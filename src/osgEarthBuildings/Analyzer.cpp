@@ -150,65 +150,14 @@ Analyzer::analyze(osg::Node* node, ProgressCallback* progress, unsigned numFeatu
         << " ms, Avg = " << std::setprecision(3) << (1000.0*(totalTime / (double)numFeatures)) << " ms"
         << std::endl;
 
-    // collect statistics about the resulting scene graph:
-    if (progress->collectStats())
-    {
-        ExStatsVisitor stats;
-        node->accept(stats);
-        progress->stats("# unique stateSets") = stats._statesetSet.size();
-        progress->stats("# stateSet refs") = stats._numInstancedStateSet;
-        progress->stats("# drawables") = stats._drawableSet.size();
+    FindTextures ft;
+    node->accept(ft);
+    ft.print(std::cout);
 
-        // Prints out the stats details
-        stats.print(std::cout);
+    FindStateSets fss;
+    node->accept(fss);
+    fss.print(std::cout);
 
-        // Uncomment to see the number of primitivesets (i.e. number of calls to DrawElements) in each drawable
-        unsigned primsets = 0;
-        for (osgUtil::StatsVisitor::DrawableSet::const_iterator i = stats._drawableSet.begin(); i != stats._drawableSet.end(); ++i) {
-            primsets += (*i)->asGeometry()->getNumPrimitiveSets();
-        }
-        progress->stats("# primsets") = primsets;
-        progress->stats("# vbos") = stats._vbos.size();
-
-        FindTextures ft;
-        node->accept(ft);
-        ft.print(std::cout);
-
-        FindStateSets fss;
-        node->accept(fss);
-        fss.print(std::cout);
-
-        // Uncomment to dump out a file per tile.
-        //osgDB::writeNodeFile(*node, "out.osgt");
-    }
-
-    std::stringstream buf;
-    buf << "Stats:\n";
-
-    for (ProgressCallback::Stats::const_iterator i = progress->stats().begin(); i != progress->stats().end(); ++i)
-    {
-        if (i->first.at(0) == '#')
-        {
-            buf
-                << "    "
-                << std::setw(15) << i->first
-                << std::setw(10) << i->second
-                << std::endl;
-        }
-        else
-        {
-            buf
-                << "    "
-                << std::setw(15) << i->first
-                << std::setw(6) << (int)(1000.0*i->second) << " ms"
-                << std::setw(6) << (int)(100.0*i->second / totalTime) << "%"
-                << std::endl;
-        }
-    }
-
-    std::cout << buf.str() << std::endl;
-
-    // clear them when we are done.
-    progress->stats().clear();
-
+    // Uncomment to dump out a file per tile.
+    //osgDB::writeNodeFile(*node, "out.osgt");
 }

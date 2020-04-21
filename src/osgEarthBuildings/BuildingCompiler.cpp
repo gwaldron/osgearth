@@ -81,11 +81,6 @@ BuildingCompiler::compile(const BuildingVector& input,
         }
     }
 
-    if ( progress && progress->collectStats() )
-    {
-        progress->stats("compile.total") += OE_GET_TIMER(total);
-    }
-
     return true;
 }
 

@@ -230,16 +230,7 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
         return 0L;
     }
 
-
-    // For debugging. This tile is in Seattle.
-    //if (tileKey.str() != "14/2625/5725" && tileKey.str() != "13/1312/2862")
-    //    return 0L;
-
-    if ( progress )
-        progress->collectStats() = _profile;
-
     OE_PROFILING_ZONE;
-    OE_START_TIMER(total);
     unsigned numFeatures = 0;
     
     std::string activityName("Load building tile " + tileKey.str());
@@ -281,14 +272,9 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
     // Try to load from the cache.
     if (cacheReadsEnabled(readOptions.get()) && !canceled)
     {
-        OE_START_TIMER(readCache);
-
         osg::CVSpan UpdateTick(series2, 4, "ReadFromCache");
 
         node = output.readFromCache(readOptions.get(), progress);
-
-        if (progress && progress->collectStats())
-            progress->stats("pager.readCache") = OE_GET_TIMER(readCache);
     }
 
     bool fromCache = node.valid();
@@ -329,9 +315,6 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
                 envelope = pool->createEnvelope(
                     _session->getMapSRS(),      // SRS of input features
                     tileKey.getLOD());          // LOD at which to clamp
-
-                if (progress && progress->collectStats())
-                    progress->stats("pager.envelope") = OE_GET_TIMER(envelope);
 
                 if (!envelope.valid())
                 {
@@ -417,9 +400,6 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
                 applyRenderSymbology(node.get(), *style);
 
             output.postProcess(node.get(), _compilerSettings, progress);
-
-            if (progress && progress->collectStats())
-                progress->stats("pager.postProcess") = OE_GET_TIMER(postProcess);
         }
 
         if (node.valid() && cacheWritesEnabled(readOptions.get()) && !canceled)
@@ -429,22 +409,10 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
             osg::CVSpan UpdateTick(series2, 4, "writeToCache");
 
             output.writeToCache(node.get(), readOptions.get(), progress);
-
-            if (progress && progress->collectStats())
-                progress->stats("pager.writeCache") = OE_GET_TIMER(writeCache);
         }
     }
 
     Registry::instance()->endActivity(activityName);
-
-    double totalTime = OE_GET_TIMER(total);
-
-    // STATS:
-    if ( progress && progress->collectStats() && !progress->stats().empty() && (fromCache || numFeatures > 0))
-    {
-        Analyzer analyzer;
-        analyzer.analyze(node.get(), progress, numFeatures, totalTime, tileKey);
-    }
 
     if (canceled)
     {

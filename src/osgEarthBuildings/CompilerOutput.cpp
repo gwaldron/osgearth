@@ -390,8 +390,6 @@ CompilerOutput::createSceneGraph(Session*                session,
                                  const osgDB::Options*   readOptions,
                                  ProgressCallback*       progress) const
 {
-    OE_START_TIMER(total);
-
     // install the master matrix for this graph:
     osg::ref_ptr<osg::MatrixTransform> root = new osg::MatrixTransform( getLocalToWorld() );
     root->setName("BuildingSceneGraphNode");
@@ -446,25 +444,14 @@ CompilerOutput::createSceneGraph(Session*                session,
     
     // Run an optimization pass before adding any debug data or models
     // NOTE: be careful; don't mess with state during optimization.
-    OE_START_TIMER(optimize);
     {
         // because the default merge limit is 10000 and there's no other way to change it
         osgUtil::Optimizer::MergeGeometryVisitor mergeGeometry;
         mergeGeometry.setTargetMaximumNumberOfVertices( 250000u );
         root->accept( mergeGeometry );
     }
-    double optimizeTime = OE_GET_TIMER(optimize);
 
-    OE_START_TIMER(instances);
     addInstances(root, session, settings, readOptions, progress);
-    double instanceTime = OE_GET_TIMER(instances);
-
-    if ( progress && progress->collectStats() )
-    {
-        progress->stats("out.optimize" ) = optimizeTime;
-        progress->stats("out.instances") = instanceTime;
-        progress->stats("out.total")     = OE_GET_TIMER(total);
-    }
 
     return root.release();
 }
@@ -529,8 +516,6 @@ namespace
 
             else if (node.getName() == INSTANCES_ROOT && !_useDrawInstanced)
             {
-                OE_START_TIMER(clustering);
-
                 // Clustering:
                 osg::Group* group = node.asGroup();
 
@@ -551,9 +536,6 @@ namespace
 
                 // Generate shaders afterwards.
                 Registry::instance()->shaderGenerator().run(&node, "Instances Root", _sscache.get());
-
-                if (_progress)
-                    _progress->stats("clustering") += OE_GET_TIMER(clustering);
 
                 // no traverse necessary
             }

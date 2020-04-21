@@ -67,9 +67,6 @@ BuildingFactory::create(Feature*               feature,
     if ( !feature || !feature->getGeometry() )
         return false;
 
-    double xformTime=0.0, clampTime=0.0, symbolTime=0.0, createTime=0.0;
-    OE_START_TIMER(total);
-
     // TODO: for the single-feature version here, consider a token or other way
     // to compute all this common stuff up front. This was not necessary for the
     // FeatureCursor variation. -gw
@@ -135,8 +132,6 @@ BuildingFactory::create(Feature*               feature,
 
     if ( buildingSymbol )
     {
-        OE_START_TIMER(symbol);
-
         // see if we are referencing an external model.
         if ( modelExpr.isSet() )
         {
@@ -178,14 +173,10 @@ BuildingFactory::create(Feature*               feature,
                 }
             }
         }
-
-        symbolTime = OE_GET_TIMER(symbol);
     }
 
     if ( height > 0.0f || externalModelURI.isSet() )
     {
-        OE_START_TIMER(xform);
-
         // Removing co-linear points will help produce a more "true"
         // longest-edge for rotation and roof rectangle calcuations.
         feature->getGeometry()->removeColinearPoints();
@@ -203,12 +194,8 @@ BuildingFactory::create(Feature*               feature,
             return true;
         }
 
-        xformTime = OE_GET_TIMER(xform);
-
-
         // Prepare for terrain clamping by finding the minimum and 
         // maximum elevations under the feature:
-        OE_START_TIMER(clamp);
                 
         float min = FLT_MAX, max = -FLT_MAX;
         bool terrainMinMaxValid =
@@ -220,11 +207,6 @@ BuildingFactory::create(Feature*               feature,
         context.setTerrainMinMax(
             terrainMinMaxValid ? min : 0.0f,
             terrainMinMaxValid ? max : 0.0f );
-
-        clampTime = OE_GET_TIMER(clamp);
-
-
-        OE_START_TIMER(create);
 
         // If this is an external model, set up a building referencing the model
         if ( externalModelURI.isSet() )
@@ -257,18 +239,6 @@ BuildingFactory::create(Feature*               feature,
                 }
             }
         }
-
-        createTime = OE_GET_TIMER(create);
-    }
-
-    double totalTime = OE_GET_TIMER(total);
-
-    if ( progress && progress->collectStats() )
-    {
-        progress->stats("factory.xform")  += xformTime;
-        progress->stats("factory.clamp")  += clampTime;
-        progress->stats("factory.symbol") += symbolTime;
-        progress->stats("factory.create") += createTime;
     }
 
     return true;

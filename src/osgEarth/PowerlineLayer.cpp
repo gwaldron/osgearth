@@ -561,6 +561,18 @@ int chooseAttachment(const osg::Matrixd& towerFrame0, const osg::Matrixd& towerF
     }
 }
 
+osg::Matrixd getLocalToWorld(const osg::Vec3d& geodeticPt,
+                             const SpatialReference* inputSRS,
+                             const SpatialReference* outputSRS)
+{
+    osg::Matrixd result;
+    osg::Vec3d worldPt;
+    ECEF::transformAndGetRotationMatrix(geodeticPt, inputSRS, worldPt,
+                                        outputSRS, result);
+    result.setTrans(worldPt);
+    return result;
+}
+
 FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
                                                            FeatureList& towerFeatures, const FilterContext& cx,
                                                            const Query& query,
@@ -617,24 +629,9 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
         Geometry* geom = feature->getGeometry();
         if (geom->getType() == Geometry::TYPE_LINESTRING)
         {
-            std::vector<float> elevations;
-            eq.getElevations(geom->asVector(), feature->getSRS(), elevations);
-            std::vector<osg::Vec3d> worldPts(geom->size());
-            std::vector<osg::Matrixd> orientations(geom->size());
-            for (int i = 0; i < geom->size(); ++i)
-            {
-                osg::Vec3d geodeticPt((*geom)[i].x(), (*geom)[i].y(), elevations[i]);
-                ECEF::transformAndGetRotationMatrix(geodeticPt, featureSRS.get(), worldPts[i],
-                                                    targetSRS, orientations[i]);
-            }
-            // New feature for the cable
             const int size = geom->size();
-            // For various reasons the headings of successive towers can be inconsistant, causing
-            // the cables between attachment points to cross each other. Ideally, the points are
-            // specified in pairs. If the attachment point being used causes a cable to cross over
-            // the center line between towers, then switch to the other attachment point. If the
-            // attachment points are not in pairs, it's awkward...
-            std::vector<osg::Matrixd> towerMats(size);
+            std::vector<osg::Matrixd> towerMats;
+            towerMats.reserve(size);
             for (int i = 0; i < size; ++i)
             {
                 double heading = 0.0;
@@ -645,20 +642,26 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                 }
                 else
                 {
-                    OE_NOTICE << LC << "Calculating tower heading; shouldn't happen!\n";
-                    heading = calculateHeading(geom, i);
+                    OE_NOTICE << LC << "tower not found!\n";
+                    break;
                 }
                 const osg::Vec3d Z(0.0, 0.0, 1.0);
                 osg::Matrixd headingMat = osg::Matrixd::rotate(osg::DegreesToRadians(heading), Z);
-                towerMats[i] = headingMat * orientations[i] * osg::Matrixd::translate(worldPts[i]);
+                osg::Matrixd geodMat = getLocalToWorld(itr->first, featureSRS.get(), targetSRS);
+                towerMats.push_back(headingMat * geodMat);
             }
-
+            // For various reasons the headings of successive towers can be inconsistant, causing
+            // the cables between attachment points to cross each other. Ideally, the points are
+            // specified in pairs. If the attachment point being used causes a cable to cross over
+            // the center line between towers, then switch to the other attachment point. If the
+            // attachment points are not in pairs... awkward...
             Array::View<osg::Vec3d> attachments(_attachments.data(),
                                                _attachments.size() / 2, 2);
             for (int attachRow = 0; attachRow < _attachments.size() / 2; ++attachRow)
             {
                 for (int startingAttachment = 0; startingAttachment < 2; ++startingAttachment)
                 {
+                    // New feature for each cable
                     Feature* newFeature = new Feature(*feature);
                     LineString* newGeom = new LineString(size);
                     int currAttachment = startingAttachment;
@@ -680,7 +683,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                     {
                         for (int i = 0; i < cablePoints.size() -1; ++i)
                         {
-                            makeCatenary(cablePoints[i], cablePoints[i + 1], orientations[i], 1.002, _maxSag,
+                            makeCatenary(cablePoints[i], cablePoints[i + 1], towerMats[i], 1.002, _maxSag,
                                          catenaryPoints,
                                          cableStyle.get<LineSymbol>()->tessellationSize()->as(Units::METERS));
                         }
@@ -774,6 +777,8 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
 
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
     osg::ref_ptr<osg::Node> pointsNode;
+    // This has the side effect of updating the elevations of the point features according to the
+    // model style sheet. We rely on this in makeCableFeatures().
     GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), towerStyle, localCX, pointsNode, query);
     osg::ref_ptr<osg::Group> results(new osg::Group);
     results->addChild(pointsNode.get());

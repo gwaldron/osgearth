@@ -716,7 +716,8 @@ FeatureImageRenderer::render(const TileKey& key,
     if (features->hasEmbeddedStyles() )
     {
         // Each feature has its own embedded style data, so use that:
-        osg::ref_ptr<FeatureCursor> cursor = createCursor(features, _filterChain.get(), FilterContext(), defaultQuery, progress); //features->createFeatureCursor(defaultQuery, progress);
+        FilterContext context;
+        osg::ref_ptr<FeatureCursor> cursor = createCursor(features, _filterChain.get(), context, defaultQuery, progress); //features->createFeatureCursor(defaultQuery, progress);
         while( cursor.valid() && cursor->hasMore() )
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();

@@ -457,12 +457,21 @@ XmlDocument::load( std::istream& in, const URIContext& uriContext )
     if ( xmlDoc.Error() )
     {
         std::stringstream buf;
-        buf << xmlDoc.ErrorDesc() << " (row " << xmlDoc.ErrorRow() << ", col " << xmlDoc.ErrorCol() << ")";
-        std::string str;
-        str = buf.str();
-        OE_WARN << "Error in XML document: " << str << std::endl;
-        if ( !uriContext.referrer().empty() )
-            OE_WARN << uriContext.referrer() << std::endl;
+        buf << "XML parsing error";
+        if (!uriContext.referrer().empty())
+            buf << " in \"" <<  uriContext.referrer() << "\"";
+        OE_WARN << buf.str() << std::endl;
+        OE_WARN << xmlDoc.ErrorDesc() << " (row " << xmlDoc.ErrorRow() << ", col " << xmlDoc.ErrorCol() << ")" << std::endl;
+
+        // print some context
+        StringVector output;
+        StringTokenizer lines(xmlStr, output, "\n", "", true, false);
+        int startLine = osg::maximum(0, xmlDoc.ErrorRow()-12);
+        int endLine = osg::minimum((int)(output.size())-1, xmlDoc.ErrorRow()+4);
+        for(int i=startLine; i<=endLine; ++i)
+        {
+            OE_WARN << " " << i+1 << (i+1 == xmlDoc.ErrorRow()? " *":"  ") << "\t" << output[i] << std::endl;
+        }
     }
 
     if ( !xmlDoc.Error() && xmlDoc.RootElement() )

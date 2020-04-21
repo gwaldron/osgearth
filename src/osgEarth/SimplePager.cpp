@@ -34,21 +34,23 @@ namespace
      * to use. It will report cancelation if the last reported frame number is
      * behind the current master frame number (as tracked by the ProgressMaster)
      */
-    struct MyProgressCallback : public ProgressCallback
+    struct MyProgressCallback : public DatabasePagerProgressCallback
     {
-        MyProgressCallback(ProgressMaster* master)
+        MyProgressCallback(ProgressMaster* master) :
+            DatabasePagerProgressCallback()
         {
             _master = master;
             _lastFrame = 0u;
         }
 
-        // override from ProgressCallback
-        bool isCanceled()
+        virtual bool shouldCancel() const
         {
-            osg::ref_ptr<ProgressMaster> master;
-            if (!_master.lock(master)) return true;
-            if (!_master->_canCancel) return false;
-            return (master->_frame - _lastFrame > 1u);
+            osg::ref_ptr<ProgressMaster> master = _master.get();
+
+            return 
+                (DatabasePagerProgressCallback::shouldCancel()) ||
+                (master.valid() == false) ||
+                (master->_canCancel && _master->_frame - _lastFrame > 1u);
         }
 
         // called by ProgressUpdater

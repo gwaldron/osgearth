@@ -366,7 +366,9 @@ namespace
         for (unsigned i = 0; i < map->getNumLayers(); ++i)
         {
             const Layer* layer = map->getLayerAt(i);
-            if (layer->getStatus().isError())
+
+            if (layer->getStatus().isError() &&
+                layer->getEnabled() == true)
             {
                 OE_WARN << LC << layer->getTypeName() << " \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
             }

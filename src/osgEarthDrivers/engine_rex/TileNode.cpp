@@ -45,9 +45,6 @@ using namespace osgEarth::Util;
 
 #define LC "[TileNode] "
 
-#define REPORT(name,timer) if(context->progress()) { \
-    context->progress()->stats()[name] += OE_GET_TIMER(timer); }
-
 namespace
 {
     // Scale and bias matrices, one for each TileKey quadrant.
@@ -489,7 +486,6 @@ TileNode::cull(TerrainCuller* culler)
             {
                 OE_START_TIMER(createChildren);
                 createChildren( context );
-                REPORT("TileNode::createChildren", createChildren);
                 _childrenReady = true;
 
                 // This means that you cannot start loading data immediately; must wait a frame.

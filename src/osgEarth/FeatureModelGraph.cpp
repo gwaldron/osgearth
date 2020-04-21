@@ -82,14 +82,22 @@ namespace
         bool useFileCache() const { return false; }
     };
 
-    struct MyProgressCallback : public ProgressCallback
+    struct MyProgressCallback : public DatabasePagerProgressCallback
     {
         osg::ref_ptr<const Session> _session;
-        MyProgressCallback(const Session* session) : _session(session) { }
-        virtual bool isCanceled() {
-            if (!_canceled && (!_session.valid() || !_session->hasMap()))
-                _canceled = true;
-            return _canceled;
+
+        MyProgressCallback(const Session* session) : 
+            DatabasePagerProgressCallback(),
+            _session(session)
+        {
+            //nop
+        }
+
+        virtual bool shouldCancel() const
+        {
+            return
+                DatabasePagerProgressCallback::shouldCancel() ||
+                (!_session.valid() || !_session->hasMap());
         }
     };
 

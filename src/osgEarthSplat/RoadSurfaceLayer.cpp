@@ -385,9 +385,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             // Schedule the rasterization and get the future.
             imageFuture = _rasterizer->push(group.release(), getTileSize(), outputExtent);
 
-            // Block until the image is ready.
-            // NULL means there was nothing to render.
-            osg::Image* image = imageFuture.release();
+            osg::Image* image = imageFuture.release(progress);
             if (image)
             {
                 return GeoImage(image, key.getExtent());

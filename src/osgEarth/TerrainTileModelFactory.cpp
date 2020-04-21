@@ -352,9 +352,6 @@ TerrainTileModelFactory::addColorLayers(
             model->colorLayers().push_back(colorModel);
         }
     }
-
-    if (progress)
-        progress->stats()["fetch_imagery_time"] += OE_STOP_TIMER(fetch_image_layers);
 }
 
 
@@ -396,9 +393,6 @@ TerrainTileModelFactory::addPatchLayers(
             }
         }
     }
-
-    if (progress)
-        progress->stats()["fetch_patches_time"] += OE_STOP_TIMER(fetch_patch_layers);
 }
 
 
@@ -501,9 +495,6 @@ TerrainTileModelFactory::addElevation(
             model->normalModel() = layerModel;
         }
     }
-
-    if (progress)
-        progress->stats()["fetch_elevation_time"] += OE_STOP_TIMER(fetch_elevation);
 }
 
 bool
@@ -527,22 +518,12 @@ TerrainTileModelFactory::getOrCreateHeightField(
     cachekey._revision     = revision;
     cachekey._samplePolicy = samplePolicy;
 
-    if (progress)
-        progress->stats()["hfcache_try_count"] += 1;
-
     bool hit = false;
     HFCache::Record rec;
     if ( _heightFieldCacheEnabled && _heightFieldCache.get(cachekey, rec) )
     {
         out_hf = rec.value()._hf.get();
         out_normalMap = rec.value()._normalMap.get();
-
-        if (progress)
-        {
-            progress->stats()["hfcache_hit_count"] += 1;
-            progress->stats()["hfcache_hit_rate"] = progress->stats()["hfcache_hit_count"]/progress->stats()["hfcache_try_count"];
-        }
-
         return true;
     }
 

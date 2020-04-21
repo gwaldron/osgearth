@@ -618,11 +618,6 @@ updateControlPanel()
     {
         Layer* layer = layers[i].get();
         addLayerItem(s_activeBox, i, layers.size(), layer, true);
-
-        if (layer->getStatus().isError())
-        {
-            OE_WARN << layer->getName() << " : " << layer->getStatus().toString() << "\n";
-        }
     }
 
     // inactive layers:

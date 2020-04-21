@@ -270,6 +270,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     // live tiles of the current map revision so they can inrementally update
     // themselves if necessary.
     _liveTiles = new TileNodeRegistry("live");
+    _liveTiles->setFrameClock(&_clock);
     _liveTiles->setMapRevision(map->getDataModelRevision());
     _liveTiles->setNotifyNeighbors(options().normalizeEdges() == true);
     _liveTiles->setFirstLOD(options().firstLOD().get());
@@ -285,6 +286,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // Make a tile loader
     PagerLoader* loader = new PagerLoader( this );
+    loader->setFrameClock(&_clock);
     loader->setNumLODs(options().maxLOD().getOrUse(DEFAULT_MAX_LOD));
     loader->setMergesPerFrame(options().mergesPerFrame().get() );
     loader->setOverallPriorityScale(options().priorityScale().get());
@@ -303,6 +305,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // Make a tile unloader
     _unloader = new UnloaderGroup( _liveTiles.get() );
+    _unloader->setFrameClock(&_clock);
     _unloader->setCacheSize(expirationThreshold);
     _unloader->setMaxAge(options().minExpiryTime().get());
     _unloader->setMaxTilesToUnloadPerFrame(options().maxTilesToUnloadPerFrame().get());
@@ -340,7 +343,8 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         _liveTiles.get(),
         _renderBindings,
         options(),
-        _selectionInfo);
+        _selectionInfo,
+        &_clock);
 
     // Calculate the LOD morphing parameters:
     unsigned maxLOD = options().maxLOD().getOrUse(DEFAULT_MAX_LOD);
@@ -620,12 +624,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
 
-    // Inform the registry of the current frame so that Tiles have access
-    // to the information.
-    //if (_liveTiles.valid() && nv.getFrameStamp())
-    //{
-    //    _liveTiles->setTraversalFrame(nv.getFrameStamp()->getFrameNumber());
-    //}
+    _clock.cull();
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
@@ -780,15 +779,15 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
 
-    bool runUpdate = false;
-    if (nv.getFrameStamp())
-    {
-        runUpdate = (_frameLastUpdated < nv.getFrameStamp()->getFrameNumber());
-        _frameLastUpdated = nv.getFrameStamp()->getFrameNumber();
-    }
+    unsigned osgFrame = nv.getFrameStamp()->getFrameNumber();
+    bool newFrame = (osgFrame > _clock.getFrame());
 
-    if (runUpdate)
+    // prevent from running more than once per frame
+    if (newFrame)
     {
+        // advance the frame clock for this new frame.
+        _clock.update();
+
         if (_renderModelUpdateRequired)
         {
             PurgeOrphanedLayers visitor(getMap(), _renderBindings);

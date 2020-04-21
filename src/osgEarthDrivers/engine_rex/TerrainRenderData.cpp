@@ -51,7 +51,6 @@ TerrainRenderData::setup(const Map* map,
 
     // Create a new State object to track sampler and uniform settings
     _drawState = new DrawState();
-    _drawState->_frame = frameNum;
     _drawState->_bindings = &bindings;
     
     // Is this a depth camera? Because if it is, we don't need any color layers.

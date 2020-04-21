@@ -283,12 +283,10 @@ TileNodeRegistry::update(TileNode* tile, osg::NodeVisitor& nv)
     TileTable::iterator i = _tiles.find(tile->getKey());
     if (i != _tiles.end())
     {
-        const osg::FrameStamp* fs = nv.getFrameStamp();
-
         TableEntry& e = i->second;
         TrackerEntry* se = (*e._trackerptr);
-        se->_lastTime = fs->getReferenceTime();
-        se->_lastFrame = fs->getFrameNumber();
+        se->_lastTime = _clock->getTime();
+        se->_lastFrame = _clock->getFrame();
 
         const osg::BoundingSphere& bs = tile->getBound();
         float range = nv.getDistanceToViewPoint(bs.center(), true) - bs.radius();
@@ -322,8 +320,6 @@ TileNodeRegistry::collectDormantTiles(
 
     unsigned count = 0u;
 
-    const osg::FrameStamp* fs = nv.getFrameStamp();
-
     // After cull, all visited tiles are in front of the sentry, and all
     // non-visited tiles are behind it. Start at the sentry position and
     // iterate over the non-visited tiles, checking them for deletion.
@@ -339,7 +335,7 @@ TileNodeRegistry::collectDormantTiles(
             se->_lastTime < oldestAllowableTime &&
             se->_lastFrame < oldestAllowableFrame &&
             se->_lastRange > farthestAllowableRange &&
-            se->_tile->areSiblingsDormant(fs))
+            se->_tile->areSiblingsDormant())
         {
             if (_notifyNeighbors)
             {

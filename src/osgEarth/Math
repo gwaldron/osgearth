@@ -242,6 +242,50 @@ namespace osgEarth
         return xn;
     }
 
+    // Courtesy of stackoverflow, return -1, 0, +1 based on the sign
+    // of a number
+    template<typename T>
+    int sgn(T val)
+    {
+        return (T(0) < val) - (val < T(0));
+    }
+    // Bisection solver, useful when the derivative of a function is
+    // unknown or expensive to calculate.
+    // x0 and x1 are initial guesses surrounding the root. The signs
+    // of func(x0) and func(x1) should be different; otherwise we bail
+    // immediately.
+    template<typename Func>
+    double solveBisect(const Func& func, double x0, double x1, double tolerance, int maxIterations = 8)
+    {
+        double f0 = func(x0);
+        double f1 =func(x1);
+        if (sgn(f0) == sgn(f1))
+        {
+            return x0;
+        }
+        double midPoint = 0.0;
+        for (int i = 0; i < maxIterations; ++i)
+        {
+            midPoint = (x0 + x1) / 2.0;
+            double fMidpoint = func(midPoint);
+            if (fabs(fMidpoint) <= tolerance)
+            {
+                return midPoint;
+            }
+            else if (sgn(f0) == sgn(fMidpoint))
+            {
+                x0 = midPoint;
+                f0 = fMidpoint;
+            }
+            else
+            {
+                x1 = midPoint;
+                f1 = fMidpoint;
+            }
+        }
+        return midPoint;
+    }
+
     // Project osg::Vec3 a onto b.
     template<typename VecType>
     VecType vecProjection(const VecType& a, const VecType& b)

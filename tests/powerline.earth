@@ -1,11 +1,13 @@
 <map name="power tower test">
     <PowerlineModel name="towers" max_range="6000" attenuation_range="1000">
-        <features>power-towers</features>
+        <features>power-lines</features>
         <tower_model>
             <model>../data/Transmission_Tower.osgb</model>
             <attachment_points>
-                LINESTRING(5.876 0.0 14.162, -5.876 0.0 14.162, 6.875 0.0 18.52, -6.875 0.0 18.52)
+                LINESTRING(5.876 0.0 14.162, -5.876 0.0 14.162, 6.875 0.0 18.52, -6.875 0.0 18.52, 4.890 0.0 22.42, -4.890 0.0 22.42)
             </attachment_points>
+            <!-- maximum sag or droop of a single cable -->
+            <max_sag>5.0</max_sag>
         </tower_model>
         <styles>
             <style type="text/css">
@@ -22,7 +24,7 @@
         </styles>
     </PowerlineModel>
 
-    <TFSFeatures name="power-towers">
+    <TFSFeatures name="power-lines">
         <url>http://readymap.org/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
@@ -60,6 +62,15 @@
             <height>155</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
             <range>500</range>
+        </viewpoint>
+        <viewpoint name="problematic">
+          <heading>-52.6766</heading>
+          <pitch>-16.6442</pitch>
+          <range>123.522m</range>
+          <long>-0.6434920611453753</long>
+          <lat>44.89152565710955</lat>
+          <height>53.01278693787754</height>
+          <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
 
     </viewpoints>

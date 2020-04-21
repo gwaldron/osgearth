@@ -76,6 +76,9 @@ namespace osgEarth { namespace REX
     public:
         TileNodeRegistry( const std::string& name );
 
+        //! Sets the frame clock to use
+        void setFrameClock(const FrameClock* value) { _clock = value; }
+
         /* Enabled revisioning on TileNodes, to support incremental update. */
         void setRevisioningEnabled(bool value);
 
@@ -151,6 +154,7 @@ namespace osgEarth { namespace REX
         Tracker::iterator _sentryptr;
         mutable Threading::Mutex _mutex;
         bool _notifyNeighbors;
+        const FrameClock* _clock;
 
         typedef UnorderedSet<TileKey> TileKeySet;
         typedef UnorderedMap<TileKey, TileKeySet> TileKeyOneToMany;

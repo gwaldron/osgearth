@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include <osgEarth/Array>
 #include <osgEarth/PowerlineLayer>
 #include <osgEarth/AltitudeFilter>
 #include <osgEarth/JoinPointsLinesFilter>
@@ -61,6 +62,7 @@ void PowerlineLayer::ModelOptions::fromConfig(const Config& conf)
     {
         uri() = conf.child("uri").value();
     }
+    conf.get("max_sag", maxSag());
 }
 
 Config PowerlineLayer::ModelOptions::getConfig() const
@@ -72,6 +74,7 @@ Config PowerlineLayer::ModelOptions::getConfig() const
         conf.set("attachment_points", GeometryUtils::geometryToWKT(attachGeom.get()));
     }
     conf.set("uri", uri());
+    conf.set("max_sag", maxSag());
     return conf;
 }
 
@@ -145,6 +148,7 @@ private:
     std::string _modelName;
     osg::ref_ptr<StyleSheet> _styles;
     bool _point_features;
+    float _maxSag;
 };
 
 PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
@@ -152,7 +156,8 @@ PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::O
       _lineSourceLayer(options.lineSourceLayerName().get()),
       _lineSource(options.lineSourceEmbeddedOptions().get()),
       _styles(styles),
-      _point_features(true)
+      _point_features(true),
+      _maxSag(6.0)
 {
     if (options.towerModels().empty())
         return;
@@ -162,6 +167,10 @@ PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::O
               std::back_inserter(_attachments));
     _modelName = modelOption.uri().get();
     _point_features = options.point_features().get();
+    if (modelOption.maxSag().isSet())
+    {
+        _maxSag = modelOption.maxSag().get();
+    }
 }
 
 FeatureNodeFactory*
@@ -360,9 +369,73 @@ namespace
         }
         double d;
     };
+
+    // Support around evaluating the catenary formula x = a * cosh((x + x1) / a) + C
+    // and solving for the parameters a,x1, and C given the arc length of the curve L and the
+    // horizontal and vertical displacement of the endpoints.
+    struct CatenaryFunc
+    {
+        double a;
+        double x1;
+        double C;
+        double L;
+        double d;
+        double h;
+        CatenaryFunc(double a_, double x1_, double C_, double L_ = 0.0, double d_ = 0.0, double h_ = 0.0)
+            : a(a_), x1(x1_), C(C_), L(L_), d(d_), h(h_)
+        {
+        }
+        double operator()(double x) const
+        {
+            return a * cosh((x + x1) /a) + C;
+        }
+        static CatenaryFunc solveIt(double L, double d, double h)
+        {
+            GFunc gfunc(d, L, h);
+            GFuncDeriv gfuncDeriv(d);
+            bool validSoln = false;
+            const double a = solve(gfunc, gfuncDeriv, d / 2, 1.0e-6, validSoln);
+            // Parameters of the curve
+            const double x1 = (a * log((L + h) / (L - h)) - d) / 2.0;
+            const double C = -a * cosh(x1 / a);
+            return CatenaryFunc(a, x1, C, L, d, h);
+        }
+    };
+    // Find the difference between a catenary's minimum and refHeight. minHeight should be negative
+    // i.e., below both towers in this usage.  d, h, and L are as in CatenaryFunc, but now L is a
+    // free variable.
+    struct MinCatHeight
+    {
+        double d;
+        double h;
+        double refHeight;
+        MinCatHeight(double d_, double h_, double refHeight_ = 0.0)
+            : d(d_), h(h_), refHeight(refHeight_)
+        {
+        }
+        double operator()(double L) const
+        {
+            if (L * L < d * d + h * h)
+            {
+                // not happening
+                return 0.0;
+            }
+            CatenaryFunc func = CatenaryFunc::solveIt(L, d, h);
+            double minHeight = 0.0;
+            if (func.x1 > 0.0)
+            {
+                // minimum is out of the range of the curve (x < 0)
+                return 0.0;
+            }
+            // Could use func.a + func.C
+            return (func(-func.x1) -refHeight);
+        }
+    };
 }
 
+
 void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation, double slack,
+                  double maxSag,
                   std::vector<osg::Vec3d>& result, float tessellationSize)
 {
     // Create a frame centered at p1 with orientation normal to
@@ -391,6 +464,7 @@ void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation,
     {
         Xaxis = osg::Vec3d(p2local.x(), p2local.y(), 0.0);
     }
+    // Horizontal distance between points
     const double d = Xaxis.normalize();
     osg::Vec3d Yaxis = osg::Vec3d(0.0, 0.0, 1.0) ^ Xaxis;
     osg::Matrixd FrameCat;
@@ -407,18 +481,25 @@ void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation,
     {
         h = p2local.z();
     }
-    // Arc length of the cable
-    const double L = p2local.length() * slack;
-    GFunc gfunc(d, L, h);
-    GFuncDeriv gfuncDeriv(d);
-    bool validSoln = false;
-    const double a = solve(gfunc, gfuncDeriv, d / 2, 1.0e-6, validSoln);
-    // Parameters of the curve
-    const double x1 = (a * log((L + h) / (L - h)) - d) / 2.0;
-    const double C = -a * cosh(x1 / a);
+    // straight distance between attachment points; obviously a lower limit on the cable length
+    double straightDist = p2local.length();
+    CatenaryFunc func = CatenaryFunc::solveIt(straightDist * slack, d, h);
+
+    double xMin = -func.x1;
+    double yMin = func(xMin);
+    if (0.0 < xMin && yMin < -maxSag)
+    {
+        // Cable droops too much, so try a more expensive strategy
+        MinCatHeight minimum(d, h, -maxSag);
+        // No downside in choosing a very low lower bound
+        double newGuess = ((slack - 1.0) * .01 + 1.0) * straightDist;
+        // centimeter tolerence is fine
+        double Lmin = solveBisect(minimum, newGuess, straightDist * slack, 0.01, 8);
+        func = CatenaryFunc::solveIt(Lmin, d, h);
+    }
     const osg::Vec3d P1(0.0, 0.0, 0.0), P2(d, 0.0, h);
     double begin, inc;
-    int numSteps = ceil(L / tessellationSize);
+    int numSteps = ceil(p2local.length() / tessellationSize);
     std::vector<osg::Vec3d> cablePts;
     if (swapped)
     {
@@ -433,9 +514,9 @@ void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation,
         cablePts.push_back(P1);
     }
     double x = begin;
-    for (int i = 1; i < numSteps; ++i, x += inc)
+    for (int i = 1; i <= numSteps; ++i, x += inc)
     {
-        double z = a * cosh((x + x1) / a) + C;
+        double z = func(x);
         cablePts.push_back(osg::Vec3d(x, 0.0, z));
     }
     osg::Matrixd cat2world = FrameCat * FrameP1;
@@ -448,6 +529,49 @@ void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation,
     result.insert(result.end(), cablePts.begin(), cablePts.end());
 }
 
+int chooseAttachment(const osg::Matrixd& towerFrame0, const osg::Matrixd& towerFrame1,
+                     const osg::Vec3d& attachStart, const osg::Vec3d& attachEnd0, const osg::Vec3d& attachEnd1)
+{
+    // Get everything into tower1's local frame
+    osg::Matrixd world2Tower1 = osg::Matrixd::inverse(towerFrame0);
+    osg::Vec3d t2 = osg::Vec3d(towerFrame1(3,0), towerFrame1(3, 1), towerFrame1(3, 2))
+        * world2Tower1;
+    osg::Vec3d end0 = attachEnd0 * towerFrame1 * world2Tower1;
+    osg::Vec3d end1 = attachEnd1 * towerFrame1 * world2Tower1;
+    // Project the line segments into the XY plane.
+    // Segment 2D does just that.
+    Segment2d towers(osg::Vec3d(0.0, 0.0, 0.0), t2);
+    Segment2d line0(attachStart, end0);
+    Segment2d line1(attachStart, end1);
+    osg::Vec2d intersection;
+    // the line that doesn't intersect the towers' centerline is the
+    // right choice.
+    if (!towers.intersect(line0, intersection))
+    {
+        return 0;
+    }
+    else if (!towers.intersect(line1, intersection))
+    {
+        return 1;
+    }
+    else
+    {
+        // ??? They both suck.
+        return 0;
+    }
+}
+
+osg::Matrixd getLocalToWorld(const osg::Vec3d& geodeticPt,
+                             const SpatialReference* inputSRS,
+                             const SpatialReference* outputSRS)
+{
+    osg::Matrixd result;
+    osg::Vec3d worldPt;
+    ECEF::transformAndGetRotationMatrix(geodeticPt, inputSRS, worldPt,
+                                        outputSRS, result);
+    result.setTrans(worldPt);
+    return result;
+}
 
 FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
                                                            FeatureList& towerFeatures, const FilterContext& cx,
@@ -471,12 +595,12 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
 
     ElevationQuery eq(map.get());
 
+    // Network stuff not really working yet.
     PowerNetwork linesNetwork;
     addFeatures(linesNetwork, powerFeatures);
     FeatureList neighbors = findNeighborLineFeatures(cx, query);
     addFeatures(linesNetwork, neighbors);
     linesNetwork.buildNetwork();
-    // Old code
     PointMap pointMap;
     for (FeatureList::iterator i = towerFeatures.begin(); i != towerFeatures.end(); ++i)
     {
@@ -505,72 +629,82 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
         Geometry* geom = feature->getGeometry();
         if (geom->getType() == Geometry::TYPE_LINESTRING)
         {
-            std::vector<float> elevations;
-            eq.getElevations(geom->asVector(), feature->getSRS(), elevations);
-            std::vector<osg::Vec3d> worldPts(geom->size());
-            std::vector<osg::Matrixd> orientations(geom->size());
-            for (int i = 0; i < geom->size(); ++i)
-            {
-                osg::Vec3d geodeticPt((*geom)[i].x(), (*geom)[i].y(), elevations[i]);
-                ECEF::transformAndGetRotationMatrix(geodeticPt, featureSRS.get(), worldPts[i],
-                                                    targetSRS, orientations[i]);
-            }
-            // New feature for the cable
             const int size = geom->size();
-            // XXX assumption that there are only two cables
-            for (Vec3dVector::iterator attachment = _attachments.begin();
-                 attachment != _attachments.end();
-                 ++attachment)
+            std::vector<osg::Matrixd> towerMats;
+            towerMats.reserve(size);
+            for (int i = 0; i < size; ++i)
             {
-                Feature* newFeature = new Feature(*feature);
-                LineString* newGeom = new LineString(size);
-                std::vector<osg::Vec3d> cablePoints;
-
-                for (int i = 0; i < size; ++i)
+                double heading = 0.0;
+                PointMap::iterator itr = findPoint(pointMap, (*geom)[i]);
+                if (itr != pointMap.end())
                 {
-                    double heading = 0.0;
-                    PointMap::iterator itr = findPoint(pointMap, (*geom)[i]);
-                    if (itr != pointMap.end())
-                    {
-                        heading = itr->second.pointFeature->getDouble("heading", 0.0);
-                    }
-                    else
-                    {
-                        heading = calculateHeading(geom, i);
-                    }
-                    osg::Matrixd headingMat;
-                    headingMat.makeRotate(osg::DegreesToRadians(heading), osg::Vec3d(0.0, 0.0, 1.0));
-                    osg::Vec3d worldAttach = *attachment * headingMat * orientations[i] + worldPts[i];
-                    cablePoints.push_back(worldAttach);
-                }
-                const bool catenary = true;
-                std::vector<osg::Vec3d> *cableSource = 0L;
-                std::vector<osg::Vec3d> catenaryPoints;
-                if (catenary)
-                {
-                    for (int i = 0; i < cablePoints.size() -1; ++i)
-                    {
-                        makeCatenary(cablePoints[i], cablePoints[i + 1], orientations[i], 1.002,
-                                     catenaryPoints,
-                                     cableStyle.get<LineSymbol>()->tessellationSize()->as(Units::METERS));
-                    }
-                    cableSource = &catenaryPoints;
+                    heading = itr->second.pointFeature->getDouble("heading", 0.0);
                 }
                 else
                 {
-                    cableSource = &cablePoints;
+                    OE_NOTICE << LC << "tower not found!\n";
+                    break;
                 }
-                for (std::vector<osg::Vec3d>::iterator itr = cableSource->begin();
-                     itr != cableSource->end();
-                     ++itr)
+                const osg::Vec3d Z(0.0, 0.0, 1.0);
+                osg::Matrixd headingMat = osg::Matrixd::rotate(osg::DegreesToRadians(heading), Z);
+                osg::Matrixd geodMat = getLocalToWorld(itr->first, featureSRS.get(), targetSRS);
+                towerMats.push_back(headingMat * geodMat);
+            }
+            // For various reasons the headings of successive towers can be inconsistant, causing
+            // the cables between attachment points to cross each other. Ideally, the points are
+            // specified in pairs. If the attachment point being used causes a cable to cross over
+            // the center line between towers, then switch to the other attachment point. If the
+            // attachment points are not in pairs... awkward...
+            Array::View<osg::Vec3d> attachments(_attachments.data(),
+                                               _attachments.size() / 2, 2);
+            for (int attachRow = 0; attachRow < _attachments.size() / 2; ++attachRow)
+            {
+                for (int startingAttachment = 0; startingAttachment < 2; ++startingAttachment)
                 {
-                    osg::Vec3d wgs84, mapAttach;
-                    featureSRS->getGeographicSRS()->transformFromWorld(*itr, wgs84);
-                    featureSRS->getGeographicSRS()->transform(wgs84, featureSRS.get(), mapAttach);
-                    newGeom->push_back(mapAttach);
+                    // New feature for each cable
+                    Feature* newFeature = new Feature(*feature);
+                    LineString* newGeom = new LineString(size);
+                    int currAttachment = startingAttachment;
+                    std::vector<osg::Vec3d> cablePoints;
+                    cablePoints.push_back(attachments(attachRow, currAttachment) * towerMats[0]);
+                    for (int i = 1; i < size; ++i)
+                    {
+                        int next = chooseAttachment(towerMats[i - 1], towerMats[i],
+                                                    attachments(attachRow, currAttachment),
+                                                    attachments(attachRow, 0), attachments(attachRow, 1));
+                        osg::Vec3d worldAttach = attachments(attachRow, next) * towerMats[i];
+                        cablePoints.push_back(worldAttach);
+                        currAttachment = next;
+                    }
+                    const bool catenary = true;
+                    std::vector<osg::Vec3d> *cableSource = 0L;
+                    std::vector<osg::Vec3d> catenaryPoints;
+                    if (catenary)
+                    {
+                        for (int i = 0; i < cablePoints.size() -1; ++i)
+                        {
+                            makeCatenary(cablePoints[i], cablePoints[i + 1], towerMats[i], 1.002, _maxSag,
+                                         catenaryPoints,
+                                         cableStyle.get<LineSymbol>()->tessellationSize()->as(Units::METERS));
+                        }
+                        cableSource = &catenaryPoints;
+                    }
+                    else
+                    {
+                        cableSource = &cablePoints;
+                    }
+                    for (std::vector<osg::Vec3d>::iterator itr = cableSource->begin();
+                         itr != cableSource->end();
+                         ++itr)
+                    {
+                        osg::Vec3d wgs84, mapAttach;
+                        featureSRS->getGeographicSRS()->transformFromWorld(*itr, wgs84);
+                        featureSRS->getGeographicSRS()->transform(wgs84, featureSRS.get(), mapAttach);
+                        newGeom->push_back(mapAttach);
+                    }
+                    newFeature->setGeometry(newGeom);
+                    result.push_back(newFeature);
                 }
-                newFeature->setGeometry(newGeom);
-                result.push_back(newFeature);
             }
         }
     }
@@ -643,6 +777,8 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
 
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
     osg::ref_ptr<osg::Node> pointsNode;
+    // This has the side effect of updating the elevations of the point features according to the
+    // model style sheet. We rely on this in makeCableFeatures().
     GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), towerStyle, localCX, pointsNode, query);
     osg::ref_ptr<osg::Group> results(new osg::Group);
     results->addChild(pointsNode.get());

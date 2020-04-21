@@ -33,6 +33,7 @@ namespace osgEarth
             META_ConfigOptions(osgEarth, ModelOptions, ConfigOptions);
             OE_OPTION(std::string, uri);
             OE_OPTION_VECTOR(osg::Vec3d, attachment_points);
+            OE_OPTION(float, maxSag);
         public:
             void fromConfig(const Config& conf);
             virtual Config getConfig() const;

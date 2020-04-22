@@ -158,7 +158,8 @@ _supportsETC            ( false ),
 _supportsRGTC           ( false ),
 _supportsTextureBuffer  ( false ),
 _maxTextureBufferSize   ( 0 ),
-_isCoreProfile          ( true )
+_isCoreProfile          ( true ),
+_supportsVertexArrayObjects ( false )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -411,6 +412,8 @@ _isCoreProfile          ( true )
         if ( _supportsRGTC ) buf << "RG";
 
         OE_DEBUG << LC << buf.str() << std::endl;
+
+        _supportsVertexArrayObjects = osg::isGLExtensionOrVersionSupported(id, "GL_ARB_vertex_array_object", 3.0);
     }
 }
 

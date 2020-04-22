@@ -53,6 +53,7 @@ set(TARGET_GLSL
     ClipPlane.glsl
     DepthOffset.glsl
     Draping.glsl
+    DrawInstancedAttribute.glsl
     GPUClamping.glsl
     GPUClamping.lib.glsl
     Instancing.glsl
@@ -148,6 +149,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
+    InstanceBuilder
     InstanceCloud
     IntersectionPicker
     IOTypes
@@ -518,6 +520,7 @@ set(TARGET_SRC
     ImageMosaic.cpp
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
+    InstanceBuilder.cpp
     IntersectionPicker.cpp
     IOTypes.cpp
     JoinPointsLinesFilter.cpp

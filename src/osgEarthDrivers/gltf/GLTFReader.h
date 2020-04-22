@@ -209,12 +209,17 @@ public:
             // todo transformation
             if (node.mesh >= 0)
             {
-                osg::Group* meshNode = makeMesh(model.meshes[node.mesh]);
-                mt->addChild(meshNode);
+                osg::Group* meshNode = nullptr;
                 if (node.extensions.find("EXT_mesh_gpu_instancing") != node.extensions.end())
                 {
+                    meshNode = makeMesh(model.meshes[node.mesh], true);
                     makeInstancedMeshNode(node, meshNode);
                 }
+                else
+                {
+                    meshNode = makeMesh(model.meshes[node.mesh], false);
+                }
+                mt->addChild(meshNode);
             }
 
             // Load any children.
@@ -306,7 +311,7 @@ public:
             return tex.release();
         }
 
-        osg::Group* makeMesh(const tinygltf::Mesh& mesh) const
+        osg::Group* makeMesh(const tinygltf::Mesh& mesh, bool prepInstancing) const
         {
             osg::Group *group = new osg::Group;
 
@@ -322,7 +327,15 @@ public:
                     return 0;
                 }
 
-                osg::ref_ptr< osg::Geometry > geom = new osg::Geometry;
+                osg::ref_ptr< osg::Geometry > geom;
+                if (prepInstancing)
+                {
+                    geom = osgEarth::InstanceBuilder::createGeometry();
+                }
+                else
+                {
+                    geom = new osg::Geometry;
+                }
                 geom->setUseVertexBufferObjects(true);
 
                 group->addChild(geom.get());

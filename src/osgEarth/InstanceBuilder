@@ -30,6 +30,7 @@ namespace osgEarth
     {
     public:
         InstanceBuilder();
+        static osg::Geometry* createGeometry();
         osg::Vec3Array* getPositions() { return _positions; };
         void setPositions(osg::Vec3Array* positions) { _positions = positions; };
         osg::Vec4Array* getRotations() { return _rotations; };

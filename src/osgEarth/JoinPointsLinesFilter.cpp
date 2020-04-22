@@ -227,8 +227,7 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
                 point.lineFeatures.push_back(feature);
                 if (i > 0)
                 {
-                    point.previous = (*geom)[i - i];
-            
+                    point.previous = (*geom)[i - 1];
                 }
                 if (i < size - 1)
                 {

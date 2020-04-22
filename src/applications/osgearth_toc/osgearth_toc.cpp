@@ -150,9 +150,7 @@ struct SetWindPoint : public osgGA::GUIEventHandler
 {
     SetWindPoint(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c)
     {
-        osg::Node* heli = osgDB::readNodeFile("D:/mak/helicopter.osgb.(10,10,10).scale");
         xform = new GeoTransform();
-        xform->addChild(heli);
         mapNode->addChild(xform);
     }
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)

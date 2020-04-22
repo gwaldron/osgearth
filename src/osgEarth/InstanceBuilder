@@ -20,13 +20,14 @@
 #ifndef OSGEARTH_INSTANCE_BUILDER_H
 #define OSGEARTH_INSTANCE_BUILDER_H 1
 
+#include <osgEarth/Export>
 #include <osg/ref_ptr>
 #include <osg/Array>
 #include <osg/Geometry>
 
 namespace osgEarth
 {
-    class InstanceBuilder
+    class OSGEARTH_EXPORT InstanceBuilder
     {
     public:
         InstanceBuilder();

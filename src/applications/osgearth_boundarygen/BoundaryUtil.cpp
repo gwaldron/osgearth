@@ -26,14 +26,17 @@
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/Point>
+#include <osg/Math>
 #include <osg/TriangleIndexFunctor>
 #include <osg/ComputeBoundsVisitor>
 #include <osgEarth/Geometry>
 #include <osgEarth/SpatialReference>
 #include <osgDB/WriteFile>
+#include <osg/MatrixTransform>
 #include <map>
 #include <vector>
 #include <set>
+#include "concaveman.h"
 
 /* Comparator used to sort osg::Vec3d's first by x and then by y */
 bool presortCompare (osg::Vec3d i, osg::Vec3d j)
@@ -55,12 +58,12 @@ BoundaryUtil::setTolerance(double value)
 /* Use the vertices of the given node to calculate a boundary via the
  * findHull() method.
  */
-osg::Vec3dArray* BoundaryUtil::getBoundary(osg::Node* modelNode, bool geocentric, bool convexHull)
+osg::Vec3dArray* BoundaryUtil::getBoundary(osg::Node* modelNode, bool geocentric, BoundaryMethod method)
 {
   if (!modelNode)
     return 0;
 
-  if ( convexHull )
+  if ( method == METHOD_CONVEX_HULL )
   {
     VertexCollectionVisitor v(geocentric);
     modelNode->accept(v);
@@ -82,6 +85,71 @@ osg::Vec3dArray* BoundaryUtil::getBoundary(osg::Node* modelNode, bool geocentric
     }
 
     return verts.release();
+  }
+  else if (method == METHOD_CONCAVE_HULL)
+  {   
+      VertexCollectionVisitor v(geocentric);
+      modelNode->accept(v);      
+
+      osg::ref_ptr<osg::Vec3dArray> verts = v.getVertices();
+      if (verts.valid() == false || verts->size() == 0)
+      {
+          OE_WARN << "No verts found in model!" << std::endl;
+          return NULL;
+      }
+
+      // Find the convex hull first
+      osg::Vec3dArray* hullVerts = findHull(*verts);
+
+      typedef double T;
+      typedef std::array<T, 2> point_type;
+      std::vector<point_type> points;
+      for (unsigned int i = 0; i < verts->size(); i++)
+      {
+          points.push_back({ (*verts)[i].x(), (*verts)[i].y() });
+      }
+
+      std::vector<int> hull;
+      for (unsigned int i = 0; i < hullVerts->size(); i++)
+      {
+          int index = -1;
+          for (unsigned int j = 0; j < verts->size(); j++)
+          {
+              if ((*hullVerts)[i] == (*verts)[j])
+              {
+                  index = j;
+                  break;
+              }
+          }
+          if (index >= 0)
+          {
+              hull.push_back(index);
+          }
+      }
+
+      auto concave = concaveman<T, 10000>(points, hull, 1, 0);
+      osg::ref_ptr<osg::Vec3dArray> outVerts = new osg::Vec3dArray();
+      for (auto &p : concave) {
+          bool pushedVert = false;
+          for (unsigned int i = 0; i < verts->size(); i++)
+          {
+              if ((*verts)[i].x() == p[0] && (*verts)[i].y() == p[1])
+              {
+                  outVerts->push_back((*verts)[i]);
+                  pushedVert = true;
+                  break;
+              }
+          }
+      }
+
+      osg::EllipsoidModel em;
+      for (osg::Vec3dArray::iterator i = outVerts->begin(); i != outVerts->end(); ++i)
+      {
+          em.convertLatLongHeightToXYZ(osg::DegreesToRadians(i->y()), osg::DegreesToRadians(i->x()), i->z(),
+              i->x(), i->y(), i->z());
+      }
+
+      return outVerts.release();
   }
   else
   {
@@ -247,6 +315,162 @@ osg::Vec3dArray* BoundaryUtil::findHull(osg::Vec3dArray& points)
 
   hull->resize(top + 1);
   return hull;
+}
+
+
+osg::Vec3dArray* BoundaryUtil::findConcaveHull(osg::Vec3dArray& points)
+{
+    OE_NOTICE << "Concave hull" << std::endl;
+    if (points.size() == 0)
+        return 0;
+
+    // the output array hull will be used as the stack
+    osg::Vec3dArray* hull = new osg::Vec3dArray(points.size());
+
+    // Presort the points as required by the algorithm
+    osg::ref_ptr<osg::Vec3dArray> sorted = hullPresortPoints(points);
+
+    int bot = 0, top = (-1);  // indices for bottom and top of the stack
+    int i;                // array scan index
+    int n = sorted->size();
+
+    // Get the indices of points with min x-coord and min|max y-coord
+    int minmin = 0, minmax;
+    double xmin = (*sorted)[0].x();
+    for (i = 1; i < n; i++)
+        if ((*sorted)[i].x() != xmin) break;
+    minmax = i - 1;
+
+    //if the points at minmin and minmax have the same value, shift minmin
+    //to ignore the duplicate points
+    if ((*sorted)[minmin] == (*sorted)[minmax])
+        minmin = minmax;
+
+    // degenerate case: all x-coords == xmin
+    if (minmax == n - 1)
+    {
+        (*hull)[++top] = (*sorted)[minmin];
+        if ((*sorted)[minmax].y() != (*sorted)[minmin].y()) // a nontrivial segment
+            (*hull)[++top] = (*sorted)[minmax];
+        (*hull)[++top] = (*sorted)[minmin];           // add polygon endpoint
+
+        hull->resize(top + 1);
+        return hull;
+    }
+
+    // Get the indices of points with max x-coord and min|max y-coord
+    int maxmin, maxmax = n - 1;
+    double xmax = (*sorted)[n - 1].x();
+    for (i = n - 2; i >= 0; i--)
+        if ((*sorted)[i].x() != xmax) break;
+    maxmin = i + 1;
+
+    // Compute the lower hull on the stack
+    (*hull)[++top] = (*sorted)[minmin];  // push minmin point onto stack
+    i = minmax;
+    while (++i <= maxmin)
+    {
+        // the lower line joins (*sorted)[minmin] with (*sorted)[maxmin]
+
+        // if multiple points have the same x/y values, go with the lowest z value
+        if ((*hull)[top].x() == (*sorted)[i].x() && (*hull)[top].y() == (*sorted)[i].y())
+        {
+            if ((*sorted)[i].z() < (*hull)[top].z())
+                (*hull)[top].z() = (*sorted)[i].z();
+
+            continue;
+        }
+
+        if (isLeft((*sorted)[minmin], (*sorted)[maxmin], (*sorted)[i]) > 0 && i < maxmin)
+            continue;  // ignore (*sorted)[i] above the lower line.  NOTE: Differs from original CH algorithm in that it keeps collinear points
+
+        while (top > 0)  // there are at least 2 points on the stack
+        {
+            // test if (*sorted)[i] is left of or on the line at the stack top. NOTE: Differs from original CH algorithm in that it keeps collinear points
+            if (isLeft((*hull)[top - 1], (*hull)[top], (*sorted)[i]) >= 0)
+                break;  // (*sorted)[i] is a new hull vertex
+            else
+                top--;  // pop top point off stack
+        }
+        (*hull)[++top] = (*sorted)[i];  // push (*sorted)[i] onto stack
+    }
+
+    if (maxmax != maxmin)  // if distinct xmax points
+    {
+        // Push all points between maxmin and maxmax onto stack. NOTE: Differs from original CH algorithm in that it keeps collinear points
+        while (i <= maxmax)
+        {
+            if ((*hull)[top].x() == (*sorted)[i].x() && (*hull)[top].y() == (*hull)[top].y())
+            {
+                if ((*sorted)[i].z() < (*hull)[top].z())
+                    (*hull)[top].z() = (*sorted)[i].z();
+            }
+            else
+            {
+                (*hull)[++top] = (*sorted)[i];
+            }
+
+            i++;
+        }
+    }
+
+    // Next, compute the upper hull on the stack H above the bottom hull
+
+    bot = top;  // the bottom point of the upper hull stack
+    i = maxmin;
+    while (--i >= minmax)
+    {
+        // the upper line joins (*sorted)[maxmax] with (*sorted)[minmax]
+
+        // if multiple points have the same x/y values, go with the lowest z value
+        if ((*hull)[top].x() == (*sorted)[i].x() && (*hull)[top].y() == (*sorted)[i].y())
+        {
+            if ((*sorted)[i].z() < (*hull)[top].z())
+                (*hull)[top].z() = (*sorted)[i].z();
+
+            continue;
+        }
+
+        if (isLeft((*sorted)[maxmax], (*sorted)[minmax], (*sorted)[i]) > 0 && i > minmax)
+            continue;  // ignore (*sorted)[i] below the upper line. NOTE: Differs from original CH algorithm in that it keeps collinear points
+
+        while (top > bot)  // at least 2 points on the upper stack
+        {
+            // test if (*sorted)[i] is left of or on the line at the stack top. NOTE: Differs from original CH algorithm in that it keeps collinear points
+            if (isLeft((*hull)[top - 1], (*hull)[top], (*sorted)[i]) >= 0)
+                break;   // (*sorted)[i] is a new hull vertex
+            else
+                top--;   // pop top point off stack
+        }
+        (*hull)[++top] = (*sorted)[i];  // push (*sorted)[i] onto stack
+    }
+
+    // If minmax and minmin are the same, remove the duplicate point
+    if (minmax == minmin)
+    {
+        top--;
+    }
+    else
+    {
+        // Push all points between minmax and minmin onto stack. NOTE: Differs from original CH algorithm in that it keeps collinear points
+        while (i > minmin)
+        {
+            if ((*hull)[top].x() == (*sorted)[i].x() && (*hull)[top].y() == (*hull)[top].y())
+            {
+                if ((*sorted)[i].z() < (*hull)[top].z())
+                    (*hull)[top].z() = (*sorted)[i].z();
+            }
+            else
+            {
+                (*hull)[++top] = (*sorted)[i];
+            }
+
+            i--;
+        }
+    }
+
+    hull->resize(top + 1);
+    return hull;
 }
 
 /* Returns an array containing the points sorted first by x and then by y */
@@ -459,9 +683,9 @@ namespace
         g2->addPrimitiveSet(new osg::DrawArrays(GL_POINTS, minyindex, 1));
         g2->getOrCreateStateSet()->setAttributeAndModes(new osg::Point(10));
         n->addDrawable(g2);
-        osgDB::writeNodeFile(*n, "mesh.osg");            
+        osgDB::writeNodeFile(*n, "mesh.osgb");            
         n->unref();
-    }
+    }       
 }
 
 //------------------------------------------------------------------------

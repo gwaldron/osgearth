@@ -28,6 +28,14 @@
 class BoundaryUtil
 {
 public:
+
+    enum BoundaryMethod
+    {
+        METHOD_TOPOLOGY,
+        METHOD_CONVEX_HULL,
+        METHOD_CONCAVE_HULL
+    };
+
     BoundaryUtil();
 
     /** Sets the tolerance when combining close verts. Default = 0.01 */
@@ -38,13 +46,15 @@ public:
      * Use the vertices of the given node to calculate a boundary via the
      * findHull() method.
      */
-    static osg::Vec3dArray* getBoundary(osg::Node* modelNode, bool geocentric=true, bool convexHull=false);
+    static osg::Vec3dArray* getBoundary(osg::Node* modelNode, bool geocentric=true, BoundaryMethod method = METHOD_TOPOLOGY);
 
     /**
      * Finds the convex hull for the given points using the Andrew's monotone
      * chain algorithm. Returns an ordered set of points defining the hull
      */
     static osg::Vec3dArray* findHull(osg::Vec3dArray& points);
+
+    static osg::Vec3dArray* findConcaveHull(osg::Vec3dArray& points);
 
     static osg::Vec3dArray* findMeshBoundary(osg::Node* modelNode, bool geocentric=true);
 

@@ -40,6 +40,8 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgUtil/Optimizer>
+#include <osgEarth/PointDrawable>
+#include "VertexCollectionVisitor"
 
 
 int usage( char** argv, const std::string& msg )
@@ -55,12 +57,31 @@ int usage( char** argv, const std::string& msg )
     << "           --precision <n>      : output precision of boundary coords (default=12)\n"
     << "           --no-geocentric      : skip geocentric reprojection (for flat databases)\n"
     << "           --convex-hull        : calculate a convex hull instead of a full boundary\n"
+    << "           --concave-hull       : calculate a concave hull instead of a full boundary\n"
     << "           --verbose            : print progress to console\n"
     << "           --view               : show result in 3D window\n"
     << std::endl;
 
   
   return -1;
+}
+
+osg::Node* makePointDrawable(osg::Vec3dArray* inVerts)
+{
+    osgEarth::PointDrawable* points = new osgEarth::PointDrawable();
+    osg::Vec3d anchor = (*inVerts)[0];
+    for (unsigned int i = 0; i < inVerts->size(); i++)
+    {
+        points->pushVertex((*inVerts)[i] - anchor);
+    }
+    points->finish();
+    points->setPointSize(3.0f);
+    points->setColor(osg::Vec4(1, 0, 0, 1));
+
+    osg::MatrixTransform* mt = new osg::MatrixTransform;
+    mt->setMatrix(osg::Matrixd::translate(anchor));
+    mt->addChild(points);
+    return mt;
 }
 
 int main(int argc, char** argv)
@@ -81,6 +102,7 @@ int main(int argc, char** argv)
     bool geocentric = !arguments.read("--no-geocentric");
     bool verbose = arguments.read("--verbose");
     bool convexOnly = arguments.read("--convex-hull");
+    bool concaveOnly = arguments.read("--concave-hull");
     bool view = arguments.read("--view");
 
     std::string ext;
@@ -94,7 +116,17 @@ int main(int argc, char** argv)
     if (!modelNode.valid())
         return usage( argv, "Unable to load model." );
 
-    osg::ref_ptr<osg::Vec3dArray> hull = BoundaryUtil::getBoundary(modelNode.get(), geocentric, convexOnly);
+    BoundaryUtil::BoundaryMethod method = BoundaryUtil::METHOD_TOPOLOGY;
+    if (convexOnly)
+    {
+        method = BoundaryUtil::METHOD_CONVEX_HULL;
+    }
+    else if (concaveOnly)
+    {
+        method = BoundaryUtil::METHOD_CONCAVE_HULL;
+    }
+
+    osg::ref_ptr<osg::Vec3dArray> hull = BoundaryUtil::getBoundary(modelNode.get(), geocentric, method);
 
     if ( !outFile.empty() )
     {
@@ -167,6 +199,10 @@ int main(int argc, char** argv)
       root->addChild( modelNode );
       root->addChild( xform );
       modelNode->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
+
+      VertexCollectionVisitor v(false);
+      modelNode->accept(v);
+      root->addChild(makePointDrawable(v.getVertices()));
       
       osg::Geometry* boundaryGeometry = new osg::Geometry();
       boundaryGeometry->setVertexArray( drawHull );

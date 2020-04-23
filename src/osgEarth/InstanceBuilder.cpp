@@ -138,8 +138,8 @@ namespace
             {
                 instancedGeom->setVertexAttribDivisor(index, 1);
             }
-#endif
             else
+#endif
             {
                 osg::StateSet* ss = geom->getOrCreateStateSet();
                 ss->setAttribute(new osg::VertexAttribDivisor(index, 1));

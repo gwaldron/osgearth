@@ -70,19 +70,19 @@ void VertexCollectionVisitor::apply(osg::Drawable& drawable)
       if (_matrixStack.empty())
       {
         for (osg::Vec3Array::iterator it=verts->begin(); it != verts->end(); ++it)
-          addVertex(*it);
+          addVertex(osg::Vec3d(*it));
       }
       else
       {
         osg::Matrix& matrix = _matrixStack.back();
         for (osg::Vec3Array::iterator it=verts->begin(); it != verts->end(); ++it)
-          addVertex((*it) * matrix);
+          addVertex(osg::Vec3d(*it) * matrix);
       }
     }
   }
 }
 
-void VertexCollectionVisitor::addVertex(osg::Vec3 vertex)
+void VertexCollectionVisitor::addVertex(osg::Vec3d vertex)
 {
   if (_geocentric)
   {

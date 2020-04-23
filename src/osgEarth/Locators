@@ -58,7 +58,6 @@ namespace osgEarth { namespace Util
     protected:
         osg::Matrixd _transform;
         osg::Matrixd _inverse;
-        double _x0, _y0, _x1, _y1;
         osg::ref_ptr<const SpatialReference> _srs;
     };
 } }

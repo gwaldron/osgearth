@@ -213,7 +213,8 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(OGRLayerH resultSetHandle, const Feature
     _spatialFilter(0L),
     _chunkSize(500),
     _nextHandleToQueue(0L),
-    _resultSetEndReached(false)
+    _resultSetEndReached(false),
+    _rewindPolygons(false)
 {
     OGR_SCOPED_LOCK;
 

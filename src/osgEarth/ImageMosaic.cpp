@@ -27,9 +27,9 @@ using namespace osgEarth::Util;
 
 /***************************************************************************/
 
-TileImage::TileImage(osg::Image* image, const TileKey& key)
+TileImage::TileImage(osg::Image* image, const TileKey& key) :
+_image( image )
 {
-    _image = image;
     key.getExtent().getBounds(_minX, _minY, _maxX, _maxY);
     key.getTileXY(_tileX, _tileY);
 }

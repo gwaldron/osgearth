@@ -173,7 +173,7 @@ namespace osgEarth
 
         /** uniquely identifies an SRS. */
         struct Key {
-            Key() { }
+            Key() : hash(0) { }
             Key(const std::string& h, const std::string& v) : 
                 horiz(h), horizLower(toLower(h)), vert(v), vertLower(toLower(v))
             {

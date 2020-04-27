@@ -60,6 +60,9 @@ GrassLayer::init()
 
     // no shadow casting
     options().castShadows().setDefault(false);
+
+    // smooth picking for grouped instances of grass (3=clumpy)
+    getOrCreateStateSet()->setDefine("OE_GROUNDCOVER_PICK_NOISE_TYPE", "3");
 }
 
 void
@@ -79,13 +82,13 @@ GrassLayer::createGeometry(unsigned vboTileDim) const
     osg::Geometry* out_geom = new osg::Geometry();
     out_geom->setUseVertexBufferObjects(true);
 
-    static const GLubyte indices[54] = {
+    static const GLushort indices[54] = {
         0,1,4, 4,1,5, 1,2,5, 5,2,6, 2,3,6, 6,3,7,
         4,5,8, 8,5,9, 5,6,9, 9,6,10, 6,7,10, 10,7,11,
         8,9,12, 12,9,13, 9,10,13, 13,10,14, 10,11,14, 14,11,15
     };
 
-    out_geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_TRIANGLES, indiciesPerInstance, &indices[0], numInstances));
+    out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, indiciesPerInstance, &indices[0], numInstances));
 
     // We don't actually need any verts. Is it OK not to set an array?
     //geom->setVertexArray(new osg::Vec3Array(8));

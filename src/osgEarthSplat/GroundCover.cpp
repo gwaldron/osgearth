@@ -365,13 +365,13 @@ GroundCover::createShader() const
         << "} \n";
 
     objectsBuf
-        << "void oe_GroundCover_getObject(in int index, out oe_GroundCover_Object output) { \n"
-        << "    output = oe_GroundCover_objects[index]; \n"
+        << "void oe_GroundCover_getObject(in int index, out oe_GroundCover_Object object) { \n"
+        << "    object = oe_GroundCover_objects[index]; \n"
         << "} \n";
 
     billboardsBuf
-        << "void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard output) { \n"
-        << "    output = oe_GroundCover_billboards[index]; \n"
+        << "void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard billboard) { \n"
+        << "    billboard = oe_GroundCover_billboards[index]; \n"
         << "} \n";
 
     std::string biomeStr = biomeBuf.str();
@@ -438,18 +438,7 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
     //}
     else
     {
-#if 0
-        const std::string& sampler = layer->getSharedTextureUniformName());
-        const std::string& matrix  = layer->getSharedTextureMatrixUniformName());
-        buf << "uniform sampler2D " << sampler << ";\n"
-            << "uniform mat4 " << matrix << ";\n"
-            << "int oe_GroundCover_getBiomeIndex(in vec4 coords) { \n"
-            << "    float value = textureLod(" << sampler << ", (" << matrix << " * coords).st, 0).r;\n";
-#else
-        buf << "float oe_LandCover_coverage; \n"
-            << "int oe_GroundCover_getBiomeIndex(in vec4 coords) { \n"
-            << "    float value = oe_LandCover_coverage; \n";
-#endif
+        buf << "int oe_GroundCover_getBiomeIndex(in float code) { \n";
 
         for(int biomeIndex=0; biomeIndex<getBiomes().size(); ++biomeIndex)
         {
@@ -465,7 +454,7 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
                     const LandCoverClass* lcClass = landCoverDict->getClassByName(classes[i]);
                     if (lcClass)
                     {
-                        buf << "    if (value == " << lcClass->getValue() << ") return " << biomeIndex << "; \n";
+                        buf << "    if (code == " << lcClass->getValue() << ") return " << biomeIndex << "; \n";
                     }
                     else
                     {

@@ -38,7 +38,6 @@ namespace osgEarth { namespace REX
     struct DrawTileCommand
     {
         // ModelView matrix to apply before rendering this tile
-        //osg::Matrixf _modelViewMatrix;
         osg::ref_ptr<const osg::RefMatrix> _modelViewMatrix;
 
         // Samplers that are shared between all rendering passes
@@ -55,6 +54,9 @@ namespace osgEarth { namespace REX
 
         // Tile key value to push to uniform just before drawing
         osg::Vec4f _keyValue;
+
+        // Data revision # of the tile
+        unsigned _tileRevision;
 
         // Elevation texel sampling coefficients (so we sample elevation
         // data on center rather than on edge) - We might be able to move

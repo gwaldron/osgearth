@@ -127,6 +127,8 @@ namespace osgEarth { namespace REX
         void loadSync();
 
         void refreshSharedSamplers(const RenderBindings& bindings);
+
+        unsigned getRevision() const { return _revision; }
         
     public: // osg::Node
 
@@ -152,7 +154,8 @@ namespace osgEarth { namespace REX
         bool                               _empty;
         bool                               _imageUpdatesActive;
         TileKey                            _subdivideTestKey;
-        bool _doNotExpire;
+        bool                               _doNotExpire;
+        unsigned                           _revision;
 
         typedef std::queue<osg::ref_ptr<LoadTileData> > LoadQueue;
         Lockable<LoadQueue> _loadQueue;

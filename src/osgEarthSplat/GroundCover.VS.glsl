@@ -1,41 +1,37 @@
-#version $GLSL_VERSION_STR
+#version 430
 $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       GroundCover vertex shader
 #pragma vp_entryPoint oe_GroundCover_VS
 #pragma vp_location   vertex_view
 
-#pragma import_defines(OE_GROUNDCOVER_USE_INSTANCING)
-#pragma import_defines(OE_LANDCOVER_TEX)
-#pragma import_defines(OE_LANDCOVER_TEX_MATRIX)
 #pragma import_defines(OE_GROUNDCOVER_MASK_SAMPLER)
 #pragma import_defines(OE_GROUNDCOVER_MASK_MATRIX)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
+// Instance data from compute shader
+struct RenderData
+{
+    vec4 vertex;      // 16
+    vec2 tilec;       // 8
+    int sideIndex;    // 4
+    int  topIndex;    // 4
+    float width;      // 4
+    float height;     // 4
+    float fillEdge;   // 4
+    float _padding;   // 4
+};
+
+layout(binding=1, std430) readonly buffer RenderBuffer {
+    RenderData render[];
+};
+
 // Noise texture:
 uniform sampler2D oe_GroundCover_noiseTex;
-
-// noise texture channels:
 #define NOISE_SMOOTH   0
 #define NOISE_RANDOM   1
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
-
-// LandCover texture
-uniform sampler2D OE_LANDCOVER_TEX;
-uniform mat4 OE_LANDCOVER_TEX_MATRIX;
-out float oe_LandCover_coverage;
-
-#ifdef OE_GROUNDCOVER_MASK_SAMPLER
-uniform sampler2D OE_GROUNDCOVER_MASK_SAMPLER;
-uniform mat4 OE_GROUNDCOVER_MASK_MATRIX;
-#endif
-
-uniform vec2 oe_GroundCover_numInstances;
-uniform vec3 oe_GroundCover_LL, oe_GroundCover_UR;
-
-// 0=draw a textured billboard; 1=draw an instanced model
-uniform int oe_GroundCover_instancedModel;
 
 uniform float oe_GroundCover_wind; // wind blowing the foliage
 uniform float oe_GroundCover_maxDistance;     // distance at which flora disappears
@@ -49,51 +45,13 @@ uniform mat4 osg_ViewMatrix;
 vec3 oe_UpVectorView;
 vec4 vp_Color;
 vec3 vp_Normal;
-vec4 oe_layer_tilec;
+out vec4 oe_layer_tilec;
 // Output grass texture coordinates to the fragment shader
 out vec2 oe_GroundCover_texCoord;
 
 // Output that selects the land cover texture from the texture array (non interpolated)
 flat out float oe_GroundCover_atlasIndex;
 
-out vec2 modelCoords;
-
-struct oe_GroundCover_Biome {
-    int firstObjectIndex;
-    int numObjects;
-    float density;
-    float fill;
-    vec2 maxWidthHeight;
-};
-void oe_GroundCover_getBiome(in int index, out oe_GroundCover_Biome biome);
-
-struct oe_GroundCover_Object {
-    int type;             // 0=billboard 
-    int objectArrayIndex; // index into the typed object array 
-};
-void oe_GroundCover_getObject(in int index, out oe_GroundCover_Object object);
-
-struct oe_GroundCover_Billboard {
-    int atlasIndexSide;
-    int atlasIndexTop;
-    float width;
-    float height;
-    float sizeVariation;
-};
-void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard bb);
-
-// SDK import
-float oe_terrain_getElevation(in vec2);
-
-// Generated in GroundCover.cpp
-int oe_GroundCover_getBiomeIndex(in vec4);
-
-// Sample the elevation texture and move the vertex accordingly.
-void oe_GroundCover_clamp(inout vec4 vert_view, in vec3 up, in vec2 UV)
-{
-    float elev = oe_terrain_getElevation( UV );
-    vert_view.xyz += up*elev;
-}
 
 // Generate a wind-perturbation value
 float oe_GroundCover_applyWind(float time, float factor, float randOffset)
@@ -131,131 +89,35 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     // intialize with a "no draw" value (consider using a compute/gs cull instead)
     oe_GroundCover_atlasIndex = -1.0;
 
-    int instanceID;
-    if (oe_GroundCover_instancedModel == 1)
-    {
-        instanceID = gl_InstanceID;
-        modelCoords = gl_MultiTexCoord3.st;
-    }
-    else
-    {
-#ifdef OE_GROUNDCOVER_USE_INSTANCING
-        instanceID = gl_InstanceID;
-#else
-        instanceID = gl_VertexID / 8;
-#endif
-    }
+    vertex_view = gl_ModelViewMatrix * render[gl_InstanceID].vertex;
+    oe_layer_tilec = vec4(render[gl_InstanceID].tilec, 0, 1);
 
-    // Generate the UV tile coordinates (tilec) based on the instance number
-    vec2 offset = vec2(
-        float(instanceID % int(oe_GroundCover_numInstances.x)),
-        float(instanceID / int(oe_GroundCover_numInstances.y)));
+    vec4 noise = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st, 0);  
 
-    // half the distance between cell centers
-    vec2 halfSpacing = 0.5 / oe_GroundCover_numInstances;
-
-    // tile coords [0..1]
-    oe_layer_tilec = vec4(halfSpacing + offset / oe_GroundCover_numInstances, 0, 1);
-
-    vec4 noise = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st, 0);
-
-    // randomly shift each point off center
-    vec2 shift = vec2(fract(noise[NOISE_RANDOM]*1.5), fract(noise[NOISE_RANDOM_2]*1.5))*2.0-1.0;
-
-    oe_layer_tilec.xy += shift * halfSpacing;
-
-    // and place it correctly within the tile
-    vec3 pos = gl_NormalMatrix * vec3(mix(oe_GroundCover_LL.xy, oe_GroundCover_UR.xy, oe_layer_tilec.xy), 0);
-
-    vertex_view.xyz += pos;
-
-    if (oe_GroundCover_instancedModel == 0)
-    {
-        vp_Normal = vec3(0, 0, 1);
-        vp_Color = vec4(1, 1, 1, 0);
-    }
-
-    // sample the landcover data
-    oe_LandCover_coverage = textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*oe_layer_tilec).st, 0).r;
-
-    // Look up the biome at this point:
-    int biomeIndex = oe_GroundCover_getBiomeIndex(oe_layer_tilec);
-    if ( biomeIndex < 0 )
-    {
-        // No biome defined; bail out without emitting any geometry.
-        return;
-    }
-
-    // If we're using a mask texture, sample it now:
-#ifdef OE_GROUNDCOVER_MASK_SAMPLER
-    float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*oe_layer_tilec).st).a;
-    if ( mask > 0.0 )
-    {
-        // Failed to pass the mask; no geometry emitted.
-        return;
-    }
-#endif
-
-    // look up biome:
-    oe_GroundCover_Biome biome;
-    oe_GroundCover_getBiome(biomeIndex, biome);
-
-    // discard instances based on noise value threshold (coverage). If it passes,
-    // scale the noise value back up to [0..1]
-    if (noise[NOISE_SMOOTH] > biome.fill)
-        return;
-    else
-        noise[NOISE_SMOOTH] /= biome.fill;
-
-    // Clamp the center point to the elevation.
-    oe_GroundCover_clamp(vertex_view, oe_UpVectorView, oe_layer_tilec.st);
+    vp_Color = vec4(1);
+    vp_Normal = vec3(0,0,1);
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
     float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
     float nRange = clamp(-vertex_view.z/maxRange, 0.0, 1.0);
 
-    // Distance culling:
-    if ( nRange == 1.0 )
+    // cull verts that are out of range. Sadly we can't do this in COMPUTE.
+    if (nRange >= 0.99)
         return;
 
-    // Instancing? We are finished
-    if (oe_GroundCover_instancedModel == 1)
-    {
-        oe_GroundCover_atlasIndex = 1.0;
-        return;
-    }
-
-    // select a billboard at random
-    int objectIndex = biome.firstObjectIndex + int(floor(noise[NOISE_RANDOM] * float(biome.numObjects)));
-    objectIndex = min(objectIndex, biome.firstObjectIndex + biome.numObjects - 1);
-
-    // Recover the object we randomly picked:
-    oe_GroundCover_Object object;
-    oe_GroundCover_getObject(objectIndex, object);
-
-    // for now, assume type == BILLBOARD.
-    // Find the billboard associated with the object:
-    oe_GroundCover_Billboard billboard;
-    oe_GroundCover_getBillboard(object.objectArrayIndex, billboard);
-
-    oe_GroundCover_atlasIndex = float(billboard.atlasIndexSide);
+    oe_GroundCover_atlasIndex = float(render[gl_InstanceID].sideIndex);
 
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);
-
-    // a pseudo-random scale factor to the width and height of a billboard
-    float sizeScale = billboard.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
-
-    float width = (billboard.width + billboard.width*sizeScale) * falloff;
-
-    float height = (billboard.height + billboard.height*sizeScale) * falloff;
+    float width = render[gl_InstanceID].width * falloff;
+    float height = render[gl_InstanceID].width * falloff;
 
     int which = gl_VertexID & 7; // mod8 - there are 8 verts per instance
 
 #ifdef OE_IS_SHADOW_CAMERA
 
     // For a shadow camera, draw the tree as a cross hatch model instead of a billboard.
-    vp_Color = vec4(1,1,1,falloff);
+    vp_Color = vec4(1.0);
     vec3 heightVector = oe_UpVectorView*height;
     vec3 tangentVector;
 
@@ -294,7 +156,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     float topDownAmount = rescale(d, 0.4, 0.6);
     float billboardAmount = rescale(1.0-d, 0.0, 0.25);
 
-    if (which < 4 && billboard.atlasIndexSide >= 0 && billboardAmount > 0.0) // Front-facing billboard
+    if (which < 4 && render[gl_InstanceID].sideIndex >= 0 && billboardAmount > 0.0) // Front-facing billboard
     {
         vertex_view = 
             which == 0? vec4(vertex_view.xyz - halfWidthTangentVector, 1.0) :
@@ -324,13 +186,14 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
                 which == 0 || which == 2? mix(-tangentVector, faceNormalVector, blend) :
                 mix( tangentVector, faceNormalVector, blend);
 
-            oe_GroundCover_atlasIndex = float(billboard.atlasIndexSide);
+            //oe_GroundCover_atlasIndex = float(billboard.atlasIndexSide);
+            oe_GroundCover_atlasIndex = float(render[gl_InstanceID].sideIndex);
         }
     }
 
-    else if (which >= 4 && billboard.atlasIndexTop >= 0 && topDownAmount > 0.0) // top-down billboard
+    else if (which >= 4 && render[gl_InstanceID].topIndex >= 0 && topDownAmount > 0.0) // top-down billboard
     {
-        oe_GroundCover_atlasIndex = float(billboard.atlasIndexTop);
+        oe_GroundCover_atlasIndex = float(render[gl_InstanceID].topIndex);
 
         // estiblish the local tangent plane:
         vec3 Z = mat3(osg_ViewMatrix) * vec3(0,0,1); //north pole

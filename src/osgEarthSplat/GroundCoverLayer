@@ -28,6 +28,7 @@
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
+#include <osgEarth/InstanceCloud>
 
 namespace osgEarth { namespace Splat
 {
@@ -41,6 +42,7 @@ namespace osgEarth { namespace Splat
             META_LayerOptions(osgEarth, Options, PatchLayer::Options);
             OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
+            OE_OPTION(float, colorMinSaturation);
             OE_OPTION(unsigned, lod);
             OE_OPTION(bool, castShadows);
             OE_OPTION(float, maxAlpha);
@@ -153,23 +155,10 @@ namespace osgEarth { namespace Splat
             {
                 double _tileWidth;
             };
-
-            // Tracks a GL state to minimize state changes
-            struct DrawState
+            
+            struct UniformState
             {
-                DrawState();
-
-                void reset(const osg::State*, Settings*);
-
-                // Geometry differs by zone/groundcover settings
-                typedef UnorderedMap<const void*, osg::ref_ptr<osg::Geometry> > GeomPerGroundCover;
-                GeomPerGroundCover _geom;
-
-                osg::ref_ptr<osg::ElementBufferObject> _ebo;
-
-                const osg::Program::PerContextProgram* _pcp;
-
-                unsigned _tilesDrawnThisFrame;
+                UniformState();
 
                 GLint _numInstancesUL;
                 int _numInstances1D;
@@ -188,7 +177,25 @@ namespace osgEarth { namespace Splat
 
                 GLint _A2CUL;
 
+                GLint _tileNumUL;
+
+                unsigned _tileCounter;
+            };
+
+            // Tracks a GL state to minimize state changes
+            struct DrawState
+            {
+                // Geometry differs by zone/groundcover settings
+                typedef UnorderedMap<const void*, osg::ref_ptr<InstanceCloud> > InstancerPerGroundCover;
+                InstancerPerGroundCover _instancers;
+
                 Renderer* _renderer;
+
+                typedef UnorderedMap<const void*, UniformState> UniformsPerPCP;
+                UniformsPerPCP _uniforms;
+
+                osg::Matrixd _mvp;
+                std::size_t _lastTileBatchID;
             };
 
             // one per graphics context
@@ -199,12 +206,14 @@ namespace osgEarth { namespace Splat
             unsigned _LLUName, _URUName;
             unsigned _LLNormalUName, _URNormalUName;
             unsigned _A2CName;
+            unsigned _tileNumUName;
             unsigned _instancedModelUName;
 
+            void applyLocalState(osg::RenderInfo& ri, DrawState& ds);
+
             // DrawCallback API
-            void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data);
-            void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data);
-            void postDraw(osg::RenderInfo& ri, osg::Referenced* data);
+            void draw(osg::RenderInfo& ri, const TileBatch* tiles);
+            void drawTile(osg::RenderInfo& ri, const DrawContext& tile);
 
             void resizeGLObjectBuffers(unsigned maxSize);
             void releaseGLObjects(osg::State* state) const;
@@ -212,6 +221,12 @@ namespace osgEarth { namespace Splat
             Settings _settings;
             GroundCoverLayer* _layer;
             osg::ref_ptr<osg::StateAttribute> _a2cBlending;
+
+            unsigned _pass;
+
+            osg::ref_ptr<osg::StateSet> _computeStateSet;
+            osg::Program* _computeProgram;
+            int _counter;
         };
 
         osg::ref_ptr<Renderer> _renderer;

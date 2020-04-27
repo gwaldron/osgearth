@@ -73,7 +73,7 @@ namespace osgEarth { namespace REX
         }
     };
 
-    struct PerContextDrawState
+    struct PerProgramState
     {
         // uniform locations
         GLint _tileKeyUL;
@@ -88,31 +88,32 @@ namespace osgEarth { namespace REX
         optional<bool>       _parentTextureExists;
         optional<int>        _layerOrder;
 
-        const osg::Program::PerContextProgram* _pcp;
-
-        osg::ref_ptr<osg::GLExtensions> _ext;
-
         TileSamplerState _samplerState;
 
-        PerContextDrawState() :
+        PerProgramState() :
             _tileKeyUL(-1),
             _parentTextureExistsUL(-1),
             _layerUidUL(-1),
             _layerOrderUL(-1),
             _elevTexelCoeffUL(-1),
-            _morphConstantsUL(-1),
-            _ext(0L),
-            _pcp(0L)
-        {
-            //nop
-        }
+            _morphConstantsUL(-1) { }
+
+        void clear();
+
+        void refresh(osg::RenderInfo& ri, const RenderBindings* bindings);
+    };
+
+    struct PerContextDrawState
+    {
+        typedef UnorderedMap<const void*, PerProgramState> PerProgramStateMap;
+        PerProgramStateMap _perProgramStateMap;
+        const osg::Program::PerContextProgram* _pcp;
 
         // Ensures that the Uniform Locations in the DrawState correspond to
         // the currently applied program object.
         void refresh(osg::RenderInfo& ri, const RenderBindings* bindings);
 
-        // Clears all saved state.
-        void clear();
+        PerProgramState& getPerProgramState(osg::RenderInfo& ri);
     };
 
     /**
@@ -136,6 +137,8 @@ namespace osgEarth { namespace REX
         }
 
         PerContextDrawState& getPCDS(unsigned contextID) { return _pcds[contextID]; }
+
+        PerProgramState& getPPS(osg::RenderInfo& ri) { return getPCDS(ri.getContextID()).getPerProgramState(ri); }
     };
 
 } } // namespace 

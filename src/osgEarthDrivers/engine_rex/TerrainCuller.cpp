@@ -123,6 +123,7 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             tile->_geom = surface->getDrawable()->_geom.get();
             tile->_morphConstants = tileNode->getMorphConstants();
             tile->_key = &tileNode->getKey();
+            tile->_tileRevision = tileNode->getRevision();
 
             osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
             tile->_range = getDistanceToViewPoint(c, true);

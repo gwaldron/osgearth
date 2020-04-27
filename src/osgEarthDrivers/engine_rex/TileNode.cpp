@@ -64,7 +64,8 @@ _lastTraversalTime(0.0),
 _lastTraversalFrame(0.0),
 _empty(false),              // an "empty" node exists but has no geometry or children.,
 _imageUpdatesActive(false),
-_doNotExpire(false)
+_doNotExpire(false),
+_revision(0u)
 {
     //nop
 }
@@ -946,6 +947,9 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
         _loadQueue.pop();
     _loadsInQueue = _loadQueue.size();
     _loadQueue.unlock();
+
+    // Bump the data revision for the tile.
+    ++_revision;
 }
 
 void TileNode::inheritSharedSampler(int binding)
@@ -963,6 +967,9 @@ void TileNode::inheritSharedSampler(int binding)
     {
         _renderModel.clearSharedSampler(binding);
     }
+
+    // Bump the data revision for the tile.
+    ++_revision;
 }
 
 void TileNode::loadChildren()
@@ -1130,6 +1137,9 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 
     if (changes > 0)
     {
+        // Bump the data revision for the tile.
+        ++_revision;
+
         dirtyBound(); // only for elev/patch changes maybe?
 
         if (_childrenReady)
@@ -1201,7 +1211,7 @@ bool
 TileNode::areSubTilesDormant() const
 {
     return
-        getNumChildren() >= 4           &&
+        getNumChildren() >= 4       &&
         getSubTile(0)->isDormant()  &&
         getSubTile(1)->isDormant()  &&
         getSubTile(2)->isDormant()  &&

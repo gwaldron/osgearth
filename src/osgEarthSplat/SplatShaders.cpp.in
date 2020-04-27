@@ -32,6 +32,9 @@ GroundCoverShaders::GroundCoverShaders()
 {
     Grass_VS = "Grass.VS.glsl";
     _sources[Grass_VS] = "@Grass.VS.glsl@";
+    
+    GroundCover_CS = "GroundCover.CS.glsl";
+    _sources[GroundCover_CS] = "@GroundCover.CS.glsl@";
 
     GroundCover_VS = "GroundCover.VS.glsl";
     _sources[GroundCover_VS] = "@GroundCover.VS.glsl@";

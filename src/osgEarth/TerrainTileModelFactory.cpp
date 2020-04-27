@@ -312,7 +312,6 @@ TerrainTileModelFactory::addColorLayers(
     bool standalone)
 {
     OE_PROFILING_ZONE;
-    OE_START_TIMER(fetch_image_layers);
 
     int order = 0;
 
@@ -364,8 +363,6 @@ TerrainTileModelFactory::addPatchLayers(
     ProgressCallback* progress,
     bool fallback)
 {
-    OE_START_TIMER(fetch_patch_layers);
-
     PatchLayerVector patchLayers;
     map->getLayers(patchLayers);
 
@@ -405,9 +402,6 @@ TerrainTileModelFactory::addElevation(
     unsigned                     border,
     ProgressCallback*            progress)
 {
-    // make an elevation layer.
-    OE_START_TIMER(fetch_elevation);
-
     bool needElevation = manifest.includesElevation();
     ElevationLayerVector layers;
     map->getLayers(layers);

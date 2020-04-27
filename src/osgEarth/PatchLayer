@@ -60,6 +60,14 @@ namespace osgEarth
             virtual const osg::BoundingBox& getBoundingBox() const = 0;
         };
 
+        class OSGEARTH_EXPORT TileBatch
+        {
+        public:
+            virtual void drawTiles(osg::RenderInfo& ri) const = 0;
+            virtual std::size_t size() const = 0;
+            virtual std::size_t getBatchID() const = 0;
+        };
+
         //! Internal
         struct DrawContext
         {
@@ -75,9 +83,11 @@ namespace osgEarth
         class DrawCallback : public osg::Referenced
         {
         public:
-            virtual void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data) { }
-            virtual void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data) =0;
-            virtual void postDraw(osg::RenderInfo& ri, osg::Referenced* data) { }
+            virtual void draw(osg::RenderInfo& ri, const TileBatch* tiles) { }
+            virtual void drawTile(osg::RenderInfo& ri, const DrawContext& tile) { }
+            //virtual void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data) { }
+            //virtual void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data) =0;
+            //virtual void postDraw(osg::RenderInfo& ri, osg::Referenced* data) { }
         };
 
         /**
@@ -107,6 +117,10 @@ namespace osgEarth
         void setAcceptCallback(AcceptCallback* value) { _acceptCallback = value; }
         AcceptCallback* getAcceptCallback() const { return _acceptCallback.get(); }
 
+        unsigned getNumPrePassStateSets() const { return _prePassStateSets.size(); }
+        osg::StateSet* getPrePassStateSet(unsigned i) const { return _prePassStateSets[i].get(); }
+
+
     protected:
 
         // default destructor
@@ -120,6 +134,8 @@ namespace osgEarth
         virtual GeoNode createNodeImplementation(const TileKey& key, ProgressCallback* progress) const {
             return GeoNode::INVALID;
         }
+
+        std::vector< osg::ref_ptr<osg::StateSet> > _prePassStateSets;
 
     private:
         osg::ref_ptr<DrawCallback> _drawCallback;

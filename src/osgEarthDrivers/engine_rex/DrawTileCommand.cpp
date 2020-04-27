@@ -26,34 +26,34 @@ using namespace osgEarth::REX;
 void
 DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced* layerData) const
 {
-    PerContextDrawState& ds = dsMaster.getPCDS(ri.getContextID());
-
+    PerProgramState& ds = dsMaster.getPPS(ri);
     osg::State& state = *ri.getState();
+    osg::GLExtensions* ext = state.get<osg::GLExtensions>();
         
     // Tile key encoding, if the uniform is required.
     if (ds._tileKeyUL >= 0 )
     {
-        ds._ext->glUniform4fv(ds._tileKeyUL, 1, _keyValue.ptr());
+        ext->glUniform4fv(ds._tileKeyUL, 1, _keyValue.ptr());
     }
 
     // Apply the layer draw order for this tile so we can blend correctly:
     if (ds._layerOrderUL >= 0 && !ds._layerOrder.isSetTo(_layerOrder))
     {
-        ds._ext->glUniform1i(ds._layerOrderUL, (GLint)_layerOrder);
+        ext->glUniform1i(ds._layerOrderUL, (GLint)_layerOrder);
         ds._layerOrder = _layerOrder;
     }
 
     // Elevation coefficients (can probably be terrain-wide)
     if (ds._elevTexelCoeffUL >= 0 && !ds._elevTexelCoeff.isSetTo(_elevTexelCoeff))
     {
-        ds._ext->glUniform2fv(ds._elevTexelCoeffUL, 1, _elevTexelCoeff.ptr());
+        ext->glUniform2fv(ds._elevTexelCoeffUL, 1, _elevTexelCoeff.ptr());
         ds._elevTexelCoeff = _elevTexelCoeff;
     }
 
     // Morphing constants for this LOD
     if (ds._morphConstantsUL >= 0 && !ds._morphConstants.isSetTo(_morphConstants))
     {
-        ds._ext->glUniform2fv(ds._morphConstantsUL, 1, _morphConstants.ptr());
+        ext->glUniform2fv(ds._morphConstantsUL, 1, _morphConstants.ptr());
         ds._morphConstants = _morphConstants;
     }
 
@@ -85,7 +85,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
             if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))
             {
-                ds._ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
+                ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
                 samplerState._matrix = sampler._matrix;
             }
 
@@ -94,7 +94,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
             {
                 if (ds._parentTextureExistsUL >= 0 && !ds._parentTextureExists.isSetTo(sampler._texture.get() != 0L))
                 {
-                    ds._ext->glUniform1f(ds._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
+                    ext->glUniform1f(ds._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
                     ds._parentTextureExists = sampler._texture.valid();
                 }
             }
@@ -117,7 +117,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
             if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))
             {
-                ds._ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
+                ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
                 samplerState._matrix = sampler._matrix;
             }
         }
@@ -125,12 +125,12 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
     if (_drawCallback)
     {
-        PatchLayer::DrawContext dc;
+        PatchLayer::DrawContext tile;
 
-        dc._key = _key;
-        dc._range = _range;
-        dc._geom = _geom.get();
-        _drawCallback->draw(ri, dc, layerData);
+        tile._key = _key;
+        tile._range = _range;
+        tile._geom = _geom.get();
+        _drawCallback->drawTile(ri, tile);
     }
 
     else

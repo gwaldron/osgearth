@@ -710,8 +710,9 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
                 }
             }
 
-            //OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << "; tiles=" << lastLayer->_tiles.size() << std::endl;
-            //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
+            // perform any pre-draw finalization
+            lastLayer->finalize();
+
 
             if (lastLayer->_layer)
             {
@@ -724,8 +725,6 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
             ++layersDrawn;
         }
-
-        //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
     }
 
     // Uncomment this to see how many layers were drawn

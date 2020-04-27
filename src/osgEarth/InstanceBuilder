@@ -32,11 +32,11 @@ namespace osgEarth
     public:
         InstanceBuilder();
         static osg::Geometry* createGeometry();
-        osg::Vec3Array* getPositions() { return _positions; };
+        osg::Vec3Array* getPositions() { return _positions.get(); };
         void setPositions(osg::Vec3Array* positions) { _positions = positions; };
-        osg::Vec4Array* getRotations() { return _rotations; };
+        osg::Vec4Array* getRotations() { return _rotations.get(); };
         void setRotations(osg::Vec4Array* rotations) { _rotations = rotations; }
-        osg::Vec3Array* getScales() { return _scales; }
+        osg::Vec3Array* getScales() { return _scales.get(); }
         void setScales(osg::Vec3Array* scales) { _scales = scales; }
         void installInstancing(osg::Geometry* geometry) const;
     protected:

@@ -141,7 +141,11 @@ namespace osgEarth { namespace Util
     /**
     * Gets a pretty printed version of the given size in MB.
     */
-    extern OSGEARTH_EXPORT std::string prettyPrintSize( double mb );
+    extern OSGEARTH_EXPORT std::string prettyPrintSize( double mb );  
+    
+    //! Extract the "i-th" token from a delimited string
+    extern OSGEARTH_EXPORT std::string getToken(const std::string& input, unsigned i, const std::string& delims=",");
+
 
     //------------------------------------------------------------------------
     // conversion templates

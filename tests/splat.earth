@@ -37,9 +37,16 @@
     </GroundCover>
 
     <!-- Procedural grass -->
-    <Grass name="Grass" max_range="150">
+    <Grass name="Grass" max_range="100">
         <xi:include href="../data/splat/grass/groundcover.xml"/>
     </Grass>
+    
+    <!-- A gentle breeze -->
+    <Wind name="Breeze">
+        <winds>
+            <wind type="directional" direction="1,0" speed="5 kts"/>
+        </winds>
+    </Wind>
 
     <xi:include href="viewpoints.xml"/>
 </map>

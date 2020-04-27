@@ -657,7 +657,8 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     bool imageLayerStateSetPushed = false;
     int layersDrawn = 0;
 
-    osg::State::StateSetStack stateSetStack;
+    // LOOP over effectlayers..
+    // for each one, call culltraverse() on it to push a stateset;
 
     for (LayerDrawableList::iterator i = culler._terrain.layers().begin();
         i != culler._terrain.layers().end();
@@ -1168,7 +1169,7 @@ RexTerrainEngineNode::updateState()
 
         osg::StateSet* surfaceStateSet = getSurfaceStateSet();    // just the surface
 
-                                                                  // required for multipass tile rendering to work
+        // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(
             new osg::Depth(osg::Depth::LEQUAL, 0, 1, true));
 

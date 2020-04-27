@@ -825,6 +825,30 @@ MapNode::traverse( osg::NodeVisitor& nv )
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
     }
 
+    else if ( nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        osgUtil::CullVisitor* cv = nv.asCullVisitor();
+
+        LayerVector layers;
+        getMap()->getLayers(layers);
+
+        int count = 0;
+        for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        {
+            if (i->get()->getSharedStateSet(&nv))
+            {
+                cv->pushStateSet(i->get()->getSharedStateSet(&nv));
+                ++count;
+            }
+        }
+
+        // traverse:
+        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+
+        for(int i=0; i<count; ++i)
+            cv->popStateSet();
+    }
+
     else
     {
         if (dynamic_cast<osgUtil::BaseOptimizerVisitor*>(&nv) == 0L)

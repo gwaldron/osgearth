@@ -207,7 +207,10 @@ InstanceCloud::InstancingData::InstancingData() :
 InstanceCloud::InstancingData::~InstancingData()
 {
     if (commands)
+    {
         delete [] commands;
+        commands = NULL;
+    }
 }
 
 void
@@ -266,7 +269,10 @@ InstanceCloud::InstancingData::releaseGLObjects(osg::State* state) const
         osg::GLExtensions* ext = state->get<osg::GLExtensions>();
 
         if (commands)
+        {
             delete[] commands;
+            commands = NULL;
+        }
 
         if (commandBuffer >= 0)
             ext->glDeleteBuffers(1, &commandBuffer);

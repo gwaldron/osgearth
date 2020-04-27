@@ -1,6 +1,6 @@
 <groundcover>
     <spacing>0.25</spacing>
-    <wind>0.1</wind>
+    <wind>0.25</wind>
     <biomes>
         <biome name="Grass/Grassland" classes="grassland" fill="0.80" source="clipartmax.com">
             <billboard url="clipart974730_2.png" width="0.6" height="0.8" size_variation="1" selection_weight="10"/>

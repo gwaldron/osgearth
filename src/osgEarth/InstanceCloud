@@ -47,7 +47,7 @@ namespace osgEarth
 
         struct InstancingData
         {
-            DrawElementsIndirectCommand* commands;
+            mutable DrawElementsIndirectCommand* commands;
             GLuint commandBuffer;
             GLsizei commandBufferSize;
             GLuint pointsBuffer;

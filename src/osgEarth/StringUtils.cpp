@@ -570,3 +570,12 @@ osgEarth::Util::endsWith( const std::string& ref, const std::string& pattern, bo
     }
     return true;
 }
+
+std::string
+osgEarth::Util::getToken(const std::string& input, unsigned i, const std::string& delims)
+{
+    std::vector<std::string> tokens;
+    StringTokenizer t(delims);
+    t.tokenize(input, tokens);
+    return i < tokens.size() ? tokens[i] : "";    
+}

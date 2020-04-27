@@ -236,6 +236,9 @@ namespace osgEarth
         //! Layer's stateset, or NULL if none exists
         osg::StateSet* getStateSet() const;
 
+        //! Stateset that should be applied to an entire terrain traversal
+        virtual osg::StateSet* getSharedStateSet(osg::NodeVisitor* nv) const { return NULL; }
+
         //! How (and if) to use this layer when rendering terrain tiles.
         enum RenderType
         {

@@ -80,5 +80,8 @@ namespace osgEarth { namespace Util
         
         RTTPicker = "RTTPicker.glsl";
         _sources[RTTPicker] = "@RTTPicker.glsl@";
+        
+        WindComputer = "WindLayer.CS.glsl";
+        _sources[WindComputer] = "@WindLayer.CS.glsl";
     }
 } }

@@ -259,7 +259,7 @@ TFSFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
 {
     FeatureCursor* result = 0L;
 
-    std::string url = createURL(query);
+    const std::string url = createURL(query);
 
     // the URL wil lbe empty if it was invalid or outside the level bounds of the layer.
     if (url.empty())
@@ -284,9 +284,10 @@ TFSFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
         //If the mimetype is empty then try to set it from the format specification
         if (mimeType.empty())
         {
-            if (options().format().value() == "json") mimeType = "json";
-            else if (options().format().value().compare("gml") == 0) mimeType = "text/xml";
-            else if (options().format().value().compare("pbf") == 0) mimeType = "application/x-protobuf";
+            const std::string& val = options().format().value();
+            if (val == "json") mimeType = "json";
+            else if (val.compare("gml") == 0) mimeType = "text/xml";
+            else if (val.compare("pbf") == 0) mimeType = "application/x-protobuf";
         }
         dataOK = getFeatures(buffer, *query.tileKey(), mimeType, features);
     }
@@ -303,7 +304,8 @@ TFSFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
         cx.setProfile(getFeatureProfile());
         cx.extent() = query.tileKey()->getExtent();
 
-        for (FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i)
+        FeatureFilterChain::const_iterator filterChainEnd = getFilters()->end();
+        for (FeatureFilterChain::const_iterator i = getFilters()->begin(); i != filterChainEnd; ++i)
         {
             FeatureFilter* filter = i->get();
             cx = filter->push(features, cx);
@@ -313,7 +315,8 @@ TFSFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
     // If we have any features and we have an fid attribute, override the fid of the features
     if (options().fidAttribute().isSet())
     {
-        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+       FeatureList::iterator featureListEnd = features.end();
+        for (FeatureList::iterator itr = features.begin(); itr != featureListEnd; ++itr)
         {
             std::string attr = itr->get()->getString(options().fidAttribute().get());
             FeatureID fid = as<long>(attr, 0);
@@ -453,9 +456,9 @@ TFSFeatureSource::createURL(const Query& query)
     if (query.tileKey().isSet())
     {
         const TileKey& key = query.tileKey().get();
-        unsigned int tileX = key.getTileX();
+        const unsigned int tileX = key.getTileX();
         unsigned int tileY = key.getTileY();
-        unsigned int level = key.getLevelOfDetail();
+        const unsigned int level = key.getLevelOfDetail();
 
         // attempt to verify that the request is within the first and max level
         // of the data source.

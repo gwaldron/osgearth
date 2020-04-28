@@ -72,12 +72,12 @@
         <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
     </viewpoint>
     <viewpoint name="Grasslands">
-        <heading>27.9433</heading>
-        <pitch>-10.5859</pitch>
-        <range>48.8864m</range>
-        <long>-87.50129555902878</long>
-        <lat>40.96097465221744</lat>
-        <height>175.6394258914515</height>
+        <heading>27.8304</heading>
+        <pitch>-13.5693</pitch>
+        <range>33.5138m</range>
+        <long>-87.61713635034261</long>
+        <lat>41.04180176430292</lat>
+        <height>172.7516074106097</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
 </viewpoints>

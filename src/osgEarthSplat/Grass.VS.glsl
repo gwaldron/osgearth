@@ -57,8 +57,6 @@ uniform mat4 osg_ViewMatrix;
 
 uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 
-
-                        // Output grass texture coords to the FS
 out vec2 oe_GroundCover_texCoord;
 
 // Output that selects the land cover texture from the texture array (flat)
@@ -67,6 +65,8 @@ flat out float oe_GroundCover_atlasIndex;
 float decel(float x) {
     return 1.0-(1.0-x)*(1.0-x);
 }
+
+const float browning = 0.25;
 
 void oe_Grass_VS(inout vec4 vertex)
 {
@@ -79,6 +79,7 @@ void oe_Grass_VS(inout vec4 vertex)
 
     // Sample our noise texture
     vec4 oe_noise = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st, 0);
+    vec4 oe_noise_wide = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st/16.0, 0);
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
     float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
@@ -96,6 +97,8 @@ void oe_Grass_VS(inout vec4 vertex)
 
     float width = render[gl_InstanceID].width * clamp(render[gl_InstanceID].fillEdge*2.0, 0, 1);
     float height = render[gl_InstanceID].height * render[gl_InstanceID].fillEdge * falloff;
+
+    height = mix(-browning*height+height, browning*height+height, oe_noise_wide[NOISE_CLUMPY]);
 
     // ratio of adjusted height to nonimal height
     float heightRatio = height/render[gl_InstanceID].height;
@@ -184,6 +187,15 @@ void oe_Grass_VS(inout vec4 vertex)
     }
 
     vertex.xyz += bendVec;
+
+    // Some AO.
+    if (row==0)
+        vp_Color.rgb *= 0.5;
+    if (row==1)
+        vp_Color.rgb /= max(1.5*heightRatio,1.0);
+
+    // Some color variation.
+    vp_Color.gb -= browning*oe_noise_wide[NOISE_SMOOTH];
 }
 
 

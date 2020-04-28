@@ -287,64 +287,16 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         return GeoImage::INVALID;
     }
 
-    // If the feature source has a tiling profile, we are going to have to map the incoming
-    // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
     GeoExtent featureExtent = key.getExtent().transform(featureSRS);
-    GeoExtent queryExtent = featureExtent;
 
-    // Buffer the incoming extent, if requested.
-    if (options().featureBufferWidth().isSet())
-    {
-        GeoExtent geoExtent = queryExtent.transform(featureSRS->getGeographicSRS());
-        double latitude = geoExtent.getCentroid().y();
-        double buffer = SpatialReference::transformUnits(options().featureBufferWidth().get(), featureSRS, latitude);
-        queryExtent.expand(buffer, buffer);
-    }
-    
+    osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
+        key,
+        options().featureBufferWidth().get(),
+        progress);
 
     FeatureList features;
-
-    if (featureProfile->getTilingProfile())
-    {
-        // Resolve the list of tile keys that intersect the incoming extent.
-        std::vector<TileKey> intersectingKeys;
-        featureProfile->getTilingProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
-
-        UnorderedSet<TileKey> featureKeys;
-        for (int i = 0; i < intersectingKeys.size(); ++i)
-        {        
-            if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
-                featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
-            else
-                featureKeys.insert(intersectingKeys[i]);
-        }
-
-        // Query and collect all the features we need for this tile.
-        for (UnorderedSet<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
-        {
-            Query query;        
-            query.tileKey() = *i;
-
-            osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
-            if (cursor.valid())
-            {
-                cursor->fill(features);
-            }
-        }
-    }
-    else
-    {
-        // Set up the query; bounds must be in the feature SRS:
-        Query query;
-        query.bounds() = queryExtent.bounds();
-
-        // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
-        if (cursor.valid())
-        {
-            cursor->fill(features);
-        }
-    }
+    if (cursor.valid())
+        cursor->fill(features);
 
     if (!features.empty())
     {

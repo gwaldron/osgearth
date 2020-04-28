@@ -504,6 +504,11 @@ namespace osgEarth
         void expand( double x, double y );
 
         /**
+        * Expands the extent by x and y.
+        */
+        void expand(const Distance& x, const Distance& y);
+
+        /**
          *Gets the area of this GeoExtent
          */
         double area() const;

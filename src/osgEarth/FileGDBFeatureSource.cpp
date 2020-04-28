@@ -188,7 +188,7 @@ FileGDBFeatureSource::close()
 }
 
 FeatureCursor*
-FileGDBFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
+FileGDBFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
 {
     if (!_db || !_table || getStatus().isError())
         return NULL;

@@ -269,6 +269,65 @@ Segment2d::angle(const Segment2d& rhs) const
     return acos( v0 * v1 );
 }
 
+double
+Segment2d::squaredDistanceTo(const osg::Vec3d& p) const
+{
+    typedef osg::Vec3d vec3;
+
+    vec3 n = _b - _a;
+    vec3 pa = _a - p;
+
+    double c = n * pa;
+
+    if (c > 0.0)
+        return (pa*pa);
+
+    vec3 bp = p - _b;
+
+    if ((n*bp) > 0.0)
+        return (bp*bp);
+
+    vec3 e = pa - n * (c/(n*n));
+    return (e*e);
+
+    //osg::Vec3d n = _b - _a;
+    //osg::Vec3d pa = _a - p;
+    //double q = (pa*n)/(n*n);
+    //osg::Vec3d c = n * q;
+    //osg::Vec3d d = pa - c;
+    //return sqrt(d*d);
+
+    //double num = (p.x()-_a.x())*(_b.x()-_a.x()) + (p.y()-_a.y())*(_b.y()-_a.y());
+    //double demon = (_b-_a).length2();
+    //double u = num/demon;
+    //if (u < 0.0) return (_a-p).length();
+    //if (u > 1.0) return (_a-p).length();
+    //osg::Vec3d c(_a.x() + u*(_b.x()-_a.x()), _a.y() + u*(_b.y()-_a.y()), 0);
+    //return (c-p).length();
+}
+
+osg::Vec3d
+Segment2d::closestPointTo(const osg::Vec3d& p) const
+{
+    typedef osg::Vec3d vec;
+    vec qp = _b-_a;
+    vec xp = p-_a;
+    double u = (xp*qp)/(qp*qp);
+    if (u < 0.0) return _a;
+    if (u > 1.0) return _b;
+    return _a+qp*u;
+}
+//
+//
+//
+//    double num = (p.x()-_a.x())*(_b.x()-_a.x()) + (p.y()-_a.y())*(_b.y()-_a.y());
+//    double demon = (_b-_a).length2();
+//    double u = num/demon;
+//    if (u < 0.0) return _a;
+//    if (u > 1.0) return _b;
+//    return osg::Vec3d (_a.x() + u*(_b.x()-_a.x()), _a.y() + u*(_b.y()-_a.y()), 0);
+//}
+
 //--------------------------------------------------------------------------
 
 Segment3d

@@ -48,6 +48,11 @@ namespace
         GLfloat speed;
     };
 
+    // osg::GLintptr is not defined on all systems, and GLintptr is
+    // also not defined on all systems.  One or the other is defined
+    // in osg/GLDefines; using statement lets compiler pick.
+    using namespace osg;
+
     // GL data that must be stored per-graphics-context
     struct DrawState
     {
@@ -56,7 +61,7 @@ namespace
             _bufferSize(0) { }
 
         GLuint _buffer;
-        osg::GLintptr _bufferSize;
+        GLintptr _bufferSize;
     };
 
     // Data stored per-camera

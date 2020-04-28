@@ -106,6 +106,11 @@ namespace osgEarth
         // post-ctor initialization
         virtual void init();
 
+        // open the layer
+        virtual Status openImplementation();
+
+        virtual Status closeImplementation();
+
         virtual osg::Node* getNode() const;
 
         virtual void setTerrainResources(TerrainResources*);
@@ -115,7 +120,6 @@ namespace osgEarth
     private:
         osg::ref_ptr<osg::Group> _node;
         osg::ref_ptr<osg::Node> _drawable;
-        TextureImageUnitReservation _unit;
 
         // todo: local per camera
         mutable osg::ref_ptr<osg::StateSet> _sharedStateSet;

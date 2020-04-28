@@ -25,9 +25,10 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/CameraUtils>
 #include <osgEarth/Shaders>
-#include <osgUtil/CullVisitor>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/BlendFunc>
 #include <osg/Multisample>
 #include <osg/Texture2D>
@@ -35,7 +36,7 @@
 #include <osg/Version>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
-#include <osgUtil/Optimizer>
+#include <osgUtil/CullVisitor>
 #include <cstdlib> // getenv
 
 #define LC "[GroundCoverLayer] " << getName() << ": "
@@ -255,11 +256,13 @@ GroundCoverLayer::init()
 Status
 GroundCoverLayer::openImplementation()
 {
-    Status parent = PatchLayer::openImplementation();
-    if (parent.isError())
-        return parent;
+    // GL version requirement
+    if (Registry::capabilities().getGLSLVersion() < 4.3f)
+    {
+        return Status(Status::ResourceUnavailable, "Requires GL 4.3+");
+    }
 
-    return Status::NoError;
+    return PatchLayer::openImplementation();
 }
 
 void

@@ -20,6 +20,8 @@
 #include <osgEarth/Shaders>
 #include <osgEarth/StringUtils>
 #include <osgEarth/GeoTransform>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/Texture3D>
 #include <osg/Program>
 #include <osg/BindImageTexture>
@@ -128,7 +130,7 @@ namespace
     public:
         WindDrawable(const osgDB::Options* readOptions);
 
-        void setupPerCameraState(const osg::Camera* camera, int textureImageUnit);
+        void setupPerCameraState(const osg::Camera* camera);
         void drawImplementation(osg::RenderInfo& ri) const;
         void compileGLObjects(osg::RenderInfo& ri, DrawState& ds) const;
         void releaseGLObjects(osg::State* state) const;
@@ -140,6 +142,7 @@ namespace
         std::vector<osg::ref_ptr<Wind> > _winds;
         mutable osg::buffered_object<DrawState> _ds;
         mutable CameraStates _cameraState;
+        TextureImageUnitReservation _unitReservation;
     };
 
     void StateSwitcherCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
@@ -164,7 +167,7 @@ namespace
         _computeProgram->addShader(computeShader);
     }
 
-    void WindDrawable::setupPerCameraState(const osg::Camera* camera, int textureImageUnit)
+    void WindDrawable::setupPerCameraState(const osg::Camera* camera)
     {
         // wind texture
         osg::Texture3D* tex = new osg::Texture3D();
@@ -200,8 +203,8 @@ namespace
         cs._sharedStateSet->addUniform(cs._viewToTexMatrix.get());
         cs._sharedStateSet->setDefine("OE_WIND_TEX_MATRIX", "oe_wind_matrix");
 
-        cs._sharedStateSet->addUniform(new osg::Uniform("oe_wind_tex", textureImageUnit));
-        cs._sharedStateSet->setTextureAttribute(textureImageUnit, tex, osg::StateAttribute::ON);
+        cs._sharedStateSet->addUniform(new osg::Uniform("oe_wind_tex", _unitReservation.unit()));
+        cs._sharedStateSet->setTextureAttribute(_unitReservation.unit(), tex, osg::StateAttribute::ON);
         cs._sharedStateSet->setDefine("OE_WIND_TEX", "oe_wind_tex");
     }
 
@@ -444,6 +447,29 @@ WindLayer::init()
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
+Status
+WindLayer::openImplementation()
+{
+    // GL version requirement
+    if (Registry::capabilities().getGLSLVersion() < 4.3f)
+    {
+        return Status(Status::ResourceUnavailable, "WindLayer requires GL 4.3+");
+    }
+
+    return Layer::openImplementation();
+}
+
+Status
+WindLayer::closeImplementation()
+{
+    if (_node.valid())
+    {
+        _node->releaseGLObjects();
+        _node = NULL;
+    }
+    return Layer::closeImplementation();
+}
+
 osg::Node*
 WindLayer::getNode() const
 {
@@ -453,11 +479,12 @@ WindLayer::getNode() const
 void
 WindLayer::setTerrainResources(TerrainResources* res)
 {
-    res->reserveTextureImageUnit(_unit, "WindLayer");
-
     // Create the wind drawable that will provide a wind texture
     WindDrawable* wd = new WindDrawable(getReadOptions());
     _drawable = wd;
+
+    // texture image unit for the shared wind LUT
+    res->reserveTextureImageUnit(wd->_unitReservation, "WindLayer");
 
     // chooses the right per-camera stateset for the compute shader
     _node = new StateSwitcher(wd);
@@ -486,6 +513,9 @@ WindLayer::setTerrainResources(TerrainResources* res)
 osg::StateSet*
 WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
 {
+    if (!isOpen())
+        return NULL;
+
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
 
     WindDrawable* windDrawable = static_cast<WindDrawable*>(_drawable.get());
@@ -495,7 +525,7 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
 
     if (!cs._computeStateSet.valid())
     {
-        windDrawable->setupPerCameraState(camera, _unit.unit());
+        windDrawable->setupPerCameraState(camera);
     }
 
     // this xforms from clip [-1..1] to texture [0..1] space

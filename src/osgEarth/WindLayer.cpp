@@ -56,7 +56,7 @@ namespace
             _bufferSize(0) { }
 
         GLuint _buffer;
-        osg::GLintptr _bufferSize;
+        GLuint _bufferSize;
     };
 
     // Data stored per-camera

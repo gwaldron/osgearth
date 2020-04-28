@@ -2393,7 +2393,6 @@ namespace
                     {
                         os << os.PROPERTY("Location") << (unsigned)loc->first << std::endl;
                         os << os.PROPERTY("Order") << k->first << std::endl;
-                        // todo: min/max range?
 
                         osgEarth::VirtualProgram::ShaderID shaderId = MAKE_SHADER_ID(k->second._name);
                         osgEarth::VirtualProgram::ShaderMap::const_iterator miter = shaders.find(shaderId);

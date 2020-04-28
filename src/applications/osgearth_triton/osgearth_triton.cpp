@@ -76,7 +76,7 @@ public:
 
     void onInitialize(Environment& env, Ocean& ocean)
     {
-        //todo
+        //nop
     }
 
     void onDrawOcean(Environment& env, Ocean& ocean)

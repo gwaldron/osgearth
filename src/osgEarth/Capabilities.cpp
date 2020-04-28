@@ -371,19 +371,6 @@ _supportsVertexArrayObjects ( false )
         // NVIDIA:
         bool isNVIDIA = _vendor.find("NVIDIA") == 0;
 
-        // NVIDIA has h/w acceleration of some kind for display lists, supposedly.
-        // In any case they do benchmark much faster in osgEarth for static geom.
-        // BUT unfortunately, they dont' seem to work too well with shaders. Colors
-        // change randomly, etc. Might work OK for textured geometry but not for 
-        // untextured. TODO: investigate.
-        _preferDLforStaticGeom = false;
-        if ( ::getenv("OSGEARTH_TRY_DISPLAY_LISTS") )
-        {
-            _preferDLforStaticGeom = true;
-        }
-
-        //OE_INFO << LC << "  prefer DL for static geom = " << SAYBOOL(_preferDLforStaticGeom) << std::endl;
-
         // ATI workarounds:
         bool isATI = _vendor.find("ATI ") == 0;
 

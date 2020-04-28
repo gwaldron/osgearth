@@ -80,7 +80,6 @@ ImageLayer::Options::fromConfig(const Config& conf)
     conf.get("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
     conf.get("texture_compression", "on",   _textureCompression, (osg::Texture::InternalFormatMode)~0);
     conf.get("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
-    //TODO add all the enums
 
     // uniform names
     conf.get("shared_sampler", _shareTexUniformName);
@@ -128,72 +127,12 @@ ImageLayer::Options::getConfig() const
     conf.set("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
     conf.set("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
     conf.set("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
-    //TODO add all the enums
 
     // uniform names
     conf.set("shared_sampler", _shareTexUniformName);
     conf.set("shared_matrix",  _shareTexMatUniformName);
 
     return conf;
-}
-
-//------------------------------------------------------------------------
-
-ImageLayer::TileProcessor::TileProcessor()
-{
-    init(ImageLayer::Options(), 0L, false );
-}
-
-void
-ImageLayer::TileProcessor::init(const ImageLayer::Options& options,
-                              const osgDB::Options*        dbOptions, 
-                              bool                         mosaicingPossible )
-{
-    _options = options;
-    _mosaicingPossible = mosaicingPossible;
-
-    //if ( _layerInTargetProfile )
-    //    OE_DEBUG << LC << "Good, the layer and map have the same profile." << std::endl;
-
-    const osg::Vec4ub& ck= *_options.transparentColor();
-    _chromaKey.set( ck.r() / 255.0f, ck.g() / 255.0f, ck.b() / 255.0f, 1.0 );
-
-    if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
-    {
-        _noDataImage = _options.noDataImageFilename()->getImage( dbOptions );
-        if ( !_noDataImage.valid() )
-        {
-            OE_WARN << "Failed to read nodata image from \"" << _options.noDataImageFilename()->full() << "\"" << std::endl;
-        }
-    }
-}
-
-void
-ImageLayer::TileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
-{
-    if ( !image.valid() )
-        return;
-
-    // Check to see if the image is the nodata image
-    if ( _noDataImage.valid() )
-    {
-        if (ImageUtils::areEquivalent(image.get(), _noDataImage.get()))
-        {
-            //OE_DEBUG << LC << "Found nodata" << std::endl;
-            image = 0L;
-            return;
-        }
-    }
-
-    // If this is a compressed image, uncompress it IF the image is not already in the
-    // target profile...because if it's not in the target profile, we will have to do
-    // some mosaicing...and we can't mosaic a compressed image.
-    if (_mosaicingPossible &&
-        ImageUtils::isCompressed(image.get()) &&
-        ImageUtils::canConvert(image.get(), GL_RGBA, GL_UNSIGNED_BYTE) )
-    {
-        image = ImageUtils::convertToRGBA8( image.get() );
-    }
 }
 
 //------------------------------------------------------------------------
@@ -398,71 +337,6 @@ ImageLayer::createImage(const TileKey&    key,
 
     return result;
 }
-
-GeoImage
-ImageLayer::createImageInNativeProfile(const TileKey& key, ProgressCallback* progress)
-{
-    if (getStatus().isError())
-    {
-        return GeoImage::INVALID;
-    }
-
-    const Profile* nativeProfile = getProfile();
-    if ( !nativeProfile )
-    {
-        OE_WARN << LC << "Could not establish the profile" << std::endl;
-        return GeoImage::INVALID;
-    }
-    
-
-    GeoImage result;
-
-    if ( key.getProfile()->isHorizEquivalentTo(nativeProfile) )
-    {
-        // requested profile matches native profile, move along.
-        result = createImageInKeyProfile( key, progress );
-    }
-    else
-    {
-        // find the intersection of keys.
-        std::vector<TileKey> nativeKeys;
-        nativeProfile->getIntersectingTiles(key, nativeKeys);
-
-        // build a mosaic of the images from the native profile keys:
-        bool foundAtLeastOneRealTile = false;
-
-        ImageMosaic mosaic;
-        for( std::vector<TileKey>::iterator k = nativeKeys.begin(); k != nativeKeys.end(); ++k )
-        {
-            GeoImage image = createImageInKeyProfile( *k, progress );
-            if ( image.valid() )
-            {
-                foundAtLeastOneRealTile = true;
-                mosaic.getImages().push_back( TileImage(image.getImage(), *k) );
-            }
-            else
-            {
-                // We didn't get an image so pad the mosaic with a transparent image.
-                mosaic.getImages().push_back( TileImage(ImageUtils::createEmptyImage(getTileSize(), getTileSize()), *k));
-            }
-        }
-
-        // bail out if we got nothing.
-        if ( foundAtLeastOneRealTile )
-        {
-            // assemble new GeoImage from the mosaic.
-            double rxmin, rymin, rxmax, rymax;
-            mosaic.getExtents( rxmin, rymin, rxmax, rymax );
-
-            result = GeoImage(
-                mosaic.createImage(), 
-                GeoExtent( nativeProfile->getSRS(), rxmin, rymin, rxmax, rymax ) );
-        }
-    }
-
-    return result;
-}
-
 
 GeoImage
 ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progress)

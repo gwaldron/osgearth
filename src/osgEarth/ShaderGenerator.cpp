@@ -851,7 +851,6 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
     }
 
     // Check whether the lighting state has changed and install a mode uniform.
-    // TODO: fix this
     if ( original && original->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )
     {
         needNewStateSet = true;

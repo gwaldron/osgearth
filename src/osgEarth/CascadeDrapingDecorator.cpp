@@ -272,7 +272,7 @@ CascadeDrapingDecorator::traverse(osg::NodeVisitor& nv)
             const osg::Camera* camera = cv->getCurrentCamera();
 
             // only proceed if there is geometry to drape.
-            // TODO: is this correct? if there's nothing, should be clear out any
+            // TODO: is this correct? if there's nothing, should we clear out any
             // pre-existing projected texture or set a uniform or something?
             const osg::BoundingSphere& bound = _manager.get(camera).getBound();
             if (bound.valid())

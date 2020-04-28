@@ -440,7 +440,6 @@ StateSetCache::prune()
         if ( i->get()->referenceCount() <= 1 )
         {
             // do not call releaseGLObjects since the attrs themselves might still be shared
-            // TODO: review this.
             _stateSetCache.erase( i++ );
             ss_count++;
         }

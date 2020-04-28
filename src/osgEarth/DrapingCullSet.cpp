@@ -123,8 +123,6 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
                 }
 
                 // Cull the DrapeableNode's children (but not the DrapeableNode itself!)
-                // TODO: make sure we aren't skipping any cull callbacks, etc. by calling traverse 
-                // instead of accept. (Cannot call accept b/c that calls traverse)
                 for(unsigned i=0; i<entry->_node->getNumChildren(); ++i)
                 {
                     entry->_node->getChild(i)->accept( nv );

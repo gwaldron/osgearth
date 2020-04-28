@@ -1085,7 +1085,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
                 else
                 {
-                    //TODO: simple single texture?
+                    // nop
                 }
             }
 
@@ -1103,7 +1103,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
                 else
                 {
-                    //TODO: simple single texture?
+                    // nop
                 }
             }
 
@@ -1175,7 +1175,6 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             if ( baselines.valid() )
             {
-                //TODO.
                 osgUtil::Tessellator tess;
                 tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
                 tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );

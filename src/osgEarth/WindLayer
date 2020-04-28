@@ -120,9 +120,6 @@ namespace osgEarth
     private:
         osg::ref_ptr<osg::Group> _node;
         osg::ref_ptr<osg::Node> _drawable;
-
-        // todo: local per camera
-        mutable osg::ref_ptr<osg::StateSet> _sharedStateSet;
         double _radius;
     };
 

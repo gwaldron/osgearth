@@ -56,8 +56,6 @@ LayerDrawable::finalize()
 {
     // if this is a patch layer with a draw callback, we need to
     // generate a batch ID.
-    //if (_drawCallback.valid())
-    //{
     if (_patchLayer)
     {
         std::stringstream buf;
@@ -69,16 +67,6 @@ LayerDrawable::finalize()
         }
         _tileBatchId = osgEarth::hashString(buf.str());
     }
-
-    //    // build the tilekey hashes. Not exactly pristine. TODO
-    //    _tileBatchId = 0;
-    //    for(DrawTileCommands::const_iterator i = _tiles.begin();
-    //        i != _tiles.end();
-    //        ++i)
-    //    {
-    //        _tileBatchId += (i->_key->hash() + i->_tileRevision);
-    //    }
-    //}
 }
 
 namespace

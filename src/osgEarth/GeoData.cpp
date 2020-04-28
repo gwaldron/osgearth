@@ -1765,7 +1765,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
     else
     {
         //TODO: just reproject the image before cropping
-        OE_NOTICE << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
+        OE_WARN << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
         return GeoImage::INVALID;
     }
 }
@@ -2050,7 +2050,6 @@ namespace
         unsigned int      width = 0, 
         unsigned int      height = 0)
     {
-        //TODO:  Compute the optimal destination size
         if (width == 0 || height == 0)
         {
             //If no width and height are specified, just use the minimum dimension for the image
@@ -2257,7 +2256,6 @@ GeoImage::applyAlphaMask(const GeoExtent& maskingExtent)
     if ( maskingExtentLocal.contains(getExtent()))
         return;
 
-    // TODO: find a more performant way about this 
     ImageUtils::PixelReader read (_image.get());
     ImageUtils::PixelWriter write(_image.get());
 
@@ -2334,7 +2332,6 @@ NormalMap::NormalMap(unsigned s, unsigned t) :
         pixData.z = (0.5f*(DEFAULT_NORMAL.z() + 1.0f)) * 255;
         pixData.w = (0.5f*(DEFAULT_CURVATURE + 1.0f)) * 255;
 
-        // TODO: We could just have a 257x257 image and just do mem copy?
         std::fill_n((PixelData*)ptr, s*t, pixData);
     }
 }

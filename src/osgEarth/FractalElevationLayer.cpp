@@ -129,7 +129,7 @@ FractalElevationLayer::Options::getConfig() const
 
 FractalElevationLayer::~FractalElevationLayer()
 {
-    //todo
+    //nop
 }
 
 void

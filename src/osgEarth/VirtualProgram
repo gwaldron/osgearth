@@ -521,7 +521,7 @@ namespace osgEarth
         
         /**
          * Populates the output collection with all the PolyShaders that are applicable
-         * for the given state. Information about the stage mask is not returned (TODO?)
+         * for the given state. Information about the stage mask is not returned.
          * Returns the size of the output collection.
          */
         static int getPolyShaders(

@@ -452,10 +452,6 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
                 return GeoHeightField::INVALID;
             }
 
-            //TODO:
-            //getOrCreatePreCacheOp() is only used in TileSource-based path atm.
-            //We need to include the funcionality in all 
-
             if (key.getProfile()->isHorizEquivalentTo(getProfile()))
             {
                 result = createHeightFieldImplementation(key, progress);
@@ -477,7 +473,6 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
 
             // The const_cast is safe here because we just created the
             // heightfield from scratch...not from a cache.
-            // TODO: note, I don't like this -gw
             hf = const_cast<osg::HeightField*>(result.getHeightField());
 
             // validate it to make sure it's legal.

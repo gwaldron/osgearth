@@ -63,17 +63,6 @@ FeatureSource::Options::fromConfig(const Config& conf)
     conf.get( "fid_attribute", fidAttribute() );
     conf.get( "rewind_polygons", rewindPolygons());
 
-#if 0
-    // For backwards-compatibility (before adding the "filters" block)
-    // TODO: Remove at some point in the distant future.
-    const std::string bcstrings[3] = { "resample", "buffer", "convert" };
-    for(unsigned i=0; i<3; ++i) {
-        if ( conf.hasChild(bcstrings[i]) ) {
-            _filterOptions.push_back( conf.child(bcstrings[i]) );
-        }
-    }
-#endif
-
     const Config& filtersConf = conf.child("filters");
     for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
         filters().push_back( *i );

@@ -265,7 +265,6 @@ ViewpointsExtension::connect(osg::View* view)
 bool
 ViewpointsExtension::disconnect(osg::View* view)
 {
-    //TODO: remove the event handler
     osgViewer::View* v = dynamic_cast<osgViewer::View*>(view);
     if ( v && _handler.valid() )
     {
@@ -277,7 +276,6 @@ ViewpointsExtension::disconnect(osg::View* view)
 bool
 ViewpointsExtension::connect(Control* control)
 {
-    //TODO add a UI.
     Container* container = dynamic_cast<Container*>(control);
     if ( container )
     {

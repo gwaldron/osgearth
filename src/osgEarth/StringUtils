@@ -219,7 +219,6 @@ namespace osgEarth { namespace Util
     }
 
     // converts a primitive to a string
-    // TODO: precision??
     template<typename T> inline std::string
     toString(const T& value)
     {

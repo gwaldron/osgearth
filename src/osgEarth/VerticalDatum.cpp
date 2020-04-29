@@ -202,8 +202,6 @@ VerticalDatum::isEquivalentTo( const VerticalDatum* rhs ) const
     if ( _geoid.valid() && !_geoid->isEquivalentTo( *rhs->_geoid.get() ) )
         return false;
 
-    //TODO - add comparisons as necessary
-
     return true;
 }
 

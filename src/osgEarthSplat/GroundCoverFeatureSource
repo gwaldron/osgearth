@@ -55,7 +55,7 @@ namespace osgEarth { namespace Splat
 
     public: // FeatureSource
 
-        virtual FeatureCursor* createFeatureCursor(const Query& query, ProgressCallback* progress);
+        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);
 
     protected: // Layer
 

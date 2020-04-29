@@ -811,15 +811,6 @@ FeatureModelGraph::setupPaging()
     }
 #endif
 
-#if 0
-    // calculate the max range for the top-level PLOD:
-    // TODO: a user-specified maxRange is actually an altitude, so this is not
-    //       strictly correct anymore!
-    float maxRange =
-        maxRangeOverride.isSet() ? *maxRangeOverride :
-        bs.radius() * _options.layout()->tileSizeFactor().value();
-#endif
-
     float maxRange = bs.radius() * _options.layout()->tileSizeFactor().get();
 
     // build the URI for the top-level paged LOD:

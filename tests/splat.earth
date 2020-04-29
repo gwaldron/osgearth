@@ -24,7 +24,7 @@
     </SplatImage>
     
     <!-- Satellite imagery, shared to help place vegetation -->
-    <TMSImage name="World Imagery" opacity="0.3" shared="true">
+    <TMSImage name="World Imagery" visible="false" shared="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
     

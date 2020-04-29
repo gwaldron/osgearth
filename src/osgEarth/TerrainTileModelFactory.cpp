@@ -24,6 +24,7 @@
 #include <osgEarth/Metrics>
 
 #include <osg/Texture2D>
+#include <osg/Texture2DArray>
 
 #define LC "[TerrainTileModelFactory] "
 
@@ -716,9 +717,28 @@ osg::Texture*
 TerrainTileModelFactory::createImageTexture(osg::Image*       image,
                                             const ImageLayer* layer) const
 {
-    osg::Texture2D* tex = new osg::Texture2D( image );
-    tex->setDataVariance(osg::Object::STATIC);
+    osg::Texture* tex = 0;
+    if (image->r() == 1)
+    {
+        tex = new osg::Texture2D(image);
+    }
+    else if (image->r() > 1)
+    {
+        std::vector< osg::ref_ptr<osg::Image> > images;
+        ImageUtils::flattenImage(image, images);
 
+        osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
+
+        tex2dArray->setTextureDepth(images.size());
+        tex2dArray->setInternalFormat(images[0]->getInternalTextureFormat());
+        tex2dArray->setSourceFormat(images[0]->getPixelFormat());
+        for (int i = 0; i < (int)images.size(); ++i)
+            tex2dArray->setImage(i, images[i].get());
+
+        tex = tex2dArray;
+    }
+
+    tex->setDataVariance(osg::Object::STATIC);
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint(false);
@@ -751,8 +771,10 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
     }
 
     layer->applyTextureCompressionMode(tex);
-
-    ImageUtils::generateMipmaps(tex);
+    {
+        Threading::ScopedMutexLock lock(_mipmapMutex);
+        ImageUtils::generateMipmaps(tex);
+    }
     
     return tex;
 }
@@ -827,7 +849,9 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
     tex->setMaxAnisotropy(1.0f);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
-    ImageUtils::generateMipmaps(tex);
-
+    {
+        Threading::ScopedMutexLock lock(_mipmapMutex);
+        ImageUtils::generateMipmaps(tex);
+    }
     return tex;
 }

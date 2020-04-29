@@ -114,7 +114,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     public:
         OE_OPTION(Asset, asset);
         OE_OPTION(BoundingVolume, boundingVolume);
-        //todo: properties
         OE_OPTION(double, geometricError);
         OE_OPTION_REFPTR(Tile, root);
 

@@ -281,7 +281,6 @@ UTMGraticule::rebuild()
 
     _featureProfile = new FeatureProfile(_profile->getSRS());
 
-    //todo: do this right..
     osg::StateSet* set = this->getOrCreateStateSet();
     GLUtils::setLighting(set, 0);
     set->setMode( GL_BLEND, 1 );

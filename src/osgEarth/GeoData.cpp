@@ -1381,7 +1381,7 @@ GeoExtent::scale(double x_scale, double y_scale)
 void
 GeoExtent::expand(double x, double y)
 {
-    if (isInvalid() || !is_valid(x) || !is_valid(y))
+    if (!_srs.valid() || !is_valid(x) || !is_valid(y))
         return;
 
     setOriginAndSize(
@@ -1389,6 +1389,20 @@ GeoExtent::expand(double x, double y)
         _south - 0.5*y,
         _width + x,
         _height + y);
+}
+
+void
+GeoExtent::expand(const Distance& x, const Distance& y)
+{
+    if (!_srs.valid()) // || !is_valid(x) || !is_valid(y))
+        return;
+
+    double latitude = isValid() ? (yMin() >= 0.0 ? yMin() : yMax()) : 0.0;
+
+    double xp = SpatialReference::transformUnits(x, _srs.get(), latitude);
+    double yp = SpatialReference::transformUnits(y, _srs.get(), 0.0);
+
+    expand(xp, yp);
 }
 
 void
@@ -1765,7 +1779,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
     else
     {
         //TODO: just reproject the image before cropping
-        OE_NOTICE << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
+        OE_WARN << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
         return GeoImage::INVALID;
     }
 }
@@ -2050,7 +2064,6 @@ namespace
         unsigned int      width = 0, 
         unsigned int      height = 0)
     {
-        //TODO:  Compute the optimal destination size
         if (width == 0 || height == 0)
         {
             //If no width and height are specified, just use the minimum dimension for the image
@@ -2257,7 +2270,6 @@ GeoImage::applyAlphaMask(const GeoExtent& maskingExtent)
     if ( maskingExtentLocal.contains(getExtent()))
         return;
 
-    // TODO: find a more performant way about this 
     ImageUtils::PixelReader read (_image.get());
     ImageUtils::PixelWriter write(_image.get());
 
@@ -2334,7 +2346,6 @@ NormalMap::NormalMap(unsigned s, unsigned t) :
         pixData.z = (0.5f*(DEFAULT_NORMAL.z() + 1.0f)) * 255;
         pixData.w = (0.5f*(DEFAULT_CURVATURE + 1.0f)) * 255;
 
-        // TODO: We could just have a 257x257 image and just do mem copy?
         std::fill_n((PixelData*)ptr, s*t, pixData);
     }
 }

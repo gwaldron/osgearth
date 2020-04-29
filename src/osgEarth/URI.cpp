@@ -345,7 +345,7 @@ namespace
         if ( rr.validObject() )
             return ReadResult( rr.getObject() );
         else
-            return ReadResult( ReadResult::RESULT_NOT_FOUND ); // TODO: translate codes better
+            return ReadResult( ReadResult::RESULT_NOT_FOUND );
     }
 
     // Utility to redirect a local file read if it has an archive name in the URI

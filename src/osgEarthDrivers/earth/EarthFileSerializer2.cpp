@@ -540,27 +540,6 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
     // Start a batch update of the map:
     map->beginUpdate();
 
-#if 0
-    // Read all the elevation layers in FIRST so other layers can access them for things like clamping.
-    // TODO: revisit this since we should really be listening for elevation data changes and
-    // re-clamping based on that..
-    for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
-    {
-        // for backwards compatibility:
-        if (i->key() == "heightfield")
-        {
-            Config temp = *i;
-            temp.key() = "elevation";
-            addLayer(temp, layers);
-        }
-
-        else if ( i->key() == "elevation" )
-        {
-            addLayer(*i, layers);
-        }
-    }
-#endif
-
     LayerVector layers;
     Config externalConfig;
     std::vector<osg::ref_ptr<Extension> > extensions;

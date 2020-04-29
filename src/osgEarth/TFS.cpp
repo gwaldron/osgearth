@@ -255,7 +255,7 @@ TFSFeatureSource::openImplementation()
 
 
 FeatureCursor*
-TFSFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
+TFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
 {
     FeatureCursor* result = 0L;
 

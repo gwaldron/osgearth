@@ -150,9 +150,12 @@ namespace
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
         const osg::Camera* camera = cv->getCurrentCamera();
         CameraState& cs = _d->_cameraState.get(camera); // should exist by now
-        cv->pushStateSet(cs._computeStateSet.get());
-        traverse(node, nv);
-        cv->popStateSet();
+        if (cs._computeStateSet.valid())
+        {
+            cv->pushStateSet(cs._computeStateSet.get());
+            traverse(node, nv);
+            cv->popStateSet();
+        }
     }
 
     WindDrawable::WindDrawable(const osgDB::Options* readOptions)

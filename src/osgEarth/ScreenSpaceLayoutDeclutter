@@ -557,8 +557,6 @@ namespace osgEarth { namespace Internal
             const osg::Viewport* vp = renderInfo.getCurrentCamera()->getViewport();
             if ( vp )
             {
-                //TODO see which is faster
-
                 osg::ref_ptr<osg::RefMatrix>& m = _ortho2D.get();
                 if ( !m.valid() )
                     m = new osg::RefMatrix();

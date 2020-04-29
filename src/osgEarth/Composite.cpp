@@ -374,8 +374,7 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
                 }
 
                 if (image.valid())
-                {                                        
-                    // TODO:  Bilinear options?
+                {
                     bool bilinear = layer->isCoverage() ? false : true;
                     GeoImage cropped = image.crop( key.getExtent(), true, textureSize.x(), textureSize.y(), bilinear);
                     info.image = cropped.getImage();

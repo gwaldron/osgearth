@@ -104,8 +104,8 @@ namespace
             // compute topographic measurements relative to observer position:
             if (sun._observer.isValid())
             {
-                double siteLat_deg = sun._observer.y(); // TODO
-                double siteLon_deg = sun._observer.x(); // TODO
+                double siteLat_deg = sun._observer.y(); // ?
+                double siteLon_deg = sun._observer.x(); // ?
 
                 double SIDEREAL_deg = GMST0_deg + UT * 360 + siteLon_deg;
                 double siteLon_rad = d2r(siteLon_deg);

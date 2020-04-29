@@ -243,34 +243,6 @@ namespace osgEarth
 
         typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
         Threading::Lockable<Callbacks> _callbacks;
-
-    public:
-        // Internal utility class for post-processing image tiles that come from a TileSource
-        // TODO: move internal to cpp
-        class TileProcessor 
-        {
-        public:
-            TileProcessor();
-
-            /** dtor */
-            virtual ~TileProcessor() { }
-
-            void init( const ImageLayer::Options& options, const osgDB::Options* dbOptions, bool layerInTargetProfile );
-
-            void process( osg::ref_ptr<osg::Image>& image ) const;
-
-        private:
-            ImageLayer::Options                _options;
-            osg::Vec4f                         _chromaKey;
-            osg::ref_ptr<osg::Image>           _noDataImage;
-            bool                               _mosaicingPossible;
-        };
-
-        /**
-         * @deprecated Used only by legacy terrain engine
-         * Creates an image that is in the image layer's native profile.
-         */
-        GeoImage createImageInNativeProfile(const TileKey& key, ProgressCallback* progress);
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

@@ -457,7 +457,6 @@ ArcGISServerImageLayer::openImplementation()
         options().cachePolicy() = CachePolicy::NO_CACHE;
     }
 
-    //TODO: allow single layers vs. "fused view"
     _layers = options().layers().getOrUse("_alllayers");
 
     // image format to request:

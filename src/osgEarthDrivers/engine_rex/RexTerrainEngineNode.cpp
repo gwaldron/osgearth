@@ -156,8 +156,6 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
         package.load(vp, package.ENGINE_SDK);
     }
 
-    // TODO: replace with a "renderer" object that can return statesets
-    // for different layer types, or something.
     _surfaceStateSet = new osg::StateSet();
     _surfaceStateSet->setName("Surface");
 
@@ -1060,9 +1058,6 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
         {
             // Update the existing render models, and trigger a data reload.
             // Later we can limit the reload to an update of only the new data.
-            // TODO: replace with a tnr->invalidateRegion with a manifest containing the new layer
-            //UpdateRenderModels updateModels(getMap(), _renderBindings);
-            //_terrain->accept(updateModels);
             std::vector<const Layer*> layers;
             layers.push_back(tileLayer);
             invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);

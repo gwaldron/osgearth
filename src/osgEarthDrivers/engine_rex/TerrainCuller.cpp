@@ -213,7 +213,6 @@ TerrainCuller::apply(TileNode& node)
         
     if (!_terrain.patchLayers().empty() && node.getSurfaceNode())
     {
-        // todo: check for patch/virtual
         const RenderBindings& bindings = _context->getRenderBindings();
         TileRenderModel& renderModel = _currentTileNode->renderModel();
 

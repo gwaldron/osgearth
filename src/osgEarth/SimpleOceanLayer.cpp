@@ -182,7 +182,7 @@ SimpleOceanLayer::setSurfaceImage(osg::Image* image)
         tex->setUnRefImageDataAfterApply(true);
 
         osg::StateSet* ss = getOrCreateStateSet();
-        ss->setTextureAttributeAndModes(_texReservation.unit(), tex, 1); // todo: reserve a slot
+        ss->setTextureAttributeAndModes(_texReservation.unit(), tex, 1);
         ss->setDefine("OE_OCEAN_TEXTURE", "oe_ocean_tex");
         ss->addUniform(new osg::Uniform("oe_ocean_tex", _texReservation.unit()));
 

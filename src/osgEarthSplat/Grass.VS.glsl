@@ -57,8 +57,6 @@ uniform mat4 osg_ViewMatrix;
 
 uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 
-
-                        // Output grass texture coords to the FS
 out vec2 oe_GroundCover_texCoord;
 
 // Output that selects the land cover texture from the texture array (flat)
@@ -67,6 +65,14 @@ flat out float oe_GroundCover_atlasIndex;
 float decel(float x) {
     return 1.0-(1.0-x)*(1.0-x);
 }
+
+// remap x from [0..1] to [lo..hi]
+float remap(float x, float lo, float hi) {
+    return lo+x*(hi-lo);
+}
+
+const float browning = 0.25;
+uniform float shmoo;
 
 void oe_Grass_VS(inout vec4 vertex)
 {
@@ -79,6 +85,7 @@ void oe_Grass_VS(inout vec4 vertex)
 
     // Sample our noise texture
     vec4 oe_noise = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st, 0);
+    vec4 oe_noise_wide = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st/16.0, 0);
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
     float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
@@ -96,6 +103,8 @@ void oe_Grass_VS(inout vec4 vertex)
 
     float width = render[gl_InstanceID].width * clamp(render[gl_InstanceID].fillEdge*2.0, 0, 1);
     float height = render[gl_InstanceID].height * render[gl_InstanceID].fillEdge * falloff;
+
+    height = mix(-browning*height+height, browning*height+height, oe_noise_wide[NOISE_CLUMPY]);
 
     // ratio of adjusted height to nonimal height
     float heightRatio = height/render[gl_InstanceID].height;
@@ -155,25 +164,26 @@ void oe_Grass_VS(inout vec4 vertex)
 
 #ifdef OE_WIND_TEX
     // sample the local wind map.
-    const float bendPerMetersPerSecond = 0.25*vertexHeight;
+    const float bendDistance = 0.25*vertexHeight;
     vec4 windData = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex_base));
     vec3 windDir  = normalize(windData.rgb*2 - 1); // view space
 
-    float windSpeed = clamp(windData.a, 0, 1);
-    float windPower = windSpeed * bendPerMetersPerSecond;
+    const float rate = 0.01;
+    vec4 noise_moving = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st + osg_FrameTime*rate, 0);
+    float windSpeedVariation = remap(noise_moving[NOISE_CLUMPY], 0.9, 1.4);
+    float windSpeed = clamp(windData.a * windSpeedVariation, 0, 1);
 
-    float windEffect = bendPower * falloff; // * oe_GroundCover_wind
-    
-    // wind turbulence
-    vec3 turbDir = vec3(0);
-    if (windPower > 0.0)
+    // wind turbulence - once the wind exceeds a certain speed, grass starts buffeting
+    // based on a higher frequency noise function
+    vec3 buffetingDir = vec3(0);
+    if (windSpeed > 0.2)
     {
-        const vec2 turbFreq = vec2(0.1)*windSpeed;
-        vec2 turbUV = oe_layer_tilec.xy + turbFreq*osg_FrameTime;
-        turbDir = gl_NormalMatrix * vec3(textureLod(oe_GroundCover_noiseTex, turbUV, 0).xx * 2 - 1, 0);
+        float buffetingSpeed = windSpeed*0.2;
+        vec4 noise_b = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st + osg_FrameTime*buffetingSpeed, 0);
+        buffetingDir = gl_NormalMatrix * vec3(noise_b.xx*2-1,0) * buffetingSpeed;
     }
 
-    bendVec += (windDir+turbDir) * windPower * windEffect;
+    bendVec += (windDir+buffetingDir) * windSpeed * bendPower * bendDistance * falloff;
 #endif
 
     // Keep the bending under control
@@ -184,6 +194,19 @@ void oe_Grass_VS(inout vec4 vertex)
     }
 
     vertex.xyz += bendVec;
+
+    // Some AO.
+
+    vec4 ao = vp_Color;
+    if (row==0)
+        ao.rgb *= 0.5;
+    if (row==1)
+        ao.rgb /= max(1.5*heightRatio,1.0);
+
+    vp_Color = mix(ao, vp_Color, nRange*nRange);
+
+    // Some color variation.
+    vp_Color.gb -= browning*oe_noise_wide[NOISE_SMOOTH];
 }
 
 

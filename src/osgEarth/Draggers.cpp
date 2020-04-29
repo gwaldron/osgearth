@@ -164,7 +164,7 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
               _pointer.reset();
 
               // set movement range
-              // TODO: values 0.0 and 300000.0 are rather experimental
+              // NOTE: values 0.0 and 300000.0 are rather experimental
               GeoPoint posStart(position.getSRS(), position.x(), position.y(), 0.0, ALTMODE_ABSOLUTE);
               osg::Vec3d posStartXYZ;
               posStart.toWorld(posStartXYZ);

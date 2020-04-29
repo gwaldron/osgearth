@@ -44,7 +44,7 @@
     <!-- A gentle breeze -->
     <Wind name="Breeze">
         <winds>
-            <wind type="directional" direction="1,0" speed="5 kts"/>
+            <wind type="directional" direction="1,0" speed="10 kts"/>
         </winds>
     </Wind>
 

@@ -66,7 +66,13 @@ float decel(float x) {
     return 1.0-(1.0-x)*(1.0-x);
 }
 
+// remap x from [0..1] to [lo..hi]
+float remap(float x, float lo, float hi) {
+    return lo+x*(hi-lo);
+}
+
 const float browning = 0.25;
+uniform float shmoo;
 
 void oe_Grass_VS(inout vec4 vertex)
 {
@@ -158,25 +164,26 @@ void oe_Grass_VS(inout vec4 vertex)
 
 #ifdef OE_WIND_TEX
     // sample the local wind map.
-    const float bendPerMetersPerSecond = 0.25*vertexHeight;
+    const float bendDistance = 0.25*vertexHeight;
     vec4 windData = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex_base));
     vec3 windDir  = normalize(windData.rgb*2 - 1); // view space
 
-    float windSpeed = clamp(windData.a, 0, 1);
-    float windPower = windSpeed * bendPerMetersPerSecond;
+    const float rate = 0.01;
+    vec4 noise_moving = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st + osg_FrameTime*rate, 0);
+    float windSpeedVariation = remap(noise_moving[NOISE_CLUMPY], 0.9, 1.4);
+    float windSpeed = clamp(windData.a * windSpeedVariation, 0, 1);
 
-    float windEffect = bendPower * falloff; // * oe_GroundCover_wind
-    
-    // wind turbulence
-    vec3 turbDir = vec3(0);
-    if (windPower > 0.0)
+    // wind turbulence - once the wind exceeds a certain speed, grass starts buffeting
+    // based on a higher frequency noise function
+    vec3 buffetingDir = vec3(0);
+    if (windSpeed > 0.2)
     {
-        const vec2 turbFreq = vec2(0.1)*windSpeed;
-        vec2 turbUV = oe_layer_tilec.xy + turbFreq*osg_FrameTime;
-        turbDir = gl_NormalMatrix * vec3(textureLod(oe_GroundCover_noiseTex, turbUV, 0).xx * 2 - 1, 0);
+        float buffetingSpeed = windSpeed*0.2;
+        vec4 noise_b = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st + osg_FrameTime*buffetingSpeed, 0);
+        buffetingDir = gl_NormalMatrix * vec3(noise_b.xx*2-1,0) * buffetingSpeed;
     }
 
-    bendVec += (windDir+turbDir) * windPower * windEffect;
+    bendVec += (windDir+buffetingDir) * windSpeed * bendPower * bendDistance * falloff;
 #endif
 
     // Keep the bending under control

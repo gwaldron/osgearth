@@ -25,6 +25,7 @@
 #include <osgEarth/TerrainEngineRequirements>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Progress>
+#include <osgEarth/ThreadingUtils>
 
 namespace osgEarth
 {
@@ -232,6 +233,7 @@ namespace osgEarth
         bool    _heightFieldCacheEnabled;
         osg::ref_ptr<osg::Texture> _emptyColorTexture;
         osg::ref_ptr<osg::Texture> _emptyLandCoverTexture;
+        mutable Threading::Mutex _mipmapMutex;
     };
 }
 

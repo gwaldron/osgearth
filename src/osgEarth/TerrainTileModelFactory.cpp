@@ -771,9 +771,11 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
     }
 
     layer->applyTextureCompressionMode(tex);
-
-    ImageUtils::generateMipmaps(tex);
-
+    {
+        Threading::ScopedMutexLock lock(_mipmapMutex);
+        ImageUtils::generateMipmaps(tex);
+    }
+    
     return tex;
 }
 
@@ -847,7 +849,9 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) c
     tex->setMaxAnisotropy(1.0f);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
-    ImageUtils::generateMipmaps(tex);
-
+    {
+        Threading::ScopedMutexLock lock(_mipmapMutex);
+        ImageUtils::generateMipmaps(tex);
+    }
     return tex;
 }

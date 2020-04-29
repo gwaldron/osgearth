@@ -285,28 +285,23 @@ namespace
         const Session* session = context.getSession();
         FeatureList result;
 
-        const optional<TileKey>& qTileKey = query.tileKey();
-
-        if (!qTileKey.isSet())
+        if (!query.tileKey().isSet())
             return result;
-
-        const TileKey& qTileKeyRef = qTileKey.get();
-        FeatureSource* featureSrc = session->getFeatureSource();
         for (int i =-1; i <= 1; ++i)
         {
             for (int j = -1; j <=1; ++j)
             {
                 if (!(i == 0 && j == 0))
                 {
-                    const TileKey neighborKey = qTileKeyRef.createNeighborKey(i, j);
+                    TileKey neighborKey = query.tileKey().get().createNeighborKey(i, j);
                     Query newQuery(query);
                     newQuery.bounds().unset();
                     newQuery.tileKey() = neighborKey;
-                    FeatureCursor* cursor = featureSrc->createFeatureCursor(newQuery, 0L);
+                    FeatureCursor* cursor = session->getFeatureSource()->createFeatureCursor(newQuery, 0L);
                     while (cursor->hasMore())
                     {
                         Feature* feature = cursor->nextFeature();
-                        const Geometry* geom = feature->getGeometry();
+                        Geometry* geom = feature->getGeometry();
                         if (geom->getType() == Geometry::TYPE_LINESTRING)
                         {
                             result.push_back(feature);

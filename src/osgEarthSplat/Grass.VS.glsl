@@ -196,10 +196,14 @@ void oe_Grass_VS(inout vec4 vertex)
     vertex.xyz += bendVec;
 
     // Some AO.
+
+    vec4 ao = vp_Color;
     if (row==0)
-        vp_Color.rgb *= 0.5;
+        ao.rgb *= 0.5;
     if (row==1)
-        vp_Color.rgb /= max(1.5*heightRatio,1.0);
+        ao.rgb /= max(1.5*heightRatio,1.0);
+
+    vp_Color = mix(ao, vp_Color, nRange*nRange);
 
     // Some color variation.
     vp_Color.gb -= browning*oe_noise_wide[NOISE_SMOOTH];

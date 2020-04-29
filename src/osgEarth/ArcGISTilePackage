@@ -30,6 +30,7 @@
  */
 namespace osgEarth { namespace ArcGIS
 {
+    // esriMapCacheStorageModeCompact bundle reader
     class OSGEARTH_EXPORT BundleReader
     {
     public:
@@ -51,6 +52,34 @@ namespace osgEarth { namespace ArcGIS
         std::ifstream _in;
 
         std::vector< int > _index;
+
+        unsigned int _lod;
+        unsigned int _rowOffset;
+        unsigned int _colOffset;
+    };
+
+    // https://github.com/Esri/raster-tiles-compactcache/blob/master/CompactCacheV2.md
+    // esriMapCacheStorageModeCompactV2 bundle reader
+    class OSGEARTH_EXPORT BundleReader2
+    {
+    public:
+        BundleReader2(const std::string& bundleFile, unsigned int bundleSize);
+
+        void init();
+
+        void readIndex(std::vector<unsigned long long>& index);
+
+        osg::Image* readImage(const TileKey& key);
+
+        osg::Image* readImage(unsigned int index);
+
+    protected:
+        std::string _bundleFile;
+        unsigned int _bundleSize;
+
+        std::ifstream _in;
+
+        std::vector< unsigned long long > _index;
 
         unsigned int _lod;
         unsigned int _rowOffset;
@@ -78,6 +107,13 @@ namespace osgEarth
         };
 
     public:
+        enum StorageFormat
+        {
+            STORAGE_FORMAT_COMPACT,
+            STORAGE_FORMAT_COMPACTV2
+        };
+
+    public:
         META_Layer(osgEarth, ArcGISTilePackageImageLayer, Options, ImageLayer, ArcGISTilePackageImage);
 
     public:
@@ -86,7 +122,7 @@ namespace osgEarth
         const URI& getURL() const;
 
     public: // Layer
-        
+
         //! Establishes a connection to the service
         virtual Status openImplementation();
 
@@ -107,6 +143,7 @@ namespace osgEarth
         optional<ProfileOptions> _profileConf;
         unsigned _bundleSize;
         std::string _extension;
+        StorageFormat _storageFormat;
 
         void readConf();
     };

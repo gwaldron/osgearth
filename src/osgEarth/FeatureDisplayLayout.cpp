@@ -30,19 +30,17 @@ _maxRange( FLT_MAX )
     fromConfig( conf );
 }
 
-FeatureLevel::FeatureLevel( float minRange, float maxRange ) :
-_minRange( minRange ),
-_maxRange( maxRange )
+FeatureLevel::FeatureLevel( float minRange, float maxRange )
 {
-
+    _minRange = minRange;
+    _maxRange = maxRange;
 }
 
-FeatureLevel::FeatureLevel( float minRange, float maxRange, const std::string& styleName ) :
-_minRange( minRange ),
-_maxRange( maxRange ),
-_styleName( styleName )
+FeatureLevel::FeatureLevel( float minRange, float maxRange, const std::string& styleName )
 {
-
+    _minRange = minRange;
+    _maxRange = maxRange;
+    _styleName = styleName;
 }
 
 void

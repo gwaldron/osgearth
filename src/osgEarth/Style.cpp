@@ -58,17 +58,13 @@ _uri     ( rhs._uri )
 Style&
 Style::operator = ( const Style& rhs )
 {
-   if (this != &rhs)
-   {
-      _name = rhs._name;
-      _origType = rhs._origType;
-      _origData = rhs._origData;
-      _uri = rhs._uri;
-      _symbols.clear();
-      copySymbols(rhs);
-   }
-
-   return *this;
+    _name = rhs._name;
+    _origType = rhs._origType;
+    _origData = rhs._origData;
+    _uri = rhs._uri;
+    _symbols.clear();
+    copySymbols(rhs);
+    return *this;
 }
 
 void Style::addSymbol(Symbol* symbol)

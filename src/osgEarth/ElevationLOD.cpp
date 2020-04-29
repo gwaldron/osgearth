@@ -52,12 +52,12 @@ _srs         ( srs )
 }
 
 ElevationLOD::ElevationLOD(const SpatialReference* srs, double minElevation, double maxElevation):
-_minRange     ( 0.0f ),
-_maxRange     ( FLT_MAX ),
-_srs          ( srs ),
-_minElevation ( minElevation ),
-_maxElevation ( maxElevation )
+_minRange    ( 0.0f ),
+_maxRange    ( FLT_MAX ),
+_srs         ( srs )
 {
+    _minElevation = minElevation;
+    _maxElevation = maxElevation;
 }
 
 ElevationLOD::~ElevationLOD()

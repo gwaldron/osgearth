@@ -1,5 +1,4 @@
 <groundcover name="Trees" source="hiclipart.com (non-commercial use only)">
-    <max_distance>4000</max_distance>
     <spacing>15</spacing>
     <biomes>
         <biome classes="forest" fill="1">

@@ -55,7 +55,7 @@ GroundCoverBiomeOptions::getConfig() const
 GroundCoverOptions::GroundCoverOptions(const ConfigOptions& co) :
     ConfigOptions(co),
     //_lod(14),
-    _maxDistance(1000.0f),
+    _maxDistance(FLT_MAX),//1000.0f),
     _density(1.0f),
     _spacing(25.0f),
     _fill(1.0f),

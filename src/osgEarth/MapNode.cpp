@@ -151,7 +151,7 @@ MapNode::load(osg::ArgumentParser& args)
 {
     for( int i=1; i<args.argc(); ++i )
     {
-        if ( args[i] && endsWith(args[i], ".earth") )
+        if ( args[i] ) //&& (endsWith(args[i], ".earth") || endsWith(args[i], ".earth.template")) )
         {
             ReadResult r = URI(args[i]).readNode();
             if ( r.succeeded() )
@@ -168,7 +168,7 @@ MapNode::load(osg::ArgumentParser& args, const MapNode::Options& defaults)
 {
     for( int i=1; i<args.argc(); ++i )
     {
-        if ( args[i] && endsWith(args[i], ".earth") )
+        if ( args[i] ) //&& (endsWith(args[i], ".earth") || endsWith(args[i], ".earth.template")))
         {
             osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
             std::string optionsJSON = defaults.getConfig().toJSON();

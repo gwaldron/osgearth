@@ -129,6 +129,8 @@ namespace osgEarth { namespace REX
         void refreshSharedSamplers(const RenderBindings& bindings);
 
         unsigned getRevision() const { return _revision; }
+
+        bool isEmpty() const { return _empty; }
         
     public: // osg::Node
 

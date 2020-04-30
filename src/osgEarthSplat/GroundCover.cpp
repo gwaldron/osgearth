@@ -54,7 +54,7 @@ GroundCoverBiomeOptions::getConfig() const
 
 GroundCoverOptions::GroundCoverOptions(const ConfigOptions& co) :
     ConfigOptions(co),
-    _lod(14),
+    //_lod(14),
     _maxDistance(1000.0f),
     _density(1.0f),
     _spacing(25.0f),
@@ -72,7 +72,6 @@ GroundCoverOptions::getConfig() const
     Config conf = ConfigOptions::getConfig();
     conf.key() = "groundcover";
     conf.set("name", _name);
-    conf.set("lod", _lod);
     conf.set("max_distance", _maxDistance);
     conf.set("density", _density);
     conf.set("spacing", _spacing);
@@ -94,7 +93,6 @@ void
 GroundCoverOptions::fromConfig(const Config& conf)
 {
     conf.get("name", _name);
-    conf.get("lod", _lod);
     conf.get("max_distance", _maxDistance);
     conf.get("density", _density);
     conf.get("spacing", _spacing);
@@ -639,7 +637,8 @@ GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo
             if (!sideImage.valid())
             {
                 OE_WARN << LC << "A billboard is missing the mandatory image" << std::endl;
-                return false;
+                //return false;
+                sideImage = new osg::Image();
             }
 
             // Next process the top image (optional)

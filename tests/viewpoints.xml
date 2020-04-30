@@ -27,14 +27,14 @@
         <pitch>-18.63803872963365</pitch>
         <range>13611.24948464565</range>
     </viewpoint>
-    <viewpoint>
-        <heading>-1.429462844200832</heading>
-        <height>2282.858508689329</height>
-        <lat>45.95106319557</lat>
-        <long>7.642741711675961</long>
-        <name>The Matterhorn</name>
-        <pitch>-25.12269405854052</pitch>
-        <range>26690.10606054494</range>
+    <viewpoint name="Honolulu">
+        <heading>-4.34672</heading>
+        <pitch>-18.0653</pitch>
+        <range>2644.04m</range>
+        <long>-157.8191623694535</long>
+        <lat>21.26576663978325</lat>
+        <height>17.39070732519031</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
     <viewpoint>
         <name>Hallstatt, Austria</name>

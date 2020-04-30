@@ -67,13 +67,12 @@ uniform sampler2D oe_GroundCover_noiseTex;
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
-uniform vec3 oe_GroundCover_LL, oe_GroundCover_UR;
+// (LLx, LLy, URx, URy, tileNum
+uniform float oe_tile[5];
+
 uniform vec2 oe_tile_elevTexelCoeff;
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4 oe_tile_elevationTexMatrix;
-uniform uint oe_GroundCover_tileNum;
-uniform float oe_GroundCover_maxDistance;
-uniform vec3 oe_Camera;
 uniform float oe_GroundCover_colorMinSaturation;
 
 #pragma import_defines(OE_LANDCOVER_TEX)
@@ -125,6 +124,9 @@ bool isLegalColor(in vec2 tilec)
 #endif // OE_GROUNDCOVER_COLOR_SAMPLER
 
 #if 0
+uniform float oe_GroundCover_maxDistance;
+uniform vec3 oe_Camera;
+
 bool inRange(in vec4 vertex_view)
 {
     float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
@@ -163,6 +165,7 @@ void main()
 
     vec2 shift = vec2(fract(noise[1]*1.5), fract(noise[2]*1.5))*2.0-1.0;
     tilec += shift * halfSpacing;
+
     vec4 tilec4 = vec4(tilec, 0, 1);
 
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
@@ -194,9 +197,10 @@ void main()
 
     noise[NOISE_SMOOTH] /= biome.fill;
 
-    vec4 vertex_model = vec4(
-        mix(oe_GroundCover_LL.xy, oe_GroundCover_UR.xy, tilec),
-        getElevation(tilec), 1);
+    vec2 LL = vec2(oe_tile[0], oe_tile[1]);
+    vec2 UR = vec2(oe_tile[2], oe_tile[3]);
+
+    vec4 vertex_model = vec4(mix(LL, UR, tilec), getElevation(tilec), 1.0);
 
 #if 0 // Cannot view-cull when we're only computing on demand!
 
@@ -211,8 +215,9 @@ void main()
 #endif
 
     // It's a keeper. Populate the render buffer.
-    uint start = oe_GroundCover_tileNum * gl_NumWorkGroups.y * gl_NumWorkGroups.x;
-    uint slot = start + atomicAdd(cmd[oe_GroundCover_tileNum].instanceCount, 1);
+    uint tileNum = uint(oe_tile[4]);
+    uint start = tileNum * gl_NumWorkGroups.y * gl_NumWorkGroups.x;
+    uint slot = start + atomicAdd(cmd[tileNum].instanceCount, 1);
 
     render[slot].fillEdge = 1.0;
     const float xx = 0.5;

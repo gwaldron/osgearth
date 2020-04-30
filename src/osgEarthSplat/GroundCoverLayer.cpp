@@ -718,7 +718,7 @@ GroundCoverLayer::createNodeImplementation(const DrawContext& dc)
 {
     osg::Node* node = NULL;
     if (_debug)
-        node = makeBBox(dc._geom->getBoundingBox(), *dc._key);
+        node = makeBBox(*dc._geomBBox, *dc._key);
     return node;
 }
 
@@ -758,10 +758,8 @@ GroundCoverLayer::Renderer::UniformState::UniformState()
 {
     // initialize all the uniform locations - we will fetch these at draw time
     // when the program is active
-    _LLUL = -1;
-    _URUL = -1;
+    _computeDataUL = -1;
     _A2CUL = -1;
-    _tileNumUL = -1;
     _tileCounter = 0;
     _numInstances1D = 0;
 }
@@ -771,10 +769,8 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     _layer = layer;
 
     // create uniform IDs for each of our uniforms
-    _LLUName = osg::Uniform::getNameID("oe_GroundCover_LL");
-    _URUName = osg::Uniform::getNameID("oe_GroundCover_UR");
     _A2CName = osg::Uniform::getNameID("oe_GroundCover_A2C");
-    _tileNumUName = osg::Uniform::getNameID("oe_GroundCover_tileNum");
+    _computeDataUName = osg::Uniform::getNameID("oe_tile");
 
     _drawStateBuffer.resize(256u);
 
@@ -879,17 +875,13 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
 
     UniformState& u = ds._uniforms[pcp];
 
-    if (u._LLUL < 0)
+    if (u._computeDataUL < 0)
     {
-        u._LLUL = pcp->getUniformLocation(_LLUName);
-        u._URUL = pcp->getUniformLocation(_URUName);
+        u._computeDataUL = pcp->getUniformLocation(_computeDataUName);
         u._A2CUL = pcp->getUniformLocation(_A2CName);
-        u._tileNumUL = pcp->getUniformLocation(_tileNumUName);
     }
 
     u._tileCounter = 0;
-    u._LLAppliedValue.set(FLT_MAX, FLT_MAX, FLT_MAX);
-    u._URAppliedValue.set(FLT_MAX, FLT_MAX, FLT_MAX);
 
     // Check for initialization in this zone:
     const GroundCover* groundcover = GroundCoverSA::extract(ri.getState())->_groundcover;
@@ -947,33 +939,16 @@ GroundCoverLayer::Renderer::drawTile(osg::RenderInfo& ri, const PatchLayer::Draw
     {
         osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
 
-        // uniform sets the offset into the SSBO holding all the render data
-        if (u._tileNumUL >= 0)
+        if (u._computeDataUL >= 0)
         {
-            ext->glUniform1ui(u._tileNumUL, u._tileCounter);
-        }
+            u._computeData[0] = tile._tileBBox->xMin();
+            u._computeData[1] = tile._tileBBox->yMin();
+            u._computeData[2] = tile._tileBBox->xMax();
+            u._computeData[3] = tile._tileBBox->yMax();
+            u._computeData[4] = (float)u._tileCounter;
 
-        if (u._LLUL >= 0 && u._URUL >= 0)
-        {
-            // transmit the extents of this tile to the shader, skipping the glUniform
-            // call if the values have not changed. The shader will calculate the
-            // instance positions by interpolating across the tile extents.
-            const osg::BoundingBox& bbox = tile._geom->getBoundingBox();
-
-            const osg::Vec3f& LL = bbox.corner(0);
-            const osg::Vec3f& UR = bbox.corner(3);
-
-            //if (LL != u._LLAppliedValue)
-            {
-                ext->glUniform3fv(u._LLUL, 1, LL.ptr());
-                //u._LLAppliedValue = LL;
-            }
-
-            //if (UR != u._URAppliedValue)
-            {
-                ext->glUniform3fv(u._URUL, 1, UR.ptr());
-                //u._URAppliedValue = UR;
-            }
+            // TODO: check whether this changed before calling it
+            ext->glUniform1fv(u._computeDataUL, 5, &u._computeData[0]);
         }
 
         instancer->cullTile(ri, u._tileCounter);

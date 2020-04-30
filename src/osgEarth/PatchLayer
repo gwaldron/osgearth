@@ -51,13 +51,14 @@ namespace osgEarth
             OSGEARTH_FINAL;
 
         //! API providing access to patch geometry 
-        class OSGEARTH_EXPORT GeometryArrayProvider
+        class OSGEARTH_EXPORT TileInfoProvider
         {
         public:
-            virtual const osg::Array* getVertexArray() const = 0;
-            virtual const osg::Array* getNormalArray() const = 0;
-            virtual const osg::Array* getTexCoordArray() const = 0;
-            virtual const osg::BoundingBox& getBoundingBox() const = 0;
+            //! Bounding box of the actual tile geometry (could be cropped by a mask)
+            virtual const osg::BoundingBox& getGeomBoundingBox() const = 0;
+
+            //! Bounding box of the full tile
+            virtual const osg::BoundingBox& getTileBoundingBox() const = 0;
         };
 
         class OSGEARTH_EXPORT TileBatch
@@ -72,9 +73,12 @@ namespace osgEarth
         struct DrawContext
         {
             const TileKey* _key;
-            float _range;
-            GeometryArrayProvider* _geom;
-            DrawContext() : _range(0.0f), _geom(NULL), _key(NULL) { }
+            //float _range;
+            const osg::BoundingBox* _geomBBox;
+            const osg::BoundingBox* _tileBBox;
+            //GeometryArrayProvider* _geom;
+            //DrawContext() : _range(0.0f), _geom(NULL), _key(NULL) { }
+            DrawContext() : _geomBBox(NULL), _tileBBox(NULL), _key(NULL) { }
         };
 
         /**

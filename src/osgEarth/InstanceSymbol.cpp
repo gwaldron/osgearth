@@ -23,6 +23,7 @@
 using namespace osgEarth;
 
 InstanceSymbol::InstanceSymbol( const Config& conf ) :
+TaggableWithConfig<Symbol>(conf),
 _placement ( PLACEMENT_VERTEX ),
 _density   ( 25.0f ),
 _randomSeed( 0 ),
@@ -32,7 +33,7 @@ _scale     ( NumericExpression(1.0) )
 }
 
 InstanceSymbol::InstanceSymbol(const InstanceSymbol& rhs,const osg::CopyOp& copyop):
-Taggable<Symbol>(rhs, copyop),
+TaggableWithConfig<Symbol>(rhs, copyop),
 _url(rhs._url),
 _library(rhs._library),
 _scale(rhs._scale),
@@ -47,7 +48,7 @@ _script(rhs._script)
 Config 
 InstanceSymbol::getConfig() const
 {
-    Config conf = Taggable<Symbol>::getConfig();
+    Config conf = TaggableWithConfig<Symbol>::getConfig();
     conf.key() = "instance";
     conf.set( "url", _url );
     conf.set( "library", _library );

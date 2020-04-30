@@ -37,7 +37,7 @@ namespace osgEarth { namespace REX
     using namespace osgEarth;
 
     // Adapted from osgTerrain shared geometry class.
-    class /*internal*/ SharedGeometry : public osg::Drawable, public PatchLayer::GeometryArrayProvider
+    class /*internal*/ SharedGeometry : public osg::Drawable //, public PatchLayer::GeometryArrayProvider
     {
     public:
         SharedGeometry();

@@ -156,7 +156,7 @@ void oe_Grass_VS(inout vec4 vertex)
     vp_Normal = oe_UpVectorView;
 
     // For bending, exaggerate effect as we climb the stalk
-    float bendPower = pow(3.0*oe_GroundCover_texCoord.t, 2.0);
+    float bendPower = pow(3.0*oe_GroundCover_texCoord.t+0.8, 2.0);
 
     // effect of gravity:
     const float gravity = 0.025; // 0=no bend, 1=insane megabend

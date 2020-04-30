@@ -89,10 +89,6 @@ namespace osgEarth { namespace Splat
         optional<std::string>& name() { return _name; }
         const optional<std::string>& name() const { return _name; }
 
-        /** Equivalent terrain LOD at which this layer will render */
-        optional<unsigned>& lod() { return _lod; }
-        const optional<unsigned>& lod() const { return _lod; }
-
         /** Maximum viewing distance from camera */
         optional<float>& maxDistance() { return _maxDistance; }
         const optional<float>& maxDistance() const { return _maxDistance; }

@@ -45,7 +45,10 @@ namespace osgEarth
         const URIContext& uriContext() const { return _uriContext; }
 
         virtual Config getConfig() const;   
-	virtual void mergeConfig(const Config& conf);
+	    virtual void mergeConfig(const Config& conf);
+
+        //! First Config used to construct this object
+        Config getOriginalConfig() const { return _ctorConfig; }
 
     public:
         /* methods required by osg::Object */
@@ -56,6 +59,7 @@ namespace osgEarth
     protected:
         URIContext _uriContext;
         optional<StringExpression> _script;
+        Config _ctorConfig;
 
         static bool match(const std::string& key, const char* pattern);
 

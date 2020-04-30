@@ -22,6 +22,7 @@
 #include "TileRenderModel"
 #include "DrawState"
 #include "GeometryPool"
+#include "TileDrawable"
 #include <osgEarth/PatchLayer>
 #include <osgEarth/TileKey>
 #include <osg/Matrix>
@@ -46,8 +47,12 @@ namespace osgEarth { namespace REX
         // Samplers specific to one rendering pass
         const Samplers* _colorSamplers;
 
-        // Tile geometry, if present
+        // Tile geometry, if present (ref_ptr necessary?)
         osg::ref_ptr<SharedGeometry> _geom;
+
+        TileDrawable* _tile;
+
+        //PatchLayer::GeometryArrayProvider* _provider;
 
         // Tile key
         const TileKey* _key;

@@ -160,24 +160,12 @@ namespace osgEarth { namespace Splat
             {
                 UniformState();
 
-                GLint _numInstancesUL;
                 int _numInstances1D;
 
-                GLint _LLUL;
-                osg::Vec3f _LLAppliedValue;
-
-                GLint _URUL;
-                osg::Vec3f _URAppliedValue;
-
-                GLint _instancedModelUL;
-                int _instancedModelValue;
-
-                GLint _LLNormalUL;
-                GLint _URNormalUL;
+                GLint _computeDataUL;
+                float _computeData[5];
 
                 GLint _A2CUL;
-
-                GLint _tileNumUL;
 
                 unsigned _tileCounter;
             };
@@ -202,12 +190,8 @@ namespace osgEarth { namespace Splat
             osg::buffered_object<DrawState> _drawStateBuffer;
 
             // uniform IDs
-            unsigned _numInstancesUName;
-            unsigned _LLUName, _URUName;
-            unsigned _LLNormalUName, _URNormalUName;
+            unsigned _computeDataUName;
             unsigned _A2CName;
-            unsigned _tileNumUName;
-            unsigned _instancedModelUName;
 
             void applyLocalState(osg::RenderInfo& ri, DrawState& ds);
 

@@ -60,6 +60,7 @@ namespace osgEarth
             GLuint numIndices;
             GLenum mode;
             GLenum dataType;
+            GLint ssboOffsetAlignment;
 
             InstancingData();
             ~InstancingData();

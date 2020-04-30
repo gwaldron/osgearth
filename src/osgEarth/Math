@@ -299,5 +299,11 @@ namespace osgEarth
     {
         return a - vecProjection(a, b);
     }
+
+    template<typename T>
+    T roundUpToNearestMultiple(T x, T multiple) {
+        T isPositive = (T)(x >= 0);
+        return ((x + isPositive * (multiple - 1)) / multiple) * multiple;
+    }
 }
 #endif

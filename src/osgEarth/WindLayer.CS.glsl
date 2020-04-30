@@ -11,6 +11,7 @@ layout(binding=0, rgba8) uniform image3D oe_wind_tex;
 // https://tinyurl.com/y6see7zz
 #define MAX_WIND_SPEED 50.0 // meters per second
 
+// keep me vec4-aligned
 struct WindData {
     vec4 position;
     vec3 direction;

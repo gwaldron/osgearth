@@ -170,8 +170,8 @@ void oe_Grass_VS(inout vec4 vertex)
 
     const float rate = 0.01;
     vec4 noise_moving = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st + osg_FrameTime*rate, 0);
-    float windSpeedVariation = remap(noise_moving[NOISE_CLUMPY], 0.9, 1.4);
-    float windSpeed = clamp(windData.a * windSpeedVariation, 0, 1);
+    float windSpeedVariation = remap(noise_moving[NOISE_CLUMPY], -0.2, 1.4);
+    float windSpeed = windData.a * windSpeedVariation;
 
     // wind turbulence - once the wind exceeds a certain speed, grass starts buffeting
     // based on a higher frequency noise function

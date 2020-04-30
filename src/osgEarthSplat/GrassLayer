@@ -54,8 +54,7 @@ namespace osgEarth { namespace Splat
             VirtualProgram* vp, 
             const osgDB::Options* options) const;
 
-        virtual osg::Geometry* createGeometry(
-            unsigned vboTileDim) const;
+        virtual osg::Geometry* createGeometry() const;
     };
 
 } } // namespace osgEarth::Splat

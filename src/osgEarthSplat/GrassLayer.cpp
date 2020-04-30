@@ -73,9 +73,8 @@ GrassLayer::loadShaders(VirtualProgram* vp, const osgDB::Options* options) const
 }
 
 osg::Geometry*
-GrassLayer::createGeometry(unsigned vboTileDim) const    
+GrassLayer::createGeometry() const    
 {
-    unsigned numInstances = vboTileDim * vboTileDim;
     const unsigned vertsPerInstance = 16;
     const unsigned indiciesPerInstance = 54;
 
@@ -88,14 +87,14 @@ GrassLayer::createGeometry(unsigned vboTileDim) const
         8,9,12, 12,9,13, 9,10,13, 13,10,14, 10,11,14, 14,11,15
     };
 
-    out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, indiciesPerInstance, &indices[0], numInstances));
+    out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, indiciesPerInstance, &indices[0]));
 
     // We don't actually need any verts. Is it OK not to set an array?
     //geom->setVertexArray(new osg::Vec3Array(8));
 
-    osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
-    normals->push_back(osg::Vec3f(0,0,1));
-    out_geom->setNormalArray(normals);
+    //osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
+    //normals->push_back(osg::Vec3f(0,0,1));
+    //out_geom->setNormalArray(normals);
 
     return out_geom;
 }

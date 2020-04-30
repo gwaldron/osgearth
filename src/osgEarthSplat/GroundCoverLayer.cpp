@@ -709,7 +709,6 @@ namespace
         osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile("D:/data/models/rockinsoil/RockSoil.3DS.osg");
         osg::ref_ptr<osg::Geometry> geom = osgEarth::findTopMostNodeOfType<osg::Geometry>(node.get());
         node = NULL;
-        if (!geom.valid()) OE_WARN << "ASDLAKSDJALSKDJALSKJASLKDJ" << std::endl;
         return geom.release();
     }
 }
@@ -724,9 +723,8 @@ GroundCoverLayer::createNodeImplementation(const DrawContext& dc)
 }
 
 osg::Geometry*
-GroundCoverLayer::createGeometry(unsigned vboTileDim) const    
+GroundCoverLayer::createGeometry() const    
 {
-    unsigned numInstances = vboTileDim * vboTileDim;
     const unsigned vertsPerInstance = 8;
     const unsigned indiciesPerInstance = 12;
 
@@ -741,7 +739,7 @@ GroundCoverLayer::createGeometry(unsigned vboTileDim) const
 #endif
 
     static const GLushort indices[12] = { 0,1,2,2,1,3, 4,5,6,6,5,7 };
-    out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0], numInstances));
+    out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
 
     // We don't actually need any verts. Is it OK not to set an array?
     //geom->setVertexArray(new osg::Vec3Array(8));
@@ -914,9 +912,11 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
             u._numInstances1D = 128;
         }
 
+        //OE_WARN << "Num Instances = " << u._numInstances1D*u._numInstances1D << std::endl;
+
         if (instancer->getGeometry() == NULL)
         {
-            instancer->setGeometry(_layer->createGeometry(u._numInstances1D));
+            instancer->setGeometry(_layer->createGeometry());
             instancer->setNumInstances(u._numInstances1D, u._numInstances1D);
         }
     }

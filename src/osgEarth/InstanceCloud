@@ -52,7 +52,7 @@ namespace osgEarth
             GLsizei commandBufferSize;
             GLuint pointsBuffer;
             GLuint renderBuffer;
-            GLsizei renderBufferTileSize;
+            GLint renderBufferTileSize;
             osg::Vec4Array* points;
             unsigned numX, numY;
             unsigned numTilesAllocated;

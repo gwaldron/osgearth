@@ -72,7 +72,7 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
 {
     if (numTilesAllocated < numTiles)
     {
-        OE_DEBUG << LC << "Reallocate: " << numTiles << " tiles" << std::endl;
+        OE_DEBUG << LC << "Reallocate from " << numTilesAllocated << " to " << numTiles << " tiles" << std::endl;
 
         releaseGLObjects(state);
 
@@ -96,23 +96,25 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
             OE_DEBUG << "SSBO ALIGN = " << ssboOffsetAlignment << std::endl;
         }
 
-        GLuint baseSize = 0; 
         GLuint numInstances = numX * numY;
         GLuint instanceSize = 48; // see RenderData in shader (must be a multiple of a vec4)
+
+        commandBufferSize = numTilesAllocated * sizeof(DrawElementsIndirectCommand);
+        commandBufferSize = align(commandBufferSize, ssboOffsetAlignment);
 
         ext->glGenBuffers(1, &commandBuffer);
         ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, commandBuffer);
         _glBufferStorage(
             GL_SHADER_STORAGE_BUFFER,
-            numTilesAllocated * sizeof(DrawElementsIndirectCommand),
+            commandBufferSize,
             NULL,                    // uninitialized memory
             GL_DYNAMIC_STORAGE_BIT); // so we can reset each frame
-
+        
         // Buffer for the output data (culled points, written by compute shader)
-        renderBufferTileSize = baseSize + numInstances*instanceSize;
+        // Align properly to satisfy glBindBufferRange
+        renderBufferTileSize = align(numInstances*instanceSize, (GLuint)ssboOffsetAlignment);
 
-        // Align properly to satidfy glBindBufferRange
-        renderBufferTileSize = roundUpToNearestMultiple(renderBufferTileSize, ssboOffsetAlignment);
+        OE_DEBUG << "NumInstances="<<numInstances<< ", renderBufferTileSize=" << renderBufferTileSize << ", cmdBufferSize=" << commandBufferSize << std::endl;
 
         ext->glGenBuffers(1, &renderBuffer);
         ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderBuffer);
@@ -181,8 +183,10 @@ InstanceCloud::setGeometry(osg::Geometry* geom)
 void
 InstanceCloud::setNumInstances(unsigned x, unsigned y)
 {
-    _data.numX = x;
-    _data.numY = y;
+    // Enforce an even number of instances. For whatever reason that I cannot
+    // figure out today, an odd number causes the shader to freak out.
+    _data.numX = (x & 0x01) ? x-1 : x;
+    _data.numY = (y & 0x01) ? y-1 : y;
 }
 
 osg::BoundingBox

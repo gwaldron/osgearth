@@ -50,7 +50,7 @@ void NetworkMonitor::end(unsigned long handle, const std::string& status)
     if (s_enabled)
     {
         Threading::ScopedMutexLock lock(s_requestsMutex);
-        auto req = s_requests.find(handle);
+        NetworkMonitor::Requests::iterator req = s_requests.find(handle);
         if (req == s_requests.end())
         {
             OE_WARN << LC << "Missing handle " << handle << std::endl;

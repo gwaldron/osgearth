@@ -128,15 +128,10 @@ AnnotationNode::setMapNode( MapNode* mapNode )
 {
     if ( getMapNode() != mapNode )
     {
-        if (_mapNode.valid())
-            _mapNode->removeObserver(this);
-
         _mapNode = mapNode;
-        
+
         if ( mapNode )
         {
-            mapNode->addObserver(this);
-
             if ( mapNode->isGeocentric() )
                 _horizonCuller->setHorizon( new Horizon(mapNode->getMapSRS()) );
             else
@@ -146,19 +141,6 @@ AnnotationNode::setMapNode( MapNode* mapNode )
         }
 
 		applyStyle( this->getStyle() );
-    }
-}
-
-void
-AnnotationNode::objectDeleted(void* ptr)
-{
-    if ((void*)_mapNode.get() == ptr)
-    {
-        if (_mapNode.valid())
-        {
-            _mapNode->removeObserver(this);
-            _mapNode = NULL;
-        }
     }
 }
 
@@ -272,14 +254,14 @@ AnnotationNode::applyRenderSymbology(const Style& style)
         {
             DiscardAlphaFragments().install( getOrCreateStateSet(), render->minAlpha().value() );
         }
-        
+
 
         if ( render->transparent() == true )
         {
             osg::StateSet* ss = getOrCreateStateSet();
             ss->setRenderingHint( ss->TRANSPARENT_BIN );
         }
-        
+
         if (render->decal() == true)
         {
             getOrCreateStateSet()->setAttributeAndModes(

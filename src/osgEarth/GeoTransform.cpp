@@ -57,6 +57,8 @@ GeoTransform::setTerrain(Terrain* terrain)
 {
     if (terrain)
     {
+        if (_terrain.valid())
+            _terrain->removeObserver(this);
         _terrain = terrain;
         _terrain->addObserver(this);
         setPosition(_position);
@@ -66,15 +68,16 @@ GeoTransform::setTerrain(Terrain* terrain)
 void
 GeoTransform::objectDeleted(void* ptr)
 {
-    // called then the observed Terrain is deleted
-    if ((void*)_terrain.get() == ptr)
+    // called when the observed Terrain is deleted.  Since _terrain is
+    // in an observer_ptr, we cannot trust its value because it might
+    // be cleared out before we got here.  We also cannot set its value
+    // because that will change the observer list on the item being
+    // deleted, leading to invalidated iterators in OSG.  Because it's
+    // in an observer_ptr, _terrain will automatically set to NULL.
+    if (!_findTerrainInUpdateTraversal)
     {
-        _terrain = NULL;
-        if (!_findTerrainInUpdateTraversal)
-        {
-            _findTerrainInUpdateTraversal = true;
-            ADJUST_UPDATE_TRAV_COUNT(this, +1);
-        }
+        _findTerrainInUpdateTraversal = true;
+        ADJUST_UPDATE_TRAV_COUNT(this, +1);
     }
 }
 

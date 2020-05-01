@@ -55,7 +55,7 @@ protected:
     bool _geocentric;
     osg::ref_ptr<osg::EllipsoidModel> _ellipsoidModel;
 
-    void addVertex(osg::Vec3 vertex);
+    void addVertex(osg::Vec3d vertex);
 };
 
 #endif //VERTEX_COLLECTION_VISITOR

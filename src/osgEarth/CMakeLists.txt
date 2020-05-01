@@ -53,6 +53,7 @@ set(TARGET_GLSL
     ClipPlane.glsl
     DepthOffset.glsl
     Draping.glsl
+    DrawInstancedAttribute.glsl
     GPUClamping.glsl
     GPUClamping.lib.glsl
     Instancing.glsl
@@ -69,6 +70,7 @@ set(TARGET_GLSL
     ShadowCaster.glsl
     SimpleOceanLayer.glsl
     RTTPicker.glsl
+    WindLayer.CS.glsl
 )
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
@@ -149,6 +151,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
+    InstanceBuilder
     InstanceCloud
     IntersectionPicker
     IOTypes
@@ -421,6 +424,7 @@ SET(LIB_PUBLIC_HEADERS
     PlaceNode
     RectangleNode
     TrackNode
+    WindLayer
 
     rtree.h
 
@@ -521,6 +525,7 @@ set(TARGET_SRC
     ImageMosaic.cpp
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
+    InstanceBuilder.cpp
     IntersectionPicker.cpp
     IOTypes.cpp
     JoinPointsLinesFilter.cpp
@@ -763,6 +768,7 @@ set(TARGET_SRC
     ModelNode.cpp
     PlaceNode.cpp
     TrackNode.cpp
+    WindLayer.cpp
 
     FileGDBFeatureSource.cpp
 

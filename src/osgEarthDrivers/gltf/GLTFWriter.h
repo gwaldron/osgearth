@@ -257,6 +257,7 @@ public:
         accessor.byteOffset = 0;
         accessor.componentType = data->getDataType();
         accessor.count = data->getNumElements();
+        accessor.normalized = data->getNormalize();
 
         const osg::DrawArrays* da = dynamic_cast<const osg::DrawArrays*>(pset);
         if (da)

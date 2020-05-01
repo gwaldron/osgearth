@@ -166,7 +166,6 @@ TrackNode::compile()
 
         if ( imageGeom )
         {
-            // todo: optimize this better:
             imageGeom->getOrCreateStateSet()->merge(*_imageStateSet.get());
             _geode->addDrawable( imageGeom );
 

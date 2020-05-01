@@ -213,8 +213,8 @@ BingImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         }
 
         // request the actual tile
-        //OE_INFO << "key = " << key.str() << ", URL = " << location->value() << std::endl;
-        image = osgDB::readRefImageFile(location.full());
+        //OE_INFO << "key = " << key.str() << ", URL = " << location.full() << std::endl;
+        image = location.getImage(getReadOptions(), progress);
     }
 
     return GeoImage(image.get(), key.getExtent());

@@ -321,7 +321,7 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
     verts->reserve( latSegments * lonSegments );
 
 #if 0
-    bool genTexCoords = false; // TODO: optional
+    bool genTexCoords = false;
     osg::Vec2Array* texCoords = 0;
     if (genTexCoords)
     {
@@ -426,51 +426,6 @@ AnnotationUtils::createEllipsoid(float xRadius,
     }
 
     return geode;
-}
-
-osg::Node*
-AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
-{
-    osg::Geometry* geom = new osg::Geometry();
-    geom->setUseVertexBufferObjects(true);
-
-    osg::Vec3Array* v = new osg::Vec3Array();
-    v->reserve(4);
-    v->push_back( osg::Vec3(0,0,0) );
-    v->push_back( osg::Vec3(1,0,0) );
-    v->push_back( osg::Vec3(1,1,0) );
-    v->push_back( osg::Vec3(0,1,0) );
-    geom->setVertexArray(v);
-    if ( v->getVertexBufferObject() )
-        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
-
-    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
-    b->reserve(6);
-    b->push_back(0); b->push_back(1); b->push_back(2);
-    b->push_back(2); b->push_back(3); b->push_back(0);
-    geom->addPrimitiveSet( b );
-
-    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
-    (*c)[0] = color;
-    geom->setColorArray( c );
-
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( geom );
-
-    osg::StateSet* s = geom->getOrCreateStateSet();
-    GLUtils::setLighting(s, 0);
-    s->setMode(GL_DEPTH_TEST,0);
-    s->setMode(GL_CULL_FACE,0);
-    s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
-
-    osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrix::identity() );
-    xform->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
-    xform->addChild( geode );
-
-    osg::Projection* proj = new osg::Projection( osg::Matrix::ortho(0,1,0,1,0,-1) );
-    proj->addChild( xform );
-
-    return proj;
 }
 
 osg::Node*

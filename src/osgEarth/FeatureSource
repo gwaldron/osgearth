@@ -85,20 +85,33 @@ namespace osgEarth
             const osgDB::Options* readOptions);
 
         /**
-         * Creates a cursor that iterates over all the features corresponding to the
-         * specified query.
-         *
-         * Caller takes ownership of the returned object.
-         */
-        virtual FeatureCursor* createFeatureCursor(
-            const Query& query,
-            ProgressCallback* progress) =0;
+        * Creates a cursor that iterates over all features corresponding to the
+        * specified TileKey. Caller takes ownership of the returned object.
+        */
+        FeatureCursor* createFeatureCursor(
+            const TileKey& key,
+            ProgressCallback* progress);
+
+        /**
+        * Creates a cursor that iterates over all features corresponding to the
+        * specified TileKey with a buffer. Caller takes ownership of the returned object.
+        */
+        FeatureCursor* createFeatureCursor(
+            const TileKey& key,
+            const Distance& buffer,
+            ProgressCallback* progress);
 
         /**
          * Creates a cursor that iterates over all the features corresponding to the
-         * specified query.
-         *
-         * Caller takes ownership of the returned object.
+         * specified query. Caller takes ownership of the returned object.
+         */
+        FeatureCursor* createFeatureCursor(
+            const Query& query,
+            ProgressCallback* progress);
+
+        /**
+         * Creates a cursor that iterates over all the features corresponding to the
+         * specified query. Caller takes ownership of the returned object.
          */
         FeatureCursor* createFeatureCursor(ProgressCallback* progress) {
             return createFeatureCursor(Query(), progress);
@@ -218,6 +231,11 @@ namespace osgEarth
         mutable Threading::ReadWriteMutex  _blacklistMutex;
         std::set<FeatureID>                _blacklist;        
         osg::ref_ptr<FeatureFilterChain>   _filters;
+
+        //! Implements the feature cursor creation
+        virtual FeatureCursor* createFeatureCursorImplementation(
+            const Query& query,
+            ProgressCallback* progress) =0;
 
         /** Convenience function to apply the filters to a FeatureList */
         void applyFilters(FeatureList& features, const GeoExtent& extent) const;

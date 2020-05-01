@@ -28,6 +28,7 @@
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
+#include <osgEarth/InstanceCloud>
 
 namespace osgEarth { namespace Splat
 {
@@ -45,6 +46,7 @@ namespace osgEarth { namespace Splat
             META_LayerOptions(osgEarth, Options, PatchLayer::Options);
             OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
+            OE_OPTION(float, colorMinSaturation);
             OE_OPTION(unsigned, lod);
             OE_OPTION(bool, castShadows);
             OE_OPTION(float, maxAlpha);
@@ -158,58 +160,49 @@ namespace osgEarth { namespace Splat
             {
                 double _tileWidth;
             };
+            
+            struct UniformState
+            {
+                UniformState();
+
+                int _numInstances1D;
+
+                GLint _computeDataUL;
+                float _computeData[5];
+
+                GLint _A2CUL;
+
+                unsigned _tileCounter;
+            };
 
             // Tracks a GL state to minimize state changes
             struct DrawState
             {
-                DrawState();
-
-                void reset(const osg::State*, Settings*);
-
                 // Geometry differs by zone/groundcover settings
-                typedef UnorderedMap<const void*, osg::ref_ptr<osg::Geometry> > GeomPerGroundCover;
-                GeomPerGroundCover _geom;
-
-                osg::ref_ptr<osg::ElementBufferObject> _ebo;
-
-                const osg::Program::PerContextProgram* _pcp;
-
-                unsigned _tilesDrawnThisFrame;
-
-                GLint _numInstancesUL;
-                int _numInstances1D;
-
-                GLint _LLUL;
-                osg::Vec3f _LLAppliedValue;
-
-                GLint _URUL;
-                osg::Vec3f _URAppliedValue;
-
-                GLint _instancedModelUL;
-                int _instancedModelValue;
-
-                GLint _LLNormalUL;
-                GLint _URNormalUL;
-
-                GLint _A2CUL;
+                typedef UnorderedMap<const void*, osg::ref_ptr<InstanceCloud> > InstancerPerGroundCover;
+                InstancerPerGroundCover _instancers;
 
                 Renderer* _renderer;
+
+                typedef UnorderedMap<const void*, UniformState> UniformsPerPCP;
+                UniformsPerPCP _uniforms;
+
+                osg::Matrixd _mvp;
+                std::size_t _lastTileBatchID;
             };
 
             // one per graphics context
             osg::buffered_object<DrawState> _drawStateBuffer;
 
             // uniform IDs
-            unsigned _numInstancesUName;
-            unsigned _LLUName, _URUName;
-            unsigned _LLNormalUName, _URNormalUName;
+            unsigned _computeDataUName;
             unsigned _A2CName;
-            unsigned _instancedModelUName;
+
+            void applyLocalState(osg::RenderInfo& ri, DrawState& ds);
 
             // DrawCallback API
-            void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data);
-            void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data);
-            void postDraw(osg::RenderInfo& ri, osg::Referenced* data);
+            void draw(osg::RenderInfo& ri, const TileBatch* tiles);
+            void drawTile(osg::RenderInfo& ri, const DrawContext& tile);
 
             void resizeGLObjectBuffers(unsigned maxSize);
             void releaseGLObjects(osg::State* state) const;
@@ -217,6 +210,12 @@ namespace osgEarth { namespace Splat
             Settings _settings;
             GroundCoverLayer* _layer;
             osg::ref_ptr<osg::StateAttribute> _a2cBlending;
+
+            unsigned _pass;
+
+            osg::ref_ptr<osg::StateSet> _computeStateSet;
+            osg::Program* _computeProgram;
+            int _counter;
         };
 
         osg::ref_ptr<Renderer> _renderer;
@@ -228,8 +227,7 @@ namespace osgEarth { namespace Splat
             VirtualProgram* vp,
             const osgDB::Options* options) const;
 
-        virtual osg::Geometry* createGeometry(
-            unsigned vboTileDim) const;
+        virtual osg::Geometry* createGeometry() const;
     };
 
 } } // namespace osgEarth::Splat

@@ -91,8 +91,8 @@ namespace
                     BillboardLUTEntry entry;
                     if (bb->_symbol.valid())
                     {
-                        entry.billboardConfig = bb->_symbol->getConfig();
-                        OE_INFO << entry.billboardConfig.toJSON(false) << std::endl;
+                        entry.billboardConfig = bb->_symbol->getOriginalConfig();
+                        OE_DEBUG << entry.billboardConfig.toJSON(false) << std::endl;
                         entry.width = bb->_symbol->width().get();
                         entry.height = bb->_symbol->height().get();
                         entry.sizeVariation = bb->_symbol->sizeVariation().get();

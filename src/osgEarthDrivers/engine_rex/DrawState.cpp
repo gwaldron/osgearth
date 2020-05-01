@@ -24,29 +24,20 @@ using namespace osgEarth::REX;
 #define LC "[DrawState] "
 
 void
-PerContextDrawState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings)
+PerProgramState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings)
 {
-    // Establish a GL Extensions handle:
-    if (!_ext.valid())
-    {
-        _ext = osg::GLExtensions::Get(ri.getContextID(), true);
-    }
-
     // Size the sampler states property:
     if (_samplerState._samplers.size() < bindings->size())
     {
         _samplerState._samplers.resize(bindings->size());
     }
 
-    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
-    if (pcp && (pcp != _pcp))
+    if (_tileKeyUL < 0)
     {
+        const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
+
         // Reset all sampler matrix states since their uniform locations are going to change.
-        //_runningLayerDrawOrder = 0;
-        _elevTexelCoeff.clear();
-        _morphConstants.clear();
-        _parentTextureExists.clear();
-        _samplerState.clear();
+        clear();
 
         // for each sampler binding, initialize its state tracking structure 
         // and resolve its matrix uniform location:
@@ -64,13 +55,32 @@ PerContextDrawState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings
         _layerOrderUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_order"));
         _morphConstantsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_morph"));
     }
-
-    _pcp = pcp;
 }
 
 void
-PerContextDrawState::clear()
+PerProgramState::clear()
 {
+    _elevTexelCoeff.clear();
+    _morphConstants.clear();
+    _parentTextureExists.clear();
     _samplerState.clear();
-    _pcp = 0L;
+}
+
+
+void
+PerContextDrawState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings)
+{
+    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
+    if (pcp == NULL)
+        return;
+
+    PerProgramState& u = _perProgramStateMap[pcp];
+    u.refresh(ri, bindings);
+}
+
+PerProgramState&
+PerContextDrawState::getPerProgramState(osg::RenderInfo& ri)
+{
+    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
+    return _perProgramStateMap[pcp];
 }

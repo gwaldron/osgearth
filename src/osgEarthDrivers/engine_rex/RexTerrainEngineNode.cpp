@@ -156,8 +156,6 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
         package.load(vp, package.ENGINE_SDK);
     }
 
-    // TODO: replace with a "renderer" object that can return statesets
-    // for different layer types, or something.
     _surfaceStateSet = new osg::StateSet();
     _surfaceStateSet->setName("Surface");
 
@@ -657,7 +655,8 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     bool imageLayerStateSetPushed = false;
     int layersDrawn = 0;
 
-    osg::State::StateSetStack stateSetStack;
+    // LOOP over effectlayers..
+    // for each one, call culltraverse() on it to push a stateset;
 
     for (LayerDrawableList::iterator i = culler._terrain.layers().begin();
         i != culler._terrain.layers().end();
@@ -710,8 +709,9 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
                 }
             }
 
-            //OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << "; tiles=" << lastLayer->_tiles.size() << std::endl;
-            //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
+            // perform any pre-draw finalization
+            lastLayer->finalize();
+
 
             if (lastLayer->_layer)
             {
@@ -724,8 +724,6 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
             ++layersDrawn;
         }
-
-        //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
     }
 
     // Uncomment this to see how many layers were drawn
@@ -1060,9 +1058,6 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
         {
             // Update the existing render models, and trigger a data reload.
             // Later we can limit the reload to an update of only the new data.
-            // TODO: replace with a tnr->invalidateRegion with a manifest containing the new layer
-            //UpdateRenderModels updateModels(getMap(), _renderBindings);
-            //_terrain->accept(updateModels);
             std::vector<const Layer*> layers;
             layers.push_back(tileLayer);
             invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);
@@ -1169,7 +1164,7 @@ RexTerrainEngineNode::updateState()
 
         osg::StateSet* surfaceStateSet = getSurfaceStateSet();    // just the surface
 
-                                                                  // required for multipass tile rendering to work
+        // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(
             new osg::Depth(osg::Depth::LEQUAL, 0, 1, true));
 

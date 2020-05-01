@@ -503,7 +503,7 @@ WFSFeatureSource::createURL(const Query& query) const
 }
 
 FeatureCursor* 
-WFSFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
+WFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
 {
     FeatureCursor* result = 0L;
 

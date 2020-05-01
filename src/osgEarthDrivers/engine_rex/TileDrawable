@@ -53,7 +53,7 @@ namespace osgEarth { namespace REX
      * the terrain's geometry. It also hold a pointer to the tile's elevation
      * raster so it can properly reflect the elevation data in the texture.
      */
-    class TileDrawable : public osg::Drawable, public PatchLayer::GeometryArrayProvider
+    class TileDrawable : public osg::Drawable //, public PatchLayer::GeometryArrayProvider
     {
     public:
         // underlying geometry, possibly shared between this tile and other.

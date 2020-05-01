@@ -163,7 +163,7 @@ namespace osgEarth { namespace Util
      * Query object that you can use to search for applicable Skin resources from the 
      * ResourceLibrary.
      */
-    class OSGEARTH_EXPORT SkinSymbol : public Taggable<Symbol>
+    class OSGEARTH_EXPORT SkinSymbol : public TaggableWithConfig<Symbol>
     {
     public:
         META_Object(osgEarth, SkinSymbol);

@@ -2821,7 +2821,7 @@ EarthManipulator::handleMovementAction( const ActionType& type, double dx, doubl
 
     case ACTION_EARTH_DRAG:
         if (_thrown)
-          pan(dx*0.5, dy*0.5);  //TODO: create proper drag throwing instead of panning trick
+          pan(dx*0.5, dy*0.5);
         else
           drag( dx, dy, view );
         break;
@@ -2934,7 +2934,6 @@ EarthManipulator::handleMouseAction( const Action& action, osg::View* view )
 bool
 EarthManipulator::handleMouseClickAction( const Action& action )
 {
-    //TODO.
     return false;
 }
 
@@ -3133,7 +3132,6 @@ EarthManipulator::getQuaternion(double azim, double pitch) const
     osg::Quat pitch_q( -pitch-osg::PI_2, osg::Vec3d(1,0,0) );
     osg::Matrix newRot = osg::Matrixd( azim_q * pitch_q );
     return osg::Matrixd::inverse(newRot).getRotate();
-    //TODO: simplify this old code..
 }
 
 void
@@ -3142,7 +3140,7 @@ EarthManipulator::collapseTetherRotationIntoRotation()
     // fetch the composite rotation angles (_rotation and _tetherRotation):
 
     double azim, pitch;
-    getCompositeEulerAngles(&azim, &pitch); // TODO replace with getEulerAngles(_rotation*_tetherRotation, ...)
+    getCompositeEulerAngles(&azim, &pitch);
 
     pitch = osg::clampBetween(
         pitch,

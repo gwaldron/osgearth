@@ -54,8 +54,8 @@ GroundCoverBiomeOptions::getConfig() const
 
 GroundCoverOptions::GroundCoverOptions(const ConfigOptions& co) :
     ConfigOptions(co),
-    _lod(14),
-    _maxDistance(1000.0f),
+    //_lod(14),
+    _maxDistance(FLT_MAX),//1000.0f),
     _density(1.0f),
     _spacing(25.0f),
     _fill(1.0f),
@@ -72,7 +72,6 @@ GroundCoverOptions::getConfig() const
     Config conf = ConfigOptions::getConfig();
     conf.key() = "groundcover";
     conf.set("name", _name);
-    conf.set("lod", _lod);
     conf.set("max_distance", _maxDistance);
     conf.set("density", _density);
     conf.set("spacing", _spacing);
@@ -94,7 +93,6 @@ void
 GroundCoverOptions::fromConfig(const Config& conf)
 {
     conf.get("name", _name);
-    conf.get("lod", _lod);
     conf.get("max_distance", _maxDistance);
     conf.get("density", _density);
     conf.get("spacing", _spacing);
@@ -365,13 +363,13 @@ GroundCover::createShader() const
         << "} \n";
 
     objectsBuf
-        << "void oe_GroundCover_getObject(in int index, out oe_GroundCover_Object output) { \n"
-        << "    output = oe_GroundCover_objects[index]; \n"
+        << "void oe_GroundCover_getObject(in int index, out oe_GroundCover_Object object) { \n"
+        << "    object = oe_GroundCover_objects[index]; \n"
         << "} \n";
 
     billboardsBuf
-        << "void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard output) { \n"
-        << "    output = oe_GroundCover_billboards[index]; \n"
+        << "void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard billboard) { \n"
+        << "    billboard = oe_GroundCover_billboards[index]; \n"
         << "} \n";
 
     std::string biomeStr = biomeBuf.str();
@@ -438,18 +436,7 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
     //}
     else
     {
-#if 0
-        const std::string& sampler = layer->getSharedTextureUniformName());
-        const std::string& matrix  = layer->getSharedTextureMatrixUniformName());
-        buf << "uniform sampler2D " << sampler << ";\n"
-            << "uniform mat4 " << matrix << ";\n"
-            << "int oe_GroundCover_getBiomeIndex(in vec4 coords) { \n"
-            << "    float value = textureLod(" << sampler << ", (" << matrix << " * coords).st, 0).r;\n";
-#else
-        buf << "float oe_LandCover_coverage; \n"
-            << "int oe_GroundCover_getBiomeIndex(in vec4 coords) { \n"
-            << "    float value = oe_LandCover_coverage; \n";
-#endif
+        buf << "int oe_GroundCover_getBiomeIndex(in float code) { \n";
 
         for(int biomeIndex=0; biomeIndex<getBiomes().size(); ++biomeIndex)
         {
@@ -465,7 +452,7 @@ GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCover
                     const LandCoverClass* lcClass = landCoverDict->getClassByName(classes[i]);
                     if (lcClass)
                     {
-                        buf << "    if (value == " << lcClass->getValue() << ") return " << biomeIndex << "; \n";
+                        buf << "    if (code == " << lcClass->getValue() << ") return " << biomeIndex << "; \n";
                     }
                     else
                     {
@@ -650,7 +637,8 @@ GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo
             if (!sideImage.valid())
             {
                 OE_WARN << LC << "A billboard is missing the mandatory image" << std::endl;
-                return false;
+                //return false;
+                sideImage = new osg::Image();
             }
 
             // Next process the top image (optional)

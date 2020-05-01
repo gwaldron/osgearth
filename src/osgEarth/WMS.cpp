@@ -822,7 +822,6 @@ WMSImageLayer::playSequence()
 void
 WMSImageLayer::pauseSequence()
 {
-    //todo
     _isPlaying = false;
 }
 

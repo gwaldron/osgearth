@@ -152,7 +152,6 @@ LandCoverLayer::openImplementation()
         return cs;
 
     // Pull this layer's extents from the coverage layer.
-    // TODO: imageLayer can probably not to NULL here
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(options().source().getLayer());
     if (!imageLayer)
         return Status(Status::ResourceUnavailable, "Cannot access source image layer");

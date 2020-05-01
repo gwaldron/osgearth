@@ -1,4 +1,4 @@
-<LandCover name="Copernicus">
+<LandCover name="Copernicus" max_data_level="16">
     <xi:include href="http://readymap.org/readymap/filemanager/download/public/landcover/land_cover_copernicus.xml"/>
 	
 	<TMSImage name="CLC 2015" driver="tms">

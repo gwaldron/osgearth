@@ -20,6 +20,7 @@
 #include "TerrainRenderData"
 #include <osg/ConcurrencyViewerMacros>
 #include <osgEarth/Metrics>
+#include <sstream>
 
 
 using namespace osgEarth::REX;
@@ -52,6 +53,24 @@ LayerDrawable::~LayerDrawable()
     setStateSet(0L);
 }
 
+void
+LayerDrawable::finalize()
+{
+    // if this is a patch layer with a draw callback, we need to
+    // generate a batch ID.
+    if (_patchLayer)
+    {
+        std::stringstream buf;
+        for(DrawTileCommands::const_iterator i = _tiles.begin();
+            i != _tiles.end();
+            ++i)
+        {
+            buf << i->_key->str() << "/" << i->_tileRevision << "/";
+        }
+        _tileBatchId = osgEarth::hashString(buf.str());
+    }
+}
+
 namespace
 {
     // Hack State so we can dirty the texture attrs without dirtying the other 
@@ -80,6 +99,26 @@ namespace
     };
 }
 
+void
+LayerDrawable::drawTiles(osg::RenderInfo& ri) const
+{
+    PerProgramState& ds = _drawState->getPPS(ri);
+    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+
+    ds.refresh(ri, _drawState->_bindings);
+
+    if (ds._layerUidUL >= 0)
+    {
+        GLint uid = _layer ? (GLint)_layer->getUID() : (GLint)-1;
+        ext->glUniform1i(ds._layerUidUL, uid);
+    }
+
+    for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
+    {
+        _drawState->getPPS(ri).refresh(ri, _drawState->_bindings);
+        tile->draw(ri, *_drawState, NULL);
+    }
+}
 
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
@@ -88,43 +127,14 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     char buf[64];
     sprintf(buf, "%.36s (%zd tiles)", _layer ? _layer->getName().c_str() : "unknown layer", _tiles.size());
     OE_PROFILING_ZONE_TEXT(buf);
-    //OE_INFO << LC << (_layer ? _layer->getName() : "[empty]") << " tiles=" << _tiles.size() << std::endl;
 
-    // Get this context's state values:
-    PerContextDrawState& ds = _drawState->getPCDS(ri.getContextID());
-
-    ds.refresh(ri, _drawState->_bindings);
-
-    std::string buf2("oe_draw_layer::");
-    buf2 += getName();
-    ds._ext->glPushDebugGroup(GL_DEBUG_SOURCE_THIRD_PARTY, 1, -1, buf2.c_str());
-    osg::CVMarkerSeries objectCreation("Main Thread");
-    osg::CVSpan creationSpan(objectCreation, 4, buf2.c_str());
-
-    if (ds._layerUidUL >= 0)
-    {
-        GLint uid = _layer ? (GLint)_layer->getUID() : (GLint)-1;
-        ds._ext->glUniform1i(ds._layerUidUL, uid);
+    if (_patchLayer && _patchLayer->getDrawCallback())
+    {        
+        _patchLayer->getDrawCallback()->draw(ri, this);
     }
     else
     {
-        // This just means that the fragment shader for this layer doesn't use oe_layer_uid
-    }
-    osg::ref_ptr<osg::Referenced> layerData;
-
-    if (_patchLayer && _patchLayer->getDrawCallback())
-    {
-        _patchLayer->getDrawCallback()->preDraw(ri, layerData);
-    }
-
-    for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
-    {
-        tile->draw(ri, *_drawState, layerData.get());
-    }
-
-    if (_patchLayer && _patchLayer->getDrawCallback())
-    {
-        _patchLayer->getDrawCallback()->postDraw(ri, layerData.get());
+        drawTiles(ri);
     }
 
     // If set, dirty all OSG state to prevent any leakage - this is sometimes
@@ -141,13 +151,14 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         ri.getState()->dirtyAllVertexArrays();
         
         // unbind local buffers when finished.
-        ds._ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
-        ds._ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
+        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+
+        ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
+        ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
 
         // gw: no need to do this, in fact it will cause positional attributes
         // (light clip planes and lights) to immediately be reapplied under the
         // current MVM, which will by definition be wrong!)
         //ri.getState()->apply();
     }
-    ds._ext->glPopDebugGroup();
 }

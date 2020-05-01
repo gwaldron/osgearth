@@ -1,52 +1,51 @@
-#version $GLSL_VERSION_STR
+#version 430
 $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       GroundCover vertex shader
 #pragma vp_entryPoint oe_Grass_VS
 #pragma vp_location   vertex_view
 
-#pragma import_defines(OE_GROUNDCOVER_USE_INSTANCING)
-#pragma import_defines(OE_LANDCOVER_TEX)
-#pragma import_defines(OE_LANDCOVER_TEX_MATRIX)
-#pragma import_defines(OE_GROUNDCOVER_MASK_SAMPLER)
-#pragma import_defines(OE_GROUNDCOVER_MASK_MATRIX)
-
-
-#pragma import_defines(OE_GROUNDCOVER_COLOR_SAMPLER)
-#pragma import_defines(OE_GROUNDCOVER_COLOR_MATRIX)
-#ifdef OE_GROUNDCOVER_COLOR_SAMPLER
-uniform sampler2D OE_GROUNDCOVER_COLOR_SAMPLER ;
-uniform mat4 OE_GROUNDCOVER_COLOR_MATRIX ;
-#endif
+// Instance data from compute shader
+struct RenderData // vec4 aligned please
+{
+    vec4 vertex;      // 16
+    vec2 tilec;       // 8
+    int sideIndex;    // 4
+    int  topIndex;    // 4
+    float width;      // 4
+    float height;     // 4
+    float fillEdge;   // 4
+    float _padding;   // 4
+};
+layout(binding=1, std430) readonly buffer RenderBuffer {
+    RenderData render[];
+};
 
 //uncomment to activate
 //#define OE_GROUNDCOVER_USE_ACTOR
 
-uniform vec2 oe_GroundCover_numInstances;
-uniform vec3 oe_GroundCover_LL, oe_GroundCover_UR;
-
 // Noise texture:
 uniform sampler2D oe_GroundCover_noiseTex;
-vec4 oe_noise;
-// Noise texture channels:
 #define NOISE_SMOOTH   0
 #define NOISE_RANDOM   1
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
-// LandCover texture
-uniform sampler2D OE_LANDCOVER_TEX;
-uniform mat4 OE_LANDCOVER_TEX_MATRIX;
-float oe_LandCover_coverage;
-
 vec3 vp_Normal;
 vec4 vp_Color;
-vec4 oe_layer_tilec;
+out vec4 oe_layer_tilec;
 vec3 oe_UpVectorView;
 
 uniform float osg_FrameTime; // OSG frame time (seconds) used for wind animation
-uniform float oe_GroundCover_wind;  // wind strength
+//uniform float oe_GroundCover_wind;  // wind strength
 uniform float oe_GroundCover_maxDistance; // distance at which flora disappears
+
+#pragma import_defines(OE_WIND_TEX, OE_WIND_TEX_MATRIX)
+#ifdef OE_WIND_TEX
+uniform sampler3D OE_WIND_TEX ;
+uniform mat4 OE_WIND_TEX_MATRIX ;
+#define MAX_WIND_SPEED 50.0  // meters per second
+#endif
 
 #ifdef OE_GROUNDCOVER_USE_ACTOR
 uniform float actorRadius;
@@ -58,208 +57,64 @@ uniform mat4 osg_ViewMatrix;
 
 uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 
-
-                        // Output grass texture coords to the FS
 out vec2 oe_GroundCover_texCoord;
 
 // Output that selects the land cover texture from the texture array (flat)
 flat out float oe_GroundCover_atlasIndex;
 
-struct oe_GroundCover_Biome {
-    int firstObjectIndex;
-    int numObjects;
-    float density;
-    float fill;
-    vec2 maxWidthHeight;
-};
-void oe_GroundCover_getBiome(in int index, out oe_GroundCover_Biome biome);
-
-struct oe_GroundCover_Object {
-    int type;             // 0=billboard 
-    int objectArrayIndex; // index into the typed object array 
-};
-void oe_GroundCover_getObject(in int index, out oe_GroundCover_Object object);
-
-struct oe_GroundCover_Billboard {
-    int atlasIndexSide;
-    int atlasIndexTop;
-    float width;
-    float height;
-    float sizeVariation;
-};
-void oe_GroundCover_getBillboard(in int index, out oe_GroundCover_Billboard bb);
-
-// SDK import
-float oe_terrain_getElevation(in vec2);
-
-// Generated in GroundCover.cpp
-int oe_GroundCover_getBiomeIndex(in vec4);
-
-#ifdef OE_GROUNDCOVER_MASK_SAMPLER
-uniform sampler2D OE_GROUNDCOVER_MASK_SAMPLER;
-uniform mat4 OE_GROUNDCOVER_MASK_MATRIX;
-#endif
-
-// https://stackoverflow.com/a/17897228/4218920
-vec3 rgb2hsv(vec3 c)
-{
-    const vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
-    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
-    float d = q.x - min(q.w, q.y);
-    const float e = 1.0e-10;
-    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-}
-
-const float oe_grass_hue = 80.0; // HSL hue value
-const float oe_grass_hueWidth = 0.27;
-const float oe_grass_saturation = 0.32;
-
-float accel(float x) {
-    return x*x;
-}
 float decel(float x) {
     return 1.0-(1.0-x)*(1.0-x);
 }
+
+// remap x from [0..1] to [lo..hi]
+float remap(float x, float lo, float hi) {
+    return lo+x*(hi-lo);
+}
+
+const float browning = 0.25;
+uniform float shmoo;
 
 void oe_Grass_VS(inout vec4 vertex)
 {
     // intialize with a "no draw" value:
     oe_GroundCover_atlasIndex = -1.0;
 
-    // input: 8 verts per instance so we can expand into a dual billboard
-#ifdef OE_GROUNDCOVER_USE_INSTANCING
-    int instanceID = gl_InstanceID;
-#else
-    int instanceID = gl_VertexID / 16;
-#endif
+    vertex = gl_ModelViewMatrix * render[gl_InstanceID].vertex;
 
-    // Generate the UV tile coordinates (oe_layer_tilec) based on the current instance number
-    vec2 numInstances = oe_GroundCover_numInstances;
-
-    vec2 offset = vec2(
-        float(instanceID % int(numInstances.x)),
-        float(instanceID / int(numInstances.y)));
-
-    // half the distance between cell centers
-    vec2 halfSpacing = 0.5/numInstances;
-
-    oe_layer_tilec = vec4( halfSpacing + offset/numInstances, 0, 1);
+    oe_layer_tilec = vec4(render[gl_InstanceID].tilec, 0, 1);
 
     // Sample our noise texture
-    oe_noise = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st, 0);
-
-    // randomly shift each point off center
-    vec2 shift = vec2(fract(oe_noise[NOISE_RANDOM]*5.5), fract(oe_noise[NOISE_RANDOM_2]*5.5))*2-1;
-    oe_layer_tilec.st += shift*halfSpacing;
-
-    // interpolate to correct position within the tile
-    vertex.xyz +=
-        gl_NormalMatrix *  // model to view
-        vec3(mix(oe_GroundCover_LL.xy, oe_GroundCover_UR.xy, oe_layer_tilec.st), 0);
-
-    // Sample the landcover data. Must do this BEFORE calling getBiomeIndex.
-    oe_LandCover_coverage = textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*oe_layer_tilec).st, 0).r;
-
-    // Look up the biome and bail if not defined
-    int biomeIndex = oe_GroundCover_getBiomeIndex(oe_layer_tilec);
-    if ( biomeIndex < 0 )
-        return;
-
-    // Sample optional mask texture
-#ifdef OE_GROUNDCOVER_MASK_SAMPLER
-    float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*oe_layer_tilec).st).a;
-    if ( mask > 0.0 )
-        return;
-#endif
-
-    // Clamp the center point to the elevation.
-    vertex.xyz += oe_UpVectorView * oe_terrain_getElevation(oe_layer_tilec.st);
+    vec4 oe_noise = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st, 0);
+    vec4 oe_noise_wide = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st/16.0, 0);
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
     float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
     float zv = vertex.z;
     float nRange = clamp(-zv/maxRange, 0.0, 1.0);
 
-    // Distance culling:
-    if ( nRange == 1.0 )
+    // cull verts that are out of range. Sadly we can't do this in COMPUTE.
+    if (nRange >= 0.99)
         return;
 
-    // look up biome:
-    oe_GroundCover_Biome biome;
-    oe_GroundCover_getBiome(biomeIndex, biome);
+    // make the grass smoothly disappear in the distance
+    float falloff = clamp(2.0-(nRange + oe_noise[NOISE_SMOOTH]), 0, 1);
 
-    // discard instances based on noise value threshold (fill).
+    oe_GroundCover_atlasIndex = float(render[gl_InstanceID].sideIndex);
 
-    float fill = biome.fill;
+    float width = render[gl_InstanceID].width * clamp(render[gl_InstanceID].fillEdge*2.0, 0, 1);
+    float height = render[gl_InstanceID].height * render[gl_InstanceID].fillEdge * falloff;
 
-    float fillEdgeFactor = 1.0;
-
-#ifdef OE_GROUNDCOVER_COLOR_SAMPLER
-    //fill = 1.0; // for color sampling
-    vec4 c = texture(OE_GROUNDCOVER_COLOR_SAMPLER, (OE_GROUNDCOVER_COLOR_MATRIX*oe_layer_tilec).st);
-    vec3 hsv = rgb2hsv(c.rgb);
-    float hue_dot = -cos((oe_grass_hue/360.0)*6.2831853); // [-1..1]
-    float hsv_dot = -cos(hsv[0]*6.2831853); // [-1..1]
-    float hue_delta = 0.5*abs(hue_dot - hsv_dot); // [0..1]
-    if (oe_grass_hueWidth < hue_delta) {
-        float f = (oe_grass_hueWidth/hue_delta);
-        fill *= f*f*f;
-    }
-    if (hsv[1] < oe_grass_saturation) {
-        float f = (hsv[1]/oe_grass_saturation);
-        fill *= f*f;
-    }
-#endif
-
-    if ( oe_noise[NOISE_SMOOTH] > fill )
-    {
-        return;
-    }
-    else
-    {
-        // scale the smooth-noise back up to [0..1] and compute an edge factor
-        // that will shrink the foliage near the fill boundaries
-        oe_noise[NOISE_SMOOTH] /= fill;
-        const float xx = 0.5;
-        if (oe_noise[NOISE_SMOOTH] > xx)
-            fillEdgeFactor = 1.0-((oe_noise[NOISE_SMOOTH]-xx)/(1.0-xx));
-    }
-
-    // select a billboard at "random" .. TODO: still order-dependent; needs work
-    float pickNoise = (1.0-oe_noise[NOISE_SMOOTH]);
-    int objectIndex = biome.firstObjectIndex + int(floor(pickNoise * float(biome.numObjects)));
-    objectIndex = clamp(objectIndex, biome.firstObjectIndex, biome.firstObjectIndex + biome.numObjects - 1);
-
-    // Recover the object we randomly picked and its billboard
-    oe_GroundCover_Object object;
-    oe_GroundCover_getObject(objectIndex, object);
-    oe_GroundCover_Billboard billboard;
-    oe_GroundCover_getBillboard(object.objectArrayIndex, billboard);
-
-    oe_GroundCover_atlasIndex = float(billboard.atlasIndexSide);
-
-    // push the falloff closer to the max distance.
-    float falloff = 1.0-(nRange*nRange*nRange);
-
-    // a pseudo-random scale factor to the width and height of a billboard
-    //float sizeScale = billboard.sizeVariation * (oe_noise[NOISE_RANDOM_2]*2.0-1.0);
-    float sizeScale = billboard.sizeVariation * (oe_noise[NOISE_CLUMPY]*2.0-1.0);
-
-    float width = (billboard.width + billboard.width*sizeScale) * clamp(fillEdgeFactor*2,0,1);
-
-    // need abs here but not sure why... todo
-    float height = abs((billboard.height + billboard.height*sizeScale) * fillEdgeFactor);
+    height = mix(-browning*height+height, browning*height+height, oe_noise_wide[NOISE_CLUMPY]);
 
     // ratio of adjusted height to nonimal height
-    float heightRatio = height/billboard.height;
+    float heightRatio = height/render[gl_InstanceID].height;
 
     int which = gl_VertexID & 15; // mod16 - there are 16 verts per instance
 
     vp_Color = vec4(1,1,1,falloff);
 
     // darken as the fill level decreases
-    vp_Color.rgb *= 0.5+( decel(fillEdgeFactor)*(1.0-0.5) );
+    vp_Color.rgb *= 0.5+( decel(render[gl_InstanceID].fillEdge)*(1.0-0.5) );
 
     // texture coordinate:
     float row = float(which/4);
@@ -292,47 +147,66 @@ void oe_Grass_VS(inout vec4 vertex)
     }
 
     // extrude to height:
-    vertex.xyz += oe_UpVectorView * height * oe_GroundCover_texCoord.t;
+    vec4 vertex_base = vertex;
+
+    float vertexHeight = height * oe_GroundCover_texCoord.t;
+    vertex.xyz += oe_UpVectorView * vertexHeight;
 
     // normal:
     vp_Normal = oe_UpVectorView;
 
     // For bending, exaggerate effect as we climb the stalk
-    vec3 bendVec = vec3(0.0);
-    float bendPower = pow(3.0*oe_GroundCover_texCoord.t, 2.0);
+    float bendPower = pow(3.0*oe_GroundCover_texCoord.t+0.8, 2.0);
 
     // effect of gravity:
     const float gravity = 0.025; // 0=no bend, 1=insane megabend
-    bendVec += faceVec * heightRatio * gravity * bendPower;
+    vec3 bendVec = faceVec * heightRatio * gravity * bendPower;
 
-    // wind:
-    if (oe_GroundCover_wind > 0.0)
+#ifdef OE_WIND_TEX
+    // sample the local wind map.
+    const float bendDistance = 0.25*vertexHeight;
+    vec4 windData = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex_base));
+    vec3 windDir  = normalize(windData.rgb*2 - 1); // view space
+
+    const float rate = 0.01;
+    vec4 noise_moving = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st + osg_FrameTime*rate, 0);
+    float windSpeedVariation = remap(noise_moving[NOISE_CLUMPY], -0.2, 1.4);
+    float windSpeed = windData.a * windSpeedVariation;
+
+    // wind turbulence - once the wind exceeds a certain speed, grass starts buffeting
+    // based on a higher frequency noise function
+    vec3 buffetingDir = vec3(0);
+    if (windSpeed > 0.2)
     {
-        float windEffect = oe_GroundCover_wind * heightRatio * bendPower * 0.2 * falloff;
+        float buffetingSpeed = windSpeed*0.2;
+        vec4 noise_b = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st + osg_FrameTime*buffetingSpeed, 0);
+        buffetingDir = gl_NormalMatrix * vec3(noise_b.xx*2-1,0) * buffetingSpeed;
+    }
 
-#ifdef OE_GROUNDCOVER_USE_ACTOR
-        vec3 windPos = (osg_ViewMatrix * vec4(actorPos, 1)).xyz;
-        windPos += oe_UpVectorView * actorHeight;
-
-        // macro:
-        vec3 windvec = vertex.xyz - windPos;
-        float attenuation = clamp(actorRadius/length(windvec), 0, 1);
-        attenuation *= attenuation;
-        bendVec += normalize(windvec) * windEffect * attenuation;
-
-        // micro turbulence
-        vec2 turbUV = oe_layer_tilec.xy + (1.0-oe_GroundCover_wind)*osg_FrameTime;
-        vec2 turb = textureLod(oe_GroundCover_noiseTex, turbUV, 0).xw * 2 - 1;
-        bendVec += gl_NormalMatrix * vec3(turb.xy, 0) * windEffect * attenuation;
-#else
-        const vec2 turbFreq = vec2(0.01);
-        vec2 turbUV = oe_layer_tilec.xy + turbFreq*osg_FrameTime;
-        vec2 turb = textureLod(oe_GroundCover_noiseTex, turbUV, 0).xw * 2 - 1;
-        bendVec += gl_NormalMatrix * vec3(turb.xy, 0) * windEffect;
+    bendVec += (windDir+buffetingDir) * windSpeed * bendPower * bendDistance * falloff;
 #endif
+
+    // Keep the bending under control
+    float bendLen = length(bendVec);
+    if (bendLen > vertexHeight)
+    {
+        bendVec = (bendVec/bendLen)*vertexHeight;
     }
 
     vertex.xyz += bendVec;
+
+    // Some AO.
+
+    vec4 ao = vp_Color;
+    if (row==0)
+        ao.rgb *= 0.5;
+    if (row==1)
+        ao.rgb /= max(1.5*heightRatio,1.0);
+
+    vp_Color = mix(ao, vp_Color, nRange*nRange);
+
+    // Some color variation.
+    vp_Color.gb -= browning*oe_noise_wide[NOISE_SMOOTH];
 
     // VRV_PATCH - grass textures don't cover the whole quad
     oe_GroundCover_texCoord.t *= 0.4;
@@ -341,8 +215,10 @@ void oe_Grass_VS(inout vec4 vertex)
 
 
 [break]
+
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
+
 #pragma vp_name GroundCover frag shader
 #pragma vp_entryPoint oe_Grass_FS
 #pragma vp_location fragment
@@ -371,6 +247,10 @@ void oe_Grass_FS(inout vec4 color)
 
     // paint the texture
     color = texture(oe_GroundCover_billboardTex, vec3(oe_GroundCover_texCoord, oe_GroundCover_atlasIndex)) * color;
+
+    // uncomment to see triangles
+    //if (color.a < 0.2)
+    //    color.a = 0.8;
 
     if (oe_GroundCover_A2C == 1)
     {

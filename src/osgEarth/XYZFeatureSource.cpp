@@ -122,7 +122,7 @@ XYZFeatureSource::init()
 
 
 FeatureCursor*
-XYZFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
+XYZFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
 {
     FeatureCursor* result = 0L;
 

@@ -51,22 +51,34 @@ namespace osgEarth
             OSGEARTH_FINAL;
 
         //! API providing access to patch geometry 
-        class OSGEARTH_EXPORT GeometryArrayProvider
+        class OSGEARTH_EXPORT TileInfoProvider
         {
         public:
-            virtual const osg::Array* getVertexArray() const = 0;
-            virtual const osg::Array* getNormalArray() const = 0;
-            virtual const osg::Array* getTexCoordArray() const = 0;
-            virtual const osg::BoundingBox& getBoundingBox() const = 0;
+            //! Bounding box of the actual tile geometry (could be cropped by a mask)
+            virtual const osg::BoundingBox& getGeomBoundingBox() const = 0;
+
+            //! Bounding box of the full tile
+            virtual const osg::BoundingBox& getTileBoundingBox() const = 0;
+        };
+
+        class OSGEARTH_EXPORT TileBatch
+        {
+        public:
+            virtual void drawTiles(osg::RenderInfo& ri) const = 0;
+            virtual std::size_t size() const = 0;
+            virtual std::size_t getBatchID() const = 0;
         };
 
         //! Internal
         struct DrawContext
         {
             const TileKey* _key;
-            float _range;
-            GeometryArrayProvider* _geom;
-            DrawContext() : _range(0.0f), _geom(NULL), _key(NULL) { }
+            //float _range;
+            const osg::BoundingBox* _geomBBox;
+            const osg::BoundingBox* _tileBBox;
+            //GeometryArrayProvider* _geom;
+            //DrawContext() : _range(0.0f), _geom(NULL), _key(NULL) { }
+            DrawContext() : _geomBBox(NULL), _tileBBox(NULL), _key(NULL) { }
         };
 
         /**
@@ -75,9 +87,11 @@ namespace osgEarth
         class DrawCallback : public osg::Referenced
         {
         public:
-            virtual void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data) { }
-            virtual void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data) =0;
-            virtual void postDraw(osg::RenderInfo& ri, osg::Referenced* data) { }
+            virtual void draw(osg::RenderInfo& ri, const TileBatch* tiles) { }
+            virtual void drawTile(osg::RenderInfo& ri, const DrawContext& tile) { }
+            //virtual void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data) { }
+            //virtual void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data) =0;
+            //virtual void postDraw(osg::RenderInfo& ri, osg::Referenced* data) { }
         };
 
         /**
@@ -107,6 +121,10 @@ namespace osgEarth
         void setAcceptCallback(AcceptCallback* value) { _acceptCallback = value; }
         AcceptCallback* getAcceptCallback() const { return _acceptCallback.get(); }
 
+        unsigned getNumPrePassStateSets() const { return _prePassStateSets.size(); }
+        osg::StateSet* getPrePassStateSet(unsigned i) const { return _prePassStateSets[i].get(); }
+
+
     protected:
 
         // default destructor
@@ -120,6 +138,8 @@ namespace osgEarth
         virtual GeoNode createNodeImplementation(const TileKey& key, ProgressCallback* progress) const {
             return GeoNode::INVALID;
         }
+
+        std::vector< osg::ref_ptr<osg::StateSet> > _prePassStateSets;
 
     private:
         osg::ref_ptr<DrawCallback> _drawCallback;

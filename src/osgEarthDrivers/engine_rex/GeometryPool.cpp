@@ -30,8 +30,9 @@ using namespace osgEarth::REX;
 #define LC "[GeometryPool] "
 
 // TODO: experiment with sharing a single texture coordinate array 
-//// across all shared geometries.
-/// JB:  Disabled to fix issues with ATI.
+// across all shared geometries.
+// JB: Disabled to fix issues with ATI.
+// GW: Could we bind this at a globally applied SSBO at the top of the terrain instead?
 //#define SHARE_TEX_COORDS 1
 
 //struct DebugGeometry : public osg::Geometry {
@@ -228,7 +229,6 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     unsigned numIndiciesInSurface = (tileSize-1) * (tileSize-1) * 6;
     unsigned numIncidesInSkirt    = getNumSkirtElements(tileSize);
     
-    // TODO: reconsider this ... 
     GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
 
     osg::BoundingSphere tileBound;
@@ -428,26 +428,12 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     
     if (tessellateSurface)
     {
-        // TODO: do we really need this??
-        bool swapOrientation = false; //!locator->orientationOpenGL();
-
         for(unsigned j=0; j<tileSize-1; ++j)
         {
             for(unsigned i=0; i<tileSize-1; ++i)
             {
-                int i00;
-                int i01;
-                if (swapOrientation)
-                {
-                    i01 = j*tileSize + i;
-                    i00 = i01+tileSize;
-                }
-                else
-                {
-                    i00 = j*tileSize + i;
-                    i01 = i00+tileSize;
-                }
-
+                int i00 = j*tileSize + i;
+                int i01 = i00+tileSize;
                 int i10 = i00+1;
                 int i11 = i01+1;
 

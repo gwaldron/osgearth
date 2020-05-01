@@ -119,7 +119,6 @@ void atmos_fragment_main(inout vec4 color)
             float dayTerm = i==0? dot(U,L) : 1.0;
 
             // This term boosts the ambient lighting for the sun (light 0) when it's daytime.
-            // TODO: make the boostFactor a uniform?
             float ambientBoost = i==0? 1.0 + oe_sky_ambientBoostFactor*clamp(2.0*(dayTerm-0.5), 0.0, 1.0) : 1.0;
 
             vec3 ambientReflection =

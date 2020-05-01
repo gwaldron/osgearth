@@ -3,15 +3,6 @@
 #pragma vp_entryPoint oe_GroundCover_FS
 #pragma vp_location   fragment_coloring
 
-#pragma import_defines(OE_GROUNDCOVER_COLOR_SAMPLER)
-#pragma import_defines(OE_GROUNDCOVER_COLOR_MATRIX)
-#pragma import_defines(OE_IS_SHADOW_CAMERA)
-#ifdef OE_GROUNDCOVER_COLOR_SAMPLER
-uniform sampler2D OE_GROUNDCOVER_COLOR_SAMPLER ;
-uniform mat4 OE_GROUNDCOVER_COLOR_MATRIX ;
-in vec4 oe_layer_tilec;
-#endif
-
 uniform sampler2DArray oe_GroundCover_billboardTex;
 
 uniform int oe_GroundCover_instancedModel;
@@ -55,11 +46,4 @@ void oe_GroundCover_FS(inout vec4 color)
     {
         color.rgba = vec4(1,.6,.2,1);
     }
-
-#ifdef OE_GROUNDCOVER_COLOR_SAMPLER
-    const float modulation = 0.75;
-    float mono = (color.r*0.2126 + color.g*0.7152 + color.b*0.0722);
-    vec4 mod_color = texture(OE_GROUNDCOVER_COLOR_SAMPLER, (OE_GROUNDCOVER_COLOR_MATRIX*oe_layer_tilec).st);
-    color.rgb = mix(color.rgb, mod_color.rgb*vec3(mono)*2.0, modulation);
-#endif
 }

@@ -598,9 +598,12 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     // Network stuff not really working yet.
     PowerNetwork linesNetwork;
     addFeatures(linesNetwork, powerFeatures);
-    FeatureList neighbors = findNeighborLineFeatures(cx, query);
-    addFeatures(linesNetwork, neighbors);
-    linesNetwork.buildNetwork();
+    if (false)
+    {
+        FeatureList neighbors = findNeighborLineFeatures(cx, query);
+        addFeatures(linesNetwork, neighbors);
+        linesNetwork.buildNetwork();
+    }
     PointMap pointMap;
     for (FeatureList::iterator i = towerFeatures.begin(); i != towerFeatures.end(); ++i)
     {

@@ -24,31 +24,18 @@
 
 #include <osgEarth/Common>
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
-
 #include <osg/Geometry>
 #include <osg/GL>
 
 namespace osgEarth
 {
+    /**
+     * InstanceCloud is a helper class that facilitates primitive set
+     * instancing across multiple tiles.
+     */
     class OSGEARTH_EXPORT InstanceCloud : public osg::Referenced
     {
     public:
-        InstanceCloud();
-
-        void setGeometry(osg::Geometry* geom);
-
-        void setNumInstances(unsigned x, unsigned y);
-
-        void setPositions(osg::Vec4Array* positions);
-
-        void cull(osg::RenderInfo&);
-
-        void draw(osg::RenderInfo&);
-
-        osg::BoundingBox computeBoundingBox() const;
-
-    private:
         struct DrawElementsIndirectCommand
         {
             GLuint  count;
@@ -56,26 +43,57 @@ namespace osgEarth
             GLuint  firstIndex;
             GLuint  baseVertex;
             GLuint  baseInstance;
-            DrawElementsIndirectCommand();
         };
 
         struct InstancingData
         {
-            DrawElementsIndirectCommand command;
+            mutable DrawElementsIndirectCommand* commands;
             GLuint commandBuffer;
+            GLsizei commandBufferSize;
             GLuint pointsBuffer;
             GLuint renderBuffer;
+            GLint renderBufferTileSize;
             osg::Vec4Array* points;
             unsigned numX, numY;
-            osg::ref_ptr<osg::Node> node;
+            unsigned numTilesAllocated;
+            unsigned tileToDraw;
+            GLuint numIndices;
+            GLenum mode;
+            GLenum dataType;
+            GLint ssboOffsetAlignment;
 
             InstancingData();
-            bool needsAllocate() const;
-            void allocate(osg::State* state);
+            ~InstancingData();
+            void allocateGLObjects(osg::State* state, unsigned numTiles);
+            void releaseGLObjects(osg::State* state) const;
+
+            // pre-OSG 3.6 support
+            void (GL_APIENTRY * _glBufferStorage)(GLenum, GLuint, const void*, GLenum);
         };
 
+    public:
+        InstanceCloud();
+
+        void setGeometry(osg::Geometry* geom);
+        osg::Geometry* getGeometry() { return _geom.get(); }
+
+        void setNumInstances(unsigned x, unsigned y);
+        
+        void allocateGLObjects(osg::RenderInfo&, unsigned numTiles);
+        
+        void preCull(osg::RenderInfo&);
+        void cullTile(osg::RenderInfo&, unsigned tileNum);
+        void postCull(osg::RenderInfo&);
+
+        void drawTile(osg::RenderInfo&, unsigned tileNum);
+
+        osg::BoundingBox computeBoundingBox() const;
+
+        virtual void releaseGLObjects(osg::State* state) const;
+
+    public:
+
         InstancingData _data;
-        osg::ref_ptr<osg::StateSet> _computeStateSet;
         osg::ref_ptr<osg::Geometry> _geom;
 
         struct Renderer : public osg::Geometry::DrawCallback
@@ -83,6 +101,9 @@ namespace osgEarth
             Renderer(InstancingData* data);
             void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const;
             InstancingData* _data;
+
+            // pre-OSG3.6 support
+            void (GL_APIENTRY * _glDrawElementsIndirect)(GLenum, GLenum, const void*);
         };
 
         struct Installer : public osg::NodeVisitor
@@ -93,24 +114,6 @@ namespace osgEarth
             osg::ref_ptr<Renderer> _callback;
         };
     };
-
-
-    class OSGEARTH_EXPORT InstanceCloudDrawable : public osg::Drawable
-    {
-    public:
-        InstanceCloudDrawable();
-
-        void drawImplementation(osg::RenderInfo& ri) const;
-
-        osg::BoundingBox computeBoundingBox() const;
-
-        InstanceCloud* cloud() { return _cloud.get(); }
-
-    private:
-        osg::ref_ptr<InstanceCloud> _cloud;
-    };
 }
-
-#endif // OSG 3.6+
 
 #endif // OSGEARTH_INSTANCE_CLOUD

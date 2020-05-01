@@ -10,35 +10,43 @@
     <!-- Pre-load the splatting nodekit -->
     <libraries>osgEarthSplat</libraries>
     
-    <!-- Land cover requires a dictionary that defines all the core classes -->
+    <!-- Dictionary that defines all the core classes -->
     <xi:include href="land_cover_dictionary.xml"/>
     
-    <!-- Land cover layer defines world wide classes -->
-    <xi:include href="esa_land_cover.xml"/>
+    <!-- Land cover source data -->
+    <xi:include href="copernicus_land_cover.xml"/>
         
-    <!-- Procedural terrain imagery from land cover data -->
+    <!-- Procedural imagery from land cover data -->
     <SplatImage name="Splat Imagery">
         <surface>
             <catalog>../data/splat/splat_catalog.xml</catalog>
         </surface>
     </SplatImage>
     
-    <!-- Satellite imagery -->
-    <TMSImage name="ReadyMap Imagery" opacity="0.4" shared="true">
+    <!-- Satellite imagery, shared to help place vegetation -->
+    <TMSImage name="World Imagery" visible="false" shared="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
     
     <!-- Procedural trees -->
-    <GroundCover name="Trees">
-        <lod>13</lod>
-        <cast_shadows>true</cast_shadows>
+    <GroundCover name="Trees" lod="13" max_range="20000">
         <xi:include href="../data/splat/trees/groundcover.xml"/>
+        <color_layer>World Imagery</color_layer>
+        <color_min_saturation>0.1</color_min_saturation>
+        <cast_shadows>true</cast_shadows>
     </GroundCover>
 
     <!-- Procedural grass -->
-    <Grass name="Grass" max_range="175">
+    <Grass name="Grass" max_range="100">
         <xi:include href="../data/splat/grass/groundcover.xml"/>
     </Grass>
+    
+    <!-- A gentle breeze -->
+    <Wind name="Breeze">
+        <winds>
+            <wind type="directional" direction="1,0" speed="5 kts"/>
+        </winds>
+    </Wind>
 
     <xi:include href="viewpoints.xml"/>
 </map>

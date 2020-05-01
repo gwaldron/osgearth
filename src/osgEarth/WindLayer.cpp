@@ -55,10 +55,14 @@ namespace
     {
         DrawState() :
             _buffer(INT_MAX),
-            _bufferSize(0) { }
+            _bufferSize(0),
+            _glBufferStorage(NULL) { }
 
         GLuint _buffer;
         GLuint _bufferSize;
+
+        // pre-OSG 3.6 support
+        void (GL_APIENTRY * _glBufferStorage)(GLenum, GLuint, const void*, GLenum);
     };
 
     // Data stored per-camera
@@ -107,21 +111,9 @@ namespace
 
     struct WindDrawable;
 
-
-    // Helpers that picks a stateset based on the traversing camera. 
-    struct StateSwitcherCullCallback : public osg::NodeCallback
+    struct WindStateCuller : public osg::Drawable::CullCallback
     {
-        WindDrawable* _d;
-        StateSwitcherCullCallback(WindDrawable* d) : _d(d) { }
-        void operator()(osg::Node* node, osg::NodeVisitor* nv);
-    };
-    struct StateSwitcher : public osg::Group
-    {
-        StateSwitcher(WindDrawable* d)
-        {
-            setCullingActive(false);
-            setCullCallback(new StateSwitcherCullCallback(d));
-        }
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const;
     };
 
     //! Drawable that runs the compute shader to populate our wind texture.
@@ -145,29 +137,40 @@ namespace
         TextureImageUnitReservation _unitReservation;
     };
 
-    void StateSwitcherCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+    bool WindStateCuller::cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const
     {
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
         const osg::Camera* camera = cv->getCurrentCamera();
-        CameraState& cs = _d->_cameraState.get(camera); // should exist by now
+        WindDrawable* wd = static_cast<WindDrawable*>(drawable);
+        CameraState& cs = wd->_cameraState.get(camera); // should exist by now
         if (cs._computeStateSet.valid())
         {
             cv->pushStateSet(cs._computeStateSet.get());
-            traverse(node, nv);
+            cv->addDrawableAndDepth(drawable, cv->getModelViewMatrix(), 0.0f);
             cv->popStateSet();
         }
+        return true;
     }
 
     WindDrawable::WindDrawable(const osgDB::Options* readOptions)
     {
+        // Always run the shader.
         setCullingActive(false);
-        setDataVariance(osg::Object::DYNAMIC); // so we can update the wind instances synchronously
+
+        // So we can update the wind instances synchronously
+        setDataVariance(osg::Object::DYNAMIC);
+
+        // Prevent some variations of OSG from building an old-school display list
+        // and then never calling drawImplementation again. Cry.
+        setUseDisplayList(false);
 
         Shaders shaders;
         std::string source = ShaderLoader::load(shaders.WindComputer, shaders, readOptions);
         osg::Shader* computeShader = new osg::Shader(osg::Shader::COMPUTE, source);
         _computeProgram = new osg::Program();
         _computeProgram->addShader(computeShader);
+
+        setCullCallback(new WindStateCuller());
     }
 
     void WindDrawable::setupPerCameraState(const osg::Camera* camera)
@@ -175,6 +178,7 @@ namespace
         // wind texture
         osg::Texture3D* tex = new osg::Texture3D();
         tex->setTextureSize(WIND_DIM_X, WIND_DIM_Y, WIND_DIM_Z);
+        tex->setSourceFormat(GL_RGBA);
         tex->setInternalFormat(GL_RGBA8);
         tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
         tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
@@ -231,12 +235,21 @@ namespace
 
                 ds._bufferSize = requiredBufferSize;
 
+                if (!ds._glBufferStorage)
+                {
+                    // polyfill for pre-OSG 3.6 support
+                    osg::setGLExtensionFuncPtr(ds._glBufferStorage, "glBufferStorage", "glBufferStorageARB");
+                }
+
                 ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer);
-                ext->glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, NULL, GL_DYNAMIC_STORAGE_BIT);
+                ds._glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, NULL, GL_DYNAMIC_STORAGE_BIT);
+            }
+            else
+            {
+                ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer);
             }
 
             // download to GPU
-            ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer);
             ext->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, ds._bufferSize, cs._windData);
         }
     }
@@ -320,6 +333,9 @@ namespace
 
     void WindDrawable::drawImplementation(osg::RenderInfo& ri) const
     {
+        if (ri.getCurrentCamera() == NULL)
+            return;
+
         DrawState& ds = _ds[ri.getState()->getContextID()];
         osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
@@ -476,7 +492,7 @@ WindLayer::closeImplementation()
 osg::Node*
 WindLayer::getNode() const
 {
-    return _node.get();
+    return _drawable.get();
 }
 
 void
@@ -488,10 +504,6 @@ WindLayer::setTerrainResources(TerrainResources* res)
 
     // texture image unit for the shared wind LUT
     res->reserveTextureImageUnit(wd->_unitReservation, "WindLayer");
-
-    // chooses the right per-camera stateset for the compute shader
-    _node = new StateSwitcher(wd);
-    _node->addChild(wd);
 
 #if 0 // TESTING
     Wind* wind = new Wind();

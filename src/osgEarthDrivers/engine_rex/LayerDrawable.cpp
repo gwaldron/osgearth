@@ -125,7 +125,6 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     char buf[64];
     sprintf(buf, "%.36s (%zd tiles)", _layer ? _layer->getName().c_str() : "unknown layer", _tiles.size());
     OE_PROFILING_ZONE_TEXT(buf);
-    //OE_INFO << LC << (_layer ? _layer->getName() : "[empty]") << " tiles=" << _tiles.size() << std::endl;
 
     if (_patchLayer && _patchLayer->getDrawCallback())
     {        

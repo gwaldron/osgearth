@@ -827,7 +827,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
     else if ( nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        osgUtil::CullVisitor* cv = nv.asCullVisitor();
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         LayerVector layers;
         getMap()->getLayers(layers);

@@ -104,6 +104,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     vp_Color = vec4(1);
     vp_Normal = vec3(0,0,1);
+    oe_UpVectorView = gl_NormalMatrix * vp_Normal;
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
     float maxRange = oe_GroundCover_maxDistance / VRV_OSG_LOD_SCALE;

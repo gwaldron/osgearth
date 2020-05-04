@@ -23,6 +23,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Utils>
 #include <osgEarth/Metrics>
+#include <osgEarth/NetworkMonitor>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
@@ -40,7 +41,7 @@ using namespace osgEarth::Threading;
 
 
 namespace
-{   
+{
     class LoadNodeOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
     {
     public:
@@ -63,7 +64,7 @@ namespace
 
                 if (result.succeeded())
                 {
-                    osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico = 
+                    osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico =
                         OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
 
                     // If we have an ICO, wait for it to be compiled
@@ -88,7 +89,7 @@ namespace
                                 ico->remove(_compileSet.get());
                                 _compileSet = 0;
                                 break;
-                            }                                                        
+                            }
                         }
 
                     }
@@ -323,7 +324,7 @@ URI::getConfig() const
 
 void
 URI::mergeConfig(const Config& conf)
-{    
+{
     conf.get("option_string", _optionString);
 
     const ConfigSet headers = conf.child("headers").children();
@@ -499,10 +500,10 @@ namespace
         bool callbackRequestsCaching( URIReadCallback* cb ) const {
             return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0);
         }
-        ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { 
+        ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) {
             return cb->readString(uri, opt);
         }
-        ReadResult fromCache( CacheBin* bin, const std::string& key) { 
+        ReadResult fromCache( CacheBin* bin, const std::string& key) {
             return bin->readString(key, 0L);
         }
         ReadResult fromHTTP(const URI& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
@@ -532,10 +533,12 @@ namespace
     {
         //osg::Timer_t startTime = osg::Timer::instance()->tick();
 
+        unsigned long handle = NetworkMonitor::begin(inputURI.full(), "pending");
         ReadResult result;
 
         if (osgEarth::Registry::instance()->isBlacklisted(inputURI.full()))
         {
+            NetworkMonitor::end(handle, "Blacklisted");
             return result;
         }
 
@@ -681,6 +684,7 @@ namespace
                             // Check for cancellation before a cache write
                             if (progress && progress->isCanceled())
                             {
+                                NetworkMonitor::end(handle, "Canceled");
                                 return 0L;
                             }
 
@@ -697,6 +701,7 @@ namespace
                 // Check for cancelation before a potential cache write
                 if (progress && progress->isCanceled())
                 {
+                    NetworkMonitor::end(handle, "Canceled");
                     return 0L;
                 }
 
@@ -732,6 +737,14 @@ namespace
         {
             (*post)(result);
         }
+
+        std::stringstream buf;
+        buf << result.getResultCodeString();
+        if (result.isFromCache() && result.succeeded())
+        {
+            buf << " (from cache)";
+        }
+        NetworkMonitor::end(handle, buf.str());
 
         return result;
     }

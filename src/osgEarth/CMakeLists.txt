@@ -182,6 +182,7 @@ SET(LIB_PUBLIC_HEADERS
     ModelLayer
     ModelSource
     NativeProgramAdapter
+    NetworkMonitor
     NodeUtils
     Notify
     optional
@@ -426,7 +427,7 @@ SET(LIB_PUBLIC_HEADERS
     rtree.h
 
     FileGDBFeatureSource
-    
+
     ${OSGEARTH_BUILDCONFIG_HEADER}
 )
 
@@ -550,6 +551,7 @@ set(TARGET_SRC
     MimeTypes.cpp
     ModelLayer.cpp
     ModelSource.cpp
+    NetworkMonitor.cpp
     NodeUtils.cpp
     Notify.cpp
     ObjectIndex.cpp
@@ -776,7 +778,7 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   ELSE()
     INCLUDE_DIRECTORIES(${Protobuf_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
   ENDIF()
-  
+
   PROTOBUF_GENERATE_CPP(PROTO_VECTOR_TILE_CPP PROTO_VECTOR_TILE_H vector_tile.proto)
   SET(LIB_PUBLIC_HEADERS
     ${LIB_PUBLIC_HEADERS}

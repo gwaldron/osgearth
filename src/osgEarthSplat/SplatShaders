@@ -47,6 +47,7 @@ namespace osgEarth { namespace Splat
         std::string
             Grass_VS,
             GroundCover_CS,
+            GroundCover_Model,
             GroundCover_VS,
             GroundCover_TCS,
             GroundCover_TES,

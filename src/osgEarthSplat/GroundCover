@@ -150,7 +150,8 @@ namespace osgEarth { namespace Splat
     {
     public:
         enum Type {
-            TYPE_BILLBOARD
+            TYPE_BILLBOARD,
+            TYPE_MODEL
         };
         virtual Type getType() const =0;
     };
@@ -173,6 +174,20 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Image> _sideImage;
         osg::ref_ptr<osg::Image> _topImage;
         osg::ref_ptr<const BillboardSymbol> _symbol;
+    };
+
+    /**
+    * Billboard object - camera-facing side image coupled with an optional
+    * top-down image.
+    */
+    class OSGEARTHSPLAT_EXPORT GroundCoverModel : public GroundCoverObject
+    {
+    public:
+        GroundCoverModel(osg::Node* model) { }
+
+        virtual Type getType() const { return TYPE_MODEL; }
+
+        osg::ref_ptr<osg::Node> _model;
     };
 
     /**
@@ -276,6 +291,9 @@ namespace osgEarth { namespace Splat
         //! Finds the biome representing this land cover class,
         //! or NULL if there isn't one
         const GroundCoverBiome* getBiome(const LandCoverClass*) const;
+
+        //! Get number of models
+        int getTotalNumModels() const;
 
     protected:
         virtual ~GroundCover() { }

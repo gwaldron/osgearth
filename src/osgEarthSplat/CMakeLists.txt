@@ -23,7 +23,8 @@ set(TARGET_GLSL
     GroundCover.TCS.glsl
     GroundCover.TES.glsl
     GroundCover.GS.glsl
-    GroundCover.FS.glsl )
+    GroundCover.FS.glsl
+    GroundCover.Model.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

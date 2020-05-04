@@ -22,8 +22,11 @@
 #include <osgEarth/InstanceCloud>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Math>
+#include <osgEarth/Registry>
 #include <osg/Program>
 #include <osg/GLExtensions>
+#include <osgUtil/Optimizer>
+#include <iterator>
 
 #ifndef GL_DYNAMIC_STORAGE_BIT
 #define GL_DYNAMIC_STORAGE_BIT 0x0100
@@ -185,8 +188,8 @@ InstanceCloud::setNumInstances(unsigned x, unsigned y)
 {
     // Enforce an even number of instances. For whatever reason that I cannot
     // figure out today, an odd number causes the shader to freak out.
-    _data.numX = (x & 0x01) ? x-1 : x;
-    _data.numY = (y & 0x01) ? y-1 : y;
+    _data.numX = (x & 0x01) ? x+1 : x;
+    _data.numY = (y & 0x01) ? y+1 : y;
 }
 
 osg::BoundingBox
@@ -276,6 +279,7 @@ InstanceCloud::Renderer::drawImplementation(osg::RenderInfo& ri, const osg::Draw
     if (_data->tileToDraw == 0)
     {
         const osg::Geometry* geom = drawable->asGeometry();
+
         geom->drawVertexArraysImplementation(ri);
 
         // TODO: support multiple primtsets....?
@@ -323,4 +327,249 @@ InstanceCloud::Installer::apply(osg::Drawable& drawable)
         _data->mode = p->getMode();
         _data->dataType = p->getDrawElements()->getDataType();
     }
+}
+
+InstanceCloud::ModelCruncher::ModelCruncher() :
+    osg::NodeVisitor()
+{
+    setTraversalMode(TRAVERSE_ALL_CHILDREN);
+    setNodeMaskOverride(~0);
+
+    _geom = new osg::Geometry();
+    _geom->setUseVertexBufferObjects(true);
+    _geom->setUseDisplayList(false);
+
+    _verts = new osg::Vec3Array();
+    _geom->setVertexArray(_verts);
+
+    _colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
+    _geom->setColorArray(_colors);
+
+    _normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    _geom->setNormalArray(_normals);
+
+    _texcoords = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    _geom->setTexCoordArray(7, _texcoords);
+
+    _primset = new osg::DrawElementsUShort(GL_TRIANGLES);
+    _geom->addPrimitiveSet(_primset);
+}
+
+void
+InstanceCloud::ModelCruncher::add(osg::Node* node)
+{
+    // convert all primitive sets to GL_TRIANGLES
+    osgUtil::Optimizer o;
+    o.optimize(node, o.INDEX_MESH);
+
+    // count total number of indices
+    // todo
+
+    // traverse the model, consolidating arrays and rewriting texture indices
+    node->accept(*this);
+}
+
+namespace
+{
+    template<typename T> void append(T* dest, const osg::Array* src, int numVerts)
+    {
+        if (src->getBinding() == osg::Array::BIND_PER_VERTEX)
+        {
+            dest->reserveArray(dest->size() + src->getNumElements());
+            const T* src_typed = static_cast<const T*>(src);
+            std::copy(src_typed->begin(), src_typed->end(), std::back_inserter(*dest));
+        }
+        else if (src->getBinding() == osg::Array::BIND_OVERALL)
+        {
+            dest->reserveArray(dest->size() + numVerts);
+            const T* src_typed = static_cast<const T*>(src);
+            for(int i=0; i<numVerts; ++i)
+                dest->push_back((*src_typed)[0]);
+        }
+    }
+
+    int nextPowerOf2(int x) {
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x+1;
+    }
+}
+
+void
+InstanceCloud::ModelCruncher::finalize()
+{
+    _atlas = new osg::Texture2DArray();
+
+    int s = -1, t = -1;
+    for(unsigned i=0; i<_imagesToAdd.size(); ++i)
+    {
+        osg::Image* image = _imagesToAdd[i].get();
+        osg::ref_ptr<osg::Image> im;
+
+        // make sure the texture array is POT - required now for mipmapping to work
+        if ( s < 0 )
+        {
+            s = nextPowerOf2(image->s());
+            t = nextPowerOf2(image->t());
+            _atlas->setTextureSize(s, t, _imagesToAdd.size());
+        }
+
+        if ( image->s() != s || image->t() != t )
+        {
+            ImageUtils::resizeImage( image, s, t, im );
+        }
+        else
+        {
+            im = image;
+        }
+
+        im->setInternalTextureFormat(GL_RGBA8);
+
+        _atlas->setImage( i, im.get() );
+    }
+
+    _atlas->setFilter(_atlas->MIN_FILTER, _atlas->NEAREST_MIPMAP_LINEAR);
+    _atlas->setFilter(_atlas->MAG_FILTER, _atlas->LINEAR);
+    _atlas->setWrap  (_atlas->WRAP_S, _atlas->REPEAT);
+    _atlas->setWrap  (_atlas->WRAP_T, _atlas->REPEAT);
+    _atlas->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    _atlas->setMaxAnisotropy( 1.0 );
+
+    // Let the GPU do it since we only download this at startup
+    //ImageUtils::generateMipmaps(tex);
+    _atlas->setUseHardwareMipMapGeneration(true);
+
+    _geom->getOrCreateStateSet()->setTextureAttribute(11, _atlas.get());
+    _geom->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_GroundCover_atlas", 11));
+}
+
+void
+InstanceCloud::ModelCruncher::addTextureToAtlas(osg::Texture* t)
+{
+    osg::Texture2D* tex = dynamic_cast<osg::Texture2D*>(t);
+    if (tex)
+    {
+        osg::ref_ptr<osg::Image> imageToAdd = tex->getImage();
+
+        if(imageToAdd->getPixelFormat() != GL_RGBA)
+        {
+            imageToAdd = ImageUtils::convert(imageToAdd.get(), GL_RGBA, GL_UNSIGNED_BYTE); //firstImage->getDataType());
+        }
+
+        if (!_atlasLUT.empty())
+        {
+            //osg::Image* firstImage = _imagesToAdd[0].get();
+            
+        }
+
+        int index = _atlasLUT.size();
+        _atlasLUT[tex] = index;
+        _imagesToAdd.push_back(imageToAdd.get());
+    }
+}
+
+bool
+InstanceCloud::ModelCruncher::pushStateSet(osg::Node& node)
+{
+    osg::StateSet* stateset = node.getStateSet();
+    if (stateset)
+    {
+        osg::Texture* tex = dynamic_cast<osg::Texture*>(
+            stateset->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
+
+        if (tex)
+        {
+            _textureStack.push_back(tex);
+            
+            AtlasIndexLUT::iterator i = _atlasLUT.find(tex);
+            if (i == _atlasLUT.end())
+            {
+                addTextureToAtlas(tex);
+            }
+
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+InstanceCloud::ModelCruncher::popStateSet()
+{
+    _textureStack.pop_back();
+}
+
+void
+InstanceCloud::ModelCruncher::apply(osg::Node& node)
+{
+    bool pushed = pushStateSet(node);
+    traverse(node);
+    if (pushed) popStateSet();
+}
+
+void
+InstanceCloud::ModelCruncher::apply(osg::Geometry& node)
+{
+    bool pushed = pushStateSet(node);
+
+    int offset = _verts->size();
+    int size = node.getVertexArray()->getNumElements();
+
+    append(_verts, node.getVertexArray(), size);
+    append(_normals, node.getNormalArray(), size);
+    append(_colors, node.getColorArray(), size);
+
+    // find the current texture in the atlas
+    int layer = 0;
+    if (!_textureStack.empty())
+    {
+        AtlasIndexLUT::iterator i = _atlasLUT.find(_textureStack.back());
+        if (i != _atlasLUT.end())
+        {
+            layer = i->second;
+        }
+    }
+
+    osg::Vec2Array* texcoords = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
+    if (texcoords)
+    {
+        // find the current texture in the atlas
+        int layer = 0;
+        if (!_textureStack.empty())
+        {
+            AtlasIndexLUT::iterator i = _atlasLUT.find(_textureStack.back());
+            if (i != _atlasLUT.end())
+            {
+                layer = i->second;
+            }
+        }
+
+        _texcoords->reserve(_texcoords->size() + texcoords->size());
+        for(int i=0; i<texcoords->size(); ++i)
+        {
+            _texcoords->push_back(osg::Vec3(
+                (*texcoords)[i].x(),
+                (*texcoords)[i].y(),
+                layer));
+        }
+    }
+
+    for(int i=0; i < node.getNumPrimitiveSets(); ++i)
+    {
+        osg::DrawElements* de = dynamic_cast<osg::DrawElements*>(node.getPrimitiveSet(i));
+        if (de)
+        {
+            for(int k=0; k<de->getNumIndices(); ++k)
+            {
+                int index = de->getElement(k);
+                _primset->addElement(offset + index);
+            }
+        }
+    }
+
+    if (pushed) popStateSet();
 }

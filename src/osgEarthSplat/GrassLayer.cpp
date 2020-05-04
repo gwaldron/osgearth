@@ -69,7 +69,7 @@ void
 GrassLayer::loadShaders(VirtualProgram* vp, const osgDB::Options* options) const
 {
     GroundCoverShaders s;
-    s.load(vp, s.Grass_VS, options);
+    s.load(vp, s.Grass, options);
 }
 
 osg::Geometry*

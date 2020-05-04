@@ -1020,7 +1020,6 @@ GroundCoverLayer::loadShaders(VirtualProgram* vp, const osgDB::Options* options)
     }
     else // billboards
     {
-        shaders.load(vp, shaders.GroundCover_VS, options);
-        shaders.load(vp, shaders.GroundCover_FS, options);
+        shaders.load(vp, shaders.GroundCover_Billboard, options);
     }
 }

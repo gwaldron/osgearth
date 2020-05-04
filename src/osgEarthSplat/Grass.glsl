@@ -81,6 +81,9 @@ void oe_Grass_VS(inout vec4 vertex)
 
     vertex = gl_ModelViewMatrix * render[gl_InstanceID].vertex;
 
+    vp_Normal = vec3(0,0,1);
+    oe_UpVectorView = gl_NormalMatrix * vp_Normal;
+
     oe_layer_tilec = vec4(render[gl_InstanceID].tilec, 0, 1);
 
     // Sample our noise texture

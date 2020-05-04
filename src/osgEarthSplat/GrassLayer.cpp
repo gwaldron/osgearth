@@ -80,6 +80,7 @@ GrassLayer::createGeometry() const
 
     osg::Geometry* out_geom = new osg::Geometry();
     out_geom->setUseVertexBufferObjects(true);
+    out_geom->setUseDisplayList(false);
 
     static const GLushort indices[54] = {
         0,1,4, 4,1,5, 1,2,5, 5,2,6, 2,3,6, 6,3,7,

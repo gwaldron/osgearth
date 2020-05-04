@@ -96,6 +96,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     vp_Color = vec4(1);
     vp_Normal = vec3(0,0,1);
+    oe_UpVectorView = gl_NormalMatrix * vp_Normal;
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
     float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
@@ -258,10 +259,10 @@ void oe_GroundCover_FS(inout vec4 color)
     color *= texture(oe_GroundCover_billboardTex, vec3(oe_GroundCover_texCoord, oe_GroundCover_atlasIndex));
 
 #ifdef OE_IS_SHADOW_CAMERA
-    //if (color.a < oe_GroundCover_maxAlpha)
-    //{
-    //    discard;
-    //}
+    if (color.a < oe_GroundCover_maxAlpha)
+    {
+        discard;
+    }
 #else
     if (oe_GroundCover_A2C == 0 && color.a < oe_GroundCover_maxAlpha)
     {

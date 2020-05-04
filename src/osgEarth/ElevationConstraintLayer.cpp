@@ -172,6 +172,10 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
 
     FeatureList features;
 
+    GeoExtent tileExtent = key.getExtent();
+    double scale = 1.0 + 2.0 / getTileSize();
+    tileExtent.scale(scale, scale);
+
     const GeoExtent& featuresExtent = _session->getFeatureSource()->getFeatureProfile()->getExtent();
     GeoExtent featuresExtentWGS84 = featuresExtent.transform( featuresExtent.getSRS()->getGeographicSRS() );
     GeoExtent imageExtentWGS84 = key.getExtent().transform( featuresExtent.getSRS()->getGeographicSRS() );
@@ -182,7 +186,7 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
 
     GeoExtent queryExtent = queryExtentWGS84.transform( featuresExtent.getSRS() );
 
-    queryExtent = key.getExtent().transform(featureProfile->getSRS());
+    queryExtent = tileExtent.transform(featureProfile->getSRS());
 
     // TODO: this whole block needs to be elevated to a convenient location in the SDK
     if (featureProfile->getTilingProfile())

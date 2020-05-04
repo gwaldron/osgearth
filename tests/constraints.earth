@@ -37,6 +37,7 @@ http://readymap.org
     <terrainshader>
         <code>
             <![CDATA[
+            #version 330
             #pragma vp_entryPoint seeMe
             #pragma vp_location vertex_model
             #pragma vp_order last
@@ -110,10 +111,11 @@ http://readymap.org
         <format>pbf</format>
     </TFSFeatures>
 
+<!--
     <OGRFeatures name="ridges">
         <url>D:/data/temp/ridges_uk.shp</url>
     </OGRFeatures>    
-
+-->
     <Viewpoints time="0" home="2">
         <viewpoint>
             <heading>-0.175995</heading>

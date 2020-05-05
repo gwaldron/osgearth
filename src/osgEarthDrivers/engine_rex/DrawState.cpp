@@ -32,9 +32,10 @@ PerProgramState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings)
         _samplerState._samplers.resize(bindings->size());
     }
 
-    if (_tileKeyUL < 0)
+    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject(); 
+    if (pcp != _pcp)
     {
-        const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
+        _pcp = pcp;
 
         // Reset all sampler matrix states since their uniform locations are going to change.
         clear();

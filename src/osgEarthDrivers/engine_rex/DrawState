@@ -47,11 +47,6 @@ namespace osgEarth { namespace REX
             _texture.clear();
             _matrix.clear();
         }
-
-        void clearUniformData() {
-            _matrix.clear();
-            _matrixUL = -1;
-        }
     };
 
     /**
@@ -66,15 +61,12 @@ namespace osgEarth { namespace REX
             for (unsigned i = 0; i<_samplers.size(); ++i)
                 _samplers[i].clear();
         }
-
-        void clearUniformData() {
-            for (unsigned i = 0; i<_samplers.size(); ++i)
-                _samplers[i].clearUniformData();
-        }
     };
 
     struct PerProgramState
     {
+        const osg::Program::PerContextProgram* _pcp;
+
         // uniform locations
         GLint _tileKeyUL;
         GLint _parentTextureExistsUL;
@@ -91,6 +83,7 @@ namespace osgEarth { namespace REX
         TileSamplerState _samplerState;
 
         PerProgramState() :
+            _pcp(0L),
             _tileKeyUL(-1),
             _parentTextureExistsUL(-1),
             _layerUidUL(-1),

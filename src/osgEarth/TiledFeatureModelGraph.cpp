@@ -19,6 +19,7 @@
 #include <osgEarth/TiledFeatureModelGraph>
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/FeatureModelSource>
+#include <osgEarth/NetworkMonitor>
 
 using namespace osgEarth;
 
@@ -27,7 +28,7 @@ TiledFeatureModelGraph::TiledFeatureModelGraph(FeatureSource* features,
                                                Session* session) :
     SimplePager(features->getFeatureProfile()->getTilingProfile()),
     _features(features),
-    _styleSheet(styleSheet),    
+    _styleSheet(styleSheet),
     _session(session)
 {
     setMinLevel(features->getFeatureProfile()->getFirstLevel());
@@ -42,9 +43,17 @@ TiledFeatureModelGraph::setFilterChain(FeatureFilterChain* chain)
     _filterChain = chain;
 }
 
+void
+TiledFeatureModelGraph::setOwnerName(const std::string& value)
+{
+    _ownerName = value;
+}
+
+
 FeatureCursor*
 TiledFeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const
 {
+    NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
     FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
     if (_filterChain.valid())
     {
@@ -55,6 +64,7 @@ TiledFeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const
 
 osg::Node* TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
 {
+    NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
     // Get features for this key
     Query query;
     query.tileKey() = key;

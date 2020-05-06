@@ -54,9 +54,25 @@ namespace osgEarth {
 
             bool isComplete;
             std::string uri;
+            std::string layer;
             std::string status;
             osg::Timer_t startTime;
             osg::Timer_t endTime;
+        };
+
+        struct ScopedRequestLayer
+        {
+            ScopedRequestLayer(const std::string& layer) :
+                _layer(layer)
+            {
+                NetworkMonitor::setRequestLayer(_layer);
+            }
+
+            ~ScopedRequestLayer()
+            {
+                NetworkMonitor::setRequestLayer("");
+            }
+            std::string _layer;
         };
 
         typedef std::map<unsigned long, Request> Requests;
@@ -68,7 +84,12 @@ namespace osgEarth {
         static void setEnabled(bool enabled);
         static void clear();
 
+        static void setRequestLayer(const std::string& name);
+        static std::string getRequestConext();
+
     };
+
+
 
 }
 

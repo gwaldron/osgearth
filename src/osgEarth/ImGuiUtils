@@ -270,10 +270,11 @@ public:
             NetworkMonitor::clear();
         }
 
-        ImGui::Columns(3, "requests");
+        ImGui::Columns(4, "requests");
         ImGui::Separator();
         ImGui::Text("Path"); ImGui::NextColumn();
         ImGui::Text("Duration (ms)"); ImGui::NextColumn();
+        ImGui::Text("Layer"); ImGui::NextColumn();
         ImGui::Text("Status"); ImGui::NextColumn();
         ImGui::Separator();
         for (auto itr = requests.begin(); itr != requests.end(); ++itr)
@@ -305,6 +306,7 @@ public:
 
                 ImGui::TextColored(color, itr->second.uri.c_str());  ImGui::NextColumn();
                 ImGui::Text("%f", itr->second.getDuration()); ImGui::NextColumn();
+                ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
                 ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
             }
         }

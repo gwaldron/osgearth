@@ -25,9 +25,10 @@ using namespace osgEarth;
 namespace
 {
     static NetworkMonitor::Requests s_requests;
-    static Threading::Mutex s_requestsMutex;
+    osgEarth::Threading::ReadWriteMutex s_requestsMutex;
     static unsigned long s_requestId = 0;
     static bool s_enabled = false;
+    static std::map<unsigned int, std::string> s_requestLayer;
 }
 
 #define LC "[NetworkMonitor] "
@@ -36,8 +37,9 @@ unsigned long NetworkMonitor::begin(const std::string& uri, const std::string& s
 {
     if (s_enabled)
     {
-        Threading::ScopedMutexLock lock(s_requestsMutex);
+        osgEarth::Threading::ScopedWriteLock lock(s_requestsMutex);
         Request req(uri, status);
+        req.layer = s_requestLayer[osgEarth::Threading::getCurrentThreadId()];
         unsigned long id = s_requestId++;
         s_requests[id] = req;
         return id;
@@ -49,7 +51,7 @@ void NetworkMonitor::end(unsigned long handle, const std::string& status)
 {
     if (s_enabled)
     {
-        Threading::ScopedMutexLock lock(s_requestsMutex);
+        osgEarth::Threading::ScopedWriteLock lock(s_requestsMutex);
         NetworkMonitor::Requests::iterator req = s_requests.find(handle);
         if (req == s_requests.end())
         {
@@ -65,7 +67,7 @@ void NetworkMonitor::end(unsigned long handle, const std::string& status)
 
 void NetworkMonitor::getRequests(Requests& out)
 {
-    Threading::ScopedMutexLock lock(s_requestsMutex);
+    osgEarth::Threading::ScopedReadLock lock(s_requestsMutex);
     out = s_requests;
 }
 
@@ -81,7 +83,19 @@ void NetworkMonitor::setEnabled(bool enabled)
 
 void NetworkMonitor::clear()
 {
-    Threading::ScopedMutexLock lock(s_requestsMutex);
+    osgEarth::Threading::ScopedWriteLock lock(s_requestsMutex);
     s_requests.clear();
+}
+
+void NetworkMonitor::setRequestLayer(const std::string& name)
+{
+    osgEarth::Threading::ScopedWriteLock lock(s_requestsMutex);
+    s_requestLayer[osgEarth::Threading::getCurrentThreadId()] = name;
+}
+
+std::string NetworkMonitor::getRequestConext()
+{
+    osgEarth::Threading::ScopedReadLock lock(s_requestsMutex);
+    return s_requestLayer[osgEarth::Threading::getCurrentThreadId()];
 }
 

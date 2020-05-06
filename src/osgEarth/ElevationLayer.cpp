@@ -21,6 +21,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/MemCache>
 #include <osgEarth/Metrics>
+#include <osgEarth/NetworkMonitor>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -48,7 +49,7 @@ ElevationLayer::Options::fromConfig( const Config& conf )
 {
     _offset.init( false );
     _noDataPolicy.init( NODATA_INTERPOLATE );
-    
+
     conf.get("vdatum", verticalDatum() );
     conf.get("vsrs", verticalDatum() );    // back compat
     conf.get("offset", offset() );
@@ -64,7 +65,7 @@ namespace
     // perform very basic sanity-check validation on a heightfield.
     bool validateHeightField(osg::HeightField* hf)
     {
-        if (!hf) 
+        if (!hf)
             return false;
         if (hf->getNumRows() < 2 || hf->getNumRows() > 1024) {
             OE_WARN << "row count = " << hf->getNumRows() << std::endl;
@@ -80,7 +81,7 @@ namespace
         }
         //if (hf->getXInterval() < 1e-5 || hf->getYInterval() < 1e-5)
         //    return false;
-        
+
         return true;
     }
 }
@@ -164,7 +165,7 @@ ElevationLayer::normalizeNoDataValues(osg::HeightField* hf) const
                 OE_DEBUG << "Replaced " << value << " with NO_DATA_VALUE" << std::endl;
                 value = NO_DATA_VALUE;
             }
-        } 
+        }
     }
 }
 
@@ -176,7 +177,7 @@ ElevationLayer::applyProfileOverrides(osg::ref_ptr<const Profile>& inOutProfile)
     if ( inOutProfile.valid() && options().verticalDatum().isSet() )
     {
         std::string vdatum = options().verticalDatum().get();
-        
+
         std::string profileVDatumStr = _profile->getSRS()->getVertInitString();
         if (profileVDatumStr.empty()) profileVDatumStr = "geodetic";
         OE_INFO << LC << "Override vdatum = " << vdatum << " (was " << profileVDatumStr << ")" << std::endl;
@@ -196,7 +197,7 @@ ElevationLayer::assembleHeightField(const TileKey& key,
                                     osg::ref_ptr<osg::HeightField>& out_hf,
                                     osg::ref_ptr<NormalMap>& out_normalMap,
                                     ProgressCallback* progress) const
-{			
+{
     OE_PROFILING_ZONE;
 
     // Collect the heightfields for each of the intersecting tiles.
@@ -204,7 +205,7 @@ ElevationLayer::assembleHeightField(const TileKey& key,
 
     //Determine the intersecting keys
     std::vector< TileKey > intersectingTiles;
-    
+
     if (key.getLOD() > 0u)
     {
         getProfile()->getIntersectingTiles(key, intersectingTiles);
@@ -214,7 +215,7 @@ ElevationLayer::assembleHeightField(const TileKey& key,
     {
         // LOD is zero - check whether the LOD mapping went out of range, and if so,
         // fall back until we get valid tiles. This can happen when you have two
-        // profiles with very different tile schemes, and the "equivalent LOD" 
+        // profiles with very different tile schemes, and the "equivalent LOD"
         // surpasses the max data LOD of the tile source.
         unsigned numTilesThatMayHaveData = 0u;
 
@@ -259,7 +260,7 @@ ElevationLayer::assembleHeightField(const TileKey& key,
 
         // If we actually got a HeightField, resample/reproject it to match the incoming TileKey's extents.
         if (heightFields.size() > 0)
-        {		
+        {
             unsigned int width = 0;
             unsigned int height = 0;
 
@@ -267,12 +268,12 @@ ElevationLayer::assembleHeightField(const TileKey& key,
             {
                 if (itr->getHeightField()->getNumColumns() > width)
                     width = itr->getHeightField()->getNumColumns();
-                if (itr->getHeightField()->getNumRows() > height) 
-                    height = itr->getHeightField()->getNumRows();                        
+                if (itr->getHeightField()->getNumRows() > height)
+                    height = itr->getHeightField()->getNumRows();
             }
 
             //Now sort the heightfields by resolution to make sure we're sampling the highest resolution one first.
-            std::sort( heightFields.begin(), heightFields.end(), GeoHeightField::SortByResolutionFunctor());        
+            std::sort( heightFields.begin(), heightFields.end(), GeoHeightField::SortByResolutionFunctor());
 
             out_hf = new osg::HeightField();
             out_hf->allocate(width, height);
@@ -299,7 +300,7 @@ ElevationLayer::assembleHeightField(const TileKey& key,
 
                     for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                     {
-                        // get the elevation value, at the same time transforming it vertically into the 
+                        // get the elevation value, at the same time transforming it vertically into the
                         // requesting key's vertical datum.
                         float e = 0.0;
                         osg::Vec3 n;
@@ -310,7 +311,7 @@ ElevationLayer::assembleHeightField(const TileKey& key,
                             break;
                         }
                     }
-                    out_hf->setHeight( c, r, elevation );   
+                    out_hf->setHeight( c, r, elevation );
                     out_normalMap->set( c, r, normal );
                 }
             }
@@ -354,6 +355,8 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
     {
         return GeoHeightField::INVALID;
     }
+
+    NetworkMonitor::ScopedRequestLayer layerRequest(getName());
 
     // prevents 2 threads from creating the same object at the same time
     //_sentry.lock(key);
@@ -423,7 +426,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
         {
             ReadResult r = cacheBin->readObject(cacheKey, 0L);
             if ( r.succeeded() )
-            {            
+            {
                 bool expired = policy.isExpired(r.lastModifiedTime());
                 cachedHF = r.get<osg::HeightField>();
                 if ( cachedHF && validateHeightField(cachedHF.get()) )
@@ -509,8 +512,8 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
 
             // If we have a cacheable heightfield, and it didn't come from the cache
             // itself, cache it now.
-            if ( hf.valid()    && 
-                 cacheBin      && 
+            if ( hf.valid()    &&
+                 cacheBin      &&
                  !fromCache    &&
                  policy.isCacheWriteable() )
             {
@@ -663,7 +666,7 @@ namespace
             double lat = extent.yMin() + res.y()*(double)t;
             dx = dx * mPerDegAtEquator * cos(osg::DegreesToRadians(lat));
         }
-        
+
         osg::Vec3d west(0, 0, e), east(0, 0, e), south(0, 0, e), north(0, 0, e);
 
         if (s > 0)     west.set (-dx, 0, hf->getHeight(s-1, t));
@@ -679,12 +682,12 @@ namespace
     //! pre-allocated NormalMap.
     //!
     //! "deltaLOD" holds the difference in LODs between the heightfield itself and the LOD
-    //! from which the elevation value came. This will be positive when we had to "fall back" on 
+    //! from which the elevation value came. This will be positive when we had to "fall back" on
     //! lower LOD data to fetch an elevation value. When this happens we need to interpolate
     //! between "real" normals instead of sampling them from the neighboring pixels, otherwise
     //! ugly faceting will occur.
     //!
-    //! Unfortunately, it there's an offset layer, this will update the deltaLOD and we will 
+    //! Unfortunately, it there's an offset layer, this will update the deltaLOD and we will
     //! get faceting if the real elevation layer is from a lower LOD. The only solution to this
     //! would be to sample the elevation data using a spline function instead of bilinear
     //! interpolation -- but we would need to do that to a separate heightfield (especially for
@@ -716,7 +719,7 @@ namespace
                     int s1 = (s%step == 0)? s0 : osg::minimum(s0+step, w-1);
                     int t0 = osg::maximum(t - (t % step), 0);
                     int t1 = (t%step == 0)? t0 : osg::minimum(t0+step, h-1);
-                    
+
                     if (s0 == s1 && t0 == t1)
                     {
                         // on-pixel, simple query
@@ -810,7 +813,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
         if (layer->isOpen()) // redundant for elevation layers..
         {
-            // calculate the resolution-mapped key (adjusted for tile resolution differential).            
+            // calculate the resolution-mapped key (adjusted for tile resolution differential).
             TileKey mappedKey = keyToUse.mapResolution(
                 hf->getNumColumns(),
                 layer->getTileSize() );
@@ -833,9 +836,9 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
             //{
             //    useLayer = false;
             //}
-                
+
             // Find the "best available" mapped key from the tile source:
-            else 
+            else
             {
                 bestKey = layer->getBestAvailableTileKey(mappedKey);
                 if (bestKey.valid())
@@ -890,15 +893,15 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     {
         return false;
     }
-    
+
     // Sample the layers into our target.
     unsigned numColumns = hf->getNumColumns();
-    unsigned numRows    = hf->getNumRows();    
+    unsigned numRows    = hf->getNumRows();
     double   xmin       = key.getExtent().xMin();
     double   ymin       = key.getExtent().yMin();
     double   dx         = key.getExtent().width() / (double)(numColumns-1);
     double   dy         = key.getExtent().height() / (double)(numRows-1);
-   
+
     // We will load the actual heightfields on demand. We might not need them all.
     GeoHeightFieldVector heightFields(contenders.size());
     GeoHeightFieldVector offsetFields(offsets.size());
@@ -922,14 +925,14 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     {
         deltaLOD = new osg::ShortArray(total);
     }
-    
+
     int nodataCount = 0;
 
     TileKey scratchKey; // Storage if a new key needs to be constructed
 
     bool requiresResample = true;
 
-    // If we only have a single contender layer, and the tile is the same size as the requested 
+    // If we only have a single contender layer, and the tile is the same size as the requested
     // heightfield then we just use it directly and avoid having to resample it
     if (contenders.size() == 1 && offsets.empty())
     {
@@ -1116,7 +1119,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                         hf->getHeight(c, r) += elevation;
 
                         // Update the resolution tracker to account for the offset. Sadly this
-                        // will wipe out the resolution of the actual data, and might result in 
+                        // will wipe out the resolution of the actual data, and might result in
                         // normal faceting. See the comments on "createNormalMap" for more info
                         if (deltaLOD.valid())
                         {
@@ -1147,7 +1150,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         for (std::map<ElevationLayer*, LayerAnalysis>::const_iterator i = layerAnalysis.begin();
             i != layerAnalysis.end(); ++i)
         {
-            std::cout << i->first->getName() 
+            std::cout << i->first->getName()
                 << " used=" << i->second.used
                 << " failed=" << i->second.failed
                 << " akv=" << i->second.actualKeyValid

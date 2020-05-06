@@ -22,6 +22,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
+#include <osgEarth/NetworkMonitor>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -43,8 +44,8 @@ ImageLayer::Options::fromConfig(const Config& conf)
     _magFilter.init( osg::Texture::LINEAR );
     _textureCompression.init( osg::Texture::USE_IMAGE_DATA_FORMAT ); // none
     _shared.init( false );
-    _coverage.init( false );  
-    _reprojectedTileSize.init( 256 );  
+    _coverage.init( false );
+    _reprojectedTileSize.init( 256 );
 
     conf.get( "nodata_image",   _noDataImageFilename );
     conf.get( "shared",         _shared );
@@ -328,6 +329,8 @@ ImageLayer::createImage(const TileKey&    key,
         return GeoImage::INVALID;
     }
 
+    NetworkMonitor::ScopedRequestLayer layerRequest(getName());
+
     // prevents 2 threads from creating the same object at the same time
     //_sentry.lock(key);
 
@@ -368,7 +371,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     char memCacheKey[64];
 
     const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
-    
+
     // Check the layer L2 cache first
     if ( _memCache.valid() )
     {
@@ -382,7 +385,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 
     // locate the cache bin for the target profile for this layer:
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
-    
+
     // validate the existance of a valid layer profile (unless we're in cache-only mode, in which
     // case there is no layer profile)
     if ( !policy.isCacheOnly() && !getProfile() )
@@ -404,30 +407,30 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
             bool expired = policy.isExpired(r.lastModifiedTime());
             if (!expired)
             {
-                OE_DEBUG << "Got cached image for " << key.str() << std::endl;                
-                return GeoImage( cachedImage.get(), key.getExtent() );                        
+                OE_DEBUG << "Got cached image for " << key.str() << std::endl;
+                return GeoImage( cachedImage.get(), key.getExtent() );
             }
             else
             {
-                OE_DEBUG << "Expired image for " << key.str() << std::endl;                
+                OE_DEBUG << "Expired image for " << key.str() << std::endl;
             }
         }
     }
-    
+
     // The data was not in the cache. If we are cache-only, fail sliently
     if ( policy.isCacheOnly() )
     {
         // If it's cache only and we have an expired but cached image, just return it.
         if (cachedImage.valid())
         {
-            return GeoImage( cachedImage.get(), key.getExtent() );            
+            return GeoImage( cachedImage.get(), key.getExtent() );
         }
         else
         {
             return GeoImage::INVALID;
         }
     }
-    
+
     if (key.getProfile()->isHorizEquivalentTo(getProfile()))
     {
         result = createImageImplementation(key, progress);
@@ -460,7 +463,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     // If we got a result, the cache is valid and we are caching in the map profile,
     // write to the map cache.
     if (result.valid()  &&
-        cacheBin        && 
+        cacheBin        &&
         policy.isCacheWriteable())
     {
         if ( key.getExtent() != result.getExtent() )
@@ -477,7 +480,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     }
     else
     {
-        OE_DEBUG << LC << key.str() << "result INVALID" << std::endl;        
+        OE_DEBUG << LC << key.str() << "result INVALID" << std::endl;
         // We couldn't get an image from the source.  So see if we have an expired cached image
         if (cachedImage.valid())
         {
@@ -490,7 +493,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 }
 
 GeoImage
-ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress) 
+ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 {
     // If we got here, asset that there's a non-null layer profile.
     if (!getProfile())
@@ -615,7 +618,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
                     }
 
                     // and queue it.
-                    mosaic.getImages().push_back( TileImage(cropped.getImage(), *k) );       
+                    mosaic.getImages().push_back( TileImage(cropped.getImage(), *k) );
 
                 }
             }
@@ -645,19 +648,19 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
     if ( mosaicedImage.valid() )
     {
         // GeoImage::reproject() will automatically crop the image to the correct extents.
-        // so there is no need to crop after reprojection. Also note that if the SRS's are the 
+        // so there is no need to crop after reprojection. Also note that if the SRS's are the
         // same (even though extents are different), then this operation is technically not a
         // reprojection but merely a resampling.
 
-        result = mosaicedImage.reproject( 
+        result = mosaicedImage.reproject(
             key.getProfile()->getSRS(),
-            &key.getExtent(), 
+            &key.getExtent(),
             getTileSize(), getTileSize(),
             true);
     }
 
     // Process images with full alpha to properly support MP blending.
-    if (result.valid() && 
+    if (result.valid() &&
         options().featherPixels() == true &&
         isCoverage() == false)
     {
@@ -705,9 +708,9 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
         // auto mode:
         if ( Registry::capabilities().isGLES() )
         {
-            // Many GLES drivers do not support automatic compression, so by 
+            // Many GLES drivers do not support automatic compression, so by
             // default, don't set the internal format.
-            // TODO: later perhaps we can replace this with a CPU-side 
+            // TODO: later perhaps we can replace this with a CPU-side
             // compression step for PV or ETC
             tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
         }
@@ -735,7 +738,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             }
             // RGBA uses DXT5
             else if (tex->getImage(0)->getPixelFormat() == GL_RGBA)
-            {         
+            {
                 mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
             }
             else
@@ -749,7 +752,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             osg::Timer_t end = osg::Timer::instance()->tick();
             image->dirty();
             tex->setImage(0, image);
-            OE_DEBUG << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;        
+            OE_DEBUG << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
         }
         else
         {

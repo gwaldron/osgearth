@@ -57,9 +57,10 @@ struct App
     osg::ref_ptr<MapNode> _mapNode;
     osg::ref_ptr<DecalImageLayer> _imageLayer;
     osg::ref_ptr<DecalElevationLayer> _elevLayer;
-    osg::ref_ptr<DecalLandCoverLayer> _landCoverLayer;
-    osg::ref_ptr<osg::Image> _image;
-    osg::ref_ptr<osg::Image> _landCover;
+//    osg::ref_ptr<DecalLandCoverLayer> _landCoverLayer;
+    osg::ref_ptr<osg::Image> _image_for_elev;
+	osg::ref_ptr<osg::Image> _image_for_rgb;
+//    osg::ref_ptr<osg::Image> _landCover;
     std::stack<std::string> _undoStack;
     unsigned _idGenerator;
     unsigned _decalsPerClick;
@@ -67,13 +68,19 @@ struct App
 
     App()
     {
-        _image = osgDB::readRefImageFile("../data/burn.png");
-        if (!_image.valid())
+        _image_for_elev = osgDB::readRefImageFile("../data/burn.png");
+        if (!_image_for_elev.valid())
         {
-            OE_WARN << "Failed to load decal image!" << std::endl;
+            OE_WARN << "Failed to load elev decal image!" << std::endl;
             return;
         }
-
+		
+		_image_for_rgb = osgDB::readRefImageFile("../data/crater.png");
+		if (!_image_for_rgb.valid())
+		{
+			OE_WARN << "Failed to load rgb decal image!" << std::endl;
+			return;
+		}
         _idGenerator = 0u;
         _minLevel = 11u;
         _size = 0.0f;
@@ -85,11 +92,15 @@ struct App
         _mapNode = mapNode;
 
         // read from the visible image:
-        ImageUtils::PixelReader read(_image.get());
+        ImageUtils::PixelReader read(_image_for_rgb.get());
         osg::Vec4 value;
 
         // Only activate the land cover decal if there's a dictionary in the map:
-        LandCoverDictionary* dic = mapNode->getMap()->getLayer<LandCoverDictionary>();
+
+		//This bit would synthesize a rocky image decal using landocver codes to replace any non-zero alpha value in the imagery with rock.
+		//Removed for now to use a seperate rgb image instead of synthesizing one
+/*
+		LandCoverDictionary* dic = mapNode->getMap()->getLayer<LandCoverDictionary>();
         if (dic)
         {
             // Synthesize a land cover raster to use as a decal.
@@ -97,28 +108,32 @@ struct App
             if (lc_class)
             {
                 // write to the landcover raster:
-                _landCover = LandCover::createImage(_image->s(), _image->t());
+                _landCover = LandCover::createImage(_image_for_rgb->s(), _image_for_rgb->t());
                 ImageUtils::PixelWriter write(_landCover.get());
 
                 const float lc_code = (float)lc_class->getValue();
+				const float no_data_image = 0.0f / 255.0f;
 
                 for (int t = 0; t < read.t(); ++t)
                 {
                     for (int s = 0; s < read.s(); ++s)
                     {
                         read(value, s, t);
-                        float c = value.a() > 0.2 ? lc_code : NO_DATA_VALUE;
-                        value.set(c, c, c, c);
+
+//                        float c = value.a() != no_data_image ? lc_code : NO_DATA_VALUE;
+						float c = value.a() > 0.2 ? lc_code : NO_DATA_VALUE;
+
+                        //value.set(c, c, c, c);
                         write(value, s, t);
                     }
                 }
             }
         }
-
+*/
         _imageLayer = new DecalImageLayer();
         _imageLayer->setName("Image Decals");
         _imageLayer->setMinLevel(_minLevel);
-        _imageLayer->setOpacity(0.25f);
+        _imageLayer->setOpacity(0.95f);
         mapNode->getMap()->addLayer(_imageLayer.get());
         _layersToRefresh.push_back(_imageLayer.get());
 
@@ -128,6 +143,7 @@ struct App
         mapNode->getMap()->addLayer(_elevLayer.get());
         _layersToRefresh.push_back(_elevLayer.get());
 
+/*
         if (_landCover.valid())
         {
             _landCoverLayer = new DecalLandCoverLayer();
@@ -136,6 +152,7 @@ struct App
             mapNode->getMap()->addLayer(_landCoverLayer.get());
             _layersToRefresh.push_back(_landCoverLayer.get());
         }
+*/
     }
 
     void addDecal(const GeoExtent& extent)
@@ -149,23 +166,27 @@ struct App
 
         if (_imageLayer.valid())
         {
-            _imageLayer->addDecal(id, extent, _image.get());
+            _imageLayer->addDecal(id, extent, _image_for_rgb.get());
         }
 
         if (_elevLayer.valid())
         {
             //_elevLayer->addDecal(id, extent, _image.get(), -_size / 20.0f);
-            _elevLayer->addDecal(id, extent, _image.get(), 0.0f, -_size/20.0f);
+			//adjust the max/min of the craters, default _size is 250
+            _elevLayer->addDecal(id, extent, _image_for_elev.get(), _size / 15.0f, -_size / 15.0f);
         }
 
-        if (_landCoverLayer.valid())
+/* Remove landcover layer for now, using rgb image
+		if (_landCoverLayer.valid())
         {
-            _landCoverLayer->addDecal(id, extent, _landCover.get());
+           _landCoverLayer->addDecal(id, extent, _landCover.get());
         }
+*/
 
         // Tell the terrain engine to regenerate the effected area.
         _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
     }
+
 
     void undoLastAdd()
     {
@@ -190,11 +211,13 @@ struct App
                 _elevLayer->removeDecal(id);
             }
 
+/*
             if (_landCoverLayer.valid())
             {
                 extent.expandToInclude(_landCoverLayer->getDecalExtent(id));
                 _landCoverLayer->removeDecal(id);
             }
+*/
 
             _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
         }
@@ -214,11 +237,12 @@ struct App
             _elevLayer->clearDecals();
         }
 
+/*
         if (_landCoverLayer.valid())
         {
             _landCoverLayer->clearDecals();
         }
-
+*/
         _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
     }
 };

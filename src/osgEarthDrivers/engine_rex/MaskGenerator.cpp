@@ -198,7 +198,7 @@ MaskGenerator::Result
 MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCoords, 
                                     osg::Vec3Array* normals, osg::Vec3Array* neighbors,
                                     osg::Vec3Array* neighborNormals,
-                                    osg::ref_ptr<osg::DrawElementsUInt>& out_elements)
+                                    osg::ref_ptr<osg::DrawElements>& out_elements)
 {
     if (_maskRecords.size() <= 0)
     {
@@ -599,8 +599,12 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
     }
 
     // Construct the output triangle set.
-    out_elements = new osg::DrawElementsUInt(tris->getMode());
-    out_elements->reserve(tris->size());
+    unsigned numIndicies = tris->size() * 6;
+    out_elements =
+        numIndicies > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUInt(tris->getMode()) :
+        (osg::DrawElements*)new osg::DrawElementsUShort(tris->getMode());
+
+    out_elements->reserveElements(numIndicies);
 
     const osg::MixinVector<GLuint> ins = tris->asVector();
 
@@ -617,15 +621,15 @@ MaskGenerator::createMaskPrimitives(osg::Vec3Array* verts, osg::Vec3Array* texCo
         // check the winding order. Triangles don't always come out in the right orientation
         if (((v0 - v1) ^ (v2 - v1)).z() < 0)
         {
-            out_elements->push_back(i0);
-            out_elements->push_back(i1);
-            out_elements->push_back(i2);
+            out_elements->addElement(i0);
+            out_elements->addElement(i1);
+            out_elements->addElement(i2);
         }
         else
         {
-            out_elements->push_back(i0);
-            out_elements->push_back(i2);
-            out_elements->push_back(i1);
+            out_elements->addElement(i0);
+            out_elements->addElement(i2);
+            out_elements->addElement(i1);
         }
     }
 

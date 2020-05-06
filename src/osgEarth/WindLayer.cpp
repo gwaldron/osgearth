@@ -22,10 +22,14 @@
 #include <osgEarth/GeoTransform>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/GLUtils>
 #include <osg/Texture3D>
 #include <osg/Program>
-#include <osg/BindImageTexture>
 #include <osgUtil/CullVisitor>
+
+#ifdef OE_HAVE_BINDIMAGETEXTURE
+#include <osg/BindImageTexture>
+#endif
 
 using namespace osgEarth;
 

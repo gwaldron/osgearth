@@ -37,6 +37,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgUtil/CullVisitor>
+#include <osgUtil/Optimizer>
 #include <cstdlib> // getenv
 
 #define LC "[GroundCoverLayer] " << getName() << ": "
@@ -228,6 +229,8 @@ GroundCoverLayer::init()
     PatchLayer::init();
 
     _zonesConfigured = false;
+
+    _isModel = false;
 
     // deserialize zone data
     for (std::vector<ZoneOptions>::const_iterator i = options().zones().begin();
@@ -550,6 +553,9 @@ GroundCoverLayer::buildStateSets()
                     zoneStateSet->setMode(GL_MULTISAMPLE, 1);
                 }
 
+                // TEMP. If we have models, use them instead
+                _isModel = groundCover->getTotalNumModels() > 0;
+
                 // Install the land cover shaders on the state set
                 VirtualProgram* vp = VirtualProgram::getOrCreate(zoneStateSet);
                 vp->setName("Ground cover (" + groundCover->getName() + ")");
@@ -672,6 +678,7 @@ namespace
     {
         osg::Geometry* geom = new osg::Geometry();
         geom->setUseVertexBufferObjects(true);
+        geom->setUseDisplayList(false);
 
         const float s=10;
 
@@ -706,10 +713,18 @@ namespace
 
     osg::Geometry* loadShape()
     {
-        osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile("D:/data/models/rockinsoil/RockSoil.3DS.osg");
-        osg::ref_ptr<osg::Geometry> geom = osgEarth::findTopMostNodeOfType<osg::Geometry>(node.get());
-        node = NULL;
-        return geom.release();
+        //osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile("D:/data/models/rockinsoil/RockSoil.3DS.osg");
+        osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile("D:/data/models/OakTree/redoak.osgb");
+        
+        InstanceCloud::ModelCruncher cruncher;
+        cruncher.add(node.get());
+        cruncher.finalize();
+        
+        return cruncher._geom.release();
+
+        //osg::ref_ptr<osg::Geometry> geom = osgEarth::findTopMostNodeOfType<osg::Geometry>(node.get());
+        //node = NULL;
+        //return geom.release();
     }
 }
 
@@ -725,30 +740,28 @@ GroundCoverLayer::createNodeImplementation(const DrawContext& dc)
 osg::Geometry*
 GroundCoverLayer::createGeometry() const    
 {
-    const unsigned vertsPerInstance = 8;
-    const unsigned indiciesPerInstance = 12;
+    osg::Geometry* out_geom = NULL;
 
-    osg::Geometry* out_geom = new osg::Geometry();
-    out_geom->setUseVertexBufferObjects(true);
+    if (_isModel)
+    {
+        out_geom = loadShape();
+        out_geom->setUseVertexBufferObjects(true);
+        out_geom->setUseDisplayList(false);
+        return out_geom;
+    }
+    else
+    {
+        const unsigned vertsPerInstance = 8;
+        const unsigned indiciesPerInstance = 12;
 
-#ifdef TEST_MODEL_INSTANCING
-    out_geom = makeShape();
-    //out_geom = loadShape();
-    out_geom->getPrimitiveSet(0)->setNumInstances(numInstances);
-    return out_geom;
-#endif
+        osg::Geometry* out_geom = new osg::Geometry();
+        out_geom->setUseVertexBufferObjects(true);
 
-    static const GLushort indices[12] = { 0,1,2,2,1,3, 4,5,6,6,5,7 };
-    out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
+        static const GLushort indices[12] = { 0,1,2,2,1,3, 4,5,6,6,5,7 };
+        out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
 
-    // We don't actually need any verts. Is it OK not to set an array?
-    //geom->setVertexArray(new osg::Vec3Array(8));
-
-    //osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
-    //normals->push_back(osg::Vec3f(0,0,1));
-    //out_geom->setNormalArray(normals);
-
-    return out_geom;
+        return out_geom;
+    }
 }
 
 //........................................................................
@@ -893,6 +906,7 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
         {
             float spacing_m = groundcover->options().spacing().get();
             u._numInstances1D = _settings._tileWidth / spacing_m;
+            _spacing = spacing_m;
         }
         else if (groundcover->options().density().isSet())
         {
@@ -910,6 +924,11 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
         {
             instancer->setGeometry(_layer->createGeometry());
             instancer->setNumInstances(u._numInstances1D, u._numInstances1D);
+
+            // TODO: review this. I don't like it but have no good reason. -gw
+            // This is here to integrate the model's texture atlas into the stateset
+            if (instancer->_geom->getStateSet())
+                _layer->getOrCreateStateSet()->merge(*instancer->_geom->getStateSet());
         }
     }
 
@@ -945,17 +964,19 @@ GroundCoverLayer::Renderer::drawTile(osg::RenderInfo& ri, const PatchLayer::Draw
             u._computeData[1] = tile._tileBBox->yMin();
             u._computeData[2] = tile._tileBBox->xMax();
             u._computeData[3] = tile._tileBBox->yMax();
+
             u._computeData[4] = (float)u._tileCounter;
 
             // TODO: check whether this changed before calling it
             ext->glUniform1fv(u._computeDataUL, 5, &u._computeData[0]);
-        }
 
-        instancer->cullTile(ri, u._tileCounter);
+            instancer->cullTile(ri, u._tileCounter);
+        }
     }
 
     else // DRAW shader
     {
+        // check valid flag
         instancer->drawTile(ri, u._tileCounter);
     }
 
@@ -992,6 +1013,13 @@ void
 GroundCoverLayer::loadShaders(VirtualProgram* vp, const osgDB::Options* options) const
 {
     GroundCoverShaders shaders;
-    shaders.load(vp, shaders.GroundCover_VS, options);
-    shaders.load(vp, shaders.GroundCover_FS, options);
+
+    if (_isModel)
+    {
+        shaders.load(vp, shaders.GroundCover_Model, options);
+    }
+    else // billboards
+    {
+        shaders.load(vp, shaders.GroundCover_Billboard, options);
+    }
 }

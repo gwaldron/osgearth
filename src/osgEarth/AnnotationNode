@@ -27,7 +27,6 @@
 #include <osgEarth/DepthOffset>
 #include <osgEarth/MapNodeObserver>
 #include <osgEarth/Horizon>
-#include <osg/Observer>
 
 #define META_AnnotationNode(library,name) \
     META_Node(library,name)
@@ -52,8 +51,7 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT AnnotationNode : 
         public osg::Group,
-        public MapNodeObserver,
-        public osg::Observer
+        public MapNodeObserver
     {
     public:
         META_AnnotationNode(osgEarth, AnnotationNode);
@@ -169,8 +167,6 @@ namespace osgEarth
     public:
 
         virtual ~AnnotationNode();
-
-        virtual void objectDeleted(void* ptr);
     };
 
 }

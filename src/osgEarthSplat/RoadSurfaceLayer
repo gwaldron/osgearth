@@ -78,9 +78,6 @@ namespace osgEarth { namespace Splat
         // Called by Map when it removes this layer
         virtual void removedFromMap(const class Map*);
 
-        // A node to add to the scene graph for this layer.
-        virtual osg::Node* getNode() const;
-
         //! Serialize
         virtual Config getConfig() const;
 

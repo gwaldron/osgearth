@@ -45,13 +45,10 @@ namespace osgEarth { namespace Splat
         GroundCoverShaders();
 
         std::string
-            Grass_VS,
+            Grass,
             GroundCover_CS,
-            GroundCover_VS,
-            GroundCover_TCS,
-            GroundCover_TES,
-            GroundCover_GS,
-            GroundCover_FS;
+            GroundCover_Billboard,
+            GroundCover_Model;
 	};
 	
 } } // namespace osgEarth::Splat

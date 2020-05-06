@@ -358,7 +358,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     {
         // The mask generator adds to the passed-in arrays as necessary,
         // and then returns a new primtive set containing all the new triangles.
-        osg::ref_ptr<osg::DrawElementsUInt> maskElements;
+        //osg::ref_ptr<osg::DrawElementsUInt> maskElements;
+        osg::ref_ptr<osg::DrawElements> maskElements;
 
         MaskGenerator::Result r = maskSet->createMaskPrimitives(
             verts.get(), texCoords.get(), normals.get(), neighbors.get(), neighborNormals.get(),
@@ -366,7 +367,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
         if (r == MaskGenerator::R_BOUNDARY_INTERSECTS_TILE && 
             maskElements.valid() && 
-            maskElements->size() > 0)
+            maskElements->getNumIndices() > 0)
         {
             // Share the same EBO as the surface geometry
             maskElements->setElementBufferObject(primSet->getElementBufferObject());
@@ -786,19 +787,64 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
     if (ebo)
     {
-        /*if (request_bind_unbind)*/ state.bindElementBufferObject(ebo);
+        //if (request_bind_unbind) 
+        {
+            state.bindElementBufferObject(ebo);
+        }
 
         if (_drawElements->getNumIndices() > 0u)
         {
-            glDrawElements(primitiveType, _drawElements->getNumIndices(), _drawElements->getDataType(), (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
+            if (_maskElements.valid() && 
+                _maskElements->getNumIndices() > 0u)
+            {
+                if (_maskElements->getDataType() == _drawElements->getDataType())
+                {
+                    GLsizei counts[2];
+                    counts[0] = _drawElements->getNumIndices();
+                    counts[1] = _maskElements->getNumIndices();
+
+                    const GLvoid* indexLocations[2];
+                    indexLocations[0] = (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex()));
+                    indexLocations[1] = (const GLvoid *)(ebo->getOffset(_maskElements->getBufferIndex()));
+
+                    osg::GLExtensions* ext = state.get<osg::GLExtensions>();
+
+                    ext->glMultiDrawElements(
+                        primitiveType,
+                        counts,
+                        _drawElements->getDataType(),
+                        indexLocations,
+                        2);
+                }
+                else
+                {
+                    glDrawElements(
+                        primitiveType, 
+                        _drawElements->getNumIndices(), 
+                        _drawElements->getDataType(), 
+                        (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
+
+                    glDrawElements(
+                        primitiveType, 
+                        _maskElements->getNumIndices(), 
+                        _maskElements->getDataType(), 
+                        (const GLvoid *)(ebo->getOffset(_maskElements->getBufferIndex())));
+                }
+            }
+            else
+            {
+                glDrawElements(
+                    primitiveType, 
+                    _drawElements->getNumIndices(), 
+                    _drawElements->getDataType(), 
+                    (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
+            }
         }
 
-        if (_maskElements.valid() && _maskElements->getNumIndices() > 0u)
+        //if (request_bind_unbind) 
         {
-            glDrawElements(primitiveType, _maskElements->getNumIndices(), _maskElements->getDataType(), (const GLvoid *)(ebo->getOffset(_maskElements->getBufferIndex())));
+            state.unbindElementBufferObject();
         }
-
-        /*if (request_bind_unbind)*/ state.unbindElementBufferObject();
     }
     else
     {

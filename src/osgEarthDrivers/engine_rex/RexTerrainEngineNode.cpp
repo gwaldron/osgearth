@@ -312,8 +312,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     this->addChild( _unloader.get() );
 
     // Tile rasterizer in case we need one
-    _rasterizer = new TileRasterizer();
-    this->addChild( _rasterizer );
+    //_rasterizer = new TileRasterizer();
 
     // Initialize the core render bindings.
     setupRenderBindings();
@@ -767,9 +766,6 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     _loader->accept(nv);
     _unloader->accept(nv);
     _releaser->accept(nv);
-
-    if (_rasterizer)
-        _rasterizer->accept(nv);
 }
 
 void

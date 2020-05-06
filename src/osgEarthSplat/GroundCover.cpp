@@ -156,6 +156,21 @@ GroundCover::getTotalNumObjects() const
     }
     return count;
 }
+int
+GroundCover::getTotalNumModels() const
+{
+    int count = 0;
+    for(int i=0; i<_biomes.size(); ++i)
+    {
+        for(int j=0; j<_biomes[i]->getObjects().size(); ++j)
+        {
+            const GroundCoverObject* obj = _biomes[i]->getObjects()[j].get();
+            if (obj->getType() == GroundCoverObject::TYPE_MODEL)
+                ++count;
+        }
+    }
+    return count;
+}
 
 osg::StateSet*
 GroundCover::getOrCreateStateSet()
@@ -680,7 +695,16 @@ GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo
             {
                 getObjects().push_back( new GroundCoverBillboard(sideImage.get(), topImage.get(), bs) );
             }
+
+            continue;
         } 
+
+        const ModelSymbol* model = dynamic_cast<const ModelSymbol*>(i->get());
+        if (model)
+        {
+            osg::ref_ptr<osg::Node> node = URI(model->url()->evalURI()).getNode(dbo);
+            getObjects().push_back(new GroundCoverModel(node.release()));
+        }
     }
 
     if ( getObjects().size() == 0 )

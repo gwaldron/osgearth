@@ -18,10 +18,8 @@
  */
 #include "LayerDrawable"
 #include "TerrainRenderData"
-#include <osg/ConcurrencyViewerMacros>
 #include <osgEarth/Metrics>
 #include <sstream>
-
 
 using namespace osgEarth::REX;
 
@@ -102,20 +100,19 @@ namespace
 void
 LayerDrawable::drawTiles(osg::RenderInfo& ri) const
 {
-    PerProgramState& ds = _drawState->getPPS(ri);
-    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+    PerProgramState& pps = _drawState->getPPS(ri);
+    pps.refresh(ri, _drawState->_bindings);
 
-    ds.refresh(ri, _drawState->_bindings);
-
-    if (ds._layerUidUL >= 0)
+    if (pps._layerUidUL >= 0)
     {
+        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
         GLint uid = _layer ? (GLint)_layer->getUID() : (GLint)-1;
-        ext->glUniform1i(ds._layerUidUL, uid);
+        ext->glUniform1i(pps._layerUidUL, uid);
     }
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
-        _drawState->getPPS(ri).refresh(ri, _drawState->_bindings);
+        //_drawState->getPPS(ri).refresh(ri, _drawState->_bindings);
         tile->draw(ri, *_drawState, NULL);
     }
 }

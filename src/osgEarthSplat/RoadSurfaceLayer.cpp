@@ -68,7 +68,7 @@ RoadSurfaceLayer::init()
     setProfile(Profile::create("global-geodetic"));
 
     // Create a rasterizer for rendering nodes to images.
-    _rasterizer = new TileRasterizer(); 
+    _rasterizer = new TileRasterizer();
 
     if (getName().empty())
         setName("Road surface");
@@ -114,13 +114,6 @@ RoadSurfaceLayer::removedFromMap(const Map* map)
     options().featureSource().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
     _session = 0L;
-}
-
-osg::Node*
-RoadSurfaceLayer::getNode() const
-{
-    // adds the Rasterizer to the scene graph so we can rasterize tiles
-    return _rasterizer.get();
 }
 
 void
@@ -332,16 +325,11 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
         if (group && group->getBound().valid())
         {
-            Threading::Future<osg::Image> imageFuture;
+            Threading::Future<osg::Image> result = _rasterizer->render(group.release(), getTileSize(), outputExtent);
+            return GeoImage(result.release(), key.getExtent());
 
-            // Schedule the rasterization and get the future.
-            imageFuture = _rasterizer->push(group.release(), getTileSize(), outputExtent);
-
-            osg::Image* image = imageFuture.release(progress);
-            if (image)
-            {
-                return GeoImage(image, key.getExtent());
-            }
+            // TODO: consider storing a Future right in the geoimage.
+            //return GeoImage(result, key.getExtent());
         }
     }
 

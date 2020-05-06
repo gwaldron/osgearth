@@ -38,11 +38,7 @@ namespace osgEarth { namespace Splat
     {
     public:
         class OSGEARTHSPLAT_EXPORT Options : public PatchLayer::Options {
-        //! Whether this layer should node cache.
-        optional<bool>& nodeCaching() { return _nodeCaching; }
-        const optional<bool>& nodeCaching() const { return _nodeCaching; }
-
-    public:
+        public:
             META_LayerOptions(osgEarth, Options, PatchLayer::Options);
             OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
@@ -52,11 +48,10 @@ namespace osgEarth { namespace Splat
             OE_OPTION(float, maxAlpha);
             OE_OPTION(bool, alphaToCoverage);
             OE_OPTION_VECTOR(ZoneOptions, zones);
-        virtual Config getConfig() const;
+            virtual Config getConfig() const;
         private:
-        void fromConfig(const Config& conf);
-        optional<bool> _nodeCaching;
-    };
+            void fromConfig(const Config& conf);
+        };
 
     public:
         META_Layer(osgEarth, GroundCoverLayer, Options, PatchLayer, GroundCover);
@@ -216,10 +211,11 @@ namespace osgEarth { namespace Splat
             osg::ref_ptr<osg::StateSet> _computeStateSet;
             osg::Program* _computeProgram;
             int _counter;
+            float _spacing;
         };
 
         osg::ref_ptr<Renderer> _renderer;
-
+        bool _isModel;
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
 

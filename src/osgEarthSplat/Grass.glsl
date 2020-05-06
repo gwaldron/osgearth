@@ -57,14 +57,6 @@ uniform mat4 osg_ViewMatrix;
 
 uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 
-// VRV: use a custom LOD scale uniform
-#pragma import_defines(VRV_OSG_LOD_SCALE)
-#ifdef VRV_OSG_LOD_SCALE
-uniform float VRV_OSG_LOD_SCALE;
-#else
-#define VRV_OSG_LOD_SCALE oe_Camera.z
-#endif
-
 out vec2 oe_GroundCover_texCoord;
 
 // Output that selects the land cover texture from the texture array (flat)
@@ -89,6 +81,9 @@ void oe_Grass_VS(inout vec4 vertex)
 
     vertex = gl_ModelViewMatrix * render[gl_InstanceID].vertex;
 
+    vp_Normal = vec3(0,0,1);
+    oe_UpVectorView = gl_NormalMatrix * vp_Normal;
+
     oe_layer_tilec = vec4(render[gl_InstanceID].tilec, 0, 1);
 
     // Sample our noise texture
@@ -96,7 +91,7 @@ void oe_Grass_VS(inout vec4 vertex)
     vec4 oe_noise_wide = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st/16.0, 0);
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
-    float maxRange = oe_GroundCover_maxDistance / VRV_OSG_LOD_SCALE;
+    float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
     float zv = vertex.z;
     float nRange = clamp(-zv/maxRange, 0.0, 1.0);
 
@@ -161,8 +156,7 @@ void oe_Grass_VS(inout vec4 vertex)
     vertex.xyz += oe_UpVectorView * vertexHeight;
 
     // normal:
-    vp_Normal = vec3(0,0,1);
-    oe_UpVectorView = gl_NormalMatrix * vp_Normal;
+    vp_Normal = oe_UpVectorView;
 
     // For bending, exaggerate effect as we climb the stalk
     float bendPower = pow(3.0*oe_GroundCover_texCoord.t+0.8, 2.0);
@@ -216,10 +210,6 @@ void oe_Grass_VS(inout vec4 vertex)
 
     // Some color variation.
     vp_Color.gb -= browning*oe_noise_wide[NOISE_SMOOTH];
-
-    // VRV_PATCH - grass textures don't cover the whole quad
-    oe_GroundCover_texCoord.t *= 0.4;
-    // VRV_PATCH END
 }
 
 
@@ -270,12 +260,6 @@ void oe_Grass_FS(inout vec4 color)
     {
         discard;
     }
-
-    // VRV_PATCH
-    // counteract the normal-flipping in VRV's lighting shader
-    if (gl_FrontFacing == false)
-        vp_Normal = -vp_Normal;
-    //VRV_PATCH END
 
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
     const float modulation = 0.75;

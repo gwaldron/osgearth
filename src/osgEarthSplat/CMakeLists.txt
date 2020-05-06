@@ -18,12 +18,9 @@ set(TARGET_GLSL
     Splat.frag.glsl
     Splat.util.glsl
     GroundCover.CS.glsl
-    Grass.VS.glsl
-    GroundCover.VS.glsl
-    GroundCover.TCS.glsl
-    GroundCover.TES.glsl
-    GroundCover.GS.glsl
-    GroundCover.FS.glsl )
+    GroundCover.Billboard.glsl
+    GroundCover.Model.glsl
+    Grass.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

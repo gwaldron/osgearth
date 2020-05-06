@@ -33,6 +33,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Geocoder>
 #include <osgEarth/ViewFitter>
+#include <osgEarth/NetworkMonitor>
 
 using namespace osgEarth;
 
@@ -239,6 +240,81 @@ public:
     char _search[128];
     Geocoder::Results _results;
     osg::ref_ptr<osgDB::Options> _options;
+};
+
+class NetworkMonitorGUI
+{
+public:
+    NetworkMonitorGUI() :
+        _showOnlyActiveRequests(false),
+        filter("")
+    {
+
+    }
+
+    void draw()
+    {
+        ImGui::Begin("Network Monitor");
+        NetworkMonitor::Requests requests;
+        NetworkMonitor::getRequests(requests);
+
+        bool enabled = NetworkMonitor::getEnabled();
+        ImGui::Checkbox("Enabled", &enabled);
+        NetworkMonitor::setEnabled(enabled);
+
+        ImGui::Checkbox("Show active requests", &_showOnlyActiveRequests);
+        ImGui::InputText("Filter", filter, 128);
+
+        if (ImGui::Button("Clear"))
+        {
+            NetworkMonitor::clear();
+        }
+
+        ImGui::Columns(3, "requests");
+        ImGui::Separator();
+        ImGui::Text("Path"); ImGui::NextColumn();
+        ImGui::Text("Duration (ms)"); ImGui::NextColumn();
+        ImGui::Text("Status"); ImGui::NextColumn();
+        ImGui::Separator();
+        for (auto itr = requests.begin(); itr != requests.end(); ++itr)
+        {
+            if (!_showOnlyActiveRequests || !itr->second.isComplete)
+            {
+                if (strlen(filter) > 0)
+                {
+                    if (strstr(itr->second.uri.c_str(), filter) == NULL && strstr(itr->second.status.c_str(), filter) == NULL)
+                    {
+                        continue;
+                    }
+                }
+
+                ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
+                if (itr->second.isComplete)
+                {
+                    if (strstr(itr->second.status.c_str(), "OK") != NULL)
+                    {
+                        // Color OK requests green
+                        color = ImVec4(0.0, 1.0, 0.0, 1.0);
+                    }
+                    else
+                    {
+                        // Color bad requests red
+                        color = ImVec4(1.0, 0.0, 0.0, 1.0);
+                    }
+                }
+
+                ImGui::TextColored(color, itr->second.uri.c_str());  ImGui::NextColumn();
+                ImGui::Text("%f", itr->second.getDuration()); ImGui::NextColumn();
+                ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
+            }
+        }
+        ImGui::Columns(1);
+        ImGui::Separator();
+        ImGui::End();
+    }
+
+    bool _showOnlyActiveRequests;
+    char filter[128];
 };
 
 

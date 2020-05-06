@@ -41,7 +41,7 @@ namespace osgEarth
     {
     public:
         //! Construct a new tile rasterizer camera
-        TileRasterizer();
+        TileRasterizer(unsigned width, unsigned height);
 
         //! Whether the rasterizer initialized properly and is valid for use.
         bool valid() const;
@@ -53,7 +53,7 @@ namespace osgEarth
         * @param extent geospatial extent of the node to render.
         * @return Future image - blocks on .get() or .release()
         */
-        Threading::Future<osg::Image> render(osg::Node* node, unsigned size, const GeoExtent& extent);
+        Threading::Future<osg::Image> render(osg::Node* node, const GeoExtent& extent);
 
         //! destructor
         virtual ~TileRasterizer();
@@ -62,11 +62,12 @@ namespace osgEarth
 
         struct RenderData {
             osg::ref_ptr<osgUtil::SceneView> _sv;
+            unsigned _width, _height;
             mutable osg::buffered_object<GLuint> _samplesQuery;
         };
 
         struct RenderOperation : public osg::GraphicsOperation {
-            RenderOperation(osg::Node* node, unsigned size, const GeoExtent& extent, RenderData& renderData);
+            RenderOperation(osg::Node* node, const GeoExtent& extent, RenderData& renderData);
             Threading::Future<osg::Image> getFuture();
             void operator () (osg::GraphicsContext* context);
             osg::ref_ptr<osg::Node> _node;

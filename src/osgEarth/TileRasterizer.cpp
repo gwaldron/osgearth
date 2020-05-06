@@ -33,10 +33,9 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 
-TileRasterizer::RenderOperation::RenderOperation(osg::Node* node, unsigned size, const GeoExtent& extent, TileRasterizer::RenderData& renderData) :
+TileRasterizer::RenderOperation::RenderOperation(osg::Node* node, const GeoExtent& extent, TileRasterizer::RenderData& renderData) :
     osg::GraphicsOperation("TileRasterizer", false),
     _node(node),
-    _size(size),
     _extent(extent),
     _renderData(renderData)
 {
@@ -56,7 +55,7 @@ TileRasterizer::RenderOperation::operator () (osg::GraphicsContext* context)
     const osg::GraphicsContext* gc = camera->getGraphicsContext();
 
     _image = new osg::Image();
-    _image->allocateImage(_size, _size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    _image->allocateImage(_renderData._width, _renderData._height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
     camera->detach(camera->COLOR_BUFFER);
     camera->attach(camera->COLOR_BUFFER, _image.get());
@@ -65,8 +64,6 @@ TileRasterizer::RenderOperation::operator () (osg::GraphicsContext* context)
     camera->setProjectionMatrixAsOrtho2D(
         _extent.xMin(), _extent.xMax(),
         _extent.yMin(), _extent.yMax());
-
-    camera->setViewport(0, 0, _size, _size);
 
     _renderData._sv->setSceneData(_node.get());
            
@@ -89,7 +86,11 @@ TileRasterizer::RenderOperation::operator () (osg::GraphicsContext* context)
 
     if (samples > 0u)
     {
-        _image->readImageFromCurrentTexture(gc->getState()->getContextID(), false);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, _image->data());
+
+        //TODO: we can use this method if we wish to compress or otherwise reformat
+        // the data on the GPU
+        //_image->readImageFromCurrentTexture(gc->getState()->getContextID(), false);
     }
     else
     {
@@ -100,7 +101,7 @@ TileRasterizer::RenderOperation::operator () (osg::GraphicsContext* context)
 }
 
 
-TileRasterizer::TileRasterizer()
+TileRasterizer::TileRasterizer(unsigned width, unsigned height)
 {
     osg::Camera* rtt = new osg::Camera();
 
@@ -115,6 +116,7 @@ TileRasterizer::TileRasterizer()
     rtt->setImplicitBufferAttachmentMask(0, 0);
     rtt->setSmallFeatureCullingPixelSize(0.0f);
     rtt->setViewMatrix(osg::Matrix::identity());
+    rtt->setViewport(0, 0, width, height);
 
     osg::StateSet* ss = rtt->getOrCreateStateSet();
     ss->setMode(GL_BLEND, 1);
@@ -132,8 +134,8 @@ TileRasterizer::TileRasterizer()
     traits->screenNum = si.screenNum;
     traits->x = 0;
     traits->y = 0;
-    traits->width = 1024;
-    traits->height = 1024;
+    traits->width = width;
+    traits->height = height;
     traits->format = GL_RGBA;
     traits->red = 8;
     traits->green = 8;
@@ -185,6 +187,10 @@ TileRasterizer::TileRasterizer()
     _renderData._sv->getCullVisitor()->setIdentifier(new osgUtil::CullVisitor::Identifier());
     _renderData._sv->setState(gc->getState());
     _renderData._sv->setFrameStamp(new osg::FrameStamp());
+
+    // pass in the dimensions
+    _renderData._width = width;
+    _renderData._height = height;
 }
 
 bool
@@ -206,12 +212,12 @@ TileRasterizer::~TileRasterizer()
 
 
 Threading::Future<osg::Image>
-TileRasterizer::render(osg::Node* node, unsigned size, const GeoExtent& extent)
+TileRasterizer::render(osg::Node* node, const GeoExtent& extent)
 {
     if (_renderData._sv.valid() == false)
         return Threading::Future<osg::Image>();
 
-    RenderOperation* op = new RenderOperation(node, size, extent, _renderData);
+    RenderOperation* op = new RenderOperation(node, extent, _renderData);
     Threading::Future<osg::Image> result = op->getFuture();
 
     _renderData._sv->getCamera()->getGraphicsContext()->getGraphicsThread()->add( op );

@@ -327,6 +327,9 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         {
             Threading::Future<osg::Image> result = _rasterizer->render(group.release(), getTileSize(), outputExtent);
             return GeoImage(result.release(), key.getExtent());
+
+            // TODO: consider storing a Future right in the geoimage.
+            //return GeoImage(result, key.getExtent());
         }
     }
 

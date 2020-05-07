@@ -41,7 +41,7 @@ namespace osgEarth
     {
     public:
         //! Construct a new tile rasterizer camera
-        TileRasterizer();
+        TileRasterizer(unsigned width, unsigned height);
 
         //! Whether the rasterizer initialized properly and is valid for use.
         bool valid() const;
@@ -53,31 +53,46 @@ namespace osgEarth
         * @param extent geospatial extent of the node to render.
         * @return Future image - blocks on .get() or .release()
         */
-        Threading::Future<osg::Image> render(osg::Node* node, unsigned size, const GeoExtent& extent);
+        Threading::Future<osg::Image> render(osg::Node* node, const GeoExtent& extent);
 
         //! destructor
         virtual ~TileRasterizer();
 
+        osg::Node* getNode() const;
+
     private:
 
         struct RenderData {
+            bool _initialized;
             osg::ref_ptr<osgUtil::SceneView> _sv;
             mutable osg::buffered_object<GLuint> _samplesQuery;
+            mutable osg::buffered_object<GLuint> _pbo;
+            osg::observer_ptr<osg::GraphicsContext> _gc;
+            unsigned _width, _height;
         };
 
         struct RenderOperation : public osg::GraphicsOperation {
-            RenderOperation(osg::Node* node, unsigned size, const GeoExtent& extent, RenderData& renderData);
+            RenderOperation(osg::Node* node, const GeoExtent& extent, RenderData& renderData);
             Threading::Future<osg::Image> getFuture();
             void operator () (osg::GraphicsContext* context);
             osg::ref_ptr<osg::Node> _node;
-            unsigned _size;
             GeoExtent _extent;
             osg::ref_ptr<osg::Image> _image;
             Threading::Promise<osg::Image> _promise;
             RenderData& _renderData;
+            int _pass;
+            bool _async;
+            GLuint _pbo;
+        };
+
+        struct RenderInstaller : public osg::Drawable {
+            RenderInstaller(RenderData& renderData);
+            void drawImplementation(osg::RenderInfo& ri) const;
+            RenderData& _renderData;
         };
 
         RenderData _renderData;
+        osg::ref_ptr<osg::Drawable> _installer;
     };
 
 } // namespace osgEarth

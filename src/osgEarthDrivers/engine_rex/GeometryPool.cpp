@@ -797,6 +797,7 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
             if (_maskElements.valid() && 
                 _maskElements->getNumIndices() > 0u)
             {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
                 if (_maskElements->getDataType() == _drawElements->getDataType())
                 {
                     GLsizei counts[2];
@@ -817,6 +818,7 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
                         2);
                 }
                 else
+#endif
                 {
                     glDrawElements(
                         primitiveType, 

@@ -53,7 +53,7 @@ static ModelNode*     s_marker      = 0L;
 
 
 // An event handler that will print out the elevation at the clicked point
-struct QueryElevationHandler : public osgGA::GUIEventHandler 
+struct QueryElevationHandler : public osgGA::GUIEventHandler
 {
     QueryElevationHandler()
         : _mouseDown( false ),
@@ -99,9 +99,9 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                 static LatLongFormatter s_f;
 
                 s_posLabel->setText( Stringify()
-                    << std::fixed << std::setprecision(2) 
+                    << std::fixed << std::setprecision(2)
                     << s_f.format(mapPointGeodetic.y(), true)
-                    << ", " 
+                    << ", "
                     << s_f.format(mapPointGeodetic.x(), false) );
 
                 if (s_mapNode->getMapSRS()->isGeographic())
@@ -122,7 +122,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                     mapPointGeodetic.y(),
                     mapPointGeodetic.x(),
                     egm96z);
-                
+
                 s_egm96Label->setText(Stringify() << egm96z << " m");
 
                 yes = true;
@@ -191,6 +191,8 @@ struct ClickToRemoveElevation : public ControlEventHandler
 
 int main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     osgViewer::Viewer viewer(arguments);
@@ -208,7 +210,7 @@ int main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );
-    
+
     // install the programmable manipulator.
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
@@ -238,7 +240,7 @@ int main(int argc, char** argv)
     s_egm96Label = grid->setControl(1,r++,new LabelControl(""));
     s_resLabel = grid->setControl(1,r++,new LabelControl(""));
 
-    
+
     Style markerStyle;
     markerStyle.getOrCreate<ModelSymbol>()->url()->setLiteral("../data/axes.osgt.64.scale");
     markerStyle.getOrCreate<ModelSymbol>()->autoScale() = true;
@@ -249,8 +251,8 @@ int main(int argc, char** argv)
     s_mapNode->addChild( s_marker );
 
     const SpatialReference* mapSRS = s_mapNode->getMapSRS();
-    s_vdaLabel->setText( mapSRS->getVerticalDatum() ? 
-        mapSRS->getVerticalDatum()->getName() : 
+    s_vdaLabel->setText( mapSRS->getVerticalDatum() ?
+        mapSRS->getVerticalDatum()->getName() :
         Stringify() << "geodetic (" << mapSRS->getEllipsoid()->getName() << ")" );
 
     ControlCanvas* canvas = ControlCanvas::get(&viewer);

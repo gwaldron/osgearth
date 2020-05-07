@@ -65,6 +65,8 @@ struct UpdateLabel : public osg::Operation
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );

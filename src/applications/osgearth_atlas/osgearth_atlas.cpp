@@ -108,7 +108,7 @@ build(osg::ArgumentParser& arguments)
 
     if ( !lib->initialize(0L) )
         return usage("Error loading input catalog file");
-    
+
     // build the atlas.
     AtlasBuilder        builder;
     AtlasBuilder::Atlas atlas;
@@ -122,14 +122,14 @@ build(osg::ArgumentParser& arguments)
     std::string outImageFile;
     if ( !arguments.read("--out-image", outImageFile) )
         outImageFile  = osgDB::getNameLessExtension(inCatalogFile) + "_atlas.osgb";
-        
+
     // the output catalog file describing the texture atlas contents:
     std::string outCatalogFile = osgDB::getSimpleFileName(outImageFile) + ".xml";
 
     // Whether to build RGB images
     bool rgb = arguments.read("--rgb");
     builder.setRGB( rgb );
-    
+
 
     // auxiliary atlas patterns:
     std::string pattern;
@@ -146,7 +146,7 @@ build(osg::ArgumentParser& arguments)
 
     osgDB::writeImageFile(*atlas._images.begin()->get(), outImageFile, writeOptions.get());
     OE_INFO << LC << "Wrote output image to \"" << outImageFile << "\"" << std::endl;
-    
+
     // write any aux images.
     const std::vector<std::string>& auxPatterns = builder.auxFilePatterns();
     for(unsigned i=0; i<auxPatterns.size(); ++i)
@@ -157,7 +157,7 @@ build(osg::ArgumentParser& arguments)
             osgDB::getFileExtension(outImageFile);
 
         osgDB::writeImageFile(*atlas._images[i + 1].get(), auxAtlasFile, writeOptions.get());
-        
+
         OE_INFO << LC << "Wrote auxiliary image to \"" << auxAtlasFile << "\"" << std::endl;
     }
 
@@ -291,6 +291,8 @@ show(osg::ArgumentParser& arguments)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // print usage info.

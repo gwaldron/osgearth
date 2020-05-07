@@ -37,6 +37,8 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser args(&argc, argv);
 
     if (argc < 2)

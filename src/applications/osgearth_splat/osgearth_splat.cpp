@@ -51,6 +51,8 @@ failed(const std::string& s) {
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     bool fromXML = arguments.find("--xml") >= 0;
 
@@ -58,7 +60,7 @@ main(int argc, char** argv)
     LandCoverDictionary* dictionary = new LandCoverDictionary();
 
     if (fromXML)
-    {        
+    {
         if (!dictionary->loadFromXML("../data/land_cover_dictionary.xml"))
             return failed("Cannot find XML land cover dictionary");
     }
@@ -72,7 +74,7 @@ main(int argc, char** argv)
         dictionary->addClass("swamp");
         dictionary->addClass("desert");
         dictionary->addClass("rock");
-        dictionary->addClass("water");    
+        dictionary->addClass("water");
         dictionary->addClass("tundra");
         dictionary->addClass("urban");
     }
@@ -128,7 +130,7 @@ main(int argc, char** argv)
     // At least one zone is required and by default it covers the entire map.
     Zone* splatZone = new Zone();
     splatZone->setSurface(surface);
-    
+
     // Create an imagery splatting layer that uses the configured land cover.
     SplatLayer* splatLayer = new SplatLayer();
     splatLayer->setName("Splat imagery");
@@ -154,7 +156,7 @@ main(int argc, char** argv)
     GroundCoverBiomeOptions forestBiome;
     forestBiome.biomeClasses() = "forest";
     forestBiome.symbols().push_back(treeSymbol);
-    
+
     // Assemble the ground cover coniguration:
     GroundCoverOptions treeOptions;
     treeOptions.biomes().push_back(forestBiome);

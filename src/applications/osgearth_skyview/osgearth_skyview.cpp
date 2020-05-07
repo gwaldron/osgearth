@@ -35,7 +35,7 @@ using namespace osgEarth::Util;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -45,6 +45,8 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -80,15 +82,15 @@ main(int argc, char** argv)
     }
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
 
     //Set our custom manipulator
     viewer.setCameraManipulator(new SkyManipulator());
     //viewer.setCameraManipulator( new osgGA::FirstPersonManipulator() );
 
-    
-    
+
+
     if ( node )
     {
         // Disable backface culling
@@ -98,7 +100,7 @@ main(int argc, char** argv)
         viewer.setSceneData( node );
         while(!viewer.done())
         {
-            viewer.frame();            
+            viewer.frame();
         }
     }
     else

@@ -128,10 +128,10 @@ namespace
 
 
     /**
-     * Handler that demonstrates the "viewpoint" functionality in 
+     * Handler that demonstrates the "viewpoint" functionality in
      * EarthManipulator. Press a number key to fly to a viewpoint.
      */
-    struct FlyToViewpointHandler : public osgGA::GUIEventHandler 
+    struct FlyToViewpointHandler : public osgGA::GUIEventHandler
     {
         FlyToViewpointHandler( EarthManipulator* manip ) : _manip(manip) { }
 
@@ -147,7 +147,7 @@ namespace
 
         osg::observer_ptr<EarthManipulator> _manip;
     };
-    
+
 
     /**
      * Toggles the logarithmic depth buffer
@@ -222,7 +222,7 @@ namespace
     /**
     * Toggles whether to zoom towards the mouse pointer.
     */
-    struct ToggleZoomToMouse : public osgGA::GUIEventHandler 
+    struct ToggleZoomToMouse : public osgGA::GUIEventHandler
     {
         ToggleZoomToMouse(char key, EarthManipulator* manip ) : _key(key), _manip(manip) { }
 
@@ -439,7 +439,7 @@ namespace
         char _key;
         osg::ref_ptr<EarthManipulator> _manip;
     };
-    
+
 
     /**
      * Adjusts the position offset.
@@ -533,7 +533,7 @@ namespace
         osg::ref_ptr<EarthManipulator> _manip;
         double _vfov, _ar, _zn, _zf;
     };
-    
+
     struct FitViewToPoints : public osgGA::GUIEventHandler
     {
         std::vector<GeoPoint> _points;
@@ -574,7 +574,7 @@ namespace
         char _key;
         osg::ref_ptr<EarthManipulator> _manip;
     };
-        
+
 
     /**
      * A simple simulator that moves an object around the Earth. We use this to
@@ -586,7 +586,7 @@ namespace
             : _manip(manip), _mapnode(mapnode), _model(model), _name(name), _key(key), _varyAngles(false)
         {
             if ( !model )
-            { 
+            {
                 _model = AnnotationUtils::createHemisphere(250.0, osg::Vec4(1,.7,.4,1));
             }
 
@@ -598,7 +598,7 @@ namespace
             text->size() = 32.0f;
             text->declutter() = false;
             text->pixelOffset()->set(50, 50);
-            
+
             _label = new LabelNode(_name, style);
             _label->setDynamic( true );
             _label->setHorizonCulling(false);
@@ -638,7 +638,7 @@ namespace
             else if ( ea.getEventType() == ea.KEYDOWN )
             {
                 if ( ea.getKey() == _key )
-                {                                
+                {
                     Viewpoint vp = _manip->getViewpoint();
                     vp.setNode(_label);
                     vp.range() = 25000.0;
@@ -670,7 +670,7 @@ namespace
      * which provides a frame-synched camera matrix (post-update traversal)
      */
     struct CalculateWindowCoords : public osgGA::GUIEventHandler
-                                   
+
     {
         CalculateWindowCoords(char key, EarthManipulator* manip, Simulator* sim)
             : _key(key), _active(false), _sim(sim), _xform(0L)
@@ -732,7 +732,7 @@ namespace
                 aa.requestRedraw();
                 return true;
             }
-            
+
             return false;
         }
 
@@ -753,7 +753,7 @@ namespace
         CalculateWindowCoords* _calc;
 
         CameraUpdater(CalculateWindowCoords* calc) : _calc(calc) { }
-        
+
         void onUpdateCamera(const osg::Camera* cam)
         {
             _calc->onUpdateCamera(cam);
@@ -764,6 +764,8 @@ namespace
 
 int main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     if (arguments.read("--help") || argc==1)
@@ -818,14 +820,14 @@ int main(int argc, char** argv)
     sim2->_varyAngles = true;
     viewer.addEventHandler(sim2);
 
-    manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
+    manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );
 
     // Set the minimum distance to something larger than the default
     manip->getSettings()->setMinMaxDistance(10.0, manip->getSettings()->getMaxDistance());
 
     // Sets the maximum focal point offsets (usually for tethering)
     manip->getSettings()->setMaxOffset(5000.0, 5000.0);
-    
+
     // Pitch limits.
     manip->getSettings()->setMinMaxPitch(-90, 90);
 
@@ -842,10 +844,10 @@ int main(int argc, char** argv)
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
         osgGA::GUIEventAdapter::MODKEY_SHIFT);
 
-    manip->getSettings()->setArcViewpointTransitions( true );    
+    manip->getSettings()->setArcViewpointTransitions( true );
 
     manip->setTetherCallback( new TetherCB() );
-    
+
     //viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
     viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
@@ -859,7 +861,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new ToggleSSL(sims, ')'));
     viewer.addEventHandler(new FitViewToPoints('j', manip, mapNode->getMapSRS()));
     viewer.addEventHandler(new ToggleZoomToMouse('z', manip));
-    
+
     CalculateWindowCoords* calc = new CalculateWindowCoords('W', manip, sim1);
     viewer.addEventHandler(calc);
     manip->setUpdateCameraCallback(new CameraUpdater(calc));

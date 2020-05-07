@@ -57,10 +57,10 @@ struct App
     osg::ref_ptr<MapNode> _mapNode;
     osg::ref_ptr<DecalImageLayer> _imageLayer;
     osg::ref_ptr<DecalElevationLayer> _elevLayer;
-//    osg::ref_ptr<DecalLandCoverLayer> _landCoverLayer;
+    osg::ref_ptr<DecalLandCoverLayer> _landCoverLayer;
     osg::ref_ptr<osg::Image> _image_for_elev;
 	osg::ref_ptr<osg::Image> _image_for_rgb;
-//    osg::ref_ptr<osg::Image> _landCover;
+    osg::ref_ptr<osg::Image> _landCover;
     std::stack<std::string> _undoStack;
     unsigned _idGenerator;
     unsigned _decalsPerClick;
@@ -74,7 +74,7 @@ struct App
             OE_WARN << "Failed to load elev decal image!" << std::endl;
             return;
         }
-
+		
 		_image_for_rgb = osgDB::readRefImageFile("../data/crater.png");
 		if (!_image_for_rgb.valid())
 		{
@@ -99,11 +99,11 @@ struct App
 
 		//This bit would synthesize a rocky image decal using landocver codes to replace any non-zero alpha value in the imagery with rock.
 		//Removed for now to use a seperate rgb image instead of synthesizing one
-/*
+
 		LandCoverDictionary* dic = mapNode->getMap()->getLayer<LandCoverDictionary>();
         if (dic)
         {
-            // Synthesize a land cover raster to use as a decal.
+            // Synthesize a land cover raster to use as a decal and for masking trees & grass
             const LandCoverClass* lc_class = dic->getClassByName("rock");
             if (lc_class)
             {
@@ -112,7 +112,6 @@ struct App
                 ImageUtils::PixelWriter write(_landCover.get());
 
                 const float lc_code = (float)lc_class->getValue();
-				const float no_data_image = 0.0f / 255.0f;
 
                 for (int t = 0; t < read.t(); ++t)
                 {
@@ -120,16 +119,15 @@ struct App
                     {
                         read(value, s, t);
 
-//                        float c = value.a() != no_data_image ? lc_code : NO_DATA_VALUE;
 						float c = value.a() > 0.2 ? lc_code : NO_DATA_VALUE;
 
-                        //value.set(c, c, c, c);
+                        value.set(c, c, c, c);
                         write(value, s, t);
                     }
                 }
             }
         }
-*/
+
         _imageLayer = new DecalImageLayer();
         _imageLayer->setName("Image Decals");
         _imageLayer->setMinLevel(_minLevel);
@@ -143,7 +141,7 @@ struct App
         mapNode->getMap()->addLayer(_elevLayer.get());
         _layersToRefresh.push_back(_elevLayer.get());
 
-/*
+
         if (_landCover.valid())
         {
             _landCoverLayer = new DecalLandCoverLayer();
@@ -152,7 +150,7 @@ struct App
             mapNode->getMap()->addLayer(_landCoverLayer.get());
             _layersToRefresh.push_back(_landCoverLayer.get());
         }
-*/
+
     }
 
     void addDecal(const GeoExtent& extent)
@@ -176,12 +174,12 @@ struct App
             _elevLayer->addDecal(id, extent, _image_for_elev.get(), _size / 15.0f, -_size / 15.0f);
         }
 
-/* Remove landcover layer for now, using rgb image
+
 		if (_landCoverLayer.valid())
         {
            _landCoverLayer->addDecal(id, extent, _landCover.get());
         }
-*/
+
 
         // Tell the terrain engine to regenerate the effected area.
         _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
@@ -211,13 +209,13 @@ struct App
                 _elevLayer->removeDecal(id);
             }
 
-/*
+
             if (_landCoverLayer.valid())
             {
                 extent.expandToInclude(_landCoverLayer->getDecalExtent(id));
                 _landCoverLayer->removeDecal(id);
             }
-*/
+
 
             _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
         }
@@ -237,12 +235,12 @@ struct App
             _elevLayer->clearDecals();
         }
 
-/*
+
         if (_landCoverLayer.valid())
         {
             _landCoverLayer->clearDecals();
         }
-*/
+
         _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
     }
 };
@@ -316,7 +314,7 @@ struct ClickToDecal : public osgGA::GUIEventHandler
 int
 main(int argc, char** argv)
 {
-    osgEarth::initialize();
+	osgEarth::initialize();
     osg::ArgumentParser arguments(&argc, argv);
 
     // help?
@@ -328,7 +326,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator(new EarthManipulator(arguments));
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags
+    // and earth file <external> tags    
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
@@ -345,7 +343,7 @@ main(int argc, char** argv)
         viewer.setSceneData(node);
         viewer.addEventHandler(new ClickToDecal(app));
 
-        OE_WARN << LC <<
+        OE_WARN << LC << 
             "\n\n-- Zoom in close ..."
             "\n-- Press 'd' to drop bombs"
             "\n-- Press 'u' to undo last drop"

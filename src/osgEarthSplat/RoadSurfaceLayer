@@ -81,6 +81,8 @@ namespace osgEarth { namespace Splat
         //! Serialize
         virtual Config getConfig() const;
 
+        osg::Node* getNode() const;
+
     protected: // Layer
 
         // post-ctor initialization

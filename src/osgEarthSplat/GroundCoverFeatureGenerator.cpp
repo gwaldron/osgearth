@@ -373,6 +373,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     double tileWidth_m = 2.0 * c.getRadius() / 1.4142;
     float spacing_m = groundcover->getSpacing();
     unsigned vboTileSize = (unsigned)(tileWidth_m / spacing_m);
+    if (vboTileSize & 0x01) vboTileSize += 1;
 
     // from here on out, we are mimicing the GroundCover.VS.glsl shader logic.
     int numInstancesX = vboTileSize;

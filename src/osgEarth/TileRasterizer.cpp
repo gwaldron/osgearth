@@ -124,28 +124,9 @@ TileRasterizer::TileRasterizer(unsigned width, unsigned height)
     GLUtils::setLighting(ss, 0);
 
     // set up our off-screen GC
-    osg::GraphicsContext::ScreenIdentifier si;
-    si.readDISPLAY();
-    si.setUndefinedScreenDetailsToDefaultScreen();
-
     osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;  
-    traits->hostName = si.hostName;
-    traits->displayNum = si.displayNum;
-    traits->screenNum = si.screenNum;
-    traits->x = 0;
-    traits->y = 0;
-    traits->width = width;
-    traits->height = height;
-    traits->format = GL_RGBA;
-    traits->red = 8;
-    traits->green = 8;
-    traits->blue = 8;
     traits->alpha = 8;
     traits->depth = 0;
-    traits->windowDecoration = false;
-    traits->doubleBuffer = false;
-    traits->sharedContext = 0;
-    traits->pbuffer = false;
     traits->glContextVersion = osg::DisplaySettings::instance()->getGLContextVersion();
     traits->glContextProfileMask = osg::DisplaySettings::instance()->getGLContextProfileMask();
 

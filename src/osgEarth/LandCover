@@ -32,8 +32,13 @@ namespace osgEarth
         //! Creates a new image configured to hold land cover data
         static osg::Image* createImage(unsigned s, unsigned t =0u);
 
+        //! Create an empty no-data image
+        static osg::Image* createEmptyImage();
+
         //! the internal texture format used for land cover data
         static GLint getTextureFormat();
+
+        static bool isLandCover(const osg::Image*);
     };
 
     /**

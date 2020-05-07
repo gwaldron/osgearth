@@ -35,10 +35,24 @@ LandCover::createImage(unsigned s, unsigned t)
     return image;
 }
 
+osg::Image*
+LandCover::createEmptyImage()
+{
+    osg::Image* image = createImage(1,1);
+    *((GLfloat*)image->data()) = NO_DATA_VALUE;
+    return image;
+}
+
 GLint
 LandCover::getTextureFormat()
 {
     return GL_R16F;
+}
+
+bool
+LandCover::isLandCover(const osg::Image* image)
+{
+    return image && image->getPixelFormat() == GL_RED && image->getDataType() == GL_FLOAT;
 }
 
 //............................................................................

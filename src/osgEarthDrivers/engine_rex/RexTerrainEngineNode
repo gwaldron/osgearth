@@ -26,7 +26,6 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Containers>
 #include <osgEarth/ResourceReleaser>
-#include <osgEarth/TileRasterizer>
 
 #include "EngineContext"
 #include "TileNodeRegistry"
@@ -172,7 +171,6 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<GeometryPool> _geometryPool;
         osg::ref_ptr<LoaderGroup>  _loader;
         osg::ref_ptr<UnloaderGroup> _unloader;
-        TileRasterizer* _rasterizer;
         
         osg::ref_ptr<osg::Group> _terrain;
         bool _morphingSupported;

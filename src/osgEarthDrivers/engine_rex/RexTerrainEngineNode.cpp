@@ -128,7 +128,6 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     _refreshRequired      ( false ),
     _stateUpdateRequired  ( false ),
     _renderModelUpdateRequired( false ),
-    _rasterizer(0L),
     _morphTerrainSupported(true),
     _frameLastUpdated(0u)
 {
@@ -336,7 +335,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         this, // engine
         _geometryPool.get(),
         _loader.get(),
-        _rasterizer,
         _liveTiles.get(),
         _renderBindings,
         options(),

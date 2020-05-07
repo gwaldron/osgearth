@@ -65,7 +65,6 @@ namespace osgEarth
         struct RenderData {
             bool _initialized;
             osg::ref_ptr<osgUtil::SceneView> _sv;
-            unsigned _width, _height;
             mutable osg::buffered_object<GLuint> _samplesQuery;
             mutable osg::buffered_object<GLuint> _pbo;
             osg::observer_ptr<osg::GraphicsContext> _gc;

@@ -474,6 +474,7 @@ namespace osgEarth { namespace TMS
             const URI& uri,
             osg::ref_ptr<const Profile>& profile,
             const std::string& format,
+            bool isCoverage,
             DataExtentList& out_dataExtents,
             const osgDB::Options* readOptions);
 
@@ -498,6 +499,7 @@ namespace osgEarth { namespace TMS
         osg::ref_ptr<TMS::TileMap> _tileMap;
         osg::ref_ptr<osgDB::ReaderWriter> _writer;
         bool _forceRGBWrites;
+        bool _isCoverage;
 
         bool resolveWriter(const std::string& format);
     };

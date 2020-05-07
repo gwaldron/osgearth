@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/LandCover>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgDB/FileUtils>
 
@@ -803,9 +804,12 @@ Status
 TMS::Driver::open(const URI& uri,
                   osg::ref_ptr<const Profile>& profile,
                   const std::string& format,
+                  bool isCoverage,
                   DataExtentList& dataExtents,
                   const osgDB::Options* readOptions)
 {
+    _isCoverage = isCoverage;
+
     // URI is mandatory.
     if (uri.empty())
     {
@@ -947,8 +951,33 @@ TMS::Driver::read(const URI& uri,
                 if (key.getLevelOfDetail() <= _tileMap->getMaxLevel())
                 {
                     OE_DEBUG << LC << "Returning empty image " << std::endl;
-                    return ImageUtils::createEmptyImage();
+                    if (_isCoverage)
+                        return LandCover::createEmptyImage();
+                    else
+                        return ImageUtils::createEmptyImage();
                 }
+            }
+        }
+
+        if (image.valid())
+        {
+            if (_isCoverage && !LandCover::isLandCover(image.get()))
+            {
+                osg::Image* dest = LandCover::createImage(image->s(), image->t());
+                ImageUtils::PixelReader read(image.get());
+                ImageUtils::PixelWriter write(dest);
+                osg::Vec4 value;
+                for(int t=0; t<read.t(); ++t)
+                {
+                    for(int s=0; s<read.s(); ++s)
+                    {
+                        read(value, s, t);
+                        if (value.a() == 0.0)
+                            value.r() = NO_DATA_VALUE;
+                        write(value, s, t);
+                    }
+                }
+                image = dest;
             }
         }
 
@@ -1117,6 +1146,7 @@ TMSImageLayer::openImplementation()
         options().url().get(),
         profile,
         options().format().get(),
+        options().coverage().get(),
         dataExtents(),
         getReadOptions());
 

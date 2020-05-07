@@ -91,7 +91,7 @@ public:
             }
             if ( !_grid->visible() )
                 _grid->setVisible( true );
-        
+
             _lastFID = feature->getFID();
         }
     }
@@ -102,7 +102,7 @@ public:
         _lastFID = 0u;
     }
 
-    bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa) 
+    bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa)
     {
         return ea.getEventType() == ea.RELEASE; // click
     }
@@ -116,6 +116,8 @@ public:
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // a basic OSG viewer
@@ -148,7 +150,7 @@ main(int argc, char** argv)
     }
     else
     {
-        OE_NOTICE 
+        OE_NOTICE
             << "\nUsage: " << argv[0] << " file.earth" << std::endl
             << MapNodeHelper().usage() << std::endl;
     }

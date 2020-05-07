@@ -188,7 +188,7 @@ createTrackNodes(const SpatialReference* mapSRS, osg::Group* parent, const Track
         double lon1 = -180.0 + prng.next() * 360.0;
         double lat1 = -80.0 + prng.next() * 160.0;
         TrackSim* sim = new TrackSim();
-        sim->_track = track;  
+        sim->_track = track;
         sim->_start.set(mapSRS, lon0, lat0, 0.0, ALTMODE_ABSOLUTE);
         sim->_end.set(mapSRS, lon1, lat1, 0.0, ALTMODE_ABSOLUTE);
         sims.push_back( sim );
@@ -201,12 +201,12 @@ Container*
 createControls( osgViewer::View* view )
 {
     //ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
-    
+
     // title bar
     VBox* vbox = new VBox(Control::ALIGN_NONE, Control::ALIGN_BOTTOM, 2, 1 );
     vbox->setBackColor( Color(Color::Black, 0.5) );
     vbox->addControl( new LabelControl("osgEarth Tracks Demo", Color::Yellow) );
-    
+
     // checkbox that toggles decluttering of tracks
     struct ToggleDecluttering : public ControlEventHandler {
         void onValueChanged( Control* c, bool on ) {
@@ -249,28 +249,28 @@ createControls( osgViewer::View* view )
 
     grid->setControl( 0, r, new LabelControl("Sim loop duration:") );
     LabelControl* speedLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_duration) );
-    HSliderControl* speedSlider = grid->setControl( 1, r, new HSliderControl( 
+    HSliderControl* speedSlider = grid->setControl( 1, r, new HSliderControl(
         600.0, 30.0, *g_duration, new ChangeFloatOption(g_duration, speedLabel) ) );
     speedSlider->setHorizFill( true, 200 );
 
     grid->setControl( 0, ++r, new LabelControl("Min scale:") );
     LabelControl* minAnimationScaleLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minAnimationScale()) );
-    grid->setControl( 1, r, new HSliderControl( 
+    grid->setControl( 1, r, new HSliderControl(
         0.0, 1.0, *g_dcOptions.minAnimationScale(), new ChangeFloatOption(g_dcOptions.minAnimationScale(), minAnimationScaleLabel) ) );
 
     grid->setControl( 0, ++r, new LabelControl("Min alpha:") );
     LabelControl* alphaLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minAnimationAlpha()) );
-    grid->setControl( 1, r, new HSliderControl( 
+    grid->setControl( 1, r, new HSliderControl(
         0.0, 1.0, *g_dcOptions.minAnimationAlpha(), new ChangeFloatOption(g_dcOptions.minAnimationAlpha(), alphaLabel) ) );
 
     grid->setControl( 0, ++r, new LabelControl("Activate time (s):") );
     LabelControl* actLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.inAnimationTime()) );
-    grid->setControl( 1, r, new HSliderControl( 
+    grid->setControl( 1, r, new HSliderControl(
         0.0, 2.0, *g_dcOptions.inAnimationTime(), new ChangeFloatOption(g_dcOptions.inAnimationTime(), actLabel) ) );
 
     grid->setControl( 0, ++r, new LabelControl("Deactivate time (s):") );
     LabelControl* deactLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.outAnimationTime()) );
-    grid->setControl( 1, r, new HSliderControl( 
+    grid->setControl( 1, r, new HSliderControl(
         0.0, 2.0, *g_dcOptions.outAnimationTime(), new ChangeFloatOption(g_dcOptions.outAnimationTime(), deactLabel) ) );
 
     return vbox;
@@ -284,6 +284,8 @@ createControls( osgViewer::View* view )
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // initialize a viewer.
@@ -299,7 +301,7 @@ main(int argc, char** argv)
 
     // count on the cmd line?
     arguments.read("--count", g_numTracks);
-    
+
     viewer.setSceneData( earth );
 
     // build a track field schema.
@@ -315,7 +317,7 @@ main(int argc, char** argv)
     // Set up the automatic decluttering. setEnabled() activates decluttering for
     // all drawables under that state set. We are also activating priority-based
     // sorting, which looks at the AnnotationData::priority field for each drawable.
-    // (By default, objects are sorted by disatnce-to-camera.) Finally, we customize 
+    // (By default, objects are sorted by disatnce-to-camera.) Finally, we customize
     // a couple of the decluttering options to get the animation effects we want.
     g_dcOptions = ScreenSpaceLayout::getOptions();
     g_dcOptions.inAnimationTime()  = 1.0f;
@@ -326,7 +328,7 @@ main(int argc, char** argv)
     // attach the simulator to the viewer.
     viewer.addUpdateOperation( new TrackSimUpdate(trackSims) );
     viewer.setRunFrameScheme( viewer.CONTINUOUS );
-    
+
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     viewer.run();
 }

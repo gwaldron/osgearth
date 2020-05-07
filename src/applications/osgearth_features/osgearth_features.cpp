@@ -60,6 +60,8 @@ int usage( const std::string& app )
 //
 int main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     if ( arguments.read("--help") )
@@ -84,8 +86,8 @@ int main(int argc, char** argv)
     GDALImageLayer* basemap = new GDALImageLayer();
     basemap->setURL("../data/world.tif");
     map->addLayer(basemap);
-    
-    // Next we add a layer to provide the feature data. 
+
+    // Next we add a layer to provide the feature data.
     OGRFeatureSource* features = new OGRFeatureSource();
     features->setName("vector-data");
 
@@ -132,7 +134,7 @@ int main(int argc, char** argv)
         RenderSymbol* render = style.getOrCreate<RenderSymbol>();
         render->depthOffset()->enabled() = true;
     }
-    
+
     if (useRaster)
     {
         FeatureImageLayer* layer = new FeatureImageLayer();
@@ -153,7 +155,7 @@ int main(int argc, char** argv)
         layer->setStyleSheet(styleSheet);
 
         map->addLayer(layer);
-    }   
+    }
 
     if ( useLabels && !useRaster )
     {

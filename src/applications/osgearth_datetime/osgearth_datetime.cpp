@@ -59,7 +59,7 @@ struct CollectDateTimeRangeVisitor : public osg::NodeVisitor
         }
 
         traverse(node);
-    }    
+    }
 };
 
 struct CullNodeByDateTimeRange : public osg::NodeCallback
@@ -67,7 +67,7 @@ struct CullNodeByDateTimeRange : public osg::NodeCallback
     DateTimeRange range;
 
     void operator()(osg::Node* node, osg::NodeVisitor* nv)
-    {        
+    {
         AnnotationData* data = dynamic_cast<AnnotationData*>(node->getUserData());
         if (data && !data->getDateTimeRange().intersects(range))
         {
@@ -97,7 +97,7 @@ struct AssignCullCallbakVisitor : public osg::NodeVisitor
         }
 
         traverse(node);
-    }    
+    }
 };
 
 struct TimeSliderHandler : public ControlEventHandler
@@ -132,11 +132,13 @@ usage( char** argv )
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::Group* root = new osg::Group();
 
     // try to load an earth file.
     osg::ArgumentParser arguments(&argc,argv);
-    
+
     osgViewer::Viewer viewer(arguments);
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy(false, false);
     viewer.setCameraManipulator( new EarthManipulator() );
@@ -160,9 +162,9 @@ main(int argc, char** argv)
     CollectDateTimeRangeVisitor collectVisitor;
     collectVisitor.setNodeMaskOverride(~0);
     node->accept(collectVisitor);
-    
+
     osg::ref_ptr<CullNodeByDateTimeRange> callback = new CullNodeByDateTimeRange;
-    
+
     AssignCullCallbakVisitor assignVisitor(callback.get());
     assignVisitor.setNodeMaskOverride(~0);
     node->accept(assignVisitor);
@@ -174,21 +176,21 @@ main(int argc, char** argv)
     slider->setVertAlign(Control::ALIGN_TOP);
     slider->setBackColor(.6, 0, 0, 1);
     slider->setHeight(25);
-    slider->setWidth(300);    
+    slider->setWidth(300);
     slider->addEventHandler(new TimeSliderHandler(callback.get(), collectVisitor.range));
     slider->setValue(0.0);
     cs->addControl(slider);
 
     //--------------------------------------------------------------------
 
-    // initialize the viewer:    
+    // initialize the viewer:
     viewer.setSceneData( root );
 
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    
+
     viewer.run();
 
     return 0;

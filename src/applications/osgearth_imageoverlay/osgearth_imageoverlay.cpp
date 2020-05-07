@@ -64,7 +64,7 @@ createControlPanel( osgViewer::View* view )
 
 
 
-    canvas->addControl( s_layerBox );    
+    canvas->addControl( s_layerBox );
     return canvas;
 }
 
@@ -73,10 +73,10 @@ usage( const std::string& msg )
 {
     OE_NOTICE << msg << std::endl;
     OE_NOTICE << "USAGE: osgearth_imageoverlay file.earth" << std::endl;
-    OE_NOTICE << "   --image <file> xmin ymin xmax ymax : An image to overlay and it's bounds" << std::endl;        
+    OE_NOTICE << "   --image <file> xmin ymin xmax ymax : An image to overlay and it's bounds" << std::endl;
     OE_NOTICE << "   --vert                             : Move individual verts when editing" << std::endl;
 
-        
+
     return -1;
 }
 
@@ -107,7 +107,7 @@ struct EditHandler : public ControlEventHandler
       _viewer(viewer),
       _editor(editor){ }
 
-    void onClick( Control* control, int mouseButtonMask ) {        
+    void onClick( Control* control, int mouseButtonMask ) {
         if (_editor->getNodeMask() != ~0)
         {
             static_cast<LabelControl*>(control)->setText( "Finish" );
@@ -160,7 +160,7 @@ struct UpdateLabelCallback : public ImageOverlay::ImageOverlayCallback
         str = ss.str();
         _label->setText( str );
     }
-    
+
 
     osg::ref_ptr< LabelControl > _label;
     osg::ref_ptr< ImageOverlay > _overlay;
@@ -174,6 +174,8 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+
+    osgEarth::initialize();
 
 
     std::vector< std::string > imageFiles;
@@ -193,7 +195,7 @@ main(int argc, char** argv)
       imageFiles.push_back("../data/osgearth.gif");
       imageBounds.push_back( Bounds(-100, 30, -90, 40) );
     }
- 
+
 
     bool moveVert = arguments.read("--vert");
 
@@ -203,7 +205,7 @@ main(int argc, char** argv)
         return usage( "Unable to load earth model." );
 
     osgViewer::Viewer viewer(arguments);
-    
+
     EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
 
@@ -214,7 +216,7 @@ main(int argc, char** argv)
     root->addChild( createControlPanel(&viewer) );
 
     viewer.setSceneData( root );
-    
+
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode.get() );
     if ( mapNode )
     {
@@ -234,34 +236,34 @@ main(int argc, char** argv)
             }
 
             //Create a new ImageOverlay and set it's bounds
-            //ImageOverlay* overlay = new ImageOverlay(mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), image);        
+            //ImageOverlay* overlay = new ImageOverlay(mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), image);
             ImageOverlay* overlay = new ImageOverlay(mapNode);
             overlay->setImage( image.get() );
             overlay->setBounds(imageBounds[i]);
-            
+
             mapNode->addChild( overlay );
 
 
             //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
             osg::Node* editor = new ImageOverlayEditor( overlay, moveVert);
             editor->setNodeMask( 0 );
-            mapNode->addChild( editor );      
-            
+            mapNode->addChild( editor );
+
             // Add an image preview
             ImageControl* imageCon = new ImageControl( image.get() );
             imageCon->setSize( 64, 64 );
             imageCon->setVertAlign( Control::ALIGN_CENTER );
-            s_layerBox->setControl( 0, i, imageCon );            
+            s_layerBox->setControl( 0, i, imageCon );
 
 
-            //Add some controls        
+            //Add some controls
             CheckBoxControl* enabled = new CheckBoxControl( true );
             enabled->addEventHandler( new EnabledHandler(overlay) );
             enabled->setVertAlign( Control::ALIGN_CENTER );
             s_layerBox->setControl( 1, i, enabled );
 
             //The overlay name
-            LabelControl* name = new LabelControl( osgDB::getSimpleFileName( imageFile) );      
+            LabelControl* name = new LabelControl( osgDB::getSimpleFileName( imageFile) );
             name->setVertAlign( Control::ALIGN_CENTER );
             s_layerBox->setControl( 2, i, name );
 
@@ -274,19 +276,19 @@ main(int argc, char** argv)
             s_layerBox->setControl( 3, i, opacity );
 
             // Add a text label:
-            LabelControl* edit = new LabelControl( "Edit" );        
+            LabelControl* edit = new LabelControl( "Edit" );
             edit->setVertAlign( Control::ALIGN_CENTER );
             edit->addEventHandler(new EditHandler(overlay, &viewer, editor));
             s_layerBox->setControl(4, i, edit );
-        }        
+        }
     }
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());    
+    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
     viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
-        
+
     return viewer.run();
 }

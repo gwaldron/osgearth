@@ -41,6 +41,8 @@ using namespace osgEarth::Util;
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // initialize a viewer:
@@ -58,14 +60,14 @@ main(int argc, char** argv)
     TMSElevationLayer* elevation = new TMSElevationLayer();
     elevation->setURL("http://readymap.org/readymap/tiles/1.0.0/116/");
     map->addLayer(elevation);
-   
+
     // Load command line arguments as videos.
     for(int pos=1;pos<arguments.argc();++pos)
     {
         if (!arguments.isOption(pos))
         {
             std::string filename = arguments[ pos ];
-            OE_NOTICE << "Loading " << filename << std::endl;            
+            OE_NOTICE << "Loading " << filename << std::endl;
 
             VideoLayer* layer = new VideoLayer();
             layer->options().url() = filename;
@@ -75,7 +77,7 @@ main(int argc, char** argv)
 
     // make the map scene graph:
     MapNode* node = new MapNode( map );
-    
+
     viewer.setCameraManipulator( new EarthManipulator );
     viewer.setSceneData( node );
 

@@ -58,14 +58,14 @@ public:
 
 
     virtual FilterContext push( FeatureList& input, FilterContext& context )
-    {        
+    {
         for (FeatureList::iterator itr = input.begin(); itr != input.end(); itr++)
         {
             //Change the value of the attribute
             if (_key.isSet() && _value.isSet())
             {
                 itr->get()->set(*_key, std::string(*_value));
-            }            
+            }
         }
         return context;
     }
@@ -75,12 +75,14 @@ public:
 };
 
 //Register our custom FeatureFilter with osgEarth
-//The first 
+//The first
 OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(change_attribute, ChangeAttributeFilter);
 
 int
 main(int argc, char** argv)
-{    
+{
+    osgEarth::initialize();
+
     //Run this example with the feature_custom_filters.earth file in the tests directory for a simple example
     osg::ArgumentParser arguments(&argc,argv);
 
@@ -94,7 +96,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
@@ -109,7 +111,7 @@ main(int argc, char** argv)
     }
     else
     {
-        OE_NOTICE 
+        OE_NOTICE
             << "\nUsage: " << argv[0] << " file.earth" << std::endl
             << MapNodeHelper().usage() << std::endl;
     }

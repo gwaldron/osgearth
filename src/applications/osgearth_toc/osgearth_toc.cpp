@@ -281,6 +281,7 @@ struct DumpLabel : public osgGA::GUIEventHandler
 int
 main( int argc, char** argv )
 {
+    osgEarth::initialize();
     osg::ArgumentParser arguments( &argc,argv );
 
     // configure the viewer.
@@ -293,7 +294,7 @@ main( int argc, char** argv )
     // disable the small-feature culling (so text will work)
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-    // Load an earth file 
+    // Load an earth file
     Container* uiRoot = new VBox();
     uiRoot->setAbsorbEvents(false);
     createControlPanel(uiRoot);
@@ -431,7 +432,7 @@ struct ZoomLayerHandler : public ControlEventHandler
             std::vector<GeoPoint> points;
             points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
             points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
-            
+
             ViewFitter fitter(s_activeMap->getSRS(), s_view->getCamera());
             Viewpoint vp;
             if (fitter.createViewpoint(points, vp))
@@ -516,7 +517,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     // don't show hidden coverage layers
     if (imageLayer && imageLayer->isCoverage()) // && !imageLayer->getVisible())
         return;
-    
+
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
 
     // a checkbox to toggle the layer's visibility:
@@ -638,7 +639,7 @@ createInactiveLayerItem( Grid* grid, int gridRow, const std::string& name, const
     LabelControl* nameLabel = new LabelControl( name );
     grid->setControl( gridCol, gridRow, nameLabel );
     gridCol++;
-    
+
     LabelControl* addRemove = new LabelControl( "ADD", 14 );
     addRemove->setHorizAlign( Control::ALIGN_CENTER );
     addRemove->setBackColor( .4,.4,.4,1 );
@@ -652,12 +653,12 @@ updateControlPanel()
 {
     // erase all child controls and just rebuild them b/c we're lazy.
 
-    //Rebuild all the image layers    
+    //Rebuild all the image layers
     s_activeBox->clearControls();
 
     int row = 0;
 
-    std::string title = 
+    std::string title =
         s_activeMap->getName().empty()? "Map Layers" :
         s_activeMap->getName();
 

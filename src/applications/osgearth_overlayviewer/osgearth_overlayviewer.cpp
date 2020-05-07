@@ -199,11 +199,12 @@ namespace
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
     osg::ArgumentParser arguments(&argc,argv);
 
     osgViewer::CompositeViewer viewer(arguments);
     viewer.setThreadingModel( osgViewer::CompositeViewer::SingleThreaded );
-    
+
     App app;
 
     // query the screen size.
@@ -227,7 +228,7 @@ main(int argc, char** argv)
     osgViewer::View* overlayView = new osgViewer::View();
     overlayView->getCamera()->setNearFarRatio(0.00002);
     overlayView->setCameraManipulator( app._manip = new EarthManipulator() );
-    
+
     overlayView->setUpViewInWindow( (width/2), b, (width/2)-b*2, (height-b*4) );
     overlayView->addEventHandler(new osgGA::StateSetManipulator(overlayView->getCamera()->getOrCreateStateSet()));
     viewer.addView( overlayView );
@@ -250,7 +251,7 @@ main(int argc, char** argv)
 
         osg::Group* group = new osg::Group();
         group->addChild(app._mapNode);
-        overlayView->setSceneData( group );       
+        overlayView->setSceneData( group );
         overlayView->addEventHandler( new PHDumper(app, group) );
 
         return viewer.run();

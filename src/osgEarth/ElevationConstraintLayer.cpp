@@ -136,44 +136,44 @@ ElevationConstraintLayer::setFeatureSource(FeatureSource* fs)
     }
 }
 
-GeoImage
-ElevationConstraintLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
+osg::Image*
+ElevationConstraintLayer::createImageImplementationAux(const TileKey& key, ProgressCallback* progress) const
 {
     if (getStatus().isError())
     {
-        return GeoImage::INVALID;
+        return 0L;
     }
-    
+
     if (!getFeatureSource())
     {
         setStatus(Status::ServiceUnavailable, "No feature source");
-        return GeoImage::INVALID;
+        return 0L;
     }
 
     const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
     if (!featureProfile)
     {
         setStatus(Status::ConfigurationError, "Feature profile is missing");
-        return GeoImage::INVALID;
+        return 0L;
     }
 
     const SpatialReference* featureSRS = featureProfile->getSRS();
     if (!featureSRS)
     {
         setStatus(Status::ConfigurationError, "Feature profile has no SRS");
-        return GeoImage::INVALID;
+        return 0L;
     }
 
     if (!_session.valid())
     {
         setStatus(Status::AssertionFailure, "_session is NULL - call support");
-        return GeoImage::INVALID;
+        return 0L;
     }
 
     FeatureList features;
 
     GeoExtent tileExtent = key.getExtent();
-    double scale = 1.0 + 2.0 / getTileSize();
+    double scale = 1.0 + 4.0 / getTileSize();
     tileExtent.scale(scale, scale);
 
     const GeoExtent& featuresExtent = _session->getFeatureSource()->getFeatureProfile()->getExtent();
@@ -182,7 +182,7 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
     GeoExtent queryExtentWGS84 = featuresExtentWGS84.intersectionSameSRS( imageExtentWGS84 );
 
     if (!queryExtentWGS84.isValid())
-        return GeoImage::INVALID;
+        return 0L;
 
     GeoExtent queryExtent = queryExtentWGS84.transform( featuresExtent.getSRS() );
 
@@ -197,7 +197,7 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
 
         UnorderedSet<TileKey> featureKeys;
         for (int i = 0; i < intersectingKeys.size(); ++i)
-        {        
+        {
             if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
                 featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
             else
@@ -207,7 +207,7 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
         // Query and collect all the features we need for this tile.
         for (UnorderedSet<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
         {
-            Query query;        
+            Query query;
             query.tileKey() = *i;
 
             osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
@@ -231,11 +231,16 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
         }
     }
 
-    GeoImage result;
-
     int gridSize = getTileSize(); //TODO: option
-    osg::ref_ptr<osg::Image> image;
-    ImageUtils::PixelWriter* write = NULL;
+    const osg::Vec4 zero(0,0,0,0);
+    osg::Vec4 value(0,0,0,0);
+    osg::Vec3d point;
+
+    osg::ref_ptr<osg::Image> image = new osg::Image();
+    image->allocateImage(gridSize, gridSize, 1, GL_RGBA, GL_FLOAT);
+    image->setInternalTextureFormat(GL_RGBA16F_ARB); //16-bit is sufficient
+    ImageUtils::PixelWriter write(image.get());
+    write.assign(zero);
 
     // use a local tangent place to get accurate local coordinates
     const SpatialReference* local = key.getExtent().getSRS()->createTangentPlaneSRS(key.getExtent().getCentroid());
@@ -249,9 +254,6 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
     double ybuffer = 0.5*(localExtent.height() / (gridSize-1));
     double buffer2 = osg::maximum(xbuffer*xbuffer, ybuffer*ybuffer);
 
-    const osg::Vec4 zero(0,0,0,0);
-    osg::Vec4 value(0,0,0,0);
-    osg::Vec3d point;
 
     // go through and for a bbox around each "vertex".
     // if any segment of the feature intersects this bbox
@@ -274,16 +276,6 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
             for(FeatureList::iterator i = features.begin(); i != features.end(); ++i)
             {
                 Feature* feature = i->get();
-
-                if (feature && !image.valid())
-                {
-                    image = new osg::Image();
-                    image->allocateImage(gridSize, gridSize, 1, GL_RGBA, GL_FLOAT);
-                    image->setInternalTextureFormat(GL_RGBA16F_ARB); //16-bit is sufficient
-                    write = new ImageUtils::PixelWriter(image.get());
-                    write->assign(zero);
-                    result = GeoImage(image.get(), key.getExtent());
-                }
 
                 if (feature)
                 {
@@ -311,7 +303,7 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
                                     shift.x() / localExtent.width(),
                                     shift.y() / localExtent.height() );
                             
-                                (*write)(value, s, t);
+                                write(value, s, t);
                             }
                         }
                     }
@@ -319,9 +311,65 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
             }
         }
     }
+    return image.release();
+}
 
-    if (write)
-        delete write;
+GeoImage
+ElevationConstraintLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    osg::ref_ptr<osg::Image> primary =createImageImplementationAux(key, progress);
+    
+    if (!primary.valid())
+    {
+        return GeoImage();      // XXX
+    }
+    int gridSize = getTileSize(); //TODO: option
+    osg::ref_ptr<osg::Image> parentImage = createImageImplementationAux(key.createParentKey(), progress);
+    osg::ref_ptr<osg::Image> result = new osg::Image();
+    result->allocateImage(gridSize, gridSize, 2, GL_RGBA, GL_FLOAT);
+    result->setInternalTextureFormat(GL_RGBA16F_ARB); //16-bit is sufficient
+    ImageUtils::PixelWriter write(result.get());
+    ImageUtils::PixelReader readPrimary(primary.get());
+    // First layer
+    for (int t = 0; t < gridSize; ++t)
+    {
+        for (int s = 0; s < gridSize; ++s)
+        {
+            osg::Vec4 value = readPrimary(s, t);
+            write(value, s, t, 0);
+        }
+    }
+    // Write the displacements from the correct quadrant of the parent
+    // into this tile's image. Grid posts that don't exist in the
+    // parent get values from their morph targets.
+    unsigned tileQuad = key.getQuadrant();
+    int parentOriginX = 0, parentOriginY = 0;
+    int halfGrid = (gridSize - 1) / 2;
+    switch (tileQuad)
+    {
+    case 0:
+        parentOriginY = halfGrid;
+    case 1:
+        parentOriginX = halfGrid;
+        parentOriginY = halfGrid;
+        break;
+    case 2:
+        break;
+    case 3:
+        parentOriginX = halfGrid;
+        break;
+    default:
+        break;
+    }
+    ImageUtils::PixelReader readParent(parentImage.get());
+    for (int t = 0; t < gridSize; ++t)
+    {
+        for (int s = 0; s < gridSize; ++s)
+        {
+            osg::Vec4 value = readParent(s / 2 + parentOriginX, t / 2 + parentOriginY);
+            write(value, s, t, 1);
+        }
+    }
+    return GeoImage(result.get(), key.getExtent());
 
-    return result;
 }

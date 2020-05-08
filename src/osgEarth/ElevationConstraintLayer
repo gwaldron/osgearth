@@ -68,6 +68,7 @@ namespace osgEarth
         virtual void init();
 
     protected:
+        osg::Image* createImageImplementationAux(const TileKey& key, ProgressCallback* progress) const;
 
         virtual ~ElevationConstraintLayer() { }
 

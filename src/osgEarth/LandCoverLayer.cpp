@@ -267,7 +267,13 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     if (getStatus().isError())
         return GeoImage::INVALID;
 
+    if (key.getLOD() > getMaxDataLevel())
+        return GeoImage::INVALID;
+
     ImageLayer* imageLayer = getSource();
+
+    if (key.getLOD() > imageLayer->getMaxDataLevel())
+        return GeoImage::INVALID;
 
     TileKey parentKey = key.createParentKey();
 

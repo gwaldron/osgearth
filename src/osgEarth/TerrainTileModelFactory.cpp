@@ -291,7 +291,7 @@ TerrainTileModelFactory::addStandaloneImageLayer(
             {
                 osg::Matrixf sb;
                 keyToUse.getExtent().createScaleBias(parentKey.getExtent(), sb);
-                scaleBiasMatrix.preMult(sb);
+                scaleBiasMatrix.postMult(sb);
             }
             keyToUse = parentKey;
         }
@@ -702,7 +702,7 @@ TerrainTileModelFactory::addStandaloneLandCover(
             {
                 osg::Matrixf sb;
                 keyToUse.getExtent().createScaleBias(parentKey.getExtent(), sb);
-                scaleBiasMatrix.preMult(sb);
+                scaleBiasMatrix.postMult(sb);
             }
             keyToUse = parentKey;
         }

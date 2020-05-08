@@ -349,5 +349,5 @@ RoadSurfaceLayer::getConfig() const
 osg::Node*
 RoadSurfaceLayer::getNode() const
 {
-    return _rasterizer->getNode();
+    return _rasterizer.valid() ? _rasterizer->getNode() : NULL;
 }

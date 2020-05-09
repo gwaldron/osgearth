@@ -23,15 +23,17 @@
 #define OSGEARTH_SPLAT_GROUND_COVER_LAYER_H
 
 #include "Export"
-#include "Coverage"
-#include "Zone"
+#include "Biome"
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
 #include <osgEarth/InstanceCloud>
+#include <osgEarth/VirtualProgram>
 
 namespace osgEarth { namespace Splat
 {
+    using namespace osgEarth;
+
     //! Layer that renders billboards on the ground using the GPU,
     //! like trees, grass, rocks, etc.
     class OSGEARTHSPLAT_EXPORT GroundCoverLayer : public PatchLayer
@@ -47,7 +49,8 @@ namespace osgEarth { namespace Splat
             OE_OPTION(bool, castShadows);
             OE_OPTION(float, maxAlpha);
             OE_OPTION(bool, alphaToCoverage);
-            OE_OPTION_VECTOR(ZoneOptions, zones);
+            //OE_OPTION_VECTOR(ZoneOptions, zones);
+            OE_OPTION_VECTOR(BiomeZone, biomeZones);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -73,16 +76,16 @@ namespace osgEarth { namespace Splat
         ImageLayer* getColorLayer() const;
 
         //! LOD at which to draw ground cover
-        void setLOD(const unsigned& value);
-        const unsigned& getLOD() const;
+        void setLOD(unsigned value);
+        unsigned getLOD() const;
 
         //! Geogrphic zones; at least one is required
-        Zones& getZones() { return _zones; }
-        const Zones& getZones() const { return _zones; }
+        std::vector<BiomeZone>& getZones() { return options().biomeZones(); }
+        const std::vector<BiomeZone>& getZones() const { return options().biomeZones(); }
 
         //! Whether the ground cover casts shadows on the terrain
-        void setCastShadows(const bool& value);
-        const bool& getCastShadows() const;
+        void setCastShadows(bool value);
+        bool getCastShadows() const;
 
         //! Transparency threshold below which to discard fragments.
         //! Only applies when alpha-to-coverage mode is OFF.
@@ -124,8 +127,8 @@ namespace osgEarth { namespace Splat
         TextureImageUnitReservation _groundCoverTexBinding;
         TextureImageUnitReservation _noiseBinding;
 
-        Zones _zones;
-        bool _zonesConfigured;
+        //Zones _zones;
+        //bool _zonesConfigured;
 
         void buildStateSets();
 
@@ -150,11 +153,6 @@ namespace osgEarth { namespace Splat
         struct Renderer : public PatchLayer::DrawCallback
         {
             Renderer(GroundCoverLayer* layer);
-
-            struct Settings
-            {
-                double _tileWidth;
-            };
             
             struct UniformState
             {
@@ -202,7 +200,7 @@ namespace osgEarth { namespace Splat
             void resizeGLObjectBuffers(unsigned maxSize);
             void releaseGLObjects(osg::State* state) const;
 
-            Settings _settings;
+            double _tileWidth;
             GroundCoverLayer* _layer;
             osg::ref_ptr<osg::StateAttribute> _a2cBlending;
 
@@ -224,6 +222,46 @@ namespace osgEarth { namespace Splat
             const osgDB::Options* options) const;
 
         virtual osg::Geometry* createGeometry() const;
+
+        osg::Shader* createLUTShader() const;
+
+        struct AssetData : public osg::Referenced
+        {
+            osg::ref_ptr<osg::Image> _sideImage;
+            osg::ref_ptr<osg::Image> _topImage;
+            osg::ref_ptr<osg::Node> _model;
+
+            const BiomeLayout* _biomeLayout;
+            const LandCoverGroup* _landCoverGroup;
+            const AssetUsage* _asset;
+
+            int _zoneIndex;
+            int _landCoverGroupIndex;
+
+            // texture atlas indexes
+            int _sideImageAtlasIndex;
+            int _topImageAtlasIndex;
+            int _modelAtlasIndex;
+
+            // number of instances of this asset (for selection weight purposes)
+            int _numInstances;
+            std::vector<int> _codes;
+
+        };
+
+        void loadAssets();
+        typedef std::vector<osg::ref_ptr<AssetData> > AssetDataVector;
+        AssetDataVector _liveAssets;
+
+        typedef std::vector<osg::ref_ptr<osg::Image> > ImageVector;
+        ImageVector _atlasImages;
+
+        osg::Texture* createTextureAtlas() const;
+
+        osg::StateSet* getZoneStateSet(unsigned index) const;
+        std::vector<osg::ref_ptr<osg::StateSet> > _zoneStateSets;
+
+        bool shouldEnableTopDownBillboards() const;
     };
 
 } } // namespace osgEarth::Splat

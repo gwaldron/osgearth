@@ -20,7 +20,6 @@
 #define OSGEARTH_PROCEDURAL_SURFACE 1
 
 #include "Export"
-#include "Coverage"
 #include "SplatCatalog"
 #include <osgEarth/Common>
 #include <osgEarth/Config>

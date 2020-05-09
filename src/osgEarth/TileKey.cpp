@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/TileKey>
+#include <osgEarth/Math>
 #include <stdio.h>
 
 using namespace osgEarth;
@@ -183,19 +184,6 @@ TileKey::createNeighborKey( int xoffset, int yoffset ) const
     //OE_NOTICE << "Returning neighbor " << x << ", " << y << " for tile " << str() << " offset=" << xoffset << ", " << yoffset << std::endl;
 
     return TileKey( _lod, x, y, _profile.get() );
-}
-
-namespace
-{
-    int nextPowerOf2(int x) {
-        --x;
-        x |= x >> 1;
-        x |= x >> 2;
-        x |= x >> 4;
-        x |= x >> 8;
-        x |= x >> 16;
-        return x+1;
-    }
 }
 
 TileKey

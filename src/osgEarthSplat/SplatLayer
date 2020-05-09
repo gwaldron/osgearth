@@ -23,7 +23,6 @@
 #define OSGEARTH_SPLAT_SPLAT_LAYER_H
 
 #include "Export"
-#include "Coverage"
 #include "Zone"
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/LayerReference>

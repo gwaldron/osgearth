@@ -85,6 +85,13 @@ namespace
                 i != group->getAssets().end();
                 ++i)
             {
+                AssetLUTEntry entry;
+                entry.billboardConfig = i->getConfig();
+                entry.width = i->options().width().get();
+                entry.height = i->options().height().get();
+                entry.sizeVariation = i->options().sizeVariation().getOrUse(
+                    group->options().sizeVariation().get());
+                assets.push_back(entry);
             }
         }
     }

@@ -91,7 +91,11 @@ namespace
                 entry.height = i->options().height().get();
                 entry.sizeVariation = i->options().sizeVariation().getOrUse(
                     group->options().sizeVariation().get());
-                assets.push_back(entry);
+
+                for(int k=0; k<(int)i->options().selectionWeight().get(); ++k)
+                {
+                    assets.push_back(entry);
+                }
             }
         }
     }
@@ -490,7 +494,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
         if (group)
         {
             AssetLUTVector& bblut = assetLUT[group];
-            unsigned index = (unsigned)(clamp(noise[NOISE_RANDOM], 0.0, 0.9999999) * (float)(bblut.size()));
+            unsigned index = (unsigned)(clamp(1.0-noise[NOISE_RANDOM], 0.0, 0.9999999) * (float)(bblut.size()));
             AssetLUTEntry& asset = bblut[index];
             float sizeScale = asset.sizeVariation * (noise[NOISE_RANDOM_2] * 2.0 - 1.0);
             float width = asset.width + asset.width*sizeScale;

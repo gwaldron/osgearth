@@ -231,7 +231,7 @@ namespace osgEarth { namespace Splat
             osg::ref_ptr<osg::Image> _topImage;
             osg::ref_ptr<osg::Node> _model;
 
-            const BiomeLayout* _biomeLayout;
+            const BiomeZone* _zone;
             const LandCoverGroup* _landCoverGroup;
             const AssetUsage* _asset;
 

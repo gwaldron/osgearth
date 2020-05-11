@@ -106,44 +106,6 @@ namespace osgEarth { namespace Splat
     };
 
     /**
-    * Defines the art make up for a particular location
-    */
-    class OSGEARTHSPLAT_EXPORT BiomeLayout // was "GroundCover"
-    {
-    public:
-        struct OSGEARTHSPLAT_EXPORT Options : public ConfigOptions
-        {
-            META_ConfigOptions(osgEarth, Options, ConfigOptions);
-            Config getConfig() const;
-            void fromConfig(const Config& conf);
-
-            OE_OPTION(std::string, name);
-            OE_OPTION(Distance, spacing);
-            OE_OPTION(float, fill);
-            OE_OPTION_VECTOR(LandCoverGroup, landCoverGroups);
-        };
-
-    public:
-        BiomeLayout() { init(); }
-        BiomeLayout(const Config& conf) : _options(conf) { init(); }
-
-        const std::vector<LandCoverGroup>& getLandCoverGroups() const {
-            return options().landCoverGroups(); }
-
-        const Distance& getSpacing() const { return _options.spacing().get(); }
-
-        const LandCoverGroup* getLandCoverGroup(const LandCoverClass* c) const;
-
-        Options& options() { return _options; }
-        const Options& options() const { return _options; }
-        Config getConfig() const { return options().getConfig(); }
-
-    private:
-        Options _options;
-        void init() { }
-    };
-
-    /**
     * Defines a geographic bounding region for a Biome.
     * Temporary construct while we transition to the new setup.
     */
@@ -158,27 +120,13 @@ namespace osgEarth { namespace Splat
 
             OE_OPTION(std::string, name);
             OE_OPTION_VECTOR(osg::BoundingBox, boundaries);
-            OE_OPTION(BiomeLayout, biomeLayout);
+            OE_OPTION(Distance, spacing);
+            OE_OPTION(float, fill);
+            OE_OPTION(float, maxDistance);
+            OE_OPTION_VECTOR(LandCoverGroup, landCoverGroups);
         };
 
-    public:
-        BiomeZone() { init(); }
-        BiomeZone(const Config& conf) : _options(conf) { init(); }
-
-        const BiomeLayout& getBiomeLayout() const { return options().biomeLayout().get(); }
-
-        bool contains(const osg::Vec3& point) const;
-
-        Options& options() { return _options; }
-        const Options& options() const { return _options; }
-        Config getConfig() const { return options().getConfig(); }
-
-    private:
-        Options _options;
-
-        void init();
-
-        struct Boundary
+        struct OSGEARTHSPLAT_EXPORT Boundary
         {
             GeoExtent     extent;
             double        zmin, zmin2;
@@ -187,7 +135,42 @@ namespace osgEarth { namespace Splat
             osg::Polytope tope;
         };
         typedef std::vector<Boundary> Boundaries;
+
+    public:
+        BiomeZone() { init(); }
+        BiomeZone(const Config& conf) : _options(conf) { init(); }
+
+        //! Name of this zone
+        const std::string& getName() const {
+            return options().name().get(); }
+        
+        //! Collection of land cover groups
+        const std::vector<LandCoverGroup>& getLandCoverGroups() const {
+            return options().landCoverGroups(); }
+
+        //! Spacing between asset instances
+        const Distance& getSpacing() const { return _options.spacing().get(); }
+
+        //! Find a land cover group by the class it contains
+        const LandCoverGroup* getLandCoverGroup(const LandCoverClass* c) const;
+
+        //! The geospatial boundaries of this zone
+        const Boundaries& getBoundaries() const {
+            return _boundaries; }
+
+        //! Whether a point intersects this zone's boundaries
+        bool contains(const osg::Vec3& point) const;
+
+        //! Internal -- serialization options
+        Options& options() { return _options; }
+        const Options& options() const { return _options; }
+        Config getConfig() const { return options().getConfig(); }
+
+    private:
+        Options _options;
         Boundaries _boundaries;
+
+        void init();
     };
     
 } } // namespace osgEarth::Splat

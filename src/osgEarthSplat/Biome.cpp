@@ -91,50 +91,6 @@ LandCoverGroup::init()
 
 //..........................................................
 
-void BiomeLayout::Options::fromConfig(const Config& conf)
-{
-    fill().setDefault(1.0f);
-    spacing().setDefault(20.0f);
-
-    conf.get("name", name());
-    conf.get("spacing", spacing());
-    conf.get("fill", fill());
-    const ConfigSet biomes = conf.child("biomes").children("biome");
-    for (ConfigSet::const_iterator i = biomes.begin(); i != biomes.end(); ++i)
-    {
-        if (i->key() == "biome")
-            landCoverGroups().push_back(LandCoverGroup(*i));
-    }
-}
-
-Config BiomeLayout::Options::getConfig() const
-{
-    Config conf("groundcover");
-    conf.set("name", name());
-    conf.set("spacing", spacing());
-    conf.set("fill", fill());
-    Config biomesConf("biomes");
-    for (int i = 0; i < landCoverGroups().size(); ++i)
-        biomesConf.add("biome", landCoverGroups()[i].getConfig());
-    if (!biomesConf.empty())
-        conf.add(biomesConf);
-    return conf;
-}
-
-const LandCoverGroup* 
-BiomeLayout::getLandCoverGroup(const LandCoverClass* lc) const
-{
-    for(unsigned i=0; i<getLandCoverGroups().size(); ++i)
-    {
-        const LandCoverGroup& group = getLandCoverGroups()[i];
-        if (std::find(group.getLandCoverClassNames().begin(), group.getLandCoverClassNames().end(), lc->getName()) != group.getLandCoverClassNames().end())
-            return &group;
-    }
-    return NULL;
-}
-
-//..........................................................
-
 void BiomeZone::Options::fromConfig(const Config& conf)
 {
     conf.get("name", name());
@@ -147,11 +103,24 @@ void BiomeZone::Options::fromConfig(const Config& conf)
         }
     }
 
-    biomeLayout() = BiomeLayout(conf.child("groundcover"));
+    const Config& gcConf = conf.child("groundcover");
+    fill().setDefault(1.0f);
+    spacing().setDefault(20.0f);
+
+    gcConf.get("spacing", spacing());
+    gcConf.get("fill", fill());
+    gcConf.get("max_distance", maxDistance());
+    const ConfigSet biomes = gcConf.child("biomes").children("biome");
+    for (ConfigSet::const_iterator i = biomes.begin(); i != biomes.end(); ++i)
+    {
+        if (i->key() == "biome")
+            landCoverGroups().push_back(LandCoverGroup(*i));
+    }
 }
 
 Config BiomeZone::Options::getConfig() const
 {
+    // old skool:
     Config conf("zone");
     conf.set("name", name());
     if ( boundaries().size() > 0 ) {
@@ -168,8 +137,18 @@ Config BiomeZone::Options::getConfig() const
         }
         conf.set(regions);
     }
-    if (biomeLayout().isSet())
-        conf.set("groundcover", biomeLayout()->getConfig());
+
+    Config gcConf("groundcover");
+    gcConf.set("name", name());
+    gcConf.set("spacing", spacing());
+    gcConf.set("fill", fill());
+    gcConf.set("max_distance", maxDistance());
+    Config biomesConf("biomes");
+    for (int i = 0; i < landCoverGroups().size(); ++i)
+        biomesConf.add("biome", landCoverGroups()[i].getConfig());
+    if (!biomesConf.empty())
+        gcConf.add(biomesConf);
+    conf.add(gcConf);
 
     return conf;
 }
@@ -199,6 +178,18 @@ BiomeZone::init()
             extent.getSRS()->getEllipsoid()->getRadiusEquator() : 0.0;
         b.meanRadius2 = meanRadius*meanRadius;
     }
+}
+
+const LandCoverGroup* 
+BiomeZone::getLandCoverGroup(const LandCoverClass* lc) const
+{
+    for(unsigned i=0; i<getLandCoverGroups().size(); ++i)
+    {
+        const LandCoverGroup& group = getLandCoverGroups()[i];
+        if (std::find(group.getLandCoverClassNames().begin(), group.getLandCoverClassNames().end(), lc->getName()) != group.getLandCoverClassNames().end())
+            return &group;
+    }
+    return NULL;
 }
 
 bool

@@ -72,10 +72,10 @@ namespace
 
     typedef UnorderedMap<const LandCoverGroup*, AssetLUTVector> AssetLUT;
 
-    void buildLUT(const BiomeLayout& layout, AssetLUT& lut)
+    void buildLUT(const BiomeZone& zone, AssetLUT& lut)
     {
-        for(std::vector<LandCoverGroup>::const_iterator b = layout.getLandCoverGroups().begin();
-            b != layout.getLandCoverGroups().end();
+        for(std::vector<LandCoverGroup>::const_iterator b = zone.getLandCoverGroups().begin();
+            b != zone.getLandCoverGroups().end();
             ++b)
         {
             const LandCoverGroup* group = &(*b);
@@ -316,8 +316,6 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
 
     const BiomeZone& zone = _gclayer->getZones()[0];
 
-    const BiomeLayout& layout = zone.getBiomeLayout();
-
     // noise sampler:
     ImageUtils::PixelReader sampleNoise;
     sampleNoise.setTexture(_noiseTexture.get());
@@ -374,7 +372,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     // TODO: we could do this in initialize(), but we want to leave the door open
     // for supporting multiple zones in the future -GW
     AssetLUT assetLUT;
-    buildLUT(layout, assetLUT);
+    buildLUT(zone, assetLUT);
 
     // calculate instance count based on tile extents
     unsigned lod = _gclayer->getLOD();
@@ -383,7 +381,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     GeoExtent e = TileKey(lod, tx / 2, ty / 2, _map->getProfile()).getExtent();
     GeoCircle c = e.computeBoundingGeoCircle();
     double tileWidth_m = 2.0 * c.getRadius() / 1.4142;
-    float spacing_m = layout.getSpacing().as(Units::METERS);
+    float spacing_m = zone.getSpacing().as(Units::METERS);
     unsigned vboTileSize = (unsigned)(tileWidth_m / spacing_m);
     if (vboTileSize & 0x01) vboTileSize += 1;
 
@@ -428,7 +426,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
             lcclass = _lcdict->getClassByValue((int)landCover.r());
             if (lcclass == NULL)
                 continue;
-            group = layout.getLandCoverGroup(lcclass);
+            group = zone.getLandCoverGroup(lcclass);
             if (!group)
                 continue;
         }
@@ -444,7 +442,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
         // check the fill
         float fill =
             group->options().fill().isSet() ? group->options().fill().get() :
-            layout.options().fill().get();
+            zone.options().fill().get();
 
         if (noise[NOISE_SMOOTH] > fill)
             continue;

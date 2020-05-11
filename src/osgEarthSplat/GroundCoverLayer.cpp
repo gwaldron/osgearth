@@ -112,16 +112,10 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
             _biomeZones.push_back(BiomeZone(*i));
         }
     }
-    else // no zones, load GC directly
+    else if (conf.hasChild("groundcover"))
     {
-        const Config& gc = conf.child("groundcover");
-        if (!gc.empty())
-        {
-            BiomeZone zone;
-            zone.options().name() = "default";
-            zone.options().biomeLayout() = BiomeLayout(gc);
-            _biomeZones.push_back(zone);
-        }
+        BiomeZone zone(conf);
+        _biomeZones.push_back(zone);
     }
 }
 
@@ -157,20 +151,20 @@ GroundCoverLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 namespace
 {
     // Trickt o store the BiomeLayout pointer in a stateattribute so we can track it during cull/draw
-    struct BiomeLayoutSA : public osg::StateAttribute
+    struct ZoneSA : public osg::StateAttribute
     {
-        META_StateAttribute(osgEarth, BiomeLayoutSA, (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY + 90210));
-        BiomeLayout* _layout;
-        BiomeLayoutSA() : _layout(NULL) { }
-        BiomeLayoutSA(const BiomeLayoutSA& sa, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY) : osg::StateAttribute(sa, copyop), _layout(sa._layout) { }
-        BiomeLayoutSA(BiomeLayout* gc) : _layout(gc) { }
+        META_StateAttribute(osgEarth, ZoneSA, (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY + 90210));
+        BiomeZone* _obj;
+        ZoneSA() : _obj(NULL) { }
+        ZoneSA(const ZoneSA& sa, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY) : osg::StateAttribute(sa, copyop), _obj(sa._obj) { }
+        ZoneSA(BiomeZone* obj) : _obj(obj) { }
         virtual int compare(const StateAttribute& sa) const { return 0; }
-        static const BiomeLayoutSA* extract(const osg::State* state) {
+        static const ZoneSA* extract(const osg::State* state) {
             osg::State::AttributeMap::const_iterator i = state->getAttributeMap().find(
                 std::make_pair((osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY + 90210), 0));
             if (i == state->getAttributeMap().end()) return NULL;
             if (i->second.attributeVec.empty()) return NULL;
-            return dynamic_cast<const BiomeLayoutSA*>(i->second.attributeVec.front().first);
+            return dynamic_cast<const ZoneSA*>(i->second.attributeVec.front().first);
         }
     };
 }
@@ -533,6 +527,7 @@ GroundCoverLayer::buildStateSets()
     stateset->addUniform(new osg::Uniform(GCTEX_SAMPLER, _groundCoverTexBinding.unit()));
 
     // Assemble zone-specific statesets:
+    float maxVisibleRange = getMaxVisibleRange();
     _zoneStateSets.clear();
     for(unsigned z = 0; z < getZones().size(); ++z)
     {
@@ -541,12 +536,18 @@ GroundCoverLayer::buildStateSets()
 
         // store the layout on a per-zone basis since the instancer will be different.
         const BiomeZone& zone = getZones()[z];
-        const BiomeLayout& layout = zone.getBiomeLayout();
-        zoneStateSet->setAttribute(new BiomeLayoutSA(&const_cast<BiomeLayout&>(layout)));
+        zoneStateSet->setAttribute(new ZoneSA(&const_cast<BiomeZone&>(zone)));
+
+        if (zone.options().maxDistance().isSet())
+        {
+            maxVisibleRange = osg::minimum(maxVisibleRange, zone.options().maxDistance().get());
+        }
 
         // keep in a vector so the ZoneSelector can pick one at cull time
         _zoneStateSets.push_back(zoneStateSet);
     }
+
+    setMaxVisibleRange(maxVisibleRange);
 }
 
 void
@@ -750,8 +751,8 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatc
 #endif
 
     // Push the pre-gen culling shader and run it:
-    const BiomeLayoutSA* sa = BiomeLayoutSA::extract(ri.getState());
-    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_layout];
+    const ZoneSA* sa = ZoneSA::extract(ri.getState());
+    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
     if (!instancer.valid())
     {
         instancer = new InstanceCloud();
@@ -831,14 +832,14 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
     u._tileCounter = 0;
 
     // Check for initialization in this zone:
-    const BiomeLayout* layout = BiomeLayoutSA::extract(ri.getState())->_layout;
-    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[layout];
+    const BiomeZone* bz = ZoneSA::extract(ri.getState())->_obj;
+    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[bz];
 
     if (!instancer->getGeometry() || u._numInstances1D == 0)
     {
-        if (layout->options().spacing().isSet())
+        if (bz->options().spacing().isSet())
         {
-            float spacing_m = layout->options().spacing()->as(Units::METERS);
+            float spacing_m = bz->options().spacing()->as(Units::METERS);
             u._numInstances1D = _tileWidth / spacing_m;
             _spacing = spacing_m;
         }
@@ -878,9 +879,9 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
 void
 GroundCoverLayer::Renderer::drawTile(osg::RenderInfo& ri, const PatchLayer::DrawContext& tile)
 {
-    const BiomeLayoutSA* sa = BiomeLayoutSA::extract(ri.getState());
+    const ZoneSA* sa = ZoneSA::extract(ri.getState());
     DrawState& ds = _drawStateBuffer[ri.getContextID()];
-    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_layout];
+    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
     if (!pcp)
         return;
@@ -980,22 +981,25 @@ GroundCoverLayer::loadAssets()
     {
         // each zone has a single layout (used to be called "groundcover")
         const BiomeZone& zone = getZones()[z];
-        const BiomeLayout& layout = zone.getBiomeLayout();
 
         // each layout has one or more groupings of land cover classes
         // (this used to be called a biome)
-        for(int j=0; j<layout.getLandCoverGroups().size(); ++j)
+        for(int j=0; j<zone.getLandCoverGroups().size(); ++j)
         {
-            const LandCoverGroup& group = layout.getLandCoverGroups()[j];
+            const LandCoverGroup& group = zone.getLandCoverGroups()[j];
 
             // parse the land cover codes:
-            std::vector<std::string> classes;
-            Strings::StringTokenizer tok;
-            tok.tokenize(group.options().landCoverClasses().get(), classes);
-            std::vector<int> codes;
-            for(int c=0; c<classes.size(); ++c)
+            const std::vector<std::string>& classNames = group.getLandCoverClassNames();
+            if (classNames.empty())
             {
-                const LandCoverClass* lcclass = getLandCoverDictionary()->getClassByName(classes[c]);
+                OE_WARN << LC << "Skipping a land cover group because it has no classes" << std::endl;
+                continue;
+            }
+
+            std::vector<int> codes;
+            for(unsigned c=0; c<classNames.size(); ++c)
+            {
+                const LandCoverClass* lcclass = getLandCoverDictionary()->getClassByName(classNames[c]);
                 if (lcclass)
                     codes.push_back(lcclass->getValue());
             }
@@ -1007,7 +1011,7 @@ GroundCoverLayer::loadAssets()
 
                 osg::ref_ptr<AssetData> data = new AssetData();
                 data->_zoneIndex = z;
-                data->_biomeLayout = &layout;
+                data->_zone = &zone;
                 data->_landCoverGroupIndex = j;
                 data->_landCoverGroup = &group;
                 data->_asset = &asset;
@@ -1175,8 +1179,7 @@ GroundCoverLayer::createLUTShader() const
     for(int i=0; i<numBiomeZones; ++i)
     {
         const BiomeZone& bz = options().biomeZones()[i];
-        const BiomeLayout& layout = bz.options().biomeLayout().get();
-        numLandCoverGroups += layout.getLandCoverGroups().size();
+        numLandCoverGroups += bz.getLandCoverGroups().size();
         // todo.
     }
 
@@ -1206,7 +1209,7 @@ GroundCoverLayer::createLUTShader() const
         if (currentLandCoverGroupIndex != data->_landCoverGroupIndex)
         {
             float fill = currentLandCoverGroup->options().fill().getOrUse(
-                data->_biomeLayout->options().fill().get());
+                data->_zone->options().fill().get());
 
             if (startingAssetIndex > 0)
                 landCoverGroupBuf << ", \n";
@@ -1264,7 +1267,7 @@ GroundCoverLayer::createLUTShader() const
     if (numAssetsInLandCoverGroup > 0 && data != NULL)
     {
         float fill = currentLandCoverGroup->options().fill().getOrUse(
-            data->_biomeLayout->options().fill().get());
+            data->_zone->options().fill().get());
 
         if (startingAssetIndex > 0)
             landCoverGroupBuf << ", \n";
@@ -1318,11 +1321,16 @@ GroundCoverLayer::createLUTShader() const
     for(int a=0; a<_liveAssets.size(); ++a)
     {
         AssetData* data = _liveAssets[a].get();
+
+        // shouldn't happen, but check anyway
+        if (data->_codes.empty())
+            continue;
+
         exprBuf.str("");
         exprBuf << "  if ((zone==" << data->_zoneIndex << ") && (";
         for(int c = 0; c < data->_codes.size(); ++c)
         {
-            if (c > 0) lutbuf << " || ";
+            if (c > 0) exprBuf << " || ";
             exprBuf << "(code==" << data->_codes[c] << ")";
         }
         exprBuf << ")) { result = oe_gc_landCoverGroups[" << data->_landCoverGroupIndex << "]; return true; } \n";

@@ -38,7 +38,7 @@ using namespace osgEarth;
 #endif
 
 // ---------------------------------------------------------------------------
-// A custom graphics context that we will use to query for OpenGL 
+// A custom graphics context that we will use to query for OpenGL
 // extension and hardware support. (Adapted from osgconv in OpenSceneGraph)
 
 namespace
@@ -47,12 +47,22 @@ namespace
     {
         MyGraphicsContext()
         {
+            // If the number of graphics context is > 0 or < 32 (the default, unitialized value of osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts()) then warn users
+            // to call osgEarth::initialize before realizing any graphics windows to avoid issues with the maxNumberOfGraphicsContexts being different than the
+            // actual number of registered GraphicsContexts in osg.  This can cause issues with unrefAfterApply due to faulty logic in osg::Texture::areAllTextureObjectsLoaded
+            // iterating over all of the max number of graphics contexts and checking whether textures are loaded for that context, even if the context isn't still in use.
+            // Realizing windows before the capabilities context can also cause odd issues with textures dissapearing in some cases.  It's much safer just to call
+            // osgEarth::initialize() at the start of your application to avoid these issues altogether.
+            if (osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() > 0 && osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() < 32)
+            {
+                OE_WARN << "WARNING:  Call osgEarth::initialize() before realizing any graphics windows.  There are currently " << osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() << " graphics contexts." << std::endl;
+            }
 
     	    osg::GraphicsContext::ScreenIdentifier si;
 	        si.readDISPLAY();
 	        si.setUndefinedScreenDetailsToDefaultScreen();
 
-            osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;  
+            osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
     	    traits->hostName = si.hostName;
 	        traits->displayNum = si.displayNum;
 	        traits->screenNum = si.screenNum;
@@ -86,7 +96,7 @@ namespace
                 _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
             }
 
-            if (_gc.valid()) 
+            if (_gc.valid())
             {
                 _gc->realize();
                 _gc->makeCurrent();
@@ -104,14 +114,6 @@ namespace
             {
                 OE_WARN << LC << "Failed to create graphic window too." << std::endl;
             }
-        }
-
-        ~MyGraphicsContext()
-        {
-            // Since this context is being thrown away, decrement the maximum number of graphics contexts
-            // The Texture::areAllTextureObjectsLoaded function just looks at the maximum number of graphics contexts setting to determine if it's safe to unref an image after Texture apply and if you don't decrement
-            // the max value it will never be considered safe to unref.
-            osg::DisplaySettings::instance()->setMaxNumberOfGraphicsContexts(osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() -1);
         }
 
         bool valid() const { return _gc.valid() && _gc->isRealized(); }
@@ -253,10 +255,10 @@ _supportsVertexArrayObjects ( false )
         glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
         OE_DEBUG << LC << "  Depth buffer bits = " << _depthBits << std::endl;
 #endif
-        
+
         glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
 #if !defined(OSG_GLES1_AVAILABLE) && !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
-        // Use the texture-proxy method to determine the maximum texture size 
+        // Use the texture-proxy method to determine the maximum texture size
         for( int s = _maxTextureSize; s > 2; s >>= 1 )
         {
             glTexImage2D( GL_PROXY_TEXTURE_2D, 0, GL_RGBA8, s, s, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0L );
@@ -284,13 +286,13 @@ _supportsVertexArrayObjects ( false )
             OE_DEBUG << LC << "  GLSL Version = " << getGLSLVersionInt() << std::endl;
         }
 
-        _supportsTextureArrays = 
+        _supportsTextureArrays =
             _supportsGLSL &&
             osg::getGLVersionNumber() >= 2.0f && // hopefully this will detect Intel cards
             osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
         OE_DEBUG << LC << "  Texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
 
-        _supportsMultiTexture = 
+        _supportsMultiTexture =
             osg::getGLVersionNumber() >= 1.3f ||
             osg::isGLExtensionSupported( id, "GL_ARB_multitexture") ||
             osg::isGLExtensionSupported( id, "GL_EXT_multitexture" );
@@ -302,14 +304,14 @@ _supportsVertexArrayObjects ( false )
         _supportsTwoSidedStencil = osg::isGLExtensionSupported( id, "GL_EXT_stencil_two_side" );
         //OE_INFO << LC << "  2-sided stencils = " << SAYBOOL(_supportsTwoSidedStencil) << std::endl;
 
-        _supportsDepthPackedStencilBuffer = osg::isGLExtensionSupported( id, "GL_EXT_packed_depth_stencil" ) || 
+        _supportsDepthPackedStencilBuffer = osg::isGLExtensionSupported( id, "GL_EXT_packed_depth_stencil" ) ||
                                             osg::isGLExtensionSupported( id, "GL_OES_packed_depth_stencil" );
         //OE_INFO << LC << "  depth-packed stencil = " << SAYBOOL(_supportsDepthPackedStencilBuffer) << std::endl;
 
         _supportsOcclusionQuery = osg::isGLExtensionSupported( id, "GL_ARB_occlusion_query" );
         //OE_INFO << LC << "  occlusion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
 
-        _supportsDrawInstanced = 
+        _supportsDrawInstanced =
             _supportsGLSL &&
             osg::isGLExtensionOrVersionSupported( id, "GL_EXT_draw_instanced", 3.1f );
         OE_DEBUG << LC << "  draw instanced = " << SAYBOOL(_supportsDrawInstanced) << std::endl;
@@ -317,7 +319,7 @@ _supportsVertexArrayObjects ( false )
         glGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &_maxUniformBlockSize );
         //OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
 
-        _supportsUniformBufferObjects = 
+        _supportsUniformBufferObjects =
             _supportsGLSL &&
             osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
         //OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
@@ -338,7 +340,7 @@ _supportsVertexArrayObjects ( false )
 
 
 #if !defined(OSG_GLES3_AVAILABLE)
-        _supportsTextureBuffer = 
+        _supportsTextureBuffer =
             osg::isGLExtensionOrVersionSupported( id, "GL_ARB_texture_buffer_object", 3.0 ) ||
             osg::isGLExtensionOrVersionSupported( id, "GL_EXT_texture_buffer_object", 3.0 );
 #else
@@ -354,7 +356,7 @@ _supportsVertexArrayObjects ( false )
         if ( _supportsTextureBuffer )
         {
             OE_DEBUG << LC << "  Texture buffer max size = " << _maxTextureBufferSize << std::endl;
-        }       
+        }
 
         bool supportsTransformFeedback =
             osg::isGLExtensionSupported( id, "GL_ARB_transform_feedback2" );

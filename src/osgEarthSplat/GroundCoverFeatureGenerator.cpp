@@ -20,7 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "GroundCoverFeatureGenerator"
-#include "GroundCover"
+#include "GroundCoverLayer"
 #include "NoiseTextureFactory"
 #include <osgEarth/ImageUtils>
 
@@ -60,7 +60,7 @@ namespace
     const int NOISE_CLUMPY = 3;
 
     // biome weighted index lookup table
-    struct BillboardLUTEntry
+    struct AssetLUTEntry
     {
         float width;
         float height;
@@ -68,17 +68,29 @@ namespace
         Config billboardConfig;
     };
 
-    typedef std::vector<BillboardLUTEntry> BillboardLUT;
+    typedef std::vector<AssetLUTEntry> AssetLUTVector;
 
-    typedef UnorderedMap<const GroundCoverBiome*, BillboardLUT> BiomeLUT;
+    typedef UnorderedMap<const LandCoverGroup*, AssetLUTVector> AssetLUT;
 
-    void buildLUT(const GroundCover* gc, BiomeLUT& lut)
+    void buildLUT(const BiomeZone& zone, AssetLUT& lut)
     {
-        for(GroundCoverBiomes::const_iterator b = gc->getBiomes().begin();
-            b != gc->getBiomes().end();
+        for(std::vector<LandCoverGroup>::const_iterator b = zone.getLandCoverGroups().begin();
+            b != zone.getLandCoverGroups().end();
             ++b)
         {
-            BillboardLUT& billboards = lut[b->get()];
+            const LandCoverGroup* group = &(*b);
+            AssetLUTVector& assets = lut[group];
+
+            for(std::vector<AssetUsage>::const_iterator i = group->getAssets().begin();
+                i != group->getAssets().end();
+                ++i)
+            {
+            }
+        }
+    }
+
+#if 0
+
 
             for (GroundCoverObjects::const_iterator i = b->get()->getObjects().begin();
                 i != b->get()->getObjects().end();
@@ -101,11 +113,12 @@ namespace
                     for(unsigned w=0; w<weight; ++w)
                     {
                         billboards.push_back(entry);
-                    }               
+                    }
                 }
             }
         }
     }
+#endif
 
     // custom featurelist cursor that lets us populate the list directly
     class MyFeatureListCursor : public FeatureListCursor
@@ -298,13 +311,10 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
         return Status::NoError;
 
     // for now, default to zone 0
-    Zone* zone = _gclayer->getZones()[0].get();
-    if (!zone)
+    if (_gclayer->getZones().empty())
         return Status("No zones found in GroundCoverLayer");
 
-    GroundCover* groundcover = zone->getGroundCover();
-    if (!groundcover)
-        return Status("No groundcover data found in zone");
+    const BiomeZone& zone = _gclayer->getZones()[0];
 
     // noise sampler:
     ImageUtils::PixelReader sampleNoise;
@@ -361,8 +371,8 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     // build the lookup table for the biomes.
     // TODO: we could do this in initialize(), but we want to leave the door open
     // for supporting multiple zones in the future -GW
-    BiomeLUT biomeLUT;
-    buildLUT(groundcover, biomeLUT);
+    AssetLUT assetLUT;
+    buildLUT(zone, assetLUT);
 
     // calculate instance count based on tile extents
     unsigned lod = _gclayer->getLOD();
@@ -371,7 +381,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     GeoExtent e = TileKey(lod, tx / 2, ty / 2, _map->getProfile()).getExtent();
     GeoCircle c = e.computeBoundingGeoCircle();
     double tileWidth_m = 2.0 * c.getRadius() / 1.4142;
-    float spacing_m = groundcover->getSpacing();
+    float spacing_m = zone.getSpacing().as(Units::METERS);
     unsigned vboTileSize = (unsigned)(tileWidth_m / spacing_m);
     if (vboTileSize & 0x01) vboTileSize += 1;
 
@@ -407,7 +417,8 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
         tilec.y() += shift.y()*halfSpacing.y();
 
         // check the land cover
-        const GroundCoverBiome* biome = NULL;
+        const LandCoverGroup* group = NULL;
+        //const GroundCoverBiome* biome = NULL;
         const LandCoverClass* lcclass = NULL;
         if (lcTex)
         {
@@ -415,8 +426,8 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
             lcclass = _lcdict->getClassByValue((int)landCover.r());
             if (lcclass == NULL)
                 continue;
-            biome = groundcover->getBiome(lcclass);
-            if (!biome)
+            group = zone.getLandCoverGroup(lcclass);
+            if (!group)
                 continue;
         }
 
@@ -430,8 +441,8 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
 
         // check the fill
         float fill =
-            biome && biome->fill().isSet() ? biome->fill().get() :
-            groundcover->options().fill().get();
+            group->options().fill().isSet() ? group->options().fill().get() :
+            zone.options().fill().get();
 
         if (noise[NOISE_SMOOTH] > fill)
             continue;
@@ -469,14 +480,14 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
         feature->set("elevation", z);
 
         // Resolve the symbol so we can add attributes
-        if (biome)
+        if (group)
         {
-            BillboardLUT& bblut = biomeLUT[biome];
+            AssetLUTVector& bblut = assetLUT[group];
             unsigned index = (unsigned)(clamp(noise[NOISE_RANDOM], 0.0, 0.9999999) * (float)(bblut.size()));
-            BillboardLUTEntry& bb = bblut[index];
-            float sizeScale = bb.sizeVariation * (noise[NOISE_RANDOM_2] * 2.0 - 1.0);
-            float width = bb.width + bb.width*sizeScale;
-            float height = bb.height + bb.height*sizeScale;
+            AssetLUTEntry& asset = bblut[index];
+            float sizeScale = asset.sizeVariation * (noise[NOISE_RANDOM_2] * 2.0 - 1.0);
+            float width = asset.width + asset.width*sizeScale;
+            float height = asset.height + asset.height*sizeScale;
             feature->set("width", width);
             feature->set("height", height);
 
@@ -485,7 +496,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
                 i != _propNames.end(); 
                 ++i)
             {
-                std::string value = bb.billboardConfig.value(*i);
+                std::string value = asset.billboardConfig.value(*i);
                 if (!value.empty())
                 {
                     feature->set(*i, value);

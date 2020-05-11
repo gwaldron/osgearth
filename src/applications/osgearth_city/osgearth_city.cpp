@@ -63,6 +63,7 @@ void addParks    (Map* map);
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
     osg::ArgumentParser arguments(&argc,argv);
 
     // create the map.
@@ -76,7 +77,7 @@ main(int argc, char** argv)
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
-    
+
     EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
 
@@ -126,7 +127,7 @@ void addBuildings(Map* map)
     data->setName("buildings");
     data->setURL(BUILDINGS_URL);
     data->options().buildSpatialIndex() = true;
-    
+
     // a style for the building data:
     Style buildingStyle;
     buildingStyle.setName( "buildings" );
@@ -168,7 +169,7 @@ void addBuildings(Map* map)
     styleSheet->addStyle( buildingStyle );
     styleSheet->addStyle( wallStyle );
     styleSheet->addStyle( roofStyle );
-    
+
     // load a resource library that contains the building textures.
     ResourceLibrary* reslib = new ResourceLibrary( "us_resources", RESOURCE_LIB_URL );
     styleSheet->addResourceLibrary( reslib );
@@ -198,7 +199,7 @@ void addStreets(Map* map)
     data->options().buildSpatialIndex() = true;
 
     // a resampling filter will ensure that the length of each segment falls
-    // within the specified range. That can be helpful to avoid cropping 
+    // within the specified range. That can be helpful to avoid cropping
     // very long lines segments.
     ResampleFilterOptions resample;
     resample.minLength() = 0.0f;
@@ -261,7 +262,7 @@ void addParks(Map* map)
     model->url()->setLiteral(TREE_MODEL_URL);
     model->placement() = model->PLACEMENT_RANDOM;
     model->density() = 6000.0f; // instances per sqkm
-    
+
     // Clamp to the terrain:
     AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
     alt->clamping() = alt->CLAMP_TO_TERRAIN;

@@ -110,7 +110,7 @@ osg::Node* makeGeometryForImport(double x, double y)
     verts->push_back(osg::Vec3(x, 0, y + 10));
     verts->push_back(osg::Vec3(x, 0, y + 5));
     verts->push_back(osg::Vec3(x + 5, 0, y + 5));
-    geom->setVertexArray(verts);    
+    geom->setVertexArray(verts);
     osg::Vec4Array* colors = new osg::Vec4Array(1);
     (*colors)[0].set(1,1,1,1);
     geom->setColorArray(colors);
@@ -130,7 +130,7 @@ struct TestFirstCount : public osg::NodeCallback
 
             unsigned total = line->getNumVerts();
             unsigned first = line->getFirst();
-        
+
             line->setFirst( (first+1) % total );
             line->setCount( 3 );
         }
@@ -188,7 +188,7 @@ osg::Node* createDrawables()
     addVerts(rollingStipple, x, y);
     rollingStipple->addUpdateCallback(new RollStipple());
     group->addChild(rollingStipple);
-    
+
     x += 20;
     LineDrawable* segments = new LineDrawable(GL_LINES);
     segments->setLineWidth(3);
@@ -203,7 +203,7 @@ osg::Node* createDrawables()
     addVerts(firstCount, x, y);
     firstCount->addUpdateCallback(new TestFirstCount());
     group->addChild(firstCount);
-    
+
     x += 20;
     osg::ref_ptr<osg::Node> node = makeGeometryForImport(x, y);
     LineGroup* lines = new LineGroup();
@@ -266,6 +266,8 @@ osg::Node* createDrawables()
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
@@ -315,7 +317,7 @@ main(int argc, char** argv)
     GLUtils::setGlobalDefaults(viewer.getCamera()->getOrCreateStateSet());
 
     viewer.setSceneData(node.get());
-    
+
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));

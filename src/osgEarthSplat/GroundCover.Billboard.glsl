@@ -34,7 +34,8 @@ uniform sampler2D oe_GroundCover_noiseTex;
 #define NOISE_CLUMPY   3
 
 uniform float oe_GroundCover_wind; // wind blowing the foliage
-uniform float oe_GroundCover_maxDistance;     // distance at which flora disappears
+//uniform float oe_GroundCover_maxDistance;     // distance at which flora disappears
+uniform vec3 oe_VisibleLayer_ranges;
 
 uniform vec3 oe_Camera; // (vp width, vp height, lodscale)
 
@@ -107,7 +108,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     oe_UpVectorView = gl_NormalMatrix * vp_Normal;
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
-    float maxRange = oe_GroundCover_maxDistance / VRV_OSG_LOD_SCALE;
+    float maxRange = oe_VisibleLayer_ranges[1] / VRV_OSG_LOD_SCALE;
     float nRange = clamp(-vertex_view.z/maxRange, 0.0, 1.0);
 
     // cull verts that are out of range. Sadly we can't do this in COMPUTE.
@@ -139,6 +140,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     {
         // second quad
         tangentVector = gl_NormalMatrix * vec3(0,1,0);
+        which -= 4;
     }
 
     vec3 halfWidthTangentVector = cross(tangentVector, oe_UpVectorView) * 0.5 * width;
@@ -195,7 +197,6 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
                 which == 0 || which == 2? mix(-tangentVector, faceNormalVector, blend) :
                 mix( tangentVector, faceNormalVector, blend);
 
-            //oe_GroundCover_atlasIndex = float(billboard.atlasIndexSide);
             oe_GroundCover_atlasIndex = float(render[gl_InstanceID].sideIndex);
         }
     }
@@ -254,14 +255,13 @@ uniform int oe_GroundCover_A2C;
 
 in vec2 oe_GroundCover_texCoord;
 flat in float oe_GroundCover_atlasIndex;
-in float oe_layer_opacity;
 
 void oe_GroundCover_FS(inout vec4 color)
 {
     if (oe_GroundCover_atlasIndex < 0.0)
+    {
         discard;
-
-    color.a *= oe_layer_opacity;
+    }
 
     // modulate the texture
     color *= texture(oe_GroundCover_billboardTex, vec3(oe_GroundCover_texCoord, oe_GroundCover_atlasIndex));

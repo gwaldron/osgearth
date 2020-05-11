@@ -45,7 +45,7 @@
 int usage( char** argv, const std::string& msg )
 {
   OSG_NOTICE << msg << "\n\n";
-  OSG_NOTICE 
+  OSG_NOTICE
     << "osgEarth Boundary Generator Tool\n\n"
     << "Generates boundary geometry that you can use with an osgEarth <mask> layer in order\n"
     << "to stitch an external model into the terrain.\n\n"
@@ -59,12 +59,13 @@ int usage( char** argv, const std::string& msg )
     << "           --view               : show result in 3D window\n"
     << std::endl;
 
-  
+
   return -1;
 }
 
 int main(int argc, char** argv)
 {
+    osgEarth::initialize();
     osg::ArgumentParser arguments(&argc,argv);
 
     std::string outFile;
@@ -113,7 +114,7 @@ int main(int argc, char** argv)
         {
           outStream << "POLYGON((";
 
-          osg::ref_ptr<osg::EllipsoidModel> em = new osg::EllipsoidModel();  
+          osg::ref_ptr<osg::EllipsoidModel> em = new osg::EllipsoidModel();
 
           for (int i=0; i < (int)hull->size(); i++)
           {
@@ -137,7 +138,7 @@ int main(int argc, char** argv)
           outStream.close();
 
           std::cout << "Boundary data written to " << outFile << std::endl;
-          
+
           if (!convexOnly)
             std::cout << "Boundary: " << (BoundaryUtil::simpleBoundaryTest(*hull) ? "VALID" : "INVALID") << std::endl;
         }
@@ -167,7 +168,7 @@ int main(int argc, char** argv)
       root->addChild( modelNode );
       root->addChild( xform );
       modelNode->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
-      
+
       osg::Geometry* boundaryGeometry = new osg::Geometry();
       boundaryGeometry->setVertexArray( drawHull );
 

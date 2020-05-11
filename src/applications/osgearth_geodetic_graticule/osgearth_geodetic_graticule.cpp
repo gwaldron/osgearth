@@ -37,7 +37,7 @@ namespace ui = osgEarth::Util::Controls;
 int
 usage( char** argv, const std::string& msg )
 {
-    OE_NOTICE 
+    OE_NOTICE
         << msg << std::endl
         << "USAGE: " << argv[0] << " file.earth" << std::endl;
     return -1;
@@ -121,6 +121,8 @@ ui::Control* makeUI(App& app)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 

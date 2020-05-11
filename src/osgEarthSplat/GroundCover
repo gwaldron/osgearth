@@ -38,11 +38,7 @@ namespace osgEarth {
 namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
-
-    class Coverage;
-    class SplatCoverageLegend;
-
-
+    
     class OSGEARTHSPLAT_EXPORT GroundCoverBiomeOptions : public ConfigOptions
     {
     public:

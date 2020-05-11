@@ -22,7 +22,6 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/LandCoverLayer>
-#include <osgEarth/TileRasterizer>
 #include <osg/Image>
 
 namespace osgEarth {

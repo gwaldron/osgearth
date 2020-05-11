@@ -46,7 +46,7 @@ namespace ui = osgEarth::Util::Controls;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl;
 
     return 0;
@@ -139,6 +139,8 @@ ui::Control* makeUI(App& app)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -150,7 +152,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( em );
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* earth = MapNodeHelper().load( arguments, &viewer );
 
     MapNode* mapNode = MapNode::get(earth);
@@ -175,7 +177,7 @@ main(int argc, char** argv)
     // Place your GeoTransform under the map node and it will automatically support clamping.
     // If you don't do this, you must call setTerrain to get terrain clamping.
     mapNode->addChild( app.geo );
-    
+
     viewer.setSceneData( root );
     viewer.getCamera()->setNearFarRatio(0.00002);
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);

@@ -35,7 +35,7 @@ using namespace osgEarth::Util;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth"
         << "\n          --views [num] : Number of windows to open"
         << "\n          --shared      : Use a shared graphics context"

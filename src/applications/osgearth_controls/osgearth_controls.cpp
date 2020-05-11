@@ -41,7 +41,9 @@ ImageControl* s_imageControl = 0L;
 
 int main(int argc, char** argv)
 {
-    osg::ArgumentParser arguments(&argc,argv);       
+    osgEarth::initialize();
+
+    osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
     osg::Node* node = osgEarth::Util::MapNodeHelper().load(arguments, &viewer);
@@ -50,7 +52,7 @@ int main(int argc, char** argv)
         OE_WARN << "No earth file on the command line." << std::endl;
         return -1;
     }
-    
+
     osg::Group* root = new osg::Group();
     root->addChild( node );
 
@@ -172,7 +174,7 @@ createControls( ControlCanvas* cs )
 
                 s_sliderLabel = new LabelControl();
                 s_sliderLabel->setVertAlign( Control::ALIGN_CENTER );
-                c2->addControl( s_sliderLabel );        
+                c2->addControl( s_sliderLabel );
             }
             ul->addControl( c2 );
 
@@ -206,7 +208,7 @@ createControls( ControlCanvas* cs )
     // a centered hbox container along the bottom on the screen.
     {
         HBox* bottom = new HBox();
-        bottom->setBackColor(0,0,0,0.5);        
+        bottom->setBackColor(0,0,0,0.5);
         bottom->setMargin( 10 );
         bottom->setChildSpacing( 145 );
         bottom->setVertAlign( Control::ALIGN_BOTTOM );

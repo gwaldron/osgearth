@@ -41,7 +41,7 @@ using namespace osgEarth::Contrib;
 int
 usage(const char* name, const char* msg =NULL)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << (msg ? msg : "")
         << "\nUsage: " << name << " file.earth --model <file> [--num <number>] [--debug]" << std::endl
         << MapNodeHelper().usage() << std::endl;
@@ -53,6 +53,8 @@ usage(const char* name, const char* msg =NULL)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     if ( arguments.read("--help") )
@@ -96,7 +98,7 @@ main(int argc, char** argv)
     htm->setMinimumCellSize(25000);
     htm->setRangeFactor(5);
     mapNode->addChild(htm);
-        
+
     for (unsigned i = 0; i < numObjects; ++i)
     {
         GeoTransform* xform = new GeoTransform();

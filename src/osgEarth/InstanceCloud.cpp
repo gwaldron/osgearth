@@ -387,16 +387,6 @@ namespace
                 dest->push_back((*src_typed)[0]);
         }
     }
-
-    int nextPowerOf2(int x) {
-        --x;
-        x |= x >> 1;
-        x |= x >> 2;
-        x |= x >> 4;
-        x |= x >> 8;
-        x |= x >> 16;
-        return x+1;
-    }
 }
 
 void
@@ -558,12 +548,12 @@ InstanceCloud::ModelCruncher::apply(osg::Geometry& node)
         }
     }
 
-    for(int i=0; i < node.getNumPrimitiveSets(); ++i)
+    for(unsigned i=0; i < node.getNumPrimitiveSets(); ++i)
     {
         osg::DrawElements* de = dynamic_cast<osg::DrawElements*>(node.getPrimitiveSet(i));
         if (de)
         {
-            for(int k=0; k<de->getNumIndices(); ++k)
+            for(unsigned k=0; k<de->getNumIndices(); ++k)
             {
                 int index = de->getElement(k);
                 _primset->addElement(offset + index);

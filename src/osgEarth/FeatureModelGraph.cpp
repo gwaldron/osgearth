@@ -36,6 +36,7 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/ElevationRanges>
 #include <osgEarth/LineDrawable>
+#include <osgEarth/NetworkMonitor>
 
 #include <osg/CullFace>
 #include <osg/PagedLOD>
@@ -86,7 +87,7 @@ namespace
     {
         osg::ref_ptr<const Session> _session;
 
-        MyProgressCallback(const Session* session) : 
+        MyProgressCallback(const Session* session) :
             DatabasePagerProgressCallback(),
             _session(session)
         {
@@ -116,9 +117,9 @@ namespace
 
 #ifdef USE_POLYTOPE_CULLING
 
-    // This sort of works. 
+    // This sort of works.
     // Sadly, if you are zoomed in to a high LOD, it can get "stuck" failing on a lower LOD
-    // somewhere up the chain. 
+    // somewhere up the chain.
     struct PolytopeCullCallback : public osg::NodeCallback
     {
         PolytopeCullCallback(const GeoExtent& tileExtent, double zMin, double zMax) :
@@ -198,7 +199,7 @@ namespace
             const int index[24] = {
                 0, 1, 1, 2, 2, 3, 3, 0,
                 4, 5, 5, 6, 6, 7, 7, 4,
-                0, 4, 1, 5, 2, 6, 3, 7 
+                0, 4, 1, 5, 2, 6, 3, 7
             };
             LineDrawable* d = new LineDrawable(GL_LINES);
             d->setUseGPU(false);
@@ -546,7 +547,7 @@ FeatureModelGraph::open()
 
             float tileSizeFactor = maxRange / bounds.radius();
 
-            //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
+            //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere.
             tileSizeFactor = osg::maximum(tileSizeFactor, 1.0f);
             OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRange << std::endl;
             _options.layout()->tileSizeFactor() = tileSizeFactor;
@@ -651,7 +652,7 @@ FeatureModelGraph::open()
     if (_options.enableLighting().isSet())
         GLUtils::setLighting(stateSet, *_options.enableLighting() ? 1 : 0);
 
-    // If the user requests fade-in, install a post-merge operation that will set the 
+    // If the user requests fade-in, install a post-merge operation that will set the
     // proper fade time for paged nodes.
     if (_options.fading().isSet() && _sgCallbacks.valid())
     {
@@ -725,7 +726,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
         float maxElevation = 100.0f;
 #if 0
         float elevation = NO_DATA_VALUE;
-        osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);        
+        osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);
         if (env.valid())
         {
             elevation = env->getElevation(center.x(), center.y());
@@ -880,7 +881,7 @@ FeatureModelGraph::load(
             FeatureLevel level(0, maxRange);
 
 
-            // Construct a tile key that will be used to query the source for this tile.            
+            // Construct a tile key that will be used to query the source for this tile.
             // The tilekey x, y, z that is computed in the FeatureModelGraph uses a lower left origin,
             // osgEarth tilekeys use a lower left so we need to invert it.
             unsigned int w, h;
@@ -916,7 +917,7 @@ FeatureModelGraph::load(
 
     else if (!_options.layout().isSet() || _lodmap.size() == 0)
     {
-        // This is a non-tiled data source that has NO level details. In this case, 
+        // This is a non-tiled data source that has NO level details. In this case,
         // we simply want to load all features at once and make them visible at
         // maximum camera range.
 
@@ -1383,6 +1384,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
 FeatureCursor*
 FeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const
 {
+    NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
     FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
     if (_filterChain.valid())
     {
@@ -1400,6 +1402,8 @@ FeatureModelGraph::build(const Style&          defaultStyle,
     ProgressCallback*     progress)
 {
     OE_TEST << LC << "build " << workingExtent.toString() << std::endl;
+
+    NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
 
     osg::ref_ptr<osg::Group> group = new osg::Group();
 
@@ -1657,7 +1661,7 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
         }
 
         // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-        // style in this case: for style expressions, the user must be explicity about 
+        // style in this case: for style expressions, the user must be explicity about
         // default styling; this is because there is no other way to exclude unwanted
         // features.
         else
@@ -1680,13 +1684,15 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
 
 
 osg::Group*
-FeatureModelGraph::createStyleGroup(const Style&          style, 
-                                    FeatureList&          workingSet, 
+FeatureModelGraph::createStyleGroup(const Style&          style,
+                                    FeatureList&          workingSet,
                                     const FilterContext&  contextPrototype,
                                     const osgDB::Options* readOptions,
                                     const Query&          query)
 {
     OE_TEST << LC << "createStyleGroup " << style.getName() << std::endl;
+
+    NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
 
     osg::Group* styleGroup = 0L;
 
@@ -1710,7 +1716,7 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
     OE_DEBUG << LC << "Cropped out " << sizeBefore - sizeAfter << " features\n";
 
     // next, if the usable extent is less than the full extent (i.e. we had to clamp the feature
-    // extent to fit on the map), calculate the extent of the features in this tile and 
+    // extent to fit on the map), calculate the extent of the features in this tile and
     // crop to the map extent if necessary. (Note, if cropFeatures was set to true, this is
     // already done)
     if (_featureExtentClamped && _options.layout().isSet() && _options.layout()->cropFeatures() == false)

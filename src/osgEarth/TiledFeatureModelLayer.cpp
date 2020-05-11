@@ -235,7 +235,7 @@ TiledFeatureModelLayer::removedFromMap(const Map* map)
 
     options().featureSource().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
-    
+
     if (_root.valid())
     {
         _root->removeChildren(0, _root->getNumChildren());
@@ -262,6 +262,7 @@ TiledFeatureModelLayer::create()
 
             // group that will build all the feature geometry:
             osg::ref_ptr<TiledFeatureModelGraph> fmg = new TiledFeatureModelGraph(getFeatureSource(), getStyleSheet(), _session.get());
+            fmg->setOwnerName(getName());
             fmg->setFilterChain(chain.get());
             fmg->setAdditive(*_options->additive());
             fmg->build();

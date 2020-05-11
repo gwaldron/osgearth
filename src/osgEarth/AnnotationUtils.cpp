@@ -59,20 +59,6 @@ AnnotationUtils::convertTextSymbolEncoding (const TextSymbol::Encoding encoding)
     return text_encoding;
 }
 
-namespace
-{
-    static int nextPowerOf2(int x)
-    {
-        --x;
-        x |= x >> 1;
-        x |= x >> 2;
-        x |= x >> 4;
-        x |= x >> 8;
-        x |= x >> 16;
-        return x+1;
-    }
-}
-
 osgText::Text*
 AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,

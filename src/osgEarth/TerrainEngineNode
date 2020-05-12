@@ -111,7 +111,7 @@ namespace osgEarth
         const Terrain* getTerrain() const { return _terrainInterface.get(); }
 
         /** Accesses the object that keeps track of GPU resources in use */
-        TerrainResources* getResources() const;
+        TerrainResources* getResources();
 
         /** Adds a terrain effect */
         void addEffect( TerrainEffect* effect );

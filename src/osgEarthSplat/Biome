@@ -51,6 +51,7 @@ namespace osgEarth { namespace Splat
             OE_OPTION(float, height);
             OE_OPTION(float, sizeVariation);
             OE_OPTION(float, selectionWeight);
+            OE_OPTION(float, fill);
 
             Config _initConfig;
         };

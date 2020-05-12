@@ -74,8 +74,6 @@ void oe_GroundCover_Model_VS(inout vec4 vertex)
 
     // push the falloff closer to the max distance.
     oe_GroundCover_falloff = 1.0-(nRange*nRange);
-    //float width = render[gl_InstanceID].width * falloff;
-    //float height = render[gl_InstanceID].width * falloff;
 
     oe_GroundCover_texCoord = gl_MultiTexCoord7.xyz;
 

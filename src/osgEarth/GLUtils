@@ -56,6 +56,10 @@ namespace osgEarth
         //! Removes the state associated with a GL capability, causing it to inherit from above.
         //! and if one of: GL_LIGHTING, GL_LINE_WIDTH, GL_LINE_STIPPLE, GL_LINE_SMOOTH, GL_POINT_SIZE
         static void remove(osg::StateSet* stateSet, GLenum cap);
+
+        //! Submits a hand-created GL buffer object for deletion by the GL manager.
+        //! Method copied from OSG
+        static void deleteGLBuffer(unsigned contextID, GLuint handle);
     };
 
     struct OSGEARTH_EXPORT CustomRealizeOperation : public osg::Operation

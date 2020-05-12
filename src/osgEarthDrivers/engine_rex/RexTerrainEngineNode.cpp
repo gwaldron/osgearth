@@ -346,12 +346,16 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     _selectionInfo.initialize(
         0u, // always zero, not the terrain options firstLOD
-        osg::minimum(options().maxLOD().get(), maxLOD ),
+        maxLOD,
         map->getProfile(),
         options().minTileRangeFactor().get(),
         true); // restrict polar subdivision for geographic maps
 
-               // set up the initial graph
+    TerrainResources* res = getResources();
+    for(unsigned lod=0; lod<=maxLOD; ++lod)
+        res->setVisibilityRangeHint(lod, _selectionInfo.getLOD(lod)._visibilityRange);
+
+    // set up the initial graph
     refresh();
 
     // now that we have a map, set up to recompute the bounds

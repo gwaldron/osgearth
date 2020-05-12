@@ -1,44 +1,84 @@
-#version 430
+#version 460
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_name       GroundCover vertex shader
-#pragma vp_entryPoint oe_Grass_VS
+#pragma vp_name       Grass VS MODEL
+#pragma vp_entryPoint oe_Grass_VS_MODEL
+#pragma vp_location   vertex_model
+
+#pragma include GroundCover.Types.glsl
+
+vec3 vp_Normal;
+vec4 vp_Color;
+
+struct oe_VertexSpec {
+    vec4 model, view;
+    vec3 normal; // always in view
+} oe_vertex;
+
+struct oe_TransformSpec {
+    mat4 modelview;
+    mat4 projection;
+    mat3 normal;
+} oe_transform;
+
+void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
+{
+    uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
+    uint tileNum = render[i].tileNum;
+
+    oe_transform.modelview = tile[tileNum].modelViewMatrix;
+    oe_transform.normal    = mat3(tile[tileNum].normalMatrix);
+
+    oe_vertex.model  = vec4(render[i].vertex.xyz + geom_vertex.xyz, 1.0);
+    oe_vertex.view   = oe_transform.modelview * oe_vertex.model;
+    oe_vertex.normal = oe_transform.normal * vp_Normal;
+
+    // override the terrain's shader
+    vp_Color = gl_Color;  
+}
+
+
+[break]
+#version 460
+$GLSL_DEFAULT_PRECISION_FLOAT
+
+#pragma vp_name       Grass Render VS
+#pragma vp_entryPoint oe_Grass_main
 #pragma vp_location   vertex_view
 
-// Instance data from compute shader
-struct RenderData // vec4 aligned please
-{
-    vec4 vertex;      // 16
-    vec2 tilec;       // 8
-    int sideIndex;    // 4
-    int  topIndex;    // 4
-    float width;      // 4
-    float height;     // 4
-    float fillEdge;   // 4
-    float _padding;   // 4
-};
-layout(binding=1, std430) readonly buffer RenderBuffer {
-    RenderData render[];
-};
+#pragma include GroundCover.Types.glsl
 
-//uncomment to activate
-//#define OE_GROUNDCOVER_USE_ACTOR
+struct oe_VertexSpec {
+    vec4 model, view;
+    vec3 normal;
+} oe_vertex;
+
+struct oe_TransformSpec {
+    mat4 modelview;
+    mat4 projection;
+    mat3 normal;
+} oe_transform;
 
 // Noise texture:
-uniform sampler2D oe_GroundCover_noiseTex;
+uniform sampler2D oe_gc_noiseTex;
 #define NOISE_SMOOTH   0
 #define NOISE_RANDOM   1
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
-vec3 vp_Normal;
-vec4 vp_Color;
-out vec4 oe_layer_tilec;
+// Stage globals
 vec3 oe_UpVectorView;
+vec4 vp_Color;
+vec3 vp_Normal;
+out vec4 oe_layer_tilec;
+
+// Output texture coordinates to the fragment shader
+out vec3 oe_gc_texCoord;
 
 uniform float osg_FrameTime; // OSG frame time (seconds) used for wind animation
-//uniform float oe_GroundCover_wind;  // wind strength
+
 uniform vec3 oe_VisibleLayer_ranges; // distance at which flora disappears
+uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 
 #pragma import_defines(OE_WIND_TEX, OE_WIND_TEX_MATRIX)
 #ifdef OE_WIND_TEX
@@ -46,21 +86,6 @@ uniform sampler3D OE_WIND_TEX ;
 uniform mat4 OE_WIND_TEX_MATRIX ;
 #define MAX_WIND_SPEED 50.0  // meters per second
 #endif
-
-#ifdef OE_GROUNDCOVER_USE_ACTOR
-uniform float actorRadius;
-uniform float actorHeight;
-//uniform float actorPlace;
-uniform vec3 actorPos;
-uniform mat4 osg_ViewMatrix;
-#endif
-
-uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
-
-out vec2 oe_GroundCover_texCoord;
-
-// Output that selects the land cover texture from the texture array (flat)
-flat out float oe_GroundCover_atlasIndex;
 
 float decel(float x) {
     return 1.0-(1.0-x)*(1.0-x);
@@ -72,94 +97,88 @@ float remap(float x, float lo, float hi) {
 }
 
 const float browning = 0.25;
-uniform float shmoo;
 
-void oe_Grass_VS(inout vec4 vertex)
+void oe_Grass_parametric(inout vec4 vertex_view)
 {
-    // intialize with a "no draw" value:
-    oe_GroundCover_atlasIndex = -1.0;
+    uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
+    uint t = render[i].tileNum;
 
-    vertex = gl_ModelViewMatrix * render[gl_InstanceID].vertex;
+    vp_Color = vec4(1);
 
-    vp_Normal = vec3(0,0,1);
-    oe_UpVectorView = gl_NormalMatrix * vp_Normal;
-
-    oe_layer_tilec = vec4(render[gl_InstanceID].tilec, 0, 1);
+    oe_layer_tilec = vec4(render[i].tilec, 0, 1);
+    vertex_view = oe_vertex.view;
+    oe_UpVectorView = oe_transform.normal * vec3(0,0,1);
 
     // Sample our noise texture
-    vec4 oe_noise = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st, 0);
-    vec4 oe_noise_wide = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st/16.0, 0);
+    vec4 oe_noise = textureLod(oe_gc_noiseTex, oe_layer_tilec.st, 0);
+    vec4 oe_noise_wide = textureLod(oe_gc_noiseTex, oe_layer_tilec.st/16.0, 0);
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
     float maxRange = oe_VisibleLayer_ranges[1] / oe_Camera.z;
-    float zv = vertex.z;
-    float nRange = clamp(-zv/maxRange, 0.0, 1.0);
+    float nRange = clamp(-vertex_view.z/maxRange, 0.0, 1.0);
 
-    // cull verts that are out of range. Sadly we can't do this in COMPUTE.
-    if (nRange >= 0.99)
-        return;
+    // find the texture atlas index:
+    oe_gc_texCoord.z = float(render[i].sideIndex);
 
     // make the grass smoothly disappear in the distance
     float falloff = clamp(2.0-(nRange + oe_noise[NOISE_SMOOTH]), 0, 1);
 
-    oe_GroundCover_atlasIndex = float(render[gl_InstanceID].sideIndex);
-
-    float width = render[gl_InstanceID].width * clamp(render[gl_InstanceID].fillEdge*2.0, 0, 1);
-    float height = render[gl_InstanceID].height * render[gl_InstanceID].fillEdge * falloff;
+    float width = render[i].width * falloff;
+    float height = render[i].height * falloff;
 
     height = mix(-browning*height+height, browning*height+height, oe_noise_wide[NOISE_CLUMPY]);
 
     // ratio of adjusted height to nonimal height
-    float heightRatio = height/render[gl_InstanceID].height;
+    float heightRatio = height/render[i].height;
 
     int which = gl_VertexID & 15; // mod16 - there are 16 verts per instance
 
     vp_Color = vec4(1,1,1,falloff);
 
     // darken as the fill level decreases
-    vp_Color.rgb *= 0.5+( decel(render[gl_InstanceID].fillEdge)*(1.0-0.5) );
+    vp_Color.rgb *= 0.5+( decel(render[i].fillEdge)*(1.0-0.5) );
 
     // texture coordinate:
     float row = float(which/4);
-    oe_GroundCover_texCoord.t = (1.0/3.0)*row;
+    oe_gc_texCoord.t = (1.0/3.0)*row;
 
     // random rotation; do this is model space and then transform
     // the vector to view space.
     float a = 6.283185 * fract(oe_noise[NOISE_RANDOM_2]*5.5);
-    vec3 faceVec = gl_NormalMatrix * vec3(-sin(a), cos(a), 0);
+    vec3 faceVec = oe_transform.normal * vec3(-sin(a), cos(a), 0);
 
     // local frame side vector
     vec3 sideVec = cross(faceVec, oe_UpVectorView);
 
     // make a curved billboard
     if ((which&3) == 0) { // col 0
-        vertex.xyz += -sideVec*width*0.5 -faceVec*width*0.1;
-        oe_GroundCover_texCoord.s = 0.0;
+        vertex_view.xyz += -sideVec*width*0.5 -faceVec*width*0.1;
+        oe_gc_texCoord.s = 0.0;
     }
     else if (((which-1)&3) == 0) { // col 1
-        vertex.xyz += -sideVec*width*0.15 +faceVec*width*0.1;
-        oe_GroundCover_texCoord.s = (1.0/3.0);
+        vertex_view.xyz += -sideVec*width*0.15 +faceVec*width*0.1;
+        oe_gc_texCoord.s = (1.0/3.0);
     }
     else if (((which-2)&3) == 0) { // col 2
-        vertex.xyz += sideVec*width*0.15 +faceVec*width*0.1;
-        oe_GroundCover_texCoord.s = (2.0/3.0);
+        vertex_view.xyz += sideVec*width*0.15 +faceVec*width*0.1;
+        oe_gc_texCoord.s = (2.0/3.0);
     }
     else { // col 3
-        vertex.xyz += sideVec*width*0.5 -faceVec*width*0.1;
-        oe_GroundCover_texCoord.s = 1.0;
+        vertex_view.xyz += sideVec*width*0.5 -faceVec*width*0.1;
+        oe_gc_texCoord.s = 1.0;
     }
 
     // extrude to height:
-    vec4 vertex_base = vertex;
+    vec4 vertex_base = vertex_view;
 
-    float vertexHeight = height * oe_GroundCover_texCoord.t;
-    vertex.xyz += oe_UpVectorView * vertexHeight;
+    float vertexHeight = height * oe_gc_texCoord.t;
+    vertex_view.xyz += oe_UpVectorView * vertexHeight;
 
     // normal:
     vp_Normal = oe_UpVectorView;
 
     // For bending, exaggerate effect as we climb the stalk
-    float bendPower = pow(3.0*oe_GroundCover_texCoord.t+0.8, 2.0);
+    float bendPower = pow(3.0*oe_gc_texCoord.t+0.8, 2.0);
 
     // effect of gravity:
     const float gravity = 0.025; // 0=no bend, 1=insane megabend
@@ -172,7 +191,7 @@ void oe_Grass_VS(inout vec4 vertex)
     vec3 windDir  = normalize(windData.rgb*2 - 1); // view space
 
     const float rate = 0.01;
-    vec4 noise_moving = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st + osg_FrameTime*rate, 0);
+    vec4 noise_moving = textureLod(oe_gc_noiseTex, oe_layer_tilec.st + osg_FrameTime*rate, 0);
     float windSpeedVariation = remap(noise_moving[NOISE_CLUMPY], -0.2, 1.4);
     float windSpeed = windData.a * windSpeedVariation;
 
@@ -182,8 +201,8 @@ void oe_Grass_VS(inout vec4 vertex)
     if (windSpeed > 0.2)
     {
         float buffetingSpeed = windSpeed*0.2;
-        vec4 noise_b = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st + osg_FrameTime*buffetingSpeed, 0);
-        buffetingDir = gl_NormalMatrix * vec3(noise_b.xx*2-1,0) * buffetingSpeed;
+        vec4 noise_b = textureLod(oe_gc_noiseTex, oe_layer_tilec.st + osg_FrameTime*buffetingSpeed, 0);
+        buffetingDir = oe_transform.normal * vec3(noise_b.xx*2-1,0) * buffetingSpeed;
     }
 
     bendVec += (windDir+buffetingDir) * windSpeed * bendPower * bendDistance * falloff;
@@ -196,7 +215,7 @@ void oe_Grass_VS(inout vec4 vertex)
         bendVec = (bendVec/bendLen)*vertexHeight;
     }
 
-    vertex.xyz += bendVec;
+    vertex_view.xyz += bendVec;
 
     // Some AO.
 
@@ -212,13 +231,42 @@ void oe_Grass_VS(inout vec4 vertex)
     vp_Color.gb -= browning*oe_noise_wide[NOISE_SMOOTH];
 }
 
+float rescale(float d, float v0, float v1)
+{
+    return clamp((d-v0)/(v1-v0), 0, 1);
+}
+
+void oe_Grass_model(inout vec4 vertex_view)
+{
+    uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
+    oe_layer_tilec = vec4(render[i].tilec, 0, 1);
+    vertex_view = oe_vertex.view;
+    vp_Normal = oe_vertex.normal;
+
+    float psr = render[i].pixelSizeRatio;
+    if (psr < 1.5) {
+        psr = rescale(psr-1.0, 0.0, 1.0);
+        vp_Color.a *= psr;
+    }
+
+    // TODO: don't hard-code this..? or meh
+    oe_gc_texCoord.xyz = gl_MultiTexCoord7.xyz;
+}
+
+void oe_Grass_main(inout vec4 vertex_view)
+{
+    if (gl_DrawID == 0)
+        oe_Grass_parametric(vertex_view);
+    else
+        oe_Grass_model(vertex_view);
+}
+
 
 [break]
-
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_name GroundCover frag shader
+#pragma vp_name Grass frag shader
 #pragma vp_entryPoint oe_Grass_FS
 #pragma vp_location fragment
 
@@ -231,33 +279,33 @@ uniform mat4 OE_GROUNDCOVER_COLOR_MATRIX ;
 in vec4 oe_layer_tilec;
 #endif
 
-uniform sampler2DArray oe_GroundCover_billboardTex;
-in vec2 oe_GroundCover_texCoord;
-flat in float oe_GroundCover_atlasIndex;
+uniform sampler2DArray oe_gc_atlas;
+in vec3 oe_gc_texCoord;
 vec3 vp_Normal;
 
-uniform float oe_GroundCover_maxAlpha;
-uniform int oe_GroundCover_A2C;
+uniform float oe_gc_maxAlpha;
+uniform int oe_gc_useAlphaToCoverage;
 
 void oe_Grass_FS(inout vec4 color)
 {
-    if (oe_GroundCover_atlasIndex < 0.0)
+    if (oe_gc_texCoord.z < 0.0)
         discard;
 
     // paint the texture
-    color = texture(oe_GroundCover_billboardTex, vec3(oe_GroundCover_texCoord, oe_GroundCover_atlasIndex)) * color;
+    color *= texture(oe_gc_atlas, oe_gc_texCoord);
 
     // uncomment to see triangles
     //if (color.a < 0.2)
     //    color.a = 0.8;
 
-    if (oe_GroundCover_A2C == 1)
+    if (oe_gc_useAlphaToCoverage == 1)
     {
         // https://medium.com/@bgolus/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
-        color.a = (color.a - oe_GroundCover_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+        //color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
     }
-    else if (color.a < oe_GroundCover_maxAlpha)
+    else if (color.a < oe_gc_maxAlpha)
     {
+        color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
         discard;
     }
 

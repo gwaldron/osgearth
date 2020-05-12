@@ -23,9 +23,14 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Math>
 #include <osgEarth/Registry>
+#include <osgEarth/Utils>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/Math>
+#include <osgEarth/GLUtils>
 #include <osg/Program>
 #include <osg/GLExtensions>
 #include <osgUtil/Optimizer>
+#include <osgUtil/MeshOptimizers>
 #include <iterator>
 
 #ifndef GL_DYNAMIC_STORAGE_BIT
@@ -39,119 +44,211 @@ using namespace osgEarth;
 
 //...................................................................
 
-#define BINDING_COMMAND_BUFFER 0
-#define BINDING_RENDER_BUFFER 1
-#define BINDING_POINTS_BUFFER 2
-
 // pre OSG-3.6 support
 #ifndef GL_DRAW_INDIRECT_BUFFER
 #define GL_DRAW_INDIRECT_BUFFER 0x8F3F
 #endif
 
-InstanceCloud::InstancingData::InstancingData() :
-    commands(NULL),
-    points(NULL),
-    commandBuffer(-1),
-    pointsBuffer(-1),
-    renderBuffer(-1),
-    numTilesAllocated(0u),
-    ssboOffsetAlignment(-1)
+SSBO::SSBO() :
+    _contextID(0),
+    _handle(0),
+    _allocatedSize(0),
+    _bindingIndex(0)
 {
     // polyfill for pre-OSG 3.6 support
     osg::setGLExtensionFuncPtr(_glBufferStorage, "glBufferStorage", "glBufferStorageARB");
 }
 
+void
+SSBO::release() const
+{
+    if (_handle != 0u)
+    {
+        GLUtils::deleteGLBuffer(_contextID, _handle);
+        //ext->glDeleteBuffers(1, &_handle);
+    }
+
+    _handle = 0u;
+    _allocatedSize = 0u;
+}
+
+void
+SSBO::bind(osg::GLExtensions* ext) const
+{
+    ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _handle);
+}
+
+void
+SSBO::bindLayout(osg::GLExtensions* ext) const
+{
+    ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bindingIndex, _handle);
+}
+
+void
+InstanceCloud::CommandBuffer::allocate(
+    GeometryCloud* geom,
+    GLsizei alignment,
+    osg::GLExtensions* ext)
+{
+    unsigned numCommands = geom->getNumDrawCommands();
+
+    _requiredSize = numCommands * sizeof(DrawElementsIndirectCommand);
+
+    if (_requiredSize > _allocatedSize)
+    {
+        _geom = geom;
+
+        release();
+        if (_buf) delete [] _buf;
+
+        _buf = new DrawElementsIndirectCommand[numCommands];
+        _allocatedSize = align(_requiredSize, alignment);
+
+        ext->glGenBuffers(1, &_handle);
+        ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _handle);
+        _glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, NULL, GL_DYNAMIC_STORAGE_BIT);
+        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bindingIndex, _handle);
+    }
+}
+
+void
+InstanceCloud::CommandBuffer::reset(osg::GLExtensions* ext)
+{
+    // Initialize and blit to GPU
+    for(unsigned i=0; i<_geom->getNumDrawCommands(); ++i)
+    {
+        _geom->getDrawCommand(i, _buf[i]);
+    }
+
+    ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _handle);
+    ext->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, _requiredSize, _buf);
+}
+
+void
+InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::GLExtensions* ext)
+{
+    _requiredSize = numTiles * sizeof(Data);
+    if (_requiredSize > _allocatedSize)
+    {
+        OE_INFO << "Allocating " << numTiles << " tiles" << std::endl;
+        release();
+        if (_buf) delete [] _buf;
+
+        _buf = new Data[numTiles];
+        _allocatedSize = align(_requiredSize, alignment);
+
+        ext->glGenBuffers(1, &_handle);
+        ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _handle);
+        _glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, NULL, GL_DYNAMIC_STORAGE_BIT);  
+        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bindingIndex, _handle);
+    }
+}
+
+void
+InstanceCloud::TileBuffer::update(osg::GLExtensions* ext) const
+{
+    ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _handle);
+    ext->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, _requiredSize, _buf);
+}
+
+void
+InstanceCloud::InstanceBuffer::allocate(unsigned numInstances, GLsizei alignment, osg::GLExtensions* ext)
+{
+    _requiredSize = sizeof(HeaderData) + numInstances*sizeof(InstanceData);
+    if (_requiredSize > _allocatedSize)
+    {
+        release();
+        if (_buf) delete[] _buf;
+
+        _buf = new HeaderData;
+        _allocatedSize = align(_requiredSize, alignment);
+
+        ext->glGenBuffers(1, &_handle);
+        ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _handle);
+        _glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, NULL, GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT);  
+        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bindingIndex, _handle);
+    }
+    clear(ext);
+}
+
+void
+InstanceCloud::InstanceBuffer::clear(osg::GLExtensions* ext)
+{
+    // Zero out the instance count.
+    _buf[0]._count = 0u;
+
+    // placeholders
+    _buf[0]._padding[0] = 1;
+    _buf[0]._padding[1] = 2;
+    _buf[0]._padding[2] = 3;
+
+    ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _handle);
+    ext->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(unsigned), _buf);
+}
+
+void
+InstanceCloud::InstanceBuffer::readHeader(osg::GLExtensions* ext)
+{
+    // Zero out the instance count.
+    _buf[0]._count = 0u;
+
+    // placeholders
+    _buf[0]._padding[0] = 1;
+    _buf[0]._padding[1] = 2;
+    _buf[0]._padding[2] = 3;
+
+    ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _handle);
+    ext->glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(unsigned), _buf);
+}
+
+
+InstanceCloud::InstancingData::InstancingData() :
+    _numTilesAllocated(0u),
+    _alignment((GLsizei)-1),
+    _passUL((GLint)-1),
+    _numX(0u),
+    _numY(0u)
+{
+    // Layout bindings. Make sure these match the layout specs in the shaders.
+    _commandBuffer._bindingIndex = 0;
+    _instanceBuffer._bindingIndex = 1;
+    _tileBuffer._bindingIndex = 2;
+    _renderListBuffer._bindingIndex = 4;
+}
+
 InstanceCloud::InstancingData::~InstancingData()
 {
-    if (commands)
-    {
-        delete [] commands;
-        commands = NULL;
-    }
+    //nop
 }
 
 void
 InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned numTiles)
 {
-    if (numTilesAllocated < numTiles)
+    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+
+    if (_alignment < 0)
     {
-        OE_DEBUG << LC << "Reallocate from " << numTilesAllocated << " to " << numTiles << " tiles" << std::endl;
-
-        releaseGLObjects(state);
-
-        osg::GLExtensions* ext = state->get<osg::GLExtensions>();
-
-        numTilesAllocated = numTiles;
-
-        commands = new DrawElementsIndirectCommand[numTilesAllocated];
-        for(unsigned i=0; i<numTilesAllocated; ++i)
-        {
-            commands[i].count = numIndices;
-            commands[i].instanceCount = 0;
-            commands[i].firstIndex = 0;
-            commands[i].baseVertex = 0;
-            commands[i].baseInstance = 0;
-        }
-
-        if (ssboOffsetAlignment < 0)
-        {
-            glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &ssboOffsetAlignment);
-            OE_DEBUG << "SSBO ALIGN = " << ssboOffsetAlignment << std::endl;
-        }
-
-        GLuint numInstances = numX * numY;
-        GLuint instanceSize = 48; // see RenderData in shader (must be a multiple of a vec4)
-
-        commandBufferSize = numTilesAllocated * sizeof(DrawElementsIndirectCommand);
-        commandBufferSize = align(commandBufferSize, ssboOffsetAlignment);
-
-        ext->glGenBuffers(1, &commandBuffer);
-        ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, commandBuffer);
-        _glBufferStorage(
-            GL_SHADER_STORAGE_BUFFER,
-            commandBufferSize,
-            NULL,                    // uninitialized memory
-            GL_DYNAMIC_STORAGE_BIT); // so we can reset each frame
-        
-        // Buffer for the output data (culled points, written by compute shader)
-        // Align properly to satisfy glBindBufferRange
-        renderBufferTileSize = align(numInstances*instanceSize, (GLuint)ssboOffsetAlignment);
-
-        OE_DEBUG << "NumInstances="<<numInstances<< ", renderBufferTileSize=" << renderBufferTileSize << ", cmdBufferSize=" << commandBufferSize << std::endl;
-
-        ext->glGenBuffers(1, &renderBuffer);
-        ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderBuffer);
-        _glBufferStorage(
-            GL_SHADER_STORAGE_BUFFER, 
-            numTilesAllocated * renderBufferTileSize,
-            NULL,   // uninitialized memory
-            0);     // only GPU will write to this buffer
+        glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &_alignment);
+        OE_DEBUG << "SSBO Alignment = " << _alignment << std::endl;
     }
+
+    GLuint numInstances = numTiles * _numX * _numY;
+
+    _commandBuffer.allocate(_geom.get(), _alignment, ext);
+    _instanceBuffer.allocate(numInstances, _alignment, ext);
+    _tileBuffer.allocate(numTiles, _alignment, ext);
+    _renderListBuffer.allocate(numInstances, _alignment, ext);
+
+    _numTilesAllocated = numTiles;
 }
 
 void
 InstanceCloud::InstancingData::releaseGLObjects(osg::State* state) const
 {
-    if (state)
-    {
-        osg::GLExtensions* ext = state->get<osg::GLExtensions>();
-
-        if (commands)
-        {
-            delete[] commands;
-            commands = NULL;
-        }
-
-        if (commandBuffer >= 0)
-            ext->glDeleteBuffers(1, &commandBuffer);
-
-        if (renderBuffer >= 0)
-            ext->glDeleteBuffers(1, &renderBuffer);
-    }
-    else
-    {
-        // wut?
-    }
+    _commandBuffer.release();
+    _tileBuffer.release();
+    _instanceBuffer.release();
+    _renderListBuffer.release();
 }
 
 InstanceCloud::InstanceCloud()
@@ -166,49 +263,38 @@ InstanceCloud::releaseGLObjects(osg::State* state) const
 }
 
 void
-InstanceCloud::setGeometry(osg::Geometry* geom)
+InstanceCloud::setGeometryCloud(GeometryCloud* geom)
 {
-    _geom = geom;
+    GeometryValidator validator;
+    geom->getGeometry()->accept(validator);
 
+    _data._geom = geom;
     if (geom)
     {
         Installer installer(&_data);
-        geom->accept(installer);
+        geom->getGeometry()->accept(installer);
     }
 }
 
-//void
-//InstanceCloud::setPositions(osg::Vec4Array* value)
-//{
-//    _data.points = value;
-//}
+GeometryCloud*
+InstanceCloud::getGeometryCloud() const 
+{
+    return _data._geom.get();
+}
 
 void
-InstanceCloud::setNumInstances(unsigned x, unsigned y)
+InstanceCloud::setNumInstancesPerTile(unsigned x, unsigned y)
 {
     // Enforce an even number of instances. For whatever reason that I cannot
     // figure out today, an odd number causes the shader to freak out.
-    _data.numX = (x & 0x01) ? x+1 : x;
-    _data.numY = (y & 0x01) ? y+1 : y;
+    _data._numX = (x & 0x01) ? x+1 : x;
+    _data._numY = (y & 0x01) ? y+1 : y;
 }
 
-osg::BoundingBox
-InstanceCloud::computeBoundingBox() const
+unsigned
+InstanceCloud::getNumInstancesPerTile() const
 {
-    osg::BoundingBox box;
-    float radius = _geom.valid() ? _geom->getBound().radius() : 0.0f;
-    osg::Vec3 radius3(radius, radius, radius);
-    if (_data.points)
-    {
-        for(int i=0; i<_data.points->size(); ++i)
-        {
-            const osg::Vec4& v = (*_data.points)[i];
-            osg::Vec3 center(v.x()/v.w(), v.y()/v.w(), v.z()/v.w());
-            osg::BoundingBox pbox(center-radius3, center+radius3);
-            box.expandBy(pbox);
-        }
-    }
-    return box;
+    return _data._numX * _data._numY;
 }
 
 void
@@ -218,55 +304,122 @@ InstanceCloud::allocateGLObjects(osg::RenderInfo& ri, unsigned numTiles)
 }
 
 void
-InstanceCloud::preCull(osg::RenderInfo& ri)
+InstanceCloud::newFrame(osg::RenderInfo& ri)
 {
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
-
-    // Reset all the instance counts to zero by copying the empty
-    // prototype buffer to the GPU
-    ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _data.commandBuffer);
-
-    ext->glBufferSubData(
-        GL_SHADER_STORAGE_BUFFER, 
-        0,
-        _data.numTilesAllocated * sizeof(DrawElementsIndirectCommand),
-        &_data.commands[0]);
-
-    // Bind our SSBOs to their respective layout indices in the shader
-    ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_COMMAND_BUFFER, _data.commandBuffer);
-
-    ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_RENDER_BUFFER, _data.renderBuffer);
+    _data._commandBuffer.bindLayout(ext);
+    _data._tileBuffer.bindLayout(ext);
+    _data._instanceBuffer.bindLayout(ext);
+    _data._renderListBuffer.bindLayout(ext);
 }
 
 void
-InstanceCloud::cullTile(osg::RenderInfo& ri, unsigned tileNum)
+InstanceCloud::setMatrix(unsigned tileNum, const osg::Matrix& modelView)
 {
-    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+    // double to float before doing a memcpy!
+    osg::Matrixf modelViewF = modelView;
+    ::memcpy(
+        _data._tileBuffer._buf[tileNum]._modelViewMatrix,
+        modelViewF.ptr(),
+        sizeof(TileBuffer::Data::_modelViewMatrix));
 
-    ext->glDispatchCompute(_data.numX, _data.numY, 1);
+    // derive normal matrix (transposed inverse of MVM 3x3)
+    osg::Matrix mv(modelView);
+    mv.setTrans(0.0, 0.0, 0.0);
+    osg::Matrix matrix;
+    matrix.invert(mv);
+    osg::Matrixf normalMatrix(
+        matrix(0,0), matrix(1,0), matrix(2,0), matrix(3,0),
+        matrix(0,1), matrix(1,1), matrix(2,1), matrix(3,1),
+        matrix(0,2), matrix(1,2), matrix(2,2), matrix(3,2),
+        matrix(0,3), matrix(1,3), matrix(2,3), matrix(3,3));
+    ::memcpy(
+        _data._tileBuffer._buf[tileNum]._normalMatrix,
+        normalMatrix.ptr(),
+        sizeof(TileBuffer::Data::_normalMatrix));
 }
 
 void
-InstanceCloud::postCull(osg::RenderInfo& ri)
+InstanceCloud::generate_begin(osg::RenderInfo& ri)
+{
+    //nop
+}
+
+void
+InstanceCloud::generate_tile(osg::RenderInfo& ri)
+{
+    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+    ext->glDispatchCompute(_data._numX, _data._numY, 1);
+}
+
+void
+InstanceCloud::generate_end(osg::RenderInfo& ri)
 {
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
+    // read back the instance count from the generator.
+    // should be quick; it's only 4 bytes.
+    ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
+    _data._instanceBuffer.readHeader(ext);
+    _data._numInstancesGenerated = _data._instanceBuffer._buf->_count;
+
+    OE_DEBUG << LC << "Generated " << _data._numInstancesGenerated << " instances." << std::endl;
+}
+
+void
+InstanceCloud::cull(osg::RenderInfo& ri)
+{
+    osg::State& state = *ri.getState();
+
+    osg::GLExtensions* ext = state.get<osg::GLExtensions>();
+
+    // find the "pass" uniform first time in
+    if (_data._passUL < 1)
+    {
+        unsigned passUName = osg::Uniform::getNameID("oe_pass");
+        const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
+        if (!pcp) return;
+        _data._passUL = pcp->getUniformLocation(passUName);
+    }
+
+    // reset the command buffer in prep for culling and sorting
+    _data._commandBuffer.reset(ext);
+
+    // update with the newest tile matrices
+    _data._tileBuffer.update(ext);
+
+    // need the projection matrix for frustum culling.
+    if (state.getUseModelViewAndProjectionUniforms())
+        state.applyModelViewAndProjectionUniformsIfRequired();
+
+    // first pass: cull
+    ext->glUniform1i(_data._passUL, (int)0);
+    ext->glDispatchCompute(_data._numInstancesGenerated, 1, 1);
+
+    // second pass: sort
+    ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    ext->glUniform1i(_data._passUL, (int)1);
+    ext->glDispatchCompute(_data._numInstancesGenerated, 1, 1);
+
+    // synchronize in preparation for rendering
     ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
 }
 
 void
-InstanceCloud::drawTile(osg::RenderInfo& ri, unsigned tileNum)
+InstanceCloud::draw(osg::RenderInfo& ri)
 {
-    _data.tileToDraw = tileNum;
-    _geom->draw(ri);
+    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+   _data._geom->draw(ri);
 }
 
 
 InstanceCloud::Renderer::Renderer(InstancingData* data) :
     _data(data)
 {
-    // pre-OSG3.6 support
-    osg::setGLExtensionFuncPtr(_glDrawElementsIndirect, "glDrawElementsIndirect", "glDrawElementsIndirectARB");
+    // polyfill pre-OSG3.6 support
+    osg::setGLExtensionFuncPtr(
+        _glMultiDrawElementsIndirect, 
+        "glMultiDrawElementsIndirect", "glMultiDrawElementsIndirectARB");
 }
 
 void
@@ -276,33 +429,33 @@ InstanceCloud::Renderer::drawImplementation(osg::RenderInfo& ri, const osg::Draw
 
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
 
-    if (_data->tileToDraw == 0)
+    const osg::Geometry* geom = static_cast<const osg::Geometry*>(drawable);
+
+    // prepare the VAO, etc.
+    osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
+    vas->setVertexBufferObjectSupported(true);
+    geom->drawVertexArraysImplementation(ri);
+
+    // bind the combined EBO to the VAO
+    if (vas->getRequiresSetArrays())
     {
-        const osg::Geometry* geom = drawable->asGeometry();
-
-        geom->drawVertexArraysImplementation(ri);
-
-        // TODO: support multiple primtsets....?
         osg::GLBufferObject* ebo = geom->getPrimitiveSet(0)->getOrCreateGLBufferObject(state.getContextID());
         state.bindElementBufferObject(ebo);
-
-        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_COMMAND_BUFFER, _data->commandBuffer);
-
-        ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _data->commandBuffer);
     }
 
-    // activate the "nth" tile in the render buffer:
-    ext->glBindBufferRange(
-        GL_SHADER_STORAGE_BUFFER, 
-        BINDING_RENDER_BUFFER,
-        _data->renderBuffer, 
-        _data->tileToDraw * _data->renderBufferTileSize,
-        _data->renderBufferTileSize);
+    // GL_DRAW_INDIRECT_BUFFER buffing binding is NOT part of VAO state (per spec)
+    // so we have to bind it here.
+    ext->glBindBuffer(
+        GL_DRAW_INDIRECT_BUFFER,
+        _data->_commandBuffer._handle);
 
-    _glDrawElementsIndirect(
-        _data->mode,
-        _data->dataType,
-        (const void*)(_data->tileToDraw * sizeof(DrawElementsIndirectCommand)) );
+    // engage
+    _glMultiDrawElementsIndirect(
+        GL_TRIANGLES,
+        GL_UNSIGNED_SHORT,
+        NULL,                                // in GL_DRAW_INDIRECT_BUFFER on GPU
+        _data->_geom->getNumDrawCommands(),  // number of commands to execute
+        0);                                  // stride=0, commands are tightly packed
 }
 
 
@@ -321,15 +474,75 @@ InstanceCloud::Installer::apply(osg::Drawable& drawable)
     {
         geom->setDrawCallback(_callback.get());
         geom->setCullingActive(false);
-
-        osg::PrimitiveSet* p = geom->getPrimitiveSet(0);
-        _data->numIndices = p->getNumIndices();
-        _data->mode = p->getMode();
-        _data->dataType = p->getDrawElements()->getDataType();
     }
 }
 
-InstanceCloud::ModelCruncher::ModelCruncher() :
+//...................................................................
+
+TextureAtlas::TextureAtlas() :
+    osg::Texture2DArray()
+{
+    setFilter(MIN_FILTER, NEAREST_MIPMAP_LINEAR);
+    setFilter(MAG_FILTER, LINEAR);
+    setWrap(WRAP_S, REPEAT);
+    setWrap(WRAP_T, REPEAT);
+    setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    //setMaxAnisotropy(4.0);
+
+    // Let the GPU do it since we only download this at startup
+    setUseHardwareMipMapGeneration(true);
+}
+
+void
+TextureAtlas::setSize(int s, int t)
+{
+    setTextureSize(s, t, 1);
+}
+
+void
+TextureAtlas::addImage(osg::Image* image)
+{
+    if (!image)
+        return;
+
+    osg::ref_ptr<osg::Image> temp;
+
+    // make sure the texture array is POT - required now for mipmapping to work
+    int s = getTextureWidth();
+    int t = getTextureHeight();
+    int r = getTextureDepth();
+
+    if (s == 0)
+    {
+        s = osgEarth::nextPowerOf2(image->s());
+        t = osgEarth::nextPowerOf2(image->t());
+        setTextureSize(s, t, r);
+    }
+
+    if(image->getPixelFormat() != GL_RGBA ||
+       image->getDataType() != GL_UNSIGNED_BYTE)
+    {
+        image = ImageUtils::convert(image, GL_RGBA, GL_UNSIGNED_BYTE);
+    }
+
+    if (image->s() != s || image->t() != t)
+    {
+        ImageUtils::resizeImage(image, s, t, temp);
+    }
+    else
+    {
+        temp = image;
+    }
+
+    temp->setInternalTextureFormat(GL_RGBA8);
+    setImage(r, temp.get());
+
+    setTextureSize(s, t, r+1);
+}
+
+//...................................................................
+
+GeometryCloud::GeometryCloud() :
     osg::NodeVisitor()
 {
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
@@ -339,7 +552,7 @@ InstanceCloud::ModelCruncher::ModelCruncher() :
     _geom->setUseVertexBufferObjects(true);
     _geom->setUseDisplayList(false);
 
-    _verts = new osg::Vec3Array();
+    _verts = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
     _geom->setVertexArray(_verts);
 
     _colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
@@ -351,119 +564,103 @@ InstanceCloud::ModelCruncher::ModelCruncher() :
     _texcoords = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
     _geom->setTexCoordArray(7, _texcoords);
 
+    // N.B. UShort is sufficient b/c we are using the DrawElementsIndirect.baseVertex
+    // technique to offset element indicies and thereby support a VBO with >65535 verts.
     _primset = new osg::DrawElementsUShort(GL_TRIANGLES);
     _geom->addPrimitiveSet(_primset);
 }
 
 void
-InstanceCloud::ModelCruncher::add(osg::Node* node)
+GeometryCloud::setAtlas(TextureAtlas* atlas)
 {
+    _atlas = atlas;
+}
+
+int
+GeometryCloud::add(osg::Node* node, unsigned alignment)
+{
+    unsigned prevAtlasSize = _atlas->getTextureDepth();
+
     // convert all primitive sets to GL_TRIANGLES
     osgUtil::Optimizer o;
     o.optimize(node, o.INDEX_MESH);
 
-    // count total number of indices
-    // todo
+    // Reorder indices for optimal cache usage.
+    // DO NOT do this if alignment is set; using alignment
+    // implies the verts are in a specific order for a good reason.
+    if (alignment == 0u)
+    {
+        osgUtil::VertexCacheVisitor vcv;
+        node->accept(vcv);
+        vcv.optimizeVertices();
+    }
+
+    // pad the arrays to the alignment:
+    if (alignment > 0u)
+    {
+        unsigned padding = align((unsigned)_verts->size(), alignment) - _verts->size();
+        OE_DEBUG << "vert size = " << _verts->size() << " so we gonna pad it with " << padding << " bytes" << std::endl;
+        for(unsigned i=0; i<padding; ++i)
+        {   
+            _verts->push_back(osg::Vec3());
+            _colors->push_back(osg::Vec4(1,0,0,1));
+            _normals->push_back(osg::Vec3(0,0,1));
+            _texcoords->push_back(osg::Vec3(0,0,0));
+        }
+    }
+
+    // track the starting vertex of this model:
+    _vertexOffsets.push_back(_verts->size());
+
+    // track the starting element index of this model:
+    _elementOffsets.push_back(_primset->getNumIndices());
 
     // traverse the model, consolidating arrays and rewriting texture indices
+    // and counting elements indices
+    _numElements = 0u;
     node->accept(*this);
+    _elementCounts.push_back(_numElements);
+
+    if (_atlas->getTextureDepth() > prevAtlasSize)
+        return prevAtlasSize;
+    else
+        return -1;
 }
 
 namespace
 {
-    template<typename T> void append(T* dest, const osg::Array* src, int numVerts)
+    template<typename T> void append(T* dest, const osg::Array* src, unsigned numVerts)
     {
-        if (src->getBinding() == osg::Array::BIND_PER_VERTEX)
+        if (src == NULL)
         {
-            dest->reserveArray(dest->size() + src->getNumElements());
+            dest->reserveArray(dest->size() + numVerts);
+            for(unsigned i=0; i<numVerts; ++i)
+                dest->push_back(T :: ElementDataType ());
+        }
+        else if (src->getBinding() == osg::Array::BIND_PER_VERTEX)
+        {
+            dest->reserveArray(dest->size() + numVerts); //src->getNumElements());
             const T* src_typed = static_cast<const T*>(src);
             std::copy(src_typed->begin(), src_typed->end(), std::back_inserter(*dest));
+
+            // pad out to match
+            if (src->getNumElements() < numVerts)
+                for(unsigned i=0; i<numVerts-src->getNumElements(); ++i)
+                    dest->push_back(T :: ElementDataType ());
+
         }
         else if (src->getBinding() == osg::Array::BIND_OVERALL)
         {
             dest->reserveArray(dest->size() + numVerts);
             const T* src_typed = static_cast<const T*>(src);
-            for(int i=0; i<numVerts; ++i)
+            for(unsigned i=0; i<numVerts; ++i)
                 dest->push_back((*src_typed)[0]);
         }
     }
 }
 
-void
-InstanceCloud::ModelCruncher::finalize()
-{
-    _atlas = new osg::Texture2DArray();
-
-    int s = -1, t = -1;
-    for(unsigned i=0; i<_imagesToAdd.size(); ++i)
-    {
-        osg::Image* image = _imagesToAdd[i].get();
-        osg::ref_ptr<osg::Image> im;
-
-        // make sure the texture array is POT - required now for mipmapping to work
-        if ( s < 0 )
-        {
-            s = nextPowerOf2(image->s());
-            t = nextPowerOf2(image->t());
-            _atlas->setTextureSize(s, t, _imagesToAdd.size());
-        }
-
-        if ( image->s() != s || image->t() != t )
-        {
-            ImageUtils::resizeImage( image, s, t, im );
-        }
-        else
-        {
-            im = image;
-        }
-
-        im->setInternalTextureFormat(GL_RGBA8);
-
-        _atlas->setImage( i, im.get() );
-    }
-
-    _atlas->setFilter(_atlas->MIN_FILTER, _atlas->NEAREST_MIPMAP_LINEAR);
-    _atlas->setFilter(_atlas->MAG_FILTER, _atlas->LINEAR);
-    _atlas->setWrap  (_atlas->WRAP_S, _atlas->REPEAT);
-    _atlas->setWrap  (_atlas->WRAP_T, _atlas->REPEAT);
-    _atlas->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    _atlas->setMaxAnisotropy( 1.0 );
-
-    // Let the GPU do it since we only download this at startup
-    //ImageUtils::generateMipmaps(tex);
-    _atlas->setUseHardwareMipMapGeneration(true);
-
-    _geom->getOrCreateStateSet()->setTextureAttribute(11, _atlas.get());
-    _geom->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_GroundCover_atlas", 11));
-}
-
-void
-InstanceCloud::ModelCruncher::addTextureToAtlas(osg::Texture* t)
-{
-    osg::Texture2D* tex = dynamic_cast<osg::Texture2D*>(t);
-    if (tex)
-    {
-        osg::ref_ptr<osg::Image> imageToAdd = tex->getImage();
-
-        if(imageToAdd->getPixelFormat() != GL_RGBA)
-        {
-            imageToAdd = ImageUtils::convert(imageToAdd.get(), GL_RGBA, GL_UNSIGNED_BYTE); //firstImage->getDataType());
-        }
-
-        if (!_atlasLUT.empty())
-        {
-            //osg::Image* firstImage = _imagesToAdd[0].get();
-            
-        }
-
-        int index = _atlasLUT.size();
-        _atlasLUT[tex] = index;
-        _imagesToAdd.push_back(imageToAdd.get());
-    }
-}
-
 bool
-InstanceCloud::ModelCruncher::pushStateSet(osg::Node& node)
+GeometryCloud::pushStateSet(osg::Node& node)
 {
     osg::StateSet* stateset = node.getStateSet();
     if (stateset)
@@ -478,7 +675,8 @@ InstanceCloud::ModelCruncher::pushStateSet(osg::Node& node)
             AtlasIndexLUT::iterator i = _atlasLUT.find(tex);
             if (i == _atlasLUT.end())
             {
-                addTextureToAtlas(tex);
+                _atlasLUT[tex] = _atlas->getTextureDepth();
+                _atlas->addImage(tex->getImage(0));
             }
 
             return true;
@@ -488,13 +686,13 @@ InstanceCloud::ModelCruncher::pushStateSet(osg::Node& node)
 }
 
 void
-InstanceCloud::ModelCruncher::popStateSet()
+GeometryCloud::popStateSet()
 {
     _textureStack.pop_back();
 }
 
 void
-InstanceCloud::ModelCruncher::apply(osg::Node& node)
+GeometryCloud::apply(osg::Node& node)
 {
     bool pushed = pushStateSet(node);
     traverse(node);
@@ -502,33 +700,53 @@ InstanceCloud::ModelCruncher::apply(osg::Node& node)
 }
 
 void
-InstanceCloud::ModelCruncher::apply(osg::Geometry& node)
+GeometryCloud::apply(osg::Transform& node)
+{
+    osg::Matrix m = _matrixStack.empty() ? osg::Matrix() : _matrixStack.back();
+    node.computeLocalToWorldMatrix(m, this);
+    _matrixStack.push_back(m);
+    traverse(node);
+    _matrixStack.pop_back();
+}
+
+void
+GeometryCloud::apply(osg::Geometry& node)
 {
     bool pushed = pushStateSet(node);
 
-    int offset = _verts->size();
-    int size = node.getVertexArray()->getNumElements();
+    // offset of verts within this model:
+    unsigned globalOffset = _vertexOffsets.empty() ? 0 : _vertexOffsets.back();
+
+    // offset of verts local to this geometry:
+    unsigned localOffset = _verts->size() - globalOffset;
+
+    unsigned size = node.getVertexArray()->getNumElements();
+
+    if (!_matrixStack.empty())
+    {
+        osg::Vec3Array* nodeVerts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
+        if (nodeVerts)
+        {
+            for(unsigned i=0; i<nodeVerts->size(); ++i)
+            {
+                (*nodeVerts)[i] = (*nodeVerts)[i] * _matrixStack.back();
+            }
+        }
+    }
+    //TODO: transform normals too if necessary
 
     append(_verts, node.getVertexArray(), size);
     append(_normals, node.getNormalArray(), size);
     append(_colors, node.getColorArray(), size);
 
-    // find the current texture in the atlas
-    int layer = 0;
-    if (!_textureStack.empty())
-    {
-        AtlasIndexLUT::iterator i = _atlasLUT.find(_textureStack.back());
-        if (i != _atlasLUT.end())
-        {
-            layer = i->second;
-        }
-    }
-
+    unsigned numTexCoords = 0;
     osg::Vec2Array* texcoords = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
     if (texcoords)
     {
+        numTexCoords = texcoords->size();
+
         // find the current texture in the atlas
-        int layer = 0;
+        int layer = -1;
         if (!_textureStack.empty())
         {
             AtlasIndexLUT::iterator i = _atlasLUT.find(_textureStack.back());
@@ -548,6 +766,15 @@ InstanceCloud::ModelCruncher::apply(osg::Geometry& node)
         }
     }
 
+    // pad out
+    if (numTexCoords < size)
+    {
+        for(unsigned i=0; i < size - numTexCoords; ++i)
+        {
+            _texcoords->push_back(osg::Vec3(0,0,-2));
+        }
+    }
+
     for(unsigned i=0; i < node.getNumPrimitiveSets(); ++i)
     {
         osg::DrawElements* de = dynamic_cast<osg::DrawElements*>(node.getPrimitiveSet(i));
@@ -556,10 +783,35 @@ InstanceCloud::ModelCruncher::apply(osg::Geometry& node)
             for(unsigned k=0; k<de->getNumIndices(); ++k)
             {
                 int index = de->getElement(k);
-                _primset->addElement(offset + index);
+                // by using a "model-local" offset here, we can use UShort even
+                // if our vertex array size exceeds 65535 by storing the 
+                // baseVertex in our DrawElements structure
+                _primset->addElement(localOffset + index);
+                ++_numElements;
             }
         }
     }
 
     if (pushed) popStateSet();
+}
+
+void
+GeometryCloud::draw(osg::RenderInfo& ri)
+{
+    _geom->draw(ri);
+}
+
+bool
+GeometryCloud::getDrawCommand(unsigned i, DrawElementsIndirectCommand& cmd) const
+{
+    if (i <= getNumDrawCommands())
+    {
+        cmd.count = _elementCounts[i];       // how many indices comprise this draw command
+        cmd.instanceCount = 0;               // will be assigned by the Cull/Sort shader
+        cmd.firstIndex = _elementOffsets[i]; // not used by us...or is it
+        cmd.baseVertex = _vertexOffsets[i];  // offset to add to element indices (nice, lets us use USHORT)
+        cmd.baseInstance = 0;                // will be assigned by the Cull/Sort shader
+        return true;
+    }
+    return false;
 }

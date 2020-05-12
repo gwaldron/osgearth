@@ -32,6 +32,35 @@
 
 namespace osgEarth
 {
+    class GeometryCloud;
+
+    //! Base class for a shader storage buffer object
+    struct SSBO
+    {
+        SSBO();
+        mutable unsigned _contextID;
+        mutable GLuint _handle;
+        mutable GLsizei _allocatedSize;
+        mutable GLsizei _requiredSize;
+        GLint _bindingIndex;
+        void bind(osg::GLExtensions* ext) const;
+        void bindLayout(osg::GLExtensions* ext) const;
+        void release() const;
+
+        // pre-OSG 3.6 support
+        void (GL_APIENTRY * _glBufferStorage)(GLenum, GLuint, const void*, GLenum);
+    };
+
+    //! A draw command for indirect rendering
+    struct DrawElementsIndirectCommand
+    {
+        GLuint  count;          // how many indices comprise this draw command
+        GLuint  instanceCount;  // how many instances of the geometry to draw
+        GLuint  firstIndex;     // index of the first element in the EBO to use
+        GLuint  baseVertex;     // offset to add to each element index (lets us use USHORT even when >65535 verts)
+        GLuint  baseInstance;   // offset to instace # when fetching vertex attrs (does NOT affect gl_InstanceID)
+    };
+
     /**
      * InstanceCloud is a helper class that facilitates primitive set
      * instancing across multiple tiles.
@@ -39,66 +68,136 @@ namespace osgEarth
     class OSGEARTH_EXPORT InstanceCloud : public osg::Referenced
     {
     public:
-        struct DrawElementsIndirectCommand
+
+        // Buffer holding all draw commands (Keep a CPU copy for wiping)
+        struct CommandBuffer : public SSBO
         {
-            GLuint  count;
-            GLuint  instanceCount;
-            GLuint  firstIndex;
-            GLuint  baseVertex;
-            GLuint  baseInstance;
+            CommandBuffer() : _buf(NULL) { }
+            ~CommandBuffer() { if (_buf) delete[] _buf; }
+            mutable DrawElementsIndirectCommand* _buf;
+            GeometryCloud* _geom;
+            void allocate(GeometryCloud* cloud, GLsizei alignment, osg::GLExtensions* ext);
+            void reset(osg::GLExtensions* ext);
+        };
+
+        // Buffer holding per-tile information. 
+        // For now this consists of the modelview and normal matrices for each tile.
+        // Since we draw the entire tile set in one call, we need these matrices
+        // so we can transform the verts in the shader
+        struct TileBuffer : public SSBO
+        {
+            struct Data {
+                GLfloat _modelViewMatrix[16];   // 64
+                GLfloat _normalMatrix[16];      // +64 = 128 (no mat3's allowed!!)
+            };
+            Data* _buf;
+            TileBuffer() : _buf(NULL) { }
+            ~TileBuffer() { if (_buf) delete[] _buf; }
+            void allocate(unsigned numTiles, GLsizei alignment, osg::GLExtensions* ext);
+            void update(osg::GLExtensions* ext) const;
+        };
+
+        // Buffer populated by the Generator containing information on each 
+        // instance in a tile.
+        struct InstanceBuffer : public SSBO
+        {
+            struct HeaderData
+            {
+                GLuint _count;          // +4
+                GLfloat _padding[3];    // +12 = 16
+            };
+            struct InstanceData
+            {
+                GLfloat vertex[4];   // 16
+                GLfloat tilec[2];    //  + 8 = 24
+                GLint modelIndex;    //  + 4 = 28
+                GLint sideIndex;     //  + 4 = 32
+                GLint topIndex;      //  + 4 = 36
+                GLfloat width;       //  + 4 = 40
+                GLfloat height;      //  + 4 = 44
+                GLfloat sinrot; 
+                GLfloat cosrot;
+                GLfloat fillEdge;    //  + 4 = 48
+                GLint modelId;       //  + 4 = 52
+                GLuint tileNum;      //  + 4 = 56
+                GLint  drawCommand;  //  + 4 = 60
+                GLfloat instanceId;  //  + 4 = 64
+                GLfloat sizeScale;   //  + 4 = 68
+                GLfloat pixelSizeRatio;
+            };
+            HeaderData* _buf;
+            InstanceBuffer() : _buf(NULL) { }
+            ~InstanceBuffer() { if (_buf) delete[] _buf; }
+            void allocate(unsigned numTiles, GLsizei alignment, osg::GLExtensions* ext);
+            void clear(osg::GLExtensions* ext);
+            void readHeader(osg::GLExtensions* ext);
         };
 
         struct InstancingData
         {
-            mutable DrawElementsIndirectCommand* commands;
-            GLuint commandBuffer;
-            GLsizei commandBufferSize;
-            GLuint pointsBuffer;
-            GLuint renderBuffer;
-            GLint renderBufferTileSize;
-            osg::Vec4Array* points;
-            unsigned numX, numY;
-            unsigned numTilesAllocated;
-            unsigned tileToDraw;
-            GLuint numIndices;
-            GLenum mode;
-            GLenum dataType;
-            GLint ssboOffsetAlignment;
+            CommandBuffer _commandBuffer;     // One for each unique model plus one for billboards
+            TileBuffer _tileBuffer;           // per-tile information (matrices)
+            InstanceBuffer _instanceBuffer;   // instances emitted by the Instancing CS
+            InstanceBuffer _renderListBuffer; // final render list of instances
+
+            unsigned _numX, _numY;
+            unsigned _numAssets;
+            unsigned _numTilesAllocated;
+            unsigned _numInstancesGenerated;
+
+            GLsizei _alignment; // SSBO range alignment
+            GLint _passUL;      // uniform location for compute/rendering pass
+
+            osg::ref_ptr<GeometryCloud> _geom;  // merged geometry
 
             InstancingData();
             ~InstancingData();
             void allocateGLObjects(osg::State* state, unsigned numTiles);
             void releaseGLObjects(osg::State* state) const;
-
-            // pre-OSG 3.6 support
-            void (GL_APIENTRY * _glBufferStorage)(GLenum, GLuint, const void*, GLenum);
         };
 
     public:
         InstanceCloud();
 
-        void setGeometry(osg::Geometry* geom);
-        osg::Geometry* getGeometry() { return _geom.get(); }
+        //! The merged geometry that this instance will render
+        void setGeometryCloud(GeometryCloud*);
+        GeometryCloud* getGeometryCloud() const;
 
-        void setNumInstances(unsigned x, unsigned y);
-        
+        //! Max number of asset instances allowed in a single tile
+        void setNumInstancesPerTile(unsigned x, unsigned y);
+
+        //! Maximum # of instances ina  tile
+        unsigned getNumInstancesPerTile() const;
+       
+        //! Allocates memory as needed and initializes GPU buffers.
+        //! Run this any time the tile batch changes.
         void allocateGLObjects(osg::RenderInfo&, unsigned numTiles);
+
+        //! Prepare to render a new frame.
+        void newFrame(osg::RenderInfo&);
+
+        //! Sets the modeview matrix for a tile
+        void setMatrix(unsigned tileNum, const osg::Matrix& modelView);
         
-        void preCull(osg::RenderInfo&);
-        void cullTile(osg::RenderInfo&, unsigned tileNum);
-        void postCull(osg::RenderInfo&);
+        //! Run the generate compute shader pass (only when tile batch changes)
+        void generate_begin(osg::RenderInfo&);
+        void generate_tile(osg::RenderInfo&);
+        void generate_end(osg::RenderInfo&);
 
-        void drawTile(osg::RenderInfo&, unsigned tileNum);
+        //! Run the cull/sort compute shader (only when generating or when the camera moves)
+        void cull(osg::RenderInfo&);
 
-        osg::BoundingBox computeBoundingBox() const;
+        //! Render the entire tile batch (every frame)
+        void draw(osg::RenderInfo&);
 
         virtual void releaseGLObjects(osg::State* state) const;
 
-    public:
+    private:
 
         InstancingData _data;
-        osg::ref_ptr<osg::Geometry> _geom;
 
+        //! Installed on the geometry cloud to intercept drawing and 
+        //! run the multi draw indirect commands.
         struct Renderer : public osg::Geometry::DrawCallback
         {
             Renderer(InstancingData* data);
@@ -107,8 +206,10 @@ namespace osgEarth
 
             // pre-OSG3.6 support
             void (GL_APIENTRY * _glDrawElementsIndirect)(GLenum, GLenum, const void*);
+            void (GL_APIENTRY * _glMultiDrawElementsIndirect)(GLenum, GLenum, const void*, GLsizei, GLsizei);
         };
 
+        //! Utility to install the draw callback on the geometry cloud.
         struct Installer : public osg::NodeVisitor
         {
             Installer(InstancingData* data);
@@ -116,38 +217,107 @@ namespace osgEarth
             InstancingData* _data;
             osg::ref_ptr<Renderer> _callback;
         };
+    };
 
-        //! Visitor that transforms a model into a single draw call.
-        struct OSGEARTH_EXPORT ModelCruncher : public osg::NodeVisitor
-        {
-            ModelCruncher();
+    /**
+     * Texture atlas using arrays.
+     *
+     * The array will automatically take on the size of the first image
+     * you add UNLESS you set the size beforehand. The format will be
+     * GL_RGBA / GL_UNSIGNED_BYTE.
+     */
+    class OSGEARTH_EXPORT TextureAtlas : public osg::Texture2DArray
+    {
+    public:
+        TextureAtlas();
 
-            void add(osg::Node*);
+        //TODO: unique ID so we dont' duplicate images
+        void addImage(osg::Image* image);
 
-            osg::Node* getNode() const { return _geom.get(); }
-            osg::Texture* getAtlas() const { return _atlas.get(); }
+        void setSize(int s, int t);
 
-            void apply(osg::Node& node);
-            void apply(osg::Geometry& geom);
-            bool pushStateSet(osg::Node&);
-            void popStateSet();
-            void addTextureToAtlas(osg::Texture*);
-            void finalize();
+    protected:
+        virtual ~TextureAtlas() { }
+    };
 
-            osg::ref_ptr<osg::Geometry> _geom;
-            osg::ref_ptr<osg::Texture2DArray> _atlas;
-            osg::fast_back_stack<osg::Texture*> _textureStack;
-            typedef Util::UnorderedMap<osg::Texture*, int> AtlasIndexLUT;
-            AtlasIndexLUT _atlasLUT;
-            std::vector<osg::ref_ptr<osg::Image> > _imagesToAdd;
+    /**
+    * Object that combines multiple models into a single
+    * GL_TRIANGLES geometry. This does two things:
+    * 1) Each time you call add(), the model is stripped down
+    *    and transformed into a single primitive set. All state
+    *    except for texture0 will be lost.
+    * 2) The newly stripped geometry is appended to the One True
+    *    Combined Geometry and its texture added to the combined
+    *    atlas.
+    * You will end up with:
+    * - One GL_TRIANGLES geometry with one primitive set
+    * - One texture atlas
+    * - Vertex offset of each embedded model
+    * - Element count of each embedded model
+    */
+    class OSGEARTH_EXPORT GeometryCloud : public osg::NodeVisitor
+    {
+    public:
+        //! New cloud.
+        GeometryCloud();
 
-            osg::DrawElementsUShort* _primset;
-            osg::Vec3Array* _verts;
-            osg::Vec4Array* _colors;
-            osg::Vec3Array* _normals;
-            osg::Vec3Array* _texcoords;
-        };
+        //! Set an existing atlas to use for textures. If you don't
+        //! call this it the utility will make a new one.
+        void setAtlas(TextureAtlas*);
 
+        //! Add a model to be incorporated
+        //! "align" means to pad the cloud before adding so that the index
+        //! or the first vertex in this node is a multiple of the alignment
+        //! number. This is necessary for shaders that use gl_VertexID as
+        //! a modulus.
+        //! Returns the atlas index of the first image added from this node,
+        //! or -1 if no images were added.
+        int add(osg::Node*, unsigned alignment =0);
+
+        //! After calling finalize, this will return the unified geometry.
+        osg::Geometry* getGeometry() const { return _geom.get(); }
+        osg::Geometry* releaseGeometry() { return _geom.release(); }
+
+        //! After calling finalize(), this will return the unified atlas.
+        osg::Texture* getAtlas() const { return _atlas.get(); }
+
+        //! How many models were added
+        unsigned getNumDrawCommands() const { return _vertexOffsets.size(); }
+
+        //! Populates the i-th draw command from this cloud
+        bool getDrawCommand(unsigned i, DrawElementsIndirectCommand& cmd) const;
+
+        //! Render it.
+        void draw(osg::RenderInfo& ri);
+
+    public: // osg::NodeVisitor
+        void apply(osg::Node& node);
+        void apply(osg::Transform& xform);
+        void apply(osg::Geometry& geom);
+        osg::ref_ptr<osg::Geometry> _geom;
+
+    private:
+        bool pushStateSet(osg::Node&);
+        void popStateSet();
+
+        osg::ref_ptr<TextureAtlas> _atlas;
+        osg::fast_back_stack<osg::Texture*> _textureStack;
+        osg::fast_back_stack<osg::Matrix> _matrixStack;
+        typedef Util::UnorderedMap<osg::Texture*, int> AtlasIndexLUT;
+        AtlasIndexLUT _atlasLUT;
+        std::vector<osg::ref_ptr<osg::Image> > _imagesToAdd;
+
+        osg::DrawElementsUShort* _primset;
+        osg::Vec3Array* _verts;
+        osg::Vec4Array* _colors;
+        osg::Vec3Array* _normals;
+        osg::Vec3Array* _texcoords;
+        std::vector<unsigned> _vertexOffsets;
+        std::vector<unsigned> _elementOffsets;
+        std::vector<unsigned> _elementCounts;
+
+        //traversal data
+        unsigned _numElements;
     };
 }
 

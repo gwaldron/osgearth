@@ -300,7 +300,7 @@ namespace osgEarth
         return a - vecProjection(a, b);
     }
 
-    // Round x to the nearest multiple of "multiple" greater than or equal to x
+    // Round integral x to the nearest multiple of "multiple" greater than or equal to x
     template<typename T>
     T align(T x, T multiple) {
         T isPositive = (T)(x >= 0);

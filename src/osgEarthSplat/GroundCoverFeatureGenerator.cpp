@@ -102,37 +102,6 @@ namespace
         }
     }
 
-#if 0
-
-
-            for (GroundCoverObjects::const_iterator i = b->get()->getObjects().begin();
-                i != b->get()->getObjects().end();
-                ++i)
-            {
-                const GroundCoverBillboard* bb = static_cast<const GroundCoverBillboard*>(i->get());
-                if (bb)
-                {
-                    unsigned weight = 1u;
-                    BillboardLUTEntry entry;
-                    if (bb->_symbol.valid())
-                    {
-                        entry.billboardConfig = bb->_symbol->getOriginalConfig();
-                        OE_DEBUG << entry.billboardConfig.toJSON(false) << std::endl;
-                        entry.width = bb->_symbol->width().get();
-                        entry.height = bb->_symbol->height().get();
-                        entry.sizeVariation = bb->_symbol->sizeVariation().get();
-                        weight = bb->_symbol->selectionWeight().get();
-                    }
-                    for(unsigned w=0; w<weight; ++w)
-                    {
-                        billboards.push_back(entry);
-                    }
-                }
-            }
-        }
-    }
-#endif
-
     // custom featurelist cursor that lets us populate the list directly
     class MyFeatureListCursor : public FeatureListCursor
     {

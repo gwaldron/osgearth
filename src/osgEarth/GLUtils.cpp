@@ -24,6 +24,7 @@
 
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
+#include <osg/ContextData>
 #include <osgViewer/GraphicsWindow>
 
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
@@ -176,6 +177,31 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
         stateSet->removeUniform("oe_GL_PointSize");
         break;
     }
+}
+
+
+void
+GLUtils::deleteGLBuffer(unsigned contextID, GLuint handle)
+{
+    osg::GLBufferObjectManager* bufferObjectManager = osg::get<osg::GLBufferObjectManager>(contextID);
+    if (!bufferObjectManager)
+    {
+        OE_WARN << "Unable to delete GL object " << handle << " in context " << contextID << std::endl;
+        return;
+    }
+
+    // create a temporary object for OSG to delete
+    osg::ref_ptr<osg::GLBufferObject> glBufferObject = new osg::GLBufferObject(contextID, 0, handle);
+
+    osg::GLBufferObjectSet* bufferObjectSet = bufferObjectManager->getGLBufferObjectSet(glBufferObject->getProfile());
+    if (!bufferObjectSet)
+    {
+        OE_WARN << "Unable to delete GL object " << handle << " in context " << contextID << std::endl;
+        return;
+    }
+
+    // queue the handle up for eventual (?) deletion by OSG.
+    bufferObjectSet->orphan(glBufferObject.get());
 }
 
 void

@@ -112,8 +112,16 @@ LayerDrawable::drawTiles(osg::RenderInfo& ri) const
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
-        //_drawState->getPPS(ri).refresh(ri, _drawState->_bindings);
         tile->draw(ri, *_drawState, NULL);
+    }
+}
+
+void
+LayerDrawable::visitTiles(osg::RenderInfo& ri) const
+{
+    for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
+    {
+        tile->visit(ri);
     }
 }
 
@@ -127,7 +135,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     if (_patchLayer && _patchLayer->getDrawCallback())
     {        
-        _patchLayer->getDrawCallback()->draw(ri, this);
+        _patchLayer->getDrawCallback()->visitTileBatch(ri, this);
     }
     else
     {

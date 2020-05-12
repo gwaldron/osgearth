@@ -74,10 +74,21 @@ TerrainEngineNode::removeEffect(TerrainEffect* effect)
 
 
 TerrainResources*
-TerrainEngineNode::getResources() const
+TerrainEngineNode::getResources()
 {
+    if (!_textureResourceTracker.valid())
+    {
+        // Install an object to manage texture image unit usage:
+        _textureResourceTracker = new TerrainResources();
+
+        std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
+        for (std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
+            _textureResourceTracker->setTextureImageUnitOffLimits(*i);
+    }
+
     return _textureResourceTracker.get();
 }
+
 
 //------------------------------------------------------------------------
 
@@ -95,12 +106,6 @@ _updateScheduled( false )
 {
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT(this, 1);
-    
-    // Install an object to manage texture image unit usage:
-    _textureResourceTracker = new TerrainResources();
-    std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
-    for (std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
-        _textureResourceTracker->setTextureImageUnitOffLimits(*i);
 }
 
 TerrainEngineNode::~TerrainEngineNode()

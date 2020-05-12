@@ -65,7 +65,7 @@ namespace
         float width;
         float height;
         float sizeVariation;
-        Config billboardConfig;
+        Config assetConfig;
     };
 
     typedef std::vector<AssetLUTEntry> AssetLUTVector;
@@ -86,7 +86,7 @@ namespace
                 ++i)
             {
                 AssetLUTEntry entry;
-                entry.billboardConfig = i->getConfig();
+                entry.assetConfig = i->getConfig();
                 entry.width = i->options().width().get();
                 entry.height = i->options().height().get();
                 entry.sizeVariation = i->options().sizeVariation().getOrUse(
@@ -96,6 +96,8 @@ namespace
                 {
                     assets.push_back(entry);
                 }
+
+                //OE_INFO << "Asset: " << entry.assetConfig.toJSON(true) << std::endl;
             }
         }
     }
@@ -507,7 +509,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
                 i != _propNames.end(); 
                 ++i)
             {
-                std::string value = asset.billboardConfig.value(*i);
+                std::string value = asset.assetConfig.value(*i);
                 if (!value.empty())
                 {
                     feature->set(*i, value);

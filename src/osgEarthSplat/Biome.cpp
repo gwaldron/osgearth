@@ -25,6 +25,8 @@ using namespace osgEarth::Splat;
 
 void AssetUsage::Options::fromConfig(const Config& conf)
 {
+    _initConfig = conf;
+
     width().setDefault(5.0f);
     height().setDefault(10.0f);
     sizeVariation().setDefault(0.0f);
@@ -41,7 +43,10 @@ void AssetUsage::Options::fromConfig(const Config& conf)
 
 Config AssetUsage::Options::getConfig() const
 {
-    Config conf("billboard");
+    Config conf = _initConfig;
+    conf.key() = "billboard";
+
+    //Config conf("billboard");
     conf.set("url", sideBillboardURI());
     conf.set("top_url", topBillboardURI());
     conf.set("model", modelURI());

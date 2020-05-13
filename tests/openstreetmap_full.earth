@@ -12,12 +12,13 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
         <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
     </TFSFeatures>
-    
+
     <FeatureModel name="OSM">
         <features>data:osm</features>
 
-        <feature_indexing enabled="false"></feature_indexing>
+        <feature_indexing enabled="true"></feature_indexing>
 
         <styles>
 
@@ -204,7 +205,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
             </style>
         </styles>
     </FeatureImage>
-    
+
     <xi:include href="readymap_elevation.xml"/>
 
     <xi:include href="viewpoints.xml"/>

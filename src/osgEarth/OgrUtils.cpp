@@ -148,7 +148,7 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle, bool rewindPolygons)
 {
     Geometry* output = 0L;
 
-    OGRwkbGeometryType wkbType = OGR_G_GetGeometryType( geomHandle );        
+    OGRwkbGeometryType wkbType = OGR_G_GetGeometryType( geomHandle );
 
     int numPoints, numGeoms;
 
@@ -243,7 +243,7 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle, bool rewindPolygons)
                 Geometry* geom = createGeometry( subGeomRef, rewindPolygons);
                 if ( geom ) multi->getComponents().push_back( geom );
             }
-        } 
+        }
         output = multi;
         break;
     }
@@ -268,7 +268,7 @@ OgrUtils::encodePart( const Geometry* geometry, OGRwkbGeometryType part_type )
 
 OGRGeometryH
 OgrUtils::encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type )
-{    
+{
     OGRGeometryH shape_handle = OGR_G_CreateGeometry(shape_type);
     if (shape_handle)
     {
@@ -306,7 +306,7 @@ OgrUtils::encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, 
     }
     return shape_handle;
 
-#if 0    
+#if 0
     // emit single-point pointset as wkbPoint
     if (geometry->getType() == Geometry::TYPE_POINT)
     {
@@ -408,7 +408,7 @@ OgrUtils::getOGRGeometryType(const osgEarth::Geometry* geometry)
     case osgEarth::Geometry::TYPE_RING:
         requestedType = wkbLinearRing;
         break;
-    case Geometry::TYPE_UNKNOWN: 
+    case Geometry::TYPE_UNKNOWN:
         break;
     case Geometry::TYPE_MULTI:
     {
@@ -482,7 +482,7 @@ OgrUtils::createOgrGeometry(const osgEarth::Geometry* geometry, OGRwkbGeometryTy
                 {
                     OE_WARN << "OGR_G_AddGeometryDirectly failed! " << error << std::endl;
                     OE_WARN << "shape_type = " << shape_type << " part_type=" << part_type << std::endl;
-                }                    
+                }
             }
         }
 
@@ -510,14 +510,14 @@ OgrUtils::createFeature(OGRFeatureH handle, const FeatureProfile* profile, bool 
         f = createFeature( handle, (const SpatialReference*)0L, rewindPolygons);
     }
     return f;
-}            
+}
 
 Feature*
 OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs, bool rewindPolygons)
 {
-    long fid = OGR_F_GetFID( handle );
+    FeatureID fid = OGR_F_GetFID( handle );
 
-    OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
+    OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );
 
     Geometry* geom = 0;
 
@@ -528,25 +528,25 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs, bool r
 
     Feature* feature = new Feature( geom, srs, Style(), fid );
 
-    int numAttrs = OGR_F_GetFieldCount(handle); 
-    for (int i = 0; i < numAttrs; ++i) 
-    { 
-        OGRFieldDefnH field_handle_ref = OGR_F_GetFieldDefnRef( handle, i ); 
+    int numAttrs = OGR_F_GetFieldCount(handle);
+    for (int i = 0; i < numAttrs; ++i)
+    {
+        OGRFieldDefnH field_handle_ref = OGR_F_GetFieldDefnRef( handle, i );
 
         // get the field name and convert to lower case:
-        const char* field_name = OGR_Fld_GetNameRef( field_handle_ref ); 
+        const char* field_name = OGR_Fld_GetNameRef( field_handle_ref );
         std::string name = osgEarth::toLower( std::string(field_name) );
 
         // get the field type and set the value appropriately
-        OGRFieldType field_type = OGR_Fld_GetType( field_handle_ref );        
+        OGRFieldType field_type = OGR_Fld_GetType( field_handle_ref );
         switch( field_type )
         {
         case OFTInteger:
-            {     
+            {
                 if (IsFieldSet( handle, i ))
                 {
-                    int value = OGR_F_GetFieldAsInteger( handle, i );
-                    feature->set( name, value );                    
+                    long long value = OGR_F_GetFieldAsInteger(handle, i);
+                    feature->set( name, value );
                 }
                 else
                 {
@@ -554,6 +554,19 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs, bool r
                 }
             }
             break;
+        case OFTInteger64:
+        {
+            if (IsFieldSet(handle, i))
+            {
+                long long value = OGR_F_GetFieldAsInteger64(handle, i);
+                feature->set(name, value);
+            }
+            else
+            {
+                feature->setNull(name, ATTRTYPE_INT);
+            }
+        }
+        break;
         case OFTReal:
             {
                 if (IsFieldSet( handle, i ))
@@ -580,7 +593,7 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs, bool r
                 }
             }
         }
-    } 
+    }
 
     return feature;
 }
@@ -594,7 +607,7 @@ OgrUtils::getAttributeType( OGRFieldType type )
     case OFTReal: return ATTRTYPE_DOUBLE;
     case OFTInteger: return ATTRTYPE_INT;
     default: return ATTRTYPE_UNSPECIFIED;
-    };        
+    };
 }
 
 

@@ -133,7 +133,7 @@ MBTilesImageLayer::openImplementation()
     {
         return status;
     }
-    
+
     // install the profile if there is one
     if (getProfile() == NULL && profile.valid())
     {
@@ -164,7 +164,7 @@ MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     if (r.succeeded())
         return GeoImage(r.releaseImage(), key.getExtent());
-    else 
+    else
         return GeoImage(Status(r.errorDetail()));
 }
 
@@ -500,7 +500,7 @@ MBTiles::Driver::open(
 
             inout_profile = profile;
             OE_INFO << LC << "Profile = " << profile->toString() << std::endl;
-            OE_INFO << LC << "Min=" << _minLevel << ", Max=" << _maxLevel 
+            OE_INFO << LC << "Min=" << _minLevel << ", Max=" << _maxLevel
                 << ", format=" << _tileFormat  << std::endl;
         }
 

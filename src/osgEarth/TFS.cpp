@@ -72,7 +72,7 @@ TFS::ReaderWriter::read(const URI& uri, const osgDB::ReaderWriter::Options *opti
         std::string str = result.getString();
         std::stringstream in( str.c_str()  );
         return read( in, layer);
-    }    
+    }
     return false;
 }
 
@@ -109,7 +109,7 @@ TFS::ReaderWriter::read( std::istream &in, TFS::Layer &layer)
         double maxX = as<double>(e_bounding_box->getAttr( "maxx" ), 0.0);
         double maxY = as<double>(e_bounding_box->getAttr( "maxy" ), 0.0);
         layer.setExtent( GeoExtent( layer.getSRS(), minX, minY, maxX, maxY) );
-    }    
+    }
 
     return true;
 }
@@ -316,7 +316,7 @@ TFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
         {
             std::string attr = itr->get()->getString(options().fidAttribute().get());
-            FeatureID fid = as<long>(attr, 0);
+            FeatureID fid = as<FeatureID>(attr, 0);
             itr->get()->setFID(fid);
         }
     }
@@ -469,7 +469,7 @@ TFSFeatureSource::createURL(const Query& query)
         }
 
         // TFS follows the same protocol as TMS, with the origin in the lower left of the profile.
-        // osgEarth TileKeys are upper left origin, so we need to invert the tilekey to request the correct key.            
+        // osgEarth TileKeys are upper left origin, so we need to invert the tilekey to request the correct key.
         if (options().invertY() == false)
         {
             unsigned int numRows, numCols;

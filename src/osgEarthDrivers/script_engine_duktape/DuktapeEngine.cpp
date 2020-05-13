@@ -61,7 +61,7 @@ namespace
         Feature* feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));
 
         // Fetch the feature data:
-        duk_push_global_object(ctx);                    
+        duk_push_global_object(ctx);
         // [ptr, global]
 
         if ( !duk_get_prop_string(ctx, -1, "feature") || !duk_is_object(ctx, -1))
@@ -72,8 +72,8 @@ namespace
         if ( duk_get_prop_string(ctx, -1, "properties") && duk_is_object(ctx, -1) )
         {
             // [ptr, global, feature, props]
-            duk_enum(ctx, -1, 0);                       
-        
+            duk_enum(ctx, -1, 0);
+
             // [ptr, global, feature, props, enum]
             while( duk_next(ctx, -1, 1/*get_value=true*/) )
             {
@@ -129,7 +129,7 @@ namespace
         {
             // [ptr, global, feature, undefined]
         }
-        
+
         // [ptr, global, feature]
         duk_pop_2(ctx);     // [ptr] (as we found it)
         return 0;           // no return values.
@@ -172,7 +172,7 @@ namespace
         {
             duk_idx_t feature_i = duk_push_object(ctx);     // [global] [feature]
             {
-                duk_push_int(ctx, feature->getFID());       // [global] [feature] [id]
+                duk_push_number(ctx, feature->getFID());       // [global] [feature] [id]
                 duk_put_prop_string(ctx, feature_i, "id");  // [global] [feature]
 
                 duk_idx_t props_i = duk_push_object(ctx);   // [global] [feature] [properties]
@@ -183,7 +183,7 @@ namespace
                         AttributeType type = a->second.first;
                         switch(type) {
                         case ATTRTYPE_DOUBLE: duk_push_number (ctx, a->second.getDouble()); break;          // [global] [feature] [properties] [name]
-                        case ATTRTYPE_INT:    duk_push_int    (ctx, a->second.getInt()); break;             // [global] [feature] [properties] [name]
+                        case ATTRTYPE_INT:    duk_push_number(ctx, (double)a->second.getInt()); break;             // [global] [feature] [properties] [name]
                         case ATTRTYPE_BOOL:   duk_push_boolean(ctx, a->second.getBool()); break;            // [global] [feature] [properties] [name]
                         case ATTRTYPE_DOUBLEARRAY: break;
                         case ATTRTYPE_STRING:
@@ -204,9 +204,9 @@ namespace
             duk_put_prop_string(ctx, -2, "feature"); // [global] [feature]
         }
 
-        duk_pop(ctx); 
+        duk_pop(ctx);
     }
-    
+
 }
 
 //............................................................................
@@ -286,7 +286,7 @@ DuktapeEngine::run(const std::string&   code,
 {
     if (code.empty())
         return ScriptResult(EMPTY_STRING, false, "Script is empty.");
-        
+
     bool complete = false;
 
     // gw: broken; disable until we can address (if necessary)

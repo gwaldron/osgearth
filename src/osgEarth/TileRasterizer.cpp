@@ -66,11 +66,8 @@ TileRasterizer::RenderInstaller::drawImplementation(osg::RenderInfo& ri) const
     }
 }
 
-#define ASYNC_READBACK false
-
-
 TileRasterizer::RenderOperation::RenderOperation(osg::Node* node, const GeoExtent& extent, TileRasterizer::RenderData& renderData) :
-    osg::GraphicsOperation("TileRasterizer", false), //ASYNC_READBACK),
+    osg::GraphicsOperation("TileRasterizer", false),
     _node(node),
     _extent(extent),
     _renderData(renderData),
@@ -88,122 +85,49 @@ TileRasterizer::RenderOperation::getFuture()
 void 
 TileRasterizer::RenderOperation::operator () (osg::GraphicsContext* gc)
 {
-    if (_pass == 0)
-    {
-        //OE_INFO << "Pass 1" << std::endl;
-        osg::Camera* camera = _renderData._sv->getCamera();
+    osg::Camera* camera = _renderData._sv->getCamera();
 
-        _image = new osg::Image();
-        _image->allocateImage(_renderData._width, _renderData._height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-        _image->setInternalTextureFormat(GL_RGBA8);
+    _image = new osg::Image();
+    _image->allocateImage(_renderData._width, _renderData._height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    _image->setInternalTextureFormat(GL_RGBA8);
 
-        camera->detach(camera->COLOR_BUFFER0);
-        camera->attach(camera->COLOR_BUFFER0, _image.get());
-        camera->dirtyAttachmentMap();
+    // attaching an image tells OSG to automatically call glReadPixels at the 
+    // end of the RenderStage. No opportunity for async readback with a PBO however.
+    camera->detach(camera->COLOR_BUFFER0);
+    camera->attach(camera->COLOR_BUFFER0, _image.get());
+    camera->dirtyAttachmentMap();
 
-        camera->setProjectionMatrixAsOrtho2D(
-            _extent.xMin(), _extent.xMax(),
-            _extent.yMin(), _extent.yMax());
+    camera->setProjectionMatrixAsOrtho2D(
+        _extent.xMin(), _extent.xMax(),
+        _extent.yMin(), _extent.yMax());
 
-        _renderData._sv->setSceneData(_node.get());
+    _renderData._sv->setSceneData(_node.get());
            
-        unsigned id = gc->getState()->getContextID();
-        osg::GLExtensions* ext = osg::GLExtensions::Get(id, true);
+    unsigned id = gc->getState()->getContextID();
+    osg::GLExtensions* ext = osg::GLExtensions::Get(id, true);
 
-        if (_renderData._samplesQuery[id] == INT_MAX)
-        {
-            ext->glGenQueries(1, &_renderData._samplesQuery[id]);
-        }
-
-        _renderData._sv->cull();
-
-        // initiate a query for samples passing the fragment shader
-        // to see whether we drew anything.
-        GLuint samples = 0u;
-        ext->glBeginQuery(GL_ANY_SAMPLES_PASSED, _renderData._samplesQuery[id]);
-
-        _renderData._sv->draw();
-
-        ext->glEndQuery(GL_ANY_SAMPLES_PASSED);
-        ext->glGetQueryObjectuiv(_renderData._samplesQuery[id], GL_QUERY_RESULT, &samples);
-
-        if (samples > 0u)
-        {
-#if ASYNC_READBACK
-            ext->glGenBuffers(1, &_pbo);
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER, _pbo);
-            ext->glBufferData(GL_PIXEL_PACK_BUFFER, _renderData._width*_renderData._height * 4, NULL, GL_STREAM_READ);
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER, _pbo);
-            //glPixelStorei(GL_PACK_ALIGNMENT, 1);
-            //glPixelStorei(GL_PACK_ROW_LENGTH, _renderData._width*4);
-            //glReadPixels(0, 0, _renderData._width, _renderData._height, GL_RGBA, GL_UNSIGNED_BYTE, 0L);
-            glPixelStorei(GL_PACK_ALIGNMENT, _image->getPacking());
-            glPixelStorei(GL_PACK_ROW_LENGTH, _image->getRowLength());
-            glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0L);
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-
-            //glReadBuffer(GL_COLOR_ATTACHMENT0);
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER, _pbo);
-            const GLvoid* buf = ext->glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-            unsigned size = _image->getTotalSizeInBytes();
-            ::memcpy(_image->data(), buf, size);
-            ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-            ext->glDeleteBuffers(1, &_pbo);
-
-            _promise.resolve(_image.release());
-
-            _pass = 1;
-            setKeep(true);
-#else
-            //glPixelStorei(GL_PACK_ALIGNMENT, _image->getPacking());
-            //glPixelStorei(GL_PACK_ROW_LENGTH, _image->getRowLength());
-            glGetTexImage(GL_TEXTURE_2D, 0, _image->getPixelFormat(), _image->getDataType(), _image->data());
-            _promise.resolve(_image.release());
-#endif      
-        }
-        else
-        {
-#if ASYNC_READBACK
-            _pass = 1;
-            setKeep(false);
-#endif
-            _image = NULL;
-            _promise.resolve(_image.release());
-        }
-    }
-#if ASYNC_READBACK
-    else if (_pass == 1)
+    if (_renderData._samplesQuery[id] == INT_MAX)
     {
-        osg::GLExtensions* ext = gc->getState()->get<osg::GLExtensions>();
-
-        if (_image.valid())
-        {
-            unsigned id = gc->getState()->getContextID();
-
-            //osg::Image* image = new osg::Image();
-            //image->allocateImage(_renderData._width, _renderData._height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER, _pbo);
-            const GLvoid* buf = ext->glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-            ::memcpy(_image->data(), buf, _image->getTotalSizeInBytes());
-            ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-            ext->glDeleteBuffers(1, &_pbo);
-
-            _promise.resolve(_image.release());
-        }
-
-        ++_pass;
-        setKeep(false);
+        ext->glGenQueries(1, &_renderData._samplesQuery[id]);
     }
-    else
-    {
-        ++_pass;
-        setKeep(false);
-    }
-#endif
+
+    _renderData._sv->cull();
+
+    // initiate a query for samples passing the fragment shader
+    // to see whether we drew anything.
+    GLuint samples = 0u;
+    ext->glBeginQuery(GL_ANY_SAMPLES_PASSED, _renderData._samplesQuery[id]);
+
+    _renderData._sv->draw();
+
+    ext->glEndQuery(GL_ANY_SAMPLES_PASSED);
+    ext->glGetQueryObjectuiv(_renderData._samplesQuery[id], GL_QUERY_RESULT, &samples);
+
+    // nothing rendered? return a NULL image.
+    if (samples == 0u)
+        _image = NULL;
+
+    _promise.resolve(_image.release());
 }
 
 

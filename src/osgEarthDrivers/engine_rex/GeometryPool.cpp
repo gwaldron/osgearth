@@ -21,6 +21,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TopologyGraph>
 #include <osg/Point>
+#include <osgUtil/MeshOptimizers>
 #include <cstdlib> // for getenv
 
 using namespace osgEarth;
@@ -28,23 +29,6 @@ using namespace osgEarth::Util;
 using namespace osgEarth::REX;
 
 #define LC "[GeometryPool] "
-
-// TODO: experiment with sharing a single texture coordinate array 
-// across all shared geometries.
-// JB: Disabled to fix issues with ATI.
-// GW: Could we bind this at a globally applied SSBO at the top of the terrain instead?
-//#define SHARE_TEX_COORDS 1
-
-//struct DebugGeometry : public osg::Geometry {
-//    void compileGLObjects(osg::RenderInfo& renderInfo) const {
-//        OE_WARN << "Compiling GL Objects: " << this << std::endl;
-//        osg::Geometry::compileGLObjects(renderInfo);
-//    }
-//    void releaseGLObjects(osg::State* state) const {
-//        OE_WARN << "Releasing GL Objects: " << this << std::endl;
-//        osg::Geometry::releaseGLObjects(state);
-//    }
-//};
 
 
 GeometryPool::GeometryPool(const TerrainOptions& options) :
@@ -87,6 +71,12 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
     {
         // Look it up in the pool:
         Threading::ScopedMutexLock exclusive( _geometryMapMutex );
+
+        // make our globally shared EBO if we need it
+        if ( !_defaultPrimSet.valid())
+        {
+            _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL);
+        }
 
         bool masking = maskSet && maskSet->hasMasks();
 
@@ -205,6 +195,107 @@ namespace
     primSet->addElement((INDEX1)+1); \
 }
 
+osg::DrawElements*
+GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg::Vec3Array* texCoords) const
+{
+    // Attempt to calculate the number of verts in the surface geometry.
+    bool needsSkirt = _options.heightFieldSkirtRatio() > 0.0f;
+
+    unsigned numVertsInSurface    = (tileSize*tileSize);
+    unsigned numVertsInSkirt      = needsSkirt ? (tileSize-1)*2u * 4u : 0;
+    unsigned numVerts             = numVertsInSurface + numVertsInSkirt;    
+    unsigned numIndiciesInSurface = (tileSize-1) * (tileSize-1) * 6;
+    unsigned numIncidesInSkirt    = getNumSkirtElements(tileSize);
+
+    GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
+
+    osg::ref_ptr<osg::DrawElements> primSet = new osg::DrawElementsUShort(mode);
+    primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
+
+    // add the elements for the surface:
+    tessellateSurface(tileSize, maskSet, texCoords, primSet.get());
+
+    if (needsSkirt)
+    {
+        // add the elements for the skirt:
+        int skirtBegin = numVertsInSurface;
+        int skirtEnd = skirtBegin + numVertsInSkirt;
+        int i;
+        for(i=skirtBegin; i<(int)skirtEnd-2; i+=2)
+            addSkirtTriangles( i, i+2 );
+        addSkirtTriangles( i, skirtBegin );
+    }
+
+    // if there's no mask, assume this is the "global" geometry and optimize it.
+    if (!maskSet)
+    {
+        osg::ref_ptr<osg::Geometry> temp = new osg::Geometry();
+        temp->addPrimitiveSet(primSet.get());
+
+        // optimizer wants this..
+        temp->setVertexArray(new osg::Vec3Array(numVertsInSurface + numVertsInSkirt));
+
+        osgUtil::VertexCacheVisitor vcv;
+        temp->accept(vcv);
+        vcv.optimizeVertices();
+    
+        // Uh oh, breaks the geometry
+        //osgUtil::VertexAccessOrderVisitor vaov;
+        //temp->accept(vaov);
+        //vaov.optimizeOrder();
+
+        primSet = (osg::DrawElements*)temp->getPrimitiveSet(0);
+        temp = NULL;
+    }
+
+    return primSet.release();
+}
+
+void
+GeometryPool::tessellateSurface(unsigned tileSize, MaskGenerator* maskSet, osg::Vec3Array* texCoords, osg::DrawElements* primSet) const
+{
+    for (unsigned j = 0; j < tileSize - 1; ++j)
+    {
+        for (unsigned i = 0; i < tileSize - 1; ++i)
+        {
+            int i00 = j * tileSize + i;
+            int i01 = i00 + tileSize;
+            int i10 = i00 + 1;
+            int i11 = i01 + 1;
+
+            // skip any triangles that have a discarded vertex:
+            bool discard = maskSet && (
+                maskSet->isMasked((*texCoords)[i00]) ||
+                maskSet->isMasked((*texCoords)[i11])
+                );
+            // If the three vertices are on the patch boundary, then don't make a
+            // triangle. It would overlap geometry between the patch boundary and the
+            // mask and possibly the masked area too.
+            bool onPatchBoundary = maskSet
+                && maskSet->isPatchBoundary((*texCoords)[i00])
+                && maskSet->isPatchBoundary((*texCoords)[i11]);
+            if (!discard)
+            {
+                discard = maskSet && maskSet->isMasked((*texCoords)[i01]);
+                if (!(discard || (onPatchBoundary && maskSet->isPatchBoundary((*texCoords)[i01]))))
+                {
+                    primSet->addElement(i01);
+                    primSet->addElement(i00);
+                    primSet->addElement(i11);
+                }
+
+                discard = maskSet && maskSet->isMasked((*texCoords)[i10]);
+                if (!(discard || (onPatchBoundary && maskSet->isPatchBoundary((*texCoords)[i10]))))
+                {
+                    primSet->addElement(i00);
+                    primSet->addElement(i10);
+                    primSet->addElement(i11);
+                }
+            }
+        }
+    }
+}
+
 SharedGeometry*
 GeometryPool::createGeometry(const TileKey& tileKey,
                              unsigned       tileSize,
@@ -221,11 +312,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     local2world.invert( world2local );
 
     // Attempt to calculate the number of verts in the surface geometry.
-    bool createSkirt = _options.heightFieldSkirtRatio() > 0.0f;
+    bool needsSkirt = _options.heightFieldSkirtRatio() > 0.0f;
 
     unsigned numVertsInSurface    = (tileSize*tileSize);
-    unsigned numVertsInSkirt      = createSkirt ? tileSize*4u - 4u : 0;
-    unsigned numVerts             = numVertsInSurface + numVertsInSkirt;    
+    unsigned numVertsInSkirt      = needsSkirt ? (tileSize-1)*2u * 4u : 0;
+    unsigned numVerts             = numVertsInSurface + numVertsInSkirt;
     unsigned numIndiciesInSurface = (tileSize-1) * (tileSize-1) * 6;
     unsigned numIncidesInSkirt    = getNumSkirtElements(tileSize);
     
@@ -241,11 +332,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
 
-    // Pre-allocate enough space for all triangles.
-    osg::DrawElements* primSet = new osg::DrawElementsUShort(mode);
-    primSet->setElementBufferObject(new osg::ElementBufferObject());
-    primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
-    geom->setDrawElements(primSet);
+    // Elements set ... later we'll decide whether to use the global one
+    osg::DrawElements* primSet = NULL;
 
     // the vertex locations:
     osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array();
@@ -281,22 +369,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     // tex coord is [0..1] across the tile. The 3rd dimension tracks whether the
     // vert is masked: 0=yes, 1=no
-#ifdef SHARE_TEX_COORDS
-    bool populateTexCoords = false;
-    if ( !_sharedTexCoords.valid() )
-    {
-        _sharedTexCoords = new osg::Vec3Array();
-        _sharedTexCoords->reserve( numVerts );
-        populateTexCoords = true;
-    }    
-    osg::Vec3Array* texCoords = _sharedTexCoords.get();
-#else
     bool populateTexCoords = true;
     osg::ref_ptr<osg::Vec3Array> texCoords = new osg::Vec3Array();
     texCoords->setBinding(texCoords->BIND_PER_VERTEX);
     texCoords->setVertexBufferObject(vbo.get());
     texCoords->reserve( numVerts );
-#endif
 
     geom->setTexCoordArray(texCoords.get());
     
@@ -350,6 +427,28 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         }
     }
 
+    if (needsSkirt)
+    {
+        // calculate the skirt extrusion height
+        double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
+
+        // Normal tile skirt first:
+        unsigned skirtIndex = verts->size();
+
+        // first, create all the skirt verts, normals, and texcoords.
+        for(int c=0; c<(int)tileSize-1; ++c)
+            addSkirtDataForIndex( c, height ); //top
+
+        for(int r=0; r<(int)tileSize-1; ++r)
+            addSkirtDataForIndex( r*tileSize+(tileSize-1), height ); //right
+
+        for(int c=tileSize-1; c>=0; --c)
+            addSkirtDataForIndex( (tileSize-1)*tileSize+c, height ); //bottom
+
+        for(int r=tileSize-1; r>=0; --r)
+            addSkirtDataForIndex( r*tileSize, height ); //left
+    }
+
     // By default we tessellate the surface, but if there's a masking set
     // it might replace some or all of our surface geometry.
     bool tessellateSurface = true;
@@ -370,11 +469,17 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             maskElements->getNumIndices() > 0)
         {
             // Share the same EBO as the surface geometry
-            maskElements->setElementBufferObject(primSet->getElementBufferObject());
+            //maskElements->setElementBufferObject(primSet->getElementBufferObject());
+            osg::ElementBufferObject* ebo = new osg::ElementBufferObject();
+            maskElements->setElementBufferObject(ebo);
             geom->setMaskElements(maskElements.get());
 
+            // Need a custom primitive set, so clone the default one:
+            primSet = createPrimitiveSet(tileSize, maskSet, texCoords.get());
+            primSet->setElementBufferObject(ebo);
+
             // Build a skirt for the mask geometry?
-            if (createSkirt)
+            if (needsSkirt)
             {
                 // calculate the skirt extrusion height
                 double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
@@ -401,7 +506,9 @@ GeometryPool::createGeometry(const TileKey& tileKey,
                         // then create the elements:
                         int i;
                         for (i = skirtIndex; i < (int)verts->size() - 2; i += 2)
+                        {
                             addSkirtTriangles(i, i + 2);
+                        }
 
                         addSkirtTriangles(i, skirtIndex);
                     }
@@ -415,7 +522,9 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         {
             maskSet = 0L;
             for (osg::Vec3Array::iterator i = texCoords->begin(); i != texCoords->end(); ++i)
+            {
                 i->z() = VERTEX_MARKER_GRID;
+            }
         }
 
         // If the boundary contains the entire tile, draw nothing!
@@ -425,80 +534,14 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         }
     }
 
-    // Now tessellate the (unmasked) surface.
-    
-    if (tessellateSurface)
+    if (tessellateSurface && primSet == NULL)
     {
-        for(unsigned j=0; j<tileSize-1; ++j)
-        {
-            for(unsigned i=0; i<tileSize-1; ++i)
-            {
-                int i00 = j*tileSize + i;
-                int i01 = i00+tileSize;
-                int i10 = i00+1;
-                int i11 = i01+1;
+        primSet = _defaultPrimSet.get();
+    }
 
-                // skip any triangles that have a discarded vertex:
-                bool discard = maskSet && (
-                    maskSet->isMasked( (*texCoords)[i00] ) ||
-                    maskSet->isMasked( (*texCoords)[i11] )
-                );
-                // If the three vertices are on the patch boundary, then don't make a
-                // triangle. It would overlap geometry between the patch boundary and the
-                // mask and possibly the masked area too.
-                bool onPatchBoundary = maskSet
-                    && maskSet->isPatchBoundary((*texCoords)[i00])
-                    && maskSet->isPatchBoundary((*texCoords)[i11]);
-                if ( !discard )
-                {
-                    discard = maskSet && maskSet->isMasked( (*texCoords)[i01] );
-                    if ( !(discard || (onPatchBoundary && maskSet->isPatchBoundary( (*texCoords)[i01] ))) )
-                    {
-                        primSet->addElement(i01);
-                        primSet->addElement(i00);
-                        primSet->addElement(i11);
-                    }
-            
-                    discard = maskSet && maskSet->isMasked( (*texCoords)[i10] );
-                    if ( !(discard || (onPatchBoundary && maskSet->isPatchBoundary( (*texCoords)[i10] ))) )
-                    {
-                        primSet->addElement(i00);
-                        primSet->addElement(i10);
-                        primSet->addElement(i11);
-                    }
-                }
-            }
-        }
-
-        // Build skirts for the tile geometry
-        if ( createSkirt )
-        {
-            // SKIRTS:
-            // calculate the skirt extrusion height
-            double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
-        
-            unsigned skirtIndex = verts->size();
-
-            // first, create all the skirt verts, normals, and texcoords.
-            for(int c=0; c<(int)tileSize-1; ++c)
-                addSkirtDataForIndex( c, height ); //top
-
-            for(int r=0; r<(int)tileSize-1; ++r)
-                addSkirtDataForIndex( r*tileSize+(tileSize-1), height ); //right
-    
-            for(int c=tileSize-1; c>=0; --c)
-                addSkirtDataForIndex( (tileSize-1)*tileSize+c, height ); //bottom
-
-            for(int r=tileSize-1; r>=0; --r)
-                addSkirtDataForIndex( r*tileSize, height ); //left
-    
-            // then create the elements indices:
-            int i;
-            for(i=skirtIndex; i<(int)verts->size()-2; i+=2)
-                addSkirtTriangles( i, i+2 );
-
-            addSkirtTriangles( i, skirtIndex );
-        }
+    if (primSet)
+    {
+        geom->setDrawElements(primSet);
     }
 
     return geom.release();
@@ -787,7 +830,15 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
     if (ebo)
     {
-        //if (request_bind_unbind) 
+        osg::GLExtensions* ext = state.get<osg::GLExtensions>();
+
+        // Someday, figure out exactly WHY this does not work.
+        // i.e., why we have to bind/unbind the same shared EBO
+        // for every tile. I suspect it's because OSG reallocates
+        // the underlying EBO buffer, but I don't really know.
+        // Anyway it's 2 extra GL calls per tile.
+
+        //if (request_bind_unbind)
         {
             state.bindElementBufferObject(ebo);
         }
@@ -843,7 +894,7 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
             }
         }
 
-        //if (request_bind_unbind) 
+        //if (request_bind_unbind)
         {
             state.unbindElementBufferObject();
         }
@@ -864,7 +915,7 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     // unbind the VBO's if any are used.
     if (request_bind_unbind)
     {
-        state.unbindVertexBufferObject();
+        //state.unbindVertexBufferObject();
     }
 }
 

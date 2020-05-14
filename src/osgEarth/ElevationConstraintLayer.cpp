@@ -318,7 +318,6 @@ GeoImage
 ElevationConstraintLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     osg::ref_ptr<osg::Image> primary =createImageImplementationAux(key, progress);
-    
     if (!primary.valid())
     {
         return GeoImage();      // XXX
@@ -339,37 +338,27 @@ ElevationConstraintLayer::createImageImplementation(const TileKey& key, Progress
             write(value, s, t, 0);
         }
     }
-    // Write the displacements from the correct quadrant of the parent
-    // into this tile's image. Grid posts that don't exist in the
-    // parent get values from their morph targets.
-    unsigned tileQuad = key.getQuadrant();
-    int parentOriginX = 0, parentOriginY = 0;
-    int halfGrid = (gridSize - 1) / 2;
-    switch (tileQuad)
+    // Scale and bias matrices, one for each TileKey quadrant.
+    const osg::Matrixf scaleBias[4] =
     {
-    case 0:
-        parentOriginY = halfGrid;
-    case 1:
-        parentOriginX = halfGrid;
-        parentOriginY = halfGrid;
-        break;
-    case 2:
-        break;
-    case 3:
-        parentOriginX = halfGrid;
-        break;
-    default:
-        break;
-    }
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.5f,0,1.0f),
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.5f,0,1.0f),
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.0f,0,1.0f),
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f)
+    };
+    const osg::Matrixf& m = scaleBias[key.getQuadrant()];
     ImageUtils::PixelReader readParent(parentImage.get());
     for (int t = 0; t < gridSize; ++t)
     {
+        float v = (float)t / (float)(gridSize-1);
         for (int s = 0; s < gridSize; ++s)
         {
-            osg::Vec4 value = readParent(s / 2 + parentOriginX, t / 2 + parentOriginY);
+            float u = (float)s / (float)(gridSize-1);
+            float up = u*m(0,0) + m(3,0);
+            float vp = v*m(1,1) + m(3,1);
+            osg::Vec4 value = readParent(up, vp);
             write(value, s, t, 1);
         }
     }
     return GeoImage(result.get(), key.getExtent());
-
 }

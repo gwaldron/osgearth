@@ -53,8 +53,13 @@ void moveToConstraint(in vec4 vertex, in vec4 layer_tilec, out vec4 newVertex, o
     + oe_tile_elevTexelCoeff.y;
 
   vec4 dir = texture(con_tex, vec3(elevc, 0.0));
-  vec4 dirInParent = texture(con_tex, vec3(elevc, 1.0));
-  dir = mix(dir, dirInParent, oe_rex_morphFactor);
+  if (con_tex_matrix[0][0] == 1.0)
+  {
+      vec4 dirInParent = texture(con_tex, vec3(elevc, 1.0));
+      dir = mix(dir, dirInParent, oe_rex_morphFactor);
+  }
+  // Otherwise we are working with an upscaled copy of the parent
+  // tile; only con_tex[0] makes sense.
   // actual code:
   newVertex = vertex;
   newVertex.xy += dir.xy;

@@ -132,11 +132,7 @@ AnnotationNode::setMapNode( MapNode* mapNode )
 
         if ( mapNode )
         {
-            if ( mapNode->isGeocentric() )
-                _horizonCuller->setHorizon( new Horizon(mapNode->getMapSRS()) );
-            else
-                _horizonCuller->setEnabled( false );
-
+            _horizonCuller->setEnabled(mapNode->isGeocentric());
             static_cast<AltitudeCullCallback*>(_altCallback)->srs() = mapNode->getMapSRS();
         }
 

@@ -60,6 +60,7 @@ _VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minH
 
 Horizon::Horizon(const Horizon& rhs, const osg::CopyOp& op) :
 osg::Object( rhs, op ),
+_em      ( rhs._em ),
 _valid   ( rhs._valid ),
 _scale   ( rhs._scale ),
 _scaleInv( rhs._scaleInv ),
@@ -353,10 +354,19 @@ Horizon::getDistanceToVisibleHorizon() const
 
 
 HorizonCullCallback::HorizonCullCallback() :
-_enabled   ( true ),
-_centerOnly( false )
+    _enabled(true),
+    _centerOnly(false),
+    _customEllipsoidSet(false)
 {
     //nop
+}
+
+void
+HorizonCullCallback::setEllipsoid(const osg::EllipsoidModel& em)
+{
+    _customEllipsoid.setRadiusEquator(em.getRadiusEquator());
+    _customEllipsoid.setRadiusPolar(em.getRadiusPolar());
+    _customEllipsoidSet = true;
 }
 
 bool
@@ -365,18 +375,28 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
     if ( !node )
         return false;
 
-    osg::NodePath np = nv->getNodePath();
-    osg::Matrix local2world;
-    Horizon* horizon = Horizon::get(*nv);
+    osg::ref_ptr<Horizon> horizon;
+
+    if (_customEllipsoidSet)
+    {
+        horizon = new Horizon(_customEllipsoid);
+        horizon->setEye(nv->getViewPoint());
+    }
+    else
+    {
+        horizon = Horizon::get(*nv);
+    }
 
     // If we fetched the Horizon from the nodevisitor...
-    if ( horizon )
+    if ( horizon.valid() )
     {
         // pop the last node in the path (which is the node this callback is on)
         // to prevent double-transforming the bounding sphere's center point
+        osg::NodePath np = nv->getNodePath();
         if (!np.empty() && np.back() == node)
             np.pop_back();
-        local2world = osg::computeLocalToWorld(np);
+
+        osg::Matrix local2world = osg::computeLocalToWorld(np);
 
         const osg::BoundingSphere& bs = node->getBound();
         double radius = _centerOnly ? 0.0 : bs.radius();

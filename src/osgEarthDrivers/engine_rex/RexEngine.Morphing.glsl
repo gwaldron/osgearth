@@ -46,26 +46,33 @@ float oe_terrain_getElevation(in vec2 uv);
 
 void moveToConstraint(in vec4 vertex, in vec4 layer_tilec, out vec4 newVertex, out vec4 new_layer_tilec)
 {
-  // not sure if we need this
-  vec2 elevc = layer_tilec.xy
-    * oe_tile_elevTexelCoeff.x * con_tex_matrix[0][0] // scale
-    + oe_tile_elevTexelCoeff.x * con_tex_matrix[3].st // bias
-    + oe_tile_elevTexelCoeff.y;
-
-  vec4 dir = texture(con_tex, vec3(elevc, 0.0));
-  if (con_tex_matrix[0][0] == 1.0)
-  {
-      vec4 dirInParent = texture(con_tex, vec3(elevc, 1.0));
-      dir = mix(dir, dirInParent, oe_rex_morphFactor);
-  }
-  // Otherwise we are working with an upscaled copy of the parent
-  // tile; only con_tex[0] makes sense.
-  // actual code:
-  newVertex = vertex;
-  newVertex.xy += dir.xy;
-  new_layer_tilec = layer_tilec;
-  new_layer_tilec.xy += dir.zw;
-
+    // Don't constrain edges
+    if (any(equal(layer_tilec.st, vec2(0))) || any(equal(layer_tilec.st, vec2(1))))
+    {
+        newVertex = vertex;
+        new_layer_tilec = layer_tilec;
+        return;
+    }
+    vec2 elevc = layer_tilec.xy
+        * oe_tile_elevTexelCoeff.x * con_tex_matrix[0][0] // scale
+        + oe_tile_elevTexelCoeff.x * con_tex_matrix[3].st // bias
+        + oe_tile_elevTexelCoeff.y;
+    float tcMixer = 1.0;
+    vec4 dir = texture(con_tex, vec3(elevc, 0.0));
+    if (con_tex_matrix[0][0] == 1.0)
+    {
+        vec4 dirInParent = texture(con_tex, vec3(elevc, 1.0));
+        dir = mix(dir, dirInParent, oe_rex_morphFactor);
+        tcMixer = mix(1.0, 2.0, oe_rex_morphFactor);
+    }
+    else
+    {
+        tcMixer = 1.0/con_tex_matrix[0][0];
+    }
+    newVertex = vertex;
+    newVertex.xy += dir.xy;
+    new_layer_tilec = layer_tilec;
+    new_layer_tilec.xy += dir.zw * tcMixer;
 }
 
 // Compute a morphing factor based on model-space inputs:

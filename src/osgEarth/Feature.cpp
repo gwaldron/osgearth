@@ -172,10 +172,16 @@ const std::vector<double>& AttributeValue::getDoubleArrayValue() const
 
 //----------------------------------------------------------------------------
 
+Feature::Feature() :
+    _fid(0LL),
+    _srs(NULL)
+{
+    //nop
+}
+
 Feature::Feature( FeatureID fid ) :
 _fid( fid ),
 _srs( 0L )
-//_cachedBoundingPolytopeValid( false )
 {
     //NOP
 }

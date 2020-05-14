@@ -134,7 +134,7 @@ namespace osgEarth
     {
     public:
 
-        Feature( Geometry* geom, const SpatialReference* srs, const Style& style =Style(), FeatureID fid =0L );
+        Feature( Geometry* geom, const SpatialReference* srs, const Style& style =Style(), FeatureID fid =0LL );
 
         /** Copy contructor */
         Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
@@ -260,7 +260,8 @@ namespace osgEarth
 
     protected:
 
-        Feature( FeatureID fid =0L );
+        Feature();
+        Feature( FeatureID fid );
 
         virtual ~Feature();
 

@@ -693,6 +693,30 @@ ImageUtils::readStream(std::istream& stream, const osgDB::Options* options) {
     return 0;
 }
 
+osg::Texture2DArray*
+ImageUtils::makeTexture2DArray(osg::Image* image)
+{
+    std::vector< osg::ref_ptr<osg::Image> > images;
+    if (image->r() > 1)
+    {
+        ImageUtils::flattenImage(image, images);
+    }
+    else
+    {
+        images.push_back(image);
+    }
+    osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
+
+    tex2dArray->setTextureDepth(images.size());
+    tex2dArray->setInternalFormat(images[0]->getInternalTextureFormat());
+    tex2dArray->setSourceFormat(images[0]->getPixelFormat());
+    for (int i = 0; i < (int)images.size(); ++i)
+    {
+        tex2dArray->setImage(i, images[i].get());
+    }
+    return tex2dArray;
+}
+
 namespace
 {
     struct MixImage
@@ -856,13 +880,13 @@ ImageUtils::createEmptyImage()
 }
 
 osg::Image*
-ImageUtils::createEmptyImage(unsigned int s, unsigned int t)
+ImageUtils::createEmptyImage(unsigned int s, unsigned int t, unsigned int r)
 {
     osg::Image* empty = new osg::Image;
-    empty->allocateImage(s,t,1, GL_RGBA, GL_UNSIGNED_BYTE);
+    empty->allocateImage(s,t, r, GL_RGBA, GL_UNSIGNED_BYTE);
     empty->setInternalTextureFormat( GL_RGB8A_INTERNAL );
     unsigned char *data = empty->data(0,0);
-    memset(data, 0, 4 * s * t);
+    memset(data, 0, 4 * s * t * r);
     return empty;
 }
 

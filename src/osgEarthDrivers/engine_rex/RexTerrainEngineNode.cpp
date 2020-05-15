@@ -1033,7 +1033,22 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                     if (newBinding.isActive())
                     {
                         osg::StateSet* terrainSS = _terrain->getOrCreateStateSet();
-                        osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
+                        osg::ref_ptr<osg::Texture> tex;
+                        if (osg::Image* emptyImage = imageLayer->getEmptyImage())
+                        {
+                            if (emptyImage->r() > 1)
+                            {
+                                tex = ImageUtils::makeTexture2DArray(emptyImage);
+                            }
+                            else
+                            {
+                                tex = new osg::Texture2D(emptyImage);
+                            }
+                        }
+                        else
+                        {
+                            tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
+                        }
                         tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
                         terrainSS->addUniform(new osg::Uniform(newBinding.samplerName().c_str(), newBinding.unit()));
                         terrainSS->setTextureAttribute(newBinding.unit(), tex.get(), 1);

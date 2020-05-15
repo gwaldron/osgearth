@@ -82,6 +82,8 @@ ElevationConstraintLayer::init()
     {
         setProfile(Profile::create("global-geodetic"));
     }
+
+    _emptyImage = ImageUtils::createEmptyImage(1, 1, 2);
 }
 
 Status

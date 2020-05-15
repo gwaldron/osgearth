@@ -9,6 +9,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY)
 #pragma import_defines(OE_TERRAIN_RENDER_ELEVATION)
 #pragma import_defines(OE_IS_DEPTH_CAMERA)
+#pragma import_defines(OE_ELEVATION_CONSTRAINT_TEX)
+#pragma import_defines(OE_ELEVATION_CONSTRAINT_TEX_MATRIX)
 
 // stage
 vec3 vp_Normal;
@@ -23,11 +25,11 @@ uniform vec2  oe_tile_morph;
 uniform float oe_tile_size;
 
 // Constraint stuff
-uniform sampler2DArray con_tex;
-uniform mat4 con_tex_matrix;
+#ifdef OE_ELEVATION_CONSTRAINT_TEX
+uniform sampler2DArray OE_ELEVATION_CONSTRAINT_TEX;
+uniform mat4 OE_ELEVATION_CONSTRAINT_TEX_MATRIX;
+#endif 
 uniform vec2 oe_tile_elevTexelCoeff;
-// For debugging
-uniform float fake_morph_factor;
 
 #ifdef OE_IS_DEPTH_CAMERA
 uniform mat4 oe_shadowToPrimaryMatrix;
@@ -43,38 +45,46 @@ float oe_terrain_getElevation(in vec2 uv);
 #define VERTEX_MARKER_BOUNDARY 8
 #define VERTEX_MARKER_SKIRT    16
 
+#ifdef OE_ELEVATION_CONSTRAINT_TEX
 void moveToConstraint(in vec4 vertex, in vec4 layer_tilec, out vec4 newVertex, out vec4 new_layer_tilec)
 {
     // Don't constrain edges
     if (any(equal(layer_tilec.st, vec2(0)))
         || any(equal(layer_tilec.st, vec2(1)))
-        || con_tex_matrix[0][0] < .5)
+        || OE_ELEVATION_CONSTRAINT_TEX_MATRIX[0][0] < .5)
     {
         newVertex = vertex;
         new_layer_tilec = layer_tilec;
         return;
     }
     vec2 elevc = layer_tilec.xy
-        * oe_tile_elevTexelCoeff.x * con_tex_matrix[0][0] // scale
-        + oe_tile_elevTexelCoeff.x * con_tex_matrix[3].st // bias
+        * oe_tile_elevTexelCoeff.x * OE_ELEVATION_CONSTRAINT_TEX_MATRIX[0][0] // scale
+        + oe_tile_elevTexelCoeff.x * OE_ELEVATION_CONSTRAINT_TEX_MATRIX[3].st // bias
         + oe_tile_elevTexelCoeff.y;
     float tcMixer = 1.0;
-    vec4 dir = texture(con_tex, vec3(elevc, 0.0));
-    if (con_tex_matrix[0][0] == 1.0)
+    vec4 dir = texture(OE_ELEVATION_CONSTRAINT_TEX, vec3(elevc, 0.0));
+    if (OE_ELEVATION_CONSTRAINT_TEX_MATRIX[0][0] == 1.0)
     {
-        vec4 dirInParent = texture(con_tex, vec3(elevc, 1.0));
+        vec4 dirInParent = texture(OE_ELEVATION_CONSTRAINT_TEX, vec3(elevc, 1.0));
         dir = mix(dir, dirInParent, oe_rex_morphFactor);
         tcMixer = mix(1.0, 2.0, oe_rex_morphFactor);
     }
     else
     {
-        tcMixer = 1.0/con_tex_matrix[0][0];
+        tcMixer = 1.0/OE_ELEVATION_CONSTRAINT_TEX_MATRIX[0][0];
     }
     newVertex = vertex;
     newVertex.xy += dir.xy;
     new_layer_tilec = layer_tilec;
     new_layer_tilec.xy += dir.zw * tcMixer;
 }
+#else
+void moveToConstraint(in vec4 vertex, in vec4 layer_tilec, out vec4 newVertex, out vec4 new_layer_tilec)
+{
+    newVertex = vertex;
+    new_layer_tilec = layer_tilec;
+}
+#endif
 
 // Compute a morphing factor based on model-space inputs:
 float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
@@ -121,7 +131,6 @@ void oe_rex_morph(inout vec4 vertexModel)
     if ((oe_terrain_vertexMarker & VERTEX_MARKER_GRID) != 0)
     {
         oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);
-        // oe_rex_morphFactor = fake_morph_factor;
 #ifdef OE_TERRAIN_MORPH_GEOMETRY
         vec4 neighborVertexModel = vec4(gl_MultiTexCoord1.xyz, 1.0);
         vec3 neighborNormal = gl_MultiTexCoord2.xyz;
@@ -144,7 +153,6 @@ void oe_rex_morph(inout vec4 vertexModel)
         // morph the normal:
         vp_Normal = normalize(mix(vp_Normal, neighborNormal, oe_rex_morphFactor));
         oe_layer_tilec.st = mix(new_tilec.st, new_neighbor_tilec.st, oe_rex_morphFactor);
-        // debugging hack
 #endif
     }
     else

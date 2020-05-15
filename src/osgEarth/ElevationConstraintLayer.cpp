@@ -50,6 +50,7 @@ ElevationConstraintLayer::Options::getConfig() const
 void
 ElevationConstraintLayer::Options::fromConfig(const Config& conf)
 {
+    magFilter() = osg::Texture::NEAREST;
     featureSource().get(conf, "features");
 
     const Config& filtersConf = conf.child("filters");

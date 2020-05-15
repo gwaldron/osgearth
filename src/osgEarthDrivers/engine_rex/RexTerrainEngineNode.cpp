@@ -32,6 +32,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Metrics>
+#include <osgEarth/ElevationConstraintLayer>
 
 #include <osg/Version>
 #include <osg/BlendFunc>
@@ -1053,6 +1054,11 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                         terrainSS->addUniform(new osg::Uniform(newBinding.samplerName().c_str(), newBinding.unit()));
                         terrainSS->setTextureAttribute(newBinding.unit(), tex.get(), 1);
                         OE_INFO << LC << "Bound shared sampler " << newBinding.samplerName() << " to unit " << newBinding.unit() << std::endl;
+                        if (dynamic_cast<ElevationConstraintLayer*>(imageLayer))
+                        {
+                            terrainSS->setDefine("OE_ELEVATION_CONSTRAINT_TEX", newBinding.samplerName());
+                            terrainSS->setDefine("OE_ELEVATION_CONSTRAINT_TEX_MATRIX", newBinding.matrixName());
+                        }
                     }
                 }
             }

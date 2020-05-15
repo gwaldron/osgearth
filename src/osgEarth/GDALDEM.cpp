@@ -102,7 +102,7 @@ GDALDEMLayer::addedToMap(const Map* map)
     ElevationLayer* layer = options().elevationLayer().getLayer();
     if (!layer)
     {
-        setStatus(Status::Error(Stringify() << "Failed to get layer" << options().elevationLayer().externalLayerName()));
+        setStatus(Status::Error(Stringify() << "Failed to get elevaton layer"));
         return;
     }
 

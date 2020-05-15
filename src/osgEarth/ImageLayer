@@ -156,7 +156,8 @@ namespace osgEarth
         //! shared layer to a texture image unit.
         optional<int>& sharedImageUnit() { return _shareImageUnit; }
         const optional<int>& sharedImageUnit() const { return _shareImageUnit; }
-        
+
+        osg::Image* getEmptyImage() const { return _emptyImage.get(); }
 
     public: // methods
 
@@ -223,7 +224,7 @@ namespace osgEarth
         //! Configure the layer to create textures via createTexture instead of
         //! using a createImage driver
         void setUseCreateTexture();
-
+        osg::ref_ptr<osg::Image> _emptyImage;
     private:
 
         // Creates an image that's in the same profile as the provided key.
@@ -235,7 +236,6 @@ namespace osgEarth
         GeoImage assembleImage(const TileKey& key, ProgressCallback* progress);
 
         mutable Threading::Mutex _mutex;
-        osg::ref_ptr<osg::Image> _emptyImage;
         optional<int> _shareImageUnit;
         bool _useCreateTexture;
 

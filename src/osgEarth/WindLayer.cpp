@@ -63,7 +63,7 @@ namespace
             _glBufferStorage(NULL) { }
 
         GLuint _buffer;
-        GLuint _bufferSize;
+        GLintptr _bufferSize;
 
         // pre-OSG 3.6 support
         void (GL_APIENTRY * _glBufferStorage)(GLenum, GLuint, const void*, GLenum);

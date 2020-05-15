@@ -12,7 +12,6 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 // stage
 vec3 vp_Normal;
-vec4 vp_Color;
 
 vec4 oe_layer_tilec;
 
@@ -47,7 +46,9 @@ float oe_terrain_getElevation(in vec2 uv);
 void moveToConstraint(in vec4 vertex, in vec4 layer_tilec, out vec4 newVertex, out vec4 new_layer_tilec)
 {
     // Don't constrain edges
-    if (any(equal(layer_tilec.st, vec2(0))) || any(equal(layer_tilec.st, vec2(1))))
+    if (any(equal(layer_tilec.st, vec2(0)))
+        || any(equal(layer_tilec.st, vec2(1)))
+        || con_tex_matrix[0][0] < .5)
     {
         newVertex = vertex;
         new_layer_tilec = layer_tilec;
@@ -144,9 +145,6 @@ void oe_rex_morph(inout vec4 vertexModel)
         vp_Normal = normalize(mix(vp_Normal, neighborNormal, oe_rex_morphFactor));
         oe_layer_tilec.st = mix(new_tilec.st, new_neighbor_tilec.st, oe_rex_morphFactor);
         // debugging hack
-#if 0
-        vp_Color = mix(vec4(.4,.4,.4,1.0), vec4(.8,.4,.4,1.0), oe_rex_morphFactor);
-#endif
 #endif
     }
     else

@@ -70,10 +70,10 @@ TEST_CASE("Feature handles attributes correctly.") {
         feature->set("int", 8);
         REQUIRE(feature->getInt("int") == 8);
 
-        feature->set("int64", 4549941524);
+        feature->set("int64", static_cast<long long>(4549941524));
         REQUIRE(feature->getInt("int64") == 4549941524);
 
-        feature->set("int64max", INT64_MAX);
+        feature->set("int64max", static_cast<long long>(INT64_MAX));
         REQUIRE(feature->getInt("int64max") == INT64_MAX);
 
         feature->set("bool", true);

@@ -278,13 +278,22 @@ public:
         ImGui::Text("Layer"); ImGui::NextColumn();
         ImGui::Text("Status"); ImGui::NextColumn();
         ImGui::Separator();
-        for (auto itr = requests.begin(); itr != requests.end(); ++itr)
+
+        std::string filterLower = osgEarth::toLower(filter);
+
+        for (NetworkMonitor::Requests::iterator itr = requests.begin(); itr != requests.end(); ++itr)
         {
             if (!_showOnlyActiveRequests || !itr->second.isComplete)
             {
-                if (strlen(filter) > 0)
+                if (!filterLower.empty())
                 {
-                    if (strstr(itr->second.uri.c_str(), filter) == NULL && strstr(itr->second.status.c_str(), filter) == NULL)
+                    std::string uriLower = osgEarth::toLower(itr->second.uri);
+                    std::string statusLower = osgEarth::toLower(itr->second.status);
+                    std::string layerLower = osgEarth::toLower(itr->second.layer);
+
+                    if (strstr(uriLower.c_str(), filterLower.c_str()) == NULL &&
+                        strstr(statusLower.c_str(), filterLower.c_str()) == NULL &&
+                        strstr(layerLower.c_str(), filterLower.c_str()) == NULL)
                     {
                         continue;
                     }

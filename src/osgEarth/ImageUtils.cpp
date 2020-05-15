@@ -693,6 +693,30 @@ ImageUtils::readStream(std::istream& stream, const osgDB::Options* options) {
     return 0;
 }
 
+osg::Texture2DArray*
+ImageUtils::makeTexture2DArray(osg::Image* image)
+{
+    std::vector< osg::ref_ptr<osg::Image> > images;
+    if (image->r() > 1)
+    {
+        ImageUtils::flattenImage(image, images);
+    }
+    else
+    {
+        images.push_back(image);
+    }
+    osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
+
+    tex2dArray->setTextureDepth(images.size());
+    tex2dArray->setInternalFormat(images[0]->getInternalTextureFormat());
+    tex2dArray->setSourceFormat(images[0]->getPixelFormat());
+    for (int i = 0; i < (int)images.size(); ++i)
+    {
+        tex2dArray->setImage(i, images[i].get());
+    }
+    return tex2dArray;
+}
+
 namespace
 {
     struct MixImage
@@ -856,13 +880,13 @@ ImageUtils::createEmptyImage()
 }
 
 osg::Image*
-ImageUtils::createEmptyImage(unsigned int s, unsigned int t)
+ImageUtils::createEmptyImage(unsigned int s, unsigned int t, unsigned int r)
 {
     osg::Image* empty = new osg::Image;
-    empty->allocateImage(s,t,1, GL_RGBA, GL_UNSIGNED_BYTE);
+    empty->allocateImage(s,t, r, GL_RGBA, GL_UNSIGNED_BYTE);
     empty->setInternalTextureFormat( GL_RGB8A_INTERNAL );
     unsigned char *data = empty->data(0,0);
-    memset(data, 0, 4 * s * t);
+    memset(data, 0, 4 * s * t * r);
     return empty;
 }
 
@@ -1545,6 +1569,29 @@ namespace
     };
 
     template<typename T>
+    struct ColorReader<GL_RG, T>
+    {
+        static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
+        {
+            const T* ptr = (const T*)ia->data(s, t, r, m);
+            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
+            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
+            out.set(red, g, 0.0f, 1.0f);
+        }
+    };
+
+    template<typename T>
+    struct ColorWriter<GL_RG, T>
+    {
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
+        {
+            T* ptr = (T*)iw->data(s, t, r, m);
+            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
+        }
+    };
+
+    template<typename T>
     struct ColorReader<GL_RGB, T>
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
@@ -1823,7 +1870,10 @@ namespace
             break;
         case GL_LUMINANCE_ALPHA:
             return chooseReader<GL_LUMINANCE_ALPHA>(dataType);
-            break;
+            break;        
+        case GL_RG:
+            return chooseReader<GL_RG>(dataType);
+            break;        
         case GL_RGB:
             return chooseReader<GL_RGB>(dataType);
             break;
@@ -2251,6 +2301,9 @@ namespace
             break;
         case GL_LUMINANCE_ALPHA:
             return chooseWriter<GL_LUMINANCE_ALPHA>(dataType);
+            break;                
+        case GL_RG:
+            return chooseWriter<GL_RG>(dataType);
             break;
         case GL_RGB:
             return chooseWriter<GL_RGB>(dataType);

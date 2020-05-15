@@ -423,6 +423,7 @@ SET(LIB_PUBLIC_HEADERS
     RectangleNode
     TrackNode
     WindLayer
+    ElevationConstraintLayer
 
     rtree.h
 
@@ -766,6 +767,7 @@ set(TARGET_SRC
     PlaceNode.cpp
     TrackNode.cpp
     WindLayer.cpp
+    ElevationConstraintLayer.cpp
 
     FileGDBFeatureSource.cpp
 

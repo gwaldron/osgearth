@@ -32,6 +32,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Metrics>
+#include <osgEarth/ElevationConstraintLayer>
 
 #include <osg/Version>
 #include <osg/BlendFunc>
@@ -1033,11 +1034,31 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                     if (newBinding.isActive())
                     {
                         osg::StateSet* terrainSS = _terrain->getOrCreateStateSet();
-                        osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
+                        osg::ref_ptr<osg::Texture> tex;
+                        if (osg::Image* emptyImage = imageLayer->getEmptyImage())
+                        {
+                            if (emptyImage->r() > 1)
+                            {
+                                tex = ImageUtils::makeTexture2DArray(emptyImage);
+                            }
+                            else
+                            {
+                                tex = new osg::Texture2D(emptyImage);
+                            }
+                        }
+                        else
+                        {
+                            tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
+                        }
                         tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
                         terrainSS->addUniform(new osg::Uniform(newBinding.samplerName().c_str(), newBinding.unit()));
                         terrainSS->setTextureAttribute(newBinding.unit(), tex.get(), 1);
                         OE_INFO << LC << "Bound shared sampler " << newBinding.samplerName() << " to unit " << newBinding.unit() << std::endl;
+                        if (dynamic_cast<ElevationConstraintLayer*>(imageLayer))
+                        {
+                            terrainSS->setDefine("OE_ELEVATION_CONSTRAINT_TEX", newBinding.samplerName());
+                            terrainSS->setDefine("OE_ELEVATION_CONSTRAINT_TEX_MATRIX", newBinding.matrixName());
+                        }
                     }
                 }
             }

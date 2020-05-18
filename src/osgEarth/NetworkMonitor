@@ -86,8 +86,7 @@ namespace osgEarth {
         static void clear();
 
         static void setRequestLayer(const std::string& name);
-        static std::string getRequestConext();
-
+        static std::string getRequestLayer();
     };
 
 

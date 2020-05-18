@@ -94,7 +94,7 @@ void NetworkMonitor::setRequestLayer(const std::string& name)
     s_requestLayer[osgEarth::Threading::getCurrentThreadId()] = name;
 }
 
-std::string NetworkMonitor::getRequestConext()
+std::string NetworkMonitor::getRequestLayer()
 {
     osgEarth::Threading::ScopedReadLock lock(s_requestsMutex);
     return s_requestLayer[osgEarth::Threading::getCurrentThreadId()];

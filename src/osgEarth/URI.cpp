@@ -50,12 +50,16 @@ namespace
             _promise(promise),
             _options(options)
         {
+            // Get the currently active request layer and reuse it when the operator actually occurs, which will probably be on a different thread.
+            _requestLayer = NetworkMonitor::getRequestLayer();
         }
 
         void operator()(osg::Object*)
         {
             OE_PROFILING_ZONE_NAMED("loadAsyncNode");
             OE_PROFILING_ZONE_TEXT(_uri.full());
+
+            NetworkMonitor::ScopedRequestLayer layerRequest(_requestLayer);
 
             if (!_promise.isAbandoned())
             {
@@ -113,6 +117,7 @@ namespace
         osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
         Threading::Event _block;
         URI _uri;
+        std::string _requestLayer;
     };
 }
 

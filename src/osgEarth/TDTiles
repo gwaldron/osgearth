@@ -278,6 +278,9 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         bool getColorPerTile() const;
         void setColorPerTile(bool colorPerTile);
 
+        const std::string& getOwnerName() const;
+        void setOwnerName(const std::string& name);
+
     private:
         void expireTiles(const osg::NodeVisitor& nv);
 
@@ -304,6 +307,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         std::string _authorizationHeader;
 
         osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
+
+        std::string _ownerName;
     };
 
 } } }

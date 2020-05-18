@@ -33,13 +33,14 @@ namespace
 
 #define LC "[NetworkMonitor] "
 
-unsigned long NetworkMonitor::begin(const std::string& uri, const std::string& status)
+unsigned long NetworkMonitor::begin(const std::string& uri, const std::string& status, const std::string& type)
 {
     if (s_enabled)
     {
         osgEarth::Threading::ScopedWriteLock lock(s_requestsMutex);
         Request req(uri, status);
         req.layer = s_requestLayer[osgEarth::Threading::getCurrentThreadId()];
+        req.type = type;
         unsigned long id = s_requestId++;
         s_requests[id] = req;
         return id;

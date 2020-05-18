@@ -25,6 +25,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/NetworkMonitor>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <fstream>
@@ -43,7 +44,7 @@ using namespace osgEarth::Threading;
 
 namespace
 {
-    /** 
+    /**
      * Cache that stores data in the local file system.
      */
     class FileSystemCache : public Cache
@@ -55,7 +56,7 @@ namespace
 
         /**
          * Constructs a new file system cache.
-         * @param options Options structure that comes from a serialized description of 
+         * @param options Options structure that comes from a serialized description of
          *        the object.
          */
         FileSystemCache( const CacheOptions& options );
@@ -73,7 +74,7 @@ namespace
         std::string _rootPath;
     };
 
-    /** 
+    /**
      * Cache bin implementation for a FileSystemCache.
      * You don't need to create this object directly; use FileSystemCache::createBin instead.
     */
@@ -170,7 +171,7 @@ namespace
 
         // read the root path from ENV is necessary:
         if ( !fsco.rootPath().isSet())
-        {           
+        {
             const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
             if ( cachePath )
                 fsco.rootPath() = cachePath;
@@ -337,48 +338,7 @@ namespace
     ReadResult
     FileSystemCacheBin::readImage(const std::string& key, const osgDB::Options* readOptions)
     {
-        if ( !binValidForReading() ) 
-            return ReadResult(ReadResult::RESULT_NOT_FOUND);
-
-        // mangle "key" into a legal path name
-        URI fileURI( key, _metaPath );
-        std::string path = fileURI.full() + OSG_EXT;
-
-        if ( !osgDB::fileExists(path) )
-            return ReadResult( ReadResult::RESULT_NOT_FOUND );
-
-        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);     
-
-        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(readOptions);
-
-        osgDB::ReaderWriter::ReadResult r;
-        {
-            ScopedReadLock lock(_mutex);
-
-            r = _rw->readImage( path, dbo.get() );
-            if ( !r.success() )
-                return ReadResult();
-
-            // read metadata
-            Config meta;
-            std::string metafile = fileURI.full() + ".meta";
-            if ( osgDB::fileExists(metafile) )
-                readMeta( metafile, meta );
-
-            ReadResult rr( r.getImage(), meta );
-            rr.setLastModifiedTime(timeStamp);
-
-            if (_debug)
-                OE_NOTICE << LC << "Read image \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
-
-            return rr;            
-        }
-    }
-
-    ReadResult
-    FileSystemCacheBin::readObject(const std::string& key, const osgDB::Options* readOptions)
-    {
-        if ( !binValidForReading() ) 
+        if ( !binValidForReading() )
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
@@ -396,9 +356,66 @@ namespace
         {
             ScopedReadLock lock(_mutex);
 
-            r = _rw->readObject( path, dbo.get() );
-            if ( !r.success() )
+            unsigned long handle = NetworkMonitor::begin(path, "pending", "Cache");
+            r = _rw->readImage( path, dbo.get() );
+            if (!r.success())
+            {
+                NetworkMonitor::end(handle, "failed");
                 return ReadResult();
+            }
+            else
+            {
+                NetworkMonitor::end(handle, "OK");
+            }
+
+            // read metadata
+            Config meta;
+            std::string metafile = fileURI.full() + ".meta";
+            if ( osgDB::fileExists(metafile) )
+                readMeta( metafile, meta );
+
+            ReadResult rr( r.getImage(), meta );
+            rr.setLastModifiedTime(timeStamp);
+
+            if (_debug)
+                OE_NOTICE << LC << "Read image \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+
+            return rr;
+        }
+    }
+
+    ReadResult
+    FileSystemCacheBin::readObject(const std::string& key, const osgDB::Options* readOptions)
+    {
+        if ( !binValidForReading() )
+            return ReadResult(ReadResult::RESULT_NOT_FOUND);
+
+        // mangle "key" into a legal path name
+        URI fileURI( key, _metaPath );
+        std::string path = fileURI.full() + OSG_EXT;
+
+        if ( !osgDB::fileExists(path) )
+            return ReadResult( ReadResult::RESULT_NOT_FOUND );
+
+        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
+
+        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(readOptions);
+
+        osgDB::ReaderWriter::ReadResult r;
+        {
+            ScopedReadLock lock(_mutex);
+
+            unsigned long handle = NetworkMonitor::begin(path, "pending", "Cache");
+            r = _rw->readObject( path, dbo.get() );
+            if (!r.success())
+            {
+                NetworkMonitor::end(handle, "failed");
+                return ReadResult();
+            }
+            else
+            {
+                NetworkMonitor::end(handle, "OK");
+            }
 
             // read metadata
             Config meta;
@@ -412,7 +429,7 @@ namespace
             if (_debug)
                 OE_NOTICE << LC << "Read object \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
 
-            return rr;            
+            return rr;
         }
     }
 
@@ -443,12 +460,12 @@ namespace
     bool
     FileSystemCacheBin::write(const std::string& key, const osg::Object* object, const Config& meta, const osgDB::Options* writeOptions)
     {
-        if ( !binValidForWriting() || !object ) 
+        if ( !binValidForWriting() || !object )
             return false;
 
         // convert the key into a legal filename:
         URI fileURI( key, _metaPath );
-        
+
         osgDB::ReaderWriter::WriteResult r;
 
         bool objWriteOK = false;
@@ -506,7 +523,7 @@ namespace
     CacheBin::RecordStatus
     FileSystemCacheBin::getRecordStatus(const std::string& key)
     {
-        if ( !binValidForReading() ) 
+        if ( !binValidForReading() )
             return STATUS_NOT_FOUND;
 
         URI fileURI( key, _metaPath );
@@ -551,7 +568,7 @@ namespace
         {
             int ok = 0;
             std::string full = osgDB::concatPaths(dir, *i);
-            
+
             if ( full.find( getID() ) != std::string::npos ) // safety latch
             {
                 osgDB::FileType type = osgDB::fileType( full );
@@ -597,7 +614,7 @@ namespace
     FileSystemCacheBin::readMetadata()
     {
         if ( !binValidForReading() ) return Config();
-        
+
         ScopedReadLock lock(_mutex);
 
         Config conf;
@@ -610,7 +627,7 @@ namespace
     FileSystemCacheBin::writeMetadata( const Config& conf )
     {
         if ( !binValidForWriting() ) return false;
-        
+
         ScopedWriteLock lock(_mutex);
 
         std::fstream output( _metaPath.c_str(), std::ios_base::out );

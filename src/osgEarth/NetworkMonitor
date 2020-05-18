@@ -55,6 +55,7 @@ namespace osgEarth {
             bool isComplete;
             std::string uri;
             std::string layer;
+            std::string type;
             std::string status;
             osg::Timer_t startTime;
             osg::Timer_t endTime;
@@ -77,7 +78,7 @@ namespace osgEarth {
 
         typedef std::map<unsigned long, Request> Requests;
 
-        static unsigned long begin(const std::string& uri, const std::string& status);
+        static unsigned long begin(const std::string& uri, const std::string& status, const std::string& type = "");
         static void end(unsigned long handle, const std::string& status);
         static void getRequests(Requests& out);
         static bool getEnabled();

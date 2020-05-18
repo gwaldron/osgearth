@@ -61,6 +61,7 @@ protected:
         _layers.draw(_mapNode.get(), _view->getCamera(), _earthManip.get());
         _search.draw(_earthManip.get());
         _networkMonitor.draw();
+        _log.draw();
     }
 
     osg::ref_ptr< MapNode > _mapNode;
@@ -68,6 +69,7 @@ protected:
     osgViewer::View* _view;
     LayersGUI _layers;
     SearchGUI _search;
+    LogGUI _log;
     NetworkMonitorGUI _networkMonitor;
 
 };
@@ -86,6 +88,10 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+    ImGuiNotifyHandler* notifyHandler = new ImGuiNotifyHandler();
+    osg::setNotifyHandler(notifyHandler);
+    osgEarth::setNotifyHandler(notifyHandler);
+
     osgEarth::initialize();
 
     osg::ArgumentParser arguments(&argc, argv);

@@ -36,6 +36,7 @@
 #include <osgEarth/NetworkMonitor>
 
 using namespace osgEarth;
+using namespace ImGui;
 
 class GlewInitOperation : public osg::Operation
 {
@@ -262,7 +263,24 @@ public:
         ImGui::Checkbox("Enabled", &enabled);
         NetworkMonitor::setEnabled(enabled);
 
+        // Compute the time duration for all of the requests
+        osg::Timer_t startTime;
+        double totalTime = 0.0;
+        if (!requests.empty())
+        {
+            startTime = requests.begin()->second.startTime;
+            if (requests.rbegin()->second.isComplete)
+            {
+                totalTime = osg::Timer::instance()->delta_m(startTime, requests.rbegin()->second.endTime);
+            }
+            else
+            {
+                totalTime = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
+            }
+        }
+
         ImGui::Checkbox("Show active requests", &_showOnlyActiveRequests);
+
         ImGui::InputText("Filter", filter, 128);
 
         if (ImGui::Button("Clear"))
@@ -270,14 +288,21 @@ public:
             NetworkMonitor::clear();
         }
 
+        ImGui::Text("%d requests", requests.size()); ImGui::SameLine();
+        ImGui::Text("Finished %f s", totalTime / 1000.0);
+
         ImGui::BeginChild("Columns");
-        ImGui::Columns(4, "requests");
+        ImGui::Columns(7, "requests");
         ImGui::Separator();
         ImGui::Text("Path"); ImGui::NextColumn();
-        ImGui::Text("Duration (ms)"); ImGui::NextColumn();
+        ImGui::Text("Duration"); ImGui::NextColumn();
+        ImGui::Text("Start time"); ImGui::NextColumn();
+        ImGui::Text("End time"); ImGui::NextColumn();
         ImGui::Text("Layer"); ImGui::NextColumn();
+        ImGui::Text("Type"); ImGui::NextColumn();
         ImGui::Text("Status"); ImGui::NextColumn();
         ImGui::Separator();
+
 
         std::string filterLower = osgEarth::toLower(filter);
 
@@ -290,10 +315,12 @@ public:
                     std::string uriLower = osgEarth::toLower(itr->second.uri);
                     std::string statusLower = osgEarth::toLower(itr->second.status);
                     std::string layerLower = osgEarth::toLower(itr->second.layer);
+                    std::string typeLower = osgEarth::toLower(itr->second.type);
 
                     if (strstr(uriLower.c_str(), filterLower.c_str()) == NULL &&
                         strstr(statusLower.c_str(), filterLower.c_str()) == NULL &&
-                        strstr(layerLower.c_str(), filterLower.c_str()) == NULL)
+                        strstr(layerLower.c_str(), filterLower.c_str()) == NULL &&
+                        strstr(typeLower.c_str(), filterLower.c_str()) == NULL)
                     {
                         continue;
                     }
@@ -314,9 +341,23 @@ public:
                     }
                 }
 
+                double startMS = osg::Timer::instance()->delta_m(startTime, itr->second.startTime);
+                double endMS = 0.0;
+                if (itr->second.isComplete)
+                {
+                    endMS = osg::Timer::instance()->delta_m(startTime, itr->second.endTime);
+                }
+                else
+                {
+                    endMS = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
+                }
+
                 ImGui::TextColored(color, itr->second.uri.c_str());  ImGui::NextColumn();
-                ImGui::Text("%f", itr->second.getDuration()); ImGui::NextColumn();
+                ImGui::Text("%lf ms", itr->second.getDuration()); ImGui::NextColumn();
+                ImGui::Text("%lf ms", startMS); ImGui::NextColumn();
+                ImGui::Text("%lf ms", endMS); ImGui::NextColumn();
                 ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
+                ImGui::Text(itr->second.type.c_str()); ImGui::NextColumn();
                 ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
             }
         }
@@ -329,6 +370,7 @@ public:
             ImGui::SetScrollHere(1.0);
         }
         ImGui::EndChild();
+
         ImGui::End();
     }
 

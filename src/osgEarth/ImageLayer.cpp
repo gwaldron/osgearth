@@ -379,8 +379,10 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
         ReadResult result = bin->readObject(memCacheKey, 0L);
-        if ( result.succeeded() )
+        if (result.succeeded())
+        {
             return GeoImage(static_cast<osg::Image*>(result.releaseObject()), key.getExtent());
+        }
     }
 
     // locate the cache bin for the target profile for this layer:
@@ -531,7 +533,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 
         for( std::vector<TileKey>::iterator k = intersectingKeys.begin(); k != intersectingKeys.end(); ++k )
         {
-            GeoImage image = createImageImplementation( *k, progress );
+            GeoImage image = createImageInKeyProfile(*k, progress);
 
             if ( image.valid() )
             {

@@ -107,6 +107,9 @@ namespace osgEarth { namespace REX
             _drawPatch(false),
             _range(0.0f),
             _layerOrder(INT_MAX){ }
+
+        virtual void accept(osg::PrimitiveFunctor& functor) const;
+        virtual void accept(osg::PrimitiveIndexFunctor& functor) const;
     };
 
     /**

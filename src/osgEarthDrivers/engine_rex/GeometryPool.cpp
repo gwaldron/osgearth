@@ -75,7 +75,9 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
         // make our globally shared EBO if we need it
         if ( !_defaultPrimSet.valid())
         {
-            _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL);
+            osg::UIntArray* reorder = 0L;
+            _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL, &reorder);
+            _reorder = reorder;
         }
 
         bool masking = maskSet && maskSet->hasMasks();
@@ -196,7 +198,8 @@ namespace
 }
 
 osg::DrawElements*
-GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg::Vec3Array* texCoords) const
+GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg::Vec3Array* texCoords,
+                                 osg::UIntArray** reorder) const
 {
     // Attempt to calculate the number of verts in the surface geometry.
     bool needsSkirt = _options.heightFieldSkirtRatio() > 0.0f;
@@ -227,28 +230,51 @@ GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg:
     }
 
     // if there's no mask, assume this is the "global" geometry and optimize it.
-    if (!maskSet)
+    if (!maskSet && reorder)
     {
         osg::ref_ptr<osg::Geometry> temp = new osg::Geometry();
         temp->addPrimitiveSet(primSet.get());
 
         // optimizer wants this..
         temp->setVertexArray(new osg::Vec3Array(numVertsInSurface + numVertsInSkirt));
+        osg::ref_ptr<osg::UIntArray> indexArray = new osg::UIntArray(numVertsInSurface + numVertsInSkirt);
+        indexArray->setBinding(osg::Array::BIND_PER_VERTEX);
+        for (int i = 0; i < indexArray->size();++i)
+        {
+            (*indexArray)[i] = i;
+        }
+        temp->setVertexAttribArray(0, indexArray.get());
 
         osgUtil::VertexCacheVisitor vcv;
         temp->accept(vcv);
         vcv.optimizeVertices();
     
-        // Uh oh, breaks the geometry
-        //osgUtil::VertexAccessOrderVisitor vaov;
-        //temp->accept(vaov);
-        //vaov.optimizeOrder();
+        osgUtil::VertexAccessOrderVisitor vaov;
+        temp->accept(vaov);
+        vaov.optimizeOrder();
 
         primSet = (osg::DrawElements*)temp->getPrimitiveSet(0);
+        // The optimizer may (will) make a copy of attributes
+        indexArray = static_cast<osg::UIntArray*>(temp->getVertexAttribArray(0));
         temp = NULL;
+        *reorder = indexArray.release();
     }
 
     return primSet.release();
+}
+
+// Order (destructively) the elements of a Vec3Array according to the
+// values of a UIntArray
+
+void reorder(osg::Array* array, osg::UIntArray* elems)
+{
+    osg::Vec3Array* a = dynamic_cast<osg::Vec3Array*>(array);
+    osg::ref_ptr<osg::Vec3Array> reordered = new osg::Vec3Array(a->size());
+    for (int i = 0; i < a->size(); ++i)
+    {
+        (*reordered)[i] = (*a)[(*elems)[i]];
+    }
+    reordered->swap(*a);
 }
 
 void
@@ -537,6 +563,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     if (tessellateSurface && primSet == NULL)
     {
         primSet = _defaultPrimSet.get();
+        reorder(geom->getVertexArray(), _reorder.get());
+        reorder(geom->getNormalArray(), _reorder.get());
+        reorder(geom->getTexCoordArray(), _reorder.get());
+        reorder(geom->getNeighborArray(), _reorder.get());
+        reorder(geom->getNeighborNormalArray(), _reorder.get());
     }
 
     if (primSet)

@@ -23,6 +23,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/FileUtils>
+#include <osgEarth/NetworkMonitor>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 #include <osgUtil/IncrementalCompileOperation>
@@ -761,10 +762,13 @@ namespace
             _options(options),
             _parentTileset(parentTileset)
         {
+            // Get the currently active request layer and reuse it when the operator actually occurs, which will probably be on a different thread.
+            _requestLayer = NetworkMonitor::getRequestLayer();
         }
 
         void operator()(osg::Object*)
         {
+            NetworkMonitor::ScopedRequestLayer layerRequest(_requestLayer);
             if (!_promise.isAbandoned())
             {
                 osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico = OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
@@ -845,6 +849,7 @@ namespace
         osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
         Threading::Event _block;
         URI _uri;
+        std::string _requestLayer;
     };
 
     Threading::Future<osg::Node> readTilesetAsync(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options)
@@ -900,6 +905,8 @@ void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
         }
 
         URI uri(_tile->content()->uri()->base(), context);
+
+        NetworkMonitor::ScopedRequestLayer layerRequest(_tileset->getOwnerName());
 
         if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
         {
@@ -1207,6 +1214,19 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& author
         getOrCreateStateSet()->setDefine("OE_3DTILES_DEBUG", osg::StateAttribute::ON);
     }
 }
+
+const std::string&
+ThreeDTilesetNode::getOwnerName() const
+{
+    return _ownerName;
+}
+
+void
+ThreeDTilesetNode::setOwnerName(const std::string& value)
+{
+    _ownerName = value;
+}
+
 
 unsigned int ThreeDTilesetNode::getMaxTiles() const
 {

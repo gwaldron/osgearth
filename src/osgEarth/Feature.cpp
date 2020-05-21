@@ -79,7 +79,7 @@ FeatureProfile::setMaxLevel(int maxLevel)
     _maxLevel = maxLevel;
 }
 
-const osgEarth::Profile* 
+const osgEarth::Profile*
 FeatureProfile::getTilingProfile() const
 {
     return _tilingProfile.get();
@@ -112,7 +112,7 @@ AttributeValue::getString() const
 }
 
 double
-AttributeValue::getDouble( double defaultValue ) const 
+AttributeValue::getDouble( double defaultValue ) const
 {
     if (!second.set)
     {
@@ -129,8 +129,8 @@ AttributeValue::getDouble( double defaultValue ) const
     return defaultValue;
 }
 
-int
-AttributeValue::getInt( int defaultValue ) const 
+long long
+AttributeValue::getInt( long long defaultValue ) const
 {
     if (!second.set)
     {
@@ -139,7 +139,7 @@ AttributeValue::getInt( int defaultValue ) const
 
     switch( first ) {
         case ATTRTYPE_STRING: return Strings::as<int>(second.stringValue, defaultValue);
-        case ATTRTYPE_DOUBLE: return (int)second.doubleValue;
+        case ATTRTYPE_DOUBLE: return (long long)second.doubleValue;
         case ATTRTYPE_INT:    return second.intValue;
         case ATTRTYPE_BOOL:   return second.boolValue? 1 : 0;
         case ATTRTYPE_UNSPECIFIED: break;
@@ -148,7 +148,7 @@ AttributeValue::getInt( int defaultValue ) const
 }
 
 bool
-AttributeValue::getBool( bool defaultValue ) const 
+AttributeValue::getBool( bool defaultValue ) const
 {
     if (!second.set)
     {
@@ -172,10 +172,16 @@ const std::vector<double>& AttributeValue::getDoubleArrayValue() const
 
 //----------------------------------------------------------------------------
 
+Feature::Feature() :
+    _fid(0LL),
+    _srs(NULL)
+{
+    //nop
+}
+
 Feature::Feature( FeatureID fid ) :
 _fid( fid ),
 _srs( 0L )
-//_cachedBoundingPolytopeValid( false )
 {
     //NOP
 }
@@ -210,7 +216,7 @@ Feature::~Feature()
 }
 
 FeatureID
-Feature::getFID() const 
+Feature::getFID() const
 {
     return _fid;
 }
@@ -272,7 +278,16 @@ Feature::set( const std::string& name, double value )
 }
 
 void
-Feature::set( const std::string& name, int value )
+Feature::set( const std::string& name, long long value )
+{
+    AttributeValue& a = _attrs[name];
+    a.first = ATTRTYPE_INT;
+    a.second.intValue = value;
+    a.second.set = true;
+}
+
+void
+Feature::set(const std::string& name, int value)
 {
     AttributeValue& a = _attrs[name];
     a.first = ATTRTYPE_INT;
@@ -316,7 +331,7 @@ Feature::setSwap( const std::string& name, std::vector<double>& value )
 void
 Feature::setNull( const std::string& name)
 {
-    AttributeValue& a = _attrs[name];    
+    AttributeValue& a = _attrs[name];
     a.second.set = false;
 }
 
@@ -324,7 +339,7 @@ void
 Feature::setNull( const std::string& name, AttributeType type)
 {
     AttributeValue& a = _attrs[name];
-    a.first = type;    
+    a.first = type;
     a.second.set = false;
 }
 
@@ -345,14 +360,14 @@ Feature::getString( const std::string& name ) const
 }
 
 double
-Feature::getDouble( const std::string& name, double defaultValue ) const 
+Feature::getDouble( const std::string& name, double defaultValue ) const
 {
     AttributeTable::const_iterator i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getDouble(defaultValue) : defaultValue;
 }
 
-int
-Feature::getInt( const std::string& name, int defaultValue ) const 
+long long
+Feature::getInt( const std::string& name, long long defaultValue ) const
 {
     AttributeTable::const_iterator i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getInt(defaultValue) : defaultValue;
@@ -366,7 +381,7 @@ Feature::getDoubleArray( const std::string& name ) const
 }
 
 bool
-Feature::getBool( const std::string& name, bool defaultValue ) const 
+Feature::getBool( const std::string& name, bool defaultValue ) const
 {
     AttributeTable::const_iterator i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getBool(defaultValue) : defaultValue;
@@ -529,7 +544,7 @@ Feature::getWorldBound(const SpatialReference* srs,
     {
         out_bound.init();
 
-        ConstGeometryIterator i( getGeometry(), false); 
+        ConstGeometryIterator i( getGeometry(), false);
         while( i.hasMore() )
         {
             const Geometry* g = i.next();
@@ -612,7 +627,7 @@ bool Feature::getWorldBoundingPolytope( const osg::BoundingSphered& bs, const Sp
 
 GeoExtent
 Feature::calculateExtent() const
-{    
+{
     GeoExtent e(getSRS());
     ConstGeometryIterator gi(getGeometry(), false);
     while (gi.hasMore()) {
@@ -630,8 +645,8 @@ Feature::getGeoJSON() const
 
     Json::Value root(Json::objectValue);
     root["type"] = "Feature";
-    root["id"] = (unsigned int)getFID(); //TODO:  Update JSON to use unsigned longs
-    
+    root["id"] = (double)getFID(); //TODO:  Update JSON to use unsigned longs
+
     Json::Reader reader;
     Json::Value geometryValue( Json::objectValue );
     if ( reader.parse( geometry, geometryValue ) )
@@ -639,8 +654,8 @@ Feature::getGeoJSON() const
         root["geometry"] = geometryValue;
     }
 
-    //Write out all the properties         
-    Json::Value props(Json::objectValue);    
+    //Write out all the properties
+    Json::Value props(Json::objectValue);
     if (getAttrs().size() > 0)
     {
 
@@ -650,7 +665,7 @@ Feature::getGeoJSON() const
             {
                 if (itr->second.second.set)
                 {
-                    props[itr->first] = itr->second.getInt();
+                    props[itr->first] = (double)itr->second.getInt();
                 }
                 else
                 {
@@ -689,9 +704,9 @@ Feature::getGeoJSON() const
                 {
                     props[itr->first] = Json::nullValue;
                 }
-            }            
+            }
         }
-    } 
+    }
 
     root["properties"] = props;
     return Json::FastWriter().write( root );
@@ -743,7 +758,7 @@ void Feature::transform( const SpatialReference* srs )
 void Feature::splitAcrossDateLine(FeatureList& splitFeatures)
 {
     splitFeatures.clear();
-    
+
      // If the feature is geodetic, try to split it across the dateline.
     if (getSRS() && getSRS()->isGeodetic())
     {
@@ -781,5 +796,5 @@ void Feature::splitAcrossDateLine(FeatureList& splitFeatures)
     if (splitFeatures.empty())
     {
         splitFeatures.push_back( this );
-    }   
+    }
 }

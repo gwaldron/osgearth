@@ -42,6 +42,7 @@ namespace osgEarth
             OE_OPTION(float, altitude);
             OE_OPTION(bool, multidirectional);
             OE_OPTION(bool, combined);
+            OE_OPTION(URI, color_filename);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -72,9 +73,12 @@ namespace osgEarth
         void setCombined(const bool& value);
         float getCombined() const;
 
+        void setColorFilename(const URI& value);
+        const URI& getColorFilename() const;
+
 
     public: // Layer
-        
+
         //! open succesfully
         virtual Status openImplementation();
 
@@ -83,7 +87,7 @@ namespace osgEarth
 
         //! Creates a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
-        
+
         //! Called when a layer is added to the map
         virtual void addedToMap(const Map* map);
         virtual void removedFromMap(const Map* map);

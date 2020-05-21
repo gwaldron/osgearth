@@ -209,6 +209,9 @@ public:
   {
     int internalFormat = osg::Image::computeNumComponents(img.getPixelFormat());
 
+    osg::ref_ptr< osg::Image > flippedImage = new osg::Image(img);
+    flippedImage->flipVertical();
+
     WebPConfig config;
     config.quality = 75;
     config.method = 2;
@@ -276,13 +279,13 @@ public:
     switch (img.getPixelFormat())
     {
     case (GL_RGB):
-      WebPPictureImportRGB(&picture, img.data(), img.getRowSizeInBytes());
+      WebPPictureImportRGB(&picture, flippedImage->data(), img.getRowSizeInBytes());
       break;
     case (GL_RGBA):
-      WebPPictureImportRGBA(&picture, img.data(), img.getRowSizeInBytes());
+      WebPPictureImportRGBA(&picture, flippedImage->data(), img.getRowSizeInBytes());
       break;
     case (GL_LUMINANCE):
-      WebPPictureImportRGBX(&picture, img.data(), img.getRowSizeInBytes());
+      WebPPictureImportRGBX(&picture, flippedImage->data(), img.getRowSizeInBytes());
       break;
     default:
       return WriteResult::ERROR_IN_WRITING_FILE;

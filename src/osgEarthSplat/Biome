@@ -107,46 +107,6 @@ namespace osgEarth { namespace Splat
         void init();
     };
 
-#if 0
-    /**
-    * Defines the art make up for a particular location
-    */
-    class OSGEARTHSPLAT_EXPORT BiomeLayout // was "GroundCover"
-    {
-    public:
-        struct OSGEARTHSPLAT_EXPORT Options : public ConfigOptions
-        {
-            META_ConfigOptions(osgEarth, Options, ConfigOptions);
-            Config getConfig() const;
-            void fromConfig(const Config& conf);
-
-            OE_OPTION(std::string, name);
-            OE_OPTION(Distance, spacing);
-            OE_OPTION(float, fill);
-            OE_OPTION_VECTOR(LandCoverGroup, landCoverGroups);
-        };
-
-    public:
-        BiomeLayout() { init(); }
-        BiomeLayout(const Config& conf) : _options(conf) { init(); }
-
-        const std::vector<LandCoverGroup>& getLandCoverGroups() const {
-            return options().landCoverGroups(); }
-
-        const Distance& getSpacing() const { return _options.spacing().get(); }
-
-        const LandCoverGroup* getLandCoverGroup(const LandCoverClass* c) const;
-
-        Options& options() { return _options; }
-        const Options& options() const { return _options; }
-        Config getConfig() const { return options().getConfig(); }
-
-    private:
-        Options _options;
-        void init() { }
-    };
-#endif
-
     /**
     * Defines a geographic bounding region for a Biome.
     * Temporary construct while we transition to the new setup.

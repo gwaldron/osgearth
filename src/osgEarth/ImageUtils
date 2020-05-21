@@ -24,6 +24,7 @@
 #include <osgEarth/Bounds>
 #include <osg/Image>
 #include <osg/Texture>
+#include <osg/Texture2DArray>
 #include <osg/GL>
 #include <osg/NodeVisitor>
 #include <osgDB/ReaderWriter>
@@ -156,7 +157,7 @@ namespace osgEarth { namespace Util
         /**
          * Gets a transparent image used for a placeholder with the specified dimensions
          */
-        static osg::Image* createEmptyImage(unsigned int s, unsigned int t);
+        static osg::Image* createEmptyImage(unsigned int s, unsigned int t, unsigned int r = 1);
 
         /**
          * Creates a one-pixel image.
@@ -322,6 +323,8 @@ namespace osgEarth { namespace Util
          * Returns NULL if the image could not be read.
          */
         static osg::Image* readStream(std::istream& stream, const osgDB::Options* options);
+
+        static osg::Texture2DArray* makeTexture2DArray(osg::Image* image);
 
         /**
          * Reads color data out of an image, regardles of its internal pixel format.

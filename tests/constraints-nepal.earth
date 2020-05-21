@@ -1,0 +1,39 @@
+<map name="ReadyMap.org">
+<!--
+  <options>
+        <terrain morph_imagery="false" morph_terrain="false"/>
+    </options>
+-->
+    <TMSImage name="ReadyMap 15m Imagery" opacity="0.5">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
+
+    <TMSElevation name="ReadyMap 90m Elevation" enabled="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+        <vdatum>egm96</vdatum>
+    </TMSElevation>
+
+    <!--
+    <GDALElevation name="Nepal">
+      <url>/home/moore/gis/ridgelines/nepal.tiff</url>
+    </GDALElevation>
+    -->
+    <MBTilesElevation name="Nepal MBTiles">
+         <url>/home/moore/gis/ridgelines/nepal.mbtiles</url>
+         <vdatum>egm96</vdatum>
+    </MBTilesElevation>
+
+    <ElevationConstraint name="Constraint vectors" min_level="10" shared="true" visible="false">
+        <tile_size>17</tile_size>
+        <features>ridges</features>
+        <caching_policy usage="none"/>
+    </ElevationConstraint>
+
+    <DebugImage/>
+
+    <OGRFeatures name="ridges">
+        <url>/home/moore/gis/ridgelines/nepal_ridgetops.shp</url>
+    </OGRFeatures>
+
+    <xi:include href="viewpoints.xml"/>
+</map>

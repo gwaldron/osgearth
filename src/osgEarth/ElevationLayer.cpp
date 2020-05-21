@@ -119,6 +119,9 @@ void
 ElevationLayer::setVerticalDatum(const std::string& value)
 {
     setOptionThatRequiresReopen(options().verticalDatum(), value);
+
+    // vertical datum change requires a profile override:
+    applyProfileOverrides(_profile);
 }
 
 const std::string&
@@ -173,13 +176,14 @@ void
 ElevationLayer::applyProfileOverrides(osg::ref_ptr<const Profile>& inOutProfile) const
 {
     // Check for a vertical datum override.
-    bool changed = false;
     if ( inOutProfile.valid() && options().verticalDatum().isSet() )
     {
         std::string vdatum = options().verticalDatum().get();
 
         std::string profileVDatumStr = _profile->getSRS()->getVertInitString();
-        if (profileVDatumStr.empty()) profileVDatumStr = "geodetic";
+        if (profileVDatumStr.empty())
+            profileVDatumStr = "geodetic";
+
         OE_INFO << LC << "Override vdatum = " << vdatum << " (was " << profileVDatumStr << ")" << std::endl;
 
         if ( !ciEquals(getProfile()->getSRS()->getVertInitString(), vdatum) )
@@ -187,7 +191,6 @@ ElevationLayer::applyProfileOverrides(osg::ref_ptr<const Profile>& inOutProfile)
             ProfileOptions po = getProfile()->toProfileOptions();
             po.vsrsString() = vdatum;
             inOutProfile = Profile::create(po);
-            changed = true;
         }
     }
 }

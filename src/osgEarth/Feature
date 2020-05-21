@@ -56,7 +56,7 @@ namespace osgEarth
 
         //! Spatial reference system of feature data
         const SpatialReference* getSRS() const { return _extent.getSRS(); }
-        
+
         //! Whether the feature data is pre-tiled
         bool isTiled() const;
 
@@ -90,7 +90,7 @@ namespace osgEarth
     {
         std::string stringValue;
         double      doubleValue;
-        int         intValue;
+        long long   intValue;
         bool        boolValue;
         std::vector<double> doubleArrayValue;
 
@@ -109,17 +109,17 @@ namespace osgEarth
     };
 
     struct OSGEARTH_EXPORT AttributeValue : public std::pair<AttributeType,AttributeValueUnion>
-    {    
+    {
         std::string getString() const;
         double getDouble( double defaultValue =0.0 ) const;
-        int getInt( int defaultValue =0 ) const;
+        long long getInt( long long defaultValue =0 ) const;
         bool getBool( bool defaultValue =false ) const;
         const std::vector<double>& getDoubleArrayValue() const;
     };
-    
+
     typedef std::map<std::string, AttributeValue, CIStringComp> AttributeTable;
 
-    typedef unsigned long FeatureID;
+    typedef long long FeatureID;
 
     typedef std::map< std::string, AttributeType > FeatureSchema;
 
@@ -132,9 +132,9 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT Feature : public osg::Object
     {
-    public:        
+    public:
 
-        Feature( Geometry* geom, const SpatialReference* srs, const Style& style =Style(), FeatureID fid =0L );
+        Feature( Geometry* geom, const SpatialReference* srs, const Style& style =Style(), FeatureID fid =0LL );
 
         /** Copy contructor */
         Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
@@ -176,14 +176,14 @@ namespace osgEarth
          */
         bool getWorldBound( const SpatialReference* srs, osg::BoundingSphered& out_bound ) const;
 
-        /** 
+        /**
          * Gets a polytope, in world coordinates (proj or ECEF) that bounds the
          * geographic extents covered by this feature. This is useful for roughly
          * intersecting the feature with the terrain graph.
          */
         bool getWorldBoundingPolytope( const SpatialReference* srs, osg::Polytope& out_polytope ) const;
 
-        /** 
+        /**
          * Gets a polytope, in world coordinates (proj or ECEF) that bounds the
          * world coordinates covered by the given bounding sphere. This is useful for roughly
          * intersecting features with the terrain graph.
@@ -200,13 +200,14 @@ namespace osgEarth
 
         void set( const std::string& name, const std::string& value );
         void set( const std::string& name, double value );
-        void set( const std::string& name, int value );
+        void set(const std::string& name, int value);
+        void set( const std::string& name, long long value );
         void set( const std::string& name, bool value );
         void set( const std::string& name, const std::vector<double>& value );
         void setSwap( const std::string& name, std::vector<double>& value );
         void set( const std::string& name, const AttributeValue& value);
 
-        /** Sets the attribute to NULL */         
+        /** Sets the attribute to NULL */
         void setNull( const std::string& name );
         void setNull( const std::string& name, AttributeType type );
 
@@ -214,7 +215,7 @@ namespace osgEarth
 
         std::string getString( const std::string& name ) const;
         double getDouble( const std::string& name, double defaultValue =0.0 ) const;
-        int getInt( const std::string& name, int defaultValue =0 ) const;
+        long long getInt( const std::string& name, long long defaultValue =0 ) const;
         bool getBool( const std::string& name, bool defaultValue =false ) const;
         const std::vector<double>* getDoubleArray( const std::string& name ) const;
 
@@ -234,7 +235,7 @@ namespace osgEarth
         /** populates the variables of an expression with attribute values and evals the expression. */
         double eval(NumericExpression& expr, const FilterContext* context) const;
         double eval(NumericExpression& expr, Session* session) const;
-        
+
         /** populates the variables of an expression with attribute values and evals the expression. */
         const std::string& eval(StringExpression& expr, const FilterContext* context) const;
         const std::string& eval(StringExpression& expr, Session* session) const;
@@ -259,7 +260,8 @@ namespace osgEarth
 
     protected:
 
-        Feature( FeatureID fid =0L );
+        Feature();
+        Feature( FeatureID fid );
 
         virtual ~Feature();
 

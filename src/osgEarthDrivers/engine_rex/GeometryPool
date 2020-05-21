@@ -221,6 +221,8 @@ namespace osgEarth { namespace REX
         GeometryMap                    _geometryMap;
         const TerrainOptions&          _options; 
         osg::ref_ptr<ResourceReleaser> _releaser;
+        osg::ref_ptr<osg::DrawElements> _defaultPrimSet;
+        osg::ref_ptr<osg::UIntArray> _reorder;
 
         mutable osg::ref_ptr<osg::Vec3Array> _sharedTexCoords;
         
@@ -233,6 +235,19 @@ namespace osgEarth { namespace REX
             const TileKey& tileKey,
             unsigned       tileSize,
             MaskGenerator* maskSet ) const;
+
+        // builds a primitive set to use for any tile without a mask
+        osg::DrawElements* createPrimitiveSet(
+            unsigned tileSize,
+            MaskGenerator* maskSet,
+            osg::Vec3Array* texCoords,
+            osg::UIntArray** reorder = 0L) const;
+
+        void tessellateSurface(
+            unsigned tileSize, 
+            MaskGenerator* maskSet,
+            osg::Vec3Array* texCoords,
+            osg::DrawElements* primSet) const;
 
         bool _enabled;
         bool _debug;

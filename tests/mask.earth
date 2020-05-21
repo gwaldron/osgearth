@@ -4,6 +4,10 @@ Demonstrates the use a a MaskLayer to cut out an area of the globe.
 -->
 
 <Map>
+    <options>
+        <terrain skirt_ratio="0.25"/>
+    </options>
+    
     <GDALImage name="world-tiff">
         <url>../data/world.tif</url>
     </GDALImage>

@@ -54,12 +54,13 @@ GDALDEMLayer::Options::getConfig() const
     conf.set("azimuth", azimuth());
     conf.set("combined", combined());
     conf.set("multidirectional", multidirectional());
+    conf.set("color_filename", color_filename());
     return conf;
 }
 
 void
 GDALDEMLayer::Options::fromConfig(const Config& conf)
-{ 
+{
     processing().init("hillshade");
     elevationLayer().get(conf, "layer");
     conf.get("processing", processing());
@@ -67,6 +68,7 @@ GDALDEMLayer::Options::fromConfig(const Config& conf)
     conf.get("azimuth", azimuth());
     conf.get("combined", combined());
     conf.get("multidirectional", multidirectional());
+    conf.get("color_filename", color_filename());
 }
 
 REGISTER_OSGEARTH_LAYER(GDALDEM, GDALDEMLayer);
@@ -100,7 +102,7 @@ GDALDEMLayer::addedToMap(const Map* map)
     ElevationLayer* layer = options().elevationLayer().getLayer();
     if (!layer)
     {
-        setStatus(Status::Error("Busted"));
+        setStatus(Status::Error(Stringify() << "Failed to get elevaton layer"));
         return;
     }
 
@@ -276,65 +278,8 @@ namespace
             OE_WARN << LC << "RasterIO failed.\n";
         }
 
-        //ds->FlushCache();
-
-        //image->flipVertical();
-
         return image;
     }
-
-#if 0
-    osg::Image*
-    createRGBImageFromGrayscale(GDALDataset* ds)
-    {    
-        int numBands = ds->GetRasterCount();
-        if (numBands < 1)
-            return 0L;
-
-        unsigned char *data = new unsigned char[ds->GetRasterXSize() * ds->GetRasterYSize()];
-        CPLErr err = ds->RasterIO(
-            GF_Read,
-            0, 0,
-            ds->GetRasterXSize(), ds->GetRasterYSize(),
-            data,
-            ds->GetRasterXSize(), ds->GetRasterYSize(),
-            GDT_Byte,
-            numBands,
-            NULL,
-            1,
-            ds->GetRasterXSize(),
-            1);
-        if (err != CE_None)
-        {
-            OE_WARN << LC << "RasterIO failed.\n";
-        }
-
-        //Allocate the image
-        osg::Image *image = new osg::Image;
-        image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, GL_RGB, GL_UNSIGNED_BYTE);    
-        ImageUtils::PixelWriter write(image);
-        for (unsigned int r = 0; r < ds->GetRasterYSize(); r++)
-        {
-            for (unsigned int c = 0; c < ds->GetRasterXSize(); c++)
-            {
-                int v = (int)data[r * ds->GetRasterXSize() + c];
-                //int v = (int)data[c * ds->GetRasterYSize() + r];
-                osg::Vec4 color(v / 255.0, v / 255.0, v / 255.0, 1.0);
-                //write(color, r, c);
-                write(color, c, r);
-            }
-        }
-
-        delete[]data;
-
-        //image->flipVertical();
-
-        OE_NOTICE << "Output image is " << image->s() << "x" << image->t() << std::endl;
-
-        return image;
-    }
-#endif
-
 
     GDALDataset*
     createDataSetFromHeightField(const osg::HeightField* hf, double minX, double minY, double maxX, double maxY, const std::string &projection)
@@ -379,9 +324,10 @@ GeoImage
 GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
 #ifdef HAS_GDALDEM
+    GDAL_SCOPED_LOCK;
 
     ElevationLayer* layer = getElevationLayer();
-    GeoHeightField heightField = layer->createHeightField(key, progress);    
+    GeoHeightField heightField = layer->createHeightField(key, progress);
     if (heightField.valid())
     {
         osg::ref_ptr< osg::Image > image = 0;
@@ -392,6 +338,7 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
         GDALDataset* srcDS = createDataSetFromHeightField(hf, key.getExtent().xMin(), key.getExtent().yMin(), key.getExtent().xMax(), key.getExtent().yMax(), key.getExtent().getSRS()->getWKT());
         int error = 0;
         std::string processing = options().processing().get();
+        std::string color_filename = options().color_filename()->full();
         char **papsz = NULL;
         papsz = CSLAddString(papsz, "-compute_edges");
 
@@ -399,7 +346,7 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
         {
             papsz = CSLAddString(papsz, "-az");
             std::string arg = Stringify() << *options().azimuth();
-            papsz = CSLAddString(papsz, arg.c_str());                        
+            papsz = CSLAddString(papsz, arg.c_str());
         }
 
         if (options().altitude().isSet())
@@ -419,21 +366,28 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
             papsz = CSLAddString(papsz, "-combined");
         }
 
+
         GDALDEMProcessingOptions* psOptions = GDALDEMProcessingOptionsNew(papsz, NULL);
 
-        GDALDatasetH outputDS = GDALDEMProcessing(tmpPath.c_str(), srcDS, processing.c_str(), NULL, psOptions, &error);
-        delete srcDS;
+        const char* pszColorFilename = NULL;
+        if (!color_filename.empty())
+        {
+            pszColorFilename = color_filename.c_str();
+        }
+
+        GDALDatasetH outputDS = GDALDEMProcessing(tmpPath.c_str(), srcDS, processing.c_str(), pszColorFilename, psOptions, &error);
         if (outputDS)
-        {            
+        {
             image = createImageFromDataset((GDALDataset*)outputDS);
-            GDALClose(outputDS);            
+            GDALClose(outputDS);
         }
         remove(tmpPath.c_str());
+        delete srcDS;
         GDALDEMProcessingOptionsFree(psOptions);
         CSLDestroy(papsz);
 
         if (image.valid())
-        {            
+        {
             return GeoImage(image.get() , key.getExtent());
         }
     }

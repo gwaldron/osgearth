@@ -141,3 +141,19 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
         _geom->draw(ri);
     }    
 }
+
+void DrawTileCommand::accept(osg::PrimitiveFunctor& functor) const
+{
+    if (_geom.valid() && _geom->supports(functor))
+    {
+        _geom->accept(functor);
+    }
+}
+
+void DrawTileCommand::accept(osg::PrimitiveIndexFunctor& functor) const
+{
+    if (_geom.valid() && _geom->supports(functor))
+    {
+        _geom->accept(functor);
+    }
+}

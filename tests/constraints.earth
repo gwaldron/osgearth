@@ -1,0 +1,148 @@
+<!--
+osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
+
+ReadyMap.ORG provides free global base map data for osgEarth developers!
+This tiled, worldwide dataset of imagery, elevation, and street map data
+is a great base map that provides global context for your own local datasets.
+It works "out of the box" with osgEarth applications.
+
+**** NOTICE ****
+YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
+http://readymap.org
+
+-->
+<map name="ReadyMap.org">
+
+    <options>
+        <terrain morph_imagery="false" morph_terrain="false"/>
+    </options>
+
+    <TMSImage name="ReadyMap 15m Imagery" opacity="0.5">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
+
+    <TMSElevation name="ReadyMap 90m Elevation" enabled="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+        <vdatum>egm96</vdatum>
+    </TMSElevation>
+
+    <ElevationConstraint name="Constraint vectors" min_level="10" shared="true" visible="false">
+        <tile_size>17</tile_size>
+        <features>osm:water</features>
+        <shared_sampler>con_tex</shared_sampler>
+        <shared_matrix>con_tex_matrix</shared_matrix>
+        <mag_filter>NEAREST</mag_filter>
+    </ElevationConstraint>
+
+    <terrainshader>
+        <code>
+            <![CDATA[
+            #version 330
+            #pragma vp_entryPoint seeMe
+            #pragma vp_location vertex_model
+            #pragma vp_order last
+            
+            uniform sampler2D con_tex;
+            uniform mat4 con_tex_matrix;   
+            uniform vec2 oe_tile_elevTexelCoeff;         
+            vec4 oe_layer_tilec;
+            uniform float shmoo;
+            
+            void seeMe(inout vec4 vertex) 
+            {            
+                // not sure if we need this
+                vec2 elevc = oe_layer_tilec.xy
+                    * oe_tile_elevTexelCoeff.x * con_tex_matrix[0][0] // scale
+                    + oe_tile_elevTexelCoeff.x * con_tex_matrix[3].st // bias
+                    + oe_tile_elevTexelCoeff.y;
+       
+                vec4 dir = texture(con_tex, elevc);
+                
+                // slider code: use --uniform shmoo 0 1
+                vec4 vertex2 = vertex + vec4(dir.xy,0,0);
+                vec4 tilec2 = oe_layer_tilec + vec4(dir.zw,0,0);
+                vertex = mix(vertex, vertex2, shmoo);
+                oe_layer_tilec = mix(oe_layer_tilec, tilec2, shmoo);
+                
+                // actual code:
+                //vertex.xy += dir.xy;
+                //oe_layer_tilec.xy += dir.zw;
+            }
+          ]]>
+        </code>
+    </terrainshader>
+
+    <FeatureModel name="ridge polys" min_level="10" enabled="false">
+        <features>ridge-data</features>
+        <styles>
+            <style>
+                default {
+                    stroke: #ffff00;
+                    stroke-tessellation: 25m;                    
+                    altitude-clamping: terrain;
+                    render-depth-offset: true;
+                }
+            </style>
+        </styles>
+    </FeatureModel>    
+
+    <TiledFeatureModel name="water polys" min_level="10">
+        <features>osm:water</features>
+        <additive>false</additive>
+        <styles>
+            <style>
+                default {
+                    stroke: #ffff00;
+                    stroke-tessellation: 25m;                    
+                    altitude-clamping: terrain;
+                    render-depth-offset: true;
+                }
+            </style>
+        </styles>
+    </TiledFeatureModel>
+
+    <DebugImage/>
+
+    <TFSFeatures name="osm:water">
+        <url>http://readymap.org/readymap/mbtiles/osm-water/</url>
+        <min_level>10</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+    </TFSFeatures>
+
+<!--
+    <OGRFeatures name="ridges">
+        <url>D:/data/temp/ridges_uk.shp</url>
+    </OGRFeatures>    
+-->
+    <Viewpoints time="0" home="2">
+        <viewpoint>
+            <heading>-0.175995</heading>
+            <pitch>-89.8272</pitch>
+            <range>9456.83m</range>
+            <long>-122.4901782887075</long>
+            <lat>37.71660371731895</lat>
+            <height>-32.38459638506174</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+        <viewpoint>
+            <heading>10.8114</heading>
+            <pitch>-45.4945</pitch>
+            <range>7636.09m</range>
+            <long>-120.0936733884631</long>
+            <lat>38.94334067526717</lat>
+            <height>1978.931499702856</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+        <viewpoint>
+            <heading>-0.365936</heading>
+            <pitch>-89.8895</pitch>
+            <range>33.014m</range>
+            <long>-120.085653978862</long>
+            <lat>38.94487085099077</lat>
+            <height>1957.812414072454</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+    </Viewpoints>
+</map>

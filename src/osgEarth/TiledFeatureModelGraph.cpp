@@ -110,7 +110,7 @@ osg::Node* TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallba
                     {
                         Feature* feature = itr->get();
 
-                        feature->set("level", (int)key.getLevelOfDetail());
+                        feature->set("level", (long long)key.getLevelOfDetail());
 
                         const std::string& styleString = feature->eval(styleExprCopy, &fc);
                         if (!styleString.empty() && styleString != "null")

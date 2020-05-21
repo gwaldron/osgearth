@@ -368,11 +368,11 @@ namespace osgEarth { namespace MVT
                         }
                         else if (value.has_int_value())
                         {
-                            oeFeature->set(key, (int)value.int_value());
+                            oeFeature->set(key, (long long)value.int_value());
                         }
                         else if (value.has_sint_value())
                         {
-                            oeFeature->set(key, (int)value.sint_value());
+                            oeFeature->set(key, (long long)value.sint_value());
                         }
                         else if (value.has_string_value())
                         {
@@ -380,7 +380,7 @@ namespace osgEarth { namespace MVT
                         }
                         else if (value.has_uint_value())
                         {
-                            oeFeature->set(key, (int)value.uint_value());
+                            oeFeature->set(key, (long long)value.uint_value());
                         }
 
                         // Special path for getting heights from our test dataset.
@@ -443,9 +443,9 @@ namespace osgEarth { namespace MVT
                     if (geometry)
                     {
                         oeFeature->setGeometry( geometry.get() );
-                        features.push_back(oeFeature.get());                     
+                        features.push_back(oeFeature.get());
                     }
-                    
+
                 }
             }
         }
@@ -545,7 +545,7 @@ MVTFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
     int rc = sqlite3_prepare_v2((sqlite3*)_database, queryStr.c_str(), -1, &select, 0L);
     if (rc != SQLITE_OK)
     {
-        OE_WARN << LC << "Failed to prepare SQL: " << queryStr << "; " 
+        OE_WARN << LC << "Failed to prepare SQL: " << queryStr << "; "
             << sqlite3_errmsg((sqlite3*)_database) << std::endl;
         return NULL;
     }
@@ -586,7 +586,7 @@ MVTFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
         {
             std::string attr = itr->get()->getString(options().fidAttribute().get());
-            FeatureID fid = as<long>(attr, 0);
+            FeatureID fid = as<FeatureID>(attr, 0);
             itr->get()->setFID(fid);
         }
     }
@@ -644,7 +644,7 @@ MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoEx
     {
         OE_WARN << LC << "Failed to prepare SQL: " << queryStr << "; "
             << sqlite3_errmsg((sqlite3*)_database) << std::endl;
-    }    
+    }
 
     while ((rc = sqlite3_step(select)) == SQLITE_ROW) {
         int zoom = sqlite3_column_int(select, 0);

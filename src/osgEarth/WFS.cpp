@@ -134,7 +134,7 @@ WFS::CapabilitiesReader::read(std::istream &in)
     capabilities->setAbstract(e_service->getSubElementText(ELEM_ABSTRACT));
     capabilities->setTitle(e_service->getSubElementText(ELEM_TITLE));
 
-    //Read all the feature types    
+    //Read all the feature types
     osg::ref_ptr<XmlElement> e_feature_types = e_root->getSubElement(ELEM_FEATURETYPELIST);
     if (e_feature_types.valid())
     {
@@ -166,7 +166,7 @@ WFS::CapabilitiesReader::read(std::istream &in)
                 featureType->setFirstLevel(as<int>(firstLevelStr, 0));
             }
 
-            // Read the SRS            
+            // Read the SRS
             std::string srsText = e_featureType->getSubElementText(ELEM_SRS);
             if (srsText.compare("") != 0)
             {
@@ -314,7 +314,7 @@ WFSFeatureSource::openImplementation()
 
 
 
-void 
+void
 WFSFeatureSource::saveResponse(const std::string buffer, const std::string& filename)
 {
     std::ofstream fout;
@@ -323,7 +323,7 @@ WFSFeatureSource::saveResponse(const std::string buffer, const std::string& file
     fout.close();
 }
 
-bool 
+bool
 WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mimeType, FeatureList& features)
 {
     OGR_SCOPED_LOCK;
@@ -352,7 +352,7 @@ WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mime
     if (gml)
     {
         std::string ext = getExtensionForMimeType(mimeType);
-        //Save the response to a temp file            
+        //Save the response to a temp file
         std::string tmpPath = getTempPath();
         tmpName = getTempName(tmpPath, ext);
         saveResponse(buffer, tmpName);
@@ -404,7 +404,7 @@ WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mime
 }
 
 
-std::string 
+std::string
 WFSFeatureSource::getExtensionForMimeType(const std::string& mime)
 {
     //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
@@ -420,7 +420,7 @@ WFSFeatureSource::getExtensionForMimeType(const std::string& mime)
     return "";
 }
 
-bool 
+bool
 WFSFeatureSource::isGML(const std::string& mime) const
 {
     return
@@ -428,7 +428,7 @@ WFSFeatureSource::isGML(const std::string& mime) const
 }
 
 
-bool 
+bool
 WFSFeatureSource::isJSON(const std::string& mime) const
 {
     return
@@ -440,7 +440,7 @@ WFSFeatureSource::isJSON(const std::string& mime) const
         startsWith(mime, "text/x-json");
 }
 
-std::string 
+std::string
 WFSFeatureSource::createURL(const Query& query) const
 {
     char sep = options().url()->full().find_first_of('?') == std::string::npos ? '?' : '&';
@@ -502,7 +502,7 @@ WFSFeatureSource::createURL(const Query& query) const
     return str;
 }
 
-FeatureCursor* 
+FeatureCursor*
 WFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
 {
     FeatureCursor* result = 0L;
@@ -552,7 +552,7 @@ WFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
         {
             std::string attr = itr->get()->getString(options().fidAttribute().get());
-            FeatureID fid = as<long>(attr, 0);
+            FeatureID fid = as<FeatureID>(attr, 0);
             itr->get()->setFID(fid);
         }
     }

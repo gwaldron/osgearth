@@ -267,6 +267,8 @@ GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg:
         }
     }
 
+    primSet->setElementBufferObject(new osg::ElementBufferObject());
+
     return primSet.release();
 }
 
@@ -954,9 +956,10 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     }
 
     // unbind the VBO's if any are used.
+    // Absolutely required if not using VAOs (OSG3.4)
     if (request_bind_unbind)
     {
-        //state.unbindVertexBufferObject();
+        state.unbindVertexBufferObject();
     }
 }
 

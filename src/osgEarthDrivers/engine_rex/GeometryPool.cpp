@@ -76,7 +76,11 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
         if ( !_defaultPrimSet.valid())
         {
             osg::UIntArray* reorder = 0L;
+#if 0
+            // not ready for prime time
             _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL, &reorder);
+#endif
+            _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL);
             _reorder = reorder;
         }
 
@@ -230,7 +234,7 @@ GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg:
     }
 
     // if there's no mask, assume this is the "global" geometry and optimize it.
-    if (!maskSet && reorder)
+    if (!maskSet)
     {
         osg::ref_ptr<osg::Geometry> temp = new osg::Geometry();
         temp->addPrimitiveSet(primSet.get());
@@ -248,16 +252,19 @@ GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg:
         osgUtil::VertexCacheVisitor vcv;
         temp->accept(vcv);
         vcv.optimizeVertices();
-    
-        osgUtil::VertexAccessOrderVisitor vaov;
-        temp->accept(vaov);
-        vaov.optimizeOrder();
 
-        primSet = (osg::DrawElements*)temp->getPrimitiveSet(0);
-        // The optimizer may (will) make a copy of attributes
-        indexArray = static_cast<osg::UIntArray*>(temp->getVertexAttribArray(0));
-        temp = NULL;
-        *reorder = indexArray.release();
+        if (reorder)
+        {
+            osgUtil::VertexAccessOrderVisitor vaov;
+            temp->accept(vaov);
+            vaov.optimizeOrder();
+
+            primSet = (osg::DrawElements*)temp->getPrimitiveSet(0);
+            // The optimizer may (will) make a copy of attributes
+            indexArray = static_cast<osg::UIntArray*>(temp->getVertexAttribArray(0));
+            temp = NULL;
+            *reorder = indexArray.release();
+        }
     }
 
     return primSet.release();
@@ -563,11 +570,14 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     if (tessellateSurface && primSet == NULL)
     {
         primSet = _defaultPrimSet.get();
-        reorder(geom->getVertexArray(), _reorder.get());
-        reorder(geom->getNormalArray(), _reorder.get());
-        reorder(geom->getTexCoordArray(), _reorder.get());
-        reorder(geom->getNeighborArray(), _reorder.get());
-        reorder(geom->getNeighborNormalArray(), _reorder.get());
+        if (_reorder.valid())
+        {
+            reorder(geom->getVertexArray(), _reorder.get());
+            reorder(geom->getNormalArray(), _reorder.get());
+            reorder(geom->getTexCoordArray(), _reorder.get());
+            reorder(geom->getNeighborArray(), _reorder.get());
+            reorder(geom->getNeighborNormalArray(), _reorder.get());
+        }
     }
 
     if (primSet)

@@ -19,6 +19,7 @@
 #include <osgEarth/Horizon>
 #include <osgUtil/CullVisitor>
 #include <osgEarth/Registry>
+#include <osgEarth/CullingUtils>
 #include <osg/Geometry>
 #include <osg/Geode>
 
@@ -375,16 +376,18 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
     if ( !node )
         return false;
 
-    osg::ref_ptr<Horizon> horizon;
+    osg::ref_ptr<Horizon> horizon = Horizon::get(*nv);
 
     if (_customEllipsoidSet)
     {
+        osg::Vec3d eye;
+        if (horizon.valid())
+            eye = horizon->getEye();
+        else
+            eye = osg::Vec3d(0,0,0) * Culling::asCullVisitor(nv)->getCurrentCamera()->getInverseViewMatrix();
+
         horizon = new Horizon(_customEllipsoid);
-        horizon->setEye(nv->getViewPoint());
-    }
-    else
-    {
-        horizon = Horizon::get(*nv);
+        horizon->setEye(eye);
     }
 
     // If we fetched the Horizon from the nodevisitor...

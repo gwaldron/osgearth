@@ -554,6 +554,7 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs, bool r
                 }
             }
             break;
+#if GDAL_VERSION_AT_LEAST(2,0,0)
         case OFTInteger64:
         {
             if (IsFieldSet(handle, i))
@@ -567,6 +568,7 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs, bool r
             }
         }
         break;
+#endif
         case OFTReal:
             {
                 if (IsFieldSet( handle, i ))

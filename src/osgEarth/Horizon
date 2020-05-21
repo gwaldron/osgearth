@@ -78,6 +78,7 @@ namespace osgEarth
          * Returns true if the value changed; false if it was the same
          */
         bool setEye(const osg::Vec3d& eyeECEF);
+        const osg::Vec3d& getEye() const { return _eye; }
         
         /**
          * Whether a point is visible over the horizon.

@@ -155,6 +155,7 @@ BuildingLayer::createSceneGraph()
     }
 
     BuildingPager* pager = new BuildingPager( profile );
+    pager->setAdditive        ( options().additiveLODs().get() );
     pager->setElevationPool   ( _map->getElevationPool() );
     pager->setSession         ( _session.get() );
     pager->setFeatureSource   ( fs );

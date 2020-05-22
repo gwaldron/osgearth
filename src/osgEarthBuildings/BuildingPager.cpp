@@ -92,9 +92,6 @@ SimplePager( profile ),
 _index     ( 0L ),
 _filterUsage(FILTER_USAGE_NORMAL)
 {
-    // Replace tiles with higher LODs.
-    setAdditive( false );
-
     // Force building generation onto the high latency queue.
     setFileLocationCallback( new HighLatencyFileLocationCallback() );
 
@@ -312,9 +309,12 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
             osg::ref_ptr<ElevationPool> pool;
             if (_elevationPool.lock(pool))
             {
+                //envelope = pool->createEnvelope(
+                //    _session->getMapSRS(),      // SRS of input features
+                //    tileKey.getLOD());          // LOD at which to clamp
                 envelope = pool->createEnvelope(
                     _session->getMapSRS(),      // SRS of input features
-                    tileKey.getLOD());          // LOD at which to clamp
+                    23);          // LOD at which to clamp
 
                 if (!envelope.valid())
                 {

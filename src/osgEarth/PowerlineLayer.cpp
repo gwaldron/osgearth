@@ -216,7 +216,7 @@ namespace
                 FeatureID fid = feature->getFID();
                 for (int seg = 0; seg < geom->size() - 1; ++seg)
                 {
-                    network.addEdge(EdgeNode(fid, seg), (*geom)[seg], (*geom)[seg - 1]);
+                    network.addEdge(EdgeNode(fid, seg), (*geom)[seg], (*geom)[seg + 1]);
                 }
             }
     }

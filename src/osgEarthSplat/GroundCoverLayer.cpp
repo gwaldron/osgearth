@@ -234,17 +234,13 @@ GroundCoverLayer::init()
 
     _isModel = false;
 
-    setAcceptCallback(new LayerAcceptor(this));
-
-    setCullCallback(new ZoneSelector(this));
-
-    // this layer will do its own custom rendering
-    _renderer = new Renderer(this);
-    setDrawCallback(_renderer.get());
-
     _debug = (::getenv("OSGEARTH_GROUNDCOVER_DEBUG") != NULL);
 
-    installDefaultOpacityShader();
+}
+
+GroundCoverLayer::~GroundCoverLayer()
+{
+    close();
 }
 
 Status
@@ -256,7 +252,39 @@ GroundCoverLayer::openImplementation()
         return Status(Status::ResourceUnavailable, "Requires GL 4.3+");
     }
 
+    setAcceptCallback(new LayerAcceptor(this));
+    setCullCallback(new ZoneSelector(this));
+
+    // this layer will do its own custom rendering
+    _renderer = new Renderer(this);
+    setDrawCallback(_renderer.get());
+
+    installDefaultOpacityShader();
+
     return PatchLayer::openImplementation();
+}
+
+Status
+GroundCoverLayer::closeImplementation()
+{
+    releaseGLObjects(NULL);
+
+    setDrawCallback(NULL);
+    _renderer = NULL;
+
+    setAcceptCallback(NULL);
+    setCullCallback(NULL);
+
+    _zoneStateSets.clear();
+    getOrCreateStateSet()->clear();
+
+    _noiseBinding.release();
+    _groundCoverTexBinding.release();
+    
+    _liveAssets.clear();
+    _atlasImages.clear();
+
+    return PatchLayer::closeImplementation();
 }
 
 void
@@ -387,8 +415,6 @@ GroundCoverLayer::addedToMap(const Map* map)
 
         //OE_INFO << LC << "Instances across = " << _renderer->_settings._vboTileSize << std::endl;
     }
-
-    buildStateSets();
 }
 
 void

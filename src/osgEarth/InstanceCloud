@@ -24,6 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Containers>
+#include <osgEarth/GLUtils>
 
 #include <osg/Geometry>
 #include <osg/GL>
@@ -50,11 +51,12 @@ namespace osgEarth
 
         struct InstancingData
         {
+            unsigned contextID;
             mutable DrawElementsIndirectCommand* commands;
-            GLuint commandBuffer;
+            mutable osg::ref_ptr<GLBuffer> commandBuffer;
             GLsizei commandBufferSize;
             GLuint pointsBuffer;
-            GLuint renderBuffer;
+            mutable osg::ref_ptr<GLBuffer> renderBuffer;
             GLint renderBufferTileSize;
             osg::Vec4Array* points;
             unsigned numX, numY;

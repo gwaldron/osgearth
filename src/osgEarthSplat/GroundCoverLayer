@@ -105,6 +105,8 @@ namespace osgEarth { namespace Splat
         //! Override layer open
         virtual Status openImplementation();
 
+        virtual Status closeImplementation();
+
         //! Get geometry for a tilekey
         virtual osg::Node* createNodeImplementation(const DrawContext& dc);
 
@@ -119,7 +121,7 @@ namespace osgEarth { namespace Splat
         virtual void releaseGLObjects(osg::State* state) const;
 
     protected:
-        virtual ~GroundCoverLayer() { }
+        virtual ~GroundCoverLayer();
 
         LayerReference<LandCoverDictionary> _landCoverDict;
         LayerReference<LandCoverLayer> _landCoverLayer;

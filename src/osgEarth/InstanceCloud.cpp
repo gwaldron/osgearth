@@ -25,6 +25,7 @@
 #include <osgEarth/Registry>
 #include <osg/Program>
 #include <osg/GLExtensions>
+#include <osg/GraphicsContext>
 #include <osgUtil/Optimizer>
 #include <iterator>
 
@@ -36,8 +37,6 @@ using namespace osgEarth;
 
 #undef LC
 #define LC "[InstanceCloud] "
-
-//...................................................................
 
 #define BINDING_COMMAND_BUFFER 0
 #define BINDING_RENDER_BUFFER 1
@@ -51,9 +50,6 @@ using namespace osgEarth;
 InstanceCloud::InstancingData::InstancingData() :
     commands(NULL),
     points(NULL),
-    commandBuffer(-1),
-    pointsBuffer(-1),
-    renderBuffer(-1),
     numTilesAllocated(0u),
     ssboOffsetAlignment(-1)
 {
@@ -68,6 +64,7 @@ InstanceCloud::InstancingData::~InstancingData()
         delete [] commands;
         commands = NULL;
     }
+    releaseGLObjects(NULL);
 }
 
 void
@@ -78,6 +75,10 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
         OE_DEBUG << LC << "Reallocate from " << numTilesAllocated << " to " << numTiles << " tiles" << std::endl;
 
         releaseGLObjects(state);
+
+        // this is OK b/c there should only be one InstanceCloud per context id..
+        // save it for release time.
+        contextID = state->getContextID();
 
         osg::GLExtensions* ext = state->get<osg::GLExtensions>();
 
@@ -105,13 +106,15 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
         commandBufferSize = numTilesAllocated * sizeof(DrawElementsIndirectCommand);
         commandBufferSize = align(commandBufferSize, ssboOffsetAlignment);
 
-        ext->glGenBuffers(1, &commandBuffer);
-        ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, commandBuffer);
+        commandBuffer = new GLBuffer();
+        ext->glGenBuffers(1, &commandBuffer->_handle);
+        ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, commandBuffer->_handle);
         _glBufferStorage(
             GL_SHADER_STORAGE_BUFFER,
             commandBufferSize,
             NULL,                    // uninitialized memory
             GL_DYNAMIC_STORAGE_BIT); // so we can reset each frame
+        state->getGraphicsContext()->add(new GLBufferReleaser(commandBuffer.get()));
         
         // Buffer for the output data (culled points, written by compute shader)
         // Align properly to satisfy glBindBufferRange
@@ -119,39 +122,31 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
 
         OE_DEBUG << "NumInstances="<<numInstances<< ", renderBufferTileSize=" << renderBufferTileSize << ", cmdBufferSize=" << commandBufferSize << std::endl;
 
-        ext->glGenBuffers(1, &renderBuffer);
-        ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderBuffer);
+        renderBuffer = new GLBuffer();
+        ext->glGenBuffers(1, &renderBuffer->_handle);
+        ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderBuffer->_handle);
         _glBufferStorage(
             GL_SHADER_STORAGE_BUFFER, 
             numTilesAllocated * renderBufferTileSize,
             NULL,   // uninitialized memory
             0);     // only GPU will write to this buffer
+        state->getGraphicsContext()->add(new GLBufferReleaser(renderBuffer.get()));
     }
 }
 
 void
 InstanceCloud::InstancingData::releaseGLObjects(osg::State* state) const
 {
-    if (state)
+    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+
+    if (commands)
     {
-        osg::GLExtensions* ext = state->get<osg::GLExtensions>();
-
-        if (commands)
-        {
-            delete[] commands;
-            commands = NULL;
-        }
-
-        if (commandBuffer >= 0)
-            ext->glDeleteBuffers(1, &commandBuffer);
-
-        if (renderBuffer >= 0)
-            ext->glDeleteBuffers(1, &renderBuffer);
+        delete[] commands;
+        commands = NULL;
     }
-    else
-    {
-        // wut?
-    }
+
+    commandBuffer = NULL;
+    renderBuffer = NULL;
 }
 
 InstanceCloud::InstanceCloud()
@@ -224,7 +219,7 @@ InstanceCloud::preCull(osg::RenderInfo& ri)
 
     // Reset all the instance counts to zero by copying the empty
     // prototype buffer to the GPU
-    ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _data.commandBuffer);
+    ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _data.commandBuffer->_handle);
 
     ext->glBufferSubData(
         GL_SHADER_STORAGE_BUFFER, 
@@ -233,9 +228,9 @@ InstanceCloud::preCull(osg::RenderInfo& ri)
         &_data.commands[0]);
 
     // Bind our SSBOs to their respective layout indices in the shader
-    ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_COMMAND_BUFFER, _data.commandBuffer);
+    ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_COMMAND_BUFFER, _data.commandBuffer->_handle);
 
-    ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_RENDER_BUFFER, _data.renderBuffer);
+    ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_RENDER_BUFFER, _data.renderBuffer->_handle);
 }
 
 void
@@ -286,16 +281,16 @@ InstanceCloud::Renderer::drawImplementation(osg::RenderInfo& ri, const osg::Draw
         osg::GLBufferObject* ebo = geom->getPrimitiveSet(0)->getOrCreateGLBufferObject(state.getContextID());
         state.bindElementBufferObject(ebo);
 
-        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_COMMAND_BUFFER, _data->commandBuffer);
+        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_COMMAND_BUFFER, _data->commandBuffer->_handle);
 
-        ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _data->commandBuffer);
+        ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _data->commandBuffer->_handle);
     }
 
     // activate the "nth" tile in the render buffer:
     ext->glBindBufferRange(
         GL_SHADER_STORAGE_BUFFER, 
         BINDING_RENDER_BUFFER,
-        _data->renderBuffer, 
+        _data->renderBuffer->_handle, 
         _data->tileToDraw * _data->renderBufferTileSize,
         _data->renderBufferTileSize);
 

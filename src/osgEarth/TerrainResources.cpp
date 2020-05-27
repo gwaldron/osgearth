@@ -151,7 +151,7 @@ TerrainResources::releaseTextureImageUnit(int unit)
 {
     Threading::ScopedMutexLock exclusiveLock( _reservedUnitsMutex );
     _globallyReservedUnits.erase( unit );
-    OE_INFO << LC << "Texture unit " << unit << " released\n";
+    OE_INFO << LC << "Texture unit " << unit << " released" << std::endl;
 }
 
 void
@@ -213,9 +213,17 @@ TextureImageUnitReservation::TextureImageUnitReservation()
 
 TextureImageUnitReservation::~TextureImageUnitReservation()
 {
+    release();
+}
+
+void
+TextureImageUnitReservation::release()
+{
     osg::ref_ptr<TerrainResources> res;
     if (_unit >= 0 && _res.lock(res))
     {
         res->releaseTextureImageUnit(_unit, _layer);
+        _unit = -1;
+        _layer = 0L;
     }
 }

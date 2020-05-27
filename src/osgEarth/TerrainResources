@@ -114,6 +114,7 @@ namespace osgEarth
         virtual ~TextureImageUnitReservation();
         int unit() const { return _unit; }
         bool valid() const { return _unit >= 0; }
+        void release();
     private:
         int _unit;
         osg::observer_ptr<TerrainResources> _res;

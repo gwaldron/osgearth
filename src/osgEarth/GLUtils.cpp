@@ -228,6 +228,29 @@ GL3RealizeOperation::operator()(osg::Object* object)
 }
 
 
+
+GLBufferReleaser::GLBufferReleaser(GLBuffer* buffer) : 
+    osg::GraphicsOperation("osgEarth::GLBufferReleaser", true),
+    _buffer(buffer),
+    _handle(buffer->_handle)
+{
+    //nop
+}
+
+void
+GLBufferReleaser::operator () (osg::GraphicsContext* context)
+{
+    if (!_buffer.valid() && _handle != (GLuint)~0 && context && context->getState())
+    {
+        OE_DEBUG << "Note: glDeleteBuffers(1, " << _handle << ")" << std::endl;
+        osg::GLExtensions* ext = context->getState()->get<osg::GLExtensions>();
+        ext->glDeleteBuffers(1, &_handle);
+        _handle = (GLuint)~0;
+        setKeep(false);
+    }
+}
+
+
 #ifndef OE_HAVE_BINDIMAGETEXTURE
 using namespace osg;
 

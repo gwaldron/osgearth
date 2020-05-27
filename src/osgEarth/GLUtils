@@ -27,6 +27,7 @@
 #include <osgEarth/optional>
 #include <osg/StateSet>
 #include <osg/OperationThread>
+#include <osg/GraphicsContext>
 
 namespace osgEarth
 {
@@ -69,7 +70,25 @@ namespace osgEarth
     {
         virtual void operator()(osg::Object*);
     };
+
+    struct GLBuffer : public osg::Referenced
+    {
+        mutable GLuint _handle;
+    };
+
+    /**
+     * Operation that will automatically delete a GL buffer 
+     * when its container goes out of scope
+     */
+    struct GLBufferReleaser : public osg::GraphicsOperation
+    {
+        osg::observer_ptr<GLBuffer> _buffer;
+        GLuint _handle;
+        GLBufferReleaser(GLBuffer* buffer);
+        void operator () (osg::GraphicsContext* context);
+    };
 }
+
 
 #ifndef GL_DYNAMIC_STORAGE_BIT
 #define GL_DYNAMIC_STORAGE_BIT 0x0100

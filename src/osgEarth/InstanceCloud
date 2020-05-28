@@ -153,7 +153,7 @@ namespace osgEarth
 
             InstancingData();
             ~InstancingData();
-            void allocateGLObjects(osg::State* state, unsigned numTiles);
+            bool allocateGLObjects(osg::State* state, unsigned numTiles);
             void releaseGLObjects(osg::State* state) const;
         };
 
@@ -172,7 +172,8 @@ namespace osgEarth
        
         //! Allocates memory as needed and initializes GPU buffers.
         //! Run this any time the tile batch changes.
-        void allocateGLObjects(osg::RenderInfo&, unsigned numTiles);
+        //! Returns true if new memory was allocated and old data is now invalid.
+        bool allocateGLObjects(osg::RenderInfo&, unsigned numTiles);
 
         //! Prepare to render a new frame.
         void newFrame(osg::RenderInfo&);
@@ -221,27 +222,6 @@ namespace osgEarth
     };
 
     /**
-     * Texture atlas using arrays.
-     *
-     * The array will automatically take on the size of the first image
-     * you add UNLESS you set the size beforehand. The format will be
-     * GL_RGBA / GL_UNSIGNED_BYTE.
-     */
-    class OSGEARTH_EXPORT TextureAtlas : public osg::Texture2DArray
-    {
-    public:
-        TextureAtlas();
-
-        //TODO: unique ID so we dont' duplicate images
-        void addImage(osg::Image* image);
-
-        void setSize(int s, int t);
-
-    protected:
-        virtual ~TextureAtlas() { }
-    };
-
-    /**
     * Object that combines multiple models into a single
     * GL_TRIANGLES geometry. This does two things:
     * 1) Each time you call add(), the model is stripped down
@@ -262,25 +242,18 @@ namespace osgEarth
         //! New cloud.
         GeometryCloud();
 
-        //! Set an existing atlas to use for textures. If you don't
-        //! call this it the utility will make a new one.
-        void setAtlas(TextureAtlas*);
-
         //! Add a model to be incorporated
         //! "align" means to pad the cloud before adding so that the index
         //! or the first vertex in this node is a multiple of the alignment
         //! number. This is necessary for shaders that use gl_VertexID as
         //! a modulus.
-        //! Returns the atlas index of the first image added from this node,
-        //! or -1 if no images were added.
-        int add(osg::Node*, unsigned alignment =0);
+        //! Returns an object containing a mini-atlas of all
+        //! the textures found in the node.
+        Texture* add(osg::Node*, unsigned alignment =0);
 
         //! After calling finalize, this will return the unified geometry.
         osg::Geometry* getGeometry() const { return _geom.get(); }
         osg::Geometry* releaseGeometry() { return _geom.release(); }
-
-        //! After calling finalize(), this will return the unified atlas.
-        osg::Texture* getAtlas() const { return _atlas.get(); }
 
         //! How many models were added
         unsigned getNumDrawCommands() const { return _vertexOffsets.size(); }
@@ -301,12 +274,10 @@ namespace osgEarth
         bool pushStateSet(osg::Node&);
         void popStateSet();
 
-        osg::ref_ptr<TextureAtlas> _atlas;
         osg::fast_back_stack<osg::Texture*> _textureStack;
         osg::fast_back_stack<osg::Matrix> _matrixStack;
         typedef Util::UnorderedMap<osg::Texture*, int> AtlasIndexLUT;
-        AtlasIndexLUT _atlasLUT;
-        std::vector<osg::ref_ptr<osg::Image> > _imagesToAdd;
+        AtlasIndexLUT _textureLayers;
 
         osg::DrawElementsUShort* _primset;
         osg::Vec3Array* _verts;
@@ -319,6 +290,8 @@ namespace osgEarth
 
         //traversal data
         unsigned _numElements;
+        int _texLayer;
+        std::vector<osg::ref_ptr<osg::Texture> > _texturesToAdd;
     };
 }
 

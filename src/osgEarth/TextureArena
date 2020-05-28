@@ -33,7 +33,13 @@
 namespace osgEarth
 {
     /**
-     * A texture that can be resident (or not) on multiple levels.
+     * A texture that can be GPU-resident or not. Managed by a TextureArena.
+     *
+     * Stages of residency:
+     * 1. Not resident - only the URI is set
+     * 2. CPU resident - osg::Image is loaded into memory
+     * 3. GPU resident - GPU handle is in GPU table; GPU memory might not be allocated
+     * 4. GPU commited - GPU handle active, GPU texture fully available
      */
     class OSGEARTH_EXPORT Texture : public osg::Referenced
     {
@@ -49,24 +55,40 @@ namespace osgEarth
         GLuint64 getHandle() const { return _glhandle.isSet() ? _glhandle.get() : ~0ULL; }
     };
 
-#if 1
+
+    /**
+     * TextureArena is a dynamic bindless texture atlas. Add as many texture
+     * as you want and control memory management by activating and deactivating
+     * them.
+     *
+     * Call add() to have the arena start managing a Texture.
+     * After that, you can call activate() or deactivate() on individual textures
+     * to control their availability on the GPU.
+     */
     class OSGEARTH_EXPORT TextureArena : public osg::StateAttribute
     {
     public:
         META_StateAttribute(osgEarth, TextureArena,
             (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY+8675309));
 
+        //! Construct an empty arena.
         TextureArena();
 
-        virtual ~TextureArena();
-
+        //! Adds a texture to the arena. On next apply() GL handles will allocate.
+        //! You only need to call this once for each texture.
         void add(Texture* tex);
 
+        //! Makes a texture fully available on the GPU.
         void activate(Texture* tex);
 
+        //! Removes the texture from the GPU.
         void deactivate(Texture* tex);
 
+        //! Whether compileGLObjects has been called.
         bool isCompiled() const { return _compiled; }
+
+        //! destruct
+        virtual ~TextureArena();
 
     public: // StateAttribute
         void apply(osg::State&) const;
@@ -76,52 +98,11 @@ namespace osgEarth
         int compare(const osg::StateAttribute& rhs) const { return -1; }
 
     private:
-        TextureArena(const TextureArena&, const osg::CopyOp&) { }
+        //! disasble copy
+        TextureArena(const TextureArena&, const osg::CopyOp&) { } 
 
+        //! allocate handles for all add()ed textures
         void allocate(Texture* texture, osg::State& state) const;
-#if 0
-        struct ToAdd
-        {
-            osg::ref_ptr<osg::Texture> _texture;
-        };
-
-        struct GCData : public osg::Referenced
-        {
-            GCData();
-            //osg::ref_ptr<GLTexture> _tex;
-            //bool valid() const { return _tex.valid() && _tex->_handle != (GLuint)~0; }
-        };
-
-        struct TextureSet : public osg::Referenced
-        {
-            TextureSet(const Layout&);
-
-            Locator add(osg::Image*);
-            void remove(const Locator& locator);
-            void allocate(Locator& locator);
-
-            mutable osg::buffered_object<osg::ref_ptr<GCData> > _cxdata;
-
-            void apply(osg::State&) const;
-            void resizeGLObjectBuffers(unsigned);
-            void releaseGLObjects(osg::State*) const;
-
-            GLenum _target;
-            GLenum _internalFormat;
-            Layout _layout;
-            GLsizei _miplevels, _capacity;
-            std::queue<Locator> _freelist;
-            unsigned _maxSize;
-
-            int _frame;
-            mutable std::vector<osg::ref_ptr<Texture> > _toAdds;
-            mutable std::vector<osg::ref_ptr<Texture> > _toRemoves;
-        };
-
-        std::vector<Layout> _layouts;
-
-        std::unordered_map<Layout*, osg::ref_ptr<TextureSet> > _sets;
-#endif
 
         mutable std::vector<osg::ref_ptr<Texture> > _toAdd;
         mutable std::vector<osg::ref_ptr<Texture> > _toActivate;
@@ -129,91 +110,6 @@ namespace osgEarth
 
         mutable bool _compiled;
     };
-#else
-
-class OSGEARTH_EXPORT TextureArena : public osg::TextureAttribute
-{
-public:
-    META_StateAttribute(osgEarth, TextureArena, TEXTURE);
-
-    TextureArena();
-    virtual ~TextureArena();
-
-    struct OSGEARTH_EXPORT Locator
-    {
-        Locator();
-        bool _valid;
-        GLuint _set;
-        GLuint _xoffset, _yoffset, _zoffset;
-        GLuint _width, _height, _depth;
-        GLuint64 _handle;
-    };
-
-    Locator add(osg::Image*);
-
-    void remove(const Locator& id);
-
-public: // StateAttribute
-    void apply(osg::State&) const;
-    void compileGLObjects(osg::State&) const;
-    void resizeGLObjectBuffers(unsigned);
-    void releaseGLObjects(osg::State*) const;
-    int compare(const osg::StateAttribute& rhs) const { return -1; }
-
-private:
-    TextureArena(const TextureArena&, const osg::CopyOp&) { }
-
-    struct Layout
-    {
-        int _s, _t;
-        GLenum _format, _type;
-        bool operator == (const Layout& rhs) const;
-    };
-
-    struct ToAdd
-    {
-        osg::ref_ptr<osg::Image> _image;
-        Locator _locator;
-    };
-
-    struct GCData : public osg::Referenced
-    {
-        GCData();
-        osg::ref_ptr<GLTexture> _tex;
-        bool valid() const { return _tex.valid() && _tex->_handle != (GLuint)~0; }
-    };
-
-    struct TextureSet : public osg::Referenced
-    {
-        TextureSet(const Layout&);
-
-        Locator add(osg::Image*);
-        void remove(const Locator& locator);
-        void allocate(Locator& locator);
-
-        mutable osg::buffered_object<osg::ref_ptr<GCData> > _cxdata;
-
-        void apply(osg::State&) const;
-        void resizeGLObjectBuffers(unsigned);
-        void releaseGLObjects(osg::State*) const;
-
-        GLenum _target;
-        GLenum _internalFormat;
-        Layout _layout;
-        GLsizei _miplevels, _capacity;
-        std::queue<Locator> _freelist;
-        unsigned _maxSize;
-
-        int _frame;
-        mutable std::vector<ToAdd> _toAdds;
-        mutable std::vector<Locator> _toRemoves;
-    };
-
-    std::vector<Layout> _layouts;
-
-    std::unordered_map<Layout*, osg::ref_ptr<TextureSet> > _sets;
-};
-#endif
 }
 
 #endif // OSGEARTH_TEXTURE_ARENA_H

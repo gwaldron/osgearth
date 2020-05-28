@@ -9,12 +9,12 @@
             <asset url="tree_transpiration.png" width="15.0" height="18.0"/>
             <asset url="tree_pine.png" width="15.0" height="30.0"/>
             <asset url="tree_sycamore_2.png" width="15.0" height="18.0"/>
-            <!--
+            
             <asset model="D:/data/models/OakTree/redoak.osgb"
                    url="D:/data/models/OakTree/redoak_low.png" 
                    top_url="D:/data/models/OakTree/redoak_low_top.png"
-                   weight="7"/>
-                   -->
+                   weight="3"/>
+
         </biome>
 
     </biomes>

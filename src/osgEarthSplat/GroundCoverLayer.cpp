@@ -44,7 +44,7 @@
 
 #define LC "[GroundCoverLayer] " << getName() << ": "
 
-#define ATLAS_SAMPLER "oe_gc_atlas"
+//#define ATLAS_SAMPLER "oe_gc_atlas"
 #define NOISE_SAMPLER "oe_gc_noiseTex"
 
 #ifndef GL_MULTISAMPLE
@@ -56,21 +56,22 @@ using namespace osgEarth::Splat;
 REGISTER_OSGEARTH_LAYER(groundcover, GroundCoverLayer);
 REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 
-#define USE_TEX_ARENA
-
 // TODO LIST
 //
-//  - Reduce the size of the RenderBuffer structure
+//  - (IN PROGRESS) texture management as the catalog gets bigger (paged arrays or different sizes?)
+
+//  - Properly delete all GL memory .. use the Releaser on the GC thread?
+//  - Do NOT regenerate every tile every time the tilebatch changes!
 //  - include a "model range" in the InstanceBuffer...?
-//  - fade between model/imposter?
 //  - thin out distant instances automatically in large tiles
 //  - cull by "horizon" .. e.g., the lower you are, the fewer distant trees...?
-//  - texture management as the catalog gets bigger (paged arrays or different sizes?)
-//  - variable spacing or clumping by landcovergroup or asset...?
 //  - fix the random asset select with weighting...just not really working well.
-//  - deal with blending to fade in 3d models
 //  - programmable SSE for models?
-//  - (DONE - I think - GLUtils::deleteGLBuffer) Properly delete all GL memory (reimplement as osg::BufferObject's)
+//  - deal with blending to fade in 3d models
+//  - Reduce the size of the RenderBuffer structure
+//  - variable spacing or clumping by landcovergroup or asset...?
+//  - make the noise texture bindless as well? Stick it in the arena? Why not.
+
 //  - (DONE .. had to call glBindBufferRange each frame) Two GC layers at the same time doesn't work! (grass + trees)
 //  - (DONE) FIX: IC's atlas is hard-coded to texture image unit 11. Allocate it dynamically.
 //  - (DONE .. the lighting shader was executing in the wrong order) Lighting
@@ -428,27 +429,17 @@ GroundCoverLayer::addedToMap(const Map* map)
 
     // Now that we have access to all the layers we need...
 
-
     // Make the texture atlas from the images found in the asset list
-    _renderer->_atlas = new TextureAtlas();
-
-#ifdef USE_TEX_ARENA
     _renderer->_texArena = new TextureArena();
 
     // Add to the stateset so it gets compiled and applied
     getOrCreateStateSet()->setAttribute(_renderer->_texArena.get());
-#endif
 
-    // Load asset data from the configuration. This will populate
-    // _liveAssets as well as the _imagesToAddToAtlas.
-#ifdef USE_TEX_ARENA
+    // Load asset data from the configuration.
     loadAssets(_renderer->_texArena.get());
-#else
-    loadAssets(_renderer->_atlas.get());
-#endif
 
     // Prepare model assets and add their textures to the atlas:
-    _renderer->_geomCloud = createGeometryCloud(_renderer->_atlas.get());
+    _renderer->_geomCloud = createGeometryCloud(_renderer->_texArena.get());
 
     // bind the cloud's stateset to this layer.
     if (_renderer->_geomCloud.valid())
@@ -457,14 +448,6 @@ GroundCoverLayer::addedToMap(const Map* map)
         if (cloudSS)
             getOrCreateStateSet()->merge(*cloudSS);
     }
-
-    // Install LUTs on the compute shader:
-    // TODO: DEFER this until the arena is properly initialized.
-#if 0
-    osg::ref_ptr<osg::Shader> lutShader = createLUTShader();
-    lutShader->setName("GroundCover CS LUT");
-    _renderer->_generateProgram->addShader(lutShader.get());
-#endif
 }
 
 void
@@ -483,14 +466,6 @@ GroundCoverLayer::setTerrainResources(TerrainResources* res)
 
     if (res)
     {
-        if (_atlasBinding.valid() == false)
-        {
-            if (res->reserveTextureImageUnitForLayer(_atlasBinding, this, "GroundCover texture atlas") == false)
-            {
-                OE_WARN << LC << "No texture unit available for ground cover texture atlas\n";
-            }
-        }
-
         if (_noiseBinding.valid() == false)
         {
             if (res->reserveTextureImageUnitForLayer(_noiseBinding, this, "GroundCover noise sampler") == false)
@@ -537,8 +512,9 @@ void
 GroundCoverLayer::buildStateSets()
 {
     // assert we have the necessary prereqs:
-    if (_atlasBinding.valid() == false) {
-        OE_DEBUG << LC << "buildStateSets deferred.. bindings not reserved" << std::endl;
+
+    if (!_noiseBinding.valid()) {
+        OE_DEBUG << LC << "buildStateSets deferred.. noise texture not yet bound" << std::endl;
         return;
     }
 
@@ -614,13 +590,10 @@ GroundCoverLayer::buildStateSets()
     else
         stateset->removeMode(GL_MULTISAMPLE);
 
-    // The billboard texture atlas:
-    stateset->setTextureAttribute(_atlasBinding.unit(), _renderer->_atlas.get());
-    stateset->addUniform(new osg::Uniform(ATLAS_SAMPLER, _atlasBinding.unit()));
-
     // Install the land cover shaders on the state set
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     vp->setName("GroundCover");
+    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
 
     // Load shaders particular to this class
     loadRenderingShaders(vp, getReadOptions());
@@ -761,7 +734,7 @@ GroundCoverLayer::createNodeImplementation(const DrawContext& dc)
 {
     osg::Node* node = NULL;
     if (_debug)
-        node = makeBBox(*dc._geomBBox, *dc._key);
+        node = makeBBox(*dc._tileBBox, *dc._key);
     return node;
 }
 
@@ -906,9 +879,11 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
 
         if (needsGenerate)
         {
+            ds._numTilesGenerated = 0u;
             instancer->generate_begin(ri);
             tiles->drawTiles(ri);
             instancer->generate_end(ri);
+            //OE_INFO << "Re-generated " << ds._numTilesGenerated << "/" << tiles->size() << " tiles" << std::endl;
         }
 
         if (needsCull)
@@ -1025,13 +1000,32 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
 void
 GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const PatchLayer::DrawContext& tile)
 {
-    const ZoneSA* sa = ZoneSA::extract(ri.getState());
-    DrawState& ds = _drawStateBuffer[ri.getContextID()];
-    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
+    // make sure we don't have a shader error or NULL pcp
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
     if (!pcp)
         return;
 
+    // Per-GC buffer:
+    DrawState& ds = _drawStateBuffer[ri.getContextID()];
+
+    // TODO: There was an attempt to only regenerate tiles that have changed;
+    // but the generator builds the entire instance Buffer at once, so
+    // we will have to re-think this
+
+    //if (_pass == PASS_GENERATE)
+    //{
+    //    // Decide whether this tile really needs regen:
+    //    DrawState::TileRevisions::iterator i = ds._tileRevisions.find(*tile._key);
+    //    if (i != ds._tileRevisions.end())
+    //    {
+    //        if (i->second == tile._revision) // already up to date ... early bail.
+    //            return;
+    //    }
+    //}
+
+    // Find our instancer:
+    const ZoneSA* sa = ZoneSA::extract(ri.getState());
+    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
     DrawState::UniformState& u = ds._uniforms[pcp];
 
     if (_pass == PASS_GENERATE)
@@ -1054,6 +1048,10 @@ GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const PatchLayer::Dra
             ext->glUniform1fv(u._generateDataUL, 5, &u._generateData[0]);
 
             instancer->generate_tile(ri);
+
+            ++ds._numTilesGenerated;
+
+            //ds._tileRevisions[*tile._key] = tile._revision;
         }
     }
 
@@ -1066,6 +1064,7 @@ GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const PatchLayer::Dra
     else // if (_pass == PASS_DRAW)
     {
         // NOP
+        OE_INFO << "Should not be here." << std::endl;
     }
 
     ++u._tileCounter;
@@ -1177,9 +1176,9 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                 data->_asset = &asset;
                 data->_numInstances = 0;
                 data->_codes = codes;
-                data->_sideImageAtlasIndex = -1;
-                data->_topImageAtlasIndex = -1;
-                data->_modelAtlasIndex = -1;
+                //data->_sideImageAtlasIndex = -1;
+                //data->_topImageAtlasIndex = -1;
+                //data->_modelAtlasIndex = -1;
                 data->_modelID = -1;
                 data->_assetID = -1;
 
@@ -1383,6 +1382,7 @@ GroundCoverLayer::createLUTShader() const
                 << "    oe_gc_LandCoverGroup("
                 << startingAssetIndex << ", "
                 << numAssetsInLandCoverGroup << ", " << fill << ")";
+                //<< " // " << currentLandCoverGroup->options().landCoverClasses().get();
 
             ++numLandCoverGroupsAdded;
 
@@ -1428,17 +1428,15 @@ GroundCoverLayer::createLUTShader() const
             assetBuf << "    oe_gc_Asset("
                 << data->_assetID
                 << ", " << data->_modelID
-                << ", " << (data->_modelTex.valid() ? data->_modelTex->getHandle() : 0)
-                << ", " << (data->_sideBillboardTex.valid() ? data->_sideBillboardTex->getHandle() : 0)
-                << ", " << (data->_topBillboardTex.valid() ? data->_topBillboardTex->getHandle() : 0)
-                //<< ", " << data->_modelAtlasIndex
-                //<< ", " << data->_sideImageAtlasIndex
-                //<< ", " << data->_topImageAtlasIndex
+                << ", " << (data->_modelTex.valid() ? data->_modelTex->getHandle() : 0) << "UL"
+                << ", " << (data->_sideBillboardTex.valid() ? data->_sideBillboardTex->getHandle() : 0) << "UL"
+                << ", " << (data->_topBillboardTex.valid() ? data->_topBillboardTex->getHandle() : 0) << "UL"
                 << ", " << width
                 << ", " << height
                 << ", " << sizeVariation
                 << ", " << data->_asset->options().fill().get()
                 << ")";
+                //<< " // " << data->_asset->options().sideBillboardURI()->base();
 
             ++data->_numInstances;
 
@@ -1461,6 +1459,7 @@ GroundCoverLayer::createLUTShader() const
             << startingAssetIndex << ", "
             << numAssetsInLandCoverGroup
             << ", " << fill << ")";
+            //<< " // " << currentLandCoverGroup->options().landCoverClasses().get();
 
         ++numLandCoverGroupsAdded;
     }
@@ -1475,7 +1474,7 @@ GroundCoverLayer::createLUTShader() const
         "}; \n"
         "const oe_gc_LandCoverGroup oe_gc_landCoverGroups[" << numLandCoverGroupsAdded << "] = oe_gc_LandCoverGroup[" << numLandCoverGroupsAdded << "]( \n"
         << landCoverGroupBuf.str()
-        << "); \n";
+        << "\n); \n";
 
     std::stringstream assetWrapperBuf;
     assetWrapperBuf <<
@@ -1495,7 +1494,7 @@ GroundCoverLayer::createLUTShader() const
         "}; \n"
         "const oe_gc_Asset oe_gc_assets[" << numAssetInstancesAdded << "] = oe_gc_Asset[" << numAssetInstancesAdded << "]( \n"
         << assetBuf.str()
-        << "); \n";
+        << "\n); \n";
 
     // next, create the master LUT.
     std::stringstream lutbuf;
@@ -1547,6 +1546,7 @@ GroundCoverLayer::createLUTShader() const
     shader->setShaderSource(
         Stringify() 
         << "#version " GLSL_VERSION_STR "\n"
+        << "#extension GL_ARB_gpu_shader_int64 : enable\n"
         << lutbuf.str() << "\n");
 
     return shader;
@@ -1559,12 +1559,9 @@ GroundCoverLayer::getZoneStateSet(unsigned index) const
 }
 
 GeometryCloud*
-GroundCoverLayer::createGeometryCloud(TextureAtlas* atlas) const
+GroundCoverLayer::createGeometryCloud(TextureArena* arena) const
 {
     GeometryCloud* geomCloud = new GeometryCloud();
-
-    // assign our pre-existing texture atlas so they will be combined into one.
-    geomCloud->setAtlas(atlas);
 
     // First entry is the parametric group. Any instance without a 3D model,
     // or that is out of model range, gets rendered as a parametric billboard.
@@ -1573,7 +1570,7 @@ GroundCoverLayer::createGeometryCloud(TextureAtlas* atlas) const
 
     // Add each 3D model to the geometry cloud and update the texture
     // atlas along the way.
-    UnorderedMap<int, int> visited;
+    UnorderedMap<int, Texture*> visited;
     for(AssetDataVector::const_iterator a = _liveAssets.begin();
         a != _liveAssets.end();
         ++a)
@@ -1582,19 +1579,22 @@ GroundCoverLayer::createGeometryCloud(TextureAtlas* atlas) const
         if (asset->_modelID >= 0)
         {
             int atlasIndex = -1;
-            UnorderedMap<int, int>::iterator i = visited.find(asset->_modelID);
+            auto i = visited.find(asset->_modelID);
             if (i == visited.end())
             {
                 // adds the model, and returns the texture atlas index of the
                 // FIRST discovered texture from the model.
-                atlasIndex = geomCloud->add(asset->_model.get());
-                visited[asset->_modelID] = atlasIndex;
+                Texture* tex = geomCloud->add(asset->_model.get());
+                visited[asset->_modelID] = tex;
+                if (tex)
+                    arena->add(tex);
+
+                asset->_modelTex = tex;
             }
             else
             {
-                atlasIndex = i->second;
+                asset->_modelTex = i->second;
             }
-            asset->_modelAtlasIndex = atlasIndex;
         }
     }
 

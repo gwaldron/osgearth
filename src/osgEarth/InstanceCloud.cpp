@@ -130,7 +130,6 @@ InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::G
     _requiredSize = numTiles * sizeof(Data);
     if (_requiredSize > _allocatedSize)
     {
-        OE_INFO << "Allocating " << numTiles << " tiles" << std::endl;
         release();
         if (_buf) delete [] _buf;
 
@@ -168,7 +167,7 @@ InstanceCloud::InstanceBuffer::allocate(unsigned numInstances, GLsizei alignment
         _glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, NULL, GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT);  
         ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bindingIndex, _handle);
     }
-    clear(ext);
+    //clear(ext);
 }
 
 void
@@ -221,7 +220,7 @@ InstanceCloud::InstancingData::~InstancingData()
     //nop
 }
 
-void
+bool
 InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned numTiles)
 {
     osg::GLExtensions* ext = state->get<osg::GLExtensions>();
@@ -232,14 +231,19 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
         OE_DEBUG << "SSBO Alignment = " << _alignment << std::endl;
     }
 
-    GLuint numInstances = numTiles * _numX * _numY;
+    if (numTiles > _numTilesAllocated)
+    {
+        GLuint numInstances = numTiles * _numX * _numY;
 
-    _commandBuffer.allocate(_geom.get(), _alignment, ext);
-    _instanceBuffer.allocate(numInstances, _alignment, ext);
-    _tileBuffer.allocate(numTiles, _alignment, ext);
-    _renderListBuffer.allocate(numInstances, _alignment, ext);
+        _commandBuffer.allocate(_geom.get(), _alignment, ext);
+        _instanceBuffer.allocate(numInstances, _alignment, ext);
+        _tileBuffer.allocate(numTiles, _alignment, ext);
+        _renderListBuffer.allocate(numInstances, _alignment, ext);
 
-    _numTilesAllocated = numTiles;
+        _numTilesAllocated = numTiles;
+    }
+
+    return true;
 }
 
 void
@@ -297,10 +301,10 @@ InstanceCloud::getNumInstancesPerTile() const
     return _data._numX * _data._numY;
 }
 
-void
+bool
 InstanceCloud::allocateGLObjects(osg::RenderInfo& ri, unsigned numTiles)
 {
-    _data.allocateGLObjects(ri.getState(), numTiles);
+    return _data.allocateGLObjects(ri.getState(), numTiles);
 }
 
 void
@@ -342,7 +346,10 @@ InstanceCloud::setMatrix(unsigned tileNum, const osg::Matrix& modelView)
 void
 InstanceCloud::generate_begin(osg::RenderInfo& ri)
 {
-    //nop
+    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+
+    // Reset the instance buffer so we can generate all new data
+    _data._instanceBuffer.clear(ext);
 }
 
 void
@@ -358,7 +365,8 @@ InstanceCloud::generate_end(osg::RenderInfo& ri)
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
     // read back the instance count from the generator.
-    // should be quick; it's only 4 bytes.
+    // should be quick; it's only 4 bytes....
+    // TODO: still a pipeline stall....
     ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
     _data._instanceBuffer.readHeader(ext);
     _data._numInstancesGenerated = _data._instanceBuffer._buf->_count;
@@ -479,69 +487,6 @@ InstanceCloud::Installer::apply(osg::Drawable& drawable)
 
 //...................................................................
 
-TextureAtlas::TextureAtlas() :
-    osg::Texture2DArray()
-{
-    setFilter(MIN_FILTER, NEAREST_MIPMAP_LINEAR);
-    setFilter(MAG_FILTER, LINEAR);
-    setWrap(WRAP_S, REPEAT);
-    setWrap(WRAP_T, REPEAT);
-    setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    //setMaxAnisotropy(4.0);
-
-    // Let the GPU do it since we only download this at startup
-    setUseHardwareMipMapGeneration(true);
-}
-
-void
-TextureAtlas::setSize(int s, int t)
-{
-    setTextureSize(s, t, 1);
-}
-
-void
-TextureAtlas::addImage(osg::Image* image)
-{
-    if (!image)
-        return;
-
-    osg::ref_ptr<osg::Image> temp;
-
-    // make sure the texture array is POT - required now for mipmapping to work
-    int s = getTextureWidth();
-    int t = getTextureHeight();
-    int r = getTextureDepth();
-
-    if (s == 0)
-    {
-        s = osgEarth::nextPowerOf2(image->s());
-        t = osgEarth::nextPowerOf2(image->t());
-        setTextureSize(s, t, r);
-    }
-
-    if(image->getPixelFormat() != GL_RGBA ||
-       image->getDataType() != GL_UNSIGNED_BYTE)
-    {
-        image = ImageUtils::convert(image, GL_RGBA, GL_UNSIGNED_BYTE);
-    }
-
-    if (image->s() != s || image->t() != t)
-    {
-        ImageUtils::resizeImage(image, s, t, temp);
-    }
-    else
-    {
-        temp = image;
-    }
-
-    temp->setInternalTextureFormat(GL_RGBA8);
-    setImage(r, temp.get());
-
-    setTextureSize(s, t, r+1);
-}
-
-//...................................................................
-
 GeometryCloud::GeometryCloud() :
     osg::NodeVisitor()
 {
@@ -570,17 +515,9 @@ GeometryCloud::GeometryCloud() :
     _geom->addPrimitiveSet(_primset);
 }
 
-void
-GeometryCloud::setAtlas(TextureAtlas* atlas)
-{
-    _atlas = atlas;
-}
-
-int
+Texture*
 GeometryCloud::add(osg::Node* node, unsigned alignment)
 {
-    unsigned prevAtlasSize = _atlas->getTextureDepth();
-
     // convert all primitive sets to GL_TRIANGLES
     osgUtil::Optimizer o;
     o.optimize(node, o.INDEX_MESH);
@@ -618,13 +555,66 @@ GeometryCloud::add(osg::Node* node, unsigned alignment)
     // traverse the model, consolidating arrays and rewriting texture indices
     // and counting elements indices
     _numElements = 0u;
+    _texLayer = 0;
+    _texturesToAdd.clear();
     node->accept(*this);
     _elementCounts.push_back(_numElements);
 
-    if (_atlas->getTextureDepth() > prevAtlasSize)
-        return prevAtlasSize;
-    else
-        return -1;
+    // finally, consolidate all discovered textures into a single "mini-atlas"
+    // and return it.
+    if (_texturesToAdd.empty())
+        return NULL; // nothing.
+
+    // find the largest image and make that the atlas size.
+    GLenum pixelFormat = GL_RED;
+    GLenum dataType = GL_FLOAT;
+    int width=0, height=0;
+    for(auto i : _texturesToAdd)
+    {
+        osg::Image* src = i->getImage(0);
+        width = osg::maximum(src->s(), width);
+        height = osg::maximum(src->t(), height);
+
+        // upgrade pixelformat/datatype as we go:
+        if (pixelFormat == GL_RED && src->getPixelFormat() != GL_RED)
+            pixelFormat = src->getPixelFormat();
+        if (pixelFormat == GL_RGB && src->getPixelFormat() == GL_RGBA)
+            pixelFormat = GL_RGBA;
+        if (dataType == GL_FLOAT && src->getDataType() != GL_FLOAT)
+            dataType = src->getDataType();
+    }
+
+    Texture* tex = new Texture();
+    tex->_image = new osg::Image();
+    tex->_image->allocateImage(width, height, _texturesToAdd.size(), pixelFormat, dataType);
+    ImageUtils::PixelWriter write(tex->_image.get());
+    osg::Vec4 value;
+
+    for(auto i : _texturesToAdd)
+    {
+        osg::Image* src = i->getImage(0);
+        int layer = _textureLayers[i.get()];
+
+        // resize if necessary to fit into the miniatlas:
+        osg::ref_ptr<osg::Image> sized;
+        if (src->s() == width && src->t() == height)
+            sized = src;
+        else
+            ImageUtils::resizeImage(src, width, height, sized);
+
+        // copy pixels into atlas
+        ImageUtils::PixelReader read(sized.get());    
+        for(int s=0; s<width; ++s)
+        {
+            for(int t=0; t<height; ++t)
+            {
+                read(value, s, t);
+                write(value, s, t, layer);
+            }
+        }
+    }
+
+    return tex;
 }
 
 namespace
@@ -672,11 +662,12 @@ GeometryCloud::pushStateSet(osg::Node& node)
         {
             _textureStack.push_back(tex);
             
-            AtlasIndexLUT::iterator i = _atlasLUT.find(tex);
-            if (i == _atlasLUT.end())
+            AtlasIndexLUT::iterator i = _textureLayers.find(tex);
+            if (i == _textureLayers.end())
             {
-                _atlasLUT[tex] = _atlas->getTextureDepth();
-                _atlas->addImage(tex->getImage(0));
+                _texturesToAdd.push_back(tex);
+                _textureLayers[tex] = _texLayer++;
+
             }
 
             return true;
@@ -749,8 +740,8 @@ GeometryCloud::apply(osg::Geometry& node)
         int layer = -1;
         if (!_textureStack.empty())
         {
-            AtlasIndexLUT::iterator i = _atlasLUT.find(_textureStack.back());
-            if (i != _atlasLUT.end())
+            AtlasIndexLUT::iterator i = _textureLayers.find(_textureStack.back());
+            if (i != _textureLayers.end())
             {
                 layer = i->second;
             }

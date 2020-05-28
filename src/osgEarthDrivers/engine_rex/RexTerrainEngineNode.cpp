@@ -132,6 +132,8 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     _frameLastUpdated(0u)
 {
     // Necessary for pager object data
+    // Note: Do not change this value. Apps depend on it to
+    // detect being inside a terrain traversal.
     this->setName("osgEarth.RexTerrainEngineNode");
 
     // unique ID for this engine:

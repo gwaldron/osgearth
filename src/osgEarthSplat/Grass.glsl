@@ -40,7 +40,7 @@ void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
 
 [break]
 #version 460
-$GLSL_DEFAULT_PRECISION_FLOAT
+#extension GL_ARB_gpu_shader_int64 : enable
 
 #pragma vp_name       Grass Render VS
 #pragma vp_entryPoint oe_Grass_main
@@ -74,6 +74,7 @@ out vec4 oe_layer_tilec;
 
 // Output texture coordinates to the fragment shader
 out vec3 oe_gc_texCoord;
+flat out uint64_t oe_gc_atlasSampler;
 
 uniform float osg_FrameTime; // OSG frame time (seconds) used for wind animation
 
@@ -118,7 +119,7 @@ void oe_Grass_parametric(inout vec4 vertex_view)
     float nRange = clamp(-vertex_view.z/maxRange, 0.0, 1.0);
 
     // find the texture atlas index:
-    oe_gc_texCoord.z = float(render[i].sideIndex);
+    oe_gc_atlasSampler = render[i].sideSampler;
 
     // make the grass smoothly disappear in the distance
     float falloff = clamp(2.0-(nRange + oe_noise[NOISE_SMOOTH]), 0, 1);
@@ -251,6 +252,9 @@ void oe_Grass_model(inout vec4 vertex_view)
 
     // TODO: don't hard-code this..? or meh
     oe_gc_texCoord.xyz = gl_MultiTexCoord7.xyz;
+
+    // pick the sampler
+    oe_gc_atlasSampler = render[i].modelSampler;
 }
 
 void oe_Grass_main(inout vec4 vertex_view)
@@ -263,8 +267,8 @@ void oe_Grass_main(inout vec4 vertex_view)
 
 
 [break]
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
+#version 430
+#extension GL_ARB_gpu_shader_int64 : enable
 
 #pragma vp_name Grass frag shader
 #pragma vp_entryPoint oe_Grass_FS
@@ -279,8 +283,9 @@ uniform mat4 OE_GROUNDCOVER_COLOR_MATRIX ;
 in vec4 oe_layer_tilec;
 #endif
 
-uniform sampler2DArray oe_gc_atlas;
+//uniform sampler2DArray oe_gc_atlas;
 in vec3 oe_gc_texCoord;
+flat in uint64_t oe_gc_atlasSampler;
 vec3 vp_Normal;
 
 uniform float oe_gc_maxAlpha;
@@ -288,11 +293,11 @@ uniform int oe_gc_useAlphaToCoverage;
 
 void oe_Grass_FS(inout vec4 color)
 {
-    if (oe_gc_texCoord.z < 0.0)
-        discard;
-
-    // paint the texture
-    color *= texture(oe_gc_atlas, oe_gc_texCoord);
+    if (oe_gc_atlasSampler > 0UL)
+    {
+        // paint the texture
+        color *= texture(sampler2DArray(oe_gc_atlasSampler), oe_gc_texCoord);
+    }
 
     // uncomment to see triangles
     //if (color.a < 0.2)

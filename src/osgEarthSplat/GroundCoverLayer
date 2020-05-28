@@ -127,7 +127,6 @@ namespace osgEarth { namespace Splat
         LayerReference<LandCoverDictionary> _landCoverDict;
         LayerReference<LandCoverLayer> _landCoverLayer;
 
-        TextureImageUnitReservation _atlasBinding;
         TextureImageUnitReservation _noiseBinding;
 
         void buildStateSets();
@@ -184,11 +183,16 @@ namespace osgEarth { namespace Splat
                 typedef UnorderedMap<const void*, UniformState> UniformsPerPCP;
                 UniformsPerPCP _uniforms;
 
+                //TODO per camera???
                 osg::Matrixd _mvp;
+
+                //typedef UnorderedMap<TileKey, int> TileRevisions;
+                //TileRevisions _tileRevisions;
 
                 // tracks the last know batch ID so we know when to regenerate tiles
                 std::size_t _lastTileBatchID;
                 osg::Matrixf _lastMVP;
+                unsigned _numTilesGenerated;
             };
 
             // one per graphics context
@@ -223,10 +227,8 @@ namespace osgEarth { namespace Splat
             int _counter;
             float _spacing;
 
-            osg::ref_ptr<TextureAtlas> _atlas;
             osg::ref_ptr<GeometryCloud> _geomCloud;
             osg::ref_ptr<osg::Texture> _noiseTex;
-
             osg::ref_ptr<TextureArena> _texArena;
         };
 
@@ -247,8 +249,6 @@ namespace osgEarth { namespace Splat
         struct AssetData : public osg::Referenced
         {
             osg::ref_ptr<osg::Node> _model;
-            osg::ref_ptr<osg::Image> _sideImage;
-            osg::ref_ptr<osg::Image> _topImage;
 
             const BiomeZone* _zone;
             const LandCoverGroup* _landCoverGroup;
@@ -262,10 +262,6 @@ namespace osgEarth { namespace Splat
             osg::ref_ptr<Texture> _topBillboardTex;
             osg::ref_ptr<Texture> _modelTex;
 
-            int _sideImageAtlasIndex;
-            int _topImageAtlasIndex;
-            int _modelAtlasIndex;
-
             // number of instances of this asset (for selection weight purposes)
             int _numInstances;
             std::vector<int> _codes;
@@ -276,7 +272,6 @@ namespace osgEarth { namespace Splat
             int _modelID; // sequential unique ID of the asset's model (may or may not have one)
         };
 
-        //void loadAssets(TextureAtlas*);
         void loadAssets(TextureArena*);
         typedef std::vector<osg::ref_ptr<AssetData> > AssetDataVector;
         AssetDataVector _liveAssets;
@@ -286,7 +281,7 @@ namespace osgEarth { namespace Splat
         osg::StateSet* getZoneStateSet(unsigned index) const;
         std::vector<osg::ref_ptr<osg::StateSet> > _zoneStateSets;
 
-        GeometryCloud* createGeometryCloud(TextureAtlas*) const;
+        GeometryCloud* createGeometryCloud(TextureArena*) const;
 
         osg::ref_ptr<const Profile> _mapProfile;
     };

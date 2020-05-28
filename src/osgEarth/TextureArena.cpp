@@ -17,20 +17,20 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TextureArena"
+#include <osgEarth/ImageUtils>
 #include <osg/State>
 
 #ifndef GL_TEXTURE_SPARSE_ARB
-#define GL_TEXTURE_SPARSE_ARB 0x91A6
+    #define GL_TEXTURE_SPARSE_ARB 0x91A6
 #endif
 
 #ifndef GL_VIRTUAL_PAGE_SIZE_INDEX_ARB
-#define GL_VIRTUAL_PAGE_SIZE_INDEX_ARB 0x91A7
+    #define GL_VIRTUAL_PAGE_SIZE_INDEX_ARB 0x91A7
+    #define GL_NUM_VIRTUAL_PAGE_SIZES_ARB 0x91A8
+    #define GL_VIRTUAL_PAGE_SIZE_X_ARB 0x9195
+    #define GL_VIRTUAL_PAGE_SIZE_Y_ARB 0x9196 
+    #define GL_VIRTUAL_PAGE_SIZE_Z_ARB 0x9197
 #endif
-
-#define GL_NUM_VIRTUAL_PAGE_SIZES_ARB 0x91A8
-#define GL_VIRTUAL_PAGE_SIZE_X_ARB 0x9195
-#define GL_VIRTUAL_PAGE_SIZE_Y_ARB 0x9196 
-#define GL_VIRTUAL_PAGE_SIZE_Z_ARB 0x9197
 
 using namespace osgEarth;
 
@@ -38,7 +38,8 @@ using namespace osgEarth;
 TextureArena::TextureArena() :
     _compiled(false)
 {
-    //todo
+    // Keep this synchronous w.r.t. the render thread since we are
+    // giong to be changing things on the fly
     setDataVariance(DYNAMIC);
 }
 
@@ -84,52 +85,6 @@ TextureArena::deactivate(Texture* tex)
     //TODO: consider issues like multiple GCs and "unref after apply"
 }
 
-#if 0
-TextureArena::Locator
-TextureArena::add(osg::Image* image)
-{
-    //TODO: pick a set based on the image's size, format, and data type
-    Layout layout;
-    layout._s = image->s();
-    layout._t = image->t();
-    layout._format = image->getPixelFormat();
-    layout._type = image->getDataType();
-
-    TextureSet* set = NULL;
-
-    for(auto i = _layouts.begin(); i != _layouts.end(); ++i)
-    {
-        if (*i == layout)
-        {
-            set = _sets[&(*i)].get();
-            break;
-        }
-    }
-
-    if (set == NULL)
-    {
-        _layouts.push_back(layout);
-        osg::ref_ptr<TextureSet>& newSet = _sets[&_layouts.back()];
-        newSet = new TextureSet(layout);
-        set = newSet.get();
-    }
-
-    return set->add(image);
-}
-
-void
-TextureArena::remove(const Locator& id)
-{
-    if (id._valid == false)
-        return;
-
-    //TODO - proper set.
-    TextureSet* set = _sets.begin()->second.get();
-
-    set->remove(id);
-}
-#endif
-
 void
 TextureArena::allocate(Texture* tex, osg::State& state) const
 {
@@ -141,32 +96,112 @@ TextureArena::allocate(Texture* tex, osg::State& state) const
     //TODO: deal with potentially large numbers of these things
     //state.getGraphicsContext()->add(new GLTextureReleaser(tex->_object.get()));
 
+    // TODO: make sure we can actually generate mipmaps for a texture array ...
+    bool useGPUmipmaps = false;
+
+    if ( !useGPUmipmaps && tex->_image->getNumMipmapLevels() <= 1 )
+    {
+        if (ImageUtils::generateMipmaps(tex->_image.get()) == false)
+        {
+            useGPUmipmaps = true;
+        }
+    }
+    unsigned numMipLevels = tex->_image->getNumMipmapLevels();
+
+    //TODO: compute the best internal format
+    GLenum pixelFormat = tex->_image->getPixelFormat();
+
+    GLenum internalFormat = 
+        pixelFormat == GL_RGB ? GL_COMPRESSED_RGBA_S3TC_DXT1_EXT :
+        pixelFormat == GL_RGBA ? GL_COMPRESSED_RGBA_S3TC_DXT5_EXT :
+        GL_RGBA8;
+
+    // If you change this you must change the typecast in the fragment shader too
+    GLenum target = GL_TEXTURE_2D_ARRAY;
+    //GLenum target = GL_TEXTURE_2D;
+
     // Blit our image to the GPU
     glBindTexture(
-        GL_TEXTURE_2D,
+        target,
         tex->_gltexture.get());
 
-    ext->glTexStorage2D(
-        GL_TEXTURE_2D,
-        tex->_image->getNumMipmapLevels(),
-        GL_RGBA8, //tex->_image->getInternalTextureFormat(),
-        tex->_image->s(),
-        tex->_image->t());
+    if (target == GL_TEXTURE_2D_ARRAY)
+    {
+        ext->glTexStorage3D(
+            target,
+            numMipLevels,
+            internalFormat,
+            tex->_image->s(),
+            tex->_image->t(),
+            tex->_image->r() );
+    }
+    else
+    {
+        ext->glTexStorage2D(
+            target,
+            numMipLevels,
+            internalFormat,
+            tex->_image->s(),
+            tex->_image->t() );
+    }
+
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     // Create the bindless handle
     tex->_glhandle = ext->glGetTextureHandle(tex->_gltexture.get());
 
-    // At this point, if we go with SPARSE textures, don't actually
+    // At this point, if/when we go with SPARSE textures, don't actually
     // copy the image down until activation.
 
-    glTexSubImage2D(
-        GL_TEXTURE_2D,
-        0, // mip level
-        0, 0, // xofffset, yoffset
-        tex->_image->s(), tex->_image->t(), // width, height
-        tex->_image->getPixelFormat(),
-        tex->_image->getDataType(),
-        tex->_image->data());
+    // Iterate over mipmap levels in this layer:
+    for (unsigned mipLevel = 0; mipLevel < numMipLevels; ++mipLevel)
+    {
+        int sizeOfMipImage = tex->_image->getImageSizeInBytes() >> (2*mipLevel);
+
+        // Iterate over image slices:
+        for (int r = 0; r < tex->_image->r(); ++r)
+        {
+            if (target == GL_TEXTURE_2D_ARRAY)
+            {
+                unsigned char* dataptr =
+                    tex->_image->getMipmapData(mipLevel) +
+                    sizeOfMipImage * r;
+
+                ext->glTexSubImage3D(
+                    target, // GL_TEXTURE_2D_ARRAY
+                    mipLevel, // mip level
+                    0, 0, // xoffset, yoffset
+                    r, // zoffset (array layer)
+                    tex->_image->s() >> mipLevel, // width at mipmap level i
+                    tex->_image->t() >> mipLevel, // height at mipmap level i
+                    1, // z size always = 1
+                    tex->_image->getPixelFormat(),
+                    tex->_image->getDataType(),
+                    dataptr );
+            }
+            else
+            {
+                glTexSubImage2D(
+                    target, // GL_TEXTURE_2D
+                    mipLevel, // mip level
+                    0, 0, // xoffset, yoffset
+                    tex->_image->s() >> mipLevel, // width at mipmap level i
+                    tex->_image->t() >> mipLevel, // height at mipmap level i
+                    tex->_image->getPixelFormat(),
+                    tex->_image->getDataType(),
+                    tex->_image->getMipmapData(mipLevel) );
+            }
+        }
+    }
+
+    if (useGPUmipmaps)
+    {
+        ext->glGenerateMipmap(target);
+    }
 }
 
 void
@@ -220,6 +255,11 @@ TextureArena::compileGLObjects(osg::State& state) const
         if (tex->_gltexture.isSet() == false)
         {
             allocate(tex, state);
+
+            //TODO: take this out -- temp for TESTING.
+            osg::GLExtensions* ext = state.get<osg::GLExtensions>();
+            ext->glMakeTextureHandleResident(tex->_glhandle.get());
+            tex->_resident = true;
         }
 
         //TODO: Consider making the texture SPARSE as well so we can
@@ -243,206 +283,3 @@ TextureArena::releaseGLObjects(osg::State* state) const
 {
     // TODO
 }
-
-#if 0
-TextureArena::TextureSet::TextureSet(const Layout& layout) :
-    _layout(layout),
-    _target(GL_TEXTURE_2D_ARRAY),
-    _internalFormat(GL_RGBA8),
-    _miplevels(1),
-    _capacity(1),
-    _maxSize(0u)
-{
-    //nop
-}
-
-TextureArena::Locator
-TextureArena::TextureSet::add(osg::Image* image)
-{
-    ToAdd toAdd;
-    toAdd._image = image;
-
-    allocate(toAdd._locator);
-    _toAdds.push_back(toAdd);
-
-    return toAdd._locator;
-}
-
-void
-TextureArena::TextureSet::remove(const Locator& locator)
-{
-    _freelist.push(locator);
-    _toRemoves.push_back(locator);
-}
-
-void
-TextureArena::TextureSet::allocate(Locator& locator)
-{
-    if (_freelist.size() > 0)
-    {
-        locator = _freelist.front();
-        _freelist.pop();
-    }
-    else
-    {
-        locator._width = _layout._s;
-        locator._height = _layout._t;
-        locator._depth = 1;
-        locator._zoffset = _maxSize++;
-    }
-    locator._valid = true;
-}
-
-void
-TextureArena::TextureSet::apply(osg::State& state) const
-{
-    osg::GLExtensions* ext = state.get<osg::GLExtensions>();
-    ext->glActiveTexture(GL_TEXTURE0);
-
-    osg::ref_ptr<GCData>& cd = _cxdata[state.getContextID()];
-    if (!cd.valid())
-    {
-        // allocate a new sparse texture array
-        cd = new GCData();
-
-        glGenTextures(1, &cd->_tex->_handle);
-        glBindTexture(_target, cd->_tex->_handle);
-        glTexParameteri(_target, GL_TEXTURE_SPARSE_ARB, GL_TRUE);
-
-        state.getGraphicsContext()->add(new GLTextureReleaser(cd->_tex.get()));
-
-#if 0
-        // TODO: This could be done once per internal format. For now, just do it every time.
-        GLint indexCount = 0, xSize = 0, ySize = 0, zSize = 0;
-        GLint bestIndex = -1, bestXSize = 0, bestYSize = 0;
-
-        void (GL_APIENTRY * glGetInternalformativ)(GLenum, GLenum, GLenum, GLsizei, GLint*);
-        osg::setGLExtensionFuncPtr(glGetInternalformativ, "glGetInternalformativ", "glGetInternalformativARB");
-
-        glGetInternalformativ(_target, _internalFormat, GL_NUM_VIRTUAL_PAGE_SIZES_ARB, 1, &indexCount);
-
-        for (GLint i = 0; i < indexCount; ++i) {
-            glTexParameteri(_target, GL_VIRTUAL_PAGE_SIZE_INDEX_ARB, i);
-            glGetInternalformativ(_target, _internalFormat, GL_VIRTUAL_PAGE_SIZE_X_ARB, 1, &xSize);
-            glGetInternalformativ(_target, _internalFormat, GL_VIRTUAL_PAGE_SIZE_Y_ARB, 1, &ySize);
-            glGetInternalformativ(_target, _internalFormat, GL_VIRTUAL_PAGE_SIZE_Z_ARB, 1, &zSize);
-            
-            // For our purposes, the "best" format is the one that winds up with Z=1 and the largest x and y sizes.
-            if (zSize == 1) {
-                if (xSize >= bestXSize && ySize >= bestYSize) {
-                    bestIndex = i;
-                    bestXSize = xSize;
-                    bestYSize = ySize;
-                }
-            }
-        }
-        glTexParameteri(_target, GL_VIRTUAL_PAGE_SIZE_INDEX_ARB, bestIndex);
-#endif
-
-        ext->glTexStorage3D(_target, _miplevels, _internalFormat, _layout._s, _layout._t, _capacity);
-    }
-    else
-    {
-        glBindTexture(_target, cd->_tex->_handle);
-    }
-
-    for(auto i = _toRemoves.begin(); i != _toRemoves.end(); ++i)
-    {
-        // remove stuff and add to freelist
-        const Locator& locator = *i;
-
-        ext->glTexPageCommitment(
-            _target, 
-            0, // miplevel
-            locator._xoffset, locator._yoffset, locator._zoffset,
-            locator._width, locator._height, locator._depth,
-            GL_FALSE);
-    }
-
-    //TODO: replace this
-    _toRemoves.clear();
-
-    // Iterator over the "add queue" and make pending images resident:
-    for(auto i = _toAdds.begin(); i != _toAdds.end(); ++i)
-    {
-        const ToAdd& toAdd = *i;
-        const Locator& locator = toAdd._locator;
-
-        // commit backing store to GPU:
-        ext->glTexPageCommitment(
-            _target, 
-            0, // miplevel
-            locator._xoffset, locator._yoffset, locator._zoffset,
-            locator._width, locator._height, locator._depth,
-            GL_TRUE);
-
-        // blit image data to GPU at newly committed location:
-        ext->glTexSubImage3D(
-            _target,
-            0, // miplevel,
-            locator._xoffset, locator._yoffset, locator._zoffset,
-            locator._width, locator._height, locator._depth,
-            _layout._format,
-            _layout._type,
-            toAdd._image->data());
-    }
-
-    //TODO: replace this
-    _toAdds.clear();
-}
-
-void
-TextureArena::TextureSet::resizeGLObjectBuffers(unsigned maxsize)
-{
-    _cxdata.resize(maxsize);
-}
-
-void
-TextureArena::TextureSet::releaseGLObjects(osg::State* state) const
-{
-#if 1
-    // need this? can just use the deleter?
-    if (state)
-    {
-        osg::ref_ptr<GCData>& cd = _cxdata[state->getContextID()];
-        if (cd.valid())
-        {
-            cd->_tex->_handle = (GLuint)~0;
-        }
-    }
-    else
-    {
-        //??
-    }
-#endif
-}
-
-TextureArena::GCData::GCData() :
-    _tex(new GLTexture())
-{
-    //nop
-}
-
-TextureArena::Locator::Locator() :
-    _valid(false),
-    _set(0),
-    _xoffset(0),
-    _yoffset(0),
-    _zoffset(0),
-    _width(0),
-    _height(0),
-    _depth(1)
-{
-    //nop
-}
-
-bool
-TextureArena::Layout::operator==(const TextureArena::Layout& rhs) const
-{
-    return 
-        _s == rhs._s &&
-        _t == rhs._t &&
-        _format == rhs._format &&
-        _type == rhs._type;
-}
-#endif

@@ -187,11 +187,18 @@ ImageUtils::resizeImage(const osg::Image* input,
     unsigned int in_s = input->s();
     unsigned int in_t = input->t();
 
+    const bool useGLU = bilinear;
+
     if ( !output.valid() )
     {
         output = new osg::Image();
 
-        if ( PixelWriter::supports(input) )
+        if (useGLU)
+        {
+            output->allocateImage( out_s, out_t, input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
+            output->setInternalTextureFormat( input->getInternalTextureFormat() );
+        }
+        else if ( PixelWriter::supports(input) )
         {
             output->allocateImage( out_s, out_t, input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
             output->setInternalTextureFormat( input->getInternalTextureFormat() );
@@ -209,10 +216,36 @@ ImageUtils::resizeImage(const osg::Image* input,
         output->setInternalTextureFormat( input->getInternalTextureFormat() );
     }
 
-    if ( in_s == out_s && in_t == out_t && mipmapLevel == 0 && input->getInternalTextureFormat() == output->getInternalTextureFormat() )
+    if (useGLU)
+    {
+        // now, populate the image levels.
+        osg::PixelStorageModes psm;
+        psm.pack_alignment = input->getPacking();
+        psm.pack_row_length = input->getRowLength();
+        psm.unpack_alignment = input->getPacking();
+
+        // OSG gluScaleImage doesn't require a GC
+        GLint status = gluScaleImage(
+            &psm,
+            input->getPixelFormat(),
+            input->s(),
+            input->t(),
+            input->getDataType(),
+            input->data(),
+            out_s,
+            out_t,
+            output->getDataType(),
+            output->getMipmapData(mipmapLevel) );
+    }
+
+    else if (in_s == out_s && in_t == out_t && mipmapLevel == 0 && 
+             input->getPixelFormat() == output->getPixelFormat() &&
+             input->getDataType() == output->getDataType() &&
+             input->getInternalTextureFormat() == output->getInternalTextureFormat() )
     {
         memcpy( output->data(), input->data(), input->getTotalSizeInBytes() );
     }
+
     else
     {
         PixelReader read( input );
@@ -463,12 +496,6 @@ ImageUtils::generateMipmaps(osg::Image* input)
         return false;
     }
 
-    if (input->r() > 1)
-    {
-        OE_WARN << LC << "generateMipmaps() not implemented for 3D image" << std::endl;
-        return false;
-    }
-
     // already has mipmaps?
     if (input->getNumMipmapLevels() > 1)
     {
@@ -476,8 +503,10 @@ ImageUtils::generateMipmaps(osg::Image* input)
     }
 
 #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
-    // NVTT doest not like 1- or 2-channel images; can crash
-    if (osg::Image::computeNumComponents(input->getPixelFormat()) >= 3)
+    // NVTT doesn't like 1- or 2-channel images; can crash
+    // NVTT doesn't like r > 1; can crash
+    if (osg::Image::computeNumComponents(input->getPixelFormat()) >= 3 &&
+        input->r() == 1)
     {
         // Fint the NVTT plugin
         osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessorForExtension("nvtt");
@@ -501,23 +530,28 @@ ImageUtils::generateMipmaps(osg::Image* input)
 
     // first, build the image that will hold all the mipmap levels.
     int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
-    int imageSizeBytes = input->getTotalSizeInBytes();
+    int sizeOfOneMainImage = input->getImageSizeInBytes();
+    int sizeOfAllMainImages = sizeOfOneMainImage * input->r();
 
     // offset vector does not include level 0 (the full-resolution level)
+    // so getMipLevelOffset(0) is the main data and (1) is the first mip level.
+    // But the first mip level is in index[0]. Not confusing at all
     osg::Image::MipmapDataType mipOffsets;
     mipOffsets.reserve(numLevels-1);
 
     // calculate memory requirements:
-    int totalSizeBytes = imageSizeBytes;
+    int sizeToAllocate = sizeOfAllMainImages;
     for( int i=1; i<numLevels; ++i )
     {
-        mipOffsets.push_back(totalSizeBytes);
-        totalSizeBytes += (imageSizeBytes >> i);
+        mipOffsets.push_back(sizeToAllocate);
+        sizeToAllocate += sizeOfAllMainImages >> (2*i);
     }
 
-    // allocate space for the new data and copy over level 0 of the old data
-    unsigned char* data = new unsigned char[totalSizeBytes];
-    ::memcpy(data, input->data(), input->getTotalSizeInBytes());
+    // allocate space for the new data
+    unsigned char* data = new unsigned char[sizeToAllocate];
+
+    // and copy over level 0 of the old data
+    ::memcpy(data, input->data(), sizeOfAllMainImages);
 
     input->setImage(
         input->s(), input->t(), input->r(),
@@ -539,18 +573,31 @@ ImageUtils::generateMipmaps(osg::Image* input)
 
     for(int level=1; level<numLevels; ++level)
     {
-        // OSG-custom gluScaleImage that does not require a graphics context
-        GLint status = gluScaleImage(
-            &psm,
-            input->getPixelFormat(),
-            input->s(),
-            input->t(),
-            input->getDataType(),
-            input->data(),
-            input->s() >> level,
-            input->t() >> level,
-            input->getDataType(),
-            input->getMipmapData(level));
+        int sizeOfOneMipImage = sizeOfOneMainImage >> (2*level);
+
+        for(int r=0; r<input->r(); ++r)
+        {
+            const unsigned char* fromPtr = 
+                input->data() + 
+                sizeOfOneMainImage * r;
+
+            unsigned char* toPtr =
+                input->getMipmapData(level) +
+                sizeOfOneMipImage * r;
+
+            // OSG-custom gluScaleImage that does not require a graphics context
+            GLint status = gluScaleImage(
+                &psm,
+                input->getPixelFormat(),
+                input->s(),
+                input->t(),
+                input->getDataType(),
+                fromPtr,
+                input->s() >> level,
+                input->t() >> level,
+                input->getDataType(),
+                toPtr);
+        }
     }
 
     input->dirty();

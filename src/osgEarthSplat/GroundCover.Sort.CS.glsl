@@ -1,5 +1,4 @@
 #version 430
-#extension GL_NV_gpu_shader5 : enable
 #pragma include GroundCover.Types.glsl
 
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
@@ -72,7 +71,7 @@ void cull()
     }
 
     // chose a billboard, but there isn't one; bail.
-    if (chooseModel == false && instance[i].sideIndex < 0)
+    if (chooseModel == false && instance[i].sideSampler == 0)
         return;
 
     // Sort into DrawCommands based on range. anything beyond the
@@ -95,8 +94,6 @@ void cull()
     // use to draw this instance. Command[0] is the billboard group; all
     // others are unique 3D models.
     instance[i].drawId = chooseModel ? instance[i].modelId + 1 : 0;
-        //range > modelRange || instance[i].modelId < 0 ? 0 :
-        //instance[i].modelId + 1;
 
     instance[i].pixelSizeRatio = min(pixelSizeRatio.x, pixelSizeRatio.y);
     

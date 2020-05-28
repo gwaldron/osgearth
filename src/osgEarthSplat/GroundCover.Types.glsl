@@ -1,4 +1,3 @@
-#extension GL_NV_gpu_shader5 : enable
 #extension GL_ARB_gpu_shader_int64 : enable
 
 struct DrawElementsIndirectCommand
@@ -26,9 +25,6 @@ struct InstanceData
     uint64_t modelSampler;
     uint64_t sideSampler;
     uint64_t topSampler;
-    //int modelIndex;    // 4
-    //int sideIndex;     // 4
-    //int topIndex;      // 4
     float width;       // 4
     float height;      // 4
     float sinrot;      // 4

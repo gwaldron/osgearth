@@ -123,13 +123,15 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
         }
     }
 
-    if (_drawCallback)
+    if (_drawCallback) // need this?
     {
         PatchLayer::DrawContext tileData;
 
         tileData._key = _key;
-        tileData._geomBBox = &_geom->getBoundingBox();
+        tileData._revision = _tileRevision;
+        //tileData._geomBBox = &_geom->getBoundingBox();
         tileData._tileBBox = &_tile->getBoundingBox();
+        tileData._modelViewMatrix = _modelViewMatrix.get();
         _drawCallback->visitTile(ri, tileData);
     }
 
@@ -151,7 +153,8 @@ DrawTileCommand::visit(osg::RenderInfo& ri) const
         PatchLayer::DrawContext tileData;
 
         tileData._key = _key;
-        tileData._geomBBox = &_geom->getBoundingBox();
+        tileData._revision = _tileRevision;
+        //tileData._geomBBox = &_geom->getBoundingBox();
         tileData._tileBBox = &_tile->getBoundingBox();
         tileData._modelViewMatrix = _modelViewMatrix.get();
         _drawCallback->visitTile(ri, tileData);

@@ -912,7 +912,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         buf << "#version " << fs_glsl_version << "\n"
             << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
             << "#pragma vp_name VP Fragment Shader Main\n"
-            << (!s_GLES_SHADERS ? "#extension GL_ARB_gpu_shader5 : enable \n" : "");
+            << (!s_GLES_SHADERS ? "#extension GL_ARB_gpu_shader5 : enable\n" : "");
 
         addExtensionsToBuffer(buf, in_extensions);
 

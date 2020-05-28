@@ -1,6 +1,4 @@
 #version 460
-#extension GL_NV_gpu_shader5 : enable
-$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       GroundCover VS MODEL
 #pragma vp_entryPoint oe_GroundCover_VS_MODEL
@@ -49,7 +47,7 @@ void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 
 [break]
 #version 460
-$GLSL_DEFAULT_PRECISION_FLOAT
+#extension GL_ARB_gpu_shader_int64 : enable
 
 #pragma vp_name       GroundCover VS
 #pragma vp_entryPoint oe_GroundCover_VS
@@ -96,14 +94,15 @@ float rescale(float d, float v0, float v1)
     return clamp((d-v0)/(v1-v0), 0, 1);
 }
 
-flat out uint64_t atlasSampler;
+flat out uint64_t oe_gc_atlasSampler;
 
 void oe_GroundCover_Billboard(inout vec4 vertex_view)
 {
     uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
     uint t = render[i].tileNum;
 
-    vp_Color = vec4(1);
+    vp_Color = vec4(1,1,1,0); // start alpha at ZERO for billboard transitions
+    oe_gc_atlasSampler = 0UL; // 0UL = untextured
 
     oe_layer_tilec = vec4(render[i].tilec, 0, 1);
     vertex_view = oe_vertex.view;
@@ -114,9 +113,6 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
     float maxRange = oe_VisibleLayer_ranges[1] / oe_Camera.z;
     float nRange = clamp(-vertex_view.z/maxRange, 0.0, 1.0);
-
-    // find the texture atlas index:
-    //float atlasIndex = -2;
 
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);
@@ -169,7 +165,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     float billboardAmount = rescale(1.0-d, 0.0, 0.25);
 
     // COMMMENTED OUT FOR TESTING
-    if (which < 4 && render[i].sideSampler >= 0 && billboardAmount > 0.0) // Front-facing billboard
+    if (which < 4 && render[i].sideSampler >= 0UL && billboardAmount > 0.0) // Front-facing billboard
     {
         vertex_view = 
             which == 0? vec4(vertex_view.xyz - halfWidthTangentVector, 1.0) :
@@ -190,13 +186,13 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
                 which == 0 || which == 2? mix(-tangentVector, faceNormalVector, blend) :
                 mix( tangentVector, faceNormalVector, blend);
 
-            atlasSampler = (render[i].sideSampler);
+            oe_gc_atlasSampler = (render[i].sideSampler);
         }
     }
 
-    else if (which >= 4 && render[i].topSampler >= 0 && topDownAmount > 0.0) // top-down billboard
+    else if (which >= 4 && render[i].topSampler > 0UL && topDownAmount > 0.0) // top-down billboard
     {
-        atlasSampler = (render[i].topSampler);
+        oe_gc_atlasSampler = (render[i].topSampler);
 
         // estiblish the local tangent plane:
         vec3 Z = mat3(osg_ViewMatrix) * vec3(0,0,1); //north pole
@@ -231,8 +227,6 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         which == 1 || which == 5? vec2(1, 0) :
         which == 2 || which == 6? vec2(0, 1) :
                                   vec2(1, 1);
-
-    //oe_gc_texCoord.z = atlasIndex;
 }
 
 
@@ -254,8 +248,11 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
     //vertex.xy = rot * vertex.xy;
     //vp_Normal.xy = rot * vp_Normal.xy;
 
-    // TODO: don't hard-code this..? or meh
-    oe_gc_texCoord.xyz = gl_MultiTexCoord7.xyz;
+    //TODO: hard-coded Coord7, is that OK? I guess we could use zero
+    oe_gc_texCoord = gl_MultiTexCoord7.xyz;
+
+    // assign texture sampler for this model
+    oe_gc_atlasSampler = render[i].modelSampler;
 }
 
 
@@ -275,7 +272,9 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
 
 [break]
-#version $GLSL_VERSION_STR
+#version 430
+#extension GL_ARB_gpu_shader_int64 : enable
+
 #pragma vp_name       Land cover billboard texture application
 #pragma vp_entryPoint oe_GroundCover_FS
 #pragma vp_location   fragment_coloring
@@ -287,19 +286,17 @@ uniform float oe_gc_maxAlpha;
 uniform int oe_gc_useAlphaToCoverage;
 
 in vec3 oe_gc_texCoord;
-flat in uint64_t atlasSampler;
+flat in uint64_t oe_gc_atlasSampler;
 
 
 void oe_GroundCover_FS(inout vec4 color)
 {
-    if (oe_gc_texCoord.z < -1.0)
+    if (oe_gc_atlasSampler > 0UL)
     {
-        discard;
-    }
-    else if (oe_gc_texCoord.z >= 0.0)
-    {
-        // modulate the texture
-        color *= texture(sampler2D(atlasSampler), oe_gc_texCoord.st);
+        // modulate the texture.
+        // "cast" the bindless handle to a sampler array and sample it
+        //color *= texture(sampler2D(oe_gc_atlasSampler), oe_gc_texCoord.st);
+        color *= texture(sampler2DArray(oe_gc_atlasSampler), oe_gc_texCoord);
     }
 
 #ifdef OE_IS_SHADOW_CAMERA

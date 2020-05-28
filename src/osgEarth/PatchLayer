@@ -74,10 +74,10 @@ namespace osgEarth
         struct DrawContext
         {
             const TileKey* _key;
-            const osg::BoundingBox* _geomBBox;
             const osg::BoundingBox* _tileBBox;
             const osg::RefMatrix* _modelViewMatrix;
-            DrawContext() : _geomBBox(NULL), _tileBBox(NULL), _key(NULL), _modelViewMatrix(NULL) { }
+            int _revision;
+            DrawContext() : _tileBBox(NULL), _key(NULL), _modelViewMatrix(NULL), _revision(-1) { }
         };
 
         /**

@@ -5,7 +5,7 @@
     <WMSImage name="USGS NAIP+ Imagery">
         <url>https://services.nationalmap.gov/arcgis/services/USGSNAIPPlus/MapServer/WmsServer?</url>
         <format>png</format>
-        <layers>1</layers>
+        <layers>25</layers>
         <tile_size>256</tile_size>
         <srs>EPSG:4326</srs>
         <transparent>true</transparent>

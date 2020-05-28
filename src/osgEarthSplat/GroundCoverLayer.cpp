@@ -56,6 +56,7 @@ using namespace osgEarth::Splat;
 REGISTER_OSGEARTH_LAYER(groundcover, GroundCoverLayer);
 REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 
+#define USE_TEX_ARENA
 
 // TODO LIST
 //
@@ -429,11 +430,22 @@ GroundCoverLayer::addedToMap(const Map* map)
 
 
     // Make the texture atlas from the images found in the asset list
-    _renderer->_atlas = new TextureAtlas(); //createTextureAtlas();
+    _renderer->_atlas = new TextureAtlas();
+
+#ifdef USE_TEX_ARENA
+    _renderer->_texArena = new TextureArena();
+
+    // Add to the stateset so it gets compiled and applied
+    getOrCreateStateSet()->setAttribute(_renderer->_texArena.get());
+#endif
 
     // Load asset data from the configuration. This will populate
     // _liveAssets as well as the _imagesToAddToAtlas.
+#ifdef USE_TEX_ARENA
+    loadAssets(_renderer->_texArena.get());
+#else
     loadAssets(_renderer->_atlas.get());
+#endif
 
     // Prepare model assets and add their textures to the atlas:
     _renderer->_geomCloud = createGeometryCloud(_renderer->_atlas.get());
@@ -447,9 +459,12 @@ GroundCoverLayer::addedToMap(const Map* map)
     }
 
     // Install LUTs on the compute shader:
+    // TODO: DEFER this until the arena is properly initialized.
+#if 0
     osg::ref_ptr<osg::Shader> lutShader = createLUTShader();
     lutShader->setName("GroundCover CS LUT");
     _renderer->_generateProgram->addShader(lutShader.get());
+#endif
 }
 
 void
@@ -829,83 +844,98 @@ GroundCoverLayer::Renderer::~Renderer()
 void
 GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
 {
-    DrawState& ds = _drawStateBuffer[ri.getContextID()];
-    ds._renderer = this;
-    osg::State* state = ri.getState();
-
-    const ZoneSA* sa = ZoneSA::extract(ri.getState());
-    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
-    if (!instancer.valid())
+    // compile the texture area if necessary on the first pass.
+    if (_texArena.valid() && !_texArena->isCompiled())
     {
-        instancer = new InstanceCloud();
+        _texArena->compileGLObjects(*ri.getState());
+
+        // now that we have handles, we can make the LUT shader.
+        osg::ref_ptr<osg::Shader> lutShader = _layer->createLUTShader();
+        lutShader->setName("GroundCover CS LUT");
+        _generateProgram->addShader(lutShader.get());
+
+        // bail out here. Because the Program won't be "ready" until the next frame, I think..
     }
-
-    // Only run the compute shader when the tile batch has changed:
-    bool needsGenerate = false;
-    if (ds._lastTileBatchID != tiles->getBatchID())
+    else
     {
-        ds._lastTileBatchID = tiles->getBatchID();
-        needsGenerate = true;
-    }
+        DrawState& ds = _drawStateBuffer[ri.getContextID()];
+        ds._renderer = this;
+        osg::State* state = ri.getState();
 
-    // not a bug. Do this as a 32-bit matrix to avoid wierd micro-precision changes.
-    bool needsCull = needsGenerate;
-    if (!needsCull)
-    {
-        osg::Matrixf mvp = state->getModelViewMatrix() * state->getProjectionMatrix();
-        if (ds._lastMVP != mvp)
+        const ZoneSA* sa = ZoneSA::extract(ri.getState());
+        osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
+        if (!instancer.valid())
         {
-            ds._lastMVP = mvp;
-            needsCull = true;
+            instancer = new InstanceCloud();
         }
+
+        // Only run the compute shader when the tile batch has changed:
+        bool needsGenerate = false;
+        if (ds._lastTileBatchID != tiles->getBatchID())
+        {
+            ds._lastTileBatchID = tiles->getBatchID();
+            needsGenerate = true;
+        }
+
+        // not a bug. Do this as a 32-bit matrix to avoid wierd micro-precision changes.
+        bool needsCull = needsGenerate;
+        if (!needsCull)
+        {
+            osg::Matrixf mvp = state->getModelViewMatrix() * state->getProjectionMatrix();
+            if (ds._lastMVP != mvp)
+            {
+                ds._lastMVP = mvp;
+                needsCull = true;
+            }
+        }
+
+        // I'm not sure why we have to push the layer's stateset here.
+        // It should have been applied already in the render bin.
+        // I am missing something. -gw 4/20/20
+        state->pushStateSet(_layer->getStateSet());
+
+        if (needsGenerate)
+        {
+            _pass = PASS_GENERATE;
+            state->apply(_generateStateSet.get()); // activate gen program
+            applyLocalState(ri, ds);               // reset counter and setup instancer
+            instancer->allocateGLObjects(ri, tiles->size());  // ensure sufficient memory
+        }
+
+        instancer->newFrame(ri);
+
+        if (needsGenerate)
+        {
+            instancer->generate_begin(ri);
+            tiles->drawTiles(ri);
+            instancer->generate_end(ri);
+        }
+
+        if (needsCull)
+        {
+            // per frame cull/sort:
+            _pass = PASS_CULL;
+            state->apply(_cullStateSet.get()); // activate cull program
+            applyLocalState(ri, ds); // reset tile counter
+            tiles->visitTiles(ri);   // collect tile matrix data
+            instancer->cull(ri);     // cull and sort
+        }
+
+        // If we ran a compute shader, we replaced the state and 
+        // now need to re-apply it before rendering.
+        if (needsGenerate || needsCull)
+        {
+            state->apply();
+        }
+
+        // draw pass:
+        _pass = PASS_DRAW;
+        applyLocalState(ri, ds);
+        instancer->draw(ri);
+
+        // pop the layer's stateset.
+        state->popStateSet();
     }
-
-    // I'm not sure why we have to push the layer's stateset here.
-    // It should have been applied already in the render bin.
-    // I am missing something. -gw 4/20/20
-    state->pushStateSet(_layer->getStateSet());
-
-    if (needsGenerate)
-    {
-        _pass = PASS_GENERATE;
-        state->apply(_generateStateSet.get()); // activate gen program
-        applyLocalState(ri, ds);               // reset counter and setup instancer
-        instancer->allocateGLObjects(ri, tiles->size());  // ensure sufficient memory
-    }
-
-    instancer->newFrame(ri);
-
-    if (needsGenerate)
-    {
-        instancer->generate_begin(ri);
-        tiles->drawTiles(ri);
-        instancer->generate_end(ri);
-    }
-
-    if (needsCull)
-    {
-        // per frame cull/sort:
-        _pass = PASS_CULL;
-        state->apply(_cullStateSet.get()); // activate cull program
-        applyLocalState(ri, ds); // reset tile counter
-        tiles->visitTiles(ri);   // collect tile matrix data
-        instancer->cull(ri);     // cull and sort
-    }
-
-    // If we ran a compute shader, we replaced the state and 
-    // now need to re-apply it before rendering.
-    if (needsGenerate || needsCull)
-    {
-        state->apply();
-    }
-
-    // draw pass:
-    _pass = PASS_DRAW;
-    applyLocalState(ri, ds);
-    instancer->draw(ri);
-
-    // pop the layer's stateset.
-    state->popStateSet();
 
     // Clean up and finish
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
@@ -1089,8 +1119,11 @@ namespace {
 }
 
 void
-GroundCoverLayer::loadAssets(TextureAtlas* atlas)
+GroundCoverLayer::loadAssets(TextureArena* arena)
 {
+    typedef std::map<URI, osg::ref_ptr<Texture> > TextureCache;
+    TextureCache texcache;
+
     typedef std::map<URI, osg::ref_ptr<osg::Image> > ImageCache;
     ImageCache imagecache;
 
@@ -1182,6 +1215,26 @@ GroundCoverLayer::loadAssets(TextureAtlas* atlas)
                 if (asset.options().sideBillboardURI().isSet())
                 {
                     const URI& uri = asset.options().sideBillboardURI().get();
+
+                    auto ic = texcache.find(uri);
+                    if (ic != texcache.end())
+                    {
+                        data->_sideBillboardTex = ic->second.get();
+                    }
+                    else
+                    {
+                        data->_sideBillboardTex = new Texture();
+                        data->_sideBillboardTex->_uri = uri;
+                        data->_sideBillboardTex->_image = uri.getImage(getReadOptions());
+                        //TODO: check for errors
+                        if (true)
+                        {
+                            texcache[uri] = data->_sideBillboardTex;
+                            arena->add(data->_sideBillboardTex.get());
+                        }
+                    }
+
+#if 0
                     ImageCache::iterator ic = imagecache.find(uri);
                     if (ic != imagecache.end())
                     {
@@ -1202,11 +1255,32 @@ GroundCoverLayer::loadAssets(TextureAtlas* atlas)
                             OE_WARN << LC << "Failed to load billboard side image from \"" << uri.full() << "\"" << std::endl;
                         }
                     }
+#endif
                 }
 
                 if (asset.options().topBillboardURI().isSet())
                 {
                     const URI& uri = asset.options().topBillboardURI().get();
+
+                    auto ic = texcache.find(uri);
+                    if (ic != texcache.end())
+                    {
+                        data->_topBillboardTex = ic->second.get();
+                    }
+                    else
+                    {
+                        data->_topBillboardTex = new Texture();
+                        data->_topBillboardTex->_uri = uri;
+                        data->_topBillboardTex->_image = uri.getImage(getReadOptions());
+                        //TODO: check for errors
+                        if (true)
+                        {
+                            texcache[uri] = data->_topBillboardTex;
+                            arena->add(data->_topBillboardTex.get());
+                        }
+                    }
+
+#if 0
                     ImageCache::iterator ic = imagecache.find(uri);
                     if (ic != imagecache.end())
                     {
@@ -1227,11 +1301,19 @@ GroundCoverLayer::loadAssets(TextureAtlas* atlas)
                             OE_WARN << LC << "Failed to load billboard top image from \"" << uri.full() << "\"" << std::endl;
                         }
                     }
+#endif
                 }
 
+#if 0
                 if (data->_sideImage.valid() || data->_model.valid())
                 {
                     // every asset gets a unique ID:
+                    data->_assetID = assetIDGen++;
+                    _liveAssets.push_back(data.get());
+                }
+#endif
+                if (data->_sideBillboardTex.valid() || data->_model.valid())
+                {
                     data->_assetID = assetIDGen++;
                     _liveAssets.push_back(data.get());
                 }
@@ -1239,17 +1321,18 @@ GroundCoverLayer::loadAssets(TextureAtlas* atlas)
         }
     }
 
+#if 0
     // Add all discovered images to the atlas.
     if (atlas)
     {
-        for(ImageVector::const_iterator i = imagesToAddToAtlas.begin();
+        for (ImageVector::const_iterator i = imagesToAddToAtlas.begin();
             i != imagesToAddToAtlas.end();
             ++i)
         {
             atlas->addImage(i->get());
         }
     }
-
+#endif
 
     if (_liveAssets.empty())
     {
@@ -1345,9 +1428,12 @@ GroundCoverLayer::createLUTShader() const
             assetBuf << "    oe_gc_Asset("
                 << data->_assetID
                 << ", " << data->_modelID
-                << ", " << data->_modelAtlasIndex
-                << ", " << data->_sideImageAtlasIndex
-                << ", " << data->_topImageAtlasIndex
+                << ", " << (data->_modelTex.valid() ? data->_modelTex->getHandle() : 0)
+                << ", " << (data->_sideBillboardTex.valid() ? data->_sideBillboardTex->getHandle() : 0)
+                << ", " << (data->_topBillboardTex.valid() ? data->_topBillboardTex->getHandle() : 0)
+                //<< ", " << data->_modelAtlasIndex
+                //<< ", " << data->_sideImageAtlasIndex
+                //<< ", " << data->_topImageAtlasIndex
                 << ", " << width
                 << ", " << height
                 << ", " << sizeVariation
@@ -1396,9 +1482,12 @@ GroundCoverLayer::createLUTShader() const
         "struct oe_gc_Asset { \n"
         "    int assetId; \n"
         "    int modelId; \n"
-        "    int atlasIndexModel; \n" // first index of model's textures
-        "    int atlasIndexSide; \n"
-        "    int atlasIndexTop; \n"
+        "    uint64_t modelSampler; \n"
+        "    uint64_t sideSampler; \n"
+        "    uint64_t topSampler; \n"
+        //"    int atlasIndexModel; \n" // first index of model's textures
+        //"    int atlasIndexSide; \n"
+        //"    int atlasIndexTop; \n"
         "    float width; \n"
         "    float height; \n"
         "    float sizeVariation; \n"

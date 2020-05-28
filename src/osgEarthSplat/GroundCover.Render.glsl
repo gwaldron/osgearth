@@ -1,4 +1,5 @@
 #version 460
+#extension GL_NV_gpu_shader5 : enable
 $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       GroundCover VS MODEL
@@ -95,6 +96,8 @@ float rescale(float d, float v0, float v1)
     return clamp((d-v0)/(v1-v0), 0, 1);
 }
 
+flat out uint64_t atlasSampler;
+
 void oe_GroundCover_Billboard(inout vec4 vertex_view)
 {
     uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
@@ -113,7 +116,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     float nRange = clamp(-vertex_view.z/maxRange, 0.0, 1.0);
 
     // find the texture atlas index:
-    float atlasIndex = -2;
+    //float atlasIndex = -2;
 
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);
@@ -166,7 +169,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     float billboardAmount = rescale(1.0-d, 0.0, 0.25);
 
     // COMMMENTED OUT FOR TESTING
-    if (which < 4 && render[i].sideIndex >= 0 && billboardAmount > 0.0) // Front-facing billboard
+    if (which < 4 && render[i].sideSampler >= 0 && billboardAmount > 0.0) // Front-facing billboard
     {
         vertex_view = 
             which == 0? vec4(vertex_view.xyz - halfWidthTangentVector, 1.0) :
@@ -187,13 +190,13 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
                 which == 0 || which == 2? mix(-tangentVector, faceNormalVector, blend) :
                 mix( tangentVector, faceNormalVector, blend);
 
-            atlasIndex = float(render[i].sideIndex);
+            atlasSampler = (render[i].sideSampler);
         }
     }
 
-    else if (which >= 4 && render[i].topIndex >= 0 && topDownAmount > 0.0) // top-down billboard
+    else if (which >= 4 && render[i].topSampler >= 0 && topDownAmount > 0.0) // top-down billboard
     {
-        atlasIndex = float(render[i].topIndex);
+        atlasSampler = (render[i].topSampler);
 
         // estiblish the local tangent plane:
         vec3 Z = mat3(osg_ViewMatrix) * vec3(0,0,1); //north pole
@@ -229,7 +232,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         which == 2 || which == 6? vec2(0, 1) :
                                   vec2(1, 1);
 
-    oe_gc_texCoord.z = atlasIndex;
+    //oe_gc_texCoord.z = atlasIndex;
 }
 
 
@@ -279,11 +282,12 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
-uniform sampler2DArray oe_gc_atlas;
+//uniform sampler2DArray oe_gc_atlas;
 uniform float oe_gc_maxAlpha;
 uniform int oe_gc_useAlphaToCoverage;
 
 in vec3 oe_gc_texCoord;
+flat in uint64_t atlasSampler;
 
 
 void oe_GroundCover_FS(inout vec4 color)
@@ -295,7 +299,7 @@ void oe_GroundCover_FS(inout vec4 color)
     else if (oe_gc_texCoord.z >= 0.0)
     {
         // modulate the texture
-        color *= texture(oe_gc_atlas, oe_gc_texCoord);
+        color *= texture(sampler2D(atlasSampler), oe_gc_texCoord.st);
     }
 
 #ifdef OE_IS_SHADOW_CAMERA

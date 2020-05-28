@@ -2,7 +2,6 @@
     <spacing>15</spacing>
     <biomes>
         <biome classes="forest" fill="0.5" size_variation="0.4">
-        <!--
             <asset url="tree_ginkgo.png" width="16.0" height="16.0" />
             <asset url="tree_maple.png" width="15.0" height="18.0"/>
             <asset url="tree_sycamore.png" width="15.0" height="16.0"/>
@@ -10,36 +9,13 @@
             <asset url="tree_transpiration.png" width="15.0" height="18.0"/>
             <asset url="tree_pine.png" width="15.0" height="30.0"/>
             <asset url="tree_sycamore_2.png" width="15.0" height="18.0"/>
-            -->
-            
+            <!--
             <asset model="D:/data/models/OakTree/redoak.osgb"
                    url="D:/data/models/OakTree/redoak_low.png" 
                    top_url="D:/data/models/OakTree/redoak_low_top.png"
                    weight="7"/>
+                   -->
         </biome>
-        <biome classes="grassland" fill="0.35" size_variation="0.4">
-            <asset url="tree_ginkgo.png" width="16.0" height="16.0" />
-            <asset url="tree_maple.png" width="15.0" height="18.0"/>
-            <asset url="tree_sycamore.png" width="15.0" height="16.0"/>
-            <asset url="tree_white_poplar.png" width="15.0" height="18.0"/>
-            <asset url="tree_transpiration.png" width="15.0" height="18.0"/>
-            <asset url="tree_pine.png" width="15.0" height="30.0"/>
-            <asset url="tree_sycamore_2.png" width="15.0" height="18.0"/>
-            
-            <asset model="D:/data/models/OakTree/redoak.osgb"
-                           url="D:/data/models/OakTree/redoak_low.png" 
-                           top_url="D:/data/models/OakTree/redoak_low_top.png"
-                           weight="1"/>
 
-        </biome>
-        <biome classes="savanna" fill="0.2" size_variation="0.4">
-            <asset url="tree_ginkgo.png" width="16.0" height="16.0" />
-            <asset url="tree_maple.png" width="15.0" height="18.0"/>
-            <asset url="tree_sycamore.png" width="15.0" height="16.0"/>
-            <asset url="tree_white_poplar.png" width="15.0" height="18.0"/>
-            <asset url="tree_transpiration.png" width="15.0" height="18.0"/>
-            <asset url="tree_pine.png" width="15.0" height="30.0"/>
-            <asset url="tree_sycamore_2.png" width="15.0" height="18.0"/>
-        </biome>
     </biomes>
 </groundcover>

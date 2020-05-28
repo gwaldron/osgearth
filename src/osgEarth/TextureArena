@@ -1,0 +1,219 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_TEXTURE_ARENA_H
+#define OSGEARTH_TEXTURE_ARENA_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/GLUtils>
+#include <osgEarth/URI>
+#include <osg/Object>
+#include <osg/StateAttribute>
+#include <osg/buffered_value>
+#include <osg/Image>
+#include <unordered_map>
+#include <unordered_set>
+#include <queue>
+
+namespace osgEarth
+{
+    /**
+     * A texture that can be resident (or not) on multiple levels.
+     */
+    class OSGEARTH_EXPORT Texture : public osg::Referenced
+    {
+    public:
+        Texture() : _resident(false), _gltexture(~0UL), _glhandle(~0ULL) { }
+        //TODO: API
+        optional<URI> _uri;
+        osg::ref_ptr<osg::Image> _image;
+        mutable optional<GLuint> _gltexture;
+        mutable optional<GLuint64> _glhandle;
+        mutable bool _resident;
+
+        GLuint64 getHandle() const { return _glhandle.isSet() ? _glhandle.get() : ~0ULL; }
+    };
+
+#if 1
+    class OSGEARTH_EXPORT TextureArena : public osg::StateAttribute
+    {
+    public:
+        META_StateAttribute(osgEarth, TextureArena,
+            (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY+8675309));
+
+        TextureArena();
+
+        virtual ~TextureArena();
+
+        void add(Texture* tex);
+
+        void activate(Texture* tex);
+
+        void deactivate(Texture* tex);
+
+        bool isCompiled() const { return _compiled; }
+
+    public: // StateAttribute
+        void apply(osg::State&) const;
+        void compileGLObjects(osg::State&) const;
+        void resizeGLObjectBuffers(unsigned);
+        void releaseGLObjects(osg::State*) const;
+        int compare(const osg::StateAttribute& rhs) const { return -1; }
+
+    private:
+        TextureArena(const TextureArena&, const osg::CopyOp&) { }
+
+        void allocate(Texture* texture, osg::State& state) const;
+#if 0
+        struct ToAdd
+        {
+            osg::ref_ptr<osg::Texture> _texture;
+        };
+
+        struct GCData : public osg::Referenced
+        {
+            GCData();
+            //osg::ref_ptr<GLTexture> _tex;
+            //bool valid() const { return _tex.valid() && _tex->_handle != (GLuint)~0; }
+        };
+
+        struct TextureSet : public osg::Referenced
+        {
+            TextureSet(const Layout&);
+
+            Locator add(osg::Image*);
+            void remove(const Locator& locator);
+            void allocate(Locator& locator);
+
+            mutable osg::buffered_object<osg::ref_ptr<GCData> > _cxdata;
+
+            void apply(osg::State&) const;
+            void resizeGLObjectBuffers(unsigned);
+            void releaseGLObjects(osg::State*) const;
+
+            GLenum _target;
+            GLenum _internalFormat;
+            Layout _layout;
+            GLsizei _miplevels, _capacity;
+            std::queue<Locator> _freelist;
+            unsigned _maxSize;
+
+            int _frame;
+            mutable std::vector<osg::ref_ptr<Texture> > _toAdds;
+            mutable std::vector<osg::ref_ptr<Texture> > _toRemoves;
+        };
+
+        std::vector<Layout> _layouts;
+
+        std::unordered_map<Layout*, osg::ref_ptr<TextureSet> > _sets;
+#endif
+
+        mutable std::vector<osg::ref_ptr<Texture> > _toAdd;
+        mutable std::vector<osg::ref_ptr<Texture> > _toActivate;
+        mutable std::vector<osg::ref_ptr<Texture> > _toDeactivate;
+
+        mutable bool _compiled;
+    };
+#else
+
+class OSGEARTH_EXPORT TextureArena : public osg::TextureAttribute
+{
+public:
+    META_StateAttribute(osgEarth, TextureArena, TEXTURE);
+
+    TextureArena();
+    virtual ~TextureArena();
+
+    struct OSGEARTH_EXPORT Locator
+    {
+        Locator();
+        bool _valid;
+        GLuint _set;
+        GLuint _xoffset, _yoffset, _zoffset;
+        GLuint _width, _height, _depth;
+        GLuint64 _handle;
+    };
+
+    Locator add(osg::Image*);
+
+    void remove(const Locator& id);
+
+public: // StateAttribute
+    void apply(osg::State&) const;
+    void compileGLObjects(osg::State&) const;
+    void resizeGLObjectBuffers(unsigned);
+    void releaseGLObjects(osg::State*) const;
+    int compare(const osg::StateAttribute& rhs) const { return -1; }
+
+private:
+    TextureArena(const TextureArena&, const osg::CopyOp&) { }
+
+    struct Layout
+    {
+        int _s, _t;
+        GLenum _format, _type;
+        bool operator == (const Layout& rhs) const;
+    };
+
+    struct ToAdd
+    {
+        osg::ref_ptr<osg::Image> _image;
+        Locator _locator;
+    };
+
+    struct GCData : public osg::Referenced
+    {
+        GCData();
+        osg::ref_ptr<GLTexture> _tex;
+        bool valid() const { return _tex.valid() && _tex->_handle != (GLuint)~0; }
+    };
+
+    struct TextureSet : public osg::Referenced
+    {
+        TextureSet(const Layout&);
+
+        Locator add(osg::Image*);
+        void remove(const Locator& locator);
+        void allocate(Locator& locator);
+
+        mutable osg::buffered_object<osg::ref_ptr<GCData> > _cxdata;
+
+        void apply(osg::State&) const;
+        void resizeGLObjectBuffers(unsigned);
+        void releaseGLObjects(osg::State*) const;
+
+        GLenum _target;
+        GLenum _internalFormat;
+        Layout _layout;
+        GLsizei _miplevels, _capacity;
+        std::queue<Locator> _freelist;
+        unsigned _maxSize;
+
+        int _frame;
+        mutable std::vector<ToAdd> _toAdds;
+        mutable std::vector<Locator> _toRemoves;
+    };
+
+    std::vector<Layout> _layouts;
+
+    std::unordered_map<Layout*, osg::ref_ptr<TextureSet> > _sets;
+};
+#endif
+}
+
+#endif // OSGEARTH_TEXTURE_ARENA_H

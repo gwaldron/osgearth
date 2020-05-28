@@ -226,6 +226,8 @@ namespace osgEarth { namespace Splat
             osg::ref_ptr<TextureAtlas> _atlas;
             osg::ref_ptr<GeometryCloud> _geomCloud;
             osg::ref_ptr<osg::Texture> _noiseTex;
+
+            osg::ref_ptr<TextureArena> _texArena;
         };
 
         osg::ref_ptr<Renderer> _renderer;
@@ -256,6 +258,10 @@ namespace osgEarth { namespace Splat
             int _landCoverGroupIndex;
 
             // texture atlas indexes
+            osg::ref_ptr<Texture> _sideBillboardTex;
+            osg::ref_ptr<Texture> _topBillboardTex;
+            osg::ref_ptr<Texture> _modelTex;
+
             int _sideImageAtlasIndex;
             int _topImageAtlasIndex;
             int _modelAtlasIndex;
@@ -270,7 +276,8 @@ namespace osgEarth { namespace Splat
             int _modelID; // sequential unique ID of the asset's model (may or may not have one)
         };
 
-        void loadAssets(TextureAtlas*);
+        //void loadAssets(TextureAtlas*);
+        void loadAssets(TextureArena*);
         typedef std::vector<osg::ref_ptr<AssetData> > AssetDataVector;
         AssetDataVector _liveAssets;
 

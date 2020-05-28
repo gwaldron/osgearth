@@ -1,4 +1,5 @@
 #version 430
+#extension GL_NV_gpu_shader5 : enable
 #pragma include GroundCover.Types.glsl
 
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
@@ -12,9 +13,12 @@ struct oe_gc_LandCoverGroup {
 struct oe_gc_Asset {
     int assetId;
     int modelId;
-    int atlasIndexModel;
-    int atlasIndexSide;
-    int atlasIndexTop;
+    uint64_t modelSampler;
+    uint64_t sideSampler;
+    uint64_t topSampler;
+    //int atlasIndexModel;
+    //int atlasIndexSide;
+    //int atlasIndexTop;
     float width;
     float height;
     float sizeVariation;
@@ -168,9 +172,12 @@ void main()
 
     //instance[i].assetId = asset.assetId;
     instance[i].modelId = asset.modelId;
-    instance[i].modelIndex = asset.atlasIndexModel;
-    instance[i].sideIndex = asset.atlasIndexSide;
-    instance[i].topIndex = asset.atlasIndexTop;
+    //instance[i].modelIndex = asset.atlasIndexModel;
+    //instance[i].sideIndex = asset.atlasIndexSide;
+    //instance[i].topIndex = asset.atlasIndexTop;
+    instance[i].modelSampler = asset.modelSampler;
+    instance[i].sideSampler = asset.sideSampler;
+    instance[i].topSampler = asset.topSampler;
 
      //a pseudo-random scale factor to the width and height of a billboard
     instance[i].sizeScale = 1.0 + asset.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);

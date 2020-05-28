@@ -301,6 +301,7 @@ SET(LIB_PUBLIC_HEADERS
     SkyView
     StarData
     TerrainProfile
+    TextureArena
     TileIndex
     TileIndexBuilder
     TFSPackager
@@ -352,6 +353,7 @@ SET(LIB_PUBLIC_HEADERS
     SubstituteModelFilter
     TessellateOperator
     TextSymbolizer
+    TextureArena.cpp
     TFS
     TransformFilter
     WireLines

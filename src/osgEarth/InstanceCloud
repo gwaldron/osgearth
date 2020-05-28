@@ -24,6 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Containers>
+#include <osgEarth/TextureArena>
 
 #include <osg/Geometry>
 #include <osg/GL>

@@ -348,7 +348,7 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
         for(int s=0; s<read.s(); ++s)
         {
             read(value, s, t);
-            float h = value.a() * scale;
+            float h = value.r() * scale;
             hf->setHeight(s, t, h);
         }
     }

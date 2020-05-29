@@ -259,7 +259,8 @@ GroundCoverLayer::openImplementation()
     _renderer = new Renderer(this);
     setDrawCallback(_renderer.get());
 
-    installDefaultOpacityShader();
+    // Do NOT do this. This is pure evil:
+    //installDefaultOpacityShader();
 
     return PatchLayer::openImplementation();
 }

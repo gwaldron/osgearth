@@ -3,9 +3,9 @@
     <xi:include href="readymap_elevation.xml"/>    
     
     <WMSImage name="USGS NAIP+ Imagery">
-        <url>https://services.nationalmap.gov/arcgis/services/USGSNAIPPlus/MapServer/WmsServer?</url>
+        <url>https://services.nationalmap.gov/arcgis/services/USGSNAIPImagery/ImageServer/WMSServer?</url>
         <format>png</format>
-        <layers>25</layers>
+        <layers>0</layers>
         <tile_size>256</tile_size>
         <srs>EPSG:4326</srs>
         <transparent>true</transparent>

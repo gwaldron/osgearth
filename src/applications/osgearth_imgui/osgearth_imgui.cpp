@@ -59,14 +59,12 @@ protected:
         // ImGui code goes here...
         //ImGui::ShowDemoWindow();
         _layers.draw(_mapNode.get(), _view->getCamera(), _earthManip.get());
-        _search.draw(_earthManip.get());
     }
 
     osg::ref_ptr< MapNode > _mapNode;
     osg::ref_ptr<EarthManipulator> _earthManip;
     osgViewer::View* _view;
     LayersGUI _layers;
-    SearchGUI _search;
 };
 
 int

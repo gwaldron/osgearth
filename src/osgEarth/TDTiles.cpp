@@ -583,7 +583,7 @@ void ThreeDTileNode::computeBoundingVolume()
             osg::RadiansToDegrees(_tile->boundingVolume()->region()->yMax()));
 
         // For really large bounding regions just use the bounding sphere to avoid transformation issues.
-        if (extent.width() >= 10.0 || extent.height() >= 10.0)
+        if (extent.width() >= 5.0 || extent.height() >= 5.0)
         {
             return;
         }

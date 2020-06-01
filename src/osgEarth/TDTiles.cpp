@@ -294,11 +294,6 @@ Tile::fromJSON(const Json::Value& value, LoadContext& uc)
     if (value.isMember("refine"))
     {
         refine() = osgEarth::ciEquals(value["refine"].asString(), "ADD") ? REFINE_ADD : REFINE_REPLACE;
-        uc._defaultRefine = refine().get();
-    }
-    else
-    {
-        refine() = uc._defaultRefine;
     }
 
     if (value.isMember("transform"))
@@ -447,7 +442,6 @@ Tileset::create(const std::string& json, const URIContext& uc)
 
     LoadContext lc;
     lc._uc = uc;
-    lc._defaultRefine = REFINE_REPLACE;
 
     return new Tileset(root, lc);
 }
@@ -494,7 +488,8 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     _options(options),
     _trackerItrValid(false),
     _lastCulledFrameNumber(0),
-    _lastCulledFrameTime(0.0f)
+    _lastCulledFrameTime(0.0f),
+    _refine(REFINE_ADD)
 {
     OE_PROFILING_ZONE;
     if (_tile->content().isSet())
@@ -514,6 +509,11 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     if (tile->transform().isSet())
     {
         setMatrix(tile->transform().get());
+    }
+
+    if (tile->refine().isSet())
+    {
+        _refine = *tile->refine();
     }
 
     _localBoundingSphere = tile->boundingVolume()->asBoundingSphere();
@@ -540,7 +540,9 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         _children = new osg::Group;
         for (unsigned int i = 0; i < _tile->children().size(); ++i)
         {
-            _children->addChild(new ThreeDTileNode(_tileset, _tile->children()[i].get(), false, _options.get()));
+            ThreeDTileNode* child = new ThreeDTileNode(_tileset, _tile->children()[i].get(), false, _options.get());
+            child->setParentTile(this);
+            _children->addChild(child);
         }
 
         if (_children->getNumChildren() == 0)
@@ -558,6 +560,16 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     createDebugBounds();
 }
 
+void ThreeDTileNode::setParentTile(ThreeDTileNode* parentTile)
+{
+    _parentTile = parentTile;
+    // Inherit the parent's refine policy if this Tile's refine policy isn't set.
+    if (parentTile && !_tile->refine().isSet())
+    {
+        _refine = parentTile->getRefine();
+    }
+}
+
 void ThreeDTileNode::computeBoundingVolume()
 {
     if (_tile->boundingVolume()->region().isSet())
@@ -569,6 +581,12 @@ void ThreeDTileNode::computeBoundingVolume()
             osg::RadiansToDegrees(_tile->boundingVolume()->region()->yMin()),
             osg::RadiansToDegrees(_tile->boundingVolume()->region()->xMax()),
             osg::RadiansToDegrees(_tile->boundingVolume()->region()->yMax()));
+
+        // For really large bounding regions just use the bounding sphere to avoid transformation issues.
+        if (extent.width() >= 10.0 || extent.height() >= 10.0)
+        {
+            return;
+        }
 
         GeoPoint centroid;
         extent.getCentroid(centroid);
@@ -744,6 +762,17 @@ void ThreeDTileNode::resolveContent()
 
         if (_content.valid())
         {
+            // Assign the parent node if we just loaded a tileset
+            ThreeDTilesetContentNode* tilesetContentNode = dynamic_cast<ThreeDTilesetContentNode*>(_content.get());
+            if (tilesetContentNode)
+            {
+                ThreeDTileNode* tileNode = tilesetContentNode->getTileNode();
+                if (tileNode)
+                {
+                    tileNode->setParentTile(this);
+                }
+            }
+
             _tileset->runPreMergeOperations(_content.get());
             _tileset->runPostMergeOperations(_content.get());
         }
@@ -1088,7 +1117,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 
         if (areChildrenReady && error > _tileset->getMaximumScreenSpaceError() && _children.valid() && _children->getNumChildren() > 0)
         {
-            if (_content.valid() && _tile->refine().isSetTo(REFINE_ADD))
+            if (_content.valid() && _refine == REFINE_ADD)
             {
                 _content->accept(nv);
             }
@@ -1142,7 +1171,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 
         if (areChildrenReady && _children.valid() && _children->getNumChildren() > 0)
         {
-            if (_content.valid() && _tile->refine().isSetTo(REFINE_ADD))
+            if (_content.valid() && _refine == REFINE_ADD)
             {
                 _content->accept(nv);
             }
@@ -1423,11 +1452,18 @@ void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)
 ThreeDTilesetContentNode::ThreeDTilesetContentNode(ThreeDTilesetNode* tilesetNode, Tileset* tileset, osgDB::Options* options) :
     _tilesetNode(tilesetNode),
     _tileset(tileset),
-    _options(options)
+    _options(options),
+    _tileNode(0)
 {
     // Set up the root tile.
     if (tileset->root().valid())
     {
-        addChild(new ThreeDTileNode(_tilesetNode, tileset->root().get(), true, _options.get()));
+        _tileNode = new ThreeDTileNode(_tilesetNode, tileset->root().get(), true, _options.get());
+        addChild(_tileNode);
     }
+}
+
+ThreeDTileNode* ThreeDTilesetContentNode::getTileNode()
+{
+    return _tileNode;
 }

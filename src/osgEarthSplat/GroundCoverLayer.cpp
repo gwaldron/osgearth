@@ -182,15 +182,21 @@ GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv
             int zoneIndex = 0;
             osg::Vec3d vp = cv->getViewPoint();
 
+            const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+            GeoPoint p;
+            p.fromWorld(wgs84, vp);
+                
             for(int z=_layer->getZones().size()-1; z > 0 && zoneIndex == 0; --z)
             {
-                if ( _layer->getZones()[z].contains(vp) )
+                if ( _layer->getZones()[z].contains(p) )
                 {
                     zoneIndex = z;
+                    //OE_INFO << p.toString() << ", zoneIndex=" << zoneIndex << std::endl;
                 }
             }
 
             osg::StateSet* zoneStateSet = _layer->getZoneStateSet(zoneIndex);
+            //_layer->_perCamera[cv->getCurrentCamera]._currentZoneStateSet = zoneStateSet;
 
             if (zoneStateSet)
             {
@@ -785,8 +791,13 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatc
         instancer = new InstanceCloud();
     }
 
+    // Pull the per-camera data
+    PerCameraData& pcd = _layer->_perCamera.get(ri.getCurrentCamera());
+
     // Only run the compute shader when the tile batch has changed:
-    bool needsCompute = false;
+    bool needsCompute = sa != pcd._previousZoneSA;
+    pcd._previousZoneSA = sa;
+
     if (ds._lastTileBatchID != tiles->getBatchID())
     {
         ds._lastTileBatchID = tiles->getBatchID();
@@ -1003,6 +1014,8 @@ GroundCoverLayer::loadAssets()
 
     osg::ref_ptr<osg::Image> standIn = new osg::Image();
 
+    int landCoverGroupIndex = 0;
+
     // all the zones (these will later be called "biomes")
     for(int z=0; z<getZones().size(); ++z)
     {
@@ -1011,7 +1024,7 @@ GroundCoverLayer::loadAssets()
 
         // each layout has one or more groupings of land cover classes
         // (this used to be called a biome)
-        for(int j=0; j<zone.getLandCoverGroups().size(); ++j)
+        for(int j=0; j<zone.getLandCoverGroups().size(); ++j, ++landCoverGroupIndex)
         {
             const LandCoverGroup& group = zone.getLandCoverGroups()[j];
 
@@ -1039,7 +1052,7 @@ GroundCoverLayer::loadAssets()
                 osg::ref_ptr<AssetData> data = new AssetData();
                 data->_zoneIndex = z;
                 data->_zone = &zone;
-                data->_landCoverGroupIndex = j;
+                data->_landCoverGroupIndex = landCoverGroupIndex;
                 data->_landCoverGroup = &group;
                 data->_asset = &asset;
                 data->_numInstances = 0;

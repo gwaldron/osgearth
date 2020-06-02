@@ -219,6 +219,12 @@ namespace osgEarth { namespace Splat
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
 
+        struct PerCameraData {
+            const osg::StateAttribute* _previousZoneSA;
+            const osg::StateAttribute* _currentZoneSA;
+        };
+        mutable PerObjectFastMap<const osg::Camera*, PerCameraData> _perCamera;
+
         virtual void loadShaders(
             VirtualProgram* vp,
             const osgDB::Options* options) const;

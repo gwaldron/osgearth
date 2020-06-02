@@ -167,20 +167,20 @@ BiomeZone::init()
         _boundaries.push_back( Boundary() );
         Boundary& b = _boundaries.back();
 
-        GeoExtent extent(
+        b.extent = GeoExtent(
             SpatialReference::get("wgs84"),
             osg::clampBetween(static_cast<float>(box.xMin()), -180.0f, 180.0f),
             osg::clampBetween(static_cast<float>(box.yMin()),  -90.0f,  90.0f),
             osg::clampBetween(static_cast<float>(box.xMax()), -180.0f, 180.0f),
             osg::clampBetween(static_cast<float>(box.yMax()),  -90.0f,  90.0f));
 
-        extent.createPolytope( b.tope );
+        b.extent.createPolytope( b.tope );
         b.zmin2 = box.zMin() > -FLT_MAX ? box.zMin()*box.zMin() : box.zMin();
         b.zmax2 = box.zMax() <  FLT_MAX ? box.zMax()*box.zMax() : box.zMax();
 
         // this only needs to be very approximate.
-        double meanRadius = extent.getSRS()->isGeographic() ?
-            extent.getSRS()->getEllipsoid()->getRadiusEquator() : 0.0;
+        double meanRadius = b.extent.getSRS()->isGeographic() ?
+            b.extent.getSRS()->getEllipsoid()->getRadiusEquator() : 0.0;
         b.meanRadius2 = meanRadius*meanRadius;
     }
 }
@@ -216,6 +216,24 @@ BiomeZone::contains(const osg::Vec3& point) const
             {
                 return true;
             }
+        }
+    }
+
+    return false;
+}
+
+
+
+bool
+BiomeZone::contains(const GeoPoint& point) const
+{
+    for(Boundaries::const_iterator b = _boundaries.begin();
+        b != _boundaries.end(); 
+        ++b)
+    {
+        if (b->extent.contains(point.x(), point.y()))
+        {
+            return true;
         }
     }
 

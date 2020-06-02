@@ -162,6 +162,7 @@ namespace osgEarth { namespace Splat
 
         //! Whether a point intersects this zone's boundaries
         bool contains(const osg::Vec3& point) const;
+        bool contains(const GeoPoint& point) const; // no z check!
 
         //! Internal -- serialization options
         Options& options() { return _options; }

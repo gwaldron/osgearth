@@ -1388,8 +1388,6 @@ GroundCoverLayer::createLUTShader() const
         << "#version " GLSL_VERSION_STR "\n"
         << lutbuf.str() << "\n");
 
-    OE_WARN << "*******\n" << lutbuf.str() << std::endl << std::endl;
-
     return shader;
 }
 

@@ -442,22 +442,29 @@ void
 WindLayer::addWind(Wind* wind)
 {
     WindDrawable* wd = static_cast<WindDrawable*>(_drawable.get());
-    wd->_winds.push_back(wind);
+    if (wd)
+    {
+       wd->_winds.push_back(wind);
+    }
+
 }
 
 void
 WindLayer::removeWind(Wind* wind)
 {
     WindDrawable* wd = static_cast<WindDrawable*>(_drawable.get());
-    for(std::vector<osg::ref_ptr<Wind> >::iterator i = wd->_winds.begin();
-        i != wd->_winds.end();
-        ++i)
+    if (wd)
     {
-        if (i->get() == wind)
-        {
-            wd->_winds.erase(i);
-            break;
-        }
+       for (std::vector<osg::ref_ptr<Wind> >::iterator i = wd->_winds.begin();
+          i != wd->_winds.end();
+          ++i)
+       {
+          if (i->get() == wind)
+          {
+             wd->_winds.erase(i);
+             break;
+          }
+       }
     }
 }
 

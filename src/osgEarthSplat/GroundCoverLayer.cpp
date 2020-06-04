@@ -263,6 +263,11 @@ GroundCoverLayer::init()
     //installDefaultOpacityShader();
 }
 
+GroundCoverLayer::~GroundCoverLayer()
+{
+    close();
+}
+
 Status
 GroundCoverLayer::openImplementation()
 {
@@ -842,8 +847,14 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
             instancer = new InstanceCloud();
         }
 
+        // Pull the per-camera data
+        PerCameraData& pcd = _layer->_perCamera.get(ri.getCurrentCamera());
+
         // Only run the compute shader when the tile batch has changed:
-        bool needsGenerate = false;
+        bool needsGenerate = sa != pcd._previousZoneSA;
+        pcd._previousZoneSA = sa;
+
+        // Only run the compute shader when the tile batch has changed:
         if (ds._lastTileBatchID != tiles->getBatchID())
         {
             ds._lastTileBatchID = tiles->getBatchID();
@@ -1129,6 +1140,8 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
     typedef std::map<URI, ModelCacheEntry> ModelCache;
     ModelCache modelcache;
 
+    int landCoverGroupIndex = 0;
+
     ImageVector imagesToAddToAtlas;
 
     int assetIDGen = 0;
@@ -1142,7 +1155,7 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
 
         // each layout has one or more groupings of land cover classes
         // (this used to be called a biome)
-        for(int j=0; j<zone.getLandCoverGroups().size(); ++j)
+        for(int j=0; j<zone.getLandCoverGroups().size(); ++j, ++landCoverGroupIndex)
         {
             const LandCoverGroup& group = zone.getLandCoverGroups()[j];
 
@@ -1171,7 +1184,7 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                 osg::ref_ptr<AssetData> data = new AssetData();
                 data->_zoneIndex = z;
                 data->_zone = &zone;
-                data->_landCoverGroupIndex = j;
+                data->_landCoverGroupIndex = landCoverGroupIndex;
                 data->_landCoverGroup = &group;
                 data->_asset = &asset;
                 data->_numInstances = 0;

@@ -42,7 +42,6 @@ namespace osgEarth { namespace MBTiles
         OE_OPTION(URI, url);
         OE_OPTION(std::string, format);
         OE_OPTION(bool, compress);
-        OE_OPTION(bool, computeLevels);
         void readFrom(const Config&);
         void writeTo(Config&) const;
     };
@@ -127,22 +126,14 @@ namespace osgEarth
         //! Data format to request from the service
         void setFormat(const std::string& value);
         const std::string& getFormat() const;
-        
+
         //! Whether to compress the data. This isn't necessary for formats that
         //! are already compressed, like JPEG
         void setCompress(const bool& value);
         const bool& getCompress() const;
-        
-        //! Whether or not to automatically compute the valid levels of the MBTiles file.
-        //! By default this is true and will scan the table to determine the min/max.
-        //! This can take time when first loading the file so if you know the levels of your file
-        //! up front you can set this to false and just use the min_level max_level settings
-        //! of the tile source.
-        void setComputeLevels(const bool& value);
-        const bool& getComputeLevels() const;
 
     public: // Layer
-        
+
         //! Establishes a connection to the database
         virtual Status openImplementation();
 
@@ -195,22 +186,14 @@ namespace osgEarth
         //! Data format to request from the service
         void setFormat(const std::string& value);
         const std::string& getFormat() const;
-        
+
         //! Whether to compress the data. This isn't necessary for formats that
         //! are already compressed, like JPEG
         void setCompress(const bool& value);
         const bool& getCompress() const;
-        
-        //! Whether or not to automatically compute the valid levels of the MBTiles file.
-        //! By default this is true and will scan the table to determine the min/max.
-        //! This can take time when first loading the file so if you know the levels of your file
-        //! up front you can set this to false and just use the min_level max_level settings
-        //! of the tile source.
-        void setComputeLevels(const bool& value);
-        const bool& getComputeLevels() const;
 
     public: // Layer
-        
+
         //! Establishes a connection to the TMS repository
         virtual Status openImplementation();
 

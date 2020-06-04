@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019-2020 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -216,7 +216,7 @@ namespace
                 FeatureID fid = feature->getFID();
                 for (int seg = 0; seg < geom->size() - 1; ++seg)
                 {
-                    network.addEdge(EdgeNode(fid, seg), (*geom)[seg], (*geom)[seg - 1]);
+                    network.addEdge(EdgeNode(fid, seg), (*geom)[seg], (*geom)[seg + 1]);
                 }
             }
     }

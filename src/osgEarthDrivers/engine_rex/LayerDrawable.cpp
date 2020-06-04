@@ -167,3 +167,19 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         //ri.getState()->apply();
     }
 }
+
+void LayerDrawable::accept(osg::PrimitiveFunctor& functor) const
+{
+    for (DrawTileCommands::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
+    {
+        itr->accept(functor);
+    }
+}
+
+void LayerDrawable::accept(osg::PrimitiveIndexFunctor& functor) const
+{
+    for (DrawTileCommands::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
+    {
+        itr->accept(functor);
+    }
+}

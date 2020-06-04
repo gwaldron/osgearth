@@ -144,7 +144,6 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
     }    
 }
 
-
 void
 DrawTileCommand::visit(osg::RenderInfo& ri) const
 {
@@ -158,5 +157,21 @@ DrawTileCommand::visit(osg::RenderInfo& ri) const
         tileData._tileBBox = &_tile->getBoundingBox();
         tileData._modelViewMatrix = _modelViewMatrix.get();
         _drawCallback->visitTile(ri, tileData);
+    }
+}
+
+void DrawTileCommand::accept(osg::PrimitiveFunctor& functor) const
+{
+    if (_geom.valid() && _geom->supports(functor))
+    {
+        _geom->accept(functor);
+    }
+}
+
+void DrawTileCommand::accept(osg::PrimitiveIndexFunctor& functor) const
+{
+    if (_geom.valid() && _geom->supports(functor))
+    {
+        _geom->accept(functor);
     }
 }

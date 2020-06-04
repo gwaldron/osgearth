@@ -246,6 +246,8 @@ main(int argc, char** argv)
     if ( argc == 1 )
         return usage(argv);
 
+    osgDB::readCommandLine(args);
+
     typedef std::map<std::string,std::string> KeyValue;
     std::string key, value;
 

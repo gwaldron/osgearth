@@ -101,6 +101,7 @@ ThreeDTilesLayer::openImplementation()
 
     _tilesetNode = new ThreeDTilesetNode(tileset, "", getSceneGraphCallbacks(), readOptions.get());
     _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());
+    _tilesetNode->setOwnerName(getName());
 
     return STATUS_OK;
 }

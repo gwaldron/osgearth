@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2016 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -56,10 +56,10 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 
     struct span_coverage32
     {
-        static void render(unsigned char* ptr, 
+        static void render(unsigned char* ptr,
                            int x,
-                           unsigned count, 
-                           const unsigned char* covers, 
+                           unsigned count,
+                           const unsigned char* covers,
                            const float32& c)
         {
             unsigned char* p = ptr + (x << 2);
@@ -73,9 +73,9 @@ namespace osgEarth { namespace FeatureImageLayerImpl
             while(--count);
         }
 
-        static void hline(unsigned char* ptr, 
+        static void hline(unsigned char* ptr,
                           int x,
-                          unsigned count, 
+                          unsigned count,
                           const float32& c)
         {
             unsigned char* p = ptr + (x << 2);
@@ -95,12 +95,12 @@ namespace osgEarth { namespace FeatureImageLayerImpl
     };
 
     // rasterizes a geometry to color
-    void rasterize(const Geometry* geometry, const osg::Vec4& color, RenderFrame& frame, 
+    void rasterize(const Geometry* geometry, const osg::Vec4& color, RenderFrame& frame,
                    agg::rasterizer& ras, agg::rendering_buffer& buffer)
     {
         unsigned a = (unsigned)(127.0f+(color.a()*255.0f)/2.0f); // scale alpha up
         agg::rgba8 fgColor = agg::rgba8( (unsigned)(color.r()*255.0f), (unsigned)(color.g()*255.0f), (unsigned)(color.b()*255.0f), a );
-        
+
         ConstGeometryIterator gi( geometry );
         while( gi.hasMore() )
         {
@@ -125,7 +125,7 @@ namespace osgEarth { namespace FeatureImageLayerImpl
     }
 
 
-    void rasterizeCoverage(const Geometry* geometry, float value, RenderFrame& frame, 
+    void rasterizeCoverage(const Geometry* geometry, float value, RenderFrame& frame,
                            agg::rasterizer& ras, agg::rendering_buffer& buffer)
     {
         ConstGeometryIterator gi( geometry );
@@ -145,7 +145,7 @@ namespace osgEarth { namespace FeatureImageLayerImpl
                     ras.line_to_d( x0, y0 );
             }
         }
-        
+
         agg::renderer<span_coverage32, float32> ren(buffer);
         ras.render(ren, value);
         ras.reset();
@@ -310,7 +310,7 @@ FeatureImageLayer::updateSession()
             if (fp->getTilingProfile() != NULL)
             {
                 // Use specified profile's GeoExtent
-                dataExtents().push_back(DataExtent(fp->getTilingProfile()->getExtent()));
+                dataExtents().push_back(DataExtent(fp->getTilingProfile()->getExtent(), fp->getFirstLevel(), fp->getMaxLevel()));
             }
             else if (fp->getExtent().isValid() == true)
             {
@@ -336,11 +336,11 @@ FeatureImageLayer::updateSession()
 GeoImage
 FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    if (getStatus().isError())    
+    if (getStatus().isError())
     {
         return GeoImage::INVALID;
     }
-    
+
     if (!getFeatureSource())
     {
         setStatus(Status::ServiceUnavailable, "No feature source");
@@ -366,7 +366,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         setStatus(Status::AssertionFailure, "_session is NULL - call support");
         return GeoImage::INVALID;
     }
-    
+
     // allocate the image.
     osg::ref_ptr<osg::Image> image;
 
@@ -517,7 +517,7 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
         double yres = 1.0 / trans_yf;
 
         // downsample the line data so that it is no higher resolution than to image to which
-        // we intend to rasterize it. If you don't do this, you run the risk of the buffer 
+        // we intend to rasterize it. If you don't do this, you run the risk of the buffer
         // operation taking forever on very high-res input data.
         if (true) //options().optimizeLineSampling() == true)
         {
@@ -558,7 +558,7 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
                         }
                         else if (strokeUnits.isLinear() && featureUnits.isAngular())
                         {
-                            // linear to angular? approximate degrees per meter at the 
+                            // linear to angular? approximate degrees per meter at the
                             // latitude of the tile's centroid.
                             double lineWidthM = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
                             double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI);
@@ -777,7 +777,7 @@ FeatureImageRenderer::render(const TileKey& key,
                                 }
 
                                 // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                                // style in this case: for style expressions, the user must be explicity about 
+                                // style in this case: for style expressions, the user must be explicity about
                                 // default styling; this is because there is no other way to exclude unwanted
                                 // features.
                                 else
@@ -801,7 +801,7 @@ FeatureImageRenderer::render(const TileKey& key,
                                 }
                             }
                         }
-                    }                    
+                    }
                 }
                 else
                 {
@@ -834,7 +834,7 @@ FeatureImageRenderer::queryAndRenderFeaturesForStyle(Session*          session,
                                                      const GeoExtent&  imageExtent,
                                                      osg::Image*       out_image,
                                                      ProgressCallback* progress) const
-{   
+{
     // Get the features
     FeatureList features;
     getFeatures(session, query, imageExtent, features, progress);
@@ -859,7 +859,7 @@ FeatureImageRenderer::getFeatures(Session* session,
 {
     // first we need the overall extent of the layer:
     const GeoExtent& featuresExtent = session->getFeatureSource()->getFeatureProfile()->getExtent();
-    
+
     // convert them both to WGS84, intersect the extents, and convert back.
     GeoExtent featuresExtentWGS84 = featuresExtent.transform( featuresExtent.getSRS()->getGeographicSRS() );
     GeoExtent imageExtentWGS84 = imageExtent.transform( featuresExtent.getSRS()->getGeographicSRS() );
@@ -870,7 +870,7 @@ FeatureImageRenderer::getFeatures(Session* session,
 
         // incorporate the image extent into the feature query for this style:
         Query localQuery = query;
-        localQuery.bounds() = 
+        localQuery.bounds() =
             query.bounds().isSet() ? query.bounds()->unionWith( queryExtent.bounds() ) :
             queryExtent.bounds();
 

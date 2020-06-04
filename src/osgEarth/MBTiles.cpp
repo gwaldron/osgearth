@@ -908,7 +908,8 @@ MBTiles::Driver::setDataExtents(const DataExtentList& values)
         }
 
         // Convert the bounds to wgs84
-        GeoExtent bounds = e.transform(osgEarth::SpatialReference::get("wgs84"));
+        osg::ref_ptr<const Profile> gg = Profile::create("global-geodetic");
+        GeoExtent bounds = gg->clampAndTransformExtent(e);
         std::stringstream boundsStr;
         boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();
         putMetaData("bounds", boundsStr.str());

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2018 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -33,13 +33,14 @@ namespace
 
 #define LC "[NetworkMonitor] "
 
-unsigned long NetworkMonitor::begin(const std::string& uri, const std::string& status)
+unsigned long NetworkMonitor::begin(const std::string& uri, const std::string& status, const std::string& type)
 {
     if (s_enabled)
     {
         osgEarth::Threading::ScopedWriteLock lock(s_requestsMutex);
         Request req(uri, status);
         req.layer = s_requestLayer[osgEarth::Threading::getCurrentThreadId()];
+        req.type = type;
         unsigned long id = s_requestId++;
         s_requests[id] = req;
         return id;
@@ -93,7 +94,7 @@ void NetworkMonitor::setRequestLayer(const std::string& name)
     s_requestLayer[osgEarth::Threading::getCurrentThreadId()] = name;
 }
 
-std::string NetworkMonitor::getRequestConext()
+std::string NetworkMonitor::getRequestLayer()
 {
     osgEarth::Threading::ScopedReadLock lock(s_requestsMutex);
     return s_requestLayer[osgEarth::Threading::getCurrentThreadId()];

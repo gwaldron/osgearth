@@ -95,7 +95,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
     vec4 noise = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st, 0);  
 
-    vp_Color = vec4(1);
+    vp_Color = vec4(1,1,1,0);
     vp_Normal = vec3(0,0,1);
     oe_UpVectorView = gl_NormalMatrix * vp_Normal;
 
@@ -106,7 +106,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
     // cull verts that are out of range. Sadly we can't do this in COMPUTE.
     if (nRange >= 0.99)
         return;
-
+    
     oe_GroundCover_atlasIndex = float(render[gl_InstanceID].sideIndex);
 
     // push the falloff closer to the max distance.

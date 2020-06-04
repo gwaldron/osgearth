@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -251,6 +251,29 @@ GL3RealizeOperation::operator()(osg::Object* object)
     }
 
     CustomRealizeOperation::operator()(object);
+}
+
+
+
+GLBufferReleaser::GLBufferReleaser(GLBuffer* buffer) : 
+    osg::GraphicsOperation("osgEarth::GLBufferReleaser", true),
+    _buffer(buffer),
+    _handle(buffer->_handle)
+{
+    //nop
+}
+
+void
+GLBufferReleaser::operator () (osg::GraphicsContext* context)
+{
+    if (!_buffer.valid() && _handle != (GLuint)~0 && context && context->getState())
+    {
+        OE_DEBUG << "Note: glDeleteBuffers(1, " << _handle << ")" << std::endl;
+        osg::GLExtensions* ext = context->getState()->get<osg::GLExtensions>();
+        ext->glDeleteBuffers(1, &_handle);
+        _handle = (GLuint)~0;
+        setKeep(false);
+    }
 }
 
 

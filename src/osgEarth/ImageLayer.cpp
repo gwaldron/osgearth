@@ -33,19 +33,23 @@ using namespace OpenThreads;
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
+#define OE_TEXCOMP_NONE    (osg::Texture::USE_IMAGE_DATA_FORMAT)
+#define OE_TEXCOMP_AUTO    ((osg::Texture::InternalFormatMode)(~0))
+#define OE_TEXCOMP_FASTDXT ((osg::Texture::InternalFormatMode)(~0 - 1))
+
 //------------------------------------------------------------------------
 
 void
 ImageLayer::Options::fromConfig(const Config& conf)
 {
-    _transparentColor.init( osg::Vec4ub(0,0,0,0) );
-    _featherPixels.init( false );
-    _minFilter.init( osg::Texture::LINEAR_MIPMAP_LINEAR );
-    _magFilter.init( osg::Texture::LINEAR );
-    _textureCompression.init( osg::Texture::USE_IMAGE_DATA_FORMAT ); // none
-    _shared.init( false );
-    _coverage.init( false );
-    _reprojectedTileSize.init( 256 );
+    _transparentColor.setDefault( osg::Vec4ub(0,0,0,0) );
+    _featherPixels.setDefault( false );
+    _minFilter.setDefault( osg::Texture::LINEAR_MIPMAP_LINEAR );
+    _magFilter.setDefault( osg::Texture::LINEAR );
+    _textureCompression.setDefault( OE_TEXCOMP_NONE );
+    _shared.setDefault( false );
+    _coverage.setDefault( false );
+    _reprojectedTileSize.setDefault( 256 );
 
     conf.get( "nodata_image",   _noDataImageFilename );
     conf.get( "shared",         _shared );
@@ -77,10 +81,11 @@ ImageLayer::Options::fromConfig(const Config& conf)
     conf.get("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.get("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
-    conf.get("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
-    conf.get("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
-    conf.get("texture_compression", "on",   _textureCompression, (osg::Texture::InternalFormatMode)~0);
-    conf.get("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
+    conf.get("texture_compression", "none", _textureCompression, OE_TEXCOMP_NONE);
+    conf.get("texture_compression", "auto", _textureCompression, OE_TEXCOMP_AUTO);
+    conf.get("texture_compression", "on",   _textureCompression, OE_TEXCOMP_AUTO);
+    conf.get("texture_compression", "fastdxt", _textureCompression, OE_TEXCOMP_FASTDXT);
+    conf.get("texture_compression", "dxt", _textureCompression, OE_TEXCOMP_FASTDXT);
 
     // uniform names
     conf.get("shared_sampler", _shareTexUniformName);
@@ -125,9 +130,10 @@ ImageLayer::Options::getConfig() const
     conf.set("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.set("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
-    conf.set("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
-    conf.set("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
-    conf.set("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
+    conf.set("texture_compression", "none", _textureCompression, OE_TEXCOMP_NONE);
+    conf.set("texture_compression", "auto", _textureCompression, OE_TEXCOMP_AUTO);
+    conf.set("texture_compression", "fastdxt", _textureCompression, OE_TEXCOMP_FASTDXT);
+    conf.set("texture_compression", "dxt", _textureCompression, OE_TEXCOMP_FASTDXT);
 
     // uniform names
     conf.set("shared_sampler", _shareTexUniformName);
@@ -379,8 +385,10 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
         ReadResult result = bin->readObject(memCacheKey, 0L);
-        if ( result.succeeded() )
+        if (result.succeeded())
+        {
             return GeoImage(static_cast<osg::Image*>(result.releaseObject()), key.getExtent());
+        }
     }
 
     // locate the cache bin for the target profile for this layer:
@@ -531,7 +539,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 
         for( std::vector<TileKey>::iterator k = intersectingKeys.begin(); k != intersectingKeys.end(); ++k )
         {
-            GeoImage image = createImageImplementation( *k, progress );
+            GeoImage image = createImageInKeyProfile(*k, progress);
 
             if ( image.valid() )
             {
@@ -703,7 +711,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
     }
 
 
-    else if ( options().textureCompression() == (osg::Texture::InternalFormatMode)~0 )
+    else if ( options().textureCompression() == OE_TEXCOMP_AUTO )
     {
         // auto mode:
         if ( Registry::capabilities().isGLES() )
@@ -724,7 +732,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             }
         }
     }
-    else if ( options().textureCompression() == (osg::Texture::InternalFormatMode)(~0 - 1))
+    else if ( options().textureCompression() == OE_TEXCOMP_FASTDXT )
     {
         osg::Timer_t start = osg::Timer::instance()->tick();
         osgDB::ImageProcessor* imageProcessor = osgDB::Registry::instance()->getImageProcessorForExtension("fastdxt");
@@ -762,7 +770,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
     }
     else if ( options().textureCompression().isSet() )
     {
-        // use specifically picked a mode.
+        // user specifically picked a mode.
         tex->setInternalFormatMode(options().textureCompression().get());
     }
 }

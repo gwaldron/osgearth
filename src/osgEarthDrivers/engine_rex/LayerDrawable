@@ -42,6 +42,8 @@ namespace osgEarth { namespace REX
     public:
         LayerDrawable();
 
+        void accept(osg::NodeVisitor& nv) { Drawable::accept(nv); }
+
         // Finalize the tile batch before dispatch
         void finalize();
 
@@ -88,6 +90,10 @@ namespace osgEarth { namespace REX
         // All LayerDrawables share the common terrain bounds.
         osg::BoundingSphere computeBound() const { return _drawState->_bs; }
         osg::BoundingBox computeBoundingBox() const { return _drawState->_box; }
+        bool supports(const osg::PrimitiveFunctor&) const { return true; }
+        void accept(osg::PrimitiveFunctor& functor) const;
+        bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
+        void accept(osg::PrimitiveIndexFunctor&) const;
 
     public: // TileBatch
 

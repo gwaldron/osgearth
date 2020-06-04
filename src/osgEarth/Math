@@ -110,6 +110,8 @@ namespace osgEarth
             double cross = base.x() * (p.y() - _a.y()) - base.y() * (p.x() - _a.x());
             return cross / base.length();
         }
+        double squaredDistanceTo(const osg::Vec3d& point) const;
+        osg::Vec3d closestPointTo(const osg::Vec3d& point) const;
     };
 
     struct OSGEARTH_EXPORT Segment3d

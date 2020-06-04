@@ -122,7 +122,7 @@ namespace osgEarth { namespace Splat
         virtual void releaseGLObjects(osg::State* state) const;
 
     protected:
-        virtual ~GroundCoverLayer() { }
+        virtual ~GroundCoverLayer();
 
         LayerReference<LandCoverDictionary> _landCoverDict;
         LayerReference<LandCoverLayer> _landCoverLayer;
@@ -235,6 +235,13 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<Renderer> _renderer;
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
+
+        struct PerCameraData {
+            const osg::StateAttribute* _previousZoneSA;
+            const osg::StateAttribute* _currentZoneSA;
+        };
+        mutable PerObjectFastMap<const osg::Camera*, PerCameraData> _perCamera;
+
 
         virtual void loadRenderingShaders(
             VirtualProgram* vp,

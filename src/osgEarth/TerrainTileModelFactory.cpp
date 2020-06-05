@@ -450,16 +450,23 @@ TerrainTileModelFactory::addElevation(
         layerModel->setRevision(combinedRevision);
         layerModel->setHeightField( mainHF.get() );
 
-        // pre-calculate the min/max heights:
-        for( unsigned col = 0; col < mainHF->getNumColumns(); ++col )
+        if (mainHF->getNumColumns()*mainHF->getNumRows() != mainHF->getFloatArray()->size())
         {
-            for( unsigned row = 0; row < mainHF->getNumRows(); ++row )
+            OE_WARN << "We have a problem." << std::endl;
+        }
+        else
+        {
+            // pre-calculate the min/max heights:
+            for( unsigned col = 0; col < mainHF->getNumColumns(); ++col )
             {
-                float h = mainHF->getHeight(col, row);
-                if ( h > layerModel->getMaxHeight() )
-                    layerModel->setMaxHeight( h );
-                if ( h < layerModel->getMinHeight() )
-                    layerModel->setMinHeight( h );
+                for( unsigned row = 0; row < mainHF->getNumRows(); ++row )
+                {
+                    float h = mainHF->getHeight(col, row);
+                    if ( h > layerModel->getMaxHeight() )
+                        layerModel->setMaxHeight( h );
+                    if ( h < layerModel->getMinHeight() )
+                        layerModel->setMinHeight( h );
+                }
             }
         }
 

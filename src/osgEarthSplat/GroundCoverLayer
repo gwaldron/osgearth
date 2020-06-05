@@ -148,6 +148,33 @@ namespace osgEarth { namespace Splat
         };
         friend struct ZoneSelector;
 
+        struct TileGenInfo {
+            TileGenInfo() : _revision(-1), _dirty(true), _expired(false) { }
+            TileKey _key;
+            int _revision;
+            bool _dirty;
+            bool _expired;
+        };
+        
+        typedef std::unordered_map<TileKey, TileGenInfo> TileGenInfoMap;
+        
+        typedef std::set<int> TileGenFreeList;
+
+        struct TileManager
+        {
+            std::vector<TileGenInfo> _current;
+            std::vector<TileGenInfo> _new;
+            int _highestOccupiedSlot;
+
+            TileManager();
+            void reset();
+            int allocate(const TileKey& key, int revision);
+            int release(const TileKey& key);
+            void release(int slot);
+            int getSlot(const TileKey& key) const;
+            bool inUse(int slot) const;
+        };
+
         // Custom GL renderer for ground cover.
         // This is a PatchLayer callback that intercepts the drawing of a
         // terrain tile to do custom rendering with access to the tile's data.
@@ -156,54 +183,65 @@ namespace osgEarth { namespace Splat
             Renderer(GroundCoverLayer* layer);
             ~Renderer();
 
-            // GL State tied to a GraphicsContext
-            struct DrawState
+            // Uniform data must be maintained for each unique PCP
+            struct PCPState
             {
-                // Geometry differs by zone/groundcover settings
-                typedef UnorderedMap<const void*, osg::ref_ptr<InstanceCloud> > InstancerPerGroundCover;
-                InstancerPerGroundCover _instancers;
+                PCPState();
+                GLint _generateDataUL;
+                float _generateData[5];
+                GLint _A2CUL;
+                GLint _contextIdUL;
+            };
+            typedef std::unordered_map<const void*, PCPState> PCPStateMap;
 
+            typedef std::unordered_map<const void*, osg::ref_ptr<InstanceCloud> > InstancerPerZone;
+
+            // Data unique to a specific camera traversal
+            // (multiple views, shadow cams, etc)
+            struct CameraState
+            {
+                CameraState() { }
+
+                // Track zone changes
+                const osg::StateAttribute* _previousZoneSA;
+                const osg::StateAttribute* _currentZoneSA;
+
+                // Asset catalog differs by zone
+                InstancerPerZone _instancers;
+
+                // Uniform locations differ by PCP
+                PCPStateMap _pcpState;
+
+                // Points to shared renderer object
                 Renderer* _renderer;
-
-                // Uniform data must be maintained for each unique PCP within the DrawState
-                struct UniformState
-                {
-                    UniformState();
-
-                    // uniform data needed to the Generate shader
-                    GLint _generateDataUL;
-                    float _generateData[5];
-
-                    GLint _A2CUL;
-                    GLint _numCommandsUL;
-
-                    unsigned _tileCounter;
-                };
-
-                typedef UnorderedMap<const void*, UniformState> UniformsPerPCP;
-                UniformsPerPCP _uniforms;
-
-                //TODO per camera???
-                osg::Matrixd _mvp;
-
-                //typedef UnorderedMap<TileKey, int> TileRevisions;
-                //TileRevisions _tileRevisions;
 
                 // tracks the last know batch ID so we know when to regenerate tiles
                 std::size_t _lastTileBatchID;
                 osg::Matrixf _lastMVP;
                 unsigned _numTilesGenerated;
-            };
 
-            // one per graphics context
-            osg::buffered_object<DrawState> _drawStateBuffer;
+                // Track in-GPU tile set
+                TileManager _tiles;
+
+                // compute pass
+                unsigned _pass;
+            };
+            typedef PerObjectFastMap<const osg::Camera*, CameraState> CameraStateMap;
+
+            mutable CameraStateMap _cameraState;
+
+            struct CameraStateRGLO : public CameraStateMap::ConstFunctor {
+                CameraStateRGLO(osg::State* state) : _state(state) { }
+                void operator()(const CameraState& ds) const;
+                osg::State* _state;
+            };
 
             // uniform IDs
             unsigned _computeDataUName;
             unsigned _A2CName;
-            unsigned _numCommandsUName;
+            unsigned _contextIdUName;
 
-            void applyLocalState(osg::RenderInfo& ri, DrawState& ds);
+            void applyLocalState(osg::RenderInfo& ri, CameraState& ds);
 
             // DrawCallback API
             void visitTileBatch(osg::RenderInfo& ri, const TileBatch* tiles);
@@ -216,15 +254,9 @@ namespace osgEarth { namespace Splat
             GroundCoverLayer* _layer;
             osg::ref_ptr<osg::StateAttribute> _a2cBlending;
 
-            unsigned _pass;
+            osg::ref_ptr<osg::StateSet> _computeSS;
+            osg::Program* _computeProgram;
 
-            osg::ref_ptr<osg::StateSet> _generateStateSet;
-            osg::Program* _generateProgram;
-
-            osg::ref_ptr<osg::StateSet> _cullStateSet;
-            osg::Program* _cullProgram;
-
-            int _counter;
             float _spacing;
 
             osg::ref_ptr<GeometryCloud> _geomCloud;
@@ -235,12 +267,6 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<Renderer> _renderer;
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
-
-        struct PerCameraData {
-            const osg::StateAttribute* _previousZoneSA;
-            const osg::StateAttribute* _currentZoneSA;
-        };
-        mutable PerObjectFastMap<const osg::Camera*, PerCameraData> _perCamera;
 
 
         virtual void loadRenderingShaders(
@@ -266,8 +292,13 @@ namespace osgEarth { namespace Splat
 
             // texture atlas indexes
             osg::ref_ptr<Texture> _sideBillboardTex;
+            int _sideBillboardTexIndex;
+
             osg::ref_ptr<Texture> _topBillboardTex;
+            int _topBillboardTexIndex;
+
             osg::ref_ptr<Texture> _modelTex;
+            int _modelTexIndex;
 
             // number of instances of this asset (for selection weight purposes)
             int _numInstances;

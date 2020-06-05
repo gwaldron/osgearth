@@ -44,17 +44,25 @@ namespace osgEarth
     class OSGEARTH_EXPORT Texture : public osg::Referenced
     {
     public:
-        Texture() : _resident(false), _gltexture(~0UL), _glhandle(~0ULL) { }
-        //TODO: API
+        struct GCState {
+            osg::ref_ptr<GLTexture> _gltexture;
+        };
+
+    public:
+        Texture() { }
+        GCState& get(const osg::State&) const;
+        void makeResident(const osg::State&, bool toggle) const;
+        bool isCompiled(const osg::State&) const;
+        void compileGLObjects(osg::State&) const;
+        void resizeGLObjectBuffers(unsigned);
+        void releaseGLObjects(osg::State*) const;
+
         optional<URI> _uri;
         osg::ref_ptr<osg::Image> _image;
-        mutable optional<GLuint> _gltexture;
-        mutable optional<GLuint64> _glhandle;
-        mutable bool _resident;
-
-        GLuint64 getHandle() const { return _glhandle.isSet() ? _glhandle.get() : ~0ULL; }
+        mutable osg::buffered_object<GCState> _gc;
     };
 
+    typedef std::vector<osg::ref_ptr<Texture> > TextureVector;
 
     /**
      * TextureArena is a dynamic bindless texture atlas. Add as many texture
@@ -86,6 +94,14 @@ namespace osgEarth
 
         //! Whether compileGLObjects has been called.
         bool isCompiled() const { return _compiled; }
+        
+        //! Number of textures registered
+        size_t size() const { return _textures.size(); }
+
+        const TextureVector& getTextures() const { return _textures; }
+
+        //! Number of graphics contexts that exist in this object
+        unsigned getNumGCs() const { return _gc.size(); }
 
         //! destruct
         virtual ~TextureArena();
@@ -98,15 +114,35 @@ namespace osgEarth
         int compare(const osg::StateAttribute& rhs) const { return -1; }
 
     private:
-        //! disasble copy
+        //! disable copy
         TextureArena(const TextureArena&, const osg::CopyOp&) { } 
 
         //! allocate handles for all add()ed textures
-        void allocate(Texture* texture, osg::State& state) const;
+        void activate(Texture* texture, osg::State& state) const;
 
-        mutable std::vector<osg::ref_ptr<Texture> > _toAdd;
-        mutable std::vector<osg::ref_ptr<Texture> > _toActivate;
-        mutable std::vector<osg::ref_ptr<Texture> > _toDeactivate;
+        struct HandleLUT : public SSBO {
+            mutable GLuint64* _buf;
+            unsigned _numTextures;
+            bool _dirty;
+            optional<GLsizei> _alignment;
+            HandleLUT() : _buf(NULL), _dirty(false) { }
+            ~HandleLUT() { if (_buf) delete[] _buf; }
+            void allocate(const TextureVector&, osg::State&);
+            void release() const;
+            bool update();
+        };
+
+        struct GCState {
+            GCState() : _inUse(false) { }
+            bool _inUse;
+            TextureVector _toAdd;
+            TextureVector _toActivate;
+            TextureVector _toDeactivate;
+            mutable HandleLUT _handleLUT;
+        };
+        mutable osg::buffered_object<GCState> _gc;
+
+        TextureVector _textures;
 
         mutable bool _compiled;
     };

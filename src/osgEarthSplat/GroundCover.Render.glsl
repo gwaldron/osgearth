@@ -10,7 +10,8 @@ vec3 vp_Normal;
 vec4 vp_Color;
 
 struct oe_VertexSpec {
-    vec4 model, view;
+    //vec4 model;
+    vec4 view;
     vec3 normal; // always in view
 } oe_vertex;
 
@@ -20,14 +21,15 @@ struct oe_TransformSpec {
     mat3 normal;
 } oe_transform;
 
-
 void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 {
     uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
     uint tileNum = render[i].tileNum;
 
-    oe_transform.modelview = tile[tileNum].modelViewMatrix;
-    oe_transform.normal    = mat3(tile[tileNum].normalMatrix);
+    oe_transform.modelview = tileData[tileNum].modelViewMatrix;
+
+    // Shortcut works as long as the matrix is isotropic w.r.t. scale
+    oe_transform.normal = mat3(tileData[tileNum].modelViewMatrix);
 
     float s = render[i].sinrot, c = render[i].cosrot;
     mat2 rot = mat2(c, -s, s, c);
@@ -36,8 +38,8 @@ void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 
     geom_vertex.xyz *= render[i].sizeScale;
 
-    oe_vertex.model  = vec4(render[i].vertex.xyz + geom_vertex.xyz, 1.0);
-    oe_vertex.view   = oe_transform.modelview * oe_vertex.model;
+    vec4 model = vec4(render[i].vertex.xyz + geom_vertex.xyz, 1.0);
+    oe_vertex.view = oe_transform.modelview * model;
     oe_vertex.normal = oe_transform.normal * vp_Normal;
 
     // override the terrain's shader
@@ -58,7 +60,8 @@ void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 struct oe_VertexSpec {
-    vec4 model, view;
+    //vec4 model;
+    vec4 view;
     vec3 normal;
 } oe_vertex;
 
@@ -94,7 +97,7 @@ float rescale(float d, float v0, float v1)
     return clamp((d-v0)/(v1-v0), 0, 1);
 }
 
-flat out uint64_t oe_gc_atlasSampler;
+flat out uint64_t oe_gc_texHandle;
 
 void oe_GroundCover_Billboard(inout vec4 vertex_view)
 {
@@ -102,7 +105,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     uint t = render[i].tileNum;
 
     vp_Color = vec4(1,1,1,0); // start alpha at ZERO for billboard transitions
-    oe_gc_atlasSampler = 0UL; // 0UL = untextured
+    oe_gc_texHandle = 0UL; // 0UL = untextured
 
     oe_layer_tilec = vec4(render[i].tilec, 0, 1);
     vertex_view = oe_vertex.view;
@@ -131,12 +134,12 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     if (which < 4)
     {
         // first quad
-        tangentVector = normalMatrix * vec3(1,0,0); // vector pointing east-ish.
+        tangentVector = oe_transform.normal * vec3(1,0,0); // vector pointing east-ish.
     }
     else
     {
         // second quad
-        tangentVector = normalMatrix * vec3(0,1,0);
+        tangentVector = oe_transform.normal * vec3(0,1,0);
         which -= 4;
     }
 
@@ -149,6 +152,9 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         vertex_view.xyz + halfWidthTangentVector + heightVector;
 
     vp_Normal = normalize(cross(tangentVector, heightVector));
+
+    if (render[i].sideSamplerIndex >= 0)
+        oe_gc_texHandle = texHandle[render[i].sideSamplerIndex];
 
 #else // normal render camera - draw as a billboard:
 
@@ -165,7 +171,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     float billboardAmount = rescale(1.0-d, 0.0, 0.25);
 
     // COMMMENTED OUT FOR TESTING
-    if (which < 4 && render[i].sideSampler >= 0UL && billboardAmount > 0.0) // Front-facing billboard
+    if (which < 4 && render[i].sideSamplerIndex >= 0 && billboardAmount > 0.0) // Front-facing billboard
     {
         vertex_view = 
             which == 0? vec4(vertex_view.xyz - halfWidthTangentVector, 1.0) :
@@ -186,13 +192,13 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
                 which == 0 || which == 2? mix(-tangentVector, faceNormalVector, blend) :
                 mix( tangentVector, faceNormalVector, blend);
 
-            oe_gc_atlasSampler = (render[i].sideSampler);
+            oe_gc_texHandle = texHandle[render[i].sideSamplerIndex];
         }
     }
 
-    else if (which >= 4 && render[i].topSampler > 0UL && topDownAmount > 0.0) // top-down billboard
+    else if (which >= 4 && render[i].topSamplerIndex > 0 && topDownAmount > 0.0) // top-down billboard
     {
-        oe_gc_atlasSampler = (render[i].topSampler);
+        oe_gc_texHandle = texHandle[render[i].topSamplerIndex];
 
         // estiblish the local tangent plane:
         vec3 Z = mat3(osg_ViewMatrix) * vec3(0,0,1); //north pole
@@ -240,19 +246,14 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
 
     vp_Normal = oe_vertex.normal;
 
-    // random rotation...move to Generate.CS
-    //vec4 noise = texture(oe_gc_noiseTex, render[gl_InstanceID].tilec);
-    //float a = 3.1415927 * 2.0 * noise[2];
-    //float s = sin(a), c = cos(a);
-    //mat2 rot = mat2(c, -s, s, c);
-    //vertex.xy = rot * vertex.xy;
-    //vp_Normal.xy = rot * vp_Normal.xy;
-
     //TODO: hard-coded Coord7, is that OK? I guess we could use zero
     oe_gc_texCoord = gl_MultiTexCoord7.xyz;
 
     // assign texture sampler for this model
-    oe_gc_atlasSampler = render[i].modelSampler;
+    if (render[i].modelSamplerIndex >= 0)
+        oe_gc_texHandle = texHandle[render[i].modelSamplerIndex];
+    else
+        oe_gc_texHandle = 0UL;
 }
 
 
@@ -281,26 +282,25 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
-//uniform sampler2DArray oe_gc_atlas;
 uniform float oe_gc_maxAlpha;
 uniform int oe_gc_useAlphaToCoverage;
 
 in vec3 oe_gc_texCoord;
-flat in uint64_t oe_gc_atlasSampler;
+flat in uint64_t oe_gc_texHandle;
 
 
 void oe_GroundCover_FS(inout vec4 color)
 {
-    if (oe_gc_atlasSampler > 0UL)
+    if (oe_gc_texHandle > 0UL)
     {
         // modulate the texture.
         // "cast" the bindless handle to a sampler array and sample it
         //color *= texture(sampler2D(oe_gc_atlasSampler), oe_gc_texCoord.st);
-        color *= texture(sampler2DArray(oe_gc_atlasSampler), oe_gc_texCoord);
+        color *= texture(sampler2DArray(oe_gc_texHandle), oe_gc_texCoord);
     }
 
 #ifdef OE_IS_SHADOW_CAMERA
-    if (color.a < oe_GroundCover_maxAlpha)
+    if (color.a < oe_gc_maxAlpha)
     {
         discard;
     }

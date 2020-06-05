@@ -44,6 +44,8 @@
 
 #define LC "[GroundCoverLayer] " << getName() << ": "
 
+#define OE_DEVEL OE_DEBUG
+
 //#define ATLAS_SAMPLER "oe_gc_atlas"
 #define NOISE_SAMPLER "oe_gc_noiseTex"
 
@@ -60,11 +62,31 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 //
 //  - (IN PROGRESS) texture management as the catalog gets bigger (paged arrays or different sizes?)
 
-//  - Properly delete all GL memory .. use the Releaser on the GC thread?
-//  - Do NOT regenerate every tile every time the tilebatch changes!
-//  - include a "model range" in the InstanceBuffer...?
+//  - (IN PROGRESS) FIX the multi-CAMERA case.
+
+//  - FIX the multi-GC case. A resident handle can't cross GCs, so we will need
+//    to upgrade TextureArena (Texture) to store one object/handle per GC.
+//    We will also need to replace the sampler IDs in teh LUT shader with a mapping
+//    to a UBO (or something) that holds the actual resident handles. Blah..
+//
+//  - FIX to work with SHADOW camera (separate culling...maybe?) (reference viewpoint?)
+//  - [OPT] on Generate, store the instance count per tile in an array somewhere. Also store the 
+//    TOTAL instance count in the DI buffer. THen use this to dispatchComputeIndirect for the
+//    MERGE. That way we don't have to dispatch to "all possible locations" during a merge,
+//    hopefully making it much faster and avoiding frame breaks.
+//  - [OPT] combine multiple object lists into the GLObjectReleaser
+//  - include a "model range" or "max SSE" in the InstanceBuffer...?
+//  - [OPT] reduce the SIZE of the instance buffer by re-using variables (instanceID, drawID, assetID)
+//  - Can we remove the normal matrix?
 //  - thin out distant instances automatically in large tiles
 //  - cull by "horizon" .. e.g., the lower you are, the fewer distant trees...?
+//  - Figure out how to pre-compile/ICO the TextureArena; it takes quite a while.
+//  - Properly delete all GL memory .. use the Releaser on the GC thread?
+//  - Figure out exactly where some of this functionality goes -- GCL or IC? For example the
+//    TileManager stuff seems like it would go in IC?
+//  - Allow us to store key, slot, etc data in the actual TileContext coming from the 
+//    PatchLayer. It is silly to have to do TileKey lookups and not be able to simple
+//    iterate over the TileBatch.
 //  - fix the random asset select with weighting...just not really working well.
 //  - programmable SSE for models?
 //  - deal with blending to fade in 3d models
@@ -72,6 +94,7 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 //  - variable spacing or clumping by landcovergroup or asset...?
 //  - make the noise texture bindless as well? Stick it in the arena? Why not.
 
+//  - (DONE) Do NOT regenerate every tile every time the tilebatch changes!
 //  - (DONE .. had to call glBindBufferRange each frame) Two GC layers at the same time doesn't work! (grass + trees)
 //  - (DONE) FIX: IC's atlas is hard-coded to texture image unit 11. Allocate it dynamically.
 //  - (DONE .. the lighting shader was executing in the wrong order) Lighting
@@ -291,6 +314,8 @@ GroundCoverLayer::openImplementation()
 Status
 GroundCoverLayer::closeImplementation()
 {
+    releaseGLObjects(NULL);
+
     setDrawCallback(NULL);
     _renderer = NULL;
 
@@ -453,6 +478,12 @@ GroundCoverLayer::addedToMap(const Map* map)
         if (cloudSS)
             getOrCreateStateSet()->merge(*cloudSS);
     }
+
+    // now that we have HANDLES, we can make the LUT shader.
+    // TODO: this probably needs to be Per-Context...
+    osg::ref_ptr<osg::Shader> lutShader = createLUTShader();
+    lutShader->setName("GroundCover CS LUT");
+    _renderer->_computeProgram->addShader(lutShader.get());
 }
 
 void
@@ -764,18 +795,121 @@ GroundCoverLayer::createParametricGeometry() const
 
 //........................................................................
 
-#define PASS_GENERATE 0
-#define PASS_CULL 1
-#define PASS_DRAW 2
+GroundCoverLayer::TileManager::TileManager() :
+    _highestOccupiedSlot(-1)
+{
+    //nop
+}
 
-GroundCoverLayer::Renderer::DrawState::UniformState::UniformState()
+void
+GroundCoverLayer::TileManager::reset()
+{
+    for(auto& i : _current)
+    {
+        i._revision = -1;
+        i._dirty = true;
+        i._expired = false;
+    }
+
+    _highestOccupiedSlot = -1;
+
+    _new.clear();
+}
+
+int
+GroundCoverLayer::TileManager::allocate(const TileKey& key, int revision)
+{
+    int slot = -1;
+    for(unsigned i=0; i<_current.size(); ++i)
+    {
+        if (_current[i]._revision < 0)
+        {
+            slot = i;
+            break;
+        }
+    }
+
+    if (slot < 0)
+    {
+        slot = _current.size();
+        _current.resize(_current.size()+1);
+    }
+
+    _highestOccupiedSlot = osg::maximum(_highestOccupiedSlot, slot);
+
+    _current[slot]._key = key;
+    _current[slot]._revision = revision;
+    _current[slot]._expired = false;
+    _current[slot]._dirty = true;
+
+    return slot;
+}
+
+int
+GroundCoverLayer::TileManager::release(const TileKey& key)
+{
+    int slot = getSlot(key);
+    if (slot >= 0)
+    {
+        _current[slot]._revision = -1;
+
+        if (_highestOccupiedSlot == slot)
+        {
+            for(int s=_current.size()-1; s >= 0; --s)
+            {
+                if (_current[s]._revision >= 0)
+                {
+                    _highestOccupiedSlot = s;
+                    break;
+                }
+            }
+        }
+    }
+    return slot;
+}
+
+void
+GroundCoverLayer::TileManager::release(int slot)
+{
+    if (slot >= 0 && slot < _current.size())
+    {
+        _current[slot]._revision = -1;
+        _current[slot]._expired = false;
+    }
+}
+
+bool
+GroundCoverLayer::TileManager::inUse(int slot) const
+{
+    return slot < _current.size() && _current[slot]._revision >= 0;
+}
+
+int
+GroundCoverLayer::TileManager::getSlot(const TileKey& key) const
+{
+    int slot = -1;
+    for(int i=0; i<_current.size(); ++i)
+    {
+        if (_current[i]._revision >= 0 && _current[i]._key == key)
+        {
+            slot = i;
+            break;
+        }
+    }
+    return slot;
+}
+
+#define PASS_COLLECT 0
+#define PASS_GENERATE 1
+#define PASS_CULL 2
+#define PASS_DRAW 3
+
+GroundCoverLayer::Renderer::PCPState::PCPState()
 {
     // initialize all the uniform locations - we will fetch these at draw time
     // when the program is active
     _generateDataUL = -1;
     _A2CUL = -1;
-    _numCommandsUL = -1;
-    _tileCounter = 0;
 }
 
 GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
@@ -785,9 +919,6 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     // create uniform IDs for each of our uniforms
     _A2CName = osg::Uniform::getNameID("oe_gc_useAlphaToCoverage");
     _computeDataUName = osg::Uniform::getNameID("oe_tile");
-    _numCommandsUName = osg::Uniform::getNameID("oe_gc_numCommands");
-
-    _drawStateBuffer.resize(256u);
 
     _tileWidth = 0.0;
 
@@ -796,22 +927,13 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     // Load our compute shader
     GroundCoverShaders shaders;
 
-    std::string generateSource = ShaderLoader::load(shaders.GroundCover_Generate, shaders, layer->getReadOptions());
-    _generateStateSet = new osg::StateSet();
-
-    _generateProgram = new osg::Program();
-    osg::Shader* generateShader = new osg::Shader(osg::Shader::COMPUTE, generateSource);
-    generateShader->setName(shaders.GroundCover_Generate);
-    _generateProgram->addShader(generateShader);
-    _generateStateSet->setAttribute(_generateProgram, osg::StateAttribute::ON);
-
-    std::string cullSource = ShaderLoader::load(shaders.GroundCover_Sort_CS, shaders, layer->getReadOptions());
-    _cullStateSet = new osg::StateSet();
-    _cullProgram = new osg::Program();
-    osg::Shader* cullShader = new osg::Shader(osg::Shader::COMPUTE, cullSource);
-    cullShader->setName(shaders.GroundCover_Sort_CS);
-    _cullProgram->addShader(cullShader);
-    _cullStateSet->setAttribute(_cullProgram, osg::StateAttribute::ON);
+    std::string computeSource = ShaderLoader::load(shaders.GroundCover_CS, shaders, layer->getReadOptions());
+    _computeSS = new osg::StateSet();
+    _computeProgram = new osg::Program();
+    osg::Shader* computeShader = new osg::Shader(osg::Shader::COMPUTE, computeSource);
+    computeShader->setName(shaders.GroundCover_CS);
+    _computeProgram->addShader(computeShader);
+    _computeSS->setAttribute(_computeProgram, osg::StateAttribute::ON);
 }
 
 GroundCoverLayer::Renderer::~Renderer()
@@ -819,109 +941,202 @@ GroundCoverLayer::Renderer::~Renderer()
     releaseGLObjects(0);
 }
 
+namespace 
+{
+    inline bool equivalent(const osg::Matrixf& a, const osg::Matrixf& b, bool epsilon)
+    {
+        const float* aptr = a.ptr();
+        const float* bptr = b.ptr();
+        for(int i=0; i<16; ++i) {
+            if (!osg::equivalent(*aptr++, *bptr++, epsilon))
+                return false;
+        }
+        return true;
+    }
+}
+
+//#define DEVEL
+
 void
 GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
 {
-    // compile the texture area if necessary on the first pass.
-    if (_texArena.valid() && !_texArena->isCompiled())
+    osg::State* state = ri.getState();
+    CameraState& ds = _cameraState.get(ri.getCurrentCamera());
+
+    ds._renderer = this;
+
+    const ZoneSA* sa = ZoneSA::extract(state);
+    const BiomeZone* zone = sa->_obj;
+    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[zone];
+
+    // First time through we will need to create and set up the instancer
+    // for this camera.
+    if (!instancer.valid())
     {
-        _texArena->compileGLObjects(*ri.getState());
+        instancer = new InstanceCloud();
 
-        // now that we have handles, we can make the LUT shader.
-        osg::ref_ptr<osg::Shader> lutShader = _layer->createLUTShader();
-        lutShader->setName("GroundCover CS LUT");
-        _generateProgram->addShader(lutShader.get());
+        unsigned numInstances1D = 64u;
 
-        // bail out here. Because the Program won't be "ready" until the next frame, I think..
+        if (zone->options().spacing().isSet())
+        {
+            float spacing_m = zone->options().spacing()->as(Units::METERS);
+            numInstances1D = _tileWidth / spacing_m;
+            _spacing = spacing_m;
+        }
+
+        instancer->setGeometryCloud(_geomCloud.get());
+        instancer->setNumInstancesPerTile(numInstances1D, numInstances1D);
     }
-    else
+
+    // If the zone changed, we need to re-generate ALL tiles
+    bool needsGenerate = false;
+    bool needsReset = false;
+
+    if (sa != ds._previousZoneSA)
     {
-        DrawState& ds = _drawStateBuffer[ri.getContextID()];
-        ds._renderer = this;
-        osg::State* state = ri.getState();
+        needsGenerate = true;
+        needsReset = true;
+        ds._previousZoneSA = sa;
+    }
 
-        const ZoneSA* sa = ZoneSA::extract(ri.getState());
-        osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
-        if (!instancer.valid())
+    // If the tile batch changed, we need to re-generate SOME tiles
+    if (ds._lastTileBatchID != tiles->getBatchID())
+    {
+        ds._lastTileBatchID = tiles->getBatchID();
+        needsGenerate = true;
+    }
+
+    // not a bug. Do this as a 32-bit matrix to avoid wierd micro-precision changes.
+    // NOTE: this can cause jittering in the tree positions when you zoom :(
+    bool needsCull = needsGenerate;
+    if (!needsCull)
+    {
+        osg::Matrixf mvp = state->getModelViewMatrix() * state->getProjectionMatrix();
+        if (mvp != ds._lastMVP)
         {
-            instancer = new InstanceCloud();
+            ds._lastMVP = mvp;
+            needsCull = true;
         }
+    }
 
-        // Pull the per-camera data
-        PerCameraData& pcd = _layer->_perCamera.get(ri.getCurrentCamera());
+    // I'm not sure why we have to push the layer's stateset here.
+    // It should have been applied already in the render bin.
+    // I am missing something. -gw 4/20/20
+    state->pushStateSet(_layer->getStateSet());
 
-        // Only run the compute shader when the tile batch has changed:
-        bool needsGenerate = sa != pcd._previousZoneSA;
-        pcd._previousZoneSA = sa;
-
-        // Only run the compute shader when the tile batch has changed:
-        if (ds._lastTileBatchID != tiles->getBatchID())
+    // Ensure we have allocated sufficient GPU memory for the tiles:
+    if (needsGenerate)
+    {
+        // returns true if new memory was allocated
+        if (instancer->allocateGLObjects(ri, tiles->size()) ||
+            needsReset)
         {
-            ds._lastTileBatchID = tiles->getBatchID();
-            needsGenerate = true;
+            ds._tiles.reset();
         }
+    }
 
-        // not a bug. Do this as a 32-bit matrix to avoid wierd micro-precision changes.
-        bool needsCull = needsGenerate;
-        if (!needsCull)
+    if (needsGenerate || needsCull)
+    {
+        state->apply(_computeSS.get()); // activate compute program
+    }
+
+    instancer->newFrame();
+
+    if (needsGenerate)
+    {
+        int slot;
+
+        // First we run a COLLECT pass. This determines which tiles are new,
+        // which already exist in the instancer, and which went away and
+        // need to be recycled.
+        ds._pass = PASS_COLLECT;
+
+        // Put all tiles on the expired list, only removing them when we
+        // determine that they are good to keep around.
+        for(auto& i : ds._tiles._current)
+            if (i._revision >= 0)
+                i._expired = true;
+
+        // traverse and build our gen list.
+        tiles->visitTiles(ri);
+
+
+        // Release anything still marked as expired.
+        for(slot=0; slot<ds._tiles._current.size(); ++slot)
         {
-            osg::Matrixf mvp = state->getModelViewMatrix() * state->getProjectionMatrix();
-            if (ds._lastMVP != mvp)
+            if (ds._tiles._current[slot]._expired)
             {
-                ds._lastMVP = mvp;
-                needsCull = true;
+                ds._tiles.release(slot);
+                instancer->clearTileSlot(slot);
             }
         }
 
-        // I'm not sure why we have to push the layer's stateset here.
-        // It should have been applied already in the render bin.
-        // I am missing something. -gw 4/20/20
-        state->pushStateSet(_layer->getStateSet());
-
-        if (needsGenerate)
+        // Allocate a slot for each new tile. We do this now AFTER
+        // we have released any expired tiles
+        for(const auto& i : ds._tiles._new)
         {
-            _pass = PASS_GENERATE;
-            state->apply(_generateStateSet.get()); // activate gen program
-            applyLocalState(ri, ds);               // reset counter and setup instancer
-            instancer->allocateGLObjects(ri, tiles->size());  // ensure sufficient memory
+            ds._tiles.allocate(i._key, i._revision);
         }
+        ds._tiles._new.clear();
 
-        instancer->newFrame(ri);
+        ds._pass = PASS_GENERATE;
+        ds._numTilesGenerated = 0u;
 
-        if (needsGenerate)
+        instancer->setHighestTileSlot(ds._tiles._highestOccupiedSlot);
+
+        instancer->generate_begin(ri);
+        tiles->drawTiles(ri);
+        instancer->generate_end(ri);
+
+#ifdef DEVEL
+        OE_INFO << "-----" << std::endl;
+        OE_INFO << "Generated " << ds._numTilesGenerated << "/" << tiles->size() << " tiles" << std::endl;
+
+        OE_INFO << "Tiles:"<<std::endl;
+        for(slot=0; slot<ds._tiles._current.size(); ++slot)
         {
-            ds._numTilesGenerated = 0u;
-            instancer->generate_begin(ri);
-            tiles->drawTiles(ri);
-            instancer->generate_end(ri);
-            //OE_INFO << "Re-generated " << ds._numTilesGenerated << "/" << tiles->size() << " tiles" << std::endl;
+            const TileGenInfo& i = ds._tiles._current[slot];
+            if (i._revision >= 0)
+            {
+                OE_INFO 
+                    << "   " << slot
+                    << ": " << i._key.str()
+                    << ", r=" << i._revision
+                    << std::endl;
+            }
+            else
+            {
+                OE_INFO 
+                    << "   " << slot
+                    << ": -"
+                    << std::endl;
+            }
         }
-
-        if (needsCull)
-        {
-            // per frame cull/sort:
-            _pass = PASS_CULL;
-            state->apply(_cullStateSet.get()); // activate cull program
-            applyLocalState(ri, ds); // reset tile counter
-            tiles->visitTiles(ri);   // collect tile matrix data
-            instancer->cull(ri);     // cull and sort
-        }
-
-        // If we ran a compute shader, we replaced the state and 
-        // now need to re-apply it before rendering.
-        if (needsGenerate || needsCull)
-        {
-            state->apply();
-        }
-
-        // draw pass:
-        _pass = PASS_DRAW;
-        applyLocalState(ri, ds);
-        instancer->draw(ri);
-
-        // pop the layer's stateset.
-        state->popStateSet();
+#endif
     }
+
+    if (needsCull)
+    {
+        // per frame cull/sort:
+        ds._pass = PASS_CULL;
+        tiles->visitTiles(ri); // collect and upload tile matrix data
+        instancer->cull(ri);   // cull and sort
+    }
+
+    // If we ran a compute shader, we replaced the state and 
+    // now need to re-apply it before rendering.
+    if (needsGenerate || needsCull)
+    {
+        state->apply();
+    }
+
+    // draw pass:
+    ds._pass = PASS_DRAW;
+    applyLocalState(ri, ds);
+    instancer->draw(ri);
+
+    // pop the layer's stateset.
+    state->popStateSet();
 
     // Clean up and finish
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
@@ -934,58 +1149,16 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
 }
 
 void
-GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
+GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, CameraState& ds)
 {
-    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
-    if (!pcp)
-        return;
-
-    osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
-
-    DrawState::UniformState& u = ds._uniforms[pcp];
-    u._tileCounter = 0;
-
-    // Check for initialization in this zone:
-    const BiomeZone* bz = ZoneSA::extract(ri.getState())->_obj;
-    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[bz];
-
-    // If the instancer is not yet initialized, do so now.
-    // This happens here because the instance count varies 
-    // depending on the BiomeZone.
-    if (instancer->getNumInstancesPerTile() == 0)
+    if (ds._pass == PASS_DRAW)
     {
-        unsigned numInstances1D = 64u;
+        const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
+        if (!pcp)
+            return;
 
-        if (bz->options().spacing().isSet())
-        {
-            float spacing_m = bz->options().spacing()->as(Units::METERS);
-            numInstances1D = _tileWidth / spacing_m;
-            _spacing = spacing_m;
-        }
+        osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
 
-        instancer->setGeometryCloud(_geomCloud.get());
-        instancer->setNumInstancesPerTile(numInstances1D, numInstances1D);
-
-        // TODO: FIX THIS - NOT GOOD. Cannot merge ALL the geometrycloud's
-        // statesets into the layer..... but, this may change once we get
-        // rid of BiomeZones.
-        // This is here to integrate the model's texture atlas into the stateset
-        //osg::StateSet* cloudStateSet = instancer->getGeometryCloud()->getGeometry()->getStateSet();
-        //if (cloudStateSet)
-        //    _layer->getOrCreateStateSet()->merge(*cloudStateSet);
-    }
-
-    if (_pass == PASS_CULL)
-    {
-        if (u._numCommandsUL < 0)
-            u._numCommandsUL = pcp->getUniformLocation(_numCommandsUName);
-
-        if (u._numCommandsUL >= 0)
-            ext->glUniform1i(u._numCommandsUL, _geomCloud->getNumDrawCommands());
-    }
-
-    else if (_pass == PASS_DRAW)
-    {
         GLint useA2C = 0;
         if (_layer->getUseAlphaToCoverage())
         {
@@ -994,11 +1167,7 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
             ri.getState()->applyAttribute(_a2cBlending.get());
         }
 
-        if (u._numCommandsUL < 0)
-            u._numCommandsUL = pcp->getUniformLocation(_numCommandsUName);
-
-        if (u._numCommandsUL >= 0)
-            ext->glUniform1i(u._numCommandsUL, _layer->_liveAssets.size());
+        PCPState& u = ds._pcpState[pcp];
 
         if (u._A2CUL < 0)
             u._A2CUL = pcp->getUniformLocation(_A2CName);
@@ -1016,91 +1185,130 @@ GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const PatchLayer::Dra
     if (!pcp)
         return;
 
-    // Per-GC buffer:
-    DrawState& ds = _drawStateBuffer[ri.getContextID()];
-
-    // TODO: There was an attempt to only regenerate tiles that have changed;
-    // but the generator builds the entire instance Buffer at once, so
-    // we will have to re-think this
-
-    //if (_pass == PASS_GENERATE)
-    //{
-    //    // Decide whether this tile really needs regen:
-    //    DrawState::TileRevisions::iterator i = ds._tileRevisions.find(*tile._key);
-    //    if (i != ds._tileRevisions.end())
-    //    {
-    //        if (i->second == tile._revision) // already up to date ... early bail.
-    //            return;
-    //    }
-    //}
+    CameraState& ds = _cameraState.get(ri.getCurrentCamera());
 
     // Find our instancer:
     const ZoneSA* sa = ZoneSA::extract(ri.getState());
     osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
-    DrawState::UniformState& u = ds._uniforms[pcp];
 
-    if (_pass == PASS_GENERATE)
+    if (ds._pass == PASS_COLLECT)
     {
-        osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
+        // Decide whether this tile really needs regen:
+        int slot = ds._tiles.getSlot(*tile._key);
 
-        if (u._generateDataUL < 0)
-            u._generateDataUL = pcp->getUniformLocation(_computeDataUName);
-
-        if (u._generateDataUL >= 0)
+        if (slot < 0) // new tile.
         {
-            u._generateData[0] = tile._tileBBox->xMin();
-            u._generateData[1] = tile._tileBBox->yMin();
-            u._generateData[2] = tile._tileBBox->xMax();
-            u._generateData[3] = tile._tileBBox->yMax();
+            ds._tiles._new.push_back(TileGenInfo());
+            TileGenInfo& newTile = ds._tiles._new.back();
+            newTile._key = *tile._key;
+            newTile._revision = tile._revision;
+            // will allocate a slot later, after we see if anybody freed one.
+            //OE_INFO << "Greetings, " << tile._key->str() << ", r=" << tile._revision << std::endl;
+        }
 
-            u._generateData[4] = (float)u._tileCounter;
+        else
+        {
+            TileGenInfo& i = ds._tiles._current[slot];
 
-            // TODO: check whether this changed before calling it
-            ext->glUniform1fv(u._generateDataUL, 5, &u._generateData[0]);
+            // Keep it around.
+            i._expired = false;
 
-            instancer->generate_tile(ri);
-
-            ++ds._numTilesGenerated;
-
-            //ds._tileRevisions[*tile._key] = tile._revision;
+            if (i._revision != tile._revision)
+            {
+                // revision changed! Queue it up for regeneration.
+                i._revision = tile._revision;
+                i._dirty = true;
+            }
         }
     }
 
-    else if (_pass == PASS_CULL)
+    else if (ds._pass == PASS_GENERATE)
     {
-        // TODO: Collect matrices and send to instancer
-        instancer->setMatrix(u._tileCounter, *tile._modelViewMatrix);
+        int slot = ds._tiles.getSlot(*tile._key);
+        if (slot >= 0)
+        {
+            TileGenInfo& i = ds._tiles._current[slot];
+
+            if (i._dirty == true)
+            {
+                i._dirty = false;
+
+                osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
+                PCPState& u = ds._pcpState[pcp];
+
+                if (u._generateDataUL < 0)
+                    u._generateDataUL = pcp->getUniformLocation(_computeDataUName);
+
+                if (u._generateDataUL >= 0)
+                {
+                    u._generateData[0] = tile._tileBBox->xMin();
+                    u._generateData[1] = tile._tileBBox->yMin();
+                    u._generateData[2] = tile._tileBBox->xMax();
+                    u._generateData[3] = tile._tileBBox->yMax();
+
+                    u._generateData[4] = (float)slot;
+
+                    // TODO: check whether this changed before calling it
+                    ext->glUniform1fv(u._generateDataUL, 5, &u._generateData[0]);
+
+                    //OE_INFO << "Gen: " << tile._key->str() << ", slot=" << slot << std::endl;
+
+                    instancer->generate_tile(slot, ri);
+                    
+                    ++ds._numTilesGenerated;
+                }
+            }
+        }
     }
 
-    else // if (_pass == PASS_DRAW)
+    else if (ds._pass == PASS_CULL)
+    {
+        int slot = ds._tiles.getSlot(*tile._key);
+        if (slot >= 0)
+        {
+            instancer->setMatrix(slot, *tile._modelViewMatrix);
+        }
+        else
+        {
+            OE_WARN << "Internal error -- CULL should not see an inactive tile" << std::endl;
+        }
+    }
+
+    else // if (ds._pass == PASS_DRAW)
     {
         // NOP
         OE_INFO << "Should not be here." << std::endl;
     }
-
-    ++u._tileCounter;
 }
 
 void
 GroundCoverLayer::Renderer::resizeGLObjectBuffers(unsigned maxSize)
 {
-    _drawStateBuffer.resize(osg::maximum(maxSize, _drawStateBuffer.size()));
+    //_drawStateBuffer.resize(osg::maximum(maxSize, _drawStateBuffer.size()));
+}
+
+void
+GroundCoverLayer::Renderer::CameraStateRGLO::operator()(
+    const GroundCoverLayer::Renderer::CameraState& ds) const
+{
+    for (InstancerPerZone::const_iterator j = ds._instancers.begin();
+        j != ds._instancers.end();
+        ++j)
+    {
+        InstanceCloud* instancer = j->second.get();
+        if (instancer)
+            instancer->releaseGLObjects(_state);
+    }
 }
 
 void
 GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
 {
-    for(unsigned i=0; i<_drawStateBuffer.size(); ++i)
+    _cameraState.forEach(CameraStateRGLO(state));
+
+    if (_texArena.valid())
     {
-        const DrawState& ds = _drawStateBuffer[i];
-        for(DrawState::InstancerPerGroundCover::const_iterator j = ds._instancers.begin();
-            j != ds._instancers.end();
-            ++j)
-        {
-            InstanceCloud* instancer = j->second.get();
-            if (instancer)
-                instancer->releaseGLObjects(state);
-        }        
+        _texArena->releaseGLObjects(state);
     }
 }
 
@@ -1112,16 +1320,6 @@ GroundCoverLayer::loadRenderingShaders(VirtualProgram* vp, const osgDB::Options*
 }
 
 namespace {
-    template<typename T>
-    int indexOf(const std::vector<osg::ref_ptr<T> >& v, T* obj) {
-        for(int i=0; i<v.size(); ++i) {
-            if (v[i].get() == obj) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
     struct ModelCacheEntry {
         osg::ref_ptr<osg::Node> _node;
         int _modelID;
@@ -1131,19 +1329,19 @@ namespace {
 void
 GroundCoverLayer::loadAssets(TextureArena* arena)
 {
-    typedef std::map<URI, osg::ref_ptr<Texture> > TextureCache;
-    TextureCache texcache;
+    OE_INFO << LC << "Loading assets ..." << std::endl;
 
-    typedef std::map<URI, osg::ref_ptr<osg::Image> > ImageCache;
-    ImageCache imagecache;
+    //typedef std::map<URI, osg::ref_ptr<Texture> > TextureCache;
+    typedef std::map<URI, osg::ref_ptr<AssetData> > TextureShareCache;
+    TextureShareCache texcache;
+
+    //typedef std::map<URI, osg::ref_ptr<osg::Image> > ImageCache;
+    //ImageCache imagecache;
 
     typedef std::map<URI, ModelCacheEntry> ModelCache;
     ModelCache modelcache;
 
     int landCoverGroupIndex = 0;
-
-    ImageVector imagesToAddToAtlas;
-
     int assetIDGen = 0;
     int modelIDGen = 0;
 
@@ -1189,11 +1387,11 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                 data->_asset = &asset;
                 data->_numInstances = 0;
                 data->_codes = codes;
-                //data->_sideImageAtlasIndex = -1;
-                //data->_topImageAtlasIndex = -1;
-                //data->_modelAtlasIndex = -1;
                 data->_modelID = -1;
                 data->_assetID = -1;
+                data->_sideBillboardTexIndex = -1;
+                data->_topBillboardTexIndex = -1;
+                data->_modelTexIndex = -1;
 
                 if (asset.options().modelURI().isSet())
                 {
@@ -1231,7 +1429,8 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                     auto ic = texcache.find(uri);
                     if (ic != texcache.end())
                     {
-                        data->_sideBillboardTex = ic->second.get();
+                        data->_sideBillboardTex = ic->second->_sideBillboardTex.get();
+                        data->_sideBillboardTexIndex = ic->second->_sideBillboardTexIndex;
                     }
                     else
                     {
@@ -1241,33 +1440,11 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                         //TODO: check for errors
                         if (true)
                         {
-                            texcache[uri] = data->_sideBillboardTex;
+                            texcache[uri] = data.get();
+                            data->_sideBillboardTexIndex = arena->size();
                             arena->add(data->_sideBillboardTex.get());
                         }
                     }
-
-#if 0
-                    ImageCache::iterator ic = imagecache.find(uri);
-                    if (ic != imagecache.end())
-                    {
-                        data->_sideImage = ic->second.get();
-                        data->_sideImageAtlasIndex = indexOf(imagesToAddToAtlas, data->_sideImage.get());
-                    }
-                    else
-                    {
-                        data->_sideImage = uri.getImage(getReadOptions());
-                        if (data->_sideImage.valid())
-                        {
-                            data->_sideImageAtlasIndex = imagesToAddToAtlas.size();
-                            imagesToAddToAtlas.push_back(data->_sideImage.get());
-                            imagecache[uri] = data->_sideImage.get();
-                        }
-                        else
-                        {
-                            OE_WARN << LC << "Failed to load billboard side image from \"" << uri.full() << "\"" << std::endl;
-                        }
-                    }
-#endif
                 }
 
                 if (asset.options().topBillboardURI().isSet())
@@ -1277,7 +1454,8 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                     auto ic = texcache.find(uri);
                     if (ic != texcache.end())
                     {
-                        data->_topBillboardTex = ic->second.get();
+                        data->_topBillboardTex = ic->second->_topBillboardTex;
+                        data->_topBillboardTexIndex = ic->second->_topBillboardTexIndex;
                     }
                     else
                     {
@@ -1287,43 +1465,13 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                         //TODO: check for errors
                         if (true)
                         {
-                            texcache[uri] = data->_topBillboardTex;
+                            texcache[uri] = data.get();
+                            data->_topBillboardTexIndex = arena->size();
                             arena->add(data->_topBillboardTex.get());
                         }
                     }
-
-#if 0
-                    ImageCache::iterator ic = imagecache.find(uri);
-                    if (ic != imagecache.end())
-                    {
-                        data->_topImage = ic->second.get();
-                        data->_topImageAtlasIndex = indexOf(imagesToAddToAtlas, data->_topImage.get());
-                    }
-                    else
-                    {
-                        data->_topImage = uri.getImage(getReadOptions());
-                        if (data->_topImage.valid())
-                        {
-                            data->_topImageAtlasIndex = imagesToAddToAtlas.size();
-                            imagesToAddToAtlas.push_back(data->_topImage.get());
-                            imagecache[uri] = data->_topImage.get();
-                        }
-                        else
-                        {
-                            OE_WARN << LC << "Failed to load billboard top image from \"" << uri.full() << "\"" << std::endl;
-                        }
-                    }
-#endif
                 }
 
-#if 0
-                if (data->_sideImage.valid() || data->_model.valid())
-                {
-                    // every asset gets a unique ID:
-                    data->_assetID = assetIDGen++;
-                    _liveAssets.push_back(data.get());
-                }
-#endif
                 if (data->_sideBillboardTex.valid() || data->_model.valid())
                 {
                     data->_assetID = assetIDGen++;
@@ -1333,23 +1481,14 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
         }
     }
 
-#if 0
-    // Add all discovered images to the atlas.
-    if (atlas)
-    {
-        for (ImageVector::const_iterator i = imagesToAddToAtlas.begin();
-            i != imagesToAddToAtlas.end();
-            ++i)
-        {
-            atlas->addImage(i->get());
-        }
-    }
-#endif
-
     if (_liveAssets.empty())
     {
         OE_WARN << LC << "Failed to load any assets!" << std::endl;
         // TODO: something?
+    }
+    else
+    {
+        OE_INFO << LC << "Loaded " << _liveAssets.size() << " assets." << std::endl;
     }
 }
 
@@ -1395,12 +1534,10 @@ GroundCoverLayer::createLUTShader() const
                 << "    oe_gc_LandCoverGroup("
                 << startingAssetIndex << ", "
                 << numAssetsInLandCoverGroup << ", " << fill << ")";
-                //<< " // " << currentLandCoverGroup->options().landCoverClasses().get();
 
             ++numLandCoverGroupsAdded;
 
             startingAssetIndex = numAssetInstancesAdded;
-            //startingAssetIndex = a;
             numAssetsInLandCoverGroup = 0;
             currentLandCoverGroupIndex = data->_landCoverGroupIndex;
             currentLandCoverGroup = data->_landCoverGroup;
@@ -1441,15 +1578,17 @@ GroundCoverLayer::createLUTShader() const
             assetBuf << "    oe_gc_Asset("
                 << data->_assetID
                 << ", " << data->_modelID
-                << ", " << (data->_modelTex.valid() ? data->_modelTex->getHandle() : 0) << "UL"
-                << ", " << (data->_sideBillboardTex.valid() ? data->_sideBillboardTex->getHandle() : 0) << "UL"
-                << ", " << (data->_topBillboardTex.valid() ? data->_topBillboardTex->getHandle() : 0) << "UL"
+                //<< ", " << (data->_modelTex.valid() ? data->_modelTex->getHandle() : 0) << "UL"
+                //<< ", " << (data->_sideBillboardTex.valid() ? data->_sideBillboardTex->getHandle() : 0) << "UL"
+                //<< ", " << (data->_topBillboardTex.valid() ? data->_topBillboardTex->getHandle() : 0) << "UL"
+                << ", " << (data->_modelTex.valid() ? data->_modelTexIndex : -1)
+                << ", " << (data->_sideBillboardTex.valid() ? data->_sideBillboardTexIndex : -1)
+                << ", " << (data->_topBillboardTex.valid() ? data->_topBillboardTexIndex : -1)
                 << ", " << width
                 << ", " << height
                 << ", " << sizeVariation
                 << ", " << data->_asset->options().fill().get()
                 << ")";
-                //<< " // " << data->_asset->options().sideBillboardURI()->base();
 
             ++data->_numInstances;
 
@@ -1472,7 +1611,6 @@ GroundCoverLayer::createLUTShader() const
             << startingAssetIndex << ", "
             << numAssetsInLandCoverGroup
             << ", " << fill << ")";
-            //<< " // " << currentLandCoverGroup->options().landCoverClasses().get();
 
         ++numLandCoverGroupsAdded;
     }
@@ -1494,12 +1632,12 @@ GroundCoverLayer::createLUTShader() const
         "struct oe_gc_Asset { \n"
         "    int assetId; \n"
         "    int modelId; \n"
-        "    uint64_t modelSampler; \n"
-        "    uint64_t sideSampler; \n"
-        "    uint64_t topSampler; \n"
-        //"    int atlasIndexModel; \n" // first index of model's textures
-        //"    int atlasIndexSide; \n"
-        //"    int atlasIndexTop; \n"
+        "    int modelSamplerIndex; \n"
+        "    int sideSamplerIndex; \n"
+        "    int topSamplerIndex; \n"
+        //"    uint64_t modelSampler; \n"
+        //"    uint64_t sideSampler; \n"
+        //"    uint64_t topSampler; \n"
         "    float width; \n"
         "    float height; \n"
         "    float sizeVariation; \n"
@@ -1584,6 +1722,7 @@ GroundCoverLayer::createGeometryCloud(TextureArena* arena) const
     // Add each 3D model to the geometry cloud and update the texture
     // atlas along the way.
     UnorderedMap<int, Texture*> visited;
+    UnorderedMap<Texture*, int> arenaIndex;
     for(AssetDataVector::const_iterator a = _liveAssets.begin();
         a != _liveAssets.end();
         ++a)
@@ -1595,18 +1734,23 @@ GroundCoverLayer::createGeometryCloud(TextureArena* arena) const
             auto i = visited.find(asset->_modelID);
             if (i == visited.end())
             {
-                // adds the model, and returns the texture atlas index of the
+                // adds the model, and returns the texture associated with the
                 // FIRST discovered texture from the model.
                 Texture* tex = geomCloud->add(asset->_model.get());
                 visited[asset->_modelID] = tex;
                 if (tex)
+                {
+                    asset->_modelTexIndex = arena->size();
                     arena->add(tex);
+                    arenaIndex[tex] = asset->_modelTexIndex;
+                }
 
                 asset->_modelTex = tex;
             }
             else
             {
                 asset->_modelTex = i->second;
+                asset->_modelTexIndex = arenaIndex[i->second];
             }
         }
     }

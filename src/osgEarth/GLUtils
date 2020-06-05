@@ -28,6 +28,15 @@
 #include <osg/StateSet>
 #include <osg/OperationThread>
 #include <osg/GraphicsContext>
+#include <osg/GLObjects>
+#include <set>
+
+#ifndef GLintptr
+#define GLintptr std::intptr_t
+#endif
+#ifndef GLsizeiptr
+#define GLsizeiptr std::uintptr_t
+#endif
 
 namespace osgEarth
 {
@@ -75,22 +84,86 @@ namespace osgEarth
         virtual void operator()(osg::Object*);
     };
 
-    struct GLBuffer : public osg::Referenced
+    //! Base class for GL object containers
+    class OSGEARTH_EXPORT GLObject : public osg::Referenced
     {
-        mutable GLuint _handle;
+    public:
+        GLObject(osg::State& state, const std::string& label);
+        virtual void release() =0;
+        osg::GLExtensions* ext() const { return _ext; }
+    protected:
+        std::string _label;
+        osg::GLExtensions* _ext;
+    };
+
+    //! A buffer object
+    class OSGEARTH_EXPORT GLBuffer : public GLObject
+    {
+    public:
+        GLBuffer(GLenum target, osg::State& state, const std::string& label="");
+        void bind();
+        void bind(GLenum target);
+        GLuint name() const { return _name; }
+        void release();
+    private:
+        GLuint _name;
+        GLenum _target;
+    };
+
+    //! A texture object with optional resident handle
+    class OSGEARTH_EXPORT GLTexture : public GLObject
+    {
+    public:
+        GLTexture(GLenum target, osg::State& state, const std::string& label="");
+        void bind();
+        GLuint64 handle();
+        GLuint name() const { return _name; }
+        void makeResident(bool toggle);
+        void release();
+    private:
+        GLenum _target;
+        GLuint _name;
+        GLuint64 _handle;
+        bool _isResident;
     };
 
     /**
-     * Operation that will automatically delete a GL buffer 
+     * Mechanism that will automatically delete a GL object 
      * when its container goes out of scope
      */
-    struct GLBufferReleaser : public osg::GraphicsOperation
+    struct GLObjectReleaser : public osg::GraphicsObjectManager
     {
-        osg::observer_ptr<GLBuffer> _buffer;
-        GLuint _handle;
-        GLBufferReleaser(GLBuffer* buffer);
-        void operator () (osg::GraphicsContext* context);
+        GLObjectReleaser(unsigned contextID);
+
+        void watch(GLObject*);
+
+        virtual void flushDeletedGLObjects(double currentTime, double& availableTime);
+        virtual void flushAllDeletedGLObjects();
+        virtual void deleteAllGLObjects();
+        virtual void discardAllGLObjects();
+
+        std::set<osg::ref_ptr<GLObject> > _objects;
+        std::set<osg::ref_ptr<GLObject> > _temp;
     };
+
+    //! Base class for a shader storage buffer object
+    class OSGEARTH_EXPORT SSBO
+    {
+    public:
+        SSBO();
+        void initGL();
+
+        mutable osg::ref_ptr<GLBuffer> _buffer;
+        mutable GLsizei _allocatedSize;
+        mutable GLsizei _requiredSize;
+        GLint _bindingIndex;
+        void bindLayout() const;
+        virtual void release() const;
+
+        // pre-OSG 3.6 support
+        void (GL_APIENTRY * _glBufferStorage)(GLenum, GLuint, const void*, GLenum);
+        void (GL_APIENTRY * _glClearBufferSubData)(GLenum, GLenum, GLintptr, GLsizeiptr, GLenum, GLenum type, const void*);
+};
 }
 
 

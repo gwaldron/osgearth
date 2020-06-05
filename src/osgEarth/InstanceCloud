@@ -24,6 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Containers>
+#include <osgEarth/GLUtils>
 #include <osgEarth/TextureArena>
 
 #include <osg/Geometry>
@@ -35,23 +36,6 @@ namespace osgEarth
 {
     class GeometryCloud;
 
-    //! Base class for a shader storage buffer object
-    struct SSBO
-    {
-        SSBO();
-        mutable unsigned _contextID;
-        mutable GLuint _handle;
-        mutable GLsizei _allocatedSize;
-        mutable GLsizei _requiredSize;
-        GLint _bindingIndex;
-        void bind(osg::GLExtensions* ext) const;
-        void bindLayout(osg::GLExtensions* ext) const;
-        void release() const;
-
-        // pre-OSG 3.6 support
-        void (GL_APIENTRY * _glBufferStorage)(GLenum, GLuint, const void*, GLenum);
-    };
-
     //! A draw command for indirect rendering
     struct DrawElementsIndirectCommand
     {
@@ -60,6 +44,14 @@ namespace osgEarth
         GLuint  firstIndex;     // index of the first element in the EBO to use
         GLuint  baseVertex;     // offset to add to each element index (lets us use USHORT even when >65535 verts)
         GLuint  baseInstance;   // offset to instace # when fetching vertex attrs (does NOT affect gl_InstanceID)
+    };
+
+    //! A dispatch command for indirect compute
+    struct DispatchIndirectCommand
+    {
+        GLuint num_groups_x;
+        GLuint num_groups_y;
+        GLuint num_groups_z;
     };
 
     /**
@@ -77,8 +69,8 @@ namespace osgEarth
             ~CommandBuffer() { if (_buf) delete[] _buf; }
             mutable DrawElementsIndirectCommand* _buf;
             GeometryCloud* _geom;
-            void allocate(GeometryCloud* cloud, GLsizei alignment, osg::GLExtensions* ext);
-            void reset(osg::GLExtensions* ext);
+            void allocate(GeometryCloud* cloud, GLsizei alignment, osg::State&);
+            void reset();
         };
 
         // Buffer holding per-tile information. 
@@ -89,71 +81,94 @@ namespace osgEarth
         {
             struct Data {
                 GLfloat _modelViewMatrix[16];   // 64
-                GLfloat _normalMatrix[16];      // +64 = 128 (no mat3's allowed!!)
+                //GLfloat _normalMatrix[16];      // +64 = 128 (no mat3's allowed!!)
             };
             Data* _buf;
             TileBuffer() : _buf(NULL) { }
             ~TileBuffer() { if (_buf) delete[] _buf; }
-            void allocate(unsigned numTiles, GLsizei alignment, osg::GLExtensions* ext);
-            void update(osg::GLExtensions* ext) const;
+            void allocate(unsigned numTiles, GLsizei alignment, osg::State&);
+            void update() const;
+        };
+
+        struct InstanceData
+        {
+            GLfloat vertex[4];   // 16
+            GLfloat tilec[2];    //  + 8 = 24
+            GLint64 modelSampler;    //  + 4 = 28
+            GLint64 sideSampler;     //  + 4 = 32
+            GLint64 topSampler;      //  + 4 = 36
+            GLfloat width;       //  + 4 = 40
+            GLfloat height;      //  + 4 = 44
+            GLfloat sinrot;      //  + 4 = 48
+            GLfloat cosrot;      //  + 4 = 52
+            GLfloat fillEdge;    //  + 4 = 56
+            GLint modelId;       //  + 4 = 60
+            GLuint tileNum;      //  + 4 = 64
+            GLint  drawCommand;  //  + 4 = 68
+            GLfloat instanceId;  //  + 4 = 72
+            GLfloat sizeScale;   //  + 4 = 76
+            GLfloat pixelSizeRatio;//+ 4 = 80
+            GLfloat _padding[1];
+        };
+
+        // Buffer populated by the Generator containing information on each 
+        // instance in each tile.
+        // Each tile's data starts at an offset based on the total dimensions
+        // of each tile multiplied by the tile number.
+        struct GenBuffer : public SSBO
+        {
+            InstanceData* _buf;
+            unsigned _numInstancesPerTile;
+            GenBuffer() : _buf(NULL) { }
+            ~GenBuffer() { if (_buf) delete[] _buf; }
+            void allocate(unsigned numTiles, unsigned numInstancesPerTile, GLsizei alignment, osg::State&);
+            void clearTile(unsigned tileNum);
         };
 
         // Buffer populated by the Generator containing information on each 
         // instance in a tile.
         struct InstanceBuffer : public SSBO
         {
-            struct HeaderData
-            {
-                GLuint _count;          // +4
-                GLfloat _padding[3];    // +12 = 16
-            };
-            struct InstanceData
-            {
-                GLfloat vertex[4];   // 16
-                GLfloat tilec[2];    //  + 8 = 24
-                GLint modelIndex;    //  + 4 = 28
-                GLint sideIndex;     //  + 4 = 32
-                GLint topIndex;      //  + 4 = 36
-                GLfloat width;       //  + 4 = 40
-                GLfloat height;      //  + 4 = 44
-                GLfloat sinrot; 
-                GLfloat cosrot;
-                GLfloat fillEdge;    //  + 4 = 48
-                GLint modelId;       //  + 4 = 52
-                GLuint tileNum;      //  + 4 = 56
-                GLint  drawCommand;  //  + 4 = 60
-                GLfloat instanceId;  //  + 4 = 64
-                GLfloat sizeScale;   //  + 4 = 68
-                GLfloat pixelSizeRatio;
-            };
-            HeaderData* _buf;
+            DispatchIndirectCommand* _buf;
             InstanceBuffer() : _buf(NULL) { }
             ~InstanceBuffer() { if (_buf) delete[] _buf; }
-            void allocate(unsigned numTiles, GLsizei alignment, osg::GLExtensions* ext);
-            void clear(osg::GLExtensions* ext);
-            void readHeader(osg::GLExtensions* ext);
+            void allocate(unsigned numTiles, GLsizei alignment, osg::State&);
+            void clear();
+        };
+
+        // Buffer populated by the Generator containing information on each 
+        // instance in a tile.
+        struct RenderBuffer : public SSBO
+        {
+            InstanceData* _buf;
+            RenderBuffer() : _buf(NULL) { }
+            ~RenderBuffer() { if (_buf) delete[] _buf; }
+            void allocate(unsigned numTiles, GLsizei alignment, osg::State&);
         };
 
         struct InstancingData
         {
             CommandBuffer _commandBuffer;     // One for each unique model plus one for billboards
             TileBuffer _tileBuffer;           // per-tile information (matrices)
+            GenBuffer _genBuffer;
             InstanceBuffer _instanceBuffer;   // instances emitted by the Instancing CS
-            InstanceBuffer _renderListBuffer; // final render list of instances
+            RenderBuffer _renderBuffer; // final render list of instances
 
             unsigned _numX, _numY;
-            unsigned _numAssets;
+            unsigned _numTilesActive;
             unsigned _numTilesAllocated;
             unsigned _numInstancesGenerated;
+            unsigned _highestTileSlotInUse;
 
             GLsizei _alignment; // SSBO range alignment
             GLint _passUL;      // uniform location for compute/rendering pass
+            GLint _numCommandsUL; // uniform loc for draw cmd count
 
             osg::ref_ptr<GeometryCloud> _geom;  // merged geometry
 
             InstancingData();
             ~InstancingData();
-            bool allocateGLObjects(osg::State* state, unsigned numTiles);
+            bool allocateGLObjects(osg::State& state, unsigned numTiles);
             void releaseGLObjects(osg::State* state) const;
         };
 
@@ -175,16 +190,22 @@ namespace osgEarth
         //! Returns true if new memory was allocated and old data is now invalid.
         bool allocateGLObjects(osg::RenderInfo&, unsigned numTiles);
 
+        //! Tell the instancer the highest tile index currently in use.
+        void setHighestTileSlot(unsigned slot);
+
         //! Prepare to render a new frame.
-        void newFrame(osg::RenderInfo&);
+        void newFrame();
 
         //! Sets the modeview matrix for a tile
         void setMatrix(unsigned tileNum, const osg::Matrix& modelView);
         
         //! Run the generate compute shader pass (only when tile batch changes)
         void generate_begin(osg::RenderInfo&);
-        void generate_tile(osg::RenderInfo&);
+        void generate_tile(unsigned slot, osg::RenderInfo&);
         void generate_end(osg::RenderInfo&);
+
+        //! Reset a tile so we can re-use its slot
+        void clearTileSlot(unsigned slot);
 
         //! Run the cull/sort compute shader (only when generating or when the camera moves)
         void cull(osg::RenderInfo&);
@@ -202,21 +223,16 @@ namespace osgEarth
         //! run the multi draw indirect commands.
         struct Renderer : public osg::Geometry::DrawCallback
         {
-            Renderer(InstancingData* data);
+            Renderer(GeometryCloud* geom);
             void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const;
-            InstancingData* _data;
-
-            // pre-OSG3.6 support
-            void (GL_APIENTRY * _glDrawElementsIndirect)(GLenum, GLenum, const void*);
-            void (GL_APIENTRY * _glMultiDrawElementsIndirect)(GLenum, GLenum, const void*, GLsizei, GLsizei);
+            GeometryCloud* _geom;
         };
 
         //! Utility to install the draw callback on the geometry cloud.
         struct Installer : public osg::NodeVisitor
         {
-            Installer(InstancingData* data);
+            Installer(GeometryCloud* geom);
             void apply(osg::Drawable& drawable);
-            InstancingData* _data;
             osg::ref_ptr<Renderer> _callback;
         };
     };

@@ -887,6 +887,9 @@ MapNode::releaseGLObjects(osg::State* state) const
     for(const osg::Callback* ec = getEventCallback(); ec; ec = ec->getNestedCallback())
         ec->releaseGLObjects(state);
 
+    // inform the GLObjectReleaser for this context
+    GLObjectReleaser::releaseAll(*state);
+
     osg::Group::releaseGLObjects(state);
 }
 

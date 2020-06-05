@@ -11,7 +11,8 @@ vec3 vp_Normal;
 vec4 vp_Color;
 
 struct oe_VertexSpec {
-    vec4 model, view;
+    //vec4 model;
+    vec4 view;
     vec3 normal; // always in view
 } oe_vertex;
 
@@ -26,11 +27,13 @@ void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
     uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
     uint tileNum = render[i].tileNum;
 
-    oe_transform.modelview = tile[tileNum].modelViewMatrix;
-    oe_transform.normal    = mat3(tile[tileNum].normalMatrix);
+    oe_transform.modelview = tileData[tileNum].modelViewMatrix;
 
-    oe_vertex.model  = vec4(render[i].vertex.xyz + geom_vertex.xyz, 1.0);
-    oe_vertex.view   = oe_transform.modelview * oe_vertex.model;
+    // shortcut for scale-isotropic mvm:
+    oe_transform.normal = mat3(oe_transform.modelview);
+
+    vec4 model = vec4(render[i].vertex.xyz + geom_vertex.xyz, 1.0);
+    oe_vertex.view = oe_transform.modelview * model;
     oe_vertex.normal = oe_transform.normal * vp_Normal;
 
     // override the terrain's shader
@@ -49,8 +52,9 @@ void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
 #pragma include GroundCover.Types.glsl
 
 struct oe_VertexSpec {
-    vec4 model, view;
-    vec3 normal;
+    //vec4 model;
+    vec4 view;
+    vec3 normal; // always in view
 } oe_vertex;
 
 struct oe_TransformSpec {
@@ -74,7 +78,7 @@ out vec4 oe_layer_tilec;
 
 // Output texture coordinates to the fragment shader
 out vec3 oe_gc_texCoord;
-flat out uint64_t oe_gc_atlasSampler;
+flat out uint64_t oe_gc_texHandle;
 
 uniform float osg_FrameTime; // OSG frame time (seconds) used for wind animation
 
@@ -119,7 +123,9 @@ void oe_Grass_parametric(inout vec4 vertex_view)
     float nRange = clamp(-vertex_view.z/maxRange, 0.0, 1.0);
 
     // find the texture atlas index:
-    oe_gc_atlasSampler = render[i].sideSampler;
+    oe_gc_texHandle = 0UL;
+    if (render[i].sideSamplerIndex >= 0)
+        oe_gc_texHandle = texHandle[render[i].sideSamplerIndex];
 
     // make the grass smoothly disappear in the distance
     float falloff = clamp(2.0-(nRange + oe_noise[NOISE_SMOOTH]), 0, 1);
@@ -254,7 +260,9 @@ void oe_Grass_model(inout vec4 vertex_view)
     oe_gc_texCoord.xyz = gl_MultiTexCoord7.xyz;
 
     // pick the sampler
-    oe_gc_atlasSampler = render[i].modelSampler;
+    oe_gc_texHandle = render[i].modelSamplerIndex >= 0?
+        texHandle[render[i].modelSamplerIndex] :
+        0UL;
 }
 
 void oe_Grass_main(inout vec4 vertex_view)
@@ -283,9 +291,8 @@ uniform mat4 OE_GROUNDCOVER_COLOR_MATRIX ;
 in vec4 oe_layer_tilec;
 #endif
 
-//uniform sampler2DArray oe_gc_atlas;
 in vec3 oe_gc_texCoord;
-flat in uint64_t oe_gc_atlasSampler;
+flat in uint64_t oe_gc_texHandle;
 vec3 vp_Normal;
 
 uniform float oe_gc_maxAlpha;
@@ -293,10 +300,10 @@ uniform int oe_gc_useAlphaToCoverage;
 
 void oe_Grass_FS(inout vec4 color)
 {
-    if (oe_gc_atlasSampler > 0UL)
+    if (oe_gc_texHandle > 0UL)
     {
         // paint the texture
-        color *= texture(sampler2DArray(oe_gc_atlasSampler), oe_gc_texCoord);
+        color *= texture(sampler2DArray(oe_gc_texHandle), oe_gc_texCoord);
     }
 
     // uncomment to see triangles

@@ -18,7 +18,7 @@ http://readymap.org
     </TMSImage>
 
     <DebugImage name="Tilekeys" enabled="false"/>
-    
+
     <RoadSurface name="road-surface" min_level="14" max_data_level="18">
         <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
@@ -29,7 +29,7 @@ http://readymap.org
                    stroke: #ffffff;
                    stroke-width: 20m;
                    stroke-image: "'../data/road.png'";
-                }                    
+                }
             </style>
         </styles>
     </RoadSurface>
@@ -66,14 +66,14 @@ http://readymap.org
     </FeatureModel>
 
     <TFSFeatures name="roads-data">
-        <url>http://readymap.org/osm/</url>
+        <url>http://readymap.org/readymap/mbtiles/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
         <format>pbf</format>
         <filters>
             <script language="javascript">
-              <![CDATA[ ("highway" in feature.properties); ]]>
+                <![CDATA[ ("highway" in feature.properties); ]]>
             </script>
         </filters>
     </TFSFeatures>

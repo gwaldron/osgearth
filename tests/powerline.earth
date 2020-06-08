@@ -25,7 +25,7 @@
     </PowerlineModel>
 
     <TFSFeatures name="power-lines">
-        <url>http://readymap.org/osm/</url>
+        <url>http://readymap.org/readymap/mbtiles/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
@@ -64,13 +64,13 @@
             <range>500</range>
         </viewpoint>
         <viewpoint name="problematic">
-          <heading>-52.6766</heading>
-          <pitch>-16.6442</pitch>
-          <range>123.522m</range>
-          <long>-0.6434920611453753</long>
-          <lat>44.89152565710955</lat>
-          <height>53.01278693787754</height>
-          <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+            <heading>-52.6766</heading>
+            <pitch>-16.6442</pitch>
+            <range>123.522m</range>
+            <long>-0.6434920611453753</long>
+            <lat>44.89152565710955</lat>
+            <height>53.01278693787754</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
 
     </viewpoints>

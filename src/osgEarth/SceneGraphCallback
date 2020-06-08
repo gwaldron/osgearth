@@ -24,6 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
+#include <OpenThreads/ReentrantMutex>
 #include <osg/Node>
 #include <osg/PagedLOD>
 #include <osg/observer_ptr>
@@ -53,7 +54,7 @@ namespace osgEarth
     typedef std::vector<osg::ref_ptr<SceneGraphCallback> > SceneGraphCallbackVector;
 
     /**
-     * Cotnainer for scene graph callbacks. Typically an object that 
+     * Cotnainer for scene graph callbacks. Typically an object that
      * supports scene graph callbacks will host an instance of this
      * object and use it register and fire callbacks at the appropriate times.
      */
@@ -80,7 +81,7 @@ namespace osgEarth
 
     private:
         SceneGraphCallbackVector _callbacks;
-        Threading::Mutex _mutex;
+        OpenThreads::ReentrantMutex _mutex;
         osg::observer_ptr<osg::Object> _sender;
     };
 
@@ -107,7 +108,7 @@ namespace osgEarth
             void setSceneGraphCallbacks(SceneGraphCallbacks* host);
 
         public: // osg::Group
-        
+
             virtual bool addChild(osg::Node* child);
             virtual bool insertChild(unsigned index, osg::Node* child);
             virtual bool replaceChild(osg::Node* origChild, osg::Node* newChild);

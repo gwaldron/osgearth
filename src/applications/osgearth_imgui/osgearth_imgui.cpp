@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2018 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -59,14 +59,12 @@ protected:
         // ImGui code goes here...
         //ImGui::ShowDemoWindow();
         _layers.draw(_mapNode.get(), _view->getCamera(), _earthManip.get());
-        _search.draw(_earthManip.get());
     }
 
     osg::ref_ptr< MapNode > _mapNode;
     osg::ref_ptr<EarthManipulator> _earthManip;
     osgViewer::View* _view;
     LayersGUI _layers;
-    SearchGUI _search;
 };
 
 int

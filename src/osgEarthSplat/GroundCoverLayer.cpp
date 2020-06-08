@@ -76,7 +76,8 @@ GroundCoverLayer::Options::getConfig() const
     conf.set("alpha_to_coverage", alphaToCoverage());
 
     Config zones("zones");
-    for (int i = 0; i < _biomeZones.size(); ++i) {
+    for (int i = 0; i < _biomeZones.size(); ++i)
+    {
         Config zone = _biomeZones[i].getConfig();
         if (!zone.empty())
             zones.add(zone);
@@ -86,8 +87,7 @@ GroundCoverLayer::Options::getConfig() const
     return conf;
 }
 
-void
-GroundCoverLayer::Options::fromConfig(const Config& conf)
+void GroundCoverLayer::Options::fromConfig(const Config &conf)
 {
     // defaults:
     lod().setDefault(13u);
@@ -103,10 +103,10 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     conf.get("max_alpha", maxAlpha());
     conf.get("alpha_to_coverage", alphaToCoverage());
 
-    const Config* zones = conf.child_ptr("zones");
+    const Config *zones = conf.child_ptr("zones");
     if (zones)
     {
-        const ConfigSet& children = zones->children();
+        const ConfigSet &children = zones->children();
         for (ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i)
         {
             _biomeZones.push_back(BiomeZone(*i));
@@ -121,8 +121,7 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
 
 //........................................................................
 
-bool
-GroundCoverLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
+bool GroundCoverLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor &nv, const osg::Camera *camera) const
 {
     // if this is a shadow camera and the layer is configured to cast shadows, accept it.
     if (CameraUtils::isShadowCamera(camera))
@@ -140,8 +139,7 @@ GroundCoverLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor& nv, const osg::Ca
     return true;
 }
 
-bool
-GroundCoverLayer::LayerAcceptor::acceptKey(const TileKey& key) const
+bool GroundCoverLayer::LayerAcceptor::acceptKey(const TileKey &key) const
 {
     return _layer->getLOD() == key.getLOD();
 }
@@ -154,27 +152,29 @@ namespace
     struct ZoneSA : public osg::StateAttribute
     {
         META_StateAttribute(osgEarth, ZoneSA, (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY + 90210));
-        BiomeZone* _obj;
-        ZoneSA() : _obj(NULL) { }
-        ZoneSA(const ZoneSA& sa, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY) : osg::StateAttribute(sa, copyop), _obj(sa._obj) { }
-        ZoneSA(BiomeZone* obj) : _obj(obj) { }
-        virtual int compare(const StateAttribute& sa) const { return 0; }
-        static const ZoneSA* extract(const osg::State* state) {
+        BiomeZone *_obj;
+        ZoneSA() : _obj(NULL) {}
+        ZoneSA(const ZoneSA &sa, const osg::CopyOp &copyop = osg::CopyOp::SHALLOW_COPY) : osg::StateAttribute(sa, copyop), _obj(sa._obj) {}
+        ZoneSA(BiomeZone *obj) : _obj(obj) {}
+        virtual int compare(const StateAttribute &sa) const { return 0; }
+        static const ZoneSA *extract(const osg::State *state)
+        {
             osg::State::AttributeMap::const_iterator i = state->getAttributeMap().find(
                 std::make_pair((osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY + 90210), 0));
-            if (i == state->getAttributeMap().end()) return NULL;
-            if (i->second.attributeVec.empty()) return NULL;
-            return dynamic_cast<const ZoneSA*>(i->second.attributeVec.front().first);
+            if (i == state->getAttributeMap().end())
+                return NULL;
+            if (i->second.attributeVec.empty())
+                return NULL;
+            return dynamic_cast<const ZoneSA *>(i->second.attributeVec.front().first);
         }
     };
-}
+} // namespace
 
-void
-GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv) const
+void GroundCoverLayer::ZoneSelector::operator()(osg::Node *node, osg::NodeVisitor *nv) const
 {
     if (nv->getVisitorType() == nv->CULL_VISITOR)
     {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+        osgUtil::CullVisitor *cv = dynamic_cast<osgUtil::CullVisitor *>(nv);
 
         // If we have zones, select the current one and apply its state set.
         if (_layer && _layer->getZones().size() > 0)
@@ -182,20 +182,20 @@ GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv
             int zoneIndex = 0;
             osg::Vec3d vp = cv->getViewPoint();
 
-            const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+            const SpatialReference *wgs84 = SpatialReference::get("wgs84");
             GeoPoint p;
             p.fromWorld(wgs84, vp);
-                
-            for(int z=_layer->getZones().size()-1; z > 0 && zoneIndex == 0; --z)
+
+            for (int z = _layer->getZones().size() - 1; z > 0 && zoneIndex == 0; --z)
             {
-                if ( _layer->getZones()[z].contains(p) )
+                if (_layer->getZones()[z].contains(p))
                 {
                     zoneIndex = z;
                     //OE_INFO << p.toString() << ", zoneIndex=" << zoneIndex << std::endl;
                 }
             }
 
-            osg::StateSet* zoneStateSet = _layer->getZoneStateSet(zoneIndex);
+            osg::StateSet *zoneStateSet = _layer->getZoneStateSet(zoneIndex);
             //_layer->_perCamera[cv->getCurrentCamera]._currentZoneStateSet = zoneStateSet;
 
             if (zoneStateSet)
@@ -207,7 +207,7 @@ GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv
             else
             {
                 OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null - Layer disabled" << std::endl;
-                const_cast<ZoneSelector*>(this)->_layer = NULL;
+                const_cast<ZoneSelector *>(this)->_layer = NULL;
             }
         }
     }
@@ -219,29 +219,31 @@ GroundCoverLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv
 
 //........................................................................
 
-void GroundCoverLayer::setLOD(unsigned value) {
+void GroundCoverLayer::setLOD(unsigned value)
+{
     options().lod() = value;
 }
-unsigned GroundCoverLayer::getLOD() const {
+unsigned GroundCoverLayer::getLOD() const
+{
     return options().lod().get();
 }
 
-void GroundCoverLayer::setCastShadows(bool value) {
+void GroundCoverLayer::setCastShadows(bool value)
+{
     options().castShadows() = value;
 }
-bool GroundCoverLayer::getCastShadows() const {
+bool GroundCoverLayer::getCastShadows() const
+{
     return options().castShadows().get();
 }
 
-void
-GroundCoverLayer::init()
+void GroundCoverLayer::init()
 {
     PatchLayer::init();
 
     _isModel = false;
 
     _debug = (::getenv("OSGEARTH_GROUNDCOVER_DEBUG") != NULL);
-
 }
 
 GroundCoverLayer::~GroundCoverLayer()
@@ -287,45 +289,43 @@ GroundCoverLayer::closeImplementation()
 
     _noiseBinding.release();
     _groundCoverTexBinding.release();
-    
+
     _liveAssets.clear();
     _atlasImages.clear();
 
     return PatchLayer::closeImplementation();
 }
 
-void
-GroundCoverLayer::setLandCoverDictionary(LandCoverDictionary* layer)
+void GroundCoverLayer::setLandCoverDictionary(LandCoverDictionary *layer)
 {
     _landCoverDict.setLayer(layer);
     if (layer)
         buildStateSets();
 }
 
-LandCoverDictionary*
+LandCoverDictionary *
 GroundCoverLayer::getLandCoverDictionary() const
 {
     return _landCoverDict.getLayer();
 }
 
-void
-GroundCoverLayer::setLandCoverLayer(LandCoverLayer* layer)
+void GroundCoverLayer::setLandCoverLayer(LandCoverLayer *layer)
 {
     _landCoverLayer.setLayer(layer);
-    if (layer) {
+    if (layer)
+    {
         OE_INFO << LC << "Land cover layer is \"" << layer->getName() << "\"\n";
         buildStateSets();
     }
 }
 
-LandCoverLayer*
+LandCoverLayer *
 GroundCoverLayer::getLandCoverLayer() const
 {
     return _landCoverLayer.getLayer();
 }
 
-void
-GroundCoverLayer::setMaskLayer(ImageLayer* layer)
+void GroundCoverLayer::setMaskLayer(ImageLayer *layer)
 {
     options().maskLayer().setLayer(layer);
     if (layer)
@@ -334,14 +334,13 @@ GroundCoverLayer::setMaskLayer(ImageLayer* layer)
     }
 }
 
-ImageLayer*
+ImageLayer *
 GroundCoverLayer::getMaskLayer() const
 {
     return options().maskLayer().getLayer();
 }
 
-void
-GroundCoverLayer::setColorLayer(ImageLayer* value)
+void GroundCoverLayer::setColorLayer(ImageLayer *value)
 {
     options().colorLayer().setLayer(value);
     if (value)
@@ -350,38 +349,33 @@ GroundCoverLayer::setColorLayer(ImageLayer* value)
     }
 }
 
-ImageLayer*
+ImageLayer *
 GroundCoverLayer::getColorLayer() const
 {
     return options().colorLayer().getLayer();
 }
 
-void
-GroundCoverLayer::setMaxAlpha(float value)
+void GroundCoverLayer::setMaxAlpha(float value)
 {
     options().maxAlpha() = value;
 }
 
-float
-GroundCoverLayer::getMaxAlpha() const
+float GroundCoverLayer::getMaxAlpha() const
 {
     return options().maxAlpha().get();
 }
 
-void
-GroundCoverLayer::setUseAlphaToCoverage(bool value)
+void GroundCoverLayer::setUseAlphaToCoverage(bool value)
 {
     options().alphaToCoverage() = value;
 }
 
-bool
-GroundCoverLayer::getUseAlphaToCoverage() const
+bool GroundCoverLayer::getUseAlphaToCoverage() const
 {
     return options().alphaToCoverage().get();
 }
 
-void
-GroundCoverLayer::addedToMap(const Map* map)
+void GroundCoverLayer::addedToMap(const Map *map)
 {
     PatchLayer::addedToMap(map);
 
@@ -415,7 +409,7 @@ GroundCoverLayer::addedToMap(const Map* map)
         unsigned lod = getLOD();
         unsigned tx, ty;
         map->getProfile()->getNumTiles(lod, tx, ty);
-        GeoExtent e = TileKey(lod, tx/2, ty/2, map->getProfile()).getExtent();
+        GeoExtent e = TileKey(lod, tx / 2, ty / 2, map->getProfile()).getExtent();
         GeoCircle c = e.computeBoundingGeoCircle();
         double width_m = 2.0 * c.getRadius() / 1.4142;
         _renderer->_tileWidth = width_m;
@@ -424,8 +418,7 @@ GroundCoverLayer::addedToMap(const Map* map)
     }
 }
 
-void
-GroundCoverLayer::removedFromMap(const Map* map)
+void GroundCoverLayer::removedFromMap(const Map *map)
 {
     PatchLayer::removedFromMap(map);
 
@@ -433,8 +426,7 @@ GroundCoverLayer::removedFromMap(const Map* map)
     options().colorLayer().removedFromMap(map);
 }
 
-void
-GroundCoverLayer::setTerrainResources(TerrainResources* res)
+void GroundCoverLayer::setTerrainResources(TerrainResources *res)
 {
     PatchLayer::setTerrainResources(res);
 
@@ -464,12 +456,11 @@ GroundCoverLayer::setTerrainResources(TerrainResources* res)
 }
 
 //Returns true if any billboard in the data model uses a "top-down" image.
-bool 
-GroundCoverLayer::shouldEnableTopDownBillboards() const
+bool GroundCoverLayer::shouldEnableTopDownBillboards() const
 {
-    for(AssetDataVector::const_iterator i = _liveAssets.begin();
-        i != _liveAssets.end();
-        ++i)
+    for (AssetDataVector::const_iterator i = _liveAssets.begin();
+         i != _liveAssets.end();
+         ++i)
     {
         if (i->get()->_topImage.valid())
             return true;
@@ -478,17 +469,17 @@ GroundCoverLayer::shouldEnableTopDownBillboards() const
     return false;
 }
 
-
-void
-GroundCoverLayer::buildStateSets()
+void GroundCoverLayer::buildStateSets()
 {
     // assert we have the necessary TIUs:
-    if (_groundCoverTexBinding.valid() == false) {
+    if (_groundCoverTexBinding.valid() == false)
+    {
         OE_DEBUG << LC << "buildStateSets deferred.. bindings not reserved\n";
         return;
     }
 
-    if (!getLandCoverDictionary()) {
+    if (!getLandCoverDictionary())
+    {
         OE_DEBUG << LC << "buildStateSets deferred.. land cover dictionary not available\n";
         return;
     }
@@ -499,14 +490,13 @@ GroundCoverLayer::buildStateSets()
         // TODO: check for errors.
     }
 
-
     NoiseTextureFactory noise;
     osg::ref_ptr<osg::Texture> noiseTexture = noise.create(256u, 4u);
 
     GroundCoverShaders shaders;
 
     // Layer-wide stateset:
-    osg::StateSet* stateset = getOrCreateStateSet();
+    osg::StateSet *stateset = getOrCreateStateSet();
 
     // bind the noise sampler.
     stateset->setTextureAttribute(_noiseBinding.unit(), noiseTexture.get());
@@ -542,7 +532,7 @@ GroundCoverLayer::buildStateSets()
     _renderer->_computeProgram->addShader(lutShader.get());
 
     // Install the land cover shaders on the state set
-    VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+    VirtualProgram *vp = VirtualProgram::getOrCreate(stateset);
     vp->setName("Ground cover");
 
     // Load shaders particular to this class
@@ -555,21 +545,21 @@ GroundCoverLayer::buildStateSets()
         stateset->setDefine("OE_GROUNDCOVER_USE_TOP_BILLBOARDS");
     }
 
-    osg::Texture* tex = createTextureAtlas();
+    osg::Texture *tex = createTextureAtlas();
     stateset->setTextureAttribute(_groundCoverTexBinding.unit(), tex);
     stateset->addUniform(new osg::Uniform(GCTEX_SAMPLER, _groundCoverTexBinding.unit()));
 
     // Assemble zone-specific statesets:
     float maxVisibleRange = getMaxVisibleRange();
     _zoneStateSets.clear();
-    for(unsigned z = 0; z < getZones().size(); ++z)
+    for (unsigned z = 0; z < getZones().size(); ++z)
     {
-        osg::StateSet* zoneStateSet = new osg::StateSet();
+        osg::StateSet *zoneStateSet = new osg::StateSet();
         zoneStateSet->addUniform(new osg::Uniform("oe_gc_zone", (int)z));
 
         // store the layout on a per-zone basis since the instancer will be different.
-        const BiomeZone& zone = getZones()[z];
-        zoneStateSet->setAttribute(new ZoneSA(&const_cast<BiomeZone&>(zone)));
+        const BiomeZone &zone = getZones()[z];
+        zoneStateSet->setAttribute(new ZoneSA(&const_cast<BiomeZone &>(zone)));
 
         if (zone.options().maxDistance().isSet())
         {
@@ -583,12 +573,11 @@ GroundCoverLayer::buildStateSets()
     setMaxVisibleRange(maxVisibleRange);
 }
 
-void
-GroundCoverLayer::resizeGLObjectBuffers(unsigned maxSize)
+void GroundCoverLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
-    for(std::vector<osg::ref_ptr<osg::StateSet> >::iterator i = _zoneStateSets.begin();
-        i != _zoneStateSets.end();
-        ++i)
+    for (std::vector<osg::ref_ptr<osg::StateSet>>::iterator i = _zoneStateSets.begin();
+         i != _zoneStateSets.end();
+         ++i)
     {
         i->get()->resizeGLObjectBuffers(maxSize);
     }
@@ -599,12 +588,11 @@ GroundCoverLayer::resizeGLObjectBuffers(unsigned maxSize)
     PatchLayer::resizeGLObjectBuffers(maxSize);
 }
 
-void
-GroundCoverLayer::releaseGLObjects(osg::State* state) const
+void GroundCoverLayer::releaseGLObjects(osg::State *state) const
 {
-    for(std::vector<osg::ref_ptr<osg::StateSet> >::const_iterator i = _zoneStateSets.begin();
-        i != _zoneStateSets.end();
-        ++i)
+    for (std::vector<osg::ref_ptr<osg::StateSet>>::const_iterator i = _zoneStateSets.begin();
+         i != _zoneStateSets.end();
+         ++i)
     {
         i->get()->releaseGLObjects(state);
     }
@@ -619,25 +607,24 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
 
 namespace
 {
-    osg::Node* makeBBox(const osg::BoundingBox& bbox, const TileKey& key)
+    osg::Node *makeBBox(const osg::BoundingBox &bbox, const TileKey &key)
     {
-        osg::Group* geode = new osg::Group();
+        osg::Group *geode = new osg::Group();
 
-        if ( bbox.valid() )
+        if (bbox.valid())
         {
             static const int index[24] = {
-                0,1, 1,3, 3,2, 2,0,
-                0,4, 1,5, 2,6, 3,7,
-                4,5, 5,7, 7,6, 6,4
-            };
+                0, 1, 1, 3, 3, 2, 2, 0,
+                0, 4, 1, 5, 2, 6, 3, 7,
+                4, 5, 5, 7, 7, 6, 6, 4};
 
-            LineDrawable* lines = new LineDrawable(GL_LINES);            
-            for(int i=0; i<24; i+=2)
+            LineDrawable *lines = new LineDrawable(GL_LINES);
+            for (int i = 0; i < 24; i += 2)
             {
                 lines->pushVertex(bbox.corner(index[i]));
-                lines->pushVertex(bbox.corner(index[i+1]));
+                lines->pushVertex(bbox.corner(index[i + 1]));
             }
-            lines->setColor(osg::Vec4(1,0,0,1));
+            lines->setColor(osg::Vec4(1, 0, 0, 1));
             lines->finish();
 
             geode->addChild(lines);
@@ -646,69 +633,71 @@ namespace
         return geode;
     }
 
-    osg::Geometry* makeShape()
+    osg::Geometry *makeShape()
     {
-        osg::Geometry* geom = new osg::Geometry();
+        osg::Geometry *geom = new osg::Geometry();
         geom->setUseVertexBufferObjects(true);
         geom->setUseDisplayList(false);
 
-        const float s=10;
+        const float s = 10;
 
-        osg::Vec3Array* v = new osg::Vec3Array();
+        osg::Vec3Array *v = new osg::Vec3Array();
         v->reserve(3);
-        v->push_back(osg::Vec3(-s/2, 0, s)); // left
-        v->push_back(osg::Vec3(+s/2, 0, s)); // right
-        v->push_back(osg::Vec3( 0, 0, 0)); // bottom
+        v->push_back(osg::Vec3(-s / 2, 0, s)); // left
+        v->push_back(osg::Vec3(+s / 2, 0, s)); // right
+        v->push_back(osg::Vec3(0, 0, 0));      // bottom
         geom->setVertexArray(v);
 
-        osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL);
-        c->push_back(osg::Vec4(1,1,1,1));
+        osg::Vec4Array *c = new osg::Vec4Array(osg::Array::BIND_OVERALL);
+        c->push_back(osg::Vec4(1, 1, 1, 1));
         geom->setColorArray(c);
 
-        osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
+        osg::Vec3Array *normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
         normals->push_back(osg::Vec3f(0, 0, 1));
         geom->setNormalArray(normals);
 
-        osg::Vec2Array* t = new osg::Vec2Array(osg::Array::BIND_PER_VERTEX);
-        t->push_back(osg::Vec2(0, 1)); // left
-        t->push_back(osg::Vec2(1, 1)); // right
+        osg::Vec2Array *t = new osg::Vec2Array(osg::Array::BIND_PER_VERTEX);
+        t->push_back(osg::Vec2(0, 1));  // left
+        t->push_back(osg::Vec2(1, 1));  // right
         t->push_back(osg::Vec2(.5, 0)); // bottom
         geom->setTexCoordArray(3, t);
 
-        osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+        osg::DrawElementsUByte *b = new osg::DrawElementsUByte(GL_TRIANGLES);
         b->reserve(3);
-        b->push_back(0); b->push_back(1); b->push_back(2);
+        b->push_back(0);
+        b->push_back(1);
+        b->push_back(2);
         geom->addPrimitiveSet(b);
 
         return geom;
     }
 
-    osg::Geometry* loadShape()
+    osg::Geometry *loadShape()
     {
         //osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile("D:/data/models/rockinsoil/RockSoil.3DS.osg");
         osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile("D:/data/models/OakTree/redoak.osgb");
-        
+
         InstanceCloud::ModelCruncher cruncher;
         cruncher.add(node.get());
         cruncher.finalize();
-        
+
         return cruncher._geom.release();
     }
-}
+} // namespace
 
-osg::Node*
-GroundCoverLayer::createNodeImplementation(const DrawContext& dc)
+osg::Node *
+GroundCoverLayer::createNodeImplementation(const DrawContext &dc)
 {
-    osg::Node* node = NULL;
+    osg::Node *node = NULL;
     if (_debug)
         node = makeBBox(*dc._geomBBox, *dc._key);
     return node;
 }
 
-osg::Geometry*
-GroundCoverLayer::createGeometry() const    
+osg::Geometry *
+GroundCoverLayer::createGeometry() const
 {
-    osg::Geometry* out_geom = NULL;
+    osg::Geometry *out_geom = NULL;
 
     if (_isModel)
     {
@@ -722,10 +711,10 @@ GroundCoverLayer::createGeometry() const
         const unsigned vertsPerInstance = 8;
         const unsigned indiciesPerInstance = 12;
 
-        osg::Geometry* out_geom = new osg::Geometry();
+        osg::Geometry *out_geom = new osg::Geometry();
         out_geom->setUseVertexBufferObjects(true);
 
-        static const GLushort indices[12] = { 0,1,2,2,1,3, 4,5,6,6,5,7 };
+        static const GLushort indices[12] = {0, 1, 2, 2, 1, 3, 4, 5, 6, 6, 5, 7};
         out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
 
         return out_geom;
@@ -745,7 +734,7 @@ GroundCoverLayer::Renderer::UniformState::UniformState()
     _numInstances1D = 0;
 }
 
-GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
+GroundCoverLayer::Renderer::Renderer(GroundCoverLayer *layer)
 {
     _layer = layer;
 
@@ -763,7 +752,7 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     GroundCoverShaders shaders;
     std::string source = ShaderLoader::load(shaders.GroundCover_CS, shaders, layer->getReadOptions());
     _computeStateSet = new osg::StateSet();
-    osg::Shader* s = new osg::Shader(osg::Shader::COMPUTE, source);
+    osg::Shader *s = new osg::Shader(osg::Shader::COMPUTE, source);
     _computeProgram = new osg::Program();
     _computeProgram->addShader(s);
     _computeStateSet->setAttribute(_computeProgram, osg::StateAttribute::ON);
@@ -771,28 +760,27 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     _counter = 0;
 }
 
-void
-GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
+void GroundCoverLayer::Renderer::draw(osg::RenderInfo &ri, const PatchLayer::TileBatch *tiles)
 {
-    DrawState& ds = _drawStateBuffer[ri.getContextID()];
+    DrawState &ds = _drawStateBuffer[ri.getContextID()];
     ds._renderer = this;
-    osg::State* state = ri.getState();
+    osg::State *state = ri.getState();
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
+#if OSG_VERSION_GREATER_OR_EQUAL(3, 5, 6)
     // Need to unbind any VAO since we'll be doing straight GL calls
     //ri.getState()->unbindVertexArrayObject();
 #endif
 
     // Push the pre-gen culling shader and run it:
-    const ZoneSA* sa = ZoneSA::extract(ri.getState());
-    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
+    const ZoneSA *sa = ZoneSA::extract(ri.getState());
+    osg::ref_ptr<InstanceCloud> &instancer = ds._instancers[sa->_obj];
     if (!instancer.valid())
     {
         instancer = new InstanceCloud();
     }
 
     // Pull the per-camera data
-    PerCameraData& pcd = _layer->_perCamera.get(ri.getCurrentCamera());
+    PerCameraData &pcd = _layer->_perCamera.get(ri.getCurrentCamera());
 
     // Only run the compute shader when the tile batch has changed:
     bool needsCompute = sa != pcd._previousZoneSA;
@@ -809,7 +797,7 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatc
         // I'm not sure why we have to push the layer's stateset here.
         // It should have bee applied already in the render bin.
         // I am missing something. -gw 4/20/20
-        
+
         state->pushStateSet(_layer->getStateSet());
 
         // First pass: render with compute shader
@@ -841,7 +829,7 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatc
     }
 
     // Clean up and finish
-#if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
+#if OSG_VERSION_GREATER_OR_EQUAL(3, 5, 6)
     // Need to unbind our VAO so as not to confuse OSG
     ri.getState()->unbindVertexArrayObject();
 
@@ -850,16 +838,15 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatc
 #endif
 }
 
-void
-GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
+void GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo &ri, DrawState &ds)
 {
-    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
+    const osg::Program::PerContextProgram *pcp = ri.getState()->getLastAppliedProgramObject();
     if (!pcp)
         return;
 
-    osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
+    osg::GLExtensions *ext = osg::GLExtensions::Get(ri.getContextID(), true);
 
-    UniformState& u = ds._uniforms[pcp];
+    UniformState &u = ds._uniforms[pcp];
 
     if (u._computeDataUL < 0)
     {
@@ -870,8 +857,8 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
     u._tileCounter = 0;
 
     // Check for initialization in this zone:
-    const BiomeZone* bz = ZoneSA::extract(ri.getState())->_obj;
-    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[bz];
+    const BiomeZone *bz = ZoneSA::extract(ri.getState())->_obj;
+    osg::ref_ptr<InstanceCloud> &instancer = ds._instancers[bz];
 
     if (!instancer->getGeometry() || u._numInstances1D == 0)
     {
@@ -914,21 +901,20 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
     }
 }
 
-void
-GroundCoverLayer::Renderer::drawTile(osg::RenderInfo& ri, const PatchLayer::DrawContext& tile)
+void GroundCoverLayer::Renderer::drawTile(osg::RenderInfo &ri, const PatchLayer::DrawContext &tile)
 {
-    const ZoneSA* sa = ZoneSA::extract(ri.getState());
-    DrawState& ds = _drawStateBuffer[ri.getContextID()];
-    osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
-    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
+    const ZoneSA *sa = ZoneSA::extract(ri.getState());
+    DrawState &ds = _drawStateBuffer[ri.getContextID()];
+    osg::ref_ptr<InstanceCloud> &instancer = ds._instancers[sa->_obj];
+    const osg::Program::PerContextProgram *pcp = ri.getState()->getLastAppliedProgramObject();
     if (!pcp)
         return;
 
-    UniformState& u = ds._uniforms[pcp];
+    UniformState &u = ds._uniforms[pcp];
 
     if (_pass == 0) // COMPUTE shader
     {
-        osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
+        osg::GLExtensions *ext = osg::GLExtensions::Get(ri.getContextID(), true);
 
         if (u._computeDataUL >= 0)
         {
@@ -955,32 +941,29 @@ GroundCoverLayer::Renderer::drawTile(osg::RenderInfo& ri, const PatchLayer::Draw
     ++u._tileCounter;
 }
 
-void
-GroundCoverLayer::Renderer::resizeGLObjectBuffers(unsigned maxSize)
+void GroundCoverLayer::Renderer::resizeGLObjectBuffers(unsigned maxSize)
 {
     _drawStateBuffer.resize(osg::maximum(maxSize, _drawStateBuffer.size()));
 }
 
-void
-GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
+void GroundCoverLayer::Renderer::releaseGLObjects(osg::State *state) const
 {
-    for(unsigned i=0; i<_drawStateBuffer.size(); ++i)
+    for (unsigned i = 0; i < _drawStateBuffer.size(); ++i)
     {
-        const DrawState& ds = _drawStateBuffer[i];
-        for(DrawState::InstancerPerGroundCover::const_iterator j = ds._instancers.begin();
-            j != ds._instancers.end();
-            ++j)
+        const DrawState &ds = _drawStateBuffer[i];
+        for (DrawState::InstancerPerGroundCover::const_iterator j = ds._instancers.begin();
+             j != ds._instancers.end();
+             ++j)
         {
             if (j->second.valid())
             {
                 j->second->releaseGLObjects(state);
             }
-        }        
+        }
     }
 }
 
-void
-GroundCoverLayer::loadShaders(VirtualProgram* vp, const osgDB::Options* options) const
+void GroundCoverLayer::loadShaders(VirtualProgram *vp, const osgDB::Options *options) const
 {
     GroundCoverShaders shaders;
 
@@ -994,22 +977,25 @@ GroundCoverLayer::loadShaders(VirtualProgram* vp, const osgDB::Options* options)
     }
 }
 
-namespace {
-    template<typename T>
-    int indexOf(const std::vector<osg::ref_ptr<T> >& v, T* obj) {
-        for(int i=0; i<v.size(); ++i) {
-            if (v[i].get() == obj) {
+namespace
+{
+    template <typename T>
+    int indexOf(const std::vector<osg::ref_ptr<T>> &v, T *obj)
+    {
+        for (int i = 0; i < v.size(); ++i)
+        {
+            if (v[i].get() == obj)
+            {
                 return i;
             }
         }
         return -1;
     }
-}
+} // namespace
 
-void
-GroundCoverLayer::loadAssets()
+void GroundCoverLayer::loadAssets()
 {
-    typedef std::map<URI, osg::ref_ptr<osg::Object> > Cache;
+    typedef std::map<URI, osg::ref_ptr<osg::Object>> Cache;
     Cache _cache;
 
     osg::ref_ptr<osg::Image> standIn = new osg::Image();
@@ -1017,19 +1003,19 @@ GroundCoverLayer::loadAssets()
     int landCoverGroupIndex = 0;
 
     // all the zones (these will later be called "biomes")
-    for(int z=0; z<getZones().size(); ++z)
+    for (int z = 0; z < getZones().size(); ++z)
     {
         // each zone has a single layout (used to be called "groundcover")
-        const BiomeZone& zone = getZones()[z];
+        const BiomeZone &zone = getZones()[z];
 
         // each layout has one or more groupings of land cover classes
         // (this used to be called a biome)
-        for(int j=0; j<zone.getLandCoverGroups().size(); ++j, ++landCoverGroupIndex)
+        for (int j = 0; j < zone.getLandCoverGroups().size(); ++j, ++landCoverGroupIndex)
         {
-            const LandCoverGroup& group = zone.getLandCoverGroups()[j];
+            const LandCoverGroup &group = zone.getLandCoverGroups()[j];
 
             // parse the land cover codes:
-            const std::vector<std::string>& classNames = group.getLandCoverClassNames();
+            const std::vector<std::string> &classNames = group.getLandCoverClassNames();
             if (classNames.empty())
             {
                 OE_WARN << LC << "Skipping a land cover group because it has no classes" << std::endl;
@@ -1037,17 +1023,17 @@ GroundCoverLayer::loadAssets()
             }
 
             std::vector<int> codes;
-            for(unsigned c=0; c<classNames.size(); ++c)
+            for (unsigned c = 0; c < classNames.size(); ++c)
             {
-                const LandCoverClass* lcclass = getLandCoverDictionary()->getClassByName(classNames[c]);
+                const LandCoverClass *lcclass = getLandCoverDictionary()->getClassByName(classNames[c]);
                 if (lcclass)
                     codes.push_back(lcclass->getValue());
             }
 
             // Each grouping points to multiple assets (used to be "billboards")
-            for(int k=0; k<group.getAssets().size(); ++k)
+            for (int k = 0; k < group.getAssets().size(); ++k)
             {
-                const AssetUsage& asset = group.getAssets()[k];
+                const AssetUsage &asset = group.getAssets()[k];
 
                 osg::ref_ptr<AssetData> data = new AssetData();
                 data->_zoneIndex = z;
@@ -1062,11 +1048,11 @@ GroundCoverLayer::loadAssets()
 
                 if (asset.options().sideBillboardURI().isSet())
                 {
-                    const URI& uri = asset.options().sideBillboardURI().get();
+                    const URI &uri = asset.options().sideBillboardURI().get();
                     Cache::iterator ic = _cache.find(uri);
                     if (ic != _cache.end())
                     {
-                        data->_sideImage = dynamic_cast<osg::Image*>(ic->second.get());
+                        data->_sideImage = dynamic_cast<osg::Image *>(ic->second.get());
                         data->_sideImageAtlasIndex = indexOf(_atlasImages, data->_sideImage.get());
                     }
                     else
@@ -1080,17 +1066,17 @@ GroundCoverLayer::loadAssets()
                         }
                         _cache[uri] = data->_sideImage.get();
                         data->_sideImageAtlasIndex = _atlasImages.size();
-                       _atlasImages.push_back(data->_sideImage.get());
+                        _atlasImages.push_back(data->_sideImage.get());
                     }
                 }
 
                 if (asset.options().topBillboardURI().isSet())
                 {
-                    const URI& uri = asset.options().topBillboardURI().get();
+                    const URI &uri = asset.options().topBillboardURI().get();
                     Cache::iterator ic = _cache.find(uri);
                     if (ic != _cache.end())
                     {
-                        data->_topImage = dynamic_cast<osg::Image*>(ic->second.get());
+                        data->_topImage = dynamic_cast<osg::Image *>(ic->second.get());
                         data->_topImageAtlasIndex = indexOf(_atlasImages, data->_topImage.get());
                     }
                     else
@@ -1111,11 +1097,11 @@ GroundCoverLayer::loadAssets()
 
                 if (asset.options().modelURI().isSet())
                 {
-                    const URI& uri = asset.options().modelURI().get();
+                    const URI &uri = asset.options().modelURI().get();
                     Cache::iterator ic = _cache.find(uri);
                     if (ic != _cache.end())
                     {
-                        data->_model = dynamic_cast<osg::Node*>(ic->second.get());
+                        data->_model = dynamic_cast<osg::Node *>(ic->second.get());
                         //data->_modelAtlasIndex = indexOf(_atlasImages, data->_model.get());
                     }
                     else
@@ -1148,19 +1134,19 @@ GroundCoverLayer::loadAssets()
     }
 }
 
-osg::Texture*
+osg::Texture *
 GroundCoverLayer::createTextureAtlas() const
 {
     // Creates a texture array containing all the billboard images.
     // Each image is included only once.
-    osg::Texture2DArray* tex = new osg::Texture2DArray();
+    osg::Texture2DArray *tex = new osg::Texture2DArray();
 
     int arrayIndex = 0;
     float s = -1.0f, t = -1.0f;
 
-    for(unsigned i=0; i<_atlasImages.size(); ++i)
+    for (unsigned i = 0; i < _atlasImages.size(); ++i)
     {
-        osg::Image* image = _atlasImages[i].get();
+        osg::Image *image = _atlasImages[i].get();
 
         osg::ref_ptr<osg::Image> temp;
 
@@ -1199,11 +1185,12 @@ GroundCoverLayer::createTextureAtlas() const
     return tex;
 }
 
-namespace {
+namespace
+{
 
 }
 
-osg::Shader*
+osg::Shader *
 GroundCoverLayer::createLUTShader() const
 {
     std::stringstream landCoverGroupBuf;
@@ -1215,13 +1202,13 @@ GroundCoverLayer::createLUTShader() const
     int numAssetInstancesAdded = 0;
     int numLandCoverGroupsAdded = 0;
     int currentLandCoverGroupIndex = -1;
-    const LandCoverGroup* currentLandCoverGroup = NULL;
+    const LandCoverGroup *currentLandCoverGroup = NULL;
     int startingAssetIndex = 0;
     int numAssetsInLandCoverGroup = 0;
     float maxWidth = -1.0f, maxHeight = -1.0f;
-    AssetData* data = NULL;
+    AssetData *data = NULL;
 
-    for(int a=0; a<_liveAssets.size(); ++a)
+    for (int a = 0; a < _liveAssets.size(); ++a)
     {
         data = _liveAssets[a].get();
 
@@ -1245,7 +1232,7 @@ GroundCoverLayer::createLUTShader() const
                 << "    oe_gc_LandCoverGroup("
                 << startingAssetIndex << ", "
                 << numAssetsInLandCoverGroup << ", " << fill << ")";
-                //<< " // " << currentLandCoverGroup->options().landCoverClasses().get();
+            //<< " // " << currentLandCoverGroup->options().landCoverClasses().get();
 
             ++numLandCoverGroupsAdded;
 
@@ -1266,24 +1253,24 @@ GroundCoverLayer::createLUTShader() const
 
         int weight = (int)osg::maximum(data->_asset->options().selectionWeight().get(), 1.0f);
 
-        maxWidth = osg::maximum(maxWidth, width + (width*sizeVariation));
-        maxHeight = osg::maximum(maxHeight, height + (height*sizeVariation));
+        maxWidth = osg::maximum(maxWidth, width + (width * sizeVariation));
+        maxHeight = osg::maximum(maxHeight, height + (height * sizeVariation));
 
         // apply the selection weight by adding the object multiple times
 
-        for(unsigned w=0; w<weight; ++w)
+        for (unsigned w = 0; w < weight; ++w)
         {
             if (numAssetInstancesAdded > 0)
                 assetBuf << ", \n";
 
             assetBuf << "    oe_gc_Asset("
-                << data->_sideImageAtlasIndex
-                << ", " << data->_topImageAtlasIndex
-                << ", " << width
-                << ", " << height
-                << ", " << sizeVariation
-                << ")";
-                //<< " // " << data->_asset->options().sideBillboardURI()->base();
+                     << data->_sideImageAtlasIndex
+                     << ", " << data->_topImageAtlasIndex
+                     << ", " << width
+                     << ", " << height
+                     << ", " << sizeVariation
+                     << ")";
+            //<< " // " << data->_asset->options().sideBillboardURI()->base();
 
             ++data->_numInstances;
 
@@ -1303,38 +1290,37 @@ GroundCoverLayer::createLUTShader() const
             landCoverGroupBuf << ", \n";
 
         landCoverGroupBuf << "    oe_gc_LandCoverGroup("
-            << startingAssetIndex << ", "
-            << numAssetsInLandCoverGroup
-            << ", " << fill << ")";
-            //<< " // " << currentLandCoverGroup->options().landCoverClasses().get();
+                          << startingAssetIndex << ", "
+                          << numAssetsInLandCoverGroup
+                          << ", " << fill << ")";
+        //<< " // " << currentLandCoverGroup->options().landCoverClasses().get();
 
         ++numLandCoverGroupsAdded;
     }
 
-
     std::stringstream landCoverGroupWrapperBuf;
-    landCoverGroupWrapperBuf << 
-        "struct oe_gc_LandCoverGroup { \n"
-        "    int firstAssetIndex; \n"
-        "    int numAssets; \n"
-        "    float fill; \n"
-        "}; \n"
-        "const oe_gc_LandCoverGroup oe_gc_landCoverGroups[" << numLandCoverGroupsAdded << "] = oe_gc_LandCoverGroup[" << numLandCoverGroupsAdded << "]( \n"
-        << landCoverGroupBuf.str()
-        << "\n); \n";
+    landCoverGroupWrapperBuf << "struct oe_gc_LandCoverGroup { \n"
+                                "    int firstAssetIndex; \n"
+                                "    int numAssets; \n"
+                                "    float fill; \n"
+                                "}; \n"
+                                "const oe_gc_LandCoverGroup oe_gc_landCoverGroups["
+                             << numLandCoverGroupsAdded << "] = oe_gc_LandCoverGroup[" << numLandCoverGroupsAdded << "]( \n"
+                             << landCoverGroupBuf.str()
+                             << "\n); \n";
 
     std::stringstream assetWrapperBuf;
-    assetWrapperBuf <<
-        "struct oe_gc_Asset { \n"
-        "    int atlasIndexSide; \n" // or 3D model texture..todo
-        "    int atlasIndexTop; \n"
-        "    float width; \n"
-        "    float height; \n"
-        "    float sizeVariation; \n"
-        "}; \n"
-        "const oe_gc_Asset oe_gc_assets[" << numAssetInstancesAdded << "] = oe_gc_Asset[" << numAssetInstancesAdded << "]( \n"
-        << assetBuf.str()
-        << "\n); \n";
+    assetWrapperBuf << "struct oe_gc_Asset { \n"
+                       "    int atlasIndexSide; \n" // or 3D model texture..todo
+                       "    int atlasIndexTop; \n"
+                       "    float width; \n"
+                       "    float height; \n"
+                       "    float sizeVariation; \n"
+                       "}; \n"
+                       "const oe_gc_Asset oe_gc_assets["
+                    << numAssetInstancesAdded << "] = oe_gc_Asset[" << numAssetInstancesAdded << "]( \n"
+                    << assetBuf.str()
+                    << "\n); \n";
 
     // next, create the master LUT.
     std::stringstream lutbuf;
@@ -1343,15 +1329,14 @@ GroundCoverLayer::createLUTShader() const
 
     lutbuf << landCoverGroupWrapperBuf.str() << "\n";
 
-    lutbuf <<
-        "bool oe_gc_getLandCoverGroup(in int zone, in int code, out oe_gc_LandCoverGroup result) { \n";
+    lutbuf << "bool oe_gc_getLandCoverGroup(in int zone, in int code, out oe_gc_LandCoverGroup result) { \n";
 
     UnorderedSet<std::string> exprs;
     std::stringstream exprBuf;
 
-    for(int a=0; a<_liveAssets.size(); ++a)
+    for (int a = 0; a < _liveAssets.size(); ++a)
     {
-        AssetData* data = _liveAssets[a].get();
+        AssetData *data = _liveAssets[a].get();
 
         // shouldn't happen, but check anyway
         if (data->_codes.empty())
@@ -1359,9 +1344,10 @@ GroundCoverLayer::createLUTShader() const
 
         exprBuf.str("");
         exprBuf << "  if ((zone==" << data->_zoneIndex << ") && (";
-        for(int c = 0; c < data->_codes.size(); ++c)
+        for (int c = 0; c < data->_codes.size(); ++c)
         {
-            if (c > 0) exprBuf << " || ";
+            if (c > 0)
+                exprBuf << " || ";
             exprBuf << "(code==" << data->_codes[c] << ")";
         }
         exprBuf << ")) { result = oe_gc_landCoverGroups[" << data->_landCoverGroupIndex << "]; return true; } \n";
@@ -1378,20 +1364,20 @@ GroundCoverLayer::createLUTShader() const
         << "  return false; \n"
         << "} \n";
 
-    lutbuf 
+    lutbuf
         << "bool oe_gc_getAsset(in int index, out oe_gc_Asset result) { result = oe_gc_assets[index]; return true; } \n";
 
-    osg::Shader* shader = new osg::Shader(osg::Shader::COMPUTE);
-    shader->setName( "GroundCover LUTs" );
+    osg::Shader *shader = new osg::Shader(osg::Shader::COMPUTE);
+    shader->setName("GroundCover LUTs");
     shader->setShaderSource(
-        Stringify() 
+        Stringify()
         << "#version " GLSL_VERSION_STR "\n"
         << lutbuf.str() << "\n");
 
     return shader;
 }
 
-osg::StateSet*
+osg::StateSet *
 GroundCoverLayer::getZoneStateSet(unsigned index) const
 {
     return index < _zoneStateSets.size() ? _zoneStateSets[index].get() : NULL;

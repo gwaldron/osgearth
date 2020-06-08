@@ -54,7 +54,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     struct LoadContext
     {
         URIContext _uc;
-        RefinePolicy _defaultRefine;
     };
 
     class OSGEARTH_EXPORT Asset
@@ -129,6 +128,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     };
 
     class ThreeDTilesetNode;
+    class ThreeDTileNode;
 
     /**
      * Node that renders a 3D-Tiles content record
@@ -138,7 +138,10 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     public:
         ThreeDTilesetContentNode(ThreeDTilesetNode* tilesetNode, Tileset* tileset, osgDB::Options* options);
 
+        ThreeDTileNode* getTileNode();
+
     private:
+        ThreeDTileNode* _tileNode;
         ThreeDTilesetNode* _tilesetNode;
         osg::ref_ptr< Tileset > _tileset;
         osg::ref_ptr< osgDB::Options > _options;
@@ -175,6 +178,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         const Tile* getTile() const { return _tile.get(); }
 
+        RefinePolicy getRefine() const { return _refine; }
+
         unsigned int getLastCulledFrameNumber() const;
         float getLastCulledFrameTime() const;
 
@@ -186,6 +191,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         TileTracker::iterator _trackerItr;
         bool _trackerItrValid;
+
+        void setParentTile(ThreeDTileNode* parentTile);
 
     private:
 
@@ -219,6 +226,10 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         unsigned int _lastCulledFrameNumber;
         float _lastCulledFrameTime;
+
+        RefinePolicy _refine;
+
+        osg::observer_ptr< ThreeDTileNode > _parentTile;
     };
 
     /**

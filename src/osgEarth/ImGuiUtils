@@ -203,6 +203,11 @@ public:
                 }
             }
 
+            if (ImGui::Button("Save"))
+            {
+                NetworkMonitor::saveCSV(requests, "network_requests.csv");
+            }
+
             ImGui::Checkbox("Show active requests", &_showOnlyActiveRequests);
 
             ImGui::InputText("Filter", filter, 128);

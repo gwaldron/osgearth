@@ -84,6 +84,7 @@ namespace osgEarth {
         static bool getEnabled();
         static void setEnabled(bool enabled);
         static void clear();
+        static void saveCSV(Requests& requests, const std::string& filename);
 
         static void setRequestLayer(const std::string& name);
         static std::string getRequestLayer();

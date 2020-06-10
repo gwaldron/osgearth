@@ -19,7 +19,7 @@
 
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/ThreadingUtils>
-#include <fstream>
+#include <osgDB/fstream>
 #include <iomanip>
 
 using namespace osgEarth;

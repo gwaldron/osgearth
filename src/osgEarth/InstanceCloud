@@ -60,7 +60,7 @@ namespace osgEarth
             GLint renderBufferTileSize;
             osg::Vec4Array* points;
             unsigned numX, numY;
-            unsigned numTilesAllocated;
+            mutable unsigned numTilesAllocated;
             unsigned tileToDraw;
             GLuint numIndices;
             GLenum mode;

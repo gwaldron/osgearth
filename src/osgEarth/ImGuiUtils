@@ -203,6 +203,11 @@ public:
                 }
             }
 
+            if (ImGui::Button("Save"))
+            {
+                NetworkMonitor::saveCSV(requests, "network_requests.csv");
+            }
+
             ImGui::Checkbox("Show active requests", &_showOnlyActiveRequests);
 
             ImGui::InputText("Filter", filter, 128);
@@ -277,9 +282,9 @@ public:
                     }
 
                     ImGui::TextColored(color, itr->second.uri.c_str());  ImGui::NextColumn();
-                    ImGui::Text("%lf ms", itr->second.getDuration()); ImGui::NextColumn();
-                    ImGui::Text("%lf ms", startMS); ImGui::NextColumn();
-                    ImGui::Text("%lf ms", endMS); ImGui::NextColumn();
+                    ImGui::Text("%.2lf ms", itr->second.getDuration()); ImGui::NextColumn();
+                    ImGui::Text("%.2lf ms", startMS); ImGui::NextColumn();
+                    ImGui::Text("%.2lf ms", endMS); ImGui::NextColumn();
                     ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
                     ImGui::Text(itr->second.type.c_str()); ImGui::NextColumn();
                     ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();

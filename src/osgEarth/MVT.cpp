@@ -695,18 +695,8 @@ MVTFeatureSource::createFeatureProfile()
 {
     const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
     FeatureProfile* result = new FeatureProfile(profile->getExtent());
-    std::string minLevelStr, maxLevelStr;
-    if (getMetaData("minzoom", minLevelStr) && getMetaData("maxzoom", maxLevelStr))
-    {
-        _minLevel = as<int>(minLevelStr, 0);
-        _maxLevel = as<int>(maxLevelStr, 0);
-        OE_NOTICE << LC << "Got levels from metadata " << _minLevel << ", " << _maxLevel << std::endl;
-    }
-    else
-    {
-        computeLevels();
-        OE_NOTICE << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
-    }
+    computeLevels();
+    OE_INFO << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
 
 
     // Use the max level for now as the min level.
@@ -722,7 +712,8 @@ MVTFeatureSource::computeLevels()
 {
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     sqlite3_stmt* select = NULL;
-    std::string query = "SELECT min(zoom_level), max(zoom_level) from tiles";
+    // Get min and max as separate queries to allow the SQLite query planner to convert it to a fast equivalent.
+    std::string query = "SELECT (SELECT min(zoom_level) FROM tiles), (SELECT max(zoom_level) FROM tiles); ";
     int rc = sqlite3_prepare_v2((sqlite3*)_database, query.c_str(), -1, &select, 0L);
     if (rc != SQLITE_OK)
     {
@@ -734,7 +725,6 @@ MVTFeatureSource::computeLevels()
     {
         _minLevel = sqlite3_column_int(select, 0);
         _maxLevel = sqlite3_column_int(select, 1);
-        OE_DEBUG << LC << "Min=" << _minLevel << " Max=" << _maxLevel << std::endl;
     }
     else
     {

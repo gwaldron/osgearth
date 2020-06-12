@@ -96,10 +96,6 @@ struct App
         osg::Vec4 value;
 
         // Only activate the land cover decal if there's a dictionary in the map:
-
-		//This bit would synthesize a rocky image decal using landocver codes to replace any non-zero alpha value in the imagery with rock.
-		//Removed for now to use a seperate rgb image instead of synthesizing one
-
 		LandCoverDictionary* dic = mapNode->getMap()->getLayer<LandCoverDictionary>();
         if (dic)
         {
@@ -118,9 +114,7 @@ struct App
                     for (int s = 0; s < read.s(); ++s)
                     {
                         read(value, s, t);
-
-						float c = value.a() > 0.2 ? lc_code : NO_DATA_VALUE;
-
+						float c = value.a() >= 0.1 ? lc_code : NO_DATA_VALUE;
                         value.set(c, c, c, c);
                         write(value, s, t);
                     }
@@ -164,20 +158,29 @@ struct App
 
         if (_imageLayer.valid())
         {
-            _imageLayer->addDecal(id, extent, _image_for_rgb.get());
+            _imageLayer->addDecal(
+                id, 
+                extent, 
+                _image_for_rgb.get());
         }
 
         if (_elevLayer.valid())
         {
-            //_elevLayer->addDecal(id, extent, _image.get(), -_size / 20.0f);
-			//adjust the max/min of the craters, default _size is 250
-            _elevLayer->addDecal(id, extent, _image_for_elev.get(), _size / 15.0f, -_size / 15.0f);
+            _elevLayer->addDecal(
+                id, 
+                extent, 
+                _image_for_elev.get(), 
+                _size / 15.0f, -_size / 15.0f,  // min value (0.0), max value(1.0)
+                GL_ALPHA);
         }
 
 
 		if (_landCoverLayer.valid())
         {
-           _landCoverLayer->addDecal(id, extent, _landCover.get());
+           _landCoverLayer->addDecal(
+               id, 
+               extent, 
+               _landCover.get());
         }
 
 

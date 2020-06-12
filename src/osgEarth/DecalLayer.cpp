@@ -324,7 +324,12 @@ DecalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progres
 }
 
 bool
-DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image, float scale)
+DecalElevationLayer::addDecal(
+    const std::string& id, 
+    const GeoExtent& extent,
+    const osg::Image* image, 
+    float scale,
+    GLenum channel)
 {
     if (!extent.isValid() || !image)
         return false;
@@ -340,6 +345,13 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 
     ImageUtils::PixelReader read(image);
 
+    unsigned c =
+        channel == GL_RED   ? 0u :
+        channel == GL_GREEN ? 1u :
+        channel == GL_BLUE  ? 2u :
+        3u;
+    c = osg::minimum(c, osg::Image::computeNumComponents(image->getPixelFormat())-1u);
+
     // scale up the values so that [0...1/2] is below ground
     // and [1/2...1] is above ground.
     osg::Vec4 value;
@@ -348,7 +360,7 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
         for(int s=0; s<read.s(); ++s)
         {
             read(value, s, t);
-            float h = value.r() * scale;
+            float h = scale * value[c];
             hf->setHeight(s, t, h);
         }
     }
@@ -365,7 +377,13 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 }
 
 bool
-DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image, float zeroValue, float oneValue)
+DecalElevationLayer::addDecal(
+    const std::string& id, 
+    const GeoExtent& extent, 
+    const osg::Image* image, 
+    float minOffset, 
+    float maxOffset,
+    GLenum channel)
 {
     if (!extent.isValid() || !image)
         return false;
@@ -381,13 +399,20 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 
     ImageUtils::PixelReader read(image);
 
+    unsigned c =
+        channel == GL_RED   ? 0u :
+        channel == GL_GREEN ? 1u :
+        channel == GL_BLUE  ? 2u :
+        3u;
+    c = osg::maximum(c, osg::Image::computeNumComponents(image->getPixelFormat())-1u);
+
     osg::Vec4 value;
     for(int t=0; t<read.t(); ++t)
     {
         for(int s=0; s<read.s(); ++s)
         {
             read(value, s, t);
-            float h = zeroValue + (oneValue-zeroValue)*value.a();
+            float h = minOffset + (maxOffset-minOffset)*value[c];
             hf->setHeight(s, t, h);
         }
     }

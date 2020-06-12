@@ -49,7 +49,7 @@ main(int argc, char** argv)
     {
         test = "Convert geodetic Z to EGM96";
         const SpatialReference* wgs84 = SpatialReference::get("wgs84");
-        const SpatialReference* wgs84_egm96 = SpatialReference::get("wgs84", "egm96");        
+        const SpatialReference* wgs84_egm96 = SpatialReference::get("wgs84", "egm96");
         osg::Vec3d input[4] = {
             osg::Vec3d( 0,  0,  17.16),
             osg::Vec3d( 90, 0, -63.24),
@@ -61,7 +61,7 @@ main(int argc, char** argv)
             osg::Vec3d output;
             if (!wgs84->transform(input[i], wgs84_egm96, output))
                 std::cout << test << ": transform failed for texst #" << i << std::endl;
-            else if (!eq(output.z(), 0.0, 0.01)) {
+            else if (!eq(output.z(), 0.0, 0.02)) {
                 std::cout << test << ": output doesn't match for test #" << i << "; expected Z=0, got Z=" << output.z() << std::endl;
             }
         }

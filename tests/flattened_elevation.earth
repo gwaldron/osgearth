@@ -30,7 +30,7 @@ osgEarth Sample - Feature to elevation driver.
         </OGRFeatures>
     </FlattenedElevation>
     
-    <viewpoints>
+    <viewpoints home="0">
         <viewpoint>
             <name>Mt Rainier</name>
             <heading>-21.7843</heading>

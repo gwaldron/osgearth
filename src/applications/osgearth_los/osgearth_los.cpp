@@ -161,6 +161,9 @@ main(int argc, char** argv)
         return 1;
     }
 
+    // We need to explicitly open the MapNode so we can attach the terrainCallbacks.
+    mapNode->open();
+
     osgEarth::Util::EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
 

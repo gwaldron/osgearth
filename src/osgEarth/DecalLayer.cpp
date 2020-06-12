@@ -340,6 +340,10 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 
     ImageUtils::PixelReader read(image);
 
+    // read the value from the RED channel when there is only one channel;
+    // else read it rom the BLUE channel
+    int channel = image->getPixelFormat() == GL_RED ? 0 : 2;
+
     // scale up the values so that [0...1/2] is below ground
     // and [1/2...1] is above ground.
     osg::Vec4 value;
@@ -348,7 +352,7 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
         for(int s=0; s<read.s(); ++s)
         {
             read(value, s, t);
-            float h = value.a() * scale;
+            float h = scale * value[channel];
             hf->setHeight(s, t, h);
         }
     }
@@ -381,13 +385,17 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 
     ImageUtils::PixelReader read(image);
 
+    // read the value from the RED channel when there is only one channel;
+    // else read it rom the BLUE channel
+    int channel = image->getPixelFormat() == GL_RED ? 0 : 2;
+
     osg::Vec4 value;
     for(int t=0; t<read.t(); ++t)
     {
         for(int s=0; s<read.s(); ++s)
         {
             read(value, s, t);
-            float h = zeroValue + (oneValue-zeroValue)*value.a();
+            float h = zeroValue + (oneValue-zeroValue)*value[channel];
             hf->setHeight(s, t, h);
         }
     }

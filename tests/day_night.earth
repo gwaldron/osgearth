@@ -17,6 +17,9 @@
             #pragma vp_entryPoint dayNight
             #pragma vp_location fragment_coloring
             #pragma import_defines(OE_NUM_LIGHTS)
+            #ifndef OE_NUM_LIGHTS
+            #define OE_NUM_LIGHTS 1
+            #endif
 
             // stage global - interpolated UP vector at fragment
             vec3 vp_Normal;

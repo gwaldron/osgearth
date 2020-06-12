@@ -29,7 +29,7 @@
     </TMSImage>
     
     <!-- Procedural trees -->
-    <GroundCover name="Trees" lod="13" max_range="20000">
+    <GroundCover name="Trees" max_range="7500">
         <xi:include href="../data/splat/trees/groundcover.xml"/>
         <color_layer>World Imagery</color_layer>
         <color_min_saturation>0.1</color_min_saturation>

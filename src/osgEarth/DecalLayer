@@ -101,14 +101,43 @@ namespace osgEarth { namespace Contrib
     public:
         META_Layer(osgEarth, DecalElevationLayer, Options, osgEarth::ElevationLayer, DecalElevation);
 
-        //! Adds a heightfield "decal" to the terrain. Each pixel in image contains a height value.
+        //! Adds a heightfield "decal" to the terrain. Each pixel (in the specified channel)
+        //! contains a normalized height value [0..1]. This normalized value is mapped to
+        //! the elevation range [minElevation..maxElevation] to produce the final height.
         //! Overlapping decals will result in the sum of overlapping height values.
-        bool addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image, float zeroValue, float oneValue);
+        //!
+        //! @param id Unique ID to give this decal
+        //! @param extent Geospatial extent of the decal
+        //! @param image Raster containing normalized offset values
+        //! @param minElevOffset Elevation offset corresponding to zero
+        //! @param maxElevOffset Elevation offset corresponding to one
+        //! @param channel Image channel containing the normalized offset value
+        //! @return true upon success
+        bool addDecal(
+            const std::string& id, 
+            const GeoExtent& extent, 
+            const osg::Image* image, 
+            float minElevOffset,
+            float maxElevOffset,
+            GLenum channel =GL_RED);
 
-        //! Adds a heightfield "decal" to the terrain. Each pixel in image contains a height value
-        //! that is multiplied by "scale" before being applied to the terrain.
+        //! Adds a heightfield "decal" to the terrain. Each pixel (red channel for GL_RED, 
+        //! blue channel for GL_RGB/A) contains a height value. This value is multiplied by
+        //! "scale" to produce the final height for that location.
         //! Overlapping decals will result in the sum of overlapping height values.
-        bool addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image, float scale);
+        //!
+        //! @param id Unique ID to give this decal
+        //! @param extent Geospatial extent of the decal
+        //! @param image Raster containing offset values
+        //! @param elevScale Scale factor to apply to raster values
+        //! @param channel Image channel containing the normalized offset value
+        //! @return true upon success
+        bool addDecal(
+            const std::string& id, 
+            const GeoExtent& extent, 
+            const osg::Image* image, 
+            float elevScale,
+            GLenum channel =GL_RED);
 
         //! Removes a decal with the specified ID that was returned from addDecal.
         void removeDecal(const std::string& id);

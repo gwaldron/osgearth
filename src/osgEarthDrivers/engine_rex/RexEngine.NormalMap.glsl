@@ -10,6 +10,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 uniform mat4 oe_tile_normalTexMatrix;
 uniform vec2 oe_tile_elevTexelCoeff;
 
+uniform mat4 oe_tile_elevationTexMatrix;
+
 // stage globals
 vec4 oe_layer_tilec;
 
@@ -25,9 +27,14 @@ void oe_rex_normalMapVS(inout vec4 unused)
     // calculate the sampling coordinates for the normal texture
     //oe_normalMapCoords = (oe_tile_normalTexMatrix * oe_layer_tilec).st;
     
+    //oe_normalMapCoords = oe_layer_tilec.st
+    //    * oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[0][0]
+    //    + oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[3].st
+    //    + oe_tile_elevTexelCoeff.y;
+
     oe_normalMapCoords = oe_layer_tilec.st
-        * oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[0][0]
-        + oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[3].st
+        * oe_tile_elevTexelCoeff.x * oe_tile_elevationTexMatrix[0][0]
+        + oe_tile_elevTexelCoeff.x * oe_tile_elevationTexMatrix[3].st
         + oe_tile_elevTexelCoeff.y;
 
     // send the bi-normal to the fragment shader
@@ -45,6 +52,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
 #pragma import_defines(OE_DEBUG_NORMALS)
+#pragma import_defines(OE_DEBUG_CURVATURE)
 #pragma import_defines(OE_COMPRESSED_NORMAL_MAP)
 
 // import terrain SDK
@@ -66,27 +74,29 @@ void oe_rex_normalMapFS(inout vec4 color)
     return;
 #endif
 
-    vec4 encodedNormal = oe_terrain_getNormalAndCurvature(oe_normalMapCoords);
+    vec4 normalAndCurvature = oe_terrain_getNormalAndCurvature(oe_normalMapCoords);
 #ifdef OE_COMPRESSED_NORMAL_MAP
-    vec2 xymod = encodedNormal.rg*2.0 - 1.0;
-    vec3 normal = vec3(xymod, sqrt(1 - xymod.x*xymod.x - xymod.y*xymod.y));
+    //vec2 xymod = encodedNormal.rg*2.0 - 1.0;
+    //vec3 normal = vec3(xymod, sqrt(1 - xymod.x*xymod.x - xymod.y*xymod.y));
 #else
-    vec3 normal = normalize(encodedNormal.xyz*2.0-1.0);
+    //vec3 normal = normalize(encodedNormal.xyz*2.0-1.0);
+    //vec3 normal = encodedNormal.xyz;
 #endif
 
     vec3 tangent = normalize(cross(oe_normalMapBinormal, oe_UpVectorView));
     oe_normalMapTBN = mat3(tangent, oe_normalMapBinormal, oe_UpVectorView);
-    vp_Normal = normalize( oe_normalMapTBN*normal );
+    vp_Normal = normalize( oe_normalMapTBN*normalAndCurvature.xyz );
 
+#ifdef OE_DEBUG_CURVATURE
     // visualize curvature quantized:
-    //color.rgba = vec4(0.0,0,1);
-    //float curvature = 2.0*encodedNormal.w - 1.0;
-    //if (curvature > 0.0) color.r = curvature;
-    //if (curvature < 0.0) color.b = -curvature;
-    //color.a = 1.0;
+    color.rgba = vec4(0,0,0,1);
+    float curvature = normalAndCurvature.w;
+    if (curvature > 0.0) color.r = curvature;
+    if (curvature < 0.0) color.g = -curvature;
+#endif
 
 #ifdef OE_DEBUG_NORMALS
     // visualize normals:
-    color.rgb = encodedNormal.xyz;
+    color.rgb = (normalAndCurvature.xyz+1.0)*0.5;
 #endif
 }

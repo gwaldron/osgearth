@@ -84,10 +84,10 @@ namespace
 
 DepthOffsetOptions::DepthOffsetOptions(const Config& conf) :
 _enabled ( true ),
-_minBias (      100.0f ),
-_maxBias (    10000.0f ),
-_minRange(     1000.0f ),
-_maxRange( 10000000.0f ),
+_minBias (Distance(100.0, Units::METERS)),
+_maxBias (Distance(10000.0, Units::METERS)),
+_minRange(Distance(1000.0, Units::METERS)),
+_maxRange(Distance(10000000.0, Units::METERS)),
 _auto    ( true )
 {
     conf.get( "enabled",   _enabled );
@@ -242,7 +242,7 @@ DepthOffsetAdapter::recalculate()
             GeometryAnalysisVisitor v;
             _graph->accept( v );
             float maxLen = osg::maximum(1.0f, sqrtf(v._segmentAnalyzer._maxLen2));
-            _options.minRange() = sqrtf(maxLen) * 19.0f;
+            _options.minRange()->set(sqrtf(maxLen) * 19.0f, Units::METERS);
             _dirty = false;
             OE_TEST << LC << "Recalcluated." << std::endl;
         }

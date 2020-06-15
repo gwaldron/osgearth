@@ -41,11 +41,11 @@ TEST_CASE( "Spherical Mercator SpatialReferences can be created" ) {
     osg::ref_ptr< const SpatialReference > mercSRS = SpatialReference::create("spherical-mercator");
 
     REQUIRE( mercSRS.valid() );
-    REQUIRE( mercSRS->isSphericalMercator() );    
-    REQUIRE( mercSRS->isProjected() );    
-    REQUIRE( !mercSRS->isGeodetic() );    
-    REQUIRE( !mercSRS->isGeographic() );    
-    
+    REQUIRE( mercSRS->isSphericalMercator() );
+    REQUIRE( mercSRS->isProjected() );
+    REQUIRE( !mercSRS->isGeodetic() );
+    REQUIRE( !mercSRS->isGeographic() );
+
     SECTION("epsg:900913 is equivalent") {
         osg::ref_ptr< const SpatialReference > epsg900913 = SpatialReference::create("epsg:900913");
         REQUIRE(epsg900913.valid());
@@ -62,19 +62,19 @@ TEST_CASE( "Spherical Mercator SpatialReferences can be created" ) {
         osg::ref_ptr< const SpatialReference > epsg102113 = SpatialReference::create("epsg:102113");
         REQUIRE(epsg102113.valid());
         REQUIRE(epsg102113->isEquivalentTo(mercSRS.get()));
-    }    
+    }
 }
 
 TEST_CASE( "WGS84 SpatialReferences can be created" ) {
     // Create a wgs84 mercator SRS.
-    osg::ref_ptr< const SpatialReference > wgs84 = SpatialReference::create("wgs84");     
+    osg::ref_ptr< const SpatialReference > wgs84 = SpatialReference::create("wgs84");
     REQUIRE( wgs84.valid() );
 
     REQUIRE(wgs84->isGeographic());
     REQUIRE(wgs84->isGeodetic());
     REQUIRE(!wgs84->isMercator());
     REQUIRE(!wgs84->isProjected());
-    
+
     SECTION("epsg:4326 is equivalent") {
         osg::ref_ptr< const SpatialReference > epsg4326 = SpatialReference::create("epsg:4326");
         REQUIRE(epsg4326.valid());
@@ -89,4 +89,53 @@ TEST_CASE("Plate Carre SpatialReferences can be created") {
     REQUIRE(!plateCarre->isMercator());
     REQUIRE(!plateCarre->isGeodetic());
     REQUIRE(plateCarre->isProjected());
+}
+
+TEST_CASE("Plate Carre SpatialReference Conversions") {
+    const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+    const SpatialReference* pceqc = SpatialReference::get("plate-carre");
+
+    double pcMinX = -20037508.3427892476320267;
+    double pcMaxX = 20037508.3427892476320267;
+    double pcMinY = -10018754.1713946219533682;
+    double pcMaxY = 10018754.1713946219533682;
+
+    osg::Vec3d output;
+    REQUIRE(wgs84->transform(osg::Vec3d(-180, -90, 0), pceqc, output));
+    REQUIRE(osg::equivalent(output.x(), pcMinX));
+    REQUIRE(osg::equivalent(output.y(), pcMinY));
+
+    REQUIRE(wgs84->transform(osg::Vec3d(-180, +90, 0), pceqc, output));
+    REQUIRE(osg::equivalent(output.x(), pcMinX));
+    REQUIRE(osg::equivalent(output.y(), pcMaxY));
+
+    REQUIRE(wgs84->transform(osg::Vec3d(180, -90, 0), pceqc, output));
+    REQUIRE(osg::equivalent(output.x(), pcMaxX));
+    REQUIRE(osg::equivalent(output.y(), pcMinY));
+
+    REQUIRE(wgs84->transform(osg::Vec3d(180, 90, 0), pceqc, output));
+    REQUIRE(osg::equivalent(output.x(), pcMaxX));
+    REQUIRE(osg::equivalent(output.y(), pcMaxY));
+}
+
+TEST_CASE("Vertical Datum Tests") {
+    const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+    const SpatialReference* wgs84_egm96 = SpatialReference::get("wgs84", "egm96");
+
+    double eps = 0.2;
+    // Vertical datum tests.
+    // Reference: http://earth-info.nga.mil/GandG/wgs84/gravitymod/egm96/intpt.html
+    osg::Vec3d output;
+
+    REQUIRE(wgs84->transform(osg::Vec3d(0, 0, 17.16), wgs84_egm96, output));
+    REQUIRE(osg::equivalent(output.z(), 0.0, eps));
+
+    REQUIRE(wgs84->transform(osg::Vec3d(90, 0, -63.24), wgs84_egm96, output));
+    REQUIRE(osg::equivalent(output.z(), 0.0, eps));
+
+    REQUIRE(wgs84->transform(osg::Vec3d(180, 0, 21.15), wgs84_egm96, output));
+    REQUIRE(osg::equivalent(output.z(), 0.0, eps));
+
+    REQUIRE(wgs84->transform(osg::Vec3d(-90, 0, -4.29), wgs84_egm96, output));
+    REQUIRE(osg::equivalent(output.z(), 0.0, eps));
 }

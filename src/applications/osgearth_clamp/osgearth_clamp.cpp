@@ -105,30 +105,29 @@ struct App
 
     void run()
     {
-        osg::ref_ptr<ElevationEnvelope> env = mapNode->getMap()->getElevationPool()->createEnvelope(
-            input->getFeatureProfile()->getSRS(),
-            99u);
+        ElevationPool::WorkingSet workingSet;
 
         unsigned total = input->getFeatureCount();
         unsigned count = 0u;
 
         std::cout << "\n";
 
+        GeoPoint point(input->getFeatureProfile()->getSRS(),0,0,0);
+
         osg::ref_ptr<FeatureCursor> cursor = input->createFeatureCursor(Query(), NULL);
         while(cursor->hasMore())
         {
             Feature* f = cursor->nextFeature();
             GeoExtent e = f->getExtent();
-            osg::Vec3d centroid = e.getCentroid();
+            point.vec3d() = e.getCentroid();
 
-            std::pair<float,float> r = env->getElevationAndResolution(centroid.x(), centroid.y());
+            ElevationSample sample = map->getElevationPool()->getSample(
+                point,
+                &workingSet);
             
-            float value = r.first;
+            float value = sample.elevation().as(Units::METERS);
             if (value == NO_DATA_VALUE)
                 value = 0.0f;
-
-            //if (value > 0.0f)
-            //    OE_NOTICE << "resolution = " << std::fixed << std::setprecision(8) << r.second << std::endl;
 
             f->set(attrName, value);
 

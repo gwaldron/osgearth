@@ -659,7 +659,9 @@ ImageOverlay::setBoundsAndRotation(const osgEarth::Bounds& b, const Angular& rot
         // there must be a better way, but my internet is down so i can't look it up with now..
 
         osg::ref_ptr<const SpatialReference> srs = SpatialReference::create("wgs84");
-        osg::ref_ptr<const SpatialReference> utm = srs->createUTMFromLonLat( c.x(), c.y() );
+        osg::ref_ptr<const SpatialReference> utm = srs->createUTMFromLonLat(
+            Angle(c.x(), Units::DEGREES),
+            Angle(c.y(), Units::DEGREES) );
 
         osg::Vec3d ll_utm, ul_utm, ur_utm, lr_utm, c_utm;
         

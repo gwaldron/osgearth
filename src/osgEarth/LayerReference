@@ -77,12 +77,20 @@ namespace osgEarth
                 if (typedLayer)
                 {
                     typedLayer->setReadOptions(readOptions);
-                    const Status& fsStatus = typedLayer->open();
-                    if (fsStatus.isError())
+                    const Status& layerStatus = typedLayer->open();
+                    if (layerStatus.isError())
                     {
-                        return fsStatus;
+                        return layerStatus;
                     }
                     _layer = typedLayer.get();
+                }
+            }
+            else if (_layer && !_layer->isOpen())
+            {
+                const Status& layerStatus = _layer->open();
+                if (layerStatus.isError())
+                {
+                    return layerStatus;
                 }
             }
             return Status::OK();

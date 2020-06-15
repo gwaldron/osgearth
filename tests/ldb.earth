@@ -1,9 +1,7 @@
 <!--
 osgEarth Sample - Logrithmic depth buffer.
-
-Enable the logrithmic depth buffer by running osgearth_viewer with --logdepth
 -->
-<map name="Demo: Logarithmic Depth Buffer (use --logdepth)">
+<map name="Demo: Logarithmic Depth Buffer Test">
 
     <xi:include href="readymap_imagery.xml"/>
     
@@ -16,9 +14,8 @@ Enable the logrithmic depth buffer by running osgearth_viewer with --logdepth
         <model name="flag model">
             <url>../data/cessna.osgb.100.scale.(-90,-45,0).rot</url>
             <position lat="0" long="-90" hat="19000000"/>
-            <!-- <position lat="33" long="-120" hat="1000000"/> -->
         </model>            
     </annotations>
     
-    <sky driver="gl"/>
+    <sky/>
 </map>

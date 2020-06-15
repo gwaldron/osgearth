@@ -33,6 +33,7 @@
 #include <osgEarth/TerrainProfile>
 #include <osgEarth/GeoMath>
 #include <osgEarth/Registry>
+#include <osgEarth/ExampleResources>
 #include <osgEarth/FileUtils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Feature>
@@ -245,9 +246,8 @@ public:
 class DrawProfileEventHandler : public osgGA::GUIEventHandler
 {
 public:
-    DrawProfileEventHandler(osgEarth::MapNode* mapNode, osg::Group* root, TerrainProfileCalculator* profileCalculator):
+    DrawProfileEventHandler(osgEarth::MapNode* mapNode, TerrainProfileCalculator* profileCalculator):
       _mapNode( mapNode ),
-          _root( root ),
           _startValid( false ),
           _profileCalculator( profileCalculator )
       {
@@ -273,7 +273,7 @@ public:
                       _start = mapPoint.vec3d();
                       if (_featureNode.valid())
                       {
-                          _root->removeChild( _featureNode.get() );
+                          _mapNode->removeChild( _featureNode.get() );
                           _featureNode = 0;
                       }
                   }
@@ -296,7 +296,7 @@ public:
 
           if (_featureNode.valid())
           {
-              _root->removeChild( _featureNode.get() );
+              _mapNode->removeChild( _featureNode.get() );
               _featureNode = 0;
           }
 
@@ -323,15 +323,11 @@ public:
           feature->style() = style;
           _featureNode = new FeatureNode( feature );
           _featureNode->setMapNode(_mapNode);
-          _root->addChild( _featureNode.get() );
+          _mapNode->addChild( _featureNode.get() );
 
       }
 
-
-
-
       osgEarth::MapNode* _mapNode;
-      osg::Group* _root;
       TerrainProfileCalculator* _profileCalculator;
       osg::ref_ptr< FeatureNode > _featureNode;
       bool _startValid;
@@ -351,7 +347,8 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     // load the .earth file from the command line.
-    osg::ref_ptr<osg::Node> earthNode = osgDB::readNodeFiles( arguments );
+    MapNodeHelper helper;
+    osg::ref_ptr<osg::Node> earthNode = helper.load(arguments, &viewer);
     if (!earthNode.valid())
     {
         OE_NOTICE << "Unable to load earth model" << std::endl;
@@ -366,6 +363,8 @@ main(int argc, char** argv)
         OE_NOTICE << "Could not find MapNode " << std::endl;
         return 1;
     }
+
+    mapNode->open();
 
     osgEarth::Util::EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
@@ -393,7 +392,7 @@ main(int argc, char** argv)
 
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
-    viewer.addEventHandler( new DrawProfileEventHandler( mapNode, mapNode, calculator.get() ) );
+    viewer.addEventHandler( new DrawProfileEventHandler( mapNode, calculator.get() ) );
 
     viewer.setSceneData( root );
 

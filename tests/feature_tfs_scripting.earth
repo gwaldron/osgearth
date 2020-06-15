@@ -58,8 +58,17 @@ osgEarth Sample - TFS
 
     <xi:include href="readymap_imagery.xml"/>
 
-    <viewpoints>
-        <viewpoint name="Mexico Buildings" height="0" lat="19.42" long="-99.163" pitch="-89" range="5000"/>
+
+    <viewpoints home="0">
+        <viewpoint>
+            <heading>-12.3715</heading>
+            <pitch>-38.216</pitch>
+            <range>5000.38m</range>
+            <long>-99.16536849045873</long>
+            <lat>19.42101714904623</lat>
+            <height>0.00265851616859436</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
     </viewpoints>
 
 </map>

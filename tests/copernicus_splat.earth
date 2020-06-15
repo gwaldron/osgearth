@@ -30,16 +30,15 @@
 
 	  
     <!-- Procedural trees -->
-    <GroundCover name="Trees">
+    <GroundCover name="Trees" max_range="10000">
         <lod>13</lod>
         <cast_shadows>true</cast_shadows>
         <xi:include href="../data/splat/trees/groundcover.xml"/>
     </GroundCover>
 
     <!-- Procedural grass -->
-    <Grass name="Grass">
+    <Grass name="Grass" max_range="75">
         <xi:include href="../data/splat/grass/groundcover.xml"/>
-        <!-- <color_layer>ReadyMap Imagery</color_layer> -->
     </Grass>
 
     <xi:include href="viewpoints.xml"/>

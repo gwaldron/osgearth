@@ -42,7 +42,7 @@ EllipseNode::construct()
 {
     _radiusMajor.set(1.0, Units::KILOMETERS);
     _radiusMinor.set(0.5, Units::KILOMETERS);
-    _rotationAngle = 0.0;
+    _rotationAngle.set(0.0, Units::RADIANS);
     _arcStart.set(0.0, Units::RADIANS);
     _arcEnd.set(2.0*osg::PI, Units::RADIANS);
     _pie = false;

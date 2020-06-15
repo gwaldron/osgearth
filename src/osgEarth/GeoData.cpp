@@ -210,6 +210,12 @@ GeoPoint::set(const SpatialReference* srs,
     _altMode = altMode;
 }
 
+const Units&
+GeoPoint::getXYUnits() const
+{
+    return getSRS() ? getSRS()->getUnits() : Units::DEGREES;
+}
+
 bool 
 GeoPoint::operator == (const GeoPoint& rhs) const
 {
@@ -317,6 +323,36 @@ GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainResolver* terrain
         out_z = z() + out_hamsl;
     }
     return true;
+}
+
+Distance
+GeoPoint::transformResolution(const Distance& resolution, const Units& outUnits) const
+{
+    if (!isValid())
+        return resolution;
+
+    // is this just a normal transformation?
+    if (resolution.getUnits().isLinear() ||
+        outUnits.isAngular())
+    {
+        return resolution.to(outUnits);
+    }
+
+    double refLatDegrees = y();
+
+    if (!getSRS()->isGeographic())
+    {
+        double refLonDegrees; // unused
+
+        getSRS()->transform2D(
+            x(), y(),
+            getSRS()->getGeographicSRS(),
+            refLonDegrees,
+            refLatDegrees);
+    }
+
+    double d = resolution.asDistance(outUnits, refLatDegrees);
+    return Distance(d, outUnits);
 }
 
 bool
@@ -2430,6 +2466,7 @@ NormalMap::getNormal(unsigned s, unsigned t) const
 void
 NormalMap::generateCurvatures()
 {
+    //TODO: this algorithm: http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//00q90000000t000000
     osg::Vec4f a, b;
     osg::Vec3f j, k;
 

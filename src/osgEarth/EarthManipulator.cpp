@@ -692,17 +692,19 @@ EarthManipulator::applySettings( Settings* settings )
     flushMouseEventStack();
 
     // apply new pitch restrictions
-    double old_pitch;
-    getEulerAngles( _rotation, 0L, &old_pitch );
+    double old_pitch_rad;
+    getEulerAngles( _rotation, 0L, &old_pitch_rad );
 
-    double new_pitch = osg::clampBetween( old_pitch, _settings->getMinPitch(), _settings->getMaxPitch() );
+    double old_pitch_deg = osg::RadiansToDegrees(old_pitch_rad);
+
+    double new_pitch_deg = osg::clampBetween( old_pitch_deg, _settings->getMinPitch(), _settings->getMaxPitch() );
 
     setDistance(_distance);
 
-    if ( new_pitch != old_pitch )
+    if ( !osg::equivalent(new_pitch_deg, old_pitch_deg) )
     {
         Viewpoint vp = getViewpoint();
-        vp.pitch() = new_pitch;
+        vp.pitch()->set(new_pitch_deg, Units::DEGREES);
         setViewpoint( vp );
     }
 }

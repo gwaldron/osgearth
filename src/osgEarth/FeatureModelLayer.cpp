@@ -21,7 +21,7 @@
 
 using namespace osgEarth;
 
-#define LC "[FeatureModelLayer] "
+#define LC "[FeatureModelLayer] \"" << getName() << "\": "
 
 #define OE_TEST OE_NULL
 
@@ -106,11 +106,14 @@ FeatureModelLayer::init()
 
 void FeatureModelLayer::dirty()
 {
-    // feature source changed, so the graph needs rebuilding
-    _graphDirty = true;
+    //// feature source changed, so the graph needs rebuilding
+    //_graphDirty = true;
 
-    // create the scene graph
-    create();
+    //// create the scene graph
+    //if (isOpen())
+    //{
+    //    create();
+    //}
 }
 
 Config
@@ -157,6 +160,18 @@ StyleSheet*
 FeatureModelLayer::getStyleSheet() const
 {
     return options().styleSheet().getLayer();
+}
+
+void
+FeatureModelLayer::setLayout(const FeatureDisplayLayout& value)
+{
+    options().layout() = value;
+}
+
+const FeatureDisplayLayout&
+FeatureModelLayer::getLayout() const
+{
+    return options().layout().get();
 }
 
 void
@@ -260,9 +275,9 @@ FeatureModelLayer::create()
 {
     OE_TEST << LC << "create" << std::endl;
 
-    if (_graphDirty)
+    //if (_graphDirty)
     {
-        if (getFeatureSource() && getStyleSheet() && _session.valid())
+        if (isOpen() && getFeatureSource() && getStyleSheet() && _session.valid())
         {
             _session->setFeatureSource(getFeatureSource());
 
@@ -278,7 +293,7 @@ FeatureModelLayer::create()
 
             if (status.isError())
             {
-                OE_WARN << LC << "INTERNAL ERROR intializing the FMG" << std::endl;
+                OE_WARN << LC << "ERROR intializing the FMG: " << status.toString() << std::endl;
                 setStatus(status);
             }
             else

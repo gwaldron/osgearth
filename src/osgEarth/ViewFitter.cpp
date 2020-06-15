@@ -228,8 +228,8 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
     FP.fromWorld(_mapSRS.get(), centroid);
     outVP = Viewpoint();
     outVP.focalPoint() = FP;
-    outVP.pitch() = -90;
-    outVP.range() = Zbest;
+    outVP.pitch()->set(-90, Units::DEGREES);
+    outVP.range()->set(Zbest, Units::METERS);
 
     return true;
 }

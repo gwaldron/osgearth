@@ -237,7 +237,7 @@ namespace
 FeatureCursor*
 FeatureSource::createFeatureCursor(const TileKey& key, ProgressCallback* progress)
 {
-    return createFeatureCursor(key, Distance(0.0), progress);
+    return createFeatureCursor(key, Distance(0.0, Units::METERS), progress);
 }
 
 FeatureCursor*

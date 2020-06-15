@@ -100,14 +100,14 @@ Layer::TraversalCallback::traverse(osg::Node* node, osg::NodeVisitor* nv) const
 
 Layer::Layer() :
 _options(&_optionsConcrete),
-_revision(0u)
+_revision(1u)
 {
     init();
 }
 
 Layer::Layer(Layer::Options* optionsPtr) :
 _options(optionsPtr? optionsPtr : &_optionsConcrete),
-_revision(0u)
+_revision(1u)
 {
     // init() will be called by base class
 }

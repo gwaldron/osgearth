@@ -161,6 +161,9 @@ main(int argc, char** argv)
         return 1;
     }
 
+    // We need to explicitly open the MapNode so we can attach the terrainCallbacks.
+    mapNode->open();
+
     osgEarth::Util::EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
 
@@ -250,8 +253,8 @@ main(int argc, char** argv)
     osgEarth::Viewpoint vp;
     vp.name() = "Mt Ranier";
     vp.focalPoint()->set(geoSRS, -121.488, 46.2054, 0, ALTMODE_ABSOLUTE);
-    vp.pitch() = -50.0;
-    vp.range() = 100000;
+    vp.pitch()->set(-50.0, Units::DEGREES);
+    vp.range()->set(100000, Units::METERS);
 
     manip->setHomeViewpoint( vp );
 

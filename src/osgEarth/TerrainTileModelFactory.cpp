@@ -425,76 +425,21 @@ TerrainTileModelFactory::addElevation(
     if (!needElevation)
         return;
 
-    const osgEarth::RasterInterpolation& interp = map->getElevationInterpolation();
+    osg::ref_ptr<ElevationTexture> elevTex;
 
-    // Request a heightfield from the map.
-    osg::ref_ptr<osg::HeightField> mainHF;
-    osg::ref_ptr<NormalMap> normalMap;
+    bool getNormalMap = (_options.normalMaps() == true);
+    const bool acceptLowerRes = false;
 
-    bool hfOK = 
-        getOrCreateHeightField(map, layers, combinedRevision, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) 
-        && mainHF.valid();
-
-    if (hfOK == false && key.getLOD() == _options.firstLOD().get())
-    {
-        OE_DEBUG << LC << "No HF at key " << key.str() << ", making placeholder" << std::endl;
-        mainHF = new osg::HeightField();
-        mainHF->allocate(1, 1);
-        mainHF->setHeight(0, 0, 0.0f);
-        hfOK = true;
-    }
-
-    if (hfOK && mainHF.valid())
+    if (map->getElevationPool()->getTile(key, getNormalMap, acceptLowerRes, elevTex, NULL))
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
         layerModel->setRevision(combinedRevision);
-        layerModel->setHeightField( mainHF.get() );
 
-        if (mainHF->getNumColumns()*mainHF->getNumRows() != mainHF->getFloatArray()->size())
-        {
-            OE_WARN << "We have a problem." << std::endl;
-        }
-        else
-        {
-            // pre-calculate the min/max heights:
-            for( unsigned col = 0; col < mainHF->getNumColumns(); ++col )
-            {
-                for( unsigned row = 0; row < mainHF->getNumRows(); ++row )
-                {
-                    float h = mainHF->getHeight(col, row);
-                    if ( h > layerModel->getMaxHeight() )
-                        layerModel->setMaxHeight( h );
-                    if ( h < layerModel->getMinHeight() )
-                        layerModel->setMinHeight( h );
-                }
-            }
-        }
-
-        // needed for normal map generation
-        model->heightFields().setNeighbor(0, 0, mainHF.get());
-
-        // convert the heightfield to a 1-channel 32-bit fp image:
-        ImageToHeightFieldConverter conv;
-        osg::Image* hfImage = conv.convertToR32F(mainHF.get());
-
-        if ( hfImage )
+        if ( elevTex.valid() )
         {
             // Made an image, so store this as a texture with no matrix.
-            osg::Texture* texture = createElevationTexture( hfImage );
-            layerModel->setTexture( texture );
+            layerModel->setTexture( elevTex.get() );
             model->elevationModel() = layerModel.get();
-        }
-
-        if (normalMap.valid())
-        {
-            TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-            layerModel->setName( "oe_normal_map" );
-            layerModel->setRevision(combinedRevision);
-
-            // Made an image, so store this as a texture with no matrix.
-            osg::Texture* texture = createNormalTexture(normalMap.get(), *_options.compressNormalMaps());
-            layerModel->setTexture( texture );
-            model->normalModel() = layerModel;
         }
     }
 }

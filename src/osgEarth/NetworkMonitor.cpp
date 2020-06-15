@@ -92,7 +92,7 @@ void NetworkMonitor::clear()
 
 void NetworkMonitor::saveCSV(Requests& requests, const std::string& filename)
 {
-    std::ofstream out(filename);
+    std::ofstream out(filename.c_str());
     out << "URI, Duration, Start, End, Layer, Type, Status" << std::endl;
 
     if (!requests.empty())

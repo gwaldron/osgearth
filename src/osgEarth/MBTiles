@@ -71,14 +71,14 @@ namespace osgEarth { namespace MBTiles
         Status write(
             const TileKey& key,
             const osg::Image* image,
-            ProgressCallback* progress) const;
+            ProgressCallback* progress);
 
         void setDataExtents(const DataExtentList&);
 
     private:
         void* _database;
-        unsigned _minLevel;
-        unsigned _maxLevel;
+        mutable unsigned _minLevel;
+        mutable unsigned _maxLevel;
         osg::ref_ptr< osg::Image> _emptyImage;
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options> _dbOptions;
@@ -94,6 +94,8 @@ namespace osgEarth { namespace MBTiles
         bool putMetaData(const std::string& name, const std::string& value);
         bool createTables();
         void computeLevels();
+
+        int readMaxLevel();
     };
 } }
 
@@ -159,7 +161,7 @@ namespace osgEarth
         virtual ~MBTilesImageLayer() { }
 
     private:
-        MBTiles::Driver _driver;
+        mutable MBTiles::Driver _driver;
     };
 
     /**
@@ -219,7 +221,7 @@ namespace osgEarth
         virtual ~MBTilesElevationLayer() { }
 
     private:
-        MBTiles::Driver _driver;
+        mutable MBTiles::Driver _driver;
     };
 } // namespace osgEarth
 

@@ -104,6 +104,7 @@ namespace osgEarth { namespace Contrib
     private:
 
         osg::ref_ptr<ElevationPool> _pool;
+        mutable ElevationPool::WorkingSet _elevWorkingSet;
         osg::ref_ptr<ScriptEngine> _scriptEngine;
         osg::observer_ptr< const Map > _map;
     };

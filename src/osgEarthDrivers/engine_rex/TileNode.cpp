@@ -825,20 +825,39 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
     const SamplerBinding& normals = bindings[SamplerBinding::NORMAL];
     if (normals.isActive())
     {
-        if (model->normalModel().valid() && model->normalModel()->getTexture())
+        if (model->elevationModel().valid() && model->elevationModel()->getTexture())
         {
-            osg::Texture* tex = model->normalModel()->getTexture();
-            int revision = model->normalModel()->getRevision();
-
-            if (_context->options().normalizeEdges() == true)
+            ElevationTexture* etex = static_cast<ElevationTexture*>(model->elevationModel()->getTexture());
+            if (etex->getNormalMapTexture())
             {
-                // keep the normal map around because we might update it later
-                tex->setUnRefImageDataAfterApply(false);
-            }
+                osg::Texture* tex = etex->getNormalMapTexture();
+                int revision = model->elevationModel()->getRevision();
 
-            _renderModel.setSharedSampler(SamplerBinding::NORMAL, tex, revision);
-            updateNormalMap();
+                if (_context->options().normalizeEdges() == true)
+                {
+                    // keep the normal map around because we might update it later
+                    tex->setUnRefImageDataAfterApply(false);
+                }
+
+                _renderModel.setSharedSampler(SamplerBinding::NORMAL, tex, revision);
+                updateNormalMap();
+            }
         }
+
+        //if (model->normalModel().valid() && model->normalModel()->getTexture())
+        //{
+        //    osg::Texture* tex = model->normalModel()->getTexture();
+        //    int revision = model->normalModel()->getRevision();
+
+        //    if (_context->options().normalizeEdges() == true)
+        //    {
+        //        // keep the normal map around because we might update it later
+        //        tex->setUnRefImageDataAfterApply(false);
+        //    }
+
+        //    _renderModel.setSharedSampler(SamplerBinding::NORMAL, tex, revision);
+        //    updateNormalMap();
+        //}
 
         // If we OWN normal data, requested new data, and didn't get any,
         // that means it disappeared and we need to delete what we have:

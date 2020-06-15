@@ -423,7 +423,7 @@ void
 WindLayer::Options::fromConfig(const Config& conf)
 {
     ortho().setDefault(true);
-    radius().setDefault(75.0f);
+    radius().setDefault(Distance(75.0, Units::METERS));
     winds().clear();
 
     conf.get("ortho", ortho());

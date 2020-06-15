@@ -50,7 +50,7 @@ std::string
 GeodeticLabelingEngine::getText(const GeoPoint& location, bool lat)
 {
     double value = lat ? location.y() : location.x();
-    return _formatter->format(value, lat);
+    return _formatter->format(Angle(value, location.getSRS()->getUnits()), lat);
 }
 
 bool

@@ -186,6 +186,9 @@ namespace osgEarth
          */
         bool transformZ(const AltitudeMode& altMode, const TerrainResolver* t, double& out_z) const;
 
+        //! Transforms a resolution distance to a cartesian value.
+        Distance transformResolution(const Distance& d, const Units& outUnits) const;
+
         /**
          * Transforms this geopoint's Z to be absolute w.r.t. the vertical datum
          */
@@ -249,6 +252,8 @@ namespace osgEarth
          */
         GeoPoint interpolate(const GeoPoint& rhs, double t) const;
 
+        //! Convenience function to return xy units
+        const Units& getXYUnits() const;
 
         bool operator == (const GeoPoint& rhs) const;
         bool operator != (const GeoPoint& rhs) const { return !operator==(rhs); }

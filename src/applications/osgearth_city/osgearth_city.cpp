@@ -223,7 +223,7 @@ void addStreets(Map* map)
     // apparent offset (towards the camera) of the geometry from its actual position.
     // The value here was chosen empirically by tweaking the "oe_doff_min_bias" uniform.
     RenderSymbol* render = style.getOrCreate<RenderSymbol>();
-    render->depthOffset()->minBias() = 6.6f;
+    render->depthOffset()->minBias()->set(6.6, Units::METERS);
 
     // Set up a paging layout. The tile size factor and the visibility range combine
     // to determine the tile size, such that tile radius = max range / tile size factor.

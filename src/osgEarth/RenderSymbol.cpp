@@ -51,9 +51,9 @@ _clipPlane      ( 0 ),
 _minAlpha       ( 0.0f ),
 _transparent    ( false ),
 _decal          ( false ),
-_maxCreaseAngle ( 0.0 ),
+_maxCreaseAngle ( Angle(0.0, Units::DEGREES) ),
 _maxAltitude    ( Distance(FLT_MAX, Units::METERS) ),
-_geometricError ( 0.0f )
+_geometricError ( Distance(0.0, Units::METERS) )
 {
     mergeConfig(conf);
 }

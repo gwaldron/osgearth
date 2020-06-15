@@ -156,7 +156,7 @@ main(int argc, char** argv)
         Style geomStyle;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
-        geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
+        geomStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
@@ -187,7 +187,7 @@ main(int argc, char** argv)
 
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
-        geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
+        geomStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
@@ -218,7 +218,7 @@ main(int argc, char** argv)
         pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 1.0f;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->smooth() = true;
-        pathStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
+        pathStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
         pathStyle.getOrCreate<PointSymbol>()->size() = 8;
         pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
         pathStyle.getOrCreate<PointSymbol>()->smooth() = true;

@@ -110,7 +110,7 @@ void BiomeZone::Options::fromConfig(const Config& conf)
 
     const Config& gcConf = conf.child("groundcover");
     fill().setDefault(1.0f);
-    spacing().setDefault(20.0f);
+    spacing().setDefault(Distance(20.0, Units::METERS));
 
     gcConf.get("spacing", spacing());
     gcConf.get("fill", fill());

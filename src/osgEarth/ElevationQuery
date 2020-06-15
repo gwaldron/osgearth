@@ -64,6 +64,8 @@ namespace osgEarth { namespace Util
         void setMap(const Map* map);
 
         /**
+         * @deprecated
+         *
          * Gets the elevation data at a point, given a terrain resolution.
          *
          * @param point
@@ -117,9 +119,6 @@ namespace osgEarth { namespace Util
         // Callback to force the intersector to materialize paged model nodes
         osg::ref_ptr<osgUtil::IntersectionVisitor::ReadCallback> _ivrc;
 
-        // Active elevation sampler
-        osg::ref_ptr<ElevationEnvelope> _envelope;
-
     private:
         void reset();
         void sync();
@@ -133,6 +132,8 @@ namespace osgEarth { namespace Util
 
         osg::observer_ptr<const Map> _map;
         Revision _mapRevision;
+
+        ElevationPool::WorkingSet _workingSet;
     };
 
 } }

@@ -29,6 +29,7 @@
 #include <osg/ref_ptr>
 #include <set>
 #include <map>
+#include <atomic>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
 
@@ -435,6 +436,13 @@ namespace osgEarth { namespace Threading
         }
     private:
         mutable Mutex _lockable_mutex;
+    };
+
+
+    struct ScopedAtomicCounter {
+        std::atomic_int& _a;
+        ScopedAtomicCounter(std::atomic_int& a) : _a(a) { ++_a; }
+        ~ScopedAtomicCounter() { --_a; }
     };
 
 } } // namepsace osgEarth::Threading

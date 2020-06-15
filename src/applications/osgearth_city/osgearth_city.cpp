@@ -67,13 +67,13 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
 
     // create the map.
-    Map* map = new Map();
+    osg::ref_ptr<Map> map = new Map();
 
-    addImagery( map );
-    addElevation( map );
-    addBuildings( map );
-    addStreets( map );
-    addParks( map );
+    addImagery( map.get() );
+    addElevation( map.get() );
+    addBuildings( map.get() );
+    addStreets( map.get() );
+    addParks( map.get() );
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
@@ -85,7 +85,7 @@ main(int argc, char** argv)
     viewer.setSceneData( root );
 
     // make the map scene graph:
-    MapNode* mapNode = new MapNode(map);
+    MapNode* mapNode = new MapNode(map.get());
     root->addChild( mapNode );
 
     // zoom to a good startup position
@@ -124,13 +124,12 @@ void addBuildings(Map* map)
 {
     // create a feature source to load the building footprint shapefile.
     OGRFeatureSource* data = new OGRFeatureSource();
-    data->setName("buildings");
+    data->setName("buildings-data");
     data->setURL(BUILDINGS_URL);
-    data->options().buildSpatialIndex() = true;
 
     // a style for the building data:
     Style buildingStyle;
-    buildingStyle.setName( "buildings" );
+    buildingStyle.setName( "default" );
 
     // Extrude the shapes into 3D buildings.
     ExtrusionSymbol* extrusion = buildingStyle.getOrCreate<ExtrusionSymbol>();
@@ -179,13 +178,13 @@ void addBuildings(Map* map)
     // tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
     layout.tileSize() = 500;
-    layout.addLevel( FeatureLevel(0.0f, 20000.0f, "buildings") );
 
     FeatureModelLayer* layer = new FeatureModelLayer();
     layer->setName("Buildings");
     layer->setFeatureSource(data);
     layer->setStyleSheet(styleSheet);
-    layer->options().layout() = layout;
+    layer->setLayout(layout);
+    layer->setMaxVisibleRange(20000.0);
 
     map->addLayer(layer);
 }
@@ -230,14 +229,15 @@ void addStreets(Map* map)
     // to determine the tile size, such that tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
     layout.tileSize() = 500;
-    layout.maxRange() = 5000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
     FeatureModelLayer* layer = new FeatureModelLayer();
+    layer->setName("Streets");
     layer->setFeatureSource(data);
     layer->options().layout() = layout;
     layer->setStyleSheet(new StyleSheet());
     layer->getStyleSheet()->addStyle(style);
+    layer->setMaxVisibleRange(5000.0f);
 
     map->addLayer(layer);
 }

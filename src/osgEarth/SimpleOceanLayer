@@ -40,7 +40,7 @@ namespace osgEarth
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
             OE_OPTION(Color, color);
             OE_OPTION(float, maxAltitude);
-            OE_OPTION(std::string, maskLayer);
+            OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION(bool, useBathymetry);
             OE_OPTION(URI, textureURI);
             OE_OPTION(unsigned, textureLOD);
@@ -94,11 +94,15 @@ namespace osgEarth
 
     protected: // Layer
 
+        virtual void init();
+
+        virtual Status openImplementation();
+
         virtual void addedToMap(const class Map*);
 
         virtual void removedFromMap(const class Map*);
 
-        virtual void init();
+        virtual Config getConfig() const;
 
     protected:
 
@@ -106,9 +110,9 @@ namespace osgEarth
 
     private:
 
-        LayerReference<ImageLayer> _maskLayer;
-
         TextureImageUnitReservation _texReservation;
+
+        void updateMaskLayer();
     };
     
 }

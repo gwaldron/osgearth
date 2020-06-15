@@ -120,6 +120,10 @@ DebugImageLayer::init()
 
     // disable caching for the debugging layer.
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
+
+    // set a default name
+    if (getName().empty())
+        setName("Debug");
 }
 
 Status

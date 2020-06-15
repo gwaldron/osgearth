@@ -49,8 +49,9 @@ namespace osgEarth
     /**
      * Base class for all annotation node types.
      */
-    class OSGEARTH_EXPORT AnnotationNode : public osg::Group,
-                                               public MapNodeObserver
+    class OSGEARTH_EXPORT AnnotationNode : 
+        public osg::Group,
+        public MapNodeObserver
     {
     public:
         META_AnnotationNode(osgEarth, AnnotationNode);

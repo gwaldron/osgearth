@@ -59,6 +59,9 @@ namespace osgEarth
         //! open succesfully
         virtual Status openImplementation();
 
+        //! Close all composited layers
+        virtual Status closeImplementation();
+
         //! Creates a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
@@ -82,7 +85,6 @@ namespace osgEarth
     private:
 
         ImageLayerVector _layers;
-        bool _open;
         osg::ref_ptr<osg::Group> _layerNodes;
     };
 
@@ -119,6 +121,9 @@ namespace osgEarth
         //! open succesfully
         virtual Status openImplementation();
 
+        //! Close all composited layers
+        virtual Status closeImplementation();
+
         //! Creates a heightfield for the given tile key
         virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
 
@@ -142,7 +147,6 @@ namespace osgEarth
     private:
 
         ElevationLayerVector _layers;
-        bool _open;
         osg::ref_ptr<osg::Group> _layerNodes;
     };
 
@@ -179,6 +183,9 @@ namespace osgEarth
         //! Opens all composited layers and only returns OK if all layers
         //! open succesfully
         virtual Status openImplementation();
+
+        //! Close all composited layers
+        virtual Status closeImplementation();
 
         //! Creates a raster image for the given tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;

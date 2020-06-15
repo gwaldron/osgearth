@@ -103,7 +103,7 @@ namespace osgEarth { namespace Contrib
         {
             CalloutRecord();
 
-            osgEarth::Text* _node;   // node to render TODO refptr or obsptr?
+            osgEarth::Text* _node;   // node to render
             osg::ref_ptr<osg::RefMatrix> _matrix;
             unsigned _frame;        // frame number of last update
             BBox _textBB;

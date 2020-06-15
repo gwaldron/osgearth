@@ -23,7 +23,6 @@
 #define OSGEARTH_SPLAT_SPLAT_LAYER_H
 
 #include "Export"
-#include "Coverage"
 #include "Zone"
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/LayerReference>
@@ -68,6 +67,9 @@ namespace osgEarth { namespace Splat
         virtual void init();
         virtual void setTerrainResources(TerrainResources* res);
 
+        //! Serialize
+        virtual Config getConfig() const;
+
     public:
 
         //! Called when this layer is added to the map
@@ -95,8 +97,6 @@ namespace osgEarth { namespace Splat
         bool _gpuNoise;
 
         void buildStateSets();
-
-        void aaa();
 
         struct ZoneSelector : public Layer::TraversalCallback
         {

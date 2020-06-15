@@ -220,7 +220,7 @@ namespace osgEarth
 
         /** The result as a string */
         const std::string& getString() const { const StringObject* so = dynamic_cast<StringObject*>(_result.get()); return so ? so->getString() : _emptyString; }
-        
+
         /** Gets a string describing the read result */
         static std::string getResultCodeString( unsigned code )
         {
@@ -233,6 +233,7 @@ namespace osgEarth
                 code == RESULT_NO_READER       ? "No suitable ReaderWriter found" :
                 code == RESULT_READER_ERROR    ? "ReaderWriter error" :
                 code == RESULT_NOT_IMPLEMENTED ? "Not implemented" :
+                code == RESULT_NOT_MODIFIED    ? "Not modified" :
                                                  "Unknown error";
         }
 
@@ -267,7 +268,7 @@ namespace osgEarth
 //--------------------------------------------------------------------
 
     /**
-     * Callback that allows the developer to re-route URI read calls. 
+     * Callback that allows the developer to re-route URI read calls.
      *
      * If the corresponding callback method returns NOT_IMPLEMENTED, URI will
      * fall back on its default mechanism.
@@ -286,7 +287,7 @@ namespace osgEarth
             CACHE_ALL         = ~0
         };
 
-        /** 
+        /**
          * Tells the URI class which data types (if any) from this callback should be subjected
          * to osgEarth's caching mechamism. By default, the answer is "none" - URI
          * will not attempt to read or write from its cache when using this callback.

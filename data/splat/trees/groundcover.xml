@@ -1,0 +1,32 @@
+<groundcover name="Trees" source="hiclipart.com (non-commercial use only)">
+    <spacing>15</spacing>
+    <biomes>
+        <biome classes="forest" fill="1" size_variation="0.4">
+            <billboard url="tree_ginkgo.png" width="16.0" height="16.0" />
+            <billboard url="tree_maple.png" width="15.0" height="18.0"/>
+            <billboard url="tree_sycamore.png" width="15.0" height="16.0"/>
+            <billboard url="tree_white_poplar.png" width="15.0" height="18.0"/>
+            <billboard url="tree_transpiration.png" width="15.0" height="18.0"/>
+            <billboard url="tree_pine.png" width="15.0" height="30.0"/>
+            <billboard url="tree_sycamore_2.png" width="15.0" height="18.0"/>
+        </biome>
+        <biome classes="grassland" fill="0.35" size_variation="0.4">
+            <billboard url="tree_ginkgo.png" width="16.0" height="16.0" />
+            <billboard url="tree_maple.png" width="15.0" height="18.0"/>
+            <billboard url="tree_sycamore.png" width="15.0" height="16.0"/>
+            <billboard url="tree_white_poplar.png" width="15.0" height="18.0"/>
+            <billboard url="tree_transpiration.png" width="15.0" height="18.0"/>
+            <billboard url="tree_pine.png" width="15.0" height="30.0"/>
+            <billboard url="tree_sycamore_2.png" width="15.0" height="18.0"/>
+        </biome>
+        <biome classes="savanna" fill="0.2" size_variation="0.4">
+            <billboard url="tree_ginkgo.png" width="16.0" height="16.0" />
+            <billboard url="tree_maple.png" width="15.0" height="18.0"/>
+            <billboard url="tree_sycamore.png" width="15.0" height="16.0"/>
+            <billboard url="tree_white_poplar.png" width="15.0" height="18.0"/>
+            <billboard url="tree_transpiration.png" width="15.0" height="18.0"/>
+            <billboard url="tree_pine.png" width="15.0" height="30.0"/>
+            <billboard url="tree_sycamore_2.png" width="15.0" height="18.0"/>
+        </biome>
+    </biomes>
+</groundcover>

@@ -57,7 +57,7 @@ _context(context)
 }
 
 void
-TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings)
+TerrainCuller::setup(const Map* map, LayerExtentMap& layerExtents, const RenderBindings& bindings)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
     _layerExtents = &layerExtents;
@@ -121,8 +121,11 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             tile->_modelViewMatrix = _cv->getModelViewMatrix();
             tile->_keyValue = tileNode->getTileKeyValue();
             tile->_geom = surface->getDrawable()->_geom.get();
+            tile->_tile = surface->getDrawable();
+            //tile->_provider = surface->getDrawable();
             tile->_morphConstants = tileNode->getMorphConstants();
             tile->_key = &tileNode->getKey();
+            tile->_tileRevision = tileNode->getRevision();
 
             osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
             tile->_range = getDistanceToViewPoint(c, true);
@@ -210,9 +213,8 @@ TerrainCuller::apply(TileNode& node)
     // knows to blend it with the terrain geometry color.
     _firstDrawCommandForTile = 0L;
         
-    if (!_terrain.patchLayers().empty() && node.getSurfaceNode())
+    if (!_terrain.patchLayers().empty() && node.getSurfaceNode() && !node.isEmpty())
     {
-        // todo: check for patch/virtual
         const RenderBindings& bindings = _context->getRenderBindings();
         TileRenderModel& renderModel = _currentTileNode->renderModel();
 

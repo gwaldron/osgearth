@@ -123,15 +123,14 @@ _maxVertsPerDrawable(USHRT_MAX)
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/dds",                            "dds" );
     // This is not correct, but some versions of readymap can return tif with one f instead of two.
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/tif",                            "tif" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/webp", "webp");
 
     // pre-load OSG's ZIP plugin so that we can use it in URIs
     std::string zipLib = osgDB::Registry::instance()->createLibraryNameForExtension( "zip" );
     if ( !zipLib.empty() )
         osgDB::Registry::instance()->loadLibrary( zipLib );
 
-    // set up our default r/w options to NOT cache archives!
     _defaultOptions = new osgDB::Options();
-    _defaultOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
 
     const char* teStr = ::getenv(OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER);
     if ( teStr )
@@ -459,6 +458,10 @@ Registry::getDefaultCache() const
                     CacheOptions cacheOptions;
                     cacheOptions.setDriver(driverName);
                     _defaultCache = CacheFactory::create(cacheOptions);
+                    if (_defaultCache.valid() && _defaultCache->getStatus().isError())
+                    {
+                        OE_WARN << LC << "Cache error: " << _defaultCache->getStatus().toString() << std::endl;
+                    }
                 }
             }
         }
@@ -604,13 +607,6 @@ Registry::cloneOrCreateOptions(const osgDB::Options* input)
     osgDB::Options* newOptions =
         input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::DEEP_COPY_USERDATA)) :
         new osgDB::Options();
-
-    // clear the CACHE_ARCHIVES flag because it is evil
-    if ( ((int)newOptions->getObjectCacheHint() & osgDB::Options::CACHE_ARCHIVES) != 0 )
-    {
-        newOptions->setObjectCacheHint( (osgDB::Options::CacheHintOptions)
-            ((int)newOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES) );
-    }
 
     return newOptions;
 }

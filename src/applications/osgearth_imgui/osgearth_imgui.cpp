@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2018 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -46,25 +46,25 @@ using namespace osgEarth::Contrib;
 class ImGuiDemo : public OsgImGuiHandler
 {
 public:
-    ImGuiDemo(MapNode* mapNode, EarthManipulator* earthManip) :
+    ImGuiDemo(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
         _mapNode(mapNode),
-        _earthManip(earthManip)        
-    {        
+        _earthManip(earthManip),
+        _view(view)
+    {
     }
 
 protected:
     void drawUi() override
     {
         // ImGui code goes here...
-        //ImGui::ShowDemoWindow();        
-        _layers.draw(_mapNode.get());
-        _search.draw(_earthManip.get());
+        //ImGui::ShowDemoWindow();
+        _layers.draw(_mapNode.get(), _view->getCamera(), _earthManip.get());
     }
 
     osg::ref_ptr< MapNode > _mapNode;
     osg::ref_ptr<EarthManipulator> _earthManip;
+    osgViewer::View* _view;
     LayersGUI _layers;
-    SearchGUI _search;        
 };
 
 int
@@ -81,6 +81,12 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+    ImGuiNotifyHandler* notifyHandler = new ImGuiNotifyHandler();
+    osg::setNotifyHandler(notifyHandler);
+    osgEarth::setNotifyHandler(notifyHandler);
+
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc, argv);
 
     // help?
@@ -109,19 +115,19 @@ main(int argc, char** argv)
     viewer.getCamera()->setNearFarRatio(0.0001);
 
     // Setup the viewer for imgui
-    viewer.setRealizeOperation(new GlewInitOperation);
+    viewer.setRealizeOperation(new ImGuiDemo::RealizeOperation);
 
     viewer.realize();
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
         MapNode* mapNode = MapNode::findMapNode(node);
         if (mapNode)
         {
-            viewer.getEventHandlers().push_front(new ImGuiDemo(mapNode, manip));
+            viewer.getEventHandlers().push_front(new ImGuiDemo(&viewer, mapNode, manip));
         }
 
         viewer.setSceneData(node);

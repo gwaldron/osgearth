@@ -101,6 +101,8 @@ namespace osgEarth
         if (callback)
         {
             cancelled = callback->isCanceled() || callback->reportProgress(dlnow, dltotal);
+            if (cancelled)
+                OE_DEBUG << "An HTTP request was canceled mid-stream" << std::endl;
         }
         return cancelled;
     }
@@ -399,6 +401,7 @@ namespace
 
     static long                        s_timeout = 0;
     static long                        s_connectTimeout = 0;
+    static float                       s_retryDelay_s = 0.5f;
 
     // HTTP debugging.
     static bool                        s_HTTP_DEBUG = false;
@@ -735,14 +738,6 @@ namespace
             }
 
             response.setDuration(OE_STOP_TIMER(get_duration));
-
-            if ( progress )
-            {
-                progress->stats()["http_get_time"] += OE_STOP_TIMER(http_get);
-                progress->stats()["http_get_count"] += 1;
-                if ( response.isCanceled() )
-                    progress->stats()["http_cancel_count"] += 1;
-            }
 
             if ( s_HTTP_DEBUG )
             {
@@ -1104,14 +1099,6 @@ namespace
 
             response.setDuration(OE_STOP_TIMER(http_get));
 
-            if ( progress )
-            {
-                progress->stats("http_get_time") += OE_GET_TIMER(http_get);
-                progress->stats("http_get_count") += 1;
-                if ( response.isCanceled() )
-                    progress->stats("http_cancel_count") += 1;
-            }            
-
             return response;
         }
 
@@ -1276,6 +1263,13 @@ HTTPClient::initializeImpl()
     }
     OE_DEBUG << LC << "Setting connect timeout to " << connectTimeout << std::endl;
 
+    const char* retryDelayEnv = getenv("OSGEARTH_HTTP_RETRY_DELAY");
+    if (retryDelayEnv)
+    {
+        s_retryDelay_s = osgEarth::as<double>(std::string(retryDelayEnv), 0.0);
+    }
+    OE_DEBUG << LC << "Setting retry delay to " << s_retryDelay_s << std::endl;
+
     _impl->initialize();
 
     _impl->setUserAgent(userAgent.c_str());
@@ -1330,6 +1324,17 @@ void HTTPClient::setConnectTimeout( long timeout )
 {
     s_connectTimeout = timeout;
 }
+
+void HTTPClient::setRetryDelay(float value_s)
+{
+    s_retryDelay_s = value_s;
+}
+
+float HTTPClient::getRetryDelay() 
+{
+    return s_retryDelay_s;
+}
+
 URLRewriter* HTTPClient::getURLRewriter()
 {
     return s_rewriter.get();
@@ -1598,6 +1603,7 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
         {
             if (callback)
             {
+                callback->setRetryDelay(getRetryDelay());
                 callback->cancel();
 
                 if ( s_HTTP_DEBUG )
@@ -1686,6 +1692,7 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
         {
             if (callback)
             {
+                callback->setRetryDelay(getRetryDelay());
                 callback->cancel();
 
                 if ( s_HTTP_DEBUG )
@@ -1770,6 +1777,7 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
         {
             if (callback)
             {
+                callback->setRetryDelay(getRetryDelay());
                 callback->cancel();
 
                 if ( s_HTTP_DEBUG )
@@ -1828,6 +1836,7 @@ HTTPClient::doReadString(const HTTPRequest&    request,
         {
             if (callback)
             {
+                callback->setRetryDelay(getRetryDelay());
                 callback->cancel();
 
                 if ( s_HTTP_DEBUG )

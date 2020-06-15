@@ -43,6 +43,8 @@ int usage()
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     int dim;

@@ -25,7 +25,7 @@
  *
  * By default, osgEarth uses GL shaders to render the terrain. Shader composition is a
  * mechanism by which you can inject custom shader code into osgEarth's shader program
- * pipeline. This gets around the problem of having to duplicate shader code in order 
+ * pipeline. This gets around the problem of having to duplicate shader code in order
  * to add functionality.
  */
 #include <osg/Notify>
@@ -50,7 +50,7 @@ using namespace osgEarth::Util::Controls;
 
 
 int usage( const std::string& msg )
-{    
+{
     OE_NOTICE
         << msg << "\n\n"
         << "USAGE: osgearth_shadercomp \n"
@@ -120,7 +120,7 @@ namespace TEST_1
     }
 
     osg::Group* run( osg::Node* earth )
-    {   
+    {
         osg::Group* g = new osg::Group();
         g->addChild( earth );
         g->getOrCreateStateSet()->setAttributeAndModes( createHaze(), osg::StateAttribute::ON );
@@ -156,7 +156,7 @@ namespace TEST_2
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(node->getOrCreateStateSet());
         vp->setFunction("make_it_red", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, new Acceptor());
-        
+
         osg::Group* g = new osg::Group();
         g->addChild( node );
         return g;
@@ -292,7 +292,7 @@ namespace TEST_6
 
     // This acceptor will only include the fragment shader snippet above
     // when the camera's viewport.x == 0. Normally the Program will only
-    // be applied once in succession. 
+    // be applied once in succession.
     struct Acceptor : public ShaderComp::AcceptCallback
     {
         Acceptor() : _fn(0) { }
@@ -321,7 +321,7 @@ namespace TEST_6
 
         osg::Camera* cam2 = new osg::Camera();
         cam2->setViewport(201, 0, 200, 200);
-        cam2->addChild( group1 );        
+        cam2->addChild( group1 );
 
         osg::Group* group2 = new osg::Group();
         VirtualProgram* vp2 =  VirtualProgram::getOrCreate(group2->getOrCreateStateSet());
@@ -335,7 +335,7 @@ namespace TEST_6
         osg::Camera* cam4 = new osg::Camera();
         cam4->setViewport(201, 201, 200, 200);
         cam4->addChild( group2 );
-        
+
         osg::Group* g = new osg::Group();
         g->addChild( cam1 );
         g->addChild( cam2 );
@@ -364,7 +364,7 @@ namespace TEST_7
         "layout(triangles) in; \n"
         "layout(triangle_strip) out; \n"
         "layout(max_vertices = 3) out; \n"
-        
+
         "void VP_LoadVertex(in int); \n"
         "void VP_EmitVertex(); \n"
 
@@ -373,7 +373,7 @@ namespace TEST_7
         "void myGeomShader() \n"
         "{ \n"
         "    float strength = 0.25 + sin(osg_FrameTime*2.0)*0.25; \n"
-        "    vec4 cen = (gl_in[0].gl_Position + gl_in[1].gl_Position + gl_in[2].gl_Position)/3.0; \n"        
+        "    vec4 cen = (gl_in[0].gl_Position + gl_in[1].gl_Position + gl_in[2].gl_Position)/3.0; \n"
         "    for(int i=0; i < 3; ++i ) \n"
         "    { \n"
         "        VP_LoadVertex(i); \n"
@@ -404,7 +404,7 @@ namespace TEST_7
     }
 
     osg::Group* run( osg::Node* earth )
-    {   
+    {
         osg::Group* g = new osg::Group();
         g->addChild( earth );
         g->getOrCreateStateSet()->setAttribute( createVP() );
@@ -442,7 +442,7 @@ namespace TEST_8
 // This test will turn terrain verts RED if their distance from the earth's
 // center exceeds a certain number. Zoom down to a region where there is a
 // boundary between red verts and normally-colored verts. If you use the 32-bit
-// version of the vertex shader, small movements in the camera will cause 
+// version of the vertex shader, small movements in the camera will cause
 // red triangles to jump in and out as the world vertex position overflows
 // the 32-bit values. If you use the 64-bit version, this no longer happens.
 //
@@ -454,7 +454,7 @@ namespace TEST_9
     osg::Node* run(osg::Node* earthfile)
     {
         // 32-bit vertex shader, for reference only. This shader will exceed
-        // the single-precision capacity and cause "jumping verts" at the 
+        // the single-precision capacity and cause "jumping verts" at the
         // camera make small movements.
         const char* vs32 =
             "#version 330 \n"
@@ -468,7 +468,7 @@ namespace TEST_9
             "    float len = length(world); \n"
 
             "    const float R = 6371234.5678; \n"
-            
+
             "    isRed = 0.0; \n"
             "    if (len > R) \n"
             "        isRed = 1.0;"
@@ -477,12 +477,12 @@ namespace TEST_9
 
         // 64-bit vertex shader. This shader uses a double-precision inverse
         // view matrix and calculates the altitude all in double precision;
-        // therefore the "jumping verts" problem in the 32-bit version is 
-        // resolved. (Mostly-- you will still see the jumping if you view the 
+        // therefore the "jumping verts" problem in the 32-bit version is
+        // resolved. (Mostly-- you will still see the jumping if you view the
         // earth from orbit, because the 32-bit vertex itself is very far from
         // the camera in view coordinates. If that is an issue, you need to pass
         // in 64-bit vertex attributes.)
-        const char* vs64 = 
+        const char* vs64 =
             "#version 330 \n"
             "#extension GL_ARB_gpu_shader_fp64 : enable \n"
             "uniform dmat4 u_ViewMatrixInverse64; \n"            // must use a 64-bit VMI.
@@ -499,7 +499,7 @@ namespace TEST_9
             "    double len = length(world.xyz); \n"             // get double-precision vector length.
 
             "    const double R = 6371234.5678; \n"              // arbitrary earth radius threshold
-            
+
             "    isRed = (len > R) ? 1.0 : 0.0; \n"
             "}\n";
 
@@ -526,7 +526,7 @@ namespace TEST_9
 
                 osg::Uniform* u = new osg::Uniform(osg::Uniform::DOUBLE_MAT4, "u_ViewMatrixInverse64");
                 u->set(cv->getCurrentCamera()->getInverseViewMatrix());
-                
+
                 osg::ref_ptr<osg::StateSet> ss = new osg::StateSet();
                 ss->addUniform(u);
                 cv->pushStateSet(ss.get());
@@ -552,6 +552,8 @@ namespace TEST_9
 
 int main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
@@ -574,7 +576,7 @@ int main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );
-    
+
     LabelControl* label = new LabelControl();
     if ( ui )
     {
@@ -614,7 +616,7 @@ int main(int argc, char** argv)
             root->addChild( TEST_6::run(earthNode.get()) );
             if (ui) label->setText("State Memory Stack test; top row, both=blue. bottom left=red, bottom right=normal.");
         }
-        
+
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
     }
     else if ( test5 )
@@ -640,7 +642,7 @@ int main(int argc, char** argv)
         {
             return usage( "Unable to load earth model." );
         }
-        
+
         root->addChild(TEST_9::run(earthNode.get()));
         if (ui) label->setText("DP Shader Test - see code comments");
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );

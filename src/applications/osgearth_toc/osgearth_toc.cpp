@@ -37,6 +37,7 @@
 #include <osgEarth/AnnotationLayer>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Metrics>
+#include <osgEarth/WindLayer>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -84,7 +85,6 @@ struct UpdateOperation : public osg::Operation
 
             if (s_change.getElevationLayer())
             {
-                OE_NOTICE << "Dirtying model layers.\n";
                 dirtyModelLayers();
             }
         }
@@ -126,6 +126,110 @@ struct DumpElevation : public osgGA::GUIEventHandler
     }
     char _c;
     MapNode* _mapNode;
+};
+
+struct ToggleMinValidValue : public osgGA::GUIEventHandler
+{
+    ToggleMinValidValue(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c) { }
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)
+    {
+        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _c)
+        {
+            ElevationLayer* e = _mapNode->getMap()->getLayer<ElevationLayer>();
+            if (e->getMinValidValue() >= 0)
+                e->resetMinValidValue();
+            else
+                e->setMinValidValue(0);
+        }
+        return false;
+    }
+    char _c;
+    MapNode* _mapNode;
+};
+
+struct SetWindPoint : public osgGA::GUIEventHandler
+{
+    SetWindPoint(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c), _wind(NULL)
+    {
+        //osg::Node* heli = osgDB::readNodeFile("D:/mak/helicopter.osgb.(10,10,10).scale");
+        osg::Node* heli = osgDB::readNodeFile("../data/red_flag.osg");
+        _xform = new GeoTransform();
+        _xform->addChild(heli);
+        mapNode->addChild(_xform);
+    }
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)
+    {
+        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _c)
+        {
+            osg::Vec3d world;
+            if (s_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
+            {
+                WindLayer* layer = s_mapNode->getMap()->getLayer<WindLayer>();
+                if (!_wind)
+                {
+                    if (layer)
+                    {
+                        _wind = new Wind();
+                        _wind->setType(Wind::TYPE_POINT);
+                        _wind->setSpeed(Speed(125.0, Units::KILOMETERS_PER_HOUR));
+                        layer->addWind(_wind);
+                    }
+
+                    GeoPoint p;
+                    p.fromWorld(s_mapNode->getMapSRS(), world);
+                    p.alt() = 50.0;
+                    p.altitudeMode() = ALTMODE_RELATIVE;
+                    _xform->setPosition(p);
+
+                    p.makeAbsolute(s_mapNode->getTerrain());
+                    _wind->setPoint(p);
+                }
+                else
+                {
+                    layer->removeWind(_wind);
+                    _wind = NULL;
+                }
+            }
+            else OE_WARN << "Try again, no intersection :(" << std::endl;
+        }
+        else if (ea.getEventType() == ea.FRAME)
+        {
+            if (_wind)
+            {
+                GeoPoint p = _xform->getPosition();
+                p.alt() = 4.0; // + 25.0 + 25.0*sin((double)(aa.asView()->getFrameStamp()->getReferenceTime()));
+                //p.alt() = 2.0;
+                _xform->setPosition(p);
+                p.makeAbsolute(s_mapNode->getTerrain());
+                _wind->setPoint(p);
+            }
+
+            //if (_wind)
+            //{
+            //    osg::Vec3d world;
+            //    if (s_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
+            //    {
+            //        osg::Vec3d n = world;
+            //        n.normalize();
+            //        world += n*1.0;
+            //        _wind->point() = world;
+            //    }
+            //}
+
+            //osg::Vec3d eye,center,up;
+            //aa.asView()->getCamera()->getViewMatrixAsLookAt(eye,center,up);
+            //if (_wind)
+            //    {
+            //      OE_WARN << (_wind->point().get() - eye).length() << std::endl;
+            //    }
+        }
+
+        return false;
+    }
+    char _c;
+    MapNode* _mapNode;
+    GeoTransform* _xform;
+    Wind* _wind;
 };
 
 struct DumpLabel : public osgGA::GUIEventHandler
@@ -177,6 +281,7 @@ struct DumpLabel : public osgGA::GUIEventHandler
 int
 main( int argc, char** argv )
 {
+    osgEarth::initialize();
     osg::ArgumentParser arguments( &argc,argv );
 
     // configure the viewer.
@@ -189,7 +294,7 @@ main( int argc, char** argv )
     // disable the small-feature culling (so text will work)
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-    // Load an earth file 
+    // Load an earth file
     Container* uiRoot = new VBox();
     uiRoot->setAbsorbEvents(false);
     createControlPanel(uiRoot);
@@ -215,6 +320,10 @@ main( int argc, char** argv )
 
     viewer.addEventHandler(new DumpLabel(s_mapNode.get(), 'L'));
 
+    viewer.addEventHandler(new ToggleMinValidValue(s_mapNode.get(), 'M'));
+
+    viewer.addEventHandler(new SetWindPoint(s_mapNode.get(), 'p'));
+
     return Metrics::run(viewer);
 }
 
@@ -225,7 +334,16 @@ struct EnableDisableHandler : public ControlEventHandler
     EnableDisableHandler( Layer* layer ) : _layer(layer) { }
     void onClick( Control* control )
     {
-        _layer->setEnabled( !_layer->getEnabled() );
+        if (_layer->isOpen())
+            _layer->close();
+        else
+        {
+            if (_layer->getEnabled() == false)
+                _layer->setEnabled(true);
+
+            _layer->open();
+        }
+
         updateControlPanel();
     }
     Layer* _layer;
@@ -314,7 +432,7 @@ struct ZoomLayerHandler : public ControlEventHandler
             std::vector<GeoPoint> points;
             points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
             points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
-            
+
             ViewFitter fitter(s_activeMap->getSRS(), s_view->getCamera());
             Viewpoint vp;
             if (fitter.createViewpoint(points, vp))
@@ -399,7 +517,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     // don't show hidden coverage layers
     if (imageLayer && imageLayer->isCoverage()) // && !imageLayer->getVisible())
         return;
-    
+
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
 
     // a checkbox to toggle the layer's visibility:
@@ -487,7 +605,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     gridCol++;
 
     // enable/disable button
-    LabelControl* enableDisable = new LabelControl(layer->getEnabled() ? "DISABLE" : "ENABLE", 14);
+    LabelControl* enableDisable = new LabelControl(layer->isOpen()? "CLOSE" : "OPEN", 14);
     enableDisable->setHorizAlign( Control::ALIGN_CENTER );
     enableDisable->setBackColor( .4,.4,.4,1 );
     enableDisable->setActiveColor( .8,0,0,1 );
@@ -496,7 +614,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     gridCol++;
 
     // refresh button (for image layers)
-    if (imageLayer)
+    if (visibleLayer)
     {
         LabelControl* refresh = new LabelControl("REFRESH", 14);
         refresh->setBackColor( .4,.4,.4,1 );
@@ -521,7 +639,7 @@ createInactiveLayerItem( Grid* grid, int gridRow, const std::string& name, const
     LabelControl* nameLabel = new LabelControl( name );
     grid->setControl( gridCol, gridRow, nameLabel );
     gridCol++;
-    
+
     LabelControl* addRemove = new LabelControl( "ADD", 14 );
     addRemove->setHorizAlign( Control::ALIGN_CENTER );
     addRemove->setBackColor( .4,.4,.4,1 );
@@ -535,12 +653,12 @@ updateControlPanel()
 {
     // erase all child controls and just rebuild them b/c we're lazy.
 
-    //Rebuild all the image layers    
+    //Rebuild all the image layers
     s_activeBox->clearControls();
 
     int row = 0;
 
-    std::string title = 
+    std::string title =
         s_activeMap->getName().empty()? "Map Layers" :
         s_activeMap->getName();
 
@@ -555,11 +673,6 @@ updateControlPanel()
     {
         Layer* layer = layers[i].get();
         addLayerItem(s_activeBox, i, layers.size(), layer, true);
-
-        if (layer->getStatus().isError())
-        {
-            OE_WARN << layer->getName() << " : " << layer->getStatus().toString() << "\n";
-        }
     }
 
     // inactive layers:

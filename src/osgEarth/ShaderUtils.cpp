@@ -588,29 +588,14 @@ DiscardAlphaFragments::uninstall(osg::StateSet* ss) const
 
 namespace
 {
-    const char* vs =
-        "#version " GLSL_VERSION_STR "\n"
-        "out vec2 oe_default_coords;\n"
-        "void oe_default_vs(inout vec4 vertex) { \n"
-        "    oe_default_coords = gl_MultiTexCoord0.st;\n"
-        "}\n";
-
     const char* fs =
         "#version " GLSL_VERSION_STR "\n"
-        "uniform sampler2D oe_default_tex;\n"
-        "in vec2 oe_default_coords;\n"
-        "void oe_default_fs(inout vec4 color) { \n"
-        "    vec4 texel = texture(oe_default_tex, oe_default_coords);\n"
-        "    color.rgb = mix(color.rgb, texel.rgb, texel.a);\n"
-        "}\n";
+        "void oe_default_fs(inout vec4 color) { } \n";
 }
 
 void
 ShaderUtils::installDefaultShader(osg::StateSet* ss)
 {
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    vp->setFunction("oe_default_vs", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0);
     vp->setFunction("oe_default_fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0);
-    ss->addUniform(new osg::Uniform("oe_default_tex", 0));
-    ss->setTextureAttribute(0, new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)), 1);
 }

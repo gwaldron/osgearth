@@ -113,7 +113,7 @@ namespace osgEarth
         void reclamp();
 
     public:
-        void onTileAdded(
+        void onTileUpdate(
             const TileKey&          key, 
             osg::Node*              graph, 
             TerrainCallbackContext& context);

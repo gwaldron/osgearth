@@ -22,6 +22,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
+#include <osgEarth/NetworkMonitor>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -32,19 +33,23 @@ using namespace OpenThreads;
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
+#define OE_TEXCOMP_NONE    (osg::Texture::USE_IMAGE_DATA_FORMAT)
+#define OE_TEXCOMP_AUTO    ((osg::Texture::InternalFormatMode)(~0))
+#define OE_TEXCOMP_FASTDXT ((osg::Texture::InternalFormatMode)(~0 - 1))
+
 //------------------------------------------------------------------------
 
 void
 ImageLayer::Options::fromConfig(const Config& conf)
 {
-    _transparentColor.init( osg::Vec4ub(0,0,0,0) );
-    _featherPixels.init( false );
-    _minFilter.init( osg::Texture::LINEAR_MIPMAP_LINEAR );
-    _magFilter.init( osg::Texture::LINEAR );
-    _textureCompression.init( osg::Texture::USE_IMAGE_DATA_FORMAT ); // none
-    _shared.init( false );
-    _coverage.init( false );  
-    _reprojectedTileSize.init( 256 );  
+    _transparentColor.setDefault( osg::Vec4ub(0,0,0,0) );
+    _featherPixels.setDefault( false );
+    _minFilter.setDefault( osg::Texture::LINEAR_MIPMAP_LINEAR );
+    _magFilter.setDefault( osg::Texture::LINEAR );
+    _textureCompression.setDefault( OE_TEXCOMP_NONE );
+    _shared.setDefault( false );
+    _coverage.setDefault( false );
+    _reprojectedTileSize.setDefault( 256 );
 
     conf.get( "nodata_image",   _noDataImageFilename );
     conf.get( "shared",         _shared );
@@ -76,10 +81,11 @@ ImageLayer::Options::fromConfig(const Config& conf)
     conf.get("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.get("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
-    conf.get("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
-    conf.get("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
-    conf.get("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
-    //TODO add all the enums
+    conf.get("texture_compression", "none", _textureCompression, OE_TEXCOMP_NONE);
+    conf.get("texture_compression", "auto", _textureCompression, OE_TEXCOMP_AUTO);
+    conf.get("texture_compression", "on",   _textureCompression, OE_TEXCOMP_AUTO);
+    conf.get("texture_compression", "fastdxt", _textureCompression, OE_TEXCOMP_FASTDXT);
+    conf.get("texture_compression", "dxt", _textureCompression, OE_TEXCOMP_FASTDXT);
 
     // uniform names
     conf.get("shared_sampler", _shareTexUniformName);
@@ -124,11 +130,10 @@ ImageLayer::Options::getConfig() const
     conf.set("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.set("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
-    conf.set("texture_compression", "none", _textureCompression, osg::Texture::USE_IMAGE_DATA_FORMAT);
-    conf.set("texture_compression", "auto", _textureCompression, (osg::Texture::InternalFormatMode)~0);
-    conf.set("texture_compression", "on",   _textureCompression, (osg::Texture::InternalFormatMode)~0);
-    conf.set("texture_compression", "fastdxt", _textureCompression, (osg::Texture::InternalFormatMode)(~0 - 1));
-    //TODO add all the enums
+    conf.set("texture_compression", "none", _textureCompression, OE_TEXCOMP_NONE);
+    conf.set("texture_compression", "auto", _textureCompression, OE_TEXCOMP_AUTO);
+    conf.set("texture_compression", "fastdxt", _textureCompression, OE_TEXCOMP_FASTDXT);
+    conf.set("texture_compression", "dxt", _textureCompression, OE_TEXCOMP_FASTDXT);
 
     // uniform names
     conf.set("shared_sampler", _shareTexUniformName);
@@ -139,69 +144,55 @@ ImageLayer::Options::getConfig() const
 
 //------------------------------------------------------------------------
 
-ImageLayer::TileProcessor::TileProcessor()
+void
+ImageLayer::setShared(bool value)
 {
-    init(ImageLayer::Options(), 0L, false );
+    setOptionThatRequiresReopen(options().shared(), value);
+}
+
+bool
+ImageLayer::getShared() const
+{
+    return options().shared().get();
 }
 
 void
-ImageLayer::TileProcessor::init(const ImageLayer::Options& options,
-                              const osgDB::Options*        dbOptions, 
-                              bool                         mosaicingPossible )
+ImageLayer::setCoverage(bool value)
 {
-    _options = options;
-    _mosaicingPossible = mosaicingPossible;
+    setOptionThatRequiresReopen(options().coverage(), value);
+}
 
-    //if ( _layerInTargetProfile )
-    //    OE_DEBUG << LC << "Good, the layer and map have the same profile." << std::endl;
-
-    const osg::Vec4ub& ck= *_options.transparentColor();
-    _chromaKey.set( ck.r() / 255.0f, ck.g() / 255.0f, ck.b() / 255.0f, 1.0 );
-
-    if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
-    {
-        _noDataImage = _options.noDataImageFilename()->getImage( dbOptions );
-        if ( !_noDataImage.valid() )
-        {
-            OE_WARN << "Failed to read nodata image from \"" << _options.noDataImageFilename()->full() << "\"" << std::endl;
-        }
-    }
+bool
+ImageLayer::getCoverage() const
+{
+    return options().coverage().get();
 }
 
 void
-ImageLayer::TileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
+ImageLayer::setSharedTextureUniformName(const std::string& value)
 {
-    if ( !image.valid() )
-        return;
-
-    // Check to see if the image is the nodata image
-    if ( _noDataImage.valid() )
-    {
-        if (ImageUtils::areEquivalent(image.get(), _noDataImage.get()))
-        {
-            //OE_DEBUG << LC << "Found nodata" << std::endl;
-            image = 0L;
-            return;
-        }
-    }
-
-    // If this is a compressed image, uncompress it IF the image is not already in the
-    // target profile...because if it's not in the target profile, we will have to do
-    // some mosaicing...and we can't mosaic a compressed image.
-    if (_mosaicingPossible &&
-        ImageUtils::isCompressed(image.get()) &&
-        ImageUtils::canConvert(image.get(), GL_RGBA, GL_UNSIGNED_BYTE) )
-    {
-        image = ImageUtils::convertToRGBA8( image.get() );
-    }
+    if (options().shareTexUniformName() != value)
+        options().shareTexUniformName() = value;
 }
 
-//------------------------------------------------------------------------
+const std::string&
+ImageLayer::getSharedTextureUniformName() const
+{
+    return options().shareTexUniformName().get();
+}
 
-OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Shared, shared);
-OE_LAYER_PROPERTY_IMPL(ImageLayer, bool, Coverage, coverage);
-OE_LAYER_PROPERTY_IMPL(ImageLayer, std::string, SharedTextureUniformName, shareTexUniformName);
-OE_LAYER_PROPERTY_IMPL(ImageLayer, std::string, SharedTextureMatrixUniformName, shareTexMatUniformName);
+void
+ImageLayer::setSharedTextureMatrixUniformName(const std::string& value)
+{
+    if (options().shareTexMatUniformName() != value)
+        options().shareTexMatUniformName() = value;
+}
+
+const std::string&
+ImageLayer::getSharedTextureMatrixUniformName() const
+{
+    return options().shareTexMatUniformName().get();
+}
 
 ImageLayer*
 ImageLayer::create(const ConfigOptions& options)
@@ -337,12 +328,14 @@ ImageLayer::createImage(const TileKey&    key,
 {
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(getName());
-    OE_PROFILING_ZONE_TEXT(key.str());
+    //OE_PROFILING_ZONE_TEXT(key.str());
 
-    if (getStatus().isError())
+    if (!isOpen())
     {
         return GeoImage::INVALID;
     }
+
+    NetworkMonitor::ScopedRequestLayer layerRequest(getName());
 
     // prevents 2 threads from creating the same object at the same time
     //_sentry.lock(key);
@@ -355,75 +348,10 @@ ImageLayer::createImage(const TileKey&    key,
 }
 
 GeoImage
-ImageLayer::createImageInNativeProfile(const TileKey& key, ProgressCallback* progress)
-{
-    if (getStatus().isError())
-    {
-        return GeoImage::INVALID;
-    }
-
-    const Profile* nativeProfile = getProfile();
-    if ( !nativeProfile )
-    {
-        OE_WARN << LC << "Could not establish the profile" << std::endl;
-        return GeoImage::INVALID;
-    }
-    
-
-    GeoImage result;
-
-    if ( key.getProfile()->isHorizEquivalentTo(nativeProfile) )
-    {
-        // requested profile matches native profile, move along.
-        result = createImageInKeyProfile( key, progress );
-    }
-    else
-    {
-        // find the intersection of keys.
-        std::vector<TileKey> nativeKeys;
-        nativeProfile->getIntersectingTiles(key, nativeKeys);
-
-        // build a mosaic of the images from the native profile keys:
-        bool foundAtLeastOneRealTile = false;
-
-        ImageMosaic mosaic;
-        for( std::vector<TileKey>::iterator k = nativeKeys.begin(); k != nativeKeys.end(); ++k )
-        {
-            GeoImage image = createImageInKeyProfile( *k, progress );
-            if ( image.valid() )
-            {
-                foundAtLeastOneRealTile = true;
-                mosaic.getImages().push_back( TileImage(image.getImage(), *k) );
-            }
-            else
-            {
-                // We didn't get an image so pad the mosaic with a transparent image.
-                mosaic.getImages().push_back( TileImage(ImageUtils::createEmptyImage(getTileSize(), getTileSize()), *k));
-            }
-        }
-
-        // bail out if we got nothing.
-        if ( foundAtLeastOneRealTile )
-        {
-            // assemble new GeoImage from the mosaic.
-            double rxmin, rymin, rxmax, rymax;
-            mosaic.getExtents( rxmin, rymin, rxmax, rymax );
-
-            result = GeoImage(
-                mosaic.createImage(), 
-                GeoExtent( nativeProfile->getSRS(), rxmin, rymin, rxmax, rymax ) );
-        }
-    }
-
-    return result;
-}
-
-
-GeoImage
 ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progress)
 {
     // If the layer is disabled, bail out.
-    if ( !getEnabled() )
+    if ( !isOpen() )
     {
         return GeoImage::INVALID;
     }
@@ -449,7 +377,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     char memCacheKey[64];
 
     const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
-    
+
     // Check the layer L2 cache first
     if ( _memCache.valid() )
     {
@@ -457,13 +385,15 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
         ReadResult result = bin->readObject(memCacheKey, 0L);
-        if ( result.succeeded() )
+        if (result.succeeded())
+        {
             return GeoImage(static_cast<osg::Image*>(result.releaseObject()), key.getExtent());
+        }
     }
 
     // locate the cache bin for the target profile for this layer:
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
-    
+
     // validate the existance of a valid layer profile (unless we're in cache-only mode, in which
     // case there is no layer profile)
     if ( !policy.isCacheOnly() && !getProfile() )
@@ -485,30 +415,30 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
             bool expired = policy.isExpired(r.lastModifiedTime());
             if (!expired)
             {
-                OE_DEBUG << "Got cached image for " << key.str() << std::endl;                
-                return GeoImage( cachedImage.get(), key.getExtent() );                        
+                OE_DEBUG << "Got cached image for " << key.str() << std::endl;
+                return GeoImage( cachedImage.get(), key.getExtent() );
             }
             else
             {
-                OE_DEBUG << "Expired image for " << key.str() << std::endl;                
+                OE_DEBUG << "Expired image for " << key.str() << std::endl;
             }
         }
     }
-    
+
     // The data was not in the cache. If we are cache-only, fail sliently
     if ( policy.isCacheOnly() )
     {
         // If it's cache only and we have an expired but cached image, just return it.
         if (cachedImage.valid())
         {
-            return GeoImage( cachedImage.get(), key.getExtent() );            
+            return GeoImage( cachedImage.get(), key.getExtent() );
         }
         else
         {
             return GeoImage::INVALID;
         }
     }
-    
+
     if (key.getProfile()->isHorizEquivalentTo(getProfile()))
     {
         result = createImageImplementation(key, progress);
@@ -541,7 +471,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     // If we got a result, the cache is valid and we are caching in the map profile,
     // write to the map cache.
     if (result.valid()  &&
-        cacheBin        && 
+        cacheBin        &&
         policy.isCacheWriteable())
     {
         if ( key.getExtent() != result.getExtent() )
@@ -558,7 +488,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     }
     else
     {
-        OE_DEBUG << LC << key.str() << "result INVALID" << std::endl;        
+        OE_DEBUG << LC << key.str() << "result INVALID" << std::endl;
         // We couldn't get an image from the source.  So see if we have an expired cached image
         if (cachedImage.valid())
         {
@@ -571,7 +501,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 }
 
 GeoImage
-ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress) 
+ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 {
     // If we got here, asset that there's a non-null layer profile.
     if (!getProfile())
@@ -609,7 +539,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 
         for( std::vector<TileKey>::iterator k = intersectingKeys.begin(); k != intersectingKeys.end(); ++k )
         {
-            GeoImage image = createImageImplementation( *k, progress );
+            GeoImage image = createImageInKeyProfile(*k, progress);
 
             if ( image.valid() )
             {
@@ -696,7 +626,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
                     }
 
                     // and queue it.
-                    mosaic.getImages().push_back( TileImage(cropped.getImage(), *k) );       
+                    mosaic.getImages().push_back( TileImage(cropped.getImage(), *k) );
 
                 }
             }
@@ -726,19 +656,19 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
     if ( mosaicedImage.valid() )
     {
         // GeoImage::reproject() will automatically crop the image to the correct extents.
-        // so there is no need to crop after reprojection. Also note that if the SRS's are the 
+        // so there is no need to crop after reprojection. Also note that if the SRS's are the
         // same (even though extents are different), then this operation is technically not a
         // reprojection but merely a resampling.
 
-        result = mosaicedImage.reproject( 
+        result = mosaicedImage.reproject(
             key.getProfile()->getSRS(),
-            &key.getExtent(), 
+            &key.getExtent(),
             getTileSize(), getTileSize(),
             true);
     }
 
     // Process images with full alpha to properly support MP blending.
-    if (result.valid() && 
+    if (result.valid() &&
         options().featherPixels() == true &&
         isCoverage() == false)
     {
@@ -781,14 +711,14 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
     }
 
 
-    else if ( options().textureCompression() == (osg::Texture::InternalFormatMode)~0 )
+    else if ( options().textureCompression() == OE_TEXCOMP_AUTO )
     {
         // auto mode:
         if ( Registry::capabilities().isGLES() )
         {
-            // Many GLES drivers do not support automatic compression, so by 
+            // Many GLES drivers do not support automatic compression, so by
             // default, don't set the internal format.
-            // TODO: later perhaps we can replace this with a CPU-side 
+            // TODO: later perhaps we can replace this with a CPU-side
             // compression step for PV or ETC
             tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
         }
@@ -802,7 +732,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             }
         }
     }
-    else if ( options().textureCompression() == (osg::Texture::InternalFormatMode)(~0 - 1))
+    else if ( options().textureCompression() == OE_TEXCOMP_FASTDXT )
     {
         osg::Timer_t start = osg::Timer::instance()->tick();
         osgDB::ImageProcessor* imageProcessor = osgDB::Registry::instance()->getImageProcessorForExtension("fastdxt");
@@ -816,7 +746,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             }
             // RGBA uses DXT5
             else if (tex->getImage(0)->getPixelFormat() == GL_RGBA)
-            {         
+            {
                 mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
             }
             else
@@ -830,7 +760,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             osg::Timer_t end = osg::Timer::instance()->tick();
             image->dirty();
             tex->setImage(0, image);
-            OE_DEBUG << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;        
+            OE_DEBUG << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
         }
         else
         {
@@ -840,7 +770,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
     }
     else if ( options().textureCompression().isSet() )
     {
-        // use specifically picked a mode.
+        // user specifically picked a mode.
         tex->setInternalFormatMode(options().textureCompression().get());
     }
 }

@@ -110,6 +110,8 @@ namespace osgEarth
             double cross = base.x() * (p.y() - _a.y()) - base.y() * (p.x() - _a.x());
             return cross / base.length();
         }
+        double squaredDistanceTo(const osg::Vec3d& point) const;
+        osg::Vec3d closestPointTo(const osg::Vec3d& point) const;
     };
 
     struct OSGEARTH_EXPORT Segment3d
@@ -135,11 +137,13 @@ namespace osgEarth
         bool contains(const osg::Vec3d& p) const;
     };
 
-#if 0
+    // Work in progress. We want to use Ray without doing the work to
+    // fully support the other types.
+
     struct Line;
-    struct Segment;
     struct Ray;
 
+#if 0
     /** Infinite 3D line. */
     struct Line
     {
@@ -155,6 +159,7 @@ namespace osgEarth
     inline Line operator* (const osg::Quat& q, const Line& rhs) {
         return Line( q * rhs._a, q * rhs._b );
     }
+#endif
 
     /** Endpoint and a direction vector */
     struct Ray
@@ -163,10 +168,12 @@ namespace osgEarth
         osg::Vec3d _dv; // directional vector
         Ray(const osg::Vec3d& a, const osg::Vec3d& dv) : _a(a), _dv(dv) { }
         Ray(const Ray& rhs) : _a(rhs._a), _dv(rhs._dv) { }
+#if 0
         bool intersectXY( const Line&    rhs, osg::Vec3d& out ) const;
         bool intersectXY( const Ray&     rhs, osg::Vec3d& out ) const;
         bool intersectXY( const Segment& rhs, osg::Vec3d& out ) const;
         bool isPointOnLeftXY( const osg::Vec3d& p ) const;
+#endif
     };
     
     // rotate a Ray
@@ -174,7 +181,10 @@ namespace osgEarth
         return Ray( q * rhs._a, q * rhs._dv );
     }
 
+#if 0
     /** Finite line between two endpoints */
+    // This will need a new name before it's enabled; conflicts with a
+    // type in osgEarth/Geometry.
     struct Segment
     {
         osg::Vec3d _a, _b; // endpoints
@@ -214,6 +224,100 @@ namespace osgEarth
             return v;
         }
     }
-}
 
+    // Newton-Raphson solver
+    template<typename Func, typename FuncDeriv>
+    double solve(Func func, FuncDeriv deriv, double guess, double tolerance, bool& valid, int maxIterations = 16)
+    {
+        double xn = guess;
+        for (int i = 0; i <= maxIterations; ++i)
+        {
+            double f = func(xn);
+            if (fabs(f) <= tolerance)
+            {
+                valid = true;
+                return xn;
+            }
+            xn = xn - f / deriv(xn);
+        }
+        valid = false;
+        return xn;
+    }
+
+    // Courtesy of stackoverflow, return -1, 0, +1 based on the sign
+    // of a number
+    template<typename T>
+    int sgn(T val)
+    {
+        return (T(0) < val) - (val < T(0));
+    }
+    // Bisection solver, useful when the derivative of a function is
+    // unknown or expensive to calculate.
+    // x0 and x1 are initial guesses surrounding the root. The signs
+    // of func(x0) and func(x1) should be different; otherwise we bail
+    // immediately.
+    template<typename Func>
+    double solveBisect(const Func& func, double x0, double x1, double tolerance, int maxIterations = 8)
+    {
+        double f0 = func(x0);
+        double f1 =func(x1);
+        if (sgn(f0) == sgn(f1))
+        {
+            return x0;
+        }
+        double midPoint = 0.0;
+        for (int i = 0; i < maxIterations; ++i)
+        {
+            midPoint = (x0 + x1) / 2.0;
+            double fMidpoint = func(midPoint);
+            if (fabs(fMidpoint) <= tolerance)
+            {
+                return midPoint;
+            }
+            else if (sgn(f0) == sgn(fMidpoint))
+            {
+                x0 = midPoint;
+                f0 = fMidpoint;
+            }
+            else
+            {
+                x1 = midPoint;
+                f1 = fMidpoint;
+            }
+        }
+        return midPoint;
+    }
+
+    // Project osg::Vec3 a onto b.
+    template<typename VecType>
+    VecType vecProjection(const VecType& a, const VecType& b)
+    {
+        return b * ((a * b) / (b * b));
+    }
+
+    // Project osg::Vec3 a onto the plane perpendicular to b.
+    template<typename VecType>
+    VecType vecRejection(const VecType& a, const VecType& b)
+    {
+        return a - vecProjection(a, b);
+    }
+
+    // Round x to the nearest multiple of "multiple" greater than or equal to x
+    template<typename T>
+    T align(T x, T multiple) {
+        T isPositive = (T)(x >= 0);
+        return ((x + isPositive * (multiple - 1)) / multiple) * multiple;
+    }
+
+    inline int nextPowerOf2(int x)
+    {
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x + 1;
+    }
+}
 #endif

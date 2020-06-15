@@ -65,7 +65,7 @@ struct PlacerCallback : public MouseCoordsTool::Callback
         _eyeView->getCamera()->getViewMatrixAsLookAt(eyeWorld, c, u);
         osg::Vec3d placeWorld;
         coords.toWorld(placeWorld);
-        
+
         _place->setText( Stringify() << "Range: " << (int)(eyeWorld-placeWorld).length() << "m" );
     }
 
@@ -192,7 +192,10 @@ updateFrustumGeometry(osg::Node* node, const osg::Matrix& modelview, const osg::
 int
 main( int argc, char** argv )
 {
-    putenv("OSGEARTH_REX_DEBUG=1");
+    osgEarth::initialize();
+
+    static char debugEnv[] = "OSGEARTH_REX_DEBUG=1";
+    putenv(debugEnv);
 
     osg::ArgumentParser arguments( &argc, argv );
 

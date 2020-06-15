@@ -108,7 +108,8 @@ FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(Draco)
 FIND_PACKAGE(BASISU)
 FIND_PACKAGE(Tracy)
-FIND_PACKAGE(Glew)
+FIND_PACKAGE(GLEW)
+FIND_PACKAGE(LIBZIP)
 
 IF(SQLITE3_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_MBTILES)
@@ -118,16 +119,25 @@ IF(draco_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_DRACO)
 ENDIF(draco_FOUND)
 
+IF(GDAL_FOUND)
+  IF (GDAL_VERSION VERSION_LESS 3)
+    message(STATUS "Found GDAL ${GDAL_VERSION}" )
+  ELSE()
+    message(FATAL_ERROR "GDAL ${GDAL_VERSION} is unsupported at this time. Please use GDAL 2.X" )
+  ENDIF()
+ENDIF(GDAL_FOUND)
+
 OPTION(ENABLE_PROFILING "Build with support for Tracy profiler" OFF)
 IF(TRACY_FOUND AND ENABLE_PROFILING)
     ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
 ENDIF(TRACY_FOUND AND ENABLE_PROFILING)
 
 # the OGR geocoder is not always available so persent an option
-OPTION(OSGEARTH_ENABLE_GEOCODER "Enable the OGR-based geocoder" ON)
+OPTION(OSGEARTH_ENABLE_GEOCODER "Enable the OGR-based geocoder" OFF)
 
 FIND_PACKAGE(Triton QUIET)
 FIND_PACKAGE(SilverLining QUIET)
+FIND_PACKAGE(WEBP QUIET)
 
 FIND_PACKAGE(Protobuf QUIET)
 SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
@@ -226,6 +236,11 @@ ENDIF(INSTALL_TO_OSG_DIR)
 
 # osgEarth Examples
 OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
+
+# Whether to build our custom zip plugin
+IF(LIBZIP_FOUND)
+    OPTION(BUILD_OSGEARTH_ZIP_PLUGIN "Enable to build osgEarth's zip plugin based on libzip" ON)
+ENDIF(LIBZIP_FOUND)
 
 # Applications and tests
 OPTION(BUILD_APPLICATIONS "Enable build of Applications" ON)

@@ -24,6 +24,8 @@
 #include <osgEarth/StringUtils>
 #include <osg/Object>
 #include <osg/Version>
+#include <osg/Vec2f>
+#include <osg/Vec3d>
 #include <osgDB/Options>
 #include <list>
 #include <stack>
@@ -431,6 +433,75 @@ namespace osgEarth
         _defaultValue = Stringify() << std::setprecision(16) << value;
         _isNumber = true;
     }
+
+    // Specializations (OSG types)
+
+    template<> inline void Config::set<osg::Vec2f>(const std::string& key, const optional<osg::Vec2f>& opt) {
+        remove(key);
+        if (opt.isSet()) {
+            set(key, Stringify() << std::setprecision(8) << opt->x() << "," << opt->y());
+        }
+    }
+    template<> inline bool Config::get<osg::Vec2f>(const std::string& key, optional<osg::Vec2f>& output) const {
+        if (hasChild(key)) {
+            output->x() = as<float>(getToken(value(key), 0), 0.0f);
+            output->y() = as<float>(getToken(value(key), 1), 0.0f);
+            return true;
+        }
+        else
+            return false;
+    }
+
+    template<> inline void Config::set<osg::Vec2d>(const std::string& key, const optional<osg::Vec2d>& opt) {
+        remove(key);
+        if (opt.isSet()) {
+            set(key, Stringify() << std::setprecision(16) << opt->x() << "," << opt->y());
+        }
+    }
+    template<> inline bool Config::get<osg::Vec2d>(const std::string& key, optional<osg::Vec2d>& output) const {
+        if (hasChild(key)) {
+            output->x() = as<double>(getToken(value(key), 0), 0.0);
+            output->y() = as<double>(getToken(value(key), 1), 0.0);
+            return true;
+        }
+        else
+            return false;
+    }
+
+    template<> inline void Config::set<osg::Vec3f>(const std::string& key, const optional<osg::Vec3f>& opt) {
+        remove(key);
+        if (opt.isSet()) {
+            set(key, Stringify() << std::setprecision(8) << opt->x() << "," << opt->y() << "," << opt->z());
+        }
+    }
+    template<> inline bool Config::get<osg::Vec3f>(const std::string& key, optional<osg::Vec3f>& output) const {
+        if (hasChild(key)) {
+            output->x() = as<float>(getToken(value(key), 0), 0.0f);
+            output->y() = as<float>(getToken(value(key), 1), 0.0f);
+            output->z() = as<float>(getToken(value(key), 2), 0.0f);
+            return true;
+        }
+        else
+            return false;
+    }
+
+    template<> inline void Config::set<osg::Vec3d>(const std::string& key, const optional<osg::Vec3d>& opt) {
+        remove(key);
+        if (opt.isSet()) {
+            set(key, Stringify() << std::setprecision(16) << opt->x() << "," << opt->y() << "," << opt->z());
+        }
+    }
+    template<> inline bool Config::get<osg::Vec3d>(const std::string& key, optional<osg::Vec3d>& output) const {
+        if (hasChild(key)) {
+            output->x() = as<double>(getToken(value(key), 0), 0.0);
+            output->y() = as<double>(getToken(value(key), 1), 0.0);
+            output->z() = as<double>(getToken(value(key), 2), 0.0);
+            return true;
+        }
+        else
+            return false;
+    }
+
 
     // Use this macro to "activate" any object with a getConfig/ctor(const Config&) pair
     // and make it usable with Config::set/get/add.

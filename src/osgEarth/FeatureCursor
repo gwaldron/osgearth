@@ -41,6 +41,8 @@ namespace osgEarth
 
         void fill(FeatureList& output);
 
+        ProgressCallback* getProgress() const { return _progress.get(); }
+
     protected:
 
         FeatureCursor(ProgressCallback* progress);
@@ -92,6 +94,31 @@ namespace osgEarth
         osg::ref_ptr<const FeatureFilterChain> _filterChain;
         osg::ref_ptr<Feature> _lastFeature;
     };
+
+    /**
+     * FeatureCursor wrapper that runs incoming features through a filter chain
+     */
+    class OSGEARTH_EXPORT FilteredFeatureCursor : public FeatureCursor
+    {
+    public:
+        FilteredFeatureCursor(
+            FeatureCursor* cursor,
+            FeatureFilterChain* chain,
+            FilterContext& context);
+
+        virtual bool hasMore() const;
+        virtual Feature* nextFeature();
+
+    protected:
+        virtual ~FilteredFeatureCursor() { }
+
+    private:
+        osg::ref_ptr<FeatureCursor> _cursor;
+        osg::ref_ptr<FeatureFilterChain> _chain;
+        FilterContext& _context;
+        mutable FeatureList _cache;
+    };
+
 } // namespace osgEarth
 
 #endif // OSGEARTHFEATURES_FEATURE_CURSOR_H

@@ -40,7 +40,7 @@ namespace osgEarth
      * Base class for symbols that represent an instance of an external resource
      * like an icon or a model and can be placed at a location.
      */
-    class OSGEARTH_EXPORT InstanceSymbol : public Taggable<Symbol>
+    class OSGEARTH_EXPORT InstanceSymbol : public TaggableWithConfig<Symbol>
     {
     public:
         /**

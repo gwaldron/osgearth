@@ -61,7 +61,7 @@ MGRSGraticule::Options::getConfig() const
     Config conf = VisibleLayer::Options::getConfig();
     conf.set("sqid_data", sqidData() );
     conf.set("use_default_styles", useDefaultStyles() );
-    LayerReference<StyleSheet>::set(conf, "styles", styleSheetLayer(), styleSheet());
+    styleSheet().set(conf, "styles");
     return conf;
 }
 
@@ -72,7 +72,7 @@ MGRSGraticule::Options::fromConfig(const Config& conf)
     sqidData().init(URI("../data/mgrs_sqid.bin", conf.referrer()));
     conf.get("sqid_data", sqidData() );
     conf.get("use_default_styles", useDefaultStyles() );
-    LayerReference<StyleSheet>::get(conf, "styles", styleSheetLayer(), styleSheet());
+    styleSheet().get(conf, "styles");
 }
 
 //---------------------------------------------------------------------------
@@ -296,13 +296,13 @@ OE_LAYER_PROPERTY_IMPL(MGRSGraticule, bool, UseDefaultStyles, useDefaultStyles);
 void
 MGRSGraticule::setStyleSheet(StyleSheet* value)
 {
-    _styleSheet.setLayer(value);
+    options().styleSheet().setLayer(value);
 }
 
 StyleSheet*
 MGRSGraticule::getStyleSheet() const
 {
-    return _styleSheet.getLayer();
+    return options().styleSheet().getLayer();
 }
 
 void
@@ -338,12 +338,13 @@ MGRSGraticule::init()
 
     // install the range callback for clip plane activation
     _root->addCullCallback( new RangeUniformCullCallback() );
+}
 
-    if (getEnabled() == true)
-    {
-        rebuild();
-    }
-
+Config
+MGRSGraticule::getConfig() const
+{
+    Config c = VisibleLayer::getConfig();
+    return c;
 }
 
 Status
@@ -353,7 +354,7 @@ MGRSGraticule::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    Status ssStatus = options().styleSheet().open(getReadOptions());
     if (ssStatus.isError())
         return ssStatus;
 
@@ -364,7 +365,7 @@ void
 MGRSGraticule::addedToMap(const Map* map)
 {
     VisibleLayer::addedToMap(map);
-    _styleSheet.connect(map, options().styleSheetLayer());
+    options().styleSheet().addedToMap(map);
     _map = map;
     rebuild();
 }
@@ -372,9 +373,9 @@ MGRSGraticule::addedToMap(const Map* map)
 void
 MGRSGraticule::removedFromMap(const Map* map)
 {
-    VisibleLayer::removedFromMap(map);
-    _styleSheet.disconnect(map);
+    options().styleSheet().removedFromMap(map);
     _map = 0L;
+    VisibleLayer::removedFromMap(map);
 }
 
 osg::Node*

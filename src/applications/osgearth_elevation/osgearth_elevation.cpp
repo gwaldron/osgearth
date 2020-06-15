@@ -49,11 +49,12 @@ static LabelControl*  s_haeLabel    = 0L;
 static LabelControl*  s_egm96Label  = 0L;
 static LabelControl*  s_mapLabel    = 0L;
 static LabelControl*  s_resLabel    = 0L;
+static LabelControl*  s_mouseLabel  = 0L;
 static ModelNode*     s_marker      = 0L;
 
 
 // An event handler that will print out the elevation at the clicked point
-struct QueryElevationHandler : public osgGA::GUIEventHandler 
+struct QueryElevationHandler : public osgGA::GUIEventHandler
 {
     QueryElevationHandler()
         : _mouseDown( false ),
@@ -99,9 +100,9 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                 static LatLongFormatter s_f;
 
                 s_posLabel->setText( Stringify()
-                    << std::fixed << std::setprecision(2) 
+                    << std::fixed << std::setprecision(2)
                     << s_f.format(mapPointGeodetic.y(), true)
-                    << ", " 
+                    << ", "
                     << s_f.format(mapPointGeodetic.x(), false) );
 
                 if (s_mapNode->getMapSRS()->isGeographic())
@@ -122,7 +123,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                     mapPointGeodetic.y(),
                     mapPointGeodetic.x(),
                     egm96z);
-                
+
                 s_egm96Label->setText(Stringify() << egm96z << " m");
 
                 yes = true;
@@ -152,14 +153,49 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
         }
     }
 
+    void updateMouseSample()
+    {
+        if (_mouseSample.isAvailable())
+        {
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            float seconds = osg::Timer::instance()->delta_s(_mouseSampleStart, end);
+            osg::ref_ptr<ElevationSample> result = _mouseSample.release();
+            if (result->elevation == NO_DATA_VALUE)
+                s_mouseLabel->setText("NO DATA");
+            else
+                s_mouseLabel->setText(Stringify() << result->elevation << "m (" << std::setprecision(2) << seconds << " s)");
+        }
+    }
+
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
     {
-        if (ea.getEventType() == ea.DOUBLECLICK &&
-            ea.getButton() == ea.LEFT_MOUSE_BUTTON)
+        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+        if (ea.getEventType() == ea.DOUBLECLICK && ea.getButton() == ea.LEFT_MOUSE_BUTTON)
         {
-            osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
             update( ea.getX(), ea.getY(), view );
             return true;
+        }
+
+        else if (ea.getEventType() == ea.MOVE)
+        {
+            osg::Vec3d world;
+            osgUtil::LineSegmentIntersector::Intersections hits;
+            if ( view->computeIntersections(ea.getX(), ea.getY(), hits) )
+            {
+                s_mouseLabel->setText("");
+                world = hits.begin()->getWorldIntersectPoint();
+                GeoPoint mapPoint;
+                mapPoint.fromWorld( _terrain->getSRS(), world );
+                _mouseSample = s_mapNode->getMap()->getElevationPool()->getElevation(mapPoint);
+                _mouseSampleStart = osg::Timer::instance()->tick();
+            }
+            else _mouseSample = Future<ElevationSample>();
+        }
+
+        else if (ea.getEventType() == ea.FRAME)
+        {
+            updateMouseSample();
         }
 
         return false;
@@ -170,6 +206,8 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
     bool             _mouseDown;
     osg::NodePath    _path;
     osg::ref_ptr<ElevationEnvelope> _envelope;
+    Future<ElevationSample> _mouseSample;
+    osg::Timer_t _mouseSampleStart;
 };
 
 
@@ -191,6 +229,8 @@ struct ClickToRemoveElevation : public ControlEventHandler
 
 int main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     osgViewer::Viewer viewer(arguments);
@@ -208,7 +248,7 @@ int main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );
-    
+
     // install the programmable manipulator.
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
@@ -227,6 +267,7 @@ int main(int argc, char** argv)
     grid->setControl(0,r++,new LabelControl("Scene graph intersection:"));
     grid->setControl(0,r++,new LabelControl("EGM96 elevation:"));
     grid->setControl(0,r++,new LabelControl("Query resolution:"));
+    grid->setControl(0,r++,new LabelControl("Mouse async:"));
     grid->setControl(0, r++, new ButtonControl("Click to remove all elevation data", new ClickToRemoveElevation()));
 
     r = 1;
@@ -237,8 +278,8 @@ int main(int argc, char** argv)
     s_mapLabel = grid->setControl(1,r++,new LabelControl(""));
     s_egm96Label = grid->setControl(1,r++,new LabelControl(""));
     s_resLabel = grid->setControl(1,r++,new LabelControl(""));
+    s_mouseLabel = grid->setControl(1,r++, new LabelControl(""));
 
-    
     Style markerStyle;
     markerStyle.getOrCreate<ModelSymbol>()->url()->setLiteral("../data/axes.osgt.64.scale");
     markerStyle.getOrCreate<ModelSymbol>()->autoScale() = true;
@@ -249,8 +290,8 @@ int main(int argc, char** argv)
     s_mapNode->addChild( s_marker );
 
     const SpatialReference* mapSRS = s_mapNode->getMapSRS();
-    s_vdaLabel->setText( mapSRS->getVerticalDatum() ? 
-        mapSRS->getVerticalDatum()->getName() : 
+    s_vdaLabel->setText( mapSRS->getVerticalDatum() ?
+        mapSRS->getVerticalDatum()->getName() :
         Stringify() << "geodetic (" << mapSRS->getEllipsoid()->getName() << ")" );
 
     ControlCanvas* canvas = ControlCanvas::get(&viewer);

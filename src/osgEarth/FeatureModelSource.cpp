@@ -54,7 +54,7 @@ _nodeCaching(false)
 void
 FeatureModelOptions::fromConfig(const Config& conf)
 {
-    LayerReference<StyleSheet>::get(conf, "styles", _styleSheetLayer, _styleSheet);
+    styleSheet().get(conf, "styles");
 
     conf.get( "layout",           _layout );
     conf.get( "fading",           _fading );
@@ -69,6 +69,10 @@ FeatureModelOptions::fromConfig(const Config& conf)
     conf.get( "node_caching",     _nodeCaching );
     
     conf.get( "session_wide_resource_cache", _sessionWideResourceCache );
+
+    const Config& filtersConf = conf.child("filters");
+    for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
+        filters().push_back( ConfigOptions(*i) );
 }
 
 Config
@@ -76,7 +80,7 @@ FeatureModelOptions::getConfig() const
 {
     Config conf;
 
-    LayerReference<StyleSheet>::set(conf, "styles", styleSheetLayer(), styleSheet());
+    styleSheet().set(conf, "styles");
 
     conf.set( "layout",           _layout );
     conf.set( "fading",           _fading );
@@ -91,6 +95,14 @@ FeatureModelOptions::getConfig() const
     conf.set( "node_caching",     _nodeCaching );
     
     conf.set( "session_wide_resource_cache", _sessionWideResourceCache );
+
+    if (filters().empty() == false)
+    {
+        Config temp;
+        for(unsigned i=0; i<filters().size(); ++i)
+            temp.add( filters()[i].getConfig() );
+        conf.set( "filters", temp );
+    }
 
     return conf;
 }
@@ -183,7 +195,9 @@ bool GeomFeatureNodeFactory::createOrUpdateNode(
     FeatureCursor*            features,
     const Style&              style,
     const FilterContext&      context,
-    osg::ref_ptr<osg::Node>&  node )
+    osg::ref_ptr<osg::Node>&  node,
+    const Query&              query
+)
 {
     GeometryCompiler compiler( _options );
     node = compiler.compile( features, style, context );

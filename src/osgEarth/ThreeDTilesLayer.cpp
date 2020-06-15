@@ -68,9 +68,6 @@ ThreeDTilesLayer::init()
     // Make sure the b3dm plugin is loaded
     std::string libname = osgDB::Registry::instance()->createLibraryNameForExtension("gltf");
     osgDB::Registry::instance()->loadLibrary(libname);
-
-    // Default zero-or-one-texture shader
-    ShaderUtils::installDefaultShader(getOrCreateStateSet());
 }
 
 Status
@@ -79,18 +76,6 @@ ThreeDTilesLayer::openImplementation()
     Status parentStatus = VisibleLayer::openImplementation();
     if (parentStatus.isError())
         return parentStatus;
-
-    ReadResult rr = _options->url()->readString();
-    if (rr.failed())
-    {
-        return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
-    }
-
-    Tileset* tileset = Tileset::create(rr.getString(), _options->url()->full());
-    if (!tileset)
-    {
-        return Status(Status::GeneralError, "Bad tileset");
-    }
 
     // Clone the read options and if there isn't a ThreadPool create one.
     osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
@@ -102,8 +87,21 @@ ThreeDTilesLayer::openImplementation()
         _threadPool->put(readOptions.get());
     }
 
-    _tilesetNode = new ThreeDTilesetNode(tileset, readOptions.get());
-    _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());    
+    ReadResult rr = _options->url()->readString(readOptions.get());
+    if (rr.failed())
+    {
+        return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
+    }
+
+    Tileset* tileset = Tileset::create(rr.getString(), _options->url()->full());
+    if (!tileset)
+    {
+        return Status(Status::GeneralError, "Bad tileset");
+    }
+
+    _tilesetNode = new ThreeDTilesetNode(tileset, "", getSceneGraphCallbacks(), readOptions.get());
+    _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());
+    _tilesetNode->setOwnerName(getName());
 
     return STATUS_OK;
 }

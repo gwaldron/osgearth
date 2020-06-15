@@ -44,7 +44,7 @@ using namespace osgEarth::Util;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -54,6 +54,8 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     if ( arguments.read("--help") )
         return usage(argv[0]);
@@ -71,13 +73,13 @@ main(int argc, char** argv)
     while (arguments.read("--bounds", xmin, ymin, xmax, ymax))
     {
         bounds.xMin() = xmin, bounds.yMin() = ymin, bounds.xMax() = xmax, bounds.yMax() = ymax;
-    }        
+    }
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
-    {        
+    {
         MapNode* mapNode = MapNode::get(node);
         if ( !mapNode )
             return usage(argv[0]);
@@ -113,7 +115,7 @@ main(int argc, char** argv)
 
         // Create the FeatureNode with the features and the style.
         osg::ref_ptr< FeatureNode > featureNode = new FeatureNode(features, style);
-        mapNode->addChild(featureNode.get());                
+        mapNode->addChild(featureNode.get());
 
         viewer.setSceneData( node );
         return viewer.run();

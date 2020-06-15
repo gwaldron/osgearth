@@ -37,8 +37,7 @@ namespace osgEarth
         {
         public:
             META_LayerOptions(osgEarth, Options, FeatureSource::Options);
-            OE_OPTION(std::string, imageLayerName);
-            OE_OPTION(ImageLayer::Options, imageLayer);
+            OE_OPTION_LAYER(ImageLayer, image);
             OE_OPTION(unsigned, level);
             OE_OPTION(std::string, attribute);
             virtual Config getConfig() const;
@@ -63,7 +62,7 @@ namespace osgEarth
 
     public: // FeatureLayer
         
-        virtual FeatureCursor* createFeatureCursor(
+        virtual FeatureCursor* createFeatureCursorImplementation(
             const Query& query,
             ProgressCallback* progress);
 
@@ -77,9 +76,7 @@ namespace osgEarth
 
         virtual void removedFromMap(const Map*);
 
-    protected:
-        
-        LayerReference<ImageLayer> _imageLayer;
+        virtual Config getConfig() const;
     };
 } // namespace osgEarth
 

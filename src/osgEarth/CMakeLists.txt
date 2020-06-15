@@ -53,10 +53,12 @@ set(TARGET_GLSL
     ClipPlane.glsl
     DepthOffset.glsl
     Draping.glsl
+    DrawInstancedAttribute.glsl
     GPUClamping.glsl
     GPUClamping.lib.glsl
     Instancing.glsl
     LineDrawable.glsl
+    WireLines.glsl
     PhongLighting.glsl
     PointDrawable.glsl
     Text.glsl
@@ -68,6 +70,7 @@ set(TARGET_GLSL
     ShadowCaster.glsl
     SimpleOceanLayer.glsl
     RTTPicker.glsl
+    WindLayer.CS.glsl
 )
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
@@ -130,6 +133,7 @@ SET(LIB_PUBLIC_HEADERS
     FadeEffect
     FileUtils
     GDAL
+    GDALDEM
     GeoCommon
     GeoData
     Geoid
@@ -146,6 +150,8 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
+    InstanceBuilder
+    InstanceCloud
     IntersectionPicker
     IOTypes
     JoinPointsLinesFilter
@@ -176,6 +182,7 @@ SET(LIB_PUBLIC_HEADERS
     ModelLayer
     ModelSource
     NativeProgramAdapter
+    NetworkMonitor
     NodeUtils
     Notify
     optional
@@ -229,6 +236,8 @@ SET(LIB_PUBLIC_HEADERS
     TileLayer
     TileHandler
     TileRasterizer
+    TiledFeatureModelGraph
+    TiledFeatureModelLayer
     TileSource
     TileSourceElevationLayer
     TileSourceImageLayer
@@ -327,7 +336,7 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
     GeometryUtils
     ImageToFeatureLayer
-    LabelSource
+    InstanceCloud.cpp
     MVT
     OgrUtils
     OGRFeatureSource
@@ -345,6 +354,7 @@ SET(LIB_PUBLIC_HEADERS
     TextSymbolizer
     TFS
     TransformFilter
+    WireLines
     XYZFeatureSource
     WFS
 
@@ -412,11 +422,13 @@ SET(LIB_PUBLIC_HEADERS
     PlaceNode
     RectangleNode
     TrackNode
+    WindLayer
+    ElevationConstraintLayer
 
     rtree.h
 
     FileGDBFeatureSource
-    
+
     ${OSGEARTH_BUILDCONFIG_HEADER}
 )
 
@@ -496,6 +508,7 @@ set(TARGET_SRC
     FadeEffect.cpp
     FileUtils.cpp
     GDAL.cpp
+    GDALDEM.cpp
     GeoData.cpp
     Geoid.cpp
     GeoMath.cpp
@@ -511,6 +524,7 @@ set(TARGET_SRC
     ImageMosaic.cpp
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
+    InstanceBuilder.cpp
     IntersectionPicker.cpp
     IOTypes.cpp
     JoinPointsLinesFilter.cpp
@@ -538,6 +552,7 @@ set(TARGET_SRC
     MimeTypes.cpp
     ModelLayer.cpp
     ModelSource.cpp
+    NetworkMonitor.cpp
     NodeUtils.cpp
     Notify.cpp
     ObjectIndex.cpp
@@ -582,6 +597,8 @@ set(TARGET_SRC
     TileLayer.cpp
     TileHandler.cpp
     TileRasterizer.cpp
+    TiledFeatureModelGraph.cpp
+    TiledFeatureModelLayer.cpp
     TileVisitor.cpp
     TileSource.cpp
     TileSourceElevationLayer.cpp
@@ -671,7 +688,6 @@ set(TARGET_SRC
     GeometryCompiler.cpp
     GeometryUtils.cpp
     ImageToFeatureLayer.cpp
-    LabelSource.cpp
     MVT.cpp
     OgrUtils.cpp
     OGRFeatureSource.cpp
@@ -687,6 +703,7 @@ set(TARGET_SRC
     TextSymbolizer.cpp
     TFS.cpp
     TransformFilter.cpp
+    WireLines.cpp
     XYZFeatureSource.cpp
     WFS.cpp
 
@@ -749,6 +766,8 @@ set(TARGET_SRC
     ModelNode.cpp
     PlaceNode.cpp
     TrackNode.cpp
+    WindLayer.cpp
+    ElevationConstraintLayer.cpp
 
     FileGDBFeatureSource.cpp
 
@@ -761,7 +780,7 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   ELSE()
     INCLUDE_DIRECTORIES(${Protobuf_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
   ENDIF()
-  
+
   PROTOBUF_GENERATE_CPP(PROTO_VECTOR_TILE_CPP PROTO_VECTOR_TILE_H vector_tile.proto)
   SET(LIB_PUBLIC_HEADERS
     ${LIB_PUBLIC_HEADERS}

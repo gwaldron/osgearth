@@ -45,10 +45,10 @@ using namespace osgEarth::Contrib;
 
 osg::AnimationPath* createAnimationPath(const GeoPoint& pos, const SpatialReference* mapSRS, float radius, double looptime)
 {
-    // set up the animation path 
+    // set up the animation path
     osg::AnimationPath* animationPath = new osg::AnimationPath;
     animationPath->setLoopMode(osg::AnimationPath::LOOP);
-    
+
     int numSamples = 40;
 
     double delta = osg::PI * 2.0 / (double)numSamples;
@@ -78,7 +78,7 @@ osg::AnimationPath* createAnimationPath(const GeoPoint& pos, const SpatialRefere
         double angle = delta * (double)i;
         osg::Quat quat(angle, up );
         osg::Vec3d spoke = quat * (side * radius);
-        osg::Vec3d end = centerWorld + spoke;                
+        osg::Vec3d end = centerWorld + spoke;
 
         osg::Quat makeUp;
         makeUp.makeRotate(osg::Vec3d(0,0,1), up);
@@ -90,12 +90,12 @@ osg::AnimationPath* createAnimationPath(const GeoPoint& pos, const SpatialRefere
             firstPosition = end;
             firstRotation = rot;
         }
-        time += time_delta;            
+        time += time_delta;
     }
-   
+
     animationPath->insert(time, osg::AnimationPath::ControlPoint(firstPosition, firstRotation));
 
-    return animationPath;    
+    return animationPath;
 }
 
 osg::Node* createPlane(osg::Node* node, const GeoPoint& pos, const SpatialReference* mapSRS, double radius, double time)
@@ -120,7 +120,7 @@ osg::Node* createPlane(osg::Node* node, const GeoPoint& pos, const SpatialRefere
 //      {
 //          TerrainTileNode* tile = dynamic_cast<TerrainTileNode*>(&node);
 //          if (tile && tile->getKey().valid())
-//          {              
+//          {
 //              if (tile->getKey().getExtent().intersects(_extent) && tile->getKey().getLevelOfDetail() < 11)
 //              {
 //                  // Set this tile to not expire.
@@ -128,7 +128,7 @@ osg::Node* createPlane(osg::Node* node, const GeoPoint& pos, const SpatialRefere
 //                  OE_NOTICE << "Preloading children for " << tile->getKey().str() << std::endl;
 //                  tile->loadChildren();
 //              }
-//          }          
+//          }
 //          traverse(node);
 //      }
 //
@@ -139,6 +139,8 @@ osg::Node* createPlane(osg::Node* node, const GeoPoint& pos, const SpatialRefere
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
@@ -159,10 +161,13 @@ main(int argc, char** argv)
         return 1;
     }
 
+    // We need to explicitly open the MapNode so we can attach the terrainCallbacks.
+    mapNode->open();
+
     osgEarth::Util::EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
-    
-    root->addChild( earthNode );    
+
+    root->addChild( earthNode );
     //viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
     osg::Group* losGroup = new osg::Group();
@@ -176,20 +181,20 @@ main(int argc, char** argv)
 
     //Create a point to point LineOfSightNode.
     LinearLineOfSightNode* los = new LinearLineOfSightNode(
-        mapNode, 
+        mapNode,
         GeoPoint(geoSRS, -121.665, 46.0878, 1258.00, ALTMODE_ABSOLUTE),
         GeoPoint(geoSRS, -121.488, 46.2054, 3620.11, ALTMODE_ABSOLUTE) );
 
     losGroup->addChild( los );
-    
+
     //Create an editor for the point to point line of sight that allows you to drag the beginning and end points around.
     //This is just one way that you could manipulator the LineOfSightNode.
     LinearLineOfSightEditor* p2peditor = new LinearLineOfSightEditor( los );
     root->addChild( p2peditor );
 
     //Create a relative point to point LineOfSightNode.
-    LinearLineOfSightNode* relativeLOS = new LinearLineOfSightNode( 
-        mapNode, 
+    LinearLineOfSightNode* relativeLOS = new LinearLineOfSightNode(
+        mapNode,
         GeoPoint(geoSRS, -121.2, 46.1, 10, ALTMODE_RELATIVE),
         GeoPoint(geoSRS, -121.488, 46.2054, 10, ALTMODE_RELATIVE) );
 
@@ -202,7 +207,7 @@ main(int argc, char** argv)
     RadialLineOfSightNode* radial = new RadialLineOfSightNode( mapNode );
     radial->setCenter( GeoPoint(geoSRS, -121.515, 46.054, 847.604, ALTMODE_ABSOLUTE) );
     radial->setRadius( 2000 );
-    radial->setNumSpokes( 100 );    
+    radial->setNumSpokes( 100 );
     losGroup->addChild( radial );
     RadialLineOfSightEditor* radialEditor = new RadialLineOfSightEditor( radial );
     losGroup->addChild( radialEditor );
@@ -211,12 +216,12 @@ main(int argc, char** argv)
     RadialLineOfSightNode* radialRelative = new RadialLineOfSightNode( mapNode );
     radialRelative->setCenter( GeoPoint(geoSRS, -121.2, 46.054, 10, ALTMODE_RELATIVE) );
     radialRelative->setRadius( 3000 );
-    radialRelative->setNumSpokes(60);    
+    radialRelative->setNumSpokes(60);
     losGroup->addChild( radialRelative );
     RadialLineOfSightEditor* radialRelEditor = new RadialLineOfSightEditor( radialRelative );
     losGroup->addChild( radialRelEditor );
 
-    //Load a plane model.  
+    //Load a plane model.
     osg::ref_ptr< osg::Node >  plane = osgDB::readRefNodeFile("../data/cessna.osgb.5,5,5.scale");
 
     //Create 2 moving planes
@@ -253,7 +258,7 @@ main(int argc, char** argv)
 
     manip->setHomeViewpoint( vp );
 
-    viewer.setSceneData( root );    
+    viewer.setSceneData( root );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
@@ -274,7 +279,7 @@ main(int argc, char** argv)
     //root->accept(v);
 
     while (!viewer.done())
-    {        
+    {
         viewer.frame();
     }
     return 0;

@@ -20,12 +20,12 @@
 #define OSGEARTH_REX_LOADER 1
 
 #include "Common"
+#include "FrameClock"
 
 #include <osgEarth/IOTypes>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TileKey>
 #include <osgEarth/Progress>
-
 #include <osg/ref_ptr>
 #include <osg/Group>
 
@@ -64,11 +64,11 @@ namespace osgEarth { namespace REX
             const TileKey& getTileKey() const { return _key; }
 
             /** Invoke the operation - not safe to alter the graph */
-            virtual void invoke(ProgressCallback*) { }
+            virtual bool run(ProgressCallback*) =0;
 
             /** Apply the results of the invoke operation - runs safely in update stage.
                 If this returns false, the request needs to be rerun. */
-            virtual bool apply(const osg::FrameStamp*) { return true; }
+            virtual bool merge() =0;
 
             //! Comparison for sorting
             bool operator()(const Request& lhs, const Request& rhs) const {
@@ -92,6 +92,11 @@ namespace osgEarth { namespace REX
 
             void setState(State value);
 
+            //! Sets a minimum delay before the request will be processed.
+            //! This exists to prevent retry requests from spamming a resource
+            //! (like the network)
+            void setDelay(double seconds);
+
             bool isIdle() const { return _state == IDLE; }
             bool isRunning() const { return _state == RUNNING; }
             bool isMerging() const { return _state == MERGING; }
@@ -101,17 +106,20 @@ namespace osgEarth { namespace REX
             std::string                   _name;
             TileKey                       _key;
             State                         _state;
+            osg::Timer_t                  _stateTick;
+            osg::Timer_t                  _readyTick;
             float                         _priority;
             osg::ref_ptr<osg::Referenced> _internalHandle;
             unsigned                      _lastFrameSubmitted;
-            osg::Timer_t                  _lastTick;
+            double                        _lastTick;
             mutable Threading::Mutex      _lock;
             int                           _loadCount;
+            double                        _delay_s;
+            int                           _delayCount;
+            char                          _filename[64];
 
             void lock() { _lock.lock(); }
             void unlock() { _lock.unlock(); }
-
-            ChangeSet                     _nodesChanged;
         };
 
         class Handler : public osg::Referenced
@@ -133,12 +141,6 @@ namespace osgEarth { namespace REX
      */
     class LoaderGroup : public osg::Group, public Loader
     {
-    public: // Loader
-        void setFrameStamp(const osg::FrameStamp* fs) { _frameStamp = fs; }
-        const osg::FrameStamp* getFrameStamp() const { return _frameStamp.get(); }
-
-    protected:
-        osg::ref_ptr<const osg::FrameStamp> _frameStamp;
     };
 
 
@@ -179,6 +181,9 @@ namespace osgEarth { namespace REX
         //! Set the priority scale for all LODs */
         void setOverallPriorityScale(float scale);
 
+        //! Install the frame clock
+        void setFrameClock(const FrameClock* clock) { _clock = clock; }
+
     public: // Loader
 
         /** Asks the loader to begin or continue loading something.
@@ -197,7 +202,7 @@ namespace osgEarth { namespace REX
     public:
 
         /** Internal method to invoke a request that was previously queued with load(). */
-        Request* invokeAndRelease(UID requestUID);
+        Request* runAndRelease(UID requestUID);
 
         /** Returns the tilekey associated with the request (or TileKey::INVALID if none) */
         TileKey getTileKeyForRequest(UID requestUID) const;
@@ -220,13 +225,14 @@ namespace osgEarth { namespace REX
         osg::NodePath    _myNodePath;
         Requests         _requests;
         MergeQueue       _mergeQueue;  
-        osg::Timer_t     _checkpoint;
+        double           _checkpoint;
         int              _mergesPerFrame;
         unsigned         _frameNumber;
         unsigned         _frameLastUpdated;
         unsigned         _numLODs;
         float            _priorityScales[64];
         float            _priorityOffsets[64];
+        const FrameClock* _clock;
 
         osg::ref_ptr<osgDB::Options> _dboptions;
     };

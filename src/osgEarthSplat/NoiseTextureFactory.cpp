@@ -45,10 +45,10 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     image->allocateImage(dim, dim, 1, type, GL_UNSIGNED_BYTE);
     image->setInternalTextureFormat(textureFormat);
 
-    // 0 = rocky mountains
-    // 1 = white noise
-    // 2 = white noise 2
-    // 3 = super-clumpy
+    // 0 = SMOOTH
+    // 1 = NOISE
+    // 2 = NOISE2
+    // 3 = CLUMPY
     const float F[4] = { 4.0f, 64.0f, 33.0f, 1.2f };
     const float P[4] = { 0.8f,  1.0f,  0.9f, 0.9f };
     const float L[4] = { 2.2f,  1.0f,  1.0f, 4.0f };
@@ -122,7 +122,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
     tex->setMaxAnisotropy( 1.0f );
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    ImageUtils::activateMipMaps(tex);
+    ImageUtils::generateMipmaps(tex);
 
     return tex;
 }

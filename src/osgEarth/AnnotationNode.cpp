@@ -84,7 +84,7 @@ AnnotationNode::construct()
 
 AnnotationNode::~AnnotationNode()
 {
-    setMapNode( 0L );
+    setMapNode(NULL);
 }
 
 void
@@ -129,14 +129,10 @@ AnnotationNode::setMapNode( MapNode* mapNode )
     if ( getMapNode() != mapNode )
     {
         _mapNode = mapNode;
-        
+
         if ( mapNode )
         {
-            if ( mapNode->isGeocentric() )
-                _horizonCuller->setHorizon( new Horizon(mapNode->getMapSRS()) );
-            else
-                _horizonCuller->setEnabled( false );
-
+            _horizonCuller->setEnabled(mapNode->isGeocentric());
             static_cast<AltitudeCullCallback*>(_altCallback)->srs() = mapNode->getMapSRS();
         }
 
@@ -254,14 +250,14 @@ AnnotationNode::applyRenderSymbology(const Style& style)
         {
             DiscardAlphaFragments().install( getOrCreateStateSet(), render->minAlpha().value() );
         }
-        
+
 
         if ( render->transparent() == true )
         {
             osg::StateSet* ss = getOrCreateStateSet();
             ss->setRenderingHint( ss->TRANSPARENT_BIN );
         }
-        
+
         if (render->decal() == true)
         {
             getOrCreateStateSet()->setAttributeAndModes(

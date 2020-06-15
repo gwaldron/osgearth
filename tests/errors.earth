@@ -3,20 +3,23 @@ osgEarth Test - Earth File Error Reporting
 -->
 
 <Map>
-
-    <image name="Bad Image Driver Test" driver="none" >
-        <url>missing_file.tif</url>
-    </image>
     
-    <model name="Bad Model Driver Test" driver="none" >
-        <features name="world" driver="ogr">
-            <url>../data/usa.shp</url>
-        </features>
-    </model>
+    <GDALImage name="Missing required property Test">
+    </GDALImage>
     
     <GDALImage name="Missing URL Test">
         <url>missing_file.tif</url>
     </GDALImage>
+
+    <image name="Missing file test" driver="none" >
+        <url>missing_file.tif</url>
+    </image>
+    
+    <model name="Bad driver test" driver="none" >
+        <OGRFeatures name="world">
+            <url>../data/usa.shp</url>
+        </OGRFeatures>
+    </model>
     
     <FeatureModel name="Missing Feature Test">
         <features name="world" driver="ogr">
@@ -25,8 +28,7 @@ osgEarth Test - Earth File Error Reporting
     </FeatureModel>
 
     <FeatureMask name="Bad Features Test">   
-        <features driver="ogr">
-        </features>
+        <OGRFeatures/>
     </FeatureMask>
     
 </Map>

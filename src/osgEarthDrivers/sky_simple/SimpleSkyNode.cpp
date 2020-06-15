@@ -644,9 +644,6 @@ SimpleSkyNode::makeMoon()
     osg::Geometry* moonDrawable = s_makeEllipsoidGeometry( em.get(), em->getRadiusEquator()*_options.moonScale().get(), true );    
     osg::StateSet* stateSet = moonDrawable->getOrCreateStateSet();
 
-    //TODO:  Embed this texture in code or provide a way to have a default resource directory for osgEarth.
-    //       Right now just need to have this file somewhere in your OSG_FILE_PATH
-    //stateSet->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     osg::ref_ptr<osg::Image> image = _options.moonImageURI()->getImage();
     if (!image.valid())
     {

@@ -80,6 +80,8 @@ namespace osgEarth { namespace ArcGIS
 
 } }
 
+//........................................................................
+
 BundleReader::BundleReader(const std::string& bundleFile, unsigned int bundleSize) :
     _bundleFile(bundleFile),
     _lod(0),
@@ -161,6 +163,95 @@ osg::Image* BundleReader::readImage(unsigned int index)
 }
 
 //........................................................................
+const unsigned long long M = pow(2, 40);
+
+BundleReader2::BundleReader2(const std::string& bundleFile, unsigned int bundleSize) :
+    _bundleFile(bundleFile),
+    _lod(0),
+    _colOffset(0),
+    _rowOffset(0),
+    _bundleSize(bundleSize)
+{
+    init();
+}
+
+void BundleReader2::init()
+{
+    std::string base = osgDB::getNameLessExtension(_bundleFile);
+
+    // Open the bundle
+    _in.open(_bundleFile.c_str(), std::ofstream::binary);
+
+    // Read the index
+    readIndex(_index);
+
+    std::string baseName = osgDB::getSimpleFileName(base);
+
+    _rowOffset = hexFromString(baseName.substr(1, 4));
+    _colOffset = hexFromString(baseName.substr(6, 4));
+
+    std::string path = osgDB::getFilePath(_bundleFile);
+
+    std::string levelDir = osgDB::getSimpleFileName(path);
+    _lod = as<unsigned int>(levelDir.substr(1, 2), 0);
+}
+
+/**
+* Reads the index of a bundle file.
+*/
+void BundleReader2::readIndex(std::vector<unsigned long long>& index)
+{
+    // Go past the bundle header
+    _in.seekg(64);
+
+    const unsigned int numEntries = 128 * 128;
+    index = std::vector<unsigned long long>(numEntries, 0);
+
+    //unsigned long long indexBuffer[numEntries];
+    _in.read((char*)&index[0], numEntries * sizeof(unsigned long long));
+    unsigned int numGoodEntries = 0;
+    for (unsigned int i = 0; i < numEntries; i++)
+    {
+        unsigned long long tile_index = index[i];
+        unsigned long long tileOffset = tile_index % (unsigned long long)M;
+        unsigned long long tileSize = floor((unsigned long long)tile_index / M);
+        if (tileSize > 0)
+        {
+            numGoodEntries++;
+        }
+    }
+}
+
+osg::Image* BundleReader2::readImage(const TileKey& key)
+{
+    unsigned int col = key.getTileX() - _colOffset;
+    unsigned int row = key.getTileY() - _rowOffset;
+    unsigned int i = _bundleSize * row + col;
+    return readImage(i);
+}
+
+osg::Image* BundleReader2::readImage(unsigned int index)
+{
+    if (index < 0 || index >= _index.size()) return 0;
+
+    unsigned long long tile_index = _index[index];
+    unsigned long long tileOffset = tile_index % (unsigned long long)M;
+    unsigned long long tileSize = floor((unsigned long long)tile_index / M);
+
+    _in.seekg(tileOffset, std::ios::beg);
+    if (tileSize > 0)
+    {
+        std::string imageData;
+        imageData.resize(tileSize);
+        _in.read(&imageData[0], tileSize);
+        std::stringstream ss(imageData);
+        return ImageUtils::readStream(ss, 0);
+    }
+
+    return 0;
+}
+
+//........................................................................
 
 Config
 ArcGISTilePackageImageLayer::Options::getConfig() const
@@ -188,6 +279,7 @@ ArcGISTilePackageImageLayer::init()
     ImageLayer::init();
     _bundleSize = 128u;
     _extension = "png";
+    _storageFormat = STORAGE_FORMAT_COMPACT;
 }
 
 ArcGISTilePackageImageLayer::~ArcGISTilePackageImageLayer()
@@ -244,11 +336,22 @@ ArcGISTilePackageImageLayer::createImageImplementation(const TileKey& key, Progr
     std::string bundleFile = buf.str();
     if (osgDB::fileExists(bundleFile))
     {
-        BundleReader reader(bundleFile, _bundleSize);
-        osg::Image* result = reader.readImage(key);
-        return GeoImage(result, key.getExtent());
+        osg::Image* result = NULL;
+        if (_storageFormat == STORAGE_FORMAT_COMPACT)
+        {
+            BundleReader reader(bundleFile, _bundleSize);
+            result = reader.readImage(key);
+        }
+        if (_storageFormat == STORAGE_FORMAT_COMPACTV2)
+        {
+            BundleReader2 reader(bundleFile, _bundleSize);
+            result = reader.readImage(key);
+        }
+        if (result)
+        {
+            return GeoImage(result, key.getExtent());
+        }
     }
-
     return GeoImage::INVALID;
 }
 
@@ -293,5 +396,16 @@ ArcGISTilePackageImageLayer::readConf()
         }
 
         _bundleSize = as<unsigned int>(conf.child("cacheinfo").child("cachestorageinfo").value("packetsize"), 128);
+        std::string storageFormat = conf.child("cacheinfo").child("cachestorageinfo").value("storageformat");
+        if (ciEquals(storageFormat, "esriMapCacheStorageModeCompact"))
+        {
+            _storageFormat = STORAGE_FORMAT_COMPACT;
+        }
+        else if (ciEquals(storageFormat, "esriMapCacheStorageModeCompactV2"))
+        {
+            _storageFormat = STORAGE_FORMAT_COMPACTV2;
+        }
+
+
     }
 }

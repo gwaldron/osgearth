@@ -80,6 +80,7 @@ LocalGeometryNode::compileGeometry()
     // any old clamping data is out of date, so clear it
     _clamperData.clear();
     _perVertexClampingEnabled = false;
+    _clampCallback = NULL;
     
     if ( _geom.valid() )
     {
@@ -178,10 +179,10 @@ LocalGeometryNode::togglePerVertexClamping()
         if (terrain.valid())
         {
             if (!_clampCallback.valid())
+            {
                 _clampCallback = new ClampCallback(this);
-
-            if (_clampCallback->referenceCount() == 1)
                 terrain->addTerrainCallback(_clampCallback.get());
+            }
 
             // all drawables must be dynamic since we are altering the verts
             SetDataVarianceVisitor sdv(osg::Object::DYNAMIC);
@@ -212,9 +213,9 @@ LocalGeometryNode::togglePerVertexClamping()
 }
 
 void
-LocalGeometryNode::onTileAdded(const TileKey&          key, 
-                               osg::Node*              graph, 
-                               TerrainCallbackContext& context)
+LocalGeometryNode::onTileUpdate(const TileKey&          key, 
+                                osg::Node*              graph, 
+                                TerrainCallbackContext& context)
 {
     // If we are already set to clamp, ignore this
     if (_clampInUpdateTraversal)

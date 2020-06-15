@@ -1201,7 +1201,6 @@ ImageControl::draw( const ControlContext& cx )
     }
     const osg::Vec2i imageSize = calculateImageSize();
 
-    //TODO: this is not precisely correct..images get deformed slightly..
     osg::Geometry* g = newGeometry();
     g->setStateSet(getGeomStateSet());
 

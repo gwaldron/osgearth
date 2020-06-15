@@ -1194,8 +1194,15 @@ GeoExtent::expandToInclude(double x, double y)
 bool
 GeoExtent::expandToInclude(const GeoExtent& rhs)
 {
-    if (rhs.isInvalid() || !_srs.valid())
+    if (rhs.isInvalid())
         return false;
+
+    // no SRS? Just assign.
+    if (!_srs.valid())
+    {
+        *this = rhs;
+        return true;
+    }
 
     if ( !rhs.getSRS()->isHorizEquivalentTo( _srs.get() ) )
     {
@@ -1374,7 +1381,7 @@ GeoExtent::scale(double x_scale, double y_scale)
 void
 GeoExtent::expand(double x, double y)
 {
-    if (isInvalid() || !is_valid(x) || !is_valid(y))
+    if (!_srs.valid() || !is_valid(x) || !is_valid(y))
         return;
 
     setOriginAndSize(
@@ -1382,6 +1389,20 @@ GeoExtent::expand(double x, double y)
         _south - 0.5*y,
         _width + x,
         _height + y);
+}
+
+void
+GeoExtent::expand(const Distance& x, const Distance& y)
+{
+    if (!_srs.valid()) // || !is_valid(x) || !is_valid(y))
+        return;
+
+    double latitude = isValid() ? (yMin() >= 0.0 ? yMin() : yMax()) : 0.0;
+
+    double xp = SpatialReference::transformUnits(x, _srs.get(), latitude);
+    double yp = SpatialReference::transformUnits(y, _srs.get(), 0.0);
+
+    expand(xp, yp);
 }
 
 void
@@ -1641,33 +1662,50 @@ _maxLevel( 25 )
 GeoImage GeoImage::INVALID( 0L, GeoExtent::INVALID );
 
 GeoImage::GeoImage() :
-_image ( 0L ),
-_extent( GeoExtent::INVALID ),
-_status( Status::GeneralError )
+    _myimage(0L),
+    _extent(GeoExtent::INVALID),
+    _status(Status::GeneralError)
 {
     //nop
 }
 
 GeoImage::GeoImage(const Status& status) :
-_image(0L),
-_extent(GeoExtent::INVALID),
-_status(status)
+    _myimage(0L),
+    _extent(GeoExtent::INVALID),
+    _status(status)
 {
     if (_status.isOK())
         _status = Status::GeneralError;
 }
 
 GeoImage::GeoImage(osg::Image* image, const GeoExtent& extent) :
-_image(image),
-_extent(extent)
+    _myimage(image),
+    _extent(extent)
 {
-    if (_image.valid() && extent.isInvalid())
+    if (_myimage.valid() && extent.isInvalid())
     {
         OE_WARN << LC << "ILLEGAL: created a GeoImage with a valid image and an invalid extent" << std::endl;
         _status = Status::GeneralError;
     }
-    else if (!_image.valid())
+    else if (!_myimage.valid())
     {
+        _status = Status::GeneralError;
+    }
+}
+
+GeoImage::GeoImage(Threading::Future<osg::Image> fimage, const GeoExtent& extent) :
+    _myimage(0L),
+    _extent(extent)
+{
+    _future = fimage;
+
+    if (_future->isAbandoned())
+    {
+        _status = Status::ResourceUnavailable;
+    }
+    else if (extent.isInvalid())
+    {
+        OE_WARN << LC << "ILLEGAL: created a GeoImage with a valid image and an invalid extent" << std::endl;
         _status = Status::GeneralError;
     }
 }
@@ -1675,13 +1713,18 @@ _extent(extent)
 bool
 GeoImage::valid() const 
 {
-    return _image.valid() && _extent.isValid();
+    if (!_extent.isValid())
+        return false;
+
+    return
+        (_future.isSet() && _future->get() != NULL) ||
+        _myimage.valid();
 }
 
 osg::Image*
 GeoImage::getImage() const
 {
-    return _image.get();
+    return _future.isSet() ? _future->get() : _myimage.get();
 }
 
 const SpatialReference*
@@ -1699,9 +1742,14 @@ GeoImage::getExtent() const
 double
 GeoImage::getUnitsPerPixel() const
 {
-    double uppw = _extent.width() / (double)_image->s();
-    double upph = _extent.height() / (double)_image->t();
-    return (uppw + upph) / 2.0;
+    const osg::Image* image = getImage();
+    if (image)
+    {
+        double uppw = _extent.width() / (double)image->s();
+        double upph = _extent.height() / (double)image->t();
+        return (uppw + upph) / 2.0;
+    }
+    else return 0.0;
 }
 
 GeoImage
@@ -1709,6 +1757,10 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
 {
     if ( !valid() )
         return *this;
+
+    const osg::Image* image = getImage();
+    if ( !image )
+        return GeoImage::INVALID;
 
     //Check for equivalence
     if ( extent.getSRS()->isEquivalentTo( getSRS() ) )
@@ -1721,8 +1773,8 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
             //Suggest an output image size
             if (width == 0 || height == 0)
             {
-                double xRes = getExtent().width() / (double)_image->s(); //(getExtent().xMax() - getExtent().xMin()) / (double)_image->s();
-                double yRes = getExtent().height() / (double)_image->t(); //(getExtent().yMax() - getExtent().yMin()) / (double)_image->t();
+                double xRes = getExtent().width() / (double)image->s(); //(getExtent().xMax() - getExtent().xMin()) / (double)_image->s();
+                double yRes = getExtent().height() / (double)image->t(); //(getExtent().yMax() - getExtent().yMin()) / (double)_image->t();
 
                 width =  osg::maximum(1u, (unsigned int)(extent.width() / xRes));
                 height = osg::maximum(1u, (unsigned int)(extent.height() / yRes));
@@ -1745,7 +1797,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
             double destYMax = extent.yMax();
 
             osg::Image* new_image = ImageUtils::cropImage(
-                _image.get(),
+                image,
                 _extent.xMin(), _extent.yMin(), _extent.xMax(), _extent.yMax(),
                 destXMin, destYMin, destXMax, destYMax );
 
@@ -1758,7 +1810,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
     else
     {
         //TODO: just reproject the image before cropping
-        OE_NOTICE << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
+        OE_WARN << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
         return GeoImage::INVALID;
     }
 }
@@ -1766,27 +1818,31 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
 GeoImage
 GeoImage::addTransparentBorder(bool leftBorder, bool rightBorder, bool bottomBorder, bool topBorder)
 {
+    const osg::Image* image = getImage();
+    if (!image)
+        return GeoImage::INVALID;
+
     unsigned int buffer = 1;
 
-    unsigned int newS = _image->s();
+    unsigned int newS = image->s();
     if (leftBorder) newS += buffer;
     if (rightBorder) newS += buffer;
 
-    unsigned int newT = _image->t();
+    unsigned int newT = image->t();
     if (topBorder)    newT += buffer;
     if (bottomBorder) newT += buffer;
 
     osg::Image* newImage = new osg::Image;
-    newImage->allocateImage(newS, newT, _image->r(), _image->getPixelFormat(), _image->getDataType(), _image->getPacking());
-    newImage->setInternalTextureFormat(_image->getInternalTextureFormat());
+    newImage->allocateImage(newS, newT, image->r(), image->getPixelFormat(), image->getDataType(), image->getPacking());
+    newImage->setInternalTextureFormat(image->getInternalTextureFormat());
     memset(newImage->data(), 0, newImage->getImageSizeInBytes());
     unsigned startC = leftBorder ? buffer : 0;
     unsigned startR = bottomBorder ? buffer : 0;
-    ImageUtils::copyAsSubImage(_image.get(), newImage, startC, startR );
+    ImageUtils::copyAsSubImage(image, newImage, startC, startR );
 
     //double upp = getUnitsPerPixel();
-    double uppw = _extent.width() / (double)_image->s();
-	double upph = _extent.height() / (double)_image->t();
+    double uppw = _extent.width() / (double)image->s();
+	double upph = _extent.height() / (double)image->t();
 
     double xmin = leftBorder ? _extent.xMin() - buffer * uppw : _extent.xMin();
     double ymin = bottomBorder ? _extent.yMin() - buffer * upph : _extent.yMin();
@@ -2043,7 +2099,6 @@ namespace
         unsigned int      width = 0, 
         unsigned int      height = 0)
     {
-        //TODO:  Compute the optimal destination size
         if (width == 0 || height == 0)
         {
             //If no width and height are specified, just use the minimum dimension for the image
@@ -2244,30 +2299,31 @@ GeoImage::applyAlphaMask(const GeoExtent& maskingExtent)
     if ( !valid() )
         return;
 
+    osg::Image* image = getImage();
+
     GeoExtent maskingExtentLocal = maskingExtent.transform(_extent.getSRS());
 
     // if the image is completely contains by the mask, no work to do.
     if ( maskingExtentLocal.contains(getExtent()))
         return;
 
-    // TODO: find a more performant way about this 
-    ImageUtils::PixelReader read (_image.get());
-    ImageUtils::PixelWriter write(_image.get());
+    ImageUtils::PixelReader read (image);
+    ImageUtils::PixelWriter write(image);
 
-    double sInterval = _extent.width()/(double)_image->s();
-    double tInterval = _extent.height()/(double)_image->t();
+    double sInterval = _extent.width()/(double)read.s();
+    double tInterval = _extent.height()/(double)read.t();
 
     osg::Vec4f pixel;
 
-    for( int t=0; t<_image->t(); ++t )
+    for( int t=0; t<image->t(); ++t )
     {
         double y = _extent.south() + tInterval*(double)t;
 
-        for( int s=0; s<_image->s(); ++s )
+        for( int s=0; s<image->s(); ++s )
         {
             double x = _extent.west() + sInterval*(double)s;
 
-            for( int r=0; r<_image->r(); ++r )
+            for( int r=0; r<image->r(); ++r )
             {
                 if ( !maskingExtentLocal.contains(x, y) )
                 {
@@ -2283,7 +2339,7 @@ GeoImage::applyAlphaMask(const GeoExtent& maskingExtent)
 osg::Image*
 GeoImage::takeImage()
 {
-    return _image.release();
+    return _future.isSet() ? _future->release() : _myimage.release();
 }
 
 /***************************************************************************/
@@ -2327,7 +2383,6 @@ NormalMap::NormalMap(unsigned s, unsigned t) :
         pixData.z = (0.5f*(DEFAULT_NORMAL.z() + 1.0f)) * 255;
         pixData.w = (0.5f*(DEFAULT_CURVATURE + 1.0f)) * 255;
 
-        // TODO: We could just have a 257x257 image and just do mem copy?
         std::fill_n((PixelData*)ptr, s*t, pixData);
     }
 }
@@ -2370,6 +2425,41 @@ NormalMap::getNormal(unsigned s, unsigned t) const
         encoding.x()*2.0 - 1.0,
         encoding.y()*2.0 - 1.0,
         encoding.z()*2.0 - 1.0);
+}
+
+void
+NormalMap::generateCurvatures()
+{
+    osg::Vec4f a, b;
+    osg::Vec3f j, k;
+
+    for(int t=0; t<_read->t(); ++t)
+    {
+        int t_prev = t > 0 ? t - 1 : t;
+        int t_next = t < _read->t() - 1 ? t + 1 : t;
+
+        for(int s=0; s<_read->s(); ++s)
+        {
+            int s_prev = s > 0 ? s - 1 : s;
+            int s_next = s < _read->s() - 1 ? s + 1 : s;
+
+            (*_read)(a, s_prev, t); j.set(a[0]*2-1, a[1]*2-1, a[2]*2-1);
+            (*_read)(b, s_next, t); k.set(b[0]*2-1, b[1]*2-1, b[2]*2-1);
+
+            float d1 = j*k;
+
+            (*_read)(a, s, t_prev); j.set(a[0]*2-1, a[1]*2-1, a[2]*2-1);
+            (*_read)(b, s, t_next); k.set(b[0]*2-1, b[1]*2-1, b[2]*2-1);
+
+            float d2 = j*k;
+
+            float dm = osg::minimum(d1, d2);
+            
+            (*_read)(a, s, t);
+            a.w() = 1.0-(0.5*(dm+1.0));
+            (*_write)(a, s, t);
+        }
+    }
 }
 
 osg::Vec3

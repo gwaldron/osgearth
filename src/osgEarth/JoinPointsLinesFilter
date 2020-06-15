@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/FeatureSource>
+#include <osgEarth/LayerReference>
 
 namespace osgEarth { namespace Util
 {
@@ -36,17 +37,16 @@ namespace osgEarth { namespace Util
         }
 
         /** Features to load and use as boundary geometries */
-        optional<std::string>& lineSourceLayer() { return _lineLayerName; }
-        const optional<std::string>& lineSourceLayer() const { return _lineLayerName; }
+        OE_OPTION_LAYER(FeatureSource, lineSource);
 
-        optional<FeatureSource::Options>& lineSource() { return _lineFeatures; }
-        const optional<FeatureSource::Options>& lineSource() const { return _lineFeatures; }
+        optional<bool>& createPointFeatures() { return _createPointFeatures; }
+        optional<bool> createPointFeatures() const { return _createPointFeatures; }
 
     public:
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "join_points_lines";
-            LayerReference<FeatureSource>::set(conf, "line_features", lineSourceLayer(), lineSource());
+            lineSource().set(conf, "line_features");
             return conf;
         }
 
@@ -58,17 +58,18 @@ namespace osgEarth { namespace Util
 
     private:
         void fromConfig( const Config& conf ) {
-            LayerReference<FeatureSource>::get(conf, "line_features", lineSourceLayer(), lineSource());
+            _createPointFeatures.init(false);
+            lineSource().get(conf, "line_features");
+            conf.get("create_point_features", createPointFeatures());
         }
 
-        optional<std::string>            _lineLayerName;
-        optional<FeatureSource::Options> _lineFeatures;
+        //optional<std::string>            _lineLayerName;
+        //optional<FeatureSource::Options> _lineFeatures;
+        optional<bool>                   _createPointFeatures;
     };
 
     class JoinPointsLinesFilter : public FeatureFilter, public JoinPointsLinesFilterOptions
     {
-    private:
-        LayerReference<FeatureSource> _lineSource;
     public:
         JoinPointsLinesFilter(const ConfigOptions& options = ConfigOptions())
             : FeatureFilter(), JoinPointsLinesFilterOptions(options)
@@ -95,14 +96,34 @@ namespace osgEarth { namespace Util
         osg::Vec3d next;
     };
 
-    typedef std::map<osg::Vec2d, PointEntry> PointMap;
+    // Map that ignores elevation component of points
+    struct CompPoints
+    {
+        bool operator()(const osg::Vec3d& lhs, const osg::Vec3d& rhs) const
+        {
+            if (lhs.x() < rhs.x())
+            {
+                return true;
+            }
+            else if (lhs.x() > rhs.x())
+            {
+                return false;
+            }
+            else
+            {
+                return lhs.y() < rhs.y();
+            }
+        }
+    };
+
+    typedef std::map<osg::Vec3d, PointEntry, CompPoints> PointMap;
     inline PointEntry& getPoint(PointMap& map, const osg::Vec3d& coord)
     {
-        return map[osg::Vec2d(coord.x(), coord.y())];
+        return map[coord];
     }
     inline PointMap::iterator findPoint(PointMap& map, const osg::Vec3d& coord)
     {
-        return map.find(osg::Vec2d(coord.x(), coord.y()));
+        return map.find(coord);
     }
 } } // namespace osgEarth::Util
 

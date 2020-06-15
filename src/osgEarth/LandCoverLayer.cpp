@@ -38,7 +38,7 @@ REGISTER_OSGEARTH_LAYER(landcover, LandCoverLayer);
 void
 LandCoverLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<ImageLayer>::get(conf, source());
+    source().get(conf, "source");
 
     ConfigSet mappingsConf = conf.child("land_cover_mappings").children("mapping");
     for (ConfigSet::const_iterator i = mappingsConf.begin(); i != mappingsConf.end(); ++i)
@@ -53,7 +53,7 @@ LandCoverLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
 
-    LayerReference<ImageLayer>::set(conf, source());
+    source().set(conf, "source");
 
     if (conf.hasChild("land_cover_mappings") == false)
     {   
@@ -91,16 +91,23 @@ LandCoverLayer::init()
     _beachCode = -1;
 }
 
+Config
+LandCoverLayer::getConfig() const
+{
+    Config c = ImageLayer::getConfig();
+    return c;
+}
+
 void
 LandCoverLayer::setSource(ImageLayer* value)
 {
-    _source.setLayer(value);
+    options().source().setLayer(value);
 }
 
 ImageLayer*
 LandCoverLayer::getSource() const
 {
-    return _source.getLayer();
+    return options().source().getLayer();
 }
 
 LandCoverValueMappingVector&
@@ -137,16 +144,15 @@ LandCoverLayer::openImplementation()
 
     // We never want to cache data from a coverage, because the "parent" layer
     // will be caching the entire result of a multi-coverage composite.
-    options().source()->cachePolicy() = CachePolicy::NO_CACHE;
+    options().sourceEmbeddedOptions()->cachePolicy() = CachePolicy::NO_CACHE;
 
     // Try to open it.
-    Status cs =_source.open(options().source(), getReadOptions());
+    Status cs = options().source().open(getReadOptions());
     if (cs.isError())
         return cs;
 
     // Pull this layer's extents from the coverage layer.
-    // TODO: imageLayer can probably not to NULL here
-    ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(_source.getLayer());
+    ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(options().source().getLayer());
     if (!imageLayer)
         return Status(Status::ResourceUnavailable, "Cannot access source image layer");
 
@@ -158,6 +164,8 @@ LandCoverLayer::openImplementation()
 
     // TODO: review this since we are setting a cache on this layer itself
     // via the layerHints()
+    
+    // GW: do we really need this? Probably not
     getSource()->setUpL2Cache(9u);
 
     // Force the image source into coverage mode.
@@ -202,7 +210,7 @@ void
 LandCoverLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _source.disconnect(map);
+    options().source().removedFromMap(map);
 }
 
 bool
@@ -259,7 +267,13 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     if (getStatus().isError())
         return GeoImage::INVALID;
 
+    if (key.getLOD() > getMaxDataLevel())
+        return GeoImage::INVALID;
+
     ImageLayer* imageLayer = getSource();
+
+    if (key.getLOD() > imageLayer->getMaxDataLevel())
+        return GeoImage::INVALID;
 
     TileKey parentKey = key.createParentKey();
 
@@ -273,14 +287,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         if (!img.valid())
             return img;
 
-        osg::ref_ptr<osg::Image> output = new osg::Image();
-        output->allocateImage(
-            getTileSize(),
-            getTileSize(),
-            1,
-            GL_RED,
-            GL_FLOAT);
-        output->setInternalTextureFormat(GL_R16F);
+        osg::ref_ptr<osg::Image> output = LandCover::createImage(getTileSize());
 
         ImageUtils::PixelReader read(img.getImage());
         ImageUtils::PixelWriter write(output.get());
@@ -361,26 +368,15 @@ LandCoverLayer::createFractalEnhancedImage(const TileKey& key, ProgressCallback*
 {
     MetaImage metaImage;
 
-    // Allocate the working image:
-    osg::ref_ptr<osg::Image> workspace = new osg::Image();
-    workspace->allocateImage(
-        getTileSize() + 3,
-        getTileSize() + 3,
-        1,
-        GL_RED,
-        GL_FLOAT);
+    // Allocate the working image, which includes a border for 
+    // holding values from adjacent tiles.
+    osg::ref_ptr<osg::Image> workspace = LandCover::createImage(getTileSize() + 3);
+
     ImageUtils::PixelWriter writeToWorkspace(workspace.get());
     ImageUtils::PixelReader readFromWorkspace(workspace.get());
 
     // Allocate the output image:
-    osg::ref_ptr<osg::Image> output = new osg::Image();
-    output->allocateImage(
-        getTileSize(),
-        getTileSize(),
-        1,
-        GL_RED,
-        GL_FLOAT);
-    output->setInternalTextureFormat(GL_R16F);
+    osg::ref_ptr<osg::Image> output = LandCover::createImage(getTileSize());
 
     Random prng(key.getTileX()*key.getTileY()*key.getLOD());
 
@@ -631,7 +627,7 @@ LandCoverLayerVector::populateLandCoverImage(
     // Special case of one image - no compositing necessary.
     if (size() == 1)
     {
-        if (begin()->get()->getEnabled())
+        if (begin()->get()->isOpen())
         {
             GeoImage r = begin()->get()->createImage(key, progress);
             output = r.getImage();
@@ -652,7 +648,7 @@ LandCoverLayerVector::populateLandCoverImage(
     {
         LandCoverLayer* layer = i->get();
 
-        if (!layer->getEnabled())
+        if (!layer->isOpen())
             continue;
 
         GeoImage comp;

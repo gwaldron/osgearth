@@ -19,6 +19,7 @@
 #include <osgEarth/TextSymbolizer>
 #include <osgEarth/Feature>
 #include <osgEarth/Registry>
+#include <osgEarth/Math>
 
 using namespace osgEarth;
 
@@ -29,19 +30,7 @@ _symbol( symbol )
 }
 
 namespace
-{
-    // rounds "x" up to the next power of 2
-    int nextPowerOf2(int x)
-    {
-        --x;
-        x |= x >> 1;
-        x |= x >> 2;
-        x |= x >> 4;
-        x |= x >> 8;
-        x |= x >> 16;
-        return x+1;
-    }
-    
+{    
     // transcodes an OE encoding to an OSG encoding
     osgText::String::Encoding convertEncoding(TextSymbol::Encoding enc)
     {

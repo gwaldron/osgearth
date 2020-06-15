@@ -25,6 +25,7 @@
 #include <osgEarth/TerrainEngineRequirements>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Progress>
+#include <osgEarth/ThreadingUtils>
 
 namespace osgEarth
 {
@@ -41,6 +42,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT CreateTileManifest
     {
     public:
+        CreateTileManifest();
+
         //! Request data for a layer
         void insert(const Layer* layer);
 
@@ -56,9 +59,19 @@ namespace osgEarth
         //! Update all the manifest layers with the latest layer revisions from the map
         void updateRevisions(const Map*);
 
+        bool includes(UID uid) const;
+
+        bool includes(const Layer* layer) const;
+
+        bool includesElevation() const;
+
+        bool includesLandCover() const;
+
     private:
         typedef vector_map<UID, int> LayerTable;
         LayerTable _layers;
+        bool _includesElevation;
+        bool _includesLandCover;
     };
 
     /**
@@ -142,6 +155,7 @@ namespace osgEarth
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
+            const TerrainEngineRequirements* requirements,
             const CreateTileManifest&    manifest,
             ProgressCallback*            progress);
 
@@ -149,6 +163,7 @@ namespace osgEarth
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
+            const TerrainEngineRequirements* requirements,
             const CreateTileManifest&    manifest,
             ProgressCallback*            progress);
 
@@ -166,6 +181,7 @@ namespace osgEarth
         bool getOrCreateHeightField(
             const Map*                      map,
             const ElevationLayerVector&     layers,
+            int                             revision,
             const TileKey&                  key,
             ElevationSamplePolicy           samplePolicy,
             RasterInterpolation             interpolation,
@@ -215,7 +231,9 @@ namespace osgEarth
         typedef LRUCache<HFCacheKey, HFCacheValue> HFCache;
         HFCache _heightFieldCache;
         bool    _heightFieldCacheEnabled;
-        osg::ref_ptr<osg::Texture> _emptyTexture;
+        osg::ref_ptr<osg::Texture> _emptyColorTexture;
+        osg::ref_ptr<osg::Texture> _emptyLandCoverTexture;
+        mutable Threading::Mutex _mipmapMutex;
     };
 }
 

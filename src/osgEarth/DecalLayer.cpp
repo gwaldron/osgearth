@@ -302,8 +302,8 @@ DecalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progres
 
                 if (intersection.contains(x, y))
                 {
-                    double uu = (y-decalExtent.yMin())/decalExtent.width();
-                    double vv = (x-decalExtent.xMin())/decalExtent.height();
+                    double uu = (x-decalExtent.xMin())/decalExtent.width();
+                    double vv = (y-decalExtent.yMin())/decalExtent.height();
 
                     float h_prev = HeightFieldUtils::getHeightAtNormalizedLocation(output.get(), u, v);
 
@@ -324,7 +324,12 @@ DecalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progres
 }
 
 bool
-DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image, float scale)
+DecalElevationLayer::addDecal(
+    const std::string& id, 
+    const GeoExtent& extent,
+    const osg::Image* image, 
+    float scale,
+    GLenum channel)
 {
     if (!extent.isValid() || !image)
         return false;
@@ -340,14 +345,75 @@ DecalElevationLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 
     ImageUtils::PixelReader read(image);
 
+    unsigned c =
+        channel == GL_RED   ? 0u :
+        channel == GL_GREEN ? 1u :
+        channel == GL_BLUE  ? 2u :
+        3u;
+    c = osg::minimum(c, osg::Image::computeNumComponents(image->getPixelFormat())-1u);
+
+    // scale up the values so that [0...1/2] is below ground
+    // and [1/2...1] is above ground.
     osg::Vec4 value;
-    for(unsigned row=0; row<read.t(); ++row)
+    for(int t=0; t<read.t(); ++t)
     {
-        for(unsigned col=0; col<read.s(); ++col)
+        for(int s=0; s<read.s(); ++s)
         {
-            read(value, col, row);
-            float h = value.a() * scale;
-            hf->setHeight(col, row, h);
+            read(value, s, t);
+            float h = scale * value[c];
+            hf->setHeight(s, t, h);
+        }
+    }
+
+    _decalList.push_back(Decal());
+    Decal& decal = _decalList.back();
+    decal._heightfield = GeoHeightField(hf, extent);
+
+    _decalIndex[id] = --_decalList.end();
+
+    // data changed so up the revsion.
+    bumpRevision();
+    return true;
+}
+
+bool
+DecalElevationLayer::addDecal(
+    const std::string& id, 
+    const GeoExtent& extent, 
+    const osg::Image* image, 
+    float minOffset, 
+    float maxOffset,
+    GLenum channel)
+{
+    if (!extent.isValid() || !image)
+        return false;
+
+    Threading::ScopedMutexLock lock(_mutex);
+
+    DecalIndex::iterator i = _decalIndex.find(id);
+    if (i != _decalIndex.end())
+        return false;
+
+    osg::HeightField* hf = new osg::HeightField();
+    hf->allocate(image->s(), image->t());
+
+    ImageUtils::PixelReader read(image);
+
+    unsigned c =
+        channel == GL_RED   ? 0u :
+        channel == GL_GREEN ? 1u :
+        channel == GL_BLUE  ? 2u :
+        3u;
+    c = osg::maximum(c, osg::Image::computeNumComponents(image->getPixelFormat())-1u);
+
+    osg::Vec4 value;
+    for(int t=0; t<read.t(); ++t)
+    {
+        for(int s=0; s<read.s(); ++s)
+        {
+            read(value, s, t);
+            float h = minOffset + (maxOffset-minOffset)*value[c];
+            hf->setHeight(s, t, h);
         }
     }
 
@@ -482,17 +548,11 @@ DecalLandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallb
     if (decals.empty())
         return GeoImage::INVALID;
 
-    osg::ref_ptr<osg::Image> output = new osg::Image();
-    
-    output->allocateImage(getTileSize(), getTileSize(), 1, GL_RED, GL_FLOAT);
-    output->setInternalTextureFormat(GL_R16F);
+    osg::ref_ptr<osg::Image> output = LandCover::createImage(getTileSize());
     
     // initialize to nodata
-    float* ptr = (float*)output->data();
-    for(unsigned i=0; i<getTileSize()*getTileSize(); ++i)
-        *ptr++ = NO_DATA_VALUE;
-
     ImageUtils::PixelWriter writeOutput(output.get());
+    writeOutput.assign(Color::all(NO_DATA_VALUE));
 
     ImageUtils::PixelReader readOutput(output.get());
     readOutput.setBilinear(false);

@@ -154,12 +154,22 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     // doesn't have an "in" somewhere in the shader list is not actually
     // being used as a varying, in which case we don't need it in the
     // interface block.
+    // NOTE: The above statement is true IFF we don't move any vertex shaders
+    // to the TCS, TES, or GS phase. So we need to check that.
+
     for(VirtualProgram::ShaderMap::const_iterator s = in_shaders.begin(); s != in_shaders.end(); ++s )
     {
         osg::Shader* shader = s->second._shader->getNominalShader();
         if ( shader )
         {
             ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying_in", varDefs);
+
+            // Like I said above, if the possibility exists of shunting vertex shaders to
+            // a different stage, we need the outs after all.
+            if (hasTCS || hasTES || hasGS)
+            {
+                ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying_out", varDefs);
+            }
         }
     }
 

@@ -691,6 +691,9 @@ OGRFeatureSource::create(const FeatureProfile* profile,
                          const Geometry::Type& geometryType,
                          const osgDB::Options* readOptions)
 {
+    if (FeatureSource::openImplementation().isError())
+        return getStatus();
+
     setFeatureProfile(profile);
 
     _schema = schema;
@@ -766,6 +769,7 @@ OGRFeatureSource::create(const FeatureProfile* profile,
 
     _geometryType = geometryType;
 
+    setStatus(Status::NoError);
     return getStatus();
 }
 
@@ -786,7 +790,7 @@ OGRFeatureSource::buildSpatialIndex()
 }
 
 FeatureCursor*
-OGRFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
+OGRFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
 {
     if (_geometry.valid())
     {

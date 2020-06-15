@@ -79,7 +79,7 @@ REGISTER_OSGEARTH_LAYER(compositeimage, CompositeImageLayer);
 void
 CompositeImageLayer::addLayer(ImageLayer* layer)
 {
-    if (_open)
+    if (isOpen())
     {
         OE_WARN << LC << "Illegal call to addLayer when layer is already open" << std::endl;
     }
@@ -99,8 +99,6 @@ void
 CompositeImageLayer::init()
 {
     ImageLayer::init();
-    _open = false;
-    _layerNodes = new osg::Group();
 }
 
 osg::Node*
@@ -142,18 +140,9 @@ CompositeImageLayer::openImplementation()
     if (getCacheSettings()->cachePolicy()->isCacheOnly())
         return Status::NoError;
 
-    _open = true;
-
     osg::ref_ptr<const Profile> profile;
 
     bool dataExtentsValid = true;
-
-    // You may not call addLayers() and also put layers in the options.
-    if (_layers.empty() == false && options().layers().empty() == false)
-    {
-        return Status(Status::ConfigurationError, 
-            "Illegal to add layers both by options and by API");
-    }
 
     // If the user didn't call addLayer(), try to read them from the options.
     if (_layers.empty())
@@ -247,6 +236,9 @@ CompositeImageLayer::openImplementation()
             // If the sublayer has a Node, add it to the group.
             if (layer->getNode())
             {
+                if (!_layerNodes.valid())
+                    _layerNodes = new osg::Group();
+
                 _layerNodes->addChild(layer->getNode());
             }
         }
@@ -280,6 +272,24 @@ CompositeImageLayer::openImplementation()
     setProfile( profile.get() );
 
     return Status::NoError;
+}
+
+Status
+CompositeImageLayer::closeImplementation()
+{
+    for(ImageLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+    {
+        ImageLayer* layer = i->get();
+        layer->close();
+    }
+
+    if (_layerNodes.valid())
+    {
+        _layerNodes->removeChildren(0, _layerNodes->getNumChildren());
+    }
+
+    dataExtents().clear();
+    return Status::OK();
 }
 
 GeoImage
@@ -364,8 +374,7 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
                 }
 
                 if (image.valid())
-                {                                        
-                    // TODO:  Bilinear options?
+                {
                     bool bilinear = layer->isCoverage() ? false : true;
                     GeoImage cropped = image.crop( key.getExtent(), true, textureSize.x(), textureSize.y(), bilinear);
                     info.image = cropped.getImage();
@@ -467,7 +476,7 @@ REGISTER_OSGEARTH_LAYER(compositeelevation, CompositeElevationLayer);
 void
 CompositeElevationLayer::addLayer(ElevationLayer* layer)
 {
-    if (_open)
+    if (isOpen())
     {
         OE_WARN << LC << "Illegal call to addLayer when layer is already open" << std::endl;
     }
@@ -487,7 +496,6 @@ void
 CompositeElevationLayer::init()
 {
     ElevationLayer::init();
-    _open = false;
 }
 
 osg::Node*
@@ -529,18 +537,9 @@ CompositeElevationLayer::openImplementation()
     if (getCacheSettings() && getCacheSettings()->cachePolicy()->isCacheOnly())
         return Status::NoError;
 
-    _open = true;
-
     osg::ref_ptr<const Profile> profile;
 
     bool dataExtentsValid = true;
-
-    // You may not call addLayers() and also put layers in the options.
-    if (_layers.empty() == false && options().layers().empty() == false)
-    {
-        return Status(Status::ConfigurationError, 
-            "Illegal to add layers both by options and by API");
-    }
 
     // If the user didn't call addLayer(), try to read them from the options.
     if (_layers.empty())
@@ -633,6 +632,9 @@ CompositeElevationLayer::openImplementation()
             // If the sublayer has a Node, add it to the group.
             if (layer->getNode())
             {
+                if (!_layerNodes.valid())
+                    _layerNodes = new osg::Group();
+
                 _layerNodes->addChild(layer->getNode());
             }
         }
@@ -666,6 +668,24 @@ CompositeElevationLayer::openImplementation()
     setProfile( profile.get() );
 
     return Status::NoError;
+}
+
+Status
+CompositeElevationLayer::closeImplementation()
+{
+    for(ElevationLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+    {
+        ElevationLayer* layer = i->get();
+        layer->close();
+    }
+
+    if (_layerNodes.valid())
+    {
+        _layerNodes->removeChildren(0, _layerNodes->getNumChildren());
+    }
+
+    dataExtents().clear();
+    return Status::OK();
 }
 
 GeoHeightField
@@ -748,7 +768,6 @@ void
 CompositeLandCoverLayer::init()
 {
     LandCoverLayer::init();
-    _layerNodes = new osg::Group();
 }
 
 osg::Node*
@@ -893,6 +912,9 @@ CompositeLandCoverLayer::openImplementation()
             // If the sublayer has a Node, add it to the group.
             if (layer->getNode())
             {
+                if (!_layerNodes.valid())
+                    _layerNodes = new osg::Group();
+
                 _layerNodes->addChild(layer->getNode());
             }
         }
@@ -926,6 +948,24 @@ CompositeLandCoverLayer::openImplementation()
     setProfile( profile.get() );
 
     return Status::NoError;
+}
+
+Status
+CompositeLandCoverLayer::closeImplementation()
+{
+    for(LandCoverLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+    {
+        LandCoverLayer* layer = i->get();
+        layer->close();
+    }
+
+    if (_layerNodes.valid())
+    {
+        _layerNodes->removeChildren(0, _layerNodes->getNumChildren());
+    }
+
+    dataExtents().clear();
+    return Status::OK();
 }
 
 GeoImage

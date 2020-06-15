@@ -45,7 +45,7 @@ using namespace osgEarth::Contrib;
 int
 usage( const std::string& msg )
 {
-    OE_NOTICE 
+    OE_NOTICE
         << msg << std::endl
         << "USAGE: osgearth_graticule [options] file.earth" << std::endl
         << "   --geodetic            : display a Lat/Long graticule" << std::endl
@@ -60,6 +60,8 @@ usage( const std::string& msg )
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
@@ -109,7 +111,7 @@ main(int argc, char** argv)
         mapNode->getMap()->addLayer(gr);
         formatter = new LatLongFormatter();
     }
-   
+
     // mouse coordinate readout:
     ControlCanvas* canvas = new ControlCanvas();
     root->addChild( canvas );

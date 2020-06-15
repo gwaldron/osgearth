@@ -60,7 +60,11 @@ namespace osgEarth
         // gets a mutable reference, automatically setting
         T& mutable_value() { _set = true; return _value; }
 
+        // sets a default value and usets the variable
         void init(T defValue) { _value=defValue; _defaultValue=defValue; unset(); }
+
+        // sets a default value (without altering a set value)
+        void setDefault(T defValue) { _defaultValue = defValue; if (!_set) _value = defValue; }
 
         operator const T*() const { return &_value; }
 

@@ -1,0 +1,29 @@
+<!--
+osgEarth Sample - GDALDEM
+
+Provides access to GDALDEM processing capabilities such as hillshading.
+-->
+<map name="GDALDEM">
+
+    <TMSElevation name="elevation">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+        <vdatum>egm96</vdatum>
+    </TMSElevation>
+
+    <GDALDEM name="hillshade">
+        <cache_policy usage="no_cache"/>
+        <processing>hillshade</processing>
+        <layer>elevation</layer>
+        <opacity>1.0</opacity>
+    </GDALDEM>
+
+    <GDALDEM name="color-relief">
+        <cache_policy usage="no_cache"/>
+        <processing>color-relief</processing>
+        <layer>elevation</layer>
+        <color_filename>../data/colorramps/thematic.clr</color_filename>
+        <opacity>0.75</opacity>
+    </GDALDEM>
+
+    <xi:include href="viewpoints.xml"/>
+</map>

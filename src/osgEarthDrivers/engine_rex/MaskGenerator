@@ -105,7 +105,7 @@ namespace osgEarth { namespace REX
             osg::Vec3Array* normals,
             osg::Vec3Array* neighbors,
             osg::Vec3Array* neighborNormals,
-            osg::ref_ptr<osg::DrawElementsUInt>& out_elements);
+            osg::ref_ptr<osg::DrawElements>& out_elements);
 
     protected:
         void setupMaskRecord(osg::Vec3dArray* boundary);

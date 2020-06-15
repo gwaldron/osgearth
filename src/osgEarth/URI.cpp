@@ -23,6 +23,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Utils>
 #include <osgEarth/Metrics>
+#include <osgEarth/NetworkMonitor>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
@@ -41,24 +42,6 @@ using namespace osgEarth::Threading;
 
 namespace
 {
-    /**
-     * "Fixes" the osgDB options by disabling the automatic archive caching. Archive caching
-     * screws up our URI resolution because with it on, osgDB remembers every archive file
-     * you open and effectively puts it in all future search paths :(
-     */
-    const osgDB::Options*
-    fixOptions( const osgDB::Options* input )
-    {
-        if ( input && input->getObjectCacheHint() == osgDB::Options::CACHE_NONE )
-        {
-            return input;
-        }
-        else
-        {
-            return Registry::instance()->cloneOrCreateOptions( input );
-        }
-    }
-    
     class LoadNodeOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
     {
     public:
@@ -67,12 +50,16 @@ namespace
             _promise(promise),
             _options(options)
         {
+            // Get the currently active request layer and reuse it when the operator actually occurs, which will probably be on a different thread.
+            _requestLayer = NetworkMonitor::getRequestLayer();
         }
 
         void operator()(osg::Object*)
         {
             OE_PROFILING_ZONE_NAMED("loadAsyncNode");
             OE_PROFILING_ZONE_TEXT(_uri.full());
+
+            NetworkMonitor::ScopedRequestLayer layerRequest(_requestLayer);
 
             if (!_promise.isAbandoned())
             {
@@ -81,7 +68,7 @@ namespace
 
                 if (result.succeeded())
                 {
-                    osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico = 
+                    osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico =
                         OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
 
                     // If we have an ICO, wait for it to be compiled
@@ -106,7 +93,7 @@ namespace
                                 ico->remove(_compileSet.get());
                                 _compileSet = 0;
                                 break;
-                            }                                                        
+                            }
                         }
 
                     }
@@ -130,6 +117,7 @@ namespace
         osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
         Threading::Event _block;
         URI _uri;
+        std::string _requestLayer;
     };
 }
 
@@ -341,7 +329,7 @@ URI::getConfig() const
 
 void
 URI::mergeConfig(const Config& conf)
-{    
+{
     conf.get("option_string", _optionString);
 
     const ConfigSet headers = conf.child("headers").children();
@@ -363,7 +351,7 @@ namespace
         if ( rr.validObject() )
             return ReadResult( rr.getObject() );
         else
-            return ReadResult( ReadResult::RESULT_NOT_FOUND ); // TODO: translate codes better
+            return ReadResult( ReadResult::RESULT_NOT_FOUND );
     }
 
     // Utility to redirect a local file read if it has an archive name in the URI
@@ -502,7 +490,8 @@ namespace
             return r;
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readImage(uri, opt);
+            // Call readImageImplementation instead of readImage to bypass any readfile callbacks installed in the registry.
+            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readImageImplementation(uri, opt);
             if (osgRR.validImage()) {
                 osgRR.getImage()->setFileName(uri);
                 return ReadResult(osgRR.takeImage());
@@ -516,10 +505,10 @@ namespace
         bool callbackRequestsCaching( URIReadCallback* cb ) const {
             return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0);
         }
-        ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { 
+        ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) {
             return cb->readString(uri, opt);
         }
-        ReadResult fromCache( CacheBin* bin, const std::string& key) { 
+        ReadResult fromCache( CacheBin* bin, const std::string& key) {
             return bin->readString(key, 0L);
         }
         ReadResult fromHTTP(const URI& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
@@ -549,10 +538,12 @@ namespace
     {
         //osg::Timer_t startTime = osg::Timer::instance()->tick();
 
+        unsigned long handle = NetworkMonitor::begin(inputURI.full(), "pending", "URI");
         ReadResult result;
 
         if (osgEarth::Registry::instance()->isBlacklisted(inputURI.full()))
         {
+            NetworkMonitor::end(handle, "Blacklisted");
             return result;
         }
 
@@ -698,6 +689,7 @@ namespace
                             // Check for cancellation before a cache write
                             if (progress && progress->isCanceled())
                             {
+                                NetworkMonitor::end(handle, "Canceled");
                                 return 0L;
                             }
 
@@ -714,6 +706,7 @@ namespace
                 // Check for cancelation before a potential cache write
                 if (progress && progress->isCanceled())
                 {
+                    NetworkMonitor::end(handle, "Canceled");
                     return 0L;
                 }
 
@@ -749,6 +742,14 @@ namespace
         {
             (*post)(result);
         }
+
+        std::stringstream buf;
+        buf << result.getResultCodeString();
+        if (result.isFromCache() && result.succeeded())
+        {
+            buf << " (from cache)";
+        }
+        NetworkMonitor::end(handle, buf.str());
 
         return result;
     }

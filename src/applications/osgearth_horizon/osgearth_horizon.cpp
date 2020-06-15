@@ -43,7 +43,7 @@ using namespace osgEarth::Util;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth --activity" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -92,6 +92,8 @@ installGeometry2(const SpatialReference* srs)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -111,7 +113,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator(arguments) );
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
@@ -131,10 +133,10 @@ main(int argc, char** argv)
         // Culls the second item based on its horizon visibility
         HorizonCullCallback* callback = new HorizonCullCallback();
         item2->addCullCallback( callback );
-        
+
         // This horizon object we are just using to print out the results;
         // it's not actually part of the culling cullback!
-        osg::ref_ptr<Horizon> horizon = new Horizon(srs);        
+        osg::ref_ptr<Horizon> horizon = new Horizon(srs);
 
         while (!viewer.done())
         {

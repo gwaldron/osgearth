@@ -62,10 +62,10 @@ namespace
         void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex) {
             _node->onLayerMoved(layer, oldIndex, newIndex);
         }
-        void onLayerEnabled(Layer* layer) {
+        void onLayerOpened(Layer* layer) {
             _node->onLayerAdded(layer, _node->getMap()->getIndexOfLayer(layer));
         }
-        void onLayerDisabled(Layer* layer) {
+        void onLayerClosed(Layer* layer) {
             _node->onLayerRemoved(layer, _node->getMap()->getIndexOfLayer(layer));
         }
 
@@ -151,7 +151,7 @@ MapNode::load(osg::ArgumentParser& args)
 {
     for( int i=1; i<args.argc(); ++i )
     {
-        if ( args[i] && endsWith(args[i], ".earth") )
+        if ( args[i] ) //&& (endsWith(args[i], ".earth") || endsWith(args[i], ".earth.template")) )
         {
             ReadResult r = URI(args[i]).readNode();
             if ( r.succeeded() )
@@ -168,7 +168,7 @@ MapNode::load(osg::ArgumentParser& args, const MapNode::Options& defaults)
 {
     for( int i=1; i<args.argc(); ++i )
     {
-        if ( args[i] && endsWith(args[i], ".earth") )
+        if ( args[i] ) //&& (endsWith(args[i], ".earth") || endsWith(args[i], ".earth.template")))
         {
             osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
             std::string optionsJSON = defaults.getConfig().toJSON();
@@ -240,7 +240,7 @@ _terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
 }
 
 MapNode::MapNode( Map* map ) :
-_map( map ),
+_map( map ? map : new Map() ),
 _terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
 {
     init();
@@ -292,9 +292,6 @@ MapNode::init()
     // make a group for the model layers. (Sticky otherwise the osg optimizer will remove it)
     _layerNodes = new StickyGroup();
     _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
-    // This shader will support basic, zero- or one-texture rendering for all layer node groups by default.
-    // GW: taking this back out, because it doesn't work with texture array atlas ... :(
-    //ShaderUtils::installDefaultShader(_layerNodes->getOrCreateStateSet());
 
     this->addChild( _layerNodes );
 }
@@ -706,7 +703,8 @@ namespace
         for (LayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
         {
             Layer* layer = i->get();
-            if (layer->getEnabled())
+
+            if (layer->isOpen())
             {
                 osg::Node* node = layer->getNode();
                 if (node)
@@ -726,7 +724,7 @@ namespace
 void
 MapNode::onLayerAdded(Layer* layer, unsigned index)
 {
-    if (!layer || !layer->getEnabled())
+    if (!layer || !layer->isOpen())
         return;
     
     // Communicate terrain resources to the layer:
@@ -825,6 +823,30 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
         // traverse:
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+    }
+
+    else if ( nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+
+        LayerVector layers;
+        getMap()->getLayers(layers);
+
+        int count = 0;
+        for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        {
+            if (i->get()->getSharedStateSet(&nv))
+            {
+                cv->pushStateSet(i->get()->getSharedStateSet(&nv));
+                ++count;
+            }
+        }
+
+        // traverse:
+        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+
+        for(int i=0; i<count; ++i)
+            cv->popStateSet();
     }
 
     else

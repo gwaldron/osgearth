@@ -6,11 +6,11 @@
 <Map>
     <libraries>osgEarthSplat</libraries>
 
-    <xi:include href="../data/land_cover_dictionary.xml"/>
+    <xi:include href="land_cover_dictionary.xml"/>
     <xi:include href="esa_land_cover.xml"/>
     <xi:include href="readymap_elevation.xml"/>
 
-    <SplatImage name="Splat Imagery" land_cover_layer="LandCover">
+    <SplatImage name="Splat Imagery">
         <zones>
             <zone name="default">
                 <surface>
@@ -20,21 +20,17 @@
         </zones>
     </SplatImage>
 
-    <GroundCover name="Trees" land_cover_layer="LandCover">
+    <GroundCover name="Trees">
         <lod>13</lod>
-        <cast_shadows>true</cast_shadows>
         <mask_layer>Boston Streets</mask_layer>
         <zones>
             <zone name="default">
                 <groundcover>
                     <max_distance>10000</max_distance>
-                    <density>4.0</density>
-                    <fill>1.0</fill>
-                    <brightness>3.0</brightness>
-                    <contrast>1.0</contrast>
+                    <spacing>10.0</spacing>
                     <biomes>
                         <biome classes="forest urban grassland cropland">
-                            <billboard url="../data/splat/pine2.png" width="12.0" height="16.0"/>
+                            <billboard url="../data/splat/pine.png" width="12.0" height="16.0"/>
                         </biome>
                     </biomes>
                 </groundcover>
@@ -44,29 +40,28 @@
 
     <!-- Setting shared="true" lets us use this as our mask layer -->
     <FeatureImage name="Boston Streets" shared="true" min_level="10" max_data_level="17">
-        <OGRFeatures build_spatial_index="true">
+        <OGRFeatures>
             <url>../data/boston-scl-utm19n-meters.shp</url>
         </OGRFeatures>
         <styles>
             <style type="text/css">
                 default {
+                    stroke: #ffffff;
                     stroke-width: 10m;
-                    stroke-image: "../data/road.png";
                 }
             </style>
         </styles>
-        <cache_policy usage="no_cache"/>
     </FeatureImage>
 
     <viewpoints>
-        <viewpoint name="Tree-Covered Boston">
-            <heading>9.95514</heading>
-            <pitch>-19.0589</pitch>
-            <range>3450.07m</range>
-            <long>-71.06514757538032</long>
-            <lat>42.35534282973394</lat>
-            <height>14.42520617321134</height>
-            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        <viewpoint name="Trees in Boston">
+            <heading>-1.57631</heading>
+            <pitch>-47.6346</pitch>
+            <range>4770.74m</range>
+            <long>-71.07181859519301</long>
+            <lat>42.35160229434759</lat>
+            <height>-10.85772443283349</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
     </viewpoints>
 

@@ -22,6 +22,7 @@
 #include "TileRenderModel"
 #include "DrawState"
 #include "GeometryPool"
+#include "TileDrawable"
 #include <osgEarth/PatchLayer>
 #include <osgEarth/TileKey>
 #include <osg/Matrix>
@@ -38,7 +39,6 @@ namespace osgEarth { namespace REX
     struct DrawTileCommand
     {
         // ModelView matrix to apply before rendering this tile
-        //osg::Matrixf _modelViewMatrix;
         osg::ref_ptr<const osg::RefMatrix> _modelViewMatrix;
 
         // Samplers that are shared between all rendering passes
@@ -47,14 +47,21 @@ namespace osgEarth { namespace REX
         // Samplers specific to one rendering pass
         const Samplers* _colorSamplers;
 
-        // Tile geometry, if present
+        // Tile geometry, if present (ref_ptr necessary?)
         osg::ref_ptr<SharedGeometry> _geom;
+
+        TileDrawable* _tile;
+
+        //PatchLayer::GeometryArrayProvider* _provider;
 
         // Tile key
         const TileKey* _key;
 
         // Tile key value to push to uniform just before drawing
         osg::Vec4f _keyValue;
+
+        // Data revision # of the tile
+        unsigned _tileRevision;
 
         // Elevation texel sampling coefficients (so we sample elevation
         // data on center rather than on edge) - We might be able to move
@@ -82,14 +89,12 @@ namespace osgEarth { namespace REX
         // Renders the tile.
         void draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const;
 
-        // Less than operator will ensure that tiles are sorted high-to-low LOD
-        // (to minimize Z overdraw) and then grouped by shared geometry
-        // (to minimize buffer binds). Both of these make a significant performance
-        // difference based on benchmarking.
+        // Less than operator will ensure that tiles are sorted near to far
+        // to minimze overdraw.
         bool operator < (const DrawTileCommand& rhs) const
         {
-            if (_key->getLOD() > rhs._key->getLOD()) return true;
-            if (_key->getLOD() < rhs._key->getLOD()) return false;
+            if (_range > rhs._range) return false;
+            if (_range < rhs._range) return true;
             return _geom < rhs._geom;
         }
 
@@ -102,6 +107,9 @@ namespace osgEarth { namespace REX
             _drawPatch(false),
             _range(0.0f),
             _layerOrder(INT_MAX){ }
+
+        virtual void accept(osg::PrimitiveFunctor& functor) const;
+        virtual void accept(osg::PrimitiveIndexFunctor& functor) const;
     };
 
     /**

@@ -102,10 +102,6 @@ Layer::Layer() :
 _options(&_optionsConcrete),
 _revision(0u)
 {
-    _uid = osgEarth::Registry::instance()->createUID();
-    _renderType = RENDERTYPE_NONE;
-    _status = Status::OK();
-
     init();
 }
 
@@ -113,9 +109,6 @@ Layer::Layer(Layer::Options* optionsPtr) :
 _options(optionsPtr? optionsPtr : &_optionsConcrete),
 _revision(0u)
 {
-    _uid = osgEarth::Registry::instance()->createUID();
-    _renderType = RENDERTYPE_NONE;
-    _status = Status::OK();
     // init() will be called by base class
 }
 
@@ -159,8 +152,8 @@ Layer::getReadOptions() const
 void
 Layer::setCacheID(const std::string& value)
 {
-    options().cacheId() = value;
-    _runtimeCacheId = value;
+    _runtimeCacheId = "";
+    setOptionThatRequiresReopen(options().cacheId(), value);
 }
 
 std::string
@@ -194,9 +187,10 @@ Layer::getCacheID() const
 
         unsigned hash = osgEarth::hashString(hashConf.toJSON());
         std::stringstream buf;
-        buf << std::hex << std::setw(8) << std::setfill('0') << hash;
         const char hyphen = '-';
-        if (getName().empty() == false) buf << hyphen << toLegalFileName(getName(), false, &hyphen);
+        if (getName().empty() == false)
+            buf << toLegalFileName(getName(), false, &hyphen) << hyphen;
+        buf << std::hex << std::setw(8) << std::setfill('0') << hash;
         return buf.str();
     }
 }
@@ -212,16 +206,20 @@ Layer::getConfig() const
 bool
 Layer::getEnabled() const
 {
-    return (options().enabled() == true) && getStatus().isOK();
+    return (options().enabled() == true);
 }
 
 void
 Layer::setEnabled(bool value)
 {
-    if (getStatus().isOK() && value != options().enabled().value())
+    if (options().enabled() != value)
     {
         options().enabled() = value;
-        fireCallback(&LayerCallback::onEnabledChanged);
+        if (value == false && isOpen())
+        {
+            close();
+            _status.set(Status::ResourceUnavailable, "Layer disabled");
+        }
     }
 }
 
@@ -253,7 +251,9 @@ Layer::getCachePolicy() const
 void
 Layer::init()
 {
-    _isOpen = false;
+    _uid = osgEarth::Registry::instance()->createUID();
+    _renderType = RENDERTYPE_NONE;
+    _status.set(Status::ResourceUnavailable, getEnabled() ? "Layer closed" : "Layer disabled");
 
     // For detecting scene graph changes at runtime
     _sceneGraphCallbacks = new SceneGraphCallbacks(this);
@@ -269,10 +269,14 @@ Layer::init()
 const Status&
 Layer::open()
 {
-    if (_isOpen)
+    // Cannot open a layer that's already open OR is disabled.
+    if (isOpen() || !getEnabled())
     {
         return getStatus();
     }
+
+    // be optimistic :)
+    _status.set(Status::NoError);
 
     // Copy the layer options name into the Object name.
     if (options().name().isSet())
@@ -289,7 +293,10 @@ Layer::open()
 
     setStatus(openImplementation());
 
-    _isOpen = getStatus().isOK();
+    if (isOpen())
+    {
+        fireCallback(&LayerCallback::onOpen);
+    }
 
     return getStatus();
 }
@@ -346,22 +353,26 @@ Status
 Layer::closeImplementation()
 {
     _cacheSettings = NULL;
+    _runtimeCacheId.clear();
     return Status::NoError;
 }
 
 Status
 Layer::close()
 {
-    Status s = closeImplementation();
-    setStatus(Status::OK());
-    _isOpen = false;
-    return s;
+    if (isOpen())
+    {
+        closeImplementation();
+        _status.set(Status::ResourceUnavailable, "Layer closed");
+        fireCallback(&LayerCallback::onClose);
+    }
+    return getStatus();
 }
 
 bool
 Layer::isOpen() const
 {
-    return _isOpen;
+    return getStatus().isOK();
 }
 
 const Status&

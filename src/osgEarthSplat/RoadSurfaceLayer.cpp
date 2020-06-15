@@ -41,8 +41,8 @@ Config
 RoadSurfaceLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    LayerReference<FeatureSource>::set(conf, "features", featureSourceLayer(), featureSource());
-    LayerReference<StyleSheet>::set(conf, "styles", styleSheetLayer(), styleSheet());
+    featureSource().set(conf, "features");
+    styleSheet().set(conf, "styles");
     conf.set("buffer_width", featureBufferWidth() );
     return conf;
 }
@@ -50,8 +50,8 @@ RoadSurfaceLayer::Options::getConfig() const
 void
 RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<FeatureSource>::get(conf, "features", featureSourceLayer(), featureSource());
-    LayerReference<StyleSheet>::get(conf, "styles", styleSheetLayer(), styleSheet());
+    featureSource().get(conf, "features");
+    styleSheet().get(conf, "styles");
     conf.get("buffer_width", featureBufferWidth() );
 }
 
@@ -67,9 +67,6 @@ RoadSurfaceLayer::init()
     // Generate Mercator tiles by default.
     setProfile(Profile::create("global-geodetic"));
 
-    // Create a rasterizer for rendering nodes to images.
-    _rasterizer = new TileRasterizer(); 
-
     if (getName().empty())
         setName("Road surface");
 }
@@ -82,13 +79,19 @@ RoadSurfaceLayer::openImplementation()
         return parent;
 
     // assert a feature source:
-    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
+    Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
-    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    Status ssStatus = options().styleSheet().open(getReadOptions());
     if (ssStatus.isError())
         return ssStatus;
+
+    // Create a rasterizer for rendering nodes to images.
+    if (!_rasterizer.valid())
+    {
+        _rasterizer = new TileRasterizer(getTileSize(), getTileSize());
+    }
 
     return Status::NoError;
 }
@@ -103,24 +106,17 @@ RoadSurfaceLayer::addedToMap(const Map* map)
     _session = new Session(map, getStyleSheet(), 0L, getReadOptions());
     _session->setResourceCache(new ResourceCache());
 
-    _featureSource.connect(map, options().featureSourceLayer());
-    _styleSheet.connect(map, options().styleSheetLayer());
+    options().featureSource().addedToMap(map);
+    options().styleSheet().addedToMap(map);
 }
 
 void
 RoadSurfaceLayer::removedFromMap(const Map* map)
 {
     ImageLayer::removedFromMap(map);
-    _featureSource.disconnect(map);
-    _styleSheet.disconnect(map);
+    options().featureSource().removedFromMap(map);
+    options().styleSheet().removedFromMap(map);
     _session = 0L;
-}
-
-osg::Node*
-RoadSurfaceLayer::getNode() const
-{
-    // adds the Rasterizer to the scene graph so we can rasterize tiles
-    return _rasterizer.get();
 }
 
 void
@@ -128,7 +124,7 @@ RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 {
     if (getFeatureSource() != layer)
     {
-        _featureSource.setLayer(layer);
+        options().featureSource().setLayer(layer);
         if (layer && layer->getStatus().isError())
         {
             setStatus(layer->getStatus());
@@ -139,19 +135,19 @@ RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 FeatureSource*
 RoadSurfaceLayer::getFeatureSource() const
 {
-    return _featureSource.getLayer();
+    return options().featureSource().getLayer();
 }
 
 void
 RoadSurfaceLayer::setStyleSheet(StyleSheet* value)
 {
-    _styleSheet.setLayer(value);
+    options().styleSheet().setLayer(value);
 }
 
 StyleSheet*
 RoadSurfaceLayer::getStyleSheet() const
 {
-    return _styleSheet.getLayer();
+    return options().styleSheet().getLayer();
 }
 
 namespace
@@ -287,64 +283,16 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         return GeoImage::INVALID;
     }
 
-    // If the feature source has a tiling profile, we are going to have to map the incoming
-    // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
     GeoExtent featureExtent = key.getExtent().transform(featureSRS);
-    GeoExtent queryExtent = featureExtent;
 
-    // Buffer the incoming extent, if requested.
-    if (options().featureBufferWidth().isSet())
-    {
-        GeoExtent geoExtent = queryExtent.transform(featureSRS->getGeographicSRS());
-        double latitude = geoExtent.getCentroid().y();
-        double buffer = SpatialReference::transformUnits(options().featureBufferWidth().get(), featureSRS, latitude);
-        queryExtent.expand(buffer, buffer);
-    }
-    
+    osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
+        key,
+        options().featureBufferWidth().get(),
+        progress);
 
     FeatureList features;
-
-    if (featureProfile->getTilingProfile())
-    {
-        // Resolve the list of tile keys that intersect the incoming extent.
-        std::vector<TileKey> intersectingKeys;
-        featureProfile->getTilingProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
-
-        UnorderedSet<TileKey> featureKeys;
-        for (int i = 0; i < intersectingKeys.size(); ++i)
-        {        
-            if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
-                featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
-            else
-                featureKeys.insert(intersectingKeys[i]);
-        }
-
-        // Query and collect all the features we need for this tile.
-        for (UnorderedSet<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
-        {
-            Query query;        
-            query.tileKey() = *i;
-
-            osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
-            if (cursor.valid())
-            {
-                cursor->fill(features);
-            }
-        }
-    }
-    else
-    {
-        // Set up the query; bounds must be in the feature SRS:
-        Query query;
-        query.bounds() = queryExtent.bounds();
-
-        // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
-        if (cursor.valid())
-        {
-            cursor->fill(features);
-        }
-    }
+    if (cursor.valid())
+        cursor->fill(features);
 
     if (!features.empty())
     {
@@ -380,20 +328,26 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
         if (group && group->getBound().valid())
         {
-            Threading::Future<osg::Image> imageFuture;
+            Future<osg::Image> result = _rasterizer->render(group.release(), outputExtent);
+            return GeoImage(result.release(progress), key.getExtent());
 
-            // Schedule the rasterization and get the future.
-            imageFuture = _rasterizer->push(group.release(), getTileSize(), outputExtent);
-
-            // Block until the image is ready.
-            // NULL means there was nothing to render.
-            osg::Image* image = imageFuture.release();
-            if (image)
-            {
-                return GeoImage(image, key.getExtent());
-            }
+            // TODO: consider storing a Future right in the geoimage.
+            //return GeoImage(result, key.getExtent());
         }
     }
 
     return GeoImage::INVALID;
+}
+
+Config
+RoadSurfaceLayer::getConfig() const
+{
+    Config c = ImageLayer::getConfig();
+    return c;
+}
+
+osg::Node*
+RoadSurfaceLayer::getNode() const
+{
+    return _rasterizer.valid() ? _rasterizer->getNode() : NULL;
 }

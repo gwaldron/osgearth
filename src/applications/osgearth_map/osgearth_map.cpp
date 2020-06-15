@@ -50,7 +50,7 @@ using namespace osgEarth::Util;
 int
 usage(int argc, char** argv)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\n" << argv[0]
         << "\n    [--out outFile] : write map node to outFile before exit"
         << std::endl;
@@ -117,6 +117,8 @@ checkErrors(const Layer* layer)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     if (arguments.read("--help"))
         return usage(argc, argv);
@@ -145,7 +147,7 @@ main(int argc, char** argv)
     MyTextureLayer* texLayer = new MyTextureLayer();
     texLayer->setPath("../data/grid2.png");
     texLayer->setOpacity(0.5f);
-    map->addLayer(texLayer);  
+    map->addLayer(texLayer);
 
     // add a WMS radar layer with transparency, and disable caching since
     // this layer updates on the server periodically.

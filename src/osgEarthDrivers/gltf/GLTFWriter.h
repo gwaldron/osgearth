@@ -257,11 +257,13 @@ public:
         accessor.byteOffset = 0;
         accessor.componentType = data->getDataType();
         accessor.count = data->getNumElements();
+        accessor.normalized = data->getNormalize();
 
         const osg::DrawArrays* da = dynamic_cast<const osg::DrawArrays*>(pset);
         if (da)
         {
             accessor.byteOffset = da->getFirst() * getBytesPerElement(data);
+            accessor.count = da->getCount();
         }
 
         //TODO: indexed elements
@@ -360,15 +362,15 @@ public:
                     osg::Texture::WrapMode wrapR = osgTexture->getWrap(osg::Texture::WRAP_R);
 
                     // Validate the clamp mode to be compatible with webgl
-                    if (wrapS == osg::Texture::CLAMP)
+                    if ((wrapS == osg::Texture::CLAMP) || (wrapS == osg::Texture::CLAMP_TO_BORDER))
                     {                     
                         wrapS = osg::Texture::CLAMP_TO_EDGE;
                     }
-                    if (wrapT == osg::Texture::CLAMP)
+                    if ((wrapT == osg::Texture::CLAMP) || (wrapT == osg::Texture::CLAMP_TO_BORDER))
                     {                     
                         wrapT = osg::Texture::CLAMP_TO_EDGE;
                     }
-                    if (wrapR == osg::Texture::CLAMP)
+                    if ((wrapR == osg::Texture::CLAMP) || (wrapR == osg::Texture::CLAMP_TO_BORDER))
                     {                     
                         wrapR = osg::Texture::CLAMP_TO_EDGE;
                     }                    
@@ -409,6 +411,12 @@ public:
                     roughnessFactor.has_number_value = true;
                     mat.values["roughnessFactor"] = roughnessFactor;
 
+                    mat.doubleSided = ((stateSet->getMode(GL_CULL_FACE) & osg::StateAttribute::ON) == 0);
+
+                    if (stateSet->getMode(GL_BLEND) & osg::StateAttribute::ON) {
+                        mat.alphaMode = "BLEND";
+                    }
+                    
                     _model.materials.push_back(mat);
                     return index;
                 }
@@ -497,7 +505,14 @@ public:
                 int currentMaterial = getCurrentMaterial();
                 if (currentMaterial >= 0)
                 {
-                    primitive.material = currentMaterial;
+                    // Cesium may crash if using texture without texCoords
+                    // gltf_validator will report it as errors
+                    // ThreeJS seems to be fine though
+                    // TODO: check if the material actually has any texture in it
+                    // TODO: the material should not be added if not used anywhere
+                    if (texCoords.valid()) {
+                        primitive.material = currentMaterial;
+                    }
                 }
 
                 primitive.mode = pset->getMode();

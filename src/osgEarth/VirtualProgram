@@ -195,6 +195,8 @@ namespace osgEarth
 
             static PolyShader * lookUpShader(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation location);
 
+            static void clearShaderCache();
+
         protected:
             virtual ~PolyShader() { }
 
@@ -250,6 +252,15 @@ namespace osgEarth
             //! Release anything used by this user
             void release(UID user, osg::State* state);
 
+            //! Whether to automatically delete a Program after its final user releases it
+            //! Defaults to true
+            void setReleaseUnusedPrograms(bool value);
+
+            //! Filesystem location in which to cache precopmiled shader binaries
+            void setProgramBinaryCacheLocation(const std::string& directory);
+
+            bool isProgramBinaryCachingActive() const;
+
             //! Prune expired data
             void prune(unsigned frameNumber, osg::State* state);
 
@@ -257,10 +268,22 @@ namespace osgEarth
 
             void releaseGLObjects(osg::State* state) const;
 
+            //! Link a program, attempting to read/write its binary from the cache
+            //! if one is specified
+            void linkProgram(
+                const ProgramKey&,
+                osg::Program*, 
+                osg::Program::PerContextProgram*,
+                osg::State&);
+
+            ProgramRepo();
+
             ~ProgramRepo();
 
         private:
             mutable ProgramMap _db;
+            bool _releaseUnusedPrograms;
+            std::string _programBinaryCacheFolder;
         };
     }
 }
@@ -315,6 +338,17 @@ namespace osgEarth
         * on the "src" stateset, or otherwise just constructing a new one.
         */
         static VirtualProgram* cloneOrCreate(const osg::StateSet* src, osg::StateSet* dest);
+
+        /**
+        * Whether to automatically delete a Program after its final user releases it
+        * Defaults to true
+        */
+        static void setReleaseUnusedPrograms(bool value);
+
+        /**
+        * Folder to used to cache pre-compiled shader binaries
+        */
+        static void setProgramBinaryCacheLocation(const std::string& directory);
 
     public:
         /**
@@ -487,7 +521,7 @@ namespace osgEarth
         
         /**
          * Populates the output collection with all the PolyShaders that are applicable
-         * for the given state. Information about the stage mask is not returned (TODO?)
+         * for the given state. Information about the stage mask is not returned.
          * Returns the size of the output collection.
          */
         static int getPolyShaders(

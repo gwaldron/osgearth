@@ -61,6 +61,8 @@ usage( char** argv )
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::Group* root = new osg::Group();
 
     // try to load an earth file.
@@ -157,7 +159,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-        
+
         FeatureNode* fnode = new FeatureNode(feature, geomStyle);
 
         fnode->addCullCallback(new C());
@@ -247,7 +249,7 @@ main(int argc, char** argv)
         circle->set(
             GeoPoint(geoSRS, -90.25, 29.98, 1000., ALTMODE_RELATIVE),
             Distance(300, Units::KILOMETERS),
-            circleStyle, 
+            circleStyle,
             Angle(-45.0, Units::DEGREES),
             Angle(45.0, Units::DEGREES),
             true);
@@ -288,7 +290,7 @@ main(int argc, char** argv)
             Angle   (0, Units::DEGREES),
             ellipseStyle,
             Angle(45.0, Units::DEGREES),
-            Angle(360.0 - 45.0, Units::DEGREES), 
+            Angle(360.0 - 45.0, Units::DEGREES),
             true);
         annoGroup->addChild( ellipse );
     }
@@ -302,13 +304,13 @@ main(int argc, char** argv)
 			Distance(250, Units::MILES),
 			Distance(100, Units::MILES),
 			Angle   (0, Units::DEGREES),
-			ellipseStyle, 
-            Angle(-40.0, Units::DEGREES), 
-            Angle(40.0, Units::DEGREES), 
+			ellipseStyle,
+            Angle(-40.0, Units::DEGREES),
+            Angle(40.0, Units::DEGREES),
             true);
 		annoGroup->addChild( ellipse );
 	}
-    
+
     //--------------------------------------------------------------------
 
     {
@@ -323,7 +325,7 @@ main(int argc, char** argv)
             Distance(600, Units::KILOMETERS ),
             rectStyle);
         annoGroup->addChild( rect );
-    }    
+    }
 
     //--------------------------------------------------------------------
 
@@ -372,15 +374,15 @@ main(int argc, char** argv)
         Style style;
         style.getOrCreate<ModelSymbol>()->autoScale() = true;
         style.getOrCreate<ModelSymbol>()->url()->setLiteral("../data/red_flag.osg.50.scale");
-        ModelNode* modelNode = new ModelNode(mapNode, style); 
+        ModelNode* modelNode = new ModelNode(mapNode, style);
         modelNode->setPosition(GeoPoint(geoSRS, -100, 52));
         annoGroup->addChild(modelNode);
     }
 
     //--------------------------------------------------------------------
 
-    // initialize the viewer:    
-    viewer.setSceneData( root );    
+    // initialize the viewer:
+    viewer.setSceneData( root );
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     return viewer.run();
 }

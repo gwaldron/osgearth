@@ -4,20 +4,21 @@ osgEarth Sample - Openstreetmap buildings.
 This shows how to use the TFS driver to connect to a worldwide openstreetmap building dataset.
 You must have the mapnik vector tiles driver built by including the protobuf libraries in cmake.
 -->
-<map name="OSM with Buildings">
+<map name="Worldwide OSM feature data">
 
     <TFSFeatures name="data:osm">
-        <url>http://readymap.org/osm/</url>
+        <url>http://readymap.org/readymap/mbtiles/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
         <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
     </TFSFeatures>
-    
+
     <FeatureModel name="OSM">
         <features>data:osm</features>
 
-        <feature_indexing enabled="false"></feature_indexing>
+        <feature_indexing enabled="true"></feature_indexing>
 
         <styles>
 
@@ -178,7 +179,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
     <xi:include href="readymap_imagery.xml"/>
 
     <TFSFeatures name="data:roads">
-        <url>http://readymap.org/osm/</url>
+        <url>http://readymap.org/readymap/mbtiles/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
@@ -204,7 +205,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
             </style>
         </styles>
     </FeatureImage>
-    
+
     <xi:include href="readymap_elevation.xml"/>
 
     <xi:include href="viewpoints.xml"/>

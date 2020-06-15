@@ -1,0 +1,181 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_PROCEDURAL_BIOME
+#define OSGEARTH_PROCEDURAL_BIOME 1
+
+#include "Export"
+#include <osgEarth/Config>
+//#include <osgEarth/BillboardSymbol>
+#include <osgEarth/URI>
+#include <osgEarth/Units>
+#include <osgEarth/GeoData>
+#include <osgEarth/LandCover>
+#include <osg/BoundingBox>
+
+namespace osgEarth { namespace Splat
+{
+    using namespace osgEarth;
+
+    /**
+     * Individual artwork asset reference within a biome
+     */
+    class OSGEARTHSPLAT_EXPORT AssetUsage
+    {
+    public:
+        struct OSGEARTHSPLAT_EXPORT Options : public ConfigOptions
+        {
+            META_ConfigOptions(osgEarth, Options, ConfigOptions);
+            Config getConfig() const;
+            void fromConfig(const Config& conf);
+
+            OE_OPTION(URI, modelURI);
+            OE_OPTION(URI, sideBillboardURI);
+            OE_OPTION(URI, topBillboardURI);
+            OE_OPTION(float, width);
+            OE_OPTION(float, height);
+            OE_OPTION(float, sizeVariation);
+            OE_OPTION(float, selectionWeight);
+
+            Config _initConfig;
+        };
+
+    public:
+        AssetUsage() { }
+        AssetUsage(const Config& conf) : _options(conf) { }
+
+        Options& options() { return _options; }
+        const Options& options() const { return _options; }
+        Config getConfig() const { return options().getConfig(); }
+
+    private:
+        Options _options;
+    };
+
+    /**
+    * Maps artwork symbols to land cover classes within a Biome.
+    */
+    class OSGEARTHSPLAT_EXPORT LandCoverGroup // was "Biome"
+    {
+    public:
+        struct OSGEARTHSPLAT_EXPORT Options : public ConfigOptions
+        {
+            META_ConfigOptions(osgEarth, Options, ConfigOptions);
+            Config getConfig() const;
+            void fromConfig(const Config& conf);
+
+            OE_OPTION(std::string, landCoverClasses);
+            OE_OPTION(float, fill);
+            OE_OPTION(float, sizeVariation);
+            OE_OPTION_VECTOR(AssetUsage, assets);
+        };
+
+    public:
+        LandCoverGroup() { init(); }
+        LandCoverGroup(const Config& conf) : _options(conf) { init(); }
+
+        const std::vector<AssetUsage>& getAssets() const {
+            return options().assets(); }
+
+        const std::vector<std::string>& getLandCoverClassNames() const {
+            return _classNames; }
+
+        Options& options() { return _options; }
+        const Options& options() const { return _options; }
+        Config getConfig() const { return options().getConfig(); }
+
+    private:
+        Options _options;
+
+        std::vector<std::string> _classNames;
+
+        void init();
+    };
+
+    /**
+    * Defines a geographic bounding region for a Biome.
+    * Temporary construct while we transition to the new setup.
+    */
+    class OSGEARTHSPLAT_EXPORT BiomeZone // was "Zone"
+    {
+    public:
+        struct OSGEARTHSPLAT_EXPORT Options : public ConfigOptions
+        {
+            META_ConfigOptions(osgEarth, Options, ConfigOptions);
+            Config getConfig() const;
+            void fromConfig(const Config& conf);
+
+            OE_OPTION(std::string, name);
+            OE_OPTION_VECTOR(osg::BoundingBox, boundaries);
+            OE_OPTION(Distance, spacing);
+            OE_OPTION(float, fill);
+            OE_OPTION(float, maxDistance);
+            OE_OPTION_VECTOR(LandCoverGroup, landCoverGroups);
+        };
+
+        struct OSGEARTHSPLAT_EXPORT Boundary
+        {
+            GeoExtent     extent;
+            double        zmin, zmin2;
+            double        zmax, zmax2;
+            double        meanRadius2;
+            osg::Polytope tope;
+        };
+        typedef std::vector<Boundary> Boundaries;
+
+    public:
+        BiomeZone() { init(); }
+        BiomeZone(const Config& conf) : _options(conf) { init(); }
+
+        //! Name of this zone
+        const std::string& getName() const {
+            return options().name().get(); }
+        
+        //! Collection of land cover groups
+        const std::vector<LandCoverGroup>& getLandCoverGroups() const {
+            return options().landCoverGroups(); }
+
+        //! Spacing between asset instances
+        const Distance& getSpacing() const { return _options.spacing().get(); }
+
+        //! Find a land cover group by the class it contains
+        const LandCoverGroup* getLandCoverGroup(const LandCoverClass* c) const;
+
+        //! The geospatial boundaries of this zone
+        const Boundaries& getBoundaries() const {
+            return _boundaries; }
+
+        //! Whether a point intersects this zone's boundaries
+        bool contains(const osg::Vec3& point) const;
+        bool contains(const GeoPoint& point) const; // no z check!
+
+        //! Internal -- serialization options
+        Options& options() { return _options; }
+        const Options& options() const { return _options; }
+        Config getConfig() const { return options().getConfig(); }
+
+    private:
+        Options _options;
+        Boundaries _boundaries;
+
+        void init();
+    };
+    
+} } // namespace osgEarth::Splat
+
+#endif

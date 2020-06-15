@@ -48,7 +48,7 @@ CacheEstimator::getNumTiles() const
 {
     unsigned int total = 0;
 
-    GeoExtent extentsUnion(_extents.front());
+    GeoExtent extentsUnion;
     for (std::vector< GeoExtent >::const_iterator itr = _extents.begin(); itr != _extents.end(); ++itr)
         extentsUnion.expandToInclude(*itr);
 

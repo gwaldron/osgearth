@@ -27,11 +27,11 @@
 #include "TileNodeRegistry"
 #include "RenderBindings"
 #include "TileDrawable"
+#include "FrameClock"
 
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/Progress>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/TileRasterizer>
 
 #include <osgUtil/CullVisitor>
 
@@ -55,11 +55,11 @@ namespace osgEarth { namespace REX
             TerrainEngineNode*                  engine,
             GeometryPool*                       geometryPool,
             Loader*                             loader,
-            TileRasterizer*                     rasterizer,
             TileNodeRegistry*                   liveTiles,
             const RenderBindings&               renderBindings,
             const TerrainOptions&               options,
-            const SelectionInfo&                selectionInfo);
+            const SelectionInfo&                selectionInfo,
+            const FrameClock*                   clock);
         
         Loader* getLoader() const { return _loader; }
 
@@ -80,11 +80,11 @@ namespace osgEarth { namespace REX
 
         ProgressCallback* progress() const { return _progress.get(); }
 
-        void startCull(osgUtil::CullVisitor* cv);
+        //void startCull(osgUtil::CullVisitor* cv);
 
-        void endCull(osgUtil::CullVisitor* cv);
+        //void endCull(osgUtil::CullVisitor* cv);
 
-        double getElapsedCullTime() const;
+        //double getElapsedCullTime() const;
 
         //bool maxLiveTilesExceeded() const;
 
@@ -94,7 +94,7 @@ namespace osgEarth { namespace REX
 
         bool getUseTextureBorder() const { return false; }
 
-        TileRasterizer* getTileRasterizer() const { return _tileRasterizer; }
+        const FrameClock* getClock() const { return _clock; }
 
     protected:
 
@@ -110,13 +110,13 @@ namespace osgEarth { namespace REX
         const RenderBindings&                 _renderBindings;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
-        TileRasterizer*                       _tileRasterizer;
         const SelectionInfo&                  _selectionInfo;
         osg::Timer_t                          _tick;
         int                                   _tilesLastCull;
         osg::ref_ptr<ProgressCallback>        _progress;    
         double                                _expirationRange2;
         osg::ref_ptr<ModifyBoundingBoxCallback> _bboxCB;
+        const FrameClock*                     _clock;
     };
 
 } } // namespace osgEarth::Drivers::RexTerrainEngine

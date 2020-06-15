@@ -43,15 +43,19 @@ namespace osgEarth { namespace REX
 
     public: // Loader::Request
 
-        /** Fetches the data for the tile node. */
-        void invoke(ProgressCallback*);
+        /** Fetches the data for the tile node. Return true upon success, false upon 
+            failure or cancelation */
+        bool run(ProgressCallback*);
 
         /** Applies the fetched data to the tile node (scene-graph safe)
             return false if the request failed and must be re-queued */
-        bool apply(const osg::FrameStamp*);
+        bool merge();
 
         //! Creates a stateset containing GL compilable objects from the model
         osg::StateSet* createStateSet() const;
+
+        //! Set of data requested
+        const CreateTileManifest& getManifest() const { return _manifest; }
 
     protected:
         Threading::Mutex _mutex;

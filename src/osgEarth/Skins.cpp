@@ -166,7 +166,9 @@ SkinResource::createTexture(osg::Image* image) const
     // don't resize them, let it be
     tex->setResizeNonPowerOfTwoHint(false);
 
-    ImageUtils::activateMipMaps(tex);
+	// JB:  The image could be shared and it's possible that mipmaps could be generated at the same time in different threads.
+	// Need to figure out a safe place to call generateMipMaps, or just rely on baking them into the image beforehand as an art step.
+    //ImageUtils::generateMipmaps(tex);
 
     return tex;
 }
@@ -244,7 +246,7 @@ SkinResource::createImage( const osgDB::Options* dbOptions ) const
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(skin, SkinSymbol);
 
 SkinSymbol::SkinSymbol(const SkinSymbol& rhs,const osg::CopyOp& copyop):
-Taggable<Symbol>(rhs, copyop),
+TaggableWithConfig<Symbol>(rhs, copyop),
 _library(rhs._library),
 _objHeight(rhs._objHeight),
 _minObjHeight(rhs._minObjHeight),
@@ -256,6 +258,7 @@ _name(rhs._name)
 }
 
 SkinSymbol::SkinSymbol( const Config& conf ) :
+TaggableWithConfig<Symbol>(conf),
 _objHeight    ( 0.0f ),
 _minObjHeight ( 0.0f ),
 _maxObjHeight ( FLT_MAX ),

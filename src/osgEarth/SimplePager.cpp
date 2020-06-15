@@ -1,6 +1,7 @@
 #include <osgEarth/SimplePager> 
 #include <osgEarth/TileKey>
 #include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/ShapeDrawable>
@@ -33,21 +34,23 @@ namespace
      * to use. It will report cancelation if the last reported frame number is
      * behind the current master frame number (as tracked by the ProgressMaster)
      */
-    struct MyProgressCallback : public ProgressCallback
+    struct MyProgressCallback : public DatabasePagerProgressCallback
     {
-        MyProgressCallback(ProgressMaster* master)
+        MyProgressCallback(ProgressMaster* master) :
+            DatabasePagerProgressCallback()
         {
             _master = master;
             _lastFrame = 0u;
         }
 
-        // override from ProgressCallback
-        bool isCanceled()
+        virtual bool shouldCancel() const
         {
-            osg::ref_ptr<ProgressMaster> master;
-            if (!_master.lock(master)) return true;
-            if (!_master->_canCancel) return false;
-            return (master->_frame - _lastFrame > 1u);
+            osg::ref_ptr<ProgressMaster> master = _master.get();
+
+            return 
+                (DatabasePagerProgressCallback::shouldCancel()) ||
+                (master.valid() == false) ||
+                (master->_canCancel && _master->_frame - _lastFrame > 1u);
         }
 
         // called by ProgressUpdater
@@ -238,9 +241,10 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
     {
         node = createNode( key, progress );
 
-        if ( node.valid() )
-        {
-            tileBounds = node->getBound();
+        if ( node.valid())
+        {      
+            // TODO:  Some bounds can be invalid, specifically from PlaceNodes, so we just take the computed tile bounds instead.
+            // tileBounds = node->getBound();         
         }
         else
         {
@@ -267,6 +271,33 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
     plod->setRadius( tileRadius );
 
     plod->addChild( node.get() );
+    
+    // Assume geocentric for now.
+    if (true)
+    {
+        const GeoExtent& ccExtent = key.getExtent();
+        if (ccExtent.isValid())
+        {
+            // if the extent is more than 90 degrees, bail
+            GeoExtent geodeticExtent = ccExtent.transform(ccExtent.getSRS()->getGeographicSRS());
+            if (geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0)
+            {
+                // get the geocentric tile center:
+                osg::Vec3d tileCenter;
+                ccExtent.getCentroid(tileCenter.x(), tileCenter.y());
+
+                osg::Vec3d centerECEF;
+                const SpatialReference* mapSRS = osgEarth::SpatialReference::get("epsg:4326");
+                if (mapSRS)
+                {
+                    ccExtent.getSRS()->transform(tileCenter, mapSRS->getGeocentricSRS(), centerECEF);
+                    osg::NodeCallback* ccc = ClusterCullingFactory::create(geodeticExtent);
+                    if (ccc)
+                        plod->addCullCallback(ccc);
+                }
+            }
+        }
+    }
 
     if ( hasChildren )
     {

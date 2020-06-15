@@ -24,6 +24,14 @@ using namespace osgEarth;
 
 #define LC "[ElevationPool] "
 
+#define USE_KEY_MAPPING_MEMORY
+
+#define USE_ENVELOPE_DATA_EXTENTS
+
+#define USE_ENVELOPE_CONTEXT
+
+#define USE_ENVELOPE_TILE_CACHE
+
 #define OE_TEST OE_DEBUG
 
 
@@ -120,9 +128,13 @@ ElevationPool::GetElevationOp::operator()(osg::Object*)
 }
 
 bool
-ElevationPool::fetchTileFromMap(const TileKey& key, const ElevationLayerVector& layers, Tile* tile)
+ElevationPool::fetchTileFromMap(
+    const TileKey& key, 
+    const ElevationLayerVector& layers,
+    KeyFetchMemory& memory,
+    Tile* out_tile) const
 {
-    tile->_loadTime = osg::Timer::instance()->tick();
+    out_tile->_loadTime = osg::Timer::instance()->tick();
 
     osg::ref_ptr<osg::HeightField> hf = new osg::HeightField();
     hf->allocate( _tileSize, _tileSize );
@@ -130,9 +142,13 @@ ElevationPool::fetchTileFromMap(const TileKey& key, const ElevationLayerVector& 
     // Initialize the heightfield to nodata
     hf->getFloatArray()->assign( hf->getFloatArray()->size(), NO_DATA_VALUE );
 
+    std::vector<TileKey> keysTried;
     TileKey keyToUse = key;
-    while( !tile->_hf.valid() && keyToUse.valid() )
+
+    while( !out_tile->_hf.valid() && keyToUse.valid() )
     {
+        keysTried.push_back(keyToUse);
+
         bool ok;
         if (_layers.empty())
         {
@@ -147,8 +163,9 @@ ElevationPool::fetchTileFromMap(const TileKey& key, const ElevationLayerVector& 
 
         if (ok)
         {
-            tile->_hf = GeoHeightField( hf.get(), keyToUse.getExtent() );
-            tile->_bounds = keyToUse.getExtent().bounds();
+            // store the *actual* key (keyToUse) with the heightfield;
+            // may be an ancestor of key in the case of fallback.
+            out_tile->_hf = GeoHeightField( hf.get(), keyToUse.getExtent() );
         }
         else
         {
@@ -156,9 +173,17 @@ ElevationPool::fetchTileFromMap(const TileKey& key, const ElevationLayerVector& 
         }
     }
 
-    tile->_actualKey = keyToUse;
+#ifdef USE_KEY_MAPPING_MEMORY
+    // every key that failed maps to the final key:
+    for(std::vector<TileKey>::const_iterator i = keysTried.begin();
+        i != keysTried.end();
+        ++i)
+    {
+        memory[*i] = keyToUse;
+    }
+#endif
 
-    return tile->_hf.valid();
+    return out_tile->_hf.valid();
 }
 
 void
@@ -182,13 +207,28 @@ ElevationPool::popMRU()
 }
 
 bool
-ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<Tile>& out)
+ElevationPool::tryTile(
+    const TileKey& key, 
+    const ElevationLayerVector& layers, 
+    ElevationPool::KeyFetchMemory& memory,
+    osg::ref_ptr<Tile>& out_tile)
 {
+#ifdef USE_KEY_MAPPING_MEMORY
+    TileKey keyToUse;
+    KeyFetchMemory::iterator i = memory.find(key);
+    keyToUse = (i != memory.end())? i->second : key;
+
+    if (keyToUse.valid() == false)
+        return false;
+#else
+    TileKey keyToUse = key;
+#endif
+
     // first see whether the tile is available
     _tiles.lock();
 
     // locate the tile in the local tile cache:
-    osg::observer_ptr<Tile>& tile_obs = _tiles[key];
+    osg::observer_ptr<Tile>& tile_obs = _tiles[keyToUse];
 
     osg::ref_ptr<Tile> tile;
 
@@ -221,10 +261,10 @@ ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, o
         tile->_status.exchange(STATUS_IN_PROGRESS);
         _tiles.unlock();
 
-        bool ok = fetchTileFromMap(key, layers, tile.get());
+        bool ok = fetchTileFromMap(keyToUse, layers, memory, tile.get());
         tile->_status.exchange( ok ? STATUS_AVAILABLE : STATUS_FAIL );
         
-        out = ok ? tile.get() : 0L;
+        out_tile = ok ? tile.get() : 0L;
         return ok;
     }
 
@@ -232,7 +272,7 @@ ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, o
     else if ( tile->_status == STATUS_AVAILABLE )
     {
         OE_TEST << "  getTile(" << key.str() << ") -> available\n";
-        out = tile.get();
+        out_tile = tile.get();
 
         // Mark this tile as recently used:
         _mru.push_front(tile.get());
@@ -253,7 +293,7 @@ ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, o
     {
         OE_TEST << "  getTile(" << key.str() << ") -> fail\n";
         _tiles.unlock();
-        out = 0L;
+        out_tile = 0L;
         return false;
     }
 
@@ -263,7 +303,7 @@ ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, o
     {
         OE_DEBUG << "  getTile(" << key.str() << ") -> in progress...waiting\n";
         _tiles.unlock();
-        out = 0L;
+        out_tile = 0L;
         return true;            // out:NULL => check back later please.
     }
 }
@@ -278,13 +318,24 @@ ElevationPool::clearImpl()
 }
 
 bool
-ElevationPool::getTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<ElevationPool::Tile>& output)
+ElevationPool::getTile(
+    const TileKey& key, 
+    const ElevationLayerVector& layers,
+    ElevationPool::KeyFetchMemory& memory,
+    osg::ref_ptr<ElevationPool::Tile>& out_tile)
 {   
     OE_START_TIMER(get);
 
+#ifdef USE_KEY_MAPPING_MEMORY
+    // trivial rejection test
+    KeyFetchMemory::iterator i = memory.find(key);
+    if (i != memory.end() && i->second.valid() == false)
+        return false;
+#endif
+
     const double timeout = 30.0;
     osg::ref_ptr<Tile> tile;
-    while( tryTile(key, layers, tile) && !tile.valid() && OE_GET_TIMER(get) < timeout)
+    while( tryTile(key, layers, memory, tile) && !tile.valid() && OE_GET_TIMER(get) < timeout)
     {
         // condition: another thread is working on fetching the tile from the map,
         // so wait and try again later. Do this until we succeed or time out.
@@ -302,7 +353,7 @@ ElevationPool::getTile(const TileKey& key, const ElevationLayerVector& layers, o
         if ( tile->_hf.valid() )
         {
             // got a valid tile, so push it to the query set.
-            output = tile.get();
+            out_tile = tile.get();
         }
         else
         {
@@ -318,6 +369,7 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 {
     osg::ref_ptr<ElevationEnvelope> e = new ElevationEnvelope();
     e->_inputSRS = srs; 
+    e->_requestedLOD = lod;
     e->_lod = lod;
     e->_pool = this;
     
@@ -335,22 +387,9 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
             map->getLayers(e->_layers);
         }
 
-        // Restrict the query resolution to the maximum available elevation data resolution:
-        unsigned maxLOD = 0u;
-        for(ElevationLayerVector::const_iterator i = e->_layers.begin();
-            i != e->_layers.end();
-            ++i)
-        {
-            const ElevationLayer* layer = i->get();
-            if (layer->getDataExtentsUnion().maxLevel().isSet())
-                maxLOD = osg::maximum(maxLOD, layer->getDataExtentsUnion().maxLevel().get());
-        }
-        if (maxLOD > 0u)
-        {
-            e->_lod = maxLOD;
-        }
-
         e->_mapProfile = map->getProfile();
+
+        e->collectDataExtents();
     }
     else
     {
@@ -364,7 +403,13 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 
 ElevationEnvelope::ElevationEnvelope() :
 _pool(0L),
-_lod(0)
+_requestedLOD(0),
+_lod(0),
+_queries(0u),
+_contexthits(0u),
+_cachehits(0u),
+_newcontexts(0u),
+_fails(0u)
 {
     //nop
 }
@@ -375,60 +420,178 @@ ElevationEnvelope::~ElevationEnvelope()
 }
 
 bool
-ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_resolution)
+ElevationEnvelope::sample(
+    double x, double y,
+    Context* context,
+    float& out_elevation, float& out_resolution)
 {
+    out_elevation = NO_DATA_VALUE;
+
+    ++_queries;
+
+    // Keep the envelope in sync with the elevation layers.
+    unsigned changes = 0;
+    for(unsigned i=0; i<_layers.size(); ++i)
+    {
+        if (_layers[i]->getRevision() != _revisions[i])
+        {
+            _revisions[i] = _layers[i]->getRevision();
+            ++changes;
+        }
+    }
+    if (changes > 0)
+    {
+        _memory.clear();
+        _tiles.clear();
+        if (context)
+            context->_tiles.clear();
+        collectDataExtents();
+    }
+
     out_elevation = NO_DATA_VALUE;
     out_resolution = 0.0f;
     bool foundTile = false;
+    osg::ref_ptr<ElevationPool::Tile> tile;
 
     GeoPoint p(_inputSRS.get(), x, y, 0.0f, ALTMODE_ABSOLUTE);
 
+
     if (p.transformInPlace(_mapProfile->getSRS()))
     {
-#if 0
-        // find the tile containing the point:
-        for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
-            tile_ref != _tiles.end();
-            ++tile_ref)
+        unsigned lodToUse = _lod;
+
+#ifdef USE_ENVELOPE_DATA_EXTENTS
+        // check the data extents under the point to come up with an LOD.
+        bool foundData = false;
+        for(SortedDataExtentList::const_iterator i = _dataExtentsSortedHiToLoRes.begin();
+            i != _dataExtentsSortedHiToLoRes.end();
+            ++i)
         {
-            ElevationPool::Tile* tile = tile_ref->get();
-
-            if (tile->_hf.getExtent().contains(p.x(), p.y()))
+            if (i->maxLevel().isSet() && i->contains(p.x(), p.y()))
             {
-                foundTile = true;
+                lodToUse = osg::minimum(_lod, i->maxLevel().get());
+                foundData = true;
+                break;
+            }
+        }
 
-                // Found an intersecting tile; sample the elevation:
-                if (tile->_hf.getElevation(0L, p.x(), p.y(), INTERP_BILINEAR, 0L, out_elevation))
+        if (!foundData)
+        {
+            return false;
+        }
+#endif
+
+#ifdef USE_ENVELOPE_TILE_CACHE
+        // See if we have a cached tile containing the point:
+        if (!foundTile && !context)
+        {
+            for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
+                tile_ref != _tiles.end();
+                ++tile_ref)
+            {
+                tile = tile_ref->get();
+
+                // Important: test against the bounds of the original key that was used
+                // to make the tile request, even if the request fell back on an ancestor
+                // key. We cannot assume that points outside the original request bounds
+                // would result in the same tile.
+                if (lodToUse <= tile->_key.getLOD() &&
+                    tile->_key.getExtent().contains(p.x(), p.y()))
                 {
-                    out_resolution = tile->_hf.getXInterval();
-                    // got it; finished
+                    foundTile = true;
+                    ++_cachehits;
                     break;
                 }
             }
         }
-#endif
+#endif    
 
-        // If we didn't find a tile containing the point, we need to ask the clamper
-        // for the tile so we can add it to the query set.
+        // If we still don't have a tile, we need to ask the pool for the tile.
         if (!foundTile)
         {
-            TileKey key = _mapProfile->createTileKey(p.x(), p.y(), _lod);
-            osg::ref_ptr<ElevationPool::Tile> tile;
+#ifdef USE_ENVELOPE_CONTEXT
 
-            osg::ref_ptr<ElevationPool> pool;
+            if (context && context->_tiles.empty())
+                ++_newcontexts;
 
-            if (_pool.lock(pool) && pool->getTile(key, _layers, tile))
+            // If the user passed in a context, check that first.
+            if (context && context->_tiles.empty() == false)
             {
-                // Got the new tile; put it in the query set:
-                _tiles.insert(tile.get());
-
-                // Then sample the elevation:
-                if (tile->_hf.getElevation(0L, p.x(), p.y(), INTERP_BILINEAR, 0L, out_elevation))
+                for(Context::TileMRU::iterator i = context->_tiles.begin();
+                    i != context->_tiles.end();
+                    ++i)
                 {
-                    out_resolution = 0.5*(tile->_hf.getXInterval() + tile->_hf.getYInterval());
+                    ElevationPool::Tile* temp = i->get();
+
+                    if (lodToUse <= temp->_key.getLOD() &&
+                        temp->_key.getExtent().contains(p.x(), p.y()))
+                    {
+                        tile = temp;
+                        foundTile = true;
+                        context->_tiles.erase(i); // will re-push it to front later
+                        ++_contexthits;
+                        break;
+                    }
+                }
+            }
+#endif
+
+            if (!foundTile)
+            {
+                TileKey key = _mapProfile->createTileKey(p.x(), p.y(), lodToUse);
+
+                osg::ref_ptr<ElevationPool> pool;
+
+                if (_pool.lock(pool) && pool->getTile(key, _layers, _memory, tile))
+                {
+                    foundTile = true;
+
+#ifdef USE_ENVELOPE_TILE_CACHE
+                    // Got the new tile; put it in the query set:
+                    _tiles.insert(tile.get());
+#endif
                 }
             }
         }
+
+        // Finally, so the actual elevation query against out found tile.
+        if (foundTile)
+        {
+            if (tile->_hf.getElevation(0L, p.x(), p.y(), INTERP_BILINEAR, 0L, out_elevation))
+            {
+                out_resolution = 0.5*(tile->_hf.getXInterval() + tile->_hf.getYInterval());
+            }
+
+#ifdef USE_ENVELOPE_CONTEXT
+            // If the user passed in a context, store the tile there so the next query
+            // for the same context has a chance of being faster.
+            if (context)
+            {
+                context->_tiles.push_front(tile.get());
+                if (context->_tiles.size() > 4)
+                    context->_tiles.pop_back();
+            }
+#endif
+        }
+        else
+        {
+            ++_fails;
+        }
+
+#if 0
+        if (_queries % 500 == 0)
+        {
+            OE_INFO 
+                <<": Q="<<_queries
+                <<"; Ctx=" << _contexthits << "("<<100.0f*(float)_contexthits/(float)_queries<<")"
+                <<"; Cache=" << 100.0f*(float)_cachehits/(float)_queries
+                <<"; NewCtx=" << _newcontexts
+                <<"; Fail=" << 100.0f*(float)_fails/(float)_queries
+                << std::endl;
+
+            _queries = 0, _contexthits = 0, _cachehits = 0, _newcontexts = 0, _fails = 0;
+        }
+#endif
     }
     else
     {
@@ -443,11 +606,19 @@ float
 ElevationEnvelope::getElevation(double x, double y)
 {
     OE_PROFILING_ZONE;
-    //char buf[16]; itoa(_lod, buf, 10);
-    //OE_PROFILING_ZONE_TEXT(buf);
 
     float elevation, resolution;
-    sample(x, y, elevation, resolution);
+    sample(x, y, NULL, elevation, resolution);
+    return elevation;
+}
+
+float
+ElevationEnvelope::getElevation(double x, double y, ElevationEnvelope::Context& context)
+{
+    OE_PROFILING_ZONE;
+
+    float elevation, resolution;
+    sample(x, y, &context, elevation, resolution);
     return elevation;
 }
 
@@ -456,7 +627,7 @@ ElevationEnvelope::getElevationAndResolution(double x, double y)
 {
     OE_PROFILING_ZONE;
     float elevation, resolution;
-    sample(x, y, elevation, resolution);
+    sample(x, y, NULL, elevation, resolution);
     return std::make_pair(elevation, resolution);
 }
 
@@ -476,7 +647,7 @@ ElevationEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
     for (std::vector<osg::Vec3d>::const_iterator v = input.begin(); v != input.end(); ++v)
     {
         float elevation, resolution;
-        sample(v->x(), v->y(), elevation, resolution);
+        sample(v->x(), v->y(), NULL, elevation, resolution);
         output.push_back(elevation);
         if (elevation != NO_DATA_VALUE)
             ++count;
@@ -502,7 +673,7 @@ ElevationEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
 
         float elevation, resolution;
         
-        if (sample(v->x(), v->y(), elevation, resolution))
+        if (sample(v->x(), v->y(), NULL, elevation, resolution))
         {
             if (elevation < min) min = elevation;
             if (elevation > max) max = elevation;
@@ -516,7 +687,7 @@ ElevationEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
         centroid /= input.size();
 
         float elevation, resolution;
-        if (sample(centroid.x(), centroid.y(), elevation, resolution))
+        if (sample(centroid.x(), centroid.y(), NULL, elevation, resolution))
         {
             if (elevation < min) min = elevation;
             if (elevation > max) max = elevation;
@@ -530,4 +701,85 @@ const SpatialReference*
 ElevationEnvelope::getSRS() const
 {
     return _inputSRS.get();
+}
+
+void
+ElevationEnvelope::collectDataExtents()
+{
+    // Restrict the query resolution to the maximum available elevation data resolution:
+    _revisions.clear();
+
+    _lod = _requestedLOD;
+
+    unsigned maxLOD = 0u;
+    for(ElevationLayerVector::const_iterator i = _layers.begin();
+        i != _layers.end();
+        ++i)
+    {
+        const ElevationLayer* layer = i->get();
+
+        if (layer->getDataExtentsUnion().maxLevel().isSet())
+        {
+            maxLOD = osg::maximum(maxLOD, layer->getDataExtentsUnion().maxLevel().get());
+        }
+
+        // record the revision at the time of creation:
+        _revisions.push_back(layer->getRevision());
+    }
+    if (maxLOD > 0u)
+    {
+        _lod = osg::minimum(_requestedLOD, maxLOD);
+    }
+
+    _dataExtentsSortedHiToLoRes.clear();
+
+    for(ElevationLayerVector::const_iterator i = _layers.begin();
+        i != _layers.end();
+        ++i)
+    {
+        const ElevationLayer* layer = i->get();
+        const DataExtentList& del = layer->getDataExtents();
+        for(DataExtentList::const_iterator k = del.begin();
+            k != del.end();
+            ++k)
+        {
+            const DataExtent& de = *k;
+
+            GeoExtent localExtent = _mapProfile->clampAndTransformExtent(de);
+
+            if (!de.maxLevel().isSet())
+            {
+                _dataExtentsSortedHiToLoRes.push_front(DataExtent(localExtent));
+            }
+            else
+            {
+                unsigned localMaxLevel = _mapProfile->getEquivalentLOD(layer->getProfile(), de.maxLevel().get());
+
+                SortedDataExtentList::iterator m;
+                for(m = _dataExtentsSortedHiToLoRes.begin();
+                    m != _dataExtentsSortedHiToLoRes.end();
+                    ++m)
+                {
+                    const DataExtent& rhs = *m;
+                    if (rhs.maxLevel().isSet() && localMaxLevel > rhs.maxLevel().get())
+                    {
+                        break;
+                    }
+                }
+                _dataExtentsSortedHiToLoRes.insert(m, DataExtent(localExtent, 0, localMaxLevel));
+            }
+        }
+    }
+
+#if 0
+    OE_INFO << "Extents:" << std::endl;
+    for(SortedDataExtentList::const_iterator i = _dataExtentsSortedHiToLoRes.begin();
+        i != _dataExtentsSortedHiToLoRes.end();
+        ++i)
+    {
+        OE_INFO << i->toString()
+            << " maxLevel=" << (i->maxLevel().isSet()? i->maxLevel().get() : 99u)
+            << std::endl;
+    }
+#endif
 }

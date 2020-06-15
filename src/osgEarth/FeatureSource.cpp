@@ -38,14 +38,14 @@ FeatureSource::Options::getConfig() const
     conf.set( "fid_attribute", fidAttribute() );
     conf.set( "rewind_polygons", rewindPolygons());
 
-    if ( !_filterOptions.empty() )
+    if (!filters().empty())
     {
-        Config filters;
-        for(unsigned i=0; i<_filterOptions.size(); ++i)
+        Config filtersConf;
+        for(unsigned i=0; i<filters().size(); ++i)
         {
-            filters.add( _filterOptions[i].getConfig() );
+            filtersConf.add( filters()[i].getConfig() );
         }
-        conf.set( "filters", filters );
+        conf.set( "filters", filtersConf );
     }
 
     return conf;
@@ -63,20 +63,9 @@ FeatureSource::Options::fromConfig(const Config& conf)
     conf.get( "fid_attribute", fidAttribute() );
     conf.get( "rewind_polygons", rewindPolygons());
 
-#if 0
-    // For backwards-compatibility (before adding the "filters" block)
-    // TODO: Remove at some point in the distant future.
-    const std::string bcstrings[3] = { "resample", "buffer", "convert" };
-    for(unsigned i=0; i<3; ++i) {
-        if ( conf.hasChild(bcstrings[i]) ) {
-            _filterOptions.push_back( conf.child(bcstrings[i]) );
-        }
-    }
-#endif
-
-    const Config& filters = conf.child("filters");
-    for(ConfigSet::const_iterator i = filters.children().begin(); i != filters.children().end(); ++i)
-        _filterOptions.push_back( *i );
+    const Config& filtersConf = conf.child("filters");
+    for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
+        filters().push_back( *i );
 }
 
 //...................................................................
@@ -115,22 +104,10 @@ FeatureSource::openImplementation()
         return parent;
 
     // Create and initialize the filters.
-    for(unsigned i=0; i<options().filters().size(); ++i)
+    _filters = FeatureFilterChain::create(options().filters(), getReadOptions());
+    if (_filters.valid() && _filters->getStatus().isError())
     {
-        const ConfigOptions& conf = options().filters()[i];
-        FeatureFilter* filter = FeatureFilterRegistry::instance()->create( conf.getConfig(), 0L );
-        if ( filter )
-        {
-            if (_filters.valid() == false)
-                _filters = new FeatureFilterChain();
-
-            _filters->push_back( filter );
-            Status s = filter->initialize(getReadOptions());
-            if (s.isError())
-            {
-                OE_WARN << LC << "Filter problem: " << filter->getName() << " : " << s.message() << std::endl;
-            }
-        }
+        return _filters->getStatus();
     }
 
     return Status::NoError;
@@ -213,4 +190,127 @@ FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) cons
             cx = filter->get()->push( features, cx );
         }
     }
+}
+
+FeatureCursor*
+FeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
+{
+    return createFeatureCursorImplementation(query, progress);
+}
+
+namespace
+{
+    struct MultiCursor : public FeatureCursor
+    {
+        typedef std::vector<osg::ref_ptr<FeatureCursor> > Cursors;
+        
+        Cursors _cursors;
+        Cursors::iterator _iter;
+
+        MultiCursor(ProgressCallback* progress) :
+            FeatureCursor(progress), _iter(_cursors.end()) { }
+
+        void finish()
+        {
+            _iter = _cursors.begin();
+            while(_iter != _cursors.end() && !_iter->get()->hasMore())
+                _iter++;
+        }
+
+        bool hasMore() const
+        {
+            return _iter != _cursors.end() && _iter->get()->hasMore();
+        }
+
+        Feature* nextFeature()
+        {
+            Feature* f = _iter->get()->nextFeature();
+
+            while(_iter != _cursors.end() && !_iter->get()->hasMore())
+                _iter++;
+
+            return f;
+        }
+    };
+}
+
+FeatureCursor*
+FeatureSource::createFeatureCursor(const TileKey& key, ProgressCallback* progress)
+{
+    return createFeatureCursor(key, Distance(0.0), progress);
+}
+
+FeatureCursor*
+FeatureSource::createFeatureCursor(const TileKey& key, const Distance& buffer, ProgressCallback* progress)
+{
+    if (_featureProfile.valid())
+    {
+        // If this is a tiled FS we need to translate the caller's tilekey into
+        // feature source tilekeys and combine multiple queries into one.
+        const Profile* tilingProfile = _featureProfile->getTilingProfile();
+        if (tilingProfile)
+        {
+            std::vector<TileKey> intersectingKeys;
+            if (buffer.as(Units::METERS) == 0.0)
+            {
+                tilingProfile->getIntersectingTiles(key, intersectingKeys);
+            }
+            else
+            {
+                // TODO
+                // total cheat to just get the surrounding tiles :)
+                GeoExtent extent = key.getExtent();
+                extent.expand(extent.width()/2.0, extent.height()/2.0);
+                unsigned lod = tilingProfile->getEquivalentLOD(key.getProfile(), key.getLOD());
+                tilingProfile->getIntersectingTiles(extent, lod, intersectingKeys);
+            }
+
+            UnorderedSet<TileKey> featureKeys;
+            for (int i = 0; i < intersectingKeys.size(); ++i)
+            {        
+                if (intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
+                    featureKeys.insert(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
+                else
+                    featureKeys.insert(intersectingKeys[i]);
+            }
+
+            osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
+
+            // Query and collect all the features we need for this tile.
+            for (UnorderedSet<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
+            {
+                Query query;        
+                query.tileKey() = *i;
+
+                osg::ref_ptr<FeatureCursor> cursor = createFeatureCursor(query, progress);
+                if (cursor.valid())
+                {
+                    multi->_cursors.push_back(cursor.get());
+                }
+            }
+
+            if (multi->_cursors.empty())
+                return NULL;
+
+            multi->finish();
+            return multi.release();
+        }
+
+        else
+        {
+            GeoExtent localExtent = key.getExtent().transform(_featureProfile->getSRS());
+            if (localExtent.isInvalid())
+                return NULL;
+
+            localExtent.expand(buffer*2.0, buffer*2.0);
+
+            // Set up the query; bounds must be in the feature SRS:
+            Query query;
+            query.bounds() = localExtent.bounds();
+
+            return createFeatureCursor(query, progress);
+        }
+    }
+
+    return NULL;
 }

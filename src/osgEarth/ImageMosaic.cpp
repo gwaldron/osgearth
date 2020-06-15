@@ -111,12 +111,8 @@ ImageMosaic::createImage()
     image->setInternalTextureFormat(tile->_image->getInternalTextureFormat());
 
     //Initialize the image to be completely white!
-    //memset(image->data(), 0xFF, image->getImageSizeInBytes());
-
     ImageUtils::PixelWriter write(image.get());
-    for (unsigned t = 0; t < pixelsHigh; ++t)
-        for (unsigned s = 0; s < pixelsWide; ++s)
-            write(osg::Vec4(1,1,1,0), s, t);
+    write.assign(osg::Vec4(1,1,1,0));
 
     //Composite the incoming images into the master image
     for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)

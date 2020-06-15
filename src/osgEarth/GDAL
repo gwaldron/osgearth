@@ -34,7 +34,7 @@ class GDALRasterBand;
 
 namespace osgEarth { namespace GDAL
 {
-    /** 
+    /**
      * Encapsulates a user-supplied GDALDataset
      */
     class OSGEARTH_EXPORT ExternalDataset : public osg::Referenced // NO EXPORT; header only
@@ -58,7 +58,7 @@ namespace osgEarth { namespace GDAL
         bool         _ownsDataset;
     };
 
-    // GDAL-specific options to be incorpoated by the LayerOptions below
+    // GDAL-specific serialization data to be incorpoated by the LayerOptions below
     class OSGEARTH_EXPORT Options
     {
     public:
@@ -69,6 +69,7 @@ namespace osgEarth { namespace GDAL
         OE_OPTION(unsigned, subDataSet);
         OE_OPTION(RasterInterpolation, interpolation);
         OE_OPTION(ProfileOptions, warpProfile);
+        OE_OPTION(bool, useVRT);
 
         void readFrom(const Config& conf);
         void writeTo(Config& conf) const;
@@ -110,17 +111,23 @@ namespace osgEarth { namespace GDAL
             unsigned tileSize,
             DataExtentList& out_dataExtents,
             const osgDB::Options* readOptions);
-        
+
         //! Creates an image if possible
         osg::Image* createImage(
             const TileKey& key,
             unsigned tileSize,
-            bool isCoverage, 
+            bool isCoverage,
             ProgressCallback* progress);
 
         //! Creates a heightfield if possible
         osg::HeightField* createHeightField(
-            const TileKey& key, 
+            const TileKey& key,
+            unsigned tileSize,
+            ProgressCallback* progress);
+
+        //! Creates a heightfield if possible using a faster path that creates a temporary warped VRT.
+        osg::HeightField* createHeightFieldWithVRT(
+            const TileKey& key,
             unsigned tileSize,
             ProgressCallback* progress);
 
@@ -164,7 +171,7 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT GDALImageLayer : public ImageLayer
     {
-    public:
+    public: // serialization
         class OSGEARTH_EXPORT Options : public ImageLayer::Options, public GDAL::Options {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
@@ -172,7 +179,6 @@ namespace osgEarth
         private:
             void fromConfig(const Config&);
         };
-        //typedef GDAL::GDALLayerOptions<ImageLayer::Options> Options;
 
     public:
         META_Layer(osgEarth, GDALImageLayer, Options, ImageLayer, GDALImage);
@@ -197,6 +203,10 @@ namespace osgEarth
         void setInterpolation(const RasterInterpolation& value);
         const RasterInterpolation& getInterpolation() const;
 
+        //! Use the new VRT read approach
+        void setUseVRT(const bool &value);
+        const bool& getUseVRT() const;
+
         //! User-supplied external dataset
         void setExternalDataset(GDAL::ExternalDataset* value);
 
@@ -204,7 +214,7 @@ namespace osgEarth
 
         //! Called by the constructor
         virtual void init();
-        
+
         //! Establishes a connection to the TMS repository
         virtual Status openImplementation();
 
@@ -221,6 +231,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<GDAL::Driver> _driver;
+        osg::ref_ptr<const Profile> _overrideProfile;
     };
 
 
@@ -238,7 +249,7 @@ namespace osgEarth
 
     public:
         META_Layer(osgEarth, GDALElevationLayer, Options, ElevationLayer, GDALElevation);
-        
+
         //! Base URL for TMS requests
         void setURL(const URI& value);
         const URI& getURL() const;
@@ -263,11 +274,15 @@ namespace osgEarth
         void setExternalDataset(GDAL::ExternalDataset* value);
         GDAL::ExternalDataset* getExtenalDataset() const;
 
+        //! Use the new VRT read approach
+        void setUseVRT(const bool& value);
+        const bool& getUseVRT() const;
+
     public: // Layer
 
         //! Called by the constructor
         virtual void init();
-        
+
         //! Establishes a connection to the repository
         virtual Status openImplementation();
 
@@ -284,6 +299,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<GDAL::Driver> _driver;
+        osg::ref_ptr<const Profile> _overrideProfile;
     };
 
 } // namespace osgEarth

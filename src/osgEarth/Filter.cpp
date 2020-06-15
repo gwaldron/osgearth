@@ -41,6 +41,40 @@ FeatureFilter::~FeatureFilter()
 }
 
 /********************************************************************************/
+
+#undef LC
+#define LC "[FeatureFilterChain] "
+
+FeatureFilterChain*
+FeatureFilterChain::create(const std::vector<ConfigOptions>& filters, const osgDB::Options* readOptions)
+{
+    // Create and initialize the filters.
+    FeatureFilterChain* chain = NULL;
+
+    for(unsigned i=0; i<filters.size(); ++i)
+    {
+        const ConfigOptions& conf = filters[i];
+        FeatureFilter* filter = FeatureFilterRegistry::instance()->create( conf.getConfig(), 0L );
+        if ( filter )
+        {
+            if (chain == NULL)
+                chain = new FeatureFilterChain();
+
+            chain->push_back( filter );
+            Status s = filter->initialize(readOptions);
+            if (s.isError())
+            {
+                chain->_status = s;
+                OE_WARN << LC << "Filter problem: " << filter->getName() << " : " << s.message() << std::endl;
+                break;
+            }
+        }
+    }
+
+    return chain;
+}
+
+/********************************************************************************/
         
 #undef  LC
 #define LC "[FeatureFilterRegistry] "
@@ -268,7 +302,7 @@ FeaturesToNodeFilter::transformAndLocalize(const osg::Vec3d&              input,
                                            const osg::Matrixd&            world2local,
                                            bool                           toECEF )
 {
-    if ( toECEF )
+    if ( toECEF && inputSRS && outputSRS )
     {
         ECEF::transformAndLocalize( input, inputSRS, output, outputSRS, world2local );
     }

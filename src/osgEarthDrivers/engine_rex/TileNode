@@ -62,11 +62,10 @@ namespace osgEarth { namespace REX
     public:
         TileNode();
 
+        virtual ~TileNode();
+
         /** TileKey of the key representing the data in this node. */
         const TileKey& getKey() const { return _key; }
-
-        /** Tells this tile that it needs to request data (when set to true) */
-        //void setDirty(bool value);
 
         /** Indicates that this tile should never be unloaded. */
         void setDoNotExpire(bool value);
@@ -82,10 +81,13 @@ namespace osgEarth { namespace REX
         void create(const TileKey& key, TileNode* parent, EngineContext* context);
 
         /** Whether the tile is expired; i.e. has not been visited in some time. */
-        bool isDormant(const osg::FrameStamp*) const;
+        bool isDormant() const;
 
         /** Whether all the subtiles are this tile are dormant (have not been visited recently) */
-        bool areSubTilesDormant(const osg::FrameStamp*) const;
+        bool areSubTilesDormant() const;
+
+        /** Whether all 3 quadtree siblings of this tile are dormant */
+        bool areSiblingsDormant() const;
 
         /** Removed any sub tiles from the scene graph. Please call from a safe thread only (update) */
         void removeSubTiles();
@@ -94,13 +96,15 @@ namespace osgEarth { namespace REX
         void notifyOfArrival(TileNode* that);
 
         /** Returns the tile's parent; convenience function */
-        TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
+        TileNode* getParentTile() { return getNumParents()>0?dynamic_cast<TileNode*>(getParent(0)):NULL; }
+        const TileNode* getParentTile() const { return getNumParents()>0?dynamic_cast<const TileNode*>(getParent(0)):NULL; }
 
         /** Returns the SurfaceNode under this node. */
         SurfaceNode* getSurfaceNode() { return _surface.get(); }
 
         /** Elevation data for this node along with its scale/bias matrix; needed for bounding box */
         void setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix);
+        void updateElevationRaster();
         const osg::Image* getElevationRaster() const;
         const osg::Matrixf& getElevationMatrix() const;
 
@@ -123,6 +127,10 @@ namespace osgEarth { namespace REX
         void loadSync();
 
         void refreshSharedSamplers(const RenderBindings& bindings);
+
+        unsigned getRevision() const { return _revision; }
+
+        bool isEmpty() const { return _empty; }
         
     public: // osg::Node
 
@@ -148,7 +156,8 @@ namespace osgEarth { namespace REX
         bool                               _empty;
         bool                               _imageUpdatesActive;
         TileKey                            _subdivideTestKey;
-        bool _doNotExpire;
+        bool                               _doNotExpire;
+        unsigned                           _revision;
 
         typedef std::queue<osg::ref_ptr<LoadTileData> > LoadQueue;
         Lockable<LoadQueue> _loadQueue;
@@ -184,6 +193,9 @@ namespace osgEarth { namespace REX
 
         /** Ensure that inherited data from the parent node is up to date. */
         void refreshInheritedData(TileNode* parent, const RenderBindings& bindings);
+
+        // Inherit one shared sampler from parent tile if possible
+        void inheritSharedSampler(int binding);
 
         const TerrainOptions& options() const;
     };

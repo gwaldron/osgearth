@@ -25,6 +25,7 @@
 #include <osgEarth/SpatialReference>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Status>
+#include <osgEarth/ThreadingUtils>
 
 #include <osg/Referenced>
 #include <osg/Image>
@@ -35,6 +36,8 @@ namespace osgEarth
 {
     class TerrainResolver;
     class GeoExtent;
+
+    using namespace Threading;
 
     /**
      * A georeferenced 3D point.
@@ -504,6 +507,11 @@ namespace osgEarth
         void expand( double x, double y );
 
         /**
+        * Expands the extent by x and y.
+        */
+        void expand(const Distance& x, const Distance& y);
+
+        /**
          *Gets the area of this GeoExtent
          */
         double area() const;
@@ -601,10 +609,11 @@ namespace osgEarth
         //! Construct an image with an error status
         GeoImage(const Status&);
 
-        /** 
-         * Constructs a new goereferenced image.
-         */
+        //! Constructs a new goereferenced image.
         GeoImage(osg::Image* image, const GeoExtent& extent);
+
+        //! Constructs a new goereferenced image from a future.
+        GeoImage(Future<osg::Image> image, const GeoExtent& extent);
 
         /** dtor */
         virtual ~GeoImage() { }
@@ -702,7 +711,8 @@ namespace osgEarth
 		double getUnitsPerPixel() const;
 
     private:
-        osg::ref_ptr<osg::Image> _image;
+        osg::ref_ptr<osg::Image> _myimage;
+        mutable optional<Future<osg::Image> > _future;
         GeoExtent                _extent;
         Status                   _status;
     };
@@ -718,6 +728,8 @@ namespace osgEarth
         NormalMap(const osg::Image& image);
 
         void set(unsigned s, unsigned t, const osg::Vec3& normal, float curvature =0.0f);
+
+        void generateCurvatures();
 
         osg::Vec3 getNormal(unsigned s, unsigned t) const;
 

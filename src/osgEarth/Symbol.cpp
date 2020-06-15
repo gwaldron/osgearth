@@ -86,6 +86,10 @@ void
 Symbol::mergeConfig(const Config& conf)
 {
     conf.get("script", _script);
+    if (conf.hasChild("__original"))
+        _ctorConfig = conf.child("__original");
+    else
+        _ctorConfig = conf;
 }
 
 Config
@@ -93,6 +97,8 @@ Symbol::getConfig() const
 {
     Config conf;
     conf.set("script", _script);
+    if (!_ctorConfig.empty())
+        conf.add("__original", _ctorConfig);
     return conf;
 }
 

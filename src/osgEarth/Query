@@ -54,7 +54,7 @@ namespace osgEarth
         optional<std::string>& orderby() { return _orderby; }
         const optional<std::string>& orderby() const { return _orderby; }
 
-        /** Sets a driver-specific query expression. */
+        /** Sets tilekey to use for tiled feature sources */
         optional<TileKey>& tileKey() { return _tileKey; }
         const optional<TileKey>& tileKey() const { return _tileKey; }
 

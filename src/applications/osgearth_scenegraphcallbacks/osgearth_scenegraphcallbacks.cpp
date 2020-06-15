@@ -35,7 +35,7 @@ using namespace osgEarth::Util;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -67,6 +67,8 @@ public:
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator(arguments) );

@@ -39,10 +39,10 @@ SimpleOceanLayer::Options::getConfig() const
     Config conf = VisibleLayer::Options::getConfig();
     conf.set("color", _color);
     conf.set("max_altitude", _maxAltitude);
-    conf.set("mask_layer", _maskLayer);
     conf.set("use_bathymetry", _useBathymetry);
     conf.set("texture", _textureURI);
     conf.set("texture_lod", _textureLOD);
+    maskLayer().set(conf, "mask_layer");
     return conf;
 }
 
@@ -56,10 +56,10 @@ SimpleOceanLayer::Options::fromConfig(const Config& conf)
 
     conf.get("color", _color);
     conf.get("max_altitude", _maxAltitude);
-    conf.get("mask_layer", _maskLayer);
     conf.get("use_bathymetry", _useBathymetry);
     conf.get("texture", _textureURI);
     conf.get("texture_lod", _textureLOD);
+    maskLayer().get(conf, "mask_layer");
 }
 
 //...................................................................
@@ -118,6 +118,31 @@ SimpleOceanLayer::init()
     setColor(options().color().get());
     setMaxAltitude(options().maxAltitude().get());
     setSeaLevel(0.0f); // option?
+
+    installDefaultOpacityShader();
+}
+
+Config
+SimpleOceanLayer::getConfig() const
+{
+    Config c = VisibleLayer::getConfig();
+    return c;
+}
+
+Status
+SimpleOceanLayer::openImplementation()
+{
+    Status parent = VisibleLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
+    Status fsStatus = options().maskLayer().open(getReadOptions());
+    if (fsStatus.isError())
+        return fsStatus;
+
+    updateMaskLayer();
+
+    return Status::NoError;
 }
 
 void
@@ -157,7 +182,7 @@ SimpleOceanLayer::setSurfaceImage(osg::Image* image)
         tex->setUnRefImageDataAfterApply(true);
 
         osg::StateSet* ss = getOrCreateStateSet();
-        ss->setTextureAttributeAndModes(_texReservation.unit(), tex, 1); // todo: reserve a slot
+        ss->setTextureAttributeAndModes(_texReservation.unit(), tex, 1);
         ss->setDefine("OE_OCEAN_TEXTURE", "oe_ocean_tex");
         ss->addUniform(new osg::Uniform("oe_ocean_tex", _texReservation.unit()));
 
@@ -173,29 +198,38 @@ SimpleOceanLayer::setSurfaceImage(osg::Image* image)
 void
 SimpleOceanLayer::setMaskLayer(ImageLayer* maskLayer)
 {
-    if (maskLayer)
+    if (maskLayer != options().maskLayer().getLayer())
     {
-        if (!maskLayer->getEnabled())
+        options().maskLayer().setLayer(maskLayer);
+        updateMaskLayer();
+    }
+}
+
+ImageLayer*
+SimpleOceanLayer::getMaskLayer() const
+{
+    return options().maskLayer().getLayer();
+}
+
+void
+SimpleOceanLayer::updateMaskLayer()
+{
+    ImageLayer* layer = options().maskLayer().getLayer();
+
+    if (layer && layer->isOpen())
+    {
+        if (!layer->isShared())
         {
-            OE_WARN << LC << "Mask layer \"" << maskLayer->getName() << "\" disabled\n";
+            OE_WARN << LC << "Mask layer \"" << layer->getName() << "\" is not a shared\n";
             return;
         }
-
-        if (!maskLayer->isShared())
-        {
-            OE_WARN << LC << "Mask layer \"" << maskLayer->getName() << "\" is not a shared\n";
-            return;
-        }
-
-        // Just to support getMaskLayer
-        _maskLayer.setLayer(maskLayer);
 
         // activate the mask.
         osg::StateSet* ss = getOrCreateStateSet();
-        ss->setDefine("OE_OCEAN_MASK", maskLayer->getSharedTextureUniformName());
-        ss->setDefine("OE_OCEAN_MASK_MATRIX", maskLayer->getSharedTextureMatrixUniformName());
+        ss->setDefine("OE_OCEAN_MASK", layer->getSharedTextureUniformName());
+        ss->setDefine("OE_OCEAN_MASK_MATRIX", layer->getSharedTextureMatrixUniformName());
 
-        OE_INFO << LC << "Installed \"" << maskLayer->getName() << "\" as mask layer\n";
+        OE_INFO << LC << "Installed \"" << layer->getName() << "\" as mask layer\n";
     }
 
     else
@@ -204,28 +238,26 @@ SimpleOceanLayer::setMaskLayer(ImageLayer* maskLayer)
         ss->removeDefine("OE_OCEAN_MASK");
         ss->removeDefine("OE_OCEAN_MASK_MATRIX");
 
-        OE_INFO << LC << "Uninstalled mask layer\n";
+        //OE_INFO << LC << "Uninstalled mask layer\n";
     }
-}
-
-ImageLayer*
-SimpleOceanLayer::getMaskLayer() const
-{
-    return _maskLayer.getLayer();
 }
 
 void
 SimpleOceanLayer::addedToMap(const Map* map)
 {    
     VisibleLayer::addedToMap(map);
-    _maskLayer.connect(map, options().maskLayer());
+    
+    options().maskLayer().addedToMap(map);
+    updateMaskLayer();
 }
 
 void
 SimpleOceanLayer::removedFromMap(const Map* map)
 {
+    options().maskLayer().removedFromMap(map);
+    updateMaskLayer();
+
     VisibleLayer::removedFromMap(map);
-    _maskLayer.disconnect(map);
 }
 
 void
@@ -233,7 +265,7 @@ SimpleOceanLayer::setColor(const Color& color)
 {
     options().color() = color;
     getOrCreateStateSet()->getOrCreateUniform(
-        "ocean_color", osg::Uniform::FLOAT_VEC4)->set(color);
+        "oe_ocean_color", osg::Uniform::FLOAT_VEC4)->set(color);
 }
 
 const Color&
@@ -247,7 +279,10 @@ SimpleOceanLayer::setMaxAltitude(const float& value)
 {
     options().maxAltitude() = value;
     getOrCreateStateSet()->getOrCreateUniform(
-        "ocean_maxAltitude", osg::Uniform::FLOAT)->set(value);
+        "oe_ocean_maxAltitude", osg::Uniform::FLOAT)->set(value);
+
+    // temporary shiv:
+    setMaxVisibleRange(value);
 }
 
 const float&
@@ -268,7 +303,7 @@ SimpleOceanLayer::setSeaLevel(const float& value)
 {
     options().seaLevel() = value;
     getOrCreateStateSet()->getOrCreateUniform(
-        "ocean_seaLevel", osg::Uniform::FLOAT)->set(value);
+        "oe_ocean_seaLevel", osg::Uniform::FLOAT)->set(value);
 }
 
 const float&

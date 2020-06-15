@@ -103,7 +103,7 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
 
         if (minLevel <= key.getLOD() && 
             maxLevel >= key.getLOD() &&
-            (extent.isInvalid() || extent.intersects(i->first.getExtent())))
+            (extent.isInvalid() || extent.intersects(key.getExtent())))
         {
             i->second._tile->refreshLayers(manifest);
         }
@@ -146,6 +146,7 @@ TileNodeRegistry::add(TileNode* tile)
     se->_tile = tile;
     se->_lastTime = DBL_MAX;
     se->_lastFrame = ~0;
+    se->_lastRange = FLT_MAX;
     _tracker.push_front(se);
 
     // init the table entry:
@@ -274,7 +275,7 @@ TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
 }
 
 void
-TileNodeRegistry::update(TileNode* tile, const osg::FrameStamp* fs)
+TileNodeRegistry::update(TileNode* tile, osg::NodeVisitor& nv)
 {
     _mutex.lock();
 
@@ -284,8 +285,12 @@ TileNodeRegistry::update(TileNode* tile, const osg::FrameStamp* fs)
     {
         TableEntry& e = i->second;
         TrackerEntry* se = (*e._trackerptr);
-        se->_lastTime = fs->getReferenceTime();
-        se->_lastFrame = fs->getFrameNumber();
+        se->_lastTime = _clock->getTime();
+        se->_lastFrame = _clock->getFrame();
+
+        const osg::BoundingSphere& bs = tile->getBound();
+        float range = nv.getDistanceToViewPoint(bs.center(), true) - bs.radius();
+        se->_lastRange = osg::minimum(se->_lastRange, range);
 
         // Move the tracker to the front of the list (ahead of the sentry).
         // Once a cull traversal is complete, all visited tiles will be
@@ -303,7 +308,13 @@ TileNodeRegistry::update(TileNode* tile, const osg::FrameStamp* fs)
 }
 
 void
-TileNodeRegistry::collectTheDead(double olderThanTime, unsigned olderThanFrame, unsigned maxTiles, std::vector<osg::observer_ptr<TileNode> >& output)
+TileNodeRegistry::collectDormantTiles(
+    osg::NodeVisitor& nv,
+    double oldestAllowableTime,
+    unsigned oldestAllowableFrame,
+    float farthestAllowableRange,
+    unsigned maxTiles,
+    std::vector<osg::observer_ptr<TileNode> >& output)
 {
     _mutex.lock();
 
@@ -312,7 +323,6 @@ TileNodeRegistry::collectTheDead(double olderThanTime, unsigned olderThanFrame, 
     // After cull, all visited tiles are in front of the sentry, and all
     // non-visited tiles are behind it. Start at the sentry position and
     // iterate over the non-visited tiles, checking them for deletion.
-    // We never remove tiles at the first LOD!
     Tracker::iterator i = _sentryptr;
     Tracker::iterator tmp;
     for(++i; i != _tracker.end() && count < maxTiles; ++i)
@@ -322,8 +332,10 @@ TileNodeRegistry::collectTheDead(double olderThanTime, unsigned olderThanFrame, 
         const TileKey& key = se->_tile->getKey();
 
         if (se->_tile->getDoNotExpire() == false &&
-            se->_lastTime < olderThanTime &&
-            se->_lastFrame < olderThanFrame)
+            se->_lastTime < oldestAllowableTime &&
+            se->_lastFrame < oldestAllowableFrame &&
+            se->_lastRange > farthestAllowableRange &&
+            se->_tile->areSiblingsDormant())
         {
             if (_notifyNeighbors)
             {
@@ -347,6 +359,11 @@ TileNodeRegistry::collectTheDead(double olderThanTime, unsigned olderThanFrame, 
             delete se;
 
             ++count;
+        }
+        else
+        {
+            // reset the range in preparation for the next frame.
+            se->_lastRange = FLT_MAX;
         }
     }
 

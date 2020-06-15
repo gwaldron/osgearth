@@ -63,20 +63,21 @@ void addParks    (Map* map);
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
     osg::ArgumentParser arguments(&argc,argv);
 
     // create the map.
-    Map* map = new Map();
+    osg::ref_ptr<Map> map = new Map();
 
-    addImagery( map );
-    addElevation( map );
-    addBuildings( map );
-    addStreets( map );
-    addParks( map );
+    addImagery( map.get() );
+    addElevation( map.get() );
+    addBuildings( map.get() );
+    addStreets( map.get() );
+    addParks( map.get() );
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
-    
+
     EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
 
@@ -84,7 +85,7 @@ main(int argc, char** argv)
     viewer.setSceneData( root );
 
     // make the map scene graph:
-    MapNode* mapNode = new MapNode(map);
+    MapNode* mapNode = new MapNode(map.get());
     root->addChild( mapNode );
 
     // zoom to a good startup position
@@ -123,13 +124,12 @@ void addBuildings(Map* map)
 {
     // create a feature source to load the building footprint shapefile.
     OGRFeatureSource* data = new OGRFeatureSource();
-    data->setName("buildings");
+    data->setName("buildings-data");
     data->setURL(BUILDINGS_URL);
-    data->options().buildSpatialIndex() = true;
-    
+
     // a style for the building data:
     Style buildingStyle;
-    buildingStyle.setName( "buildings" );
+    buildingStyle.setName( "default" );
 
     // Extrude the shapes into 3D buildings.
     ExtrusionSymbol* extrusion = buildingStyle.getOrCreate<ExtrusionSymbol>();
@@ -168,7 +168,7 @@ void addBuildings(Map* map)
     styleSheet->addStyle( buildingStyle );
     styleSheet->addStyle( wallStyle );
     styleSheet->addStyle( roofStyle );
-    
+
     // load a resource library that contains the building textures.
     ResourceLibrary* reslib = new ResourceLibrary( "us_resources", RESOURCE_LIB_URL );
     styleSheet->addResourceLibrary( reslib );
@@ -178,13 +178,13 @@ void addBuildings(Map* map)
     // tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
     layout.tileSize() = 500;
-    layout.addLevel( FeatureLevel(0.0f, 20000.0f, "buildings") );
 
     FeatureModelLayer* layer = new FeatureModelLayer();
     layer->setName("Buildings");
     layer->setFeatureSource(data);
     layer->setStyleSheet(styleSheet);
-    layer->options().layout() = layout;
+    layer->setLayout(layout);
+    layer->setMaxVisibleRange(20000.0);
 
     map->addLayer(layer);
 }
@@ -198,7 +198,7 @@ void addStreets(Map* map)
     data->options().buildSpatialIndex() = true;
 
     // a resampling filter will ensure that the length of each segment falls
-    // within the specified range. That can be helpful to avoid cropping 
+    // within the specified range. That can be helpful to avoid cropping
     // very long lines segments.
     ResampleFilterOptions resample;
     resample.minLength() = 0.0f;
@@ -229,14 +229,15 @@ void addStreets(Map* map)
     // to determine the tile size, such that tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
     layout.tileSize() = 500;
-    layout.maxRange() = 5000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
     FeatureModelLayer* layer = new FeatureModelLayer();
+    layer->setName("Streets");
     layer->setFeatureSource(data);
     layer->options().layout() = layout;
     layer->setStyleSheet(new StyleSheet());
     layer->getStyleSheet()->addStyle(style);
+    layer->setMaxVisibleRange(5000.0f);
 
     map->addLayer(layer);
 }
@@ -261,7 +262,7 @@ void addParks(Map* map)
     model->url()->setLiteral(TREE_MODEL_URL);
     model->placement() = model->PLACEMENT_RANDOM;
     model->density() = 6000.0f; // instances per sqkm
-    
+
     // Clamp to the terrain:
     AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
     alt->clamping() = alt->CLAMP_TO_TERRAIN;

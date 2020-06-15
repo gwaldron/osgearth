@@ -59,7 +59,6 @@ MBTiles::Options::writeTo(Config& conf) const
 {
     conf.set("filename", _url);
     conf.set("format", _format);
-    conf.set("compute_levels", _computeLevels);
     conf.set("compress", _compress);
 }
 
@@ -67,13 +66,11 @@ void
 MBTiles::Options::readFrom(const Config& conf)
 {
     format().init("png");
-    computeLevels().init(false);
     compress().init(false);
 
     conf.get("filename", _url);
     conf.get("url", _url); // compat for consistency with other drivers
     conf.get("format", _format);
-    conf.get("compute_levels", _computeLevels);
     conf.get("compress", _compress);
 }
 
@@ -100,7 +97,6 @@ REGISTER_OSGEARTH_LAYER(mbtilesimage, MBTilesImageLayer);
 OE_LAYER_PROPERTY_IMPL(MBTilesImageLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(MBTilesImageLayer, std::string, Format, format);
 OE_LAYER_PROPERTY_IMPL(MBTilesImageLayer, bool, Compress, compress);
-OE_LAYER_PROPERTY_IMPL(MBTilesImageLayer, bool, ComputeLevels, computeLevels);
 
 void
 MBTilesImageLayer::init()
@@ -133,7 +129,7 @@ MBTilesImageLayer::openImplementation()
     {
         return status;
     }
-    
+
     // install the profile if there is one
     if (getProfile() == NULL && profile.valid())
     {
@@ -164,7 +160,7 @@ MBTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     if (r.succeeded())
         return GeoImage(r.releaseImage(), key.getExtent());
-    else 
+    else
         return GeoImage(Status(r.errorDetail()));
 }
 
@@ -204,7 +200,6 @@ REGISTER_OSGEARTH_LAYER(mbtileselevation, MBTilesElevationLayer);
 OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, std::string, Format, format);
 OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, bool, Compress, compress);
-OE_LAYER_PROPERTY_IMPL(MBTilesElevationLayer, bool, ComputeLevels, computeLevels);
 
 void
 MBTilesElevationLayer::init()
@@ -410,10 +405,8 @@ MBTiles::Driver::open(
     // If the database pre-existed, read in the information from the metadata.
     else // !isNewDatabase
     {
-        if (options.computeLevels() == true)
-        {
-            computeLevels();
-        }
+        computeLevels();
+        OE_INFO << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
 
         std::string profileStr;
         getMetaData("profile", profileStr);
@@ -500,7 +493,7 @@ MBTiles::Driver::open(
 
             inout_profile = profile;
             OE_INFO << LC << "Profile = " << profile->toString() << std::endl;
-            OE_INFO << LC << "Min=" << _minLevel << ", Max=" << _maxLevel 
+            OE_INFO << LC << "Min=" << _minLevel << ", Max=" << _maxLevel
                 << ", format=" << _tileFormat  << std::endl;
         }
 
@@ -820,7 +813,8 @@ MBTiles::Driver::computeLevels()
     sqlite3* database = (sqlite3*)_database;
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     sqlite3_stmt* select = NULL;
-    std::string query = "SELECT min(zoom_level), max(zoom_level) from tiles";
+    // Get min and max as separate queries to allow the SQLite query planner to convert it to a fast equivalent.
+    std::string query = "SELECT (SELECT min(zoom_level) FROM tiles), (SELECT max(zoom_level) FROM tiles); ";
     int rc = sqlite3_prepare_v2( database, query.c_str(), -1, &select, 0L );
     if ( rc != SQLITE_OK )
     {
@@ -908,7 +902,8 @@ MBTiles::Driver::setDataExtents(const DataExtentList& values)
         }
 
         // Convert the bounds to wgs84
-        GeoExtent bounds = e.transform(osgEarth::SpatialReference::get("wgs84"));
+        osg::ref_ptr<const Profile> gg = Profile::create("global-geodetic");
+        GeoExtent bounds = gg->clampAndTransformExtent(e);
         std::stringstream boundsStr;
         boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();
         putMetaData("bounds", boundsStr.str());

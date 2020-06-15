@@ -339,11 +339,9 @@ namespace osgEarth { namespace MVT
             {
                 const mapnik::vector::tile_layer &layer = tile.layers().Get(i);
 
-
                 for (int j = 0; j < layer.features().size(); j++)
                 {
                     const mapnik::vector::tile_feature &feature = layer.features().Get(j);
-
 
                     osg::ref_ptr< Feature > oeFeature = new Feature(0, key.getProfile()->getSRS());
 
@@ -370,11 +368,11 @@ namespace osgEarth { namespace MVT
                         }
                         else if (value.has_int_value())
                         {
-                            oeFeature->set(key, (int)value.int_value());
+                            oeFeature->set(key, (long long)value.int_value());
                         }
                         else if (value.has_sint_value())
                         {
-                            oeFeature->set(key, (int)value.sint_value());
+                            oeFeature->set(key, (long long)value.sint_value());
                         }
                         else if (value.has_string_value())
                         {
@@ -382,7 +380,7 @@ namespace osgEarth { namespace MVT
                         }
                         else if (value.has_uint_value())
                         {
-                            oeFeature->set(key, (int)value.uint_value());
+                            oeFeature->set(key, (long long)value.uint_value());
                         }
 
                         // Special path for getting heights from our test dataset.
@@ -425,6 +423,17 @@ namespace osgEarth { namespace MVT
                     else if (geomType == MVT::Point)
                     {
                         geometry = decodePoint(feature, key, layer.extent());
+
+                        // This is a bit of a hack, but if a point is outside of the extents we remove it.
+                        // Lines and Polygons that extend outside of the tileset we keep though b/c we assume that they are just slightly going outside of the
+                        // extent.  Should probably make this an option somewhere.
+                        if (geometry)
+                        {
+                            if (!key.getExtent().contains(geometry->getBounds().center()))
+                            {
+                                geometry = NULL;
+                            }
+                        }
                     }
                     else
                     {
@@ -436,6 +445,7 @@ namespace osgEarth { namespace MVT
                         oeFeature->setGeometry( geometry.get() );
                         features.push_back(oeFeature.get());
                     }
+
                 }
             }
         }
@@ -511,7 +521,7 @@ MVTFeatureSource::init()
 }
 
 FeatureCursor*
-MVTFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
+MVTFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
 {
     if (!query.tileKey().isSet())
     {
@@ -535,7 +545,7 @@ MVTFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
     int rc = sqlite3_prepare_v2((sqlite3*)_database, queryStr.c_str(), -1, &select, 0L);
     if (rc != SQLITE_OK)
     {
-        OE_WARN << LC << "Failed to prepare SQL: " << queryStr << "; " 
+        OE_WARN << LC << "Failed to prepare SQL: " << queryStr << "; "
             << sqlite3_errmsg((sqlite3*)_database) << std::endl;
         return NULL;
     }
@@ -576,7 +586,7 @@ MVTFeatureSource::createFeatureCursor(const Query& query, ProgressCallback* prog
         for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
         {
             std::string attr = itr->get()->getString(options().fidAttribute().get());
-            FeatureID fid = as<long>(attr, 0);
+            FeatureID fid = as<FeatureID>(attr, 0);
             itr->get()->setFID(fid);
         }
     }
@@ -634,7 +644,7 @@ MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoEx
     {
         OE_WARN << LC << "Failed to prepare SQL: " << queryStr << "; "
             << sqlite3_errmsg((sqlite3*)_database) << std::endl;
-    }    
+    }
 
     while ((rc = sqlite3_step(select)) == SQLITE_ROW) {
         int zoom = sqlite3_column_int(select, 0);
@@ -685,22 +695,12 @@ MVTFeatureSource::createFeatureProfile()
 {
     const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
     FeatureProfile* result = new FeatureProfile(profile->getExtent());
-    std::string minLevelStr, maxLevelStr;
-    if (getMetaData("minzoom", minLevelStr) && getMetaData("maxzoom", maxLevelStr))
-    {
-        _minLevel = as<int>(minLevelStr, 0);
-        _maxLevel = as<int>(maxLevelStr, 0);
-        OE_NOTICE << LC << "Got levels from metadata " << _minLevel << ", " << _maxLevel << std::endl;
-    }
-    else
-    {
-        computeLevels();
-        OE_NOTICE << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
-    }
+    computeLevels();
+    OE_INFO << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
 
 
     // Use the max level for now as the min level.
-    result->setFirstLevel(_maxLevel);
+    result->setFirstLevel(_minLevel);
     result->setMaxLevel(_maxLevel);
     result->setTilingProfile(profile);
     result->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;
@@ -712,7 +712,8 @@ MVTFeatureSource::computeLevels()
 {
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     sqlite3_stmt* select = NULL;
-    std::string query = "SELECT min(zoom_level), max(zoom_level) from tiles";
+    // Get min and max as separate queries to allow the SQLite query planner to convert it to a fast equivalent.
+    std::string query = "SELECT (SELECT min(zoom_level) FROM tiles), (SELECT max(zoom_level) FROM tiles); ";
     int rc = sqlite3_prepare_v2((sqlite3*)_database, query.c_str(), -1, &select, 0L);
     if (rc != SQLITE_OK)
     {
@@ -724,7 +725,6 @@ MVTFeatureSource::computeLevels()
     {
         _minLevel = sqlite3_column_int(select, 0);
         _maxLevel = sqlite3_column_int(select, 1);
-        OE_DEBUG << LC << "Min=" << _minLevel << " Max=" << _maxLevel << std::endl;
     }
     else
     {

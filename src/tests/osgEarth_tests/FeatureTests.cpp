@@ -47,7 +47,7 @@ TEST_CASE("Feature::splitAcrossDateLine works") {
     for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
     {
         REQUIRE_FALSE(itr->get()->getExtent().crossesAntimeridian());
-    }    
+    }
 }
 
 TEST_CASE("Feature handles attributes correctly.") {
@@ -70,8 +70,14 @@ TEST_CASE("Feature handles attributes correctly.") {
         feature->set("int", 8);
         REQUIRE(feature->getInt("int") == 8);
 
+        feature->set("int64", static_cast<long long>(4549941524));
+        REQUIRE(feature->getInt("int64") == 4549941524);
+
+        feature->set("int64max", static_cast<long long>(INT64_MAX));
+        REQUIRE(feature->getInt("int64max") == INT64_MAX);
+
         feature->set("bool", true);
-        REQUIRE(feature->getBool("bool") == true);        
+        REQUIRE(feature->getBool("bool") == true);
     }
 
     SECTION("Null attributes get the correct default values") {
@@ -79,7 +85,7 @@ TEST_CASE("Feature handles attributes correctly.") {
 
         feature->set("string", std::string("test"));
         REQUIRE(feature->isSet("string") == true);
-        
+
         feature->setNull("string");
         REQUIRE(feature->isSet("string") == false);
         REQUIRE(feature->getString("string") == "");

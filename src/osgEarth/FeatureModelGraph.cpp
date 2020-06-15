@@ -36,6 +36,7 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/ElevationRanges>
 #include <osgEarth/LineDrawable>
+#include <osgEarth/NetworkMonitor>
 
 #include <osg/CullFace>
 #include <osg/PagedLOD>
@@ -82,14 +83,22 @@ namespace
         bool useFileCache() const { return false; }
     };
 
-    struct MyProgressCallback : public ProgressCallback
+    struct MyProgressCallback : public DatabasePagerProgressCallback
     {
         osg::ref_ptr<const Session> _session;
-        MyProgressCallback(const Session* session) : _session(session) { }
-        virtual bool isCanceled() {
-            if (!_canceled && (!_session.valid() || !_session->hasMap()))
-                _canceled = true;
-            return _canceled;
+
+        MyProgressCallback(const Session* session) :
+            DatabasePagerProgressCallback(),
+            _session(session)
+        {
+            //nop
+        }
+
+        virtual bool shouldCancel() const
+        {
+            return
+                DatabasePagerProgressCallback::shouldCancel() ||
+                (!_session.valid() || !_session->hasMap());
         }
     };
 
@@ -108,9 +117,9 @@ namespace
 
 #ifdef USE_POLYTOPE_CULLING
 
-    // This sort of works. 
+    // This sort of works.
     // Sadly, if you are zoomed in to a high LOD, it can get "stuck" failing on a lower LOD
-    // somewhere up the chain. 
+    // somewhere up the chain.
     struct PolytopeCullCallback : public osg::NodeCallback
     {
         PolytopeCullCallback(const GeoExtent& tileExtent, double zMin, double zMax) :
@@ -190,7 +199,7 @@ namespace
             const int index[24] = {
                 0, 1, 1, 2, 2, 3, 3, 0,
                 4, 5, 5, 6, 6, 7, 7, 4,
-                0, 4, 1, 5, 2, 6, 3, 7 
+                0, 4, 1, 5, 2, 6, 3, 7
             };
             LineDrawable* d = new LineDrawable(GL_LINES);
             d->setUseGPU(false);
@@ -461,7 +470,7 @@ FeatureModelGraph::open()
     osg::ref_ptr<const Map> map = _session->getMap();
     if (!map.valid())
     {
-        return Status(Status::ConfigurationError, "Session does not have a Map set");
+        return Status(Status::AssertionFailure, "Session does not have a Map set; you probably need to use osg::ref_ptr<Map>");
     }
 
     const Profile* mapProfile = map->getProfile();
@@ -487,6 +496,9 @@ FeatureModelGraph::open()
     {
         _usableFeatureExtent.expand(-0.001, -0.001);
     }
+
+    // Create a filter chain if necessary
+    _filterChain = FeatureFilterChain::create(_options.filters(), NULL);
 
     // world-space bounds of the feature layer
     _fullWorldBound = getBoundInWorldCoords(_usableMapExtent);
@@ -535,7 +547,7 @@ FeatureModelGraph::open()
 
             float tileSizeFactor = maxRange / bounds.radius();
 
-            //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
+            //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere.
             tileSizeFactor = osg::maximum(tileSizeFactor, 1.0f);
             OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRange << std::endl;
             _options.layout()->tileSizeFactor() = tileSizeFactor;
@@ -640,7 +652,7 @@ FeatureModelGraph::open()
     if (_options.enableLighting().isSet())
         GLUtils::setLighting(stateSet, *_options.enableLighting() ? 1 : 0);
 
-    // If the user requests fade-in, install a post-merge operation that will set the 
+    // If the user requests fade-in, install a post-merge operation that will set the
     // proper fade time for paged nodes.
     if (_options.fading().isSet() && _sgCallbacks.valid())
     {
@@ -714,7 +726,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
         float maxElevation = 100.0f;
 #if 0
         float elevation = NO_DATA_VALUE;
-        osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);        
+        osg::ref_ptr<ElevationEnvelope> env = map->getElevationPool()->createEnvelope(center.getSRS(), lod);
         if (env.valid())
         {
             elevation = env->getElevation(center.x(), center.y());
@@ -800,15 +812,6 @@ FeatureModelGraph::setupPaging()
     }
 #endif
 
-#if 0
-    // calculate the max range for the top-level PLOD:
-    // TODO: a user-specified maxRange is actually an altitude, so this is not
-    //       strictly correct anymore!
-    float maxRange =
-        maxRangeOverride.isSet() ? *maxRangeOverride :
-        bs.radius() * _options.layout()->tileSizeFactor().value();
-#endif
-
     float maxRange = bs.radius() * _options.layout()->tileSizeFactor().get();
 
     // build the URI for the top-level paged LOD:
@@ -878,7 +881,7 @@ FeatureModelGraph::load(
             FeatureLevel level(0, maxRange);
 
 
-            // Construct a tile key that will be used to query the source for this tile.            
+            // Construct a tile key that will be used to query the source for this tile.
             // The tilekey x, y, z that is computed in the FeatureModelGraph uses a lower left origin,
             // osgEarth tilekeys use a lower left so we need to invert it.
             unsigned int w, h;
@@ -914,7 +917,7 @@ FeatureModelGraph::load(
 
     else if (!_options.layout().isSet() || _lodmap.size() == 0)
     {
-        // This is a non-tiled data source that has NO level details. In this case, 
+        // This is a non-tiled data source that has NO level details. In this case,
         // we simply want to load all features at once and make them visible at
         // maximum camera range.
 
@@ -1378,6 +1381,17 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
     }
 }
 
+FeatureCursor*
+FeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const
+{
+    NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
+    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
+    if (_filterChain.valid())
+    {
+        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), cx);
+    }
+    return cursor;
+}
 
 osg::Group*
 FeatureModelGraph::build(const Style&          defaultStyle,
@@ -1389,6 +1403,8 @@ FeatureModelGraph::build(const Style&          defaultStyle,
 {
     OE_TEST << LC << "build " << workingExtent.toString() << std::endl;
 
+    NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
+
     osg::ref_ptr<osg::Group> group = new osg::Group();
 
     FeatureSource* source = _session->getFeatureSource();
@@ -1398,8 +1414,10 @@ FeatureModelGraph::build(const Style&          defaultStyle,
     {
         const FeatureProfile* featureProfile = source->getFeatureProfile();
 
+        FilterContext context(_session.get(), featureProfile, workingExtent, index);
+
         // each feature has its own style, so use that and ignore the style catalog.
-        osg::ref_ptr<FeatureCursor> cursor = source->createFeatureCursor(baseQuery, progress);
+        osg::ref_ptr<FeatureCursor> cursor = createCursor(source, context, baseQuery, progress);
 
         while (cursor.valid() && cursor->hasMore())
         {
@@ -1409,8 +1427,6 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                 FeatureList list;
                 list.push_back(feature);
                 osg::ref_ptr<FeatureCursor> cursor = new FeatureListCursor(list);
-
-                FilterContext context(_session.get(), featureProfile, workingExtent, index);
 
                 // note: gridding is not supported for embedded styles.
                 osg::ref_ptr<osg::Node> node;
@@ -1426,7 +1442,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                     }
                 }
 
-                if ( createOrUpdateNode(cursor.get(), *feature->style(), context, readOptions, node))
+                if ( createOrUpdateNode(cursor.get(), *feature->style(), context, readOptions, node, baseQuery))
                 {
                     if (node.valid())
                     {
@@ -1523,9 +1539,10 @@ FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
                                       const Style&             style,
                                       FilterContext&           context,
                                       const osgDB::Options*    readOptions,
-                                      osg::ref_ptr<osg::Node>& output)
+                                      osg::ref_ptr<osg::Node>& output,
+                                      const Query&             query)
 {
-    bool ok = _factory->createOrUpdateNode(cursor, style, context, output);
+    bool ok = _factory->createOrUpdateNode(cursor, style, context, output, query);
     return ok;
 }
 
@@ -1596,14 +1613,15 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
     // get the extent of the full set of feature data:
     const GeoExtent& extent = featureProfile->getExtent();
 
-    // query the feature source:
-    osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(query, progress);
-    if (!cursor.valid())
-        return;
-
     // establish the working bounds and a context:
     Bounds bounds = query.bounds().isSet() ? *query.bounds() : extent.bounds();
     FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), bounds), index);
+
+    // query the feature source:
+    osg::ref_ptr<FeatureCursor> cursor = createCursor(_session->getFeatureSource(), context, query, progress);
+    if (!cursor.valid())
+        return;
+
     StringExpression styleExprCopy(styleExpr);
 
     // visit each feature and run the expression to sort it into a bin.
@@ -1643,7 +1661,7 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
         }
 
         // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-        // style in this case: for style expressions, the user must be explicity about 
+        // style in this case: for style expressions, the user must be explicity about
         // default styling; this is because there is no other way to exclude unwanted
         // features.
         else
@@ -1657,7 +1675,7 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
         // the feature.)
         if (!combinedStyle.empty())
         {
-            osg::Group* styleGroup = createStyleGroup(combinedStyle, workingSet, context, readOptions);
+            osg::Group* styleGroup = createStyleGroup(combinedStyle, workingSet, context, readOptions, query);
             if (styleGroup)
                 parent->addChild(styleGroup);
         }
@@ -1666,12 +1684,15 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
 
 
 osg::Group*
-FeatureModelGraph::createStyleGroup(const Style&          style, 
-                                    FeatureList&          workingSet, 
+FeatureModelGraph::createStyleGroup(const Style&          style,
+                                    FeatureList&          workingSet,
                                     const FilterContext&  contextPrototype,
-                                    const osgDB::Options* readOptions)
+                                    const osgDB::Options* readOptions,
+                                    const Query&          query)
 {
     OE_TEST << LC << "createStyleGroup " << style.getName() << std::endl;
+
+    NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
 
     osg::Group* styleGroup = 0L;
 
@@ -1695,7 +1716,7 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
     OE_DEBUG << LC << "Cropped out " << sizeBefore - sizeAfter << " features\n";
 
     // next, if the usable extent is less than the full extent (i.e. we had to clamp the feature
-    // extent to fit on the map), calculate the extent of the features in this tile and 
+    // extent to fit on the map), calculate the extent of the features in this tile and
     // crop to the map extent if necessary. (Note, if cropFeatures was set to true, this is
     // already done)
     if (_featureExtentClamped && _options.layout().isSet() && _options.layout()->cropFeatures() == false)
@@ -1711,7 +1732,7 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
         osg::ref_ptr<osg::Node> node;
         osg::ref_ptr<FeatureCursor> newCursor = new FeatureListCursor(workingSet);
 
-        if ( createOrUpdateNode( newCursor.get(), style, context, readOptions, node ) )
+        if ( createOrUpdateNode( newCursor.get(), style, context, readOptions, node, query ) )
         {
             if (!styleGroup)
                 styleGroup = getOrCreateStyleGroupFromFactory(style);
@@ -1741,15 +1762,16 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
     // get the extent of the full set of feature data:
     const GeoExtent& extent = featureProfile->getExtent();
 
+    Bounds cellBounds =
+        query.bounds().isSet() ? *query.bounds() : extent.bounds();
+
+    FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), cellBounds), index);
+
     // query the feature source:
-    osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(query, progress);
+    osg::ref_ptr<FeatureCursor> cursor = createCursor(_session->getFeatureSource(), context, query, progress);
 
     if (cursor.valid() && cursor->hasMore())
     {
-        Bounds cellBounds =
-            query.bounds().isSet() ? *query.bounds() : extent.bounds();
-
-        FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), cellBounds), index);
 
         // start by culling our feature list to the working extent. By default, this is done by
         // checking feature centroids. But the user can override this to crop feature geometry to
@@ -1760,7 +1782,7 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
         if (progress && progress->isCanceled())
             return NULL;
 
-        styleGroup = createStyleGroup(style, workingSet, context, readOptions);
+        styleGroup = createStyleGroup(style, workingSet, context, readOptions, query);
     }
 
 

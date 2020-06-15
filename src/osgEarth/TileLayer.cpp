@@ -40,11 +40,11 @@ TileLayer::Options::getConfig() const
     conf.set( "min_resolution", _minResolution );
     conf.set( "max_resolution", _maxResolution );
     conf.set( "max_data_level", _maxDataLevel );
+    conf.set( "tile_size", _tileSize);
+    conf.set( "profile", _profile);
     conf.set( "no_data_value", _noDataValue);
     conf.set( "min_valid_value", _minValidValue);
     conf.set( "max_valid_value", _maxValidValue);
-    conf.set( "tile_size", _tileSize);
-    conf.set( "profile", _profile);
 
     return conf;
 }
@@ -65,12 +65,12 @@ TileLayer::Options::fromConfig(const Config& conf)
     conf.get( "min_resolution", _minResolution );
     conf.get( "max_resolution", _maxResolution );
     conf.get( "max_data_level", _maxDataLevel );
+    conf.get( "tile_size", _tileSize);
+    conf.get( "profile", _profile);
     conf.get( "no_data_value", _noDataValue);
     conf.get( "nodata_value", _noDataValue); // back compat
     conf.get( "min_valid_value", _minValidValue);
     conf.get( "max_valid_value", _maxValidValue);
-    conf.get( "tile_size", _tileSize);
-    conf.get( "profile", _profile);
 }
 
 //------------------------------------------------------------------------
@@ -185,24 +185,122 @@ TileLayer::CacheBinMetadata::getConfig() const
 
 //------------------------------------------------------------------------
 
-OE_LAYER_PROPERTY_IMPL(TileLayer, unsigned, MinLevel, minLevel);
-OE_LAYER_PROPERTY_IMPL(TileLayer, double, MinResolution, minResolution);
-OE_LAYER_PROPERTY_IMPL(TileLayer, unsigned, MaxLevel, maxLevel);
-OE_LAYER_PROPERTY_IMPL(TileLayer, double, MaxResolution, maxResolution);
-OE_LAYER_PROPERTY_IMPL(TileLayer, unsigned, MaxDataLevel, maxDataLevel);
-
-
 TileLayer::~TileLayer()
 {
     //nop
 }
+
+void TileLayer::setMinLevel(unsigned value)
+{
+    setOptionThatRequiresReopen(options().minLevel(), value);
+}
+
+unsigned TileLayer::getMinLevel() const
+{
+    return options().minLevel().get();
+}
+
+void TileLayer::setMaxLevel(unsigned value)
+{
+    setOptionThatRequiresReopen(options().maxLevel(), value);
+}
+
+unsigned TileLayer::getMaxLevel() const
+{
+    return options().maxLevel().get();
+}
+
+void TileLayer::setMinResolution(double value)
+{
+    setOptionThatRequiresReopen(options().minResolution(), value);
+}
+
+double TileLayer::getMinResolution() const
+{
+    return options().minResolution().get();
+}
+
+void TileLayer::setMaxResolution(double value)
+{
+    setOptionThatRequiresReopen(options().maxResolution(), value);
+}
+
+double TileLayer::getMaxResolution() const
+{
+    return options().maxResolution().get();
+}
+
+void TileLayer::setMaxDataLevel(unsigned value)
+{
+    setOptionThatRequiresReopen(options().maxDataLevel(), value);
+}
+
+unsigned TileLayer::getMaxDataLevel() const
+{
+    return options().maxDataLevel().get();
+}
+
+void TileLayer::setNoDataValue(float value)
+{
+    setOptionThatRequiresReopen(options().noDataValue(), value);
+}
+
+void TileLayer::resetNoDataValue()
+{
+    resetOptionThatRequiresReopen(options().noDataValue());
+}
+
+float TileLayer::getNoDataValue() const
+{
+    return options().noDataValue().get();
+}
+
+void TileLayer::setMinValidValue(float value)
+{
+    setOptionThatRequiresReopen(options().minValidValue(), value);
+}
+
+void TileLayer::resetMinValidValue()
+{
+    resetOptionThatRequiresReopen(options().minValidValue());
+}
+
+float TileLayer::getMinValidValue() const
+{
+    return options().minValidValue().get();
+}
+
+void TileLayer::setMaxValidValue(float value)
+{
+    setOptionThatRequiresReopen(options().maxValidValue(), value);
+}
+
+void TileLayer::resetMaxValidValue()
+{
+    resetOptionThatRequiresReopen(options().maxValidValue());
+}
+
+float TileLayer::getMaxValidValue() const
+{
+    return options().maxValidValue().get();
+}
+
+void TileLayer::setTileSize(unsigned value)
+{
+    setOptionThatRequiresReopen(options().tileSize(), value);
+}
+
+unsigned TileLayer::getTileSize() const
+{
+    return options().tileSize().get();
+}
+
 
 void
 TileLayer::init()
 {
     Layer::init();
 
-    _openCalled = false;
     _writingRequested = false;
     _profileMatchesMapProfile = true;
 
@@ -274,16 +372,15 @@ TileLayer::setUpL2Cache(unsigned minSize)
 Status
 TileLayer::openImplementation()
 {
-    if ( !_openCalled )
-    {
-        _openCalled = true;
+    Status parent = VisibleLayer::openImplementation();
+    if (parent.isError())
+        return parent;
 
-        Status parent = VisibleLayer::openImplementation();
-        if (parent.isError())
-            return parent;
-
+    if (isOpen())
         _cacheBinMetadata.clear();
-    }
+
+    if (_memCache.valid())
+        _memCache->clear();
 
     return getStatus();
 }
@@ -302,10 +399,7 @@ TileLayer::openForWriting()
 
 Status
 TileLayer::closeImplementation()
-{
-    setProfile(0L);
-    _openCalled = false;
-    setStatus(Status());
+{    
     return Layer::closeImplementation();
 }
 
@@ -359,7 +453,7 @@ TileLayer::getMetadataKey(const Profile* profile) const
 CacheBin*
 TileLayer::getCacheBin(const Profile* profile)
 {
-    if ( !_openCalled )
+    if ( !isOpen() )
     {
         OE_WARN << LC << "Illegal- called getCacheBin() before layer is open.. did you call open()?\n";
         return 0L;
@@ -794,52 +888,4 @@ bool
 TileLayer::mayHaveData(const TileKey& key) const
 {
     return key == getBestAvailableTileKey(key);
-}
-
-void
-TileLayer::setTileSize(const unsigned& value)
-{
-    options().tileSize() = value;
-}
-
-unsigned
-TileLayer::getTileSize() const
-{
-    return options().tileSize().get();
-}
-
-void
-TileLayer::setNoDataValue(const float& value)
-{
-    options().noDataValue() = value;
-}
-
-float
-TileLayer::getNoDataValue() const
-{
-    return options().noDataValue().get();
-}
-
-void
-TileLayer::setMinValidValue(const float& value)
-{
-    options().minValidValue() = value;
-}
-
-float
-TileLayer::getMinValidValue() const
-{
-    return options().minValidValue().get();
-}
-
-void
-TileLayer::setMaxValidValue(const float& value)
-{
-    options().maxValidValue() = value;
-}
-
-float
-TileLayer::getMaxValidValue() const
-{
-    return options().maxValidValue().get();
 }

@@ -44,14 +44,14 @@ Config
 SkyViewImageLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    LayerReference<ImageLayer>::set(conf, "image", imageLayerName(), imageLayer());
+    imageLayer().set(conf, "image");
     return conf;
 }
 
 void
 SkyViewImageLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<ImageLayer>::get(conf, "image", imageLayerName(), imageLayer());
+    imageLayer().get(conf, "image");
 }
 
 //........................................................................
@@ -71,7 +71,7 @@ SkyViewImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status imageStatus = _imageLayer.open(options().imageLayer(), getReadOptions());
+    Status imageStatus = options().imageLayer().open(getReadOptions());
     if (imageStatus.isError())
         return imageStatus;
 
@@ -105,4 +105,11 @@ SkyViewImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         image.getImage()->flipHorizontal();
     }
     return GeoImage(image.takeImage(), key.getExtent());
+}
+
+Config
+SkyViewImageLayer::getConfig() const
+{
+    Config c = ImageLayer::getConfig();
+    return c;
 }

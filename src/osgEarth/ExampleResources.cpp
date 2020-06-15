@@ -319,16 +319,15 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     }
 
     osg::ref_ptr<MapNode> mapNode = MapNode::get(node.get());
+
+    if (args.read("--tessellation") || args.read("--tess"))
+    {
+        mapNode->getTerrainOptions().setGPUTessellation(true);
+    }
+
     if ( !mapNode.valid() )
     {
         OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;
-        return 0L;
-    }
-
-    // open the map node:
-    if (!mapNode->open())
-    {
-        OE_WARN << LC << "Failed to open MapNode" << std::endl;
         return 0L;
     }
 
@@ -353,6 +352,13 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     osg::Group* root = new osg::Group();
 
     root->addChild( node );
+    
+    // open the map node:
+    if (!mapNode->open())
+    {
+        OE_WARN << LC << "Failed to open MapNode" << std::endl;
+        return 0L;
+    }
 
     // parses common cmdline arguments and apply to the first view:
     if ( !views.empty() )
@@ -477,10 +483,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
     view->addEventHandler(new ToggleCanvasEventHandler(canvas, 'y'));
 
     // look for external data in the map node:
-    const Config& externals = mapNode->externalConfig();
+    const Config externals = mapNode ? mapNode->externalConfig() : Config();
 
     // Loading KML from the command line:
-    if ( !kmlFile.empty() )
+    if ( !kmlFile.empty() && mapNode )
     {
         KML::KMLOptions kml_options;
         kml_options.declutter() = true;
@@ -515,7 +521,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Configure the mouse coordinate readout:
-    if ( useCoords )
+    if ( useCoords && mapNode )
     {
         LabelControl* readout = new LabelControl();
         readout->setBackColor( Color(Color::Black, 0.8) );
@@ -531,7 +537,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
 
     // Add the credits display
-    canvas->addControl(AttributionControlFactory().create(mapNode));
+    if (mapNode)
+    {
+        canvas->addControl(AttributionControlFactory().create(mapNode));
+    }
 
     // Configure for an ortho camera:
     if ( args.read("--ortho") )
@@ -624,19 +633,19 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Map inspector:
-    if (args.read("--inspect"))
+    if (args.read("--inspect") && mapNode)
     {
         mapNode->addExtension( Extension::create("mapinspector", ConfigOptions()) );
     }
 
     // Memory monitor:
-    if (args.read("--monitor"))
+    if (args.read("--monitor") && mapNode)
     {
         mapNode->addExtension(Extension::create("monitor", ConfigOptions()) );
     }
 
     // Simple sky model:
-    if (args.read("--sky"))
+    if (args.read("--sky") && mapNode)
     {
         mapNode->open(); // necessary to resolve the SRS on the next line
         std::string ext = mapNode->getMapSRS()->isGeographic() ? "sky_simple" : "sky_gl";
@@ -644,7 +653,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Simple ocean model:
-    if (args.read("--ocean"))
+    if (args.read("--ocean") && mapNode)
     {
         SimpleOceanLayer* layer = new SimpleOceanLayer();
         mapNode->getMap()->addLayer(layer);
@@ -654,7 +663,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     // Arbitrary extension:
     std::string extname;
-    if (args.read("--extension", extname))
+    if (args.read("--extension", extname) && mapNode)
     {
         Extension* ext = Extension::create(extname, ConfigOptions());
         if (ext)
@@ -663,27 +672,29 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
 
     // Hook up the extensions!
-    for(std::vector<osg::ref_ptr<Extension> >::const_iterator eiter = mapNode->getExtensions().begin();
-        eiter != mapNode->getExtensions().end();
-        ++eiter)
+    if (mapNode)
     {
-        Extension* e = eiter->get();
+        for(std::vector<osg::ref_ptr<Extension> >::const_iterator eiter = mapNode->getExtensions().begin();
+            eiter != mapNode->getExtensions().end();
+            ++eiter)
+        {
+            Extension* e = eiter->get();
 
-        // Check for a View interface:
-        ExtensionInterface<osg::View>* viewIF = ExtensionInterface<osg::View>::get( e );
-        if ( viewIF )
-            viewIF->connect( view );
+            // Check for a View interface:
+            ExtensionInterface<osg::View>* viewIF = ExtensionInterface<osg::View>::get( e );
+            if ( viewIF )
+                viewIF->connect( view );
 
-        // Check for a Control interface:
-        ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get( e );
-        if ( controlIF )
-            controlIF->connect( mainContainer );
+            // Check for a Control interface:
+            ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get( e );
+            if ( controlIF )
+                controlIF->connect( mainContainer );
+        }
     }
-
 
     // Shadowing. This is last because it needs access to a light which may be provided
     // by one of the Sky extensions.
-    if (args.read("--shadows"))
+    if (args.read("--shadows") && mapNode)
     {
         int unit;
         if ( mapNode->getTerrainEngine()->getResources()->reserveTextureImageUnit(unit, "ShadowCaster") )

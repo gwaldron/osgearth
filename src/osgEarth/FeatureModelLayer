@@ -50,8 +50,7 @@ namespace osgEarth
             // constructors
             Options();
             Options(const ConfigOptions& options);
-            OE_OPTION(std::string, featureSourceLayer);
-            OE_OPTION(FeatureSource::Options, featureSource);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
             virtual Config getConfig() const;
         protected: // LayerOptions
             virtual void mergeConfig(const Config& conf);        
@@ -69,6 +68,10 @@ namespace osgEarth
         //! Stylesheet to apply to the features
         void setStyleSheet(StyleSheet* value);
         StyleSheet* getStyleSheet() const;
+
+        //! Set the dislpay layout (optional)
+        void setLayout(const FeatureDisplayLayout& layout);
+        const FeatureDisplayLayout& getLayout() const;
 
         void setAlphaBlending(const bool& value);
         const bool& getAlphaBlending() const;
@@ -96,11 +99,17 @@ namespace osgEarth
         // opens the layer and returns the status
         virtual Status openImplementation();
 
+        // closes the layer
+        virtual Status closeImplementation();
+
         // The Node representing this layer.
         virtual osg::Node* getNode() const;
 
         //! Extent of the feature layer, if available (INVALID if not)
         virtual const GeoExtent& getExtent() const;
+
+        //! Serialization
+        virtual Config getConfig() const;
 
     protected: // Layer
         
@@ -121,8 +130,6 @@ namespace osgEarth
         virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const;
 
     private:
-        LayerReference<FeatureSource> _featureSource;
-        LayerReference<StyleSheet> _styleSheet;
         osg::ref_ptr<class Session> _session;
         osg::ref_ptr<osg::Group> _root;
         bool _graphDirty;

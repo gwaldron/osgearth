@@ -90,7 +90,7 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
         // Calc the maximum valid TY (to avoid over-subdivision at the poles)
         // In a geographic map, this will effectively limit the maximum LOD
         // progressively starting at about +/- 72 degrees latitude.
-        unsigned startLOD = 6;
+        int startLOD = 6;
         if (restrictPolarSubdivision && lod >= startLOD && profile->getSRS()->isGeographic())
         {            
             const double startAR = 0.1; // minimum allowable aspect ratio at startLOD
@@ -100,7 +100,7 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
 
             unsigned tx, ty;
             profile->getNumTiles(lod, tx, ty);
-            for(int y=ty/2; y>=0; --y)
+            for(int y=(int)ty/2; y>=0; --y)
             {
                 TileKey k(lod, 0, y, profile);
                 const GeoExtent& e = k.getExtent();

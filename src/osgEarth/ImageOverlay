@@ -144,7 +144,7 @@ namespace osgEarth
     public:
         
         // callback from Terrain whsen new data arrives
-        void onTileAdded(
+        void onTileUpdate(
             const TileKey&          key, 
             osg::Node*              graph, 
             TerrainCallbackContext& context);

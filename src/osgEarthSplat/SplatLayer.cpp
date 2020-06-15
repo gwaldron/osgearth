@@ -71,6 +71,16 @@ SplatLayer::Options::fromConfig(const Config& conf)
             _zones.push_back(ZoneOptions(*i));
         }
     }
+    else { // no zones?
+        optional<SurfaceOptions> surface;
+        conf.get("surface", surface);
+        if (surface.isSet())
+        {
+            ZoneOptions zo;
+            zo.surface() = surface;
+            _zones.push_back(zo);
+        }
+    }
 }
 
 //........................................................................
@@ -167,8 +177,12 @@ void
 SplatLayer::addedToMap(const Map* map)
 {
     VisibleLayer::addedToMap(map);
-    _landCoverDict.setLayer(map->getLayer<LandCoverDictionary>());
-    _landCoverLayer.connect(map, options().landCoverLayer().get());
+
+    if (!getLandCoverDictionary())
+        setLandCoverDictionary(map->getLayer<LandCoverDictionary>());
+
+    if (!getLandCoverLayer())
+        setLandCoverLayer(map->getLayer<LandCoverLayer>());
 
     for (Zones::iterator zone = _zones.begin(); zone != _zones.end(); ++zone)
     {
@@ -355,4 +369,16 @@ SplatLayer::releaseGLObjects(osg::State* state) const
     // texture def data (SplatTextureDef). So we have to recreate
     // it here.
     //const_cast<SplatLayer*>(this)->buildStateSets();
+}
+
+
+Config
+SplatLayer::getConfig() const
+{
+    Config c = VisibleLayer::getConfig();
+    if (_landCoverDict.isSetByUser())
+        c.set(_landCoverDict.getLayer()->getConfig());
+    if (_landCoverLayer.isSetByUser())
+        c.set(_landCoverLayer.getLayer()->getConfig());
+    return c;
 }

@@ -35,9 +35,11 @@ namespace osgEarth { namespace Util
         std::string ClipPlane;
         std::string DepthOffset;
         std::string Draping;
+        std::string DrawInstancedAttribute;
         std::string GPUClamping, GPUClampingLib;
         std::string Instancing;
         std::string LineDrawable;
+        std::string WireLines;
         std::string PointDrawable;
         std::string PhongLighting;
         std::string Text, TextLegacy;
@@ -48,6 +50,7 @@ namespace osgEarth { namespace Util
         std::string ShadowCaster;
         std::string SimpleOceanLayer;
         std::string RTTPicker;
+        std::string WindComputer;
 	};	
 
 } } 

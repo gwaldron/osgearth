@@ -210,9 +210,9 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
                                       Structure&              structure,
                                       FilterContext&          cx )
 {
-    bool  makeECEF                 = false;
-    const SpatialReference* srs    = 0L;
-    const SpatialReference* mapSRS = 0L;
+    bool makeECEF = false;
+    osg::ref_ptr<const SpatialReference> srs;
+    osg::ref_ptr<const SpatialReference> mapSRS;
 
     if ( cx.isGeoreferenced() )
     {
@@ -260,7 +260,11 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
 
     osg::Vec2d c = input->getBounds().center2d();
     osg::Vec3d centroid(c.x(), c.y(), minLoc.z());
-    transformAndLocalize(centroid, srs, structure.baseCentroid, mapSRS, _world2local, makeECEF );
+
+    if (srs.valid() && mapSRS.valid())
+    {
+        transformAndLocalize(centroid, srs.get(), structure.baseCentroid, mapSRS.get(), _world2local, makeECEF );
+    }
 
     // apply the height offsets
     //height    -= heightOffset;
@@ -287,7 +291,7 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             roofProjSRS = SpatialReference::create("spherical-mercator");
             if ( roofProjSRS.valid() )
             {
-                roofBounds.transform( srs, roofProjSRS.get() );
+                roofBounds.transform( srs.get(), roofProjSRS.get() );
                 osg::ref_ptr<Geometry> projectedInput = input->clone();
                 srs->transform( projectedInput->asVector(), roofProjSRS.get() );
                 roofRotation = getApparentRotation( projectedInput.get() );
@@ -386,10 +390,10 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             }
 
             // transform into target SRS.
-            if (srs)
+            if (srs.valid() && mapSRS.valid())
             {
-                transformAndLocalize( corner->base, srs, corner->base, mapSRS, _world2local, makeECEF );
-                transformAndLocalize( corner->roof, srs, corner->roof, mapSRS, _world2local, makeECEF );
+                transformAndLocalize( corner->base, srs.get(), corner->base, mapSRS.get(), _world2local, makeECEF );
+                transformAndLocalize( corner->roof, srs.get(), corner->roof, mapSRS.get(), _world2local, makeECEF );
             }
 
             // cache the length for later use.
@@ -992,10 +996,6 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*       drawable,
 bool
 ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 {
-    // seed our random number generators
-    Random wallSkinPRNG( _wallSkinSymbol.valid()? *_wallSkinSymbol->randomSeed() : 0, Random::METHOD_FAST );
-    Random roofSkinPRNG( _roofSkinSymbol.valid()? *_roofSkinSymbol->randomSeed() : 0, Random::METHOD_FAST );
-
     for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
@@ -1068,20 +1068,24 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             osg::ref_ptr<osg::StateSet> wallStateSet;
             osg::ref_ptr<osg::StateSet> roofStateSet;
 
+            
+
             // calculate the wall texturing:
             SkinResource* wallSkin = 0L;
             if ( _wallSkinSymbol.valid() )
             {
+                unsigned int wallRand = f->get()->getFID() + (_wallSkinSymbol.valid() ? *_wallSkinSymbol->randomSeed() : 0);
+
                 if ( _wallResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_wallSkinSymbol.get() );
                     querySymbol.objectHeight() = fabs(height);
-                    wallSkin = _wallResLib->getSkin( &querySymbol, wallSkinPRNG, context.getDBOptions() );
+                    wallSkin = _wallResLib->getSkin( &querySymbol, wallRand, context.getDBOptions() );
                 }
 
                 else
                 {
-                    //TODO: simple single texture?
+                    // nop
                 }
             }
 
@@ -1089,15 +1093,17 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             SkinResource* roofSkin = 0L;
             if ( _roofSkinSymbol.valid() )
             {
+                unsigned int roofRand = f->get()->getFID() + (_roofSkinSymbol.valid() ? *_roofSkinSymbol->randomSeed() : 0);
+
                 if ( _roofResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_roofSkinSymbol.get() );
-                    roofSkin = _roofResLib->getSkin( &querySymbol, roofSkinPRNG, context.getDBOptions() );
+                    roofSkin = _roofResLib->getSkin( &querySymbol, roofRand, context.getDBOptions() );
                 }
 
                 else
                 {
-                    //TODO: simple single texture?
+                    // nop
                 }
             }
 
@@ -1169,7 +1175,6 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             if ( baselines.valid() )
             {
-                //TODO.
                 osgUtil::Tessellator tess;
                 tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
                 tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );

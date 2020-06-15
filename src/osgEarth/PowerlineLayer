@@ -33,6 +33,7 @@ namespace osgEarth
             META_ConfigOptions(osgEarth, ModelOptions, ConfigOptions);
             OE_OPTION(std::string, uri);
             OE_OPTION_VECTOR(osg::Vec3d, attachment_points);
+            OE_OPTION(float, maxSag);
         public:
             void fromConfig(const Config& conf);
             virtual Config getConfig() const;
@@ -43,8 +44,8 @@ namespace osgEarth
         public:
             Options();
             Options(const ConfigOptions& options);
-            OE_OPTION(std::string, lineSourceLayer);
-            OE_OPTION(FeatureSource::Options, lineSource);
+            OE_OPTION_LAYER(FeatureSource, lineSource);
+            OE_OPTION(bool, point_features);
             OE_OPTION_VECTOR(ModelOptions, towerModels);
             virtual Config getConfig() const;
         protected: // LayerOptions

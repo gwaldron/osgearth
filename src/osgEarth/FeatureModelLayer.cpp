@@ -21,7 +21,7 @@
 
 using namespace osgEarth;
 
-#define LC "[FeatureModelLayer] "
+#define LC "[FeatureModelLayer] \"" << getName() << "\": "
 
 #define OE_TEST OE_NULL
 
@@ -49,7 +49,7 @@ GeometryCompilerOptions(options)
 
 void FeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<FeatureSource>::get(conf, "features", _featureSourceLayer, _featureSource);
+    featureSource().get(conf, "features");
 }
 
 Config
@@ -63,7 +63,7 @@ FeatureModelLayer::Options::getConfig() const
     Config gcConf = GeometryCompilerOptions::getConfig();
     conf.merge(gcConf);
 
-    LayerReference<FeatureSource>::set(conf, "features", _featureSourceLayer, _featureSource);
+    featureSource().set(conf, "features");
 
     return conf;
 }
@@ -106,11 +106,21 @@ FeatureModelLayer::init()
 
 void FeatureModelLayer::dirty()
 {
-    // feature source changed, so the graph needs rebuilding
-    _graphDirty = true;
+    //// feature source changed, so the graph needs rebuilding
+    //_graphDirty = true;
 
-    // create the scene graph
-    create();
+    //// create the scene graph
+    //if (isOpen())
+    //{
+    //    create();
+    //}
+}
+
+Config
+FeatureModelLayer::getConfig() const
+{
+    Config conf = VisibleLayer::getConfig();
+    return conf;
 }
 
 void
@@ -118,7 +128,7 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 {
     if (getFeatureSource() != source)
     {
-        _featureSource.setLayer(source);
+        options().featureSource().setLayer(source);
 
         if (source && source->getStatus().isError())
         {
@@ -133,7 +143,7 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 FeatureSource*
 FeatureModelLayer::getFeatureSource() const
 {
-    return _featureSource.getLayer();
+    return options().featureSource().getLayer();
 }
 
 void
@@ -141,7 +151,7 @@ FeatureModelLayer::setStyleSheet(StyleSheet* value)
 {
     if (getStyleSheet() != value)
     {
-        _styleSheet.setLayer(value);
+        options().styleSheet().setLayer(value);
         dirty();
     }
 }
@@ -149,7 +159,19 @@ FeatureModelLayer::setStyleSheet(StyleSheet* value)
 StyleSheet*
 FeatureModelLayer::getStyleSheet() const
 {
-    return _styleSheet.getLayer();
+    return options().styleSheet().getLayer();
+}
+
+void
+FeatureModelLayer::setLayout(const FeatureDisplayLayout& value)
+{
+    options().layout() = value;
+}
+
+const FeatureDisplayLayout&
+FeatureModelLayer::getLayout() const
+{
+    return options().layout().get();
 }
 
 void
@@ -177,15 +199,24 @@ FeatureModelLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
+    Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
-    Status ssStatus = _styleSheet.open(options().styleSheet(), getReadOptions());
+    Status ssStatus =  options().styleSheet().open(getReadOptions());
     if (ssStatus.isError())
         return ssStatus;
 
     return Status::NoError;
+}
+
+Status
+FeatureModelLayer::closeImplementation()
+{
+    options().featureSource().close();
+    options().styleSheet().close();
+    _graphDirty = true;
+    return getStatus();
 }
 
 const GeoExtent&
@@ -205,8 +236,8 @@ FeatureModelLayer::addedToMap(const Map* map)
     OE_TEST << LC << "addedToMap" << std::endl;
     VisibleLayer::addedToMap(map);
 
-    _featureSource.connect(map, options().featureSourceLayer());
-    _styleSheet.connect(map, options().styleSheetLayer());
+    options().featureSource().addedToMap(map);
+    options().styleSheet().addedToMap(map);
 
     if (getFeatureSource() && getStyleSheet())
     {
@@ -228,8 +259,8 @@ FeatureModelLayer::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
 
-    _featureSource.disconnect();
-    _styleSheet.disconnect();
+    options().featureSource().removedFromMap(map);
+    options().styleSheet().removedFromMap(map);
     
     if (_root.valid())
     {
@@ -244,11 +275,10 @@ FeatureModelLayer::create()
 {
     OE_TEST << LC << "create" << std::endl;
 
-    if (_graphDirty)
+    //if (_graphDirty)
     {
-        if (getFeatureSource() && getStyleSheet() && _session.valid())
+        if (isOpen() && getFeatureSource() && getStyleSheet() && _session.valid())
         {
-            // connect the session to the features:
             _session->setFeatureSource(getFeatureSource());
 
             // group that will build all the feature geometry:
@@ -263,7 +293,7 @@ FeatureModelLayer::create()
 
             if (status.isError())
             {
-                OE_WARN << LC << "INTERNAL ERROR intializing the FMG" << std::endl;
+                OE_WARN << LC << "ERROR intializing the FMG: " << status.toString() << std::endl;
                 setStatus(status);
             }
             else

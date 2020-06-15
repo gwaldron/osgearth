@@ -1,0 +1,97 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_NETWORK_MONITOR_H
+#define OSGEARTH_NETWORK_MONITOR_H 1
+
+#include <osgEarth/Common>
+#include <map>
+
+namespace osgEarth {
+    class OSGEARTH_EXPORT NetworkMonitor
+    {
+    public:
+        struct Request
+        {
+            Request() :
+                isComplete(false)
+            {
+                startTime = osg::Timer::instance()->tick();
+            }
+
+            Request(const std::string& _uri, const std::string& _status) :
+                isComplete(false)
+            {
+                uri = _uri;
+                status = _status;
+                startTime = osg::Timer::instance()->tick();
+            }
+
+            double getDuration()
+            {
+                if (isComplete)
+                {
+                    return osg::Timer::instance()->delta_m(startTime, endTime);
+                }
+                return osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
+            }
+
+            bool isComplete;
+            std::string uri;
+            std::string layer;
+            std::string type;
+            std::string status;
+            osg::Timer_t startTime;
+            osg::Timer_t endTime;
+        };
+
+        struct ScopedRequestLayer
+        {
+            ScopedRequestLayer(const std::string& layer) :
+                _layer(layer)
+            {
+                NetworkMonitor::setRequestLayer(_layer);
+            }
+
+            ~ScopedRequestLayer()
+            {
+                NetworkMonitor::setRequestLayer("");
+            }
+            std::string _layer;
+        };
+
+        typedef std::map<unsigned long, Request> Requests;
+
+        static unsigned long begin(const std::string& uri, const std::string& status, const std::string& type = "");
+        static void end(unsigned long handle, const std::string& status);
+        static void getRequests(Requests& out);
+        static bool getEnabled();
+        static void setEnabled(bool enabled);
+        static void clear();
+        static void saveCSV(Requests& requests, const std::string& filename);
+
+        static void setRequestLayer(const std::string& name);
+        static std::string getRequestLayer();
+    };
+
+
+
+}
+
+#endif // OSGEARTH_NETWORK_MONITOR_H

@@ -38,8 +38,6 @@ namespace osgEarth { namespace Util
     {
     public:
         Taggable() { }
-
-        //Taggable(const osgEarth::Config& conf) : T(conf) { }
         
         Taggable(const Taggable& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY):
         T(rhs, copyop)
@@ -119,6 +117,91 @@ namespace osgEarth { namespace Util
         }
     };
 
+    template<typename T>
+    class TaggableWithConfig : public T
+    {
+    public:
+        TaggableWithConfig() { }
+
+        TaggableWithConfig(const Config& conf) : T(conf) { }
+
+        TaggableWithConfig(const TaggableWithConfig& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY):
+            T(rhs, copyop)
+        {
+            _tags = rhs._tags;
+        }
+
+        void addTag( const std::string& tag ) {
+            _tags.insert( normalize( tag ) );
+        }
+        void addTags( const TagVector& tags ) {
+            for( TagVector::const_iterator i = tags.begin(); i != tags.end(); ++i )
+                _tags.insert( normalize(*i) );
+        }
+        void addTags( const std::string& tagString ) {
+            TagVector tags;
+            StringTokenizer( tagString, tags, " ", "\"'", false, true );
+            addTags( tags );
+        }
+        void removeTag( const std::string& tag ) {
+            _tags.erase( normalize( tag ) );
+        }
+        bool containsTag( const std::string& tag ) const {
+            return _tags.find( normalize( tag )) != _tags.end();
+        }
+
+        bool containsTags( const TagSet& tags) const {
+            for( TagSet::const_iterator i = tags.begin(); i != tags.end(); i++ ) {
+                if ( _tags.find( normalize( *i ) ) == _tags.end() )
+                    return false;
+            }
+            return true;            
+        }
+
+        bool containsTags( const TagVector& tags) const {
+            for( TagVector::const_iterator i = tags.begin(); i != tags.end(); i++ ) {
+                if ( _tags.find( normalize( *i ) ) == _tags.end() )
+                    return false;
+            }
+            return true;            
+        }
+
+        const TagSet& tags() const { return _tags; }
+
+        static std::string tagString(const TagSet& tags) {
+            std::stringstream buf;
+            for( TagSet::const_iterator i = tags.begin(); i != tags.end(); i++ )
+                buf << (i != tags.begin()? " " : "") << *i;
+            std::string result = buf.str();
+            return result;
+        }
+
+        static std::string tagString(const TagVector& tags) {
+            std::stringstream buf;
+            for( TagVector::const_iterator i = tags.begin(); i != tags.end(); i++ )
+                buf << (i != tags.begin()? " " : "") << *i;
+            std::string result = buf.str();
+            return result;
+        }
+
+        std::string tagString() const {
+            std::stringstream buf;
+            for( TagSet::const_iterator i = _tags.begin(); i != _tags.end(); i++ )
+                buf << (i != _tags.begin()? " " : "") << *i;
+            std::string result = buf.str();
+            return result;
+        }
+
+    protected:
+
+        TagSet _tags;
+
+    private:
+
+        std::string normalize( const std::string& input ) const {
+            return osgEarth::toLower(input);
+        }
+    };
 } }
 
 #endif // OSGEARTHSYMBOLOGY_QUERY_H

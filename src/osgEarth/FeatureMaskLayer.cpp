@@ -33,14 +33,14 @@ REGISTER_OSGEARTH_LAYER(feature_mask, FeatureMaskLayer);
 void
 FeatureMaskLayer::Options::fromConfig(const Config& conf)
 {
-    LayerReference<FeatureSource>::get(conf, "features", _featureSourceLayer, _featureSource);
+    featureSource().get(conf, "features");
 }
 
 Config
 FeatureMaskLayer::Options::getConfig() const
 {
     Config conf = MaskLayer::Options::getConfig();
-    LayerReference<FeatureSource>::set(conf, "features", _featureSourceLayer, _featureSource);
+    featureSource().set(conf, "features");
     return conf;
 }
 
@@ -49,13 +49,13 @@ FeatureMaskLayer::Options::getConfig() const
 void
 FeatureMaskLayer::setFeatureSource(FeatureSource* layer)
 {
-    _featureSource.setLayer(layer);
+    options().featureSource().setLayer(layer);
 }
 
 FeatureSource*
 FeatureMaskLayer::getFeatureSource() const
 {
-    return _featureSource.getLayer();
+    return options().featureSource().getLayer();
 }
 
 Status
@@ -65,11 +65,18 @@ FeatureMaskLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status fsStatus = _featureSource.open(options().featureSource(), getReadOptions());
+    Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
     return Status::NoError;
+}
+
+Config
+FeatureMaskLayer::getConfig() const
+{
+    Config c = MaskLayer::getConfig();
+    return c;
 }
 
 osg::Vec3dArray*
@@ -108,15 +115,15 @@ FeatureMaskLayer::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap\n";
     MaskLayer::addedToMap(map);
-    _featureSource.connect(map, options().featureSourceLayer());
+    options().featureSource().addedToMap(map);
     create();
 }
 
 void
 FeatureMaskLayer::removedFromMap(const Map* map)
 {
+    options().featureSource().removedFromMap(map);
     MaskLayer::removedFromMap(map);
-    _featureSource.disconnect(map);
 }
 
 void

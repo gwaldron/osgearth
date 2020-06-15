@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -226,3 +226,62 @@ GL3RealizeOperation::operator()(osg::Object* object)
 
     CustomRealizeOperation::operator()(object);
 }
+
+
+
+GLBufferReleaser::GLBufferReleaser(GLBuffer* buffer) : 
+    osg::GraphicsOperation("osgEarth::GLBufferReleaser", true),
+    _buffer(buffer),
+    _handle(buffer->_handle)
+{
+    //nop
+}
+
+void
+GLBufferReleaser::operator () (osg::GraphicsContext* context)
+{
+    if (!_buffer.valid() && _handle != (GLuint)~0 && context && context->getState())
+    {
+        OE_DEBUG << "Note: glDeleteBuffers(1, " << _handle << ")" << std::endl;
+        osg::GLExtensions* ext = context->getState()->get<osg::GLExtensions>();
+        ext->glDeleteBuffers(1, &_handle);
+        _handle = (GLuint)~0;
+        setKeep(false);
+    }
+}
+
+
+#ifndef OE_HAVE_BINDIMAGETEXTURE
+using namespace osg;
+
+int BindImageTexture::compare(const osg::StateAttribute &sa) const
+{
+    COMPARE_StateAttribute_Types(BindImageTexture,sa)
+        // Compare each parameter in turn against the rhs.
+        COMPARE_StateAttribute_Parameter(_target)
+        COMPARE_StateAttribute_Parameter(_imageunit)
+        COMPARE_StateAttribute_Parameter(_access)
+        COMPARE_StateAttribute_Parameter(_format)
+        COMPARE_StateAttribute_Parameter(_layered)
+        COMPARE_StateAttribute_Parameter(_level)
+        return 0;
+}
+
+void BindImageTexture::apply(osg::State& state) const
+{
+    if(_target.valid())
+    {
+        unsigned int contextID = state.getContextID();
+        osg::Texture::TextureObject *to = _target->getTextureObject( contextID );
+        if( !to ) //|| _target->isDirty( contextID ))
+        {
+            // _target never been applied yet or is dirty
+            state.applyTextureAttribute( state.getActiveTextureUnit(), _target.get());
+            to = _target->getTextureObject( contextID );
+        }
+
+        state.get<osg::GLExtensions>()->glBindImageTexture(_imageunit, to->id(), _level, _layered, _layer, _access, _format);
+    }
+}
+
+#endif

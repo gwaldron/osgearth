@@ -62,8 +62,9 @@ _traversalMask( ~0 )
     {
         // default slices:
         _ranges.push_back(0.0f);
+        _ranges.push_back(100.0f);
         _ranges.push_back(500.0f);
-        _ranges.push_back(1250.0f);
+        //_ranges.push_back(1250.0f);
 
         reinitialize();
     }

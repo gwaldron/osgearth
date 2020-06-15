@@ -29,6 +29,7 @@
 #include <osgEarth/FadeEffect>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
+#include <osgEarth/LayerReference>
 #include <osg/Node>
 
 namespace osgEarth
@@ -37,8 +38,7 @@ namespace osgEarth
     {
     public: //properties
         
-        OE_OPTION(StyleSheet::Options, styleSheet);
-        OE_OPTION(std::string, styleSheetLayer);
+        OE_OPTION_LAYER(StyleSheet, styleSheet);
 
         /** Maximum span of a generated edge, in degrees. For geocentric maps only */
         optional<double>& maxGranularity() { return _maxGranularity_deg; }
@@ -84,6 +84,9 @@ namespace osgEarth
         /** Debug: whether to enable a session-wide resource cache (default=true) */
         optional<bool>& sessionWideResourceCache() { return _sessionWideResourceCache; }
         const optional<bool>& sessionWideResourceCache() const { return _sessionWideResourceCache; }
+
+        /** Options feature filters */
+        OE_OPTION_VECTOR(ConfigOptions, filters);
 
     public:
         FeatureModelOptions(const ConfigOptions& co =ConfigOptions());
@@ -156,7 +159,21 @@ namespace osgEarth
             FeatureCursor*            cursor,
             const Style&              style,
             const FilterContext&      context,
-            osg::ref_ptr<osg::Node>&  node ) =0;
+            osg::ref_ptr<osg::Node>&  node,
+            const Query&              query)
+        {
+            // for backwards compatibility with old API
+            return createOrUpdateNode(cursor, style, context, node);
+        }
+
+        virtual bool createOrUpdateNode(
+            FeatureCursor*            cursor,
+            const Style&              style,
+            const FilterContext&      context,
+            osg::ref_ptr<osg::Node>&  node)
+        {
+            return false;
+        }
 
         /**
          * Creates a group that will contain all the geometry corresponding to a
@@ -183,7 +200,8 @@ namespace osgEarth
             FeatureCursor*            features,
             const Style&              style,
             const FilterContext&      context,
-            osg::ref_ptr<osg::Node>&  node );
+            osg::ref_ptr<osg::Node>&  node,
+            const Query&                    query);
 
     public:
         GeometryCompilerOptions _options;

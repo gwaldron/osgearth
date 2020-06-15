@@ -2,15 +2,12 @@
 set(TARGET_GLSL
     RexEngine.vert.glsl
     RexEngine.elevation.glsl
-    RexEngine.vert.view.glsl
-    RexEngine.tcs.glsl
-    RexEngine.tes.glsl
     RexEngine.gs.glsl
-    RexEngine.frag.glsl
-    RexEngine.NormalMap.vert.glsl
-    RexEngine.NormalMap.frag.glsl
-    RexEngine.Morphing.vert.glsl
-    RexEngine.SDK.vert.glsl)
+    RexEngine.ImageLayer.glsl
+    RexEngine.NormalMap.glsl
+    RexEngine.Morphing.glsl
+    RexEngine.Tessellation.glsl
+    RexEngine.SDK.glsl)
 
 set(TARGET_IN
     Shaders.cpp.in)
@@ -26,6 +23,7 @@ SET(TARGET_SRC
     CreateTileImplementation.cpp
     DrawState.cpp
     DrawTileCommand.cpp
+    FrameClock.cpp
     GeometryPool.cpp
     RexTerrainEngineNode.cpp
     RexTerrainEngineDriver.cpp
@@ -50,6 +48,7 @@ SET(TARGET_H
     CreateTileImplementation
     DrawState
     DrawTileCommand
+    FrameClock
     GeometryPool
     Shaders
     RexTerrainEngineNode

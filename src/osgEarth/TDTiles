@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/SceneGraphCallback>
 #include <osgEarth/URI>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/GeoData>
@@ -50,7 +51,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     struct LoadContext
     {
         URIContext _uc;
-        RefinePolicy _defaultRefine;
     };
 
     class OSGEARTH_EXPORT Asset
@@ -104,6 +104,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         Tile(const Json::Value& value, LoadContext& uc) { fromJSON(value, uc); }
         void fromJSON(const Json::Value&, LoadContext& uc);
         Json::Value getJSON() const;
+
+        osg::BoundingSphere getBoundingSphere();
     };
 
     class OSGEARTH_EXPORT Tileset : public osg::Referenced
@@ -111,7 +113,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     public:
         OE_OPTION(Asset, asset);
         OE_OPTION(BoundingVolume, boundingVolume);
-        //todo: properties
         OE_OPTION(double, geometricError);
         OE_OPTION_REFPTR(Tile, root);
 
@@ -124,6 +125,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     };
 
     class ThreeDTilesetNode;
+    class ThreeDTileNode;
 
     /**
      * Node that renders a 3D-Tiles content record
@@ -133,13 +135,14 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     public:
         ThreeDTilesetContentNode(ThreeDTilesetNode* tilesetNode, Tileset* tileset, osgDB::Options* options);
 
-        osg::BoundingSphere computeBound() const;
+        ThreeDTileNode* getTileNode();
 
     private:
+        ThreeDTileNode* _tileNode;
         ThreeDTilesetNode* _tilesetNode;
         osg::ref_ptr< Tileset > _tileset;
         osg::ref_ptr< osgDB::Options > _options;
-    };    
+    };
 
     /**
      * Node that renders a 3D-Tiles Tile
@@ -172,6 +175,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         const Tile* getTile() const { return _tile.get(); }
 
+        RefinePolicy getRefine() const { return _refine; }
+
         unsigned int getLastCulledFrameNumber() const;
         float getLastCulledFrameTime() const;
 
@@ -183,6 +188,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         TileTracker::iterator _trackerItr;
         bool _trackerItrValid;
+
+        void setParentTile(ThreeDTileNode* parentTile);
 
     private:
 
@@ -208,26 +215,32 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         osg::BoundingBoxd _boundingBox;
         osg::Matrixd _boundingBoxLocalToWorld;
 
+        osg::BoundingSphere _localBoundingSphere;
+
         osg::ref_ptr< osgDB::Options > _options;
 
         osg::Vec4 _debugColor;
 
         unsigned int _lastCulledFrameNumber;
         float _lastCulledFrameTime;
+
+        RefinePolicy _refine;
+
+        osg::observer_ptr< ThreeDTileNode > _parentTile;
     };
 
     /**
     * Node representing a 3D-Tiles Tileet.
     */
-    class OSGEARTH_EXPORT ThreeDTilesetNode : public osg::MatrixTransform
+    class OSGEARTH_EXPORT ThreeDTilesetNode : public osg::Group
     {
     public:
-        ThreeDTilesetNode(Tileset* tileset, osgDB::Options* options);
-
-        osg::BoundingSphere computeBound() const;
+        ThreeDTilesetNode(Tileset* tileset, const std::string& authorizationHeader, SceneGraphCallbacks* sceneGraphCallbacks, osgDB::Options* options);
 
         float getMaximumScreenSpaceError() const;
         void setMaximumScreenSpaceError(float maximumScreenSpaceError);
+
+        double getSSEDenominator() const;
 
         void touchTile(ThreeDTileNode* node);
 
@@ -237,7 +250,17 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         const osgDB::Options* getOptions() const { return _options.get(); }
 
+        const std::string& getAuthorizationHeader() const { return _authorizationHeader; }
+        void setAuthorizationHeader(const std::string& authorizationHeader) { _authorizationHeader = authorizationHeader; }
 
+        //! Get the scene graph callback host
+        SceneGraphCallbacks* getSceneGraphCallbacks(SceneGraphCallbacks* callbacks);
+
+        //! Set the scene graph callback host
+        void setSceneGraphCallbacks(SceneGraphCallbacks* callbacks);
+
+        void runPreMergeOperations(osg::Node* node);
+        void runPostMergeOperations(osg::Node* node);
 
         /**
          * Gets/sets the maximum number of tiles to keep in memory before expiring them.
@@ -263,6 +286,9 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         bool getColorPerTile() const;
         void setColorPerTile(bool colorPerTile);
 
+        const std::string& getOwnerName() const;
+        void setOwnerName(const std::string& name);
+
     private:
         void expireTiles(const osg::NodeVisitor& nv);
 
@@ -277,12 +303,20 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         unsigned int _maxTiles;
         float _maxAge;
 
-        bool _showBoundingVolumes;       
+        bool _showBoundingVolumes;
         bool _showColorPerTile;
 
         osg::ref_ptr< VirtualProgram> _debugVP;
 
         unsigned int _lastExpiredFrame;
+
+        double _sseDenominator;
+
+        std::string _authorizationHeader;
+
+        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
+
+        std::string _ownerName;
     };
 
 } } }

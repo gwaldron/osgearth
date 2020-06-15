@@ -77,6 +77,7 @@ _maxVertsPerDrawable(USHRT_MAX)
     // support Chinese character in the file name and attributes in ESRI's shapefile
     CPLSetConfigOption("GDAL_FILENAME_IS_UTF8","NO");
     CPLSetConfigOption("SHAPE_ENCODING","");
+    CPLSetConfigOption("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", "YES");
 
     // Redirect GDAL/OGR console errors to our own handler
     CPLPushErrorHandler(myCPLErrorHandler);

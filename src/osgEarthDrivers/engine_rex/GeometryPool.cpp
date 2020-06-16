@@ -17,9 +17,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "GeometryPool"
+#include "MeshEditor"
 #include <osgEarth/Locators>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TopologyGraph>
+#include <osgEarth/WingedEdgeMesh>
 #include <osg/Point>
 #include <osgUtil/MeshOptimizers>
 #include <cstdlib> // for getenv
@@ -62,6 +64,7 @@ void
 GeometryPool::getPooledGeometry(const TileKey&                tileKey,
                                 unsigned                      tileSize,
                                 MaskGenerator*                maskSet,
+                                MeshEditor*                   meshEditor,
                                 osg::ref_ptr<SharedGeometry>& out)
 {
     // convert to a unique-geometry key:
@@ -85,7 +88,7 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
             _reorder = reorder;
         }
 
-        bool masking = maskSet && maskSet->hasMasks();
+        bool masking = (maskSet && maskSet->hasMasks()) || (meshEditor && meshEditor->hasEdits());
 
         GeometryMap::iterator i = _geometryMap.find( geomKey );
         if ( !masking && i != _geometryMap.end() )
@@ -96,7 +99,7 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
         else
         {
             // Not found. Create it.
-            out = createGeometry( tileKey, tileSize, maskSet );
+            out = createGeometry( tileKey, tileSize, maskSet, meshEditor );
 
             if (!masking && out.valid())
             {
@@ -112,7 +115,7 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
 
     else
     {
-        out = createGeometry( tileKey, tileSize, maskSet );
+        out = createGeometry( tileKey, tileSize, maskSet, meshEditor );
     }
 }
 
@@ -335,8 +338,9 @@ GeometryPool::tessellateSurface(unsigned tileSize, MaskGenerator* maskSet, osg::
 SharedGeometry*
 GeometryPool::createGeometry(const TileKey& tileKey,
                              unsigned       tileSize,
-                             MaskGenerator* maskSet) const
-{
+                             MaskGenerator* maskSet,
+                             MeshEditor* editor) const
+{    
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
     GeoPoint centroid;
@@ -371,7 +375,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     // Elements set ... later we'll decide whether to use the global one
     osg::DrawElements* primSet = NULL;
 
-    // the vertex locations:
+    // the initial vertex locations:
     osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array();
     verts->setVertexBufferObject(vbo.get());
     verts->reserve( numVerts );
@@ -387,7 +391,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     osg::ref_ptr<osg::Vec3Array> neighbors = 0L;
     osg::ref_ptr<osg::Vec3Array> neighborNormals = 0L;
-    if ( _options.morphTerrain() == true )
+    if ( _options.morphTerrain() == true)
     {
         // neighbor positions (for morphing)
         neighbors = new osg::Vec3Array();
@@ -415,6 +419,12 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     GeoLocator locator(tileKey.getExtent());
 
+    if (editor && editor->hasEdits())
+    {
+        editor->createTileMesh(geom, tileSize);
+        return geom.release();
+    }
+
     osg::Vec3d unit;
     osg::Vec3d model;
     osg::Vec3d modelLTP;
@@ -438,7 +448,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             if ( populateTexCoords )
             {
                 // Use the Z coord as a type marker
-                float marker = maskSet ? maskSet->getMarker(nx, ny) : VERTEX_MARKER_GRID;
+                float marker =  VERTEX_MARKER_GRID;
                 texCoords->push_back( osg::Vec3f(nx, ny, marker) );
             }
 
@@ -488,7 +498,6 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     // By default we tessellate the surface, but if there's a masking set
     // it might replace some or all of our surface geometry.
     bool tessellateSurface = true;
-
     if (maskSet)
     {
         // The mask generator adds to the passed-in arrays as necessary,
@@ -573,14 +582,6 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     if (tessellateSurface && primSet == NULL)
     {
         primSet = _defaultPrimSet.get();
-        if (_reorder.valid())
-        {
-            reorder(geom->getVertexArray(), _reorder.get());
-            reorder(geom->getNormalArray(), _reorder.get());
-            reorder(geom->getTexCoordArray(), _reorder.get());
-            reorder(geom->getNeighborArray(), _reorder.get());
-            reorder(geom->getNeighborNormalArray(), _reorder.get());
-        }
     }
 
     if (primSet)

@@ -1,0 +1,88 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_FEATURE_MESH_EDIT_LAYER_H
+#define OSGEARTH_FEATURE_MESH_EDIT_LAYER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/FeatureSource>
+
+#include <osgEarth/MeshEditLayer>
+#include <osgEarth/LayerReference>
+
+namespace osgEarth
+{
+    /**
+     * MeshEditLayer whose geometry comes from a feature source.
+     */
+    class OSGEARTH_EXPORT FeatureMeshEditLayer : public MeshEditLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public MeshEditLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, MeshEditLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
+    public:
+        META_Layer(osgEarth, FeatureMeshEditLayer, Options, MeshEditLayer, FeatureMeshEdit);
+
+        //! Source of the feature(s)
+        void setFeatureSource(FeatureSource* features);
+        FeatureSource* getFeatureSource() const;
+
+    public: // MeshEditLayer
+        virtual EditVector* getOrCreateEditGeometry(
+            float                   heightScale,
+            const SpatialReference* srs,
+            ProgressCallback*       progress);
+    public:
+
+        virtual Status openImplementation();
+
+        virtual Config getConfig() const;
+
+    protected:
+
+        virtual void addedToMap(const Map*);
+
+        virtual void removedFromMap(const Map*);
+
+    protected:
+
+        /** dtor */
+        virtual ~FeatureMeshEditLayer() { }
+
+    private:
+
+        void create();
+
+        osg::ref_ptr<EditVector> _editGeometry;
+        OpenThreads::Mutex _geometryMutex;
+    };
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureMeshEditLayer::Options);
+
+#endif // OSGEARTH_FEATURE_MASK_LAYER_H
+

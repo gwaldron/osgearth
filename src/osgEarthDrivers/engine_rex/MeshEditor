@@ -1,0 +1,67 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_DRIVERS_REX_MESH_EDITOR
+#define OSGEARTH_DRIVERS_REX_MESH_EDITOR 1
+#include "Common"
+#include <osgEarth/TileKey>
+#include <osgEarth/Geometry>
+#include <osgEarth/MeshEditLayer>
+#include <osg/Geometry>
+
+namespace osgEarth {
+    class Map;
+}
+
+namespace osgEarth { namespace REX
+{
+    using namespace osgEarth;
+
+    class SharedGeometry;
+    
+    struct EditGeometry
+    {
+        EditGeometry(MeshEditLayer::EditVector* geom,
+                     const osg::Vec3d& ndcMin, const osg::Vec3d& ndcMax)
+            : geometry(geom), _ndcMin(ndcMin), _ndcMax(ndcMax)
+        {
+        }
+        osg::ref_ptr<MeshEditLayer::EditVector> geometry;
+        // XXX Necessary?
+        osg::Vec3d _ndcMin, _ndcMax;
+    };
+    
+    class MeshEditor : public osg::Referenced
+    {
+    public:
+        MeshEditor(const TileKey& key, unsigned tileSize, const Map* map);
+        void addEditGeometry(MeshEditLayer::EditVector *geometry);
+        bool hasEdits()
+        {
+            return !_edits.empty();
+        }
+        bool createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize);
+    protected:
+        std::vector<EditGeometry> _edits;
+        const TileKey _key;
+        unsigned _tileSize;
+        osg::Vec3d _ndcMin, _ndcMax;
+    };
+    }}
+#endif

@@ -1,0 +1,21 @@
+<!-- Testing of mesh edit - cut features into the terrain
+-->
+
+<Map>
+    <options>
+      <terrain skirt_ratio="0.0" morph_imagery="false" morph_terrain="false"/>
+    </options>
+    
+    <GDALImage name="world-tiff">
+        <url>../data/world.tif</url>
+    </GDALImage>
+    <FeatureMeshEdit name="mask">
+        <OGRFeatures>
+            <geometry>
+                POLYGON(( -111.0466 42.0015 0, -111.0467 40.9979 0, -109.0501 41.0007 0, -109.0452 36.9991 0, -114.0506 37.0004 0, -114.0417 41.9937 0)) 
+            </geometry>
+            <profile>global-geodetic</profile>
+        </OGRFeatures>
+    </FeatureMeshEdit>
+    <DebugImage/>
+</Map>

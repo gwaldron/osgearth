@@ -21,6 +21,7 @@
 
 #include "Common"
 #include "MaskGenerator"
+#include "MeshEditor"
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/TileKey>
 #include <osgEarth/Threading>
@@ -217,6 +218,7 @@ namespace osgEarth { namespace REX
             const TileKey&               tileKey,
             unsigned                     tileSize,
             MaskGenerator*               maskSet,
+            MeshEditor*                  meshEditor,
             osg::ref_ptr<SharedGeometry>& out);
 
         /**
@@ -263,7 +265,8 @@ namespace osgEarth { namespace REX
         SharedGeometry* createGeometry(
             const TileKey& tileKey,
             unsigned       tileSize,
-            MaskGenerator* maskSet ) const;
+            MaskGenerator* maskSet,
+            MeshEditor* meshEditor) const;
 
         // builds a primitive set to use for any tile without a mask
         osg::DrawElements* createPrimitiveSet(

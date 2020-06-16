@@ -30,6 +30,7 @@ SET(TARGET_SRC
     LayerDrawable.cpp
     LoadTileData.cpp
     MaskGenerator.cpp
+    MeshEditor.cpp
 	SelectionInfo.cpp
     SurfaceNode.cpp
     TerrainCuller.cpp
@@ -55,6 +56,7 @@ SET(TARGET_H
     LayerDrawable
     LoadTileData
     MaskGenerator
+    MeshEditor
     RenderBindings
     SurfaceNode
     TerrainCuller

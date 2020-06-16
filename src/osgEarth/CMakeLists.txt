@@ -178,6 +178,7 @@ SET(LIB_PUBLIC_HEADERS
     MapNodeObserver
     MaskLayer
     MaskSource
+    MeshEditLayer
     Memory
     MemCache
     MetaTile
@@ -329,6 +330,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureImageLayer
     FeatureIndex
     FeatureMaskLayer
+    FeatureMeshEditLayer
     FeatureModelGraph
     FeatureModelLayer
     FeatureModelSource
@@ -550,6 +552,7 @@ set(TARGET_SRC
     MaskSource.cpp
     MemCache.cpp
     Memory.cpp
+    MeshEditLayer.cpp
     MetaTile.cpp
     Metrics.cpp
     MBTiles.cpp
@@ -681,6 +684,7 @@ set(TARGET_SRC
     FeatureElevationLayer.cpp
     FeatureImageLayer.cpp
     FeatureMaskLayer.cpp
+    FeatureMeshEditLayer.cpp
     FeatureModelGraph.cpp
     FeatureModelLayer.cpp
     FeatureModelSource.cpp

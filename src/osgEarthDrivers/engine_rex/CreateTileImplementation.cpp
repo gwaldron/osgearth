@@ -184,6 +184,7 @@ CreateTileImplementation::createTile(
     {
         // Mask generator creates geometry from masking boundaries when they exist.
         MaskGenerator maskGen(*subkey, tileSize, map.get());
+        MeshEditor meshEdit(*subkey, tileSize, map.get());
 
         if (maskGen.hasMasks() == true && includeTilesWithMasks == false)
             continue;
@@ -197,6 +198,7 @@ CreateTileImplementation::createTile(
             *subkey,
             tileSize,
             &maskGen,
+            &meshEdit,
             sharedGeom);
 
         osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();

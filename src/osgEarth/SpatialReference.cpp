@@ -99,7 +99,6 @@ SpatialReference::createFromPROJ4( const std::string& proj4, const std::string& 
     SpatialReference* result = NULL;
     GDAL_SCOPED_LOCK;
 	void* handle = OSRNewSpatialReference( NULL );
-    OSRSetAxisMappingStrategy(handle, OAMS_TRADITIONAL_GIS_ORDER);
     if ( OSRImportFromProj4( handle, proj4.c_str() ) == OGRERR_NONE )
 	{
         result = new SpatialReference( handle, std::string("PROJ4") );
@@ -178,7 +177,6 @@ SpatialReference::createFromUserInput( const std::string& input, const std::stri
     osg::ref_ptr<SpatialReference> result;
     GDAL_SCOPED_LOCK;
     void* handle = OSRNewSpatialReference( NULL );
-    OSRSetAxisMappingStrategy(handle, OAMS_TRADITIONAL_GIS_ORDER);
     if ( OSRSetFromUserInput( handle, input.c_str() ) == OGRERR_NONE )
     {
         result = new SpatialReference( handle, std::string("UserInput") );

@@ -30,6 +30,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Math>
+#include <osgEarth/Metrics>
+
 #include <osg/BlendFunc>
 #include <osg/Multisample>
 #include <osg/Texture2D>
@@ -40,6 +42,7 @@
 #include <osgDB/WriteFile>
 #include <osgUtil/CullVisitor>
 #include <osgUtil/Optimizer>
+
 #include <cstdlib> // getenv
 
 #define LC "[GroundCoverLayer] " << getName() << ": "
@@ -60,21 +63,14 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 
 // TODO LIST
 //
-//  - (IN PROGRESS) texture management as the catalog gets bigger (paged arrays or different sizes?)
+//  - Texture management as the catalog gets bigger. Swap in/out criteria and detection??
 
+//  - Fix model culling. The "radius" isn't quite sufficient since the origin is not at the center,
+//    AND because rotation changes the profile. Calculate it differently.
 
-
-//  - [OPT] on Generate, store the instance count per tile in an array somewhere. Also store the 
-//    TOTAL instance count in the DI buffer. THen use this to dispatchComputeIndirect for the
-//    MERGE. That way we don't have to dispatch to "all possible locations" during a merge,
-//    hopefully making it much faster and avoiding frame breaks.
-
-//  - include a "model range" or "max SSE" in the InstanceBuffer...?
-
-//  - [OPT] reduce the SIZE of the instance buffer by re-using variables (instanceID, drawID, assetID)
+//  - Idea: include a "model range" or "max SSE" in the InstanceBuffer...?
 //  - [PERF] thin out distant instances automatically in large tiles
 //  - [PERF] cull by "horizon" .. e.g., the lower you are, the fewer distant trees...?
-//  - Figure out how to pre-compile/ICO the TextureArena; it takes quite a while.
 //  - Figure out exactly where some of this functionality goes -- GCL or IC? For example the
 //    TileManager stuff seems like it would go in IC?
 //  - Allow us to store key, slot, etc data in the actual TileContext coming from the 
@@ -87,6 +83,12 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 //  - variable spacing or clumping by landcovergroup or asset...?
 //  - make the noise texture bindless as well? Stick it in the arena? Why not.
 
+//  - (DONE) [OPT] reduce the SIZE of the instance buffer by re-using variables (instanceID, drawID, assetID)
+//  - (DONE) Figure out how to pre-compile/ICO the TextureArena; it takes quite a while.
+//  - (DONE) [OPT] on Generate, store the instance count per tile in an array somewhere. Also store the 
+//    TOTAL instance count in the DI buffer. THen use this to dispatchComputeIndirect for the
+//    MERGE. That way we don't have to dispatch to "all possible locations" during a merge,
+//    hopefully making it much faster and avoiding frame breaks.
 //  - (DONE) FIX the multi-GC case. A resident handle can't cross GCs, so we will need
 //    to upgrade TextureArena (Texture) to store one object/handle per GC.
 //    We will also need to replace the sampler IDs in teh LUT shader with a mapping
@@ -120,6 +122,7 @@ GroundCoverLayer::Options::getConfig() const
     conf.set("cast_shadows", _castShadows);
     conf.set("max_alpha", maxAlpha());
     conf.set("alpha_to_coverage", alphaToCoverage());
+    conf.set("max_sse", maxSSE());
 
     Config zones("zones");
     for (int i = 0; i < _biomeZones.size(); ++i) {
@@ -148,6 +151,7 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     conf.get("cast_shadows", _castShadows);
     conf.get("max_alpha", maxAlpha());
     conf.get("alpha_to_coverage", alphaToCoverage());
+    conf.get("max_sse", maxSSE());
 
     const Config* zones = conf.child_ptr("zones");
     if (zones)
@@ -271,6 +275,17 @@ void GroundCoverLayer::setCastShadows(bool value) {
 }
 bool GroundCoverLayer::getCastShadows() const {
     return options().castShadows().get();
+}
+
+void GroundCoverLayer::setMaxSSE(float value)
+{
+    options().maxSSE() = value;
+    if (_sseU.valid())
+        _sseU->set(value);
+}
+float GroundCoverLayer::getMaxSSE() const
+{
+    return options().maxSSE().get();
 }
 
 void
@@ -623,6 +638,11 @@ GroundCoverLayer::buildStateSets()
 
     stateset->addUniform(new osg::Uniform("oe_gc_maxAlpha", getMaxAlpha()));
 
+    if (!_sseU.valid())
+        _sseU = new osg::Uniform("oe_gc_sse", getMaxSSE());
+
+    stateset->addUniform(_sseU.get());
+
     if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
         stateset->setMode(GL_MULTISAMPLE, 1);
     else
@@ -962,6 +982,9 @@ namespace
 void
 GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
 {
+    OE_PROFILING_ZONE_NAMED("GroundCover DrawTileBatch");
+    OE_PROFILING_GPU_ZONE("GroundCover DrawTileBatch");
+
     osg::State* state = ri.getState();
     CameraState& ds = _cameraState.get(ri.getCurrentCamera());
 
@@ -975,6 +998,7 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
     // for this camera.
     if (!instancer.valid())
     {
+        OE_PROFILING_ZONE_NAMED("IC Setup");
         instancer = new InstanceCloud();
 
         unsigned numInstances1D = 64u;
@@ -1029,6 +1053,8 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
     // Ensure we have allocated sufficient GPU memory for the tiles:
     if (needsGenerate)
     {
+        OE_PROFILING_ZONE_NAMED("allocateGLObjects");
+
         // returns true if new memory was allocated
         if (instancer->allocateGLObjects(ri, tiles->size()) ||
             needsReset)
@@ -1052,43 +1078,54 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
         // which already exist in the instancer, and which went away and
         // need to be recycled.
         ds._pass = PASS_COLLECT;
-
-        // Put all tiles on the expired list, only removing them when we
-        // determine that they are good to keep around.
-        for(auto& i : ds._tiles._current)
-            if (i._revision >= 0)
-                i._expired = true;
-
-        // traverse and build our gen list.
-        tiles->visitTiles(ri);
-
-
-        // Release anything still marked as expired.
-        for(slot=0; slot<ds._tiles._current.size(); ++slot)
         {
-            if (ds._tiles._current[slot]._expired)
+            OE_PROFILING_ZONE_NAMED("Collect");
+
+            // Put all tiles on the expired list, only removing them when we
+            // determine that they are good to keep around.
+            for(auto& i : ds._tiles._current)
+                if (i._revision >= 0)
+                    i._expired = true;
+
+            // traverse and build our gen list.
+            tiles->visitTiles(ri);
+
+            // Release anything still marked as expired.
+            for(slot=0; slot<ds._tiles._current.size(); ++slot)
             {
-                ds._tiles.release(slot);
-                instancer->clearTileSlot(slot);
+                if (ds._tiles._current[slot]._expired)
+                {
+                    ds._tiles.release(slot);
+                }
             }
-        }
 
-        // Allocate a slot for each new tile. We do this now AFTER
-        // we have released any expired tiles
-        for(const auto& i : ds._tiles._new)
-        {
-            ds._tiles.allocate(i._key, i._revision);
+            // Allocate a slot for each new tile. We do this now AFTER
+            // we have released any expired tiles
+            for(const auto& i : ds._tiles._new)
+            {
+                slot = ds._tiles.allocate(i._key, i._revision);
+            }
+            ds._tiles._new.clear();
         }
-        ds._tiles._new.clear();
 
         ds._pass = PASS_GENERATE;
-        ds._numTilesGenerated = 0u;
+        {
+            OE_PROFILING_ZONE_NAMED("Generate");
+            OE_PROFILING_GPU_ZONE("IC:Generate");
 
-        instancer->setHighestTileSlot(ds._tiles._highestOccupiedSlot);
+            ds._numTilesGenerated = 0u;
 
-        instancer->generate_begin(ri);
-        tiles->drawTiles(ri);
-        instancer->generate_end(ri);
+            instancer->setHighestTileSlot(ds._tiles._highestOccupiedSlot);
+
+            for (slot = 0; slot <= ds._tiles._current.size(); ++slot)
+            {
+                instancer->setTileActive(slot, ds._tiles.inUse(slot));
+            }
+
+            instancer->generate_begin(ri);
+            tiles->drawTiles(ri);
+            instancer->generate_end(ri);
+        }
 
 #ifdef DEVEL
         OE_INFO << "-----" << std::endl;
@@ -1119,23 +1156,32 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
 
     if (needsCull)
     {
+        OE_PROFILING_ZONE_NAMED("Cull/Sort");
+
         // per frame cull/sort:
         ds._pass = PASS_CULL;
+        
         tiles->visitTiles(ri); // collect and upload tile matrix data
-        instancer->cull(ri);   // cull and sort
+
+        instancer->cull(ri); // cull and sort
     }
 
     // If we ran a compute shader, we replaced the state and 
     // now need to re-apply it before rendering.
     if (needsGenerate || needsCull)
     {
+        OE_PROFILING_ZONE_NAMED("State reset");
         state->apply();
     }
 
     // draw pass:
-    ds._pass = PASS_DRAW;
-    applyLocalState(ri, ds);
-    instancer->draw(ri);
+    {
+        OE_PROFILING_ZONE_NAMED("Draw");
+
+        ds._pass = PASS_DRAW;
+        applyLocalState(ri, ds);
+        instancer->draw(ri);
+    }
 
     // pop the layer's stateset.
     state->popStateSet();
@@ -1333,12 +1379,8 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
 {
     OE_INFO << LC << "Loading assets ..." << std::endl;
 
-    //typedef std::map<URI, osg::ref_ptr<Texture> > TextureCache;
     typedef std::map<URI, osg::ref_ptr<AssetData> > TextureShareCache;
     TextureShareCache texcache;
-
-    //typedef std::map<URI, osg::ref_ptr<osg::Image> > ImageCache;
-    //ImageCache imagecache;
 
     typedef std::map<URI, ModelCacheEntry> ModelCache;
     ModelCache modelcache;
@@ -1416,6 +1458,12 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                             osg::ComputeBoundsVisitor cbv;
                             data->_model->accept(cbv);
                             data->_modelAABB = cbv.getBoundingBox();
+
+                            //OE_INFO << LC << "Model " << uri.base() 
+                            //    << " : X=" << (data->_modelAABB.xMin()) << " " << data->_modelAABB.xMax()
+                            //    << " , Y=" << (data->_modelAABB.yMin()) << " " << data->_modelAABB.yMax()
+                            //    << " , Z=" << (data->_modelAABB.zMin()) << " " << data->_modelAABB.zMax()
+                            //    << std::endl;                                
                         }
                         else
                         {
@@ -1562,6 +1610,13 @@ GroundCoverLayer::createLUTShader() const
             height = data->_modelAABB.zMax() - data->_modelAABB.zMin();
         }
 
+        float radius = 0.5*osg::maximum(width, height);
+        if (data->_model.valid())
+        {
+            for(int i=0; i<8; ++i)
+                radius = osg::maximum(radius, data->_modelAABB.corner(i).length());
+        }
+
         float sizeVariation = data->_asset->options().sizeVariation().getOrUse(
             currentLandCoverGroup->options().sizeVariation().get());
 
@@ -1580,14 +1635,12 @@ GroundCoverLayer::createLUTShader() const
             assetBuf << "    oe_gc_Asset("
                 << data->_assetID
                 << ", " << data->_modelID
-                //<< ", " << (data->_modelTex.valid() ? data->_modelTex->getHandle() : 0) << "UL"
-                //<< ", " << (data->_sideBillboardTex.valid() ? data->_sideBillboardTex->getHandle() : 0) << "UL"
-                //<< ", " << (data->_topBillboardTex.valid() ? data->_topBillboardTex->getHandle() : 0) << "UL"
                 << ", " << (data->_modelTex.valid() ? data->_modelTexIndex : -1)
                 << ", " << (data->_sideBillboardTex.valid() ? data->_sideBillboardTexIndex : -1)
                 << ", " << (data->_topBillboardTex.valid() ? data->_topBillboardTexIndex : -1)
                 << ", " << width
                 << ", " << height
+                << ", " << radius
                 << ", " << sizeVariation
                 << ", " << data->_asset->options().fill().get()
                 << ")";
@@ -1637,11 +1690,9 @@ GroundCoverLayer::createLUTShader() const
         "    int modelSamplerIndex; \n"
         "    int sideSamplerIndex; \n"
         "    int topSamplerIndex; \n"
-        //"    uint64_t modelSampler; \n"
-        //"    uint64_t sideSampler; \n"
-        //"    uint64_t topSampler; \n"
         "    float width; \n"
         "    float height; \n"
+        "    float radius; \n"
         "    float sizeVariation; \n"
         "    float fill; \n"
         "}; \n"

@@ -12,14 +12,12 @@ struct oe_gc_LandCoverGroup {
 struct oe_gc_Asset {
     int assetId;
     int modelId;
-    //uint64_t modelSampler;
-    //uint64_t sideSampler;
-    //uint64_t topSampler;
     int modelSamplerIndex;
     int sideSamplerIndex;
     int topSamplerIndex;
     float width;
     float height;
+    float radius;
     float sizeVariation;
     float fill;
 };
@@ -101,6 +99,18 @@ void generate()
     const uint x = gl_GlobalInvocationID.x;
     const uint y = gl_GlobalInvocationID.y;
 
+    uint tileNum = uint(oe_tile[4]);
+
+    uint local_i =
+        gl_GlobalInvocationID.y * gl_NumWorkGroups.x
+        + gl_GlobalInvocationID.x;
+    uint i = 
+        tileNum * (gl_NumWorkGroups.x * gl_NumWorkGroups.y)
+        + local_i;
+
+    instance[i].instanceId = 0; // means the slot is unoccupied
+    instance[i].tileNum = tileNum; // need this for merge
+
     vec2 offset = vec2(float(x), float(y));
     vec2 halfSpacing = 0.5 / vec2(gl_NumWorkGroups.xy);
     vec2 tilec = halfSpacing + offset / vec2(gl_NumWorkGroups.xy);
@@ -156,44 +166,33 @@ void generate()
 
     vec4 vertex_model = vec4(mix(LL, UR, tilec), getElevation(tilec), 1.0);
 
-    // stick it in a predetermined slot
-    // TODO: would it be better to atomic-add it? Then we'd need a counter
-    uint tileNum = uint(oe_tile[4]);
+    instance[i].vertex = vertex_model;
+    instance[i].tilec = tilec;
 
-    uint local_i =
-        gl_GlobalInvocationID.y * gl_NumWorkGroups.x
-        + gl_GlobalInvocationID.x;
-
-    uint i = 
-        tileNum * (gl_NumWorkGroups.x * gl_NumWorkGroups.y)
-        + local_i;
-
-    genInstance[i].tileNum = tileNum;
-    genInstance[i].vertex = vertex_model;
-    genInstance[i].tilec = tilec;
-
-    genInstance[i].fillEdge = 1.0;
+    instance[i].fillEdge = 1.0;
     const float xx = 0.5;
     if (noise[NOISE_SMOOTH] > xx)
-        genInstance[i].fillEdge = 1.0-((noise[NOISE_SMOOTH]-xx)/(1.0-xx));
+        instance[i].fillEdge = 1.0-((noise[NOISE_SMOOTH]-xx)/(1.0-xx));
 
-    genInstance[i].modelId = asset.modelId;
+    instance[i].modelId = asset.modelId;
 
-    genInstance[i].modelSamplerIndex = asset.modelSamplerIndex;
-    genInstance[i].sideSamplerIndex = asset.sideSamplerIndex;
-    genInstance[i].topSamplerIndex = asset.topSamplerIndex;
+    instance[i].modelSamplerIndex = asset.modelSamplerIndex;
+    instance[i].sideSamplerIndex = asset.sideSamplerIndex;
+    instance[i].topSamplerIndex = asset.topSamplerIndex;
 
     //a pseudo-random scale factor to the width and height of a billboard
-    genInstance[i].sizeScale = 1.0 + asset.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
-    genInstance[i].width = asset.width * genInstance[i].sizeScale;
-    genInstance[i].height = asset.height * genInstance[i].sizeScale;
+    instance[i].sizeScale = 1.0 + asset.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
+    instance[i].width = asset.width * instance[i].sizeScale;
+    instance[i].height = asset.height * instance[i].sizeScale;
+    instance[i].radius = asset.radius;
 
-    float rotation = 6.283185 * noise[NOISE_RANDOM];
-    genInstance[i].sinrot = sin(rotation);
-    genInstance[i].cosrot = cos(rotation);
+    //float rotation = 6.283185 * noise[NOISE_RANDOM];
+    float rotation = 6.283185 * fract(noise[NOISE_RANDOM_2]*5.5);
+    instance[i].sinrot = sin(rotation);
+    instance[i].cosrot = cos(rotation);
 
     // non-zero instanceID means this slot is occupied
-    genInstance[i].instanceId = 1 + int(i);
+    instance[i].instanceId = 1 + int(i);
 }
 
 
@@ -202,10 +201,11 @@ void merge()
 {
     uint i = gl_GlobalInvocationID.x;
 
-    if (genInstance[i].instanceId > 0)
+    // only if instance is set and tile is active:
+    if (instance[i].instanceId > 0 && tileData[instance[i].tileNum].inUse == 1)
     {
         uint k = atomicAdd(di.num_groups_x, 1);
-        instance[k] = genInstance[i];
+        instanceLUT[k] = i;
     }
 }
 
@@ -213,11 +213,11 @@ void merge()
 uniform vec3 oe_VisibleLayer_ranges;
 uniform vec3 oe_Camera;
 uniform int oe_gc_numCommands; // total number of draw commands
-uniform float HARD_CODED_MAX_SSE = 100.0; // pixels
+uniform float oe_gc_sse = 100.0; // pixels
 
 void cull()
 {
-    uint i = gl_GlobalInvocationID.x;
+    uint i = instanceLUT[ gl_GlobalInvocationID.x ];
 
     // initialize to -1, meaning the instance will be ignored.
     instance[i].drawId = -1;
@@ -236,12 +236,12 @@ void cull()
         return;
 
     // frustum culling:
-    vec4 clipLL = gl_ProjectionMatrix * (vertex_view - vec4(0.5*instance[i].width, 0, 0, 0));
+    vec4 clipLL = gl_ProjectionMatrix * (vertex_view - vec4(instance[i].radius, 0, 0, 0));
     clipLL.xy /= clipLL.w;
     if (clipLL.x > 1.0 || clipLL.y > 1.0)
         return;
 
-    vec4 clipUR = gl_ProjectionMatrix * (vertex_view + vec4(0.5*instance[i].width, instance[i].height, 0, 0));
+    vec4 clipUR = gl_ProjectionMatrix * (vertex_view + vec4(instance[i].radius, 2*instance[i].radius, 0, 0));
     clipUR.xy /= clipUR.w;
     if (clipUR.x < -1.0 || clipUR.y < -1.0)
         return;
@@ -254,12 +254,12 @@ void cull()
     if (chooseModel)
     {
         vec2 pixelSize = 0.5*(clipUR.xy-clipLL.xy) * oe_Camera.xy;
-        pixelSizeRatio = pixelSize/vec2(HARD_CODED_MAX_SSE);
+        pixelSizeRatio = pixelSize / vec2(oe_gc_sse);
         if (all(lessThan(pixelSizeRatio, vec2(1))))
             chooseModel = false;
     }
 
-    // chose a billboard, but there isn't one; bail.
+    // If we chose a billboard but there isn't one, bail.
     if (chooseModel == false && instance[i].sideSamplerIndex < 0)
         return;
 
@@ -282,7 +282,7 @@ void cull()
 
 void sort()
 {
-    uint i = gl_GlobalInvocationID.x;
+    uint i = instanceLUT[gl_GlobalInvocationID.x];
 
     int drawId = instance[i].drawId;
     if (drawId >= 0)
@@ -296,7 +296,7 @@ void sort()
 
         // copy to the right place in the render list
         uint index = cmdStartIndex + instanceIndex;
-        render[index] = instance[i];
+        renderLUT[index] = i;
     }
 }
 

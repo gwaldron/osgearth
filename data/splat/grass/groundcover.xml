@@ -11,8 +11,8 @@
         <biome classes="forest" fill="0.5" source="clipartmax.com">
             <asset url="clipart974730_2.png" width="0.5" height="0.6" size_variation="0.8" weight="11"/>
             <asset model="D:/data/models/rockinsoil/RockSoil.osgb.(0.20).scale" fill="0.1"/>
-            <asset model="D:/data/models/knapweed/knapweed.osgb.(0.4).scale" size_variation="0.8" fill="0.25" />
-            <asset model="D:/data/models/fern/fern.osgb.(0.3).scale" size_variation="0.8" fill="0.1"/>
+            <asset model="D:/data/models/knapweed/knapweed.osgb" size_variation="0.8" fill="0.2" />
+            <asset model="D:/data/models/fern/fern.osgb" size_variation="0.8" fill="0.1"/>
         </biome>
 
         <biome classes="savanna" fill="0.3" source="clipartmax.com">

@@ -23,22 +23,22 @@ struct oe_TransformSpec {
 
 void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 {
-    uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
-    uint tileNum = render[i].tileNum;
+    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
+    uint tileNum = instance[i].tileNum;
 
     oe_transform.modelview = tileData[tileNum].modelViewMatrix;
 
     // Shortcut works as long as the matrix is isotropic w.r.t. scale
     oe_transform.normal = mat3(tileData[tileNum].modelViewMatrix);
 
-    float s = render[i].sinrot, c = render[i].cosrot;
+    float s = instance[i].sinrot, c = instance[i].cosrot;
     mat2 rot = mat2(c, -s, s, c);
     geom_vertex.xy = rot * geom_vertex.xy;
     vp_Normal.xy = rot * vp_Normal.xy;
 
-    geom_vertex.xyz *= render[i].sizeScale;
+    geom_vertex.xyz *= instance[i].sizeScale;
 
-    vec4 model = vec4(render[i].vertex.xyz + geom_vertex.xyz, 1.0);
+    vec4 model = vec4(instance[i].vertex.xyz + geom_vertex.xyz, 1.0);
     oe_vertex.view = oe_transform.modelview * model;
     oe_vertex.normal = oe_transform.normal * vp_Normal;
 
@@ -101,13 +101,13 @@ flat out uint64_t oe_gc_texHandle;
 
 void oe_GroundCover_Billboard(inout vec4 vertex_view)
 {
-    uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
-    uint t = render[i].tileNum;
+    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
+    uint t = instance[i].tileNum;
 
     vp_Color = vec4(1,1,1,0); // start alpha at ZERO for billboard transitions
     oe_gc_texHandle = 0UL; // 0UL = untextured
 
-    oe_layer_tilec = vec4(render[i].tilec, 0, 1);
+    oe_layer_tilec = vec4(instance[i].tilec, 0, 1);
     vertex_view = oe_vertex.view;
     oe_UpVectorView = oe_transform.normal * vec3(0,0,1);
 
@@ -119,8 +119,8 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);
-    float width = render[i].width * falloff;
-    float height = render[i].height * falloff;
+    float width = instance[i].width * falloff;
+    float height = instance[i].height * falloff;
 
     int which = gl_VertexID & 7; // mod8 - there are 8 verts per instance
 
@@ -153,8 +153,8 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
     vp_Normal = normalize(cross(tangentVector, heightVector));
 
-    if (render[i].sideSamplerIndex >= 0)
-        oe_gc_texHandle = texHandle[render[i].sideSamplerIndex];
+    if (instance[i].sideSamplerIndex >= 0)
+        oe_gc_texHandle = texHandle[instance[i].sideSamplerIndex];
 
 #else // normal render camera - draw as a billboard:
 
@@ -171,7 +171,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     float billboardAmount = rescale(1.0-d, 0.0, 0.25);
 
     // COMMMENTED OUT FOR TESTING
-    if (which < 4 && render[i].sideSamplerIndex >= 0 && billboardAmount > 0.0) // Front-facing billboard
+    if (which < 4 && instance[i].sideSamplerIndex >= 0 && billboardAmount > 0.0) // Front-facing billboard
     {
         vertex_view = 
             which == 0? vec4(vertex_view.xyz - halfWidthTangentVector, 1.0) :
@@ -192,13 +192,13 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
                 which == 0 || which == 2? mix(-tangentVector, faceNormalVector, blend) :
                 mix( tangentVector, faceNormalVector, blend);
 
-            oe_gc_texHandle = texHandle[render[i].sideSamplerIndex];
+            oe_gc_texHandle = texHandle[instance[i].sideSamplerIndex];
         }
     }
 
-    else if (which >= 4 && render[i].topSamplerIndex > 0 && topDownAmount > 0.0) // top-down billboard
+    else if (which >= 4 && instance[i].topSamplerIndex > 0 && topDownAmount > 0.0) // top-down billboard
     {
-        oe_gc_texHandle = texHandle[render[i].topSamplerIndex];
+        oe_gc_texHandle = texHandle[instance[i].topSamplerIndex];
 
         // estiblish the local tangent plane:
         vec3 Z = mat3(osg_ViewMatrix) * vec3(0,0,1); //north pole
@@ -238,9 +238,9 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
 void oe_GroundCover_Model(inout vec4 vertex_view)
 {
-    uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
+    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
 
-    oe_layer_tilec = vec4(render[i].tilec, 0, 1);
+    oe_layer_tilec = vec4(instance[i].tilec, 0, 1);
 
     vertex_view = oe_vertex.view;
 
@@ -250,8 +250,8 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
     oe_gc_texCoord = gl_MultiTexCoord7.xyz;
 
     // assign texture sampler for this model
-    if (render[i].modelSamplerIndex >= 0)
-        oe_gc_texHandle = texHandle[render[i].modelSamplerIndex];
+    if (instance[i].modelSamplerIndex >= 0)
+        oe_gc_texHandle = texHandle[instance[i].modelSamplerIndex];
     else
         oe_gc_texHandle = 0UL;
 }

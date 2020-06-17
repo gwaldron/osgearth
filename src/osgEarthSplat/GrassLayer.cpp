@@ -92,5 +92,9 @@ GrassLayer::createParametricGeometry() const
 
     out_geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 16));
 
+    osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
+    normals->push_back(osg::Vec3(0,1,0));
+    out_geom->setNormalArray(normals);
+
     return out_geom;
 }

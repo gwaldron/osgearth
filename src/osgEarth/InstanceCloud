@@ -81,6 +81,8 @@ namespace osgEarth
         {
             struct Data {
                 GLfloat _modelViewMatrix[16];   // 64
+                GLint   _inUse;
+                GLfloat _padding[7];
                 //GLfloat _normalMatrix[16];      // +64 = 128 (no mat3's allowed!!)
             };
             Data* _buf;
@@ -111,36 +113,32 @@ namespace osgEarth
             GLfloat _padding[1];
         };
 
-        // Buffer populated by the Generator containing information on each 
-        // instance in each tile.
+        // Buffer containing information on each instance in each tile.
         // Each tile's data starts at an offset based on the total dimensions
         // of each tile multiplied by the tile number.
-        struct GenBuffer : public SSBO
+        struct InstanceBuffer : public SSBO
         {
             InstanceData* _buf;
             unsigned _numInstancesPerTile;
-            GenBuffer() : _buf(NULL) { }
-            ~GenBuffer() { if (_buf) delete[] _buf; }
-            void allocate(unsigned numTiles, unsigned numInstancesPerTile, GLsizei alignment, osg::State&);
-            void clearTile(unsigned tileNum);
-        };
-
-        // Buffer populated by the Generator containing information on each 
-        // instance in a tile.
-        struct InstanceBuffer : public SSBO
-        {
-            DispatchIndirectCommand* _buf;
             InstanceBuffer() : _buf(NULL) { }
             ~InstanceBuffer() { if (_buf) delete[] _buf; }
+            void allocate(unsigned numTiles, unsigned numInstancesPerTile, GLsizei alignment, osg::State&);
+        };
+
+        // Buffer containing the index of each index to cull.
+        struct CullBuffer : public SSBO
+        {
+            DispatchIndirectCommand* _buf;
+            CullBuffer() : _buf(NULL) { }
+            ~CullBuffer() { if (_buf) delete[] _buf; }
             void allocate(unsigned numTiles, GLsizei alignment, osg::State&);
             void clear();
         };
 
-        // Buffer populated by the Generator containing information on each 
-        // instance in a tile.
+        // Buffer containing the index of each instance to render after passing cull.
         struct RenderBuffer : public SSBO
         {
-            InstanceData* _buf;
+            GLuint* _buf;
             RenderBuffer() : _buf(NULL) { }
             ~RenderBuffer() { if (_buf) delete[] _buf; }
             void allocate(unsigned numTiles, GLsizei alignment, osg::State&);
@@ -148,11 +146,11 @@ namespace osgEarth
 
         struct InstancingData
         {
-            CommandBuffer _commandBuffer;     // One for each unique model plus one for billboards
-            TileBuffer _tileBuffer;           // per-tile information (matrices)
-            GenBuffer _genBuffer;
-            InstanceBuffer _instanceBuffer;   // instances emitted by the Instancing CS
-            RenderBuffer _renderBuffer; // final render list of instances
+            CommandBuffer _commandBuffer; // One for each unique model plus one for billboards
+            TileBuffer _tileBuffer;       // per-tile information (matrices and in-use flags)
+            InstanceBuffer _instanceBuffer; // instances emitted by the generate pass.
+            CullBuffer _cullBuffer;         // instances emitted by the merge pass, ready for culling.
+            RenderBuffer _renderBuffer;     // instances emitted by the cull pass, ready for rendering.
 
             unsigned _numX, _numY;
             unsigned _numTilesActive;
@@ -198,14 +196,14 @@ namespace osgEarth
 
         //! Sets the modeview matrix for a tile
         void setMatrix(unsigned tileNum, const osg::Matrix& modelView);
+
+        //! Sets whether to render a tile
+        void setTileActive(unsigned tileNum, bool value);
         
         //! Run the generate compute shader pass (only when tile batch changes)
         void generate_begin(osg::RenderInfo&);
         void generate_tile(unsigned slot, osg::RenderInfo&);
         void generate_end(osg::RenderInfo&);
-
-        //! Reset a tile so we can re-use its slot
-        void clearTileSlot(unsigned slot);
 
         //! Run the cull/sort compute shader (only when generating or when the camera moves)
         void cull(osg::RenderInfo&);

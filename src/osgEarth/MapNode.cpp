@@ -888,7 +888,8 @@ MapNode::releaseGLObjects(osg::State* state) const
         ec->releaseGLObjects(state);
 
     // inform the GLObjectReleaser for this context
-    GLObjectReleaser::releaseAll(*state);
+    if (state)
+        GLObjectReleaser::releaseAll(*state);
 
     osg::Group::releaseGLObjects(state);
 }

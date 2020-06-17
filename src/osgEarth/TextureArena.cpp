@@ -19,6 +19,8 @@
 #include "TextureArena"
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Math>
+#include <osgEarth/Metrics>
+#include <osgViewer/View>
 #include <osg/State>
 
 #ifndef GL_TEXTURE_SPARSE_ARB
@@ -289,6 +291,26 @@ TextureArena::deactivate(Texture* tex)
     //TODO: consider issues like multiple GCs and "unref after apply"
 }
 
+namespace
+{
+    struct TextureCompileOp : public osgUtil::IncrementalCompileOperation::CompileOp
+    {
+        osg::ref_ptr<Texture> _tex;
+
+        TextureCompileOp(Texture* tex) : _tex(tex) { }
+
+        // How many seconds we expect the operation to take. Educated guess.
+        double estimatedTimeForCompile(osgUtil::IncrementalCompileOperation::CompileInfo& compileInfo) const {
+            return 0.1;
+        }
+        bool compile(osgUtil::IncrementalCompileOperation::CompileInfo& compileInfo) {
+            OE_PROFILING_ZONE_NAMED("TextureCompileOp::compile");
+            _tex->compileGLObjects(*compileInfo.getState());
+            return true;
+        }
+    };
+}
+
 void
 TextureArena::apply(osg::State& state) const
 {
@@ -305,22 +327,48 @@ TextureArena::apply(osg::State& state) const
         std::copy(_textures.begin(), _textures.end(), gc._toAdd.begin());
     }
 
+    osgUtil::IncrementalCompileOperation* ico = NULL;
+    if (!gc._toAdd.empty())
+    {
+        const osg::Camera* camera = state.getGraphicsContext()->getCameras().front();
+        const osgViewer::View* osgView = dynamic_cast<const osgViewer::View*>(camera->getView());
+        if (osgView)
+            ico = const_cast<osgViewer::View*>(osgView)->getDatabasePager()->getIncrementalCompileOperation();
+    }
+
     // allocate textures and resident handles
+
+    TextureVector stillCompiling;
+
     for(auto& tex : gc._toAdd)
     {
         if (!tex->isCompiled(state))
         {
-            tex->compileGLObjects(state);
+            if (ico)
+            {
+                Texture::GCState& tex_gc = tex->get(state);
 
-            //TODO: take this out -- temp for TESTING.
-            tex->makeResident(state, true);
+                if (!tex_gc._compileSet.valid())
+                {
+                    tex_gc._compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
+                    tex_gc._compileSet->_compileMap[state.getGraphicsContext()].add(new TextureCompileOp(tex.get()));
+                    ico->add(tex_gc._compileSet.get());
+                }
+
+                stillCompiling.push_back(tex.get());
+            }
+            else
+            {
+                tex->compileGLObjects(state);
+                gc._toActivate.push_back(tex.get());
+            }
         }
-
-        //TODO: Consider making the texture SPARSE as well so we can
-        // control the actual texture residency along with the handle residency.
-        // i.e. call glTexPageCommitment(...,GL_TRUE) here
+        else
+        {
+            gc._toActivate.push_back(tex.get());
+        }
     }
-    gc._toAdd.clear();
+    gc._toAdd.swap(stillCompiling);
 
     // remove pending objects by swapping them out of memory
     for(auto& tex : gc._toDeactivate)
@@ -330,21 +378,18 @@ TextureArena::apply(osg::State& state) const
     gc._toDeactivate.clear();
 
     // add pending textures by swapping them in to memory
-    for(auto& tex : gc._toActivate)
+    if (!gc._toActivate.empty())
     {
-        tex->makeResident(state, true);
+        for(auto& tex : gc._toActivate)
+        {
+            tex->makeResident(state, true);
+        }
+        gc._toActivate.clear();
+        gc._handleLUT._dirty = true;
     }
-    gc._toActivate.clear();
 
-    // update the LUT if it's dirty
-    gc._handleLUT.allocate(_textures, state);
-
-    osg::GLExtensions* ext = state.get<osg::GLExtensions>();
-
-    if (gc._handleLUT._dirty)
-    {
-        gc._handleLUT.update();
-    }
+    // update the LUT if it needs more space:
+    gc._handleLUT.sync(_textures, state);
 
     // bind to the layout index in the shader
     gc._handleLUT.bindLayout();
@@ -386,7 +431,7 @@ TextureArena::releaseGLObjects(osg::State* state) const
 }
 
 void
-TextureArena::HandleLUT::allocate(const TextureVector& textures, osg::State& state)
+TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
 {
     _requiredSize = textures.size() * sizeof(GLuint64);
 
@@ -406,7 +451,7 @@ TextureArena::HandleLUT::allocate(const TextureVector& textures, osg::State& sta
         //ext->glGetProgramResourceIndex(...
         if (_bindingIndex < 0)
         {
-            _bindingIndex = 5; // TODO: query!
+            _bindingIndex = 5; // TODO: query...?
         }
 
         release();
@@ -419,13 +464,8 @@ TextureArena::HandleLUT::allocate(const TextureVector& textures, osg::State& sta
         // set all data:
         OE_DEBUG << LC << "Uploading " << _numTextures << " texture handles" << std::endl;
 
-        osg::GLExtensions* ext = state.get<osg::GLExtensions>();
-
-        unsigned i=0;
-        for(const auto& tex : textures)
-        {
-            _buf[i++] = tex->_gc[state.getContextID()]._gltexture->handle();
-        }
+        // copy handles to buffer:
+        refresh(textures, state);
 
         _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state);
 
@@ -433,8 +473,32 @@ TextureArena::HandleLUT::allocate(const TextureVector& textures, osg::State& sta
 
         GLFunctions::get(state).
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, _buf, GL_DYNAMIC_STORAGE_BIT);
+    }
 
-        _dirty = true;
+    else if (_dirty)
+    {
+        refresh(textures, state);
+        update();
+    }
+}
+
+void
+TextureArena::HandleLUT::refresh(const TextureVector& textures, osg::State& state)
+{
+    unsigned i=0;
+    for(const auto& tex : textures)
+    {
+        GLTexture* glTex = tex->_gc[state.getContextID()]._gltexture.get();
+        GLuint64 handle = 0ULL;
+        if (glTex)
+            handle = glTex->handle();
+
+        if (_buf[i] != handle)
+        {
+            _buf[i] = handle;
+            _dirty = true;
+        }
+        i++;
     }
 }
 

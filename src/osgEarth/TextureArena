@@ -26,6 +26,7 @@
 #include <osg/StateAttribute>
 #include <osg/buffered_value>
 #include <osg/Image>
+#include <osgUtil/IncrementalCompileOperation>
 #include <unordered_map>
 #include <unordered_set>
 #include <queue>
@@ -46,6 +47,7 @@ namespace osgEarth
     public:
         struct GCState {
             osg::ref_ptr<GLTexture> _gltexture;
+            osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
         };
 
     public:
@@ -127,7 +129,8 @@ namespace osgEarth
             optional<GLsizei> _alignment;
             HandleLUT() : _buf(NULL), _dirty(false) { }
             ~HandleLUT() { if (_buf) delete[] _buf; }
-            void allocate(const TextureVector&, osg::State&);
+            void sync(const TextureVector&, osg::State&);
+            void refresh(const TextureVector&, osg::State&);
             void release() const;
             bool update();
         };

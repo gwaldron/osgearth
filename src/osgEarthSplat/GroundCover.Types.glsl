@@ -41,11 +41,13 @@ struct InstanceData
     int instanceId;    // 4 // -1 = unused
     float sizeScale;   // 4
     float pixelSizeRatio;
-    float padding[1];
+    float _padding[1];
 };
 struct TileData
 {
     mat4 modelViewMatrix; // 4 x vec4 = 64 bytes
+    int inUse;
+    float _padding[7];
     //mat4 normalMatrix;    // 4 x vec4 = 64 bytes // NO mat3 allowed!
 };
 
@@ -53,23 +55,23 @@ layout(binding=0, std430) buffer DrawCommandsBuffer
 {
     DrawElementsIndirectCommand cmd[];
 };
-layout(binding=1, std430) buffer GenBuffer
+layout(binding=1, std430) buffer InstanceBuffer
 {
-    InstanceData genInstance[];
+    InstanceData instance[];
 };
-layout(binding=2, std430) buffer InstanceBuffer
+layout(binding=2, std430) buffer CullLUT
 {
     DispatchIndirectCommand di;
     float _padding[1];
-    InstanceData instance[];
+    uint instanceLUT[];
 };
 layout(binding=3, std430) buffer TileDataBuffer
 {
     TileData tileData[];
 };
-layout(binding=4, std430) buffer RenderBuffer
+layout(binding=4, std430) buffer RenderLUT
 {
-    InstanceData render[];
+    uint renderLUT[];
 };
 layout(binding=5, std430) buffer TextureLUT
 {

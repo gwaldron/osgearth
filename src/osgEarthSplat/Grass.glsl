@@ -24,20 +24,27 @@ struct oe_TransformSpec {
 
 void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
 {
-    uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
-    uint tileNum = render[i].tileNum;
+    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
+    uint tileNum = instance[i].tileNum;
 
     oe_transform.modelview = tileData[tileNum].modelViewMatrix;
 
-    // shortcut for scale-isotropic mvm:
-    oe_transform.normal = mat3(oe_transform.modelview);
+    // Shortcut works as long as the matrix is isotropic w.r.t. scale
+    oe_transform.normal = mat3(tileData[tileNum].modelViewMatrix);
 
-    vec4 model = vec4(render[i].vertex.xyz + geom_vertex.xyz, 1.0);
+    float s = instance[i].sinrot, c = instance[i].cosrot;
+    mat2 rot = mat2(c, -s, s, c);
+    geom_vertex.xy = rot * geom_vertex.xy;
+    vp_Normal.xy = rot * vp_Normal.xy;
+
+    geom_vertex.xyz *= instance[i].sizeScale;
+
+    vec4 model = vec4(instance[i].vertex.xyz + geom_vertex.xyz, 1.0);
     oe_vertex.view = oe_transform.modelview * model;
     oe_vertex.normal = oe_transform.normal * vp_Normal;
 
     // override the terrain's shader
-    vp_Color = gl_Color;  
+    vp_Color = gl_Color;
 }
 
 
@@ -105,12 +112,12 @@ const float browning = 0.25;
 
 void oe_Grass_parametric(inout vec4 vertex_view)
 {
-    uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
-    uint t = render[i].tileNum;
+    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
+    uint t = instance[i].tileNum;
 
     vp_Color = vec4(1);
 
-    oe_layer_tilec = vec4(render[i].tilec, 0, 1);
+    oe_layer_tilec = vec4(instance[i].tilec, 0, 1);
     vertex_view = oe_vertex.view;
     oe_UpVectorView = oe_transform.normal * vec3(0,0,1);
 
@@ -124,26 +131,26 @@ void oe_Grass_parametric(inout vec4 vertex_view)
 
     // find the texture atlas index:
     oe_gc_texHandle = 0UL;
-    if (render[i].sideSamplerIndex >= 0)
-        oe_gc_texHandle = texHandle[render[i].sideSamplerIndex];
+    if (instance[i].sideSamplerIndex >= 0)
+        oe_gc_texHandle = texHandle[instance[i].sideSamplerIndex];
 
     // make the grass smoothly disappear in the distance
     float falloff = clamp(2.0-(nRange + oe_noise[NOISE_SMOOTH]), 0, 1);
 
-    float width = render[i].width * falloff;
-    float height = render[i].height * falloff;
+    float width = instance[i].width * falloff;
+    float height = instance[i].height * falloff;
 
     height = mix(-browning*height+height, browning*height+height, oe_noise_wide[NOISE_CLUMPY]);
 
     // ratio of adjusted height to nonimal height
-    float heightRatio = height/render[i].height;
+    float heightRatio = height/instance[i].height;
 
     int which = gl_VertexID & 15; // mod16 - there are 16 verts per instance
 
     vp_Color = vec4(1,1,1,falloff);
 
     // darken as the fill level decreases
-    vp_Color.rgb *= 0.5+( decel(render[i].fillEdge)*(1.0-0.5) );
+    vp_Color.rgb *= 0.5+( decel(instance[i].fillEdge)*(1.0-0.5) );
 
     // texture coordinate:
     float row = float(which/4);
@@ -151,8 +158,8 @@ void oe_Grass_parametric(inout vec4 vertex_view)
 
     // random rotation; do this is model space and then transform
     // the vector to view space.
-    float a = 6.283185 * fract(oe_noise[NOISE_RANDOM_2]*5.5);
-    vec3 faceVec = oe_transform.normal * vec3(-sin(a), cos(a), 0);
+    //float a = 6.283185 * fract(oe_noise[NOISE_RANDOM_2]*5.5);
+    vec3 faceVec = oe_vertex.normal; //oe_transform.normal * vec3(0,1,0); // * vec3(-sin(a), cos(a), 0);
 
     // local frame side vector
     vec3 sideVec = cross(faceVec, oe_UpVectorView);
@@ -245,12 +252,12 @@ float rescale(float d, float v0, float v1)
 
 void oe_Grass_model(inout vec4 vertex_view)
 {
-    uint i = gl_InstanceID + cmd[gl_DrawID].baseInstance;
-    oe_layer_tilec = vec4(render[i].tilec, 0, 1);
+    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
+    oe_layer_tilec = vec4(instance[i].tilec, 0, 1);
     vertex_view = oe_vertex.view;
     vp_Normal = oe_vertex.normal;
 
-    float psr = render[i].pixelSizeRatio;
+    float psr = instance[i].pixelSizeRatio;
     if (psr < 1.5) {
         psr = rescale(psr-1.0, 0.0, 1.0);
         vp_Color.a *= psr;
@@ -260,8 +267,8 @@ void oe_Grass_model(inout vec4 vertex_view)
     oe_gc_texCoord.xyz = gl_MultiTexCoord7.xyz;
 
     // pick the sampler
-    oe_gc_texHandle = render[i].modelSamplerIndex >= 0?
-        texHandle[render[i].modelSamplerIndex] :
+    oe_gc_texHandle = instance[i].modelSamplerIndex >= 0?
+        texHandle[instance[i].modelSamplerIndex] :
         0UL;
 }
 

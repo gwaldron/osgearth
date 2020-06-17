@@ -500,7 +500,7 @@ PagerLoader::addChild(osg::Node* node)
 
             else
             {
-                OE_WARN << LC << "Request " << req->getName() << " abandoned (in addChild)" << std::endl;
+                OE_DEBUG << LC << "Request " << req->getName() << " abandoned (in addChild)" << std::endl;
                 //GW: allow to requeue (leave idle)
                 //req->setState( Request::FINISHED );
                 if ( REPORT_ACTIVITY )

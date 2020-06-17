@@ -49,7 +49,7 @@ namespace osgEarth { namespace Splat
             OE_OPTION(bool, castShadows);
             OE_OPTION(float, maxAlpha);
             OE_OPTION(bool, alphaToCoverage);
-            //OE_OPTION_VECTOR(ZoneOptions, zones);
+            OE_OPTION(float, maxSSE);
             OE_OPTION_VECTOR(BiomeZone, biomeZones);
             virtual Config getConfig() const;
         private:
@@ -74,6 +74,10 @@ namespace osgEarth { namespace Splat
         //! Color modulation layer
         void setColorLayer(ImageLayer* layer);
         ImageLayer* getColorLayer() const;
+
+        //! Set the maximum screen-space error (pixels)
+        void setMaxSSE(float pixels);
+        float getMaxSSE() const;
 
         //! LOD at which to draw ground cover
         void setLOD(unsigned value);
@@ -322,6 +326,8 @@ namespace osgEarth { namespace Splat
         GeometryCloud* createGeometryCloud(TextureArena*) const;
 
         osg::ref_ptr<const Profile> _mapProfile;
+
+        osg::ref_ptr<osg::Uniform> _sseU;
     };
 
 } } // namespace osgEarth::Splat

@@ -1601,6 +1601,7 @@ GroundCoverLayer::createLUTShader() const
             width = osg::maximum(
                 data->_modelAABB.xMax() - data->_modelAABB.xMin(),
                 data->_modelAABB.yMax() - data->_modelAABB.yMin());
+            width = data->_modelAABB.radius();
         }
 
         float height = data->_asset->options().height().get();
@@ -1608,6 +1609,7 @@ GroundCoverLayer::createLUTShader() const
             data->_modelAABB.valid())
         {
             height = data->_modelAABB.zMax() - data->_modelAABB.zMin();
+            height = data->_modelAABB.radius();
         }
 
         float radius = 0.5*osg::maximum(width, height);

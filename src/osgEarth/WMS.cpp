@@ -59,10 +59,10 @@ _parentLayer(0)
     //nop
 }
 
-void WMS::Layer::getLatLonExtents(double &minLon, double &minLat, double &maxLon, double &maxLat)
+void WMS::Layer::getLatLonExtents(double &minLon, double &minLat, double &maxLon, double &maxLat) const
 {
     minLon = _minLon;
-    minLat= _minLat;
+    minLat = _minLat;
     maxLon = _maxLon;
     maxLat = _maxLat;
 }
@@ -75,7 +75,7 @@ void WMS::Layer::setLatLonExtents(double minLon, double minLat, double maxLon, d
     _maxLat = maxLat;
 }
 
-void WMS::Layer::getExtents(double &minX, double &minY, double &maxX, double &maxY)
+void WMS::Layer::getExtents(double &minX, double &minY, double &maxX, double &maxY) const
 {
     minX = _minX;
     minY = _minY;
@@ -98,7 +98,7 @@ WMS::Capabilities::Capabilities()
 }
 
 std::string
-WMS::Capabilities::suggestExtension()
+WMS::Capabilities::suggestExtension() const
 {
     //Default to png
     std::string ext = "png";
@@ -125,9 +125,9 @@ WMS::Capabilities::suggestExtension()
 }
 
 WMS::Layer*
-WMS::Capabilities::getLayerByName(const std::string& name, WMS::Layer::LayerList& layers)
+WMS::Capabilities::getLayerByName(const std::string& name, const WMS::Layer::LayerList& layers) const
 {
-    for (WMS::Layer::LayerList::iterator i = layers.begin(); i != layers.end(); ++i)
+    for (WMS::Layer::LayerList::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
         if (osgDB::equalCaseInsensitive(i->get()->getName(), name)) return i->get();
         WMS::Layer *l = getLayerByName(name, i->get()->getLayers());
@@ -137,7 +137,7 @@ WMS::Capabilities::getLayerByName(const std::string& name, WMS::Layer::LayerList
 }
 
 WMS::Layer*
-WMS::Capabilities::getLayerByName(const std::string& name)
+WMS::Capabilities::getLayerByName(const std::string& name) const
 {
     return getLayerByName(name, _layers);
 }
@@ -328,7 +328,7 @@ WMS::CapabilitiesReader::read(std::istream &in)
             //Read all the formats
             XmlNodeList formats = e_getMap->getSubElements( ELEM_FORMAT );
             for( XmlNodeList::const_iterator i = formats.begin(); i != formats.end(); i++ )
-            {            
+            {
                 std::string format = trim(static_cast<XmlElement*>( i->get() )->getText());
                 capabilities->getFormats().push_back(format);
             }
@@ -614,7 +614,7 @@ osg::Image*
 WMS::Driver::fetchTileImage(const TileKey&     key,
                             const std::string& extraAttrs,
                             ProgressCallback*  progress,
-                            ReadResult&        out_response)
+                            ReadResult&        out_response) const
 {
     osg::ref_ptr<osg::Image> image;
 
@@ -639,7 +639,7 @@ WMS::Driver::fetchTileImage(const TileKey&     key,
 //! Queries the WMS service for an image and returns an osg::Image
 //! containing the result, or NULL if one could not be found
 osg::Image*
-WMS::Driver::createImage(const TileKey& key, ProgressCallback* progress)
+WMS::Driver::createImage(const TileKey& key, ProgressCallback* progress) const
 {
     osg::ref_ptr<osg::Image> image;
 
@@ -663,7 +663,7 @@ WMS::Driver::createImage(const TileKey& key, ProgressCallback* progress)
 
 //! Creates an image from timestamped data
 osg::Image*
-WMS::Driver::createImageSequence(const TileKey& key, ProgressCallback* progress)
+WMS::Driver::createImageSequence(const TileKey& key, ProgressCallback* progress) const
 {
     osg::ref_ptr< osg::ImageSequence > seq = new SyncImageSequence();
 
@@ -713,7 +713,7 @@ WMS::Driver::createURI(const TileKey& key) const
 
     return uri;
 }
- 
+
 const WMS::WMSImageLayerOptions&
 WMS::Driver::options() const
 {

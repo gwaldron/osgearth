@@ -95,7 +95,7 @@ namespace osgEarth { namespace WMS
         /**
         *Gets the name of the layer
         */
-        const std::string& getName() {return _name;}
+        const std::string& getName() const {return _name;}
 
         /**
         *Sets the name of the layer
@@ -105,7 +105,7 @@ namespace osgEarth { namespace WMS
         /**
         *Gets the title of the layer
         */
-        const std::string& getTitle() {return _title;}
+        const std::string& getTitle() const {return _title;}
 
         /**
         *Sets the title of the layer
@@ -115,7 +115,7 @@ namespace osgEarth { namespace WMS
         /**
         *Gets the abstract of the layer
         */
-        const std::string& getAbstract() {return _abstract;}
+        const std::string& getAbstract() const {return _abstract;}
 
         /**
         *Sets the abstract of the layer
@@ -125,7 +125,7 @@ namespace osgEarth { namespace WMS
         /**
         *Gets the lat lon extents of the layer
         */
-        void getLatLonExtents(double &minLon, double &minLat, double &maxLon, double &maxLat);
+        void getLatLonExtents(double &minLon, double &minLat, double &maxLon, double &maxLat) const;
 
         /**
         *Sets the lat lon extents of the layer
@@ -135,7 +135,7 @@ namespace osgEarth { namespace WMS
         /**
         *Gets the extents of the layer
         */
-        void getExtents(double &minX, double &minY, double &maxX, double &maxY);
+        void getExtents(double &minX, double &minY, double &maxX, double &maxY) const;
 
         /**
         *Sets the extents of the layer
@@ -170,7 +170,7 @@ namespace osgEarth { namespace WMS
         /**
         *Gets this Layer's parent layer
         */
-        Layer* getParentLayer() {return _parentLayer;}
+        Layer* getParentLayer() const {return _parentLayer;}
 
         /**
         *Sets this Layer's parent layer
@@ -182,7 +182,7 @@ namespace osgEarth { namespace WMS
         *@returns
         *       The Layer with the given name or NULL if not found.
         */
-        Layer* getLayerByName(const std::string &name);
+        Layer* getLayerByName(const std::string &name) const;
 
     protected:
         std::string _name;
@@ -211,7 +211,7 @@ namespace osgEarth { namespace WMS
         /**
         *Gets the WMS capabilities version
         */
-        const std::string& getVersion() {return _version;}
+        const std::string& getVersion() const {return _version;}
 
         /**
         *Sets the WMS capabilities version
@@ -239,17 +239,17 @@ namespace osgEarth { namespace WMS
         *@returns
         *       The suggested extension.
         */
-        std::string suggestExtension();
+        std::string suggestExtension() const;
 
         /**
         *Finds the child Layer with the given name.
         *@returns
         *       The Layer with the given name or NULL if not found.
         */
-        Layer* getLayerByName(const std::string &name);
+        Layer* getLayerByName(const std::string &name) const;
         
         //! Finds the child Layer with the given name from a list of layers
-        Layer* getLayerByName(const std::string& name, WMS::Layer::LayerList& layers);
+        Layer* getLayerByName(const std::string& name, const WMS::Layer::LayerList& layers) const;
 
     protected:
         FormatList _formats;
@@ -290,7 +290,7 @@ namespace osgEarth { namespace WMS
             DataExtentList& out_dataExtents);
         
         //! Create and return an image for the tile key
-        osg::Image* createImage( const TileKey& key, ProgressCallback* progress );
+        osg::Image* createImage( const TileKey& key, ProgressCallback* progress ) const;
 
         //! Whether the data is sequenced
         bool isSequenced() const;
@@ -306,9 +306,9 @@ namespace osgEarth { namespace WMS
             const TileKey&     key, 
             const std::string& extraAttrs,
             ProgressCallback*  progress, 
-            ReadResult&        out_response );
+            ReadResult&        out_response ) const;
         
-        osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress );
+        osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress ) const;
         
         std::string createURI( const TileKey& key ) const;
         

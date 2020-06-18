@@ -95,7 +95,7 @@ _updateScheduled( false )
 {
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT(this, 1);
-    
+
     // Install an object to manage texture image unit usage:
     _textureResourceTracker = new TerrainResources();
     std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
@@ -137,7 +137,7 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     }
 
     _map = map;
-    
+
     // Create a terrain utility interface. This interface can be used
     // to query the in-memory terrain graph, subscribe to tile events, etc.
     _terrainInterface = new Terrain( this, map->getProfile() );
@@ -145,7 +145,7 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // Set up the CSN values. We support this because some manipulators look for it,
     // but osgEarth itself doesn't use it.
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
-    
+
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
     if ( _map->getSRS()->isProjected())
     {
@@ -161,7 +161,7 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         osg::StateSet* set = getOrCreateStateSet();
         set->setRenderBinDetails(options.renderBinNumber().get(), "RenderBin" );
     }
-   
+
     // This is the object that creates the data model for each terrain tile.
     _tileModelFactory = new TerrainTileModelFactory(options);
 
@@ -217,15 +217,15 @@ TerrainEngineNode::createTileModel(const Map* map,
 
     // Ask the factory to create a new tile model:
     osg::ref_ptr<TerrainTileModel> model = _tileModelFactory->createTileModel(
-        map, 
-        key, 
+        map,
+        key,
         manifest,
-        requirements,         
+        requirements,
         progress);
 
     if ( model.valid() )
     {
-        // Fire all registered tile model callbacks, so user code can 
+        // Fire all registered tile model callbacks, so user code can
         // add to or otherwise customize the model before it's returned
         Threading::ScopedReadLock sharedLock(_createTileModelCallbacksMutex);
         for(CreateTileModelCallbacks::iterator i = _createTileModelCallbacks.begin();
@@ -238,14 +238,14 @@ TerrainEngineNode::createTileModel(const Map* map,
     return model.release();
 }
 
-void 
+void
 TerrainEngineNode::addCreateTileModelCallback(CreateTileModelCallback* callback)
 {
     Threading::ScopedWriteLock exclusiveLock(_createTileModelCallbacksMutex);
     _createTileModelCallbacks.push_back(callback);
 }
 
-void 
+void
 TerrainEngineNode::removeCreateTileModelCallback(CreateTileModelCallback* callback)
 {
     Threading::ScopedWriteLock exclusiveLock(_createTileModelCallbacksMutex);
@@ -294,14 +294,9 @@ TerrainEngineNode::fireModifyTileBoundingBoxCallbacks(const TileKey& key, osg::B
     }
 }
 
-namespace
-{
-    Threading::Mutex s_opqlock;
-}
-
 void
 TerrainEngineNode::traverse( osg::NodeVisitor& nv )
-{    
+{
     if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         _dirtyCount = 0;

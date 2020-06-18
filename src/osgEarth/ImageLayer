@@ -89,7 +89,7 @@ namespace osgEarth
             OE_OPTION(Distance, altitude);
             OE_OPTION(std::string, shareTexUniformName);
             OE_OPTION(std::string, shareTexMatUniformName);
-            virtual Config getConfig() const;        
+            virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );
         };
@@ -187,7 +187,7 @@ namespace osgEarth
 
 
     public: // Texture support
-            
+
         //! Whether to use createTexture to create data for this layer
         //! instead of createImage and a TileSource driver
         bool useCreateTexture() const { return _useCreateTexture; }
@@ -197,7 +197,7 @@ namespace osgEarth
 
 
     public: // Layer
-        
+
         //! Open the layer for reading.
         virtual Status openImplementation();
 
@@ -213,7 +213,7 @@ namespace osgEarth
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
 
     protected: // Layer
-            
+
         virtual void init();
 
     protected:
@@ -235,7 +235,6 @@ namespace osgEarth
         // doesn't match the layer profile.
         GeoImage assembleImage(const TileKey& key, ProgressCallback* progress);
 
-        mutable Threading::Mutex _mutex;
         optional<int> _shareImageUnit;
         bool _useCreateTexture;
 

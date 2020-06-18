@@ -43,7 +43,7 @@ namespace osgEarth { namespace REX
 
     public: // Loader::Request
 
-        /** Fetches the data for the tile node. Return true upon success, false upon 
+        /** Fetches the data for the tile node. Return true upon success, false upon
             failure or cancelation */
         bool run(ProgressCallback*);
 
@@ -58,7 +58,6 @@ namespace osgEarth { namespace REX
         const CreateTileManifest& getManifest() const { return _manifest; }
 
     protected:
-        Threading::Mutex _mutex;
         osg::observer_ptr<TileNode> _tilenode;
         osg::observer_ptr<TerrainEngineNode> _engine;
         osg::observer_ptr<EngineContext> _context;

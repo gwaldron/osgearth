@@ -125,7 +125,7 @@ namespace osgEarth
      * Subclass Layer to create a new layer type. Use the META_Layer macro
      * to establish the standard options framework.
      *
-     * When you create a Layer, init() is called. Do all one-time construction 
+     * When you create a Layer, init() is called. Do all one-time construction
      * activity where.
      *
      * When you add a Layer to a Map, the follow methods are called in order:
@@ -156,7 +156,7 @@ namespace osgEarth
 
         //! This layer's unique ID.
         //! This value is generated automatically at runtime and is not
-        //! guaranteed to be the same from one run to the next.        
+        //! guaranteed to be the same from one run to the next.
         UID getUID() const { return _uid; }
 
         //! osgDB read options for this Layer.
@@ -167,11 +167,11 @@ namespace osgEarth
         const osgDB::Options* getReadOptions() const;
 
         //! Open a layer.
-        virtual const Status& open() 
+        virtual const Status& open()
             OSGEARTH_FINAL;
 
         //! Open a layer. Shortcut for calling setReadOptions() followed by open().
-        virtual const Status& open(const osgDB::Options* options) 
+        virtual const Status& open(const osgDB::Options* options)
             OSGEARTH_FINAL;
 
         //! Close this layer.
@@ -270,7 +270,7 @@ namespace osgEarth
 
         //! Attribution to be displayed by the application
         virtual std::string getAttribution() const;
-        
+
         //! Attribution to be displayed by the application
 		virtual void setAttribution(const std::string& attribution);
 
@@ -314,7 +314,7 @@ namespace osgEarth
 
         //! Extracts config options from a DB options - internal use
         static const ConfigOptions& getConfigOptions(const osgDB::Options*);
-        
+
         //! Adds a property notification callback to this layer
         void addCallback(LayerCallback* cb);
 
@@ -354,7 +354,7 @@ namespace osgEarth
 
         //! Sets the status for this layer - internal
         const Status& setStatus(const Status& status) const;
-        
+
         //! Sets the status for this layer with a message - internal
         const Status& setStatus(const Status::Code& statusCode, const std::string& message) const;
 
@@ -369,7 +369,6 @@ namespace osgEarth
         osg::ref_ptr<osg::StateSet> _stateSet;
         RenderType _renderType;
         mutable Status _status;
-        mutable Threading::Mutex _mutex;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
         Hints _hints;
@@ -400,7 +399,7 @@ namespace osgEarth
         //! internal cache information
         CacheSettings* getCacheSettings() { return _cacheSettings.get(); }
         const CacheSettings* getCacheSettings() const { return _cacheSettings.get(); }
-                
+
     public: // serialization
         class OSGEARTH_EXPORT Options : public ConfigOptions
         {
@@ -431,7 +430,7 @@ namespace osgEarth
         Layer ( const Layer& rhs, const osg::CopyOp& op ) { }
 
         // allow the map access to the addedToMap/removedFromMap methods
-        friend class Map; 
+        friend class Map;
         friend class MapNode;
     };
 

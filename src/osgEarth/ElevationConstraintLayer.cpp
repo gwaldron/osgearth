@@ -201,7 +201,7 @@ ElevationConstraintLayer::createImageImplementationAux(const TileKey& key, Progr
         UnorderedSet<TileKey> featureKeys;
         for (int i = 0; i < intersectingKeys.size(); ++i)
         {
-            if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
+            if ((int)intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
                 featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
             else
                 featureKeys.insert(intersectingKeys[i]);

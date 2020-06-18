@@ -2,9 +2,9 @@
     <PowerlineModel name="towers" max_range="6000" attenuation_range="1000">
         <features>power-lines</features>
         <tower_model>
-            <model>../data/Transmission_Tower.osgb</model>
+            <model>../data/power_tower.osgb</model>
             <attachment_points>
-                LINESTRING(5.876 0.0 14.162, -5.876 0.0 14.162, 6.875 0.0 18.52, -6.875 0.0 18.52, 4.890 0.0 22.42, -4.890 0.0 22.42)
+                LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89, 6.385 0.0 21.077, -6.35 -0.01 21.077)
             </attachment_points>
             <!-- maximum sag or droop of a single cable -->
             <max_sag>5.0</max_sag>
@@ -12,7 +12,7 @@
         <styles>
             <style type="text/css">
                 towers {
-                    model: "../data/Transmission_Tower.osgb";
+                    model: "../data/power_tower.osgb";
                     altitude-clamping: terrain;
                     model-heading: from_feature;
                 }

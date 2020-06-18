@@ -443,6 +443,9 @@ namespace osgEarth { namespace Util
             //! Initialize to all one value
             void assign(const osg::Vec4& c);
 
+            //! Initialize to all one value (one layer)
+            void assign(const osg::Vec4& c, int r);
+
             /** Writes a color to a pixel. */
             void operator()(const osg::Vec4& c, int s, int t, int r=0, int m=0) {
                 (*_writer)(this, c, s, t, r, m );

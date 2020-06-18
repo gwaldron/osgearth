@@ -306,7 +306,7 @@ MBTilesElevationLayer::writeHeightFieldImplementation(const TileKey& key, const 
 MBTiles::Driver::Driver()
 {
     _minLevel = 0;
-    _maxLevel = 20;
+    _maxLevel = 19;
     _forceRGB = false;
     _database = NULL;
 }
@@ -400,6 +400,10 @@ MBTiles::Driver::open(
                 OE_INFO << LC << "Data will be compressed (zlib)" << std::endl;
             }
         }
+
+        // initialize and update as we write tiles.
+        _minLevel = 0u;
+        _maxLevel = 0u;
     }
 
     // If the database pre-existed, read in the information from the metadata.
@@ -547,6 +551,38 @@ MBTiles::Driver::open(
     return Status::OK();
 }
 
+int
+MBTiles::Driver::readMaxLevel()
+{
+    int result = -1;
+
+    sqlite3* database = (sqlite3*)_database;
+
+    //Get the image
+    sqlite3_stmt* select = NULL;
+    std::string query = "SELECT zoom_level FROM tiles ORDER BY zoom_level DESC LIMIT 1";
+    int rc = sqlite3_prepare_v2( database, query.c_str(), -1, &select, 0L );
+    if ( rc != SQLITE_OK )
+    {
+        OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(database) << std::endl;
+        return ReadResult::RESULT_READER_ERROR;
+    }
+
+    rc = sqlite3_step( select );
+    if (rc == SQLITE_ROW)
+    {
+        result = sqlite3_column_int(select, 0);
+    }
+    else
+    {
+        OE_DEBUG << LC << "SQL QUERY failed for " << query << ": " << std::endl;
+        return -1;
+    }
+
+    sqlite3_finalize( select );
+    return result;
+}
+
 ReadResult
 MBTiles::Driver::read(
     const TileKey& key,
@@ -641,7 +677,7 @@ Status
 MBTiles::Driver::write(
     const TileKey& key,
     const osg::Image* image,
-    ProgressCallback* progress) const
+    ProgressCallback* progress)
 {
     if (!key.valid() || !image)
         return Status::AssertionFailure;
@@ -727,6 +763,18 @@ MBTiles::Driver::write(
     }
 
     sqlite3_finalize(insert);
+
+    // adjust the max level if necessary
+    if (key.getLOD() > _maxLevel)
+    {
+        _maxLevel = key.getLOD();
+        //putMetaData("maxlevel", Stringify()<<_maxLevel);
+    }
+    if (key.getLOD() < _minLevel)
+    {
+        _minLevel = key.getLOD();
+        //putMetaData("minlevel", Stringify()<<_minLevel);
+    }
 
     return Status::NoError;
 }
@@ -846,7 +894,7 @@ MBTiles::Driver::createTables()
 
     std::string query =
         "CREATE TABLE IF NOT EXISTS metadata ("
-        " name  text,"
+        " name text PRIMARY KEY,"
         " value text)";
 
     if (SQLITE_OK != sqlite3_exec(database, query.c_str(), 0L, 0L, 0L))

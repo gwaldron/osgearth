@@ -210,6 +210,7 @@ namespace osgEarth
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<ElevationPool> _elevationPool;
+        mutable ElevationPool _ElevationPool;
 
         struct LayerCB : public LayerCallback {
             LayerCB(Map*);

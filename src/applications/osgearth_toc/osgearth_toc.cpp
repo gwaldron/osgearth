@@ -106,28 +106,6 @@ struct UpdateOperation : public osg::Operation
     }
 };
 
-
-struct DumpElevation : public osgGA::GUIEventHandler
-{
-    DumpElevation(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c) { }
-    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)
-    {
-        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _c)
-        {
-            osg::Vec3d world;
-            _mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world);
-            GeoPoint coords;
-            coords.fromWorld(s_activeMap->getSRS(), world);
-            osg::ref_ptr<ElevationEnvelope> env = s_activeMap->getElevationPool()->createEnvelope(s_activeMap->getSRS(), 23u);
-            float ep_elev = env->getElevation(coords.x(), coords.y());
-            OE_NOTICE << "Elevations under mouse. EP=" << ep_elev << "\n";
-        }
-        return false;
-    }
-    char _c;
-    MapNode* _mapNode;
-};
-
 struct ToggleMinValidValue : public osgGA::GUIEventHandler
 {
     ToggleMinValidValue(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c) { }
@@ -315,8 +293,6 @@ main( int argc, char** argv )
 
     // install our control panel updater
     viewer.addUpdateOperation( new UpdateOperation() );
-
-    viewer.addEventHandler(new DumpElevation(s_mapNode.get(), 'E'));
 
     viewer.addEventHandler(new DumpLabel(s_mapNode.get(), 'L'));
 

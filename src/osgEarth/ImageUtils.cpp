@@ -2361,6 +2361,17 @@ ImageUtils::PixelWriter::assign(const osg::Vec4& c)
     }
 }
 
+void
+ImageUtils::PixelWriter::assign(const osg::Vec4& c, int layer)
+{
+    if (_image->valid())
+    {
+        for(int t=0; t<_image->t(); ++t)
+            for(int s=0; s<_image->s(); ++s)
+                (*this)(c, s, t, layer);
+    }
+}
+
 unsigned char*
 ImageUtils::PixelWriter::data(int s, int t, int r, int m) const
 {

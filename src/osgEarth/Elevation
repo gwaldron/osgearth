@@ -1,0 +1,125 @@
+
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2016 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ELEVATION_H
+#define OSGEARTH_ELEVATION_H
+
+#include <osgEarth/Common>
+#include <osgEarth/Units>
+#include <osgEarth/GeoData>
+#include <osgEarth/TileKey>
+#include <osg/Texture2D>
+
+namespace osgEarth
+{
+    constexpr int ELEVATION_TILE_SIZE = 257;
+
+    /**
+     * Result of an elevation sampling query
+     */
+    class OSGEARTH_EXPORT ElevationSample
+    {
+    public:
+        ElevationSample() : _e(NO_DATA_VALUE, Units::METERS), _r(0.0, Units::METERS) { }
+        ElevationSample(const Distance& e, const Distance& r) : _e(e), _r(r) { }
+        const Distance& elevation() const { return _e; }
+        const Distance& resolution() const { return _r; }
+        bool hasData() const { return _e.getValue() != NO_DATA_VALUE && _r.getValue() > 0.0f; }
+    private:
+        Distance _e, _r;
+    };
+
+    /**
+     * Reference-counted wrapper for ElevationSample
+     */
+    class OSGEARTH_EXPORT RefElevationSample : public ElevationSample, public osg::Referenced
+    {
+    public:
+        RefElevationSample(const Distance& e, const Distance& r) :
+            ElevationSample(e, r) { }
+    };
+
+    // CONTAINER for elevation data on the system "somewhere".
+    // could be HF, could be image, could be texture .....
+    // for now, let's say it's a heightfield.
+    // abstract that away with the API.
+    // GL_R16F value
+    // Encoded normal/scope?
+    // Look up functions?
+    class OSGEARTH_EXPORT ElevationTexture : public osg::Texture2D
+    {
+    public:
+        ElevationTexture(const GeoHeightField& hf, const NormalMap* normalMap);
+
+        virtual ~ElevationTexture();
+
+        //! Gets the elevation at the map coordinates. These coordinates must
+        //! be in the SRS used to create the texture.
+        ElevationSample getElevation(double x, double y) const;
+
+        //! Gets the elevation using normalized [0..1] coordinates.
+        ElevationSample getElevationUV(double u, double v) const;
+
+        //! Extent of the texture
+        const GeoExtent& getExtent() const { return _extent; }
+
+        //! Normal map associated with the elevation data, if available.
+        osg::Texture2D* getNormalMapTexture() const { return _normalTex.get(); }
+
+    private:
+        GeoExtent _extent;
+        Distance _resolution;
+        ImageUtils::PixelReader _read;
+        osg::ref_ptr<osg::Texture2D> _normalTex;
+    };
+
+    //! Revisioned key for elevation lookups (internal)
+    namespace Internal
+    {
+        struct RevElevationKey
+        {
+            TileKey _tilekey;
+            int _revision;
+
+            inline bool operator < (const RevElevationKey& rhs) const {
+                if ( _tilekey < rhs._tilekey ) return true;
+                if ( rhs._tilekey < _tilekey ) return false;
+                return _revision < rhs._revision;
+            }
+            inline bool operator == (const RevElevationKey& rhs) const {
+                return _tilekey == rhs._tilekey &&
+                    _revision == rhs._revision;
+            }
+        };
+    }
+}
+
+#ifdef OSGEARTH_CXX11
+namespace std {
+    // std::hash specialization for Key
+    template<> struct hash<osgEarth::Internal::RevElevationKey> {
+        inline size_t operator()(const osgEarth::Internal::RevElevationKey& value) const {
+            return value._tilekey.hash() + value._revision;
+        }
+    };
+}
+#endif
+
+
+
+#endif // OSGEARTH_ELEVATION_H

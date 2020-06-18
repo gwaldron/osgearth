@@ -26,6 +26,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TileKey>
 #include <osgEarth/Progress>
+#include <osgEarth/Metrics>
 #include <osg/ref_ptr>
 #include <osg/Group>
 
@@ -112,7 +113,7 @@ namespace osgEarth { namespace REX
             osg::ref_ptr<osg::Referenced> _internalHandle;
             unsigned                      _lastFrameSubmitted;
             double                        _lastTick;
-            mutable Threading::Mutex      _lock;
+            mutable OE_LOCKABLE(Threading::Mutex, _lock);
             int                           _loadCount;
             double                        _delay_s;
             int                           _delayCount;
@@ -208,7 +209,7 @@ namespace osgEarth { namespace REX
         TileKey getTileKeyForRequest(UID requestUID) const;
 
     protected:
-        
+
         typedef UnorderedMap<UID, osg::ref_ptr<Loader::Request> > UnsafeRequestMap;
         typedef Threading::Lockable<UnsafeRequestMap> Requests;
 
@@ -224,7 +225,7 @@ namespace osgEarth { namespace REX
 
         osg::NodePath    _myNodePath;
         Requests         _requests;
-        MergeQueue       _mergeQueue;  
+        MergeQueue       _mergeQueue;
         double           _checkpoint;
         int              _mergesPerFrame;
         unsigned         _frameNumber;

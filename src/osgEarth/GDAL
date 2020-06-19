@@ -138,7 +138,6 @@ namespace osgEarth { namespace GDAL
         void pixelToGeo(double, double, double&, double&);
         void geoToPixel(double, double, double&, double&);
 
-        bool isValidValue_noLock(float, GDALRasterBand*);
         bool isValidValue(float, GDALRasterBand*);
         bool intersects(const TileKey&);
         float getInterpolatedValue(GDALRasterBand* band, double x, double y, bool applyOffset=true);

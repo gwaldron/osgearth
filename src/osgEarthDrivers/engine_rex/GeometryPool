@@ -26,6 +26,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/PatchLayer>
+#include <osgEarth/Metrics>
 #include <osg/Geometry>
 
 #if OSG_MIN_VERSION_REQUIRED(3,5,9)
@@ -90,7 +91,7 @@ namespace osgEarth { namespace REX
 
         void resizeGLObjectBuffers(unsigned int maxSize);
         void releaseGLObjects(osg::State* state) const;
-        
+
         bool supports(const osg::Drawable::AttributeFunctor&) const { return true; }
         void accept(osg::Drawable::AttributeFunctor&);
 
@@ -217,17 +218,17 @@ namespace osgEarth { namespace REX
     protected:
         virtual ~GeometryPool() { }
 
-        mutable Threading::Mutex       _geometryMapMutex;
+        mutable OE_LOCKABLE(Threading::Mutex, _geometryMapMutex);
         GeometryMap                    _geometryMap;
-        const TerrainOptions&          _options; 
+        const TerrainOptions&          _options;
         osg::ref_ptr<ResourceReleaser> _releaser;
         osg::ref_ptr<osg::DrawElements> _defaultPrimSet;
         osg::ref_ptr<osg::UIntArray> _reorder;
 
         mutable osg::ref_ptr<osg::Vec3Array> _sharedTexCoords;
-        
+
         void createKeyForTileKey(
-            const TileKey& tileKey, 
+            const TileKey& tileKey,
             unsigned       size,
             GeometryKey&   out) const;
 
@@ -244,7 +245,7 @@ namespace osgEarth { namespace REX
             osg::UIntArray** reorder = 0L) const;
 
         void tessellateSurface(
-            unsigned tileSize, 
+            unsigned tileSize,
             MaskGenerator* maskSet,
             osg::Vec3Array* texCoords,
             osg::DrawElements* primSet) const;

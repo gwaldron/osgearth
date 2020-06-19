@@ -247,9 +247,9 @@ Registry::release()
         _objectIndex = new ObjectIndex();
 }
 
-OpenThreads::ReentrantMutex& osgEarth::getGDALMutex()
+OE_LOCKABLE_BASE(OpenThreads::ReentrantMutex)& osgEarth::getGDALMutex()
 {
-    static OpenThreads::ReentrantMutex _gdal_mutex;
+    static OE_LOCKABLE(OpenThreads::ReentrantMutex, _gdal_mutex);
     return _gdal_mutex;
 }
 

@@ -168,6 +168,7 @@ SET(LIB_PUBLIC_HEADERS
     LineFunctor
     Locators
     LocalTangentPlane
+    Math
     Map
     MapCallback
     MapInfo

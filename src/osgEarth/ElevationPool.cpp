@@ -22,6 +22,7 @@
 #include <osgEarth/rtree.h>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/Containers>
 
 #include <thread>
 #include <chrono>
@@ -258,17 +259,19 @@ osg::ref_ptr<ElevationTexture>
 ElevationPool::getOrCreateRaster(
     const Internal::RevElevationKey& key, 
     const Map* map, 
-    bool getNormalMap, 
+    bool getResolutions, 
     bool acceptLowerRes,
     WorkingSet* ws)
 {
+    OE_PROFILING_ZONE;
+
     // first check for pre-existing data for this key:
     osg::ref_ptr<ElevationTexture> result;
     bool fromWS, fromL2, fromLUT;
     if (findExistingRaster(key, ws, result, &fromWS, &fromL2, &fromLUT))
     {
         // only accept if cached record matches caller's request
-        if (getNormalMap == true && result->getNormalMapTexture() == NULL)
+        if (getResolutions == true && !result->getResolutions())
         {
             result = NULL;
         }
@@ -283,10 +286,10 @@ ElevationPool::getOrCreateRaster(
             false,      // no border
             true);      // initialize to HAE (0.0) heights
 
-        osg::ref_ptr<NormalMap> normalMap;
-        if (getNormalMap)
+        float* resolutions = NULL;
+        if (getResolutions)
         {
-            normalMap = new NormalMap(_tileSize, _tileSize);
+            resolutions = new float[_tileSize*_tileSize];
         }
 
         TileKey keyToUse;
@@ -300,9 +303,9 @@ ElevationPool::getOrCreateRaster(
             keyToUse.valid(); 
             keyToUse = keyToUse.createParentKey())
         {
-            populated = layersToSample.populateHeightFieldAndNormalMap(
+            populated = layersToSample.populateHeightField(
                 hf.get(),
-                normalMap.get(),
+                resolutions,
                 keyToUse,
                 map->getProfileNoVDatum(), // convertToHAE,
                 map->getElevationInterpolation(),
@@ -316,7 +319,7 @@ ElevationPool::getOrCreateRaster(
         {
             result = new ElevationTexture(
                 GeoHeightField(hf.get(), keyToUse.getExtent()),
-                normalMap.get());
+                resolutions);
         }
         else
         {
@@ -347,6 +350,188 @@ ElevationPool::getOrCreateRaster(
     }
 
     return result;
+}
+
+namespace
+{
+    typedef vector_map<
+        Internal::RevElevationKey,
+        osg::ref_ptr<ElevationTexture> > QuickCache;
+
+    struct QuickSampleVars {
+        double sizeS, sizeT;
+        double s, t;
+        double s0, s1, smix;
+        double t0, t1, tmix;
+        osg::Vec4f UL, UR, LL, LR, TOP, BOT;
+    };
+
+    inline void quickSample(
+        const ImageUtils::PixelReader& reader, 
+        double u, double v, 
+        osg::Vec4f& out,
+        QuickSampleVars& a)
+    {
+        double sizeS = (double)(reader.s()-1);
+        double sizeT = (double)(reader.t()-1);
+
+        // u, v => [0..1]
+        double s = u * sizeS;
+        double t = v * sizeT;
+
+        double s0 = osg::maximum(floor(s), 0.0);
+        double s1 = osg::minimum(s0 + 1.0, sizeS);
+        double smix = s0 < s1 ? (s - s0) / (s1 - s0) : 0.0;
+
+        double t0 = osg::maximum(floor(t), 0.0);
+        double t1 = osg::minimum(t0 + 1.0, sizeT);
+        double tmix = t0 < t1 ? (t - t0) / (t1 - t0) : 0.0;
+
+        reader(a.UL, (int)s0, (int)t0, 0, 0); // upper left
+        reader(a.UR, (int)s1, (int)t0, 0, 0); // upper right
+        reader(a.LL, (int)s0, (int)t1, 0, 0); // lower left
+        reader(a.LR, (int)s1, (int)t1, 0, 0); // lower right
+
+        a.TOP = a.UL * (1.0f - smix) + a.UR * smix;
+        a.BOT = a.LL * (1.0f - smix) + a.LR * smix;
+        out = a.TOP * (1.0f - tmix) + a.BOT * tmix;
+    }
+}
+
+int
+ElevationPool::sampleMapCoords(
+    std::vector<osg::Vec4d>& points,
+    WorkingSet* ws)
+{
+    OE_PROFILING_ZONE;
+
+    if (points.empty())
+        return -1;
+
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map) == false || map->getProfile() == NULL)
+        return -1;
+
+    sync(map.get(), ws);
+    ScopedAtomicCounter counter(_workers);
+
+    Internal::RevElevationKey key;
+    key._revision = getElevationRevision(map.get());
+
+    osg::ref_ptr<ElevationTexture> raster;
+    osg::Vec4 elev;
+    double u, v;
+
+    const Profile* profile = map->getProfile();
+    double pw = profile->getExtent().width();
+    double ph = profile->getExtent().height();
+    double pxmin = profile->getExtent().xMin();
+    double pymin = profile->getExtent().yMin();
+
+    int count = 0;
+
+    QuickCache quickCache;
+    QuickSampleVars qvars;
+
+    //TODO: TESTING..?
+    //ws = NULL;
+
+    unsigned tw, th;
+    double rx, ry;
+    int tx, ty;
+    int tx_prev = INT_MAX, ty_prev = INT_MAX;
+    float lastRes = -1.0f;
+    unsigned lod;
+    unsigned lod_prev = INT_MAX;
+    const Units& units = map->getSRS()->getUnits();
+    Distance pointRes(0.0, units);
+
+    for(auto& p : points)
+    {
+        {
+            OE_PROFILING_ZONE_NAMED("createTileKey");
+
+            if (p.w() >= 0.0f && p.w() != lastRes)
+            {
+                pointRes.set(p.w(), units);
+
+                double resolutionInMapUnits = pointRes.asDistance(units, p.y());
+
+                unsigned maxLOD = profile->getLevelOfDetailForHorizResolution(
+                    resolutionInMapUnits,
+                    ELEVATION_TILE_SIZE);
+
+                lod = osg::minimum( getLOD(p.x(), p.y()), maxLOD );
+
+                profile->getNumTiles(lod, tw, th);
+
+                lastRes = p.w();
+            }
+
+            rx = (p.x()-pxmin)/pw, ry = (p.y()-pymin)/ph;
+            tx = osg::clampBelow((unsigned)(rx * (double)tw), tw-1u ); // TODO: wrap around for geo
+            ty = osg::clampBelow((unsigned)((1.0-ry) * (double)th), th-1u );
+
+            if (lod != lod_prev || tx != tx_prev || ty != ty_prev)
+            {
+                key._tilekey = TileKey(lod, tx, ty, profile);
+                lod_prev = lod;
+                tx_prev = tx;
+                ty_prev = ty;
+            }
+        }
+        
+        if (key._tilekey.valid())
+        {
+            auto& iter = quickCache.find(key);
+
+            if (iter == quickCache.end())
+            {
+                raster = getOrCreateRaster(
+                    key,   // key to query
+                    map.get(), // map to query
+                    true,  // for the cache
+                    true,  // fall back on lower resolution data if necessary
+                    ws);   // user's workingset
+
+                quickCache[key] = raster.get();
+            }
+            else
+            {
+                raster = iter->second;
+            }
+
+            {
+                OE_PROFILING_ZONE_NAMED("sample");
+                if (raster.valid())
+                {
+                    u = (p.x() - raster->getExtent().xMin()) /  raster->getExtent().width();
+                    v = (p.y() - raster->getExtent().yMin()) /  raster->getExtent().height();
+
+                    // Note: This can happen on the map edges..
+                    // TODO: consider looping around for geo and clamping for projected
+                    u = osg::clampBetween(u, 0.0, 1.0);
+                    v = osg::clampBetween(v, 0.0, 1.0);
+
+                    quickSample(raster->reader(), u, v, elev, qvars);
+                    p.z() = elev.r();
+                }
+                else
+                {
+                    p.z() = NO_DATA_VALUE;
+                }
+            }
+        }
+        else
+        {
+            p.z() = NO_DATA_VALUE;
+        }
+
+        if (p.z() != NO_DATA_VALUE)
+            ++count;
+    }
+
+    return count;
 }
 
 ElevationSample
@@ -438,7 +623,7 @@ ElevationPool::getSample(const GeoPoint& p, const Distance& resolution, WorkingS
 bool
 ElevationPool::getTile(
     const TileKey& tilekey, 
-    bool getNormalMap, 
+    bool getResolutions, 
     bool acceptLowerRes,
     osg::ref_ptr<ElevationTexture>& out_tex,
     WorkingSet* ws)
@@ -456,7 +641,12 @@ ElevationPool::getTile(
     key._tilekey = tilekey;
     key._revision = getElevationRevision(map.get());
 
-    out_tex = getOrCreateRaster(key, _map.get(), getNormalMap, acceptLowerRes, ws);
+    out_tex = getOrCreateRaster(
+        key, 
+        _map.get(), 
+        getResolutions, 
+        acceptLowerRes,
+        ws);
 
     return true;
 }

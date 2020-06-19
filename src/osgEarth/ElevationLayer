@@ -136,7 +136,6 @@ namespace osgEarth
         void assembleHeightField(
             const TileKey& key,
             osg::ref_ptr<osg::HeightField>& out_hf,
-            osg::ref_ptr<NormalMap>& out_normalMap,
             ProgressCallback* progress) const;
 
         void normalizeNoDataValues(osg::HeightField* hf) const;
@@ -158,12 +157,12 @@ namespace osgEarth
          * Populates an existing height field (hf must already exist) with height
          * values from the elevation layers.
          */
-        bool populateHeightFieldAndNormalMap(
+        bool populateHeightField(
             osg::HeightField*      hf,
-            NormalMap*             normalMap,
+            float*                 resolutions,
             const TileKey&         key,
             const Profile*         haeProfile,
-            RasterInterpolation interpolation,
+            RasterInterpolation    interpolation,
             ProgressCallback*      progress ) const;
 
     public:

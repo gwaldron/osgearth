@@ -107,6 +107,11 @@ namespace osgEarth
          * Constructs an empty (and invalid) geopoint.
          */
         GeoPoint();
+        
+        /**
+         * Constructs a GeoPoint at 0,0,0 absolute.
+         */
+        GeoPoint(const SpatialReference* srs);
 
         /**
          * Constructs a geopoint from serialization
@@ -724,32 +729,6 @@ namespace osgEarth
 
     typedef std::vector<GeoImage> GeoImageVector;
 
-
-    class OSGEARTH_EXPORT NormalMap : public osg::Image
-    {
-    public:
-        NormalMap(unsigned s, unsigned t);
-
-        NormalMap(const osg::Image& image);
-
-        void set(unsigned s, unsigned t, const osg::Vec3& normal, float curvature =0.0f);
-
-        void generateCurvatures();
-
-        osg::Vec3 getNormal(unsigned s, unsigned t) const;
-
-        osg::Vec3 getNormalByUV(double u, double v) const;
-
-        float getCurvature(unsigned s, unsigned t) const;
-
-        virtual ~NormalMap();
-
-    private:
-        ImageUtils::PixelWriter* _write;
-        ImageUtils::PixelReader* _read;
-    };
-
-
     /**
      * A georeferenced heightfield and associated normal/curvature map.
      */
@@ -768,15 +747,6 @@ namespace osgEarth
         GeoHeightField(
             osg::HeightField* heightField,
             const GeoExtent&  extent );
-
-        //! Constructs a new GeoHeightField
-        //! @param[in] heightField Elevation grid
-        //! @param[in] normalMap   Normal/Curvature map
-        //! @param[in] extent      Geospatial extent of the data
-        GeoHeightField(
-            osg::HeightField* heightField,
-            NormalMap*        normalMap,
-            const GeoExtent&  extent);
 
         /** dtor */
         virtual ~GeoHeightField() { }
@@ -820,15 +790,6 @@ namespace osgEarth
             const SpatialReference* srsWithOutputVerticalDatum,
             float&                  out_elevation ) const;
 
-        bool getElevationAndNormal(
-            const SpatialReference* inputSRS, 
-            double                  x,
-            double                  y,
-            RasterInterpolation     interp,
-            const SpatialReference* srsWithOutputVerticalDatum,
-            float&                  out_elevation,
-            osg::Vec3&              out_normal ) const;
-
         //! Gets the elevation at a point (must be in the same SRS; bilinear interpolation)
         float getElevation(double x, double y) const;
 
@@ -861,9 +822,6 @@ namespace osgEarth
          */
         const osg::HeightField* getHeightField() const;
 
-        //! Normal map
-        const NormalMap* getNormalMap() const;
-
         /**
          * Gets the X interval of this GeoHeightField
          */
@@ -886,7 +844,6 @@ namespace osgEarth
 
     protected:
         osg::ref_ptr<osg::HeightField> _heightField;
-        osg::ref_ptr<NormalMap>        _normalMap;
         GeoExtent                      _extent;
         float                          _minHeight, _maxHeight;
         Status                         _status;

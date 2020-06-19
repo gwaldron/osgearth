@@ -18,16 +18,16 @@
 */
 #include <osgEarth/Elevation>
 #include <osgEarth/Registry>
+#include <osgEarth/Map>
+#include <osgEarth/Metrics>
 
 using namespace osgEarth;
-
 
 namespace
 {
     // octohodreal normal packing
-    osg::Vec2 packNormal(const osg::Vec3& v)
+    void packNormal(const osg::Vec3& v, osg::Vec2& p)
     {
-        osg::Vec2 p;
         float d = 1.0/(fabs(v.x())+fabs(v.y())+fabs(v.z()));
         p.x() = v.x() * d;
         p.y() = v.y() * d;
@@ -40,13 +40,12 @@ namespace
 
         p.x() = 0.5f*(p.x()+1.0f);
         p.y() = 0.5f*(p.y()+1.0f);
-
-        return p;
     }
 }
 
-ElevationTexture::ElevationTexture(const GeoHeightField& in_hf, const NormalMap* normalMap) :
-    _extent(in_hf.getExtent())
+ElevationTexture::ElevationTexture(const GeoHeightField& in_hf, float* resolutions) :
+    _extent(in_hf.getExtent()),
+    _resolutions(resolutions)
 {
     if (in_hf.valid())
     {
@@ -79,38 +78,6 @@ ElevationTexture::ElevationTexture(const GeoHeightField& in_hf, const NormalMap*
         setMaxAnisotropy(1.0f);
         setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
-        if (normalMap)
-        {
-            osg::Image* normals = new osg::Image();
-            normals->allocateImage(normalMap->s(), normalMap->t(), 1, GL_RG, GL_UNSIGNED_BYTE);
-            normals->setInternalTextureFormat(GL_RG8);
-            ImageUtils::PixelWriter writeNormal(normals);
-
-            osg::Vec2 temp;
-            for(int t=0; t<normalMap->t(); ++t)
-            {
-                for(int s=0; s<normalMap->s(); ++s)
-                {
-                    temp = packNormal(normalMap->getNormal(s, t));
-                    value.r() = temp.x(), value.g() = temp.y();
-                    // TODO: won't actually be written until we make the format GL_RGB
-                    // but we need to rewrite the curvature generator first
-                    value.b() = 0.5f*(1.0f+normalMap->getCurvature(s, t));
-                    writeNormal(value, s, t);
-                }
-            }
-            _normalTex = new osg::Texture2D(normals);
-
-            _normalTex->setInternalFormat(GL_RG8);
-            _normalTex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-            _normalTex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
-            _normalTex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-            _normalTex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-            _normalTex->setResizeNonPowerOfTwoHint(false);
-            _normalTex->setMaxAnisotropy(1.0f);
-            _normalTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-        }
-
         _read.setTexture(this);
         _read.setSampleAsTexture(false);
 
@@ -122,7 +89,8 @@ ElevationTexture::ElevationTexture(const GeoHeightField& in_hf, const NormalMap*
 
 ElevationTexture::~ElevationTexture()
 {
-    //nop
+    if (_resolutions)
+        delete [] _resolutions;
 }
 
 ElevationSample
@@ -140,4 +108,154 @@ ElevationTexture::getElevationUV(double u, double v) const
     osg::Vec4 value;
     _read(value, u, v);
     return ElevationSample(Distance(value.r(),Units::METERS), _resolution);
+}
+
+
+#undef LC
+#define LC "[NormalMapGenerator] "
+
+osg::Texture2D*
+NormalMapGenerator::createNormalMap(
+    const TileKey& key,
+    const Map* map,
+    void* ws)
+{
+    if (!map)
+        return NULL;
+
+    OE_PROFILING_ZONE;
+
+    ElevationPool::WorkingSet* workingSet = static_cast<ElevationPool::WorkingSet*>(ws);
+
+    osg::Image* image = new osg::Image();
+    image->allocateImage(
+        ELEVATION_TILE_SIZE, ELEVATION_TILE_SIZE, 1,
+        GL_RG, GL_UNSIGNED_BYTE);
+
+    ElevationPool* pool = map->getElevationPool();
+
+    ImageUtils::PixelWriter write(image);
+
+    osg::Vec3 normal;
+    osg::Vec2 packedNormal;
+    osg::Vec4 pixel;
+
+    GeoPoint
+        north(key.getProfile()->getSRS()),
+        south(key.getProfile()->getSRS()),
+        east(key.getProfile()->getSRS()),
+        west(key.getProfile()->getSRS());
+
+    ElevationSample
+        h_north, h_south, h_west, h_east;
+
+    osg::Vec3 a[4];
+
+    const GeoExtent& ex = key.getExtent();
+
+    // fetch the base tile in order to get resolutions data.
+    osg::ref_ptr<ElevationTexture> heights;
+    pool->getTile(key, true, true, heights, workingSet);
+
+    if (!heights.valid())
+        return NULL;
+
+    // build the sample set.
+    std::vector<osg::Vec4d> points(write.s() * write.t() * 4);
+    int p = 0;
+    for(int t=0; t<write.t(); ++t)
+    {
+        double v = (double)t/(double)(write.t()-1);
+        double y = ex.yMin() + v*ex.height();
+        east.y() = y;
+        west.y() = y;
+
+        for(int s=0; s<write.t(); ++s)
+        {
+            double u = (double)s/(double)(write.s()-1);
+            double x = ex.xMin() + u*ex.width();
+            north.x() = x;
+            south.x() = x;
+
+            double r = heights->getResolution(s, t);
+
+            east.x() = x + r;
+            west.x() = x - r;
+            north.y() = y + r;
+            south.y() = y - r;
+
+            points[p++].set(west.x(), west.y(), 0.0, r);
+            points[p++].set(east.x(), east.y(), 0.0, r);
+            points[p++].set(south.x(), south.y(), 0.0, r);
+            points[p++].set(north.x(), north.y(), 0.0, r);
+        }
+    }
+
+    int sampleOK = map->getElevationPool()->sampleMapCoords(
+        points,
+        workingSet);
+
+    if (sampleOK < 0)
+    {
+        OE_WARN << LC << "Internal error - contact support" << std::endl;
+        return NULL;
+    }
+
+    Distance res(0.0, key.getProfile()->getSRS()->getUnits());
+    double dx, dy;
+
+    for(int t=0; t<write.t(); ++t)
+    {
+        double v = (double)t/(double)(write.t()-1);
+        double y_or_lat = ex.yMin() + v*ex.height();
+
+        for(int s=0; s<write.s(); ++s)
+        {    
+            int p = (4*write.s()*t + 4*s);
+
+            res.set(points[p].w(), res.getUnits());
+            dx = res.asDistance(Units::METERS, y_or_lat);
+            dy = res.asDistance(Units::METERS, 0.0);
+
+            if (points[p+0].z() != NO_DATA_VALUE &&
+                points[p+1].z() != NO_DATA_VALUE &&
+                points[p+2].z() != NO_DATA_VALUE &&
+                points[p+3].z() != NO_DATA_VALUE)
+            {
+                a[0].set(-dx, 0, points[p+0].z());
+                a[1].set( dx, 0, points[p+1].z());
+                a[2].set(0, -dy, points[p+2].z());
+                a[3].set(0,  dy, points[p+3].z());
+
+                normal = (a[1]-a[0]) ^ (a[3]-a[2]);
+                normal.normalize();
+            }
+            else
+            {
+                normal.set(0,0,1);
+            }
+
+            packNormal(normal, packedNormal);
+            pixel.r() = packedNormal.x(), pixel.g() = packedNormal.y();
+
+            // TODO: won't actually be written until we make the format GL_RGB
+            // but we need to rewrite the curvature generator first
+            //pixel.b() = 0.0f; // 0.5f*(1.0f+normalMap->getCurvature(s, t));
+
+            write(pixel, s, t);
+        }
+    }
+
+    osg::Texture2D* normalTex = new osg::Texture2D(image);
+
+    normalTex->setInternalFormat(GL_RG8);
+    normalTex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+    normalTex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
+    normalTex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+    normalTex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+    normalTex->setResizeNonPowerOfTwoHint(false);
+    normalTex->setMaxAnisotropy(1.0f);
+    normalTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    
+    return normalTex;
 }

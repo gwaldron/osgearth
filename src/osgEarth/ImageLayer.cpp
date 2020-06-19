@@ -23,6 +23,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
 #include <osgEarth/NetworkMonitor>
+#include <cinttypes>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -370,7 +371,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 
     // the cache key combines the Key and the horizontal profile.
     std::string cacheKey = Cache::makeCacheKey(
-        Stringify() << key.str() << "-" << key.getProfile()->getHorizSignature(),
+        Stringify() << key.str() << "-" << std::hex << key.getProfile()->getHorizSignature(),
         "image");
 
     // The L2 cache key includes the layer revision of course!
@@ -381,7 +382,10 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     // Check the layer L2 cache first
     if ( _memCache.valid() )
     {
-        sprintf(memCacheKey, "%d/%s/%s", getRevision(), key.str().c_str(), key.getProfile()->getHorizSignature().c_str());
+        sprintf(memCacheKey, "%d/%s/%" PRIu64 , 
+            getRevision(), 
+            key.str().c_str(), 
+            key.getProfile()->getHorizSignature());
 
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
         ReadResult result = bin->readObject(memCacheKey, 0L);

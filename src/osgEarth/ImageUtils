@@ -440,6 +440,9 @@ namespace osgEarth { namespace Util
                 return image && supports(image->getPixelFormat(), image->getDataType() );
             }
 
+            inline int s() const { return _image->s(); }
+            inline int t() const { return _image->t(); }
+
             //! Initialize to all one value
             void assign(const osg::Vec4& c);
 
@@ -466,11 +469,6 @@ namespace osgEarth { namespace Util
             bool     _normalized;
 
             unsigned char* data(int s=0, int t=0, int r=0, int m=0) const;
-            //{
-            //    return m == 0 ?
-            //        _image->data() + s*_colBytes + t*_rowBytes + r*_imageBytes :
-            //        _image->getMipmapData(m-1) + (s>>m)*_colBytes + (t>>m)*(_rowBytes>>m) + r*(_imageBytes>>m);
-            //}
 
             typedef void (*WriterFunc)(const PixelWriter* iw, const osg::Vec4& c, int s, int t, int r, int m);
             WriterFunc _writer;

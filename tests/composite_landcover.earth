@@ -19,7 +19,7 @@
                     <url>D:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31_256tiled.tif</url>
                 </GDALImage>
             </LandCover>
-            
+
             <LandCover name="US Highways">
                 <cache_policy usage="no_cache"/>
                 <FeatureImage min_level="11">
@@ -73,4 +73,16 @@
           ]]>
         </code>
     </terrainshader>
+
+    <Viewpoints home="0">
+        <viewpoint>
+            <heading>-2.12818e-06</heading>
+            <pitch>-89</pitch>
+            <range>6.4025e+06m</range>
+            <long>-98.94045729599723</long>
+            <lat>38.58816416459028</lat>
+            <height>451.3777650874108</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+    </Viewpoints>
 </map>

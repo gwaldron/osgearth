@@ -41,7 +41,7 @@
 #define OSGEARTH_ENV_NO_CACHE      "OSGEARTH_NO_CACHE"
 #define OSGEARTH_ENV_CACHE_MAX_AGE "OSGEARTH_CACHE_MAX_AGE"
 
-namespace osgEarth 
+namespace osgEarth
 {
     class Cache;
     class CachePolicy;
@@ -111,7 +111,6 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<Cache>      _cache;
         osg::ref_ptr<CacheBin>   _activeBin;
         optional<CachePolicy>    _policy;
-        mutable Threading::Mutex _mutex;
     };
 } }
 

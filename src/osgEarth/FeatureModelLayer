@@ -69,6 +69,10 @@ namespace osgEarth
         void setStyleSheet(StyleSheet* value);
         StyleSheet* getStyleSheet() const;
 
+        //! Set the dislpay layout (optional)
+        void setLayout(const FeatureDisplayLayout& layout);
+        const FeatureDisplayLayout& getLayout() const;
+
         void setAlphaBlending(const bool& value);
         const bool& getAlphaBlending() const;
 

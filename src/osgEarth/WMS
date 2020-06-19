@@ -257,12 +257,21 @@ namespace osgEarth { namespace WMS
         std::string _version;
     };
 
-    //! Reads WMS Capabilities from a URL or file
+    /**
+     * Reads WMS Capabilities from a URL or file
+     */
     class OSGEARTH_EXPORT CapabilitiesReader
     {
     public:
+        //! Reads WMS caps from a URI. The URI must be complete, to include
+        //! the WMS query string (e.g., ?SERVICE=WMS&REQUEST=GetCapabilities etc.)
+        //! @param location URI from which to read
+        //! @param options I/O options (or NULL)
         static Capabilities* read( const URI& location, const osgDB::Options *options );
+
+        //! Reads WMS caps from a stream.
         static Capabilities* read( std::istream &in );
+
     private:
         CapabilitiesReader(){}
         CapabilitiesReader(const CapabilitiesReader &cr){}

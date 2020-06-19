@@ -119,11 +119,8 @@ bool CreateTileManifest::includesLandCover() const
 //.........................................................................
 
 TerrainTileModelFactory::TerrainTileModelFactory(const TerrainOptions& options) :
-_options         ( options ),
-_heightFieldCache( true, 128 )
+_options         ( options )
 {
-    _heightFieldCacheEnabled = (::getenv("OSGEARTH_MEMORY_PROFILE") == 0L);
-
     // Create an empty texture that we can use as a placeholder
     _emptyColorTexture = new osg::Texture2D(ImageUtils::createEmptyImage());
     _emptyColorTexture->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
@@ -430,161 +427,40 @@ TerrainTileModelFactory::addElevation(
     if (!needElevation)
         return;
 
-    const osgEarth::RasterInterpolation& interp = map->getElevationInterpolation();
+    osg::ref_ptr<ElevationTexture> elevTex;
 
-    // Request a heightfield from the map.
-    osg::ref_ptr<osg::HeightField> mainHF;
-    osg::ref_ptr<NormalMap> normalMap;
+    bool getNormalMap = (_options.normalMaps() == true);
 
-    bool hfOK = 
-        getOrCreateHeightField(map, layers, combinedRevision, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) 
-        && mainHF.valid();
+    const bool getResolutions = (getNormalMap);
+    const bool acceptLowerRes = false;
 
-    if (hfOK == false && key.getLOD() == _options.firstLOD().get())
-    {
-        OE_DEBUG << LC << "No HF at key " << key.str() << ", making placeholder" << std::endl;
-        mainHF = new osg::HeightField();
-        mainHF->allocate(1, 1);
-        mainHF->setHeight(0, 0, 0.0f);
-        hfOK = true;
-    }
-
-    if (hfOK && mainHF.valid())
+    if (map->getElevationPool()->getTile(key, getResolutions, acceptLowerRes, elevTex, NULL))
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
         layerModel->setRevision(combinedRevision);
-        layerModel->setHeightField( mainHF.get() );
 
-        // pre-calculate the min/max heights:
-        for( unsigned col = 0; col < mainHF->getNumColumns(); ++col )
+        if ( elevTex.valid() )
         {
-            for( unsigned row = 0; row < mainHF->getNumRows(); ++row )
+            // Make a normal map
+            NormalMapGenerator gen;
+
+            Distance resolution(
+                key.getExtent().height() / (osgEarth::ELEVATION_TILE_SIZE-1),
+                key.getProfile()->getSRS()->getUnits());
+            
+            osg::Texture2D* normalMap = gen.createNormalMap(key, map, &_workingSet);
+
+            if (normalMap)
             {
-                float h = mainHF->getHeight(col, row);
-                if ( h > layerModel->getMaxHeight() )
-                    layerModel->setMaxHeight( h );
-                if ( h < layerModel->getMinHeight() )
-                    layerModel->setMinHeight( h );
+                elevTex->setNormalMapTexture(normalMap);
             }
-        }
 
-        // needed for normal map generation
-        model->heightFields().setNeighbor(0, 0, mainHF.get());
-
-        // convert the heightfield to a 1-channel 32-bit fp image:
-        ImageToHeightFieldConverter conv;
-        osg::Image* hfImage = conv.convertToR32F(mainHF.get());
-
-        if ( hfImage )
-        {
             // Made an image, so store this as a texture with no matrix.
-            osg::Texture* texture = createElevationTexture( hfImage );
             texture->setName(key.str() + ":elevation");
             layerModel->setTexture( texture );
             model->elevationModel() = layerModel.get();
         }
-
-        if (normalMap.valid())
-        {
-            TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-            layerModel->setName(key.str() + ":normal_map" );
-            layerModel->setRevision(combinedRevision);
-
-            // Made an image, so store this as a texture with no matrix.
-            osg::Texture* texture = createNormalTexture(normalMap.get(), *_options.compressNormalMaps());
-            texture->setName(key.str() + ":normal_map");
-            layerModel->setTexture( texture );
-            model->normalModel() = layerModel;
-        }
     }
-}
-
-bool
-TerrainTileModelFactory::getOrCreateHeightField(
-    const Map*                      map,
-    const ElevationLayerVector&     layers,
-    int                             revision,
-    const TileKey&                  key,
-    ElevationSamplePolicy           samplePolicy,
-    RasterInterpolation             interpolation,
-    unsigned                        border,
-    osg::ref_ptr<osg::HeightField>& out_hf,
-    osg::ref_ptr<NormalMap>&        out_normalMap,
-    ProgressCallback*               progress)
-{
-    OE_PROFILING_ZONE;
-  
-    // check the quick cache.
-    HFCacheKey cachekey;
-    cachekey._key          = key;
-    cachekey._revision     = revision;
-    cachekey._samplePolicy = samplePolicy;
-
-    bool hit = false;
-    HFCache::Record rec;
-    if ( _heightFieldCacheEnabled && _heightFieldCache.get(cachekey, rec) )
-    {
-        out_hf = rec.value()._hf.get();
-        out_normalMap = rec.value()._normalMap.get();
-        return true;
-    }
-
-    if ( !out_hf.valid() )
-    {
-        out_hf = HeightFieldUtils::createReferenceHeightField(
-            key.getExtent(),
-            257, 257,           // base tile size for elevation data
-            border,             // 1 sample border around the data makes it 259x259
-            true);              // initialize to HAE (0.0) heights
-    }
-
-    if (!out_normalMap.valid() && _options.normalMaps() == true)
-    {
-        out_normalMap = new NormalMap(257, 257);
-    }
-
-    bool populated = layers.populateHeightFieldAndNormalMap(
-        out_hf.get(),
-        out_normalMap.get(),
-        key,
-        map->getProfileNoVDatum(), // convertToHAE,
-        interpolation,
-        progress );
-
-#ifdef TREAT_ALL_ZEROS_AS_MISSING_TILE
-    // check for a real tile with all zeros and treat it the same as non-existent data.
-    if ( populated )
-    {
-        bool isEmpty = true;
-        for(osg::FloatArray::const_iterator f = out_hf->getFloatArray()->begin(); f != out_hf->getFloatArray()->end(); ++f)
-        {
-            if ( (*f) != 0.0f )
-            {
-                isEmpty = false;
-                break;
-            }
-        }
-        if ( isEmpty )
-        {
-            populated = false;
-        }
-    }
-#endif
-
-    if ( populated )
-    {   
-        // cache it.
-        if (_heightFieldCacheEnabled )
-        {
-            HFCacheValue newValue;
-            newValue._hf = out_hf.get();
-            newValue._normalMap = out_normalMap.get();
-
-            _heightFieldCache.insert( cachekey, newValue );
-        }
-    }
-
-    return populated;
 }
 
 void

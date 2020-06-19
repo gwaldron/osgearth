@@ -19,767 +19,693 @@
 #include <osgEarth/ElevationPool>
 #include <osgEarth/Map>
 #include <osgEarth/Metrics>
+#include <osgEarth/rtree.h>
+#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/Registry>
+#include <osgEarth/Containers>
+
+#include <thread>
+#include <chrono>
 
 using namespace osgEarth;
 
 #define LC "[ElevationPool] "
 
-#define USE_KEY_MAPPING_MEMORY
-
-#define USE_ENVELOPE_DATA_EXTENTS
-
-#define USE_ENVELOPE_CONTEXT
-
-#define USE_ENVELOPE_TILE_CACHE
-
-#define OE_TEST OE_DEBUG
-
+void
+ElevationPool::MapCallbackAdapter::onMapModelChanged(const MapModelChange& c)
+{
+    _pool->clear();
+}
 
 ElevationPool::ElevationPool() :
-_entries(0u),
-_maxEntries( 128u ),
-_tileSize( 257u )
+    _index(NULL),
+    _tileSize(257),
+    _mapDataDirty(true),
+    _workers(0)
 {
-    //nop
-    //_opQueue = Registry::instance()->getAsyncOperationQueue();
-    if (!_opQueue.valid())
-    {
-        _opQueue = new osg::OperationQueue();
-        for (unsigned i=0; i<2; ++i)
-        {
-            osg::OperationThread* thread = new osg::OperationThread();
-            thread->setOperationQueue(_opQueue.get());
-            thread->start();
-            _opThreads.push_back(thread);
-        }
-    }
+    // small L2 cache to use if the caller doesn't supply a working set
+    _L2 = new WorkingSet(32u);
+
+    // adapter for detecting elevation layer changes
+    _mapCallback = new MapCallbackAdapter();
 }
 
 ElevationPool::~ElevationPool()
 {
-    stopThreading();
-}
+    if (_L2)
+        delete _L2;
 
-void
-ElevationPool::setMap(const Map* map)
-{
-    Threading::ScopedMutexLock lock(_tiles.mutex());
-    _map = map;
-    clearImpl();
+    setMap(NULL);
 }
 
 void
 ElevationPool::clear()
 {
-    Threading::ScopedMutexLock lock(_tiles.mutex());
-    clearImpl();
+    _mapDataDirty = true;
 }
 
 void
-ElevationPool::stopThreading()
+ElevationPool::setMap(const Map* map)
 {
-    _opQueue->releaseAllOperations();
+    if (map != _map.get())
+    {
+        osg::ref_ptr<const Map> oldMap;
+        if (_map.lock(oldMap))
+        {
+            oldMap->removeMapCallback(_mapCallback.get());
+        }
+    }
+
+    _map = map;
     
-    for (unsigned i = 0; i<_opThreads.size(); ++i)
-    _opThreads[i]->setDone(true);
+    if (map)
+    {
+        _mapCallback->_pool = this;
+        map->addMapCallback(_mapCallback.get());
+        refresh(map);
+    }
+}
+
+int
+ElevationPool::getElevationRevision(const Map* map) const
+{
+    // yes, must do this every time because individual
+    // layers can "bump" their revisions (dynamic layers)
+    int revision = map ? static_cast<int>(map->getDataModelRevision()) : 0;
+
+    for(auto i : _elevationLayers)
+        if (i->getEnabled())
+            revision += i->getRevision();
+    return revision;
+}
+
+typedef RTree<unsigned, double, 2> MaxLevelIndex;
+
+void
+ElevationPool::sync(const Map* map, WorkingSet* ws)
+{
+    if (_mapDataDirty)
+    {
+        while(_workers > 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        _refreshMutex.lock();
+        if (_mapDataDirty) // double check
+        {
+            refresh(map);
+
+            if (ws)
+                ws->_lru.clear();
+
+            _mapDataDirty = false;
+        }
+        _refreshMutex.unlock();
+    }
 }
 
 void
-ElevationPool::setElevationLayers(const ElevationLayerVector& layers)
+ElevationPool::refresh(const Map* map)
 {
-    Threading::ScopedMutexLock lock(_tiles.mutex());
-    _layers = layers;
-    clearImpl();
-}
+    _elevationLayers.clear();
 
-void
-ElevationPool::setTileSize(unsigned value)
-{
-    Threading::ScopedMutexLock lock(_tiles.mutex());
-    _tileSize = value;
-    clearImpl();
-}
+    if (_index)
+        delete static_cast<MaxLevelIndex*>(_index);
 
-Future<ElevationSample>
-ElevationPool::getElevation(const GeoPoint& point, unsigned lod)
-{
-    GetElevationOp* op = new GetElevationOp(this, point, lod);
-    Future<ElevationSample> result = op->_promise.getFuture();
-    _opQueue->add(op);
-    return result;
-}
+    map->getLayers(_elevationLayers);
 
-ElevationPool::GetElevationOp::GetElevationOp(ElevationPool* pool, const GeoPoint& point, unsigned lod) :
-_pool(pool), _point(point), _lod(lod)
-{
-    //nop
-}
+    MaxLevelIndex* index = new MaxLevelIndex();
+    _index = index;
 
-void
-ElevationPool::GetElevationOp::operator()(osg::Object*)
-{
-    osg::ref_ptr<ElevationPool> pool;
-    if (!_promise.isAbandoned() && _pool.lock(pool))
-    {
-        osg::ref_ptr<ElevationEnvelope> env = pool->createEnvelope(_point.getSRS(), _lod);
-        std::pair<float, float> r = env->getElevationAndResolution(_point.x(), _point.y());
-        _promise.resolve(new ElevationSample(r.first, r.second));
-    }
-}
-
-bool
-ElevationPool::fetchTileFromMap(
-    const TileKey& key, 
-    const ElevationLayerVector& layers,
-    KeyFetchMemory& memory,
-    Tile* out_tile) const
-{
-    out_tile->_loadTime = osg::Timer::instance()->tick();
-
-    osg::ref_ptr<osg::HeightField> hf = new osg::HeightField();
-    hf->allocate( _tileSize, _tileSize );
-
-    // Initialize the heightfield to nodata
-    hf->getFloatArray()->assign( hf->getFloatArray()->size(), NO_DATA_VALUE );
-
-    std::vector<TileKey> keysTried;
-    TileKey keyToUse = key;
-
-    while( !out_tile->_hf.valid() && keyToUse.valid() )
-    {
-        keysTried.push_back(keyToUse);
-
-        bool ok;
-        if (_layers.empty())
-        {
-            OE_TEST << LC << "Populating from envelope (" << keyToUse.str() << ")\n";
-            ok = layers.populateHeightFieldAndNormalMap(hf.get(), 0L, keyToUse, 0L, INTERP_BILINEAR, 0L);
-        }
-        else
-        {
-            OE_TEST << LC << "Populating from layers (" << keyToUse.str() << ")\n";
-            ok = _layers.populateHeightFieldAndNormalMap(hf.get(), 0L, keyToUse, 0L, INTERP_BILINEAR, 0L);
-        }
-
-        if (ok)
-        {
-            // store the *actual* key (keyToUse) with the heightfield;
-            // may be an ancestor of key in the case of fallback.
-            out_tile->_hf = GeoHeightField( hf.get(), keyToUse.getExtent() );
-        }
-        else
-        {
-            keyToUse = keyToUse.createParentKey();
-        }
-    }
-
-#ifdef USE_KEY_MAPPING_MEMORY
-    // every key that failed maps to the final key:
-    for(std::vector<TileKey>::const_iterator i = keysTried.begin();
-        i != keysTried.end();
-        ++i)
-    {
-        memory[*i] = keyToUse;
-    }
-#endif
-
-    return out_tile->_hf.valid();
-}
-
-void
-ElevationPool::popMRU()
-{
-    // first rememeber the key of the item we're about the pop:
-    TileKey key = _mru.back()->_key;
-
-    // establish a temporary observer on the item:
-    osg::observer_ptr<Tile> temp = _mru.back().get();
-
-    // pop the Tile from the MRU:
-    _mru.pop_back();
-
-    // if our observer went to NULL, we know there are no more pointers
-    // to that Tile in the MRU, and we can remove it from the main list:
-    if (!temp.valid())
-    {
-        _tiles.erase(key);
-    }
-}
-
-bool
-ElevationPool::tryTile(
-    const TileKey& key, 
-    const ElevationLayerVector& layers, 
-    ElevationPool::KeyFetchMemory& memory,
-    osg::ref_ptr<Tile>& out_tile)
-{
-#ifdef USE_KEY_MAPPING_MEMORY
-    TileKey keyToUse;
-    KeyFetchMemory::iterator i = memory.find(key);
-    keyToUse = (i != memory.end())? i->second : key;
-
-    if (keyToUse.valid() == false)
-        return false;
-#else
-    TileKey keyToUse = key;
-#endif
-
-    // first see whether the tile is available
-    _tiles.lock();
-
-    // locate the tile in the local tile cache:
-    osg::observer_ptr<Tile>& tile_obs = _tiles[keyToUse];
-
-    osg::ref_ptr<Tile> tile;
-
-    // Get a safe pointer to it. If this is NULL, we need to create and
-    // fetch a new tile from the Map.
-    if (!tile_obs.lock(tile))
-    {
-        // a new tile; status -> EMPTY
-        tile = new Tile();
-        tile->_key = key;
-
-        // update the LRU:
-        _mru.push_front(tile.get());
-
-        // prune the MRU if necessary:
-        if (++_entries > _maxEntries )
-        {
-            popMRU();
-            --_entries;
-        }
-
-        // add to the main cache (after putting it on the LRU).
-        tile_obs = tile;
-    }
-       
-    // This means the tile object exists but has yet to be populated:
-    if ( tile->_status == STATUS_EMPTY )
-    {
-        OE_TEST << "  getTile(" << key.str() << ") -> fetch from map\n";
-        tile->_status.exchange(STATUS_IN_PROGRESS);
-        _tiles.unlock();
-
-        bool ok = fetchTileFromMap(keyToUse, layers, memory, tile.get());
-        tile->_status.exchange( ok ? STATUS_AVAILABLE : STATUS_FAIL );
+    double minv[2], maxv[2];
         
-        out_tile = ok ? tile.get() : 0L;
-        return ok;
-    }
-
-    // This means the tile object is populated and available for use:
-    else if ( tile->_status == STATUS_AVAILABLE )
+    for(auto i : _elevationLayers)
     {
-        OE_TEST << "  getTile(" << key.str() << ") -> available\n";
-        out_tile = tile.get();
+        const ElevationLayer* layer = i.get();
+        const DataExtentList& dataExtents = layer->getDataExtents();
 
-        // Mark this tile as recently used:
-        _mru.push_front(tile.get());
-
-        // prune the MRU if necessary
-        if (++_entries > _maxEntries)
+        for(auto de = dataExtents.begin(); de != dataExtents.end(); ++de)
         {
-            popMRU();
-            --_entries;
-        }
+            GeoExtent extentInMapSRS = map->getProfile()->clampAndTransformExtent(*de);
 
-        _tiles.unlock();
-        return true;
-    }
+            minv[0] = extentInMapSRS.xMin(), minv[1] = extentInMapSRS.yMin();
+            maxv[0] = extentInMapSRS.xMax(), maxv[1] = extentInMapSRS.yMax();
 
-    // This means the attempt to populate the tile with data failed.
-    else if ( tile->_status == STATUS_FAIL )
-    {
-        OE_TEST << "  getTile(" << key.str() << ") -> fail\n";
-        _tiles.unlock();
-        out_tile = 0L;
-        return false;
-    }
+            // Check.
+            unsigned maxLevel = layer->getProfile()->getEquivalentLOD(map->getProfile(), de->maxLevel().get());
 
-    // This means tile data fetch is still in progress (in another thread)
-    // and the caller should check back later.
-    else //if ( tile->_status == STATUS_IN_PROGRESS )
-    {
-        OE_DEBUG << "  getTile(" << key.str() << ") -> in progress...waiting\n";
-        _tiles.unlock();
-        out_tile = 0L;
-        return true;            // out:NULL => check back later please.
-    }
-}
-
-void
-ElevationPool::clearImpl()
-{
-    // assumes the tiles lock is taken.
-    _tiles.clear();
-    _mru.clear();
-    _entries = 0u;
-}
-
-bool
-ElevationPool::getTile(
-    const TileKey& key, 
-    const ElevationLayerVector& layers,
-    ElevationPool::KeyFetchMemory& memory,
-    osg::ref_ptr<ElevationPool::Tile>& out_tile)
-{   
-    OE_START_TIMER(get);
-
-#ifdef USE_KEY_MAPPING_MEMORY
-    // trivial rejection test
-    KeyFetchMemory::iterator i = memory.find(key);
-    if (i != memory.end() && i->second.valid() == false)
-        return false;
-#endif
-
-    const double timeout = 30.0;
-    osg::ref_ptr<Tile> tile;
-    while( tryTile(key, layers, memory, tile) && !tile.valid() && OE_GET_TIMER(get) < timeout)
-    {
-        // condition: another thread is working on fetching the tile from the map,
-        // so wait and try again later. Do this until we succeed or time out.
-        OpenThreads::Thread::YieldCurrentThread();
-    }
-
-    if ( !tile.valid() && OE_GET_TIMER(get) >= timeout )
-    {
-        // this means we timed out trying to fetch the map tile.
-        OE_TEST << LC << "Timeout fetching tile " << key.str() << std::endl;
-    }
-
-    if ( tile.valid() )
-    {
-        if ( tile->_hf.valid() )
-        {
-            // got a valid tile, so push it to the query set.
-            out_tile = tile.get();
-        }
-        else
-        {
-            OE_WARN << LC << "Got a tile with an invalid HF (" << key.str() << ")\n";
+            index->Insert(minv, maxv, maxLevel);
         }
     }
 
-    return tile.valid();
-}
+    _L2->_lru.clear();
 
-ElevationEnvelope*
-ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
-{
-    osg::ref_ptr<ElevationEnvelope> e = new ElevationEnvelope();
-    e->_inputSRS = srs; 
-    e->_requestedLOD = lod;
-    e->_lod = lod;
-    e->_pool = this;
-    
-    osg::ref_ptr<const Map> map;
-    if (_map.lock(map))
-    {
-        if (_layers.size() > 0)
-        {
-            // user-specified layers
-            e->_layers = _layers;
-        }
-        else
-        {
-            // all elevation layers
-            map->getLayers(e->_layers);
-        }
-
-        e->_mapProfile = map->getProfile();
-
-        e->collectDataExtents();
-    }
-    else
-    {
-        e = NULL;
-    }
-
-    return e.release();
-}
-
-//........................................................................
-
-ElevationEnvelope::ElevationEnvelope() :
-_pool(0L),
-_requestedLOD(0),
-_lod(0),
-_queries(0u),
-_contexthits(0u),
-_cachehits(0u),
-_newcontexts(0u),
-_fails(0u)
-{
-    //nop
-}
-
-ElevationEnvelope::~ElevationEnvelope()
-{
-    //nop
-}
-
-bool
-ElevationEnvelope::sample(
-    double x, double y,
-    Context* context,
-    float& out_elevation, float& out_resolution)
-{
-    out_elevation = NO_DATA_VALUE;
-
-    ++_queries;
-
-    // Keep the envelope in sync with the elevation layers.
-    unsigned changes = 0;
-    for(unsigned i=0; i<_layers.size(); ++i)
-    {
-        if (_layers[i]->getRevision() != _revisions[i])
-        {
-            _revisions[i] = _layers[i]->getRevision();
-            ++changes;
-        }
-    }
-    if (changes > 0)
-    {
-        _memory.clear();
-        _tiles.clear();
-        if (context)
-            context->_tiles.clear();
-        collectDataExtents();
-    }
-
-    out_elevation = NO_DATA_VALUE;
-    out_resolution = 0.0f;
-    bool foundTile = false;
-    osg::ref_ptr<ElevationPool::Tile> tile;
-
-    GeoPoint p(_inputSRS.get(), x, y, 0.0f, ALTMODE_ABSOLUTE);
-
-
-    if (p.transformInPlace(_mapProfile->getSRS()))
-    {
-        unsigned lodToUse = _lod;
-
-#ifdef USE_ENVELOPE_DATA_EXTENTS
-        // check the data extents under the point to come up with an LOD.
-        bool foundData = false;
-        for(SortedDataExtentList::const_iterator i = _dataExtentsSortedHiToLoRes.begin();
-            i != _dataExtentsSortedHiToLoRes.end();
-            ++i)
-        {
-            if (i->maxLevel().isSet() && i->contains(p.x(), p.y()))
-            {
-                lodToUse = osg::minimum(_lod, i->maxLevel().get());
-                foundData = true;
-                break;
-            }
-        }
-
-        if (!foundData)
-        {
-            return false;
-        }
-#endif
-
-#ifdef USE_ENVELOPE_TILE_CACHE
-        // See if we have a cached tile containing the point:
-        if (!foundTile && !context)
-        {
-            for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
-                tile_ref != _tiles.end();
-                ++tile_ref)
-            {
-                tile = tile_ref->get();
-
-                // Important: test against the bounds of the original key that was used
-                // to make the tile request, even if the request fell back on an ancestor
-                // key. We cannot assume that points outside the original request bounds
-                // would result in the same tile.
-                if (lodToUse <= tile->_key.getLOD() &&
-                    tile->_key.getExtent().contains(p.x(), p.y()))
-                {
-                    foundTile = true;
-                    ++_cachehits;
-                    break;
-                }
-            }
-        }
-#endif    
-
-        // If we still don't have a tile, we need to ask the pool for the tile.
-        if (!foundTile)
-        {
-#ifdef USE_ENVELOPE_CONTEXT
-
-            if (context && context->_tiles.empty())
-                ++_newcontexts;
-
-            // If the user passed in a context, check that first.
-            if (context && context->_tiles.empty() == false)
-            {
-                for(Context::TileMRU::iterator i = context->_tiles.begin();
-                    i != context->_tiles.end();
-                    ++i)
-                {
-                    ElevationPool::Tile* temp = i->get();
-
-                    if (lodToUse <= temp->_key.getLOD() &&
-                        temp->_key.getExtent().contains(p.x(), p.y()))
-                    {
-                        tile = temp;
-                        foundTile = true;
-                        context->_tiles.erase(i); // will re-push it to front later
-                        ++_contexthits;
-                        break;
-                    }
-                }
-            }
-#endif
-
-            if (!foundTile)
-            {
-                TileKey key = _mapProfile->createTileKey(p.x(), p.y(), lodToUse);
-
-                osg::ref_ptr<ElevationPool> pool;
-
-                if (_pool.lock(pool) && pool->getTile(key, _layers, _memory, tile))
-                {
-                    foundTile = true;
-
-#ifdef USE_ENVELOPE_TILE_CACHE
-                    // Got the new tile; put it in the query set:
-                    _tiles.insert(tile.get());
-#endif
-                }
-            }
-        }
-
-        // Finally, so the actual elevation query against out found tile.
-        if (foundTile)
-        {
-            if (tile->_hf.getElevation(0L, p.x(), p.y(), INTERP_BILINEAR, 0L, out_elevation))
-            {
-                out_resolution = 0.5*(tile->_hf.getXInterval() + tile->_hf.getYInterval());
-            }
-
-#ifdef USE_ENVELOPE_CONTEXT
-            // If the user passed in a context, store the tile there so the next query
-            // for the same context has a chance of being faster.
-            if (context)
-            {
-                context->_tiles.push_front(tile.get());
-                if (context->_tiles.size() > 4)
-                    context->_tiles.pop_back();
-            }
-#endif
-        }
-        else
-        {
-            ++_fails;
-        }
-
-#if 0
-        if (_queries % 500 == 0)
-        {
-            OE_INFO 
-                <<": Q="<<_queries
-                <<"; Ctx=" << _contexthits << "("<<100.0f*(float)_contexthits/(float)_queries<<")"
-                <<"; Cache=" << 100.0f*(float)_cachehits/(float)_queries
-                <<"; NewCtx=" << _newcontexts
-                <<"; Fail=" << 100.0f*(float)_fails/(float)_queries
-                << std::endl;
-
-            _queries = 0, _contexthits = 0, _cachehits = 0, _newcontexts = 0, _fails = 0;
-        }
-#endif
-    }
-    else
-    {
-        OE_WARN << LC << "sample: xform failed" << std::endl;
-    }
-
-    // push the result, even if it was not found and it's NO_DATA_VALUE
-    return out_elevation != NO_DATA_VALUE;
-}
-
-float
-ElevationEnvelope::getElevation(double x, double y)
-{
-    OE_PROFILING_ZONE;
-
-    float elevation, resolution;
-    sample(x, y, NULL, elevation, resolution);
-    return elevation;
-}
-
-float
-ElevationEnvelope::getElevation(double x, double y, ElevationEnvelope::Context& context)
-{
-    OE_PROFILING_ZONE;
-
-    float elevation, resolution;
-    sample(x, y, &context, elevation, resolution);
-    return elevation;
-}
-
-std::pair<float, float>
-ElevationEnvelope::getElevationAndResolution(double x, double y)
-{
-    OE_PROFILING_ZONE;
-    float elevation, resolution;
-    sample(x, y, NULL, elevation, resolution);
-    return std::make_pair(elevation, resolution);
+    _globalLUT.lock();
+    _globalLUT.clear();
+    _globalLUT.unlock();
 }
 
 unsigned
-ElevationEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
-                                 std::vector<float>& output)
+ElevationPool::getLOD(double x, double y) const
+{
+    MaxLevelIndex* index = static_cast<MaxLevelIndex*>(_index);
+
+    double minv[2], maxv[2];
+    minv[0] = maxv[0] = x, minv[1] = maxv[1] = y;
+    std::vector<unsigned> hits;
+    index->Search(minv, maxv, &hits, 99);
+    unsigned maxiestMaxLevel = 0u;
+    for(auto h = hits.begin(); h != hits.end(); ++h)
+    {
+        maxiestMaxLevel = osg::maximum(maxiestMaxLevel, *h); 
+    }
+    return maxiestMaxLevel;
+}
+
+ElevationPool::WorkingSet::WorkingSet(unsigned size) :
+    _lru(true, size)
+{
+    //nop
+}
+
+bool
+ElevationPool::findExistingRaster(
+    const Internal::RevElevationKey& key,
+    WorkingSet* ws,
+    osg::ref_ptr<ElevationTexture>& output,
+    bool* fromWS,
+    bool* fromL2,
+    bool* fromLUT)
+{   
+    *fromWS = false;
+    *fromL2 = false;
+    *fromLUT = false;
+
+    // First check the workingset. No mutex required since the
+    // LRU has its own mutex. (TODO: maybe just combine mutexes here)
+    if (ws)
+    {
+        WorkingSet::LRU::Record record;
+        if (ws->_lru.get(key, record))
+        {
+            OE_DEBUG << LC << key._tilekey.str() << " - Cache hit (Working set)" << std::endl;
+            output = record.value();
+            *fromWS = true;
+            return true;
+        }
+    }
+
+    if (_L2)
+    {
+        WorkingSet::LRU::Record record;
+        if (_L2->_lru.get(key, record))
+        {
+            OE_DEBUG << LC << key._tilekey.str() << " - Cache hit (L2 cache)" << std::endl;
+            output = record.value();
+            *fromL2 = true;
+            return true;
+        }
+    }
+
+    // Next check the system LUT -- see if someone somewhere else
+    // already has it (the terrain or another WorkingSet)
+    _globalLUT.lock();
+    OE_DEBUG << "Global LUT size = " << _globalLUT.size() << std::endl;
+    auto i =_globalLUT.find(key);
+    if (i != _globalLUT.end())
+    {
+        i->second.lock(output);
+        if (output.valid())
+        {
+            *fromLUT = true;
+        }
+        else
+        {
+            // observer was orphaned..remove it
+            _globalLUT.erase(i);
+        }
+    }
+    _globalLUT.unlock();
+
+    // found it, so stick it in the L2 cache
+    if (output.valid())
+    {
+        OE_DEBUG << LC << key._tilekey.str() << " - Cache hit (global LUT)" << std::endl;
+    }
+
+    return output.valid();
+}
+
+osg::ref_ptr<ElevationTexture>
+ElevationPool::getOrCreateRaster(
+    const Internal::RevElevationKey& key, 
+    const Map* map, 
+    bool getResolutions, 
+    bool acceptLowerRes,
+    WorkingSet* ws)
 {
     OE_PROFILING_ZONE;
-    OE_PROFILING_ZONE_TEXT(Stringify() << "Count " << input.size());
 
-    unsigned count = 0u;
-
-    output.reserve(input.size());
-    output.clear();
-
-    // for each input point:
-    for (std::vector<osg::Vec3d>::const_iterator v = input.begin(); v != input.end(); ++v)
+    // first check for pre-existing data for this key:
+    osg::ref_ptr<ElevationTexture> result;
+    bool fromWS, fromL2, fromLUT;
+    if (findExistingRaster(key, ws, result, &fromWS, &fromL2, &fromLUT))
     {
-        float elevation, resolution;
-        sample(v->x(), v->y(), NULL, elevation, resolution);
-        output.push_back(elevation);
-        if (elevation != NO_DATA_VALUE)
+        // only accept if cached record matches caller's request
+        if (getResolutions == true && !result->getResolutions())
+        {
+            result = NULL;
+        }
+    }
+
+    if (!result.valid())
+    {
+        // need to build NEW data for this key
+        osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(
+            key._tilekey.getExtent(),
+            _tileSize, _tileSize,
+            false,      // no border
+            true);      // initialize to HAE (0.0) heights
+
+        float* resolutions = NULL;
+        if (getResolutions)
+        {
+            resolutions = new float[_tileSize*_tileSize];
+        }
+
+        TileKey keyToUse;
+        bool populated = false;
+
+        const ElevationLayerVector& layersToSample =
+            ws && !ws->_elevationLayers.empty() ? ws->_elevationLayers :
+            _elevationLayers;
+
+        for(keyToUse = key._tilekey; 
+            keyToUse.valid(); 
+            keyToUse = keyToUse.createParentKey())
+        {
+            populated = layersToSample.populateHeightField(
+                hf.get(),
+                resolutions,
+                keyToUse,
+                map->getProfileNoVDatum(), // convertToHAE,
+                map->getElevationInterpolation(),
+                NULL ); // TODO: progress callback
+
+            if (populated==true || acceptLowerRes==false)
+                break;
+        }
+
+        if (populated)
+        {
+            result = new ElevationTexture(
+                GeoHeightField(hf.get(), keyToUse.getExtent()),
+                resolutions);
+        }
+        else
+        {
+            return NULL;
+        }
+    }
+
+    // update WorkingSet:
+    if (ws)
+    {
+        ws->_lru.insert(key, result.get());
+    }
+
+    // update if L2 cache, but ONLY if the user did not supply
+    // their own working set. We don't want to "pollute" the 
+    // shared L2 cache with localized data.
+    else if (_L2)
+    {
+        _L2->_lru.insert(key, result.get());
+    }
+
+    // update system weak-LUT:
+    if (!fromLUT)
+    {
+        _globalLUT.lock();
+        _globalLUT[key] = result.get();
+        _globalLUT.unlock();
+    }
+
+    return result;
+}
+
+namespace
+{
+    typedef vector_map<
+        Internal::RevElevationKey,
+        osg::ref_ptr<ElevationTexture> > QuickCache;
+
+    struct QuickSampleVars {
+        double sizeS, sizeT;
+        double s, t;
+        double s0, s1, smix;
+        double t0, t1, tmix;
+        osg::Vec4f UL, UR, LL, LR, TOP, BOT;
+    };
+
+    inline void quickSample(
+        const ImageUtils::PixelReader& reader, 
+        double u, double v, 
+        osg::Vec4f& out,
+        QuickSampleVars& a)
+    {
+        double sizeS = (double)(reader.s()-1);
+        double sizeT = (double)(reader.t()-1);
+
+        // u, v => [0..1]
+        double s = u * sizeS;
+        double t = v * sizeT;
+
+        double s0 = osg::maximum(floor(s), 0.0);
+        double s1 = osg::minimum(s0 + 1.0, sizeS);
+        double smix = s0 < s1 ? (s - s0) / (s1 - s0) : 0.0;
+
+        double t0 = osg::maximum(floor(t), 0.0);
+        double t1 = osg::minimum(t0 + 1.0, sizeT);
+        double tmix = t0 < t1 ? (t - t0) / (t1 - t0) : 0.0;
+
+        reader(a.UL, (int)s0, (int)t0, 0, 0); // upper left
+        reader(a.UR, (int)s1, (int)t0, 0, 0); // upper right
+        reader(a.LL, (int)s0, (int)t1, 0, 0); // lower left
+        reader(a.LR, (int)s1, (int)t1, 0, 0); // lower right
+
+        a.TOP = a.UL * (1.0f - smix) + a.UR * smix;
+        a.BOT = a.LL * (1.0f - smix) + a.LR * smix;
+        out = a.TOP * (1.0f - tmix) + a.BOT * tmix;
+    }
+}
+
+int
+ElevationPool::sampleMapCoords(
+    std::vector<osg::Vec4d>& points,
+    WorkingSet* ws)
+{
+    OE_PROFILING_ZONE;
+
+    if (points.empty())
+        return -1;
+
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map) == false || map->getProfile() == NULL)
+        return -1;
+
+    sync(map.get(), ws);
+    ScopedAtomicCounter counter(_workers);
+
+    Internal::RevElevationKey key;
+    key._revision = getElevationRevision(map.get());
+
+    osg::ref_ptr<ElevationTexture> raster;
+    osg::Vec4 elev;
+    double u, v;
+
+    const Profile* profile = map->getProfile();
+    double pw = profile->getExtent().width();
+    double ph = profile->getExtent().height();
+    double pxmin = profile->getExtent().xMin();
+    double pymin = profile->getExtent().yMin();
+
+    int count = 0;
+
+    QuickCache quickCache;
+    QuickSampleVars qvars;
+
+    //TODO: TESTING..?
+    //ws = NULL;
+
+    unsigned tw, th;
+    double rx, ry;
+    int tx, ty;
+    int tx_prev = INT_MAX, ty_prev = INT_MAX;
+    float lastRes = -1.0f;
+    unsigned lod;
+    unsigned lod_prev = INT_MAX;
+    const Units& units = map->getSRS()->getUnits();
+    Distance pointRes(0.0, units);
+
+    for(auto& p : points)
+    {
+        {
+            OE_PROFILING_ZONE_NAMED("createTileKey");
+
+            if (p.w() >= 0.0f && p.w() != lastRes)
+            {
+                pointRes.set(p.w(), units);
+
+                double resolutionInMapUnits = pointRes.asDistance(units, p.y());
+
+                unsigned maxLOD = profile->getLevelOfDetailForHorizResolution(
+                    resolutionInMapUnits,
+                    ELEVATION_TILE_SIZE);
+
+                lod = osg::minimum( getLOD(p.x(), p.y()), maxLOD );
+
+                profile->getNumTiles(lod, tw, th);
+
+                lastRes = p.w();
+            }
+
+            rx = (p.x()-pxmin)/pw, ry = (p.y()-pymin)/ph;
+            tx = osg::clampBelow((unsigned)(rx * (double)tw), tw-1u ); // TODO: wrap around for geo
+            ty = osg::clampBelow((unsigned)((1.0-ry) * (double)th), th-1u );
+
+            if (lod != lod_prev || tx != tx_prev || ty != ty_prev)
+            {
+                key._tilekey = TileKey(lod, tx, ty, profile);
+                lod_prev = lod;
+                tx_prev = tx;
+                ty_prev = ty;
+            }
+        }
+        
+        if (key._tilekey.valid())
+        {
+            auto& iter = quickCache.find(key);
+
+            if (iter == quickCache.end())
+            {
+                raster = getOrCreateRaster(
+                    key,   // key to query
+                    map.get(), // map to query
+                    true,  // for the cache
+                    true,  // fall back on lower resolution data if necessary
+                    ws);   // user's workingset
+
+                quickCache[key] = raster.get();
+            }
+            else
+            {
+                raster = iter->second;
+            }
+
+            {
+                OE_PROFILING_ZONE_NAMED("sample");
+                if (raster.valid())
+                {
+                    u = (p.x() - raster->getExtent().xMin()) /  raster->getExtent().width();
+                    v = (p.y() - raster->getExtent().yMin()) /  raster->getExtent().height();
+
+                    // Note: This can happen on the map edges..
+                    // TODO: consider looping around for geo and clamping for projected
+                    u = osg::clampBetween(u, 0.0, 1.0);
+                    v = osg::clampBetween(v, 0.0, 1.0);
+
+                    quickSample(raster->reader(), u, v, elev, qvars);
+                    p.z() = elev.r();
+                }
+                else
+                {
+                    p.z() = NO_DATA_VALUE;
+                }
+            }
+        }
+        else
+        {
+            p.z() = NO_DATA_VALUE;
+        }
+
+        if (p.z() != NO_DATA_VALUE)
             ++count;
     }
 
     return count;
 }
 
-bool
-ElevationEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
-                                       float& min, float& max)
+ElevationSample
+ElevationPool::getSample(
+    const GeoPoint& p, 
+    unsigned maxLOD, 
+    const Map* map, 
+    WorkingSet* ws)
 {
-    if (input.empty())
+    // ensure the Pool is in sync with the map
+    sync(map, ws);
+
+    ScopedAtomicCounter counter(_workers);
+
+    Internal::RevElevationKey key;
+    unsigned lod = osg::minimum( getLOD(p.x(), p.y()), maxLOD );
+    key._tilekey = map->getProfile()->createTileKey(p.x(), p.y(), lod);
+    key._revision = getElevationRevision(map);
+
+    osg::ref_ptr<ElevationTexture> raster = getOrCreateRaster(
+        key,   // key to query
+        map,   // map to query
+        false, // no normal maps
+        true,  // fall back on lower resolution data if necessary
+        ws);   // user's workingset
+
+    if (raster.valid())
+    {
+        return raster->getElevation(p.x(), p.y());
+    }
+
+    return ElevationSample();
+}
+
+ElevationSample
+ElevationPool::getSample(const GeoPoint& p, WorkingSet* ws)
+{
+    if (!p.isValid())
+        return ElevationSample();
+
+    osg::ref_ptr<const Map> map = _map.get();
+    if (!map.valid() || !map->getProfile())
+        return ElevationSample();
+
+    if (!p.getSRS()->isHorizEquivalentTo(map->getProfile()->getSRS()))
+    {
+        GeoPoint xp(p);
+        xp.transformInPlace(map->getProfile()->getSRS());
+        return getSample(xp, ~0, map.get(), ws);
+    }
+    else
+    {
+        return getSample(p, ~0, map.get(), ws);
+    }
+}
+
+ElevationSample
+ElevationPool::getSample(const GeoPoint& p, const Distance& resolution, WorkingSet* ws)
+{
+    if (!p.isValid())
+        return ElevationSample();
+
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map) == false || map->getProfile() == NULL)
+        return ElevationSample();
+
+    // mostly right. :)
+    double resolutionInMapUnits = SpatialReference::transformUnits(
+        resolution,
+        map->getSRS(),
+        p.y());
+
+    unsigned maxLOD = map->getProfile()->getLevelOfDetailForHorizResolution(
+        resolutionInMapUnits,
+        ELEVATION_TILE_SIZE);
+
+    if (!p.getSRS()->isHorizEquivalentTo(map->getProfile()->getSRS()))
+    {
+        GeoPoint xp(p);
+        xp.transformInPlace(map->getProfile()->getSRS());
+        return getSample(xp, maxLOD, map.get(), ws);
+    }
+    else
+    {
+        return getSample(p, maxLOD, map.get(), ws);
+    }
+}
+
+bool
+ElevationPool::getTile(
+    const TileKey& tilekey, 
+    bool getResolutions, 
+    bool acceptLowerRes,
+    osg::ref_ptr<ElevationTexture>& out_tex,
+    WorkingSet* ws)
+{
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
         return false;
 
-    min = FLT_MAX, max = -FLT_MAX;
+    // ensure we are in sync with the map
+    sync(map.get(), ws);
 
-    osg::Vec3d centroid;
+    ScopedAtomicCounter counter(_workers);
 
-    for (std::vector<osg::Vec3d>::const_iterator v = input.begin(); v != input.end(); ++v)
-    {
-        centroid += *v;
+    Internal::RevElevationKey key;
+    key._tilekey = tilekey;
+    key._revision = getElevationRevision(map.get());
 
-        float elevation, resolution;
-        
-        if (sample(v->x(), v->y(), NULL, elevation, resolution))
-        {
-            if (elevation < min) min = elevation;
-            if (elevation > max) max = elevation;
-        }
-    }
+    out_tex = getOrCreateRaster(
+        key, 
+        _map.get(), 
+        getResolutions, 
+        acceptLowerRes,
+        ws);
 
-    // If none of the feature points clamped, try the feature centroid.
-    // It's possible (but improbable) that the feature encloses the envelope
-    if (min > max)
-    {
-        centroid /= input.size();
-
-        float elevation, resolution;
-        if (sample(centroid.x(), centroid.y(), NULL, elevation, resolution))
-        {
-            if (elevation < min) min = elevation;
-            if (elevation > max) max = elevation;
-        }
-    }
-
-    return (min <= max);
+    return true;
 }
 
-const SpatialReference*
-ElevationEnvelope::getSRS() const
+//...................................................................
+
+namespace osgEarth { namespace Internal
 {
-    return _inputSRS.get();
-}
-
-void
-ElevationEnvelope::collectDataExtents()
-{
-    // Restrict the query resolution to the maximum available elevation data resolution:
-    _revisions.clear();
-
-    _lod = _requestedLOD;
-
-    unsigned maxLOD = 0u;
-    for(ElevationLayerVector::const_iterator i = _layers.begin();
-        i != _layers.end();
-        ++i)
+    struct SampleElevationOp : public osg::Operation
     {
-        const ElevationLayer* layer = i->get();
+        osg::observer_ptr<const Map> _map;
+        GeoPoint _p;
+        Distance _res;
+        ElevationPool::WorkingSet* _ws;
+        Promise<RefElevationSample> _promise;
 
-        if (layer->getDataExtentsUnion().maxLevel().isSet())
+        SampleElevationOp(osg::observer_ptr<const Map> map, const GeoPoint& p, const Distance& res, ElevationPool::WorkingSet* ws) :
+            _map(map), _p(p), _res(res), _ws(ws) { }
+
+        void operator()(osg::Object*)
         {
-            maxLOD = osg::maximum(maxLOD, layer->getDataExtentsUnion().maxLevel().get());
-        }
-
-        // record the revision at the time of creation:
-        _revisions.push_back(layer->getRevision());
-    }
-    if (maxLOD > 0u)
-    {
-        _lod = osg::minimum(_requestedLOD, maxLOD);
-    }
-
-    _dataExtentsSortedHiToLoRes.clear();
-
-    for(ElevationLayerVector::const_iterator i = _layers.begin();
-        i != _layers.end();
-        ++i)
-    {
-        const ElevationLayer* layer = i->get();
-        const DataExtentList& del = layer->getDataExtents();
-        for(DataExtentList::const_iterator k = del.begin();
-            k != del.end();
-            ++k)
-        {
-            const DataExtent& de = *k;
-
-            GeoExtent localExtent = _mapProfile->clampAndTransformExtent(de);
-
-            if (!de.maxLevel().isSet())
+            if (!_promise.isAbandoned())
             {
-                _dataExtentsSortedHiToLoRes.push_front(DataExtent(localExtent));
-            }
-            else
-            {
-                unsigned localMaxLevel = _mapProfile->getEquivalentLOD(layer->getProfile(), de.maxLevel().get());
-
-                SortedDataExtentList::iterator m;
-                for(m = _dataExtentsSortedHiToLoRes.begin();
-                    m != _dataExtentsSortedHiToLoRes.end();
-                    ++m)
+                osg::ref_ptr<const Map> map;
+                if (_map.lock(map))
                 {
-                    const DataExtent& rhs = *m;
-                    if (rhs.maxLevel().isSet() && localMaxLevel > rhs.maxLevel().get())
-                    {
-                        break;
-                    }
+                    ElevationSample sample = map->getElevationPool()->getSample(_p, _res, _ws);
+                    _promise.resolve(new RefElevationSample(sample.elevation(), sample.resolution()));
+                    return;
                 }
-                _dataExtentsSortedHiToLoRes.insert(m, DataExtent(localExtent, 0, localMaxLevel));
             }
-        }
-    }
 
-#if 0
-    OE_INFO << "Extents:" << std::endl;
-    for(SortedDataExtentList::const_iterator i = _dataExtentsSortedHiToLoRes.begin();
-        i != _dataExtentsSortedHiToLoRes.end();
-        ++i)
-    {
-        OE_INFO << i->toString()
-            << " maxLevel=" << (i->maxLevel().isSet()? i->maxLevel().get() : 99u)
-            << std::endl;
-    }
-#endif
+            _promise.resolve(NULL);
+        }
+    };
+}}
+
+AsyncElevationSampler::AsyncElevationSampler(
+    const Map* map,
+    unsigned numThreads) :
+
+    _map(map)
+{
+    _threadPool = new ThreadPool(numThreads);
+}
+
+Future<RefElevationSample>
+AsyncElevationSampler::getSample(const GeoPoint& p)
+{
+    return getSample(p, Distance(0, p.getXYUnits()));
+}
+
+Future<RefElevationSample>
+AsyncElevationSampler::getSample(
+    const GeoPoint& p,
+    const Distance& resolution)
+{
+    Internal::SampleElevationOp* op = new Internal::SampleElevationOp(_map, p, resolution, &_ws);
+    Future<RefElevationSample> result = op->_promise.getFuture();
+    _threadPool->getQueue()->add(op);
+    return result;
 }

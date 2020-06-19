@@ -63,14 +63,20 @@ UTMLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_world
     UTMZone left, right;
 
     left.LL_geo.fromWorld(_srs.get(), LL_world);
-    left.utmSRS = _srs->createUTMFromLonLat(left.LL_geo.x(), left.LL_geo.y());
+    left.utmSRS = _srs->createUTMFromLonLat(
+        Angle(left.LL_geo.x(), Units::DEGREES),
+        Angle(left.LL_geo.y(), Units::DEGREES) );
+
     if (left.utmSRS.valid() == false)
         return false;
 
     left.UL_geo.fromWorld(_srs.get(), UL_world);
 
     right.LR_geo.fromWorld(_srs.get(), LR_world);
-    right.utmSRS = _srs->createUTMFromLonLat(right.LR_geo.x(), right.LR_geo.y());
+    right.utmSRS = _srs->createUTMFromLonLat(
+        Angle(right.LR_geo.x(), Units::DEGREES),
+        Angle(right.LR_geo.y(), Units::DEGREES) );
+
     if (right.utmSRS.valid() == false)
         return false;
 

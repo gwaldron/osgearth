@@ -641,8 +641,8 @@ namespace
                 {
                     Viewpoint vp = _manip->getViewpoint();
                     vp.setNode(_label);
-                    vp.range() = 25000.0;
-                    vp.pitch() = -45.0;
+                    vp.range()->set(25000.0, Units::METERS);
+                    vp.pitch()->set(-45.0, Units::DEGREES);
                     _manip->setViewpoint(vp, 2.0);
                 }
                 return true;

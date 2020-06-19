@@ -70,7 +70,8 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
     if ( _enabled )
     {
         // Look it up in the pool:
-        Threading::ScopedMutexLock exclusive( _geometryMapMutex );
+        //Threading::ScopedMutexLock exclusive( _geometryMapMutex );
+        OpenThreads::ScopedLock< OE_LOCKABLE_BASE(OpenThreads::Mutex) > exclusive(_geometryMapMutex);
 
         // make our globally shared EBO if we need it
         if ( !_defaultPrimSet.valid())
@@ -138,7 +139,7 @@ namespace
         if ( (col & 0x1)==1 && (row & 0x1)==1 ) return rowSize+2;
         if ( (row & 0x1)==1 )                   return rowSize+1;
         if ( (col & 0x1)==1 )                   return 2;
-        return 1;            
+        return 1;
     }
 
     struct Sort_by_X {
@@ -210,7 +211,7 @@ GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg:
 
     unsigned numVertsInSurface    = (tileSize*tileSize);
     unsigned numVertsInSkirt      = needsSkirt ? (tileSize-1)*2u * 4u : 0;
-    unsigned numVerts             = numVertsInSurface + numVertsInSkirt;    
+    unsigned numVerts             = numVertsInSurface + numVertsInSkirt;
     unsigned numIndiciesInSurface = (tileSize-1) * (tileSize-1) * 6;
     unsigned numIncidesInSkirt    = getNumSkirtElements(tileSize);
 
@@ -335,7 +336,7 @@ SharedGeometry*
 GeometryPool::createGeometry(const TileKey& tileKey,
                              unsigned       tileSize,
                              MaskGenerator* maskSet) const
-{    
+{
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
     GeoPoint centroid;
@@ -354,7 +355,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     unsigned numVerts             = numVertsInSurface + numVertsInSkirt;
     unsigned numIndiciesInSurface = (tileSize-1) * (tileSize-1) * 6;
     unsigned numIncidesInSkirt    = getNumSkirtElements(tileSize);
-    
+
     GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
 
     osg::BoundingSphere tileBound;
@@ -383,7 +384,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     normals->reserve( numVerts );
     normals->setBinding(normals->BIND_PER_VERTEX);
     geom->setNormalArray( normals.get() );
-    
+
     osg::ref_ptr<osg::Vec3Array> neighbors = 0L;
     osg::ref_ptr<osg::Vec3Array> neighborNormals = 0L;
     if ( _options.morphTerrain() == true )
@@ -394,7 +395,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         neighbors->setVertexBufferObject(vbo.get());
         neighbors->reserve( numVerts );
         geom->setNeighborArray(neighbors.get());
-        
+
         neighborNormals = new osg::Vec3Array();
         neighborNormals->setVertexBufferObject(vbo.get());
         neighborNormals->reserve( numVerts );
@@ -411,7 +412,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     texCoords->reserve( numVerts );
 
     geom->setTexCoordArray(texCoords.get());
-    
+
     GeoLocator locator(tileKey.getExtent());
 
     osg::Vec3d unit;
@@ -443,7 +444,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
             unit.z() = 1.0f;
             locator.unitToWorld(unit, modelPlusOne);
-            normal = (modelPlusOne*world2local)-modelLTP;                
+            normal = (modelPlusOne*world2local)-modelLTP;
             normal.normalize();
             normals->push_back(normal);
 
@@ -487,7 +488,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     // By default we tessellate the surface, but if there's a masking set
     // it might replace some or all of our surface geometry.
     bool tessellateSurface = true;
-                    
+
     if (maskSet)
     {
         // The mask generator adds to the passed-in arrays as necessary,
@@ -499,8 +500,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             verts.get(), texCoords.get(), normals.get(), neighbors.get(), neighborNormals.get(),
             maskElements);
 
-        if (r == MaskGenerator::R_BOUNDARY_INTERSECTS_TILE && 
-            maskElements.valid() && 
+        if (r == MaskGenerator::R_BOUNDARY_INTERSECTS_TILE &&
+            maskElements.valid() &&
             maskElements->getNumIndices() > 0)
         {
             // Share the same EBO as the surface geometry
@@ -601,7 +602,7 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.UPDATE_VISITOR && _enabled)
     {
-        Threading::ScopedMutexLock exclusive( _geometryMapMutex );
+        OpenThreads::ScopedLock< OE_LOCKABLE_BASE(OpenThreads::Mutex) > exclusive(_geometryMapMutex);
 
         std::vector<GeometryKey> keys;
         for (GeometryMap::iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
@@ -610,7 +611,7 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
             {
                 keys.push_back(i->first);
                 i->second->releaseGLObjects(NULL);
-                    
+
                 OE_DEBUG << "Releasing: " << i->second.get() << std::endl;
             }
         }
@@ -627,9 +628,8 @@ void
 GeometryPool::clear()
 {
     releaseGLObjects(NULL);
-    _geometryMapMutex.lock();
+    OpenThreads::ScopedLock< OE_LOCKABLE_BASE(OpenThreads::Mutex) > exclusive(_geometryMapMutex);
     _geometryMap.clear();
-    _geometryMapMutex.unlock();
 }
 
 void
@@ -639,14 +639,13 @@ GeometryPool::resizeGLObjectBuffers(unsigned maxsize)
         return;
 
     // collect all objects in a thread safe manner
-    _geometryMapMutex.lock();
+    OpenThreads::ScopedLock< OE_LOCKABLE_BASE(OpenThreads::Mutex) > exclusive(_geometryMapMutex);
     {
         for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
         {
             i->second->resizeGLObjectBuffers(maxsize);
         }
     }
-    _geometryMapMutex.unlock();
 }
 
 void
@@ -658,22 +657,23 @@ GeometryPool::releaseGLObjects(osg::State* state) const
     ResourceReleaser::ObjectList objects;
 
     // collect all objects in a thread safe manner
-    _geometryMapMutex.lock();
     {
-        for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
+        OpenThreads::ScopedLock< OE_LOCKABLE_BASE(OpenThreads::Mutex) > exclusive(_geometryMapMutex);
         {
-            if (_releaser.valid())
-                objects.push_back(i->second.get());
-            else
-                i->second->releaseGLObjects(state);
-        }
+            for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
+            {
+                if (_releaser.valid())
+                    objects.push_back(i->second.get());
+                else
+                    i->second->releaseGLObjects(state);
+            }
 
-        if (_releaser.valid() && !objects.empty())
-        {
-            OE_INFO << LC << "Released " << objects.size() << " objects in the geometry pool\n";
+            if (_releaser.valid() && !objects.empty())
+            {
+                OE_INFO << LC << "Released " << objects.size() << " objects in the geometry pool\n";
+            }
         }
     }
-    _geometryMapMutex.unlock();
 
     // submit to the releaser.
     if (_releaser.valid() && !objects.empty())
@@ -711,7 +711,7 @@ SharedGeometry::~SharedGeometry()
     //nop
 }
 
-bool 
+bool
 SharedGeometry::empty() const
 {
     return
@@ -797,7 +797,7 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
 void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     osg::State& state = *renderInfo.getState();
-    
+
 #if OSG_VERSION_LESS_THAN(3,5,6)
     osg::ArrayDispatchers& dispatchers = state.getArrayDispatchers();
 #else
@@ -810,7 +810,7 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
 #ifdef SUPPORTS_VAO
     osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
-    
+
     if (!state.useVertexArrayObject(_useVertexArrayObject) || vas->getRequiresSetArrays())
     {
         vas->lazyDisablingOfVertexAttributes();
@@ -888,7 +888,7 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
         if (_drawElements->getNumIndices() > 0u)
         {
-            if (_maskElements.valid() && 
+            if (_maskElements.valid() &&
                 _maskElements->getNumIndices() > 0u)
             {
 #if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
@@ -915,24 +915,24 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 #endif
                 {
                     glDrawElements(
-                        primitiveType, 
-                        _drawElements->getNumIndices(), 
-                        _drawElements->getDataType(), 
+                        primitiveType,
+                        _drawElements->getNumIndices(),
+                        _drawElements->getDataType(),
                         (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
 
                     glDrawElements(
-                        primitiveType, 
-                        _maskElements->getNumIndices(), 
-                        _maskElements->getDataType(), 
+                        primitiveType,
+                        _maskElements->getNumIndices(),
+                        _maskElements->getDataType(),
                         (const GLvoid *)(ebo->getOffset(_maskElements->getBufferIndex())));
                 }
             }
             else
             {
                 glDrawElements(
-                    primitiveType, 
-                    _drawElements->getNumIndices(), 
-                    _drawElements->getDataType(), 
+                    primitiveType,
+                    _drawElements->getNumIndices(),
+                    _drawElements->getDataType(),
                     (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
             }
         }

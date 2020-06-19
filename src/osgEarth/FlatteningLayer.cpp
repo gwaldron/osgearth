@@ -194,7 +194,7 @@ namespace
     // The height of the area is found by sampling a point internal to the polygon.
     // bufferWidth = width of transition from flat area to natural terrain.
     bool integratePolygons(const TileKey& key, osg::HeightField* hf, const MultiGeometry* geom, const SpatialReference* geomSRS,
-                           WidthsList& widths, ElevationEnvelope* envelope, 
+                           WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
                            bool fillAllPixels, ProgressCallback* progress)
     {
         bool wroteChanges = false;
@@ -205,6 +205,7 @@ namespace
         double row_interval = ex.height() / (double)(hf->getNumRows()-1);
 
         POINT Pex, P, internalP;
+        GeoPoint EP(geomSRS, 0, 0, 0);
 
         bool needsTransform = ex.getSRS() != geomSRS;
         
@@ -271,7 +272,8 @@ namespace
                 {
                     float h;
                     POINT internalP = getInternalPoint(bestPoly);
-                    float elevInternal = envelope->getElevation(internalP.x(), internalP.y());
+                    EP.x() = internalP.x(), EP.y() = internalP.y();
+                    float elevInternal = pool->getSample(EP, workingSet).elevation();
 
                     if (minD2 < 0.0)
                     {
@@ -279,7 +281,8 @@ namespace
                     }
                     else
                     {
-                        float elevNatural = envelope->getElevation(P.x(), P.y());
+                        EP.x() = P.x(), EP.y() = P.y();
+                        float elevNatural = pool->getSample(EP, workingSet).elevation();
                         double blend = clamp(sqrt(minD2)/bufferWidth, 0.0, 1.0); // [0..1] 0=internal, 1=natural
                         h = smootherstep(elevInternal, elevNatural, blend);
                     }
@@ -290,7 +293,8 @@ namespace
 
                 else if (fillAllPixels)
                 {
-                    float h = envelope->getElevation(P.x(), P.y());
+                    EP.x() = P.x(), EP.y() = P.y();
+                    float h = pool->getSample(EP, workingSet).elevation();
                     hf->setHeight(col, row, h);
                     // do not set wroteChanges
                 }
@@ -390,7 +394,7 @@ namespace
      * modifiable heightfield as we go along.
      */
     bool integrateLines(const TileKey& key, osg::HeightField* hf, const MultiGeometry* geom, const SpatialReference* geomSRS,
-                        WidthsList& widths, ElevationEnvelope* envelope,
+                        WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
                         bool fillAllPixels, ProgressCallback* progress)
     {
         bool wroteChanges = false;
@@ -401,8 +405,11 @@ namespace
         double row_interval = ex.height() / (double)(hf->getNumRows()-1);
 
         osg::Vec3d Pex, P, PROJ;
+        GeoPoint EP(geomSRS, 0, 0, 0);
+
         // For the point calcs in the inner loops
         osg::Vec3d AB, AP;
+        ElevationSample elevSample;
 
         bool needsTransform = ex.getSRS() != geomSRS;
 
@@ -544,7 +551,12 @@ namespace
                 if (samplesSize > 0)
                 {
                     // The original elevation at our point:
-                    const float elevP = envelope->getElevation(P.x(), P.y());
+                    //float elevP = pool->getElevation(P.x(), P.y());
+
+                    EP.x() = P.x(), EP.y() = P.y();
+
+                    elevSample = pool->getSample(EP, workingSet);
+                    float elevP = elevSample.elevation().getValue();
                     
                     for (unsigned i = 0; i < samplesSize; ++i)
                     {
@@ -560,23 +572,27 @@ namespace
                         
                         if (sample.T == 0.0)
                         {
-                            sample.elevPROJ = envelope->getElevation(sample.A.x(), sample.A.y());
+                            EP.x() = sample.A.x(), EP.y() = sample.A.y();
+                            sample.elevPROJ = pool->getSample(EP, workingSet).elevation();
                             if (sample.elevPROJ == NO_DATA_VALUE)
                                 sample.elevPROJ = elevP;
                         }
                         else if (sample.T == 1.0)
                         {
-                            sample.elevPROJ = envelope->getElevation(sample.B.x(), sample.B.y());
+                            EP.x() = sample.B.x(), EP.y() = sample.B.y();
+                            sample.elevPROJ = pool->getSample(EP, workingSet).elevation();
                             if (sample.elevPROJ == NO_DATA_VALUE)
                                 sample.elevPROJ = elevP;
                         }
                         else
                         {
-                            float elevA = envelope->getElevation(sample.A.x(), sample.A.y());
+                            EP.x() = sample.A.x(), EP.y() = sample.A.y();
+                            float elevA = pool->getSample(EP, workingSet).elevation();
                             if (elevA == NO_DATA_VALUE)
                                 elevA = elevP;
 
-                            float elevB = envelope->getElevation(sample.B.x(), sample.B.y());
+                            EP.x() = sample.B.x(), EP.y() = sample.B.y();
+                            float elevB = pool->getSample(EP, workingSet).elevation();
                             if (elevB == NO_DATA_VALUE)
                                 elevB = elevP;
 
@@ -602,7 +618,8 @@ namespace
                 else if (fillAllPixels)
                 {
                     // No close segments were found, so just copy over the source data.
-                    const float h = envelope->getElevation(P.x(), P.y());
+                    EP.x() = P.x(), EP.y() = P.y();
+                    float h = pool->getSample(EP, workingSet).elevation();
                     hf->setHeight(col, row, h);
 
                     // Note: do not set wroteChanges to true.
@@ -615,13 +632,13 @@ namespace
     
 
     bool integrate(const TileKey& key, osg::HeightField* hf, const MultiGeometry* geom, const SpatialReference* geomSRS,
-                   WidthsList& widths, ElevationEnvelope* envelope,
+                   WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
                    bool fillAllPixels, ProgressCallback* progress)
     {
         if (geom->isLinear())
-            return integrateLines(key, hf, geom, geomSRS, widths, envelope, fillAllPixels, progress);
+            return integrateLines(key, hf, geom, geomSRS, widths, pool, workingSet, fillAllPixels, progress);
         else
-            return integratePolygons(key, hf, geom, geomSRS, widths, envelope, fillAllPixels, progress);
+            return integratePolygons(key, hf, geom, geomSRS, widths, pool, workingSet, fillAllPixels, progress);
     }
 }
 
@@ -715,7 +732,6 @@ FlatteningLayer::init()
 
     // Experiment with this and see what will work.
     _pool = new ElevationPool();
-    _pool->setTileSize(257u);
 }
 
 Config
@@ -783,7 +799,7 @@ FlatteningLayer::addedToMap(const Map* map)
     }
     if (!layers.empty())
     {
-        _pool->setElevationLayers(layers);
+        _elevWorkingSet.setElevationLayers(layers);
     }
 }
 
@@ -829,11 +845,11 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         return GeoHeightField::INVALID;
     }
 
-    if (_pool->getElevationLayers().empty())
-    {
-        OE_WARN << LC << "Internal error - Pool layer set is empty\n";
-        return GeoHeightField::INVALID;
-    }
+    //if (_pool->getElevationLayers().empty())
+    //{
+    //    OE_WARN << LC << "Internal error - Pool layer set is empty\n";
+    //    return GeoHeightField::INVALID;
+    //}
 
     OE_START_TIMER(create);
     
@@ -945,12 +961,12 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
                     feature->transform(workingSRS);
 
                 lineWidth = SpatialReference::transformUnits(
-                    Distance(lineWidth),
+                    Distance(lineWidth, Units::METERS),
                     featureSRS,
                     geoExtent.getCentroid().y());
 
                 bufferWidth = SpatialReference::transformUnits(
-                    Distance(bufferWidth),
+                    Distance(bufferWidth, Units::METERS),
                     featureSRS,
                     geoExtent.getCentroid().y());
 
@@ -993,12 +1009,12 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
                 feature->transform(workingSRS);
 
             lineWidth = SpatialReference::transformUnits(
-                Distance(lineWidth),
+                Distance(lineWidth, Units::METERS),
                 featureSRS,
                 geoExtent.getCentroid().y());
 
             bufferWidth = SpatialReference::transformUnits(
-                Distance(bufferWidth),
+                Distance(bufferWidth, Units::METERS),
                 featureSRS,
                 geoExtent.getCentroid().y());
 
@@ -1021,7 +1037,9 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
             // Make an empty heightfield to populate:
             hf = HeightFieldUtils::createReferenceHeightField(
                 queryExtent,
-                257, 257,           // base tile size for elevation data
+                osgEarth::ELEVATION_TILE_SIZE,
+                osgEarth::ELEVATION_TILE_SIZE,
+                //257, 257,           // base tile size for elevation data
                 0u,                 // no border
                 true);              // initialize to HAE (0.0) heights
 
@@ -1030,13 +1048,8 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         }
 
         // Create an elevation query envelope at the LOD we are creating
-        osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(workingSRS, key.getLOD());
-
-        if (envelope.valid())
-        {
-            bool fill = (options().fill() == true);             
-            integrate(key, hf.get(), &geoms, workingSRS, widths, envelope.get(), fill, progress);
-        }
+        bool fill = (options().fill() == true);             
+        integrate(key, hf.get(), &geoms, workingSRS, widths, _pool.get(), &_elevWorkingSet, fill, progress);
     }
 
     return GeoHeightField(hf.get(), key.getExtent());

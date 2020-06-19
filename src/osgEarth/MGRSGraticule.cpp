@@ -507,7 +507,9 @@ namespace
             _extent = GeoExtent(_feature->getSRS(), _feature->getGeometry()->getBounds());
             double lon, lat;
             _extent.getCentroid(lon, lat);
-            _utm = _feature->getSRS()->createUTMFromLonLat(lon, lat);
+            _utm = _feature->getSRS()->createUTMFromLonLat(
+                Angle(lon, Units::DEGREES),
+                Angle(lat, Units::DEGREES) );
 
             double x0 = _feature->getDouble("easting");
             double y0 = _feature->getDouble("northing");

@@ -31,10 +31,11 @@
 #include <osgEarth/SpatialReference>
 #include <osg/Referenced>
 #include <osg/OperationThread>
+#include <osgEarth/Metrics>
 #include <set>
 
 #define GDAL_SCOPED_LOCK \
-    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::getGDALMutex() )\
+    OpenThreads::ScopedLock< OE_LOCKABLE_BASE( OpenThreads::ReentrantMutex) > _slock( osgEarth::getGDALMutex() )\
 
 namespace osgText {
     class Font;
@@ -60,7 +61,7 @@ namespace osgEarth
     using namespace Util;
 
 
-    extern OSGEARTH_EXPORT OpenThreads::ReentrantMutex& getGDALMutex();
+    extern OSGEARTH_EXPORT OE_LOCKABLE_BASE(OpenThreads::ReentrantMutex)& getGDALMutex();
 
     /**
     * Application-wide global repository.
@@ -87,7 +88,7 @@ namespace osgEarth
         osg::ref_ptr<SpatialReference> getOrCreateSRS(const SpatialReference::Key& key);
 
         /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
-        OpenThreads::ReentrantMutex& getGDALMutex();
+        OE_LOCKABLE_BASE(OpenThreads::ReentrantMutex)& getGDALMutex();
 
         /** Gets a default cache object - based on environment settings - unless setDefaultCache
         was called to override it. */
@@ -305,7 +306,7 @@ namespace osgEarth
          * Release OpenGL resources associated with anything in the reigstry
          */
         void releaseGLObjects(class osg::State*) const;
-        
+
         //! Release any resources held by the registry so it can be re-used
         void release();
 

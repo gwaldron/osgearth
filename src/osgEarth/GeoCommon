@@ -28,6 +28,8 @@
 
 namespace osgEarth
 {
+//    constexpr float NO_DATA_VALUE = -FLT_MAX;
+
     /**
      * Types of interpolation between two geodetic locations.
      */

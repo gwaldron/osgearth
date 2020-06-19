@@ -45,9 +45,9 @@ LatLongFormatter::format( const GeoPoint& p ) const
         return "";
 
     return Stringify()
-        << format( Angular(geo.y()), true )
+        << format( Angle(geo.y(), Units::DEGREES), true )
         << ", "
-        << format( Angular(geo.x()), false );
+        << format( Angle(geo.x(), Units::DEGREES), false );
 }
 
 std::string

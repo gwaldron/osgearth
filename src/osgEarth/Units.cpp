@@ -74,6 +74,9 @@ namespace
                 Units units;
                 if ( Units::parse(unitsStr, units) )
                     out_units = units;
+                else if (unitsStr.back() != 's' && Units::parse(unitsStr+'s', units))
+                    out_units = units;
+                    
             }
             else
             {
@@ -140,6 +143,7 @@ Units::parse( const std::string& input, int& out_value, Units& out_units, const 
 {
     return parseValueAndUnits(input, out_value, out_units, defaultUnits);
 }
+
 
 void
 Units::registerAll(Registry* r)

@@ -752,7 +752,7 @@ std::string
 GeodeticGraticule::getText(const GeoPoint& location, bool lat)
 {
     double value = lat ? location.y() : location.x();
-    return _formatter->format(value, lat);
+    return _formatter->format(Angle(value, location.getXYUnits()), lat);
 }
 
 void

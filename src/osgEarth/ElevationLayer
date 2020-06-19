@@ -55,7 +55,7 @@ namespace osgEarth
             //! NOTE: This may be invoked from a worker thread. Use caution.
             virtual void onCreate(const TileKey&, GeoHeightField&) { }
         };
-        
+
         //! Vertical data identifier (options)
         void setVerticalDatum(const std::string& value);
         const std::string& getVerticalDatum() const;
@@ -73,9 +73,9 @@ namespace osgEarth
         virtual void setVisible(bool value);
 
     public: // methods
-        
+
         /**
-         * Creates a GeoHeightField for this layer that corresponds to the extents and LOD 
+         * Creates a GeoHeightField for this layer that corresponds to the extents and LOD
          * in the specified TileKey. The returned HeightField will always match the geospatial
          * extents of that TileKey.
          *
@@ -84,7 +84,7 @@ namespace osgEarth
         GeoHeightField createHeightField(const TileKey& key);
 
         /**
-         * Creates a GeoHeightField for this layer that corresponds to the extents and LOD 
+         * Creates a GeoHeightField for this layer that corresponds to the extents and LOD
          * in the specified TileKey. The returned HeightField will always match the geospatial
          * extents of that TileKey.
          *
@@ -124,19 +124,16 @@ namespace osgEarth
 
         //! Subalss can override this to enable writing heightfields.
         virtual Status writeHeightFieldImplementation(
-            const TileKey& key, 
+            const TileKey& key,
             const osg::HeightField* hf,
             ProgressCallback* progress) const;
-        
+
         virtual ~ElevationLayer() { }
-        
+
     private:
-        mutable Threading::Mutex _mutex;
-        
         void assembleHeightField(
             const TileKey& key,
             osg::ref_ptr<osg::HeightField>& out_hf,
-            osg::ref_ptr<NormalMap>& out_normalMap,
             ProgressCallback* progress) const;
 
         void normalizeNoDataValues(osg::HeightField* hf) const;
@@ -158,12 +155,12 @@ namespace osgEarth
          * Populates an existing height field (hf must already exist) with height
          * values from the elevation layers.
          */
-        bool populateHeightFieldAndNormalMap(
+        bool populateHeightField(
             osg::HeightField*      hf,
-            NormalMap*             normalMap,
+            float*                 resolutions,
             const TileKey&         key,
             const Profile*         haeProfile,
-            RasterInterpolation interpolation,
+            RasterInterpolation    interpolation,
             ProgressCallback*      progress ) const;
 
     public:

@@ -838,6 +838,8 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatc
         applyLocalState(ri, ds);
         _pass = 1;
         tiles->drawTiles(ri);
+
+        instancer->endFrame(ri);
     }
 
     // Clean up and finish

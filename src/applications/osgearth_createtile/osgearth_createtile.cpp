@@ -223,7 +223,7 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
         osg::ref_ptr<TerrainTileModel> model
             = s_mapNode->getTerrainEngine()->createTileModel(map, key, _manifest, nullptr);
         osg::ref_ptr<osg::Node> node =
-            s_mapNode->getTerrainEngine()->createStandaloneTile(model, _tileFlags, _refLOD, key);
+            s_mapNode->getTerrainEngine()->createStandaloneTile(model.get(), _tileFlags, _refLOD, key);
         if (node.valid())
         {
             // Extract the triangles from the node that was created

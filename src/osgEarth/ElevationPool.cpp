@@ -534,6 +534,136 @@ ElevationPool::sampleMapCoords(
     return count;
 }
 
+int
+ElevationPool::sampleMapCoords(
+    std::vector<osg::Vec3d>& points,
+    const Distance& resolution,
+    WorkingSet* ws)
+{
+    OE_PROFILING_ZONE;
+
+    if (points.empty())
+        return -1;
+
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map) == false || map->getProfile() == NULL)
+        return -1;
+
+    sync(map.get(), ws);
+    ScopedAtomicCounter counter(_workers);
+
+    Internal::RevElevationKey key;
+    key._revision = getElevationRevision(map.get());
+
+    osg::ref_ptr<ElevationTexture> raster;
+    osg::Vec4 elev;
+    double u, v;
+
+    const Profile* profile = map->getProfile();
+    double pw = profile->getExtent().width();
+    double ph = profile->getExtent().height();
+    double pxmin = profile->getExtent().xMin();
+    double pymin = profile->getExtent().yMin();
+
+    int count = 0;
+
+    QuickCache quickCache;
+    QuickSampleVars qvars;
+
+    //TODO: TESTING..?
+    //ws = NULL;
+
+    unsigned tw, th;
+    double rx, ry;
+    int tx, ty;
+    int tx_prev = INT_MAX, ty_prev = INT_MAX;
+    float lastRes = -1.0f;
+    unsigned lod;
+    unsigned lod_prev = INT_MAX;
+    const Units& units = map->getSRS()->getUnits();
+    Distance pointRes(0.0, units);
+
+    double resolutionInMapUnits = resolution.asDistance(units, points[0].y());
+
+    unsigned maxLOD = profile->getLevelOfDetailForHorizResolution(
+        resolutionInMapUnits,
+        ELEVATION_TILE_SIZE);
+
+    lod = osg::minimum( getLOD(points[0].x(), points[0].y()), maxLOD );
+
+    profile->getNumTiles(lod, tw, th);
+
+    for(auto& p : points)
+    {
+        {
+            OE_PROFILING_ZONE_NAMED("createTileKey");
+
+            rx = (p.x()-pxmin)/pw, ry = (p.y()-pymin)/ph;
+            tx = osg::clampBelow((unsigned)(rx * (double)tw), tw-1u ); // TODO: wrap around for geo
+            ty = osg::clampBelow((unsigned)((1.0-ry) * (double)th), th-1u );
+
+            if (lod != lod_prev || tx != tx_prev || ty != ty_prev)
+            {
+                key._tilekey = TileKey(lod, tx, ty, profile);
+                lod_prev = lod;
+                tx_prev = tx;
+                ty_prev = ty;
+            }
+        }
+
+        if (key._tilekey.valid())
+        {
+            auto& iter = quickCache.find(key);
+
+            if (iter == quickCache.end())
+            {
+                raster = getOrCreateRaster(
+                    key,   // key to query
+                    map.get(), // map to query
+                    true,  // for the cache
+                    true,  // fall back on lower resolution data if necessary
+                    ws);   // user's workingset
+
+                quickCache[key] = raster.get();
+            }
+            else
+            {
+                raster = iter->second;
+            }
+
+            {
+                OE_PROFILING_ZONE_NAMED("sample");
+                if (raster.valid())
+                {
+                    u = (p.x() - raster->getExtent().xMin()) /  raster->getExtent().width();
+                    v = (p.y() - raster->getExtent().yMin()) /  raster->getExtent().height();
+
+                    // Note: This can happen on the map edges..
+                    // TODO: consider looping around for geo and clamping for projected
+                    u = osg::clampBetween(u, 0.0, 1.0);
+                    v = osg::clampBetween(v, 0.0, 1.0);
+
+                    quickSample(raster->reader(), u, v, elev, qvars);
+                    p.z() = elev.r();
+                }
+                else
+                {
+                    p.z() = NO_DATA_VALUE;
+                }
+            }
+        }
+        else
+        {
+            p.z() = NO_DATA_VALUE;
+        }
+
+        if (p.z() != NO_DATA_VALUE)
+            ++count;
+    }
+
+    return count;
+}
+
 ElevationSample
 ElevationPool::getSample(
     const GeoPoint& p, 

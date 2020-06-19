@@ -883,7 +883,7 @@ GDAL::Driver::geoToPixel(double geoX, double geoY, double &x, double &y)
 }
 
 bool
-GDAL::Driver::isValidValue_noLock(float v, GDALRasterBand* band)
+GDAL::Driver::isValidValue(float v, GDALRasterBand* band)
 {
     float bandNoData = -32767.0f;
     int success;
@@ -909,13 +909,6 @@ GDAL::Driver::isValidValue_noLock(float v, GDALRasterBand* band)
         return false;
 
     return true;
-}
-
-bool
-GDAL::Driver::isValidValue(float v, GDALRasterBand* band)
-{
-    GDAL_SCOPED_LOCK;
-    return isValidValue_noLock(v, band);
 }
 
 float
@@ -1306,7 +1299,7 @@ GDAL::Driver::createImage(const TileKey& key,
                             gdalSampleSize == 4 ? *(float*)ptr :
                             NO_DATA_VALUE;
 
-                        if (!isValidValue_noLock(value, bandGray))
+                        if (!isValidValue(value, bandGray))
                             value = NO_DATA_VALUE;
 
                         temp.r() = value;
@@ -1667,7 +1660,7 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
             {
                 unsigned inv_r = tileSize - r - 1;
                 float h = heights[r * tileSize + c];
-                if (!isValidValue_noLock(h, band))
+                if (!isValidValue(h, band))
                 {
                     h = NO_DATA_VALUE;
                 }

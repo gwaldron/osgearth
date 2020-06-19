@@ -91,7 +91,7 @@ ElevationPool::getElevationRevision(const Map* map) const
 {
     // yes, must do this every time because individual
     // layers can "bump" their revisions (dynamic layers)
-    int revision = map ? map->getDataModelRevision() : 0;
+    int revision = map ? static_cast<int>(map->getDataModelRevision()) : 0;
 
     for(auto i : _elevationLayers)
         if (i->getEnabled())
@@ -129,7 +129,7 @@ ElevationPool::refresh(const Map* map)
     _elevationLayers.clear();
 
     if (_index)
-        delete _index;
+        delete static_cast<MaxLevelIndex*>(_index);
 
     map->getLayers(_elevationLayers);
 

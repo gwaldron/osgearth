@@ -70,7 +70,6 @@ namespace osgEarth { namespace REX
         float _minRange;
         unsigned _maxTilesToUnloadPerFrame;
         TileNodeRegistry* _tiles;
-        mutable Threading::Mutex _mutex;
         std::vector<osg::observer_ptr<TileNode> > _deadpool;
         unsigned _frameLastUpdated;
         const FrameClock* _clock;

@@ -66,6 +66,8 @@ namespace osgEarth {
 #define OE_PROFILING_ZONE_TEXT(text) _zoneSetText(___tracy_scoped_zone, text)
 #define OE_PROFILING_PLOT(name, value) if (osgEarth::Util::Metrics::enabled()) {TracyPlot(name, value);}
 #define OE_PROFILING_FRAME_MARK if (osgEarth::Util::Metrics::enabled()) {FrameMark;}
+#define OE_LOCKABLE(type, varname) TracyLockable(type, varname)
+#define OE_LOCKABLE_BASE( type ) LockableBase( type )
 
 inline void _zoneSetText(tracy::ScopedZone& zone, const char* text) {
     zone.Text(text, strlen(text));
@@ -80,6 +82,8 @@ inline void _zoneSetText(tracy::ScopedZone& zone, const std::string& text) {
 #define OE_PROFILING_ZONE_TEXT(text)
 #define OE_PROFILING_PLOT(name, value)
 #define OE_PROFILING_FRAME_MARK
+#define OE_LOCKABLE(type, varname) type varname
+#define OE_LOCKABLE_BASE( type ) type
 #endif
 
 #endif

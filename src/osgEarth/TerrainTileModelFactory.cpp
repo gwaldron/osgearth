@@ -456,8 +456,8 @@ TerrainTileModelFactory::addElevation(
             }
 
             // Made an image, so store this as a texture with no matrix.
-            texture->setName(key.str() + ":elevation");
-            layerModel->setTexture( texture );
+            elevTex->setName(key.str() + ":elevation");
+            layerModel->setTexture( elevTex.get() );
             model->elevationModel() = layerModel.get();
         }
     }

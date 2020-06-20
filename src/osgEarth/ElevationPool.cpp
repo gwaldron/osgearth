@@ -540,7 +540,7 @@ ElevationPool::sampleMapCoords(
     const Distance& resolution,
     WorkingSet* ws)
 {
-    OE_PROFILING_ZONE;
+    //OE_PROFILING_ZONE;
 
     if (points.empty())
         return -1;
@@ -596,7 +596,7 @@ ElevationPool::sampleMapCoords(
     for(auto& p : points)
     {
         {
-            OE_PROFILING_ZONE_NAMED("createTileKey");
+            //OE_PROFILING_ZONE_NAMED("createTileKey");
 
             rx = (p.x()-pxmin)/pw, ry = (p.y()-pymin)/ph;
             tx = osg::clampBelow((unsigned)(rx * (double)tw), tw-1u ); // TODO: wrap around for geo
@@ -632,7 +632,7 @@ ElevationPool::sampleMapCoords(
             }
 
             {
-                OE_PROFILING_ZONE_NAMED("sample");
+                //OE_PROFILING_ZONE_NAMED("sample");
                 if (raster.valid())
                 {
                     u = (p.x() - raster->getExtent().xMin()) /  raster->getExtent().width();

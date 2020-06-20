@@ -77,7 +77,7 @@ namespace osgEarth { namespace Buildings
         virtual bool create(
             Feature*                input,
             const GeoExtent&        cropTo,
-            ElevationEnvelope*      terrain,
+            ElevationPool::WorkingSet* poolWorkingSet,
             const Style*            style,
             BuildingVector&         output,
             const osgDB::Options*   readOptions,

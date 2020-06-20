@@ -58,7 +58,7 @@ BuildingFactory::cropToCentroid(const Feature* feature, const GeoExtent& extent)
 bool
 BuildingFactory::create(Feature*               feature,
                         const GeoExtent&       cropTo,
-                        ElevationEnvelope*     terrain,
+                        ElevationPool::WorkingSet* workingSet,
                         const Style*           style,
                         BuildingVector&        output,
                         const osgDB::Options*  readOptions,
@@ -71,8 +71,7 @@ BuildingFactory::create(Feature*               feature,
     // to compute all this common stuff up front. This was not necessary for the
     // FeatureCursor variation. -gw
 
-    bool needToClamp = 
-        terrain &&
+    bool needToClamp =
         style &&
         style->has<AltitudeSymbol>() &&
         style->get<AltitudeSymbol>()->clamping() != AltitudeSymbol::CLAMP_NONE;
@@ -82,8 +81,7 @@ BuildingFactory::create(Feature*               feature,
     const BuildingSymbol* buildingSymbol =
         style ? style->get<BuildingSymbol>() :
         _session->styles() ? _session->styles()->getDefaultStyle()->get<BuildingSymbol>() :
-        0L;
-        
+        0L;        
   
     // Pull a resource library if one is defined.
     ResourceLibrary* reslib = 0L;
@@ -196,13 +194,29 @@ BuildingFactory::create(Feature*               feature,
 
         // Prepare for terrain clamping by finding the minimum and 
         // maximum elevations under the feature:
-                
+
+        bool terrainMinMaxValid = false;
         float min = FLT_MAX, max = -FLT_MAX;
-        bool terrainMinMaxValid =
-            needToClamp &&
-            terrain &&
-            feature->getGeometry() != 0L &&
-            terrain->getElevationExtrema(feature->getGeometry()->asVector(), min, max);
+        osg::ref_ptr<const Map> map = _session->getMap();
+
+        if (needToClamp && feature->getGeometry() && map.valid())
+        {
+            std::vector<osg::Vec3d> points;
+            for(auto& i : feature->getGeometry()->asVector())
+                points.push_back(i);
+
+            map->getElevationPool()->sampleMapCoords(
+                points, 
+                osgEarth::Distance(0.0, feature->getSRS()->getUnits()),
+                workingSet);
+
+            for(auto& i : points) {
+                min = osg::minimum(min, (float)i.z());
+                max = osg::maximum(max, (float)i.z());
+            }
+
+            terrainMinMaxValid = true;
+        }
                 
         context.setTerrainMinMax(
             terrainMinMaxValid ? min : 0.0f,

@@ -304,27 +304,10 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
             // TODO: review the LOD selection..
             OE_START_TIMER(envelope);
 
-            osg::ref_ptr<ElevationEnvelope> envelope;
+            // Localized cache for clamping
+            ElevationPool::WorkingSet workingSet;
 
-            osg::ref_ptr<ElevationPool> pool;
-            if (_elevationPool.lock(pool))
-            {
-                //envelope = pool->createEnvelope(
-                //    _session->getMapSRS(),      // SRS of input features
-                //    tileKey.getLOD());          // LOD at which to clamp
-                envelope = pool->createEnvelope(
-                    _session->getMapSRS(),      // SRS of input features
-                    23);          // LOD at which to clamp
-
-                if (!envelope.valid())
-                {
-                    // if this happens, it means that the clamper most likely lost its connection
-                    // to the underlying map for some reason (Map closed, e.g.). In this case we
-                    // should just cancel the tile operation.
-                    OE_INFO << LC << "Failed to create clamping envelope for " << tileKey.str() << "\n";
-                }
-            }
-            canceled = canceled || !envelope.valid();
+            //canceled = canceled || !pool.valid();
 
             while (cursor->hasMore() && !canceled)
             {
@@ -332,7 +315,7 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
                 numFeatures++;
                 
                 BuildingVector buildings;
-                if (!factory->create(feature, tileKey.getExtent(), envelope.get(), style, buildings, readOptions.get(), progress))
+                if (!factory->create(feature, tileKey.getExtent(), &workingSet, style, buildings, readOptions.get(), progress))
                 {
                     canceled = true;
                 }

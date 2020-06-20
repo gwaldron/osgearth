@@ -61,7 +61,7 @@ TileRasterizer::RenderInstaller::drawImplementation(osg::RenderInfo& ri) const
         {
             _renderData._gc = ri.getState()->getGraphicsContext();
             _renderData._sv->setState(ri.getState());
-            OE_WARN << LC << "Installed on GC " << _renderData._gc.get() << std::endl;
+            OE_DEBUG << LC << "Installed on GC " << _renderData._gc.get() << std::endl;
         }
     }
 }

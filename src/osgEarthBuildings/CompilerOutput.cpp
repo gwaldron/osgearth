@@ -189,7 +189,7 @@ CompilerOutput::readFromCache(const osgDB::Options* readOptions, ProgressCallbac
         ConsolidateTextures consolidate(_texCache.get());
         result.getNode()->accept(consolidate);
 
-        OE_INFO << LC << "Loaded " << _name << " from the cache (key = " << cacheKey << ")\n";
+        OE_DEBUG << LC << "Loaded " << _name << " from the cache (key = " << cacheKey << ")\n";
         return result.releaseNode();
     }
 
@@ -234,7 +234,7 @@ CompilerOutput::writeToCache(osg::Node* node, const osgDB::Options* writeOptions
 
     cacheSettings->getCacheBin()->writeNode(cacheKey, node, Config(), writeOptions);
 
-    OE_INFO << LC << "Wrote " << _name << " to cache (key = " << cacheKey << ")\n";
+    OE_DEBUG << LC << "Wrote " << _name << " to cache (key = " << cacheKey << ")\n";
 }
 
 void CompilerOutput::addInstancesNormal(osg::MatrixTransform* root, Session* session, const CompilerSettings& settings, const osgDB::Options* readOptions, ProgressCallback*) const

@@ -99,7 +99,6 @@ namespace osgEarth
         //! @param ws Optional working set
         bool getTile(
             const TileKey& key,
-            bool getResolutions,
             bool acceptLowerRes,
             osg::ref_ptr<ElevationTexture>& out_elev,
             WorkingSet* ws);
@@ -181,7 +180,6 @@ namespace osgEarth
         osg::ref_ptr<ElevationTexture> getOrCreateRaster(
             const Internal::RevElevationKey& key, 
             const Map* map, 
-            bool getNormalMap, 
             bool acceptLowerRes,
             WorkingSet* ws);
 

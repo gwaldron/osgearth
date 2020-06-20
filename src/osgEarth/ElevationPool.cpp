@@ -258,8 +258,7 @@ ElevationPool::findExistingRaster(
 osg::ref_ptr<ElevationTexture>
 ElevationPool::getOrCreateRaster(
     const Internal::RevElevationKey& key, 
-    const Map* map, 
-    bool getResolutions, 
+    const Map* map,
     bool acceptLowerRes,
     WorkingSet* ws)
 {
@@ -268,14 +267,8 @@ ElevationPool::getOrCreateRaster(
     // first check for pre-existing data for this key:
     osg::ref_ptr<ElevationTexture> result;
     bool fromWS, fromL2, fromLUT;
-    if (findExistingRaster(key, ws, result, &fromWS, &fromL2, &fromLUT))
-    {
-        // only accept if cached record matches caller's request
-        if (getResolutions == true && !result->getResolutions())
-        {
-            result = NULL;
-        }
-    }
+
+    findExistingRaster(key, ws, result, &fromWS, &fromL2, &fromLUT);
 
     if (!result.valid())
     {
@@ -286,11 +279,7 @@ ElevationPool::getOrCreateRaster(
             false,      // no border
             true);      // initialize to HAE (0.0) heights
 
-        float* resolutions = NULL;
-        if (getResolutions)
-        {
-            resolutions = new float[_tileSize*_tileSize];
-        }
+        float* resolutions = new float[_tileSize*_tileSize];
 
         TileKey keyToUse;
         bool populated = false;
@@ -490,7 +479,6 @@ ElevationPool::sampleMapCoords(
                 raster = getOrCreateRaster(
                     key,   // key to query
                     map.get(), // map to query
-                    true,  // for the cache
                     true,  // fall back on lower resolution data if necessary
                     ws);   // user's workingset
 
@@ -620,7 +608,6 @@ ElevationPool::sampleMapCoords(
                 raster = getOrCreateRaster(
                     key,   // key to query
                     map.get(), // map to query
-                    true,  // for the cache
                     true,  // fall back on lower resolution data if necessary
                     ws);   // user's workingset
 
@@ -684,7 +671,6 @@ ElevationPool::getSample(
     osg::ref_ptr<ElevationTexture> raster = getOrCreateRaster(
         key,   // key to query
         map,   // map to query
-        false, // no normal maps
         true,  // fall back on lower resolution data if necessary
         ws);   // user's workingset
 
@@ -752,8 +738,7 @@ ElevationPool::getSample(const GeoPoint& p, const Distance& resolution, WorkingS
 
 bool
 ElevationPool::getTile(
-    const TileKey& tilekey, 
-    bool getResolutions, 
+    const TileKey& tilekey,
     bool acceptLowerRes,
     osg::ref_ptr<ElevationTexture>& out_tex,
     WorkingSet* ws)
@@ -774,7 +759,6 @@ ElevationPool::getTile(
     out_tex = getOrCreateRaster(
         key, 
         _map.get(), 
-        getResolutions, 
         acceptLowerRes,
         ws);
 

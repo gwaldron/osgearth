@@ -155,7 +155,7 @@ NormalMapGenerator::createNormalMap(
 
     // fetch the base tile in order to get resolutions data.
     osg::ref_ptr<ElevationTexture> heights;
-    pool->getTile(key, true, true, heights, workingSet);
+    pool->getTile(key, true, heights, workingSet);
 
     if (!heights.valid())
         return NULL;

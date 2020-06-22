@@ -664,9 +664,11 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
         // same (even though extents are different), then this operation is technically not a
         // reprojection but merely a resampling.
 
+        const GeoExtent& extent = key.getExtent();
+
         result = mosaicedImage.reproject(
             key.getProfile()->getSRS(),
-            &key.getExtent(),
+            &extent,
             getTileSize(), getTileSize(),
             true);
     }

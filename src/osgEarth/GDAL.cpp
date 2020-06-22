@@ -1390,6 +1390,8 @@ GDAL::Driver::createImage(const TileKey& key,
 
         ImageUtils::PixelWriter write(image.get());
 
+        osg::Vec4f pixel;
+
         for (int src_row = 0, dst_row = tile_offset_top;
             src_row < target_height;
             src_row++, dst_row++)
@@ -1403,23 +1405,22 @@ GDAL::Driver::createImage(const TileKey& key,
 
                 if (isCoverage)
                 {
-                    osg::Vec4ub color;
-                    osg::Vec4f pixel;
-                    if (getPalleteIndexColor(bandPalette, p, color) &&
-                        isValidValue((float)color.r(), bandPalette)) // need this?
+                    if (_gdalOptions.coverageUsesPaletteIndex() == true)
                     {
-                        if (_gdalOptions.coverageUsesPaletteIndex() == true)
-                        {
-                            pixel.r() = (float)p;
-                        }
-                        else
-                        {
-                            pixel.r() = (float)color.r();
-                        }
+                        pixel.r() = (float)p;
                     }
                     else
                     {
-                        pixel.r() = NO_DATA_VALUE;
+                        osg::Vec4ub color;
+                        if (getPalleteIndexColor(bandPalette, p, color) &&
+                            isValidValue((float)color.r(), bandPalette)) // need this?
+                        {
+                            pixel.r() = (float)color.r();
+                        }
+                        else
+                        {
+                            pixel.r() = NO_DATA_VALUE;
+                        }
                     }
 
                     write(pixel, dst_col, flippedRow);

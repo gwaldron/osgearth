@@ -1412,9 +1412,14 @@ GDAL::Driver::createImage(const TileKey& key,
                     if (getPalleteIndexColor(bandPalette, p, color) &&
                         isValidValue((float)color.r(), bandPalette)) // need this?
                     {
-                        // use the palette index directly for coverage data...?
-                        pixel.r() = (float)p;
-                        //pixel.r() = (float)color.r();
+                        if (_gdalOptions.coverageUsesPaletteIndex() == true)
+                        {
+                            pixel.r() = (float)p;
+                        }
+                        else
+                        {
+                            pixel.r() = (float)color.r();
+                        }
                     }
                     else
                     {
@@ -1702,6 +1707,8 @@ GDAL::Options::readFrom(const Config& conf)
 {
     _interpolation.init(INTERP_AVERAGE);
     _useVRT.init(false);
+    coverageUsesPaletteIndex().setDefault(true);
+
     conf.get("url", _url);
     conf.get("connection", _connection);
     conf.get("subdataset", _subDataSet);
@@ -1712,6 +1719,7 @@ GDAL::Options::readFrom(const Config& conf)
     conf.get("interpolation", "bilinear", _interpolation, osgEarth::INTERP_BILINEAR);
     conf.get("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
     conf.get("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
+    conf.get("coverage_uses_palette_index", coverageUsesPaletteIndex());
 }
 
 void
@@ -1727,6 +1735,7 @@ GDAL::Options::writeTo(Config& conf) const
     conf.set("interpolation", "bilinear", _interpolation, osgEarth::INTERP_BILINEAR);
     conf.set("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
     conf.set("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
+    conf.set("coverage_uses_palette_index", coverageUsesPaletteIndex());
 }
 
 //......................................................................

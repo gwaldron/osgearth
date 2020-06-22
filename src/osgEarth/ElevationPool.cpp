@@ -290,7 +290,7 @@ ElevationPool::getOrCreateRaster(
 
         for(keyToUse = key._tilekey; 
             keyToUse.valid(); 
-            keyToUse = keyToUse.createParentKey())
+            keyToUse.makeParent())
         {
             populated = layersToSample.populateHeightField(
                 hf.get(),
@@ -307,10 +307,22 @@ ElevationPool::getOrCreateRaster(
         if (populated)
         {
             result = new ElevationTexture(
+                keyToUse,
                 GeoHeightField(hf.get(), keyToUse.getExtent()),
                 resolutions);
         }
         else
+        {
+            return NULL;
+        }
+    }
+
+    else
+    {
+        // found it ... but if it's a lower res tile and we aren't accepting
+        // those, discard it.
+        if (acceptLowerRes == false &&
+            result->getTileKey() != key._tilekey)
         {
             return NULL;
         }

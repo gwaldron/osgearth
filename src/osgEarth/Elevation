@@ -62,6 +62,7 @@ namespace osgEarth
     {
     public:
         ElevationTexture(
+            const TileKey& key,
             const GeoHeightField& hf,
             float* resolutions);
 
@@ -76,6 +77,9 @@ namespace osgEarth
 
         //! Extent of the texture
         const GeoExtent& getExtent() const { return _extent; }
+
+        //! TileKey used to create this elevation grid
+        const TileKey& getTileKey() const { return _tilekey; }
 
         //! Normal map associated with the elevation data, if available.
         osg::Texture2D* getNormalMapTexture() const { return _normalTex.get(); }
@@ -100,6 +104,7 @@ namespace osgEarth
         }
 
     private:
+        TileKey _tilekey;
         GeoExtent _extent;
         Distance _resolution;
         ImageUtils::PixelReader _read;

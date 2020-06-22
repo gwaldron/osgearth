@@ -43,7 +43,8 @@ namespace
     }
 }
 
-ElevationTexture::ElevationTexture(const GeoHeightField& in_hf, float* resolutions) :
+ElevationTexture::ElevationTexture(const TileKey& key, const GeoHeightField& in_hf, float* resolutions) :
+    _tilekey(key),
     _extent(in_hf.getExtent()),
     _resolutions(resolutions)
 {

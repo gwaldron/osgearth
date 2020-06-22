@@ -484,7 +484,7 @@ ElevationPool::sampleMapCoords(
         
         if (key._tilekey.valid())
         {
-            auto& iter = quickCache.find(key);
+            auto iter = quickCache.find(key);
 
             if (iter == quickCache.end())
             {
@@ -613,7 +613,7 @@ ElevationPool::sampleMapCoords(
 
         if (key._tilekey.valid())
         {
-            auto& iter = quickCache.find(key);
+            auto iter = quickCache.find(key);
 
             if (iter == quickCache.end())
             {

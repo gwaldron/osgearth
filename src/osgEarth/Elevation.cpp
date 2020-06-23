@@ -50,20 +50,21 @@ ElevationTexture::ElevationTexture(const TileKey& key, const GeoHeightField& in_
 {
     if (in_hf.valid())
     {
-        const osg::HeightField* hf = in_hf.getHeightField();
+        _heightField = in_hf.getHeightField();
+
         osg::Vec4 value;
 
         osg::Image* heights = new osg::Image();
-        heights->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RED, GL_FLOAT);
+        heights->allocateImage(_heightField->getNumColumns(), _heightField->getNumRows(), 1, GL_RED, GL_FLOAT);
         heights->setInternalTextureFormat(GL_R32F);
 
         ImageUtils::PixelWriter write(heights);
         // TODO: speed this up since we know the format
-        for(unsigned row=0; row<hf->getNumRows(); ++row)
+        for(unsigned row=0; row<_heightField->getNumRows(); ++row)
         {
-            for(unsigned col=0; col<hf->getNumColumns(); ++col)
+            for(unsigned col=0; col<_heightField->getNumColumns(); ++col)
             {
-                value.r() = hf->getHeight(col, row);
+                value.r() = _heightField->getHeight(col, row);
                 write(value, col, row);
             }
         }

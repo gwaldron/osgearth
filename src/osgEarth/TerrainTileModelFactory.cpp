@@ -431,6 +431,7 @@ TerrainTileModelFactory::addElevation(
     if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, NULL))
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
+
         layerModel->setRevision(combinedRevision);
 
         if ( elevTex.valid() )
@@ -451,6 +452,10 @@ TerrainTileModelFactory::addElevation(
 
             // Made an image, so store this as a texture with no matrix.
             layerModel->setTexture( elevTex.get() );
+
+            // Keep the heightfield pointer around for legacy 3rd party usage (VRF)
+            layerModel->setHeightField(elevTex->getHeightField());
+
             model->elevationModel() = layerModel.get();
         }
     }

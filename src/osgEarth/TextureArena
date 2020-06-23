@@ -27,9 +27,6 @@
 #include <osg/buffered_value>
 #include <osg/Image>
 #include <osgUtil/IncrementalCompileOperation>
-#include <unordered_map>
-#include <unordered_set>
-#include <queue>
 
 namespace osgEarth
 {
@@ -93,17 +90,12 @@ namespace osgEarth
 
         //! Removes the texture from the GPU.
         void deactivate(Texture* tex);
-
-        //! Whether compileGLObjects has been called.
-        bool isCompiled() const { return _compiled; }
         
         //! Number of textures registered
         size_t size() const { return _textures.size(); }
 
+        //! Textures installed in this arena
         const TextureVector& getTextures() const { return _textures; }
-
-        //! Number of graphics contexts that exist in this object
-        unsigned getNumGCs() const { return _gc.size(); }
 
         //! destruct
         virtual ~TextureArena();
@@ -122,6 +114,7 @@ namespace osgEarth
         //! allocate handles for all add()ed textures
         void activate(Texture* texture, osg::State& state) const;
 
+        // Lookup table that maps texture ids to bindless handles
         struct HandleLUT : public SSBO {
             mutable GLuint64* _buf;
             unsigned _numTextures;
@@ -135,6 +128,7 @@ namespace osgEarth
             bool update();
         };
 
+        // Per-GC data
         struct GCState {
             GCState() : _inUse(false) { }
             bool _inUse;
@@ -146,8 +140,6 @@ namespace osgEarth
         mutable osg::buffered_object<GCState> _gc;
 
         TextureVector _textures;
-
-        mutable bool _compiled;
     };
 }
 

@@ -203,7 +203,7 @@ Texture::releaseGLObjects(osg::State* state) const
     else
     {
         // rely on the Releaser to get around to it
-        for(int i=0; i<_gc.size(); ++i)
+        for(unsigned i=0; i<_gc.size(); ++i)
         {
             // will activate the releaser(s)
             _gc[i]._gltexture = NULL;
@@ -218,8 +218,7 @@ Texture::releaseGLObjects(osg::State* state) const
 #define LC "[TextureArena] "
 
 
-TextureArena::TextureArena() :
-    _compiled(false)
+TextureArena::TextureArena()
 {
     // Keep this synchronous w.r.t. the render thread since we are
     // giong to be changing things on the fly
@@ -399,7 +398,6 @@ void
 TextureArena::compileGLObjects(osg::State& state) const
 {
     apply(state);
-    _compiled = true;
 }
 
 void

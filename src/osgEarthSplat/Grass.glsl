@@ -156,10 +156,7 @@ void oe_Grass_parametric(inout vec4 vertex_view)
     float row = float(which/4);
     oe_gc_texCoord.t = (1.0/3.0)*row;
 
-    // random rotation; do this is model space and then transform
-    // the vector to view space.
-    //float a = 6.283185 * fract(oe_noise[NOISE_RANDOM_2]*5.5);
-    vec3 faceVec = oe_vertex.normal; //oe_transform.normal * vec3(0,1,0); // * vec3(-sin(a), cos(a), 0);
+    vec3 faceVec = oe_vertex.normal;
 
     // local frame side vector
     vec3 sideVec = cross(faceVec, oe_UpVectorView);
@@ -258,10 +255,11 @@ void oe_Grass_model(inout vec4 vertex_view)
     vp_Normal = oe_vertex.normal;
 
     float psr = instance[i].pixelSizeRatio;
-    if (psr < 1.5) {
-        psr = rescale(psr-1.0, 0.0, 1.0);
-        vp_Color.a *= psr;
-    }
+    vp_Color.a = clamp(psr, 0, 1);
+    //if (psr < 2.0) {
+    //    psr = rescale(psr-2.0, 0.0, 1.0);
+    //    vp_Color.a *= psr;
+    //}
 
     // TODO: don't hard-code this..? or meh
     oe_gc_texCoord.xyz = gl_MultiTexCoord7.xyz;
@@ -324,7 +322,7 @@ void oe_Grass_FS(inout vec4 color)
     }
     else if (color.a < oe_gc_maxAlpha)
     {
-        color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+        //color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
         discard;
     }
 

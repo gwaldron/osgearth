@@ -1603,7 +1603,7 @@ GroundCoverLayer::createLUTShader() const
             width = osg::maximum(
                 data->_modelAABB.xMax() - data->_modelAABB.xMin(),
                 data->_modelAABB.yMax() - data->_modelAABB.yMin());
-            width = data->_modelAABB.radius();
+            //width = data->_modelAABB.radius();
         }
 
         float height = data->_asset->options().height().get();
@@ -1611,7 +1611,7 @@ GroundCoverLayer::createLUTShader() const
             data->_modelAABB.valid())
         {
             height = data->_modelAABB.zMax() - data->_modelAABB.zMin();
-            height = data->_modelAABB.radius();
+            //height = data->_modelAABB.radius();
         }
 
         float radius = 0.5*osg::maximum(width, height);
@@ -1644,7 +1644,7 @@ GroundCoverLayer::createLUTShader() const
                 << ", " << (data->_topBillboardTex.valid() ? data->_topBillboardTexIndex : -1)
                 << ", " << width
                 << ", " << height
-                << ", " << radius
+                //<< ", " << radius
                 << ", " << sizeVariation
                 << ", " << data->_asset->options().fill().get()
                 << ")";
@@ -1696,7 +1696,7 @@ GroundCoverLayer::createLUTShader() const
         "    int topSamplerIndex; \n"
         "    float width; \n"
         "    float height; \n"
-        "    float radius; \n"
+        //"    float radius; \n"
         "    float sizeVariation; \n"
         "    float fill; \n"
         "}; \n"

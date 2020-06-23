@@ -17,7 +17,7 @@ struct oe_gc_Asset {
     int topSamplerIndex;
     float width;
     float height;
-    float radius;
+    //float radius;
     float sizeVariation;
     float fill;
 };
@@ -184,7 +184,7 @@ void generate()
     instance[i].sizeScale = 1.0 + asset.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
     instance[i].width = asset.width * instance[i].sizeScale;
     instance[i].height = asset.height * instance[i].sizeScale;
-    instance[i].radius = asset.radius;
+    //instance[i].radius = asset.radius;
 
     //float rotation = 6.283185 * noise[NOISE_RANDOM];
     float rotation = 6.283185 * fract(noise[NOISE_RANDOM_2]*5.5);
@@ -236,12 +236,14 @@ void cull()
         return;
 
     // frustum culling:
-    vec4 clipLL = gl_ProjectionMatrix * (vertex_view - vec4(instance[i].radius, 0, 0, 0));
+    //vec4 clipLL = gl_ProjectionMatrix * (vertex_view - vec4(instance[i].radius, 0, 0, 0));
+    vec4 clipLL = gl_ProjectionMatrix * (vertex_view + vec4(-instance[i].width, 0, 0, 0));
     clipLL.xy /= clipLL.w;
     if (clipLL.x > 1.0 || clipLL.y > 1.0)
         return;
 
-    vec4 clipUR = gl_ProjectionMatrix * (vertex_view + vec4(instance[i].radius, 2*instance[i].radius, 0, 0));
+    //vec4 clipUR = gl_ProjectionMatrix * (vertex_view + vec4(instance[i].radius, 2*instance[i].radius, 0, 0));
+    vec4 clipUR = gl_ProjectionMatrix * (vertex_view + vec4(instance[i].width, instance[i].height, 0, 0));
     clipUR.xy /= clipUR.w;
     if (clipUR.x < -1.0 || clipUR.y < -1.0)
         return;

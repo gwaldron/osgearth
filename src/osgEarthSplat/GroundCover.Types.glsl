@@ -30,7 +30,7 @@ struct InstanceData
 
     float width;       // 4
     float height;      // 4
-    float radius;      // 4
+    //float radius;      // 4
     float sinrot;      // 4
     float cosrot;      // 4
 
@@ -42,6 +42,8 @@ struct InstanceData
     int instanceId;    // 4 // -1 = unused
     float sizeScale;   // 4
     float pixelSizeRatio;
+
+    float _padding[1];
 };
 struct TileData
 {

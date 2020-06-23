@@ -210,12 +210,15 @@ BuildingFactory::create(Feature*               feature,
                 osgEarth::Distance(0.0, feature->getSRS()->getUnits()),
                 workingSet);
 
-            for(auto& i : points) {
-                min = osg::minimum(min, (float)i.z());
-                max = osg::maximum(max, (float)i.z());
+            for(auto& i : points)
+            {
+                if (i.z() != NO_DATA_VALUE)
+                {
+                    min = osg::minimum(min, (float)i.z());
+                    max = osg::maximum(max, (float)i.z());
+                    terrainMinMaxValid = true;
+                }
             }
-
-            terrainMinMaxValid = true;
         }
                 
         context.setTerrainMinMax(

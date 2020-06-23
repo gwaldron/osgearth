@@ -256,6 +256,13 @@ InstanceCloud::drawTile(osg::RenderInfo& ri, unsigned tileNum)
     _geom->draw(ri);
 }
 
+void
+InstanceCloud::endFrame(osg::RenderInfo& ri)
+{
+    // be a good citizen
+    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+    ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+}
 
 InstanceCloud::Renderer::Renderer(InstancingData* data) :
     _data(data)

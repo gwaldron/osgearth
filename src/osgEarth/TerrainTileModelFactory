@@ -26,6 +26,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Progress>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/ElevationPool>
 
 namespace osgEarth
 {
@@ -187,7 +188,6 @@ namespace osgEarth
             RasterInterpolation             interpolation,
             unsigned                        border,
             osg::ref_ptr<osg::HeightField>& out_hf,
-            osg::ref_ptr<NormalMap>&        out_normalMap,
             ProgressCallback*               progress);
 
         osg::Texture* createImageTexture(
@@ -205,35 +205,10 @@ namespace osgEarth
             bool compress ) const;
 
         const TerrainOptions& _options;
-        
-
-        /** Key into the height field cache */
-        struct HFCacheKey 
-        {
-            TileKey               _key;
-            int                   _revision;
-            ElevationSamplePolicy _samplePolicy;
-
-            bool operator < (const HFCacheKey& rhs) const {
-                if ( _key < rhs._key ) return true;
-                if ( rhs._key < _key ) return false;
-                if ( _revision < rhs._revision ) return true;
-                if ( _revision > rhs._revision ) return false;
-                return _samplePolicy < rhs._samplePolicy;
-            }
-        };
-
-        struct HFCacheValue
-        {
-            osg::ref_ptr<osg::HeightField> _hf;
-            osg::ref_ptr<NormalMap> _normalMap;
-        };
-        typedef LRUCache<HFCacheKey, HFCacheValue> HFCache;
-        HFCache _heightFieldCache;
-        bool    _heightFieldCacheEnabled;
         osg::ref_ptr<osg::Texture> _emptyColorTexture;
         osg::ref_ptr<osg::Texture> _emptyLandCoverTexture;
         mutable Threading::Mutex _mipmapMutex;
+        ElevationPool::WorkingSet _workingSet;
     };
 }
 

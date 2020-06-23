@@ -133,19 +133,12 @@ CreateTileImplementation::createTile(
                 geoLocator.mapToUnit(it->max, max_ndc);
 
                 // true if boundary overlaps tile in X dimension:
-                bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
-                    (min_ndc.x() <= 0.0 && max_ndc.x() > 0.0) ||
-                    (min_ndc.x() < 1.0 && max_ndc.x() >= 1.0));
-
-                if (!x_match)
-                    continue;
+                bool x_match = min_ndc.x() < 1.0 && max_ndc.x() >= 0.0;
 
                 // true if boundary overlaps tile in Y dimension:
-                bool y_match = ((min_ndc.y() >= 0.0 && max_ndc.y() <= 1.0) ||
-                    (min_ndc.y() <= 0.0 && max_ndc.y() > 0.0) ||
-                    (min_ndc.y() < 1.0 && max_ndc.y() >= 1.0));
+                bool y_match = min_ndc.y() < 1.0 && max_ndc.y() >= 0.0;
 
-                if (y_match)
+                if (x_match && y_match)
                 {
                     // only care if this tile has any masks so we can stop as soon as we find one
                     hasMasks = true;

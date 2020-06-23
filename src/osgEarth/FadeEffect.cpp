@@ -165,7 +165,7 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "in float oe_FadeLOD_opacity; \n"
+        "uniform float oe_FadeLOD_opacity; \n"
         "void oe_fragFadeLOD( inout vec4 color ) \n"
         "{ \n"
         "    color.a *= oe_FadeLOD_opacity; \n"

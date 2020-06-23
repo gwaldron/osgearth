@@ -92,6 +92,8 @@ namespace osgEarth
 
         void drawTile(osg::RenderInfo&, unsigned tileNum);
 
+        void endFrame(osg::RenderInfo&);
+
         osg::BoundingBox computeBoundingBox() const;
 
         virtual void releaseGLObjects(osg::State* state) const;

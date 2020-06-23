@@ -445,7 +445,7 @@ std::string
 TileLayer::getMetadataKey(const Profile* profile) const
 {
     if (profile)
-        return Stringify() << profile->getHorizSignature() << "_metadata";
+        return Stringify() << std::hex << profile->getHorizSignature() << "_metadata";
     else
         return "_metadata";
 }

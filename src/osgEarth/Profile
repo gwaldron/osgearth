@@ -265,14 +265,14 @@ namespace osgEarth
         /**
          * Returns a signature hash code unique to this profile.
          */
-        const std::string& getFullSignature() const { return _fullSignature; }
+        const std::size_t getFullSignature() const { return _fullSignature; }
 
         /**
          * Returns a signature hash code that uniquely identifies this profile
          * without including any vertical datum information. This is useful for
          * seeing if two profiles are horizontally compatible.
          */
-        const std::string& getHorizSignature() const { return _horizSignature; }
+        const std::size_t getHorizSignature() const { return _horizSignature; }
 
         /**
          * Given another Profile and an LOD in that Profile, determine 
@@ -324,8 +324,8 @@ namespace osgEarth
         GeoExtent   _latlong_extent;
         unsigned    _numTilesWideAtLod0;
         unsigned    _numTilesHighAtLod0;
-        std::string _fullSignature;
-        std::string _horizSignature;
+        std::size_t _fullSignature;
+        std::size_t _horizSignature;
     };
 }
 

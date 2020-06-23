@@ -14,7 +14,7 @@ before_install:
 # Try coverity workaround here:  https://github.com/travis-ci/travis-ci/issues/6142
 - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
 - curl https://bintray.com/user/downloadSubjectPublicKey?username=bintray -o bintray.asc
-- apt-key add bintray.asc
+- sudo apt-key add bintray.asc
 - sudo echo "deb http://dl.bintray.com/jasonbeverage/pelicanmapping xenial main" | sudo tee -a /etc/apt/sources.list
 - sudo apt-get update -qq
 - sudo apt-get install -y python-software-properties software-properties-common

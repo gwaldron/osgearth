@@ -883,7 +883,7 @@ GDAL::Driver::geoToPixel(double geoX, double geoY, double &x, double &y)
 }
 
 bool
-GDAL::Driver::isValidValue_noLock(float v, GDALRasterBand* band)
+GDAL::Driver::isValidValue(float v, GDALRasterBand* band)
 {
     float bandNoData = -32767.0f;
     int success;
@@ -909,13 +909,6 @@ GDAL::Driver::isValidValue_noLock(float v, GDALRasterBand* band)
         return false;
 
     return true;
-}
-
-bool
-GDAL::Driver::isValidValue(float v, GDALRasterBand* band)
-{
-    GDAL_SCOPED_LOCK;
-    return isValidValue_noLock(v, band);
 }
 
 float
@@ -1306,7 +1299,7 @@ GDAL::Driver::createImage(const TileKey& key,
                             gdalSampleSize == 4 ? *(float*)ptr :
                             NO_DATA_VALUE;
 
-                        if (!isValidValue_noLock(value, bandGray))
+                        if (!isValidValue(value, bandGray))
                             value = NO_DATA_VALUE;
 
                         temp.r() = value;
@@ -1397,6 +1390,8 @@ GDAL::Driver::createImage(const TileKey& key,
 
         ImageUtils::PixelWriter write(image.get());
 
+        osg::Vec4f pixel;
+
         for (int src_row = 0, dst_row = tile_offset_top;
             src_row < target_height;
             src_row++, dst_row++)
@@ -1410,18 +1405,22 @@ GDAL::Driver::createImage(const TileKey& key,
 
                 if (isCoverage)
                 {
-                    osg::Vec4ub color;
-                    osg::Vec4f pixel;
-                    if (getPalleteIndexColor(bandPalette, p, color) &&
-                        isValidValue((float)color.r(), bandPalette)) // need this?
+                    if (_gdalOptions.coverageUsesPaletteIndex() == true)
                     {
-                        // use the palette index directly for coverage data...?
                         pixel.r() = (float)p;
-                        //pixel.r() = (float)color.r();
                     }
                     else
                     {
-                        pixel.r() = NO_DATA_VALUE;
+                        osg::Vec4ub color;
+                        if (getPalleteIndexColor(bandPalette, p, color) &&
+                            isValidValue((float)color.r(), bandPalette)) // need this?
+                        {
+                            pixel.r() = (float)color.r();
+                        }
+                        else
+                        {
+                            pixel.r() = NO_DATA_VALUE;
+                        }
                     }
 
                     write(pixel, dst_col, flippedRow);
@@ -1667,7 +1666,7 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
             {
                 unsigned inv_r = tileSize - r - 1;
                 float h = heights[r * tileSize + c];
-                if (!isValidValue_noLock(h, band))
+                if (!isValidValue(h, band))
                 {
                     h = NO_DATA_VALUE;
                 }
@@ -1705,6 +1704,8 @@ GDAL::Options::readFrom(const Config& conf)
 {
     _interpolation.init(INTERP_AVERAGE);
     _useVRT.init(false);
+    coverageUsesPaletteIndex().setDefault(true);
+
     conf.get("url", _url);
     conf.get("connection", _connection);
     conf.get("subdataset", _subDataSet);
@@ -1715,6 +1716,7 @@ GDAL::Options::readFrom(const Config& conf)
     conf.get("interpolation", "bilinear", _interpolation, osgEarth::INTERP_BILINEAR);
     conf.get("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
     conf.get("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
+    conf.get("coverage_uses_palette_index", coverageUsesPaletteIndex());
 }
 
 void
@@ -1730,6 +1732,7 @@ GDAL::Options::writeTo(Config& conf) const
     conf.set("interpolation", "bilinear", _interpolation, osgEarth::INTERP_BILINEAR);
     conf.set("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
     conf.set("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
+    conf.set("coverage_uses_palette_index", coverageUsesPaletteIndex());
 }
 
 //......................................................................

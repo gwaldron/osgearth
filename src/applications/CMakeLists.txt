@@ -30,6 +30,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
 
 ADD_SUBDIRECTORY(osgearth_viewer)
 ADD_SUBDIRECTORY(osgearth_toc)
+ADD_SUBDIRECTORY(osgearth_createtile)
 ADD_SUBDIRECTORY(osgearth_tfs)
 ADD_SUBDIRECTORY(osgearth_boundarygen)
 ADD_SUBDIRECTORY(osgearth_overlayviewer)

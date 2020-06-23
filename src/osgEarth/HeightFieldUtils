@@ -197,23 +197,6 @@ namespace osgEarth { namespace Util
             float                      verticalScale =1.0f );
 
         /**
-         * Convert a heightfield (and its neighbors) into a normal map* image.
-         */
-        static NormalMap* convertToNormalMap(
-            const HeightFieldNeighborhood& hood,
-            const SpatialReference*        hoodSRS);
-        
-        /**
-         * Reads elevation data from one image and writes a normal/curvature map
-         * for it to another image of the same size
-         */
-        static void createNormalMap(
-            const osg::Image* elevation,
-            NormalMap*        normalMap,
-            const GeoExtent&  extent);
-
-
-        /**
          * Utility function that will take sample points used for interpolation and copy valid values into any of the samples that are NO_DATA_VALUE.
          * Returns false if all values are NO_DATA_VALUE.
          * Returns true if all the values are valid or if we were able to replace NO_DATA_VALUE samples with valid values.

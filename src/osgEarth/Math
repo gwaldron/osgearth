@@ -319,5 +319,38 @@ namespace osgEarth
         x |= x >> 16;
         return x + 1;
     }
+
+    // Adapted from Boost - see boost license
+    // https://www.boost.org/users/license.html
+    template <class T> inline std::size_t hash_value_unsigned(T val) {
+        const int size_t_bits = std::numeric_limits<std::size_t>::digits;
+        const int length = (std::numeric_limits<T>::digits - 1) / size_t_bits;
+        std::size_t seed = 0;
+        for(unsigned int i = length * size_t_bits; i > 0; i -= size_t_bits)
+            seed ^= (std::size_t) (val >> i) + (seed<<6) + (seed>>2);
+        seed ^= (std::size_t) val + (seed<<6) + (seed>>2);
+        return seed;
+    }
+
+    template <class T> inline std::size_t hash_value_unsigned(T a, T b) {
+        std::size_t seed = hash_value_unsigned(a);
+        seed ^= hash_value_unsigned(b) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        return seed;
+    }
+
+    template <class T> inline std::size_t hash_value_unsigned(T a, T b, T c) {
+        std::size_t seed = hash_value_unsigned(a);
+        seed ^= hash_value_unsigned(b) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        seed ^= hash_value_unsigned(c) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        return seed;
+    }
+
+    template <class T> inline std::size_t hash_value_unsigned(T a, T b, T c, T d) {
+        std::size_t seed = hash_value_unsigned(a);
+        seed ^= hash_value_unsigned(b) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        seed ^= hash_value_unsigned(c) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        seed ^= hash_value_unsigned(d) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        return seed;
+    }
 }
 #endif

@@ -23,6 +23,7 @@
 #include <osgEarth/Units>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
+#include <osgEarth/Math>
 #include <osg/Texture2D>
 
 namespace osgEarth
@@ -54,17 +55,16 @@ namespace osgEarth
             ElevationSample(e, r) { }
     };
 
-    // CONTAINER for elevation data on the system "somewhere".
-    // could be HF, could be image, could be texture .....
-    // for now, let's say it's a heightfield.
-    // abstract that away with the API.
-    // GL_R16F value
-    // Encoded normal/scope?
-    // Look up functions?
+    /**
+     * Elevation grid as a texture with in optional associated normal map.
+     */
     class OSGEARTH_EXPORT ElevationTexture : public osg::Texture2D
     {
     public:
-        ElevationTexture(const GeoHeightField& hf, const NormalMap* normalMap);
+        ElevationTexture(
+            const TileKey& key,
+            const GeoHeightField& hf,
+            float* resolutions);
 
         virtual ~ElevationTexture();
 
@@ -78,14 +78,50 @@ namespace osgEarth
         //! Extent of the texture
         const GeoExtent& getExtent() const { return _extent; }
 
+        //! TileKey used to create this elevation grid
+        const TileKey& getTileKey() const { return _tilekey; }
+
         //! Normal map associated with the elevation data, if available.
         osg::Texture2D* getNormalMapTexture() const { return _normalTex.get(); }
 
+        //! Set the normal map associated with this data
+        void setNormalMapTexture(osg::Texture2D* value) { _normalTex = value; }
+
+        //! Direct access to the pixel reader
+        const ImageUtils::PixelReader& reader() const { return _read; }
+
+        //! Matching list of sample resolutions
+        const float* getResolutions() const { return _resolutions; }
+
+        //! Get the resolution at s,t
+        inline float getResolution(int s, int t) const {
+            return _resolutions[t*_read.s()+s];
+        }
+        inline float getResolutionUV(double u, double v) const {
+            return getResolution(
+                (int)(u*(double)(_read.s()-1)),
+                (int)(v*(double)(_read.t()-1)));
+        }
+
     private:
+        TileKey _tilekey;
         GeoExtent _extent;
         Distance _resolution;
         ImageUtils::PixelReader _read;
         osg::ref_ptr<osg::Texture2D> _normalTex;
+        float* _resolutions;
+    };
+
+    /**
+     * Utility class that makes normal map texture for the given tile key
+     */
+    class OSGEARTH_EXPORT NormalMapGenerator
+    {
+    public:
+        osg::Texture2D* createNormalMap(
+            const TileKey& key,
+            const class Map* map,
+            void* workingSet);
     };
 
     //! Revisioned key for elevation lookups (internal)
@@ -105,6 +141,9 @@ namespace osgEarth
                 return _tilekey == rhs._tilekey &&
                     _revision == rhs._revision;
             }
+            inline std::size_t hash() const {
+                return osgEarth::hash_value_unsigned(_tilekey.hash(), (std::size_t)_revision);
+            }
         };
     }
 }
@@ -114,7 +153,7 @@ namespace std {
     // std::hash specialization for Key
     template<> struct hash<osgEarth::Internal::RevElevationKey> {
         inline size_t operator()(const osgEarth::Internal::RevElevationKey& value) const {
-            return value._tilekey.hash() + value._revision;
+            return value.hash();
         }
     };
 }

@@ -93,15 +93,35 @@ namespace osgEarth
 
         //! Extract a complete tile of elevation data
         //! @param key TileKey or data to extact
-        //! @param getNormalMap Whether to include normals in the result
+        //! @param getResolutions Whether to include the resolution of each tile sample
         //! @param acceptLowerRes Return a lower resolution tile if the requested one isn't available
         //! @param out_elev Output
         //! @param ws Optional working set
         bool getTile(
             const TileKey& key,
-            bool getNormalMap,
             bool acceptLowerRes,
             osg::ref_ptr<ElevationTexture>& out_elev,
+            WorkingSet* ws);
+
+        //! For each point in an array of points, sample the elevation and store
+        //! the result in the Z coordinate. Input points must be in the map's SRS,
+        //! and the sampling resolution is taken from the W coordinate.
+        //! @param points Array of points in map coords for which to sample elevation
+        //! @param ws Optional working set (local cache)
+        //! @return Number of valid elevations sampled, or -1 if there was an error
+        int sampleMapCoords(
+            std::vector<osg::Vec4d>& points,
+            WorkingSet* ws);
+
+        //! For each point in an array of points, sample the elevation and store
+        //! the result in the Z coordinate. Input points must be in the map's SRS.
+        //! @param points Array of points in map coords for which to sample elevation
+        //! @param resolution Resolution at which to sample the points
+        //! @param ws Optional working set (local cache)
+        //! @return Number of valid elevations sampled, or -1 if there was an error
+        int sampleMapCoords(
+            std::vector<osg::Vec3d>& points,
+            const Distance& resolution,
             WorkingSet* ws);
 
         //! Invalidates all caches in the ElevationPool
@@ -160,7 +180,6 @@ namespace osgEarth
         osg::ref_ptr<ElevationTexture> getOrCreateRaster(
             const Internal::RevElevationKey& key, 
             const Map* map, 
-            bool getNormalMap, 
             bool acceptLowerRes,
             WorkingSet* ws);
 

@@ -334,10 +334,8 @@ Profile::Profile(const SpatialReference* srs,
                  unsigned int numTilesWideAtLod0,
                  unsigned int numTilesHighAtLod0) :
 
-osg::Referenced( true )
+    _extent(srs, xmin, ymin, xmax, ymax)
 {
-    _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
-
     _numTilesWideAtLod0 = numTilesWideAtLod0 != 0? numTilesWideAtLod0 : srs->isGeographic()? 2 : 1;
     _numTilesHighAtLod0 = numTilesHighAtLod0 != 0? numTilesHighAtLod0 : 1;
 
@@ -348,9 +346,9 @@ osg::Referenced( true )
 
     // make a profile sig (sans srs) and an srs sig for quick comparisons.
     ProfileOptions temp = toProfileOptions();
-    _fullSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
+    _fullSignature = std::hash<std::string>()(temp.getConfig().toJSON());
     temp.vsrsString() = "";
-    _horizSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
+    _horizSignature = std::hash<std::string>()(temp.getConfig().toJSON());
 }
 
 Profile::Profile(const SpatialReference* srs,
@@ -359,10 +357,8 @@ Profile::Profile(const SpatialReference* srs,
                  unsigned int numTilesWideAtLod0,
                  unsigned int numTilesHighAtLod0 ) :
 
-osg::Referenced( true )
+    _extent(srs, xmin, ymin, xmax, ymax)
 {
-    _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
-
     _numTilesWideAtLod0 = numTilesWideAtLod0 != 0? numTilesWideAtLod0 : srs->isGeographic()? 2 : 1;
     _numTilesHighAtLod0 = numTilesHighAtLod0 != 0? numTilesHighAtLod0 : 1;
 
@@ -370,14 +366,11 @@ osg::Referenced( true )
         srs->getGeographicSRS(),
         geo_xmin, geo_ymin, geo_xmax, geo_ymax );
 
-    //if ( !_vsrs.valid() )
-    //    _vsrs = Registry::instance()->getDefaultVSRS();
-
     // make a profile sig (sans srs) and an srs sig for quick comparisons.
     ProfileOptions temp = toProfileOptions();
-    _fullSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
+    _fullSignature = std::hash<std::string>()(temp.getConfig().toJSON());
     temp.vsrsString() = "";
-    _horizSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
+    _horizSignature = std::hash<std::string>()(temp.getConfig().toJSON());
 }
 
 Profile::ProfileType

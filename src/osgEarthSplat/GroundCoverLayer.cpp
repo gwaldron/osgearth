@@ -1181,6 +1181,8 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
         ds._pass = PASS_DRAW;
         applyLocalState(ri, ds);
         instancer->draw(ri);
+
+        instancer->endFrame(ri);
     }
 
     // pop the layer's stateset.

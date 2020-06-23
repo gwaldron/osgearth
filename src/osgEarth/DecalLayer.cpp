@@ -277,6 +277,7 @@ DecalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progres
     osg::ref_ptr<osg::HeightField> output = new osg::HeightField();
     output->allocate(getTileSize(), getTileSize());
     output->getFloatArray()->assign(output->getFloatArray()->size(), 0.0f);
+    unsigned writes = 0u;
 
     for(unsigned i=0; i<decals.size(); ++i)
     {
@@ -314,13 +315,14 @@ DecalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progres
                     {
                         float final_h = h_prev != NO_DATA_VALUE ? h+h_prev : h;
                         output->setHeight(col, row, final_h);
+                        ++writes;
                     }
                 }
             }
         }
     }
 
-    return GeoHeightField(output.get(), outputExtent);
+    return writes > 0u ? GeoHeightField(output.get(), outputExtent) : GeoHeightField::INVALID;
 }
 
 bool

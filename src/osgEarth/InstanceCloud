@@ -208,6 +208,8 @@ namespace osgEarth
         //! Run the cull/sort compute shader (only when generating or when the camera moves)
         void cull(osg::RenderInfo&);
 
+
+        void endFrame(osg::RenderInfo&);
         //! Render the entire tile batch (every frame)
         void draw(osg::RenderInfo&);
 

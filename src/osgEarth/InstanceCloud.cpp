@@ -490,6 +490,13 @@ InstanceCloud::cull(osg::RenderInfo& ri)
 }
 
 void
+InstanceCloud::endFrame(osg::RenderInfo& ri)
+{
+    // be a good citizen
+    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+    ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+}
+void
 InstanceCloud::draw(osg::RenderInfo& ri)
 {
     OE_PROFILING_GPU_ZONE("IC:Draw");

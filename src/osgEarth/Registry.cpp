@@ -192,6 +192,16 @@ Registry::~Registry()
     CPLPopErrorHandler();
 }
 
+static osg::ref_ptr<Registry> s_registry = NULL;
+
+// Destroy the registry explicitly: this is called in an atexit() hook.  See comment in
+// Registry::instance(bool reset).
+void destroyRegistry()
+{
+   s_registry->release();
+   s_registry = NULL;
+}
+
 Registry*
 Registry::instance(bool reset)
 {
@@ -199,7 +209,18 @@ Registry::instance(bool reset)
     // This is to prevent crash on exit where the gdal mutex is deleted before the registry is.
     osgEarth::getGDALMutex();
 
-    static osg::ref_ptr<Registry> s_registry = new Registry;
+    static bool s_registryInit = false;
+
+    // Create registry the first time through, explicitly rather than depending on static object
+    // initialization order, which is undefined in c++ across separate compilation units.  An
+    // explicit hook is registered to tear it down on exit.  atexit() hooks are run on exit in
+    // the reverse order of their registration during setup.
+    if (!s_registryInit)
+    {
+        s_registryInit = true;
+        s_registry = new Registry;
+        atexit(destroyRegistry);
+    }
 
     if (reset)
     {
@@ -247,9 +268,9 @@ Registry::release()
         _objectIndex = new ObjectIndex();
 }
 
-OpenThreads::ReentrantMutex& osgEarth::getGDALMutex()
+OE_LOCKABLE_BASE(OpenThreads::ReentrantMutex)& osgEarth::getGDALMutex()
 {
-    static OpenThreads::ReentrantMutex _gdal_mutex;
+    static OE_LOCKABLE(OpenThreads::ReentrantMutex, _gdal_mutex);
     return _gdal_mutex;
 }
 
@@ -680,7 +701,7 @@ Registry::startActivity(const std::string& activity)
 
 void
 Registry::startActivity(const std::string& activity,
-                        const std::string& value)
+    const std::string& value)
 {
     Threading::ScopedMutexLock lock(_activityMutex);
     _activities.erase(Activity(activity,std::string()));
@@ -793,10 +814,10 @@ namespace
     public:
         RegisterEarthTileExtension()
         {
-    #if OSG_VERSION_LESS_THAN(3,5,4)
+#if OSG_VERSION_LESS_THAN(3,5,4)
             // Method deprecated beyone 3.5.4 since all ref counting is thread-safe by default
             osg::Referenced::setThreadSafeReferenceCounting( true );
-    #endif
+#endif
             osgDB::Registry::instance()->addFileExtensionAlias("earth_tile", "earth");
         }
     };

@@ -108,6 +108,7 @@ ElevationSample
 ElevationTexture::getElevationUV(double u, double v) const
 {
     osg::Vec4 value;
+    u = osg::clampBetween(u, 0.0, 1.0), v = osg::clampBetween(v, 0.0, 1.0);
     _read(value, u, v);
     return ElevationSample(Distance(value.r(),Units::METERS), _resolution);
 }

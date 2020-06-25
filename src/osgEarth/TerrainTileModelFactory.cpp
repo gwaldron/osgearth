@@ -462,6 +462,15 @@ TerrainTileModelFactory::addElevation(
             // Keep the heightfield pointer around for legacy 3rd party usage (VRF)
             layerModel->setHeightField(elevTex->getHeightField());
 
+            float minHeight = FLT_MAX, maxHeight = FLT_MIN;
+            const osg::FloatArray* heights = elevTex->getHeightField()->getFloatArray();
+            for(int i=0; i<heights->size(); ++i) {
+                minHeight = osg::minimum(minHeight, (*heights)[i]);
+                maxHeight = osg::maximum(maxHeight, (*heights)[i]);
+            }
+            layerModel->setMinHeight(minHeight);
+            layerModel->setMaxHeight(maxHeight);
+
             model->elevationModel() = layerModel.get();
         }
     }

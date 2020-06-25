@@ -310,7 +310,10 @@ FeatureImageLayer::updateSession()
             if (fp->getTilingProfile() != NULL)
             {
                 // Use specified profile's GeoExtent
-                dataExtents().push_back(DataExtent(fp->getTilingProfile()->getExtent(), fp->getFirstLevel(), fp->getMaxLevel()));
+                unsigned maxLevel = fp->getMaxLevel();
+                if (options().maxDataLevel().isSet())
+                    maxLevel = osg::maximum(maxLevel, options().maxDataLevel().get());
+                dataExtents().push_back(DataExtent(fp->getTilingProfile()->getExtent(), fp->getFirstLevel(), maxLevel));
             }
             else if (fp->getExtent().isValid() == true)
             {

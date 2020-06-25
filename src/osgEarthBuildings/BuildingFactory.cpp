@@ -59,6 +59,7 @@ bool
 BuildingFactory::create(Feature*               feature,
                         const GeoExtent&       cropTo,
                         ElevationPool::WorkingSet* workingSet,
+                        const Distance&        clampingResolution,
                         const Style*           style,
                         BuildingVector&        output,
                         const osgDB::Options*  readOptions,
@@ -207,7 +208,7 @@ BuildingFactory::create(Feature*               feature,
 
             map->getElevationPool()->sampleMapCoords(
                 points, 
-                osgEarth::Distance(0.0, feature->getSRS()->getUnits()),
+                clampingResolution,
                 workingSet);
 
             for(auto& i : points)

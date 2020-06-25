@@ -126,7 +126,7 @@ namespace osgEarth { namespace Buildings
             BuildingVector buildings;
             while(cursor->hasMore())
             {
-                factory->create(cursor->nextFeature(), GeoExtent::INVALID, 0L, 0L, buildings, 0L);
+                factory->create(cursor->nextFeature(), GeoExtent::INVALID, 0L, Distance(0, Units::DEGREES), 0L, buildings, 0L);
             }
             OE_INFO << LC << "Created " << buildings.size() << " buildings in " << std::setprecision(3) << OE_GET_TIMER(start) << "s" << std::endl;
 

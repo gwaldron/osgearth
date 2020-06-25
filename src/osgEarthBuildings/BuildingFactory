@@ -78,6 +78,7 @@ namespace osgEarth { namespace Buildings
             Feature*                input,
             const GeoExtent&        cropTo,
             ElevationPool::WorkingSet* poolWorkingSet,
+            const Distance&         clampingResolution,
             const Style*            style,
             BuildingVector&         output,
             const osgDB::Options*   readOptions,

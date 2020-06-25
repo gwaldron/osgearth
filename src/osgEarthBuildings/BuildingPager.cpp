@@ -306,6 +306,8 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
 
             // Localized cache for clamping
             ElevationPool::WorkingSet workingSet;
+            std::pair<double,double> resPair = tileKey.getResolution(osgEarth::ELEVATION_TILE_SIZE);
+            Distance clampingResolution(resPair.second, tileKey.getProfile()->getSRS()->getUnits());
 
             //canceled = canceled || !pool.valid();
 
@@ -315,7 +317,7 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
                 numFeatures++;
                 
                 BuildingVector buildings;
-                if (!factory->create(feature, tileKey.getExtent(), &workingSet, style, buildings, readOptions.get(), progress))
+                if (!factory->create(feature, tileKey.getExtent(), &workingSet, clampingResolution, style, buildings, readOptions.get(), progress))
                 {
                     canceled = true;
                 }

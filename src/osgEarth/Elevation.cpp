@@ -19,6 +19,7 @@
 #include <osgEarth/Elevation>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarth/Progress>
 #include <osgEarth/Metrics>
 
 using namespace osgEarth;
@@ -121,7 +122,8 @@ osg::Texture2D*
 NormalMapGenerator::createNormalMap(
     const TileKey& key,
     const Map* map,
-    void* ws)
+    void* ws,
+    ProgressCallback* progress)
 {
     if (!map)
         return NULL;
@@ -158,7 +160,7 @@ NormalMapGenerator::createNormalMap(
 
     // fetch the base tile in order to get resolutions data.
     osg::ref_ptr<ElevationTexture> heights;
-    pool->getTile(key, true, heights, workingSet);
+    pool->getTile(key, true, heights, workingSet, progress);
 
     if (!heights.valid())
         return NULL;
@@ -196,7 +198,14 @@ NormalMapGenerator::createNormalMap(
 
     int sampleOK = map->getElevationPool()->sampleMapCoords(
         points,
-        workingSet);
+        workingSet,
+        progress);
+
+    if (progress && progress->isCanceled())
+    {
+        // canceled. Bail.
+        return NULL;
+    }
 
     if (sampleOK < 0)
     {

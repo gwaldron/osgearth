@@ -23,6 +23,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Containers>
+#include <osgEarth/Progress>
 
 #include <thread>
 #include <chrono>
@@ -260,7 +261,8 @@ ElevationPool::getOrCreateRaster(
     const Internal::RevElevationKey& key, 
     const Map* map,
     bool acceptLowerRes,
-    WorkingSet* ws)
+    WorkingSet* ws,
+    ProgressCallback* progress)
 {
     OE_PROFILING_ZONE;
 
@@ -298,10 +300,20 @@ ElevationPool::getOrCreateRaster(
                 keyToUse,
                 map->getProfileNoVDatum(), // convertToHAE,
                 map->getElevationInterpolation(),
-                NULL ); // TODO: progress callback
+                progress );
 
-            if (populated==true || acceptLowerRes==false)
+            if ((populated == true) || 
+                (acceptLowerRes == false) ||
+                (progress && progress->isCanceled()))
+            {
                 break;
+            }
+        }
+
+        // check for cancelation/deferral
+        if (progress && progress->isCanceled())
+        {
+            return NULL;
         }
 
         if (populated)
@@ -402,7 +414,8 @@ namespace
 int
 ElevationPool::sampleMapCoords(
     std::vector<osg::Vec4d>& points,
-    WorkingSet* ws)
+    WorkingSet* ws,
+    ProgressCallback* progress)
 {
     OE_PROFILING_ZONE;
 
@@ -492,7 +505,14 @@ ElevationPool::sampleMapCoords(
                     key,   // key to query
                     map.get(), // map to query
                     true,  // fall back on lower resolution data if necessary
-                    ws);   // user's workingset
+                    ws,    // user's workingset
+                    progress);
+
+                // bail on cancelation before using the quickcache
+                if (progress && progress->isCanceled())
+                {
+                    return -1;
+                }
 
                 quickCache[key] = raster.get();
             }
@@ -538,7 +558,8 @@ int
 ElevationPool::sampleMapCoords(
     std::vector<osg::Vec3d>& points,
     const Distance& resolution,
-    WorkingSet* ws)
+    WorkingSet* ws,
+    ProgressCallback* progress)
 {
     OE_PROFILING_ZONE;
 
@@ -621,7 +642,14 @@ ElevationPool::sampleMapCoords(
                     key,   // key to query
                     map.get(), // map to query
                     true,  // fall back on lower resolution data if necessary
-                    ws);   // user's workingset
+                    ws,    // user's workingset
+                    progress);
+
+                // bail on cancelation before using the quickcache
+                if (progress && progress->isCanceled())
+                {
+                    return -1;
+                }
 
                 quickCache[key] = raster.get();
             }
@@ -668,7 +696,8 @@ ElevationPool::getSample(
     const GeoPoint& p, 
     unsigned maxLOD, 
     const Map* map, 
-    WorkingSet* ws)
+    WorkingSet* ws,
+    ProgressCallback* progress)
 {
     // ensure the Pool is in sync with the map
     sync(map, ws);
@@ -684,7 +713,8 @@ ElevationPool::getSample(
         key,   // key to query
         map,   // map to query
         true,  // fall back on lower resolution data if necessary
-        ws);   // user's workingset
+        ws,    // user's workingset
+        progress);
 
     if (raster.valid())
     {
@@ -695,7 +725,10 @@ ElevationPool::getSample(
 }
 
 ElevationSample
-ElevationPool::getSample(const GeoPoint& p, WorkingSet* ws)
+ElevationPool::getSample(
+    const GeoPoint& p, 
+    WorkingSet* ws, 
+    ProgressCallback* progress)
 {
     if (!p.isValid())
         return ElevationSample();
@@ -708,16 +741,20 @@ ElevationPool::getSample(const GeoPoint& p, WorkingSet* ws)
     {
         GeoPoint xp(p);
         xp.transformInPlace(map->getProfile()->getSRS());
-        return getSample(xp, ~0, map.get(), ws);
+        return getSample(xp, ~0, map.get(), ws, progress);
     }
     else
     {
-        return getSample(p, ~0, map.get(), ws);
+        return getSample(p, ~0, map.get(), ws, progress);
     }
 }
 
 ElevationSample
-ElevationPool::getSample(const GeoPoint& p, const Distance& resolution, WorkingSet* ws)
+ElevationPool::getSample(
+    const GeoPoint& p, 
+    const Distance& resolution, 
+    WorkingSet* ws,
+    ProgressCallback* progress)
 {
     if (!p.isValid())
         return ElevationSample();
@@ -740,11 +777,11 @@ ElevationPool::getSample(const GeoPoint& p, const Distance& resolution, WorkingS
     {
         GeoPoint xp(p);
         xp.transformInPlace(map->getProfile()->getSRS());
-        return getSample(xp, maxLOD, map.get(), ws);
+        return getSample(xp, maxLOD, map.get(), ws, progress);
     }
     else
     {
-        return getSample(p, maxLOD, map.get(), ws);
+        return getSample(p, maxLOD, map.get(), ws, progress);
     }
 }
 
@@ -753,7 +790,8 @@ ElevationPool::getTile(
     const TileKey& tilekey,
     bool acceptLowerRes,
     osg::ref_ptr<ElevationTexture>& out_tex,
-    WorkingSet* ws)
+    WorkingSet* ws,
+    ProgressCallback* progress)
 {
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
@@ -772,7 +810,8 @@ ElevationPool::getTile(
         key, 
         _map.get(), 
         acceptLowerRes,
-        ws);
+        ws,
+        progress);
 
     return true;
 }

@@ -428,7 +428,7 @@ TerrainTileModelFactory::addElevation(
 
     const bool acceptLowerRes = false;
 
-    if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, NULL))
+    if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, NULL, progress))
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
 
@@ -443,7 +443,7 @@ TerrainTileModelFactory::addElevation(
                 key.getExtent().height() / (osgEarth::ELEVATION_TILE_SIZE-1),
                 key.getProfile()->getSRS()->getUnits());
             
-            osg::Texture2D* normalMap = gen.createNormalMap(key, map, &_workingSet);
+            osg::Texture2D* normalMap = gen.createNormalMap(key, map, &_workingSet, progress);
 
             if (normalMap)
             {

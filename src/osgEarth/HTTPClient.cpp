@@ -40,6 +40,8 @@ using namespace osgEarth::Util;
 
 namespace osgEarth
 {
+    static int s_simResponseCode = -1;
+
     struct StreamObject
     {
         StreamObject(std::ostream* stream) : _stream(stream) { }
@@ -679,7 +681,16 @@ namespace
 
             curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );
 
+            if (s_simResponseCode > 0)
+            {
+                unsigned hash = std::hash<double>()(osg::Timer::instance()->tick()) % 10;
+                if (hash == 0)
+                    response_code = s_simResponseCode;
+            }
+
             HTTPResponse response( response_code );
+
+
 
             // read the response content type:
             char* content_type_cp;
@@ -1228,7 +1239,7 @@ HTTPClient::initializeImpl()
     const char* simCode = getenv("OSGEARTH_SIMULATE_HTTP_RESPONSE_CODE");
     if ( simCode )
     {
-        _simResponseCode = osgEarth::as<long>(std::string(simCode), 404L);
+        s_simResponseCode = osgEarth::as<long>(std::string(simCode), 404L);
         OE_WARN << LC << "Simulating a network error with Response Code = " << _simResponseCode << std::endl;
     }
 
@@ -1236,7 +1247,7 @@ HTTPClient::initializeImpl()
     const char* disable = getenv("OSGEARTH_HTTP_DISABLE");
     if (disable)
     {
-        _simResponseCode = 503L; // SERVICE UNAVAILABLE
+        s_simResponseCode = 500L; // SERVER ERROR
         OE_WARN << LC << "HTTP traffic disabled" << std::endl;
     }
 
@@ -1605,6 +1616,11 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
             {
                 callback->setRetryDelay(getRetryDelay());
                 callback->cancel();
+
+                if (response.getCode() == 503)
+                {
+                    callback->message() = "Server deferral";
+                }
 
                 if ( s_HTTP_DEBUG )
                 {

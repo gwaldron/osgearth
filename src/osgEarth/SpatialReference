@@ -177,20 +177,14 @@ namespace osgEarth
             Key(const std::string& h, const std::string& v) : 
                 horiz(h), horizLower(toLower(h)), vert(v), vertLower(toLower(v))
             {
-#ifdef OSGEARTH_CXX11
                 hash = std::hash<std::string>()(horizLower+vertLower);
-#endif
             }
             std::string horiz, horizLower;
             std::string vert,  vertLower;
             std::size_t hash;
 
             bool operator == (const Key& rhs) const {
-#ifdef OSGEARTH_CXX11
-                return hash == rhs.hash;
-#else
                 return horizLower==rhs.horizLower && vertLower==rhs.vertLower;
-#endif
             }
             bool operator < (const Key& rhs) const {
                 int h = horizLower.compare(rhs.horizLower);
@@ -418,7 +412,6 @@ namespace osgEarth
 }
 
 
-#ifdef OSGEARTH_CXX11
 namespace std {
     // std::hash specialization for SpatialReference::Key
     template<> struct hash<osgEarth::SpatialReference::Key> {
@@ -427,6 +420,5 @@ namespace std {
         }
     };
 }
-#endif
 
 #endif // OSGEARTH_SPATIAL_REFERENCE_H

@@ -346,9 +346,9 @@ Profile::Profile(const SpatialReference* srs,
 
     // make a profile sig (sans srs) and an srs sig for quick comparisons.
     ProfileOptions temp = toProfileOptions();
-    _fullSignature = std::hash<std::string>()(temp.getConfig().toJSON());
+    _fullSignature =  Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
     temp.vsrsString() = "";
-    _horizSignature = std::hash<std::string>()(temp.getConfig().toJSON());
+    _horizSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
 }
 
 Profile::Profile(const SpatialReference* srs,
@@ -368,9 +368,9 @@ Profile::Profile(const SpatialReference* srs,
 
     // make a profile sig (sans srs) and an srs sig for quick comparisons.
     ProfileOptions temp = toProfileOptions();
-    _fullSignature = std::hash<std::string>()(temp.getConfig().toJSON());
+    _fullSignature =  Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
     temp.vsrsString() = "";
-    _horizSignature = std::hash<std::string>()(temp.getConfig().toJSON());
+    _horizSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
 }
 
 Profile::ProfileType

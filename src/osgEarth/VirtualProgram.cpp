@@ -317,11 +317,7 @@ ProgramRepo::linkProgram(
         const std::string& defineStr = pcp->getDefineString();
 #endif
 
-#ifdef OSGEARTH_CXX11
-        unsigned defineHash = std::hash<std::string>()(defineStr);
-#else
         unsigned defineHash = osgEarth::hashString(defineStr);
-#endif
         programCacheNameStream << "_" << defineHash;
         programCacheNameStream << ".bin";
 
@@ -2178,11 +2174,7 @@ PolyShader::getHash()
 {
     if (_hash.isSet() == false)
     {
-#ifdef OSGEARTH_CXX11
-        _hash = std::hash<std::string>()(_source);
-#else
         _hash = osgEarth::hashString(_source);
-#endif
     }
     return _hash.get();
 }

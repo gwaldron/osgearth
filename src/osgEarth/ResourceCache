@@ -92,10 +92,6 @@ namespace osgEarth { namespace Util
         typedef LRUCache<std::string, osg::ref_ptr<osg::Node> > InstanceCache;
         InstanceCache    _instanceCache;
         Threading::Mutex _instanceMutex;
-
-        typedef LRUCache<std::string, osg::ref_ptr<osg::StateSet> > ResourceLibraryCache;
-        ResourceLibraryCache  _resourceLibraryCache;
-        Threading::Mutex      _resourceLibraryMutex;
     };
 } } 
 

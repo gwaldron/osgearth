@@ -17,13 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ThreadingUtils>
-
-#include <osgDB/ReadFile>
-#include <osgEarth/Utils>
-#include <osgEarth/URI>
+#include <osgDB/Options>
+#include <osg/OperationThread>
+#include "Utils"
+#include "Metrics"
 
 #ifdef _WIN32
+  #ifndef OSGEARTH_PROFILING
+    // because Tracy already does this in its header file..
     extern "C" unsigned long __stdcall GetCurrentThreadId();
+  #endif
 #elif defined(__APPLE__) || defined(__LINUX__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__ANDROID__)
 #   include <unistd.h>
 #   include <sys/syscall.h>
@@ -34,13 +37,168 @@
 using namespace osgEarth::Threading;
 using namespace osgEarth::Util;
 
-//------------------------------------------------------------------------
+//...................................................................
+
+#ifdef OSGEARTH_PROFILING
+#define MUTEX_TYPE tracy::Lockable<std::recursive_mutex>
+#else
+#define MUTEX_TYPE std::recursive_mutex
+#endif
+
+Mutex::Mutex()
+{
+#ifdef OSGEARTH_PROFILING
+    tracy::SourceLocationData* s = new tracy::SourceLocationData();
+    s->name = nullptr;
+    s->function = "unnamed";
+    s->file = __FILE__;
+    s->line = __LINE__;
+    s->color = 0;
+    _handle = new tracy::Lockable<std::mutex>(s);
+    _data = s;
+#else
+    _handle = new std::mutex();
+    _data = NULL;
+#endif
+}
+
+Mutex::Mutex(const std::string& name, const char* file, std::uint32_t line) :
+    _name(name)
+{
+#ifdef OSGEARTH_PROFILING        
+    tracy::SourceLocationData* s = new tracy::SourceLocationData();
+    s->name = nullptr;
+    s->function = _name.c_str();
+    s->file = file;
+    s->line = line;
+    s->color = 0;
+    _handle = new tracy::Lockable<std::mutex>(s);
+    _data = s;
+#else
+    _handle = new std::mutex();
+    _data = NULL;
+#endif
+}
+
+Mutex::~Mutex()
+{
+    delete static_cast<MUTEX_TYPE*>(_handle);
+}
+
+void
+Mutex::setName(const std::string& name)
+{
+    _name = name;
+#ifdef OSGEARTH_PROFILING
+    if (_data)
+    {
+        tracy::SourceLocationData* s = static_cast<tracy::SourceLocationData*>(_data);
+        s->function = _name.c_str();
+    }
+#endif
+}
+
+void
+Mutex::lock()
+{
+    if (_name.empty()) {
+        volatile int i=0; // breakpoint for finding unnamed mutexes -GW
+    }
+    static_cast<MUTEX_TYPE*>(_handle)->lock();
+}
+
+void
+Mutex::unlock()
+{
+    static_cast<MUTEX_TYPE*>(_handle)->unlock();
+}
+
+bool
+Mutex::try_lock()
+{
+    return static_cast<MUTEX_TYPE*>(_handle)->try_lock();
+}
+
+//...................................................................
+
+#ifdef OSGEARTH_PROFILING
+#define RECURSIVE_MUTEX_TYPE tracy::Lockable<std::recursive_mutex>
+#else
+#define RECURSIVE_MUTEX_TYPE std::recursive_mutex
+#endif
+
+RecursiveMutex::RecursiveMutex() :
+    _enabled(true)
+{
+#ifdef OSGEARTH_PROFILING
+    tracy::SourceLocationData* s = new tracy::SourceLocationData();
+    s->name = nullptr;
+    s->function = "unnamed recursive";
+    s->file = __FILE__;
+    s->line = __LINE__;
+    s->color = 0;
+    _handle = new tracy::Lockable<std::recursive_mutex>(s);
+#else
+    _handle = new std::recursive_mutex();
+#endif
+}
+
+RecursiveMutex::RecursiveMutex(const std::string& name, const char* file, std::uint32_t line) :
+    _name(name),
+    _enabled(true)
+{
+#ifdef OSGEARTH_PROFILING        
+    tracy::SourceLocationData* s = new tracy::SourceLocationData();
+    s->name = nullptr;
+    s->function = _name.c_str();
+    s->file = file;
+    s->line = line;
+    s->color = 0;
+    _handle = new tracy::Lockable<std::recursive_mutex>(s);
+#else
+    _handle = new std::recursive_mutex();
+#endif
+}
+
+RecursiveMutex::~RecursiveMutex()
+{
+    if (_handle)
+        delete static_cast<RECURSIVE_MUTEX_TYPE*>(_handle);
+}
+
+void
+RecursiveMutex::disable()
+{
+    _enabled = false;
+}
+
+void
+RecursiveMutex::lock()
+{
+    if (_enabled)
+        static_cast<RECURSIVE_MUTEX_TYPE*>(_handle)->lock();
+}
+
+void
+RecursiveMutex::unlock()
+{
+    if (_enabled)
+        static_cast<RECURSIVE_MUTEX_TYPE*>(_handle)->unlock();
+}
+
+bool
+RecursiveMutex::try_lock()
+{
+    if (_enabled)
+        return static_cast<MUTEX_TYPE*>(_handle)->try_lock();
+    else
+        return true;
+}
+
+//...................................................................
 
 unsigned osgEarth::Threading::getCurrentThreadId()
-{
-  /*   OpenThreads::Thread* t = OpenThreads::Thread::CurrentThread();
-   return t ? t->getThreadId() : 0u;*/
-  
+{  
 #ifdef _WIN32
   return (unsigned)::GetCurrentThreadId();
 #elif __APPLE__
@@ -66,112 +224,144 @@ _set(false)
 {
     //nop
 }
+Event::Event(const std::string& name) :
+    _set(false),
+    _m(name)
+{
+    //nop
+}
 
 Event::~Event()
 {
-    reset();
-    for (int i = 0; i < 255; ++i) // workaround buggy broadcast
-        _cond.signal();
+    _set = false;
+    for(int i=0; i<255; ++i)  // workaround buggy broadcast
+        _cond.notify_all();
+}
+
+void
+Event::setName(const std::string& name)
+{
+    _m.setName(name);
 }
 
 bool Event::wait()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
-    return _set ? true : (_cond.wait(&_m) == 0);
+    std::unique_lock<Mutex> lock(_m);
+    if (!_set)
+        _cond.wait(lock);
+    return true;
 }
 
 bool Event::wait(unsigned timeout_ms)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
-    return _set ? true : (_cond.wait(&_m, timeout_ms) == 0);
+    std::unique_lock<Mutex> lock(_m);
+    if (!_set)
+    {
+        std::cv_status result = _cond.wait_for(lock, std::chrono::milliseconds(timeout_ms));
+        return result == std::cv_status::no_timeout ? true : false;
+    }
+    return true;
 }
 
 bool Event::waitAndReset()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
-    if (_set) {
-        _set = false;
-        return true;
-    }
-    else {
-        bool value = _cond.wait(&_m) == 0;
-        _set = false;
-        return value;
-    }
+    std::unique_lock<Mutex> lock(_m);
+    if (!_set)
+        _cond.wait(lock);
+    _set = false;
+    return true;
 }
 
 void Event::set()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    std::unique_lock<Mutex> lock(_m);
     if (!_set) {
         _set = true;
-        _cond.broadcast(); // possible deadlock before OSG r10457 on windows
+        _cond.notify_all();
     }
 }
 
 void Event::reset()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    std::unique_lock<Mutex> lock(_m);
     _set = false;
 }
 
 //...................................................................
 
-MultiEvent::MultiEvent(int num) :
-_set(num), _num(num) 
-{
-    //nop
-}
-
-MultiEvent::~MultiEvent()
-{
-    reset();
-    for (int i = 0; i < 255; ++i) // workaround buggy broadcast
-        _cond.signal();
-}
-
-bool MultiEvent::wait()
-{
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
-    while (_set > 0)
-        if (_cond.wait(&_m) != 0)
-            return false;
-    return true;
-}
-
-bool MultiEvent::waitAndReset()
-{
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
-    while (_set > 0)
-        if (_cond.wait(&_m) != 0)
-            return false;
-    _set = _num;
-    return true;
-}
-
-void MultiEvent::set()
-{
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
-    if (_set > 0)
-        --_set;
-    if (_set == 0)
-        _cond.broadcast(); // possible deadlock before OSG r10457 on windows
-    //_cond.signal();
-}
-
-void MultiEvent::reset()
-{
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
-    _set = _num;
-}
-
-//...................................................................
-
 ReadWriteMutex::ReadWriteMutex() :
-_readerCount(0)
+    _readers(0), _writers(0)
+{
+    //NOP
+}
+
+ReadWriteMutex::ReadWriteMutex(const std::string& name) :
+    _readers(0), _writers(0), _m(name)
+{
+    //NOP
+}
+
+void ReadWriteMutex::read_lock()
+{
+    std::unique_lock<Mutex> lock(_m);
+    while (_writers > 0)
+        _unlocked.wait(lock);
+    ++_readers;
+}
+
+void ReadWriteMutex::read_unlock()
+{
+    std::unique_lock<Mutex> lock(_m);
+    --_readers;
+    if (_readers == 0)
+        _unlocked.notify_all();
+}
+
+void ReadWriteMutex::write_lock()
+{
+    std::unique_lock<Mutex> lock(_m);
+    while (_writers > 0 || _readers > 0)
+        _unlocked.wait(lock);
+    ++_writers;
+}
+
+void ReadWriteMutex::write_unlock()
+{
+    std::unique_lock<Mutex> lock(_m);
+    _writers = 0;
+    _unlocked.notify_all();
+}
+
+void ReadWriteMutex::setName(const std::string& name)
+{
+    _m.setName(name);
+}
+        
+
+#if 0
+ReadWriteMutex::ReadWriteMutex() :
+    _readerCount(0),
+    _noWriterEvent("RWMutex unnamed"),
+    _noReadersEvent("RWMutex unnamed")
 {
     _noWriterEvent.set();
     _noReadersEvent.set();
+}
+
+ReadWriteMutex::ReadWriteMutex(const std::string& name) :
+    _readerCount(0),
+    _noWriterEvent(name),
+    _noReadersEvent(name)
+{
+    _noWriterEvent.set();
+    _noReadersEvent.set();
+}
+
+void
+ReadWriteMutex::setName(const std::string& name)
+{
+    _noWriterEvent.setName(name);
+    _noReadersEvent.setName(name);
 }
 
 void ReadWriteMutex::readLock()
@@ -198,7 +388,7 @@ void ReadWriteMutex::writeLock()
     {
         _noReadersEvent.wait(); // wait for no readers
 
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_lockWriterMutex);
+        std::lock_guard<Mutex> lock(_lockWriterMutex);
         _noWriterEvent.wait();  // wait for no writers
         _noWriterEvent.reset(); // signal that there is now a writer
 
@@ -216,18 +406,20 @@ void ReadWriteMutex::writeUnlock()
 
 void ReadWriteMutex::incrementReaderCount()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_readerCountMutex);
+    std::lock_guard<Mutex> lock(_readerCountMutex);
     _readerCount++;            // add a reader
     _noReadersEvent.reset();   // there's at least one reader now so clear the flag
 }
 
 void ReadWriteMutex::decrementReaderCount()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_readerCountMutex);
+    std::lock_guard<Mutex> lock(_readerCountMutex);
     _readerCount--;               // remove a reader
     if (_readerCount <= 0)      // if that was the last one, signal that writers are now allowed
         _noReadersEvent.set();
 }
+#endif
+
 
 ThreadPool::ThreadPool(unsigned int numThreads) :
     _numThreads(numThreads)

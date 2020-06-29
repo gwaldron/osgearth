@@ -117,7 +117,8 @@ bool CreateTileManifest::includesLandCover() const
 //.........................................................................
 
 TerrainTileModelFactory::TerrainTileModelFactory(const TerrainOptions& options) :
-_options         ( options )
+_options( options ),
+_mipmapMutex("TerrainTileModelFactory MIPMAP(OE)")
 {
     // Create an empty texture that we can use as a placeholder
     _emptyColorTexture = new osg::Texture2D(ImageUtils::createEmptyImage());
@@ -653,7 +654,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
 
     layer->applyTextureCompressionMode(tex);
     {
-        Threading::ScopedMutexLock lock(_mipmapMutex);
+        //Threading::ScopedMutexLock lock(_mipmapMutex);
         ImageUtils::generateMipmaps(tex);
     }
     

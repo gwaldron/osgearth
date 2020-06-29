@@ -46,7 +46,7 @@ namespace
           {        
           }
 
-          const GeoExtent& getExtent() const
+          GeoExtent getExtent() const
           {
               return _key.getExtent();
           }

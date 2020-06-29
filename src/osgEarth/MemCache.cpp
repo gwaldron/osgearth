@@ -123,7 +123,7 @@ namespace
     };
     
 
-    static Threading::Mutex s_defaultBinMutex;
+    static Threading::Mutex s_defaultBinMutex(OE_MUTEX_NAME);
 }
 
 //------------------------------------------------------------------------

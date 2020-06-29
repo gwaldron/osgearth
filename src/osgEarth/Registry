@@ -22,20 +22,18 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/Containers>
 #include <osgEarth/TraversalData>
 #include <osgEarth/ShaderGenerator>
-#include <OpenThreads/ReentrantMutex>
-#include <OpenThreads/ScopedLock>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/SpatialReference>
-#include <osg/Referenced>
-#include <osg/OperationThread>
-#include <osgEarth/Metrics>
+#include <atomic>
 #include <set>
+#include <unordered_set>
+#include <unordered_map>
 
 #define GDAL_SCOPED_LOCK \
-    OpenThreads::ScopedLock< OE_LOCKABLE_BASE( OpenThreads::ReentrantMutex) > _slock( osgEarth::getGDALMutex() )\
+    std::lock_guard<osgEarth::Threading::RecursiveMutex> \
+        _oe_gdal_lock( osgEarth::getGDALMutex() )
 
 namespace osgText {
     class Font;
@@ -54,14 +52,11 @@ namespace osgEarth
     namespace Util
     {
         class ShaderFactory;
-        class TaskServiceManager;
-        class AsyncMemoryManager;
     }
 
-    using namespace Util;
 
-
-    extern OSGEARTH_EXPORT OE_LOCKABLE_BASE(OpenThreads::ReentrantMutex)& getGDALMutex();
+    //! Global mutex used to serialize access to GDAL/OGR/PROJ functionality
+    extern OSGEARTH_EXPORT Threading::RecursiveMutex& getGDALMutex();
 
     /**
      * Application-wide global repository.
@@ -84,11 +79,9 @@ namespace osgEarth
         /** Gets the spherical-mercator builtin profile (mercator/sphere) */
         const Profile* getSphericalMercatorProfile() const;
 
-        /** Gets a spatial reference object */
+        //! Gets a spatial reference object (internal)
+        //! Please use SpatialReference::get() instead of calling this directly
         osg::ref_ptr<SpatialReference> getOrCreateSRS(const SpatialReference::Key& key);
-
-        /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
-        OE_LOCKABLE_BASE(OpenThreads::ReentrantMutex)& getGDALMutex();
 
         /** Gets a default cache object - based on environment settings - unless setDefaultCache
             was called to override it. */
@@ -156,9 +149,9 @@ namespace osgEarth
          * shader factory if you want to alter any of osgEarth's baseline shaders
          * (advanced usage).
          */
-        ShaderFactory* getShaderFactory() const;
-        void setShaderFactory( ShaderFactory* lib );
-        static ShaderFactory* shaderFactory() { return instance()->getShaderFactory(); }
+        Util::ShaderFactory* getShaderFactory() const;
+        void setShaderFactory( Util::ShaderFactory* lib );
+        static Util::ShaderFactory* shaderFactory() { return instance()->getShaderFactory(); }
 
         /**
          * The default shader generator.
@@ -189,12 +182,6 @@ namespace osgEarth
          */
         ProgramRepo& getProgramRepo();
         static ProgramRepo& programRepo() { return instance()->getProgramRepo(); }
-
-        /**
-         * Gets a reference to the global task service manager.
-         */
-        TaskServiceManager* getTaskServiceManager() {
-            return _taskServiceManager.get(); }
 
         /**
          * Generates an instance-wide global unique ID.
@@ -277,12 +264,6 @@ namespace osgEarth
         TransientUserDataStore& dataStore() { return _dataStore; }
         const TransientUserDataStore& dataStore() const { return _dataStore; }
 
-        //! Access to the general-purpose async operations queue
-        osg::OperationQueue* getAsyncOperationQueue() const { return _opQueue.get(); }
-
-        //! Access to the Async mem mgr
-        AsyncMemoryManager* getAsyncMemoryManager() const;
-
         /**
          * Gets the device pixel ratio.
          */
@@ -314,15 +295,12 @@ namespace osgEarth
         virtual ~Registry();
         Registry();
 
-        bool _gdal_registered;
-
         osg::ref_ptr<const Profile> _global_geodetic_profile;
         osg::ref_ptr<const Profile> _global_mercator_profile;
         osg::ref_ptr<const Profile> _spherical_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
         mutable Threading::Mutex _regMutex;
-        int _numGdalMutexGets;
 
         mutable osg::ref_ptr<Cache>   _defaultCache;
         mutable optional<CachePolicy> _defaultCachePolicy;
@@ -330,16 +308,14 @@ namespace osgEarth
 
         mutable bool _overrideCachePolicyInitialized;
 
-        typedef UnorderedSet<std::string> StringSet;
-        Threading::Lockable<StringSet> _blacklist;
+        typedef std::unordered_set<std::string> StringSet;
+        Threading::Mutexed<StringSet> _blacklist;
 
-        osg::ref_ptr<ShaderFactory> _shaderLib;
+        osg::ref_ptr<Util::ShaderFactory> _shaderLib;
         osg::ref_ptr<ShaderGenerator> _shaderGen;
-        osg::ref_ptr<TaskServiceManager> _taskServiceManager;
 
         // unique ID generator:
-        int                      _uidGen;
-        mutable Threading::Mutex _uidGenMutex;
+        std::atomic_int _uidGen;
 
         // system capabilities:
         osg::ref_ptr< Capabilities > _caps;
@@ -353,8 +329,8 @@ namespace osgEarth
         osg::ref_ptr<osgText::Font> _defaultFont;
 
         typedef std::vector<const Units*> UnitsVector;
-        UnitsVector                       _unitsVector;
-        mutable Threading::ReadWriteMutex _unitsVectorMutex;
+        UnitsVector _unitsVector;
+        //mutable Threading::Mutex _unitsVectorMutex;
 
         osg::ref_ptr<StateSetCache> _stateSetCache;
 
@@ -382,20 +358,12 @@ namespace osgEarth
 
         TransientUserDataStore _dataStore;
 
-        osg::ref_ptr<osg::OperationQueue> _opQueue;
-
-        typedef std::vector< osg::ref_ptr<osg::OperationThread> > ThreadPool;
-        ThreadPool _opThreadPool;
-        unsigned _threadPoolSize;
-
         float _devicePixelRatio;
 
-        typedef UnorderedMap<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
-        mutable Threading::Lockable<SRSCache> _srsCache;
+        typedef std::unordered_map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
+        mutable PerThread<SRSCache> _srsCache;
 
         unsigned _maxVertsPerDrawable;
-
-        osg::ref_ptr<AsyncMemoryManager> _asyncMemoryManager;
     };
 }
 

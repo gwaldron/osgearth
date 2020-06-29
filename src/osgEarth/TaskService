@@ -108,6 +108,7 @@ namespace osgEarth { namespace Util
 
     typedef std::multimap< float, osg::ref_ptr<TaskRequest> > TaskRequestPriorityMap;
     
+#if 0
     /**
      * Convenience template for creating a task that synchronized with an event.
      * Initialze multiple ParallelTask's with a common MultiEvent (semaphore) to
@@ -132,6 +133,7 @@ namespace osgEarth { namespace Util
         Threading::MultiEvent* _mev;
         Threading::Event*      _sev;
     };
+#endif
 
     class TaskRequestQueue : public osg::Referenced
     {

@@ -291,8 +291,6 @@ namespace osgEarth
         typedef std::map<std::string, osg::ref_ptr<CacheBinMetadata> > CacheBinMetadataMap;
         CacheBinMetadataMap _cacheBinMetadata;
 
-        mutable Threading::Mutex _mutex;
-
         // methods accesible by Map:
         friend class Map;
 

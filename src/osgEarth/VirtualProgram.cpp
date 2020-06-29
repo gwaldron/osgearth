@@ -84,7 +84,7 @@ using namespace osgEarth::ShaderComp;
 
 
 #ifdef USE_POLYSHADER_CACHE
-Threading::Mutex PolyShader::_cacheMutex;
+Threading::Mutex PolyShader::_cacheMutex("VP PolyShader Cache(OE)");
 PolyShader::PolyShaderCache PolyShader::_polyShaderCache;
 #endif
 
@@ -119,6 +119,7 @@ namespace
 #define LC "[ProgramRepo] "
 
 ProgramRepo::ProgramRepo() :
+    Threading::Mutexed<osg::Referenced>("ProgramRepo(OE)"),
     _releaseUnusedPrograms(true)
 {
     const char* value = ::getenv("OSGEARTH_PROGRAM_BINARY_CACHE_PATH");
@@ -854,9 +855,15 @@ VirtualProgram::ShaderEntry::accept(const osg::State& state) const
 bool
 VirtualProgram::ShaderEntry::operator < (const VirtualProgram::ShaderEntry& rhs) const
 {
+    int c = _shader->getShaderSource().compare(rhs._shader->getShaderSource());
+    if (c < 0) return true;
+    if (c > 0) return false;
+
     if (_shader->getShaderSource().compare(rhs._shader->getShaderSource()) < 0) return true;
-    //if ( _shader->compare(*rhs._shader.get()) < 0 ) return true;
+
     if (_overrideValue < rhs._overrideValue) return true;
+    if (_overrideValue > rhs._overrideValue) return false;
+
     if (_accept.valid() && !rhs._accept.valid()) return true;
     return false;
 }
@@ -955,7 +962,8 @@ VirtualProgram::VirtualProgram(unsigned mask) :
     _logShaders(false),
     _logPath(""),
     _acceptCallbacksVaryPerFrame(false),
-    _isAbstract(false)
+    _isAbstract(false),
+    _dataModelMutex("VirtualProgram(OE)")
 {
     // Note: we cannot set _active here. Wait until apply().
     // It will cause a conflict in the Registry.
@@ -1680,7 +1688,7 @@ VirtualProgram::apply(osg::State& state) const
         {
             // debugging            
             static int s_framenum = 0;
-            static Threading::Mutex s_mutex;
+            static Threading::Mutex s_mutex(OE_MUTEX_NAME);
             static std::map< const VirtualProgram*, std::pair<int, int> > s_counts;
 
             Threading::ScopedMutexLock lock(s_mutex);

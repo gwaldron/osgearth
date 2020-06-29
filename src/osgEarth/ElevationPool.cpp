@@ -42,7 +42,9 @@ ElevationPool::ElevationPool() :
     _index(NULL),
     _tileSize(257),
     _mapDataDirty(true),
-    _workers(0)
+    _workers(0),
+    _refreshMutex("ElevPool(OE)"),
+    _globalLUTMutex("ElevPool LUT(OE)")
 {
     // small L2 cache to use if the caller doesn't supply a working set
     _L2 = new WorkingSet(32u);
@@ -160,9 +162,9 @@ ElevationPool::refresh(const Map* map)
 
     _L2->_lru.clear();
 
-    _globalLUT.lock();
+    _globalLUTMutex.write_lock();
     _globalLUT.clear();
-    _globalLUT.unlock();
+    _globalLUTMutex.write_unlock();
 }
 
 unsigned
@@ -229,7 +231,8 @@ ElevationPool::findExistingRaster(
 
     // Next check the system LUT -- see if someone somewhere else
     // already has it (the terrain or another WorkingSet)
-    _globalLUT.lock();
+    optional<Internal::RevElevationKey> orphanedKey;
+    _globalLUTMutex.read_lock();
     OE_DEBUG << "Global LUT size = " << _globalLUT.size() << std::endl;
     auto i =_globalLUT.find(key);
     if (i != _globalLUT.end())
@@ -242,10 +245,16 @@ ElevationPool::findExistingRaster(
         else
         {
             // observer was orphaned..remove it
-            _globalLUT.erase(i);
+            orphanedKey = key;
         }
     }
-    _globalLUT.unlock();
+    _globalLUTMutex.read_unlock();
+
+    if (orphanedKey.isSet())
+    {
+        Threading::ScopedWriteLock lock(_globalLUTMutex);
+        _globalLUT.erase(orphanedKey.get());
+    }
 
     // found it, so stick it in the L2 cache
     if (output.valid())
@@ -357,9 +366,10 @@ ElevationPool::getOrCreateRaster(
     // update system weak-LUT:
     if (!fromLUT)
     {
-        _globalLUT.lock();
+        Threading::ScopedWriteLock lock(_globalLUTMutex);
+        //_globalLUT.lock();
         _globalLUT[key] = result.get();
-        _globalLUT.unlock();
+        //_globalLUT.unlock();
     }
 
     return result;
@@ -829,7 +839,7 @@ namespace osgEarth { namespace Internal
         Promise<RefElevationSample> _promise;
 
         SampleElevationOp(osg::observer_ptr<const Map> map, const GeoPoint& p, const Distance& res, ElevationPool::WorkingSet* ws) :
-            _map(map), _p(p), _res(res), _ws(ws) { }
+            _map(map), _p(p), _res(res), _ws(ws), _promise(OE_MUTEX_NAME) { }
 
         void operator()(osg::Object*)
         {

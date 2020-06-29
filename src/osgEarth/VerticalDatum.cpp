@@ -34,7 +34,7 @@ namespace
 {
     typedef std::map<std::string, osg::ref_ptr<VerticalDatum> > VDatumCache;
     VDatumCache      _vdatumCache;
-    Threading::Mutex _vdataCacheMutex;
+    Threading::Mutex _vdataCacheMutex("VDatumCache(OE)");
 } 
 
 VerticalDatum*

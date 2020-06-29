@@ -754,7 +754,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     if (culler._orphanedPassesDetected > 0u)
     {
         _renderModelUpdateRequired = true;
-        OE_INFO << LC << "Detected " << culler._orphanedPassesDetected << " orphaned rendering passes\n";
+        OE_DEBUG << LC << "Detected " << culler._orphanedPassesDetected << " orphaned rendering passes\n";
     }
 
     // we don't call this b/c we don't want _terrain

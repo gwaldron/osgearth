@@ -380,7 +380,8 @@ namespace
 FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
     _options(options),
     _featureExtentClamped(false),
-    _useTiledSource(false)
+    _useTiledSource(false),
+    _blacklistMutex("FMG BlackList(OE)")
 {
     //NOP
 }

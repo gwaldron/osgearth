@@ -28,6 +28,9 @@
 
 using namespace osgEarth;
 
+#undef GDAL_SCOPED_LOCK
+#define GDAL_SCOPED_LOCK
+
 //------------------------------------------------------------------------
 
 namespace
@@ -293,17 +296,6 @@ SpatialReference::create(const Key& key)
 }
 
 SpatialReference*
-SpatialReference::create( osg::CoordinateSystemNode* csn )
-{
-    SpatialReference* result = NULL;
-    if ( csn && !csn->getCoordinateSystem().empty() )
-    {
-        result = create( csn->getCoordinateSystem() );
-    }
-    return result;
-}
-
-SpatialReference*
 SpatialReference::createFromHandle(void* ogrHandle)
 {
     if (!ogrHandle)
@@ -390,7 +382,8 @@ _is_contiguous  ( false ),
 _is_user_defined( false ),
 _is_ltp         ( false ),
 _is_spherical_mercator( false ),
-_ellipsoidId(0u)
+_ellipsoidId(0u),
+_mutex("SpatialReference(OE)")
 {
     // nop
 }
@@ -409,7 +402,8 @@ _is_north_polar  ( false ),
 _is_south_polar  ( false ),
 _is_cube         ( false ),
 _is_contiguous   ( false ),
-_is_user_defined ( false )
+_is_user_defined ( false ),
+_mutex("SpatialReference(OE)")
 {
     //nop
 }
@@ -651,7 +645,7 @@ SpatialReference::getGeographicSRS() const
 
     if ( !_geo_srs.valid() )
     {
-        GDAL_SCOPED_LOCK;
+        Threading::ScopedMutexLock lock(_mutex);
 
         if ( !_geo_srs.valid() ) // double-check pattern
         {
@@ -688,7 +682,7 @@ SpatialReference::getGeodeticSRS() const
     {
         const SpatialReference* geo = getGeographicSRS();
 
-        GDAL_SCOPED_LOCK;
+        Threading::ScopedMutexLock lock(_mutex);
 
         if ( !_geodetic_srs.valid() ) // double check pattern
         {
@@ -724,7 +718,7 @@ SpatialReference::getGeocentricSRS() const
     {
         const SpatialReference* geo = getGeographicSRS(); // before the lock please.
 
-        GDAL_SCOPED_LOCK;
+        Threading::ScopedMutexLock lock(_mutex);
 
         if ( !_geocentric_srs.valid() ) // double-check pattern
         {
@@ -1409,14 +1403,17 @@ bool SpatialReference::transformExtentPoints(const SpatialReference* to_srs,
 void
 SpatialReference::init()
 {
-    GDAL_SCOPED_LOCK;
-
     // always double-check the _initialized flag after obtaining the lock.
     if ( !_initialized )
     {
-        // calls the internal version, which can be overriden by the developer.
-        // therefore do not call init() from the constructor!
-        _init();
+        Threading::ScopedMutexLock lock(_mutex);
+
+        if (!_initialized)
+        {
+            // calls the internal version, which can be overriden by the developer.
+            // therefore do not call init() from the constructor!
+            _init();
+        }
     }
 }
 

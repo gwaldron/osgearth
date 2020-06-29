@@ -27,7 +27,7 @@ ColorFilterRegistry::instance()
     // OK to be in the local scope since this gets called at static init time
     // by the OSGEARTH_REGISTER_COLORFILTER macro
     static ColorFilterRegistry* s_singleton =0L;
-    static Threading::Mutex     s_singletonMutex;
+    static Threading::Mutex     s_singletonMutex(OE_MUTEX_NAME);
 
     if ( !s_singleton )
     {

@@ -70,7 +70,7 @@ ScriptEngineOptions::getConfig() const
 #define SCRIPT_ENGINE_OPTIONS_TAG "__osgEarth::ScriptEngineOptions"
 
 ScriptEngineFactory* ScriptEngineFactory::s_singleton = 0L;
-osgEarth::Threading::Mutex ScriptEngineFactory::s_singletonMutex;
+osgEarth::Threading::Mutex ScriptEngineFactory::s_singletonMutex(OE_MUTEX_NAME);
 
 ScriptEngineFactory*
 ScriptEngineFactory::instance()

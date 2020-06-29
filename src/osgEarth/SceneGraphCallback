@@ -24,8 +24,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
-#include <OpenThreads/ReentrantMutex>
-#include <osg/Node>
 #include <osg/PagedLOD>
 #include <osg/observer_ptr>
 
@@ -81,7 +79,7 @@ namespace osgEarth
 
     private:
         SceneGraphCallbackVector _callbacks;
-        OpenThreads::ReentrantMutex _mutex;
+        Threading::RecursiveMutex _mutex;
         osg::observer_ptr<osg::Object> _sender;
     };
 

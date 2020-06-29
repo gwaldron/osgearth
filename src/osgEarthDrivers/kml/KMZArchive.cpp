@@ -36,7 +36,7 @@ namespace
     {
         // get a handle on the file cache. This is a temporary setup just to get things
         // working.
-        static Threading::Mutex s_fcMutex;
+        static Threading::Mutex s_fcMutex(OE_MUTEX_NAME);
 
         static URIContext s_cache;
         if ( s_cache.empty() )

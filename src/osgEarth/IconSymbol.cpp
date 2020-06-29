@@ -98,7 +98,7 @@ IconSymbol::mergeConfig( const Config& conf )
 
 namespace
 {
-    static Threading::Mutex s_getImageMutex;
+    static Threading::Mutex s_getImageMutex(OE_MUTEX_NAME);
 }
 
 osg::Image*

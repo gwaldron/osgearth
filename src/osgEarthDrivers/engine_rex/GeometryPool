@@ -218,7 +218,7 @@ namespace osgEarth { namespace REX
     protected:
         virtual ~GeometryPool() { }
 
-        mutable OE_LOCKABLE(Threading::Mutex, _geometryMapMutex);
+        mutable Threading::Mutex _geometryMapMutex;
         GeometryMap                    _geometryMap;
         const TerrainOptions&          _options;
         osg::ref_ptr<ResourceReleaser> _releaser;

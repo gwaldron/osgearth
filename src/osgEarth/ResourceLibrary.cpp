@@ -34,7 +34,8 @@ using namespace OpenThreads;
 //------------------------------------------------------------------------
 
 ResourceLibrary::ResourceLibrary(const Config& conf) :
-_initialized( false )
+_initialized( false ),
+_mutex(OE_MUTEX_NAME)
 {
     mergeConfig( conf );
 }
@@ -43,7 +44,8 @@ ResourceLibrary::ResourceLibrary(const std::string&    name,
                                  const URI&            uri) :
 _name       ( name ),
 _uri        ( uri, uri ),
-_initialized( false )
+_initialized( false ),
+_mutex(OE_MUTEX_NAME)
 {
     //nop
 }
@@ -144,7 +146,7 @@ ResourceLibrary::removeResource( Resource* resource )
 
 namespace
 {
-    static Threading::Mutex s_initMutex;
+    static Threading::Mutex s_initMutex(OE_MUTEX_NAME);
 }
 
 bool

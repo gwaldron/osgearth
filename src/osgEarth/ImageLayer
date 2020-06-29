@@ -23,9 +23,9 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/ColorFilter>
-#include <osgEarth/TileSource>
 #include <osgEarth/TileLayer>
 #include <osgEarth/URI>
+#include <osgEarth/ThreadingUtils>
 
 namespace osgEarth
 {
@@ -241,7 +241,7 @@ namespace osgEarth
         void invoke_onCreate(const TileKey&, GeoImage&);
 
         typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
-        Threading::Lockable<Callbacks> _callbacks;
+        Threading::Mutexed<Callbacks> _callbacks;
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

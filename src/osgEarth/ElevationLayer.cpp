@@ -390,7 +390,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
     // Try the L2 memory cache first:
     if ( _memCache.valid() )
     {
-        sprintf(memCacheKey, "%d/%s/%" PRIu64 , 
+        sprintf(memCacheKey, "%d/%s/%s", 
             getRevision(), 
             key.str().c_str(), 
             key.getProfile()->getHorizSignature());
@@ -838,7 +838,7 @@ ElevationLayerVector::populateHeightField(
                 if (resolutions)
                 {
                     std::pair<double,double> res = contenders[0].key.getResolution(hf->getNumColumns());
-                    for(int i=0; i<hf->getNumColumns()*hf->getNumRows(); ++i)
+                    for(unsigned i=0; i<hf->getNumColumns()*hf->getNumRows(); ++i)
                         resolutions[i] = res.second;
                 }
             }

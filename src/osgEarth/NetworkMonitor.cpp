@@ -27,7 +27,7 @@ using namespace osgEarth;
 namespace
 {
     static NetworkMonitor::Requests s_requests;
-    osgEarth::Threading::ReadWriteMutex s_requestsMutex;
+    osgEarth::Threading::ReadWriteMutex s_requestsMutex("NetworkMonitor(OE)");
     static unsigned long s_requestId = 0;
     static bool s_enabled = false;
     static std::map<unsigned int, std::string> s_requestLayer;

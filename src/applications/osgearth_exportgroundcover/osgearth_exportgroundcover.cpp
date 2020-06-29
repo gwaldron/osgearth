@@ -61,7 +61,7 @@ struct App
     GroundCoverFeatureGenerator featureGen;
     osg::ref_ptr<OGRFeatureSource> outfs;
 
-    Threading::Lockable<std::queue<FeatureList*> > outputQueue;
+    Threading::Mutexed<std::queue<FeatureList*> > outputQueue;
     Threading::Event gate;
 
     App() { }

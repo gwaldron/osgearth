@@ -21,9 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
-//#include <osgEarth/Horizon>
 #include <osgEarth/Containers>
-//#include <osg/Version>
 #include <osg/NodeVisitor>
 #include <osg/observer_ptr>
 #include <map>
@@ -47,6 +45,8 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT TransientUserDataStore
     {
     public:
+        TransientUserDataStore();
+
         void store(osg::Referenced* owner, const std::string& key, osg::Referenced* data);
 
         osg::Referenced* fetch(osg::Referenced* owner, const std::string& key) const;

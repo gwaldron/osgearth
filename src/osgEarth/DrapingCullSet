@@ -76,7 +76,7 @@ namespace osgEarth { namespace Util
     class OSGEARTH_INTERNAL DrapingManager
     {
     public:
-        DrapingManager() : _renderBinNum(1) { }
+        DrapingManager();
 
         //! Gets the draping cull set associated with a camera.
         DrapingCullSet& get(const osg::Camera*);

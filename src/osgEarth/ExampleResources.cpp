@@ -527,9 +527,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
         readout->setBackColor( Color(Color::Black, 0.8) );
         readout->setHorizAlign( Control::ALIGN_RIGHT );
         readout->setVertAlign( Control::ALIGN_BOTTOM );
-
+    
+        Formatter* formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE);    
         MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
-        mcTool->addCallback( new MouseCoordsLabelCallback(readout) );
+        mcTool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
         view->addEventHandler( mcTool );
 
         canvas->addControl( readout );

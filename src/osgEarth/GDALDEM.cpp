@@ -324,7 +324,7 @@ GeoImage
 GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
 #ifdef HAS_GDALDEM
-    GDAL_SCOPED_LOCK;
+    //GDAL_SCOPED_LOCK;
 
     ElevationLayer* layer = getElevationLayer();
     GeoHeightField heightField = layer->createHeightField(key, progress);

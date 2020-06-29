@@ -141,7 +141,7 @@ namespace osgEarth
         void invoke_onCreate(const TileKey&, GeoHeightField&);
 
         typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
-        Threading::Lockable<Callbacks> _callbacks;
+        Threading::Mutexed<Callbacks> _callbacks;
     };
 
 

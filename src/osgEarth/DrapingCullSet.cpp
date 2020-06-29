@@ -28,6 +28,13 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 
+DrapingManager::DrapingManager() :
+    _sets(OE_MUTEX_NAME),
+    _renderBinNum(1)
+{
+    //nop
+}
+
 DrapingCullSet&
 DrapingManager::get(const osg::Camera* cam)
 {

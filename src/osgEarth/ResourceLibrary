@@ -27,7 +27,7 @@
 #include <osgEarth/ModelSymbol>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Random>
-#include <map>
+#include <unordered_map>
 
 namespace osgEarth { namespace Util
 {
@@ -130,7 +130,7 @@ namespace osgEarth { namespace Util
         const optional<URI>& uri() const { return _uri; }
 
     protected:
-        template<typename T> struct ResourceMap : public std::map<std::string, osg::ref_ptr<T> > { };
+        template<typename T> struct ResourceMap : public std::unordered_map<std::string, osg::ref_ptr<T> > { };
 
         optional<URI>                      _uri;
         std::string                        _name;
@@ -144,7 +144,7 @@ namespace osgEarth { namespace Util
     };
 
 
-    typedef std::map< std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraryMap;
+    typedef std::unordered_map< std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraryMap;
 } }
 
 #endif // OSGEARTHSYMBOLOGY_RESOURCE_LIBRARY_H

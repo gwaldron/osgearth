@@ -20,7 +20,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/Random>
+#include <osgEarth/Metrics>
 
 #include <osg/GLU>
 #include <osgDB/Registry>
@@ -475,6 +475,12 @@ ImageUtils::generateMipmaps(osg::Image* input)
         return false;
     }
 
+    static Threading::Gate<osg::Image*> s_imageGate("Mipmip Gate");
+
+    // Allow only one equal pointer at a time past this point
+    // so we don't try to mipmap the same image in parallel
+    Threading::ScopedGate<osg::Image*> gate(s_imageGate, input);
+
 #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
     // NVTT doest not like 1- or 2-channel images; can crash
     if (osg::Image::computeNumComponents(input->getPixelFormat()) >= 3)
@@ -554,6 +560,7 @@ ImageUtils::generateMipmaps(osg::Image* input)
     }
 
     input->dirty();
+
     return true;
 }
 
@@ -861,7 +868,7 @@ ImageUtils::createSharpenedImage( const osg::Image* input )
 
 namespace
 {
-    static Threading::Mutex         s_emptyImageMutex;
+    static Threading::Mutex         s_emptyImageMutex(OE_MUTEX_NAME);
     static osg::ref_ptr<osg::Image> s_emptyImage;
 }
 
@@ -1219,6 +1226,8 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
 bool
 ImageUtils::generateMipmaps(osg::Texture* tex)
 {
+    OE_PROFILING_ZONE;
+
     // Verify that this texture requests mipmaps:
     osg::Texture::FilterMode minFilter = tex->getFilter(tex->MIN_FILTER);
 

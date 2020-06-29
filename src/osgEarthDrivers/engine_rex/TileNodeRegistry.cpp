@@ -38,7 +38,8 @@ TileNodeRegistry::TileNodeRegistry(const std::string& name) :
 _name              ( name ),
 _revisioningEnabled( false ),
 _notifyNeighbors   ( false ),
-_firstLOD          ( 0u )
+_firstLOD          ( 0u ),
+_mutex("TileNodeRegistry(OE)")
 {
     _tracker.push_front(SENTRY_VALUE);
     _sentryptr = _tracker.begin();

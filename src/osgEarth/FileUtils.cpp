@@ -178,7 +178,7 @@ std::string
 osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &relativePath)
 {
     // A cache, since this method uses osgDB::getRealPath which can be quite slow.
-    static Threading::Mutex s_cacheMutex;
+    static Threading::Mutex s_cacheMutex(OE_MUTEX_NAME);
     typedef std::map<std::string, std::string> PathCache;
     static PathCache s_cache;
     //static float tries = 0, hits = 0;

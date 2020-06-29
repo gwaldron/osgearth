@@ -23,7 +23,6 @@
 #include <osgEarth/TaskService>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ObjectIndex>
-#include <osgEarth/Async>
 
 #include <osgText/Font>
 
@@ -57,18 +56,19 @@ namespace
 }
 
 Registry::Registry() :
-osg::Referenced     ( true ),
-_gdal_registered    ( false ),
-_numGdalMutexGets   ( 0 ),
 _uidGen             ( 0 ),
 _caps               ( 0L ),
 _defaultFont        ( 0L ),
 _terrainEngineDriver( "rex" ),
 _cacheDriver        ( "filesystem" ),
 _overrideCachePolicyInitialized( false ),
-_threadPoolSize(2u),
 _devicePixelRatio(1.0f),
-_maxVertsPerDrawable(USHRT_MAX)
+_maxVertsPerDrawable(USHRT_MAX),
+_regMutex("Registry(OE)"),
+_activityMutex("Reg.Activity(OE)"),
+_capsMutex("Reg.Caps(OE)"),
+_srsCache("Reg.SRSCache(OE)"),
+_blacklist("Reg.BlackList(OE)")
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -93,9 +93,6 @@ _maxVertsPerDrawable(USHRT_MAX)
 
     // shader generator used internally by osgEarth. Can be replaced.
     _shaderGen = new ShaderGenerator();
-
-    // thread pool for general use
-    _taskServiceManager = new TaskServiceManager();
 
     // optimizes sharing of state attributes and state sets for
     // performance boost
@@ -173,6 +170,12 @@ _maxVertsPerDrawable(USHRT_MAX)
             _maxVertsPerDrawable = 65536;
     }
 
+    // use the GDAL global mutex?
+    if (getenv("OSGEARTH_DISABLE_GDAL_MUTEX"))
+    {
+        getGDALMutex().disable();
+    }
+
     // register the system stock Units.
     Units::registerAll( this );
 }
@@ -180,9 +183,6 @@ _maxVertsPerDrawable(USHRT_MAX)
 Registry::~Registry()
 {
     OE_DEBUG << LC << "Registry shutting down...\n";
-    _srsCache.lock();
-    _srsCache.clear();
-    _srsCache.unlock();
     _global_geodetic_profile = 0L;
     _spherical_mercator_profile = 0L;
     _cube_profile = 0L;
@@ -259,18 +259,16 @@ Registry::release()
     }
 
     // SpatialReference cache
-    _srsCache.lock();
     _srsCache.clear();
-    _srsCache.unlock();
 
     // Shared object index
     if (_objectIndex.valid())
         _objectIndex = new ObjectIndex();
 }
 
-OE_LOCKABLE_BASE(OpenThreads::ReentrantMutex)& osgEarth::getGDALMutex()
+Threading::RecursiveMutex& osgEarth::getGDALMutex()
 {
-    static OE_LOCKABLE(OpenThreads::ReentrantMutex, _gdal_mutex);
+    static osgEarth::Threading::RecursiveMutex _gdal_mutex("GDAL Mutex");
     return _gdal_mutex;
 }
 
@@ -340,17 +338,13 @@ Registry::getNamedProfile( const std::string& name ) const
 osg::ref_ptr<SpatialReference>
 Registry::getOrCreateSRS(const SpatialReference::Key& key)
 {
-    _srsCache.lock();
-
-    osg::ref_ptr<SpatialReference>& srs = _srsCache[key];
+    SRSCache& local = _srsCache.get();
+    osg::ref_ptr<SpatialReference>& srs = local[key];
     if (!srs.valid())
     {
         srs = SpatialReference::create(key);
     }
     osg::ref_ptr<SpatialReference> result = srs.get();
-
-    _srsCache.unlock();
-
     return result;
 }
 
@@ -611,9 +605,7 @@ Registry::getDefaultFont()
 UID
 Registry::createUID()
 {
-    //todo: use OpenThreads::Atomic for this
-    ScopedLock<Mutex> exclusive( _uidGenMutex );
-    return (UID)( _uidGen++ );
+    return _uidGen++;
 }
 
 const osgDB::Options*
@@ -635,15 +627,14 @@ Registry::cloneOrCreateOptions(const osgDB::Options* input)
 void
 Registry::registerUnits( const Units* units )
 {
-    Threading::ScopedWriteLock exclusive( _unitsVectorMutex );
+    Threading::ScopedMutexLock lock(_regMutex);
     _unitsVector.push_back(units);
 }
 
 const Units*
 Registry::getUnits(const std::string& name) const
 {
-    Threading::ScopedReadLock shared( _unitsVectorMutex );
-
+    Threading::ScopedMutexLock lock(_regMutex);
     std::string lower = toLower(name);
     for( UnitsVector::const_iterator i = _unitsVector.begin(); i != _unitsVector.end(); ++i )
     {
@@ -798,12 +789,6 @@ unsigned
 Registry::getMaxNumberOfVertsPerDrawable() const
 {
     return _maxVertsPerDrawable;
-}
-
-AsyncMemoryManager*
-Registry::getAsyncMemoryManager() const
-{
-    return _asyncMemoryManager.get();
 }
 
 namespace

@@ -190,7 +190,7 @@ Control::getGeomStateSet()
     osg::ref_ptr<osg::StateSet> stateSet;
     if (s_geomStateSet.lock(stateSet) == false)
     {
-        static Threading::Mutex m;
+        static Threading::Mutex m(OE_MUTEX_NAME);
         Threading::ScopedMutexLock lock(m);
         if (s_geomStateSet.lock(stateSet) == false)
         {
@@ -1052,7 +1052,7 @@ ImageControl::getImageStateSet()
     osg::ref_ptr<osg::StateSet> stateSet;
     if (s_imageStateSet.lock(stateSet) == false)
     {
-        static Threading::Mutex m;
+        static Threading::Mutex m(OE_MUTEX_NAME);
         Threading::ScopedMutexLock lock(m);
         if (s_imageStateSet.lock(stateSet) == false)
         {

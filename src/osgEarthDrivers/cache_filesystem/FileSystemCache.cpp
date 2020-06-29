@@ -209,7 +209,7 @@ namespace
         if (getStatus().isError())
             return NULL;
 
-        static Threading::Mutex s_defaultBinMutex;
+        static Threading::Mutex s_defaultBinMutex(OE_MUTEX_NAME);
         if ( !_defaultBin.valid() )
         {
             Threading::ScopedMutexLock lock( s_defaultBinMutex );

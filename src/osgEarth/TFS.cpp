@@ -48,7 +48,7 @@
 using namespace osgEarth;
 using namespace osgEarth::TFS;
 
-#define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
+//#define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
 //........................................................................
 
@@ -346,7 +346,7 @@ TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
     else
     {
         // find the right driver for the given mime type
-        OGR_SCOPED_LOCK;
+        //OGR_SCOPED_LOCK;
 
         // find the right driver for the given mime type
         OGRSFDriverH ogrDriver =

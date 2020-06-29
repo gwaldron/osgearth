@@ -48,7 +48,8 @@ namespace
         LoadNodeOperation(const URI& uri, const osgDB::Options* options, Promise<osg::Node> promise) :
             _uri(uri),
             _promise(promise),
-            _options(options)
+            _options(options),
+            _block("URI LoadNodeOp(OE)")
         {
             // Get the currently active request layer and reuse it when the operator actually occurs, which will probably be on a different thread.
             _requestLayer = NetworkMonitor::getRequestLayer();

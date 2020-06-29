@@ -113,14 +113,14 @@ namespace osgEarth { namespace REX
             osg::ref_ptr<osg::Referenced> _internalHandle;
             unsigned                      _lastFrameSubmitted;
             double                        _lastTick;
-            mutable OE_LOCKABLE(Threading::Mutex, _lock);
+            Threading::Mutex              _mutex;
             int                           _loadCount;
             double                        _delay_s;
             int                           _delayCount;
             char                          _filename[64];
 
-            void lock() { _lock.lock(); }
-            void unlock() { _lock.unlock(); }
+            void lock() { _mutex.lock(); }
+            void unlock() { _mutex.unlock(); }
         };
 
         class Handler : public osg::Referenced
@@ -211,7 +211,7 @@ namespace osgEarth { namespace REX
     protected:
 
         typedef UnorderedMap<UID, osg::ref_ptr<Loader::Request> > UnsafeRequestMap;
-        typedef Threading::Lockable<UnsafeRequestMap> Requests;
+        typedef Threading::Mutexed<UnsafeRequestMap> Requests;
 
         typedef osg::ref_ptr<Loader::Request> RefRequest;
 

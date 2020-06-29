@@ -129,7 +129,7 @@ SilverLiningNode::onSetDateTime()
 void
 SilverLiningNode::traverse(osg::NodeVisitor& nv)
 {
-    static Threading::Mutex s_mutex;
+    static Threading::Mutex s_mutex(OE_MUTEX_NAME);
 
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {

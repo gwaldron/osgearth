@@ -42,7 +42,7 @@ namespace osgEarth
     public:
         typedef osg::observer_ptr<ElevationTexture> WeakPointer;
         typedef osg::ref_ptr<ElevationTexture> Pointer;
-        typedef Lockable<std::unordered_map<Internal::RevElevationKey, WeakPointer> > WeakLUT;
+        typedef std::unordered_map<Internal::RevElevationKey, WeakPointer> WeakLUT;
 
         //! User data that a client can use to speed up queries in
         //! a local geographic area or sample a custom set of layers.
@@ -149,6 +149,7 @@ namespace osgEarth
         // stores weak pointers to elevation textures wherever they may exist
         // elsewhere in the system
         WeakLUT _globalLUT;
+        Threading::ReadWriteMutex _globalLUTMutex;
 
         // internal: spatial index of data extents
         void* _index;

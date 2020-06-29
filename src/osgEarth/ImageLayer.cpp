@@ -382,7 +382,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     // Check the layer L2 cache first
     if ( _memCache.valid() )
     {
-        sprintf(memCacheKey, "%d/%s/%" PRIu64 , 
+        sprintf(memCacheKey, "%d/%s/%s", 
             getRevision(), 
             key.str().c_str(), 
             key.getProfile()->getHorizSignature());

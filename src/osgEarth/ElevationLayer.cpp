@@ -390,7 +390,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
     // Try the L2 memory cache first:
     if ( _memCache.valid() )
     {
-        sprintf(memCacheKey, "%d/%s/%" PRIu64 , 
+        sprintf(memCacheKey, "%d/%s/%s", 
             getRevision(), 
             key.str().c_str(), 
             key.getProfile()->getHorizSignature());

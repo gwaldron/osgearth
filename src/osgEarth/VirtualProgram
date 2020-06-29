@@ -499,6 +499,8 @@ namespace osgEarth
             osg::ref_ptr<PolyShader>                 _shader;
             osg::StateAttribute::OverrideValue       _overrideValue;
             osg::ref_ptr<ShaderComp::AcceptCallback> _accept; // @deprecated
+
+            // not used when using a vector_map, but keep around anyway
             bool operator < (const ShaderEntry& rhs) const;
         };
 

@@ -857,9 +857,15 @@ VirtualProgram::ShaderEntry::accept(const osg::State& state) const
 bool
 VirtualProgram::ShaderEntry::operator < (const VirtualProgram::ShaderEntry& rhs) const
 {
+    int c = _shader->getShaderSource().compare(rhs._shader->getShaderSource());
+    if (c < 0) return true;
+    if (c > 0) return false;
+
     if (_shader->getShaderSource().compare(rhs._shader->getShaderSource()) < 0) return true;
-    //if ( _shader->compare(*rhs._shader.get()) < 0 ) return true;
+
     if (_overrideValue < rhs._overrideValue) return true;
+    if (_overrideValue > rhs._overrideValue) return false;
+
     if (_accept.valid() && !rhs._accept.valid()) return true;
     return false;
 }

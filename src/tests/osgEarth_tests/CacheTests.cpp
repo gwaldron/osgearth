@@ -23,14 +23,14 @@
 #include <osgEarth/catch.hpp>
 #include <osgEarth/GeoData>
 #include <osgEarth/Registry>
-#include <osgEarth/Cache>
+#include <osgEarth/MemCache>
 
 using namespace osgEarth;
 
 TEST_CASE( "Cache" ) {
 
     // Get the cache
-    osg::ref_ptr<Cache> cache = Registry::instance()->getDefaultCache();
+    osg::ref_ptr<Cache> cache = new MemCache(); //Registry::instance()->getDefaultCache();
     REQUIRE(cache.valid());
 
     // open a bin:

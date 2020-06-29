@@ -393,7 +393,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
         sprintf(memCacheKey, "%d/%s/%s", 
             getRevision(), 
             key.str().c_str(), 
-            key.getProfile()->getHorizSignature());
+            key.getProfile()->getHorizSignature().c_str());
 
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
         ReadResult cacheResult = bin->readObject(memCacheKey, 0L);

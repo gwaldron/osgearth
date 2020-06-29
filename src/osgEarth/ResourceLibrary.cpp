@@ -19,7 +19,7 @@
 #include <osgEarth/ResourceLibrary>
 #include <osgEarth/ModelResource>
 #include <osgEarth/IconResource>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Random>
 #include <iterator>

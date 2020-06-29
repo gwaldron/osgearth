@@ -23,7 +23,7 @@
 #include <osgDB/ObjectWrapper>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <fstream>
 
 #define LC "[KMZArchive] "

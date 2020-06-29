@@ -23,7 +23,7 @@
 #define OSGEARTH_CONTAINERS_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/ref_ptr>
 #include <osg/observer_ptr>
 #include <osg/State>

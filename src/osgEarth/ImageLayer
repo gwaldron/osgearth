@@ -25,7 +25,7 @@
 #include <osgEarth/ColorFilter>
 #include <osgEarth/TileLayer>
 #include <osgEarth/URI>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 
 namespace osgEarth
 {

@@ -21,7 +21,7 @@
 */
 
 #include <osgEarth/catch.hpp>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <thread>
 
 using namespace osgEarth;

@@ -19,7 +19,7 @@
 #include "FileSystemCache"
 #include <osgEarth/Cache>
 #include <osgEarth/StringUtils>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/URI>
 #include <osgEarth/FileUtils>

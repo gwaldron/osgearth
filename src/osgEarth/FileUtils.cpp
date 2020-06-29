@@ -19,7 +19,7 @@
 
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ConvertUTF>

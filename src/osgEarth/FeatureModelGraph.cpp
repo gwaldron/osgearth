@@ -30,7 +30,7 @@
 #include <osgEarth/FadeEffect>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/Utils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Metrics>

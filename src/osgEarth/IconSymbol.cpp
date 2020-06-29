@@ -19,7 +19,7 @@
 #include <osgEarth/IconSymbol>
 #include <osgEarth/IconResource>
 #include <osgEarth/Style>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
 #include <osgDB/Options>

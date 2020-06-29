@@ -24,7 +24,7 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/TraversalData>
 #include <osgEarth/ShaderGenerator>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/SpatialReference>
 #include <atomic>
 #include <set>

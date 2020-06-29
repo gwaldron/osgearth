@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/VerticalDatum>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/GeoData>
 
 #include <osgDB/ReadFile>

@@ -385,7 +385,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
         sprintf(memCacheKey, "%d/%s/%s", 
             getRevision(), 
             key.str().c_str(), 
-            key.getProfile()->getHorizSignature());
+            key.getProfile()->getHorizSignature().c_str());
 
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
         ReadResult result = bin->readObject(memCacheKey, 0L);

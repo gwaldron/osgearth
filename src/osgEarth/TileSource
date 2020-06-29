@@ -31,7 +31,7 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/MemCache>
 #include <osgEarth/Status>
 #include <osgEarth/Containers>

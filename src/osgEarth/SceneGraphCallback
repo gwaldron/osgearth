@@ -23,7 +23,7 @@
 #define OSGEARTH_SCENE_GRAPH_CALLBACK_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/PagedLOD>
 #include <osg/observer_ptr>
 

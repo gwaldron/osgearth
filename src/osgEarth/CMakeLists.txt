@@ -248,7 +248,7 @@ SET(LIB_PUBLIC_HEADERS
     TileCache
     TimeControl
     TraversalData
-    ThreadingUtils
+    Threading
     TMS
     Units
     URI
@@ -609,7 +609,7 @@ set(TARGET_SRC
     TileCache.cpp
     TimeControl.cpp
     TraversalData.cpp
-    ThreadingUtils.cpp
+    Threading.cpp
     TMS.cpp
     Units.cpp
     URI.cpp

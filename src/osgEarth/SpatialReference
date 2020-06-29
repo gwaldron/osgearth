@@ -22,7 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Units>
 #include <osgEarth/VerticalDatum>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/CoordinateSystemNode>
 #include <osg/Vec3>
 #include <unordered_map>

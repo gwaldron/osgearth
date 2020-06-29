@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/NetworkMonitor>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgDB/fstream>
 #include <iomanip>
 

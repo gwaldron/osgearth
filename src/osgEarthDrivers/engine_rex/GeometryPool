@@ -23,7 +23,7 @@
 #include "MaskGenerator"
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/TileKey>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/PatchLayer>
 #include <osgEarth/Metrics>

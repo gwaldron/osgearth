@@ -20,14 +20,14 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Cube>
 #include <osgEarth/ShaderFactory>
-#include <osgEarth/TaskService>
-#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ObjectIndex>
+#include <osgEarth/HTTPClient>
+#include <osgEarth/TerrainEngineNode>
 
 #include <osgText/Font>
+#include <osgDB/Registry>
 
 #include <gdal_priv.h>
-
 #include <ogr_api.h>
 #include <cstdlib>
 

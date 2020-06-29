@@ -223,7 +223,6 @@ SET(LIB_PUBLIC_HEADERS
     Status
     StringUtils
     TDTiles
-    TaskService
     Terrain
     TerrainEffect
     TerrainOptions
@@ -586,7 +585,6 @@ set(TARGET_SRC
     StateSetCache.cpp
     Status.cpp
     StringUtils.cpp
-    TaskService.cpp
     TDTiles.cpp
     Terrain.cpp
     TerrainOptions.cpp

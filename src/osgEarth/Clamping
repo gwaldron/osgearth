@@ -140,6 +140,8 @@ namespace osgEarth { namespace Util
     class OSGEARTH_INTERNAL ClampingManager
     {
     public:
+        ClampingManager();
+
         //! Gets the cull set associated with a camera.
         ClampingCullSet& get(const osg::Camera*);
 

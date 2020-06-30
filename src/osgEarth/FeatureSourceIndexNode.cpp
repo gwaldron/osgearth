@@ -332,7 +332,8 @@ FeatureSourceIndex::FeatureSourceIndex(FeatureSource* featureSource,
                                        const FeatureSourceIndexOptions& options) :
 _featureSource  ( featureSource ),
 _masterIndex    ( index ),
-_options        ( options )
+_options        ( options ),
+_mutex( "FeatureSourceIndex(OE)" )
 {
     _embed =
         _options.embedFeatures() == true ||

@@ -30,6 +30,8 @@ namespace osgEarth
 {
     constexpr int ELEVATION_TILE_SIZE = 257;
 
+    class ProgressCallback;
+
     /**
      * Result of an elevation sampling query
      */
@@ -127,7 +129,8 @@ namespace osgEarth
         osg::Texture2D* createNormalMap(
             const TileKey& key,
             const class Map* map,
-            void* workingSet);
+            void* workingSet,
+            ProgressCallback* progress);
     };
 
     //! Revisioned key for elevation lookups (internal)

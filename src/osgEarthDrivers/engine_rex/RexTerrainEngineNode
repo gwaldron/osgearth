@@ -23,7 +23,7 @@
 #include <osgEarth/TerrainResources>
 #include <osgEarth/Map>
 #include <osgEarth/Revisioning>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/Containers>
 #include <osgEarth/ResourceReleaser>
 

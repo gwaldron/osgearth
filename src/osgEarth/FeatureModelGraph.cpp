@@ -30,7 +30,7 @@
 #include <osgEarth/FadeEffect>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/Utils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Metrics>
@@ -380,7 +380,8 @@ namespace
 FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
     _options(options),
     _featureExtentClamped(false),
-    _useTiledSource(false)
+    _useTiledSource(false),
+    _blacklistMutex("FMG BlackList(OE)")
 {
     //NOP
 }

@@ -792,6 +792,7 @@ ElevationLayerVector::populateHeightField(
 
     // We will load the actual heightfields on demand. We might not need them all.
     GeoHeightFieldVector heightFields(contenders.size());
+    std::vector<TileKey> heightFieldActualKeys(contenders.size());
     GeoHeightFieldVector offsetFields(offsets.size());
     std::vector<bool>    heightFallback(contenders.size(), false);
     std::vector<bool>    heightFailed(contenders.size(), false);
@@ -809,7 +810,7 @@ ElevationLayerVector::populateHeightField(
 
     int nodataCount = 0;
 
-    TileKey scratchKey; // Storage if a new key needs to be constructed
+    TileKey actualKey; // Storage if a new key needs to be constructed
 
     bool requiresResample = true;
 
@@ -819,7 +820,7 @@ ElevationLayerVector::populateHeightField(
     {
         ElevationLayer* layer = contenders[0].layer.get();
 
-        GeoHeightField layerHF = layer->createHeightField(contenders[0].key, 0);
+        GeoHeightField layerHF = layer->createHeightField(contenders[0].key, progress);
         if (layerHF.valid())
         {
             if (layerHF.getHeightField()->getNumColumns() == hf->getNumColumns() &&
@@ -837,7 +838,7 @@ ElevationLayerVector::populateHeightField(
                 if (resolutions)
                 {
                     std::pair<double,double> res = contenders[0].key.getResolution(hf->getNumColumns());
-                    for(int i=0; i<hf->getNumColumns()*hf->getNumRows(); ++i)
+                    for(unsigned i=0; i<hf->getNumColumns()*hf->getNumRows(); ++i)
                         resolutions[i] = res.second;
                 }
             }
@@ -877,25 +878,19 @@ ElevationLayerVector::populateHeightField(
                     if (heightFailed[i])
                         continue;
 
-                    TileKey* actualKey = &contenderKey;
-
                     GeoHeightField& layerHF = heightFields[i];
+                    TileKey& actualKey = heightFieldActualKeys[i];
 
                     if (!layerHF.valid())
                     {
                         // We couldn't get the heightfield from the cache, so try to create it.
                         // We also fallback on parent layers to make sure that we have data at the location even if it's fallback.
-                        while (!layerHF.valid() && actualKey->valid() && layer->isKeyInLegalRange(*actualKey))
+                        while (!layerHF.valid() && actualKey.valid() && layer->isKeyInLegalRange(actualKey))
                         {
-                            layerHF = layer->createHeightField(*actualKey, progress);
+                            layerHF = layer->createHeightField(actualKey, progress);
                             if (!layerHF.valid())
                             {
-                                if (actualKey != &scratchKey)
-                                {
-                                    scratchKey = *actualKey;
-                                    actualKey = &scratchKey;
-                                }
-                                actualKey->makeParent();
+                                actualKey.makeParent();
                             }
                         }
 
@@ -905,7 +900,7 @@ ElevationLayerVector::populateHeightField(
                             //TODO: check this. Should it be actualKey != keyToUse...?
                             heightFallback[i] = 
                                 contenders[i].isFallback ||
-                                (*actualKey != contenderKey);
+                                (actualKey != contenderKey);
 
                             numHeightFieldsInCache++;
                         }
@@ -945,7 +940,7 @@ ElevationLayerVector::populateHeightField(
 
                                 hf->setHeight(c, r, elevation);
 
-                                resolution = actualKey->getResolution(hf->getNumColumns()).second;
+                                resolution = actualKey.getResolution(hf->getNumColumns()).second;
 #ifdef ANALYZE
                                 layerAnalysis[layer].samples++;
 #endif
@@ -973,12 +968,15 @@ ElevationLayerVector::populateHeightField(
 
                 for (int i = offsets.size() - 1; i >= 0; --i)
                 {
+                    if (progress && progress->isCanceled())
+                        return false;
+
                     // Only apply an offset layer if it sits on top of the resolved layer
                     // (or if there was no resolved layer).
                     if (resolvedIndex >= 0 && offsets[i].index < resolvedIndex)
                         continue;
 
-                    TileKey &contenderKey = offsets[i].key;
+                    TileKey& contenderKey = offsets[i].key;
 
                     if (offsetFailed[i] == true)
                         continue;

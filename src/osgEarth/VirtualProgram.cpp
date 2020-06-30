@@ -84,7 +84,7 @@ using namespace osgEarth::ShaderComp;
 
 
 #ifdef USE_POLYSHADER_CACHE
-Threading::Mutex PolyShader::_cacheMutex;
+Threading::Mutex PolyShader::_cacheMutex("VP PolyShader Cache(OE)");
 PolyShader::PolyShaderCache PolyShader::_polyShaderCache;
 #endif
 
@@ -119,6 +119,7 @@ namespace
 #define LC "[ProgramRepo] "
 
 ProgramRepo::ProgramRepo() :
+    Threading::Mutexed<osg::Referenced>("ProgramRepo(OE)"),
     _releaseUnusedPrograms(true)
 {
     const char* value = ::getenv("OSGEARTH_PROGRAM_BINARY_CACHE_PATH");
@@ -964,7 +965,8 @@ VirtualProgram::VirtualProgram(unsigned mask) :
     _logShaders(false),
     _logPath(""),
     _acceptCallbacksVaryPerFrame(false),
-    _isAbstract(false)
+    _isAbstract(false),
+    _dataModelMutex("VirtualProgram(OE)")
 {
     // Note: we cannot set _active here. Wait until apply().
     // It will cause a conflict in the Registry.
@@ -1689,7 +1691,7 @@ VirtualProgram::apply(osg::State& state) const
         {
             // debugging            
             static int s_framenum = 0;
-            static Threading::Mutex s_mutex;
+            static Threading::Mutex s_mutex(OE_MUTEX_NAME);
             static std::map< const VirtualProgram*, std::pair<int, int> > s_counts;
 
             Threading::ScopedMutexLock lock(s_mutex);

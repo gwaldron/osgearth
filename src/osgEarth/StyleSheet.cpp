@@ -191,6 +191,13 @@ REGISTER_OSGEARTH_LAYER(styles, StyleSheet);
 REGISTER_OSGEARTH_LAYER(stylesheet, StyleSheet);
 
 void
+StyleSheet::init()
+{
+    Layer::init();
+    _resLibsMutex.setName(OE_MUTEX_NAME);
+}
+
+void
 StyleSheet::addStyle( const Style& style )
 {
     options().styles()[ style.getName() ] = style;

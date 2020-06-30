@@ -247,7 +247,7 @@ namespace
     };
 
     
-    Threading::Mutex WriteExternalReferencesToCache::_globalMutex;
+    Threading::Mutex WriteExternalReferencesToCache::_globalMutex(OE_MUTEX_NAME);
 }
 
 

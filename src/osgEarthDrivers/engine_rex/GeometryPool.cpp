@@ -34,7 +34,8 @@ using namespace osgEarth::REX;
 GeometryPool::GeometryPool(const TerrainOptions& options) :
 _options ( options ),
 _enabled ( true ),
-_debug   ( false )
+_debug   ( false ),
+_geometryMapMutex("GeometryPool(OE)")
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 
@@ -70,8 +71,7 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
     if ( _enabled )
     {
         // Look it up in the pool:
-        //Threading::ScopedMutexLock exclusive( _geometryMapMutex );
-        OpenThreads::ScopedLock< OE_LOCKABLE_BASE(OpenThreads::Mutex) > exclusive(_geometryMapMutex);
+        Threading::ScopedMutexLock lock(_geometryMapMutex);
 
         // make our globally shared EBO if we need it
         if ( !_defaultPrimSet.valid())
@@ -602,7 +602,7 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.UPDATE_VISITOR && _enabled)
     {
-        OpenThreads::ScopedLock< OE_LOCKABLE_BASE(OpenThreads::Mutex) > exclusive(_geometryMapMutex);
+        Threading::ScopedMutexLock lock(_geometryMapMutex);
 
         std::vector<GeometryKey> keys;
         for (GeometryMap::iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
@@ -628,7 +628,7 @@ void
 GeometryPool::clear()
 {
     releaseGLObjects(NULL);
-    OpenThreads::ScopedLock< OE_LOCKABLE_BASE(OpenThreads::Mutex) > exclusive(_geometryMapMutex);
+    Threading::ScopedMutexLock lock(_geometryMapMutex);
     _geometryMap.clear();
 }
 
@@ -639,7 +639,7 @@ GeometryPool::resizeGLObjectBuffers(unsigned maxsize)
         return;
 
     // collect all objects in a thread safe manner
-    OpenThreads::ScopedLock< OE_LOCKABLE_BASE(OpenThreads::Mutex) > exclusive(_geometryMapMutex);
+    Threading::ScopedMutexLock lock(_geometryMapMutex);
     {
         for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
         {
@@ -658,7 +658,7 @@ GeometryPool::releaseGLObjects(osg::State* state) const
 
     // collect all objects in a thread safe manner
     {
-        OpenThreads::ScopedLock< OE_LOCKABLE_BASE(OpenThreads::Mutex) > exclusive(_geometryMapMutex);
+        Threading::ScopedMutexLock lock(_geometryMapMutex);
         {
             for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
             {

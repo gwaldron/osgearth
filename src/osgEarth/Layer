@@ -167,16 +167,13 @@ namespace osgEarth
         const osgDB::Options* getReadOptions() const;
 
         //! Open a layer.
-        virtual const Status& open()
-            OSGEARTH_FINAL;
+        virtual const Status& open() final;
 
         //! Open a layer. Shortcut for calling setReadOptions() followed by open().
-        virtual const Status& open(const osgDB::Options* options)
-            OSGEARTH_FINAL;
+        virtual const Status& open(const osgDB::Options* options) final;
 
         //! Close this layer.
-        virtual Status close()
-            OSGEARTH_FINAL;
+        virtual Status close() final;
 
         //! Whether the layer is open
         bool isOpen() const;
@@ -377,6 +374,8 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<CacheSettings> _cacheSettings;
         std::vector<osg::ref_ptr<LayerShader> > _shaders;
+        mutable Threading::Mutex* _mutex;
+        bool _isClosing;
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;
@@ -399,6 +398,12 @@ namespace osgEarth
         //! internal cache information
         CacheSettings* getCacheSettings() { return _cacheSettings.get(); }
         const CacheSettings* getCacheSettings() const { return _cacheSettings.get(); }
+
+        //! subclass access to general-purpose layer mutex
+        Threading::Mutex& layerMutex() const { return *_mutex; }
+
+        //! are we in the middle of a close() call?
+        bool isClosing() const { return _isClosing; }
 
     public: // serialization
         class OSGEARTH_EXPORT Options : public ConfigOptions

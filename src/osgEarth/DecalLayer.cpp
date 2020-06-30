@@ -71,7 +71,7 @@ DecalImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
 
     // thread-safe collection of intersecting decals
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        Threading::ScopedMutexLock lock(layerMutex());
 
         for(std::list<Decal>::const_iterator i = _decalList.begin();
             i != _decalList.end();
@@ -149,7 +149,7 @@ DecalImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
 bool
 DecalImageLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
 
     DecalIndex::iterator i = _decalIndex.find(id);
     if (i != _decalIndex.end())
@@ -170,7 +170,7 @@ DecalImageLayer::addDecal(const std::string& id, const GeoExtent& extent, const 
 void
 DecalImageLayer::removeDecal(const std::string& id)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
 
     DecalIndex::iterator i = _decalIndex.find(id);
     if (i != _decalIndex.end())
@@ -186,7 +186,7 @@ DecalImageLayer::removeDecal(const std::string& id)
 const GeoExtent&
 DecalImageLayer::getDecalExtent(const std::string& id) const
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
     DecalIndex::const_iterator i = _decalIndex.find(id);
     if (i != _decalIndex.end())
     {
@@ -198,7 +198,7 @@ DecalImageLayer::getDecalExtent(const std::string& id) const
 void
 DecalImageLayer::clearDecals()
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
     _decalIndex.clear();
     _decalList.clear();
     bumpRevision();
@@ -253,7 +253,7 @@ DecalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progres
 
     // thread-safe collection of intersecting decals
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        Threading::ScopedMutexLock lock(layerMutex());
 
         for(std::list<Decal>::const_iterator i = _decalList.begin();
             i != _decalList.end();
@@ -336,7 +336,7 @@ DecalElevationLayer::addDecal(
     if (!extent.isValid() || !image)
         return false;
 
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
 
     DecalIndex::iterator i = _decalIndex.find(id);
     if (i != _decalIndex.end())
@@ -390,7 +390,7 @@ DecalElevationLayer::addDecal(
     if (!extent.isValid() || !image)
         return false;
 
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
 
     DecalIndex::iterator i = _decalIndex.find(id);
     if (i != _decalIndex.end())
@@ -433,7 +433,7 @@ DecalElevationLayer::addDecal(
 void
 DecalElevationLayer::removeDecal(const std::string& id)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
 
     DecalIndex::iterator i = _decalIndex.find(id);
     if (i != _decalIndex.end())
@@ -449,7 +449,7 @@ DecalElevationLayer::removeDecal(const std::string& id)
 const GeoExtent&
 DecalElevationLayer::getDecalExtent(const std::string& id) const
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
     DecalIndex::const_iterator i = _decalIndex.find(id);
     if (i != _decalIndex.end())
     {
@@ -461,7 +461,7 @@ DecalElevationLayer::getDecalExtent(const std::string& id) const
 void
 DecalElevationLayer::clearDecals()
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
     _decalIndex.clear();
     _decalList.clear();
     bumpRevision();
@@ -528,7 +528,7 @@ DecalLandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallb
 
     // thread-safe collection of intersecting decals
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        Threading::ScopedMutexLock lock(layerMutex());
 
         for(std::list<Decal>::const_iterator i = _decalList.begin();
             i != _decalList.end();
@@ -603,7 +603,7 @@ DecalLandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallb
 bool
 DecalLandCoverLayer::addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
 
     DecalIndex::iterator i = _decalIndex.find(id);
     if (i != _decalIndex.end())
@@ -624,7 +624,7 @@ DecalLandCoverLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 void
 DecalLandCoverLayer::removeDecal(const std::string& id)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
 
     DecalIndex::iterator i = _decalIndex.find(id);
     if (i != _decalIndex.end())
@@ -640,7 +640,7 @@ DecalLandCoverLayer::removeDecal(const std::string& id)
 const GeoExtent&
 DecalLandCoverLayer::getDecalExtent(const std::string& id) const
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
     DecalIndex::const_iterator i = _decalIndex.find(id);
     if (i != _decalIndex.end())
     {
@@ -652,7 +652,7 @@ DecalLandCoverLayer::getDecalExtent(const std::string& id) const
 void
 DecalLandCoverLayer::clearDecals()
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    Threading::ScopedMutexLock lock(layerMutex());
     _decalIndex.clear();
     _decalList.clear();
     bumpRevision();

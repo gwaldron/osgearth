@@ -1242,7 +1242,7 @@ LineDrawable::setupShaders()
         if (s_gpuStateSet.lock(_gpuStateSet) == false)
         {
             // serialize access and double-check:
-            static Threading::Mutex s_mutex;
+            static Threading::Mutex s_mutex(OE_MUTEX_NAME);
             Threading::ScopedMutexLock lock(s_mutex);
 
             if (s_gpuStateSet.lock(_gpuStateSet) == false)

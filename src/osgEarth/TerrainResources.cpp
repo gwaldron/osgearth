@@ -27,7 +27,8 @@ using namespace osgEarth;
 #define LC "[TerrainResources] "
 
 
-TerrainResources::TerrainResources()
+TerrainResources::TerrainResources() :
+    _reservedUnitsMutex("TerrainResources(OE)")
 {
     //nop
 }

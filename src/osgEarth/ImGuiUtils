@@ -30,7 +30,7 @@
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ThreeDTilesLayer>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/Geocoder>
 #include <osgEarth/ViewFitter>
 #include <osgEarth/NetworkMonitor>

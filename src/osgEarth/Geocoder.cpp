@@ -177,7 +177,7 @@ Geocoder::search(const std::string& input, const osgDB::Options* io_options)
         {
             Promise<Geocoder::OutputData> promise;
             GeocodeAsyncOperation* op = new GeocodeAsyncOperation(input, promise, _impl.get());
-            pool->getQueue()->add(op);
+            pool->run(op);
             return Geocoder::Results(promise.getFuture());
         }
         else

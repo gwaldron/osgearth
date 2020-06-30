@@ -21,12 +21,12 @@
 
 #include <osgEarth/Common>
 #include <osg/OperationThread>
-#include <map>
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
 #include <vector>
 #include <unordered_map>
+#include <queue>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
 
@@ -64,9 +64,9 @@ namespace osgEarth { namespace Threading
         Mutex(const std::string& name, const char* file=nullptr, std::uint32_t line=0);
         ~Mutex();
 
-        void lock();
-        void unlock();
-        bool try_lock();
+        void lock() override;
+        void unlock() override;
+        bool try_lock() override;
 
         void setName(const std::string& name);
 
@@ -91,9 +91,9 @@ namespace osgEarth { namespace Threading
         //! Enable or disable this mutex. Don't call this while threads are running.
         void disable();
 
-        void lock();
-        void unlock();
-        bool try_lock();
+        void lock() override;
+        void unlock() override;
+        bool try_lock() override;
 
     private:
         bool _enabled;
@@ -111,7 +111,7 @@ namespace osgEarth { namespace Threading
     /**
     * Pure interface for an object that can be canceled.
     */
-    class OSGEARTH_EXPORT Cancelable
+    class Cancelable
     {
     public:
         virtual bool isCanceled() const = 0;
@@ -330,20 +330,21 @@ namespace osgEarth { namespace Threading
     * Mutex that locks on a per-object basis
     */
     template<typename T>
-    class OSGEARTH_EXPORT Gate
+    class Gate
     {
     public:
         Gate() { }
+
         Gate(const std::string& name) : _m(name) { }
 
-        void lock(T key) {
+        inline void lock(T key) {
             std::unique_lock<Mutex> lock(_m);
             while(_users[key] > 0)
                 _unlocked.wait(lock);
             ++_users[key];
         }
 
-        void unlock(T key) {
+        inline void unlock(T key) {
             std::unique_lock<Mutex> lock(_m);
             --_users[key];
             if (_users[key] == 0) {
@@ -352,7 +353,7 @@ namespace osgEarth { namespace Threading
             }
         }
 
-        void setName(const std::string& name) {
+        inline void setName(const std::string& name) {
             _m.setName(name);
         }
 
@@ -415,11 +416,17 @@ namespace osgEarth { namespace Threading
     class OSGEARTH_EXPORT ThreadPool : public osg::Referenced
     {
     public:
-        ThreadPool(unsigned int numThreads = 2);
+        //! Allocate a new pool with "numThreads" threads.
+        ThreadPool(unsigned numThreads = 2);
 
+        //! Destroy
         ~ThreadPool();
 
-        osg::OperationQueue* getQueue() const;
+        //! Run an asynchronous operation in this thread pool.
+        void run(osg::Operation*);
+
+        //! How many operations are queued up?
+        unsigned getNumOperationsInQueue() const;
 
         //! Store/retrieve thread pool stored in an options structure
         void put(class osgDB::Options*);
@@ -429,9 +436,19 @@ namespace osgEarth { namespace Threading
         void startThreads();
         void stopThreads();
 
-        osg::ref_ptr< osg::OperationQueue > _queue;
-        std::vector< osg::ref_ptr< osg::OperationThread > > _threads;
+        // queued operations to run asynchronously
+        typedef std::queue<osg::ref_ptr<osg::Operation> > Queue;
+        Queue _queue;
+        // protect access to the queue
+        Mutex _queueMutex;
+        // number of concurrent threads in the pool
         unsigned int _numThreads;
+        // thread waiter block
+        std::condition_variable_any _block;
+        // set to true when threads should exit
+        bool _done;
+        // threads in the pool
+        std::vector<std::thread> _threads;
     };
 
     /**

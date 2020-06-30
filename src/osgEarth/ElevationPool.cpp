@@ -881,6 +881,6 @@ AsyncElevationSampler::getSample(
 {
     Internal::SampleElevationOp* op = new Internal::SampleElevationOp(_map, p, resolution, &_ws);
     Future<RefElevationSample> result = op->_promise.getFuture();
-    _threadPool->getQueue()->add(op);
+    _threadPool->run(op);
     return result;
 }

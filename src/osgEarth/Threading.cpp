@@ -336,95 +336,15 @@ void ReadWriteMutex::setName(const std::string& name)
 {
     _m.setName(name);
 }
-        
 
-#if 0
-ReadWriteMutex::ReadWriteMutex() :
-    _readerCount(0),
-    _noWriterEvent("RWMutex unnamed"),
-    _noReadersEvent("RWMutex unnamed")
-{
-    _noWriterEvent.set();
-    _noReadersEvent.set();
-}
-
-ReadWriteMutex::ReadWriteMutex(const std::string& name) :
-    _readerCount(0),
-    _noWriterEvent(name),
-    _noReadersEvent(name)
-{
-    _noWriterEvent.set();
-    _noReadersEvent.set();
-}
-
-void
-ReadWriteMutex::setName(const std::string& name)
-{
-    _noWriterEvent.setName(name);
-    _noReadersEvent.setName(name);
-}
-
-void ReadWriteMutex::readLock()
-{
-    for (;;)
-    {
-        _noWriterEvent.wait();           // wait for a writer to quit if there is one
-        incrementReaderCount();          // register this reader
-        if (!_noWriterEvent.isSet())     // double lock check, in case a writer snuck in while inrementing
-            decrementReaderCount();      // if it did, undo the registration and try again
-        else
-            break;                       // otherwise, we're in
-    }
-}
-
-void ReadWriteMutex::readUnlock()
-{
-    decrementReaderCount();              // unregister this reader
-}
-
-void ReadWriteMutex::writeLock()
-{
-    for (;;)
-    {
-        _noReadersEvent.wait(); // wait for no readers
-
-        std::lock_guard<Mutex> lock(_lockWriterMutex);
-        _noWriterEvent.wait();  // wait for no writers
-        _noWriterEvent.reset(); // signal that there is now a writer
-
-        if (_noReadersEvent.isSet()) // still no readers? done.
-            break;
-        else
-            _noWriterEvent.set(); // otherwise, a reader snuck in, so try again.
-    }
-}
-
-void ReadWriteMutex::writeUnlock()
-{
-    _noWriterEvent.set();
-}
-
-void ReadWriteMutex::incrementReaderCount()
-{
-    std::lock_guard<Mutex> lock(_readerCountMutex);
-    _readerCount++;            // add a reader
-    _noReadersEvent.reset();   // there's at least one reader now so clear the flag
-}
-
-void ReadWriteMutex::decrementReaderCount()
-{
-    std::lock_guard<Mutex> lock(_readerCountMutex);
-    _readerCount--;               // remove a reader
-    if (_readerCount <= 0)      // if that was the last one, signal that writers are now allowed
-        _noReadersEvent.set();
-}
-#endif
-
+#undef LC
+#define LC "[ThreadPool] "
 
 ThreadPool::ThreadPool(unsigned int numThreads) :
-    _numThreads(numThreads)
+    _numThreads(numThreads),
+    _done(false),
+    _queueMutex("ThreadPool")
 {
-    _queue = new osg::OperationQueue;
     startThreads();
 }
 
@@ -433,29 +353,85 @@ ThreadPool::~ThreadPool()
     stopThreads();
 }
 
-osg::OperationQueue* ThreadPool::getQueue() const
+void ThreadPool::run(osg::Operation* op)
 {
-    return _queue.get();
+    if (op)
+    {
+        Threading::ScopedMutexLock lock(_queueMutex);
+        _queue.push(op);
+        _block.notify_all();
+    }
+}
+
+unsigned ThreadPool::getNumOperationsInQueue() const
+{
+    return _queue.size();
 }
 
 void ThreadPool::startThreads()
 {
-    for (unsigned int i = 0; i < _numThreads; ++i)
+    _done = false;
+
+    for(unsigned i=0; i<_numThreads; ++i)
     {
-        osg::OperationsThread* thread = new osg::OperationsThread();
-        thread->setOperationQueue(_queue.get());
-        thread->start();
-        _threads.push_back(thread);
+        _threads.push_back(std::thread( [this]
+        {
+            OE_DEBUG << LC << "Thread " << std::this_thread::get_id() << " started." << std::endl;
+            while(!_done)
+            {
+                osg::ref_ptr<osg::Operation> op;
+                {
+                    std::unique_lock<Mutex> lock(_queueMutex);
+
+                    _block.wait(lock, [this] {
+                        return !_queue.empty() || _done;
+                    });
+
+                    if (!_queue.empty() && !_done)
+                    {
+                        op = _queue.front();
+                        _queue.pop();
+                    }
+                }
+
+                if (op.valid())
+                {
+                    // run the op:
+                    (*op.get())(nullptr);
+
+                    // if it's a keeper, requeue it
+                    if (op->getKeep())
+                    {
+                        Threading::ScopedMutexLock lock(_queueMutex);
+                        _queue.push(op);
+                    }
+                    op = nullptr;
+                }
+            }
+            OE_DEBUG << LC << "Thread " << std::this_thread::get_id() << " exiting." << std::endl;
+        }));
     }
 }
 
 void ThreadPool::stopThreads()
 {
-    for (unsigned int i = 0; i < _threads.size(); ++i)
+    _done = true;
+    _block.notify_all();
+
+    for(unsigned i=0; i<_numThreads; ++i)
     {
-        osg::ref_ptr< osg::OperationsThread > thread = _threads[i].get();
-        thread->setDone(true);
-        thread->join();
+        if (_threads[i].joinable())
+        {
+            _threads[i].join();
+        }
+    }
+
+    _threads.clear();
+    
+    // Clear out the queue
+    {
+        Threading::ScopedMutexLock lock(_queueMutex);
+        _queue.swap(Queue());
     }
 }
 

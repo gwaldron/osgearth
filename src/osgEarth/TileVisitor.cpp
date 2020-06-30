@@ -269,10 +269,10 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
     // Produce the tiles
     TileVisitor::run( mapProfile );
 
-    OE_INFO << _threadPool->getQueue()->getNumOperationsInQueue() << " tasks in the queue." << std::endl;
+    OE_INFO << _threadPool->getNumOperationsInQueue() << " tasks in the queue." << std::endl;
 
     // Wait for everything to finish, checking for cancellation while we wait so we can kill all the existing tasks.
-    while(_threadPool->getQueue()->getNumOperationsInQueue() > 0)
+    while(_threadPool->getNumOperationsInQueue() > 0)
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -281,7 +281,7 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
 bool MultithreadedTileVisitor::handleTile(const TileKey& key)
 {    
     // Add the tile to the task queue.
-    _threadPool->getQueue()->add(new HandleTileTask(_tileHandler.get(), this, key, getProgressCallback()));
+    _threadPool->run(new HandleTileTask(_tileHandler.get(), this, key, getProgressCallback()));
     return true;
 }
 

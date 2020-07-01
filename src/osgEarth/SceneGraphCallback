@@ -79,7 +79,7 @@ namespace osgEarth
 
     private:
         SceneGraphCallbackVector _callbacks;
-        Threading::RecursiveMutex _mutex;
+        Threading::ReadWriteRecursiveMutex _mutex;
         osg::observer_ptr<osg::Object> _sender;
     };
 

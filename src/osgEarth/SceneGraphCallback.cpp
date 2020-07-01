@@ -38,7 +38,7 @@ SceneGraphCallbacks::add(SceneGraphCallback* cb)
 {
     if (cb)
     {
-        Threading::ScopedRecursiveMutexLock lock(_mutex);
+        Threading::ScopedRecursiveWriteLock lock(_mutex);
         _callbacks.push_back(cb);
     }
 }
@@ -48,7 +48,7 @@ SceneGraphCallbacks::remove(SceneGraphCallback* cb)
 {
     if (cb)
     {
-        Threading::ScopedRecursiveMutexLock lock(_mutex);
+        Threading::ScopedRecursiveWriteLock lock(_mutex);
         for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
         {
             if (i->get() == cb)
@@ -63,7 +63,7 @@ SceneGraphCallbacks::remove(SceneGraphCallback* cb)
 void
 SceneGraphCallbacks::firePreMergeNode(osg::Node* node)
 {
-    Threading::ScopedRecursiveMutexLock lock(_mutex);
+    Threading::ScopedRecursiveReadLock lock(_mutex);
     osg::ref_ptr<osg::Object> sender;
     _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
@@ -73,7 +73,7 @@ SceneGraphCallbacks::firePreMergeNode(osg::Node* node)
 void
 SceneGraphCallbacks::firePostMergeNode(osg::Node* node)
 {
-    Threading::ScopedRecursiveMutexLock lock(_mutex); // prob not necessary but good measure
+    Threading::ScopedRecursiveReadLock lock(_mutex); // prob not necessary but good measure
     osg::ref_ptr<osg::Object> sender;
     _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
@@ -83,7 +83,7 @@ SceneGraphCallbacks::firePostMergeNode(osg::Node* node)
 void
 SceneGraphCallbacks::fireRemoveNode(osg::Node* node)
 {
-    Threading::ScopedRecursiveMutexLock lock(_mutex); // prob not necessary but good measure
+    Threading::ScopedRecursiveReadLock lock(_mutex); // prob not necessary but good measure
     osg::ref_ptr<osg::Object> sender;
     _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)

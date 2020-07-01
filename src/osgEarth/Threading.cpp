@@ -190,7 +190,7 @@ bool
 RecursiveMutex::try_lock()
 {
     if (_enabled)
-        return static_cast<MUTEX_TYPE*>(_handle)->try_lock();
+        return static_cast<RECURSIVE_MUTEX_TYPE*>(_handle)->try_lock();
     else
         return true;
 }
@@ -287,55 +287,6 @@ void Event::reset()
     _set = false;
 }
 
-//...................................................................
-
-ReadWriteMutex::ReadWriteMutex() :
-    _readers(0), _writers(0)
-{
-    //NOP
-}
-
-ReadWriteMutex::ReadWriteMutex(const std::string& name) :
-    _readers(0), _writers(0), _m(name)
-{
-    //NOP
-}
-
-void ReadWriteMutex::read_lock()
-{
-    std::unique_lock<Mutex> lock(_m);
-    while (_writers > 0)
-        _unlocked.wait(lock);
-    ++_readers;
-}
-
-void ReadWriteMutex::read_unlock()
-{
-    std::unique_lock<Mutex> lock(_m);
-    --_readers;
-    if (_readers == 0)
-        _unlocked.notify_all();
-}
-
-void ReadWriteMutex::write_lock()
-{
-    std::unique_lock<Mutex> lock(_m);
-    while (_writers > 0 || _readers > 0)
-        _unlocked.wait(lock);
-    ++_writers;
-}
-
-void ReadWriteMutex::write_unlock()
-{
-    std::unique_lock<Mutex> lock(_m);
-    _writers = 0;
-    _unlocked.notify_all();
-}
-
-void ReadWriteMutex::setName(const std::string& name)
-{
-    _m.setName(name);
-}
 
 #undef LC
 #define LC "[ThreadPool] "

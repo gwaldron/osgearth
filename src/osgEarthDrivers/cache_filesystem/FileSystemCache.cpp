@@ -391,7 +391,7 @@ namespace
             if (i != _writeCache.end())
             {
                 ReadResult rr(
-                    dynamic_cast<osg::Image*>( const_cast<osg::Object*>(i->second.object.get()) ),
+                    const_cast<osg::Image*>(dynamic_cast<const osg::Image*>(i->second.object.get())),
                     i->second.meta);
 
                 rr.setLastModifiedTime(timeStamp);
@@ -646,6 +646,8 @@ namespace
             dbo.get(),
             this);
 
+        //writer->operator()(nullptr);
+        //delete writer;
         _threadPool->run(writer);
 
         return true;

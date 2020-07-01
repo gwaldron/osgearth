@@ -374,40 +374,76 @@ namespace osgEarth { namespace Threading
     /**
      * Mutex that allows many simultaneous readers but only one writer
      */
-    class OSGEARTH_EXPORT ReadWriteMutex
+    template<typename T>
+    class ReadWrite
     {
     public:
-        ReadWriteMutex();
-        ReadWriteMutex(const std::string& name);
+        ReadWrite() :
+            _readers(0u), _writers(0u) { }
 
-        void read_lock();
-        void read_unlock();
+        ReadWrite(const std::string& name) : 
+            _m(name), _readers(0u), _writers(0u) { }
 
-        void write_lock();
-        void write_unlock();
+        void read_lock() {
+            std::unique_lock<T> lock(_m);
+            while (_writers > 0)
+                _unlocked.wait(lock);
+            ++_readers;
+        }
 
-        void setName(const std::string& name);
+        void read_unlock() {
+            std::unique_lock<T> lock(_m);
+            --_readers;
+            if (_readers == 0)
+                _unlocked.notify_all();
+        }
+
+        void write_lock() {
+            std::unique_lock<T> lock(_m);
+            while (_writers > 0 || _readers > 0)
+                _unlocked.wait(lock);
+            ++_writers;
+        }
+
+        void write_unlock() {
+            std::unique_lock<T> lock(_m);
+            _writers = 0;
+            _unlocked.notify_all();
+        }
+
+        void setName(const std::string& name) {
+            _m.setName(name);
+        }
 
     private:
-        Mutex _m;
+        T _m;
         std::condition_variable_any _unlocked;
         unsigned _writers;
         unsigned _readers;
     };
 
-    struct ScopedWriteLock {
-        ScopedWriteLock( ReadWriteMutex& lock ) : _lock(lock) { _lock.write_lock(); }
-        ~ScopedWriteLock() { _lock.write_unlock(); }
+    template<typename T>
+    struct ScopedWrite {
+        ScopedWrite( ReadWrite<T>& lock ) : _lock(lock) { _lock.write_lock(); }
+        ~ScopedWrite() { _lock.write_unlock(); }
     private:
-        ReadWriteMutex& _lock;
+        ReadWrite<T>& _lock;
     };
 
-    struct ScopedReadLock {
-        ScopedReadLock( ReadWriteMutex& lock ) : _lock(lock) { _lock.read_lock(); }
-        ~ScopedReadLock() { _lock.read_unlock(); }
+    template<typename T>
+    struct ScopedRead {
+        ScopedRead( ReadWrite<T>& lock ) : _lock(lock) { _lock.read_lock(); }
+        ~ScopedRead() { _lock.read_unlock(); }
     private:
-        ReadWriteMutex& _lock;
+        ReadWrite<T>& _lock;
     };
+
+    typedef ReadWrite<Mutex> ReadWriteMutex;
+    typedef ReadWrite<RecursiveMutex> ReadWriteRecursiveMutex;
+    typedef ScopedRead<Mutex> ScopedReadLock;
+    typedef ScopedWrite<Mutex> ScopedWriteLock;
+    typedef ScopedRead<RecursiveMutex> ScopedRecursiveReadLock;
+    typedef ScopedWrite<RecursiveMutex> ScopedRecursiveWriteLock;
 
     /**
      * A ThreadPool that contains a work queue and one or more

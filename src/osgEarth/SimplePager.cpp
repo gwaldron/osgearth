@@ -111,7 +111,7 @@ namespace
                 pager->getSceneGraphCallbacks()->firePreMergeNode(node.get());
             }
 
-            return node.release();
+            return ReadResult(node);
         }
     };
 
@@ -196,23 +196,23 @@ osg::BoundingSphere SimplePager::getBounds(const TileKey& key) const
     return bs;
 }
 
-osg::Node* SimplePager::buildRootNode()
-{    
-    osg::Group* root = new osg::Group;
+osg::ref_ptr<osg::Node> SimplePager::buildRootNode()
+{   
+    osg::ref_ptr<osg::Group> root = new osg::Group();
 
     std::vector<TileKey> keys;
     _profile->getRootKeys( keys );
     for (unsigned int i = 0; i < keys.size(); i++)
     {
-        osg::Node* node = createPagedNode( keys[i], 0L );
-        if ( node )
+        osg::ref_ptr<osg::Node> node = createPagedNode( keys[i], 0L );
+        if ( node.valid() )
             root->addChild( node );
     }
 
     return root;
 }
 
-osg::Node* SimplePager::createNode(const TileKey& key, ProgressCallback* progress)
+osg::ref_ptr<osg::Node> SimplePager::createNode(const TileKey& key, ProgressCallback* progress)
 {
     osg::BoundingSphere bounds = getBounds( key );
 
@@ -226,7 +226,7 @@ osg::Node* SimplePager::createNode(const TileKey& key, ProgressCallback* progres
     return mt;
 }
 
-osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
+osg::ref_ptr<osg::Node> SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
 {
     osg::BoundingSphere tileBounds = getBounds( key );
     float tileRadius = tileBounds.radius();
@@ -263,8 +263,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 
     tileRadius = osg::maximum(tileBounds.radius(), static_cast<osg::BoundingSphere::value_type>(tileRadius));
 
-    //osg::PagedLOD* plod = new osg::PagedLOD;
-    osg::PagedLOD* plod = 
+    osg::ref_ptr<osg::PagedLOD> plod = 
         getSceneGraphCallbacks() ? new PagedLODWithSceneGraphCallbacks(getSceneGraphCallbacks()) :
         new osg::PagedLOD();
 
@@ -357,7 +356,8 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 /**
 * Loads the PagedLOD hierarchy for this key.
 */
-osg::Node* SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
+osg::ref_ptr<osg::Node>
+SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
 {       
     osg::ref_ptr< osg::Group >  group = new osg::Group;
 
@@ -365,15 +365,15 @@ osg::Node* SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
     {
         TileKey childKey = key.createChildKey( i );
 
-        osg::Node* plod = createPagedNode( childKey, tracker->_progress[i].get() );
-        if (plod)
+        osg::ref_ptr<osg::Node> plod = createPagedNode( childKey, tracker->_progress[i].get() );
+        if (plod.valid())
         {
             group->addChild( plod );
         }
     }
     if (group->getNumChildren() > 0)
     {
-        return group.release();
+        return group;
     }
     return 0;
 }

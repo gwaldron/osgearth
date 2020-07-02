@@ -579,8 +579,9 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
     // allocate a texture image unit the first time through.
     if ( !_textureUnit.isSet() )
     {
-        static Threading::Mutex m;
-        m.lock();
+        static Threading::Mutex m(OE_MUTEX_NAME);
+        Threading::ScopedMutexLock lock(m);
+
         if ( !_textureUnit.isSet() )
         {
             // apply the user-request texture unit, if applicable:
@@ -607,7 +608,6 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
                 }
             }
         }
-        m.unlock();
     }
 
     if ( !params._rttCamera.valid() && _textureUnit.isSet() )

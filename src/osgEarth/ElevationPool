@@ -24,7 +24,7 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/Containers>
 #include <osgEarth/MapCallback>
 #include <osg/Timer>
@@ -42,7 +42,7 @@ namespace osgEarth
     public:
         typedef osg::observer_ptr<ElevationTexture> WeakPointer;
         typedef osg::ref_ptr<ElevationTexture> Pointer;
-        typedef Lockable<std::unordered_map<Internal::RevElevationKey, WeakPointer> > WeakLUT;
+        typedef std::unordered_map<Internal::RevElevationKey, WeakPointer> WeakLUT;
 
         //! User data that a client can use to speed up queries in
         //! a local geographic area or sample a custom set of layers.
@@ -77,19 +77,23 @@ namespace osgEarth
 
         //! Sample the map's elevation at a point.
         //! @param p  Point at which to sample
-        //! @param ws Optional working set
+        //! @param ws Optional working set (can be NULL)
+        //! @param progress Optional progress callback
         ElevationSample getSample(
             const GeoPoint& p,
-            WorkingSet* ws);
+            WorkingSet* ws,
+            ProgressCallback* progress =nullptr);
 
         //! Sample the map's elevation at a point.
         //! @param p Point at which to sample
         //! @param resolution Resolution at which to attempt to sample (in point srs)
-        //! @param ws Optional working set
+        //! @param ws Optional working set (can be NULL)
+        //! @param progress Optional progress callback
         ElevationSample getSample(
             const GeoPoint& p, 
             const Distance& resolution,
-            WorkingSet* ws);
+            WorkingSet* ws,
+            ProgressCallback* progress =nullptr);
 
         //! Extract a complete tile of elevation data
         //! @param key TileKey or data to extact
@@ -97,32 +101,39 @@ namespace osgEarth
         //! @param acceptLowerRes Return a lower resolution tile if the requested one isn't available
         //! @param out_elev Output
         //! @param ws Optional working set
+        //! @param progress Optional progress callback
+        //! @return true upon success, false upon failure
         bool getTile(
             const TileKey& key,
             bool acceptLowerRes,
             osg::ref_ptr<ElevationTexture>& out_elev,
-            WorkingSet* ws);
+            WorkingSet* ws,
+            ProgressCallback* progress);
 
         //! For each point in an array of points, sample the elevation and store
         //! the result in the Z coordinate. Input points must be in the map's SRS,
         //! and the sampling resolution is taken from the W coordinate.
         //! @param points Array of points in map coords for which to sample elevation
         //! @param ws Optional working set (local cache)
+        //! @param progress Optional progress callback
         //! @return Number of valid elevations sampled, or -1 if there was an error
         int sampleMapCoords(
             std::vector<osg::Vec4d>& points,
-            WorkingSet* ws);
+            WorkingSet* ws,
+            ProgressCallback* progress);
 
         //! For each point in an array of points, sample the elevation and store
         //! the result in the Z coordinate. Input points must be in the map's SRS.
         //! @param points Array of points in map coords for which to sample elevation
         //! @param resolution Resolution at which to sample the points
         //! @param ws Optional working set (local cache)
+        //! @param progress Optional progress callback
         //! @return Number of valid elevations sampled, or -1 if there was an error
         int sampleMapCoords(
             std::vector<osg::Vec3d>& points,
             const Distance& resolution,
-            WorkingSet* ws);
+            WorkingSet* ws,
+            ProgressCallback* progress);
 
         //! Invalidates all caches in the ElevationPool
         void clear();
@@ -138,6 +149,7 @@ namespace osgEarth
         // stores weak pointers to elevation textures wherever they may exist
         // elsewhere in the system
         WeakLUT _globalLUT;
+        Threading::ReadWriteMutex _globalLUTMutex;
 
         // internal: spatial index of data extents
         void* _index;
@@ -173,7 +185,8 @@ namespace osgEarth
             const GeoPoint& p, 
             unsigned maxLOD, 
             const Map* map, 
-            WorkingSet* ws);
+            WorkingSet* ws,
+            ProgressCallback* progress);
 
         unsigned getLOD(double x, double y) const;
 
@@ -181,7 +194,8 @@ namespace osgEarth
             const Internal::RevElevationKey& key, 
             const Map* map, 
             bool acceptLowerRes,
-            WorkingSet* ws);
+            WorkingSet* ws,
+            ProgressCallback* progress);
 
         bool findExistingRaster(
             const Internal::RevElevationKey& key,

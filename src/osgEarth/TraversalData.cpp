@@ -22,6 +22,12 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
+TransientUserDataStore::TransientUserDataStore() :
+    _mutex(OE_MUTEX_NAME)
+{
+    //nop
+}
+
 bool
 TransientUserDataStore::isObserverInvalid(const Table::value_type& p)
 {

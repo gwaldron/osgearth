@@ -165,8 +165,6 @@ namespace osgEarth
         osg::ref_ptr<CacheSettings>   _cacheSettings;
         osg::ref_ptr<osg::Group>      _root;
 
-        mutable Threading::Mutex _mutex; // general-purpose mutex.
-
         void fireCallback(ModelLayerCallback::MethodPtr method);
     };
 

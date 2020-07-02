@@ -160,7 +160,7 @@ namespace osgEarth { namespace REX
         unsigned                           _revision;
 
         typedef std::queue<osg::ref_ptr<LoadTileData> > LoadQueue;
-        Lockable<LoadQueue> _loadQueue;
+        Mutexed<LoadQueue> _loadQueue;
         unsigned _loadsInQueue;
 
         bool dirty() const { return _loadsInQueue>0; }

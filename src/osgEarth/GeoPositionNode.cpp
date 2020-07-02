@@ -24,7 +24,7 @@
 #include <osgEarth/AnnotationUtils>
 #include <osgEarth/AnnotationSettings>
 #include <osgEarth/Color>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>

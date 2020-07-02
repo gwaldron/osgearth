@@ -223,7 +223,6 @@ SET(LIB_PUBLIC_HEADERS
     Status
     StringUtils
     TDTiles
-    TaskService
     Terrain
     TerrainEffect
     TerrainOptions
@@ -249,7 +248,7 @@ SET(LIB_PUBLIC_HEADERS
     TileCache
     TimeControl
     TraversalData
-    ThreadingUtils
+    Threading
     TMS
     Units
     URI
@@ -586,7 +585,6 @@ set(TARGET_SRC
     StateSetCache.cpp
     Status.cpp
     StringUtils.cpp
-    TaskService.cpp
     TDTiles.cpp
     Terrain.cpp
     TerrainOptions.cpp
@@ -611,7 +609,7 @@ set(TARGET_SRC
     TileCache.cpp
     TimeControl.cpp
     TraversalData.cpp
-    ThreadingUtils.cpp
+    Threading.cpp
     TMS.cpp
     Units.cpp
     URI.cpp

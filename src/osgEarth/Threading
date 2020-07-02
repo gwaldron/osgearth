@@ -20,36 +20,98 @@
 #define OSGEARTH_THREADING_UTILS_H 1
 
 #include <osgEarth/Common>
-#include <OpenThreads/Condition>
-#include <OpenThreads/Mutex>
-#include <OpenThreads/Thread>
 #include <osg/OperationThread>
-#include <osgUtil/IncrementalCompileOperation>
-#include <osgDB/Options>
-#include <osg/ref_ptr>
-#include <set>
-#include <map>
 #include <atomic>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
+#include <unordered_map>
+#include <queue>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
 
+namespace osgDB {
+    class Options;
+}
+
+// to include the file and line as the mutex name
+#define OE_MUTEX_NAME __FILE__ ":" OE_STRINGIFY(__LINE__)
+
 namespace osgEarth { namespace Threading
-{   
-    typedef OpenThreads::Mutex Mutex;
-    typedef OpenThreads::ScopedLock<OpenThreads::Mutex> ScopedMutexLock;
-    typedef OpenThreads::Thread Thread;
+{
+    //! C++ BasicLockable requirement
+    class BasicLockable
+    {
+    public:
+        virtual void lock() =0;
+        virtual void unlock() = 0;
+    };
+
+    //! C++ Lockable requirement
+    class Lockable : public BasicLockable
+    {
+    public:
+        virtual bool try_lock() =0;
+    };
 
     /**
-     * Gets the unique ID of the running thread. Use this instead of
-     * OpenThreads::Thread::CurrentThread, which only works reliably on
-     * threads created with the OpenThreads framework
+     * A normal mutex
+     */
+    class OSGEARTH_EXPORT Mutex : public Lockable
+    {
+    public:
+        Mutex();
+        Mutex(const std::string& name, const char* file=nullptr, std::uint32_t line=0);
+        ~Mutex();
+
+        void lock() override;
+        void unlock() override;
+        bool try_lock() override;
+
+        void setName(const std::string& name);
+
+    private:
+        std::string _name;
+        void* _handle;
+        void* _data;
+    };
+
+    typedef std::lock_guard<Mutex> ScopedMutexLock;
+
+    /**
+     * A recursive mutex
+     */
+    class OSGEARTH_EXPORT RecursiveMutex : public Lockable
+    {
+    public:
+        RecursiveMutex();
+        RecursiveMutex(const std::string& name, const char* file=nullptr, std::uint32_t line=0);
+        ~RecursiveMutex();
+
+        //! Enable or disable this mutex. Don't call this while threads are running.
+        void disable();
+
+        void lock() override;
+        void unlock() override;
+        bool try_lock() override;
+
+    private:
+        bool _enabled;
+        std::string _name;
+        void* _handle;
+    };
+
+    typedef std::lock_guard<RecursiveMutex> ScopedRecursiveMutexLock;
+
+    /**
+     * Gets the unique ID of the running thread.
      */
     extern OSGEARTH_EXPORT unsigned getCurrentThreadId();
 
     /**
     * Pure interface for an object that can be canceled.
     */
-    class OSGEARTH_EXPORT Cancelable
+    class Cancelable
     {
     public:
         virtual bool isCanceled() const = 0;
@@ -76,6 +138,8 @@ namespace osgEarth { namespace Threading
         //! Construct a new event
         Event();
 
+        Event(const std::string& name);
+
         //! DTOR
         ~Event();
 
@@ -97,96 +161,21 @@ namespace osgEarth { namespace Threading
         //! Whether the event state is set (waiters will not block).
         inline bool isSet() const { return _set; }
 
+        void setName(const std::string& name);
+
     protected:
-        OpenThreads::Mutex _m;
-        OpenThreads::Condition _cond;
+        Mutex _m;
+        std::condition_variable_any _cond;
         bool _set;
     };
 
     /** Wraps an Event in a Referenced. */
     class OSGEARTH_EXPORT RefEvent : public Event, public osg::Referenced
     {
-    };
-
-    /**
-     * Same as Event, but set() must be called N times before unblocking
-     * waiting thread(s).
-     */
-    class OSGEARTH_EXPORT MultiEvent 
-    {
     public:
-        //! Construct a multi-event with the number of setters.
-        MultiEvent(int num =1);
-
-        //! DTOR
-        ~MultiEvent();
-
-        //! Block the calling thread until all N set()s are called.
-        bool wait();
-
-        //! Same as wait(), but resets the state after returning.
-        bool waitAndReset();
-
-        //! Adds one signal to the event; when all signals are set, waiters will unblock.
-        void set();
-        void notify() { set(); }
-
-        //! Resets the state.
-        void reset();
-
-    protected:
-        OpenThreads::Mutex _m;
-        OpenThreads::Condition _cond;
-        int _set, _num;
+        RefEvent() : Event() , osg::Referenced() { }
+        RefEvent(const std::string& name) : Event(name), osg::Referenced() { }
     };
-
-    /**
-     * KeyedMutex is a per-value mutex; really just a map of key/mutex pairs.
-     * *** BROKEN, DON't USE YET ***
-     */
-#if 0
-    template<typename T>
-    class OSGEARTH_EXPORT KeyedMutex
-    {
-    protected:
-        mutable OpenThreads::Mutex _m;
-        typedef std::pair<Mutex*, int> Entry;
-        typedef std::map<T, Entry> Table;
-        Table _t;
-
-    public:
-        int lock(const T& key) {
-            _m.lock();
-            bool exists = _t.find(key) != _t.end();
-            Entry& e = _t[key];
-            if (!exists) {
-                e.first = new Mutex();
-                e.second = 1;
-            }
-            else {
-                e.second++;
-            }
-            _m.unlock();
-            return e.first->lock();
-        }
-
-        int unlock(const T& key) {
-            _m.lock();
-            typename Table::iterator i = _t.find(key);
-            if (i != _t.end()) {
-                Entry& e = i->second;
-                e.first->unlock();
-                e.second--;
-                if (e.second == 0) {
-                    delete e.first;
-                    _t.erase(i);
-                }
-            }
-            _m.unlock();
-            return 0;
-        }
-    };
-#endif
 
     /**
      * Future is the consumer-side interface to an asynchronous operation.
@@ -212,6 +201,11 @@ namespace osgEarth { namespace Threading
         //! Blank CTOR
         Future() {
             _ev = new RefEvent();
+            _objRef = new RefPtrRef();
+        }
+
+        Future(const std::string& name) {
+            _ev = new RefEvent(name);
             _objRef = new RefPtrRef();
         }
 
@@ -280,6 +274,10 @@ namespace osgEarth { namespace Threading
     class Promise
     {
     public:
+        Promise() { }
+
+        Promise(const std::string& name) : _future(name) { }
+
         //! This promise's future result.
         const Future<T> getFuture() const { return _future; }
 
@@ -326,105 +324,141 @@ namespace osgEarth { namespace Threading
 
         Future<T> _future;
     };
-    
-#ifdef USE_CUSTOM_READ_WRITE_LOCK
+
 
     /**
-     * Custom read/write lock. The read/write lock in OSG can unlock mutexes from a different
-     * thread than the one that locked them - this can hang the thread in Windows.
-     *
-     * Adapted from:
-     * http://www.codeproject.com/KB/threads/ReadWriteLock.aspx
+    * Mutex that locks on a per-object basis
+    */
+    template<typename T>
+    class Gate
+    {
+    public:
+        Gate() { }
+
+        Gate(const std::string& name) : _m(name) { }
+
+        inline void lock(T key) {
+            std::unique_lock<Mutex> lock(_m);
+            while(_users[key] > 0)
+                _unlocked.wait(lock);
+            ++_users[key];
+        }
+
+        inline void unlock(T key) {
+            std::unique_lock<Mutex> lock(_m);
+            --_users[key];
+            if (_users[key] == 0) {
+                _users.erase(key);
+                _unlocked.notify_all();
+            }
+        }
+
+        inline void setName(const std::string& name) {
+            _m.setName(name);
+        }
+
+    private:
+        Mutex _m;
+        std::condition_variable_any _unlocked;
+        std::unordered_map<T, int> _users;
+    };
+
+    template<typename T>
+    struct ScopedGate {
+        Gate<T>& _gate;
+        T _key;
+        ScopedGate(Gate<T>& gate, T key) : _gate(gate), _key(key) { _gate.lock(key); }
+        ~ScopedGate() { _gate.unlock(_key); }
+    };
+
+    /**
+     * Mutex that allows many simultaneous readers but only one writer
      */
     class OSGEARTH_EXPORT ReadWriteMutex
     {
     public:
-        //! Construct a read/write mutex.
         ReadWriteMutex();
+        ReadWriteMutex(const std::string& name);
 
-        //! Lock for reading. Multiple threads can take a read lock simultaneously.
-        void readLock();
+        void read_lock();
+        void read_unlock();
 
-        //! Unlock for reading.
-        void readUnlock();
+        void write_lock();
+        void write_unlock();
 
-        //! Lock for writing. This is exclusive; no other read OR write locks may be taken.
-        void writeLock();
-
-        //! Release a write lock.
-        void writeUnlock();
-
-    protected:
-
-        void incrementReaderCount();
-        void decrementReaderCount();
+        void setName(const std::string& name);
 
     private:
-        int    _readerCount;
-        Mutex  _lockWriterMutex;
-        Mutex  _readerCountMutex;
-        Event  _noWriterEvent;
-        Event  _noReadersEvent;
+        Mutex _m;
+        std::condition_variable_any _unlocked;
+        unsigned _writers;
+        unsigned _readers;
     };
 
-
-    struct ScopedWriteLock
-    {
-        ScopedWriteLock( ReadWriteMutex& lock ) : _lock(lock) { _lock.writeLock(); }
-        ~ScopedWriteLock() { _lock.writeUnlock(); }
-    protected:
+    struct ScopedWriteLock {
+        ScopedWriteLock( ReadWriteMutex& lock ) : _lock(lock) { _lock.write_lock(); }
+        ~ScopedWriteLock() { _lock.write_unlock(); }
+    private:
         ReadWriteMutex& _lock;
     };
 
-    struct ScopedReadLock
-    {
-        ScopedReadLock( ReadWriteMutex& lock ) : _lock(lock) { _lock.readLock(); }
-        ~ScopedReadLock() { _lock.readUnlock(); }
-    protected:
+    struct ScopedReadLock {
+        ScopedReadLock( ReadWriteMutex& lock ) : _lock(lock) { _lock.read_lock(); }
+        ~ScopedReadLock() { _lock.read_unlock(); }
+    private:
         ReadWriteMutex& _lock;
     };
-
-#else
-
-    typedef OpenThreads::ReadWriteMutex  ReadWriteMutex;
-    typedef OpenThreads::ScopedWriteLock ScopedWriteLock;
-    typedef OpenThreads::ScopedReadLock  ScopedReadLock;
-
-#endif
-
 
     /**
-     * A ThreadPool that contains a work queue and it's threads that process the queue
+     * A ThreadPool that contains a work queue and one or more
+     * threads that process the operations on the queue.
      */
     class OSGEARTH_EXPORT ThreadPool : public osg::Referenced
     {
     public:
-        ThreadPool(unsigned int numThreads = 2);
+        //! Allocate a new pool with "numThreads" threads.
+        ThreadPool(unsigned numThreads = 2);
 
+        //! Destroy
         ~ThreadPool();
 
-        osg::OperationQueue* getQueue() const;
+        //! Run an asynchronous operation in this thread pool.
+        void run(osg::Operation*);
+
+        //! How many operations are queued up?
+        unsigned getNumOperationsInQueue() const;
 
         //! Store/retrieve thread pool stored in an options structure
-        void put(osgDB::Options*);
-        static osg::ref_ptr<ThreadPool> get(const osgDB::Options*);
+        void put(class osgDB::Options*);
+        static osg::ref_ptr<ThreadPool> get(const class osgDB::Options*);
 
     private:
         void startThreads();
         void stopThreads();
 
-        osg::ref_ptr< osg::OperationQueue > _queue;
-        std::vector< osg::ref_ptr< osg::OperationsThread > > _threads;
+        // queued operations to run asynchronously
+        typedef std::queue<osg::ref_ptr<osg::Operation> > Queue;
+        Queue _queue;
+        // protect access to the queue
+        Mutex _queueMutex;
+        // number of concurrent threads in the pool
         unsigned int _numThreads;
+        // thread waiter block
+        std::condition_variable_any _block;
+        // set to true when threads should exit
+        bool _done;
+        // threads in the pool
+        std::vector<std::thread> _threads;
     };
-
 
     /**
      * Simple convenience construct to make another type "lockable"
      * as long as it has a default constructor
      */
     template<typename T>
-    struct Lockable : public T {
+    struct Mutexed : public T {
+        Mutexed() : T() { }
+        Mutexed(const std::string& name) : _lockable_mutex(name), T() { }
         inline void lock() const {
             _lockable_mutex.lock();
         }
@@ -439,7 +473,12 @@ namespace osgEarth { namespace Threading
     };
 
 
-    struct ScopedAtomicCounter {
+    /**
+     * Simple atomic counter that increments an atomic
+     * when entering a scope and decrements it upon exiting the scope
+     */
+    struct ScopedAtomicCounter
+    {
         std::atomic_int& _a;
         ScopedAtomicCounter(std::atomic_int& a) : _a(a) { ++_a; }
         ~ScopedAtomicCounter() { --_a; }

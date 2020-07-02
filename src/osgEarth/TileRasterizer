@@ -24,7 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/TileKey>
 #include <osg/Camera>
 #include <osg/BufferObject>

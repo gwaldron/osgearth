@@ -48,7 +48,7 @@
 class GLTFReader
 {
 public:
-    typedef osgEarth::Threading::Lockable<
+    typedef osgEarth::Mutexed<
         osgEarth::UnorderedMap<std::string, osg::ref_ptr<osg::Texture2D> >
     > TextureCache;
 

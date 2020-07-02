@@ -30,6 +30,8 @@ namespace osgEarth
 {
     constexpr int ELEVATION_TILE_SIZE = 257;
 
+    class ProgressCallback;
+
     /**
      * Result of an elevation sampling query
      */
@@ -103,12 +105,18 @@ namespace osgEarth
                 (int)(v*(double)(_read.t()-1)));
         }
 
+        //! The heightfield that was used to populate this object
+        const osg::HeightField* getHeightField() const {
+            return _heightField.get();
+        }
+
     private:
         TileKey _tilekey;
         GeoExtent _extent;
         Distance _resolution;
         ImageUtils::PixelReader _read;
         osg::ref_ptr<osg::Texture2D> _normalTex;
+        osg::ref_ptr<const osg::HeightField> _heightField;
         float* _resolutions;
     };
 
@@ -121,7 +129,8 @@ namespace osgEarth
         osg::Texture2D* createNormalMap(
             const TileKey& key,
             const class Map* map,
-            void* workingSet);
+            void* workingSet,
+            ProgressCallback* progress);
     };
 
     //! Revisioned key for elevation lookups (internal)

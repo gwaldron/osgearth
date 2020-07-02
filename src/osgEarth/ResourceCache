@@ -25,7 +25,7 @@
 #include <osgEarth/InstanceResource>
 #include <osgEarth/ResourceLibrary>
 #include <osgEarth/Containers>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 
 namespace osgEarth { namespace Util
 {
@@ -92,10 +92,6 @@ namespace osgEarth { namespace Util
         typedef LRUCache<std::string, osg::ref_ptr<osg::Node> > InstanceCache;
         InstanceCache    _instanceCache;
         Threading::Mutex _instanceMutex;
-
-        typedef LRUCache<std::string, osg::ref_ptr<osg::StateSet> > ResourceLibraryCache;
-        ResourceLibraryCache  _resourceLibraryCache;
-        Threading::Mutex      _resourceLibraryMutex;
     };
 } } 
 

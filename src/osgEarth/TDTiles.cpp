@@ -596,7 +596,7 @@ namespace
         {
             if (threadPool.valid())
             {
-                threadPool->getQueue()->add(operation.get());
+                threadPool->run(operation.get());
             }
             else
             {

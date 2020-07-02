@@ -38,12 +38,11 @@ PagedLODWithNodeOperations::runPostMerge( osg::Node* node )
 {
     if ( _postMergeOps.valid() )
     {
-        _postMergeOps->mutex().readLock();
+        Threading::ScopedReadLock(_postMergeOps->mutex());
         for( NodeOperationVector::iterator i = _postMergeOps->begin(); i != _postMergeOps->end(); ++i )
         {
             i->get()->operator()( node );
         }
-        _postMergeOps->mutex().readUnlock();
     }
 }
 

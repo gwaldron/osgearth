@@ -142,7 +142,8 @@ _minLevel(0),
 _maxLevel(30),
 _priorityScale(1.0f),
 _priorityOffset(0.0f),
-_canCancel(true)
+_canCancel(true),
+_mutex("SimplePager(OE)")
 {
     // required in order to pass our "this" pointer to the pseudo loader:
     this->setName( "osgEarth::Util::SimplerPager::this" );

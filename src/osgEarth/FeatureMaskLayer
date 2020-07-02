@@ -84,7 +84,7 @@ namespace osgEarth
         void create();
 
         osg::ref_ptr<osg::Vec3dArray> _boundary;
-        OpenThreads::Mutex _boundaryMutex;
+        Threading::Mutex _boundaryMutex;
     };
 } // namespace osgEarth
 

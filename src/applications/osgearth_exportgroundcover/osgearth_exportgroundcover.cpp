@@ -61,7 +61,7 @@ struct App
     GroundCoverFeatureGenerator featureGen;
     osg::ref_ptr<OGRFeatureSource> outfs;
 
-    Threading::Lockable<std::queue<FeatureList*> > outputQueue;
+    Threading::Mutexed<std::queue<FeatureList*> > outputQueue;
     Threading::Event gate;
 
     App() { }
@@ -145,7 +145,7 @@ struct ExportOperation : public osg::Operation
     ExportOperation(App& app, const TileKey& key) : 
         osg::Operation("build", false), _app(app), _key(key) { }
 
-    void operator()(osg::Object*)
+    void operator()(osg::Object*) override
     {
         _app.exportKey(_key);
     }
@@ -175,7 +175,7 @@ main(int argc, char** argv)
         i != keys.end();
         ++i)
     {
-        pool->getQueue()->add(new ExportOperation(app, *i));
+        pool->run(new ExportOperation(app, *i));
     }
 
     unsigned totalFeatures = 0u;

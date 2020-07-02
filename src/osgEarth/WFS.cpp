@@ -326,7 +326,8 @@ WFSFeatureSource::saveResponse(const std::string buffer, const std::string& file
 bool
 WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mimeType, FeatureList& features)
 {
-    OGR_SCOPED_LOCK;
+    // Unnecessary - dataset is created and destroyed locally
+    //OGR_SCOPED_LOCK;
 
     bool json = isJSON(mimeType);
     bool gml = isGML(mimeType);

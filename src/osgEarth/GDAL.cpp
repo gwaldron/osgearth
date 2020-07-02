@@ -280,8 +280,6 @@ namespace osgEarth { namespace GDAL
     */
     GDALRasterBand* findBandByColorInterp(GDALDataset *ds, GDALColorInterp colorInterp)
     {
-        GDAL_SCOPED_LOCK;
-
         for (int i = 1; i <= ds->GetRasterCount(); ++i)
         {
             if (ds->GetRasterBand(i)->GetColorInterpretation() == colorInterp) return ds->GetRasterBand(i);
@@ -291,8 +289,6 @@ namespace osgEarth { namespace GDAL
 
     GDALRasterBand* findBandByDataType(GDALDataset *ds, GDALDataType dataType)
     {
-        GDAL_SCOPED_LOCK;
-
         for (int i = 1; i <= ds->GetRasterCount(); ++i)
         {
             if (ds->GetRasterBand(i)->GetRasterDataType() == dataType) return ds->GetRasterBand(i);
@@ -448,7 +444,17 @@ _warpedDS(NULL),
 _maxDataLevel(30),
 _linearUnits(1.0)
 {
-    //nop
+    _threadId = osgEarth::Threading::getCurrentThreadId();
+}
+
+GDAL::Driver::~Driver()
+{
+    if (_warpedDS)
+        GDALClose(_warpedDS);
+    else if (_srcDS)
+        GDALClose(_srcDS);
+
+    OE_DEBUG << "Closed GDAL Driver on thread " << _threadId << std::endl;
 }
 
 void
@@ -462,10 +468,12 @@ Status
 GDAL::Driver::open(const std::string& name,
                    const GDAL::Options& options,
                    unsigned tileSize,
-                   DataExtentList& layerDataExtents,
+                   DataExtentList* layerDataExtents,
                    const osgDB::Options* readOptions)
 {
-    GDAL_SCOPED_LOCK;
+    //GDAL_SCOPED_LOCK;
+
+    bool info = (layerDataExtents != NULL);
 
     _name = name;
     _gdalOptions = options;
@@ -534,7 +542,6 @@ GDAL::Driver::open(const std::string& name,
         {
             char **subDatasets = _srcDS->GetMetadata("SUBDATASETS");
             int numSubDatasets = CSLCount(subDatasets);
-            //OE_NOTICE << "There are " << numSubDatasets << " in this file " << std::endl;
 
             if (numSubDatasets > 0)
             {
@@ -764,9 +771,8 @@ GDAL::Driver::open(const std::string& name,
                 << "Cannot create projected Profile from dataset's warped spatial reference WKT: " << warpedSRSWKT);
         }
 
-        OE_INFO << LC << INDENT << source << " is projected, SRS = "
-            << warpedSRSWKT << std::endl;
-        //<< _warpedDS->GetProjectionRef() << std::endl;
+        if (info)
+            OE_INFO << LC << INDENT << source << " is projected, SRS = " << warpedSRSWKT << std::endl;
     }
 
     //Compute the min and max data levels
@@ -775,11 +781,13 @@ GDAL::Driver::open(const std::string& name,
 
     double maxResolution = osg::minimum(resolutionX, resolutionY);
 
-    OE_INFO << LC << INDENT << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
+    if (info)
+        OE_INFO << LC << INDENT << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
     if (_maxDataLevel.isSet())
     {
-        OE_INFO << LC << INDENT << gdalOptions().url()->full() << " using override max data level " << _maxDataLevel.get() << std::endl;
+        if (info)
+            OE_INFO << LC << INDENT << gdalOptions().url()->full() << " using override max data level " << _maxDataLevel.get() << std::endl;
     }
     else
     {
@@ -798,56 +806,38 @@ GDAL::Driver::open(const std::string& name,
             }
         }
 
-        OE_INFO << LC << INDENT << gdalOptions().url()->full() << " max Data Level: " << _maxDataLevel.get() << std::endl;
+        if (info)
+            OE_INFO << LC << INDENT << gdalOptions().url()->full() << " max Data Level: " << _maxDataLevel.get() << std::endl;
     }
 
     // If the input dataset is a VRT, then get the individual files in the dataset and use THEM for the DataExtents.
     // A VRT will create a potentially very large virtual dataset from sparse datasets, so using the extents from the underlying files
     // will allow osgEarth to only create tiles where there is actually data.
     DataExtentList dataExtents;
-#if 0
-    if (strcmp(_warpedDS->GetDriver()->GetDescription(), "VRT") == 0)
-    {
-        char **papszFileList = _warpedDS->GetFileList();
-        if (papszFileList != NULL)
-        {
-            for (int i = 0; papszFileList[i] != NULL; i++)
-            {
-                std::string file = papszFileList[i];
-                GeoExtent ext = getGeoExtent(file);
-                if (ext.isValid())
-                {
-                    if (_maxDataLevel.isSet())
-                        dataExtents.push_back(DataExtent(ext, 0, _maxDataLevel.get()));
-                    else
-                        dataExtents.push_back(DataExtent(ext));
-                }
-            }
-        }
-    }
-#endif
-
 
     osg::ref_ptr< SpatialReference > srs = SpatialReference::create(warpedSRSWKT);
+
     // record the data extent in profile space:
     _bounds = Bounds(minX, minY, maxX, maxY);
     _extents = GeoExtent(srs.get(), _bounds);
-    GeoExtent profile_extent = _extents.transform(profile->getSRS());
-
-    if (dataExtents.empty())
+    if (layerDataExtents)
     {
-        // Use the extents of the whole file.
-        if (_maxDataLevel.isSet())
-            layerDataExtents.push_back(DataExtent(profile_extent, 0, _maxDataLevel.get()));
+        GeoExtent profile_extent = _extents.transform(profile->getSRS());
+
+        if (dataExtents.empty())
+        {
+            // Use the extents of the whole file.
+            if (_maxDataLevel.isSet())
+                layerDataExtents->push_back(DataExtent(profile_extent, 0, _maxDataLevel.get()));
+            else
+                layerDataExtents->push_back(DataExtent(profile_extent));
+        }
         else
-            layerDataExtents.push_back(DataExtent(profile_extent));
+        {
+            // Use the DataExtents from the subfiles of the VRT.
+            layerDataExtents->insert(layerDataExtents->end(), dataExtents.begin(), dataExtents.end());
+        }
     }
-    else
-    {
-        // Use the DataExtents from the subfiles of the VRT.
-        layerDataExtents.insert(layerDataExtents.end(), dataExtents.begin(), dataExtents.end());
-    }
-
 
     // Get the linear units of the SRS for scaling elevation values
     _linearUnits = OSRGetLinearUnits((OGRSpatialReferenceH)srs->getHandle(), 0);
@@ -855,7 +845,8 @@ GDAL::Driver::open(const std::string& name,
     // Set the final profile
     _profile = profile;
 
-    OE_DEBUG << LC << INDENT << "Set Profile to " << (profile ? profile->toString() : "NULL") << std::endl;
+    if (info)
+        OE_DEBUG << LC << INDENT << "Set Profile to " << (profile ? profile->toString() : "NULL") << std::endl;
 
     return STATUS_OK;
 }
@@ -1048,7 +1039,7 @@ GDAL::Driver::createImage(const TileKey& key,
         return NULL;
     }
 
-    GDAL_SCOPED_LOCK;
+    //GDAL_SCOPED_LOCK;
 
     if (progress && progress->isCanceled())
     {
@@ -1472,7 +1463,7 @@ GDAL::Driver::createHeightField(const TileKey& key,
         return NULL;
     }
 
-    GDAL_SCOPED_LOCK;
+    //GDAL_SCOPED_LOCK;
 
     //Allocate the heightfield
     osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
@@ -1568,7 +1559,7 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
         return NULL;
     }
 
-    GDAL_SCOPED_LOCK;
+    //GDAL_SCOPED_LOCK;
 
     //Allocate the heightfield
     osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
@@ -1775,42 +1766,66 @@ GDALImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    _driver = new GDAL::Driver();
+    // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
+    // So we just encapsulate the entire setup once per thread.
+    // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
+    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
+
+    osg::ref_ptr<const Profile> profile;
+    Status s = openOnThisThread(driver, &profile, &_overrideProfile);
+    if (s.isError())
+        return s;
+
+    if (profile.valid())
+        setProfile(profile.get());
+
+    return s;
+}
+
+Status
+GDALImageLayer::openOnThisThread(
+    osg::ref_ptr<GDAL::Driver>& driver, 
+    osg::ref_ptr<const Profile>* out_profile,
+    osg::ref_ptr<const Profile>* out_overrideProfile) const
+{
+    driver = new GDAL::Driver();
 
     if (options().noDataValue().isSet())
-        _driver->setNoDataValue( options().noDataValue().get() );
+        driver->setNoDataValue( options().noDataValue().get() );
     if (options().minValidValue().isSet())
-        _driver->setMinValidValue( options().minValidValue().get() );
+        driver->setMinValidValue( options().minValidValue().get() );
     if (options().maxValidValue().isSet())
-        _driver->setMaxValidValue( options().maxValidValue().get() );
+        driver->setMaxValidValue( options().maxValidValue().get() );
     if (options().maxDataLevel().isSet())
-        _driver->setMaxDataLevel( options().maxDataLevel().get() );
+        driver->setMaxDataLevel( options().maxDataLevel().get() );
 
     // If the user set an override profile, save it
     // TODO: may want to elevate this to Layer
-    if (getProfile())
+    if (getProfile() && out_overrideProfile)
     {
-        _overrideProfile = getProfile();
+        *out_overrideProfile = getProfile();
     }
 
     if (_overrideProfile.valid())
     {
-        _driver->setOverrideProfile(_overrideProfile.get());
+        driver->setOverrideProfile(_overrideProfile.get());
     }
 
-    Status status = _driver->open(
+    DataExtentList* de = out_profile ? &const_cast<GDALImageLayer*>(this)->dataExtents() : NULL;
+
+    Status status = driver->open(
         getName(),
         options(),
         options().tileSize().get(),
-        dataExtents(),
+        de,
         getReadOptions());
 
     if (status.isError())
         return status;
 
-    if (_driver->getProfile())
+    if (driver->getProfile() && out_profile)
     {
-        setProfile(_driver->getProfile());
+        *out_profile = driver->getProfile();
     }
 
     return Status::NoError;
@@ -1819,7 +1834,11 @@ GDALImageLayer::openImplementation()
 Status
 GDALImageLayer::closeImplementation()
 {
-    _driver = 0L;
+    // safely shut down all per-thread handles.
+    {
+        Threading::ScopedWriteLock exclusive(_workers);
+        _driverPerThread.clear();
+    }
     dataExtents().clear();
     setProfile(NULL); // must do this to support override profiles
     return ImageLayer::closeImplementation();
@@ -1828,9 +1847,23 @@ GDALImageLayer::closeImplementation()
 GeoImage
 GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    GDAL::Driver* driver = dynamic_cast<GDAL::Driver*>(_driver.get());
+    if (getStatus().isError())
+        return GeoImage::INVALID;
+
+    Threading::ScopedReadLock enterReader(_workers);
+    if (isClosing())
+        return GeoImage::INVALID;
+
+    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
+    if (!driver.valid())
+    {
+        // calling openImpl with NULL params limits the setup
+        // since we already called this during openImplementation
+        openOnThisThread(driver, NULL, NULL);
+    }
+
     osg::ref_ptr<osg::Image> image;
-    if (driver)
+    if (driver.valid())
     {
         image = driver->createImage(
             key,
@@ -1870,7 +1903,8 @@ OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, bool, UseVRT, useVRT);
 
 void GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value)
 {
-    _driver->setExternalDataset(value);
+    //_driver->setExternalDataset(value);
+    OE_WARN << LC << "setExternalDataset NOT IMPLEMENTED" << std::endl;
 }
 
 void
@@ -1886,41 +1920,66 @@ GDALElevationLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    _driver = new GDAL::Driver();
+    // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
+    // So we just encapsulate the entire setup once per thread.
+    // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
+    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
+
+    osg::ref_ptr<const Profile> profile;
+    Status s = openOnThisThread(driver, &profile, &_overrideProfile);
+    if (s.isError())
+        return s;
+
+    if (profile.valid())
+        setProfile(profile.get());
+
+    return s;
+}
+
+Status
+GDALElevationLayer::openOnThisThread(
+    osg::ref_ptr<GDAL::Driver>& driver, 
+    osg::ref_ptr<const Profile>* out_profile,
+    osg::ref_ptr<const Profile>* out_overrideProfile) const
+{
+    driver = new GDAL::Driver();
 
     if (options().noDataValue().isSet())
-        _driver->setNoDataValue( options().noDataValue().get() );
+        driver->setNoDataValue( options().noDataValue().get() );
     if (options().minValidValue().isSet())
-        _driver->setMinValidValue( options().minValidValue().get() );
+        driver->setMinValidValue( options().minValidValue().get() );
     if (options().maxValidValue().isSet())
-        _driver->setMaxValidValue( options().maxValidValue().get() );
+        driver->setMaxValidValue( options().maxValidValue().get() );
     if (options().maxDataLevel().isSet())
-        _driver->setMaxDataLevel( options().maxDataLevel().get() );
+        driver->setMaxDataLevel( options().maxDataLevel().get() );
 
-    // If the user set an override profile, save it.
-    if (getProfile())
+    // If the user set an override profile, save it
+    // TODO: may want to elevate this to Layer
+    if (getProfile() && out_overrideProfile)
     {
-        _overrideProfile = getProfile();
+        *out_overrideProfile = getProfile();
     }
 
     if (_overrideProfile.valid())
     {
-        _driver->setOverrideProfile(_overrideProfile.get());
+        driver->setOverrideProfile(_overrideProfile.get());
     }
 
-    Status status = _driver->open(
+    DataExtentList* de = out_profile ? &const_cast<GDALElevationLayer*>(this)->dataExtents() : NULL;
+
+    Status status = driver->open(
         getName(),
         options(),
         options().tileSize().get(),
-        dataExtents(),
+        de,
         getReadOptions());
 
     if (status.isError())
         return status;
 
-    if (_driver->getProfile())
+    if (driver->getProfile() && out_profile)
     {
-        setProfile(_driver->getProfile());
+        *out_profile = driver->getProfile();
     }
 
     return Status::NoError;
@@ -1929,7 +1988,11 @@ GDALElevationLayer::openImplementation()
 Status
 GDALElevationLayer::closeImplementation()
 {
-    _driver = 0L;
+    // safely shut down all per-thread handles.
+    {
+        Threading::ScopedWriteLock exclusive(_workers);
+        _driverPerThread.clear();
+    }
     dataExtents().clear();
     setProfile(NULL); // must do this to support override profiles
     return ElevationLayer::closeImplementation();
@@ -1938,7 +2001,21 @@ GDALElevationLayer::closeImplementation()
 GeoHeightField
 GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    GDAL::Driver* driver = dynamic_cast<GDAL::Driver*>(_driver.get());
+    if (getStatus().isError())
+        return GeoHeightField::INVALID;
+
+    Threading::ScopedReadLock enterReader(_workers);
+    if (isClosing())
+        return GeoHeightField::INVALID;
+
+    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
+    if (!driver.valid())
+    {
+        // calling openImpl with NULL params limits the setup
+        // since we already called this during openImplementation
+        openOnThisThread(driver, NULL, NULL);
+    }
+
     osg::ref_ptr<osg::HeightField> heightfield;
     if (driver)
     {
@@ -1958,4 +2035,258 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
         }
     }
     return GeoHeightField(heightfield.get(), key.getExtent());
+}
+
+//...................................................................
+
+#undef LC
+#define LC "[GDAL] "
+
+namespace
+{
+    osg::Image* createImageFromDataset(GDALDataset* ds)
+    {
+        // called internally -- GDAL lock not required
+
+        int numBands = ds->GetRasterCount();
+        if ( numBands < 1 )
+            return 0L;
+
+        GLenum dataType;
+        int    sampleSize;
+        GLint  internalFormat;
+
+        switch(ds->GetRasterBand(1)->GetRasterDataType())
+        {
+        case GDT_Byte:
+            dataType = GL_UNSIGNED_BYTE;
+            sampleSize = 1;
+            internalFormat = GL_LUMINANCE8;
+            break;
+        case GDT_UInt16:
+        case GDT_Int16:
+            dataType = GL_UNSIGNED_SHORT;
+            sampleSize = 2;
+            internalFormat = GL_LUMINANCE16;
+            break;
+        default:
+            dataType = GL_FLOAT;
+            sampleSize = 4;
+            internalFormat = GL_LUMINANCE32F_ARB;
+        }
+
+        GLenum pixelFormat =
+            numBands == 1 ? GL_LUMINANCE :
+            numBands == 2 ? GL_LUMINANCE_ALPHA :
+            numBands == 3 ? GL_RGB :
+            GL_RGBA;
+
+        int pixelBytes = sampleSize * numBands;
+
+        //Allocate the image
+        osg::Image *image = new osg::Image;
+        image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, pixelFormat, dataType);
+
+        CPLErr err = ds->RasterIO(
+            GF_Read, 
+            0, 0, 
+            image->s(), image->t(), 
+            (void*)image->data(), 
+            image->s(), image->t(), 
+            ds->GetRasterBand(1)->GetRasterDataType(),
+            numBands,
+            NULL,
+            pixelBytes,
+            pixelBytes * image->s(),
+            1);
+        if ( err != CE_None )
+        {
+            OE_WARN << LC << "RasterIO failed.\n";
+        }
+
+        ds->FlushCache();
+
+        image->flipVertical();
+
+        return image;
+    }
+
+    GDALDataset* createMemDS(int width, int height, int numBands, GDALDataType dataType, double minX, double minY, double maxX, double maxY, const std::string &projection)
+    {
+        //Get the MEM driver
+        GDALDriver* memDriver = (GDALDriver*)GDALGetDriverByName("MEM");
+        if (!memDriver)
+        {
+            OE_WARN  << LC << "Could not get MEM driver" << std::endl;
+            return NULL;
+        }
+
+        //Create the in memory dataset.
+        GDALDataset* ds = memDriver->Create("", width, height, numBands, dataType, 0);
+        if (!ds)
+        {
+            OE_WARN << LC << "memDriver.create failed" << std::endl;
+            return NULL;
+        }
+
+        //Initialize the color interpretation
+        if ( numBands == 1 )
+        {
+            ds->GetRasterBand(1)->SetColorInterpretation(GCI_GrayIndex);
+        }
+        else
+        {
+            ds->GetRasterBand(1)->SetColorInterpretation(GCI_RedBand);
+            ds->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
+            ds->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
+
+            if ( numBands == 4 )
+            {
+                ds->GetRasterBand(4)->SetColorInterpretation(GCI_AlphaBand);
+            }
+        }
+
+        //Initialize the geotransform
+        double geotransform[6];
+        double x_units_per_pixel = (maxX - minX) / (double)width;
+        double y_units_per_pixel = (maxY - minY) / (double)height;
+        geotransform[0] = minX;
+        geotransform[1] = x_units_per_pixel;
+        geotransform[2] = 0;
+        geotransform[3] = maxY;
+        geotransform[4] = 0;
+        geotransform[5] = -y_units_per_pixel;
+        ds->SetGeoTransform(geotransform);
+        ds->SetProjection(projection.c_str());
+
+        return ds;
+    }
+
+    GDALDataset* createDataSetFromImage(const osg::Image* image, double minX, double minY, double maxX, double maxY, const std::string &projection)
+    {
+        //Clone the incoming image
+        osg::ref_ptr<osg::Image> clonedImage = new osg::Image(*image);
+
+        //Flip the image
+        clonedImage->flipVertical();
+
+        GDALDataType gdalDataType =
+            image->getDataType() == GL_UNSIGNED_BYTE  ? GDT_Byte :
+            image->getDataType() == GL_UNSIGNED_SHORT ? GDT_UInt16 :
+            image->getDataType() == GL_FLOAT          ? GDT_Float32 :
+            GDT_Byte;
+
+        int numBands =
+            image->getPixelFormat() == GL_RGBA      ? 4 :
+            image->getPixelFormat() == GL_RGB       ? 3 :
+            image->getPixelFormat() == GL_LUMINANCE ? 1 : 0;
+
+
+        if ( numBands == 0 )
+        {
+            OE_WARN << LC << "Failure in createDataSetFromImage: unsupported pixel format\n";
+            return 0L;
+        }
+
+        int pixelBytes =
+            gdalDataType == GDT_Byte   ?   numBands :
+            gdalDataType == GDT_UInt16 ? 2*numBands :
+            4*numBands;
+
+        GDALDataset* srcDS = createMemDS(image->s(), image->t(), numBands, gdalDataType, minX, minY, maxX, maxY, projection);
+
+        if ( srcDS )
+        {
+            CPLErr err = srcDS->RasterIO(
+                GF_Write, 
+                0, 0,
+                clonedImage->s(), clonedImage->t(),
+                (void*)clonedImage->data(),
+                clonedImage->s(),
+                clonedImage->t(),
+                gdalDataType,
+                numBands,
+                NULL,
+                pixelBytes,
+                pixelBytes * image->s(),
+                1);
+            if ( err != CE_None )
+            {
+                OE_WARN << LC << "RasterIO failed.\n";
+            }
+
+            srcDS->FlushCache();
+        }
+
+        return srcDS;
+    }
+}
+
+osg::Image* osgEarth::GDAL::reprojectImage(
+    osg::Image* srcImage, 
+    const std::string srcWKT, 
+    double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
+    const std::string destWKT, 
+    double destMinX, double destMinY, double destMaxX, double destMaxY,
+    int width, 
+    int height, 
+    bool useBilinearInterpolation)
+{
+    // Unnessecary since this is totally self-contained with thread-safe DataSets
+    //GDAL_SCOPED_LOCK;
+
+    osg::Timer_t start = osg::Timer::instance()->tick();
+
+    //Create a dataset from the source image
+    GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
+
+    OE_DEBUG << LC << "Source image is " << srcImage->s() << "x" << srcImage->t() << " in " << srcWKT << std::endl;
+
+
+    if (width == 0 || height == 0)
+    {
+        double outgeotransform[6];
+        double extents[4];
+        void* transformer = GDALCreateGenImgProjTransformer(srcDS, srcWKT.c_str(), NULL, destWKT.c_str(), 1, 0, 0);
+        GDALSuggestedWarpOutput2(srcDS,
+            GDALGenImgProjTransform, transformer,
+            outgeotransform,
+            &width,
+            &height,
+            extents,
+            0);
+        GDALDestroyGenImgProjTransformer(transformer);
+    }
+    OE_DEBUG << "Creating warped output of " << width <<"x" << height << " in " << destWKT << std::endl;
+
+    int numBands = srcDS->GetRasterCount();
+    GDALDataType dataType = srcDS->GetRasterBand(1)->GetRasterDataType();
+
+    GDALDataset* destDS = createMemDS(width, height, numBands, dataType, destMinX, destMinY, destMaxX, destMaxY, destWKT);
+
+    if (useBilinearInterpolation == true)
+    {
+        GDALReprojectImage(srcDS, NULL,
+            destDS, NULL,
+            GRA_Bilinear,
+            0,0,0,0,0);
+    }
+    else
+    {
+        GDALReprojectImage(srcDS, NULL,
+            destDS, NULL,
+            GRA_NearestNeighbour,
+            0,0,0,0,0);
+    }
+
+    osg::Image* result = createImageFromDataset(destDS);
+
+    delete srcDS;
+    delete destDS;  
+
+    osg::Timer_t end = osg::Timer::instance()->tick();
+
+    OE_DEBUG << "Reprojected image in " << osg::Timer::instance()->delta_m(start,end) << std::endl;
+
+    return result;
 }

@@ -252,7 +252,8 @@ StateSetCache::StateSetCache() :
     _attrShareAttempts( 0 ),
     _attrsIneligible  ( 0 ),
     _attrShareHits    ( 0 ),
-    _attrShareMisses  ( 0 )
+    _attrShareMisses  ( 0 ),
+    _mutex            ("StateSetCache(OE)")
 {
     //nop
 }

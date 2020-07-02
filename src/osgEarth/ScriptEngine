@@ -22,7 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Script>
 #include <osgEarth/Config>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 
 namespace osgEarth
 {

@@ -117,7 +117,8 @@ bool CreateTileManifest::includesLandCover() const
 //.........................................................................
 
 TerrainTileModelFactory::TerrainTileModelFactory(const TerrainOptions& options) :
-_options         ( options )
+_options( options ),
+_mipmapMutex("TerrainTileModelFactory MIPMAP(OE)")
 {
     // Create an empty texture that we can use as a placeholder
     _emptyColorTexture = new osg::Texture2D(ImageUtils::createEmptyImage());
@@ -428,9 +429,10 @@ TerrainTileModelFactory::addElevation(
 
     const bool acceptLowerRes = false;
 
-    if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, NULL))
+    if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, NULL, progress))
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
+
         layerModel->setRevision(combinedRevision);
 
         if ( elevTex.valid() )
@@ -442,7 +444,7 @@ TerrainTileModelFactory::addElevation(
                 key.getExtent().height() / (osgEarth::ELEVATION_TILE_SIZE-1),
                 key.getProfile()->getSRS()->getUnits());
             
-            osg::Texture2D* normalMap = gen.createNormalMap(key, map, &_workingSet);
+            osg::Texture2D* normalMap = gen.createNormalMap(key, map, &_workingSet, progress);
 
             if (normalMap)
             {
@@ -451,6 +453,10 @@ TerrainTileModelFactory::addElevation(
 
             // Made an image, so store this as a texture with no matrix.
             layerModel->setTexture( elevTex.get() );
+
+            // Keep the heightfield pointer around for legacy 3rd party usage (VRF)
+            layerModel->setHeightField(elevTex->getHeightField());
+
             model->elevationModel() = layerModel.get();
         }
     }
@@ -648,7 +654,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
 
     layer->applyTextureCompressionMode(tex);
     {
-        Threading::ScopedMutexLock lock(_mipmapMutex);
+        //Threading::ScopedMutexLock lock(_mipmapMutex);
         ImageUtils::generateMipmaps(tex);
     }
     

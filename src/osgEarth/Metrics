@@ -67,6 +67,7 @@ namespace osgEarth {
 #define OE_PROFILING_PLOT(name, value) if (osgEarth::Util::Metrics::enabled()) {TracyPlot(name, value);}
 #define OE_PROFILING_FRAME_MARK if (osgEarth::Util::Metrics::enabled()) {FrameMark;}
 #define OE_LOCKABLE(type, varname) TracyLockable(type, varname)
+#define OE_LOCKABLE_NAMED(type, varname, desc) TracyLockableN(type, varname, desc)
 #define OE_LOCKABLE_BASE( type ) LockableBase( type )
 
 inline void _zoneSetText(tracy::ScopedZone& zone, const char* text) {

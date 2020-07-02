@@ -21,6 +21,7 @@
 #define OSGEARTH_LEGACY_TILE_SOURCE_IMAGE_LAYER_H 1
 
 #include <osgEarth/ImageLayer>
+#include <osgEarth/TileSource>
 
 namespace osgEarth 
 {

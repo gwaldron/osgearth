@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/VerticalDatum>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/GeoData>
 
 #include <osgDB/ReadFile>
@@ -34,7 +34,7 @@ namespace
 {
     typedef std::map<std::string, osg::ref_ptr<VerticalDatum> > VDatumCache;
     VDatumCache      _vdatumCache;
-    Threading::Mutex _vdataCacheMutex;
+    Threading::Mutex _vdataCacheMutex("VDatumCache(OE)");
 } 
 
 VerticalDatum*

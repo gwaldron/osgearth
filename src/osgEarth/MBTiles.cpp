@@ -303,12 +303,14 @@ MBTilesElevationLayer::writeHeightFieldImplementation(const TileKey& key, const 
 #undef LC
 #define LC "[MBTiles] Layer \"" << _name << "\" "
 
-MBTiles::Driver::Driver()
+MBTiles::Driver::Driver() :
+    _minLevel(0),
+    _maxLevel(19),
+    _forceRGB(false),
+    _database(NULL),
+    _mutex("MBTiles Driver(OE)")
 {
-    _minLevel = 0;
-    _maxLevel = 19;
-    _forceRGB = false;
-    _database = NULL;
+    //nop
 }
 
 Status

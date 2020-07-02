@@ -19,6 +19,7 @@
 #include <osgEarth/Elevation>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarth/Progress>
 #include <osgEarth/Metrics>
 
 using namespace osgEarth;
@@ -50,20 +51,21 @@ ElevationTexture::ElevationTexture(const TileKey& key, const GeoHeightField& in_
 {
     if (in_hf.valid())
     {
-        const osg::HeightField* hf = in_hf.getHeightField();
+        _heightField = in_hf.getHeightField();
+
         osg::Vec4 value;
 
         osg::Image* heights = new osg::Image();
-        heights->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RED, GL_FLOAT);
+        heights->allocateImage(_heightField->getNumColumns(), _heightField->getNumRows(), 1, GL_RED, GL_FLOAT);
         heights->setInternalTextureFormat(GL_R32F);
 
         ImageUtils::PixelWriter write(heights);
         // TODO: speed this up since we know the format
-        for(unsigned row=0; row<hf->getNumRows(); ++row)
+        for(unsigned row=0; row<_heightField->getNumRows(); ++row)
         {
-            for(unsigned col=0; col<hf->getNumColumns(); ++col)
+            for(unsigned col=0; col<_heightField->getNumColumns(); ++col)
             {
-                value.r() = hf->getHeight(col, row);
+                value.r() = _heightField->getHeight(col, row);
                 write(value, col, row);
             }
         }
@@ -107,6 +109,7 @@ ElevationSample
 ElevationTexture::getElevationUV(double u, double v) const
 {
     osg::Vec4 value;
+    u = osg::clampBetween(u, 0.0, 1.0), v = osg::clampBetween(v, 0.0, 1.0);
     _read(value, u, v);
     return ElevationSample(Distance(value.r(),Units::METERS), _resolution);
 }
@@ -119,7 +122,8 @@ osg::Texture2D*
 NormalMapGenerator::createNormalMap(
     const TileKey& key,
     const Map* map,
-    void* ws)
+    void* ws,
+    ProgressCallback* progress)
 {
     if (!map)
         return NULL;
@@ -156,7 +160,7 @@ NormalMapGenerator::createNormalMap(
 
     // fetch the base tile in order to get resolutions data.
     osg::ref_ptr<ElevationTexture> heights;
-    pool->getTile(key, true, heights, workingSet);
+    pool->getTile(key, true, heights, workingSet, progress);
 
     if (!heights.valid())
         return NULL;
@@ -194,7 +198,14 @@ NormalMapGenerator::createNormalMap(
 
     int sampleOK = map->getElevationPool()->sampleMapCoords(
         points,
-        workingSet);
+        workingSet,
+        progress);
+
+    if (progress && progress->isCanceled())
+    {
+        // canceled. Bail.
+        return NULL;
+    }
 
     if (sampleOK < 0)
     {

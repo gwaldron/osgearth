@@ -77,6 +77,8 @@ namespace osgEarth
     public:
         META_Layer(osgEarth, StyleSheet, Options, Layer, Styles);
 
+        virtual void init();
+
         /** Gets the context for relative path resolution */
         const URIContext& uriContext() const { return _uriContext; }
 

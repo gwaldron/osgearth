@@ -654,7 +654,7 @@ ShaderGenerator::apply(osg::PagedLOD& node)
 
     for( unsigned i=0; i<node.getNumFileNames(); ++i )
     {
-        static Threading::Mutex s_mutex;
+        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
         s_mutex.lock();
         const std::string& filename = node.getFileName( i );
         if (!filename.empty() &&

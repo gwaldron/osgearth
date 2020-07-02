@@ -83,4 +83,8 @@ namespace osgEarth
 #define OSGEARTH_FINAL
 #endif
 
+// Sringification
+#define OE_STRINGIFY_0(x) #x
+#define OE_STRINGIFY(x) OE_STRINGIFY_0(x)
+
 #endif // OSGEARTH_COMMON_H

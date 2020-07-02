@@ -157,6 +157,7 @@ namespace
     }
 
     WindDrawable::WindDrawable(const osgDB::Options* readOptions)
+        : _cameraState(OE_MUTEX_NAME)
     {
         // Always run the shader.
         setCullingActive(false);

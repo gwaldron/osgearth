@@ -102,7 +102,7 @@ namespace osgEarth { namespace Util
 
         virtual ~FeatureModelGraph();
 
-        osg::Node* setupPaging();
+        osg::ref_ptr<osg::Node> setupPaging();
 
         osg::ref_ptr<osg::Group> buildTile( 
             const FeatureLevel&   level, 

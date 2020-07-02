@@ -785,7 +785,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
     return osg::BoundingSphered(centerWorld, (centerWorld - cornerWorld).length());
 }
 
-osg::Node*
+osg::ref_ptr<osg::Node>
 FeatureModelGraph::setupPaging()
 {
     // calculate the bounds of the full data extent:
@@ -819,7 +819,7 @@ FeatureModelGraph::setupPaging()
     std::string uri = s_makeURI(0, 0, 0);
 
     // bulid the top level node:
-    osg::Node* topNode;
+    osg::ref_ptr<osg::Node> topNode;
 
     if (_options.layout()->paged() == true)
     {
@@ -1069,7 +1069,7 @@ FeatureModelGraph::buildSubTilePagedLODs(
                     << "; maxrange = " << maxRange
                     << std::endl;
 
-                osg::Node* childNode;
+                osg::ref_ptr<osg::Node> childNode;
 
                 if (_options.layout()->paged() == true)
                 {
@@ -1891,7 +1891,8 @@ FeatureModelGraph::redraw()
             _options.featureIndexing().get());
     }
 
-    osg::Node* node = 0;
+    osg::ref_ptr<osg::Node> node;
+
     // if there's a display schema in place, set up for quadtree paging.
     if (_options.layout().isSet() || _useTiledSource)
     {
@@ -1904,7 +1905,7 @@ FeatureModelGraph::redraw()
         //Remove all current children
         node = buildTile(defaultLevel, GeoExtent::INVALID, 0, _session->getDBOptions());
         // We're just building the entire node now with no paging, so run the post merge operations immediately.
-        runPostMergeOperations(node);
+        runPostMergeOperations(node.get());
     }
 
 #if 0

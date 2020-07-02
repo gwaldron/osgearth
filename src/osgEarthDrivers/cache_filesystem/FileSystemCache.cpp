@@ -135,11 +135,11 @@ namespace
         // cache for objects waiting to be written; this supports reading from
         // the cache before the object has been asynchronously written to disk.
         WriteCache _writeCache;
-        Threading::ReadWriteMutex _writeCacheRWM;
+        ReadWriteMutex _writeCacheRWM;
 
         // gate to prevent multiple threads from accessing the same file
         // at the same time.
-        Threading::Gate<std::string> _fileGate;
+        Gate<std::string> _fileGate;
 
         // OSG reader-writer used to serialize the objects
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
@@ -208,8 +208,11 @@ namespace
         OE_INFO << LC << "Opened a filesystem cache at \"" << _rootPath << "\"\n";
 
         // create a thread pool dedicated to asynchronous cache writes
-        _threadPool = new ThreadPool(
-            osg::maximum(fsco.threads().get(), 1u) );
+        if (fsco.threads() > 0u)
+        {
+            _threadPool = new ThreadPool(
+                osg::maximum(fsco.threads().get(), 1u) );
+        }
     }
 
     CacheBin*
@@ -227,10 +230,10 @@ namespace
         if (getStatus().isError())
             return NULL;
 
-        static Threading::Mutex s_defaultBinMutex(OE_MUTEX_NAME);
+        static Mutex s_defaultBinMutex(OE_MUTEX_NAME);
         if ( !_defaultBin.valid() )
         {
-            Threading::ScopedMutexLock lock( s_defaultBinMutex );
+            ScopedMutexLock lock( s_defaultBinMutex );
             if ( !_defaultBin.valid() ) // double-check
             {
                 _defaultBin = new FileSystemCacheBin( "__default", _rootPath, _threadPool.get() );
@@ -379,12 +382,14 @@ namespace
         unsigned long handle = NetworkMonitor::begin(path, "pending", "Cache");
 
         // lock the file:
-        ScopedGate<std::string>(_fileGate, fileURI.full());
+        ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
 
-        // first check the write-pending cache. The record will be there
-        // if the object is queued for asynchronous writing but hasn't 
-        // actually been saved out yet.
+        if (_threadPool)
         {
+            // first check the write-pending cache. The record will be there
+            // if the object is queued for asynchronous writing but hasn't 
+            // actually been saved out yet.
+
             ScopedReadLock lock(_writeCacheRWM);
 
             auto i = _writeCache.find(fileURI.full());
@@ -448,12 +453,14 @@ namespace
         unsigned long handle = NetworkMonitor::begin(path, "pending", "Cache");
 
         // lock the file:
-        ScopedGate<std::string>(_fileGate, fileURI.full());
+        ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
 
-        // first check the write-pending cache. The record will be there
-        // if the object is queued for asynchronous writing but hasn't 
-        // actually been saved out yet.
+        if (_threadPool)
         {
+            // first check the write-pending cache. The record will be there
+            // if the object is queued for asynchronous writing but hasn't 
+            // actually been saved out yet.
+        
             ScopedReadLock lock(_writeCacheRWM);
 
             auto i = _writeCache.find(fileURI.full());
@@ -548,7 +555,7 @@ namespace
                 OE_PROFILING_ZONE_NAMED("FS Cache Write");
 
                 // prevent more than one thread from writing to the same key at the same time
-                Threading::ScopedGate<std::string>(_bin->_fileGate, _uri.full());
+                ScopedGate<std::string> lockFile(_bin->_fileGate, _uri.full());
 
                 // make a home for it..
                 if (!osgDB::fileExists(osgDB::getFilePath(_uri.full())))
@@ -598,7 +605,7 @@ namespace
 
                 // remove it from the write cache now that we're done.
                 {
-                    Threading::ScopedWriteLock lock(_bin->_writeCacheRWM);
+                    ScopedWriteLock lock(_bin->_writeCacheRWM);
                     _bin->_writeCache.erase(_uri.full());
                 }
             }
@@ -628,27 +635,38 @@ namespace
         // combine custom options with cache options:
         osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(writeOptions);
 
-        // Store in the write-cache until it's actually written.
-        // Will override any existing entry and that's OK since the 
-        // most recent one is the valid one.
+        if (_threadPool)
         {
-            Threading::ScopedWriteLock lock(_writeCacheRWM);
+            // Store in the write-cache until it's actually written.
+            // Will override any existing entry and that's OK since the 
+            // most recent one is the valid one.
+            _writeCacheRWM.write_lock();
             WriteCacheRecord& record = _writeCache[fileURI.full()];
             record.meta = meta;
             record.object = object;
+            _writeCacheRWM.write_unlock();
+
+            // queue the asynchronous write.
+            WriteOperation* writer = new WriteOperation(
+                fileURI,
+                object,
+                meta,
+                dbo.get(),
+                this);
+
+            _threadPool->run(writer);
         }
+        else // synchronous write:
+        { 
+            WriteOperation writeOp(
+                fileURI,
+                object,
+                meta,
+                dbo.get(),
+                this);
 
-        // queue the asynchronous write.
-        WriteOperation* writer = new WriteOperation(
-            fileURI,
-            object,
-            meta,
-            dbo.get(),
-            this);
-
-        //writer->operator()(nullptr);
-        //delete writer;
-        _threadPool->run(writer);
+            writeOp.operator()(nullptr);
+        }
 
         return true;
     }
@@ -675,7 +693,7 @@ namespace
         std::string path( fileURI.full() + OSG_EXT );
 
         // exclusive file access:
-        Threading::ScopedGate<std::string> lockURI(_fileGate, fileURI.full());
+        ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
         return ::unlink( path.c_str() ) == 0;
     }
 
@@ -687,7 +705,7 @@ namespace
         std::string path( fileURI.full() + OSG_EXT );
 
         // exclusive file access:
-        Threading::ScopedGate<std::string> lockURI(_fileGate, fileURI.full());
+        ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
         return osgEarth::touchFile( path );
     }
 

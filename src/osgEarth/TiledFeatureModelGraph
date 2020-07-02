@@ -46,7 +46,7 @@ namespace osgEarth {
 
     public: // SimplePager
 
-        virtual osg::Node* createNode(const TileKey& key, ProgressCallback* progress);
+        virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override;
 
     private:
 

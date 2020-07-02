@@ -334,7 +334,7 @@ namespace
             }
 
             Registry::instance()->startActivity(uri);
-            osg::Node* node = graph->load(lod, x, y, uri, readOptions);
+            osg::ref_ptr<osg::Node> node = graph->load(lod, x, y, uri, readOptions);
             Registry::instance()->endActivity(uri);
             return ReadResult(node);
         }
@@ -846,7 +846,7 @@ FeatureModelGraph::setupPaging()
 /**
  * Called by the pseudo-loader, this method attempts to load a single tile of features.
  */
-osg::Node*
+osg::ref_ptr<osg::Group>
 FeatureModelGraph::load(
     unsigned lod, unsigned tileX, unsigned tileY,
     const std::string& uri,
@@ -857,14 +857,15 @@ FeatureModelGraph::load(
 
     OE_TEST << LC << "load " << lod << "_" << tileX << "_" << tileY << std::endl;
 
-    osg::Group* result = 0L;
+    osg::ref_ptr<osg::Group> result;
 
     if (_useTiledSource)
     {
         // A "tiled" source has a pre-generted tile hierarchy, but no range information.
         // We will calcluate the LOD ranges here, as a function of the tile radius and the
         // "tile size factor" ... see below.
-        osg::Group* geometry = 0L;
+        osg::ref_ptr<osg::Group> geometry;
+
         const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
 
         if ((int)lod >= featureProfile->getFirstLevel())
@@ -905,7 +906,7 @@ FeatureModelGraph::load(
             if (lod + 1 != ~0)
             {
                 // only build sub-pagedlods if we are expecting subtiles at some point:
-                if (geometry != 0L || (int)lod < featureProfile->getFirstLevel())
+                if (geometry.valid() || (int)lod < featureProfile->getFirstLevel())
                 {
                     buildSubTilePagedLODs(lod, tileX, tileY, group.get(), readOptions);
                     group->addChild(geometry);
@@ -933,7 +934,8 @@ FeatureModelGraph::load(
         // current LOD points to an actual FeatureLevel, we build the geometry for that
         // level in the tile.
 
-        osg::Group* geometry = 0L;
+        osg::ref_ptr<osg::Group> geometry;
+
         const FeatureLevel* level = _lodmap[lod];
         if (level)
         {
@@ -985,7 +987,7 @@ FeatureModelGraph::load(
     }
 
     // Done - run the pre-merge operations.
-    runPreMergeOperations(result);
+    runPreMergeOperations(result.get());
 
     return result;
 }
@@ -1220,7 +1222,7 @@ FeatureModelGraph::writeTileToCache(const std::string&    cacheKey,
  * data source, or (b) expressed implicitly by a TileKey, which is the case for a tiled
  * data source.
  */
-osg::Group*
+osg::ref_ptr<osg::Group>
 FeatureModelGraph::buildTile(const FeatureLevel& level,
     const GeoExtent& extent,
     const TileKey* key,
@@ -1373,7 +1375,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
             }
         }
 
-        return group.release();
+        return group;
     }
 
     else

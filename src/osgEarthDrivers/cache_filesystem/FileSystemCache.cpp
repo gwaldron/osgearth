@@ -67,6 +67,8 @@ namespace
 
         CacheBin* getOrCreateDefaultBin() override;
 
+        void setNumThreads(unsigned) override;
+
     protected:
 
         std::string _rootPath;
@@ -212,6 +214,20 @@ namespace
         {
             _threadPool = new ThreadPool(
                 osg::maximum(fsco.threads().get(), 1u) );
+        }
+    }
+
+    void
+    FileSystemCache::setNumThreads(unsigned num)
+    {
+        if (_threadPool.valid())
+        {
+            _threadPool = NULL;
+        }
+
+        if (num > 0u)
+        {
+            _threadPool = new ThreadPool(osg::clampBetween(num, 1u, 8u));
         }
     }
 
@@ -635,7 +651,12 @@ namespace
         // combine custom options with cache options:
         osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(writeOptions);
 
-        if (_threadPool)
+        // Temporary: Check whether it's a node because we can't thread
+        // out the NODE writes until we figure out the thread-safety 
+        // issue and make all the reads return CONST objects
+        bool isNode = dynamic_cast<const osg::Node*>(object) != nullptr;
+
+        if (_threadPool && !isNode)
         {
             // Store in the write-cache until it's actually written.
             // Will override any existing entry and that's OK since the 

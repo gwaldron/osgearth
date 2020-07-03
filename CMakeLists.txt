@@ -120,11 +120,7 @@ IF(draco_FOUND)
 ENDIF(draco_FOUND)
 
 IF(GDAL_FOUND)
-  IF (GDAL_VERSION VERSION_LESS 3)
     message(STATUS "Found GDAL ${GDAL_VERSION}" )
-  ELSE()
-    message(FATAL_ERROR "GDAL ${GDAL_VERSION} is unsupported at this time. Please use GDAL 2.X" )
-  ENDIF()
 ENDIF(GDAL_FOUND)
 
 OPTION(ENABLE_PROFILING "Build with support for Tracy profiler" OFF)

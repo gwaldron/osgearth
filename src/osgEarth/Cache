@@ -225,6 +225,10 @@ namespace osgEarth
          * some time to complete.
          */
         virtual bool clear() { return false; }
+        
+        //! Set the number of background threads to use. You must call this 
+        //! prior to addBin().
+        virtual void setNumThreads(unsigned num) { }
 
         //! Make a legal cache key with an optional prefix
         static std::string makeCacheKey(const std::string& input, const std::string& prefix="");

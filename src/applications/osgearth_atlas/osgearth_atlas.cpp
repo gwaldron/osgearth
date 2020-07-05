@@ -221,9 +221,9 @@ show(osg::ArgumentParser& arguments)
         return usage("Specified layer does not exist");
 
     // geometry for the image layer:
-    std::vector<osg::ref_ptr<osg::Image> > images;
+    std::vector<osg::ref_ptr<const osg::Image> > images;
     osgEarth::ImageUtils::flattenImage(image.get(), images);
-    osg::Geode* geode = osg::createGeodeForImage(images[layer].get());
+    osg::Geode* geode = osg::createGeodeForImage(const_cast<osg::Image*>(images[layer].get()));
 
     const osg::BoundingBox& bbox = geode->getDrawable(0)->getBoundingBox();
     float width = bbox.xMax() - bbox.xMin();

@@ -27,7 +27,7 @@ using namespace osgEarth::Util;
 
 /***************************************************************************/
 
-TileImage::TileImage(osg::Image* image, const TileKey& key)
+TileImage::TileImage(const osg::Image* image, const TileKey& key)
 {
     _image = image;
     key.getExtent().getBounds(_minX, _minY, _maxX, _maxY);
@@ -121,7 +121,7 @@ ImageMosaic::createImage()
         int dstX = (i->_tileX - minTileX) * tileWidth;
         int dstY = (maxTileY - i->_tileY) * tileHeight;
 
-        osg::Image* sourceTile = i->getImage();
+        const osg::Image* sourceTile = i->getImage();
         if ( sourceTile )
         {
             ImageUtils::copyAsSubImage(sourceTile, image.get(), dstX, dstY);

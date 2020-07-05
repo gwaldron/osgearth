@@ -620,10 +620,10 @@ namespace osgEarth
         GeoImage(const Status&);
 
         //! Constructs a new goereferenced image.
-        GeoImage(osg::Image* image, const GeoExtent& extent);
+        GeoImage(const osg::Image* image, const GeoExtent& extent);
 
         //! Constructs a new goereferenced image from a future.
-        GeoImage(Future<osg::Image> image, const GeoExtent& extent);
+        GeoImage(Future<const osg::Image> image, const GeoExtent& extent);
 
         /** dtor */
         virtual ~GeoImage() { }
@@ -642,7 +642,7 @@ namespace osgEarth
         /**
          * Gets a pointer to the underlying OSG image.
          */
-        osg::Image* getImage() const;
+        const osg::Image* getImage() const;
 
         /**
          * Gets the geospatial extent of the image.
@@ -697,23 +697,9 @@ namespace osgEarth
             bool useBilinearInterpolation = true) const;
 
         /**
-         * Adds a one-pixel transparent border around an image.
-         */
-        GeoImage addTransparentBorder(
-            bool leftBorder=true, 
-            bool rightBorder=true, 
-            bool bottomBorder=true, 
-            bool topBorder=true);
-
-        /**
-         * Sets alpha to Zero for any pixels that do NOT intersect the masking extent.
-         */
-        void applyAlphaMask(const GeoExtent& maskingExtent);
-
-        /**
          * Returns the underlying OSG image and releases the reference pointer.
          */
-        osg::Image* takeImage();
+        const osg::Image* takeImage();
 
 		/**
 		 * Gets the units per pixel of this geoimage
@@ -721,10 +707,10 @@ namespace osgEarth
 		double getUnitsPerPixel() const;
 
     private:
-        osg::ref_ptr<osg::Image> _myimage;
-        mutable optional<Future<osg::Image> > _future;
-        GeoExtent                _extent;
-        Status                   _status;
+        osg::ref_ptr<const osg::Image> _myimage;
+        mutable optional<Future<const osg::Image> > _future;
+        GeoExtent _extent;
+        Status _status;
     };
 
     typedef std::vector<GeoImage> GeoImageVector;
@@ -745,7 +731,7 @@ namespace osgEarth
          * Constructs a new georeferenced heightfield.
          */
         GeoHeightField(
-            osg::HeightField* heightField,
+            const osg::HeightField* heightField,
             const GeoExtent&  extent );
 
         /** dtor */
@@ -792,9 +778,6 @@ namespace osgEarth
 
         //! Gets the elevation at a point (must be in the same SRS; bilinear interpolation)
         float getElevation(double x, double y) const;
-
-        //! Gets the normal at a point (must be in the same SRS; bilinear interpolation)
-        osg::Vec3 getNormal(double x, double y) const;
         
         /**
          * Subsamples the heightfield, returning a new heightfield corresponding to
@@ -838,15 +821,15 @@ namespace osgEarth
         {
             inline bool operator() (const GeoHeightField& lhs, const GeoHeightField& rhs) const
             {                
-                return lhs.getXInterval() < rhs.getXInterval();                
+                return lhs.getXInterval() < rhs.getXInterval();
             }
         };
 
     protected:
-        osg::ref_ptr<osg::HeightField> _heightField;
-        GeoExtent                      _extent;
-        float                          _minHeight, _maxHeight;
-        Status                         _status;
+        osg::ref_ptr<const osg::HeightField> _heightField;
+        GeoExtent _extent;
+        float _minHeight, _maxHeight;
+        Status _status;
 
         void init();
     };
@@ -867,7 +850,7 @@ namespace osgEarth
         GeoNode(const Status&);
 
         //! Constructs a new goereferenced node
-        GeoNode(osg::Node* node, const GeoExtent& extent);
+        GeoNode(const osg::Node* node, const GeoExtent& extent);
 
         //! Global invalid node
         static GeoNode INVALID;
@@ -880,15 +863,15 @@ namespace osgEarth
         const Status& getStatus() const { return _status; }
 
         //! The underlying OSG node
-        osg::Node* getNode() const { return _node.get(); }
+        const osg::Node* getNode() const { return _node.get(); }
 
         //! The node's extent
         const GeoExtent& getExtent() const { return _extent; }
 
     private:
-        osg::ref_ptr<osg::Node> _node;
-        GeoExtent               _extent;
-        Status                  _status;
+        osg::ref_ptr<const osg::Node> _node;
+        GeoExtent _extent;
+        Status _status;
     };
 
     typedef std::vector<GeoNode> GeoNodeVector;

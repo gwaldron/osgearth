@@ -2223,7 +2223,7 @@ namespace
 }
 
 osg::Image* osgEarth::GDAL::reprojectImage(
-    osg::Image* srcImage, 
+    const osg::Image* srcImage, 
     const std::string srcWKT, 
     double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
     const std::string destWKT, 

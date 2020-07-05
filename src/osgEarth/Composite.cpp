@@ -67,7 +67,7 @@ namespace osgEarth { namespace Composite
         TileKey bestAvailableKey;
         //bool mayHaveData;
         float opacity;
-        osg::ref_ptr< osg::Image> image;
+        osg::ref_ptr<const osg::Image> image;
     };
 
     // some helper types.    

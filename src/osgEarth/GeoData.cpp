@@ -1717,7 +1717,7 @@ GeoImage::GeoImage(const Status& status) :
         _status = Status::GeneralError;
 }
 
-GeoImage::GeoImage(osg::Image* image, const GeoExtent& extent) :
+GeoImage::GeoImage(const osg::Image* image, const GeoExtent& extent) :
     _myimage(image),
     _extent(extent)
 {
@@ -1732,7 +1732,7 @@ GeoImage::GeoImage(osg::Image* image, const GeoExtent& extent) :
     }
 }
 
-GeoImage::GeoImage(Threading::Future<osg::Image> fimage, const GeoExtent& extent) :
+GeoImage::GeoImage(Threading::Future<const osg::Image> fimage, const GeoExtent& extent) :
     _myimage(0L),
     _extent(extent)
 {
@@ -1760,7 +1760,7 @@ GeoImage::valid() const
         _myimage.valid();
 }
 
-osg::Image*
+const osg::Image*
 GeoImage::getImage() const
 {
     return _future.isSet() ? _future->get() : _myimage.get();
@@ -1852,43 +1852,6 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
         OE_WARN << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
         return GeoImage::INVALID;
     }
-}
-
-GeoImage
-GeoImage::addTransparentBorder(bool leftBorder, bool rightBorder, bool bottomBorder, bool topBorder)
-{
-    const osg::Image* image = getImage();
-    if (!image)
-        return GeoImage::INVALID;
-
-    unsigned int buffer = 1;
-
-    unsigned int newS = image->s();
-    if (leftBorder) newS += buffer;
-    if (rightBorder) newS += buffer;
-
-    unsigned int newT = image->t();
-    if (topBorder)    newT += buffer;
-    if (bottomBorder) newT += buffer;
-
-    osg::Image* newImage = new osg::Image;
-    newImage->allocateImage(newS, newT, image->r(), image->getPixelFormat(), image->getDataType(), image->getPacking());
-    newImage->setInternalTextureFormat(image->getInternalTextureFormat());
-    memset(newImage->data(), 0, newImage->getImageSizeInBytes());
-    unsigned startC = leftBorder ? buffer : 0;
-    unsigned startR = bottomBorder ? buffer : 0;
-    ImageUtils::copyAsSubImage(image, newImage, startC, startR );
-
-    //double upp = getUnitsPerPixel();
-    double uppw = _extent.width() / (double)image->s();
-	double upph = _extent.height() / (double)image->t();
-
-    double xmin = leftBorder ? _extent.xMin() - buffer * uppw : _extent.xMin();
-    double ymin = bottomBorder ? _extent.yMin() - buffer * upph : _extent.yMin();
-    double xmax = rightBorder ? _extent.xMax() + buffer * uppw : _extent.xMax();
-    double ymax = topBorder ? _extent.yMax() + buffer * upph : _extent.yMax();
-
-    return GeoImage(newImage, GeoExtent(getSRS(), xmin, ymin, xmax, ymax));
 }
 
 namespace
@@ -2095,50 +2058,7 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     return GeoImage(resultImage, destExtent);
 }
 
-void
-GeoImage::applyAlphaMask(const GeoExtent& maskingExtent)
-{
-    if ( !valid() )
-        return;
-
-    osg::Image* image = getImage();
-
-    GeoExtent maskingExtentLocal = maskingExtent.transform(_extent.getSRS());
-
-    // if the image is completely contains by the mask, no work to do.
-    if ( maskingExtentLocal.contains(getExtent()))
-        return;
-
-    ImageUtils::PixelReader read (image);
-    ImageUtils::PixelWriter write(image);
-
-    double sInterval = _extent.width()/(double)read.s();
-    double tInterval = _extent.height()/(double)read.t();
-
-    osg::Vec4f pixel;
-
-    for( int t=0; t<image->t(); ++t )
-    {
-        double y = _extent.south() + tInterval*(double)t;
-
-        for( int s=0; s<image->s(); ++s )
-        {
-            double x = _extent.west() + sInterval*(double)s;
-
-            for( int r=0; r<image->r(); ++r )
-            {
-                if ( !maskingExtentLocal.contains(x, y) )
-                {
-                    read(pixel, s, t, r);
-                    pixel.a() = 0.0f;
-                    write(pixel, s, t, r);
-                }
-            }
-        }
-    }
-}
-
-osg::Image*
+const osg::Image*
 GeoImage::takeImage()
 {
     return _future.isSet() ? _future->release() : _myimage.release();
@@ -2171,10 +2091,10 @@ _status(value)
     init();
 }
 
-GeoHeightField::GeoHeightField(osg::HeightField* heightField,
+GeoHeightField::GeoHeightField(const osg::HeightField* heightField,
                                const GeoExtent&  extent) :
-_heightField( heightField ),
-_extent     ( extent ),
+_heightField(heightField),
+_extent( extent ),
 _minHeight( FLT_MAX ),
 _maxHeight( -FLT_MAX )
 {
@@ -2195,10 +2115,21 @@ GeoHeightField::init()
         double minx, miny, maxx, maxy;
         _extent.getBounds(minx, miny, maxx, maxy);
 
-        _heightField->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-        _heightField->setXInterval( (maxx - minx)/(double)(_heightField->getNumColumns()-1) );
-        _heightField->setYInterval( (maxy - miny)/(double)(_heightField->getNumRows()-1) );
-        _heightField->setBorderWidth( 0 );
+        osg::Vec3 origin(minx, miny, 0.0);
+        float dx = (maxx - minx)/(float)(_heightField->getNumColumns()-1);
+        float dy = (maxy - miny)/(float)(_heightField->getNumRows()-1);
+
+        if (_heightField->getOrigin() != origin ||
+            _heightField->getXInterval() != dx ||
+            _heightField->getYInterval() != dy)
+        {
+            osg::HeightField* hf = new osg::HeightField(*_heightField.get(), osg::CopyOp::SHALLOW_COPY);
+            hf->setOrigin(origin);
+            hf->setXInterval(dx);
+            hf->setYInterval(dy);
+            hf->setBorderWidth(0);
+            _heightField = hf;
+        }
 
         const osg::HeightField::HeightList& heights = _heightField->getHeightList();
         for( unsigned i=0; i<heights.size(); ++i )
@@ -2383,7 +2314,7 @@ GeoNode::GeoNode(const Status& status) :
         _status = Status::GeneralError;
 }
 
-GeoNode::GeoNode(osg::Node* node, const GeoExtent& extent) :
+GeoNode::GeoNode(const osg::Node* node, const GeoExtent& extent) :
     _node(node),
     _extent(extent)
 {

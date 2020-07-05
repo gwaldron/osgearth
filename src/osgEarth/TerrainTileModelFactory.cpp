@@ -117,8 +117,7 @@ bool CreateTileManifest::includesLandCover() const
 //.........................................................................
 
 TerrainTileModelFactory::TerrainTileModelFactory(const TerrainOptions& options) :
-_options( options ),
-_mipmapMutex("TerrainTileModelFactory MIPMAP(OE)")
+_options( options )
 {
     // Create an empty texture that we can use as a placeholder
     _emptyColorTexture = new osg::Texture2D(ImageUtils::createEmptyImage());
@@ -156,8 +155,6 @@ TerrainTileModelFactory::createTileModel(
     }
 
     addLandCover(model.get(), map, key, requirements, manifest, progress);
-
-    //addPatchLayers(model.get(), map, key, filter, progress, false);
 
     // done.
     return model.release();
@@ -352,7 +349,7 @@ TerrainTileModelFactory::addColorLayers(
     }
 }
 
-
+#if 0
 void
 TerrainTileModelFactory::addPatchLayers(
     TerrainTileModel* model,
@@ -390,7 +387,7 @@ TerrainTileModelFactory::addPatchLayers(
         }
     }
 }
-
+#endif
 
 void
 TerrainTileModelFactory::addElevation(
@@ -596,18 +593,39 @@ TerrainTileModelFactory::addStandaloneLandCover(
 }
 
 osg::Texture*
-TerrainTileModelFactory::createImageTexture(osg::Image*       image,
+TerrainTileModelFactory::createImageTexture(const osg::Image* image,
                                             const ImageLayer* layer) const
 {
-    osg::Texture* tex = 0;
+    osg::Texture* tex = nullptr;
+    bool hasMipMaps = false;
+
     if (image->r() == 1)
     {
-        tex = new osg::Texture2D(image);
+        const osg::Image* compressed = ImageUtils::compressImage(image, layer->getCompressionMethod());
+        const osg::Image* mipmapped = ImageUtils::mipmapImage(compressed);
+        tex = new osg::Texture2D(const_cast<osg::Image*>(mipmapped));
+        hasMipMaps = mipmapped->isMipmap();
+
+        if (layer->getCompressionMethod() == "gpu" && !mipmapped->isCompressed())
+            tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
     }
-    else if (image->r() > 1)
+
+    else // if (image->r() > 1)
     {
-        std::vector< osg::ref_ptr<osg::Image> > images;
+        std::vector< osg::ref_ptr<const osg::Image> > images;
         ImageUtils::flattenImage(image, images);
+        
+        const osg::Image* compressed;
+        for(auto& ref : images)
+        {
+            compressed = ImageUtils::compressImage(image, layer->getCompressionMethod());
+            ref = ImageUtils::mipmapImage(compressed);
+
+            if (layer->getCompressionMethod() == "gpu" && !compressed->isCompressed())
+                tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
+
+            hasMipMaps = compressed->isMipmap();
+        }
 
         osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
 
@@ -615,7 +633,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
         tex2dArray->setInternalFormat(images[0]->getInternalTextureFormat());
         tex2dArray->setSourceFormat(images[0]->getPixelFormat());
         for (int i = 0; i < (int)images.size(); ++i)
-            tex2dArray->setImage(i, images[i].get());
+            tex2dArray->setImage(i, const_cast<osg::Image*>(images[i].get()));
 
         tex = tex2dArray;
     }
@@ -634,8 +652,8 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
     tex->setFilter( osg::Texture::MIN_FILTER, minFilter );
     tex->setMaxAnisotropy( 4.0f );
 
-    // Disable mip mapping for npot tiles
-    if (!ImageUtils::isPowerOfTwo( image ) || (!image->isMipmap() && ImageUtils::isCompressed(image)))
+    // Disable mip mapping if we don't have it
+    if (!hasMipMaps)
     {
         tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     }
@@ -651,20 +669,14 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
             break;
         }
     }
-
-    layer->applyTextureCompressionMode(tex);
-    {
-        //Threading::ScopedMutexLock lock(_mipmapMutex);
-        ImageUtils::generateMipmaps(tex);
-    }
     
     return tex;
 }
 
 osg::Texture*
-TerrainTileModelFactory::createCoverageTexture(osg::Image* image) const
+TerrainTileModelFactory::createCoverageTexture(const osg::Image* image) const
 {
-    osg::Texture2D* tex = new osg::Texture2D( image );
+    osg::Texture2D* tex = new osg::Texture2D(const_cast<osg::Image*>(image));
     tex->setDataVariance(osg::Object::STATIC);
 
     tex->setInternalFormat(GL_R16F);
@@ -684,9 +696,9 @@ TerrainTileModelFactory::createCoverageTexture(osg::Image* image) const
 }
 
 osg::Texture*
-TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
+TerrainTileModelFactory::createElevationTexture(const osg::Image* image) const
 {
-    osg::Texture2D* tex = new osg::Texture2D( image );
+    osg::Texture2D* tex = new osg::Texture2D(const_cast<osg::Image*>(image));
     tex->setDataVariance(osg::Object::STATIC);
     tex->setInternalFormat(GL_R32F);
     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
@@ -696,44 +708,5 @@ TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
     tex->setResizeNonPowerOfTwoHint( false );
     tex->setMaxAnisotropy( 1.0f );
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    return tex;
-}
-
-osg::Texture*
-TerrainTileModelFactory::createNormalTexture(osg::Image* image, bool compress) const
-{
-    if (compress)
-    {            
-        // Only compress the image if it's not already compressed.
-        if (image->getPixelFormat() != GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
-        {
-            // See if we have a CPU compressor generator:
-            osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
-            if (ip)
-            {
-                ip->compress(*image, osg::Texture::USE_RGTC2_COMPRESSION, true, true, osgDB::ImageProcessor::USE_CPU, osgDB::ImageProcessor::NORMAL);
-            }
-            else
-            {
-                OE_NOTICE << LC << "Failed to get image processor, cannot compress normal map" << std::endl;
-            }
-        }
-    }    
-
-    osg::Texture2D* tex = new osg::Texture2D(image);
-    tex->setDataVariance(osg::Object::STATIC);
-    tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
-    tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-    tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
-    tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-    tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-    tex->setResizeNonPowerOfTwoHint(false);
-    tex->setMaxAnisotropy(1.0f);
-    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-
-    {
-        Threading::ScopedMutexLock lock(_mipmapMutex);
-        ImageUtils::generateMipmaps(tex);
-    }
     return tex;
 }

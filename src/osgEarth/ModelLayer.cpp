@@ -578,7 +578,7 @@ ModelLayer::getOrCreateMaskBoundary(float                   heightScale,
 {
     if (_maskSource.valid() && !_maskBoundary.valid() && getStatus().isOK())
     {
-        Threading::ScopedMutexLock excl(_mutex);
+        Threading::ScopedMutexLock excl(layerMutex());
 
         if ( !_maskBoundary.valid() ) // double-check pattern
         {

@@ -269,7 +269,8 @@ DuktapeEngine::Context::~Context()
 
 DuktapeEngine::DuktapeEngine(const ScriptEngineOptions& options) :
 ScriptEngine( options ),
-_options    ( options )
+_options    ( options ),
+_contexts   ( "DuktapeEngine(OE)" )
 {
     //nop
 }

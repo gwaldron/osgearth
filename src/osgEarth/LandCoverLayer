@@ -89,7 +89,7 @@ namespace osgEarth
         struct MetaImageComponent {
             MetaImageComponent() : pixel(0L), failed(false) { }
             bool failed;
-            osg::ref_ptr<osg::Image> image;
+            osg::ref_ptr<const osg::Image> image;
             osg::Matrix scaleBias;
             ImageUtils::PixelReader pixel;
         };

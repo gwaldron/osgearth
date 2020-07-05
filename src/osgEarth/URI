@@ -25,7 +25,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/IOTypes>
 #include <osgEarth/HTTPClient>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
@@ -299,7 +299,6 @@ namespace osgEarth
 
 //------------------------------------------------------------------------
 
-#ifdef OSGEARTH_CXX11
 namespace std {
     // std::hash specialization for URI
     template<> struct hash<osgEarth::URI> {
@@ -308,7 +307,6 @@ namespace std {
         }
     };
 }
-#endif
 
 //------------------------------------------------------------------------
 

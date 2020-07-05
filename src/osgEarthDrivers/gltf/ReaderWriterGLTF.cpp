@@ -113,11 +113,9 @@ public:
 
         if (magic == "glTF")
         {
-            // non-functional -- fix - TODO
             GLTFReader reader;
             reader.setTextureCache(&_cache);
-            tinygltf::Model model;
-            return reader.read(context.referrer(), true, options); // binary=yes
+            return reader.read(context.referrer(), buffer, options);
         }
         else if (magic == "b3dm")
         {
@@ -153,7 +151,7 @@ public:
 
         return WriteResult::ERROR_IN_WRITING_FILE;
     }
-    
+
 };
 
 REGISTER_OSGPLUGIN(gltf, GLTFReaderWriter)

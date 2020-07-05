@@ -79,9 +79,6 @@ namespace osgEarth { namespace Contrib
         std::list<Decal> _decalList;
         typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
         DecalIndex _decalIndex;
-
-        // controls access to data
-        mutable Threading::Mutex _mutex;
     };
 
     /**
@@ -170,8 +167,6 @@ namespace osgEarth { namespace Contrib
         std::list<Decal> _decalList;
         typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
         DecalIndex _decalIndex;
-
-        mutable Threading::Mutex _mutex;
     };
 
 
@@ -226,9 +221,6 @@ namespace osgEarth { namespace Contrib
         std::list<Decal> _decalList;
         typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
         DecalIndex _decalIndex;
-
-        // controls access to_decals
-        mutable Threading::Mutex _mutex;
     };
 
 } } // namespace osgEarth

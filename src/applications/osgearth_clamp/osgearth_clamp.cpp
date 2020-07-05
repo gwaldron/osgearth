@@ -56,7 +56,7 @@ struct App
     const Map* map;
     osg::ref_ptr<OGRFeatureSource> input;
     osg::ref_ptr<OGRFeatureSource> output;
-    Threading::Lockable<std::queue<FeatureList*> > outputQueue;
+    Threading::Mutexed<std::queue<FeatureList*> > outputQueue;
     Threading::Event gate;
     std::string attrName;
     bool verbose;

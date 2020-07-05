@@ -54,7 +54,6 @@ _tilesLastCull(0),
 _clock(clock)
 {
     _expirationRange2 = _options.minExpiryRange().get() * _options.minExpiryRange().get();
-    _mainThreadId = Threading::getCurrentThreadId();
     _bboxCB = new ModifyBoundingBoxCallback(this);
 }
 

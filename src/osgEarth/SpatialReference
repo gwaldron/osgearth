@@ -22,9 +22,10 @@
 #include <osgEarth/Common>
 #include <osgEarth/Units>
 #include <osgEarth/VerticalDatum>
+#include <osgEarth/Threading>
 #include <osg/CoordinateSystemNode>
 #include <osg/Vec3>
-#include <OpenThreads/ReentrantMutex>
+#include <unordered_map>
 
 namespace osgEarth
 {
@@ -55,12 +56,6 @@ namespace osgEarth
          */
         static SpatialReference* create( const std::string& init, const std::string& vinit ="" );
         static SpatialReference* get   ( const std::string& init, const std::string& vinit ="" ) { return create(init,vinit); }
-
-        /**
-         * Attempts to create a spatial reference def from a pre-existing CSN, returning
-         * NULL if there is not enough information.
-         */
-        static SpatialReference* create( osg::CoordinateSystemNode* csn );
 
         /**
          * Creates an SRS by cloning a pre-existing OGR spatial reference handle.
@@ -177,20 +172,14 @@ namespace osgEarth
             Key(const std::string& h, const std::string& v) : 
                 horiz(h), horizLower(toLower(h)), vert(v), vertLower(toLower(v))
             {
-#ifdef OSGEARTH_CXX11
                 hash = std::hash<std::string>()(horizLower+vertLower);
-#endif
             }
             std::string horiz, horizLower;
             std::string vert,  vertLower;
             std::size_t hash;
 
             bool operator == (const Key& rhs) const {
-#ifdef OSGEARTH_CXX11
-                return hash == rhs.hash;
-#else
                 return horizLower==rhs.horizLower && vertLower==rhs.vertLower;
-#endif
             }
             bool operator < (const Key& rhs) const {
                 int h = horizLower.compare(rhs.horizLower);
@@ -365,8 +354,9 @@ namespace osgEarth
         osg::ref_ptr<SpatialReference>    _geodetic_srs;  // _geo_srs with a NULL vdatum.
         osg::ref_ptr<SpatialReference>    _geocentric_srs;
         osg::ref_ptr<VerticalDatum>       _vdatum;
+        mutable Threading::Mutex _mutex;
 
-        typedef std::map<std::string,void*> TransformHandleCache;
+        typedef std::unordered_map<std::string,void*> TransformHandleCache;
         TransformHandleCache _transformHandleCache;
 
         // user can override these methods in a subclass to perform custom functionality; must
@@ -418,7 +408,6 @@ namespace osgEarth
 }
 
 
-#ifdef OSGEARTH_CXX11
 namespace std {
     // std::hash specialization for SpatialReference::Key
     template<> struct hash<osgEarth::SpatialReference::Key> {
@@ -427,6 +416,5 @@ namespace std {
         }
     };
 }
-#endif
 
 #endif // OSGEARTH_SPATIAL_REFERENCE_H

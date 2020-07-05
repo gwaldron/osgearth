@@ -81,7 +81,7 @@ namespace osgEarth { namespace Util
         * Creates a node for the given TileKey.  Doesn't do anything with paging, just gets the raw data.
         * Subclasses override this method to provide their data for TileKeys
         */
-        virtual osg::Node* createNode(const TileKey& key, ProgressCallback* progress);
+        virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress);
 
         /**
          * Callback structure for pager events
@@ -111,7 +111,7 @@ namespace osgEarth { namespace Util
         /**
         * Loads the PagedLOD hierarchy for this key.
         */
-        osg::Node* loadKey(const TileKey& key, ProgressTracker* progress);
+        osg::ref_ptr<osg::Node> loadKey(const TileKey& key, ProgressTracker* progress);
 
     protected:
 
@@ -123,12 +123,12 @@ namespace osgEarth { namespace Util
         /**
         * The root node is a special node.
         */
-        osg::Node* buildRootNode();
+        osg::ref_ptr<osg::Node> buildRootNode();
 
         /**
         * Creates a PagedLOD for the given TileKEy
         */
-        osg::Node* createPagedNode(const TileKey& key, ProgressCallback* progress);
+        osg::ref_ptr<osg::Node> createPagedNode(const TileKey& key, ProgressCallback* progress);
 
         bool _additive;
         double _rangeFactor;

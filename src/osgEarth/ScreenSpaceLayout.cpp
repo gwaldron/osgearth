@@ -169,7 +169,7 @@ namespace
         static bool _vpInstalled;
     };
 
-    Threading::Mutex osgEarthScreenSpaceLayoutRenderBin::_vpMutex;
+    Threading::Mutex osgEarthScreenSpaceLayoutRenderBin::_vpMutex(OE_MUTEX_NAME);
     bool osgEarthScreenSpaceLayoutRenderBin::_vpInstalled = false;
 }
 

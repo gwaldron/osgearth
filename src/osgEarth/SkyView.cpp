@@ -102,9 +102,15 @@ SkyViewImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     if (image.valid())
     {
         // If an image was read successfully, we still need to flip it horizontally
-        image.getImage()->flipHorizontal();
+        
+        osg::ref_ptr<osg::Image> flipped =
+            osg::clone(image.getImage(), osg::CopyOp::DEEP_COPY_ALL);
+
+        flipped->flipHorizontal();
+
+        return GeoImage(flipped.get(), key.getExtent());
     }
-    return GeoImage(image.takeImage(), key.getExtent());
+    return GeoImage::INVALID;
 }
 
 Config

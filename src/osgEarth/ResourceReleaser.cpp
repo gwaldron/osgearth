@@ -29,7 +29,8 @@ using namespace osgEarth::Util;
 #define LC "[ResourceReleaser] "
 
 
-ResourceReleaser::ResourceReleaser()
+ResourceReleaser::ResourceReleaser() :
+    _mutex("ResourceReleaser(OE)")
 {
     // ensure this node always gets traversed:
     this->setCullingActive(false);

@@ -23,11 +23,13 @@ using namespace osgEarth;
 
 
 // internal thread-safety not required since we mutex it in this object.
-ResourceCache::ResourceCache() : // const osgDB::Options* dbOptions ) :
-//_dbOptions    ( dbOptions ),
+ResourceCache::ResourceCache() :
 _skinCache    ( false ),
 _instanceCache( false ),
-_resourceLibraryCache( false )
+_texCache( false ),
+_skinMutex(OE_MUTEX_NAME),
+_instanceMutex(OE_MUTEX_NAME),
+_texMutex(OE_MUTEX_NAME)
 {
     //nop
 }

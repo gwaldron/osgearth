@@ -57,8 +57,7 @@ TileKey::rehash()
         osgEarth::hash_value_unsigned(
             (std::size_t)_lod, 
             (std::size_t)_x,
-            (std::size_t)_y, 
-            _profile->getFullSignature()) :
+            (std::size_t)_y) :
         0ULL;
 }
 

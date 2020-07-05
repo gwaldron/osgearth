@@ -24,7 +24,7 @@
 #include <osgDB/Archive>
 #include <osgEarth/Containers>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 
 #include "KMLOptions"
 #include "KMLReader"

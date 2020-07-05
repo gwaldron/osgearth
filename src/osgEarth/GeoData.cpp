@@ -22,11 +22,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Terrain>
-
-
-#include <gdal_priv.h>
-#include <gdalwarper.h>
-
+#include <osgEarth/GDAL>
 
 using namespace osgEarth;
 
@@ -1721,7 +1717,7 @@ GeoImage::GeoImage(const Status& status) :
         _status = Status::GeneralError;
 }
 
-GeoImage::GeoImage(osg::Image* image, const GeoExtent& extent) :
+GeoImage::GeoImage(const osg::Image* image, const GeoExtent& extent) :
     _myimage(image),
     _extent(extent)
 {
@@ -1736,7 +1732,7 @@ GeoImage::GeoImage(osg::Image* image, const GeoExtent& extent) :
     }
 }
 
-GeoImage::GeoImage(Threading::Future<osg::Image> fimage, const GeoExtent& extent) :
+GeoImage::GeoImage(Threading::Future<const osg::Image> fimage, const GeoExtent& extent) :
     _myimage(0L),
     _extent(extent)
 {
@@ -1764,7 +1760,7 @@ GeoImage::valid() const
         _myimage.valid();
 }
 
-osg::Image*
+const osg::Image*
 GeoImage::getImage() const
 {
     return _future.isSet() ? _future->get() : _myimage.get();
@@ -1858,282 +1854,8 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
     }
 }
 
-GeoImage
-GeoImage::addTransparentBorder(bool leftBorder, bool rightBorder, bool bottomBorder, bool topBorder)
-{
-    const osg::Image* image = getImage();
-    if (!image)
-        return GeoImage::INVALID;
-
-    unsigned int buffer = 1;
-
-    unsigned int newS = image->s();
-    if (leftBorder) newS += buffer;
-    if (rightBorder) newS += buffer;
-
-    unsigned int newT = image->t();
-    if (topBorder)    newT += buffer;
-    if (bottomBorder) newT += buffer;
-
-    osg::Image* newImage = new osg::Image;
-    newImage->allocateImage(newS, newT, image->r(), image->getPixelFormat(), image->getDataType(), image->getPacking());
-    newImage->setInternalTextureFormat(image->getInternalTextureFormat());
-    memset(newImage->data(), 0, newImage->getImageSizeInBytes());
-    unsigned startC = leftBorder ? buffer : 0;
-    unsigned startR = bottomBorder ? buffer : 0;
-    ImageUtils::copyAsSubImage(image, newImage, startC, startR );
-
-    //double upp = getUnitsPerPixel();
-    double uppw = _extent.width() / (double)image->s();
-	double upph = _extent.height() / (double)image->t();
-
-    double xmin = leftBorder ? _extent.xMin() - buffer * uppw : _extent.xMin();
-    double ymin = bottomBorder ? _extent.yMin() - buffer * upph : _extent.yMin();
-    double xmax = rightBorder ? _extent.xMax() + buffer * uppw : _extent.xMax();
-    double ymax = topBorder ? _extent.yMax() + buffer * upph : _extent.yMax();
-
-    return GeoImage(newImage, GeoExtent(getSRS(), xmin, ymin, xmax, ymax));
-}
-
 namespace
 {
-    osg::Image*
-    createImageFromDataset(GDALDataset* ds)
-    {
-        // called internally -- GDAL lock not required
-
-        int numBands = ds->GetRasterCount();
-        if ( numBands < 1 )
-            return 0L;
-
-        GLenum dataType;
-        int    sampleSize;
-        GLint  internalFormat;
-
-        switch(ds->GetRasterBand(1)->GetRasterDataType())
-        {
-        case GDT_Byte:
-            dataType = GL_UNSIGNED_BYTE;
-            sampleSize = 1;
-            internalFormat = GL_LUMINANCE8;
-            break;
-        case GDT_UInt16:
-        case GDT_Int16:
-            dataType = GL_UNSIGNED_SHORT;
-            sampleSize = 2;
-            internalFormat = GL_LUMINANCE16;
-            break;
-        default:
-            dataType = GL_FLOAT;
-            sampleSize = 4;
-            internalFormat = GL_LUMINANCE32F_ARB;
-        }
-
-        GLenum pixelFormat =
-            numBands == 1 ? GL_LUMINANCE :
-            numBands == 2 ? GL_LUMINANCE_ALPHA :
-            numBands == 3 ? GL_RGB :
-                            GL_RGBA;
-
-        int pixelBytes = sampleSize * numBands;
-
-        //Allocate the image
-        osg::Image *image = new osg::Image;
-        image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, pixelFormat, dataType);
-
-        CPLErr err = ds->RasterIO(
-            GF_Read, 
-            0, 0, 
-            image->s(), image->t(), 
-            (void*)image->data(), 
-            image->s(), image->t(), 
-            ds->GetRasterBand(1)->GetRasterDataType(),
-            numBands,
-            NULL,
-            pixelBytes,
-            pixelBytes * image->s(),
-            1);
-        if ( err != CE_None )
-        {
-            OE_WARN << LC << "RasterIO failed.\n";
-        }
-
-        ds->FlushCache();
-
-        image->flipVertical();
-
-        return image;
-    }
-
-    GDALDataset*
-    createMemDS(int width, int height, int numBands, GDALDataType dataType, double minX, double minY, double maxX, double maxY, const std::string &projection)
-    {
-        //Get the MEM driver
-        GDALDriver* memDriver = (GDALDriver*)GDALGetDriverByName("MEM");
-        if (!memDriver)
-        {
-            OE_NOTICE << "[osgEarth::GeoData] Could not get MEM driver" << std::endl;
-        }
-
-        //Create the in memory dataset.
-        GDALDataset* ds = memDriver->Create("", width, height, numBands, dataType, 0);
-
-        //Initialize the color interpretation
-        if ( numBands == 1 )
-        {
-            ds->GetRasterBand(1)->SetColorInterpretation(GCI_GrayIndex);
-        }
-        else
-        {
-            ds->GetRasterBand(1)->SetColorInterpretation(GCI_RedBand);
-            ds->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
-            ds->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
-
-            if ( numBands == 4 )
-            {
-                ds->GetRasterBand(4)->SetColorInterpretation(GCI_AlphaBand);
-            }
-        }
-
-        //Initialize the geotransform
-        double geotransform[6];
-        double x_units_per_pixel = (maxX - minX) / (double)width;
-        double y_units_per_pixel = (maxY - minY) / (double)height;
-        geotransform[0] = minX;
-        geotransform[1] = x_units_per_pixel;
-        geotransform[2] = 0;
-        geotransform[3] = maxY;
-        geotransform[4] = 0;
-        geotransform[5] = -y_units_per_pixel;
-        ds->SetGeoTransform(geotransform);
-        ds->SetProjection(projection.c_str());
-
-        return ds;
-    }
-
-    GDALDataset*
-    createDataSetFromImage(const osg::Image* image, double minX, double minY, double maxX, double maxY, const std::string &projection)
-    {
-        //Clone the incoming image
-        osg::ref_ptr<osg::Image> clonedImage = new osg::Image(*image);
-
-        //Flip the image
-        clonedImage->flipVertical();
-
-        GDALDataType gdalDataType =
-            image->getDataType() == GL_UNSIGNED_BYTE  ? GDT_Byte :
-            image->getDataType() == GL_UNSIGNED_SHORT ? GDT_UInt16 :
-            image->getDataType() == GL_FLOAT          ? GDT_Float32 :
-                                                        GDT_Byte;
-
-        int numBands =
-            image->getPixelFormat() == GL_RGBA      ? 4 :
-            image->getPixelFormat() == GL_RGB       ? 3 :
-            image->getPixelFormat() == GL_LUMINANCE ? 1 : 0;
-
-
-        if ( numBands == 0 )
-        {
-            OE_WARN << LC << "Failure in createDataSetFromImage: unsupported pixel format\n";
-            return 0L;
-        }
-
-        int pixelBytes =
-            gdalDataType == GDT_Byte   ?   numBands :
-            gdalDataType == GDT_UInt16 ? 2*numBands :
-                                         4*numBands;
-        
-        GDALDataset* srcDS = createMemDS(image->s(), image->t(), numBands, gdalDataType, minX, minY, maxX, maxY, projection);
-
-        if ( srcDS )
-        {
-            CPLErr err = srcDS->RasterIO(
-                GF_Write, 
-                0, 0,
-                clonedImage->s(), clonedImage->t(),
-                (void*)clonedImage->data(),
-                clonedImage->s(),
-                clonedImage->t(),
-                gdalDataType,
-                numBands,
-                NULL,
-                pixelBytes,
-                pixelBytes * image->s(),
-                1);
-            if ( err != CE_None )
-            {
-                OE_WARN << LC << "RasterIO failed.\n";
-            }
-
-            srcDS->FlushCache();
-        }
-
-        return srcDS;
-    }
-
-    osg::Image*
-    reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
-                   const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY,
-                   int width = 0, int height = 0, bool useBilinearInterpolation = true)
-    {
-        GDAL_SCOPED_LOCK;
-        osg::Timer_t start = osg::Timer::instance()->tick();
-
-        //Create a dataset from the source image
-        GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
-
-        OE_DEBUG << LC << "Source image is " << srcImage->s() << "x" << srcImage->t() << " in " << srcWKT << std::endl;
-
-
-        if (width == 0 || height == 0)
-        {
-            double outgeotransform[6];
-            double extents[4];
-            void* transformer = GDALCreateGenImgProjTransformer(srcDS, srcWKT.c_str(), NULL, destWKT.c_str(), 1, 0, 0);
-            GDALSuggestedWarpOutput2(srcDS,
-                GDALGenImgProjTransform, transformer,
-                outgeotransform,
-                &width,
-                &height,
-                extents,
-                0);
-            GDALDestroyGenImgProjTransformer(transformer);
-        }
-	    OE_DEBUG << "Creating warped output of " << width <<"x" << height << " in " << destWKT << std::endl;
-
-        int numBands = srcDS->GetRasterCount();
-        GDALDataType dataType = srcDS->GetRasterBand(1)->GetRasterDataType();
-               
-        GDALDataset* destDS = createMemDS(width, height, numBands, dataType, destMinX, destMinY, destMaxX, destMaxY, destWKT);
-
-        if (useBilinearInterpolation == true)
-        {
-            GDALReprojectImage(srcDS, NULL,
-                               destDS, NULL,
-                               GRA_Bilinear,
-                               0,0,0,0,0);
-        }
-        else
-        {
-            GDALReprojectImage(srcDS, NULL,
-                               destDS, NULL,
-                               GRA_NearestNeighbour,
-                               0,0,0,0,0);
-        }
-
-        osg::Image* result = createImageFromDataset(destDS);
-        
-        delete srcDS;
-        delete destDS;  
-
-        osg::Timer_t end = osg::Timer::instance()->tick();
-
-        OE_DEBUG << "Reprojected image in " << osg::Timer::instance()->delta_m(start,end) << std::endl;
-
-        return result;
-    }    
-
-
     osg::Image* manualReproject(
         const osg::Image* image, 
         const GeoExtent&  src_extent, 
@@ -2325,7 +2047,7 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     else
     {
         // otherwise use GDAL.
-        resultImage = reprojectImage(
+        resultImage = osgEarth::GDAL::reprojectImage(
             getImage(),
             getSRS()->getWKT(),
             getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),
@@ -2336,50 +2058,7 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     return GeoImage(resultImage, destExtent);
 }
 
-void
-GeoImage::applyAlphaMask(const GeoExtent& maskingExtent)
-{
-    if ( !valid() )
-        return;
-
-    osg::Image* image = getImage();
-
-    GeoExtent maskingExtentLocal = maskingExtent.transform(_extent.getSRS());
-
-    // if the image is completely contains by the mask, no work to do.
-    if ( maskingExtentLocal.contains(getExtent()))
-        return;
-
-    ImageUtils::PixelReader read (image);
-    ImageUtils::PixelWriter write(image);
-
-    double sInterval = _extent.width()/(double)read.s();
-    double tInterval = _extent.height()/(double)read.t();
-
-    osg::Vec4f pixel;
-
-    for( int t=0; t<image->t(); ++t )
-    {
-        double y = _extent.south() + tInterval*(double)t;
-
-        for( int s=0; s<image->s(); ++s )
-        {
-            double x = _extent.west() + sInterval*(double)s;
-
-            for( int r=0; r<image->r(); ++r )
-            {
-                if ( !maskingExtentLocal.contains(x, y) )
-                {
-                    read(pixel, s, t, r);
-                    pixel.a() = 0.0f;
-                    write(pixel, s, t, r);
-                }
-            }
-        }
-    }
-}
-
-osg::Image*
+const osg::Image*
 GeoImage::takeImage()
 {
     return _future.isSet() ? _future->release() : _myimage.release();
@@ -2412,10 +2091,10 @@ _status(value)
     init();
 }
 
-GeoHeightField::GeoHeightField(osg::HeightField* heightField,
+GeoHeightField::GeoHeightField(const osg::HeightField* heightField,
                                const GeoExtent&  extent) :
-_heightField( heightField ),
-_extent     ( extent ),
+_heightField(heightField),
+_extent( extent ),
 _minHeight( FLT_MAX ),
 _maxHeight( -FLT_MAX )
 {
@@ -2436,10 +2115,21 @@ GeoHeightField::init()
         double minx, miny, maxx, maxy;
         _extent.getBounds(minx, miny, maxx, maxy);
 
-        _heightField->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-        _heightField->setXInterval( (maxx - minx)/(double)(_heightField->getNumColumns()-1) );
-        _heightField->setYInterval( (maxy - miny)/(double)(_heightField->getNumRows()-1) );
-        _heightField->setBorderWidth( 0 );
+        osg::Vec3 origin(minx, miny, 0.0);
+        float dx = (maxx - minx)/(float)(_heightField->getNumColumns()-1);
+        float dy = (maxy - miny)/(float)(_heightField->getNumRows()-1);
+
+        if (_heightField->getOrigin() != origin ||
+            _heightField->getXInterval() != dx ||
+            _heightField->getYInterval() != dy)
+        {
+            osg::HeightField* hf = new osg::HeightField(*_heightField.get(), osg::CopyOp::SHALLOW_COPY);
+            hf->setOrigin(origin);
+            hf->setXInterval(dx);
+            hf->setYInterval(dy);
+            hf->setBorderWidth(0);
+            _heightField = hf;
+        }
 
         const osg::HeightField::HeightList& heights = _heightField->getHeightList();
         for( unsigned i=0; i<heights.size(); ++i )
@@ -2624,7 +2314,7 @@ GeoNode::GeoNode(const Status& status) :
         _status = Status::GeneralError;
 }
 
-GeoNode::GeoNode(osg::Node* node, const GeoExtent& extent) :
+GeoNode::GeoNode(const osg::Node* node, const GeoExtent& extent) :
     _node(node),
     _extent(extent)
 {

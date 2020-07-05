@@ -630,7 +630,7 @@ LandCoverLayerVector::populateLandCoverImage(
         if (begin()->get()->isOpen())
         {
             GeoImage r = begin()->get()->createImage(key, progress);
-            output = r.getImage();
+            output = const_cast<osg::Image*>(r.getImage());
         }
         return output.valid();
     }
@@ -703,7 +703,7 @@ LandCoverLayerVector::populateLandCoverImage(
                 }
             }
 
-            output = comp.getImage();
+            output = const_cast<osg::Image*>(comp.getImage());
             numValues = output->s() * output->t();
             needsClone = true;
             fallback = true;

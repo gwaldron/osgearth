@@ -190,7 +190,7 @@ Control::getGeomStateSet()
     osg::ref_ptr<osg::StateSet> stateSet;
     if (s_geomStateSet.lock(stateSet) == false)
     {
-        static Threading::Mutex m;
+        static Threading::Mutex m(OE_MUTEX_NAME);
         Threading::ScopedMutexLock lock(m);
         if (s_geomStateSet.lock(stateSet) == false)
         {
@@ -1052,7 +1052,7 @@ ImageControl::getImageStateSet()
     osg::ref_ptr<osg::StateSet> stateSet;
     if (s_imageStateSet.lock(stateSet) == false)
     {
-        static Threading::Mutex m;
+        static Threading::Mutex m(OE_MUTEX_NAME);
         Threading::ScopedMutexLock lock(m);
         if (s_imageStateSet.lock(stateSet) == false)
         {
@@ -1202,7 +1202,7 @@ ImageControl::draw( const ControlContext& cx )
     const osg::Vec2i imageSize = calculateImageSize();
 
     osg::Geometry* g = newGeometry();
-    g->setStateSet(getGeomStateSet());
+    //g->setStateSet(getGeomStateSet());
 
     float rx = osg::round( _renderPos.x() );
     float ry = osg::round( _renderPos.y() );

@@ -23,7 +23,7 @@
 #define OSGEARTH_CONTAINERS_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/ref_ptr>
 #include <osg/observer_ptr>
 #include <osg/State>
@@ -247,12 +247,12 @@ namespace osgEarth { namespace Util
         mutable Threading::Mutex _mutex;
 
     public:
-        LRUCache( unsigned max =100 ) : _max(max), _threadsafe(false) {
+        LRUCache( unsigned max =100 ) : _max(max), _threadsafe(false), _mutex("LRUCache(OE)") {
             _queries = 0;
             _hits = 0;
             setMaxSize_impl(max);
         }
-        LRUCache( bool threadsafe, unsigned max =100 ) : _max(max), _threadsafe(threadsafe) {
+        LRUCache( bool threadsafe, unsigned max =100 ) : _max(max), _threadsafe(threadsafe), _mutex("LRUCache(OE)") {
             _queries = 0;
             _hits = 0;
             setMaxSize_impl(max);
@@ -570,15 +570,31 @@ namespace osgEarth { namespace Util
 
     /** Template for per-thread data storage */
     template<typename T>
-    struct PerThread
+    struct PerThread : public Threading::Mutex
     {
+        PerThread() : Threading::Mutex() { }
+
+        PerThread(const std::string& name) : Threading::Mutex(name) { }
+
         T& get() {
-            Threading::ScopedMutexLock lock(_mutex);
+            Threading::ScopedMutexLock lock(*this);
             return _data[Threading::getCurrentThreadId()];
         }
+
+        void clear() {
+            Threading::ScopedMutexLock lock(*this);
+            _data.clear();
+        }
+
+        typedef typename std::unordered_map<unsigned,T> container_t;
+        typedef typename container_t::iterator iterator;
+
+        // NB. lock before using these!
+        iterator begin() { return _data.begin(); }
+        iterator end() { return _data.end(); }
+
     private:
-        UnorderedMap<unsigned,T> _data;
-        Threading::Mutex     _mutex;
+        container_t _data;
     };
 
 
@@ -586,6 +602,9 @@ namespace osgEarth { namespace Util
     template<typename KEY, typename DATA>
     struct PerObjectMap
     {
+        PerObjectMap() { }
+        PerObjectMap(const std::string& name) : _mutex(name) { }
+
         DATA& get(KEY k)
         {
             {
@@ -619,6 +638,9 @@ namespace osgEarth { namespace Util
     template<typename KEY, typename DATA>
     struct PerObjectFastMap
     {
+        PerObjectFastMap() { }
+        PerObjectFastMap(const std::string& name) : _mutex(name) { }
+
         struct Functor {
             virtual void operator()(DATA& data) =0;
         };

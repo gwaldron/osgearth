@@ -68,7 +68,9 @@ namespace osgEarth
         inline bool operator == (const TileKey& rhs) const {
             return
                 valid() == rhs.valid() &&
-                _hash == rhs._hash &&
+                _lod == rhs._lod &&
+                _x == rhs._x &&
+                _y == rhs._y &&
                 _profile->isHorizEquivalentTo(rhs._profile.get());
         }
 
@@ -76,7 +78,9 @@ namespace osgEarth
         inline bool operator != (const TileKey& rhs) const {
             return 
                 valid() != rhs.valid() ||
-                _hash != rhs._hash ||
+                _lod != rhs._lod ||
+                _x != rhs._x ||
+                _y != rhs._y ||
                 !_profile->isEquivalentTo(rhs._profile.get());
         }
 
@@ -86,7 +90,9 @@ namespace osgEarth
             if (_lod > rhs._lod) return false;
             if (_x < rhs._x) return true;
             if (_x > rhs._x) return false;
-            return _y < rhs._y;
+            if (_y < rhs._y) return true;
+            if (_y > rhs._y) return false;
+            return _profile->getHorizSignature() < rhs._profile->getHorizSignature();
         }
 
         /**

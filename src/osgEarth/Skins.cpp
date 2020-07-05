@@ -141,11 +141,11 @@ SkinResource::createTexture(osg::Image* image) const
         ta->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
         tex = ta;
 
-        std::vector<osg::ref_ptr<osg::Image> > layers;
+        std::vector<osg::ref_ptr<const osg::Image> > layers;
         ImageUtils::flattenImage(image, layers);
         for (unsigned i = 0; i < layers.size(); ++i)
         {
-            tex->setImage(i, layers[i].get());
+            tex->setImage(i, const_cast<osg::Image*>(layers[i].get()));
         }
         tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
         tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);

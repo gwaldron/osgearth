@@ -247,6 +247,12 @@ ClampingCullSet::accept(osg::NodeVisitor& nv)
     }
 }
 
+ClampingManager::ClampingManager() :
+    _sets(OE_MUTEX_NAME)
+{
+    //nop
+}
+
 ClampingCullSet&
 ClampingManager::get(const osg::Camera* cam)
 {

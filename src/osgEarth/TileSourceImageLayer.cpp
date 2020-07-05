@@ -193,14 +193,7 @@ TileSourceImageLayer::createImageImplementation(const TileKey& key, ProgressCall
     }
 
     // create an image from the tile source.
-    osg::ref_ptr<osg::Image> result = _tileSource->createImage( key, NULL, progress );
-
-    // Process images with full alpha to properly support MP blending.    
-    if (result.valid() && 
-        options().featherPixels() == true)
-    {
-        ImageUtils::featherAlphaRegions( result.get() );
-    }    
+    osg::ref_ptr<osg::Image> result = _tileSource->createImage( key, NULL, progress );  
 
     // If image creation failed (but was not intentionally canceled and 
     // didn't time out or end for any other recoverable reason), then

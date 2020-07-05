@@ -20,8 +20,9 @@
 #define OSGEARTH_TEXTURE_COMPOSITOR_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/observer_ptr>
+#include <unordered_map>
 
 namespace osgEarth
 {
@@ -111,7 +112,7 @@ namespace osgEarth
         typedef std::set<int> ReservedUnits;
         ReservedUnits _globallyReservedUnits;
 
-        typedef std::map<const Layer*, ReservedUnits> PerLayerReservedUnits;
+        typedef std::unordered_map<const Layer*, ReservedUnits> PerLayerReservedUnits;
         PerLayerReservedUnits _perLayerReservedUnits;
 
         std::vector<float> _visibilityRanges;

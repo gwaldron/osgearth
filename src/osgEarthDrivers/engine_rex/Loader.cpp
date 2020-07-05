@@ -39,7 +39,8 @@ using namespace osgEarth::REX;
 Loader::Request::Request() :
     _delay_s(0.0),
     _readyTick(0.0),
-    _delayCount(0)
+    _delayCount(0),
+    _mutex("Request(OE)")
 {
     _uid = osgEarth::Registry::instance()->createUID();
     sprintf(_filename, "%u.osgearth_rex_loader", _uid);
@@ -233,7 +234,8 @@ PagerLoader::PagerLoader(TerrainEngineNode* engine) :
 _checkpoint    (0.0),
 _mergesPerFrame( 0 ),
 _frameLastUpdated( 0u ),
-_numLODs       ( 20u )
+_numLODs       ( 20u ),
+_requests(OE_MUTEX_NAME)
 {
     _myNodePath.push_back( this );
 

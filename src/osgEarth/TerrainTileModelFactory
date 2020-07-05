@@ -25,7 +25,7 @@
 #include <osgEarth/TerrainEngineRequirements>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Progress>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/ElevationPool>
 
 namespace osgEarth
@@ -168,46 +168,29 @@ namespace osgEarth
             const CreateTileManifest&    manifest,
             ProgressCallback*            progress);
 
-        virtual void addPatchLayers(
-            TerrainTileModel*            model,
-            const Map*                   map,
-            const TileKey&               key,
-            const CreateTileManifest&    manifest,
-            ProgressCallback*            progress,
-            bool                         fallback);
+        //virtual void addPatchLayers(
+        //    TerrainTileModel*            model,
+        //    const Map*                   map,
+        //    const TileKey&               key,
+        //    const CreateTileManifest&    manifest,
+        //    ProgressCallback*            progress,
+        //    bool                         fallback);
 
     protected:
 
-        /** Find a heightfield in the cache, or fetch it from the source. */
-        bool getOrCreateHeightField(
-            const Map*                      map,
-            const ElevationLayerVector&     layers,
-            int                             revision,
-            const TileKey&                  key,
-            ElevationSamplePolicy           samplePolicy,
-            RasterInterpolation             interpolation,
-            unsigned                        border,
-            osg::ref_ptr<osg::HeightField>& out_hf,
-            ProgressCallback*               progress);
-
         osg::Texture* createImageTexture(
-            osg::Image*       image,
+            const osg::Image* image,
             const ImageLayer* layer) const;
 
         osg::Texture* createCoverageTexture(
-            osg::Image* image) const;
+            const osg::Image* image) const;
 
         osg::Texture* createElevationTexture(
-            osg::Image* image) const;
-
-        osg::Texture* createNormalTexture(
-            osg::Image* image,
-            bool compress ) const;
+            const osg::Image* image) const;
 
         const TerrainOptions& _options;
         osg::ref_ptr<osg::Texture> _emptyColorTexture;
         osg::ref_ptr<osg::Texture> _emptyLandCoverTexture;
-        mutable Threading::Mutex _mipmapMutex;
         ElevationPool::WorkingSet _workingSet;
     };
 }

@@ -114,17 +114,6 @@ namespace osgEarth { namespace Util
             double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy);
 
         /**
-         * Creates an Image that "blends" two images into a new image in which "primary"
-         * occupies mipmap level 0, and "secondary" occupies all the other mipmap levels.
-         *
-         * WARNING: this method assumes that primary and seconday are the same exact size
-         * and the same exact format.
-         */
-        static osg::Image* createMipmapBlendedImage(
-            const osg::Image* primary,
-            const osg::Image* secondary );
-
-        /**
          * Blends the "src" image into the "dest" image, based on the "a" value.
          * The two images must be the same.
          */
@@ -142,7 +131,9 @@ namespace osgEarth { namespace Util
          * simply placed onto the output vector (no copy).
          * Returns true upon sucess, false upon failure
          */
-        static bool flattenImage(osg::Image* image, std::vector<osg::ref_ptr<osg::Image> >& output);
+        static bool flattenImage(
+            const osg::Image* image, 
+            std::vector<osg::ref_ptr<const osg::Image> >& output);
 
         /**
          * Gets whether the input image's dimensions are powers of 2.
@@ -237,16 +228,6 @@ namespace osgEarth { namespace Util
         static bool hasTransparency(const osg::Image* image, float alphaThreshold =1.0f);
 
         /**
-         * Finds pixels with alpha less than [maxAlpha] and sets their color
-         * to match that or neighboring non-alpha pixels. This facilitates multipass
-         * blending or abutting tiles by overlapping them slightly. Specify "maxAlpha"
-         * as the maximum value to consider when searching for fully-transparent pixels.
-         *
-         * Returns false if there is no reader or writer for the image's format.
-         */
-        static bool featherAlphaRegions(osg::Image* image, float maxAlpha =0.0f);
-
-        /**
          * Converts an image (in place) to premultiplied-alpha format.
          * Returns False is the conversion fails, e.g., if there is no reader
          * or writer for the image format.
@@ -303,14 +284,44 @@ namespace osgEarth { namespace Util
 
          * Returns true if mipmaps were added
          */
-        static bool generateMipmaps(osg::Texture* texture);
+        //static bool generateMipmaps(osg::Texture* texture);
 
         /**
         * Adds mipmaps to an image.
         * Returns false if the image already has mipmaps, or if we cannot
         * generate mipmaps for some reason.
         */
-        static bool generateMipmaps(osg::Image* image);
+        //static bool generateMipmaps(osg::Image* image);
+
+        /**
+         * Creates a copy of the input image with added mipmaps.
+         * @param image Input image to generate mipmaps for
+         * @return image with mipmaps. If the input already had mipmaps,
+         *   just returns the input pointer (that is why it's const)
+         */
+        static const osg::Image* mipmapImage(
+            const osg::Image* image);
+
+        /**
+        * Adds mipmaps to an existing image if neccessary
+        * @param image Input image to generate mipmaps for
+        */
+        static void mipmapImageInPlace(
+            osg::Image* image);
+        
+        //! Returns a compressed copy of the input image.
+        //! @param image Image to compress
+        //! @param method Compression method to use; see ImageLayer::getCompressionMethod
+        static const osg::Image* compressImage(
+            const osg::Image* image,
+            const std::string& method ="");
+
+        //! Compressed an exsting image.
+        //! @param image Image to compress
+        //! @param method Compression method to use; see ImageLayer::getCompressionMethod
+        static void compressImageInPlace(
+            osg::Image* image,
+            const std::string& method ="");
 
         /**
          * Gets an osgDB::ReaderWriter for the given input stream.

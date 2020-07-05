@@ -801,7 +801,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
             nv.getVisitorType() == nv.CULL_VISITOR ||
             nv.getVisitorType() == nv.UPDATE_VISITOR)
         {
-            static Threading::Mutex s_openMutex;
+            static Threading::Mutex s_openMutex(OE_MUTEX_NAME);
             Threading::ScopedMutexLock lock(s_openMutex);
             if (!_isOpen)
             {

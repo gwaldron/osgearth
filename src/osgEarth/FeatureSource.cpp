@@ -94,6 +94,7 @@ void
 FeatureSource::init()
 {
     Layer::init();
+    _blacklistMutex.setName(getName());
 }
 
 Status

@@ -162,7 +162,7 @@ TritonHeightMap::configure(unsigned texSize, osg::State& state)
     if (_texSize == 0u)
     {
         // first time through, single-lane and set up FBO parameters.
-        static Threading::Mutex s_mutex;
+        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
         s_mutex.lock();
 
         if (_texSize == 0u)

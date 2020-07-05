@@ -30,7 +30,7 @@
 #include <osgEarth/FadeEffect>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/Utils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Metrics>
@@ -334,7 +334,7 @@ namespace
             }
 
             Registry::instance()->startActivity(uri);
-            osg::Node* node = graph->load(lod, x, y, uri, readOptions);
+            osg::ref_ptr<osg::Node> node = graph->load(lod, x, y, uri, readOptions);
             Registry::instance()->endActivity(uri);
             return ReadResult(node);
         }
@@ -380,7 +380,8 @@ namespace
 FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
     _options(options),
     _featureExtentClamped(false),
-    _useTiledSource(false)
+    _useTiledSource(false),
+    _blacklistMutex("FMG BlackList(OE)")
 {
     //NOP
 }
@@ -784,7 +785,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
     return osg::BoundingSphered(centerWorld, (centerWorld - cornerWorld).length());
 }
 
-osg::Node*
+osg::ref_ptr<osg::Node>
 FeatureModelGraph::setupPaging()
 {
     // calculate the bounds of the full data extent:
@@ -818,7 +819,7 @@ FeatureModelGraph::setupPaging()
     std::string uri = s_makeURI(0, 0, 0);
 
     // bulid the top level node:
-    osg::Node* topNode;
+    osg::ref_ptr<osg::Node> topNode;
 
     if (_options.layout()->paged() == true)
     {
@@ -845,7 +846,7 @@ FeatureModelGraph::setupPaging()
 /**
  * Called by the pseudo-loader, this method attempts to load a single tile of features.
  */
-osg::Node*
+osg::ref_ptr<osg::Group>
 FeatureModelGraph::load(
     unsigned lod, unsigned tileX, unsigned tileY,
     const std::string& uri,
@@ -856,14 +857,15 @@ FeatureModelGraph::load(
 
     OE_TEST << LC << "load " << lod << "_" << tileX << "_" << tileY << std::endl;
 
-    osg::Group* result = 0L;
+    osg::ref_ptr<osg::Group> result;
 
     if (_useTiledSource)
     {
         // A "tiled" source has a pre-generted tile hierarchy, but no range information.
         // We will calcluate the LOD ranges here, as a function of the tile radius and the
         // "tile size factor" ... see below.
-        osg::Group* geometry = 0L;
+        osg::ref_ptr<osg::Group> geometry;
+
         const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
 
         if ((int)lod >= featureProfile->getFirstLevel())
@@ -904,7 +906,7 @@ FeatureModelGraph::load(
             if (lod + 1 != ~0)
             {
                 // only build sub-pagedlods if we are expecting subtiles at some point:
-                if (geometry != 0L || (int)lod < featureProfile->getFirstLevel())
+                if (geometry.valid() || (int)lod < featureProfile->getFirstLevel())
                 {
                     buildSubTilePagedLODs(lod, tileX, tileY, group.get(), readOptions);
                     group->addChild(geometry);
@@ -932,7 +934,8 @@ FeatureModelGraph::load(
         // current LOD points to an actual FeatureLevel, we build the geometry for that
         // level in the tile.
 
-        osg::Group* geometry = 0L;
+        osg::ref_ptr<osg::Group> geometry;
+
         const FeatureLevel* level = _lodmap[lod];
         if (level)
         {
@@ -984,7 +987,7 @@ FeatureModelGraph::load(
     }
 
     // Done - run the pre-merge operations.
-    runPreMergeOperations(result);
+    runPreMergeOperations(result.get());
 
     return result;
 }
@@ -1066,7 +1069,7 @@ FeatureModelGraph::buildSubTilePagedLODs(
                     << "; maxrange = " << maxRange
                     << std::endl;
 
-                osg::Node* childNode;
+                osg::ref_ptr<osg::Node> childNode;
 
                 if (_options.layout()->paged() == true)
                 {
@@ -1219,7 +1222,7 @@ FeatureModelGraph::writeTileToCache(const std::string&    cacheKey,
  * data source, or (b) expressed implicitly by a TileKey, which is the case for a tiled
  * data source.
  */
-osg::Group*
+osg::ref_ptr<osg::Group>
 FeatureModelGraph::buildTile(const FeatureLevel& level,
     const GeoExtent& extent,
     const TileKey* key,
@@ -1372,7 +1375,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
             }
         }
 
-        return group.release();
+        return group;
     }
 
     else
@@ -1888,7 +1891,8 @@ FeatureModelGraph::redraw()
             _options.featureIndexing().get());
     }
 
-    osg::Node* node = 0;
+    osg::ref_ptr<osg::Node> node;
+
     // if there's a display schema in place, set up for quadtree paging.
     if (_options.layout().isSet() || _useTiledSource)
     {
@@ -1901,7 +1905,7 @@ FeatureModelGraph::redraw()
         //Remove all current children
         node = buildTile(defaultLevel, GeoExtent::INVALID, 0, _session->getDBOptions());
         // We're just building the entire node now with no paging, so run the post merge operations immediately.
-        runPostMergeOperations(node);
+        runPostMergeOperations(node.get());
     }
 
 #if 0

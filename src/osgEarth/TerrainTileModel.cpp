@@ -110,6 +110,23 @@ TerrainTileModel::compileGLObjects(osg::State& state) const
         getLandCoverTexture()->compileGLObjects(state);
 }
 
+void
+TerrainTileModel::getDataToCompile(std::vector<osg::Texture*>& output) const
+{
+    for(auto& colorLayer : _colorLayers)
+        if (colorLayer->getTexture())
+            output.push_back(colorLayer->getTexture());
+
+    if (getNormalTexture())
+        output.push_back(getNormalTexture());
+
+    if (getElevationTexture())
+        output.push_back(getElevationTexture());
+
+    if (getLandCoverTexture())
+        output.push_back(getLandCoverTexture());
+}
+
 osg::Texture*
 TerrainTileModel::getTexture(UID layerUID) const
 {

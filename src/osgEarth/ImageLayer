@@ -216,23 +216,9 @@ namespace osgEarth
 
     private:
 
-        //! Creates an image for the given tile key.
-        //! @param key TileKey for which to create an image
-        //! @param createCallback Post-processing callback to run on a newly created image.
-        //!          This is called BEFORE writing to cache; and it is NOT called at all
-        //!          if the image is read from cache.
-        //! @param progress Optional progress/cancelation callback
-        //! TODO: remove this probably, pasing in a createCallback makes for
-        //!   cache inconsistences..
-        GeoImage createImage(
-            const TileKey& key, 
-            Callback* createCallback, 
-            ProgressCallback* progress);
-
         // Creates an image that's in the same profile as the provided key.
         GeoImage createImageInKeyProfile(
             const TileKey& key,
-            Callback* callback,
             ProgressCallback* progress);
 
         // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
@@ -240,7 +226,6 @@ namespace osgEarth
         // doesn't match the layer profile.
         GeoImage assembleImage(
             const TileKey& key,
-            Callback* createCallback,
             ProgressCallback* progress);
 
         optional<int> _shareImageUnit;

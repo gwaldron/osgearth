@@ -313,21 +313,12 @@ GeoImage
 ImageLayer::createImage(
     const TileKey& key)
 {
-    return createImage(key, nullptr, nullptr);
+    return createImage(key, nullptr);
 }
 
 GeoImage
 ImageLayer::createImage(
     const TileKey& key,
-    ProgressCallback* progress)
-{
-    return createImage(key, nullptr, progress);
-}
-
-GeoImage
-ImageLayer::createImage(
-    const TileKey& key,
-    ImageLayer::Callback* createCallback,
     ProgressCallback* progress)
 {
     OE_PROFILING_ZONE;
@@ -344,7 +335,7 @@ ImageLayer::createImage(
     //TODO use a GATE here on the key?
     //_sentry.lock(key);
 
-    GeoImage result = createImageInKeyProfile( key, createCallback, progress );
+    GeoImage result = createImageInKeyProfile( key, progress );
 
     //_sentry.unlock(key);
 
@@ -354,7 +345,6 @@ ImageLayer::createImage(
 GeoImage
 ImageLayer::createImageInKeyProfile(
     const TileKey& key,
-    ImageLayer::Callback* createCallback,
     ProgressCallback* progress)
 {
     // If the layer is disabled, bail out.
@@ -456,7 +446,7 @@ ImageLayer::createImageInKeyProfile(
     else
     {
         // If the profiles are different, use a compositing method to assemble the tile.
-        result = assembleImage( key, createCallback, progress );
+        result = assembleImage( key, progress );
     }
 
     // Check for cancelation before writing to a cache:
@@ -469,11 +459,6 @@ ImageLayer::createImageInKeyProfile(
     {
         // invoke user callbacks
         invoke_onCreate(key, result);
-
-        if (createCallback)
-        {
-            createCallback->onCreate(key, result);
-        }
 
         if (_memCache.valid())
         {
@@ -512,7 +497,6 @@ ImageLayer::createImageInKeyProfile(
 GeoImage
 ImageLayer::assembleImage(
     const TileKey& key,
-    ImageLayer::Callback* createCallback,
     ProgressCallback* progress)
 {
     // If we got here, asset that there's a non-null layer profile.
@@ -551,7 +535,7 @@ ImageLayer::assembleImage(
 
         for( std::vector<TileKey>::iterator k = intersectingKeys.begin(); k != intersectingKeys.end(); ++k )
         {
-            GeoImage image = createImageInKeyProfile(*k, createCallback, progress);
+            GeoImage image = createImageInKeyProfile(*k, progress);
 
             if ( image.valid() )
             {

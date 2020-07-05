@@ -307,7 +307,7 @@ ElevationPool::getOrCreateRaster(
                 hf.get(),
                 resolutions,
                 keyToUse,
-                map->getProfileNoVDatum(), // convertToHAE,
+                map->getProfileNoVDatum(), // want HAE for terrain building...? TODO
                 map->getElevationInterpolation(),
                 progress );
 

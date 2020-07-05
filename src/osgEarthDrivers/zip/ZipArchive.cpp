@@ -22,7 +22,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Registry>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -144,7 +144,7 @@ osgDB::ReaderWriter::ReadResult ZipArchive::readObject(const std::string& file, 
     osgDB::ReaderWriter::ReadResult rresult = osgDB::ReaderWriter::ReadResult::FILE_NOT_HANDLED;
 
     std::string ext = osgDB::getLowerCaseFileExtension(file);
-    if (!_zipLoaded || !acceptsExtension(ext)) return osgDB::ReaderWriter::ReadResult::FILE_NOT_HANDLED;    
+    if (!_zipLoaded || !acceptsExtension(ext)) return osgDB::ReaderWriter::ReadResult::FILE_NOT_HANDLED;
 
     std::stringstream buffer;
 
@@ -351,14 +351,14 @@ osgDB::ReaderWriter* ZipArchive::ReadFromZipIndex(const std::string& filename, c
         {
             zip_file_t* zf;
             if ((zf = zip_fopen_index(data._zipHandle, idx, 0)) != NULL)
-            {             
+            {
                 char buf[8192];
                 zip_int64_t n;
                 while ((n = zip_fread(zf, buf, sizeof(buf))) > 0) {
                     streamIn.write(buf, (size_t)n);
                 }
                 zip_fclose(zf);
-                
+
                 std::string file_ext = osgDB::getFileExtension(filename);
                 osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(file_ext);
                 if (rw != NULL)
@@ -366,8 +366,8 @@ osgDB::ReaderWriter* ZipArchive::ReadFromZipIndex(const std::string& filename, c
                     return rw;
                 }
 
-            }            
-        }        
+            }
+        }
     }
 
     return NULL;
@@ -410,7 +410,7 @@ void ZipArchive::IndexZipFiles(zip_t* zip)
             {
                 _zipIndex.insert(ZipEntryMapping(name, i));
             }
-        }        
+        }
     }
 }
 
@@ -539,7 +539,7 @@ ZipArchive::getDataNoLock() const
                 zip_error_t error;
                 zip_error_init_with_code(&error, errorCode);
                 OSG_WARN << "Failed to open zip " << _filename << ": " << zip_error_strerror(&error) << std::endl;
-                zip_error_fini(&error);                
+                zip_error_fini(&error);
             }
         }
         else

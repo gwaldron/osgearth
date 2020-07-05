@@ -30,6 +30,8 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
+#include <osgDB/ObjectWrapper>
+#include <osgDB/Registry>
 #include <osgUtil/SmoothingVisitor>
 #include <osgEarth/Notify>
 #include <osgEarth/URI>
@@ -39,6 +41,7 @@
 #include <osgEarth/InstanceBuilder>
 
 
+
 #undef LC
 #define LC "[GLTFWriter] "
 
@@ -46,7 +49,7 @@ class GLTFReader
 {
 public:
     typedef osgEarth::Mutexed<
-        osgEarth::UnorderedMap<std::string, osg::ref_ptr<osg::Texture2D> > 
+        osgEarth::UnorderedMap<std::string, osg::ref_ptr<osg::Texture2D> >
     > TextureCache;
 
     struct NodeBuilder;
@@ -133,6 +136,48 @@ public:
             OE_WARN << LC << "gltf Error loading " << location << std::endl;
             OE_WARN << LC << err << std::endl;
             return osgDB::ReaderWriter::ReadResult::ERROR_IN_READING_FILE;
+        }
+
+        Env env(location, readOptions);
+        return makeNodeFromModel(model, env);
+    }
+
+    osg::Node* read(const std::string& location, const std::string& inputStream, const osgDB::Options* readOptions) const
+    {
+        std::string err, warn;
+        tinygltf::Model model;
+        tinygltf::TinyGLTF loader;
+
+        tinygltf::FsCallbacks fs;
+        fs.FileExists = &tinygltf::FileExists;
+        fs.ExpandFilePath = &GLTFReader::ExpandFilePath;
+        fs.ReadWholeFile = &tinygltf::ReadWholeFile;
+        fs.WriteWholeFile = &tinygltf::WriteWholeFile;
+        fs.user_data = (void*)&location;
+        loader.SetFsCallbacks(fs);
+
+        tinygltf::Options opt;
+        opt.skip_imagery = readOptions && readOptions->getOptionString().find("gltfSkipImagery") != std::string::npos;
+
+        std::string decompressedData;
+        const std::string* data = &inputStream;
+
+        osg::ref_ptr<osgDB::BaseCompressor> compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
+        if (compressor.valid())
+        {
+            std::stringstream in_data(inputStream);
+            if (compressor->decompress(in_data, decompressedData))
+            {
+                data = &decompressedData;
+            }
+        }
+
+        loader.LoadBinaryFromMemory(&model, &err, &warn, reinterpret_cast<const unsigned char*>(data->c_str()), data->size(), "", REQUIRE_VERSION, &opt);
+
+        if (!err.empty()) {
+            OE_WARN << LC << "gltf Error loading " << location << std::endl;
+            OE_WARN << LC << err << std::endl;
+            return 0;
         }
 
         Env env(location, readOptions);
@@ -451,7 +496,7 @@ public:
                         }
                     }
                 }
-            
+
                 std::map<std::string, int>::const_iterator it(primitive.attributes.begin());
                 std::map<std::string, int>::const_iterator itEnd(
                     primitive.attributes.end());

@@ -27,6 +27,7 @@
 #include <vector>
 #include <unordered_map>
 #include <queue>
+#include <thread>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
 

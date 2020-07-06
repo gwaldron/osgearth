@@ -32,9 +32,8 @@ namespace osgEarth {
       REGISTER_OBJECT_WRAPPER(ElevationsLodNode,
          new ElevationsLodNode,
          osgEarth::Buildings::ElevationsLodNode,
-         "osg::Object osgEarth::Buildings::ElevationsLodNode")
+         "osg::Node osgEarth::Buildings::ElevationsLodNode")
       {
-
          ADD_OBJECT_SERIALIZER(elevationsLOD, osg::LOD, NULL);
          ADD_MATRIX_SERIALIZER(xform, osg::Matrix());
       }

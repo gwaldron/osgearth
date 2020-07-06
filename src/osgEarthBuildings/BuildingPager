@@ -67,7 +67,7 @@ namespace osgEarth { namespace Buildings
 
     public: // SimplePager
 
-        osg::Node* createNode(const TileKey& key, ProgressCallback* progress);
+        osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override;
 
     protected:
 

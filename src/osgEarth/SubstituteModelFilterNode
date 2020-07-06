@@ -8,7 +8,12 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT SubstituteModelFilterNode : public osg::Object
+    /**
+    * Container Node for storing information about the Sub Geometry
+    * without rendering it. VRV looks for this so it can preprocess the 
+    * building geometry for Indirect Rendering.
+    */
+    class OSGEARTH_EXPORT SubstituteModelFilterNode : public osg::Node
     {
     public:
 
@@ -27,7 +32,7 @@ namespace osgEarth
 
         }
 
-        META_Object(osgEarth, SubstituteModelFilterNode);
+        META_Node(osgEarth, SubstituteModelFilterNode);
 
 
         typedef std::list<ModelSymbol> ModelSymbolList;

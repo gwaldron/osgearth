@@ -112,14 +112,14 @@ BuildingCompiler::addExternalModel(CompilerOutput&       output,
          group->setName("ExternalModelNodeListAttachPoint");
 
          ExternalModelNode* externalModelNodeList = new ExternalModelNode();
-         group->setUserData(externalModelNodeList);
+         group->addChild(externalModelNodeList);
 
          output.getExternalModelsGroup()->addChild(group);
       }
 
       ASSERT_PREDICATE(output.getExternalModelsGroup()->getNumChildren() == 1);
       ExternalModelNode* externalModelNode =
-         static_cast<ExternalModelNode*>(output.getExternalModelsGroup()->getChild(0)->getUserData());
+         static_cast<ExternalModelNode*>(output.getExternalModelsGroup()->getChild(0)->asGroup()->getChild(0));
       ExternalModel * externalModel = new ExternalModel();
 
       externalModel->modelName = building->getExternalModelURI().full();

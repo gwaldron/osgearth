@@ -265,10 +265,12 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
     if (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
     {
-        if (attachPoint->getUserData() == 0)
+        if (attachPoint->getNumChildren() == 0)
+        //if (attachPoint->getUserData() == 0)
         {
             substituteModelFilterNode = new SubstituteModelFilterNode();
-            attachPoint->setUserData(substituteModelFilterNode);
+            attachPoint->addChild(substituteModelFilterNode);
+            //attachPoint->setUserData(substituteModelFilterNode);
 
             bool instancing = getUseDrawInstanced() == true && getClustering() == false;
             bool clustering = getClustering() == true && getUseDrawInstanced() == false;

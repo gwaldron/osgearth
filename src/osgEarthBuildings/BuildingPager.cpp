@@ -218,7 +218,7 @@ BuildingPager::cacheWritesEnabled(const osgDB::Options* writeOptions) const
         cacheSettings->cachePolicy()->isCacheWriteable();
 }
 
-osg::Node*
+osg::ref_ptr<osg::Node>
 BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
 {
     if ( !_session.valid() || !_compiler.valid() || !_features.valid() )
@@ -407,7 +407,7 @@ BuildingPager::createNode(const TileKey& tileKey, ProgressCallback* progress)
     else
     {
 
-        return node.release();
+        return node;
     }
 }
 

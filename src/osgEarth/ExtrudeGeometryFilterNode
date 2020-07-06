@@ -13,7 +13,12 @@ namespace osg
 
 namespace osgEarth
 {
-    class ExtrudeGeometryFilterNode : public osg::Object
+    /**
+    * Container Node for storing information about extruded geometry
+    * without rendering it. VRV looks for this so it can preprocess the 
+    * building geometry for Indirect Rendering.
+    */
+    class ExtrudeGeometryFilterNode : public osg::Node
     {
     public:
         struct ModelSymbol
@@ -26,7 +31,7 @@ namespace osgEarth
         ExtrudeGeometryFilterNode(osg::Group* extrusionGroup, const osg::Matrixd& xform);
         ExtrudeGeometryFilterNode(const ExtrudeGeometryFilterNode & rhs, const osg::CopyOp& copyop);
 
-        META_Object(osgEarth, ExtrudeGeometryFilterNode);
+        META_Node(osgEarth, ExtrudeGeometryFilterNode);
 
         const osg::Group * extrusionGroup() const { return _extrusionGroup.get(); }
 

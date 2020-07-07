@@ -49,6 +49,11 @@ namespace osgEarth { namespace Splat
         //! Sets the groundcover layer from which to generate features (required)
         void setLayer(GroundCoverLayer* layer);
 
+        //! Sets the viewer position so the generator can select the appropriate
+        //! biome zone. Without this, or if you set it to GeoPoint::INVALID,
+        //! the generator will always query the first available zone.
+        void setViewPosition(const GeoPoint& location);
+
         //! Adds a property name to store as a feature attribute
         void addBillboardPropertyName(const std::string& name);
 
@@ -75,8 +80,10 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Texture> _noiseTexture;
         CreateTileManifest _manifest;
         std::vector<std::string> _propNames;
+        GeoPoint _location;
 
         void initialize();
+        const BiomeZone& selectZone(const GeoPoint&) const;
     };
 
 } } // namespace osgEarth::Splat

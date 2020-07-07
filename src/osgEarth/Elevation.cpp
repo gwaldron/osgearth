@@ -44,7 +44,7 @@ namespace
 }
 
 osg::Texture*
-Elevation::createEmptyElevationTexture()
+osgEarth::createEmptyElevationTexture()
 {
     osg::Image* image = new osg::Image();
     image->allocateImage(1, 1, 1, GL_RED, GL_FLOAT);
@@ -56,7 +56,7 @@ Elevation::createEmptyElevationTexture()
 }
 
 osg::Texture*
-Elevation::createEmptyNormalMapTexture()
+osgEarth::createEmptyNormalMapTexture()
 {
     osg::Image* image = new osg::Image();
     image->allocateImage(1, 1, 1, GL_RG, GL_UNSIGNED_BYTE);

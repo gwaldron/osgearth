@@ -476,7 +476,7 @@ RexTerrainEngineNode::setupRenderBindings()
     elevation.usage()       = SamplerBinding::ELEVATION;
     elevation.samplerName() = "oe_tile_elevationTex";
     elevation.matrixName()  = "oe_tile_elevationTexMatrix";
-    elevation.setDefaultTexture(Elevation::createEmptyElevationTexture());
+    elevation.setDefaultTexture(osgEarth::createEmptyElevationTexture());
     if (this->elevationTexturesRequired())
         getResources()->reserveTextureImageUnit( elevation.unit(), "Terrain Elevation" );
 
@@ -484,7 +484,7 @@ RexTerrainEngineNode::setupRenderBindings()
     normal.usage()       = SamplerBinding::NORMAL;
     normal.samplerName() = "oe_tile_normalTex";
     normal.matrixName()  = "oe_tile_normalTexMatrix";
-    normal.setDefaultTexture(Elevation::createEmptyNormalMapTexture());
+    normal.setDefaultTexture(osgEarth::createEmptyNormalMapTexture());
     if (this->normalTexturesRequired())
         getResources()->reserveTextureImageUnit( normal.unit(), "Terrain Normals" );
 

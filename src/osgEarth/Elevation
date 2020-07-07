@@ -30,6 +30,13 @@ namespace osgEarth
 {
     constexpr int ELEVATION_TILE_SIZE = 257;
 
+    struct OSGEARTH_EXPORT Elevation
+    {
+        static osg::Texture* createEmptyElevationTexture();
+
+        static osg::Texture* createEmptyNormalMapTexture();
+    };
+
     /**
      * Result of an elevation sampling query
      */

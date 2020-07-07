@@ -43,6 +43,33 @@ namespace
     }
 }
 
+osg::Texture*
+Elevation::createEmptyElevationTexture()
+{
+    osg::Image* image = new osg::Image();
+    image->allocateImage(1, 1, 1, GL_RED, GL_FLOAT);
+    *((GLfloat*)image->data()) = 0.0f;
+    osg::Texture2D* tex = new osg::Texture2D(image);
+    tex->setInternalFormat(GL_R32F);
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    return tex;
+}
+
+osg::Texture*
+Elevation::createEmptyNormalMapTexture()
+{
+    osg::Image* image = new osg::Image();
+    image->allocateImage(1, 1, 1, GL_RG, GL_UNSIGNED_BYTE);
+    ImageUtils::PixelWriter write(image);
+    osg::Vec2 packed;
+    packNormal(osg::Vec3(0,0,1), packed);
+    write(osg::Vec4(packed.x(), packed.y(), 0, 0), 0, 0);
+    osg::Texture2D* tex = new osg::Texture2D(image);
+    tex->setInternalFormat(GL_RG8);
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    return tex;
+}
+
 ElevationTexture::ElevationTexture(const TileKey& key, const GeoHeightField& in_hf, float* resolutions) :
     _tilekey(key),
     _extent(in_hf.getExtent()),

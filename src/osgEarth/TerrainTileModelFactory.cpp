@@ -681,7 +681,7 @@ TerrainTileModelFactory::createCoverageTexture(osg::Image* image) const
     osg::Texture2D* tex = new osg::Texture2D( image );
     tex->setDataVariance(osg::Object::STATIC);
 
-    tex->setInternalFormat(GL_R16F);
+    tex->setInternalFormat(LandCover::getTextureFormat());
 
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );

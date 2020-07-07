@@ -382,7 +382,8 @@ void ThreadPool::stopThreads()
     // Clear out the queue
     {
         Threading::ScopedMutexLock lock(_queueMutex);
-        _queue.swap(Queue());
+        Queue emptyQueue;
+        _queue.swap(emptyQueue);
     }
 }
 

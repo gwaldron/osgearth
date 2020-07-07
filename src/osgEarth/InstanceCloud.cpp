@@ -21,8 +21,6 @@
 */
 #include <osgEarth/InstanceCloud>
 #include <osgEarth/ShaderLoader>
-#include <osgEarth/Math>
-#include <osgEarth/Registry>
 #include <osgEarth/Utils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Math>
@@ -657,8 +655,10 @@ GeometryCloud::add(osg::Node* node, unsigned alignment)
         return NULL; // nothing.
 
     // find the largest image and make that the atlas size.
-    GLenum pixelFormat = GL_RED;
-    GLenum dataType = GL_FLOAT;
+    GLenum pixelFormat = GL_RGBA;
+    GLenum dataType = GL_UNSIGNED_BYTE;
+    GLenum internalFormat = GL_RGBA8;
+
     int width=0, height=0;
     for(auto i : _texturesToAdd)
     {
@@ -666,21 +666,55 @@ GeometryCloud::add(osg::Node* node, unsigned alignment)
         width = osg::maximum(src->s(), width);
         height = osg::maximum(src->t(), height);
 
-        // upgrade pixelformat/datatype as we go:
-        if (pixelFormat == GL_RED && src->getPixelFormat() != GL_RED)
-            pixelFormat = src->getPixelFormat();
-        if (pixelFormat == GL_RGB && src->getPixelFormat() == GL_RGBA)
-            pixelFormat = GL_RGBA;
-        if (dataType == GL_FLOAT && src->getDataType() != GL_FLOAT)
-            dataType = src->getDataType();
+        //// upgrade pixelformat/datatype as we go:
+        //if (pixelFormat == GL_RED && src->getPixelFormat() != GL_RED)
+        //    pixelFormat = src->getPixelFormat();
+        //if (pixelFormat == GL_RGB && src->getPixelFormat() == GL_RGBA)
+        //    pixelFormat = GL_RGBA;
+        //if (dataType == GL_FLOAT && src->getDataType() != GL_FLOAT)
+        //    dataType = src->getDataType();
     }
 
+    //GLenum internalFormat =
+    //    pixelFormat == GL_RED ? GL_R16F :
+    //    pixelFormat == GL_RG ? GL_RG8 :
+    //    pixelFormat == GL_RGB ? GL_RGB8 :
+    //    pixelFormat == GL_RGBA ? GL_RGBA8 :
+    //    GL_RGBA8;
+
+    // round to a power of 2 so we can properly mipmap/compress the textures
+    width = nextPowerOf2(width);
+    height = nextPowerOf2(height);
+
     Texture* tex = new Texture();
+
     tex->_image = new osg::Image();
     tex->_image->allocateImage(width, height, _texturesToAdd.size(), pixelFormat, dataType);
+    tex->_image->setInternalTextureFormat(internalFormat);
+
     ImageUtils::PixelWriter write(tex->_image.get());
     osg::Vec4 value;
 
+#if 1
+    for(auto& i : _texturesToAdd)
+    {
+        int layer = _textureLayers[i.get()];
+
+        ImageUtils::PixelReader read(i->getImage(0));
+
+        for(int t=0; t<height; ++t)
+        {
+            float v = osg::clampBetween((float)t/(float)(height-1), 0.0f, 1.0f);
+            for(int s=0; s<width; ++s)
+            {
+                float u = osg::clampBetween((float)s/(float)(width-1), 0.0f, 1.0f);
+                read(value, u, v);
+                write(value, s, t, layer);
+            }
+        }
+    }
+
+#else
     for(auto i : _texturesToAdd)
     {
         osg::Image* src = i->getImage(0);
@@ -694,7 +728,7 @@ GeometryCloud::add(osg::Node* node, unsigned alignment)
             ImageUtils::resizeImage(src, width, height, sized);
 
         // copy pixels into atlas
-        ImageUtils::PixelReader read(sized.get());    
+        ImageUtils::PixelReader read(sized.get());
         for(int s=0; s<width; ++s)
         {
             for(int t=0; t<height; ++t)
@@ -704,6 +738,7 @@ GeometryCloud::add(osg::Node* node, unsigned alignment)
             }
         }
     }
+#endif
 
     return tex;
 }

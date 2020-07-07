@@ -69,18 +69,16 @@ Texture::compileGLObjects(osg::State& state) const
 
     gc._gltexture = new GLTexture(target, state, _uri->base());
 
-    // TODO: make sure we can actually generate mipmaps for a texture array ...
-    bool useGPUmipmaps = false;
-
     unsigned numMipLevels = _image->getNumMipmapLevels();
 
-    useGPUmipmaps = (numMipLevels <= 1);
-
-    //TODO: compute the best internal format
+    bool useGPUmipmaps = (numMipLevels <= 1);
+    
     GLenum pixelFormat = _image->getPixelFormat();
 
-    GLenum internalFormat = 
-        pixelFormat == GL_RGB ? GL_COMPRESSED_RGBA_S3TC_DXT1_EXT :
+    // trigger GPU compression if not already compressed
+    GLenum internalFormat =
+        _image->isCompressed() ? _image->getInternalTextureFormat() :
+        pixelFormat == GL_RGB ? GL_COMPRESSED_RGB_S3TC_DXT1_EXT :
         pixelFormat == GL_RGBA ? GL_COMPRESSED_RGBA_S3TC_DXT5_EXT :
         GL_RGBA8;
 
@@ -121,10 +119,14 @@ Texture::compileGLObjects(osg::State& state) const
     // TODO: At this point, if/when we go with SPARSE textures,
     // don't actually copy the image down until activation.
 
+    bool compressed = _image->isCompressed();
+
     // Iterate over mipmap levels in this layer:
     for (unsigned mipLevel = 0; mipLevel < numMipLevels; ++mipLevel)
     {
-        int sizeOfMipImage = _image->getImageSizeInBytes() >> (2*mipLevel);
+        // Note: getImageSizeInBytes() will return the actual data size 
+        // even if the data is compressed.
+        int mipmapBytes = _image->getImageSizeInBytes() >> (2*mipLevel);
 
         // Iterate over image slices:
         for (int r = 0; r < _image->r(); ++r)
@@ -133,31 +135,66 @@ Texture::compileGLObjects(osg::State& state) const
             {
                 unsigned char* dataptr =
                     _image->getMipmapData(mipLevel) +
-                    sizeOfMipImage * r;
+                    mipmapBytes * r;
 
-                ext->glTexSubImage3D(
-                    target, // GL_TEXTURE_2D_ARRAY
-                    mipLevel, // mip level
-                    0, 0, // xoffset, yoffset
-                    r, // zoffset (array layer)
-                    _image->s() >> mipLevel, // width at mipmap level i
-                    _image->t() >> mipLevel, // height at mipmap level i
-                    1, // z size always = 1
-                    _image->getPixelFormat(),
-                    _image->getDataType(),
-                    dataptr );
+                if (compressed)
+                {
+                    ext->glCompressedTexSubImage3D(
+                        target, // GL_TEXTURE_2D_ARRAY
+                        mipLevel,
+                        0, 0, // xoffset, yoffset
+                        r, // zoffset (array layer)
+                        _image->s() >> mipLevel, // width at mipmap level i
+                        _image->t() >> mipLevel, // height at mipmap level i
+                        1, // z size always = 1
+                        _image->getInternalTextureFormat(),
+                        mipmapBytes,
+                        dataptr);
+                }
+                else
+                {
+                    ext->glTexSubImage3D(
+                        target, // GL_TEXTURE_2D_ARRAY
+                        mipLevel, // mip level
+                        0, 0, // xoffset, yoffset
+                        r, // zoffset (array layer)
+                        _image->s() >> mipLevel, // width at mipmap level i
+                        _image->t() >> mipLevel, // height at mipmap level i
+                        1, // z size always = 1
+                        _image->getPixelFormat(),
+                        _image->getDataType(),
+                        dataptr );
+                }
             }
             else
             {
-                glTexSubImage2D(
-                    target, // GL_TEXTURE_2D
-                    mipLevel, // mip level
-                    0, 0, // xoffset, yoffset
-                    _image->s() >> mipLevel, // width at mipmap level i
-                    _image->t() >> mipLevel, // height at mipmap level i
-                    _image->getPixelFormat(),
-                    _image->getDataType(),
-                    _image->getMipmapData(mipLevel) );
+                unsigned char* dataptr =
+                    _image->getMipmapData(mipLevel);
+
+                if (compressed)
+                {
+                    ext->glCompressedTexSubImage2D(
+                        target, // GL_TEXTURE_2D
+                        mipLevel, // mip level
+                        0, 0, // xoffset, yoffset
+                        _image->s() >> mipLevel, // width at mipmap level i
+                        _image->t() >> mipLevel, // height at mipmap level i
+                        _image->getInternalTextureFormat(),
+                        mipmapBytes,
+                        dataptr );
+                }
+                else
+                {
+                    glTexSubImage2D(
+                        target, // GL_TEXTURE_2D
+                        mipLevel, // mip level
+                        0, 0, // xoffset, yoffset
+                        _image->s() >> mipLevel, // width at mipmap level i
+                        _image->t() >> mipLevel, // height at mipmap level i
+                        _image->getPixelFormat(),
+                        _image->getDataType(),
+                        dataptr );
+                }
             }
         }
     }
@@ -243,11 +280,26 @@ TextureArena::add(Texture* tex)
 
     if (tex->_image.valid())
     {
-        // Try to generate mipmaps on the CPU.
-        if ( tex->_image->getNumMipmapLevels() <= 1 )
+        if (!tex->_image->isCompressed())
         {
-            ImageUtils::generateMipmaps(tex->_image.get());
+            if (tex->_image->getPixelFormat() == tex->_image->getInternalTextureFormat())
+            {
+                // normalize the internal texture format
+                GLenum internalFormat =
+                    tex->_image->getPixelFormat() == GL_RED ? GL_R16F :
+                    tex->_image->getPixelFormat() == GL_RG ? GL_RG8 :
+                    tex->_image->getPixelFormat() == GL_RGB ? GL_RGB8 :
+                    tex->_image->getPixelFormat() == GL_RGBA ? GL_RGBA8 :
+                    GL_RGBA8;
+
+                tex->_image->setInternalTextureFormat(internalFormat);
+            }
+
+            // TODO: this doesn't quite work with a texture array coming from the GeometryCloud.
+            ImageUtils::compressImageInPlace(tex->_image.get());
         }
+
+        //ImageUtils::mipmapImageInPlace(tex->_image.get());
 
         // add to all GCs.
         for(unsigned i=0; i<_gc.size(); ++i)

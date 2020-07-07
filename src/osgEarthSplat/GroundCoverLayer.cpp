@@ -63,10 +63,15 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 
 // TODO LIST
 //
-//  - Texture management as the catalog gets bigger. Swap in/out criteria and detection??
+//  - BUG: multiple biomes, same asset in each biome; billboard sizes are messed up.
 
-//  - Fix model culling. The "radius" isn't quite sufficient since the origin is not at the center,
-//    AND because rotation changes the profile. Calculate it differently.
+//  - FEATURE: FADE in 3D models from billboards
+//  - FEATURE: automatically generate billboards? Imposters? Other?
+
+//  - Texture management as the catalog gets bigger. Swap in/out criteria and detection??
+//    (This will probably have to wait until we change the Biome meta.)
+//    OR, the GPU can periodically "report" on usage in a readback buffer and the CPU
+//    can respond accordingly; as long as the readback is fairly asynchronous
 
 //  - Idea: include a "model range" or "max SSE" in the InstanceBuffer...?
 //  - [PERF] thin out distant instances automatically in large tiles
@@ -78,11 +83,12 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 //    iterate over the TileBatch.
 //  - fix the random asset select with weighting...just not really working well.
 //  - programmable SSE for models?
-//  - deal with blending to fade in 3d models
-//  - Reduce the size of the RenderBuffer structure
 //  - variable spacing or clumping by landcovergroup or asset...?
 //  - make the noise texture bindless as well? Stick it in the arena? Why not.
 
+//  - (DONE - using indexes instead of copies) Reduce the size of the RenderBuffer structure
+//  - (DONE) Fix model culling. The "radius" isn't quite sufficient since the origin is not at the center,
+//    AND because rotation changes the profile. Calculate it differently.
 //  - (DONE) [OPT] reduce the SIZE of the instance buffer by re-using variables (instanceID, drawID, assetID)
 //  - (DONE) Figure out how to pre-compile/ICO the TextureArena; it takes quite a while.
 //  - (DONE) [OPT] on Generate, store the instance count per tile in an array somewhere. Also store the 

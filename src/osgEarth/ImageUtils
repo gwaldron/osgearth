@@ -314,14 +314,14 @@ namespace osgEarth { namespace Util
         //! @param method Compression method to use; see ImageLayer::getCompressionMethod
         static const osg::Image* compressImage(
             const osg::Image* image,
-            const std::string& method ="");
+            const std::string& method ="cpu");
 
         //! Compressed an exsting image.
         //! @param image Image to compress
         //! @param method Compression method to use; see ImageLayer::getCompressionMethod
         static void compressImageInPlace(
             osg::Image* image,
-            const std::string& method ="");
+            const std::string& method ="cpu");
 
         /**
          * Gets an osgDB::ReaderWriter for the given input stream.

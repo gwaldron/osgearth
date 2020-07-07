@@ -487,18 +487,105 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
     return true;
 }
 
+namespace
+{
+    const osg::Image* mipmapImageImplementation(const osg::Image* input_const, bool inPlace)
+    {
+        osg::Image* input = const_cast<osg::Image*>(input_const);
+
+        // first, build the image that will hold all the mipmap levels.
+        int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
+        int sizeOfOneMainImage = input->getImageSizeInBytes();
+        int sizeOfAllMainImages = sizeOfOneMainImage * input->r();
+
+        // offset vector does not include level 0 (the full-resolution level)
+        // so getMipLevelOffset(0) is the main data and (1) is the first mip level.
+        // But the first mip level is in index[0]. Not confusing at all
+        osg::Image::MipmapDataType mipOffsets;
+        mipOffsets.reserve(numLevels-1);
+
+        // calculate memory requirements:
+        int sizeToAllocate = sizeOfAllMainImages;
+        for( int i=1; i<numLevels; ++i )
+        {
+            mipOffsets.push_back(sizeToAllocate);
+            sizeToAllocate += sizeOfAllMainImages >> (2*i);
+        }
+
+        osg::Image* output;
+        if (inPlace)
+        {
+            output = input;
+        }
+        else
+        {
+            output = new osg::Image();
+            output->setName(input->getName());
+        }
+
+        // allocate space for the new data
+        unsigned char* data = new unsigned char[sizeToAllocate];
+
+        // and copy over level 0 of the old data
+        ::memcpy(data, input->data(), sizeOfAllMainImages);
+
+        output->setImage(
+            input->s(), input->t(), input->r(),
+            input->getInternalTextureFormat(),
+            input->getPixelFormat(),
+            input->getDataType(),
+            data,
+            osg::Image::USE_NEW_DELETE,
+            input->getPacking(),
+            input->getRowLength());
+
+        output->setMipmapLevels(mipOffsets);
+
+        // now, populate the image levels.
+        osg::PixelStorageModes psm;
+        psm.pack_alignment = input->getPacking();
+        psm.pack_row_length = input->getRowLength();
+        psm.unpack_alignment = input->getPacking();
+
+        for(int level=1; level<numLevels; ++level)
+        {
+            int sizeOfOneMipImage = sizeOfOneMainImage >> (2*level);
+
+            for(int r=0; r<input->r(); ++r)
+            {
+                const unsigned char* fromPtr = 
+                    input->data(0, 0, r);// + 
+                    //sizeOfOneMainImage * r;
+
+                unsigned char* toPtr =
+                    output->getMipmapData(level) +
+                    sizeOfOneMipImage * r;
+
+                // OSG-custom gluScaleImage that does not require a graphics context
+                GLint status = gluScaleImage(
+                    &psm,
+                    input->getPixelFormat(),
+                    input->s(),
+                    input->t(),
+                    input->getDataType(),
+                    fromPtr,
+                    input->s() >> level,
+                    input->t() >> level,
+                    input->getDataType(),
+                    toPtr);
+            }
+        }
+
+        return output;
+    }
+}
+
 const osg::Image*
 ImageUtils::mipmapImage(const osg::Image* input)
 {
     if (!input)
     {
-        OE_WARN << LC << "createMipmappedImage() called with NULL input" << std::endl;
-        return input;
-    }
-
-    if (input->r() > 1)
-    {
-        OE_WARN << LC << "createMipmappedImage() not implemented for 3D image" << std::endl;
+        OE_WARN << LC << __FUNCTION__ " called with NULL input" << std::endl;
         return input;
     }
 
@@ -511,67 +598,11 @@ ImageUtils::mipmapImage(const osg::Image* input)
     // compressed? this algorithm won't work
     if (input->isCompressed())
     {
+        OE_WARN << LC << __FUNCTION__ " not implemented for compressed image" << std::endl;
         return input;
     }
 
-    // first, build the image that will hold all the mipmap levels.
-    int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
-    int imageSizeBytes = input->getTotalSizeInBytes();
-
-    // offset vector does not include level 0 (the full-resolution level)
-    osg::Image::MipmapDataType mipOffsets;
-    mipOffsets.reserve(numLevels-1);
-
-    // calculate memory requirements:
-    int totalSizeBytes = imageSizeBytes;
-    for( int i=1; i<numLevels; ++i )
-    {
-        mipOffsets.push_back(totalSizeBytes);
-        totalSizeBytes += (imageSizeBytes >> i);
-    }
-
-    osg::Image* output = new osg::Image();
-    output->setName(input->getName());
-
-    // allocate space for the new data and copy over level 0 of the old data
-    unsigned char* newData = new unsigned char[totalSizeBytes];
-    ::memcpy(newData, input->data(), input->getTotalSizeInBytes());
-
-    output->setImage(
-        input->s(), input->t(), input->r(),
-        input->getInternalTextureFormat(),
-        input->getPixelFormat(),
-        input->getDataType(),
-        newData,
-        osg::Image::USE_NEW_DELETE,
-        input->getPacking(),
-        input->getRowLength());
-
-    output->setMipmapLevels(mipOffsets);
-
-    // now, populate the image levels.
-    osg::PixelStorageModes psm;
-    psm.pack_alignment = input->getPacking();
-    psm.pack_row_length = input->getRowLength();
-    psm.unpack_alignment = input->getPacking();
-
-    for(int level=1; level<numLevels; ++level)
-    {
-        // OSG-custom gluScaleImage that does not require a graphics context
-        GLint status = gluScaleImage(
-            &psm,
-            output->getPixelFormat(),
-            output->s(),
-            output->t(),
-            output->getDataType(),
-            output->data(),
-            output->s() >> level,
-            output->t() >> level,
-            output->getDataType(),
-            output->getMipmapData(level));
-    }
-    
-    return output;
+    return mipmapImageImplementation(input, false);
 }
 
 void
@@ -579,13 +610,7 @@ ImageUtils::mipmapImageInPlace(osg::Image* input)
 {
     if (!input)
     {
-        OE_WARN << LC << "createMipmappedImage() called with NULL input" << std::endl;
-        return;
-    }
-
-    if (input->r() > 1)
-    {
-        OE_WARN << LC << "createMipmappedImage() not implemented for 3D image" << std::endl;
+        OE_WARN << LC << __FUNCTION__ " called with NULL input" << std::endl;
         return;
     }
 
@@ -598,62 +623,11 @@ ImageUtils::mipmapImageInPlace(osg::Image* input)
     // compressed? this algorithm won't work
     if (input->isCompressed())
     {
+        OE_WARN << LC << __FUNCTION__ " not implemented for compressed image" << std::endl;
         return;
     }
 
-    // first, build the image that will hold all the mipmap levels.
-    int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
-    int imageSizeBytes = input->getTotalSizeInBytes();
-
-    // offset vector does not include level 0 (the full-resolution level)
-    osg::Image::MipmapDataType mipOffsets;
-    mipOffsets.reserve(numLevels-1);
-
-    // calculate memory requirements:
-    int totalSizeBytes = imageSizeBytes;
-    for( int i=1; i<numLevels; ++i )
-    {
-        mipOffsets.push_back(totalSizeBytes);
-        totalSizeBytes += (imageSizeBytes >> i);
-    }
-
-    // allocate space for the new data and copy over level 0 of the old data
-    unsigned char* newData = new unsigned char[totalSizeBytes];
-    ::memcpy(newData, input->data(), input->getTotalSizeInBytes());
-
-    input->setImage(
-        input->s(), input->t(), input->r(),
-        input->getInternalTextureFormat(),
-        input->getPixelFormat(),
-        input->getDataType(),
-        newData,
-        osg::Image::USE_NEW_DELETE,
-        input->getPacking(),
-        input->getRowLength());
-
-    input->setMipmapLevels(mipOffsets);
-
-    // now, populate the image levels.
-    osg::PixelStorageModes psm;
-    psm.pack_alignment = input->getPacking();
-    psm.pack_row_length = input->getRowLength();
-    psm.unpack_alignment = input->getPacking();
-
-    for(int level=1; level<numLevels; ++level)
-    {
-        // OSG-custom gluScaleImage that does not require a graphics context
-        GLint status = gluScaleImage(
-            &psm,
-            input->getPixelFormat(),
-            input->s(),
-            input->t(),
-            input->getDataType(),
-            input->data(),
-            input->s() >> level,
-            input->t() >> level,
-            input->getDataType(),
-            input->getMipmapData(level));
-    }
+    mipmapImageImplementation(input, true);
 }
 
 const osg::Image*

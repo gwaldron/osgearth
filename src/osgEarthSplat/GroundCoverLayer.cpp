@@ -68,6 +68,9 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 //  - FEATURE: FADE in 3D models from billboards
 //  - FEATURE: automatically generate billboards? Imposters? Other?
 
+//  - Lighting: do something about billboard lighting. We might have to generate normal 
+//    maps when we make the imposter billboards (if we make them).
+
 //  - Texture management as the catalog gets bigger. Swap in/out criteria and detection??
 //    (This will probably have to wait until we change the Biome meta.)
 //    OR, the GPU can periodically "report" on usage in a readback buffer and the CPU

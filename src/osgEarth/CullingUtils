@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -35,7 +35,7 @@
 #include <osg/ClipPlane>
 #include <osgUtil/CullVisitor>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {    
     /**
      * A customized CCC that works correctly under an RTT camera and also with 
@@ -268,6 +268,6 @@ namespace osgEarth
         optional<float> _maxAltitude;
         osg::ref_ptr<const SpatialReference> _srs;
     };
-}
+} }
 
 #endif // OSGEARTH_CULLING_UTILS_H

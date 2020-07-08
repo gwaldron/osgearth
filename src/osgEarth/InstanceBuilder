@@ -1,0 +1,52 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_INSTANCE_BUILDER_H
+#define OSGEARTH_INSTANCE_BUILDER_H 1
+
+#include <osgEarth/Export>
+#include <osg/ref_ptr>
+#include <osg/Array>
+#include <osg/Geometry>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT InstanceBuilder
+    {
+    public:
+        InstanceBuilder();
+        static osg::Geometry* createGeometry();
+        osg::Vec3Array* getPositions() { return _positions.get(); };
+        void setPositions(osg::Vec3Array* positions) { _positions = positions; };
+        osg::Vec4Array* getRotations() { return _rotations.get(); };
+        void setRotations(osg::Vec4Array* rotations) { _rotations = rotations; }
+        osg::Vec3Array* getScales() { return _scales.get(); }
+        void setScales(osg::Vec3Array* scales) { _scales = scales; }
+        void installInstancing(osg::Geometry* geometry) const;
+    protected:
+        osg::ref_ptr<osg::Vec3Array> _positions;
+        osg::ref_ptr<osg::Vec4Array> _rotations;
+        osg::ref_ptr<osg::Vec3Array> _scales;
+        // Overall values 
+        osg::ref_ptr<osg::Vec3Array> _position;
+        osg::ref_ptr<osg::Vec4Array> _rotation;
+        osg::ref_ptr<osg::Vec3Array> _scale;
+    };
+}
+#endif // OSGEARTH_INSTANCE_BUILDER_H

@@ -30,7 +30,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class EngineContext;
 
@@ -53,7 +53,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      * the terrain's geometry. It also hold a pointer to the tile's elevation
      * raster so it can properly reflect the elevation data in the texture.
      */
-    class TileDrawable : public osg::Drawable
+    class TileDrawable : public osg::Drawable //, public PatchLayer::GeometryArrayProvider
     {
     public:
         // underlying geometry, possibly shared between this tile and other.
@@ -122,15 +122,29 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::BoundingSphere computeBound() const;
         osg::BoundingBox computeBoundingBox() const;
 
+    public: // GeometryArrayProvider interface
+
+        const osg::Array* getVertexArray() const { return _geom->getVertexArray(); }
+        const osg::Array* getNormalArray() const { return _geom->getNormalArray(); }
+        const osg::Array* getTexCoordArray() const { return _geom->getTexCoordArray(); }
+        const osg::BoundingBox& getBoundingBox() const { return osg::Drawable::getBoundingBox(); }
+
     public:
         META_Object(osgEarth, TileDrawable);
-        TileDrawable() : osg::Drawable(){}
-        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop) {}
+        TileDrawable() : osg::Drawable(), _tileSize(0), _mesh(NULL), _meshIndices(NULL), _bboxCB(NULL), _bboxRadius(0.0) {}
+        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) 
+         : osg::Drawable(rhs, cop)
+         , _tileSize(rhs._tileSize)
+         , _mesh(rhs._mesh)
+         , _meshIndices(rhs._meshIndices)
+         , _bboxCB(rhs._bboxCB)
+         , _bboxRadius(rhs._bboxRadius)
+        {}
 
         virtual ~TileDrawable();
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_RexGEOMETRY
 

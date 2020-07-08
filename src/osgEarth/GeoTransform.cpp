@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -46,11 +46,39 @@ osg::MatrixTransform(rhs, op)
     _clampInUpdateTraversal = false;
 }
 
+GeoTransform::~GeoTransform()
+{
+    if (_terrain.valid())
+        _terrain->removeObserver(this);
+}
+
 void
 GeoTransform::setTerrain(Terrain* terrain)
 {
-    _terrain = terrain;
-    setPosition(_position);
+    if (terrain)
+    {
+        if (_terrain.valid())
+            _terrain->removeObserver(this);
+        _terrain = terrain;
+        _terrain->addObserver(this);
+        setPosition(_position);
+    }
+}
+
+void
+GeoTransform::objectDeleted(void* ptr)
+{
+    // called when the observed Terrain is deleted.  Since _terrain is
+    // in an observer_ptr, we cannot trust its value because it might
+    // be cleared out before we got here.  We also cannot set its value
+    // because that will change the observer list on the item being
+    // deleted, leading to invalidated iterators in OSG.  Because it's
+    // in an observer_ptr, _terrain will automatically set to NULL.
+    if (!_findTerrainInUpdateTraversal)
+    {
+        _findTerrainInUpdateTraversal = true;
+        ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    }
 }
 
 void
@@ -138,7 +166,7 @@ GeoTransform::setPosition(const GeoPoint& position)
 }
 
 void
-GeoTransform::onTileAdded(const TileKey&          key,
+GeoTransform::onTileUpdate(const TileKey&          key,
                           osg::Node*              node,
                           TerrainCallbackContext& context)
 {
@@ -146,13 +174,13 @@ GeoTransform::onTileAdded(const TileKey&          key,
     {
        if (!_position.isValid() || _position.altitudeMode() != ALTMODE_RELATIVE || !_autoRecomputeHeights)
        {
-           OE_TEST << LC << "onTileAdded fail condition 1\n";
+           OE_TEST << LC << "onTileUpdate fail condition 1\n";
            return;
        }
 
        if (key.valid() && !key.getExtent().contains(_position))
        {
-           OE_TEST << LC << "onTileAdded fail condition 2\n";
+           OE_TEST << LC << "onTileUpdate fail condition 2\n";
            return;
        }
 

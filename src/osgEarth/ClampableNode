@@ -38,9 +38,6 @@ namespace osgEarth
         //! Constructs a new clampable node.
         ClampableNode();
 
-		//! Whether the given camera is a depth camera.
-		static bool isDepthCamera(const osg::Camera* camera);
-
     public: // osg::Node
 
         virtual void traverse(osg::NodeVisitor& nv);

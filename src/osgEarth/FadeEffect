@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -59,9 +59,10 @@ namespace osgEarth
         optional<float> _attenDist;
     };
 }
+
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FadeOptions);
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Decorator node that will only display it's children when the camera is within a given elevation range
@@ -136,6 +137,6 @@ namespace osgEarth
         float _maxFadeExtent;
     };
 
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTH_FADE_EFFECT_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,9 +22,7 @@
 #include "Common"
 
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/LayerListener>
 #include <osgEarth/ImageLayer>
-#include <osgEarthUtil/Ocean>
 #include <osgEarthTriton/TritonCallback>
 
 namespace osgEarth { namespace Triton

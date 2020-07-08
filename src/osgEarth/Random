@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 
 #include <osgEarth/Common>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Psuedo random number generator. Results are guaranteed to be consistent across
@@ -88,6 +88,6 @@ namespace osgEarth
         unsigned _seed;
         unsigned _next;
     };
-}
+} }
 
 #endif // OSGEARTH_RANDOM_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,9 +21,13 @@
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Progress>
+#include <osgEarth/Utils>
+#include <osgEarth/Metrics>
+#include <osgEarth/NetworkMonitor>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
+#include <osgUtil/IncrementalCompileOperation>
 
 #define LC "[URI] "
 
@@ -31,28 +35,91 @@
 //#define OE_TEST OE_NOTICE
 
 using namespace osgEarth;
+using namespace osgEarth::Threading;
 
 //------------------------------------------------------------------------
 
+
 namespace
 {
-    /**
-     * "Fixes" the osgDB options by disabling the automatic archive caching. Archive caching
-     * screws up our URI resolution because with it on, osgDB remembers every archive file
-     * you open and effectively puts it in all future search paths :(
-     */
-    const osgDB::Options*
-    fixOptions( const osgDB::Options* input )
+    class LoadNodeOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
     {
-        if ( input && input->getObjectCacheHint() == osgDB::Options::CACHE_NONE )
+    public:
+        LoadNodeOperation(const URI& uri, const osgDB::Options* options, Promise<osg::Node> promise) :
+            _uri(uri),
+            _promise(promise),
+            _options(options),
+            _block("URI LoadNodeOp(OE)")
         {
-            return input;
+            // Get the currently active request layer and reuse it when the operator actually occurs, which will probably be on a different thread.
+            _requestLayer = NetworkMonitor::getRequestLayer();
         }
-        else
+
+        void operator()(osg::Object*)
         {
-            return Registry::instance()->cloneOrCreateOptions( input );
+            OE_PROFILING_ZONE_NAMED("loadAsyncNode");
+            OE_PROFILING_ZONE_TEXT(_uri.full());
+
+            NetworkMonitor::ScopedRequestLayer layerRequest(_requestLayer);
+
+            if (!_promise.isAbandoned())
+            {
+                // Read the node
+                osgEarth::ReadResult result = _uri.readNode(_options.get());
+
+                if (result.succeeded())
+                {
+                    osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico =
+                        OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
+
+                    // If we have an ICO, wait for it to be compiled
+                    if (ico.valid())
+                    {
+                        OE_PROFILING_ZONE_NAMED("ICO compile");
+
+                        _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(result.getNode());
+                        _compileSet->_compileCompletedCallback = this;
+                        ico->add(_compileSet.get());
+
+                        unsigned int numTries = 0;
+                        // block until the compile completes, checking once and a while for
+                        // an abandoned operation (to avoid deadlock)
+                        while (!_block.wait(10)) // 10ms
+                        {
+                            // Limit the number of tries and give up after awhile to avoid the case where the ICO still has work to do but the application has exited.
+                            ++numTries;
+                            if (_promise.isAbandoned() || numTries == 1000)
+                            {
+                                _compileSet->_compileCompletedCallback = NULL;
+                                ico->remove(_compileSet.get());
+                                _compileSet = 0;
+                                break;
+                            }
+                        }
+
+                    }
+                }
+
+                _promise.resolve(result.getNode());
+            }
         }
-    }
+
+        bool compileCompleted(osgUtil::IncrementalCompileOperation::CompileSet* compileSet)
+        {
+            // Clear the _compileSet to avoid keeping a circular reference to the content.
+            _compileSet = 0;
+            // release the wait.
+            _block.set();
+            return true;
+        }
+
+        Promise<osg::Node> _promise;
+        osg::ref_ptr<const osgDB::Options> _options;
+        osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
+        Threading::Event _block;
+        URI _uri;
+        std::string _requestLayer;
+    };
 }
 
 //------------------------------------------------------------------------
@@ -263,7 +330,7 @@ URI::getConfig() const
 
 void
 URI::mergeConfig(const Config& conf)
-{    
+{
     conf.get("option_string", _optionString);
 
     const ConfigSet headers = conf.child("headers").children();
@@ -285,7 +352,7 @@ namespace
         if ( rr.validObject() )
             return ReadResult( rr.getObject() );
         else
-            return ReadResult( ReadResult::RESULT_NOT_FOUND ); // TODO: translate codes better
+            return ReadResult( ReadResult::RESULT_NOT_FOUND );
     }
 
     // Utility to redirect a local file read if it has an archive name in the URI
@@ -368,7 +435,9 @@ namespace
             return HTTPClient::readObject(req, opt, p);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            return ReadResult(osgDB::readRefObjectFile(uri, opt).get());
+            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readObject(uri, opt);
+            if (osgRR.validObject()) return ReadResult(osgRR.takeObject());
+            else return ReadResult(osgRR.message());
         }
     };
 
@@ -388,7 +457,9 @@ namespace
             return HTTPClient::readNode(req, opt, p);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            return ReadResult(osgDB::readRefNodeFile(uri, opt));
+            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readNode(uri, opt);
+            if (osgRR.validNode()) return ReadResult(osgRR.takeNode());
+            else return ReadResult(osgRR.message());
         }
     };
 
@@ -420,9 +491,13 @@ namespace
             return r;
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            ReadResult r = ReadResult(osgDB::readRefImageFile(uri, opt));
-            if ( r.getImage() ) r.getImage()->setFileName( uri );
-            return r;
+            // Call readImageImplementation instead of readImage to bypass any readfile callbacks installed in the registry.
+            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readImageImplementation(uri, opt);
+            if (osgRR.validImage()) {
+                osgRR.getImage()->setFileName(uri);
+                return ReadResult(osgRR.takeImage());
+            }
+            else return ReadResult(osgRR.message());
         }
     };
 
@@ -431,10 +506,10 @@ namespace
         bool callbackRequestsCaching( URIReadCallback* cb ) const {
             return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0);
         }
-        ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { 
+        ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) {
             return cb->readString(uri, opt);
         }
-        ReadResult fromCache( CacheBin* bin, const std::string& key) { 
+        ReadResult fromCache( CacheBin* bin, const std::string& key) {
             return bin->readString(key, 0L);
         }
         ReadResult fromHTTP(const URI& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
@@ -464,10 +539,12 @@ namespace
     {
         //osg::Timer_t startTime = osg::Timer::instance()->tick();
 
+        unsigned long handle = NetworkMonitor::begin(inputURI.full(), "pending", "URI");
         ReadResult result;
 
         if (osgEarth::Registry::instance()->isBlacklisted(inputURI.full()))
         {
+            NetworkMonitor::end(handle, "Blacklisted");
             return result;
         }
 
@@ -610,14 +687,15 @@ namespace
                                 }
                             }
 
-                            // Check for cancelation before a cache write
+                            // Check for cancellation before a cache write
                             if (progress && progress->isCanceled())
                             {
+                                NetworkMonitor::end(handle, "Canceled");
                                 return 0L;
                             }
 
                             // write the result to the cache if possible:
-                            if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() && bin )
+                            if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() )
                             {
                                 OE_DEBUG << LC << "Writing " << uri.cacheKey() << " to cache" << std::endl;
                                 bin->write( uri.cacheKey(), result.getObject(), result.metadata(), remoteOptions.get() );
@@ -629,6 +707,7 @@ namespace
                 // Check for cancelation before a potential cache write
                 if (progress && progress->isCanceled())
                 {
+                    NetworkMonitor::end(handle, "Canceled");
                     return 0L;
                 }
 
@@ -665,6 +744,14 @@ namespace
             (*post)(result);
         }
 
+        std::stringstream buf;
+        buf << result.getResultCodeString();
+        if (result.isFromCache() && result.succeeded())
+        {
+            buf << " (from cache)";
+        }
+        NetworkMonitor::end(handle, buf.str());
+
         return result;
     }
 }
@@ -697,6 +784,36 @@ URI::readString(const osgDB::Options* dbOptions,
     return doRead<ReadString>( *this, dbOptions, progress );
 }
 
+
+Future<osg::Node>
+URI::readNodeAsync(const osgDB::Options* dbOptions,
+                   ProgressCallback* progress) const
+{
+    osg::ref_ptr<ThreadPool> threadPool;
+    if (dbOptions)
+    {
+        threadPool = ThreadPool::get(dbOptions);
+    }
+
+    Promise<osg::Node> promise;
+
+    osg::ref_ptr<osg::Operation> operation = new LoadNodeOperation(*this, dbOptions, promise);
+
+    if (operation.valid())
+    {
+        if (threadPool.valid())
+        {
+            threadPool->run(operation.get());
+        }
+        else
+        {
+            OE_DEBUG << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
+            operation->operator()(0);
+        }
+    }
+
+    return promise.getFuture();
+}
 
 //------------------------------------------------------------------------
 

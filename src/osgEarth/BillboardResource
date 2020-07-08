@@ -1,0 +1,70 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_BILLBOARD_RESOURCE_H
+#define OSGEARTHSYMBOLOGY_BILLBOARD_RESOURCE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/InstanceResource>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    /**
+     * A resource that represents a real-world-sized image that can be used as
+     * a billboard (camera-facing 2D object)
+     */
+    class OSGEARTH_EXPORT BillboardResource : public InstanceResource
+    {
+    public:
+        /** Constructs a new resource. */
+        BillboardResource( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~BillboardResource() { }      
+
+        bool is2D() const { return false; }
+
+    public: // properties
+
+        /** Width of the billboard image in meters */
+        optional<float>& width() { return _width; }
+        const optional<float>& width() const { return _width; }
+
+        /** Height of the billboard image in meters */
+        optional<float>& height() { return _height; }
+        const optional<float>& height() const { return _height; }
+
+    public: // serialization methods
+
+        virtual Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
+    protected: // InstanceResource
+
+        virtual osg::Node* createNodeFromURI(const URI& uri, const osgDB::Options* dbOptions) const;
+
+        optional<float> _width;
+        optional<float> _height;
+    };
+
+} }
+
+#endif // OSGEARTHSYMBOLOGY_BILLBOARD_RESOURCE_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,59 +27,55 @@
 #include <osgDB/Registry>
 #include "KMLOptions"
 
-namespace osgEarth { namespace Drivers
+namespace osgEarth { namespace KML
 {
     using namespace osgEarth;
 
-    class KML // header-only (no export)
+    /**
+        * Loads KML or KMZ from a URI.
+        *
+        * @param[in ] uri     URI from which to load the KML or KMZ
+        * @param[in ] mapNode MapNode to which to attach KML elements
+        * @param[in ] options Optional KML options
+        */
+    static osg::Node* load(const URI&             uri, 
+                            MapNode*              mapNode,
+                            const osgDB::Options* dbOptions, 
+                            const KMLOptions&     kmlOptions)
     {
-    public:
-        /**
-         * Loads KML or KMZ from a URI.
-         *
-         * @param[in ] uri     URI from which to load the KML or KMZ
-         * @param[in ] mapNode MapNode to which to attach KML elements
-         * @param[in ] options Optional KML options
-         */
-        static osg::Node* load(const URI&            uri, 
-                               MapNode*              mapNode,
-                               const osgDB::Options* dbOptions, 
-                               const KMLOptions&     kmlOptions)
+        // ensure the library is loaded.
+        osgDB::Registry::instance()->addArchiveExtension( "kmz" );
+        if ( osgDB::getLowerCaseFileExtension(uri.full()) == "kmz" )
         {
-            // ensure the library is loaded.
-            osgDB::Registry::instance()->addArchiveExtension( "kmz" );
-            if ( osgDB::getLowerCaseFileExtension(uri.full()) == "kmz" )
+            OE_INFO << "[KML] Preloading KML plugin\n";
+            std::string libName = osgDB::Registry::instance()->createLibraryNameForExtension("kml");
+            osgDB::Registry::LoadStatus status = osgDB::Registry::instance()->loadLibrary(libName);
+            if ( status == osgDB::Registry::NOT_LOADED )
             {
-                OE_INFO << "[KML] Preloading KML plugin\n";
-                std::string libName = osgDB::Registry::instance()->createLibraryNameForExtension("kml");
-                osgDB::Registry::LoadStatus status = osgDB::Registry::instance()->loadLibrary(libName);
-                if ( status == osgDB::Registry::NOT_LOADED )
-                {
-                    OE_WARN << "[KML] FAILED!\n";
-                }
-                URI newURI( uri.full() + "/doc.kml", uri.context() );
-                return load( newURI, mapNode, dbOptions, kmlOptions );
+                OE_WARN << "[KML] FAILED!\n";
             }
-
-            if ( !mapNode ) {
-                OE_WARN << "[KML] " << "MapNode instance required" << std::endl;
-                return 0L;
-            }
-            osg::ref_ptr<osgDB::Options> options = Registry::instance()->cloneOrCreateOptions( dbOptions );
-            options->setPluginData( "osgEarth::MapNode",    mapNode );
-            options->setPluginData( "osgEarth::KMLOptions", (void*)&kmlOptions );
-
-            return uri.getNode( options.get() );
+            URI newURI( uri.full() + "/doc.kml", uri.context() );
+            return load( newURI, mapNode, dbOptions, kmlOptions );
         }
 
-        static osg::Node* load(const URI&            uri, 
-                               MapNode*              mapNode,
-                               const KMLOptions&     kmlOptions =KMLOptions() )
-        {
-            return load(uri, mapNode, 0L, kmlOptions);
+        if ( !mapNode ) {
+            OE_WARN << "[KML] " << "MapNode instance required" << std::endl;
+            return 0L;
         }
-    };
+        osg::ref_ptr<osgDB::Options> options = Registry::instance()->cloneOrCreateOptions( dbOptions );
+        options->setPluginData( "osgEarth::MapNode",    mapNode );
+        options->setPluginData( "osgEarth::KMLOptions", (void*)&kmlOptions );
 
-} } // namespace osgEarth::Drivers
+        return uri.getNode( options.get() );
+    }
+
+    static osg::Node* load(const URI&            uri, 
+                            MapNode*              mapNode,
+                            const KMLOptions&     kmlOptions =KMLOptions() )
+    {
+        return load(uri, mapNode, 0L, kmlOptions);
+    }
+
+} } // namespace osgEarth::KML
 
 #endif // OSGEARTH_DRIVER_KML

@@ -17,10 +17,10 @@ set(TARGET_GLSL
     Splat.vert.view.glsl
     Splat.frag.glsl
     Splat.util.glsl
-    GroundCover.TCS.glsl
-    GroundCover.TES.glsl
-    GroundCover.GS.glsl
-    GroundCover.FS.glsl )
+    GroundCover.CS.glsl
+    GroundCover.Billboard.glsl
+    GroundCover.Model.glsl
+    Grass.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -33,30 +33,29 @@ set(TARGET_IN
     SplatShaders.cpp.in)
 
 set(TARGET_SRC
-    Coverage.cpp
-    GroundCover.cpp
+    Biome.cpp
+    GrassLayer.cpp
+    GroundCoverFeatureGenerator.cpp
+    GroundCoverFeatureSource.cpp
     GroundCoverLayer.cpp
-    LandUseTileSource.cpp
     NoiseTextureFactory.cpp
     RoadSurfaceLayer.cpp
 	SplatCatalog.cpp
     SplatLayer.cpp
-	SplatCoverageLegend.cpp
     Surface.cpp
     Zone.cpp
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
-    Coverage
+    Biome
 	Export
-    GroundCover
+    GrassLayer
+    GroundCoverFeatureGenerator
+    GroundCoverFeatureSource
     GroundCoverLayer
-    LandUseTileSource
     NoiseTextureFactory
     RoadSurfaceLayer
-	SplatCoverageLegend
 	SplatCatalog
-	SplatOptions
     SplatShaders
     SplatLayer
     Surface
@@ -81,13 +80,14 @@ ENDIF(WIN32)
 
 LINK_INTERNAL(${LIB_NAME}
     osgEarth
-    osgEarthFeatures
-    osgEarthSymbology
-    osgEarthAnnotation
-    osgEarthUtil
 )
 
-LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGMANIPULATOR_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY)
+IF (TRACY_FOUND)
+    INCLUDE_DIRECTORIES(${TRACY_INCLUDE_DIR})
+    LINK_WITH_VARIABLES(${LIB_NAME} TRACY_LIBRARY)
+ENDIF(TRACY_FOUND)
+
+LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGDB_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY)
 LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
 
 # Add this project to the NodeKits solution folder

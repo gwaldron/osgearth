@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,40 +22,43 @@
 
 #include <osg/Notify>
 #include <osgViewer/Viewer>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/FeatureNode>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/FeatureNode>
 #include <osgViewer/CompositeViewer>
-#include <osgEarthDrivers/gdal/GDALOptions>
-#include <osgEarth/ImageLayer>
+#include <osgEarth/XYZ>
+#include <osgEarth/GLUtils>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Drivers;
-
 
 /**
  * Makes a simple projected MapNode that contains a basemap of the world
  */
-MapNode* makeMiniMapNode( ) {    
-    MapOptions mapOpt;
-    mapOpt.coordSysType() = MapOptions::CSTYPE_PROJECTED;  
-    mapOpt.profile() = ProfileOptions("plate-carre");
-    Map* map = new Map( mapOpt );    
+MapNode* makeMiniMapNode( )
+{
+    Map* map = new Map();
+    map->setProfile(Profile::create("spherical-mercator"));
 
-    GDALOptions basemapOpt;
-    basemapOpt.url() = "../data/world.tif";
-    map->addLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
+    // add a semi-transparent XYZ layer:
+    XYZImageLayer* osm = new XYZImageLayer();
+    osm->setURL("http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
+    osm->setProfile(Profile::create("spherical-mercator"));
+    map->addLayer(osm);
 
-    // That's it, the map is ready; now create a MapNode to render the Map:
-    MapNodeOptions mapNodeOptions;
-    mapNodeOptions.enableLighting() = false;    
+    TerrainOptions terrainOptions;
+    terrainOptions.rangeMode() = osg::LOD::PIXEL_SIZE_ON_SCREEN;
 
-    return new MapNode( map, mapNodeOptions );
+    MapNode::Options mapNodeOptions;
+    mapNodeOptions.terrain() = terrainOptions;
+
+    MapNode* mapNode = new MapNode(map, mapNodeOptions);
+    mapNode->setEnableLighting(false);
+
+    return mapNode;
 }
 
 osg::Node* drawBounds(MapNode* mapNode, osgEarth::GeoExtent& bounds)
@@ -71,13 +74,13 @@ osg::Node* drawBounds(MapNode* mapNode, osgEarth::GeoExtent& bounds)
     }
     else
     {
-        osgEarth::Symbology::LineString* geom = new osgEarth::Symbology::LineString();
+        osgEarth::LineString* geom = new osgEarth::LineString();
         geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMin(), 0));
         geom->push_back(osg::Vec3d(bounds.xMax(), bounds.yMin(), 0));
         geom->push_back(osg::Vec3d(bounds.xMax(), bounds.yMax(), 0));
         geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMax(), 0));
         geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMin(), 0));
-        osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(geom, osgEarth::SpatialReference::create("wgs84"));
+        osgEarth::Feature* feature = new osgEarth::Feature(geom, osgEarth::SpatialReference::create("wgs84"));
         Style style;
         style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Yellow;
         feature->style() = style;
@@ -137,7 +140,7 @@ osgEarth::GeoExtent getExtent(osgViewer::View* view)
         osg::Vec3d world = verts[i] * invmv;
         bs.expandBy( world );
     }
-  
+
     // Get the center of the bounding sphere
     osgEarth::GeoPoint center;
     center.fromWorld(srs, bs.center());
@@ -156,6 +159,8 @@ osgEarth::GeoExtent getExtent(osgViewer::View* view)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     //Setup a CompositeViewer
@@ -164,90 +169,89 @@ main(int argc, char** argv)
     //Setup our main view that will show the loaded earth file.
     osgViewer::View* mainView = new osgViewer::View();
     mainView->getCamera()->setNearFarRatio(0.00002);
-    mainView->setCameraManipulator( new EarthManipulator() );      
+    mainView->setCameraManipulator( new EarthManipulator() );
     mainView->setUpViewInWindow( 50, 50, 800, 800 );
     viewer.addView( mainView );
-    
+
     //Setup a MiniMap View that will be embedded in the main view
     int miniMapWidth = 400;
-    int miniMapHeight = 200;
+    int miniMapHeight = 400;
     osgViewer::View* miniMapView = new osgViewer::View();
     miniMapView->getCamera()->setNearFarRatio(0.00002);
-    miniMapView->getCamera()->setViewport( 0, 0, miniMapWidth, miniMapHeight);    
-    miniMapView->setCameraManipulator( new EarthManipulator() );    
+    miniMapView->getCamera()->setViewport( 0, 0, miniMapWidth, miniMapHeight);
     miniMapView->getCamera()->setClearColor( osg::Vec4(0,0,0,0));
     miniMapView->getCamera()->setProjectionResizePolicy( osg::Camera::FIXED );
-    miniMapView->getCamera()->setProjectionMatrixAsPerspective(30.0, double(miniMapWidth) / double(miniMapHeight), 1.0, 1000.0);
+    miniMapView->getCamera()->setProjectionMatrixAsOrtho2D(MERC_MINX, MERC_MAXX, MERC_MINY, MERC_MAXY);
     //Share a graphics context with the main view
-    miniMapView->getCamera()->setGraphicsContext( mainView->getCamera()->getGraphicsContext());        
+    miniMapView->getCamera()->setGraphicsContext( mainView->getCamera()->getGraphicsContext());
+    GLUtils::setGlobalDefaults(miniMapView->getCamera()->getOrCreateStateSet());
     viewer.addView( miniMapView );
-    
+
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
         MapNode* mapNode = MapNode::findMapNode(node);
-    
+
         //Set the main view's scene data to the loaded earth file
         mainView->setSceneData( node );
 
         //Setup a group to hold the contents of the MiniMap
         osg::Group* miniMapGroup = new osg::Group;
 
-        MapNode* miniMapNode = makeMiniMapNode();        
+        MapNode* miniMapNode = makeMiniMapNode();
         miniMapGroup->addChild( miniMapNode );
-       
+
         //Get the main MapNode so we can do transformations between it and our minimap
         MapNode* mainMapNode = MapNode::findMapNode( node );
-                               
+
         //Set the scene data for the minimap
-        miniMapView->setSceneData( miniMapGroup );        
+        miniMapView->setSceneData( miniMapGroup );
 
         //Add a marker we can move around with the main view's eye point
         Style markerStyle;
         markerStyle.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
         PlaceNode* eyeMarker = new PlaceNode("", markerStyle);
+        eyeMarker->setDynamic(true);
         eyeMarker->setPosition(GeoPoint(miniMapNode->getMapSRS(), 0, 0));
-        miniMapGroup->addChild( eyeMarker );        
-        miniMapGroup->getOrCreateStateSet()->setRenderBinDetails(100, "RenderBin");
+        miniMapNode->addChild( eyeMarker );
 
         osg::Node* bounds = 0;
-  
+
         while (!viewer.done())
         {
             //Reset the viewport so that the camera's viewport is static and doesn't resize with window resizes
-            miniMapView->getCamera()->setViewport( 0, 0, miniMapWidth, miniMapHeight);    
+            miniMapView->getCamera()->setViewport( 0, 0, miniMapWidth, miniMapHeight);
 
             //Get the eye point of the main view
             osg::Vec3d eye, up, center;
             mainView->getCamera()->getViewMatrixAsLookAt( eye, center, up );
 
-            //Turn the eye into a geopoint and transform it to the minimap's SRS
+            //Turn the eye into a geopoint
             GeoPoint eyeGeo;
             eyeGeo.fromWorld( mainMapNode->getMapSRS(), eye );
-            eyeGeo.transform( miniMapNode->getMapSRS());
 
             //We want the marker to be positioned at elevation 0, so zero out any elevation in the eye point
-            eyeGeo.z() = 0;           
- 
+            eyeGeo.z() = 0;
+
             //Set the position of the marker
             eyeMarker->setPosition( eyeGeo );
 
             if (bounds)
             {
-                miniMapGroup->removeChild( bounds );
+                miniMapNode->removeChild( bounds );
             }
             GeoExtent extent = getExtent( mainView );
             bounds = drawBounds( miniMapNode, extent );
-            miniMapGroup->addChild( bounds );
+            miniMapNode->addChild( bounds );
 
             viewer.frame();
-        }        
+        }
     }
     else
     {
-        OE_NOTICE 
+        OE_NOTICE
             << "\nUsage: " << argv[0] << " file.earth" << std::endl
             << MapNodeHelper().usage() << std::endl;
     }

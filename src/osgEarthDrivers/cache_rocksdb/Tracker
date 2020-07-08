@@ -29,7 +29,7 @@
 #   include <unistd.h>
 #endif
 
-namespace osgEarth { namespace Drivers { namespace RocksDBCache
+namespace osgEarth { namespace RocksDBCache
 {
     typedef OpenThreads::Atomic unsigned_atomic;
 
@@ -108,6 +108,6 @@ namespace osgEarth { namespace Drivers { namespace RocksDBCache
         optional<unsigned>        _seed;
     };
 
-} } } // namespace osgEarth::Drivers::RocksDBCache
+} } // namespace osgEarth::RocksDBCache
 
 #endif // OSGEARTH_DRIVER_CACHE_ROCKSDB_TRACKER

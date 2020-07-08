@@ -22,10 +22,11 @@
 #include "RenderBindings"
 #include "DrawState"
 #include "LayerDrawable"
+#include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     /**
      * Main data structure assembled by the TerrainCuller that contains
@@ -67,6 +68,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         PatchLayerVector      _patchLayers;
     };
 
-} } } // namespace 
+} } // namespace 
 
 #endif // OSGEARTH_REX_TERRAIN_DRAWABLE_H

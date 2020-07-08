@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,6 @@
  * developed by Baptiste Lepilleur and put in the publi domain. Since the json-cpp
  * project is relatively compact, and has not been updated in 3 years, we decided 
  * to simply incorporate it here instead of introducing another dependency.
- *
- * TODO: probably move this into the osgEarth::Util namespace.
  */
 
 #ifndef OSGEARTH_JSONUTILS_H
@@ -47,10 +45,8 @@
 
 #define JSON_API OSGEARTH_EXPORT
 
-namespace osgEarth {
-
-namespace Json {
-
+namespace osgEarth { namespace Util { namespace Json
+{
    class FastWriter;
    class Reader;
    class StyledWriter;
@@ -70,10 +66,6 @@ namespace Json {
    class ValueInternalArray;
    class ValueInternalMap;
 #endif // #ifdef JSON_VALUE_USE_INTERNAL_MAP
-
-} // namespace Json
-
-namespace Json {
 
    /** \brief Type of the value held by a Value object.
     */
@@ -504,7 +496,7 @@ namespace Json {
 
    /** \brief Experimental and untested: represents an element of the "path" to access a node.
     */
-   class JSON_API PathArgument
+   class PathArgument
    {
    public:
       friend class Path;
@@ -537,7 +529,7 @@ namespace Json {
     * - ".%" => member name is provided as parameter
     * - ".[%]" => index is provied as parameter
     */
-   class JSON_API Path
+   class Path
    {
    public:
       Path( const std::string &path,
@@ -1441,8 +1433,6 @@ namespace Json {
    */
    std::istream& operator>>( std::istream&, Value& );
 
-} // namespace Json
-
-} // namespace osgEarth
+} } } // namespace
 
 #endif // OSGEARTH_JSONUTILS_H

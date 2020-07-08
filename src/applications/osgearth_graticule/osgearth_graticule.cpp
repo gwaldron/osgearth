@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,23 +26,26 @@
 #include <osgViewer/ViewerEventHandlers>
 
 #include <osgEarth/MapNode>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/MGRSFormatter>
-#include <osgEarthUtil/LatLongFormatter>
+#include <osgEarth/GLUtils>
 
-#include <osgEarthUtil/GeodeticGraticule>
-#include <osgEarthUtil/MGRSGraticule>
-#include <osgEarthUtil/UTMGraticule>
-#include <osgEarthUtil/GARSGraticule>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/MouseCoordsTool>
+#include <osgEarth/MGRSFormatter>
+#include <osgEarth/LatLongFormatter>
+
+#include <osgEarth/GeodeticGraticule>
+#include <osgEarth/MGRSGraticule>
+#include <osgEarth/UTMGraticule>
+#include <osgEarth/GARSGraticule>
 
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
+using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Contrib;
 
 int
 usage( const std::string& msg )
 {
-    OE_NOTICE 
+    OE_NOTICE
         << msg << std::endl
         << "USAGE: osgearth_graticule [options] file.earth" << std::endl
         << "   --geodetic            : display a Lat/Long graticule" << std::endl
@@ -57,6 +60,8 @@ usage( const std::string& msg )
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
@@ -73,6 +78,9 @@ main(int argc, char** argv)
 
     // install our manipulator:
     viewer.setCameraManipulator( new EarthManipulator() );
+
+    // initialize the top level state
+    GLUtils::setGlobalDefaults(viewer.getCamera()->getOrCreateStateSet());
 
     // root scene graph:
     osg::Group* root = new osg::Group();
@@ -103,7 +111,7 @@ main(int argc, char** argv)
         mapNode->getMap()->addLayer(gr);
         formatter = new LatLongFormatter();
     }
-   
+
     // mouse coordinate readout:
     ControlCanvas* canvas = new ControlCanvas();
     root->addChild( canvas );

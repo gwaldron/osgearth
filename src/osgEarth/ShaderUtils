@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -41,6 +41,16 @@ namespace osgEarth
         SHADERPOLICY_GENERATE,
         SHADERPOLICY_INHERIT
     };
+}
+
+namespace osgEarth { namespace Util
+{
+    struct OSGEARTH_EXPORT ShaderUtils
+    {
+        // Installs a default, one-texture shader on a stateset
+        // for basic rendering.
+        static void installDefaultShader(osg::StateSet*);
+    };
 
     /**
      * Preprocesses GLES shader source to include our osg_LightProducts and osg_LightSourceParameters
@@ -50,8 +60,6 @@ namespace osgEarth
     {
     public:
         static void run(osg::Shader* shader);
-
-        //static void applySupportForNoFFP(osg::Shader* shader);
     };
 
     /**
@@ -147,6 +155,6 @@ namespace osgEarth
         void install(osg::StateSet* ss, float minAlpha) const;
         void uninstall(osg::StateSet* ss) const;
     };
-}
+} }
 
 #endif // OSGEARTH_SHADER_UTILS_H

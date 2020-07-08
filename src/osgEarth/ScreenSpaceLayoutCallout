@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -77,6 +77,8 @@ namespace osgEarth { namespace Internal
             osg::Vec3d _offsetVector;
             double _offsetLength;
             unsigned _leaderLineIndex;
+            bool _declutter;
+            int _numFramesSinceMove;
 
             Element();
             bool operator < (const Element&) const; // comparator
@@ -125,9 +127,13 @@ namespace osgEarth { namespace Internal
         _text(NULL),
         _frame(0u),
         _leaderLineIndex(INT_MAX),
-        _offsetVector(0,1,0)
+        _offsetVector(0,1,0),
+        _leaf(NULL),
+        _offsetLength(0.0),
+        _declutter(false),
+        _numFramesSinceMove(0)
     {
-        //todo
+        //nop
     }
 
     bool CalloutImplementation::Element::operator<(const Element& rhs) const
@@ -154,6 +160,7 @@ namespace osgEarth { namespace Internal
         _leaders = new LineDrawable(GL_LINES);
         _leaders->setCullingActive(false);
         _leaders->setDataVariance(osg::Object::DYNAMIC);
+        _leaders->setUseGPU(false);
         _leaders->setColor(_leaderColor);
         _leaders->setLineSmooth(true);
         GLUtils::setLighting(_leaders->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
@@ -189,6 +196,7 @@ namespace osgEarth { namespace Internal
         const osg::Vec3d zero(0,0,0);
 
         osg::Drawable* drawable = leaf->_drawable.get();
+
         std::pair<Elements::iterator,bool> result = local._elements.insert(std::make_pair(drawable,prototype));
         Element& element = result.first->second;
 
@@ -199,11 +207,28 @@ namespace osgEarth { namespace Internal
         element._frame = local._frame;
         element._leaf = leaf;
 
+        osg::Vec3d offset;
+        const ScreenSpaceLayoutData* layoutData = dynamic_cast<const ScreenSpaceLayoutData*>(drawable->getUserData());
+        if (layoutData)
+        {
+            offset = osg::Vec3d(layoutData->getPixelOffset().x(), layoutData->getPixelOffset().y(), 0.0);
+        }
+
         if (element._drawable == NULL)
         {
             element._drawable = drawable;
             element._text = dynamic_cast<osgEarth::Text*>(drawable);
             element._drawable->setDataVariance(osg::Object::DYNAMIC);
+            element._declutter = true;
+            
+            if (layoutData)
+            {
+                // FLT_MAX priority => don't declutter this element.
+                if (layoutData->getPriority() == FLT_MAX)
+                {
+                    element._declutter = false;
+                }
+            }
         }
 
         element._anchor = 
@@ -233,7 +258,7 @@ namespace osgEarth { namespace Internal
             local._leadersDirty = true;
         }
 
-        if (ScreenSpaceLayout::globallyEnabled)
+        if (element._declutter && ScreenSpaceLayout::globallyEnabled)
         {
             double leaderLen = osg::minimum((double)_context->_options.leaderLineMaxLength().get(), element._offsetLength);
             osg::Vec3d pos = element._anchor + element._offsetVector*leaderLen;
@@ -271,7 +296,7 @@ namespace osgEarth { namespace Internal
         }
         else
         {
-            leaf->_modelview->makeTranslate(element._anchor);
+            leaf->_modelview->makeTranslate(element._anchor + offset);
         }
     }
 
@@ -291,8 +316,9 @@ namespace osgEarth { namespace Internal
         {
             Element& element = i->second;
 
-            if (element._leaf != NULL)
+            if (element._leaf != NULL && element._declutter)
             {
+                // Hm, not sure what this is doing
                 if (element._frame == element._frame)
                 {
                     // i.e., visible
@@ -350,7 +376,7 @@ namespace osgEarth { namespace Internal
                 for(edge = site->edges; edge; edge = edge->next)
                 {
                     jcv_real dx = edge->pos[1].x - edge->pos[0].x;
-                    jcv_real dy = edge->pos[1].y - edge->pos[1].y;
+                    jcv_real dy = edge->pos[1].y - edge->pos[0].y;
                     jcv_real len2 = dx*dx + dy*dy;
                     if (len2 > maxLen2)
                     {
@@ -417,9 +443,26 @@ namespace osgEarth { namespace Internal
                     0);
 #endif
 
-                element->_offsetVector = centroid - element->_anchor;
-                element->_offsetLength = element->_offsetVector.length();
-                element->_offsetVector.normalize();
+                osg::Vec3d prevOffset = element->_offsetVector;
+                osg::Vec3d newOffset = centroid - element->_anchor;
+                double newOffsetLength = newOffset.length();
+                newOffset.normalize();
+
+                // Try to avoid moving the offsetVector too drastically per frame.
+                // If the label still needs to move after 60 frames go ahead and move it.
+                // This helps for fast moving entities or if you are moving the camera quickly.
+                double dot = newOffset * prevOffset;
+                if (osg::absolute(dot) < 0.9 && element->_numFramesSinceMove < 60)
+                {
+                    element->_numFramesSinceMove++;
+                }
+                else
+                {
+                    element->_offsetVector = newOffset;
+                    element->_numFramesSinceMove = 0;
+                    element->_offsetLength = newOffsetLength;
+                    element->_offsetVector.normalize();
+                }
             }
         }
         jcv_diagram_free(&diagram);
@@ -528,6 +571,7 @@ namespace osgEarth { namespace Internal
         */
         CalloutDraw(ScreenSpaceLayoutContext* context)
             : _context(context)
+            , _sortCallback(NULL)
         {
             // create the fade uniform.
             _fade = new osg::Uniform(osg::Uniform::FLOAT, FADE_UNIFORM_NAME);
@@ -557,8 +601,6 @@ namespace osgEarth { namespace Internal
             const osg::Viewport* vp = renderInfo.getCurrentCamera()->getViewport();
             if (vp)
             {
-                //TODO see which is faster
-
                 osg::ref_ptr<osg::RefMatrix>& m = _ortho2D.get();
                 if (!m.valid())
                     m = new osg::RefMatrix();
@@ -605,7 +647,8 @@ namespace osgEarth { namespace Internal
                 renderInfo.getState()->applyModelViewMatrix(osg::Matrix::identity());
 
                 renderInfo.getState()->apply(local._leaders->getStateSet());
-                renderInfo.getState()->apply(local._leaders->getGPUStateSet());
+                // don't need when setting setUseGPU(false)
+                //renderInfo.getState()->apply(local._leaders->getGPUStateSet());
                 glDepthFunc(GL_ALWAYS);
                 glDepthMask(GL_FALSE);
                 glEnable(GL_BLEND);

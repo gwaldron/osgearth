@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -81,24 +81,6 @@ Zone::configure(const Map* map, const osgDB::Options* readOptions)
         }
     }
 
-    if( _options.groundCover().isSet() )
-    {
-        _groundCover = new GroundCover(_options.groundCover().get());
-    }
-
-    if (_groundCover.valid())
-    {
-        if (_groundCover->configure(readOptions))
-        {
-            OE_DEBUG << LC << "Configured land cover group \"" << _groundCover->getName() << "\"\n";
-        }
-        else
-        {
-            OE_WARN << LC << "Land cover group is improperly configured\n";
-            return false;
-        }
-    }
-
     return true;
 }
 
@@ -128,9 +110,6 @@ Zone::contains(const osg::Vec3& point) const
 void
 Zone::resizeGLObjectBuffers(unsigned maxSize)
 {
-    if (_groundCover.valid())
-        _groundCover->resizeGLObjectBuffers(maxSize);
-
     if (_surface.valid())
         _surface->resizeGLObjectBuffers(maxSize);
 }
@@ -138,9 +117,6 @@ Zone::resizeGLObjectBuffers(unsigned maxSize)
 void
 Zone::releaseGLObjects(osg::State* state) const
 {
-    if (_groundCover.valid())
-        _groundCover->releaseGLObjects(state);
-
     if (_surface.valid())
         _surface->releaseGLObjects(state);
 }
@@ -160,7 +136,6 @@ ZoneOptions::fromConfig(const Config& conf)
         }
     }
     conf.get( "surface",     _surface );
-    conf.get( "groundcover", _groundCover);
 }
 
 Config
@@ -183,62 +158,6 @@ ZoneOptions::getConfig() const
         conf.set(regions);
     }
     conf.set( "surface",     _surface );
-    conf.set( "groundcover", _groundCover );
     return conf;
 }
 
-void
-ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{
-#if 0
-    osg::StateSet* stateset = 0L;
-    
-    Zone* finalZone = 0L;
-
-    if ( _zones.size() > 0 )
-    {
-        osg::Vec3d vp = nv->getViewPoint();
-        double z2 = vp.length2();
-
-        unsigned zoneIndex = 0;
-        unsigned finalZoneIndex = ~0;
-
-        for(unsigned z=0; z<_zones.size() && !stateset; ++z)
-        {
-            if ( _zones[z]->contains(vp) )
-            {
-                stateset = _zones[z]->getStateSet();
-                finalZoneIndex = zoneIndex;
-                finalZone = _zones[z].get();
-            }
-            if ( _zones[z]->getGroundCover() )
-            {
-                zoneIndex++;
-            }
-        }
-
-        if ( !stateset )
-        {
-            stateset = _zones[0]->getStateSet();
-            finalZoneIndex = 0;
-        }                
-        
-        // Relays the zone to the GroundCoverPatchLayer.
-        //VisitorData::store(*nv, "oe.GroundCover.zoneIndex", new RefUID(finalZoneIndex));
-        VisitorData::store(*nv, "oe.GroundCover.zone", finalZone );
-    }
-
-    if ( stateset )
-        static_cast<osgUtil::CullVisitor*>(nv)->pushStateSet( stateset );
-
-    traverse(node, nv);
-
-    if ( stateset )
-        static_cast<osgUtil::CullVisitor*>(nv)->popStateSet();
-
-    if (finalZone)
-    {
-        VisitorData::remove(*nv, "oe.GroundCover.zone");
-    }
-#endif
-}

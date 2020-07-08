@@ -1,0 +1,62 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_FEATURES_POWERLINE_LAYER
+#define OSGEARTH_FEATURES_POWERLINE_LAYER 1
+
+#include <osgEarth/FeatureModelLayer>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT PowerlineLayer : public FeatureModelLayer
+    {
+        // XXX Maybe hide some options from FeatureModelLayer?
+    public:
+        class ModelOptions : public ConfigOptions
+        {
+            META_ConfigOptions(osgEarth, ModelOptions, ConfigOptions);
+            OE_OPTION(std::string, uri);
+            OE_OPTION_VECTOR(osg::Vec3d, attachment_points);
+            OE_OPTION(float, maxSag);
+        public:
+            void fromConfig(const Config& conf);
+            virtual Config getConfig() const;
+        };
+
+        class OSGEARTH_EXPORT Options : public FeatureModelLayer::Options
+        {
+        public:
+            Options();
+            Options(const ConfigOptions& options);
+            OE_OPTION_LAYER(FeatureSource, lineSource);
+            OE_OPTION(bool, point_features);
+            OE_OPTION_VECTOR(ModelOptions, towerModels);
+            virtual Config getConfig() const;
+        protected: // LayerOptions
+            virtual void mergeConfig(const Config& conf);        
+        private:
+            void fromConfig(const Config& conf);
+        };
+    public:
+        META_Layer(osgEarth, PowerlineLayer, Options, FeatureModelLayer, PowerlineModel);
+    protected:
+        virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const; // override;
+    };
+}
+#endif // OSGEARTH_FEATURES_POWERLINE_LAYER

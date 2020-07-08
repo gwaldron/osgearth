@@ -6,7 +6,6 @@ SET(TARGET_H
     JoinFeatureFilterOptions
 )
 
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures osgEarthSymbology)
 SETUP_PLUGIN(osgearth_featurefilter_join)
 
 # to install public driver includes:

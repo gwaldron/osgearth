@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -35,7 +35,7 @@ namespace osgEarth { namespace SilverLining
     {
     public:
         CloudsDrawable(SilverLiningContextNode* contexNode =0L);
-        META_Object(SilverLining, CloudsDrawable);
+        META_Object(osgEarth::SilverLining, CloudsDrawable);
 
 		/* Sets whether to draw this item */
 		void setDraw(bool draw);
@@ -54,7 +54,7 @@ namespace osgEarth { namespace SilverLining
         osg::observer_ptr<SilverLiningContext> _SL;
 		SilverLiningContextNode* _contextNode;
 
-        mutable osg::buffered_object<osgEarth::NativeProgramAdapterCollection> _adapters;
+        mutable osg::buffered_object<osgEarth::Util::NativeProgramAdapterCollection> _adapters;
         
         CloudsDrawable(const CloudsDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };

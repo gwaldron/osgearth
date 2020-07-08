@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,7 +28,7 @@
 #include <osg/Image>
 #include <osg/Shape>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
     * Utility class that re-interprets an image as a heightfield and vice-versa.
@@ -74,6 +74,6 @@ namespace osgEarth
         bool  _replace_nodata;
         float _nodata_value;
     };
-}
+} }
 
 #endif //OSGEARTH_IMAGE_TO_HEIGHTFIELD_CONVERTER

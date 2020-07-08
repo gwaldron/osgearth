@@ -5,23 +5,22 @@ Demonstrates the use of a Resource Library in order to apply "typical" textures
 to extruded buildings.
 -->
 
-<map name="Boston Demo" type="geocentric" version="2">
+<map name="Boston Demo">
     
-    
-    <image name="readymap_imagery" driver="tms">
+    <TMSImage name="Imagery">
         <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
-    </image>
+    </TMSImage>
     
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_elevation.xml"/>
       
-    <feature_model name="buildings" max_range="20000">
+    <FeatureModel name="Buildings" max_range="20000">
          
-        <features name="buildings" driver="ogr">
+        <OGRFeatures name="buildings">
             <url>../data/boston_buildings_utm19.shp</url>
-			<resample min_length="2.5"/>
-        </features>
+            <filters>
+			    <resample min_length="2.5"/>
+            </filters>
+        </OGRFeatures>
         
         <!--
          ! The "layout" element activates tiling and paging of the feature set. If you
@@ -51,7 +50,6 @@ to extruded buildings.
                     altitude-clamping:       terrain;
                     altitude-technique:      map;
                     altitude-binding:        vertex;
-					altitude-resolution:     0;
                 }            
                 building-wall {
                     skin-library:     us_resources;
@@ -66,10 +64,10 @@ to extruded buildings.
                 }
             </style>
         </styles>   
-    </feature_model>
+    </FeatureModel>
     
     
-    <feature_model name="Streets" feature_source="streets-data">        
+    <FeatureModel name="Streets" features="streets-data">        
         <layout crop_features="true" tile_size="1000">
             <level max_range="5000"/>
         </layout>        
@@ -84,10 +82,10 @@ to extruded buildings.
                 }
             </style>
         </styles>        
-    </feature_model>
+    </FeatureModel>
 	
 	
-	<feature_model name="streetlamps" feature_source="streets-data">
+	<FeatureModel name="streetlamps" features="streets-data">
         <layout tile_size="1000" crop_features="true">
             <level max_range="1000" style="default"/>
         </layout>
@@ -105,13 +103,13 @@ to extruded buildings.
 				<url>../data/scripts/createLineOffsetPoints.js</url>
 			</script>
         </styles>   
-    </feature_model>
+    </FeatureModel>
     
     
-    <feature_model name="Parks" enabled="true">
-        <features name="parks" driver="ogr">
+    <FeatureModel name="Parks" enabled="true">
+        <OGRFeatures name="parks">
             <url>../data/boston-parks.shp</url>
-        </features>        
+        </OGRFeatures>        
         
         <layout tile_size="1000">
             <level max_range="2000"/>
@@ -133,21 +131,22 @@ to extruded buildings.
                 }
             </style>
         </styles>        
-    </feature_model>
+    </FeatureModel>
     
     <viewpoints time="1.0">
         <viewpoint name="Boston Overview" heading="24.261" height="0" lat="42.34425" long="-71.076262" pitch="-21.6" range="3450"/>
+        <viewpoint name="Boston Downtown 0" heading="26.3875" range="240m" lat="42.35727" long="-71.064521" pitch="-13.5" height="0"/>
         <viewpoint name="Boston Downtown 1" heading="117" lat="42.3568" long="-71.0585" height="0" pitch="-20.4" range="1500" />
         <viewpoint name="Boston Downtown 2" heading="-128.5" lat="42.3582" long="-71.0546" height="0" pitch="-19" range="1620" />
         <viewpoint name="Boston Street Level" heading="-145.64081" lat="42.364015" long="-71.054149" pitch="-9.701" range="144.95"/>
     </viewpoints>
   
     
-    <feature_source name="streets-data" driver="ogr">
+    <OGRFeatures name="streets-data">
         <url>../data/boston-scl-utm19n-meters.shp</url>
         <filters>
             <resample min_length="25" max_length="25"/>
         </filters>
-    </feature_source>
+    </OGRFeatures>
     
 </map>

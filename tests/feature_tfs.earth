@@ -1,17 +1,14 @@
 <!--
 osgEarth Sample - TFS
-
-This example shows how to use the TFS driver.
 -->
-<map name="TFS" type="geocentric" version="2">
+<map name="Demo: TFS Feature Source">
 
-    <model name="buildings" driver="feature_geom">
+    <TFSFeatures name="buildings-data">	                
+        <url>http://readymap.org/readymap/features/tfs/4/</url>
+        <format>json</format>
+    </TFSFeatures>
 
-        <features name="buildings" driver="tfs">		                
-            <url>http://readymap.org/readymap/features/tfs/4/</url>
-            <format>json</format>            
-        </features>
-
+    <FeatureModel name="buildings" features="buildings-data">
         <layout>        
             <tile_size_factor>5.0</tile_size_factor>
         </layout>
@@ -27,15 +24,20 @@ This example shows how to use the TFS driver.
                 }            
             </style>
         </styles>
-    </model>
+    </FeatureModel>
 
-    <image name="esri imagery" driver="arcgis">
-        <url>http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer</url>
-        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
 
-    <viewpoints>
-        <viewpoint name="Mexico Buildings" height="0" lat="19.42" long="-99.163" pitch="-89" range="5000"/>
+    <viewpoints home="0">
+        <viewpoint>
+            <heading>-12.3715</heading>
+            <pitch>-38.216</pitch>
+            <range>5000.38m</range>
+            <long>-99.16536849045873</long>
+            <lat>19.42101714904623</lat>
+            <height>0.00265851616859436</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
     </viewpoints>
 
 </map>

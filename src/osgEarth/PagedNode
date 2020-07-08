@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,7 +26,7 @@
 #include <osgEarth/optional>
 #include <osg/PagedLOD>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * PagedNode is a group with a self-contained paged child.
@@ -90,6 +90,6 @@ namespace osgEarth
         optional<float> _range;
         float _rangeFactor;
     };    
-}
+} }
 
 #endif // OSGEARTHUTIL_PAGEDNODE_H

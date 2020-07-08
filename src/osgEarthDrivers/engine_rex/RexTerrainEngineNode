@@ -23,12 +23,10 @@
 #include <osgEarth/TerrainResources>
 #include <osgEarth/Map>
 #include <osgEarth/Revisioning>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/Containers>
 #include <osgEarth/ResourceReleaser>
-#include <osgEarth/TileRasterizer>
 
-#include "RexTerrainEngineOptions"
 #include "EngineContext"
 #include "TileNodeRegistry"
 #include "RenderBindings"
@@ -39,6 +37,7 @@
 #include "SurfaceNode"
 #include "TileDrawable"
 #include "TerrainCuller"
+#include "FrameClock"
 
 #include <list>
 #include <map>
@@ -46,7 +45,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class RexTerrainEngineNode : public TerrainEngineNode
     {
@@ -58,23 +57,20 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     protected:
         virtual ~RexTerrainEngineNode();
 
-    public: // TerrainEngineNode public
-
-        //! for standalone tile creation outside of a terrain
-        osg::Node* createTile(const TileKey& key);
-
-        //! Create a standalone tile from a tile model (experimental)
-        osg::Node* createTile(
-            const TerrainTileModel* model,
-            int createTileFlags,
-            unsigned referenceLOD,
-            const TileKey& area);
+    public:
         
         //! Forces regeneration of tiles in the given region.
         void invalidateRegion(
             const GeoExtent& extent,
-            unsigned         minLevel,
-            unsigned         maxLevel);
+            unsigned minLevel,
+            unsigned maxLevel);
+
+        //! Forces regeneration of tiles in the given region for one layer.
+        void invalidateRegion(
+            const std::vector<const Layer*> layers,
+            const GeoExtent& extent,
+            unsigned minLevel,
+            unsigned maxLevel);
 
         //! Get the stateset used to render the terrain surface.
         osg::StateSet* getSurfaceStateSet();
@@ -82,8 +78,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         //! Unique identifier of this engine instance
         UID getUID() const { return _uid; }
 
-        //! Terrain options object
-        const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
+        //! Generate a standalone tile geometry
+        osg::Node* createStandaloneTile(
+            const TerrainTileModel* model,
+            int createTileFlags,
+            unsigned referenceLOD,
+            const TileKey& subRegion);
 
     public: // osg::Node
 
@@ -113,8 +113,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual void dirtyState();
 
     private:
-        void init();
-        void syncMapModel();
+
+        void update_traverse(osg::NodeVisitor& nv);
+        void cull_traverse(osg::NodeVisitor& nv);
 
         //! Reloads all the tiles in the terrain due to a data model change
         void refresh(bool force =false);
@@ -125,7 +126,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void addTileLayer( Layer* layer );
         void removeImageLayer( ImageLayer* layerRemoved );
         void removeElevationLayer( ElevationLayer* layerRemoved );
-        void toggleElevationLayer( ElevationLayer* layer );
         void moveElevationLayer( ElevationLayer* layerMoved );
         
         //! refresh the statesets of the terrain and the imagelayer tile surface
@@ -145,15 +145,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned int computeSampleSize(unsigned int levelOfDetail);
 
     private:
-        RexTerrainEngineOptions _terrainOptions;
+        const TerrainOptions* _terrainOptions;
+        const TerrainOptions& options() const { return *_terrainOptions; }
 
         UID _uid;
         bool _batchUpdateInProgress;
         bool _refreshRequired;
         bool _stateUpdateRequired;
+        bool _morphTerrainSupported;
 
         // extents of each layer, in the Map's SRS. UID = vector index (for speed)
-        LayerExtentVector _cachedLayerExtents;
+        //typedef UnorderedMap<UID, LayerExtent> LayerExtentMap; // fast_map?
+        LayerExtentMap _cachedLayerExtents;
         bool _cachedLayerExtentsComputeRequired;
 
         // node registry is shared across all threads.
@@ -168,7 +171,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<GeometryPool> _geometryPool;
         osg::ref_ptr<LoaderGroup>  _loader;
         osg::ref_ptr<UnloaderGroup> _unloader;
-        TileRasterizer* _rasterizer;
         
         osg::ref_ptr<osg::Group> _terrain;
         bool _morphingSupported;
@@ -181,8 +183,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::ref_ptr<osg::StateSet> _surfaceStateSet;
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
+
+        unsigned _frameLastUpdated;
+
+        FrameClock _clock;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_ENGINE_NODE_H

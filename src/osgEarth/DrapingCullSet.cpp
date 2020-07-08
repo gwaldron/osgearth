@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,7 +25,15 @@
 #define LC "[DrapingCullSet] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
+
+DrapingManager::DrapingManager() :
+    _sets(OE_MUTEX_NAME),
+    _renderBinNum(1)
+{
+    //nop
+}
 
 DrapingCullSet&
 DrapingManager::get(const osg::Camera* cam)
@@ -122,8 +130,6 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
                 }
 
                 // Cull the DrapeableNode's children (but not the DrapeableNode itself!)
-                // TODO: make sure we aren't skipping any cull callbacks, etc. by calling traverse 
-                // instead of accept. (Cannot call accept b/c that calls traverse)
                 for(unsigned i=0; i<entry->_node->getNumChildren(); ++i)
                 {
                     entry->_node->getChild(i)->accept( nv );

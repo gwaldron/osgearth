@@ -1,0 +1,84 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_LEGACY_TILE_SOURCE_IMAGE_LAYER_H
+#define OSGEARTH_LEGACY_TILE_SOURCE_IMAGE_LAYER_H 1
+
+#include <osgEarth/ImageLayer>
+#include <osgEarth/TileSource>
+
+namespace osgEarth 
+{
+    class SequenceControl;
+}
+
+namespace osgEarth { namespace Contrib
+{
+    using namespace osgEarth;
+    class TileSource;
+
+    /**
+    * A map terrain layer containing bitmap image data.
+    */
+    class OSGEARTH_EXPORT TileSourceImageLayer : public ImageLayer
+    {
+    public: // Serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(TileSourceOptions, driver);
+            virtual Config getConfig() const;        
+        private:
+            void fromConfig( const Config& conf );
+        };
+
+    public:
+        META_Layer(osgEarth, TileSourceImageLayer, Options, ImageLayer, image);
+
+    public: // Layer
+
+        //! Open the layer for reading.
+        virtual Status openImplementation();
+
+        //! Subclass can override this when not using a TileSource
+        //! by calling setTileSourceExpected(false).
+        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress) const;
+
+        //! Subclass can override this to write data for a tile key.
+        virtual Status writeImageImplementation(const TileKey&, const osg::Image*, ProgressCallback*) const;
+
+        virtual SequenceControl* getSequenceControl();
+
+    protected: // Layer
+
+        virtual void init();
+
+    protected:
+
+        /** dtor */
+        virtual ~TileSourceImageLayer() { }
+
+        osg::ref_ptr<TileSource> _tileSource;
+    };
+} } 
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::TileSourceImageLayer::Options);
+
+
+#endif // OSGEARTH_LEGACY_TILE_SOURCE_IMAGE_LAYER_H

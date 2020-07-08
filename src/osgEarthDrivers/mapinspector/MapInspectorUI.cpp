@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,16 +18,13 @@
  */
 #include "MapInspectorUI"
 #include <osgEarth/GeoData>
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/LabelNode>
+#include <osgEarth/Feature>
+#include <osgEarth/Style>
+#include <osgEarth/Geometry>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::MapInspector;
 
 namespace ui = osgEarth::Util::Controls;
@@ -65,10 +62,10 @@ MapInspectorUI::reinit(MapNode* mapNode)
 
         for (unsigned i = 0; i < map->getNumLayers(); ++i)
         {
-            TerrainLayer* terrainLayer = map->getLayerAt<TerrainLayer>(i);
+            TileLayer* terrainLayer = map->getLayerAt<TileLayer>(i);
             if (terrainLayer)
             {
-                addTerrainLayer(terrainLayer, mapNode);
+                addTileLayer(terrainLayer, mapNode);
             }
 
             ModelLayer* modelLayer = map->getLayerAt<ModelLayer>(i);
@@ -85,7 +82,7 @@ MapInspectorUI::reinit(MapNode* mapNode)
 }
 
 void
-MapInspectorUI::addTerrainLayer(TerrainLayer* layer,
+MapInspectorUI::addTileLayer(TileLayer* layer,
                                 MapNode*      mapNode)
 {
     const Color colors[6] = {

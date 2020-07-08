@@ -1,0 +1,102 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_SCRIPT_FILTER_H
+#define OSGEARTHFEATURES_SCRIPT_FILTER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Feature>
+#include <osgEarth/Filter>
+#include <osgEarth/ScriptEngine>
+
+namespace osgEarth
+{
+    /**
+     * Options structure for serializing/configuring the ScriptFilter.
+     */
+    class ScriptFilterOptions : public ConfigOptions
+    {
+    public:
+        ScriptFilterOptions(const ConfigOptions& co =ConfigOptions()) : ConfigOptions(co) {
+            _language.init("javascript");
+            fromConfig(_conf);
+        }
+
+        /** Expression that will return true or false. */
+        optional<std::string>& expression() { return _expression; }
+        const optional<std::string>& expression() const { return _expression; }
+
+        /** Language in which the expression is written (default = javascript) */
+        optional<std::string>& language() { return _language; }
+        const optional<std::string>& language() const { return _language; }
+
+        /** Profile - set to "full" to enable property and geometry editing. */
+        optional<std::string>& profile() { return _profile; }
+        const optional<std::string>& profile() const { return _profile; }
+
+        void fromConfig(const Config& conf) {
+            _expression = conf.value();
+            conf.get("language", _language);
+            //conf.get("profile", _profile);
+        }
+
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.setValue(_expression.get());
+            conf.set("language", _language);
+            //conf.set("profile", _profile);
+            return conf;
+        }
+
+    protected:
+        optional<std::string> _expression;
+        optional<std::string> _language;
+        optional<std::string> _profile;
+    };
+
+    /**
+     * This filter will modify the FeatureList using a script that return true or false.
+     * The script should contain a single expression returning the boolean.
+     */
+    class OSGEARTH_EXPORT ScriptFilter : public FeatureFilter,
+                                                 public ScriptFilterOptions
+    {
+    public:
+        // Call this determine whether this filter is available.
+        static bool isSupported();    
+
+    public:
+        ScriptFilter();
+        ScriptFilter( const Config& conf );
+
+        virtual ~ScriptFilter() { }
+
+    public:
+        virtual FilterContext push( FeatureList& input, FilterContext& context );
+
+    protected:
+        bool push( Feature* input, FilterContext& context );
+
+    private:
+        void ctor();
+        osg::ref_ptr<ScriptEngine> _engine;
+    };
+} // namespace osgEarth
+
+#endif // OSGEARTHFEATURES_SCRIPT_FILTER_H

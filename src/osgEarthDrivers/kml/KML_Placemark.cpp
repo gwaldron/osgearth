@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,10 +20,10 @@
 #include "KML_Geometry"
 #include "KML_Style"
 
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/ModelNode>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/LabelNode>
+#include <osgEarth/ModelNode>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Registry>
 
@@ -31,8 +31,7 @@
 #include <osgDB/WriteFile>
 
 using namespace osgEarth_kml;
-using namespace osgEarth::Features;
-using namespace osgEarth::Annotation;
+using namespace osgEarth;
 
 void 
 KML_Placemark::build( xml_node<>* node, KMLContext& cx )

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,66 +19,124 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Registry>
-#include <osgEarth/Utils>
 
 using namespace osgEarth;
 
 #define LC "[Map] "
 
-//------------------------------------------------------------------------
-
-Map::VisibleLayerCB::VisibleLayerCB(Map* map) : _map(map) { }
-
-void Map::VisibleLayerCB::onVisibleChanged(VisibleLayer* layer) {
-    osg::ref_ptr<Map> map;
-    if ( _map.lock(map) )
-        _map->notifyLayerVisibleChanged(layer);
-}
+//...................................................................
 
 Map::LayerCB::LayerCB(Map* map) : _map(map) { }
 
-void Map::LayerCB::onEnabledChanged(Layer* layer) {
+void Map::LayerCB::onOpen(Layer* layer)
+{
     osg::ref_ptr<Map> map;
     if (_map.lock(map))
-        map->notifyOnLayerEnabledChanged(layer);
+        map->notifyOnLayerOpenOrClose(layer);
 }
 
-//------------------------------------------------------------------------
-
-Map::Map() :
-osg::Object(),
-_dataModelRevision(0)
+void Map::LayerCB::onClose(Layer* layer)
 {
-    ctor();
+    osg::ref_ptr<Map> map;
+    if (_map.lock(map))
+        map->notifyOnLayerOpenOrClose(layer);
 }
 
-Map::Map( const MapOptions& options ) :
-osg::Object(),
-_mapOptions          ( options ),
-_initMapOptions      ( options ),
-_dataModelRevision   ( 0 )
+//...................................................................
+
+Config
+Map::Options::getConfig() const
 {
-    ctor();
+    Config conf = ConfigOptions::getConfig();
+
+    conf.set( "name",         name() );
+    conf.set( "profile",      profile() );
+    conf.set( "cache",        cache() );
+    conf.set( "cache_policy", cachePolicy() );
+
+    conf.set( "elevation_interpolation", "nearest",     elevationInterpolation(), INTERP_NEAREST);
+    conf.set( "elevation_interpolation", "average",     elevationInterpolation(), INTERP_AVERAGE);
+    conf.set( "elevation_interpolation", "bilinear",    elevationInterpolation(), INTERP_BILINEAR);
+    conf.set( "elevation_interpolation", "triangulate", elevationInterpolation(), INTERP_TRIANGULATE);
+
+    conf.set( "profile_layer", profileLayer() );
+
+    return conf;
 }
 
 void
-Map::ctor()
+Map::Options::fromConfig(const Config& conf)
 {
-    // Set the object name.
-    osg::Object::setName("osgEarth.Map");
+    elevationInterpolation().init(INTERP_BILINEAR);
+    
+    conf.get( "name",         name() );
+    conf.get( "profile",      profile() );
+    conf.get( "cache",        cache() );  
+    conf.get( "cache_policy", cachePolicy() );
+
+    // legacy support:
+    if ( conf.value<bool>( "cache_only", false ) == true )
+        cachePolicy()->usage() = CachePolicy::USAGE_CACHE_ONLY;
+
+    if ( conf.value<bool>( "cache_enabled", true ) == false )
+        cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
+
+    conf.get( "elevation_interpolation", "nearest",     elevationInterpolation(), INTERP_NEAREST);
+    conf.get( "elevation_interpolation", "average",     elevationInterpolation(), INTERP_AVERAGE);
+    conf.get( "elevation_interpolation", "bilinear",    elevationInterpolation(), INTERP_BILINEAR);
+    conf.get( "elevation_interpolation", "triangulate", elevationInterpolation(), INTERP_TRIANGULATE);
+
+    conf.get( "profile_layer", profileLayer() );
+}
+
+//...................................................................
+
+Map::Map() :
+osg::Object()
+{
+    init();
+}
+
+Map::Map(const Map::Options& options) :
+osg::Object(),
+_optionsConcrete(options)
+{
+    init();
+}
+
+void
+Map::init()
+{
+    // reset the revision:
+    _dataModelRevision = 0;
+
+    _mapDataMutex.setName("Map dataMutex(OE)");
+
+    // set the object name from the options:
+    if (options().name().isSet())
+        osg::Object::setName(options().name().get());
+    else
+        osg::Object::setName("osgEarth.Map");
 
     // Generate a UID.
     _uid = Registry::instance()->createUID();
 
+    // Set up the map's profile
+    if (options().profile().isSet())
+        setProfile(Profile::create(options().profile().get()));
+
+    if (getProfile() == NULL)
+        setProfile( Profile::create("global-geodetic") );
+
     // If the registry doesn't have a default cache policy, but the
     // map options has one, make the map policy the default.
-    if (_mapOptions.cachePolicy().isSet() &&
+    if (options().cachePolicy().isSet() &&
         !Registry::instance()->defaultCachePolicy().isSet())
     {
-        Registry::instance()->setDefaultCachePolicy( _mapOptions.cachePolicy().get() );
+        Registry::instance()->setDefaultCachePolicy( options().cachePolicy().get() );
         OE_INFO << LC
             << "Setting default cache policy from map ("
-            << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
+            << options().cachePolicy()->usageString() << ")" << std::endl;
     }
 
     // the map-side dbOptions object holds I/O information for all components.
@@ -90,33 +148,22 @@ Map::ctor()
     CacheSettings* cacheSettings = new CacheSettings();
 
     // Set up a cache if there's one in the options:
-    if (_mapOptions.cache().isSet())
-        cacheSettings->setCache(CacheFactory::create(_mapOptions.cache().get()));
+    if (options().cache().isSet())
+        cacheSettings->setCache(CacheFactory::create(options().cache().get()));
 
     // Otherwise use the registry default cache if there is one:
     if (cacheSettings->getCache() == 0L)
         cacheSettings->setCache(Registry::instance()->getDefaultCache());
 
     // Integrate local cache policy (which can be overridden by the environment)
-    cacheSettings->integrateCachePolicy(_mapOptions.cachePolicy());
+    cacheSettings->integrateCachePolicy(options().cachePolicy());
 
     // store in the options so we can propagate it to layers, etc.
     cacheSettings->store(_readOptions.get());
-
     OE_INFO << LC << cacheSettings->toString() << "\n";
 
-
     // remember the referrer for relative-path resolution:
-    URIContext( _mapOptions.referrer() ).store( _readOptions.get() );
-
-    // we do our own caching
-    _readOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
-
-    // encode this map in the read options.
-    OptionsData<const Map>::set(_readOptions.get(), "osgEarth.Map", this);
-
-    // set up a callback that the Map will use to detect Layer visibility changes
-    _visibleLayerCB = new VisibleLayerCB(this);
+    URIContext( options().referrer() ).store( _readOptions.get() );
 
     // create a callback that the Map will use to detect setEnabled calls
     _layerCB = new LayerCB(this);
@@ -138,35 +185,7 @@ Map::getElevationPool() const
 }
 
 void
-Map::notifyLayerVisibleChanged(VisibleLayer* layer)
-{
-    // bump the revision safely:
-    Revision newRevision;
-    {
-        Threading::ScopedWriteLock lock(_mapDataMutex);
-        newRevision = ++_dataModelRevision;
-    }
-
-    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-    if (elevationLayer)
-    {
-        // reinitialize the elevation pool:
-        _elevationPool->clear();
-    }
-
-    MapModelChange change(
-        MapModelChange::TOGGLE_LAYER,
-        newRevision,
-        layer);
-
-    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-    {
-        i->get()->onMapModelChanged(change);
-    }
-}
-
-void
-Map::notifyOnLayerEnabledChanged(Layer* layer)
+Map::notifyOnLayerOpenOrClose(Layer* layer)
 {
     // bump the revision safely:
     Revision newRevision;
@@ -181,17 +200,20 @@ Map::notifyOnLayerEnabledChanged(Layer* layer)
         _elevationPool->clear();
     }
 
-    if (layer->getEnabled())
+    if (layer->isOpen())
     {
-        openLayer(layer);
+        if (getProfile())
+        {
+            layer->addedToMap(this);
+        }
     }
     else
     {
-        closeLayer(layer);
+        layer->removedFromMap(this);
     }
 
     MapModelChange change(
-        layer->getEnabled() ? MapModelChange::ENABLE_LAYER : MapModelChange::DISABLE_LAYER,
+        layer->isOpen() ? MapModelChange::OPEN_LAYER : MapModelChange::CLOSE_LAYER,
         newRevision,
         layer);
 
@@ -201,29 +223,9 @@ Map::notifyOnLayerEnabledChanged(Layer* layer)
     }
 }
 
-bool
-Map::isGeocentric() const
-{
-    return
-        _mapOptions.coordSysType().isSet() ? _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC :
-        getSRS() ? getSRS()->isGeographic() :
-        true;
-}
-
-const osgDB::Options*
-Map::getGlobalOptions() const
-{
-    return _globalOptions.get();
-}
-
 void
-Map::setGlobalOptions( const osgDB::Options* options )
+Map::setMapName( const std::string& name )
 {
-    _globalOptions = options;
-}
-
-void
-Map::setMapName( const std::string& name ) {
     _name = name;
 }
 
@@ -233,12 +235,80 @@ Map::getDataModelRevision() const
     return _dataModelRevision;
 }
 
+void
+Map::setProfile(const Profile* value)
+{
+    bool notifyLayers = !_profile.valid();
+
+    if (value)
+    {
+        _profile = value;
+
+        // create a "proxy" profile to use when querying elevation layers with a vertical datum
+        if (_profile.valid() && _profile->getSRS()->getVerticalDatum() != 0L )
+        {
+            ProfileOptions po = _profile->toProfileOptions();
+            po.vsrsString().unset();
+            _profileNoVDatum = Profile::create(po);
+        }
+        else
+        {
+            _profileNoVDatum = _profile;
+        }
+
+        // finally, fire an event if the profile has been set.
+        OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
+    }
+
+    // If we just set the profile, tell all our layers they are now added
+    // to a valid map.
+    if (_profile.valid() && notifyLayers)
+    {
+        for(LayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+        {
+            Layer* layer = i->get();
+            if (layer->isOpen())
+            {
+                layer->addedToMap(this);
+            }
+        }
+    }
+}
+
 const Profile*
 Map::getProfile() const
 {
-    if ( !_profile.valid() )
-        const_cast<Map*>(this)->calculateProfile();
     return _profile.get();
+}
+
+void
+Map::setCachePolicy(const CachePolicy& value)
+{
+    options().cachePolicy() = value;
+
+    CacheSettings* cacheSettings = CacheSettings::get(_readOptions.get());
+    if (cacheSettings)
+    {
+        cacheSettings->integrateCachePolicy(value);
+    }
+}
+
+const CachePolicy&
+Map::getCachePolicy() const
+{
+    return options().cachePolicy().get();
+}
+
+void
+Map::setElevationInterpolation(const RasterInterpolation& value)
+{
+    options().elevationInterpolation() = value;
+}
+
+const RasterInterpolation&
+Map::getElevationInterpolation() const
+{
+    return options().elevationInterpolation().get();
 }
 
 Cache*
@@ -265,7 +335,7 @@ Map::getAttributions(StringSet& attributions) const
 
     for (LayerVector::const_iterator itr = layers.begin(); itr != layers.end(); ++itr)
     {
-        if (itr->get()->getEnabled())
+        if (itr->get()->isOpen())
         {
             VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(itr->get());
             if (!visibleLayer || visibleLayer->getVisible())
@@ -323,96 +393,119 @@ Map::endUpdate()
 void
 Map::addLayer(Layer* layer)
 {
+    if (layer == NULL)
+        return;
+
+    // ensure it's not already in the map
+    if (getIndexOfLayer(layer) != getNumLayers())
+        return;
+
     // Store in a ref_ptr for scope to ensure callbacks don't accidentally delete while adding
     osg::ref_ptr<Layer> layerRef( layer );
-    osgEarth::Registry::instance()->clearBlacklist();
-    if ( layer )
+
+    //osgEarth::Registry::instance()->clearBlacklist();
+
+    layer->setReadOptions(getReadOptions());
+
+    layer->open();
+
+    // do we need this? Won't the callback to this?
+    if (layer->isOpen() && getProfile() != NULL)
     {
-        // Set up callbacks
-        installLayerCallbacks(layer);
+        layer->addedToMap(this);
+    }
 
-        // Open the layer if it's enabled:
-        if (layer->getEnabled())
-        {
-            openLayer(layer);
-        }
+    // Set up callbacks. Do this *after* calling addedToMap (since the callback invokes addedToMap)
+    installLayerCallbacks(layer);
 
-        // Add the layer to our stack.
-        int newRevision;
-        unsigned index = -1;
-        {
-            Threading::ScopedWriteLock lock( _mapDataMutex );
+    // Add the layer to our stack.
+    int newRevision;
+    unsigned index = -1;
+    {
+        Threading::ScopedWriteLock lock( _mapDataMutex );
 
-            _layers.push_back( layer );
-            index = _layers.size() - 1;
-            newRevision = ++_dataModelRevision;
-        }
+        _layers.push_back( layer );
+        index = _layers.size() - 1;
+        newRevision = ++_dataModelRevision;
+    }
 
-        // tell the layer it was just added.
-        //layer->addedToMap(this);
-
-        // a separate block b/c we don't need the mutex
-        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-        {
-            i->get()->onMapModelChanged(MapModelChange(
-                MapModelChange::ADD_LAYER, newRevision, layer, index));
-        }
+    // a separate block b/c we don't need the mutex
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+        i->get()->onMapModelChanged(MapModelChange(
+            MapModelChange::ADD_LAYER, newRevision, layer, index));
     }
 }
 
 void
 Map::insertLayer(Layer* layer, unsigned index)
 {
-    osgEarth::Registry::instance()->clearBlacklist();
-    if ( layer )
+    if (layer == NULL)
+        return;
+
+    // ensure it's not already in the map
+    if (getIndexOfLayer(layer) != getNumLayers())
+        return;
+
+    // Store in a ref_ptr for scope to ensure callbacks don't accidentally delete while adding
+    osg::ref_ptr<Layer> layerRef( layer );
+
+    //osgEarth::Registry::instance()->clearBlacklist();
+
+    layer->setReadOptions(getReadOptions());
+
+    layer->open();
+
+    if (layer->isOpen() && getProfile() != NULL)
     {
-        // Set up callbacks
-        installLayerCallbacks(layer);
+        layer->addedToMap(this);
+    }
 
-        // Open the layer if it's enabled:
-        if (layer->getEnabled())
-        {
-            openLayer(layer);
-        }
+    // Set up callbacks. Do this *after* calling addedToMap (since the callback invokes addedToMap)
+    installLayerCallbacks(layer);
 
-        // Add the layer to our stack.
-        int newRevision;
-        {
-            Threading::ScopedWriteLock lock( _mapDataMutex );
+    // Add the layer to our stack.
+    int newRevision;
+    {
+        Threading::ScopedWriteLock lock(_mapDataMutex);
 
-            if (index >= _layers.size())
-                _layers.push_back(layer);
-            else
-                _layers.insert( _layers.begin() + index, layer );
+        if (index >= _layers.size())
+            _layers.push_back(layer);
+        else
+            _layers.insert(_layers.begin() + index, layer);
 
-            newRevision = ++_dataModelRevision;
-        }
+        newRevision = ++_dataModelRevision;
+    }
 
-        // tell the layer it was just added.
-        //layer->addedToMap(this);
-
-        // a separate block b/c we don't need the mutex
-        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-        {
-            //i->get()->onMapModelChanged( MapModelChange(
-            //    MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
-
-            i->get()->onMapModelChanged(MapModelChange(
-                MapModelChange::ADD_LAYER, newRevision, layer, index));
-        }
+    // a separate block b/c we don't need the mutex
+    for (MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++)
+    {
+        i->get()->onMapModelChanged(MapModelChange(
+            MapModelChange::ADD_LAYER, newRevision, layer, index));
     }
 }
 
 void
 Map::removeLayer(Layer* layer)
 {
-    osgEarth::Registry::instance()->clearBlacklist();
+    if (layer == NULL)
+        return;
+
+    // ensure it's in the map
+    if (getIndexOfLayer(layer) == getNumLayers())
+        return;
+
+    //osgEarth::Registry::instance()->clearBlacklist();
     unsigned int index = -1;
 
-    osg::ref_ptr<Layer> layerToRemove = layer;
+    osg::ref_ptr<Layer> layerToRemove(layer);
     Revision newRevision;
 
-    closeLayer(layer);
+    uninstallLayerCallbacks(layerToRemove.get());
+
+    layer->removedFromMap(this);
+
+    layer->close();
 
     if ( layerToRemove.get() )
     {
@@ -427,12 +520,7 @@ Map::removeLayer(Layer* layer)
                 break;
             }
         }
-
-        // tell the layer it was just removed.
-        //layerToRemove->removedFromMap(this);
     }
-
-    uninstallLayerCallbacks(layerToRemove.get());
 
     // a separate block b/c we don't need the mutex
     if ( newRevision >= 0 )
@@ -457,7 +545,7 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
         Threading::ScopedWriteLock lock( _mapDataMutex );
 
         // preserve the layer with a ref:
-        osg::ref_ptr<Layer> layerToMove = layer;
+        osg::ref_ptr<Layer> layerToMove( layer );
 
         // find it:
         LayerVector::iterator i_oldIndex = _layers.end();
@@ -499,16 +587,85 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
 }
 
 void
-Map::installLayerCallbacks(Layer* layer)
+Map::addLayers(const LayerVector& layers)
 {
-    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
-    if (visibleLayer)
+    // This differs from addLayer() in a loop because it will
+    // (a) call addedToMap only after all the layers are added, and
+    // (b) invoke all the MapModelChange callbacks with the same 
+    // new revision number.
+
+    //osgEarth::Registry::instance()->clearBlacklist();
+
+    for(LayerVector::const_iterator layerRef = layers.begin();
+        layerRef != layers.end();
+        ++layerRef)
     {
-        visibleLayer->addCallback(_visibleLayerCB.get());
+        Layer* layer = layerRef->get();
+        if ( !layer )
+            continue;
+
+        layer->setReadOptions(getReadOptions());
+
+        // open, but don't call addedToMap(layer) yet.
+        layer->open();
     }
 
+    unsigned firstIndex;
+    unsigned count = 0;
+    int newRevision;
+
+    // Add the layers to the map.
+    {
+        Threading::ScopedWriteLock lock( _mapDataMutex );
+
+        firstIndex = _layers.size();
+        newRevision = ++_dataModelRevision;
+
+        for(LayerVector::const_iterator layerRef = layers.begin();
+            layerRef != layers.end();
+            ++layerRef)
+        {
+            Layer* layer = layerRef->get();
+            if ( !layer )
+                continue;
+
+            _layers.push_back( layer );
+        }
+    }
+
+    // call addedToMap on each new layer in turn:
+    unsigned index = firstIndex;
+
+    for(LayerVector::const_iterator layerRef = layers.begin();
+        layerRef != layers.end();
+        ++layerRef)
+    {
+        Layer* layer = layerRef->get();
+        if ( !layer )
+            continue;
+
+        if (layer->isOpen() && getProfile() != NULL)
+        {
+            layer->addedToMap(this);
+        }
+
+        // Set up callbacks.
+        installLayerCallbacks(layer);
+
+        // a separate block b/c we don't need the mutex
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        {
+            i->get()->onMapModelChanged(MapModelChange(
+                MapModelChange::ADD_LAYER, newRevision, layer, index++));
+        }
+    }
+}
+
+void
+Map::installLayerCallbacks(Layer* layer)
+{
     // If this is an elevation layer, install a callback so we know when
-    // it's visibility changes:
+    // it's enabled state changes:
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     if (elevationLayer)
     {
@@ -523,12 +680,6 @@ Map::installLayerCallbacks(Layer* layer)
 void
 Map::uninstallLayerCallbacks(Layer* layer)
 {
-    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
-    if (visibleLayer)
-    {
-        visibleLayer->removeCallback(_visibleLayerCB.get());
-    }
-
     // undo the things we did in prepareLayer:
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     if (elevationLayer)
@@ -538,35 +689,6 @@ Map::uninstallLayerCallbacks(Layer* layer)
     }
 
     layer->removeCallback(_layerCB.get());
-}
-
-void
-Map::openLayer(Layer* layer)
-{
-    // Pass along the Read Options (including the cache settings, etc.) to the layer:
-    layer->setReadOptions(_readOptions.get());
-
-    // If this is a terrain layer, tell it about the Map profile.
-    TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-    if (terrainLayer && _profile.valid())
-    {
-        terrainLayer->setTargetProfileHint(_profile.get());
-    }
-
-    // Attempt to open the layer. Don't check the status here.
-    if (layer->open().isOK())
-    {
-        layer->addedToMap(this);
-    }
-}
-
-void
-Map::closeLayer(Layer* layer)
-{
-    if (layer)
-    {
-        layer->removedFromMap(this);
-    }
 }
 
 Revision
@@ -665,120 +787,10 @@ Map::clear()
     getElevationPool()->clear();
 }
 
-
-void
-Map::setLayersFromMap(const Map* map)
+const SpatialReference*
+Map::getSRS() const
 {
-    this->clear();
-
-    if ( map )
-    {
-        LayerVector layers;
-        map->getLayers(layers);
-        for (LayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
-            addLayer(i->get());
-    }
-}
-
-
-void
-Map::calculateProfile()
-{
-    // collect the terrain layers; we will need them later
-    TerrainLayerVector layers;
-    getLayers(layers);
-
-    // Figure out the map profile:
-    if ( !_profile.valid() )
-    {
-        osg::ref_ptr<const Profile> profile;
-
-        // Do the map options contain a profile? If so, try to use it:
-        if ( _mapOptions.profile().isSet() )
-        {
-            profile = Profile::create( _mapOptions.profile().value() );
-        }
-
-        // Do the map options contain an override coordinate system type?
-        // If so, attempt to apply that next:
-        if (_mapOptions.coordSysType().isSetTo(MapOptions::CSTYPE_GEOCENTRIC))
-        {
-            if (profile.valid() && profile->getSRS()->isProjected())
-            {
-                OE_WARN << LC << "Geocentric map type conflicts with the projected SRS profile; ignoring your profile\n";
-                profile = Registry::instance()->getGlobalGeodeticProfile();
-            }
-        }
-
-        // Do the map options ask for a projected map?
-        else if (_mapOptions.coordSysType().isSetTo(MapOptions::CSTYPE_PROJECTED))
-        {
-            // Is there a conflict in the MapOptions?
-            if (profile.valid() && profile->getSRS()->isGeographic())
-            {
-                OE_WARN << LC << "Projected map type conflicts with the geographic SRS profile; converting to Equirectangular projection\n";
-                unsigned u, v;
-                profile->getNumTiles(0, u, v);
-                const osgEarth::SpatialReference* eqc = profile->getSRS()->createEquirectangularSRS();
-                osgEarth::GeoExtent e = profile->getExtent().transform( eqc );
-                profile = osgEarth::Profile::create( eqc, e.xMin(), e.yMin(), e.xMax(), e.yMax(), u, v);
-            }
-
-            // Is there no profile set? Try to derive it from the Map layers:
-            if (!profile.valid())
-            {
-                for (TerrainLayerVector::iterator i = layers.begin(); !profile.valid() && i != layers.end(); ++i)
-                {
-                    profile = i->get()->getProfile();
-                }
-            }
-
-            if (!profile.valid())
-            {
-                OE_WARN << LC << "No profile information available; defaulting to Spherical Mercator projection\n";
-                profile = Registry::instance()->getSphericalMercatorProfile();
-            }
-        }
-
-        // Finally, if there is still no profile, default to global geodetic.
-        if (!profile.valid())
-        {
-            profile = Registry::instance()->getGlobalGeodeticProfile();
-        }
-
-
-        // Set the map's profile!
-        _profile = profile.release();
-
-        // create a "proxy" profile to use when querying elevation layers with a vertical datum
-        if ( _profile->getSRS()->getVerticalDatum() != 0L )
-        {
-            ProfileOptions po = _profile->toProfileOptions();
-            po.vsrsString().unset();
-            _profileNoVDatum = Profile::create(po);
-        }
-        else
-        {
-            _profileNoVDatum = _profile;
-        }
-
-        // finally, fire an event if the profile has been set.
-        OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
-
-        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-        {
-            //i->get()->onMapInfoEstablished( MapInfo(this) );
-        }
-    }
-
-    // Tell all the layers about the profile
-    for (TerrainLayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
-    {
-        if (i->get()->getEnabled())
-        {
-            i->get()->setTargetProfileHint(_profile.get());
-        }
-    }
+    return _profile.valid() ? _profile->getSRS() : 0L;
 }
 
 const SpatialReference*
@@ -799,29 +811,20 @@ Map::isFast(const TileKey& key, const LayerVector& layers) const
         if (!layer)
             continue;
 
-        if (!layer->getEnabled())
+        if (!layer->isOpen())
             continue;
 
-        TerrainLayer* terrainlayer = dynamic_cast<TerrainLayer*>(layer);
-        if (terrainlayer)
+        TileLayer* tilelayer = dynamic_cast<TileLayer*>(layer);
+        if (tilelayer)
         {
-            if (terrainlayer->getCacheSettings()->cachePolicy()->isCacheDisabled())
+            if (tilelayer->getCacheSettings()->cachePolicy()->isCacheDisabled())
               return false;
 
             //If no data is available on this tile, we'll be fast
-            if (!terrainlayer->mayHaveData(key))
+            if (!tilelayer->mayHaveData(key))
                 continue;
 
-            // No tile source? skip it
-            osg::ref_ptr< TileSource > source = terrainlayer->getTileSource();
-            if (!source.valid())
-                continue;
-
-            //If the tile is blacklisted, it should also be fast.
-            if (source->getBlacklist()->contains(key))
-                continue;
-
-            if (!terrainlayer->isCached(key))
+            if (!tilelayer->isCached(key))
                 return false;
         }
     }

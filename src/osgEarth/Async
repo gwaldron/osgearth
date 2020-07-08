@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,12 +28,12 @@
 /**
  * Classes for asynchronous loading of scene graph nodes.
  */
-namespace osgEarth 
+namespace osgEarth { namespace Util
 {
     /**
      * Result returned from an asynchronous function
      */
-    class OSGEARTH_EXPORT AsyncResult : public osg::Node
+    class OSGEARTH_EXPORT AsyncResult : public osg::Group
     {
     public:
         AsyncResult(osg::Node* node);
@@ -139,9 +139,6 @@ namespace osgEarth
 
     private:
 
-        // collection of child nodes (potential or real)
-        std::vector<AsyncNode> _children;
-
         // internal, used to tell the pager where to attach newly loaded nodes
         osg::NodePath _nodePath;
 
@@ -163,6 +160,31 @@ namespace osgEarth
         // how child node should interact with each other
         Policy _policy;
     };
-}
+
+    //! Object that tracks the usage of Async objects and removes
+    //! them from the scene graph when they expire. Once instance
+    //! may be shared by multiple cameras, graphs, etc.
+    class OSGEARTH_EXPORT AsyncMemoryManager : public osg::Node
+    {
+    public:
+        AsyncMemoryManager();
+
+        void push(AsyncNode* node, osg::NodeVisitor& nv);
+
+        void traverse(osg::NodeVisitor& nv);
+
+    protected:
+        virtual ~AsyncMemoryManager();
+
+        typedef std::vector< osg::ref_ptr<AsyncNode> > RefNodeVector;
+        typedef std::set< osg::ref_ptr<AsyncNode> > RefNodeSet;
+        RefNodeSet _alive;
+        RefNodeSet _orphaned;
+        RefNodeSet _dead;
+        Threading::Mutex _mutex;
+
+        void cycle(osg::NodeVisitor& nv);
+    };
+} }
 
 #endif // OSGEARTH_ASYNC_H

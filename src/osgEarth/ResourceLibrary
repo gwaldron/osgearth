@@ -1,0 +1,150 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_RESOURCE_LIBRARY_H
+#define OSGEARTHSYMBOLOGY_RESOURCE_LIBRARY_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Skins>
+#include <osgEarth/InstanceResource>
+#include <osgEarth/ModelResource>
+#include <osgEarth/ModelSymbol>
+#include <osgEarth/Threading>
+#include <osgEarth/Random>
+#include <unordered_map>
+
+namespace osgEarth { namespace Util
+{
+    /** 
+     * ResourceLibrary manages a collection of external resources that a
+     * build system can use the construct geometries.
+     */
+    class OSGEARTH_EXPORT ResourceLibrary : public osg::Referenced
+    {
+    public:
+        /**
+         * Creates a new resource library with a source URI. The library
+         * will populate upon first use..
+         */
+        ResourceLibrary( 
+            const std::string& name, 
+            const URI&         uri);
+
+        /**
+         * Creates a new resource library from a config.
+         */
+        ResourceLibrary( const Config& conf );
+
+
+        /** dtor */
+        virtual ~ResourceLibrary() { }
+
+        /** 
+         * Initialize the catalog by loading its contents into memory
+         */
+        bool initialize( const osgDB::Options* options );
+
+        /**
+         * Gets the name of the lib.
+         */
+        const std::string& getName() const { return _name; }
+        void setName(const std::string& name) { _name = name; }
+
+        /**
+         * Adds a resource to the library.
+         */
+        void addResource( Resource* resource );
+
+        /**
+         * Removes a resource from the library.
+         */
+        void removeResource( Resource* resource );
+
+
+    public: // Skin resource functions
+
+        /**
+         * Finds and returns a Skin resource by name.
+         */
+        SkinResource* getSkin( const std::string& name, const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Returns a list of all Skin resources.
+         */
+        void getSkins( SkinResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Returns a list of all Skin resources that match the criteria specified
+         * in the symbol.
+         */
+        void getSkins( const SkinSymbol* symbol, SkinResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Returns a skin that matches the criteria specified in the symbol. The method
+         * will randomly select a suitable skin if there are more than one match.
+         */
+        SkinResource* getSkin( const SkinSymbol* symbol, unsigned int rand, const osgDB::Options* dbOptions =0L ) const;
+
+
+    public: // Instance functions
+
+        /**
+         * Finds an instance-resource by name.
+         */
+        InstanceResource* getInstance( const std::string& name, const osgDB::Options* dbOptions =0L ) const;
+        
+        ModelResource* getModel( const ModelSymbol* ms, const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Returns a list of all Model resources.
+         */
+        void getModels( ModelResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
+        
+        /**
+         * Returns a list of models that match the input symbol.
+         */
+        void getModels(const ModelSymbol* ms, ModelResourceVector& output, const osgDB::Options* dbOptions =0L) const;
+
+    public: // serialization functions
+
+        void mergeConfig( const Config& conf );
+        Config getConfig() const;
+
+        optional<URI>& uri() { return _uri; }
+        const optional<URI>& uri() const { return _uri; }
+
+    protected:
+        template<typename T> struct ResourceMap : public std::unordered_map<std::string, osg::ref_ptr<T> > { };
+
+        optional<URI>                      _uri;
+        std::string                        _name;
+        bool                               _initialized;
+        mutable Threading::ReadWriteMutex  _mutex;
+
+        ResourceMap<SkinResource>          _skins;
+        ResourceMap<InstanceResource>      _instances;
+
+        bool matches( const SkinSymbol* symbol, SkinResource* skin ) const;
+    };
+
+
+    typedef std::unordered_map< std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraryMap;
+} }
+
+#endif // OSGEARTHSYMBOLOGY_RESOURCE_LIBRARY_H

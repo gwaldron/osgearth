@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,8 @@
 */
 
 #include <osgEarth/catch.hpp>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
+#include <thread>
 
 using namespace osgEarth;
 
@@ -46,25 +47,25 @@ namespace ReadWriteMutexTest
         void run()
         {
             // Thread one takes the first read lock.
-            mutex.readLock();
+            mutex.read_lock();
             readLock1 = true;
 
             // Wait for the write lock to happen in thread 2
             while (!attemptingWriteLock)
             {
-                OpenThreads::Thread::YieldCurrentThread();
+                std::this_thread::yield();
             }
 
             // The write lock is being attempted, sleep for awhile to make sure it actually tries to get the write lock.
-            OpenThreads::Thread::microSleep(2e6);
+            std::this_thread::sleep_for(std::chrono::seconds(2));
 
             // Take a second read lock
-            mutex.readLock();            
+            mutex.read_lock();
             readLock2 = true;
 
             // Unlock both of our read locks
-            mutex.readUnlock();
-            mutex.readUnlock();
+            mutex.read_unlock();
+            mutex.read_unlock();
         }
     };
 
@@ -83,16 +84,16 @@ namespace ReadWriteMutexTest
             // Wait for thread1 to grab the read lock.
             while (!readLock1)
             {
-                OpenThreads::Thread::YieldCurrentThread();
+                std::this_thread::yield();
             }
 
             // Tell the first thread we are attempting a write lock so it can try to grab it's second read lock.
             attemptingWriteLock = true;
 
             // Try to get the write lock
-            mutex.writeLock();
+            mutex.write_lock();
             writeLock = true;
-            mutex.writeUnlock();            
+            mutex.write_unlock();
         }
     };
 }

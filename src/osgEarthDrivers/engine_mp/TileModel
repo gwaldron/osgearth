@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -82,10 +82,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             bool isFallbackData() const { return _fallbackData; }
 
             // get a height value using a normalized coord and a locator.
-            bool getHeight( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, float& output, ElevationInterpolation interp ) const;
+            bool getHeight( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, float& output, RasterInterpolation interp ) const;
 
             // get a normal vector (in woord space)
-            bool getNormal( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, osg::Vec3& output, ElevationInterpolation interp ) const;
+            bool getNormal( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, osg::Vec3& output, RasterInterpolation interp ) const;
             
             osg::HeightField* getNeighbor(int xoffset, int yoffset) const
             {

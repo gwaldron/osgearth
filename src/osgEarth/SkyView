@@ -1,0 +1,78 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_SKYVIEW_H
+#define OSGEARTHUTIL_SKYVIEW_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/LayerReference>
+
+namespace osgEarth { namespace Contrib
+{
+    /**
+     * Image layer intended to be viewed from the inside.
+     */
+    class OSGEARTH_EXPORT SkyViewImageLayer : public ImageLayer
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION_LAYER(ImageLayer, imageLayer);
+            virtual Config getConfig() const;
+            static Config getMetadata();
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, SkyViewImageLayer, Options, ImageLayer, SkyView);
+
+        //! Image layer to render in skyview mode
+        void setImageLayer(ImageLayer* layer) { options().imageLayer().setLayer(layer); }
+        ImageLayer* getImageLayer() const { return options().imageLayer().getLayer(); }
+
+    public: // Layer
+
+        //! Called by constructors
+        void init();
+
+        //! Establishes a connection to the WMS service
+        Status openImplementation();
+
+        //! Return an image for a key.
+        GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+        virtual Config getConfig() const;
+
+    protected:
+
+        //! Destructor
+        virtual ~SkyViewImageLayer() { }
+    };
+
+} } // namespace osgEarth:Contrib
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::SkyViewImageLayer::Options);
+
+
+#endif // OSGEARTHUTIL_SKYVIEW_H

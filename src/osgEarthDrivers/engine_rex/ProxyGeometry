@@ -26,12 +26,13 @@
 
 #include <osgEarth/TileKey>
 
-namespace osgEarth
-{
-    class MapInfo;
+namespace osgEarth {
+    namespace Support {
+        class MapInfo;
+    }
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class IndexPool
     {
@@ -71,5 +72,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         static IndexPool _indexPool;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} }
+
 #endif

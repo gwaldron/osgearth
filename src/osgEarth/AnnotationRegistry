@@ -1,0 +1,111 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNO_REGISTRY_H
+#define OSGEARTH_ANNO_REGISTRY_H 1
+
+#include <osgEarth/AnnotationNode>
+#include <osgEarth/MapNode>
+
+namespace osgEarth { namespace Util
+{
+    class AnnotationFactory;
+
+    /**
+     * Singleton registry for annotation node types.
+     */
+    class OSGEARTH_EXPORT AnnotationRegistry
+    {
+    public:
+        /**
+         * Access the singleton instance of this class.
+         */
+        static AnnotationRegistry* instance();
+
+        /**
+         * Creates one or more AnnotationNodes from a Config. The resulting
+         * AnnotationNode's are placed under the provided group.
+         */
+        bool create( 
+            MapNode*              mapNode, 
+            const Config&         conf, 
+            const osgDB::Options* dbOptions,
+            osg::Group*&          output ) const;
+
+        /**
+         * Returns a Config containing all the AnnotationNode's found in the
+         * specified subgraph. You can pass this Config to create(...) to 
+         * rematerialize the nodes.
+         */
+        Config getConfig( osg::Node* graph ) const;
+
+    public:
+        /**
+         * Adds an annotation type to the registry
+         */
+        void add( const std::string& key, AnnotationFactory* factory );
+
+        virtual ~AnnotationRegistry() { }
+
+    private:
+        AnnotationRegistry() { }
+        typedef std::map<std::string, AnnotationFactory*> FactoryMap;
+        FactoryMap _factories;
+
+        AnnotationNode* createOne( 
+            MapNode*              mapNode, 
+            const Config&         conf,
+            const osgDB::Options* dbOptions) const;
+    };
+
+    // Macro used to register new annotation types.
+#define OSGEARTH_REGISTER_ANNOTATION( KEY, CLASSNAME ) \
+    extern "C" void osgearth_annotation_##KEY(void) {} \
+    static AnnotationRegistrationProxy< CLASSNAME > s_osgEarthAnnotationRegistrationProxy##KEY( #KEY )
+    
+#define USE_OSGEARTH_ANNOTATION( KEY ) \
+    extern "C" void osgearth_annotation_##KEY(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_annotation_##KEY(osgearth_annotation_##KEY);
+
+
+    //--------------------------------------------------------------------
+
+    // internal: interface class for an object that creates annotation node from a Config
+    // (used by OSGEARTH_REGISTER_ANNOTATION macro)
+    class AnnotationFactory {
+    public:
+        virtual AnnotationNode* create( 
+            const Config&         conf, 
+            const osgDB::Options* dbOptions) const =0;
+
+        virtual ~AnnotationFactory() { }
+    };
+
+    // internal: proxy class used by the registraion macro
+    template<typename T>
+    struct AnnotationRegistrationProxy : public AnnotationFactory {
+        AnnotationRegistrationProxy(const std::string& key) { AnnotationRegistry::instance()->add(key, this); }
+        AnnotationNode* create(const Config& conf, const osgDB::Options* options) const { return new T(conf, options); }
+    };
+
+} }
+
+#endif // OSGEARTH_ANNO_FEATURE_NODE_H

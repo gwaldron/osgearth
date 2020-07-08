@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -43,10 +43,13 @@
 
 namespace osgEarth
 {
-#define DEFAULT_BIN_ID ""
-
     class Cache;
     class CachePolicy;
+}
+
+namespace osgEarth { namespace Util
+{
+#define DEFAULT_BIN_ID ""
 
     /**
      * CacheSettings is an object stored in the osgDB::Options structure that
@@ -89,6 +92,10 @@ namespace osgEarth
           * also takes care of global (registry) override policy. */
         void integrateCachePolicy(const optional<CachePolicy>& policy);
 
+        /** Integrates an outside cache policy with the one in these settings. This method
+        * also takes care of global (registry) override policy. */
+        void integrateCachePolicy(const CachePolicy& policy);
+
         /** Extracts the settings from a read-options structure. */
         static CacheSettings* get(const osgDB::Options* readOptions);
 
@@ -104,11 +111,13 @@ namespace osgEarth
         osg::ref_ptr<Cache>      _cache;
         osg::ref_ptr<CacheBin>   _activeBin;
         optional<CachePolicy>    _policy;
-        mutable Threading::Mutex _mutex;
     };
+} }
 
 //--------------------------------------------------------------------
 
+namespace osgEarth
+{
     /**
      * Base class for Cache options.
      */
@@ -150,7 +159,6 @@ namespace osgEarth
 {
     typedef PerObjectRefMap<std::string, CacheBin> ThreadSafeCacheBinMap;
 
-
     /**
      * Cache is a container for local storage of keyed data elements.
      */
@@ -167,7 +175,7 @@ namespace osgEarth
         /**
          * Whether this cache is valid and available for use
          */
-        bool isOK() const { return _ok; }
+        const Status& getStatus() const { return _status; }
 
         /**
          * Gets a caching bin within this cache.
@@ -217,12 +225,16 @@ namespace osgEarth
          * some time to complete.
          */
         virtual bool clear() { return false; }
+        
+        //! Set the number of background threads to use. You must call this 
+        //! prior to addBin().
+        virtual void setNumThreads(unsigned num) { }
 
         //! Make a legal cache key with an optional prefix
         static std::string makeCacheKey(const std::string& input, const std::string& prefix="");
 
     protected:
-        bool                   _ok;
+        Status _status;
         CacheOptions           _options;
         ThreadSafeCacheBinMap  _bins;
         osg::ref_ptr<CacheBin> _defaultBin;
@@ -230,29 +242,30 @@ namespace osgEarth
 
 //----------------------------------------------------------------------
 
-    /**
-     * Base class for a cache driver plugin.
-     */
-    class OSGEARTH_EXPORT CacheDriver : public osgDB::ReaderWriter
+    namespace Util
     {
-    public:
-        const CacheOptions& getCacheOptions( const osgDB::ReaderWriter::Options* options ) const;
+        /**
+         * Base class for a cache driver plugin.
+         */
+        class OSGEARTH_EXPORT CacheDriver : public osgDB::ReaderWriter
+        {
+        public:
+            const CacheOptions& getCacheOptions( const osgDB::ReaderWriter::Options* options ) const;
 
-        /** dtor */
-        virtual ~CacheDriver();
-    };
+            /** dtor */
+            virtual ~CacheDriver();
+        };
 
-//----------------------------------------------------------------------
-
-    /**
-     * Factory class that can load and instantiate a Cache implementation based on the
-     * information in the CacheOptions settings.
-     */
-    class OSGEARTH_EXPORT CacheFactory
-    {
-    public:
-        static Cache* create( const CacheOptions& options);
-    };
+        /**
+         * Factory class that can load and instantiate a Cache implementation based on the
+         * information in the CacheOptions settings.
+         */
+        class OSGEARTH_EXPORT CacheFactory
+        {
+        public:
+            static osgEarth::Cache* create( const CacheOptions& options);
+        };
+    }
 }
 
 #endif // OSGEARTH_CACHE_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -31,18 +31,18 @@
 #include <osgEarth/Viewpoint>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/GLUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/Controls>
+#include <osgEarth/MouseCoordsTool>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Color>
 
-#include <osgEarthUtil/MeasureTool>
+#include <osgEarth/MeasureTool>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Contrib;
 
 class MyMeasureToolCallback : public MeasureToolHandler::MeasureToolEventHandler
 {
@@ -55,7 +55,7 @@ public:
     virtual void onDistanceChanged(MeasureToolHandler* sender, double distance)
     {
         std::stringstream ss;
-        ss << "Distance = " << std::setprecision(10) << distance << "m" << std::endl; 
+        ss << "Distance = " << std::setprecision(10) << distance << "m" << std::endl;
         std::string str;
         str = ss.str();
         _label->setText( str );
@@ -91,7 +91,7 @@ struct ToggleModeHandler : public ControlEventHandler
         else
         {
             _tool->setGeoInterpolation( GEOINTERP_GREAT_CIRCLE);
-        }        
+        }
     }
 
     osg::ref_ptr<MeasureToolHandler> _tool;
@@ -102,6 +102,8 @@ struct ToggleModeHandler : public ControlEventHandler
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
@@ -123,13 +125,13 @@ main(int argc, char** argv)
     }
 
     earthNode->setNodeMask( 0x1 );
-    
+
     osgEarth::Util::EarthManipulator* earthManip = new EarthManipulator();
     viewer.setCameraManipulator( earthManip );
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
-    
+
     //Create the MeasureToolHandler
     MeasureToolHandler* measureTool = new MeasureToolHandler(mapNode);
     measureTool->setIntersectionMask( 0x1 );
@@ -147,7 +149,7 @@ main(int argc, char** argv)
     grid->setChildSpacing( 10 );
     grid->setChildVertAlign( Control::ALIGN_CENTER );
     grid->setAbsorbEvents( true );
-    grid->setVertAlign( Control::ALIGN_TOP );   
+    grid->setVertAlign( Control::ALIGN_TOP );
 
     canvas->addControl( grid );
 
@@ -157,13 +159,13 @@ main(int argc, char** argv)
     LabelControl* label = new LabelControl();
     label->setFont( osgEarth::Registry::instance()->getDefaultFont() );
     label->setFontSize( 24.0f );
-    label->setHorizAlign( Control::ALIGN_LEFT );    
+    label->setHorizAlign( Control::ALIGN_LEFT );
     label->setText("click to measure");
     grid->setControl( 1, 0, label );
 
     //Add a callback to update the label when the distance changes
     measureTool->addEventHandler( new MyMeasureToolCallback(label) );
-    
+
     Style style = measureTool->getLineStyle();
     style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
     style.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;

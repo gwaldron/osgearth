@@ -1,0 +1,61 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_REX_FRAME_CLOCK
+#define OSGEARTH_REX_FRAME_CLOCK 1
+
+#include "Common"
+#include <osg/Timer>
+#include <osgEarth/DateTime>
+
+namespace osgEarth { namespace REX
+{
+    /**
+     * Frame clock to keep track of time/frames independently of OSG
+     */
+    class FrameClock
+    {
+    public:
+        //! New frame clock
+        FrameClock();
+
+        //! Seconds since creation of this object
+        double getTime() const;
+
+        //! Number of times frame() called
+        unsigned getFrame() const;
+
+        //! Advance the clock and frame counter if permitted;
+        //! Return true if the update succeeded.
+        bool update();
+
+        //! Register a cull traversal
+        void cull();
+
+    private:
+        osg::Timer_t _zero;
+        osg::Timer_t _tick;
+        unsigned _updateFrame;
+        unsigned _cullFrame;
+        osg::Timer* _timer;
+    };
+
+} } // namespace osgEarth::REX
+
+
+#endif // OSGEARTH_REX_FRAME_CLOCK

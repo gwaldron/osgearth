@@ -23,7 +23,7 @@
 #include <osgEarth/Cache>
 #include <string>
 
-namespace osgEarth { namespace Drivers { namespace RocksDBCache
+namespace osgEarth { namespace RocksDBCache
 {
     using namespace osgEarth;
     
@@ -148,6 +148,6 @@ namespace osgEarth { namespace Drivers { namespace RocksDBCache
         optional<std::string> _key;
     };
 
-} } } // namespace osgEarth::Drivers::RocksDBCache
+} } // namespace osgEarth::RocksDBCache
 
 #endif // OSGEARTH_DRIVER_CACHE_ROCKSDB_OPTIONS

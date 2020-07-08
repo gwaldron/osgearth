@@ -1,0 +1,180 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_STYLE_H
+#define OSGEARTHSYMBOLOGY_STYLE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Color>
+#include <osgEarth/Query>
+#include <osgEarth/IconSymbol>
+#include <osgEarth/PointSymbol>
+#include <osgEarth/LineSymbol>
+#include <osgEarth/PolygonSymbol>
+#include <osgEarth/ModelSymbol>
+#include <osgEarth/ExtrusionSymbol>
+#include <osgEarth/AltitudeSymbol>
+#include <osgEarth/TextSymbol>
+#include <osgEarth/Skins>
+#include <osgEarth/RenderSymbol>
+#include <osgEarth/CoverageSymbol>
+#include <osgEarth/BBoxSymbol>
+
+#include <osgEarth/Config>
+#include <osg/Object>
+#include <vector>
+
+namespace osgEarth
+{
+    class Style;
+
+    typedef std::map<std::string, Style> StyleMap;
+
+    /**
+     * Style is an unordered collection of Symbols that describes how to render
+     * geometry and other objects.
+     */
+    class OSGEARTH_EXPORT Style
+    {
+    public:
+        /** Constructs a new, empty style. */
+        Style( const std::string& name = "" );
+
+        /** Constructs a style by deserializing it from a Config. */
+        Style(const Config& conf);
+
+        /** Constructs a stype by deserializing it from a Config. */
+        Style(const Config& conf, const StyleMap* sheet);
+
+        /** Copy constructor. By default, duplicates all the symbols; but if you 
+            specify SHALLOW_COPY, the new one will point to the same symbols. */
+        Style(const Style& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ); 
+
+        /** assignment operator */
+        Style& operator = (const Style& rhs);
+
+        /** virtual dtor */
+        virtual ~Style() { }
+
+        /** Gets the name of this style */
+        const std::string& getName() const { return _name; }
+
+        /** Sets the name of this style */
+        void setName( const std::string& value ) { _name = value; }
+
+        /** Starts with this style, merges in all the symbols from the other style, and
+            returns a new style */
+        Style combineWith( const Style& rhs ) const;
+
+        /** Test whether the style is empty */
+        bool empty() const { return _symbols.empty(); }
+
+        /** Adds a symbol to the collection. */
+        void addSymbol(Symbol* symbol);
+        void add(Symbol* symbol) { addSymbol(symbol); }
+
+        /** Remove a symbol from the collection */
+        bool removeSymbol (Symbol* symbol);
+
+        void copySymbols(const Style& style);
+
+        /** Remove a symbol by type */
+        template<typename T>
+        bool remove()
+        {
+            Symbol* s = get<T>();
+            return s ? removeSymbol(s) : false;
+        }
+
+        /** Gets a typed symbol from the style (the first one found). */
+        template<typename T>
+        T* getSymbol()
+        {
+            for (SymbolList::const_iterator it = _symbols.begin(); it != _symbols.end(); ++it)
+            {
+                Symbol* symbol = (*it).get();
+                T* s = dynamic_cast<T*>(symbol);
+                if (s)
+                    return s;
+            }
+            return 0L;
+        }
+        template<typename T> T* get() { return getSymbol<T>(); } // alias
+
+        /** Whether the style contains a symbol of the template type */
+        template<typename T> bool has() { return get<T>() != 0L; }
+        template<typename T> bool has() const { return get<T>() != 0L; }
+
+        /** Gets a typed symbol from the style (the first one found) */
+        template<typename T>
+        const T* getSymbol() const
+        {
+            for (SymbolList::const_iterator it = _symbols.begin(); it != _symbols.end(); ++it)
+            {
+                Symbol* symbol = (*it).get();
+                const T* s = dynamic_cast<const T*>(symbol);
+                if (s)
+                    return s;
+            }
+            return 0L;
+        }
+        template<typename T> const T* get() const { return getSymbol<T>(); } // alias
+
+        /** Gets a typed symbol from the style (first one found), or creates/adds/returns one of 
+            that type if it doesn't already exist. */
+        template<typename T>
+        T* getOrCreateSymbol()
+        {
+            T* sym = getSymbol<T>();
+            if ( !sym )
+            {
+                sym = new T();
+                addSymbol( sym );
+            }
+            return sym;
+        }
+
+        template<typename T> T* getOrCreate() { return getOrCreateSymbol<T>(); } // alias
+
+        /** Access to list of symbols currently defining the style */
+        SymbolList& symbols() { return _symbols; }
+        const SymbolList& symbols() const { return _symbols; }
+
+        /** Serializes this object into a Config. */
+        virtual Config getConfig(bool keepOrigType = true) const;
+
+        void mergeConfig(const Config& conf, const StyleMap*);
+
+        void fromSLD(const Config&, const StyleMap*);
+        
+    protected:
+        std::string                 _name;
+        SymbolList                  _symbols;
+        std::string                 _origType;
+        std::string                 _origData;
+        optional<URI>               _uri;
+    };
+
+    typedef std::vector<Style>           StyleList;
+    //typedef std::map<std::string, Style> StyleMap;
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Style);
+
+#endif // OSGEARTHSYMBOLOGY_STYLE_H

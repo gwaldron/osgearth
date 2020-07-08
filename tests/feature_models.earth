@@ -1,12 +1,10 @@
-<map name="Model Demo" type="geocentric" version="2">
+<map name="Demo: point-model substitution">
+                  
+    <OGRFeatures name="points">
+        <url>../data/points.shp</url>
+    </OGRFeatures>
                
-    <model name="points" driver="feature_geom">
-                      
-        <features name="points" driver="ogr">
-            <url>../data/points.shp</url>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
-                
+    <FeatureModel name="points" features="points">                
         <styles>
             <style type="text/css">
                 points {
@@ -14,13 +12,10 @@
                    model-scale: 2500;
                 }                                            
             </style>
-        </styles>   
-        
-    </model>
+        </styles>        
+    </FeatureModel>
     
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
 	
     <viewpoints>
         <viewpoint name="Models" lat="25.311" long="-80.807" pitch="-21" range="177351"/>

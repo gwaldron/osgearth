@@ -1,0 +1,217 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURES_WFS_FEATURESOURCE_LAYER
+#define OSGEARTH_FEATURES_WFS_FEATURESOURCE_LAYER
+
+#include <osgEarth/FeatureSource>
+
+using namespace osgEarth;
+
+// WFS API
+namespace osgEarth {  namespace WFS
+{
+    class OSGEARTH_EXPORT FeatureType : public osg::Referenced
+    {
+    public:
+        FeatureType();
+
+        virtual ~FeatureType() { }
+
+        const std::string& getName() const { return _name;}
+        void setName(const std::string& name) { _name = name;}
+
+        const std::string& getTitle() const { return _title;}
+        void setTitle(const std::string& title) { _title = title;}
+
+        const std::string& getSRS() const { return _srs;}
+        void  setSRS(const std::string& srs) { _srs = srs; }
+
+        const std::string& getAbstract() const { return _abstract;}
+        void setAbstract(const std::string& abstract) { _abstract = abstract; }
+
+        const GeoExtent& getExtent() const { return _extent;}
+        void setExtent(const GeoExtent& extent) { _extent = extent;}
+
+        int getMaxLevel() const { return _maxLevel;}
+        void setMaxLevel( int maxLevel ) { _maxLevel = maxLevel; }
+
+        int getFirstLevel() const { return _firstLevel;}
+        void setFirstLevel( int firstLevel ) { _firstLevel = firstLevel; }
+
+        bool getTiled() const { return _tiled;}
+        void setTiled(bool tiled) { _tiled = tiled;}
+        
+    private:
+        std::string _name;
+        std::string _title;
+        std::string _srs;
+        std::string _abstract;
+        GeoExtent   _extent;
+        bool        _tiled;
+        int         _maxLevel;
+        int         _firstLevel;
+    };
+
+    typedef std::vector< osg::ref_ptr<FeatureType> > FeatureTypeList;
+
+    
+    class OSGEARTH_EXPORT Capabilities : public osg::Referenced
+    {
+    public:
+        Capabilities();
+
+        virtual ~Capabilities() { }
+
+        //! Gets the WFS capabilities version
+        const std::string& getVersion() const {return _version;}
+
+        //! Sets the WFS capabilities version
+        void setVersion(const std::string& version) {_version = version;}        
+
+        const std::string& getName() const { return _name; }
+        void setName(const std::string& name) { _name = name; }
+
+        const std::string& getTitle() const { return _title;}
+        void setTitle(const std::string& title) { _title = title;}
+
+        const std::string& getAbstract() const { return _abstract; }
+        void setAbstract( const std::string& abstract) { _abstract = abstract; }
+
+        FeatureType* getFeatureTypeByName(const std::string& name);
+
+        FeatureTypeList& getFeatureTypes() { return _featureTypes; }
+
+                
+    protected:
+        FeatureTypeList _featureTypes;
+
+        std::string _version;
+        std::string _name;
+        std::string _title;
+        std::string _abstract;
+    };
+
+    /**
+     * Reads Capabilities from a URL or file
+     */
+    class OSGEARTH_EXPORT CapabilitiesReader
+    {
+    public:
+        static Capabilities* read( const URI& uri, const osgDB::Options* options );
+        static Capabilities* read( std::istream &in );
+    private:
+        CapabilitiesReader(){}
+        CapabilitiesReader(const CapabilitiesReader &cr){}
+
+        /** dtor */
+        virtual ~CapabilitiesReader() { }
+    };
+
+    // Internal Serialization data for a WFSFeatureSource
+    class OSGEARTH_EXPORT WFSFeatureSourceOptions : public FeatureSource::Options
+    {
+    public:
+        META_LayerOptions(osgEarth, WFSFeatureSourceOptions, FeatureSource::Options);
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, typeName);
+        OE_OPTION(unsigned, maxFeatures);
+        OE_OPTION(std::string, outputFormat);
+        OE_OPTION(bool, disableTiling);
+        OE_OPTION(double, buffer);        
+        virtual Config getConfig() const;
+    private:
+        void fromConfig(const Config& conf);
+    };
+
+}} // osgEarth::WFS
+
+
+namespace osgEarth
+{
+    /**
+     * Feature Layer that accesses features from an OGC WFS endpoint
+     */
+    class OSGEARTH_EXPORT WFSFeatureSource : public FeatureSource
+    {
+    public: // serialization
+        typedef WFS::WFSFeatureSourceOptions Options;
+
+    public:
+        META_Layer(osgEarth, WFSFeatureSource, Options, FeatureSource, wfsfeatures);
+        
+        //! Base URL of the WFS service (not including any WFS parameters)
+        void setURL(const URI& value);
+        const URI& getURL() const;
+        
+        //! WFS typename parameter (see WFS spec)
+        void setTypeName(const std::string& value);
+        const std::string& getTypeName() const;
+        
+        //! Cap on the number of features that the WFS service will return on a single request
+        void setMaxFeatures(const unsigned& value);
+        const unsigned& getMaxFeatures() const;
+        
+        //! Response format to request (geojson, gml)
+        void setOutputFormat(const std::string& value);
+        const std::string& getOutputFormat() const;
+        
+        //! Explicitly disable a "TFS" tiled feature source queries
+        void setDisableTiling(const bool& value);
+        const bool& getDisableTiling() const;
+        
+        //! The number of map units to buffer bounding box requests with 
+        //! to ensure that enough data is returned.  This is useful when
+        //! rendering buffered lines using the FeatureImageLayer
+        void setBuffer(const double& value);
+        const double& getBuffer() const;
+
+    public: // Layer
+
+        virtual Status openImplementation();
+
+    protected:
+
+        virtual void init();
+
+    public: // FeatureLayer
+
+        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+        
+        virtual const FeatureSchema& getSchema() const { return _schema; }
+
+    protected:
+
+        virtual ~WFSFeatureSource() { }
+
+    private:
+        osg::ref_ptr<WFS::Capabilities> _capabilities;
+        FeatureSchema _schema;
+
+        void saveResponse(const std::string buffer, const std::string& filename);
+        bool getFeatures( const std::string& buffer, const std::string& mimeType, FeatureList& features );
+        std::string getExtensionForMimeType(const std::string& mime);
+        bool isGML( const std::string& mime ) const;
+        bool isJSON( const std::string& mime ) const;
+        std::string createURL(const Query& query) const;
+    };
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::WFSFeatureSource::Options);
+
+#endif // OSGEARTH_FEATURES_WFS_FEATURESOURCE_LAYER

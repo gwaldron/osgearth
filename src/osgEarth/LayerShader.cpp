@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 #include <osgEarth/LayerShader>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Color>
 #include <osgEarth/Layer>
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
@@ -27,6 +28,7 @@
 #define LC "[LayerShader] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //...................................................................
 
@@ -60,9 +62,11 @@ ShaderOptions::getConfig() const
     conf.remove("uniform");
     for (unsigned i = 0; i < _uniforms.size(); ++i) {
         Config c("uniform");
-        c.set("name", _uniforms[i]._name);
-        c.set("value", _uniforms[i]._value);
-        conf.add(c);
+        c.set("name", _uniforms[i]._name);  
+        if (_uniforms[i]._floatValue.isSet())
+            c.set("value", _uniforms[i]._floatValue);
+        else if (_uniforms[i]._vec3Value.isSet())
+            c.set("value", Color(_uniforms[i]._vec3Value.get()).toHTML());
     }
 
     return conf;
@@ -95,10 +99,20 @@ ShaderOptions::fromConfig(const Config& conf)
     }
 
     s = conf.children("uniform");
-    for (ConfigSet::const_iterator i = s.begin(); i != s.end(); ++i) {
+    for (ConfigSet::const_iterator i = s.begin(); i != s.end(); ++i)
+    {
         _uniforms.push_back(Uniform());
         _uniforms.back()._name = i->value("name");
-        i->get("value", _uniforms.back()._value);
+        std::string value = i->value("value");
+        if (!value.empty() && value[0] == '#') 
+        {
+            Color color(value);
+            _uniforms.back()._vec3Value->set(color.r(), color.g(), color.b());
+        }
+        else
+        {
+            i->get("value", _uniforms.back()._floatValue);
+        }
     }
 }
 
@@ -210,10 +224,18 @@ LayerShader::install(Layer* layer, TerrainResources* res)
     for (int i = 0; i < _options.uniforms().size(); ++i)
     {
         const ShaderOptions::Uniform& uniform = _options.uniforms()[i];
-        if (!uniform._name.empty() && uniform._value.isSet())
+        if (!uniform._name.empty())
         {
-            osg::Uniform* u = new osg::Uniform(uniform._name.c_str(), (float)uniform._value.get());
-            stateset->addUniform(u);
+            if (uniform._floatValue.isSet())
+            {
+                osg::Uniform* u = new osg::Uniform(uniform._name.c_str(), (float)uniform._floatValue.get());
+                stateset->addUniform(u);
+            }
+            else if (uniform._vec3Value.isSet())
+            {
+                osg::Uniform* u = new osg::Uniform(uniform._name.c_str(), uniform._vec3Value.get());
+                stateset->addUniform(u);
+            }
         }
     }
 }

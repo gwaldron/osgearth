@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
  */
 
 #include "SimpleSkyOptions"
-#include <osgEarthUtil/Sky>
+#include <osgEarth/Sky>
 #include <osgEarth/MapNode>
 #include <osgEarth/PhongLightingEffect>
 #include <osg/MatrixTransform>
@@ -79,7 +79,7 @@ namespace osgEarth { namespace SimpleSky
             double declination;
             double magnitude;
             
-            StarData() { }
+            StarData() : right_ascension(0.0), declination(0.0), magnitude(0.0) { }
             StarData( std::stringstream &ss );
         };
 

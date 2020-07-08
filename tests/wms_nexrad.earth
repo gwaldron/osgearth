@@ -8,7 +8,7 @@ Weather (RADAR and IR) overlaid on the map.
     <xi:include href="readymap_imagery.xml"/>
 
     <!-- GlobalIR Imgery from http://realearth.ssec.wisc.edu/ -->	
-    <image name="GlobalIR" driver="xyz">
+    <XYZImage name="GlobalIR">
         <url>http://realearth.ssec.wisc.edu/tiles/globalir/{z}/{x}/{y}.png</url>                
         <profile>spherical-mercator</profile>
         <cache_policy usage="no_cache"/>
@@ -24,10 +24,10 @@ Weather (RADAR and IR) overlaid on the map.
           ]]>
         </shader>
         <altitude>10000</altitude>
-    </image>
+    </XYZImage>
     
     <!-- NEXRAD 45 minute RADAR returns -->
-    <image name="nexrad45min" driver="wms">
+    <WMSImage name="nexrad45min">
         <url>http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi</url>
         <format>png</format>
         <layers>nexrad-n0r</layers>
@@ -36,11 +36,13 @@ Weather (RADAR and IR) overlaid on the map.
         <transparent>true</transparent>
         <cache_policy usage="no_cache"/>
         <altitude>20000</altitude>
-    </image>
+    </WMSImage>
     
     <!-- US State Boundaries -->
-    <feature_model name="US States">
-        <features driver="ogr" url="../data/usa.shp"/>
+    <FeatureModel name="US States">
+        <OGRFeatures name="US-Data">
+			<url>../data/usa.shp</url>
+		</OGRFeatures>
         <style type="text/css">
             states {
                stroke: #7f7f7f; 
@@ -48,5 +50,5 @@ Weather (RADAR and IR) overlaid on the map.
                render-depth-offset: true;
             }                    
         </style>  
-    </feature_model>
+    </FeatureModel>
 </map>

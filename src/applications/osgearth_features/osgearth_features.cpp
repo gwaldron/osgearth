@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,24 +24,19 @@
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+#include <osgDB/WriteFile>
 
 #include <osgEarth/MapNode>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/ModelLayer>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/GDAL>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
 
-#include <osgEarthSymbology/Style>
-#include <osgEarthFeatures/FeatureModelLayer>
-
-#include <osgEarthDrivers/gdal/GDALOptions>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <osgEarthDrivers/agglite/AGGLiteOptions>
+#include <osgEarth/Style>
+#include <osgEarth/OGRFeatureSource>
+#include <osgEarth/FeatureModelLayer>
+#include <osgEarth/FeatureImageLayer>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
-using namespace osgEarth::Drivers;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
 int usage( const std::string& app )
@@ -52,6 +47,7 @@ int usage( const std::string& app )
         << "  --clamp               : draw features using shader clamping \n"
         << "  --mem                 : load features from memory \n"
         << "  --labels              : add feature labels \n"
+        << "  --out <earthfile>     : test writing to an earth file \n"
         << "\n"
         << MapNodeHelper().usage()
         << std::endl;
@@ -64,6 +60,8 @@ int usage( const std::string& app )
 //
 int main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     if ( arguments.read("--help") )
@@ -75,25 +73,25 @@ int main(int argc, char** argv)
     bool useDraping = arguments.read("--drape");
     bool useClamping = arguments.read("--clamp");
 
+    std::string outfile;
+    arguments.read("--out", outfile);
+
     osgViewer::Viewer viewer(arguments);
 
     // Start by creating the map:
-    Map* map = new Map();
+    osg::ref_ptr<Map> map = new Map();
 
     // Start with a basemap imagery layer; we'll be using the GDAL driver
     // to load a local GeoTIFF file:
-    GDALOptions basemap;
-    basemap.url() = "../data/world.tif";
-    map->addLayer( new ImageLayer(ImageLayerOptions("basemap", basemap)));
-    
-    // Next we add a feature layer. 
-    OGRFeatureOptions featureData;
-    if ( !useMem )
-    {
-        // Configures the feature driver to load the vectors from a shapefile:
-        featureData.url() = "../data/world.shp";
-    }
-    else
+    GDALImageLayer* basemap = new GDALImageLayer();
+    basemap->setURL("../data/world.tif");
+    map->addLayer(basemap);
+
+    // Next we add a layer to provide the feature data.
+    OGRFeatureSource* features = new OGRFeatureSource();
+    features->setName("vector-data");
+
+    if (useMem)
     {
         // the --mem options tells us to just make an in-memory geometry:
         Ring* line = new Ring();
@@ -101,14 +99,13 @@ int main(int argc, char** argv)
         line->push_back( osg::Vec3d(-120, 20, 0) );
         line->push_back( osg::Vec3d(-120, 60, 0) );
         line->push_back( osg::Vec3d(-60, 60, 0) );
-        featureData.geometry() = line;
+        features->setGeometry(line);
     }
-
-    // Make a feature source layer and add it to the Map:
-    FeatureSourceLayerOptions ogrLayer;
-    ogrLayer.name() = "vector-data";
-    ogrLayer.featureSource() = featureData;
-    map->addLayer(new FeatureSourceLayer(ogrLayer));
+    else
+    {
+        features->setURL("../data/world.shp");
+    }
+    map->addLayer(features);
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
@@ -137,27 +134,28 @@ int main(int argc, char** argv)
         RenderSymbol* render = style.getOrCreate<RenderSymbol>();
         render->depthOffset()->enabled() = true;
     }
-    
+
     if (useRaster)
     {
-        AGGLiteOptions rasterOptions;
-        rasterOptions.featureOptions() = featureData;
-        rasterOptions.styles() = new StyleSheet();
-        rasterOptions.styles()->addStyle( style );
-        map->addLayer(new ImageLayer("My Features", rasterOptions) );
+        FeatureImageLayer* layer = new FeatureImageLayer();
+        layer->setFeatureSource(features);
+        StyleSheet* sheet = new StyleSheet();
+        sheet->addStyle(style);
+        layer->setStyleSheet(sheet);
+        map->addLayer(layer);
     }
 
     else //if (useGeom)
     {
-        FeatureModelLayerOptions fml;
-        fml.name() = "My Features";
-        fml.featureSourceLayer() = "vector-data";
-        fml.styles() = new StyleSheet();
-        fml.styles()->addStyle(style);
-        fml.enableLighting() = false;
+        FeatureModelLayer* layer = new FeatureModelLayer();
+        layer->setFeatureSource(features);
 
-        map->addLayer(new FeatureModelLayer(fml));
-    }   
+        StyleSheet* styleSheet = new StyleSheet();
+        styleSheet->addStyle(style);
+        layer->setStyleSheet(styleSheet);
+
+        map->addLayer(layer);
+    }
 
     if ( useLabels && !useRaster )
     {
@@ -167,31 +165,52 @@ int main(int argc, char** argv)
         Style labelStyle;
 
         TextSymbol* text = labelStyle.getOrCreateSymbol<TextSymbol>();
-        text->content() = StringExpression( "[cntry_name]" );
-        text->priority() = NumericExpression( "[pop_cntry]" );
+        text->content() = StringExpression( "[name]" );
+        text->priority() = NumericExpression( "[pop]" );
         text->size() = 16.0f;
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
         text->fill()->color() = Color::White;
         text->halo()->color() = Color::DarkGray;
 
-        // and configure a model layer:
-        FeatureModelLayerOptions fml;
-        fml.name() = "Labels";
-        fml.featureSourceLayer() = "vector-data";
-        fml.styles() = new StyleSheet();
-        fml.styles()->addStyle( labelStyle );
+        StyleSheet* sheet = new StyleSheet();
+        sheet->addStyle(labelStyle);
 
-        map->addLayer(new FeatureModelLayer(fml));
+        // and configure a model layer:
+        FeatureModelLayer* fml = new FeatureModelLayer();
+        fml->setName("Labels");
+        fml->setFeatureSource(features);
+        fml->setStyleSheet(sheet);
+        map->addLayer(fml);
+    }
+
+    LayerVector layers;
+    map->getLayers(layers);
+    for(LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    {
+        Layer* layer = i->get();
+        if (layer->getStatus().isError() &&
+            layer->getEnabled())
+        {
+            OE_WARN << layer->getName() << " : " << layer->getStatus().toString() << std::endl;
+        }
     }
 
     // That's it, the map is ready; now create a MapNode to render the Map:
-    MapNode* mapNode = new MapNode(map);
+    MapNode* mapNode = new MapNode(map.get());
 
-    viewer.setSceneData( mapNode );
-    viewer.setCameraManipulator( new EarthManipulator() );
+    if (!outfile.empty())
+    {
+        OE_NOTICE << "Writing to " << outfile << std::endl;
+        osgDB::writeNodeFile(*mapNode, outfile);
+    }
+    else
+    {
+        viewer.setSceneData( mapNode );
+        viewer.setCameraManipulator( new EarthManipulator() );
 
-    // add some stock OSG handlers:
-    MapNodeHelper().configureView(&viewer);
+        // add some stock OSG handlers:
+        MapNodeHelper().configureView(&viewer);
 
-    return viewer.run();
+        return viewer.run();
+    }
 }

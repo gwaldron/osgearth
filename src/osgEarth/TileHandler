@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,10 +26,12 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Map>
 
-#include <osgEarth/TerrainLayer>
+#include <osgEarth/TileLayer>
 
-namespace osgEarth
+
+namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
     class TileVisitor;
 
     /**
@@ -58,6 +60,6 @@ namespace osgEarth
         virtual std::string getProcessString() const;
     };    
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_TRAVERSAL_DATA_H

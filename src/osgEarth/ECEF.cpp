@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,29 +20,37 @@
 #include <osgEarth/ECEF>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 #define LC "[ECEF] "
 
-void
+bool
 ECEF::transformAndLocalize(const osg::Vec3d&       input,
                            const SpatialReference* inputSRS,
                            osg::Vec3d&             output,
                            const SpatialReference* outputSRS,
                            const osg::Matrixd&     world2local)
 {
+    if (inputSRS==NULL || outputSRS==NULL)
+        return false;
+
     osg::Vec3d ecef;
     inputSRS->transform( input, outputSRS->getGeocentricSRS(), ecef );
     output = ecef * world2local;
+    return true;
 }
 
 
-void
+bool
 ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
                            const SpatialReference*        inputSRS,
                            osg::Vec3Array*                output,
                            const SpatialReference*        outputSRS,
                            const osg::Matrixd&            world2local )
 {
+    if (inputSRS==NULL || outputSRS==NULL)
+        return false;
+
     const SpatialReference* geocentricSRS = outputSRS->getGeocentricSRS();
     output->reserve( output->size() + input.size() );
 
@@ -50,13 +58,14 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
     {
         osg::Vec3d geoc;
         inputSRS->transform( *i, geocentricSRS, geoc );
-        //inputSRS->transformToECEF( *i, ecef );
         output->push_back( geoc * world2local );
     }
+
+    return true;
 }
 
 
-void
+bool
 ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
                            const SpatialReference*        inputSRS,
                            osg::Vec3Array*                out_verts,
@@ -64,6 +73,9 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
                            const SpatialReference*        outputSRS,
                            const osg::Matrixd&            world2local )
 {
+    if (inputSRS==NULL || outputSRS==NULL)
+        return false;
+
     const SpatialReference* ecefSRS = outputSRS->getGeocentricSRS();
     out_verts->reserve( out_verts->size() + input.size() );
     
@@ -106,15 +118,19 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
         outNormal.normalize();
         out_normals->push_back( outNormal );
     }
+    return true;
 }
 
-void
+bool
 ECEF::transformAndGetRotationMatrix(const osg::Vec3d&       input,
                                     const SpatialReference* inputSRS,
                                     osg::Vec3d&             out_point,
                                     const SpatialReference* outputSRS,
                                     osg::Matrixd&           out_rotation )
 {
+    if (inputSRS==NULL || outputSRS==NULL)
+        return false;
+
     const SpatialReference* geoSRS  = inputSRS->getGeographicSRS();
     const SpatialReference* ecefSRS = outputSRS->getGeocentricSRS();
 
@@ -133,4 +149,7 @@ ECEF::transformAndGetRotationMatrix(const osg::Vec3d&       input,
 
     // then convert that to ECEF.
     geoSRS->transform(geoPoint, ecefSRS, out_point);
+
+
+    return true;
 }

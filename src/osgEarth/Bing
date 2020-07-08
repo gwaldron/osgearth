@@ -1,0 +1,158 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_BING_H
+#define OSGEARTH_BING_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/URI>
+
+/**
+ * Bing maps requires a license
+ * https://msdn.microsoft.com/en-us/library/ff428643.aspx
+ */
+namespace osgEarth
+{
+    /**
+     * Image layer connected to a Microsoft Bing Maps API endpoint
+     */
+    class OSGEARTH_EXPORT BingImageLayer : public ImageLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(std::string, apiKey);
+            OE_OPTION(std::string, imagerySet);
+            OE_OPTION(URI, imageryMetadataURL);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, BingImageLayer, Options, ImageLayer, BingImage);
+
+    public:
+        //! User's API key
+        void setAPIKey(const std::string& value);
+        const std::string& getAPIKey() const;
+
+        //! Bing imagery set to access (default is Aerial)
+        void setImagerySet(const std::string& value);
+        const std::string& getImagerySet() const;
+
+        //! Metadata API endpoint
+        void setImageryMetadataURL(const URI& value);
+        const URI& getImageryMetadataURL() const;
+
+    public: // Layer
+        
+        //! Establishes a connection to the service
+        virtual Status openImplementation();
+
+        //! Closes all resources
+        virtual Status closeImplementation();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~BingImageLayer();
+
+    private:
+        typedef LRUCache<std::string, std::string> TileURICache;
+        bool _debugDirect;
+        TileURICache* _tileURICache;
+        mutable OpenThreads::Atomic _apiCount;
+        std::string _key;
+
+        std::string getQuadKey(const TileKey&) const;
+        std::string getDirectURI(const TileKey&) const;
+    };
+
+
+    /**
+     * Elevation layer connected to a Microsoft Bing Maps API endpoint
+     */
+    class OSGEARTH_EXPORT BingElevationLayer : public ElevationLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION(std::string, apiKey);
+            OE_OPTION(URI, url);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, BingElevationLayer, Options, ElevationLayer, BingElevation);
+
+    public:
+        //! User's API key
+        void setAPIKey(const std::string& value);
+        const std::string& getAPIKey() const;
+
+        //! API endpoint
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+    public: // Layer
+
+        //! Establishes a connection to the service
+        virtual Status openImplementation();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~BingElevationLayer();
+
+    private:
+        osg::ref_ptr<const Profile> _globalGeodetic;
+        std::string _key;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::BingImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::BingElevationLayer::Options);
+
+#endif // OSGEARTH_TMS_H

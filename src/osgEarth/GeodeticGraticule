@@ -1,0 +1,193 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_GEODETIC_GRATICULE_H
+#define OSGEARTHUTIL_GEODETIC_GRATICULE_H
+
+#include <osgEarth/Common>
+#include <osgEarth/LatLongFormatter>
+#include <osgEarth/GeodeticLabelingEngine>
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/MapNode>
+#include <osgEarth/Style>
+#include <osgEarth/LabelNode>
+#include <osg/ClipPlane>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+
+    /**
+     * Graticule that shows lat/long lines and automatically places labels.
+     */
+    class OSGEARTH_EXPORT GeodeticGraticule : public VisibleLayer
+    {
+    public: // serialization        
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(Color, color);
+            OE_OPTION(Style, gridLabelStyle);
+            OE_OPTION(Style, edgeLabelStyle);
+            OE_OPTION(float, lineWidth);
+            OE_OPTION(int, gridLines);
+            OE_OPTION(std::string, resolutions);
+            OE_OPTION(bool, gridLinesVisible);
+            OE_OPTION(bool, gridLabelsVisible);
+            OE_OPTION(bool, edgeLabelsVisible);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
+    public:
+        META_Layer(osgEarth, GeodeticGraticule, Options, VisibleLayer, GeodeticGraticule);
+
+        //! Rebuild the graticule after changing options.
+        void dirty();
+
+        //! Grid line color
+        void setColor(const Color& value);
+        const Color& getColor() const;
+
+        //! Grid line width in pixels
+        void setLineWidth(const float& value);
+        const float& getLineWidth() const;
+
+        //! A target number of grid lines to view on screen at once.
+        void setNumGridLines(const int& value);
+        const int& getNumGridLines() const;
+
+        //! Get whether to show the grid lines
+        bool getGridLinesVisible() const;
+
+        //! Set whether to show the grid lines
+        void setGridLinesVisible(bool gridLinesVisible);
+
+        //! Get whether to show the grid labels
+        bool getGridLabelsVisible() const;
+
+        //! Set whether to show the grid labels
+        void setGridLabelsVisible(bool gridLabelsVisible);
+
+        //! Get whether to show the edge labels
+        bool getEdgeLabelsVisible() const;
+
+        //! Set whether to show the edge labels
+        void setEdgeLabelsVisible(bool edgeLabelsVisible);
+
+        //! Set the styling to use for grid labels
+        void setGridLabelStyle(const Style& style);
+        const Style& getGridLabelStyle() const { return options().gridLabelStyle().get(); }
+
+        //! Set ths styling to use for edge labels
+        void setEdgeLabelStyle(const Style& style);
+        const Style& getEdgeLabelStyle() const { return options().edgeLabelStyle().get(); }
+
+    public: // Layer
+
+        virtual void addedToMap(const Map* map);
+
+        virtual void removedFromMap(const Map* map);
+
+        virtual osg::Node* getNode() const;
+
+        virtual void init();
+
+    public: // VisibleLayer
+
+        virtual void setVisible(bool value);
+
+    public: // osg::Object
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+
+        virtual void releaseGLObjects(osg::State* state) const;
+
+    protected:
+
+        /** dtor */
+        virtual ~GeodeticGraticule() { }
+
+    private:
+
+        void rebuild();
+
+        void updateGridLineVisibility();
+
+        UID _uid;
+        osg::ref_ptr<const Profile> _profile;
+        osg::ref_ptr<osg::Group> _root;
+        osg::ref_ptr<const SpatialReference> _mapSRS;
+        osg::ref_ptr<osg::NodeCallback > _callback;
+        osg::ref_ptr<LatLongFormatter> _formatter;
+        float _defaultResolution;
+        osg::Vec2f _centerOffset;
+        std::vector< double > _resolutions;
+
+        struct CameraData
+        {
+            osg::ref_ptr<osg::StateSet> _stateset;
+            osg::ref_ptr<osg::Uniform> _resolutionUniform;
+            osg::ref_ptr<osg::StateSet> _labelStateset;
+            std::vector< osg::ref_ptr<LabelNode> > _labelPool;
+            float _resolution;
+            osg::Matrixd _lastViewMatrix;
+            GeoExtent _viewExtent;
+            double _lon;
+            double _lat;
+            double _metersPerPixel;
+            void releaseGLObjects(osg::State*) const;
+            ~CameraData();
+        };
+        typedef std::map<osg::Camera*, CameraData> CameraDataMap;
+        mutable CameraDataMap _cameraDataMap;
+        mutable Threading::Mutex _cameraDataMapMutex;
+
+        CameraData& getCameraData(osg::Camera*) const;
+
+        void initLabelPool(CameraData&);
+
+        std::string getText(const GeoPoint& location, bool lat);
+
+        GeodeticLabelingEngine* _labelingEngine;
+
+        GeoExtent getViewExtent(osgUtil::CullVisitor*) const;
+
+
+    public:
+
+        void updateLabels();
+        void cull(osgUtil::CullVisitor*);
+        osg::StateSet* getStateSet(osgUtil::CullVisitor* cv);
+
+    private:
+        osg::observer_ptr<MapNode> _mapNode;
+        void setMapNode(MapNode*);
+
+        struct MyGroup : public osg::Group {
+            MyGroup(GeodeticGraticule*);
+            GeodeticGraticule* _graticule;
+            void traverse(osg::NodeVisitor& nv); 
+        };
+        friend struct MyGroup;
+    };
+} }
+
+#endif // OSGEARTHUTIL_GEODETIC_GRATICULE_H

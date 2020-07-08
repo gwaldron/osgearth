@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -29,6 +29,134 @@ using namespace osgEarth;
 
 #undef LC
 #define LC "[B3DMWriter] "
+
+static void WriteBinaryGltfStream(std::ostream& gltfFile,
+                                  const std::string &content) {
+    const std::string header = "glTF";
+    const int version = 2;
+    const int padding_size = content.size() % 4;
+
+    // 12 bytes for header, JSON content length, 8 bytes for JSON chunk info, padding
+    const int length = 12 + 8 + int(content.size()) + padding_size;
+
+    gltfFile.write(header.c_str(), header.size());
+    gltfFile.write(reinterpret_cast<const char *>(&version), sizeof(version));
+    gltfFile.write(reinterpret_cast<const char *>(&length), sizeof(length));
+
+    // JSON chunk info, then JSON data
+    const int model_length = int(content.size()) + padding_size;
+    const int model_format = 0x4E4F534A;
+    gltfFile.write(reinterpret_cast<const char *>(&model_length), sizeof(model_length));
+    gltfFile.write(reinterpret_cast<const char *>(&model_format), sizeof(model_format));
+    gltfFile.write(content.c_str(), content.size());
+
+    // Chunk must be multiplies of 4, so pad with spaces
+    if (padding_size > 0) {
+        const std::string padding = std::string(padding_size, ' ');
+        gltfFile.write(padding.c_str(), padding.size());
+    }
+}
+
+class OETinyGLTF : public TinyGLTF
+{
+public:
+    bool WriteGltfSceneToBinaryStream(Model *model,
+                                      const std::string& filename,
+                                      std::ostream& stream,
+                                      bool embedImages,
+                                      bool embedBuffers);
+protected:
+    // Private tiny_gltf stuff that we need
+    WriteImageDataFunction WriteImageData = &tinygltf::WriteImageData;
+      FsCallbacks fs = {
+          &tinygltf::FileExists, &tinygltf::ExpandFilePath,
+          &tinygltf::ReadWholeFile, &tinygltf::WriteWholeFile,
+          nullptr  // Fs callback user data
+      };
+};
+
+bool OETinyGLTF::WriteGltfSceneToBinaryStream(Model *model,
+                                              const std::string& filename,
+                                              std::ostream& stream,
+                                              bool embedImages = false,
+                                              bool embedBuffers = false)
+{
+    JsonDocument output;
+    bool prettyPrint = false;
+
+    /// Serialize all properties except buffers and images.
+    SerializeGltfModel(model, output);
+
+    std::string defaultBinFilename = GetBaseFilename(filename);
+    std::string defaultBinFileExt = ".bin";
+    std::string::size_type pos = defaultBinFilename.rfind('.', defaultBinFilename.length());
+
+    if (pos != std::string::npos) {
+        defaultBinFilename = defaultBinFilename.substr(0, pos);
+    }
+    std::string baseDir = GetBaseDir(filename);
+    if (baseDir.empty()) {
+        baseDir = "./";
+    }
+
+        // BUFFERS
+    std::vector<std::string> usedUris;
+    json buffers;
+    JsonReserveArray(buffers, model->buffers.size());
+    for (unsigned int i = 0; i < model->buffers.size(); ++i) {
+        json buffer;
+        if (embedBuffers) {
+            SerializeGltfBuffer(model->buffers[i], buffer);
+        }
+        else {
+            std::string binSavePath;
+            std::string binUri;
+            if (!model->buffers[i].uri.empty() && !IsDataURI(model->buffers[i].uri)) {
+                binUri = model->buffers[i].uri;
+            }
+            else {
+                binUri = defaultBinFilename + defaultBinFileExt;
+                bool inUse = true;
+                int numUsed = 0;
+                while (inUse) {
+                    inUse = false;
+                    for (const std::string& usedName : usedUris) {
+                        if (binUri.compare(usedName) != 0) continue;
+                        inUse = true;
+                        binUri = defaultBinFilename + std::to_string(numUsed++) + defaultBinFileExt;
+                        break;
+                    }
+                }
+            }
+            usedUris.push_back(binUri);
+            binSavePath = JoinPath(baseDir, binUri);
+            if (!SerializeGltfBuffer(model->buffers[i], buffer, binSavePath,
+                binUri)) {
+                return false;
+            }
+        }
+        JsonPushBack(buffers, std::move(buffer));
+    }
+    JsonAddMember(output, "buffers", std::move(buffers));
+
+    // IMAGES
+    if (model->images.size()) {
+        json images;
+        JsonReserveArray(images, model->images.size());
+        for (unsigned int i = 0; i < model->images.size(); ++i) {
+            json image;
+
+            UpdateImageObject(model->images[i], baseDir, int(i), embedImages,
+                              &this->WriteImageData, reinterpret_cast<void *>(&fs));
+            SerializeGltfImage(model->images[i], image);
+            JsonPushBack(images, std::move(image));
+        }
+        JsonAddMember(output, "images", std::move(images));
+    }
+    WriteBinaryGltfStream(stream, JsonToString(output, prettyPrint ? 2 : -1));
+    return true;
+}
+
 
 class B3DMWriter
 {
@@ -62,7 +190,7 @@ public:
         tinygltf::Model model;
         gltfWriter.convertOSGtoGLTF(node, model);
 
-        tinygltf::TinyGLTF gltfOut;
+        OETinyGLTF gltfOut;
         std::ostringstream gltfBuf;
         gltfOut.WriteGltfSceneToBinaryStream(&model, location, gltfBuf, true, true);
         std::string gltfData = gltfBuf.str();

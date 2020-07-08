@@ -1,0 +1,142 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_ANNOTATION_RECTANGLE_NODE_H
+#define OSGEARTH_ANNOTATION_RECTANGLE_NODE_H 1
+
+#include <osgEarth/GeoPositionNode>
+#include <osgEarth/Style>
+#include <osgEarth/MapNode>
+#include <osgEarth/Units>
+
+namespace osgEarth
+{
+    /**
+     * Rectangle annotation.
+     */
+    class OSGEARTH_EXPORT RectangleNode : public GeoPositionNode
+    {
+    public:
+        enum Corner
+        {
+            CORNER_LOWER_LEFT,
+            CORNER_LOWER_RIGHT,
+            CORNER_UPPER_LEFT,
+            CORNER_UPPER_RIGHT
+        };
+
+        META_AnnotationNode(osgEarth, RectangleNode );
+
+        RectangleNode();
+
+        /**
+         * Constructs a new rectangle annotation.
+         *
+         * @param position    Location of the annotation, in map coordinates
+         * @param width       Rectangle width
+         * @param height      Rectangle height
+         * @param style       Style defining how the annotation will look
+         * @param draped      Whether to "drape" the annotation down on to the terrain         
+         */
+        RectangleNode(
+            const GeoPoint&   position,
+            const Linear&     width,
+            const Linear&     height,
+            const Style&      style );
+
+        /**
+         * Gets the width of this rectangle
+         */
+        const Linear& getWidth() const;
+
+        /**
+         * Gets the height of this rectangle
+         */
+        const Linear& getHeight() const;
+
+        /**
+         * Sets the width of this rectangle
+         * @param width The width of the rectangle
+         */
+        void setWidth( const Linear& width );
+
+        /**
+         * Sets the height of this rectangle
+         * @param height   The height of the rectangle
+         */
+        void setHeight( const Linear& height );
+
+        /**
+         * Sets the size of the rectangle
+         * @param width         The width of the rectangle
+         * @param height        The height of the rectangle
+         */
+        void setSize( const Linear& width, const Linear& height);
+
+        /**
+         * Gets the style
+         */
+        const Style& getStyle() const;
+
+        /**
+         * Sets the style
+         */
+        void setStyle( const Style& style );        
+
+        GeoPoint getUpperLeft() const;
+        void setUpperLeft( const GeoPoint& upperLeft );
+
+        GeoPoint getUpperRight() const;
+        void setUpperRight( const GeoPoint& upperRight );
+
+        GeoPoint getLowerLeft() const;
+        void setLowerLeft( const GeoPoint& lowerLeft );
+
+        GeoPoint getLowerRight() const;
+        void setLowerRight( const GeoPoint& lowerRight );
+
+        GeoPoint getCorner( Corner corner ) const;
+        void setCorner( Corner corner, const GeoPoint& location);
+
+    public:
+
+        RectangleNode(const Config& conf, const osgDB::Options* options);
+        virtual Config getConfig() const;
+
+    protected:        
+
+        virtual ~RectangleNode() { }
+
+    private:
+        RectangleNode(const RectangleNode& rhs, const osg::CopyOp& op) { }
+
+        void construct();
+        void compile();
+
+        Style  _style;
+        Linear _width;
+        Linear _height;
+    };
+
+}
+
+#endif // OSGEARTH_ANNOTATION_RECTANGLE_NODE_H

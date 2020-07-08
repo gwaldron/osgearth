@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Template that helps with the registration of plugins.
@@ -78,6 +78,6 @@ namespace osgEarth
         }
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_PLUGIN_LOADER_H

@@ -1,0 +1,461 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_WMS_H
+#define OSGEARTH_WMS_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/URI>
+#include <osgEarth/TimeControl>
+#include <osg/ImageSequence>
+
+namespace osgEarth {
+    class WMSImageLayer;
+    namespace Util {
+        class XmlElement;
+    }
+}
+
+/**
+ * WMS (OGC Web Map Service)
+ * https://www.opengeospatial.org/standards/wms
+ */
+
+//! WMS namespace contains WMS support classes used to the Layers
+namespace osgEarth { namespace WMS
+{
+    class WMSImageLayerOptions;
+
+    /**
+     * WMS style definition 
+     */
+    class OSGEARTH_EXPORT Style : public osg::Referenced
+    {
+    public:
+        //! Constructs a new style
+        Style();
+        Style(const std::string& name, const std::string& title);
+
+        //! DTOR
+        virtual ~Style() { }
+
+        /**
+        *Gets the name of the style
+        */
+	    const std::string& getName() const {return _name;}
+
+        /**
+        *Sets the name of the style
+        */
+        void setName(const std::string &name) {_name = name;}
+
+        /**
+        *Gets the title of the style
+        */
+	    const std::string& getTitle() const {return _title;}
+
+        /**
+        *Sets the title of the style
+        */
+        void setTitle(const std::string &title) {_title = title;}
+        
+    protected:
+        std::string _name;
+        std::string _title;
+    };
+
+    /**
+     * WMS server layer definition (unrelated to an osgEarth layer)
+     */
+    class OSGEARTH_EXPORT Layer : public osg::Referenced
+    {
+    public:
+        Layer();
+
+        /** dtor */
+        virtual ~Layer() { }
+
+        /**
+        *Gets the name of the layer
+        */
+        const std::string& getName() const {return _name;}
+
+        /**
+        *Sets the name of the layer
+        */
+        void setName(const std::string &name) {_name = name;}
+
+        /**
+        *Gets the title of the layer
+        */
+        const std::string& getTitle() const {return _title;}
+
+        /**
+        *Sets the title of the layer
+        */
+        void setTitle(const std::string &title) {_title = title;}
+
+        /**
+        *Gets the abstract of the layer
+        */
+        const std::string& getAbstract() const {return _abstract;}
+
+        /**
+        *Sets the abstract of the layer
+        */
+        void setAbstract(const std::string &abstract) {_abstract = abstract;}
+
+        /**
+        *Gets the lat lon extents of the layer
+        */
+        void getLatLonExtents(double &minLon, double &minLat, double &maxLon, double &maxLat) const;
+
+        /**
+        *Sets the lat lon extents of the layer
+        */
+        void setLatLonExtents(double minLon, double minLat, double maxLon, double maxLat);
+
+        /**
+        *Gets the extents of the layer
+        */
+        void getExtents(double &minX, double &minY, double &maxX, double &maxY) const;
+
+        /**
+        *Sets the extents of the layer
+        */
+        void setExtents(double minX, double minY, double maxX, double maxY);
+
+
+        /**A list of Styles*/
+        typedef std::vector<Style> StyleList;
+
+        /**
+        *Gets this Layer's list of defined Styles
+        */
+        StyleList& getStyles() {return _styles;}
+
+        /**A list of spatial references*/
+        typedef std::vector<std::string> SRSList;
+
+        /**
+        *Gets this Layer's list of spatial references
+        */
+        SRSList& getSpatialReferences() {return _spatialReferences;}
+
+        /**A list of Layers*/
+        typedef std::vector< osg::ref_ptr<Layer> > LayerList;
+
+        /**
+        *Gets this Layer's list of child Layers
+        */
+        LayerList& getLayers() {return _layers;}
+
+        /**
+        *Gets this Layer's parent layer
+        */
+        Layer* getParentLayer() const {return _parentLayer;}
+
+        /**
+        *Sets this Layer's parent layer
+        */
+        void setParentLayer( Layer* layer ) {_parentLayer = layer;}
+
+        /**
+        *Finds the child Layer with the given name.
+        *@returns
+        *       The Layer with the given name or NULL if not found.
+        */
+        Layer* getLayerByName(const std::string &name) const;
+
+    protected:
+        std::string _name;
+        std::string _title;
+        std::string _abstract;
+        double _minLon, _minLat, _maxLon, _maxLat;
+        double _minX, _minY, _maxX, _maxY;
+        StyleList _styles;
+        SRSList _spatialReferences;
+
+        LayerList _layers;
+        Layer* _parentLayer;
+    };
+
+    /**
+     * WMS Capabilities exposes the available services of a WMS service
+     */
+    class OSGEARTH_EXPORT Capabilities : public osg::Referenced
+    {
+    public:
+        Capabilities();
+
+        /** dtor */
+        virtual ~Capabilities() { }
+
+        /**
+        *Gets the WMS capabilities version
+        */
+        const std::string& getVersion() const {return _version;}
+
+        /**
+        *Sets the WMS capabilities version
+        */
+        void setVersion(const std::string& version) {_version = version;}
+
+        /**A list of supported formats*/
+        typedef std::vector<std::string> FormatList;
+
+        /**
+        *Gets the list of supported formats
+        */
+        FormatList& getFormats() {return _formats;}
+
+        /**
+        *Gets the Layer's for the Capabilities.
+        */
+        Layer::LayerList& getLayers() {return _layers;}
+
+        /**
+        *Suggests an extension to use for WMS layers defined for the service.
+        *This function will analyze the list of formats contained in the Capabilities request
+        *and recommend the first format that has an OpenSceneGraph ReaderWriter that can support
+        *it's extension.
+        *@returns
+        *       The suggested extension.
+        */
+        std::string suggestExtension() const;
+
+        /**
+        *Finds the child Layer with the given name.
+        *@returns
+        *       The Layer with the given name or NULL if not found.
+        */
+        Layer* getLayerByName(const std::string &name) const;
+        
+        //! Finds the child Layer with the given name from a list of layers
+        Layer* getLayerByName(const std::string& name, const WMS::Layer::LayerList& layers) const;
+
+    protected:
+        FormatList _formats;
+        Layer::LayerList _layers;
+        std::string _version;
+    };
+
+    /**
+     * Reads WMS Capabilities from a URL or file
+     */
+    class OSGEARTH_EXPORT CapabilitiesReader
+    {
+    public:
+        //! Reads WMS caps from a URI. The URI must be complete, to include
+        //! the WMS query string (e.g., ?SERVICE=WMS&REQUEST=GetCapabilities etc.)
+        //! @param location URI from which to read
+        //! @param options I/O options (or NULL)
+        static Capabilities* read( const URI& location, const osgDB::Options *options );
+
+        //! Reads WMS caps from a stream.
+        static Capabilities* read( std::istream &in );
+
+    private:
+        CapabilitiesReader(){}
+        CapabilitiesReader(const CapabilitiesReader &cr){}
+        
+        static void readLayers(XmlElement* e, Layer* parentLayer, Layer::LayerList& layers);
+    };
+
+    /**
+     * Driver for direct communicating with a WMS service.
+     * It is rarely necessary to use this class directly. Instead, use a
+     * WMSImageLayer.
+     */
+    class Driver : public osg::Referenced
+    {
+    public:
+        //! Construct the WMS driver
+	    Driver(
+            const WMSImageLayerOptions& myOptions,
+            SequenceControl* sequence,
+            const osgDB::Options* readOptions);
+
+        //! Connect to the WMS service, query capabilities, and prepare the driver
+        Status open(
+            osg::ref_ptr<const Profile>& profile,
+            DataExtentList& out_dataExtents);
+        
+        //! Create and return an image for the tile key
+        osg::Image* createImage( const TileKey& key, ProgressCallback* progress ) const;
+
+        //! Whether the data is sequenced
+        bool isSequenced() const;
+
+        //! Access the sequence frames
+        const std::vector<SequenceFrameInfo>& getSequenceFrameInfo() const;
+
+        //! Calculate the frame index based on the current time
+        int getCurrentSequenceFrameIndex(const osg::FrameStamp* fs, double secondsPerFrame) const;
+        
+    protected:
+        osg::Image* fetchTileImage(
+            const TileKey&     key, 
+            const std::string& extraAttrs,
+            ProgressCallback*  progress, 
+            ReadResult&        out_response ) const;
+        
+        osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress ) const;
+        
+        std::string createURI( const TileKey& key ) const;
+        
+        const WMSImageLayerOptions* _options;
+        const WMSImageLayerOptions& options() const;
+
+        SequenceControl*                   _sequence;
+        std::string                        _formatToUse;
+        std::string                        _srsToUse;
+        osg::ref_ptr<const Profile>        _profile;
+        std::string                        _prototype;
+        std::vector<std::string>           _timesVec;
+        osg::ref_ptr<const osgDB::Options> _readOptions;
+        bool                               _isPlaying;
+        std::vector<SequenceFrameInfo>     _seqFrameInfoVec;
+    };
+
+    /**
+     * Serialization options for a WMS image layer.
+     */
+    class OSGEARTH_EXPORT WMSImageLayerOptions : public ImageLayer::Options
+    {
+    public:
+        META_LayerOptions(osgEarth, WMSImageLayerOptions, ImageLayer::Options);
+        OE_OPTION(URI, url);
+        OE_OPTION(URI, capabilitiesUrl);
+        OE_OPTION(std::string, layers);
+        OE_OPTION(std::string, style);
+        OE_OPTION(std::string, format);
+        OE_OPTION(std::string, wmsFormat);
+        OE_OPTION(std::string, wmsVersion);
+        OE_OPTION(std::string, srs);
+        OE_OPTION(std::string, crs);
+        OE_OPTION(bool, transparent);
+        OE_OPTION(std::string, times);
+        OE_OPTION(double, secondsPerFrame);
+        
+        static Config getMetadata();
+        virtual Config getConfig() const;
+
+    private:
+        void fromConfig( const Config& conf );
+    };
+
+} }  // namespace osgEarth::WMS
+
+
+namespace osgEarth
+{
+    /**
+     * Image layer connected to a WMS service
+     * Implements SequenceControl for *experimental* WMS-T support
+     */
+    class OSGEARTH_EXPORT WMSImageLayer : public ImageLayer, public SequenceControl
+    {
+    public:
+        typedef WMS::WMSImageLayerOptions Options;
+
+    public:
+        META_Layer(osgEarth, WMSImageLayer, Options, ImageLayer, WMSImage);
+
+        //! Base URL for service requests
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Custom capabilibies URL (optional)
+        void setCapabilitiesURL(const URI& value);
+        const URI& getCapabilitiesURL() const;
+
+        //! Whitespace-separated list of layer names
+        void setLayers(const std::string& value);
+        const std::string& getLayers() const;
+
+        //! Name of WMS style to request be applied to the data
+        void setStyle(const std::string& value);
+        const std::string& getStyle() const;
+
+        //! Data format to request (e.g., mime type)
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+        //! Spatial reference to request
+        void setSRS(const std::string& value);
+        const std::string& getSRS() const;
+
+        //! CRS to request
+        void setCRS(const std::string& value);
+        const std::string& getCRS() const;
+
+        //! Whether to request a transparent background
+        void setTransparent(const bool& value);
+        const bool& getTransparent() const;
+
+        //! Comma-separated list of timestamps for experimental WMS-T support
+        void setTimes(const std::string& value);
+        const std::string& getTimes() const;
+
+        //! Duration of each WMS-T frame in seconds
+        void setSecondsPerFrame(const double& value);
+        const double& getSecondsPerFrame() const;
+        
+
+    public: // Layer
+
+        //! Called by constructors
+        virtual void init();
+        
+        //! Establishes a connection to the WMS service
+        virtual Status openImplementation();
+
+        //! Gets a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+        //! Sequencing API (temporary - might go away)
+        virtual SequenceControl* getSequenceControl() { return this; }
+
+    public: // SequenceControl
+
+        bool supportsSequenceControl() const;
+        void playSequence();
+        void pauseSequence();
+        void seekToSequenceFrame(unsigned frame);
+        bool isSequencePlaying() const;
+        const std::vector<SequenceFrameInfo>& getSequenceFrameInfo() const;
+        int getCurrentSequenceFrameIndex( const osg::FrameStamp* fs ) const;
+
+    protected:
+
+        //! Destructor
+        virtual ~WMSImageLayer() { }
+
+    private:
+        osg::ref_ptr<osg::Referenced> _driver;
+        bool _isPlaying;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::WMSImageLayer::Options);
+
+#endif // OSGEARTH_WMS_H

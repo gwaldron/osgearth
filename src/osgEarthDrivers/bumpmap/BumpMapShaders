@@ -27,7 +27,7 @@
 
 namespace osgEarth { namespace BumpMap
 {
-    struct Shaders : public osgEarth::ShaderPackage
+    struct Shaders : public osgEarth::Util::ShaderPackage
 	{
         Shaders();
         std::string VertexView;

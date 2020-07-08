@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/VerticalDatum>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/GeoData>
 
 #include <osgDB/ReadFile>
@@ -34,7 +34,7 @@ namespace
 {
     typedef std::map<std::string, osg::ref_ptr<VerticalDatum> > VDatumCache;
     VDatumCache      _vdatumCache;
-    Threading::Mutex _vdataCacheMutex;
+    Threading::Mutex _vdataCacheMutex("VDatumCache(OE)");
 } 
 
 VerticalDatum*
@@ -53,7 +53,7 @@ VerticalDatum::get( const std::string& initString )
 
     if ( !result )
     {
-        OE_INFO << LC << "Initializing vertical datum: " << initString << std::endl;
+        OE_DEBUG << LC << "Initializing vertical datum: " << initString << std::endl;
         result = VerticalDatumFactory::create( initString );
         if ( result )
             _vdatumCache[s] = result;
@@ -201,8 +201,6 @@ VerticalDatum::isEquivalentTo( const VerticalDatum* rhs ) const
     
     if ( _geoid.valid() && !_geoid->isEquivalentTo( *rhs->_geoid.get() ) )
         return false;
-
-    //TODO - add comparisons as necessary
 
     return true;
 }

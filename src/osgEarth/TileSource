@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,7 +31,7 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/MemCache>
 #include <osgEarth/Status>
 #include <osgEarth/Containers>
@@ -41,15 +41,16 @@
 #include <osg/Image>
 #include <osg/Shape>
 #include <osgDB/Options>
-#include <osgDB/ReadFile>
 #include <string>
-
 
 namespace osgEarth
 {
     class ProgressCallback;
     class Map;
+}
 
+namespace osgEarth { namespace Contrib
+{
     /**
      * Configuration options for a tile source driver.
      */
@@ -104,10 +105,11 @@ namespace osgEarth
         optional<bool>           _coverage;
         optional<std::string>    _osgOptionString;
     };
-}
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TileSourceOptions);
+} }
 
-namespace osgEarth
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::TileSourceOptions);
+
+namespace osgEarth { namespace Contrib
 {
     /**
      * A collection of tiles that should be considered blacklisted
@@ -397,9 +399,7 @@ namespace osgEarth
         TileSourceOptions _options;
 
         friend class Map;
-        friend class MapEngine;
         friend class TileSourceFactory;
-        friend class CompositeTileSource;
 
         osg::ref_ptr< TileBlacklist > _blacklist;
         std::string _blacklistFilename;
@@ -418,9 +418,6 @@ namespace osgEarth
 
         mutable Threading::Mutex _mutex;
     };
-
-
-    typedef std::vector< osg::ref_ptr<TileSource> > TileSourceVector;
 
     //--------------------------------------------------------------------
 
@@ -448,6 +445,6 @@ namespace osgEarth
          */
         static TileSource* create(const TileSourceOptions& options);
     };
-}
+} }
 
 #endif // OSGEARTH_TILE_SOURCE_H

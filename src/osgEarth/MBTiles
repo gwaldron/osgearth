@@ -1,0 +1,231 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MBTILES_H
+#define OSGEARTH_MBTILES_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/URI>
+
+/**
+ * MBTiles - MapBox tile storage specification using SQLite3
+ * https://github.com/mapbox/mbtiles-spec
+ */
+
+//! Namespace for internal driver classes
+namespace osgEarth { namespace MBTiles
+{
+    /**
+     * MBTiles serialization data
+     */
+    class OSGEARTH_EXPORT Options
+    {
+    public:
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, format);
+        OE_OPTION(bool, compress);
+        void readFrom(const Config&);
+        void writeTo(Config&) const;
+    };
+
+    /**
+     * Underlying driver for reading/writing an MBTiles database
+     */
+    class OSGEARTH_EXPORT Driver
+    {
+    public:
+        Driver();
+
+        Status open(
+            const std::string& name,
+            const Options& options,
+            bool isWritingRequested,
+            const optional<std::string>& format,
+            osg::ref_ptr<const Profile>& profile,
+            DataExtentList& dataExtents,
+            const osgDB::Options* readOptions);
+
+        ReadResult read(
+            const TileKey& key,
+            ProgressCallback* progress,
+            const osgDB::Options* readOptions) const;
+
+        Status write(
+            const TileKey& key,
+            const osg::Image* image,
+            ProgressCallback* progress);
+
+        void setDataExtents(const DataExtentList&);
+
+    private:
+        void* _database;
+        mutable unsigned _minLevel;
+        mutable unsigned _maxLevel;
+        osg::ref_ptr< osg::Image> _emptyImage;
+        osg::ref_ptr<osgDB::ReaderWriter> _rw;
+        osg::ref_ptr<osgDB::Options> _dbOptions;
+        osg::ref_ptr<osgDB::BaseCompressor> _compressor;
+        std::string _tileFormat;
+        bool _forceRGB;
+        std::string _name;
+
+        // because no one knows if/when sqlite3 is threadsafe.
+        mutable Threading::Mutex _mutex;
+
+        bool getMetaData(const std::string& name, std::string& value);
+        bool putMetaData(const std::string& name, const std::string& value);
+        bool createTables();
+        void computeLevels();
+
+        int readMaxLevel();
+    };
+} }
+
+//........................................................................
+
+namespace osgEarth
+{
+    /**
+     * Image layer connected to a TMS (Tile Map Service) facility
+     */
+    class OSGEARTH_EXPORT MBTilesImageLayer : public ImageLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options, public MBTiles::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config&);
+        };
+
+    public:
+        META_Layer(osgEarth, MBTilesImageLayer, Options, ImageLayer, MBTilesImage);
+
+    public:
+        //! Base URL of TileCache endpoint
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Data format to request from the service
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+        //! Whether to compress the data. This isn't necessary for formats that
+        //! are already compressed, like JPEG
+        void setCompress(const bool& value);
+        const bool& getCompress() const;
+
+    public: // Layer
+
+        //! Establishes a connection to the database
+        virtual Status openImplementation();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+        //! Writes a raster image for the given key (if the layer is open for writing)
+        virtual Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const;
+
+        //! Assigns data extents to this layer (if open for writing).
+        virtual void setDataExtents(const DataExtentList&);
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+        virtual bool isWritingSupported() const { return true; }
+
+    protected:
+
+        //! Destructor
+        virtual ~MBTilesImageLayer() { }
+
+    private:
+        mutable MBTiles::Driver _driver;
+    };
+
+    /**
+     * Elevation layer connected to a TMS (Tile Map Service) facility
+     */
+    class OSGEARTH_EXPORT MBTilesElevationLayer : public ElevationLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options, public MBTiles::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config&);
+        };
+
+    public:
+        META_Layer(osgEarth, MBTilesElevationLayer, Options, ElevationLayer, MBTilesElevation);
+
+        //! Base URL of TileCache endpoint
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Data format to request from the service
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+        //! Whether to compress the data. This isn't necessary for formats that
+        //! are already compressed, like JPEG
+        void setCompress(const bool& value);
+        const bool& getCompress() const;
+
+    public: // Layer
+
+        //! Establishes a connection to the TMS repository
+        virtual Status openImplementation();
+
+        virtual bool isWritingSupported() const { return true; }
+
+        //! Creates a heightfield for the given tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+        //! Writes a heightfield image for the given key (if the layer is open for writing)
+        virtual Status writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const;
+
+        //! Assigns data extents to this layer (if open for writing).
+        virtual void setDataExtents(const DataExtentList&);
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~MBTilesElevationLayer() { }
+
+    private:
+        mutable MBTiles::Driver _driver;
+    };
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MBTilesImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MBTilesElevationLayer::Options);
+
+#endif // OSGEARTH_MBTILES_H

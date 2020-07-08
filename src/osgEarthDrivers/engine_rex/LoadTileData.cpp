@@ -20,9 +20,10 @@
 #include "SurfaceNode"
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Terrain>
+#include <osgEarth/Metrics>
 #include <osg/NodeVisitor>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[LoadTileData] "
@@ -38,108 +39,152 @@ _enableCancel(true)
     _engine = context->getEngine();
 }
 
+LoadTileData::LoadTileData(const CreateTileManifest& manifest, TileNode* tilenode, EngineContext* context) :
+    _manifest(manifest),
+    _tilenode(tilenode),
+    _context(context),
+    _enableCancel(true)
+{
+    this->setTileKey(tilenode->getKey());
+    _map = context->getMap();
+    _engine = context->getEngine();
+}
+
 // invoke runs in the background pager thread.
-void
-LoadTileData::invoke(ProgressCallback* progress)
+bool
+LoadTileData::run(ProgressCallback* progress)
 {
     osg::ref_ptr<TileNode> tilenode;
     if (!_tilenode.lock(tilenode))
-        return;
+        return false;
 
     osg::ref_ptr<TerrainEngineNode> engine;
     if (!_engine.lock(engine))
-        return;
+        return false;
 
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
-        return;
+        return false;
+
+    // if the operation was canceled, set the request to abandoned
+    // so it can potentially retry later.
+    if (progress && progress->isCanceled())
+    {
+        _dataModel = 0L;
+        //OE_WARN << _key.str() << " .. canceled before createTileModel" << std::endl;
+        setDelay(progress->getRetryDelay());
+        return false;
+    }
 
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
         map.get(),
         tilenode->getKey(),
-        _filter,
+        _manifest,
         _enableCancel? progress : 0L);
 
-    // if the operation was canceled, set the request to idle and delete the tile model.
+    // if the operation was canceled, set the request to abandoned
+    // so it can potentially retry later.
     if (progress && progress->isCanceled())
     {
         _dataModel = 0L;
-        setState(Request::IDLE);
+        //OE_WARN << _key.str() << " .. canceled after createTileModel" << std::endl;
+        setDelay(progress->getRetryDelay());
+        return false;
     }
+
+    // In the terrain engine, we have to keep our elevation rasters in 
+    // memory since we use them to build intersection graphs.
+    if (_dataModel.valid() && _dataModel->getElevationTexture())
+    {
+        _dataModel->getElevationTexture()->setUnRefImageDataAfterApply(false);
+    }
+
+    return _dataModel.valid();
 }
 
 
 // apply() runs in the update traversal and can safely alter the scene graph
-void
-LoadTileData::apply(const osg::FrameStamp* stamp)
+bool
+LoadTileData::merge()
 {
+    // context went out of scope - bail
     osg::ref_ptr<EngineContext> context;
     if (!_context.lock(context))
-        return;
+        return true;
 
+    // map went out of scope - bail
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
-        return;
+        return true;
 
-    // ensure we got an actual datamodel:
-    if (_dataModel.valid())
+    // tilenode went out of scope - bail
+    osg::ref_ptr<TileNode> tilenode;
+    if (!_tilenode.lock(tilenode))
+        return true;
+
+    // no data model at all - done
+    // GW: how does this happen? shouldn't happen.
+    if (!_dataModel.valid())
     {
-        // ensure it's in sync with the map revision (not out of date):
-        if (map.valid() && _dataModel->getRevision() == map->getDataModelRevision())
-        {
-            // ensure the tile node hasn't expired:
-            osg::ref_ptr<TileNode> tilenode;
-            if ( _tilenode.lock(tilenode) )
-            {
-                const RenderBindings& bindings = context->getRenderBindings();
-
-                // Merge the new data into the tile.
-                tilenode->merge(_dataModel.get(), bindings);
-
-                // Mark as complete. TODO: per-data requests will do something different.
-                tilenode->setDirty( false );
-
-                OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
-            }
-            else
-            {
-                OE_DEBUG << LC << "LoadTileData failed; TileNode disappeared\n";
-            }
-        }
-        else
-        {
-            OE_INFO << LC << "apply " << _dataModel->getKey().str() << " ignored b/c it is out of date\n";
-        }
-
-        // Delete the model immediately
-        _dataModel = 0L;
+        OE_WARN << _key.str() << " bailing out of merge b/c data model is NULL" << std::endl;
+        return false;
     }
+
+    OE_PROFILING_ZONE;
+
+    // Check the map data revision and scan the manifest and see if any
+    // revisions don't match the revisions in the original manifest.
+    // If there are mismatches, that means the map has changed since we
+    // submitted this request, and the results are now invalid.
+    if (_dataModel->getRevision() != map->getDataModelRevision() ||
+        _manifest.inSyncWith(map.get()) == false)
+    {
+        // wipe the data model, update the revisions, and try again.
+        _manifest.updateRevisions(map.get());
+        _dataModel = 0L;
+        OE_DEBUG << LC << "Request for tile " << _key.str() << " out of date and will be requeued" << std::endl;
+        return false;
+    }
+
+    // Merge the new data into the tile.
+    tilenode->merge(_dataModel.get(), this);
+
+    OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
+
+    // Delete the model immediately
+    _dataModel = 0L;
+    return true;
 }
 
 namespace
 {
     // Fake attribute that compiles everything in the TerrainTileModel
     // when the ICO is active.
-    struct ModelCompilingAttribute : public osg::Texture2D
+    struct TileNodeTextureICO : public osg::Texture2D
     {
-        osg::observer_ptr<TerrainTileModel> _dataModel;
+        osg::observer_ptr<Texture> _tex;
+
+        TileNodeTextureICO(osg::Texture* tex) : _tex(tex) { }
         
         // the ICO calls apply() directly instead of compileGLObjects
         void apply(osg::State& state) const
         {
-            osg::ref_ptr<TerrainTileModel> dataModel;
-            if (_dataModel.lock(dataModel))
-                dataModel->compileGLObjects(state);
+            osg::ref_ptr<Texture> tex;
+            if (_tex.lock(tex))
+            {
+                OE_PROFILING_ZONE;
+                OE_PROFILING_ZONE_TEXT(_tex->getName());
+                _tex->compileGLObjects(state);
+            }
         }
 
         // no need to override release or resize since this is a temporary object
         // that exists only to service the ICO.
-
-        META_StateAttribute(osgEarth, ModelCompilingAttribute, osg::StateAttribute::TEXTURE);
+        META_StateAttribute(osgEarth, TileNodeTextureICO, osg::StateAttribute::TEXTURE);
         int compare(const StateAttribute& sa) const { return 0; }
-        ModelCompilingAttribute() { }
-        ModelCompilingAttribute(const ModelCompilingAttribute& rhs, const osg::CopyOp& copy) { }
+        TileNodeTextureICO() { }
+        TileNodeTextureICO(const TileNodeTextureICO& rhs, const osg::CopyOp& copy) { }
     };
 }
 
@@ -148,10 +193,6 @@ LoadTileData::createStateSet() const
 {
     osg::ref_ptr<osg::StateSet> out;
 
-    osg::ref_ptr<EngineContext> context;
-    if (!_context.lock(context))
-        return NULL;
-
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
         return NULL;
@@ -159,12 +200,14 @@ LoadTileData::createStateSet() const
     if (_dataModel.valid() && map.valid() &&
         _dataModel->getRevision() == map->getDataModelRevision())
     {
-        // This stateset contains a "fake" attribute that the ICO will
-        // try to GL-compile, thereby GL-compiling everything in the TerrainTileModel.
+        std::vector<osg::Texture*> textures;
+        _dataModel->getDataToCompile(textures);
+
+        // a "fake" stateset for the ICO to compile and then discard.
         out = new osg::StateSet();
-        ModelCompilingAttribute* mca = new ModelCompilingAttribute();
-        mca->_dataModel = _dataModel.get();
-        out->setTextureAttribute(0, mca, 1);
+        unsigned unit = 0;
+        for(auto& tex : textures)
+            out->setTextureAttribute(unit++, new TileNodeTextureICO(tex));
     }
 
     return out.release();

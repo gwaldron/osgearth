@@ -28,8 +28,11 @@
 #include <vector>
 #include <map>
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+
     /**
      * Defines the usage information for a single texture sampler.
      */
@@ -42,7 +45,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             COLOR_PARENT  = 1,
             ELEVATION     = 2,
             NORMAL        = 3,
-            COVERAGE      = 4,
+            LANDCOVER     = 4,
             SHARED        = 5   // non-core shared layers start at this index
         };
 
@@ -69,6 +72,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::string& matrixName() { return _matrixName; }
         const std::string& matrixName() const { return _matrixName; }
 
+        //! Default image to use at the top level when no data it available
+        osg::Texture* getDefaultTexture() const { return _defaultImage.get(); }
+        void setDefaultTexture(osg::Texture* value) { _defaultImage = value; }
+
     public:
         /** True if this binding is bound to a teture image unit and therefore active. */
         bool isActive() const { return _unit >= 0; }
@@ -79,6 +86,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         int             _unit;
         std::string     _samplerName;
         std::string     _matrixName;
+        osg::ref_ptr<osg::Texture> _defaultImage;
     };
 
     /**
@@ -89,6 +97,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      */
     typedef AutoArray<SamplerBinding> RenderBindings;
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_DRIVERS_REX_RENDER_BINDINGS_H

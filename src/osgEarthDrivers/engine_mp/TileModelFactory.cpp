@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,7 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TileModelFactory"
-#include <osgEarth/MapFrame>
+#include "MapFrame"
 #include <osgEarth/MapInfo>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HeightFieldUtils>
@@ -233,8 +233,9 @@ TileModelFactory::buildElevation(const TileKey&    key,
 {     
     const MapInfo& mapInfo = frame.getMapInfo();
 
-    const osgEarth::ElevationInterpolation& interp =
-        frame.getMapOptions().elevationInterpolation().get();
+    osg::ref_ptr<const Map> map = frame.lockMap();
+    osgEarth::RasterInterpolation interp = map.valid() ? map->getElevationInterpolation() : INTERP_BILINEAR;
+    map.release();
 
     // Request a heightfield from the map, falling back on lower resolution tiles
     // if necessary (fallback=true)
@@ -340,8 +341,9 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
 {   
     const MapInfo& mapInfo = frame.getMapInfo();
 
-    const osgEarth::ElevationInterpolation& interp =
-        frame.getMapOptions().elevationInterpolation().get();
+    osg::ref_ptr<const Map> map = frame.lockMap();
+    osgEarth::RasterInterpolation interp = map.valid() ? map->getElevationInterpolation() : INTERP_BILINEAR;
+    map.release();
 
     // Request a heightfield from the map, falling back on lower resolution tiles
     // if necessary (fallback=true)

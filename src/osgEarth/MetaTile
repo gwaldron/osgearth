@@ -28,8 +28,10 @@
 #include <osgEarth/TileKey>
 #include <osg/Image>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     class ImageLayer;
 
     /**
@@ -72,6 +74,6 @@ namespace osgEarth
         Tile _tiles[3][3]; // col, row
     };
 
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTH_METATILE_H

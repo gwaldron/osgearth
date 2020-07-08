@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -37,6 +37,12 @@
 #define LC "[drawables] "
 
 using namespace osgEarth;
+
+// rotates a 16-bit value to the right by the specified # of bits, where bits is [0,15]
+void ror(unsigned short& v, unsigned short bits)
+{
+    v = (v << (16-bits)) | (v >> bits);
+}
 
 void addVerts(LineDrawable* line, double x, double y)
 {
@@ -104,7 +110,7 @@ osg::Node* makeGeometryForImport(double x, double y)
     verts->push_back(osg::Vec3(x, 0, y + 10));
     verts->push_back(osg::Vec3(x, 0, y + 5));
     verts->push_back(osg::Vec3(x + 5, 0, y + 5));
-    geom->setVertexArray(verts);    
+    geom->setVertexArray(verts);
     osg::Vec4Array* colors = new osg::Vec4Array(1);
     (*colors)[0].set(1,1,1,1);
     geom->setColorArray(colors);
@@ -124,10 +130,21 @@ struct TestFirstCount : public osg::NodeCallback
 
             unsigned total = line->getNumVerts();
             unsigned first = line->getFirst();
-        
+
             line->setFirst( (first+1) % total );
             line->setCount( 3 );
         }
+    }
+};
+
+struct RollStipple : public osg::NodeCallback
+{
+    void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+        LineDrawable* line = (LineDrawable*)node;
+        GLushort p = line->getStipplePattern();
+        ror(p, 1);
+        line->setStipplePattern(p);
     }
 };
 
@@ -162,7 +179,16 @@ osg::Node* createDrawables()
     stippled->setColor(osg::Vec4(0,1,0,1));
     addVerts(stippled, x, y);
     group->addChild(stippled);
-    
+
+    x += 20;
+    LineDrawable* rollingStipple = new LineDrawable(GL_LINE_STRIP);
+    rollingStipple->setLineWidth(4);
+    rollingStipple->setStipplePattern(0xfff0);
+    rollingStipple->setColor(osg::Vec4(1,1,0,1));
+    addVerts(rollingStipple, x, y);
+    rollingStipple->addUpdateCallback(new RollStipple());
+    group->addChild(rollingStipple);
+
     x += 20;
     LineDrawable* segments = new LineDrawable(GL_LINES);
     segments->setLineWidth(3);
@@ -177,7 +203,7 @@ osg::Node* createDrawables()
     addVerts(firstCount, x, y);
     firstCount->addUpdateCallback(new TestFirstCount());
     group->addChild(firstCount);
-    
+
     x += 20;
     osg::ref_ptr<osg::Node> node = makeGeometryForImport(x, y);
     LineGroup* lines = new LineGroup();
@@ -240,6 +266,8 @@ osg::Node* createDrawables()
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
@@ -289,7 +317,7 @@ main(int argc, char** argv)
     GLUtils::setGlobalDefaults(viewer.getCamera()->getOrCreateStateSet());
 
     viewer.setSceneData(node.get());
-    
+
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));

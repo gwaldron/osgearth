@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -48,6 +48,10 @@ CacheEstimator::getNumTiles() const
 {
     unsigned int total = 0;
 
+    GeoExtent extentsUnion;
+    for (std::vector< GeoExtent >::const_iterator itr = _extents.begin(); itr != _extents.end(); ++itr)
+        extentsUnion.expandToInclude(*itr);
+
     for (unsigned int level = _minLevel; level <= _maxLevel; level++)
     {
         if (_extents.empty())
@@ -58,20 +62,15 @@ CacheEstimator::getNumTiles() const
         }
         else
         {
-            for (std::vector< GeoExtent >::const_iterator itr = _extents.begin(); itr != _extents.end(); ++itr)
-            {
-                const GeoExtent& extent = *itr;
+            TileKey ll = _profile->createTileKey(extentsUnion.xMin(), extentsUnion.yMin(), level);
+            TileKey ur = _profile->createTileKey(extentsUnion.xMax(), extentsUnion.yMax(), level);
 
-                TileKey ll = _profile->createTileKey(extent.xMin(), extent.yMin(), level);
-                TileKey ur = _profile->createTileKey(extent.xMax(), extent.yMax(), level);
-
-                if (!ll.valid() || !ur.valid()) continue;
+            if (!ll.valid() || !ur.valid()) continue;
                 
-                int tilesWide = ur.getTileX() - ll.getTileX() + 1;
-                int tilesHigh = ll.getTileY() - ur.getTileY() + 1;
-                int tilesAtLevel = tilesWide * tilesHigh;                
-                total += tilesAtLevel;
-            }
+            int tilesWide = ur.getTileX() - ll.getTileX() + 1;
+            int tilesHigh = ll.getTileY() - ur.getTileY() + 1;
+            int tilesAtLevel = tilesWide * tilesHigh;                
+            total += tilesAtLevel;
         }
     }
     return total;

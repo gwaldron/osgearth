@@ -1,0 +1,103 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_AUTOCLIPPLANEHANDLER_H
+#define OSGEARTHUTIL_AUTOCLIPPLANEHANDLER_H
+
+#include <osgEarth/Common>
+#include <osgEarth/Containers>
+#include <osgEarth/Utils>
+#include <osgGA/GUIEventHandler>
+#include <osgGA/EventVisitor>
+#include <osg/Camera>
+
+namespace osgEarth {
+    class MapNode;
+}
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+
+    /**
+     * A CULL callback that automatically adjusts the calculated near and far clip planes for
+     * use in a geocentric map.
+     *
+     * Usage: add this as a cull callback to a camera, like:
+     *
+     * osgViewer::Viewer viewer;
+     * ...
+     * viewer.getCamera()->addCullCallback( new AutoClipPlaneCallback(map) )
+     */
+    class OSGEARTH_EXPORT AutoClipPlaneCullCallback : public osg::NodeCallback
+    {
+    public:
+        /**
+         * Constructs a new auto-clip plane manager corresponding to the parameters
+         * in the specified map.
+         * @param map Map to take ellipsoid information from; if NULL, use WGS84 values
+         */
+        AutoClipPlaneCullCallback( MapNode* mapNode =0L );
+
+        virtual ~AutoClipPlaneCullCallback() { }
+
+        /**
+         * Sets the minimum near/far ratio to use for this camera. The minimum ratio takes
+         * effect when the camera HAE hits zero.
+         */
+        void setMinNearFarRatio( double value ) { _minNearFarRatio = value; }
+        double getMinNearFarRatio() const { return _minNearFarRatio; }
+
+        /**
+         * Sets the maximum near/far ratio to use for the camera. The maximum ratio
+         * takes effect when the camera HAE hits the Height Threshold.
+         */
+        void setMaxNearFarRatio( double value ) { _maxNearFarRatio = value; }
+        double getMaxNearFarRatio() const { return _maxNearFarRatio; }
+
+        /** 
+         * Sets the camera Height (above ellipsoide) at which the near/far ratio
+         * hits its maximum value.
+         */
+        void setHeightThreshold( double value ) { _haeThreshold = value; }
+        double getHeightThreshold() const { return _haeThreshold; }
+
+        /**
+         * Whether to clamp the the far clipping plane to the approximate
+         * visible horizon.
+         */
+        void setClampFarClipPlane( bool value ) { _autoFarPlaneClamping = value; }
+        bool getClampFarClipPlane() const { return _autoFarPlaneClamping; }
+
+    public:
+        virtual void operator()( osg::Node* node, osg::NodeVisitor* nv );
+        
+    protected:
+        bool   _active;
+        double _minNearFarRatio, _maxNearFarRatio;
+        double _haeThreshold;
+        double _rp2, _rp;
+        bool   _autoFarPlaneClamping;
+        osg::observer_ptr<MapNode> _mapNode;
+        PerObjectFastMap< osg::Camera*, osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> > _clampers;
+    };
+
+} }
+
+#endif // OSGEARTHUTIL_AUTOCLIPPLANEHANDLER_H

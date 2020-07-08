@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,29 +22,29 @@
 
 #include <osgEarth/MapNode>
 
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 
-#include <osgEarthAnnotation/ImageOverlay>
-#include <osgEarthAnnotation/CircleNode>
-#include <osgEarthAnnotation/RectangleNode>
-#include <osgEarthAnnotation/EllipseNode>
-#include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/LocalGeometryNode>
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthAnnotation/ModelNode>
+#include <osgEarth/ImageOverlay>
+#include <osgEarth/CircleNode>
+#include <osgEarth/RectangleNode>
+#include <osgEarth/EllipseNode>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/LabelNode>
+#include <osgEarth/LocalGeometryNode>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/ModelNode>
 
-#include <osgEarthAnnotation/AnnotationEditing>
-#include <osgEarthAnnotation/ImageOverlayEditor>
+#include <osgEarth/ImageOverlayEditor>
 
-#include <osgEarthSymbology/GeometryFactory>
+#include <osgEarth/GeometryFactory>
 
 #include <osgViewer/Viewer>
+#include <osgDB/ReadFile>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
+using namespace osgEarth::Util;
+using namespace osgEarth::Contrib;
 using namespace osgEarth::Util;
 
 //------------------------------------------------------------------
@@ -61,6 +61,8 @@ usage( char** argv )
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::Group* root = new osg::Group();
 
     // try to load an earth file.
@@ -154,10 +156,9 @@ main(int argc, char** argv)
         Style geomStyle;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
-        geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
-        geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-        
+        geomStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
+        geomStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
+
         FeatureNode* fnode = new FeatureNode(feature, geomStyle);
 
         fnode->addCullCallback(new C());
@@ -185,9 +186,8 @@ main(int argc, char** argv)
 
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
-        geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
-        geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
+        geomStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
+        geomStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
 
         FeatureNode* gnode = new FeatureNode(feature, geomStyle);
         annoGroup->addChild( gnode );
@@ -216,7 +216,7 @@ main(int argc, char** argv)
         pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 1.0f;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->smooth() = true;
-        pathStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
+        pathStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
         pathStyle.getOrCreate<PointSymbol>()->size() = 8;
         pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
         pathStyle.getOrCreate<PointSymbol>()->smooth() = true;
@@ -247,14 +247,12 @@ main(int argc, char** argv)
         circle->set(
             GeoPoint(geoSRS, -90.25, 29.98, 1000., ALTMODE_RELATIVE),
             Distance(300, Units::KILOMETERS),
-            circleStyle, 
+            circleStyle,
             Angle(-45.0, Units::DEGREES),
             Angle(45.0, Units::DEGREES),
             true);
 
         annoGroup->addChild( circle );
-
-        editGroup->addChild( new CircleNodeEditor(circle) );
     }
 
 	{
@@ -273,8 +271,6 @@ main(int argc, char** argv)
             true);
 
 		annoGroup->addChild( circle );
-
-        editGroup->addChild( new CircleNodeEditor(circle) );
 	}
 
     //--------------------------------------------------------------------
@@ -292,11 +288,9 @@ main(int argc, char** argv)
             Angle   (0, Units::DEGREES),
             ellipseStyle,
             Angle(45.0, Units::DEGREES),
-            Angle(360.0 - 45.0, Units::DEGREES), 
+            Angle(360.0 - 45.0, Units::DEGREES),
             true);
         annoGroup->addChild( ellipse );
-
-        editGroup->addChild( new EllipseNodeEditor(ellipse) );
     }
 	{
 		Style ellipseStyle;
@@ -308,15 +302,13 @@ main(int argc, char** argv)
 			Distance(250, Units::MILES),
 			Distance(100, Units::MILES),
 			Angle   (0, Units::DEGREES),
-			ellipseStyle, 
-            Angle(-40.0, Units::DEGREES), 
-            Angle(40.0, Units::DEGREES), 
+			ellipseStyle,
+            Angle(-40.0, Units::DEGREES),
+            Angle(40.0, Units::DEGREES),
             true);
 		annoGroup->addChild( ellipse );
-
-        editGroup->addChild( new EllipseNodeEditor(ellipse) );
 	}
-    
+
     //--------------------------------------------------------------------
 
     {
@@ -331,9 +323,7 @@ main(int argc, char** argv)
             Distance(600, Units::KILOMETERS ),
             rectStyle);
         annoGroup->addChild( rect );
-
-        editGroup->addChild( new RectangleNodeEditor(rect) );
-    }    
+    }
 
     //--------------------------------------------------------------------
 
@@ -382,15 +372,15 @@ main(int argc, char** argv)
         Style style;
         style.getOrCreate<ModelSymbol>()->autoScale() = true;
         style.getOrCreate<ModelSymbol>()->url()->setLiteral("../data/red_flag.osg.50.scale");
-        ModelNode* modelNode = new ModelNode(mapNode, style); 
+        ModelNode* modelNode = new ModelNode(mapNode, style);
         modelNode->setPosition(GeoPoint(geoSRS, -100, 52));
         annoGroup->addChild(modelNode);
     }
 
     //--------------------------------------------------------------------
 
-    // initialize the viewer:    
-    viewer.setSceneData( root );    
+    // initialize the viewer:
+    viewer.setSceneData( root );
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     return viewer.run();
 }

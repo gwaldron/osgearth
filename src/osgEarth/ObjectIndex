@@ -23,7 +23,7 @@
 #define OSGEARTH_OBJECT_INDEX_H
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/ShaderLoader>
 #include <osg/Version>
 #include <osg/Drawable>
@@ -38,6 +38,8 @@ namespace osgEarth
 {
     typedef unsigned       ObjectID;
     typedef osg::UIntArray ObjectIDArray;
+
+    using namespace Util;
 
     /** 
      * Virutal interface class for building an object index.

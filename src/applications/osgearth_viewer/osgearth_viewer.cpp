@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,12 +22,13 @@
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
-#include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
+#include <osgEarth/Threading>
 #include <iostream>
+
+#include <osgEarth/Metrics>
 
 #define LC "[viewer] "
 
@@ -37,7 +38,7 @@ using namespace osgEarth::Util;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -48,6 +49,8 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -75,17 +78,15 @@ main(int argc, char** argv)
     viewer.getCamera()->setNearFarRatio(0.0001);
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if ( node )
     {
         viewer.setSceneData( node );
-        Metrics::run(viewer);
+        return Metrics::run(viewer);
     }
     else
     {
         return usage(argv[0]);
     }
-
-    return 0;
 }

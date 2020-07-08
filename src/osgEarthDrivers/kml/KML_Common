@@ -1,7 +1,7 @@
 
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,9 +24,9 @@
 #include <osgEarth/URI>
 #include <osgEarth/MapNode>
 #include <osgEarth/SpatialReference>
-#include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/StyleSheet>
-#include <osgEarthSymbology/ResourceCache>
+#include <osgEarth/Style>
+#include <osgEarth/StyleSheet>
+#include <osgEarth/ResourceCache>
 #include "KMLOptions"
 
 #include "rapidxml.hpp"
@@ -34,6 +34,7 @@
 #include "rapidxml_ext.hpp"
 
 using namespace rapidxml;
+using namespace osgEarth::KML;
 
 #define LC "[KML] "
 
@@ -69,8 +70,6 @@ using namespace rapidxml;
 namespace osgEarth_kml
 {
     using namespace osgEarth;
-    using namespace osgEarth::Drivers;
-    using namespace osgEarth::Symbology;
 
     struct KMLContext
     {

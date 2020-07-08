@@ -1,0 +1,166 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURES_TFS_FEATURESOURCE_LAYER
+#define OSGEARTH_FEATURES_TFS_FEATURESOURCE_LAYER
+
+#include <osgEarth/FeatureSource>
+#include <osgEarth/GeoData>
+
+using namespace osgEarth;
+
+namespace osgDB {
+    class Options;
+}
+
+/**
+ * TFS API
+ */
+namespace osgEarth { namespace TFS
+{    
+    class OSGEARTH_EXPORT Layer
+    {
+    public:
+        Layer();
+
+        const std::string& getTitle() const { return _title;}
+        void setTitle(const std::string& value) { _title = value;}
+
+        const std::string& getAbstract() const { return _abstract;}
+        void setAbstract(const std::string& value) { _abstract = value;}
+
+        const GeoExtent& getExtent() const { return _extent;}
+        void setExtent(const GeoExtent& value) { _extent = value;}
+
+        unsigned int getMaxLevel() const { return _maxLevel;}
+        void setMaxLevel( unsigned int value ) { _maxLevel = value;}
+
+        unsigned int getFirstLevel() const { return _firstLevel;}
+        void setFirstLevel(unsigned int value) { _firstLevel = value;}
+
+        const SpatialReference* getSRS() const { return _srs.get();}
+        void setSRS( const SpatialReference* srs ) { _srs = srs;}
+
+    private:
+        std::string _title;
+        std::string _abstract;
+        GeoExtent _extent;
+        unsigned int _maxLevel;
+        unsigned int _firstLevel;
+        osg::ref_ptr< const SpatialReference > _srs;
+    };
+
+    class OSGEARTH_EXPORT ReaderWriter
+    {
+    public:
+        static bool read(const URI& uri, const osgDB::Options* options, Layer& layer);
+        static bool read( std::istream& in, Layer& layer);
+
+        static void write(const Layer& layer, const std::string& location);
+        static void write(const Layer& layer, std::ostream& output);
+    };
+
+    // Internal serialization data for the TFS feature source
+    class OSGEARTH_EXPORT TFSFeatureSourceOptions : public FeatureSource::Options
+    {
+    public:
+        META_LayerOptions(osgEarth, TFSFeatureSourceOptions, FeatureSource::Options);
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, format);
+        OE_OPTION(bool, invertY);
+        OE_OPTION(int, minLevel);
+        OE_OPTION(int, maxLevel);
+        virtual Config getConfig() const;
+    private:
+        void fromConfig(const Config& conf);
+    };
+
+}} // namespace osgEarth::TFS
+
+
+/**
+ * A FeatureSource that reads feature tiles from a TFS layer
+ */
+namespace osgEarth
+{
+    /**
+     * Feature Layer that accesses features from a TFS endpoint
+     */
+    class OSGEARTH_EXPORT TFSFeatureSource : public FeatureSource
+    {   
+    public: // serialization
+        typedef TFS::TFSFeatureSourceOptions Options;
+
+    public:
+        META_Layer(osgEarth, TFSFeatureSource, Options, FeatureSource, TFSFeatures);
+
+        //! Location of the resource
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Format of the geometry data (GeoJSON, GML)
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+        //! Whether to flip the Y coordinate for tile access
+        void setInvertY(const bool& value);
+        const bool& getInvertY() const;
+
+        //! Minimum level of detail to access
+        void setMinLevel(const int& value);
+        const int& getMinLevel() const;
+
+        //! Maximum level of detail to access
+        void setMaxLevel(const int& value);
+        const int& getMaxLevel() const;
+
+    public: // Layer
+
+        virtual Status openImplementation();
+
+    protected:
+
+        virtual void init();
+
+    public: // FeatureLayer
+
+        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+        
+        virtual const FeatureSchema& getSchema() const { return _schema; }
+
+    protected:
+
+        virtual ~TFSFeatureSource() { }
+
+    private:    
+        FeatureSchema _schema;       
+        TFS::Layer _layer;
+        bool _layerValid;
+
+        bool getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features);
+        std::string getExtensionForMimeType(const std::string& mime);
+        bool isGML(const std::string& mime) const;
+        bool isJSON(const std::string& mime) const;
+        std::string createURL(const Query& query);
+    };
+} // namespace osgEarth
+
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TFSFeatureSource::Options);
+
+#endif // OSGEARTH_FEATURES_TFS_FEATURESOURCE_LAYER

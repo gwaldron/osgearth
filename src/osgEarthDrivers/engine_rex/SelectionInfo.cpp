@@ -19,7 +19,7 @@
 #include "SelectionInfo"
 #include <osgEarth/TileKey>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[SelectionInfo] "
@@ -61,8 +61,6 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
 
     _lods.resize(numLods);
 
-    OE_INFO << LC << "LOD Ranges:\n";
-
     for (unsigned lod = 0; lod <= maxLod; ++lod)
     {
         unsigned tx, ty;
@@ -73,9 +71,7 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
         double range = c.getRadius() * mtrf * 2.0 * (1.0/1.405);
         _lods[lod]._visibilityRange = range;
         _lods[lod]._minValidTY = 0;
-        _lods[lod]._maxValidTY = INT32_MAX;
-
-        //OE_INFO << LC << "  " << lod << " = " << range << std::endl;
+        _lods[lod]._maxValidTY = 0xFFFFFFFF;
     }
     
     double metersPerEquatorialDegree = (profile->getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
@@ -94,7 +90,7 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
         // Calc the maximum valid TY (to avoid over-subdivision at the poles)
         // In a geographic map, this will effectively limit the maximum LOD
         // progressively starting at about +/- 72 degrees latitude.
-        unsigned startLOD = 6;
+        int startLOD = 6;
         if (restrictPolarSubdivision && lod >= startLOD && profile->getSRS()->isGeographic())
         {            
             const double startAR = 0.1; // minimum allowable aspect ratio at startLOD
@@ -104,7 +100,7 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
 
             unsigned tx, ty;
             profile->getNumTiles(lod, tx, ty);
-            for(int y=ty/2; y>=0; --y)
+            for(int y=(int)ty/2; y>=0; --y)
             {
                 TileKey k(lod, 0, y, profile);
                 const GeoExtent& e = k.getExtent();

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -191,10 +191,6 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
                 _TRITON->getOceanWrapper());
         }
 
-        // The sun position is roughly where it is in our skybox texture:
-
-        // Since this is a simple example we will just assume that Sun is the light from View light source
-        // TODO: fix this...
         osg::Light* light = renderInfo.getView() ? renderInfo.getView()->getLight() : NULL;
 
         // This is the light attached to View so there are no transformations above..

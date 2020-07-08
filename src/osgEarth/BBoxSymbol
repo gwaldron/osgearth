@@ -1,0 +1,79 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_BBOX_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_BBOX_SYMBOL_H 1
+
+#include <osgEarth/Symbol>
+#include <osgEarth/Expression>
+#include <osgEarth/Fill>
+#include <osgEarth/Stroke>
+
+namespace osgEarth
+{
+    /**
+     * Symbol that describes how to render bounding boxes around text labels.
+     */
+    class OSGEARTH_EXPORT BBoxSymbol : public Symbol
+    {
+    public:
+
+        enum BboxGeom {
+            GEOM_BOX,
+            GEOM_BOX_ORIENTED
+        };
+
+        META_Object(osgEarth, BBoxSymbol);
+    	
+        BBoxSymbol(const BBoxSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+        BBoxSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~BBoxSymbol() { }
+
+        /** Bounding box fill color. */
+        optional<Fill>& fill() { return _fill; }
+        const optional<Fill>& fill() const { return _fill; }
+
+        /** Bounding box border color. */
+        optional<Stroke>& border() { return _border; }
+        const optional<Stroke>& border() const { return _border; }
+
+        /** Bounding box border margin. */
+        optional<float>& margin() { return _margin; }
+        const optional<float>& margin() const { return _margin; }
+
+        /** Bounding box geom to draw. */
+        optional<BboxGeom>& geom() { return _bboxGeom; }
+        const optional<BboxGeom>& geom() const { return _bboxGeom; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
+
+    protected:
+        optional<Fill>              _fill;
+        optional<Stroke>            _border;
+        optional<float>             _margin;
+        optional<BboxGeom>          _bboxGeom;
+    };
+} // namespace osgEarth
+
+#endif // OSGEARTHSYMBOLOGY_BBOX_SYMBOL_H

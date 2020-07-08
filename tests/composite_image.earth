@@ -1,0 +1,32 @@
+<!--
+Composite Image Layer.
+An image layer comprised of other image layers - they act as
+a single layer for visibility, caching, etc.
+-->
+<map name="Composite">
+    <CompositeImage>
+        <layers>
+            <xi:include href="readymap_imagery.xml"/>
+
+            <GDALImage name="Boston">
+                <url>../data/boston-inset-wgs84.tif</url>
+            </GDALImage>	
+
+            <GDALImage name="New York">
+                <url>../data/nyc-inset-wgs84.tif</url>
+            </GDALImage>
+        </layers>
+    </CompositeImage>
+
+    <Viewpoints home="0">
+        <viewpoint name="Images">
+            <heading>0.000227526</heading>
+            <pitch>-88.9989</pitch>
+            <range>672215m</range>
+            <long>-72.53359909539196</long>
+            <lat>41.6222272572636</lat>
+            <height>-2.708691684529185</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+    </Viewpoints>
+</map>

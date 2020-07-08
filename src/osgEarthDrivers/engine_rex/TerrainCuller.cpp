@@ -21,10 +21,12 @@
 #include "SurfaceNode"
 #include "SelectionInfo"
 #include <osgEarth/TraversalData>
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/Shadowing>
 
 #define LC "[TerrainCuller] "
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 
 TerrainCuller::TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context) :
@@ -47,10 +49,15 @@ _context(context)
     setLODScale(_cv->getLODScale());
     _camera = _cv->getCurrentCamera();
     _isSpy = VisitorData::isSet(*cullVisitor, "osgEarth.Spy");
+
+    // skip surface nodes is this is a shadow camera and shadowing is disabled.
+    _acceptSurfaceNodes =
+        osgEarth::Util::Shadowing::isShadowCamera(_cv->getCurrentCamera()) == false ||
+        context->options().castShadows() == true;
 }
 
 void
-TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings)
+TerrainCuller::setup(const Map* map, LayerExtentMap& layerExtents, const RenderBindings& bindings)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
     _layerExtents = &layerExtents;
@@ -68,6 +75,8 @@ DrawTileCommand*
 TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const RenderingPass* pass, TileNode* tileNode)
 {
     SurfaceNode* surface = tileNode->getSurfaceNode();
+    if ( !surface )
+        return 0L;
 
     const RenderBindings& bindings = _context->getRenderBindings();
 
@@ -112,8 +121,11 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             tile->_modelViewMatrix = _cv->getModelViewMatrix();
             tile->_keyValue = tileNode->getTileKeyValue();
             tile->_geom = surface->getDrawable()->_geom.get();
+            tile->_tile = surface->getDrawable();
+            //tile->_provider = surface->getDrawable();
             tile->_morphConstants = tileNode->getMorphConstants();
             tile->_key = &tileNode->getKey();
+            tile->_tileRevision = tileNode->getRevision();
 
             osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
             tile->_range = getDistanceToViewPoint(c, true);
@@ -164,7 +176,7 @@ TerrainCuller::apply(osg::Node& node)
     {
         apply(*tileNode);
     }
-    else
+    else if (_acceptSurfaceNodes)
     {
         SurfaceNode* surfaceNode = dynamic_cast<SurfaceNode*>(&node);
         if (surfaceNode)
@@ -201,9 +213,8 @@ TerrainCuller::apply(TileNode& node)
     // knows to blend it with the terrain geometry color.
     _firstDrawCommandForTile = 0L;
         
-    if (!_terrain.patchLayers().empty())
+    if (!_terrain.patchLayers().empty() && node.getSurfaceNode() && !node.isEmpty())
     {
-        // todo: check for patch/virtual
         const RenderBindings& bindings = _context->getRenderBindings();
         TileRenderModel& renderModel = _currentTileNode->renderModel();
 
@@ -263,6 +274,8 @@ TerrainCuller::apply(SurfaceNode& node)
 {
     TileRenderModel& renderModel = _currentTileNode->renderModel();
 
+    float range = _cv->getDistanceToViewPoint(node.getBound().center(), true) - node.getBound().radius();
+
     // push the surface matrix:
     osg::RefMatrix* matrix = createOrReuseMatrix(*getModelViewMatrix());
     node.computeLocalToWorldMatrix(*matrix,this);
@@ -284,6 +297,13 @@ TerrainCuller::apply(SurfaceNode& node)
         for (unsigned p = 0; p < renderModel._passes.size(); ++p)
         {
             const RenderingPass& pass = renderModel._passes[p];
+
+            // is the tile in visible range?
+            if (pass.visibleLayer() && pass.visibleLayer()->getMaxVisibleRange() < range)
+                continue;
+
+            //TODO: see if we can skip adding a draw command for 1-pixel images
+            // or other "placeholder" textures
             DrawTileCommand* cmd = addDrawCommand(pass.sourceUID(), &renderModel, &pass, _currentTileNode);
             if (cmd)
             {

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -94,7 +94,7 @@ namespace
     {
         osg::observer_ptr<TritonHeightMap> _hm;
         TerrainDirtyCallback(TritonHeightMap* hm) : _hm(hm) { }
-        void onTileAdded(const osgEarth::TileKey&, osg::Node*, osgEarth::TerrainCallbackContext&)
+        void onTileUpdate(const osgEarth::TileKey&, osg::Node*, osgEarth::TerrainCallbackContext&)
         {
             osg::ref_ptr<TritonHeightMap> hm;
             if (_hm.lock(hm))
@@ -162,7 +162,7 @@ TritonHeightMap::configure(unsigned texSize, osg::State& state)
     if (_texSize == 0u)
     {
         // first time through, single-lane and set up FBO parameters.
-        static Threading::Mutex s_mutex;
+        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
         s_mutex.lock();
 
         if (_texSize == 0u)
@@ -322,7 +322,6 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     rttVP->setName("Triton Height Map");
     rttVP->setFunction( "oe_triton_setupHeightMap", vertexShader,   ShaderComp::LOCATION_VERTEX_MODEL);
     rttVP->setFunction( "oe_triton_drawHeightMap",  fragmentShader, ShaderComp::LOCATION_FRAGMENT_OUTPUT);
-    rttVP->setIsAbstract(true);
     rttVP->setInheritShaders(false);
 
     osg::StateAttribute::OverrideValue off = osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE;
@@ -335,9 +334,9 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     osg::ref_ptr<const osgEarth::ImageLayer> maskLayer;
     if (_maskLayer.lock(maskLayer))
     {
-        rttSS->setDefine("OE_TRITON_MASK_SAMPLER", maskLayer->shareTexUniformName().get());
-        rttSS->setDefine("OE_TRITON_MASK_MATRIX", maskLayer->shareTexMatUniformName().get());
-        OE_INFO << LC << "Using mask layer \"" << maskLayer->getName() << "\", sampler=" << maskLayer->shareTexUniformName().get() << ", matrix=" << maskLayer->shareTexMatUniformName().get() << std::endl;
+        rttSS->setDefine("OE_TRITON_MASK_SAMPLER", maskLayer->getSharedTextureUniformName());
+        rttSS->setDefine("OE_TRITON_MASK_MATRIX", maskLayer->getSharedTextureMatrixUniformName());
+        OE_INFO << LC << "Using mask layer \"" << maskLayer->getName() << "\", sampler=" << maskLayer->getSharedTextureUniformName() << ", matrix=" << maskLayer->getSharedTextureMatrixUniformName() << std::endl;
     }
 
     if (_terrain.valid())

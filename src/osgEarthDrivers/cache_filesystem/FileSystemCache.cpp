@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,12 +19,14 @@
 #include "FileSystemCache"
 #include <osgEarth/Cache>
 #include <osgEarth/StringUtils>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/URI>
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/NetworkMonitor>
+#include <osgEarth/Metrics>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <fstream>
@@ -32,7 +34,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
-using namespace osgEarth::Threading;
 
 #ifndef _WIN32
 #   include <unistd.h>
@@ -43,7 +44,7 @@ using namespace osgEarth::Threading;
 
 namespace
 {
-    /** 
+    /**
      * Cache that stores data in the local file system.
      */
     class FileSystemCache : public Cache
@@ -55,56 +56,63 @@ namespace
 
         /**
          * Constructs a new file system cache.
-         * @param options Options structure that comes from a serialized description of 
+         * @param options Options structure that comes from a serialized description of
          *        the object.
          */
         FileSystemCache( const CacheOptions& options );
 
     public: // Cache interface
 
-        CacheBin* addBin( const std::string& binID );
+        CacheBin* addBin( const std::string& binID ) override;
 
-        CacheBin* getOrCreateDefaultBin();
+        CacheBin* getOrCreateDefaultBin() override;
+
+        void setNumThreads(unsigned) override;
 
     protected:
 
-        void init();
-
         std::string _rootPath;
+
+        osg::ref_ptr<ThreadPool> _threadPool;
     };
 
-    /** 
+    struct WriteCacheRecord {
+        Config meta;
+        osg::ref_ptr<const osg::Object> object;
+    };
+    typedef std::unordered_map<std::string, WriteCacheRecord> WriteCache;
+
+    /**
      * Cache bin implementation for a FileSystemCache.
      * You don't need to create this object directly; use FileSystemCache::createBin instead.
     */
     class FileSystemCacheBin : public CacheBin
     {
     public:
-        FileSystemCacheBin( const std::string& name, const std::string& rootPath );
+        FileSystemCacheBin( 
+            const std::string& name, 
+            const std::string& rootPath,
+            ThreadPool* threadPool);
+
+        static bool _s_debug;
 
     public: // CacheBin interface
 
-        ReadResult readObject(const std::string& key, const osgDB::Options* dbo);
+        ReadResult readObject(const std::string& key, const osgDB::Options* dbo) override;
 
-        ReadResult readImage(const std::string& key, const osgDB::Options* dbo);
+        ReadResult readImage(const std::string& key, const osgDB::Options* dbo) override;
 
-        //ReadResult readNode(const std::string& key, const osgDB::Options* dbo);
+        ReadResult readString(const std::string& key, const osgDB::Options* dbo) override;
 
-        ReadResult readString(const std::string& key, const osgDB::Options* dbo);
+        bool write(const std::string& key, const osg::Object* object, const Config& meta, const osgDB::Options* dbo) override;
 
-        bool write(const std::string& key, const osg::Object* object, const Config& meta, const osgDB::Options* dbo);
+        bool remove(const std::string& key) override;
 
-        bool remove(const std::string& key);
+        bool touch(const std::string& key) override;
 
-        bool touch(const std::string& key);
+        RecordStatus getRecordStatus(const std::string& key) override;
 
-        RecordStatus getRecordStatus(const std::string& key);
-
-        bool clear();
-
-        Config readMetadata();
-
-        bool writeMetadata( const Config& meta );
+        bool clear() override;
 
     protected:
         bool purgeDirectory( const std::string& dir );
@@ -120,10 +128,23 @@ namespace
         std::string                       _metaPath;       // full path to the bin's metadata file
         std::string                       _binPath;        // full path to the bin's root folder
         std::string                       _compressorName;
-        osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options>      _zlibOptions;
-        mutable Threading::ReadWriteMutex _mutex;
-        bool                              _debug;
+
+        // pool for asynchronous writes
+        ThreadPool* _threadPool;
+
+    public:
+        // cache for objects waiting to be written; this supports reading from
+        // the cache before the object has been asynchronously written to disk.
+        WriteCache _writeCache;
+        ReadWriteMutex _writeCacheRWM;
+
+        // gate to prevent multiple threads from accessing the same file
+        // at the same time.
+        Gate<std::string> _fileGate;
+
+        // OSG reader-writer used to serialize the objects
+        osg::ref_ptr<osgDB::ReaderWriter> _rw;
     };
 
     void writeMeta( const std::string& fullPath, const Config& meta )
@@ -161,47 +182,77 @@ namespace
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
+bool FileSystemCacheBin::_s_debug = false;
+
 namespace
 {
-    FileSystemCache::FileSystemCache( const CacheOptions& options ) :
-    Cache( options )
+    FileSystemCache::FileSystemCache(const CacheOptions& options) :
+        Cache(options)
     {
         FileSystemCacheOptions fsco( options );
 
         // read the root path from ENV is necessary:
         if ( !fsco.rootPath().isSet())
-        {           
+        {
             const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
             if ( cachePath )
                 fsco.rootPath() = cachePath;
         }
 
         _rootPath = URI( *fsco.rootPath(), options.referrer() ).full();
-        init();
+
+        if (osgDB::makeDirectory(_rootPath) == false)
+        {
+            _status.set(Status::ResourceUnavailable, Stringify()
+                << "Failed to create or access folder \"" << _rootPath << "\"");
+            return;
+        }
+        OE_INFO << LC << "Opened a filesystem cache at \"" << _rootPath << "\"\n";
+
+        // create a thread pool dedicated to asynchronous cache writes
+        if (fsco.threads() > 0u)
+        {
+            _threadPool = new ThreadPool(
+                osg::maximum(fsco.threads().get(), 1u) );
+        }
     }
 
     void
-    FileSystemCache::init()
+    FileSystemCache::setNumThreads(unsigned num)
     {
-        OE_INFO << LC << "Opened a filesystem cache at \"" << _rootPath << "\"\n";
+        if (_threadPool.valid())
+        {
+            _threadPool = NULL;
+        }
+
+        if (num > 0u)
+        {
+            _threadPool = new ThreadPool(osg::clampBetween(num, 1u, 8u));
+        }
     }
 
     CacheBin*
     FileSystemCache::addBin( const std::string& name )
     {
-        return _bins.getOrCreate( name, new FileSystemCacheBin( name, _rootPath ) );
+        if (getStatus().isError())
+            return NULL;
+
+        return _bins.getOrCreate( name, new FileSystemCacheBin( name, _rootPath, _threadPool.get() ) );
     }
 
     CacheBin*
     FileSystemCache::getOrCreateDefaultBin()
     {
-        static Threading::Mutex s_defaultBinMutex;
+        if (getStatus().isError())
+            return NULL;
+
+        static Mutex s_defaultBinMutex(OE_MUTEX_NAME);
         if ( !_defaultBin.valid() )
         {
-            Threading::ScopedMutexLock lock( s_defaultBinMutex );
+            ScopedMutexLock lock( s_defaultBinMutex );
             if ( !_defaultBin.valid() ) // double-check
             {
-                _defaultBin = new FileSystemCacheBin( "__default", _rootPath );
+                _defaultBin = new FileSystemCacheBin( "__default", _rootPath, _threadPool.get() );
             }
         }
         return _defaultBin.get();
@@ -269,14 +320,20 @@ namespace
         return _ok;
     }
 
-    FileSystemCacheBin::FileSystemCacheBin(const std::string&   binID,
-                                           const std::string&   rootPath) :
-    CacheBin            ( binID ),
-    _binPathExists      ( false ),
-    _ok( true )
+    FileSystemCacheBin::FileSystemCacheBin(
+        const std::string& binID,
+        const std::string& rootPath,
+        ThreadPool* threadPool) :
+
+        CacheBin(binID),
+        _threadPool(threadPool),
+        _binPathExists(false),
+        _ok(true),
+        _fileGate("CacheBinFileGate(OE)"),
+        _writeCacheRWM("CacheBinWriteL2(OE)")
     {
-        _binPath = osgDB::concatPaths( rootPath, binID );
-        _metaPath = osgDB::concatPaths( _binPath, "osgearth_cacheinfo.json" );
+        _binPath = osgDB::concatPaths(rootPath, binID);
+        _metaPath = osgDB::concatPaths(_binPath, "osgearth_cacheinfo.json");
 
         _rw = osgDB::Registry::instance()->getReaderWriterForExtension(OSG_FORMAT);
 
@@ -296,7 +353,7 @@ namespace
             _zlibOptions->setPluginStringData("Compressor", _compressorName);
         }
 
-        _debug = ::getenv("OSGEARTH_CACHE_DEBUG") != 0L;
+        _s_debug = ::getenv("OSGEARTH_CACHE_DEBUG") != 0L;
     }
 
     const osgDB::Options*
@@ -324,48 +381,7 @@ namespace
     ReadResult
     FileSystemCacheBin::readImage(const std::string& key, const osgDB::Options* readOptions)
     {
-        if ( !binValidForReading() ) 
-            return ReadResult(ReadResult::RESULT_NOT_FOUND);
-
-        // mangle "key" into a legal path name
-        URI fileURI( key, _metaPath );
-        std::string path = fileURI.full() + OSG_EXT;
-
-        if ( !osgDB::fileExists(path) )
-            return ReadResult( ReadResult::RESULT_NOT_FOUND );
-
-        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);     
-
-        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(readOptions);
-
-        osgDB::ReaderWriter::ReadResult r;
-        {
-            ScopedReadLock lock(_mutex);
-
-            r = _rw->readImage( path, dbo.get() );
-            if ( !r.success() )
-                return ReadResult();
-
-            // read metadata
-            Config meta;
-            std::string metafile = fileURI.full() + ".meta";
-            if ( osgDB::fileExists(metafile) )
-                readMeta( metafile, meta );
-
-            ReadResult rr( r.getImage(), meta );
-            rr.setLastModifiedTime(timeStamp);
-
-            if (_debug)
-                OE_NOTICE << LC << "Read image \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
-
-            return rr;            
-        }
-    }
-
-    ReadResult
-    FileSystemCacheBin::readObject(const std::string& key, const osgDB::Options* readOptions)
-    {
-        if ( !binValidForReading() ) 
+        if ( !binValidForReading() )
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
@@ -379,28 +395,129 @@ namespace
 
         osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(readOptions);
 
-        osgDB::ReaderWriter::ReadResult r;
+        unsigned long handle = NetworkMonitor::begin(path, "pending", "Cache");
+
+        // lock the file:
+        ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
+
+        if (_threadPool)
         {
-            ScopedReadLock lock(_mutex);
+            // first check the write-pending cache. The record will be there
+            // if the object is queued for asynchronous writing but hasn't 
+            // actually been saved out yet.
 
-            r = _rw->readObject( path, dbo.get() );
-            if ( !r.success() )
-                return ReadResult();
+            ScopedReadLock lock(_writeCacheRWM);
 
-            // read metadata
-            Config meta;
-            std::string metafile = fileURI.full() + ".meta";
-            if ( osgDB::fileExists(metafile) )
-                readMeta( metafile, meta );
+            auto i = _writeCache.find(fileURI.full());
+            if (i != _writeCache.end())
+            {
+                ReadResult rr(
+                    const_cast<osg::Image*>(dynamic_cast<const osg::Image*>(i->second.object.get())),
+                    i->second.meta);
 
-            ReadResult rr( r.getObject(), meta );
-            rr.setLastModifiedTime(timeStamp);
+                rr.setLastModifiedTime(timeStamp);
 
-            if (_debug)
-                OE_NOTICE << LC << "Read object \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+                NetworkMonitor::end(handle, "OK");
 
-            return rr;            
+                return rr;
+            }
         }
+
+        osgDB::ReaderWriter::ReadResult r = _rw->readImage(path, dbo.get());
+        if (!r.success())
+        {
+            NetworkMonitor::end(handle, "failed");
+            return ReadResult();
+        }
+        else
+        {
+            NetworkMonitor::end(handle, "OK");
+        }
+
+        // read metadata
+        Config meta;
+        std::string metafile = fileURI.full() + ".meta";
+        if (osgDB::fileExists(metafile))
+            readMeta(metafile, meta);
+
+        ReadResult rr(r.getImage(), meta);
+        rr.setLastModifiedTime(timeStamp);
+
+        if (_s_debug)
+            OE_NOTICE << LC << "Read image \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+
+        return rr;
+    }
+
+    ReadResult
+    FileSystemCacheBin::readObject(const std::string& key, const osgDB::Options* readOptions)
+    {
+        if ( !binValidForReading() )
+            return ReadResult(ReadResult::RESULT_NOT_FOUND);
+
+        // mangle "key" into a legal path name
+        URI fileURI( key, _metaPath );
+        std::string path = fileURI.full() + OSG_EXT;
+
+        if ( !osgDB::fileExists(path) )
+            return ReadResult( ReadResult::RESULT_NOT_FOUND );
+
+        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
+
+        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(readOptions);
+
+        unsigned long handle = NetworkMonitor::begin(path, "pending", "Cache");
+
+        // lock the file:
+        ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
+
+        if (_threadPool)
+        {
+            // first check the write-pending cache. The record will be there
+            // if the object is queued for asynchronous writing but hasn't 
+            // actually been saved out yet.
+        
+            ScopedReadLock lock(_writeCacheRWM);
+
+            auto i = _writeCache.find(fileURI.full());
+            if (i != _writeCache.end())
+            {
+                ReadResult rr(
+                    const_cast<osg::Object*>(i->second.object.get()),
+                    i->second.meta);
+
+                rr.setLastModifiedTime(timeStamp);
+
+                NetworkMonitor::end(handle, "OK");
+
+                return rr;
+            }
+        }
+
+        osgDB::ReaderWriter::ReadResult r = _rw->readObject(path, dbo.get());
+        if (!r.success())
+        {
+            NetworkMonitor::end(handle, "failed");
+            return ReadResult();
+        }
+        else
+        {
+            NetworkMonitor::end(handle, "OK");
+        }
+
+        // read metadata
+        Config meta;
+        std::string metafile = fileURI.full() + ".meta";
+        if (osgDB::fileExists(metafile))
+            readMeta(metafile, meta);
+
+        ReadResult rr(r.getObject(), meta);
+        rr.setLastModifiedTime(timeStamp);
+
+        if (_s_debug)
+            OE_NOTICE << LC << "Read object \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+
+        return rr;
     }
 
     ReadResult
@@ -411,7 +528,7 @@ namespace
         {
             if ( r.get<StringObject>() )
             {
-                if (_debug)
+                if (_s_debug)
                     OE_NOTICE << LC << "Read string \"" << key << "\" from cache bin [" << getID() << "]" << std::endl;
 
                 return r;
@@ -427,73 +544,158 @@ namespace
         }
     }
 
-    bool
-    FileSystemCacheBin::write(const std::string& key, const osg::Object* object, const Config& meta, const osgDB::Options* writeOptions)
+    namespace
     {
-        if ( !binValidForWriting() || !object ) 
+        struct WriteOperation : public osg::Operation
+        {
+        public:
+            WriteOperation(
+                const URI& uri,
+                const osg::Object* object,
+                const Config& meta,
+                const osgDB::Options* writeOptions,
+                FileSystemCacheBin* bin) :
+
+                osg::Operation(bin->getID(), false),
+                _uri(uri),
+                _object(object),
+                _meta(meta),
+                _writeOptions(writeOptions),
+                _bin(bin)
+            {
+                //nop
+            }
+
+            void operator()(osg::Object*) override
+            {
+                OE_PROFILING_ZONE_NAMED("FS Cache Write");
+
+                // prevent more than one thread from writing to the same key at the same time
+                ScopedGate<std::string> lockFile(_bin->_fileGate, _uri.full());
+
+                // make a home for it..
+                if (!osgDB::fileExists(osgDB::getFilePath(_uri.full())))
+                {
+                    osgEarth::makeDirectoryForFile(_uri.full());
+                }
+
+                osgDB::ReaderWriter::WriteResult r;
+
+                bool writeOK = false;
+
+                if (dynamic_cast<const osg::Image*>(_object.get()))
+                {
+                    std::string filename = _uri.full() + OSG_EXT;
+                    r = _bin->_rw->writeImage(*static_cast<const osg::Image*>(_object.get()), filename, _writeOptions.get());
+                    writeOK = r.success();
+                }
+                else if (dynamic_cast<const osg::Node*>(_object.get()))
+                {
+                    std::string filename = _uri.full() + OSG_EXT;
+                    r = _bin->_rw->writeNode(*static_cast<const osg::Node*>(_object.get()), filename, _writeOptions.get());
+                    writeOK = r.success();
+                }
+                else
+                {
+                    std::string filename = _uri.full() + OSG_EXT;
+                    r = _bin->_rw->writeObject(*_object.get(), filename, _writeOptions.get());
+                    writeOK = r.success();
+                }
+
+                // write metadata
+                if (!_meta.empty() && writeOK)
+                {
+                    std::string metaname = _uri.full() + ".meta";
+                    writeMeta(metaname, _meta);
+                }
+
+                if (!writeOK)
+                {
+                    OE_WARN << LC << "FAILED to write \"" << _uri.full() << "\" to cache bin \"" << 
+                        _bin->getID() << "\"; msg = \"" << r.message() << "\"" << std::endl;
+                }
+                else
+                {
+                    OE_DEBUG << LC << "Wrote " << _uri.full() << " to cache bin " << _bin->getID() << std::endl;
+                }
+
+                // remove it from the write cache now that we're done.
+                {
+                    ScopedWriteLock lock(_bin->_writeCacheRWM);
+                    _bin->_writeCache.erase(_uri.full());
+                }
+            }
+
+        private:
+            URI _uri;
+            osg::ref_ptr<const osg::Object> _object;
+            Config _meta;
+            osg::ref_ptr<const osgDB::Options> _writeOptions;
+            osg::ref_ptr<FileSystemCacheBin> _bin;
+        };
+    }
+
+    bool
+    FileSystemCacheBin::write(
+        const std::string& key, 
+        const osg::Object* object, 
+        const Config& meta, 
+        const osgDB::Options* writeOptions)
+    {
+        if ( !binValidForWriting() || !object )
             return false;
 
         // convert the key into a legal filename:
         URI fileURI( key, _metaPath );
-        
-        osgDB::ReaderWriter::WriteResult r;
 
-        bool objWriteOK = false;
+        // combine custom options with cache options:
+        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(writeOptions);
+
+        // Temporary: Check whether it's a node because we can't thread
+        // out the NODE writes until we figure out the thread-safety 
+        // issue and make all the reads return CONST objects
+        bool isNode = dynamic_cast<const osg::Node*>(object) != nullptr;
+
+        if (_threadPool && !isNode)
         {
-            // prevent cache contention:
-            ScopedWriteLock lock(_mutex);
+            // Store in the write-cache until it's actually written.
+            // Will override any existing entry and that's OK since the 
+            // most recent one is the valid one.
+            _writeCacheRWM.write_lock();
+            WriteCacheRecord& record = _writeCache[fileURI.full()];
+            record.meta = meta;
+            record.object = object;
+            _writeCacheRWM.write_unlock();
 
-            // make a home for it..
-            if ( !osgDB::fileExists( osgDB::getFilePath(fileURI.full()) ) )
-                osgEarth::makeDirectoryForFile( fileURI.full() );
+            // queue the asynchronous write.
+            WriteOperation* writer = new WriteOperation(
+                fileURI,
+                object,
+                meta,
+                dbo.get(),
+                this);
 
-            osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(writeOptions);
+            _threadPool->run(writer);
+        }
+        else // synchronous write:
+        { 
+            WriteOperation writeOp(
+                fileURI,
+                object,
+                meta,
+                dbo.get(),
+                this);
 
-            if ( dynamic_cast<const osg::Image*>(object) )
-            {
-                std::string filename = fileURI.full() + OSG_EXT;
-                r = _rw->writeImage( *static_cast<const osg::Image*>(object), filename, dbo.get() );
-                objWriteOK = r.success();
-            }
-            else if ( dynamic_cast<const osg::Node*>(object) )
-            {
-                std::string filename = fileURI.full() + OSG_EXT;
-                r = _rw->writeNode(*static_cast<const osg::Node*>(object), filename, dbo.get());
-                objWriteOK = r.success();
-            }
-            else
-            {
-                std::string filename = fileURI.full() + OSG_EXT;
-                r = _rw->writeObject(*object, filename, dbo.get());
-                objWriteOK = r.success();
-            }
-
-            // write metadata
-            if ( !meta.empty() && objWriteOK )
-            {
-                std::string metaname = fileURI.full() + ".meta";
-                writeMeta( metaname, meta );
-            }
+            writeOp.operator()(nullptr);
         }
 
-        if ( objWriteOK )
-        {
-            if (_debug)
-                OE_NOTICE << LC << "Wrote \"" << key << "\" to cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
-        }
-        else
-        {
-            OE_WARN << LC << "FAILED to write \"" << key << "\" to cache bin " << getID()
-                << "; msg = \"" << r.message() << "\"" << std::endl;
-        }
-
-        return objWriteOK;
+        return true;
     }
 
     CacheBin::RecordStatus
     FileSystemCacheBin::getRecordStatus(const std::string& key)
     {
-        if ( !binValidForReading() ) 
+        if ( !binValidForReading() )
             return STATUS_NOT_FOUND;
 
         URI fileURI( key, _metaPath );
@@ -511,7 +713,8 @@ namespace
         URI fileURI( key, _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
 
-        ScopedWriteLock lock(_mutex);
+        // exclusive file access:
+        ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
         return ::unlink( path.c_str() ) == 0;
     }
 
@@ -522,7 +725,8 @@ namespace
         URI fileURI( key, _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
 
-        ScopedWriteLock lock(_mutex);
+        // exclusive file access:
+        ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
         return osgEarth::touchFile( path );
     }
 
@@ -538,7 +742,7 @@ namespace
         {
             int ok = 0;
             std::string full = osgDB::concatPaths(dir, *i);
-            
+
             if ( full.find( getID() ) != std::string::npos ) // safety latch
             {
                 osgDB::FileType type = osgDB::fileType( full );
@@ -548,7 +752,7 @@ namespace
                     purgeDirectory( full );
 
                     ok = ::unlink( full.c_str() );
-                    if (_debug)
+                    if (_s_debug)
                         OE_NOTICE << LC << "Unlink: " << full << std::endl;
                 }
                 else if ( type == osgDB::REGULAR_FILE )
@@ -556,7 +760,7 @@ namespace
                     if ( full != _metaPath )
                     {
                         ok = ::unlink( full.c_str() );
-                        if (_debug)
+                        if (_s_debug)
                             OE_NOTICE << LC << "Unlink: " << full << std::endl;
                     }
                 }
@@ -575,40 +779,8 @@ namespace
         if ( !binValidForReading() )
             return false;
 
-        ScopedWriteLock lock(_mutex);
         std::string binDir = osgDB::getFilePath( _metaPath );
         return purgeDirectory( binDir );
-    }
-
-    Config
-    FileSystemCacheBin::readMetadata()
-    {
-        if ( !binValidForReading() ) return Config();
-        
-        ScopedReadLock lock(_mutex);
-
-        Config conf;
-        conf.fromJSON( URI(_metaPath).getString(_zlibOptions.get()) );
-
-        return conf;
-    }
-
-    bool
-    FileSystemCacheBin::writeMetadata( const Config& conf )
-    {
-        if ( !binValidForWriting() ) return false;
-        
-        ScopedWriteLock lock(_mutex);
-
-        std::fstream output( _metaPath.c_str(), std::ios_base::out );
-        if ( output.is_open() )
-        {
-            output << conf.toJSON(true);
-            output.flush();
-            output.close();
-            return true;
-        }
-        return false;
     }
 }
 

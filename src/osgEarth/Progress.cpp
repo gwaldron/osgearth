@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,15 +18,36 @@
  */
 
 #include <osgEarth/Progress>
+#include <osgDB/DatabasePager>
 
 using namespace osgEarth;
 
 ProgressCallback::ProgressCallback() :
 osg::Referenced( true ),
 _canceled      ( false ),
-_collectStats  ( false )
+_retryDelay_s  ( 0.0f )
 {
     //NOP
+}
+
+void
+ProgressCallback::cancel()
+{
+    _canceled = true;
+}
+
+void
+ProgressCallback::reset()
+{
+    _canceled = false;
+}
+
+bool
+ProgressCallback::isCanceled() const
+{
+    if (!_canceled && shouldCancel())
+        _canceled = true;
+    return _canceled;
 }
 
 void ProgressCallback::reportError(const std::string& msg)
@@ -41,18 +62,6 @@ bool ProgressCallback::reportProgress(double             current,
                                       const std::string& msg )
 {
     return false;
-}
-
-double& ProgressCallback::stats(const std::string& key)
-{
-    Stats::iterator i = _stats.find(key);
-    if ( i == _stats.end() )
-    {
-        double& value = _stats[key];
-        value = 0.0;
-        return value;
-    }
-    return i->second;
 }
 
 /******************************************************************************/
@@ -87,4 +96,21 @@ ConsoleProgressCallback::reportProgress(double current, double total,
         OE_NOTICE << msg << std::endl;
     }
     return false;
+}
+
+/******************************************************************************/
+
+DatabasePagerProgressCallback::DatabasePagerProgressCallback()
+{
+    // if this is a pager thread, get a handle on it:
+    _pagerThread = dynamic_cast<osgDB::DatabasePager::DatabaseThread*>(
+        OpenThreads::Thread::CurrentThread());
+}
+
+bool
+DatabasePagerProgressCallback::shouldCancel() const
+{
+    return 
+        (ProgressCallback::shouldCancel()) ||
+        (_pagerThread != NULL && static_cast<osgDB::DatabasePager::DatabaseThread*>(_pagerThread)->getDone());
 }

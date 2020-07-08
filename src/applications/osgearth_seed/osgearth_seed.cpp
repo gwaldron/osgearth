@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
+#include <osgDB/ReadFile>
 
 #include <osg/io_utils>
 
@@ -37,16 +38,13 @@
 #include <osgEarth/TileVisitor>
 #include <osgEarth/FileUtils>
 
-#include <osgEarthFeatures/FeatureCursor>
-
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarth/OGRFeatureSource>
 
 #include <iostream>
 #include <sstream>
 #include <iterator>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 
 #define LC "[osgearth_cache] "
 
@@ -57,8 +55,7 @@ int usage( const std::string& msg );
 int message( const std::string& msg );
 
 
-int
-    main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     osg::ArgumentParser args(&argc,argv);
 
@@ -72,8 +69,7 @@ int
     return usage("");
 }
 
-int
-    usage( const std::string& msg )
+int usage( const std::string& msg )
 {
     if ( !msg.empty() )
     {
@@ -112,8 +108,7 @@ int message( const std::string& msg )
     return 0;
 }
 
-int
-seed( osg::ArgumentParser& args )
+int seed( osg::ArgumentParser& args )
 {    
     osgDB::Registry::instance()->getReaderWriterForExtension("png");
     osgDB::Registry::instance()->getReaderWriterForExtension("jpg");
@@ -174,15 +169,11 @@ seed( osg::ArgumentParser& args )
     while (args.read("--index", index))
     {        
         //Open the feature source
-        OGRFeatureOptions featureOpt;
-        featureOpt.url() = index;        
-
-        osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
-        Status status = features->open();
-
-        if (status.isOK())
+        osg::ref_ptr<OGRFeatureSource> features = new OGRFeatureSource();
+        features->setURL(index);
+        if (features->open().isOK())
         {
-            osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(0L);
+            osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(Query(), 0L);
             while (cursor.valid() && cursor->hasMore())
             {
                 osg::ref_ptr< Feature > feature = cursor->nextFeature();
@@ -194,7 +185,7 @@ seed( osg::ArgumentParser& args )
         }
         else
         {
-            OE_WARN << status.message() << "\n";
+            OE_WARN << features->getStatus().message() << "\n";
         }
     }
 
@@ -312,7 +303,7 @@ seed( osg::ArgumentParser& args )
     
 
     // Initialize the seeder
-    CacheSeed seeder;
+    osgEarth::Contrib::CacheSeed seeder;
     seeder.setVisitor(visitor.get());
 
     osgEarth::Map* map = mapNode->getMap();
@@ -363,13 +354,13 @@ seed( osg::ArgumentParser& args )
     // They want to seed the entire map
     else
     {
-        TerrainLayerVector terrainLayers;
+        TileLayerVector terrainLayers;
         map->getLayers(terrainLayers);
 
         // Seed all the map layers
         for (unsigned int i = 0; i < terrainLayers.size(); ++i)
         {            
-            osg::ref_ptr< TerrainLayer > layer = terrainLayers[i].get();
+            osg::ref_ptr< TileLayer > layer = terrainLayers[i].get();
             OE_NOTICE << "Seeding layer" << layer->getName() << std::endl;            
             osg::Timer_t start = osg::Timer::instance()->tick();
             seeder.run(layer.get(), map);            
@@ -418,21 +409,16 @@ int list( osg::ArgumentParser& args )
         << cache->getCacheOptions().getConfig().toJSON(true) << std::endl;
 
 
-    TerrainLayerVector layers;
+    TileLayerVector layers;
     map->getLayers(layers);
 
-    for( TerrainLayerVector::iterator i =layers.begin(); i != layers.end(); ++i )
+    for( TileLayerVector::iterator i =layers.begin(); i != layers.end(); ++i )
     {
-        TerrainLayer* layer = i->get();
+        TileLayer* layer = i->get();
 
-        bool useMFP =
-            layer->getProfile() &&
-            layer->getProfile()->getSRS()->isSphericalMercator() &&
-            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
+        const Profile* cacheProfile = map->getProfile();
 
-        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
-
-        TerrainLayer::CacheBinMetadata* meta = layer->getCacheBinMetadata(cacheProfile);
+        TileLayer::CacheBinMetadata* meta = layer->getCacheBinMetadata(cacheProfile);
         if (meta)
         {
             Config conf = meta->getConfig();
@@ -482,13 +468,6 @@ purge( osg::ArgumentParser& args )
     {
         ImageLayer* layer = i->get();
 
-        bool useMFP =
-            layer->getProfile() &&
-            layer->getProfile()->getSRS()->isSphericalMercator() &&
-            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
-
-        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
-
         CacheSettings* cacheSettings = layer->getCacheSettings();
         if (cacheSettings)
         {
@@ -508,13 +487,6 @@ purge( osg::ArgumentParser& args )
     for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
     {
         ElevationLayer* layer = i->get();
-
-        bool useMFP =
-            layer->getProfile() &&
-            layer->getProfile()->getSRS()->isSphericalMercator() &&
-            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
-
-        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
         
         CacheSettings* cacheSettings = layer->getCacheSettings();
         if (cacheSettings)

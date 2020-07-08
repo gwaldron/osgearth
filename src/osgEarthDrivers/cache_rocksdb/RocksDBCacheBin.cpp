@@ -26,7 +26,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;
-using namespace osgEarth::Drivers::RocksDBCache;
+using namespace osgEarth::RocksDBCache;
 
 //------------------------------------------------------------------------
 

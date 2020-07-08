@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -29,13 +29,10 @@
 #include <osgDB/FileNameUtils>
 
 #include <osgEarth/Progress>
-#include <osgEarthUtil/TileIndexBuilder>
+#include <osgEarth/TileIndexBuilder>
 
-
-
-using namespace osgDB;
 using namespace osgEarth;
-using namespace osgEarth::Util;
+using namespace osgEarth::Contrib;
 
 int main(int argc, char** argv)
 {

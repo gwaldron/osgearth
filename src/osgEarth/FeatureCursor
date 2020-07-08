@@ -1,0 +1,125 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_CURSOR_H
+#define OSGEARTHFEATURES_FEATURE_CURSOR_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Feature>
+#include <osgEarth/Filter>
+#include <osgEarth/Progress>
+#include <osgEarth/Profile>
+
+namespace osgEarth
+{
+    /**
+     * A cursor that lets you iterate over a collection of features returned 
+     * from a feature query performed on a FeatureStore.
+     */
+    class OSGEARTH_EXPORT FeatureCursor : public osg::Referenced
+    {
+    public:
+        virtual bool hasMore() const =0;
+
+        virtual Feature* nextFeature() =0;
+
+        void fill(FeatureList& output);
+
+        ProgressCallback* getProgress() const { return _progress.get(); }
+
+    protected:
+
+        FeatureCursor(ProgressCallback* progress);
+
+        virtual ~FeatureCursor();
+
+        osg::ref_ptr<ProgressCallback> _progress;
+    };
+
+    /**
+     * A simple cursor implementation that returns features from an in-memory
+     * feature list.
+     */
+    class OSGEARTH_EXPORT FeatureListCursor : public FeatureCursor
+    {
+    public:
+        FeatureListCursor(const FeatureList& input);
+
+    public: // FeatureCursor
+        virtual bool hasMore() const;
+        virtual Feature* nextFeature();
+
+    protected:
+        
+        virtual ~FeatureListCursor();
+
+        FeatureList           _features;
+        FeatureList::iterator _iter;
+        bool                  _clone;
+    };
+
+    /**
+     * A simple cursor that returns each Geometry wrapped in a feature.
+     */
+    class OSGEARTH_EXPORT GeometryFeatureCursor : public FeatureCursor
+    {
+    public:
+        GeometryFeatureCursor( Geometry* geom );
+        GeometryFeatureCursor( Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain* filters );
+
+    public: // FeatureCursor
+        virtual bool hasMore() const;
+        virtual Feature* nextFeature();
+
+    protected:
+        virtual ~GeometryFeatureCursor();
+        osg::ref_ptr<Geometry> _geom;
+        osg::ref_ptr<const FeatureProfile> _featureProfile;
+        osg::ref_ptr<const FeatureFilterChain> _filterChain;
+        osg::ref_ptr<Feature> _lastFeature;
+    };
+
+    /**
+     * FeatureCursor wrapper that runs incoming features through a filter chain
+     */
+    class OSGEARTH_EXPORT FilteredFeatureCursor : public FeatureCursor
+    {
+    public:
+        FilteredFeatureCursor(
+            FeatureCursor* cursor,
+            FeatureFilterChain* chain,
+            FilterContext& context);
+
+        virtual bool hasMore() const;
+        virtual Feature* nextFeature();
+
+    protected:
+        virtual ~FilteredFeatureCursor() { }
+
+    private:
+        osg::ref_ptr<FeatureCursor> _cursor;
+        osg::ref_ptr<FeatureFilterChain> _chain;
+        FilterContext& _context;
+        mutable FeatureList _cache;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTHFEATURES_FEATURE_CURSOR_H
+

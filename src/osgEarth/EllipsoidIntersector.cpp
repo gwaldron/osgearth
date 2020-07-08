@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 #include <osgEarth/EllipsoidIntersector>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 EllipsoidIntersector::EllipsoidIntersector(const osg::EllipsoidModel* em)
 {

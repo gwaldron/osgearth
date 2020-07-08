@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,114 +21,56 @@
 
 #include <osgEarth/ImageLayer>
 #include <osgEarth/TileRasterizer>
-#include <osgEarth/LayerListener>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureSourceLayer>
-#include <osgEarthSymbology/StyleSheet>
+#include <osgEarth/LayerReference>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/StyleSheet>
 #include "Export"
 
 namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
 
     /**
-     * Configuration options for the land use tile source
-     */
-    class OSGEARTHSPLAT_EXPORT RoadSurfaceLayerOptions : public ImageLayerOptions    
-    {
-    public:
-        RoadSurfaceLayerOptions(const ConfigOptions& options = ConfigOptions())
-            : ImageLayerOptions(options)
-        {
-            fromConfig(_conf);
-        }
-
-    public:
-
-        //! Inline feature specification
-        optional<FeatureSourceOptions>& features() { return _featureSourceOptions; }
-        const optional<FeatureSourceOptions>& features() const { return _featureSourceOptions; }
-
-        //! Name of feature source layer containing features
-        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
-        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
-
-        //! Buffer around the road vector for querying linear data (should be at least road width/2)
-        optional<Distance>& featureBufferWidth() { return _bufferWidth; }
-        const optional<Distance>& featureBufferWidth() const { return _bufferWidth; }
-
-        //! Style for rendering the road
-        osg::ref_ptr<StyleSheet>& styles() { return _styles; }
-        const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
-
-    public:
-        Config getConfig() const
-        {
-            Config conf = ImageLayerOptions::getConfig();
-            conf.set("features",  _featureSourceOptions);
-            conf.set("feature_source", _featureSourceLayer);
-            conf.set("buffer_width", _bufferWidth);
-            conf.set("styles", _styles);
-            return conf;
-        }
-
-    protected:
-        void mergeConfig( const Config& conf ) {
-            ImageLayerOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
-
-    private:
-        void fromConfig( const Config& conf )
-        {
-            conf.get("features",  _featureSourceOptions);
-            conf.get("feature_source", _featureSourceLayer);
-            conf.get("buffer_width", _bufferWidth);
-            conf.get("styles", _styles);
-        }
-        
-    private:
-        optional<FeatureSourceOptions> _featureSourceOptions;
-        optional<std::string> _featureSourceLayer;
-        optional<Distance> _bufferWidth;
-        osg::ref_ptr<StyleSheet> _styles;
-    };
-
-    /**
-     * Tile source that will read from ANOTHER tile source and perform
-     * various pre-processing syntheses operations like warping and detailing.
+     * Renders a road surface.
      */
     class OSGEARTHSPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
     {
+    public: // serialization
+        class OSGEARTHSPLAT_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_LAYER(StyleSheet, styleSheet);
+            OE_OPTION(Distance, featureBufferWidth);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
-        META_Layer(osgEarth, RoadSurfaceLayer, RoadSurfaceLayerOptions, road_surface);
-
-        //! Create a blank layer to be configured with options()
-        RoadSurfaceLayer();
-
-        //! Create a layer from deserialized options
-        RoadSurfaceLayer(const RoadSurfaceLayerOptions& options);
-
-    public:
+        META_Layer(osgEarth, RoadSurfaceLayer, Options, osgEarth::ImageLayer, RoadSurface);
 
         //! Sets the map layer from which to pull feature data. Call either
         //! This or setFeatureSource
-        void setFeatureSourceLayer(FeatureSourceLayer* layer);
+        void setFeatureSource(FeatureSource* layer);
+        FeatureSource* getFeatureSource() const;
+        
+        //! Buffer around the road vector for querying linear data (should be at least road width/2)
+        void setFeatureBufferWidth(const Distance& value);
+        const Distance& getFeatureBufferWidth() const;
+        
+        //! Style for rendering the road
+        void setStyleSheet(StyleSheet* value);
+        StyleSheet* getStyleSheet() const;
 
-        //! Sets the feature source to get road data from; call either this
-        //! or setFeatureSourceLayer
-        void setFeatureSource(FeatureSource* source);
 
     public: // ImageLayer
 
         // Opens the layer and returns a status
-        virtual const Status& open();
+        virtual Status openImplementation();
 
         // Creates an image for a tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress);
-
-    protected: // Layer
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
         // Called by Map when it adds this layer
         virtual void addedToMap(const class Map*);
@@ -136,24 +78,27 @@ namespace osgEarth { namespace Splat
         // Called by Map when it removes this layer
         virtual void removedFromMap(const class Map*);
 
+        //! Serialize
+        virtual Config getConfig() const;
+
+        osg::Node* getNode() const;
+
+    protected: // Layer
+
         // post-ctor initialization
         virtual void init();
-
-        // A node to add to the scene graph for this layer.
-        virtual osg::Node* getNode() const;
 
     protected:
 
         virtual ~RoadSurfaceLayer() { }
 
     private:
-        osg::ref_ptr<FeatureSource> _features;
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<TileRasterizer> _rasterizer;
-
-        LayerListener<RoadSurfaceLayer, FeatureSourceLayer> _layerListener;
     };
 
 } } // namespace osgEarth::Splat
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Splat::RoadSurfaceLayer::Options);
 
 #endif // OSGEARTH_SPLAT_ROAD_SURFACE_LAYER

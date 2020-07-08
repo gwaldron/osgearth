@@ -1,45 +1,23 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
+osgEarth Sample - Ocean without elevation data
 -->
-<map name="readymap.org" type="geocentric" version="2">
+<map name="Demo: ocean without elevation data">
 
-    <options>
-        <terrain driver="rex"/>
-    </options>
+    <xi:include href="readymap_imagery.xml"/>
     
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-        
-    <!--
-    <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-    -->
-    
-    <simple_ocean>      
+    <Ocean>
         <color>#1D2C4FFF</color>
         <max_altitude>1e10</max_altitude>
         <mask_layer>ocean_mask</mask_layer>
         <use_bathymetry>false</use_bathymetry>
         <shader_define>IS_OCEAN</shader_define>
-    </simple_ocean>
+    </Ocean>
     
-    <image name="ocean_mask" visible="false" shared="true" driver="tms">
+    <TMSImage name="ocean_mask" visible="false" shared="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
         <shared_sampler>ocean_mask</shared_sampler>
         <shared_matrix>ocean_mask_matrix</shared_matrix>
-    </image>
+    </TMSImage>
     
     <terrainshader>
         <code><![CDATA[

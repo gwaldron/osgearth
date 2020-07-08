@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,33 +24,30 @@
 
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Registry>
-
-#include <osgEarthDrivers/gdal/GDALOptions>
+#include <osgEarth/GDAL>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 
-TEST_CASE( "ImageLayers can be created from TileSourceOptions" ) {
-
-    GDALOptions opt;
-    opt.url() = "../data/world.tif";
-    osg::ref_ptr< ImageLayer > layer = new ImageLayer( ImageLayerOptions("world", opt) );
+TEST_CASE( "ImageLayers can be created" )
+{
+    GDALImageLayer* layer = new GDALImageLayer();
+    layer->setName("World");
+    layer->setURL("../data/world.tif");
 
     Status status = layer->open();
     REQUIRE( status.isOK() );
 
-    SECTION("Profiles are correct") {
+    SECTION("Profiles are correct")
+    {
         const Profile* profile = layer->getProfile();
-        REQUIRE(profile != NULL);
-
-        // This doesn't actually work without a change to the gdal driver.
-        //REQUIRE(profile->isEquivalentTo(osgEarth::Registry::instance()->getGlobalGeodeticProfile()));
-        //REQUIRE(profile->isHorizEquivalentTo(globalGeodetic));
+        REQUIRE(profile != nullptr);
+        REQUIRE(profile->isEquivalentTo(Profile::create("global-geodetic")));
     }
 
-    SECTION("Images are read correctly") {
-        TileKey key(0,0,0,layer->getProfile());
-        GeoImage image = layer->createImage( key );
+    SECTION("Images are read correctly")
+    {
+        TileKey key(0, 0, 0, layer->getProfile());
+        GeoImage image = layer->createImage(key);
         REQUIRE(image.valid());
         REQUIRE(image.getImage()->s() == 256);
         REQUIRE(image.getImage()->t() == 256);
@@ -58,18 +55,16 @@ TEST_CASE( "ImageLayers can be created from TileSourceOptions" ) {
     }
 }
 
-TEST_CASE("Attribution works") {
-
+TEST_CASE("Attribution works")
+{
     std::string attribution = "Attribution test";
-    GDALOptions gdalOpt;
-    gdalOpt.url() = "../data/world.tif";
 
-    ImageLayerOptions imageOpts;
-    imageOpts.driver() = gdalOpt;
-    imageOpts.attribution() = attribution;
+    GDALImageLayer* layer = new GDALImageLayer();
+    layer->setURL("../data/world.tif");
+    layer->setAttribution(attribution);
 
-    osg::ref_ptr< ImageLayer > layer = new ImageLayer(imageOpts);
     Status status = layer->open();
+
     REQUIRE(status.isOK());
     REQUIRE(layer->getAttribution() == attribution);
 }

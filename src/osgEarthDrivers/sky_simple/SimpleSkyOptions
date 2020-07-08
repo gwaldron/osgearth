@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,13 +19,12 @@
 #ifndef OSGEARTH_DRIVER_SIMPLE_SKY_OPTIONS
 #define OSGEARTH_DRIVER_SIMPLE_SKY_OPTIONS 1
 
-#include <osgEarthUtil/Sky>
+#include <osgEarth/Sky>
 #include <osgEarth/URI>
 
 namespace osgEarth { namespace SimpleSky
 {
     using namespace osgEarth;
-    using namespace osgEarth::Util;
 
     /**
      * Options for creating a simple sky.

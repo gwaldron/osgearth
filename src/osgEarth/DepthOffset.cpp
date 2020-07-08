@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -84,10 +84,10 @@ namespace
 
 DepthOffsetOptions::DepthOffsetOptions(const Config& conf) :
 _enabled ( true ),
-_minBias (      100.0f ),
-_maxBias (    10000.0f ),
-_minRange(     1000.0f ),
-_maxRange( 10000000.0f ),
+_minBias (Distance(100.0, Units::METERS)),
+_maxBias (Distance(10000.0, Units::METERS)),
+_minRange(Distance(1000.0, Units::METERS)),
+_maxRange(Distance(10000000.0, Units::METERS)),
 _auto    ( true )
 {
     conf.get( "enabled",   _enabled );
@@ -165,7 +165,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         osg::StateSet* s = _graph->getStateSet();
         s->removeUniform( _paramsUniform.get() );
         
-        shaders.unload( VirtualProgram::get(s), shaders.DepthOffsetVertex );
+        shaders.unload( VirtualProgram::get(s), shaders.DepthOffset);
 
         s->removeAttribute(osg::StateAttribute::DEPTH);
     }
@@ -184,7 +184,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         
         VirtualProgram* vp = VirtualProgram::getOrCreate(s);
         vp->setName("DepthOffset");
-        shaders.load(vp, shaders.DepthOffsetVertex);    
+        shaders.load(vp, shaders.DepthOffset);  
 
         // disable depth writes
         s->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false), 1);
@@ -242,7 +242,7 @@ DepthOffsetAdapter::recalculate()
             GeometryAnalysisVisitor v;
             _graph->accept( v );
             float maxLen = osg::maximum(1.0f, sqrtf(v._segmentAnalyzer._maxLen2));
-            _options.minRange() = sqrtf(maxLen) * 19.0f;
+            _options.minRange()->set(sqrtf(maxLen) * 19.0f, Units::METERS);
             _dirty = false;
             OE_TEST << LC << "Recalcluated." << std::endl;
         }
@@ -293,10 +293,10 @@ DepthOffsetGroup::computeBound() const
 {
     if ( _adapter.supported() )
     {
-        static Threading::Mutex s_mutex;
-        s_mutex.lock();
+        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
+        Threading::ScopedMutexLock lock(s_mutex);
+
         const_cast<DepthOffsetGroup*>(this)->scheduleUpdate();
-        s_mutex.unlock();
     }
     return osg::Group::computeBound();
 }

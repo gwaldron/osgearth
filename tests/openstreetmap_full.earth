@@ -4,18 +4,21 @@ osgEarth Sample - Openstreetmap buildings.
 This shows how to use the TFS driver to connect to a worldwide openstreetmap building dataset.
 You must have the mapnik vector tiles driver built by including the protobuf libraries in cmake.
 -->
-<map name="TFS" type="geocentric" version="2">
+<map name="Worldwide OSM feature data">
 
-    <feature_model name="osm">
-        <features name="osm" driver="tfs">
-            <url>http://readymap.org/osm/</url>
-            <min_level>14</min_level>
-            <max_level>14</max_level>
-            <profile>spherical-mercator</profile>
-            <format>pbf</format>
-        </features>
+    <TFSFeatures name="data:osm">
+        <url>http://readymap.org/readymap/mbtiles/osm/</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
+    </TFSFeatures>
 
-        <feature_indexing enabled="false"></feature_indexing>
+    <FeatureModel name="OSM">
+        <features>data:osm</features>
+
+        <feature_indexing enabled="true"></feature_indexing>
 
         <styles>
 
@@ -54,7 +57,9 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                    model-density:       10000;
                    model-scale:         2.5;
                    model-random-seed:   1;
-                   altitude-clamping:       terrain;
+                   render-transparent:  true;
+                   render-min-alpha:    0.15;
+                   altitude-clamping:   terrain;
                 }
 
                 grass {
@@ -63,7 +68,9 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                    model-density:       10000;
                    model-scale:         2.5;
                    model-random-seed:   1;
-                   altitude-clamping:       terrain;
+                   render-transparent:  true;
+                   render-min-alpha:    0.15;
+                   altitude-clamping:   terrain;
                 }
 
                 water {
@@ -171,33 +178,27 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
             </script>
 
         </styles>
-    </feature_model>
+    </FeatureModel>
 
+    <xi:include href="readymap_imagery.xml"/>
 
-
-    <image name="esri imagery" driver="arcgis">
-        <url>http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer</url>
-        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
-    </image>
-
-    <image name="osm_roads" driver="agglite" min_level="14">
-
-        <max_data_level>14</max_data_level>
-
+    <TFSFeatures name="data:roads">
+        <url>http://readymap.org/readymap/mbtiles/osm/</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
         <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <filters>
+            <script language="javascript">
+                <![CDATA[ ("highway" in feature.properties) ]]>
+            </script>
+        </filters>
+    </TFSFeatures>
 
-        <features name="osm" driver="tfs">
-            <url>http://readymap.org/osm/</url>
-            <min_level>14</min_level>
-            <max_level>14</max_level>
-            <profile>spherical-mercator</profile>
-            <format>pbf</format>
-            <filters>
-                <script language="javascript">
-                    <![CDATA[ ("highway" in feature.properties) ]]>
-                </script>
-            </filters>
-        </features>
+    <FeatureImage name="OSM Roads" min_level="14">
+        <features>data:roads</features>
+        <max_data_level>14</max_data_level>
+        <profile>spherical-mercator</profile>
         <styles>
             <style type="text/css">
                 roads {
@@ -207,14 +208,9 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                 }
             </style>
         </styles>
+    </FeatureImage>
 
-        <cache_policy usage="none"/>
-    </image>
-
-
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_elevation.xml"/>
 
     <xi:include href="viewpoints.xml"/>
 </map>

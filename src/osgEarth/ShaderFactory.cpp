@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,17 +24,21 @@
 
 #define LC "[ShaderFactory] "
 
-#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
-    static bool s_GLES_SHADERS = true;
-#else
-    static bool s_GLES_SHADERS = false;
-#endif
+namespace
+{
+    #if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
+        static bool s_GLES_SHADERS = true;
+    #else
+        static bool s_GLES_SHADERS = false;
+    #endif
+}
 
 #define INDENT "    "
 #define RANGE  osgEarth::Registry::instance()->shaderFactory()->getRangeUniformName()
 
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
+using namespace osgEarth::Util;
 
 
 ShaderFactory::ShaderFactory()
@@ -146,12 +150,26 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     varDefs.insert( "vec4 vp_Vertex" );
 
     // parse the vp_varyings (which were injected by the ShaderLoader)
+    // We actually only care about the in's. Because any varying that 
+    // doesn't have an "in" somewhere in the shader list is not actually
+    // being used as a varying, in which case we don't need it in the
+    // interface block.
+    // NOTE: The above statement is true IFF we don't move any vertex shaders
+    // to the TCS, TES, or GS phase. So we need to check that.
+
     for(VirtualProgram::ShaderMap::const_iterator s = in_shaders.begin(); s != in_shaders.end(); ++s )
     {
-        osg::Shader* shader = s->data()._shader->getNominalShader();
+        osg::Shader* shader = s->second._shader->getNominalShader();
         if ( shader )
         {
-            ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying", varDefs);
+            ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying_in", varDefs);
+
+            // Like I said above, if the possibility exists of shunting vertex shaders to
+            // a different stage, we need the outs after all.
+            if (hasTCS || hasTES || hasGS)
+            {
+                ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying_out", varDefs);
+            }
         }
     }
 

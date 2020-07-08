@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,26 +20,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osg/Notify>
-#include <osgGA/GUIEventHandler>
-#include <osgGA/StateSetManipulator>
-#include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>
-#include <osgEarth/MapNode>
-#include <osgEarth/ImageLayer>
+#include <osg/ArgumentParser>
 #include <osgEarth/SimplexNoise>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Controls>
-#include <osgEarthSymbology/Color>
-#include <osgEarthDrivers/tms/TMSOptions>
-#include <osgEarthDrivers/wms/WMSOptions>
-#include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgDB/WriteFile>
 #include <osg/Image>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
-using namespace osgEarth::Util;
 
 int usage()
 {
@@ -57,6 +43,8 @@ int usage()
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     int dim;
@@ -73,7 +61,7 @@ main(int argc, char** argv)
     int octaves = 12;
     arguments.read("--octaves", octaves);
 
-    SimplexNoise noise;
+    osgEarth::Util::SimplexNoise noise;
     noise.setFrequency(freq);
     noise.setOctaves(octaves);
     noise.setNormalize(true);

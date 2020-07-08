@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,8 +28,8 @@
 #include <osgViewer/Viewer>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/GLUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 
 #define LC "[viewer] "
 
@@ -56,7 +56,7 @@ createMRTPass(App& app, osg::Node* sceneGraph)
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER0), app.gcolor);
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER1), app.gnormal);
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER2), app.gdepth);
-    rtt->setCullingMode(rtt->getCullingMode() & ~osg::CullSettings::SMALL_FEATURE_CULLING); 
+    rtt->setCullingMode(rtt->getCullingMode() & ~osg::CullSettings::SMALL_FEATURE_CULLING);
 
     static const char* vertSource =
         "#version " GLSL_VERSION_STR "\n"
@@ -96,7 +96,7 @@ createFramebufferQuad(App& app)
 
     osg::Geometry* g = new osg::Geometry();
     g->setSupportsDisplayList( false );
-    
+
     osg::Vec3Array* v = new osg::Vec3Array();
     v->push_back(osg::Vec3(-w/2, -h/2, 0));
     v->push_back(osg::Vec3( w/2, -h/2, 0));
@@ -130,7 +130,7 @@ osg::Node*
 createFramebufferPass(App& app)
 {
     osg::Node* quad = createFramebufferQuad(app);
-    
+
     osg::StateSet* stateset = quad->getOrCreateStateSet();
 
     static const char* vertSource =
@@ -232,7 +232,7 @@ createRenderTargets(App& app, unsigned width, unsigned height)
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -257,7 +257,7 @@ struct RTTIntersectionTest : public osgGA::GUIEventHandler
             osg::Vec3d pf( nx, ny,  1 ); // on far plane
 
             OE_NOTICE << "clip: nx=" << nx << ", ny=" << ny << std::endl;
-            
+
             // take the view matrix as-is:
             osg::Matrix view = _view->getCamera()->getViewMatrix();
 
@@ -284,8 +284,8 @@ struct RTTIntersectionTest : public osgGA::GUIEventHandler
 
             lsi->setIntersectionLimit( lsi->LIMIT_NEAREST );
 
-            osgUtil::IntersectionVisitor iv( lsi ); 
-            
+            osgUtil::IntersectionVisitor iv( lsi );
+
             _node->accept( iv );
 
             if ( lsi->containsIntersections() )
@@ -301,6 +301,8 @@ struct RTTIntersectionTest : public osgGA::GUIEventHandler
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator() );

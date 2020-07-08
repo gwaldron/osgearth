@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,7 +28,7 @@
 #include <osg/CoordinateSystemNode>
 #include <osg/ClusterCullingCallback>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     struct HeightFieldNeighborhood
     {
@@ -76,7 +76,7 @@ namespace osgEarth
         static float getHeightAtPixel(
             const osg::HeightField* hf, 
             double c, double r, 
-            ElevationInterpolation interpolation = INTERP_BILINEAR);
+            RasterInterpolation interpolation = INTERP_BILINEAR);
 
         /**
          * Gets the height value at the specified column and row, but instead of reading
@@ -86,7 +86,7 @@ namespace osgEarth
             const osg::HeightField* hf, 
             unsigned c, unsigned r, 
             float& out_height,
-            ElevationInterpolation interpoltion = INTERP_BILINEAR);
+            RasterInterpolation interpoltion = INTERP_BILINEAR);
         
         /**
          * Gets the interpolated height value at the specific geolocation.
@@ -96,7 +96,7 @@ namespace osgEarth
             double x, double y, 
             double llx, double lly,
             double dx, double dy,
-            ElevationInterpolation interpolation = INTERP_BILINEAR);
+            RasterInterpolation interpolation = INTERP_BILINEAR);
 
         /**
          * Gets the normal vector at a geolocation
@@ -106,7 +106,7 @@ namespace osgEarth
             double x, double y, 
             double llx, double lly,
             double dx, double dy,
-            ElevationInterpolation interpolation = INTERP_BILINEAR);
+            RasterInterpolation interpolation = INTERP_BILINEAR);
 
         /**
          * Gets the interpolated elevation at the specified "normalized unit location".
@@ -116,7 +116,7 @@ namespace osgEarth
         static float getHeightAtNormalizedLocation(
             const osg::HeightField* hf,
             double nx, double ny,
-            ElevationInterpolation interp = INTERP_BILINEAR);
+            RasterInterpolation interp = INTERP_BILINEAR);
 
         /**
          * Gets the interpolated elevation at the specified "normalized unit location".
@@ -127,7 +127,7 @@ namespace osgEarth
             const HeightFieldNeighborhood& hood,
             double nx, double ny,
             float& output,
-            ElevationInterpolation interp = INTERP_BILINEAR);
+            RasterInterpolation interp = INTERP_BILINEAR);
 
         /**
          * Scales all the height values in a heightfield from scalar units to "linear degrees".
@@ -163,7 +163,7 @@ namespace osgEarth
             const osg::HeightField* input, 
             const GeoExtent&        inputEx,
             const GeoExtent&        outputEx,
-            ElevationInterpolation  interpolation = INTERP_BILINEAR);
+            RasterInterpolation     interpolation = INTERP_BILINEAR);
 
         /**
          * Resizes a heightfield, keeping the corner values the same and
@@ -174,7 +174,7 @@ namespace osgEarth
             const GeoExtent& inputEx,
             int newX,
             int newY,
-            ElevationInterpolation interp = INTERP_BILINEAR );
+            RasterInterpolation interp = INTERP_BILINEAR );
 
         /**
          * Resolves any "invalid" height values in the hieghtfield, replacing them
@@ -197,29 +197,12 @@ namespace osgEarth
             float                      verticalScale =1.0f );
 
         /**
-         * Convert a heightfield (and its neighbors) into a normal map* image.
-         */
-        static NormalMap* convertToNormalMap(
-            const HeightFieldNeighborhood& hood,
-            const SpatialReference*        hoodSRS);
-        
-        /**
-         * Reads elevation data from one image and writes a normal/curvature map
-         * for it to another image of the same size
-         */
-        static void createNormalMap(
-            const osg::Image* elevation,
-            NormalMap*        normalMap,
-            const GeoExtent&  extent);
-
-
-        /**
          * Utility function that will take sample points used for interpolation and copy valid values into any of the samples that are NO_DATA_VALUE.
          * Returns false if all values are NO_DATA_VALUE.
          * Returns true if all the values are valid or if we were able to replace NO_DATA_VALUE samples with valid values.
          **/
         static bool validateSamples(float &a, float &b, float &c, float &d);
     };
-}
+} }
 
 #endif //OSGEARTH_HEIGHTFIELDUTILS_H

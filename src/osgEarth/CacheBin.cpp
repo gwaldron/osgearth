@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -169,7 +169,7 @@ namespace
     {
         CacheBin*               _bin;
         const osgDB::Options*   _writeOptions;
-        static Threading::Mutex _globalMutex;
+        static Threading::Gate<osg::Image*> _imageGate;
 
         // constructor
         WriteExternalReferencesToCache(CacheBin* bin, const osgDB::Options* writeOptions)
@@ -203,9 +203,8 @@ namespace
 
             if (!osgEarth::endsWith(path, ".osgearth_cachebin"))
             {
-                // take a plugin-global mutex to avoid two threads altering the image
-                // at the same time
-                Threading::ScopedMutexLock lock(_globalMutex);
+                // Allow only one reference to the same image through at a time
+                Threading::ScopedGate<osg::Image*> _lockImage(_imageGate, &image);
 
                 if (!osgEarth::endsWith(path, ".osgearth_cachebin"))
                 {
@@ -243,7 +242,7 @@ namespace
     };
 
     
-    Threading::Mutex WriteExternalReferencesToCache::_globalMutex;
+    Threading::Gate<osg::Image*> WriteExternalReferencesToCache::_imageGate(OE_MUTEX_NAME);
 }
 
 

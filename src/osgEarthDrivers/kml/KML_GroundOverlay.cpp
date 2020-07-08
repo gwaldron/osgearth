@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,10 +18,10 @@
  */
 #include "KML_GroundOverlay"
 #include "KML_Geometry"
-#include <osgEarthAnnotation/ImageOverlay>
+#include <osgEarth/ImageOverlay>
 
 using namespace osgEarth_kml;
-using namespace osgEarth::Annotation;
+using namespace osgEarth;
 
 void
 KML_GroundOverlay::scan( xml_node<>* node, KMLContext& cx )

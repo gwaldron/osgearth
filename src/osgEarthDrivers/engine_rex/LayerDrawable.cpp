@@ -18,8 +18,10 @@
  */
 #include "LayerDrawable"
 #include "TerrainRenderData"
+#include <osgEarth/Metrics>
+#include <sstream>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 #undef  LC
 #define LC "[LayerDrawable] "
@@ -31,6 +33,7 @@ _drawOrder(0),
 _layer(0L),
 _visibleLayer(0L),
 _imageLayer(0L),
+_patchLayer(0L),
 _clearOsgState(false),
 _draw(true)
 {
@@ -46,6 +49,24 @@ LayerDrawable::~LayerDrawable()
     // we don't want that because our Layer stateset is shared and re-usable.
     // So detach it before OSG has a chance to do so.
     setStateSet(0L);
+}
+
+void
+LayerDrawable::finalize()
+{
+    // if this is a patch layer with a draw callback, we need to
+    // generate a batch ID.
+    if (_patchLayer)
+    {
+        std::stringstream buf;
+        for(DrawTileCommands::const_iterator i = _tiles.begin();
+            i != _tiles.end();
+            ++i)
+        {
+            buf << i->_key->str() << "/" << i->_tileRevision << "/";
+        }
+        _tileBatchId = osgEarth::hashString(buf.str());
+    }
 }
 
 namespace
@@ -76,30 +97,41 @@ namespace
     };
 }
 
-
 void
-LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
+LayerDrawable::drawTiles(osg::RenderInfo& ri) const
 {
-    //OE_INFO << LC << (_layer ? _layer->getName() : "[empty]") << " tiles=" << _tiles.size() << std::endl;
+    PerProgramState& pps = _drawState->getPPS(ri);
+    pps.refresh(ri, _drawState->_bindings);
 
-    // Get this context's state values:
-    PerContextDrawState& ds = _drawState->getPCDS(ri.getContextID());
-
-    ds.refresh(ri, _drawState->_bindings);
-
-    if (ds._layerUidUL >= 0)
+    if (pps._layerUidUL >= 0)
     {
+        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
         GLint uid = _layer ? (GLint)_layer->getUID() : (GLint)-1;
-        ds._ext->glUniform1i(ds._layerUidUL, uid);
-    }
-    else
-    {
-        // This just means that the fragment shader for this layer doesn't use oe_layer_uid
+        ext->glUniform1i(pps._layerUidUL, uid);
     }
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
-        tile->draw(ri, *_drawState, 0L);
+        //_drawState->getPPS(ri).refresh(ri, _drawState->_bindings);
+        tile->draw(ri, *_drawState, NULL);
+    }
+}
+
+void
+LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
+{
+    OE_PROFILING_ZONE;
+    char buf[64];
+    sprintf(buf, "%.36s (%zd tiles)", _layer ? _layer->getName().c_str() : "unknown layer", _tiles.size());
+    OE_PROFILING_ZONE_TEXT(buf);
+
+    if (_patchLayer && _patchLayer->getDrawCallback())
+    {        
+        _patchLayer->getDrawCallback()->draw(ri, this);
+    }
+    else
+    {
+        drawTiles(ri);
     }
 
     // If set, dirty all OSG state to prevent any leakage - this is sometimes
@@ -116,12 +148,30 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         ri.getState()->dirtyAllVertexArrays();
         
         // unbind local buffers when finished.
-        ds._ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
-        ds._ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
+        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+
+        ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
+        ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
 
         // gw: no need to do this, in fact it will cause positional attributes
         // (light clip planes and lights) to immediately be reapplied under the
         // current MVM, which will by definition be wrong!)
         //ri.getState()->apply();
+    }
+}
+
+void LayerDrawable::accept(osg::PrimitiveFunctor& functor) const
+{
+    for (DrawTileCommands::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
+    {
+        itr->accept(functor);
+    }
+}
+
+void LayerDrawable::accept(osg::PrimitiveIndexFunctor& functor) const
+{
+    for (DrawTileCommands::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
+    {
+        itr->accept(functor);
     }
 }

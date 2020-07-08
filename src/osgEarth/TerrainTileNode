@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -38,16 +38,6 @@ namespace osgEarth
     public:    
         //! TileKey represented by this tile node
         virtual const TileKey& getKey() const = 0;
-
-        virtual double getMinimumExpirationTime() const = 0;
-        virtual void setMinimumExpirationTime(double minExpiryTime) = 0;
-        
-        virtual unsigned int getMinimumExpirationFrames() const = 0;
-        virtual void setMinimumExpirationFrames(unsigned int minExpiryFrames) = 0;
-
-
-        virtual void loadChildren() = 0;
-
 
     protected:
         virtual ~TerrainTileNode() { }

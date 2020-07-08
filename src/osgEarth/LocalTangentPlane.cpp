@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,23 +25,18 @@ using namespace osgEarth;
 
 // --------------------------------------------------------------------------
 
-TangentPlaneSpatialReference::TangentPlaneSpatialReference( void* handle, const osg::Vec3d& originLLA ) :
-SpatialReference( handle, false ),
-_originLLA      ( originLLA )
-{
-    //nop
-}
+TangentPlaneSpatialReference::TangentPlaneSpatialReference(
+    const Key& key,
+    const osg::Vec3d& originLLA) :
 
-void
-TangentPlaneSpatialReference::_init()
+    SpatialReference(key),
+    _originLLA(originLLA)
 {
-    SpatialReference::_init();
-
     _is_user_defined = true;
     _is_contiguous   = true;
-    _is_ltp          = true;
-    _is_geographic   = false;
-    _name            = "ENU Local Tangent Plane";
+    _is_ltp = true;
+    _domain = PROJECTED;
+    _name = "Tangent Plane";
 
     // set up the LTP matrixes.
 
@@ -84,7 +79,7 @@ TangentPlaneSpatialReference::postTransform(std::vector<osg::Vec3d>& points) con
 }
 
 bool
-TangentPlaneSpatialReference::_isEquivalentTo( const SpatialReference* srs ) const
+TangentPlaneSpatialReference::_isEquivalentTo( const SpatialReference* srs, bool considerVDatum ) const
 {
     return 
         srs->isLTP() && 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,7 +25,7 @@
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/ExampleResources>
 #include <osgDB/ReaderWriter>
 #include <osgDB/ReadFile>
 #include <osgDB/Registry>
@@ -78,16 +78,16 @@ using namespace osgViewer;
 class WindowCaptureCallback : public osg::Camera::DrawCallback
 {
     public:
-       
+
         enum FramePosition
         {
             START_FRAME,
             END_FRAME
         };
-    
+
         struct ContextData : public osg::Referenced
         {
-        
+
             ContextData(osg::GraphicsContext* gc, GLenum readBuffer):
                 _gc(gc),
                 _readBuffer(readBuffer),
@@ -105,23 +105,23 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
                         osg::notify(osg::NOTICE)<<"Select GL_BGRA read back format"<<std::endl;
                         _pixelFormat = GL_BGRA;
                     }
-                    else 
+                    else
                     {
                         osg::notify(osg::NOTICE)<<"Select GL_BGR read back format"<<std::endl;
-                        _pixelFormat = GL_BGR; 
+                        _pixelFormat = GL_BGR;
                     }
                 }
-            
+
                 getSize(gc, _width, _height);
-                
+
                 std::cout<<"Window size "<<_width<<", "<<_height<<std::endl;
-            
+
                 // single buffered image
                 _imageBuffer.push_back(new osg::Image);
 
                 _pboBuffer.push_back(0);
             }
-            
+
             void getSize(osg::GraphicsContext* gc, int& width, int& height)
             {
                 if (gc->getTraits())
@@ -130,7 +130,7 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
                     height = gc->getTraits()->height;
                 }
             }
-           
+
 
             void read()
             {
@@ -149,35 +149,35 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
                         singlePBO(ext);
                 }
             }
-           
+
 #if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
             void singlePBO(osg::GLExtensions* ext);
 #else
             void singlePBO(osg::GLBufferObject::Extensions* ext);
 #endif
 
-       
+
             typedef std::vector< osg::ref_ptr<osg::Image> >             ImageBuffer;
             typedef std::vector< GLuint > PBOBuffer;
 
-       
+
             osg::GraphicsContext*   _gc;
             GLenum                  _readBuffer;
-            
+
             GLenum                  _pixelFormat;
             GLenum                  _type;
             int                     _width;
             int                     _height;
-            
+
             unsigned int            _currentImageIndex;
             ImageBuffer             _imageBuffer;
-            
+
             unsigned int            _currentPboIndex;
             PBOBuffer               _pboBuffer;
 
             osg::ref_ptr< osg::Image > _lastImage;
         };
-    
+
         WindowCaptureCallback(FramePosition position, GLenum readBuffer):
             _position(position),
             _readBuffer(readBuffer)
@@ -190,13 +190,13 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
         {
             return new ContextData(gc, _readBuffer);
         }
-        
+
         ContextData* getContextData(osg::GraphicsContext* gc) const
         {
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
             osg::ref_ptr<ContextData>& data = _contextDataMap[gc];
             if (!data) data = createContextData(gc);
-            
+
             return data.get();
         }
 
@@ -209,7 +209,7 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
             cd->read();
             const_cast<WindowCaptureCallback*>(this)->_image = cd->_lastImage.get();
         }
-        
+
         typedef std::map<osg::GraphicsContext*, osg::ref_ptr<ContextData> > ContextDataMap;
 
         FramePosition               _position;
@@ -217,8 +217,8 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
         mutable OpenThreads::Mutex  _mutex;
         mutable ContextDataMap      _contextDataMap;
         osg::ref_ptr< osg::Image>   _image;
-        
-        
+
+
 };
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
@@ -226,7 +226,7 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
 #else
             void WindowCaptureCallback::ContextData::singlePBO(osg::GLBufferObject::Extensions* ext)
 #endif
-{ 
+{
     unsigned int nextImageIndex = (_currentImageIndex+1)%_imageBuffer.size();
 
     int width=0, height=0;
@@ -239,14 +239,14 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
     }
 
     GLuint& pbo = _pboBuffer[0];
-    
+
     osg::Image* image = _imageBuffer[_currentImageIndex].get();
-    if (image->s() != _width || 
+    if (image->s() != _width ||
         image->t() != _height)
     {
         osg::notify(osg::NOTICE)<<"Allocating image "<<std::endl;
         image->allocateImage(_width, _height, 1, _pixelFormat, _type);
-        
+
         if (pbo!=0)
         {
             osg::notify(osg::NOTICE)<<"deleting pbo "<<pbo<<std::endl;
@@ -254,8 +254,8 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
             pbo = 0;
         }
     }
-    
-    
+
+
     if (pbo==0)
     {
         ext->glGenBuffers(1, &pbo);
@@ -271,14 +271,14 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
 
 #if 1
     glReadPixels(0, 0, _width, _height, _pixelFormat, _type, 0);
-#endif    
+#endif
 
     GLubyte* src = (GLubyte*)ext->glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,
                                               GL_READ_ONLY_ARB);
     if(src)
     {
         memcpy(image->data(), src, image->getTotalSizeInBytes());
-        
+
         ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
     }
 
@@ -294,7 +294,7 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -367,7 +367,7 @@ public:
            GLenum buffer = GL_BACK;
            _viewer->getCamera()->setDrawBuffer(buffer);
            _viewer->getCamera()->setReadBuffer(buffer);
-           
+
 
           _root = new osg::Group;
 
@@ -379,8 +379,8 @@ public:
       }
 
       osg::GraphicsContext* createGraphicsContext()
-      {       
-          osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;  
+      {
+          osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
           traits->x = 0;
           traits->y = 0;
           traits->width = 256;
@@ -414,13 +414,13 @@ public:
 
           OE_DEBUG << "key=" << key.str() << std::endl;
 
-          // Set the projection matrix to capture the tile.                    
+          // Set the projection matrix to capture the tile.
           OE_DEBUG << "Key extent " << z << "(" << x << ", " << y << ") = " << key.getExtent().toString() << std::endl;
           //_viewer->getCamera()->setProjectionMatrixAsOrtho2D(key.getExtent().xMin(), key.getExtent().xMax(), key.getExtent().yMin(), key.getExtent().yMax());
           unsigned int heightIndex = osg::clampBetween(z, 0u, LOD_COUNT -1u);
 
           // Multiply by the min_tile_range_factor to get close to what the correct distance would be for this tile.
-          double height = oe_LODRanges[heightIndex] * *_mapNode->getMapNodeOptions().getTerrainOptions().minTileRangeFactor();
+          double height = oe_LODRanges[heightIndex] * _mapNode->getTerrainOptions().getMinTileRangeFactor();
           osg::Vec3d center = key.getExtent().getCentroid();
           osg::Vec3d eye = center + osg::Vec3d(0,0,height);
           _viewer->getCamera()->setViewMatrixAsLookAt(eye, center, osg::Vec3d(0,1,0));
@@ -441,11 +441,11 @@ public:
 
           OE_DEBUG << "Took " << numFrames << " to load data for " << key.str() << std::endl;
 
-          _viewer->getCamera()->setFinalDrawCallback(_windowCaptureCallback);
+          _viewer->getCamera()->setFinalDrawCallback(_windowCaptureCallback.get());
           _viewer->frame();
           _viewer->frame();
           _viewer->getCamera()->setFinalDrawCallback( 0 );
-                   
+
           if (_windowCaptureCallback->_image)
           {
               return new osg::Image(*_windowCaptureCallback->_image);
@@ -475,7 +475,7 @@ public:
     {
         StringTokenizer tok("/");
         StringVector tized;
-        tok.tokenize(request.getURI(), tized);            
+        tok.tokenize(request.getURI(), tized);
         if ( tized.size() == 4 )
         {
             int z = as<int>(tized[1], 0);
@@ -485,13 +485,13 @@ public:
 
             OE_DEBUG << "z=" << z << std::endl;
             OE_DEBUG << "x=" << x << std::endl;
-            OE_DEBUG << "y=" << y << std::endl;              
+            OE_DEBUG << "y=" << y << std::endl;
             OE_DEBUG << "ext=" << ext << std::endl;
 
             response.setChunkedTransferEncoding(true);
 
             osg::ref_ptr< osg::Image > image = _server->getTile(z, x, y);
-            
+
             if (image)
             {
                 osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(ext);
@@ -501,16 +501,16 @@ public:
                     if (ext == "jpeg" || ext == "jpg")
                     {
                         mime = "image/jpeg";
-                    }                    
+                    }
                     response.setContentType(mime);
-                    std::ostream& ostr = response.send();                 
-                    rw->writeImage(*image.get(), ostr);                    
-                }             
+                    std::ostream& ostr = response.send();
+                    rw->writeImage(*image.get(), ostr);
+                }
 
             }
         }
- 
-        response.setStatus(Poco::Net::HTTPResponse::HTTP_NOT_FOUND);                
+
+        response.setStatus(Poco::Net::HTTPResponse::HTTP_NOT_FOUND);
     }
 
 private:
@@ -526,10 +526,10 @@ class TileRequestHandlerFactory : public HTTPRequestHandlerFactory
 
     HTTPRequestHandler* createRequestHandler(
         const HTTPServerRequest& request)
-    {        
+    {
         StringTokenizer tok("/");
         StringVector tized;
-        tok.tokenize(request.getURI(), tized);            
+        tok.tokenize(request.getURI(), tized);
         if ( tized.size() == 4 )
         {
             int z = as<int>(tized[1], 0);
@@ -539,7 +539,7 @@ class TileRequestHandlerFactory : public HTTPRequestHandlerFactory
 
             OE_DEBUG << "z=" << z << std::endl;
             OE_DEBUG << "x=" << x << std::endl;
-            OE_DEBUG << "y=" << y << std::endl;              
+            OE_DEBUG << "y=" << y << std::endl;
             OE_DEBUG << "ext=" << ext << std::endl;
 
             return new TileRequestHandler();
@@ -592,6 +592,8 @@ private:
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -607,9 +609,9 @@ main(int argc, char** argv)
     osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
 
         // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::ref_ptr< osg::Node> node = osgDB::readNodeFiles( arguments );
-    osg::ref_ptr< MapNode > mapNode = MapNode::findMapNode( node );
+    osg::ref_ptr< MapNode > mapNode = MapNode::findMapNode( node.get());
 
     if (mapNode.valid())
     {

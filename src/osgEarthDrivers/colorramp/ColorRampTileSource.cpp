@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,8 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
+#include <osgEarth/LayerReference>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osg/TransferFunction>
@@ -32,7 +33,7 @@
 #define LC "[ColorRamp Driver] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Contrib;
 using namespace osgEarth::Drivers;
 
 
@@ -49,16 +50,12 @@ public:
     Status initialize( const osgDB::Options* dbOptions )
     {
         osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);        
-
-        if (!_options.elevationLayer().isSet())
-        {
-            return Status::Error(Status::ConfigurationError, "Please specify a heightfield layer for the color ramp");
-        }
         
-        _layer = new ElevationLayer(*_options.elevationLayer() );
-        _layer->open();
+        Status s = _options.elevationLayer().open(dbOptions);
+        if (s.isError())
+            return s;
 
-        setProfile(_layer->getProfile());
+        setProfile(_options.elevationLayer().getLayer()->getProfile());
 
         initTransferFunction();
                
@@ -102,8 +99,11 @@ public:
     osg::Image*
     createImage( const TileKey& key, ProgressCallback* progress )
     {
+        if (!_options.elevationLayer().getLayer())
+            return 0L;
+
         // Use the underlying ElevationLayer to create a heightfield and then color it.
-        GeoHeightField geoHF = _layer->createHeightField(key, progress);
+        GeoHeightField geoHF = _options.elevationLayer().getLayer()->createHeightField(key, progress);
         if (geoHF.valid())
         {
             const osg::HeightField* hf = geoHF.getHeightField(); 
@@ -131,8 +131,7 @@ public:
     
 
 private:
-    const ColorRampOptions _options;
-    osg::ref_ptr< ElevationLayer > _layer;
+    ColorRampOptions _options;
     osg::ref_ptr< osg::TransferFunction1D> _transferFunction;
 };
 
@@ -160,4 +159,3 @@ public:
 };
 
 REGISTER_OSGPLUGIN(osgearth_colorramp, ColorRampTileSourceFactory)
-

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -41,13 +41,12 @@ namespace osgEarth
             ADD_LAYER,
             REMOVE_LAYER,
             MOVE_LAYER,
-            TOGGLE_LAYER,     // visibilty toggle on elevation is a model change.
-            ENABLE_LAYER,
-            DISABLE_LAYER,
+            OPEN_LAYER,
+            CLOSE_LAYER,
             UNSPECIFIED
         };
 
-        MapModelChange() : _action(UNSPECIFIED) { }
+        MapModelChange() : _action(UNSPECIFIED), _firstIndex(0), _secondIndex(0) { }
 
         MapModelChange( ActionType action, Revision mapModeRev, Layer* layer =0L, int firstIndex =-1, int secondIndex =-1 )
             : _action(action), _layer(layer), _modelRevision(mapModeRev), _firstIndex(firstIndex), _secondIndex(secondIndex) { }

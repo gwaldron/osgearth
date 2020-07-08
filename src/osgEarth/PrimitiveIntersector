@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,9 +23,8 @@
 #include <osgUtil/IntersectionVisitor>
 #include <osgEarth/Common>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
-
 /** Concrete class for implementing line intersections with the scene graph.
   * To be used in conjunction with IntersectionVisitor. */
 class OSGEARTH_EXPORT PrimitiveIntersector : public osgUtil::Intersector
@@ -40,13 +39,24 @@ public:
     /** Constructor for initializing with full start and end vectors. */
     PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d& start, const osg::Vec3d& end, double thickness, bool overlayIgnore=false);
 
-    struct Intersection
+    struct OSGEARTH_EXPORT Intersection
     {
         Intersection():
             ratio(-1.0),
             primitiveIndex(0) {}
 
-        Intersection(const Intersection &rhs);
+        Intersection(const Intersection &rhs)
+        {
+            ratio = rhs.ratio;
+            nodePath = rhs.nodePath;
+            drawable = rhs.drawable;
+            matrix = rhs.matrix;
+            localIntersectionPoint = rhs.localIntersectionPoint;
+            localIntersectionNormal = rhs.localIntersectionNormal;
+            indexList = rhs.indexList;
+            ratioList = rhs.ratioList;
+            primitiveIndex = rhs.primitiveIndex;
+        }
 
         bool operator < (const Intersection& rhs) const { return ratio < rhs.ratio; }
 
@@ -58,7 +68,7 @@ public:
         osg::ref_ptr<osg::Drawable>     drawable;
         osg::ref_ptr<osg::RefMatrix>    matrix;
         osg::Vec3d                      localIntersectionPoint;
-        osg::Vec3d                       localIntersectionNormal;
+        osg::Vec3d                      localIntersectionNormal;
         IndexList                       indexList;
         RatioList                       ratioList;
         unsigned int                    primitiveIndex;
@@ -125,7 +135,7 @@ protected:
 
 };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif //OSGEARTH_PRIMITIVE_INTERSECTOR_H
 

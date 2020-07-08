@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -44,16 +44,6 @@ _callback(callback)
     construct();
 }
 
-// DEPRECATED
-SilverLiningNode::SilverLiningNode(const osgEarth::SpatialReference* mapSRS,
-                                   const SilverLiningOptions& options,
-                                   Callback*                  callback) :
-_options(options),
-_callback(callback)
-{
-    construct();
-}
-
 void
 SilverLiningNode::construct()
 {
@@ -72,7 +62,7 @@ SilverLiningNode::construct()
 
     // scene lighting
     osg::StateSet* stateset = this->getOrCreateStateSet();
-    _lighting = new PhongLightingEffect();
+    _lighting = new Util::PhongLightingEffect();
     //_lighting->setCreateLightingUniform( false );
     _lighting->attach( stateset );
 
@@ -90,8 +80,6 @@ void
 SilverLiningNode::attach(osg::View* view, int lightNum)
 {
     _light->setLightNum( lightNum );
-    //view->setLight( _light.get() );
-    //view->setLightingMode( osg::View::SKY_LIGHT );
     view->setLightingMode(osg::View::NO_LIGHT);
 }
 
@@ -139,22 +127,9 @@ SilverLiningNode::onSetDateTime()
 }
 
 void
-SilverLiningNode::onSetMinimumAmbient()
-{
-    for (CameraContextMap::const_iterator itr = _contexts.begin();
-        itr != _contexts.end();
-        ++itr)
-    {
-        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).second.get());
-        if(node)
-            node->onSetMinimumAmbient();
-    }
-}
-
-void
 SilverLiningNode::traverse(osg::NodeVisitor& nv)
 {
-    static Threading::Mutex s_mutex;
+    static Threading::Mutex s_mutex(OE_MUTEX_NAME);
 
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
@@ -213,5 +188,5 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
         _lightSource->accept(nv);
     }
 
-    osgEarth::Util::SkyNode::traverse(nv);
+    osgEarth::SkyNode::traverse(nv);
 }

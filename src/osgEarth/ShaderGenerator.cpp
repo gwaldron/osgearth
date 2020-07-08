@@ -1,7 +1,7 @@
 
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -57,6 +57,7 @@
 #define PROMOTE_EQUIVALENT_DRAWABLE_VP_TO_GEODE 1
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
 
@@ -68,7 +69,7 @@ using namespace osgEarth;
 #   define LOWP           "lowp "
 #   define HIGHP          "highp "
 #else
-#   define GLSL_PRECISION ""
+#   define GLSL_PRECISION
 #   define MEDIUMP        ""
 #   define LOWP           ""
 #   define HIGHP          ""
@@ -429,6 +430,19 @@ ShaderGenerator::run(osg::Node*         graph,
     }
 }
 
+osg::ref_ptr<osg::StateSet>
+ShaderGenerator::run(osg::StateSet* ss)
+{
+    if (!ss)
+        return NULL;
+
+    _state->pushStateSet(ss);
+    osg::ref_ptr<osg::StateSet> replacement;
+    processGeometry(ss, replacement);
+    _state->popStateSet();
+    return replacement;
+}
+
 void
 ShaderGenerator::optimizeStateSharing(osg::Node* node, StateSetCache* cache)
 {
@@ -640,7 +654,7 @@ ShaderGenerator::apply(osg::PagedLOD& node)
 
     for( unsigned i=0; i<node.getNumFileNames(); ++i )
     {
-        static Threading::Mutex s_mutex;
+        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
         s_mutex.lock();
         const std::string& filename = node.getFileName( i );
         if (!filename.empty() &&
@@ -786,8 +800,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     replacement->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
 #else
     Shaders shaders;
-    shaders.load(vp.get(), shaders.TextVertex);
-    shaders.load(vp.get(), shaders.TextFragment);
+    shaders.load(vp.get(), shaders.Text);
     #if defined(OSG_GL3_AVAILABLE) && !defined(OSG_GL2_AVAILABLE) && !defined(OSG_GL1_AVAILABLE)
         replacement->setDefine("OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED");
     #endif
@@ -838,7 +851,6 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
     }
 
     // Check whether the lighting state has changed and install a mode uniform.
-    // TODO: fix this
     if ( original && original->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )
     {
         needNewStateSet = true;

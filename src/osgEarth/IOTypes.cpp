@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -47,6 +47,68 @@ const std::string& StringObject::getString() const
 void StringObject::setString( const std::string& value )
 {
     _str = value;
+}
+
+//----------------------------------------------------------------------------
+
+ProxySettings::ProxySettings( const Config& conf )
+{
+    mergeConfig( conf );
+}
+
+ProxySettings::ProxySettings( const std::string& host, int port ) :
+    _hostName(host),
+    _port(port)
+{
+    //nop
+}
+
+void
+ProxySettings::mergeConfig( const Config& conf )
+{
+    _hostName = conf.value<std::string>( "host", "" );
+    _port = conf.value<int>( "port", 8080 );
+    _userName = conf.value<std::string>( "username", "" );
+    _password = conf.value<std::string>( "password", "" );
+}
+
+Config
+ProxySettings::getConfig() const
+{
+    Config conf( "proxy" );
+    conf.add( "host", _hostName );
+    conf.add( "port", toString(_port) );
+    conf.add( "username", _userName);
+    conf.add( "password", _password);
+
+    return conf;
+}
+
+bool
+ProxySettings::fromOptions( const osgDB::Options* dbOptions, optional<ProxySettings>& out )
+{
+    if ( dbOptions )
+    {
+        std::string jsonString = dbOptions->getPluginStringData( "osgEarth::ProxySettings" );
+        if ( !jsonString.empty() )
+        {
+            Config conf;
+            conf.fromJSON( jsonString );
+            out = ProxySettings( conf );
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+ProxySettings::apply( osgDB::Options* dbOptions ) const
+{
+    if ( dbOptions )
+    {
+        Config conf = getConfig();
+        dbOptions->setPluginStringData( "osgEarth::ProxySettings", conf.toJSON() );
+    }
 }
 
 //------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 #include <osgEarth/GLUtils>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 #define LC "[Lighting] "
 
@@ -283,8 +284,6 @@ MaterialGL3::apply(osg::State& state) const
 {
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     osg::Material::apply(state);
-#else
-    state.Color(_diffuseFront.r(), _diffuseFront.g(), _diffuseFront.b(), _diffuseFront.a());
 #endif
 }
 

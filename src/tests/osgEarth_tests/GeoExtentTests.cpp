@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,9 +27,10 @@
 using namespace osgEarth;
 
 TEST_CASE( "GeoExtent" ) {
-    
+
     const SpatialReference* WGS84 = SpatialReference::get("wgs84");
     const SpatialReference* CUBE = SpatialReference::get("unified-cube");
+    const SpatialReference* SPHMERC = SpatialReference::get("spherical-mercator");
     
     SECTION("Create an extent that crosses the antimeridian") {
         GeoExtent ext(SpatialReference::create("wgs84"), 178, 30, 183.4, 34.5);
@@ -141,16 +142,6 @@ TEST_CASE( "GeoExtent" ) {
         REQUIRE(ext == GeoExtent(WGS84, 150, 0, -165, 25));
     }
 
-    //SECTION("expandToInclude expands to the full extent") {
-    //    GeoExtent full(WGS84);
-    //    full.expandToInclude(-180.0, -90);
-    //    // First point should result in zero width
-    //    REQUIRE(full.width() == 0.0);
-    //    full.expandToInclude(180.0, 90);
-    //    // Seond point should result in full width
-    //    REQUIRE(full.width() == 360.0);
-    //}
-
     SECTION("Intersect 2 non-overlapping extents") {
         GeoExtent e1(WGS84, -10, -10, 10, 10);
         GeoExtent e2(WGS84, 20, 20, 30, 30);
@@ -211,41 +202,40 @@ TEST_CASE( "GeoExtent" ) {
         e1.expand(5, 5);
         REQUIRE(e1 == GeoExtent(WGS84, -12.5, -12.5, 12.5, 12.5));
     }
-
-
+    
     // Older ones
     SECTION("Normalization across the antimeridian") {
-        GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
+        GeoExtent ext(WGS84, 175.0, -10.0, 185.0, 10.0);
         REQUIRE(ext.crossesAntimeridian());
         REQUIRE(ext.east() == -175.0);
     }
 
     SECTION("expandToInclude is a noop when point is within the extent") {
-        GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
+        GeoExtent ext(WGS84, 175.0, -10.0, 185.0, 10.0);
         ext.expandToInclude(180.0, 0.0);
-        REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0));
+        REQUIRE(ext == GeoExtent(WGS84, 175.0, -10.0, 185.0, 10.0));
     }
 
     SECTION("expandToInclude expand to the west") {
-        GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
+        GeoExtent ext(WGS84, 175.0, -10.0, 185.0, 10.0);
         ext.expandToInclude(170.0, 0.0);        
-        REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), 170.0, -10.0, 185.0, 10.0));
+        REQUIRE(ext == GeoExtent(WGS84, 170.0, -10.0, 185.0, 10.0));
         REQUIRE(ext.crossesAntimeridian());
     }
 
     SECTION("expandToInclude expand to the east") {
-        GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
+        GeoExtent ext(WGS84, 175.0, -10.0, 185.0, 10.0);
         ext.expandToInclude(186.0, 0.0);        
-        REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), 175.0, -10.0, 186.0, 10.0));
+        REQUIRE(ext == GeoExtent(WGS84, 175.0, -10.0, 186.0, 10.0));
         REQUIRE(ext.crossesAntimeridian());
     }
 
     SECTION("expandToInclude expands to the closest side of the bounds") {
         // This seems like it would expand to the east, but b/c of wrapping the final point is actually closer to the 
         // west side, so it will expand westward.
-        GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
+        GeoExtent ext(WGS84, 175.0, -10.0, 185.0, 10.0);
         ext.expandToInclude(525.0, 0.0);        
-        REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), 165.0, -10.0, 185.0, 10.0));
+        REQUIRE(ext == GeoExtent(WGS84, 165.0, -10.0, 185.0, 10.0));
         REQUIRE(ext.crossesAntimeridian());
     }
 
@@ -256,13 +246,25 @@ TEST_CASE( "GeoExtent" ) {
         REQUIRE(GeoExtent(WGS84, sqrt(-1.0), 0.0, 10.0, 10.0).isInvalid());
     }
 
-    SECTION("Cube 1") {
-        GeoExtent e1(CUBE, 0.0, 0.0, 6.0, 1.0);
-        GeoExtent e2(WGS84, -180.0, -90.0, 180.0, 90.0);
-        REQUIRE(e1.isValid());
-        REQUIRE(e1.intersects(e2));
-        REQUIRE(e2.intersects(e1));
-        REQUIRE(e1.contains(e2));
-        REQUIRE(e2.contains(e1));
+    SECTION("Cube versus WGS84") {
+        GeoExtent cube(CUBE, 0.0, 0.0, 6.0, 1.0);
+        GeoExtent wgs84(WGS84, -180.0, -90.0, 180.0, 90.0);
+        REQUIRE(cube.isValid());
+        REQUIRE(wgs84.isValid());
+        REQUIRE(cube.intersects(wgs84));
+        REQUIRE(wgs84.intersects(cube));
+        REQUIRE(cube.contains(wgs84));
+        REQUIRE(wgs84.contains(cube));
+    }
+
+    SECTION("SphMerc versus WGS84") {
+        GeoExtent sphm(SPHMERC, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY);
+        GeoExtent wgs84(WGS84, -180.0, -90.0, 180.0, 90.0);
+        REQUIRE(sphm.isValid());
+        REQUIRE(wgs84.isValid());
+        REQUIRE(sphm.intersects(wgs84));
+        REQUIRE(wgs84.intersects(sphm));
+        REQUIRE(!sphm.contains(wgs84));
+        REQUIRE(wgs84.contains(sphm));
     }
 }

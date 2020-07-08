@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -115,41 +115,43 @@ namespace osgEarth
         virtual ~DepthOffsetInterface() { }
     };
 
-
-    /**
-     * Adapter that affects depth offset functionality on a graph.
-     */
-    class OSGEARTH_EXPORT DepthOffsetAdapter : public DepthOffsetInterface
+    namespace Util
     {
-    public:
-        DepthOffsetAdapter();
-        DepthOffsetAdapter(osg::Node* graph);
+        /**
+         * Adapter that affects depth offset functionality on a graph.
+         */
+        class OSGEARTH_EXPORT DepthOffsetAdapter : public DepthOffsetInterface
+        {
+        public:
+            DepthOffsetAdapter();
+            DepthOffsetAdapter(osg::Node* graph);
         
-        virtual ~DepthOffsetAdapter() { }
+            virtual ~DepthOffsetAdapter() { }
 
-        void setGraph(osg::Node* graph );
-        void recalculate();
+            void setGraph(osg::Node* graph );
+            void recalculate();
 
-        bool isDirty() const { return _dirty; }
+            bool isDirty() const { return _dirty; }
 
-        /** whether depth offsetting is supported. */
-        bool supported() const { return _supported; }
+            /** whether depth offsetting is supported. */
+            bool supported() const { return _supported; }
 
-    public: // DepthOffsetInterface
+        public: // DepthOffsetInterface
 
-        void setDepthOffsetOptions( const DepthOffsetOptions& options );
-        const DepthOffsetOptions& getDepthOffsetOptions() const { return _options; }
+            void setDepthOffsetOptions( const DepthOffsetOptions& options );
+            const DepthOffsetOptions& getDepthOffsetOptions() const { return _options; }
 
-    private:
-        void init();
-        void updateUniforms();
+        private:
+            void init();
+            void updateUniforms();
 
-        bool                         _supported;
-        bool                         _dirty;
-        osg::observer_ptr<osg::Node> _graph;
-        osg::ref_ptr<osg::Uniform>   _paramsUniform;
-        DepthOffsetOptions           _options;
-    };
+            bool                         _supported;
+            bool                         _dirty;
+            osg::observer_ptr<osg::Node> _graph;
+            osg::ref_ptr<osg::Uniform>   _paramsUniform;
+            DepthOffsetOptions           _options;
+        };
+    }
 
 
     /**
@@ -182,7 +184,7 @@ namespace osgEarth
         void dirty();
         void scheduleUpdate();
 
-        DepthOffsetAdapter _adapter;
+        Util::DepthOffsetAdapter _adapter;
         bool               _updatePending;
 
         virtual ~DepthOffsetGroup() { }

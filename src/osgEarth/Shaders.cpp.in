@@ -2,7 +2,7 @@
 
 #include <osgEarth/Shaders>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     Shaders::Shaders()
     {
@@ -15,32 +15,27 @@ namespace osgEarth
         _sources[ClipPlane] = "@ClipPlane.glsl@";
 
         // Depth Offset
-        DepthOffsetVertex = "DepthOffset.vert.glsl";
-        _sources[DepthOffsetVertex] = "@DepthOffset.vert.glsl@";
-
+        DepthOffset = "DepthOffset.glsl";
+        _sources[DepthOffset] = "@DepthOffset.glsl@";
 
         // Draping
-        DrapingVertex = "Draping.vert.glsl";
-        _sources[DrapingVertex] = "@Draping.vert.glsl@";
+        Draping = "Draping.glsl";
+        _sources[Draping] = "@Draping.glsl@";
 
-        DrapingFragment = "Draping.frag.glsl";
-        _sources[DrapingFragment] = "@Draping.frag.glsl@";
-
+        // DrawInstanced with attributes
+        DrawInstancedAttribute = "DrawInstancedAttribute.glsl";
+        _sources[DrawInstancedAttribute] = "@DrawInstancedAttribute.glsl@";
 
         // GPU Clamping
-        GPUClampingVertex = "GPUClamping.vert.glsl";
-        _sources[GPUClampingVertex] = "@GPUClamping.vert.glsl@";
+        GPUClamping = "GPUClamping.glsl";
+        _sources[GPUClamping] = "@GPUClamping.glsl@";
 
-        GPUClampingFragment = "GPUClamping.frag.glsl";
-        _sources[GPUClampingFragment] = "@GPUClamping.frag.glsl@";
-
-        GPUClampingVertexLib = "GPUClamping.vert.lib.glsl";
-        _sources[GPUClampingVertexLib] = "@GPUClamping.vert.lib.glsl@";
-
+        GPUClampingLib = "GPUClamping.lib.glsl";
+        _sources[GPUClampingLib] = "@GPUClamping.lib.glsl@";
 
         // DrawInstanced
-        InstancingVertex = "Instancing.vert.glsl";
-        _sources[InstancingVertex] = "@Instancing.vert.glsl@";
+        Instancing = "Instancing.glsl";
+        _sources[Instancing] = "@Instancing.glsl@";
 
         // LineDrawable
         LineDrawable = "LineDrawable.glsl";
@@ -50,21 +45,43 @@ namespace osgEarth
         PointDrawable = "PointDrawable.glsl";
         _sources[PointDrawable] = "@PointDrawable.glsl@";          
 
+        // WireLines
+        WireLines = "WireLines.glsl";
+        _sources[WireLines] = "@WireLines.glsl@";
+
         // PhongLightingEffect
-        PhongLightingVertex = "PhongLighting.vert.glsl";
-        _sources[PhongLightingVertex] = "@PhongLighting.vert.glsl@";
-        
-        PhongLightingFragment = "PhongLighting.frag.glsl";
-        _sources[PhongLightingFragment] = "@PhongLighting.frag.glsl@";
+        PhongLighting = "PhongLighting.glsl";
+        _sources[PhongLighting] = "@PhongLighting.glsl@";
 
 		// Text
-		TextVertex = "Text.vert.glsl";
-		_sources[TextVertex] = "@Text.vert.glsl@";
-
-		TextFragment = "Text.frag.glsl";
-		_sources[TextFragment] = "@Text.frag.glsl@";
+		Text = "Text.glsl";
+		_sources[Text] = "@Text.glsl@";
 
         TextLegacy = "Text_legacy.glsl";
         _sources[TextLegacy] = "@Text_legacy.glsl@";
+        
+        ContourMap = "ContourMap.glsl";
+        _sources[ContourMap] = "@ContourMap.glsl@";
+
+        LogDepthBuffer = "LogDepthBuffer.glsl";
+        _sources[LogDepthBuffer] = "@LogDepthBuffer.glsl@";
+
+        LogDepthBuffer_VertOnly = "LogDepthBuffer.VertOnly.glsl";
+        _sources[LogDepthBuffer_VertOnly] = "@LogDepthBuffer.VertOnly.glsl@";
+
+        GeodeticGraticule = "GeodeticGraticule.glsl";
+        _sources[GeodeticGraticule] = "@GeodeticGraticule.glsl@";
+
+        ShadowCaster = "ShadowCaster.glsl";
+        _sources[ShadowCaster] = "@ShadowCaster.glsl@";
+
+        SimpleOceanLayer = "SimpleOceanLayer.glsl";
+        _sources[SimpleOceanLayer] = "@SimpleOceanLayer.glsl@";
+        
+        RTTPicker = "RTTPicker.glsl";
+        _sources[RTTPicker] = "@RTTPicker.glsl@";
+        
+        WindComputer = "WindLayer.CS.glsl";
+        _sources[WindComputer] = "@WindLayer.CS.glsl@";
     }
-};
+} }

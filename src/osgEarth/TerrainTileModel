@@ -24,14 +24,15 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/PatchLayer>
 #include <osgEarth/Revisioning>
-#include <osgEarth/MapInfo>
-#include <osgEarth/Locators>
 #include <osgEarth/HeightFieldUtils>
 #include <osg/Texture>
 #include <osg/Matrix>
+#include <osg/Node>
 
 namespace osgEarth
 {
+    using namespace Util;
+
     /**
      * Data model backing an individual layer of a terrain tile.
      */
@@ -50,6 +51,11 @@ namespace osgEarth
         void setMatrix(osg::RefMatrixf* matrix) { _matrix = matrix; }
         osg::RefMatrixf* getMatrix() const { return _matrix.get(); }
 
+        //! Revision of the source of the texture and matrix data 
+        void setRevision(int revision) { _revision = revision; }
+        int getRevision() const { return _revision; }
+
+
     public:
         TerrainTileLayerModel();
 
@@ -59,11 +65,12 @@ namespace osgEarth
         std::string                   _name;
         osg::ref_ptr<osg::Texture>    _texture;
         osg::ref_ptr<osg::RefMatrixf> _matrix;
+        int                           _revision;
     };
     typedef std::vector< osg::ref_ptr<TerrainTileLayerModel> > TerrainTileLayerModelVector;
 
     /**
-     * Layer based on a color layer (ImageLayer or any other RENDERTYPE_TILE layer)
+     * Layer based on a color layer (ImageLayer or any other RENDERTYPE_TERRAIN_SURFACE layer)
      */
     class OSGEARTH_EXPORT TerrainTileColorLayerModel : public TerrainTileLayerModel
     {
@@ -112,14 +119,14 @@ namespace osgEarth
         void setPatchLayer(PatchLayer* layer) { _layer = layer; }
         const PatchLayer* getPatchLayer() const { return _layer.get(); }
 
-        /** Patch data */
-        void setTileData(PatchLayer::TileData* data) { _tileData = data; }
-        PatchLayer::TileData* getTileData() const { return _tileData.get(); }
+        //! Node payload
+        void setNode(osg::Node* node) { _node = node; }
+        osg::ref_ptr<osg::Node> getNode() const { return _node; }
 
     protected:
         virtual ~TerrainTilePatchLayerModel() { }
         osg::ref_ptr<PatchLayer> _layer;
-        osg::ref_ptr<PatchLayer::TileData> _tileData;
+        osg::ref_ptr<osg::Node> _node;
     };
     typedef std::vector< osg::ref_ptr<TerrainTilePatchLayerModel> > TerrainTilePatchLayerModelVector;
 
@@ -148,6 +155,23 @@ namespace osgEarth
 
         osg::ref_ptr<const osg::HeightField> _heightField;
         float _minHeight, _maxHeight;
+    };
+
+    /**
+    * Layer based on aggregated land cover data.
+    */
+    class OSGEARTH_EXPORT TerrainTileLandCoverModel : public TerrainTileLayerModel
+    {
+    public:
+        TerrainTileLandCoverModel() { }
+
+        void setLayer(ImageLayer* layer) { _layer = layer; }
+        const Layer* getImageLayer() const { return _layer.get(); }
+
+    protected:
+        virtual ~TerrainTileLandCoverModel() { }
+
+        osg::ref_ptr<ImageLayer> _layer;
     };
 
     /**
@@ -182,6 +206,10 @@ namespace osgEarth
         osg::ref_ptr<TerrainTileLayerModel>& normalModel() { return _normalLayer; }
         const osg::ref_ptr<TerrainTileLayerModel>& normalModel() const { return _normalLayer; }
 
+        /** Land cover model (one) */
+        osg::ref_ptr<TerrainTileLandCoverModel>& landCoverModel() { return _landCoverLayer; }
+        const osg::ref_ptr<TerrainTileLandCoverModel>& landCoverModel() const { return _landCoverLayer; }
+
         /** Shared raster layers (bound for all rendering) */
         TerrainTileImageLayerModelVector& sharedLayers() { return _sharedLayers; }
         const TerrainTileImageLayerModelVector& sharedLayers() const { return _sharedLayers; }
@@ -202,8 +230,16 @@ namespace osgEarth
         osg::Texture* getElevationTexture() const;
         osg::RefMatrixf* getElevationTextureMatrix() const;
 
+        osg::Texture* getLandCoverTexture() const;
+        osg::RefMatrixf* getLandCoverTextureMatrix() const;
+
+        osg::Texture* getTexture(UID layerUID) const;
+        osg::RefMatrixf* getMatrix(UID layerUID) const;
+
     public:
         void compileGLObjects(class osg::State& state) const;
+
+        void getDataToCompile(std::vector<osg::Texture*>& textures) const;
 
     protected:
         TileKey                                 _key;
@@ -213,6 +249,7 @@ namespace osgEarth
         TerrainTileImageLayerModelVector        _sharedLayers;
         osg::ref_ptr<TerrainTileElevationModel> _elevationLayer;
         osg::ref_ptr<TerrainTileLayerModel>     _normalLayer;
+        osg::ref_ptr<TerrainTileLandCoverModel> _landCoverLayer;
         HeightFieldNeighborhood                 _heightFields;
         bool                                    _requiresUpdateTraverse;
     };

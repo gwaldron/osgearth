@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,16 +25,24 @@
 #include <osgEarth/Containers>
 #include <osgEarth/IOTypes>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/Threading>
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
 #include <iostream>
 #include <sstream>
 
+namespace osgUtil
+{
+    class IncrementalCompileOperation;
+}
+
 namespace osgEarth
 {
     class URI;
     class ProgressCallback;
+
+    using namespace Threading;
 
     /**
      * Context for resolving relative URIs.
@@ -232,6 +240,10 @@ namespace osgEarth
             const osgDB::Options* dbOptions   =0L,
             ProgressCallback*     progress    =0L ) const;
 
+        Future<osg::Node> readNodeAsync(
+            const osgDB::Options* dbOptions   =0L,
+            ProgressCallback*     progress    =0L) const;
+
     public: // get methods call the read* methods, then just return the raw data.
 
         osg::Object* getObject(
@@ -283,11 +295,23 @@ namespace osgEarth
 
         void ctorCacheKey();
     };
-    
+}
 
 //------------------------------------------------------------------------
 
+namespace std {
+    // std::hash specialization for URI
+    template<> struct hash<osgEarth::URI> {
+        inline size_t operator()(const osgEarth::URI& value) const {
+            return hash<string>()(value.full());
+        }
+    };
+}
 
+//------------------------------------------------------------------------
+
+namespace osgEarth
+{
     /**
      * A lookup table that maps URI references to other URI references. This
      * is used as an optional resource mapping table. (See KML's ResourceMap
@@ -500,7 +524,6 @@ namespace osgEarth
 
         return escaped.str();
     }
-
 }
 
 #endif // OSGEARTH_URI

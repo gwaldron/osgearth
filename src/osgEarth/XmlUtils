@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -33,7 +33,7 @@
 
 // XML support utilites.
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     class OSGEARTH_EXPORT XmlNode : public osg::Referenced
     {
@@ -158,6 +158,6 @@ namespace osgEarth
         std::string              _name;
         osg::ref_ptr<XmlElement> _root;
     };
-}
+} }
 
 #endif // OSGEARTH_XML_UTILS_H

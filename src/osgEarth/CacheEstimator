@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,8 +26,9 @@
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
 
-namespace osgEarth
-{      
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
 
     /**
      * A simple tool used for estimating the size of a cache seed operation.
@@ -112,6 +113,6 @@ namespace osgEarth
         double _timeInSecondsPerTile;
 
     };
-}
+} }
 
 #endif // OSGEARTH_BOUNDS_H

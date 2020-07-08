@@ -23,107 +23,86 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/NodeUtils>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
-
-
-//........................................................................
-
-namespace
-{
-    // traverses a node graph and moves any TileNodes from the LIVE
-    // registry to the DEAD registry.
-    struct ExpirationCollector : public osg::NodeVisitor
-    {
-        TileNodeRegistry*      _tiles;
-        unsigned               _count;
-
-        ResourceReleaser::ObjectList _nodes;
-
-        ExpirationCollector(TileNodeRegistry* tiles)
-            : _tiles(tiles), _count(0)
-        {
-            // set up to traverse the entire subgraph, ignoring node masks.
-            setTraversalMode( TRAVERSE_ALL_CHILDREN );
-            setNodeMaskOverride( ~0 );
-        }
-
-        void apply(osg::Node& node)
-        {
-            // Make sure the tile is still dormat before releasing it
-            TileNode* tn = dynamic_cast<TileNode*>( &node );
-            if ( tn )
-            {
-                _nodes.push_back(tn);
-                _tiles->remove( tn );
-                _count++;
-            }
-            traverse(node);
-        }
-    };
-}
-
-//........................................................................
-
-
 #undef  LC
 #define LC "[UnloaderGroup] "
 
+using namespace osgEarth::REX;
+
+
 UnloaderGroup::UnloaderGroup(TileNodeRegistry* tiles) :
 _tiles(tiles),
-_threshold( INT_MAX )
+_cacheSize(0u),
+_maxAge(0.1),
+_minRange(0.0f),
+_maxTilesToUnloadPerFrame(~0),
+_frameLastUpdated(0u)
 {
-    ADJUST_EVENT_TRAV_COUNT(this, +1);
-}
-
-void
-UnloaderGroup::unloadChildren(const std::vector<TileKey>& keys)
-{
-    _mutex.lock();
-    for(std::vector<TileKey>::const_iterator i = keys.begin(); i != keys.end(); ++i)
-        _parentKeys.insert(*i);
-    _mutex.unlock();
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
 void
 UnloaderGroup::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
-    {        
-        if ( _parentKeys.size() > _threshold )
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    {
+        unsigned frame = _clock->getFrame();
+        bool runUpdate = (_frameLastUpdated < frame);
+
+        if (runUpdate)
         {
-            ScopedMetric m("Unloader expire");
+            _frameLastUpdated = frame;
 
-            unsigned unloaded=0, notFound=0, notDormant=0;
-            Threading::ScopedMutexLock lock( _mutex );
-            for(std::set<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
+            OE_PROFILING_ZONE_NAMED("Expire Tiles");
+
+            double now = _clock->getTime();
+
+            unsigned count = 0u;
+
+            // Have to enforce both the time delay AND a frame delay since the frames can
+            // stop while the time rolls on (e.g., if you are dragging the window)
+            double oldestAllowableTime = now - _maxAge;
+            unsigned oldestAllowableFrame = osg::maximum(frame, 3u) - 3u;
+
+            // Remove them from the registry:
+            _tiles->collectDormantTiles(
+                nv, 
+                oldestAllowableTime,
+                oldestAllowableFrame,
+                _minRange,
+                _maxTilesToUnloadPerFrame, _deadpool);
+
+            // Remove them from the scene graph:
+            for(std::vector<osg::observer_ptr<TileNode> >::iterator i = _deadpool.begin();
+                i != _deadpool.end();
+                ++i)
             {
-                osg::ref_ptr<TileNode> parentNode;
-                if ( _tiles->get(*parentKey, parentNode) )
+                // may be NULL since we're removing scene graph objects as we go!
+                osg::ref_ptr<TileNode> tile = i->get();
+
+                if (tile.valid())
                 {
-                    // re-check for dormancy in case something has changed
-                    if ( parentNode->areSubTilesDormant(nv.getFrameStamp()) )
+                    TileNode* parent = tile->getParentTile();
+
+                    // Check that this tile doesn't have any live quadtree siblings. If it does,
+                    // we don't want to remove them too!
+                    // GW: moved this check to the collectAbandonedTiles function where it belongs
+                    if (parent)
                     {
-                        // find and move all tiles to be unloaded to the dead pile.
-                        ExpirationCollector collector( _tiles );
-                        for(unsigned i=0; i<parentNode->getNumChildren(); ++i)
-                            parentNode->getSubTile(i)->accept( collector );
-                        unloaded += collector._count;
-
-                        // submit all collected nodes for GL resource release:
-                        if (!collector._nodes.empty() && _releaser.valid())
-                            _releaser->push(collector._nodes);
-
-                        parentNode->removeSubTiles();
+                        parent->removeSubTiles();
+                        ++count;
                     }
-                    else notDormant++;
                 }
-                else notFound++;
             }
 
-            OE_DEBUG << LC << "Total=" << _parentKeys.size() << "; threshold=" << _threshold << "; unloaded=" << unloaded << "; notDormant=" << notDormant << "; notFound=" << notFound << "\n";
-            _parentKeys.clear();
+            if (_deadpool.empty() == false)
+            {
+                OE_DEBUG << LC << "Unloaded " << count << " of " << _deadpool.size() << " dormant tiles; " << _tiles->size() << " remain active." << std::endl;
+            }
+
+            _deadpool.clear();
         }
     }
+
     osg::Group::traverse( nv );
 }
 

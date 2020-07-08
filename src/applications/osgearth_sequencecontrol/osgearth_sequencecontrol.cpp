@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,8 +24,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/TimeControl>
 #include <osgEarth/ImageLayer>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
 
 namespace ui = osgEarth::Util::Controls;
 
@@ -65,6 +65,8 @@ struct UpdateLabel : public osg::Operation
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );

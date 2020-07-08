@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,128 +22,72 @@
 #include "Common"
 
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/LayerListener>
+#include <osgEarth/LayerReference>
 #include <osgEarth/ImageLayer>
-#include <osgEarthUtil/Ocean>
 #include <osgEarthTriton/TritonCallback>
 #include <osgEarthTriton/TritonIntersections>
 
 namespace osgEarth { namespace Triton
 {
     /**
-     * Serializable options for initializing the TritonLayer.
-     */
-    class OSGEARTHTRITON_EXPORT TritonLayerOptions : public osgEarth::VisibleLayerOptions
-    {
-    public:
-        TritonLayerOptions(const osgEarth::ConfigOptions& options = osgEarth::ConfigOptions()) :
-            osgEarth::VisibleLayerOptions( options )
-        {
-            _useHeightMap.init( true );
-            _heightMapSize.init( 1024 );
-            _renderBinNumber.init( 12 );
-            _maxAltitude.init(50000);
-            fromConfig( _conf );
-        }
-
-        /* User name for license activation */
-        osgEarth::optional<std::string>& user() { return _user; }
-        const osgEarth::optional<std::string>& user() const { return _user; }
-
-        /* License code string */
-        osgEarth::optional<std::string>& licenseCode() { return _licenseCode; }
-        const osgEarth::optional<std::string>& licenseCode() const { return _licenseCode; }
-
-        /* Triton resource path */
-        osgEarth::optional<std::string>& resourcePath() { return _resourcePath; }
-        const osgEarth::optional<std::string>& resourcePath() const { return _resourcePath; }
-
-        /** Whether to pass a heightmap raster to Triton to mitigate coastline interference */
-        osgEarth::optional<bool>& useHeightMap() { return _useHeightMap; }
-        const osgEarth::optional<bool>& useHeightMap() const { return _useHeightMap; }
-
-        /** Texture size to use for the height map */
-        osgEarth::optional<int>& heightMapSize() { return _heightMapSize; }
-        const osgEarth::optional<int>& heightMapSize() const { return _heightMapSize; }
-
-        /** Render bin number to assign to the ocean (in DepthSortedBin) */
-        optional<int>& renderBinNumber() { return _renderBinNumber; }
-        const optional<int>& renderBinNumber() const { return _renderBinNumber; }
-
-        /** Name of optional land mask layer. A land mask layer is an image layer
-          * in the Map that has the alpha channel set to 1 over land and 0 over ocean.
-          * This is used in addition to the height map to prevent drawing the ocean
-          * over land areas.
-          */
-        optional<std::string>& maskLayer() { return _maskLayerName; }
-        const optional<std::string>& maskLayer() const { return _maskLayerName; }
-
-        /** Render bin number to assign to the ocean (in DepthSortedBin) */
-        optional<float>& maxAltitude() { return _maxAltitude; }
-        const optional<float>& maxAltitude() const { return _maxAltitude; }
-
-    public:
-        osgEarth::Config getConfig() const {
-            osgEarth::Config conf = osgEarth::VisibleLayerOptions::getConfig();
-            conf.set("user", _user);
-            conf.set("license_code", _licenseCode);
-            conf.set("resource_path", _resourcePath);
-            conf.set("use_height_map", _useHeightMap);
-            conf.set("height_map_size", _heightMapSize);
-            conf.set("render_bin_number", _renderBinNumber);
-            conf.set("mask_layer", _maskLayerName);
-            conf.set("max_altitude", _maxAltitude);
-            return conf;
-        }
-
-    protected:
-        void mergeConfig( const osgEarth::Config& conf ) {
-            osgEarth::VisibleLayerOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
-
-    private:
-        void fromConfig( const osgEarth::Config& conf ) {
-            conf.get("user", _user);
-            conf.get("license_code", _licenseCode);
-            conf.get("resource_path", _resourcePath);
-            conf.get("use_height_map", _useHeightMap);
-            conf.get("height_map_size", _heightMapSize);
-            conf.get("render_bin_number", _renderBinNumber);
-            conf.get("mask_layer", _maskLayerName);
-            conf.get("max_altitude", _maxAltitude);
-        }
-
-    private:
-        osgEarth::optional<std::string> _user;
-        osgEarth::optional<std::string> _licenseCode;
-        osgEarth::optional<std::string> _resourcePath;
-        osgEarth::optional<bool>        _useHeightMap;
-        osgEarth::optional<int>         _heightMapSize;
-        osgEarth::optional<int>         _renderBinNumber;
-        osgEarth::optional<std::string> _maskLayerName;
-        osgEarth::optional<float>       _maxAltitude;
-    };
-
-
-    /**
      * Node that roots the Triton adapter.
      */
     class OSGEARTHTRITON_EXPORT TritonLayer : public osgEarth::VisibleLayer
     {
     public:
-        META_Layer(osgEarth, TritonLayer, TritonLayerOptions, triton);
+        class OSGEARTHTRITON_EXPORT Options : public osgEarth::VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, osgEarth::VisibleLayer::Options);
+            OE_OPTION(std::string, user);
+            OE_OPTION(std::string, licenseCode);
+            OE_OPTION(std::string, resourcePath);
+            OE_OPTION(bool, useHeightMap);
+            OE_OPTION(unsigned, heightMapSize);
+            OE_OPTION(int, renderBinNumber);
+            OE_OPTION(float, maxAltitude);
+            OE_OPTION_LAYER(osgEarth::ImageLayer, maskLayer);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
-        explicit TritonLayer(Callback* userCallback =0L);
+    public:
+        META_Layer(osgEarth, TritonLayer, Options, osgEarth::VisibleLayer, triton);
 
-        TritonLayer(const TritonLayerOptions& options, Callback* userCallback =0L);
+        //! Sets the user callback that's invoked when Triton start up
+        void setUserCallback(Triton::Callback* callback);
 
-        /** Masking layer for the ocean */
-        void setMaskLayer(const osgEarth::ImageLayer* maskLayer);
+        //! User name for license
+        void setUserName(const std::string& value);
+        const std::string& getUserName() const;
 
-        /** Maximum visibility altitude */
-        void setMaxAltitude(float alt);
-        float getMaxAltitude() const;
+        //! License code
+        void setLicenseCode(const std::string& value);
+        const std::string& getLicenseCode() const;
+
+        //! Triton resource path
+        void setResourcePath(const std::string& value);
+        const std::string& getResourcePath() const;
+
+        //! Whether to use a height map to fade out the ocean at the coastline
+        void setUseHeightMap(const bool& value);
+        const bool& getUseHeightMap() const;
+
+        //! Size in texels of the height map (each dimension)
+        void setHeightMapSize(const unsigned& value);
+        const unsigned& getHeightMapSize() const;
+
+        //! Render bin number to use for the ocean rendering
+        void setRenderBinNumber(const int& value);
+        const int& getRenderBinNumber() const;
+
+        //! Masking layer for the ocean
+        void setMaskLayer(osgEarth::ImageLayer* maskLayer);
+        osgEarth::ImageLayer* getMaskLayer() const;
+
+        //! Maximum visibility altitude
+        void setMaxAltitude(const float& value);
+        const float& getMaxAltitude() const;
 
         //! Adds an intersection set.
         //! Each frame, Triton will perform intersections against the ocean surface
@@ -153,6 +97,9 @@ namespace osgEarth { namespace Triton
     public: // Layer
 
         virtual osg::Node* getNode() const;
+
+        //! Serialize
+        virtual Config getConfig() const;
 
     protected: // Layer
 
@@ -166,13 +113,8 @@ namespace osgEarth { namespace Triton
 
         osg::ref_ptr<osg::Group> _root;
         osg::ref_ptr<osg::Node> _tritonNode;
-        osg::ref_ptr<Callback> _callback;
         float _seaLevel;
         float _opacity;
-
-    private:
-
-        osgEarth::LayerListener<TritonLayer, const osgEarth::ImageLayer> _layerListener;
     };
 
 } } // namespace osgEarth::Triton

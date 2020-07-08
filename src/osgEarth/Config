@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,8 @@
 #include <osgEarth/StringUtils>
 #include <osg/Object>
 #include <osg/Version>
+#include <osg/Vec2f>
+#include <osg/Vec3d>
 #include <osgDB/Options>
 #include <list>
 #include <stack>
@@ -31,6 +33,7 @@
 
 namespace osgEarth
 {
+    using namespace osgEarth::Util;
     typedef std::list<class Config> ConfigSet;
 
     /**
@@ -62,7 +65,7 @@ namespace osgEarth
         }
 
         // Copy CTOR
-        Config(const Config& rhs)
+        Config( const Config& rhs ) 
             : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _isLocation(rhs._isLocation), _isNumber(rhs._isNumber), _externalRef(rhs._externalRef), _refMap(rhs._refMap) { }
 
         virtual ~Config();
@@ -258,7 +261,7 @@ namespace osgEarth
         /** Default value transformed to another type */
         template<typename T>
         T valueAs(const T& fallback) const {
-            return osgEarth::as<T>(_defaultValue, fallback);
+            return osgEarth::Util::as<T>(_defaultValue, fallback);
         }
 
         /** Value cast to a particular primitive type (with fallback in case casting fails) */
@@ -267,7 +270,7 @@ namespace osgEarth
             std::string r;
             if (hasChild(key))
                 r = child(key).value();
-            return osgEarth::as<T>(r, fallback);
+            return osgEarth::Util::as<T>(r, fallback);
         }
 
         /** Populates the output value iff the Config exists. */
@@ -277,7 +280,7 @@ namespace osgEarth
             if (hasChild(key))
                 r = child(key).value();
             if (!r.empty()) {
-                output = osgEarth::as<T>(r, output.defaultValue());
+                output = osgEarth::Util::as<T>(r, output.defaultValue());
                 return true;
             }
             else
@@ -395,7 +398,7 @@ namespace osgEarth
         _isNumber = false;
     }
     template<> inline void Config::setValue<bool>(const bool& value) {
-        _defaultValue = value == true ? "true" : "false";
+        _defaultValue = value==true? "true" : "false";
         _isNumber = false;
     }
     template<> inline void Config::setValue<short>(const short& value) {
@@ -431,19 +434,74 @@ namespace osgEarth
         _isNumber = true;
     }
 
-    // SPECIALIZATION - std::string
+    // Specializations (OSG types)
 
-    template<> inline
-        void Config::add<std::string>(const std::string& key, const std::string& value) {
-        _children.push_back(Config(key, value));
-        _children.back().setReferrer(_referrer);
-    }
-
-    template<> inline
-        void Config::set<std::string>(const std::string& key, const std::string& value) {
+    template<> inline void Config::set<osg::Vec2f>(const std::string& key, const optional<osg::Vec2f>& opt) {
         remove(key);
-        add(Config(key, value));
+        if (opt.isSet()) {
+            set(key, Stringify() << std::setprecision(8) << opt->x() << "," << opt->y());
+        }
     }
+    template<> inline bool Config::get<osg::Vec2f>(const std::string& key, optional<osg::Vec2f>& output) const {
+        if (hasChild(key)) {
+            output->x() = as<float>(getToken(value(key), 0), 0.0f);
+            output->y() = as<float>(getToken(value(key), 1), 0.0f);
+            return true;
+        }
+        else
+            return false;
+    }
+
+    template<> inline void Config::set<osg::Vec2d>(const std::string& key, const optional<osg::Vec2d>& opt) {
+        remove(key);
+        if (opt.isSet()) {
+            set(key, Stringify() << std::setprecision(16) << opt->x() << "," << opt->y());
+        }
+    }
+    template<> inline bool Config::get<osg::Vec2d>(const std::string& key, optional<osg::Vec2d>& output) const {
+        if (hasChild(key)) {
+            output->x() = as<double>(getToken(value(key), 0), 0.0);
+            output->y() = as<double>(getToken(value(key), 1), 0.0);
+            return true;
+        }
+        else
+            return false;
+    }
+
+    template<> inline void Config::set<osg::Vec3f>(const std::string& key, const optional<osg::Vec3f>& opt) {
+        remove(key);
+        if (opt.isSet()) {
+            set(key, Stringify() << std::setprecision(8) << opt->x() << "," << opt->y() << "," << opt->z());
+        }
+    }
+    template<> inline bool Config::get<osg::Vec3f>(const std::string& key, optional<osg::Vec3f>& output) const {
+        if (hasChild(key)) {
+            output->x() = as<float>(getToken(value(key), 0), 0.0f);
+            output->y() = as<float>(getToken(value(key), 1), 0.0f);
+            output->z() = as<float>(getToken(value(key), 2), 0.0f);
+            return true;
+        }
+        else
+            return false;
+    }
+
+    template<> inline void Config::set<osg::Vec3d>(const std::string& key, const optional<osg::Vec3d>& opt) {
+        remove(key);
+        if (opt.isSet()) {
+            set(key, Stringify() << std::setprecision(16) << opt->x() << "," << opt->y() << "," << opt->z());
+        }
+    }
+    template<> inline bool Config::get<osg::Vec3d>(const std::string& key, optional<osg::Vec3d>& output) const {
+        if (hasChild(key)) {
+            output->x() = as<double>(getToken(value(key), 0), 0.0);
+            output->y() = as<double>(getToken(value(key), 1), 0.0);
+            output->z() = as<double>(getToken(value(key), 2), 0.0);
+            return true;
+        }
+        else
+            return false;
+    }
+
 
     // Use this macro to "activate" any object with a getConfig/ctor(const Config&) pair
     // and make it usable with Config::set/get/add.
@@ -525,6 +583,7 @@ namespace osgEarth
 
     /**
      * Base configoptions class for driver options.
+     * @deprecated - will be removed.
      */
     class OSGEARTH_EXPORT DriverConfigOptions : public ConfigOptions
     {
@@ -544,7 +603,8 @@ namespace osgEarth
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            conf.set("driver", _driver);
+            if (!_driver.empty())
+                conf.set("driver", _driver);
             return conf;
         }
 

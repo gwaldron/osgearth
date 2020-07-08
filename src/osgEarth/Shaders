@@ -24,7 +24,7 @@
 
 #include <osgEarth/ShaderLoader>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     class OSGEARTH_EXPORT Shaders : public ShaderPackage
 	{
@@ -33,16 +33,26 @@ namespace osgEarth
 
         std::string CascadeDraping;
         std::string ClipPlane;
-        std::string DepthOffsetVertex;
-        std::string DrapingVertex, DrapingFragment;
-        std::string GPUClampingVertex, GPUClampingFragment, GPUClampingVertexLib;
-        std::string InstancingVertex;
+        std::string DepthOffset;
+        std::string Draping;
+        std::string DrawInstancedAttribute;
+        std::string GPUClamping, GPUClampingLib;
+        std::string Instancing;
         std::string LineDrawable;
+        std::string WireLines;
         std::string PointDrawable;
-        std::string PhongLightingVertex, PhongLightingFragment;
-        std::string TextVertex, TextFragment, TextLegacy;
+        std::string PhongLighting;
+        std::string Text, TextLegacy;
+        std::string ContourMap;
+        std::string GeodeticGraticule;
+        std::string LogDepthBuffer;
+        std::string LogDepthBuffer_VertOnly;
+        std::string ShadowCaster;
+        std::string SimpleOceanLayer;
+        std::string RTTPicker;
+        std::string WindComputer;
 	};	
 
-} // namespace osgEarth
+} } 
 
 #endif // OSGEARTH_SHADERS

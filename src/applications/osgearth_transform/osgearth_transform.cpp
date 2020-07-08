@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -29,9 +29,9 @@
 #include <osgDB/ReadFile>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Controls>
 #include <osgEarth/GeoTransform>
 #include <osgEarth/MapNode>
 
@@ -46,7 +46,7 @@ namespace ui = osgEarth::Util::Controls;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl;
 
     return 0;
@@ -54,7 +54,6 @@ usage(const char* name)
 
 struct App
 {
-    const osgEarth::SpatialReference* srs;
     osgEarth::GeoTransform*           geo;
     osg::PositionAttitudeTransform*   pat;
 
@@ -71,7 +70,7 @@ struct App
         AltitudeMode altMode = uiRelativeZ->getValue() ? ALTMODE_RELATIVE : ALTMODE_ABSOLUTE;
 
         GeoPoint pos(
-            srs,
+            SpatialReference::get("wgs84"),
             uiLon->getValue(), uiLat->getValue(), uiAlt->getValue(),
             altMode);
 
@@ -140,6 +139,8 @@ ui::Control* makeUI(App& app)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -151,23 +152,23 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( em );
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* earth = MapNodeHelper().load( arguments, &viewer );
+
     MapNode* mapNode = MapNode::get(earth);
     if (!mapNode)
         return usage(argv[0]);
 
     // load the model file into the local coordinate frame, which will be
     // +X=east, +Y=north, +Z=up.
-    osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("../data/axes.osgt.(1000).scale.osgearth_shadergen");
+    osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("../data/axes.osgt.1000.scale.osgearth_shadergen");
     if (!model.valid())
         return usage(argv[0]);
 
     osg::Group* root = new osg::Group();
     root->addChild( earth );
-    
+
     App app;
-    app.srs = mapNode->getMapSRS();
     app.geo = new GeoTransform();
     app.pat = new osg::PositionAttitudeTransform();
     app.pat->addChild( model.get() );
@@ -176,7 +177,7 @@ main(int argc, char** argv)
     // Place your GeoTransform under the map node and it will automatically support clamping.
     // If you don't do this, you must call setTerrain to get terrain clamping.
     mapNode->addChild( app.geo );
-    
+
     viewer.setSceneData( root );
     viewer.getCamera()->setNearFarRatio(0.00002);
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);

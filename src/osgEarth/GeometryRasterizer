@@ -1,0 +1,56 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_GEOMETRY_RASTERIZER_H
+#define OSGEARTHSYMBOLOGY_GEOMETRY_RASTERIZER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Geometry>
+#include <osgEarth/Style>
+#include <osg/Image>
+
+namespace osgEarth
+{
+    /**
+     * Draws geometry onto an Image canvas using software path-rendering.
+     */
+    class OSGEARTH_EXPORT GeometryRasterizer
+    {
+    public:
+        GeometryRasterizer( int width, int height, const Style& style =Style() );
+
+        GeometryRasterizer( osg::Image* image, const Style& style =Style() );
+
+        /** dtor */
+        virtual ~GeometryRasterizer();
+
+        /** draws the geometry to the image. */
+        void draw( const Geometry* geom, const osg::Vec4f& color =osg::Vec4f(1,1,1,1) );
+
+        /** finishes the image and returns it. calls to draw() after this will have no effect. */
+        osg::Image* finalize();
+
+    private:
+        osg::ref_ptr<osg::Image>      _image;
+        Style                         _style;
+        osg::ref_ptr<osg::Referenced> _state;
+    };
+} // namespace osgEarth
+
+#endif // OSGEARTHSYMBOLOGY_GEOMETRY_RASTERIZER_H

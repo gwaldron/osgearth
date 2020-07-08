@@ -1,25 +1,13 @@
 <!--
 osgEarth Sample - Annotations
 -->
-<map name="readymap.org" type="projected" version="2">
+<map name="Annotations on a Projected Map">
 
     <options>
-        <profile>plate-carre</profile>
+        <profile>global-mercator</profile>
     </options>
 
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-        
-    <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-    
-    <viewpoints>
-        <viewpoint name="Annotation Samples" 
-                   lat="33" long="-118" range="500000"
-                   heading="35.27" pitch="-35" />
-    </viewpoints>
+    <xi:include href="readymap_imagery.xml"/>
     
     <annotations>
     

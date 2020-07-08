@@ -1,0 +1,160 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_CESIUMION_H
+#define OSGEARTH_CESIUMION_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ThreeDTilesLayer>
+#include <osgEarth/URI>
+
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT CesiumIonResource
+    {
+    public:
+        Status open(
+            const URI& server,
+            const std::string& assedId,
+            const std::string& token,
+            const osgDB::Options* readOptions);
+
+    public:
+        std::string _acceptHeader;
+        std::string _resourceToken;
+        std::string _resourceUrl;
+        std::string _externalType;
+        Json::Value _externalOptions;
+    };
+
+    /**
+     * Image layer connection to a Cesium ION server.
+     */
+    class OSGEARTH_EXPORT CesiumIonImageLayer : public ImageLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(URI, server);
+            OE_OPTION(std::string, assetId);
+            OE_OPTION(std::string, token);
+            static Config getMetadata();
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, CesiumIonImageLayer, Options, ImageLayer, XYZImage);
+
+    public:
+        //! Base URL for requests
+        void setServer(const URI& value);
+        const URI& getServer() const;
+
+        //! Asset identifier
+        void setAssetId(const std::string& value);
+        const std::string& getAssetId() const;
+
+        //! Auth token
+        void setToken(const std::string& value);
+        const std::string& getToken() const;
+
+    public: // Layer
+
+        //! Establishes a connection to the TMS repository
+        virtual Status openImplementation();
+
+        virtual Status closeImplementation();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~CesiumIonImageLayer() { }
+
+    private:
+        osg::ref_ptr< ImageLayer > _imageLayer;
+
+        std::string _key;
+    };
+
+    /**
+     * Cesium Ion 3d tiles layer
+     */
+    class OSGEARTH_EXPORT CesiumIon3DTilesLayer : public osgEarth::Contrib::ThreeDTilesLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public osgEarth::Contrib::ThreeDTilesLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, osgEarth::Contrib::ThreeDTilesLayer::Options);
+            OE_OPTION(URI, server);
+            OE_OPTION(std::string, assetId);
+            OE_OPTION(std::string, token);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, CesiumIon3DTilesLayer, Options, ThreeDTilesLayer, CesiumIon3DTiles);
+
+    public:
+        //! Base URL for requests
+        void setServer(const URI& value);
+        const URI& getServer() const;
+
+        //! Asset identifier
+        void setAssetId(const std::string& value);
+        const std::string& getAssetId() const;
+
+        //! Auth token
+        void setToken(const std::string& value);
+        const std::string& getToken() const;
+
+    public: // Layer
+
+        //! Open the layer and return its status
+        virtual Status openImplementation();
+
+    protected: // Layer
+
+        //! post-ctor initialization
+        virtual void init();
+
+        std::string _key;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CesiumIonImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CesiumIon3DTilesLayer::Options);
+
+#endif // OSGEARTH_CESIUMION_H

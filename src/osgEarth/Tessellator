@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,8 +26,8 @@
 
 #include <osg/Geometry>
     
-namespace osgEarth {
-
+namespace osgEarth { namespace Util
+{
     /**
      * Polygon tessellator using a modified ear clipping technique
      */
@@ -43,6 +43,6 @@ namespace osgEarth {
         bool isConvex(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor);
         bool isEar(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor, bool &tradEar);
     };
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTH_TESSELLATOR_H

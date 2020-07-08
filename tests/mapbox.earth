@@ -4,25 +4,25 @@ Demo of MapBox's satellite, terrain and streets layers
 Please change your API key to your own MapBox account, this key is for demo purposes only.
 -->
 
-<map name="MapBox" type="geocentric" version="2">
+<map name="MapBox">
 
 
-    <image name="mapbox_satellite" driver="xyz">
+    <XYZImage name="mapbox_satellite" driver="xyz">
         <url>http://a.tiles.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.jpg?access_token=YOUR_TOKEN_HERE</url>
         <profile>spherical-mercator</profile>
-    </image>
+    </XYZImage>
 
 
-    <elevation name="mapbox_terrain" driver="xyz" max_data_level="14">
+    <XYZElevation name="mapbox_terrain" driver="xyz" max_data_level="14">
         <url>http://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=YOUR_TOKEN_HERE</url>
         <profile>spherical-mercator</profile>
         <elevation_encoding>mapbox</elevation_encoding>
-    </elevation>
+    </XYZElevation>
 
 
-    <model name="mapbox_streets" driver="feature_geom">
+    <FeatureModel name="mapbox_streets">
 
-        <features name="mapbox_streets" driver="xyz">
+        <XYZFeatures name="mapbox_streets">
             <url>http://[abcd].tiles.mapbox.com/v4/mapbox.mapbox-streets-v7/{z}/{x}/{y}.vector.pbf?access_token=YOUR_TOKEN_HERE</url>
             <!-- Change this to pick what level you want to view the mapbox data at, just keep min_level and max_level the same -->
             <min_level>15</min_level>
@@ -30,7 +30,7 @@ Please change your API key to your own MapBox account, this key is for demo purp
             <profile>spherical-mercator</profile>
             <format>pbf</format>
             <invert_y>true</invert_y>
-        </features>
+        </XYZFeatures>
 
         <feature_indexing enabled="true"></feature_indexing>
 
@@ -164,7 +164,7 @@ Please change your API key to your own MapBox account, this key is for demo purp
             </script>
 
         </styles>
-    </model>
+    </FeatureModel>
 
 
 

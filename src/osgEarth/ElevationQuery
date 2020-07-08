@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #include <osgEarth/ModelLayer>
 #include <osgUtil/LineSegmentIntersector>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * @deprecated after 2.10 - Use ElevationPool instead, via Map::getElevationPool to
@@ -64,6 +64,8 @@ namespace osgEarth
         void setMap(const Map* map);
 
         /**
+         * @deprecated
+         *
          * Gets the elevation data at a point, given a terrain resolution.
          *
          * @param point
@@ -117,9 +119,6 @@ namespace osgEarth
         // Callback to force the intersector to materialize paged model nodes
         osg::ref_ptr<osgUtil::IntersectionVisitor::ReadCallback> _ivrc;
 
-        // Active elevation sampler
-        osg::ref_ptr<ElevationEnvelope> _envelope;
-
     private:
         void reset();
         void sync();
@@ -133,8 +132,10 @@ namespace osgEarth
 
         osg::observer_ptr<const Map> _map;
         Revision _mapRevision;
+
+        ElevationPool::WorkingSet _workingSet;
     };
 
-} // namespace osgEarth
+} }
 
 #endif // OSGEARTH_ELEVATION_QUERY_H

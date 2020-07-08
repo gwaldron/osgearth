@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,12 +27,14 @@
 #include <osg/PagedLOD>
 #include <osgGA/GUIActionAdapter>
 #include <osgUtil/LineSegmentIntersector>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <set>
 #include <vector>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     /**
      * General purpose operation for doing something to a node.
      */
@@ -411,6 +413,6 @@ namespace osgEarth
             OE_INFO << "**INTERNAL: ADJUST_EVENT_TRAV_COUNT wrapped around" << std::endl; \
         } \
     }
-}
+} }
 
 #endif // OSGEARTH_CACHING_H

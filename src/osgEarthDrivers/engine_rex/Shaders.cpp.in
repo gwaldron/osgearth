@@ -2,34 +2,31 @@
 
 #include <osgEarthDrivers/engine_rex/Shaders>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 Shaders::Shaders()
 {
-    ENGINE_VERT_MODEL = "RexEngine.vert.glsl";
-    _sources[ENGINE_VERT_MODEL] = "@RexEngine.vert.glsl@";
+    ENGINE_VERT = "RexEngine.vert.glsl";
+    _sources[ENGINE_VERT] = "@RexEngine.vert.glsl@";
 
-	ENGINE_ELEVATION_MODEL = "RexEngine.elevation.glsl";
-    _sources[ENGINE_ELEVATION_MODEL] = "@RexEngine.elevation.glsl@";
+	ENGINE_ELEVATION = "RexEngine.elevation.glsl";
+    _sources[ENGINE_ELEVATION] = "@RexEngine.elevation.glsl@";
 
-    MORPHING_VERT = "RexEngine.Morphing.vert.glsl";
-    _sources[MORPHING_VERT] = "@RexEngine.Morphing.vert.glsl@";
+    ENGINE_MORPHING = "RexEngine.Morphing.glsl";
+    _sources[ENGINE_MORPHING] = "@RexEngine.Morphing.glsl@";
 
-    ENGINE_VERT_VIEW = "RexEngine.vert.view.glsl";
-    _sources[ENGINE_VERT_VIEW] = "@RexEngine.vert.view.glsl@";
+    ENGINE_IMAGELAYER = "RexEngine.ImageLayer.glsl";
+    _sources[ENGINE_IMAGELAYER] = "@RexEngine.ImageLayer.glsl@";
 
-    ENGINE_FRAG = "RexEngine.frag.glsl";
-    _sources[ENGINE_FRAG] = "@RexEngine.frag.glsl@";
-
-    NORMAL_MAP_VERT = "RexEngine.NormalMap.vert.glsl";
-    _sources[NORMAL_MAP_VERT] = "@RexEngine.NormalMap.vert.glsl@";
-
-    NORMAL_MAP_FRAG = "RexEngine.NormalMap.frag.glsl";
-    _sources[NORMAL_MAP_FRAG] = "@RexEngine.NormalMap.frag.glsl@";
+    ENGINE_NORMAL_MAP = "RexEngine.NormalMap.glsl";
+    _sources[ENGINE_NORMAL_MAP] = "@RexEngine.NormalMap.glsl@";
 
     ENGINE_GEOM = "RexEngine.gs.glsl";
     _sources[ENGINE_GEOM] = "@RexEngine.gs.glsl@";
 
-    SDK = "RexEngine.SDK.vert.glsl";
-    _sources[SDK] = "@RexEngine.SDK.vert.glsl@";
+    ENGINE_TESSELLATION = "RexEngine.Tessellation.glsl";
+    _sources[ENGINE_TESSELLATION] = "@RexEngine.Tessellation.glsl@";
+
+    ENGINE_SDK = "RexEngine.SDK.glsl";
+    _sources[ENGINE_SDK] = "@RexEngine.SDK.glsl@";
 }

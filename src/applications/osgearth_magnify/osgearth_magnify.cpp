@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,8 @@
 
 #include <osgViewer/Viewer>
 #include <osgViewer/CompositeViewer>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
 #include <osgEarth/MapNode>
 #include <osgUtil/CullVisitor>
 
@@ -35,7 +35,7 @@ namespace ui = osgEarth::Util::Controls;
 
 int usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -130,7 +130,7 @@ struct MyCullVisitor : public osgUtil::CullVisitor
     }
 
     virtual osgUtil::CullVisitor* clone() const
-    { 
+    {
         return new MyCullVisitor(*this);
     }
 
@@ -168,10 +168,12 @@ struct MyCullVisitor : public osgUtil::CullVisitor
 
 int main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     if ( arguments.read("--help") )
         return usage(argv[0]);
-    
+
     App app;
 
     // optionally use a custom cull visitor instead of LOD scale:
@@ -186,7 +188,7 @@ int main(int argc, char** argv)
     viewer.setThreadingModel(osgViewer::CompositeViewer::SingleThreaded);
 
     // main view lets the user control the scene
-    app._mainView = new osgViewer::View();   
+    app._mainView = new osgViewer::View();
     app._mainView->setUpViewInWindow(10, 10, 800, 800);
     app._mainView->setCameraManipulator(new EarthManipulator(arguments));
     viewer.addView(app._mainView);
@@ -199,7 +201,7 @@ int main(int argc, char** argv)
     // load the earth file
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (!node) return usage(argv[0]);
-    
+
     // Add a UI to the main view:
     ui::ControlCanvas* canvas = new ui::ControlCanvas();
     ui::Container* ui = createUI(app);
@@ -209,7 +211,7 @@ int main(int argc, char** argv)
     uiGroup->addChild(node);
     uiGroup->addChild(canvas);
     app._mainView->setSceneData(uiGroup);
-    
+
     // Just the map on the magnified view:
     app._magView->setSceneData(node);
 

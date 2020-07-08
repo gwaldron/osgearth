@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 #define OSGEARTH_CONTAINERS_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/ref_ptr>
 #include <osg/observer_ptr>
 #include <osg/State>
@@ -32,78 +32,33 @@
 #include <set>
 #include <map>
 
-namespace osgEarth
+#ifdef OSGEARTH_CXX11
+#include <unordered_set>
+#include <unordered_map>
+#endif
+
+namespace osgEarth { namespace Util
 {
-    template<typename DATA>
-    struct fast_set
-    {
-        typedef DATA                 entry_t;
-        typedef std::vector<entry_t> container_t;
-
-        container_t _data;
-
-        typedef typename container_t::iterator       iterator;
-        typedef typename container_t::const_iterator const_iterator;
-
-        iterator find(const DATA& value) {
-            for( iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( (*i) == value ) {
-                    return i;
-                }
-            }
-            return _data.end();
-        }
-
-        const_iterator find(const DATA& value) const {
-            for( const_iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( (*i) == value ) {
-                    return i;
-                }
-            }
-            return _data.end();
-        }
-
-        std::pair<iterator,bool> insert(const DATA& value) {
-            for( iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( (*i) == value ) {
-                    *i = value;
-                    return std::make_pair(i, false);
-                }
-            }
-            _data.push_back(value);
-            iterator n = _data.end(); --n;
-            return std::make_pair(n, true);
-        }
-
-        const_iterator begin() const { return _data.begin(); }
-        const_iterator end() const { return _data.end(); }
-        iterator begin() { return _data.begin(); }
-        iterator end() { return _data.end(); }
-        bool empty() const { return _data.empty(); }
-        void clear() { _data.clear(); }
-        void erase(iterator i) { _data.erase(i); }
-        void erase(const DATA& data) { iterator i = find(data); if (i != _data.end()) _data.erase(i); }
-        int size() const { return _data.size(); }
-    };
+#ifdef OSGEARTH_CXX11
+    template<typename K> class UnorderedSet : public std::unordered_set<K> { };
+    template<typename K, typename T> class UnorderedMap : public std::unordered_map<K,T> { };
+#else
+    template<typename K> class UnorderedSet : public std::set<K> { };
+    template<typename K, typename T> class UnorderedMap : public std::map<K,T> { };
+#endif
 
     /**
-     * A std::map-like map that uses a vector and a getUID method for keying.
-     * DATA must have a getUID() method.
+     * A std::map-like map that uses a vector.
+     * This benchmarks much faster than std::map or std::unordered_map for small sets.
      */
     template<typename KEY,typename DATA>
     struct vector_map
     {
         struct ENTRY {
-            inline const KEY&  key()  const { return _key; }
-            inline const DATA& data() const { return _data; }
-            inline DATA&       data()       { return _data; }
-            KEY  _key;
-            DATA _data;
+            KEY first;
+            DATA second;
         };
         typedef std::vector<ENTRY> container_t;
-
-        //typedef std::vector<KEY>  keys_t;
-        //typedef std::vector<DATA> container_t;
 
         typedef typename container_t::iterator       iterator;
         typedef typename container_t::const_iterator const_iterator;
@@ -112,31 +67,13 @@ namespace osgEarth
 
         inline DATA& operator[](const KEY& key) {
             for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i]._key == key) {
-                    return _container[i]._data;
+                if (_container[i].first == key) {
+                    return _container[i].second;
                 }
             }
             _container.resize(_container.size()+1);
-            _container.back()._key = key;
-            return _container.back()._data;
-        }
-
-        inline DATA* find(const KEY& key) {
-            for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i]._key == key) {
-                    return &_container[i]._data;
-                }
-            }
-            return 0L;
-        }
-
-        inline const DATA* find(const KEY& key) const {
-            for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i]._key == key) {
-                    return &_container[i]._data;
-                }
-            }
-            return 0L;
+            _container.back().first = key;
+            return _container.back().second;
         }
 
         inline const_iterator begin() const { return _container.begin(); }
@@ -144,13 +81,22 @@ namespace osgEarth
         inline iterator begin()             { return _container.begin(); }
         inline iterator end()               { return _container.end(); }
 
+        inline const_iterator find(const KEY& key) const {
+            for(unsigned i=0; i<_container.size(); ++i) {
+                if (_container[i].first == key) {
+                    return _container.begin()+i;
+                }
+            }
+            return _container.end();
+        }
+
         inline bool empty() const { return _container.empty(); }
 
         inline void clear() { _container.clear(); }
 
         inline void erase(const KEY& key) {
             for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i]._key == key) {
+                if (_container[i].first == key) {
                     if (i+1 < _container.size()) {
                         _container[i] = _container[_container.size()-1];
                     }
@@ -168,82 +114,69 @@ namespace osgEarth
         }
     };
 
-    /**
-     * A std::map-like container that is faster than std::map for small amounts
-     * of data accessed by a single user
-     */
-    template<typename KEY, typename DATA>
-    struct fast_map
+    template<typename DATA>
+    struct vector_set
     {
-        typedef std::pair<KEY,DATA>  entry_t;
-        typedef std::list<entry_t> container_t;
+        typedef std::vector<DATA> container_t;
 
-        typedef typename container_t::iterator       iterator;
+        typedef typename container_t::iterator iterator;
         typedef typename container_t::const_iterator const_iterator;
+        typedef typename container_t::size_type size_type;
 
-        container_t _data;
-        KEY         _lastKey;
+        container_t _container;
 
-        DATA& operator[] (const KEY& key) {
-            for( iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( i->first == key ) {
-                    return i->second;
+        inline const_iterator begin() const { return _container.begin(); }
+        inline const_iterator end()   const { return _container.end(); }
+        inline iterator begin() { return _container.begin(); }
+        inline iterator end() { return _container.end(); }
+
+        inline std::pair<typename vector_set<DATA>::const_iterator, bool> insert(const DATA& data) {
+            const_iterator i = find(data);
+            if (i != end()) {
+                return std::make_pair(i, false);
+            }
+            else {
+                _container.push_back(data);
+                return std::make_pair(_container.end()-1, true);
+            }
+        }
+
+        inline const_iterator find(const DATA& data) const {
+            for (unsigned i = 0; i < _container.size(); ++i) {
+                if (_container[i] == data) {
+                    return _container.begin() + i;
                 }
             }
-            _data.push_back(entry_t(key,DATA()));
-            return _data.back().second;
+            return _container.end();
         }
 
-        iterator find( const KEY& key ) {
-            for( iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( i->first == key ) {
-                    return i;
+        inline bool contains(const DATA& data) const {
+            return find(data) != _container.end();
+        }
+
+        inline bool empty() const { return _container.empty(); }
+
+        inline void clear() { _container.clear(); }
+
+        inline size_type erase(const DATA& data) {
+            for (unsigned i = 0; i < _container.size(); ++i) {
+                if (_container[i] == data) {
+                    if (i + 1 < _container.size()) {
+                        _container[i] = _container[_container.size() - 1];
+                    }
+                    _container.resize(_container.size() - 1);
+                    return 1;
                 }
             }
-            return end();
+            return 0;
         }
 
-        const_iterator find( const KEY& key ) const {
-            for( const_iterator i = _data.begin(); i != _data.end(); ++i ) {
-                if ( i->first == key ) {
-                    return i;
-                }
-            }
-            return end();
-        }
-
-        const_iterator begin() const { return _data.begin(); }
-        const_iterator end() const { return _data.end(); }
-        iterator begin() { return _data.begin(); }
-        iterator end() { return _data.end(); }
-
-        bool empty() const { return _data.empty(); }
-
-        void clear() {
-            _data.clear();
-        }
-
-        iterator erase(iterator i) {
-            return _data.erase( i );
-        }
-
-        iterator erase(iterator i0, iterator i1) {
-            return _data.erase(i0, i1);
-        }
-
-        void erase(const KEY& key) {
-            iterator i = find(key);
-            if ( i != end() ) {
-                erase( i );
-            }
-        }
-
-        // Note: std::list::size() can be O(n)
-        int size() const { return _data.size(); }
+        inline int size() const { return _container.size(); }
 
         template<typename InputIterator>
         void insert(InputIterator a, InputIterator b) {
-            for(InputIterator i = a; i != b; ++i) (*this)[i->first] = i->second;
+            for (InputIterator i = a; i != b; ++i)
+                insert(*i);
         }
     };
 
@@ -314,12 +247,12 @@ namespace osgEarth
         mutable Threading::Mutex _mutex;
 
     public:
-        LRUCache( unsigned max =100 ) : _max(max), _threadsafe(false) {
+        LRUCache( unsigned max =100 ) : _max(max), _threadsafe(false), _mutex("LRUCache(OE)") {
             _queries = 0;
             _hits = 0;
             setMaxSize_impl(max);
         }
-        LRUCache( bool threadsafe, unsigned max =100 ) : _max(max), _threadsafe(threadsafe) {
+        LRUCache( bool threadsafe, unsigned max =100 ) : _max(max), _threadsafe(threadsafe), _mutex("LRUCache(OE)") {
             _queries = 0;
             _hits = 0;
             setMaxSize_impl(max);
@@ -487,10 +420,10 @@ namespace osgEarth
     //--------------------------------------------------------------------
 
     /**
-     * Same of osg::MixinVector, but with a superclass template parameter.
+     * Same of osg::InlineVector, but with a superclass template parameter.
      */
     template<class ValueT, class SuperClass>
-    class MixinVector : public SuperClass
+    class InlineVector : public SuperClass
     {
         typedef typename std::vector<ValueT> vector_type;
     public:
@@ -507,51 +440,51 @@ namespace osgEarth
         typedef typename vector_type::size_type size_type;
         typedef typename vector_type::difference_type difference_type;
 
-        explicit MixinVector() : _impl()
+        explicit InlineVector() : _impl()
         {
         }
 
-        explicit MixinVector(size_type initial_size, const value_type& fill_value = value_type())
+        explicit InlineVector(size_type initial_size, const value_type& fill_value = value_type())
         : _impl(initial_size, fill_value)
         {
         }
 
         template<class InputIterator>
-        MixinVector(InputIterator first, InputIterator last)
+        InlineVector(InputIterator first, InputIterator last)
         : _impl(first, last)
         {
         }
 
-        MixinVector(const vector_type& other)
+        InlineVector(const vector_type& other)
         : _impl(other)
         {
         }
 
-        MixinVector(const MixinVector& other)
+        InlineVector(const InlineVector& other)
         : _impl(other._impl)
         {
         }
 
-        MixinVector& operator=(const vector_type& other)
+        InlineVector& operator=(const vector_type& other)
         {
             _impl = other;
             return *this;
         }
 
-        MixinVector& operator=(const MixinVector& other)
+        InlineVector& operator=(const InlineVector& other)
         {
             _impl = other._impl;
             return *this;
         }
 
-        virtual ~MixinVector() {}
+        virtual ~InlineVector() {}
 
         void clear() { _impl.clear(); }
         void resize(size_type new_size, const value_type& fill_value = value_type()) { _impl.resize(new_size, fill_value); }
         void reserve(size_type new_capacity) { _impl.reserve(new_capacity); }
 
         void swap(vector_type& other) { _impl.swap(other); }
-        void swap(MixinVector& other) { _impl.swap(other._impl); }
+        void swap(InlineVector& other) { _impl.swap(other._impl); }
 
         bool empty() const { return _impl.empty(); }
         size_type size() const { return _impl.size(); }
@@ -606,29 +539,29 @@ namespace osgEarth
         vector_type& asVector() { return _impl; }
         const vector_type& asVector() const { return _impl; }
 
-        friend inline bool operator==(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl == right._impl; }
-        friend inline bool operator==(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl == right; }
-        friend inline bool operator==(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left == right._impl; }
+        friend inline bool operator==(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl == right._impl; }
+        friend inline bool operator==(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl == right; }
+        friend inline bool operator==(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left == right._impl; }
 
-        friend inline bool operator!=(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl != right._impl; }
-        friend inline bool operator!=(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl != right; }
-        friend inline bool operator!=(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left != right._impl; }
+        friend inline bool operator!=(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl != right._impl; }
+        friend inline bool operator!=(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl != right; }
+        friend inline bool operator!=(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left != right._impl; }
 
-        friend inline bool operator<(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl < right._impl; }
-        friend inline bool operator<(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl < right; }
-        friend inline bool operator<(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left < right._impl; }
+        friend inline bool operator<(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl < right._impl; }
+        friend inline bool operator<(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl < right; }
+        friend inline bool operator<(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left < right._impl; }
 
-        friend inline bool operator>(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl > right._impl; }
-        friend inline bool operator>(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl > right; }
-        friend inline bool operator>(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left > right._impl; }
+        friend inline bool operator>(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl > right._impl; }
+        friend inline bool operator>(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl > right; }
+        friend inline bool operator>(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left > right._impl; }
 
-        friend inline bool operator<=(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl <= right._impl; }
-        friend inline bool operator<=(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl <= right; }
-        friend inline bool operator<=(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left <= right._impl; }
+        friend inline bool operator<=(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl <= right._impl; }
+        friend inline bool operator<=(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl <= right; }
+        friend inline bool operator<=(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left <= right._impl; }
 
-        friend inline bool operator>=(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl >= right._impl; }
-        friend inline bool operator>=(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl >= right; }
-        friend inline bool operator>=(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left >= right._impl; }
+        friend inline bool operator>=(const InlineVector<ValueT,SuperClass>& left, const InlineVector<ValueT,SuperClass>& right) { return left._impl >= right._impl; }
+        friend inline bool operator>=(const InlineVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl >= right; }
+        friend inline bool operator>=(const std::vector<ValueT>& left, const InlineVector<ValueT,SuperClass>& right) { return left >= right._impl; }
 
     private:
         vector_type _impl;
@@ -637,15 +570,31 @@ namespace osgEarth
 
     /** Template for per-thread data storage */
     template<typename T>
-    struct PerThread
+    struct PerThread : public Threading::Mutex
     {
+        PerThread() : Threading::Mutex() { }
+
+        PerThread(const std::string& name) : Threading::Mutex(name) { }
+
         T& get() {
-            Threading::ScopedMutexLock lock(_mutex);
+            Threading::ScopedMutexLock lock(*this);
             return _data[Threading::getCurrentThreadId()];
         }
+
+        void clear() {
+            Threading::ScopedMutexLock lock(*this);
+            _data.clear();
+        }
+
+        typedef typename std::unordered_map<unsigned,T> container_t;
+        typedef typename container_t::iterator iterator;
+
+        // NB. lock before using these!
+        iterator begin() { return _data.begin(); }
+        iterator end() { return _data.end(); }
+
     private:
-        std::map<unsigned,T> _data;
-        Threading::Mutex     _mutex;
+        container_t _data;
     };
 
 
@@ -653,17 +602,20 @@ namespace osgEarth
     template<typename KEY, typename DATA>
     struct PerObjectMap
     {
+        PerObjectMap() { }
+        PerObjectMap(const std::string& name) : _mutex(name) { }
+
         DATA& get(KEY k)
         {
             {
                 osgEarth::Threading::ScopedReadLock readLock(_mutex);
-                typename std::map<KEY,DATA>::iterator i = _data.find(k);
+                typename UnorderedMap<KEY,DATA>::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second;
             }
             {
                 osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                typename std::map<KEY,DATA>::iterator i = _data.find(k);
+                typename UnorderedMap<KEY,DATA>::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second;
                 else
@@ -678,7 +630,7 @@ namespace osgEarth
         }
 
     private:
-        std::map<KEY,DATA>                  _data;
+        UnorderedMap<KEY,DATA>              _data;
         osgEarth::Threading::ReadWriteMutex _mutex;
     };
 
@@ -686,6 +638,9 @@ namespace osgEarth
     template<typename KEY, typename DATA>
     struct PerObjectFastMap
     {
+        PerObjectFastMap() { }
+        PerObjectFastMap(const std::string& name) : _mutex(name) { }
+
         struct Functor {
             virtual void operator()(DATA& data) =0;
         };
@@ -697,7 +652,7 @@ namespace osgEarth
         DATA& get(KEY k)
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
-            typename osgEarth::fast_map<KEY,DATA>::iterator i = _data.find(k);
+            typename UnorderedMap<KEY,DATA>::iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second;
             else
@@ -713,14 +668,14 @@ namespace osgEarth
         void forEach(Functor& functor)
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
-            for (typename fast_map<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
+            for (typename UnorderedMap<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 
         void forEach(ConstFunctor& functor) const
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
-            for (typename fast_map<KEY, DATA>::const_iterator i = _data.begin(); i != _data.end(); ++i)
+            for (typename UnorderedMap<KEY, DATA>::const_iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 
@@ -737,7 +692,7 @@ namespace osgEarth
         }
 
     private:
-        osgEarth::fast_map<KEY,DATA> _data;
+        UnorderedMap<KEY,DATA> _data;
         mutable osgEarth::Threading::Mutex _mutex;
     };
 
@@ -748,7 +703,7 @@ namespace osgEarth
         DATA* get(KEY k)
         {
             osgEarth::Threading::ScopedReadLock lock(_mutex);
-            typename std::map<KEY,osg::ref_ptr<DATA > >::const_iterator i = _data.find(k);
+            typename UnorderedMap<KEY,osg::ref_ptr<DATA > >::const_iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second.get();
 
@@ -760,14 +715,14 @@ namespace osgEarth
             osg::ref_ptr<DATA> _refReleaser = newDataIfNeeded;
             {
                 osgEarth::Threading::ScopedReadLock lock(_mutex);
-                typename std::map<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
+                typename UnorderedMap<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second.get();
             }
 
             {
                 osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                typename std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.find(k);
+                typename UnorderedMap<KEY,osg::ref_ptr<DATA> >::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second.get();
 
@@ -785,7 +740,7 @@ namespace osgEarth
         void remove(DATA* data)
         {
             osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
-            for( typename std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
+            for( typename UnorderedMap<KEY,osg::ref_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
             {
                 if ( i->second.get() == data )
                 {
@@ -796,128 +751,9 @@ namespace osgEarth
         }
 
     private:
-        std::map<KEY,osg::ref_ptr<DATA> >    _data;
+        UnorderedMap<KEY,osg::ref_ptr<DATA> >    _data;
         osgEarth::Threading::ReadWriteMutex  _mutex;
     };
-
-    /** Template for thread safe per-object data storage */
-    template<typename KEY, typename DATA>
-    struct PerObjectObsMap
-    {
-        DATA* get(KEY k)
-        {
-            osgEarth::Threading::ScopedReadLock lock(_mutex);
-            typename std::map<KEY, osg::observer_ptr<DATA> >::const_iterator i = _data.find(k);
-            if ( i != _data.end() )
-                return i->second.get();
-
-            return 0L;
-        }
-
-        DATA* getOrCreate(KEY k, DATA* newDataIfNeeded)
-        {
-            osg::ref_ptr<DATA> _refReleaser = newDataIfNeeded;
-            {
-                osgEarth::Threading::ScopedReadLock lock(_mutex);
-                typename std::map<KEY,osg::observer_ptr<DATA> >::const_iterator i = _data.find(k);
-                if ( i != _data.end() )
-                    return i->second.get();
-            }
-
-            {
-                osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                typename std::map<KEY,osg::observer_ptr<DATA> >::iterator i = _data.find(k);
-                if ( i != _data.end() )
-                    return i->second.get();
-
-                _data[k] = newDataIfNeeded;
-                return newDataIfNeeded;
-            }
-        }
-
-        void remove(KEY k)
-        {
-            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
-            _data.erase( k );
-        }
-
-        void remove(DATA* data)
-        {
-            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
-            for( typename std::map<KEY,osg::observer_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
-            {
-                if ( i->second.get() == data )
-                {
-                    _data.erase( i );
-                    break;
-                }
-            }
-        }
-
-    private:
-        std::map<KEY,osg::observer_ptr<DATA> >    _data;
-        osgEarth::Threading::ReadWriteMutex       _mutex;
-    };
-
-
-    /** Template for thread safe observer set */
-    template<typename T>
-    struct ThreadSafeObserverSet
-    {
-        typedef void (*Functor)(T*);
-        typedef void (*ConstFunctor)(const T*);
-
-        void iterate( const Functor& f )
-        {
-            osgEarth::Threading::ScopedWriteLock lock(_mutex);
-            for( typename std::set<T>::iterator i = _data.begin(); i != _data.end(); )
-            {
-                if ( i->valid() )
-                {
-                    f( i->get() );
-                    ++i;
-                }
-                else
-                {
-                    i = _data.erase( i );
-                }
-            }
-        }
-
-        void iterate( const ConstFunctor& f )
-        {
-            osgEarth::Threading::ScopedReadLock lock(_mutex);
-            for( typename std::set<osg::observer_ptr<T> >::iterator i = _data.begin(); i != _data.end(); )
-            {
-                if ( i->valid() )
-                {
-                    f( i->get() );
-                    ++i;
-                }
-                else
-                {
-                    i = _data.erase( i );
-                }
-            }
-        }
-
-        void insert(T* obj)
-        {
-            osgEarth::Threading::ScopedWriteLock lock(_mutex);
-            _data.insert( obj );
-        }
-
-        void remove(T* obj)
-        {
-            osgEarth::Threading::ScopedWriteLock lock(_mutex);
-            _data.erase( obj );
-        }
-
-    private:
-        std::set<osg::observer_ptr<T> >      _data;
-        osgEarth::Threading::ReadWriteMutex  _mutex;
-    };
-
 
     // borrowed from osg::buffered_object. Auto-resizing array.
     template<class T>
@@ -965,6 +801,6 @@ namespace osgEarth
         mutable std::vector<T> _array;
     };
 
-}
+} }
 
 #endif // OSGEARTH_CONTAINERS_H

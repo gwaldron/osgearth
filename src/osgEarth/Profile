@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -32,6 +32,7 @@ namespace osgEarth
 
     /**
      * Configuration options for initializing a Profile.
+     * TODO: refactor into Profile::Options
      */
     class OSGEARTH_EXPORT ProfileOptions : public ConfigOptions
     {
@@ -134,14 +135,14 @@ namespace osgEarth
 
         static const Profile* create(
             const std::string& srs_string,
-            const std::string& vsrs_string ="",
+            const std::string& vsrs_string,
             unsigned int numTilesWideAtLod0 =0,
             unsigned int numTilesHighAtLod0 =0 );
 
         static const Profile* create(
             const ProfileOptions& options );
 
-        static const Profile* createNamed(
+        static const Profile* create(
             const std::string& name);
 
         /**
@@ -278,6 +279,12 @@ namespace osgEarth
          * the LOD in this Profile that is nearly equivalent.
          */
         virtual unsigned getEquivalentLOD(const Profile* profile, unsigned lod) const;
+
+        /**
+         * Given a LOD-0 tile height, determine the LOD in this Profile that
+         * most closely houses a tile with that height.
+         */
+        virtual unsigned getLOD(double tileHeight) const;
 
     public:
 

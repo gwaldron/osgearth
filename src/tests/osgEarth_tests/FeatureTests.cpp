@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,12 +22,10 @@
 
 #include <osgEarth/catch.hpp>
 
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/Feature>
+#include <osgEarth/GeometryUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Features;
 
 TEST_CASE("Feature::splitAcrossDateLine doesn't modify features that don't cross the dateline") {
     osg::ref_ptr< Feature > feature = new Feature(GeometryUtils::geometryFromWKT("POLYGON((-81 26, -40.5 45, -40.5 75.5, -81 60))"), osgEarth::SpatialReference::create("wgs84"));
@@ -49,7 +47,7 @@ TEST_CASE("Feature::splitAcrossDateLine works") {
     for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
     {
         REQUIRE_FALSE(itr->get()->getExtent().crossesAntimeridian());
-    }    
+    }
 }
 
 TEST_CASE("Feature handles attributes correctly.") {
@@ -72,8 +70,14 @@ TEST_CASE("Feature handles attributes correctly.") {
         feature->set("int", 8);
         REQUIRE(feature->getInt("int") == 8);
 
+        feature->set("int64", static_cast<long long>(4549941524));
+        REQUIRE(feature->getInt("int64") == 4549941524);
+
+        feature->set("int64max", static_cast<long long>(INT64_MAX));
+        REQUIRE(feature->getInt("int64max") == INT64_MAX);
+
         feature->set("bool", true);
-        REQUIRE(feature->getBool("bool") == true);        
+        REQUIRE(feature->getBool("bool") == true);
     }
 
     SECTION("Null attributes get the correct default values") {
@@ -81,7 +85,7 @@ TEST_CASE("Feature handles attributes correctly.") {
 
         feature->set("string", std::string("test"));
         REQUIRE(feature->isSet("string") == true);
-        
+
         feature->setNull("string");
         REQUIRE(feature->isSet("string") == false);
         REQUIRE(feature->getString("string") == "");

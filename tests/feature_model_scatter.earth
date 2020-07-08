@@ -8,25 +8,22 @@ that polygon as a specific density (instances/sqkm). Scattered placement
 is randomized, but it is randomized exactly the same way each time.
 -->
 
-<map name="Model Scattering Demo" type="geocentric" version="2">
-      
-    <!-- Our features layer. The "feature_geom" driver will analyze the
-         style sheet and determine how to render the feature data. -->
-         
-    <feature_model name="trees" enabled="true">
-          
-        <!-- Feature data set to load. This is a set of polygons representing
-             the public parks in Washington DC -->
-             
-        <features name="parks" driver="ogr">
-            <url>../data/parks.shp</url>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
-        
+<map name="Demo: Model Scattering">
+
+    <OGRFeatures name="trees-data">
+        <url>../data/parks.shp</url>
+        <build_spatial_index>true</build_spatial_index>
+    </OGRFeatures>
+
+    <FeatureModel name="trees" enabled="true">
+
+        <!-- Feature Layer to read the data from -->
+        <features> trees-data </features>
+
         <!-- The stylesheet will describe how to render the feature data. In this case
              we indicate model substitution with density-based scattering. The "density"
              units are instances-per-sqkm. -->
-             
+
         <layout>
             <crop_features>true</crop_features>
             <level max_range="25000" style="park-polygons"/>
@@ -34,7 +31,7 @@ is randomized, but it is randomized exactly the same way each time.
             <level max_range="3000"  style="parks-2"/>
             <level max_range="1000"  style="parks-3"/>
         </layout>
-             
+
         <styles>
             <style type="text/css">
                 park-polygons {
@@ -66,19 +63,22 @@ is randomized, but it is randomized exactly the same way each time.
                 }                
             </style>
         </styles>        
-    </feature_model>
-    
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-    
-    <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-    
-    <viewpoints>
-        <viewpoint name="DC overview" heading="0" height="25.83" lat="38.9015" long="-77.0217" pitch="-89.9" range="28262"/>
+    </FeatureModel>
+
+    <xi:include href="readymap_imagery.xml"/>
+    <xi:include href="readymap_elevation.xml"/>
+
+    <Viewpoints home="0">
+        <viewpoint name="DC Overview">
+            <heading>-3.69224e-08</heading>
+            <pitch>-89.9</pitch>
+            <range>22073.3m</range>
+            <long>-77.02170005868915</long>
+            <lat>38.90150049600116</lat>
+            <height>-12.07075788639486</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
         <viewpoint name="DC close up" heading="-13.48" lat="38.911" long="-77.051" pitch="-10.1" range="2711"/>
-    </viewpoints>
-  
+    </Viewpoints>
+
 </map>

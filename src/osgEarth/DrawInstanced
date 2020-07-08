@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -33,36 +33,38 @@ namespace osg {
 /**
  * Some utilities to support *DrawInstanced rendering.
  */
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     namespace DrawInstanced
     {
         /**
-         * Referenced-counted vector of instance matrices. These are stored
-         * in the node that's been instanced so the app can recover the 
-         * original positioning data.
-         */
-        class MatrixRefVector : public osgEarth::MixinVector<osg::Matrixf,osg::Object>
+        * Referenced-counted vector of instance matrices. These are stored
+        * in the node that's been instanced so the app can recover the 
+        * original positioning data.
+        */
+        class MatrixRefVector : public InlineVector<osg::Matrixf,osg::Object>
         {
         public:
             META_Object(osgEarth,MatrixRefVector);
-            MatrixRefVector() : osgEarth::MixinVector<osg::Matrixf,osg::Object>() { }
+            MatrixRefVector() : InlineVector<osg::Matrixf,osg::Object>() { }
         protected:
             MatrixRefVector(const MatrixRefVector& rhs, const osg::CopyOp& op) { }
         };
 
         /**
-         * Visitor that converts all the primitive sets in a graph to use
-         * instanced draw calls.
-         * Called by convertGraphToUseDrawInstanced().
-         */
+            * Visitor that converts all the primitive sets in a graph to use
+            * instanced draw calls.
+            * Called by convertGraphToUseDrawInstanced().
+            */
         class OSGEARTH_EXPORT ConvertToDrawInstanced : public osg::NodeVisitor
         {
         public:
             /**
-             * Create the visitor that will convert primitive sets to draw
-             * <num> instances.
-             */
+                * Create the visitor that will convert primitive sets to draw
+                * <num> instances.
+                */
             ConvertToDrawInstanced(
                 unsigned                numInstances,
                 const osg::BoundingBox& bbox,
@@ -89,32 +91,32 @@ namespace osgEarth
 
 
         /**
-         * Creates a virtual shader program that implements DrawInstanced rendering.
-         * You should prepare the scene graph first by calling
-         * convertGraphToUseDrawInstanced().
-         * @return false If instancing is not available
-         */
+            * Creates a virtual shader program that implements DrawInstanced rendering.
+            * You should prepare the scene graph first by calling
+            * convertGraphToUseDrawInstanced().
+            * @return false If instancing is not available
+            */
         extern OSGEARTH_EXPORT bool install(osg::StateSet* stateset);
         extern OSGEARTH_EXPORT void remove (osg::StateSet* stateset);
 
 
         /**
-         * Processes a scene graph and converts all the top-level MatrixTransform
-         * nodes into shader uniforms that can be used with the VirtualProgram
-         * created by createDrawInstacedShaders.
-         * NOTE: You must also call install(StateSet) to activate instancing.
-         * @return false If instancing is not available
-         */
+            * Processes a scene graph and converts all the top-level MatrixTransform
+            * nodes into shader uniforms that can be used with the VirtualProgram
+            * created by createDrawInstacedShaders.
+            * NOTE: You must also call install(StateSet) to activate instancing.
+            * @return false If instancing is not available
+            */
         extern OSGEARTH_EXPORT bool convertGraphToUseDrawInstanced( 
             osg::Group* graph );
 
         /**
-         * Gets the vector of instance matrices attached to a node,
-         * or NULL if not found.
-         */
+            * Gets the vector of instance matrices attached to a node,
+            * or NULL if not found.
+            */
         extern OSGEARTH_EXPORT const MatrixRefVector* getMatrixVector(
             osg::Node* node );
     }
-}
+} }
 
 #endif // OSGEARTH_DRAW_INSTANCED_H

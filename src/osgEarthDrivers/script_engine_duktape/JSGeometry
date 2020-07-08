@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,17 +20,14 @@
 #ifndef OSGEARTHDRIVERS_DUKTAPE_JS_GEOMETRY_H
 #define OSGEARTHDRIVERS_DUKTAPE_JS_GEOMETRY_H
 
-#include <osgEarthSymbology/Geometry>
-#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/Geometry>
+#include <osgEarth/GeometryUtils>
 #include "duktape.h"
 
 #define LC "[duktape] "
 
 namespace osgEarth { namespace Drivers { namespace Duktape
 {
-    using namespace osgEarth::Features;
-    using namespace osgEarth::Symbology;
-
     struct GeometryAPI
     {
         static void install(duk_context* ctx)
@@ -155,7 +152,9 @@ namespace osgEarth { namespace Drivers { namespace Duktape
             // arg#1 : type
             std::string typeName = osgEarth::toLower( duk_get_string(ctx, 1) );
             Geometry::Type type;
-            if ( typeName == "point" || typeName == "multipoint" )
+            if ( typeName == "point")
+                type = Geometry::TYPE_POINT;
+            else if (typeName == "multipoint" )
                 type = Geometry::TYPE_POINTSET;
             else if (typeName == "linestring" || typeName == "multilinestring")
                 type = Geometry::TYPE_LINESTRING;

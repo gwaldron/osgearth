@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,18 +20,18 @@
 #define OSGEARTH_DRIVER_SILVERLINING_OPTIONS 1
 
 #include "Common"
-#include <osgEarthUtil/Sky>
+#include <osgEarth/Sky>
 
 namespace osgEarth { namespace SilverLining
 {
     /**
      * Options for creating a SilverLining environment node
      */
-    class /*header only*/ SilverLiningOptions : public osgEarth::Util::SkyOptions
+    class /*header only*/ SilverLiningOptions : public osgEarth::SkyOptions
     {
     public:
-        SilverLiningOptions(const osgEarth::Util::SkyOptions& options =osgEarth::Util::SkyOptions()) :
-          osgEarth::Util::SkyOptions(options),
+        SilverLiningOptions(const osgEarth::SkyOptions& options =osgEarth::SkyOptions()) :
+          osgEarth::SkyOptions(options),
           _drawClouds(false),
           _cloudsMaxAltitude(20000)
         {
@@ -64,7 +64,7 @@ namespace osgEarth { namespace SilverLining
 
     public:
         osgEarth::Config getConfig() const {
-            osgEarth::Config conf = osgEarth::Util::SkyOptions::getConfig();
+            osgEarth::Config conf = osgEarth::SkyOptions::getConfig();
             conf.set("user", _user);
             conf.set("license_code", _licenseCode);
             conf.set("resource_path", _resourcePath);
@@ -75,7 +75,7 @@ namespace osgEarth { namespace SilverLining
 
     protected:
         void mergeConfig( const osgEarth::Config& conf ) {
-            osgEarth::Util::SkyOptions::mergeConfig( conf );
+            osgEarth::SkyOptions::mergeConfig( conf );
             fromConfig(conf);
         }
 

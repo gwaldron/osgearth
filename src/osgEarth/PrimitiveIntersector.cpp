@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #define LC "[PrmitiveIntersector] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 namespace
 {
@@ -343,19 +344,6 @@ PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d&
   _end.set(end);
 
   setThickness(thickness);
-}
-
-PrimitiveIntersector::Intersection::Intersection(const PrimitiveIntersector::Intersection &rhs)
-{
-  ratio = rhs.ratio;
-  nodePath = rhs.nodePath;
-  drawable = rhs.drawable;
-  matrix = rhs.matrix;
-  localIntersectionPoint = rhs.localIntersectionPoint;
-  localIntersectionNormal = rhs.localIntersectionNormal;
-  indexList = rhs.indexList;
-  ratioList = rhs.ratioList;
-  primitiveIndex = rhs.primitiveIndex;
 }
 
 void PrimitiveIntersector::setThickness(double thickness)

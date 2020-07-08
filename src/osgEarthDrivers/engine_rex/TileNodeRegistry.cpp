@@ -20,7 +20,7 @@
 
 #include <osgEarth/Metrics>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[TileNodeRegistry] "
@@ -28,18 +28,27 @@ using namespace osgEarth;
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_INFO
 
+#define SENTRY_VALUE NULL
+
+#define PROFILING_REX_TILES "Live Terrain Tiles"
 
 //----------------------------------------------------------------------------
 
 TileNodeRegistry::TileNodeRegistry(const std::string& name) :
 _name              ( name ),
 _revisioningEnabled( false ),
-_frameNumber       ( 0u ),
-_notifyNeighbors   ( false )
+_notifyNeighbors   ( false ),
+_firstLOD          ( 0u ),
+_mutex("TileNodeRegistry(OE)")
 {
-    //nop
+    _tracker.push_front(SENTRY_VALUE);
+    _sentryptr = _tracker.begin();
 }
 
+TileNodeRegistry::~TileNodeRegistry()
+{
+    releaseAll(NULL);
+}
 
 void
 TileNodeRegistry::setRevisioningEnabled(bool value)
@@ -61,61 +70,105 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
     {
         if ( _maprev != rev || setToDirty )
         {
-            Threading::ScopedWriteLock exclusive( _tilesMutex );
+            _mutex.lock();
 
             if ( _maprev != rev || setToDirty )
             {
                 _maprev = rev;
 
-                for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+                for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
                 {
-                    i->second.tile->setMapRevision( _maprev );
                     if ( setToDirty )
                     {
-                        i->second.tile->setDirty( true );
+                        i->second._tile->refreshAllLayers();
                     }
                 }
             }
+
+            _mutex.unlock();
         }
     }
 }
 
-
-//NOTE: this method assumes the input extent is the same SRS as
-// the terrain profile SRS.
 void
 TileNodeRegistry::setDirty(const GeoExtent& extent,
                            unsigned         minLevel,
-                           unsigned         maxLevel)
+                           unsigned         maxLevel,
+                           const CreateTileManifest& manifest)
 {
-    Threading::ScopedWriteLock exclusive( _tilesMutex );
+    _mutex.lock();
     
-    bool checkSRS = false;
-    for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+    for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
     {
         const TileKey& key = i->first;
+
         if (minLevel <= key.getLOD() && 
             maxLevel >= key.getLOD() &&
-            extent.intersects(i->first.getExtent(), checkSRS) )
+            (extent.isInvalid() || extent.intersects(key.getExtent())))
         {
-            i->second.tile->setDirty( true );
+            i->second._tile->refreshLayers(manifest);
         }
     }
+
+    _mutex.unlock();
 }
 
 void
-TileNodeRegistry::addSafely(TileNode* tile)
+TileNodeRegistry::add(TileNode* tile)
 {
-    _tiles.insert( tile->getKey(), tile );
+    _mutex.lock();
+
+    // It is possible that a Tile with the same key is already in the registry. 
+    // This can happen when a Tile's ancestor gets unloaded, orphaning
+    // the registry records for its descendants, but the orphaned record has
+    // not yet itself been removed by the Unloader. So we have to check!
+
+    bool recyclingOrphan = false;
+    TrackerEntry* se;
+    TableEntry* te;
+
+    TileTable::iterator i = _tiles.find(tile->getKey());
+    if (i != _tiles.end())
+    {
+        // found an orphan! Reuse and overwrite it.
+        recyclingOrphan = true;
+        te = &i->second;
+        se = (*te->_trackerptr);
+        _tracker.erase(te->_trackerptr); // since we need to move it to the front
+        OE_DEBUG << "Reused orphaned tile record " << tile->getKey().str() << std::endl;
+    }
+    else
+    {
+        te = &_tiles[tile->getKey()];
+        se = new TrackerEntry();
+    }
+
+    // init the tracker entry and place it at the front of the tracker:
+    se->_tile = tile;
+    se->_lastTime = DBL_MAX;
+    se->_lastFrame = ~0;
+    se->_lastRange = FLT_MAX;
+    _tracker.push_front(se);
+
+    // init the table entry:
+    te->_tile = tile;
+    te->_trackerptr = _tracker.begin();
     
-    if ( _revisioningEnabled )
-        tile->setMapRevision( _maprev );
-    
-    // Start waiting on our neighbors
+    // Start waiting on our neighbors.
+    // (If we're recycling and orphaned record, we need to remove old listeners first)
     if (_notifyNeighbors)
     {
-        startListeningFor(tile->getKey().createNeighborKey(1, 0), tile);
-        startListeningFor(tile->getKey().createNeighborKey(0, 1), tile);
+        const TileKey& key = tile->getKey();
+
+        // If we're recycling, we need to remove the old listeners first
+        if (recyclingOrphan)
+        {
+            stopListeningFor(key.createNeighborKey(1, 0), key);
+            stopListeningFor(key.createNeighborKey(0, 1), key);
+        }
+
+        startListeningFor(key.createNeighborKey(1, 0), tile);
+        startListeningFor(key.createNeighborKey(0, 1), tile);
 
         // check for tiles that are waiting on this tile, and notify them!
         TileKeyOneToMany::iterator notifier = _notifiers.find( tile->getKey() );
@@ -125,10 +178,10 @@ TileNodeRegistry::addSafely(TileNode* tile)
 
             for(TileKeySet::iterator listener = listeners.begin(); listener != listeners.end(); ++listener)
             {
-                TileNode* listenerTile = _tiles.find( *listener );
-                if ( listenerTile )
+                TileTable::iterator i = _tiles.find( *listener );
+                if ( i != _tiles.end())
                 {
-                    listenerTile->notifyOfArrival( tile );
+                    i->second._tile->notifyOfArrival( tile );
                 }
             }
             _notifiers.erase( notifier );
@@ -140,114 +193,7 @@ TileNodeRegistry::addSafely(TileNode* tile)
             << std::endl;
     }
 
-    Metrics::counter("RexStats", "Tiles", _tiles.size());
-}
-
-void
-TileNodeRegistry::removeSafely(const TileKey& key)
-{
-    TileNode* tile = _tiles.find(key);
-    if (tile)
-    {
-        if (_notifyNeighbors)
-        {
-            // remove neighbor listeners:
-            stopListeningFor(key.createNeighborKey(1, 0), tile);
-            stopListeningFor(key.createNeighborKey(0, 1), tile);
-        }
-
-        // remove the tile.
-        _tiles.erase( key );
-
-        Metrics::counter("RexStats", "Tiles", _tiles.size());
-    }
-}
-
-void
-TileNodeRegistry::add( TileNode* tile )
-{
-    if ( tile )
-    {
-        Threading::ScopedWriteLock exclusive( _tilesMutex );
-        addSafely( tile );
-    }
-}
-
-void
-TileNodeRegistry::add( const TileNodeVector& tiles )
-{
-    if ( tiles.size() > 0 )
-    {
-        Threading::ScopedWriteLock exclusive( _tilesMutex );
-        for( TileNodeVector::const_iterator i = tiles.begin(); i != tiles.end(); ++i )
-        {
-            if ( i->valid() )
-                addSafely( i->get() );
-        }
-        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
-    }
-}
-
-void
-TileNodeRegistry::remove( TileNode* tile )
-{
-    if ( tile )
-    {
-        Threading::ScopedWriteLock exclusive( _tilesMutex );
-        removeSafely( tile->getKey() );
-    }
-}
-  
-
-bool
-TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
-{
-    Threading::ScopedReadLock shared( _tilesMutex );
-
-    out_tile = _tiles.find(key);
-    return out_tile.valid();
-}
-
-
-bool
-TileNodeRegistry::take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
-{
-    Threading::ScopedWriteLock exclusive( _tilesMutex );
-
-    out_tile = _tiles.find(key);
-    if ( out_tile.valid() )
-    {
-        removeSafely( key );
-    }
-    return out_tile.valid();
-}
-
-
-void
-TileNodeRegistry::run( TileNodeRegistry::Operation& op )
-{
-    Threading::ScopedWriteLock lock( _tilesMutex );
-    unsigned size = _tiles.size();
-    op.operator()( _tiles );
-    if ( size != _tiles.size() )
-        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
-}
-
-
-void
-TileNodeRegistry::run( const TileNodeRegistry::ConstOperation& op ) const
-{
-    Threading::ScopedReadLock lock( _tilesMutex );
-    op.operator()( _tiles );
-    OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
-}
-
-
-bool
-TileNodeRegistry::empty() const
-{
-    // don't bother mutex-protecteding this.
-    return _tiles.empty();
+    _mutex.unlock();
 }
 
 void
@@ -255,9 +201,11 @@ TileNodeRegistry::startListeningFor(const TileKey& tileToWaitFor, TileNode* wait
 {
     // ASSUME EXCLUSIVE LOCK
 
-    TileNode* tile = _tiles.find( tileToWaitFor );
-    if ( tile )
+    TileTable::iterator i = _tiles.find(tileToWaitFor);
+    if (i != _tiles.end())
     {
+        TileNode* tile = i->second._tile.get();
+
         OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str()
             << ", but it was already in the repo.\n";
 
@@ -266,13 +214,12 @@ TileNodeRegistry::startListeningFor(const TileKey& tileToWaitFor, TileNode* wait
     else
     {
         OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str() << ".\n";
-        //_notifications[tileToWaitFor].push_back( waiter->getKey() );
         _notifiers[tileToWaitFor].insert( waiter->getKey() );
     }
 }
 
 void
-TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, TileNode* waiter)
+TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, const TileKey& waiterKey)
 {
     // ASSUME EXCLUSIVE LOCK
 
@@ -280,7 +227,7 @@ TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, TileNode* waite
     if (i != _notifiers.end())
     {
         // remove the waiter from this set:
-        i->second.erase(waiter->getKey());
+        i->second.erase(waiterKey);
 
         // if the set is now empty, remove the set entirely
         if (i->second.empty())
@@ -289,33 +236,144 @@ TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, TileNode* waite
         }
     }
 }
-        
-TileNode*
-TileNodeRegistry::takeAny()
-{
-    Threading::ScopedWriteLock exclusive( _tilesMutex );
-    osg::ref_ptr<TileNode> tile = _tiles.begin()->second.tile.get();
-    removeSafely( tile->getKey() );
-    return tile.release();
-}
 
 void
 TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
 {
     ResourceReleaser::ObjectList objects;
+
+    _mutex.lock();
+
+    if (releaser)
     {
-        Threading::ScopedWriteLock exclusive(_tilesMutex);
-
-        for (TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i)
+        for (TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i)
         {
-            objects.push_back(i->second.tile.get());
+            objects.push_back(i->second._tile.get());
         }
-
-        _tiles.clear();
-        _notifiers.clear();
-
-        Metrics::counter("RexStats", "Tiles", _tiles.size());
     }
 
-    releaser->push(objects);
+    _tiles.clear();
+
+    for (Tracker::iterator i = _tracker.begin(); i != _tracker.end(); ++i)
+    {
+        TrackerEntry* e = *i;
+        delete e;
+    }
+    _tracker.clear();
+    _tracker.push_front(SENTRY_VALUE);
+    _sentryptr = _tracker.begin();
+
+    _notifiers.clear();
+
+    OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
+
+    _mutex.unlock();
+
+    if (releaser)
+    {
+        releaser->push(objects);
+    }
+}
+
+void
+TileNodeRegistry::update(TileNode* tile, osg::NodeVisitor& nv)
+{
+    _mutex.lock();
+
+    // Find the tracker for this tile and update its timestamp
+    TileTable::iterator i = _tiles.find(tile->getKey());
+    if (i != _tiles.end())
+    {
+        TableEntry& e = i->second;
+        TrackerEntry* se = (*e._trackerptr);
+        se->_lastTime = _clock->getTime();
+        se->_lastFrame = _clock->getFrame();
+
+        const osg::BoundingSphere& bs = tile->getBound();
+        float range = nv.getDistanceToViewPoint(bs.center(), true) - bs.radius();
+        se->_lastRange = osg::minimum(se->_lastRange, range);
+
+        // Move the tracker to the front of the list (ahead of the sentry).
+        // Once a cull traversal is complete, all visited tiles will be
+        // in front of the sentry, leaving all non-visited tiles behind it.
+        _tracker.erase(e._trackerptr);
+        _tracker.push_front(se);
+        e._trackerptr = _tracker.begin();
+    }
+    else
+    {
+        OE_WARN << LC << "UPDATE FAILED - TILE " << tile->getKey().str() << " not in TILE TABLE!" << std::endl;
+    }
+
+    _mutex.unlock();
+}
+
+void
+TileNodeRegistry::collectDormantTiles(
+    osg::NodeVisitor& nv,
+    double oldestAllowableTime,
+    unsigned oldestAllowableFrame,
+    float farthestAllowableRange,
+    unsigned maxTiles,
+    std::vector<osg::observer_ptr<TileNode> >& output)
+{
+    _mutex.lock();
+
+    unsigned count = 0u;
+
+    // After cull, all visited tiles are in front of the sentry, and all
+    // non-visited tiles are behind it. Start at the sentry position and
+    // iterate over the non-visited tiles, checking them for deletion.
+    Tracker::iterator i = _sentryptr;
+    Tracker::iterator tmp;
+    for(++i; i != _tracker.end() && count < maxTiles; ++i)
+    {
+        TrackerEntry* se = *i;
+
+        const TileKey& key = se->_tile->getKey();
+
+        if (se->_tile->getDoNotExpire() == false &&
+            se->_lastTime < oldestAllowableTime &&
+            se->_lastFrame < oldestAllowableFrame &&
+            se->_lastRange > farthestAllowableRange &&
+            se->_tile->areSiblingsDormant())
+        {
+            if (_notifyNeighbors)
+            {
+                // remove neighbor listeners:
+                stopListeningFor(key.createNeighborKey(1, 0), key);
+                stopListeningFor(key.createNeighborKey(0, 1), key);
+            }
+
+            // back up the iterator so we can safely erase the tracker entry:
+            tmp = i;
+            --i;
+
+            // put the tile on the output list:
+            output.push_back(se->_tile);
+
+            // remove it from the main tile table:
+            _tiles.erase(key);
+
+            // remove it from the tracker list:
+            _tracker.erase(tmp);
+            delete se;
+
+            ++count;
+        }
+        else
+        {
+            // reset the range in preparation for the next frame.
+            se->_lastRange = FLT_MAX;
+        }
+    }
+
+    // reset the sentry.
+    _tracker.erase(_sentryptr);
+    _tracker.push_front(SENTRY_VALUE);
+    _sentryptr =_tracker.begin();
+
+    _mutex.unlock();
+
+    OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Containers>
+#include <osgEarth/Threading>
 
 namespace osgEarth
 {
@@ -29,7 +30,7 @@ namespace osgEarth
     * ProgressCallback is a general purpose interface for functions that need to report progress
     * or handle cancelation of a task.
     */
-    class OSGEARTH_EXPORT ProgressCallback : public osg::Referenced
+    class OSGEARTH_EXPORT ProgressCallback : public osg::Referenced, public Threading::Cancelable
     {
     public:
         /**
@@ -88,7 +89,7 @@ namespace osgEarth
         /**
          * Sets the cancelation flag
          */
-        virtual void cancel() { _canceled = true; }
+        void cancel();
 
         /**
          * Whether the associated task was canceled for some reason.
@@ -97,33 +98,26 @@ namespace osgEarth
          * recoverable problem occurred and the task is eligible to be
          * tried again later (e.g., HTTP timeout)
          */
-        virtual bool isCanceled() { return _canceled; }
+        bool isCanceled() const;
 
-        /**
-         * Status/error message
-         */
+        //! Resets the cancelation flag
+        void reset();
+
+        //! Read or write a status message
         std::string& message() { return _message; }
         const std::string& message() const { return _message; }
 
-        /**
-         * Resets the canceled flag.
-         */
-        void reset() { _canceled = false; }
-
-        /**
-         * Access user stats
-         */
-        typedef fast_map<std::string,double> Stats;
-        Stats& stats() { return _stats; }
-        double& stats(const std::string& name);
-        bool& collectStats() { return _collectStats; } 
-        const bool& collectStats() const { return _collectStats; }        
+        //! Sets a retry delay in the event of cancelation
+        void setRetryDelay(float value_seconds) { _retryDelay_s = value_seconds; }
+        float getRetryDelay() const { return _retryDelay_s; }
 
     protected:
         std::string       _message;
         mutable  bool     _canceled;
-        mutable  Stats    _stats;
-        mutable  bool     _collectStats;
+        mutable  float    _retryDelay_s;
+
+        //! Override this to tell the Progress to cancel.
+        virtual bool shouldCancel() const { return false; }
     };
 
 
@@ -162,6 +156,21 @@ namespace osgEarth
             unsigned           currentStage,
             unsigned           totalStages,
             const std::string& msg );
+    };
+
+    /**
+    * Progress callback that automatically sets the canceled state
+    * if the current thread is an osgDB::DatabasePager thread that
+    * has been canceled.
+    */
+    class OSGEARTH_EXPORT DatabasePagerProgressCallback : public ProgressCallback
+    {
+    public:
+        void* _pagerThread;
+
+        DatabasePagerProgressCallback();
+
+        virtual bool shouldCancel() const;
     };
 }
 

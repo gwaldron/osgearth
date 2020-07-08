@@ -1,6 +1,6 @@
 /* --*-c++-*-- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,13 +21,14 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osg/Vec3f>
 #include <osg/Vec4f>
 #include <string>
 
 namespace osgEarth
 {
     /**
-     * Color.
+     * Pre-set colors (convenience class).
      */
     struct OSGEARTH_EXPORT Color : public osg::Vec4f
     {
@@ -45,12 +46,18 @@ namespace osgEarth
         /** Make from vec4 */
         Color( const osg::Vec4f& rgba ) : osg::Vec4f(rgba) { }
 
+        /** Make from vec3 */
+        Color( const osg::Vec3f& rgb ) : osg::Vec4f(rgb[0], rgb[1], rgb[2], 1.0f) { }
+
         /** Copy constructor with modified alpha value */
         Color( const Color& rhs, float a );
 
         /** Component constructor */
         Color( float r, float g, float b, float a = 1.0f )
             : osg::Vec4f(r, g, b, a) { }
+
+        /** Vector constructor */
+        static Color all(float v) { return Color(v,v,v,v); }
 
         /** RGBA/ABGR constructor */
         Color( unsigned value, Format format =RGBA );

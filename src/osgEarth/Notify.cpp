@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -133,59 +133,62 @@ protected:
 
 using namespace osgEarth;
 
-static osg::ApplicationUsageProxy Notify_e0(osg::ApplicationUsage::ENVIRONMENTAL_VARIABLE, "OSGEARTH_NOTIFY_LEVEL <mode>", "FATAL | WARN | NOTICE | DEBUG_INFO | DEBUG_FP | DEBUG | INFO | ALWAYS");
-
-struct NotifySingleton
+namespace
 {
-    NotifySingleton()
+    static osg::ApplicationUsageProxy Notify_e0(osg::ApplicationUsage::ENVIRONMENTAL_VARIABLE, "OSGEARTH_NOTIFY_LEVEL <mode>", "FATAL | WARN | NOTICE | DEBUG_INFO | DEBUG_FP | DEBUG | INFO | ALWAYS");
+
+    struct NotifySingleton
     {
-        // _notifyLevel
-        // =============
-
-        _notifyLevel = osg::NOTICE; // Default value
-
-        char* OSGNOTIFYLEVEL=getenv("OSGEARTH_NOTIFY_LEVEL");
-        if (!OSGNOTIFYLEVEL) OSGNOTIFYLEVEL=getenv("OSGEARTHNOTIFYLEVEL");
-        if (OSGNOTIFYLEVEL)
+        NotifySingleton()
         {
+            // _notifyLevel
+            // =============
 
-            std::string stringOSGNOTIFYLEVEL(OSGNOTIFYLEVEL);
+            _notifyLevel = osg::NOTICE; // Default value
 
-            // Convert to upper case
-            for(std::string::iterator i=stringOSGNOTIFYLEVEL.begin();
-                i!=stringOSGNOTIFYLEVEL.end();
-                ++i)
+            char* OSGNOTIFYLEVEL=getenv("OSGEARTH_NOTIFY_LEVEL");
+            if (!OSGNOTIFYLEVEL) OSGNOTIFYLEVEL=getenv("OSGEARTHNOTIFYLEVEL");
+            if (OSGNOTIFYLEVEL)
             {
-                *i=toupper(*i);
+
+                std::string stringOSGNOTIFYLEVEL(OSGNOTIFYLEVEL);
+
+                // Convert to upper case
+                for(std::string::iterator i=stringOSGNOTIFYLEVEL.begin();
+                    i!=stringOSGNOTIFYLEVEL.end();
+                    ++i)
+                {
+                    *i=toupper(*i);
+                }
+
+                if(stringOSGNOTIFYLEVEL.find("ALWAYS")!=std::string::npos)          _notifyLevel=osg::ALWAYS;
+                else if(stringOSGNOTIFYLEVEL.find("FATAL")!=std::string::npos)      _notifyLevel=osg::FATAL;
+                else if(stringOSGNOTIFYLEVEL.find("WARN")!=std::string::npos)       _notifyLevel=osg::WARN;
+                else if(stringOSGNOTIFYLEVEL.find("NOTICE")!=std::string::npos)     _notifyLevel=osg::NOTICE;
+                else if(stringOSGNOTIFYLEVEL.find("DEBUG_INFO")!=std::string::npos) _notifyLevel=osg::DEBUG_INFO;
+                else if(stringOSGNOTIFYLEVEL.find("DEBUG_FP")!=std::string::npos)   _notifyLevel=osg::DEBUG_FP;
+                else if(stringOSGNOTIFYLEVEL.find("DEBUG")!=std::string::npos)      _notifyLevel=osg::DEBUG_INFO;
+                else if(stringOSGNOTIFYLEVEL.find("INFO")!=std::string::npos)       _notifyLevel=osg::INFO;
+                else std::cout << "Warning: invalid OSGEARTH_NOTIFY_LEVEL set ("<<stringOSGNOTIFYLEVEL<<")"<<std::endl;
+
             }
 
-            if(stringOSGNOTIFYLEVEL.find("ALWAYS")!=std::string::npos)          _notifyLevel=osg::ALWAYS;
-            else if(stringOSGNOTIFYLEVEL.find("FATAL")!=std::string::npos)      _notifyLevel=osg::FATAL;
-            else if(stringOSGNOTIFYLEVEL.find("WARN")!=std::string::npos)       _notifyLevel=osg::WARN;
-            else if(stringOSGNOTIFYLEVEL.find("NOTICE")!=std::string::npos)     _notifyLevel=osg::NOTICE;
-            else if(stringOSGNOTIFYLEVEL.find("DEBUG_INFO")!=std::string::npos) _notifyLevel=osg::DEBUG_INFO;
-            else if(stringOSGNOTIFYLEVEL.find("DEBUG_FP")!=std::string::npos)   _notifyLevel=osg::DEBUG_FP;
-            else if(stringOSGNOTIFYLEVEL.find("DEBUG")!=std::string::npos)      _notifyLevel=osg::DEBUG_INFO;
-            else if(stringOSGNOTIFYLEVEL.find("INFO")!=std::string::npos)       _notifyLevel=osg::INFO;
-            else std::cout << "Warning: invalid OSGEARTH_NOTIFY_LEVEL set ("<<stringOSGNOTIFYLEVEL<<")"<<std::endl;
-
+            // Setup standard notify handler
+            NotifyStreamBuffer *buffer = dynamic_cast<NotifyStreamBuffer *>(_notifyStream.rdbuf());
+            if (buffer && !buffer->getNotifyHandler())
+                buffer->setNotifyHandler(new osg::StandardNotifyHandler);
         }
 
-        // Setup standard notify handler
-        NotifyStreamBuffer *buffer = dynamic_cast<NotifyStreamBuffer *>(_notifyStream.rdbuf());
-        if (buffer && !buffer->getNotifyHandler())
-            buffer->setNotifyHandler(new osg::StandardNotifyHandler);
+        osg::NotifySeverity _notifyLevel;
+        NullStream     _nullStream;
+        NotifyStream   _notifyStream;
+    };
+
+    static NotifySingleton& getNotifySingleton()
+    {
+        static NotifySingleton s_NotifySingleton;
+        return s_NotifySingleton;
     }
-
-    osg::NotifySeverity _notifyLevel;
-    NullStream     _nullStream;
-    NotifyStream   _notifyStream;
-};
-
-static NotifySingleton& getNotifySingleton()
-{
-    static NotifySingleton s_NotifySingleton;
-    return s_NotifySingleton;
 }
 
 bool osgEarth::initNotifyLevel()

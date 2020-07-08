@@ -6,20 +6,15 @@
   osgearth_viewer detail_texture.earth --uniform oe_detail_lod 0 24 --uniform oe_detail_alpha 0.0 1.0 --uniform oe_detail_maxRange 500.0 10000.0 --uniform oe_detail_attenDist 0.0 5000.0
 -->
 
-<map name="detail texturing" type="geocentric">
+<Map name="Detail Extension Demo">
         
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-        
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-    
+    <xi:include href="readymap_elevation.xml"/>
+    <xi:include href="readymap_imagery.xml"/>
+	
     <detail>
         <image>../data/noise3.png</image>
         <lod>21</lod>
         <max_range>6000</max_range>
         <attenuation>2000</attenuation>
     </detail>
-</map>
+</Map>

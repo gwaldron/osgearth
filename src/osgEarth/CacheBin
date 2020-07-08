@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -129,12 +129,12 @@ namespace osgEarth
         /**
          * Reads custom metadata from the cache.
          */
-        virtual Config readMetadata() { return Config(); }
+        //virtual Config readMetadata() { return Config(); }
 
         /**
          * Writes custom metadata to the cache.
          */
-        virtual bool writeMetadata( const Config& meta ) { return false; }
+        //virtual bool writeMetadata( const Config& meta ) { return false; }
 
         /**
          * Purges all entries in the cache bin.

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,7 +25,7 @@
 #include <osgEarth/Common>
 #include <osg/Image>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Simplex Noise Generator.
@@ -181,6 +181,6 @@ namespace osgEarth
         bool _normalize;
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif //OSGEARTH_SIMPLEX_NOISE_H

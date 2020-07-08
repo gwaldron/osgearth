@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,13 +24,13 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/GLUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/RTTPicker>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FeatureIndex>
-#include <osgEarthAnnotation/AnnotationNode>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Controls>
+#include <osgEarth/RTTPicker>
+#include <osgEarth/Feature>
+#include <osgEarth/FeatureIndex>
+#include <osgEarth/AnnotationNode>
 
 #include <osgEarth/IntersectionPicker>
 
@@ -42,8 +42,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Features;
-using namespace osgEarth::Annotation;
 
 namespace ui = osgEarth::Util::Controls;
 
@@ -52,7 +50,10 @@ namespace ui = osgEarth::Util::Controls;
 //! Application-wide data.
 struct App
 {
-    App(osg::ArgumentParser& args) : viewer(args), mainView(NULL), rttView(NULL), mapNode(NULL), picker(NULL) { }
+    App(osg::ArgumentParser& args) : viewer(args), mainView(NULL),
+       rttView(NULL), mapNode(NULL), picker(NULL), fidLabel(NULL),
+       nameLabel(NULL), highlightUniform(NULL)
+    { }
 
     osgViewer::CompositeViewer viewer;
     osgViewer::View* mainView;
@@ -200,7 +201,7 @@ setupRTTView(osgViewer::View* view, osg::Texture* rttTex)
     GLUtils::setLighting(stateSet, 0);
     stateSet->setMode(GL_CULL_FACE, 0);
     stateSet->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO), 1);
-    
+
     const char* fs =
     "#version " GLSL_VERSION_STR "\n"
     "void swap(inout vec4 c) { c.rgba = c==vec4(0)? vec4(1) : vec4(vec3((c.r+c.g+c.b+c.a)/4.0),1); }\n";
@@ -231,7 +232,7 @@ void startPicker(App& app)
         app.rttView = new osgViewer::View();
         app.rttView->getCamera()->setGraphicsContext(app.mainView->getCamera()->getGraphicsContext());
         app.rttView->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-        app.viewer.addView(app.rttView);    
+        app.viewer.addView(app.rttView);
     }
     setupRTTView(app.rttView, app.picker->getOrCreateTexture(app.mainView));
     app.rttView->getCamera()->setNodeMask(~0);
@@ -271,7 +272,7 @@ struct TogglePicker : public ui::ControlEventHandler
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
     return 0;
@@ -280,6 +281,8 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     if ( arguments.read("--help") )
         return usage(argv[0]);
@@ -289,11 +292,11 @@ main(int argc, char** argv)
     app.mainView = new osgViewer::View();
     app.mainView->setUpViewInWindow(30, 30, 1024, 1024, 0);
     app.mainView->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-    
+
     app.viewer.addView(app.mainView);
 
     app.mainView->getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
-    app.mainView->setCameraManipulator( new EarthManipulator() );    
+    app.mainView->setCameraManipulator( new EarthManipulator() );
 
     // Made some UI components:
     ui::VBox* uiContainer = new ui::VBox();

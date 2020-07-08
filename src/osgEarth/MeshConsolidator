@@ -1,0 +1,63 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_MESH_CONSOLIDATOR
+#define OSGEARTHSYMBOLOGY_MESH_CONSOLIDATOR
+
+#include <osgEarth/Common>
+#include <osg/Geode>
+#include <osg/Geometry>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Consolidates all the like-moded primitive sets in a geometry.
+     *
+     * This utility will attempt to extract all triangular primitives
+     * from a geometry and regroup them into a smaller number of primitive sets. For
+     * example, if you have a geometry with triangle strips, fans, and triangles, it will
+     * combines them into one a minimal number of primitive sets containing GL_TRIANGLES.
+     *
+     * Limitations:
+     *
+     * - Will not operate on geometry with vertex attributes.
+     * 
+     * - For geometries with tex coord arrays, all geometries must have the same configuration
+     * (i.e., number of texcoord arrays, and the same unit bindings).
+     */
+    class OSGEARTH_EXPORT MeshConsolidator
+    {
+    public:
+        /**
+         * Converts all polygon primitive sets (tristrips, trifans, polygons, etc)
+         * into GL_TRIANGLES. Similar to the IndexMeshVisitor, except that this
+         * retians user data pointers on the primsets.
+         */
+        static void convertToTriangles( osg::Geometry& geom, bool force=false );
+
+        /**
+         * Consolidates compatible geometries in the geode. First runs the 
+         * convertToTriangles method on each Geometry if applicable, them combines
+         * geometies into a minimal set for performance purposes.
+         */
+        static void run( osg::Geode& geode );
+    };
+
+} }
+
+#endif // OSGEARTHSYMBOLOGY_MESH_CONSOLIDATOR

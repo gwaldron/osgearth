@@ -1,0 +1,86 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_GEOCODER_H
+#define OSGEARTH_GEOCODER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/FeatureCursor>
+#include <osgEarth/Threading>
+
+namespace osgEarth
+{
+    /**
+     * Place name geocoding service
+     */
+    class OSGEARTH_EXPORT Geocoder
+    {
+    public:
+        //! Base class for custom geocoder implementations
+        class OSGEARTH_EXPORT Implementation : public osg::Referenced
+        {
+        public:
+            virtual Status search(const std::string& input, osg::ref_ptr<FeatureCursor>& output) = 0;
+
+            virtual void setServiceOption(const std::string& name, const std::string& value) =0;
+        };
+
+        //! Internal - do not use
+        struct OutputData : public osg::Referenced
+        {
+            OutputData(const Status& status, FeatureCursor* cursor) : _status(status), _cursor(cursor) { }
+            Status _status;
+            osg::ref_ptr<FeatureCursor> _cursor;
+        };
+
+        //! Result object returned from a geocoding attempt
+        class OSGEARTH_EXPORT Results : public FutureResult<OutputData>
+        {
+        public:
+            //! Status of geocode operation -- check this first
+            Status getStatus();
+
+            //! Cursor for iterating over the geocoding results
+            FeatureCursor* getFeatures();
+
+            //! Internal constructors
+            Results(const Status& status, FeatureCursor* cursor);
+            Results(Future<OutputData> future);
+        };
+
+    public:
+        //! Constructor
+        Geocoder();
+
+        //! Sets an implementation-specific option
+        //! (See https://tinyurl.com/vacattl for OGR options)
+        void setServiceOption(const std::string& key, const std::string& value);
+
+        //! Geocode a search string
+        //! If the options contains a ThreadPool, will run asynchronously
+        Results search(const std::string& input, const osgDB::Options* ioOptions =NULL);
+
+        //! Set the underlying implementation to use.
+        void setImplementation(Implementation* impl);
+
+    protected:
+        osg::ref_ptr<Implementation> _impl;
+    };
+}
+
+#endif // OSGEARTH_GEOCODER_H

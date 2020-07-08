@@ -30,12 +30,17 @@
 
 namespace osgEarth
 {
-    class MapInfo;
+    namespace Support
+    {
+        class MapInfo;
+    }
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
-    typedef std::vector<osg::Vec3> VectorPoints;
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+
     /**
      * SurfaceNode holds the proxy (physics) geometry of the terrain surface.
      */
@@ -53,6 +58,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // proxy geometry used for intersections, bounds, etc.
         osg::ref_ptr<ProxyGeometry> _proxyGeom;
     };
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} }
 
 #endif // OSGEARTH_DRIVERS_REX_SURFACE_NODE

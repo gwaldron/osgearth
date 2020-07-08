@@ -26,7 +26,7 @@
 #include <osgEarth/ImageUtils>
 
 using namespace osg;
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[TileDrawable] "
@@ -68,7 +68,8 @@ osg::Drawable( ),
 _key         ( key ),
 _geom        ( geometry ),
 _tileSize    ( tileSize ),
-_bboxRadius  ( 1.0 )
+_bboxRadius  ( 1.0 ),
+_bboxCB      ( NULL )
 {   
     // a mesh to materialize the heightfield for functors
     _mesh = new osg::Vec3f[ tileSize*tileSize ];
@@ -124,8 +125,9 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
 
         //OE_INFO << LC << _key.str() << " - rebuilding height cache" << std::endl;
 
-        ImageUtils::PixelReader elevation(_elevationRaster.get());
-        elevation.setBilinear(true);
+        ImageUtils::PixelReader readElevation(_elevationRaster.get());
+        readElevation.setBilinear(true);
+        osg::Vec4f sample;
 
         float
             scaleU = _elevationScaleBias(0,0),
@@ -149,7 +151,10 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
                 u = u*scaleU + biasU;
 
                 unsigned index = t*_tileSize+s;
-                _mesh[index] = verts[index] + normals[index] * elevation(u, v).r();
+
+                readElevation(sample, u, v);
+
+                _mesh[index] = verts[index] + normals[index] * sample.r();
             }
         }
     }
@@ -185,7 +190,7 @@ TileDrawable::computeBoundingBox() const
     osg::BoundingBox box;
 
     // core bbox created from the mesh:
-    for(unsigned i=0; i<_tileSize*_tileSize; ++i)
+    for(int i=0; i<_tileSize*_tileSize; ++i)
     {
         box.expandBy(_mesh[i]);
     }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,23 +22,23 @@
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
-#include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
+#include <osgEarth/Threading>
 #include <osgEarth/Registry>
+#include <osgDB/ReadFile>
 #include <iostream>
 
-#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarth/PlaceNode>
 
-#include <osgEarthUtil/ClusterNode>
+#include <osgEarth/ClusterNode>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
+using namespace osgEarth::Contrib;
 
 int
 usage(const char* name)
@@ -51,9 +51,9 @@ usage(const char* name)
 }
 
 void makePlaces(MapNode* mapNode, unsigned int count, const GeoExtent& extent, osg::NodeList& nodes)
-{    
+{
     // set up a style to use for placemarks:
-    Style placeStyle;    
+    Style placeStyle;
     placeStyle.getOrCreate<TextSymbol>()->declutter() = false;
 
     // A lat/long SRS for specifying points.
@@ -74,7 +74,7 @@ void makePlaces(MapNode* mapNode, unsigned int count, const GeoExtent& extent, o
             place->setDynamic(true);
             nodes.push_back(place);
         }
-    }    
+    }
 }
 
 void makeModels(MapNode* mapNode, unsigned int count, const GeoExtent& extent, osg::NodeList& nodes)
@@ -100,7 +100,7 @@ void makeModels(MapNode* mapNode, unsigned int count, const GeoExtent& extent, o
         {
             transform->addChild(cow.get());
             transform->setName("cow");
-        }        
+        }
         else
         {
             transform->addChild(cessna.get());
@@ -131,7 +131,7 @@ struct SetRadius : public ControlEventHandler
         _clusterNode->setRadius(value);
     }
 
-    ClusterNode* _clusterNode;    
+    ClusterNode* _clusterNode;
 };
 
 struct AddIcons : public ControlEventHandler
@@ -193,16 +193,16 @@ void buildControls(Container* container, ClusterNode* clusterNode, MapNode* mapN
     radiusAdjust->setVertAlign(Control::ALIGN_CENTER);
     grid->setControl(1, 0, radiusAdjust);
     grid->setControl(2, 0, new LabelControl(radiusAdjust));
-    
+
     grid->setControl(0, 1, new LabelControl("Enabled"));
     CheckBoxControl* checkBox = new CheckBoxControl(clusterNode->getEnabled());
     checkBox->setHorizAlign(Control::ALIGN_LEFT);
     checkBox->addEventHandler(new ToggleEnabled(clusterNode));
     grid->setControl(1, 1, checkBox);
 
-    
+
     grid->setControl(0, 2, new ButtonControl("Add Icons", new AddIcons(clusterNode, mapNode)));
-    
+
 }
 
 //! Displays a simplified count for the cluster instead of the exact number.
@@ -210,7 +210,7 @@ class SimplifyCountCallback : public ClusterNode::StyleClusterCallback
 {
 public:
     virtual void operator()(ClusterNode::Cluster& cluster)
-    {        
+    {
         if (cluster.nodes.size() >= 100)
         {
             cluster.marker->setText("100+");
@@ -230,7 +230,7 @@ public:
         else
         {
             cluster.marker->setText("2+");
-        } 
+        }
     }
 };
 
@@ -244,9 +244,9 @@ public:
         _planeImage = osgDB::readRefImageFile("../data/airport.png");
         _cowImage = osgDB::readRefImageFile("../data/hospital.png");
     }
-    
+
     virtual void operator()(ClusterNode::Cluster& cluster)
-    {    
+    {
         std::stringstream buf;
         buf << cluster.nodes[0]->getName() << "(" << cluster.nodes.size() << ")" << std::endl;
         cluster.marker->setText(buf.str());
@@ -258,7 +258,7 @@ public:
         else if (cluster.nodes[0]->getName() == "cow")
         {
             cluster.marker->setIconImage(_cowImage.get());
-        } 
+        }
     }
 
     osg::ref_ptr< osg::Image > _planeImage;
@@ -279,6 +279,7 @@ public:
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
     osg::ArgumentParser arguments(&argc, argv);
 
     // help?
@@ -288,7 +289,7 @@ main(int argc, char** argv)
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    //Create the control panel    
+    //Create the control panel
     Container* container = createControlPanel(&viewer);
 
     // Tell the database pager to not modify the unref settings
@@ -305,7 +306,7 @@ main(int argc, char** argv)
     viewer.getCamera()->setNearFarRatio(0.0001);
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
@@ -314,7 +315,7 @@ main(int argc, char** argv)
 
         //GeoExtent extent(SpatialReference::create("wgs84"), -180, -90, 180, 90);
         GeoExtent extent(SpatialReference::create("wgs84"), -160.697021484375, 18.208480196039883, -153.951416015625, 22.978623970384913);
-        
+
         makeModels(mapNode, 10000, extent, nodes);
 
         ClusterNode* clusterNode = new ClusterNode(mapNode, osgDB::readImageFile("../data/placemark32.png"));
@@ -323,7 +324,7 @@ main(int argc, char** argv)
         for (unsigned int i = 0; i < nodes.size(); i++)
         {
             clusterNode->addNode(nodes[i].get());
-        }              
+        }
         mapNode->addChild(clusterNode);
 
         buildControls(container, clusterNode, mapNode);

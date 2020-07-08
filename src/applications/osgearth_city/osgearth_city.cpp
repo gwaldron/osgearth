@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,22 +26,16 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/TMS>
 
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/LogarithmicDepthBuffer>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/LogarithmicDepthBuffer>
 
-#include <osgEarthFeatures/FeatureModelLayer>
-
-#include <osgEarthDrivers/tms/TMSOptions>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
-#include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
+#include <osgEarth/FeatureModelLayer>
+#include <osgEarth/OGRFeatureSource>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
 #define IMAGERY_URL      "http://readymap.org/readymap/tiles/1.0.0/22/"
@@ -69,20 +63,21 @@ void addParks    (Map* map);
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
     osg::ArgumentParser arguments(&argc,argv);
 
     // create the map.
-    Map* map = new Map();
+    osg::ref_ptr<Map> map = new Map();
 
-    addImagery( map );
-    addElevation( map );
-    addBuildings( map );
-    addStreets( map );
-    addParks( map );
+    addImagery( map.get() );
+    addElevation( map.get() );
+    addBuildings( map.get() );
+    addStreets( map.get() );
+    addParks( map.get() );
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
-    
+
     EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
 
@@ -90,7 +85,7 @@ main(int argc, char** argv)
     viewer.setSceneData( root );
 
     // make the map scene graph:
-    MapNode* mapNode = new MapNode(map);
+    MapNode* mapNode = new MapNode(map.get());
     root->addChild( mapNode );
 
     // zoom to a good startup position
@@ -110,32 +105,31 @@ main(int argc, char** argv)
 void addImagery(Map* map)
 {
     // add a TMS imagery layer:
-    TMSOptions imagery;
-    imagery.url() = IMAGERY_URL;
-    map->addLayer( new ImageLayer("ReadyMap imagery", imagery) );
+    TMSImageLayer* layer = new TMSImageLayer();
+    layer->setURL(IMAGERY_URL);
+    map->addLayer(layer);
 }
 
 
 void addElevation(Map* map)
 {
     // add a TMS elevation layer:
-    TMSOptions elevation;
-    elevation.url() = ELEVATION_URL;
-    map->addLayer( new ElevationLayer("ReadyMap elevation", elevation) );
+    TMSElevationLayer* layer = new TMSElevationLayer();
+    layer->setURL(ELEVATION_URL);
+    map->addLayer(layer);
 }
 
 
 void addBuildings(Map* map)
 {
     // create a feature source to load the building footprint shapefile.
-    OGRFeatureOptions buildingData;
-    buildingData.name() = "buildings";
-    buildingData.url() = BUILDINGS_URL;
-    buildingData.buildSpatialIndex() = true;
-    
+    OGRFeatureSource* data = new OGRFeatureSource();
+    data->setName("buildings-data");
+    data->setURL(BUILDINGS_URL);
+
     // a style for the building data:
     Style buildingStyle;
-    buildingStyle.setName( "buildings" );
+    buildingStyle.setName( "default" );
 
     // Extrude the shapes into 3D buildings.
     ExtrusionSymbol* extrusion = buildingStyle.getOrCreate<ExtrusionSymbol>();
@@ -174,7 +168,7 @@ void addBuildings(Map* map)
     styleSheet->addStyle( buildingStyle );
     styleSheet->addStyle( wallStyle );
     styleSheet->addStyle( roofStyle );
-    
+
     // load a resource library that contains the building textures.
     ResourceLibrary* reslib = new ResourceLibrary( "us_resources", RESOURCE_LIB_URL );
     styleSheet->addResourceLibrary( reslib );
@@ -184,13 +178,13 @@ void addBuildings(Map* map)
     // tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
     layout.tileSize() = 500;
-    layout.addLevel( FeatureLevel(0.0f, 20000.0f, "buildings") );
 
     FeatureModelLayer* layer = new FeatureModelLayer();
     layer->setName("Buildings");
-    layer->options().featureSource() = buildingData;
-    layer->options().styles() = styleSheet;
-    layer->options().layout() = layout;
+    layer->setFeatureSource(data);
+    layer->setStyleSheet(styleSheet);
+    layer->setLayout(layout);
+    layer->setMaxVisibleRange(20000.0);
 
     map->addLayer(layer);
 }
@@ -199,18 +193,17 @@ void addBuildings(Map* map)
 void addStreets(Map* map)
 {
     // create a feature source to load the street shapefile.
-    OGRFeatureOptions feature_opt;
-    feature_opt.name() = "streets";
-    feature_opt.url() = STREETS_URL;
-    feature_opt.buildSpatialIndex() = true;
+    OGRFeatureSource* data = new OGRFeatureSource();
+    data->setURL(STREETS_URL);
+    data->options().buildSpatialIndex() = true;
 
     // a resampling filter will ensure that the length of each segment falls
-    // within the specified range. That can be helpful to avoid cropping 
+    // within the specified range. That can be helpful to avoid cropping
     // very long lines segments.
     ResampleFilterOptions resample;
     resample.minLength() = 0.0f;
     resample.maxLength() = 25.0f;
-    feature_opt.filters().push_back( resample );
+    data->options().filters().push_back( resample );
 
     // a style:
     Style style;
@@ -230,33 +223,32 @@ void addStreets(Map* map)
     // apparent offset (towards the camera) of the geometry from its actual position.
     // The value here was chosen empirically by tweaking the "oe_doff_min_bias" uniform.
     RenderSymbol* render = style.getOrCreate<RenderSymbol>();
-    render->depthOffset()->minBias() = 6.6f;
+    render->depthOffset()->minBias()->set(6.6, Units::METERS);
 
     // Set up a paging layout. The tile size factor and the visibility range combine
     // to determine the tile size, such that tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
     layout.tileSize() = 500;
-    layout.maxRange() = 5000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
-    FeatureModelLayerOptions streets;
-    streets.name() = "streets";
-    streets.featureSource() = feature_opt;
-    streets.layout() = layout;
-    streets.styles() = new StyleSheet();
-    streets.styles()->addStyle( style );
+    FeatureModelLayer* layer = new FeatureModelLayer();
+    layer->setName("Streets");
+    layer->setFeatureSource(data);
+    layer->options().layout() = layout;
+    layer->setStyleSheet(new StyleSheet());
+    layer->getStyleSheet()->addStyle(style);
+    layer->setMaxVisibleRange(5000.0f);
 
-    map->addLayer(new FeatureModelLayer(streets));
+    map->addLayer(layer);
 }
 
 
 void addParks(Map* map)
 {
     // create a feature source to load the shapefile.
-    OGRFeatureOptions parksData;
-    parksData.name() = "parks";
-    parksData.url() = PARKS_URL;
-    parksData.buildSpatialIndex() = true;
+    OGRFeatureSource* data = new OGRFeatureSource();
+    data->setURL(PARKS_URL);
+    data->options().buildSpatialIndex() = true;
 
     // a style:
     Style style;
@@ -270,7 +262,7 @@ void addParks(Map* map)
     model->url()->setLiteral(TREE_MODEL_URL);
     model->placement() = model->PLACEMENT_RANDOM;
     model->density() = 6000.0f; // instances per sqkm
-    
+
     // Clamp to the terrain:
     AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
     alt->clamping() = alt->CLAMP_TO_TERRAIN;
@@ -289,18 +281,16 @@ void addParks(Map* map)
     layout.addLevel(FeatureLevel(0.0f, 2000.0f, "parks"));
 
     // create a model layer that will render the buildings according to our style sheet.
-    FeatureModelLayerOptions parks;
-    parks.name() = "parks";
-    parks.featureSource() = parksData;
-    parks.layout() = layout;
-    parks.styles() = new StyleSheet();
-    parks.styles()->addStyle( style );
+    FeatureModelLayer* layer = new FeatureModelLayer();
+    layer->setFeatureSource(data);
+    layer->options().layout() = layout;
+    layer->setStyleSheet(new StyleSheet());
+    layer->getStyleSheet()->addStyle(style);
 
-    Layer* parksLayer = new FeatureModelLayer(parks);
-    map->addLayer(parksLayer);
+    map->addLayer(layer);
 
-    if (parksLayer->getStatus().isError())
+    if (layer->getStatus().isError())
     {
-        OE_WARN << parksLayer->getStatus().message() << std::endl;
+        OE_WARN << layer->getStatus().message() << std::endl;
     }
 }

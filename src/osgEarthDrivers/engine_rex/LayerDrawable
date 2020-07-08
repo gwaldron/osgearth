@@ -27,7 +27,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class TerrainRenderData;
 
@@ -37,10 +37,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      * they appear. Since all LayerDrawables share a common bounds, this 
      * should happen automatically, but let's keep an eye out for trouble.
      */
-    class LayerDrawable : public osg::Drawable
+    class LayerDrawable : public osg::Drawable, public PatchLayer::TileBatch
     {
     public:
         LayerDrawable();
+
+        void accept(osg::NodeVisitor& nv) { Drawable::accept(nv); }
+
+        // Finalize the tile batch before dispatch
+        void finalize();
 
         // The (sorted) list of tiles to render for this layer
         DrawTileCommands  _tiles;
@@ -57,6 +62,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // If _layer is an ImageLayer, this will be set as well, otherwise NULL
         const ImageLayer* _imageLayer;
 
+        // If _layer is a PatchLayer, this will be set, otherwise NULL
+        const PatchLayer* _patchLayer;
+
         // Layer render order, which is pushed into a Uniform at render time.
         // This value is assigned at cull time by RexTerrainEngineNode.
         int _drawOrder;
@@ -71,6 +79,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // Whether to render this layer.
         bool _draw;
+
+        std::size_t _tileBatchId;
         
 
     public: // osg::Drawable
@@ -80,6 +90,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // All LayerDrawables share the common terrain bounds.
         osg::BoundingSphere computeBound() const { return _drawState->_bs; }
         osg::BoundingBox computeBoundingBox() const { return _drawState->_box; }
+        bool supports(const osg::PrimitiveFunctor&) const { return true; }
+        void accept(osg::PrimitiveFunctor& functor) const;
+        bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
+        void accept(osg::PrimitiveIndexFunctor&) const;
+
+    public: // TileBatch
+
+        void drawTiles(osg::RenderInfo& ri) const;
+        std::size_t size() const { return _tiles.size(); }
+        std::size_t getBatchID() const { return _tileBatchId; }
 
     protected:
         // overriden to prevent OSG from releasing GL objects on an attached stateset.
@@ -91,6 +111,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     typedef std::vector< osg::ref_ptr<LayerDrawable> > LayerDrawableList;
     typedef std::map<UID, osg::ref_ptr<LayerDrawable> > LayerDrawableMap;
 
-} } } // namespace 
+} } // namespace 
 
 #endif // OSGEARTH_REX_TERRAIN_LAYER_DRAWABLE_H

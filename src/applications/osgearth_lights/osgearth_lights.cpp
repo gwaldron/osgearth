@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,10 +28,10 @@
 #include <osgEarth/Lighting>
 #include <osgEarth/PhongLightingEffect>
 #include <osgEarth/NodeUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Ephemeris>
-#include <osgEarthUtil/Shadowing>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Ephemeris>
+#include <osgEarth/Shadowing>
 
 #define LC "[lights] "
 
@@ -41,7 +41,7 @@ using namespace osgEarth::Util;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -79,7 +79,7 @@ addLights(osg::View* view, osg::Node* root, int lightNum)
     MapNode* mapNode = MapNode::get(root);
     const SpatialReference* mapsrs = mapNode->getMapSRS();
     const SpatialReference* geosrs = mapsrs->getGeographicSRS();
-    
+
     osg::Vec3d world;
     osg::Group* lights = new osg::Group();
 
@@ -113,14 +113,14 @@ addLights(osg::View* view, osg::Node* root, int lightNum)
     }
 
 #if 1
-    // A red spot light. A spot light has a real position in space 
+    // A red spot light. A spot light has a real position in space
     // and points in a specific direciton. The Cutoff and Exponent
     // properties control the cone angle and sharpness, respectively
     {
         GeoPoint p(geosrs, -121, 34, 5000000., ALTMODE_ABSOLUTE);
         p.toWorld(world);
 
-        osg::Light* spot = new osg::Light(lightNum++);    
+        osg::Light* spot = new osg::Light(lightNum++);
         spot->setPosition(worldToVec4(world));
         spot->setAmbient(osg::Vec4(0,0.2,0,1));
         spot->setDiffuse(osg::Vec4(1,0,0,1));
@@ -137,7 +137,7 @@ addLights(osg::View* view, osg::Node* root, int lightNum)
         lights->addChild( spotLS );
     }
 
-    // A green point light. A Point light lives at a real location in 
+    // A green point light. A Point light lives at a real location in
     // space and lights equally in all directions.
     {
         GeoPoint p(geosrs, -45, -35, 1000000., ALTMODE_ABSOLUTE);
@@ -167,6 +167,8 @@ addLights(osg::View* view, osg::Node* root, int lightNum)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -197,14 +199,14 @@ main(int argc, char** argv)
         MapNode* mapNode = MapNode::get(node.get());
         if ( !mapNode )
             return -1;
-        
+
         // Example of a custom material for the terrain.
         osg::ref_ptr< osg::Material > material = 0;
         if (update)
         {
             OE_NOTICE << "Custom material" << std::endl;
             material = new osg::Material;
-            material->setDiffuse(osg::Material::FRONT, osg::Vec4(1,1,1,1));        
+            material->setDiffuse(osg::Material::FRONT, osg::Vec4(1,1,1,1));
             material->setAmbient(osg::Material::FRONT, osg::Vec4(1,1,1,1));
             // Attach our StateAttributeCallback so that uniforms are updated.
             material->setUpdateCallback(new MaterialCallback());
@@ -223,10 +225,10 @@ main(int argc, char** argv)
         osg::Group* lights = addLights(&viewer, node.get(), sky?1:0);
 
         mapNode->addChild(lights);
-        
-        viewer.setSceneData(node.get()); 
+
+        viewer.setSceneData(node.get());
         while (!viewer.done())
-        {         
+        {
             if (viewer.getFrameStamp()->getFrameNumber() % 100 == 0)
             {
                 if (material)

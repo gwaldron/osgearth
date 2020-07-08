@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,19 +23,18 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/URI>
 #include <osgEarth/ElevationLayer>
+#include <osgEarth/LayerReference>
 
 namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
+    using namespace osgEarth::Contrib;
 
     class ColorRampOptions : public TileSourceOptions // NO EXPORT; header only
     {
-    public:            
-        optional<ElevationLayerOptions>& elevationLayer() { return _elevationLayerOptions; }
-        const optional<ElevationLayerOptions>& elevationLayer() const { return _elevationLayerOptions; }
-
-        optional<URI>& ramp() { return _ramp; }
-        const optional<URI>& ramp() const { return _ramp; }
+    public:
+        OE_OPTION_LAYER(ElevationLayer, elevationLayer);
+        OE_OPTION(URI, ramp);
 
     public:
         ColorRampOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
@@ -51,7 +50,7 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.set("elevation", _elevationLayerOptions );
+            elevationLayer().set(conf, "elevation");
             conf.set("ramp", _ramp);
             return conf;
         }
@@ -64,18 +63,10 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.get("elevation", _elevationLayerOptions );
-            if (!_elevationLayerOptions.isSet())
-            {
-                // Try to get the settings from a heightfield specification instead
-                conf.get("heightfield", _elevationLayerOptions );
-            }
+            elevationLayer().get(conf, "elevation");
             conf.get("ramp", _ramp);
         }
 
-      
-        optional<URI> _ramp;
-        optional<ElevationLayerOptions> _elevationLayerOptions;
     };
 
 } } // namespace osgEarth::Drivers

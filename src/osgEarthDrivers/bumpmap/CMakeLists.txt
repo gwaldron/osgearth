@@ -31,10 +31,6 @@ set(LIB_PUBLIC_HEADERS
 set(TARGET_H
 	${LIB_PUBLIC_HEADERS}
 	BumpMapShaders )
-
-
-set(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
-    osgEarthUtil)
 	
 setup_plugin(osgearth_bumpmap)
 

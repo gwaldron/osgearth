@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -456,7 +456,7 @@ namespace osgEarth { namespace Internal
                     DrawableInfo& info = local._memory[drawable];
 
                     bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
-                    bool isBbox = drawable && drawable->className()=="BboxDrawable";
+                    bool isBbox = drawable && (strcmp(drawable->className(), "BboxDrawable") == 0);
                     bool fullyOut = true;
 
                     if (info._frame > 0u)
@@ -557,8 +557,6 @@ namespace osgEarth { namespace Internal
             const osg::Viewport* vp = renderInfo.getCurrentCamera()->getViewport();
             if ( vp )
             {
-                //TODO see which is faster
-
                 osg::ref_ptr<osg::RefMatrix>& m = _ortho2D.get();
                 if ( !m.valid() )
                     m = new osg::RefMatrix();

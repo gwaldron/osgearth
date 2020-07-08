@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,10 +19,8 @@
 #include "MapInspectorExtension"
 #include "MapInspectorUI"
 
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthSymbology/Style>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

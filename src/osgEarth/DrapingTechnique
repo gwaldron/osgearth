@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -33,7 +33,10 @@
 namespace osgEarth
 {
     class TerrainEngineNode;
+}
 
+namespace osgEarth { namespace Util
+{
     /**
      * Projects an overlay scene graph onto the main model.
      *
@@ -132,7 +135,7 @@ namespace osgEarth
 
         mutable DrapingManager _drapingManager;
         DrapingManager& getDrapingManager() { return _drapingManager; }
-        friend class MapNode;
+        friend class osgEarth::MapNode;
 
         struct TechData : public osg::Referenced
         {
@@ -144,6 +147,6 @@ namespace osgEarth
         void setUpCamera(OverlayDecorator::TechRTTParams& params);
     };
 
-} // namespace osgEarth
+} } 
 
 #endif //OSGEARTH_OVERLAY_DRAPING_TECHNIQUE

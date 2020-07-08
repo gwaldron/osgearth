@@ -22,6 +22,7 @@ configure_shaders(
 SET(TARGET_SRC
     HeightFieldCache.cpp
     KeyNodeFactory.cpp
+    MapFrame.cpp
     MPGeometry.cpp
     MPTerrainEngineNode.cpp
     MPTerrainEngineDriver.cpp
@@ -43,6 +44,7 @@ SET(TARGET_H
     HeightFieldCache
     FileLocationCallback
     KeyNodeFactory
+    MapFrame
     MPGeometry
     MPShaders
     MPTerrainEngineNode

@@ -1,0 +1,232 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DECAL_LAYER
+#define OSGEARTH_DECAL_LAYER 1
+
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/LandCoverLayer>
+#include <osg/Image>
+
+namespace osgEarth {
+    class Profile;
+}
+
+namespace osgEarth { namespace Contrib
+{
+    /**
+     * Image layer to applies georeferenced "decals" on the terrain.
+     */
+    class OSGEARTH_EXPORT DecalImageLayer : public osgEarth::ImageLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, DecalImageLayer, Options, osgEarth::ImageLayer, DecalImage);
+
+        //! Adds a decal to the layer.
+        bool addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image);
+
+        //! Removes a decal with the specified ID that was returned from addDecal.
+        void removeDecal(const std::string& id);
+
+        //! Extent covered by the decal with the given ID.
+        const GeoExtent& getDecalExtent(const std::string& id) const;
+
+        //! Removes all decals
+        void clearDecals();
+
+    public: // ImageLayer
+
+        //! Creates an image for a tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        // post-ctor initialization
+        virtual void init();
+
+        virtual ~DecalImageLayer() { }
+
+    private:
+        struct Decal {
+            GeoExtent _extent;
+            osg::ref_ptr<const osg::Image> _image;
+        };
+        std::list<Decal> _decalList;
+        typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
+        DecalIndex _decalIndex;
+    };
+
+    /**
+    * Layer for making local modifications to elevation data.
+    */
+    class OSGEARTH_EXPORT DecalElevationLayer : public osgEarth::ElevationLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, DecalElevationLayer, Options, osgEarth::ElevationLayer, DecalElevation);
+
+        //! Adds a heightfield "decal" to the terrain. Each pixel (in the specified channel)
+        //! contains a normalized height value [0..1]. This normalized value is mapped to
+        //! the elevation range [minElevation..maxElevation] to produce the final height.
+        //! Overlapping decals will result in the sum of overlapping height values.
+        //!
+        //! @param id Unique ID to give this decal
+        //! @param extent Geospatial extent of the decal
+        //! @param image Raster containing normalized offset values
+        //! @param minElevOffset Elevation offset corresponding to zero
+        //! @param maxElevOffset Elevation offset corresponding to one
+        //! @param channel Image channel containing the normalized offset value
+        //! @return true upon success
+        bool addDecal(
+            const std::string& id, 
+            const GeoExtent& extent, 
+            const osg::Image* image, 
+            float minElevOffset,
+            float maxElevOffset,
+            GLenum channel =GL_RED);
+
+        //! Adds a heightfield "decal" to the terrain. Each pixel (red channel for GL_RED, 
+        //! blue channel for GL_RGB/A) contains a height value. This value is multiplied by
+        //! "scale" to produce the final height for that location.
+        //! Overlapping decals will result in the sum of overlapping height values.
+        //!
+        //! @param id Unique ID to give this decal
+        //! @param extent Geospatial extent of the decal
+        //! @param image Raster containing offset values
+        //! @param elevScale Scale factor to apply to raster values
+        //! @param channel Image channel containing the normalized offset value
+        //! @return true upon success
+        bool addDecal(
+            const std::string& id, 
+            const GeoExtent& extent, 
+            const osg::Image* image, 
+            float elevScale,
+            GLenum channel =GL_RED);
+
+        //! Removes a decal with the specified ID that was returned from addDecal.
+        void removeDecal(const std::string& id);
+
+        //! Extent covered by the decal with the given ID.
+        const GeoExtent& getDecalExtent(const std::string& id) const;
+
+        //! Removes all decals
+        void clearDecals();
+
+    public: // ElevationLayer
+
+        //! Creates an image for a tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        // post-ctor initialization
+        virtual void init();
+
+    protected:
+
+        virtual ~DecalElevationLayer() { }
+
+    private:
+
+        struct Decal {
+            GeoHeightField _heightfield;
+        };
+        std::list<Decal> _decalList;
+        typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
+        DecalIndex _decalIndex;
+    };
+
+
+    class OSGEARTH_EXPORT DecalLandCoverLayer : public osgEarth::LandCoverLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public LandCoverLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, LandCoverLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, DecalLandCoverLayer, Options, osgEarth::LandCoverLayer, DecalLandCover);
+
+        //! Adds a land cover decal to the layer.
+        bool addDecal(const std::string& id, const GeoExtent& extent, const osg::Image* image);
+
+        //! Removes a decal with the specified ID that was returned from addDecal.
+        void removeDecal(const std::string& id);
+
+        //! Extent covered by the decal with the given ID.
+        const GeoExtent& getDecalExtent(const std::string& id) const;
+
+        //! Removes all decals
+        void clearDecals();
+
+    public: // ImageLayer
+
+        //! Open this layer
+        Status openImplementation();
+
+        //! Creates an image for a tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        // post-ctor initialization
+        virtual void init();
+
+    protected:
+
+        virtual ~DecalLandCoverLayer() { }
+
+    private:
+        struct Decal {
+            osg::ref_ptr<const osg::Image> _image;
+            GeoExtent _extent;
+        };
+        std::list<Decal> _decalList;
+        typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
+        DecalIndex _decalIndex;
+    };
+
+} } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::DecalImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::DecalElevationLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::DecalLandCoverLayer::Options);
+
+#endif // OSGEARTH_DECAL_LAYER

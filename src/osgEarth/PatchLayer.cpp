@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,22 +20,32 @@
 
 using namespace osgEarth;
 
-PatchLayer::PatchLayer() :
-VisibleLayer()
+//............................................................................
+
+Config
+PatchLayer::Options::getConfig() const
 {
-    init();
+    return VisibleLayer::Options::getConfig();
 }
 
-PatchLayer::PatchLayer(PatchLayerOptions* optionsPtr) :
-VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
-_options(optionsPtr ? optionsPtr : &_optionsConcrete)
+void
+PatchLayer::Options::fromConfig(const Config& conf)
 {
-    //nop - subclass will call init()
+    //NOP
 }
+
+//............................................................................
 
 void
 PatchLayer::init()
 {
-    Layer::init();    
+    VisibleLayer::init();    
     setRenderType(RENDERTYPE_TERRAIN_PATCH);
+}
+
+GeoNode
+PatchLayer::createNode(const TileKey& key, ProgressCallback* progress)
+{
+    // TODO: caching code
+    return createNodeImplementation(key, progress);
 }

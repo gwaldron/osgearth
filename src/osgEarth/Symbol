@@ -1,0 +1,165 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_SYMBOL_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Expression>
+#include <osgEarth/Config>
+#include <osgEarth/URI>
+#include <osg/Referenced>
+#include <vector>
+
+namespace osgEarth
+{
+    class Style;
+    
+    /**
+     * Abstract base class for all Symbol types.
+     */
+    class OSGEARTH_EXPORT Symbol : public osg::Object
+    {
+    public:
+        /** Script expression, optionally implemented by symbolizers. */
+        optional<StringExpression>& script() { return _script; }
+        const optional<StringExpression>& script() const { return _script; }
+
+        /** URI context (relative paths, etc) associated with this symbol */
+        const URIContext& uriContext() const { return _uriContext; }
+
+        virtual Config getConfig() const;   
+	    virtual void mergeConfig(const Config& conf);
+
+        //! First Config used to construct this object
+        Config getOriginalConfig() const { return _ctorConfig; }
+
+    public:
+        /* methods required by osg::Object */
+        META_Object(osgEarth, Symbol);
+
+        Symbol(const Symbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+
+    protected:
+        URIContext _uriContext;
+        optional<StringExpression> _script;
+        Config _ctorConfig;
+
+        static bool match(const std::string& key, const char* pattern);
+
+        Symbol( const Config& conf =Config() );
+
+        virtual ~Symbol() { }
+    };
+
+    typedef std::vector<osg::ref_ptr<Symbol> > SymbolVector;
+    typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
+
+    namespace Util
+    {
+        /**
+         * A Factory that can create a Symbol from a Config
+         */
+        class OSGEARTH_EXPORT SymbolFactory : public osg::Referenced
+        {
+        public:
+            virtual Symbol* create( const Config& conf ) = 0;
+
+            virtual void parseSLD(const Config& c, Style& style) const = 0;
+        };    
+
+        typedef std::list< osg::ref_ptr< SymbolFactory > > SymbolFactoryList;
+
+        /**
+         * A registry of Symbol plugins
+         */
+        class OSGEARTH_EXPORT SymbolRegistry : public osg::Referenced
+        {         
+        public:
+            /**
+             * The singleton instance of the factory
+             */
+            static SymbolRegistry* instance();
+
+            /*
+             * Adds a new SymbolFactory to the list
+             */
+            void add( SymbolFactory* factory );
+
+            /**
+             * Creates a Symbol with the registered plugins from the given Config
+             */
+            Symbol* create( const Config& conf );
+
+            /**
+             * Parses the given SLD config into the given Style using all of the registered symbols
+             */
+            void parseSLD(const Config& c, Style& style) const;
+
+        protected:
+            SymbolRegistry();
+            SymbolFactoryList _factories;
+        };
+
+        template<class T>
+        struct SimpleSymbolFactory : public SymbolFactory
+        {
+            SimpleSymbolFactory(const std::string& key):_key(key){}
+
+            virtual Symbol* create(const Config& conf)
+            {
+                if (conf.key() == _key) return new T(conf);            
+                return 0;
+            }
+                
+            virtual void parseSLD(const Config& c, class Style& style) const
+            {
+                T::parseSLD( c, style );
+            }
+
+            std::string _key;
+        };
+
+        template<class T>
+        struct RegisterSymbolProxy
+        {
+            RegisterSymbolProxy( T* factory) { SymbolRegistry::instance()->add( factory ); }
+            RegisterSymbolProxy() { SymbolRegistry::instance()->add( new T ); }
+        };
+
+    #define OSGEARTH_REGISTER_SYMBOL( CLASSNAME )\
+        extern "C" void osgearth_symbol_##CLASSNAME(void) {} \
+        static osgEarth::RegisterSymbolProxy<CLASSNAME> s_osgEarthRegisterSymbolProxy_##CLASSNAME;
+    
+    #define USE_OSGEARTH_SYMBOL( CLASSNAME ) \
+        extern "C" void osgearth_symbol_##CLASSNAME(void); \
+        static osgDB::PluginFunctionProxy proxy_osgearth_symbol_##CLASSNAME(osgearth_symbol_##CLASSNAME);
+
+    #define OSGEARTH_REGISTER_SIMPLE_SYMBOL( KEY, CLASSNAME)\
+        extern "C" void osgearth_simple_symbol_##KEY(void) {} \
+        static osgEarth::RegisterSymbolProxy< osgEarth::SimpleSymbolFactory<CLASSNAME> > s_osgEarthRegisterSymbolProxy_##CLASSNAME##KEY(new osgEarth::SimpleSymbolFactory<CLASSNAME>(#KEY));
+    
+    #define USE_OSGEARTH_SIMPLE_SYMBOL( KEY ) \
+        extern "C" void osgearth_simple_symbol_##KEY(void); \
+        static osgDB::PluginFunctionProxy proxy_osgearth_simple_symbol_##KEY(osgearth_simple_symbol_##KEY);
+    }
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

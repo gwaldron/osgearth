@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,9 +21,7 @@
 #include "SilverLiningOptions"
 #include "SilverLiningCallback"
 #include "SilverLiningAPIWrapper"
-#include <osgEarthUtil/Sky>
-#include <osgEarth/Map>
-#include <osgEarth/Containers>
+#include <osgEarth/Sky>
 #include <osgEarth/PhongLightingEffect>
 #include <osg/Light>
 #include <osg/LightSource>
@@ -36,16 +34,10 @@ namespace osgEarth { namespace SilverLining
     /**
      * Node that roots the silverlining adapter.
      */
-    class OSGEARTHSILVERLINING_EXPORT SilverLiningNode : public osgEarth::Util::SkyNode
+    class OSGEARTHSILVERLINING_EXPORT SilverLiningNode : public osgEarth::SkyNode
     {
     public:
         SilverLiningNode(
-            const SilverLiningOptions& options,
-            Callback*                  callback =0L);
-
-        // @deprecated Use SilverLining(const SilverLiningOptions&, Callback*) (remove after 2.10)
-        SilverLiningNode(
-            const osgEarth::SpatialReference* mapSRS,
             const SilverLiningOptions& options,
             Callback*                  callback =0L);
 
@@ -69,7 +61,6 @@ namespace osgEarth { namespace SilverLining
     public:
         // callbacks from base class.
         void onSetDateTime();
-        void onSetMinimumAmbient();
 
     public: // osg::Node
 
@@ -81,7 +72,7 @@ namespace osgEarth { namespace SilverLining
         osg::ref_ptr<osg::LightSource> _lightSource;
         osg::ref_ptr<osg::Light> _light;
         const SilverLiningOptions _options;
-        osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
+        osg::ref_ptr<osgEarth::Util::PhongLightingEffect> _lighting;
         osg::ref_ptr<Callback> _callback;
 
         typedef std::map<osg::Camera*, osg::ref_ptr<osg::Node> > CameraContextMap;

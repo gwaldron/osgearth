@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -40,6 +40,7 @@
 //#define TIME_RTT_CAMERA 1
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //---------------------------------------------------------------------------
 
@@ -300,8 +301,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     vp->addBindAttribLocation( Clamping::HeightsAttrName, Clamping::HeightsAttrLocation );
 
     osgEarth::Shaders pkg;
-    pkg.load(vp, pkg.GPUClampingVertex);
-    pkg.load(vp, pkg.GPUClampingFragment);
+    pkg.load(vp, pkg.GPUClamping);
 }
 
 

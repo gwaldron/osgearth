@@ -1,7 +1,7 @@
 
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -262,7 +262,7 @@ PointGroup::optimize()
     // Merge all non-dynamic drawables to reduce the total number of 
     // OpenGL calls.
     osgUtil::Optimizer::MergeGeometryVisitor mg;
-    mg.setTargetMaximumNumberOfVertices(65536);
+    mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
     accept(mg);
 }
 
@@ -465,6 +465,20 @@ PointDrawable::pushVertex(const osg::Vec3& vert)
 }
 
 void
+PointDrawable::insert(unsigned where, const osg::Vec3& vert)
+{
+  initialize();
+
+  _current->insert(_current->begin() + where, vert);
+  _current->dirty();
+
+  _colors->insert(_colors->begin() + where, _color);
+  _colors->dirty();
+
+  dirtyBound();
+}
+
+void
 PointDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 {
     initialize();
@@ -616,7 +630,7 @@ PointDrawable::setupState()
     {
         if (s_sharedStateSet.lock(_sharedStateSet) == false)
         {
-            static Threading::Mutex s_mutex;
+            static Threading::Mutex s_mutex(OE_MUTEX_NAME);
             Threading::ScopedMutexLock lock(s_mutex);
 
             if (s_sharedStateSet.lock(_sharedStateSet) == false)
@@ -660,7 +674,7 @@ PointDrawable::checkSharedStateSet(osg::State* state) const
 {
     if (_sharedStateSet.valid() && !_sharedStateSetCompiled)
     {
-        static Threading::Mutex s_mutex;
+        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
         Threading::ScopedMutexLock lock(s_mutex);
 
         if (!_sharedStateSetCompiled)

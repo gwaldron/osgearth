@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,9 @@
 #include <osgEarth/Config>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/Containers>
+#include <osgEarth/URI>
+#include <osgEarth/Metrics>
 #include <osg/Texture2DArray>
 
 using namespace osgEarth;
@@ -63,16 +66,19 @@ SplatDetailData::getConfig() const
 //............................................................................
 
 SplatRangeData::SplatRangeData() :
-_textureIndex( -1 )
+_diffuseTextureIndex( -1 ),
+_materialTextureIndex( -1 )
 {
     //nop
 }
 
 SplatRangeData::SplatRangeData(const Config& conf) :
-_textureIndex( -1 )
+    _diffuseTextureIndex( -1 ),
+    _materialTextureIndex( -1 )
 {
     conf.get("max_lod",    _maxLOD);
     conf.get("image",      _imageURI);
+    conf.get("normal",     _normalURI);
     conf.get("model",      _modelURI);
     conf.get("modelCount", _modelCount);
     conf.get("modelLevel", _modelLevel);
@@ -87,6 +93,7 @@ SplatRangeData::getConfig() const
     Config conf;
     conf.set("max_lod",    _maxLOD);
     conf.set("image",      _imageURI);
+    conf.set("normal",     _normalURI);
     conf.set("model",      _modelURI);
     conf.set("modelCount", _modelCount);
     conf.set("modelLevel", _modelLevel);
@@ -248,13 +255,15 @@ bool
 SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
                                     SplatTextureDef&      out)
 {
+    OE_PROFILING_ZONE;
     // Reset all texture indices to default
     for(SplatClassMap::iterator i = _classes.begin(); i != _classes.end(); ++i)
     {
         SplatClass& c = i->second;
         for(SplatRangeDataVector::iterator range = c._ranges.begin(); range != c._ranges.end(); ++range)
         {
-            range->_textureIndex = -1;
+            range->_diffuseTextureIndex = -1;
+            range->_materialTextureIndex = -1;
             if ( range->_detail.isSet() )
             {
                 range->_detail->_textureIndex = -1;
@@ -262,7 +271,7 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
         }
     }
 
-    typedef osgEarth::fast_map<URI, int> ImageIndexTable; // track images to prevent dupes
+    typedef UnorderedMap<URI, int> ImageIndexTable; // track images to prevent dupes
     ImageIndexTable imageIndices;
     std::vector< osg::ref_ptr<osg::Image> > imagesInOrder;
     int index = 0;
@@ -296,8 +305,34 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
                 {
                     texIndex = k->second;
                 }
-                range->_textureIndex = texIndex;
+                range->_diffuseTextureIndex = texIndex;
             }
+
+#if 1
+            // Load the material texture(s) and assign to an index:
+            if (range->_normalURI.isSet())
+            {
+                int texIndex = -1;
+                ImageIndexTable::iterator k = imageIndices.find(range->_normalURI.get());
+                if ( k == imageIndices.end() )
+                {
+                    osg::ref_ptr<osg::Image> image = loadImage( range->_normalURI.get(), dbOptions, firstImage );
+                    if ( image.valid() )
+                    {
+                        if ( !firstImage )
+                            firstImage = image.get();
+
+                        imageIndices[range->_normalURI.get()] = texIndex = index++;
+                        imagesInOrder.push_back( image.get() );
+                    }
+                }
+                else
+                {
+                    texIndex = k->second;
+                }
+                range->_materialTextureIndex = texIndex;
+            }
+#endif
 
             // Load the detail texture if it exists:
             if (range->_detail.isSet() &&
@@ -343,12 +378,16 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
         out._texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
         out._texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
         //out._texture->setResizeNonPowerOfTwoHint( false );
-        out._texture->setMaxAnisotropy( 4.0f );
+        //out._texture->setMaxAnisotropy( 4.0f );
 
         for(unsigned i=0; i<imagesInOrder.size(); ++i)
         {
             out._texture->setImage( i, imagesInOrder[i].get() );
         }
+
+        // Let the GPU do it since we only download this at startup
+        //ImageUtils::generateMipmaps(out._texture.get());
+        out._texture->setUseHardwareMipMapGeneration(true);
 
         OE_INFO << LC << "Catalog \"" << this->name().get()
             << "\" texture size = "<< imagesInOrder.size()

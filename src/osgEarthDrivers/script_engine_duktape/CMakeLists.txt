@@ -14,8 +14,6 @@ IF(WITH_EXTERNAL_DUKTAPE)
         DuktapeEngine.cpp
     )
 
-    SET(TARGET_COMMON_LIBRARIES ${DUKTAPE_LIBRARY} osgEarthFeatures osgEarthSymbology)
-
 ELSE(WITH_EXTERNAL_DUKTAPE)
 
     SET(TARGET_H
@@ -30,8 +28,6 @@ ELSE(WITH_EXTERNAL_DUKTAPE)
         duktape.c
         DuktapeEngine.cpp
     )
-
-    SET(TARGET_COMMON_LIBRARIES osgEarthFeatures osgEarthSymbology)
 
 ENDIF(WITH_EXTERNAL_DUKTAPE)
 

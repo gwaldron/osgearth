@@ -3,21 +3,21 @@ osgEarth Sample - Masking
 Demonstrates the use a a MaskLayer to cut out an area of the globe.
 -->
 
-<map version="2">
-    <image driver="gdal" name="world-tiff">
-        <url>../data/world.tif</url>
-    </image>
+<Map>
+    <options>
+        <terrain skirt_ratio="0.25"/>
+    </options>
     
-    <feature_mask name="mask">
-        <features driver="ogr">
+    <GDALImage name="world-tiff">
+        <url>../data/world.tif</url>
+    </GDALImage>
+
+    <FeatureMask name="mask">
+        <OGRFeatures>
             <geometry>
                 POLYGON(( -111.0466 42.0015 0, -111.0467 40.9979 0, -109.0501 41.0007 0, -109.0452 36.9991 0, -114.0506 37.0004 0, -114.0417 41.9937 0)) 
             </geometry>
-        </features>
-        <profile>global-geodetic</profile>
-    </feature_mask>
-    
-    <options>
-	    <terrain min_lod="14"/>
-	</options>
-</map>
+            <profile>global-geodetic</profile>
+        </OGRFeatures>
+    </FeatureMask>
+</Map>

@@ -1,0 +1,58 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_UTIL_UTM_LABELING_ENGINE_H
+#define OSGEARTH_UTIL_UTM_LABELING_ENGINE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/GraticuleLabelingEngine>
+#include <osgEarth/GeoData>
+#include <osgEarth/MapNode>
+#include <osgEarth/Containers>
+#include <osgEarth/LabelNode>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    /**
+     * Node that plots UTM coordinats labels along the edge of the
+     * viewport when you are looking straight down on a zoomed-in area.
+     */
+    class UTMLabelingEngine : public GraticuleLabelingEngine
+    {
+    public:
+        //! Construct a new labeling engine with the map's SRS
+        UTMLabelingEngine(const SpatialReference* srs);
+
+        //! Sets the maximum resolution (meters) at which to render labels
+        void setMaxResolution(double value);
+
+        virtual bool updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_world, osg::Vec3d& LR_world, ClipSpace& window, CameraData& data);
+
+    protected:
+
+        double _maxRes;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_UTM_LABELING_ENGINE_H

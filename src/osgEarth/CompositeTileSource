@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -38,12 +38,12 @@ namespace osgEarth
         virtual ~CompositeTileSourceOptions() { }
 
         /** Add a component described by an image layer configuration. */
-        void add( const ImageLayerOptions& options );
+        void add( const ImageLayer::Options& options );
 
         /**
          * Adds a component described by an elevation layer configuration
          */
-        void add( const ElevationLayerOptions& options );
+        void add( const ElevationLayer::Options& options );
 
     public:
         virtual Config getConfig() const;
@@ -55,8 +55,8 @@ namespace osgEarth
         void fromConfig( const Config& conf );
 
         struct Component {
-            optional<ImageLayerOptions> _imageLayerOptions;
-            optional<ElevationLayerOptions> _elevationLayerOptions;
+            optional<ImageLayer::Options> _ImageLayerOptions;
+            optional<ElevationLayer::Options> _elevationLayerOptions;
             osg::ref_ptr<TerrainLayer>    _layer;
         };
 

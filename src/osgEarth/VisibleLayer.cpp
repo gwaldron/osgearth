@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,72 +26,40 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-VisibleLayerOptions::VisibleLayerOptions() :
-LayerOptions()
-{
-    setDefaults();
-    fromConfig( _conf ); 
-}
-
-VisibleLayerOptions::VisibleLayerOptions(const ConfigOptions& co) :
-LayerOptions(co)
-{
-    setDefaults();
-    fromConfig(_conf);
-}
-
-void
-VisibleLayerOptions::setDefaults()
-{
-    _visible.init( true );
-    _opacity.init( 1.0f );
-    _minRange.init( 0.0 );
-    _maxRange.init( FLT_MAX );
-    _attenuationRange.init(0.0f);
-    _blend.init( BLEND_INTERPOLATE );
-}
-
 Config
-VisibleLayerOptions::getConfig() const
+VisibleLayer::Options::getConfig() const
 {
-    Config conf = LayerOptions::getConfig();
-    conf.set( "visible", _visible);
-    conf.set( "opacity", _opacity);
-    conf.set( "min_range", _minRange );
-    conf.set( "max_range", _maxRange );
-    conf.set( "attenuation_range", _attenuationRange );
+    Config conf = Layer::Options::getConfig();
+    conf.set( "visible", visible() );
+    conf.set( "opacity", opacity() );
+    conf.set( "min_range", minVisibleRange() );
+    conf.set( "max_range", maxVisibleRange() );
+    conf.set( "attenuation_range", attenuationRange() );
     conf.set( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.set( "blend", "modulate", _blend, BLEND_MODULATE );
     return conf;
 }
 
 void
-VisibleLayerOptions::fromConfig(const Config& conf)
+VisibleLayer::Options::fromConfig(const Config& conf)
 {
+    _visible.init( true );
+    _opacity.init( 1.0f );
+    _minVisibleRange.init( 0.0 );
+    _maxVisibleRange.init( FLT_MAX );
+    _attenuationRange.init(0.0f);
+    _blend.init( BLEND_INTERPOLATE );
+
     conf.get( "visible", _visible );
     conf.get( "opacity", _opacity);
-    conf.get( "min_range", _minRange );
-    conf.get( "max_range", _maxRange );
+    conf.get( "min_range", _minVisibleRange );
+    conf.get( "max_range", _maxVisibleRange );
     conf.get( "attenuation_range", _attenuationRange );
     conf.get( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.get( "blend", "modulate", _blend, BLEND_MODULATE );
 }
 
-void
-VisibleLayerOptions::mergeConfig(const Config& conf)
-{
-    LayerOptions::mergeConfig(conf);
-    fromConfig(conf);
-}
-
 //........................................................................
-
-VisibleLayer::VisibleLayer(VisibleLayerOptions* optionsPtr) :
-Layer(optionsPtr ? optionsPtr : &_optionsConcrete),
-_options(optionsPtr ? optionsPtr : &_optionsConcrete)
-{
-    //nop
-}
 
 VisibleLayer::~VisibleLayer()
 {
@@ -104,9 +72,13 @@ VisibleLayer::init()
     Layer::init();
 }
 
-const Status&
-VisibleLayer::open()
+Status
+VisibleLayer::openImplementation()
 {
+    Status parent = Layer::openImplementation();
+    if (parent.isError())
+        return parent;
+
     if (options().visible().isSet())
     {
         setVisible(options().visible().get());
@@ -119,7 +91,7 @@ VisibleLayer::open()
         initializeMinMaxRangeOpacity();
     }
 
-    return Layer::open();
+    return Status::NoError;
 }
 
 void
@@ -160,7 +132,8 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#pragma import_defines(OE_DISABLE_RANGE_OPACITY) \n"
         "uniform vec3 oe_VisibleLayer_ranges; \n"
-        "float oe_layer_opacity; \n"
+        "uniform vec3 oe_Camera; // (vp width, vp height, lodscale)\n"
+        "out float oe_layer_opacity; \n"
         
         "void oe_VisibleLayer_applyMinMaxRange(inout vec4 vertexView) \n"
         "{ \n"
@@ -169,7 +142,7 @@ namespace
         "    float maxRange = oe_VisibleLayer_ranges[1]; \n"
         "    float attRange = oe_VisibleLayer_ranges[2]; \n"
 
-        "    float range = max(-vertexView.z, 0.0); \n"
+        "    float range = max(-vertexView.z, 0.0) * oe_Camera.z; \n"
 
         "    float maxOpaqueRange = maxRange-attRange; \n"
         "    float minOpaqueRange = minRange+attRange; \n"
@@ -208,11 +181,11 @@ namespace
     const char* opacityModulateFS =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "#define OE_MODULATION_EXPOSURE 2.35 \n"
+        "const float OE_MODULATION_EXPOSURE = 2.35; \n"
         "in float oe_layer_opacity; \n"
         "void oe_VisibleLayer_setOpacity(inout vec4 color) \n"
         "{ \n"
-        "    vec3 rgbHi = oe_layer_opacity > 0.0? color.rgb * float( OE_MODULATION_EXPOSURE )/oe_layer_opacity : vec3(1); \n"
+        "    vec3 rgbHi = oe_layer_opacity > 0.0? color.rgb * OE_MODULATION_EXPOSURE/oe_layer_opacity : vec3(1); \n"
         "    color.rgb = mix(vec3(1), rgbHi, oe_layer_opacity); \n"
         "    color.a = 1.0; \n"
         "    oe_layer_opacity = 1.0; \n"
@@ -234,7 +207,7 @@ VisibleLayer::initializeBlending()
 
         vp->setFunction("oe_VisibleLayer_initOpacity", opacityVS, ShaderComp::LOCATION_VERTEX_MODEL);
 
-        if (options().blend() == VisibleLayerOptions::BLEND_MODULATE)
+        if (options().blend() == BLEND_MODULATE)
         {
             vp->setFunction("oe_VisibleLayer_setOpacity", opacityModulateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
 
@@ -246,7 +219,7 @@ VisibleLayer::initializeBlending()
         {
             // In this case the fragment shader of the layer is responsible for
             // incorporating the final value of oe_layer_opacity.
-            if (options().blend().isSetTo(options().BLEND_INTERPOLATE))
+            if (options().blend().isSetTo(BLEND_INTERPOLATE))
             {
                 stateSet->setAttributeAndModes(
                     new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
@@ -360,7 +333,7 @@ VisibleLayer::fireCallback(VisibleLayerCallback::MethodPtr method)
 void
 VisibleLayer::installDefaultOpacityShader()
 {
-    if (options().blend() == options().BLEND_INTERPOLATE)
+    if (options().blend() == BLEND_INTERPOLATE)
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
         vp->setName("VisibleLayer");

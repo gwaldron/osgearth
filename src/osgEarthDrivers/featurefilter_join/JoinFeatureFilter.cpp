@@ -18,31 +18,30 @@
  */
 #include "JoinFeatureFilterOptions"
 
-#include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarth/Filter>
+#include <osgEarth/FeatureCursor>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FilterContext>
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/FilterContext>
+#include <osgEarth/Geometry>
 
 #define LC "[Intersect FeatureFilter] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
-using namespace osgEarth::Symbology;
 
 
-
+/**
+ * Spatial Join: This feature finds all the features in a secondary feature source
+ * that intersect the input feature's extent, and adds their attributes to the
+ * input feature.
+ */
 class JoinFeatureFilter : public FeatureFilter, public JoinFeatureFilterOptions
 {
-private:
-    osg::ref_ptr< FeatureSource > _featureSource;
-
 public:
     JoinFeatureFilter(const ConfigOptions& options)
         : FeatureFilter(), JoinFeatureFilterOptions(options)
@@ -53,14 +52,9 @@ public: // FeatureFilter
 
     Status initialize(const osgDB::Options* readOptions)
     {
-        // Load the feature source containing the intersection geometry.
-        _featureSource = FeatureSourceFactory::create( features().get() );
-        if ( !_featureSource.valid() )
-            return Status::Error(Status::ServiceUnavailable, Stringify() << "Failed to create feature driver \"" << features()->getDriver() << "\"");
-
-        const Status& fs = _featureSource->open(readOptions);
-        if (fs.isError())
-            return fs;
+        Status fsStatus = featureSource().open(readOptions);
+        if (fsStatus.isError())
+            return fsStatus;
 
         return Status::OK();
     }
@@ -70,12 +64,17 @@ public: // FeatureFilter
      */
     void getFeatures(const GeoExtent& extent, FeatureList& features, ProgressCallback* progress)
     {
-        GeoExtent localExtent = extent.transform( _featureSource->getFeatureProfile()->getSRS() );
+        FeatureSource* fs = featureSource().getLayer();
+        if (!fs)
+            return;
+
+        //TODO: should this be Profile::transformAndClampExtent instead?
+        GeoExtent localExtent = extent.transform( fs->getFeatureProfile()->getSRS() );
         Query query;
         query.bounds() = localExtent.bounds();
-        if (localExtent.intersects( _featureSource->getFeatureProfile()->getExtent()))
+        if (localExtent.intersects( fs->getFeatureProfile()->getExtent()))
         {
-            osg::ref_ptr< FeatureCursor > cursor = _featureSource->createFeatureCursor( query, progress );
+            osg::ref_ptr< FeatureCursor > cursor = fs->createFeatureCursor( query, progress );
             if (cursor)
             {
                 cursor->fill( features );
@@ -85,7 +84,7 @@ public: // FeatureFilter
 
     FilterContext push(FeatureList& input, FilterContext& context)
     {
-        if (_featureSource.valid())
+        if (featureSource().getLayer())
         {
             // Get any features that intersect this query.
             FeatureList boundaries;
@@ -106,7 +105,7 @@ public: // FeatureFilter
                     {
                         osg::Vec2d c = feature->getGeometry()->getBounds().center2d();
                        
-                        if (_featureSource->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
+                        if (featureSource().getLayer()->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
                         {
                             for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
                             {
@@ -158,5 +157,4 @@ public:
 
 REGISTER_OSGPLUGIN(osgearth_featurefilter_join, JoinFeatureFilterPlugin);
 
-//OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(intersect, IntersectFeatureFilter);
 

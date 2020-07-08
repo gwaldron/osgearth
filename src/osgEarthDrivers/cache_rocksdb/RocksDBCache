@@ -25,7 +25,7 @@
 #include <osgEarth/Cache>
 #include <rocksdb/db.h>
 
-namespace osgEarth { namespace Drivers { namespace RocksDBCache
+namespace osgEarth { namespace RocksDBCache
 {    
     /** 
      * Cache that stores data in a ROCKSDB database in the local filesystem.
@@ -72,6 +72,6 @@ namespace osgEarth { namespace Drivers { namespace RocksDBCache
     };
 
 
-} } } // namespace osgEarth::Drivers::RocksDBCache
+} } // namespace osgEarth::RocksDBCache
 
 #endif // OSGEARTH_DRIVER_CACHE_ROCKSDB

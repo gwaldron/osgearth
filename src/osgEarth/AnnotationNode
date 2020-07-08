@@ -1,0 +1,174 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNO_ANNOTATION_NODE_H
+#define OSGEARTH_ANNO_ANNOTATION_NODE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Style>
+#include <osgEarth/DepthOffset>
+#include <osgEarth/MapNodeObserver>
+#include <osgEarth/Horizon>
+
+#define META_AnnotationNode(library,name) \
+    META_Node(library,name)
+
+#define META_AnnotationNodeAbstract(library,name) \
+    virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const name *>(obj)!=NULL; } \
+    virtual const char* className() const { return #name; } \
+    virtual const char* libraryName() const { return #library; } \
+    virtual void accept(osg::NodeVisitor& nv) { if (nv.validNodeMask(*this)) { nv.pushOntoNodePath(this); nv.apply(*this); nv.popFromNodePath(); } }
+
+// forward decs
+namespace osgEarth
+{
+    class MapNode;
+}
+
+
+namespace osgEarth
+{
+    /**
+     * Base class for all annotation node types.
+     */
+    class OSGEARTH_EXPORT AnnotationNode : 
+        public osg::Group,
+        public MapNodeObserver
+    {
+    public:
+        META_AnnotationNode(osgEarth, AnnotationNode);
+
+        /**
+         * Sets the node to "dynamic", i.e. sets up the node so that you can
+         * safely change it at runtime.
+         */
+        virtual void setDynamic( bool value );
+
+        /**
+         * Serialized this annotation node so you can re-create it later
+         */
+        virtual Config getConfig() const { return Config(); }
+
+    public:
+
+        const std::string& getName() const { return osg::Group::getName(); }
+        
+        /**
+         * Priority of the item. A negative Priority means "never occlude me".
+         */
+        virtual void setPriority( float value );
+        float getPriority() const { return _priority; }
+
+        /**
+         * Enables or disable automatic horizon culling for geocentric maps
+         */
+        void setHorizonCulling(bool value);
+        bool getHorizonCulling() const;
+
+        /**
+         * Text associated with this annotation; might be the name, might be actual text
+         */
+        virtual const std::string& getText() const { return this->getName(); }
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        MapNode* getMapNode() { return _mapNode.get(); }
+        const MapNode* getMapNode() const { return _mapNode.get(); }
+
+    public: // osg::Node
+        
+        void traverse(osg::NodeVisitor& nv);
+
+    public: // Style functions
+
+        virtual void setStyle(const Style& style) { }
+
+        virtual const Style& getStyle() const { return s_emptyStyle; }
+
+    protected:
+
+        bool _dynamic;
+        bool _depthAdj;
+
+        DepthOffsetAdapter _doAdapter;
+
+        float _priority;
+
+        /**
+         * Apply general style information to the node
+         */
+        virtual void applyStyle(const Style&);
+        virtual void applyRenderSymbology(const Style&);
+
+        /**
+         * Whether to activate depth adjustment.
+         * Note: you usually don't need to call this directly; it is automatically set
+         * based on the symbology. But you can call it to override the automatic setting.
+         */
+        virtual void setDepthAdjustment( bool value );
+
+        /**
+         * Sets a lighting default, which the user can override
+         */
+        void setDefaultLighting( bool lighting );
+
+        // hidden default ctor
+        AnnotationNode();
+
+        // hidden config ctor
+        AnnotationNode(const Config& conf, const osgDB::Options* options);
+
+        // hidden copy ctor
+        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) 
+         : osg::Group(rhs, op)
+         , _dynamic(rhs._dynamic)
+         , _depthAdj(rhs._depthAdj)
+         , _priority(rhs._priority)
+         , _mapNodeRequired(rhs._mapNodeRequired)
+         , _altCallback(rhs._altCallback)
+        { }
+
+        // override to prevent render-order symbology from taking effect.
+        virtual bool supportsRenderBinDetails() const { return true; }
+
+    protected:
+        
+        osg::ref_ptr<HorizonCullCallback> _horizonCuller;
+
+    private:
+            
+        osg::observer_ptr<MapNode> _mapNode;
+        static Style s_emptyStyle;
+        bool _mapNodeRequired;
+        osg::NodeCallback* _altCallback;
+
+        void construct();
+
+    public:
+
+        virtual ~AnnotationNode();
+    };
+
+}
+
+#endif // OSGEARTH_ANNO_ANNOTATION_NODE_H

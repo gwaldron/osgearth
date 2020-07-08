@@ -22,12 +22,12 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Progress>
 
-#include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/FeatureCursor>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FilterContext>
+#include <osgEarth/Filter>
+#include <osgEarth/FeatureCursor>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/FilterContext>
 
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/Geometry>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -35,9 +35,7 @@
 #define LC "[Intersect FeatureFilter] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
-using namespace osgEarth::Symbology;
 
 
 
@@ -57,11 +55,12 @@ public: // FeatureFilter
     Status initialize(const osgDB::Options* readOptions)
     {
         // Load the feature source containing the intersection geometry.
-        _featureSource = FeatureSourceFactory::create( features().get() );
+        _featureSource = FeatureSource::create(featureSourceEmbeddedOptions().get());
         if ( !_featureSource.valid() )
-            return Status::Error(Status::ServiceUnavailable, Stringify()<< "Failed to create feature driver \"" << features()->getDriver() << "\"");
+            return Status::Error(Status::ServiceUnavailable, "Failed to create features source");
 
-        const Status& s = _featureSource->open(readOptions);
+        _featureSource->setReadOptions(readOptions);
+        const Status& s = _featureSource->open();
         if (s.isError())
             return s;
 

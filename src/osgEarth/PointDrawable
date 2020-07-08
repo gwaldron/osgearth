@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -58,6 +58,9 @@ namespace osgEarth
         
         //! Append a vertex to the drawable
         void pushVertex(const osg::Vec3& vert);
+
+        //! Insert a vertex to the drawable
+        void insert(unsigned where, const osg::Vec3& vert);
 
         //! Set the value of a vertex at index i
         void setVertex(unsigned i, const osg::Vec3& vert);

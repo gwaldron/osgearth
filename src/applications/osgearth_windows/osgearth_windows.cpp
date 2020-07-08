@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,15 +21,13 @@
 */
 
 #include <osgViewer/CompositeViewer>
-#include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
-#include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
+#include <osgEarth/Registry>
 #include <iostream>
 
-#define LC "[viewer] "
+#define LC "[osgearth_windows] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -37,7 +35,7 @@ using namespace osgEarth::Util;
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth"
         << "\n          --views [num] : Number of windows to open"
         << "\n          --shared      : Use a shared graphics context"
@@ -51,6 +49,8 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -86,6 +86,7 @@ main(int argc, char** argv)
             view->getCamera()->setViewport(i*size, 0, size, size);
             view->getCamera()->setProjectionMatrixAsPerspective(45, 1, 1, 10);
             view->getCamera()->setName(Stringify()<<"View "<<i);
+
         }
         MapNodeHelper().configureView(view);
         viewer.addView(view);

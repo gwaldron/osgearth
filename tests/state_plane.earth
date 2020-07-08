@@ -16,28 +16,25 @@ http://spatialreference.org
 osgEarth reprojects tiles before caching them. Note, this does have the side effect that you 
 cannot use the same cache for separate maps in different projections.
 
-For SRS initialization strings, see:
-http://spatialreference.org
-
-Please note that use of ESRI's free maps is subject to certain restrictions:
-http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
+Please note that use of ESRI's online maps is subject to certain restrictions.
 -->
 
-<map name="DC State Plane" type="projected" version="2">
+<map name="Demo: Custom Projected Profile">
 
     <options>
         <profile name="NAD83 Maryland State Plane (meters)">
-            <srs>+proj=lcc +lat_1=38.3 +lat_2=39.45 +lat_0=37.66666666666666 +lon_0=-77 +x_0=399999.9999999999 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=1.0 +no_defs</srs>
+            <srs>+proj=lcc +lat_1=38.3 +lat_2=39.45 +lat_0=37.66667 +lon_0=-77 +x_0=399999.9 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=1.0 +no_defs</srs>
             <xmin>390021</xmin>
             <ymin>126298</ymin>
             <xmax>407833</xmax>
             <ymax>147521</ymax>
         </profile>
+        <terrain tile_size="2"/>
     </options>
     
-    <!-- This image layer returns global geodetic tiles -->
-    <image name="ags-imagery" driver="arcgis" max_level="16">
+    <ArcGISServerImage name="Hi-res Imagery">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer</url>
-    </image>    
-    
+        <nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </ArcGISServerImage> 
+   
 </map>

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -63,6 +63,7 @@ namespace osgEarth
          */
         optional<std::string>& name()             { return _name; }
         const optional<std::string>& name() const { return _name; }
+        void setName(const std::string& value)    { _name = value; }
 
         /**
          * The geospatial location at which the camera is pointing. If the Node (below)
@@ -70,6 +71,7 @@ namespace osgEarth
          */
         optional<GeoPoint>& focalPoint()             { return _point; }
         const optional<GeoPoint>& focalPoint() const { return _point; }
+        void setFocalPoint(const GeoPoint& value)    { _point = value; }
 
         /**
          * The node in the scene graph at which the camera is pointing. The "getter" follows
@@ -83,26 +85,26 @@ namespace osgEarth
         osg::ref_ptr<osg::Node> getNode() const;
         bool nodeIsSet() const                            { return _node.valid(); }
 
-        //! @deprecated - use getNode() instead
-        bool getNode(osg::ref_ptr<osg::Node>& safe) const { return _node.lock(safe); }
-
         /**
          * Heading (in degrees) of the camera relative to the focal point.
          */
         optional<Angle>& heading()             { return _heading; }
         const optional<Angle>& heading() const { return _heading; }
+        void setHeading(const Angle& value)    { _heading = value; }
 
         /**
          * The pitch of the camera relative to the focal point.
          */
         optional<Angle>& pitch()             { return _pitch; }
         const optional<Angle>& pitch() const { return _pitch; }
+        void setPitch(const Angle& value)    { _pitch = value; }
 
         /**
          * The distance from the camera to the focal point.
          */
         optional<Distance>& range()             { return _range; }
         const optional<Distance>& range() const { return _range; }
+        void setRange(const Distance& value)    { _range = value; }
 
         /**
          * Local offsets from the focal point, in meters. For example if the Viewpoint
@@ -111,6 +113,7 @@ namespace osgEarth
          */
         optional<osg::Vec3d>& positionOffset()             { return _posOffset; }
         const optional<osg::Vec3d>& positionOffset() const { return _posOffset; }
+        void setPositionOffset(const osg::Vec3d& value)    { _posOffset = value; }
 
         /**
          * Returns a printable string with the viewpoint data
@@ -123,34 +126,14 @@ namespace osgEarth
         Config getConfig() const;
 
 
-    public: // Backwards compatibility functions. Please don't use these in view code.
+    public:
 
-        /** SRS is WGS84, angles are in degrees, range is in meters. */
-
-        /** @deprecated */
+        //! Convenience constructor - SRS is WGS84, angles are in degrees, range is in meters.
         Viewpoint(const char* name, double lon, double lat, double z, double heading, double pitch, double range);
-        
-        /** @deprecated */
-        void setHeading(double value) { _heading->set(value, Units::DEGREES); }
-
-        /** @deprecated */
-        void setPitch  (double value) { _pitch->set(value, Units::DEGREES); }
-
-        /** @deprecated */
-        void setRange  (double value) { _range->set(value, Units::METERS); }
-        
-        /** @deprecated */
-        double getHeading() const { return _heading->as(Units::DEGREES); }
-
-        /** @deprecated */
-        double getPitch()   const { return _pitch->as(Units::DEGREES); }
-
-        /** @deprecated */
-        double getRange()   const { return _range->as(Units::METERS); }
 
     public:
 
-        /** dtor */
+        //! DTOR
         ~Viewpoint() { }
 
     private:

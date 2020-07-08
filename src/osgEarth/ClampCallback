@@ -1,0 +1,108 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTHUTIL_CLAMPCALLBACK
+#define OSGEARTHUTIL_CLAMPCALLBACK
+
+#include <osg/NodeCallback>
+#include <osg/CoordinateSystemNode>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/MapNode>
+
+#include <osgEarth/Common>
+
+namespace osgEarth { namespace Contrib
+{	
+    using namespace osgEarth;
+
+    /**
+     * ClampCallback is a callback you can attach to either MatrixTransforms or Geodes to clamp them against the terrain.
+     * If you attach this callback to a MatrixTransform, it will adjust the matrix so that the object is clamped to the ground.
+     * If you attach this callback to a Geode, it will clamp all of the vertices in the Geode's geometry to the ground.
+     */
+	class OSGEARTH_EXPORT ClampCallback : public osg::NodeCallback
+	{
+	public:
+		/**
+		*Creates a new ClampCallback
+        *
+        *@param
+        *     The node to clamp to
+		*/
+        ClampCallback(osg::Node* terrainNode = NULL);
+
+        /** dtor */
+        virtual ~ClampCallback() { }
+
+        /**
+         *Sets the terrain node to clamp against
+         */
+        void setTerrainNode(osg::Node* terrainNode);
+
+        /**
+         *Gets the terrain node to clamp against
+         */
+        osg::Node* getTerrainNode() const { return _terrainNode.get(); }
+
+        /**
+         * Gets the offset that should be applied after clamping along the world's up vector
+         */
+        double getOffset() const { return _offset;}
+
+        /**
+         * Sets the offset that should be applied after clamping along the world's up vector
+         */
+        void setOffset(double offset);
+
+        /**
+         *Sets the intersection mask to use when clamping
+         */
+        void setIntersectionMask(unsigned int intersectionMask);
+
+        /**
+         *Gets the intersection mask to use when clamping
+         */
+        unsigned int getIntersectionMask() const;
+
+		virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+	private:
+
+        bool clamp(const osg::Vec3d& pos, osg::Vec3d& out) const;
+        bool clampGeometry(osg::Geometry* geom, const osg::Matrixd& localToWorld, const osg::Matrixd& worldToLocal) const;
+
+        unsigned int _intersectionMask;
+
+     	osg::observer_ptr<osg::CoordinateSystemNode> _csn;
+
+        osg::ref_ptr< osg::Node > _terrainNode;
+
+        int _lastCulledFrame;
+
+        double _offset;
+
+
+	};
+
+} } // namespace osgEarth::Util
+
+#endif //OSGEARTHUTIL_CLAMPCALLBACK

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -59,15 +59,9 @@ void VertexCollectionVisitor::apply(osg::Transform& transform)
     popMatrix();
 }
 
-void VertexCollectionVisitor::apply(osg::Geode& geode)
+void VertexCollectionVisitor::apply(osg::Drawable& drawable)
 {
-  for(unsigned int i=0; i<geode.getNumDrawables(); ++i)
-    applyDrawable(geode.getDrawable(i));
-}
-
-void VertexCollectionVisitor::applyDrawable(osg::Drawable* drawable)
-{
-  osg::Geometry* geometry = drawable->asGeometry();
+  osg::Geometry* geometry = drawable.asGeometry();
   if (geometry)
   {
     osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());
@@ -76,19 +70,19 @@ void VertexCollectionVisitor::applyDrawable(osg::Drawable* drawable)
       if (_matrixStack.empty())
       {
         for (osg::Vec3Array::iterator it=verts->begin(); it != verts->end(); ++it)
-          addVertex(*it);
+          addVertex(osg::Vec3d(*it));
       }
       else
       {
         osg::Matrix& matrix = _matrixStack.back();
         for (osg::Vec3Array::iterator it=verts->begin(); it != verts->end(); ++it)
-          addVertex((*it) * matrix);
+          addVertex(osg::Vec3d(*it) * matrix);
       }
     }
   }
 }
 
-void VertexCollectionVisitor::addVertex(osg::Vec3 vertex)
+void VertexCollectionVisitor::addVertex(osg::Vec3d vertex)
 {
   if (_geocentric)
   {

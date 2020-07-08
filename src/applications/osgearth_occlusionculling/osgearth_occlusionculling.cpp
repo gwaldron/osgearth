@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,27 +24,26 @@
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/ECEF>
 
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/ExampleResources>
 
-#include <osgEarthAnnotation/AnnotationEditing>
-#include <osgEarthAnnotation/AnnotationRegistry>
-#include <osgEarthAnnotation/ImageOverlay>
-#include <osgEarthAnnotation/ImageOverlayEditor>
-#include <osgEarthAnnotation/CircleNode>
-#include <osgEarthAnnotation/RectangleNode>
-#include <osgEarthAnnotation/EllipseNode>
-#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarth/AnnotationRegistry>
+#include <osgEarth/ImageOverlay>
+#include <osgEarth/ImageOverlayEditor>
+#include <osgEarth/CircleNode>
+#include <osgEarth/RectangleNode>
+#include <osgEarth/EllipseNode>
+#include <osgEarth/PlaceNode>
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/EventVisitor>
+#include <osgDB/ReadFile>
 
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
 
 int
@@ -61,6 +60,8 @@ usage( char** argv )
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::Group* root = new osg::Group();
 
     // try to load an earth file.
@@ -73,8 +74,8 @@ main(int argc, char** argv)
 
     bool declutter = false;
     if (arguments.read("--declutter")) declutter = true;
-    
-    // initialize the viewer:    
+
+    // initialize the viewer:
     viewer.setCameraManipulator( new EarthManipulator() );
 
 
@@ -89,12 +90,12 @@ main(int argc, char** argv)
         return usage(argv);
 
     root->addChild( node );
-   
+
     // Make a group for 2D items, and activate the decluttering engine. Decluttering
     // will migitate overlap between elements that occupy the same screen real estate.
     osg::Group* labelGroup = new osg::Group();
     root->addChild( labelGroup );
-    
+
     // set up a style to use for placemarks:
     Style placeStyle;
     placeStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
@@ -120,7 +121,7 @@ main(int argc, char** argv)
         for (unsigned int i = 0; i < numObjects; i++)
         {
             double lat = minLat + height * (rand() * 1.0)/(RAND_MAX-1);
-            double lon = minLon + width * (rand() * 1.0)/(RAND_MAX-1);        
+            double lon = minLon + width * (rand() * 1.0)/(RAND_MAX-1);
             PlaceNode* place = new PlaceNode("Placemark", placeStyle, pin.get());
             place->setMapNode(mapNode);
             place->setPosition(GeoPoint(geoSRS, lon, lat));
@@ -128,7 +129,7 @@ main(int argc, char** argv)
             //This makes use of the OcclusionCullingCallback in CullingUtils.
             place->setOcclusionCulling( true );
             labelGroup->addChild( place );
-        }    
+        }
     }
 
     viewer.setSceneData( root );

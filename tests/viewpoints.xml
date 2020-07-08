@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<viewpoints>
+<viewpoints time="0">
     <viewpoint>
         <heading>8.806974516644791</heading>
         <height>4465.397310772911</height>
@@ -27,14 +27,14 @@
         <pitch>-18.63803872963365</pitch>
         <range>13611.24948464565</range>
     </viewpoint>
-    <viewpoint>
-        <heading>-1.429462844200832</heading>
-        <height>2282.858508689329</height>
-        <lat>45.95106319557</lat>
-        <long>7.642741711675961</long>
-        <name>The Matterhorn</name>
-        <pitch>-25.12269405854052</pitch>
-        <range>26690.10606054494</range>
+    <viewpoint name="Honolulu">
+        <heading>-4.34672</heading>
+        <pitch>-18.0653</pitch>
+        <range>2644.04m</range>
+        <long>-157.8191623694535</long>
+        <lat>21.26576663978325</lat>
+        <height>17.39070732519031</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
     <viewpoint>
         <name>Hallstatt, Austria</name>
@@ -70,5 +70,14 @@
         <lat>41.88440204687279</lat>
         <height>186.9731654571369</height>
         <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+    </viewpoint>
+    <viewpoint name="Grasslands">
+        <heading>27.8304</heading>
+        <pitch>-13.5693</pitch>
+        <range>33.5138m</range>
+        <long>-87.61713635034261</long>
+        <lat>41.04180176430292</lat>
+        <height>172.7516074106097</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
 </viewpoints>

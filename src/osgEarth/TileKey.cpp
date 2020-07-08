@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,6 +18,8 @@
  */
 
 #include <osgEarth/TileKey>
+#include <osgEarth/Math>
+#include <stdio.h>
 
 using namespace osgEarth;
 
@@ -33,37 +35,30 @@ TileKey::TileKey(unsigned int lod, unsigned int tile_x, unsigned int tile_y, con
     _y = tile_y;
     _lod = lod;
     _profile = profile;
-
-    double width, height;
-    if ( _profile.valid() )
-    {
-        _profile->getTileDimensions(lod, width, height);
-
-        double xmin = _profile->getExtent().xMin() + (width * (double)_x);
-        double ymax = _profile->getExtent().yMax() - (height * (double)_y);
-        double xmax = xmin + width;
-        double ymin = ymax - height;
-
-        _extent = GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
-
-        _key = Stringify() << _lod << "/" << _x << "/" << _y;
-    }
-    else
-    {
-        _extent = GeoExtent::INVALID;
-        _key = "invalid";
-    }
+    rehash();
 }
 
-TileKey::TileKey( const TileKey& rhs ) :
-_key( rhs._key ),
-_lod(rhs._lod),
-_x(rhs._x),
-_y(rhs._y),
-_profile( rhs._profile.get() ),
-_extent( rhs._extent )
+TileKey::TileKey(const TileKey& rhs) :
+    _key(rhs._key),
+    _lod(rhs._lod),
+    _x(rhs._x),
+    _y(rhs._y),
+    _profile(rhs._profile.get()),
+    _extent(rhs._extent),
+    _hash(rhs._hash)
 {
     //NOP
+}
+
+void
+TileKey::rehash()
+{
+    _hash = valid() ?
+        osgEarth::hash_value_unsigned(
+            (std::size_t)_lod, 
+            (std::size_t)_x,
+            (std::size_t)_y) :
+        0ULL;
 }
 
 const Profile*
@@ -78,6 +73,34 @@ TileKey::getTileXY(unsigned int& out_tile_x,
 {
     out_tile_x = _x;
     out_tile_y = _y;
+}
+
+const GeoExtent
+TileKey::getExtent() const
+{
+    if (!valid())
+        return GeoExtent::INVALID;
+
+    double width, height;
+    _profile->getTileDimensions(_lod, width, height);
+    double xmin = _profile->getExtent().xMin() + (width * (double)_x);
+    double ymax = _profile->getExtent().yMax() - (height * (double)_y);
+    double xmax = xmin + width;
+    double ymin = ymax - height;
+
+    return GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
+}
+
+const std::string
+TileKey::str() const
+{
+    if (valid())
+    {
+        char buf[255];
+        sprintf(buf, "%u/%u/%u", _lod, _x, _y);
+        return std::string(buf);
+    }
+    else return "invalid";
 }
 
 unsigned
@@ -104,6 +127,16 @@ TileKey::getPixelExtents(unsigned int& xmin,
     ymin = _y * tile_size;
     xmax = xmin + tile_size;
     ymax = ymin + tile_size; 
+}
+
+std::pair<double,double>
+TileKey::getResolution(unsigned tileSize) const
+{
+    double width, height;
+    _profile->getTileDimensions(_lod, width, height);
+    return std::make_pair(
+        width/(double)(tileSize-1),
+        height/(double)(tileSize-1));
 }
 
 TileKey
@@ -141,6 +174,22 @@ TileKey::createParentKey() const
     return TileKey( lod, x, y, _profile.get());
 }
 
+bool
+TileKey::makeParent()
+{
+    if (_lod == 0)
+    {
+        _profile = NULL; // invalidate
+        return false;
+    }
+
+    _lod--;
+    _x >>= 1;
+    _y >>= 1;
+    rehash();
+    return true;
+}
+
 TileKey
 TileKey::createAncestorKey( int ancestorLod ) const
 {
@@ -176,19 +225,6 @@ TileKey::createNeighborKey( int xoffset, int yoffset ) const
     //OE_NOTICE << "Returning neighbor " << x << ", " << y << " for tile " << str() << " offset=" << xoffset << ", " << yoffset << std::endl;
 
     return TileKey( _lod, x, y, _profile.get() );
-}
-
-namespace
-{
-    int nextPowerOf2(int x) {
-        --x;
-        x |= x >> 1;
-        x |= x >> 2;
-        x |= x >> 4;
-        x |= x >> 8;
-        x |= x >> 16;
-        return x+1;
-    }
 }
 
 TileKey

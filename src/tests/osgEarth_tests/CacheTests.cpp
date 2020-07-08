@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,14 +23,14 @@
 #include <osgEarth/catch.hpp>
 #include <osgEarth/GeoData>
 #include <osgEarth/Registry>
-#include <osgEarth/Cache>
+#include <osgEarth/MemCache>
 
 using namespace osgEarth;
 
 TEST_CASE( "Cache" ) {
 
     // Get the cache
-    osg::ref_ptr<Cache> cache = Registry::instance()->getDefaultCache();
+    osg::ref_ptr<Cache> cache = new MemCache(); //Registry::instance()->getDefaultCache();
     REQUIRE(cache.valid());
 
     // open a bin:

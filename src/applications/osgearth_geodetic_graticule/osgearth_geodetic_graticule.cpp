@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,21 +24,20 @@
 #include <osgViewer/Viewer>
 #include <osgEarth/MapNode>
 #include <osgEarth/GLUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/GeodeticGraticule>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthSymbology/Style>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/GeodeticGraticule>
+#include <osgEarth/Controls>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
 namespace ui = osgEarth::Util::Controls;
 
 int
 usage( char** argv, const std::string& msg )
 {
-    OE_NOTICE 
+    OE_NOTICE
         << msg << std::endl
         << "USAGE: " << argv[0] << " file.earth" << std::endl;
     return -1;
@@ -122,6 +121,8 @@ ui::Control* makeUI(App& app)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 

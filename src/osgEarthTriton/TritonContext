@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,12 +22,12 @@
 #include <Triton.h>
 #include <Camera.h> // Triton
 #include "Common"
-#include "TritonOptions"
+#include "TritonLayer"
 #include "TritonAPIWrapper"
 #include "TritonCallback"
 #include <osg/Referenced>
 #include <osg/Light>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 
 namespace osgEarth {
     class SpatialReference;
@@ -43,7 +43,7 @@ namespace osgEarth { namespace Triton
     public:
         META_Object(osgEarth, TritonContext);
 
-        TritonContext(const TritonOptions& options);
+        TritonContext(const TritonLayer::Options&);
 
         /** Sets the spatial reference system of the map */
         void setSRS(const osgEarth::SpatialReference* srs);
@@ -93,7 +93,7 @@ namespace osgEarth { namespace Triton
         TritonContext(const TritonContext&, const osg::CopyOp&) { }
 
     private:
-        TritonOptions    _options;
+        TritonLayer::Options _options;
 
         bool             _initAttempted;
         bool             _initFailed;

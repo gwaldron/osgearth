@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,11 +22,12 @@
 #define LC "[ImageMosaic] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 
 /***************************************************************************/
 
-TileImage::TileImage(osg::Image* image, const TileKey& key)
+TileImage::TileImage(const osg::Image* image, const TileKey& key)
 {
     _image = image;
     key.getExtent().getBounds(_minX, _minY, _maxX, _maxY);
@@ -108,15 +109,10 @@ ImageMosaic::createImage()
     osg::ref_ptr<osg::Image> image = new osg::Image;
     image->allocateImage(pixelsWide, pixelsHigh, tileDepth, tile->_image->getPixelFormat(), tile->_image->getDataType());
     image->setInternalTextureFormat(tile->_image->getInternalTextureFormat());
-    ImageUtils::markAsNormalized(image.get(), ImageUtils::isNormalized(tile->getImage()));
 
     //Initialize the image to be completely white!
-    //memset(image->data(), 0xFF, image->getImageSizeInBytes());
-
     ImageUtils::PixelWriter write(image.get());
-    for (unsigned t = 0; t < pixelsHigh; ++t)
-        for (unsigned s = 0; s < pixelsWide; ++s)
-            write(osg::Vec4(1,1,1,0), s, t);
+    write.assign(osg::Vec4(1,1,1,0));
 
     //Composite the incoming images into the master image
     for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
@@ -125,7 +121,7 @@ ImageMosaic::createImage()
         int dstX = (i->_tileX - minTileX) * tileWidth;
         int dstY = (maxTileY - i->_tileY) * tileHeight;
 
-        osg::Image* sourceTile = i->getImage();
+        const osg::Image* sourceTile = i->getImage();
         if ( sourceTile )
         {
             ImageUtils::copyAsSubImage(sourceTile, image.get(), dstX, dstY);

@@ -1,29 +1,23 @@
 <!--
-osgEarth Sample - Simple Ocean with surface texture
-
-You can adjust the sea level with a uniform; e.g.:
-
-  --uniform ocean_seaLevel 0 100
-  
+osgEarth Sample - Simple Ocean with surface texture  
 -->
-<map name="readymap.org" type="geocentric">
+<map name="Demo: Ocean layer (use --sky)">
 
-    <image name="readymap_imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
+    <xi:include href="readymap_elevation.xml"/>
 
-    <elevation name="readymap_elevation" driver="tms" vdatum="egm96">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-
-    <simple_ocean>
-        <max_altitude>1e10</max_altitude>
+    <Ocean>
         <texture>../data/textures/water_modulate.png</texture>
         <texture_lod>13</texture_lod>
-        <use_bathymetry>true</use_bathymetry>
-    </simple_ocean>
+        <use_bathymetry>false</use_bathymetry>
+        <mask_layer>ocean_mask</mask_layer>        
+    </Ocean>
+    
+    <TMSImage name="ocean_mask" shared="true" visible="false">
+        <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
+    </TMSImage>
 
-    <viewpoints>
+    <Viewpoints>
         <viewpoint name="San Clemente">
             <heading>-4.56648</heading>
             <pitch>-15.6443</pitch>
@@ -42,5 +36,5 @@ You can adjust the sea level with a uniform; e.g.:
             <height>-296.9707998111844</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
-    </viewpoints>
+    </Viewpoints>
 </map>

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -29,7 +29,7 @@
 #endif
 
 #if (OSGEARTH_DEVEL_VERSION > 0)
-#    define isDevelopmentVersion " DEVELOPMENT "
+#    define isDevelopmentVersion " (DEVELOPMENT) "
 #else
 #    define isDevelopmentVersion " "
 #endif

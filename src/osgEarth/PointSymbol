@@ -1,0 +1,65 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_POINT_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_POINT_SYMBOL_H 1
+
+#include <osgEarth/Symbol>
+#include <osgEarth/Fill>
+
+namespace osgEarth
+{
+    /**
+     * Symbol that describes how to render point geometries.
+     */
+    class OSGEARTH_EXPORT PointSymbol : public Symbol
+    {
+    public:
+        META_Object(osgEarth, PointSymbol);
+
+        PointSymbol(const PointSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+        PointSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~PointSymbol() { }
+
+        /** Point fill properties. */
+        optional<Fill>& fill() { return _fill; }
+        const optional<Fill>& fill() const { return _fill; }
+
+        /** Point size property */
+        optional<float>& size() { return _size; }
+        const optional<float>& size() const { return _size; }
+
+        /** Smoothing (antialiasing/rounding) */
+        optional<bool>& smooth() { return _smooth; }
+        const optional<bool>& smooth() const { return _smooth; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
+
+    protected:
+        optional<Fill>  _fill;
+        optional<float> _size;
+        optional<bool>  _smooth;
+    };
+} // namespace osgEarth
+
+#endif // OSGEARTHSYMBOLOGY_POINT_SYMBOL_H

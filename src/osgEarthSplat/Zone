@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
 
 #include "Export"
 #include "Surface"
-#include "GroundCover"
 #include <osgEarth/TerrainEngineNode>
 #include <osg/BoundingBox>
 #include <osg/Polytope>
@@ -62,15 +61,10 @@ namespace osgEarth { namespace Splat
         optional<SurfaceOptions>& surface() { return _surface; }
         const optional<SurfaceOptions>& surface() const { return _surface; }
 
-        //! Ground cover rendering options        
-        optional<GroundCoverOptions>& groundCover() { return _groundCover; }
-        const optional<GroundCoverOptions>& groundCover() const { return _groundCover; }
-
     protected:
         optional<std::string> _name;
         std::vector<osg::BoundingBox> _boundaries;
         optional<SurfaceOptions> _surface;
-        optional<GroundCoverOptions> _groundCover;
 
     public:
         void fromConfig(const Config& conf);
@@ -111,9 +105,6 @@ namespace osgEarth { namespace Splat
         void setSurface(Surface* surface) { _surface = surface; }
         Surface* getSurface() const { return _surface.get(); }
 
-        void setGroundCover(GroundCover* groundCover) { _groundCover = groundCover; }
-        GroundCover* getGroundCover() const { return _groundCover.get(); }
-
         bool contains(const osg::Vec3& points) const;
 
         void setUID(UID uid) { _uid = uid; }
@@ -128,7 +119,6 @@ namespace osgEarth { namespace Splat
         UID                         _uid;
         Boundaries                  _boundaries;
         osg::ref_ptr<Surface>       _surface;
-        osg::ref_ptr<GroundCover>   _groundCover;
         const ZoneOptions           _options;
 
     public:
@@ -136,26 +126,6 @@ namespace osgEarth { namespace Splat
     };
 
     typedef std::vector<osg::ref_ptr<Zone> > Zones;
-
-
-    
-    
-    /**
-     * Cull callback that will select the most appropriate Zone based on the camera position
-     * Internal - no export
-     */
-    class OSGEARTHSPLAT_EXPORT ZoneSwitcher : public osg::NodeCallback
-    {
-    public:
-        ZoneSwitcher(const Zones& zones) : _zones(zones) { }
-
-    public: // NodeCallback
-        void operator()(osg::Node* node, osg::NodeVisitor* nv);
-
-    protected:
-        Zones _zones;
-    };
-
 } } // namespace osgEarth::Splat
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Splat::ZoneOptions);

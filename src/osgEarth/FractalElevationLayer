@@ -1,0 +1,129 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_UTIL_FRACTAL_ELEVATION_LAYER
+#define OSGEARTH_UTIL_FRACTAL_ELEVATION_LAYER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileSource>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/LayerReference>
+#include <osgEarth/URI>
+#include <osgEarth/LandCover>
+#include <osgEarth/LandCoverLayer>
+
+namespace osgEarth { namespace Contrib
+{
+    /**
+     * Elevation layer that adds fractal noise offset values.
+     */
+    class OSGEARTH_EXPORT FractalElevationLayer : public ElevationLayer
+    {
+    public:
+        struct LandCoverMapping
+        {
+            std::string className;
+            optional<float> amplitude;
+        };
+        typedef std::map<std::string, LandCoverMapping> LandCoverMap;
+
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION(float, frequency);
+            OE_OPTION(float, persistence);
+            OE_OPTION(float, lacunarity);
+            OE_OPTION(unsigned, baseLOD);
+            OE_OPTION(float, amplitude);
+            OE_OPTION(LandCoverMap, landCoverMap);
+            OE_OPTION(URI, noiseImageURI);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, FractalElevationLayer, Options, ElevationLayer, FractalElevation);
+
+        //! Simplex noise frequency
+        void setFrequency(const float& value);
+        const float& getFrequency() const;
+
+        //! Simplex noise persistence
+        void setPersistence(const float& value);
+        const float& getPersistence() const;
+
+        //! Simplex noise lacunarity
+        void setLacunarity(const float& value);
+        const float& getLacunarity() const;
+
+        //! Reference LOD
+        void setBaseLOD(const unsigned& value);
+        const unsigned& getBaseLOD() const;
+
+        //! Maximum change in elevation (total)
+        void setAmplitude(const float& value);
+        const float& getAmplitude() const;
+
+        //! Mappings from land cover classes to amplitude values (optional)
+        void setLandCoverMap(const LandCoverMap& value);
+        const LandCoverMap& getLandCoverMap() const;
+
+        //! URI of a noise texture to use to augment to simplex noise
+        void setNoiseImageURI(const URI& value);
+        const URI& getNodeImageURI() const;
+
+    public: // ElevationLayer
+
+        // opens the layer and returns the status
+        virtual Status openImplementation();
+
+        virtual void init();
+
+        virtual Config getConfig() const;
+
+    protected: // Layer
+
+        // called by the map when this layer is added/removed
+        virtual void addedToMap(const class Map*);
+
+        virtual void removedFromMap(const class Map*);
+
+        virtual GeoHeightField createHeightFieldImplementation(
+            const TileKey& key,
+            ProgressCallback* progress) const;
+
+    protected:
+
+        virtual ~FractalElevationLayer();
+
+        LayerReference<LandCoverDictionary> _dictionary;
+
+        LandCoverLayerVector _landCoverLayers;
+
+        bool _debug;
+        osg::ref_ptr<osg::Image> _noiseImage1;
+        osg::ref_ptr<osg::Image> _noiseImage2;
+
+        const LandCoverMapping* getMapping(const LandCoverClass*) const;
+    };
+
+} }
+
+#endif // OSGEARTH_UTIL_FRACTAL_ELEVATION_LAYER

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,39 +23,38 @@
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
+#include <osgDB/ReadFile>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/TerrainProfile>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/AutoClipPlaneHandler>
+#include <osgEarth/TerrainProfile>
 #include <osgEarth/GeoMath>
 #include <osgEarth/Registry>
+#include <osgEarth/ExampleResources>
 #include <osgEarth/FileUtils>
 #include <osgEarth/GLUtils>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthAnnotation/FeatureNode>
+#include <osgEarth/Feature>
+#include <osgEarth/FeatureNode>
 #include <osgText/Text>
 #include <osgText/Font>
 #include <osg/io_utils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Features;
-using namespace osgEarth::Annotation;
-
+using namespace osgEarth::Contrib;
 
 //Creates a simple HUD camera
 osg::Camera* createHud(double width, double height)
 {
     osg::Camera* hud = new osg::Camera;
-    hud->setProjectionMatrix(osg::Matrix::ortho2D(0,width,0,height));    
+    hud->setProjectionMatrix(osg::Matrix::ortho2D(0,width,0,height));
     hud->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-    hud->setViewMatrix(osg::Matrix::identity());    
+    hud->setViewMatrix(osg::Matrix::identity());
     hud->setClearMask(GL_DEPTH_BUFFER_BIT);
-    hud->setRenderOrder(osg::Camera::POST_RENDER);    
+    hud->setRenderOrder(osg::Camera::POST_RENDER);
     hud->setAllowEventFocus(false);
     osg::StateSet* hudSS = hud->getOrCreateStateSet();
     GLUtils::setLighting(hudSS, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
@@ -103,7 +102,7 @@ public:
         osg::ref_ptr< osgText::Font> font = osgEarth::Registry::instance()->getDefaultFont();
 
         osg::Vec4 textColor = osg::Vec4f(1,0,0,1);
-        
+
         _distanceMinLabel = new osgText::Text();
         _distanceMinLabel->setCharacterSize( textSize );
         _distanceMinLabel->setFont( font.get() );
@@ -191,10 +190,10 @@ public:
         _distanceMaxLabel->setPosition( osg::Vec3(_graphWidth-15,0,0));
         _elevationMinLabel->setPosition( osg::Vec3(_graphWidth-5,10,0));
         _elevationMaxLabel->setPosition( osg::Vec3(_graphWidth-5,_graphHeight,0));
-        
-        _distanceMinLabel->setText("0m");        
+
+        _distanceMinLabel->setText("0m");
         _distanceMaxLabel->setText(toString<int>((int)totalDistance) + std::string("m"));
-        
+
         _elevationMinLabel->setText(toString<int>((int)minElevation) + std::string("m"));
         _elevationMaxLabel->setText(toString<int>((int)maxElevation) + std::string("m"));
 
@@ -247,9 +246,8 @@ public:
 class DrawProfileEventHandler : public osgGA::GUIEventHandler
 {
 public:
-    DrawProfileEventHandler(osgEarth::MapNode* mapNode, osg::Group* root, TerrainProfileCalculator* profileCalculator):
+    DrawProfileEventHandler(osgEarth::MapNode* mapNode, TerrainProfileCalculator* profileCalculator):
       _mapNode( mapNode ),
-          _root( root ),
           _startValid( false ),
           _profileCalculator( profileCalculator )
       {
@@ -275,7 +273,7 @@ public:
                       _start = mapPoint.vec3d();
                       if (_featureNode.valid())
                       {
-                          _root->removeChild( _featureNode.get() );
+                          _mapNode->removeChild( _featureNode.get() );
                           _featureNode = 0;
                       }
                   }
@@ -283,9 +281,9 @@ public:
                   {
                       _end = mapPoint.vec3d();
                       compute();
-                      _startValid = false;                    
+                      _startValid = false;
                   }
-              }        
+              }
           }
           return false;
       }
@@ -298,7 +296,7 @@ public:
 
           if (_featureNode.valid())
           {
-              _root->removeChild( _featureNode.get() );
+              _mapNode->removeChild( _featureNode.get() );
               _featureNode = 0;
           }
 
@@ -306,7 +304,7 @@ public:
           line->push_back( _start );
           line->push_back( _end );
           Feature* feature = new Feature(line, _mapNode->getMapSRS());
-          feature->geoInterp() = GEOINTERP_GREAT_CIRCLE;    
+          feature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
 
           //Define a style for the line
           Style style;
@@ -325,20 +323,16 @@ public:
           feature->style() = style;
           _featureNode = new FeatureNode( feature );
           _featureNode->setMapNode(_mapNode);
-          _root->addChild( _featureNode.get() );
+          _mapNode->addChild( _featureNode.get() );
 
       }
 
-
-
-
-      osgEarth::MapNode* _mapNode;      
-      osg::Group* _root;
+      osgEarth::MapNode* _mapNode;
       TerrainProfileCalculator* _profileCalculator;
       osg::ref_ptr< FeatureNode > _featureNode;
       bool _startValid;
       osg::Vec3d _start;
-      osg::Vec3d _end;  
+      osg::Vec3d _end;
 };
 
 
@@ -347,11 +341,14 @@ public:
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
     // load the .earth file from the command line.
-    osg::ref_ptr<osg::Node> earthNode = osgDB::readNodeFiles( arguments );
+    MapNodeHelper helper;
+    osg::ref_ptr<osg::Node> earthNode = helper.load(arguments, &viewer);
     if (!earthNode.valid())
     {
         OE_NOTICE << "Unable to load earth model" << std::endl;
@@ -367,10 +364,12 @@ main(int argc, char** argv)
         return 1;
     }
 
-    osgEarth::Util::EarthManipulator* manip = new EarthManipulator();    
+    mapNode->open();
+
+    osgEarth::Util::EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
 
-    root->addChild( earthNode );    
+    root->addChild( earthNode );
 
     double backgroundWidth = 500;
     double backgroundHeight = 500;
@@ -382,10 +381,10 @@ main(int argc, char** argv)
     osg::Camera* hud = createHud( backgroundWidth, backgroundHeight );
     root->addChild( hud );
 
-    osg::ref_ptr< TerrainProfileCalculator > calculator = new TerrainProfileCalculator(mapNode, 
+    osg::ref_ptr< TerrainProfileCalculator > calculator = new TerrainProfileCalculator(mapNode,
         GeoPoint(mapNode->getMapSRS(), -124.0, 40.0),
         GeoPoint(mapNode->getMapSRS(), -75.1, 39.2)
-        );    
+        );
 
     osg::Group* profileNode = new TerrainProfileGraph( calculator.get(), graphWidth, graphHeight );
     hud->addChild( profileNode );
@@ -393,9 +392,9 @@ main(int argc, char** argv)
 
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
-    viewer.addEventHandler( new DrawProfileEventHandler( mapNode, mapNode, calculator.get() ) );
+    viewer.addEventHandler( new DrawProfileEventHandler( mapNode, calculator.get() ) );
 
-    viewer.setSceneData( root );    
+    viewer.setSceneData( root );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

@@ -1,0 +1,74 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_ANNOTATION_ANNOTATION_LAYER
+#define OSGEARTH_ANNOTATION_ANNOTATION_LAYER
+
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/Common>
+
+namespace osgEarth
+{
+    class AnnotationNode;
+
+    /**
+     * Layer that holds annotation nodes.
+     *
+     * Use with the options structure is intended for loading from an earth file.
+     * To use from the API, you can just call getGroup() and add Annotations there.
+     */
+    class OSGEARTH_EXPORT AnnotationLayer : public VisibleLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, AnnotationLayer, Options, VisibleLayer, Annotations);
+
+        //! Adds an annotation to the layer
+        void addChild(AnnotationNode*);
+
+        //! Gets the group to which you can add annotations
+        osg::Group* getGroup() const;
+
+    public: // Layer
+        
+        virtual osg::Node* getNode() const;
+
+        virtual void init();
+
+    protected:
+
+        /** dtor */
+        virtual ~AnnotationLayer() { }        
+
+    private:
+
+        osg::ref_ptr<osg::Group> _root;
+
+        void deserialize();
+    };  
+}
+
+#endif // OSGEARTH_ANNOTATION_ANNOTATION_LAYER

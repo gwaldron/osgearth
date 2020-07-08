@@ -1,0 +1,17 @@
+<groundcover>
+    <spacing>0.25</spacing>
+    <wind>0.25</wind>
+    <biomes>
+        <biome name="Grass/Grassland" classes="grassland" fill="0.80" source="clipartmax.com">
+            <billboard url="clipart974730_2.png" width="0.6" height="0.8" size_variation="1" selection_weight="10"/>
+            <billboard url="clipart28163.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
+            <billboard url="clipart2383752.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
+        </biome>
+        <biome name="Grass/Forest" classes="forest" fill="0.50" source="clipartmax.com">
+            <billboard url="clipart974730_2.png" width="0.5" height="0.6" size_variation="0.8" selection_weight="1"/>
+        </biome>
+        <biome name="Grass/Savanna" classes="savanna" fill="0.3" source="clipartmax.com">
+            <billboard url="clipart974730_2.png" width="0.5" height="0.3" size_variation="1" selection_weight="1"/>
+        </biome>
+    </biomes>
+</groundcover>

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,12 +27,11 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgEarth/Registry>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/Controls>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Color>
 
-using namespace osgEarth::Symbology;
 using namespace osgEarth::Util::Controls;
 
 
@@ -42,7 +41,9 @@ ImageControl* s_imageControl = 0L;
 
 int main(int argc, char** argv)
 {
-    osg::ArgumentParser arguments(&argc,argv);       
+    osgEarth::initialize();
+
+    osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
     osg::Node* node = osgEarth::Util::MapNodeHelper().load(arguments, &viewer);
@@ -51,7 +52,7 @@ int main(int argc, char** argv)
         OE_WARN << "No earth file on the command line." << std::endl;
         return -1;
     }
-    
+
     osg::Group* root = new osg::Group();
     root->addChild( node );
 
@@ -95,7 +96,7 @@ struct RotateImage : public ControlEventHandler
     void onValueChanged( Control* control, float value )
     {
         if (s_imageControl)
-            s_imageControl->setRotation( Angular(value) );
+            s_imageControl->setRotation( Angle(value, Units::DEGREES) );
     }
 };
 
@@ -112,7 +113,7 @@ createControls( ControlCanvas* cs )
         center->setVertAlign( Control::ALIGN_CENTER );
 
         // Add an image:
-        osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile("../data/osgearth.gif");
+        osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile("../data/icon.png");
         if ( image.valid() )
         {
             s_imageControl = new ImageControl( image.get() );
@@ -173,7 +174,7 @@ createControls( ControlCanvas* cs )
 
                 s_sliderLabel = new LabelControl();
                 s_sliderLabel->setVertAlign( Control::ALIGN_CENTER );
-                c2->addControl( s_sliderLabel );        
+                c2->addControl( s_sliderLabel );
             }
             ul->addControl( c2 );
 
@@ -207,7 +208,7 @@ createControls( ControlCanvas* cs )
     // a centered hbox container along the bottom on the screen.
     {
         HBox* bottom = new HBox();
-        bottom->setBackColor(0,0,0,0.5);        
+        bottom->setBackColor(0,0,0,0.5);
         bottom->setMargin( 10 );
         bottom->setChildSpacing( 145 );
         bottom->setVertAlign( Control::ALIGN_BOTTOM );

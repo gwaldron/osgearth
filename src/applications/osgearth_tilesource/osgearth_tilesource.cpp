@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2018 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -34,7 +34,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
 
 /**
  * This sample demonstrates how to create a custom TileSource.
@@ -127,8 +126,8 @@ int main(int argc, char** argv)
     }
 
     // Add a new ImageLayer to the map with our custom tile source.
-    ImageLayerOptions options( "My custom ImageLayer" );
-    map->addLayer( new ImageLayer(options, tileSource) );
+    ImageLayer* layer = new ImageLayer();
+    layer->setTileSource(tileSource);
 
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNode* mapNode = new MapNode( map );

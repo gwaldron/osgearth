@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include <osgEarth/CullingUtils>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //--------------------------------------------------------------------
 
@@ -164,7 +165,7 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "in float oe_FadeLOD_opacity; \n"
+        "uniform float oe_FadeLOD_opacity; \n"
         "void oe_fragFadeLOD( inout vec4 color ) \n"
         "{ \n"
         "    color.a *= oe_FadeLOD_opacity; \n"

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -72,28 +72,28 @@ namespace
     }
 }
 
-Color Color::White    ( 0xffffffff );
-Color Color::Silver   ( 0xc0c0c0ff );
-Color Color::Gray     ( 0x808080ff );
-Color Color::Black    ( 0x000000ff );
-Color Color::Red      ( 0xff0000ff );
-Color Color::Maroon   ( 0x800000ff );
-Color Color::Yellow   ( 0xffff00ff );
-Color Color::Olive    ( 0x808000ff );
-Color Color::Lime     ( 0x00ff00ff );
-Color Color::Green    ( 0x008000ff );
-Color Color::Aqua     ( 0x00ffffff );
-Color Color::Teal     ( 0x008080ff );
-Color Color::Blue     ( 0x0000ffff );
-Color Color::Navy     ( 0x000080ff );
-Color Color::Fuchsia  ( 0xff00ffff );
-Color Color::Purple   ( 0x800080ff );
-Color Color::Orange   ( 0xffa500ff );
+Color Color::White    ( 0xffffffff, Color::RGBA );
+Color Color::Silver   ( 0xc0c0c0ff, Color::RGBA );
+Color Color::Gray     ( 0x808080ff, Color::RGBA );
+Color Color::Black    ( 0x000000ff, Color::RGBA );
+Color Color::Red      ( 0xff0000ff, Color::RGBA );
+Color Color::Maroon   ( 0x800000ff, Color::RGBA );
+Color Color::Yellow   ( 0xffff00ff, Color::RGBA );
+Color Color::Olive    ( 0x808000ff, Color::RGBA );
+Color Color::Lime     ( 0x00ff00ff, Color::RGBA );
+Color Color::Green    ( 0x008000ff, Color::RGBA );
+Color Color::Aqua     ( 0x00ffffff, Color::RGBA );
+Color Color::Teal     ( 0x008080ff, Color::RGBA );
+Color Color::Blue     ( 0x0000ffff, Color::RGBA );
+Color Color::Navy     ( 0x000080ff, Color::RGBA );
+Color Color::Fuchsia  ( 0xff00ffff, Color::RGBA );
+Color Color::Purple   ( 0x800080ff, Color::RGBA );
+Color Color::Orange   ( 0xffa500ff, Color::RGBA );
 
-Color Color::DarkGray ( 0x404040ff );
-Color Color::Magenta  ( 0xc000c0ff );
-Color Color::Cyan     ( 0x00ffffff );
-Color Color::Brown    ( 0xaa5500ff );
+Color Color::DarkGray ( 0x404040ff, Color::RGBA );
+Color Color::Magenta  ( 0xc000c0ff, Color::RGBA );
+Color Color::Cyan     ( 0x00ffffff, Color::RGBA );
+Color Color::Brown    ( 0xaa5500ff, Color::RGBA );
 
 Color::Color( unsigned v, Format format )
 {

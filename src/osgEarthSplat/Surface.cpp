@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -93,13 +93,15 @@ Surface::loadTextures(const LandCoverDictionary* landCoverDict, const osgDB::Opt
 namespace
 {
     struct LOD {
-        LOD() : primary(-1.0f), detail(-1.0f), brightness(1.0f), contrast(1.0f), threshold(0.0f), slope(0.0f) { }
-        float primary, detail, brightness, contrast, threshold, slope;
+        LOD() : primary(-1.0f), material(-1.0f), detail(-1.0f), brightness(1.0f), contrast(1.0f), threshold(0.0f), slope(0.0f) { }
+        float primary, material, detail, brightness, contrast, threshold, slope;
     };
 
     void write(LOD& lod, const SplatRangeData& data)
     {
-        lod.primary = (float)data._textureIndex;
+        lod.primary = (float)data._diffuseTextureIndex;
+        lod.material = (float)data._materialTextureIndex;
+
         if (data._detail.isSet())
         {
             lod.detail = (float)data._detail->_textureIndex;
@@ -168,8 +170,18 @@ Surface::createLUTBuffer(const LandCoverDictionary* landCoverDict) const
         {
             LOD& record = lut[c][lod];
 
-            *ptr++ = record.primary;
-            *ptr++ = record.detail;
+            //short primary = record.primary + 1;
+            //short detail = record.detail + 1;
+            //float a = (float)((detail<<8) + primary);
+            //*ptr++ = a;
+
+            int primary = (int)record.primary + 1;
+            int detail = (int)record.detail + 1;
+
+            *ptr++ = (float)((primary<<8) + detail);
+            *ptr++ = record.material + 1;
+
+            //*ptr++ = record.material + 1;
 
             // Pack two values into one float. First each value is truncated to a maximum
             // of 2 decimal places; then the first value goes left of the decimal, and the

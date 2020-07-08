@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,18 +26,17 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarth/ObjectIndex>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/RTTPicker>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FeatureIndex>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Controls>
+#include <osgEarth/RTTPicker>
+#include <osgEarth/Feature>
+#include <osgEarth/FeatureIndex>
 
 #define LC "[feature_query] "
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Features;
 
 //-----------------------------------------------------------------------
 
@@ -92,7 +91,7 @@ public:
             }
             if ( !_grid->visible() )
                 _grid->setVisible( true );
-        
+
             _lastFID = feature->getFID();
         }
     }
@@ -103,7 +102,7 @@ public:
         _lastFID = 0u;
     }
 
-    bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa) 
+    bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa)
     {
         return ea.getEventType() == ea.RELEASE; // click
     }
@@ -117,6 +116,8 @@ public:
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // a basic OSG viewer
@@ -149,7 +150,7 @@ main(int argc, char** argv)
     }
     else
     {
-        OE_NOTICE 
+        OE_NOTICE
             << "\nUsage: " << argv[0] << " file.earth" << std::endl
             << MapNodeHelper().usage() << std::endl;
     }

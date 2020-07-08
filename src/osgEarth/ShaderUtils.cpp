@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,10 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/GLSLChunker>
+#include <osg/Texture2D>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
 
@@ -124,10 +126,14 @@ namespace
         return yes;
     }
 
-    int replaceVarying(GLSLChunker::Chunks& chunks, int index, const StringVector& tokens, int offset, const std::string& prefix)
+    int replaceVarying(GLSLChunker::Chunks& chunks, int index, const StringVector& tokens, int offset, const std::string& prefix, bool isInput)
     {
         std::stringstream buf;
-        buf << "#pragma vp_varying";
+        if (isInput)
+            buf << "#pragma vp_varying_in";
+        else
+            buf << "#pragma vp_varying_out";
+
         if ( !prefix.empty() )
             buf << " " << prefix;
 
@@ -173,18 +179,24 @@ namespace
                 */
                 const std::vector<std::string>& tokens = chunks[i].tokens;
 
+                // Note:
+                // "in"s are ignored for vertex shaders, since their ins are not varyings but
+                // rather input attributes.
+                // BUT, if there is a GS in the mix, and vertex shaders get moved into the GS,
+                // this will fail. Figure this out someday. -gw
+
                 if      ( tokens.size() > 1 && tokens[0] == "out" && type != osg::Shader::FRAGMENT )
-                    i = replaceVarying(chunks, i, tokens, 1, ""), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 1, "", false), madeChanges = true;
                 else if ( tokens.size() > 1 && tokens[0] == "in" && type != osg::Shader::VERTEX )
-                    i = replaceVarying(chunks, i, tokens, 1, ""), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 1, "", true), madeChanges = true;
                 else if ( tokens.size() > 2 && tokens[0] == "varying" && tokens[1] == "out" && type != osg::Shader::FRAGMENT )
-                    i = replaceVarying(chunks, i, tokens, 2, ""), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 2, "", false), madeChanges = true;
                 else if ( tokens.size() > 2 && tokens[0] == "flat" && tokens[1] == "out" && type != osg::Shader::FRAGMENT )
-                    i = replaceVarying(chunks, i, tokens, 2, "flat"), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 2, "flat", false), madeChanges = true;
                 else if ( tokens.size() > 2 && tokens[0] == "flat" && tokens[1] == "in" && type != osg::Shader::VERTEX )
-                    i = replaceVarying(chunks, i, tokens, 2, "flat"), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 2, "flat", true), madeChanges = true;
                 else if ( tokens.size() > 1 && tokens[0] == "varying" )
-                    i = replaceVarying(chunks, i, tokens, 1, ""), madeChanges = true;
+                    i = replaceVarying(chunks, i, tokens, 1, "", true), madeChanges = true;
             }
         }
 
@@ -571,4 +583,19 @@ DiscardAlphaFragments::uninstall(osg::StateSet* ss) const
             vp->removeShader("oe_discardalpha_frag");
         }
     }
+}
+
+
+namespace
+{
+    const char* fs =
+        "#version " GLSL_VERSION_STR "\n"
+        "void oe_default_fs(inout vec4 color) { } \n";
+}
+
+void
+ShaderUtils::installDefaultShader(osg::StateSet* ss)
+{
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    vp->setFunction("oe_default_fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0);
 }

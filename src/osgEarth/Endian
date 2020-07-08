@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -174,7 +174,7 @@ inline double OE_DECODE_DOUBLE(uint64_t x) {
     return r;
 }
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     inline void byteSwapInPlace(uint32_t x) {
         unsigned char* p = (unsigned char*)&x;
@@ -185,7 +185,7 @@ namespace osgEarth
         unsigned char* p = (unsigned char*)&x;
         std::swap(p[0], p[1]);
     }
-}
+} }
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     #define OE_IS_LITTLE_ENDIAN

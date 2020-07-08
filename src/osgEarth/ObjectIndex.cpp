@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -60,7 +60,8 @@ namespace
 }
 
 ObjectIndex::ObjectIndex() :
-_idGen( STARTING_OBJECT_ID )
+_idGen( STARTING_OBJECT_ID ),
+_mutex("ObjectIndex(OE)")
 {
     _attribName     = "oe_index_objectid_attr";
     _attribLocation = osg::Drawable::SECONDARY_COLORS;

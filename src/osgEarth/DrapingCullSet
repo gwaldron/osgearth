@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,11 +25,11 @@
 #include <osgEarth/Common>
 #include <osgEarth/Containers>
 #include <osgEarth/DrapeableNode>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/Camera>
 #include <osg/ObserverNodePath>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Culling set for tracking groups whose contents should be "draped",
@@ -76,13 +76,20 @@ namespace osgEarth
     class OSGEARTH_INTERNAL DrapingManager
     {
     public:
+        DrapingManager();
+
         //! Gets the draping cull set associated with a camera.
         DrapingCullSet& get(const osg::Camera*);
 
+        //! Sets the render bin number for DrapingCameras.
+        void setRenderBinNumber(int value) { _renderBinNum = value; }
+        int getRenderBinNumber() const { return _renderBinNum; }
+
     private:
         PerObjectFastMap<const osg::Camera*, DrapingCullSet> _sets;
+        int _renderBinNum;
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_DRAPING_CULL_SET

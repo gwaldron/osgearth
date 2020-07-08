@@ -1,0 +1,199 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H
+#define OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Feature>
+#include <osgEarth/Filter>
+#include <osgEarth/Style>
+#include <osg/Geode>
+#include <vector>
+
+namespace osgEarth
+{
+    /**
+     * Settings for a single level of detail of feature data
+     */
+    class OSGEARTH_EXPORT FeatureLevel
+    {
+    public:
+        /** Constructs a feature level from serialized data */
+        FeatureLevel( const Config& config );
+
+        /** Constructs a feature level with range information */
+        FeatureLevel( float minRange, float maxRange );
+
+        /** Constructs a feature level with range information and a style class */
+        FeatureLevel( float minRange, float maxRange, const std::string& styleName );
+
+        /** Minimum and aximum display ranges for this level */
+        optional<float>& minRange() { return _minRange; }
+        const optional<float>& minRange() const { return _minRange; }
+
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
+
+        /** Style class (or style selector) name associated with this level (optional) */
+        optional<std::string>& styleName() { return _styleName; }
+        const optional<std::string>& styleName() const { return _styleName; }
+
+        
+        virtual ~FeatureLevel() { }
+
+
+    public:
+        Config getConfig() const;
+
+    protected:
+        void fromConfig( const Config& conf );
+
+        optional<float>       _minRange;
+        optional<float>       _maxRange;
+        optional<std::string> _styleName;
+    };
+
+    /**
+     * Defines a multi-LOD layout for a feature model layer.
+     */
+    class OSGEARTH_EXPORT FeatureDisplayLayout : public osg::Referenced
+    {
+    public:
+        FeatureDisplayLayout( const Config& conf =Config() );
+        virtual ~FeatureDisplayLayout() { }
+
+        /**
+         * The size (in one dimension) of each tile of features in the layout
+         * at the maximum range. Maximum range must be set for this to take effect.
+         */
+        optional<float>& tileSize() { return _tileSize; }
+        const optional<float>& tileSize() const { return _tileSize; }
+
+        /**
+         * The ratio of visibility range to feature tile radius. Default is 15.
+         * Increase this to produce more, smaller tiles at a given visibility
+         * range; decrease this to produce fewer, larger tiles.
+         *
+         * For example, for factor=15, at a visibility range of (say) 120,000m
+         * the system will attempt to create tiles that are approximately
+         * 8,000m in radius. (120,000 / 15 = 8,000).
+         */
+        optional<float>& tileSizeFactor() { return _tileSizeFactor; }
+        const optional<float>& tileSizeFactor() const { return _tileSizeFactor; }
+
+        /**
+         * The desired max range for pre-tiled feature sources like TFS.  The tileSizeFactor will be automatically computed
+         * based on the first level of the feature profile so that it shows up at that range.
+         */
+        optional<float>& maxRange() { return _maxRange;}
+        const optional<float>& maxRange() const { return _maxRange;}
+
+        /**
+         * Minimum visibility range for all tiles in the layout.
+         */
+         optional<float>& minRange() { return _minRange; }
+         const optional<float>& minRange() const { return _minRange; }
+
+        /**
+         * Whether to crop geometry to fit within the cell extents when chopping
+         * a feature level up into grid cells. By default, this is false, meaning 
+         * that a feature whose centroid falls within the cell will be included.
+         * Setting this to true means that if any part of the feature falls within
+         * the working cell, it will be cropped to the cell extents and used.
+         */
+        optional<bool>& cropFeatures() { return _cropFeatures; }
+        const optional<bool>& cropFeatures() const { return _cropFeatures; }
+
+        /**
+         * Sets the offset that will be applied to the computed paging priority
+         * of tiles in this layout. Adjusting this can affect the priority of this
+         * data with respect to other paged data in the scene (like terrain or other
+         * feature layers).
+         * Default = 0.0
+         */
+        optional<float>& priorityOffset() { return _priorityOffset; }
+        const optional<float>& priorityOffset() const { return _priorityOffset; }
+
+        /**
+         * Sets the scale factor to be applied to the computed paging priority
+         * of tiles in this layout. Adjusting this can affect the priority of this
+         * data with respect to other paged data in the scene (like terrain or other
+         * feature layers).
+         * Default = 1.0.
+         */
+        optional<float>& priorityScale() { return _priorityScale; }
+        const optional<float>& priorityScale() const { return _priorityScale; }
+
+        /**
+         * Minimum time, in second, before a feature tile is eligible for pageout.
+         * Set this to a negative number to disable expiration altogether (i.e., tiles
+         * will never page out).
+         */
+        optional<float>& minExpiryTime() { return _minExpiryTime; }
+        const optional<float>& minExpiryTime() const { return _minExpiryTime; }
+
+        /**
+         * Whether tiles are paged in vs. created at load time (default, paged=true)
+         */
+        optional<bool>& paged() { return _paged; }
+        const optional<bool>& paged() const { return _paged; }
+
+
+        /** Adds a new feature level */
+        void addLevel( const FeatureLevel& level );
+
+        /** Gets the number of feature levels in the schema */
+        unsigned getNumLevels() const;
+
+        /** Gets the nth level */
+        const FeatureLevel* getLevel( unsigned i ) const;
+
+        /**
+         * Calculates the "best" quadtree LOD for the specified level, given the radius 
+         * of the full extent of the dataset.
+         */
+        unsigned chooseLOD( const FeatureLevel& level, double fullExtentRadius ) const;
+
+    public:
+        Config getConfig() const;
+
+    protected:
+        optional<float> _tileSize;
+        optional<float> _tileSizeFactor;
+        optional<float> _minRange;
+        optional<float> _maxRange;
+        optional<bool>  _cropFeatures;
+        optional<float> _priorityOffset;
+        optional<float> _priorityScale;
+        optional<float> _minExpiryTime;
+        optional<bool>  _paged;
+        typedef std::multimap<float,FeatureLevel> Levels;
+        Levels _levels;
+
+        void fromConfig( const Config& conf );
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureLevel);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureDisplayLayout);
+
+
+#endif // OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H

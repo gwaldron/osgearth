@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -141,10 +141,13 @@ namespace osgEarth
             return _type != rhs._type || _toBase != rhs._toBase; }
 
         bool isLinear() const { return _type == TYPE_LINEAR; }
+        bool isDistance() const { return _type == TYPE_LINEAR; }
 
         bool isAngular() const { return _type == TYPE_ANGULAR; }
+        bool isAngle() const { return _type == TYPE_ANGULAR; }
 
         bool isTemporal() const { return _type == TYPE_TEMPORAL; }
+        bool isTime() const { return _type == TYPE_TEMPORAL; }
 
         bool isSpeed() const { return _type == TYPE_SPEED; }
 
@@ -273,8 +276,25 @@ namespace osgEarth
             return T( as(convertTo), convertTo );
         }
 
+        double asDistance(const Units& convertTo, double refLatDegrees) const {
+            if (_units.isAngle() && convertTo.isLinear()) {
+                double angleDeg = Units::convert(_units, Units::DEGREES, _value);
+                double meters = angleDeg * 111000.0 * cos(osg::DegreesToRadians(refLatDegrees));
+                return Units::convert(Units::METERS, convertTo, meters);
+            }
+            else if (_units.isLinear() && convertTo.isAngle()) {
+                double valueMeters = Units::convert(_units, Units::METERS, _value);
+                double angleDeg = valueMeters / (111000.0 * cos(osg::DegreesToRadians(refLatDegrees)));
+                return Units::convert(Units::DEGREES, convertTo, angleDeg);
+            }
+            else return as(convertTo);
+        }
+
         double       getValue() const { return _value; }
         const Units& getUnits() const { return _units; }
+
+        // same as getValue; use this class directly as a double or a float
+        operator double() const { return _value; }
 
         Config getConfig() const {
             Config conf;
@@ -298,7 +318,6 @@ namespace osgEarth
 
     struct Distance : public qualified_double<Distance> {
         Distance() : qualified_double<Distance>(0, Units::METERS) { }
-        Distance(double value ) : qualified_double<Distance>(value, Units::METERS) { }
         Distance(double value, const Units& units) : qualified_double<Distance>(value, units) { }
         Distance(const Config& conf) : qualified_double<Distance>(conf, Units::METERS) { } 
         Distance(const std::string& str) : qualified_double<Distance>(str, Units::METERS) { }
@@ -307,7 +326,6 @@ namespace osgEarth
 
     struct Angle : public qualified_double<Angle> {
         Angle() : qualified_double<Angle>(0, Units::DEGREES) { }
-        Angle(double value) : qualified_double<Angle>(value, Units::DEGREES) { }
         Angle(double value, const Units& units) : qualified_double<Angle>(value, units) { }
         Angle(const Config& conf) : qualified_double<Angle>(conf, Units::DEGREES) { }
         Angle(const std::string& str) : qualified_double<Angle>(str, Units::DEGREES) { }
@@ -320,7 +338,6 @@ namespace osgEarth
 
     struct Duration : public qualified_double<Duration> {
         Duration() : qualified_double<Duration>(0, Units::SECONDS) { }
-        Duration(double value) : qualified_double<Duration>(value, Units::SECONDS) { }
         Duration(double value, const Units& units) : qualified_double<Duration>(value, units) { }
         Duration(const Config& conf) : qualified_double<Duration>(conf, Units::SECONDS) { }
         Duration(const std::string& str) : qualified_double<Duration>(str, Units::SECONDS) { }
@@ -329,7 +346,6 @@ namespace osgEarth
 
     struct Speed : public qualified_double<Speed> {
         Speed() : qualified_double<Speed>(0, Units::METERS_PER_SECOND) { }
-        Speed(double value) : qualified_double<Speed>(value, Units::METERS_PER_SECOND) { }
         Speed(double value, const Units& units) : qualified_double<Speed>(value, units) { }
         Speed(const Config& conf) : qualified_double<Speed>(conf, Units::METERS_PER_SECOND) { }
         Speed(const std::string& str) : qualified_double<Speed>(str, Units::METERS_PER_SECOND) { }
@@ -337,7 +353,6 @@ namespace osgEarth
 
     struct ScreenSize : public qualified_double<ScreenSize> {
         ScreenSize() : qualified_double<ScreenSize>(0, Units::PIXELS) { }
-        ScreenSize(double value) : qualified_double<ScreenSize>(value, Units::PIXELS) { }
         ScreenSize(double value, const Units& units) : qualified_double<ScreenSize>(value, units) { }
         ScreenSize(const Config& conf) : qualified_double<ScreenSize>(conf, Units::PIXELS) { }
         ScreenSize(const std::string& str) : qualified_double<ScreenSize>(str, Units::PIXELS) { }
@@ -359,16 +374,6 @@ namespace osgEarth
         if ( hasValue(key) ) { output = Distance(value(key)); return true; }
         else return false;
     }
-    template<> inline
-    Distance as( const std::string& str, const Distance& default_value ) {
-        double val;
-        Units units;
-        if ( Units::parse(str, val, units, Units::METERS) )
-            return Distance(val, units);
-        else
-            return default_value;
-    }
-    
     
     template<> inline
     void Config::set<Angle>( const std::string& key, const Angle& opt ) {
@@ -382,15 +387,6 @@ namespace osgEarth
     bool Config::get<Angle>( const std::string& key, optional<Angle>& output ) const {
         if ( hasValue(key) ) { output = Angle(value(key)); return true; }
         else return false;
-    }
-    template<> inline
-    Angle as( const std::string& str, const Angle& default_value ) {
-        double val;
-        Units units;
-        if ( Units::parse(str, val, units, Units::DEGREES) )
-            return Angle(val, units);
-        else
-            return default_value;
     }
 
     
@@ -408,15 +404,6 @@ namespace osgEarth
         if ( hasValue(key) ) { output = Duration(value(key)); return true; }
         else return false;
     }
-    template<> inline
-    Duration as( const std::string& str, const Duration& default_value ) {
-        double val;
-        Units units;
-        if ( Units::parse(str, val, units, Units::SECONDS) )
-            return Duration(val, units);
-        else
-            return default_value;
-    }
 
     template<> inline
     void Config::set<Speed>( const std::string& key, const Speed& opt ) {
@@ -430,15 +417,6 @@ namespace osgEarth
     bool Config::get<Speed>( const std::string& key, optional<Speed>& output ) const {
         if ( hasValue(key) ) { output = Speed(value(key)); return true; }
         else return false;
-    }
-    template<> inline
-    Speed as( const std::string& str, const Speed& default_value ) {
-        double val;
-        Units units;
-        if ( Units::parse(str, val, units, Units::METERS_PER_SECOND) )
-            return Speed(val, units);
-        else
-            return default_value;
     }
     
     template<> inline
@@ -454,14 +432,59 @@ namespace osgEarth
         if ( hasValue(key) ) { output = ScreenSize(value(key)); return true; }
         else return false;
     }
-    template<> inline
-    ScreenSize as( const std::string& str, const ScreenSize& default_value ) {
-        double val;
-        Units units;
-        if ( Units::parse(str, val, units, Units::PIXELS) )
-            return ScreenSize(val, units);
-        else
-            return default_value;
+
+    // osgEarth::Strings specializations
+    namespace Util
+    {
+        template<> inline
+        Distance as(const std::string& str, const Distance& default_value) {
+            double val;
+            Units units;
+            if (Units::parse(str, val, units, Units::METERS))
+                return Distance(val, units);
+            else
+                return default_value;
+        }
+
+        template<> inline
+        Angle as(const std::string& str, const Angle& default_value) {
+            double val;
+            Units units;
+            if (Units::parse(str, val, units, Units::DEGREES))
+                return Angle(val, units);
+            else
+                return default_value;
+        }
+
+        template<> inline
+        Duration as(const std::string& str, const Duration& default_value) {
+            double val;
+            Units units;
+            if (Units::parse(str, val, units, Units::SECONDS))
+                return Duration(val, units);
+            else
+                return default_value;
+        }
+
+        template<> inline
+        Speed as(const std::string& str, const Speed& default_value) {
+            double val;
+            Units units;
+            if (Units::parse(str, val, units, Units::METERS_PER_SECOND))
+                return Speed(val, units);
+            else
+                return default_value;
+        }
+
+        template<> inline
+        ScreenSize as(const std::string& str, const ScreenSize& default_value) {
+            double val;
+            Units units;
+            if (Units::parse(str, val, units, Units::PIXELS))
+                return ScreenSize(val, units);
+            else
+                return default_value;
+        }
     }
 }
 

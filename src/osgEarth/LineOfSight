@@ -1,0 +1,76 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_UTIL_LINE_OF_SIGHT_H
+#define OSGEARTH_UTIL_LINE_OF_SIGHT_H
+
+#include <osgEarth/Common>
+#include <osg/Group>
+
+namespace osgEarth { namespace Contrib
+{
+    using namespace osgEarth;
+
+    struct LineOfSight
+    {
+        /**
+         * The line of sight display mode
+         */
+        enum DisplayMode
+        {
+            /**
+             * Split mode draws a line in the good color from the start of the line to the first hit, then a bad line from the hit to the end
+             */
+            MODE_SPLIT,
+            /**
+             * Single mode draws a single line from start to end and colors it good or bad depending on whether there is line of sight or not.
+             */
+            MODE_SINGLE
+        };
+    };
+
+
+    /**
+     * Base class for LOS node implementations
+     */
+    class /* no export */ LineOfSightNode : public osg::Group
+    {
+    public:
+        LineOfSightNode() { }
+        virtual ~LineOfSightNode() { }
+    };
+
+
+    /** 
+     * Callback for LOS change notifications 
+     */
+    struct LOSChangedCallback : public osg::Referenced
+    {
+    public:
+        virtual void onChanged() {};
+
+        /** dtor */
+        virtual ~LOSChangedCallback() { }
+    };
+
+    typedef std::list< osg::ref_ptr<LOSChangedCallback> > LOSChangedCallbackList;
+
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_LINE_OF_SIGHT_H

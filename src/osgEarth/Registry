@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,19 +22,18 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/Containers>
 #include <osgEarth/TraversalData>
 #include <osgEarth/ShaderGenerator>
-#include <OpenThreads/ReentrantMutex>
-#include <OpenThreads/ScopedLock>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/SpatialReference>
-#include <osg/Referenced>
-#include <osg/OperationThread>
+#include <atomic>
 #include <set>
+#include <unordered_set>
+#include <unordered_map>
 
 #define GDAL_SCOPED_LOCK \
-    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::getGDALMutex() )\
+    std::lock_guard<osgEarth::Threading::RecursiveMutex> \
+        _oe_gdal_lock( osgEarth::getGDALMutex() )
 
 namespace osgText {
     class Font;
@@ -45,16 +44,19 @@ namespace osgEarth
     class Cache;
     class Capabilities;
     class Profile;
-    class ShaderFactory;
-    class TaskServiceManager;
     class URIReadCallback;
-    class ColorFilterRegistry;
-    class StateSetCache;
     class ObjectIndex;
     class Units;
+    class StateSetCache;
+
+    namespace Util
+    {
+        class ShaderFactory;
+    }
 
 
-    extern OSGEARTH_EXPORT OpenThreads::ReentrantMutex& getGDALMutex();
+    //! Global mutex used to serialize access to GDAL/OGR/PROJ functionality
+    extern OSGEARTH_EXPORT Threading::RecursiveMutex& getGDALMutex();
 
     /**
      * Application-wide global repository.
@@ -77,11 +79,9 @@ namespace osgEarth
         /** Gets the spherical-mercator builtin profile (mercator/sphere) */
         const Profile* getSphericalMercatorProfile() const;
 
-        /** Gets a spatial reference object */
-        SpatialReference* getOrCreateSRS(const SpatialReference::Key& key);
-
-        /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
-        OpenThreads::ReentrantMutex& getGDALMutex();
+        //! Gets a spatial reference object (internal)
+        //! Please use SpatialReference::get() instead of calling this directly
+        osg::ref_ptr<SpatialReference> getOrCreateSRS(const SpatialReference::Key& key);
 
         /** Gets a default cache object - based on environment settings - unless setDefaultCache
             was called to override it. */
@@ -149,9 +149,9 @@ namespace osgEarth
          * shader factory if you want to alter any of osgEarth's baseline shaders
          * (advanced usage).
          */
-        ShaderFactory* getShaderFactory() const;
-        void setShaderFactory( ShaderFactory* lib );
-        static ShaderFactory* shaderFactory() { return instance()->getShaderFactory(); }
+        Util::ShaderFactory* getShaderFactory() const;
+        void setShaderFactory( Util::ShaderFactory* lib );
+        static Util::ShaderFactory* shaderFactory() { return instance()->getShaderFactory(); }
 
         /**
          * The default shader generator.
@@ -182,12 +182,6 @@ namespace osgEarth
          */
         ProgramRepo& getProgramRepo();
         static ProgramRepo& programRepo() { return instance()->getProgramRepo(); }
-
-        /**
-         * Gets a reference to the global task service manager.
-         */
-        TaskServiceManager* getTaskServiceManager() {
-            return _taskServiceManager.get(); }
 
         /**
          * Generates an instance-wide global unique ID.
@@ -270,10 +264,6 @@ namespace osgEarth
         TransientUserDataStore& dataStore() { return _dataStore; }
         const TransientUserDataStore& dataStore() const { return _dataStore; }
 
-        //! Access to the general-purpose async operations queue
-        osg::OperationQueue* getAsyncOperationQueue() const { return _opQueue.get(); }
-
-
         /**
          * Gets the device pixel ratio.
          */
@@ -284,7 +274,20 @@ namespace osgEarth
         * This value is useful when running in high dpi environments on high resolution displays.
         */
         void setDevicePixelRatio(float devicePixelRatio);
-        
+
+        /**
+         * Maximum number of vertices to allow in a single osg::Geometry drawable
+         * when performing optimization processing. This varies based on hardware
+         * capabilities. Default is 65535.
+         */
+        void setMaxNumberOfVertsPerDrawable(unsigned value);
+        unsigned getMaxNumberOfVertsPerDrawable() const;
+
+        /**
+         * Release OpenGL resources associated with anything in the reigstry
+         */
+        void releaseGLObjects(class osg::State*) const;
+
         //! Release any resources held by the registry so it can be re-used
         void release();
 
@@ -292,15 +295,12 @@ namespace osgEarth
         virtual ~Registry();
         Registry();
 
-        bool _gdal_registered;
-
         osg::ref_ptr<const Profile> _global_geodetic_profile;
         osg::ref_ptr<const Profile> _global_mercator_profile;
         osg::ref_ptr<const Profile> _spherical_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
         mutable Threading::Mutex _regMutex;
-        int _numGdalMutexGets;
 
         mutable osg::ref_ptr<Cache>   _defaultCache;
         mutable optional<CachePolicy> _defaultCachePolicy;
@@ -308,17 +308,14 @@ namespace osgEarth
 
         mutable bool _overrideCachePolicyInitialized;
 
-        typedef std::set<std::string> StringSet;
-        StringSet _blacklistedFilenames;
-        Threading::ReadWriteMutex _blacklistMutex;
+        typedef std::unordered_set<std::string> StringSet;
+        Threading::Mutexed<StringSet> _blacklist;
 
-        osg::ref_ptr<ShaderFactory> _shaderLib;
+        osg::ref_ptr<Util::ShaderFactory> _shaderLib;
         osg::ref_ptr<ShaderGenerator> _shaderGen;
-        osg::ref_ptr<TaskServiceManager> _taskServiceManager;
 
         // unique ID generator:
-        int                      _uidGen;
-        mutable Threading::Mutex _uidGenMutex;
+        std::atomic_int _uidGen;
 
         // system capabilities:
         osg::ref_ptr< Capabilities > _caps;
@@ -332,8 +329,8 @@ namespace osgEarth
         osg::ref_ptr<osgText::Font> _defaultFont;
 
         typedef std::vector<const Units*> UnitsVector;
-        UnitsVector                       _unitsVector;
-        mutable Threading::ReadWriteMutex _unitsVectorMutex;
+        UnitsVector _unitsVector;
+        //mutable Threading::Mutex _unitsVectorMutex;
 
         osg::ref_ptr<StateSetCache> _stateSetCache;
 
@@ -361,32 +358,32 @@ namespace osgEarth
 
         TransientUserDataStore _dataStore;
 
-        osg::ref_ptr<osg::OperationQueue> _opQueue;
-
-        typedef std::vector< osg::ref_ptr<osg::OperationThread> > ThreadPool;
-        ThreadPool _opThreadPool;
-        unsigned _threadPoolSize;
-
         float _devicePixelRatio;
-        
-        typedef std::map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
-        mutable SRSCache _srsCache;
-        mutable Threading::Mutex _srsMutex;
+
+        typedef std::unordered_map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
+        Threading::Mutexed<SRSCache> _srsCache;
+        //mutable PerThread<SRSCache> _srsCache;
+
+        unsigned _maxVertsPerDrawable;
     };
 }
 
 
-/** Proxy class for automatic registration of Units with the Registry.*/
-struct osgEarthRegisterUnits {
-    osgEarthRegisterUnits(const osgEarth::Units* units) {
-        osgEarth::Registry::instance()->registerUnits(units);
-    }
-};
+namespace
+{
+    /** Proxy class for automatic registration of Units with the Registry.*/
+    struct osgEarthRegisterUnits {
+        osgEarthRegisterUnits(const osgEarth::Units* units) {
+            osgEarth::Registry::instance()->registerUnits(units);
+        }
+    };
+}
+
 #define OSGEARTH_REGISTER_UNITS(NAME,INSTANCE) \
     extern "C" void osgearth_units_##NAME(void) {} \
     static osgEarthRegisterUnits s_osgEarthRegistryUnitsProxy##NAME (INSTANCE)
 
-    
+
 #define USE_OSGEARTH_UNITS(NAME ) \
     extern "C" void osgearth_units_##NAME(void); \
     static osgDB::PluginFunctionProxy proxy_osgearth_units_##NAME(osgearth_units_##NAME);

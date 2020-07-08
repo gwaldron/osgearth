@@ -1,0 +1,133 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_ALTITUDE_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_ALTITUDE_SYMBOL_H 1
+
+#include <osgEarth/Symbol>
+#include <osgEarth/Expression>
+
+namespace osgEarth
+{
+    /**
+     * Symbol that conveys information about altitude and terrain interaction
+     */
+    class OSGEARTH_EXPORT AltitudeSymbol : public Symbol
+    {
+    public:
+        /**
+         * Controls if/how models are clamped to the terrain
+         */
+        enum Clamping
+        {
+            /** Do not clamp Z values to the terrain (but still apply the offset, if applicable) */
+            CLAMP_NONE,
+
+            /** Sample the terrain under the point, and set the feature's Z to the terrain height,
+                ignoring and discarding the feature's original Z value. */
+            CLAMP_TO_TERRAIN,
+
+            /** Sample the terrain under the point, and ADD the terrain height to the feature's 
+                pre-existing Z value. */
+            CLAMP_RELATIVE_TO_TERRAIN,
+
+            /** The feature has a attribute value that describes its height above "height zero",
+                which is typically the ellipsoid or MSL. While this will not actually modify the
+                feature's geometry, it will install ... */
+            CLAMP_ABSOLUTE
+        };
+
+        /**
+         * Clamping technique - when and where to do clamping.
+         */
+        enum Technique
+        {
+            /** Clamp geometry to the map model's elevation data. */
+            TECHNIQUE_MAP,
+
+            /** Clamp geometry to the terrain's scene graph. */
+            TECHNIQUE_SCENE,
+
+            /** Clamp geometry to the terrain as they are rendered by the GPU. */
+            TECHNIQUE_GPU,
+
+            /** Clamp geometry at draw time using projective texturing. */
+            TECHNIQUE_DRAPE
+        };
+
+        /**
+         * Binding - at what granularity the clamping is performed
+         */
+        enum Binding
+        {
+            /** Clamp every vertex independently */
+            BINDING_VERTEX,
+
+            /** Clamp to the centroid of the entire geometry */
+            BINDING_CENTROID
+        };
+
+    public:
+        META_Object(osgEarth, AltitudeSymbol);
+
+        AltitudeSymbol(const AltitudeSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+        AltitudeSymbol( const Config& conf =Config() );
+
+        /** How to clamp instances to the terrain (default is CLAMP_NONE) */
+        optional<Clamping>& clamping() { return _clamping; }
+        const optional<Clamping>& clamping() const { return _clamping; }
+
+        /** Method of terrain following to use (default is TECHNIQUE_MAP) */
+        optional<Technique>& technique() { return _technique; }
+        const optional<Technique>& technique() const { return _technique; }
+
+        /** Terrain resolution at which to perform clamping (in map units) */
+        optional<float>& clampingResolution() { return _resolution; }
+        const optional<float>& clampingResolution() const { return _resolution; }
+
+        /** Granularity at which to clamp a geometry */
+        optional<Binding>& binding() { return _binding; }
+        const optional<Binding>& binding() const { return _binding; }
+
+        /** Vertical offset of geometry after clamping */
+        optional<NumericExpression>& verticalOffset() { return _verticalOffset; }
+        const optional<NumericExpression>& verticalOffset() const { return _verticalOffset; }
+
+        /** Vertical scale factor to apply to geometry's Z after clamping. */
+        optional<NumericExpression>& verticalScale() { return _verticalScale; }
+        const optional<NumericExpression>& verticalScale() const { return _verticalScale; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
+
+    protected:
+        virtual ~AltitudeSymbol() { }
+
+        optional<Clamping>           _clamping;
+        optional<Technique>          _technique;
+        optional<Binding>            _binding;
+        optional<float>              _resolution;
+        optional<NumericExpression>  _verticalOffset;
+        optional<NumericExpression>  _verticalScale;
+    };
+} // namespace osgEarth
+
+#endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

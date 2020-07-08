@@ -1,11 +1,34 @@
 Release Notes
 =============
 
-Version 2.10.1 (April 2019)
----------------------------
-* Bug fix and performance release based on the 2.10 branch.
+Version 3.0 (June 2020)
+----------------------------
+* Layer API overhaul - no more "Options/Config" structures; no more "drivers"
+* Namespace overhaul - rolled Util/Features/Symbology/Annotation into the core
+* ImGui integration - user intefaces - eventual replacement for "Controls"
+* CompositeElevation/Image/LandCover Layers
+* GrassLayer (splatting subsystem)
+* Powerline Layer
+* Wind Layer - add winds that will affect the GrassLayer
+* Decal Layers - add geospatial decals to the terrain
+* TiledFeatureModelLayer - fast feature rendering for pre-tiles data
+* Arbitrary region invalidation and refresh for terrain engine
+* Geocoder (OGR - optional build)
+* LandCoverLayer - new fractal refinement
+* 3D-Tiles Layer
+* glTF support (partial, for 3D-Tiles)
+* Cesium Ion Layer
+* GDALDEM Layer - hillside shading, etc.
+* NetworkMonitor tool
+* WEBP loader - fast compressed imagery
+* BASIS support - image compression
+* DRACO support (GLTF) - geometry compression
+* Support for >2GB ZIP files (new OSG ZIP plugin)
+* Tracy integration - profiling
+* Better error reporting infrastructure
+* Performance improvements & bug fixes galore
 
-Version 2.10 (November 2018)
+Version 2.10 (TBD 2018)
 ----------------------------
 * REX terrain engine promoted to default. Old MP engine is now in legacy support mode.
 * Removed the osgEarthQt nodekit from the SDK, along with all Qt examples

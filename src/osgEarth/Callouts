@@ -1,0 +1,169 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_CALLOUTS_H
+#define OSGEARTH_CALLOUTS_H 1
+
+#include <osgEarth/Text>
+
+namespace osgUtil {
+    class CullVisitor;
+}
+namespace osgEarth {
+    class LineDrawable;
+}
+
+#define USE_RTREE
+#ifdef USE_RTREE
+#include "rtree.h"
+#endif
+
+namespace osgEarth { namespace Contrib
+{
+    class CalloutManager;
+
+    class OSGEARTH_EXPORT Callout : public osgEarth::Text
+    {
+    public:
+        Callout(CalloutManager* cm);
+
+       // unique ID and sorting string.
+       void setUID(const std::string& value) { _uid = value; }
+       const std::string& getUID() const { return _uid; }
+
+       // override from osg::Node
+       void accept(osg::NodeVisitor& nv);
+
+    private:
+        CalloutManager* _cm;
+        std::string _uid;
+    };
+
+
+    class OSGEARTH_EXPORT CalloutManager : public osg::Drawable
+    {
+    public:
+        CalloutManager();
+
+        //! Reset the label positions based on the current view
+        void reset();
+
+        //! Whether to draw labels that are overlapping.
+        void setDrawObscuredItems(bool value);
+        bool getDrawObscuredItems() const;
+
+        //! Whether to reset the label positioning when the view changes
+        void setResetWhenViewChanges(bool value);
+
+        //! Whether decluttering should be aggressive, thereby sorting
+        //! faster but using more resources
+        void setAggressiveSorting(bool value);
+
+        // from osg::Drawable
+        void drawImplementation(osg::RenderInfo& ri) const;
+
+    protected:
+        virtual ~CalloutManager() { }
+
+    private:
+
+        //! Callout calls this to push itself onto the rendering queue
+        void push(Callout*, osgUtil::CullVisitor&);
+
+        friend class Callout;
+
+        struct BBox
+        {
+            BBox() { }
+            BBox(const osg::BoundingBox& bbox);
+            bool overlaps(const BBox& rhs) const;
+            double overlap(const BBox& rhs) const;
+            osg::Vec2d LL, UR;
+        };
+
+        struct CalloutRecord
+        {
+            CalloutRecord();
+
+            osgEarth::Text* _node;   // node to render
+            osg::ref_ptr<osg::RefMatrix> _matrix;
+            unsigned _frame;        // frame number of last update
+            BBox _textBB;
+            BBox _vpBB;
+            BBox _leaderBB;
+            osg::Vec3d _offsetVector;     // offset in pixels at which to place the label
+            osg::Vec3d _bestVector;
+            unsigned _leaderLineIndex;    // index of leader line vertex in line drawable
+            bool _conflicted;
+            bool _moveRequested;
+
+            int _moveAttempts;
+            float _overlap;
+
+            bool operator < (const CalloutRecord& rhs) const;
+            void move(float dir);
+            void realign();
+            void setAlpha(float a);
+        };
+
+        void sort(osg::NodeVisitor& nv);
+
+        void handleOverlap(CalloutRecord* lhs, const BBox& bb);
+
+        bool isStuck(const CalloutRecord*) const;
+
+#ifdef USE_RTREE
+        typedef RTree<CalloutRecord*, float, 2> SpatialIndex;
+#else
+        typedef std::vector<BBox> SpatialIndex;
+#endif
+
+        typedef std::map<std::string, CalloutRecord> Callouts;
+        typedef std::pair<std::string, CalloutRecord> CalloutTuple;
+        Callouts _callouts;
+        LineDrawable* _leaders;
+        mutable bool _leadersDirty;
+        osg::Vec4f _leaderColor;
+        mutable SpatialIndex _labelIndex;
+        mutable SpatialIndex _leaderIndex;
+        double _leaderLen;
+        Callouts::iterator _walker;
+        double _maxOverlap;
+        int _maxMoveAttempts;
+        bool _drawConflictedRecords;
+        bool _resetWhenViewChanges;
+        bool _declutterIncrementally;
+        osg::Matrix _vpm;
+        bool _vpmChanged;
+        unsigned _movesThisFrame;
+
+        struct SortCallback : public osg::NodeCallback
+        {
+            SortCallback(CalloutManager* cm);
+            void operator()(osg::Node* node, osg::NodeVisitor* nv);
+            CalloutManager* _cm;
+        };
+        friend struct SortCallback;
+    };
+
+} }
+
+#endif // OSGEARTH_CALLOUTS_H

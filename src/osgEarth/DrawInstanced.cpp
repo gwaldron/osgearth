@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,7 +31,7 @@
 #define LC "[DrawInstanced] "
 
 using namespace osgEarth;
-using namespace osgEarth::DrawInstanced;
+using namespace osgEarth::Util;
 
 // Ref: http://sol.gfxile.net/instancing.html
 
@@ -42,7 +42,7 @@ using namespace osgEarth::DrawInstanced;
 
 //----------------------------------------------------------------------
 
-namespace osgEarth { namespace DrawInstanced
+namespace osgEarth { namespace Util
 {
     class MakeTransformsStatic : public osg::NodeVisitor
     {
@@ -58,7 +58,7 @@ namespace osgEarth { namespace DrawInstanced
             traverse(node);
         }
     };
-}}
+} }
 
 namespace
 {
@@ -150,6 +150,8 @@ namespace
         osg::BoundingBox computeBound(const osg::Drawable&) const { return _box; }
     };
 }
+
+using namespace DrawInstanced;
 
 ConvertToDrawInstanced::ConvertToDrawInstanced(unsigned                numInstances,
                                                const osg::BoundingBox& bbox,
@@ -248,7 +250,7 @@ DrawInstanced::install(osg::StateSet* stateset)
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     vp->setName("DrawInstanced");
     osgEarth::Shaders pkg;
-    pkg.load( vp, pkg.InstancingVertex );
+    pkg.load( vp, pkg.Instancing );
 
     return true;
 }
@@ -265,7 +267,7 @@ DrawInstanced::remove(osg::StateSet* stateset)
         return;
 
     Shaders pkg;
-    pkg.unload( vp, pkg.InstancingVertex );
+    pkg.unload( vp, pkg.Instancing );
 }
 
 bool

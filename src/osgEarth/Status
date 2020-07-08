@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -63,6 +63,8 @@ namespace osgEarth
         static Status Error(const std::string& owner, const std::string& msg) { return Status(owner, msg); }
         static Status Error(const Code& code, const std::string& owner, const std::string& msg) { return Status(code, owner, msg); }
         std::string toString() const;
+        void set(const Code& code) { _code = code, _source = "", _msg = ""; }
+        void set(const Code& code, const std::string& msg) { _code = code, _source = "", _msg = msg; }
     private:
         Code _code;
         std::string _source;

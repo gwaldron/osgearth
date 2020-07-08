@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,14 +21,10 @@
 */
 
 #include <osg/Notify>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarth/OGRFeatureSource>
+#include <osgEarth/GeometryUtils>
 
-#include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthFeatures/FeatureCursor>
-
-using namespace osgEarth::Features;
-using namespace osgEarth::Drivers;
-using namespace osgEarth::Symbology;
+using namespace osgEarth;
 
 std::string attributeTypeToString( AttributeType type )
 {
@@ -47,7 +43,7 @@ std::string indent = "    ";
 void printStats(FeatureSource* features)
 {
     std::cout << "Feature Count:  " << features->getFeatureCount() << std::endl;
-    std::cout << "Geometry Type:  " << osgEarth::Symbology::Geometry::toString( features->getGeometryType() ) << std::endl;
+    std::cout << "Geometry Type:  " << osgEarth::Geometry::toString( features->getGeometryType() ) << std::endl;
 
     //Print the schema
     const FeatureSchema schema = features->getSchema();
@@ -160,14 +156,13 @@ int main(int argc, char** argv)
 
 
     //Open the feature source
-    OGRFeatureOptions featureOpt;
-    featureOpt.url() = filename;
-    featureOpt.openWrite() = write;
+    osg::ref_ptr<OGRFeatureSource> features = new OGRFeatureSource();
+    features->setURL(filename);
 
-    osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
-    Status s = features->open();
-    if (s.isError())
-        return usage(s.message());
+    if (features->open().isError())
+    {
+        return usage(features->getStatus().message());
+    }
 
     //Delete any features if requested
     if (toDelete.size() > 0)

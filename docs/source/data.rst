@@ -26,7 +26,7 @@ Help us add useful sources of Free data to this list.
 
     * `CGIAR`_ - World 90m elevation data derived from SRTM and ETOPO (`CGIAR European mirror`_)
     
-    * `SRTM30+`_ - Worldwide elevation coverage (including batymetry)
+    * `SRTM30+`_ - Worldwide elevation coverage (including bathymetry)
     
     * `GLCF`_ - UMD's Global Land Cover Facility (they also have mosaiced LANDSAT data)
     
@@ -102,6 +102,17 @@ Tips for Preparing your own Data
     
         gdaladdo -r average myimage.tif 2 4 8 16
 
+        
+**Spatial indexing for feature data**
+
+    Large vector feature datasets (e.g., shapefiles) will benefit greatly from a spatial index.
+    Using the *ogrinfo* tool (included with GDAL/OGR binary distributions) you can create a 
+    spatial index for your vector data like so::
+
+        ogrinfo -sql "CREATE SPATIAL INDEX ON myfile" myfile.shp
+
+    For shapefiles, this will generate a ".qix" file that contains the spatial index information.
+
 
 **Building tile sets with osgearth_conv**
 
@@ -114,68 +125,21 @@ Tips for Preparing your own Data
 
    To make a portable MBTiles file::
 
-       osgearth_conv --in driver gdal --in url myLargeFile.tif
-                     --out driver mbtiles --out filename myData.mbtiles
+       osgearth_conv --in driver GDALImage --in url myLargeFile.tif
+                     --out driver MBTilesImage --out filename myData.mbtiles
                      --out format jpg
 
    If you want to serve tiles from a web server, use TMS::
 
-       osgearth_conv --in driver gdal --in url myLargeData.tif
-                     --out driver tms --out url myLargeData/tms.xml
+       osgearth_conv --in driver GDALImage --in url myLargeData.tif
+                     --out driver TMSImage --out url myLargeData/tms.xml
                      --out format jpg
 
    That will yield a folder (called "myLargeData" in this case) that you can deploy on the web
    behind any standard web server (e.g. Apache).
-   
-   **Tip:** If you are tiling elevation data, you will need to add the ``--elevation`` option.
    
    **Tip:** The ``jpg`` format does NOT support transparency. If your data was an alpha
    channel, use ``png`` instead.
    
    Just type *osgearth_conv* for a full list of options. The ``--in`` and ``--out`` options
    correspond directly to properties you would normally include in an Earth file.
-   
-        
-**Building tile sets with the packager**
-
-    Another way to speed up imagery and elevation loading in osgEarth is to build tile sets.
-    
-    This process takes the source data and chops it up into a quad-tree hierarchy of discrete
-    *tiles* that osgEarth can load very quickly. Normally, if you load a GeoTIFF (for example),
-    osgEarth has to create the tiles at runtime in order to build the globe; Doing this beforehand
-    means less work for osgEarth when you run your application.
-
-    **osgearth_package**
-
-    *osgearth_package* is a utility that prepares source data for use in osgEarth. 
-    It is **optional** - you can run osgEarth against your raw source data 
-    and it will work fine - but you can use *osgearth_package* to build optimized 
-    tile sets that will maximize performance in most cases. Usage::
-    
-        osgearth_package file.earth --tms --out output_folder
-
-    This will load each of the data sources in the earth file 
-    (``file.earth`` in this case) and generate a TMS repository for each under the
-    folder ``output_folder``. You can also specify options::
-    
-        --out path                          Root output folder of the TMS repo
-        --ext extension                     Output file extension
-        --max-level level                   Maximum level of detail
-        --bounds xmin ymin xmax ymax        Bounds to package (in map coordinates; default=entire map)
-        --out-earth                         Generate an output earth file referencing the new repo
-        --overwrite                         Force overwriting of existing files
-        --keep-empties                      Writes fully transparent image tiles (normally discarded)
-        --db-options                        An optional OSG options string
-        --verbose                           Displays progress of the operation
-        
-**Spatial indexing for feature data**
-
-    Large vector feature datasets (e.g., shapefiles) will benefit greatly from a spatial index.
-    Using the *ogrinfo* tool (included with GDAL/OGR binary distributions) you can create a 
-    spatial index for your vector data like so::
-
-        ogrinfo -sql "CREATE SPATIAL INDEX ON myfile" myfile.shp
-
-    For shapefiles, this will generate a ".qix" file that contains the spatial index information.
-    Note! If you edit the shapefile, you will need to delete and regenerate the spatial index.
-    

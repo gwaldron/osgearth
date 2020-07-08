@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,11 +36,11 @@
 #endif
 
 #define JSON_ASSERT_UNREACHABLE assert( false )
-#define JSON_ASSERT( condition ) assert( condition );  // @todo <= change this into an exception throw
+#define JSON_ASSERT( condition ) assert( condition );
 #define JSON_ASSERT_MESSAGE( condition, message ) if (!( condition )) throw std::runtime_error( message );
 
 using namespace osgEarth;
-using namespace osgEarth::Json;
+using namespace osgEarth::Util::Json;
 
 const Value Value::null;
 const Value::Int Value::minInt = Value::Int( ~(Value::UInt(-1)/2) );
@@ -52,7 +52,7 @@ ValueAllocator::~ValueAllocator()
 {
 }
 
-namespace osgEarth { namespace Json {
+namespace osgEarth { namespace Util { namespace Json {
 
 class DefaultValueAllocator : public ValueAllocator
 {
@@ -93,22 +93,24 @@ public:
    }
 };
 
-} } // namespaces
+} } } // namespaces
 
-static ValueAllocator *&valueAllocator()
+namespace
 {
-   static DefaultValueAllocator defaultAllocator;
-   static ValueAllocator *valueAllocator = &defaultAllocator;
-   return valueAllocator;
+    static ValueAllocator *&valueAllocator()
+    {
+       static DefaultValueAllocator defaultAllocator;
+       static ValueAllocator *valueAllocator = &defaultAllocator;
+       return valueAllocator;
+    }
+
+    static struct DummyValueAllocatorInitializer {
+       DummyValueAllocatorInitializer() 
+       {
+          valueAllocator();      // ensure valueAllocator() statics are initialized before main().
+       }
+    } dummyValueAllocatorInitializer;
 }
-
-static struct DummyValueAllocatorInitializer {
-   DummyValueAllocatorInitializer() 
-   {
-      valueAllocator();      // ensure valueAllocator() statics are initialized before main().
-   }
-} dummyValueAllocatorInitializer;
-
 
 
 // //////////////////////////////////////////////////////////////////
@@ -1989,35 +1991,32 @@ Path::make( Value &root ) const
 
 
 
-namespace osgEarth {
-
-    namespace Json {
-
-        static inline bool 
-        in( Reader::Char c, Reader::Char c1, Reader::Char c2, Reader::Char c3, Reader::Char c4 )
-        {
-           return c == c1  ||  c == c2  ||  c == c3  ||  c == c4;
-        }
-
-        static inline bool 
-        in( Reader::Char c, Reader::Char c1, Reader::Char c2, Reader::Char c3, Reader::Char c4, Reader::Char c5 )
-        {
-           return c == c1  ||  c == c2  ||  c == c3  ||  c == c4  ||  c == c5;
-        }
-
-
-        static bool 
-        containsNewLine( Reader::Location begin, 
-                         Reader::Location end )
-        {
-           for ( ;begin < end; ++begin )
-              if ( *begin == '\n'  ||  *begin == '\r' )
-                 return true;
-           return false;
-        }
-
+namespace osgEarth { namespace Util { namespace Json
+{
+    static inline bool
+        in(Reader::Char c, Reader::Char c1, Reader::Char c2, Reader::Char c3, Reader::Char c4)
+    {
+        return c == c1 || c == c2 || c == c3 || c == c4;
     }
-}
+
+    static inline bool
+        in(Reader::Char c, Reader::Char c1, Reader::Char c2, Reader::Char c3, Reader::Char c4, Reader::Char c5)
+    {
+        return c == c1 || c == c2 || c == c3 || c == c4 || c == c5;
+    }
+
+
+    static bool
+        containsNewLine(Reader::Location begin,
+            Reader::Location end)
+    {
+        for (; begin < end; ++begin)
+            if (*begin == '\n' || *begin == '\r')
+                return true;
+        return false;
+    }
+
+} } }
 
 
 // Class Reader
@@ -2732,148 +2731,145 @@ Reader::getFormatedErrorMessages() const
 
 std::istream& operator>>( std::istream &sin, Value &root )
 {
-    Json::Reader reader;
+    Util::Json::Reader reader;
     bool ok = reader.parse(sin, root, true);
     //JSON_ASSERT( ok );
     if (!ok) throw std::runtime_error(reader.getFormatedErrorMessages());
     return sin;
 }
 
-namespace osgEarth {
-    namespace Json {
-
-        static void uintToString( unsigned int value, 
-                                  char *&current )
+namespace osgEarth { namespace Util { namespace Json
+{
+    static void uintToString(unsigned int value,
+        char *&current)
+    {
+        *--current = 0;
+        do
         {
-           *--current = 0;
-           do
-           {
-              *--current = (value % 10) + '0';
-              value /= 10;
-           }
-           while ( value != 0 );
-        }
-
-        std::string valueToString( Value::Int value )
-        {
-           char buffer[32];
-           char *current = buffer + sizeof(buffer);
-           bool isNegative = value < 0;
-           if ( isNegative )
-              value = -value;
-           uintToString( Value::UInt(value), current );
-           if ( isNegative )
-              *--current = '-';
-           assert( current >= buffer );
-           return current;
-        }
-
-
-        std::string valueToString( Value::UInt value )
-        {
-           char buffer[32];
-           char *current = buffer + sizeof(buffer);
-           uintToString( value, current );
-           assert( current >= buffer );
-           return current;
-        }
-
-        std::string valueToString( double value )
-        {
-           char buffer[32];
-        #ifdef __STDC_SECURE_LIB__ // Use secure version with visual studio 2005 to avoid warning.
-           sprintf_s(buffer, sizeof(buffer), "%#.16g", value); 
-        #else	
-           sprintf(buffer, "%#.16g", value); 
-        #endif
-           char* ch = buffer + strlen(buffer) - 1;
-           if (*ch != '0') return buffer; // nothing to truncate, so save time
-           while(ch > buffer && *ch == '0'){
-             --ch;
-           }
-           char* last_nonzero = ch;
-           while(ch >= buffer){
-             switch(*ch){
-             case '0':
-             case '1':
-             case '2':
-             case '3':
-             case '4':
-             case '5':
-             case '6':
-             case '7':
-             case '8':
-             case '9':
-               --ch;
-               continue;
-             case '.':
-               // Truncate zeroes to save bytes in output, but keep one.
-               *(last_nonzero+2) = '\0';
-               return buffer;
-             default:
-               return buffer;
-             }
-           }
-           return buffer;
-        }
-
-
-        std::string valueToString( bool value )
-        {
-           return value ? "true" : "false";
-        }
-
-        std::string valueToQuotedString( const char *value )
-        {
-            if (value == NULL)
-                return "";
-
-           // Not sure how to handle unicode...
-           if (strpbrk(value, "\"\\\b\f\n\r\t") == NULL)
-			   return std::string("\"") + std::string(value) + std::string("\"");
-           // We have to walk value and escape any special characters.
-           // Appending to std::string is not efficient, but this should be rare.
-           // (Note: forward slashes are *not* rare, but I am not escaping them.)
-           unsigned maxsize = strlen(value)*2 + 3; // allescaped+quotes+NULL
-           std::string result;
-           result.reserve(maxsize); // to avoid lots of mallocs
-           result += "\"";
-           for (const char* c=value; *c != 0; ++c){
-              switch(*c){
-                 case '\"':
-	         result += "\\\"";
-	         break;
-	         case '\\':
-	         result += "\\\\";
-	         break;
-	         case '\b':
-	         result += "\\b";
-	         break;
-	         case '\f':
-	         result += "\\f";
-	         break;
-	         case '\n':
-	         result += "\\n";
-	         break;
-	         case '\r':
-	         result += "\\r";
-	         break;
-	         case '\t':
-	         result += "\\t";
-	         break;
-	         case '/':
-	         // Even though \/ is considered a legal escape in JSON, a bare
-	         // slash is also legal, so I see no reason to escape it.
-	         // (I hope I am not misunderstanding something.)
-	         default:
-	            result += *c;
-              }
-           }
-           result += "\"";
-           return result;
-        }
+            *--current = (value % 10) + '0';
+            value /= 10;
+        } while (value != 0);
     }
-}
+
+    std::string valueToString(Value::Int value)
+    {
+        char buffer[32];
+        char *current = buffer + sizeof(buffer);
+        bool isNegative = value < 0;
+        if (isNegative)
+            value = -value;
+        uintToString(Value::UInt(value), current);
+        if (isNegative)
+            *--current = '-';
+        assert(current >= buffer);
+        return current;
+    }
+
+
+    std::string valueToString(Value::UInt value)
+    {
+        char buffer[32];
+        char *current = buffer + sizeof(buffer);
+        uintToString(value, current);
+        assert(current >= buffer);
+        return current;
+    }
+
+    std::string valueToString(double value)
+    {
+        char buffer[32];
+#ifdef __STDC_SECURE_LIB__ // Use secure version with visual studio 2005 to avoid warning.
+        sprintf_s(buffer, sizeof(buffer), "%#.16g", value);
+#else	
+        sprintf(buffer, "%#.16g", value);
+#endif
+        char* ch = buffer + strlen(buffer) - 1;
+        if (*ch != '0') return buffer; // nothing to truncate, so save time
+        while (ch > buffer && *ch == '0') {
+            --ch;
+        }
+        char* last_nonzero = ch;
+        while (ch >= buffer) {
+            switch (*ch) {
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+                --ch;
+                continue;
+            case '.':
+                // Truncate zeroes to save bytes in output, but keep one.
+                *(last_nonzero + 2) = '\0';
+                return buffer;
+            default:
+                return buffer;
+            }
+        }
+        return buffer;
+    }
+
+
+    std::string valueToString(bool value)
+    {
+        return value ? "true" : "false";
+    }
+
+    std::string valueToQuotedString(const char *value)
+    {
+        if (value == NULL)
+            return "";
+
+        // Not sure how to handle unicode...
+        if (strpbrk(value, "\"\\\b\f\n\r\t") == NULL)
+            return std::string("\"") + std::string(value) + std::string("\"");
+        // We have to walk value and escape any special characters.
+        // Appending to std::string is not efficient, but this should be rare.
+        // (Note: forward slashes are *not* rare, but I am not escaping them.)
+        unsigned maxsize = strlen(value) * 2 + 3; // allescaped+quotes+NULL
+        std::string result;
+        result.reserve(maxsize); // to avoid lots of mallocs
+        result += "\"";
+        for (const char* c = value; *c != 0; ++c) {
+            switch (*c) {
+            case '\"':
+                result += "\\\"";
+                break;
+            case '\\':
+                result += "\\\\";
+                break;
+            case '\b':
+                result += "\\b";
+                break;
+            case '\f':
+                result += "\\f";
+                break;
+            case '\n':
+                result += "\\n";
+                break;
+            case '\r':
+                result += "\\r";
+                break;
+            case '\t':
+                result += "\\t";
+                break;
+            case '/':
+                // Even though \/ is considered a legal escape in JSON, a bare
+                // slash is also legal, so I see no reason to escape it.
+                // (I hope I am not misunderstanding something.)
+            default:
+                result += *c;
+            }
+        }
+        result += "\"";
+        return result;
+    }
+} } }
 
 // Class Writer
 // //////////////////////////////////////////////////////////////////
@@ -3526,7 +3522,7 @@ StyledStreamWriter::normalizeEOL( const std::string &text )
 
 std::ostream& operator<<( std::ostream &sout, const Value &root )
 {
-   Json::StyledStreamWriter writer;
+   Util::Json::StyledStreamWriter writer;
    writer.write(sout, root);
    return sout;
 }

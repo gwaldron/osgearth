@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,9 +23,9 @@
 #include <osgEarth/Notify>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarthUtil/AtlasBuilder>
-#include <osgEarthSymbology/ResourceLibrary>
-#include <osgEarthSymbology/Skins>
+#include <osgEarth/AtlasBuilder>
+#include <osgEarth/ResourceLibrary>
+#include <osgEarth/Skins>
 #include <osgEarth/Utils>
 #include <osgEarth/Lighting>
 
@@ -47,6 +47,7 @@
 #define LC "[atlas] "
 
 using namespace osgEarth;
+using namespace osgEarth::Contrib;
 
 int
 usage(const char* msg, const char* name =0L)
@@ -102,15 +103,15 @@ build(osg::ArgumentParser& arguments)
         return usage("Input file not found");
 
     // open the resource library.
-    osg::ref_ptr<osgEarth::Symbology::ResourceLibrary> lib =
-        new osgEarth::Symbology::ResourceLibrary("unnamed", inCatalogPath);
+    osg::ref_ptr<osgEarth::ResourceLibrary> lib =
+        new osgEarth::ResourceLibrary("unnamed", inCatalogPath);
 
     if ( !lib->initialize(0L) )
         return usage("Error loading input catalog file");
-    
+
     // build the atlas.
-    osgEarth::Util::AtlasBuilder        builder;
-    osgEarth::Util::AtlasBuilder::Atlas atlas;
+    AtlasBuilder        builder;
+    AtlasBuilder::Atlas atlas;
 
     // max x/y dimensions:
     unsigned sizex, sizey;
@@ -121,14 +122,14 @@ build(osg::ArgumentParser& arguments)
     std::string outImageFile;
     if ( !arguments.read("--out-image", outImageFile) )
         outImageFile  = osgDB::getNameLessExtension(inCatalogFile) + "_atlas.osgb";
-        
+
     // the output catalog file describing the texture atlas contents:
     std::string outCatalogFile = osgDB::getSimpleFileName(outImageFile) + ".xml";
 
     // Whether to build RGB images
     bool rgb = arguments.read("--rgb");
     builder.setRGB( rgb );
-    
+
 
     // auxiliary atlas patterns:
     std::string pattern;
@@ -145,7 +146,7 @@ build(osg::ArgumentParser& arguments)
 
     osgDB::writeImageFile(*atlas._images.begin()->get(), outImageFile, writeOptions.get());
     OE_INFO << LC << "Wrote output image to \"" << outImageFile << "\"" << std::endl;
-    
+
     // write any aux images.
     const std::vector<std::string>& auxPatterns = builder.auxFilePatterns();
     for(unsigned i=0; i<auxPatterns.size(); ++i)
@@ -156,7 +157,7 @@ build(osg::ArgumentParser& arguments)
             osgDB::getFileExtension(outImageFile);
 
         osgDB::writeImageFile(*atlas._images[i + 1].get(), auxAtlasFile, writeOptions.get());
-        
+
         OE_INFO << LC << "Wrote auxiliary image to \"" << auxAtlasFile << "\"" << std::endl;
     }
 
@@ -194,8 +195,8 @@ show(osg::ArgumentParser& arguments)
     arguments.read("--aux", auxPattern);
 
     // open the resource library:
-    osg::ref_ptr<osgEarth::Symbology::ResourceLibrary> lib =
-        new osgEarth::Symbology::ResourceLibrary("temp", osgEarth::URI(inCatalogFile) );
+    osg::ref_ptr<osgEarth::ResourceLibrary> lib =
+        new osgEarth::ResourceLibrary("temp", osgEarth::URI(inCatalogFile) );
     if ( lib->initialize(0L) == false )
         return usage("Failed to load resource catalog");
 
@@ -220,9 +221,9 @@ show(osg::ArgumentParser& arguments)
         return usage("Specified layer does not exist");
 
     // geometry for the image layer:
-    std::vector<osg::ref_ptr<osg::Image> > images;
+    std::vector<osg::ref_ptr<const osg::Image> > images;
     osgEarth::ImageUtils::flattenImage(image.get(), images);
-    osg::Geode* geode = osg::createGeodeForImage(images[layer].get());
+    osg::Geode* geode = osg::createGeodeForImage(const_cast<osg::Image*>(images[layer].get()));
 
     const osg::BoundingBox& bbox = geode->getDrawable(0)->getBoundingBox();
     float width = bbox.xMax() - bbox.xMin();
@@ -237,7 +238,7 @@ show(osg::ArgumentParser& arguments)
     osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*c)[0].set(1,1,0,1);
     geom->setColorArray(c);
-    osgEarth::Symbology::SkinResourceVector skins;
+    osgEarth::SkinResourceVector skins;
     lib->getSkins(skins);
     OE_WARN << "num = " << skins.size() << "\n";
 
@@ -290,6 +291,8 @@ show(osg::ArgumentParser& arguments)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // print usage info.

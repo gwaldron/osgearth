@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #define LC "[GeometryClamper] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 #define ZOFFSETS_NAME "GeometryClamper::zOffsets"
 
@@ -185,7 +186,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
 
 void
-GeometryClamperCallback::onTileAdded(const TileKey&          key, 
+GeometryClamperCallback::onTileUpdate(const TileKey&          key, 
                                      osg::Node*              tile, 
                                      TerrainCallbackContext& context)
 {

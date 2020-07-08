@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,8 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/Controls>
+#include <osgEarth/ExampleResources>
 
 #define LC "[SilverLiningExtension] "
 

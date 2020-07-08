@@ -37,7 +37,7 @@
 
 #include <numeric>
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 using namespace osgEarth;
 
 #define LC "[SurfaceNode] "
@@ -203,10 +203,7 @@ HorizonTileCuller::isVisible(const osg::Vec3d& from) const
 
 const bool SurfaceNode::_enableDebugNodes = ::getenv("OSGEARTH_REX_DEBUG") != 0L;
 
-SurfaceNode::SurfaceNode(const TileKey&        tilekey,
-                         const MapInfo&        mapinfo,
-                         const RenderBindings& bindings,
-                         TileDrawable*         drawable)
+SurfaceNode::SurfaceNode(const TileKey& tilekey, TileDrawable* drawable)
 {
     _tileKey = tilekey;
 
@@ -264,10 +261,7 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
         return;
 
     // communicate the raster to the drawable:
-    if ( raster )
-    {
-        _drawable->setElevationRaster( raster, scaleBias );
-    }
+    _drawable->setElevationRaster( raster, scaleBias );
 
     // next compute the bounding box in local space:
     const osg::BoundingBox& box = _drawable->getBoundingBox();

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2018 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -88,10 +88,10 @@ ScreenSpaceLayoutOptions::getConfig() const
 namespace
 {
     /**
-     * The actual custom render bin
-     * This wants to be in the global scope for the dynamic registration to work,
-     * hence the annoyinging long class name
-     */
+    * The actual custom render bin
+    * This wants to be in the global scope for the dynamic registration to work,
+    * hence the annoyinging long class name
+    */
     class osgEarthScreenSpaceLayoutRenderBin : public osgUtil::RenderBin
     {
     public:
@@ -169,7 +169,7 @@ namespace
         static bool _vpInstalled;
     };
 
-    Threading::Mutex osgEarthScreenSpaceLayoutRenderBin::_vpMutex;
+    Threading::Mutex osgEarthScreenSpaceLayoutRenderBin::_vpMutex(OE_MUTEX_NAME);
     bool osgEarthScreenSpaceLayoutRenderBin::_vpInstalled = false;
 }
 
@@ -187,7 +187,7 @@ ScreenSpaceLayout::activate(osg::StateSet* stateSet) //, int binNum)
             binNum,
             OSGEARTH_SCREEN_SPACE_LAYOUT_BIN,
             osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
-        
+
         // Force a single shared layout bin per render stage
         stateSet->setNestRenderBins( false );
 
@@ -249,7 +249,7 @@ ScreenSpaceLayout::setOptions( const ScreenSpaceLayoutOptions& options )
     {
         // activate priority-sorting through the options.
         if ( options.sortByPriority().isSetTo( true ) &&
-             bin->_context->_options.sortByPriority() == false )
+            bin->_context->_options.sortByPriority() == false )
         {
             ScreenSpaceLayout::setSortFunctor(new SortByPriorityPreservingGeodeTraversalOrder());
         }
@@ -296,7 +296,7 @@ namespace
 namespace osgEarth
 {
     class ScreenSpaceLayoutExtension : public Extension,
-                                       public ScreenSpaceLayoutOptions
+        public ScreenSpaceLayoutOptions
     {
     public:
         META_OE_Extension(osgEarth, ScreenSpaceLayoutExtension, screen_space_layout);
@@ -313,6 +313,7 @@ namespace osgEarth
     };
 
     REGISTER_OSGEARTH_EXTENSION(osgearth_screen_space_layout, ScreenSpaceLayoutExtension);
+    REGISTER_OSGEARTH_EXTENSION(osgearth_screenspacelayout,   ScreenSpaceLayoutExtension);
     REGISTER_OSGEARTH_EXTENSION(osgearth_decluttering,        ScreenSpaceLayoutExtension);
 }
 

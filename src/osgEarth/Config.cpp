@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -135,10 +135,6 @@ Config::merge( const Config& rhs )
     // add in the new values.
     for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
         add( *c );
-    
-    // merge ref map
-    for( RefMap::const_iterator c = rhs._refMap.begin(); c != rhs._refMap.end(); ++c )
-        _refMap[c->first] = c->second;
 }
 
 const Config*

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #include <osg/Geometry>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 
 //------------------------------------------------------------------------
@@ -37,12 +38,11 @@ PagedLODWithNodeOperations::runPostMerge( osg::Node* node )
 {
     if ( _postMergeOps.valid() )
     {
-        _postMergeOps->mutex().readLock();
+        Threading::ScopedReadLock(_postMergeOps->mutex());
         for( NodeOperationVector::iterator i = _postMergeOps->begin(); i != _postMergeOps->end(); ++i )
         {
             i->get()->operator()( node );
         }
-        _postMergeOps->mutex().readUnlock();
     }
 }
 

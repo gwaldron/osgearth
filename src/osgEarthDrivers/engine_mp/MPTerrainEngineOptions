@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,13 +21,12 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TerrainOptions>
-#include <osgEarthSymbology/Color>
+#include <osgEarth/Color>
 #include <osg/LOD>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
 
     /**
      * Options for configuring the MP Engine driver.
@@ -42,7 +41,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             _color             ( Color::White ),
             _smoothing         ( false ),
             _normalMaps        ( false ),
-            _adaptivePolarRangeFactor( true )
+            _adaptivePolarRangeFactor( true ),
+            _attenuationDistance(10000.0),
+            _mercatorFastPath  ( false )
          {
             setDriver( "mp" );
             fromConfig( _conf );
@@ -89,7 +90,23 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
          * a geocentric map. Defaults to false.
          */
         optional<bool>& adaptivePolarRangeFactor() { return _adaptivePolarRangeFactor; }
-        const optional<bool>& adaptivePolarRangeFactor() const { return _adaptivePolarRangeFactor; }
+        const optional<bool>& adaptivePolarRangeFactor() const { return _adaptivePolarRangeFactor; }   
+        
+        /**
+         * Distance (m) over which to ramp min_range and max_range blending; Default = 0.
+         * @deprecated (remove after 2.10) Use VisibleLayer::attenuation instead.
+         */
+        optional<float>& attenuationDistance() { return _attenuationDistance; }
+        const optional<float>& attenuationDistance() const { return _attenuationDistance; }
+
+        /**
+         * Whether to enable the "fast path" for spherical Mercator image layers
+         * Default = true. If enabled, Mercator image tiles will be rendered on a
+         * geocentric map with no reprojection. The trade-off is higher texture
+         * memory usage and NPOT texture usage.
+         */
+        optional<bool>& enableMercatorFastPath() { return _mercatorFastPath; }
+        const optional<bool>& enableMercatorFastPath() const { return _mercatorFastPath; }
 
     protected:
         virtual Config getConfig() const {
@@ -101,6 +118,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.set( "elevation_smoothing", _smoothing );
             conf.set( "normal_maps", _normalMaps );
             conf.set( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
+            conf.set( "attenuation_distance", _attenuationDistance );
+            conf.set( "mercator_fast_path", _mercatorFastPath );
 
             return conf;
         }
@@ -119,6 +138,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.get( "elevation_smoothing", _smoothing );
             conf.get( "normal_maps", _normalMaps );
             conf.get( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
+            conf.get( "attenuation_distance", _attenuationDistance );
+            conf.get( "mercator_fast_path", _mercatorFastPath );
        }
 
         optional<float>               _skirtRatio;
@@ -129,6 +150,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<bool>                _smoothing;
         optional<bool>                _normalMaps;
         optional<bool>                _adaptivePolarRangeFactor;
+        optional<float>               _attenuationDistance;
+        optional<bool>                _mercatorFastPath;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

@@ -1,0 +1,158 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_INSTANCE_CLOUD
+#define OSGEARTH_INSTANCE_CLOUD 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Containers>
+#include <osgEarth/GLUtils>
+
+#include <osg/Geometry>
+#include <osg/GL>
+#include <osg/Texture2DArray>
+#include <osg/NodeVisitor>
+
+namespace osgEarth
+{
+    /**
+     * InstanceCloud is a helper class that facilitates primitive set
+     * instancing across multiple tiles.
+     */
+    class OSGEARTH_EXPORT InstanceCloud : public osg::Referenced
+    {
+    public:
+        struct DrawElementsIndirectCommand
+        {
+            GLuint  count;
+            GLuint  instanceCount;
+            GLuint  firstIndex;
+            GLuint  baseVertex;
+            GLuint  baseInstance;
+        };
+
+        struct InstancingData
+        {
+            unsigned contextID;
+            mutable DrawElementsIndirectCommand* commands;
+            mutable osg::ref_ptr<GLBuffer> commandBuffer;
+            GLsizei commandBufferSize;
+            GLuint pointsBuffer;
+            mutable osg::ref_ptr<GLBuffer> renderBuffer;
+            GLint renderBufferTileSize;
+            osg::Vec4Array* points;
+            unsigned numX, numY;
+            unsigned numTilesAllocated;
+            unsigned tileToDraw;
+            GLuint numIndices;
+            GLenum mode;
+            GLenum dataType;
+            GLint ssboOffsetAlignment;
+
+            InstancingData();
+            ~InstancingData();
+            void allocateGLObjects(osg::State* state, unsigned numTiles);
+            void releaseGLObjects(osg::State* state) const;
+
+            // pre-OSG 3.6 support
+            void (GL_APIENTRY * _glBufferStorage)(GLenum, GLuint, const void*, GLenum);
+        };
+
+    public:
+        InstanceCloud();
+
+        void setGeometry(osg::Geometry* geom);
+        osg::Geometry* getGeometry() { return _geom.get(); }
+
+        void setNumInstances(unsigned x, unsigned y);
+        
+        void allocateGLObjects(osg::RenderInfo&, unsigned numTiles);
+        
+        void preCull(osg::RenderInfo&);
+        void cullTile(osg::RenderInfo&, unsigned tileNum);
+        void postCull(osg::RenderInfo&);
+
+        void drawTile(osg::RenderInfo&, unsigned tileNum);
+
+        void endFrame(osg::RenderInfo&);
+
+        osg::BoundingBox computeBoundingBox() const;
+
+        virtual void releaseGLObjects(osg::State* state) const;
+
+    public:
+
+        InstancingData _data;
+        osg::ref_ptr<osg::Geometry> _geom;
+
+        struct Renderer : public osg::Geometry::DrawCallback
+        {
+            Renderer(InstancingData* data);
+            void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const;
+            InstancingData* _data;
+
+            // pre-OSG3.6 support
+            void (GL_APIENTRY * _glDrawElementsIndirect)(GLenum, GLenum, const void*);
+        };
+
+        struct Installer : public osg::NodeVisitor
+        {
+            Installer(InstancingData* data);
+            void apply(osg::Drawable& drawable);
+            InstancingData* _data;
+            osg::ref_ptr<Renderer> _callback;
+        };
+
+        //! Visitor that transforms a model into a single draw call.
+        struct OSGEARTH_EXPORT ModelCruncher : public osg::NodeVisitor
+        {
+            ModelCruncher();
+
+            void add(osg::Node*);
+
+            osg::Node* getNode() const { return _geom.get(); }
+            osg::Texture* getAtlas() const { return _atlas.get(); }
+
+            void apply(osg::Node& node);
+            void apply(osg::Geometry& geom);
+            bool pushStateSet(osg::Node&);
+            void popStateSet();
+            void addTextureToAtlas(osg::Texture*);
+            void finalize();
+
+            osg::ref_ptr<osg::Geometry> _geom;
+            osg::ref_ptr<osg::Texture2DArray> _atlas;
+            osg::fast_back_stack<osg::Texture*> _textureStack;
+            typedef Util::UnorderedMap<osg::Texture*, int> AtlasIndexLUT;
+            AtlasIndexLUT _atlasLUT;
+            std::vector<osg::ref_ptr<osg::Image> > _imagesToAdd;
+
+            osg::DrawElementsUShort* _primset;
+            osg::Vec3Array* _verts;
+            osg::Vec4Array* _colors;
+            osg::Vec3Array* _normals;
+            osg::Vec3Array* _texcoords;
+        };
+
+    };
+}
+
+#endif // OSGEARTH_INSTANCE_CLOUD

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #define LC "[ShaderLoader] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 
 typedef std::map<std::string,std::string> StringMap;
@@ -343,6 +344,13 @@ ShaderLoader::load(VirtualProgram*       vp,
         else
         {
             locationSet = false;
+        }
+
+        // Named?
+        if (vp->getName().empty())
+        {
+            std::string name = getPragmaValue(source, "vp_name");
+            vp->setName(name);
         }
 
         // If entry point is set, this is a function; otherwise a simple library.

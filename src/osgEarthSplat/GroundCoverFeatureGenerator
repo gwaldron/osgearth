@@ -1,0 +1,91 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_PROCEDURAL_GroundCoverFeatureGenerator
+#define OSGEARTH_PROCEDURAL_GroundCoverFeatureGenerator 1
+
+#include "Export"
+#include "GroundCoverLayer"
+#include <osgEarth/Map>
+#include <osgEarth/TerrainTileModelFactory>
+#include <osgEarth/FeatureCursor>
+#include <osg/Texture>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Splat
+{
+    /**
+     * Creates features representing the location and configuration
+     * of GroundCover instances.
+     */
+    class OSGEARTHSPLAT_EXPORT GroundCoverFeatureGenerator
+    {
+    public:
+        //! Construct a generator.
+        GroundCoverFeatureGenerator();
+
+        //! Sets the map in which to find layers (required)
+        void setMap(const Map* map);
+
+        //! Sets the model factory to use (required)
+        void setFactory(TerrainTileModelFactory* factory);
+
+        //! Sets the groundcover layer from which to generate features (required)
+        void setLayer(GroundCoverLayer* layer);
+
+        //! Sets the viewer position so the generator can select the appropriate
+        //! biome zone. Without this, or if you set it to GeoPoint::INVALID,
+        //! the generator will always query the first available zone.
+        void setViewPosition(const GeoPoint& location);
+
+        //! Adds a property name to store as a feature attribute
+        void addBillboardPropertyName(const std::string& name);
+
+        //! Returns the status of the generator - call this to 
+        //! see if there are any setup errors before calling getFeatures.
+        const Status& getStatus() const;
+
+        //! Populate the output with groundcover positions corresponding to the tile key.
+        //! The key's LOD should match the GroundCoverLayer's LOD; otherwise no features
+        //! will result.
+        Status getFeatures(const TileKey& key, FeatureList& output) const;
+
+        //! Populate the output with groundcover positions within the extent.
+        Status getFeatures(const GeoExtent& extent, FeatureList& output) const;
+        
+    private:
+        Status _status;
+        osg::ref_ptr<const Map> _map;
+        osg::ref_ptr<TerrainTileModelFactory> _factory;
+        osg::ref_ptr<GroundCoverLayer> _gclayer;
+        osg::ref_ptr<ImageLayer> _masklayer;
+        osg::ref_ptr<LandCoverLayer> _lclayer;
+        osg::ref_ptr<LandCoverDictionary> _lcdict;
+        osg::ref_ptr<osg::Texture> _noiseTexture;
+        CreateTileManifest _manifest;
+        std::vector<std::string> _propNames;
+        GeoPoint _location;
+
+        void initialize();
+        const BiomeZone& selectZone(const GeoPoint&) const;
+    };
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_PROCEDURAL_GroundCoverFeatureGenerator

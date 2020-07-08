@@ -1,0 +1,80 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_UTIL_LOG_DEPTH_BUFFER_H
+#define OSGEARTH_UTIL_LOG_DEPTH_BUFFER_H  1
+
+#include <osgEarth/Common>
+#include <osg/Camera>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Installs and controls a logarithmic depth buffer that improves
+     * rendering of close and far objects in the same view without
+     * z-fighting artifacts.
+     *
+     * Note: Only works with perspective projections. For an orthographic
+     * projection it is a NOP.
+     *
+     * Note: If you have any RTT cameras that deal with depth data,
+     * they need to use a log buffer as well! (e.g., ClampingTechnique)
+     *
+     * Another Note: For this to work properly, sufficient tessellation
+     * of objects very close to the camera is necessary. Huge polygons
+     * that intersect the near plane are likely to be clipped in their
+     * entirely. Increasing the tessellation can resolve that issue.
+     */
+    class OSGEARTH_EXPORT LogarithmicDepthBuffer
+    {
+    public:
+        /** Constructs a logarithmic depth buffer controller. */
+        LogarithmicDepthBuffer();
+
+        /**
+         * Whether to write to gl_FragDepth. (default = true)
+         * Pro: accurate clipping near the camera regardless of weak tessellation
+         * Con: writes to gl_FragDepth defeats early-Z testing on the GPU (hurting
+         *      performance in fill-limited scenarios)
+         *
+         * Set this before calling install().
+         */
+        void setUseFragDepth(bool value);
+        bool getUseFragDepth() const { return _useFragDepth; }
+
+        /** is it supported on this platform? */
+        bool supported() const { return _supported; }
+
+        /** Installs a logarithmic depth buffer on a camera. */
+        void install(osg::Camera* camera);
+
+        /** Uninstalls a logarithmic depth buffer from a camera. */
+        void uninstall(osg::Camera* camera);
+
+    protected:
+        osg::ref_ptr<osg::NodeCallback> _cullCallback;
+        bool _supported;
+        bool _useFragDepth;
+    };
+
+} }
+
+#endif // OSGEARTH_UTIL_LOG_DEPTH_BUFFER_H

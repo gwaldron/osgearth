@@ -1,0 +1,144 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURES_FEATURE_MODEL_LAYER
+#define OSGEARTH_FEATURES_FEATURE_MODEL_LAYER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/GeometryCompiler>
+#include <osgEarth/FeatureModelSource>
+#include <osgEarth/Session>
+#include <osgEarth/Style>
+#include <osgEarth/Layer>
+#include <osgEarth/LayerReference>
+
+namespace osgEarth {
+    class Map;
+}
+
+namespace osgEarth
+{
+    class FeatureNodeFactory;
+
+    /**
+     * Layer that creates a scene graph from feature data and symbology.
+     */
+    class OSGEARTH_EXPORT FeatureModelLayer : public VisibleLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options,
+                                        public FeatureModelOptions,
+                                        public GeometryCompilerOptions
+        {
+        public:
+            // constructors
+            Options();
+            Options(const ConfigOptions& options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            virtual Config getConfig() const;
+        protected: // LayerOptions
+            virtual void mergeConfig(const Config& conf);        
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, FeatureModelLayer, Options, VisibleLayer, FeatureModel);
+
+        //! The feature source from which to read geometry.
+        void setFeatureSource(FeatureSource* layer);
+        FeatureSource* getFeatureSource() const;
+
+        //! Stylesheet to apply to the features
+        void setStyleSheet(StyleSheet* value);
+        StyleSheet* getStyleSheet() const;
+
+        //! Set the dislpay layout (optional)
+        void setLayout(const FeatureDisplayLayout& layout);
+        const FeatureDisplayLayout& getLayout() const;
+
+        void setAlphaBlending(const bool& value);
+        const bool& getAlphaBlending() const;
+
+        void setEnableLighting(const bool& value);
+        const bool& getEnableLighting() const;
+
+        //! Forces a rebuild on this FeatureModelLayer.
+        void dirty();
+
+    public:
+        class CreateFeatureNodeFactoryCallback : public osg::Referenced {
+        public:
+            virtual FeatureNodeFactory* createFeatureNodeFactory(const Options&) =0;
+        };
+
+        //! Callback that will create a new FeatureNodeFactory for this layer to use
+        //! to transform feature data into OSG scene graphs
+        void setCreateFeatureNodeFactoryCallback(CreateFeatureNodeFactoryCallback* callback);
+        CreateFeatureNodeFactoryCallback* getCreateFeatureNodeFactoryCallback() const;
+
+
+    public: // Layer
+
+        // opens the layer and returns the status
+        virtual Status openImplementation();
+
+        // closes the layer
+        virtual Status closeImplementation();
+
+        // The Node representing this layer.
+        virtual osg::Node* getNode() const;
+
+        //! Extent of the feature layer, if available (INVALID if not)
+        virtual const GeoExtent& getExtent() const;
+
+        //! Serialization
+        virtual Config getConfig() const;
+
+    protected: // Layer
+        
+        // called by the map when this layer is added
+        virtual void addedToMap(const Map*);
+
+        // called by the map when this layer is removed
+        virtual void removedFromMap(const Map*);
+
+        // post-ctor initialization
+        virtual void init();
+
+    protected:
+
+        virtual ~FeatureModelLayer();
+
+        //! You can override this as an alternative to setting the CreateFeatureNodeFactoryCallback
+        virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const;
+
+    private:
+        osg::ref_ptr<class Session> _session;
+        osg::ref_ptr<osg::Group> _root;
+        bool _graphDirty;
+        osg::ref_ptr<CreateFeatureNodeFactoryCallback> _createFactoryCallback;
+        
+        void create();
+        FeatureNodeFactory* createFeatureNodeFactory();
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_FEATURES_FEATURE_MODEL_LAYER

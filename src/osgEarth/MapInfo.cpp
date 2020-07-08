@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,13 +20,13 @@
 #include <osgEarth/Map>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 #define LC "[MapInfo] "
 
 MapInfo::MapInfo( const Map* map ) :
 _profile               ( 0L ),
 _isGeocentric          ( true ),
-_isCube                ( false ),
 _elevationInterpolation( INTERP_BILINEAR )
 {
     setMap(map);
@@ -35,7 +35,6 @@ _elevationInterpolation( INTERP_BILINEAR )
 MapInfo::MapInfo( const MapInfo& rhs ) :
 _profile               ( rhs._profile ),
 _isGeocentric          ( rhs._isGeocentric ),
-_isCube                ( rhs._isCube ),
 _elevationInterpolation( rhs._elevationInterpolation )
 {
     //nop
@@ -47,9 +46,8 @@ MapInfo::setMap(const Map* map)
     if (map)
     {
         _profile = map->getProfile();
-        _isGeocentric = map->isGeocentric();
-        _isCube = map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
-        _elevationInterpolation = *map->getMapOptions().elevationInterpolation();
+        _isGeocentric = _profile->getSRS()->isGeographic();
+        _elevationInterpolation = map->getElevationInterpolation();
     }
     else
     {

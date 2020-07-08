@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #define LC "[ElevationQuery] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 
 ElevationQuery::ElevationQuery()
@@ -68,9 +69,6 @@ ElevationQuery::reset()
         // revisions are now in sync.
         _mapRevision = map->getDataModelRevision();
     }
-
-    // clear any active envelope
-    _envelope = 0L;
 }
 void
 ElevationQuery::sync()
@@ -269,41 +267,16 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     if (!_map.lock(map))
     {
         return false;
-    }    
+    } 
 
-    // tile size (resolution of elevation tiles)
-    unsigned tileSize = 257; // yes?
+    // Set the query resolution:
+    Distance resolution(desiredResolution, map->getSRS()->getUnits());
 
-    // default LOD:
-    unsigned lod = 23u;
-
-    // attempt to map the requested resolution to an LOD:
-    if (desiredResolution > 0.0)
-    {
-        int level = map->getProfile()->getLevelOfDetailForHorizResolution(desiredResolution, tileSize);
-        if ( level > 0 )
-            lod = level;
-    }
-
-    // do we need a new ElevationEnvelope?
-    if (!_envelope.valid() ||
-        !point.getSRS()->isHorizEquivalentTo(_envelope->getSRS()) ||
-        lod != _envelope->getLOD())
-    {        
-        _envelope = map->getElevationPool()->createEnvelope(point.getSRS(), lod);
-    }
-
-    // sample the elevation, and if requested, the resolution as well:
+    // Sample the pool
+    ElevationSample sample = map->getElevationPool()->getSample(point, resolution, &_workingSet);
+    out_elevation = sample.elevation().as(Units::METERS);
     if (out_actualResolution)
-    {
-        std::pair<float, float> result = _envelope->getElevationAndResolution(point.x(), point.y());
-        out_elevation = result.first;
-        *out_actualResolution = result.second;
-    }
-    else
-    {
-        out_elevation = _envelope->getElevation(point.x(), point.y());
-    }
+        *out_actualResolution = sample.resolution().as(map->getSRS()->getUnits());
 
     return out_elevation != NO_DATA_VALUE;
 }

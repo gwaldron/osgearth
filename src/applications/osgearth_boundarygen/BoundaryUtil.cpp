@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,7 +28,7 @@
 #include <osg/Point>
 #include <osg/TriangleIndexFunctor>
 #include <osg/ComputeBoundsVisitor>
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/Geometry>
 #include <osgEarth/SpatialReference>
 #include <osgDB/WriteFile>
 #include <map>
@@ -44,7 +44,7 @@ bool presortCompare (osg::Vec3d i, osg::Vec3d j)
   return i.x() < j.x();
 }
 
-double BoundaryUtil::_tolerance = 0.005;
+double BoundaryUtil::_tolerance = 0.01;
 
 void
 BoundaryUtil::setTolerance(double value)
@@ -66,6 +66,12 @@ osg::Vec3dArray* BoundaryUtil::getBoundary(osg::Node* modelNode, bool geocentric
     modelNode->accept(v);
 
     osg::ref_ptr<osg::Vec3dArray> verts = v.getVertices();
+    if (verts.valid() == false || verts->size() == 0)
+    {
+        OE_WARN << "No verts found in model!" << std::endl;
+        return NULL;
+    }
+
     verts = findHull(*verts);
 
     osg::EllipsoidModel em;
@@ -394,31 +400,22 @@ namespace
         }
 
         // add the contents of a geode to the topology
-        void apply( osg::Geode& geode )
+        void apply(osg::Drawable& drawable)
         {
-            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+            osg::Geometry* geometry = drawable.asGeometry();
+            if (geometry)
             {
-                osg::Drawable* drawable = geode.getDrawable( i );
-                if ( drawable->asGeometry() )
+                osg::Vec3Array* vertexList = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());
+                if ( vertexList )
                 {
-                    apply( drawable->asGeometry() );
+                    osg::TriangleIndexFunctor<TopologyBuilder> builder;
+                    builder._topology = &_topology;
+                    builder._vertexList = vertexList;
+                    if ( !_matrixStack.empty() )
+                        builder._local2world = _matrixStack.back();
+                    _topology._totalVerts += vertexList->size();
+                    geometry->accept( builder );
                 }
-            }
-        }
-
-        // add the contents of a Geometry to the topology
-        void apply( osg::Geometry* geometry )
-        {
-            osg::Vec3Array* vertexList = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());
-            if ( vertexList )
-            {
-                osg::TriangleIndexFunctor<TopologyBuilder> builder;
-                builder._topology = &_topology;
-                builder._vertexList = vertexList;
-                if ( !_matrixStack.empty() )
-                    builder._local2world = _matrixStack.back();
-                _topology._totalVerts += vertexList->size();
-                geometry->accept( builder );
             }
         }
 
@@ -523,11 +520,6 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     {
         // store this vertex in the result set:
         _result->push_back( *vptr );
-
-        if ( _result->size() == 56 )
-        {
-            int asd=0;
-        }
 
         // pull up the next 2D vertex (XY plane):
         osg::Vec2d vert ( vptr->x(), vptr->y() );
@@ -634,18 +626,18 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
 bool
 BoundaryUtil::simpleBoundaryTest(const osg::Vec3dArray& boundary)
 {
-  osg::ref_ptr<osgEarth::Symbology::Polygon> boundsPoly = new osgEarth::Symbology::Polygon();
+  osg::ref_ptr<osgEarth::Polygon> boundsPoly = new osgEarth::Polygon();
   for (int i=0; i < (int)boundary.size(); i++)
     boundsPoly->push_back(boundary[i]);
 
   osgEarth::Bounds boundsBounds = boundsPoly->getBounds();
 
-  osg::ref_ptr<osgEarth::Symbology::Polygon> outterPoly = new osgEarth::Symbology::Polygon();
+  osg::ref_ptr<osgEarth::Polygon> outterPoly = new osgEarth::Polygon();
   outterPoly->push_back(osg::Vec3d(boundsBounds.xMin() - 10.0, boundsBounds.yMin() - 10.0, boundsBounds.zMin()));
   outterPoly->push_back(osg::Vec3d(boundsBounds.xMax() + 10.0, boundsBounds.yMin() - 10.0, boundsBounds.zMin()));
   outterPoly->push_back(osg::Vec3d(boundsBounds.xMax() + 10.0, boundsBounds.yMax() + 10.0, boundsBounds.zMin()));
   outterPoly->push_back(osg::Vec3d(boundsBounds.xMin() - 10.0, boundsBounds.yMax() + 10.0, boundsBounds.zMin()));
 
-  osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly;
+  osg::ref_ptr<osgEarth::Geometry> outPoly;
   return outterPoly->difference(boundsPoly.get(), outPoly);
 }

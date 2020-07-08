@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 #include <osgDB/ObjectWrapper>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <fstream>
 
 #define LC "[KMZArchive] "
@@ -36,7 +36,7 @@ namespace
     {
         // get a handle on the file cache. This is a temporary setup just to get things
         // working.
-        static Threading::Mutex s_fcMutex;
+        static Threading::Mutex s_fcMutex(OE_MUTEX_NAME);
 
         static URIContext s_cache;
         if ( s_cache.empty() )

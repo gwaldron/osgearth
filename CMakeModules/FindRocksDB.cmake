@@ -1,6 +1,6 @@
 # Locate RocksDB
 
-SET(ROCKSDB_DIR "" CACHE PATH "Root directory of RocksDB distribution")
+SET(ROCKSDB_DIR "" CACHE PATH "Root directory of RocksDB distribution (OPTIONAL)")
 
 FIND_PATH(ROCKSDB_INCLUDE_DIR rocksdb/db.h
   PATHS
@@ -10,14 +10,13 @@ FIND_PATH(ROCKSDB_INCLUDE_DIR rocksdb/db.h
 if(RocksDB_FIND_REQUIRED_STATIC)
 	set(ROCKSDB_LIB "rocksdblib")
 else()
-	set(ROCKSDB_LIB "rocksdb")
+	set(ROCKSDB_LIB "rocksdb-shared")
 endif()
 
 find_library(ROCKSDB_LIBRARY NAMES ${ROCKSDB_LIB}
 			 PATHS
 			   ${ROCKSDB_DIR}
-			   ${ROCKSDB_DIR}/bin/Release
-			   ${ROCKSDB_DIR}/bin64_vs2013/Release
+			   ${ROCKSDB_DIR}/lib
 			 PATH_SUFFIXES lib lib64
 		)
 
@@ -25,8 +24,8 @@ find_library(ROCKSDB_LIBRARY NAMES ${ROCKSDB_LIB}
 find_library(ROCKSDB_LIBRARY_DEBUG NAMES ${ROCKSDB_LIB}d ${ROCKSDB_LIB}
 			 PATHS
 			   ${ROCKSDB_DIR}
-			   ${ROCKSDB_DIR}/bin/Debug
-			   ${ROCKSDB_DIR}/bin64_vs2013/Debug
+			   ${ROCKSDB_DIR}/debug
+			   ${ROCKSDB_DIR}/debug/lib
 			 PATH_SUFFIXES lib lib64
 			)
 

@@ -1,0 +1,101 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_BILLBOARD_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_BILLBOARD_SYMBOL_H 1
+
+#include <climits>
+
+#include <osgEarth/Common>
+#include <osgEarth/InstanceSymbol>
+#include <osg/Vec3f>
+
+namespace osgEarth
+{
+    namespace Util {
+        class InstanceResource;
+    }
+
+    /**
+     * Represents a 2D camera-facing image
+     */
+    class OSGEARTH_EXPORT BillboardSymbol : public InstanceSymbol
+    {
+    public:
+        META_Object(osgEarth, BillboardSymbol);
+
+        BillboardSymbol(const BillboardSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+        BillboardSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~BillboardSymbol() { }
+
+    public: // properties
+
+        //! URL or the top image
+        optional<StringExpression>& topURL() { return _topURL; }
+        const optional<StringExpression>& topURL() const { return _topURL; }
+
+        //! Width of the billboard image in meters */
+        optional<float>& width() { return _width; }
+        const optional<float>& width() const { return _width; }
+
+        //! Height of the billboard image in meters */
+        optional<float>& height() { return _height; }
+        const optional<float>& height() const { return _height; }
+
+        //! Percentage by which to vary width and height [0..1] default = 0
+        optional<float>& sizeVariation() { return _sizeVariation; }
+        const optional<float>& sizeVariation() const { return _sizeVariation; }
+
+        //! Weighting of this symbol versus others in the same group.
+        //! Should be an integer >= 1. Default = 1.
+        optional<unsigned>& selectionWeight() { return _selectionWeight; }
+        const optional<unsigned>& selectionWeight() const { return _selectionWeight; }
+        
+    public: // non-serialized properties (for programmatic use only)
+
+        void setSideImage(osg::Image* value) { _sideImage = value; }
+        osg::Image* getSideImage() const { return _sideImage.get(); }
+
+        void setTopImage(osg::Image* value) { _topImage = value; }
+        osg::Image* getTopImage() const { return _topImage.get(); }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
+    
+    public: // InstanceSymbol
+
+        /** Creates a new (empty) resource appropriate for this symbol */
+        virtual InstanceResource* createResource() const;
+
+    protected:
+        optional<StringExpression> _topURL;
+        optional<float> _width;
+        optional<float> _height;
+        optional<float> _sizeVariation;
+        optional<unsigned> _selectionWeight;
+        osg::ref_ptr<osg::Image> _sideImage;
+        osg::ref_ptr<osg::Image> _topImage;
+    };
+} // namespace osgEarth
+
+#endif

@@ -1,0 +1,146 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURES_SCRIPTENGINE_H
+#define OSGEARTH_FEATURES_SCRIPTENGINE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Script>
+#include <osgEarth/Config>
+#include <osgEarth/Threading>
+
+namespace osgEarth
+{
+    class Feature;
+}
+
+namespace osgEarth { namespace Util
+{
+  class FilterContext;
+
+  /**
+   * Configuration options for a models source.
+   */
+  class OSGEARTH_EXPORT ScriptEngineOptions : public DriverConfigOptions
+  {
+  public:
+      ScriptEngineOptions( const ConfigOptions& options =ConfigOptions() ) : 
+        DriverConfigOptions( options )
+      {
+          fromConfig(_conf);
+      }
+
+    virtual ~ScriptEngineOptions() { }
+
+  public: // properties
+
+      /** optional script source */
+      optional<Script>& script() { return _script; }
+      const optional<Script>& script() const { return _script; }
+
+  public:
+      virtual Config getConfig() const;
+
+  protected:
+      virtual void mergeConfig( const Config& conf );
+      
+  private:
+      void fromConfig( const Config& conf );
+
+      optional<Script> _script;
+  };
+
+  //--------------------------------------------------------------------
+
+  class OSGEARTH_EXPORT ScriptEngine : public osg::Object
+  {
+  public:
+    ScriptEngine(const ScriptEngineOptions& options =ScriptEngineOptions()) :
+        _script(options.script()) {}
+
+    virtual ~ScriptEngine() { }
+
+    /** Whether the engine supports the specified scripting language */
+    virtual bool supported(std::string lang) =0;
+
+    /** Whether the engine can run the specified script */
+    virtual bool supported(Script* script)
+    {
+        return script ? supported(script->getLanguage()) : false;
+    }
+
+    /** Impl-specific profile to set. */
+    void setProfile(const std::string& profile) { _profile = profile; }
+    const std::string& getProfile() const { return _profile; }
+
+    /** Runs a code snippet. */
+    virtual ScriptResult run(const std::string& code, Feature const* feature=0L, FilterContext const* context=0L) =0;
+
+    /** Runs a script */
+    virtual ScriptResult run(Script* script, Feature const* feature=0L, FilterContext const* context=0L)
+    {
+        return script ? run(script->getCode(), feature, context) : ScriptResult("", false);
+    }
+
+  public:
+    // META_Object specialization:
+    virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
+    virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
+    virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const ScriptEngine*>(obj)!=NULL; }
+    virtual const char* className() const { return "ScriptEngine"; }
+    virtual const char* libraryName() const { return "osgEarth"; }
+
+  protected:
+    // common script to be included in each call to run()
+    optional<Script> _script;
+    std::string _profile;
+  };
+
+  typedef std::list< osg::ref_ptr<ScriptEngine> > ScriptEngineList;
+  typedef std::map<std::string, osg::ref_ptr<ScriptEngine> > ScriptEngineMap;
+
+  //--------------------------------------------------------------------
+
+  class OSGEARTH_EXPORT ScriptEngineDriver : public osgDB::ReaderWriter
+  {
+  protected:
+    const ScriptEngineOptions& getScriptEngineOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+  };
+
+  //--------------------------------------------------------------------
+
+  class OSGEARTH_EXPORT ScriptEngineFactory
+  {   
+	public:
+    static ScriptEngineFactory* instance();
+
+    static ScriptEngine* create( const std::string& language, const std::string& engineName="", bool quiet =false);
+    static ScriptEngine* create( const Script& script, const std::string& engineName="", bool quiet =false);
+    static ScriptEngine* createWithProfile( const Script& script, const std::string& profile, const std::string& engineName="", bool quiet =false);
+    static ScriptEngine* create( const ScriptEngineOptions& options, bool quiet =false);
+
+  protected:
+    ScriptEngineFactory() { }
+
+    std::vector<std::string> _failedDrivers;
+    static ScriptEngineFactory* s_singleton;
+    static osgEarth::Threading::Mutex s_singletonMutex;
+  };
+} }
+
+#endif // OSGEARTH_FEATURES_SCRIPTENGINE_H

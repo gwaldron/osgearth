@@ -1,5 +1,5 @@
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,11 +26,14 @@
 #include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
+#include <osgDB/FileUtils>
+#include <osgDB/WriteFile>
 #include <osgEarth/Notify>
 #include <osgEarth/StringUtils>
 #include <stack>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 #undef LC
 #define LC "[GLTFWriter] "
@@ -39,9 +42,12 @@ using namespace osgEarth;
 class OSGtoGLTF : public osg::NodeVisitor
 {
 private:
-    typedef std::map<const osg::Node*, int> OsgNodeSequenceMap;
-    typedef std::map<const osg::BufferData*, int> ArraySequenceMap;
-    typedef std::map<const osg::Array*, int> AccessorSequenceMap;
+    typedef std::map<osg::ref_ptr< const osg::Node >, int> OsgNodeSequenceMap;
+    typedef std::map<osg::ref_ptr<const osg::BufferData>, int> ArraySequenceMap;
+    typedef std::map< osg::ref_ptr<const osg::Array>, int> AccessorSequenceMap;
+    typedef std::vector< osg::ref_ptr< osg::StateSet > > StateSetStack;
+
+    std::vector< osg::ref_ptr< osg::Texture > > _textures;
 
     tinygltf::Model& _model;
     std::stack<tinygltf::Node*> _gltfNodeStack;
@@ -49,6 +55,7 @@ private:
     ArraySequenceMap _buffers;
     ArraySequenceMap _bufferViews;
     ArraySequenceMap _accessors;
+    StateSetStack _ssStack;
 
 public:
     OSGtoGLTF(tinygltf::Model& model) : _model(model)
@@ -72,6 +79,24 @@ public:
         _gltfNodeStack.pop();
     }
 
+    bool pushStateSet(osg::StateSet* stateSet)
+    {
+        osg::Texture* osgTexture = dynamic_cast<osg::Texture*>(stateSet->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
+        if (!osgTexture)
+        {
+            return false;
+        }
+
+        _ssStack.push_back(stateSet);
+        return true;
+    }
+
+    void popStateSet()
+    {
+        _ssStack.pop_back();
+    }
+
+
     void apply(osg::Node& node)
     {
         bool isRoot = _model.scenes[_model.defaultScene].nodes.empty();
@@ -82,12 +107,24 @@ public:
             _model.scenes[_model.defaultScene].nodes.push_back(-1);
         }
 
+        bool pushedStateSet = false;
+        osg::ref_ptr< osg::StateSet > ss = node.getStateSet();
+        if (ss)
+        {
+            pushedStateSet = pushStateSet(ss.get());
+        }
+
         traverse(node);
+
+        if (ss && pushedStateSet)
+        {
+            popStateSet();
+        }
 
         _model.nodes.push_back(tinygltf::Node());
         tinygltf::Node& gnode = _model.nodes.back();
         int id = _model.nodes.size() - 1;
-        gnode.name = Stringify() << "_gltfNode_" << id;
+        gnode.name = Strings::Stringify() << "_gltfNode_" << id;
         _osgNodeSeqMap[&node] = id;
 
         if (isRoot)
@@ -220,11 +257,13 @@ public:
         accessor.byteOffset = 0;
         accessor.componentType = data->getDataType();
         accessor.count = data->getNumElements();
+        accessor.normalized = data->getNormalize();
 
         const osg::DrawArrays* da = dynamic_cast<const osg::DrawArrays*>(pset);
         if (da)
         {
             accessor.byteOffset = da->getFirst() * getBytesPerElement(data);
+            accessor.count = da->getCount();
         }
 
         //TODO: indexed elements
@@ -249,11 +288,155 @@ public:
         return accessorId;
     }
 
+    int getCurrentMaterial()
+    {
+        if (_ssStack.size() > 0)
+        {
+            osg::ref_ptr< osg::StateSet > stateSet = _ssStack.back();
+
+            // Try to get the current texture
+            osg::Texture* osgTexture = dynamic_cast<osg::Texture*>(stateSet->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
+            if (osgTexture)
+            {
+                // Try to find the existing texture, which corresponds to a material index
+                for (unsigned int i = 0; i < _textures.size(); i++)
+                {
+                    if (_textures[i].get() == osgTexture)
+                    {
+                        return i;
+                    }
+                }
+
+                osg::ref_ptr< const osg::Image > osgImage = osgTexture->getImage(0);
+                if (osgImage)
+                {
+                    int index = _textures.size();
+
+                    _textures.push_back(osgTexture);
+
+                                     
+                    // Flip the image before writing
+                    osg::ref_ptr< osg::Image > flipped = new osg::Image(*osgImage.get());
+                    flipped->flipVertical();
+
+                    std::string filename;
+
+                    std::string ext = "png";// osgDB::getFileExtension(osgImage->getFileName());
+
+                    // If the image has a filename try to hash it so we only write out one copy of it.  
+                    if (!osgImage->getFileName().empty())
+                    {
+                        filename = Stringify() << std::hex << ::Strings::hashString(osgImage->getFileName()) << "." << ext;                        
+
+                        if (!osgDB::fileExists(filename))
+                        {
+                            osgDB::writeImageFile(*flipped.get(), filename);
+                        }                        
+                    }
+                    else
+                    {                      
+                        // Otherwise just find a filename that doesn't exist
+                        int fileNameInc = 0;
+                        do
+                        {
+                            std::stringstream ss;
+                            ss << fileNameInc << "." << ext;
+                            filename = ss.str();
+                            fileNameInc++;
+                        } while (osgDB::fileExists(filename));
+                        osgDB::writeImageFile(*flipped.get(), filename);
+                    }
+                                   
+                    // Add the image
+                    // TODO:  Find a better way to write out the image url.  Right now it's assuming a ../.. scheme.
+                    Image image;
+                    std::stringstream buf;
+                    buf << "../../" << filename;
+                    image.uri = buf.str();//filename;
+                    _model.images.push_back(image);
+
+                    // Add the sampler
+                    Sampler sampler;
+                    osg::Texture::WrapMode wrapS = osgTexture->getWrap(osg::Texture::WRAP_S);
+                    osg::Texture::WrapMode wrapT = osgTexture->getWrap(osg::Texture::WRAP_T);
+                    osg::Texture::WrapMode wrapR = osgTexture->getWrap(osg::Texture::WRAP_R);
+
+                    // Validate the clamp mode to be compatible with webgl
+                    if ((wrapS == osg::Texture::CLAMP) || (wrapS == osg::Texture::CLAMP_TO_BORDER))
+                    {                     
+                        wrapS = osg::Texture::CLAMP_TO_EDGE;
+                    }
+                    if ((wrapT == osg::Texture::CLAMP) || (wrapT == osg::Texture::CLAMP_TO_BORDER))
+                    {                     
+                        wrapT = osg::Texture::CLAMP_TO_EDGE;
+                    }
+                    if ((wrapR == osg::Texture::CLAMP) || (wrapR == osg::Texture::CLAMP_TO_BORDER))
+                    {                     
+                        wrapR = osg::Texture::CLAMP_TO_EDGE;
+                    }                    
+                    sampler.wrapS = wrapS;
+                    sampler.wrapT = wrapT;
+                    sampler.wrapR = wrapR;
+                    sampler.minFilter = osgTexture->getFilter(osg::Texture::MIN_FILTER);
+                    sampler.magFilter = osgTexture->getFilter(osg::Texture::MAG_FILTER);
+
+                    _model.samplers.push_back(sampler);
+
+                    // Add the texture
+                    Texture texture;
+                    texture.source = index;
+                    texture.sampler = index;
+                    _model.textures.push_back(texture);
+
+                    // Add the material
+                    Material mat;
+                    Parameter textureParam;
+                    textureParam.json_double_value["index"] = index;
+                    textureParam.json_double_value["texCoord"] = 0;
+                    mat.values["baseColorTexture"] = textureParam;
+
+                    Parameter colorFactor;
+                    colorFactor.number_array.push_back(1.0);
+                    colorFactor.number_array.push_back(1.0);
+                    colorFactor.number_array.push_back(1.0);
+                    colorFactor.number_array.push_back(1.0);
+
+                    Parameter metallicFactor;
+                    metallicFactor.has_number_value = true;
+                    metallicFactor.number_value = 0.0;
+                    mat.values["metallicFactor"] = metallicFactor;
+
+                    Parameter roughnessFactor;
+                    roughnessFactor.number_value = 1.0;
+                    roughnessFactor.has_number_value = true;
+                    mat.values["roughnessFactor"] = roughnessFactor;
+
+                    mat.doubleSided = ((stateSet->getMode(GL_CULL_FACE) & osg::StateAttribute::ON) == 0);
+
+                    if (stateSet->getMode(GL_BLEND) & osg::StateAttribute::ON) {
+                        mat.alphaMode = "BLEND";
+                    }
+                    
+                    _model.materials.push_back(mat);
+                    return index;
+                }
+            }
+        }
+        return -1;
+    }
+
     void apply(osg::Drawable& drawable)
     {
         if (drawable.asGeometry())
         {
             apply(static_cast<osg::Node&>(drawable));
+
+            osg::ref_ptr< osg::StateSet > ss = drawable.getStateSet();
+            bool pushedStateSet = false;
+            if (ss.valid())
+            {
+                pushedStateSet = pushStateSet(ss.get());
+            }
 
             osg::Geometry* geom = drawable.asGeometry();
 
@@ -291,12 +474,46 @@ public:
                 getOrCreateBufferView(colors, GL_FLOAT, GL_ARRAY_BUFFER_ARB);
             }
 
+            osg::ref_ptr< osg::Vec2Array > texCoords = dynamic_cast<osg::Vec2Array*>(geom->getTexCoordArray(0));
+            if (!texCoords.valid())
+            {                
+                // See if we have 3d texture coordinates and convert them to vec2
+                osg::Vec3Array* texCoords3 = dynamic_cast<osg::Vec3Array*>(geom->getTexCoordArray(0));
+                if (texCoords3)
+                {
+                    texCoords = new osg::Vec2Array;
+                    for (unsigned int i = 0; i < texCoords3->size(); i++)
+                    {
+                        texCoords->push_back(osg::Vec2((*texCoords3)[i].x(), (*texCoords3)[i].y()));
+                    }
+                    //geom->setTexCoordArray(0, texCoords.get());
+                }
+            }
+
+            if (texCoords.valid())
+            {
+                getOrCreateBufferView(texCoords.get(), GL_FLOAT, GL_ARRAY_BUFFER_ARB);
+            }
+
             for (unsigned i = 0; i < geom->getNumPrimitiveSets(); ++i)
             {
                 osg::PrimitiveSet* pset = geom->getPrimitiveSet(i);
 
                 mesh.primitives.push_back(tinygltf::Primitive());
                 tinygltf::Primitive& primitive = mesh.primitives.back();
+
+                int currentMaterial = getCurrentMaterial();
+                if (currentMaterial >= 0)
+                {
+                    // Cesium may crash if using texture without texCoords
+                    // gltf_validator will report it as errors
+                    // ThreeJS seems to be fine though
+                    // TODO: check if the material actually has any texture in it
+                    // TODO: the material should not be added if not used anywhere
+                    if (texCoords.valid()) {
+                        primitive.material = currentMaterial;
+                    }
+                }
 
                 primitive.mode = pset->getMode();
 
@@ -309,11 +526,17 @@ public:
                 posacc.minValues.push_back(posMin.z());
                 posacc.maxValues.push_back(posMax.x());
                 posacc.maxValues.push_back(posMax.y());
-                posacc.maxValues.push_back(posMax.z());
+                posacc.maxValues.push_back(posMax.z());                
 
                 getOrCreateAccessor(normals, pset, primitive, "NORMAL");
 
                 getOrCreateAccessor(colors, pset, primitive, "COLOR_0");
+                getOrCreateAccessor(texCoords.get(), pset, primitive, "TEXCOORD_0");
+            }
+
+            if (pushedStateSet)
+            {
+                popStateSet();
             }
         }
     }

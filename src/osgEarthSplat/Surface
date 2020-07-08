@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,7 +20,6 @@
 #define OSGEARTH_PROCEDURAL_SURFACE 1
 
 #include "Export"
-#include "Coverage"
 #include "SplatCatalog"
 #include <osgEarth/Common>
 #include <osgEarth/Config>

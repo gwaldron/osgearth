@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,26 +23,26 @@
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
 #include <osgEarth/NodeUtils>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Ephemeris>
-#include <osgEarthUtil/Sky>
-#include <osgEarthUtil/LatLongFormatter>
-#include <osgEarthUtil/Controls>
-#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/Ephemeris>
+#include <osgEarth/Sky>
+#include <osgEarth/LatLongFormatter>
+#include <osgEarth/Controls>
+#include <osgEarth/PlaceNode>
+#include <osgDB/ReadFile>
 
 #define LC "[osgearth_ephemeris] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
 
 namespace ui = osgEarth::Util::Controls;
 
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " <file.earth> --sky" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -72,7 +72,7 @@ struct App
         }
         readout->setText(sky->getDateTime().asRFC1123());
     }
-    
+
     bool _playing;
 };
 
@@ -100,6 +100,8 @@ ui::Container* createUI(App& app)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -118,11 +120,11 @@ main(int argc, char** argv)
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     osg::ref_ptr<osg::Image> mark = osgDB::readRefImageFile("../data/placemark32.png");
-    
+
     App app;
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
@@ -137,9 +139,9 @@ main(int argc, char** argv)
 
         app.moonPos = new PlaceNode("Moon", Style(), mark.get());
         app.moonPos->setDynamic(true);
-        mapNode->addChild( app.moonPos.get() ); 
+        mapNode->addChild( app.moonPos.get() );
 
-        app.sky = osgEarth::findTopMostNodeOfType<SkyNode>(node);        
+        app.sky = osgEarth::findTopMostNodeOfType<SkyNode>(node);
         const Ephemeris* ephemeris = 0L;
         if ( app.sky )
         {

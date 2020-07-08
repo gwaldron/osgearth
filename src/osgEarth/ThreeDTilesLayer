@@ -1,0 +1,89 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_THREED_TILES_LAYER_H
+#define OSGEARTH_THREED_TILES_LAYER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/ShaderUtils>
+#include <osgEarth/TDTiles>
+#include <osgEarth/URI>
+#include <osgEarth/Threading>
+
+namespace osgEarth { namespace Contrib
+{    
+    /**
+     * Layer that contains a 3D tiles tileset
+     */
+    class OSGEARTH_EXPORT ThreeDTilesLayer : public VisibleLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
+        public:        
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(URI, url);
+            OE_OPTION(float, maximumScreenSpaceError);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
+    public:
+        META_Layer(osgEarth, ThreeDTilesLayer, Options, VisibleLayer, Model);
+
+    public:
+        //! URL from which to load the tileset from        
+        void setURL(const URI& url);
+        const URI& getURL() const;
+
+        //! The maximum screen space error for this layer
+        float getMaximumScreenSpaceError() const;
+        void setMaximumScreenSpaceError(float maximumScreenSpaceError);
+
+        osgEarth::Contrib::ThreeDTiles::ThreeDTilesetNode* getTilesetNode() {
+            return _tilesetNode.get();
+        }
+
+    public: // Layer
+
+        //! Open the layer and return its status
+        virtual Status openImplementation();
+
+        //! Node created by this model layer
+        virtual osg::Node* getNode() const;
+
+    protected: // Layer
+
+        //! post-ctor initialization
+        virtual void init();
+
+    protected:
+
+        osg::ref_ptr< Threading::ThreadPool > _threadPool;
+
+        virtual ~ThreeDTilesLayer();
+
+        osg::ref_ptr<osgEarth::Contrib::ThreeDTiles::ThreeDTilesetNode> _tilesetNode;
+    };
+} }
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::ThreeDTilesLayer::Options);
+
+#endif // OSGEARTH_THREED_TILES_LAYER_H

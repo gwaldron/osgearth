@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2018 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,21 +31,18 @@
 #include <osgEarth/TileVisitor>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
+#include <osgEarth/TMS>
 
-#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarth/OGRFeatureSource>
 
-#include <osgEarthUtil/TMSPackager>
-
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <osgEarthDrivers/tms/TMSOptions>
+#include <osgEarth/TMSPackager>
 
 #include <iostream>
 #include <sstream>
 #include <iterator>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
-using namespace osgEarth::Drivers;
+using namespace osgEarth::Contrib;
 
 #define LC "[osgearth_package] "
 
@@ -166,22 +163,19 @@ makeTMS( osg::ArgumentParser& args )
     while (args.read("--index", index))
     {
         //Open the feature source
-        OGRFeatureOptions featureOpt;
-        featureOpt.url() = index;
-
-        osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
-        Status s = features->open();
-        if (s.isError())
-            return usage(s.message());
-
-        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(0L);
-        while (cursor.valid() && cursor->hasMore())
+        osg::ref_ptr<OGRFeatureSource> features = new OGRFeatureSource();
+        features->setURL(index);
+        if (features->open().isOK())
         {
-            osg::ref_ptr< Feature > feature = cursor->nextFeature();
-            osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
-            GeoExtent ext( feature->getSRS(), featureBounds );
-            ext = ext.transform( mapNode->getMapSRS() );
-            bounds.push_back( ext.bounds() );
+            osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(Query::ALL, 0L);
+            while (cursor.valid() && cursor->hasMore())
+            {
+                osg::ref_ptr< Feature > feature = cursor->nextFeature();
+                osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
+                GeoExtent ext( feature->getSRS(), featureBounds );
+                ext = ext.transform( mapNode->getMapSRS() );
+                bounds.push_back( ext.bounds() );
+            }
         }
     }
 
@@ -418,14 +412,10 @@ makeTMS( osg::ArgumentParser& args )
                 std::string layerFolder = toLegalFileName( packager.getLayerName() );
 
                 // new TMS driver info:
-                TMSOptions tms;
-                tms.url() = URI(
-                    osgDB::concatPaths( layerFolder, "tms.xml" ),
-                    outEarthFile );
-
-                ImageLayerOptions layerOptions( packager.getLayerName(), tms );
-
-                outMap->addLayer( new ImageLayer( layerOptions ) );
+                TMSImageLayer* layer = new TMSImageLayer();
+                layer->setName(packager.getLayerName());
+                layer->setURL(URI(osgDB::concatPaths( layerFolder, "tms.xml" ), outEarthFile));
+                outMap->addLayer(layer);
             }
         }
 
@@ -454,15 +444,10 @@ makeTMS( osg::ArgumentParser& args )
             {
                 std::string layerFolder = toLegalFileName( packager.getLayerName() );
 
-                // new TMS driver info:
-                TMSOptions tms;
-                tms.url() = URI(
-                    osgDB::concatPaths( layerFolder, "tms.xml" ),
-                    outEarthFile );
-
-                ElevationLayerOptions layerOptions( packager.getLayerName(), tms );
-
-                outMap->addLayer( new ElevationLayer( layerOptions ) );
+                TMSElevationLayer* layer = new TMSElevationLayer();
+                layer->setName(packager.getLayerName());
+                layer->setURL(URI(osgDB::concatPaths( layerFolder, "tms.xml" ), outEarthFile));
+                outMap->addLayer(layer);
             }
         }
 
@@ -472,7 +457,7 @@ makeTMS( osg::ArgumentParser& args )
     // Finally, write an earth file if requested:
     if( outMap.valid() )
     {
-        MapNodeOptions outNodeOptions = mapNode->getMapNodeOptions();
+        ConfigOptions outNodeOptions(mapNode->getConfig());
         osg::ref_ptr<MapNode> outMapNode = new MapNode( outMap.get(), outNodeOptions );
         if( !osgDB::writeNodeFile( *outMapNode.get(), outEarthFile ) )
         {

@@ -5,7 +5,7 @@ env:
   #   via the "travis encrypt" command using the project repo's public key
   - secure: "vLe6I4mS64oabuhMJ5NHyJLJHxudgErRoKpoXZP9/8A6rx/TmZ/gYCmtENmKublSIyOmjoVoZ8lvw10a1zCgnlQEjdijxwPvO1IN4XlesjhbxFRysmYAQZsFifZ91ta/0Ajw6NV6ofhmWCBRUc2yCEexnf+xvj80+v6tq2q3YFIL0shHjm7c3Z5nOuKPTsxLEAtHYurUM3ao4gcppc5lOeOT+r+ENE0MCQwSKOXiXh4BWCkP9cQvKel8ineBl3T6qRrT0OQQ/OBeSba/orVrf6Y3Ls+BYM48NjxG0TN2PIP68eJVQnvPNZ+j42MypkrFckcJDM/N/1pI6ZiY0PrzPMX3SisP5WDKimowWuyaI/pdOO2tBqPIIdZvuAoUyh5MYBBHLGeHf4jCD+YwY2JcOdStHgkp4NE2JqjXvP9V4TizFjrZ1jb+MXHwVKF4mleo6Eoq+qOdj8Y9iFhwmpuf9oGgoEIWR4uxgrGwiSRVVQ4o5uouP1MENvqaFB5JMTep/PSAWNLw18sgza3NiEhardI73bvl/xEvJssdeoGzpRl6YAo+sprZ93wsuzSh2beils8f1CjKQsuoDIASYre93qGEdUXRnhQvF8wmlYnQLJamYEMN37yduzZ2OHuA7+1kkMSTjPZAIoEsuyOG+25eHXnPQBECe6iqWFuKVgzdero="
 os: linux
-dist: trusty
+dist: xenial
 sudo: required
 language: cpp
 compiler:
@@ -13,12 +13,15 @@ compiler:
 before_install:
 # Try coverity workaround here:  https://github.com/travis-ci/travis-ci/issues/6142
 - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
-#- sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
-- sudo echo "deb http://dl.bintray.com/jasonbeverage/pelicanmapping trusty main" | sudo tee -a /etc/apt/sources.list
+- curl https://bintray.com/user/downloadSubjectPublicKey?username=bintray -o bintray.asc
+- sudo apt-key add bintray.asc
+- sudo echo "deb http://dl.bintray.com/jasonbeverage/pelicanmapping xenial main" | sudo tee -a /etc/apt/sources.list
+- sudo apt-get update -qq
+- sudo apt-get install -y python-software-properties software-properties-common
+- sudo add-apt-repository ppa:ubuntugis/ppa --yes
 - sudo apt-get update -qq
 - sudo apt-get install -y cmake
-#- sudo apt-get install -y libopenscenegraph-dev
-- sudo apt-get install -y --force-yes openscenegraph=3.4.1
+- sudo apt-get install -y --force-yes openscenegraph=3.6.3
 - sudo apt-get install -y libgdal-dev
 - sudo apt-get install -y libgeos-dev
 - sudo apt-get install -y libsqlite3-dev

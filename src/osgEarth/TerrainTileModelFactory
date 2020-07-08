@@ -25,40 +25,54 @@
 #include <osgEarth/TerrainEngineRequirements>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Progress>
+#include <osgEarth/Threading>
+#include <osgEarth/ElevationPool>
 
 namespace osgEarth
 {
+    class ElevationLayerVector;
+    class Map;
+
     /**
-     * Filter you can pass to TerrainTileModelFactory::createTileModel
+     * Set of layers that the TerrainTileModelFactory can use
+     * to determine what data to create for a tile. If the manifest
+     * is empty, that represents that the factory should create 
+     * data for ALL available layers. But if it contains at least
+     * one entry, the creation is limited to those entries.
      */
-    class CreateTileModelFilter
+    class OSGEARTH_EXPORT CreateTileManifest
     {
     public:
-        CreateTileModelFilter() : _elevation(false) { }
+        CreateTileManifest();
 
-        /** Whether to fetch elevation data and normal maps */
-        optional<bool>& elevation() { return _elevation; }
-        const optional<bool>& elevation() const { return _elevation; }
+        //! Request data for a layer
+        void insert(const Layer* layer);
 
-        /** List of other layers to accept */
-        std::set<UID>& layers() { return _layers; }
-        const std::set<UID>& layers() const { return _layers; }
+        //! Does the manifest exclude this layer?
+        bool excludes(const Layer* layer) const;
 
-        bool accept(const Layer* layer) const {
-            return empty() || _layers.find(layer->getUID()) != _layers.end();
-        }
+        //! Is the manifest empty (meaning ALL available layers should be loaded)?
+        bool empty() const;
 
-        bool empty() const {
-            return !_elevation.isSet() && _layers.empty();
-        }
+        //! Are the layers in the manifest up to date with the layers in the map?
+        bool inSyncWith(const Map*) const;
 
-        void clear() {
-            _elevation.unset();
-            _layers.clear();
-        }
-    protected:
-        optional<bool> _elevation;
-        std::set<UID> _layers;
+        //! Update all the manifest layers with the latest layer revisions from the map
+        void updateRevisions(const Map*);
+
+        bool includes(UID uid) const;
+
+        bool includes(const Layer* layer) const;
+
+        bool includesElevation() const;
+
+        bool includesLandCover() const;
+
+    private:
+        typedef vector_map<UID, int> LayerTable;
+        LayerTable _layers;
+        bool _includesElevation;
+        bool _includesLandCover;
     };
 
     /**
@@ -68,22 +82,32 @@ namespace osgEarth
     {
     public:
         /** Constructor */
-        TerrainTileModelFactory(
-            const TerrainOptions& options);
+        TerrainTileModelFactory(const TerrainOptions& options);
 
         /**
          * Creates a tile model and populates it with data from the map.
          *
-         * @param frame        Map frame from which to read source data
+         * @param map          Map frame from which to read source data
          * @param key          Tile key for which to create the model
-         * @param layers       Set of layer UIDs for which to fetch data; NULL => all layers
+         * @param manifest     Set of layers for which to fetch data (empty => all layers)
          * @param requirements Hints that tell the factory what types of data to add
          * @param progress     Progress tracking callback
          */
         virtual TerrainTileModel* createTileModel(
             const Map*                       map,
             const TileKey&                   key,
-            const CreateTileModelFilter&     filter,
+            const CreateTileManifest&        manifest,
+            const TerrainEngineRequirements* requirements,
+            ProgressCallback*                progress);
+
+        //! Same as createTileModel, except that this method will create "fallback"
+        //! data for each layer that doesn't have real data at the TileKey's LOD.
+        //! The texture matrix will each layer will provide a scale and bias for
+        //! sampling the corresponding texture.
+        virtual TerrainTileModel* createStandaloneTileModel(
+            const Map*                       map,
+            const TileKey&                   key,
+            const CreateTileManifest&        manifest,
             const TerrainEngineRequirements* requirements,
             ProgressCallback*                progress);
 
@@ -94,82 +118,80 @@ namespace osgEarth
             const Map*                       map,
             const TerrainEngineRequirements* reqs,
             const TileKey&                   key,
-            const CreateTileModelFilter&     filter,
-            ProgressCallback*                progress);
+            const CreateTileManifest&        manifest,
+            ProgressCallback*                progress,
+            bool                             standalone);
+
+        virtual TerrainTileImageLayerModel* addImageLayer(
+            TerrainTileModel* model,
+            ImageLayer* layer,
+            const TileKey& key,
+            const TerrainEngineRequirements* reqs,
+            ProgressCallback* progress);
+
+        virtual void addStandaloneImageLayer(
+            TerrainTileModel* model,
+            ImageLayer* layer,
+            const TileKey& key,
+            const TerrainEngineRequirements* reqs,
+            ProgressCallback* progress);
 
         virtual void addElevation(
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
-            const CreateTileModelFilter& filter,
+            const CreateTileManifest&    manifest,
             unsigned                     border,
             ProgressCallback*            progress);
 
-        virtual void addPatchLayers(
+        virtual void addStandaloneElevation(
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
-            const CreateTileModelFilter& filter,
+            const CreateTileManifest&    manifest,
+            unsigned                     border,
             ProgressCallback*            progress);
+
+        virtual TerrainTileLandCoverModel* addLandCover(
+            TerrainTileModel*            model,
+            const Map*                   map,
+            const TileKey&               key,
+            const TerrainEngineRequirements* requirements,
+            const CreateTileManifest&    manifest,
+            ProgressCallback*            progress);
+
+        virtual void addStandaloneLandCover(
+            TerrainTileModel*            model,
+            const Map*                   map,
+            const TileKey&               key,
+            const TerrainEngineRequirements* requirements,
+            const CreateTileManifest&    manifest,
+            ProgressCallback*            progress);
+
+        //virtual void addPatchLayers(
+        //    TerrainTileModel*            model,
+        //    const Map*                   map,
+        //    const TileKey&               key,
+        //    const CreateTileManifest&    manifest,
+        //    ProgressCallback*            progress,
+        //    bool                         fallback);
 
     protected:
 
-        /** Find a heightfield in the cache, or fetch it from the source. */
-        bool getOrCreateHeightField(
-            const Map*                      map,
-            const TileKey&                  key,
-            ElevationSamplePolicy           samplePolicy,
-            ElevationInterpolation          interpolation,
-            unsigned                        border,
-            osg::ref_ptr<osg::HeightField>& out_hf,
-            osg::ref_ptr<NormalMap>&        out_normalMap,
-            ProgressCallback*               progress);
-
         osg::Texture* createImageTexture(
-            osg::Image*       image,
+            const osg::Image* image,
             const ImageLayer* layer) const;
 
         osg::Texture* createCoverageTexture(
-            osg::Image*       image,
-            const ImageLayer* layer) const;
+            const osg::Image* image) const;
 
         osg::Texture* createElevationTexture(
-            osg::Image* image) const;
+            const osg::Image* image) const;
 
-        osg::Texture* createNormalTexture(
-            osg::Image* image,
-            bool compress
-            ) const;
-
-        const TerrainOptions _options;
-        
-
-        /** Key into the height field cache */
-        struct HFCacheKey 
-        {
-            TileKey               _key;
-            Revision              _revision;
-            ElevationSamplePolicy _samplePolicy;
-
-            bool operator < (const HFCacheKey& rhs) const {
-                if ( _key < rhs._key ) return true;
-                if ( rhs._key < _key ) return false;
-                if ( _revision < rhs._revision ) return true;
-                if ( _revision > rhs._revision ) return false;
-                return _samplePolicy < rhs._samplePolicy;
-            }
-        };
-
-        struct HFCacheValue
-        {
-            osg::ref_ptr<osg::HeightField> _hf;
-            osg::ref_ptr<NormalMap> _normalMap;
-        };
-        //typedef osg::ref_ptr<osg::HeightField> HFCacheValue;
-        typedef LRUCache<HFCacheKey, HFCacheValue> HFCache;
-        HFCache _heightFieldCache;
-        bool    _heightFieldCacheEnabled;
-        osg::ref_ptr<osg::Texture> _emptyTexture;
+        const TerrainOptions& _options;
+        osg::ref_ptr<osg::Texture> _emptyColorTexture;
+        osg::ref_ptr<osg::Texture> _emptyLandCoverTexture;
+        ElevationPool::WorkingSet _workingSet;
     };
 }
 

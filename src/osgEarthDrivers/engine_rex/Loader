@@ -20,23 +20,25 @@
 #define OSGEARTH_REX_LOADER 1
 
 #include "Common"
+#include "FrameClock"
 
 #include <osgEarth/IOTypes>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/TileKey>
 #include <osgEarth/Progress>
-
+#include <osgEarth/Metrics>
 #include <osg/ref_ptr>
 #include <osg/Group>
 
 #include <osgDB/Options>
 #include <set>
 
-namespace osgEarth {
+namespace osgEarth
+{
     class TerrainEngineNode;
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     /**
      * Interface for a utility to satisty Tile loading requests.
@@ -63,17 +65,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const TileKey& getTileKey() const { return _key; }
 
             /** Invoke the operation - not safe to alter the graph */
-            virtual void invoke(ProgressCallback*) { }
+            virtual bool run(ProgressCallback*) =0;
 
-            /** Apply the results of the invoke operation - runs safely in update stage */
-            virtual void apply(const osg::FrameStamp*) { }
+            /** Apply the results of the invoke operation - runs safely in update stage.
+                If this returns false, the request needs to be rerun. */
+            virtual bool merge() =0;
 
-            /** Request apply() should call this to mark a node as "changed" */
-            void addToChangeSet(osg::Node* Node);
-            
-            /** Loader calls this to process and reset the change set */
-            ChangeSet& getChangeSet() { return _nodesChanged; }
-
+            //! Comparison for sorting
             bool operator()(const Request& lhs, const Request& rhs) const {
                 return lhs._uid < rhs._uid;
             }
@@ -81,7 +79,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             UID getUID() const { return _uid; }
 
             /** Creates a stateset that holds GL-compilable objects. */
-            virtual osg::StateSet* createStateSet() const =0; // { return 0L; }
+            virtual osg::StateSet* createStateSet() const =0;
 
             void setFrameNumber(unsigned fn) { _lastFrameSubmitted = fn; }
             unsigned getLastFrameSubmitted() const { return _lastFrameSubmitted; }
@@ -93,11 +91,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 FINISHED
             };
 
-            void setState(State value) {
-                _state = value;
-                if ( _state == IDLE )
-                    _loadCount = 0;
-            }
+            void setState(State value);
+
+            //! Sets a minimum delay before the request will be processed.
+            //! This exists to prevent retry requests from spamming a resource
+            //! (like the network)
+            void setDelay(double seconds);
 
             bool isIdle() const { return _state == IDLE; }
             bool isRunning() const { return _state == RUNNING; }
@@ -108,17 +107,20 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             std::string                   _name;
             TileKey                       _key;
             State                         _state;
+            osg::Timer_t                  _stateTick;
+            osg::Timer_t                  _readyTick;
             float                         _priority;
             osg::ref_ptr<osg::Referenced> _internalHandle;
             unsigned                      _lastFrameSubmitted;
-            osg::Timer_t                  _lastTick;
-            mutable Threading::Mutex      _lock;
+            double                        _lastTick;
+            Threading::Mutex              _mutex;
             int                           _loadCount;
+            double                        _delay_s;
+            int                           _delayCount;
+            char                          _filename[64];
 
-            void lock() { _lock.lock(); }
-            void unlock() { _lock.unlock(); }
-
-            ChangeSet                     _nodesChanged;
+            void lock() { _mutex.lock(); }
+            void unlock() { _mutex.unlock(); }
         };
 
         class Handler : public osg::Referenced
@@ -140,12 +142,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      */
     class LoaderGroup : public osg::Group, public Loader
     {
-    public: // Loader
-        void setFrameStamp(const osg::FrameStamp* fs) { _frameStamp = fs; }
-        const osg::FrameStamp* getFrameStamp() const { return _frameStamp.get(); }
-
-    protected:
-        osg::ref_ptr<const osg::FrameStamp> _frameStamp;
     };
 
 
@@ -183,6 +179,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Set the priority scale for an LOD. */
         void setLODPriorityScale(unsigned lod, float scale);
 
+        //! Set the priority scale for all LODs */
+        void setOverallPriorityScale(float scale);
+
+        //! Install the frame clock
+        void setFrameClock(const FrameClock* clock) { _clock = clock; }
+
     public: // Loader
 
         /** Asks the loader to begin or continue loading something.
@@ -201,16 +203,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
 
         /** Internal method to invoke a request that was previously queued with load(). */
-        Request* invokeAndRelease(UID requestUID);
+        Request* runAndRelease(UID requestUID);
 
         /** Returns the tilekey associated with the request (or TileKey::INVALID if none) */
         TileKey getTileKeyForRequest(UID requestUID) const;
 
     protected:
-        
-        void processChangeSet(Loader::Request* req);
 
-        typedef std::map<UID, osg::ref_ptr<Loader::Request> > Requests;
+        typedef UnorderedMap<UID, osg::ref_ptr<Loader::Request> > UnsafeRequestMap;
+        typedef Threading::Mutexed<UnsafeRequestMap> Requests;
 
         typedef osg::ref_ptr<Loader::Request> RefRequest;
 
@@ -220,25 +221,24 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             }
         };
 
-        //typedef std::set<RefRequest, SortRequest> MergeQueue;
         typedef std::multiset<RefRequest, SortRequest> MergeQueue;
 
-        //UID              _engineUID;
         osg::NodePath    _myNodePath;
         Requests         _requests;
-        MergeQueue       _mergeQueue;  
-        osg::Timer_t     _checkpoint;
+        MergeQueue       _mergeQueue;
+        double           _checkpoint;
         int              _mergesPerFrame;
         unsigned         _frameNumber;
+        unsigned         _frameLastUpdated;
         unsigned         _numLODs;
         float            _priorityScales[64];
         float            _priorityOffsets[64];
+        const FrameClock* _clock;
 
         osg::ref_ptr<osgDB::Options> _dboptions;
-        mutable Threading::Mutex     _requestsMutex;
     };
 
-} } }
+} }
 
 
 #endif // OSGEARTH_REX_LOADER

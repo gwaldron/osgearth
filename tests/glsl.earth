@@ -1,15 +1,10 @@
 <!-- 
-osgEarth Sample - GLSL in the Earth File.
+osgEarth Sample - Per-layer GLSL shader injection
 -->
 
-<map>
-    <options>
-        <terrain driver="rex"></terrain>
-    </options>
-    
-    <image driver="gdal" name="world-tiff">
+<Map>    
+    <GDALImage name="world-tiff">
         <url>../data/world.tif</url>
-        <caching_policy usage="no_cache"/>
         <shader>
           <uniform name="gamma" value="2.2"/>
           <![CDATA[
@@ -22,5 +17,5 @@ osgEarth Sample - GLSL in the Earth File.
             }            
           ]]>
         </shader>
-    </image>
-</map>
+    </GDALImage>
+</Map>

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,10 +27,13 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/TileVisitor>
 
-
-namespace osgEarth
-{
+namespace osgEarth {
     class Map;
+}
+
+namespace osgEarth { namespace Contrib
+{
+    using namespace osgEarth::Util;
 
     /**
     * A TileHandler that caches tiles for the given layer.
@@ -38,14 +41,14 @@ namespace osgEarth
     class OSGEARTH_EXPORT CacheTileHandler : public TileHandler
     {
     public:
-        CacheTileHandler( TerrainLayer* layer, const Map* map );
+        CacheTileHandler( TileLayer* layer, const Map* map );
         virtual bool handleTile( const TileKey& key, const TileVisitor& tv );
         virtual bool hasData( const TileKey& key ) const;
 
         virtual std::string getProcessString() const;
 
     protected:
-        osg::ref_ptr< TerrainLayer > _layer;
+        osg::ref_ptr< TileLayer > _layer;
         osg::ref_ptr< const Map > _map;
     };    
 
@@ -68,15 +71,15 @@ namespace osgEarth
         void setVisitor(TileVisitor* visitor);
 
         /**
-        * Seeds a TerrainLayer
+        * Seeds a TileLayer
         */
-        void run(TerrainLayer* layer, const Map* map );
+        void run(TileLayer* layer, const Map* map );
 
 
     protected:
 
         osg::ref_ptr< TileVisitor > _visitor;
     };
-}
+} }
 
 #endif //OSGEARTH_CACHE_SEED_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,7 +34,7 @@
 #include <set>
 #include <ctype.h>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     extern OSGEARTH_EXPORT const std::string EMPTY_STRING;
 
@@ -125,7 +125,7 @@ namespace osgEarth
     extern OSGEARTH_EXPORT std::string vec4fToHtmlColor( const osg::Vec4f& c );
 
     /** Makes a valid filename out of a string */
-    extern OSGEARTH_EXPORT std::string toLegalFileName( const std::string& input, bool allowSubdir=false );
+    extern OSGEARTH_EXPORT std::string toLegalFileName( const std::string& input, bool allowSubdir=false, const char* replacementChar=NULL);
 
     /** Generates a hashed integer for a string (poor man's MD5) */
     extern OSGEARTH_EXPORT unsigned hashString( const std::string& input );
@@ -141,7 +141,11 @@ namespace osgEarth
     /**
     * Gets a pretty printed version of the given size in MB.
     */
-    extern OSGEARTH_EXPORT std::string prettyPrintSize( double mb );
+    extern OSGEARTH_EXPORT std::string prettyPrintSize( double mb );  
+    
+    //! Extract the "i-th" token from a delimited string
+    extern OSGEARTH_EXPORT std::string getToken(const std::string& input, unsigned i, const std::string& delims=",");
+
 
     //------------------------------------------------------------------------
     // conversion templates
@@ -215,7 +219,6 @@ namespace osgEarth
     }
 
     // converts a primitive to a string
-    // TODO: precision??
     template<typename T> inline std::string
     toString(const T& value)
     {
@@ -313,7 +316,14 @@ namespace osgEarth
         bool     _allowEmpties;
         bool     _trimTokens;
     };
+} }
+
+
+namespace osgEarth
+{
+    namespace Strings = osgEarth::Util;
 }
+
 
 #endif // OSGEARTH_STRING_UTILS_H
 

@@ -1,0 +1,27 @@
+<!--
+To control screen-space error interactiely, use:
+
+    --uniform oe_terrain_sse 50 1
+    
+with osgearth_toc
+-->
+<map name="Tessellation Example">
+
+    <options>
+        <terrain gpu_tessellation="true" morph_terrain="false"/>
+    </options>
+
+    <TMSImage name="ReadyMap 15m Imagery">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
+
+    <TMSElevation name="ReadyMap 90m Elevation">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+        <vdatum>egm96</vdatum>
+    </TMSElevation>
+
+    <ContourMap/>
+
+    <xi:include href="viewpoints.xml"/>
+
+</map>

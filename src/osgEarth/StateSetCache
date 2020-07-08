@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,104 +23,104 @@
 #define OSGEARTH_STATE_SET_CACHE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/StateSet>
 #include <set>
 
 namespace osgEarth
 {
     /**
-     * Cache for optimizing state set sharing. Running a sharing pass on a node
-     * (with the optimize method, or one of the consolidate methods) will reduce
-     * any duplicate state attribute or state sets down to a single instance.
-     * This can help reduce the number of state changes that occur when the node
-     * is rendered, though this is not guanranteed.
-     *
-     * This class is not thread safe. That means:
-     *
-     * You should ONLY use it on a node that contains nothing in the LIVE scene
-     * graph. It will replace state attributes and state sets on nodes that it finds;
-     * this is illegal if those objects are in use in another thread. So the typical
-     * use case is to run this on a newly-loaded model or on a newly-created node 
-     * graph before adding it to the live graph.
-     *
-     * It's OK for the contents of the cache itself to be present elsewhere, even
-     * in the live scene graph. These will not altered. So for example, you can re-use
-     * the same StateSetCache instance to optimize more than one new graph.
-     */
+    * Cache for optimizing state set sharing. Running a sharing pass on a node
+    * (with the optimize method, or one of the consolidate methods) will reduce
+    * any duplicate state attribute or state sets down to a single instance.
+    * This can help reduce the number of state changes that occur when the node
+    * is rendered, though this is not guanranteed.
+    *
+    * This class is not thread safe. That means:
+    *
+    * You should ONLY use it on a node that contains nothing in the LIVE scene
+    * graph. It will replace state attributes and state sets on nodes that it finds;
+    * this is illegal if those objects are in use in another thread. So the typical
+    * use case is to run this on a newly-loaded model or on a newly-created node 
+    * graph before adding it to the live graph.
+    *
+    * It's OK for the contents of the cache itself to be present elsewhere, even
+    * in the live scene graph. These will not altered. So for example, you can re-use
+    * the same StateSetCache instance to optimize more than one new graph.
+    */
     class OSGEARTH_EXPORT StateSetCache : public osg::Referenced
     {
     public:
         /**
-         * Constructs a new cache.
-         */
+        * Constructs a new cache.
+        */
         StateSetCache();
 
         /**
-         * Caps the size of the cache.
-         */
+        * Caps the size of the cache.
+        */
         void setMaxSize(unsigned maxSize);
 
         /**
-         * Check whether a StateSet is eligible for sharing.
-         */
+        * Check whether a StateSet is eligible for sharing.
+        */
         bool eligible( osg::StateSet* stateSet ) const;
 
         /**
-         * Check whether a StateAttribute is eligible for sharing.
-         */
+        * Check whether a StateAttribute is eligible for sharing.
+        */
         bool eligible( osg::StateAttribute* attr ) const;
 
         /** 
-         * Scans a graph and combines equivalents state attributes into
-         * single shared attribute. Skips any attribute (or stateset)
-         * with dynamic data variance
-         */
-        void consolidateStateAttributes(osg::Node* node);
+        * Scans a graph and combines equivalents state attributes into
+        * single shared attribute. Skips any attribute (or stateset)
+        * with dynamic data variance
+        */
+        void consolidateStateAttributes(osg::Node* node, bool traverseProxies = true);
 
         /**
-         * Scans a graph and combines equivalent statesets into a single
-         * shared stateset. Skips any stateset with dynamic data variance.
-         */
-        void consolidateStateSets(osg::Node* node);
+        * Scans a graph and combines equivalent statesets into a single
+        * shared stateset. Skips any stateset with dynamic data variance.
+        */
+        void consolidateStateSets(osg::Node* node, bool traverseProxies = true);
 
         /**
-         * Calls consolidateStateAttributes followed by consolidateStateSets.
-         */
-        void optimize(osg::Node* node);
+        * Calls consolidateStateAttributes followed by consolidateStateSets.
+        */
+        void optimize(osg::Node* node, bool traverseProxies = true);
 
         /**
-         * Looks in the cache for a stateset matching the input. If found,
-         * returns the cached one in output. If not found, stores the input 
-         * in the cache and returns the same one in output.
-         *
-         * Must use ref_ptrs for thread safely
-         */
+        * Looks in the cache for a stateset matching the input. If found,
+        * returns the cached one in output. If not found, stores the input 
+        * in the cache and returns the same one in output.
+        *
+        * Must use ref_ptrs for thread safely
+        */
         bool share( 
             osg::ref_ptr<osg::StateSet>& input, 
             osg::ref_ptr<osg::StateSet>& output,
             bool                         checkEligible =true );
 
         /**
-         * Looks in the attribute cache for an attribute matching the input.
-         * If found, returns the cached one in output. If not found, stores
-         * the input in the cache and returns the same one in output.
-         *
-         * Must use ref_ptrs for thread safely
-         */
+        * Looks in the attribute cache for an attribute matching the input.
+        * If found, returns the cached one in output. If not found, stores
+        * the input in the cache and returns the same one in output.
+        *
+        * Must use ref_ptrs for thread safely
+        */
         bool share(
             osg::ref_ptr<osg::StateAttribute>& input,
             osg::ref_ptr<osg::StateAttribute>& output,
             bool                               checkEligible =true );
 
         /**
-         * Number of statesets in the cache.
-         */
+        * Number of statesets in the cache.
+        */
         unsigned size() const { return _stateSetCache.size(); }
 
         /**
-         * Clears out the cache.
-         */
+        * Clears out the cache.
+        */
         void clear();
 
         void dumpStats();
@@ -135,7 +135,7 @@ namespace osgEarth
             bool operator()(
                 const osg::ref_ptr<osg::StateSet>& lhs,
                 const osg::ref_ptr<osg::StateSet>& rhs) const {
-                    return lhs->compare(*(rhs.get()), true) < 0;
+                return lhs->compare(*(rhs.get()), true) < 0;
             }
         };
         typedef std::set< osg::ref_ptr<osg::StateSet>, CompareStateSets> StateSetSet;
@@ -145,7 +145,7 @@ namespace osgEarth
             bool operator()(
                 const osg::ref_ptr<osg::StateAttribute>& lhs,
                 const osg::ref_ptr<osg::StateAttribute>& rhs) const {
-                    return lhs->compare(*rhs.get()) < 0;
+                return lhs->compare(*rhs.get()) < 0;
             }
         };
         typedef std::set< osg::ref_ptr<osg::StateAttribute>, CompareStateAttributes> StateAttributeSet;

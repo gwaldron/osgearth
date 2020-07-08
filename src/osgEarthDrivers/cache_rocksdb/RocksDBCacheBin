@@ -27,7 +27,7 @@
 
 #define ROCKSDB_CACHE_VERSION 1
 
-namespace osgEarth { namespace Drivers { namespace RocksDBCache
+namespace osgEarth { namespace RocksDBCache
 {
     using namespace osgEarth;
 
@@ -139,6 +139,6 @@ namespace osgEarth { namespace Drivers { namespace RocksDBCache
     };
 
 
-} } } // namespace osgEarth::Drivers::RocksDBCache
+} } // namespace osgEarth::RocksDBCache
 
 #endif // OSGEARTH_DRIVER_CACHE_ROCKSDB_BIN

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #define LC "[Random] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
 
@@ -33,7 +34,8 @@ namespace
     {
         // note: this is not a "good" PRNG, but it is good enough for some applications
         // and it is wicked fast.
-        next = next * 1103515245 + 12345;
+        //next = next * 1103515245 + 1234;
+        next = ((214013*next+2531011));
     }
 }
 

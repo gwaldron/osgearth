@@ -1,43 +1,22 @@
 <map>
-    <options>
-        <terrain driver="rex"/>
-    </options>
 
-    <!-- Land cover dictionary -->
+    <xi:include href="readymap_elevation.xml"/>
+    <xi:include href="readymap_imagery.xml"/>
+
     <xi:include href="../data/land_cover_dictionary.xml"/>
+    <xi:include href="esa_land_cover.xml"/>
 
-    <!-- Land cover layer -->
-    <land_cover name="land-cover">
-        <cache_policy usage="no_cache"/>
-        <coverages>
-            <coverage name="ESA GLOBCOVER" driver="gdal">
-                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
-                <warp>0.025</warp>
-            </coverage>
-        </coverages>
-    </land_cover>
-
-    <elevation name="ReadyMap elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-
-    <fractal_elevation name="Fractal Offset" min_level="13" max_data_level="14" offset="true">
+    <FractalElevation name="Fractal Offset" min_level="13" max_data_level="14" offset="true">
         <cache_policy usage="no_cache"/>
         <noise_image>H:/data/textures/seamless-noise-1.png</noise_image>
         <amplitude>8</amplitude>
         <land_cover_mappings>
             <mapping class="water" amplitude="0"/>
         </land_cover_mappings>
-    </fractal_elevation>
+    </FractalElevation>
 
-    <!-- Satellite imagery -->
-    <image name="ReadyMap imagery" driver="tms" opacity="0.75" enabled="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-
-    <feature_model name="roads" min_level="12">
-        <feature_source>roads-data</feature_source>
+    <FeatureModel name="roads" min_level="12">
+        <features>roads-data</features>
         <styles>
             <style type="text/css">
                 default {
@@ -47,10 +26,9 @@
                 }
             </style>
         </styles>
-    </feature_model>
+    </FeatureModel>
 
     <viewpoints>
-
         <viewpoint name="Far range">
             <heading>20.0616</heading>
             <pitch>-10.5897</pitch>
@@ -80,12 +58,10 @@
             <height>354.0491745267063</height>
             <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
-
-
     </viewpoints>
 
-    <feature_source name="roads-data" driver="tfs">
-        <url>http://readymap.org/osm/</url>
+    <TFSFeatures name="roads-data">
+        <url>http://readymap.org/readymap/mbtiles/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
@@ -95,5 +71,5 @@
                 <![CDATA[ ("highway" in feature.properties); ]]>
             </script>
         </filters>
-    </feature_source>
+    </TFSFeatures>
 </map>

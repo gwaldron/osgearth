@@ -4,16 +4,16 @@ Shows how to use an Intersect Filter to crop incoming features
 to a polygon mask.
 -->
 
-<map name="Feature Geometry Demo" type="geocentric" version="2">
-            
-    <image driver="gdal">
+<map name="Demo: Intersect Filter">
+
+    <GDALImage name="World Imagery">
         <url>../data/world.tif</url>
-    </image>
-    
-    <model driver="feature_geom" comment="Outline of France">
-        <features driver="ogr">
+    </GDALImage>
+
+    <FeatureModel name="Outline of France">
+        <OGRFeatures>
             <url>../data/france.shp</url>
-        </features>
+        </OGRFeatures>
         <styles>
             <style>
                 stroke: #ffff00;
@@ -21,27 +21,29 @@ to a polygon mask.
                 render-depth-offset: true;
             </style>
         </styles>
-    </model>
-    
-    <model name="Cities in France" driver="feature_geom">
-        <features name="cities" driver="ogr">
-            <url>../data/cities.gpkg</url>
-            <filters>
-                <intersect>
-                    <comment>
+    </FeatureModel>
+
+    <OGRFeatures name="cities">
+        <url>../data/cities.gpkg</url>
+    </OGRFeatures>
+
+    <FeatureModel name="Cities in France">
+        <features>cities</features>
+        <filters>
+            <intersect>
+                <comment>
                         Features: geometry to intersect with;
                         Contains: true=features fall inside geometry; false=outside
                         Exact:    true=use exact geometry; false=use bounding boxes only
-                    </comment>
-                    
-                    <features driver="ogr">
-                        <url>../data/france.shp</url>
-                    </features>
-                    <contains>true</contains>
-                    
-                </intersect>
-            </filters>
-        </features>
+                </comment>
+
+                <OGRFeatures>
+                    <url>../data/france.shp</url>
+                </OGRFeatures>
+                <contains>true</contains>
+
+            </intersect>
+        </filters>
 
         <styles>
             <style type="text/css">              
@@ -53,6 +55,18 @@ to a polygon mask.
                 }     
             </style>
         </styles>
-    </model>
-  
+    </FeatureModel>
+
+
+    <Viewpoints home="0" time="0">
+        <viewpoint>
+            <heading>2.42392e-07</heading>
+            <pitch>-89</pitch>
+            <range>3.3434e+06m</range>
+            <long>2.302287884490098</long>
+            <lat>47.61121725887276</lat>
+            <height>-41.88410698436201</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+    </Viewpoints>
 </map>

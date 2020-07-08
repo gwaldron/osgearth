@@ -1,116 +1,92 @@
 <map>
+    <xi:include href="readymap_elevation.xml"/>
 
-    <options>
-        <terrain driver="rex">
-        </terrain>
-    </options>
+    <!-- Procedural imagery -->
+    <xi:include href="land_cover_dictionary.xml"/>
+    <xi:include href="esa_land_cover.xml"/>
+    <xi:include href="splat_imagery.xml"/>
 
-    <elevation name="ReadyMap Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-
-    <fractal_elevation name="Fractal" min_level="8" offset="true">
-        <noise_image>../data/seamless-noise-1.png</noise_image>
-        <amplitude>7</amplitude>
-    </fractal_elevation>
-
-    <flattened_elevation name="Road Flattener" min_level="14" max_data_level="16" enabled="true" cache_enabled="false">
+    <!-- Elevation layer that will "flatten" the terrain along the roads -->
+    <FlattenedElevation name="Road Flattener" min_level="14" max_data_level="16">
+        <features>roads:data</features>
         <script language="javascript">
             <![CDATA[
-            function getLineWidth() {
-                var hwy = feature.properties["highway"];
-                if (hwy === "motorway" || hwy === "trunk" || hwy == "primary" || hwy === "secondary") {
-                    return 12.0;
-                }
-                return 4.0;
-            }
-
-            function getBufferWidth() {
-                return 24.0;
-            }
-        ]]>
-        </script>
-
-        <feature_source>roads-data</feature_source>
-        <line_width>getLineWidth()</line_width>
-        <buffer_width>getBufferWidth()</buffer_width>
-    </flattened_elevation>
-
-    <!-- Procedural terrain imagery from land cover data -->
-    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover">
-        <zones>
-            <zone name="default">
-                <surface>
-                    <catalog>../data/splat/splat_catalog.xml</catalog>
-                </surface>
-            </zone>
-        </zones>
-    </splat_imagery>
-
-    <!-- Road surface rendering -->
-    <road_surface name="RoadSurface" min_level="13" max_data_level="19" shared="true" cacheid="road_surface">
-        <cache_policy usage="no_cache"/>
-        <tile_size>256</tile_size>
-        <feature_source>roads-data</feature_source>
-        <styles>
-            <script language="javascript">
-                <![CDATA[
-                function selectStyle() {
-                    if ("highway" in feature.properties) {
-                        var hwy = feature.properties["highway"];
-                        if (hwy === "motorway" || hwy === "trunk" || hwy == "primary" || hwy === "secondary") {
-                            return "default";
-                        }
-                        return "asphalt";
+                // width of the road surface
+                function getLineWidth() {
+                    var hwy = feature.properties["highway"];
+                    if (hwy === "motorway" || hwy === "trunk" || hwy == "primary" || hwy === "secondary") {
+                        return 12.0;
                     }
-                    return "default";
+                    return 4.0;
+                }
+
+                // buffer around the road
+                function getBufferWidth() {
+                    return 24.0;
                 }
             ]]>
-            </script>
+        </script>
+        <line_width>getLineWidth()</line_width>
+        <buffer_width>getBufferWidth()</buffer_width>
+    </FlattenedElevation>
 
-            <selector name="default" style_expr="selectStyle()"/>
-
-            <style type="text/css">
-                default {
-                   stroke: #ffffff;
-                   stroke-width: 12m;
-                   stroke-image: ../data/road.png;
-                }
-                asphalt {
-                   stroke: #ffffff;
-                   stroke-width: 4m;
-                   stroke-image: ../data/asphalt.jpg;
-                }
-            </style>
-        </styles>
-
-        <buffer_width>12m</buffer_width>
-    </road_surface>
-
-    <!-- GPU trees from land cover data -->
-    <splat_groundcover name="Trees" land_cover_layer="LandCover">
+    <!-- Procedural trees, masked by the Road layer -->
+    <GroundCover name="Trees">
         <lod>14</lod>
-        <cast_shadows>true</cast_shadows>
-        <mask_layer>RoadSurface</mask_layer>
+        <mask_layer>Road Surface</mask_layer>
         <zones>
             <zone name="default">
                 <groundcover>
-                    <max_distance>6400</max_distance>
-                    <density>2.0</density>
-                    <fill>0.85</fill>
-                    <brightness>3.0</brightness>
-                    <contrast>0.5</contrast>
+                    <spacing>12</spacing>
+                    <fill>0.7</fill>
                     <biomes>
                         <biome classes="forest">
                             <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
-                            <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
-                            <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
+                            <billboard url="../data/splat/pine.png" width="16.0" height="22.0" />
+                            <billboard url="../data/splat/pine2.png" width="15.0" height="18.0"/>
                         </biome>
                     </biomes>
                 </groundcover>
             </zone>
         </zones>
-    </splat_groundcover>
+    </GroundCover>
+
+    <!-- Road surface rendering -->
+    <RoadSurface name="Road Surface" min_level="14" max_data_level="19" shared="true">
+        <features>roads:data</features>
+        <buffer_width>15m</buffer_width>
+
+        <Styles name="roads:stylesheet">
+            <script language="javascript">
+                <![CDATA[
+                    function selectStyle() {
+                        if ("highway" in feature.properties) {
+                            var hwy = feature.properties["highway"];
+                            if (hwy === "motorway" || hwy === "trunk" || hwy == "primary" || hwy === "secondary") {
+                                return "lined";
+                            }
+                        }
+                        return "paved";
+                    }
+                ]]>
+            </script>
+
+            <selector name="default" style_expr="selectStyle()"/>
+
+            <style type="text/css">
+                lined {
+                   stroke: #ffffff;
+                   stroke-width: 12m;
+                   stroke-image: "'../data/road.png'";
+                }
+                paved {
+                   stroke: #ffffff;
+                   stroke-width: 4m;
+                   stroke-image: "'../data/asphalt.jpg'";
+                }
+            </style>
+        </Styles>
+    </RoadSurface>
 
     <viewpoints>
         <viewpoint name="Rainier">
@@ -129,6 +105,15 @@
             <lat>46.7629136754553</lat>
             <height>933.7423594370484</height>
             <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>
+        <viewpoint name="Driving">
+            <heading>-34.186</heading>
+            <pitch>-1.58811</pitch>
+            <range>45.1478m</range>
+            <long>-121.6310649135474</long>
+            <lat>46.76307438804317</lat>
+            <height>908.0183555409312</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
         <viewpoint name="Road 2">
             <heading>7.34763</heading>
@@ -160,29 +145,9 @@
 
     </viewpoints>
 
-    <!-- Land cover dictionary -->
-    <xi:include href="../data/land_cover_dictionary.xml"/>
-
-    <!-- Land cover layer -->
-    <land_cover name="LandCover" max_data_level="15">
-        <cache_policy usage="no_cache"/>
-        <coverages>
-            <coverage name="ESA GLOBCOVER" driver="gdal">
-                <profile>global-geodetic</profile>
-                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
-            </coverage>
-            <coverage name="NCLD 2011" driver="gdal">
-                <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
-                <xi:include href="H:/data/nlcd/land_cover_NLCD.xml"/>
-                <warp>0.01</warp>
-            </coverage>
-        </coverages>
-    </land_cover>
-
     <!-- Road features -->
-    <feature_source name="roads-data" driver="tfs">
-        <url>http://readymap.org/osm/</url>
+    <TFSFeatures name="roads:data">
+        <url>http://readymap.org/readymap/mbtiles/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
@@ -192,7 +157,7 @@
                 <![CDATA[ ("highway" in feature.properties); ]]>
             </script>
         </filters>
-    </feature_source>
+    </TFSFeatures>
 
     <libraries>osgEarthSplat</libraries>
 </map>

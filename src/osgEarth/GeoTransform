@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/Terrain>
 #include <osg/MatrixTransform>
+#include <osg/Observer>
 
 namespace osgEarth
 {
@@ -32,7 +33,9 @@ namespace osgEarth
     /**
      * Transform node that accepts geospatial coordinates.
      */
-    class OSGEARTH_EXPORT GeoTransform : public osg::MatrixTransform
+    class OSGEARTH_EXPORT GeoTransform : 
+        public osg::MatrixTransform,
+        public osg::Observer
     {
     public:
         META_Node(osgEarth, GeoTransform);
@@ -109,13 +112,16 @@ namespace osgEarth
     public: // TerrainCallback interface
 
         // called when new data pages in and autoRecompute is true
-        void onTileAdded(const TileKey&          key,
+        void onTileUpdate(const TileKey&          key,
                          osg::Node*              node,
                          TerrainCallbackContext& context);
 
+    public: // osg::Observer interface
+
+        virtual void objectDeleted(void* ptr);
 
     protected:
-        virtual ~GeoTransform() { }
+        virtual ~GeoTransform();
 
         GeoPoint                   _position;                 // Current position
         osg::observer_ptr<Terrain> _terrain;                  // Terrain for relative height resolution
@@ -125,8 +131,6 @@ namespace osgEarth
         bool                       _clampInUpdateTraversal;       // Whether a terrain clamp is required
 
         osg::ref_ptr<ComputeMatrixCallback> _computeMatrixCallback;
-
-        void configureAutoRecompute(Terrain* terrain);
     };
 
 } // namespace osgEarth

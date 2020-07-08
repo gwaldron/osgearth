@@ -25,7 +25,8 @@ using namespace osgEarth;
 
 //...................................................................
 
-TerrainTileLayerModel::TerrainTileLayerModel()
+TerrainTileLayerModel::TerrainTileLayerModel() :
+    _revision(-1)
 {
 }
 
@@ -73,6 +74,18 @@ TerrainTileModel::getElevationTextureMatrix() const
     return _elevationLayer.valid() ? _elevationLayer->getMatrix() : 0L;
 }
 
+osg::Texture* 
+TerrainTileModel::getLandCoverTexture() const
+{
+    return _landCoverLayer.valid() ? _landCoverLayer->getTexture() : 0L;
+}
+
+osg::RefMatrixf* 
+TerrainTileModel::getLandCoverTextureMatrix() const
+{
+    return _landCoverLayer.valid() ? _landCoverLayer->getMatrix() : 0L;
+}
+
 void
 TerrainTileModel::compileGLObjects(osg::State& state) const
 {
@@ -92,4 +105,42 @@ TerrainTileModel::compileGLObjects(osg::State& state) const
 
     if (getElevationTexture())
         getElevationTexture()->compileGLObjects(state);
+
+    if (getLandCoverTexture())
+        getLandCoverTexture()->compileGLObjects(state);
+}
+
+void
+TerrainTileModel::getDataToCompile(std::vector<osg::Texture*>& output) const
+{
+    for(auto& colorLayer : _colorLayers)
+        if (colorLayer->getTexture())
+            output.push_back(colorLayer->getTexture());
+
+    if (getNormalTexture())
+        output.push_back(getNormalTexture());
+
+    if (getElevationTexture())
+        output.push_back(getElevationTexture());
+
+    if (getLandCoverTexture())
+        output.push_back(getLandCoverTexture());
+}
+
+osg::Texture*
+TerrainTileModel::getTexture(UID layerUID) const
+{
+    for(unsigned i=0; i<colorLayers().size(); ++i)
+        if (colorLayers()[i]->getLayer()->getUID() == layerUID)
+            return colorLayers()[i]->getTexture();
+    return NULL;
+}
+
+osg::RefMatrixf* 
+TerrainTileModel::getMatrix(UID layerUID) const
+{
+    for (unsigned i = 0; i < colorLayers().size(); ++i)
+        if (colorLayers()[i]->getLayer()->getUID() == layerUID)
+            return colorLayers()[i]->getMatrix();
+    return NULL;
 }

@@ -1,17 +1,15 @@
 <!--
-osgEarth Sample
-
-Footprint Extrusion using the "feature_geom" driver.
+osgEarth Sample - footprint extrusion
 -->
 
-<map name="Extrusion Demo" type="geocentric" version="2">
+<map name="Extrusion Demo">
       
-    <feature_source name="buildings-data" driver="ogr">
+    <OGRFeatures name="buildings-data">
         <url>../data/dcbuildings.shp</url>
         <build_spatial_index>true</build_spatial_index>
-    </feature_source>
+    </OGRFeatures>
 	         
-    <feature_model name="buildings" feature_source="buildings-data">
+    <FeatureModel name="buildings" features="buildings-data">
         <styles>
             <style type="text/css">
                 buildings {
@@ -23,17 +21,11 @@ Footprint Extrusion using the "feature_geom" driver.
                 }
             </style>
         </styles>
-    </feature_model>
+    </FeatureModel>
     
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    <xi:include href="readymap_imagery.xml"/>
     
-    <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-    
-    <viewpoints>
+    <viewpoints home="0">
         <viewpoint name="Zoom to Buildings" heading="12.4" lat="38.8982" long="-77.0365" height="20.67" pitch="-51.4" range="4500" />
     </viewpoints>
   

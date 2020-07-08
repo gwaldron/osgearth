@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,49 +21,76 @@
 #define OSGEARTH_PATCH_LAYER_H 1
 
 #include <osgEarth/VisibleLayer>
+#include <osgEarth/GeoData>
 #include <osg/RenderInfo>
 #include <osg/Texture>
 
 namespace osgEarth
 {
-    //! Options that govern a PatchLayer
-    class /*header only*/ PatchLayerOptions : public VisibleLayerOptions
-    {
-    public:
-        PatchLayerOptions(const ConfigOptions& co = ConfigOptions()) : VisibleLayerOptions(co) { }
-    };
-
     /**
      * PatchLayer is a layer that can render terrain tiles using either
      * a geometry shader patch (GL_PATCHES) or a custom draw callback.
      */
     class OSGEARTH_EXPORT PatchLayer : public VisibleLayer
     {
-    public:
-        META_Layer(osgEarth, PatchLayer, PatchLayerOptions, patch);
-
-        struct TileData : public osg::Referenced
-        {
-            osg::ref_ptr<osg::Texture> _texture;
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
         };
 
+    public:
+        META_Layer(osgEarth, PatchLayer, Options, VisibleLayer, Patch);
+
+        //! Create a node for a given tilekey
+        //! (Not yet implemented)
+        virtual GeoNode createNode(const TileKey& key, ProgressCallback*);
+
+        //! API providing access to patch geometry 
+        class OSGEARTH_EXPORT TileInfoProvider
+        {
+        public:
+            //! Bounding box of the actual tile geometry (could be cropped by a mask)
+            virtual const osg::BoundingBox& getGeomBoundingBox() const = 0;
+
+            //! Bounding box of the full tile
+            virtual const osg::BoundingBox& getTileBoundingBox() const = 0;
+        };
+
+        class OSGEARTH_EXPORT TileBatch
+        {
+        public:
+            virtual void drawTiles(osg::RenderInfo& ri) const = 0;
+            virtual std::size_t size() const = 0;
+            virtual std::size_t getBatchID() const = 0;
+        };
+
+        //! Internal
         struct DrawContext
         {
-            const TileKey* key;
-            float          range;
-            osg::Texture*  colorTexture;
-            osg::Texture*  elevationTexture;
-            osg::Texture*  normalTexture;
-            osg::Texture*  coverageTexture;
-            DrawContext() : range(0.0f), colorTexture(0), elevationTexture(0), normalTexture(0), coverageTexture(0) { }
+            const TileKey* _key;
+            //float _range;
+            const osg::BoundingBox* _geomBBox;
+            const osg::BoundingBox* _tileBBox;
+            //GeometryArrayProvider* _geom;
+            //DrawContext() : _range(0.0f), _geom(NULL), _key(NULL) { }
+            DrawContext() : _geomBBox(NULL), _tileBBox(NULL), _key(NULL) { }
         };
 
         /**
          * Callback that the terrain engine will call for custom tile rendering.
          */
-        struct DrawCallback : public osg::Referenced
+        class DrawCallback : public osg::Referenced
         {
-            virtual void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data) =0;
+        public:
+            virtual void draw(osg::RenderInfo& ri, const TileBatch* tiles) { }
+            virtual void drawTile(osg::RenderInfo& ri, const DrawContext& tile) { }
+            //virtual void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data) { }
+            //virtual void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data) =0;
+            //virtual void postDraw(osg::RenderInfo& ri, osg::Referenced* data) { }
         };
 
         /**
@@ -79,9 +106,7 @@ namespace osgEarth
             virtual bool acceptKey(const TileKey& key) const { return true; }
         };
 
-
     public:
-        PatchLayer();
 
         /**
          * Draw callback to use to render tiles in this layer
@@ -95,19 +120,25 @@ namespace osgEarth
         void setAcceptCallback(AcceptCallback* value) { _acceptCallback = value; }
         AcceptCallback* getAcceptCallback() const { return _acceptCallback.get(); }
 
+        unsigned getNumPrePassStateSets() const { return _prePassStateSets.size(); }
+        osg::StateSet* getPrePassStateSet(unsigned i) const { return _prePassStateSets[i].get(); }
 
-        TileData* createTileData(const TileKey& key) { return 0L; }
 
     protected:
 
-        //! Subclass constructor
-        PatchLayer(PatchLayerOptions* options);
-
-        /** dtor */
+        // default destructor
         virtual ~PatchLayer() { }
 
-        // post-ctor initialization, chain to subclasses.
+        //! post-ctor initialization, chain to super/subclasses.
         virtual void init();
+
+        //! Optional implementation of createNode.
+        //! (Not yet implemented)
+        virtual GeoNode createNodeImplementation(const TileKey& key, ProgressCallback* progress) const {
+            return GeoNode::INVALID;
+        }
+
+        std::vector< osg::ref_ptr<osg::StateSet> > _prePassStateSets;
 
     private:
         osg::ref_ptr<DrawCallback> _drawCallback;

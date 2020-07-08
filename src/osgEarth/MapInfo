@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,6 +27,11 @@
 namespace osgEarth
 {
     class Map;
+}
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
 
     /**
      * A convenience class that combines a general geospatial profile and additional 
@@ -63,13 +68,13 @@ namespace osgEarth
         bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }
 
         //! Elevation interpolation method used by the map
-        ElevationInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
+        RasterInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
 
     private:
         osg::ref_ptr<const Profile> _profile;
-        bool _isGeocentric, _isCube;
-        ElevationInterpolation _elevationInterpolation;
+        bool _isGeocentric;
+        RasterInterpolation _elevationInterpolation;
     };
-}
+} }
 
 #endif // OSGEARTH_MAP_CALLBACK_H

@@ -20,60 +20,62 @@
 #define OSGEARTH_REX_UNLOADER 1
 
 #include "Common"
-
-#include <osgEarth/ThreadingUtils>
-#include <osgEarth/TileKey>
-#include <osgEarth/ResourceReleaser>
-
+#include "TileNode"
+#include "FrameClock"
+#include <osgEarth/Threading>
 #include <osg/Group>
 
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class TileNodeRegistry; // for UnloaderGroup
-
-
-    /**
-     * Pure interface class for a tile unloader. The Tile Unloader is 
-     * responsible for removing unused tiles from the scene graph and
-     * releasing any GL resources associated with them.
-     */
-    class Unloader
-    {
-    public:
-        virtual void unloadChildren(const std::vector<TileKey>& keys) =0;
-    };
 
     /**
      * Group-based tile unloader.
      */
-    class UnloaderGroup : public osg::Group, public Unloader
+    class UnloaderGroup : public osg::Group
     {
     public:
         UnloaderGroup(TileNodeRegistry* tiles);
 
-        /** Sets the key count at which unloading will begin */
-        void setThreshold(int t) { _threshold = t; }
+        //! Permit up to this many Tiles to remain in memory even if they are expired
+        void setCacheSize(unsigned t) { _cacheSize = t; }
+        unsigned getCacheSize() const { return _cacheSize; }
 
-        /** Service that will release GL objects on unloaded nodes. */
-        void setReleaser(ResourceReleaser* releaser) { _releaser = releaser; }
+        //! A Tile must be at least this old before it can be removed:
+        void setMaxAge(double value) { _maxAge = osg::clampAbove(value, 1.0); }
+        double getMaxAge() const { return _maxAge; }
+
+        //! Maximum number of tiles to expire per frame
+        void setMaxTilesToUnloadPerFrame(unsigned value) { _maxTilesToUnloadPerFrame = value; }
+        unsigned getMaxTilesToUnloadPerFrame() const { return _maxTilesToUnloadPerFrame; }
+
+        //! A Tile must be at least this far from the camera before it can be unloaded:
+        void setMinimumRange(float value) { _minRange = osg::clampAbove(value, 0.0f); }
+        float getMinimumRange() const { return _minRange; }
+
+        //! Set the frame clock to use
+        void setFrameClock(const FrameClock* value) { _clock = value; }
 
     public: // Unloader
 
-        void unloadChildren(const std::vector<TileKey>& keys);
+        //void unloadChildren(const std::vector<TileKey>& keys);
 
     public: // osg::Node
         void traverse(osg::NodeVisitor& nv);
 
     protected:
-        int                            _threshold;
-        std::set<TileKey>              _parentKeys;
-        TileNodeRegistry*              _tiles;
-        osg::ref_ptr<ResourceReleaser> _releaser;
-        mutable Threading::Mutex       _mutex;
+        unsigned _cacheSize;
+        double _maxAge;
+        float _minRange;
+        unsigned _maxTilesToUnloadPerFrame;
+        TileNodeRegistry* _tiles;
+        std::vector<osg::observer_ptr<TileNode> > _deadpool;
+        unsigned _frameLastUpdated;
+        const FrameClock* _clock;
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 
 #endif // OSGEARTH_REX_UNLOADER

@@ -1,0 +1,74 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_MODEL_RESOURCE_H
+#define OSGEARTHSYMBOLOGY_MODEL_RESOURCE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/InstanceResource>
+#include <osgEarth/Status>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * A resource that materializes an InstanceSymbol, which is a single-point object
+     * that resolves to an osg::Node. Instances are usually used for point-model
+     * substitution.
+     */
+    class OSGEARTH_EXPORT ModelResource : public InstanceResource
+    {
+    public:
+        /** Constructs a new resource. */
+        ModelResource( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~ModelResource() { }
+
+        virtual bool is2D() const { return false; }
+
+        const osg::BoundingBox& getBoundingBox(const osgDB::Options*);
+
+        /** Whether this model instance honors "scale-to-fit" in the X and Y dimensions,
+         * if applicable. Scale-to-fit is a hint to an implementation that may want to
+         * automatically scale a model to fit a region, as to whether that should be allowed
+         * (for example when the artist has designed the model for specific dimensions.) */
+        optional<bool>& canScaleToFitXY() { return _canScaleToFitXY; }
+        const optional<bool>& canScaleToFitXY() const { return _canScaleToFitXY; }
+
+        optional<bool>& canScaleToFitZ() { return _canScaleToFitZ; }
+        const optional<bool>& canScaleToFitZ() const { return _canScaleToFitZ; }
+
+    public: // serialization methods
+
+        virtual Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
+    protected: // InstanceResource
+
+        virtual osg::Node* createNodeFromURI(const URI& uri, const osgDB::Options* dbOptions) const;
+
+        osg::BoundingBox _bbox;
+        optional<bool>   _canScaleToFitXY;
+        optional<bool>   _canScaleToFitZ;
+    };
+
+    typedef std::vector<osg::ref_ptr<ModelResource> > ModelResourceVector;
+} }
+
+#endif // OSGEARTHSYMBOLOGY_MODEL_RESOURCE_H

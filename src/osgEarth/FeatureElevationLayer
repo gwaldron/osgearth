@@ -1,0 +1,79 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURE_ELEVATION_LAYER
+#define OSGEARTH_FEATURE_ELEVATION_LAYER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/LayerReference>
+
+namespace osgEarth
+{
+    /**
+     * Elevation layer that sets elevation based on feature data
+     */
+    class OSGEARTH_EXPORT FeatureElevationLayer : public ElevationLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION(std::string, attr);
+            OE_OPTION(double, offset);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, FeatureElevationLayer, Options, ElevationLayer, FeatureElevation);
+
+    public: // ElevationLayer
+
+        // opens the layer and returns the status
+        virtual Status openImplementation();
+
+        virtual void init();
+
+        virtual Config getConfig() const;
+
+    protected: // Layer
+
+        // called by the map when this layer is added/removed
+        virtual void addedToMap(const class Map*);
+
+        virtual void removedFromMap(const class Map*);
+
+        virtual GeoHeightField createHeightFieldImplementation(
+            const TileKey& key,
+            ProgressCallback* progress) const;
+
+    protected:
+
+        virtual ~FeatureElevationLayer();
+
+        GeoExtent _extent;
+
+        bool intersects(const TileKey&) const;
+    };
+} // namespace osgEarth
+
+#endif // OSGEARTH_FEATURE_ELEVATION_LAYER

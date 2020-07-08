@@ -33,62 +33,73 @@
 
 #define REPORT_ACTIVITY true
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 
-Loader::Request::Request()
+Loader::Request::Request() :
+    _delay_s(0.0),
+    _readyTick(0.0),
+    _delayCount(0),
+    _mutex("Request(OE)")
 {
     _uid = osgEarth::Registry::instance()->createUID();
-    _state = IDLE;
-    _loadCount = 0;
-    _priority = 0;
-    _lastFrameSubmitted = 0;
-    _lastTick = 0;
+    sprintf(_filename, "%u.osgearth_rex_loader", _uid);
+    setState(IDLE);
 }
 
 void
-Loader::Request::addToChangeSet(osg::Node* node)
+Loader::Request::setState(Loader::Request::State value)
 {
-    if ( node )
+    _state = value;
+    _stateTick = osg::Timer::instance()->tick();
+
+    if ( _state == IDLE )
     {
-        _nodesChanged.push_back( node );
+        _loadCount = 0;
+        _priority = 0;
+        _lastFrameSubmitted = 0;
+        _lastTick = 0;
     }
 }
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+void
+Loader::Request::setDelay(double seconds)
+{
+    osg::Timer_t now = osg::Timer::instance()->tick();
+    _readyTick = now +
+        (osg::Timer_t)(seconds / osg::Timer::instance()->getSecondsPerTick());
+
+    ++_delayCount;
+
+    //OE_WARN << _key.str() << "setDelay(" << osg::Timer::instance()->delta_s(now, _readyTick) << ")" << std::endl;
+}
+
+namespace osgEarth { namespace REX
 {
     /**
      * Custom progress callback that checks for both request 
      * timeout (via request::isIdle) and OSG database pager
      * shutdown (via getDone)
      */
-    struct RequestProgressCallback : public ProgressCallback
+    struct RequestProgressCallback : public DatabasePagerProgressCallback
     {
-        osgDB::DatabasePager::DatabaseThread* _thread;
         Loader::Request* _request;
 
         RequestProgressCallback(Loader::Request* req) :
+            DatabasePagerProgressCallback(),
             _request(req)
         {
-            // if this is a pager thread, get a handle on it:
-            _thread = dynamic_cast<osgDB::DatabasePager::DatabaseThread*>(
-                OpenThreads::Thread::CurrentThread());
+            //NOP
         }
 
-        virtual bool isCanceled()
+        virtual bool shouldCancel() const
         {
-            // was the request canceled?
-            if (_canceled == false && _request->isIdle())
-                _canceled = true;
-
-            // was the pager shut down?
-            if (_thread != 0L && _thread->getDone())
-                _canceled = true;
-
-            return ProgressCallback::isCanceled();
+            return
+                (!_request->isRunning()) ||
+                (DatabasePagerProgressCallback::shouldCancel());
         }
     };
-} } }
+} }
 
 //...............................................
 
@@ -110,15 +121,17 @@ SimpleLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& n
         r->setState(Request::RUNNING);
 
         //OE_INFO << LC << "Request invoke : UID = " << request->getUID() << "\n";
-        request->invoke(0L);
+        request->run(0L);
         
         //OE_INFO << LC << "Request apply : UID = " << request->getUID() << "\n";
         if (r->isRunning())
         {
-            request->apply( nv.getFrameStamp() );
+            // no re-queue possible. Testing only.
+            request->setState(Request::MERGING);
+            request->merge();
         }
 
-        r->setState(Request::IDLE);
+        r->setState(Request::FINISHED);
     }
     return request != 0L;
 }
@@ -155,7 +168,7 @@ namespace
                 const RexTerrainEngineNode* engine = dynamic_cast<const RexTerrainEngineNode*>(
                     osg::getUserObject(dboptions, "osgEarth.RexTerrainEngineNode"));
 
-                sscanf(filename.c_str(), "%u", &requestUID);
+                sscanf(filename.c_str(), "%d", &requestUID);
 
                 if ( engine )
                 {
@@ -218,10 +231,11 @@ namespace
 
 
 PagerLoader::PagerLoader(TerrainEngineNode* engine) :
-_checkpoint    ( (osg::Timer_t)0 ),
+_checkpoint    (0.0),
 _mergesPerFrame( 0 ),
-_frameNumber   ( 0 ),
-_numLODs       ( 20u )
+_frameLastUpdated( 0u ),
+_numLODs       ( 20u ),
+_requests(OE_MUTEX_NAME)
 {
     _myNodePath.push_back( this );
 
@@ -248,8 +262,9 @@ void
 PagerLoader::setMergesPerFrame(int value)
 {
     _mergesPerFrame = osg::maximum(value, 0);
-    ADJUST_EVENT_TRAV_COUNT(this, +1);
-    OE_INFO << LC << "Merges per frame = " << _mergesPerFrame << std::endl;
+    //ADJUST_EVENT_TRAV_COUNT(this, +1);
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    OE_DEBUG << LC << "Merges per frame = " << _mergesPerFrame << std::endl;
     
 }
 
@@ -267,40 +282,40 @@ PagerLoader::setLODPriorityOffset(unsigned lod, float offset)
         _priorityOffsets[lod] = offset;
 }
 
+void
+PagerLoader::setOverallPriorityScale(float value)
+{
+    for(int i=0; i<64; ++i)
+    {
+        _priorityScales[i] = value;
+    }
+}
+
 bool
 PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv)
 {
+    osg::Timer_t now = osg::Timer::instance()->tick();
+
     // check that the request is not already completed but unmerged:
     if ( request && !request->isMerging() && !request->isFinished() && nv.getDatabaseRequestHandler() )
     {
-        //OE_INFO << LC << "load (" << request->getTileKey().str() << ")" << std::endl;
-
-        unsigned fn = 0;
-        if ( nv.getFrameStamp() )
-        {
-            fn = nv.getFrameStamp()->getFrameNumber();
-            request->setFrameNumber( fn );
-        }
-
         bool addToRequestSet = false;
 
         // lock the request since multiple cull traversals might hit this function.
         request->lock();
         {
-            request->setState(Request::RUNNING);
-            
             // remember the last tick at which this request was submitted
-            request->_lastTick = osg::Timer::instance()->tick();
+            request->_lastTick = _clock->getTime();
 
             // update the priority, scale and bias it, and then normalize it to [0..1] range.
             unsigned lod = request->getTileKey().getLOD();
-            float p = priority * _priorityScales[lod] + _priorityOffsets[lod];            
+            float p = priority * _priorityScales[lod] + _priorityOffsets[lod];
             request->_priority = p / (float)(_numLODs+1);
 
             // timestamp it
-            request->setFrameNumber( fn );
+            request->setFrameNumber(_clock->getFrame());
 
-            // incremenet the load count.
+            // increment the load count.
             request->_loadCount++;
 
             // if this is the first load request since idle, we need to remember this request.
@@ -308,23 +323,24 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
         }
         request->unlock();
 
-        char filename[64];
-        //sprintf(filename, "%u.%u.osgearth_rex_loader", request->_uid, _engineUID);
-        sprintf(filename, "%u.osgearth_rex_loader", request->_uid);
-
-        nv.getDatabaseRequestHandler()->requestNodeFile(
-            filename,
-            _myNodePath,
-            request->_priority,
-            nv.getFrameStamp(),
-            request->_internalHandle,
-            _dboptions.get() );
+        // is this request eligible to run (based on a possible setDelay call)?
+        if (now >= request->_readyTick)
+        {
+            nv.getDatabaseRequestHandler()->requestNodeFile(
+                request->_filename,
+                _myNodePath,
+                request->_priority,
+                nv.getFrameStamp(),
+                request->_internalHandle,
+                _dboptions.get() );
+        }
 
         // remember the request:
-        if ( true ) // addToRequestSet // Not sure whether we need to keep doing this in order keep it sorted -- check it out.
+        //if ( addToRequestSet )
         {
-            Threading::ScopedMutexLock lock( _requestsMutex );
+            _requests.lock();
             _requests[request->getUID()] = request;
+            _requests.unlock();
         }
 
         return true;
@@ -336,94 +352,109 @@ void
 PagerLoader::clear()
 {
     // Set a time checkpoint for invalidating old requests.
-    _checkpoint = osg::Timer::instance()->tick();
+    _checkpoint = _clock->getTime();
 }
 
 void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
-    // only called when _mergesPerFrame > 0
-    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
-        if ( nv.getFrameStamp() )
-        {
-            setFrameStamp(nv.getFrameStamp());
-        }
+        // prevent UPDATE from running more than once per frame
+        unsigned frame = _clock->getFrame();
+        bool runUpdate = (_frameLastUpdated < frame);
 
-        // process pending merges.
+        if (runUpdate)
         {
-            METRIC_BEGIN("loader.merge");
-            int count;
-            for(count=0; count < _mergesPerFrame && !_mergeQueue.empty(); ++count)
+            _frameLastUpdated = frame;
+
+            // process pending merges.
             {
-                Request* req = _mergeQueue.begin()->get();
-                if ( req && req->_lastTick >= _checkpoint )
+                OE_PROFILING_ZONE_NAMED("loader.merge");
+                int count;
+                for(count=0; count < _mergesPerFrame && !_mergeQueue.empty(); ++count)
                 {
-                    OE_START_TIMER(req_apply);
-                    req->apply( getFrameStamp() );
-                    double s = OE_STOP_TIMER(req_apply);
+                    Request* req = _mergeQueue.begin()->get();
+                    if ( req && req->_lastTick >= _checkpoint )
+                    {
+                        bool merged = req->merge();
+                    
+                        if (merged)
+                        {
+                            req->setState(Request::FINISHED);
+                            //OE_INFO << LC << req->_key.str() << " finished (delays = " << req->_delayCount << ")" << std::endl;
+                        }
+                        else
+                        {
+                            // if apply() returns false, that means the results were invalid
+                            // for some reason (probably revision mismatch) and the request
+                            // must be requeued.
+                            req->setState(Request::IDLE);
+                        }
+                    }
 
-                    req->setState(Request::FINISHED);
-                }
-
-                _mergeQueue.erase( _mergeQueue.begin() );
-            }
-            METRIC_END("loader.merge");
-        }
-
-        // cull finished requests.
-        {
-            METRIC_SCOPED("loader.cull");
-
-            Threading::ScopedMutexLock lock( _requestsMutex );
-
-            unsigned fn = 0;
-            if ( nv.getFrameStamp() )
-                fn = nv.getFrameStamp()->getFrameNumber();
-
-            // Purge expired requests.
-            for(Requests::iterator i = _requests.begin(); i != _requests.end(); )
-            {
-                Request* req = i->second.get();
-                const unsigned frameDiff = fn - req->getLastFrameSubmitted();
-
-                // Deal with completed requests:
-                if ( req->isFinished() )
-                {
-                    //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") finished." << std::endl; 
-                    req->setState( Request::IDLE );
-                    if ( REPORT_ACTIVITY )
-                        Registry::instance()->endActivity( req->getName() );
-                    _requests.erase( i++ );
-                }
-
-                // Discard requests that are no longer required:
-                else if ( !req->isMerging() && frameDiff > 2 )
-                {
-                    //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting after " << frameDiff << " frames" << std::endl; 
-                    req->setState( Request::IDLE );
-                    if ( REPORT_ACTIVITY )
-                        Registry::instance()->endActivity( req->getName() );
-                    _requests.erase( i++ );
-                }
-
-                // Prevent a request from getting stuck in the merge queue:
-                else if ( req->isMerging() && frameDiff > 1800 )
-                {
-                    //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting " << frameDiff << " frames to merge" << std::endl; 
-                    req->setState( Request::IDLE );
-                    if ( REPORT_ACTIVITY )
-                        Registry::instance()->endActivity( req->getName() );
-                    _requests.erase( i++ );
-                }
-
-                else // still valid.
-                {
-                    ++i;
+                    _mergeQueue.erase( _mergeQueue.begin() );
                 }
             }
 
-            //OE_NOTICE << LC << "PagerLoader: requests=" << _requests.size() << "; mergeQueue=" << _mergeQueue.size() << std::endl;
+            // cull finished requests.
+            {
+                OE_PROFILING_ZONE("loader.purge");
+
+                unsigned frame = _clock->getFrame();
+
+                _requests.lock();
+
+                // Purge expired requests.
+                for(Requests::iterator i = _requests.begin(); i != _requests.end(); )
+                {
+                    Request* req = i->second.get();
+                    const int frameDiff = (int)frame - (int)req->getLastFrameSubmitted();
+
+                    // Deal with completed requests:
+                    if ( req->isFinished() )
+                    {
+                        //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") finished." << std::endl; 
+                        if ( REPORT_ACTIVITY )
+                            Registry::instance()->endActivity( req->getName() );
+                        _requests.erase( i++ );
+                    }
+
+                    // Discard requests from tiles that have not pinged the loader in the last couple frames.
+                    // This typically means a request was initiated, but then abandoned when the tile
+                    // went out of view.
+                    else if ( !req->isMerging() && frameDiff > 2 )
+                    {
+                        OE_DEBUG << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be serviced" << std::endl; 
+                        req->setState(Request::IDLE);
+                        if ( REPORT_ACTIVITY )
+                            Registry::instance()->endActivity( req->getName() );
+                        _requests.erase( i++ );
+                    }
+
+#if 0
+                    // Prevent a request from getting stuck in the merge queue:
+                    else if ( req->isMerging() && frameDiff > 1800 )
+                    {
+                        OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") was abandoned waiting to be merged" << std::endl; 
+                        //req->setState( Request::ABANDONED );
+                        req->setState(Request::IDLE);
+                        if ( REPORT_ACTIVITY )
+                            Registry::instance()->endActivity( req->getName() );
+                        _requests.erase( i++ );
+                    }
+#endif
+
+                    else // still valid.
+                    {
+                        ++i;
+                    }
+                }
+
+                _requests.unlock();
+
+                //OE_NOTICE << LC << "PagerLoader: requests=" << _requests.size() << "; mergeQueue=" << _mergeQueue.size() << std::endl;
+            }
         }
     }
 
@@ -440,9 +471,17 @@ PagerLoader::addChild(osg::Node* node)
         Request* req = result->getRequest();
         if ( req )
         {
+            if (req->_lastTick < _checkpoint)
+            {
+                // allow it to complete and disappear.
+                req->setState(Request::FINISHED);
+                if ( REPORT_ACTIVITY )
+                    Registry::instance()->endActivity( req->getName() );
+            }
+
             // Make sure the request is both current (newer than the last checkpoint)
             // and running (i.e. has not been canceled along the way)
-            if (req->_lastTick >= _checkpoint && req->isRunning())
+            else if (req->isRunning())
             {
                 if ( _mergesPerFrame > 0 )
                 {
@@ -451,8 +490,11 @@ PagerLoader::addChild(osg::Node* node)
                 }
                 else
                 {
-                    req->apply( getFrameStamp() );
-                    req->setState( Request::FINISHED );
+                    if (req->merge())
+                        req->setState( Request::FINISHED );
+                    else
+                        req->setState( Request::IDLE ); // retry
+
                     if ( REPORT_ACTIVITY )
                         Registry::instance()->endActivity( req->getName() );
                 }
@@ -460,8 +502,9 @@ PagerLoader::addChild(osg::Node* node)
 
             else
             {
-                OE_DEBUG << LC << "Request " << req->getName() << " canceled" << std::endl;
-                req->setState( Request::FINISHED );
+                OE_WARN << LC << "Request " << req->getName() << " abandoned (in addChild)" << std::endl;
+                //GW: allow to requeue (leave idle)
+                //req->setState( Request::FINISHED );
                 if ( REPORT_ACTIVITY )
                     Registry::instance()->endActivity( req->getName() );
             }
@@ -478,36 +521,45 @@ PagerLoader::addChild(osg::Node* node)
 TileKey
 PagerLoader::getTileKeyForRequest(UID requestUID) const
 {
-    Threading::ScopedMutexLock lock( _requestsMutex );
+    TileKey result;
+
+    _requests.lock();
     Requests::const_iterator i = _requests.find( requestUID );
     if ( i != _requests.end() )
     {
-        return i->second->getTileKey();
+        result = i->second->getTileKey();
     }
+    _requests.unlock();
 
-    return TileKey::INVALID;
+    return result;
 }
 
 Loader::Request*
-PagerLoader::invokeAndRelease(UID requestUID)
+PagerLoader::runAndRelease(UID requestUID)
 {
     osg::ref_ptr<Request> request;
+
+    _requests.lock();
+    Requests::iterator i = _requests.find( requestUID );
+    if ( i != _requests.end() )
     {
-        Threading::ScopedMutexLock lock( _requestsMutex );
-        Requests::iterator i = _requests.find( requestUID );
-        if ( i != _requests.end() )
-        {
-            request = i->second.get();
-        }
+        request = i->second.get();
     }
+    _requests.unlock();
 
     if ( request.valid() )
     {
         if ( REPORT_ACTIVITY )
             Registry::instance()->startActivity( request->getName() );
 
-        osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request);
-        request->invoke(prog.get());
+        request->setState(Request::RUNNING);
+
+        osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request.get());
+
+        if (request->run(prog.get()) == false)
+        {
+            request->setState(Request::IDLE);
+        }
     }
 
     else
@@ -522,7 +574,7 @@ PagerLoader::invokeAndRelease(UID requestUID)
 
 
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
 
@@ -557,7 +609,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 osg::ref_ptr<PagerLoader> loader;
                 if (OptionsData<PagerLoader>::lock(dboptions, "osgEarth.PagerLoader", loader))
                 {
-                    osg::ref_ptr<Loader::Request> req = loader->invokeAndRelease(requestUID);
+                    osg::ref_ptr<Loader::Request> req = loader->runAndRelease(requestUID);
 
                     // make sure the request is still running (not canceled)
                     if (req.valid() && req->isRunning())
@@ -578,4 +630,4 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     };
     REGISTER_OSGPLUGIN(osgearth_rex_loader, PagerLoaderAgent);
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -139,19 +139,6 @@ ClampableNode::traverse(osg::NodeVisitor& nv)
         osg::Group::traverse(nv);
     }
 }
-
-
-bool ClampableNode::isDepthCamera(const osg::Camera* camera)
-{
-    if (camera->getStateSet() == NULL)
-    {
-        return false;
-    }
-
-    // Check for the existence of the OE_IS_DEPTH_CAMERA define
-    return (camera->getStateSet()->getDefineList().find("OE_IS_DEPTH_CAMERA") != camera->getStateSet()->getDefineList().end());
-}
-
 
 //...........................................................................
 

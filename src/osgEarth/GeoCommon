@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,6 +28,8 @@
 
 namespace osgEarth
 {
+//    constexpr float NO_DATA_VALUE = -FLT_MAX;
+
     /**
      * Types of interpolation between two geodetic locations.
      */
@@ -38,9 +40,9 @@ namespace osgEarth
     };
 
     /**
-     * Elevation interpolation methods.
+     * Elevation/Image grid interpolation methods.
      */
-    enum ElevationInterpolation
+    enum RasterInterpolation
     {
         INTERP_AVERAGE,
         INTERP_NEAREST,

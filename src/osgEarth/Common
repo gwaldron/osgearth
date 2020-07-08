@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #ifndef OSGEARTH_COMMON_H
 #define OSGEARTH_COMMON_H 1
 
@@ -24,6 +23,7 @@
 #include <osgEarth/Notify>
 #include <osg/Version>
 #include <osg/ref_ptr>
+#include <osg/Referenced>
 #include <osg/Math>
 
 // define the OSG Version checks for older OSG versions
@@ -39,6 +39,15 @@
 // text inlining macro
 #define OE_MULTILINE(...) #__VA_ARGS__
 
+// expandable comment for macros (only works in MSVC)
+// TODO: Fails when using Qt - reevaluate later
+//#ifdef _MSC_VER
+#if 0
+#define OE_COMMENT(STR) / ## ** #STR * ## /
+#else
+#define OE_COMMENT(STR)
+#endif
+
 /** osgEarth core */
 namespace osgEarth
 {
@@ -52,6 +61,10 @@ namespace osgEarth
         operator UID() const { return _uid; }
         UID _uid;
     };
+
+    // Global initializer for osgEarth - call this if you are setting up
+    // windows and views prior to using osgEarth
+    extern OSGEARTH_EXPORT void initialize();
 }
 
 #ifdef _MSC_VER
@@ -59,5 +72,19 @@ namespace osgEarth
 #pragma warning (disable: 4224)
 #pragma warning (disable: 4180)
 #endif
+
+// Library build configuration (like C++11 support)
+#include "osgEarth/BuildConfig.h"
+
+// FINAL keyword for C++11
+#ifdef OSGEARTH_CXX11
+#define OSGEARTH_FINAL final
+#else
+#define OSGEARTH_FINAL
+#endif
+
+// Sringification
+#define OE_STRINGIFY_0(x) #x
+#define OE_STRINGIFY(x) OE_STRINGIFY_0(x)
 
 #endif // OSGEARTH_COMMON_H

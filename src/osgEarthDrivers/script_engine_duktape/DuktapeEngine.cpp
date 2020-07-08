@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,7 +20,7 @@
 #include "JSGeometry"
 #include <osgEarth/JsonUtils>
 #include <osgEarth/StringUtils>
-#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/GeometryUtils>
 #include <sstream>
 
 #undef  LC
@@ -32,7 +32,6 @@
 //#define MAXIMUM_ISOLATION
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Drivers::Duktape;
 
 //............................................................................
@@ -62,7 +61,7 @@ namespace
         Feature* feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));
 
         // Fetch the feature data:
-        duk_push_global_object(ctx);                    
+        duk_push_global_object(ctx);
         // [ptr, global]
 
         if ( !duk_get_prop_string(ctx, -1, "feature") || !duk_is_object(ctx, -1))
@@ -73,8 +72,8 @@ namespace
         if ( duk_get_prop_string(ctx, -1, "properties") && duk_is_object(ctx, -1) )
         {
             // [ptr, global, feature, props]
-            duk_enum(ctx, -1, 0);                       
-        
+            duk_enum(ctx, -1, 0);
+
             // [ptr, global, feature, props, enum]
             while( duk_next(ctx, -1, 1/*get_value=true*/) )
             {
@@ -130,7 +129,7 @@ namespace
         {
             // [ptr, global, feature, undefined]
         }
-        
+
         // [ptr, global, feature]
         duk_pop_2(ctx);     // [ptr] (as we found it)
         return 0;           // no return values.
@@ -171,35 +170,43 @@ namespace
         // Minimal profile: ID and properties only. MUCH faster!
         else
         {
-            duk_idx_t feature_i = duk_push_object(ctx);
+            duk_idx_t feature_i = duk_push_object(ctx);     // [global] [feature]
             {
-                duk_push_int(ctx, feature->getFID());
-                duk_put_prop_string(ctx, feature_i, "id");
+                duk_push_number(ctx, feature->getFID());       // [global] [feature] [id]
+                duk_put_prop_string(ctx, feature_i, "id");  // [global] [feature]
 
-                duk_idx_t props_i = duk_push_object(ctx);
+                duk_idx_t props_i = duk_push_object(ctx);   // [global] [feature] [properties]
                 {
                     const AttributeTable& attrs = feature->getAttrs();
                     for(AttributeTable::const_iterator a = attrs.begin(); a != attrs.end(); ++a)
                     {
                         AttributeType type = a->second.first;
                         switch(type) {
-                        case ATTRTYPE_DOUBLE: duk_push_number (ctx, a->second.getDouble()); break;
-                        case ATTRTYPE_INT:    duk_push_int    (ctx, a->second.getInt()); break;
-                        case ATTRTYPE_BOOL:   duk_push_boolean(ctx, a->second.getBool()); break;
+                        case ATTRTYPE_DOUBLE: duk_push_number (ctx, a->second.getDouble()); break;          // [global] [feature] [properties] [name]
+                        case ATTRTYPE_INT:    duk_push_number(ctx, (double)a->second.getInt()); break;             // [global] [feature] [properties] [name]
+                        case ATTRTYPE_BOOL:   duk_push_boolean(ctx, a->second.getBool()); break;            // [global] [feature] [properties] [name]
+                        case ATTRTYPE_DOUBLEARRAY: break;
                         case ATTRTYPE_STRING:
-                        default:              duk_push_string (ctx, a->second.getString().c_str()); break;
+                        default:              duk_push_string (ctx, a->second.getString().c_str()); break;  // [global] [feature] [properties] [name]
                         }
-                        duk_put_prop_string(ctx, props_i, a->first.c_str());
+                        duk_put_prop_string(ctx, props_i, a->first.c_str()); // [global] [feature] [properties]
                     }
                 }
-                duk_put_prop_string(ctx, feature_i, "properties");
+                duk_put_prop_string(ctx, feature_i, "properties"); // [global] [feature]
+
+                duk_idx_t geometry_i = duk_push_object(ctx);  // [global] [feature] [geometry]
+                {
+                    duk_push_string(ctx, Geometry::toString(feature->getGeometry()->getType()).c_str()); // [global] [feature] [geometry] [type]
+                    duk_put_prop_string(ctx, geometry_i, "type"); // [global] [feature] [geometry]
+                }
+                duk_put_prop_string(ctx, feature_i, "geometry");
             }
-            duk_put_prop_string(ctx, -2, "feature");
+            duk_put_prop_string(ctx, -2, "feature"); // [global] [feature]
         }
 
-        duk_pop(ctx); 
+        duk_pop(ctx);
     }
-    
+
 }
 
 //............................................................................
@@ -262,7 +269,8 @@ DuktapeEngine::Context::~Context()
 
 DuktapeEngine::DuktapeEngine(const ScriptEngineOptions& options) :
 ScriptEngine( options ),
-_options    ( options )
+_options    ( options ),
+_contexts   ( "DuktapeEngine(OE)" )
 {
     //nop
 }
@@ -279,8 +287,11 @@ DuktapeEngine::run(const std::string&   code,
 {
     if (code.empty())
         return ScriptResult(EMPTY_STRING, false, "Script is empty.");
-        
-    bool complete = (getProfile() == "full");
+
+    bool complete = false;
+
+    // gw: broken; disable until we can address (if necessary)
+    //bool complete = (getProfile() == "full");
 
 #ifdef MAXIMUM_ISOLATION
     // brand new context every time
@@ -307,20 +318,21 @@ DuktapeEngine::run(const std::string&   code,
     // message instead of the return value.
     std::string resultString;
 
-    bool ok = (duk_peval_string(ctx, code.c_str()) == 0); // [ "result" ]
+    duk_int_t r = (duk_peval_string(ctx, code.c_str()) == 0); // [ "result" ]
     const char* resultVal = duk_to_string(ctx, -1);
     if ( resultVal )
         resultString = resultVal;
 
-    if ( !ok )
+    if (resultString.find("Error:") != std::string::npos)
     {
-        OE_DEBUG << LC << "Error: source =" << std::endl << code << std::endl;
+        OE_WARN << LC << "Javascript ERROR: " << resultString << std::endl;
+        r = -1;
     }
 
     // pop the return value:
     duk_pop(ctx); // []
 
-    return ok ?
+    return r >= 0 ?
         ScriptResult(resultString, true) :
         ScriptResult("", false, resultString);
 }

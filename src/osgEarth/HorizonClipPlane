@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -78,7 +78,7 @@ namespace osgEarth
             osg::ref_ptr<osg::Uniform> uniform;
         };
         typedef PerObjectFastMap<osg::Camera*, PerCameraData> DataMap;
-        DataMap data;
+        DataMap _data;
 
         struct ResizeFunctor : public DataMap::Functor {
             unsigned _s;

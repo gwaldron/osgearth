@@ -1,0 +1,104 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURES_XYZ_FEATURESOURCE_LAYER
+#define OSGEARTH_FEATURES_XYZ_FEATURESOURCE_LAYER
+
+#include <osgEarth/FeatureSource>
+
+namespace osgEarth
+{
+    /**
+     * FeatureSource that reads feature tiles from a parameterized "XYZ" source.
+     */
+    class OSGEARTH_EXPORT XYZFeatureSource : public FeatureSource
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public FeatureSource::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            OE_OPTION(URI, url);
+            OE_OPTION(std::string, format);
+            OE_OPTION(bool, invertY);
+            OE_OPTION(int, minLevel);
+            OE_OPTION(int, maxLevel);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, XYZFeatureSource, Options, FeatureSource, xyzfeatures);
+
+        //! Location of the resource
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Format of the geometry data (GeoJSON, GML)
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+        //! Whether to flip the Y coordinate for tile access
+        void setInvertY(const bool& value);
+        const bool& getInvertY() const;
+
+        //! Minimum level of detail to access
+        void setMinLevel(const int& value);
+        const int& getMinLevel() const;
+
+        //! Maximum level of detail to access
+        void setMaxLevel(const int& value);
+        const int& getMaxLevel() const;
+
+    public: // Layer
+
+        virtual Status openImplementation();
+
+    protected:
+
+        virtual void init();
+
+    public: // FeatureLayer
+
+        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+        
+        virtual const FeatureSchema& getSchema() const { return _schema; }
+
+    protected:
+
+        virtual ~XYZFeatureSource() { }
+
+    private:
+        FeatureSchema _schema;
+        std::string _template;
+        std::string _rotateChoices;
+        std::string _rotateString;
+        std::string::size_type _rotateStart, _rotateEnd;
+        OpenThreads::Atomic _rotate_iter;
+        
+        bool getFeatures( const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features);
+        std::string getExtensionForMimeType(const std::string& mime);
+        bool isGML( const std::string& mime ) const;
+        bool isJSON( const std::string& mime ) const;
+        URI createURL(const Query& query);
+    };
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZFeatureSource::Options);
+
+#endif // OSGEARTH_FEATURES_XYZ_FEATURESOURCE_LAYER

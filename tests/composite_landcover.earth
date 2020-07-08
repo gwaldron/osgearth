@@ -1,0 +1,88 @@
+<map>    
+    <xi:include href="land_cover_dictionary.xml"/>
+    <xi:include href="readymap_elevation.xml"/>    
+    <xi:include href="viewpoints.xml"/>
+
+    <CompositeLandCover name="Land Cover Data">
+        <layers>
+            <LandCover name="ESA GLOBCOVER">
+                <xi:include href="D:/data/esa/land_cover_ESA_GLOBCOVER.xml"/>
+                <GDALImage>
+                    <url>D:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                    <profile>global-geodetic</profile>
+                </GDALImage>
+            </LandCover>  
+
+            <LandCover name="NCLD 2011" max_data_level="18">
+                <xi:include href="D:/data/nlcd/land_cover_NLCD.xml"/>
+                <GDALImage>
+                    <url>D:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31_256tiled.tif</url>
+                </GDALImage>
+            </LandCover>
+
+            <LandCover name="US Highways">
+                <cache_policy usage="no_cache"/>
+                <FeatureImage min_level="11">
+                    <OGRFeatures>
+                        <url>../data/boston-scl-utm19n-meters.shp</url>
+                    </OGRFeatures>
+                    <styles>
+                        <style type="text/css">
+                            default {
+                                stroke-width: 22m;
+                                coverage-value: 1;
+                            }
+                        </style>
+                    </styles>
+                </FeatureImage>
+                <land_cover_mappings>
+                    <mapping value="1" class="asphalt"/>
+                </land_cover_mappings>
+            </LandCover>
+        </layers>        
+    </CompositeLandCover>
+
+    <terrainshader>
+        <code>
+            <![CDATA[
+            #version 330
+            #pragma vp_entryPoint colorize
+            #pragma vp_location fragment_coloring
+            #pragma import_defines(OE_LANDCOVER_TEX, OE_LANDCOVER_TEX_MATRIX)
+            
+            uniform sampler2D OE_LANDCOVER_TEX;
+            uniform mat4 OE_LANDCOVER_TEX_MATRIX;
+            vec4 oe_layer_tilec;
+            void colorize(inout vec4 color) {
+                int c = int(texture(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*oe_layer_tilec).st).r);
+                ivec3 v;
+                if      (c == 1)  v.rgb = ivec3(0, 64, 0);      // forest
+                else if (c == 2)  v.rgb = ivec3(0, 127, 0);     // cropland
+                else if (c == 3)  v.rgb = ivec3(0, 192, 0);     // grassland
+                else if (c == 4)  v.rgb = ivec3(192, 192, 128); // savanna
+                else if (c == 5)  v.rgb = ivec3(40, 50, 70);    // swamp
+                else if (c == 6)  v.rgb = ivec3(192, 128, 64);  // desert
+                else if (c == 7)  v.rgb = ivec3(100, 100, 100); // rock
+                else if (c == 8)  v.rgb = ivec3(64, 64, 128);   // water
+                else if (c == 9)  v.rgb = ivec3(250, 250, 250); // tundra
+                else if (c == 10) v.rgb = ivec3(128, 128, 128); // urban
+                else if (c == 11) v.rgb = ivec3(48, 48, 48);    // asphalt
+                else v.rgb = ivec3(255,0,0);
+                color.rgb = vec3(float(v.r)/255.0, float(v.g)/255.0, float(v.b)/255.0);
+            }
+          ]]>
+        </code>
+    </terrainshader>
+
+    <Viewpoints home="0">
+        <viewpoint>
+            <heading>-2.12818e-06</heading>
+            <pitch>-89</pitch>
+            <range>6.4025e+06m</range>
+            <long>-98.94045729599723</long>
+            <lat>38.58816416459028</lat>
+            <height>451.3777650874108</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+    </Viewpoints>
+</map>

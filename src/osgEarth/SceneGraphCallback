@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,8 +23,7 @@
 #define OSGEARTH_SCENE_GRAPH_CALLBACK_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
-#include <osg/Node>
+#include <osgEarth/Threading>
 #include <osg/PagedLOD>
 #include <osg/observer_ptr>
 
@@ -53,7 +52,7 @@ namespace osgEarth
     typedef std::vector<osg::ref_ptr<SceneGraphCallback> > SceneGraphCallbackVector;
 
     /**
-     * Cotnainer for scene graph callbacks. Typically an object that 
+     * Cotnainer for scene graph callbacks. Typically an object that
      * supports scene graph callbacks will host an instance of this
      * object and use it register and fire callbacks at the appropriate times.
      */
@@ -80,41 +79,44 @@ namespace osgEarth
 
     private:
         SceneGraphCallbackVector _callbacks;
-        Threading::Mutex _mutex;
+        Threading::ReadWriteRecursiveMutex _mutex;
         osg::observer_ptr<osg::Object> _sender;
     };
 
-    /**
-     * Extends the osg::PagedLOD class to invoke SceneGraphCallbacks
-     * when nodes are added or removed from the live scene graph.
-     * (Note, this object does not invoke the preMergeNode method.)
-     */
-    class OSGEARTH_EXPORT PagedLODWithSceneGraphCallbacks : public osg::PagedLOD
+    namespace Util
     {
-    public:
-        PagedLODWithSceneGraphCallbacks(SceneGraphCallbacks* host);
-
         /**
-         * Gets the SceneGraphCallbacks.
+         * Extends the osg::PagedLOD class to invoke SceneGraphCallbacks
+         * when nodes are added or removed from the live scene graph.
+         * (Note, this object does not invoke the preMergeNode method.)
          */
-        SceneGraphCallbacks* getSceneGraphCallbacks() const;
+        class OSGEARTH_EXPORT PagedLODWithSceneGraphCallbacks : public osg::PagedLOD
+        {
+        public:
+            PagedLODWithSceneGraphCallbacks(SceneGraphCallbacks* host);
 
-        /**
-         * Sets the SceneGraphCallbacks
-         */
-        void setSceneGraphCallbacks(SceneGraphCallbacks* host);
+            /**
+             * Gets the SceneGraphCallbacks.
+             */
+            SceneGraphCallbacks* getSceneGraphCallbacks() const;
 
-    public: // osg::Group
-        
-        virtual bool addChild(osg::Node* child);
-        virtual bool insertChild(unsigned index, osg::Node* child);
-        virtual bool replaceChild(osg::Node* origChild, osg::Node* newChild);
-        virtual void childRemoved(unsigned pos, unsigned num);
+            /**
+             * Sets the SceneGraphCallbacks
+             */
+            void setSceneGraphCallbacks(SceneGraphCallbacks* host);
 
-    private:
-        osg::observer_ptr<SceneGraphCallbacks> _host;
-        osg::observer_ptr<osg::Object> _sender;
-    };
+        public: // osg::Group
+
+            virtual bool addChild(osg::Node* child);
+            virtual bool insertChild(unsigned index, osg::Node* child);
+            virtual bool replaceChild(osg::Node* origChild, osg::Node* newChild);
+            virtual void childRemoved(unsigned pos, unsigned num);
+
+        private:
+            osg::observer_ptr<SceneGraphCallbacks> _host;
+            osg::observer_ptr<osg::Object> _sender;
+        };
+    }
 }
 
 #endif // OSGEARTH_SCENE_GRAPH_CALLBACK_H

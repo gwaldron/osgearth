@@ -1,0 +1,212 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER
+#define OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER
+
+#include <osgEarth/FeatureSource>
+#include <queue>
+
+namespace osgEarth
+{
+    /**
+     * Feature Layer that accesses features via one of the many GDAL/OGR drivers.
+     */
+    class OSGEARTH_EXPORT OGRFeatureSource : public FeatureSource
+    {   
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public FeatureSource::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            OE_OPTION(URI, url);
+            OE_OPTION(std::string, connection);
+            OE_OPTION(std::string, ogrDriver);
+            OE_OPTION(bool, buildSpatialIndex);
+            OE_OPTION(bool, forceRebuildSpatialIndex);
+            OE_OPTION(Config, geometryConfig);
+            OE_OPTION(URI, geometryUrl);
+            OE_OPTION(std::string, layer);
+            OE_OPTION(Query, query);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, OGRFeatureSource, Options, FeatureSource, OGRFeatures);
+
+        //! Location of the data resource
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Database connection string (alterative to URL)
+        void setConnection(const std::string& value);
+        const std::string& getConnection() const;
+
+        //! Whether to build a spatial index after opening the resource (if supported)
+        void setBuildSpatialIndex(const bool& value);
+        const bool& getBuildSpatialIndex() const;
+
+        //! Specific OGR driver to use (default is ESRI Shapefile)
+        void setOGRDriver(const std::string& value);
+        const std::string& getOGRDriver() const;
+
+        //! Driver-specific layer to use (to access subdatasets)
+        void setLayer(const std::string& layer);
+        const std::string& getLayer() const;
+
+        //! Query expression to use when accessing data source
+        void setQuery(const Query& value);
+        const Query& getQuery() const;
+
+        //! URL of inline geometry to load.
+        void setGeometryURL(const URI& value);
+        const URI& getGeometryURL() const;
+
+        //! Sets an inline geometry to use.
+        void setGeometry(Geometry* geom) { _geometry = geom; }
+        const Geometry* getGeometry() const { return _geometry.get(); }
+
+        //! Profile of feature data
+        void setProfile(const Profile* profile) { _profile = profile; }
+        const Profile* getProfile() const { return _profile.get(); }
+
+    protected: // Layer
+
+        virtual void init();
+
+        virtual Status openImplementation();
+
+        virtual Status closeImplementation();
+
+    public: // FeatureSource
+
+        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+
+        virtual bool deleteFeature(FeatureID fid);
+
+        virtual int getFeatureCount() const;
+
+        virtual bool supportsGetFeature() const;
+
+        virtual Feature* getFeature( FeatureID fid );
+
+        virtual bool isWritable() const;
+
+        virtual const FeatureSchema& getSchema() const;
+    
+        virtual bool insertFeature(Feature* feature);
+
+        virtual osgEarth::Geometry::Type getGeometryType() const;
+
+        const Status& create(
+                const FeatureProfile* profile,
+                const FeatureSchema& schema,
+                const Geometry::Type& geometryType,
+                const osgDB::Options* readOptions);
+
+        virtual void buildSpatialIndex();
+
+    protected:
+
+        virtual ~OGRFeatureSource();
+
+        // parses an explicit WKT geometry string into a Geometry.
+        Geometry* parseGeometry( const Config& geomConf );
+
+        // read the WKT geometry from a URL, then parse into a Geometry.
+        Geometry* parseGeometryUrl( const URI& geomUrl, const osgDB::Options* dbOptions );
+
+        void initSchema();
+
+    private:
+        osg::ref_ptr<const Profile> _profile;
+        osg::ref_ptr<Geometry> _geometry; // explicit geometry.
+        std::string _source;
+        void* _dsHandle;
+        void* _layerHandle;
+        void* _ogrDriverHandle;
+        unsigned _dsHandleThreadId;
+        int _featureCount;
+        bool _needsSync;
+        bool _writable;
+        FeatureSchema _schema;
+        Geometry::Type _geometryType;
+    };
+
+    namespace OGR
+    {
+        //! Internal class - do not use directly
+        class OGRFeatureCursor : public FeatureCursor
+        {
+        public:
+            //! Create a feature cursor that can query data from a layer.
+            OGRFeatureCursor(
+                void*                     dsHandle,
+                void*                     layerHandle,
+                const FeatureSource*      source,
+                const FeatureProfile*     profile,
+                const Query&              query,
+                const FeatureFilterChain* filters,
+                ProgressCallback*         progress,
+                bool                      rewindPolygons
+                );
+
+            //! Create a feature cursor that will just iterate over
+            //! the results in a prepopulated result set.
+            OGRFeatureCursor(
+                void* resultSet,
+                const FeatureProfile* featureProfile);
+
+        public: // FeatureCursor
+
+            bool hasMore() const;
+            Feature* nextFeature();
+
+        protected:
+            virtual ~OGRFeatureCursor();
+
+        private:
+            void* _dsHandle;
+            void* _layerHandle;
+            void* _resultSetHandle;
+            void* _spatialFilter;
+            Query _query;
+            unsigned _chunkSize;
+            void* _nextHandleToQueue;
+            osg::ref_ptr<const FeatureSource> _source;
+            osg::ref_ptr<const FeatureProfile> _profile;
+            std::queue< osg::ref_ptr<Feature> > _queue;
+            osg::ref_ptr<Feature> _lastFeatureReturned;
+            osg::ref_ptr<const FeatureFilterChain> _filters;
+            bool _resultSetEndReached;
+            bool _rewindPolygons;
+
+        private:
+            void readChunk();
+        };
+    }
+
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::OGRFeatureSource::Options);
+
+
+#endif // OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER

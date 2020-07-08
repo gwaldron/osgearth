@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include "TritonContext"
 #include "TritonDrawable"
 #include "TritonHeightMap"
+#include "TritonCallback"
 
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
@@ -39,10 +40,11 @@ namespace osgEarth { namespace Triton
     class TritonLayerNode : public osg::Group
     {
     public:
-        TritonLayerNode(const TritonLayerOptions& options, Callback* callback, osgEarth::Triton::TritonLayer* layer) :
-            _options(options),
+        TritonLayerNode(osgEarth::Triton::TritonLayer* layer,
+                        LayerReference<osgEarth::ImageLayer>& mask) :
             _tritonLayer(layer),
-            _callback(callback),
+            _maskLayer(mask),
+            _callback(0L),
             _needsMapNode(true)
         {
             // To detect the map node:
@@ -54,27 +56,16 @@ namespace osgEarth { namespace Triton
 
         ~TritonLayerNode()
         {
-            // submit the TRITON context to the releaser so it can shut down Triton
-            // objects in a valid graphics context.
-            if (_TRITON.valid())
-            {
-                // TODO: 2.10+ trying to delete the TRITON object crashes.
-#if 0
-                osg::ref_ptr<osgEarth::ResourceReleaser> releaser;
-                if (_releaser.lock(releaser))
-                {
-                    releaser->push(_TRITON.get());
-                }
-#else
-                //_TRITON->releaseGLObjects(0L);
-#endif
-            }
+            //nop
         }
 
-        /** Layer to use to mask the rendering of the ocean surface */
-        void setMaskLayer(const osgEarth::ImageLayer* layer)
+        void setUserCallback(osgEarth::Triton::Callback* callback)
         {
-            _maskLayer = layer;
+            _callback = callback;
+        }
+
+        void dirty()
+        {
             create();
         }
 
@@ -112,7 +103,7 @@ namespace osgEarth { namespace Triton
 
             // create an object to house Triton data and resources.
             if (!_TRITON.valid())
-                _TRITON = new TritonContext(_options);
+                _TRITON = new TritonContext(_tritonLayer->options());
 
             if (map)
                 _TRITON->setSRS(map->getSRS());
@@ -123,22 +114,24 @@ namespace osgEarth { namespace Triton
             TritonDrawable* drawable = new TritonDrawable(_TRITON.get());
             _drawable = drawable;
             _drawable->setNodeMask(TRITON_OCEAN_MASK);
-            drawable->setMaskLayer(_maskLayer.get());
+            drawable->setMaskLayer(_maskLayer.getLayer());
             this->addChild(_drawable);
 
             // Place in the depth-sorted bin and set a rendering order.
             // We want Triton to render after the terrain.
-            _drawable->getOrCreateStateSet()->setRenderBinDetails(_options.renderBinNumber().get(), "DepthSortedBin");
+            _drawable->getOrCreateStateSet()->setRenderBinDetails(
+                _tritonLayer->getRenderBinNumber(), 
+                "DepthSortedBin");
 
             // If the user requested a height map, install it now.
             // Configuration of the height map generator will take place later when
-            // we have a valid graphics context.
-            if (_options.useHeightMap() == true)
+            // we have a valid graphics context.            
+            if (_tritonLayer->getUseHeightMap() == true)
             {
                 TritonHeightMap* heightMapGen = new TritonHeightMap();
                 heightMapGen->setTerrain(mapNode->getTerrainEngine());
-                if (_maskLayer.valid())
-                    heightMapGen->setMaskLayer(_maskLayer.get());
+                if (_maskLayer.getLayer())
+                    heightMapGen->setMaskLayer(_maskLayer.getLayer());
                 this->addChild(heightMapGen);
                 drawable->setHeightMapGenerator(heightMapGen);
             }
@@ -246,10 +239,9 @@ namespace osgEarth { namespace Triton
         }
 
         osg::ref_ptr<TritonContext> _TRITON;
-        TritonOptions               _options;
-        osg::Drawable*              _drawable;
+        osg::Drawable* _drawable;
+        LayerReference<osgEarth::ImageLayer>& _maskLayer;
         osg::observer_ptr<osgEarth::ResourceReleaser> _releaser;
-        osg::observer_ptr<const osgEarth::ImageLayer> _maskLayer;
         osg::observer_ptr<osgEarth::MapNode> _mapNode;
         osg::observer_ptr<osgEarth::Triton::TritonLayer> _tritonLayer;
         osg::ref_ptr<Callback> _callback;
@@ -261,6 +253,40 @@ namespace osgEarth { namespace Triton
 
 //........................................................................
 
+void
+TritonLayer::Options::fromConfig(const osgEarth::Config& conf)
+{
+    _useHeightMap.init(true);
+    _heightMapSize.init(1024);
+    _renderBinNumber.init(12);
+    _maxAltitude.init(50000);
+
+    conf.get("license_code", _licenseCode);
+    conf.get("resource_path", _resourcePath);
+    conf.get("use_height_map", _useHeightMap);
+    conf.get("height_map_size", _heightMapSize);
+    conf.get("render_bin_number", _renderBinNumber);
+    conf.get("max_altitude", _maxAltitude);
+    maskLayer().get(conf, "mask_layer");
+}
+
+osgEarth::Config
+TritonLayer::Options::getConfig() const
+{
+    osgEarth::Config conf = osgEarth::VisibleLayer::Options::getConfig();
+    conf.set("license_code", _licenseCode);
+    conf.set("resource_path", _resourcePath);
+    conf.set("use_height_map", _useHeightMap);
+    conf.set("height_map_size", _heightMapSize);
+    conf.set("render_bin_number", _renderBinNumber);
+    conf.set("max_altitude", _maxAltitude);
+    maskLayer().set(conf, "mask_layer");
+
+    return conf;
+}
+
+//........................................................................
+
 /** Register this layer so it can be used in an earth file */
 namespace osgEarth { namespace Triton
 {
@@ -268,23 +294,13 @@ namespace osgEarth { namespace Triton
     REGISTER_OSGEARTH_LAYER(triton_ocean, TritonLayer);
 } }
 
-
-TritonLayer::TritonLayer(Callback* userCallback) :
-osgEarth::VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_callback(userCallback)
-{
-    init();
-}
-
-TritonLayer::TritonLayer(const TritonLayerOptions& options, Callback* userCallback) :
-osgEarth::VisibleLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options),
-_callback(userCallback)
-{
-    init();
-}
+OE_LAYER_PROPERTY_IMPL(TritonLayer, std::string, UserName, user);
+OE_LAYER_PROPERTY_IMPL(TritonLayer, std::string, LicenseCode, licenseCode);
+OE_LAYER_PROPERTY_IMPL(TritonLayer, std::string, ResourcePath, resourcePath);
+OE_LAYER_PROPERTY_IMPL(TritonLayer, bool, UseHeightMap, useHeightMap);
+OE_LAYER_PROPERTY_IMPL(TritonLayer, unsigned, HeightMapSize, heightMapSize);
+OE_LAYER_PROPERTY_IMPL(TritonLayer, int, RenderBinNumber, renderBinNumber);
+OE_LAYER_PROPERTY_IMPL(TritonLayer, float, MaxAltitude, maxAltitude);
 
 void
 TritonLayer::init()
@@ -313,10 +329,15 @@ TritonLayer::init()
         lod->setMaxElevation(options().maxAltitude().get());
     }
 
-    _tritonNode = new TritonLayerNode(options(), _callback.get(), this);
+    _tritonNode = new TritonLayerNode(this, options().maskLayer());
     _root->addChild(_tritonNode.get());
 }
 
+void
+TritonLayer::setUserCallback(Callback* callback)
+{
+    static_cast<TritonLayerNode*>(_tritonNode.get())->setUserCallback(callback);
+}
 
 osg::Node*
 TritonLayer::getNode() const
@@ -325,29 +346,31 @@ TritonLayer::getNode() const
 }
 
 void
-TritonLayer::setMaskLayer(const osgEarth::ImageLayer* maskLayer)
+TritonLayer::setMaskLayer(osgEarth::ImageLayer* maskLayer)
 {
-    static_cast<TritonLayerNode*>(_tritonNode.get())->setMaskLayer(maskLayer);
+    options().maskLayer().setLayer(maskLayer);
+    static_cast<TritonLayerNode*>(_tritonNode.get())->dirty();
+}
+
+osgEarth::ImageLayer*
+TritonLayer::getMaskLayer() const
+{
+    return options().maskLayer().getLayer();
 }
 
 void
 TritonLayer::addedToMap(const osgEarth::Map* map)
-{    
-    if (options().maskLayer().isSet())
-    {
-        // listen for the mask layer.
-        _layerListener.listen(map, options().maskLayer().get(), this, &TritonLayer::setMaskLayer);
-    }      
+{   
+    VisibleLayer::addedToMap(map);
+    options().maskLayer().addedToMap(map);
 }
 
 void
 TritonLayer::removedFromMap(const osgEarth::Map* map)
 {
-    if (options().maskLayer().isSet())
-    {
-        _layerListener.clear();
-        setMaskLayer(0L);
-    }
+    VisibleLayer::removedFromMap(map);
+    options().maskLayer().removedFromMap(map);
+    setMaskLayer(0L);
 }
 
 void
@@ -355,4 +378,11 @@ TritonLayer::addIntersections(TritonIntersections* value)
 {
     TritonLayerNode* node = static_cast<TritonLayerNode*>(_tritonNode.get());
     node->_isect.push_back(value);
+}
+
+osgEarth::Config
+TritonLayer::getConfig() const
+{
+    osgEarth::Config c = osgEarth::VisibleLayer::getConfig();
+    return c;
 }

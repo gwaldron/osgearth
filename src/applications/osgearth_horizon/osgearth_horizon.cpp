@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,12 +24,12 @@
 #include <osgEarth/Notify>
 #include <osgEarth/GeoTransform>
 #include <osgEarth/MapNode>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/AnnotationUtils>
 #include <osgEarth/Horizon>
 #include <osgEarth/Registry>
-#include <osgEarthUtil/ActivityMonitorTool>
+#include <osgEarth/ActivityMonitorTool>
 
 #include <osg/Shape>
 #include <osg/ShapeDrawable>
@@ -39,12 +39,11 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
 
 int
 usage(const char* name)
 {
-    OE_NOTICE 
+    OE_NOTICE
         << "\nUsage: " << name << " file.earth --activity" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
@@ -93,6 +92,8 @@ installGeometry2(const SpatialReference* srs)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?
@@ -112,7 +113,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator(arguments) );
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
@@ -132,10 +133,10 @@ main(int argc, char** argv)
         // Culls the second item based on its horizon visibility
         HorizonCullCallback* callback = new HorizonCullCallback();
         item2->addCullCallback( callback );
-        
+
         // This horizon object we are just using to print out the results;
         // it's not actually part of the culling cullback!
-        osg::ref_ptr<Horizon> horizon = new Horizon(srs);        
+        osg::ref_ptr<Horizon> horizon = new Horizon(srs);
 
         while (!viewer.done())
         {

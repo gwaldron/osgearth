@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <osgEarth/StringUtils>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 
 void
@@ -228,8 +229,8 @@ GLSLChunker::replace(Chunks& input, const std::string& pattern, const std::strin
     for(int i=0; i<input.size(); ++i)
     {
         Chunk& chunk = input[i];
-        osgEarth::replaceIn(chunk.text, pattern, replacement);
+        osgEarth::Util::replaceIn(chunk.text, pattern, replacement);
         for (unsigned t = 0; t<chunk.tokens.size(); ++t)
-            osgEarth::replaceIn(chunk.tokens[t], pattern, replacement);
+            osgEarth::Util::replaceIn(chunk.tokens[t], pattern, replacement);
     }
 }

@@ -1,0 +1,85 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_FEATURES_IMAGE_TO_FEATURE_LAYER_H
+#define OSGEARTH_FEATURES_IMAGE_TO_FEATURE_LAYER_H 1
+
+#include <osgEarth/FeatureSource>
+#include <osgEarth/LayerReference>
+#include <osgEarth/ImageLayer>
+
+namespace osgEarth
+{
+    /**
+     * A FeatureSourceLayer that extracts features from raster data in
+     * an image layer.
+     */
+    class OSGEARTH_EXPORT ImageToFeatureSource : public FeatureSource
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public FeatureSource::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            OE_OPTION_LAYER(ImageLayer, image);
+            OE_OPTION(unsigned, level);
+            OE_OPTION(std::string, attribute);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, ImageToFeatureSource, Options, FeatureSource, ImageToFeature);
+
+        //! Image layer to use to convert raster data to features
+        void setImageLayer(ImageLayer* layer);
+        ImageLayer* getImageLayer() const;
+
+        //! Level of detail at which to generation features
+        void setLevel(const unsigned& level);
+        const unsigned& getLevel() const;
+
+        //! Attribute in which to store information
+        void setAttribute(const std::string& value);
+        const std::string& getAttribute() const;
+
+    public: // FeatureLayer
+        
+        virtual FeatureCursor* createFeatureCursorImplementation(
+            const Query& query,
+            ProgressCallback* progress);
+
+    public: // Layer
+
+        virtual void init();
+
+        virtual Status openImplementation();
+
+        virtual void addedToMap(const Map*);
+
+        virtual void removedFromMap(const Map*);
+
+        virtual Config getConfig() const;
+    };
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ImageToFeatureSource::Options);
+
+#endif // OSGEARTH_FEATURES_IMAGE_TO_FEATURE_LAYER_H

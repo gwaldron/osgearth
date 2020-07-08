@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,7 +23,8 @@
 #include <osgEarth/Config>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LandCoverLayer>
-#include <osgEarthSymbology/BillboardSymbol>
+#include <osgEarth/ResourceLibrary>
+#include <osgEarth/BillboardSymbol>
 #include <osg/BoundingBox>
 #include <osg/Shader>
 
@@ -37,12 +38,7 @@ namespace osgEarth {
 namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
-
-    class Coverage;
-    class SplatCoverageLegend;
-
-
+    
     class OSGEARTHSPLAT_EXPORT GroundCoverBiomeOptions : public ConfigOptions
     {
     public:
@@ -59,9 +55,15 @@ namespace osgEarth { namespace Splat
         SymbolVector& symbols() { return _symbols; }
         const SymbolVector& symbols() const { return _symbols; }
 
+        /** Percentage of land that this layer's instances will cover [0..1]. Lower
+        * values will result is more "patchiness" of placement. */
+        optional<float>& fill() { return _fill; }
+        const optional<float>& fill() const { return _fill; }
+
     protected:
         optional<std::string> _biomeClasses;
         SymbolVector _symbols;
+        optional<float> _fill;
 
     public:    
         void fromConfig(const Config& conf);
@@ -83,10 +85,6 @@ namespace osgEarth { namespace Splat
         optional<std::string>& name() { return _name; }
         const optional<std::string>& name() const { return _name; }
 
-        /** Equivalent terrain LOD at which this layer will render */
-        optional<unsigned>& lod() { return _lod; }
-        const optional<unsigned>& lod() const { return _lod; }
-
         /** Maximum viewing distance from camera */
         optional<float>& maxDistance() { return _maxDistance; }
         const optional<float>& maxDistance() const { return _maxDistance; }
@@ -99,6 +97,10 @@ namespace osgEarth { namespace Splat
           * in a given area. [1..5] */
         optional<float>& density() { return _density; }
         const optional<float>& density() const { return _density; }
+
+        //! How far apart the land cover instances are
+        optional<float>& spacing() { return _spacing; }
+        const optional<float>& spacing() const { return _spacing; }
 
         /** Percentage of land that this layer's instances will cover [0..1]. Lower
           * values will result is more "patchiness" of placement. */
@@ -131,6 +133,7 @@ namespace osgEarth { namespace Splat
         optional<unsigned> _lod;
         optional<float> _maxDistance;
         optional<float> _density;
+        optional<float> _spacing;
         optional<float> _fill;
         optional<float> _wind;
         optional<float> _brightness;
@@ -143,7 +146,8 @@ namespace osgEarth { namespace Splat
     {
     public:
         enum Type {
-            TYPE_BILLBOARD
+            TYPE_BILLBOARD,
+            TYPE_MODEL
         };
         virtual Type getType() const =0;
     };
@@ -169,6 +173,20 @@ namespace osgEarth { namespace Splat
     };
 
     /**
+    * Billboard object - camera-facing side image coupled with an optional
+    * top-down image.
+    */
+    class OSGEARTHSPLAT_EXPORT GroundCoverModel : public GroundCoverObject
+    {
+    public:
+        GroundCoverModel(osg::Node* model) { }
+
+        virtual Type getType() const { return TYPE_MODEL; }
+
+        osg::ref_ptr<osg::Node> _model;
+    };
+
+    /**
      * A Biome is a collection of ground cover objects corresponding
      * to a set of land cover classes. For example, the "forest" biome
      * might map to three different tree billboards.
@@ -186,11 +204,17 @@ namespace osgEarth { namespace Splat
         GroundCoverObjects& getObjects() { return _objects; }
         const GroundCoverObjects& getObjects() const { return _objects; }
 
+        /** Percentage of land that this layer's instances will cover [0..1]. Lower
+          * values will result is more "patchiness" of placement. */
+        optional<float>& fill() { return _fill; }
+        const optional<float>& fill() const { return _fill; }
+
     protected:
         virtual ~GroundCoverBiome() { }
 
         std::string    _classNames;
         int            _code;
+        optional<float> _fill;
         GroundCoverObjects _objects;
 
     public:
@@ -224,25 +248,17 @@ namespace osgEarth { namespace Splat
         void setWind(float wind);
         float getWind() const;
 
-        //! Density
-        void setDensity(float density);
-        float getDensity() const;
+        //! Spacing
+        void setSpacing(float value);
+        float getSpacing() const;
 
-        //! Fill
-        void setFill(float fill);
+        //! Fill percentage
+        void setFill(float value);
         float getFill() const;
 
         //! Max draw distance
         void setMaxDistance(float distance);
         float getMaxDistance() const;
-
-        //! Brightness
-        void setBrightness(float value);
-        float getBrightness() const;
-
-        //! Constrast
-        void setContrast(float value);
-        float getContrast() const;
 
     public:
 
@@ -267,6 +283,13 @@ namespace osgEarth { namespace Splat
         void resizeGLObjectBuffers(unsigned maxSize);
 
         void releaseGLObjects(osg::State* state) const;
+
+        //! Finds the biome representing this land cover class,
+        //! or NULL if there isn't one
+        const GroundCoverBiome* getBiome(const LandCoverClass*) const;
+
+        //! Get number of models
+        int getTotalNumModels() const;
 
     protected:
         virtual ~GroundCover() { }

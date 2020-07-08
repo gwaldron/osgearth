@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,10 +21,13 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Random>
 #include <osgEarth/SimplexNoise>
+#include <osgEarth/Registry>
+#include <osgEarth/Metrics>
 #include <osg/Texture2D>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
+using namespace osgEarth::Util;
 
 
 #define LC "[NoiseTextureFactory] "
@@ -32,27 +35,30 @@ using namespace osgEarth::Splat;
 osg::Texture*
 NoiseTextureFactory::create(unsigned dim, unsigned chans) const
 {
+    OE_PROFILING_ZONE;
     chans = osg::clampBetween(chans, 1u, 4u);
 
     GLenum type = chans >= 2u ? GL_RGBA : GL_RED;
+    GLenum textureFormat = chans >= 2u ? GL_RGBA8 : GL_R8;
     
     osg::Image* image = new osg::Image();
     image->allocateImage(dim, dim, 1, type, GL_UNSIGNED_BYTE);
+    image->setInternalTextureFormat(textureFormat);
 
-    // 0 = rocky mountains
-    // 1 = white noise   (not used)
-    // 2 = white noise 2 (not used)
-    // 3 = super-clumpy
+    // 0 = SMOOTH
+    // 1 = NOISE
+    // 2 = NOISE2
+    // 3 = CLUMPY
     const float F[4] = { 4.0f, 64.0f, 33.0f, 1.2f };
     const float P[4] = { 0.8f,  1.0f,  0.9f, 0.9f };
     const float L[4] = { 2.2f,  1.0f,  1.0f, 4.0f };
 
-    osgEarth::Random random(0, Random::METHOD_FAST);
+    Random random(0, Random::METHOD_FAST);
     
-    for(int k=0; k<chans; ++k)
+    for(unsigned k=0; k<chans; ++k)
     {
         // Configure the noise function:
-        osgEarth::SimplexNoise noise;
+        Util::SimplexNoise noise;
         noise.setNormalize( true );
         noise.setRange( 0.0, 1.0 );
         noise.setFrequency( F[k] );
@@ -66,13 +72,15 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
         // write repeating noise to the image:
         ImageUtils::PixelReader read ( image );
         ImageUtils::PixelWriter write( image );
+        osg::Vec4f v;
+
         for(int t=0; t<(int)dim; ++t)
         {
             double rt = (double)t/(double)dim;
             for(int s=0; s<(int)dim; ++s)
             {
                 double rs = (double)s/(double)dim;
-                osg::Vec4f v = read(s, t);
+                read(v, s, t);
                 double n;
 
                 if ( k == 1 || k == 2 )
@@ -99,12 +107,15 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
             for(int x=0; x<(int)(dim*dim); ++x)
             {
                 int s = x%int(dim), t = x/(int)dim;
-                osg::Vec4f v = read(s, t);
+                read(v, s, t);
                 v[k] = osg::clampBetween((v[k]-nmin)/(nmax-nmin), 0.0f, 1.0f);
                 write(v, s, t);
             }
         }
-    }
+    }    
+    
+    // create mipmaps
+    ImageUtils::mipmapImageInPlace(image);
 
     // make a texture:
     osg::Texture2D* tex = new osg::Texture2D( image );
@@ -112,9 +123,8 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     tex->setWrap(tex->WRAP_T, tex->REPEAT);
     tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
-    tex->setMaxAnisotropy( 4.0f );
-    tex->setUnRefImageDataAfterApply( true );
-    ImageUtils::activateMipMaps(tex);
+    tex->setMaxAnisotropy( 1.0f );
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
     return tex;
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,10 +20,8 @@
 #define OSGEARTH_TRAVERSAL_DATA_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
-//#include <osgEarth/Horizon>
+#include <osgEarth/Threading>
 #include <osgEarth/Containers>
-//#include <osg/Version>
 #include <osg/NodeVisitor>
 #include <osg/observer_ptr>
 #include <map>
@@ -34,15 +32,21 @@
 #define OSGEARTH_MASK_TERRAIN            (OSGEARTH_MASK_TERRAIN_SURFACE | OSGEARTH_MASK_TERRAIN_LAND_COVER)
 #define OSGEARTH_MASK_MAP_MODEL_GROUP    0x04
 
-
 namespace osgEarth
 {
     class MapNode;
+}
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
 
     // internal utility class supporing VisitorData
     class OSGEARTH_EXPORT TransientUserDataStore
     {
     public:
+        TransientUserDataStore();
+
         void store(osg::Referenced* owner, const std::string& key, osg::Referenced* data);
 
         osg::Referenced* fetch(osg::Referenced* owner, const std::string& key) const;
@@ -54,20 +58,20 @@ namespace osgEarth
         void remove(osg::Referenced* owner, const std::string& key);
         
     protected:
-        typedef fast_map<std::string, osg::ref_ptr<osg::Referenced> > StringTable;
+        typedef UnorderedMap<std::string, osg::ref_ptr<osg::Referenced> > StringTable;
 
         struct DataPair {
             osg::observer_ptr<osg::Referenced> _owner;
             StringTable                    _data;
         };
 
-        typedef fast_map<void*, DataPair> Table;
+        typedef UnorderedMap<void*, DataPair> Table;
 
         Table _table;
 
         mutable Threading::Mutex _mutex;
 
-        static bool isObserverInvalid(const Table::entry_t&);
+        static bool isObserverInvalid(const Table::value_type&);
 
     public:
         static bool unitTest();
@@ -103,6 +107,6 @@ namespace osgEarth
         static osg::Referenced* _fetch(osg::NodeVisitor& nv, const std::string& key);
     };
 
-} // namespace osgEarth
+} } // namespace osgEarth
 
 #endif // OSGEARTH_TRAVERSAL_DATA_H

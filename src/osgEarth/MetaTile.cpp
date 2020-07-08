@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include <osgEarth/MetaTile>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 #define LC "[MetaImage] "
 
@@ -97,7 +98,7 @@ MetaImage::read(double u, double v, osg::Vec4& output) const
     u = u * tile._scaleBias(0, 0) + tile._scaleBias(3, 0);
     v = v * tile._scaleBias(1, 1) + tile._scaleBias(3, 1);
 
-    output = tile._read(u, v);
+    tile._read(output, u, v);
     return true;
 }
 

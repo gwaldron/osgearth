@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -167,9 +167,13 @@ Text::createStateSet()
 #endif
     defineList[OE_LIGHTING_DEFINE] = osg::StateSet::DefinePair("", osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
 
+    // We do not want the default OE texturing shader active;
+    // it screws with the text color!
+    defineList["OE_DISABLE_DEFAULT_SHADER"] = osg::StateSet::DefinePair("1", osg::StateAttribute::ON);
+
     // The remaining of this method is exclusive so we don't corrupt the
     // stateset cache when creating text objects from multiple threads. -gw
-    static Threading::Mutex mutex;
+    static Threading::Mutex mutex(OE_MUTEX_NAME);
     Threading::ScopedMutexLock lock(mutex);
 
     if (!statesets.empty())
@@ -216,8 +220,7 @@ Text::createStateSet()
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset.get());
     vp->setName("osgEarth::Text");
     osgEarth::Shaders coreShaders;
-    coreShaders.load(vp, coreShaders.TextVertex);
-    coreShaders.load(vp, coreShaders.TextFragment);
+    coreShaders.load(vp, coreShaders.Text);
 
     return stateset.release();
 #else
@@ -234,7 +237,7 @@ Text::setFont(osg::ref_ptr<osgText::Font> font)
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,8)
     osgText::Text::setFont(font);
 #else
-    static Threading::Mutex mutex;
+    static Threading::Mutex mutex(OE_MUTEX_NAME);
     Threading::ScopedMutexLock lock(mutex);
 
     osg::StateSet* previousFontStateSet = _font.valid() ? _font->getStateSet() : osgText::Font::getDefaultFont()->getStateSet();

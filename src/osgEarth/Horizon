@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -78,6 +78,7 @@ namespace osgEarth
          * Returns true if the value changed; false if it was the same
          */
         bool setEye(const osg::Vec3d& eyeECEF);
+        const osg::Vec3d& getEye() const { return _eye; }
         
         /**
          * Whether a point is visible over the horizon.
@@ -174,11 +175,13 @@ namespace osgEarth
         const osg::observer_ptr<osg::Node>& getProxyNode() const { return _proxy; }
 
         /**
-         * Horizon to cull againts
+         * Custom ellipsoid to cull against.
+         * Normally this object will automatically detect the active ellipsoid
+         * from the NodeVisitor, but if you want to use a custom one you 
+         * can do so here.
          */
-        void setHorizon(Horizon* horizon) { _horizonProto = horizon; }
-        Horizon* getHorizon() { return _horizonProto.get(); }
-        const Horizon* getHorizon() const { return _horizonProto.get(); }
+        void setEllipsoid(const osg::EllipsoidModel& em);
+        const osg::EllipsoidModel& getEllipsoid() const { return _customEllipsoid; }
 
     public: // osg::NodeCallback
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
@@ -191,7 +194,8 @@ namespace osgEarth
     private:
         bool _centerOnly;
         bool _enabled;
-        osg::ref_ptr<Horizon> _horizonProto;
+        osg::EllipsoidModel _customEllipsoid;
+        bool _customEllipsoidSet;
         osg::observer_ptr<osg::Node> _proxy;
     };
 

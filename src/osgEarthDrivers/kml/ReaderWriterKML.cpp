@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #include <osgDB/Archive>
 #include <osgEarth/Containers>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 
 #include "KMLOptions"
 #include "KMLReader"
@@ -33,7 +33,6 @@
 #define LC "[ReaderWriterKML] "
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 using namespace osgEarth_kml;
 
 //---------------------------------------------------------------------------
@@ -92,8 +91,8 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
             return ReadResult("Missing required MapNode option");
 
         // grab the KMLOptions if present
-        const KMLOptions* kmlOptions =
-            static_cast<const KMLOptions*>(options->getPluginData("osgEarth::KMLOptions") );
+        const KML::KMLOptions* kmlOptions =
+            static_cast<const KML::KMLOptions*>(options->getPluginData("osgEarth::KMLOptions") );
 
         // fire up a KML reader and parse the data.
         KMLReader reader( mapNode, kmlOptions );

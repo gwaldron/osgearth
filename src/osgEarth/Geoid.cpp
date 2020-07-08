@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -77,7 +77,7 @@ Geoid::validate()
 }
 
 float 
-Geoid::getHeight(double lat_deg, double lon_deg, const ElevationInterpolation& interp ) const
+Geoid::getHeight(double lat_deg, double lon_deg, const RasterInterpolation& interp ) const
 {
     float result = 0.0f;
 

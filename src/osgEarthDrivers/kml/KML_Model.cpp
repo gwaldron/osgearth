@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,15 +18,14 @@
  */
 #include "KML_Model"
 
-#include <osgEarthSymbology/ModelSymbol>
+#include <osgEarth/ModelSymbol>
 
 using namespace osgEarth_kml;
-using namespace osgEarth::Symbology;
 
 void
 KML_Model::parseCoords( xml_node<>* node, KMLContext& cx )
 {
-    PointSet* point = new PointSet();
+    Point* point = new Point();
 
     xml_node<>* location = node->first_node("location", 0, false);
     if (location)
@@ -34,7 +33,7 @@ KML_Model::parseCoords( xml_node<>* node, KMLContext& cx )
         double latitude  = as<double>(getValue(location, "latitude"), 0.0);
         double longitude = as<double>(getValue(location, "longitude"), 0.0);
         double altitude  = as<double>(getValue(location, "altitude"), 0.0);
-        point->push_back( osg::Vec3d(longitude, latitude, altitude));
+        point->set( osg::Vec3d(longitude, latitude, altitude));
     }    
     _geom = point;
 }

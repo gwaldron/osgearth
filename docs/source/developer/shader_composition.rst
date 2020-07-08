@@ -212,11 +212,10 @@ to keep the GLSL code in sync with the ``setFunction()`` parameters.
 It would be easier to specify this all in once place. A ``ShaderPackage`` lets you do just that.
 Here is an example::
 
-    #version 110
+    #version 330
     
     #pragma vp_entryPoint  color_it_red
     #pragma vp_location    fragment_coloring
-    #pragma vp_order       1.0
     
     void color_it_red(inout vec4 color)
     {
@@ -282,55 +281,4 @@ in the including file. (That means it cannot have its own ``#version`` string, f
 
 Again: the *includer* and the *includee* must be registered with the same ``ShaderPackage``.
 
-----
-
-Concepts Specific to osgEarth
------------------------------
-
-Even though the VirtualProgram framework is included in the osgEarth SDK,
-it really has nothing to do with map rendering. In this section we will go over some
-of the things that osgEarth does with shader composition.
-
-         
-Terrain Variables
-~~~~~~~~~~~~~~~~~
-
-There are some built-in shader ``uniforms`` and ``variables`` that the osgEarth terrain
-engine uses and that are available to the developer.
-
-    *Important: Shader variables starting with the prefix ``oe_`` or ``osgearth_``
-    are reserved for osgEarth internal use.*
-
-Uniforms:
-
-  :oe_tile_key:          (vec4) elements 0-2 hold the x, y, and LOD tile key values;
-                         element 3 holds the tile's bounding sphere radius (in meters)
-  :oe_layer_tex:         (sampler2D) texture applied to the current layer of the current tile
-  :oe_layer_texc:        (vec4) texture coordinates for current tile
-  :oe_layer_tilec:       (vec4) unit coordinates for the current tile (0..1 in x and y)
-  :oe_layer_uid:         (int) Unique ID of the active layer
-  :oe_layer_order:       (int) Render order of the active layer
-  :oe_layer_opacity:     (float) Opacity [0..1] of the active layer
-
-Vertex attributes:
-
-  :oe_terrain_attr:      (vec4) elements 0-2 hold the unit height vector for a terrain
-                         vertex, and element 3 holds the raw terrain elevation value
-  :oe_terrain_attr2:     (vec4) element 0 holds the *parent* tile's elevation value;
-                         elements 1-3 are currently unused.
-
-
-Shared Image Layers
-~~~~~~~~~~~~~~~~~~~
-
-Sometimes you want to access more than one image layer at a time.
-For example, you might have a masking layer that indicates land vs. water.
-You may not actually want to *draw* this layer, but you want to use it to modulate
-another visible layer.
-
-You can do this using *shared image layers*. In the ``Map``, mark an image layer as
-*shared* (using ``ImageLayerOptions::shared()``) and the renderer will make it available
-to all the other layers in a secondary sampler.
-
-    Please refer to ``osgearth_sharedlayer.cpp`` for a usage example!
 

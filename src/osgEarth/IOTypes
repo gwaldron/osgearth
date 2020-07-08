@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 
 #include <osgEarth/Config>
 #include <osgEarth/DateTime>
+#include <osgEarth/Containers>
 
 /**
  * A collectin of types used by the various I/O systems in osgEarth. These
@@ -51,6 +52,53 @@ namespace osgEarth
     private:
         std::string _str;
     };
+
+
+//--------------------------------------------------------------------
+
+    /**
+    * Proxy server configuration.
+    */
+    class OSGEARTH_EXPORT ProxySettings
+    {
+    public:
+        ProxySettings( const Config& conf =Config() );
+        ProxySettings( const std::string& host, int port );
+
+        virtual ~ProxySettings() { }
+
+        std::string& hostName() { return _hostName; }
+        const std::string& hostName() const { return _hostName; }
+
+        int& port() { return _port; }
+        const int& port() const { return _port; }
+
+        std::string& userName() { return _userName; }
+        const std::string& userName() const { return _userName; }
+
+        std::string& password() { return _password; }
+        const std::string& password() const { return _password; }
+
+        void apply(osgDB::Options* dbOptions) const;
+        static bool fromOptions( const osgDB::Options* dbOptions, optional<ProxySettings>& out );
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    protected:
+        std::string _hostName;
+        int _port;
+        std::string _userName;
+        std::string _password;
+    };
+}
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ProxySettings);
+
+
+namespace osgEarth
+{
+    typedef UnorderedMap<std::string,std::string> Headers;
 
 
 //--------------------------------------------------------------------
@@ -129,7 +177,7 @@ namespace osgEarth
         bool succeeded() const { return _code == RESULT_OK && _result.valid(); }
 
         /** Whether the read operation failed */
-        bool failed() const { return _code != RESULT_OK; }
+        bool failed() const { return !succeeded(); }
 
         /** Whether the result contains an object */
         bool empty() const { return !_result.valid(); }
@@ -172,7 +220,7 @@ namespace osgEarth
 
         /** The result as a string */
         const std::string& getString() const { const StringObject* so = dynamic_cast<StringObject*>(_result.get()); return so ? so->getString() : _emptyString; }
-        
+
         /** Gets a string describing the read result */
         static std::string getResultCodeString( unsigned code )
         {
@@ -185,6 +233,7 @@ namespace osgEarth
                 code == RESULT_NO_READER       ? "No suitable ReaderWriter found" :
                 code == RESULT_READER_ERROR    ? "ReaderWriter error" :
                 code == RESULT_NOT_IMPLEMENTED ? "Not implemented" :
+                code == RESULT_NOT_MODIFIED    ? "Not modified" :
                                                  "Unknown error";
         }
 
@@ -219,7 +268,7 @@ namespace osgEarth
 //--------------------------------------------------------------------
 
     /**
-     * Callback that allows the developer to re-route URI read calls. 
+     * Callback that allows the developer to re-route URI read calls.
      *
      * If the corresponding callback method returns NOT_IMPLEMENTED, URI will
      * fall back on its default mechanism.
@@ -238,7 +287,7 @@ namespace osgEarth
             CACHE_ALL         = ~0
         };
 
-        /** 
+        /**
          * Tells the URI class which data types (if any) from this callback should be subjected
          * to osgEarth's caching mechamism. By default, the answer is "none" - URI
          * will not attempt to read or write from its cache when using this callback.

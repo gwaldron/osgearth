@@ -1,0 +1,60 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSG_GEOMETRY_OPERATOR_H
+#define OSG_GEOMETRY_OPERATOR_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Stroke>
+#include <osg/Array>
+#include <osg/Geometry>
+
+// Interface for operators that lists of vectors and normals and turn
+// them into polygonized geometry.
+
+namespace osgEarth { namespace Util {
+    class OSGEARTH_EXPORT OsgGeometryOperator : public osg::Referenced
+    {
+    public:
+        struct Callback {
+            virtual void operator()(unsigned i) = 0;
+        };
+                /**
+         * Run the polygonizer.
+         *
+         * @param[in ] verts    Line string geometry to polygonize. The polygonizer
+         *                      will add this array to the resulting geometry.
+         * @param[in ] normals  Localized normals associated with the input verts.
+         *                      Used to determine the plane in which to polygonize each
+         *                      line segment. Optional; can be NULL
+         * @param[in ] callback Called for each new point added to the polygonized line
+         *                      with the source line index. Optional, call be NULL.
+         * @param[in ] twosided Generate polygons on both sides of the center line.
+         *
+         * @return Triangulated geometry, including primitive set
+         */
+        virtual osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, Callback* callback =0L, bool twosided =true) const = 0;
+        /**
+         * Installs a shader on a stateset.
+         */
+        virtual void installShaders(osg::Node* node) const = 0;
+    };
+}}
+
+#endif // OSG_GEOMETRY_OPERATOR_H

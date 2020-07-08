@@ -68,49 +68,50 @@ to testing, adding features, and fixing bugs.
     on the message boards are really OSG questions. We will still try our
     best to help. But it's worth your while to join the `OSG Mailing List`_ or
     read the `OSG Forum`_ regularly as well.
-    
+
 **Social Media**
 
     * Follow `@pelicanmapping`_ on twitter for updates.
-    * Add our `Google+ Page`_ to your circles for gallery shots.
+    * See our `Facebook Page`_ for gallery shots.
+    * Connect with us on LinkedIn_.
 
 **Professional Services**
 
     The osgEarth team supports its efforts through professional services. At
     `Pelican Mapping`_ we do custom software development and integration work
-    involving osgEarth_ (and geospatial technologies in general). 
+    involving osgEarth_ (and geospatial technologies in general).
     We are based in the US but we work with clients all over the world.
     `Contact us`_ if you need help!
 
-    
+
 License
 -------
 
-osgEarth_ is licensed under the LGPL_ free open source license. 
+osgEarth_ is licensed under the LGPL_ free open source license.
 
 This means that:
 
     1. You can link to the osgEarth_ SDK in any commercial or non-commercial
        application free of charge.
-       
+
     2. If you make any changes to osgEarth_ *itself*, you must make those changes
        available as free open source software under the LGPL license. (Typically
        this means contributing your changes back to the project, but it is
        sufficient to host them in a public GitHub clone.)
-       
+
     3. If you redistribute the osgEarth_ *source code* in any form, you must
        include the associated copyright notices and license information
        unaltered and intact.
-       
+
     4. *iOS / static linking exception*: The LGPL requires that anything statically
        linked to an LGPL library (like osgEarth) also be released under the LGPL.
-       We grant an exception to the LGPL in this case. If you statically link 
+       We grant an exception to the LGPL in this case. If you statically link
        osgEarth with your proprietary code, you are *NOT* required to release your
        own code under the LGPL.
-       
+
 That's it.
 
-    
+
 Maintainers
 -----------
 
@@ -127,7 +128,8 @@ Maintainers
 .. _Jeff:             http://twitter.com/#!/_jeffsmith
 .. _Paul:             http://twitter.com/#!/p_levy
 .. _@pelicanmapping:  https://twitter.com/pelicanmapping
-.. _Google+ Page:     https://plus.google.com/b/104014917856468748129/104014917856468748129/posts
+.. _LinkedIn:         https://www.linkedin.com/company/pelican-mapping
+.. _Facebook Page:    https://www.facebook.com/pelicanmapping
 
 .. _support forum:    http://forum.osgearth.org
 .. _OSG Mailing List: http://lists.openscenegraph.org/listinfo.cgi/osg-users-openscenegraph.org

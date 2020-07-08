@@ -1,0 +1,127 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_UTM_GRATICLE
+#define OSGEARTHUTIL_UTM_GRATICLE
+
+#include <osgEarth/Common>
+#include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
+#include <osgEarth/ModelLayer>
+#include <osgEarth/Style>
+#include <osgEarth/Feature>
+#include <osg/ClipPlane>
+#include <vector>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    /**
+     * UTM (Universal Transverse Mercator) map graticule. 
+     * This only works for geocentric maps.
+     */
+    class OSGEARTH_EXPORT UTMGraticule : public VisibleLayer
+    {
+    public: // Serialization data
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(Style, gzdStyle);
+            OE_OPTION(float, textScale);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, UTMGraticule, Options, VisibleLayer, utm_graticule);
+        
+        //! Style for the Grid Zone Designator graphics
+        void setGZDStyle(const Style& value);
+        const Style& getGZDStyle() const;
+
+        //! Text scale factor (default = 1)
+        void setTextScale(const float& value);
+        const float& getTextScale() const;
+
+        //! If you change any of the options, call this to refresh the display
+        //! and apply the new settings.
+        void dirty();
+
+    public: // Layer
+
+        virtual void addedToMap(const Map* map);
+
+        virtual void removedFromMap(const Map* map);
+        
+        virtual osg::Node* getNode() const;
+
+        virtual void init();
+
+    protected:
+
+        /** dtor */
+        virtual ~UTMGraticule() { }
+
+    private:
+
+        void setUpDefaultStyles();
+
+        void rebuild();
+
+        UID _uid;
+
+        osg::ref_ptr<const Profile> _profile;
+
+        osg::ref_ptr<FeatureProfile> _featureProfile;
+
+        osg::ref_ptr<osg::ClipPlane> _clipPlane;
+
+        osg::ref_ptr<osg::Group> _root;
+
+        osg::observer_ptr<const Map> _map;
+
+        
+        // UTM data (used by the UTM Graticule and the MGRS Graticule).
+        class UTMData
+        {
+        public:
+            typedef std::map<std::string, GeoExtent> SectorTable;
+
+        public:
+            UTMData() { }
+
+            void rebuild(const Profile* profile);
+
+            osg::Group* buildGZDTile(const std::string& name, const GeoExtent& extent, const Style& style, const FeatureProfile* featureProfile, const Map* map);
+
+            SectorTable& sectorTable() { return _gzd; }
+            const SectorTable& sectorTable() const { return _gzd; }
+
+        private:
+            SectorTable _gzd;
+        };
+
+        UTMData _utmData;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_UTM_GRATICLE

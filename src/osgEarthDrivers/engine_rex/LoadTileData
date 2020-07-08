@@ -27,41 +27,48 @@
 #include "TileRenderModel"
 #include <osgEarth/Progress>
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     class LoadTileData : public Loader::Request
     {
     public:
+        //! New tile data request for all layers
         LoadTileData(TileNode* tilenode, EngineContext* factory);
 
-        CreateTileModelFilter& filter() { return _filter; }
+        //! New tile data request for a subset of layers (in the manifest)
+        LoadTileData(const CreateTileManifest& manifest, TileNode* tilenode, EngineContext* factory);
 
+        //! Whether to allow the request to cancel midstream. Default is true
         void setEnableCancelation(bool value) { _enableCancel = value; }
 
     public: // Loader::Request
 
-        /** Fetches the data for the tile node. */
-        void invoke(ProgressCallback*);
+        /** Fetches the data for the tile node. Return true upon success, false upon
+            failure or cancelation */
+        bool run(ProgressCallback*);
 
-        /** Applies the fetched data to the tile node (scene-graph safe) */
-        void apply(const osg::FrameStamp*);
+        /** Applies the fetched data to the tile node (scene-graph safe)
+            return false if the request failed and must be re-queued */
+        bool merge();
 
         //! Creates a stateset containing GL compilable objects from the model
         osg::StateSet* createStateSet() const;
+
+        //! Set of data requested
+        const CreateTileManifest& getManifest() const { return _manifest; }
 
     protected:
         osg::observer_ptr<TileNode> _tilenode;
         osg::observer_ptr<TerrainEngineNode> _engine;
         osg::observer_ptr<EngineContext> _context;
         osg::ref_ptr<TerrainTileModel> _dataModel;
-        TileRenderModel _renderModel;
-        CreateTileModelFilter _filter;
+        CreateTileManifest _manifest;
         osg::observer_ptr< const Map > _map;
         bool _enableCancel;
 
         virtual ~LoadTileData() { }
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} } // namespace osgEarth::REX
 
 #endif // OSGEARTH_REX_LOAD_TILE_DATA

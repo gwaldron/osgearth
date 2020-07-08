@@ -1,16 +1,24 @@
-<map>
-    <xi:include href="readymap_imagery.xml"/>
-    
+<Map name="USGS National Map">
+    <xi:include href="readymap_imagery.xml"/>    
     <xi:include href="readymap_elevation.xml"/>    
     
-    <image name="USGS NAIP+ Imagery" driver="wms">
-        <url>https://services.nationalmap.gov/arcgis/services/USGSNAIPPlus/MapServer/WmsServer?</url>
+    <WMSImage name="USGS NAIP+ Imagery">
+        <url>https://services.nationalmap.gov/arcgis/services/USGSNAIPImagery/ImageServer/WMSServer?</url>
         <format>png</format>
-        <layers>1</layers>
+        <layers>0</layers>
         <tile_size>256</tile_size>
         <srs>EPSG:4326</srs>
         <transparent>true</transparent>
-    </image>
+    </WMSImage>
+
+    <WMSImage name="USGS NAIP HI Imagery">
+        <url>https://services.nationalmap.gov/arcgis/services/USGSNAIPPlus/MapServer/WmsServer?</url>
+        <format>png</format>
+        <layers>9</layers>
+        <tile_size>256</tile_size>
+        <srs>EPSG:4326</srs>
+        <transparent>true</transparent>
+    </WMSImage>
     
     <xi:include href="viewpoints.xml"/>
-</map>
+</Map>

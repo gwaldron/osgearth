@@ -1,0 +1,123 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_MGRS_GRATICLE
+#define OSGEARTHUTIL_MGRS_GRATICLE
+
+#include <osgEarth/Common>
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/StyleSheet>
+#include <osgEarth/Feature>
+#include <osgEarth/LayerReference>
+#include <osg/ClipPlane>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Implements a MGRS (Military Grid Reference System) map graticule. 
+     * 
+     * NOTE: So far, this only works for geocentric maps.
+     * TODO: Add projected support; add text label support
+     */
+    class OSGEARTH_EXPORT MGRSGraticule : public VisibleLayer
+    {
+    public: // internal serialization data
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(URI, sqidData);
+            OE_OPTION(bool, useDefaultStyles);
+            OE_OPTION_LAYER(StyleSheet, styleSheet);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, MGRSGraticule, Options, VisibleLayer, MGRSGraticule);
+        
+        //! Location of the SQID feature data
+        //! This is a prebuilt binary file that you should distribute 
+        //! with the application - typically names "mgrs_sqid.bin"
+        void setSQIDDataURL(const URI& value);
+        const URI& getSQIDDataURL() const;
+
+        //! Styles for each display level. Each level should be names in the
+        //! following manner:
+        //! The top-level grid zone designator is called "gzd".
+        //! Each consecutive level is a power of 10, starting with "100000"
+        //! (for the SQID 100km grid) and going down from there (10000, 1000, etc.
+        //! down to level 1).
+        //! You can set only certain levels if you wish in order to override
+        //! the defaults.
+        void setStyleSheet(StyleSheet* value);
+        StyleSheet* getStyleSheet() const;
+
+        //! Whether to apply default styles when you do not expressly
+        //! set them for all levels. Defaults to true.
+        void setUseDefaultStyles(const bool& value);
+        const bool& getUseDefaultStyles() const;
+
+        //! If you change any of the options, call this to refresh the display
+        //! to refelct the new settings.
+        void dirty();
+
+    public: // Layer
+
+        virtual Status openImplementation();
+
+        virtual void addedToMap(const Map* map);
+
+        virtual void removedFromMap(const Map* map);
+        
+        virtual osg::Node* getNode() const;
+
+        virtual void init();
+
+        virtual Config getConfig() const;
+
+    protected:
+
+        /** dtor */
+        virtual ~MGRSGraticule() { }
+
+
+    private:
+        
+        void setUpDefaultStyles();
+
+        void rebuild();
+
+        osg::ref_ptr<const Profile> _profile;
+
+        osg::ref_ptr<FeatureProfile> _featureProfile;
+
+        osg::ref_ptr<osg::Group> _root;
+
+        osg::observer_ptr<const Map> _map;
+
+        void loadGZDFeatures(const SpatialReference* srs, FeatureList& output) const;
+
+        typedef std::map<std::string, osg::ref_ptr<osgText::Text> > TextObjects;
+        TextObjects _textObjects;
+    };
+
+} }
+
+#endif // OSGEARTHUTIL_UTM_GRATICLE

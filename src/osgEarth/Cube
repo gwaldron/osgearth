@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,8 +25,10 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Locators>
 
-namespace osgEarth
+namespace osgEarth { namespace Contrib
 {
+    using namespace osgEarth;
+
     /**
      * Utilities for working with cube and cubeface coordinates.
      */
@@ -85,30 +87,6 @@ namespace osgEarth
     };
 
     /**
-     * osgTerrain locator for positioning data on the terrain using a cube-face
-     * coordinate system.
-     */
-    class OSGEARTH_EXPORT CubeFaceLocator : public GeoLocator
-    {
-    public:
-        CubeFaceLocator(unsigned int face);
-
-        /** dtor */
-        virtual ~CubeFaceLocator();
-
-        // This method will generate geocentric vertex coordinates, given local tile
-        // coordinates (0=>1).
-        bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& world) const;
-
-        // This method will generate the texture coordinates for a given location on
-        // the globe.
-        bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
-
-    private:
-        unsigned int _face;
-    };
-
-    /**
      * The "Cube" SRS represents a 6-face cube, each face being in unit coordinates (0,0=>1,1).
      * the cube as whole lays out all six faces side by side, resulting in a space 
      * measuring (0,0=>6,1). The face number corresponds to the x-axis ordinal.
@@ -116,32 +94,26 @@ namespace osgEarth
     class OSGEARTH_EXPORT CubeSpatialReference : public SpatialReference
     {
     public:
-        CubeSpatialReference(void* handle);
-
-        /** dtor */
-        virtual ~CubeSpatialReference();
-
-        virtual GeoLocator* createLocator(double xmin, double ymin, double xmax, double ymax) const;
+        CubeSpatialReference(
+            const Key& key);
 
         // CUBE is a projected coordinate system.
-        virtual bool isGeographic() const { return false; }
-        virtual bool isProjected() const { return true; }
+        virtual bool isGeographic() const  override { return false; }
+        virtual bool isProjected() const  override { return true; }
 
         // This SRS uses a WGS84 lat/long SRS under the hood for reprojection. So we need the
         // pre/post transforms to move from cube to latlong and back.
-        virtual const SpatialReference* preTransform ( std::vector<osg::Vec3d>& points ) const;
-        virtual const SpatialReference* postTransform( std::vector<osg::Vec3d>& points ) const;
+        virtual const SpatialReference* preTransform ( std::vector<osg::Vec3d>& points ) const override;
+        virtual const SpatialReference* postTransform( std::vector<osg::Vec3d>& points ) const override;
 
         virtual bool transformExtentToMBR(
             const SpatialReference* to_srs,
             double&                 in_out_xmin,
             double&                 in_out_ymin,
             double&                 in_out_xmax,
-            double&                 in_out_ymax ) const;
+            double&                 in_out_ymax ) const override;
 
-    protected: // SpatialReference overrides
-
-        void _init();
+    private:
         
         bool transformInFaceExtentToMBR(
             const SpatialReference* to_srs,
@@ -150,6 +122,8 @@ namespace osgEarth
             double&                 in_out_ymin,
             double&                 in_out_xmax,
             double&                 in_out_ymax ) const;
+
+        virtual ~CubeSpatialReference();
     };
 
     /**
@@ -204,6 +178,6 @@ namespace osgEarth
         
         GeoExtent transformGcsExtentOnFace( const GeoExtent& gcsExtent, int face ) const;
     };
-}
+} }
 
 #endif // OSGEARTH_CUBE_H

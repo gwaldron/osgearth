@@ -1,0 +1,198 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_ANNO_IMAGE_OVERLAY_H
+#define OSGEARTH_ANNO_IMAGE_OVERLAY_H
+
+#include <osgEarth/AnnotationNode>
+#include <osgEarth/GeoData>
+#include <osgEarth/Units>
+#include <osgEarth/URI>
+#include <osgEarth/Terrain>
+#include <osgEarth/VirtualProgram>
+
+#include <osgEarth/Feature>
+
+#include <osg/Group>
+#include <osg/Geometry>
+#include <osg/Image>
+#include <osg/MatrixTransform>
+
+namespace osgEarth
+{
+    /**
+     * ImageOverlay drapes a rectangular texture on the terrain.
+     */
+    class OSGEARTH_EXPORT ImageOverlay : public AnnotationNode
+    {
+    public:
+        META_AnnotationNode(osgEarth, ImageOverlay);
+        
+        enum ControlPoint
+        {
+            CONTROLPOINT_CENTER,
+            CONTROLPOINT_LOWER_LEFT,
+            CONTROLPOINT_LOWER_RIGHT,
+            CONTROLPOINT_UPPER_LEFT,
+            CONTROLPOINT_UPPER_RIGHT
+        };
+        
+        /**
+         * Constructs an image overlay.
+         */
+        ImageOverlay(MapNode* mapNode, osg::Image* image = NULL);
+
+        /**
+         * Construcs an image overlay annotation from a serialized representation
+         */
+        ImageOverlay(const Config& conf, const osgDB::Options* dbOptions);
+
+        virtual ~ImageOverlay() { }
+
+        void setCorners(const osg::Vec2d& lowerLeft, const osg::Vec2d& lowerRight, 
+                        const osg::Vec2d& upperLeft, const osg::Vec2d& upperRight);
+
+        void setLowerLeft(double lon_deg, double lat_deg);
+        const osg::Vec2d& getLowerLeft() const { return _lowerLeft; }
+
+        void setLowerRight(double lon_deg, double lat_deg);
+        const osg::Vec2d& getLowerRight() const { return _lowerRight;}
+
+        void setUpperLeft(double lon_deg, double lat_deg);
+        const osg::Vec2d& getUpperLeft() const { return _upperLeft; }
+
+        void setUpperRight(double lon_deg, double lat_deg);
+        const osg::Vec2d& getUpperRight() const { return _upperRight;}
+
+        osg::Vec2d getCenter() const;
+        void setCenter(double lon_deg, double lat_deg);
+
+        osg::Vec2d getControlPoint(ControlPoint controlPoint);
+        void setControlPoint(ControlPoint controlPoint, double lon_deg, double lat_deg, bool singleVert=false);
+
+        /** When refining the mesh to fit the curtavure of the earth, this is the target resolution of the triangle mesh.
+            Default is 5 degrees */
+        void setGeometryResolution(const Distance& d) { _geometryResolution = d; }
+        const Distance& getGeometryResolution() const { return _geometryResolution; }
+
+        struct ImageOverlayCallback : public osg::Referenced
+        {
+            virtual void onOverlayChanged() {};
+            virtual ~ImageOverlayCallback() { }
+        };
+
+        typedef std::list< osg::ref_ptr<ImageOverlayCallback> > CallbackList;
+
+        void addCallback( ImageOverlayCallback* callback );
+        void removeCallback( ImageOverlayCallback* callback );
+
+
+        osgEarth::Bounds getBounds() const;
+        void setBounds(const osgEarth::Bounds& bounds);
+
+        void setBoundsAndRotation(const osgEarth::Bounds& bounds, const Angular& rotation);
+
+        osg::Image* getImage() const;
+        void setImage( osg::Image* image );
+
+        osg::Texture::FilterMode getMinFilter() const;
+        void setMinFilter( osg::Texture::FilterMode filter );
+
+        osg::Texture::FilterMode getMagFilter() const;
+        void setMagFilter( osg::Texture::FilterMode filter );
+
+        void setNorth(double value_deg);
+        void setSouth(double value_deg);
+        void setEast(double value_deg);
+        void setWest(double value_deg);
+
+        float getAlpha() const;
+        void setAlpha(float alpha);
+
+        void dirty();
+
+        bool getDraped() const;
+        void setDraped( bool draped );
+        
+        /** Serialize the contents of this node */
+        Config getConfig() const;
+
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
+    public:
+        
+        // callback from Terrain whsen new data arrives
+        void onTileUpdate(
+            const TileKey&          key, 
+            osg::Node*              graph, 
+            TerrainCallbackContext& context);
+        
+    private:
+        void fireCallback(ImageOverlay::ControlPoint point, const osg::Vec2d& location);
+
+        void construct();
+        void compile();
+        void clampLatitudes();
+
+        void updateFilters();
+
+        osg::Node* createNode(osgEarth::Feature* feature, bool split);
+
+        osg::Vec2d _lowerLeft;
+        osg::Vec2d _lowerRight;
+        osg::Vec2d _upperRight;
+        osg::Vec2d _upperLeft;
+        osg::Polytope _boundingPolytope;        
+        osg::ref_ptr< osg::Image > _image;
+        bool _dirty;
+        Threading::Mutex _mutex;
+
+        osg::Group* _root;        
+        osg::Texture* _texture;
+        Distance _geometryResolution;
+
+        //float _alpha;
+        CallbackList _callbacks;
+
+        optional<URI>   _imageURI;
+        optional<float> _alpha;
+        optional<osg::Texture::FilterMode> _minFilter;
+        optional<osg::Texture::FilterMode> _magFilter;
+        optional<bool> _draped;
+
+        bool _updateScheduled;
+
+
+        ImageOverlay() { }
+        ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }
+
+    private:
+        static osg::ref_ptr<VirtualProgram> _program;
+    };
+
+}
+
+#endif // OSGEARTH_ANNO_IMAGE_OVERLAY_H
+

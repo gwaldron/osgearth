@@ -2,22 +2,17 @@
 Tests the SilverLining environment plugin.
 http://sundog-soft.com/sds/features/real-time-3d-clouds/
 -->
-<map name="readymap.org" type="geocentric" version="2">
+<map name="Demo: SilverLining">
     
-    <image name="readymap_imagery" driver="tms" visible="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-        
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <xi:include href="readymap_imagery.xml"/>   
+    <xi:include href="readymap_elevation.xml"/>
 
-    <sky driver="silverlining">
+    <sky_silverlining>
         <user>user</user>
         <license_code>code</license_code>
         <clouds>true</clouds>
         <clouds_max_altitude>100000</clouds_max_altitude>
-    </sky>
+    </sky_silverlining>
     
     <viewpoints>
         <viewpoint name="Clouds" heading="37.95748484316797" height="251.618257785216" lat="46.5107100574977" long="-122.1696677949447" pitch="-8.543275459971998" range="6807.567220645097"/>

@@ -25,7 +25,7 @@
 #include <vector>
 
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
     /**
      * SelectionInfo is a data structure that holds the LOD distance switching 
@@ -67,6 +67,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         static const double _morphStartRatio;
     };
 
-} } } // namespace
+} } // namespace
 
 #endif

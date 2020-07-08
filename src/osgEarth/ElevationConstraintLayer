@@ -1,0 +1,89 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ELEVATION_CONSTRAINT_LAYER
+#define OSGEARTH_ELEVATION_CONSTRAINT_LAYER 1
+
+#include <osgEarth/ImageLayer>
+#include <osgEarth/LayerReference>
+#include <osgEarth/FeatureSource>
+
+namespace osgEarth
+{
+    /**
+    * Rasterizes feature data into an image layer.
+    */
+    class OSGEARTH_EXPORT ElevationConstraintLayer : public osgEarth::ImageLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_VECTOR(ConfigOptions, filters);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
+    public:
+        META_Layer(osgEarth, ElevationConstraintLayer, Options, osgEarth::ImageLayer, ElevationConstraint);
+
+
+        //! Sets the feature source to get road data from; call either this
+        //! or setFeatureSourceLayer
+        void setFeatureSource(FeatureSource* source);
+        inline FeatureSource* getFeatureSource() const;
+    public: // ImageLayer
+
+            // Opens the layer and returns a status
+        virtual Status openImplementation();
+
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+               // Called by Map when it adds this layer
+        virtual void addedToMap(const class Map*);
+
+        // Called by Map when it removes this layer
+        virtual void removedFromMap(const class Map*);
+
+        // post-ctor initialization
+        virtual void init();
+
+    protected:
+        osg::Image* createImageImplementationAux(const TileKey& key, ProgressCallback* progress) const;
+
+        virtual ~ElevationConstraintLayer() { }
+
+    private:
+        osg::ref_ptr<Session> _session;
+        osg::ref_ptr<FeatureFilterChain> _filterChain;
+    };
+
+    // template/inline impls .................................................
+
+    FeatureSource* ElevationConstraintLayer::getFeatureSource() const { return options().featureSource().getLayer(); }
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ElevationConstraintLayer::Options);
+
+#endif // OSGEARTH_ELEVATION_CONSTRAINT_LAYER
+

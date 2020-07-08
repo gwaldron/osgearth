@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,106 +21,46 @@
 #define OSGEARTH_LOCATORS_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/GeoData>
-#include <osgTerrain/Locator>
+#include <osg/Matrixd>
 
-namespace osgEarth
-{
-    class MapInfo;
-    class TileKey;
-
-    /**
-     * Locator that stores the extent of its source data (which might be different
-     * than the extent of the locator's transform). This locator can also automatically
-     * crop out a section of the source image.
-     */
-    class OSGEARTH_EXPORT GeoLocator : public osgTerrain::Locator
-    {
-    public:
-        GeoLocator();
-
-        GeoLocator( const GeoExtent& dataExtent );
-
-        GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent );
-
-        /** Construct a locator that crops to a display extent. */
-        GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& displayExtent );
-
-        /** dtor */
-        virtual ~GeoLocator() { }
-
-        static GeoLocator* createForKey( const TileKey& key, const MapInfo& mapInfo );
-        static GeoLocator* createForExtent( const GeoExtent& extent, const MapInfo& mapInfo);
-
-        GeoLocator* createSameTypeForKey(const TileKey& key, const MapInfo& mapInfo );
-        virtual GeoLocator* createSameTypeForExtent(const GeoExtent& extent, const MapInfo& mapInfo);
-
-        void setDataExtent( const GeoExtent& extent );
-        const GeoExtent& getDataExtent() const;
-
-        virtual GeoLocator* getGeographicFromGeocentric() const;
-
-        virtual bool isEquivalentTo( const GeoLocator& rhs ) const;
-
-        // generates linear (evenly-spaced) coordinates
-        virtual bool isLinear() const { return true; }
-
-        virtual bool createScaleBiasMatrix(const GeoExtent& window, osg::Matrixd& out_m) const;
-        virtual bool createScaleBiasMatrix(const GeoExtent& window, osg::Matrixf& out_m) const;
-
-    public: // better-sounding functions.
-
-        bool modelToUnit(const osg::Vec3d& model, osg::Vec3d& unit) const {
-            return convertModelToLocal(model, unit);
-        }
-        
-        bool unitToModel(const osg::Vec3d& unit, osg::Vec3d& model) const {
-            return convertLocalToModel(unit, model);
-        }
-        
-    public: // Locator
-        virtual bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
-
-    protected:
-        void cropLocal( osg::Vec3d& local ) const;
-
-        bool _inverseCalculated;
-
-    private:
-        GeoExtent _dataExtent;
-        double _x0, _y0, _x1, _y1;
-    };
-
-    
-    /**
-     * A terrain locator that generates texture coordinates that warp a Mercator image.
-     *
-     * Note: the MercatorLocator doesn't have a "cropping" variation b/c it automatically
-     * self-crops as necessary.
-     */
-    class OSGEARTH_EXPORT MercatorLocator : public GeoLocator
-    {
-    public:
-        MercatorLocator( const GeoExtent& dataExtent );
-
-        MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent );
-
-        //virtual bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
-        virtual bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
-
-        virtual GeoLocator* getGeographicFromGeocentric() const;
-
-        // does NOT generate linear coordinates
-        virtual bool isLinear() const { return false; }
-
-        // override.
-        virtual GeoLocator* createSameTypeForExtent(const GeoExtent& extent, const class MapInfo& mapInfo);
-
-    private:
-        GeoExtent _geoDataExtent;
-
-        void postInit();
-    };
+namespace osgEarth {
+    class GeoExtent;
+    class SpatialReference;
 }
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Object that facilitates the conversion between map or world coordinates
+     * and a local unit coordinate space defined by a geospatial extent.
+     */
+    class OSGEARTH_EXPORT GeoLocator
+    {
+    public:
+        //! Construct with an extent that defines the unit [0..1] space
+        GeoLocator(const GeoExtent& extent);
+
+        //! Sets the extent that defines the unit [0..1] space
+        bool setExtent(const GeoExtent& extent);
+
+        //! Convert map coordinates to unit space
+        void mapToUnit(const osg::Vec3d& map, osg::Vec3d& unit) const;
+        
+        //! Convert unit coordinates to map coords
+        void unitToMap(const osg::Vec3d& unit, osg::Vec3d& map) const;
+
+        //! Convert world coordinates to unit space
+        void worldToUnit(const osg::Vec3d& world, osg::Vec3d& unit) const;
+
+        //! Convert unit coordinates to world space
+        void unitToWorld(const osg::Vec3d& unit, osg::Vec3d& world) const;
+        
+    protected:
+        osg::Matrixd _transform;
+        osg::Matrixd _inverse;
+        double _x0, _y0, _x1, _y1;
+        osg::ref_ptr<const SpatialReference> _srs;
+    };
+} }
 
 #endif // OSGEARTH_LOCATORS_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -38,7 +38,7 @@ namespace osgEarth
         /**
          * Constructs an invalid TileKey.
          */
-        TileKey() : _lod(0), _x(0), _y(0) { }
+        TileKey() : _lod(0), _x(0), _y(0), _hash(0) { }
 
         /**
          * Creates a new TileKey with the given tile xy at the specified level of detail
@@ -65,25 +65,34 @@ namespace osgEarth
         virtual ~TileKey() { }
 
         /** Compare two tilekeys for equality. */
-        bool operator == (const TileKey& rhs) const {
+        inline bool operator == (const TileKey& rhs) const {
             return
-                valid() && rhs.valid() && 
-                _lod==rhs._lod && _x==rhs._x && _y==rhs._y && 
+                valid() == rhs.valid() &&
+                _lod == rhs._lod &&
+                _x == rhs._x &&
+                _y == rhs._y &&
                 _profile->isHorizEquivalentTo(rhs._profile.get());
         }
 
         /** Compare two tilekeys for inequality */
-        bool operator != (const TileKey& rhs) const {
-            return !(*this == rhs);
+        inline bool operator != (const TileKey& rhs) const {
+            return 
+                valid() != rhs.valid() ||
+                _lod != rhs._lod ||
+                _x != rhs._x ||
+                _y != rhs._y ||
+                !_profile->isEquivalentTo(rhs._profile.get());
         }
 
         /** Sorts tilekeys, ignoring profiles */
-        bool operator < (const TileKey& rhs) const {
+        inline bool operator < (const TileKey& rhs) const {
             if (_lod < rhs._lod) return true;
             if (_lod > rhs._lod) return false;
             if (_x < rhs._x) return true;
             if (_x > rhs._x) return false;
-            return _y < rhs._y;
+            if (_y < rhs._y) return true;
+            if (_y > rhs._y) return false;
+            return _profile->getHorizSignature() < rhs._profile->getHorizSignature();
         }
 
         /**
@@ -95,7 +104,7 @@ namespace osgEarth
          * Gets the string representation of the key, formatted like:
          * "lod_x_y"
          */
-        const std::string& str() const { return _key; }
+        const std::string str() const;
 
         /**
          * Gets the profile within which this key is interpreted.
@@ -124,6 +133,10 @@ namespace osgEarth
          */
         TileKey createParentKey() const;
 
+        //! Convert this key to its parent
+        //! @return true upon success, false if invalid
+        bool makeParent();
+
         /**
          * Creates and returns a key that represents an ancestor tile corresponding to
          * the specified LOD.
@@ -146,8 +159,7 @@ namespace osgEarth
         /**
          * Gets the geospatial extents of the tile represented by this key.
          */
-        const GeoExtent& getExtent() const {
-            return _extent; }
+        const GeoExtent getExtent() const;
 
         /**
          * Gets the extents of this key's tile, in pixels
@@ -189,6 +201,9 @@ namespace osgEarth
             unsigned sourceDataSize,
             unsigned minimumLOD =0) const;
 
+        //! X and Y resolution (in profile units) for the given tile size
+        std::pair<double,double> getResolution(unsigned tileSize) const;
+
     protected:
         std::string _key;
         unsigned int _lod;
@@ -196,7 +211,23 @@ namespace osgEarth
         unsigned int _y;
         osg::ref_ptr<const Profile> _profile;
         GeoExtent _extent;
+        size_t _hash;
+        void rehash();
+
+    public:
+        size_t hash() const { return _hash; }
     };
 }
+
+#ifdef OSGEARTH_CXX11
+namespace std {
+    // std::hash specialization for TileKey
+    template<> struct hash<osgEarth::TileKey> {
+        inline size_t operator()(const osgEarth::TileKey& value) const {
+            return value.hash();
+        }
+    };
+}
+#endif
 
 #endif // OSGEARTH_TILE_KEY_H

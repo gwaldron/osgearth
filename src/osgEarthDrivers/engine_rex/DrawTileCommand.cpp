@@ -18,7 +18,7 @@
  */
 #include "DrawTileCommand"
 
-using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::REX;
 
 #undef  LC
 #define LC "[DrawTileCommand] "
@@ -26,34 +26,34 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 void
 DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced* layerData) const
 {
-    PerContextDrawState& ds = dsMaster.getPCDS(ri.getContextID());
-
+    PerProgramState& ds = dsMaster.getPPS(ri);
     osg::State& state = *ri.getState();
+    osg::GLExtensions* ext = state.get<osg::GLExtensions>();
         
     // Tile key encoding, if the uniform is required.
     if (ds._tileKeyUL >= 0 )
     {
-        ds._ext->glUniform4fv(ds._tileKeyUL, 1, _keyValue.ptr());
+        ext->glUniform4fv(ds._tileKeyUL, 1, _keyValue.ptr());
     }
 
     // Apply the layer draw order for this tile so we can blend correctly:
     if (ds._layerOrderUL >= 0 && !ds._layerOrder.isSetTo(_layerOrder))
     {
-        ds._ext->glUniform1i(ds._layerOrderUL, (GLint)_layerOrder);
+        ext->glUniform1i(ds._layerOrderUL, (GLint)_layerOrder);
         ds._layerOrder = _layerOrder;
     }
 
     // Elevation coefficients (can probably be terrain-wide)
     if (ds._elevTexelCoeffUL >= 0 && !ds._elevTexelCoeff.isSetTo(_elevTexelCoeff))
     {
-        ds._ext->glUniform2fv(ds._elevTexelCoeffUL, 1, _elevTexelCoeff.ptr());
+        ext->glUniform2fv(ds._elevTexelCoeffUL, 1, _elevTexelCoeff.ptr());
         ds._elevTexelCoeff = _elevTexelCoeff;
     }
 
     // Morphing constants for this LOD
     if (ds._morphConstantsUL >= 0 && !ds._morphConstants.isSetTo(_morphConstants))
     {
-        ds._ext->glUniform2fv(ds._morphConstantsUL, 1, _morphConstants.ptr());
+        ext->glUniform2fv(ds._morphConstantsUL, 1, _morphConstants.ptr());
         ds._morphConstants = _morphConstants;
     }
 
@@ -85,7 +85,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
             if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))
             {
-                ds._ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
+                ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
                 samplerState._matrix = sampler._matrix;
             }
 
@@ -94,7 +94,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
             {
                 if (ds._parentTextureExistsUL >= 0 && !ds._parentTextureExists.isSetTo(sampler._texture.get() != 0L))
                 {
-                    ds._ext->glUniform1f(ds._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
+                    ext->glUniform1f(ds._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
                     ds._parentTextureExists = sampler._texture.valid();
                 }
             }
@@ -117,7 +117,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
             if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))
             {
-                ds._ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
+                ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
                 samplerState._matrix = sampler._matrix;
             }
         }
@@ -125,29 +125,35 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
     if (_drawCallback)
     {
-        PatchLayer::DrawContext dc;
+        PatchLayer::DrawContext tileData;
 
-        //TODO: might not need any of this. review. -gw
-        dc.colorTexture = _colorSamplers? (*_colorSamplers)[SamplerBinding::COLOR]._texture.get() : 0L;
-        if (_sharedSamplers)
-        {
-            dc.elevationTexture = (*_sharedSamplers)[SamplerBinding::ELEVATION]._texture.get();
-            dc.normalTexture    = (*_sharedSamplers)[SamplerBinding::NORMAL]._texture.get();
-            dc.coverageTexture  = (*_sharedSamplers)[SamplerBinding::COVERAGE]._texture.get();
-        }
-        dc.key = _key;
-        dc.range = _range;
-        _drawCallback->draw(ri, dc, layerData);
-
-        // evaluate this.
-        ds._samplerState.clear();
+        tileData._key = _key;
+        tileData._geomBBox = &_geom->getBoundingBox();
+        tileData._tileBBox = &_tile->getBoundingBox();
+        _drawCallback->drawTile(ri, tileData);
     }
 
     else
     // If there's a geometry, draw it now:
     if (_geom.valid())
     {
-        _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode(); //GL_TRIANGLES;
+        _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode();
         _geom->draw(ri);
     }    
+}
+
+void DrawTileCommand::accept(osg::PrimitiveFunctor& functor) const
+{
+    if (_geom.valid() && _geom->supports(functor))
+    {
+        _geom->accept(functor);
+    }
+}
+
+void DrawTileCommand::accept(osg::PrimitiveIndexFunctor& functor) const
+{
+    if (_geom.valid() && _geom->supports(functor))
+    {
+        _geom->accept(functor);
+    }
 }

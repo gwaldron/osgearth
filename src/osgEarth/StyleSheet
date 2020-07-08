@@ -1,0 +1,133 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_STYLE_SHEET_H
+#define OSGEARTHSYMBOLOGY_STYLE_SHEET_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Style>
+#include <osgEarth/StyleSelector>
+#include <osgEarth/Skins>
+#include <osgEarth/ResourceLibrary>
+#include <osgEarth/Layer>
+
+namespace osgEarth
+{
+    typedef std::map<std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraries;
+    typedef std::map<std::string, StyleSelector> StyleSelectors;
+
+    /**
+     * A complete definition of style information.
+     */
+    class OSGEARTH_EXPORT StyleSheet : public Layer
+    {
+    public:
+        // Simple representation of a script used locally
+        struct ScriptDef : osg::Referenced
+        {
+            ScriptDef() { }
+            ScriptDef(const std::string& code, const std::string& language = "javascript", const std::string& name = "") :
+                code(code), language(language), name(name) { }
+
+            std::string code;
+            std::string language;
+            std::string name;
+            std::string profile;
+            optional<URI> uri;
+        };
+
+    public:
+        class OSGEARTH_EXPORT Options : public Layer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, Layer::Options);
+            StyleMap& styles() { return _styles; }
+            const StyleMap& styles() const { return _styles; }
+            StyleSelectors& selectors() { return _selectors; }
+            const StyleSelectors& selectors() const { return _selectors; }
+            osg::ref_ptr<ScriptDef>& script() { return _script; }
+            const osg::ref_ptr<ScriptDef>& script() const { return _script; }
+            ResourceLibraries& libraries() { return _libraries; }
+            const ResourceLibraries& libraries() const { return _libraries; }
+
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+            StyleMap _styles;
+            StyleSelectors _selectors;
+            osg::ref_ptr<ScriptDef> _script;
+            ResourceLibraries _libraries;
+        };
+
+    public:
+        META_Layer(osgEarth, StyleSheet, Options, Layer, Styles);
+
+        virtual void init();
+
+        /** Gets the context for relative path resolution */
+        const URIContext& uriContext() const { return _uriContext; }
+
+        /** Adds a style to this sheet. */
+        void addStyle( const Style& style );
+
+        /** Removes a style from this sheet. */
+        void removeStyle( const std::string& name );
+        
+        /** Gets a named style from this sheet. If the name isn't found, optionally falls back on the
+            "default" style. Note: if the name has a hashtag prefix (e.g., "#name") it will search for
+            the name with and without the hash. (they are considered equivalent) */
+        Style* getStyle( const std::string& name, bool fallBackOnDefault =true );
+        const Style* getStyle( const std::string& name, bool fallBackOnDefault =true ) const;
+
+        /** Gets the default style in this sheet. */
+        Style* getDefaultStyle();
+        const Style* getDefaultStyle() const;
+
+        /** Get access to styles for manual configuration */
+        StyleMap& getStyles();
+        const StyleMap& getStyles() const;
+
+        /** Selectors pick a style from the sheet based on some criteria. */
+        StyleSelectors& getSelectors();
+        const StyleSelectors& getSelectors() const;
+        const StyleSelector* getSelector(const std::string& name) const;
+
+        /** Adds a resource library. */
+        void addResourceLibrary( ResourceLibrary* library );
+
+        /** Gets a resource library by name. */
+        ResourceLibrary* getResourceLibrary( const std::string& name ) const;
+
+        /** Gets the first library. */
+        ResourceLibrary* getDefaultResourceLibrary() const;
+
+        /** Script accessors */
+        void setScript( ScriptDef* script );
+        ScriptDef* getScript() const;
+
+    protected:
+        URIContext                   _uriContext;
+        Style                        _emptyStyle;
+        Threading::ReadWriteMutex  _resLibsMutex;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::StyleSheet::Options);
+
+#endif // OSGEARTHSYMBOLOGY_STYLE_SHEET_H

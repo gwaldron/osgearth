@@ -1,32 +1,35 @@
 <!--
-osgEarth Sample
+This example shows how to access an ESRI ArcGIS Server instance
 
-This example shows how to pull map tiles from an ESRI ArcGIS Server.
+Please note that this information is for educational purposes only, and
+that use of ESRI's online maps may be subject to certain terms and
+adibing my them is your responsibility!
 
-Please note that use of ESRI's free maps is subject to certain restrictions:
-http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
+http://services.arcgisonline.com/arcgis/sdk/rest/index.html
 -->
 
-<map name="ArcGIS Online" type="geocentric" version="2">
-        
-    <image name="arcgis-world-imagery" driver="arcgis">
+<Map name="Demo: ArcGIS Server">
+
+    <!-- Template
+    <ArcGISServerImage name="Layer Name" enabled="false">
+        <url></url>
+        <token></token>
+		<nodata_image></nodata_image>
+    </ArcGISServerImage>
+    -->
+    
+    <ArcGISServerImage name="World Imagery">
         <url>http://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/</url>
 		<nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
-		<cache_policy usage="no_cache"/>
-    </image>
+    </ArcGISServerImage>
       
-    <image name="arcgis-transportation" driver="arcgis" enabled="false">
+    <ArcGISServerImage name="Transportation" enabled="false">
         <url>http://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer</url>
-		<cache_policy usage="no_cache"/>
-    </image>
+    </ArcGISServerImage>
     
-    <image name="arcgis-reference-overlay" driver="arcgis" enabled="false">
-        <url>http://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places_Alternate/MapServer</url>
-		<cache_policy usage="no_cache"/>
-    </image>
-    
-    <options>
-        <lighting>false</lighting>
-    </options>
-	
-</map>
+    <ArcGISServerImage name="Shaded Relief" enabled="false">
+        <url>http://services.arcgisonline.com/arcgis/rest/services/World_Shaded_Relief/MapServer</url>
+    </ArcGISServerImage>
+    	
+    <xi:include href="viewpoints.xml"/>
+</Map>

@@ -4,9 +4,6 @@
 -->
 
 <map>
-    <options>
-        <terrain driver="rex"/>
-    </options>
 
     <!-- Pre-load the splatting nodekit -->
     <libraries>osgEarthSplat</libraries>
@@ -15,58 +12,57 @@
     <xi:include href="../data/land_cover_dictionary.xml"/>
     
     <!-- Land cover layer defines world wide classes -->
-    <land_cover name="LandCover" max_data_level="15">
-        <cache_policy usage="no_cache"/>
-        <coverages>
-            <coverage name="ESA GLOBCOVER" driver="gdal">
-                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <profile>global-geodetic</profile>
+    <CompositeLandCover>
+        <layers>
+            <LandCover name="ESA GLOBCOVER">
                 <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
-                <warp>0.05</warp>
-                <cache_policy usage="no_cache"/>
-            </coverage>
+                <GDALImage>
+                    <url>D:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                    <profile>global-geodetic</profile>
+                </GDALImage>
+            </LandCover>
             
-            <coverage name="Lakes" driver="agglite" coverage="true">
-                <warp>0</warp>
-                <features driver="ogr">
-                    <url>H:/data/naturalearth/vector-10m/ne_10m_lakes.shp</url>
-                </features>
-                <styles>
-                    <style type="text/css">
-                        default {
-                            coverage-value: 1;
-                        }
-                    </style>
-                </styles>
+            <LandCover name="Lakes">
                 <land_cover_mappings>
                     <mapping value="1" class="water"/>
                 </land_cover_mappings>
-                <cache_policy usage="no_cache"/>
-            </coverage>
+                <FeatureImage>
+                    <OGRFeatures build_spatial_index="true">
+                        <url>D:/data/naturalearth/vector-10m/ne_10m_lakes.shp</url>
+                    </OGRFeatures>
+                    <styles>
+                        <style type="text/css">
+                            default {
+                                coverage-value: 1;
+                            }
+                        </style>
+                    </styles>
+                </FeatureImage>
+            </LandCover>
 
-            <coverage name="Boston streets" driver="agglite" coverage="true" min_level="10" max_data_level="17">
-                <warp>0</warp>
-                <features driver="ogr" build_spatial_index="true">
-                    <url>../data/boston-scl-utm19n-meters.shp</url>
-                </features>                
-                <styles>
-                    <style type="text/css">
-                        default {
-                            stroke-width: 10m;
-                            coverage-value: 1;
-                        }
-                    </style>
-                </styles>
+            <LandCover name="Boston streets" min_level="10" max_data_level="17">
                 <land_cover_mappings>
                     <mapping value="1" class="asphalt"/>
-                </land_cover_mappings>
-                <cache_policy usage="no_cache"/>     
-            </coverage>
-        </coverages>
-    </land_cover>
+                </land_cover_mappings>  
+                <FeatureImage>
+                    <OGRFeatures build_spatial_index="true">
+                        <url>../data/boston-scl-utm19n-meters.shp</url>
+                    </OGRFeatures>                
+                    <styles>
+                        <style type="text/css">
+                            default {
+                                stroke-width: 10m;
+                                coverage-value: 1;
+                            }
+                        </style>
+                    </styles>
+                </FeatureImage> 
+            </LandCover>
+        </layers>
+    </CompositeLandCover>
         
     <!-- Procedural terrain imagery from land cover data -->
-    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover">
+    <SplatImage name="Splat Imagery">
         <zones>
             <zone name="default">
                 <surface>
@@ -74,8 +70,7 @@
                 </surface>
             </zone>
         </zones>
-    </splat_imagery>
-
+    </SplatImage>
     
     <xi:include href="viewpoints.xml"/>
 </map>

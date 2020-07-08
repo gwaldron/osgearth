@@ -1,0 +1,116 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_UTIL_FLATTENING_LAYER
+#define OSGEARTH_UTIL_FLATTENING_LAYER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileSource>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/ElevationPool>
+#include <osgEarth/LayerReference>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/ScriptEngine>
+#include <osgEarth/StyleSheet>
+#include <osgDB/FileNameUtils>
+
+
+namespace osgEarth { namespace Contrib
+{
+    /**
+     * Elevation layer that overlays modified elevation samples intended to
+     * flatten the terrain around vector features. The use case is to make
+     * roads flat or prevent rivers and lakes from sloping with the terrain.
+     */
+    class OSGEARTH_EXPORT FlatteningLayer : public ElevationLayer
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION(NumericExpression, lineWidth);
+            OE_OPTION(NumericExpression, bufferWidth);
+            OE_OPTION(bool, fill);
+            StyleSheet::ScriptDef* getScript() const { return _script.get(); }
+            virtual Config getConfig() const;
+        
+        private:
+            void fromConfig(const Config&);
+            osg::ref_ptr< StyleSheet::ScriptDef > _script;
+        };
+        
+    public:
+        META_Layer(osgEarth, FlatteningLayer, Options, ElevationLayer, FlattenedElevation);
+
+        //! Feature source layer to get features from
+        void setFeatureSource(FeatureSource* layer);
+        FeatureSource* getFeatureSource() const { return options().featureSource().getLayer(); }
+
+        //! For line features, the width around the line to flatten
+        void setLineWidth(const NumericExpression& value);
+        const NumericExpression& getLineWidth() const;
+
+        //! Width of the buffer between the flattened terrain and the natural terrain,
+        //! which will serve as a transition area.
+        void setBufferWidth(const NumericExpression& value);
+        const NumericExpression& getBufferWidth() const;
+
+        //! Whether to write all samples (default=false) with source elev instead of
+        //! writing NO_DATA_VALUE where no features exist
+        void setFill(const bool& value);
+        const bool& getFill() const;
+
+    public: // ElevationLayer
+
+        virtual void init();
+
+        // opens the layer and returns the status
+        virtual Status openImplementation();
+
+        virtual Config getConfig() const;
+
+    protected: // ElevationLayer
+
+        virtual GeoHeightField createHeightFieldImplementation(
+            const TileKey& key, 
+            ProgressCallback* progress) const;
+
+        //! called by the map when this layer is added
+        virtual void addedToMap(const class Map*);
+
+        //! called by the map when this layer is removed
+        virtual void removedFromMap(const class Map*);
+
+    protected:
+
+        virtual ~FlatteningLayer();
+
+    private:
+
+        osg::ref_ptr<ElevationPool> _pool;
+        mutable ElevationPool::WorkingSet _elevWorkingSet;
+        osg::ref_ptr<ScriptEngine> _scriptEngine;
+        osg::observer_ptr< const Map > _map;
+    };
+
+} }
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::FlatteningLayer::Options);
+
+#endif // OSGEARTH_UTIL_FLATTENING_LAYER

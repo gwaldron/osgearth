@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,13 +28,12 @@
 
 #include <osgEarthSplat/SplatLayer>
 #include <osgEarthSplat/GroundCoverLayer>
+#include <osgEarth/GDAL>
 
-#include <osgEarthDrivers/gdal/GDALOptions>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/EarthManipulator>
 
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/EarthManipulator>
-
-#include <osgEarthSymbology/BillboardSymbol>
+#include <osgEarth/BillboardSymbol>
 
 
 #define LC "[splat] "
@@ -42,8 +41,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Splat;
-using namespace osgEarth::Drivers;
-using namespace osgEarth::Symbology;
 
 int
 failed(const std::string& s) {
@@ -54,23 +51,21 @@ failed(const std::string& s) {
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc,argv);
     bool fromXML = arguments.find("--xml") >= 0;
 
     // Create a land cover dictionary.
-    LandCoverDictionary* dictionary;
+    LandCoverDictionary* dictionary = new LandCoverDictionary();
 
     if (fromXML)
     {
-        LandCoverDictionaryOptions options;
-        if (options.loadFromXML("../data/land_cover_dictionary.xml") == false)
+        if (!dictionary->loadFromXML("../data/land_cover_dictionary.xml"))
             return failed("Cannot find XML land cover dictionary");
-        
-        dictionary = new LandCoverDictionary(options);
     }
     else
     {
-        dictionary = new LandCoverDictionary();
         dictionary->setName("Land Cover Dictionary");
         dictionary->addClass("forest");
         dictionary->addClass("cropland");
@@ -79,7 +74,7 @@ main(int argc, char** argv)
         dictionary->addClass("swamp");
         dictionary->addClass("desert");
         dictionary->addClass("rock");
-        dictionary->addClass("water");    
+        dictionary->addClass("water");
         dictionary->addClass("tundra");
         dictionary->addClass("urban");
     }
@@ -88,52 +83,41 @@ main(int argc, char** argv)
     // map each value to a class in the dictionary.
     // This example uses the ESA GLOBCOVER data set from
     // http://due.esrin.esa.int/page_globcover.php
-    GDALOptions coverageDriver;
-    coverageDriver.url() = "H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif"; 
-    coverageDriver.profile() = ProfileOptions("global-geodetic");
 
-    LandCoverCoverageLayerOptions coverage;
-    coverage.driver() = coverageDriver;
-    coverage.warp() = 0.035;
-    if (fromXML)
-    {
-        if (coverage.loadMappingsFromXML("../data/land_cover_ESA_GLOBCOVER.xml") == false)
-            return failed("Cannot find coverage mappings XML\n");
-    }
-    else
-    {
-        coverage.map(11, "cropland");
-        coverage.map(14, "cropland");
-        coverage.map(20, "cropland");
-        coverage.map(30, "cropland");
-        coverage.map(40, "forest");
-        coverage.map(50, "forest");
-        coverage.map(60, "forest");
-        coverage.map(70, "forest");
-        coverage.map(80, "forest");
-        coverage.map(90, "forest");
-        coverage.map(100, "forest");
-        coverage.map(110, "grassland");
-        coverage.map(120, "grassland");
-        coverage.map(130, "savanna");
-        coverage.map(140, "savanna");
-        coverage.map(150, "savanna");
-        coverage.map(160, "swamp");
-        coverage.map(170, "swamp");
-        coverage.map(180, "swamp");
-        coverage.map(190, "urban");
-        coverage.map(200, "desert");
-        coverage.map(210, "water");
-        coverage.map(220, "tundra");
-        coverage.map(230, "water");
-    }
+    osg::ref_ptr<GDALImageLayer> source = new GDALImageLayer();
+    source->setURL("H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif");
+    source->setProfile(Profile::create("global-geodetic"));
+    source->setCoverage(true);
 
     // Create the land cover layer for the map:
     LandCoverLayer* landCover = new LandCoverLayer();
     landCover->setName("LandCover");
-    landCover->options().cachePolicy() = CachePolicy::NO_CACHE;
-    landCover->options().coverages().push_back(coverage);
-    landCover->options().maxDataLevel() = 15u;
+    landCover->setCachePolicy(CachePolicy::NO_CACHE);
+    landCover->setSource(source.get());
+    landCover->map(11, "cropland");
+    landCover->map(14, "cropland");
+    landCover->map(20, "cropland");
+    landCover->map(30, "cropland");
+    landCover->map(40, "forest");
+    landCover->map(50, "forest");
+    landCover->map(60, "forest");
+    landCover->map(70, "forest");
+    landCover->map(80, "forest");
+    landCover->map(90, "forest");
+    landCover->map(100, "forest");
+    landCover->map(110, "grassland");
+    landCover->map(120, "grassland");
+    landCover->map(130, "savanna");
+    landCover->map(140, "savanna");
+    landCover->map(150, "savanna");
+    landCover->map(160, "swamp");
+    landCover->map(170, "swamp");
+    landCover->map(180, "swamp");
+    landCover->map(190, "urban");
+    landCover->map(200, "desert");
+    landCover->map(210, "water");
+    landCover->map(220, "tundra");
+    landCover->map(230, "water");
 
     // Next, load the definitions that map land cover classes to actual textures.
     Surface* surface = new Surface();
@@ -146,14 +130,14 @@ main(int argc, char** argv)
     // At least one zone is required and by default it covers the entire map.
     Zone* splatZone = new Zone();
     splatZone->setSurface(surface);
-    
+
     // Create an imagery splatting layer that uses the configured land cover.
     SplatLayer* splatLayer = new SplatLayer();
     splatLayer->setName("Splat imagery");
-    splatLayer->options().cachePolicy() = CachePolicy::NO_CACHE;
+    splatLayer->setCachePolicy(CachePolicy::NO_CACHE);
     splatLayer->setLandCoverDictionary(dictionary);
     splatLayer->setLandCoverLayer(landCover);
-    splatLayer->zones().push_back(splatZone);
+    splatLayer->getZones().push_back(splatZone);
 
 
     // Now, the trees:
@@ -172,7 +156,7 @@ main(int argc, char** argv)
     GroundCoverBiomeOptions forestBiome;
     forestBiome.biomeClasses() = "forest";
     forestBiome.symbols().push_back(treeSymbol);
-    
+
     // Assemble the ground cover coniguration:
     GroundCoverOptions treeOptions;
     treeOptions.biomes().push_back(forestBiome);
@@ -189,10 +173,10 @@ main(int argc, char** argv)
     // Now, create a ground cover layer for some trees.
     GroundCoverLayer* treeLayer = new GroundCoverLayer();
     treeLayer->setName("Ground cover");
-    treeLayer->options().lod() = 13;
+    treeLayer->setLOD(13u);
     treeLayer->setLandCoverDictionary(dictionary);
     treeLayer->setLandCoverLayer(landCover);
-    treeLayer->zones().push_back(treeZone);
+    treeLayer->getZones().push_back(treeZone);
 
 
     // Assemble the Map.

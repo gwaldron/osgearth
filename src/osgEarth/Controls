@@ -1,0 +1,933 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_CONTROLS
+#define OSGEARTHUTIL_CONTROLS
+
+#include <osgEarth/Common>
+#include <osgEarth/Common>
+#include <osgEarth/Units>
+#include <osgEarth/Containers>
+#include <osg/Drawable>
+#include <osg/Geode>
+#include <osg/MatrixTransform>
+#include <osg/MixinVector>
+#include <osgGA/GUIEventHandler>
+#include <osgViewer/View>
+#include <osgText/Font>
+#include <osgText/Text>
+#include <vector>
+#include <queue>
+
+/**
+ * Controls - A simple 2D UI toolkit.
+ *
+ * Controls are 2D interface components that automatically layout to fit their containers.
+ * The support layout containers, margins and padding, alignment/justification, and docking.
+ * Controls are a quick and easy way to add "HUD" components to a scene. Just create a
+ * ControlCanvas and add it to a View's scene. Then create and add Controls to that
+ * surface.
+ */
+namespace osgEarth { namespace Util { namespace Controls
+{
+    using namespace osgEarth;
+
+    typedef std::vector< osg::ref_ptr<osg::Drawable> > DrawableList;
+
+    typedef std::map< class Control*, osg::Geode* > GeodeTable;
+
+    // internal state class
+    struct ControlContext
+    {
+        ControlContext() : _view(0L), _viewContextID(~0), _frameStamp(0L) { }
+        osg::View* _view;
+        osg::ref_ptr<const osg::Viewport> _vp;
+        unsigned int _viewContextID;
+        std::queue< osg::ref_ptr<class Control> > _active;
+        const osg::FrameStamp* _frameStamp;
+    };
+
+    // 2-vec that supports various "units" designations
+    class OSGEARTH_EXPORT UVec2f : public osg::Vec2f
+    {
+    public:
+        enum Unit {
+            UNITS_FRACTION,
+            UNITS_PIXELS,
+            UNITS_INSET_PIXELS
+        };
+
+        UVec2f(double x, double y, Unit xunits =UNITS_PIXELS, Unit yunits =UNITS_PIXELS)
+            : osg::Vec2f(x,y), _xunits(xunits), _yunits(yunits) { }
+
+        Unit& xUnits() { return _xunits; }
+        const Unit& yUnits() const { return _yunits; }
+
+        float x( const osg::Vec2f& size ) const;
+        float x( const ControlContext& cx ) const;
+
+        float y( const osg::Vec2f& size) const;
+        float y( const ControlContext& cx ) const;
+
+        UVec2f asPixels( const osg::Vec2f& size ) const;
+        UVec2f asPixels( const ControlContext& cx ) const;
+
+    private:
+        Unit _xunits, _yunits;
+    };
+
+    // holds 4-sided gutter dimensions (for margins and padding) .. no-export, header-only.
+    struct Gutter
+    {
+        Gutter()
+            : _top(0), _right(0), _bottom(0), _left(0) { }
+        Gutter( float top, float right, float bottom, float left )
+            : _top(top), _right(right), _bottom(bottom), _left(left) { }
+        Gutter( float y, float x )
+            : _top(y), _right(x), _bottom(y), _left(x) { }
+        Gutter( float all )
+            : _top(all), _right(all), _bottom(all), _left(all) { }
+        bool operator !=( const Gutter& rhs ) const {
+            return top() != rhs.top() || right() != rhs.right() || bottom() != rhs.bottom() || left() != rhs.left(); }
+
+        float  top()  const { return _top; }
+        float& top() { return _top; }
+        float  left() const { return _left; }
+        float& left() { return _left; }
+        float  right() const { return _right; }
+        float& right() { return _right; }
+        float  bottom() const { return _bottom; }
+        float& bottom() { return _bottom; }
+
+        float x() const { return _left + _right; }
+        float y() const { return _top + _bottom; }
+
+        osg::Vec2f size() const { return osg::Vec2f(x(), y()); }
+
+        osg::Vec2f offset() const { return osg::Vec2f( _left, _top ); }
+
+    private:
+        float _top, _right, _bottom, _left;
+    };
+
+    // base class for control events
+    class ControlEventHandler : public osg::Referenced
+    {
+    public:
+        /** Click event. */
+        virtual void onClick( class Control* control ) { }
+
+        /** Click event with mouse button mask (see osgGA::GUIEventAdapter::MouseButtonMask) */
+        virtual void onClick( class Control* control, int mouseButtonMask ) { onClick(control); }
+
+        /** Click event with click position (negative values mean you're in the left/top padding) */
+        virtual void onClick( class Control* control, const osg::Vec2f& pos, int mouseButtonMask ) { onClick(control, mouseButtonMask); }
+
+        /** Value events */
+        virtual void onValueChanged( class Control* control, bool value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, double value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, float value ) { onValueChanged(control, static_cast<double>(value)); }
+        virtual void onValueChanged( class Control* control, int value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, const osg::Vec3f& value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, const osg::Vec2f& value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, const osg::Vec3d& value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, const osg::Vec2d& value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, const std::string& value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, void* value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control ) { }
+
+        /** dtor */
+        virtual ~ControlEventHandler() { }
+    };
+
+    typedef std::list< osg::ref_ptr<ControlEventHandler> > ControlEventHandlerList;
+
+    /**
+     * Base class for all controls. You can actually use a Control directly and it
+     * will just render as a rectangle.
+     */
+    class OSGEARTH_EXPORT Control : public osg::Group
+    {
+    public:
+        enum Side
+        {
+            SIDE_TOP, SIDE_BOTTOM, SIDE_LEFT, SIDE_RIGHT
+        };
+
+        enum Alignment
+        {
+            ALIGN_NONE, ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT, ALIGN_TOP, ALIGN_BOTTOM
+        };
+
+        enum Dock
+        {
+            DOCK_NONE, DOCK_LEFT, DOCK_RIGHT, DOCK_TOP, DOCK_BOTTOM, DOCK_FILL
+        };
+
+    public:
+        Control();
+
+        Control( const Alignment& halign, const Alignment& valign, const Gutter& padding );
+
+        /** dtor */
+        virtual ~Control() { }
+
+        void setX( float value );
+        const osgEarth::optional<float>& x() const { return _x; }
+        void clearX() { _x.unset(); dirty(); }
+
+        void setY( float value );
+        const osgEarth::optional<float>& y() const { return _y; }
+        void clearY() { _y.unset(); dirty(); }
+
+        void setPosition( float x, float y );
+
+        void setWidth( float value );
+        const osgEarth::optional<float>& width() const { return _width; }
+        void clearWidth() { _width.unset(); dirty(); }
+
+        void setHeight( float value );
+        const osgEarth::optional<float>& height() const { return _height; }
+        void clearHeight() { _height.unset(); dirty(); }
+
+        void setSize( float w, float h );
+
+        void setMargin( const Gutter& value );
+        void setMargin( Side side, float value );
+        const Gutter& margin() const { return _margin; }
+
+        // space between container and its content
+        void setPadding( const Gutter& value );
+        void setPadding( float globalValue );
+        void setPadding( Side side, float value );
+        const Gutter& padding() const { return _padding; }
+
+        void setVertAlign( const Alignment& value );
+        const optional<Alignment>& vertAlign() const { return _valign; }
+
+        void setHorizAlign( const Alignment& value );
+        const optional<Alignment>& horizAlign() const { return _halign; }
+
+        void setAlign(const Alignment& horiz, const Alignment& vert );
+
+        void setHorizFill( bool value, float minWidth =0.0f );
+        bool horizFill() const { return _hfill; }
+
+        void setVertFill( bool value, float minHeight =0.0f );
+        bool vertFill() const { return _vfill; }
+
+        virtual void setVisible( bool value );
+        bool visible() const { return _visible; }
+        bool parentIsVisible() const;
+
+        void setForeColor( const osg::Vec4f& value );
+        void setForeColor( float r, float g, float b, float a ) { setForeColor( osg::Vec4f(r,g,b,a) ); }
+        const osgEarth::optional<osg::Vec4f> foreColor() const { return _foreColor; }
+        void clearForeColor() { _foreColor.unset(); dirty(); }
+
+        void setBackColor( const osg::Vec4f& value );
+        void setBackColor( float r, float g, float b, float a ) { setBackColor( osg::Vec4f(r,g,b,a) ); }
+        const osgEarth::optional<osg::Vec4f>& backColor() const { return _backColor; }
+        void clearBackColor() { _backColor.unset(); dirty(); }
+
+        void setActiveColor( const osg::Vec4f& value );
+        void setActiveColor( float r, float g, float b, float a ) { setActiveColor( osg::Vec4f(r,g,b,a) ); }
+        const osgEarth::optional<osg::Vec4f>& activeColor() const { return _activeColor; }
+        void clearActiveColor() { _activeColor.unset(); dirty(); }
+
+        void setBorderColor( const osg::Vec4f& value );
+        void setBorderColor( float r, float g, float b, float a ) { setBorderColor( osg::Vec4f(r,g,b,a) ); }
+        const osgEarth::optional<osg::Vec4f>& borderColor() const { return _borderColor; }
+        void clearBorderColor() { _borderColor.unset(); dirty(); }
+
+        void setBorderWidth( float width );
+        float borderWidth() const { return _borderWidth; }
+
+        void setActive( bool value );
+        bool getActive() const { return _active; }
+
+        void setAbsorbEvents( bool value ) { _absorbEvents = value; }
+        bool getAbsorbEvents() const { return _absorbEvents; }
+
+        /** control opacity [0..1] */
+        void setOpacity(float value);
+        float getOpacity() const { return _foreColor->a(); }
+
+        void addEventHandler( ControlEventHandler* handler, bool fire =false );
+
+    public:
+
+        // mark the control as dirty so that it will regenerate on the next pass.
+        virtual void dirty();
+        bool isDirty() const { return _dirty; }
+
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcFill( const ControlContext& context ) { }
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw    ( const ControlContext& context );
+
+        // actual rendering region on the control surface
+        const osg::Vec2f& renderPos() const { return _renderPos; }
+        const osg::Vec2f& renderSize() const { return _renderSize; }
+
+        // does the control contain the point?
+        bool intersects( float x, float y ) const;
+
+        void setParent( class Control* c ) { _parent = c; }
+
+    protected:
+        bool _dirty;
+        osg::Vec2f _renderPos; // rendering position (includes padding offset)
+        osg::Vec2f _renderSize; // rendering size (includes padding)
+
+        // adjusts renderpos for alignment.
+        void init();
+        void align();
+
+        friend class ControlCanvas;
+        friend class Container;
+
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
+
+        ControlEventHandlerList _eventHandlers;
+
+        virtual void fireValueChanged( ControlEventHandler* handler =0L ) { }
+
+    protected:
+        osg::Geode* getGeode() { return _geode; }
+        void clearGeode() { _geode->removeDrawables(0, _geode->getNumDrawables()); }
+        osg::ref_ptr<osg::StateSet> getGeomStateSet();
+
+    private:
+        osgEarth::optional<float> _x, _y, _width, _height;
+        bool _hfill, _vfill;
+        Gutter _margin;
+        Gutter _padding;
+        bool _visible;
+        optional<Alignment> _valign, _halign;
+        optional<osg::Vec4f> _backColor, _foreColor, _activeColor, _borderColor;
+        float _borderWidth;
+        osg::observer_ptr<Control> _parent;
+        bool _active;
+        bool _absorbEvents;
+        osg::Geode* _geode;
+        osg::ref_ptr<osg::Geometry> _geom;
+
+        static osg::observer_ptr<osg::StateSet> s_geomStateSet;
+    };
+
+    typedef std::vector< osg::ref_ptr<Control> > ControlVector;
+
+    /**
+     * Control that contains a text string, obviously
+     */
+    class OSGEARTH_EXPORT LabelControl : public Control
+    {
+    public:
+        LabelControl(
+            const std::string& value    ="",
+            float fontSize              =18.0f,
+            const osg::Vec4f& foreColor =osg::Vec4f(1,1,1,1) );
+
+        LabelControl(
+            const std::string& value,
+            const osg::Vec4f&  foreColor,
+            float              fontSize  =18.0f );
+
+        LabelControl(
+            Control*            valueControl,
+            const osg::Vec4f&   foreColor,
+            float               fontSize =18.0f );
+
+        LabelControl(
+            Control*            valueControl,
+            float               fontSize =18.0f,
+            const osg::Vec4f&   fontColor =osg::Vec4f(1,1,1,1) );
+
+        /** dtor */
+        virtual ~LabelControl() { }
+
+        void setText( const std::string& value );
+        const std::string& text() const { return _text; }
+
+        void setEncoding( osgText::String::Encoding value );
+        const osgText::String::Encoding& encoding() const { return _encoding; }
+
+        void setFont( osgText::Font* font );
+        osgText::Font* font() const { return _font.get(); }
+
+        void setFontSize( float value );
+        float fontSize() const { return _fontSize; }
+
+        void setHaloColor( const osg::Vec4f& value );
+        const optional<osg::Vec4f>& haloColor() const { return _haloColor; }
+
+        void setTextBackdropType(osgText::Text::BackdropType value);
+        osgText::Text::BackdropType getTextBackdropType() const { return _backdropType; }
+
+        void setTextBackdropImplementation(osgText::Text::BackdropImplementation value);
+        osgText::Text::BackdropImplementation getTextBackdropImplementation() const { return _backdropImpl; }
+
+        void setTextBackdropOffset(float offsetValue);
+        float getTextBackdropOffset() const { return _backdropOffset; }
+
+    public: // Control
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void draw    ( const ControlContext& context ); //, DrawableList& out_drawables );
+
+    private:
+        std::string _text;
+        osg::ref_ptr<osgText::Font> _font;
+        float _fontSize;
+        osg::ref_ptr<osgText::Text> _drawable;
+        osg::Vec3 _bmin, _bmax;
+        optional<osg::Vec4f> _haloColor;
+        osgText::String::Encoding _encoding;
+        osgText::Text::BackdropType _backdropType;
+        osgText::Text::BackdropImplementation _backdropImpl;
+        float _backdropOffset;
+    };
+
+    /**
+     * Button - just a Label with preset background and active colors
+     */
+    class OSGEARTH_EXPORT ButtonControl : public LabelControl
+    {
+    public:
+        ButtonControl(
+            const std::string&   text        ="",
+            float                fontSize    =18.0f,
+            const osg::Vec4f&    foreColor   =osg::Vec4f(1,1,1,1),
+            const osg::Vec4f&    backColor   =osg::Vec4f(0.5,0.5,0.5,1),
+            const osg::Vec4f&    activeColor =osg::Vec4f(0.5,0.5,1,1),
+            ControlEventHandler* handler     =0L );
+
+        ButtonControl(
+            const std::string&   text,
+            const osg::Vec4f&    foreColor,
+            const osg::Vec4f&    backColor   =osg::Vec4f(0.5,0.5,0.5,1),
+            const osg::Vec4f&    activeColor =osg::Vec4f(0.5,0.5,1,1),
+            float                fontSize    =18.0f,
+            ControlEventHandler* handler     =0L );
+
+        ButtonControl(
+            const std::string&   text,
+            ControlEventHandler* handler );
+    };
+
+    /**
+     * Control that contains a raster image
+     */
+    class OSGEARTH_EXPORT ImageControl : public Control
+    {
+    public:
+        ImageControl( osg::Image* image =0L );
+        ImageControl( osg::Texture* texture );
+
+        /** dtor */
+        virtual ~ImageControl() { }
+
+        void setImage( osg::Image* image );
+        osg::Image* getImage() const { return _image.get(); }
+
+        void setTexture( osg::Texture* texture );
+        osg::Texture* getTexture() const { return _texture.get(); }
+
+        /** Rotates the image. */
+        void setRotation( const Angular& angle );
+        const Angular& getRotation() const { return _rotation; }
+
+        /** Tells the control to fix its minimum size to account to rotation. Otherwise the
+            control will auto-size its width/height based on the rotation angle. */
+        void setFixSizeForRotation( bool value );
+        bool getFixSizeForRotation() const { return _fixSizeForRot; }
+
+    public: // Control
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void draw( const ControlContext& cx );
+
+    private:
+        /** Recalculate the size of the texture */
+        osg::Vec2i calculateImageSize() const;
+
+        osg::ref_ptr<osg::Image> _image;
+        osg::ref_ptr<osg::Texture> _texture;
+        Angular _rotation;
+        bool _fixSizeForRot;
+        osg::Geometry* _geom;
+        float _opacity;
+
+        static osg::observer_ptr<osg::StateSet> s_imageStateSet;
+        osg::ref_ptr<osg::StateSet> getImageStateSet();
+    };
+
+    /**
+     * A control that provides a horizontal sliding value controller.
+     */
+    class OSGEARTH_EXPORT HSliderControl : public Control
+    {
+    public:
+        HSliderControl( float min = 0.0f, float max = 100.0f, float value = 50.0f, ControlEventHandler* handler =0L );
+
+        /** dtor */
+        virtual ~HSliderControl() { }
+
+        void setMin( float min, bool notify =true );
+        float getMin() const { return _min; }
+
+        void setMax( float max, bool notify =true );
+        float getMax() const { return _max; }
+
+        void setValue( float value, bool notify =true );
+        float getValue() const { return _value; }
+
+    public: // Control
+        //virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void draw( const ControlContext& cx );
+
+    protected:
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
+
+        virtual void fireValueChanged( ControlEventHandler* one =0L );
+
+    private:
+        float _min, _max, _value;
+    };
+
+    /**
+     * A check box toggle.
+     */
+    class OSGEARTH_EXPORT CheckBoxControl : public Control
+    {
+    public:
+        CheckBoxControl( bool checked =false );
+        CheckBoxControl( bool checked, ControlEventHandler* callback );
+
+        /** dtor */
+        virtual ~CheckBoxControl() { }
+
+        void setValue( bool value, bool notify=true );
+        bool getValue() const { return _value; }
+
+    public:
+        virtual void draw( const ControlContext& cx );
+
+    protected:
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
+
+        virtual void fireValueChanged( ControlEventHandler* one =0L );
+
+    private:
+        bool _value;
+    };
+
+    typedef std::vector< osg::ref_ptr<Control> > ControlList;
+
+    /**
+     * A control that renders a simple rectangular border for a container.
+     * This is also the base class for all Frame objects.
+     */
+    class OSGEARTH_EXPORT Frame : public ImageControl
+    {
+    public:
+        Frame();
+
+        /** dtor */
+        virtual ~Frame() { }
+
+    public: // Control
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw( const ControlContext& context );
+    };
+
+    /**
+     * A Frame with nice rounded corners.
+     */
+    class OSGEARTH_EXPORT RoundedFrame : public Frame
+    {
+    public:
+        RoundedFrame();
+
+        /** dtor */
+        virtual ~RoundedFrame() { }
+
+    public:
+        virtual void draw( const ControlContext& cx );
+    };
+
+    /**
+     * Container is a control that houses child controls. This is the base class for
+     * all containers. (It is abstract so cannot be used directly)
+     * Containers are control, so you can nest them in other containers.
+     */
+    class OSGEARTH_EXPORT Container : public Control
+    {
+    public:
+        Container();
+        Container( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
+
+        /** dtor */
+        virtual ~Container() { }
+
+        // space between children
+        void setChildSpacing( float value );
+        float childSpacing() const { return _spacing; }
+
+        // horiz alignment to set on children (that do not already have alignment explicitly set)
+        void setChildHorizAlign( Alignment align );
+        const optional<Alignment>& childHorizAlign() const { return _childhalign; }
+
+        // vert alignment to set on children (that do not already have alignment explicitly set)
+        void setChildVertAlign( Alignment align );
+        const optional<Alignment>& childVertAlign() const { return _childvalign; }
+
+        // adds a control.
+        template<typename T>
+        T* addControl( T* control, int index =-1 ) {
+            return dynamic_cast<T*>( addControlImpl(control, index) ); }
+
+        // default multiple-add function.
+        virtual void addControls( const ControlVector& controls );
+
+        // clear the controls list.
+        virtual void clearControls() =0;
+
+        // gets a vector of pointers to the container's immediate children
+        virtual void getChildren(std::vector<Control*>& out);
+
+	// change the visibility of the grid and its controls
+	virtual void setVisible( bool value );
+
+    public:
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcFill( const ControlContext& context );
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw( const ControlContext& context );
+
+    protected:
+
+        // default add function in subclass.
+        virtual Control* addControlImpl( Control* control, int index =-1 ) =0;
+
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
+
+        void applyChildAligns();
+
+        //void setChildRenderSize( Control* child, float w, float h ) { child->_renderSize.set( w, h ); }
+        float& renderWidth(Control* child) { return child->_renderSize.x(); }
+        float& renderHeight(Control* child) { return child->_renderSize.y(); }
+
+    private:
+        float _spacing;
+        optional<Alignment> _childhalign;
+        optional<Alignment> _childvalign;
+
+        //ControlList& mutable_children() { return const_cast<ControlList&>(children()); }
+    };
+
+    /**
+     * Container that stacks controls vertically.
+     */
+    class OSGEARTH_EXPORT VBox : public Container
+    {
+    public:
+        VBox();
+        VBox( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
+
+        /** dtor */
+        virtual ~VBox() { }
+
+    public: // Container
+        virtual void clearControls();
+
+    public: // Control
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcFill( const ControlContext& context );
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw( const ControlContext& context );
+
+    protected:
+        virtual Control* addControlImpl( Control* control, int index =-1 );
+
+    private:
+        //ControlList _controls;
+    };
+
+    /**
+     * Container that stacks controls horizontally.
+     */
+    class OSGEARTH_EXPORT HBox : public Container
+    {
+    public:
+        HBox();
+        HBox( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
+
+        /** dtor */
+        virtual ~HBox() { }
+
+    public: // Container
+        //virtual const ControlList& children() const { return _controls; }
+        virtual void clearControls();
+
+    public: // Control
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcFill( const ControlContext& context );
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw( const ControlContext& context );
+
+    protected:
+        virtual Control* addControlImpl( Control* control, int index =-1 );
+    };
+
+    /**
+     * Container that organizes its children in a grid.
+     */
+    class OSGEARTH_EXPORT Grid : public Container
+    {
+    public:
+        Grid();
+
+        Grid( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
+
+        /** dtor */
+        virtual ~Grid() { }
+
+        template<typename T>
+        T* setControl( int col, int row, T* control ) {
+            return dynamic_cast<T*>( setControlImpl(col, row, control)); }
+
+        Control* getControl(int col, int row);
+
+        unsigned getNumRows() const;
+        unsigned getNumColumns() const;
+
+    public: // Container
+        virtual void clearControls();
+
+
+
+        // adds the controls as a row at the bottom of the grid.
+        virtual void addControls( const ControlVector& controls );
+
+        virtual void getChildren(std::vector<Control*>& out);
+
+    public: // Control
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcFill( const ControlContext& context );
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw( const ControlContext& context );
+
+    protected:
+        virtual Control* addControlImpl( Control* control, int index =-1 );
+        virtual Control* setControlImpl( int col, int row, Control* control );
+
+    private:
+        void expandToInclude(int cols, int rows);
+
+        osg::Group* getRow(unsigned index);
+
+        std::vector<float> _rowHeights, _colWidths;
+        unsigned _maxCols;
+    };
+
+    class OSGEARTH_EXPORT RefNodeVector :
+        public osg::Referenced,
+        public osg::MixinVector<osg::Node*> { };
+
+    /**
+     * A control wrapped in a node that you can place anywhere in the scene
+     * graph. Its scene location will control its 2D screen position, and it
+     * can participate in conflict resolution.
+     */
+    class OSGEARTH_EXPORT ControlNode : public osg::Node
+    {
+    public:
+        /** Constructs a new control node with an embedded control. */
+        ControlNode(Control* control, float priority =0.0f);
+
+        /** dtor */
+        virtual ~ControlNode() { }
+
+        /** The control encaspulated in this node */
+        Control* getControl() const { return _control.get(); }
+
+        /** The draw priority of this control */
+        float getPriority() const { return _priority; }
+
+        /** The point (in screen-space, relative to the lower-left of the control) that should anchor to the scene */
+        optional<osg::Vec2f>& anchorPoint() { return _anchor; }
+        const optional<osg::Vec2f>& anchorPoint() const { return _anchor; }
+
+
+    public: // osg::Node overrides
+
+        virtual void traverse( osg::NodeVisitor& nv );
+
+        virtual osg::BoundingSphere computeBound() const;
+
+    protected:
+
+        struct TravSpecificData
+        {
+            TravSpecificData();
+            bool                              _obscured;
+            osg::Vec3f                        _screenPos;
+            float                             _visibleTime;
+            unsigned                          _visitFrame;
+            osg::ref_ptr<osg::Uniform>        _uniform;
+            osg::observer_ptr<osg::Camera>    _canvas;
+        };
+        typedef osgEarth::UnorderedMap<osg::Camera*,TravSpecificData> TravSpecificDataMap;
+
+        TravSpecificDataMap    _travDataMap;
+        osg::ref_ptr<Control>  _control;
+        float                  _priority;
+        optional<osg::Vec2f>   _anchor;
+
+        TravSpecificData& getData(osg::Camera* key) { return _travDataMap[key]; }
+
+        friend class ControlNodeBin;
+    };
+
+    /**
+     * Internal class that renders ControlNode objects found in the scene graph.
+     * There is no need to instantiate or access this object directly.
+     */
+    class OSGEARTH_EXPORT ControlNodeBin : public osg::Group
+    {
+    public:
+        ControlNodeBin();
+
+        /** dtor */
+        virtual ~ControlNodeBin() { }
+
+        /** Registers a control node with this bin. */
+        void addNode( ControlNode* node );
+
+        /** Whether to fade-in controls when they appear in view (default=true) */
+        void setFading( bool value );
+
+    private:
+        typedef std::pair<float, osg::ref_ptr<ControlNode> > ControlNodePair;
+        typedef std::multimap<float, osg::ref_ptr<ControlNode> > ControlNodeCollection;
+        ControlNodeCollection _controlNodes;
+
+        typedef std::pair<Control*, ControlNodeCollection::iterator> ControlIndexPair;
+        typedef std::map<Control*, ControlNodeCollection::iterator> ControlIndex;
+        ControlIndex _index;
+
+        typedef std::map<ControlNode*, osg::MatrixTransform*> RenderNodeTable;
+        typedef std::pair<ControlNode*, osg::MatrixTransform*> RenderNodePair;
+        RenderNodeTable _renderNodes;
+
+        osg::ref_ptr<osg::Group>      _group;
+        std::vector<osg::BoundingBox> _taken;
+        bool                          _sortByDistance;
+        bool                          _fading;
+        bool                          _sortingEnabled;
+
+        friend class ControlCanvas;
+        friend class ControlNode;
+
+        void draw( const ControlContext& context, bool newContext, int bin );
+        osg::Group* getControlGroup() const { return _group.get(); }
+    };
+
+    /**
+     * Associates controls with an OSG View.
+     */
+    class OSGEARTH_EXPORT ControlCanvas : public osg::Camera
+    {
+    public:
+        /** Accesses the control canvas attached the the specified view. */
+        static ControlCanvas* get(osg::View* view);
+
+        /** Accesses the control canvas attached the the specified view. */
+        static ControlCanvas* getOrCreate(osg::View* view);
+
+    public:
+        /** adds a top-level control to this surface. */
+        template<typename T>
+        T* addControl( T* control ) {
+            return dynamic_cast<T*>( addControlImpl( control ) ); }
+
+        /** removes a top-level control. */
+        void removeControl( Control* control );
+
+        /** gets the top-most control that intersects the specified position. */
+        Control* getControlAtMouse( float x, float y );
+
+        /** Toggles whether ControlNodes are allowed to overlap. */
+        void setAllowControlNodeOverlap( bool value );
+
+    public:
+        // internal- no need to call directly
+        void update( const osg::FrameStamp* frameStamp );
+
+        // internal - no need to call directly
+        void setControlContext( const ControlContext& );
+
+    public:
+        virtual void traverse(osg::NodeVisitor& nv); // override
+
+        virtual ~ControlCanvas();
+
+        /**
+         * Constructs a new canvas.
+         */
+        ControlCanvas();
+
+    protected:
+
+        ControlContext  _context;
+        bool            _contextDirty;
+        bool            _updatePending;
+
+        typedef std::map< osg::observer_ptr<osgGA::GUIEventHandler>, osg::observer_ptr<osgViewer::View> > EventHandlersMap;
+        EventHandlersMap _eventHandlersMap;
+
+        osg::ref_ptr<ControlNodeBin> _controlNodeBin;
+
+        Control* addControlImpl( Control* control );
+
+    private:
+        friend class ControlNode;
+        void init();
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
+
+        /** Accesses the priority rendering bin for this canvas. */
+        ControlNodeBin* getControlNodeBin() { return _controlNodeBin.get(); }
+
+        // internal class
+        class EventCallback : public osg::NodeCallback
+        {
+        public:
+            EventCallback(ControlCanvas*);
+            void operator()(osg::Node*, osg::NodeVisitor*);
+            void handleResize(osg::View* view, ControlCanvas* canvas);
+        protected:
+            osg::observer_ptr<ControlCanvas> _canvas;
+            bool _firstTime;
+            int _width, _height;
+        };
+    };
+
+} } } // namespace osgEarth::Util::Controls
+
+#endif // OSGEARTHUTIL_CONTROLS

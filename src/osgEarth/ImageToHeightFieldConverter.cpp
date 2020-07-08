@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,13 +27,15 @@
 #include <osg/Texture>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
-static bool
-isNoData( float f )
+namespace
 {
-  return f == FLT_MAX || f == -FLT_MAX;
+    bool isNoData( float f )
+    {
+        return f == FLT_MAX || f == -FLT_MAX;
+    }
 }
-
 
 ImageToHeightFieldConverter::ImageToHeightFieldConverter():
 _replace_nodata( false ),

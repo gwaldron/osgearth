@@ -1,0 +1,92 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_BUFFER_FILTER_H
+#define OSGEARTHFEATURES_BUFFER_FILTER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Feature>
+#include <osgEarth/Filter>
+#include <osgEarth/Style>
+#include <osg/Geode>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    /**
+     * The buffer geometry operation takes each input vector shape and applies
+     * morphological dilation or erosion to it.
+     * (see http://en.wikipedia.org/wiki/Morphological_image_processing)
+     *
+     * The buffer distance determines which operation to use:
+     *
+     * A positive distance dilates the shape (expands it).
+     * A negative distance erodes the shape (shrinks it). 
+     *
+     * Note: buffering always converts the input vector data into polygons. 
+     */
+    class OSGEARTH_EXPORT BufferFilter : public FeatureFilter
+    {
+    public:
+        // Call this determine whether this filter is available. This filter uses
+        // the GEOS library, so you must compile osgEarth against GEOS for this 
+        // filter to be available.
+        static bool isSupported();
+
+    public:
+        BufferFilter();
+        BufferFilter( const BufferFilter& rhs );
+
+        BufferFilter( const Config& conf );
+
+        /**
+         * Serialize this FeatureFilter
+         */
+        virtual Config getConfig() const;
+
+
+        virtual ~BufferFilter() { }
+
+    public:
+        // how far to buffer; positive to dialate, negative to erode
+        optional<double>& distance() { return _distance; }
+        const optional<double>& distance() const { return _distance; }
+
+        // for ENDCAP_ROUND, controls the tessellation detail for corners, 
+        // measured in the number of segments to create per 90 degrees
+        int numQuadrantSegments() const { return _numQuadSegs; }
+        int& numQuadrantSegments() { return _numQuadSegs; }
+
+        // tessellation style of buffered corners and line ends
+        const Stroke::LineCapStyle& capStyle() const { return _capStyle; }
+        Stroke::LineCapStyle& capStyle() { return _capStyle; }
+
+    public:
+        virtual FilterContext push( FeatureList& input, FilterContext& context );
+
+    protected:
+        optional<double>     _distance;
+        int                  _numQuadSegs;
+        Stroke::LineCapStyle _capStyle;
+    };
+
+} }
+
+#endif // OSGEARTHFEATURES_BUFFER_FILTER_H

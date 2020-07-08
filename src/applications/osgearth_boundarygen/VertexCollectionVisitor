@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -39,14 +39,12 @@ public:
     void apply(osg::Node& node);
     
     void apply(osg::Transform& transform);
-    
-    void apply(osg::Geode& geode);
+
+    void apply(osg::Drawable& drawable);
     
     inline void pushMatrix(osg::Matrix& matrix) { _matrixStack.push_back(matrix); }
     
     inline void popMatrix() { _matrixStack.pop_back(); }
-
-    void applyDrawable(osg::Drawable* drawable);
     
 protected:
     
@@ -57,7 +55,7 @@ protected:
     bool _geocentric;
     osg::ref_ptr<osg::EllipsoidModel> _ellipsoidModel;
 
-    void addVertex(osg::Vec3 vertex);
+    void addVertex(osg::Vec3d vertex);
 };
 
 #endif //VERTEX_COLLECTION_VISITOR

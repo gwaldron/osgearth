@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,11 +21,10 @@
 #include "SilverLiningOptions"
 #include "SilverLiningCallback"
 #include "SilverLiningAPIWrapper"
-#include <osgEarthUtil/Sky>
-#include <osgEarth/Map>
 #include <osgEarth/PhongLightingEffect>
 #include <osg/Light>
 #include <osg/LightSource>
+#include <osg/Geode>
 
 namespace osgEarth { namespace SilverLining
 {
@@ -50,7 +49,6 @@ namespace osgEarth { namespace SilverLining
 
         // callbacks from SilverLiningNode.
         void onSetDateTime();
-        void onSetMinimumAmbient();
         //get target camera
         osg::Camera* getTargetCamera() const {return _camera;}
         osg::ref_ptr<osg::Geode> getSLGeode() {return _geode;}

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/Bounds>
 #include <osg/Image>
 #include <osg/Texture>
+#include <osg/Texture2DArray>
 #include <osg/GL>
 #include <osg/NodeVisitor>
 #include <osgDB/ReaderWriter>
@@ -44,7 +45,7 @@
     #define GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG     0x8C03
 #endif
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     class OSGEARTH_EXPORT ImageUtils
     {
@@ -57,38 +58,6 @@ namespace osgEarth
          * help, but just call this method instead to be sure.
          */
         static osg::Image* cloneImage( const osg::Image* image );
-
-        /**
-         * Tweaks an image for consistency. OpenGL allows enums like "GL_RGBA" et.al. to be
-         * used in the internal texture format, when really "GL_RGBA8" is the proper things
-         * to use. This method accounts for that. Some parts of osgEarth (like the texture-
-         * array compositor) rely on the internal texture format being correct.
-         * (http://http.download.nvidia.com/developer/Papers/2005/Fast_Texture_Transfers/Fast_Texture_Transfers.pdf)
-         */
-        static void fixInternalFormat(osg::Image* image);
-
-        /**
-         * Marks an image as containing un-normalized data values.
-         *
-         * Normally the values in an image are "normalized", i.e. scaled so they are in the
-         * range [0..1]. This is normal for color values. But when the image is being used
-         * for coverage data (a value lookup table) it is desireable to store the raw 
-         * values instead.
-         */
-        static void markAsUnNormalized(osg::Image* image, bool value);
-
-        /** Inverse of above. */
-        static void markAsNormalized(osg::Image* image, bool value) { markAsUnNormalized(image, !value); }
-
-        /**
-         * Whether the image has been marked as containing un-normalized values.
-         */
-        static bool isUnNormalized(const osg::Image* image);
-
-        /**
-         * Whether the image has been marked as containing normalized values.
-         */
-        static bool isNormalized(const osg::Image* image) { return !isUnNormalized(image); }
 
         /**
          * Copys a portion of one image into another.
@@ -145,24 +114,6 @@ namespace osgEarth
             double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy);
 
         /**
-         * Creates an Image that "blends" two images into a new image in which "primary"
-         * occupies mipmap level 0, and "secondary" occupies all the other mipmap levels.
-         *
-         * WARNING: this method assumes that primary and seconday are the same exact size
-         * and the same exact format.
-         */
-        static osg::Image* createMipmapBlendedImage(
-            const osg::Image* primary,
-            const osg::Image* secondary );
-        
-        /**
-         * Creates a new image containing mipmaps built with nearest-neighbor
-         * sampling.
-         */
-        static osg::Image* buildNearestNeighborMipmaps(
-            const osg::Image* image);
-
-        /**
          * Blends the "src" image into the "dest" image, based on the "a" value.
          * The two images must be the same.
          */
@@ -180,7 +131,9 @@ namespace osgEarth
          * simply placed onto the output vector (no copy).
          * Returns true upon sucess, false upon failure
          */
-        static bool flattenImage(osg::Image* image, std::vector<osg::ref_ptr<osg::Image> >& output);
+        static bool flattenImage(
+            const osg::Image* image, 
+            std::vector<osg::ref_ptr<const osg::Image> >& output);
 
         /**
          * Gets whether the input image's dimensions are powers of 2.
@@ -195,7 +148,7 @@ namespace osgEarth
         /**
          * Gets a transparent image used for a placeholder with the specified dimensions
          */
-        static osg::Image* createEmptyImage(unsigned int s, unsigned int t);
+        static osg::Image* createEmptyImage(unsigned int s, unsigned int t, unsigned int r = 1);
 
         /**
          * Creates a one-pixel image.
@@ -275,16 +228,6 @@ namespace osgEarth
         static bool hasTransparency(const osg::Image* image, float alphaThreshold =1.0f);
 
         /**
-         * Finds pixels with alpha less than [maxAlpha] and sets their color
-         * to match that or neighboring non-alpha pixels. This facilitates multipass
-         * blending or abutting tiles by overlapping them slightly. Specify "maxAlpha"
-         * as the maximum value to consider when searching for fully-transparent pixels.
-         *
-         * Returns false if there is no reader or writer for the image's format.
-         */
-        static bool featherAlphaRegions(osg::Image* image, float maxAlpha =0.0f);
-
-        /**
          * Converts an image (in place) to premultiplied-alpha format.
          * Returns False is the conversion fails, e.g., if there is no reader
          * or writer for the image format.
@@ -334,20 +277,51 @@ namespace osgEarth
             unsigned stride);
 
         /**
-         * 
-         */
-        static osg::Image* upSampleNN(const osg::Image* src, int quadrant);
-
-        /**
          * Activates mipmapping for a texture image if the correct filters exist.
          *
          * If OSG has an ImageProcessor service installed, this method will use that
-         * to generate mipmaps. If not, the method will be a NOP and the GPU wil
-         * generate mipmaps (if necessary) upon GPU transfer.
-         */
-        static void activateMipMaps(osg::Texture* texture);
+         * to generate mipmaps. If not osgEarth will generate them if possible.
 
-        static void activateMipMaps(osg::Image* image);
+         * Returns true if mipmaps were added
+         */
+        //static bool generateMipmaps(osg::Texture* texture);
+
+        /**
+        * Adds mipmaps to an image.
+        * Returns false if the image already has mipmaps, or if we cannot
+        * generate mipmaps for some reason.
+        */
+        //static bool generateMipmaps(osg::Image* image);
+
+        /**
+         * Creates a copy of the input image with added mipmaps.
+         * @param image Input image to generate mipmaps for
+         * @return image with mipmaps. If the input already had mipmaps,
+         *   just returns the input pointer (that is why it's const)
+         */
+        static const osg::Image* mipmapImage(
+            const osg::Image* image);
+
+        /**
+        * Adds mipmaps to an existing image if neccessary
+        * @param image Input image to generate mipmaps for
+        */
+        static void mipmapImageInPlace(
+            osg::Image* image);
+        
+        //! Returns a compressed copy of the input image.
+        //! @param image Image to compress
+        //! @param method Compression method to use; see ImageLayer::getCompressionMethod
+        static const osg::Image* compressImage(
+            const osg::Image* image,
+            const std::string& method ="");
+
+        //! Compressed an exsting image.
+        //! @param image Image to compress
+        //! @param method Compression method to use; see ImageLayer::getCompressionMethod
+        static void compressImageInPlace(
+            osg::Image* image,
+            const std::string& method ="");
 
         /**
          * Gets an osgDB::ReaderWriter for the given input stream.
@@ -361,12 +335,17 @@ namespace osgEarth
          */
         static osg::Image* readStream(std::istream& stream, const osgDB::Options* options);
 
+        static osg::Texture2DArray* makeTexture2DArray(osg::Image* image);
+
         /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
         class OSGEARTH_EXPORT PixelReader
         {
         public:
+            //! Empty pixel reader. Must call setImage before use.
+            PixelReader();
+
             /**
              * Constructs a pixel reader. "Normalized" means that the values in the source
              * image have been scaled to [0..1] and should be denormalized upon reading.
@@ -376,8 +355,20 @@ namespace osgEarth
             /** Sets an image to read. */
             void setImage(const osg::Image* image);
 
+            //! Sets a texture whose first image to read (along with texture params)
+            void setTexture(const osg::Texture* tex);
+
+            //! Whether to denormalize data upon reading or to leave it as-is
+            void setDenormalize(bool value) { _normalized = value; }
+
             /** Whether to use bilinear interpolation when reading with u,v coords (default=true) */
             void setBilinear(bool value) { _bilinear = value; }
+
+            //! Whether to sample the image like a texture (GLSL)
+            void setSampleAsTexture(bool value) { _sampleAsTexture = value; }
+
+            //! Whether to sample with texture-wrapping
+            void setSampleAsRepeatingTexture(bool value) { _sampleAsRepeatingTexture = value; }
 
             /** Whether PixelReader supports a given format/datatype combiniation. */
             static bool supports( GLenum pixelFormat, GLenum dataType );
@@ -387,35 +378,54 @@ namespace osgEarth
                 return image && supports(image->getPixelFormat(), image->getDataType() );
             }
 
-            /** Reads a color from the image */
-            osg::Vec4 operator()(int s, int t, int r=0, int m=0) const {
-                return (*_reader)(this, s, t, r, m);
+            inline int s() const { return _image->s(); }
+            inline int t() const { return _image->t(); }
+
+            //! Returns a color from an image at pixel (s,t,r,m)
+            osg::Vec4f operator()(int s, int t, int r=0, int m=0) const {
+                osg::Vec4f temp;
+                (*_reader)(this, temp, s, t, r, m);
+                return temp;
             }
 
-            /** Reads a color from the image */
-            osg::Vec4 operator()(unsigned s, unsigned t, unsigned r=0, int m=0) const {
-                return (*_reader)(this, s, t, r, m);
+            void operator()(osg::Vec4f& output, int s, int t, int r=0, int m=0) const {
+                (*_reader)(this, output, s, t, r, m);
+            }
+
+            //! Returns a color from an image at pixel (s,t,r,m)
+            osg::Vec4f operator()(unsigned s, unsigned t, unsigned r=0, int m=0) const {
+                osg::Vec4f temp;
+                (*_reader)(this, temp, s, t, r, m);
+                return temp;
+            }
+            void operator()(osg::Vec4f& output, unsigned s, unsigned t, int r=0, int m=0) const {
+                (*_reader)(this, output, s, t, r, m);
             }
 
             /** Reads a color from the image by unit coords [0..1] */
-            osg::Vec4 operator()(float u, float v, int r=0, int m=0) const;
-            osg::Vec4 operator()(double u, double v, int r=0, int m=0) const;
+            osg::Vec4f operator()(float u, float v, int r=0, int m=0) const;
+            void operator()(osg::Vec4f& output, float u, float v, int r=0, int m=0) const;
+            osg::Vec4f operator()(double u, double v, int r=0, int m=0) const;
+            void operator()(osg::Vec4f& output, double u, double v, int t=0, int m=0) const;
 
             // internals:
             const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
                 return m == 0 ?
-                    _image->data() + s*_colMult + t*_rowMult + r*_imageSize :
-                    _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m) ;
+                    _image->data() + s*_colBytes + t*_rowBytes + r*_imageBytes :
+                    _image->getMipmapData(m-1) + (s>>m)*_colBytes + (t>>m)*(_rowBytes>>m) + r*(_imageBytes>>m);
             }
 
-            typedef osg::Vec4 (*ReaderFunc)(const PixelReader* ia, int s, int t, int r, int m);
+            typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
+
             ReaderFunc _reader;
             const osg::Image* _image;
-            unsigned _colMult;
-            unsigned _rowMult;
-            unsigned _imageSize;
+            unsigned _colBytes;
+            unsigned _rowBytes;
+            unsigned _imageBytes;
             bool     _normalized;
             bool     _bilinear;
+            bool     _sampleAsTexture;
+            bool     _sampleAsRepeatingTexture;
         };
         
         /**
@@ -430,6 +440,9 @@ namespace osgEarth
              */
             PixelWriter(osg::Image* image);
 
+            //! Whether data should be normalized to [0..1] or left as-is
+            void setNormalize(bool value) { _normalized = value; }
+
             /** Whether PixelWriter can write to an image with the given format/datatype combo. */
             static bool supports( GLenum pixelFormat, GLenum dataType );
 
@@ -437,6 +450,15 @@ namespace osgEarth
             static bool supports( const osg::Image* image ) {
                 return image && supports(image->getPixelFormat(), image->getDataType() );
             }
+
+            inline int s() const { return _image->s(); }
+            inline int t() const { return _image->t(); }
+
+            //! Initialize to all one value
+            void assign(const osg::Vec4& c);
+
+            //! Initialize to all one value (one layer)
+            void assign(const osg::Vec4& c, int r);
 
             /** Writes a color to a pixel. */
             void operator()(const osg::Vec4& c, int s, int t, int r=0, int m=0) {
@@ -452,16 +474,12 @@ namespace osgEarth
 
             // internals:
             osg::Image* _image;
-            unsigned _colMult;
-            unsigned _rowMult;
-            unsigned _imageSize;
+            unsigned _colBytes;
+            unsigned _rowBytes;
+            unsigned _imageBytes;
             bool     _normalized;
 
-            unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
-                return m == 0 ?
-                    _image->data() + s*_colMult + t*_rowMult + r*_imageSize :
-                    _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m);
-            }
+            unsigned char* data(int s=0, int t=0, int r=0, int m=0) const;
 
             typedef void (*WriterFunc)(const PixelWriter* iw, const osg::Vec4& c, int s, int t, int r, int m);
             WriterFunc _writer;
@@ -551,6 +569,6 @@ namespace osgEarth
         virtual void apply(osg::Node& node);
         virtual void apply(osg::StateSet& stateSet);
     };
-}
+} }
 
 #endif //OSGEARTH_IMAGEUTILS_H

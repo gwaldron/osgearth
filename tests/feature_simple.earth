@@ -1,0 +1,27 @@
+<!--
+osgEarth Sample -
+Basic example of how to read feature data from a shapefile and build
+OSG geometry out of it.
+-->
+
+<map name="Simple Shapefile">
+    	
+    <xi:include href="readymap_imagery.xml"/>
+    
+    <OGRFeatures name="US-Data">
+        <url>../data/usa.shp</url>
+    </OGRFeatures>
+    
+    <FeatureModel name="US States" features="US-Data">
+        <styles>
+            <style type="text/css">
+                states {
+                   stroke:          #ffff00; 
+                   stroke-width:    2px;
+                   render-depth-offset: true;
+                }                    
+            </style>
+        </styles>        
+    </FeatureModel>
+    
+</map>

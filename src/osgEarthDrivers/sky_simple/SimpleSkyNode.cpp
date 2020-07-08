@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,8 +23,8 @@
 #include "SimpleSkyNode"
 #include "SimpleSkyShaders"
 
-#include <osgEarthUtil/StarData>
-#include <osgEarthUtil/Ephemeris>
+#include <osgEarth/StarData>
+#include <osgEarth/Ephemeris>
 
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/NodeUtils>
@@ -644,9 +644,6 @@ SimpleSkyNode::makeMoon()
     osg::Geometry* moonDrawable = s_makeEllipsoidGeometry( em.get(), em->getRadiusEquator()*_options.moonScale().get(), true );    
     osg::StateSet* stateSet = moonDrawable->getOrCreateStateSet();
 
-    //TODO:  Embed this texture in code or provide a way to have a default resource directory for osgEarth.
-    //       Right now just need to have this file somewhere in your OSG_FILE_PATH
-    //stateSet->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     osg::ref_ptr<osg::Image> image = _options.moonImageURI()->getImage();
     if (!image.valid())
     {
@@ -659,6 +656,7 @@ SimpleSkyNode::makeMoon()
     texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
     texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     texture->setResizeNonPowerOfTwoHint(false);
+    texture->setUnRefImageDataAfterApply(true);
     stateSet->setTextureAttributeAndModes( 0, texture, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
 #ifdef OSG_GL3_AVAILABLE
     // Adjust for loss of GL_LUMINANCE in glTexture2D's format parameter.  OSG handles the texture's internal format,
@@ -895,7 +893,7 @@ SimpleSkyNode::getDefaultStars(std::vector<StarData>& out_stars)
 {
     out_stars.clear();
 
-    for(const char **sptr = s_defaultStarData; *sptr; sptr++)
+    for(const char **sptr = Util::s_defaultStarData; *sptr; sptr++)
     {
         std::stringstream ss(*sptr);
         out_stars.push_back(StarData(ss));

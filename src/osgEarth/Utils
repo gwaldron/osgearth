@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -41,10 +41,8 @@ namespace osg
     class EllipsoidModel;
 }
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {    
-    //------------------------------------------------------------------------
-
     /**
      * Utility for storing observables in an osg::Object
      */
@@ -158,6 +156,7 @@ namespace osgEarth
         virtual ~AllocateAndMergeBufferObjectsVisitor() { }
         void apply(osg::Drawable& drawable);
     };
-}
+
+} }
 
 #endif // OSGEARTH_UTILS_H

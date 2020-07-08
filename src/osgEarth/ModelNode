@@ -1,0 +1,94 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNO_MODEL_NODE_H
+#define OSGEARTH_ANNO_MODEL_NODE_H 1
+
+#include <osgEarth/GeoPositionNode>
+#include <osgEarth/URI>
+#include <osgEarth/CachePolicy>
+#include <osgEarth/ShaderUtils>
+#include <osgDB/ReaderWriter>
+
+namespace osgEarth
+{
+    /**
+     * Annotation node that loads a 3D model from a URI and places it
+     * at a geo location.
+     */
+    class OSGEARTH_EXPORT ModelNode : public GeoPositionNode
+    {
+    public:
+        /**
+         * Constructs a model node; the style must contain an InstanceSymbol
+         * (ModelSymbol or IconSymbol) to produce a valid node.
+         */
+        ModelNode(
+            MapNode*              mapNode,
+            const Style&          style,
+            const osgDB::Options* readOptoins =0L );
+
+        /**
+         * Sets a new style and rebuilds the node.
+         */
+        void setStyle( const Style& style );
+
+        /**
+         * Gets the style last used to build this node.
+         */
+        const Style& getStyle() const { return _style; }
+
+        //! Whether to generate shaders on the model and its children
+        //! Default = GENERATE. Set to INHERIT to use the default one-texture
+        //! shader for better performance.
+        void setShaderPolicy(const ShaderPolicy& value) { _shaderPolicy = value; }
+        const ShaderPolicy& getShaderPolicy() const { return _shaderPolicy.get(); }
+
+    public:
+
+        /**
+         * Constructs a model node from a serialized Config.
+         * (internal method).
+         */
+        ModelNode(
+            const Config&         conf,
+            const osgDB::Options* readOptions );
+
+        virtual Config getConfig() const;
+
+    protected:
+
+        Style _style;
+        osg::ref_ptr<const osgDB::Options> _readOptions;
+        optional<ShaderPolicy> _shaderPolicy;
+
+        void compileModel();
+
+        virtual ~ModelNode() { }
+
+    private:
+
+        void construct();
+    };
+
+}
+
+#endif // OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H

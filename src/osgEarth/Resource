@@ -1,0 +1,77 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_RESOURCE_H
+#define OSGEARTHSYMBOLOGY_RESOURCE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Tags>
+#include <osgEarth/Config>
+#include <osgEarth/Status>
+#include <osgEarth/Threading>
+#include <vector>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Base class for a Resource, which is an external data element managed
+     * by a ResourceLibrary.
+     */
+    class OSGEARTH_EXPORT Resource : public Taggable<osg::Object>
+    {
+    protected:
+        Resource(const Resource& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY) {};
+        Resource( const Config& config =Config() );
+
+        const Status& getStatus() const { return _status; }
+
+        /** dtor */
+        virtual ~Resource() { }
+
+        // META_Object specialization:
+        virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
+        virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const Resource*>(obj)!=NULL; }
+        virtual const char* className() const { return "Resource"; }
+        virtual const char* libraryName() const { return "osgEarth"; }
+
+    public: // properties
+
+        /** Readable name of the resource. */
+        std::string& name() { return _name; }
+        const std::string& name() const { return _name; }
+
+    public: // serialization functions
+
+        virtual Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
+    protected:
+
+        mutable Threading::Mutex _mutex;
+        mutable Status _status;
+
+    private:
+        std::string _name;
+    };
+
+    typedef std::vector< osg::ref_ptr<Resource> > ResourceVector;
+} }
+
+#endif // OSGEARTHSYMBOLOGY_SKIN_RESOURCE_H

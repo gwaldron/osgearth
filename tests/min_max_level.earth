@@ -1,19 +1,16 @@
 <!--
 This example demonstrates how to use two image sources and switch between them
 at a given levels of detail.
-
-Please note that usage of Yahoo! map data is subject to Yahoo!'s terms of service.
 -->
 
-<map name="Levels" type="geocentric" version="2">
+<map name="Demo: min/max levels">
 
-    <image driver="gdal" name="world-tiff" max_level="5">
+    <GDALImage name="world-tiff" max_level="6">
         <url>../data/world.tif</url>
-        <cache_policy usage="no_cache"/>
-    </image>
+    </GDALImage>
     
-    <image name="readymap_imagery" driver="tms" min_level="6">
+    <TMSImage name="readymap_imagery" min_level="6">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
+    </TMSImage>
     
 </map>

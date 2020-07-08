@@ -1,0 +1,112 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURES_MVT
+#define OSGEARTH_FEATURES_MVT 1
+
+#include <osgEarth/Common>
+#include <osgEarth/FeatureSource>
+
+#ifdef OSGEARTH_HAVE_MVT
+
+namespace osgEarth { namespace MVT 
+{
+    //! Reads features from an MVT stream for the specified tile.
+    extern OSGEARTH_EXPORT bool readTile(
+        std::istream&  in,
+        const TileKey& key,
+        FeatureList&   features);
+
+    // Internal serialization options
+    class OSGEARTH_EXPORT MVTFeatureSourceOptions : public FeatureSource::Options
+    {
+    public:
+        META_LayerOptions(osgEarth, MVTFeatureSourceOptions, FeatureSource::Options);
+        OE_OPTION(URI, url);
+        virtual Config getConfig() const;
+    private:
+        void fromConfig(const Config& conf);
+    };
+
+} } // osgEarth::MVT
+
+
+#ifdef OSGEARTH_HAVE_SQLITE3
+
+namespace osgEarth
+{
+    /**
+     * Feature Layer that accesses features via one of the many GDAL/OGR drivers.
+     */
+    class OSGEARTH_EXPORT MVTFeatureSource : public FeatureSource
+    {   
+    public: // serialization
+        typedef MVT::MVTFeatureSourceOptions Options;
+
+    public:
+        META_Layer(osgEarth, MVTFeatureSource, Options, FeatureSource, MVTFeatures);
+
+        //! Location of the resource
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        typedef void(*FeatureTileCallback)(const TileKey& key, const FeatureList& features, void* context);
+        /**
+        * Iterates over the tiles in the mbtiles dataset
+        */
+        void iterateTiles(int zoomLevel, int limit, int offset, const GeoExtent& extent, FeatureTileCallback callback, void* context);
+
+    public: // Layer
+
+        virtual Status openImplementation();
+
+    protected:
+
+        virtual void init();
+
+    public: // FeatureLayer
+
+        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+        
+        virtual const FeatureSchema& getSchema() const { return _schema; }
+
+    protected:
+
+        virtual ~MVTFeatureSource() { }
+
+    private:
+        FeatureSchema _schema;
+        osg::ref_ptr<osgDB::BaseCompressor> _compressor;
+        void* _database;
+        unsigned _minLevel;
+        unsigned _maxLevel;
+
+        const FeatureProfile* createFeatureProfile();
+        void computeLevels();
+        bool getMetaData(const std::string& key, std::string& value);
+    };
+}
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::MVTFeatureSource::Options);
+
+#endif // OSGEARTH_HAVE_SQLITE3
+
+#endif // OSGEARTH_HAVE_MVT
+
+#endif // OSGEARTH_FEATURES_MVT
+

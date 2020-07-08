@@ -1,0 +1,130 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_WIND_LAYER
+#define OSGEARTH_WIND_LAYER 1
+
+#include <osgEarth/Layer>
+#include <osgEarth/TerrainResources>
+#include <osgEarth/Units>
+
+namespace osgEarth
+{
+    /**
+     * A wind, either DIRECTIONAL (blows in a local direction at all points)
+     * or POINT (blows in all directions from a specific point)
+     */
+    class OSGEARTH_EXPORT Wind : public osg::Referenced
+    {
+    public:
+        Wind();
+
+        enum Type {
+            //! Originates from point and blows in all directions with attenuation
+            TYPE_POINT,
+
+            //! Blows in a local direction with no attenuation
+            TYPE_DIRECTIONAL
+        };
+
+        //! Sets the wind type
+        void setType(Type type) { _type = type; }
+        Type getType() const { return _type.get(); }
+
+        //! Sets the wind power, in knots
+        void setSpeed(const Speed& value) { _speed = value; }
+        const Speed& getSpeed() const { return _speed.get(); }
+
+        //! Sets the source location for a POINT wind 
+        void setPoint(const GeoPoint& value);
+        const GeoPoint& getPoint() const { return _point.get(); }
+        const osg::Vec3d& getPointWorld() const { return _pointWorld; }
+
+        //! Sets the direction for a TYPE_DIRECTIONAL wind,
+        //! express in local tangent plane space. For example, 
+        //! a easterly wind would be (1,0).
+        void setDirection(const osg::Vec2f& value) { _direction = value; }
+        const osg::Vec2f& getDirection() const { return _direction.get(); }
+
+    private:
+        // serialization
+        OE_OPTION(Type, type);
+        OE_OPTION(Speed, speed);
+        OE_OPTION(GeoPoint, point);
+        OE_OPTION(osg::Vec2f, direction); // local
+        Wind(const Config& conf);
+        Config getConfig() const;
+
+    private:
+        osg::Vec3d _pointWorld;
+    };
+
+    /**
+     * Layer that managed wind sources and creates a shared wind LUT
+     * for shaders to access.
+     */
+    class OSGEARTH_EXPORT WindLayer : public Layer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public Layer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, Layer::Options);
+            OE_OPTION_VECTOR(osg::ref_ptr<Wind>, winds);
+            OE_OPTION(bool, ortho);
+            OE_OPTION(Distance, radius);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, WindLayer, Options, Layer, Wind);
+
+        //! Adds a new wind to the layer
+        void addWind(Wind*);
+
+        //! Removed an existing wind from the layer
+        void removeWind(Wind*);
+
+    protected: // Layer
+
+        // post-ctor initialization
+        virtual void init();
+
+        // open the layer
+        virtual Status openImplementation();
+
+        virtual Status closeImplementation();
+
+        virtual osg::Node* getNode() const;
+
+        virtual void setTerrainResources(TerrainResources*);
+
+        osg::StateSet* getSharedStateSet(osg::NodeVisitor* nv) const;
+
+    private:
+        osg::ref_ptr<osg::Group> _node;
+        osg::ref_ptr<osg::Node> _drawable;
+        double _radius;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::WindLayer::Options);
+
+#endif // OSGEARTH_WIND_LAYER

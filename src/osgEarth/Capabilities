@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
-* Copyright 2019 Pelican Mapping
+* Copyright 2020 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -153,6 +153,9 @@ namespace osgEarth
         /** whether OpenGL core profile is active */
         bool isCoreProfile() const { return _isCoreProfile; }
 
+        /** whether OpenGL supports vertex array objects */
+        bool supportsVertexArrayObjects() const { return _supportsVertexArrayObjects; }
+
     protected:
         Capabilities();
 
@@ -198,6 +201,7 @@ namespace osgEarth
         bool _supportsTextureBuffer;
         int  _maxTextureBufferSize;
         bool _isCoreProfile;
+        bool _supportsVertexArrayObjects;
 
     public:
         friend class Registry;

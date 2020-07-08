@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
- * Copyright 2019 Pelican Mapping
+ * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,21 +20,21 @@
 #ifndef OSGEARTHDRIVERS_DUKTAPE_ENGINE_H
 #define OSGEARTHDRIVERS_DUKTAPE_ENGINE_H 1
 
-#include <osgEarthFeatures/ScriptEngine>
-#include <osgEarthFeatures/Script>
-#include <osgEarthFeatures/Feature>
+#include <osgEarth/ScriptEngine>
+#include <osgEarth/Script>
+#include <osgEarth/Feature>
 #include <osgEarth/Containers>
 #include "duktape.h"
 
 namespace osgEarth { namespace Drivers { namespace Duktape
 {
-    using namespace osgEarth::Features;
+    using namespace osgEarth;
 
     /**
      * JavaScript engine built on the Duktape embeddable Javascript
      * interpreter. http://duktape.org
      */
-    class DuktapeEngine : public osgEarth::Features::ScriptEngine
+    class DuktapeEngine : public osgEarth::ScriptEngine
     {
     public:
         /** Construct the engine */
@@ -47,9 +47,9 @@ namespace osgEarth { namespace Drivers { namespace Duktape
 
         /** Run a javascript code snippet. */
         ScriptResult run(
-            const std::string&                       code, 
-            osgEarth::Features::Feature const*       feature,
-            osgEarth::Features::FilterContext const* context);
+            const std::string&             code, 
+            osgEarth::Feature const*       feature,
+            osgEarth::FilterContext const* context);
 
     protected:
         virtual ~DuktapeEngine();

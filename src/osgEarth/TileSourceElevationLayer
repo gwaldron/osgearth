@@ -1,0 +1,73 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_LEGACY_TILE_SOURCE_ELEVATION_LAYER_H
+#define OSGEARTH_LEGACY_TILE_SOURCE_ELEVATION_LAYER_H 1
+
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/TileSource>
+
+namespace osgEarth { namespace Contrib
+{
+    using namespace osgEarth;
+    /**
+    * A map terrain layer containing elevation grid heightfields.
+    */
+    class OSGEARTH_EXPORT TileSourceElevationLayer : public ElevationLayer
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION(TileSourceOptions, driver);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
+    public:
+        META_Layer(osgEarth, TileSourceElevationLayer, Options, ElevationLayer, elevation);
+
+    protected: // Layer
+
+        virtual void init();
+
+    protected: // ElevationLayer
+
+        //! Open the layer for reading.
+        virtual Status openImplementation();
+
+        virtual GeoHeightField createHeightFieldImplementation(
+            const TileKey& key, 
+            ProgressCallback* progress) const;
+
+        virtual ~TileSourceElevationLayer() { }
+
+    private:
+
+        osg::ref_ptr<TileSource> _tileSource;
+        TileSource::HeightFieldOperation* getOrCreatePreCacheOp() const;
+        mutable osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
+    };
+
+} } // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::TileSourceElevationLayer::Options);
+
+#endif // OSGEARTH_LEGACY_TILE_SOURCE_ELEVATION_LAYER_H

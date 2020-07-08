@@ -1,0 +1,549 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_UTILS_H
+#define OSGEARTH_IMGUI_UTILS_H 1
+
+#include "GL/glew.h"
+#include "imgui.h"
+
+#include <osg/OperationThread>
+#include <osg/GraphicsContext>
+#include <osg/Notify>
+#include <osgEarth/MapNode>
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ThreeDTilesLayer>
+#include <osgEarth/Threading>
+#include <osgEarth/Geocoder>
+#include <osgEarth/ViewFitter>
+#include <osgEarth/NetworkMonitor>
+#include <OpenThreads/Mutex>
+
+using namespace osgEarth;
+using namespace ImGui;
+
+class GlewInitOperation : public osg::Operation
+{
+public:
+    GlewInitOperation()
+        : osg::Operation("GlewInitCallback", false)
+    {
+    }
+
+    void operator()(osg::Object* object) override
+    {
+        osg::GraphicsContext* context = dynamic_cast<osg::GraphicsContext*>(object);
+        if (!context)
+        {
+            return;
+        }
+
+        if (glewInit() != GLEW_OK)
+        {
+            OSG_FATAL << "glewInit() failed" << std::endl;
+        }
+    }
+};
+
+class ImGuiNotifyHandler : public osg::NotifyHandler
+{
+public:
+    void notify(osg::NotifySeverity severity, const char *message)
+    {
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lk(_mutex);
+        int old_size = Buf.size();
+        Buf.append(message);
+        for (int new_size = Buf.size(); old_size < new_size; old_size++)
+            if (Buf[old_size] == '\n')
+                LineOffsets.push_back(old_size + 1);
+    }
+
+    void    Clear()
+    {
+        Buf.clear();
+        LineOffsets.clear();
+        LineOffsets.push_back(0);
+    }
+
+    OpenThreads::Mutex  _mutex;
+    ImGuiTextBuffer     Buf;
+    ImVector<int>       LineOffsets;        // Index to lines offset. We maintain this with AddLog() calls, allowing us to have a random access on lines
+};
+
+struct LogGUI
+{
+    LogGUI()
+    {
+        _handler = dynamic_cast<ImGuiNotifyHandler*>(osg::getNotifyHandler());
+    }
+
+    void draw(bool *show)
+    {
+        if (_handler)
+        {
+            if (ImGui::Begin("Log", show))
+            {
+
+                bool clear = ImGui::Button("Clear");
+                ImGui::SameLine();
+                Filter.Draw("Filter", -100.0f);
+
+                ImGui::Separator();
+                ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+                if (clear)
+                    _handler->Clear();
+
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+                const char* buf = _handler->Buf.begin();
+                const char* buf_end = _handler->Buf.end();
+
+                if (Filter.IsActive())
+                {
+                    // In this example we don't use the clipper when Filter is enabled.
+                    // This is because we don't have a random access on the result on our filter.
+                    // A real application processing logs with ten of thousands of entries may want to store the result of search/filter.
+                    // especially if the filtering function is not trivial (e.g. reg-exp).
+                    for (int line_no = 0; line_no < _handler->LineOffsets.Size; line_no++)
+                    {
+                        const char* line_start = buf + _handler->LineOffsets[line_no];
+                        const char* line_end = (line_no + 1 < _handler->LineOffsets.Size) ? (buf + _handler->LineOffsets[line_no + 1] - 1) : buf_end;
+                        if (Filter.PassFilter(line_start, line_end))
+                            ImGui::TextUnformatted(line_start, line_end);
+                    }
+                }
+                else
+                {
+                    // The simplest and easy way to display the entire buffer:
+                    //   ImGui::TextUnformatted(buf_begin, buf_end);
+                    // And it'll just work. TextUnformatted() has specialization for large blob of text and will fast-forward to skip non-visible lines.
+                    // Here we instead demonstrate using the clipper to only process lines that are within the visible area.
+                    // If you have tens of thousands of items and their processing cost is non-negligible, coarse clipping them on your side is recommended.
+                    // Using ImGuiListClipper requires A) random access into your data, and B) items all being the  same height,
+                    // both of which we can handle since we an array pointing to the beginning of each line of text.
+                    // When using the filter (in the block of code above) we don't have random access into the data to display anymore, which is why we don't use the clipper.
+                    // Storing or skimming through the search result would make it possible (and would be recommended if you want to search through tens of thousands of entries)
+                    ImGuiListClipper clipper;
+                    clipper.Begin(_handler->LineOffsets.Size);
+                    while (clipper.Step())
+                    {
+                        for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
+                        {
+                            const char* line_start = buf + _handler->LineOffsets[line_no];
+                            const char* line_end = (line_no + 1 < _handler->LineOffsets.Size) ? (buf + _handler->LineOffsets[line_no + 1] - 1) : buf_end;
+                            ImGui::TextUnformatted(line_start, line_end);
+                        }
+                    }
+                    clipper.End();
+                }
+                ImGui::PopStyleVar();
+
+                if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+                    ImGui::SetScrollHereY(1.0f);
+
+                ImGui::EndChild();
+                ImGui::End();
+            }
+        }
+    }
+
+    ImGuiNotifyHandler* _handler;
+    ImGuiTextFilter     Filter;
+};
+
+class NetworkMonitorGUI
+{
+public:
+    NetworkMonitorGUI() :
+        _showOnlyActiveRequests(false),
+        filter("")
+    {
+
+    }
+
+    void draw(bool *show)
+    {
+        if (ImGui::Begin("Network Monitor", show))
+        {
+            NetworkMonitor::setEnabled(true);
+
+            NetworkMonitor::Requests requests;
+            NetworkMonitor::getRequests(requests);
+
+            // Compute the time duration for all of the requests
+            osg::Timer_t startTime;
+            double totalTime = 0.0;
+            if (!requests.empty())
+            {
+                startTime = requests.begin()->second.startTime;
+                if (requests.rbegin()->second.isComplete)
+                {
+                    totalTime = osg::Timer::instance()->delta_m(startTime, requests.rbegin()->second.endTime);
+                }
+                else
+                {
+                    totalTime = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
+                }
+            }
+
+            if (ImGui::Button("Save"))
+            {
+                NetworkMonitor::saveCSV(requests, "network_requests.csv");
+            }
+
+            ImGui::Checkbox("Show active requests", &_showOnlyActiveRequests);
+
+            ImGui::InputText("Filter", filter, 128);
+
+            if (ImGui::Button("Clear"))
+            {
+                NetworkMonitor::clear();
+            }
+
+            ImGui::Text("%d requests", requests.size()); ImGui::SameLine();
+            ImGui::Text("Finished %f s", totalTime / 1000.0);
+
+            ImGui::BeginChild("Columns");
+            ImGui::Columns(7, "requests");
+            ImGui::Separator();
+            ImGui::Text("Path"); ImGui::NextColumn();
+            ImGui::Text("Duration"); ImGui::NextColumn();
+            ImGui::Text("Start time"); ImGui::NextColumn();
+            ImGui::Text("End time"); ImGui::NextColumn();
+            ImGui::Text("Layer"); ImGui::NextColumn();
+            ImGui::Text("Type"); ImGui::NextColumn();
+            ImGui::Text("Status"); ImGui::NextColumn();
+            ImGui::Separator();
+
+
+            std::string filterLower = osgEarth::toLower(filter);
+
+            for (NetworkMonitor::Requests::iterator itr = requests.begin(); itr != requests.end(); ++itr)
+            {
+                if (!_showOnlyActiveRequests || !itr->second.isComplete)
+                {
+                    if (!filterLower.empty())
+                    {
+                        std::string uriLower = osgEarth::toLower(itr->second.uri);
+                        std::string statusLower = osgEarth::toLower(itr->second.status);
+                        std::string layerLower = osgEarth::toLower(itr->second.layer);
+                        std::string typeLower = osgEarth::toLower(itr->second.type);
+
+                        if (strstr(uriLower.c_str(), filterLower.c_str()) == NULL &&
+                            strstr(statusLower.c_str(), filterLower.c_str()) == NULL &&
+                            strstr(layerLower.c_str(), filterLower.c_str()) == NULL &&
+                            strstr(typeLower.c_str(), filterLower.c_str()) == NULL)
+                        {
+                            continue;
+                        }
+                    }
+
+                    ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
+                    if (itr->second.isComplete)
+                    {
+                        if (strstr(itr->second.status.c_str(), "OK") != NULL)
+                        {
+                            // Color OK requests green
+                            color = ImVec4(0.0, 1.0, 0.0, 1.0);
+                        }
+                        else
+                        {
+                            // Color bad requests red
+                            color = ImVec4(1.0, 0.0, 0.0, 1.0);
+                        }
+                    }
+
+                    double startMS = osg::Timer::instance()->delta_m(startTime, itr->second.startTime);
+                    double endMS = 0.0;
+                    if (itr->second.isComplete)
+                    {
+                        endMS = osg::Timer::instance()->delta_m(startTime, itr->second.endTime);
+                    }
+                    else
+                    {
+                        endMS = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
+                    }
+
+                    ImGui::TextColored(color, itr->second.uri.c_str());  ImGui::NextColumn();
+                    ImGui::Text("%.2lf ms", itr->second.getDuration()); ImGui::NextColumn();
+                    ImGui::Text("%.2lf ms", startMS); ImGui::NextColumn();
+                    ImGui::Text("%.2lf ms", endMS); ImGui::NextColumn();
+                    ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
+                    ImGui::Text(itr->second.type.c_str()); ImGui::NextColumn();
+                    ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
+                }
+            }
+            ImGui::Columns(1);
+            ImGui::Separator();
+
+            // Keep scroll position at the bottom so we can see new network requests as they come in if they are scrolled to the bottom already
+            if (ImGui::GetScrollY() == ImGui::GetScrollMaxY())
+            {
+                ImGui::SetScrollHere(1.0);
+            }
+            ImGui::EndChild();
+
+            ImGui::End();
+        }
+        else
+        {
+            NetworkMonitor::setEnabled(false);
+        }
+    }
+
+    bool _showOnlyActiveRequests;
+    char filter[128];
+};
+
+class SearchGUI
+{
+public:
+    SearchGUI() :
+        _search(""),
+        _results(Status::Code::ServiceUnavailable, 0)
+    {
+        osg::ref_ptr<ThreadPool> pool = new ThreadPool();
+        _options = new osgDB::Options();
+        pool->put(_options.get());
+
+    }
+
+    void draw(EarthManipulator* manip)
+    {
+        //ImGui::Begin("Search");
+        if (ImGui::InputText("Search", _search, 128, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
+        {
+            _features.clear();
+            Geocoder geocoder;
+            _results = geocoder.search(_search, _options.get());
+        }
+
+        if (_results.isReady())
+        {
+            if (_results.getStatus().isOK())
+            {
+                _results.getFeatures()->fill(_features);
+            }
+            _results = Geocoder::Results(Status::Code::ServiceUnavailable, 0);
+        }
+
+        ImGui::BeginGroup();
+        ImGui::BeginChild("Results", ImVec2(0, 100.0f));
+        for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+        {
+            bool selected = false;
+            Feature* feature = itr->get();
+            if (feature->getGeometry())
+            {
+                std::string displayName = itr->get()->getString("display_name");
+                ImGui::Selectable(displayName.c_str(), &selected);
+                if (selected)
+                {
+                    GeoExtent extent(feature->getSRS(), feature->getGeometry()->getBounds());
+                    double maxDim = osg::maximum(extent.width(), extent.height());
+                    double range = ((0.5 * maxDim) / 0.267949849) * 111000.0;
+                    double lon, lat;
+                    extent.getCentroid(lon, lat);
+                    manip->setViewpoint(Viewpoint("", lon, lat, 0, 0, -90, range), 3.0);
+                    _features.clear();
+                    break;
+                }
+            }
+        }
+        ImGui::EndChild();
+        ImGui::EndGroup();
+        //ImGui::End();
+    }
+
+    char _search[128];
+    Geocoder::Results _results;
+    osg::ref_ptr<osgDB::Options> _options;
+
+    FeatureList _features;
+};
+
+class LayersGUI
+{
+public:
+    LayersGUI() :
+        _showLog(false),
+        _showNetworkMonitor(false)
+    {
+    }
+
+    void draw(osgEarth::MapNode* mapNode, osg::Camera* camera, EarthManipulator* manip)
+    {
+        ImGui::Begin("Layers", NULL, ImGuiWindowFlags_MenuBar);
+
+        if (ImGui::BeginMenuBar())
+        {
+            if (ImGui::BeginMenu("Tools"))
+            {
+                ImGui::MenuItem("Log", NULL, &_showLog);
+                ImGui::MenuItem("Network Monitor", NULL, &_showNetworkMonitor);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+
+        if (_showLog) _log.draw(&_showLog);
+        if (_showNetworkMonitor) _networkMonitor.draw(&_showNetworkMonitor);
+
+        _searchGUI.draw(manip);
+
+        ImGui::Separator();
+        ImGui::BeginGroup();
+        ImGui::Text("Layers");
+        osgEarth::VisibleLayerVector layers;
+        mapNode->getMap()->getLayers(layers);
+
+        for (int i = layers.size() - 1; i >= 0; --i)
+        {
+            osgEarth::Layer* layer = layers[i].get();
+            ImGui::PushID(layer);
+            osgEarth::VisibleLayer *visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
+            if (visibleLayer)
+            {
+                bool visible = visibleLayer->getVisible();
+                ImGui::Checkbox(layer->getName().c_str(), &visible);
+                visibleLayer->setVisible(visible);
+            }
+            else
+            {
+                ImGui::Text(layer->getName().c_str());
+            }
+
+            ImGui::SameLine();
+            if (i > 0)
+            {
+                if (ImGui::ArrowButton("down", ImGuiDir_Down))
+                {
+                    mapNode->getMap()->moveLayer(layer, i - 1);
+                }
+            }
+            if (i < layers.size() - 1)
+            {
+                ImGui::SameLine();
+                if (ImGui::ArrowButton("up", ImGuiDir_Up))
+                {
+                    mapNode->getMap()->moveLayer(layer, i + 1);
+                }
+            }
+
+            ImGui::SameLine();
+            if (ImGui::ArrowButton("right", ImGuiDir_Right))
+            {
+                const GeoExtent& extent = layer->getExtent();
+                if (extent.isValid())
+                {
+                    std::vector<GeoPoint> points;
+                    points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
+                    points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
+
+                    ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
+                    Viewpoint vp;
+                    if (fitter.createViewpoint(points, vp))
+                    {
+                        manip->setViewpoint(vp, 2.0);
+                    }
+                }
+                else if (layer->getNode())
+                {
+                    const osg::BoundingSphere& bs = layer->getNode()->getBound();
+                    if (bs.valid())
+                    {
+                        osg::Vec3d c = bs.center();
+                        double r = bs.radius();
+                        const SpatialReference* mapSRS = mapNode->getMap()->getSRS();
+
+                        std::vector<GeoPoint> points;
+                        GeoPoint p;
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x() + r, c.y(), c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x() - r, c.y(), c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() + r, c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() - r, c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
+
+                        ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
+                        Viewpoint vp;
+                        if (fitter.createViewpoint(points, vp))
+                        {
+                            manip->setViewpoint(vp, 2.0);
+                        }
+                    }
+                }
+            }
+
+            osgEarth::ImageLayer* imageLayer = dynamic_cast<osgEarth::ImageLayer*>(visibleLayer);
+            if (imageLayer)
+            {
+                float opacity = imageLayer->getOpacity();
+                ImGui::PushID("opacity");
+                ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
+                imageLayer->setOpacity(opacity);
+                ImGui::PopID();
+            }
+
+            osgEarth::Contrib::ThreeDTilesLayer* threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(visibleLayer);
+            if (threedTiles)
+            {
+                float sse = threedTiles->getMaximumScreenSpaceError();
+                ImGui::PushID("sse");
+                ImGui::SliderFloat("SSE", &sse, 0.0f, 50.0f);
+                threedTiles->setMaximumScreenSpaceError(sse);
+                ImGui::PopID();
+
+                ImGui::PushID("debugVolumes");
+                bool showBoundingVolumes = threedTiles->getTilesetNode()->getShowBoundingVolumes();
+                ImGui::Checkbox("Show debug volumes", &showBoundingVolumes);
+                threedTiles->getTilesetNode()->setShowBoundingVolumes(showBoundingVolumes);
+                ImGui::PopID();
+
+                ImGui::PushID("debugColors");
+                bool colorPerTile = threedTiles->getTilesetNode()->getColorPerTile();
+                ImGui::Checkbox("Show color per tile", &colorPerTile);
+                threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
+                ImGui::PopID();
+            }
+            ImGui::PopID();
+
+            ImGui::Separator();
+        }
+        ImGui::EndGroup();
+        ImGui::End();
+    }
+
+    bool _showLog;
+    bool _showNetworkMonitor;
+    LogGUI _log;
+    NetworkMonitorGUI _networkMonitor;
+    SearchGUI _searchGUI;
+};
+
+
+
+
+
+
+
+
+
+#endif

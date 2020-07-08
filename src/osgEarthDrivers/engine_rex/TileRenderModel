@@ -30,22 +30,58 @@
 #include <osg/Matrix>
 #include <vector>
 
-namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+namespace osgEarth { namespace REX
 {
+    using namespace osgEarth::Util;
+
     /**
-     * A single texture and its matrix. This corresponds to a 
-     * single SamplerBinding (above).
+     * A single texture and its matrix.
+     * This corresponds to a single SamplerBinding. If the texture matrix 
+     * is non-identity, that means the sampler inherits the texture from
+     * another sampler higher up in the scene graph.
      */
     struct Sampler
     {
+        Sampler() 
+            : _revision(0u) { }
+
+        Sampler(const Sampler& rhs)
+            : _texture(rhs._texture), _matrix(rhs._matrix), _revision(rhs._revision) { }
+
+        ~Sampler()
+        {
+            // Probably unnecessary since I think OSG does this...?
+            if (_texture.valid() && _texture->referenceCount() == 1)
+            {
+                _texture->releaseGLObjects(NULL);
+            }
+        }
+
+        // pointer to the sampler texture data
         osg::ref_ptr<osg::Texture> _texture;
+
+        // scale and bias matrix for accessing the texture - will be non-identity
+        // if the texture is inherited from an ancestor tile
         osg::Matrixf _matrix;
+
+        // revision of the data in this sampler (taken from its source layer)
+        unsigned _revision;
+
+        inline bool ownsTexture() const { return _texture.valid() && _matrix.isIdentity(); }
+        inline bool inheritsTexture() const { return !_texture.valid() || !_matrix.isIdentity(); }
+        inline unsigned revision() const { return _revision; }
+
+        inline void inheritFrom(const Sampler& rhs, const osg::Matrixf& scaleBias) {
+            *this = rhs;
+            _matrix.preMult(scaleBias);
+        }
     };
     typedef AutoArray<Sampler> Samplers;
 
     /**
+     * A single rendering pass for color data.
      * Samplers (one per RenderBinding) specific to one rendering pass of a tile.
-     * Typically this is just the color and color parent samplers.
+     * These are just the COLOR and COLOR_PARENT samplers.
      */
     struct RenderingPass
     {
@@ -54,27 +90,53 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _sourceUID(-1),
             _samplers(SamplerBinding::COLOR_PARENT+1),
             _visibleLayer(0L),
-            _terrainLayer(0L)
+            _tileLayer(0L)
             { }
+
+        RenderingPass(const RenderingPass& rhs) :
+            _sourceUID(rhs._sourceUID),
+            _samplers(rhs._samplers),
+            _layer(rhs._layer),
+            _visibleLayer(rhs._visibleLayer),
+            _tileLayer(rhs._tileLayer)
+        {
+            //nop
+        }
+
         
+        // UID of the layer corresponding to this rendering pass
         UID sourceUID() const { return _sourceUID; }
+
+        // the COLOR and COLOR_PARENT (optional) samplers for this rendering pass
         Samplers& samplers() { return _samplers; }
         const Samplers& samplers() const  { return _samplers; }
+
         const Layer* layer() const { return _layer.get(); }
         const VisibleLayer* visibleLayer() const { return _visibleLayer; }
-        const TerrainLayer* terrainLayer() const { return _terrainLayer; }
+        const TileLayer* tileLayer() const { return _tileLayer; }
+
+        // whether the color sampler in this rendering pass are native
+        // or inherited from another tile
+        bool ownsTexture() const { return _samplers[SamplerBinding::COLOR].ownsTexture(); }
+        bool inheritsTexture() const { return !ownsTexture(); }
+
+        void inheritFrom(const RenderingPass& rhs, const osg::Matrix& scaleBias) {
+            *this = rhs;
+            for (unsigned s = 0; s < samplers().size(); ++s)
+                samplers()[s]._matrix.preMult(scaleBias);
+        }
 
         void releaseGLObjects(osg::State* state) const
         {
             for (unsigned s = 0; s<_samplers.size(); ++s)
-                if (_samplers[s]._texture.valid() && _samplers[s]._matrix.isIdentity())
+                if (_samplers[s].ownsTexture())
                     _samplers[s]._texture->releaseGLObjects(state);
         }
 
         void resizeGLObjectBuffers(unsigned size)
         {
             for (unsigned s = 0; s<_samplers.size(); ++s)
-                if (_samplers[s]._texture.valid() && _samplers[s]._matrix.isIdentity())
+                if (_samplers[s].ownsTexture())
                     _samplers[s]._texture->resizeGLObjectBuffers(size);
         }
 
@@ -82,9 +144,24 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _layer = layer;
             if (layer) {
                 _visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
-                _terrainLayer = dynamic_cast<const TerrainLayer*>(layer);
+                _tileLayer = dynamic_cast<const TileLayer*>(layer);
                 _sourceUID = layer->getUID();
+                for (unsigned s = 0; s<_samplers.size(); ++s) {
+                    _samplers[s]._revision = layer->getRevision();
+                }
             }
+        }
+
+        void setSampler(
+            SamplerBinding::Usage binding,
+            osg::Texture* texture,
+            const osg::Matrix& matrix,
+            int sourceRevision)
+        {
+            Sampler& sampler = _samplers[binding];
+            sampler._texture = texture;
+            sampler._matrix = matrix;
+            sampler._revision = sourceRevision;
         }
 
     private:
@@ -100,10 +177,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** VisibleLayer responsible for this rendering pass (is _layer is a VisibleLayer) */
         const VisibleLayer* _visibleLayer;
         
-        /** VisibleLayer responsible for this rendering pass (is _layer is a TerrainLayer) */
-        const TerrainLayer* _terrainLayer;
-
-
+        /** VisibleLayer responsible for this rendering pass (is _layer is a TileLayer) */
+        const TileLayer* _tileLayer;
     };
 
     /**
@@ -130,6 +205,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             return _passes.back();
         }
 
+        RenderingPass& copyPass(const RenderingPass& rhs)
+        {
+            _passes.push_back(rhs);
+            return _passes.back();
+        }
+
         /** Look up a rendering pass by the corresponding layer ID */
         const RenderingPass* getPass(UID uid) const
         {
@@ -150,11 +231,42 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             return 0L;
         }
 
+        void setSharedSampler(
+            unsigned binding,
+            osg::Texture* texture,
+            const osg::Matrix& matrix,
+            int sourceRevision)
+        {
+            Sampler& sampler = _sharedSamplers[binding];
+            sampler._texture = texture;
+            sampler._matrix = matrix;
+            sampler._revision = sourceRevision;
+        }
+
+        void setSharedSampler(
+            unsigned binding,
+            osg::Texture* texture,
+            int sourceRevision)
+        {
+            Sampler& sampler = _sharedSamplers[binding];
+            sampler._texture = texture;
+            sampler._matrix.makeIdentity();
+            sampler._revision = sourceRevision;
+        }
+
+        void clearSharedSampler(unsigned binding)
+        {
+            Sampler& sampler = _sharedSamplers[binding];
+            sampler._texture = NULL;
+            sampler._matrix.makeIdentity();
+            sampler._revision = 0;
+        }
+
         /** Deallocate GPU objects associated with this model */
         void releaseGLObjects(osg::State* state) const
         {
             for (unsigned s = 0; s<_sharedSamplers.size(); ++s)
-                if (_sharedSamplers[s]._texture.valid() && _sharedSamplers[s]._matrix.isIdentity())
+                if (_sharedSamplers[s].ownsTexture())
                     _sharedSamplers[s]._texture->releaseGLObjects(state);
 
             for (unsigned p = 0; p<_passes.size(); ++p)
@@ -165,7 +277,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void resizeGLObjectBuffers(unsigned size)
         {
             for (unsigned s = 0; s<_sharedSamplers.size(); ++s)
-                if (_sharedSamplers[s]._texture.valid() && _sharedSamplers[s]._matrix.isIdentity())
+                if (_sharedSamplers[s].ownsTexture())
                     _sharedSamplers[s]._texture->resizeGLObjectBuffers(size);
 
             for (unsigned p = 0; p<_passes.size(); ++p)
@@ -173,6 +285,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         }
     };
 
-} } } // namespace osgEarth::Drivers::RexTerrainEngine
+} }
 
 #endif // OSGEARTH_REX_TILE_RENDER_MODEL

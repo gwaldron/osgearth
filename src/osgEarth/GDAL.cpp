@@ -840,7 +840,7 @@ GDAL::Driver::open(const std::string& name,
     }
 
     // Get the linear units of the SRS for scaling elevation values
-    _linearUnits = OSRGetLinearUnits((OGRSpatialReferenceH)srs->getHandle(), 0);
+    _linearUnits = srs->getReportedLinearUnits();
 
     // Set the final profile
     _profile = profile;

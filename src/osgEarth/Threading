@@ -77,7 +77,7 @@ namespace osgEarth { namespace Threading
         void* _data;
     };
 
-    typedef std::lock_guard<Mutex> ScopedMutexLock;
+    typedef std::lock_guard<BasicLockable> ScopedMutexLock;
 
     /**
      * A recursive mutex
@@ -493,18 +493,14 @@ namespace osgEarth { namespace Threading
      * as long as it has a default constructor
      */
     template<typename T>
-    struct Mutexed : public T {
+    struct Mutexed : public T, public BasicLockable {
         Mutexed() : T() { }
         Mutexed(const std::string& name) : _lockable_mutex(name), T() { }
-        inline void lock() const {
-            _lockable_mutex.lock();
-        }
-        inline void unlock() const {
-            _lockable_mutex.unlock();
-        }
-        inline Mutex& mutex() const {
-            return _lockable_mutex;
-        }
+        void lock() { _lockable_mutex.lock(); }
+        void lock() const { _lockable_mutex.lock(); }
+        void unlock() { _lockable_mutex.unlock(); }
+        void unlock() const { _lockable_mutex.unlock(); }
+        Mutex& mutex() const { return _lockable_mutex; }
     private:
         mutable Mutex _lockable_mutex;
     };

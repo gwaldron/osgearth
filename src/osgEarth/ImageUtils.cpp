@@ -656,12 +656,6 @@ ImageUtils::compressImage(
         
     ip = osgDB::Registry::instance()->getImageProcessorForExtension(driver);
 
-    // didn't work? fall back on NVTT
-    if (!ip && driver != "nvtt")
-    {
-        ip = osgDB::Registry::instance()->getImageProcessorForExtension("nvtt");
-    }
-
     if (ip)
     {
         output = osg::clone(input, osg::CopyOp::DEEP_COPY_ALL);

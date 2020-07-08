@@ -291,27 +291,23 @@ CubeUtils::faceToCube( double& in_out_x, double& in_out_y, int face )
 
 // --------------------------------------------------------------------------
 
-CubeSpatialReference::CubeSpatialReference( void* handle ) :
-SpatialReference(handle, std::string("OSGEARTH"))
+CubeSpatialReference::CubeSpatialReference(const SpatialReference::Key& key) :
+SpatialReference(key)
 {
     _key.horiz      = "unified-cube";
     _key.horizLower = "unified-cube";
     _name           = "Unified Cube";
+    _is_cube = true;
+    _is_contiguous = false;
+    _domain = PROJECTED;
 }
 
 CubeSpatialReference::~CubeSpatialReference()
 {
-}
-
-void
-CubeSpatialReference::_init()
-{
-    SpatialReference::_init();
-
     _is_user_defined = true;
     _is_cube         = true;
     _is_contiguous   = false;
-    _is_geographic   = false;
+    _domain = PROJECTED;
     _key.horiz       = "unified-cube";
     _key.horizLower  = "unified-cube";
     _name            = "Unified Cube";

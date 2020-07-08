@@ -23,6 +23,7 @@
 #include <osgEarth/Units>
 #include <osgEarth/VerticalDatum>
 #include <osgEarth/Threading>
+#include <osgEarth/Containers>
 #include <osg/CoordinateSystemNode>
 #include <osg/Vec3>
 #include <unordered_map>
@@ -36,11 +37,6 @@ namespace osgEarth
     const double MERC_MAXY =  20037508.34278925;
     const double MERC_WIDTH = MERC_MAXX - MERC_MINX;
     const double MERC_HEIGHT = MERC_MAXY - MERC_MINY;
-
-    namespace Util
-    {
-        class GeoLocator;
-    }
 
     /** 
      * SpatialReference holds information describing the reference ellipsoid/datum
@@ -290,7 +286,7 @@ namespace osgEarth
         const SpatialReference* createTangentPlaneSRS( const osg::Vec3d& refPos ) const;
 
         /** Creates a transverse mercator projection centered at the specified longitude. */
-        const SpatialReference* createTransMercFromLongitude( const Angular& lon ) const;
+        const SpatialReference* createTransMercFromLongitude( const Angle& lon ) const;
 
         /** Creates a UTM (universal transverse mercator) projection in the UTM zone
             containing the specified longitude. NOTE: this is slightly faster than using
@@ -308,31 +304,85 @@ namespace osgEarth
         /** Populates the provided CSN with information from this SRS. */
         bool populateCoordinateSystemNode( osg::CoordinateSystemNode* csn ) const;
 
-		/**
-		 * Gets the underlying OGRLayerH that this SpatialReference owns.
-		 * Don't use this unless you know what you're doing.
-		 */
-		void* getHandle() const { return _handle;}
+		//! The underlying OGRLayerH that this SpatialReference owns.
+		//! Don't use this unless you know what you're doing - this handle
+        //! is thread-specific.
+        void* getHandle() const;
 
         /**
          * Guess at an appropriate bounding box for this SRS.
          */
         bool guessBounds(Bounds& output) const;
 
+        //! Linear reported units for scaling
+        double getReportedLinearUnits() const;
 
     protected:
         virtual ~SpatialReference();
 
     protected:
 
-        SpatialReference( void* handle, const std::string& type );
-        SpatialReference( void* handle, bool ownsHandle =true );
-        void init();
+        struct TransformInfo {
+            TransformInfo() : _failed(false), _handle(nullptr) { }
+            bool _failed;
+            void* _handle;
+        };
+        typedef std::unordered_map<std::string,optional<TransformInfo>> TransformHandleCache;
 
-        bool _initialized;
-        void* _handle;
-        bool _owns_handle;
-        bool _is_geographic;
+        // SRS requires per-thread handles to be thread safe
+        struct ThreadLocal
+        {
+            ThreadLocal();
+            ~ThreadLocal();
+            std::thread::id _threadId;
+            void* _handle;
+            TransformHandleCache _xformCache;
+            double* _workspace;
+            unsigned _workspaceSize;
+        };
+
+        // gets the thread-safe handle, initializing it if necessary
+        ThreadLocal& getLocal() const;
+
+        enum InitType {
+            INIT_USER,
+            INIT_PROJ,
+            INIT_WKT
+        };
+
+        struct Setup {
+            Setup() : 
+                type(INIT_PROJ), 
+                srcHandle(nullptr),
+                geocentric(false), 
+                cube(false) { }
+            InitType    type;
+            std::string horiz;
+            std::string vert;
+            std::string name;
+            optional<osg::Vec3d> originLLA; // for LTP
+            bool geocentric;
+            bool cube;
+            void* srcHandle;
+        };
+
+        enum Domain {
+            GEOGRAPHIC,
+            PROJECTED,
+            GEOCENTRIC
+        };
+
+        SpatialReference(const Key& key);
+
+        SpatialReference(void* handle);
+
+        std::string _name;
+        Key _key;
+        osg::ref_ptr<VerticalDatum> _vdatum;
+        Domain _domain;
+        std::string _wkt;
+
+        // shortcut bools:
         bool _is_mercator;
         bool _is_spherical_mercator;
         bool _is_north_polar, _is_south_polar;
@@ -340,35 +390,36 @@ namespace osgEarth
         bool _is_contiguous;
         bool _is_user_defined;
         bool _is_ltp;
-        bool _is_geocentric;
+
         unsigned _ellipsoidId;
-        std::string _name;
-        Key _key;
-        std::string _wkt;
         std::string _proj4;
         std::string _init_type;
         std::string _datum;
-        Units       _units;
+        Units _units;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
-        osg::ref_ptr<SpatialReference>    _geo_srs;
-        osg::ref_ptr<SpatialReference>    _geodetic_srs;  // _geo_srs with a NULL vdatum.
-        osg::ref_ptr<SpatialReference>    _geocentric_srs;
-        osg::ref_ptr<VerticalDatum>       _vdatum;
+        mutable osg::ref_ptr<SpatialReference> _geo_srs;
+        mutable osg::ref_ptr<SpatialReference> _geodetic_srs;  // _geo_srs with a NULL vdatum.
+        mutable osg::ref_ptr<SpatialReference> _geocentric_srs;
         mutable Threading::Mutex _mutex;
-
-        typedef std::unordered_map<std::string,void*> TransformHandleCache;
-        TransformHandleCache _transformHandleCache;
+        mutable bool _valid;
+        mutable bool _initialized;
+        Setup _setup;
+        mutable PerThread<ThreadLocal> _local;
 
         // user can override these methods in a subclass to perform custom functionality; must
         // call the superclass version.
-        virtual void _init();
-        virtual bool _isEquivalentTo( const SpatialReference* srs, bool considerVDatum =true ) const;
+        virtual bool _isEquivalentTo(
+            const SpatialReference* srs, 
+            bool considerVDatum =true ) const;
 
-        virtual const SpatialReference* preTransform(std::vector<osg::Vec3d>&) const { return this; }
+        virtual const SpatialReference* preTransform(
+            std::vector<osg::Vec3d>&) const { return this; }
 
-        virtual const SpatialReference* postTransform(std::vector<osg::Vec3d>&) const { return this; }
+        virtual const SpatialReference* postTransform(
+            std::vector<osg::Vec3d>&) const { return this; }
 
         bool transformXYPointArrays(
+            ThreadLocal& local,
             double*  x,
             double*  y,
             unsigned numPoints,
@@ -379,27 +430,12 @@ namespace osgEarth
             const SpatialReference*  outputSRS,
             bool                     pointsAreGeodetic) const;
 
-
     private:
 
-        static SpatialReference* create(const Key& key);
+        //! initial setup - override to provide custom setup
+        void init();
 
-        static SpatialReference* create(const Key& key, bool useCache);
-
-        static SpatialReference* createFromWKT(
-            const std::string& wkt,
-            const std::string& name ="" );
-
-        static SpatialReference* createFromPROJ4(
-            const std::string& proj4,
-            const std::string& name = "" );
-
-		static SpatialReference* createFromUserInput(
-		    const std::string& input,
-            const std::string& name = "" );
-
-        static SpatialReference* createCube();
-
+        static SpatialReference* createFromKey(const Key& key);
 
         SpatialReference* fixWKT();
 

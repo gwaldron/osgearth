@@ -25,6 +25,7 @@
 #include <osg/Matrix>
 
 #include <osgEarth/TileKey>
+#include <osgEarth/Locators>
 
 namespace osgEarth {
     namespace Support {
@@ -59,7 +60,7 @@ namespace osgEarth { namespace REX
 
         void build(void);
         void buildIfNecessary(void) const;
-        
+
         void makeVertices(void);
     private:
         const TileKey  _key;

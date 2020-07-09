@@ -105,7 +105,9 @@ _blacklist("Reg.BlackList(OE)")
     _objectIndex = new ObjectIndex();
 
     // activate KMZ support
-    osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );
+    osgDB::Registry::instance()->addArchiveExtension( "kmz" );
+    osgDB::Registry::instance()->addArchiveExtension( "3tz");
+    osgDB::Registry::instance()->addFileExtensionAlias( "3tz", "zip" );
     //osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
 
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );

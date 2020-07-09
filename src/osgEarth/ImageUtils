@@ -63,8 +63,8 @@ namespace osgEarth { namespace Util
          * Copys a portion of one image into another.
          */
         static bool copyAsSubImage(
-            const osg::Image* src, 
-            osg::Image*       dst, 
+            const osg::Image* src,
+            osg::Image*       dst,
             int dst_start_col, int dst_start_row);
 
         /**
@@ -80,7 +80,7 @@ namespace osgEarth { namespace Util
          * This lets you resize directly into a particular mipmap level of the output image.
          */
         static bool resizeImage(
-            const osg::Image* input, 
+            const osg::Image* input,
             unsigned int new_s, unsigned int new_t,
             osg::ref_ptr<osg::Image>& output,
             unsigned int mipmapLevel =0, bool bilinear=true );
@@ -132,7 +132,7 @@ namespace osgEarth { namespace Util
          * Returns true upon sucess, false upon failure
          */
         static bool flattenImage(
-            const osg::Image* image, 
+            const osg::Image* image,
             std::vector<osg::ref_ptr<const osg::Image> >& output);
 
         /**
@@ -168,7 +168,7 @@ namespace osgEarth { namespace Util
         static bool isSingleColorImage(const osg::Image* image, float threshold =0.01);
 
         /**
-         * Returns true if it is possible to convert the image to the specified 
+         * Returns true if it is possible to convert the image to the specified
          * format/datatype specification.
          */
         static bool canConvert(const osg::Image* image, GLenum pixelFormat, GLenum dataType);
@@ -216,7 +216,7 @@ namespace osgEarth { namespace Util
         }
 
         /**
-         * Checks whether the image has an alpha component 
+         * Checks whether the image has an alpha component
          */
         static bool hasAlphaChannel( const osg::Image* image );
 
@@ -308,7 +308,7 @@ namespace osgEarth { namespace Util
         */
         static void mipmapImageInPlace(
             osg::Image* image);
-        
+
         //! Returns a compressed copy of the input image.
         //! @param image Image to compress
         //! @param method Compression method to use; see ImageLayer::getCompressionMethod
@@ -321,7 +321,7 @@ namespace osgEarth { namespace Util
         //! @param method Compression method to use; see ImageLayer::getCompressionMethod
         static void compressImageInPlace(
             osg::Image* image,
-            const std::string& method ="");
+            const std::string& method ="auto");
 
         /**
          * Gets an osgDB::ReaderWriter for the given input stream.
@@ -330,7 +330,7 @@ namespace osgEarth { namespace Util
         static osgDB::ReaderWriter* getReaderWriterForStream(std::istream& stream);
 
         /**
-         * Reads an osg::Image from the given input stream.         
+         * Reads an osg::Image from the given input stream.
          * Returns NULL if the image could not be read.
          */
         static osg::Image* readStream(std::istream& stream, const osgDB::Options* options);
@@ -427,7 +427,7 @@ namespace osgEarth { namespace Util
             bool     _sampleAsTexture;
             bool     _sampleAsRepeatingTexture;
         };
-        
+
         /**
          * Writes color data to an image, regardles of its internal pixel format.
          */
@@ -510,7 +510,7 @@ namespace osgEarth { namespace Util
                         }
                     }
                 }
-            }          
+            }
 
             /**
              * Traverse an image, and call this method on the superclass:

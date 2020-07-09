@@ -20,6 +20,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Registry>
 #include <osgEarth/TileKey>
+#include <osgEarth/Math>
 
 using namespace osgEarth;
 
@@ -346,9 +347,12 @@ Profile::Profile(const SpatialReference* srs,
 
     // make a profile sig (sans srs) and an srs sig for quick comparisons.
     ProfileOptions temp = toProfileOptions();
-    _fullSignature =  Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
+    std::string fullJSON = temp.getConfig().toJSON();
+    _fullSignature =  Stringify() << std::hex << hashString(fullJSON);
     temp.vsrsString() = "";
     _horizSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
+
+    _hash = std::hash<std::string>()(fullJSON);
 }
 
 Profile::Profile(const SpatialReference* srs,
@@ -368,9 +372,12 @@ Profile::Profile(const SpatialReference* srs,
 
     // make a profile sig (sans srs) and an srs sig for quick comparisons.
     ProfileOptions temp = toProfileOptions();
-    _fullSignature =  Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
+    std::string fullJSON = temp.getConfig().toJSON();
+    _fullSignature =  Stringify() << std::hex << hashString(fullJSON);
     temp.vsrsString() = "";
     _horizSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
+
+    _hash = std::hash<std::string>()(fullJSON);
 }
 
 Profile::ProfileType

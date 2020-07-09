@@ -101,9 +101,6 @@ Mutex::setName(const std::string& name)
 void
 Mutex::lock()
 {
-    if (_name.empty()) {
-        volatile int i=0; // breakpoint for finding unnamed mutexes -GW
-    }
     static_cast<MUTEX_TYPE*>(_handle)->lock();
 }
 

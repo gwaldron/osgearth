@@ -106,7 +106,9 @@ ElevationTexture::ElevationTexture(const TileKey& key, const GeoHeightField& in_
         setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
         setResizeNonPowerOfTwoHint(false);
         setMaxAnisotropy(1.0f);
-        setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+
+        // Pooled, so never expire them.
+        setUnRefImageDataAfterApply(false);
 
         _read.setTexture(this);
         _read.setSampleAsTexture(false);
@@ -139,6 +141,43 @@ ElevationTexture::getElevationUV(double u, double v) const
     u = osg::clampBetween(u, 0.0, 1.0), v = osg::clampBetween(v, 0.0, 1.0);
     _read(value, u, v);
     return ElevationSample(Distance(value.r(),Units::METERS), _resolution);
+}
+
+osg::Texture2D*
+ElevationTexture::getNormalMapTexture() const
+{
+    return _normalTex.get();
+}
+
+void
+ElevationTexture::generateNormalMap(
+    const Map* map,
+    void* workingSet,
+    ProgressCallback* progress)
+{
+    if (!_normalTex.valid())
+    {
+        // one thread allowed to generate the normal map
+        static Gate<void*> s_thisGate;
+        ScopedGate<void*> lockThis(s_thisGate, this);
+
+        if (!_normalTex.valid())
+        {
+            NormalMapGenerator gen;
+
+            _normalTex = gen.createNormalMap(
+                getTileKey(),
+                map,
+                workingSet,
+                progress);
+
+            if (_normalTex.valid())
+            {
+                // these are pooled, so do not expire them.
+                _normalTex->setUnRefImageDataAfterApply(false);
+            }
+        }
+    }
 }
 
 

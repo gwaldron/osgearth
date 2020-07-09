@@ -233,7 +233,7 @@ namespace osgEarth { namespace Util
         typedef typename std::list<K>::iterator      lru_iter;
         typedef typename std::list<K>                lru_type;
         typedef typename std::pair<T, lru_iter>      map_value_type;
-        typedef typename std::map<K, map_value_type> map_type;
+        typedef typename std::unordered_map<K, map_value_type> map_type;
         typedef typename map_type::iterator          map_iter;
         typedef typename map_type::const_iterator    map_const_iter;
 

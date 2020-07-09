@@ -39,12 +39,10 @@ TileKey::TileKey(unsigned int lod, unsigned int tile_x, unsigned int tile_y, con
 }
 
 TileKey::TileKey(const TileKey& rhs) :
-    _key(rhs._key),
     _lod(rhs._lod),
     _x(rhs._x),
     _y(rhs._y),
     _profile(rhs._profile.get()),
-    _extent(rhs._extent),
     _hash(rhs._hash)
 {
     //NOP
@@ -57,7 +55,8 @@ TileKey::rehash()
         osgEarth::hash_value_unsigned(
             (std::size_t)_lod, 
             (std::size_t)_x,
-            (std::size_t)_y) :
+            (std::size_t)_y,
+            _profile->hash()) :
         0ULL;
 }
 

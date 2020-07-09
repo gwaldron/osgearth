@@ -286,6 +286,9 @@ namespace osgEarth
          */
         virtual unsigned getLOD(double tileHeight) const;
 
+        //! Get the hash code for this profile
+        std::size_t hash() const { return _hash; }
+
     public:
 
         /**
@@ -326,6 +329,16 @@ namespace osgEarth
         unsigned    _numTilesHighAtLod0;
         std::string _fullSignature;
         std::string _horizSignature;
+        std::size_t _hash;
+    };
+}
+
+namespace std {
+    // std::hash specialization for Profile
+    template<> struct hash<osgEarth::Profile> {
+        inline size_t operator()(const osgEarth::Profile& value) const {
+            return value.hash();
+        }
     };
 }
 

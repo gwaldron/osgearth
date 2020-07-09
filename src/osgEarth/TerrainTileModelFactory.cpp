@@ -426,7 +426,7 @@ TerrainTileModelFactory::addElevation(
 
     const bool acceptLowerRes = false;
 
-    if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, NULL, progress))
+    if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, &_workingSet, progress))
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
 
@@ -434,19 +434,8 @@ TerrainTileModelFactory::addElevation(
 
         if ( elevTex.valid() )
         {
-            // Make a normal map
-            NormalMapGenerator gen;
-
-            Distance resolution(
-                key.getExtent().height() / (osgEarth::ELEVATION_TILE_SIZE-1),
-                key.getProfile()->getSRS()->getUnits());
-            
-            osg::Texture2D* normalMap = gen.createNormalMap(key, map, &_workingSet, progress);
-
-            if (normalMap)
-            {
-                elevTex->setNormalMapTexture(normalMap);
-            }
+            // Make a normal map if it doesn't already exist
+            elevTex->generateNormalMap(map, &_workingSet, progress);
 
             // Made an image, so store this as a texture with no matrix.
             layerModel->setTexture( elevTex.get() );

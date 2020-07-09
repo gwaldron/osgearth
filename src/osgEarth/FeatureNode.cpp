@@ -171,7 +171,10 @@ FeatureNode::build()
         if ( AnnotationUtils::styleRequiresAlphaBlending( style ) &&
              getStyle().get<ExtrusionSymbol>() )
         {
-            node = AnnotationUtils::installTwoPassAlpha( node );
+            // install two pass alpha if backfaceCulling is not active
+            const RenderSymbol* render = style.get<RenderSymbol>();
+            if (!render || !render->backfaceCulling().isSet() || !render->backfaceCulling().value())
+                node = AnnotationUtils::installTwoPassAlpha( node );
         }
 
         _attachPoint = new osg::Group();

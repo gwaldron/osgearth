@@ -551,7 +551,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
         readout->setHorizAlign( Control::ALIGN_RIGHT );
         readout->setVertAlign( Control::ALIGN_BOTTOM );
     
-        Formatter* formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE);    
+        Formatter* formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES); //DEGREES_MINUTES_SECONDS_TERSE);    
         MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
         mcTool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
         view->addEventHandler( mcTool );

@@ -537,7 +537,7 @@ ImageUtils::mipmapImage(const osg::Image* input)
             output->getDataType(),
             output->getMipmapData(level));
     }
-    
+
     return output;
 }
 
@@ -647,20 +647,14 @@ ImageUtils::compressImage(
 
     std::string driver(method);
 
-    if (driver == "cpu" || 
-        driver == "auto" || 
+    if (driver == "cpu" ||
+        driver == "auto" ||
         (driver.length() >=3 && driver.substr(0,3)=="dxt"))
     {
         driver = "fastdxt";
     }
-        
-    ip = osgDB::Registry::instance()->getImageProcessorForExtension(driver);
 
-    // didn't work? fall back on NVTT
-    if (!ip && driver != "nvtt")
-    {
-        ip = osgDB::Registry::instance()->getImageProcessorForExtension("nvtt");
-    }
+    ip = osgDB::Registry::instance()->getImageProcessorForExtension(driver);
 
     if (ip)
     {
@@ -696,7 +690,7 @@ ImageUtils::compressImageInPlace(
     if (input->isCompressed())
         return;
 
-    if (method == "none")
+    if (method.empty() || method == "none")
         return;
 
     // RGB uses DXT1
@@ -724,8 +718,8 @@ ImageUtils::compressImageInPlace(
 
         std::string driver(method);
 
-        if (driver == "cpu" || 
-            driver == "auto" || 
+        if (driver == "cpu" ||
+            driver == "auto" ||
             (driver.length() >=3 && driver.substr(0,3)=="dxt"))
         {
             driver = "fastdxt";
@@ -2063,7 +2057,7 @@ namespace
             break;
         case GL_RG:
             return chooseReader<GL_RG>(dataType);
-            break;        
+            break;
         case GL_RGB:
             return chooseReader<GL_RGB>(dataType);
             break;
@@ -2491,7 +2485,7 @@ namespace
             break;
         case GL_LUMINANCE_ALPHA:
             return chooseWriter<GL_LUMINANCE_ALPHA>(dataType);
-            break;                
+            break;
         case GL_RG:
             return chooseWriter<GL_RG>(dataType);
             break;

@@ -14,6 +14,7 @@ class ReaderWriterZIP : public osgDB::ReaderWriter
         ReaderWriterZIP()
         {
             supportsExtension("zip","Zip archive format");
+            supportsExtension("3tz", "3D tiles zip archive format");
             osgDB::Registry::instance()->addArchiveExtension("zip");
         }
 
@@ -96,7 +97,7 @@ class ReaderWriterZIP : public osgDB::ReaderWriter
 
         virtual ReadResult readObject(const std::string& fileName, const osgDB::ReaderWriter::Options* options) const
         {
-            return readNode(fileName, options); 
+            return readNode(fileName, options);
         }
 
         virtual osgDB::ReaderWriter::ReadResult readNode(const std::string& file, const osgDB::ReaderWriter::Options* options) const
@@ -171,7 +172,7 @@ class ReaderWriterZIP : public osgDB::ReaderWriter
             local_options->setDatabasePath(file);
 
             return readImageFromArchive(*archive, local_options.get());
-        }        
+        }
 };
 
 // now register with sgRegistry to instantiate the above

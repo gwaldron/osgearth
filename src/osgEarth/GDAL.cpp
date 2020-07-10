@@ -1763,6 +1763,7 @@ GDALImageLayer::init()
 {
     // Initialize the image layer (always first)
     ImageLayer::init();
+    _driverPerThread.setName("OE.GDALImageLayer");
 }
 
 Status
@@ -1907,7 +1908,8 @@ OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, ProfileOptions, WarpProfile, warpProf
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, RasterInterpolation, Interpolation, interpolation);
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, bool, UseVRT, useVRT);
 
-void GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value)
+void
+GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value)
 {
     //_driver->setExternalDataset(value);
     OE_WARN << LC << "setExternalDataset NOT IMPLEMENTED" << std::endl;
@@ -1917,6 +1919,7 @@ void
 GDALElevationLayer::init()
 {
     ElevationLayer::init();
+    _driverPerThread.setName("OE.GDALElevationLayer");
 }
 
 Status

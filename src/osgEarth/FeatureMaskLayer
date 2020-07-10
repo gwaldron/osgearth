@@ -70,6 +70,8 @@ namespace osgEarth
 
     protected: // Layer
 
+        virtual void init() override;
+
         virtual void addedToMap(const Map*);
 
         virtual void removedFromMap(const Map*);

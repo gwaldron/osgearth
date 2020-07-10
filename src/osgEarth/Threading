@@ -496,6 +496,7 @@ namespace osgEarth { namespace Threading
     struct Mutexed : public T, public BasicLockable {
         Mutexed() : T() { }
         Mutexed(const std::string& name) : _lockable_mutex(name), T() { }
+        void setName(const std::string& name) { _lockable_mutex.setName(name); }
         void lock() { _lockable_mutex.lock(); }
         void lock() const { _lockable_mutex.lock(); }
         void unlock() { _lockable_mutex.unlock(); }

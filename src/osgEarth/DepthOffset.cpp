@@ -293,10 +293,10 @@ DepthOffsetGroup::computeBound() const
 {
     if ( _adapter.supported() )
     {
-        static Threading::Mutex s_mutex;
-        s_mutex.lock();
+        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
+        Threading::ScopedMutexLock lock(s_mutex);
+
         const_cast<DepthOffsetGroup*>(this)->scheduleUpdate();
-        s_mutex.unlock();
     }
     return osg::Group::computeBound();
 }

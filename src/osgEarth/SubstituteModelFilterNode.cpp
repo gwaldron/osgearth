@@ -71,7 +71,7 @@ namespace osgEarth
     REGISTER_OBJECT_WRAPPER(SubstituteModelFilterNode,
         new SubstituteModelFilterNode,
         osgEarth::SubstituteModelFilterNode,
-        "osg::Object osgEarth::SubstituteModelFilterNode")
+        "osg::Node osgEarth::SubstituteModelFilterNode")
     {
 
         ADD_USER_SERIALIZER(_modelSymbolList);

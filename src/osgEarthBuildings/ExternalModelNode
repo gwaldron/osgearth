@@ -33,13 +33,16 @@ namespace osgEarth {
          void setxform(const osg::Matrixd & mat) { xform = mat; }
       };
 
-      class ExternalModelNode : public osg::Object
+      /**
+       * Container for VRV indirect processor.
+       */
+      class ExternalModelNode : public osg::Node
       {
       public:
          ExternalModelNode() { ; }
          ExternalModelNode(const ExternalModelNode& rhs, const osg::CopyOp& copyop);
 
-         META_Object(osgEarth::Buildings, ExternalModelNode);
+         META_Node(osgEarth::Buildings, ExternalModelNode);
          
          const std::vector<osg::ref_ptr<ExternalModel> >  & getvectorExternalModels() const { return vectorExternalModels; }
          void setvectorExternalModels(std::vector<osg::ref_ptr<ExternalModel> > & vec) { vectorExternalModels = vec; }

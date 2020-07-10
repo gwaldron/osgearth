@@ -157,8 +157,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
         geomStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
-        geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
+        geomStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
 
         FeatureNode* fnode = new FeatureNode(feature, geomStyle);
 
@@ -188,8 +187,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
         geomStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
-        geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
+        geomStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
 
         FeatureNode* gnode = new FeatureNode(feature, geomStyle);
         annoGroup->addChild( gnode );

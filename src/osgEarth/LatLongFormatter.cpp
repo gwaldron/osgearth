@@ -135,8 +135,11 @@ LatLongFormatter::format( const Angular& angle, bool latitude, int precision, co
 
     case FORMAT_DEGREES_MINUTES_SECONDS:
         {
-            int    d  = (int)floor(df);
-            double mf = 60.0*(df-(double)d);
+            int sgn = df >= 0.0 ? 1 : -1;
+            double adf = fabs(df);
+
+            int    d  = (int)floor(adf);
+            double mf = 60.0*(adf-(double)d);
             int    m  = (int)floor(mf);
             double sf = 60.0*(mf-(double)m);
             if ( sf == 60.0 ) {
@@ -147,6 +150,7 @@ LatLongFormatter::format( const Angular& angle, bool latitude, int precision, co
                     m = 0;
                 }
             }
+            d *= sgn;
 
             if ( _options & USE_SYMBOLS )
             {
@@ -160,8 +164,11 @@ LatLongFormatter::format( const Angular& angle, bool latitude, int precision, co
         break;
     case FORMAT_DEGREES_MINUTES_SECONDS_TERSE:
         {
-            int    d  = (int)floor(df);
-            double mf = 60.0*(df-(double)d);
+            int sgn = df >= 0.0 ? 1 : -1;
+            double adf = fabs(df);
+
+            int    d  = (int)floor(adf);
+            double mf = 60.0*(adf-(double)d);
             int    m  = (int)floor(mf);
             double sf = 60.0*(mf-(double)m);
             int s = osg::round(sf);
@@ -175,6 +182,7 @@ LatLongFormatter::format( const Angular& angle, bool latitude, int precision, co
                 }
             }
 
+            d *= sgn;
             
 
             if ( _options & USE_SYMBOLS )

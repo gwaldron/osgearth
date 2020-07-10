@@ -142,6 +142,7 @@ namespace osgEarth
         void* _dsHandle;
         void* _layerHandle;
         void* _ogrDriverHandle;
+        unsigned _dsHandleThreadId;
         int _featureCount;
         bool _needsSync;
         bool _writable;

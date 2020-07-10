@@ -62,7 +62,8 @@ TiledFeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const
     return cursor;
 }
 
-osg::Node* TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
+osg::ref_ptr<osg::Node>
+TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
 {
     NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
     // Get features for this key
@@ -159,5 +160,5 @@ osg::Node* TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallba
         }
     }
 
-    return node.release();
+    return node;
 }

@@ -80,14 +80,6 @@ namespace osgEarth { namespace REX
 
         ProgressCallback* progress() const { return _progress.get(); }
 
-        //void startCull(osgUtil::CullVisitor* cv);
-
-        //void endCull(osgUtil::CullVisitor* cv);
-
-        //double getElapsedCullTime() const;
-
-        //bool maxLiveTilesExceeded() const;
-
         double getExpirationRange2() const { return _expirationRange2; }
 
         ModifyBoundingBoxCallback* getModifyBBoxCallback() const { return _bboxCB.get(); }
@@ -104,7 +96,6 @@ namespace osgEarth { namespace REX
         
         osg::observer_ptr<TerrainEngineNode>  _terrainEngine;
         osg::observer_ptr<const Map>          _map;
-        int                                   _mainThreadId;
         TileNodeRegistry*                     _liveTiles;
         const TerrainOptions&                 _options;
         const RenderBindings&                 _renderBindings;

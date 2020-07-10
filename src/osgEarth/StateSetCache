@@ -23,7 +23,7 @@
 #define OSGEARTH_STATE_SET_CACHE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/StateSet>
 #include <set>
 
@@ -117,6 +117,10 @@ namespace osgEarth
         * Number of statesets in the cache.
         */
         unsigned size() const { return _stateSetCache.size(); }
+
+        //! marks all caches statesets as DYNAMIC so they cannot be
+        //! shared again.
+        void protect();
 
         /**
         * Clears out the cache.

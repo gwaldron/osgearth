@@ -480,7 +480,7 @@ AerodromeNode* AerodromeFactory::getAerodromeNode(const std::string& icao)
     if (!_renderer.valid())
         return 0L;
 
-    _mutex.writeLock();
+    Threading::ScopedWriteLock lock(_mutex);
 
     OE_START_TIMER(getAerodromeNode);
 
@@ -502,8 +502,6 @@ AerodromeNode* AerodromeFactory::getAerodromeNode(const std::string& icao)
     float s = OE_STOP_TIMER(getAerodromeNode);
     OE_INFO << LC << std::setprecision(3) << "Built \"" << icao << "\" - create=" << createTime << "s, render=" << renderTime << "s, total=" << s << "s\n";
 
-    _mutex.writeUnlock();
-    
     return node.release();
 }
 

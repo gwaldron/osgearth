@@ -337,7 +337,8 @@ void CompilerOutput::addInstancesZeroWorkCallbackBased(osg::MatrixTransform* roo
    instances->setName(INSTANCES_ROOT);
 
    InstancedModelNode* instancedModelNode = new InstancedModelNode();
-   instances->setUserData(instancedModelNode);
+   instances->addChild(instancedModelNode);
+   //instances->setUserData(instancedModelNode);
 
    for (InstanceMap::const_iterator it = _instances.begin(); it != _instances.end(); ++it)
    {
@@ -394,47 +395,45 @@ CompilerOutput::createSceneGraph(Session*                session,
     osg::ref_ptr<osg::MatrixTransform> root = new osg::MatrixTransform( getLocalToWorld() );
     root->setName("BuildingSceneGraphNode");
 
-    if (_geodes.empty()==false)
+    if (_geodes.empty() == false)
     {
-       // The Geode LOD holds each geode in its range.
-       osg::LOD* elevationsLod = new osg::LOD();
-       elevationsLod->setName(GEODES_ROOT);
+        // The Geode LOD holds each geode in its range.
+        osg::LOD* elevationsLod = new osg::LOD();
+        elevationsLod->setName(GEODES_ROOT);
 
-       const GeoCircle bc = _key.getExtent().computeBoundingGeoCircle();
+        const GeoCircle bc = _key.getExtent().computeBoundingGeoCircle();
 
-       for (TaggedGeodes::const_iterator g = _geodes.begin(); g != _geodes.end(); ++g)
-       {
-          const std::string& tag = g->first;
-          const CompilerSettings::LODBin* bin = settings.getLODBin(tag);
-          //float minRange = bin && bin->minLodScale > 0.0f? g->second->getBound().radius() + _range*bin->minLodScale : 0.0f;
-          //float maxRange = bin ? g->second->getBound().radius() + _range*bin->lodScale : FLT_MAX;
-          float minRange = bin && bin->minLodScale > 0.0f ? bc.getRadius() + _range*bin->minLodScale : 0.0f;
-          float maxRange = bin ? bc.getRadius() + _range*bin->lodScale : FLT_MAX;
-          elevationsLod->addChild(g->second.get(), minRange, maxRange);
-       }
+        for (TaggedGeodes::const_iterator g = _geodes.begin(); g != _geodes.end(); ++g)
+        {
+            const std::string& tag = g->first;
+            const CompilerSettings::LODBin* bin = settings.getLODBin(tag);
+            float minRange = bin && bin->minLodScale > 0.0f ? bc.getRadius() + _range * bin->minLodScale : 0.0f;
+            float maxRange = bin ? bc.getRadius() + _range * bin->lodScale : FLT_MAX;
+            elevationsLod->addChild(g->second.get(), minRange, maxRange);
+        }
 
-       if (_filterUsage==FILTER_USAGE_NORMAL)
-       {
-          root->addChild(elevationsLod);
-       }
-       else
-       {
-          osg::Group* elevationsGroup = new osg::Group();
-          elevationsGroup->setName("BuildingElevationsGroup");
-          // because the default merge limit is 10000 and there's no other way to change it
-          osgUtil::Optimizer::MergeGeometryVisitor mergeGeometry;
-          mergeGeometry.setTargetMaximumNumberOfVertices(250000u);
-          elevationsLod->accept(mergeGeometry);
-          
-          ElevationsLodNode* elevationsLodNode = new ElevationsLodNode();
-          elevationsLodNode->setName("elevationsLodNode");
-          elevationsLodNode->elevationsLOD = elevationsLod;
-          elevationsLodNode->xform = getLocalToWorld();
+        if (_filterUsage == FILTER_USAGE_NORMAL)
+        {
+            // normal usage: just add the data directly.
+            root->addChild(elevationsLod);
+        }
+        else
+        {
+            // Indirect prep: Instead of adding the geometry directly to the scene graph,
+            // put in in a container node that the VRV indirect engine can find and process.
 
-          elevationsGroup->setUserData(elevationsLodNode);
+            // because the default merge limit is 10000 and there's no other way to change it
+            osgUtil::Optimizer::MergeGeometryVisitor mergeGeometry;
+            mergeGeometry.setTargetMaximumNumberOfVertices(250000u);
+            elevationsLod->accept(mergeGeometry);
 
-          root->addChild(elevationsGroup);
-       }
+            ElevationsLodNode* elevationsLodNode = new ElevationsLodNode();
+            elevationsLodNode->setName("BuildingElevationsNode");
+            elevationsLodNode->elevationsLOD = elevationsLod;
+            elevationsLodNode->xform = getLocalToWorld();
+
+            root->addChild(elevationsLodNode);
+        }
     }
 
     if ( _externalModelsGroup->getNumChildren() > 0 )
@@ -476,6 +475,7 @@ namespace
             setNodeMaskOverride(~0);
 
             _sscache = new StateSetCache();
+            _sscache->setMaxSize(~0);
 
             _models = 0;
             _instanceGroups = 0;
@@ -557,7 +557,11 @@ CompilerOutput::postProcess(osg::Node* graph, const CompilerSettings& settings, 
     ppnv._useDrawInstanced = !settings.useClustering().get();
     ppnv._progress = progress;
     ppnv._settings = &settings;
+
     graph->accept(ppnv);
+
+    //if (ppnv._sscache.valid())
+    //    ppnv._sscache->protect();
 }
 
 

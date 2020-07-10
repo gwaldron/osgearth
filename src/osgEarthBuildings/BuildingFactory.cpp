@@ -209,7 +209,8 @@ BuildingFactory::create(Feature*               feature,
             map->getElevationPool()->sampleMapCoords(
                 points, 
                 clampingResolution,
-                workingSet);
+                workingSet,
+                progress);
 
             for(auto& i : points)
             {

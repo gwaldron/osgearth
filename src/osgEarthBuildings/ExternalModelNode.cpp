@@ -49,7 +49,7 @@ namespace ExternalModelNodeSerializer
    REGISTER_OBJECT_WRAPPER(ExternalModelNode,
       new ExternalModelNode,
       osgEarth::Buildings::ExternalModelNode,
-      "osg::Object osgEarth::Buildings::ExternalModelNode")
+      "osg::Node osgEarth::Buildings::ExternalModelNode")
    {
       ADD_USER_SERIALIZER(vectorExternalModels);
    }

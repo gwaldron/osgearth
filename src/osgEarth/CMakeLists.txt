@@ -3,6 +3,8 @@ IF   (DYNAMIC_OSGEARTH)
 ELSE (DYNAMIC_OSGEARTH)
     ADD_DEFINITIONS(-DOSGEARTH_LIBRARY_STATIC)
 ENDIF(DYNAMIC_OSGEARTH)
+# Add __STDC_FORMAT_MACROS for use of PRIu64 macro
+ADD_DEFINITIONS(-D__STDC_FORMAT_MACROS)
 
 # CURL options
 OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)
@@ -222,7 +224,6 @@ SET(LIB_PUBLIC_HEADERS
     Status
     StringUtils
     TDTiles
-    TaskService
     Terrain
     TerrainEffect
     TerrainOptions
@@ -248,7 +249,7 @@ SET(LIB_PUBLIC_HEADERS
     TileCache
     TimeControl
     TraversalData
-    ThreadingUtils
+    Threading
     TMS
     Units
     URI
@@ -587,7 +588,6 @@ set(TARGET_SRC
     StateSetCache.cpp
     Status.cpp
     StringUtils.cpp
-    TaskService.cpp
     TDTiles.cpp
     Terrain.cpp
     TerrainOptions.cpp
@@ -612,7 +612,7 @@ set(TARGET_SRC
     TileCache.cpp
     TimeControl.cpp
     TraversalData.cpp
-    ThreadingUtils.cpp
+    Threading.cpp
     TMS.cpp
     Units.cpp
     URI.cpp

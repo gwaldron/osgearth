@@ -25,7 +25,7 @@
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/DecalLayer>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TerrainEngineNode>

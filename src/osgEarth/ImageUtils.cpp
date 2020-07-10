@@ -20,7 +20,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/Random>
+#include <osgEarth/Metrics>
 
 #include <osg/GLU>
 #include <osgDB/Registry>
@@ -303,8 +303,8 @@ ImageUtils::resizeImage(const osg::Image* input,
 }
 
 bool
-ImageUtils::flattenImage(osg::Image*                             input,
-                         std::vector<osg::ref_ptr<osg::Image> >& output)
+ImageUtils::flattenImage(const osg::Image* input,
+                         std::vector<osg::ref_ptr<const osg::Image> >& output)
 {
     if (input == 0L)
         return false;
@@ -454,6 +454,305 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
     return true;
 }
 
+const osg::Image*
+ImageUtils::mipmapImage(const osg::Image* input)
+{
+    if (!input)
+    {
+        OE_WARN << LC << "createMipmappedImage() called with NULL input" << std::endl;
+        return input;
+    }
+
+    if (input->r() > 1)
+    {
+        OE_WARN << LC << "createMipmappedImage() not implemented for 3D image" << std::endl;
+        return input;
+    }
+
+    // already has mipmaps?
+    if (input->getNumMipmapLevels() > 1)
+    {
+        return input;
+    }
+
+    // compressed? this algorithm won't work
+    if (input->isCompressed())
+    {
+        return input;
+    }
+
+    // first, build the image that will hold all the mipmap levels.
+    int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
+    int imageSizeBytes = input->getTotalSizeInBytes();
+
+    // offset vector does not include level 0 (the full-resolution level)
+    osg::Image::MipmapDataType mipOffsets;
+    mipOffsets.reserve(numLevels-1);
+
+    // calculate memory requirements:
+    int totalSizeBytes = imageSizeBytes;
+    for( int i=1; i<numLevels; ++i )
+    {
+        mipOffsets.push_back(totalSizeBytes);
+        totalSizeBytes += (imageSizeBytes >> i);
+    }
+
+    osg::Image* output = new osg::Image();
+    output->setName(input->getName());
+
+    // allocate space for the new data and copy over level 0 of the old data
+    unsigned char* newData = new unsigned char[totalSizeBytes];
+    ::memcpy(newData, input->data(), input->getTotalSizeInBytes());
+
+    output->setImage(
+        input->s(), input->t(), input->r(),
+        input->getInternalTextureFormat(),
+        input->getPixelFormat(),
+        input->getDataType(),
+        newData,
+        osg::Image::USE_NEW_DELETE,
+        input->getPacking(),
+        input->getRowLength());
+
+    output->setMipmapLevels(mipOffsets);
+
+    // now, populate the image levels.
+    osg::PixelStorageModes psm;
+    psm.pack_alignment = input->getPacking();
+    psm.pack_row_length = input->getRowLength();
+    psm.unpack_alignment = input->getPacking();
+
+    for(int level=1; level<numLevels; ++level)
+    {
+        // OSG-custom gluScaleImage that does not require a graphics context
+        GLint status = gluScaleImage(
+            &psm,
+            output->getPixelFormat(),
+            output->s(),
+            output->t(),
+            output->getDataType(),
+            output->data(),
+            output->s() >> level,
+            output->t() >> level,
+            output->getDataType(),
+            output->getMipmapData(level));
+    }
+
+    return output;
+}
+
+void
+ImageUtils::mipmapImageInPlace(osg::Image* input)
+{
+    if (!input)
+    {
+        OE_WARN << LC << "createMipmappedImage() called with NULL input" << std::endl;
+        return;
+    }
+
+    if (input->r() > 1)
+    {
+        OE_WARN << LC << "createMipmappedImage() not implemented for 3D image" << std::endl;
+        return;
+    }
+
+    // already has mipmaps?
+    if (input->getNumMipmapLevels() > 1)
+    {
+        return;
+    }
+
+    // compressed? this algorithm won't work
+    if (input->isCompressed())
+    {
+        return;
+    }
+
+    // first, build the image that will hold all the mipmap levels.
+    int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
+    int imageSizeBytes = input->getTotalSizeInBytes();
+
+    // offset vector does not include level 0 (the full-resolution level)
+    osg::Image::MipmapDataType mipOffsets;
+    mipOffsets.reserve(numLevels-1);
+
+    // calculate memory requirements:
+    int totalSizeBytes = imageSizeBytes;
+    for( int i=1; i<numLevels; ++i )
+    {
+        mipOffsets.push_back(totalSizeBytes);
+        totalSizeBytes += (imageSizeBytes >> i);
+    }
+
+    // allocate space for the new data and copy over level 0 of the old data
+    unsigned char* newData = new unsigned char[totalSizeBytes];
+    ::memcpy(newData, input->data(), input->getTotalSizeInBytes());
+
+    input->setImage(
+        input->s(), input->t(), input->r(),
+        input->getInternalTextureFormat(),
+        input->getPixelFormat(),
+        input->getDataType(),
+        newData,
+        osg::Image::USE_NEW_DELETE,
+        input->getPacking(),
+        input->getRowLength());
+
+    input->setMipmapLevels(mipOffsets);
+
+    // now, populate the image levels.
+    osg::PixelStorageModes psm;
+    psm.pack_alignment = input->getPacking();
+    psm.pack_row_length = input->getRowLength();
+    psm.unpack_alignment = input->getPacking();
+
+    for(int level=1; level<numLevels; ++level)
+    {
+        // OSG-custom gluScaleImage that does not require a graphics context
+        GLint status = gluScaleImage(
+            &psm,
+            input->getPixelFormat(),
+            input->s(),
+            input->t(),
+            input->getDataType(),
+            input->data(),
+            input->s() >> level,
+            input->t() >> level,
+            input->getDataType(),
+            input->getMipmapData(level));
+    }
+}
+
+const osg::Image*
+ImageUtils::compressImage(
+    const osg::Image* input,
+    const std::string& method)
+{
+    if (!input)
+        return input;
+
+    if (input->isCompressed())
+        return input;
+
+    if (method == "none")
+        return input;
+
+    if (method == "gpu")
+        return input;
+
+    // return the input if nothing works
+    osg::Image* output = const_cast<osg::Image*>(input);
+
+    osgDB::ImageProcessor* ip = nullptr;
+
+    std::string driver(method);
+
+    if (driver == "cpu" ||
+        driver == "auto" ||
+        (driver.length() >=3 && driver.substr(0,3)=="dxt"))
+    {
+        driver = "fastdxt";
+    }
+
+    ip = osgDB::Registry::instance()->getImageProcessorForExtension(driver);
+
+    if (ip)
+    {
+        output = osg::clone(input, osg::CopyOp::DEEP_COPY_ALL);
+
+        // RGB uses DXT1
+        osg::Texture::InternalFormatMode mode;
+        if (hasAlphaChannel(input))
+            mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
+        else
+            mode = osg::Texture::USE_S3TC_DXT1_COMPRESSION;
+
+        ip->compress(
+            *output,        // image to compress
+            mode,           // compression mode
+            true,           // generate mipmaps if possible
+            false,          // resize to power of 2
+            ip->USE_CPU,    // technique (always use CPU here)
+            ip->FASTEST);   // quality
+    }
+
+    return output;
+}
+
+void
+ImageUtils::compressImageInPlace(
+    osg::Image* input,
+    const std::string& method)
+{
+    if (!input)
+        return;
+
+    if (input->isCompressed())
+        return;
+
+    if (method.empty() || method == "none")
+        return;
+
+    // RGB uses DXT1
+    osg::Texture::InternalFormatMode mode;
+
+    if (hasAlphaChannel(input))
+    {
+        mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
+    }
+    else
+    {
+        mode = osg::Texture::USE_S3TC_DXT1_COMPRESSION;
+    }
+
+    if (method == "gpu")
+    {
+        // cheat! don't tell anyone
+        input->setInternalTextureFormat(mode);
+        return;
+    }
+    else
+    {
+        // return the input if nothing works
+        osgDB::ImageProcessor* ip = nullptr;
+
+        std::string driver(method);
+
+        if (driver == "cpu" ||
+            driver == "auto" ||
+            (driver.length() >=3 && driver.substr(0,3)=="dxt"))
+        {
+            driver = "fastdxt";
+        }
+
+        ip = osgDB::Registry::instance()->getImageProcessorForExtension(driver);
+
+        // didn't work? fall back on NVTT
+        if (!ip && driver != "nvtt")
+        {
+            ip = osgDB::Registry::instance()->getImageProcessorForExtension("nvtt");
+        }
+
+        if (ip)
+        {
+            ip->compress(
+                *input,        // image to compress
+                mode,           // compression mode
+                true,           // generate mipmaps if possible
+                false,          // resize to power of 2
+                ip->USE_CPU,    // technique (always use CPU here)
+                ip->FASTEST);   // quality
+        }
+
+        else
+        {
+            // CPU didn't work so just use GPU. (cheating)
+            input->setInternalTextureFormat(mode);
+        }
+    }
+}
+
+#if 0
 bool
 ImageUtils::generateMipmaps(osg::Image* input)
 {
@@ -474,6 +773,12 @@ ImageUtils::generateMipmaps(osg::Image* input)
     {
         return false;
     }
+
+    static Threading::Gate<osg::Image*> s_imageGate("Mipmip Gate");
+
+    // Allow only one equal pointer at a time past this point
+    // so we don't try to mipmap the same image in parallel
+    Threading::ScopedGate<osg::Image*> gate(s_imageGate, input);
 
 #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
     // NVTT doest not like 1- or 2-channel images; can crash
@@ -556,66 +861,13 @@ ImageUtils::generateMipmaps(osg::Image* input)
     }
 
     input->dirty();
+
     return true;
 #else
     return false;
 #endif
 }
-
-osg::Image*
-ImageUtils::createMipmapBlendedImage( const osg::Image* primary, const osg::Image* secondary )
-{
-    // ASSUMPTION: primary and secondary are the same size, same format.
-
-    // first, build the image that will hold all the mipmap levels.
-    int numMipmapLevels = osg::Image::computeNumberOfMipmapLevels( primary->s(), primary->t() );
-    int pixelSizeBytes  = osg::Image::computeRowWidthInBytes( primary->s(), primary->getPixelFormat(), primary->getDataType(), primary->getPacking() ) / primary->s();
-    int totalSizeBytes  = 0;
-    std::vector< unsigned int > mipmapDataOffsets;
-
-    mipmapDataOffsets.reserve( numMipmapLevels-1 );
-
-    for( int i=0; i<numMipmapLevels; ++i )
-    {
-        if ( i > 0 )
-            mipmapDataOffsets.push_back( totalSizeBytes );
-
-        int level_s = primary->s() >> i;
-        int level_t = primary->t() >> i;
-        int levelSizeBytes = level_s * level_t * pixelSizeBytes;
-
-        totalSizeBytes += levelSizeBytes;
-    }
-
-    unsigned char* data = new unsigned char[totalSizeBytes];
-
-    osg::ref_ptr<osg::Image> result = new osg::Image();
-    result->setImage(
-        primary->s(), primary->t(), 1,
-        primary->getInternalTextureFormat(),
-        primary->getPixelFormat(),
-        primary->getDataType(),
-        data, osg::Image::USE_NEW_DELETE );
-
-    result->setMipmapLevels( mipmapDataOffsets );
-
-    // now, populate the image levels.
-    int level_s = primary->s();
-    int level_t = primary->t();
-
-    for( int level=0; level<numMipmapLevels; ++level )
-    {
-        if ( secondary && level > 0 )
-            ImageUtils::resizeImage( secondary, level_s, level_t, result, level );
-        else
-            ImageUtils::resizeImage( primary, level_s, level_t, result, level );
-
-        level_s >>= 1;
-        level_t >>= 1;
-    }
-
-    return result.release();
-}
+#endif
 
 osgDB::ReaderWriter*
 ImageUtils::getReaderWriterForStream(std::istream& stream) {
@@ -701,7 +953,7 @@ ImageUtils::readStream(std::istream& stream, const osgDB::Options* options) {
 osg::Texture2DArray*
 ImageUtils::makeTexture2DArray(osg::Image* image)
 {
-    std::vector< osg::ref_ptr<osg::Image> > images;
+    std::vector< osg::ref_ptr<const osg::Image> > images;
     if (image->r() > 1)
     {
         ImageUtils::flattenImage(image, images);
@@ -717,7 +969,7 @@ ImageUtils::makeTexture2DArray(osg::Image* image)
     tex2dArray->setSourceFormat(images[0]->getPixelFormat());
     for (int i = 0; i < (int)images.size(); ++i)
     {
-        tex2dArray->setImage(i, images[i].get());
+        tex2dArray->setImage(i, const_cast<osg::Image*>(images[i].get()));
     }
     return tex2dArray;
 }
@@ -866,7 +1118,7 @@ ImageUtils::createSharpenedImage( const osg::Image* input )
 
 namespace
 {
-    static Threading::Mutex         s_emptyImageMutex;
+    static Threading::Mutex         s_emptyImageMutex(OE_MUTEX_NAME);
     static osg::ref_ptr<osg::Image> s_emptyImage;
 }
 
@@ -1221,9 +1473,12 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
     return false;
 }
 
+#if 0
 bool
 ImageUtils::generateMipmaps(osg::Texture* tex)
 {
+    OE_PROFILING_ZONE;
+
     // Verify that this texture requests mipmaps:
     osg::Texture::FilterMode minFilter = tex->getFilter(tex->MIN_FILTER);
 
@@ -1251,83 +1506,7 @@ ImageUtils::generateMipmaps(osg::Texture* tex)
 
     return mipsAdded;
 }
-
-
-bool
-ImageUtils::featherAlphaRegions(osg::Image* image, float maxAlpha)
-{
-    if ( !PixelReader::supports(image) || !PixelWriter::supports(image) )
-        return false;
-
-    PixelReader read (image);
-    PixelWriter write(image);
-
-    int ns = image->s();
-    int nt = image->t();
-    int nr = image->r();
-
-    osg::Vec4 n;
-
-    for( int r=0; r<nr; ++r )
-    {
-        for( int t=0; t<nt; ++t )
-        {
-            bool rowdone = false;
-            for( int s=0; s<ns && !rowdone; ++s )
-            {
-                osg::Vec4 pixel = read(s, t, r);
-                if ( pixel.a() <= maxAlpha )
-                {
-                    bool wrote = false;
-                    if ( s < ns-1 ) {
-                        n = read( s+1, t, r);
-                        if ( n.a() > maxAlpha ) {
-                            write( n, s, t, r);
-                            wrote = true;
-                        }
-                    }
-                    if ( !wrote && s > 0 ) {
-                        n = read( s-1, t, r);
-                        if ( n.a() > maxAlpha ) {
-                            write( n, s, t, r);
-                            rowdone = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        for( int s=0; s<ns; ++s )
-        {
-            bool coldone = false;
-            for( int t=0; t<nt && !coldone; ++t )
-            {
-                osg::Vec4 pixel = read(s, t, r);
-                if ( pixel.a() <= maxAlpha )
-                {
-                    bool wrote = false;
-                    if ( t < nt-1 ) {
-                        n = read( s, t+1, r );
-                        if ( n.a() > maxAlpha ) {
-                            write( n, s, t, r );
-                            wrote = true;
-                        }
-                    }
-                    if ( !wrote && t > 0 ) {
-                        n = read( s, t-1, r );
-                        if ( n.a() > maxAlpha ) {
-                            write( n, s, t, r);
-                            coldone = true;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return true;
-}
-
+#endif
 
 bool
 ImageUtils::convertToPremultipliedAlpha(osg::Image* image)
@@ -1878,7 +2057,7 @@ namespace
             break;
         case GL_RG:
             return chooseReader<GL_RG>(dataType);
-            break;        
+            break;
         case GL_RGB:
             return chooseReader<GL_RGB>(dataType);
             break;
@@ -2306,7 +2485,7 @@ namespace
             break;
         case GL_LUMINANCE_ALPHA:
             return chooseWriter<GL_LUMINANCE_ALPHA>(dataType);
-            break;                
+            break;
         case GL_RG:
             return chooseWriter<GL_RG>(dataType);
             break;

@@ -72,7 +72,7 @@ namespace osgEarth
       REGISTER_OBJECT_WRAPPER(InstancedModelNode,
          new InstancedModelNode,
          osgEarth::Buildings::InstancedModelNode,
-         "osg::Object osgEarth::Buildings::InstancedModelNode")
+         "osg::Node osgEarth::Buildings::InstancedModelNode")
       {
 
          //_mapModelToInstances;

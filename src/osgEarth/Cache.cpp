@@ -123,7 +123,8 @@ CacheSettings::toString() const
 //------------------------------------------------------------------------
 
 Cache::Cache( const CacheOptions& options ) :
-_options( options )
+_options( options ),
+_bins("OE.Cache.bins")
 {
     //nop
 }
@@ -133,7 +134,8 @@ Cache::~Cache()
 }
 
 Cache::Cache( const Cache& rhs, const osg::CopyOp& op ) :
-osg::Object( rhs, op )
+osg::Object( rhs, op ),
+_bins("OE.Cache.bins")
 {
     _status = rhs._status;
 }
@@ -149,7 +151,7 @@ Cache::getBin( const std::string& binID )
 void
 Cache::removeBin( CacheBin* bin )
 {
-    _bins.remove( bin );
+    _bins.remove( bin->getID() );
 }
 
 namespace

@@ -25,7 +25,8 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileHandler>
 #include <osgEarth/Profile>
-#include <osgEarth/TaskService>
+#include <osgEarth/Threading>
+#include <osgEarth/Progress>
 
 namespace osgEarth { namespace Util
 {
@@ -77,6 +78,8 @@ namespace osgEarth { namespace Util
 
         void setProgressCallback( ProgressCallback* progress );
 
+        ProgressCallback* getProgressCallback() const { return _progress.get(); }
+
         void incrementProgress( unsigned int progress );
 
         void resetProgress();
@@ -109,7 +112,7 @@ namespace osgEarth { namespace Util
 
 
     /**
-    * A TileVisitor that pushes all of it's generated keys onto a TaskService queue and handles them in background threads.
+    * A TileVisitor that pushes all of it's generated keys onto a ThreadPool queue and handles them in background threads.
     */
     class OSGEARTH_EXPORT MultithreadedTileVisitor: public TileVisitor
     {
@@ -129,8 +132,7 @@ namespace osgEarth { namespace Util
 
         unsigned int _numThreads;
 
-        // The work queue to pass seed operations to
-        osg::ref_ptr<osgEarth::TaskService> _taskService;
+        osg::ref_ptr<osgEarth::Threading::ThreadPool> _threadPool;
     };
 
 
@@ -166,67 +168,6 @@ namespace osgEarth { namespace Util
         TileKeyList _keys;
         osg::ref_ptr< const Profile > _profile;
     };
-
-
-
-
-    /**
-    * A TileVisitor that launches an external process to process tiles.
-    */
-    class OSGEARTH_EXPORT MultiprocessTileVisitor: public TileVisitor
-    {
-    public:
-        MultiprocessTileVisitor();
-
-        MultiprocessTileVisitor( TileHandler* handler );
-
-        unsigned int getNumProcesses() const;
-        void setNumProcesses( unsigned int numProcesses);
-
-        unsigned int getBatchSize() const;
-        void setBatchSize( unsigned int batchSize );
-
-        virtual void run(const Profile* mapProfile);          
-
-        const std::string& getEarthFile() const;
-        void setEarthFile( const std::string& earthFile );
-
-    protected:
-
-        virtual bool handleTile( const TileKey& key );
-
-        void processBatch();
-
-        TileKeyList _batch;
-
-        unsigned int _batchSize;
-        unsigned int _numProcesses;    
-
-        std::string _earthFile;
-
-        // The work queue to pass seed operations to
-        osg::ref_ptr<TaskService> _taskService;        
-    };
-
-    
-    /**
-    * A TileVisitor that simply emits keys from a list.  Useful for running a list of tasks.
-    */
-    class OSGEARTH_EXPORT TileKeyListVisitor : public TileVisitor
-    {
-    public:
-        TileKeyListVisitor();
-
-        void setKeys(const TileKeyList& keys);
-        
-        virtual void run(const Profile* mapProfile);
-
-    protected:
-        
-        TileKeyList _keys;
-    };
-
-
 
 } } // namespace osgEarth
 

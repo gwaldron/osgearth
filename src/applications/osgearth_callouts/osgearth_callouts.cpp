@@ -104,7 +104,6 @@ osg::Node* loadData(App& app)
         label->setColor(osg::Vec4(0,0,0,1));
         label->setCharacterSize(16.0f + ((float)rank)/3.0f);
 
-
         xform->addChild(label);
         xform->addCullCallback(app._horizonCull.get());
         group->addChild(xform);

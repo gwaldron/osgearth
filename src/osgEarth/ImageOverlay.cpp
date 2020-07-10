@@ -235,7 +235,7 @@ ImageOverlay::construct()
     
     if (!_program.valid())
     {
-        static Threading::Mutex mutex;
+        static Threading::Mutex mutex(OE_MUTEX_NAME);
         mutex.lock();
         if (_program.valid() == false)
         {
@@ -261,7 +261,7 @@ ImageOverlay::construct()
 void
 ImageOverlay::compile()
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock(_mutex);
+    Threading::ScopedMutexLock lock(_mutex);
 
     if (_root->getNumChildren() > 0)
     {
@@ -828,7 +828,7 @@ ImageOverlay::traverse(osg::NodeVisitor &nv)
 void ImageOverlay::dirty()
 {
     {
-        OpenThreads::ScopedLock< OpenThreads::Mutex > lock(_mutex);
+        Threading::ScopedMutexLock lock(_mutex);
         _dirty = true;
     }
 

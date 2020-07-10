@@ -1033,6 +1033,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             
             if ( part->getType() == Geometry::TYPE_POLYGON )
             {
+		part->rewind(osgEarth::Geometry::ORIENTATION_CCW);
                 rooflines = new osg::Geometry();
                 rooflines->setUseVertexBufferObjects(true);
 

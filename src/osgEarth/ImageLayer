@@ -23,9 +23,9 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/ColorFilter>
-#include <osgEarth/TileSource>
 #include <osgEarth/TileLayer>
 #include <osgEarth/URI>
+#include <osgEarth/Threading>
 
 namespace osgEarth
 {
@@ -56,16 +56,6 @@ namespace osgEarth
         osg::Matrixf _matrix;
     };
 
-
-    //struct ImageLayerCallback : public TileLayerCallback
-    //{
-    //    virtual void onColorFiltersChanged(class ImageLayer* layer) { }
-    //    virtual void onAltitudeChanged(class ImageLayer* layer) { }
-
-    //    typedef void (ImageLayerCallback::*MethodPtr)(class ImageLayer* layer);
-    //};
-
-
     /**
      * A map terrain layer containing bitmap image data.
      */
@@ -80,10 +70,9 @@ namespace osgEarth
             OE_OPTION(ColorFilterChain, colorFilters);
             OE_OPTION(bool, shared);
             OE_OPTION(bool, coverage);
-            OE_OPTION(bool, featherPixels);
             OE_OPTION(osg::Texture::FilterMode, minFilter);
             OE_OPTION(osg::Texture::FilterMode, magFilter);
-            OE_OPTION(osg::Texture::InternalFormatMode, textureCompression);
+            OE_OPTION(std::string, textureCompression);
             OE_OPTION(double, edgeBufferRatio);
             OE_OPTION(unsigned, reprojectedTileSize);
             OE_OPTION(Distance, altitude);
@@ -161,23 +150,23 @@ namespace osgEarth
 
     public: // methods
 
-        /**
-         * Creates a GeoImage from this layer corresponding to the provided key. The
-         * image is in the profile of the key and will be reprojected, mosaiced and
-         * cropped automatically.
-         */
-        GeoImage createImage( const TileKey& key, ProgressCallback* progress =0L);
+        //! Creates an image for the given tile key.
+        //! @param key TileKey for which to create an image
+        //! @param progress Optional progress/cancelation callback
+        GeoImage createImage(const TileKey& key);
 
-        /**
-         * Stores an image in this layer, if writing is enabled.
-         * Returns a status value indicating whether the store succeeded.
-         */
+        //! Creates an image for the given tile key.
+        //! @param key TileKey for which to create an image
+        //! @param progress Optional progress/cancelation callback
+        GeoImage createImage(const TileKey& key, ProgressCallback* progress);
+
+        //! Stores an image in this layer (if writing is enabled).
+        //! Returns a status value indicating whether the store succeeded.
         Status writeImage(const TileKey& key, const osg::Image* image, ProgressCallback* progress =0L);
 
-        /**
-         * Applies the texture compression options to a texture.
-         */
-        void applyTextureCompressionMode(osg::Texture* texture) const;
+        //! Returns the compression method prefered by this layer
+        //! that you can pass to ImageUtils::compressImage.
+        const std::string getCompressionMethod() const;
 
         //! Install a user callback
         void addCallback(Callback* callback);
@@ -192,19 +181,16 @@ namespace osgEarth
         //! instead of createImage and a TileSource driver
         bool useCreateTexture() const { return _useCreateTexture; }
 
-        //! Override to create the texture when useCreateTexture is true
-        virtual TextureWindow createTexture(const TileKey& key, ProgressCallback* progress) const { return TextureWindow(); }
-
-
-    public: // Layer
-
-        //! Open the layer for reading.
-        virtual Status openImplementation();
+        //! Override this method to create the texture when useCreateTexture is true
+        virtual TextureWindow createTexture(const TileKey& key, ProgressCallback* progress) const 
+            { return TextureWindow(); }
 
         //! Subclass overrides this to generate image data for the key.
         //! The key will always be in the same profile as the layer.
         virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress) const
             { return GeoImage::INVALID; }
+
+    protected:
 
         //! Subclass can override this to write data for a tile key.
         virtual Status writeImageImplementation(const TileKey&, const osg::Image*, ProgressCallback*) const;
@@ -214,9 +200,10 @@ namespace osgEarth
 
     protected: // Layer
 
-        virtual void init();
+        virtual void init() override;
 
-    protected:
+        //! Open the layer for reading.
+        virtual Status openImplementation() override;
 
         /** dtor */
         virtual ~ImageLayer() { }
@@ -224,16 +211,22 @@ namespace osgEarth
         //! Configure the layer to create textures via createTexture instead of
         //! using a createImage driver
         void setUseCreateTexture();
+
         osg::ref_ptr<osg::Image> _emptyImage;
+
     private:
 
         // Creates an image that's in the same profile as the provided key.
-        GeoImage createImageInKeyProfile(const TileKey& key, ProgressCallback* progress);
+        GeoImage createImageInKeyProfile(
+            const TileKey& key,
+            ProgressCallback* progress);
 
         // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
         // returns a single tile. This is called by createImageFromTileSource() if the key profile
         // doesn't match the layer profile.
-        GeoImage assembleImage(const TileKey& key, ProgressCallback* progress);
+        GeoImage assembleImage(
+            const TileKey& key,
+            ProgressCallback* progress);
 
         optional<int> _shareImageUnit;
         bool _useCreateTexture;
@@ -241,7 +234,7 @@ namespace osgEarth
         void invoke_onCreate(const TileKey&, GeoImage&);
 
         typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
-        Threading::Lockable<Callbacks> _callbacks;
+        Threading::Mutexed<Callbacks> _callbacks;
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

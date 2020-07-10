@@ -55,7 +55,7 @@ TileRasterizer::RenderInstaller::drawImplementation(osg::RenderInfo& ri) const
     osg::ref_ptr<osg::GraphicsContext> gc = _renderData._gc.get();
     if (gc.valid() == false)
     {
-        static Threading::Mutex s_mutex;
+        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
         gc = _renderData._gc.get();
         if (gc.valid() == false)
         {

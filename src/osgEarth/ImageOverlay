@@ -167,7 +167,7 @@ namespace osgEarth
         osg::Polytope _boundingPolytope;        
         osg::ref_ptr< osg::Image > _image;
         bool _dirty;
-        OpenThreads::Mutex _mutex;
+        Threading::Mutex _mutex;
 
         osg::Group* _root;        
         osg::Texture* _texture;

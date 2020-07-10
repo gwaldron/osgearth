@@ -110,6 +110,8 @@ Map::init()
     // reset the revision:
     _dataModelRevision = 0;
 
+    _mapDataMutex.setName("Map dataMutex(OE)");
+
     // set the object name from the options:
     if (options().name().isSet())
         osg::Object::setName(options().name().get());

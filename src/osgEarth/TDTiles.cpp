@@ -96,7 +96,11 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     {
         void apply(osg::Texture& texture)
         {
-            ImageUtils::generateMipmaps(&texture);
+            for(unsigned i=0; i<texture.getNumImages(); ++i)
+            {
+                ImageUtils::compressImageInPlace(texture.getImage(i));
+                ImageUtils::mipmapImageInPlace(texture.getImage(i));
+            }
         }
     };
 }}}
@@ -596,7 +600,7 @@ namespace
         {
             if (threadPool.valid())
             {
-                threadPool->getQueue()->add(operation.get());
+                threadPool->run(operation.get());
             }
             else
             {

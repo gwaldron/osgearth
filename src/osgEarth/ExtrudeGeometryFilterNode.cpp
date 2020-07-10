@@ -24,7 +24,7 @@ namespace osgEarth
     REGISTER_OBJECT_WRAPPER(ExtrudeGeometryFilterNode,
         new ExtrudeGeometryFilterNode,
         osgEarth::ExtrudeGeometryFilterNode,
-        "osg::Object osgEarth::ExtrudeGeometryFilterNode")
+        "osg::Node osgEarth::ExtrudeGeometryFilterNode")
     {
         ADD_OBJECT_SERIALIZER(_extrusionGroup, osg::Group, NULL);
 

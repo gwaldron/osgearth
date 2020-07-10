@@ -26,6 +26,17 @@
 
 using namespace osgEarth;
 
+namespace
+{
+    template<typename T>
+    bool vec_eq(const T& a, const T& b) {
+        for(int i=0; i<a.num_components; ++i)
+            if (!osg::equivalent(a[i], b[i])) return false;
+        return true;
+    }
+                
+}
+
 TEST_CASE( "SpatialReferences are cached" ) {
     osg::ref_ptr< const SpatialReference > srs1 = SpatialReference::create("spherical-mercator");
     REQUIRE(srs1.valid());
@@ -80,10 +91,15 @@ TEST_CASE( "WGS84 SpatialReferences can be created" ) {
         REQUIRE(epsg4326.valid());
         REQUIRE(epsg4326->isEquivalentTo(wgs84.get()));
     }
+
+    SECTION("WGS84 and Mercator are not equivalent") {
+        osg::ref_ptr<const SpatialReference> sm = SpatialReference::get("spherical-mercator");
+        REQUIRE(!wgs84->isEquivalentTo(sm.get()));
+    }
 }
 
-TEST_CASE("Plate Carre SpatialReferences can be created") {
-    osg::ref_ptr< const SpatialReference > plateCarre = SpatialReference::create("plate-carre");
+TEST_CASE("Plate Carree SpatialReferences can be created") {
+    osg::ref_ptr< const SpatialReference > plateCarre = SpatialReference::create("plate-carree");
     REQUIRE(plateCarre.valid());
     REQUIRE(!plateCarre->isGeographic());
     REQUIRE(!plateCarre->isMercator());
@@ -91,9 +107,9 @@ TEST_CASE("Plate Carre SpatialReferences can be created") {
     REQUIRE(plateCarre->isProjected());
 }
 
-TEST_CASE("Plate Carre SpatialReference Conversions") {
+TEST_CASE("PC/WGS84 transform") {
     const SpatialReference* wgs84 = SpatialReference::get("wgs84");
-    const SpatialReference* pceqc = SpatialReference::get("plate-carre");
+    const SpatialReference* pceqc = SpatialReference::get("plate-carree");
 
     double pcMinX = -20037508.3427892476320267;
     double pcMaxX = 20037508.3427892476320267;
@@ -102,20 +118,30 @@ TEST_CASE("Plate Carre SpatialReference Conversions") {
 
     osg::Vec3d output;
     REQUIRE(wgs84->transform(osg::Vec3d(-180, -90, 0), pceqc, output));
-    REQUIRE(osg::equivalent(output.x(), pcMinX));
-    REQUIRE(osg::equivalent(output.y(), pcMinY));
+    REQUIRE(vec_eq(output, osg::Vec3d(pcMinX, pcMinY, 0)));
 
     REQUIRE(wgs84->transform(osg::Vec3d(-180, +90, 0), pceqc, output));
-    REQUIRE(osg::equivalent(output.x(), pcMinX));
-    REQUIRE(osg::equivalent(output.y(), pcMaxY));
+    REQUIRE(vec_eq(output, osg::Vec3d(pcMinX, pcMaxY, 0)));
 
     REQUIRE(wgs84->transform(osg::Vec3d(180, -90, 0), pceqc, output));
-    REQUIRE(osg::equivalent(output.x(), pcMaxX));
-    REQUIRE(osg::equivalent(output.y(), pcMinY));
+    REQUIRE(vec_eq(output, osg::Vec3d(pcMaxX, pcMinY, 0)));
 
     REQUIRE(wgs84->transform(osg::Vec3d(180, 90, 0), pceqc, output));
-    REQUIRE(osg::equivalent(output.x(), pcMaxX));
-    REQUIRE(osg::equivalent(output.y(), pcMaxY));
+    REQUIRE(vec_eq(output, osg::Vec3d(pcMaxX, pcMaxY, 0)));
+}
+
+TEST_CASE("SphMercator/WGS84 transform") {
+    const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+    const SpatialReference* sm = SpatialReference::get("spherical-mercator");
+    osg::Vec3d temp1, temp2;
+
+    // illegal input:
+    REQUIRE(wgs84->transform(osg::Vec3d(-180, -90, 0), sm, temp1) == false);
+
+    // valid input, there and back:
+    REQUIRE(wgs84->transform(osg::Vec3d(-180, -85, 0), sm, temp1) == true);
+    REQUIRE(sm->transform(temp1, wgs84, temp2) == true);
+    REQUIRE(vec_eq(temp2, osg::Vec3d(-180, -85, 0)));
 }
 
 TEST_CASE("Vertical Datum Tests") {
@@ -138,4 +164,37 @@ TEST_CASE("Vertical Datum Tests") {
 
     REQUIRE(wgs84->transform(osg::Vec3d(-90, 0, -4.29), wgs84_egm96, output));
     REQUIRE(osg::equivalent(output.z(), 0.0, eps));
+}
+
+TEST_CASE("getGeographicsSRS") {
+    const SpatialReference* mercator = SpatialReference::get("spherical-mercator", "egm96");
+    const SpatialReference* geo = mercator->getGeographicSRS();
+    REQUIRE(geo->isGeographic());
+    REQUIRE(geo->getVerticalDatum() != nullptr); // ditto
+    REQUIRE(!geo->isGeodetic()); // vertical datum must be perserved
+}
+
+TEST_CASE("getGeodeticSRS") {
+    const SpatialReference* mercator = SpatialReference::get("spherical-mercator", "egm96");
+    const SpatialReference* geodetic = mercator->getGeodeticSRS();
+    REQUIRE(geodetic->isGeographic());
+    REQUIRE(geodetic->isGeodetic());
+    REQUIRE(geodetic->getVerticalDatum() == nullptr);
+}
+
+TEST_CASE("getGeocentricSRS") {
+    const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+    const SpatialReference* ecef = wgs84->getGeocentricSRS();
+
+    osg::Vec3d np_wgs84, np_ecef, temp;
+
+    np_wgs84.set(0.0, 90.0, 0.0);
+
+    np_ecef.set(0.0, 0.0, wgs84->getEllipsoid()->getRadiusPolar());
+
+    REQUIRE(wgs84->transform(np_wgs84, ecef, temp));
+    REQUIRE(vec_eq(temp, np_ecef));
+
+    REQUIRE(ecef->transform(np_ecef, wgs84, temp));
+    REQUIRE(vec_eq(temp, np_wgs84));
 }

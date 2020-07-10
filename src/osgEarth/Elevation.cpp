@@ -19,6 +19,7 @@
 #include <osgEarth/Elevation>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarth/Progress>
 #include <osgEarth/Metrics>
 
 using namespace osgEarth;
@@ -105,7 +106,9 @@ ElevationTexture::ElevationTexture(const TileKey& key, const GeoHeightField& in_
         setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
         setResizeNonPowerOfTwoHint(false);
         setMaxAnisotropy(1.0f);
-        setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+
+        // Pooled, so never expire them.
+        setUnRefImageDataAfterApply(false);
 
         _read.setTexture(this);
         _read.setSampleAsTexture(false);
@@ -140,6 +143,43 @@ ElevationTexture::getElevationUV(double u, double v) const
     return ElevationSample(Distance(value.r(),Units::METERS), _resolution);
 }
 
+osg::Texture2D*
+ElevationTexture::getNormalMapTexture() const
+{
+    return _normalTex.get();
+}
+
+void
+ElevationTexture::generateNormalMap(
+    const Map* map,
+    void* workingSet,
+    ProgressCallback* progress)
+{
+    if (!_normalTex.valid())
+    {
+        // one thread allowed to generate the normal map
+        static Gate<void*> s_thisGate("OE.ElevTexNormalMap");
+        ScopedGate<void*> lockThis(s_thisGate, this);
+
+        if (!_normalTex.valid())
+        {
+            NormalMapGenerator gen;
+
+            _normalTex = gen.createNormalMap(
+                getTileKey(),
+                map,
+                workingSet,
+                progress);
+
+            if (_normalTex.valid())
+            {
+                // these are pooled, so do not expire them.
+                _normalTex->setUnRefImageDataAfterApply(false);
+            }
+        }
+    }
+}
+
 
 #undef LC
 #define LC "[NormalMapGenerator] "
@@ -148,7 +188,8 @@ osg::Texture2D*
 NormalMapGenerator::createNormalMap(
     const TileKey& key,
     const Map* map,
-    void* ws)
+    void* ws,
+    ProgressCallback* progress)
 {
     if (!map)
         return NULL;
@@ -185,7 +226,7 @@ NormalMapGenerator::createNormalMap(
 
     // fetch the base tile in order to get resolutions data.
     osg::ref_ptr<ElevationTexture> heights;
-    pool->getTile(key, true, heights, workingSet);
+    pool->getTile(key, true, heights, workingSet, progress);
 
     if (!heights.valid())
         return NULL;
@@ -223,7 +264,14 @@ NormalMapGenerator::createNormalMap(
 
     int sampleOK = map->getElevationPool()->sampleMapCoords(
         points,
-        workingSet);
+        workingSet,
+        progress);
+
+    if (progress && progress->isCanceled())
+    {
+        // canceled. Bail.
+        return NULL;
+    }
 
     if (sampleOK < 0)
     {

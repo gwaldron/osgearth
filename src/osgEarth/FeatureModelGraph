@@ -24,7 +24,7 @@
 #include <osgEarth/FeatureModelSource>
 #include <osgEarth/Style>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/SceneGraphCallback>
 #include <osgDB/Callbacks>
 #include <osg/Node>
@@ -81,7 +81,7 @@ namespace osgEarth { namespace Util
         /**
          * Loads and returns a subnode. Used internally for paging.
          */
-        osg::Node* load(
+        osg::ref_ptr<osg::Group> load(
             unsigned lod, unsigned tileX, unsigned tileY,
             const std::string& uri,
             const osgDB::Options* readOptions);
@@ -102,9 +102,9 @@ namespace osgEarth { namespace Util
 
         virtual ~FeatureModelGraph();
 
-        osg::Node* setupPaging();
+        osg::ref_ptr<osg::Node> setupPaging();
 
-        osg::Group* buildTile( 
+        osg::ref_ptr<osg::Group> buildTile( 
             const FeatureLevel&   level, 
             const GeoExtent&      extent, 
             const TileKey*        key,

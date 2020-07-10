@@ -100,14 +100,16 @@ Layer::TraversalCallback::traverse(osg::Node* node, osg::NodeVisitor* nv) const
 
 Layer::Layer() :
 _options(&_optionsConcrete),
-_revision(1u)
+_revision(1u),
+_mutex(NULL)
 {
     init();
 }
 
 Layer::Layer(Layer::Options* optionsPtr) :
 _options(optionsPtr? optionsPtr : &_optionsConcrete),
-_revision(1u)
+_revision(1u),
+_mutex(NULL)
 {
     // init() will be called by base class
 }
@@ -115,6 +117,8 @@ _revision(1u)
 Layer::~Layer()
 {
     OE_DEBUG << LC << "~Layer\n";
+    if (_mutex)
+        delete _mutex;
 }
 
 void
@@ -254,6 +258,7 @@ Layer::init()
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
     _status.set(Status::ResourceUnavailable, getEnabled() ? "Layer closed" : "Layer disabled");
+    _isClosing = false;
 
     // For detecting scene graph changes at runtime
     _sceneGraphCallbacks = new SceneGraphCallbacks(this);
@@ -264,6 +269,8 @@ Layer::init()
     {
         osg::Object::setName(options().name().get());
     }
+
+    _mutex = new Threading::Mutex(options().name().isSet() ? options().name().get() : "Unnamed Layer(OE)");
 }
 
 const Status&
@@ -362,9 +369,11 @@ Layer::close()
 {
     if (isOpen())
     {
+        _isClosing = true;
         closeImplementation();
         _status.set(Status::ResourceUnavailable, "Layer closed");
         fireCallback(&LayerCallback::onClose);
+        _isClosing = false;
     }
     return getStatus();
 }

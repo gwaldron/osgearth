@@ -34,7 +34,8 @@ _num(0u)
 
 HorizonClipPlane::HorizonClipPlane(const osg::EllipsoidModel* em) :
 _ellipsoid(em ? *em : osg::EllipsoidModel()),
-_num(0u)
+_num(0u),
+_data(OE_MUTEX_NAME)
 {
     //nop
 }
@@ -49,7 +50,7 @@ void
 HorizonClipPlane::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
-    PerCameraData& d = data.get(cv->getCurrentCamera());
+    PerCameraData& d = _data.get(cv->getCurrentCamera());
 
     if (!d.horizon.valid())
     {
@@ -97,7 +98,7 @@ void
 HorizonClipPlane::resizeGLObjectBuffers(unsigned maxSize)
 {
     ResizeFunctor f(maxSize);
-    data.forEach(f);
+    _data.forEach(f);
 }
 
 void
@@ -115,5 +116,5 @@ void
 HorizonClipPlane::releaseGLObjects(osg::State* state) const
 {
     ReleaseFunctor f(state);
-    data.forEach(f);
+    _data.forEach(f);
 }

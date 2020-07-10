@@ -28,7 +28,7 @@ SymbolRegistry*
 SymbolRegistry::instance()
 {
     static SymbolRegistry* s_singleton =0L;
-    static Threading::Mutex    s_singletonMutex;
+    static Threading::Mutex s_singletonMutex(OE_MUTEX_NAME);
 
     if ( !s_singleton )
     {

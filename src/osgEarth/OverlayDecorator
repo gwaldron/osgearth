@@ -23,7 +23,7 @@
 #define OSGEARTH_OVERLAY_DECORATOR
 
 #include <osgEarth/Common>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/TerrainEngineNode>
 #include <osg/Camera>
 #include <osg/CoordinateSystemNode>

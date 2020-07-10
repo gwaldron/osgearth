@@ -252,7 +252,8 @@ StateSetCache::StateSetCache() :
     _attrShareAttempts( 0 ),
     _attrsIneligible  ( 0 ),
     _attrShareHits    ( 0 ),
-    _attrShareMisses  ( 0 )
+    _attrShareMisses  ( 0 ),
+    _mutex            ("StateSetCache(OE)")
 {
     //nop
 }
@@ -474,6 +475,16 @@ StateSetCache::clear()
     prune();
     _stateAttributeCache.clear();
     _stateSetCache.clear();
+}
+
+void
+StateSetCache::protect()
+{
+    Threading::ScopedMutexLock lock( _mutex );
+    for(auto i : _stateSetCache)
+    {
+        i->setDataVariance(osg::Object::DYNAMIC);
+    }
 }
 
 

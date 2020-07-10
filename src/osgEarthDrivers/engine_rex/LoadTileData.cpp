@@ -161,30 +161,30 @@ namespace
 {
     // Fake attribute that compiles everything in the TerrainTileModel
     // when the ICO is active.
-    struct TileICO : public osg::Texture2D
+    struct TileNodeTextureICO : public osg::Texture2D
     {
-        osg::observer_ptr<TerrainTileModel> _dataModel;
+        osg::observer_ptr<Texture> _tex;
+
+        TileNodeTextureICO(osg::Texture* tex) : _tex(tex) { }
         
         // the ICO calls apply() directly instead of compileGLObjects
         void apply(osg::State& state) const
         {
-            osg::ref_ptr<TerrainTileModel> dataModel;
-            if (_dataModel.lock(dataModel))
+            osg::ref_ptr<Texture> tex;
+            if (_tex.lock(tex))
             {
                 OE_PROFILING_ZONE;
-                OE_PROFILING_ZONE_TEXT(_dataModel->getKey().str());
-                OE_DEBUG << "MCA: compiling " << dataModel->getKey().str() << std::endl;
-                dataModel->compileGLObjects(state);
+                OE_PROFILING_ZONE_TEXT(_tex->getName());
+                _tex->compileGLObjects(state);
             }
         }
 
         // no need to override release or resize since this is a temporary object
         // that exists only to service the ICO.
-
-        META_StateAttribute(osgEarth, TileICO, osg::StateAttribute::TEXTURE);
+        META_StateAttribute(osgEarth, TileNodeTextureICO, osg::StateAttribute::TEXTURE);
         int compare(const StateAttribute& sa) const { return 0; }
-        TileICO() { }
-        TileICO(const TileICO& rhs, const osg::CopyOp& copy) { }
+        TileNodeTextureICO() { }
+        TileNodeTextureICO(const TileNodeTextureICO& rhs, const osg::CopyOp& copy) { }
     };
 }
 
@@ -193,10 +193,6 @@ LoadTileData::createStateSet() const
 {
     osg::ref_ptr<osg::StateSet> out;
 
-    osg::ref_ptr<EngineContext> context;
-    if (!_context.lock(context))
-        return NULL;
-
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
         return NULL;
@@ -204,12 +200,14 @@ LoadTileData::createStateSet() const
     if (_dataModel.valid() && map.valid() &&
         _dataModel->getRevision() == map->getDataModelRevision())
     {
-        // This stateset contains a "fake" attribute that the ICO will
-        // try to GL-compile, thereby GL-compiling everything in the TerrainTileModel.
+        std::vector<osg::Texture*> textures;
+        _dataModel->getDataToCompile(textures);
+
+        // a "fake" stateset for the ICO to compile and then discard.
         out = new osg::StateSet();
-        TileICO* mca = new TileICO();
-        mca->_dataModel = _dataModel.get();
-        out->setTextureAttribute(0, mca, 1);
+        unsigned unit = 0;
+        for(auto& tex : textures)
+            out->setTextureAttribute(unit++, new TileNodeTextureICO(tex));
     }
 
     return out.release();

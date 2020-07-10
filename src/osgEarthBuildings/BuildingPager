@@ -84,7 +84,6 @@ namespace osgEarth { namespace Buildings
         osg::observer_ptr<ElevationPool>  _elevationPool;
         bool                              _profile;
         osg::ref_ptr<osgDB::ObjectCache>  _artCache;
-        Threading::Mutex                  _globalMutex;
         osg::ref_ptr<TextureCache>        _texCache;
         FilterUsage _filterUsage;
 

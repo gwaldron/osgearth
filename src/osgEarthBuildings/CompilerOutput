@@ -46,6 +46,9 @@ namespace osgEarth { namespace Buildings
     {
         Threading::Mutex _mutex;
 
+        TextureCache() :
+            _mutex("OE.Buildings.TextureCache") { }
+
         osg::Texture* get(SkinResource* skin, const osgDB::Options* readOptions) {
             _mutex.lock();
             osg::ref_ptr<osg::Texture>& t = _cache[skin->imageURI()->full()];
@@ -78,7 +81,7 @@ namespace osgEarth { namespace Buildings
         }
 
         // todo: consider changing this to an observer_ptr -gw
-        std::map<std::string, osg::ref_ptr<osg::Texture> > _cache;
+        std::unordered_map<std::string, osg::ref_ptr<osg::Texture> > _cache;
     };
 
     /**
@@ -179,8 +182,6 @@ namespace osgEarth { namespace Buildings
 
         TileKey _key;
         std::string _name;
-        
-        mutable Threading::Mutex _cacheAccessMutex;
 
         typedef UnorderedMap<std::string, osg::ref_ptr<osg::StateSet> > SkinStateSetCache;
         SkinStateSetCache _skinStateSetCache;

@@ -158,7 +158,7 @@ ElevationTexture::generateNormalMap(
     if (!_normalTex.valid())
     {
         // one thread allowed to generate the normal map
-        static Gate<void*> s_thisGate;
+        static Gate<void*> s_thisGate("OE.ElevTexNormalMap");
         ScopedGate<void*> lockThis(s_thisGate, this);
 
         if (!_normalTex.valid())

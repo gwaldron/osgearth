@@ -146,7 +146,8 @@ SpatialReference::SpatialReference(void* handle) :
     _is_ltp(false),
     _is_spherical_mercator(false),
     _ellipsoidId(0u),
-    _mutex("SpatialReference(OE)")
+    _local("OE.SRS.Local"),
+    _mutex("OE.SRS")
 {
     _setup.srcHandle = handle;
 
@@ -167,7 +168,8 @@ SpatialReference::SpatialReference(const Key& key) :
     _is_ltp(false),
     _is_spherical_mercator(false),
     _ellipsoidId(0u),
-    _mutex("SpatialReference(OE)")
+    _local("OE.SRS.Local"),
+    _mutex("OE.SRS")
 {
     // shortcut for spherical-mercator:
     if (key.horizLower == "spherical-mercator" || 

@@ -101,6 +101,9 @@ Mutex::setName(const std::string& name)
 void
 Mutex::lock()
 {
+    if (_name.empty()) {
+        volatile int x =0 ;
+    }
     static_cast<MUTEX_TYPE*>(_handle)->lock();
 }
 

@@ -70,10 +70,12 @@ ElevationPool::ElevationPool() :
     _tileSize(257),
     _mapDataDirty(true),
     _workers(0),
-    _refreshMutex("ElevPool(OE)"),
-    _globalLUTMutex("ElevPool LUT(OE)"),
+    _refreshMutex("OE.ElevPool.RM"),
+    _globalLUTMutex("OE.ElevPool.GLUT"),
     _L2(64u)
 {
+    _L2._lru.setName("OE.ElevPool.LRU");
+
     // adapter for detecting elevation layer changes
     _mapCallback = new MapCallbackAdapter();
 }
@@ -212,6 +214,7 @@ ElevationPool::WorkingSet::WorkingSet(unsigned size) :
     _lru(size)
 {
     //nop
+    _lru._lru.setName("OE.WorkingSet.LRU");
 }
 
 bool

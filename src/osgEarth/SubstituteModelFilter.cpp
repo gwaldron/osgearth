@@ -265,10 +265,12 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
     if (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
     {
-        if (attachPoint->getNumChildren() == 0)
+        substituteModelFilterNode = osgEarth::findTopMostNodeOfType<SubstituteModelFilterNode>(attachPoint);
+        if (substituteModelFilterNode == nullptr)
         //if (attachPoint->getUserData() == 0)
         {
             substituteModelFilterNode = new SubstituteModelFilterNode();
+            substituteModelFilterNode->setDataVariance(osg::Object::DYNAMIC);
             attachPoint->addChild(substituteModelFilterNode);
             //attachPoint->setUserData(substituteModelFilterNode);
 
@@ -562,7 +564,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
     }
 
     // active DrawInstanced if required:
-    if (_useDrawInstanced)
+    if (_useDrawInstanced && _filterUsage == FILTER_USAGE_NORMAL)
     {
         DrawInstanced::convertGraphToUseDrawInstanced(attachPoint);
 

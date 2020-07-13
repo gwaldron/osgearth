@@ -54,7 +54,7 @@ public:
     }
 
 protected:
-    void drawUi() override
+    void drawUi(osg::RenderInfo& ri) override
     {
         // ImGui code goes here...
         //ImGui::ShowDemoWindow();

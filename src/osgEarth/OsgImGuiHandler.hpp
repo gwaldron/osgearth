@@ -19,7 +19,7 @@ public:
     };
 protected:
     // Put your ImGui code inside this function
-    virtual void drawUi() = 0;
+    virtual void drawUi(osg::RenderInfo& renderInfo) = 0;
     friend class RealizeOperation;
 private:
     static void init();

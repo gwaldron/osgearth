@@ -71,6 +71,7 @@ namespace osgEarth { namespace GDAL
         OE_OPTION(ProfileOptions, warpProfile);
         OE_OPTION(bool, useVRT);
         OE_OPTION(bool, coverageUsesPaletteIndex);
+        OE_OPTION(bool, singleThreaded);
 
         void readFrom(const Config& conf);
         void writeTo(Config& conf) const;
@@ -174,6 +175,26 @@ namespace osgEarth { namespace GDAL
         int width = 0, 
         int height = 0, 
         bool useBilinearInterpolation = true);
+
+
+    struct LayerBase
+    {
+    public:
+        const osg::ref_ptr<const Profile>& overrideProfile() const { return _overrideProfile; }
+
+    protected:
+        mutable PerThread<osg::ref_ptr<GDAL::Driver> > _driverPerThread;
+        mutable osg::ref_ptr<GDAL::Driver> _sharedDriver;
+        mutable Threading::Mutex _singleThreadedMutex;
+        osg::ref_ptr<const Profile> _overrideProfile;
+
+        //Status openOnThisThread(
+        //    osg::ref_ptr<GDAL::Driver>& driver,
+        //    osg::ref_ptr<const Profile>* out_profile,
+        //    osg::ref_ptr<const Profile>* out_overrideProfile) const;
+
+        mutable Threading::ReadWriteMutex _workers;
+    };
 } }
 
 
@@ -183,7 +204,7 @@ namespace osgEarth
     /**
      * Image layer connected to a GDAL raster dataset
      */
-    class OSGEARTH_EXPORT GDALImageLayer : public ImageLayer
+    class OSGEARTH_EXPORT GDALImageLayer : public ImageLayer, public GDAL::LayerBase
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public ImageLayer::Options, public GDAL::Options {
@@ -221,6 +242,10 @@ namespace osgEarth
         void setUseVRT(const bool &value);
         const bool& getUseVRT() const;
 
+        //! Use a single-threaded driver (default is multi-threaded)
+        void setSingleThreaded(bool value);
+        bool getSingleThreaded() const;
+
         //! User-supplied external dataset
         void setExternalDataset(GDAL::ExternalDataset* value);
 
@@ -242,22 +267,11 @@ namespace osgEarth
 
         //! Destructor
         virtual ~GDALImageLayer() { }
-
-    private:
-        mutable PerThread<osg::ref_ptr<GDAL::Driver> > _driverPerThread;
-        osg::ref_ptr<const Profile> _overrideProfile;
-
-        Status openOnThisThread(
-            osg::ref_ptr<GDAL::Driver>& driver,
-            osg::ref_ptr<const Profile>* out_profile,
-            osg::ref_ptr<const Profile>* out_overrideProfile) const;
-
-        mutable Threading::ReadWriteMutex _workers;
     };
 
 
     //! Elevation layer connected to a GDAL facility
-    class OSGEARTH_EXPORT GDALElevationLayer : public ElevationLayer
+    class OSGEARTH_EXPORT GDALElevationLayer : public ElevationLayer, public GDAL::LayerBase
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public ElevationLayer::Options, public GDAL::Options {
@@ -299,6 +313,10 @@ namespace osgEarth
         void setUseVRT(const bool& value);
         const bool& getUseVRT() const;
 
+        //! Use a single-threaded driver (default is multi-threaded)
+        void setSingleThreaded(bool value);
+        bool getSingleThreaded() const;
+
     public: // Layer
 
         //! Called by the constructor
@@ -317,17 +335,6 @@ namespace osgEarth
 
         //! Destructor
         virtual ~GDALElevationLayer() { }
-
-    private:
-        mutable PerThread<osg::ref_ptr<GDAL::Driver> > _driverPerThread;
-        osg::ref_ptr<const Profile> _overrideProfile;
-
-        Status openOnThisThread(
-            osg::ref_ptr<GDAL::Driver>& driver,
-            osg::ref_ptr<const Profile>* out_profile,
-            osg::ref_ptr<const Profile>* out_overrideProfile) const;
-
-        mutable Threading::ReadWriteMutex _workers;
     };
 
 } // namespace osgEarth

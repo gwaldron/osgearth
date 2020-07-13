@@ -120,7 +120,12 @@ static const char* particleVertSource =
 "uniform sampler2D positionSampler; \n"
 "uniform vec2 resolution;\n"
 "uniform float pointSize;\n"
+"uniform vec4 minColor;\n"
+"uniform vec4 maxColor;\n"
+"uniform float altitude;\n"
+
 "out vec4 particle_color;\n"
+
 "const float PI = 3.1415926535897932384626433832795;\n"
 "const float PI_2 = 1.57079632679489661923;\n"
 "const float TWO_PI = 6.283185307179586476925286766559;\n"
@@ -149,16 +154,17 @@ static const char* particleVertSource =
 // Use the (scaled) tex coord to translate the position of the vertices.
 "vec4 posInfo = texture2D( positionSampler, tC );\n"
 "float life = posInfo.w;\n"
+"float velocity = posInfo.z;\n"
 
-"particle_color = mix(vec4(1.0, 0.0, 0.0, 0.3), vec4(0.0, 1.0, 0.0, 1.0), life);\n"
+"particle_color = mix(minColor, maxColor, velocity);\n"
 
-"vec3 lla = vec3(-PI + TWO_PI * posInfo.x, -PI_2 + posInfo.y * PI, 5000.0);\n"
+"vec3 lla = vec3(-PI + TWO_PI * posInfo.x, -PI_2 + posInfo.y * PI, altitude);\n"
 "vec3 xyz = convertLatLongHeightToXYZ(lla.y, lla.x, lla.z);\n"
 "vertexModel.xyz = xyz;\n"
 
 // Big points
-"gl_PointSize = pointSize * mix(0.2, 3.0, life);\n"
-//"gl_PointSize = pointSize;\n"
+//"gl_PointSize = pointSize * mix(0.2, 3.0, life);\n"
+"gl_PointSize = pointSize;\n"
 "}\n";
 
 osg::Geometry*
@@ -281,12 +287,30 @@ std::string computeFrag =
 
 "   vec3 position = positionInfo.xyz;\n"
 "   float life = positionInfo.w;\n"
+
+"   if (dieSpeed > 0)\n"
+"   {\n"
+"     life -= (osg_DeltaSimulationTime / dieSpeed);\n"
+"   }\n"
+"   vec2 seed = (position.xy + uv);\n"
+"   float drop = oe_random(0.0, 1.0, seed);\n"
+// Reset particle
+"   if (life < 0.0 || dropChance > drop) {\n"
+"       life = oe_random(0.3, 1.0, seed + 3.4);\n"
+//"       life = 1.0;\n"
+"       float x = oe_random(0.0, 1.0, seed + 1.3);\n"
+"       float y = oe_random(0.0, 1.0, seed + 2.1);\n"
+"       float z= 0.0;\n"
+"       position = vec3(x, y, z);\n"
+"   }\n"
+
 "   vec2 posUV = position.xy;\n"
 "   float uMin = -21.32;\n"
 "   float uMax = 26.8;\n"
 "   float vMin = -21.57;\n"
 "   float vMax = 21.42;\n"
-"   vec2 velocity = mix(vec2(uMin, vMin), vec2(uMax, vMax), texture2D(windMap, posUV).rg);\n"
+"   vec2 scaledVelocity = texture2D(windMap, posUV).rg;\n"
+"   vec2 velocity = mix(vec2(uMin, vMin), vec2(uMax, vMax), scaledVelocity);\n"
 "   float distortion = cos(radians(posUV.y * 180.0 - 90.0));\n"
 //"   vec2 offset = vec2(velocity.x / distortion, -velocity.y) * 0.0001 * speedFactor;\n"
 "   vec2 offset = vec2(velocity.x / distortion, velocity.y) * 0.0001 * speedFactor;\n"
@@ -298,22 +322,9 @@ std::string computeFrag =
 "   position.y += offset.y;\n"
 "   if (position.y >= 1.0) position.y -= 1.0;\n"
 "   else if (position.y < 0) position.y += 1.0;\n"
-"   if (dieSpeed > 0)\n"
-"{\n"
-"   life -= (osg_DeltaSimulationTime / dieSpeed);\n"
-"}\n"
 
-"   vec2 seed = (position.xy + uv);\n"
-
-"   float drop = oe_random(0.0, 1.0, seed);\n"
-// Reset particle
-"   if (life < 0.0 || dropChance > drop) {\n"
-"       life = oe_random(0.0, 1.0, seed + 3.4);\n"
-"       float x = oe_random(0.0, 1.0, seed + 1.3);\n"
-"       float y = oe_random(0.0, 1.0, seed + 2.1);\n"
-"       float z = 0.0;\n;"
-"       position = vec3(x, y, z);\n"
-"   }\n"
+// Store relative velocity in z
+"   position.z = length(scaledVelocity);\n"
 
 "   out_particle = vec4(position, life);\n"
 "} \n";
@@ -418,11 +429,13 @@ public:
 class WindTextureNode : public osg::Group
 {
 public:
-    WindTextureNode(osg::Texture2D* windTexture):
+    WindTextureNode(osg::Texture2D* windTexture) :
         _width(4096),
-        _height(2048)
+        _height(2048),
+        _minColor(1.0, 0.0, 0.0, 1.0),
+        _maxColor(0.0, 1.0, 0.0, 1.0),
+        _altitude(5000.0f)
     {
-
         _computeNode = new ComputeNode(windTexture);
         _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("dieSpeed", 10.0f));
         _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("speedFactor", 1.0f));
@@ -436,6 +449,10 @@ public:
         addChild(_rttCamera.get());
         addChild(_computeNode.get());
         addChild(_pointsNode.get());
+
+        getOrCreateStateSet()->addUniform(new osg::Uniform("minColor", _minColor));
+        getOrCreateStateSet()->addUniform(new osg::Uniform("maxColor", _maxColor));
+        getOrCreateStateSet()->addUniform(new osg::Uniform("altitude", _altitude));
 
         setCullingActive(false);
     }
@@ -488,6 +505,49 @@ public:
     {
         _points->getOrCreateStateSet()->getUniform("pointSize")->set(value);
         _pointsNode->getOrCreateStateSet()->getUniform("pointSize")->set(value);
+    }
+
+
+    float getParticleAltitude() const
+    {
+        return _altitude;
+    }
+
+    void setParticleAltitude(float value)
+    {
+        if (_altitude != value)
+        {
+            _altitude = value;
+            getOrCreateStateSet()->getUniform("altitude")->set(_altitude);
+        }
+    }
+
+    const osg::Vec4& getMinColor() const
+    {
+        return _minColor;
+    }
+
+    void setMinColor(const osg::Vec4& minColor)
+    {
+        if (_minColor != minColor)
+        {
+            _minColor = minColor;
+            getOrCreateStateSet()->getUniform("minColor")->set(_minColor);
+        }
+    }
+
+    const osg::Vec4& getMaxColor() const
+    {
+        return _maxColor;
+    }
+
+    void setMaxColor(const osg::Vec4& maxColor)
+    {
+        if (_maxColor != maxColor)
+        {
+            _maxColor = maxColor;
+            getOrCreateStateSet()->getUniform("maxColor")->set(_maxColor);
+        }
     }
 
     osg::Texture2D* getOutputTexture() const
@@ -544,8 +604,10 @@ private:
     osg::ref_ptr< osg::Geometry > _pointsNode;
 
     osg::ref_ptr< ComputeNode > _computeNode;
-
     osg::ref_ptr< osg::Geometry > _points;
+    osg::Vec4 _minColor;
+    osg::Vec4 _maxColor;
+    float _altitude;
 
     unsigned int _width;
     unsigned int _height;
@@ -610,6 +672,36 @@ public:
         return _node->setDropChance(value);
     }
 
+    const osg::Vec4& getMinColor() const
+    {
+        return _node->getMinColor();
+    }
+
+    void setMinColor(const osg::Vec4& minColor)
+    {
+        _node->setMinColor(minColor);
+    }
+
+    const osg::Vec4& getMaxColor() const
+    {
+        return _node->getMaxColor();
+    }
+
+    void setMaxColor(const osg::Vec4& maxColor)
+    {
+        _node->setMaxColor(maxColor);
+    }
+
+    float getParticleAltitude() const
+    {
+        return _node->getParticleAltitude();
+    }
+
+    void setParticleAltitude(float value)
+    {
+        _node->setParticleAltitude(value);
+    }
+
 
     Status openImplementation()
     {
@@ -666,7 +758,7 @@ protected:
     virtual void drawUi(osg::RenderInfo& renderInfo)
     {
         // ImGui code goes here...
-        //ImGui::ShowDemoWindow();
+        ImGui::ShowDemoWindow();
         _layers.draw(_mapNode.get(), _view->getCamera(), _earthManip.get());
 
         ImGui::Begin("Wind");
@@ -686,6 +778,23 @@ protected:
         float dropChance = _wind->getDropChance();
         ImGui::SliderFloat("Drop Chance", &dropChance, 0.0, 1.0);
         _wind->setDropChance(dropChance);
+
+        float altitude = _wind->getParticleAltitude();
+        ImGui::SliderFloat("Altitude", &altitude, 0, 300000.0f);
+        _wind->setParticleAltitude(altitude);
+
+        osg::Vec4 minColor = _wind->getMinColor();
+        if (ImGui::ColorEdit4("Min Color", minColor._v))
+        {
+            _wind->setMinColor(minColor);
+        }
+
+        osg::Vec4 maxColor = _wind->getMaxColor();
+        if (ImGui::ColorEdit4("Max Color", maxColor._v))
+        {
+            _wind->setMaxColor(maxColor);
+        }
+
 
 
         osg::Texture2D *tex = _wind->getTexture();

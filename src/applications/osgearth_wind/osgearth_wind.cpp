@@ -38,13 +38,14 @@
 #include <osgEarth/Composite>
 
 #include <osgDB/ReadFile>
+#include <osg/PointSprite>
 
 #include <iostream>
 
 #include <osgEarth/Metrics>
 
-//#define TEXTURE_DIM 2048
-#define TEXTURE_DIM 1024
+#define TEXTURE_DIM 2048
+//#define TEXTURE_DIM 1024
 
 osg::Node* makeQuad(int width, int height, const osg::Vec4& color)
 {
@@ -74,9 +75,8 @@ osg::Node* makeQuad(int width, int height, const osg::Vec4& color)
 static const char* particleVertSource =
 "#version " GLSL_VERSION_STR "\n"
 "uniform sampler2D positionSampler; \n"
-"uniform float osg_SimulationTime; \n"
-"in vec3 positionFlip;\n"
 "uniform vec2 resolution;\n"
+"uniform float pointSize;\n"
 "out vec4 particle_color;\n"
 "void oe_particle_vertex(inout vec4 vertexModel)\n"
 "{\n"
@@ -89,14 +89,17 @@ static const char* particleVertSource =
     "vec4 posInfo = texture2D( positionSampler, tC );\n"
     "float life = posInfo.w;\n"
 
-    "particle_color = mix(vec4(0.0, 1.0, 0.0, 1.0), vec4(1.0, 0.0, 0.0, 0.1), life);\n"
+    "particle_color = mix(vec4(0.0, 1.0, 0.0, 1.0), vec4(1.0, 0.0, 0.0, 1.0), life);\n"
 
     "vec3 pos = posInfo.xyz;\n"
+
+    "pos.xy *= vec2(4096, 2048);\n"
 
     "vertexModel.xyz = pos;\n"
 
     // Big points
-    "gl_PointSize = mix(3.0, 0.2, life);\n"
+    //"gl_PointSize = mix(3.0, 0.2, life);\n"
+    "gl_PointSize = pointSize;\n"
 "}\n";
 
 static const char* particleFragSource =
@@ -125,9 +128,10 @@ createInstancedGeometry(int nInstances)
     vp->setFunction("oe_particle_vertex", particleVertSource, ShaderComp::LOCATION_VERTEX_MODEL);
     vp->setFunction("oe_particle_frag", particleFragSource, ShaderComp::LOCATION_FRAGMENT_COLORING);
     geom->getOrCreateStateSet()->addUniform(new osg::Uniform("positionSampler", 0));
+    geom->getOrCreateStateSet()->addUniform(new osg::Uniform("pointSize", 1.0f));
     geom->getOrCreateStateSet()->addUniform(new osg::Uniform("resolution", osg::Vec2f(TEXTURE_DIM, TEXTURE_DIM)));
     geom->getOrCreateStateSet()->setMode(GL_PROGRAM_POINT_SIZE, 1);
-
+    //geom->getOrCreateStateSet()->setMode(GL_POINT_SMOOTH, osg::StateAttribute::ON);
 
     return geom;
 }
@@ -144,8 +148,8 @@ osg::Texture2D* createPositionTexture()
     for (unsigned int i = 0; i < TEXTURE_DIM * TEXTURE_DIM; i++)
     {
         // Start in the center and eminate out.
-        float x = random.next() * 4096.0f;
-        float y = random.next() * 2048.0f;
+        float x = random.next();
+        float y = random.next();
         float z = 0.0;
 
         *ptr++ = x;
@@ -178,6 +182,7 @@ std::string computeFrag =
 "uniform vec2 resolution;\n"
 "uniform float dieSpeed;\n"
 "uniform float speedFactor;\n"
+"uniform float dropChance;\n"
 
 "uniform float osg_DeltaSimulationTime; \n"
 "uniform float osg_SimulationTime; \n"
@@ -200,47 +205,52 @@ std::string computeFrag =
 
 "   vec3 position = positionInfo.xyz;\n"
 "   float life = positionInfo.w;\n"
-"   vec2 posUV = vec2(position.x / 4096.0f, position.y / 2048.0f);\n"
+"   vec2 posUV = position.xy;\n"
 "   float uMin = -21.32;\n"
 "   float uMax = 26.8;\n"
 "   float vMin = -21.57;\n"
 "   float vMax = 21.42;\n"
-//"   vec2 velocity = texture2D(windMap, posUV).rg;\n"
-"     vec2 velocity = mix(vec2(uMin, vMin), vec2(uMax, vMax), texture2D(windMap, posUV).rg);\n"
-//"    vec2 offset = vec2(velocity.x / distortion, -velocity.y) * 0.0001 * u_speed_factor;\n"
+"   vec2 velocity = mix(vec2(uMin, vMin), vec2(uMax, vMax), texture2D(windMap, posUV).rg);\n"
 "   float distortion = cos(radians(posUV.y * 180.0 - 90.0));\n"
-//"   float distortion = 1.0;\n"
-"    vec2 offset = vec2(velocity.x / distortion, -velocity.y) * 0.0001 * speedFactor;\n"
-"   position.x += offset.x * 4096;\n"
-"   if (position.x >= 4096) position.x -= 4096;\n"
-"   else if (position.x < 0) position.x += 4096;\n"
-"   position.y += offset.y * 2048;\n"
-"   if (position.y >= 2048) position.y -= 2048;\n"
-"   else if (position.y < 0) position.y += 2048;\n"
+//"   vec2 offset = vec2(velocity.x / distortion, -velocity.y) * 0.0001 * speedFactor;\n"
+"   vec2 offset = vec2(velocity.x / distortion, velocity.y) * 0.0001 * speedFactor;\n"
+"   position.x += offset.x;\n"
+
+"   if (position.x >= 1.0) position.x -= 1.0;\n"
+"   else if (position.x < 0) position.x += 1.0;\n"
+
+"   position.y += offset.y;\n"
+"   if (position.y >= 1.0) position.y -= 1.0;\n"
+"   else if (position.y < 0) position.y += 1.0;\n"
 "   if (dieSpeed > 0)\n"
 "{\n"
 "   life -= (osg_DeltaSimulationTime / dieSpeed);\n"
 "}\n"
-// Reset particle
-"   if (life < 0.0) {\n"
-"       life = oe_random(0.0, 1.0, vec2(posUV.x, posUV.y));\n"
-//"       life = 1.0;\n"
-"       float x = oe_random(0.0, 4096.0, vec2(posUV.x, posUV.y));\n"
-"       float y = oe_random(0.0, 2048.0, vec2(posUV.y, posUV.x));\n"
-"       float z = 0.0;\n;"
-//"       velocity = vec3(0.0, 0.0, 0.0);\n"
-//"       position = vec3(0.0, 0.0, 0.0);\n"
-"       position = vec3(x, y, z);\n"
-"   }\n"
 
+"   vec2 seed = (position.xy + uv);\n"
 
 #if 0
-// Compute the new position based on the velocity
-"   position.x += 0.1;\n"
-"   position.y += 0.1;\n"
-"   if (position.x > 4096) position.x = 0;\n"
-"   if (position.y > 2048) position.y = 0;\n"
+"   float dropChance = 0.0;\n"//oe_random(0.0, 1.0, vec2(posUV.x, posUV.y));\n"
+// Reset particle
+"   if (life < 0.0 || dropChance > 0.99) {\n"
+//"       life = oe_random(0.0, 1.0, vec2(posUV.x, posUV.y));\n"
+"       life = 1.0;\n"
+"       float x = oe_random(0.0, 1.0, vec2(posUV.x, posUV.y));\n"
+"       float y = oe_random(0.0, 1.0, vec2(posUV.y, posUV.x));\n"
+"       float z = 0.0;\n;"
+"       position = vec3(x, y, z);\n"
+"   }\n"
 #endif
+
+"   float drop = oe_random(0.0, 1.0, seed);\n"
+// Reset particle
+"   if (life < 0.0 || dropChance > drop) {\n"
+"       life = oe_random(0.0, 1.0, seed + 3.4);\n"
+"       float x = oe_random(0.0, 1.0, seed + 1.3);\n"
+"       float y = oe_random(0.0, 1.0, seed + 2.1);\n"
+"       float z = 0.0;\n;"
+"       position = vec3(x, y, z);\n"
+"   }\n"
 
 "   out_particle = vec4(position, life);\n"
 "} \n";
@@ -353,6 +363,7 @@ public:
         _computeNode = new ComputeNode(windTexture);
         _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("dieSpeed", 10.0f));
         _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("speedFactor", 1.0f));
+        _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("dropChance", 0.0f));
 
         // Create the render target
         createOutputTexture();
@@ -386,6 +397,30 @@ public:
     void setSpeedFactor(float value)
     {
         _computeNode->getOrCreateStateSet()->getUniform("speedFactor")->set(value);
+    }
+
+    float getDropChance() const
+    {
+        float value;
+        _computeNode->getOrCreateStateSet()->getUniform("dropChance")->get(value);
+        return value;
+    }
+
+    void setDropChance(float value)
+    {
+        _computeNode->getOrCreateStateSet()->getUniform("dropChance")->set(value);
+    }
+
+    float getPointSize() const
+    {
+        float value;
+        _points->getOrCreateStateSet()->getUniform("pointSize")->get(value);
+        return value;
+    }
+
+    void setPointSize(float value)
+    {
+        _points->getOrCreateStateSet()->getUniform("pointSize")->set(value);
     }
 
     osg::Texture2D* getOutputTexture() const
@@ -480,6 +515,26 @@ public:
         return _node->setSpeedFactor(value);
     }
 
+    float getPointSize() const
+    {
+        return _node->getPointSize();
+    }
+
+    void setPointSize(float value)
+    {
+        return _node->setPointSize(value);
+    }
+
+    float getDropChance() const
+    {
+        return _node->getDropChance();
+    }
+
+    void setDropChance(float value)
+    {
+        return _node->setDropChance(value);
+    }
+
 
     Status openImplementation()
     {
@@ -548,6 +603,14 @@ protected:
         float speedFactor = _wind->getSpeedFactor();
         ImGui::SliderFloat("Speed Factor", &speedFactor, 0.01, 1.0);
         _wind->setSpeedFactor(speedFactor);
+
+        float pointSize = _wind->getPointSize();
+        ImGui::SliderFloat("Point Size", &pointSize, 0.01, 5.0);
+        _wind->setPointSize(pointSize);
+
+        float dropChance = _wind->getDropChance();
+        ImGui::SliderFloat("Drop Chance", &dropChance, 0.0, 1.0);
+        _wind->setDropChance(dropChance);
 
 
         osg::Texture2D *tex = _wind->getTexture();
@@ -635,8 +698,15 @@ main(int argc, char** argv)
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
+        GDALImageLayer* windData = new GDALImageLayer();
+        windData->setName("Wind Data");
+        windData->setURL("d:/dev/osgearth/data/2016112000.png");
+        windData->setProfile(Profile::create("global-geodetic"));
+
+
         // a custom layer that displays a user texture:
         auto windLayer = new WindTextureLayer();
+        windLayer->setName("Wind Simulation");
         osg::Texture2D *windTexture = new osg::Texture2D(osgDB::readImageFile("d:/dev/osgearth/data/2016112000.png"));
         windTexture->setResizeNonPowerOfTwoHint(false);
         windTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
@@ -645,9 +715,9 @@ main(int argc, char** argv)
         windLayer->setOpacity(0.5f);
 
         MapNode* mapNode = MapNode::findMapNode(node);
-        mapNode->open();
         if (mapNode)
         {
+            mapNode->getMap()->addLayer(windData);
             mapNode->getMap()->addLayer(windLayer);
 
             viewer.getEventHandlers().push_front(new ImGuiDemo(&viewer, mapNode, manip, windLayer));

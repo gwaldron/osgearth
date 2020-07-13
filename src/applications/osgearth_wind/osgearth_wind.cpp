@@ -72,7 +72,7 @@ osg::Node* makeQuad(int width, int height, const osg::Vec4& color)
 }
 
 
-static const char* particleVertSource =
+static const char* particleVertRTTSource =
 "#version " GLSL_VERSION_STR "\n"
 "uniform sampler2D positionSampler; \n"
 "uniform vec2 resolution;\n"
@@ -89,7 +89,7 @@ static const char* particleVertSource =
     "vec4 posInfo = texture2D( positionSampler, tC );\n"
     "float life = posInfo.w;\n"
 
-    "particle_color = mix(vec4(0.0, 1.0, 0.0, 1.0), vec4(1.0, 0.0, 0.0, 1.0), life);\n"
+    "particle_color = mix(vec4(1.0, 0.0, 0.0, 0.3), vec4(0.0, 1.0, 0.0, 1.0), life);\n"
 
     "vec3 pos = posInfo.xyz;\n"
 
@@ -108,10 +108,61 @@ static const char* particleFragSource =
 "void oe_particle_frag(inout vec4 color)\n"
 "{\n"
 "    color = particle_color;\n"
+
+// Draw circles
+"    vec2 coord = gl_PointCoord - vec2(0.5);\n"
+"    if (length(coord) > 0.5)\n"
+"        discard;\n"
+"}\n";
+
+static const char* particleVertSource =
+"#version " GLSL_VERSION_STR "\n"
+"uniform sampler2D positionSampler; \n"
+"uniform vec2 resolution;\n"
+"uniform float pointSize;\n"
+"out vec4 particle_color;\n"
+"const float PI = 3.1415926535897932384626433832795;\n"
+"const float PI_2 = 1.57079632679489661923;\n"
+"const float TWO_PI = 6.283185307179586476925286766559;\n"
+"vec3 convertLatLongHeightToXYZ(float latitude, float longitude, float height)\n"
+"{\n"
+"    float radiusEquator = 6378137.0;\n"
+"    float radiusPolar = 6356752.3142;\n"
+"    float flattening = (radiusEquator - radiusPolar) / radiusEquator;\n"
+"    float eccentricitySquared = 2 * flattening - flattening * flattening;\n"
+"    float sin_latitude = sin(latitude);\n"
+"    float cos_latitude = cos(latitude);\n"
+"    float N = radiusEquator / sqrt(1.0 - eccentricitySquared * sin_latitude*sin_latitude);\n"
+"    float X = (N + height)*cos_latitude*cos(longitude);\n"
+"    float Y = (N + height)*cos_latitude*sin(longitude);\n"
+"    float Z = (N*(1 - eccentricitySquared) + height)*sin_latitude;\n"
+"    return vec3(X,Y,Z);\n"
+"}\n"
+
+"void oe_particle_vertex(inout vec4 vertexModel)\n"
+"{\n"
+// Using the instance ID, generate "texture coords" for this instance.
+"vec2 tC; \n"
+"float r = float(gl_InstanceID) / resolution.x; \n"
+"tC.s = fract( r ); tC.t = floor( r ) / resolution.y; \n"
+
+// Use the (scaled) tex coord to translate the position of the vertices.
+"vec4 posInfo = texture2D( positionSampler, tC );\n"
+"float life = posInfo.w;\n"
+
+"particle_color = mix(vec4(1.0, 0.0, 0.0, 0.3), vec4(0.0, 1.0, 0.0, 1.0), life);\n"
+
+"vec3 lla = vec3(-PI + TWO_PI * posInfo.x, -PI_2 + posInfo.y * PI, 5000.0);\n"
+"vec3 xyz = convertLatLongHeightToXYZ(lla.y, lla.x, lla.z);\n"
+"vertexModel.xyz = xyz;\n"
+
+// Big points
+"gl_PointSize = pointSize * mix(0.2, 3.0, life);\n"
+//"gl_PointSize = pointSize;\n"
 "}\n";
 
 osg::Geometry*
-createInstancedGeometry(int nInstances)
+createRTTInstancedGeometry(int nInstances)
 {
     osg::Geometry* geom = new osg::Geometry;
     geom->setUseDisplayList(false);
@@ -125,13 +176,38 @@ createInstancedGeometry(int nInstances)
     geom->addPrimitiveSet( new osg::DrawArrays( GL_POINTS, 0, 1, nInstances ) );
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(geom->getOrCreateStateSet());
+    vp->setFunction("oe_particle_vertex", particleVertRTTSource, ShaderComp::LOCATION_VERTEX_MODEL);
+    vp->setFunction("oe_particle_frag", particleFragSource, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    geom->getOrCreateStateSet()->addUniform(new osg::Uniform("positionSampler", 0));
+    geom->getOrCreateStateSet()->addUniform(new osg::Uniform("pointSize", 1.0f));
+    geom->getOrCreateStateSet()->addUniform(new osg::Uniform("resolution", osg::Vec2f(TEXTURE_DIM, TEXTURE_DIM)));
+    geom->getOrCreateStateSet()->setMode(GL_PROGRAM_POINT_SIZE, 1);
+
+    return geom;
+}
+
+osg::Geometry*
+createInstancedGeometry(int nInstances)
+{
+    osg::Geometry* geom = new osg::Geometry;
+    geom->setUseDisplayList(false);
+    geom->setUseVertexBufferObjects(true);
+
+    // Points
+    osg::Vec3Array* v = new osg::Vec3Array;
+    v->resize(1);
+    geom->setVertexArray(v);
+    (*v)[0] = osg::Vec3(0.0, 0.0, 0.0);
+    geom->addPrimitiveSet(new osg::DrawArrays(GL_POINTS, 0, 1, nInstances));
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(geom->getOrCreateStateSet());
     vp->setFunction("oe_particle_vertex", particleVertSource, ShaderComp::LOCATION_VERTEX_MODEL);
     vp->setFunction("oe_particle_frag", particleFragSource, ShaderComp::LOCATION_FRAGMENT_COLORING);
     geom->getOrCreateStateSet()->addUniform(new osg::Uniform("positionSampler", 0));
     geom->getOrCreateStateSet()->addUniform(new osg::Uniform("pointSize", 1.0f));
     geom->getOrCreateStateSet()->addUniform(new osg::Uniform("resolution", osg::Vec2f(TEXTURE_DIM, TEXTURE_DIM)));
     geom->getOrCreateStateSet()->setMode(GL_PROGRAM_POINT_SIZE, 1);
-    //geom->getOrCreateStateSet()->setMode(GL_POINT_SMOOTH, osg::StateAttribute::ON);
+    geom->setCullingActive(false);
 
     return geom;
 }
@@ -228,19 +304,6 @@ std::string computeFrag =
 "}\n"
 
 "   vec2 seed = (position.xy + uv);\n"
-
-#if 0
-"   float dropChance = 0.0;\n"//oe_random(0.0, 1.0, vec2(posUV.x, posUV.y));\n"
-// Reset particle
-"   if (life < 0.0 || dropChance > 0.99) {\n"
-//"       life = oe_random(0.0, 1.0, vec2(posUV.x, posUV.y));\n"
-"       life = 1.0;\n"
-"       float x = oe_random(0.0, 1.0, vec2(posUV.x, posUV.y));\n"
-"       float y = oe_random(0.0, 1.0, vec2(posUV.y, posUV.x));\n"
-"       float z = 0.0;\n;"
-"       position = vec3(x, y, z);\n"
-"   }\n"
-#endif
 
 "   float drop = oe_random(0.0, 1.0, seed);\n"
 // Reset particle
@@ -368,9 +431,11 @@ public:
         // Create the render target
         createOutputTexture();
         createRTTCamera();
+        createPointsNode();
 
         addChild(_rttCamera.get());
         addChild(_computeNode.get());
+        addChild(_pointsNode.get());
 
         setCullingActive(false);
     }
@@ -415,12 +480,14 @@ public:
     {
         float value;
         _points->getOrCreateStateSet()->getUniform("pointSize")->get(value);
+        _pointsNode->getOrCreateStateSet()->getUniform("pointSize")->get(value);
         return value;
     }
 
     void setPointSize(float value)
     {
         _points->getOrCreateStateSet()->getUniform("pointSize")->set(value);
+        _pointsNode->getOrCreateStateSet()->getUniform("pointSize")->set(value);
     }
 
     osg::Texture2D* getOutputTexture() const
@@ -459,14 +526,22 @@ private:
         _rttCamera->setProjectionMatrixAsOrtho2D(0.0, _width, 0.0, _height);
         _rttCamera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 
-        _points = createInstancedGeometry(TEXTURE_DIM*TEXTURE_DIM);
+        _points = createRTTInstancedGeometry(TEXTURE_DIM*TEXTURE_DIM);
             // Attatch the output of the compute node as the texture to feed the positions on the instanced geometry.
         _points->getOrCreateStateSet()->setTextureAttributeAndModes(0, _computeNode->_outputPosition.get(), osg::StateAttribute::ON);
         _rttCamera->addChild(_points.get());
     }
 
+    void createPointsNode()
+    {
+        _pointsNode = createInstancedGeometry(TEXTURE_DIM*TEXTURE_DIM);
+        // Attatch the output of the compute node as the texture to feed the positions on the instanced geometry.
+        _pointsNode->getOrCreateStateSet()->setTextureAttributeAndModes(0, _computeNode->_outputPosition.get(), osg::StateAttribute::ON);
+    }
+
     osg::ref_ptr< osg::Texture2D > _outputTexture;
     osg::ref_ptr< osg::Camera > _rttCamera;
+    osg::ref_ptr< osg::Geometry > _pointsNode;
 
     osg::ref_ptr< ComputeNode > _computeNode;
 
@@ -605,7 +680,7 @@ protected:
         _wind->setSpeedFactor(speedFactor);
 
         float pointSize = _wind->getPointSize();
-        ImGui::SliderFloat("Point Size", &pointSize, 0.01, 5.0);
+        ImGui::SliderFloat("Point Size", &pointSize, 0.01, 20.0);
         _wind->setPointSize(pointSize);
 
         float dropChance = _wind->getDropChance();

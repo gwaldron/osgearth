@@ -27,6 +27,7 @@
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/PatchLayer>
 #include <osgEarth/Metrics>
+#include <osgEarth/Math>
 #include <osg/Geometry>
 
 #if OSG_MIN_VERSION_REQUIRED(3,5,9)
@@ -173,13 +174,40 @@ namespace osgEarth { namespace REX
                 return false;
             }
 
+            bool operator == (const GeometryKey& rhs) const
+            {
+                return
+                    lod == rhs.lod &&
+                    tileY == rhs.tileY &&
+                    size == rhs.size &&
+                    patch == rhs.patch;
+            }
+
+            bool operator != (const GeometryKey& rhs) const
+            {
+                return
+                    lod != rhs.lod ||
+                    tileY != rhs.tileY ||
+                    size != rhs.size ||
+                    patch != rhs.patch;
+            }
+
+            // hash function for unordered_map
+            std::size_t operator()(const GeometryKey& key) const
+            {
+                return osgEarth::hash_value_unsigned(
+                    (unsigned)key.lod, 
+                    (unsigned)key.tileY,
+                    key.size,key.patch?1u:0u);
+            }
+
             int      lod;
             int      tileY;
             bool     patch;
             unsigned size;
         };
 
-        typedef std::map<GeometryKey, osg::ref_ptr<SharedGeometry> > GeometryMap;
+        typedef std::unordered_map<GeometryKey, osg::ref_ptr<SharedGeometry>, GeometryKey> GeometryMap;
 
         /**
          * Gets the Geometry associated with a tile key, creating a new one if

@@ -631,7 +631,7 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
         const osg::Image* compressed;
         for(auto& ref : images)
         {
-            compressed = ImageUtils::compressImage(image, layer->getCompressionMethod());
+            compressed = ImageUtils::compressImage(ref, layer->getCompressionMethod());
             ref = ImageUtils::mipmapImage(compressed);
 
             if (layer->getCompressionMethod() == "gpu" && !compressed->isCompressed())

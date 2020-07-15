@@ -88,7 +88,7 @@ Tips for Preparing your own Data
     
         gdal_translate -of GTiff -co TILED=YES input.tif output.tif
         
-    Take is a step further and use compression to save space. You can use internal
+    Take it a step further and use compression to save space. You can use internal
     JPEG compression if your data contains no transparency::
     
         gdal_translate -of GTiff -co TILED=YES -co COMPRESS=JPG input.tif output.tif   

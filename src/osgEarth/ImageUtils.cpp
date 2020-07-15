@@ -457,6 +457,8 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
 const osg::Image*
 ImageUtils::mipmapImage(const osg::Image* input)
 {
+    OE_PROFILING_ZONE;
+
     if (!input)
     {
         OE_WARN << LC << "createMipmappedImage() called with NULL input" << std::endl;
@@ -544,6 +546,8 @@ ImageUtils::mipmapImage(const osg::Image* input)
 void
 ImageUtils::mipmapImageInPlace(osg::Image* input)
 {
+    OE_PROFILING_ZONE;
+
     if (!input)
     {
         OE_WARN << LC << "createMipmappedImage() called with NULL input" << std::endl;
@@ -628,6 +632,8 @@ ImageUtils::compressImage(
     const osg::Image* input,
     const std::string& method)
 {
+    OE_PROFILING_ZONE;
+
     if (!input)
         return input;
 
@@ -684,6 +690,8 @@ ImageUtils::compressImageInPlace(
     osg::Image* input,
     const std::string& method)
 {
+    OE_PROFILING_ZONE;
+
     if (!input)
         return;
 
@@ -751,118 +759,6 @@ ImageUtils::compressImageInPlace(
         }
     }
 }
-
-#if 0
-bool
-ImageUtils::generateMipmaps(osg::Image* input)
-{
-    if (!input)
-    {
-        OE_WARN << LC << "generateMipmaps() called with NULL input" << std::endl;
-        return false;
-    }
-
-    if (input->r() > 1)
-    {
-        OE_WARN << LC << "generateMipmaps() not implemented for 3D image" << std::endl;
-        return false;
-    }
-
-    // already has mipmaps?
-    if (input->getNumMipmapLevels() > 1)
-    {
-        return false;
-    }
-
-    static Threading::Gate<osg::Image*> s_imageGate("Mipmip Gate");
-
-    // Allow only one equal pointer at a time past this point
-    // so we don't try to mipmap the same image in parallel
-    Threading::ScopedGate<osg::Image*> gate(s_imageGate, input);
-
-#ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
-    // NVTT doest not like 1- or 2-channel images; can crash
-    if (osg::Image::computeNumComponents(input->getPixelFormat()) >= 3)
-    {
-        // Fint the NVTT plugin
-        osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessorForExtension("nvtt");
-        if (nvtt)
-        {
-            nvtt->generateMipMap(*input, true, nvtt->USE_CPU);
-
-            if (input->getInternalTextureFormat() == GL_RGB)
-            {
-                input->setInternalTextureFormat(GL_RGB8);
-            }
-            else if (input->getInternalTextureFormat() == GL_RGBA)
-            {
-                input->setInternalTextureFormat(GL_RGBA8);
-            }
-
-            return true;
-        }
-    }
-#endif
-
-    // first, build the image that will hold all the mipmap levels.
-    int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
-    int imageSizeBytes = input->getTotalSizeInBytes();
-
-    // offset vector does not include level 0 (the full-resolution level)
-    osg::Image::MipmapDataType mipOffsets;
-    mipOffsets.reserve(numLevels-1);
-
-    // calculate memory requirements:
-    int totalSizeBytes = imageSizeBytes;
-    for( int i=1; i<numLevels; ++i )
-    {
-        mipOffsets.push_back(totalSizeBytes);
-        totalSizeBytes += (imageSizeBytes >> i);
-    }
-
-    // allocate space for the new data and copy over level 0 of the old data
-    unsigned char* data = new unsigned char[totalSizeBytes];
-    ::memcpy(data, input->data(), input->getTotalSizeInBytes());
-
-    input->setImage(
-        input->s(), input->t(), input->r(),
-        input->getInternalTextureFormat(),
-        input->getPixelFormat(),
-        input->getDataType(),
-        data,
-        osg::Image::USE_NEW_DELETE,
-        input->getPacking(),
-        input->getRowLength());
-
-    input->setMipmapLevels(mipOffsets);
-
-    // now, populate the image levels.
-    osg::PixelStorageModes psm;
-    psm.pack_alignment = input->getPacking();
-    psm.pack_row_length = input->getRowLength();
-    psm.unpack_alignment = input->getPacking();
-
-    for(int level=1; level<numLevels; ++level)
-    {
-        // OSG-custom gluScaleImage that does not require a graphics context
-        GLint status = gluScaleImage(
-            &psm,
-            input->getPixelFormat(),
-            input->s(),
-            input->t(),
-            input->getDataType(),
-            input->data(),
-            input->s() >> level,
-            input->t() >> level,
-            input->getDataType(),
-            input->getMipmapData(level));
-    }
-
-    input->dirty();
-
-    return true;
-}
-#endif
 
 osgDB::ReaderWriter*
 ImageUtils::getReaderWriterForStream(std::istream& stream) {

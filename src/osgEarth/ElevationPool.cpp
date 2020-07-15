@@ -495,7 +495,7 @@ ElevationPool::sampleMapCoords(
     for(auto& p : points)
     {
         {
-            OE_PROFILING_ZONE_NAMED("createTileKey");
+            //OE_PROFILING_ZONE_NAMED("createTileKey");
 
             // Reconsider, b/c an inset could mean we need to re-query the LOD.
             if ((p.w() >= 0.0f && p.w() != lastRes) ||
@@ -561,7 +561,7 @@ ElevationPool::sampleMapCoords(
             }
 
             {
-                OE_PROFILING_ZONE_NAMED("sample");
+                //OE_PROFILING_ZONE_NAMED("sample");
                 if (raster.valid())
                 {
                     u = (p.x() - raster->getExtent().xMin()) /  raster->getExtent().width();

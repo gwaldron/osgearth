@@ -24,6 +24,7 @@
 #include <osgEarth/FilterContext>
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/Containers>
+#include <osgEarth/Metrics>
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;
@@ -328,6 +329,8 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
         if (group && group->getBound().valid())
         {
+            OE_PROFILING_ZONE_NAMED("Rasterize");
+
             Future<osg::Image> result = _rasterizer->render(group.release(), outputExtent);
             return GeoImage(result.release(progress), key.getExtent());
 

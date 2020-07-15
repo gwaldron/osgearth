@@ -20,6 +20,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Metrics>
 #include <osgViewer/Renderer>
 #include <osgViewer/Viewer>
 

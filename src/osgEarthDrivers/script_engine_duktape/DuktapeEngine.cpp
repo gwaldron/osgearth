@@ -21,6 +21,7 @@
 #include <osgEarth/JsonUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/GeometryUtils>
+#include <osgEarth/Metrics>
 #include <sstream>
 
 #undef  LC
@@ -285,6 +286,8 @@ DuktapeEngine::run(const std::string&   code,
                    Feature const*       feature,
                    FilterContext const* context)
 {
+    OE_PROFILING_ZONE;
+
     if (code.empty())
         return ScriptResult(EMPTY_STRING, false, "Script is empty.");
 

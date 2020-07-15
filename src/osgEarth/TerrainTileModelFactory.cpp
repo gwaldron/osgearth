@@ -200,6 +200,9 @@ TerrainTileModelFactory::addImageLayer(
     const TerrainEngineRequirements* reqs,
     ProgressCallback* progress)
 {
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT(imageLayer->getName());
+
     TerrainTileImageLayerModel* layerModel = NULL;
     osg::Texture* tex = 0L;
     TextureWindow window;
@@ -398,6 +401,9 @@ TerrainTileModelFactory::addElevation(
     unsigned                     border,
     ProgressCallback*            progress)
 {
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT("Elevation");
+
     bool needElevation = manifest.includesElevation();
     ElevationLayerVector layers;
     map->getLayers(layers);
@@ -483,6 +489,9 @@ TerrainTileModelFactory::addLandCover(
     const CreateTileManifest&    manifest,
     ProgressCallback*            progress)
 {
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT("LandCover");
+
     TerrainTileLandCoverModel* landCoverModel = NULL;
 
     // Note. We only support one land cover layer...

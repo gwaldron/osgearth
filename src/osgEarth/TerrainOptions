@@ -66,6 +66,7 @@ namespace osgEarth
         OE_OPTION(bool, morphImagery);
         OE_OPTION(unsigned, mergesPerFrame);
         OE_OPTION(float, priorityScale);
+        OE_OPTION(std::string, textureCompression);
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config&);
@@ -232,6 +233,10 @@ namespace osgEarth
         //! other modules.
         void setPriorityScale(const float& value);
         const float& getPriorityScale() const;
+
+        //! Texture compression to use by default on terrain image textures
+        void setTextureCompressionMethod(const std::string& method);
+        const std::string& getTextureCompressionMethod() const;
 
     public: // Legacy support
 

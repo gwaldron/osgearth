@@ -62,6 +62,8 @@ static int s_level = 14;
 static float s_height = 500.0f;
 static bool s_optimizeRotation = false;
 
+const SpatialReference* wgs84 = SpatialReference::create("wgs84");
+
 struct AABB
 {
     AABB(const osg::Matrixd& localToWorld, const osg::Matrixd& worldToLocal, const osg::BoundingBoxd& boundingBox) :
@@ -111,7 +113,6 @@ AABB ComputeAABB(const GeoExtent& extent, double zMin, double zMax)
 
 AABB ComputeAABB(const S2Cell& cell, bool optimizeRotation, double zMin, double zMax)
 {
-    const SpatialReference* wgs84 = SpatialReference::create("wgs84");
     S2LatLng center(cell.GetCenter());
 
     GeoPoint centroid(wgs84, center.lng().degrees(), center.lat().degrees());
@@ -189,8 +190,6 @@ osg::Node* RenderBounds(const AABB& bounds)
 
 osg::Node* RenderCell(S2Cell& cell)
 {
-    const SpatialReference* wgs84 = SpatialReference::create("wgs84");
-
     Geometry* poly = new osgEarth::Polygon();
     for (unsigned int i = 0; i < 4; i++)
     {
@@ -211,9 +210,34 @@ osg::Node* RenderCell(S2Cell& cell)
     return featureNode;
 }
 
-struct ClickGlobeHandler : public osgGA::GUIEventHandler
+osg::Node* RenderCells(std::vector<S2CellId>& cells)
 {
-    ClickGlobeHandler(MapNode* mapNode)
+    Style style;
+    style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
+    style.getOrCreate<LineSymbol>()->stroke()->width() = 5.0;
+    style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+    style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+
+    FeatureList features;
+
+    for (unsigned int i = 0; i < cells.size(); i++)
+    {
+        Geometry* poly = new osgEarth::Polygon();
+        S2Cell cell(cells[i]);
+        for (unsigned int i = 0; i < 4; i++)
+        {
+            S2LatLng pt = S2LatLng(cell.GetVertex(i));
+            poly->push_back(pt.lng().degrees(), pt.lat().degrees());
+        }
+        features.push_back(new Feature(poly, wgs84));
+    }
+
+    return new FeatureNode(features, style);
+}
+
+struct PickTileHandler : public osgGA::GUIEventHandler
+{
+    PickTileHandler(MapNode* mapNode)
         : _mapNode(mapNode)
     {
     }
@@ -260,8 +284,134 @@ struct ClickGlobeHandler : public osgGA::GUIEventHandler
 
     osg::Node* _boundsDisplay = nullptr;
     osgEarth::MapNode* _mapNode;
-
 };
+
+struct RegionCovererHandler : public osgGA::GUIEventHandler
+{
+    RegionCovererHandler(MapNode* mapNode)
+        : _mapNode(mapNode),
+        _extentsNode(nullptr),
+        _cellsNode(nullptr),
+        _mouseDown(false)
+    {
+    }
+
+    GeoPoint getPoint(osgViewer::View* view, float x, float y)
+    {
+        osg::Vec3d world;
+        osgUtil::LineSegmentIntersector::Intersections hits;
+        if (view->computeIntersections(x, y, hits))
+        {
+            world = hits.begin()->getWorldIntersectPoint();
+            GeoPoint mapPoint;
+            mapPoint.fromWorld(_mapNode->getMapSRS(), world);
+            return mapPoint;
+        }
+        return GeoPoint::INVALID;
+    }
+
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+    {
+        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+        if (ea.getEventType() == ea.PUSH && ea.getButton() == ea.LEFT_MOUSE_BUTTON && (ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL))
+        {
+            _mouseDown = true;
+            _startPoint = getPoint(view, ea.getX(), ea.getY());
+            _endPoint = _startPoint;
+            RedrawExtents();
+            if (_cellsNode)
+            {
+                _mapNode->removeChild(_cellsNode);
+            }
+            return true;
+        }
+        else if (ea.getEventType() == ea.RELEASE && ea.getButton() == ea.LEFT_MOUSE_BUTTON)
+        {
+            if (_mouseDown)
+            {
+                _mouseDown = false;
+                RedrawExtents();
+
+                if (_startPoint.isValid() && _endPoint.isValid())
+                {
+                    GeoExtent extent = GeoExtent(wgs84);
+                    extent.expandToInclude(_startPoint.x(), _startPoint.y());
+                    extent.expandToInclude(_endPoint.x(), _endPoint.y());
+
+                    S2RegionCoverer coverer;
+                    //coverer.mutable_options()->set_fixed_level(s_level);
+                    S2LatLngRect region(S2LatLng(S1Angle::Degrees(extent.yMin()), S1Angle::Degrees(extent.xMin())),
+                        S2LatLng(S1Angle::Degrees(extent.yMax()), S1Angle::Degrees(extent.xMax())));
+                    std::vector<S2CellId> cells;
+                    // Could also use GetFastCovering here for an approximation.
+                    coverer.GetCovering(region, &cells);
+
+                    _cellsNode = RenderCells(cells);
+                    if (_cellsNode)
+                    {
+                        _mapNode->addChild(_cellsNode);
+                    }
+
+                }
+            }
+        }
+        else if (ea.getEventType() == ea.DRAG)
+        {
+            if (_mouseDown)
+            {
+                if (_startPoint.isValid())
+                {
+                    _endPoint = getPoint(view, ea.getX(), ea.getY());
+                    RedrawExtents();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    void RedrawExtents()
+    {
+        if (_extentsNode)
+        {
+            _mapNode->removeChild(_extentsNode);
+            _extentsNode = nullptr;
+        }
+
+        if (_startPoint.isValid() && _endPoint.isValid())
+        {
+            GeoExtent extent(wgs84);
+            extent.expandToInclude(_startPoint.x(), _startPoint.y());
+            extent.expandToInclude(_endPoint.x(), _endPoint.y());
+
+            Geometry* poly = new osgEarth::Polygon();
+            poly->push_back(extent.xMin(), extent.yMin());
+            poly->push_back(extent.xMax(), extent.yMin());
+            poly->push_back(extent.xMax(), extent.yMax());
+            poly->push_back(extent.xMin(), extent.yMax());
+
+            Style style;
+            style.getOrCreate<PolygonSymbol>()->fill() = Color::Red;
+            style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+            style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+
+            _extentsNode = new FeatureNode(new Feature(poly, wgs84), style);
+            _mapNode->addChild(_extentsNode);
+        }
+    }
+
+    osgEarth::MapNode* _mapNode;
+
+    GeoExtent _extent;
+    FeatureNode* _extentsNode;
+    GeoPoint _startPoint;
+    GeoPoint _endPoint;
+    osg::Node* _cellsNode;
+    bool _mouseDown;
+};
+
+
 
 int
 main(int argc, char** argv)
@@ -269,6 +419,8 @@ main(int argc, char** argv)
     osgEarth::initialize();
     osg::ArgumentParser arguments(&argc, argv);
 
+
+    bool regionCoverer = arguments.read("--cover");
     arguments.read("--level", s_level);
 
     osgViewer::Viewer viewer(arguments);
@@ -280,7 +432,15 @@ main(int argc, char** argv)
     if (node)
     {
         MapNode* mapNode = MapNode::findMapNode(node);
-        viewer.getEventHandlers().push_back(new ClickGlobeHandler(mapNode));
+
+        if (regionCoverer)
+        {
+            viewer.getEventHandlers().push_back(new RegionCovererHandler(mapNode));
+        }
+        else
+        {
+            viewer.getEventHandlers().push_back(new PickTileHandler(mapNode));
+        }
         s_root->addChild(node);
     }
 

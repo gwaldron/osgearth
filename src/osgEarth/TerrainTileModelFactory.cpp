@@ -613,9 +613,14 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
     bool hasMipMaps = false;
     bool isCompressed = false;
 
+    // figure out the texture compression method to use (if any)
+    std::string compressionMethod = layer->getCompressionMethod();
+    if (compressionMethod.empty())
+        compressionMethod = _options.textureCompression().get();
+
     if (image->r() == 1)
     {
-        const osg::Image* compressed = ImageUtils::compressImage(image, layer->getCompressionMethod());
+        const osg::Image* compressed = ImageUtils::compressImage(image, compressionMethod);
         const osg::Image* mipmapped = ImageUtils::mipmapImage(compressed);
         tex = new osg::Texture2D(const_cast<osg::Image*>(mipmapped));
         hasMipMaps = mipmapped->isMipmap();
@@ -633,7 +638,7 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
         const osg::Image* compressed;
         for(auto& ref : images)
         {
-            compressed = ImageUtils::compressImage(ref, layer->getCompressionMethod());
+            compressed = ImageUtils::compressImage(ref, compressionMethod);
             ref = ImageUtils::mipmapImage(compressed);
 
             if (layer->getCompressionMethod() == "gpu" && !compressed->isCompressed())

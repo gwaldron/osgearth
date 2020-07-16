@@ -42,7 +42,7 @@ ImageLayer::Options::fromConfig(const Config& conf)
     _transparentColor.setDefault( osg::Vec4ub(0,0,0,0) );
     _minFilter.setDefault( osg::Texture::LINEAR_MIPMAP_LINEAR );
     _magFilter.setDefault( osg::Texture::LINEAR );
-    _textureCompression.setDefault("none");
+    _textureCompression.setDefault("");
     _shared.setDefault( false );
     _coverage.setDefault( false );
     _reprojectedTileSize.setDefault( 256 );

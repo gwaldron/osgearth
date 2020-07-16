@@ -63,6 +63,7 @@ TerrainOptions::getConfig() const
     conf.set( "morph_imagery", morphImagery() );
     conf.set( "merges_per_frame", mergesPerFrame() );
     conf.set( "priority_scale", priorityScale() );
+    conf.set( "texture_compression", textureCompression());
 
     return conf;
 }
@@ -102,6 +103,7 @@ TerrainOptions::fromConfig(const Config& conf)
     morphImagery().init(true);
     mergesPerFrame().init(20u);
     priorityScale().init(1.0f);
+    textureCompression().setDefault("");
 
     conf.get( "tile_size", _tileSize );
     conf.get( "vertical_scale", _verticalScale );
@@ -137,6 +139,7 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "morph_imagery", morphImagery() );
     conf.get( "merges_per_frame", mergesPerFrame() );
     conf.get( "priority_scale", priorityScale());
+    conf.get( "texture_compression", textureCompression());
 }
 
 //...................................................................
@@ -179,6 +182,7 @@ OE_PROPERTY_IMPL(TerrainOptionsAPI, bool, MorphTerrain, morphTerrain);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, bool, MorphImagery, morphImagery);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, MergesPerFrame, mergesPerFrame);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, float, PriorityScale, priorityScale);
+OE_PROPERTY_IMPL(TerrainOptionsAPI, std::string, TextureCompressionMethod, textureCompression);
 
 void
 TerrainOptionsAPI::setDriver(const std::string& value)

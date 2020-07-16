@@ -96,9 +96,11 @@ Mutex::Mutex(const std::string& name, const char* file, std::uint32_t line) :
 
 Mutex::~Mutex()
 {
+#ifdef OSGEARTH_PROFILING
     if (_metricsData)
         delete static_cast<tracy::Lockable<std::mutex>*>(_handle);
     else
+#endif
         delete static_cast<std::mutex*>(_handle);
 }
 
@@ -122,27 +124,33 @@ Mutex::lock()
         volatile int x =0 ; // breakpoint for finding unnamed mutexes
     }
 
+#ifdef OSGEARTH_PROFILING
     if (_metricsData)
         static_cast<tracy::Lockable<std::mutex>*>(_handle)->lock();
     else
+#endif
         static_cast<std::mutex*>(_handle)->lock();
 }
 
 void
 Mutex::unlock()
 {
+#ifdef OSGEARTH_PROFILING
     if (_metricsData)
         static_cast<tracy::Lockable<std::mutex>*>(_handle)->unlock();
     else
+#endif
         static_cast<std::mutex*>(_handle)->unlock();
 }
 
 bool
 Mutex::try_lock()
 {
+#ifdef OSGEARTH_PROFILING
     if (_metricsData)
         return static_cast<tracy::Lockable<std::mutex>*>(_handle)->try_lock();
     else
+#endif
         return static_cast<std::mutex*>(_handle)->try_lock();
 }
 
@@ -203,9 +211,11 @@ RecursiveMutex::~RecursiveMutex()
 {
     if (_handle)
     {
+#ifdef OSGEARTH_PROFILING
         if (_metricsData)
             delete static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle);
         else
+#endif
             delete static_cast<std::recursive_mutex*>(_handle);
     }
 }
@@ -235,9 +245,11 @@ RecursiveMutex::lock()
 {
     if (_enabled)
     {
+#ifdef OSGEARTH_PROFILING
         if (_metricsData)
             static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->lock();
         else
+#endif
             static_cast<std::recursive_mutex*>(_handle)->lock();
     }
 }
@@ -247,9 +259,11 @@ RecursiveMutex::unlock()
 {
     if (_enabled)
     {
+#ifdef OSGEARTH_PROFILING
         if (_metricsData)
             static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->unlock();
         else
+#endif
             static_cast<std::recursive_mutex*>(_handle)->unlock();
     }
 }
@@ -259,9 +273,11 @@ RecursiveMutex::try_lock()
 {
     if (_enabled)
     {
+#ifdef OSGEARTH_PROFILING
         if (_metricsData)
             return static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->try_lock();
         else
+#endif
             return static_cast<std::recursive_mutex*>(_handle)->try_lock();
     }
     else return true;

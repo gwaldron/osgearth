@@ -147,17 +147,13 @@ Profile::create(const SpatialReference* srs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    if (srs != NULL)
-    {
-        return new Profile(
-            srs,
-            xmin, ymin, xmax, ymax,
-            numTilesWideAtLod0,
-            numTilesHighAtLod0 );
-    }
+    OE_SOFT_ASSERT_AND_RETURN(srs!=nullptr, __FUNCTION__, nullptr);
 
-    OE_WARN << LC << "Failed to create profile; null SRS" << std::endl;
-    return 0L;
+    return new Profile(
+        srs,
+        xmin, ymin, xmax, ymax,
+        numTilesWideAtLod0,
+        numTilesHighAtLod0 );
 }
 
 const Profile*
@@ -167,18 +163,14 @@ Profile::create(const SpatialReference* srs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    if ( srs )
-    {
-        return new Profile(
-            srs,
-            xmin, ymin, xmax, ymax,
-            geoxmin, geoymin, geoxmax, geoymax,
-            numTilesWideAtLod0,
-            numTilesHighAtLod0 );
-    }
-    
-    OE_WARN << LC << "Failed to create profile; null SRS" << std::endl;
-    return 0L;
+    OE_SOFT_ASSERT_AND_RETURN(srs!=nullptr, __FUNCTION__, nullptr);
+
+    return new Profile(
+        srs,
+        xmin, ymin, xmax, ymax,
+        geoxmin, geoymin, geoxmax, geoymax,
+        numTilesWideAtLod0,
+        numTilesHighAtLod0);
 }
 
 const Profile*
@@ -337,6 +329,8 @@ Profile::Profile(const SpatialReference* srs,
 
     _extent(srs, xmin, ymin, xmax, ymax)
 {
+    OE_SOFT_ASSERT(srs!=nullptr, __FUNCTION__);
+
     _numTilesWideAtLod0 = numTilesWideAtLod0 != 0? numTilesWideAtLod0 : srs->isGeographic()? 2 : 1;
     _numTilesHighAtLod0 = numTilesHighAtLod0 != 0? numTilesHighAtLod0 : 1;
 
@@ -363,6 +357,8 @@ Profile::Profile(const SpatialReference* srs,
 
     _extent(srs, xmin, ymin, xmax, ymax)
 {
+    OE_SOFT_ASSERT(srs!=nullptr, __FUNCTION__);
+
     _numTilesWideAtLod0 = numTilesWideAtLod0 != 0? numTilesWideAtLod0 : srs->isGeographic()? 2 : 1;
     _numTilesHighAtLod0 = numTilesHighAtLod0 != 0? numTilesHighAtLod0 : 1;
 
@@ -793,7 +789,9 @@ Profile::getIntersectingTiles(const GeoExtent& extent, unsigned localLOD, std::v
 
 unsigned
 Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
-{    
+{
+    OE_SOFT_ASSERT_AND_RETURN(rhsProfile!=nullptr, __FUNCTION__, rhsLOD);
+
     //If the profiles are equivalent, just use the incoming lod
     if (rhsProfile->isHorizEquivalentTo( this ) ) 
         return rhsLOD;

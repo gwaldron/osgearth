@@ -103,7 +103,17 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
             }
         }
     };
-}}}
+
+    static Future<osg::Node>::Callback compressAndMipmapTextures = [](osg::Node* node)
+    {
+        if (node)
+        {
+            CompressAndMipmapTextures visitor;
+            node->accept(visitor);
+        }
+    };
+
+} } }
 
 //........................................................................
 
@@ -526,10 +536,7 @@ namespace
 
                         if (tilesetNode.valid())
                         {
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
-                            CompressAndMipmapTextures visitor;
-                            tilesetNode->accept(visitor);
-#endif
+                            compressAndMipmapTextures(tilesetNode.get());
 
                             if (ico.valid())
                             {
@@ -664,11 +671,13 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
 
         if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
         {
-            _content = readTilesetAsync(_tileset, uri, options).get();
+            _content = readTilesetAsync(_tileset, uri, options)
+                .get();
         }
         else
         {
             _content = uri.getNode(_options.get());
+            compressAndMipmapTextures(_content.get());
         }
         if (_content.valid())
         {
@@ -951,12 +960,16 @@ void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
 
         if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
         {
-            _contentFuture = readTilesetAsync(_tileset, uri, localOptions.get());
+            _contentFuture =
+                readTilesetAsync(_tileset, uri, localOptions.get());
         }
         else
         {
-            _contentFuture = uri.readNodeAsync(localOptions.get(), NULL);
+            _contentFuture = uri
+                .readNodeAsync(localOptions.get(), NULL)
+                .then(compressAndMipmapTextures);
         }
+
         _requestedContent = true;
     }
 }

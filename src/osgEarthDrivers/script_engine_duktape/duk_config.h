@@ -2465,8 +2465,8 @@ typedef FILE duk_file;
 #if !defined(DUK_FUNC_MACRO)
 #if defined(DUK_F_C99) || defined(DUK_F_CPP11)
 #define DUK_FUNC_MACRO  __func__
-#elif defined(__FUNCTION__)
-#define DUK_FUNC_MACRO  __FUNCTION__
+#elif defined(__func__)
+#define DUK_FUNC_MACRO  __func__
 #else
 #define DUK_FUNC_MACRO  "unknown"
 #endif

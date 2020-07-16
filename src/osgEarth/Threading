@@ -74,7 +74,7 @@ namespace osgEarth { namespace Threading
     private:
         std::string _name;
         void* _handle;
-        void* _data;
+        void* _metricsData;
     };
 
     typedef std::lock_guard<BasicLockable> ScopedMutexLock;
@@ -96,10 +96,13 @@ namespace osgEarth { namespace Threading
         void unlock() override;
         bool try_lock() override;
 
+        void setName(const std::string& name);
+
     private:
         bool _enabled;
         std::string _name;
         void* _handle;
+        void* _metricsData;
     };
 
     typedef std::lock_guard<RecursiveMutex> ScopedRecursiveMutexLock;

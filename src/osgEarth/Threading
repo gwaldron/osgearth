@@ -194,14 +194,21 @@ namespace osgEarth { namespace Threading
     template<typename T>
     class Future
     {
+    public:
+        typedef std::function<void(T*)> Callback;
+
     private:
         // internal structure to track referenced to the result
         struct RefPtrRef : public osg::Referenced {
             RefPtrRef(T* obj = 0L) : _obj(obj) { }
             osg::ref_ptr<T> _obj;
+            std::vector<Callback> _callbacks;
+            std::mutex _callbacksMutex;
         };
 
     public:
+        typedef std::function<void(T*)> Callback;
+
         //! Blank CTOR
         Future() {
             _ev = new RefEvent();
@@ -214,7 +221,15 @@ namespace osgEarth { namespace Threading
         }
 
         //! Copy CTOR
-        Future(const Future& rhs) : _ev(rhs._ev), _objRef(rhs._objRef.get()) { }
+        Future(const Future& rhs) : 
+            _ev(rhs._ev), 
+            _objRef(rhs._objRef) { }
+
+        Future<T>& operator = (const Future<T>& rhs) {
+            _ev = rhs._ev;
+            _objRef = rhs._objRef;
+            return *this;
+        }
 
         //! True if the promise was resolved and a result if available.
         bool isAvailable() const {
@@ -260,6 +275,15 @@ namespace osgEarth { namespace Threading
             return out;
         }
 
+        Future<T>& then(std::function<void(T*)>& func) {
+            std::unique_lock<std::mutex> lock(_objRef->_callbacksMutex);
+            if (_ev->isSet())
+                func(_objRef->_obj.get());
+            else
+                _objRef->_callbacks.push_back(func);
+            return *this;
+        }
+
     private:
         osg::ref_ptr<RefEvent> _ev;
         osg::ref_ptr<RefPtrRef> _objRef;
@@ -283,11 +307,16 @@ namespace osgEarth { namespace Threading
         Promise(const std::string& name) : _future(name) { }
 
         //! This promise's future result.
-        const Future<T> getFuture() const { return _future; }
+        Future<T> getFuture() const { return _future; }
 
         //! Resolve (fulfill) the promise with the provided result value.
         void resolve(T* value) {
             _future._objRef->_obj = value;
+            {
+                std::unique_lock<std::mutex> lock(_future._objRef->_callbacksMutex);
+                for(auto& f : _future._objRef->_callbacks)
+                    f(value);
+            }
             _future._ev->set();
         }
 

@@ -899,40 +899,17 @@ FeatureImageRenderer::getFeatures(Session* session,
         while (features.empty())
         {
             // query the feature source:
-            osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress); //session->getFeatureSource()->createFeatureCursor(localQuery, progress);
+            osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress);
 
-            while( cursor.valid() && cursor->hasMore() )
+            if (cursor.valid())
             {
-                Feature* feature = cursor->nextFeature();
-                Geometry* geom = feature->getGeometry();
-#if 0
-                if ( geom )
-                {
-                    // apply a type override if requested:
-                    if (_options.geometryTypeOverride().isSet() &&
-                        _options.geometryTypeOverride() != geom->getComponentType() )
-                    {
-                        geom = geom->cloneAs( _options.geometryTypeOverride().value() );
-                        if ( geom )
-                            feature->setGeometry( geom );
-                    }
-                }
-#endif
-                if ( geom )
-                {
-                    features.push_back( feature );
-                }
+                cursor->fill(features);
             }
 
             // If we didn't get any features and we have a tilekey set, try falling back.
             if (features.empty() && localQuery.tileKey().isSet())
             {
-                localQuery.tileKey() = localQuery.tileKey().get().createParentKey();
-                if (!localQuery.tileKey()->valid())
-                {
-                    // We fell back all the way to lod 0 and got nothing, so bail.
-                    break;
-                }
+                localQuery.tileKey()->makeParent();
             }
             else
             {

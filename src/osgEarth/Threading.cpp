@@ -39,50 +39,67 @@ using namespace osgEarth::Util;
 
 //...................................................................
 
-#ifdef OSGEARTH_PROFILING
-#define MUTEX_TYPE tracy::Lockable<std::recursive_mutex>
-#else
-#define MUTEX_TYPE std::recursive_mutex
-#endif
+//#ifdef OSGEARTH_PROFILING
+//#define MUTEX_TYPE tracy::Lockable<std::recursive_mutex>
+//#else
+//#define MUTEX_TYPE std::recursive_mutex
+//#endif
 
-Mutex::Mutex()
+Mutex::Mutex() :
+    _metricsData(nullptr)
 {
 #ifdef OSGEARTH_PROFILING
-    tracy::SourceLocationData* s = new tracy::SourceLocationData();
-    s->name = nullptr;
-    s->function = "unnamed";
-    s->file = __FILE__;
-    s->line = __LINE__;
-    s->color = 0;
-    _handle = new tracy::Lockable<std::mutex>(s);
-    _data = s;
+    if (Metrics::enabled())
+    {
+        tracy::SourceLocationData* s = new tracy::SourceLocationData();
+        s->name = nullptr;
+        s->function = "unnamed";
+        s->file = __FILE__;
+        s->line = __LINE__;
+        s->color = 0;
+        _handle = new tracy::Lockable<std::mutex>(s);
+        _metricsData = s;
+    }
+    else
+    {
+        _handle = new std::mutex();
+    }
 #else
     _handle = new std::mutex();
-    _data = NULL;
 #endif
 }
 
 Mutex::Mutex(const std::string& name, const char* file, std::uint32_t line) :
-    _name(name)
+    _name(name),
+    _metricsData(nullptr)
 {
-#ifdef OSGEARTH_PROFILING        
-    tracy::SourceLocationData* s = new tracy::SourceLocationData();
-    s->name = nullptr;
-    s->function = _name.c_str();
-    s->file = file;
-    s->line = line;
-    s->color = 0;
-    _handle = new tracy::Lockable<std::mutex>(s);
-    _data = s;
+#ifdef OSGEARTH_PROFILING
+    if (Metrics::enabled())
+    {
+        tracy::SourceLocationData* s = new tracy::SourceLocationData();
+        s->name = nullptr;
+        s->function = _name.c_str();
+        s->file = file;
+        s->line = line;
+        s->color = 0;
+        _handle = new tracy::Lockable<std::mutex>(s);
+        _metricsData = s;
+    }
+    else
+    {
+        _handle = new std::mutex();
+    }
 #else
     _handle = new std::mutex();
-    _data = NULL;
 #endif
 }
 
 Mutex::~Mutex()
 {
-    delete static_cast<MUTEX_TYPE*>(_handle);
+    if (_metricsData)
+        delete static_cast<tracy::Lockable<std::mutex>*>(_handle);
+    else
+        delete static_cast<std::mutex*>(_handle);
 }
 
 void
@@ -90,9 +107,9 @@ Mutex::setName(const std::string& name)
 {
     _name = name;
 #ifdef OSGEARTH_PROFILING
-    if (_data)
+    if (_metricsData)
     {
-        tracy::SourceLocationData* s = static_cast<tracy::SourceLocationData*>(_data);
+        tracy::SourceLocationData* s = static_cast<tracy::SourceLocationData*>(_metricsData);
         s->function = _name.c_str();
     }
 #endif
@@ -102,42 +119,55 @@ void
 Mutex::lock()
 {
     if (_name.empty()) {
-        volatile int x =0 ;
+        volatile int x =0 ; // breakpoint for finding unnamed mutexes
     }
-    static_cast<MUTEX_TYPE*>(_handle)->lock();
+
+    if (_metricsData)
+        static_cast<tracy::Lockable<std::mutex>*>(_handle)->lock();
+    else
+        static_cast<std::mutex*>(_handle)->lock();
 }
 
 void
 Mutex::unlock()
 {
-    static_cast<MUTEX_TYPE*>(_handle)->unlock();
+    if (_metricsData)
+        static_cast<tracy::Lockable<std::mutex>*>(_handle)->unlock();
+    else
+        static_cast<std::mutex*>(_handle)->unlock();
 }
 
 bool
 Mutex::try_lock()
 {
-    return static_cast<MUTEX_TYPE*>(_handle)->try_lock();
+    if (_metricsData)
+        return static_cast<tracy::Lockable<std::mutex>*>(_handle)->try_lock();
+    else
+        return static_cast<std::mutex*>(_handle)->try_lock();
 }
 
 //...................................................................
 
-#ifdef OSGEARTH_PROFILING
-#define RECURSIVE_MUTEX_TYPE tracy::Lockable<std::recursive_mutex>
-#else
-#define RECURSIVE_MUTEX_TYPE std::recursive_mutex
-#endif
-
 RecursiveMutex::RecursiveMutex() :
-    _enabled(true)
+    _enabled(true),
+    _metricsData(nullptr)
 {
 #ifdef OSGEARTH_PROFILING
-    tracy::SourceLocationData* s = new tracy::SourceLocationData();
-    s->name = nullptr;
-    s->function = "unnamed recursive";
-    s->file = __FILE__;
-    s->line = __LINE__;
-    s->color = 0;
-    _handle = new tracy::Lockable<std::recursive_mutex>(s);
+    if (Metrics::enabled())
+    {
+        tracy::SourceLocationData* s = new tracy::SourceLocationData();
+        s->name = nullptr;
+        s->function = "unnamed recursive";
+        s->file = __FILE__;
+        s->line = __LINE__;
+        s->color = 0;
+        _handle = new tracy::Lockable<std::recursive_mutex>(s);
+        _metricsData = s;
+    }
+    else
+    {
+        _handle = new std::recursive_mutex();
+    }
 #else
     _handle = new std::recursive_mutex();
 #endif
@@ -145,16 +175,25 @@ RecursiveMutex::RecursiveMutex() :
 
 RecursiveMutex::RecursiveMutex(const std::string& name, const char* file, std::uint32_t line) :
     _name(name),
-    _enabled(true)
+    _enabled(true),
+    _metricsData(nullptr)
 {
-#ifdef OSGEARTH_PROFILING        
-    tracy::SourceLocationData* s = new tracy::SourceLocationData();
-    s->name = nullptr;
-    s->function = _name.c_str();
-    s->file = file;
-    s->line = line;
-    s->color = 0;
-    _handle = new tracy::Lockable<std::recursive_mutex>(s);
+#ifdef OSGEARTH_PROFILING
+    if (Metrics::enabled())
+    {
+        tracy::SourceLocationData* s = new tracy::SourceLocationData();
+        s->name = nullptr;
+        s->function = _name.c_str();
+        s->file = file;
+        s->line = line;
+        s->color = 0;
+        _handle = new tracy::Lockable<std::recursive_mutex>(s);
+        _metricsData = s;
+    }
+    else
+    {
+        _handle = new std::recursive_mutex();
+    }
 #else
     _handle = new std::recursive_mutex();
 #endif
@@ -163,7 +202,12 @@ RecursiveMutex::RecursiveMutex(const std::string& name, const char* file, std::u
 RecursiveMutex::~RecursiveMutex()
 {
     if (_handle)
-        delete static_cast<RECURSIVE_MUTEX_TYPE*>(_handle);
+    {
+        if (_metricsData)
+            delete static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle);
+        else
+            delete static_cast<std::recursive_mutex*>(_handle);
+    }
 }
 
 void
@@ -173,26 +217,54 @@ RecursiveMutex::disable()
 }
 
 void
+RecursiveMutex::setName(const std::string& name)
+{
+    _name = name;
+
+#ifdef OSGEARTH_PROFILING
+    if (_metricsData)
+    {
+        tracy::SourceLocationData* s = static_cast<tracy::SourceLocationData*>(_metricsData);
+        s->function = _name.c_str();
+    }
+#endif
+}
+
+void
 RecursiveMutex::lock()
 {
     if (_enabled)
-        static_cast<RECURSIVE_MUTEX_TYPE*>(_handle)->lock();
+    {
+        if (_metricsData)
+            static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->lock();
+        else
+            static_cast<std::recursive_mutex*>(_handle)->lock();
+    }
 }
 
 void
 RecursiveMutex::unlock()
 {
     if (_enabled)
-        static_cast<RECURSIVE_MUTEX_TYPE*>(_handle)->unlock();
+    {
+        if (_metricsData)
+            static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->unlock();
+        else
+            static_cast<std::recursive_mutex*>(_handle)->unlock();
+    }
 }
 
 bool
 RecursiveMutex::try_lock()
 {
     if (_enabled)
-        return static_cast<RECURSIVE_MUTEX_TYPE*>(_handle)->try_lock();
-    else
-        return true;
+    {
+        if (_metricsData)
+            return static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->try_lock();
+        else
+            return static_cast<std::recursive_mutex*>(_handle)->try_lock();
+    }
+    else return true;
 }
 
 //...................................................................

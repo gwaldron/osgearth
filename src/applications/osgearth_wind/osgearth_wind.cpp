@@ -39,6 +39,7 @@
 
 #include <osgDB/ReadFile>
 #include <osg/PointSprite>
+#include <osg/io_utils>
 
 #include <iostream>
 
@@ -265,6 +266,11 @@ std::string computeFrag =
 "uniform float dieSpeed;\n"
 "uniform float speedFactor;\n"
 "uniform float dropChance;\n"
+"uniform float minX;\n"
+"uniform float minY;\n"
+"uniform float maxX;\n"
+"uniform float maxY;\n"
+"uniform vec4 boundingBox;\n"
 
 "uniform float osg_DeltaSimulationTime; \n"
 "uniform float osg_SimulationTime; \n"
@@ -288,6 +294,11 @@ std::string computeFrag =
 "   vec3 position = positionInfo.xyz;\n"
 "   float life = positionInfo.w;\n"
 
+//"   float minX = particleBounds.x;\n"
+//"   float minY = particleBounds.y;\n"
+//"   float maxX = particleBounds.z;\n"
+//"   float maxY = particleBounds.w;\n"
+
 "   if (dieSpeed > 0)\n"
 "   {\n"
 "     life -= (osg_DeltaSimulationTime / dieSpeed);\n"
@@ -298,8 +309,8 @@ std::string computeFrag =
 "   if (life < 0.0 || dropChance > drop) {\n"
 "       life = oe_random(0.3, 1.0, seed + 3.4);\n"
 //"       life = 1.0;\n"
-"       float x = oe_random(0.0, 1.0, seed + 1.3);\n"
-"       float y = oe_random(0.0, 1.0, seed + 2.1);\n"
+"       float x = oe_random(boundingBox.x, boundingBox.z, seed + 1.3);\n"
+"       float y = oe_random(boundingBox.y, boundingBox.w, seed + 2.1);\n"
 "       float z= 0.0;\n"
 "       position = vec3(x, y, z);\n"
 "   }\n"
@@ -441,6 +452,14 @@ public:
         _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("speedFactor", 1.0f));
         _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("dropChance", 0.0f));
 
+        _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("minX", 0.0f));
+        _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("minY", 0.0f));
+        _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("maxX", 1.0f));
+        _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("maxY", 1.0f));
+        //_computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("boundingBox", osg::Vec4f(0.0f, 0.0f, 1.0f, 1.0f)));
+        _computeNode->getOrCreateStateSet()->addUniform(new osg::Uniform("boundingBox", osg::Vec4f(0.25f, 0.25f, 0.75f, 0.75f)));
+
+
         // Create the render target
         createOutputTexture();
         createRTTCamera();
@@ -548,6 +567,24 @@ public:
             _maxColor = maxColor;
             getOrCreateStateSet()->getUniform("maxColor")->set(_maxColor);
         }
+    }
+
+    void setBoundingBox(const osg::Vec4& boundingBox)
+    {
+        _computeNode->getOrCreateStateSet()->getUniform("minX")->set(boundingBox.x());
+        _computeNode->getOrCreateStateSet()->getUniform("minY")->set(boundingBox.y());
+        _computeNode->getOrCreateStateSet()->getUniform("maxX")->set(boundingBox.z());
+        _computeNode->getOrCreateStateSet()->getUniform("maxY")->set(boundingBox.w());
+    }
+
+    osg::Vec4 getBoundingBox() const
+    {
+        float minX, minY, maxX, maxY;
+        _computeNode->getOrCreateStateSet()->getUniform("minX")->get(minX);
+        _computeNode->getOrCreateStateSet()->getUniform("minY")->get(minY);
+        _computeNode->getOrCreateStateSet()->getUniform("maxX")->get(maxX);
+        _computeNode->getOrCreateStateSet()->getUniform("maxY")->get(maxY);
+        return osg::Vec4(minX, minY, maxX, maxY);
     }
 
     osg::Texture2D* getOutputTexture() const
@@ -672,6 +709,16 @@ public:
         return _node->setDropChance(value);
     }
 
+    osg::Vec4 getBoundingBox() const
+    {
+        return _node->getBoundingBox();
+    }
+
+    void setBoundingBox(const osg::Vec4& boundingBox)
+    {
+        return _node->setBoundingBox(boundingBox);
+    }
+
     const osg::Vec4& getMinColor() const
     {
         return _node->getMinColor();
@@ -758,7 +805,7 @@ protected:
     virtual void drawUi(osg::RenderInfo& renderInfo)
     {
         // ImGui code goes here...
-        ImGui::ShowDemoWindow();
+        //ImGui::ShowDemoWindow();
         _layers.draw(_mapNode.get(), _view->getCamera(), _earthManip.get());
 
         ImGui::Begin("Wind");
@@ -782,6 +829,27 @@ protected:
         float altitude = _wind->getParticleAltitude();
         ImGui::SliderFloat("Altitude", &altitude, 0, 300000.0f);
         _wind->setParticleAltitude(altitude);
+
+
+        osg::Vec4 boundingBox = _wind->getBoundingBox();
+        float minX = -180.0f + boundingBox.x() * 360.0f;
+        float minY = -90.0f + boundingBox.y() * 180.0f;
+        float maxX = -180.0f + boundingBox.z() * 360.0f;
+        float maxY = -90.0f + boundingBox.w() * 180.0f;
+        bool bboxDirty = false;
+        bboxDirty |= ImGui::SliderFloat("Min X", &minX, -180.0, 180.0);
+        bboxDirty |= ImGui::SliderFloat("Max X", &maxX, -180.0, 180.0);
+        bboxDirty |= ImGui::SliderFloat("Min Y", &minY, -90.0, 90.0);
+        bboxDirty |= ImGui::SliderFloat("Max Y", &maxY, -90.0, 90.0);
+        if (bboxDirty)
+        {
+            _wind->setBoundingBox(osg::Vec4(
+                (minX + 180.0) / 360.0,
+                (minY + 90.0) / 180.0,
+                (maxX + 180.0) / 360.0,
+                (maxY + 90.0) / 180.0
+            ));
+        }
 
         osg::Vec4 minColor = _wind->getMinColor();
         if (ImGui::ColorEdit4("Min Color", minColor._v))

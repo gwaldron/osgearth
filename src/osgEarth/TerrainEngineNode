@@ -161,6 +161,9 @@ namespace osgEarth
         // Request that the terrain tiles be rebuilt.
         virtual void dirtyTerrain();
 
+        //! Shut down the engine
+        virtual void shutdown() { }
+
     public:
         class OSGEARTH_EXPORT ModifyTileBoundingBoxCallback : public osg::Referenced
         {

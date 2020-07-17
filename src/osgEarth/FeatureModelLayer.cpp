@@ -216,6 +216,11 @@ FeatureModelLayer::closeImplementation()
     options().featureSource().close();
     options().styleSheet().close();
     _graphDirty = true;
+    if (_root.valid())
+    {
+        FeatureModelGraph* fmg = findTopMostNodeOfType<FeatureModelGraph>(_root.get());
+        if (fmg) fmg->shutdown();
+    }
     return getStatus();
 }
 

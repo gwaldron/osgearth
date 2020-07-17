@@ -21,6 +21,9 @@ namespace
     {
         unsigned _frame;
         bool _canCancel;
+        bool _done;
+
+        ProgressMaster() : _canCancel(true), _done(false) { }
 
         void operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
@@ -45,12 +48,20 @@ namespace
 
         virtual bool shouldCancel() const
         {
-            osg::ref_ptr<ProgressMaster> master = _master.get();
+            osg::ref_ptr<ProgressMaster> master(_master.get());
 
-            return 
+            bool should = 
                 (DatabasePagerProgressCallback::shouldCancel()) ||
                 (master.valid() == false) ||
+                (master->_done == true) ||
                 (master->_canCancel && _master->_frame - _lastFrame > 1u);
+
+            if (should)
+            {
+                OE_INFO << LC << "Canceling SP task on thread " << std::this_thread::get_id() << std::endl;
+            }
+
+            return should;
         }
 
         // called by ProgressUpdater
@@ -166,6 +177,11 @@ bool SimplePager::getEnableCancalation() const
 void SimplePager::build()
 {
     addChild( buildRootNode() );
+}
+
+void SimplePager::shutdown()
+{
+    static_cast<ProgressMaster*>(_progressMaster.get())->_done = true;
 }
 
 osg::BoundingSphere SimplePager::getBounds(const TileKey& key) const

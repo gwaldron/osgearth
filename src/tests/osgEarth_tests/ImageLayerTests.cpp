@@ -28,7 +28,7 @@
 
 using namespace osgEarth;
 
-TEST_CASE( "ImageLayers can be created from TileSourceOptions" )
+TEST_CASE( "ImageLayers can be created" )
 {
     GDALImageLayer* layer = new GDALImageLayer();
     layer->setName("World");
@@ -40,17 +40,14 @@ TEST_CASE( "ImageLayers can be created from TileSourceOptions" )
     SECTION("Profiles are correct")
     {
         const Profile* profile = layer->getProfile();
-        REQUIRE(profile != NULL);
-
-        // This doesn't actually work without a change to the gdal driver.
-        //REQUIRE(profile->isEquivalentTo(osgEarth::Registry::instance()->getGlobalGeodeticProfile()));
-        //REQUIRE(profile->isHorizEquivalentTo(globalGeodetic));
+        REQUIRE(profile != nullptr);
+        REQUIRE(profile->isEquivalentTo(Profile::create("global-geodetic")));
     }
 
     SECTION("Images are read correctly")
     {
-        TileKey key(0,0,0,layer->getProfile());
-        GeoImage image = layer->createImage( key );
+        TileKey key(0, 0, 0, layer->getProfile());
+        GeoImage image = layer->createImage(key);
         REQUIRE(image.valid());
         REQUIRE(image.getImage()->s() == 256);
         REQUIRE(image.getImage()->t() == 256);

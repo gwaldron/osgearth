@@ -80,7 +80,10 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
 
     GeomFeatureNodeFactory factory(options);
 
-    osg::ref_ptr< FeatureCursor > cursor = _features->createFeatureCursor(query, 0);
+    if (progress && progress->isCanceled())
+        return nullptr;
+
+    osg::ref_ptr< FeatureCursor > cursor = _features->createFeatureCursor(query, progress);
     osg::ref_ptr<osg::Node> node = new osg::Group;
     if (cursor)
     {
@@ -118,6 +121,9 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
                         {
                             styleToFeatures[styleString].push_back(feature);
                         }
+
+                        if (progress && progress->isCanceled())
+                            return nullptr;
                     }
                 }
             }

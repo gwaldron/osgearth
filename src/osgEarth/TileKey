@@ -202,15 +202,14 @@ namespace osgEarth
             unsigned minimumLOD =0) const;
 
         //! X and Y resolution (in profile units) for the given tile size
-        std::pair<double,double> getResolution(unsigned tileSize) const;
+        std::pair<double,double> getResolution(
+            unsigned tileSize) const;
 
     protected:
-        std::string _key;
         unsigned int _lod;
         unsigned int _x;
         unsigned int _y;
         osg::ref_ptr<const Profile> _profile;
-        GeoExtent _extent;
         size_t _hash;
         void rehash();
 
@@ -219,7 +218,6 @@ namespace osgEarth
     };
 }
 
-#ifdef OSGEARTH_CXX11
 namespace std {
     // std::hash specialization for TileKey
     template<> struct hash<osgEarth::TileKey> {
@@ -228,6 +226,5 @@ namespace std {
         }
     };
 }
-#endif
 
 #endif // OSGEARTH_TILE_KEY_H

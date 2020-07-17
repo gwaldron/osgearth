@@ -32,6 +32,33 @@ using namespace osgEarth;
 
 #define LC "[ElevationPool] "
 
+ElevationPool::StrongLRU::StrongLRU(unsigned maxSize) :
+    _maxSize(maxSize)
+{
+    //nop
+}
+
+void
+ElevationPool::StrongLRU::push(ElevationPool::Pointer& p)
+{
+    ScopedMutexLock lock(_lru);
+    _lru.push(p);
+    if (_lru.size() > (unsigned)((1.5f*(float)_maxSize)))
+    {
+        while(_lru.size() > _maxSize)
+            _lru.pop();
+    }
+}
+
+void
+ElevationPool::StrongLRU::clear()
+{
+    ScopedMutexLock lock(_lru);
+    while(!_lru.empty())
+        _lru.pop();
+}
+    
+
 void
 ElevationPool::MapCallbackAdapter::onMapModelChanged(const MapModelChange& c)
 {
@@ -43,11 +70,11 @@ ElevationPool::ElevationPool() :
     _tileSize(257),
     _mapDataDirty(true),
     _workers(0),
-    _refreshMutex("ElevPool(OE)"),
-    _globalLUTMutex("ElevPool LUT(OE)")
+    _refreshMutex("OE.ElevPool.RM"),
+    _globalLUTMutex("OE.ElevPool.GLUT"),
+    _L2(64u)
 {
-    // small L2 cache to use if the caller doesn't supply a working set
-    _L2 = new WorkingSet(32u);
+    _L2._lru.setName("OE.ElevPool.LRU");
 
     // adapter for detecting elevation layer changes
     _mapCallback = new MapCallbackAdapter();
@@ -55,9 +82,6 @@ ElevationPool::ElevationPool() :
 
 ElevationPool::~ElevationPool()
 {
-    if (_L2)
-        delete _L2;
-
     setMap(NULL);
 }
 
@@ -131,6 +155,8 @@ ElevationPool::refresh(const Map* map)
 {
     _elevationLayers.clear();
 
+    OE_INFO << LC << "Refreshing EP index" << std::endl;
+
     if (_index)
         delete static_cast<MaxLevelIndex*>(_index);
 
@@ -156,18 +182,18 @@ ElevationPool::refresh(const Map* map)
             // Check.
             unsigned maxLevel = layer->getProfile()->getEquivalentLOD(map->getProfile(), de->maxLevel().get());
 
-            index->Insert(minv, maxv, maxLevel);
+            index->Insert(minv, maxv, maxLevel);            
         }
     }
 
-    _L2->_lru.clear();
+    _L2.clear();
 
     _globalLUTMutex.write_lock();
     _globalLUT.clear();
     _globalLUTMutex.write_unlock();
 }
 
-unsigned
+int
 ElevationPool::getLOD(double x, double y) const
 {
     MaxLevelIndex* index = static_cast<MaxLevelIndex*>(_index);
@@ -176,18 +202,19 @@ ElevationPool::getLOD(double x, double y) const
     minv[0] = maxv[0] = x, minv[1] = maxv[1] = y;
     std::vector<unsigned> hits;
     index->Search(minv, maxv, &hits, 99);
-    unsigned maxiestMaxLevel = 0u;
+    int maxiestMaxLevel = -1;
     for(auto h = hits.begin(); h != hits.end(); ++h)
     {
-        maxiestMaxLevel = osg::maximum(maxiestMaxLevel, *h); 
+        maxiestMaxLevel = osg::maximum(maxiestMaxLevel, (int)*h); 
     }
     return maxiestMaxLevel;
 }
 
 ElevationPool::WorkingSet::WorkingSet(unsigned size) :
-    _lru(true, size)
+    _lru(size)
 {
     //nop
+    _lru._lru.setName("OE.WorkingSet.LRU");
 }
 
 bool
@@ -203,6 +230,7 @@ ElevationPool::findExistingRaster(
     *fromL2 = false;
     *fromLUT = false;
 
+#if 0
     // First check the workingset. No mutex required since the
     // LRU has its own mutex. (TODO: maybe just combine mutexes here)
     if (ws)
@@ -228,6 +256,7 @@ ElevationPool::findExistingRaster(
             return true;
         }
     }
+#endif
 
     // Next check the system LUT -- see if someone somewhere else
     // already has it (the terrain or another WorkingSet)
@@ -322,6 +351,7 @@ ElevationPool::getOrCreateRaster(
         // check for cancelation/deferral
         if (progress && progress->isCanceled())
         {
+            delete [] resolutions;
             return NULL;
         }
 
@@ -334,6 +364,7 @@ ElevationPool::getOrCreateRaster(
         }
         else
         {
+            delete [] resolutions;
             return NULL;
         }
     }
@@ -351,25 +382,16 @@ ElevationPool::getOrCreateRaster(
 
     // update WorkingSet:
     if (ws)
-    {
-        ws->_lru.insert(key, result.get());
-    }
+        ws->_lru.push(result);
 
-    // update if L2 cache, but ONLY if the user did not supply
-    // their own working set. We don't want to "pollute" the 
-    // shared L2 cache with localized data.
-    else if (_L2)
-    {
-        _L2->_lru.insert(key, result.get());
-    }
+    // update the L2 cache:
+    _L2.push(result);
 
     // update system weak-LUT:
     if (!fromLUT)
     {
         Threading::ScopedWriteLock lock(_globalLUTMutex);
-        //_globalLUT.lock();
         _globalLUT[key] = result.get();
-        //_globalLUT.unlock();
     }
 
     return result;
@@ -465,17 +487,19 @@ ElevationPool::sampleMapCoords(
     int tx, ty;
     int tx_prev = INT_MAX, ty_prev = INT_MAX;
     float lastRes = -1.0f;
-    unsigned lod;
-    unsigned lod_prev = INT_MAX;
+    int lod;
+    int lod_prev = INT_MAX;
     const Units& units = map->getSRS()->getUnits();
     Distance pointRes(0.0, units);
 
     for(auto& p : points)
     {
         {
-            OE_PROFILING_ZONE_NAMED("createTileKey");
+            //OE_PROFILING_ZONE_NAMED("createTileKey");
 
-            if (p.w() >= 0.0f && p.w() != lastRes)
+            // Reconsider, b/c an inset could mean we need to re-query the LOD.
+            if ((p.w() >= 0.0f && p.w() != lastRes) ||
+                (lod < 0))
             {
                 pointRes.set(p.w(), units);
 
@@ -485,7 +509,12 @@ ElevationPool::sampleMapCoords(
                     resolutionInMapUnits,
                     ELEVATION_TILE_SIZE);
 
-                lod = osg::minimum( getLOD(p.x(), p.y()), maxLOD );
+                lod = osg::minimum( getLOD(p.x(), p.y()), (int)maxLOD );
+                if (lod < 0)
+                {
+                    p.z() = NO_DATA_VALUE;
+                    continue;
+                }
 
                 profile->getNumTiles(lod, tw, th);
 
@@ -532,7 +561,7 @@ ElevationPool::sampleMapCoords(
             }
 
             {
-                OE_PROFILING_ZONE_NAMED("sample");
+                //OE_PROFILING_ZONE_NAMED("sample");
                 if (raster.valid())
                 {
                     u = (p.x() - raster->getExtent().xMin()) /  raster->getExtent().width();
@@ -616,11 +645,15 @@ ElevationPool::sampleMapCoords(
 
     double resolutionInMapUnits = resolution.asDistance(units, points[0].y());
 
-    unsigned maxLOD = profile->getLevelOfDetailForHorizResolution(
+    int maxLOD = profile->getLevelOfDetailForHorizResolution(
         resolutionInMapUnits,
         ELEVATION_TILE_SIZE);
 
-    lod = osg::minimum( getLOD(points[0].x(), points[0].y()), maxLOD );
+    lod = osg::minimum( getLOD(points[0].x(), points[0].y()), (int)maxLOD );
+
+    //TODO: Fix this mess, doesn't work for insets.
+    if (lod < 0)
+        lod = 0;
 
     profile->getNumTiles(lod, tw, th);
 
@@ -715,22 +748,24 @@ ElevationPool::getSample(
     ScopedAtomicCounter counter(_workers);
 
     Internal::RevElevationKey key;
-    unsigned lod = osg::minimum( getLOD(p.x(), p.y()), maxLOD );
-    key._tilekey = map->getProfile()->createTileKey(p.x(), p.y(), lod);
-    key._revision = getElevationRevision(map);
+    int lod = osg::minimum( getLOD(p.x(), p.y()), (int)maxLOD );
+    if (lod >= 0)
+    {   
+        key._tilekey = map->getProfile()->createTileKey(p.x(), p.y(), lod);
+        key._revision = getElevationRevision(map);
 
-    osg::ref_ptr<ElevationTexture> raster = getOrCreateRaster(
-        key,   // key to query
-        map,   // map to query
-        true,  // fall back on lower resolution data if necessary
-        ws,    // user's workingset
-        progress);
+        osg::ref_ptr<ElevationTexture> raster = getOrCreateRaster(
+            key,   // key to query
+            map,   // map to query
+            true,  // fall back on lower resolution data if necessary
+            ws,    // user's workingset
+            progress);
 
-    if (raster.valid())
-    {
-        return raster->getElevation(p.x(), p.y());
+        if (raster.valid())
+        {
+            return raster->getElevation(p.x(), p.y());
+        }
     }
-
     return ElevationSample();
 }
 
@@ -823,7 +858,7 @@ ElevationPool::getTile(
         ws,
         progress);
 
-    return true;
+    return out_tex.valid();
 }
 
 //...................................................................

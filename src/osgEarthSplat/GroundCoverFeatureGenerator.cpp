@@ -141,6 +141,12 @@ GroundCoverFeatureGenerator::setLayer(GroundCoverLayer* layer)
 }
 
 void
+GroundCoverFeatureGenerator::setViewPosition(const GeoPoint& value)
+{
+    _location = value;
+}
+
+void
 GroundCoverFeatureGenerator::addBillboardPropertyName(const std::string& name)
 {
     _propNames.push_back(name);
@@ -279,6 +285,28 @@ GroundCoverFeatureGenerator::getFeatures(const GeoExtent& extent, FeatureList& o
     return Status::NoError;
 }
 
+const BiomeZone&
+GroundCoverFeatureGenerator::selectZone(const GeoPoint& p) const
+{
+    if (p.isValid() == false)
+    {
+        return _gclayer->getZones()[0];
+    }
+
+    // reverse iteration:
+    for(int i=_gclayer->getZones().size()-1; i >= 0; --i)
+    {
+        const BiomeZone& zone = _gclayer->getZones()[i];
+
+        if (zone.contains(p))
+        {
+            return zone;
+        }
+    }
+
+    return _gclayer->getZones()[0];
+}
+
 Status
 GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output) const
 {
@@ -296,7 +324,12 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     if (_gclayer->getZones().empty())
         return Status("No zones found in GroundCoverLayer");
 
-    const BiomeZone& zone = _gclayer->getZones()[0];
+    GeoPoint p = _location;
+
+    if (!_location.isValid())
+        key.getExtent().getCentroid(p);
+
+    const BiomeZone& zone = selectZone(p);
 
     // noise sampler:
     ImageUtils::PixelReader sampleNoise;

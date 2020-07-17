@@ -963,7 +963,7 @@ VirtualProgram::VirtualProgram(unsigned mask) :
     _logPath(""),
     _acceptCallbacksVaryPerFrame(false),
     _isAbstract(false),
-    _dataModelMutex("VirtualProgram(OE)")
+    _dataModelMutex("OE.VirtualProgram")
 {
     // Note: we cannot set _active here. Wait until apply().
     // It will cause a conflict in the Registry.
@@ -1017,7 +1017,9 @@ VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& cop
     _logPath(rhs._logPath),
     _template(osg::clone(rhs._template.get())),
     _acceptCallbacksVaryPerFrame(rhs._acceptCallbacksVaryPerFrame),
-    _isAbstract(rhs._isAbstract)
+    _isAbstract(rhs._isAbstract),
+    _dataModelMutex("OE.VirtualProgram")
+
 {
     _id = osgEarth::Registry::instance()->createUID();
 

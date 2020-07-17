@@ -85,6 +85,9 @@ namespace osgEarth { namespace REX
             unsigned referenceLOD,
             const TileKey& subRegion);
 
+        //! Shutdown the engine and any running services
+        void shutdown() override;
+
     public: // osg::Node
 
         void traverse(osg::NodeVisitor& nv);
@@ -169,7 +172,7 @@ namespace osgEarth { namespace REX
 
         RenderBindings _renderBindings;
         osg::ref_ptr<GeometryPool> _geometryPool;
-        osg::ref_ptr<LoaderGroup>  _loader;
+        osg::ref_ptr<Loader>  _loader;
         osg::ref_ptr<UnloaderGroup> _unloader;
         
         osg::ref_ptr<osg::Group> _terrain;

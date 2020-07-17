@@ -44,6 +44,33 @@ namespace
     }
 }
 
+osg::Texture*
+osgEarth::createEmptyElevationTexture()
+{
+    osg::Image* image = new osg::Image();
+    image->allocateImage(1, 1, 1, GL_RED, GL_FLOAT);
+    *((GLfloat*)image->data()) = 0.0f;
+    osg::Texture2D* tex = new osg::Texture2D(image);
+    tex->setInternalFormat(GL_R32F);
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    return tex;
+}
+
+osg::Texture*
+osgEarth::createEmptyNormalMapTexture()
+{
+    osg::Image* image = new osg::Image();
+    image->allocateImage(1, 1, 1, GL_RG, GL_UNSIGNED_BYTE);
+    ImageUtils::PixelWriter write(image);
+    osg::Vec2 packed;
+    packNormal(osg::Vec3(0,0,1), packed);
+    write(osg::Vec4(packed.x(), packed.y(), 0, 0), 0, 0);
+    osg::Texture2D* tex = new osg::Texture2D(image);
+    tex->setInternalFormat(GL_RG8);
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    return tex;
+}
+
 ElevationTexture::ElevationTexture(const TileKey& key, const GeoHeightField& in_hf, float* resolutions) :
     _tilekey(key),
     _extent(in_hf.getExtent()),
@@ -79,7 +106,9 @@ ElevationTexture::ElevationTexture(const TileKey& key, const GeoHeightField& in_
         setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
         setResizeNonPowerOfTwoHint(false);
         setMaxAnisotropy(1.0f);
-        setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+
+        // Pooled, so never expire them.
+        setUnRefImageDataAfterApply(false);
 
         _read.setTexture(this);
         _read.setSampleAsTexture(false);
@@ -112,6 +141,43 @@ ElevationTexture::getElevationUV(double u, double v) const
     u = osg::clampBetween(u, 0.0, 1.0), v = osg::clampBetween(v, 0.0, 1.0);
     _read(value, u, v);
     return ElevationSample(Distance(value.r(),Units::METERS), _resolution);
+}
+
+osg::Texture2D*
+ElevationTexture::getNormalMapTexture() const
+{
+    return _normalTex.get();
+}
+
+void
+ElevationTexture::generateNormalMap(
+    const Map* map,
+    void* workingSet,
+    ProgressCallback* progress)
+{
+    if (!_normalTex.valid())
+    {
+        // one thread allowed to generate the normal map
+        static Gate<void*> s_thisGate("OE.ElevTexNormalMap");
+        ScopedGate<void*> lockThis(s_thisGate, this);
+
+        if (!_normalTex.valid())
+        {
+            NormalMapGenerator gen;
+
+            _normalTex = gen.createNormalMap(
+                getTileKey(),
+                map,
+                workingSet,
+                progress);
+
+            if (_normalTex.valid())
+            {
+                // these are pooled, so do not expire them.
+                _normalTex->setUnRefImageDataAfterApply(false);
+            }
+        }
+    }
 }
 
 

@@ -790,18 +790,6 @@ ElevationLayerVector::populateHeightField(
     double   dx         = key.getExtent().width() / (double)(numColumns-1);
     double   dy         = key.getExtent().height() / (double)(numRows-1);
 
-    // We will load the actual heightfields on demand. We might not need them all.
-    GeoHeightFieldVector heightFields(contenders.size());
-    std::vector<TileKey> heightFieldActualKeys(contenders.size());
-    GeoHeightFieldVector offsetFields(offsets.size());
-    std::vector<bool>    heightFallback(contenders.size(), false);
-    std::vector<bool>    heightFailed(contenders.size(), false);
-    std::vector<bool>    offsetFailed(offsets.size(), false);
-
-    // The maximum number of heightfields to keep in this local cache
-    const unsigned maxHeightFields = 50;
-    unsigned numHeightFieldsInCache = 0;
-
     const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
 
     bool realData = false;
@@ -848,6 +836,25 @@ ElevationLayerVector::populateHeightField(
     // If we need to mosaic multiple layers or resample it to a new output tilesize go through a resampling loop.
     if (requiresResample)
     {
+        // We will load the actual heightfields on demand. We might not need them all.
+        GeoHeightFieldVector heightFields(contenders.size());
+        std::vector<TileKey> heightFieldActualKeys(contenders.size());
+        GeoHeightFieldVector offsetFields(offsets.size());
+        std::vector<bool>    heightFallback(contenders.size(), false);
+        std::vector<bool>    heightFailed(contenders.size(), false);
+        std::vector<bool>    offsetFailed(offsets.size(), false);
+
+        // Initialize the actual keys to match the contender keys.
+        // We'll adjust these as necessary if we need to fall back
+        for(unsigned i=0; i<contenders.size(); ++i)
+        {
+            heightFieldActualKeys[i] = contenders[i].key;
+        }
+
+        // The maximum number of heightfields to keep in this local cache
+        const unsigned maxHeightFields = 50;
+        unsigned numHeightFieldsInCache = 0;
+
         for (unsigned c = 0; c < numColumns; ++c)
         {
             double x = xmin + (dx * (double)c);

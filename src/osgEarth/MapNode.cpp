@@ -451,8 +451,25 @@ MapNode::open()
     return true;
 }
 
+void
+MapNode::shutdown()
+{
+    if (_terrainEngine)
+        _terrainEngine->shutdown();
+
+    if (_map.valid())
+    {
+        LayerVector layers;
+        _map->getLayers(layers);
+        for(auto& layer : layers)
+            layer->close();
+    }
+}
+
 MapNode::~MapNode()
 {
+    shutdown();
+
     if (_mapCallback.valid())
     {
         // Remove this node's map callback first:

@@ -25,23 +25,18 @@ using namespace osgEarth;
 
 // --------------------------------------------------------------------------
 
-TangentPlaneSpatialReference::TangentPlaneSpatialReference( void* handle, const osg::Vec3d& originLLA ) :
-SpatialReference( handle, false ),
-_originLLA      ( originLLA )
-{
-    //nop
-}
+TangentPlaneSpatialReference::TangentPlaneSpatialReference(
+    const Key& key,
+    const osg::Vec3d& originLLA) :
 
-void
-TangentPlaneSpatialReference::_init()
+    SpatialReference(key),
+    _originLLA(originLLA)
 {
-    SpatialReference::_init();
-
     _is_user_defined = true;
     _is_contiguous   = true;
-    _is_ltp          = true;
-    _is_geographic   = false;
-    _name            = "ENU Local Tangent Plane";
+    _is_ltp = true;
+    _domain = PROJECTED;
+    _name = "Tangent Plane";
 
     // set up the LTP matrixes.
 

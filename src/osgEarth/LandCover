@@ -35,6 +35,9 @@ namespace osgEarth
         //! Create an empty no-data image
         static osg::Image* createEmptyImage();
 
+        //! Create an empty no-data texture
+        static osg::Texture* createEmptyTexture();
+
         //! the internal texture format used for land cover data
         static GLint getTextureFormat();
 

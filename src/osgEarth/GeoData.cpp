@@ -1057,12 +1057,12 @@ GeoExtent::intersects(const GeoExtent& rhs, bool checkSRS) const
     // Transform the incoming extent if necessary:
     if ( checkSRS && !_srs->isHorizEquivalentTo(rhs.getSRS()) )
     {
-        if (_srs->isContiguous())
-        {
-            GeoExtent rhsExt = rhs.transform(getSRS());
-            return this->intersects( rhsExt, false );
-        }
-        else
+        //if (_srs->isContiguous())
+        //{
+        //    GeoExtent rhsExt = rhs.transform(getSRS());
+        //    return this->intersects( rhsExt, false );
+        //}
+        //else
         {
             // non-contiguous projection? convert to a contiguous one:
             GeoExtent thisGeo = transform(getSRS()->getGeographicSRS());

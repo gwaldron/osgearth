@@ -190,6 +190,11 @@ TiledFeatureModelLayer::closeImplementation()
     options().featureSource().close();
     options().styleSheet().close();
     _graphDirty = true;
+    if (_root.valid())
+    {
+        TiledFeatureModelGraph* fmg = findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
+        if (fmg) fmg->shutdown();
+    }
     return getStatus();
 }
 

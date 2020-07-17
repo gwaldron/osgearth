@@ -18,6 +18,8 @@
  */
 #include <osgEarth/LandCover>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/Registry>
+#include <osg/Texture2D>
 
 #define LC "[LandCover] "
 
@@ -41,6 +43,16 @@ LandCover::createEmptyImage()
     osg::Image* image = createImage(1,1);
     *((GLfloat*)image->data()) = NO_DATA_VALUE;
     return image;
+}
+
+osg::Texture*
+LandCover::createEmptyTexture()
+{
+    osg::Image* image = createEmptyImage();
+    osg::Texture2D* tex = new osg::Texture2D(image);
+    tex->setInternalFormat(getTextureFormat());
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    return tex;
 }
 
 GLint

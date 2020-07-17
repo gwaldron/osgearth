@@ -200,6 +200,9 @@ TerrainTileModelFactory::addImageLayer(
     const TerrainEngineRequirements* reqs,
     ProgressCallback* progress)
 {
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT(imageLayer->getName());
+
     TerrainTileImageLayerModel* layerModel = NULL;
     osg::Texture* tex = 0L;
     TextureWindow window;
@@ -398,6 +401,9 @@ TerrainTileModelFactory::addElevation(
     unsigned                     border,
     ProgressCallback*            progress)
 {
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT("Elevation");
+
     bool needElevation = manifest.includesElevation();
     ElevationLayerVector layers;
     map->getLayers(layers);
@@ -426,7 +432,7 @@ TerrainTileModelFactory::addElevation(
 
     const bool acceptLowerRes = false;
 
-    if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, NULL, progress))
+    if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, &_workingSet, progress))
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
 
@@ -434,19 +440,8 @@ TerrainTileModelFactory::addElevation(
 
         if ( elevTex.valid() )
         {
-            // Make a normal map
-            NormalMapGenerator gen;
-
-            Distance resolution(
-                key.getExtent().height() / (osgEarth::ELEVATION_TILE_SIZE-1),
-                key.getProfile()->getSRS()->getUnits());
-            
-            osg::Texture2D* normalMap = gen.createNormalMap(key, map, &_workingSet, progress);
-
-            if (normalMap)
-            {
-                elevTex->setNormalMapTexture(normalMap);
-            }
+            // Make a normal map if it doesn't already exist
+            elevTex->generateNormalMap(map, &_workingSet, progress);
 
             // Made an image, so store this as a texture with no matrix.
             layerModel->setTexture( elevTex.get() );
@@ -494,6 +489,9 @@ TerrainTileModelFactory::addLandCover(
     const CreateTileManifest&    manifest,
     ProgressCallback*            progress)
 {
+    OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT("LandCover");
+
     TerrainTileLandCoverModel* landCoverModel = NULL;
 
     // Note. We only support one land cover layer...
@@ -598,13 +596,20 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
 {
     osg::Texture* tex = nullptr;
     bool hasMipMaps = false;
+    bool isCompressed = false;
+
+    // figure out the texture compression method to use (if any)
+    std::string compressionMethod = layer->getCompressionMethod();
+    if (compressionMethod.empty())
+        compressionMethod = _options.textureCompression().get();
 
     if (image->r() == 1)
     {
-        const osg::Image* compressed = ImageUtils::compressImage(image, layer->getCompressionMethod());
+        const osg::Image* compressed = ImageUtils::compressImage(image, compressionMethod);
         const osg::Image* mipmapped = ImageUtils::mipmapImage(compressed);
         tex = new osg::Texture2D(const_cast<osg::Image*>(mipmapped));
         hasMipMaps = mipmapped->isMipmap();
+        isCompressed = mipmapped->isCompressed();
 
         if (layer->getCompressionMethod() == "gpu" && !mipmapped->isCompressed())
             tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
@@ -618,13 +623,14 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
         const osg::Image* compressed;
         for(auto& ref : images)
         {
-            compressed = ImageUtils::compressImage(image, layer->getCompressionMethod());
+            compressed = ImageUtils::compressImage(ref.get(), compressionMethod);
             ref = ImageUtils::mipmapImage(compressed);
 
             if (layer->getCompressionMethod() == "gpu" && !compressed->isCompressed())
                 tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
 
             hasMipMaps = compressed->isMipmap();
+            isCompressed = compressed->isCompressed();
         }
 
         osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
@@ -636,6 +642,18 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
             tex2dArray->setImage(i, const_cast<osg::Image*>(images[i].get()));
 
         tex = tex2dArray;
+    }
+
+    if (!isCompressed)
+    {
+        // Make sure we are using a proper sized internal format
+        if (tex->getImage(0)->getInternalTextureFormat() == tex->getImage(0)->getPixelFormat())
+        {
+            if (tex->getImage(0)->getPixelFormat() == GL_RGB) tex->setInternalFormat(GL_RGB8);
+            else if (tex->getImage(0)->getPixelFormat() == GL_RGBA) tex->setInternalFormat(GL_RGBA8);
+            else if (tex->getImage(0)->getPixelFormat() == GL_RG) tex->setInternalFormat(GL_RG8);
+            else if (tex->getImage(0)->getPixelFormat() == GL_RED) tex->setInternalFormat(GL_R8);
+        }
     }
 
     tex->setDataVariance(osg::Object::STATIC);
@@ -679,7 +697,7 @@ TerrainTileModelFactory::createCoverageTexture(const osg::Image* image) const
     osg::Texture2D* tex = new osg::Texture2D(const_cast<osg::Image*>(image));
     tex->setDataVariance(osg::Object::STATIC);
 
-    tex->setInternalFormat(GL_R16F);
+    tex->setInternalFormat(LandCover::getTextureFormat());
 
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );

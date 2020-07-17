@@ -23,12 +23,9 @@
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Geometry>
+#include <osgText/Font>
 
 using namespace osgEarth;
-
-namespace osgText {
-    class Font;
-}
 
 namespace osgEarth { namespace Util
 {

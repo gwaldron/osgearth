@@ -25,6 +25,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
+#include <osgEarth/Metrics>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -840,7 +841,7 @@ GDAL::Driver::open(const std::string& name,
     }
 
     // Get the linear units of the SRS for scaling elevation values
-    _linearUnits = OSRGetLinearUnits((OGRSpatialReferenceH)srs->getHandle(), 0);
+    _linearUnits = srs->getReportedLinearUnits();
 
     // Set the final profile
     _profile = profile;
@@ -1696,6 +1697,7 @@ GDAL::Options::readFrom(const Config& conf)
     _interpolation.init(INTERP_AVERAGE);
     _useVRT.init(false);
     coverageUsesPaletteIndex().setDefault(true);
+    singleThreaded().setDefault(false);
 
     conf.get("url", _url);
     conf.get("connection", _connection);
@@ -1708,6 +1710,7 @@ GDAL::Options::readFrom(const Config& conf)
     conf.get("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
     conf.get("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
     conf.get("coverage_uses_palette_index", coverageUsesPaletteIndex());
+    conf.get("single_threaded", singleThreaded());
 }
 
 void
@@ -1724,6 +1727,61 @@ GDAL::Options::writeTo(Config& conf) const
     conf.set("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
     conf.set("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
     conf.set("coverage_uses_palette_index", coverageUsesPaletteIndex());
+    conf.set("single_threaded", singleThreaded());
+}
+
+//......................................................................
+
+namespace
+{
+    template<typename T>
+    Status openOnThisThread(
+        const T* layer,
+        osg::ref_ptr<GDAL::Driver>& driver, 
+        osg::ref_ptr<const Profile>* out_profile,
+        osg::ref_ptr<const Profile>* out_overrideProfile,
+        DataExtentList* dataExtents)
+    {
+        driver = new GDAL::Driver();
+
+        if (layer->options().noDataValue().isSet())
+            driver->setNoDataValue( layer->options().noDataValue().get() );
+        if (layer->options().minValidValue().isSet())
+            driver->setMinValidValue( layer->options().minValidValue().get() );
+        if (layer->options().maxValidValue().isSet())
+            driver->setMaxValidValue( layer->options().maxValidValue().get() );
+        if (layer->options().maxDataLevel().isSet())
+            driver->setMaxDataLevel( layer->options().maxDataLevel().get() );
+
+        // If the user set an override profile, save it
+        // TODO: may want to elevate this to Layer
+        if (layer->getProfile() && out_overrideProfile)
+        {
+            *out_overrideProfile = layer->getProfile();
+        }
+
+        if (layer->overrideProfile().valid())
+        {
+            driver->setOverrideProfile(layer->overrideProfile().get());
+        }
+
+        Status status = driver->open(
+            layer->getName(),
+            layer->options(),
+            layer->options().tileSize().get(),
+            dataExtents,
+            layer->getReadOptions());
+
+        if (status.isError())
+            return status;
+
+        if (driver->getProfile() && out_profile)
+        {
+            *out_profile = driver->getProfile();
+        }
+
+        return Status::NoError;
+    }
 }
 
 //......................................................................
@@ -1752,11 +1810,16 @@ OE_LAYER_PROPERTY_IMPL(GDALImageLayer, unsigned, SubDataSet, subDataSet);
 OE_LAYER_PROPERTY_IMPL(GDALImageLayer, ProfileOptions, WarpProfile, warpProfile);
 OE_LAYER_PROPERTY_IMPL(GDALImageLayer, RasterInterpolation, Interpolation, interpolation);
 
+void GDALImageLayer::setSingleThreaded(bool value) { options().singleThreaded() = value; }
+bool GDALImageLayer::getSingleThreaded() const { return options().singleThreaded().get(); }
+
+
 void
 GDALImageLayer::init()
 {
     // Initialize the image layer (always first)
     ImageLayer::init();
+    _driverPerThread.setName("OE.GDALImageLayer");
 }
 
 Status
@@ -1766,13 +1829,29 @@ GDALImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
-    // So we just encapsulate the entire setup once per thread.
-    // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
-    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
+    osg::ref_ptr<GDAL::Driver>* driver;
+
+    if (getSingleThreaded())
+    {
+        driver = &_sharedDriver;
+    }
+    else
+    {
+        // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
+        // So we just encapsulate the entire setup once per thread.
+        // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
+        driver = &_driverPerThread.get();
+    }
 
     osg::ref_ptr<const Profile> profile;
-    Status s = openOnThisThread(driver, &profile, &_overrideProfile);
+
+    Status s = openOnThisThread(
+        this,
+        *driver,
+        &profile,
+        &_overrideProfile,
+        &dataExtents());
+
     if (s.isError())
         return s;
 
@@ -1783,59 +1862,15 @@ GDALImageLayer::openImplementation()
 }
 
 Status
-GDALImageLayer::openOnThisThread(
-    osg::ref_ptr<GDAL::Driver>& driver, 
-    osg::ref_ptr<const Profile>* out_profile,
-    osg::ref_ptr<const Profile>* out_overrideProfile) const
-{
-    driver = new GDAL::Driver();
-
-    if (options().noDataValue().isSet())
-        driver->setNoDataValue( options().noDataValue().get() );
-    if (options().minValidValue().isSet())
-        driver->setMinValidValue( options().minValidValue().get() );
-    if (options().maxValidValue().isSet())
-        driver->setMaxValidValue( options().maxValidValue().get() );
-    if (options().maxDataLevel().isSet())
-        driver->setMaxDataLevel( options().maxDataLevel().get() );
-
-    // If the user set an override profile, save it
-    // TODO: may want to elevate this to Layer
-    if (getProfile() && out_overrideProfile)
-    {
-        *out_overrideProfile = getProfile();
-    }
-
-    if (_overrideProfile.valid())
-    {
-        driver->setOverrideProfile(_overrideProfile.get());
-    }
-
-    DataExtentList* de = out_profile ? &const_cast<GDALImageLayer*>(this)->dataExtents() : NULL;
-
-    Status status = driver->open(
-        getName(),
-        options(),
-        options().tileSize().get(),
-        de,
-        getReadOptions());
-
-    if (status.isError())
-        return status;
-
-    if (driver->getProfile() && out_profile)
-    {
-        *out_profile = driver->getProfile();
-    }
-
-    return Status::NoError;
-}
-
-Status
 GDALImageLayer::closeImplementation()
 {
-    // safely shut down all per-thread handles.
+    if (_sharedDriver.valid())
     {
+        _sharedDriver = nullptr;
+    }
+    else
+    {
+        // safely shut down all per-thread handles.
         Threading::ScopedWriteLock exclusive(_workers);
         _driverPerThread.clear();
     }
@@ -1850,27 +1885,59 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     if (getStatus().isError())
         return GeoImage::INVALID;
 
-    Threading::ScopedReadLock enterReader(_workers);
-    if (isClosing())
-        return GeoImage::INVALID;
-
-    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
-    if (!driver.valid())
+    osg::ref_ptr<GDAL::Driver>* driver = nullptr;
+    if (getSingleThreaded())
     {
-        // calling openImpl with NULL params limits the setup
-        // since we already called this during openImplementation
-        openOnThisThread(driver, NULL, NULL);
+        driver = &_sharedDriver;
+        _singleThreadedMutex.lock();
+        if (isClosing())
+        {
+            _singleThreadedMutex.unlock();
+            return GeoImage::INVALID;
+        }
+    }
+    else
+    {
+        driver = &_driverPerThread.get();
+        _workers.read_lock();
+        if (isClosing())
+        {
+            _workers.read_unlock();
+            return GeoImage::INVALID;
+        }
+        if (!driver->valid())
+        {
+            // calling openImpl with NULL params limits the setup
+            // since we already called this during openImplementation
+            openOnThisThread(
+                this, 
+                *driver, 
+                nullptr, 
+                nullptr,
+                nullptr);
+        }
     }
 
+    if (!driver->get())
+        return GeoImage::INVALID;
+
+    OE_PROFILING_ZONE;
+
     osg::ref_ptr<osg::Image> image;
-    if (driver.valid())
+    if (driver->valid())
     {
-        image = driver->createImage(
+        image = driver->get()->createImage(
             key,
             options().tileSize().get(),
             options().coverage() == true,
             progress);
     }
+
+    if (getSingleThreaded())
+        _singleThreadedMutex.unlock();
+    else
+        _workers.read_unlock();
+
     return GeoImage(image.get(), key.getExtent());
 }
 
@@ -1901,7 +1968,11 @@ OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, ProfileOptions, WarpProfile, warpProf
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, RasterInterpolation, Interpolation, interpolation);
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, bool, UseVRT, useVRT);
 
-void GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value)
+void GDALElevationLayer::setSingleThreaded(bool value) { options().singleThreaded() = value; }
+bool GDALElevationLayer::getSingleThreaded() const { return options().singleThreaded().get(); }
+
+void
+GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value)
 {
     //_driver->setExternalDataset(value);
     OE_WARN << LC << "setExternalDataset NOT IMPLEMENTED" << std::endl;
@@ -1911,6 +1982,7 @@ void
 GDALElevationLayer::init()
 {
     ElevationLayer::init();
+    _driverPerThread.setName("OE.GDALElevationLayer");
 }
 
 Status
@@ -1920,13 +1992,29 @@ GDALElevationLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
-    // So we just encapsulate the entire setup once per thread.
-    // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
-    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
+    osg::ref_ptr<GDAL::Driver>* driver;
+
+    if (getSingleThreaded())
+    {
+        driver = &_sharedDriver;
+    }
+    else
+    {
+        // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
+        // So we just encapsulate the entire setup once per thread.
+        // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
+        driver = &_driverPerThread.get();
+    }
 
     osg::ref_ptr<const Profile> profile;
-    Status s = openOnThisThread(driver, &profile, &_overrideProfile);
+
+    Status s = openOnThisThread(
+        this,
+        *driver,
+        &profile,
+        &_overrideProfile,
+        &dataExtents());
+
     if (s.isError())
         return s;
 
@@ -1937,64 +2025,21 @@ GDALElevationLayer::openImplementation()
 }
 
 Status
-GDALElevationLayer::openOnThisThread(
-    osg::ref_ptr<GDAL::Driver>& driver, 
-    osg::ref_ptr<const Profile>* out_profile,
-    osg::ref_ptr<const Profile>* out_overrideProfile) const
-{
-    driver = new GDAL::Driver();
-
-    if (options().noDataValue().isSet())
-        driver->setNoDataValue( options().noDataValue().get() );
-    if (options().minValidValue().isSet())
-        driver->setMinValidValue( options().minValidValue().get() );
-    if (options().maxValidValue().isSet())
-        driver->setMaxValidValue( options().maxValidValue().get() );
-    if (options().maxDataLevel().isSet())
-        driver->setMaxDataLevel( options().maxDataLevel().get() );
-
-    // If the user set an override profile, save it
-    // TODO: may want to elevate this to Layer
-    if (getProfile() && out_overrideProfile)
-    {
-        *out_overrideProfile = getProfile();
-    }
-
-    if (_overrideProfile.valid())
-    {
-        driver->setOverrideProfile(_overrideProfile.get());
-    }
-
-    DataExtentList* de = out_profile ? &const_cast<GDALElevationLayer*>(this)->dataExtents() : NULL;
-
-    Status status = driver->open(
-        getName(),
-        options(),
-        options().tileSize().get(),
-        de,
-        getReadOptions());
-
-    if (status.isError())
-        return status;
-
-    if (driver->getProfile() && out_profile)
-    {
-        *out_profile = driver->getProfile();
-    }
-
-    return Status::NoError;
-}
-
-Status
 GDALElevationLayer::closeImplementation()
 {
-    // safely shut down all per-thread handles.
+    if (_sharedDriver.valid())
     {
+        _sharedDriver = nullptr;
+    }
+    else
+    {
+        // safely shut down all per-thread handles.
         Threading::ScopedWriteLock exclusive(_workers);
         _driverPerThread.clear();
     }
     dataExtents().clear();
     setProfile(NULL); // must do this to support override profiles
+
     return ElevationLayer::closeImplementation();
 }
 
@@ -2004,16 +2049,37 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
     if (getStatus().isError())
         return GeoHeightField::INVALID;
 
-    Threading::ScopedReadLock enterReader(_workers);
-    if (isClosing())
-        return GeoHeightField::INVALID;
-
-    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
-    if (!driver.valid())
+    osg::ref_ptr<GDAL::Driver>* driver = nullptr;
+    if (getSingleThreaded())
     {
-        // calling openImpl with NULL params limits the setup
-        // since we already called this during openImplementation
-        openOnThisThread(driver, NULL, NULL);
+        driver = &_sharedDriver;
+        _singleThreadedMutex.lock();
+        if (isClosing())
+        {
+            _singleThreadedMutex.unlock();
+            return GeoHeightField::INVALID;
+        }
+    }
+    else
+    {
+        driver = &_driverPerThread.get();
+        _workers.read_lock();
+        if (isClosing())
+        {
+            _workers.read_unlock();
+            return GeoHeightField::INVALID;
+        }
+        if (!driver->valid())
+        {
+            // calling openImpl with NULL params limits the setup
+            // since we already called this during openImplementation
+            openOnThisThread(
+                this, 
+                *driver, 
+                nullptr, 
+                nullptr,
+                nullptr);
+        }
     }
 
     osg::ref_ptr<osg::HeightField> heightfield;
@@ -2021,19 +2087,25 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
     {
         if (*_options->useVRT())
         {
-            heightfield = driver->createHeightFieldWithVRT(
+            heightfield = driver->get()->createHeightFieldWithVRT(
                 key,
                 options().tileSize().get(),
                 progress);
         }
         else
         {
-            heightfield = driver->createHeightField(
+            heightfield = driver->get()->createHeightField(
                 key,
                 options().tileSize().get(),
                 progress);
         }
     }
+
+    if (getSingleThreaded())
+        _singleThreadedMutex.unlock();
+    else
+        _workers.read_unlock();
+
     return GeoHeightField(heightfield.get(), key.getExtent());
 }
 

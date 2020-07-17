@@ -83,20 +83,30 @@ namespace osgEarth { namespace REX
      */
     struct RequestProgressCallback : public DatabasePagerProgressCallback
     {
+        osg::ref_ptr<Loader> _loader;
         Loader::Request* _request;
 
-        RequestProgressCallback(Loader::Request* req) :
+        RequestProgressCallback(Loader::Request* req, Loader* loader) :
             DatabasePagerProgressCallback(),
-            _request(req)
+            _request(req),
+            _loader(loader)
         {
             //NOP
         }
 
         virtual bool shouldCancel() const
         {
-            return
+            bool should = 
+                (!_loader->isValid(_request)) ||
                 (!_request->isRunning()) ||
                 (DatabasePagerProgressCallback::shouldCancel());
+
+            if (should)
+            {
+                OE_INFO << "REX: canceling load on thread " << std::this_thread::get_id() << std::endl;
+            }
+
+            return should;
         }
     };
 } }
@@ -355,6 +365,14 @@ PagerLoader::clear()
     _checkpoint = _clock->getTime();
 }
 
+bool
+PagerLoader::isValid(Request* req) const
+{
+    return 
+        req && 
+        req->_lastTick >= _checkpoint;
+}
+
 void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
@@ -458,7 +476,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
         }
     }
 
-    LoaderGroup::traverse( nv );
+    Loader::traverse( nv );
 }
 
 
@@ -554,7 +572,7 @@ PagerLoader::runAndRelease(UID requestUID)
 
         request->setState(Request::RUNNING);
 
-        osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request.get());
+        osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request.get(), this);
 
         if (request->run(prog.get()) == false)
         {

@@ -48,6 +48,16 @@ Lighting::remove(osg::StateSet* stateSet)
     GLUtils::remove(stateSet, GL_LIGHTING);
 }
 
+void
+Lighting::installDefaultMaterial(osg::StateSet* stateSet)
+{
+    osg::Material* m = new osgEarth::MaterialGL3();
+    m->setDiffuse(m->FRONT, osg::Vec4(1,1,1,1));
+    m->setAmbient(m->FRONT, osg::Vec4(1,1,1,1));
+    stateSet->setAttributeAndModes(m, 1);
+    osgEarth::MaterialCallback().operator()(m, 0L);
+}
+
 //............................................................................
 
 GenerateGL3LightingUniforms::GenerateGL3LightingUniforms() :

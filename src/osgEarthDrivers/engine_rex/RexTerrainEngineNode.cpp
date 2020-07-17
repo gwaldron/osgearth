@@ -33,6 +33,8 @@
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Metrics>
 #include <osgEarth/ElevationConstraintLayer>
+#include <osgEarth/Elevation>
+#include <osgEarth/LandCover>
 
 #include <osg/Version>
 #include <osg/BlendFunc>
@@ -204,12 +206,13 @@ RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
         _imageLayerStateSet.get()->releaseGLObjects(state);
     }
 
-    //if (_geometryPool.valid())
-    //{
-    //    _geometryPool->clear();
-    //}
-
     TerrainEngineNode::releaseGLObjects(state);
+}
+
+void
+RexTerrainEngineNode::shutdown()
+{
+    _loader->clear();
 }
 
 void
@@ -473,12 +476,14 @@ RexTerrainEngineNode::setupRenderBindings()
     color.usage()       = SamplerBinding::COLOR;
     color.samplerName() = "oe_layer_tex";
     color.matrixName()  = "oe_layer_texMatrix";
+    color.setDefaultTexture(new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)));
     getResources()->reserveTextureImageUnit( color.unit(), "Terrain Color" );
 
     SamplerBinding& elevation = _renderBindings[SamplerBinding::ELEVATION];
     elevation.usage()       = SamplerBinding::ELEVATION;
     elevation.samplerName() = "oe_tile_elevationTex";
     elevation.matrixName()  = "oe_tile_elevationTexMatrix";
+    elevation.setDefaultTexture(osgEarth::createEmptyElevationTexture());
     if (this->elevationTexturesRequired())
         getResources()->reserveTextureImageUnit( elevation.unit(), "Terrain Elevation" );
 
@@ -486,6 +491,7 @@ RexTerrainEngineNode::setupRenderBindings()
     normal.usage()       = SamplerBinding::NORMAL;
     normal.samplerName() = "oe_tile_normalTex";
     normal.matrixName()  = "oe_tile_normalTexMatrix";
+    normal.setDefaultTexture(osgEarth::createEmptyNormalMapTexture());
     if (this->normalTexturesRequired())
         getResources()->reserveTextureImageUnit( normal.unit(), "Terrain Normals" );
 
@@ -500,6 +506,7 @@ RexTerrainEngineNode::setupRenderBindings()
     landCover.usage()       = SamplerBinding::LANDCOVER;
     landCover.samplerName() = "oe_tile_landCoverTex";
     landCover.matrixName()  = "oe_tile_landCoverTexMatrix";
+    landCover.setDefaultTexture(LandCover::createEmptyTexture());
     if (this->landCoverTexturesRequired())
         getResources()->reserveTextureImageUnit(landCover.unit(), "Terrain Land Cover");
     getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX", landCover.samplerName());
@@ -508,15 +515,15 @@ RexTerrainEngineNode::setupRenderBindings()
     // Apply a default, empty texture to each render binding.
     OE_DEBUG << LC << "Render Bindings:\n";
     osg::StateSet* terrainSS = _terrain->getOrCreateStateSet();
-    osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1, 1));
-    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    //osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1, 1));
+    //tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     for (unsigned i = 0; i < _renderBindings.size(); ++i)
     {
         SamplerBinding& b = _renderBindings[i];
         if (b.isActive())
         {
             terrainSS->addUniform(new osg::Uniform(b.samplerName().c_str(), b.unit()));
-            terrainSS->setTextureAttribute(b.unit(), tex.get());
+            terrainSS->setTextureAttribute(b.unit(), b.getDefaultTexture());
             OE_DEBUG << LC << " > Bound \"" << b.samplerName() << "\" to unit " << b.unit() << "\n";
         }
     }
@@ -985,7 +992,7 @@ RexTerrainEngineNode::addLayer(Layer* layer)
                 addElevationLayer(dynamic_cast<ElevationLayer*>(layer));
         }
 
-        cacheLayerExtentInMapSRS(layer);        
+        cacheLayerExtentInMapSRS(layer);
     }
 }
 

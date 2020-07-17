@@ -47,6 +47,13 @@ FeatureMaskLayer::Options::getConfig() const
 //........................................................................
 
 void
+FeatureMaskLayer::init()
+{
+    MaskLayer::init();
+    _boundaryMutex.setName("OE.FeatureMaskLayer");
+}
+
+void
 FeatureMaskLayer::setFeatureSource(FeatureSource* layer)
 {
     options().featureSource().setLayer(layer);

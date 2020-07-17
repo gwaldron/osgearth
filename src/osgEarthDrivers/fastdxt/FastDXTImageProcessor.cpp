@@ -127,7 +127,7 @@ public:
 
             unsigned char* workspace = (unsigned char*)memalign(16, levelZeroSizeBytes);
             unsigned char* in;
-            
+
             unsigned totalCompressedBytes = 0u;
 
             // interate over mipmap levels:

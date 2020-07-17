@@ -41,6 +41,9 @@ namespace osgEarth { namespace Util
 
         void build();
 
+        //! Call to notify all threads to stop doing what they're doing.
+        void shutdown();
+
         /**
          * Get or set whether this pager uses additive lods.
          */

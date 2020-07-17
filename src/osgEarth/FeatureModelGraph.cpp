@@ -85,10 +85,12 @@ namespace
 
     struct MyProgressCallback : public DatabasePagerProgressCallback
     {
+        FeatureModelGraph* _graph;
         osg::ref_ptr<const Session> _session;
 
-        MyProgressCallback(const Session* session) :
+        MyProgressCallback(FeatureModelGraph* graph, const Session* session) :
             DatabasePagerProgressCallback(),
+            _graph(graph),
             _session(session)
         {
             //nop
@@ -96,9 +98,18 @@ namespace
 
         virtual bool shouldCancel() const
         {
-            return
+            bool should =
                 DatabasePagerProgressCallback::shouldCancel() ||
-                (!_session.valid() || !_session->hasMap());
+                !_graph->isActive() ||
+                !_session.valid() ||
+                !_session->hasMap();
+
+            if (should)
+            {
+                OE_INFO << "FMG: canceling load on thread " << std::this_thread::get_id() << std::endl;
+            }
+
+            return should;
         }
     };
 
@@ -329,9 +340,16 @@ namespace
             osg::ref_ptr<FeatureModelGraph> graph;
             if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
             {
-                OE_WARN << "Internal error - no FeatureModelGraph object in OptionsData\n";
-                return ReadResult::ERROR_IN_READING_FILE;
+                // FMG was shut down
+                return ReadResult(nullptr);
             }
+
+            // Enter as a graph reader:
+            ScopedReadLock reader(graph->getSync());
+
+            // make sure it's running:
+            if (!graph->isActive())
+                return ReadResult(nullptr);
 
             Registry::instance()->startActivity(uri);
             osg::ref_ptr<osg::Node> node = graph->load(lod, x, y, uri, readOptions);
@@ -381,7 +399,8 @@ FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
     _options(options),
     _featureExtentClamped(false),
     _useTiledSource(false),
-    _blacklistMutex("FMG BlackList(OE)")
+    _blacklistMutex("FMG BlackList(OE)"),
+    _isActive(false)
 {
     //NOP
 }
@@ -663,9 +682,20 @@ FeatureModelGraph::open()
 
     ADJUST_EVENT_TRAV_COUNT(this, 1);
 
+    _isActive = true;
+
     redraw();
 
     return Status::OK();
+}
+
+void
+FeatureModelGraph::shutdown()
+{
+    _isActive = false;
+
+    // Block until all active pager tasks have returned/canceled
+    //ScopedWriteLock waiter(getSync());
 }
 
 FeatureModelGraph::~FeatureModelGraph()
@@ -1246,7 +1276,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
     // Not there? Build it
     if (!group.valid())
     {
-        osg::ref_ptr<ProgressCallback> progress = new MyProgressCallback(_session.get());
+        osg::ref_ptr<ProgressCallback> progress = new MyProgressCallback(this, _session.get());
 
         // set up for feature indexing if appropriate:
         FeatureSourceIndexNode* index = 0L;

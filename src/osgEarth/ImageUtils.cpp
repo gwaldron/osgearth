@@ -640,7 +640,7 @@ ImageUtils::compressImage(
     if (input->isCompressed())
         return input;
 
-    if (method == "none")
+    if (method.empty() || method == "none")
         return input;
 
     if (method == "gpu")
@@ -677,7 +677,7 @@ ImageUtils::compressImage(
             *output,        // image to compress
             mode,           // compression mode
             true,           // generate mipmaps if possible
-            false,          // resize to power of 2
+            true,           // resize to power of 2
             ip->USE_CPU,    // technique (always use CPU here)
             ip->FASTEST);   // quality
     }
@@ -735,19 +735,13 @@ ImageUtils::compressImageInPlace(
 
         ip = osgDB::Registry::instance()->getImageProcessorForExtension(driver);
 
-        // didn't work? fall back on NVTT
-        if (!ip && driver != "nvtt")
-        {
-            ip = osgDB::Registry::instance()->getImageProcessorForExtension("nvtt");
-        }
-
         if (ip)
         {
             ip->compress(
-                *input,        // image to compress
+                *input,         // image to compress
                 mode,           // compression mode
                 true,           // generate mipmaps if possible
-                false,          // resize to power of 2
+                true,           // resize to power of 2
                 ip->USE_CPU,    // technique (always use CPU here)
                 ip->FASTEST);   // quality
         }

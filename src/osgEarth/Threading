@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osg/OperationThread>
 #include <atomic>
+#include <functional>
 #include <mutex>
 #include <condition_variable>
 #include <vector>
@@ -128,7 +129,7 @@ namespace osgEarth { namespace Threading
      *  "set" means that a call to wait() will not block;
      *  "unset" means that calls to wait() will block until another thread calls set().
      *
-     * The event starts out unset. 
+     * The event starts out unset.
      *
      * Typical usage: Thread A creates Thread B to run asynchronous code. Thread A
      * then calls wait(), which blocks Thread A. When Thread B is finished, it calls
@@ -136,7 +137,7 @@ namespace osgEarth { namespace Threading
      *
      * NOTE: ALL waiting threads will wake up when the Event is cleared.
      */
-    class OSGEARTH_EXPORT Event 
+    class OSGEARTH_EXPORT Event
     {
     public:
         //! Construct a new event
@@ -184,7 +185,7 @@ namespace osgEarth { namespace Threading
     /**
      * Future is the consumer-side interface to an asynchronous operation.
      *
-     * Usage: 
+     * Usage:
      *   Producer (usually an asynchronous function call) creates a Promise<Object>
      *   and immediately returns promise.getFuture(). The Consumer then performs other
      *   work, and eventually (or immediately) called Future.get() or Future.release().
@@ -221,8 +222,8 @@ namespace osgEarth { namespace Threading
         }
 
         //! Copy CTOR
-        Future(const Future& rhs) : 
-            _ev(rhs._ev), 
+        Future(const Future& rhs) :
+            _ev(rhs._ev),
             _objRef(rhs._objRef) { }
 
         Future<T>& operator = (const Future<T>& rhs) {
@@ -289,12 +290,12 @@ namespace osgEarth { namespace Threading
         osg::ref_ptr<RefPtrRef> _objRef;
         template<typename U> friend class Promise;
     };
-    
+
     /**
      * Promise is the producer-side interface to an asynchronous operation.
      *
      * Usage: The code that initiates an asychronous operation creates a Promise
-     *   object, dispatches the asynchronous code, and immediately returns 
+     *   object, dispatches the asynchronous code, and immediately returns
      *   Promise.getFuture(). The caller can then call future.get() to block until
      *   the result is available.
      */
@@ -414,7 +415,7 @@ namespace osgEarth { namespace Threading
         ReadWrite() :
             _readers(0u), _writers(0u) { }
 
-        ReadWrite(const std::string& name) : 
+        ReadWrite(const std::string& name) :
             _m(name), _readers(0u), _writers(0u) { }
 
         void read_lock() {

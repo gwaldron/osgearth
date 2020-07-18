@@ -100,6 +100,7 @@ namespace osgEarth { namespace Util
 
         //! Set the name of the object that owns this graph (for debugging)
         void setOwnerName(const std::string& name);
+        const std::string& getOwnerName() const { return _ownerName; }
 
         ReadWrite<Mutex>& getSync() { return _sync; }
 

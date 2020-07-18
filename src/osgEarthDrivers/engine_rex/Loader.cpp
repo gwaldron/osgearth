@@ -31,6 +31,7 @@
 
 #include <string>
 
+
 #define REPORT_ACTIVITY true
 
 using namespace osgEarth::REX;
@@ -103,7 +104,7 @@ namespace osgEarth { namespace REX
 
             if (should)
             {
-                OE_INFO << "REX: canceling load on thread " << std::this_thread::get_id() << std::endl;
+                OE_DEBUG << "REX: canceling load on thread " << std::this_thread::get_id() << std::endl;
             }
 
             return should;
@@ -601,7 +602,7 @@ namespace osgEarth { namespace REX
     {
         PagerLoaderAgent()
         {
-            // nop
+            //nop
         }
 
         virtual const char* className() const
@@ -619,6 +620,8 @@ namespace osgEarth { namespace REX
             std::string ext = osgDB::getFileExtension(uri);
             if ( acceptsExtension(ext) )
             {
+                OE_THREAD_NAME("DBPager (OE Terrain)");
+
                 // parse the tile key and engine ID:
                 std::string requestdef = osgDB::getNameLessExtension(uri);
                 unsigned requestUID;

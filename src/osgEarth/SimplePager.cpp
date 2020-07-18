@@ -2,6 +2,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Metrics>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/ShapeDrawable>
@@ -58,7 +59,7 @@ namespace
 
             if (should)
             {
-                OE_INFO << LC << "Canceling SP task on thread " << std::this_thread::get_id() << std::endl;
+                OE_DEBUG << LC << "Canceling SP task on thread " << std::this_thread::get_id() << std::endl;
             }
 
             return should;
@@ -112,6 +113,9 @@ namespace
                 OE_WARN << LC << "Internal error - no ProgressTracker object in OptionsData\n";
                 return ReadResult::ERROR_IN_READING_FILE;
             }
+
+            std::string threadName("DBPager (SP:"+getName()+")");
+            OE_THREAD_NAME(threadName.c_str());
 
             osg::ref_ptr<osg::Node> node = pager->loadKey(
                 TileKey(lod, x, y, pager->getProfile()),

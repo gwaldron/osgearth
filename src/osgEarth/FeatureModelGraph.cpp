@@ -106,7 +106,7 @@ namespace
 
             if (should)
             {
-                OE_INFO << "FMG: canceling load on thread " << std::this_thread::get_id() << std::endl;
+                OE_DEBUG << "FMG: canceling load on thread " << std::this_thread::get_id() << std::endl;
             }
 
             return should;
@@ -346,6 +346,9 @@ namespace
 
             // Enter as a graph reader:
             ScopedReadLock reader(graph->getSync());
+
+            std::string threadName("DBPager ("+graph->getOwnerName()+")");
+            OE_THREAD_NAME(threadName.c_str());
 
             // make sure it's running:
             if (!graph->isActive())

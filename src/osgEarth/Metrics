@@ -72,6 +72,7 @@ namespace osgEarth {
 #define OE_LOCKABLE(type, varname) TracyLockable(type, varname)
 #define OE_LOCKABLE_NAMED(type, varname, desc) TracyLockableN(type, varname, desc)
 #define OE_LOCKABLE_BASE( type ) LockableBase( type )
+#define OE_THREAD_NAME(text) tracy::SetThreadName(text)
 
 #include <osg/GL>
 namespace osgEarth { namespace MetricsGL {
@@ -113,6 +114,7 @@ inline void _zoneSetText(tracy::ScopedZone& zone, const std::string& text) {
 #define OE_PROFILING_FRAME_MARK
 #define OE_LOCKABLE(type, varname) type varname
 #define OE_LOCKABLE_BASE( type ) type
+#define OE_THREAD_NAME(text)
 #endif
 
 #endif

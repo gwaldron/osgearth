@@ -252,7 +252,9 @@ _requests(OE_MUTEX_NAME)
 
     _dboptions = new osgDB::Options();
 
-    _dboptions->setFileLocationCallback( new FileLocationCallback() );
+    //commented this out for now because it was forcing all terrain tile loads 
+    //on to the high latency database pager queue
+    //_dboptions->setFileLocationCallback( new FileLocationCallback() );
 
     OptionsData<PagerLoader>::set(_dboptions.get(), "osgEarth.PagerLoader", this);
 

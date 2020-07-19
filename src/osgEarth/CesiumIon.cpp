@@ -301,7 +301,7 @@ CesiumIon3DTilesLayer::openImplementation()
     if (!threadPool.valid())
     {
         unsigned int numThreads = 2;
-        _threadPool = new ThreadPool(numThreads);
+        _threadPool = new ThreadPool(className(), numThreads);
         _threadPool->put(readOptions.get());
     }
 

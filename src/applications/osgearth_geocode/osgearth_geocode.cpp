@@ -51,7 +51,7 @@ main(int argc, char** argv)
     if (async)
     {
         options = new osgDB::Options();
-        pool = new ThreadPool();
+        pool = new ThreadPool("Geocoder");
         pool->put(options.get());
     }
 

@@ -213,6 +213,7 @@ namespace
         if (fsco.threads() > 0u)
         {
             _threadPool = new ThreadPool(
+                "osgEarth.FileSystemCache",
                 osg::maximum(fsco.threads().get(), 1u) );
         }
     }
@@ -227,7 +228,9 @@ namespace
 
         if (num > 0u)
         {
-            _threadPool = new ThreadPool(osg::clampBetween(num, 1u, 8u));
+            _threadPool = new ThreadPool(
+                "osgEarth.FileSystemCache",
+                osg::clampBetween(num, 1u, 8u));
         }
     }
 

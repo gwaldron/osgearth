@@ -900,7 +900,7 @@ AsyncElevationSampler::AsyncElevationSampler(
 
     _map(map)
 {
-    _threadPool = new ThreadPool(numThreads);
+    _threadPool = new ThreadPool("osgEarth.ElevationPool", numThreads);
 }
 
 Future<RefElevationSample>

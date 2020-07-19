@@ -75,7 +75,7 @@ namespace
     // callback to force features onto the high-latency queue.
     struct HighLatencyFileLocationCallback : public osgDB::FileLocationCallback
     {
-        Location fileLocation(const std::string& filename, const osgDB::Options* options)
+        Location fileLocation(const std::string& filename, const osgDB::Options* options) override
         {
             return REMOTE_FILE;
         }
@@ -347,8 +347,7 @@ namespace
             // Enter as a graph reader:
             ScopedReadLock reader(graph->getSync());
 
-            std::string threadName("DBPager ("+graph->getOwnerName()+")");
-            OE_THREAD_NAME(threadName.c_str());
+            OE_SCOPED_THREAD_NAME("DBPager", graph->getOwnerName());
 
             // make sure it's running:
             if (!graph->isActive())

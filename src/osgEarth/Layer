@@ -362,6 +362,7 @@ namespace osgEarth
         Hints& layerHints();
 
     private:
+        const std::string& _layerName;
         UID _uid;
         osg::ref_ptr<osg::StateSet> _stateSet;
         RenderType _renderType;
@@ -432,7 +433,7 @@ namespace osgEarth
     private:
         Layer::Options * _options;
         Layer::Options   _optionsConcrete;
-        Layer ( const Layer& rhs, const osg::CopyOp& op ) { }
+        Layer ( const Layer& rhs, const osg::CopyOp& op );
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map;

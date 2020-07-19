@@ -487,7 +487,13 @@ namespace osgEarth { namespace Threading
     {
     public:
         //! Allocate a new pool with "numThreads" threads.
-        ThreadPool(unsigned numThreads = 2);
+        ThreadPool(
+            unsigned numThreads =2u);
+
+        //! Allocate a new pool with "numThreads" threads
+        ThreadPool(
+            const std::string& name,
+            unsigned numThreads =2u);
 
         //! Destroy
         ~ThreadPool();
@@ -505,6 +511,9 @@ namespace osgEarth { namespace Threading
     private:
         void startThreads();
         void stopThreads();
+
+        // thread name
+        std::string _name;
 
         // queued operations to run asynchronously
         typedef std::queue<osg::ref_ptr<osg::Operation> > Queue;
@@ -551,7 +560,28 @@ namespace osgEarth { namespace Threading
         ~ScopedAtomicCounter() { --_a; }
     };
 
+    //! Sets the name of the curent thread
+    extern OSGEARTH_EXPORT void setThreadName(const std::string& name);
+
+    //! Sets the thread name with details when scoped
+    struct ScopedThreadName
+    {
+        std::string _base;
+        ScopedThreadName(const std::string& base, const std::string& detail) : 
+            _base(base)
+        {
+            setThreadName(base + "(" + detail + ")");
+        }
+        ~ScopedThreadName()
+        {
+            setThreadName(_base);
+        }
+    };
+
 } } // namepsace osgEarth::Threading
 
+#define OE_THREAD_NAME(name) osgEarth::Threading::setThreadName(name);
+
+#define OE_SCOPED_THREAD_NAME(base,name) osgEarth::Threading::ScopedThreadName _scoped_threadName(base,name);
 
 #endif // OSGEARTH_THREADING_UTILS_H

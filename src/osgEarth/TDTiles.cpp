@@ -80,7 +80,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
             if (!threadPool.valid())
             {
                 unsigned int numThreads = 2;
-                threadPool = new ThreadPool(numThreads);
+                threadPool = new ThreadPool("osgEarth.3DTiles", numThreads);
                 threadPool->put(readOptions.get());
             }
 

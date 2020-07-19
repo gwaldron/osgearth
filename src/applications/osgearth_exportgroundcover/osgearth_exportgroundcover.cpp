@@ -167,7 +167,7 @@ main(int argc, char** argv)
     if (keys.empty())
         return usage(argv[0], "No data in extent");
 
-    osg::ref_ptr<ThreadPool> pool = new ThreadPool(4u);
+    osg::ref_ptr<ThreadPool> pool = new ThreadPool("GroundCover Export", 4u);
 
     std::cout << "Exporting " << keys.size() << " keys.." << std::endl;
 

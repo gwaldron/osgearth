@@ -101,7 +101,8 @@ Layer::TraversalCallback::traverse(osg::Node* node, osg::NodeVisitor* nv) const
 Layer::Layer() :
 _options(&_optionsConcrete),
 _revision(1u),
-_mutex(NULL)
+_mutex(NULL),
+_layerName(osg::Object::_name) // for the debugger
 {
     init();
 }
@@ -109,9 +110,17 @@ _mutex(NULL)
 Layer::Layer(Layer::Options* optionsPtr) :
 _options(optionsPtr? optionsPtr : &_optionsConcrete),
 _revision(1u),
-_mutex(NULL)
+_mutex(NULL),
+_layerName(osg::Object::_name) // for the debugger
 {
     // init() will be called by base class
+}
+
+Layer::Layer(const Layer& rhs, const osg::CopyOp& op) :
+    osg::Object(rhs, op),
+    _layerName(osg::Object::_name)
+{
+    //nop
 }
 
 Layer::~Layer()

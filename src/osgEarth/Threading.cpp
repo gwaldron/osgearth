@@ -23,14 +23,15 @@
 #include "Metrics"
 
 #ifdef _WIN32
-  #ifndef OSGEARTH_PROFILING
-    // because Tracy already does this in its header file..
-    extern "C" unsigned long __stdcall GetCurrentThreadId();
-  #endif
+#   ifndef TRACY_ENABLE
+        // because Tracy already does this in its header file..
+        extern "C" unsigned long __stdcall GetCurrentThreadId();
+#   endif
+#   include <Windows.h>
+#   include <processthreadsapi.h>
 #elif defined(__APPLE__) || defined(__LINUX__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__ANDROID__)
 #   include <unistd.h>
 #   include <sys/syscall.h>
-#else
 #   include <pthread.h>
 #endif
 
@@ -379,7 +380,17 @@ void Event::reset()
 #undef LC
 #define LC "[ThreadPool] "
 
-ThreadPool::ThreadPool(unsigned int numThreads) :
+ThreadPool::ThreadPool(unsigned numThreads) :
+    _name("osgEarth.ThreadPool"),
+    _numThreads(numThreads),
+    _done(false),
+    _queueMutex("ThreadPool")
+{
+    startThreads();
+}
+
+ThreadPool::ThreadPool(const std::string& name, unsigned numThreads) :
+    _name(name),
     _numThreads(numThreads),
     _done(false),
     _queueMutex("ThreadPool")
@@ -416,6 +427,9 @@ void ThreadPool::startThreads()
         _threads.push_back(std::thread( [this]
         {
             OE_DEBUG << LC << "Thread " << std::this_thread::get_id() << " started." << std::endl;
+
+            OE_THREAD_NAME(this->_name.c_str());
+
             while(!_done)
             {
                 osg::ref_ptr<osg::Operation> op;
@@ -491,3 +505,28 @@ ThreadPool::get(const osgDB::Options* options)
     return OptionsData<ThreadPool>::get(options, "osgEarth::ThreadPool");
 }
 
+void
+osgEarth::Threading::setThreadName(const std::string& name)
+{
+#if defined _WIN32 || defined __CYGWIN__    
+
+    wchar_t buf[256];
+    mbstowcs(buf, name.c_str(), 256);
+    ::SetThreadDescription(::GetCurrentThread(), buf);
+
+#elif defined _GNU_SOURCE && !defined __EMSCRIPTEN__ && !defined __CYGWIN__
+
+    const auto sz = strlen( name.c_str() );
+    if( sz <= 15 )
+    {
+        pthread_setname_np( pthread_self(), name );
+    }
+    else
+    {
+        char buf[16];
+        memcpy( buf, name, 15 );
+        buf[15] = '\0';
+        pthread_setname_np( pthread_self(), buf );
+    }
+#endif
+}

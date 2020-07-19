@@ -251,6 +251,7 @@ _requests(OE_MUTEX_NAME)
     _myNodePath.push_back( this );
 
     _dboptions = new osgDB::Options();
+
     _dboptions->setFileLocationCallback( new FileLocationCallback() );
 
     OptionsData<PagerLoader>::set(_dboptions.get(), "osgEarth.PagerLoader", this);
@@ -620,7 +621,7 @@ namespace osgEarth { namespace REX
             std::string ext = osgDB::getFileExtension(uri);
             if ( acceptsExtension(ext) )
             {
-                OE_THREAD_NAME("DBPager (OE Terrain)");
+                OE_SCOPED_THREAD_NAME("DBPager", "REX");
 
                 // parse the tile key and engine ID:
                 std::string requestdef = osgDB::getNameLessExtension(uri);

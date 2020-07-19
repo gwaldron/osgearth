@@ -113,9 +113,8 @@ namespace
                 OE_WARN << LC << "Internal error - no ProgressTracker object in OptionsData\n";
                 return ReadResult::ERROR_IN_READING_FILE;
             }
-
-            std::string threadName("DBPager (SP:"+getName()+")");
-            OE_THREAD_NAME(threadName.c_str());
+            
+            OE_SCOPED_THREAD_NAME("DBPager", getName());
 
             osg::ref_ptr<osg::Node> node = pager->loadKey(
                 TileKey(lod, x, y, pager->getProfile()),

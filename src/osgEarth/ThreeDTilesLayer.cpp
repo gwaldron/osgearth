@@ -83,7 +83,7 @@ ThreeDTilesLayer::openImplementation()
     if (!threadPool.valid())
     {
         unsigned int numThreads = 2;
-        _threadPool = new ThreadPool(numThreads);
+        _threadPool = new ThreadPool("osgEarth.3DTiles", numThreads);
         _threadPool->put(readOptions.get());
     }
 

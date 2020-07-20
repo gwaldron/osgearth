@@ -40,6 +40,7 @@
 #include <osg/ComputeBoundsVisitor>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
+#include <osgDB/FileNameUtils>
 #include <osgUtil/CullVisitor>
 #include <osgUtil/Optimizer>
 
@@ -63,6 +64,9 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 
 // TODO LIST
 //
+
+//  - Move normal map conversion code out of here, and move towards a "MaterialTextureSet"
+//    kind of setup that will support N material textures at once.
 
 //  - FEATURE: FADE in 3D models from billboards
 //  - FEATURE: automatically generate billboards? Imposters? Other?
@@ -226,6 +230,46 @@ namespace
             return dynamic_cast<const ZoneSA*>(i->second.attributeVec.front().first);
         }
     };
+
+    // octohodreal normal packing
+    // TODO: MOVE SOMEWHERE ELSE
+    void packNormal(const osg::Vec3& v, osg::Vec2& p)
+    {
+        float d = 1.0/(fabs(v.x())+fabs(v.y())+fabs(v.z()));
+        p.x() = v.x() * d;
+        p.y() = v.y() * d;
+
+        if (v.z() < 0.0)
+        {
+            p.x() = (1.0 - fabs(p.y())) * (p.x() >= 0.0? 1.0 : -1.0);
+            p.y() = (1.0 - fabs(p.x())) * (p.y() >= 0.0? 1.0 : -1.0);
+        }
+
+        p.x() = 0.5f*(p.x()+1.0f);
+        p.y() = 0.5f*(p.y()+1.0f);
+    }
+
+    osg::Image* convertNormalMapFromRGBToRG(const osg::Image* in)
+    {
+        osg::Image* out = new osg::Image();
+        out->allocateImage(in->s(), in->t(), 1, GL_RG, GL_UNSIGNED_BYTE);
+        out->setInternalTextureFormat(GL_RG8);
+        osg::Vec4 v;
+        osg::Vec2 packed;
+        ImageUtils::PixelReader read(in);
+        ImageUtils::PixelWriter write(out);
+        for(int t=0; t<read.t(); ++t)
+        {
+            for(int s=0; s<read.s(); ++s)
+            {
+                read(v, s, t);
+                packNormal(osg::Vec3f(v.r()*2.0f-1.0f, v.g()*2.0f-1.0f, v.b()*2.0f-1.0f), packed);
+                v.set(packed.x(), packed.y(), 0.0f, 0.0f);
+                write(v, s, t);
+            }
+        }
+        return out;
+    }
 }
 
 void
@@ -1401,6 +1445,14 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
     int assetIDGen = 0;
     int modelIDGen = 0;
 
+    // First, add a default normal map to the arena. Any billboard that doesn't
+    // have its own normal map will use this one.
+    osg::ref_ptr<osg::Texture> tempNMap = osgEarth::createEmptyNormalMapTexture();
+    int defaultNormalMapTextureIndex = arena->size();
+    osg::ref_ptr<Texture> defaultNormalMap = new Texture();
+    defaultNormalMap->_image = tempNMap->getImage(0);
+    // no URI so cannot be unloaded.
+
     // all the zones (these will later be called "biomes")
     for(int z=0; z<getZones().size(); ++z)
     {
@@ -1448,6 +1500,8 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                 data->_sideBillboardTexIndex = -1;
                 data->_topBillboardTexIndex = -1;
                 data->_modelTexIndex = -1;
+                data->_sideBillboardNormalMapIndex = -1;
+                data->_topBillboardNormalMapIndex = -1;
 
                 if (asset.options().modelURI().isSet())
                 {
@@ -1489,6 +1543,7 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                     {
                         data->_sideBillboardTex = ic->second->_sideBillboardTex.get();
                         data->_sideBillboardTexIndex = ic->second->_sideBillboardTexIndex;
+                        data->_sideBillboardNormalMapIndex = ic->second->_sideBillboardNormalMapIndex;
                     }
                     else
                     {
@@ -1502,6 +1557,30 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                             data->_sideBillboardTexIndex = arena->size();
                             arena->add(data->_sideBillboardTex.get());
                         }
+
+                        // normal map is the same file name but with _NML inserted before the extension
+                        URI normalMapURI(
+                            osgDB::getNameLessExtension(uri.full()) + 
+                            "_NML." +
+                            osgDB::getFileExtension(uri.full()));
+
+                        // silenty fail if no normal map found.
+                        osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(getReadOptions());
+                        if (normalMap.valid())
+                        {
+                            data->_sideBillboardNormalMap = new Texture();
+                            data->_sideBillboardNormalMap->_uri = normalMapURI;
+                            data->_sideBillboardNormalMap->_image = convertNormalMapFromRGBToRG(normalMap.get());
+
+                            data->_sideBillboardNormalMapIndex = arena->size();
+                            arena->add(data->_sideBillboardNormalMap.get());
+                        }
+                        else
+                        {
+                            data->_sideBillboardNormalMapIndex = defaultNormalMapTextureIndex;
+                            // wasteful but simple
+                            arena->add(defaultNormalMap.get());
+                        }
                     }
                 }
 
@@ -1514,6 +1593,7 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                     {
                         data->_topBillboardTex = ic->second->_topBillboardTex;
                         data->_topBillboardTexIndex = ic->second->_topBillboardTexIndex;
+                        data->_topBillboardNormalMapIndex = ic->second->_topBillboardNormalMapIndex;
                     }
                     else
                     {
@@ -1526,6 +1606,30 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                             texcache[uri] = data.get();
                             data->_topBillboardTexIndex = arena->size();
                             arena->add(data->_topBillboardTex.get());
+                        }
+
+                        // normal map is the same file name but with _NML inserted before the extension
+                        URI normalMapURI(
+                            osgDB::getNameLessExtension(uri.full()) + 
+                            "_NML." +
+                            osgDB::getFileExtension(uri.full()));
+
+                        // silenty fail if no normal map found.
+                        osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(getReadOptions());
+                        if (normalMap.valid())
+                        {
+                            data->_topBillboardNormalMap = new Texture();
+                            data->_topBillboardNormalMap->_uri = normalMapURI;
+                            data->_topBillboardNormalMap->_image = convertNormalMapFromRGBToRG(normalMap.get());
+
+                            data->_topBillboardNormalMapIndex = arena->size();
+                            arena->add(data->_topBillboardNormalMap.get());
+                        }
+                        else
+                        {
+                            data->_topBillboardNormalMapIndex = defaultNormalMapTextureIndex;
+                            // wasteful but simple
+                            arena->add(defaultNormalMap.get());
                         }
                     }
                 }
@@ -1702,7 +1806,6 @@ GroundCoverLayer::createLUTShader() const
         "    int topSamplerIndex; \n"
         "    float width; \n"
         "    float height; \n"
-        //"    float radius; \n"
         "    float sizeVariation; \n"
         "    float fill; \n"
         "}; \n"

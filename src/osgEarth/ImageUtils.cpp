@@ -483,6 +483,12 @@ ImageUtils::mipmapImage(const osg::Image* input)
         return input;
     }
 
+    // too small? nope
+    if (input->s() < 4 || input->t() < 4)
+    {
+        return input;
+    }
+
     // first, build the image that will hold all the mipmap levels.
     int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
     int imageSizeBytes = input->getTotalSizeInBytes();
@@ -568,6 +574,12 @@ ImageUtils::mipmapImageInPlace(osg::Image* input)
 
     // compressed? this algorithm won't work
     if (input->isCompressed())
+    {
+        return;
+    }
+
+    // too small? nope
+    if (input->s() < 4 || input->t() < 4)
     {
         return;
     }

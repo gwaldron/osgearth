@@ -40,6 +40,10 @@ public:
         CompressionMethod method, 
         CompressionQuality quality)
     {
+        // Gotta be at least 16x16
+        if (input.s() < 16 || input.t() < 16)
+            return;
+
         //Resize the image to the nearest power of two
         if (!ImageUtils::isPowerOfTwo( &input ))
         {

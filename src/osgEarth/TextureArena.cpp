@@ -78,6 +78,7 @@ Texture::compileGLObjects(osg::State& state) const
     // trigger GPU compression if not already compressed
     GLenum internalFormat =
         _image->isCompressed() ? _image->getInternalTextureFormat() :
+        pixelFormat == GL_RG ? GL_RG8 :
         pixelFormat == GL_RGB ? GL_COMPRESSED_RGB_S3TC_DXT1_EXT :
         pixelFormat == GL_RGBA ? GL_COMPRESSED_RGBA_S3TC_DXT5_EXT :
         GL_RGBA8;

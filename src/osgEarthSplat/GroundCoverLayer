@@ -298,8 +298,14 @@ namespace osgEarth { namespace Splat
             osg::ref_ptr<Texture> _sideBillboardTex;
             int _sideBillboardTexIndex;
 
+            osg::ref_ptr<Texture> _sideBillboardNormalMap;
+            int _sideBillboardNormalMapIndex;
+
             osg::ref_ptr<Texture> _topBillboardTex;
             int _topBillboardTexIndex;
+
+            osg::ref_ptr<Texture> _topBillboardNormalMap;
+            int _topBillboardNormalMapIndex;
 
             osg::ref_ptr<Texture> _modelTex;
             int _modelTexIndex;

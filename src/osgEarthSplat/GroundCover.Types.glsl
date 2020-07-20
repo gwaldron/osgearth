@@ -30,7 +30,6 @@ struct InstanceData
 
     float width;       // 4
     float height;      // 4
-    //float radius;      // 4
     float sinrot;      // 4
     float cosrot;      // 4
 

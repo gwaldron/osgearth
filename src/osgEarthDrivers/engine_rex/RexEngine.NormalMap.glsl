@@ -75,13 +75,6 @@ void oe_rex_normalMapFS(inout vec4 color)
 #endif
 
     vec4 normalAndCurvature = oe_terrain_getNormalAndCurvature(oe_normalMapCoords);
-#ifdef OE_COMPRESSED_NORMAL_MAP
-    //vec2 xymod = encodedNormal.rg*2.0 - 1.0;
-    //vec3 normal = vec3(xymod, sqrt(1 - xymod.x*xymod.x - xymod.y*xymod.y));
-#else
-    //vec3 normal = normalize(encodedNormal.xyz*2.0-1.0);
-    //vec3 normal = encodedNormal.xyz;
-#endif
 
     vec3 tangent = normalize(cross(oe_normalMapBinormal, oe_UpVectorView));
     oe_normalMapTBN = mat3(tangent, oe_normalMapBinormal, oe_UpVectorView);

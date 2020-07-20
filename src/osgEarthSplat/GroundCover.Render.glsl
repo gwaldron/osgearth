@@ -84,8 +84,9 @@ vec4 vp_Color;
 vec3 vp_Normal;
 out vec4 oe_layer_tilec;
 
-// Output texture coordinates to the fragment shader
-out vec3 oe_gc_texCoord;
+
+out vec3 oe_gc_texCoord; // Output tx coords
+out mat3 oe_gc_TBN; // ref frame for normal maps
 
 uniform vec3 oe_VisibleLayer_ranges; // from VisibleLayer
 uniform vec3 oe_Camera;
@@ -98,6 +99,7 @@ float rescale(float d, float v0, float v1)
 }
 
 flat out uint64_t oe_gc_texHandle;
+flat out uint64_t oe_gc_nmlHandle;
 
 void oe_GroundCover_Billboard(inout vec4 vertex_view)
 {
@@ -106,6 +108,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
     vp_Color = vec4(1,1,1,0); // start alpha at ZERO for billboard transitions
     oe_gc_texHandle = 0UL; // 0UL = untextured
+    oe_gc_nmlHandle = 0UL; // oUL = no normal map
 
     oe_layer_tilec = vec4(instance[i].tilec, 0, 1);
     vertex_view = oe_vertex.view;
@@ -154,7 +157,10 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     vp_Normal = normalize(cross(tangentVector, heightVector));
 
     if (instance[i].sideSamplerIndex >= 0)
+    {
         oe_gc_texHandle = texHandle[instance[i].sideSamplerIndex];
+        oe_gc_nmlHandle = texHandle[instance[i].sideSamplerIndex+1];
+    }
 
 #else // normal render camera - draw as a billboard:
 
@@ -170,7 +176,6 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     float topDownAmount = rescale(d, 0.4, 0.6);
     float billboardAmount = rescale(1.0-d, 0.0, 0.25);
 
-    // COMMMENTED OUT FOR TESTING
     if (which < 4 && instance[i].sideSamplerIndex >= 0 && billboardAmount > 0.0) // Front-facing billboard
     {
         vertex_view = 
@@ -193,6 +198,14 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
                 mix( tangentVector, faceNormalVector, blend);
 
             oe_gc_texHandle = texHandle[instance[i].sideSamplerIndex];
+
+            oe_gc_nmlHandle = texHandle[instance[i].sideSamplerIndex+1];
+
+            // normal mapping ref frame
+            oe_gc_TBN = mat3(
+                tangentVector,
+                cross(tangentVector, faceNormalVector),
+                faceNormalVector);
         }
     }
 
@@ -204,11 +217,17 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         vec3 Z = mat3(osg_ViewMatrix) * vec3(0,0,1); //north pole
         vec3 E = cross(Z, oe_UpVectorView);
         vec3 N = cross(oe_UpVectorView, E);
+        Z = cross(E, N);
 
         // now introduce a "random" rotation
+#if 1
         vec2 b = normalize(clamp(vec2(noise[NOISE_RANDOM], noise[NOISE_RANDOM_2]), 0.01, 1.0)*2.0-1.0);
         N = normalize(E*b.x + N*b.y);
         E = normalize(cross(N, oe_UpVectorView));
+#else
+        N = normalize(N);
+        E = normalize(E);
+#endif
 
         // a little trick to mitigate z-fighting amongst the topdowns.
         float yclip = noise[NOISE_RANDOM] * 0.1;
@@ -222,6 +241,15 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
             vec4(C + E*k + N*k, 1.0);
 
         vp_Normal = vertex_view.xyz - C;
+
+        oe_gc_nmlHandle = texHandle[instance[i].topSamplerIndex+1];
+
+        // normal mapping reference frame (BROKEN)
+        // before rotation since it keys off texcoords
+        oe_gc_TBN = mat3(
+            E, // Tang
+            -N, // Binorm
+            oe_UpVectorView);// Norm
 
         vp_Color.a = topDownAmount;
     }
@@ -254,6 +282,8 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
         oe_gc_texHandle = texHandle[instance[i].modelSamplerIndex];
     else
         oe_gc_texHandle = 0UL;
+
+    oe_gc_nmlHandle = 0UL; // oUL = no normal map
 }
 
 
@@ -286,8 +316,11 @@ uniform float oe_gc_maxAlpha;
 uniform int oe_gc_useAlphaToCoverage;
 
 in vec3 oe_gc_texCoord;
+vec3 vp_Normal;
 flat in uint64_t oe_gc_texHandle;
 
+flat in uint64_t oe_gc_nmlHandle;
+in mat3 oe_gc_TBN;
 
 void oe_GroundCover_FS(inout vec4 color)
 {
@@ -295,8 +328,19 @@ void oe_GroundCover_FS(inout vec4 color)
     {
         // modulate the texture.
         // "cast" the bindless handle to a sampler array and sample it
-        //color *= texture(sampler2D(oe_gc_atlasSampler), oe_gc_texCoord.st);
         color *= texture(sampler2DArray(oe_gc_texHandle), oe_gc_texCoord);
+
+        if (oe_gc_nmlHandle > 0UL)
+        {
+            vec4 n = texture(sampler2DArray(oe_gc_nmlHandle), oe_gc_texCoord);
+            n.xyz = n.xyz*2.0-1.0;
+            float curv = n.z;
+            n.z = 1.0 - abs(n.x) - abs(n.y);
+            float t = clamp(-n.z, 0, 1);
+            n.x += (n.x > 0)? -t : t;
+            n.y += (n.y > 0)? -t : t;
+            vp_Normal = normalize(oe_gc_TBN * n.xyz);
+        }
     }
 
 #ifdef OE_IS_SHADOW_CAMERA
@@ -310,4 +354,6 @@ void oe_GroundCover_FS(inout vec4 color)
         discard;
     }
 #endif
+
+    //color.rgb = (vp_Normal+1.0)*0.5;
 }

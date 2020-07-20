@@ -63,7 +63,6 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 
 // TODO LIST
 //
-//  - BUG: multiple biomes, same asset in each biome; billboard sizes are messed up.
 
 //  - FEATURE: FADE in 3D models from billboards
 //  - FEATURE: automatically generate billboards? Imposters? Other?
@@ -89,6 +88,7 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 //  - variable spacing or clumping by landcovergroup or asset...?
 //  - make the noise texture bindless as well? Stick it in the arena? Why not.
 
+//  - (DONE) BUG: multiple biomes, same asset in each biome; billboard sizes are messed up.
 //  - (DONE - using indexes instead of copies) Reduce the size of the RenderBuffer structure
 //  - (DONE) Fix model culling. The "radius" isn't quite sufficient since the origin is not at the center,
 //    AND because rotation changes the profile. Calculate it differently.
@@ -1382,6 +1382,7 @@ namespace {
     struct ModelCacheEntry {
         osg::ref_ptr<osg::Node> _node;
         int _modelID;
+        osg::BoundingBox _modelAABB;
     };
 }
 
@@ -1456,6 +1457,7 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                     {
                         data->_model = ic->second._node.get();
                         data->_modelID = ic->second._modelID;
+                        data->_modelAABB = ic->second._modelAABB;
                     }
                     else
                     {
@@ -1469,12 +1471,7 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                             osg::ComputeBoundsVisitor cbv;
                             data->_model->accept(cbv);
                             data->_modelAABB = cbv.getBoundingBox();
-
-                            //OE_INFO << LC << "Model " << uri.base() 
-                            //    << " : X=" << (data->_modelAABB.xMin()) << " " << data->_modelAABB.xMax()
-                            //    << " , Y=" << (data->_modelAABB.yMin()) << " " << data->_modelAABB.yMax()
-                            //    << " , Z=" << (data->_modelAABB.zMin()) << " " << data->_modelAABB.zMax()
-                            //    << std::endl;                                
+                            modelcache[uri]._modelAABB = data->_modelAABB;
                         }
                         else
                         {

@@ -925,7 +925,9 @@ FeatureImageRenderer::getFeatures(Session* session,
             }
 
             // If we didn't get any features and we have a tilekey set, try falling back.
-            if (features.empty() && localQuery.tileKey().isSet())
+            if (features.empty() && 
+                localQuery.tileKey().isSet() &&
+                localQuery.tileKey()->valid())
             {
                 localQuery.tileKey() = localQuery.tileKey().get().createParentKey();
                 if (!localQuery.tileKey()->valid())

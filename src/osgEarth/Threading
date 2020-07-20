@@ -208,8 +208,6 @@ namespace osgEarth { namespace Threading
         };
 
     public:
-        typedef std::function<void(T*)> Callback;
-
         //! Blank CTOR
         Future() {
             _ev = new RefEvent();

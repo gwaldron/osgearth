@@ -235,7 +235,10 @@ ELSE (INSTALL_TO_OSG_DIR)
 ENDIF(INSTALL_TO_OSG_DIR)
 
 # osgEarth Examples
-OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
+OPTION(BUILD_EXAMPLES "Build osgEarth examples" ON)
+
+# experimental stuff
+OPTION(BUILD_SANDBOX "" OFF)
 
 # Whether to build our custom zip plugin
 IF(LIBZIP_FOUND)

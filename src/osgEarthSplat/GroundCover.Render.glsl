@@ -349,10 +349,21 @@ void oe_GroundCover_FS(inout vec4 color)
         discard;
     }
 #else
-    if (oe_gc_useAlphaToCoverage == 0 && color.a < oe_gc_maxAlpha)
+    if (oe_gc_useAlphaToCoverage == 1)
     {
+        // https://medium.com/@bgolus/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
+        color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+    }
+    else if (color.a < oe_gc_maxAlpha)
+    {
+        //color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
         discard;
     }
+
+    //if (oe_gc_useAlphaToCoverage == 0 && color.a < oe_gc_maxAlpha)
+    //{
+    //    discard;
+    //}
 #endif
 
     //color.rgb = (vp_Normal+1.0)*0.5;

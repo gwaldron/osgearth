@@ -105,19 +105,27 @@ hemiOctahedronToVec3(const osg::Vec2d& e)
     return v;
 }
 
+// Shaders for albedo rendering
+const char* albedoFS =
+    "#version 330 \n"
+    "void albedoFS(inout vec4 color) { \n" 
+    "    color = vec4(1,1,1,color.a); \n"
+    "    if (color.a < 0.15) discard; \n"
+    "} \n";
+
 // Shaders for rendering the normal map
 const char* normalMapVS =
     "#version 330 \n"
     "out vec3 modelNormal; \n"
     "void normalMapVS(inout vec4 vertex) { \n"
-    "    modelNormal = gl_Normal; \n"
+    "    modelNormal = gl_NormalMatrix * gl_Normal; \n"
     "} \n";
 const char* normalMapFS =
     "#version 330 \n"
     "in vec3 modelNormal; \n"
     "out vec4 encodedNormal; \n"
-    "void normalMapFS(inout vec4 color) { \n"
-    "    encodedNormal = vec4((modelNormal+1.0)*0.5, 1.0); \n"
+    "void normalMapFS(inout vec4 color) { \n" 
+    "    encodedNormal = vec4((modelNormal.xyz+1.0)*0.5, 1.0); \n"
     "} \n";
 
 int
@@ -190,6 +198,9 @@ main(int argc, char** argv)
     
     osg::Group* models = new osg::Group();
 
+    models->getOrCreateStateSet()->setMode(GL_CULL_FACE, 0);
+    models->getOrCreateStateSet()->setMode(GL_BLEND, 1);
+
     if (numFrames == 1)
     {
         osg::PositionAttitudeTransform* xform = new osg::PositionAttitudeTransform();
@@ -244,6 +255,9 @@ main(int argc, char** argv)
     osg::Camera* colorCamera = createColorCamera(size);
     colorCamera->addChild(models);
     root->addChild(colorCamera);
+
+    VirtualProgram* colorVP = VirtualProgram::getOrCreate(colorCamera->getOrCreateStateSet());    
+    colorVP->setFunction("albedoFS", albedoFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0f);
 
     osg::Camera* normalMapCamera = createNormalMapCamera(size);
     normalMapCamera->addChild(models);

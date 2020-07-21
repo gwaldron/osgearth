@@ -220,14 +220,9 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         Z = cross(E, N);
 
         // now introduce a "random" rotation
-#if 1
         vec2 b = normalize(clamp(vec2(noise[NOISE_RANDOM], noise[NOISE_RANDOM_2]), 0.01, 1.0)*2.0-1.0);
         N = normalize(E*b.x + N*b.y);
         E = normalize(cross(N, oe_UpVectorView));
-#else
-        N = normalize(N);
-        E = normalize(E);
-#endif
 
         // a little trick to mitigate z-fighting amongst the topdowns.
         float yclip = noise[NOISE_RANDOM] * 0.1;
@@ -242,14 +237,9 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
         vp_Normal = vertex_view.xyz - C;
 
+        // normal map handle and ref frame:
         oe_gc_nmlHandle = texHandle[instance[i].topSamplerIndex+1];
-
-        // normal mapping reference frame (BROKEN)
-        // before rotation since it keys off texcoords
-        oe_gc_TBN = mat3(
-            E, // Tang
-            -N, // Binorm
-            oe_UpVectorView);// Norm
+        oe_gc_TBN = mat3(E, -N, oe_UpVectorView);
 
         vp_Color.a = topDownAmount;
     }
@@ -283,7 +273,7 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
     else
         oe_gc_texHandle = 0UL;
 
-    oe_gc_nmlHandle = 0UL; // oUL = no normal map
+    oe_gc_nmlHandle = 0UL; // no normal map
 }
 
 
@@ -349,10 +339,12 @@ void oe_GroundCover_FS(inout vec4 color)
         discard;
     }
 #else
+
     if (oe_gc_useAlphaToCoverage == 1)
     {
+        // maybe use this for billboards/impostors?
         // https://medium.com/@bgolus/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
-        color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+        //color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
     }
     else if (color.a < oe_gc_maxAlpha)
     {

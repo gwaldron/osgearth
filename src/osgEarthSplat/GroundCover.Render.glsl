@@ -84,9 +84,9 @@ vec4 vp_Color;
 vec3 vp_Normal;
 out vec4 oe_layer_tilec;
 
-
 out vec3 oe_gc_texCoord; // Output tx coords
 out mat3 oe_gc_TBN; // ref frame for normal maps
+out float oe_gc_transition; // fade bb to model
 
 uniform vec3 oe_VisibleLayer_ranges; // from VisibleLayer
 uniform vec3 oe_Camera;
@@ -251,6 +251,14 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         which == 1 || which == 5? vec2(1, 0) :
         which == 2 || which == 6? vec2(0, 1) :
                                   vec2(1, 1);
+
+    // apply fade from bb->model
+    if (instance[i].modelId >= 0)
+    {
+        oe_gc_transition = clamp(
+            (1.0 + PSR_BUFFER - instance[i].pixelSizeRatio) / PSR_BUFFER, 
+            0, 1);
+    }
 }
 
 
@@ -274,12 +282,21 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
         oe_gc_texHandle = 0UL;
 
     oe_gc_nmlHandle = 0UL; // no normal map
-}
 
+    // apply fade from bb->model
+    if (instance[i].pixelSizeRatio < 1.0)
+    {
+        oe_gc_transition = clamp( 
+            (instance[i].pixelSizeRatio - (1.0-PSR_BUFFER))/PSR_BUFFER, 
+            0.0, 1.0 );
+    }
+}
 
 // MAIN ENTRY POINT  
 void oe_GroundCover_VS(inout vec4 vertex_view)
 {
+    oe_gc_transition = 1.0;
+
     if (gl_DrawID == 0)
     {
         oe_GroundCover_Billboard(vertex_view);
@@ -303,7 +320,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 uniform float oe_gc_maxAlpha;
-uniform int oe_gc_useAlphaToCoverage;
+uniform int oe_gc_isMultisampled;
 
 in vec3 oe_gc_texCoord;
 vec3 vp_Normal;
@@ -312,8 +329,13 @@ flat in uint64_t oe_gc_texHandle;
 flat in uint64_t oe_gc_nmlHandle;
 in mat3 oe_gc_TBN;
 
+in float oe_gc_transition;
+
 void oe_GroundCover_FS(inout vec4 color)
 {
+    // apply the transition fade
+    color.a *= oe_gc_transition;
+
     if (oe_gc_texHandle > 0UL)
     {
         // modulate the texture.
@@ -340,7 +362,7 @@ void oe_GroundCover_FS(inout vec4 color)
     }
 #else
 
-    if (oe_gc_useAlphaToCoverage == 1)
+    if (oe_gc_isMultisampled == 1)
     {
         // maybe use this for billboards/impostors?
         // https://medium.com/@bgolus/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
@@ -351,11 +373,6 @@ void oe_GroundCover_FS(inout vec4 color)
         //color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
         discard;
     }
-
-    //if (oe_gc_useAlphaToCoverage == 0 && color.a < oe_gc_maxAlpha)
-    //{
-    //    discard;
-    //}
 #endif
 
     //color.rgb = (vp_Normal+1.0)*0.5;

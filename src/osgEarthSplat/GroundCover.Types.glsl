@@ -78,3 +78,6 @@ layout(binding=5, std430) buffer TextureLUT
 {
     uint64_t texHandle[];
 };
+
+// transition buffer (in pixel size ratio space) b/w billboards and models
+#define PSR_BUFFER 0.22

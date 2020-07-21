@@ -602,6 +602,8 @@ GeometryCloud::GeometryCloud() :
     // technique to offset element indicies and thereby support a VBO with >65535 verts.
     _primset = new osg::DrawElementsUShort(GL_TRIANGLES);
     _geom->addPrimitiveSet(_primset);
+
+    _geom->getOrCreateStateSet()->setMode(GL_BLEND, 1);
 }
 
 Texture*

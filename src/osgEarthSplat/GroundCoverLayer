@@ -193,7 +193,7 @@ namespace osgEarth { namespace Splat
                 PCPState();
                 GLint _generateDataUL;
                 float _generateData[5];
-                GLint _A2CUL;
+                GLint _isMSUL;
                 GLint _contextIdUL;
             };
             typedef std::unordered_map<const void*, PCPState> PCPStateMap;
@@ -242,7 +242,7 @@ namespace osgEarth { namespace Splat
 
             // uniform IDs
             unsigned _computeDataUName;
-            unsigned _A2CName;
+            unsigned _isMSUName;
             unsigned _contextIdUName;
 
             void applyLocalState(osg::RenderInfo& ri, CameraState& ds);

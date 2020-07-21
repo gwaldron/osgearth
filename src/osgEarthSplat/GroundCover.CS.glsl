@@ -17,7 +17,6 @@ struct oe_gc_Asset {
     int topSamplerIndex;
     float width;
     float height;
-    //float radius;
     float sizeVariation;
     float fill;
 };
@@ -184,7 +183,6 @@ void generate()
     instance[i].sizeScale = 1.0 + asset.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
     instance[i].width = asset.width * instance[i].sizeScale;
     instance[i].height = asset.height * instance[i].sizeScale;
-    //instance[i].radius = asset.radius;
 
     //float rotation = 6.283185 * noise[NOISE_RANDOM];
     float rotation = 6.283185 * fract(noise[NOISE_RANDOM_2]*5.5);
@@ -249,35 +247,40 @@ void cull()
         return;
 
     // Model versus billboard selection:
-    bool chooseModel = instance[i].modelId >= 0;
+    bool bbExists = instance[i].sideSamplerIndex >= 0;
+    bool modelExists = instance[i].modelId >= 0;
 
     // If model, make sure we're within the SSE limit:
     vec2 pixelSizeRatio = vec2(1);
-    if (chooseModel)
+    if (modelExists)
     {
         vec2 pixelSize = 0.5*(clipUR.xy-clipLL.xy) * oe_Camera.xy;
         pixelSizeRatio = pixelSize / vec2(oe_gc_sse);
-        if (all(lessThan(pixelSizeRatio, vec2(1))))
-            chooseModel = false;
+        //if (all(lessThan(pixelSizeRatio, vec2(1))))
+        //    chooseModel = false;
     }
 
-    // If we chose a billboard but there isn't one, bail.
-    if (chooseModel == false && instance[i].sideSamplerIndex < 0)
-        return;
+    float psr = min(pixelSizeRatio.x, pixelSizeRatio.y);
 
-    // "drawId" is the index of the DrawElementsIndirect command we will
-    // use to draw this instance. Command[0] is the billboard group; all
-    // others are unique 3D models.
-    instance[i].drawId = chooseModel ? instance[i].modelId + 1 : 0;
+    bool drawBB = bbExists && (psr < 1.0+PSR_BUFFER || !modelExists);
+    bool drawModel = modelExists && psr > 1.0-PSR_BUFFER;
 
-    instance[i].pixelSizeRatio = min(pixelSizeRatio.x, pixelSizeRatio.y);
+    instance[i].pixelSizeRatio = psr;
 
-    // for each command FOLLOWING the one we just picked,
-    // increment the baseInstance number. We should end up with
-    // the correct baseInstance for each command by the end of the cull pass.
-    for (uint drawId = instance[i].drawId + 1; drawId < oe_gc_numCommands; ++drawId)
+    if (drawModel)
     {
-        atomicAdd(cmd[drawId].baseInstance, 1);
+        int modelDrawId = instance[i].modelId + 1;
+        instance[i].drawId = modelDrawId;
+        for (uint drawId = modelDrawId + 1; drawId < oe_gc_numCommands; ++drawId)
+            atomicAdd(cmd[drawId].baseInstance, 1);
+    }
+    if (drawBB)
+    {
+        const int bb_drawId = 0;
+        if (instance[i].drawId < 0)
+            instance[i].drawId = bb_drawId;
+        for (uint drawId = bb_drawId + 1; drawId < oe_gc_numCommands; ++drawId)
+            atomicAdd(cmd[drawId].baseInstance, 1);
     }
 }
 
@@ -299,6 +302,17 @@ void sort()
         // copy to the right place in the render list
         uint index = cmdStartIndex + instanceIndex;
         renderLUT[index] = i;
+
+        // if we queued a model, but are within the transition range, queue a billboard also.
+        if (drawId > 0 && 
+            instance[i].sideSamplerIndex >= 0 &&
+            instance[i].pixelSizeRatio < (1.0+PSR_BUFFER))
+        {
+            cmdStartIndex = cmd[0].baseInstance;
+            instanceIndex = atomicAdd(cmd[0].instanceCount, 1);
+            index = cmdStartIndex + instanceIndex;
+            renderLUT[index] = i;
+        }
     }
 }
 

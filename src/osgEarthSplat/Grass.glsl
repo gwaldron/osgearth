@@ -301,7 +301,7 @@ flat in uint64_t oe_gc_texHandle;
 vec3 vp_Normal;
 
 uniform float oe_gc_maxAlpha;
-uniform int oe_gc_useAlphaToCoverage;
+uniform int oe_gc_isMultisampled;
 
 void oe_Grass_FS(inout vec4 color)
 {
@@ -315,7 +315,7 @@ void oe_Grass_FS(inout vec4 color)
     //if (color.a < 0.2)
     //    color.a = 0.8;
 
-    if (oe_gc_useAlphaToCoverage == 1)
+    if (oe_gc_isMultisampled == 1)
     {
         // https://medium.com/@bgolus/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
         //color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;

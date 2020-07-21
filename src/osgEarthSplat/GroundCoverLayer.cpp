@@ -984,7 +984,7 @@ GroundCoverLayer::Renderer::PCPState::PCPState()
     // initialize all the uniform locations - we will fetch these at draw time
     // when the program is active
     _generateDataUL = -1;
-    _A2CUL = -1;
+    _isMSUL = -1;
 }
 
 GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
@@ -992,7 +992,7 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     _layer = layer;
 
     // create uniform IDs for each of our uniforms
-    _A2CName = osg::Uniform::getNameID("oe_gc_useAlphaToCoverage");
+    _isMSUName = osg::Uniform::getNameID("oe_gc_isMultisampled");
     _computeDataUName = osg::Uniform::getNameID("oe_tile");
 
     _tileWidth = 0.0;
@@ -1262,21 +1262,21 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, CameraState& ds
 
         osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
 
-        GLint useA2C = 0;
+        GLint isMultisampled = 0;
         if (_layer->getUseAlphaToCoverage())
         {
-            useA2C = ri.getState()->getLastAppliedMode(GL_MULTISAMPLE) ? 1 : 0;
-            ri.getState()->applyMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, useA2C == 1);
+            isMultisampled = ri.getState()->getLastAppliedMode(GL_MULTISAMPLE) ? 1 : 0;
+            ri.getState()->applyMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, isMultisampled == 1);
             ri.getState()->applyAttribute(_a2cBlending.get());
         }
 
         PCPState& u = ds._pcpState[pcp];
 
-        if (u._A2CUL < 0)
-            u._A2CUL = pcp->getUniformLocation(_A2CName);
+        if (u._isMSUL < 0)
+            u._isMSUL = pcp->getUniformLocation(_isMSUName);
 
-        if (u._A2CUL >= 0)
-            ext->glUniform1i(u._A2CUL, useA2C);
+        if (u._isMSUL >= 0)
+            ext->glUniform1i(u._isMSUL, isMultisampled);
     }
 }
 

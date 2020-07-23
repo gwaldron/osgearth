@@ -24,26 +24,6 @@
 
 using namespace osgEarth;
 
-namespace
-{
-    // octohodreal normal packing
-    void packNormal(const osg::Vec3& v, osg::Vec2& p)
-    {
-        float d = 1.0/(fabs(v.x())+fabs(v.y())+fabs(v.z()));
-        p.x() = v.x() * d;
-        p.y() = v.y() * d;
-
-        if (v.z() < 0.0)
-        {
-            p.x() = (1.0 - fabs(p.y())) * (p.x() >= 0.0? 1.0 : -1.0);
-            p.y() = (1.0 - fabs(p.x())) * (p.y() >= 0.0? 1.0 : -1.0);
-        }
-
-        p.x() = 0.5f*(p.x()+1.0f);
-        p.y() = 0.5f*(p.y()+1.0f);
-    }
-}
-
 osg::Texture*
 osgEarth::createEmptyElevationTexture()
 {
@@ -62,9 +42,9 @@ osgEarth::createEmptyNormalMapTexture()
     osg::Image* image = new osg::Image();
     image->allocateImage(1, 1, 1, GL_RG, GL_UNSIGNED_BYTE);
     ImageUtils::PixelWriter write(image);
-    osg::Vec2 packed;
-    packNormal(osg::Vec3(0,0,1), packed);
-    write(osg::Vec4(packed.x(), packed.y(), 0, 0), 0, 0);
+    osg::Vec4 packed;
+    NormalMapGenerator::pack(osg::Vec3(0,0,1), packed);
+    write(packed, 0, 0);
     osg::Texture2D* tex = new osg::Texture2D(image);
     tex->setInternalFormat(GL_RG8);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
@@ -143,6 +123,21 @@ ElevationTexture::getElevationUV(double u, double v) const
     return ElevationSample(Distance(value.r(),Units::METERS), _resolution);
 }
 
+osg::Vec3
+ElevationTexture::getNormal(double x, double y) const
+{
+    osg::Vec3 normal(0,0,1);
+    if (_normalTex.valid())
+    {
+        double u = (x - getExtent().xMin()) / getExtent().width();
+        double v = (y - getExtent().yMin()) / getExtent().height();
+        osg::Vec4 value;
+        _readNormal(value, u, v);
+        NormalMapGenerator::unpack(value, normal);
+    }
+    return normal;
+}
+
 osg::Texture2D*
 ElevationTexture::getNormalMapTexture() const
 {
@@ -175,6 +170,9 @@ ElevationTexture::generateNormalMap(
             {
                 // these are pooled, so do not expire them.
                 _normalTex->setUnRefImageDataAfterApply(false);
+
+                _readNormal.setImage(_normalTex->getImage());
+                _readNormal.setBilinear(true);
             }
         }
     }
@@ -313,8 +311,7 @@ NormalMapGenerator::createNormalMap(
                 normal.set(0,0,1);
             }
 
-            packNormal(normal, packedNormal);
-            pixel.r() = packedNormal.x(), pixel.g() = packedNormal.y();
+            NormalMapGenerator::pack(normal, pixel);
 
             // TODO: won't actually be written until we make the format GL_RGB
             // but we need to rewrite the curvature generator first
@@ -336,4 +333,34 @@ NormalMapGenerator::createNormalMap(
     normalTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     
     return normalTex;
+}
+
+void
+NormalMapGenerator::pack(const osg::Vec3& n, osg::Vec4& p)
+{
+    // octohodreal normal packing
+    float d = 1.0/(fabs(n.x())+fabs(n.y())+fabs(n.z()));
+    p.x() = n.x() * d;
+    p.y() = n.y() * d;
+
+    if (n.z() < 0.0)
+    {
+        p.x() = (1.0 - fabs(p.y())) * (p.x() >= 0.0? 1.0 : -1.0);
+        p.y() = (1.0 - fabs(p.x())) * (p.y() >= 0.0? 1.0 : -1.0);
+    }
+
+    p.x() = 0.5f*(p.x()+1.0f);
+    p.y() = 0.5f*(p.y()+1.0f);
+}
+
+void
+NormalMapGenerator::unpack(const osg::Vec4& packed, osg::Vec3& normal)
+{
+    normal.x() = packed.x()*2.0-1.0;
+    normal.y() = packed.y()*2.0-1.0;
+    normal.z() = 1.0-fabs(normal.x())-fabs(normal.y());
+    float t = osg::clampBetween(-normal.z(), 0.0f, 1.0f);
+    normal.x() += (normal.x() > 0)? -t : t;
+    normal.y() += (normal.y() > 0)? -t : t;
+    normal.normalize();
 }

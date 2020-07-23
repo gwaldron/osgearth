@@ -35,6 +35,26 @@ using namespace osgEarth::Util;
 osg::Texture*
 NoiseTextureFactory::create(unsigned dim, unsigned chans) const
 {
+    osg::Image* image = createImage(dim, chans);
+
+    // create mipmaps
+    ImageUtils::mipmapImageInPlace(image);
+
+    // make a texture:
+    osg::Texture2D* tex = new osg::Texture2D( image );
+    tex->setWrap(tex->WRAP_S, tex->REPEAT);
+    tex->setWrap(tex->WRAP_T, tex->REPEAT);
+    tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
+    tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+    tex->setMaxAnisotropy( 1.0f );
+    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+
+    return tex;
+}
+
+osg::Image*
+NoiseTextureFactory::createImage(unsigned dim, unsigned chans) const
+{
     OE_PROFILING_ZONE;
     chans = osg::clampBetween(chans, 1u, 4u);
 
@@ -112,19 +132,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
                 write(v, s, t);
             }
         }
-    }    
-    
-    // create mipmaps
-    ImageUtils::mipmapImageInPlace(image);
+    }
 
-    // make a texture:
-    osg::Texture2D* tex = new osg::Texture2D( image );
-    tex->setWrap(tex->WRAP_S, tex->REPEAT);
-    tex->setWrap(tex->WRAP_T, tex->REPEAT);
-    tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
-    tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
-    tex->setMaxAnisotropy( 1.0f );
-    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-
-    return tex;
+    return image;
 }

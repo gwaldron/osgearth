@@ -2184,6 +2184,17 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
         float sizeS = (float)(_image->s() - 1);
         float sizeT = (float)(_image->t() - 1);
 
+        if (_sampleAsRepeatingTexture)
+        {
+            u = fractf(u);
+            v = fractf(v);
+        }
+        else
+        {
+            u = clampf(u, 0.0f, 1.0f);
+            v = clampf(v, 0.0f, 1.0f);
+        }
+
         // u, v => [0..1]
         float s = u * sizeS;
         float t = v * sizeT;
@@ -2291,6 +2302,17 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, 
     {
         double sizeS = (double)(_image->s() - 1);
         double sizeT = (double)(_image->t() - 1);
+
+        if (_sampleAsRepeatingTexture)
+        {
+            u = fract(u);
+            v = fract(v);
+        }
+        else
+        {
+            u = clamp(u, 0.0f, 1.0f);
+            v = clamp(v, 0.0f, 1.0f);
+        }
 
         // u, v => [0..1]
         double s = u * sizeS;

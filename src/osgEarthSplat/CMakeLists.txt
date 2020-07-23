@@ -47,6 +47,7 @@ set(TARGET_SRC
 	SplatCatalog.cpp
     SplatLayer.cpp
     Surface.cpp
+    TerroirLayer.cpp
     Zone.cpp
     ${SHADERS_CPP})
 	
@@ -63,6 +64,7 @@ set(LIB_PUBLIC_HEADERS
     SplatShaders
     SplatLayer
     Surface
+    TerroirLayer
     Zone)
 	
 SET(TARGET_H

@@ -1,0 +1,306 @@
+<map>
+    <xi:include href="readymap_elevation.xml"/>
+
+    <xi:include href="viewpoints.xml"/>
+
+    <Viewpoints>
+        <viewpoint name="Sahara Desert">
+            <heading>19.1486</heading>
+            <pitch>-5.47115</pitch>
+            <range>1579.82m</range>
+            <long>5.532673035060111</long>
+            <lat>24.4095608331511</lat>
+            <height>1670.410200586542</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+        <viewpoint>
+            <heading>4.78372</heading>
+            <pitch>-12.8643</pitch>
+            <range>871.642m</range>
+            <long>86.70992701098108</long>
+            <lat>27.80425932879971</lat>
+            <height>3412.017050028779</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+        <viewpoint>
+            <heading>-120.932</heading>
+            <pitch>-19.8311</pitch>
+            <range>2529.82m</range>
+            <long>-113.6306600515501</long>
+            <lat>35.74415839165609</lat>
+            <height>1141.220891861245</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+    </Viewpoints>
+
+    <mbtileselevation name="Nepal" enabled="true">
+        <url>D:/data/demo/nepal/nepal.mbtiles</url>
+    </mbtileselevation>
+
+    <xi:include href="osm_buildings.xml"/>
+
+    <libraries>osgEarthSplat</libraries>
+
+    <contourmap opacity="0"/>
+
+    <terroir>
+
+        <shader>
+            <![CDATA[
+                       
+                #version 430
+                #pragma vp_name Terroir shader
+                #pragma vp_entryPoint splatPrep
+                #pragma vp_location vertex_model
+                #extension GL_ARB_gpu_shader_int64 : enable
+                
+                layout(binding=5, std430) buffer TextureLUT {
+                    uint64_t texHandle[];
+                };
+
+                vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
+                vec4 oe_terrain_getNormalAndCurvature();
+                
+                #define SPLAT_LOD 16
+                
+                vec4 oe_layer_tilec;
+                out vec2 splatCoords;
+                out vec3 splatVertex_model;
+                out vec3 splatTexBlend;
+                
+                vec3 unpackNormal(in vec2 p)
+                {
+                    vec3 n;
+                    n.xy = p.xy*2.0-1.0;
+                    n.z = 1.0 - abs(n.x) - abs(n.y);
+                    return normalize(n);
+                }
+                
+                void splatPrep(inout vec4 vertex_model)
+                {
+                    splatVertex_model = vertex_model.xyz;
+                    splatCoords = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, SPLAT_LOD);
+                    
+                    // triplanar blending parameters
+                    vec3 normal_model = oe_terrain_getNormalAndCurvature().xyz;                    
+                    splatTexBlend = abs(normal_model);
+                    splatTexBlend = normalize(max(splatTexBlend, 0.00001));
+                    float b = splatTexBlend.x + splatTexBlend.y + splatTexBlend.z;
+                    splatTexBlend /= vec3(b);
+                }
+            
+              [break]
+                       
+                #version 430
+                #pragma vp_name Terroir shader
+                #pragma vp_entryPoint splatDraw
+                #pragma vp_location fragment
+                #extension GL_ARB_gpu_shader_int64 : enable
+                
+                layout(binding=5, std430) buffer TextureLUT {
+                    uint64_t texHandle[];
+                };
+                
+                #define LIFE 0
+                #define MOISTURE 1
+                #define ROUGHNESS 2
+                #define BIOME 3
+                
+                vec3 vp_Normal;
+                in vec3 splatVertex_model;
+                in vec3 splatTexBlend;
+                in vec2 splatCoords;
+                
+                uniform float life_power = 1.0;
+                uniform float moisture_power = 1.0;
+                uniform float roughness_power = 1.0;
+                
+                vec3 unpackNormal(in vec4 p)
+                {
+                    vec3 n;
+                    n.xy = p.xy*2.0-1.0;
+                    n.z = 1.0 - abs(n.x) - abs(n.y);
+                    // unnecessary since Z is never < 0:
+                    //float t = clamp(-n.z, 0, 1);
+                    //n.x += (n.x > 0)? -t : t;
+                    //n.y += (n.y > 0)? -t : t;
+                    return normalize(n);
+                }
+                
+                vec4 rgbh(in int index)
+                {
+                    return texture(sampler2D(texHandle[index]), splatCoords);
+                }
+                
+                vec4 nnsa(in int index)
+                {
+                    return texture(sampler2D(texHandle[index+1]), splatCoords);
+                }
+                
+                float amplify(in float val, in float modifier)
+                {
+                    return val * modifier;
+                    //return pow(val, modifier);
+                }
+                                
+                float threshold(in float val, in float thresh, in float buf)
+                {
+                    if (val < thresh-buf) return 0.0;
+                    else if (val > thresh+buf) return 1.0;
+                    else return clamp( (val-(thresh-buf)) / (buf*2.0), 0.0, 1.0);
+                }
+                
+                float heightBlend(in float h1, in float h2, in float a1, in float a2)
+                {
+                    // https://tinyurl.com/y5nkw2l9
+                    float depth = 0.2;
+                    float ma = max(h1+a1, h2+a2)-depth;                    
+                    float b1 = max(h1+a1-ma, 0.0);
+                    float b2 = max(h2+a2-ma, 0.0);
+                    return (a1*b1)/(b1+b2); // return blend factor for h1
+                }
+                
+                vec3 triplanar(in int index)
+                {
+                    uint64_t h = texHandle[index];
+                    const float scale = 1.0/1024.0;
+                    return
+                        //vec3(1,0,0) * splatTexBlend.x + vec3(0,1,0) * splatTexBlend.y + vec3(0,0,1) * splatTexBlend.z;
+                        texture(sampler2D(h), splatVertex_model.yz / scale).rgb * splatTexBlend.x +
+                        texture(sampler2D(h), splatVertex_model.xz / scale).rgb * splatTexBlend.y +
+                        texture(sampler2D(h), splatVertex_model.xy / scale).rgb * splatTexBlend.z;
+                }
+                
+                struct Rec {
+                    int index;
+                    float life_effect;
+                    float moisture_effect;
+                    float roughness_effect;
+                    vec4 rgbh;
+                    vec4 material;
+                };
+                
+                #define NUM_TEX 3
+                               
+                const int TEX_ROCK  = 0; // 1 = NNSA
+                const int TEX_DIRT  = 2; // 3 = NNSA
+                const int TEX_GRASS = 4; 
+                
+                Rec lut[NUM_TEX] = Rec[](
+                    //             LIF   MOI   ROU
+                    Rec(TEX_ROCK,  0.0,  0.0,  0.0, vec4(0), vec4(0)),
+                    Rec(TEX_DIRT,  0.0,  0.0, -1.0, vec4(0), vec4(0)),
+                    Rec(TEX_GRASS, 1.0,  1.0,  0.0, vec4(0), vec4(0))
+                );
+                
+                float threshold(in float val, in float lo, in float hi, in float buf)
+                {
+                    float mid = lo + (hi-lo)*0.5;
+                    float newbuf = (hi-lo)*(1.0+buf)*0.5;
+                    return threshold(val, mid, newbuf);
+                }
+                
+                void splatDraw(inout vec4 quad)
+                {
+                    vec3 tangent = cross(gl_NormalMatrix*vec3(0,0,1), vp_Normal);
+                    vec3 binormal = cross(tangent, vp_Normal);
+                    mat3 tbn = mat3(normalize(tangent), normalize(binormal), vp_Normal);
+
+                    float life = quad[LIFE];
+                    life = amplify(life, life_power);
+                    life = life * 2.0 - 1.0;
+                    
+                    float moisture = quad[MOISTURE];
+                    moisture = amplify(moisture, moisture_power);
+                    moisture = moisture * 2.0 - 1.0;
+                    
+                    float roughness = quad[ROUGHNESS];
+                    roughness = amplify(roughness, roughness_power);
+                    roughness = roughness * 2.0 - 1.0;
+                    
+                    for(int i=0; i<NUM_TEX; ++i)
+                    {
+                        lut[i].rgbh = rgbh(lut[i].index);
+                        lut[i].material = nnsa(lut[i].index);
+                    }
+
+                    // starting point.
+                    vec4 rgbh = lut[0].rgbh;
+                    vec4 material = lut[0].material;                    
+                    vec3 normal = unpackNormal(material);
+                    
+                    for(int i=1; i<NUM_TEX; ++i)
+                    {
+                        vec4 this_rgbh = lut[i].rgbh;
+                        vec4 this_material = lut[i].material;                        
+                        
+                        vec3 this_normal = unpackNormal(this_material);
+                        float blend_normal = 0.0;
+                        
+                        float this_life = life * lut[i].life_effect; //clamp(life * (lut[i].life_effect>=0? lut[i].life_effect : 1.0-lut[i].life_effect), 0, 1);
+                        float this_moisture = moisture * lut[i].moisture_effect; //clamp(moisture * (lut[i].moisture_effect>=0? lut[i].moisture_effect : 1.0-lut[i].moisture_effect), 0, 1);
+                        float this_roughness = roughness * lut[i].roughness_effect; //clamp(roughness * (lut[i].roughness_effect>=0? lut[i].roughness_effect : 1.0-lut[i].roughness_effect), 0, 1);
+                        
+                        float effect = clamp(this_life+this_moisture+this_roughness, 0, 1);
+                        
+                        float blend = heightBlend(this_rgbh.a, rgbh.a, effect, 1.0-effect);
+                        
+                        rgbh.rgb = mix(rgbh.rgb, this_rgbh.rgb, blend);
+                        
+                        normal = mix(normal, this_normal, blend); 
+                        
+                        rgbh.a = max(rgbh.a, lut[i].rgbh.a);
+                    }
+                    
+                    // final color output:
+                    quad = vec4(rgbh.rgb, 1.0);
+                    
+                    // final normal output:
+                    vp_Normal = normalize(tbn * normal);
+                }
+            ]]>
+        </shader>
+
+        <!--
+        <shader>
+            <![CDATA[
+                #version 330
+                #pragma vp_name Terroir Shader
+                #pragma vp_entryPoint colorize
+                #pragma vp_location fragment_coloring
+                
+                void colorize(inout vec4 color)
+                {
+                    const vec3 life0 = vec3(0.61, 0.46, 0.33) * 0.1;
+                    const vec3 life1 = vec3(0.13, 0.55, 0.13);
+                    
+                    //const vec3 life0 = vec3(0,0,0);
+                    //const vec3 life1 = vec3(1,1,1);
+                    
+                    const float moisture0 = 0.5;
+                    const float moisture1 = 2.0;
+                    
+                    const vec3 roughness0 = vec3(0.4, 0.4, 0.4);
+                    
+                    const vec3 water = vec3(0.0, 0.25, 0.45);
+                    
+                    vec4 output;
+                    
+                    float life = color.r;
+                    float moisture = color.g;
+                    float roughness = color.b;
+                    float land = color.a;
+                    
+                    output.rgb = mix(life0, life1, color.r);
+                    //output.rgb *= mix(moisture0, moisture1, moisture);
+                    //output.rgb = mix(output.rgb, roughness0, roughness);
+                    
+                    output.rgb = mix(water, output.rgb, land);
+                    
+                    color = clamp(vec4(output.rgb, 1.0), 0.0, 1.0);
+                }
+            ]]>
+        </shader>
+        -->
+    </terroir>
+</map>

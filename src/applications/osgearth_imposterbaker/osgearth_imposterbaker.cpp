@@ -106,10 +106,15 @@ hemiOctahedronToVec3(const osg::Vec2d& e)
 }
 
 // Shaders for albedo rendering
-const char* albedoFS =
+const char* removeVertexColors =
     "#version 330 \n"
-    "void albedoFS(inout vec4 color) { \n" 
+    "void removeVertexColors(inout vec4 color) { \n" 
     "    color = vec4(1,1,1,color.a); \n"
+    "} \n";
+
+const char* discardAlpha =
+    "#version 330 \n"
+    "void discardAlpha(inout vec4 color) { \n" 
     "    if (color.a < 0.15) discard; \n"
     "} \n";
 
@@ -257,7 +262,8 @@ main(int argc, char** argv)
     root->addChild(colorCamera);
 
     VirtualProgram* colorVP = VirtualProgram::getOrCreate(colorCamera->getOrCreateStateSet());    
-    colorVP->setFunction("albedoFS", albedoFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0f);
+    colorVP->setFunction("removeVertexColors", removeVertexColors, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0f);
+    colorVP->setFunction("discardAlpha", discardAlpha, ShaderComp::LOCATION_FRAGMENT_COLORING);
 
     osg::Camera* normalMapCamera = createNormalMapCamera(size);
     normalMapCamera->addChild(models);

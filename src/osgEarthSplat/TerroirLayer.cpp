@@ -58,13 +58,13 @@ namespace
     // The four components of a terroir pixel
     constexpr unsigned LIFE = 0;
     constexpr unsigned MOISTURE = 1;
-    constexpr unsigned ROUGHNESS = 2;
+    constexpr unsigned RUGGEDNESS = 2;
     constexpr unsigned BIOME = 3;
 
     // noise channels
     constexpr unsigned SMOOTH = 0;
-    constexpr unsigned RANDOM1 = 1;
-    constexpr unsigned RANDOM2 = 2;
+    constexpr unsigned RANDOM = 1;
+    constexpr unsigned TURBULENT = 2;
     constexpr unsigned CLUMPY = 3;
 
     // raster sampling coordinate scaler
@@ -363,7 +363,7 @@ TerroirLayer::createImageImplementation(
 
     osg::Vec2 noiseCoords[4];
     osg::Vec4 noise[4];
-    const unsigned noiseLOD[4] = { 0u, 9u, 13u, 17u };
+    const unsigned noiseLOD[4] = { 0u, 9u, 13u, 16u };
     ImageUtils::PixelReader noiseSampler(_noiseFunc.get());
     noiseSampler.setBilinear(true);
     noiseSampler.setSampleAsRepeatingTexture(true);
@@ -400,35 +400,45 @@ TerroirLayer::createImageImplementation(
 
             // Randomize it
             pixel[LIFE] += 
-                (0.3*noise[0][RANDOM1]) +
+                (0.3*noise[0][RANDOM]) +
                 (0.5*noise[1][CLUMPY]) +
-                (0.3*noise[2][SMOOTH]) +
-                (0.4*decel(noise[3][CLUMPY]));
+                (0.4*noise[2][SMOOTH]);// +
+                //(0.4*decel(noise[3][CLUMPY]));
 
             // Discourage life on slopes.
             pixel[LIFE] -= slope;
+
+            //pixel[LIFE] = 0.5 + noise[0][TURBULENT];
 
             // Clamps life variance to a small range...but why?
             //pixel[LIFE] = threshold(pixel[LIFE], 0.2f, 0.1f);
 
 
             // moisture is fairly arbitrary, but decreases a bit with slope.
+#if 0
             pixel[MOISTURE] = 0.75f;
             pixel[MOISTURE] +=
-                (0.3*noise[0][RANDOM2]) +
+                (0.3*noise[0][RANDOM]) +
                 (0.2*noise[1][SMOOTH]) +
-                (0.5*noise[2][CLUMPY]) +
-                (0.8*decel(noise[3][RANDOM1]));
+                //(0.2*noise[2][TURBULENT]); // +
+                (0.6*noise[3][CLUMPY]);
+                //(0.8*decel(noise[3][CLUMPY]));
             pixel[MOISTURE] -= slope;
+#endif
+
+            pixel[MOISTURE] = 1.0f - unitmap(elevation, 500.0f, 3500.0f);
+            pixel[MOISTURE] +=
+                (0.2 * noise[1][SMOOTH]);
+
 
             // roughess increases with altitude:
-            pixel[ROUGHNESS] = unitmap(elevation, 1600.0f, 5000.0f);
+            pixel[RUGGEDNESS] = unitmap(elevation, 1600.0f, 5000.0f);
             // and increases with slope:
-            pixel[ROUGHNESS] += slope;
+            pixel[RUGGEDNESS] += slope;
 
 
-            pixel[BIOME] = 
-                remap(elevation, -100.0f, -1.0f);
+            pixel[BIOME] = 3.0 / 255.0;
+                //remap(elevation, -100.0f, -1.0f);
 
             // saturate:
             for(int i=0; i<4; ++i)

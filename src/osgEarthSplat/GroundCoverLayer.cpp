@@ -231,31 +231,13 @@ namespace
         }
     };
 
-    // octohodreal normal packing
-    // TODO: MOVE SOMEWHERE ELSE
-    void packNormal(const osg::Vec3& v, osg::Vec2& p)
-    {
-        float d = 1.0/(fabs(v.x())+fabs(v.y())+fabs(v.z()));
-        p.x() = v.x() * d;
-        p.y() = v.y() * d;
-
-        if (v.z() < 0.0)
-        {
-            p.x() = (1.0 - fabs(p.y())) * (p.x() >= 0.0? 1.0 : -1.0);
-            p.y() = (1.0 - fabs(p.x())) * (p.y() >= 0.0? 1.0 : -1.0);
-        }
-
-        p.x() = 0.5f*(p.x()+1.0f);
-        p.y() = 0.5f*(p.y()+1.0f);
-    }
-
     osg::Image* convertNormalMapFromRGBToRG(const osg::Image* in)
     {
         osg::Image* out = new osg::Image();
         out->allocateImage(in->s(), in->t(), 1, GL_RG, GL_UNSIGNED_BYTE);
         out->setInternalTextureFormat(GL_RG8);
         osg::Vec4 v;
-        osg::Vec2 packed;
+        osg::Vec4 packed;
         ImageUtils::PixelReader read(in);
         ImageUtils::PixelWriter write(out);
         for(int t=0; t<read.t(); ++t)
@@ -263,9 +245,9 @@ namespace
             for(int s=0; s<read.s(); ++s)
             {
                 read(v, s, t);
-                packNormal(osg::Vec3f(v.r()*2.0f-1.0f, v.g()*2.0f-1.0f, v.b()*2.0f-1.0f), packed);
-                v.set(packed.x(), packed.y(), 0.0f, 0.0f);
-                write(v, s, t);
+                osg::Vec3 normal(v.r()*2.0f-1.0f, v.g()*2.0f-1.0f, v.b()*2.0f-1.0f);
+                NormalMapGenerator::pack(normal, packed);
+                write(packed, s, t);
             }
         }
         return out;
@@ -429,6 +411,22 @@ GroundCoverLayer::getLandCoverLayer() const
 }
 
 void
+GroundCoverLayer::setTerroirLayer(TerroirLayer* layer)
+{
+    _terroirLayer.setLayer(layer);
+    if (layer)
+    {
+        buildStateSets();
+    }
+}
+
+TerroirLayer*
+GroundCoverLayer::getTerroirLayer() const
+{
+    return _terroirLayer.getLayer();
+}
+
+void
 GroundCoverLayer::setMaskLayer(ImageLayer* layer)
 {
     options().maskLayer().setLayer(layer);
@@ -495,6 +493,9 @@ GroundCoverLayer::addedToMap(const Map* map)
     if (!getLandCoverDictionary())
         setLandCoverDictionary(map->getLayer<LandCoverDictionary>());
 
+    if (!getTerroirLayer())
+        setTerroirLayer(map->getLayer<TerroirLayer>());
+
     options().maskLayer().addedToMap(map);
     options().colorLayer().addedToMap(map);
 
@@ -515,13 +516,13 @@ GroundCoverLayer::addedToMap(const Map* map)
 
     _mapProfile = map->getProfile();
 
-    if (getLandCoverLayer() == NULL)
+    if (getLandCoverLayer() == nullptr && getTerroirLayer() == nullptr)
     {
-        setStatus(Status::ResourceUnavailable, "No LandCover layer available in the Map");
+        setStatus(Status::ResourceUnavailable, "No LandCover/Terroir layer available in the Map");
         return;
     }
 
-    if (getLandCoverDictionary() == NULL)
+    if (getLandCoverDictionary() == nullptr)
     {
         setStatus(Status::ResourceUnavailable, "No LandCoverDictionary available in the Map");
         return;
@@ -624,7 +625,7 @@ GroundCoverLayer::buildStateSets()
         return;
     }
 
-    if (!getLandCoverDictionary()) {
+    if (!getLandCoverDictionary() && !getTerroirLayer()) {
         OE_DEBUG << LC << "buildStateSets deferred.. land cover dictionary not available" << std::endl;
         return;
     }
@@ -681,6 +682,17 @@ GroundCoverLayer::buildStateSets()
         stateset->removeDefine("OE_GROUNDCOVER_COLOR_SAMPLER");
         stateset->removeDefine("OE_GROUNDCOVER_COLOR_MATRIX");
         stateset->removeUniform("oe_GroundCover_colorMinSaturation");
+    }
+
+    if (getTerroirLayer())
+    {
+        stateset->setDefine("OE_TERROIR_SAMPLER", getTerroirLayer()->getSharedTextureUniformName());
+        stateset->setDefine("OE_TERROIR_MATRIX", getTerroirLayer()->getSharedTextureMatrixUniformName());
+    }
+    else
+    {
+        stateset->removeDefine("OE_TERROIR_SAMPLER");
+        stateset->removeDefine("OE_TERROIR_MATRIX");
     }
 
     // disable backface culling to support shadow/depth cameras,
@@ -787,7 +799,7 @@ namespace
                 4,5, 5,7, 7,6, 6,4
             };
 
-            LineDrawable* lines = new LineDrawable(GL_LINES);            
+            LineDrawable* lines = new LineDrawable(GL_LINES);
             for(int i=0; i<24; i+=2)
             {
                 lines->pushVertex(bbox.corner(index[i]));

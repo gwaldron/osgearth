@@ -2,7 +2,7 @@
     <spacing>0.55</spacing>
     <biomes>
 
-        <biome classes="grassland" fill="0.75" source="clipartmax.com">
+        <biome classes="grassland" fill="1" source="clipartmax.com">
             <asset url="clipart974730_2.png" width="0.6" height="0.8" size_variation="1" selection_weight="10"/>
             <asset url="clipart28163.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
             <asset url="clipart2383752.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
@@ -10,7 +10,7 @@
 
         <biome classes="forest" fill="0.5" source="clipartmax.com">
             <asset url="clipart974730_2.png" width="0.5" height="0.6" size_variation="0.8" weight="11"/>
-            <!-- <asset model="D:/data/models/rockinsoil/RockSoil.osgb.(0.20).scale" fill="0.1"/> -->
+            <asset model="D:/data/models/rockinsoil/RockSoil.osgb.(0.20).scale" fill="0.1"/>
             <asset model="D:/data/models/knapweed/knapweed.osgb" size_variation="0.8" fill="0.2" />
             <asset model="D:/data/models/fern/fern.osgb" size_variation="0.8" fill="0.1"/>
         </biome>

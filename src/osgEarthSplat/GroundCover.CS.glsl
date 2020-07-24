@@ -65,6 +65,13 @@ int pickNoiseType = NOISE_RANDOM;
 //int pickNoiseType = NOISE_CLUMPY;
 #endif
 
+#pragma import_defines(OE_TERROIR_SAMPLER)
+#pragma import_defines(OE_TERROIR_MATRIX)
+#ifdef OE_TERROIR_SAMPLER
+uniform sampler2D OE_TERROIR_SAMPLER ;
+uniform mat4 OE_TERROIR_MATRIX ;
+#endif
+
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
 // https://stackoverflow.com/a/17897228/4218920
 vec3 rgb2hsv(vec3 c)
@@ -126,11 +133,30 @@ void generate()
         return;
 #endif
 
-    // sample the landcover data
-    int code = int(textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*tilec4).st, 0).r);    
     oe_gc_LandCoverGroup group;
+    float fill;
+
+#ifdef OE_TERROIR_SAMPLER
+
+    vec2 terroir_uv = (OE_TERROIR_MATRIX*tilec4).st;
+    ivec2 terroir_xy = ivec2( terroir_uv * 255.0 );
+    int code = int(texelFetch(OE_TERROIR_SAMPLER, terroir_xy, 0).w * 255.0);
     if (oe_gc_getLandCoverGroup(oe_gc_zone, code, group) == false)
         return;
+
+    vec3 terroir = texture(OE_TERROIR_SAMPLER, terroir_uv).xyz;
+    fill = terroir[0];
+
+#else
+
+    // sample the landcover data
+    int code = int(textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*tilec4).st, 0).r);   
+    if (oe_gc_getLandCoverGroup(oe_gc_zone, code, group) == false)
+        return;
+
+    fill = group.fill;
+
+#endif
 
     // If we're using a mask texture, sample it now:
 #ifdef OE_GROUNDCOVER_MASK_SAMPLER
@@ -141,9 +167,9 @@ void generate()
 
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
-    if (noise[NOISE_SMOOTH] > group.fill)
+    if (noise[NOISE_SMOOTH] > fill)
         return;
-    noise[NOISE_SMOOTH] /= group.fill;
+    noise[NOISE_SMOOTH] /= fill;
 
     // select a billboard at random
     float pickNoise = 1.0-noise[pickNoiseType];

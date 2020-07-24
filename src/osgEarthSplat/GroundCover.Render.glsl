@@ -204,7 +204,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
             // normal mapping ref frame
             oe_gc_TBN = mat3(
                 tangentVector,
-                cross(tangentVector, faceNormalVector),
+                normalize(cross(tangentVector, faceNormalVector)),
                 faceNormalVector);
         }
     }
@@ -218,6 +218,8 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         vec3 E = cross(Z, oe_UpVectorView);
         vec3 N = cross(oe_UpVectorView, E);
         Z = cross(E, N);
+
+        //oe_gc_TBN = mat3(E, -N, oe_UpVectorView);
 
         // now introduce a "random" rotation
         vec2 b = normalize(clamp(vec2(noise[NOISE_RANDOM], noise[NOISE_RANDOM_2]), 0.01, 1.0)*2.0-1.0);
@@ -330,6 +332,8 @@ flat in uint64_t oe_gc_nmlHandle;
 in mat3 oe_gc_TBN;
 
 in float oe_gc_transition;
+
+uniform float shmoo;
 
 void oe_GroundCover_FS(inout vec4 color)
 {

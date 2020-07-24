@@ -217,6 +217,13 @@ ElevationPool::WorkingSet::WorkingSet(unsigned size) :
     _lru._lru.setName("OE.WorkingSet.LRU");
 }
 
+void
+ElevationPool::WorkingSet::clear()
+{
+    _lru.clear();
+    // No need to clear the elevation layers; only invalidate the cache.
+}
+
 bool
 ElevationPool::findExistingRaster(
     const Internal::RevElevationKey& key,

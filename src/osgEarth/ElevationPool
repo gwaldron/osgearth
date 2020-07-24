@@ -74,6 +74,9 @@ namespace osgEarth
                 _elevationLayers = layers;
             }
 
+            //! Invalidate the cache.
+            void clear();
+
         private:
             StrongLRU _lru;
             ElevationLayerVector _elevationLayers;

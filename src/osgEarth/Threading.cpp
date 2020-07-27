@@ -23,10 +23,6 @@
 #include "Metrics"
 
 #ifdef _WIN32
-#   ifndef TRACY_ENABLE
-        // because Tracy already does this in its header file..
-        extern "C" unsigned long __stdcall GetCurrentThreadId();
-#   endif
 #   include <Windows.h>
 #   include <processthreadsapi.h>
 #elif defined(__APPLE__) || defined(__LINUX__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__ANDROID__)
@@ -519,12 +515,12 @@ osgEarth::Threading::setThreadName(const std::string& name)
     const auto sz = strlen( name.c_str() );
     if( sz <= 15 )
     {
-        pthread_setname_np( pthread_self(), name );
+        pthread_setname_np( pthread_self(), name.c_str() );
     }
     else
     {
         char buf[16];
-        memcpy( buf, name, 15 );
+        memcpy( buf, name.c_str(), 15 );
         buf[15] = '\0';
         pthread_setname_np( pthread_self(), buf );
     }

@@ -613,8 +613,10 @@ public:
                     // Generate normals automatically if we're not given any in the file itself.
                     if (!geom->getNormalArray())
                     {
+                        osg::ref_ptr<osg::Geode> tempGeode = new osg::Geode();
+                        tempGeode->addChild(geom);
                         osgUtil::SmoothingVisitor sv;
-                        geom->accept(sv);
+                        tempGeode->accept(sv);
                     }
                 }
 

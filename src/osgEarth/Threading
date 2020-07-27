@@ -64,7 +64,12 @@ namespace osgEarth { namespace Threading
     public:
         Mutex();
         Mutex(const std::string& name, const char* file=nullptr, std::uint32_t line=0);
+        //! Do not permit copy constructor on Mutex
+        Mutex(const Mutex& copy) = delete;
         ~Mutex();
+
+        //! Explicitly block the copy operator
+        Mutex& operator=(const Mutex& copy) = delete;
 
         void lock() override;
         void unlock() override;
@@ -208,8 +213,6 @@ namespace osgEarth { namespace Threading
         };
 
     public:
-        typedef std::function<void(T*)> Callback;
-
         //! Blank CTOR
         Future() {
             _ev = new RefEvent();

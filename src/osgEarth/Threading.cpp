@@ -23,10 +23,6 @@
 #include "Metrics"
 
 #ifdef _WIN32
-#   ifndef TRACY_ENABLE
-        // because Tracy already does this in its header file..
-        extern "C" unsigned long __stdcall GetCurrentThreadId();
-#   endif
 #   include <Windows.h>
 #   include <processthreadsapi.h>
 #elif defined(__APPLE__) || defined(__LINUX__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__ANDROID__)

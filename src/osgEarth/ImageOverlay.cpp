@@ -96,7 +96,9 @@ _draped(true)
         setImage( _imageURI->getImage(readOptions) );
     }
 
-    conf.get( "alpha", _alpha );
+    optional<float> tmpAlpha;
+    if (conf.get( "alpha", tmpAlpha))
+        setAlpha( *tmpAlpha );
     
     osg::ref_ptr<Geometry> geom;
     if ( conf.hasChild("geometry") )
@@ -133,6 +135,8 @@ _draped(true)
     conf.get("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
     conf.get("draped", _draped);
+    if (_draped.isSet())
+        setDraped(*_draped);
 
     if (conf.hasValue("geometry_resolution"))
     {

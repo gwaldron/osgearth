@@ -32,6 +32,8 @@ static bool s_metricsEnabled = true;
 static bool s_gpuMetricsEnabled = true;
 static bool s_gpuMetricsInstalled = false;
 
+#ifdef OSGEARTH_PROFILING
+
 void (GL_APIENTRY * osgEarth::MetricsGL::glGenQueries)(GLsizei, GLuint*);
 void (GL_APIENTRY * osgEarth::MetricsGL::glGetInteger64v)(GLenum, GLint64*);
 void (GL_APIENTRY * osgEarth::MetricsGL::glGetQueryiv)(GLenum, GLenum, GLint*);
@@ -73,6 +75,8 @@ namespace
         }
     };
 }
+#endif // OSGEARTH_PROFILING
+
 
 bool Metrics::enabled()
 {
@@ -101,6 +105,7 @@ int Metrics::run(osgViewer::ViewerBase& viewer)
         viewer.realize();
     }
 
+#ifdef OSGEARTH_PROFILING
     if (s_gpuMetricsEnabled == false &&
         ::getenv("OE_PROFILE_GPU") != NULL)
     {
@@ -155,5 +160,12 @@ int Metrics::run(osgViewer::ViewerBase& viewer)
 
         frame();
     }
+
     return 0;
+
+#else
+
+    return viewer.run();
+
+#endif
 }

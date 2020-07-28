@@ -113,6 +113,7 @@ inline void _zoneSetText(tracy::ScopedZone& zone, const std::string& text) {
 #define OE_PROFILING_FRAME_MARK
 #define OE_LOCKABLE(type, varname) type varname
 #define OE_LOCKABLE_BASE( type ) type
+#define OE_PROFILING_GPU_ZONE(name)
 #endif
 
 #endif

@@ -56,9 +56,9 @@ TerroirLayer::Options::fromConfig(const Config& conf)
 namespace
 {
     // The four components of a terroir pixel
-    constexpr unsigned LIFE = 0;
+    constexpr unsigned DENSITY = 0;
     constexpr unsigned MOISTURE = 1;
-    constexpr unsigned RUGGEDNESS = 2;
+    constexpr unsigned RUGGED = 2;
     constexpr unsigned BIOME = 3;
 
     // noise channels
@@ -156,7 +156,7 @@ namespace
             if (ext == "oe_splat_rgbh")
             {
                 URI colorURI(
-                    osgDB::getNameLessExtension(uri) + "_Color.jpg");                
+                    osgDB::getNameLessExtension(uri) + "_Color.jpg");
 
                 osg::ref_ptr<osg::Image> color = colorURI.getImage(options);
 
@@ -168,14 +168,18 @@ namespace
 
                 osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
 
+                osg::ref_ptr<osg::Image> rgbh = new osg::Image();
+                rgbh->allocateImage(color->s(), color->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
                 ImageUtils::PixelReader readHeight(height.get());
                 ImageUtils::PixelReader readColor(color.get());
-                ImageUtils::PixelWriter writeColor(color.get());
+                ImageUtils::PixelWriter writeRGBH(rgbh.get());
                 osg::Vec4 temp, temp2;
+                float minh = 1.0f, maxh = 0.0f;
 
-                for(int t=0; t<writeColor.t(); ++t)
+                for(int t=0; t< writeRGBH.t(); ++t)
                 {
-                    for(int s=0; s<writeColor.s(); ++s)
+                    for(int s=0; s< writeRGBH.s(); ++s)
                     {
                         readColor(temp, s, t);
                         if (height.valid())
@@ -187,13 +191,17 @@ namespace
                         {
                             temp.a() = 0.0f;
                         }
-                        writeColor(temp, s, t);
+
+                        minh = osg::minimum(minh, temp.a());
+                        maxh = osg::maximum(maxh, temp.a());
+                        writeRGBH(temp, s, t);
                     }
                 }
+                OE_INFO << heightURI.base() << ", MinH=" << minh << ", MaxH=" << maxh << std::endl;
 
-                ImageUtils::compressImageInPlace(color.get());
+                ImageUtils::compressImageInPlace(rgbh.get());
 
-                return color;
+                return rgbh;
             }
 
             return ReadResult::FILE_NOT_HANDLED;
@@ -393,52 +401,33 @@ TerroirLayer::createImageImplementation(
             normal = elevTile->getNormal(x, y);
             slope = decel(decel(1.0 - (normal * up)));
 
+
+            // roughess increases with altitude:
+            pixel[RUGGED] = unitmap(elevation, 1600.0f, 5000.0f);
+            // and increases with slope:
+            pixel[RUGGED] += 0.5*slope;
+
             // Ramp life down slowly as we increase in altitude.
-            pixel[LIFE] = 1.0f - osg::clampBetween(
+            pixel[DENSITY] = 1.0f - osg::clampBetween(
                 elevation / 6500.0f,
                 0.0f, 1.0f);
 
             // Randomize it
-            pixel[LIFE] += 
+            pixel[DENSITY] +=
                 (0.3*noise[0][RANDOM]) +
                 (0.5*noise[1][CLUMPY]) +
                 (0.4*noise[2][SMOOTH]);// +
                 //(0.4*decel(noise[3][CLUMPY]));
 
-            // Discourage life on slopes.
-            pixel[LIFE] -= slope;
+            // Discourage life in rugged areas
+            pixel[DENSITY] -= 2.0*pixel[RUGGED];
 
-            //pixel[LIFE] = 0.5 + noise[0][TURBULENT];
-
-            // Clamps life variance to a small range...but why?
-            //pixel[LIFE] = threshold(pixel[LIFE], 0.2f, 0.1f);
-
-
-            // moisture is fairly arbitrary, but decreases a bit with slope.
-#if 0
-            pixel[MOISTURE] = 0.75f;
-            pixel[MOISTURE] +=
-                (0.3*noise[0][RANDOM]) +
-                (0.2*noise[1][SMOOTH]) +
-                //(0.2*noise[2][TURBULENT]); // +
-                (0.6*noise[3][CLUMPY]);
-                //(0.8*decel(noise[3][CLUMPY]));
-            pixel[MOISTURE] -= slope;
-#endif
-
+            // moisture is fairly arbitrary
             pixel[MOISTURE] = 1.0f - unitmap(elevation, 500.0f, 3500.0f);
             pixel[MOISTURE] +=
                 (0.2 * noise[1][SMOOTH]);
 
-
-            // roughess increases with altitude:
-            pixel[RUGGEDNESS] = unitmap(elevation, 1600.0f, 5000.0f);
-            // and increases with slope:
-            pixel[RUGGEDNESS] += slope;
-
-
             pixel[BIOME] = 3.0 / 255.0;
-                //remap(elevation, -100.0f, -1.0f);
 
             // saturate:
             for(int i=0; i<4; ++i)

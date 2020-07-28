@@ -4,7 +4,6 @@
     <TMSElevation name="ReadyMap 90m Elevation">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
         <vdatum>egm96</vdatum>
-        <cache_policy usage="cache_only"/>
     </TMSElevation>
 
     <xi:include href="viewpoints.xml"/>
@@ -57,6 +56,15 @@
             <height>1141.220891861245</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
+        <viewpoint>
+            <heading>-100.934</heading>
+            <pitch>-18.2287</pitch>
+            <range>44.0949m</range>
+            <long>-113.6400863942717</long>
+            <lat>35.7373749129136</lat>
+            <height>1396.437415332533</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
     </Viewpoints>
 
     <mbtileselevation name="Nepal" enabled="false">
@@ -87,6 +95,9 @@
 
         <cache_policy usage="none"/>
 
+        <shared_sampler>TERROIR_TEX</shared_sampler>
+        <shared_matrix>TERROIR_MAT</shared_matrix>
+
         <shader>
             <![CDATA[
                        
@@ -112,7 +123,7 @@
                 #extension GL_ARB_gpu_shader_int64 : enable
                 
                 #define NUM_LEVELS 2             
-                const int levels[NUM_LEVELS] = int[]( 14, 19 );
+                const int levels[NUM_LEVELS] = int[]( 15, 19 );
                 
                 vec4 oe_terrain_getNormalAndCurvature();
                 vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
@@ -152,11 +163,9 @@
                     //oe_splat_TBN = mat3(normalize(tangent), normalize(binormal), normal_view);
                     
                     // transition b/w levels
-                    const float start = 1000.0;
-                    const float end = 200.0;                    
-                    splatLevelBlend = mapToNormalizedRange(-vertex_view.z, 1000.0, 200.0);
-                    
-                    
+                    const float start = 125.0;
+                    const float end = 50.0;                    
+                    splatLevelBlend = mapToNormalizedRange(-vertex_view.z, start, end);
                 }
             
               [break]
@@ -171,7 +180,7 @@
                     uint64_t texHandle[];
                 };
                 
-                #define LIFE 0
+                #define DENSITY 0
                 #define MOISTURE 1
                 #define RUGGED 2
                 #define BIOME 3
@@ -187,9 +196,10 @@
                 uniform float shmoo;
                 flat in int maxLevel;
                 
-                uniform float life_power = 1.0;
+                uniform float density_power = 1.0;
                 uniform float moisture_power = 1.0;
                 uniform float rugged_power = 1.0;
+                uniform float depth = 0.02;
                 
                 vec3 unpackNormal(in vec4 p)
                 {
@@ -216,7 +226,7 @@
                 float amplify(in float val, in float modifier)
                 {
                     return val * modifier;
-                    //return pow(val, modifier);
+                    //return pow(val, 1.0-modifier);
                 }
                                 
                 float threshold(in float val, in float thresh, in float buf)
@@ -226,16 +236,14 @@
                     else return clamp( (val-(thresh-buf)) / (buf*2.0), 0.0, 1.0);
                 }
                 
-                float heightAndEffectBlend(in float h1, in float h2, in float a1, in float a2)
-                {
-                    //return a1;
-                
+                float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)
+                {                
                     // https://tinyurl.com/y5nkw2l9
-                    float depth = 0.2;
+                    //float depth = 0.02;
                     float ma = max(h1+a1, h2+a2)-depth;                    
                     float b1 = max(h1+a1-ma, 0.0);
                     float b2 = max(h2+a2-ma, 0.0);
-                    return (a1*b1)/(b1+b2); // return blend factor for h1
+                    return b2/(b1+b2);
                 }
                 
                 vec3 triplanar(in int index)
@@ -251,7 +259,7 @@
                 
                 struct Rec {
                     int index;
-                    float life_effect;
+                    float density_effect;
                     float moisture_effect;
                     float rugged_effect;
                     vec4 rgbh;
@@ -265,7 +273,7 @@
                 const int TEX_GRASS = 4; // 5 = MAT
                 
                 Rec lut[NUM_TEX] = Rec[](
-                    //             LIF   MOI   ROU
+                    //             DEN   MOI   RUG
                     Rec(TEX_ROCK,  0.0,  0.0,  0.0, vec4(0), vec4(0)),
                     Rec(TEX_DIRT,  0.0,  0.0, -1.0, vec4(0), vec4(0)),
                     Rec(TEX_GRASS, 1.0,  1.0,  0.0, vec4(0), vec4(0))
@@ -279,9 +287,9 @@
                 }
                 
                 
-                float life, moisture, rugged;
+                float density, moisture, rugged;
                 
-                void resolveLevel(out vec3 color, out vec3 normal, int level)
+                void resolveLevel(out vec3 out_color, out vec3 out_normal, int level)
                 {                    
                     vec4 rgbh[NUM_TEX];
                     vec4 material[NUM_TEX];
@@ -300,30 +308,27 @@
                     for(int i=1; i<NUM_TEX; ++i)
                     {
                         // effect of each terroir component on this texture:
-                        float e_life = life * lut[i].life_effect;
+                        float e_density = density * lut[i].density_effect;
                         float e_moisture = moisture * lut[i].moisture_effect;
                         float e_rugged = rugged * lut[i].rugged_effect;
                             
                         // cummulative effect:
-                        float e_total = clamp(e_life + e_moisture + e_rugged, 0, 1);
+                        float e_total = clamp(e_density + e_moisture + e_rugged, 0, 1);
 
                         vec4 this_rgbh = rgbh[i];
                         vec4 this_material = material[i];
                         vec3 this_normal = unpackNormal(this_material);
                         
                         // blend with working image using both heightmap and effect:
-                        float blend = heightAndEffectBlend(this_rgbh.a, final_rgbh.a, e_total, 1.0-e_total);
+                        //float blend = heightAndEffectBlend(this_rgbh.a, final_rgbh.a, e_total, 1.0-e_total);
+                        float m = heightAndEffectMix(this_rgbh.a, e_total, final_rgbh.a, 1.0-e_total);
                     
-                        final_rgbh = mix(final_rgbh, this_rgbh, blend);
-                        final_normal = mix(final_normal, this_normal, blend);                            
+                        final_rgbh = mix(this_rgbh, final_rgbh, m);
+                        final_normal = mix(this_normal, final_normal, m);                            
                     }
                         
-                    // final color output:
-                    color = final_rgbh.rgb;
-                    
-                    // final normal output:
-                    //normal = normalize(tbn * final_normal);
-                    normal = final_normal;
+                    out_color = final_rgbh.rgb;
+                    out_normal = final_normal;
                 }
                 
                 
@@ -334,9 +339,9 @@
                     vec3 binormal = cross(tangent, vp_Normal);
                     mat3 tbn = mat3(normalize(tangent), normalize(binormal), vp_Normal);
 
-                    life = quad[LIFE];
-                    life = amplify(life, life_power);
-                    life = life * 2.0 - 1.0;
+                    density = quad[DENSITY];
+                    density = amplify(density, density_power);
+                    density = density * 2.0 - 1.0;
                     
                     moisture = quad[MOISTURE];
                     moisture = amplify(moisture, moisture_power);
@@ -379,43 +384,54 @@
         </shader>
     </terroir>
 
-
-    <!--
-    <terroir name="Terroir Debug">
+    <tmsimage name="Terroir Debug" visible="false">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
             <![CDATA[
                 #version 430
-                #pragma vp_name Terroir shader
-                #pragma vp_entryPoint oe_splat_Frag
-                #pragma vp_location fragment
+                #pragma vp_name Terroir Debugger
+                #pragma vp_entryPoint oe_splat_debug
+                #pragma vp_location fragment_coloring
                 
-                #define LIFE 0
+                #define DENSITY 0
                 #define MOISTURE 1
                 #define RUGGED 2
                 #define BIOME 3                
                 
-                uniform float life_power = 1.0;
+                uniform float density_power = 1.0;
                 uniform float moisture_power = 1.0;
                 uniform float rugged_power = 1.0;
                 
-                void oe_splat_Frag(inout vec4 color)
-                {                    
-                    color.g = color[LIFE] * life_power;
-                    color.b = color[MOISTURE] * moisture_power;
-                    color.r = color[RUGGED] * rugged_power;
-                    color.a = 1;                    
+                uniform sampler2D TERROIR_TEX;
+                uniform mat4 TERROIR_MAT;
+                
+                vec4 oe_layer_tilec;
+                
+                void oe_splat_debug(inout vec4 unused)
+                {               
+                    vec4 quad = texture(TERROIR_TEX, (TERROIR_MAT*oe_layer_tilec).st);
+                    vec4 color;                
+                    color.g = quad[DENSITY] * density_power;
+                    color.b = quad[MOISTURE] * moisture_power;
+                    color.r = quad[RUGGED] * rugged_power;
+                    color.a = 1;      
+                    unused = color;
                 }
             ]]>
         </shader>
-    </terroir>
--->
+    </tmsimage>
 
-<!--
     <xi:include href="osm_mask.xml"/>
 
     <xi:include href="osm_roads.xml"/>
 
+    <xi:include href="osm_water.xml"/>
+
     <xi:include href="osm_buildings.xml"/>
--->
+    
+    <TMSImage name="ReadyMap 15m Imagery">
+        <opacity>0.25</opacity>
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
 
 </map>

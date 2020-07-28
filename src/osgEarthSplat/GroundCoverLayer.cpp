@@ -1083,6 +1083,13 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
     bool needsGenerate = false;
     bool needsReset = false;
 
+    if (ds._renderer->_layer->_debug)
+    {
+        needsGenerate = true; // TEMP FOR TESTING
+        needsReset = true;
+    }
+
+
     if (sa != ds._previousZoneSA)
     {
         needsGenerate = true;

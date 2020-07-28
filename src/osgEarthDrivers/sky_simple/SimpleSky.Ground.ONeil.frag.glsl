@@ -1,7 +1,7 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint atmos_fragment_main
+#pragma vp_entryPoint atmos_fragment_main_pbr
 #pragma vp_location   fragment_lighting
 #pragma vp_order      0.8
 
@@ -48,10 +48,101 @@ struct osg_MaterialParameters
    vec4 specular;    // Scm   
    float shininess;  // Srm  
 };  
-uniform osg_MaterialParameters osg_FrontMaterial; 
+uniform osg_MaterialParameters osg_FrontMaterial;
 
+const float PI = 3.1416927;
 
-void atmos_fragment_main(inout vec4 color) 
+float DistributionGGX(vec3 N, vec3 H, float a)
+{
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+
+    float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float k)
+{
+    float nom = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float k)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx1 = GeometrySchlickGGX(NdotV, k);
+    float ggx2 = GeometrySchlickGGX(NdotL, k);
+
+    return ggx1 * ggx2;
+}
+
+vec3 FresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+// todo: these will be ins
+const float oe_roughness = 0.6;
+const float oe_ao = 1.0;
+const float oe_metallic = 0.0;
+
+void atmos_fragment_main_pbr(inout vec4 color)
+{
+#ifndef OE_LIGHTING
+    return;
+#endif
+
+    vec3 albedo = color.rgb;
+
+    // https://learnopengl.com/PBR/Lighting
+    vec3 N = normalize(vp_Normal);
+    vec3 V = normalize(-atmos_vert);
+
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, albedo, vec3(oe_metallic));
+
+    vec3 Lo = vec3(0.0);
+    for (int i = 0; i < OE_NUM_LIGHTS; ++i)
+    {
+        // per-light radiance:
+        vec3 L = normalize(osg_LightSource[i].position.xyz - atmos_vert);
+        vec3 H = normalize(V + L);
+        //float distance = length(osg_LightSource[i].position.xyz - atmos_vert);
+        //float attenuation = 1.0 / (distance * distance);
+        vec3 radiance = vec3(1.0); // osg_LightSource[i].diffuse.rgb * attenuation;
+
+        // cook-torrance BRDF:
+        float NDF = DistributionGGX(N, H, oe_roughness);
+        float G = GeometrySmith(N, V, L, oe_roughness);
+        vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+
+        vec3 kS = F;
+        vec3 kD = vec3(1.0) - kS;
+        kD *= 1.0 - oe_metallic;
+
+        vec3 numerator = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+        vec3 specular = numerator / max(denominator, 0.001);
+
+        float NdotL = max(dot(N, L), 0.0);
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+    }
+
+    vec3 ambient = osg_LightSource[0].ambient.rgb * albedo * oe_ao;
+    color.rgb = ambient + Lo;
+    color.rgb += atmos_color;
+    //color.rgb = 1.0 - exp(-oe_sky_exposure * color.rgb);
+    color.rgb = 1.0 - exp(-8.9 * color.rgb);
+}
+
+void atmos_fragment_main(inout vec4 color)
 { 
 #ifndef OE_LIGHTING
     return;

@@ -100,6 +100,10 @@ float getElevation(in vec2 tilec) {
     return texture(oe_tile_elevationTex, elevc).r;
 }
 
+uniform float density_power = 1.0;
+uniform float moisture_power = 1.0;
+uniform float rugged_power = 1.0;
+
 void generate()
 {
     const uint x = gl_GlobalInvocationID.x;
@@ -135,6 +139,7 @@ void generate()
 
     oe_gc_LandCoverGroup group;
     float fill;
+    float lush;
 
 #ifdef OE_TERROIR_SAMPLER
 
@@ -145,7 +150,9 @@ void generate()
         return;
 
     vec3 terroir = texture(OE_TERROIR_SAMPLER, terroir_uv).xyz;
-    fill = terroir[0];
+    fill = terroir[0] * density_power;
+    lush = terroir[1] * moisture_power;
+    lush = noise[pickNoiseType] * lush;
 
 #else
 
@@ -155,6 +162,7 @@ void generate()
         return;
 
     fill = group.fill;
+    lush = 1.0 - noise[pickNoiseType];
 
 #endif
 
@@ -172,7 +180,7 @@ void generate()
     noise[NOISE_SMOOTH] /= fill;
 
     // select a billboard at random
-    float pickNoise = 1.0-noise[pickNoiseType];
+    float pickNoise = lush; // 1.0 - noise[pickNoiseType];
     int assetIndex = group.firstAssetIndex + int(floor(pickNoise * float(group.numAssets)));
     assetIndex = min(assetIndex, group.firstAssetIndex + group.numAssets - 1);
 

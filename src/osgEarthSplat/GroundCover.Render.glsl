@@ -202,10 +202,16 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
             oe_gc_nmlHandle = texHandle[instance[i].sideSamplerIndex+1];
 
             // normal mapping ref frame
+            //oe_gc_TBN = mat3(
+            //    tangentVector,
+            //    normalize(cross(tangentVector, faceNormalVector)),
+            //    faceNormalVector);
+
+            // up frame prob works better.
             oe_gc_TBN = mat3(
                 tangentVector,
-                normalize(cross(tangentVector, faceNormalVector)),
-                faceNormalVector);
+                -faceNormalVector,
+                oe_UpVectorView);
         }
     }
 
@@ -352,10 +358,11 @@ void oe_GroundCover_FS(inout vec4 color)
             n.xyz = n.xyz*2.0-1.0;
             float curv = n.z;
             n.z = 1.0 - abs(n.x) - abs(n.y);
-            float t = clamp(-n.z, 0, 1);
-            n.x += (n.x > 0)? -t : t;
-            n.y += (n.y > 0)? -t : t;
+            //float t = clamp(-n.z, 0, 1);
+            //n.x += (n.x > 0)? -t : t;
+            //n.y += (n.y > 0)? -t : t;
             vp_Normal = normalize(oe_gc_TBN * n.xyz);
+            //color.rgb = (vp_Normal + 1.0)*0.5;
         }
     }
 

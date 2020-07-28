@@ -4,7 +4,7 @@
         <biome classes="forest" fill="1" size_variation="0.4">         
             <asset>
                 <model>D:/data/models/OakTree/RedOak.osgb</model>
-                <url>D:/data/models/OakTree/RedOak_bb_2.png</url>
+                <url>D:/data/models/OakTree/RedOak_bb.png</url>
                 <top_url>D:/data/models/OakTree/RedOak_bb_top.png</top_url>
             </asset>
         </biome>
@@ -12,7 +12,7 @@
         <biome classes="grassland" fill="1" size_variation="0.4">          
             <asset>
                 <model>D:/data/models/OakTree/RedOak.osgb</model>
-                <url>D:/data/models/OakTree/RedOak_bb_2.png</url>
+                <url>D:/data/models/OakTree/RedOak_bb.png</url>
                 <top_url>D:/data/models/OakTree/RedOak_bb_top.png</top_url>
             </asset>
         </biome>

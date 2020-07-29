@@ -114,6 +114,20 @@ namespace osgEarth { namespace Util
             double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy);
 
         /**
+         * Crops the input image using the input dimension
+         *  Returns a new image, leaving the input image unaltered.
+         *@param x
+         *       The cropping x coordinate of the input image.
+         *@param y
+         *       The cropping y coordinate of the input image.
+         *@param width
+         *       The width in pixels of the crop.
+         *@param height
+         *       The height in pixels of the crop.
+         */
+        static osg::Image* cropImage(osg::Image* image, unsigned int x, unsigned int y, unsigned int width, unsigned int height);
+
+        /**
          * Blends the "src" image into the "dest" image, based on the "a" value.
          * The two images must be the same.
          */

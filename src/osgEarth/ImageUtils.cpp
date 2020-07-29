@@ -958,6 +958,25 @@ ImageUtils::cropImage(const osg::Image* image,
     return cropped;
 }
 
+osg::Image*
+ImageUtils::cropImage(osg::Image* image, unsigned int x, unsigned int y, unsigned int width, unsigned int height)
+{
+    osg::Image* cropped = new osg::Image;
+    cropped->allocateImage(width, height, image->r(), image->getPixelFormat(), image->getDataType());
+    cropped->setInternalTextureFormat(image->getInternalTextureFormat());
+
+    for (int layer = 0; layer < image->r(); ++layer)
+    {
+        for (int src_row = y, dst_row = 0; dst_row < height; src_row++, dst_row++)
+        {
+            const void* src_data = image->data(x, src_row, layer);
+            void* dst_data = cropped->data(0, dst_row, layer);
+            memcpy(dst_data, src_data, cropped->getRowSizeInBytes());
+        }
+    }
+    return cropped;
+}
+
 bool
 ImageUtils::isPowerOfTwo(const osg::Image* image)
 {

@@ -24,6 +24,7 @@
 #include <osgEarth/Threading>
 #include <osgEarth/Registry>
 #include <osgEarth/TileKey>
+#include <osgEarth/ImageUtils>
 #include <osgDB/WriteFile>
 #include <osgEarth/FileUtils>
 #include <iostream>
@@ -41,9 +42,11 @@ int usage(const char* name)
         << "Generates a heatmap tiled dataset from a series of points.\n\n"
         << "osgearth_heatmap < points.txt  where points.txt contains a series of lat lon points separated by a space"
         << name
-        << "\n    --max-level level            : The maximum level to generate to."
-        << "\n    --max-heat maxHeat           : The maximum heat value to scale the color ramp to."
-        << "\n    --format format              : The format to write image tiles to.  Default png."
+        << "\n    --max-level [level]            : The maximum level to generate to."
+        << "\n    --max-heat [maxHeat]           : The maximum heat value to scale the color ramp to."
+        << "\n    --format [format]              : The format to write image tiles to.  Default png."
+        << "\n    --buffer [buffer]              : The buffer size used to create neighboring tiles.  Default 30."
+        << "\n    --out [out]                    : The destination to write to."
         << std::endl;
 
     return 0;
@@ -59,11 +62,12 @@ auto wgs84 = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
 
 static TileKeyMap s_keys;
 
-static unsigned int maxHitCount = 0;
-
 unsigned int maxLevel = 8;
 float maxHeat = 100.0;
 std::string format = "png";
+// Buffer with neighbor tiles to do some simple metatiling to prevent inconsistent edges along tile boundaries.
+unsigned int buffer = 30;
+std::string out = "heatmap";
 
 inline void addPoint(double lon, double lat)
 {
@@ -102,33 +106,93 @@ void WriteKeys()
         key.first.getTileXY(x, y);
 
         std::stringstream filename;
-        filename << key.first.getLevelOfDetail() << "/" << x << "/" << y << "." << format;
+        filename << out << "/" << key.first.getLevelOfDetail() << "/" << x << "/" << y << "." << format;
+
+        unsigned int w = 256;
+        unsigned int h = 256;
 
         // Create the heatmap object with the given dimensions (in pixel).
-        heatmap_t* hm = heatmap_new(256, 256);
+        heatmap_t* hm = heatmap_new(w + buffer * 2, h + buffer * 2);
 
         for (auto& cell : key.second)
         {
             unsigned int index = cell.first;
 
-            unsigned short r = index / 256;
-            unsigned short c = index % 256;
+            int r = index / 256;
+            int c = index % 256;
             auto hitCount = cell.second;
-            if (hitCount > maxHitCount) maxHitCount = hitCount;
+
+            int xOffset = 0;
+            int yOffset = 0;
 
             // Add the point but weighted to the number of hits in the cell to get a nice clustered view of the points of the lower levels.
-            heatmap_add_weighted_point(hm, c, r, hitCount);
+            heatmap_add_weighted_point(hm, c + buffer, r + buffer, hitCount);
         }
 
-        std::vector<unsigned char> imageData(256 * 256 * 4);
-        heatmap_render_saturated_to(hm, heatmap_cs_default, maxHeat, &imageData[0]);
-        heatmap_free(hm);
+        if (buffer > 0)
+        {
+            for (int i = -1; i <= 1; ++i)
+            {
+                for (int j = -1; j <= 1; ++j)
+                {
+                    if (!(i == 0 && j == 0))
+                    {
+                        TileKey neighborKey = key.first.createNeighborKey(i, j);
 
-        osg::ref_ptr< osg::Image > image = new osg::Image;
-        image->setImage(256, 256, 1, GL_RGB8, GL_RGBA, GL_UNSIGNED_BYTE, &imageData[0], osg::Image::NO_DELETE);
+                        TileKeyMap::iterator neighborItr = s_keys.find(neighborKey);
+                        if (neighborItr != s_keys.end())
+                        {
+                            int xOffset = 0;
+                            if (neighborKey.getTileX() < key.first.getTileX())
+                            {
+                                xOffset = -256;
+                            }
+                            if (neighborKey.getTileX() > key.first.getTileX())
+                            {
+                                xOffset = 256;
+                            }
+                            int yOffset = 0;
+                            if (neighborKey.getTileY() > key.first.getTileY())
+                            {
+                                yOffset = -256;
+                            }
+                            if (neighborKey.getTileY() < key.first.getTileY())
+                            {
+                                yOffset = 256;
+                            }
+
+                            for (auto& cell : neighborItr->second)
+                            {
+                                unsigned short index = cell.first;
+
+                                int r = index / 256;
+                                int c = index % 256;
+                                auto hitCount = cell.second;
+
+                                c += xOffset;
+                                r += yOffset;
+
+                                // Add the point but weighted to the number of hits in the cell to get a nice clustered view of the points of the lower levels.
+                                heatmap_add_weighted_point(hm, c + buffer, r + buffer, hitCount);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        unsigned int imageSize = hm->w * hm->h * 4;
+        unsigned char* imageData = new unsigned char[imageSize];
+        heatmap_render_saturated_to(hm, heatmap_cs_default, maxHeat, imageData);
 
         osgEarth::makeDirectoryForFile(filename.str());
-        osgDB::writeImageFile(*image.get(), filename.str());
+        osg::ref_ptr< osg::Image > image = new osg::Image;
+        image->setImage(hm->w, hm->h, 1, GL_RGB8, GL_RGBA, GL_UNSIGNED_BYTE, imageData, osg::Image::USE_NEW_DELETE);
+
+        osg::ref_ptr < osg::Image > cropped = ImageUtils::cropImage(image.get(), buffer, buffer, w, h);
+        osgDB::writeImageFile(*cropped.get(), filename.str());
+
+        heatmap_free(hm);
 
         ++numProcessed;
         if (numProcessed % 100 == 0)
@@ -152,6 +216,8 @@ main(int argc, char** argv)
     arguments.read("--max-level", maxLevel);
     arguments.read("--max-heat", maxHeat);
     arguments.read("--format", format);
+    arguments.read("--buffer", format);
+    arguments.read("--out", out);
 
     std::cout << "Generating heatmap to max level of " << maxLevel << " with max heat " << maxHeat << std::endl;
 
@@ -162,7 +228,6 @@ main(int argc, char** argv)
     // Write out all the keys
     std::cout << "Writing " << s_keys.size() << " keys" << std::endl;
     WriteKeys();
-    std::cout << "Max hitcount " << maxHitCount << std::endl;
 
     auto endTime = std::chrono::high_resolution_clock::now();
     long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();

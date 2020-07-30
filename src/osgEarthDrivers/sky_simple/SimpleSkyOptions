@@ -44,7 +44,8 @@ namespace osgEarth { namespace SimpleSky
 		  _sunVisible(true),
           _moonVisible(true),
           _starsVisible(true),
-          _atmosphereVisible(true)
+          _atmosphereVisible(true),
+          _pbr(true)
         {
             setDriver( "simple" );
             fromConfig( _conf );
@@ -104,6 +105,10 @@ namespace osgEarth { namespace SimpleSky
         optional<URI>& moonImageURI() { return _moonImageURI; }
         const optional<URI>& moonImageURI() const { return _moonImageURI; }
 
+        //! Whether to use PBR lighting calculations (instead of Phong)
+        optional<bool>& usePBR() { return _pbr; }
+        const optional<bool>& usePBR() const { return _pbr; }
+
     public:
         Config getConfig() const {
             Config conf = SkyOptions::getConfig();
@@ -119,6 +124,7 @@ namespace osgEarth { namespace SimpleSky
             conf.set("atmosphere_visible", _atmosphereVisible);
             conf.set("moon_scale", _moonScale);
             conf.set("moon_image", _moonImageURI);
+            conf.set("pbr", _pbr);
             return conf;
         }
 
@@ -142,6 +148,7 @@ namespace osgEarth { namespace SimpleSky
             conf.get("atmosphere_visible", _atmosphereVisible);
             conf.get("moon_scale", _moonScale);
             conf.get("moon_image", _moonImageURI);
+            conf.get("pbr", _pbr);
         }
 
         optional<bool>        _atmosphericLighting;
@@ -156,6 +163,7 @@ namespace osgEarth { namespace SimpleSky
         optional<bool>        _atmosphereVisible;
         optional<float>       _moonScale;
         optional<URI>         _moonImageURI;
+        optional<bool>        _pbr;
     };
 
 } } // namespace osgEarth::SimpleSky

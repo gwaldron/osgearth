@@ -27,6 +27,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgDB/WriteFile>
 #include <osgEarth/FileUtils>
+#include <osgEarth/ImageLayer>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -42,11 +43,10 @@ int usage(const char* name)
         << "Generates a heatmap tiled dataset from a series of points.\n\n"
         << "osgearth_heatmap < points.txt  where points.txt contains a series of lat lon points separated by a space"
         << name
-        << "\n    --max-level [level]            : The maximum level to generate to."
-        << "\n    --max-heat [maxHeat]           : The maximum heat value to scale the color ramp to."
-        << "\n    --format [format]              : The format to write image tiles to.  Default png."
-        << "\n    --buffer [buffer]              : The buffer size used to create neighboring tiles.  Default 30."
-        << "\n    --out [out]                    : The destination to write to."
+        << "\n    --max-level [level]             : The maximum level to generate to."
+        << "\n    --max-heat [maxHeat]            : The maximum heat value to scale the color ramp to."
+        << "\n    --buffer [buffer]               : The buffer size used to create neighboring tiles.  Default 30."
+        << "\n    --out [prop_name] [prop_value]  : set an output property"
         << std::endl;
 
     return 0;
@@ -64,10 +64,8 @@ static TileKeyMap s_keys;
 
 unsigned int maxLevel = 8;
 float maxHeat = 100.0;
-std::string format = "png";
 // Buffer with neighbor tiles to do some simple metatiling to prevent inconsistent edges along tile boundaries.
 unsigned int buffer = 30;
-std::string out = "heatmap";
 
 inline void addPoint(double lon, double lat)
 {
@@ -96,18 +94,12 @@ void ReadFile(std::istream& in)
     }
 }
 
-void WriteKeys()
+void WriteKeys(ImageLayer* layer)
 {
     unsigned int numKeys = s_keys.size();
     unsigned int numProcessed = 0;
     for (const auto& key : s_keys)
     {
-        unsigned x, y;
-        key.first.getTileXY(x, y);
-
-        std::stringstream filename;
-        filename << out << "/" << key.first.getLevelOfDetail() << "/" << x << "/" << y << "." << format;
-
         unsigned int w = 256;
         unsigned int h = 256;
 
@@ -184,13 +176,11 @@ void WriteKeys()
         unsigned int imageSize = hm->w * hm->h * 4;
         unsigned char* imageData = new unsigned char[imageSize];
         heatmap_render_saturated_to(hm, heatmap_cs_default, maxHeat, imageData);
-
-        osgEarth::makeDirectoryForFile(filename.str());
         osg::ref_ptr< osg::Image > image = new osg::Image;
         image->setImage(hm->w, hm->h, 1, GL_RGB8, GL_RGBA, GL_UNSIGNED_BYTE, imageData, osg::Image::USE_NEW_DELETE);
 
         osg::ref_ptr < osg::Image > cropped = ImageUtils::cropImage(image.get(), buffer, buffer, w, h);
-        osgDB::writeImageFile(*cropped.get(), filename.str());
+        layer->writeImage(key.first, cropped.get());
 
         heatmap_free(hm);
 
@@ -215,9 +205,34 @@ main(int argc, char** argv)
 
     arguments.read("--max-level", maxLevel);
     arguments.read("--max-heat", maxHeat);
-    arguments.read("--format", format);
-    arguments.read("--buffer", format);
-    arguments.read("--out", out);
+    arguments.read("--buffer", buffer);
+
+    // collect output configuration:
+    Config outConf;
+    std::string key, value;
+    while (arguments.read("--out", key, value))
+        outConf.set(key, value);
+    outConf.key() = outConf.value("driver");
+    outConf.add("profile", "global-geodetic");
+
+    // open the output tile source:
+    osg::ref_ptr<ImageLayer> output = dynamic_cast<ImageLayer*>(Layer::create(ConfigOptions(outConf)));
+    if (!output.valid())
+    {
+        OE_WARN << "Failed to create output layer" << std::endl;
+        return -1;
+    }
+
+    Status outputStatus = output->openForWriting();
+    if (outputStatus.isError())
+    {
+        OE_WARN << "Error initializing output: " << outputStatus.message() << std::endl;
+        return -1;
+    }
+
+    OE_NOTICE << "Writing tiles to:\n"
+        << outConf.toJSON(true)
+        << std::endl;
 
     std::cout << "Generating heatmap to max level of " << maxLevel << " with max heat " << maxHeat << std::endl;
 
@@ -227,7 +242,9 @@ main(int argc, char** argv)
 
     // Write out all the keys
     std::cout << "Writing " << s_keys.size() << " keys" << std::endl;
-    WriteKeys();
+
+
+    WriteKeys(output.get());
 
     auto endTime = std::chrono::high_resolution_clock::now();
     long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();

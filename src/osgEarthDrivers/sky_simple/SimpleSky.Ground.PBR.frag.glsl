@@ -76,8 +76,8 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 }
 
 // todo: these will be ins
-const float oe_roughness = 0.5;
-const float oe_ao = 1.0;
+in float oe_roughness;
+in float oe_ao;
 const float oe_metallic = 0.0;
 
 void atmos_fragment_main_pbr(inout vec4 color)

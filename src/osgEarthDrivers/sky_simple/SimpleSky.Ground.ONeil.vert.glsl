@@ -39,6 +39,8 @@ out vec3 atmos_vert;
 
 vec3 vp_Normal;             // surface normal (from osgEarth)
 
+out float oe_roughness;
+out float oe_ao;
 
 // Toatl number of lights in the scene
 //uniform int osg_NumLights;
@@ -195,4 +197,7 @@ void atmos_vertex_main(inout vec4 vertexVIEW)
     { 
         atmos_GroundFromAtmosphere(vertexVIEW); 
     } 
+
+    oe_roughness = 0.7;
+    oe_ao = 1.0;
 }

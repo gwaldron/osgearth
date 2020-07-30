@@ -7,8 +7,8 @@
             <asset url="clipart974730_2.png" width="0.6" height="0.8" size_variation="1" selection_weight="10"/>
             <asset url="clipart28163.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
             <asset url="clipart2383752.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
-            <asset model="D:/data/models/knapweed/knapweed.osgb.(0.5).scale" size_variation="0.8" fill="0.5" />
-            <asset model="D:/data/models/fern/fern.osgb" size_variation="0.8" fill="0.4"/>
+            <asset model="D:/data/models/knapweed/knapweed.osgb.(0.6).scale" size_variation="0.8" fill="0.5" />
+            <asset model="D:/data/models/fern/fern.osgb.(0.6).scale" size_variation="0.8" fill="0.4"/>
         </biome>
 
         <biome classes="forest" fill="0.5" source="clipartmax.com">

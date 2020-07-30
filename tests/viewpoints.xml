@@ -28,7 +28,7 @@
         <range>13611.24948464565</range>
     </viewpoint>
     <viewpoint>
-        <name>Grand Canyon</name>
+        <name>Grand Canyon, US</name>
         <heading>-0.8051</heading>
         <pitch>-21.5398</pitch>
         <range>28203.1m</range>
@@ -47,30 +47,34 @@
         <height>502.9998890347779</height>
     </viewpoint>
     <viewpoint>
-        <name>Anchorage, Alaska</name>
-        <heading>-6.513</heading>
-        <pitch>-14.4413</pitch>
-        <range>21030.5m</range>
-        <long>-149.9001345817515</long>
-        <lat>61.16407743963008</lat>
-        <height>30.04646527767181</height>
+        <name>Castel Gandolfo, Italy</name>
+        <heading>99.4295</heading>
+        <pitch>-21.0981</pitch>
+        <range>2140.85m</range>
+        <long>12.66202808744844</long>
+        <lat>41.75146324723777</lat>
+        <height>340.4633435951546</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="Mountainside">
-        <heading>67.9132</heading>
-        <pitch>-6.07322</pitch>
-        <range>2852.25m</range>
-        <long>-121.7712665799263</long>
-        <lat>46.79220713459502</lat>
-        <height>1636.236482798122</height>
+    <viewpoint>
+        <name>Sion, Switzerland</name>
+        <heading>77.5248</heading>
+        <pitch>-13.3381</pitch>
+        <range>1333.35m</range>
+        <long>7.275357552703459</long>
+        <lat>46.19243759376418</lat>
+        <height>683.0508383652195</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="Chicago">
-        <heading>107.859</heading>
-        <pitch>-16.1441</pitch>
-        <range>2290.68m</range>
-        <long>-87.63760536472377</long>
-        <lat>41.88440204687279</lat>
-        <height>186.9731654571369</height>
-        <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+    <viewpoint>
+        <name>Control Point Example</name>
+        <heading>-57.2662</heading>
+        <pitch>-13.0214</pitch>
+        <range>1251.4m</range>
+        <long>7.21537020162857</long>
+        <lat>46.1972862791111</lat>
+        <height>790.9680772088468</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
     <viewpoint name="Grasslands">
         <heading>27.8304</heading>

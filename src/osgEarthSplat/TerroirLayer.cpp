@@ -22,9 +22,11 @@
 #include "TerroirLayer"
 #include "SplatShaders"
 #include "NoiseTextureFactory"
+
 #include <osgEarth/TextureArena>
 #include <osgEarth/Map>
 #include <osgEarth/ElevationPool>
+#include <osgEarth/Math>
 
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
@@ -115,35 +117,8 @@ namespace
         noise -= bias;
     }
 
-    float unitmap(float x, float lo, float hi)
-    {
-        if (x <= lo) return 0.0f;
-        else if (x >= hi) return 1.0f;
-        else return (x-lo)/(hi-lo);
-    }
-
-    float remap(float x, float lo, float hi)
-    {
-        return lo+x*(hi-lo);
-    }
-
-    float decel(float x)
-    {
-        return 1.0-(1.0-x)*(1.0-x);
-    }
-
-    float accel(float x)
-    {
-        return x*x;
-    }
-
-    float threshold(float x, float thresh, float buf)
-    {
-        if (x < thresh-buf) return 0.0f;
-        else if (x > thresh+buf) return 1.0f;
-        else return osg::clampBetween( (x-(thresh-buf)) / (buf*2.0f), 0.0f, 1.0f);
-    }
-
+    // OSG loader for reading an albedo texture and a heightmap texture
+    // and merging them into a single RGBH texture
     struct RGBHPseudoLoader : public osgDB::ReaderWriter
     {
         RGBHPseudoLoader() {
@@ -209,17 +184,21 @@ namespace
     };
 
 
+#define DEFAULT_ROUGHNESS 0.75
+#define DEFAULT_AO 1.0
 
-    struct NNSAPseudoLoader : public osgDB::ReaderWriter
+    // OSG load for reading normal, roughness, and AO textures and merging
+    // them into a single encoded material texture.
+    struct NNRAPseudoLoader : public osgDB::ReaderWriter
     {
-        NNSAPseudoLoader() {
-            supportsExtension("oe_splat_nnsa", "Normal/Smooth/AO");
+        NNRAPseudoLoader() {
+            supportsExtension("oe_splat_nnra", "Normal/Roughness/AO");
         }
 
         ReadResult readImage(const std::string& uri, const osgDB::Options* options) const override
         {
             std::string ext = osgDB::getLowerCaseFileExtension(uri);
-            if (ext == "oe_splat_nnsa")
+            if (ext == "oe_splat_nnra")
             {
                 URI normalsURI(
                     osgDB::getNameLessExtension(uri) + "_Normal.jpg");
@@ -230,29 +209,57 @@ namespace
                 if (!normals.valid())
                     return ReadResult::FILE_NOT_FOUND;
 
-                //TODO: smoothness, AO
+                URI roughnessURI(
+                    osgDB::getNameLessExtension(uri) + "_Roughness.jpg");
 
-                osg::ref_ptr<osg::Image> nnsa = new osg::Image();
-                nnsa->allocateImage(normals->s(), normals->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+                osg::ref_ptr<osg::Image> roughness =
+                    roughnessURI.getImage(options);
+
+                URI aoURI(
+                    osgDB::getNameLessExtension(uri) + "_AmbientOcclusion.jpg");
+
+                osg::ref_ptr<osg::Image> ao =
+                    aoURI.getImage(options);
+
+                osg::ref_ptr<osg::Image> nnra = new osg::Image();
+                nnra->allocateImage(normals->s(), normals->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
                 ImageUtils::PixelReader readNormals(normals.get());
-                ImageUtils::PixelWriter writeNNSA(nnsa.get());
+                ImageUtils::PixelReader readAO(ao.get());
+                ImageUtils::PixelReader readRoughness(roughness.get());
+                ImageUtils::PixelWriter writeMat(nnra.get());
 
-                osg::Vec3 temp3;
-                osg::Vec4 temp;
+                osg::Vec3 normal3;
+                osg::Vec4 normal;
+                osg::Vec4 roughnessVal;
+                osg::Vec4 aoVal;
                 osg::Vec4 packed;
 
-                for(int t=0; t<writeNNSA.t(); ++t)
+                for(int t=0; t<writeMat.t(); ++t)
                 {
-                    for(int s=0; s<writeNNSA.s(); ++s)
+                    for(int s=0; s< writeMat.s(); ++s)
                     {
-                        readNormals(temp, s, t);
-                        temp3.set(temp.x()*2.0-1.0, temp.y()*2.0-1.0, temp.z()*2.0-1.0);
-                        NormalMapGenerator::pack(temp3, packed);
-                        writeNNSA(packed, s, t);
+                        readNormals(normal, s, t);
+                        normal3.set(normal.x()*2.0-1.0, normal.y()*2.0-1.0, normal.z()*2.0-1.0);
+                        NormalMapGenerator::pack(normal3, packed);
+                        if (roughness.valid())
+                        {
+                            readRoughness(roughnessVal, s, t);
+                            packed[2] = roughnessVal.r();
+                        }
+                        else packed[2] = DEFAULT_ROUGHNESS;
+
+                        if (ao.valid())
+                        {
+                            readAO(aoVal, s, t);
+                            packed[3] = aoVal.r();
+                        }
+                        else packed[3] = DEFAULT_AO;
+
+                        writeMat(packed, s, t);
                     }
                 }
-                return nnsa;
+                return nnra;
             }
 
             return ReadResult::FILE_NOT_HANDLED;
@@ -261,7 +268,7 @@ namespace
 }
 
 REGISTER_OSGPLUGIN(oe_splat_rgbh, RGBHPseudoLoader);
-REGISTER_OSGPLUGIN(oe_splat_nnsa, NNSAPseudoLoader);
+REGISTER_OSGPLUGIN(oe_splat_nnra, NNRAPseudoLoader);
 
 //........................................................................
 
@@ -272,9 +279,9 @@ TerroirLayer::loadMaterials(const std::string& base)
     rgbh->_uri = URI(base + ".oe_splat_rgbh");
     _arena->add(rgbh);
 
-    Texture* nnsa = new Texture();
-    nnsa->_uri = URI(base + ".oe_splat_nnsa");
-    _arena->add(nnsa);
+    Texture* nnra = new Texture();
+    nnra->_uri = URI(base + ".oe_splat_nnra");
+    _arena->add(nnra);
 }
 
 void
@@ -291,12 +298,9 @@ TerroirLayer::init()
     ss->setAttribute(_arena);
 
     loadMaterials("D:/data/splat/Rock030_2K");
-    
     loadMaterials("D:/data/splat/Ground029_2K");
-
-    //loadMaterials("D:/data/splat/Ground033_2K");
-
-    loadMaterials("D:/data/splat/grass_seamless");
+    loadMaterials("D:/data/splat/Ground037_2K");
+    loadMaterials("D:/data/splat/Ground003_2K");
 }
 
 Status
@@ -388,7 +392,8 @@ TerroirLayer::createImageImplementation(
 
             for(int n=0; n<4; ++n)
             {
-                if (key.getLOD() >= noiseLOD[n])
+                //TODO: well?
+                if (true)//key.getLOD() >= noiseLOD[n])
                 {
                     noiseCoords[n].set(u, v);
                     scaleCoordsToRefLOD(noiseCoords[n], key, noiseLOD[n]);
@@ -399,13 +404,13 @@ TerroirLayer::createImageImplementation(
             elevation = elevTile->getElevation(x, y).elevation().as(Units::METERS);
 
             normal = elevTile->getNormal(x, y);
-            slope = decel(decel(1.0 - (normal * up)));
+            slope = harden(harden(1.0 - (normal * up)));
 
 
             // roughess increases with altitude:
-            pixel[RUGGED] = unitmap(elevation, 1600.0f, 5000.0f);
+            pixel[RUGGED] = lerpstep(1600.0f, 5000.0f, elevation);
             // and increases with slope:
-            pixel[RUGGED] += 0.5*slope;
+            pixel[RUGGED] += slope; // 0.5*slope;
 
             // Ramp life down slowly as we increase in altitude.
             pixel[DENSITY] = 1.0f - osg::clampBetween(
@@ -416,16 +421,15 @@ TerroirLayer::createImageImplementation(
             pixel[DENSITY] +=
                 (0.3*noise[0][RANDOM]) +
                 (0.5*noise[1][CLUMPY]) +
-                (0.4*noise[2][SMOOTH]);// +
-                //(0.4*decel(noise[3][CLUMPY]));
+                (0.4*noise[2][SMOOTH]);
 
-            // Discourage life in rugged areas
+            // Discourage density in rugged areas
             pixel[DENSITY] -= 2.0*pixel[RUGGED];
 
             // moisture is fairly arbitrary
-            pixel[MOISTURE] = 1.0f - unitmap(elevation, 500.0f, 3500.0f);
-            pixel[MOISTURE] +=
-                (0.2 * noise[1][SMOOTH]);
+            pixel[MOISTURE] = 1.0f - lerpstep(500.0f, 3500.0f, elevation);
+            pixel[MOISTURE] += (0.2 * noise[1][SMOOTH]);
+            pixel[MOISTURE] -= 0.5*slope;
 
             pixel[BIOME] = 3.0 / 255.0;
 

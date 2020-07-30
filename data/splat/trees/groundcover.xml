@@ -1,19 +1,64 @@
 <groundcover name="Trees" source="hiclipart.com (non-commercial use only)">
-    <spacing>15</spacing>
+    <spacing>20</spacing>
     <biomes>
-        <biome classes="forest" fill="1" size_variation="0.4">         
+        <biome classes="forest" fill="1" size_variation="0.4">        
             <asset>
-                <model>D:/data/models/OakTree/RedOak.osgb</model>
+                <model>D:/data/models/BlueSpruce/blue_spruce.osgb</model>
+                <url>D:/data/models/BlueSpruce/blue_spruce_bb.png</url>
+                <top_url>D:/data/models/BlueSpruce/blue_spruce_bb_top.png</top_url>
+            </asset> 
+            <asset>
+                <model>D:/data/models/EuroLinden/euro_linden.osgb</model>
+                <url>D:/data/models/EuroLinden/euro_linden_bb.png</url>
+                <top_url>D:/data/models/EuroLinden/euro_linden_bb_top.png</top_url>
+            </asset>      
+            <asset>
+                <model>D:/data/models/OakTree/RedOak_white.osgb</model>
                 <url>D:/data/models/OakTree/RedOak_bb.png</url>
                 <top_url>D:/data/models/OakTree/RedOak_bb_top.png</top_url>
+            </asset> 
+            <asset>
+                <model>D:/data/models/SugarMaple/sugar_maple.osgb</model>
+                <url>D:/data/models/SugarMaple/sugar_maple_bb.png</url>
+                <top_url>D:/data/models/SugarMaple/sugar_maple_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/QueenPalm/queen_palm.osgb</model>
+                <url>D:/data/models/QueenPalm/queen_palm_bb.png</url>
+                <top_url>D:/data/models/QueenPalm/queen_palm_bb_top.png</top_url>
             </asset>
         </biome>
         
-        <biome classes="grassland" fill="1" size_variation="0.4">          
+        <biome classes="grassland" fill="1" size_variation="0.4"> 
             <asset>
-                <model>D:/data/models/OakTree/RedOak.osgb</model>
+                <model>D:/data/models/Acacia/acacia.osgb</model>
+                <url>D:/data/models/Acacia/acacia_bb.png</url>
+                <top_url>D:/data/models/Acacia/acacia_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/SugarMaple/sugar_maple.osgb</model>
+                <url>D:/data/models/SugarMaple/sugar_maple_bb.png</url>
+                <top_url>D:/data/models/SugarMaple/sugar_maple_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/BlueSpruce/blue_spruce.osgb</model>
+                <url>D:/data/models/BlueSpruce/blue_spruce_bb.png</url>
+                <top_url>D:/data/models/BlueSpruce/blue_spruce_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/EuroLinden/euro_linden.osgb</model>
+                <url>D:/data/models/EuroLinden/euro_linden_bb.png</url>
+                <top_url>D:/data/models/EuroLinden/euro_linden_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/OakTree/RedOak_white.osgb</model>
                 <url>D:/data/models/OakTree/RedOak_bb.png</url>
                 <top_url>D:/data/models/OakTree/RedOak_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/QueenPalm/queen_palm.osgb</model>
+                <url>D:/data/models/QueenPalm/queen_palm_bb.png</url>
+                <top_url>D:/data/models/QueenPalm/queen_palm_bb_top.png</top_url>
             </asset>
         </biome>
     </biomes>

@@ -202,16 +202,16 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
             oe_gc_nmlHandle = texHandle[instance[i].sideSamplerIndex+1];
 
             // normal mapping ref frame
-            //oe_gc_TBN = mat3(
-            //    tangentVector,
-            //    normalize(cross(tangentVector, faceNormalVector)),
-            //    faceNormalVector);
-
-            // up frame prob works better.
             oe_gc_TBN = mat3(
                 tangentVector,
-                -faceNormalVector,
-                oe_UpVectorView);
+                -normalize(cross(tangentVector, faceNormalVector)),
+                faceNormalVector);
+
+            // up frame prob works better.
+            //oe_gc_TBN = mat3(
+            //    tangentVector,
+            //    -faceNormalVector,
+            //    oe_UpVectorView);
         }
     }
 
@@ -247,7 +247,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
         // normal map handle and ref frame:
         oe_gc_nmlHandle = texHandle[instance[i].topSamplerIndex+1];
-        oe_gc_TBN = mat3(E, -N, oe_UpVectorView);
+        oe_gc_TBN = mat3(E, N, oe_UpVectorView);
 
         vp_Color.a = topDownAmount;
     }

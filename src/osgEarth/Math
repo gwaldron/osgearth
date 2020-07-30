@@ -208,21 +208,49 @@ namespace osgEarth
                                        double tolerance = 0.0);
     OSGEARTH_EXPORT bool pointInPoly2d(const osg::Vec3d& pt, const osg::Geometry* polyPoints,
                                        float tolerance = 0.0f);
-    template<class T>
-    const T& clamp(const T& v, const T& lo, const T& hi)
+
+
+    template<typename T>
+    inline T clamp(T x, T lo, T hi)
     {
-        if (v < lo)
-        {
-            return lo;
-        }
-        else if (v > hi)
-        {
-            return hi;
-        }
-        else
-        {
-            return v;
-        }
+        return osg::clampBetween(x, lo, hi);
+    }
+
+    template<typename T>
+    inline T lerpstep(T lo, T hi, T x)
+    {
+        if (x <= lo) return static_cast<T>(0.0);
+        else if (x >= hi) return static_cast<T>(1.0);
+        else return (x - lo) / (hi - lo);
+    }
+
+    template<typename T>
+    inline T smoothstep(T lo, T hi, T x)
+    {
+        T t = clamp((x - lo) / (hi - lo), static_cast<T>(0.0), static_cast<T>(1.0));
+        return t * t*(static_cast<T>(3.0) - static_cast<T>(2.0)*t);
+    }
+
+    // move closer to one
+    template<typename T>
+    inline T harden(T x)
+    {
+        return static_cast<T>(1.0) - (static_cast<T>(1.0) - x)*(static_cast<T>(1.0) - x);
+    }
+
+    // move closer to zero
+    template<typename T>
+    inline T soften(T x)
+    {
+        return x * x;
+    }
+
+    template<typename T>
+    inline T threshold(T x, T thresh, T buf)
+    {
+        if (x < thresh - buf) return static_cast<T>(0.0);
+        else if (x > thresh + buf) return static_cast<T>(1.0);
+        else return clamp((x - (thresh - buf)) / (buf*static_cast<T>(2.0)), static_cast<T>(0.0), static_cast<T>(1.0));
     }
 
     // Newton-Raphson solver

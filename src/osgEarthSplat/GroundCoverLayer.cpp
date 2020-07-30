@@ -1282,9 +1282,9 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, CameraState& ds
         osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
 
         GLint isMultisampled = 0;
+        isMultisampled = ri.getState()->getLastAppliedMode(GL_MULTISAMPLE) ? 1 : 0;
         if (_layer->getUseAlphaToCoverage())
         {
-            isMultisampled = ri.getState()->getLastAppliedMode(GL_MULTISAMPLE) ? 1 : 0;
             ri.getState()->applyMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, isMultisampled == 1);
             ri.getState()->applyAttribute(_a2cBlending.get());
         }

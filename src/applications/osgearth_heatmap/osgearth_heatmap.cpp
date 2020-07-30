@@ -43,10 +43,11 @@ int usage(const char* name)
         << "Generates a heatmap tiled dataset from a series of points.\n\n"
         << "osgearth_heatmap < points.txt  where points.txt contains a series of lat lon points separated by a space"
         << name
-        << "\n    --max-level [level]             : The maximum level to generate to."
-        << "\n    --max-heat [maxHeat]            : The maximum heat value to scale the color ramp to."
-        << "\n    --buffer [buffer]               : The buffer size used to create neighboring tiles.  Default 30."
-        << "\n    --out [prop_name] [prop_value]  : set an output property"
+        << "\n    --max-level [level]                 : The maximum level to generate to."
+        << "\n    --max-heat [maxHeat]                : The maximum heat value to scale the color ramp to."
+        << "\n    --buffer [buffer]                   : The buffer size used to create neighboring tiles.  Default 30."
+        << "\n    --osg-options [OSG options string]  : options to pass to OSG readers/writers"
+        << "\n    --out [prop_name] [prop_value]      : set an output property"
         << std::endl;
 
     return 0;
@@ -215,6 +216,15 @@ main(int argc, char** argv)
     outConf.key() = outConf.value("driver");
     outConf.add("profile", "global-geodetic");
 
+    osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
+
+    // plugin options, if the user passed them in:
+    std::string str;
+    while (arguments.read("--osg-options", str) || arguments.read("-O", str))
+    {
+        dbo->setOptionString(str);
+    }
+
     // open the output tile source:
     osg::ref_ptr<ImageLayer> output = dynamic_cast<ImageLayer*>(Layer::create(ConfigOptions(outConf)));
     if (!output.valid())
@@ -223,6 +233,7 @@ main(int argc, char** argv)
         return -1;
     }
 
+    output->setReadOptions(dbo.get());
     Status outputStatus = output->openForWriting();
     if (outputStatus.isError())
     {

@@ -85,7 +85,7 @@ namespace osgEarth
                     _layer = typedLayer.get();
                 }
             }
-            else if (_layer && !_layer->isOpen())
+            else if (_layer.valid() && !_layer->isOpen())
             {
                 const Status& layerStatus = _layer->open();
                 if (layerStatus.isError())
@@ -93,7 +93,7 @@ namespace osgEarth
                     return layerStatus;
                 }
             }
-            return Status::OK();
+            return _layer.valid() ? _layer->getStatus() : Status(Status::ResourceUnavailable);
         }
 
         void close()

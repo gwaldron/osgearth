@@ -19,7 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "TerroirLayer"
+#include "LifeMapLayer"
 #include "SplatShaders"
 #include "NoiseTextureFactory"
 
@@ -32,32 +32,34 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 
-#define LC "[TerroirLayer] " << getName() << ": "
+#define LC "[LifeMapLayer] " << getName() << ": "
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
-REGISTER_OSGEARTH_LAYER(terroir, TerroirLayer);
+REGISTER_OSGEARTH_LAYER(lifemap, LifeMapLayer);
 
 //........................................................................
 
 Config
-TerroirLayer::Options::getConfig() const
+LifeMapLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
+    biomes().set(conf, "biomes");
     return conf;
 }
 
 void
-TerroirLayer::Options::fromConfig(const Config& conf)
+LifeMapLayer::Options::fromConfig(const Config& conf)
 {
+    biomes().get(conf, "biomes");
 }
 
 //........................................................................
 
 namespace
 {
-    // The four components of a terroir pixel
+    // The four components of a LifeMap pixel
     constexpr unsigned DENSITY = 0;
     constexpr unsigned MOISTURE = 1;
     constexpr unsigned RUGGED = 2;
@@ -111,10 +113,9 @@ namespace
         ImageUtils::PixelReader& read,
         const osg::Vec2& coords)
     {
-        const osg::Vec4 bias(1,1,1,1);
         read(noise, coords.x(), coords.y());
         noise *= 2.0;
-        noise -= bias;
+        noise.r() -= 1.0, noise.g() -= 1.0, noise.b() -= 1.0, noise.a() -= 1.0;
     }
 
     // OSG loader for reading an albedo texture and a heightmap texture
@@ -273,7 +274,7 @@ REGISTER_OSGPLUGIN(oe_splat_nnra, NNRAPseudoLoader);
 //........................................................................
 
 void
-TerroirLayer::loadMaterials(const std::string& base)
+LifeMapLayer::loadMaterials(const std::string& base)
 {
     Texture* rgbh = new Texture();
     rgbh->_uri = URI(base + ".oe_splat_rgbh");
@@ -285,7 +286,7 @@ TerroirLayer::loadMaterials(const std::string& base)
 }
 
 void
-TerroirLayer::init()
+LifeMapLayer::init()
 {
     ImageLayer::init();
 
@@ -304,7 +305,7 @@ TerroirLayer::init()
 }
 
 Status
-TerroirLayer::openImplementation() 
+LifeMapLayer::openImplementation() 
 {
     Status parent = ImageLayer::openImplementation();
     if (parent.isError())
@@ -315,27 +316,43 @@ TerroirLayer::openImplementation()
 }
 
 Status
-TerroirLayer::closeImplementation()
+LifeMapLayer::closeImplementation()
 {
     return ImageLayer::closeImplementation();
 }
 
 void
-TerroirLayer::addedToMap(const Map* map)
+LifeMapLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
+    options().biomes().addedToMap(map);
+    
+    Status biomeStatus = options().biomes().open(getReadOptions());
+    if (biomeStatus.isOK())
+    {
+        OE_INFO << LC << "Using biome layer \"" << getBiomeLayer()->getName() << std::endl;
+    }
+
     _map = map;
 }
 
 void
-TerroirLayer::removedFromMap(const Map* map)
+LifeMapLayer::removedFromMap(const Map* map)
 {
     _map = nullptr;
+    options().biomes().close();
+    options().biomes().removedFromMap(map);
     ImageLayer::removedFromMap(map);
 }
 
+BiomeLayer*
+LifeMapLayer::getBiomeLayer() const
+{
+    return options().biomes().getLayer();
+}
+
 GeoImage
-TerroirLayer::createImageImplementation(
+LifeMapLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
@@ -410,7 +427,7 @@ TerroirLayer::createImageImplementation(
             // roughess increases with altitude:
             pixel[RUGGED] = lerpstep(1600.0f, 5000.0f, elevation);
             // and increases with slope:
-            pixel[RUGGED] += slope; // 0.5*slope;
+            pixel[RUGGED] += slope;
 
             // Ramp life down slowly as we increase in altitude.
             pixel[DENSITY] = 1.0f - osg::clampBetween(
@@ -427,19 +444,62 @@ TerroirLayer::createImageImplementation(
             pixel[DENSITY] -= 2.0*pixel[RUGGED];
 
             // moisture is fairly arbitrary
-            pixel[MOISTURE] = 1.0f - lerpstep(500.0f, 3500.0f, elevation);
-            pixel[MOISTURE] += (0.2 * noise[1][SMOOTH]);
-            pixel[MOISTURE] -= 0.5*slope;
+            float moisture = 1.0f - lerpstep(250.0f, 3000.0f, elevation);
+            moisture += (0.2 * noise[1][SMOOTH]);
+            moisture -= 0.5*slope;
 
-            pixel[BIOME] = 3.0 / 255.0;
+            float temperature = 1.0f - lerpstep(0.0f, 4000.0f, elevation);
+            temperature += (0.2 * noise[1][SMOOTH]);
+
+            pixel[MOISTURE] = ((float)(((int)(moisture*16.0f) << 4) | ((int)(temperature*16.0f)))) / 255.0f;
+
+            float biomeNoise = fract(
+                noise[1][RANDOM]);
+
+            pixel[BIOME] = (float)lookupBiome(x, y, biomeNoise) / 255.0f;
 
             // saturate:
             for(int i=0; i<4; ++i)
-                pixel[i] = osg::clampBetween(pixel[i], 0.0f, 1.0f);
+                pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
 
             write(pixel, s, t);
         }
     }
 
     return GeoImage(image.get(), key.getExtent());
+}
+
+int
+LifeMapLayer::lookupBiome(double x, double y, float noise) const
+{    
+    BiomeLayer* layer = getBiomeLayer();
+    if (layer)
+    {
+        std::set<BiomeLayer::SearchResult> results;
+        layer->getNearestBiomes(x, y, 3, results);
+        if (results.empty())
+        {
+            return 0;
+        }
+        else
+        {
+            const double strength = 9.0;
+            double total = 0.0;
+            for (auto& i : results)
+                total += pow(1.0 / i.range2, strength);
+
+            double runningTotal = 0.0;
+            double pick = total * (double)noise;
+            for (auto& i : results)
+            {
+                runningTotal += pow(1.0 / i.range2, strength);
+                if (pick < runningTotal)
+                    return i.biomeid;
+            }
+
+            // return the last one by default
+            return results.rbegin()->biomeid;
+        }
+    }
+    return 0;
 }

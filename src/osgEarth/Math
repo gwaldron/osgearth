@@ -253,6 +253,12 @@ namespace osgEarth
         else return clamp((x - (thresh - buf)) / (buf*static_cast<T>(2.0)), static_cast<T>(0.0), static_cast<T>(1.0));
     }
 
+    template<typename T>
+    inline T fract(T x)
+    {
+        return x - floor(x);
+    }
+
     // Newton-Raphson solver
     template<typename Func, typename FuncDeriv>
     double solve(Func func, FuncDeriv deriv, double guess, double tolerance, bool& valid, int maxIterations = 16)

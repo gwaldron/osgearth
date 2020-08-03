@@ -8,19 +8,29 @@
 
     <xi:include href="viewpoints.xml"/>
 
-    <xi:include href="land_cover_dictionary.xml"/>
+    <LandCoverDictionary>
+        <version>1</version>
+        <classes>
+            <class name="no-data"/>
+            <class name="Coastal Desert"/>
+            <class name="Desert"/>
+            <class name="Coniferous Forest"/>
+            <class name="Temperate Steppe"/>
+        </classes>
+    </LandCoverDictionary>
 
     <mbtileselevation name="Nepal" enabled="false">
         <url>D:/data/demo/nepal/nepal.mbtiles</url>
     </mbtileselevation>
 
-    <GroundCover name="Trees" max_range="7500" max_sse="100">
+    <GroundCover name="Trees" max_range="7500" max_sse="100" enabled="false">
         <xi:include href="../data/splat/trees/groundcover.xml"/>
         <cast_shadows>true</cast_shadows>
         <mask_layer>OSM MASK</mask_layer>
+        <biomes_layer>Test Biomes</biomes_layer>
     </GroundCover>
 
-    <Grass name="Grass" max_range="100" max_sse="10">
+    <Grass name="Grass" max_range="100" max_sse="10" enabled="false">
         <xi:include href="../data/splat/grass/groundcover.xml"/>
         <mask_layer>OSM MASK</mask_layer>
     </Grass>
@@ -32,14 +42,16 @@
     </Wind>
 
     <contourmap/>
-    <!-- needs to be here... -->
+    <!-- needs to be here or lifemap shader won't render properly...why? -->
 
-    <terroir name="Terroir" shared="true" min_level="6">
+    <lifemap name="LifeMap" shared="true" min_level="6">
 
         <cache_policy usage="none"/>
+        
+        <biomes>Test Biomes</biomes>
 
-        <shared_sampler>TERROIR_TEX</shared_sampler>
-        <shared_matrix>TERROIR_MAT</shared_matrix>
+        <shared_sampler>LIFEMAP_TEX</shared_sampler>
+        <shared_matrix>LIFEMAP_MAT</shared_matrix>
 
         <shader>
             <![CDATA[
@@ -127,6 +139,7 @@
                 
                 uniform float density_power = 1.0;
                 uniform float moisture_power = 1.0;
+                uniform float temperature_power = 1.0;
                 uniform float rugged_power = 1.0;
                 uniform float depth = 0.02;
                 
@@ -156,6 +169,16 @@
                 {
                     return val * modifier;
                     //return pow(val, 1.0-modifier);
+                }
+                
+                float soften(in float x)
+                {
+                    return x * x;
+                }
+                
+                float harden(in float x)
+                {
+                    return 1.0 - (1.0-x)*(1.0-x);
                 }
                                 
                 float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)
@@ -201,7 +224,7 @@
                     Rec(TEX_GRASS, -1.0,  1.0, -1.0)
                 );
                                 
-                float density, moisture, rugged;
+                float density, moisture, temperature, rugged;
                 
                 uniform float snow = 0.0;
                 
@@ -254,8 +277,6 @@
                     out_ao = final_ao;
                 }
                 
-                uniform float shmoo;
-                
                 void oe_splat_Frag(inout vec4 quad)
                 {
                     // local reference frame for normals:
@@ -264,16 +285,20 @@
                     mat3 tbn = mat3(normalize(tangent), normalize(binormal), vp_Normal);
 
                     density = quad[DENSITY];
-                    density = amplify(density, density_power);
                     density = density * 2.0 - 1.0;
+                    density = amplify(density, density_power);
                     
-                    moisture = quad[MOISTURE];
-                    moisture = amplify(moisture, moisture_power);
+                    moisture = float( int(quad[MOISTURE]*255.0) >> 4 ) / 16.0;
                     moisture = moisture * 2.0 - 1.0;
+                    moisture = amplify(moisture, moisture_power);
+                    
+                    temperature = float( int(quad[MOISTURE]*255.0) & 0x0F ) / 16.0;
+                    temperature = temperature * 2.0 - 1.0;
+                    temperature = amplify(temperature, temperature_power);
                     
                     rugged = quad[RUGGED];
-                    rugged = amplify(rugged, rugged_power);
                     rugged = rugged * 2.0 - 1.0;
+                    rugged = amplify(rugged, rugged_power);
                     
                     vec3 final_color;
                     vec3 final_normal;
@@ -313,21 +338,27 @@
                     // AO effect is very subtle. Consider dumping it.
                     oe_ao = final_ao;
 
-                    // snow caps: replace with material..? Modulate with altitude?
-                    //float snow_lo = clamp(1.0-(snow+0.1), 0, 1);
-                    //float snow_hi = clamp(1.0-(snow-0.1), 0, 1);
-                    //float snowiness = clamp(quad[RUGGED] * smoothstep(snow_lo, snow_hi, dot(vp_Normal, oe_UpVectorView)),0,1);
-                    //final_color.rgb = mix(final_color.rgb, vec3(1), snowiness);
-                    //oe_roughness = mix(oe_roughness, 0.1, snowiness);
+                    // perma-show caps:
+                    float snowiness = 0.0;
+                    float coldness = 1.0-(0.5*(clamp(temperature, -1, 1)+1.0));
+                    float rockiness = clamp(0.5*(rugged+1.0), 0, 1);
+                    float min_snow_cos_angle = 1.0-soften(snow*coldness*rockiness);
+                    const float snow_buf = 0.05;
+                    float b = min(min_snow_cos_angle + snow_buf, 1.0);
+                    float cos_angle = dot(vp_Normal, oe_UpVectorView);
+                    snowiness = smoothstep(min_snow_cos_angle, b, cos_angle);
+                    final_color.rgb = mix(final_color.rgb, vec3(1), snowiness);
+                    oe_roughness = mix(oe_roughness, 0.1, snowiness);
                         
                     // final color output:
                     quad = vec4(final_color.rgb, 1.0);
                 }
             ]]>
         </shader>
-    </terroir>
+    </lifemap>
 
-    <tmsimage name="Terroir Debug" enabled="false">
+    <tmsimage name="LifeMap Debug" enabled="false">
+        <cache_policy usage="none"/>
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
             <![CDATA[
@@ -345,14 +376,14 @@
                 uniform float moisture_power = 1.0;
                 uniform float rugged_power = 1.0;
                 
-                uniform sampler2D TERROIR_TEX;
-                uniform mat4 TERROIR_MAT;
+                uniform sampler2D LIFEMAP_TEX;
+                uniform mat4 LIFEMAP_MAT;
                 
                 vec4 oe_layer_tilec;
                 
                 void oe_splat_debug(inout vec4 unused)
                 {               
-                    vec4 quad = texture(TERROIR_TEX, (TERROIR_MAT*oe_layer_tilec).st);
+                    vec4 quad = texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st);
                     vec4 color;                
                     color.g = quad[DENSITY] * density_power;
                     color.b = quad[MOISTURE] * moisture_power;
@@ -364,18 +395,17 @@
         </shader>
     </tmsimage>
 
+    <!-- 
     <xi:include href="osm_mask.xml"/>
-
     <xi:include href="osm_roads.xml"/>
-
     <xi:include href="osm_water.xml"/>
-
     <xi:include href="osm_buildings.xml"/>
+    -->
 
     <TMSImage name="ReadyMap 15m Imagery" min_range="12500" attenuation_range="10000">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
-          <![CDATA[
+            <![CDATA[
             #pragma vp_entryPoint imageryDraw
             #pragma vp_location fragment
             void imageryDraw(inout vec4 color) {
@@ -385,4 +415,31 @@
         </shader>
     </TMSImage>
 
+    <Biomes name="Test Biomes">
+        <OGRFeatures name="Control Set">
+            <url>../data/biomes.shp</url>
+        </OGRFeatures>
+        <biomes>
+            <biome name="Default" id="0">
+                <models>
+                    <model name="Acacia" url="D:/data/models/Acacia/acacia.osgb"/>
+                </models>
+            </biome>
+            <biome name="Coniferous" id="1">
+                <models>
+                    <model name="Blue Spruce" url="D:/data/models/BlueSpruce/blue_spruce.osgb"/>
+                </models>
+            </biome>
+            <biome name="Deciduous" id="2">
+                <models>
+                    <model name="Sugar Maple" url="D:/data/models/SugarMaple/sugar_maple.osgb"/>
+                </models>
+            </biome>
+            <biome name="Tropical" id="3">
+                <models>
+                    <model name="Queen Palm" url="D:/data/models/QueenPalm/queen_palm.osgb"/>
+                </models>
+            </biome>
+        </biomes>
+    </Biomes>
 </map>

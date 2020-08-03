@@ -34,12 +34,12 @@
     <contourmap/>
     <!-- needs to be here... -->
 
-    <terroir name="Terroir" shared="true" min_level="6">
+    <lifemap name="LifeMap" shared="true" min_level="6">
 
         <cache_policy usage="none"/>
 
-        <shared_sampler>TERROIR_TEX</shared_sampler>
-        <shared_matrix>TERROIR_MAT</shared_matrix>
+        <shared_sampler>LIFEMAP_TEX</shared_sampler>
+        <shared_matrix>LIFEMAP_MAT</shared_matrix>
 
         <shader>
             <![CDATA[
@@ -127,6 +127,7 @@
                 
                 uniform float density_power = 1.0;
                 uniform float moisture_power = 1.0;
+                uniform float temperature_power = 1.0;
                 uniform float rugged_power = 1.0;
                 uniform float depth = 0.02;
                 
@@ -201,7 +202,7 @@
                     Rec(TEX_GRASS, -1.0,  1.0, -1.0)
                 );
                                 
-                float density, moisture, rugged;
+                float density, moisture, temperature, rugged;
                 
                 uniform float snow = 0.0;
                 
@@ -254,8 +255,6 @@
                     out_ao = final_ao;
                 }
                 
-                uniform float shmoo;
-                
                 void oe_splat_Frag(inout vec4 quad)
                 {
                     // local reference frame for normals:
@@ -264,16 +263,20 @@
                     mat3 tbn = mat3(normalize(tangent), normalize(binormal), vp_Normal);
 
                     density = quad[DENSITY];
-                    density = amplify(density, density_power);
                     density = density * 2.0 - 1.0;
+                    density = amplify(density, density_power);
                     
-                    moisture = quad[MOISTURE];
-                    moisture = amplify(moisture, moisture_power);
+                    moisture = float( int(quad[MOISTURE]*255.0) >> 4 ) / 16.0;
                     moisture = moisture * 2.0 - 1.0;
+                    moisture = amplify(moisture, moisture_power);
+                    
+                    temperature = float( int(quad[MOISTURE]*255.0) & 0x0F ) / 16.0;
+                    temperature = temperature * 2.0 - 1.0;
+                    temperature = amplify(temperature, temperature_power);
                     
                     rugged = quad[RUGGED];
-                    rugged = amplify(rugged, rugged_power);
                     rugged = rugged * 2.0 - 1.0;
+                    rugged = amplify(rugged, rugged_power);
                     
                     vec3 final_color;
                     vec3 final_normal;
@@ -313,21 +316,26 @@
                     // AO effect is very subtle. Consider dumping it.
                     oe_ao = final_ao;
 
-                    // snow caps: replace with material..? Modulate with altitude?
-                    //float snow_lo = clamp(1.0-(snow+0.1), 0, 1);
-                    //float snow_hi = clamp(1.0-(snow-0.1), 0, 1);
-                    //float snowiness = clamp(quad[RUGGED] * smoothstep(snow_lo, snow_hi, dot(vp_Normal, oe_UpVectorView)),0,1);
-                    //final_color.rgb = mix(final_color.rgb, vec3(1), snowiness);
-                    //oe_roughness = mix(oe_roughness, 0.1, snowiness);
+                    // perma-show caps:
+                    float snowiness = 0.0;
+                    float coldness = 1.0;
+                    float min_snow_cos_angle = 1.0-(snow*coldness);
+                    const float snow_buf = 0.05;
+                    float b = min(min_snow_cos_angle + snow_buf, 1.0);
+                    float cos_angle = dot(vp_Normal, oe_UpVectorView);
+                    snowiness = smoothstep(min_snow_cos_angle, b, cos_angle);
+                    final_color.rgb = mix(final_color.rgb, vec3(1), snowiness);
+                    oe_roughness = mix(oe_roughness, 0.1, snowiness);
                         
                     // final color output:
                     quad = vec4(final_color.rgb, 1.0);
                 }
             ]]>
         </shader>
-    </terroir>
+    </lifemap>
 
-    <tmsimage name="Terroir Debug" enabled="false">
+    <tmsimage name="LifeMap Debug" enabled="false">
+        <cache_policy usage="none"/>
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
             <![CDATA[
@@ -345,14 +353,14 @@
                 uniform float moisture_power = 1.0;
                 uniform float rugged_power = 1.0;
                 
-                uniform sampler2D TERROIR_TEX;
-                uniform mat4 TERROIR_MAT;
+                uniform sampler2D LIFEMAP_TEX;
+                uniform mat4 LIFEMAP_MAT;
                 
                 vec4 oe_layer_tilec;
                 
                 void oe_splat_debug(inout vec4 unused)
                 {               
-                    vec4 quad = texture(TERROIR_TEX, (TERROIR_MAT*oe_layer_tilec).st);
+                    vec4 quad = texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st);
                     vec4 color;                
                     color.g = quad[DENSITY] * density_power;
                     color.b = quad[MOISTURE] * moisture_power;

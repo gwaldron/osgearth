@@ -19,7 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "TerroirLayer"
+#include "LifeMapLayer"
 #include "SplatShaders"
 #include "NoiseTextureFactory"
 
@@ -32,24 +32,24 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 
-#define LC "[TerroirLayer] " << getName() << ": "
+#define LC "[LifeMapLayer] " << getName() << ": "
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
-REGISTER_OSGEARTH_LAYER(terroir, TerroirLayer);
+REGISTER_OSGEARTH_LAYER(lifemap, LifeMapLayer);
 
 //........................................................................
 
 Config
-TerroirLayer::Options::getConfig() const
+LifeMapLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
     return conf;
 }
 
 void
-TerroirLayer::Options::fromConfig(const Config& conf)
+LifeMapLayer::Options::fromConfig(const Config& conf)
 {
 }
 
@@ -57,7 +57,7 @@ TerroirLayer::Options::fromConfig(const Config& conf)
 
 namespace
 {
-    // The four components of a terroir pixel
+    // The four components of a LifeMap pixel
     constexpr unsigned DENSITY = 0;
     constexpr unsigned MOISTURE = 1;
     constexpr unsigned RUGGED = 2;
@@ -273,7 +273,7 @@ REGISTER_OSGPLUGIN(oe_splat_nnra, NNRAPseudoLoader);
 //........................................................................
 
 void
-TerroirLayer::loadMaterials(const std::string& base)
+LifeMapLayer::loadMaterials(const std::string& base)
 {
     Texture* rgbh = new Texture();
     rgbh->_uri = URI(base + ".oe_splat_rgbh");
@@ -285,7 +285,7 @@ TerroirLayer::loadMaterials(const std::string& base)
 }
 
 void
-TerroirLayer::init()
+LifeMapLayer::init()
 {
     ImageLayer::init();
 
@@ -304,7 +304,7 @@ TerroirLayer::init()
 }
 
 Status
-TerroirLayer::openImplementation() 
+LifeMapLayer::openImplementation() 
 {
     Status parent = ImageLayer::openImplementation();
     if (parent.isError())
@@ -315,27 +315,27 @@ TerroirLayer::openImplementation()
 }
 
 Status
-TerroirLayer::closeImplementation()
+LifeMapLayer::closeImplementation()
 {
     return ImageLayer::closeImplementation();
 }
 
 void
-TerroirLayer::addedToMap(const Map* map)
+LifeMapLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
     _map = map;
 }
 
 void
-TerroirLayer::removedFromMap(const Map* map)
+LifeMapLayer::removedFromMap(const Map* map)
 {
     _map = nullptr;
     ImageLayer::removedFromMap(map);
 }
 
 GeoImage
-TerroirLayer::createImageImplementation(
+LifeMapLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
@@ -427,15 +427,20 @@ TerroirLayer::createImageImplementation(
             pixel[DENSITY] -= 2.0*pixel[RUGGED];
 
             // moisture is fairly arbitrary
-            pixel[MOISTURE] = 1.0f - lerpstep(500.0f, 3500.0f, elevation);
-            pixel[MOISTURE] += (0.2 * noise[1][SMOOTH]);
-            pixel[MOISTURE] -= 0.5*slope;
+            float moisture = 1.0f - lerpstep(500.0f, 3500.0f, elevation);
+            moisture += (0.2 * noise[1][SMOOTH]);
+            moisture -= 0.5*slope;
+
+            float temperature = 1.0f - lerpstep(0.0f, 3500.0f, elevation);
+            temperature += (0.2 * noise[1][SMOOTH]);
+
+            pixel[MOISTURE] = ((float)(((int)(moisture*16.0f) << 4) | ((int)(temperature*16.0f)))) / 255.0f;
 
             pixel[BIOME] = 3.0 / 255.0;
 
             // saturate:
             for(int i=0; i<4; ++i)
-                pixel[i] = osg::clampBetween(pixel[i], 0.0f, 1.0f);
+                pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
 
             write(pixel, s, t);
         }

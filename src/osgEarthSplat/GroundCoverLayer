@@ -24,7 +24,7 @@
 
 #include "Export"
 #include "Biome"
-#include "TerroirLayer"
+#include "LifeMapLayer"
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
@@ -68,9 +68,9 @@ namespace osgEarth { namespace Splat
         void setLandCoverDictionary(LandCoverDictionary* landCoverDict);
         LandCoverDictionary* getLandCoverDictionary() const;
 
-        //! Layer containing terroir data
-        void setTerroirLayer(TerroirLayer*);
-        TerroirLayer* getTerroirLayer() const;
+        //! Layer containing life map data
+        void setLifeMapLayer(LifeMapLayer*);
+        LifeMapLayer* getLifeMapLayer() const;
 
         //! Masking layer (optional)
         void setMaskLayer(ImageLayer* layer);
@@ -135,7 +135,7 @@ namespace osgEarth { namespace Splat
 
         LayerReference<LandCoverDictionary> _landCoverDict;
         LayerReference<LandCoverLayer> _landCoverLayer;
-        LayerReference<TerroirLayer> _terroirLayer;
+        LayerReference<LifeMapLayer> _lifeMapLayer;
 
         TextureImageUnitReservation _noiseBinding;
 

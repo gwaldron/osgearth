@@ -19,8 +19,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_SPLAT_TERROIR_LAYER_H
-#define OSGEARTH_SPLAT_TERROIR_LAYER_H
+#ifndef OSGEARTH_SPLAT_LIFE_MAP_LAYER_H
+#define OSGEARTH_SPLAT_LIFE_MAP_LAYER_H
 
 #include "Export"
 #include <osgEarth/ImageLayer>
@@ -34,7 +34,7 @@ namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
 
-    class OSGEARTHSPLAT_EXPORT TerroirLayer : public ImageLayer
+    class OSGEARTHSPLAT_EXPORT LifeMapLayer : public ImageLayer
     {
     public:
         class OSGEARTHSPLAT_EXPORT Options : public ImageLayer::Options
@@ -47,7 +47,7 @@ namespace osgEarth { namespace Splat
         };
 
     public:
-        META_Layer(osgEarthSplat, TerroirLayer, Options, ImageLayer, Terroir);
+        META_Layer(osgEarthSplat, LifeMapLayer, Options, ImageLayer, LifeMap);
 
     protected:
 
@@ -67,7 +67,7 @@ namespace osgEarth { namespace Splat
 
     protected:
 
-        virtual ~TerroirLayer() { }
+        virtual ~LifeMapLayer() { }
 
         osg::observer_ptr<const Map> _map;
         mutable ElevationPool::WorkingSet _workingSet;
@@ -80,4 +80,4 @@ namespace osgEarth { namespace Splat
 
 } } // namespace osgEarth::Splat
 
-#endif // OSGEARTH_SPLAT_TERROIR_LAYER_H
+#endif // OSGEARTH_SPLAT_LIFE_MAP_LAYER_H

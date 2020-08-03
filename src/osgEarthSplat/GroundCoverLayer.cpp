@@ -411,19 +411,19 @@ GroundCoverLayer::getLandCoverLayer() const
 }
 
 void
-GroundCoverLayer::setTerroirLayer(TerroirLayer* layer)
+GroundCoverLayer::setLifeMapLayer(LifeMapLayer* layer)
 {
-    _terroirLayer.setLayer(layer);
+    _lifeMapLayer.setLayer(layer);
     if (layer)
     {
         buildStateSets();
     }
 }
 
-TerroirLayer*
-GroundCoverLayer::getTerroirLayer() const
+LifeMapLayer*
+GroundCoverLayer::getLifeMapLayer() const
 {
-    return _terroirLayer.getLayer();
+    return _lifeMapLayer.getLayer();
 }
 
 void
@@ -493,8 +493,8 @@ GroundCoverLayer::addedToMap(const Map* map)
     if (!getLandCoverDictionary())
         setLandCoverDictionary(map->getLayer<LandCoverDictionary>());
 
-    if (!getTerroirLayer())
-        setTerroirLayer(map->getLayer<TerroirLayer>());
+    if (!getLifeMapLayer())
+        setLifeMapLayer(map->getLayer<LifeMapLayer>());
 
     options().maskLayer().addedToMap(map);
     options().colorLayer().addedToMap(map);
@@ -516,9 +516,9 @@ GroundCoverLayer::addedToMap(const Map* map)
 
     _mapProfile = map->getProfile();
 
-    if (getLandCoverLayer() == nullptr && getTerroirLayer() == nullptr)
+    if (getLandCoverLayer() == nullptr && getLifeMapLayer() == nullptr)
     {
-        setStatus(Status::ResourceUnavailable, "No LandCover/Terroir layer available in the Map");
+        setStatus(Status::ResourceUnavailable, "No LandCover/LifeMap layer available in the Map");
         return;
     }
 
@@ -625,7 +625,7 @@ GroundCoverLayer::buildStateSets()
         return;
     }
 
-    if (!getLandCoverDictionary() && !getTerroirLayer()) {
+    if (!getLandCoverDictionary() && !getLifeMapLayer()) {
         OE_DEBUG << LC << "buildStateSets deferred.. land cover dictionary not available" << std::endl;
         return;
     }
@@ -684,15 +684,15 @@ GroundCoverLayer::buildStateSets()
         stateset->removeUniform("oe_GroundCover_colorMinSaturation");
     }
 
-    if (getTerroirLayer())
+    if (getLifeMapLayer())
     {
-        stateset->setDefine("OE_TERROIR_SAMPLER", getTerroirLayer()->getSharedTextureUniformName());
-        stateset->setDefine("OE_TERROIR_MATRIX", getTerroirLayer()->getSharedTextureMatrixUniformName());
+        stateset->setDefine("OE_LIFEMAP_SAMPLER", getLifeMapLayer()->getSharedTextureUniformName());
+        stateset->setDefine("OE_LIFEMAP_MATRIX", getLifeMapLayer()->getSharedTextureMatrixUniformName());
     }
     else
     {
-        stateset->removeDefine("OE_TERROIR_SAMPLER");
-        stateset->removeDefine("OE_TERROIR_MATRIX");
+        stateset->removeDefine("OE_LIFEMAP_SAMPLER");
+        stateset->removeDefine("OE_LIFEMAP_MATRIX");
     }
 
     // disable backface culling to support shadow/depth cameras,

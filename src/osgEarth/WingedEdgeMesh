@@ -29,6 +29,8 @@
 #include <vector>
 #include <deque>
 #include <set>
+#include <type_traits>
+#include <iterator>
 #include <osg/Vec3>
 #include <osg/Geometry>
 
@@ -87,7 +89,311 @@ namespace osgEarth { namespace Util
             }
             // An edge that is adjacent to this face
             Edge* edge;
+            // Lots of hair for iterators over the edges and vertices
+            // of a face.
+            // XXX Is there any other kind of iterator than a
+            // const_iterator for face edges?
+            template<bool Const = false>
+            class FaceIterator
+            {
+            public:
+                using difference_type = int;
+                using value_type = Edge*;
+                using reference = typename std::conditional<Const, Edge* const &, Edge*&>::type;
+                using pointer = typename std::conditional<Const, Edge* const *, Edge**>::type;
+                using iterator_category = std::bidirectional_iterator_tag;
+                pointer thisEdge;
+                pointer originalEdge;
+                bool atEnd;
+                FaceIterator()
+                    : thisEdge(nullptr), originalEdge(nullptr), atEnd(false)
+                {}
+
+                template<typename FaceType>
+                FaceIterator(FaceType& face, bool atEnd)
+                    :  originalEdge(&face.edge), atEnd(atEnd)
+                {
+                    if (atEnd)
+                    {
+                        thisEdge = nullptr;
+                    }
+                    else
+                    {
+                        thisEdge = originalEdge;
+                    }
+                }
+
+                template<bool _Const = Const>
+                typename std::enable_if<_Const, reference>::type
+                operator*() const
+                {
+                    return *thisEdge;
+                }
+
+                template<bool _Const = Const>
+                typename std::enable_if<!_Const, reference>::type
+                operator*()
+                {
+                    return *thisEdge;
+                }
+
+                FaceIterator& operator++()
+                {
+                    if (atEnd)
+                    {
+                        return *this;
+                    }
+                    if ((*thisEdge)->nextEdge() == *originalEdge)
+                    {
+                        thisEdge = nullptr;
+                        atEnd = true;
+                    }
+                    else
+                    {
+                        thisEdge = &(*thisEdge)->nextEdge();
+                    }
+                    return *this;
+                }
+
+                FaceIterator operator++(int)
+                {
+                    auto result = *this;
+                    ++(*this);
+                    return result;
+                }
+
+                FaceIterator& operator--()
+                {
+                    if (atEnd)
+                    {
+                        thisEdge = &(*originalEdge)->prevEdge();
+                        atEnd = false;
+                    }
+                    else
+                    {
+                        thisEdge = &(*thisEdge)->prevEdge();
+                    }
+                    return *this;
+                }
+
+                FaceIterator operator--(int)
+                {
+                    auto result = *this;
+                    --(*this);
+                    return result;
+                }
+
+                bool operator==(const FaceIterator& it) const
+                {
+                    if (atEnd && it.atEnd)
+                        return true;
+                    else if (atEnd != it.atEnd)
+                        return false;
+                    else
+                        return *thisEdge == *it.thisEdge;
+                }
+
+                bool operator!=(const FaceIterator& it) const
+                {
+                    return !(*this == it);
+                }
+            };
+
+            FaceIterator<false> begin()
+            {
+                return FaceIterator<false>(*this, false);
+            }
+
+            FaceIterator<false> end()
+            {
+                return FaceIterator<false>(*this, true);
+            }
+
+            FaceIterator<true> begin() const
+            {
+                return FaceIterator<true>(*this, false);
+            }
+
+            FaceIterator<true> end() const
+            {
+                return FaceIterator<true>(*this, true);
+            }
+
+            template<bool Const = false>
+            class FaceVertexIterator
+            {
+            public:
+                using difference_type = int;
+                using value_type = Vertex*;
+                using reference = typename std::conditional<Const, const Vertex* const &, Vertex*&>::type;
+                using pointer = typename std::conditional<Const, const Vertex* const *, Vertex**>::type;
+                using iterator_category = std::bidirectional_iterator_tag;
+
+                FaceIterator<Const> faceIterator;
+
+                FaceVertexIterator(const FaceIterator<Const> faceIterator)
+                    : faceIterator(faceIterator)
+                {}
+
+                template<bool _Const = Const>
+                typename std::enable_if<_Const, reference>::type
+                operator*() const
+                {
+                    return (*faceIterator)->origVert();
+                }
+
+                template<bool _Const = Const>
+                typename std::enable_if<!_Const, reference>::type
+                operator*()
+                {
+                    return (*faceIterator)->origVert();
+                }
+
+                FaceVertexIterator& operator++()
+                {
+                    ++faceIterator;
+                    return *this;
+                }
+
+                FaceVertexIterator operator++(int)
+                {
+                    auto result = *this;
+                    ++(*this);
+                    return result;
+                }
+
+                FaceVertexIterator& operator--()
+                {
+                    --faceIterator;
+                    return *this;
+                }
+
+                FaceVertexIterator operator--(int)
+                {
+                    auto result = *this;
+                    --(*this);
+                    return result;
+                }
+
+                bool operator==(const FaceVertexIterator& rhs) const
+                {
+                    return faceIterator == rhs.faceIterator;
+                }
+
+                bool operator!=(const FaceVertexIterator& rhs) const
+                {
+                    return faceIterator != rhs.faceIterator;
+                }
+            };
+
+            class FacePositionIterator
+            {
+            public:
+                using difference_type = int;
+                using value_type = Coord;
+                using reference = const Coord&;
+                using pointer = const Coord*;
+                using iterator_category = std::bidirectional_iterator_tag;
+
+                FaceVertexIterator<true> fvIterator;
+
+                FacePositionIterator(const FaceVertexIterator<true> fvIterator)
+                    : fvIterator(fvIterator)
+                {}
+
+                const Coord& operator*() const
+                {
+                    return (*fvIterator)->position;
+                }
+
+                FacePositionIterator& operator++()
+                {
+                    ++fvIterator;
+                    return *this;
+                }
+
+                FacePositionIterator operator++(int)
+                {
+                    auto result = *this;
+                    ++(*this);
+                    return result;
+                }
+
+                FacePositionIterator& operator--()
+                {
+                    --fvIterator;
+                    return *this;
+                }
+
+                FacePositionIterator operator--(int)
+                {
+                    auto result = *this;
+                    --(*this);
+                    return result;
+                }
+
+                bool operator==(const FacePositionIterator& rhs) const
+                {
+                    return fvIterator == rhs.fvIterator;
+                }
+
+                bool operator!=(const FacePositionIterator& rhs) const
+                {
+                    return fvIterator != rhs.fvIterator;
+                }
+            };
+
         };
+
+        struct FaceVerticesAdapter
+        {
+            const Face& face;
+            FaceVerticesAdapter(const Face& face)
+                : face(face)
+            {}
+
+            typename Face::template FaceVertexIterator<true> begin() const
+            {
+                return typename Face::template FaceVertexIterator<true>(face.begin());
+            }
+
+            typename Face::template FaceVertexIterator<true> end() const
+            {
+                return typename Face::template FaceVertexIterator<true>(face.end());
+            }
+        };
+
+        struct FacePositionsAdapter
+        {
+            const FaceVerticesAdapter fva;
+            FacePositionsAdapter(const Face& face)
+                : fva(face)
+            {}
+
+            typename Face::FacePositionIterator begin() const
+            {
+                return typename Face::FacePositionIterator(fva.begin());
+            }
+
+            typename Face::FacePositionIterator end() const
+            {
+                return typename Face::FacePositionIterator(fva.end());
+            }
+        };
+
+        VVec getFaceVertices(const Face* f)
+        {
+            VVec result;
+            if (!f->edge)
+            {
+                return result;
+            }
+            for (auto& e : *f)
+            {
+                result.push_back(e->origVert());
+            }
+            return result;
+        }
 
         struct VertexCmp
         {
@@ -290,23 +596,6 @@ namespace osgEarth { namespace Util
             return true;
         }
 
-        VVec getFaceVertices(const Face* f)
-        {
-            VVec result;
-            if (!f->edge)
-            {
-                return result;
-            }
-            result.push_back(f->edge->origVert());
-            for (Edge* faceEdge = f->edge->nextEdge();
-                 faceEdge != f->edge;
-                 faceEdge = faceEdge->nextEdge())
-            {
-                result.push_back(faceEdge->origVert());
-            }
-            return result;
-        }
-
         // Create new faces using a new vertex in the face
         void subdivideFace(Face* f, const Vertex* v)
         {
@@ -332,18 +621,20 @@ namespace osgEarth { namespace Util
         // XXX Handle the case where newVert is part of the split edge
         // i.e., equal to origVert or destVert. (?)
 
-        void splitOneFace(VVec& faceVerts, const Vertex* origVert, const Vertex* destVert, const Vertex* newVert,
+        template<typename VertIterator>
+        void splitOneFace(const VertIterator& vertsBegin, const VertIterator& vertsEnd,
+                          const Vertex* origVert, const Vertex* destVert, const Vertex* newVert,
                           VVec& out0, VVec& out1)
         {
-            auto ovItr = std::find(faceVerts.begin(), faceVerts.end(), origVert);
+            auto ovItr = std::find(vertsBegin, vertsEnd, origVert);
             // First poly (triangle)
-            if (ovItr == faceVerts.begin())
+            if (ovItr == vertsBegin)
             {
-                out0.push_back(faceVerts.back());
+                out0.push_back((*std::prev(vertsEnd)));
             }
             else
             {
-                out0.push_back(*(ovItr - 1));
+                out0.push_back(*std::prev(ovItr));
             }
             out0.push_back(origVert);
             out0.push_back(newVert);
@@ -351,19 +642,19 @@ namespace osgEarth { namespace Util
             out1.push_back(newVert);
             // Now all the way back to origVert, perhaps going around the
             // Horn
-            auto out1VertItr = ovItr + 1; // points at destVert or faceVerts.end()
-            if (out1VertItr != faceVerts.end())
+            auto out1VertItr = std::next(ovItr); // points at destVert or faceVerts.end()
+            if (out1VertItr != vertsEnd)
             {
                 out1.push_back(*out1VertItr++);
             }
             
-            for (; out1VertItr != faceVerts.end() && out1VertItr != ovItr; ++out1VertItr)
+            for (; out1VertItr != vertsEnd && out1VertItr != ovItr; ++out1VertItr)
             {
                 out1.push_back(*out1VertItr);
             }
-            if (out1VertItr == faceVerts.end())
+            if (out1VertItr == vertsEnd)
             {
-                for (out1VertItr = faceVerts.begin(); out1VertItr != ovItr; ++ out1VertItr)
+                for (out1VertItr = vertsBegin; out1VertItr != ovItr; ++ out1VertItr)
                 {
                     out1.push_back(*out1VertItr);
                 }
@@ -375,18 +666,17 @@ namespace osgEarth { namespace Util
         {
             const Vertex* origVert = e->origVert();
             const Vertex* destVert = e->destVert();
-            VVec faceVerts;
-            VVec otherFaceVerts; // The face across the edge
             // Vertices for new faces
             VVec newFaces[4];
-            Face* oldFace = e->f, *oldOtherFace = nullptr;
-            faceVerts = getFaceVertices(e->f);
-            splitOneFace(faceVerts, origVert, destVert, v, newFaces[0], newFaces[1]);
+            Face *oldFace = e->f, *oldOtherFace = nullptr;
+            FaceVerticesAdapter faceVerts(*oldFace);
+            splitOneFace(faceVerts.begin(), faceVerts.end(), origVert, destVert, v, newFaces[0], newFaces[1]);
             if (e->mate)
             {
                 oldOtherFace = e->mate->f;
-                otherFaceVerts = getFaceVertices(oldOtherFace);
-                splitOneFace(otherFaceVerts, destVert, origVert, v, newFaces[2], newFaces[3]);
+                FaceVerticesAdapter otherFaceVerts(*oldOtherFace);
+                splitOneFace(otherFaceVerts.begin(), otherFaceVerts.end(),
+                             destVert, origVert, v, newFaces[2], newFaces[3]);
             }
             removeFace(oldFace);
             if (oldOtherFace)
@@ -428,14 +718,8 @@ namespace osgEarth { namespace Util
         
         bool isPointInFace(const Face* f, const Coord& pt)
         {
-            VVec faceVerts = getFaceVertices(f);
-            std::vector<osg::Vec3d> coordVec(faceVerts.size());
-            std::transform(faceVerts.begin(), faceVerts.end(), coordVec.begin(),
-                           [](const Vertex* v)
-                           {
-                               return v->position;
-                           });
-            return pointInPoly2d(pt, coordVec.begin(), coordVec.end());
+            FacePositionsAdapter fpa(*f);
+            return pointInPoly2d(pt, fpa.begin(), fpa.end());
         }
         
         // Find the face that contains the point

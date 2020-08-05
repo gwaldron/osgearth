@@ -52,10 +52,10 @@ namespace osgEarth
         FeatureSource* getFeatureSource() const;
 
     public: // MeshEditLayer
-        virtual EditVector* getOrCreateEditGeometry(
+        EditVector* getOrCreateEditGeometry(
             float                   heightScale,
-            const SpatialReference* srs,
-            ProgressCallback*       progress);
+            const TileKey&          key,
+            ProgressCallback*       progress) override;
     public:
 
         virtual Status openImplementation();
@@ -78,7 +78,7 @@ namespace osgEarth
         void create();
 
         osg::ref_ptr<EditVector> _editGeometry;
-        OpenThreads::Mutex _geometryMutex;
+        osgEarth::Threading::Mutex _geometryMutex;
     };
 } // namespace osgEarth
 

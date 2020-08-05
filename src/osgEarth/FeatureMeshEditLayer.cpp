@@ -81,7 +81,7 @@ FeatureMeshEditLayer::getConfig() const
 
 MeshEditLayer::EditVector*
 FeatureMeshEditLayer::getOrCreateEditGeometry(float heightScale,
-                                              const SpatialReference* srs,
+                                              const TileKey& key,
                                               ProgressCallback* progress)
 {
     FeatureSource* fs = getFeatureSource();
@@ -94,7 +94,7 @@ FeatureMeshEditLayer::getOrCreateEditGeometry(float heightScale,
         return _editGeometry.get();
     }
 
-    osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(progress);
+    osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(key, progress);
     if (cursor.valid())
     {
         osg::ref_ptr<EditVector> edit = new EditVector;
@@ -103,7 +103,7 @@ FeatureMeshEditLayer::getOrCreateEditGeometry(float heightScale,
             Feature* f = cursor->nextFeature();
             if (f && f->getGeometry())
             {
-                f->transform(srs);
+                f->transform(key.getExtent().getSRS());
                 edit->push_back(f->getGeometry()->createVec3dArray());
             }
         }

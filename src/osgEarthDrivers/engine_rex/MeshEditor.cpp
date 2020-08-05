@@ -26,7 +26,7 @@ MeshEditor::MeshEditor(const TileKey& key, unsigned tileSize, const Map* map) :
         MeshEditLayer* layer = it->get();
         if ( layer->getMinLevel() <= key.getLevelOfDetail() )
         {
-            addEditGeometry(layer->getOrCreateEditGeometry( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
+            addEditGeometry(layer->getOrCreateEditGeometry( 1.0, key, (ProgressCallback*)0L ) );
         }
     }
 }

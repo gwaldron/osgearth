@@ -64,7 +64,7 @@ namespace osgEarth
          */
         virtual EditVector* getOrCreateEditGeometry(
             float                   heightScale,
-            const SpatialReference* srs,
+            const TileKey& key,
             ProgressCallback*       progress) { return 0L; }
 
     protected:

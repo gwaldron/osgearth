@@ -28,6 +28,8 @@
 #include <osg/Array>
 #include <osg/Geometry>
 
+#include <iterator>
+
 namespace osgEarth
 {
     struct Line2d;
@@ -218,9 +220,9 @@ namespace osgEarth
 
         for (PtItr itr = begin; itr != end; ++itr)
         {
-            Segment2d seg = (itr + 1 == end
+            Segment2d seg = (std::next(itr) == end
                              ? Segment2d(*itr, *begin)
-                             : Segment2d(*itr, *(itr + 1)));
+                             : Segment2d(*itr, *std::next(itr)));
             // if the segment is horizontal, then the "is left" test
             // isn't meaningful. We count the point as in if it's on or
             // to the left of the segment.

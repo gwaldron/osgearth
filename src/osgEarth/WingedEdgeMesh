@@ -38,7 +38,7 @@
     //! the "bottom-most" vert and walk the boundary.
 namespace osgEarth { namespace Util
 {
-    struct Empty
+    struct OSGEARTH_EXPORT Empty
     {
     };
     template<typename Coord, typename V = Empty, typename E = Empty, typename F = Empty>

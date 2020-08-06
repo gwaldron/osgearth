@@ -214,7 +214,7 @@ namespace osgEarth
     // Winding number test; see http://geomalgorithms.com/a03-_inclusion.html
     template<typename Pt, typename PtItr>
     bool
-    osgEarth::pointInPoly2d(const Pt& pt, const PtItr& begin, const PtItr& end, double tolerance = 0.0)
+    pointInPoly2d(const Pt& pt, const PtItr& begin, const PtItr& end, double tolerance = 0.0)
     {
         int windingNum = 0;
 

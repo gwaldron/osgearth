@@ -448,7 +448,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             if ( populateTexCoords )
             {
                 // Use the Z coord as a type marker
-                float marker =  VERTEX_MARKER_GRID;
+                float marker =  maskSet ? maskSet->getMarker(nx, ny) : VERTEX_MARKER_GRID;
                 texCoords->push_back( osg::Vec3f(nx, ny, marker) );
             }
 

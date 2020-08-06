@@ -2,7 +2,8 @@ add_subdirectory(osgEarth)
 set_property(TARGET osgEarth PROPERTY FOLDER "Core")
 
 FOREACH( lib
-         osgEarthSplat
+         osgEarthProcedural
+         #osgEarthSplat
          osgEarthSilverLining
          osgEarthTriton
          osgEarthDrivers )

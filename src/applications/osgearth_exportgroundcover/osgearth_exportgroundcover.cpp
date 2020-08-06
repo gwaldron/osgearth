@@ -26,15 +26,15 @@
 #include <osgEarth/Feature>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/LandCover>
-#include <osgEarthSplat/GroundCoverLayer>
-#include <osgEarthSplat/NoiseTextureFactory>
-#include <osgEarthSplat/GroundCoverFeatureGenerator>
+#include <osgEarthProcedural/GroundCoverLayer>
+#include <osgEarthProcedural/NoiseTextureFactory>
+#include <osgEarthProcedural/GroundCoverFeatureGenerator>
 #include <OpenThreads/Thread>
 
 #define LC "[exportgroundcover] "
 
 using namespace osgEarth;
-using namespace osgEarth::Splat;
+using namespace osgEarth::Procedural;
 using namespace osgEarth::Util;
 
 int

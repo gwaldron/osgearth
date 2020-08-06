@@ -1,5 +1,5 @@
 <map>
-    <libraries>osgEarthSplat</libraries>
+    <libraries>osgEarthProcedural</libraries>
 
     <TMSElevation name="ReadyMap 90m Elevation">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
@@ -8,30 +8,19 @@
 
     <xi:include href="viewpoints.xml"/>
 
-    <LandCoverDictionary>
-        <version>1</version>
-        <classes>
-            <class name="no-data"/>
-            <class name="Coastal Desert"/>
-            <class name="Desert"/>
-            <class name="Coniferous Forest"/>
-            <class name="Temperate Steppe"/>
-        </classes>
-    </LandCoverDictionary>
-
     <mbtileselevation name="Nepal" enabled="false">
         <url>D:/data/demo/nepal/nepal.mbtiles</url>
     </mbtileselevation>
 
-    <GroundCover name="Trees" max_range="7500" max_sse="100" enabled="false">
-        <xi:include href="../data/splat/trees/groundcover.xml"/>
+    <GroundCover name="Trees" max_range="7500" max_sse="100" enabled="true">
+        <category>trees</category>
         <cast_shadows>true</cast_shadows>
-        <mask_layer>OSM MASK</mask_layer>
-        <biomes_layer>Test Biomes</biomes_layer>
+        <biomes_layer>Biomes</biomes_layer>
+        <!-- <mask_layer>OSM MASK</mask_layer> -->
     </GroundCover>
 
     <Grass name="Grass" max_range="100" max_sse="10" enabled="false">
-        <xi:include href="../data/splat/grass/groundcover.xml"/>
+        <category>grass</category>
         <mask_layer>OSM MASK</mask_layer>
     </Grass>
 
@@ -44,11 +33,11 @@
     <contourmap/>
     <!-- needs to be here or lifemap shader won't render properly...why? -->
 
-    <lifemap name="LifeMap" shared="true" min_level="6">
+    <lifemap name="LifeMap" shared="true" min_level="0">
 
         <cache_policy usage="none"/>
-        
-        <biomes>Test Biomes</biomes>
+
+        <biomes>Biomes</biomes>
 
         <shared_sampler>LIFEMAP_TEX</shared_sampler>
         <shared_matrix>LIFEMAP_MAT</shared_matrix>
@@ -357,14 +346,54 @@
         </shader>
     </lifemap>
 
-    <tmsimage name="LifeMap Debug" enabled="false">
+    <tmsimage name="DEBUG - Biome View" enabled="true">
         <cache_policy usage="none"/>
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
             <![CDATA[
                 #version 430
-                #pragma vp_name Terroir Debugger
-                #pragma vp_entryPoint oe_splat_debug
+                #pragma vp_name Biome View
+                #pragma vp_entryPoint oe_splat_biome_view
+                #pragma vp_location fragment_coloring
+                #pragma vp_order 1.1
+                
+                #define BIOME 3
+                
+                const vec4 colors[7] = vec4[](
+                    vec4(1,0,0,1),
+                    vec4(1,1,0,1),
+                    vec4(1,0,1,1),
+                    vec4(0,1,1,1),
+                    vec4(0,0,1,1),
+                    vec4(1,0.5,0,1),
+                    vec4(0,1,0,1)
+                );
+                
+                uniform sampler2D LIFEMAP_TEX;
+                uniform mat4 LIFEMAP_MAT;
+                
+                vec4 oe_layer_tilec;
+                
+                void oe_splat_biome_view(inout vec4 color)
+                {               
+                    ivec2 lifemap_xy = ivec2((LIFEMAP_MAT*oe_layer_tilec).st * 255.0);
+                    int biomeid = int(texelFetch(LIFEMAP_TEX, lifemap_xy, 0)[BIOME] * 255.0);
+                    //vec4 quad = texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st);
+                    //int biomeid = int(quad[BIOME]*255.0);
+                    color = colors[biomeid];
+                }
+            ]]>
+        </shader>
+    </tmsimage>
+
+    <tmsimage name="DEBUG - LifeMap View" enabled="false">
+        <cache_policy usage="none"/>
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <shader>
+            <![CDATA[
+                #version 430
+                #pragma vp_name LifeMap View
+                #pragma vp_entryPoint oe_splat_lifemap_view
                 #pragma vp_location fragment_coloring
                 
                 #define DENSITY 0
@@ -381,15 +410,13 @@
                 
                 vec4 oe_layer_tilec;
                 
-                void oe_splat_debug(inout vec4 unused)
+                void oe_splat_lifemap_view(inout vec4 color)
                 {               
-                    vec4 quad = texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st);
-                    vec4 color;                
+                    vec4 quad = texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st);                    
                     color.g = quad[DENSITY] * density_power;
                     color.b = quad[MOISTURE] * moisture_power;
                     color.r = quad[RUGGED] * rugged_power;
-                    color.a = 1;      
-                    unused = color;
+                    color.a = 1;
                 }
             ]]>
         </shader>
@@ -402,7 +429,7 @@
     <xi:include href="osm_buildings.xml"/>
     -->
 
-    <TMSImage name="ReadyMap 15m Imagery" min_range="12500" attenuation_range="10000">
+    <TMSImage name="ReadyMap 15m Imagery" min_range="12500" attenuation_range="10000" opacity="0.2">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
             <![CDATA[
@@ -415,31 +442,41 @@
         </shader>
     </TMSImage>
 
-    <Biomes name="Test Biomes">
-        <OGRFeatures name="Control Set">
-            <url>../data/biomes.shp</url>
+    <Biomes name="Biomes">
+        <OGRFeatures name="Control Points">
+            <url>D:/data/splat/biomes.shp</url>
         </OGRFeatures>
-        <biomes>
-            <biome name="Default" id="0">
-                <models>
-                    <model name="Acacia" url="D:/data/models/Acacia/acacia.osgb"/>
-                </models>
-            </biome>
-            <biome name="Coniferous" id="1">
-                <models>
-                    <model name="Blue Spruce" url="D:/data/models/BlueSpruce/blue_spruce.osgb"/>
-                </models>
-            </biome>
-            <biome name="Deciduous" id="2">
-                <models>
-                    <model name="Sugar Maple" url="D:/data/models/SugarMaple/sugar_maple.osgb"/>
-                </models>
-            </biome>
-            <biome name="Tropical" id="3">
-                <models>
-                    <model name="Queen Palm" url="D:/data/models/QueenPalm/queen_palm.osgb"/>
-                </models>
-            </biome>
-        </biomes>
+        <xi:include href="D:/data/splat/biomes.xml"/>
     </Biomes>
+
+    <FeatureModel name="Country boundaries">    
+        <OGRFeatures name="world-data">
+            <url>../data/world.shp</url>
+        </OGRFeatures>
+        <styles>
+            <style type="text/css">
+                world {
+                   stroke:                   #ffff00;
+                   stroke-width:             3px;
+                   stroke-tessellation-size: 1km;
+                   render-lighting:          false;
+                   altitude-clamping:        terrain-drape;        
+                }            
+            </style>
+        </styles>
+    </FeatureModel>
+
+    <FeatureModel name="Biome Names">
+        <OGRFeatures url="../data/biomes.shp"/>
+        <styles>
+            <style>
+                default {
+                    text-content: [desc];
+                    text-halo: #3f3f3f;
+                    text-size: 28.0;
+                    text-align: center_center;
+                }
+            </style>
+        </styles>
+    </FeatureModel>
 </map>

@@ -1,0 +1,171 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_SPLAT_SPLAT_CATALOG
+#define OSGEARTH_SPLAT_SPLAT_CATALOG 1
+
+#include "Export"
+#include <osg/Referenced>
+#include <osg/Texture2DArray>
+#include <osgEarth/Containers>
+#include <osgEarth/URI>
+
+namespace osgDB {
+    class Options;
+}
+
+namespace osgEarth { namespace Splat
+{
+    /**
+     * Defines the parameters for noise-generated detail splatting
+     * for a given class/range.
+     */
+    struct OSGEARTHSPLAT_EXPORT SplatDetailData
+    {
+        optional<URI>   _imageURI;
+        optional<float> _brightness;
+        optional<float> _contrast;
+        optional<float> _threshold;
+        optional<float> _slope;
+
+        // catalog will populate this value
+        int _textureIndex;
+
+        SplatDetailData();
+        SplatDetailData(const Config& conf);
+        Config getConfig() const;
+    };
+
+    /**
+     * Defines a single splatting appearance that will be used if its
+     * selector expression evaluates to true.
+     */
+    struct OSGEARTHSPLAT_EXPORT SplatRangeData
+    {
+        optional<unsigned>        _maxLOD;
+        optional<URI>             _imageURI;
+        optional<URI>             _normalURI;
+        optional<URI>             _modelURI;
+        optional<int>             _modelCount;
+        optional<int>             _modelLevel;
+        optional<SplatDetailData> _detail;
+
+        // catalog will populate these values
+        int _diffuseTextureIndex;
+        int _materialTextureIndex;
+
+        SplatRangeData();
+        SplatRangeData(const Config& conf);
+        Config getConfig() const;
+    };
+
+    typedef std::vector<SplatRangeData> SplatRangeDataVector;
+
+    /**
+     * A single splatting class. One class may have multiple
+     * data definitions, which are evaluated in order of appearance.
+     */
+    struct OSGEARTHSPLAT_EXPORT SplatClass
+    {
+        std::string          _name;
+        SplatRangeDataVector _ranges;
+
+        SplatClass();
+        SplatClass(const Config& conf);
+        Config getConfig() const;
+    };
+    
+    typedef osgEarth::UnorderedMap<std::string, SplatClass> SplatClassMap;
+  
+    typedef osgEarth::UnorderedMap<std::string /*className*/, SplatRangeDataVector> SplatLUT;
+
+    // Defines the splatting texture and associated lookup table.
+    struct SplatTextureDef
+    {
+        osg::ref_ptr<osg::Texture2DArray> _texture;
+        SplatLUT                          _splatLUT;
+        osg::ref_ptr<osg::Texture>        _splatLUTBuffer;
+        void resizeGLObjectBuffers(unsigned maxSize);
+        void releaseGLObjects(osg::State* state) const;
+    };
+
+    /**
+     * Catalog of texture-splatting classes. Usually these correspond
+     * to land use.
+     */
+    class OSGEARTHSPLAT_EXPORT SplatCatalog : public osg::Referenced
+    {
+    public:
+        /**
+         * Construct an empty catalog.
+         */
+        SplatCatalog();
+
+        /**
+         * The splatting classifications set.
+         */
+        const SplatClassMap& getClasses() const { return _classes; }
+
+        /**
+         * Whether the catalog is empty
+         */
+        bool empty() const { return _classes.empty(); }
+
+        /**
+         * Create a texture array from the images in the catalog, along
+         * with a definition of how to map classifications to texture
+         * array indices.
+         */        
+        bool createSplatTextureDef(const osgDB::Options* options,
+                                   SplatTextureDef&      out);
+
+    public: // properties
+
+        /** Name of this catalog */
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
+
+
+    public: // serialization
+
+        // populate this object from a Config
+        void fromConfig(const Config& conf);
+
+        // serialize this object to a Config.
+        Config getConfig() const;
+        
+
+    public: // static utility
+
+        /** Reads a splat catalog from a URI. */
+        static SplatCatalog* read(const URI& uri, const osgDB::Options* options =0L);
+
+
+    protected:
+
+        virtual ~SplatCatalog() { }
+
+        optional<int>         _version;
+        optional<std::string> _name;
+        optional<std::string> _description;
+        SplatClassMap         _classes;
+    };
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_SPLAT_SPLAT_CATALOG

@@ -38,7 +38,7 @@ ADD_SUBDIRECTORY(osgearth_version)
 ADD_SUBDIRECTORY(osgearth_atlas)
 ADD_SUBDIRECTORY(osgearth_conv)
 ADD_SUBDIRECTORY(osgearth_3pv)
-ADD_SUBDIRECTORY(osgearth_exportgroundcover)
+#ADD_SUBDIRECTORY(osgearth_exportgroundcover)
 ADD_SUBDIRECTORY(osgearth_clamp)
 
 # deprecated

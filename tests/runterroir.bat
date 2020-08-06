@@ -1,2 +1,2 @@
 @echo off
-osgearth_toc terroir.earth --uniform density_power 1 2 --uniform moisture_power 1 2 --uniform temperature_power 1 2 --uniform rugged_power 1 2 --uniform depth 0.01 1.0 --uniform oe_sky_exposure 4.8 6 --uniform oe_gc_sse 100 1000 --sky --vfov 50 --samples 4 %*
+osgearth_toc terroir.earth --uniform density_power 1 2 --uniform moisture_power 1 2 --uniform temperature_power 1 2 --uniform rugged_power 1 2 --uniform depth 0.01 1.0 --uniform oe_sky_exposure 4.5 6 --uniform snow 0 1 --uniform oe_gc_sse 100 1000 --sky --vfov 50 --samples 4 %*

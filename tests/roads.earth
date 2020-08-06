@@ -35,7 +35,7 @@ http://readymap.org
     </RoadSurface>
 
     <FeatureModel name="Road verts">
-        <feature_source>roads-data</feature_source>
+        <features>roads-data</features>
         <styles>
             <style type="text/css">
                 default {
@@ -51,7 +51,7 @@ http://readymap.org
     </FeatureModel>
 
     <FeatureModel name="Road skeleton" enabled="false">
-        <feature_source>roads-data</feature_source>
+        <features>roads-data</features>
         <styles>
             <style type="text/css">
                 default {
@@ -99,5 +99,5 @@ http://readymap.org
         </viewpoint>
     </viewpoints>
 
-    <libraries>osgEarthSplat</libraries>
+    <libraries>osgEarthProcedural</libraries>
 </Map>

@@ -67,10 +67,10 @@ namespace osgEarth { namespace Util
             EdgeIntersection()
                 : edge(nullptr)
             {}
-            EdgeIntersection(Edge* edge, const Coord& position)
+            EdgeIntersection(const Edge* edge, const Coord& position)
                 : edge(edge), position(position)
             {}
-            Edge* edge;
+            const Edge* edge;
             Coord position;
         };
 
@@ -755,8 +755,7 @@ namespace osgEarth { namespace Util
         EdgeIntersection intersectFaceSegment(Face* face, const Vertex* a, const Vertex* b)
         {
             const Segment2d seg(a->position, b->position);
-            Edge* edge = face->edge;
-            do
+            for (const Edge* edge : *face)
             {
                 if (!(a == edge->origVert() || a == edge->destVert()
                       || b == edge->origVert() || b == edge->destVert()))
@@ -768,9 +767,7 @@ namespace osgEarth { namespace Util
                         return EdgeIntersection(edge, intersection);
                     }
                 }
-                edge = edge->nextEdge();
             }
-            while (edge != face->edge);
             return EdgeIntersection();
         }
 
@@ -892,7 +889,7 @@ namespace osgEarth { namespace Util
                     return false;
                 }
                 current = getVertex(edgeIntersection.position);
-                splitEdge(edgeIntersection.edge, current);
+                splitEdge(const_cast<Edge*>(edgeIntersection.edge), current);
             }
             return true;
         }

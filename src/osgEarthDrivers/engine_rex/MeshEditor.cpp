@@ -73,7 +73,7 @@ struct TileVertex
     mutable int meshIndex = -1;
 };
 
-using TileMesh = WingedEdgeMesh<osg::Vec3d, TileVertex>;
+using TileMesh = Util::WingedEdgeMesh<osg::Vec3d, TileVertex>;
 
 bool
 MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)

@@ -204,14 +204,8 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
             // normal mapping ref frame
             oe_gc_TBN = mat3(
                 tangentVector,
-                -normalize(cross(tangentVector, faceNormalVector)),
+                cross(tangentVector, faceNormalVector),
                 faceNormalVector);
-
-            // up frame prob works better.
-            //oe_gc_TBN = mat3(
-            //    tangentVector,
-            //    -faceNormalVector,
-            //    oe_UpVectorView);
         }
     }
 
@@ -224,8 +218,6 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         vec3 E = cross(Z, oe_UpVectorView);
         vec3 N = cross(oe_UpVectorView, E);
         Z = cross(E, N);
-
-        //oe_gc_TBN = mat3(E, -N, oe_UpVectorView);
 
         // now introduce a "random" rotation
         vec2 b = normalize(clamp(vec2(noise[NOISE_RANDOM], noise[NOISE_RANDOM_2]), 0.01, 1.0)*2.0-1.0);
@@ -247,7 +239,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
         // normal map handle and ref frame:
         oe_gc_nmlHandle = texHandle[instance[i].topSamplerIndex+1];
-        oe_gc_TBN = mat3(E, N, oe_UpVectorView);
+        oe_gc_TBN = mat3(E, -N, oe_UpVectorView);
 
         vp_Color.a = topDownAmount;
     }
@@ -339,8 +331,6 @@ in mat3 oe_gc_TBN;
 
 in float oe_gc_transition;
 
-uniform float shmoo;
-
 void oe_GroundCover_FS(inout vec4 color)
 {
     // apply the transition fade
@@ -358,11 +348,10 @@ void oe_GroundCover_FS(inout vec4 color)
             n.xyz = n.xyz*2.0-1.0;
             float curv = n.z;
             n.z = 1.0 - abs(n.x) - abs(n.y);
-            //float t = clamp(-n.z, 0, 1);
-            //n.x += (n.x > 0)? -t : t;
-            //n.y += (n.y > 0)? -t : t;
+            float t = clamp(-n.z, 0, 1);
+            n.x += (n.x > 0)? -t : t;
+            n.y += (n.y > 0)? -t : t;
             vp_Normal = normalize(oe_gc_TBN * n.xyz);
-            //color.rgb = (vp_Normal + 1.0)*0.5;
         }
     }
 

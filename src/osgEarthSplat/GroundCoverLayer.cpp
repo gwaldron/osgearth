@@ -130,7 +130,6 @@ GroundCoverLayer::Options::getConfig() const
     Config conf = PatchLayer::Options::getConfig();
     maskLayer().set(conf, "mask_layer");
     colorLayer().set(conf, "color_layer");
-    biomeLayer().set(conf, "biome_layer");
     conf.set("color_min_saturation", colorMinSaturation());
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
@@ -160,8 +159,6 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
 
     maskLayer().get(conf, "mask_layer");
     colorLayer().get(conf, "color_layer");
-    biomeLayer().get(conf, "biome_layer");
-
     conf.get("color_min_saturation", colorMinSaturation());
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
@@ -234,13 +231,31 @@ namespace
         }
     };
 
+    // octohodreal normal packing
+    // TODO: MOVE SOMEWHERE ELSE
+    void packNormal(const osg::Vec3& v, osg::Vec2& p)
+    {
+        float d = 1.0/(fabs(v.x())+fabs(v.y())+fabs(v.z()));
+        p.x() = v.x() * d;
+        p.y() = v.y() * d;
+
+        if (v.z() < 0.0)
+        {
+            p.x() = (1.0 - fabs(p.y())) * (p.x() >= 0.0? 1.0 : -1.0);
+            p.y() = (1.0 - fabs(p.x())) * (p.y() >= 0.0? 1.0 : -1.0);
+        }
+
+        p.x() = 0.5f*(p.x()+1.0f);
+        p.y() = 0.5f*(p.y()+1.0f);
+    }
+
     osg::Image* convertNormalMapFromRGBToRG(const osg::Image* in)
     {
         osg::Image* out = new osg::Image();
         out->allocateImage(in->s(), in->t(), 1, GL_RG, GL_UNSIGNED_BYTE);
         out->setInternalTextureFormat(GL_RG8);
         osg::Vec4 v;
-        osg::Vec4 packed;
+        osg::Vec2 packed;
         ImageUtils::PixelReader read(in);
         ImageUtils::PixelWriter write(out);
         for(int t=0; t<read.t(); ++t)
@@ -248,9 +263,9 @@ namespace
             for(int s=0; s<read.s(); ++s)
             {
                 read(v, s, t);
-                osg::Vec3 normal(v.r()*2.0f-1.0f, v.g()*2.0f-1.0f, v.b()*2.0f-1.0f);
-                NormalMapGenerator::pack(normal, packed);
-                write(packed, s, t);
+                packNormal(osg::Vec3f(v.r()*2.0f-1.0f, v.g()*2.0f-1.0f, v.b()*2.0f-1.0f), packed);
+                v.set(packed.x(), packed.y(), 0.0f, 0.0f);
+                write(v, s, t);
             }
         }
         return out;
@@ -414,22 +429,6 @@ GroundCoverLayer::getLandCoverLayer() const
 }
 
 void
-GroundCoverLayer::setLifeMapLayer(LifeMapLayer* layer)
-{
-    _lifeMapLayer.setLayer(layer);
-    if (layer)
-    {
-        buildStateSets();
-    }
-}
-
-LifeMapLayer*
-GroundCoverLayer::getLifeMapLayer() const
-{
-    return _lifeMapLayer.getLayer();
-}
-
-void
 GroundCoverLayer::setMaskLayer(ImageLayer* layer)
 {
     options().maskLayer().setLayer(layer);
@@ -496,9 +495,6 @@ GroundCoverLayer::addedToMap(const Map* map)
     if (!getLandCoverDictionary())
         setLandCoverDictionary(map->getLayer<LandCoverDictionary>());
 
-    if (!getLifeMapLayer())
-        setLifeMapLayer(map->getLayer<LifeMapLayer>());
-
     options().maskLayer().addedToMap(map);
     options().colorLayer().addedToMap(map);
 
@@ -519,13 +515,13 @@ GroundCoverLayer::addedToMap(const Map* map)
 
     _mapProfile = map->getProfile();
 
-    if (getLandCoverLayer() == nullptr && getLifeMapLayer() == nullptr)
+    if (getLandCoverLayer() == NULL)
     {
-        setStatus(Status::ResourceUnavailable, "No LandCover/LifeMap layer available in the Map");
+        setStatus(Status::ResourceUnavailable, "No LandCover layer available in the Map");
         return;
     }
 
-    if (getLandCoverDictionary() == nullptr)
+    if (getLandCoverDictionary() == NULL)
     {
         setStatus(Status::ResourceUnavailable, "No LandCoverDictionary available in the Map");
         return;
@@ -628,7 +624,7 @@ GroundCoverLayer::buildStateSets()
         return;
     }
 
-    if (!getLandCoverDictionary() && !getLifeMapLayer()) {
+    if (!getLandCoverDictionary()) {
         OE_DEBUG << LC << "buildStateSets deferred.. land cover dictionary not available" << std::endl;
         return;
     }
@@ -685,17 +681,6 @@ GroundCoverLayer::buildStateSets()
         stateset->removeDefine("OE_GROUNDCOVER_COLOR_SAMPLER");
         stateset->removeDefine("OE_GROUNDCOVER_COLOR_MATRIX");
         stateset->removeUniform("oe_GroundCover_colorMinSaturation");
-    }
-
-    if (getLifeMapLayer())
-    {
-        stateset->setDefine("OE_LIFEMAP_SAMPLER", getLifeMapLayer()->getSharedTextureUniformName());
-        stateset->setDefine("OE_LIFEMAP_MATRIX", getLifeMapLayer()->getSharedTextureMatrixUniformName());
-    }
-    else
-    {
-        stateset->removeDefine("OE_LIFEMAP_SAMPLER");
-        stateset->removeDefine("OE_LIFEMAP_MATRIX");
     }
 
     // disable backface culling to support shadow/depth cameras,
@@ -802,7 +787,7 @@ namespace
                 4,5, 5,7, 7,6, 6,4
             };
 
-            LineDrawable* lines = new LineDrawable(GL_LINES);
+            LineDrawable* lines = new LineDrawable(GL_LINES);            
             for(int i=0; i<24; i+=2)
             {
                 lines->pushVertex(bbox.corner(index[i]));
@@ -1086,13 +1071,6 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
     bool needsGenerate = false;
     bool needsReset = false;
 
-    if (ds._renderer->_layer->_debug)
-    {
-        needsGenerate = true; // TEMP FOR TESTING
-        needsReset = true;
-    }
-
-
     if (sa != ds._previousZoneSA)
     {
         needsGenerate = true;
@@ -1285,9 +1263,9 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, CameraState& ds
         osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
 
         GLint isMultisampled = 0;
-        isMultisampled = ri.getState()->getLastAppliedMode(GL_MULTISAMPLE) ? 1 : 0;
         if (_layer->getUseAlphaToCoverage())
         {
+            isMultisampled = ri.getState()->getLastAppliedMode(GL_MULTISAMPLE) ? 1 : 0;
             ri.getState()->applyMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, isMultisampled == 1);
             ri.getState()->applyAttribute(_a2cBlending.get());
         }
@@ -1633,230 +1611,6 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                         // normal map is the same file name but with _NML inserted before the extension
                         URI normalMapURI(
                             osgDB::getNameLessExtension(uri.full()) + 
-                            "_NML." +
-                            osgDB::getFileExtension(uri.full()));
-
-                        // silenty fail if no normal map found.
-                        osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(getReadOptions());
-                        if (normalMap.valid())
-                        {
-                            data->_topBillboardNormalMap = new Texture();
-                            data->_topBillboardNormalMap->_uri = normalMapURI;
-                            data->_topBillboardNormalMap->_image = convertNormalMapFromRGBToRG(normalMap.get());
-
-                            data->_topBillboardNormalMapIndex = arena->size();
-                            arena->add(data->_topBillboardNormalMap.get());
-                        }
-                        else
-                        {
-                            data->_topBillboardNormalMapIndex = defaultNormalMapTextureIndex;
-                            // wasteful but simple
-                            arena->add(defaultNormalMap.get());
-                        }
-                    }
-                }
-
-                if (data->_sideBillboardTex.valid() || data->_model.valid())
-                {
-                    data->_assetID = assetIDGen++;
-                    _liveAssets.push_back(data.get());
-                }
-            }
-        }
-    }
-
-    if (_liveAssets.empty())
-    {
-        OE_WARN << LC << "Failed to load any assets!" << std::endl;
-        // TODO: something?
-    }
-    else
-    {
-        OE_INFO << LC << "Loaded " << _liveAssets.size() << " assets." << std::endl;
-    }
-}
-
-void
-GroundCoverLayer::loadAssetsFromBiomeLayer(TextureArena* arena)
-{
-    OE_INFO << LC << "Loading assets from biome layer..." << std::endl;
-
-    typedef std::map<URI, osg::ref_ptr<AssetData> > TextureShareCache;
-    TextureShareCache texcache;
-
-    typedef std::map<URI, ModelCacheEntry> ModelCache;
-    ModelCache modelcache;
-
-    int landCoverGroupIndex = 0;
-    int assetIDGen = 0;
-    int modelIDGen = 0;
-
-    // First, add a default normal map to the arena. Any billboard that doesn't
-    // have its own normal map will use this one.
-    osg::ref_ptr<osg::Texture> tempNMap = osgEarth::createEmptyNormalMapTexture();
-    int defaultNormalMapTextureIndex = arena->size();
-    osg::ref_ptr<Texture> defaultNormalMap = new Texture();
-    defaultNormalMap->_image = tempNMap->getImage(0);
-    // no URI so cannot be unloaded.
-
-    // all the zones (these will later be called "biomes")
-    for (int z = 0; z < getZones().size(); ++z)
-    {
-        // each zone has a single layout (used to be called "groundcover")
-        const BiomeZone& zone = getZones()[z];
-
-        // each layout has one or more groupings of land cover classes
-        // (this used to be called a biome)
-        for (int j = 0; j < zone.getLandCoverGroups().size(); ++j, ++landCoverGroupIndex)
-        {
-            const LandCoverGroup& group = zone.getLandCoverGroups()[j];
-
-            // parse the land cover codes:
-            const std::vector<std::string>& classNames = group.getLandCoverClassNames();
-            if (classNames.empty())
-            {
-                OE_WARN << LC << "Skipping a land cover group because it has no classes" << std::endl;
-                continue;
-            }
-
-            std::vector<int> codes;
-            for (unsigned c = 0; c < classNames.size(); ++c)
-            {
-                const LandCoverClass* lcclass = getLandCoverDictionary()->getClassByName(classNames[c]);
-                if (lcclass)
-                    codes.push_back(lcclass->getValue());
-            }
-
-            // Each grouping points to multiple assets (used to be "billboards")
-            int uid = 0;
-            for (int k = 0; k < group.getAssets().size(); ++k)
-            {
-                const AssetUsage& asset = group.getAssets()[k];
-
-                osg::ref_ptr<AssetData> data = new AssetData();
-                data->_zoneIndex = z;
-                data->_zone = &zone;
-                data->_landCoverGroupIndex = landCoverGroupIndex;
-                data->_landCoverGroup = &group;
-                data->_asset = &asset;
-                data->_numInstances = 0;
-                data->_codes = codes;
-                data->_modelID = -1;
-                data->_assetID = -1;
-                data->_sideBillboardTexIndex = -1;
-                data->_topBillboardTexIndex = -1;
-                data->_modelTexIndex = -1;
-                data->_sideBillboardNormalMapIndex = -1;
-                data->_topBillboardNormalMapIndex = -1;
-
-                if (asset.options().modelURI().isSet())
-                {
-                    const URI& uri = asset.options().modelURI().get();
-                    ModelCache::iterator ic = modelcache.find(uri);
-                    if (ic != modelcache.end())
-                    {
-                        data->_model = ic->second._node.get();
-                        data->_modelID = ic->second._modelID;
-                        data->_modelAABB = ic->second._modelAABB;
-                    }
-                    else
-                    {
-                        data->_model = uri.getNode(getReadOptions());
-                        if (data->_model.valid())
-                        {
-                            data->_modelID = modelIDGen++;
-                            modelcache[uri]._node = data->_model.get();
-                            modelcache[uri]._modelID = data->_modelID;
-
-                            osg::ComputeBoundsVisitor cbv;
-                            data->_model->accept(cbv);
-                            data->_modelAABB = cbv.getBoundingBox();
-                            modelcache[uri]._modelAABB = data->_modelAABB;
-                        }
-                        else
-                        {
-                            OE_WARN << LC << "Failed to load model from \"" << uri.full() << "\"" << std::endl;
-                        }
-                    }
-                }
-
-                if (asset.options().sideBillboardURI().isSet())
-                {
-                    const URI& uri = asset.options().sideBillboardURI().get();
-
-                    auto ic = texcache.find(uri);
-                    if (ic != texcache.end())
-                    {
-                        data->_sideBillboardTex = ic->second->_sideBillboardTex.get();
-                        data->_sideBillboardTexIndex = ic->second->_sideBillboardTexIndex;
-                        data->_sideBillboardNormalMapIndex = ic->second->_sideBillboardNormalMapIndex;
-                    }
-                    else
-                    {
-                        data->_sideBillboardTex = new Texture();
-                        data->_sideBillboardTex->_uri = uri;
-                        data->_sideBillboardTex->_image = uri.getImage(getReadOptions());
-                        //TODO: check for errors
-                        if (true)
-                        {
-                            texcache[uri] = data.get();
-                            data->_sideBillboardTexIndex = arena->size();
-                            arena->add(data->_sideBillboardTex.get());
-                        }
-
-                        // normal map is the same file name but with _NML inserted before the extension
-                        URI normalMapURI(
-                            osgDB::getNameLessExtension(uri.full()) +
-                            "_NML." +
-                            osgDB::getFileExtension(uri.full()));
-
-                        // silenty fail if no normal map found.
-                        osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(getReadOptions());
-                        if (normalMap.valid())
-                        {
-                            data->_sideBillboardNormalMap = new Texture();
-                            data->_sideBillboardNormalMap->_uri = normalMapURI;
-                            data->_sideBillboardNormalMap->_image = convertNormalMapFromRGBToRG(normalMap.get());
-
-                            data->_sideBillboardNormalMapIndex = arena->size();
-                            arena->add(data->_sideBillboardNormalMap.get());
-                        }
-                        else
-                        {
-                            data->_sideBillboardNormalMapIndex = defaultNormalMapTextureIndex;
-                            // wasteful but simple
-                            arena->add(defaultNormalMap.get());
-                        }
-                    }
-                }
-
-                if (asset.options().topBillboardURI().isSet())
-                {
-                    const URI& uri = asset.options().topBillboardURI().get();
-
-                    auto ic = texcache.find(uri);
-                    if (ic != texcache.end())
-                    {
-                        data->_topBillboardTex = ic->second->_topBillboardTex;
-                        data->_topBillboardTexIndex = ic->second->_topBillboardTexIndex;
-                        data->_topBillboardNormalMapIndex = ic->second->_topBillboardNormalMapIndex;
-                    }
-                    else
-                    {
-                        data->_topBillboardTex = new Texture();
-                        data->_topBillboardTex->_uri = uri;
-                        data->_topBillboardTex->_image = uri.getImage(getReadOptions());
-                        //TODO: check for errors
-                        if (true)
-                        {
-                            texcache[uri] = data.get();
-                            data->_topBillboardTexIndex = arena->size();
-                            arena->add(data->_topBillboardTex.get());
-                        }
-
-                        // normal map is the same file name but with _NML inserted before the extension
-                        URI normalMapURI(
-                            osgDB::getNameLessExtension(uri.full()) +
                             "_NML." +
                             osgDB::getFileExtension(uri.full()));
 

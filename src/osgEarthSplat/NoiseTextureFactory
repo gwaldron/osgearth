@@ -31,8 +31,6 @@ namespace osgEarth { namespace Splat
     public:
         NoiseTextureFactory() { }
 
-        osg::Image* createImage(unsigned dim, unsigned numChannels) const;
-
         osg::Texture* create(unsigned dim, unsigned numChannels) const;
     };
 

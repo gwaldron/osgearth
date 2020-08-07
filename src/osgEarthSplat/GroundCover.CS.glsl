@@ -65,13 +65,6 @@ int pickNoiseType = NOISE_RANDOM;
 //int pickNoiseType = NOISE_CLUMPY;
 #endif
 
-#pragma import_defines(OE_LIFEMAP_SAMPLER)
-#pragma import_defines(OE_LIFEMAP_MATRIX)
-#ifdef OE_LIFEMAP_SAMPLER
-uniform sampler2D OE_LIFEMAP_SAMPLER ;
-uniform mat4 OE_LIFEMAP_MATRIX ;
-#endif
-
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
 // https://stackoverflow.com/a/17897228/4218920
 vec3 rgb2hsv(vec3 c)
@@ -99,10 +92,6 @@ float getElevation(in vec2 tilec) {
         + oe_tile_elevTexelCoeff.y;
     return texture(oe_tile_elevationTex, elevc).r;
 }
-
-uniform float density_power = 1.0;
-uniform float moisture_power = 1.0;
-uniform float rugged_power = 1.0;
 
 void generate()
 {
@@ -137,34 +126,11 @@ void generate()
         return;
 #endif
 
-    oe_gc_LandCoverGroup group;
-    float fill;
-    float lush;
-
-#ifdef OE_LIFEMAP_SAMPLER
-
-    vec2 lifemap_uv = (OE_LIFEMAP_MATRIX*tilec4).st;
-    ivec2 lifemap_xy = ivec2(lifemap_uv * 255.0 );
-    int biomeid = int(texelFetch(OE_LIFEMAP_SAMPLER, lifemap_xy, 0).w * 255.0);
-    if (oe_gc_getLandCoverGroup(oe_gc_zone, biomeid, group) == false)
-        return;
-
-    vec3 lifemap = texture(OE_LIFEMAP_SAMPLER, lifemap_uv).xyz;
-    fill = lifemap[0] * density_power;
-    lush = lifemap[1] * moisture_power;
-    lush = noise[pickNoiseType] * lush;
-
-#else
-
     // sample the landcover data
-    int code = int(textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*tilec4).st, 0).r);
+    int code = int(textureLod(OE_LANDCOVER_TEX, (OE_LANDCOVER_TEX_MATRIX*tilec4).st, 0).r);    
+    oe_gc_LandCoverGroup group;
     if (oe_gc_getLandCoverGroup(oe_gc_zone, code, group) == false)
         return;
-
-    fill = group.fill;
-    lush = 1.0 - noise[pickNoiseType];
-
-#endif
 
     // If we're using a mask texture, sample it now:
 #ifdef OE_GROUNDCOVER_MASK_SAMPLER
@@ -175,12 +141,12 @@ void generate()
 
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
-    if (noise[NOISE_SMOOTH] > fill)
+    if (noise[NOISE_SMOOTH] > group.fill)
         return;
-    noise[NOISE_SMOOTH] /= fill;
+    noise[NOISE_SMOOTH] /= group.fill;
 
     // select a billboard at random
-    float pickNoise = lush; // 1.0 - noise[pickNoiseType];
+    float pickNoise = 1.0-noise[pickNoiseType];
     int assetIndex = group.firstAssetIndex + int(floor(pickNoise * float(group.numAssets)));
     assetIndex = min(assetIndex, group.firstAssetIndex + group.numAssets - 1);
 

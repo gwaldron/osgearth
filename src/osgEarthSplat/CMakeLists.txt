@@ -38,7 +38,6 @@ set(TARGET_IN
 
 set(TARGET_SRC
     Biome.cpp
-    BiomeLayer.cpp
     GrassLayer.cpp
     GroundCoverFeatureGenerator.cpp
     GroundCoverFeatureSource.cpp
@@ -48,13 +47,11 @@ set(TARGET_SRC
 	SplatCatalog.cpp
     SplatLayer.cpp
     Surface.cpp
-    LifeMapLayer.cpp
     Zone.cpp
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
     Biome
-    BiomeLayer
 	Export
     GrassLayer
     GroundCoverFeatureGenerator
@@ -66,7 +63,6 @@ set(LIB_PUBLIC_HEADERS
     SplatShaders
     SplatLayer
     Surface
-    LifeMapLayer
     Zone)
 	
 SET(TARGET_H

@@ -24,8 +24,6 @@
 
 #include "Export"
 #include "Biome"
-#include "LifeMapLayer"
-#include "BiomeLayer"
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
@@ -46,7 +44,6 @@ namespace osgEarth { namespace Splat
             META_LayerOptions(osgEarth, Options, PatchLayer::Options);
             OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
-            OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION(float, colorMinSaturation);
             OE_OPTION(unsigned, lod);
             OE_OPTION(bool, castShadows);
@@ -69,10 +66,6 @@ namespace osgEarth { namespace Splat
         //! Layer containing the land cover dictionary.
         void setLandCoverDictionary(LandCoverDictionary* landCoverDict);
         LandCoverDictionary* getLandCoverDictionary() const;
-
-        //! Layer containing life map data
-        void setLifeMapLayer(LifeMapLayer*);
-        LifeMapLayer* getLifeMapLayer() const;
 
         //! Masking layer (optional)
         void setMaskLayer(ImageLayer* layer);
@@ -137,7 +130,6 @@ namespace osgEarth { namespace Splat
 
         LayerReference<LandCoverDictionary> _landCoverDict;
         LayerReference<LandCoverLayer> _landCoverLayer;
-        LayerReference<LifeMapLayer> _lifeMapLayer;
 
         TextureImageUnitReservation _noiseBinding;
 
@@ -329,8 +321,6 @@ namespace osgEarth { namespace Splat
         };
 
         void loadAssets(TextureArena*);
-        void loadAssetsFromBiomeLayer(TextureArena*);
-
         typedef std::vector<osg::ref_ptr<AssetData> > AssetDataVector;
         AssetDataVector _liveAssets;
 

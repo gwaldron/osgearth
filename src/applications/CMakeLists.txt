@@ -40,6 +40,7 @@ ADD_SUBDIRECTORY(osgearth_conv)
 ADD_SUBDIRECTORY(osgearth_3pv)
 ADD_SUBDIRECTORY(osgearth_exportgroundcover)
 ADD_SUBDIRECTORY(osgearth_clamp)
+ADD_SUBDIRECTORY(osgearth_heatmap)
 
 # deprecated
 #ADD_SUBDIRECTORY(osgearth_seed)

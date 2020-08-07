@@ -26,9 +26,9 @@
 
 namespace osgEarth { namespace Procedural
 {
-    struct SplattingShaders : public osgEarth::Util::ShaderPackage
+    struct TerrainShaders : public osgEarth::Util::ShaderPackage
 	{
-        SplattingShaders();
+        TerrainShaders();
 
         std::string
             Types,
@@ -37,7 +37,8 @@ namespace osgEarth { namespace Procedural
             VertView,
             Frag,
             FragCommon,
-            Util;
+            Util,
+            TextureSplatting;
 	};
 
     struct GroundCoverShaders : public osgEarth::Util::ShaderPackage

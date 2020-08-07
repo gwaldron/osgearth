@@ -6,7 +6,7 @@
 
 using namespace osgEarth::Procedural;
 
-SplattingShaders::SplattingShaders()
+TerrainShaders::TerrainShaders()
 {
     Types = "Splat.types.glsl";
     _sources[Types] = "@Splat.types.glsl@";
@@ -25,6 +25,9 @@ SplattingShaders::SplattingShaders()
 
     Util = "Splat.util.glsl";
     _sources[Util] = "@Splat.util.glsl@";
+
+    TextureSplatting = "TextureSplatting.glsl";
+    _sources[TextureSplatting] = "@TextureSplatting.glsl@";
 }
 
 

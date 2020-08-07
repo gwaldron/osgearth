@@ -27,6 +27,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/Math>
+#include <osgEarth/VirtualProgram>
 
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
@@ -292,10 +293,18 @@ LifeMapLayer::init()
     NoiseTextureFactory nf;
     _noiseFunc = nf.createImage(1024u, 4u);
 
+    osg::StateSet* ss = this->getOrCreateStateSet();
+
     // Arena holds all the splatting textures
     _arena = new TextureArena();
-    osg::StateSet* ss = this->getOrCreateStateSet();
     ss->setAttribute(_arena);
+
+    // Install the texture splatting shader
+    // TODO: consider moving this to another layer and making the LifeMapLayer
+    // a non-visible data layer.
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    TerrainShaders shaders;
+    shaders.load(vp, shaders.TextureSplatting, getReadOptions());
 }
 
 Status
@@ -331,7 +340,7 @@ LifeMapLayer::addedToMap(const Map* map)
     {
         OE_INFO << LC << "Using biome layer \"" << getBiomeLayer()->getName() << "\"" << std::endl;
 
-        const Biome* biome = getBiomeLayer()->getBiome(1);
+        const Biome* biome = getBiomeLayer()->getBiome(0);
         if (biome)
         {
             for (const auto tex : biome->textures())
@@ -468,7 +477,9 @@ LifeMapLayer::createImageImplementation(
             pixel[MOISTURE] = ((float)(((int)(moisture*16.0f) << 4) | ((int)(temperature*16.0f)))) / 255.0f;
 
             float biomeNoise = fract(
-                noise[1][RANDOM]);
+                noise[1][RANDOM] +
+                noise[2][SMOOTH]); // +
+                //noise[3][CLUMPY]);
 
             pixel[BIOME] = (float)lookupBiome(x, y, biomeNoise) / 255.0f;
 
@@ -490,7 +501,7 @@ LifeMapLayer::lookupBiome(double x, double y, float noise) const
     if (layer)
     {
         std::set<BiomeLayer::SearchResult> results;
-        layer->getNearestBiomes(x, y, 3, results);
+        layer->getNearestBiomes(x, y, 4, results);
         if (results.empty())
         {
             return 0;

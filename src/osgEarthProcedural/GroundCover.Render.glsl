@@ -87,6 +87,7 @@ out vec4 oe_layer_tilec;
 out vec3 oe_gc_texCoord; // Output tx coords
 out mat3 oe_gc_TBN; // ref frame for normal maps
 out float oe_gc_transition; // fade bb to model
+out float oe_gc_distance;
 
 uniform vec3 oe_VisibleLayer_ranges; // from VisibleLayer
 uniform vec3 oe_Camera;
@@ -124,6 +125,8 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     float falloff = 1.0-(nRange*nRange*nRange);
     float width = instance[i].width * falloff;
     float height = instance[i].height * falloff;
+
+    oe_gc_distance = 1.0 - falloff;
 
     int which = gl_VertexID & 7; // mod8 - there are 8 verts per instance
 
@@ -298,6 +301,8 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
             (instance[i].pixelSizeRatio - (1.0-PSR_BUFFER))/PSR_BUFFER, 
             0.0, 1.0 );
     }
+
+    oe_gc_distance = 0.0;
 }
 
 // MAIN ENTRY POINT  
@@ -338,8 +343,15 @@ flat in uint64_t oe_gc_nmlHandle;
 in mat3 oe_gc_TBN;
 
 in float oe_gc_transition;
+in float oe_gc_distance;
 
-uniform float shmoo;
+float CalcMipLevel(vec2 texture_coord)
+{
+    vec2 dx = dFdx(texture_coord);
+    vec2 dy = dFdy(texture_coord);
+    float delta_max_sqr = max(dot(dx, dx), dot(dy, dy));
+    return max(0.0, 0.5 * log2(delta_max_sqr));
+}
 
 void oe_GroundCover_FS(inout vec4 color)
 {
@@ -375,13 +387,13 @@ void oe_GroundCover_FS(inout vec4 color)
 
     if (oe_gc_isMultisampled == 1)
     {
-        // maybe use this for billboards/impostors?
-        // https://medium.com/@bgolus/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
-        //color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+        // mitigate the screen-door effect of A2C in the distance
+        // https://tinyurl.com/y7bbbpl9
+        float a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+        color.a = mix(color.a, a, oe_gc_distance);
     }
     else if (color.a < oe_gc_maxAlpha)
     {
-        //color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
         discard;
     }
 #endif

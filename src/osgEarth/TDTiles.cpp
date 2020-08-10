@@ -90,29 +90,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         }
     };
     REGISTER_OSGPLUGIN(3dtiles, ThreeDTilesJSONReaderWriter);
-
-
-    struct CompressAndMipmapTextures : public TextureAndImageVisitor
-    {
-        void apply(osg::Texture& texture)
-        {
-            for(unsigned i=0; i<texture.getNumImages(); ++i)
-            {
-                ImageUtils::compressImageInPlace(texture.getImage(i));
-                ImageUtils::mipmapImageInPlace(texture.getImage(i));
-            }
-        }
-    };
-
-    static Future<osg::Node>::Callback compressAndMipmapTextures = [](osg::Node* node)
-    {
-        if (node)
-        {
-            CompressAndMipmapTextures visitor;
-            node->accept(visitor);
-        }
-    };
-
 } } }
 
 //........................................................................
@@ -536,7 +513,7 @@ namespace
 
                         if (tilesetNode.valid())
                         {
-                            compressAndMipmapTextures(tilesetNode.get());
+                            ImageUtils::compressAndMipmapTextures(tilesetNode.get());
 
                             if (ico.valid())
                             {
@@ -677,7 +654,7 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         else
         {
             _content = uri.getNode(_options.get());
-            compressAndMipmapTextures(_content.get());
+            ImageUtils::compressAndMipmapTextures(_content.get());
         }
         if (_content.valid())
         {
@@ -966,8 +943,7 @@ void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
         else
         {
             _contentFuture = uri
-                .readNodeAsync(localOptions.get(), NULL)
-                .then(compressAndMipmapTextures);
+                .readNodeAsync(localOptions.get(), NULL);
         }
 
         _requestedContent = true;

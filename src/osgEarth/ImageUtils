@@ -337,6 +337,10 @@ namespace osgEarth { namespace Util
             osg::Image* image,
             const std::string& method ="auto");
 
+        //! Compresses and mipmaps all textures in the given subgraph
+        //! @param node The node to process
+        static void compressAndMipmapTextures(osg::Node* node);
+
         /**
          * Gets an osgDB::ReaderWriter for the given input stream.
          * Returns NULL if no ReaderWriter can be found.

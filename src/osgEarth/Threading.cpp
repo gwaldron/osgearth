@@ -504,7 +504,7 @@ ThreadPool::get(const osgDB::Options* options)
 void
 osgEarth::Threading::setThreadName(const std::string& name)
 {
-#if (defined _WIN32 && defined _WIN32_WINNT_WIN10) || (defined __CYGWIN__)
+#if (defined _WIN32 && defined _WIN32_WINNT_WIN10 && defined _WIN32_WINNT && _WIN32_WINNT >= _WIN32_WINNT_WIN10) || (defined __CYGWIN__)
 
     wchar_t buf[256];
     mbstowcs(buf, name.c_str(), 256);

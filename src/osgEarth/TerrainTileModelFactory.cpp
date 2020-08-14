@@ -677,6 +677,18 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
         tex = tex2dArray;
     }
 
+    if (!isCompressed)
+    {
+       // Make sure we are using a proper sized internal format
+       if (tex->getImage(0)->getInternalTextureFormat() == tex->getImage(0)->getPixelFormat())
+       {
+          if (tex->getImage(0)->getPixelFormat() == GL_RGB) tex->setInternalFormat(GL_RGB8);
+          else if (tex->getImage(0)->getPixelFormat() == GL_RGBA) tex->setInternalFormat(GL_RGBA8);
+          else if (tex->getImage(0)->getPixelFormat() == GL_RG) tex->setInternalFormat(GL_RG8);
+          else if (tex->getImage(0)->getPixelFormat() == GL_RED) tex->setInternalFormat(GL_R8);
+       }
+    }
+
     tex->setDataVariance(osg::Object::STATIC);
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );

@@ -748,6 +748,40 @@ ImageUtils::compressImageInPlace(
     }
 }
 
+namespace
+{
+    struct CompressAndMipmapTextures : public TextureAndImageVisitor
+    {
+        void apply(osg::Texture& texture)
+        {
+            for (unsigned i = 0; i < texture.getNumImages(); ++i)
+            {
+                // Only process textures with valid images.
+                osg::ref_ptr< osg::Image > image = texture.getImage(i);
+                if (image.valid())
+                {
+                    ImageUtils::compressImageInPlace(image.get());
+                    ImageUtils::mipmapImageInPlace(image.get());
+                }
+                else
+                {
+                    OE_WARN << "Skipping null image in CompressAndMipmapTextures" << std::endl;
+                }
+            }
+        }
+    };
+}
+
+void
+ImageUtils::compressAndMipmapTextures(osg::Node* node)
+{
+    if (node)
+    {
+        CompressAndMipmapTextures visitor;
+        node->accept(visitor);
+    }
+}
+
 osgDB::ReaderWriter*
 ImageUtils::getReaderWriterForStream(std::istream& stream) {
     // Modified from https://oroboro.com/image-format-magic-bytes/

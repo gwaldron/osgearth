@@ -57,6 +57,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     {
         OE_OPTION(std::string, version);
         OE_OPTION(std::string, tilesetVersion);
+        OE_OPTION(std::string, gltfUpAxis);
 
         Asset() { }
         Asset(const Json::Value& value) { fromJSON(value); }

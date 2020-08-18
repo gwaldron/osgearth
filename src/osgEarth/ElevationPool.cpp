@@ -165,7 +165,7 @@ ElevationPool::refresh(const Map* map)
     MaxLevelIndex* index = new MaxLevelIndex();
     _index = index;
 
-    double minv[2], maxv[2];
+    double a_min[2], a_max[2];
         
     for(auto i : _elevationLayers)
     {
@@ -176,13 +176,16 @@ ElevationPool::refresh(const Map* map)
         {
             GeoExtent extentInMapSRS = map->getProfile()->clampAndTransformExtent(*de);
 
-            minv[0] = extentInMapSRS.xMin(), minv[1] = extentInMapSRS.yMin();
-            maxv[0] = extentInMapSRS.xMax(), maxv[1] = extentInMapSRS.yMax();
+            a_min[0] = extentInMapSRS.xMin(), a_min[1] = extentInMapSRS.yMin();
+            a_max[0] = extentInMapSRS.xMax(), a_max[1] = extentInMapSRS.yMax();
 
-            // Check.
-            unsigned maxLevel = layer->getProfile()->getEquivalentLOD(map->getProfile(), de->maxLevel().get());
+            unsigned maxLevel = osg::minimum(
+                de->maxLevel().get(),
+                layer->getMaxDataLevel());
 
-            index->Insert(minv, maxv, maxLevel);            
+            maxLevel = layer->getProfile()->getEquivalentLOD(map->getProfile(), maxLevel);
+
+            index->Insert(a_min, a_max, maxLevel);
         }
     }
 

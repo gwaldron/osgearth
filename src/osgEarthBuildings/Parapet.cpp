@@ -65,10 +65,11 @@ Parapet::setWidth(float width)
 bool
 Parapet::build(const Polygon* footprint, BuildContext& bc)
 {
-    if ( getWidth() > 0.0f )
+    if (getWidth() > 0.0f)
     {
         // copy the outer ring of the footprint. Ignore any holes.
         osg::ref_ptr<Polygon> copy = dynamic_cast<Polygon*>(footprint->clone());
+        copy->getHoles().clear();
     
         // apply a negative buffer to the outer ring:
         osg::ref_ptr<Geometry> hole;

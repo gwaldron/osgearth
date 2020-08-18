@@ -69,6 +69,10 @@ namespace
 
                 if (result.succeeded())
                 {
+                    osg::Node* node = result.getNode();
+                    // Compress and mipmap any textures in the node before sending it to the ICO
+                    ImageUtils::compressAndMipmapTextures(node);
+
                     osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico =
                         OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
 
@@ -77,7 +81,7 @@ namespace
                     {
                         OE_PROFILING_ZONE_NAMED("ICO compile");
 
-                        _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(result.getNode());
+                        _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(node);
                         _compileSet->_compileCompletedCallback = this;
                         ico->add(_compileSet.get());
 

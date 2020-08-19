@@ -16,7 +16,7 @@
         <url>D:/data/demo/nepal/nepal.mbtiles</url>
     </mbtileselevation>
 
-    <GroundCover name="Trees" max_range="7500" max_sse="100" enabled="true">
+    <GroundCover name="Trees" max_range="7500" max_sse="100" enabled="false">
         <category>trees</category>
         <cast_shadows>true</cast_shadows>
         <biomes_layer>Biomes</biomes_layer>
@@ -46,7 +46,7 @@
         <shared_matrix>LIFEMAP_MAT</shared_matrix>
     </lifemap>
 
-    <tmsimage name="DEBUG - Biome View" enabled="true">
+    <tmsimage name="DEBUG - Biome View" enabled="false">
         <cache_policy usage="none"/>
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
@@ -129,14 +129,14 @@
     <xi:include href="osm_buildings.xml"/>
     -->
     
-    <TMSImage name="ReadyMap 15m Imagery" min_range="12500" attenuation_range="10000">
+    <TMSImage name="ReadyMap 15m Imagery" min_range="12500" attenuation_range="10000" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
             <![CDATA[
             #pragma vp_entryPoint imageryDraw
             #pragma vp_location fragment
             void imageryDraw(inout vec4 color) {
-                color.a = max(color.a, 0.2);
+                color.a = max(color.a, 0.4);
             }
           ]]>
         </shader>
@@ -149,7 +149,7 @@
         <xi:include href="D:/data/splat/biomes.xml"/>
     </Biomes>
 
-    <FeatureModel name="Country boundaries">    
+    <FeatureModel name="Country boundaries" enabled="false">    
         <OGRFeatures name="world-data">
             <url>../data/world.shp</url>
         </OGRFeatures>
@@ -166,7 +166,7 @@
         </styles>
     </FeatureModel>
 
-    <FeatureModel name="Biome Names">
+    <FeatureModel name="Biome Names" enabled="false">
         <OGRFeatures url="../data/biomes.shp"/>
         <styles>
             <style>

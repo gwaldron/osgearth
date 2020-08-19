@@ -79,6 +79,16 @@ BiomeLayer::openImplementation()
     }
     OE_INFO << LC << "Loaded control set and found " << _index.size() << " features" << std::endl;
 
+    // Warn the poor user if the configuration is missing
+    if (getBiomeCatalog() == nullptr)
+    {
+        OE_WARN << LC << "No biome catalog found - could be trouble" << std::endl;
+    }
+    else if (getBiomeCatalog()->getAssets() == nullptr)
+    {
+        OE_WARN << LC << "No asset catalog found - could be trouble" << std::endl;
+    }
+
     return Status::OK();
 }
 

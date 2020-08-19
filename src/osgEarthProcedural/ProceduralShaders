@@ -38,7 +38,8 @@ namespace osgEarth { namespace Procedural
             Frag,
             FragCommon,
             Util,
-            TextureSplatting;
+            TextureSplatting,
+            TextureSplatting2;
 	};
 
     struct GroundCoverShaders : public osgEarth::Util::ShaderPackage

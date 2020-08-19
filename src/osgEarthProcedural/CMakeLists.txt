@@ -21,7 +21,8 @@ set(TARGET_GLSL
     GroundCover.Render.glsl
     GroundCover.Types.glsl
     Grass.glsl
-    TextureSplatting.glsl)
+    TextureSplatting.glsl
+    TextureSplatting2.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

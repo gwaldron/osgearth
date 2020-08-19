@@ -114,6 +114,8 @@ namespace osgEarth
                 (int)(v*(double)(_read.t()-1)));
         }
 
+        inline float getRuggedness(double x, double y) const;
+
         //! The heightfield that was used to populate this object
         const osg::HeightField* getHeightField() const {
             return _heightField.get();
@@ -128,6 +130,8 @@ namespace osgEarth
         osg::ref_ptr<osg::Texture2D> _normalTex;
         osg::ref_ptr<const osg::HeightField> _heightField;
         float* _resolutions;
+        osg::ref_ptr<osg::Image> _ruggedness;
+        ImageUtils::PixelReader _readRuggedness;
     };
 
     /**
@@ -140,6 +144,7 @@ namespace osgEarth
             const TileKey& key,
             const class Map* map,
             void* workingSet,
+            osg::Image* ruggedness,
             ProgressCallback* progress);
 
         //! Packs a 3-vec normal into RG (octohedral compression)

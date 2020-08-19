@@ -167,6 +167,9 @@ Rec lut[4] = Rec[](
     Rec(TEX_GRASS, -1.0, 1.0, -1.0)
 );
 
+Rec materialMx[4] = Rex[](
+    );
+
 float density, moisture, temperature, rugged;
 
 void resolveLevel(out vec3 out_color, out vec3 out_normal, out float out_roughness, out float out_ao, int level)

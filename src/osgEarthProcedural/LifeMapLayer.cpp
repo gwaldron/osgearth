@@ -304,7 +304,7 @@ LifeMapLayer::init()
     // a non-visible data layer.
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     TerrainShaders shaders;
-    shaders.load(vp, shaders.TextureSplatting, getReadOptions());
+    shaders.load(vp, shaders.TextureSplatting2, getReadOptions());
 }
 
 Status
@@ -340,7 +340,23 @@ LifeMapLayer::addedToMap(const Map* map)
     {
         OE_INFO << LC << "Using biome layer \"" << getBiomeLayer()->getName() << "\"" << std::endl;
 
-        const Biome* biome = getBiomeLayer()->getBiome(0);
+        if (getBiomeLayer())
+        {
+            const BiomeCatalog* cat = getBiomeLayer()->getBiomeCatalog();
+            if (cat)
+            {
+                const AssetCatalog* assets = cat->getAssets();
+                if (assets)
+                {
+                    for (const auto tex : assets->getTextures())
+                    {
+                        loadMaterials(tex->uri()->full());
+                    }
+                }
+            }
+        }
+#if 0
+        const Biome* biome = getBiomeLayer()->getBiomeCatalog()->getAssets();
         if (biome)
         {
             for (const auto tex : biome->textures())
@@ -348,6 +364,7 @@ LifeMapLayer::addedToMap(const Map* map)
                 loadMaterials(tex->uri()->full());
             }
         }
+#endif
     }
 
     _map = map;
@@ -445,14 +462,23 @@ LifeMapLayer::createImageImplementation(
 
             normal = elevTile->getNormal(x, y);
             slope = harden(harden(1.0 - (normal * up)));
+            //slope = harden(1.0 - (normal * up));
 
+#if 1
+            float ruggedness = elevTile->getRuggedness(x, y);
 
+            pixel[RUGGED] =
+                lerpstep(1600.0f, 5000.0f, elevation) +
+                ruggedness; // + slope;
+
+#else
             // roughess increases with altitude:
             pixel[RUGGED] = lerpstep(1600.0f, 5000.0f, elevation);
             // and increases with slope:
             pixel[RUGGED] += slope;
+#endif
 
-            // Ramp life down slowly as we increase in altitude.
+            // Ramp life density down slowly as we increase in altitude.
             pixel[DENSITY] = 1.0f - osg::clampBetween(
                 elevation / 6500.0f,
                 0.0f, 1.0f);
@@ -463,8 +489,10 @@ LifeMapLayer::createImageImplementation(
                 (0.5*noise[1][CLUMPY]) +
                 (0.4*noise[2][SMOOTH]);
 
+            pixel[DENSITY] *= 1.4;
+
             // Discourage density in rugged areas
-            pixel[DENSITY] -= 2.0*pixel[RUGGED];
+            pixel[DENSITY] -= slope; // pixel[RUGGED];
 
             // moisture is fairly arbitrary
             float moisture = 1.0f - lerpstep(250.0f, 3000.0f, elevation);

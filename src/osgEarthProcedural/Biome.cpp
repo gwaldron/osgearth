@@ -83,7 +83,8 @@ AssetCatalog::AssetCatalog(const Config& conf)
     for (const auto& textureConf : texturesConf)
     {
         auto obj = new GroundTextureAsset(textureConf);
-        _textures[obj->name().get()] = obj;
+        _textures.push_back(obj);
+        //_textures[obj->name().get()] = obj;
     }
 
     ConfigSet modelsConf = conf.child("models").children("model");
@@ -101,7 +102,7 @@ AssetCatalog::getConfig() const
 
     Config textures("GroundTextures");
     for (auto& i : _textures)
-        textures.add(i.second->getConfig());
+        textures.add(i->getConfig()); // i.second->getConfig());
     if (!textures.empty())
         conf.add(textures);
 
@@ -114,11 +115,19 @@ AssetCatalog::getConfig() const
     return conf;
 }
 
+#if 0
 GroundTextureAsset*
 AssetCatalog::getTexture(const std::string& name) const
 {
     auto i = _textures.find(name);
     return i != _textures.end() ? i->second.get() : nullptr;
+}
+#endif
+
+const std::vector<osg::ref_ptr<GroundTextureAsset>>&
+AssetCatalog::getTextures() const
+{
+    return _textures;
 }
 
 ModelAsset*
@@ -166,6 +175,7 @@ Biome::Biome(const Config& conf, AssetCatalog* assets)
     conf.get("name", name());
     conf.get("id", id());
 
+#if 0
     ConfigSet gt = conf.child("groundtextures").children("texture");
     for (const auto& c : gt)
     {
@@ -173,6 +183,7 @@ Biome::Biome(const Config& conf, AssetCatalog* assets)
         if (gta)
             textures().push_back(gta);
     }
+#endif
 
     ConfigSet mt = conf.children("modelcategory");
     for (const auto& c : mt)

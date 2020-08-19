@@ -47,7 +47,6 @@ namespace osgEarth
             OE_OPTION(float, height);
             OE_OPTION(float, sizeVariation);
             OE_OPTION(float, selectionWeight);
-            //OE_OPTION(float, fill);
 
             ModelAsset() { }
             ModelAsset(const Config& conf);
@@ -84,9 +83,11 @@ namespace osgEarth
             AssetCatalog() { }
             AssetCatalog(const Config& conf);
 
-            GroundTextureAsset* getTexture(const std::string& name) const;
+            //GroundTextureAsset* getTexture(const std::string& name) const;
 
             ModelAsset* getModel(const std::string& name) const;
+
+            const std::vector<osg::ref_ptr<GroundTextureAsset>>& getTextures() const;
 
         public:
             Config getConfig() const;
@@ -94,13 +95,13 @@ namespace osgEarth
         protected:
             virtual ~AssetCatalog() { }
 
-            std::unordered_map<std::string, osg::ref_ptr<GroundTextureAsset>> _textures;
+            std::vector<osg::ref_ptr<GroundTextureAsset>> _textures;
+            //std::unordered_map<std::string, osg::ref_ptr<GroundTextureAsset>> _textures;
             std::unordered_map<std::string, osg::ref_ptr<ModelAsset>> _models;
         };
 
         /**
          * Groups together some ModelAssets for use in a single
-
          * ground cover layer
          */
         class OSGEARTHPROCEDURAL_EXPORT ModelCategory : public osg::Referenced
@@ -133,7 +134,7 @@ namespace osgEarth
 
             OE_OPTION(std::string, name);
             OE_OPTION(int, id);
-            OE_OPTION_VECTOR(osg::ref_ptr<GroundTextureAsset>, textures);
+            OE_OPTION_VECTOR(osg::ref_ptr<GroundTextureAsset>, textures); // TODO: remove
             OE_OPTION_VECTOR(osg::ref_ptr<ModelCategory>, modelCategories);
 
             //! Find a named model group
@@ -168,160 +169,7 @@ namespace osgEarth
             osg::ref_ptr<AssetCatalog> _assets;
             std::unordered_map<int, osg::ref_ptr<Biome>> _biomes;
         };
-    }
-}
 
-#if 0
-namespace osgEarth { namespace Splat
-{
-    using namespace osgEarth;
-
-    /**
-     * Individual artwork asset reference within a biome
-     */
-    class OSGEARTHPROCEDURAL_EXPORT AssetUsage
-    {
-    public:
-        struct OSGEARTHPROCEDURAL_EXPORT Options : public ConfigOptions
-        {
-            META_ConfigOptions(osgEarth, Options, ConfigOptions);
-            Config getConfig() const;
-            void fromConfig(const Config& conf);
-
-            OE_OPTION(URI, modelURI);
-            OE_OPTION(URI, sideBillboardURI);
-            OE_OPTION(URI, topBillboardURI);
-            OE_OPTION(float, width);
-            OE_OPTION(float, height);
-            OE_OPTION(float, sizeVariation);
-            OE_OPTION(float, selectionWeight);
-            OE_OPTION(float, fill);
-
-            Config _initConfig;
-        };
-
-    public:
-        AssetUsage() { }
-        AssetUsage(const Config& conf) : _options(conf) { }
-
-        Options& options() { return _options; }
-        const Options& options() const { return _options; }
-        Config getConfig() const { return options().getConfig(); }
-
-    private:
-        Options _options;
-    };
-
-    /**
-    * Maps artwork symbols to land cover classes within a Biome.
-    */
-    class OSGEARTHPROCEDURAL_EXPORT LandCoverGroup // was "Biome"
-    {
-    public:
-        struct OSGEARTHPROCEDURAL_EXPORT Options : public ConfigOptions
-        {
-            META_ConfigOptions(osgEarth, Options, ConfigOptions);
-            Config getConfig() const;
-            void fromConfig(const Config& conf);
-
-            OE_OPTION(std::string, landCoverClasses);
-            OE_OPTION(float, fill);
-            OE_OPTION(float, sizeVariation);
-            OE_OPTION_VECTOR(AssetUsage, assets);
-        };
-
-    public:
-        LandCoverGroup() { init(); }
-        LandCoverGroup(const Config& conf) : _options(conf) { init(); }
-
-        const std::vector<AssetUsage>& getAssets() const {
-            return options().assets(); }
-
-        const std::vector<std::string>& getLandCoverClassNames() const {
-            return _classNames; }
-
-        Options& options() { return _options; }
-        const Options& options() const { return _options; }
-        Config getConfig() const { return options().getConfig(); }
-
-    private:
-        Options _options;
-
-        std::vector<std::string> _classNames;
-
-        void init();
-    };
-
-    /**
-    * Defines a geographic bounding region for a Biome.
-    * Temporary construct while we transition to the new setup.
-    */
-    class OSGEARTHPROCEDURAL_EXPORT BiomeZone // was "Zone"
-    {
-    public:
-        struct OSGEARTHPROCEDURAL_EXPORT Options : public ConfigOptions
-        {
-            META_ConfigOptions(osgEarth, Options, ConfigOptions);
-            Config getConfig() const;
-            void fromConfig(const Config& conf);
-
-            OE_OPTION(std::string, name);
-            OE_OPTION_VECTOR(osg::BoundingBox, boundaries);
-            OE_OPTION(Distance, spacing);
-            OE_OPTION(float, fill);
-            OE_OPTION(float, maxDistance);
-            OE_OPTION_VECTOR(LandCoverGroup, landCoverGroups);
-        };
-
-        struct OSGEARTHPROCEDURAL_EXPORT Boundary
-        {
-            GeoExtent     extent;
-            double        zmin, zmin2;
-            double        zmax, zmax2;
-            double        meanRadius2;
-            osg::Polytope tope;
-        };
-        typedef std::vector<Boundary> Boundaries;
-
-    public:
-        BiomeZone() { init(); }
-        BiomeZone(const Config& conf) : _options(conf) { init(); }
-
-        //! Name of this zone
-        const std::string& getName() const {
-            return options().name().get(); }
-        
-        //! Collection of land cover groups
-        const std::vector<LandCoverGroup>& getLandCoverGroups() const {
-            return options().landCoverGroups(); }
-
-        //! Spacing between asset instances
-        const Distance& getSpacing() const { return _options.spacing().get(); }
-
-        //! Find a land cover group by the class it contains
-        const LandCoverGroup* getLandCoverGroup(const LandCoverClass* c) const;
-
-        //! The geospatial boundaries of this zone
-        const Boundaries& getBoundaries() const {
-            return _boundaries; }
-
-        //! Whether a point intersects this zone's boundaries
-        bool contains(const osg::Vec3& point) const;
-        bool contains(const GeoPoint& point) const; // no z check!
-
-        //! Internal -- serialization options
-        Options& options() { return _options; }
-        const Options& options() const { return _options; }
-        Config getConfig() const { return options().getConfig(); }
-
-    private:
-        Options _options;
-        Boundaries _boundaries;
-
-        void init();
-    };
-    
 } } // namespace osgEarth::Procedural
-#endif
 
 #endif

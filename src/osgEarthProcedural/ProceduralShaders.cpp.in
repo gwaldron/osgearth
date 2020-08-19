@@ -28,6 +28,9 @@ TerrainShaders::TerrainShaders()
 
     TextureSplatting = "TextureSplatting.glsl";
     _sources[TextureSplatting] = "@TextureSplatting.glsl@";
+
+    TextureSplatting2 = "TextureSplatting2.glsl";
+    _sources[TextureSplatting2] = "@TextureSplatting2.glsl@";
 }
 
 

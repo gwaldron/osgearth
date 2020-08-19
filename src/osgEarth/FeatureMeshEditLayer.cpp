@@ -89,11 +89,6 @@ FeatureMeshEditLayer::getOrCreateEditGeometry(float heightScale,
     if (fs == NULL)
         return 0L;
     Threading::ScopedMutexLock lock(_geometryMutex);
-    if (_editGeometry.valid())
-    {
-        return _editGeometry.get();
-    }
-
     osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(key, progress);
     if (cursor.valid())
     {
@@ -107,9 +102,12 @@ FeatureMeshEditLayer::getOrCreateEditGeometry(float heightScale,
                 edit->push_back(f->getGeometry()->createVec3dArray());
             }
         }
-        _editGeometry = edit;
+        return edit.release();
     }
-    return _editGeometry.get();
+    else
+    {
+        return nullptr;
+    }
 }
 
 void

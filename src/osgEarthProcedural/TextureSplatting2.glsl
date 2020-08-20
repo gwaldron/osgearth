@@ -137,10 +137,10 @@ const int TEX_FOREST = 6;
 // TODO: this can be inferred. Remove when ready.
 const int TEX_DIM = 3;
 const float TEX_DIM_F = 3.0;
-Rec lut[9] = Rec[]( // row-major
-    0, 2, 4,
-    6, 8, 10,
-    12, 14, 16);
+//Rec lut[9] = Rec[]( // row-major
+//    0, 2, 4,
+//    6, 8, 10,
+//    12, 14, 16);
 //    Rec(TEX_SAND), Rec(TEX_ROCK),
 //    Rec(TEX_GRASS), Rec(TEX_FOREST)
 //);
@@ -167,15 +167,16 @@ void resolveColumn(out Pixel pixel, int x, int level)
     int y = int(yf_floor);
     float y_mix = yf - yf_floor;
 
-    int i = y*TEX_DIM + x;
-    rgbh[0] = get_rgbh(lut[i].index, level);
-    material[0] = get_material(lut[i].index, level);
+    // the "*2" is because each material is a pair of samplers (rgbh, nnsa)
+    int i = (y*TEX_DIM + x) * 2;
+    rgbh[0] = get_rgbh(i, level);
+    material[0] = get_material(i, level);
     normal[0] = unpackNormal(material[0]);
 
-    if (y < TEX_DIM-1)
-        i += TEX_DIM;
-    rgbh[1] = get_rgbh(lut[i].index, level);
-    material[1] = get_material(lut[i].index, level);
+    if (y < TEX_DIM - 1)
+        i += (TEX_DIM * 2);
+    rgbh[1] = get_rgbh(i, level);
+    material[1] = get_material(i, level);
     normal[1] = unpackNormal(material[1]);
 
     // blend with working image using both heightmap and effect:

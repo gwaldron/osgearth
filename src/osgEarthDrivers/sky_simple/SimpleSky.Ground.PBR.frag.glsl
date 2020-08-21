@@ -12,6 +12,7 @@ uniform float oe_sky_exposure;           // HDR scene exposure (ground level)
 
 in vec3 atmos_color;       // atmospheric lighting color
 in vec3 atmos_vert; 
+in vec3 atmos_atten;
         
 vec3 vp_Normal;          // surface normal (from osgEarth)
 
@@ -86,7 +87,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
     return;
 #endif
 
-    vec3 albedo = color.rgb;
+    vec3 albedo = color.rgb; // pow(color.rgb, vec3(1.0 / 2.2));
 
     vec3 N = normalize(vp_Normal);
     vec3 V = normalize(-atmos_vert);
@@ -103,6 +104,8 @@ void atmos_fragment_main_pbr(inout vec4 color)
         //float distance = length(osg_LightSource[i].position.xyz - atmos_vert);
         //float attenuation = 1.0 / (distance * distance);
         vec3 radiance = vec3(1.0); // osg_LightSource[i].diffuse.rgb * attenuation;
+
+        radiance *= atmos_atten;
 
         // cook-torrance BRDF:
         float NDF = DistributionGGX(N, H, oe_roughness);

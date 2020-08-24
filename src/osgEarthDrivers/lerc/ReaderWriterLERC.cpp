@@ -39,7 +39,8 @@ public:
     ReaderWriterLERC()
     {
         supportsExtension("lerc", "ESRI Lerc");
-
+        supportsExtension("lerc1", "ESRI Lerc");
+        supportsExtension("lerc2", "ESRI Lerc");
     }
 
     virtual const char* className() const { return "ESRI Lerc"; }
@@ -91,7 +92,7 @@ public:
             case (uint32)LercNS::DataType::dt_char:
             {
                 sampleSize = sizeof(char);
-                glDataType = GL_UNSIGNED_BYTE;
+                glDataType = GL_BYTE;
                 internalFormat =
                     numBands == 1 ? GL_R8 :
                     numBands == 2 ? GL_RG8 :
@@ -183,13 +184,14 @@ public:
         // Allocate the final output image
         osg::ref_ptr< osg::Image > image = new osg::Image;
 
-        if (numBands > 1)
+        if (numBands > 1 && numDims == 1)
         {
             // Interleave the bands properly if we have more than one.
             image->allocateImage(width, height, 1, pixelFormat, glDataType);
             memset(image->data(), 0, image->getImageSizeInBytes());
 
             unsigned int bandSize = width * height * sampleSize * numDims;
+            unsigned int rowSize = sampleSize * width;
 
             for (unsigned int r = 0; r < height; ++r)
             {
@@ -198,7 +200,7 @@ public:
                     for (unsigned int band = 0; band < numBands; ++band)
                     {
                         Byte* bandPtr = output + (band * bandSize);
-                        *(image->data(c, r) + band) = bandPtr[r * width + c];
+                        memcpy(image->data(c, r) + band * sampleSize, (const void*)&bandPtr[r * rowSize + c * sampleSize], sampleSize);
                     }
                 }
             }
@@ -229,6 +231,165 @@ public:
         if (!istream) return ReadResult::ERROR_IN_READING_FILE;
 
         return readImage(istream, options);
+    }
+
+    virtual WriteResult writeImage(const osg::Image& img, std::ostream& fout, const osgDB::ReaderWriter::Options *options) const
+    {
+        lerc_status hr(0);
+
+        uint32 numBytesNeeded = 0;
+        uint32 numBytesWritten = 0;
+
+        double maxZErrorWanted = 0.1;
+        if (options)
+        {
+            std::istringstream iss(options->getOptionString());
+            std::string opt;
+            while (iss >> opt)
+            {
+                if (strcmp(opt.c_str(), "LERC_MAXZERROR") == 0)
+                {
+                    iss >> maxZErrorWanted;
+                }
+            }
+        }
+
+        OE_NOTICE << LC << " maxZErrorWanted=" << maxZErrorWanted << std::endl;
+
+        double eps = 0.0001;    // safety margin (optional), to account for finite floating point accuracy
+        double maxZError = maxZErrorWanted - eps;
+
+        unsigned int width = img.s();
+        unsigned int height = img.t();
+
+        osg::ref_ptr< osg::Image > flipped = new osg::Image(img);
+        flipped->flipVertical();
+
+        unsigned int numDims = 1;
+        unsigned int numBands = 1;
+        uint32 dataType;
+        unsigned int sampleSize;
+
+        switch (img.getDataType())
+        {
+        case GL_BYTE:
+            dataType = (uint32)LercNS::DataType::dt_char;
+            sampleSize = sizeof(char);
+            break;
+        case GL_UNSIGNED_BYTE:
+            dataType = (uint32)LercNS::DataType::dt_uchar;
+            sampleSize = sizeof(unsigned char);
+            break;
+        case GL_SHORT:
+            dataType = (uint32)LercNS::DataType::dt_short;
+            sampleSize = sizeof(short);
+            break;
+        case GL_UNSIGNED_SHORT:
+            dataType = (uint32)LercNS::DataType::dt_ushort;
+            sampleSize = sizeof(unsigned short);
+            break;
+        case GL_FLOAT:
+            dataType = (uint32)LercNS::DataType::dt_float;
+            sampleSize = sizeof(float);
+            break;
+        case GL_DOUBLE:
+            dataType = (uint32)LercNS::DataType::dt_double;
+            sampleSize = sizeof(double);
+            break;
+        default:
+            break;
+        }
+
+        switch (img.getPixelFormat())
+        {
+        case GL_LUMINANCE:
+        case GL_RED:
+            numBands = 1;
+            break;
+
+        case GL_RG:
+            numBands = 2;
+            break;
+
+        case GL_RGB:
+            numBands = 3;
+            break;
+        case GL_RGBA:
+            numBands = 4;
+            break;
+        }
+
+        unsigned int totalOutputSize = width * height * sampleSize * numDims * numBands;
+        unsigned char* imageData = new unsigned char[totalOutputSize];
+        if (numBands > 1)
+        {
+            unsigned int bandSize = width * height * sampleSize * numDims;
+            unsigned int rowSize = sampleSize * width;
+
+            // Write each band into the array separately.
+            for (unsigned int band = 0; band < numBands; ++band)
+            {
+                Byte* bandPtr = imageData + (band * bandSize);
+                for (unsigned int r = 0; r < height; ++r)
+                {
+                    for (unsigned int c = 0; c < width; ++c)
+                    {
+                        unsigned int destPix = r * rowSize + c * sampleSize;
+                        memcpy((void*)(bandPtr + destPix), flipped->data(c, r) + band * sampleSize, sampleSize);
+                    }
+                }
+            }
+        }
+        else
+        {
+            memcpy(imageData, flipped->data(), totalOutputSize);
+        }
+
+
+
+        hr = lerc_computeCompressedSize((void*)imageData,    // raw image data, row by row, band by band
+            dataType, numDims, width, height, numBands,
+            0,
+            maxZError,           // max coding error per pixel, or precision
+            &numBytesNeeded);    // size of outgoing Lerc blob
+        if (hr)
+        {
+            OE_WARN << LC << "Failed to compute compressed size of  image error=" << hr << std::endl;
+            return WriteResult::ERROR_IN_WRITING_FILE;
+        }
+
+        uint32 numBytesBlob = numBytesNeeded;
+        Byte* pLercBlob = new Byte[numBytesBlob];
+
+        hr = lerc_encode((void*)imageData,    // raw image data, row by row, band by band
+            dataType, numDims, width, height, numBands,
+            0,         // can give nullptr if all pixels are valid
+            maxZError,           // max coding error per pixel, or precision
+            pLercBlob,           // buffer to write to, function will fail if buffer too small
+            numBytesBlob,        // buffer size
+            &numBytesWritten);   // num bytes written to buffer
+        if (hr)
+        {
+            delete[]pLercBlob;
+            OE_WARN << LC << "Failed to encode image error=" << hr << std::endl;
+            return WriteResult::ERROR_IN_WRITING_FILE;
+        }
+        fout.write((const char*)pLercBlob, numBytesWritten);
+        delete[]pLercBlob;
+        delete[]imageData;
+
+        return WriteResult::FILE_SAVED;
+    }
+
+    virtual WriteResult writeImage(const osg::Image &img, const std::string& fileName, const osgDB::ReaderWriter::Options *options) const
+    {
+        std::string ext = osgDB::getFileExtension(fileName);
+        if (!acceptsExtension(ext)) return WriteResult::FILE_NOT_HANDLED;
+
+        osgDB::ofstream fout(fileName.c_str(), std::ios::out | std::ios::binary);
+        if (!fout) return WriteResult::ERROR_IN_WRITING_FILE;
+
+        return writeImage(img, fout, options);
     }
 };
 

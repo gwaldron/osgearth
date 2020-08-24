@@ -206,6 +206,20 @@ namespace osgEarth
 
     // Utility functions for arrays of points treated as a 2d polygon
     OSGEARTH_EXPORT osg::BoundingBoxd polygonBBox2d(const osg::Vec3dArray& points);
+
+    template<typename Iterator>
+    osg::BoundingBoxd polygonBBox2d(Iterator begin, Iterator end)
+{
+    osg::BoundingBoxd result(DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX);
+    for (Iterator itr = begin; itr != end; ++itr)
+    {
+        result.xMin() = std::min(result.xMin(), (*itr).x());
+        result.xMax() = std::max(result.xMax(), (*itr).x());
+        result.yMin() = std::min(result.yMin(), (*itr).y());
+        result.yMax() = std::max(result.yMax(), (*itr).y());
+    }
+    return result;
+}
     OSGEARTH_EXPORT bool pointInPoly2d(const osg::Vec3d& pt, const Polygon& polyPoints,
                                        double tolerance = 0.0);
     OSGEARTH_EXPORT bool pointInPoly2d(const osg::Vec3d& pt, const osg::Geometry* polyPoints,

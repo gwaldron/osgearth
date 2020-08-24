@@ -159,10 +159,10 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
     Vec3Ptr texCoords = dynamic_cast<osg::Vec3Array*>(sharedGeom->getTexCoordArray());
     for (auto& meshVertex : wmesh.vertices)
     {
-        meshVertex.meshIndex = vertexIndex++;
-        verts->push_back(meshVertex.position); // convert to Vec3
+        meshVertex.second.meshIndex = vertexIndex++;
+        verts->push_back(meshVertex.second.position); // convert to Vec3
         // Back to tile unit coords
-        osg::Vec3d worldPos = meshVertex.position * local2world;
+        osg::Vec3d worldPos = meshVertex.second.position * local2world;
         osg::Vec3d unit;
         locator.worldToUnit(worldPos, unit);
         if (texCoords.valid())
@@ -172,7 +172,7 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
         unit.z() = 1.0f;
         osg::Vec3d modelPlusOne;
         locator.unitToWorld(unit, modelPlusOne);
-        osg::Vec3d normal = (modelPlusOne*world2local)-meshVertex.position;
+        osg::Vec3d normal = (modelPlusOne*world2local) - meshVertex.second.position;
         normal.normalize();
         normals->push_back(normal);
         // Neighbors for morphing... or something else?

@@ -33,6 +33,7 @@
 #include <iterator>
 #include <osg/Vec3>
 #include <osg/Geometry>
+#include <osgEarth/rtree.h>
 
     //! The vertices are stored rotated into the XY plane so that we can properly find
     //! the "bottom-most" vert and walk the boundary.
@@ -363,10 +364,10 @@ namespace osgEarth { namespace Util
             }
         };
 
-        struct FacePositionsAdapter
+        struct FacePositionAdapter
         {
             const FaceVerticesAdapter fva;
-            FacePositionsAdapter(const Face& face)
+            FacePositionAdapter(const Face& face)
                 : fva(face)
             {}
 
@@ -378,6 +379,88 @@ namespace osgEarth { namespace Util
             typename Face::FacePositionIterator end() const
             {
                 return typename Face::FacePositionIterator(fva.end());
+            }
+        };
+
+        // Yet another iterator! Faces around a vertex. The iterator
+        // might reference a nullptr if the corresponding edge has no
+        // face, so that must be checked by the user.
+        class VertexFaceIterator
+        {
+        public:
+            using difference_type = int;
+            using value_type = const Face *;
+            using reference = const Face*&;
+            using pointer = const Face**;
+            using iterator_category = std::bidirectional_iterator_tag;
+            using NestedIterator = typename std::vector<Edge*>::const_iterator;
+
+            NestedIterator eIterator;
+
+            VertexFaceIterator(const NestedIterator eIterator)
+                : eIterator(eIterator)
+            {
+
+            }
+
+            const Face* operator*() const
+            {
+                return (*eIterator)->f;
+            }
+
+            VertexFaceIterator& operator++()
+            {
+                ++eIterator;
+                return *this;
+            }
+
+            VertexFaceIterator operator++(int)
+            {
+                auto result = *this;
+                ++(*this);
+                return result;
+            }
+
+            VertexFaceIterator& operator--()
+            {
+                --eIterator;
+                return *this;
+            }
+
+            VertexFaceIterator operator--(int)
+            {
+                auto result = *this;
+                --(*this);
+                return result;
+            }
+
+            bool operator==(const VertexFaceIterator& rhs) const
+            {
+                return eIterator == rhs.eIterator;
+            }
+
+            bool operator!=(const VertexFaceIterator& rhs) const
+            {
+                return eIterator != rhs.eIterator;
+            }
+        };
+
+        struct VertexFaceAdapter
+        {
+            const Vertex* vertex;
+
+            VertexFaceAdapter(const Vertex* vertex)
+                : vertex(vertex)
+            {}
+
+            typename Face::VertexFaceIterator begin() const
+            {
+                return typename Face::VertexFaceIterator(vertex->edges.begin());
+            }
+
+            typename Face::VertexFaceIterator end() const
+            {
+                return typename Face::VertexFaceIterator(vertex->edges.end());
             }
         };
 
@@ -422,14 +505,27 @@ namespace osgEarth { namespace Util
                 return (*this)(lhs, rhs.position);
             }
         };
-        
-        typedef std::set<Vertex, VertexCmp> VertexSet;
 
+        typedef std::map<Coord, Vertex> VertexMap;
         const Vertex* getVertex(const Coord& position)
         {
-            return &*vertices.emplace(position).first;
+            auto result = vertices.emplace(std::make_pair(position, position));
+            return &result.first->second;
         }
-        
+
+        const Vertex* lookupVertex(const Coord& position)
+        {
+            auto vItr = vertices.find(position);
+            if (vItr == vertices.end())
+            {
+                return nullptr;
+            }
+            else
+            {
+                return &vItr->second;
+            }
+        }
+
         // Half Edges surround faces in counter-clockwise order
         // The vertices are in order for the left face
         struct Edge : public E
@@ -498,9 +594,10 @@ namespace osgEarth { namespace Util
         ~WingedEdgeMesh()
         {
         }
-        VertexSet vertices;
+        VertexMap vertices;
         std::deque<Edge> edges;
         std::deque<Face> faces;
+        RTree<Face *, double, 2> faceIndex;
 
         // Create a Face from a list of Vertex*
         template<typename VItr>
@@ -548,6 +645,11 @@ namespace osgEarth { namespace Util
                 prevEdge = e;
                 (*v0Itr)->edges.push_back(e);
             }
+            FacePositionAdapter adapter(*f);
+            osg::BoundingBoxd bbox = polygonBBox2d(adapter.begin(), adapter.end());
+            double minv[2] = {bbox.xMin(), bbox.yMin()};
+            double maxv[2] = {bbox.xMax(), bbox.yMax()};
+            faceIndex.Insert(minv, maxv, f);
             return f;
         }
 
@@ -718,19 +820,21 @@ namespace osgEarth { namespace Util
         
         bool isPointInFace(const Face* f, const Coord& pt)
         {
-            FacePositionsAdapter fpa(*f);
+            FacePositionAdapter fpa(*f);
             return pointInPoly2d(pt, fpa.begin(), fpa.end());
         }
-        
-        // Find the face that contains the point
+
         Face* getFaceContainingPoint(const Coord& pt)
         {
-            // XXX Slow version
-            for (auto& face : faces)
+            std::vector<Face*> hits;
+            double minv[2] = {pt.x(), pt.y()};
+            double maxv[2] = {pt.x(), pt.y()};
+            faceIndex.Search(minv, maxv, &hits, 99);
+            for (Face* face : hits)
             {
-                if (face.edge && isPointInFace(&face, pt))
+                if (face->edge && isPointInFace(face, pt))
                 {
-                    return &face;
+                    return face;
                 }
             }
             return nullptr;
@@ -828,23 +932,59 @@ namespace osgEarth { namespace Util
             return ((aFace || aEdgeInter.edge) && (bFace || bEdgeInter.edge));
         }
 
+        // Get Border edge leaving vertex, if any
+        const Edge* getVertexBorderEdge(const Vertex* v)
+        {
+            auto eitr = std::find_if(v->edges.begin(), v->edges.end(),
+                                     [](const Edge* edge)
+                                     {
+                                         return !edge->mate;
+                                     });
+            if (eitr != v->edges.end())
+            {
+                return *eitr;
+            }
+            else
+            {
+                return nullptr;
+            }
+        }
+
+        // Different approach: work around the edge of the mesh
         EdgeIntersection getBorderEdge(Ray2d& ray)
         {
             // Hope that there aren't more than two!
             std::vector<EdgeIntersection> results;
-            for (Edge& edge : edges)
+            // Find the  "bottom left" vertex that has edges. This
+            // should be on a corner, or at least a border.
+            const Edge* firstEdge = nullptr;
+            for (auto vitr = vertices.begin(); vitr != vertices.end(); ++vitr)
             {
-                if (edge.origVert() && edge.destVert()
-                    && !edge.mate)
+
+                if ((firstEdge = getVertexBorderEdge(&vitr->second)))
                 {
-                    Segment2d seg = fromEdge(&edge);
+                    break;
+                }
+            }
+            if (!firstEdge)
+            {
+                // throw
+                return EdgeIntersection();
+            }
+            const Edge* e = firstEdge;
+            do
+            {
+                {
+                    Segment2d seg = fromEdge(e);
                     Coord intersect;
                     if (ray.intersect(seg, intersect))
                     {
-                        results.emplace_back(&edge, intersect);
+                        results.emplace_back(e, intersect);
                     }
                 }
+                e = getVertexBorderEdge(e->destVert());
             }
+            while (e && e != firstEdge);
             if (results.empty())
             {
                 return EdgeIntersection();

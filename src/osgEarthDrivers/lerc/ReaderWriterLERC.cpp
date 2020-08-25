@@ -254,8 +254,6 @@ public:
             }
         }
 
-        OE_NOTICE << LC << " maxZErrorWanted=" << maxZErrorWanted << std::endl;
-
         double eps = 0.0001;    // safety margin (optional), to account for finite floating point accuracy
         double maxZError = maxZErrorWanted - eps;
 

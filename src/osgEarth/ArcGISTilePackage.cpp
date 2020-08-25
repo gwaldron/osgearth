@@ -20,6 +20,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
+#include <osgEarth/ImageToHeightFieldConverter>
 
 using namespace osgEarth;
 using namespace osgEarth::ArcGIS;
@@ -133,15 +134,15 @@ void BundleReader::readIndex(const std::string& filename, std::vector<int>& inde
     }
 }
 
-osg::Image* BundleReader::readImage(const TileKey& key)
+osg::Image* BundleReader::readImage(const TileKey& key, const osgDB::ReaderWriter* rw)
 {
     // Figure out the index for the tilekey
     unsigned int row = key.getTileX() - _colOffset;
     unsigned int i = key.getTileY() - _rowOffset + (row * _bundleSize);
-    return readImage(i);
+    return readImage(i, rw);
 }
 
-osg::Image* BundleReader::readImage(unsigned int index)
+osg::Image* BundleReader::readImage(unsigned int index, const osgDB::ReaderWriter* rw)
 {
     if (index < 0 || index >= _index.size()) return 0;
 
@@ -156,7 +157,13 @@ osg::Image* BundleReader::readImage(unsigned int index)
         image.resize(size);
         _in.read(&image[0], size);
         std::stringstream ss(image);
-        return ImageUtils::readStream(ss, 0);
+
+        osg::Image* result = ImageUtils::readStream(ss, 0);
+        if (!result && rw)
+        {
+            result = rw->readImage(ss, 0).takeImage();
+        }
+        return result;
     }
 
     return 0;
@@ -222,15 +229,15 @@ void BundleReader2::readIndex(std::vector<unsigned long long>& index)
     }
 }
 
-osg::Image* BundleReader2::readImage(const TileKey& key)
+osg::Image* BundleReader2::readImage(const TileKey& key, const osgDB::ReaderWriter* rw)
 {
     unsigned int col = key.getTileX() - _colOffset;
     unsigned int row = key.getTileY() - _rowOffset;
     unsigned int i = _bundleSize * row + col;
-    return readImage(i);
+    return readImage(i, rw);
 }
 
-osg::Image* BundleReader2::readImage(unsigned int index)
+osg::Image* BundleReader2::readImage(unsigned int index, const osgDB::ReaderWriter* rw)
 {
     if (index < 0 || index >= _index.size()) return 0;
 
@@ -245,7 +252,13 @@ osg::Image* BundleReader2::readImage(unsigned int index)
         imageData.resize(tileSize);
         _in.read(&imageData[0], tileSize);
         std::stringstream ss(imageData);
-        return ImageUtils::readStream(ss, 0);
+
+        osg::Image* result = ImageUtils::readStream(ss, 0);
+        if (!result && rw)
+        {
+            result = rw->readImage(ss, 0).takeImage();
+        }
+        return result;
     }
 
     return 0;
@@ -266,19 +279,17 @@ ArcGISTilePackageImageLayer::Options::fromConfig(const Config& conf)
 {
     conf.get("url", _url);
 }
-
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(arcgistilepackageimage, ArcGISTilePackageImageLayer);
-
 OE_LAYER_PROPERTY_IMPL(ArcGISTilePackageImageLayer, URI, URL, url);
+
 
 void
 ArcGISTilePackageImageLayer::init()
 {
     ImageLayer::init();
     _bundleSize = 128u;
-    _extension = "png";
     _storageFormat = STORAGE_FORMAT_COMPACT;
 }
 
@@ -340,12 +351,12 @@ ArcGISTilePackageImageLayer::createImageImplementation(const TileKey& key, Progr
         if (_storageFormat == STORAGE_FORMAT_COMPACT)
         {
             BundleReader reader(bundleFile, _bundleSize);
-            result = reader.readImage(key);
+            result = reader.readImage(key, _rw.get());
         }
         if (_storageFormat == STORAGE_FORMAT_COMPACTV2)
         {
             BundleReader2 reader(bundleFile, _bundleSize);
-            result = reader.readImage(key);
+            result = reader.readImage(key, _rw.get());
         }
         if (result)
         {
@@ -385,15 +396,7 @@ ArcGISTilePackageImageLayer::readConf()
         setTileSize(as<unsigned int>(tileCacheInfo.value("tilecols"), 256));
 
         std::string format = conf.child("cacheinfo").child("tileimageinfo").value("cachetileformat");
-        if (format == "JPEG")
-        {
-            _extension = "jpg";
-        }
-        // All other cases will use png, this includes mixed mode.
-        else
-        {
-            _extension = "png";
-        }
+        _rw = osgDB::Registry::instance()->getReaderWriterForExtension(osgEarth::toLower(format));
 
         _bundleSize = as<unsigned int>(conf.child("cacheinfo").child("cachestorageinfo").value("packetsize"), 128);
         std::string storageFormat = conf.child("cacheinfo").child("cachestorageinfo").value("storageformat");
@@ -407,5 +410,151 @@ ArcGISTilePackageImageLayer::readConf()
         }
 
 
+    }
+}
+
+
+Config
+ArcGISTilePackageElevationLayer::Options::getConfig() const
+{
+    Config conf = ElevationLayer::Options::getConfig();
+    conf.set("url", _url);
+    return conf;
+}
+
+void
+ArcGISTilePackageElevationLayer::Options::fromConfig(const Config& conf)
+{
+    conf.get("url", _url);
+}
+
+REGISTER_OSGEARTH_LAYER(arcgistilepackageelevation, ArcGISTilePackageElevationLayer);
+OE_LAYER_PROPERTY_IMPL(ArcGISTilePackageElevationLayer, URI, URL, url);
+
+void
+ArcGISTilePackageElevationLayer::init()
+{
+    ElevationLayer::init();
+    _bundleSize = 128u;
+    _storageFormat = STORAGE_FORMAT_COMPACT;
+}
+
+ArcGISTilePackageElevationLayer::~ArcGISTilePackageElevationLayer()
+{
+    //nop
+}
+
+Status
+ArcGISTilePackageElevationLayer::openImplementation()
+{
+    Status parent = ElevationLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
+    readConf();
+
+    // establish a profile if we don't already have one:
+    if (!getProfile())
+    {
+        const Profile* profile = NULL;
+
+        if (_profileConf.isSet())
+        {
+            profile = Profile::create(_profileConf.get());
+        }
+        else
+        {
+            // finally, fall back on mercator
+            profile = Profile::create("spherical-mercator");
+        }
+        setProfile(profile);
+    }
+
+    return Status::NoError;
+}
+
+GeoHeightField
+ArcGISTilePackageElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    // Try to figure out which bundle file the incoming tilekey is in.
+    unsigned int numWide, numHigh;
+    getProfile()->getNumTiles(key.getLevelOfDetail(), numWide, numHigh);
+
+    std::stringstream buf;
+    buf << options().url()->full() << "/_alllayers/";
+    buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
+
+    unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileX() / _bundleSize) * _bundleSize));
+    unsigned int rowOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileY() / _bundleSize) * _bundleSize));
+
+    buf << "R" << padLeft(toHex(rowOffset), 4) << "C" << padLeft(toHex(colOffset), 4);
+    buf << ".bundle";
+
+    std::string bundleFile = buf.str();
+    if (osgDB::fileExists(bundleFile))
+    {
+        osg::Image* result = NULL;
+        if (_storageFormat == STORAGE_FORMAT_COMPACT)
+        {
+            BundleReader reader(bundleFile, _bundleSize);
+            result = reader.readImage(key, _rw.get());
+        }
+        if (_storageFormat == STORAGE_FORMAT_COMPACTV2)
+        {
+            BundleReader2 reader(bundleFile, _bundleSize);
+            result = reader.readImage(key, _rw.get());
+        }
+        if (result)
+        {
+            ImageToHeightFieldConverter conv;
+            osg::HeightField* hf = conv.convert(result);
+            return GeoHeightField(hf, key.getExtent());
+        }
+    }
+    return GeoHeightField::INVALID;
+}
+
+void
+ArcGISTilePackageElevationLayer::readConf()
+{
+    std::string confPath = options().url()->full() + "/conf.xml";
+
+    osg::ref_ptr<XmlDocument> doc = XmlDocument::load(confPath);
+    if (doc.valid())
+    {
+        Config conf = doc->getConfig();
+        Config tileCacheInfo = conf.child("cacheinfo").child("tilecacheinfo");
+        std::string wkt = tileCacheInfo.child("spatialreference").value("wkt");
+        if (!wkt.empty())
+        {
+            SpatialReference* srs = SpatialReference::create(wkt);
+            if (srs)
+            {
+                if (srs->isMercator())
+                {
+                    setProfile(Profile::create("spherical-mercator"));
+                }
+                else
+                {
+                    setProfile(Profile::create("global-geodetic"));
+                }
+            }
+        }
+
+        setTileSize(as<unsigned int>(tileCacheInfo.value("tilecols"), 256));
+
+        std::string format = conf.child("cacheinfo").child("tileimageinfo").value("cachetileformat");
+        _rw = osgDB::Registry::instance()->getReaderWriterForExtension(osgEarth::toLower(format));
+
+        _bundleSize = as<unsigned int>(conf.child("cacheinfo").child("cachestorageinfo").value("packetsize"), 128);
+        std::string storageFormat = conf.child("cacheinfo").child("cachestorageinfo").value("storageformat");
+        if (ciEquals(storageFormat, "esriMapCacheStorageModeCompact"))
+        {
+            _storageFormat = STORAGE_FORMAT_COMPACT;
+        }
+        else if (ciEquals(storageFormat, "esriMapCacheStorageModeCompactV2"))
+        {
+            _storageFormat = STORAGE_FORMAT_COMPACTV2;
+        }
     }
 }

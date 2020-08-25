@@ -188,6 +188,7 @@ int usage(const char* name)
         << "osgearth_heatmap < points.txt  where points.txt contains a series of lat lon points separated by a space"
         << name
         << "\n    --weighted                          : If set the incoming points have a third component which represents the weight of the point"
+        << "\n    --min-level [level]                 : The minimum zoom level to generate map image layer.  Heat map points are aggregated together for lower lods."
         << "\n    --max-level [level]                 : The maximum zoom level to generate map image layer, higher levels take longer"
         << "\n    --max-heat [maxHeat]                : The maximum heat value to scale the color ramp to."
         << "\n    --buffer [buffer]                   : The buffer size used to create neighboring tiles.  Default 30."
@@ -209,6 +210,7 @@ auto wgs84 = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
 
 static TileKeyMap s_keys;
 
+unsigned int minLevel = 0;
 unsigned int maxLevel = 8;
 float maxHeat = 100.0;
 // Buffer with neighbor tiles to do some simple metatiling to prevent inconsistent edges along tile boundaries.
@@ -216,9 +218,9 @@ unsigned int buffer = 30;
 
 inline void addPoint(double lon, double lat, float weight)
 {
-    for (unsigned int level = 0; level <= maxLevel; ++level)
+    for (unsigned int level = minLevel; level <= maxLevel; ++level)
     {
-        TileKey key = wgs84->createTileKey(lon, lat, level);
+        TileKey key = wgs84->createTileKey(lon, lat, maxLevel);
 
         GeoExtent extent = key.getExtent();
 
@@ -368,6 +370,7 @@ main(int argc, char** argv)
 
     auto startTime = std::chrono::high_resolution_clock::now();
 
+    arguments.read("--min-level", minLevel);
     arguments.read("--max-level", maxLevel);
     arguments.read("--max-heat", maxHeat);
     arguments.read("--buffer", buffer);

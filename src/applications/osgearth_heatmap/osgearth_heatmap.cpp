@@ -187,7 +187,8 @@ int usage(const char* name)
         << "Generates a heatmap tiled dataset from a series of points.\n\n"
         << "osgearth_heatmap < points.txt  where points.txt contains a series of lat lon points separated by a space"
         << name
-        << "\n    --max-level [level]                 : The maximum level to generate to."
+        << "\n    --weighted                          : If set the incoming points have a third component which represents the weight of the point"
+        << "\n    --max-level [level]                 : The maximum zoom level to generate map image layer, higher levels take longer"
         << "\n    --max-heat [maxHeat]                : The maximum heat value to scale the color ramp to."
         << "\n    --buffer [buffer]                   : The buffer size used to create neighboring tiles.  Default 30."
         << "\n    --color-scheme [color-scheme]       : The color scheme to use."
@@ -199,7 +200,7 @@ int usage(const char* name)
 }
 
 
-typedef std::unordered_map<unsigned short, unsigned short> CellIndex;
+typedef std::unordered_map<unsigned short, float> CellIndex;
 typedef std::unordered_map<osgEarth::TileKey, CellIndex> TileKeyMap;
 
 static int numRead = 0;
@@ -213,7 +214,7 @@ float maxHeat = 100.0;
 // Buffer with neighbor tiles to do some simple metatiling to prevent inconsistent edges along tile boundaries.
 unsigned int buffer = 30;
 
-inline void addPoint(double lon, double lat)
+inline void addPoint(double lon, double lat, float weight)
 {
     for (unsigned int level = 0; level <= maxLevel; ++level)
     {
@@ -224,19 +225,35 @@ inline void addPoint(double lon, double lat)
         unsigned int x = osg::clampBetween((unsigned int)(256.0 * (lon - extent.xMin()) / extent.width()), 0u, 255u);
         unsigned int y = osg::clampBetween((unsigned int)(256.0 * (lat - extent.yMin()) / extent.height()), 0u, 255u);
         unsigned short index = (unsigned short)(y * 256 + x);
-        s_keys[key][index]++;
+        s_keys[key][index] += weight;
     }
 }
 
-void ReadFile(std::istream& in)
+void ReadFile(std::istream& in, bool weighted)
 {
     double lat, lon;
-    while (in >> lat >> lon)
+    float weight;
+    if (weighted)
     {
-        ++numRead;
-        if (numRead % 50000 == 0) std::cout << "Read " << numRead << std::endl;
+        std::cout << "Reading weighted points..." << std::endl;
+        while (in >> lat >> lon >> weight)
+        {
+            ++numRead;
+            if (numRead % 50000 == 0) std::cout << "Read " << numRead << std::endl;
 
-        addPoint(lon, lat);
+            addPoint(lon, lat, weight);
+        }
+    }
+    else
+    {
+        std::cout << "Reading non-weighted points..." << std::endl;
+        while (in >> lat >> lon)
+        {
+            ++numRead;
+            if (numRead % 50000 == 0) std::cout << "Read " << numRead << std::endl;
+
+            addPoint(lon, lat, 1.0);
+        }
     }
 }
 
@@ -323,7 +340,7 @@ void WriteKeys(ImageLayer* layer, const heatmap_colorscheme_t* colorScheme)
         unsigned char* imageData = new unsigned char[imageSize];
         heatmap_render_saturated_to(hm, colorScheme, maxHeat, imageData);
         osg::ref_ptr< osg::Image > image = new osg::Image;
-        image->setImage(hm->w, hm->h, 1, GL_RGB8, GL_RGBA, GL_UNSIGNED_BYTE, imageData, osg::Image::USE_NEW_DELETE);
+        image->setImage(hm->w, hm->h, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, imageData, osg::Image::USE_NEW_DELETE);
 
         osg::ref_ptr < osg::Image > cropped = ImageUtils::cropImage(image.get(), buffer, buffer, w, h);
         layer->writeImage(key.first, cropped.get());
@@ -347,11 +364,14 @@ main(int argc, char** argv)
     if (arguments.read("--help"))
         return usage(argv[0]);
 
+    bool weighted = false;
+
     auto startTime = std::chrono::high_resolution_clock::now();
 
     arguments.read("--max-level", maxLevel);
     arguments.read("--max-heat", maxHeat);
     arguments.read("--buffer", buffer);
+    weighted = arguments.read("--weighted");
 
     const heatmap_colorscheme_t* colorScheme = heatmap_cs_default;
     std::string colorSchemeName;
@@ -407,7 +427,7 @@ main(int argc, char** argv)
 
     std::cout << "Generating heatmap to max level of " << maxLevel << " with max heat " << maxHeat << std::endl;
 
-    ReadFile(std::cin);
+    ReadFile(std::cin, weighted);
 
     std::cout << "Read " << numRead << " points" << std::endl;
 

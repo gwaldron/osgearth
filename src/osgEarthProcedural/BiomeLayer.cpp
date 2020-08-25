@@ -32,7 +32,7 @@ void
 BiomeLayer::Options::fromConfig(const Config& conf)
 {
     biomeCatalog() = new BiomeCatalog(conf.child("biomecatalog"));
-    controlSet().get(conf, "controlfeatures");
+    controlVectors().get(conf, "control_vectors");
 }
 
 Config
@@ -61,7 +61,7 @@ BiomeLayer::openImplementation()
     if (p.isError())
         return p;
 
-    Status csStatus = options().controlSet().open(getReadOptions());
+    Status csStatus = options().controlVectors().open(getReadOptions());
     if (csStatus.isError())
         return csStatus;
 
@@ -97,7 +97,7 @@ BiomeLayer::closeImplementation()
 {
     _index.clear();
 
-    options().controlSet().close();
+    options().controlVectors().close();
 
     return Layer::closeImplementation();
 }
@@ -105,7 +105,7 @@ BiomeLayer::closeImplementation()
 FeatureSource*
 BiomeLayer::getControlSet() const
 {
-    return options().controlSet().getLayer();
+    return options().controlVectors().getLayer();
 }
 
 const BiomeCatalog*

@@ -40,19 +40,136 @@ using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(lifemap, LifeMapLayer);
 
+template<typename T>
+class ControlVectors
+{
+public:
+    struct Point {
+        double x, y;
+        T data;
+    };
+    struct Result {
+        const T* data;
+        float weight;
+        bool operator < (const Result& rhs) const {
+            return weight < rhs.weight;
+        }
+    };
+    typedef std::set<Result> ResultSet;
+
+    std::vector<Point> _index;
+
+    void add(double x, double y, const T& data)
+    {
+        _index.emplace_back(Point());
+        _index.back().x = x;
+        _index.back().y = y;
+        _index.back().data = data;
+    }
+
+    void lookup(double x, double y, ResultSet& results) const
+    {
+        results.clear();
+
+        //TODO: replace this brute-force search with a proper
+        // spatial index.
+        const int maxCount = 3;
+        double farthest2 = 0.0;
+        std::set<Result>::iterator farthest2_iter;
+
+        for (const auto& cp : _index)
+        {
+            double range2 = (cp.x - x)*(cp.x - x) + (cp.y - y)*(cp.y - y);
+
+            if (results.size() < maxCount)
+            {
+                Result r;
+                r.data = &cp.data;
+                r.weight = range2;
+                results.insert(r);
+            }
+            else
+            {
+                if (range2 < results.rbegin()->weight)
+                {
+                    Result r;
+                    r.data = &cp.data;
+                    r.weight = range2;
+                    results.insert(r);
+                    results.erase(std::prev(results.end()));
+                }
+            }
+        }
+    }
+};
+
+//........................................................................
+
+LifeMapLayer::LandCoverLifeMapping::LandCoverLifeMapping(const Config& conf)
+{
+    conf.get("class", className());
+    conf.get("density", density());
+    conf.get("moisture", moisture());
+    conf.get("rugged", rugged());
+    conf.get("temperature", temperature());
+}
+
+Config
+LifeMapLayer::LandCoverLifeMapping::getConfig() const
+{
+    Config conf("mapping");
+    conf.set("class", className());
+    conf.set("density", density());
+    conf.set("moisture", moisture());
+    conf.set("rugged", rugged());
+    conf.set("temperature", temperature());
+    return conf;
+}
+
+class GeoImageReader
+{
+public:
+    const GeoImage& _i;
+    const GeoExtent& _ex;
+    ImageUtils::PixelReader _reader;
+    GeoImageReader(const GeoImage& i) : 
+        _i(i), _ex(i.getExtent()), _reader(_i.getImage()) { 
+        _reader.setBilinear(false);
+        _reader.setDenormalize(false);
+    }
+    void read(osg::Vec4& out, double x, double y) {
+        double u = (x - _ex.xMin()) / _ex.width();
+        double v = (y - _ex.yMin()) / _ex.height();
+        _reader(out, u, v);
+    }
+};
+
 //........................................................................
 
 Config
 LifeMapLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
+    biomeLayer().set(conf, "biomes_layer");
+    landCoverLayer().set(conf, "landcover_layer");
+    
+    Config mappings_conf;
+    for (const auto& mapping : landCoverMappings())
+        mappings_conf.add(mapping.getConfig());
+    if (!mappings_conf.empty()) conf.add(mappings_conf);
+
     return conf;
 }
 
 void
 LifeMapLayer::Options::fromConfig(const Config& conf)
 {
-    //TODO
+    biomeLayer().get(conf, "biomes_layer");
+    landCoverLayer().get(conf, "landcover_layer");
+
+    const ConfigSet mappings_conf = conf.child("landcover_mappings").children("mapping");
+    for (const auto& c : mappings_conf)
+        landCoverMappings().emplace_back(c);
 }
 
 //........................................................................
@@ -114,8 +231,8 @@ namespace
         const osg::Vec2& coords)
     {
         read(noise, coords.x(), coords.y());
-        noise *= 2.0;
-        noise.r() -= 1.0, noise.g() -= 1.0, noise.b() -= 1.0, noise.a() -= 1.0;
+        //noise *= 2.0;
+        //noise.r() -= 1.0, noise.g() -= 1.0, noise.b() -= 1.0, noise.a() -= 1.0;
     }
 
     // OSG loader for reading an albedo texture and a heightmap texture
@@ -274,16 +391,20 @@ REGISTER_OSGPLUGIN(oe_splat_nnra, NNRAPseudoLoader);
 //........................................................................
 
 void
-LifeMapLayer::loadMaterials(const std::string& base)
+LifeMapLayer::loadMaterials(const AssetCatalog* cat)
 {
-    Texture* rgbh = new Texture();
-    rgbh->_uri = URI(base + ".oe_splat_rgbh");
-    _arena->add(rgbh);
+    for (const auto tex : cat->getTextures())
+    {
+        Texture* rgbh = new Texture();
+        rgbh->_uri = URI(tex->uri()->full() + ".oe_splat_rgbh");
+        _arena->add(rgbh);
 
-    Texture* nnra = new Texture();
-    nnra->_uri = URI(base + ".oe_splat_nnra");
-    _arena->add(nnra);
+        Texture* nnra = new Texture();
+        nnra->_uri = URI(tex->uri()->full() + ".oe_splat_nnra");
+        _arena->add(nnra);
+    }
 }
+
 
 void
 LifeMapLayer::init()
@@ -330,10 +451,15 @@ LifeMapLayer::addedToMap(const Map* map)
     ImageLayer::addedToMap(map);
 
     options().biomeLayer().addedToMap(map);
+    options().landCoverLayer().addedToMap(map);
+    options().landCoverDictionary().addedToMap(map);
 
     // not specified; try to find it
     if (!getBiomeLayer())
         setBiomeLayer(map->getLayer<BiomeLayer>());
+
+    if (!getLandCoverDictionary())
+        setLandCoverDictionary(map->getLayer<LandCoverDictionary>());
     
     Status biomeStatus = options().biomeLayer().open(getReadOptions());
     if (biomeStatus.isOK())
@@ -348,10 +474,10 @@ LifeMapLayer::addedToMap(const Map* map)
                 const AssetCatalog* assets = cat->getAssets();
                 if (assets)
                 {
-                    for (const auto tex : assets->getTextures())
-                    {
-                        loadMaterials(tex->uri()->full());
-                    }
+                    _loadMaterialsJob = std::async(
+                        &LifeMapLayer::loadMaterials,
+                        this,
+                        assets);
                 }
             }
         }
@@ -368,14 +494,26 @@ LifeMapLayer::addedToMap(const Map* map)
     }
 
     _map = map;
+
+    // make the land cover code LUT
+    if (getLandCoverDictionary())
+    {
+        for (const auto& mapping : options().landCoverMappings())
+        {
+            const LandCoverClass* lcc = getLandCoverDictionary()->getClassByName(mapping.className().get());
+            if (lcc)
+                _lcLUT[lcc->getValue()] = &mapping;
+        }
+    }
 }
 
 void
 LifeMapLayer::removedFromMap(const Map* map)
 {
     _map = nullptr;
-    options().biomeLayer().close();
     options().biomeLayer().removedFromMap(map);
+    options().landCoverLayer().removedFromMap(map);
+    options().landCoverDictionary().removedFromMap(map);
     ImageLayer::removedFromMap(map);
 }
 
@@ -391,11 +529,39 @@ LifeMapLayer::getBiomeLayer() const
     return options().biomeLayer().getLayer();
 }
 
+void
+LifeMapLayer::setLandCoverLayer(LandCoverLayer* layer)
+{
+    options().landCoverLayer().setLayer(layer);
+}
+
+LandCoverLayer*
+LifeMapLayer::getLandCoverLayer() const
+{
+    return options().landCoverLayer().getLayer();
+}
+
+void
+LifeMapLayer::setLandCoverDictionary(LandCoverDictionary* layer)
+{
+    options().landCoverDictionary().setLayer(layer);
+}
+
+LandCoverDictionary*
+LifeMapLayer::getLandCoverDictionary() const
+{
+    return options().landCoverDictionary().getLayer();
+}
+
 GeoImage
 LifeMapLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
+    // sync to the async material loader
+    if (_loadMaterialsJob.valid())
+        _loadMaterialsJob.wait();
+
     osg::ref_ptr<osg::Image> image = new osg::Image();
     image->allocateImage(
         getTileSize(),
@@ -421,9 +587,25 @@ LifeMapLayer::createImageImplementation(
 
     GeoExtent extent = key.getExtent();
 
+    // if we have landcover data, fetch that now
+    GeoImage landcover;
+
+#if 1
+    if (getLandCoverLayer())
+    {
+        TileKey lckey = key;
+        for (TileKey lckey=key; !landcover.valid() && lckey.valid(); lckey.makeParent())
+        {
+            landcover = getLandCoverLayer()->createImage(lckey);
+        }
+    }
+    GeoImageReader lc_reader(landcover);
+#endif
+
     // assemble the image:
     ImageUtils::PixelWriter write(image.get());
-    osg::Vec4 pixel, temp;
+    osg::Vec4 pixel, temp, lcpixel;
+    ControlVectors<osg::Vec4>::ResultSet lc_results;
     ElevationSample sample;
     float elevation;
     osg::Vec3 normal;
@@ -461,65 +643,148 @@ LifeMapLayer::createImageImplementation(
             elevation = elevTile->getElevation(x, y).elevation().as(Units::METERS);
 
             normal = elevTile->getNormal(x, y);
+
+            // exaggerate the slope value
             slope = harden(harden(1.0 - (normal * up)));
-            //slope = harden(1.0 - (normal * up));
 
 #if 1
-            float ruggedness = elevTile->getRuggedness(x, y);
 
             pixel[RUGGED] =
-                lerpstep(1600.0f, 5000.0f, elevation) +
-                ruggedness; // + slope;
-
-#else
-            // roughess increases with altitude:
-            pixel[RUGGED] = lerpstep(1600.0f, 5000.0f, elevation);
-            // and increases with slope:
-            pixel[RUGGED] += slope;
-#endif
-
-            // Ramp life density down slowly as we increase in altitude.
-            pixel[DENSITY] = 1.0f - osg::clampBetween(
-                elevation / 6500.0f,
-                0.0f, 1.0f);
+                //lerpstep(1600.0f, 5000.0f, elevation) +
+                elevTile->getRuggedness(x, y);
 
             // Randomize it
-            pixel[DENSITY] +=
+            pixel[DENSITY] =
                 (0.3*noise[0][RANDOM]) +
-                (0.5*noise[1][CLUMPY]) +
-                (0.4*noise[2][SMOOTH]);
+                (0.3*noise[1][SMOOTH]) +
+                (0.4*noise[2][CLUMPY]);
 
-            pixel[DENSITY] *= 1.4;
+            // Compensate for low density
+            pixel[DENSITY] *= 1.1;
 
-            // Discourage density in rugged areas
-            pixel[DENSITY] -= slope; // pixel[RUGGED];
+            // Discourage density in highly sloped areas
+            pixel[DENSITY] -= (0.8*slope);
 
             // moisture is fairly arbitrary
             float moisture = 1.0f - lerpstep(250.0f, 3000.0f, elevation);
             moisture += (0.2 * noise[1][SMOOTH]);
             moisture -= 0.5*slope;
 
+            // temperature decreases with altitude
             float temperature = 1.0f - lerpstep(0.0f, 4000.0f, elevation);
             temperature += (0.2 * noise[1][SMOOTH]);
 
+            // encode moisture and temperature together (4 bits each)
             pixel[MOISTURE] = ((float)(((int)(moisture*16.0f) << 4) | ((int)(temperature*16.0f)))) / 255.0f;
 
+            // biome lookup
             float biomeNoise = fract(
                 noise[1][RANDOM] +
-                noise[2][SMOOTH]); // +
-                //noise[3][CLUMPY]);
+                noise[2][SMOOTH]);
 
             pixel[BIOME] = (float)lookupBiome(x, y, biomeNoise) / 255.0f;
 
-            // saturate:
-            for(int i=0; i<4; ++i)
+            // clamp to legal range (not the biome though)
+            for (int i = 0; i < 3; ++i)
+            {
                 pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
+            }
+
+#else
+
+            if (landcover.valid())
+            {
+                lc_reader.read(temp, x, y);  
+                const LandCoverLifeMapping* m = lookupLandCoverLifeMapping((int)(temp.r()));
+                if (m)
+                {
+                    pixel[RUGGED] = m->rugged().get();
+                    pixel[DENSITY] = m->density().get();
+                    pixel[MOISTURE] = m->moisture().get();
+                }
+            }
+
+            //pixel[RUGGED] = mix(
+            //    pixel[RUGGED],
+            //    elevTile->getRuggedness(x, y),
+            //    noise[2][CLUMPY]);
+
+            pixel[RUGGED] *=
+                (0.5f) +
+                (0.3f*noise[0][RANDOM]) +
+                (0.3f*noise[1][SMOOTH]) +
+                (0.4f*noise[2][CLUMPY]);
+
+            // Randomize it
+            pixel[DENSITY] *=
+                (0.5f) +
+                (0.3f*noise[0][RANDOM]) +
+                (0.3f*noise[1][SMOOTH]) +
+                (0.4f*noise[2][CLUMPY]);
+
+            // Compensate for low density
+            //pixel[DENSITY] *= 1.4;
+
+            // Discourage density in highly sloped areas
+            pixel[DENSITY] -= (0.8f*slope);
+
+            // moisture is fairly arbitrary
+            float moisture = 1.0f - lerpstep(250.0f, 3000.0f, elevation);
+            moisture += (0.2f * noise[1][SMOOTH]);
+            moisture -= 0.5f*slope;
+
+            // temperature decreases with altitude
+            float temperature = 1.0f - lerpstep(0.0f, 4000.0f, elevation);
+            temperature += (0.2f * noise[1][SMOOTH]);
+
+            // encode moisture and temperature together (4 bits each)
+            pixel[MOISTURE] = ((float)(((int)(moisture*16.0f) << 4) | ((int)(temperature*16.0f)))) / 255.0f;
+
+            // biome lookup
+            float biomeNoise = fract(
+                noise[1][RANDOM] +
+                noise[2][SMOOTH]);
+
+            pixel[BIOME] = (float)lookupBiome(x, y, biomeNoise) / 255.0f;
+
+            // clamp to legal range (not the biome though)
+            for (int i = 0; i < 3; ++i)
+            {
+                pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
+            }
+#endif
+
+
 
             write(pixel, s, t);
         }
     }
 
     return GeoImage(image.get(), key.getExtent());
+}
+
+osg::Vec4
+LifeMapLayer::lookupLandCover(float noise, void* thing) const
+{
+    ControlVectors<osg::Vec4>::ResultSet* r = static_cast<
+        ControlVectors<osg::Vec4>::ResultSet*>(thing);
+
+    const double strength = 9.0;
+    double total = 0.0;
+    for (auto& i : *r)
+        total += pow(1.0 / i.weight, strength);
+
+    double runningTotal = 0.0;
+    double pick = total * (double)noise;
+    for (auto& i : *r)
+    {
+        runningTotal += pow(1.0 / i.weight, strength);
+        if (pick < runningTotal)
+            return *i.data;
+    }
+
+    // return the last one by default
+    return *r->rbegin()->data;
 }
 
 int
@@ -555,4 +820,11 @@ LifeMapLayer::lookupBiome(double x, double y, float noise) const
         }
     }
     return 0;
+}
+
+const LifeMapLayer::LandCoverLifeMapping*
+LifeMapLayer::lookupLandCoverLifeMapping(int code) const
+{
+    const auto i = _lcLUT.find(code);
+    return i != _lcLUT.end() ? i->second : nullptr;
 }

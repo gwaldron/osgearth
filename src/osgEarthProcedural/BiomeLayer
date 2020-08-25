@@ -41,7 +41,7 @@ namespace osgEarth
             {
             public:
                 META_LayerOptions(osgEarth, Options, Layer::Options);
-                OE_OPTION_LAYER(FeatureSource, controlSet);
+                OE_OPTION_LAYER(FeatureSource, controlVectors);
                 OE_OPTION_REFPTR(BiomeCatalog, biomeCatalog);
                 virtual Config getConfig() const;
             private:

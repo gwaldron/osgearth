@@ -304,16 +304,10 @@ ImageUtils::resizeImage(const osg::Image* input,
 
 bool
 ImageUtils::flattenImage(const osg::Image* input,
-                         std::vector<osg::ref_ptr<const osg::Image> >& output)
+                         std::vector<osg::ref_ptr<osg::Image> >& output)
 {
-    if (input == 0L)
+    if (input == 0L || input->r() < 2)
         return false;
-
-    if ( input->r() == 1 )
-    {
-        output.push_back( input );
-        return true;
-    }
 
     for(int r=0; r<input->r(); ++r)
     {
@@ -872,7 +866,7 @@ ImageUtils::readStream(std::istream& stream, const osgDB::Options* options) {
 osg::Texture2DArray*
 ImageUtils::makeTexture2DArray(osg::Image* image)
 {
-    std::vector< osg::ref_ptr<const osg::Image> > images;
+    std::vector< osg::ref_ptr<osg::Image> > images;
     if (image->r() > 1)
     {
         ImageUtils::flattenImage(image, images);

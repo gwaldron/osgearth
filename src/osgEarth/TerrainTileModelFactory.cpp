@@ -603,10 +603,22 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
     if (compressionMethod.empty())
         compressionMethod = _options.textureCompression().get();
 
+    GLenum pixelFormat = image->getPixelFormat();
+    GLenum internalFormat = image->getInternalTextureFormat();
+
+    // Fix incorrect internal format if necessary
+    if (internalFormat == pixelFormat)
+    {
+        if (pixelFormat == GL_RGB) internalFormat = GL_RGB8;
+        else if (pixelFormat == GL_RGBA) internalFormat = GL_RGBA8;
+        else if (pixelFormat == GL_RG) internalFormat = GL_RG8;
+        else if (pixelFormat == GL_RED) internalFormat = GL_R8;
+    }
+
     if (image->r() == 1)
     {
-        const osg::Image* compressed = ImageUtils::compressImage(image, compressionMethod);
-        const osg::Image* mipmapped = ImageUtils::mipmapImage(compressed);
+        osg::ref_ptr<const osg::Image> compressed = ImageUtils::compressImage(image, compressionMethod);
+        const osg::Image* mipmapped = ImageUtils::mipmapImage(compressed.get());
         tex = new osg::Texture2D(const_cast<osg::Image*>(mipmapped));
         hasMipMaps = mipmapped->isMipmap();
         isCompressed = mipmapped->isCompressed();
@@ -617,14 +629,20 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
 
     else // if (image->r() > 1)
     {
-        std::vector< osg::ref_ptr<const osg::Image> > images;
+        std::vector< osg::ref_ptr<osg::Image> > images;
         ImageUtils::flattenImage(image, images);
+
+        // Make sure we are using a proper sized internal format
+        for(int i=0; i<images.size(); ++i)
+        {
+            images[i]->setInternalTextureFormat(internalFormat);
+        }
         
-        const osg::Image* compressed;
+        osg::ref_ptr<const osg::Image> compressed;
         for(auto& ref : images)
         {
             compressed = ImageUtils::compressImage(ref.get(), compressionMethod);
-            ref = ImageUtils::mipmapImage(compressed);
+            ref = const_cast<osg::Image*>(ImageUtils::mipmapImage(compressed.get()));
 
             if (layer->getCompressionMethod() == "gpu" && !compressed->isCompressed())
                 tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
@@ -635,25 +653,13 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
 
         osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
 
-        tex2dArray->setTextureDepth(images.size());
+        tex2dArray->setTextureSize(image[0].s(), image[0].t(), images.size());
         tex2dArray->setInternalFormat(images[0]->getInternalTextureFormat());
         tex2dArray->setSourceFormat(images[0]->getPixelFormat());
         for (int i = 0; i < (int)images.size(); ++i)
             tex2dArray->setImage(i, const_cast<osg::Image*>(images[i].get()));
 
         tex = tex2dArray;
-    }
-
-    if (!isCompressed)
-    {
-        // Make sure we are using a proper sized internal format
-        if (tex->getImage(0)->getInternalTextureFormat() == tex->getImage(0)->getPixelFormat())
-        {
-            if (tex->getImage(0)->getPixelFormat() == GL_RGB) tex->setInternalFormat(GL_RGB8);
-            else if (tex->getImage(0)->getPixelFormat() == GL_RGBA) tex->setInternalFormat(GL_RGBA8);
-            else if (tex->getImage(0)->getPixelFormat() == GL_RG) tex->setInternalFormat(GL_RG8);
-            else if (tex->getImage(0)->getPixelFormat() == GL_RED) tex->setInternalFormat(GL_R8);
-        }
     }
 
     tex->setDataVariance(osg::Object::STATIC);

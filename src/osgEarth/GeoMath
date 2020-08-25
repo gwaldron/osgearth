@@ -55,13 +55,13 @@ namespace osgEarth
                                double radius = osg::WGS_84_RADIUS_EQUATOR);
 
         /**
-         *Computes the distance covered by the given path in meters using the Haversine formula
+         *Computes the ground distance covered by the given path in meters using the Haversine formula
          *Assumes the points in Lon, Lat in degrees
          */
         static double distance(const std::vector< osg::Vec3d > &points, double radius = osg::WGS_84_RADIUS_EQUATOR);
 
         /**
-         * Computes the distance between two points, in meters.
+         * Computes the ground distance between two points, in meters.
          */
         static double distance(const osg::Vec3d& p1, const osg::Vec3d& p2, const SpatialReference* srs);
             

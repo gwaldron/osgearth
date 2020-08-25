@@ -4,9 +4,6 @@ Demonstrates the simplest possible use of the GDAL layer to load a GeoTIFF image
 -->
 
 <map>
-    <options>
-        <terrain min_tile_range_factor="3"/>
-    </options>
     <GDALImage name="World GeoTIFF">
         <url>../data/world.tif</url>
     </GDALImage>

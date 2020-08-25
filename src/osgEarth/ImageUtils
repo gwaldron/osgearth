@@ -141,13 +141,12 @@ namespace osgEarth { namespace Util
 
         /**
          * For each "layer" in the input image (each bitmap in the "r" dimension),
-         * create a new, separate image with r=1. If the input image is r=1, it is
-         * simply placed onto the output vector (no copy).
-         * Returns true upon sucess, false upon failure
+         * create a new, separate image with r=1.
+         * Returns true upon sucess, false upon failure or if r < 2
          */
         static bool flattenImage(
             const osg::Image* image,
-            std::vector<osg::ref_ptr<const osg::Image> >& output);
+            std::vector<osg::ref_ptr<osg::Image> >& output);
 
         /**
          * Gets whether the input image's dimensions are powers of 2.

@@ -259,6 +259,12 @@ namespace osgEarth
         return x - floor(x);
     }
 
+    template<typename T>
+    inline T mix(const T& a, const T& b, float c)
+    {
+        return a * (1.0 - c) + b * c;
+    }
+
     // Newton-Raphson solver
     template<typename Func, typename FuncDeriv>
     double solve(Func func, FuncDeriv deriv, double guess, double tolerance, bool& valid, int maxIterations = 16)

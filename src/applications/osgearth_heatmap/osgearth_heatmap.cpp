@@ -192,6 +192,7 @@ int usage(const char* name)
         << "\n    --max-level [level]                 : The maximum zoom level to generate map image layer, higher levels take longer"
         << "\n    --max-heat [maxHeat]                : The maximum heat value to scale the color ramp to."
         << "\n    --buffer [buffer]                   : The buffer size used to create neighboring tiles.  Default 30."
+        << "\n    --list-color-schemes                : Lists all available color schemes"
         << "\n    --color-scheme [color-scheme]       : The color scheme to use."
         << "\n    --osg-options [OSG options string]  : options to pass to OSG readers/writers"
         << "\n    --out [prop_name] [prop_value]      : set an output property"
@@ -365,6 +366,14 @@ main(int argc, char** argv)
     // help?
     if (arguments.read("--help"))
         return usage(argv[0]);
+
+    if (arguments.read("--list-color-schemes"))
+    {
+        for (auto& scheme : g_schemes) {
+            std::cout << "  " << scheme.first << std::endl;
+        }
+        return 0;
+    }
 
     bool weighted = false;
 

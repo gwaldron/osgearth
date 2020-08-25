@@ -341,7 +341,8 @@ NormalMapGenerator::createNormalMap(
                         fabs(points[p + 1].z() - points[p + 0].z()) +
                         fabs(points[p + 2].z() - points[p + 1].z()) +
                         fabs(points[p + 3].z() - points[p + 2].z()));
-                    riPixel.r() /= dy;
+                    riPixel.r() = clamp(riPixel.r() / (float)dy, 0.0f, 1.0f);
+                    riPixel.r() = harden(harden(riPixel.r()));
                 }
             }
             else

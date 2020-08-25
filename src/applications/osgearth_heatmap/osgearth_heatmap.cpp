@@ -220,7 +220,7 @@ inline void addPoint(double lon, double lat, float weight)
 {
     for (unsigned int level = minLevel; level <= maxLevel; ++level)
     {
-        TileKey key = wgs84->createTileKey(lon, lat, maxLevel);
+        TileKey key = wgs84->createTileKey(lon, lat, level);
 
         GeoExtent extent = key.getExtent();
 

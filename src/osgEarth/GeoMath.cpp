@@ -57,7 +57,8 @@ GeoMath::distance(const osg::Vec3d& p1, const osg::Vec3d& p2, const SpatialRefer
 {
     if ( srs == 0L || srs->isProjected() )
     {
-        return (p2-p1).length();
+        double dx = p2.x() - p1.x(), dy = p2.y() - p1.y();
+        return sqrt(dx*dx + dy*dy);
     }
     else
     {

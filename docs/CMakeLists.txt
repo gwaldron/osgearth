@@ -69,7 +69,6 @@ set( DOCS_REFERENCES_DRIVERS_TILE
     source/references/drivers/tile/tileservice.rst
     source/references/drivers/tile/tms.rst
     source/references/drivers/tile/vpb.rst
-    source/references/drivers/tile/wcs.rst
     source/references/drivers/tile/wms.rst
     source/references/drivers/tile/xyz.rst
 )

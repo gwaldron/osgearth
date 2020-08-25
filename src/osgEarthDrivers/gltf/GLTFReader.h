@@ -187,9 +187,14 @@ public:
     osg::Node* makeNodeFromModel(const tinygltf::Model &model, const Env& env) const
     {
         NodeBuilder builder(this, model, env);
-        // Rotate y-up to z-up
+        bool zUp = env.readOptions && env.readOptions->getOptionString().find("gltfZUp") != std::string::npos;
+
+        // Rotate y-up to z-up if necessary
         osg::MatrixTransform* transform = new osg::MatrixTransform;
-        transform->setMatrix(osg::Matrixd::rotate(osg::Vec3d(0.0, 1.0, 0.0), osg::Vec3d(0.0, 0.0, 1.0)));
+        if (!zUp)
+        {
+            transform->setMatrix(osg::Matrixd::rotate(osg::Vec3d(0.0, 1.0, 0.0), osg::Vec3d(0.0, 0.0, 1.0)));
+        }
 
         for (unsigned int i = 0; i < model.scenes.size(); i++)
         {

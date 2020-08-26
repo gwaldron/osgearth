@@ -7,7 +7,8 @@ osgearth_toc terroir.earth ^
     --uniform depth 0.01 1.0 ^
     --uniform oe_sky_exposure 4.5 2.0 ^
     --uniform snow 0 1 ^
+    --uniform oe_gc_sse 1000 50 ^
     --sky ^
     --vfov 60 ^
-    --samples 1 ^
+    --samples 4 ^
     %*

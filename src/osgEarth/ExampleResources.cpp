@@ -169,7 +169,10 @@ MouseCoordsControlFactory::create(MapNode*         mapNode,
     readout->setHorizAlign( Control::ALIGN_RIGHT );
     readout->setVertAlign( Control::ALIGN_BOTTOM );
 
-    Formatter* formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES);
+    Formatter* formatter = nullptr;
+    if (mapNode->getMapSRS()->isGeographic())
+        formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES);
+
     MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
     mcTool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
     view->addEventHandler( mcTool );
@@ -528,7 +531,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
         readout->setHorizAlign( Control::ALIGN_RIGHT );
         readout->setVertAlign( Control::ALIGN_BOTTOM );
     
-        Formatter* formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES); //DEGREES_MINUTES_SECONDS_TERSE);    
+        Formatter* formatter = nullptr;
+        if (mapNode->getMapSRS()->isGeographic())
+            formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES);
         MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
         mcTool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
         view->addEventHandler( mcTool );

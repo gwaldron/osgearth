@@ -68,7 +68,7 @@ namespace osgEarth
         }
 
         //! open the layer pointed to in the reference and return a status code
-        Status open(const osgDB::Options* readOptions) //const optional<TypedOptions>& embeddedOptions, const osgDB::Options* readOptions)
+        Status open(const osgDB::Options* readOptions)
         {
             if (_embeddedOptions.isSet())
             {
@@ -93,7 +93,7 @@ namespace osgEarth
                     return layerStatus;
                 }
             }
-            return _layer.valid() ? _layer->getStatus() : Status(Status::ResourceUnavailable);
+            return Status::OK(); // _layer.valid() ? _layer->getStatus() : Status(Status::ResourceUnavailable);
         }
 
         void close()

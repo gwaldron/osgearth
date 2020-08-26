@@ -1,11 +1,16 @@
 <map>
     <libraries>osgEarthProcedural</libraries>
-    
+
     <options>
-        <terrain progressive="true" cast_shadows="true"/>
-        <cache type="filesystem" path="cache"/>
+        <terrain 
+            progressive="false" 
+            cast_shadows="true"
+            priority_scale="1.5" />
+        <cache 
+            type="filesystem"
+            path="cache" />
     </options>
-    
+
     <xi:include href="land_cover_dictionary.xml"/>
     <xi:include href="copernicus_land_cover.xml"/>
 
@@ -24,18 +29,18 @@
         <category>trees</category>
         <cast_shadows>true</cast_shadows>
         <biomes_layer>Biomes</biomes_layer>
-        <mask_layer>OSM Features</mask_layer>
+        <mask_layer>OSM MASK</mask_layer>
     </GroundCover>
 
     <Grass name="Grass" max_range="100" max_sse="35" enabled="true">
         <category>grass</category>
         <spacing>1.0</spacing>
-        <mask_layer>OSM Features</mask_layer>
+        <mask_layer>OSM MASK</mask_layer>
     </Grass>
 
     <Wind name="Breeze">
         <winds>
-            <wind type="directional" direction="1,0" speed="20 kts"/>
+            <wind type="directional" direction="1,0" speed="8 kts"/>
         </winds>
     </Wind>
 
@@ -58,7 +63,7 @@
             <mapping class="tundra"    density="0.1" moisture="1.0" rugged="0.6" temperature="0.5" />
             <mapping class="no-data"   density="0.0" moisture="0.0" rugged="0.0" temperature="0.5" />
         </landcover_mappings>
-        
+
         <comment>to support the debug layers below</comment>
         <shared_sampler>LIFEMAP_TEX</shared_sampler>
         <shared_matrix>LIFEMAP_MAT</shared_matrix>
@@ -139,18 +144,13 @@
             ]]>
         </shader>
     </tmsimage>
-    
-    <!--
-    <xi:include href="osm_features.xml"/>
-    -->
 
-    <!--
-    <xi:include href="osm_mask.xml"/>
+    <xi:include comment="mask" href="osm_features.xml"/>
+
     <xi:include href="osm_water.xml"/>
     <xi:include href="osm_roads.xml"/>
     <xi:include href="osm_buildings.xml"/>
-    -->
-    
+
     <TMSImage name="ReadyMap 15m Imagery" enabled="true" min_range="7500" attenuation_range="6000">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>

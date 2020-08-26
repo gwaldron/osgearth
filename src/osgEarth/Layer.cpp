@@ -191,12 +191,19 @@ Layer::getCacheID() const
         // remove non-data properties.
         hashConf.remove("name");
         hashConf.remove("enabled");
+        hashConf.remove("visible");
         hashConf.remove("cacheid");
+        hashConf.remove("cache_id");
         hashConf.remove("cache_only");
         hashConf.remove("cache_enabled");
         hashConf.remove("cache_policy");
-        hashConf.remove("visible");
         hashConf.remove("l2_cache_size");
+        hashConf.remove("attribution");
+        hashConf.remove("shader");
+        hashConf.remove("shaders");
+        hashConf.remove("shader_define");
+        hashConf.remove("terrain");
+        hashConf.remove("proxy");
 
         unsigned hash = osgEarth::hashString(hashConf.toJSON());
         std::stringstream buf;

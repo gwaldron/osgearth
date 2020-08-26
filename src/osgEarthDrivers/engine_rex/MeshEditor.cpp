@@ -39,12 +39,13 @@ MeshEditor::addEditGeometry(MeshEditLayer::EditVector *geometry)
 
     if ( geometry )
     {
+        osg::ref_ptr<MeshEditLayer::EditVector> ev = new MeshEditLayer::EditVector;
+        osg::Vec3d min_ndc, max_ndc;
         for (auto geomString : *geometry)
         {
             // Calculate the axis-aligned bounding box of the boundary polygon:
             osg::BoundingBoxd bbox = polygonBBox2d(*geomString);
             // convert that bounding box to "unit" space (0..1 across the tile)
-            osg::Vec3d min_ndc, max_ndc;
             geoLocator.mapToUnit(bbox._min, min_ndc);
             geoLocator.mapToUnit(bbox._max, max_ndc);
 
@@ -61,8 +62,12 @@ MeshEditor::addEditGeometry(MeshEditLayer::EditVector *geometry)
                 _ndcMax.x() = std::max(_ndcMax.x(), max_ndc.x());
                 _ndcMax.y() = std::max(_ndcMax.y(), max_ndc.y());
                 // and add this mask to the list.
-                _edits.push_back(EditGeometry(geometry, min_ndc, max_ndc));
+                ev->push_back(geomString);
             }
+        }
+        if (!ev->empty())
+        {
+            _edits.push_back(EditGeometry(ev, min_ndc, max_ndc));
         }
     }
 }

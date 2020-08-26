@@ -219,7 +219,7 @@ CesiumIonImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
     {
         return _imageLayer->createImage(key, progress);
     }
-    return GeoImage(Status("Invalid image layer"));    
+    return GeoImage(Status("Invalid image layer"));
 }
 
 Config
@@ -296,15 +296,6 @@ CesiumIon3DTilesLayer::openImplementation()
 
     // Clone the read options and if there isn't a ThreadPool create one.
     osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
-
-    osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
-    if (!threadPool.valid())
-    {
-        unsigned int numThreads = 2;
-        _threadPool = new ThreadPool(className(), numThreads);
-        _threadPool->put(readOptions.get());
-    }
-
     _tilesetNode = new ThreeDTilesetNode(tileset, ionResource._acceptHeader, getSceneGraphCallbacks(), readOptions.get());
     _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());
 

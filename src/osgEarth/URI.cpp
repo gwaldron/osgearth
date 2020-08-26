@@ -28,6 +28,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
 #include <osgUtil/IncrementalCompileOperation>
+#include <tbb/task.h>
 
 #define LC "[URI] "
 
@@ -42,10 +43,10 @@ using namespace osgEarth::Threading;
 
 namespace
 {
-    class LoadNodeOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
+    class LoadNodeTask : public tbb::task
     {
     public:
-        LoadNodeOperation(const URI& uri, const osgDB::Options* options, Promise<osg::Node> promise) :
+        LoadNodeTask(const URI& uri, const osgDB::Options* options, Promise<osg::Node> promise) :
             _uri(uri),
             _promise(promise),
             _options(options),
@@ -55,7 +56,7 @@ namespace
             _requestLayer = NetworkMonitor::getRequestLayer();
         }
 
-        void operator()(osg::Object*)
+        virtual tbb::task* execute()
         {
             OE_PROFILING_ZONE_NAMED("loadAsyncNode");
             OE_PROFILING_ZONE_TEXT(_uri.full());
@@ -77,6 +78,7 @@ namespace
                         OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
 
                     // If we have an ICO, wait for it to be compiled
+                    /*
                     if (ico.valid())
                     {
                         OE_PROFILING_ZONE_NAMED("ICO compile");
@@ -102,12 +104,14 @@ namespace
                         }
 
                     }
+                    */
                 }
-
                 _promise.resolve(result.getNode());
             }
+            return nullptr;
         }
 
+        /*
         bool compileCompleted(osgUtil::IncrementalCompileOperation::CompileSet* compileSet)
         {
             // Clear the _compileSet to avoid keeping a circular reference to the content.
@@ -116,6 +120,7 @@ namespace
             _block.set();
             return true;
         }
+        */
 
         Promise<osg::Node> _promise;
         osg::ref_ptr<const osgDB::Options> _options;
@@ -793,29 +798,9 @@ Future<osg::Node>
 URI::readNodeAsync(const osgDB::Options* dbOptions,
                    ProgressCallback* progress) const
 {
-    osg::ref_ptr<ThreadPool> threadPool;
-    if (dbOptions)
-    {
-        threadPool = ThreadPool::get(dbOptions);
-    }
-
     Promise<osg::Node> promise;
-
-    osg::ref_ptr<osg::Operation> operation = new LoadNodeOperation(*this, dbOptions, promise);
-
-    if (operation.valid())
-    {
-        if (threadPool.valid())
-        {
-            threadPool->run(operation.get());
-        }
-        else
-        {
-            OE_DEBUG << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
-            operation->operator()(0);
-        }
-    }
-
+    auto task = new (tbb::task::allocate_root()) LoadNodeTask(*this, dbOptions, promise);
+    tbb::task::enqueue(*task);
     return promise.getFuture();
 }
 

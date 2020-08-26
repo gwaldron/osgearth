@@ -30,6 +30,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/PolygonMode>
 #include <osgEarth/LineDrawable>
+#include <tbb/task.h>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -76,13 +77,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
             // Clone the read options and if there isn't a ThreadPool create one.
             osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
-            osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
-            if (!threadPool.valid())
-            {
-                unsigned int numThreads = 2;
-                threadPool = new ThreadPool("osgEarth.3DTiles", numThreads);
-                threadPool->put(readOptions.get());
-            }
 
             osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, "", NULL, readOptions.get());
             node->setMaximumScreenSpaceError(15.0f);
@@ -477,10 +471,10 @@ randomColor()
 
 namespace
 {
-    class LoadTilesetOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
+    class LoadTilesetTask : public tbb::task
     {
     public:
-        LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options, osgEarth::Threading::Promise<osg::Node> promise) :
+        LoadTilesetTask(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options, osgEarth::Threading::Promise<osg::Node> promise) :
             _uri(uri),
             _promise(promise),
             _options(options),
@@ -490,7 +484,7 @@ namespace
             _requestLayer = NetworkMonitor::getRequestLayer();
         }
 
-        void operator()(osg::Object*)
+        virtual tbb::task* execute()
         {
             NetworkMonitor::ScopedRequestLayer layerRequest(_requestLayer);
             if (!_promise.isAbandoned())
@@ -520,6 +514,7 @@ namespace
                         {
                             ImageUtils::compressAndMipmapTextures(tilesetNode.get());
 
+                            /*
                             if (ico.valid())
                             {
                                 OE_PROFILING_ZONE_NAMED("ICO compile");
@@ -548,13 +543,16 @@ namespace
                                     }
                                 }
                             }
+                            */
                         }
                     }
                 }
                 _promise.resolve(tilesetNode.get());
             }
+            return nullptr;
         }
 
+        /*
         bool compileCompleted(osgUtil::IncrementalCompileOperation::CompileSet* compileSet)
         {
             // Clear the _compileSet to avoid keeping a circular reference to the content.
@@ -563,6 +561,7 @@ namespace
             _block.set();
             return true;
         }
+        */
 
         osgEarth::Threading::Promise<osg::Node> _promise;
         osg::ref_ptr< osgDB::Options > _options;
@@ -575,29 +574,9 @@ namespace
 
     Threading::Future<osg::Node> readTilesetAsync(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options)
     {
-        osg::ref_ptr<ThreadPool> threadPool;
-        if (options)
-        {
-            threadPool = ThreadPool::get(options);
-        }
-
         Threading::Promise<osg::Node> promise;
-
-        osg::ref_ptr< osg::Operation > operation = new LoadTilesetOperation(parentTileset, uri, options, promise);
-
-        if (operation.valid())
-        {
-            if (threadPool.valid())
-            {
-                threadPool->run(operation.get());
-            }
-            else
-            {
-                OE_WARN << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
-                operation->operator()(0);
-            }
-        }
-
+        auto task = new (tbb::task::allocate_root()) LoadTilesetTask(parentTileset, uri, options, promise);
+        tbb::task::enqueue(*task);
         return promise.getFuture();
     }
 }

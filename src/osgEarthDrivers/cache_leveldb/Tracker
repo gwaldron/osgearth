@@ -20,7 +20,7 @@
 #define OSGEARTH_DRIVER_CACHE_LEVELDB_TRACKER 1
 
 #include "LevelDBCacheOptions"
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osg/Referenced>

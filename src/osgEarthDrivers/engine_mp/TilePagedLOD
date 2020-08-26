@@ -25,7 +25,7 @@
 #include "Common"
 #include "TileNodeRegistry"
 #include <osg/PagedLOD>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/Progress>
 #include <osgEarth/ResourceReleaser>
 

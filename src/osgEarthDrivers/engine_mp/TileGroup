@@ -26,7 +26,7 @@
 #include "TileNode"
 #include "TileNodeRegistry"
 #include <osg/Group>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/ResourceReleaser>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine

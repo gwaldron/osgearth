@@ -22,7 +22,7 @@
 #include <osgDB/FileUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarthUtil/Ocean>
 
 #include <osgEarthTriton/TritonOptions>

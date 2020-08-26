@@ -50,10 +50,11 @@ GDALDEMLayer::Options::getConfig() const
     Config conf = ImageLayer::Options::getConfig();
     elevationLayer().set(conf, "layer");
     conf.set("processing", processing());
-    conf.set("altitude", altitude());
+    conf.set("light_altitude", lightAltitude());
     conf.set("azimuth", azimuth());
     conf.set("combined", combined());
     conf.set("multidirectional", multidirectional());
+    conf.set("alpha", alpha());
     conf.set("color_filename", color_filename());
     return conf;
 }
@@ -64,10 +65,11 @@ GDALDEMLayer::Options::fromConfig(const Config& conf)
     processing().init("hillshade");
     elevationLayer().get(conf, "layer");
     conf.get("processing", processing());
-    conf.get("altitude", altitude());
+    conf.get("light_altitude", lightAltitude());
     conf.get("azimuth", azimuth());
     conf.get("combined", combined());
     conf.get("multidirectional", multidirectional());
+    conf.get("alpha", alpha());
     conf.get("color_filename", color_filename());
 }
 
@@ -78,7 +80,10 @@ GDALDEMLayer::setElevationLayer(ElevationLayer* elevationLayer)
 {
     if (getElevationLayer() != elevationLayer)
     {
+        bool wasOpen = isOpen();
+        if (wasOpen) close();
         options().elevationLayer().setLayer(elevationLayer);
+        if (wasOpen) open();
     }
 }
 
@@ -86,6 +91,90 @@ ElevationLayer*
 GDALDEMLayer::getElevationLayer() const
 {
     return options().elevationLayer().getLayer();
+}
+
+void
+GDALDEMLayer::setProcessing(const std::string& value)
+{
+    setOptionThatRequiresReopen(options().processing(), value);
+}
+
+const std::string&
+GDALDEMLayer::getProcessing() const
+{
+    return options().processing().get();
+}
+
+void
+GDALDEMLayer::setAzimuth(const float& value)
+{
+    setOptionThatRequiresReopen(options().azimuth(), value);
+}
+
+float
+GDALDEMLayer::getAzimuth() const
+{
+    return options().azimuth().get();
+}
+
+void
+GDALDEMLayer::setLightAltitude(const float& value)
+{
+    setOptionThatRequiresReopen(options().lightAltitude(), value);
+}
+
+float
+GDALDEMLayer::getLightAltitude() const
+{
+    return options().lightAltitude().get();
+}
+
+void
+GDALDEMLayer::setMultidirectional(const bool& value)
+{
+    setOptionThatRequiresReopen(options().multidirectional(), value);
+}
+
+bool
+GDALDEMLayer::getMultidirectional() const
+{
+    return options().multidirectional().get();
+}
+
+void
+GDALDEMLayer::setCombined(const bool& value)
+{
+    setOptionThatRequiresReopen(options().combined(), value);
+}
+
+bool
+GDALDEMLayer::getCombined() const
+{
+    return options().combined().get();
+}
+
+void
+GDALDEMLayer::setAlpha(const bool& value)
+{
+    setOptionThatRequiresReopen(options().alpha(), value);
+}
+
+bool
+GDALDEMLayer::getAlpha() const
+{
+    return options().alpha().get();
+}
+
+void
+GDALDEMLayer::setColorFilename(const URI& value)
+{
+  setOptionThatRequiresReopen(options().color_filename(), value);
+}
+
+const URI&
+GDALDEMLayer::getColorFilename() const
+{
+  return options().color_filename().get();
 }
 
 void
@@ -349,10 +438,10 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
             papsz = CSLAddString(papsz, arg.c_str());
         }
 
-        if (options().altitude().isSet())
+        if (options().lightAltitude().isSet())
         {
             papsz = CSLAddString(papsz, "-alt");
-            std::string arg = Stringify() << *options().altitude();
+            std::string arg = Stringify() << *options().lightAltitude();
             papsz = CSLAddString(papsz, arg.c_str());
         }
 
@@ -366,6 +455,10 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
             papsz = CSLAddString(papsz, "-combined");
         }
 
+        if (options().alpha().isSet())
+        {
+            papsz = CSLAddString(papsz, "-alpha");
+        }
 
         GDALDEMProcessingOptions* psOptions = GDALDEMProcessingOptionsNew(papsz, NULL);
 

@@ -39,9 +39,10 @@ namespace osgEarth
             OE_OPTION_LAYER(ElevationLayer, elevationLayer);
             OE_OPTION(std::string, processing);
             OE_OPTION(float, azimuth);
-            OE_OPTION(float, altitude);
+            OE_OPTION(float, lightAltitude);
             OE_OPTION(bool, multidirectional);
             OE_OPTION(bool, combined);
+            OE_OPTION(bool, alpha);
             OE_OPTION(URI, color_filename);
             virtual Config getConfig() const;
         private:
@@ -57,22 +58,31 @@ namespace osgEarth
         void setElevationLayer(ElevationLayer* layer);
         ElevationLayer* getElevationLayer() const;
 
-        //! Processing option
+        //! Processing option.  Depends on GDAL version; typical options: hillshade; slope; aspect; color-relief; TRI; TPI; roughness
         void setProcessing(const std::string& value);
         const std::string& getProcessing() const;
 
+        //! Azimuth of the light, in degrees. 0 if it comes from the top of the raster, 90 from the east; typically 315; useful only for hillshade processing.
         void setAzimuth(const float& value);
         float getAzimuth() const;
 
-        void setAltitude(const float& value);
-        float getAltitude() const;
+        //! Altitude of the light, in degrees. 90 if the light comes from above the DEM, 0 if it is raking light; for hillshade processing
+        void setLightAltitude(const float& value);
+        float getLightAltitude() const;
 
+        //! Multidirectional shading, a combination of hillshading illuminated from 225 deg, 270 deg, 315 deg, and 360 deg azimuth; useful only for hillshade processing.
         void setMultidirectional(const bool& value);
-        float getMultidirectional() const;
+        bool getMultidirectional() const;
 
+        //! Combined shading, a combination of slope and oblique shading; useful only for hillshade processing.
         void setCombined(const bool& value);
-        float getCombined() const;
+        bool getCombined() const;
 
+        //! Color output supports alpha; useful only for color-relief processing.
+        void setAlpha(const bool& value);
+        bool getAlpha() const;
+
+        //! Color text file containing lines of format "elevation_value red green blue [alpha]"; useful only for color-relief processing.
         void setColorFilename(const URI& value);
         const URI& getColorFilename() const;
 

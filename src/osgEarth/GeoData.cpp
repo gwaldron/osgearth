@@ -1670,7 +1670,7 @@ GeoExtent(extent)
 
 DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel) :
 GeoExtent(extent),
-_maxLevel( 25 )
+_maxLevel( 19u )
 {
     _minLevel = minLevel;
 }
@@ -1686,7 +1686,7 @@ _maxLevel( 0 )
 DataExtent::DataExtent(const GeoExtent& extent ) :
 GeoExtent(extent),
 _minLevel( 0 ),
-_maxLevel( 25 )
+_maxLevel( 19u )
 {
     //nop
 }

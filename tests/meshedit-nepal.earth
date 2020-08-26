@@ -20,6 +20,20 @@
     <features>ridges</features>
   </FeatureMeshEdit>
 
+  <DebugImage/>
+
+<FeatureImage name="ridge-debugging" min_level="13">
+   <styles>
+            <style type="text/css">
+                default {
+                       stroke:        #ffff00;
+                    stroke-width:  50m;
+                }
+            </style>
+        </styles>
+  <features>ridges</features>
+</FeatureImage>
+
   <xi:include href="viewpoints.xml"/>
   <viewpoints>
     <viewpoint name="foo">

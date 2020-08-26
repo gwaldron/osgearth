@@ -304,16 +304,10 @@ ImageUtils::resizeImage(const osg::Image* input,
 
 bool
 ImageUtils::flattenImage(const osg::Image* input,
-                         std::vector<osg::ref_ptr<const osg::Image> >& output)
+                         std::vector<osg::ref_ptr<osg::Image> >& output)
 {
-    if (input == 0L)
+    if (input == 0L || input->r() < 2)
         return false;
-
-    if ( input->r() == 1 )
-    {
-        output.push_back( input );
-        return true;
-    }
 
     for(int r=0; r<input->r(); ++r)
     {
@@ -754,6 +748,40 @@ ImageUtils::compressImageInPlace(
     }
 }
 
+namespace
+{
+    struct CompressAndMipmapTextures : public TextureAndImageVisitor
+    {
+        void apply(osg::Texture& texture)
+        {
+            for (unsigned i = 0; i < texture.getNumImages(); ++i)
+            {
+                // Only process textures with valid images.
+                osg::ref_ptr< osg::Image > image = texture.getImage(i);
+                if (image.valid())
+                {
+                    ImageUtils::compressImageInPlace(image.get());
+                    ImageUtils::mipmapImageInPlace(image.get());
+                }
+                else
+                {
+                    OE_WARN << "Skipping null image in CompressAndMipmapTextures" << std::endl;
+                }
+            }
+        }
+    };
+}
+
+void
+ImageUtils::compressAndMipmapTextures(osg::Node* node)
+{
+    if (node)
+    {
+        CompressAndMipmapTextures visitor;
+        node->accept(visitor);
+    }
+}
+
 osgDB::ReaderWriter*
 ImageUtils::getReaderWriterForStream(std::istream& stream) {
     // Modified from https://oroboro.com/image-format-magic-bytes/
@@ -838,7 +866,7 @@ ImageUtils::readStream(std::istream& stream, const osgDB::Options* options) {
 osg::Texture2DArray*
 ImageUtils::makeTexture2DArray(osg::Image* image)
 {
-    std::vector< osg::ref_ptr<const osg::Image> > images;
+    std::vector< osg::ref_ptr<osg::Image> > images;
     if (image->r() > 1)
     {
         ImageUtils::flattenImage(image, images);

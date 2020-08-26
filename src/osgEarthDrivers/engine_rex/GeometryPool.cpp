@@ -421,7 +421,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     if (editor && editor->hasEdits())
     {
-        editor->createTileMesh(geom, tileSize);
+        editor->createTileMesh(geom.get(), tileSize);
         return geom.release();
     }
 

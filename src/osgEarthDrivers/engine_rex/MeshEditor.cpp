@@ -196,7 +196,7 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
             }
         }
     }
-    sharedGeom->setDrawElements(primSet);
+    sharedGeom->setDrawElements(primSet.get());
     return true;
 }
 

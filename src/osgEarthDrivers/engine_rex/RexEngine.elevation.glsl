@@ -32,7 +32,7 @@ void oe_rex_applyElevation(inout vec4 vertex)
         ((oe_terrain_vertexMarker & VERTEX_MARKER_BOUNDARY) != 0) ||
         ((oe_terrain_vertexMarker & VERTEX_MARKER_DISCARD)  != 0);
 
-    float elev = ignore ? 0.0f : oe_terrain_getElevation(oe_layer_tilec.st);
+    float elev = ignore ? 0.0 : oe_terrain_getElevation(oe_layer_tilec.st);
 
     vertex.xyz += oe_UpVectorView * elev;
 #endif

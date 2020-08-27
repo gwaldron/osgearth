@@ -29,6 +29,7 @@
 #include <unordered_map>
 #include <queue>
 #include <thread>
+#include <future>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
 
@@ -579,6 +580,94 @@ namespace osgEarth { namespace Threading
         {
             setThreadName(_base);
         }
+    };
+
+    //! Job that you can schedule with the JobScheduler.
+    //! The template parameter is the return value from the job.
+    template<typename T>
+    class Job
+    {
+    public:
+        template<class FUNC, class... ARGS>
+        Job(const std::string& name, FUNC&& func, ARGS&&... args) :
+            _name(name),
+            _future(std::async(
+                std::launch::deferred,
+                func, args...))
+        { }
+
+        bool isReady() const {
+            return
+                !_future.valid() ||
+                _future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+        }
+
+        const std::string& getName() const {
+            return _name;
+        }
+
+        const T& get() const {
+            return _future.get();
+        }
+
+    private:
+        std::string _name;
+        std::shared_future<T> _future;
+
+        friend class JobScheduler;
+    };
+
+    //! Schedules asynchronous jobs on a thread pool.
+    class OSGEARTH_EXPORT JobScheduler : public osg::Referenced
+    {
+    public:
+        //! Allocate a new schedule with "numThreads" threads
+        //! is the thread pool.
+        JobScheduler(unsigned numThreads = 2u);
+
+        //! Destroy
+        ~JobScheduler();
+
+        //! Schedule a job (on the global singleton)
+        template<typename T>
+        static void schedule(Job<T> job) {
+            singleton()->scheduleJob(job);
+        }
+
+    private:
+
+        //! Access the global singleton job scheduler
+        static JobScheduler* singleton();
+
+        void startThreads();
+
+        void stopThreads();
+
+        template<typename T>
+        void scheduleJob(Job<T> job) {
+            std::unique_lock<Mutex> lock(_queueMutex);
+            _queue.emplace_back([job] {
+                if (job._future.valid())
+                    job._future.wait();
+                });
+            _block.notify_all();
+        }
+
+        // pool name
+        std::string _name;
+        // queued operations to run asynchronously
+        typedef std::deque<std::function<void()>> Queue;
+        Queue _queue;
+        // protect access to the queue
+        Mutex _queueMutex;
+        // number of concurrent threads in the pool
+        unsigned _numThreads;
+        // thread waiter block
+        std::condition_variable_any _block;
+        // set to true when threads should exit
+        bool _done;
+        // threads in the pool
+        std::vector<std::thread> _threads;
     };
 
 } } // namepsace osgEarth::Threading

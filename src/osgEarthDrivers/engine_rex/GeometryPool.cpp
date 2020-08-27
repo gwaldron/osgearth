@@ -22,6 +22,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TopologyGraph>
 #include <osgEarth/WingedEdgeMesh>
+#include <osgEarth/Metrics>
 #include <osg/Point>
 #include <osgUtil/MeshOptimizers>
 #include <cstdlib> // for getenv
@@ -73,42 +74,39 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
 
     if ( _enabled )
     {
-        // Look it up in the pool:
-        Threading::ScopedMutexLock lock(_geometryMapMutex);
-
         // make our globally shared EBO if we need it
-        if ( !_defaultPrimSet.valid())
         {
-            osg::UIntArray* reorder = 0L;
-#if 0
-            // not ready for prime time
-            _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL, &reorder);
-#endif
-            _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL);
-            _reorder = reorder;
-        }
-
-        bool masking = (maskSet && maskSet->hasMasks()) || (meshEditor && meshEditor->hasEdits());
-
-        GeometryMap::iterator i = _geometryMap.find( geomKey );
-        if ( !masking && i != _geometryMap.end() )
-        {
-            // Found. return it.
-            out = i->second.get();
-        }
-        else
-        {
-            // Not found. Create it.
-            out = createGeometry( tileKey, tileSize, maskSet, meshEditor );
-
-            if (!masking && out.valid())
+            Threading::ScopedMutexLock lock(_geometryMapMutex);
+            if (!_defaultPrimSet.valid())
             {
-                _geometryMap[ geomKey ] = out.get();
+                osg::UIntArray* reorder = 0L;
+                _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL);
+                _reorder = reorder;
             }
+        }
 
-            if ( _debug )
+        // if this tile conatins mask/edit, it's a unique geometry - don't share it.
+        bool isUnique = (maskSet && maskSet->hasMasks()) || (meshEditor && meshEditor->hasEdits());
+
+        if (!isUnique)
+        {
+            Threading::ScopedMutexLock lock(_geometryMapMutex);
+            GeometryMap::iterator i = _geometryMap.find(geomKey);
+            if (i != _geometryMap.end())
             {
-                OE_NOTICE << LC << "Geometry pool size = " << _geometryMap.size() << "\n";
+                // found it:
+                out = i->second.get();
+            }
+        }
+
+        if (!out.valid())
+        {
+            out = createGeometry(tileKey, tileSize, maskSet, meshEditor);
+
+            if (!isUnique)
+            {
+                Threading::ScopedMutexLock lock(_geometryMapMutex);
+                _geometryMap[geomKey] = out.get();
             }
         }
     }
@@ -340,7 +338,9 @@ GeometryPool::createGeometry(const TileKey& tileKey,
                              unsigned       tileSize,
                              MaskGenerator* maskSet,
                              MeshEditor* editor) const
-{    
+{
+    OE_PROFILING_ZONE;
+
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
     GeoPoint centroid;
@@ -421,7 +421,45 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     if (editor && editor->hasEdits())
     {
-        editor->createTileMesh(geom, tileSize);
+        editor->createTileMesh(geom.get(), tileSize);
+
+        // Build a skirt for the edited geometry?
+        if (needsSkirt)
+        {
+            double height = geom->getBound().radius() * _options.heightFieldSkirtRatio().get();
+
+            primSet = geom->getDrawElements();
+            // Construct a node+edge graph out of the masking geometry:
+            osg::ref_ptr<TopologyGraph> graph = TopologyBuilder::create(verts.get(), primSet, tileKey.str());
+
+            // Extract the boundaries (if the topology is discontinuous,
+            // there will be more than one)
+            for (unsigned i = 0; i < graph->getNumBoundaries(); ++i)
+            {
+                TopologyGraph::IndexVector boundary;
+                graph->createBoundary(i, boundary);
+
+                if (boundary.size() >= 3)
+                {
+                    unsigned skirtIndex = verts->size();
+
+                    for (TopologyGraph::IndexVector::const_iterator i = boundary.begin(); i != boundary.end(); ++i)
+                    {
+                        addSkirtDataForIndex((*i)->index(), height);
+                    }
+
+                    // then create the elements:
+                    int i;
+                    for (i = skirtIndex; i < (int)verts->size() - 2; i += 2)
+                    {
+                        addSkirtTriangles(i, i + 2);
+                    }
+
+                    addSkirtTriangles(i, skirtIndex);
+                }
+            }
+        }
+
         return geom.release();
     }
 

@@ -67,7 +67,7 @@ MeshEditor::addEditGeometry(MeshEditLayer::EditVector *geometry)
         }
         if (!ev->empty())
         {
-            _edits.push_back(EditGeometry(ev, min_ndc, max_ndc));
+            _edits.push_back(EditGeometry(ev.get(), min_ndc, max_ndc));
         }
     }
 }
@@ -207,9 +207,7 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
             }
         }
     }
-    osg::ElementBufferObject* ebo = new osg::ElementBufferObject();
-    primSet->setElementBufferObject(ebo);
-    sharedGeom->setDrawElements(primSet);
+    sharedGeom->setDrawElements(primSet.get());
     return true;
 }
 

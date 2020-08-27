@@ -61,13 +61,14 @@ TileNode::TileNode() :
 _loadsInQueue(0u),
 _childrenReady( false ),
 _lastTraversalTime(0.0),
-_lastTraversalFrame(0.0),
+_lastTraversalFrame(0),
 _empty(false),              // an "empty" node exists but has no geometry or children.,
 _imageUpdatesActive(false),
 _doNotExpire(false),
 _revision(0u),
 _mutex("TileNode(OE)"),
-_loadQueue("TileNode LoadQueue(OE)")
+_loadQueue("TileNode LoadQueue(OE)"),
+_createChildAsync(true)
 {
     //nop
 }
@@ -88,8 +89,6 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 {
     if (!context)
         return;
-
-    OE_PROFILING_ZONE;
 
     _context = context;
 
@@ -125,9 +124,9 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 
     // Create the drawable for the terrain surface:
     TileDrawable* surfaceDrawable = new TileDrawable(
-        key, 
+        key,
         geom.get(),
-        options().tileSize().get() );
+        options().tileSize().get());
 
     // Give the tile Drawable access to the render model so it can properly
     // calculate its bounding box and sphere.
@@ -144,7 +143,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     const double m = 65536; //pow(2.0, 16.0);
 
     double x = (double)_key.getTileX();
-    double y = (double)(th - _key.getTileY()-1);
+    double y = (double)(th - _key.getTileY() - 1);
 
     _tileKeyValue.set(
         (float)fmod(x, m),
@@ -156,22 +155,27 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     float range, morphStart, morphEnd;
     context->getSelectionInfo().get(_key, range, morphStart, morphEnd);
 
-    float one_over_end_minus_start = 1.0f/(morphEnd - morphStart);
+    float one_over_end_minus_start = 1.0f / (morphEnd - morphStart);
     _morphConstants.set(morphEnd * one_over_end_minus_start, one_over_end_minus_start);
 
     // Make a tilekey to use for testing whether to subdivide.
-    if (_key.getTileY() <= th/2)
+    if (_key.getTileY() <= th / 2)
         _subdivideTestKey = _key.createChildKey(0);
     else
         _subdivideTestKey = _key.createChildKey(3);
+}
 
+void
+TileNode::initializeData()
+{
     // Initialize the data model by copying the parent's rendering data
     // and scale/biasing the matrices.
+    TileNode* parent = getParentTile();
     if (parent)
     {
         unsigned quadrant = getKey().getQuadrant();
 
-        const RenderBindings& bindings = context->getRenderBindings();
+        const RenderBindings& bindings = _context->getRenderBindings();
 
         for (unsigned p = 0; p < parent->_renderModel._passes.size(); ++p)
         {
@@ -223,14 +227,14 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     }
 
     // register me.
-    context->liveTiles()->add( this );
+    _context->liveTiles()->add( this );
 
     // signal the tile to start loading data:
     refreshAllLayers();
 
     // tell the world.
     OE_DEBUG << LC << "notify (create) key " << getKey().str() << std::endl;
-    context->getEngine()->getTerrain()->notifyTileUpdate(getKey(), this);
+    _context->getEngine()->getTerrain()->notifyTileUpdate(getKey(), this);
 }
 
 osg::BoundingSphere
@@ -490,8 +494,7 @@ TileNode::cull(TerrainCuller* culler)
             if ( !_childrenReady ) // double check inside mutex
             {
                 OE_START_TIMER(createChildren);
-                createChildren( context );
-                _childrenReady = true;
+                _childrenReady = createChildren( context );
 
                 // This means that you cannot start loading data immediately; must wait a frame.
                 canLoadData = false;
@@ -655,28 +658,81 @@ TileNode::traverse(osg::NodeVisitor& nv)
     }
 }
 
-void
+bool
 TileNode::createChildren(EngineContext* context)
 {
-    // NOTE: Ensure that _mutex is locked before calling this function!
-    //OE_WARN << "Creating children for " << _key.str() << std::endl;
-
-    // Create the four child nodes.
-    for(unsigned quadrant=0; quadrant<4; ++quadrant)
+    if (_createChildAsync)
     {
-        TileKey childkey = getKey().createChildKey(quadrant);
+        if (_createChildJobs.empty())
+        {
+            for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
+            {
+                TileKey childkey = getKey().createChildKey(quadrant);
 
-        // Note! There's a chance that the TileNode we want to create here
-        // already exists in the registry as an orphan. We should probably 
-        // check that out and try to re-attach it...?
-        TileNode* node = new TileNode();
+                _createChildJobs.emplace_back(
+                    CreateTileJob(
+                        "create child",
+                        &TileNode::createChild,
+                        this,
+                        childkey,
+                        context));
 
-        // Build the surface geometry:
-        node->create(childkey, this, context );
+                JobScheduler::schedule(_createChildJobs.back());
+            }
+        }
 
-        // Add to the scene graph.
-        addChild( node );
+        else
+        {
+            int numChildrenReady = 0;
+
+            for (int i = 0; i < 4; ++i)
+            {
+                if (_createChildJobs[i].isReady())
+                    ++numChildrenReady;
+            }
+
+            if (numChildrenReady == 4)
+            {
+                for (int i = 0; i < 4; ++i)
+                {
+                    osg::ref_ptr<TileNode> child = _createChildJobs[i].get();
+                    addChild(child);
+                    child->initializeData();
+                }
+
+                _createChildJobs.clear();
+            }
+        }
     }
+
+    else
+    {
+        for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
+        {
+            TileKey childkey = getKey().createChildKey(quadrant);
+            osg::ref_ptr<TileNode> node = createChild(childkey, context);
+            addChild(node.get());
+            node->initializeData();
+        }
+    }
+
+    return _createChildJobs.empty();
+}
+
+osg::ref_ptr<TileNode>
+TileNode::createChild(const TileKey& childkey, EngineContext* context)
+{
+    OE_PROFILING_ZONE;
+
+    // Note! There's a chance that the TileNode we want to create here
+    // already exists in the registry as an orphan. We should probably 
+    // check that out and try to re-attach it...?
+    osg::ref_ptr<TileNode> node = new TileNode();
+
+    // Build the surface geometry:
+    node->create(childkey, this, context);
+
+    return node;
 }
 
 void
@@ -995,31 +1051,31 @@ void TileNode::inheritSharedSampler(int binding)
     ++_revision;
 }
 
-void TileNode::loadChildren()
-{
-    _mutex.lock();
-
-    if ( !_childrenReady )
-    {        
-        // Create the children
-        createChildren( _context.get() );        
-        _childrenReady = true;        
-        int numChildren = getNumChildren();
-        if ( numChildren > 0 )
-        {
-            for(int i=0; i<numChildren; ++i)
-            {
-                TileNode* child = getSubTile(i);
-                if (child)
-                {
-                    // Load the children's data.
-                    child->loadSync();
-                }
-            }
-        }
-    }
-    _mutex.unlock();    
-}
+//void TileNode::loadChildren()
+//{
+//    _mutex.lock();
+//
+//    if ( !_childrenReady )
+//    {        
+//        // Create the children
+//        createChildren( _context.get() );
+//        _childrenReady = true;        
+//        int numChildren = getNumChildren();
+//        if ( numChildren > 0 )
+//        {
+//            for(int i=0; i<numChildren; ++i)
+//            {
+//                TileNode* child = getSubTile(i);
+//                if (child)
+//                {
+//                    // Load the children's data.
+//                    child->loadSync();
+//                }
+//            }
+//        }
+//    }
+//    _mutex.unlock();
+//}
 
 void
 TileNode::refreshSharedSamplers(const RenderBindings& bindings)

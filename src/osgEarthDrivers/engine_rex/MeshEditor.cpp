@@ -174,7 +174,7 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
         {
             texCoords->push_back(osg::Vec3f(unit.x(), unit.y(), VERTEX_MARKER_GRID));
         }
-        unit.z() = 1.0f;
+        unit.z() += 1.0f;
         osg::Vec3d modelPlusOne;
         locator.unitToWorld(unit, modelPlusOne);
         osg::Vec3d normal = (modelPlusOne*world2local) - meshVertex.second.position;

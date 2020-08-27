@@ -567,6 +567,9 @@ RexTerrainEngineNode::dirtyTerrain()
         // Add it to the scene graph
         _terrain->addChild( tileNode );
 
+        // Post-add initialization:
+        tileNode->initializeData();
+
         // And load the tile's data synchronously (only for root tiles)
         tileNode->loadSync();
 

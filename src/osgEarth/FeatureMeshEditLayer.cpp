@@ -88,7 +88,7 @@ FeatureMeshEditLayer::getOrCreateEditGeometry(float heightScale,
 
     if (fs == NULL)
         return 0L;
-    Threading::ScopedMutexLock lock(_geometryMutex);
+
     osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(key, progress);
     if (cursor.valid())
     {

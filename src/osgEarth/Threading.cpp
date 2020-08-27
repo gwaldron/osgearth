@@ -526,3 +526,95 @@ osgEarth::Threading::setThreadName(const std::string& name)
     }
 #endif
 }
+
+
+#undef LC
+#define LC "[JobScheduler] "
+
+JobScheduler*
+JobScheduler::singleton()
+{
+    static osg::ref_ptr<JobScheduler> s_singleton = new JobScheduler();
+    return s_singleton.get();
+}
+
+JobScheduler::JobScheduler(unsigned numThreads) :
+    _name("osgEarth.JobScheduler"),
+    _numThreads(numThreads),
+    _done(false),
+    _queueMutex("JobScheduler")
+{
+    startThreads();
+}
+
+JobScheduler::~JobScheduler()
+{
+    stopThreads();
+}
+
+void
+JobScheduler::startThreads()
+{
+    _done = false;
+
+    for (unsigned i = 0; i < _numThreads; ++i)
+    {
+        _threads.push_back(std::thread([this]
+            {
+                OE_DEBUG << LC << "Thread " << std::this_thread::get_id() << " started." << std::endl;
+
+                OE_THREAD_NAME(this->_name.c_str());
+
+                while (!_done)
+                {
+                    std::function<void()> job;
+                    bool have_job = false;
+                    {
+                        std::unique_lock<Mutex> lock(_queueMutex);
+
+                        //_block.wait_for(lock, std::chrono::seconds(1));
+
+                        _block.wait(lock, [this] {
+                            return _queue.empty() == false || _done == true;
+                            });
+
+                        if (!_queue.empty() && !_done)
+                        {
+                            job = std::move(_queue.front());
+                            have_job = true;
+                            _queue.pop_front();
+                        }
+                    }
+
+                    if (have_job)
+                    {
+                        job();
+                    }
+                }
+                OE_DEBUG << LC << "Thread " << std::this_thread::get_id() << " exiting." << std::endl;
+            }
+        ));
+    }
+}
+
+void JobScheduler::stopThreads()
+{
+    _done = true;
+    _block.notify_all();
+
+    for (unsigned i = 0; i < _numThreads; ++i)
+    {
+        if (_threads[i].joinable())
+        {
+            _threads[i].join();
+        }
+    }
+
+    _threads.clear();
+
+    // Clear out the queue
+    {
+        Threading::ScopedMutexLock lock(_queueMutex);
+        _queue.clear();
+    }
+}

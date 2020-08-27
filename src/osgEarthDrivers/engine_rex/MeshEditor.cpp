@@ -164,6 +164,8 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
     Vec3Ptr texCoords = dynamic_cast<osg::Vec3Array*>(sharedGeom->getTexCoordArray());
     for (auto& meshVertex : wmesh.vertices)
     {
+        if (meshVertex.second.edges.empty())
+            continue;
         meshVertex.second.meshIndex = vertexIndex++;
         verts->push_back(meshVertex.second.position); // convert to Vec3
         // Back to tile unit coords
@@ -174,7 +176,7 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
         {
             texCoords->push_back(osg::Vec3f(unit.x(), unit.y(), VERTEX_MARKER_GRID));
         }
-        unit.z() = 1.0f;
+        unit.z() += 1.0f;
         osg::Vec3d modelPlusOne;
         locator.unitToWorld(unit, modelPlusOne);
         osg::Vec3d normal = (modelPlusOne*world2local) - meshVertex.second.position;
@@ -188,8 +190,12 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
     primSet->reserveElements(wmesh.faces.size() * 3);
     for (auto& face : wmesh.faces)
     {
+        if (!face.edge)
+        {
+            continue;
+        }
         auto faceVerts = wmesh.getFaceVertices(&face);
-        if (faceVerts.size() > 3)
+        if (faceVerts.size() != 3)
         {
             OE_NOTICE << "face with " << faceVerts.size() << " vertices\n";
         }
@@ -201,6 +207,8 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
             }
         }
     }
+    osg::ElementBufferObject* ebo = new osg::ElementBufferObject();
+    primSet->setElementBufferObject(ebo);
     sharedGeom->setDrawElements(primSet);
     return true;
 }

@@ -19,6 +19,8 @@
 
 #include <osgEarth/ECEF>
 
+#include <tbb/parallel_for.h>
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -50,8 +52,12 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
 {
     if (inputSRS==NULL || outputSRS==NULL)
         return false;
-
     const SpatialReference* geocentricSRS = outputSRS->getGeocentricSRS();
+
+    std::mutex g_display_mutex;
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+#if 0
     output->reserve( output->size() + input.size() );
 
     for( std::vector<osg::Vec3d>::const_iterator i = input.begin(); i != input.end(); ++i )
@@ -60,6 +66,24 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
         inputSRS->transform( *i, geocentricSRS, geoc );
         output->push_back( geoc * world2local );
     }
+#else
+    output->resize(output->size() + input.size());
+    tbb::parallel_for(
+        tbb::blocked_range<size_t>(0, input.size(), 50),
+        [=](tbb::blocked_range<size_t> r) {
+        for (size_t i = r.begin(); i != r.end(); ++i)
+        {
+            osg::Vec3d geoc;
+            inputSRS->transform(input[i], geocentricSRS, geoc);
+            (*output)[i] = geoc * world2local;
+        }
+    });
+#endif
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    g_display_mutex.lock();
+    //OE_NOTICE << "Transformed " << input.size() << " points in " << std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count() << " ns" << std::endl;
+    g_display_mutex.unlock();
 
     return true;
 }
@@ -78,7 +102,7 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
 
     const SpatialReference* ecefSRS = outputSRS->getGeocentricSRS();
     out_verts->reserve( out_verts->size() + input.size() );
-    
+
     for( std::vector<osg::Vec3d>::const_iterator i = input.begin(); i != input.end(); ++i )
     {
         osg::Vec3d ecef;
@@ -98,7 +122,7 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
             osg::Vec3f out = (*out_verts)[v+1] - (*out_verts)[v];
             osg::Vec3f right = out ^ up;
             outNormal = right ^ out;
-            
+
             if ( v == 0 )
             {
                 normal = outNormal;

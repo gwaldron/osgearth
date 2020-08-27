@@ -47,6 +47,7 @@
 #include <osgDB/WriteFile>
 #include <osg/Version>
 #include <iterator>
+#include <tbb/parallel_for.h>
 
 #define LC "[BuildGeometryFilter] "
 
@@ -447,6 +448,128 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
     return group;
 }
 
+std::vector< osg::ref_ptr< LineDrawable > > BuildGeometryFilter::FeatureToLines(Feature* input, const Style& style, FilterContext& context)
+{
+    std::vector< osg::ref_ptr< LineDrawable > > drawables;
+
+    bool makeECEF = false;
+    const SpatialReference* featureSRS = 0L;
+    const SpatialReference* outputSRS = 0L;
+
+    // set up referencing information:
+    if (context.isGeoreferenced())
+    {
+        featureSRS = context.extent()->getSRS();
+        outputSRS = context.getOutputSRS();
+        makeECEF = outputSRS->isGeographic();
+    }
+
+    // Need to know if we are GPU clamping so we can add more attribs
+    bool doGpuClamping =
+        style.has<AltitudeSymbol>() &&
+        style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU;
+
+    // extract the required line symbol; bail out if not found.
+    const LineSymbol* line =
+        input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
+        style.get<LineSymbol>();
+
+    // if there's no line symbol, bail.
+    if (!line)
+        return drawables;
+
+    // run a symbol script if present.
+    if (line->script().isSet())
+    {
+        StringExpression temp(line->script().get());
+        input->eval(temp, &context);
+    }
+
+    GeometryIterator parts(input->getGeometry(), true);
+    while (parts.hasMore())
+    {
+        Geometry* part = parts.next();
+
+        // skip invalid geometry for lines.
+        if (part->size() < 2)
+            continue;
+
+        // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
+        // use a line strip.
+        bool isRing = (dynamic_cast<Ring*>(part) != 0L);
+
+        // resolve the color:
+        osg::Vec4f primaryColor = line->stroke()->color();
+
+        // generate the geometry and localize to the local tangent plane
+        osg::ref_ptr< osg::Vec3Array > allPoints = new osg::Vec3Array();
+        transformAndLocalize(part->asVector(), featureSRS, allPoints.get(), outputSRS, _world2local, makeECEF);
+
+        // construct a drawable for the lines
+        LineDrawable* drawable = new LineDrawable(isRing ? GL_LINE_LOOP : GL_LINE_STRIP);
+
+        // if the user requested legacy rendering:
+        if (line->useGLLines() == true)
+            drawable->setUseGPU(false);
+
+        drawable->importVertexArray(allPoints.get());
+
+        if (line->stroke().isSet())
+        {
+            if (line->stroke()->width().isSet())
+                drawable->setLineWidth(line->stroke()->width().get());
+
+            if (line->stroke()->stipplePattern().isSet())
+                drawable->setStipplePattern(line->stroke()->stipplePattern().get());
+
+            if (line->stroke()->stippleFactor().isSet())
+                drawable->setStippleFactor(line->stroke()->stippleFactor().get());
+
+            if (line->stroke()->smooth().isSet())
+                drawable->setLineSmooth(line->stroke()->smooth().get());
+        }
+
+        // For GPU clamping, we need an attribute array with Heights above Terrain in it.
+        if (doGpuClamping)
+        {
+            osg::FloatArray* hats = new osg::FloatArray();
+            hats->setBinding(osg::Array::BIND_PER_VERTEX);
+            hats->setNormalize(false);
+            drawable->setVertexAttribArray(Clamping::HeightsAttrLocation, hats);
+            for (Geometry::const_iterator i = part->begin(); i != part->end(); ++i)
+            {
+                drawable->pushVertexAttrib(hats, i->z());
+            }
+        }
+
+        // assign the color:
+        drawable->setColor(primaryColor);
+
+        // embed the feature name if requested. Warning: blocks geometry merge optimization!
+        if (_featureNameExpr.isSet())
+        {
+            const std::string& name = input->eval(_featureNameExpr.mutable_value(), &context);
+            drawable->setName(name);
+        }
+
+        // record the geometry's primitive set(s) in the index:
+        if (context.featureIndex())
+        {
+            context.featureIndex()->tagDrawable(drawable, input);
+        }
+
+        // install clamping attributes if necessary
+        if (doGpuClamping)
+        {
+            Clamping::applyDefaultClampingAttrs(drawable, input->getDouble("__oe_verticalOffset", 0.0));
+        }
+
+        drawables.push_back(drawable);
+    }
+
+    return drawables;
+}
+
 
 osg::Group*
 BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
@@ -454,129 +577,61 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
     // Group to contain all the lines we create here
     LineGroup* drawables = new LineGroup();
 
-    bool makeECEF = false;
-    const SpatialReference* featureSRS = 0L;
-    const SpatialReference* outputSRS = 0L;
 
-    // set up referencing information:
-    if ( context.isGeoreferenced() )
-    {
-        featureSRS = context.extent()->getSRS();
-        outputSRS  = context.getOutputSRS();
-        makeECEF = outputSRS->isGeographic();
-    }
+    auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Need to know if we are GPU clamping so we can add more attribs
-    bool doGpuClamping =
-        _style.has<AltitudeSymbol>() &&
-        _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU;
+    std::atomic<unsigned int> numChunks = 0;
 
+#if 0
+    ++numChunks;
     // For each input feature:
     for (FeatureList::iterator f = features.begin(); f != features.end(); ++f)
     {
         Feature* input = f->get();
-
-        // extract the required line symbol; bail out if not found.
-        const LineSymbol* line =
-            input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
-            _style.get<LineSymbol>();
-
-        // if there's no line symbol, bail.
-        if ( !line )
-            continue;
-
-        // run a symbol script if present.
-        if ( line->script().isSet() )
+        auto featureDrawables = FeatureToLines(input, _style, context);
+        for (auto& drawable : featureDrawables)
         {
-            StringExpression temp( line->script().get() );
-            input->eval( temp, &context );
-        }
-
-        GeometryIterator parts( input->getGeometry(), true );
-        while( parts.hasMore() )
-        {
-            Geometry* part = parts.next();
-
-            // skip invalid geometry for lines.
-            if ( part->size() < 2 )
-                continue;
-
-            // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
-            // use a line strip.
-            bool isRing = (dynamic_cast<Ring*>(part) != 0L);
-
-            // resolve the color:
-            osg::Vec4f primaryColor = line->stroke()->color();
-
-            // generate the geometry and localize to the local tangent plane
-            osg::ref_ptr< osg::Vec3Array > allPoints = new osg::Vec3Array();
-            transformAndLocalize( part->asVector(), featureSRS, allPoints.get(), outputSRS, _world2local, makeECEF );
-
-            // construct a drawable for the lines
-            LineDrawable* drawable = new LineDrawable(isRing? GL_LINE_LOOP : GL_LINE_STRIP);
-
-            // if the user requested legacy rendering:
-            if (line->useGLLines() == true)
-                drawable->setUseGPU(false);
-
-            drawable->importVertexArray(allPoints.get());
-
-            if (line->stroke().isSet())
-            {
-                if (line->stroke()->width().isSet())
-                    drawable->setLineWidth(line->stroke()->width().get());
-
-                if (line->stroke()->stipplePattern().isSet())
-                    drawable->setStipplePattern(line->stroke()->stipplePattern().get());
-
-                if (line->stroke()->stippleFactor().isSet())
-                    drawable->setStippleFactor(line->stroke()->stippleFactor().get());
-
-                if (line->stroke()->smooth().isSet())
-                    drawable->setLineSmooth(line->stroke()->smooth().get());
-            }
-
-            // For GPU clamping, we need an attribute array with Heights above Terrain in it.
-            if (doGpuClamping)
-            {
-                osg::FloatArray* hats = new osg::FloatArray();
-                hats->setBinding(osg::Array::BIND_PER_VERTEX);
-                hats->setNormalize(false);
-                drawable->setVertexAttribArray(Clamping::HeightsAttrLocation, hats);
-                for (Geometry::const_iterator i = part->begin(); i != part->end(); ++i)
-                {
-                    drawable->pushVertexAttrib(hats, i->z());
-                }
-            }
-
-            // assign the color:
-            drawable->setColor(primaryColor);
-
-            // embed the feature name if requested. Warning: blocks geometry merge optimization!
-            if ( _featureNameExpr.isSet() )
-            {
-                const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
-                drawable->setName( name );
-            }
-
-            // record the geometry's primitive set(s) in the index:
-            if ( context.featureIndex() )
-            {
-                context.featureIndex()->tagDrawable( drawable, input );
-            }
-
-            // install clamping attributes if necessary
-            if (doGpuClamping)
-            {
-                Clamping::applyDefaultClampingAttrs( drawable, input->getDouble("__oe_verticalOffset", 0.0) );
-            }
-
-            // finalize the drawable and generate primitive sets
-            drawable->dirty();
-
-            drawables->addChild(drawable);
+            drawables->addChild(drawable.get());
         }
     }
+#else
+    // Copy the features into a vector so we can use blocked_range
+    std::vector< osg::ref_ptr< Feature > > featuresVector;
+    featuresVector.reserve(features.size());
+    featuresVector.insert(featuresVector.end(), features.begin(), features.end());
+
+    // Prepare the output vector
+    std::vector< std::vector< osg::ref_ptr< LineDrawable > > > output;
+    output.resize(features.size());
+
+    std::mutex g_display_mutex;
+
+    tbb::parallel_for(
+        tbb::blocked_range<size_t>(0, features.size(), 10),
+        [&](tbb::blocked_range<size_t> r) {
+        //g_display_mutex.lock();
+        //std::cout << "Processing " << r.end() - r.begin() << " features from " << r.begin() << " to " << r.end() << " in thread " << std::this_thread::get_id() << std::endl;
+        //g_display_mutex.unlock();
+        ++numChunks;
+        for (size_t i = r.begin(); i != r.end(); ++i)
+        {
+            Feature* input = featuresVector[i].get();
+            auto featureDrawables = FeatureToLines(input, _style, context);
+            output[i] = featureDrawables;
+        }
+    });
+    for (auto& drawableList : output)
+    {
+        for (auto& drawable : drawableList)
+        {
+            drawables->addChild(drawable.get());
+        }
+    }
+
+#endif
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    OE_NOTICE << "processLines " << features.size() << " features using " << numChunks << " chunks  in " << std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count() << " ns" << std::endl;
 
     // Finally, optimize the finished group for rendering.
     if (drawables)

@@ -25,6 +25,7 @@
 #include <osgEarth/Filter>
 #include <osgEarth/Style>
 #include <osgEarth/GeoMath>
+#include <osgEarth/LineDrawable>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Util
@@ -74,7 +75,7 @@ namespace osgEarth { namespace Util
         /**
          * When a geocentric polygon is very large, the filter has to tile it up in order to
          * properly tessellate it. This is the maximum size of each tile (in degrees).
-         */        
+         */
         optional<float>& maxPolygonTilingAngle() { return _maxPolyTilingAngle_deg; }
         const optional<float>& maxPolygonTilingAngle() const { return _maxPolyTilingAngle_deg; }
 
@@ -111,7 +112,7 @@ namespace osgEarth { namespace Util
         optional<Angle>            _maximumCreaseAngle;
         optional<ShaderPolicy>     _shaderPolicy;
         optional<bool>             _useOSGTessellator;
-        
+
         void tileAndBuildPolygon(
             Geometry*               input,
             const SpatialReference* featureSRS,
@@ -120,7 +121,7 @@ namespace osgEarth { namespace Util
             bool                    tessellate,
             osg::Geometry*          osgGeom,
             const osg::Matrixd      &world2local);
-        
+
         void buildPolygon(
             Geometry*               input,
             const SpatialReference* featureSRS,
@@ -133,6 +134,8 @@ namespace osgEarth { namespace Util
         osg::Group* processLines           (FeatureList& input, FilterContext& cx);
         osg::Group* processPolygonizedLines(FeatureList& input, bool twosided, FilterContext& cx, bool wireLines);
         osg::Geode* processPoints          (FeatureList& input, FilterContext& cx);
+
+        std::vector< osg::ref_ptr< LineDrawable > > FeatureToLines(Feature* input, const Style& style, FilterContext& context);
     };
 } }
 

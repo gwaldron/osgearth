@@ -87,7 +87,7 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
 
         // if this tile conatins mask/edit, it's a unique geometry - don't share it.
         bool isUnique = (maskSet && maskSet->hasMasks()) || (meshEditor && meshEditor->hasEdits());
-        
+
         if (!isUnique)
         {
             Threading::ScopedMutexLock lock(_geometryMapMutex);
@@ -422,6 +422,44 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     if (editor && editor->hasEdits())
     {
         editor->createTileMesh(geom.get(), tileSize);
+
+        // Build a skirt for the edited geometry?
+        if (needsSkirt)
+        {
+            double height = geom->getBound().radius() * _options.heightFieldSkirtRatio().get();
+
+            primSet = geom->getDrawElements();
+            // Construct a node+edge graph out of the masking geometry:
+            osg::ref_ptr<TopologyGraph> graph = TopologyBuilder::create(verts.get(), primSet, tileKey.str());
+
+            // Extract the boundaries (if the topology is discontinuous,
+            // there will be more than one)
+            for (unsigned i = 0; i < graph->getNumBoundaries(); ++i)
+            {
+                TopologyGraph::IndexVector boundary;
+                graph->createBoundary(i, boundary);
+
+                if (boundary.size() >= 3)
+                {
+                    unsigned skirtIndex = verts->size();
+
+                    for (TopologyGraph::IndexVector::const_iterator i = boundary.begin(); i != boundary.end(); ++i)
+                    {
+                        addSkirtDataForIndex((*i)->index(), height);
+                    }
+
+                    // then create the elements:
+                    int i;
+                    for (i = skirtIndex; i < (int)verts->size() - 2; i += 2)
+                    {
+                        addSkirtTriangles(i, i + 2);
+                    }
+
+                    addSkirtTriangles(i, skirtIndex);
+                }
+            }
+        }
+
         return geom.release();
     }
 

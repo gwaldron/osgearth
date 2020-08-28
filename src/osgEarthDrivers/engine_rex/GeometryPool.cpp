@@ -21,14 +21,12 @@
 #include <osgEarth/Locators>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TopologyGraph>
-#include <osgEarth/WingedEdgeMesh>
 #include <osgEarth/Metrics>
 #include <osg/Point>
 #include <osgUtil/MeshOptimizers>
 #include <cstdlib> // for getenv
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 using namespace osgEarth::REX;
 
 #define LC "[GeometryPool] "
@@ -72,19 +70,19 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
     GeometryKey geomKey;
     createKeyForTileKey( tileKey, tileSize, geomKey );
 
+    // make our globally shared EBO if we need it
+    {
+        Threading::ScopedMutexLock lock(_geometryMapMutex);
+        if (!_defaultPrimSet.valid())
+        {
+            osg::UIntArray* reorder = 0L;
+            _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL);
+            _reorder = reorder;
+        }
+    }
+
     if ( _enabled )
     {
-        // make our globally shared EBO if we need it
-        {
-            Threading::ScopedMutexLock lock(_geometryMapMutex);
-            if (!_defaultPrimSet.valid())
-            {
-                osg::UIntArray* reorder = 0L;
-                _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL);
-                _reorder = reorder;
-            }
-        }
-
         // if this tile conatins mask/edit, it's a unique geometry - don't share it.
         bool isUnique = (maskSet && maskSet->hasMasks()) || (meshEditor && meshEditor->hasEdits());
         

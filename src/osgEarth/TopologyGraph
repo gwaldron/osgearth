@@ -107,13 +107,6 @@ namespace osgEarth { namespace Util
         void createBoundary(unsigned boundaryNum, IndexVector& output) const;
 
     public:
-        void addTriangle(const osg::Vec3Array* verts, unsigned v0, unsigned v1, unsigned v2);
-
-        Index add(const osg::Vec3Array* verts, unsigned v);
-
-        void assignAndPropagate(TopologyGraph::Index& vertex, unsigned graphID);
-
-    public:
         unsigned     _totalVerts;  // total number of verts encountered
         VertexSet    _verts;       // set of unique verts in the topology (rotated into XY plane)
         EdgeMap      _edgeMap;     // maps each vert to all the verts with which it shares an edge
@@ -132,8 +125,6 @@ namespace osgEarth { namespace Util
         { }
 
         virtual ~TopologyGraph() { }
-
-        unsigned recomputeSubgraphs();
     };
 
     typedef std::vector< osg::ref_ptr<TopologyGraph> > TopologyGraphVector;

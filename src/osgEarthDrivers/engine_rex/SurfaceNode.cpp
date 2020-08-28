@@ -328,14 +328,14 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
     // Transform the child corners to world space
     
     const osg::Matrix& local2world = getMatrix();
-    for(int i=0; i<4; ++i)
+    for (int i = 0; i < 4; ++i)
     {
         VectorPoints& childCorners = _childrenCorners[i];
-         for(int j=0; j<8; ++j)
-         {
-             osg::Vec3& corner = childCorners[j];
-             corner = corner*local2world;
-         }
+        for (int j = 0; j < 8; ++j)
+        {
+            osg::Vec3& corner = childCorners[j];
+            corner = corner * local2world;
+        }
     }
 
     if( _enableDebugNodes )

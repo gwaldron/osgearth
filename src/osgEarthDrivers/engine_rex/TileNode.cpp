@@ -493,7 +493,6 @@ TileNode::cull(TerrainCuller* culler)
 
             if ( !_childrenReady ) // double check inside mutex
             {
-                OE_START_TIMER(createChildren);
                 _childrenReady = createChildren( context );
 
                 // This means that you cannot start loading data immediately; must wait a frame.

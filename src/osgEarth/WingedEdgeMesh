@@ -61,6 +61,11 @@ namespace osgEarth { namespace Util
             mutable std::vector<Edge*> edges;
         };
 
+        bool isVertexInMesh(const Vertex* v)
+        {
+            return !v->edges.empty();
+        }
+
         using VVec = std::vector<const Vertex*>;
 
         struct EdgeIntersection
@@ -678,6 +683,8 @@ namespace osgEarth { namespace Util
             e->destVert() = nullptr;
             e->prevEdge() = nullptr;
             e->nextEdge() = nullptr;
+            e->f = nullptr;
+
             return true;
         }
 
@@ -917,6 +924,11 @@ namespace osgEarth { namespace Util
                 aEdgeInter = getBorderEdge(aRay);
                 if (aEdgeInter.edge)
                 {
+                    const Vertex* edgeVert = getVertex(aEdgeInter.position);
+                    if (!isVertexInMesh(edgeVert))
+                    {
+                        splitEdge(const_cast<Edge*>(aEdgeInter.edge), edgeVert);
+                    }
                     newSegment._a = aEdgeInter.position;
                 }
             }
@@ -926,6 +938,11 @@ namespace osgEarth { namespace Util
                 bEdgeInter = getBorderEdge(bRay);
                 if (bEdgeInter.edge)
                 {
+                    const Vertex* edgeVert = getVertex(bEdgeInter.position);
+                    if (!isVertexInMesh(edgeVert))
+                    {
+                        splitEdge(const_cast<Edge*>(bEdgeInter.edge), edgeVert);
+                    }
                     newSegment._b = bEdgeInter.position;
                 }
             }
@@ -1002,7 +1019,10 @@ namespace osgEarth { namespace Util
             Segment2d realSegment;
             // 1) End points must lie on mesh vertices. If they don't,
             // add those vertices.
-            insureSegmentInMesh(segment, realSegment);
+            if (!insureSegmentInMesh(segment, realSegment))
+            {
+                return false;
+            }
             const Vertex* a = getVertex(realSegment._a);
             const Vertex* b = getVertex(realSegment._b);
             const Vertex* current = a;

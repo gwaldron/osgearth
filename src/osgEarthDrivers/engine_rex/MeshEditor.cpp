@@ -164,6 +164,8 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
     Vec3Ptr texCoords = dynamic_cast<osg::Vec3Array*>(sharedGeom->getTexCoordArray());
     for (auto& meshVertex : wmesh.vertices)
     {
+        if (meshVertex.second.edges.empty())
+            continue;
         meshVertex.second.meshIndex = vertexIndex++;
         verts->push_back(meshVertex.second.position); // convert to Vec3
         // Back to tile unit coords
@@ -188,8 +190,12 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
     primSet->reserveElements(wmesh.faces.size() * 3);
     for (auto& face : wmesh.faces)
     {
+        if (!face.edge)
+        {
+            continue;
+        }
         auto faceVerts = wmesh.getFaceVertices(&face);
-        if (faceVerts.size() > 3)
+        if (faceVerts.size() != 3)
         {
             OE_NOTICE << "face with " << faceVerts.size() << " vertices\n";
         }

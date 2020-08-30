@@ -901,7 +901,7 @@ namespace osgEarth { namespace Util
             const Vertex* a = getVertex(segment._a);
             const Vertex* b = getVertex(segment._b);
             Face *aFace = nullptr, *bFace = nullptr;
-            if (a->edges.empty())
+            if (!isVertexInMesh(a))
             {
                 aFace = getFaceContainingPoint(a->position);
                 if (aFace)
@@ -909,7 +909,7 @@ namespace osgEarth { namespace Util
                     subdivideFace(aFace, a);
                 }
             }
-            if (b->edges.empty())
+            if (!isVertexInMesh(b))
             {
                 bFace = getFaceContainingPoint(b->position);
                 if (bFace)
@@ -917,7 +917,9 @@ namespace osgEarth { namespace Util
                     subdivideFace(bFace, b);
                 }
             }
-            if (aFace && bFace)
+            // Test if the vertices were already in the mesh, or are
+            // now due to a subdivided face
+            if (isVertexInMesh(a) && isVertexInMesh(b))
             {
                 return true;
             }

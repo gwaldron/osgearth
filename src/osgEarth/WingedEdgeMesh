@@ -690,6 +690,11 @@ namespace osgEarth { namespace Util
 
         bool removeFace(Face* f)
         {
+            FacePositionAdapter adapter(*f);
+            osg::BoundingBoxd bbox = polygonBBox2d(adapter.begin(), adapter.end());
+            double minv[2] = {bbox.xMin(), bbox.yMin()};
+            double maxv[2] = {bbox.xMax(), bbox.yMax()};
+            faceIndex.Remove(minv, maxv, f);
             Edge* firstEdge = f->edge;
             // Slightly tortured logic because the edge's members are
             // all set to nullptr when it is removed.

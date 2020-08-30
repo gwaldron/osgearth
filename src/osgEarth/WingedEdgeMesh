@@ -873,7 +873,7 @@ namespace osgEarth { namespace Util
                 {
                     Coord intersection;
                     Segment2d edgeSeg(edge->origVert()->position, edge->destVert()->position);
-                    if (seg.intersect(edgeSeg, intersection))
+                    if (edgeSeg.intersect(seg, intersection))
                     {
                         return EdgeIntersection(edge, intersection);
                     }
@@ -994,7 +994,7 @@ namespace osgEarth { namespace Util
                 {
                     Segment2d seg = fromEdge(e);
                     Coord intersect;
-                    if (ray.intersect(seg, intersect))
+                    if (seg.intersect(ray, intersect))
                     {
                         results.emplace_back(e, intersect);
                     }

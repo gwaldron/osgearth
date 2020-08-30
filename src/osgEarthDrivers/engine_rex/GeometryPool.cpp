@@ -419,7 +419,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     if (editor && editor->hasEdits())
     {
-        editor->createTileMesh(geom.get(), tileSize);
+        //editor->createTileMesh(geom.get(), tileSize);
+        editor->createTileMesh2(geom.get(), tileSize);
 
         // Build a skirt for the edited geometry?
         if (needsSkirt)

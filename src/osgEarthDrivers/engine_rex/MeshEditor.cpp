@@ -219,6 +219,414 @@ extern "C" void pfvs(void* vMesh, void* vFace)
     for (auto vert: faceVerts)
     {
         std::cout << std::hex << vert << ": " << vert->position.x() << " " << vert->position.y() << '\n';
-        
     }
+}
+
+typedef osg::Vec3d base_vert_t;
+
+typedef base_vert_t::value_type value_t;
+
+struct vert_t : public base_vert_t
+{
+    vert_t() : _is_new(false) { }
+    vert_t(value_t a, value_t b, value_t c) :
+        base_vert_t(a, b, c), _is_new(false) { }
+    vert_t(const base_vert_t& rhs) :
+        base_vert_t(rhs), _is_new(false) { }
+    bool _is_new;
+    bool operator < (const vert_t& rhs) const {
+        if (x() < rhs.x()) return true;
+        if (x() > rhs.x()) return false;
+        return y() < rhs.y();
+    }
+};
+
+typedef std::map<vert_t, int> vert_table_t;
+
+
+typedef osg::Vec3dArray vert_array_t_base;
+
+struct vert_array_t : public osg::MixinVector<vert_t>
+{
+    void push_new(const vert_t& rhs) {
+        push_back(rhs);
+        back()._is_new = true;
+    }
+};
+
+struct segment_t : std::pair<vert_t, vert_t>
+{
+    segment_t(const vert_t& a, const vert_t& b) :
+        std::pair<vert_t, vert_t>(a, b) { }
+
+    // 2D cross product
+    vert_t::value_type cross2d(const vert_t& a, const vert_t& b) const {
+        return a.x()*b.y() - b.x()*a.y();
+    }
+
+    // true if 2 segments intersect; intersection point in "out"
+    bool intersect(const segment_t& rhs, vert_t& out) const
+    {
+        vert_t r = second - first;
+        vert_t s = rhs.second - rhs.first;
+        vert_t::value_type det = cross2d(r, s);
+
+        if (osg::equivalent(det, static_cast<vert_t::value_type>(0.0)))
+            return false;
+
+        vert_t::value_type u = cross2d(rhs.first - first, s) / det;
+        vert_t::value_type v = cross2d(rhs.first - first, r) / det;
+
+        out.set(first + r * u);
+        //return (u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0);
+        return (u > 0.0 && u < 1.0 && v > 0.0 && v < 1.0);
+    }
+};
+
+struct tri_t
+{
+    UID uid;
+    vert_t p0, p1, p2; // vertices
+    unsigned i0, i1, i2; // indices
+    vert_t::value_type area;
+    vert_t::value_type a_min[2];
+    vert_t::value_type a_max[2];
+
+    // true id the triangle contains point P
+    bool contains(const vert_t& P) const 
+    {
+        vert_t c = p2 - p0;
+        vert_t b = p1 - p0;
+        vert_t p = P - p0;
+
+        vert_t::value_type cc = c * c, bc = b * c, pc = c * p, bb = b * b, pb = b * p;
+        vert_t::value_type demon = cc * bb - bc * bc;
+        if (osg::equivalent(demon, static_cast<vert_t::value_type>(0.0)))
+            return false;
+
+        float u = (bb*pc - bc * pb) / demon;
+        float v = (cc*pb - bc * pc) / demon;
+
+        return u >= 0 && v >= 0 && (u + v < 1.0);
+    }
+
+    // true if point P is one of the triangle's verts
+    bool matches_vertex(const vert_t& p) const
+    {
+        if (osg::equivalent(p.x(), p0.x()) &&
+            osg::equivalent(p.y(), p0.y()))
+            return true;
+        if (osg::equivalent(p.x(), p1.x()) &&
+            osg::equivalent(p.y(), p1.y()))
+            return true;
+        if (osg::equivalent(p.x(), p2.x()) &&
+            osg::equivalent(p.y(), p2.y()))
+            return true;
+        return false;
+    }
+};
+typedef RTree<UID, vert_t::value_type, 2> MySpatialIndex;
+
+struct mesh_t
+{
+    int uidgen;
+    std::unordered_map<UID, tri_t> _triangles;
+    MySpatialIndex _spatial_index;
+    vert_table_t _vert_lut;
+    vert_array_t _verts;
+
+    mesh_t() : uidgen(0) {
+    }
+
+    // delete triangle from the mesh
+    void remove_triangle(tri_t& tri)
+    {
+        UID uid = tri.uid;
+        _spatial_index.Remove(tri.a_min, tri.a_max, uid);
+        _triangles.erase(uid);
+    }
+
+    // add new triangle to the mesh from 3 indices
+    tri_t& add_triangle(int i0, int i1, int i2)
+    {
+        UID uid(uidgen++);
+        tri_t& tri = _triangles[uid];
+        tri.uid = uid;
+        tri.i0 = i0;
+        tri.i1 = i1;
+        tri.i2 = i2;
+        tri.p0 = get_vertex(i0);
+        tri.p1 = get_vertex(i1);
+        tri.p2 = get_vertex(i2);
+        tri.area = fabs(0.5 * (
+            tri.p0.x()*(tri.p1.y() - tri.p2.y()) +
+            tri.p1.x()*(tri.p2.y() - tri.p0.y()) +
+            tri.p2.x()*(tri.p0.y() - tri.p1.y())));
+        tri.a_min[0] = std::min(tri.p0.x(), std::min(tri.p1.x(), tri.p2.x()));
+        tri.a_min[1] = std::min(tri.p0.y(), std::min(tri.p1.y(), tri.p2.y()));
+        tri.a_max[0] = std::max(tri.p0.x(), std::max(tri.p1.x(), tri.p2.x()));
+        tri.a_max[1] = std::max(tri.p0.y(), std::max(tri.p1.y(), tri.p2.y()));
+
+        _spatial_index.Insert(tri.a_min, tri.a_max, tri.uid);
+        return tri;
+    }
+
+    const vert_t& get_vertex(unsigned i) const
+    {
+        return _verts[i];
+    }
+
+    int get_or_create_vertex(const vert_t& input)
+    {
+        vert_table_t::iterator i = _vert_lut.find(input);
+        if (i != _vert_lut.end())
+        {
+            return i->second;
+        }
+        else
+        {
+            _verts.push_new(input);
+            _vert_lut[input] = _verts.size() - 1;
+            return _verts.size() - 1;
+        }
+    }
+
+    // insert a segment into the mesh, cutting triangles as necessary
+    void insert(const segment_t& seg)
+    {
+        vert_t::value_type min_area =
+            _triangles.begin()->second.area * 0.25;
+
+        vert_t::value_type a_min[2];
+        vert_t::value_type a_max[2];
+        a_min[0] = std::min(seg.first.x(), seg.second.x());
+        a_min[1] = std::min(seg.first.y(), seg.second.y());
+        a_max[0] = std::max(seg.first.x(), seg.second.x());
+        a_max[1] = std::max(seg.first.y(), seg.second.y());
+        std::vector<UID> uids;
+        _spatial_index.Search(a_min, a_max, &uids, ~0);
+        std::list<UID> uid_list;
+        std::copy(uids.begin(), uids.end(), std::back_inserter(uid_list));
+        for (auto uid : uid_list)
+        {
+            tri_t& tri = _triangles[uid];
+
+            //if (tri.area <= min_area)
+            //{
+            //    continue;
+            //}
+
+            // is the first segment endpoint inside a triangle?
+            if (tri.contains(seg.first) && !tri.matches_vertex(seg.first))
+            {
+                inside_split(tri, seg.first, uid_list);
+                continue;
+            }
+
+            // is the second segment endpoint inside a triangle?
+            if (tri.contains(seg.second) && !tri.matches_vertex(seg.second))
+            {
+                inside_split(tri, seg.second, uid_list);
+                continue;
+            }
+
+            // interect the segment with each triangle edge:
+            vert_t out;
+            UID new_uid;
+
+            // does the segment cross first triangle edge?
+            segment_t edge0(tri.p0, tri.p1);
+            if (seg.intersect(edge0, out) && !tri.matches_vertex(out))
+            {
+                int new_i = get_or_create_vertex(out);
+
+                UID uid0 = add_triangle(new_i, tri.i2, tri.i0).uid;
+                uid_list.push_back(uid0);
+
+                UID uid1 = add_triangle(new_i, tri.i1, tri.i2).uid;
+                uid_list.push_back(uid1);
+
+                remove_triangle(tri);
+
+                continue;
+            }
+
+            // does the segment cross second triangle edge?
+            segment_t edge1(tri.p1, tri.p2);
+            if (seg.intersect(edge1, out) && !tri.matches_vertex(out))
+            {
+                int new_i = get_or_create_vertex(out);
+
+                new_uid = add_triangle(new_i, tri.i0, tri.i1).uid;
+                uid_list.push_back(new_uid);
+
+                new_uid = add_triangle(new_i, tri.i2, tri.i0).uid;
+                uid_list.push_back(new_uid);
+
+                remove_triangle(tri);
+
+                continue;
+            }
+
+            // does the segment cross third triangle edge?
+            segment_t edge2(tri.p2, tri.p0);
+            if (seg.intersect(edge2, out) && !tri.matches_vertex(out))
+            {
+                int new_i = get_or_create_vertex(out);
+
+                new_uid = add_triangle(new_i, tri.i1, tri.i2).uid;
+                uid_list.push_back(new_uid);
+
+                new_uid = add_triangle(new_i, tri.i0, tri.i1).uid;
+                uid_list.push_back(new_uid);
+
+                remove_triangle(tri);
+
+                continue;
+            }
+        }
+    }
+
+    // inserts point "p" into the interior of triangle "tri",
+    // adds three new triangles, and removes the original triangle.
+    void inside_split(tri_t& tri, const vert_t& p, std::list<UID>& uid_list)
+    {
+        //todo check if p already exists?
+
+        int new_i = get_or_create_vertex(p);
+
+        UID uid;
+
+        uid = add_triangle(tri.i0, tri.i1, new_i).uid;
+        uid_list.push_back(uid);
+
+        uid = add_triangle(tri.i1, tri.i2, new_i).uid;
+        uid_list.push_back(uid);
+
+        uid = add_triangle(tri.i2, tri.i0, new_i).uid;
+        uid_list.push_back(uid);
+
+        remove_triangle(tri);
+    }
+};
+
+bool
+MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
+{
+    static Mutex m;
+    ScopedMutexLock lock(m);
+
+    // Establish a local reference frame for the tile:
+    osg::Vec3d centerWorld;
+    GeoPoint centroid;
+    _key.getExtent().getCentroid(centroid);
+    centroid.toWorld(centerWorld);
+    osg::Matrix world2local, local2world;
+    centroid.createWorldToLocal(world2local);
+    local2world.invert(world2local);
+    bool needsSkirt = false;
+    GeoLocator locator(_key.getExtent());
+    auto tileSRS = _key.getExtent().getSRS();
+
+    mesh_t mesh;
+    mesh._verts.reserve(tileSize*tileSize);
+
+    using RowVec = std::vector<vert_t*>;
+    RowVec bottomRow;
+    for (unsigned row = 0; row < tileSize; ++row)
+    {
+        double ny = (double)row / (double)(tileSize - 1);
+        RowVec topRow;
+        for (unsigned col = 0; col < tileSize; ++col)
+        {
+            double nx = (double)col / (double)(tileSize - 1);
+            osg::Vec3d unit(nx, ny, 0.0);
+            osg::Vec3d model;
+            osg::Vec3d modelLTP;
+            locator.unitToWorld(unit, model);
+            modelLTP = model * world2local;
+            int i = mesh.get_or_create_vertex(modelLTP);
+
+            if (row > 0 && col > 0)
+            {
+                //int i = mesh._verts.size() - 1;
+                mesh.add_triangle(i, i - 1, i - tileSize - 1);
+                mesh.add_triangle(i, i - tileSize - 1, i - tileSize);
+            }
+        }
+        std::swap(topRow, bottomRow);
+    }
+
+
+    for (auto& editGeometry : _edits)
+    {
+        for (auto arrayPtr : *editGeometry.geometry)
+        {
+            // Cut in the segments
+            if (arrayPtr->empty())
+                continue;
+
+            // Get points into tile coordinate system
+            std::vector<vert_t> tileLocalPts;
+
+            std::transform(
+                arrayPtr->begin(), arrayPtr->end(), std::back_inserter(tileLocalPts),
+
+                [tileSRS, &world2local](const osg::Vec3d& worldPt)
+                {
+                    osg::Vec3d result;
+                    tileSRS->transformToWorld(worldPt, result);
+                    return result * world2local;
+                });
+
+            for (auto v0Itr = tileLocalPts.begin(), v1Itr = v0Itr + 1;
+                v1Itr != tileLocalPts.end();
+                v0Itr = v1Itr++)
+            {
+                mesh.insert(segment_t(*v0Itr, *v1Itr));
+            }
+        }
+    }
+
+    // We have an edited mesh, now turn it back into something OSG can render.
+    using Vec3Ptr = osg::ref_ptr<osg::Vec3Array>;
+    Vec3Ptr verts = dynamic_cast<osg::Vec3Array*>(sharedGeom->getVertexArray());
+    verts->reserve(mesh._verts.size());
+
+    Vec3Ptr normals = dynamic_cast<osg::Vec3Array*>(sharedGeom->getNormalArray());
+    normals->reserve(mesh._verts.size());
+
+    Vec3Ptr texCoords = dynamic_cast<osg::Vec3Array*>(sharedGeom->getTexCoordArray());
+    texCoords->reserve(mesh._verts.size());
+
+    for(auto& vert : mesh._verts)
+    {
+        verts->push_back(vert);
+
+        osg::Vec3d worldPos = vert * local2world;
+        osg::Vec3d unit;
+        locator.worldToUnit(worldPos, unit);
+        float marker = VERTEX_MARKER_GRID;
+        if (texCoords.valid())
+            texCoords->push_back(osg::Vec3f(unit.x(), unit.y(), marker));
+       
+        unit.z() += 1.0;
+        osg::Vec3d modelPlusOne;
+        locator.unitToWorld(unit, modelPlusOne);
+        osg::Vec3d normal = (modelPlusOne*world2local) - vert;
+        normal.normalize();
+        normals->push_back(normal);
+    }
+
+    osg::DrawElements* de = new osg::DrawElementsUShort(GL_TRIANGLES);
+    de->reserveElements(mesh._triangles.size() * 3);
+    for (auto& tri : mesh._triangles)
+    {
+        de->addElement(tri.second.i0);
+        de->addElement(tri.second.i1);
+        de->addElement(tri.second.i2);
+    }
+    sharedGeom->setDrawElements(de);
+
+    return true;
 }

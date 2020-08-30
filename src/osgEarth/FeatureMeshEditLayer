@@ -78,7 +78,6 @@ namespace osgEarth
         void create();
 
         osg::ref_ptr<EditVector> _editGeometry;
-        osgEarth::Threading::Mutex _geometryMutex;
     };
 } // namespace osgEarth
 

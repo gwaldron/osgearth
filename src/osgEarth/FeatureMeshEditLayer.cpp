@@ -21,6 +21,7 @@
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Map>
 #include <osgEarth/Progress>
+#include <osgEarth/AltitudeFilter>
 
 using namespace osgEarth;
 

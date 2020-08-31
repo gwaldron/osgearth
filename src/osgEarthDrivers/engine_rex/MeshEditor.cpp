@@ -222,22 +222,45 @@ extern "C" void pfvs(void* vMesh, void* vFace)
     }
 }
 
-typedef osg::Vec3d base_vert_t;
-
-typedef base_vert_t::value_type value_t;
-
-struct vert_t : public base_vert_t
+struct vert_t
 {
-    vert_t() : _is_new(false) { }
-    vert_t(value_t a, value_t b, value_t c) :
-        base_vert_t(a, b, c), _is_new(false) { }
-    vert_t(const base_vert_t& rhs) :
-        base_vert_t(rhs), _is_new(false) { }
-    bool _is_new;
+    typedef double value_type;
+    double _x, _y, _z;
+    double& x() { return _x; }
+    const double& x() const { return _x; }
+    double& y() { return _y; }
+    const double& y() const { return _y; }
+    double& z() { return _z; }
+    const double& z() const { return _z; }
+    vert_t() { }
+    vert_t(value_type a, value_type b, value_type c) : _x(a), _y(b), _z(c) { }
+    vert_t(const vert_t& rhs) : _x(rhs.x()), _y(rhs.y()), _z(rhs.z()) { }
+    vert_t(const osg::Vec3d& rhs) : _x(rhs.x()), _y(rhs.y()), _z(rhs.z()) { }
     bool operator < (const vert_t& rhs) const {
         if (x() < rhs.x()) return true;
         if (x() > rhs.x()) return false;
         return y() < rhs.y();
+    }
+    vert_t operator - (const vert_t& rhs) const {
+        return vert_t(x() - rhs.x(), y() - rhs.y(), z() - rhs.z());
+    }
+    vert_t operator + (const vert_t& rhs) const {
+        return vert_t(x() + rhs.x(), y() + rhs.y(), z() + rhs.z());
+    }
+    vert_t operator * (value_type a) const {
+        return vert_t(x()*a, y()*a, z()*a);
+    }
+    value_type dot2d(const vert_t& rhs) const {
+        return x()*rhs.x() + y() * rhs.y();
+    }
+    void set(value_type a, value_type b, value_type c) {
+        _x = a, _y = b, _z = c;
+    }
+    value_type length() const {
+        return sqrt((_x*_x) + (_y*_y));
+    }
+    value_type length2() const {
+        return (_x*_x) + (_y*_y);
     }
 };
 
@@ -248,10 +271,6 @@ typedef osg::Vec3dArray vert_array_t_base;
 
 struct vert_array_t : public osg::MixinVector<vert_t>
 {
-    void push_new(const vert_t& rhs) {
-        push_back(rhs);
-        back()._is_new = true;
-    }
 };
 
 struct segment_t : std::pair<vert_t, vert_t>
@@ -277,8 +296,7 @@ struct segment_t : std::pair<vert_t, vert_t>
         vert_t::value_type u = cross2d(rhs.first - first, s) / det;
         vert_t::value_type v = cross2d(rhs.first - first, r) / det;
 
-        out.set(first + r * u);
-        //return (u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0);
+        out = first + (r * u);
         return (u > 0.0 && u < 1.0 && v > 0.0 && v < 1.0);
     }
 };
@@ -288,18 +306,18 @@ struct tri_t
     UID uid;
     vert_t p0, p1, p2; // vertices
     unsigned i0, i1, i2; // indices
-    vert_t::value_type area;
     vert_t::value_type a_min[2];
     vert_t::value_type a_max[2];
+    vert_t::value_type e01, e12, e20;
 
     // true id the triangle contains point P
-    bool contains(const vert_t& P) const 
+    bool contains2d(const vert_t& P) const 
     {
         vert_t c = p2 - p0;
         vert_t b = p1 - p0;
         vert_t p = P - p0;
 
-        vert_t::value_type cc = c * c, bc = b * c, pc = c * p, bb = b * b, pb = b * p;
+        vert_t::value_type cc = c.dot2d(c), bc = b.dot2d(c), pc = c.dot2d(p), bb = b.dot2d(b), pb = b.dot2d(p);
         vert_t::value_type demon = cc * bb - bc * bc;
         if (osg::equivalent(demon, static_cast<vert_t::value_type>(0.0)))
             return false;
@@ -358,10 +376,9 @@ struct mesh_t
         tri.p0 = get_vertex(i0);
         tri.p1 = get_vertex(i1);
         tri.p2 = get_vertex(i2);
-        tri.area = fabs(0.5 * (
-            tri.p0.x()*(tri.p1.y() - tri.p2.y()) +
-            tri.p1.x()*(tri.p2.y() - tri.p0.y()) +
-            tri.p2.x()*(tri.p0.y() - tri.p1.y())));
+        tri.e01 = (tri.p0 - tri.p1).length();
+        tri.e12 = (tri.p1 - tri.p2).length();
+        tri.e20 = (tri.p2 - tri.p0).length();
         tri.a_min[0] = std::min(tri.p0.x(), std::min(tri.p1.x(), tri.p2.x()));
         tri.a_min[1] = std::min(tri.p0.y(), std::min(tri.p1.y(), tri.p2.y()));
         tri.a_max[0] = std::max(tri.p0.x(), std::max(tri.p1.x(), tri.p2.x()));
@@ -385,7 +402,7 @@ struct mesh_t
         }
         else
         {
-            _verts.push_new(input);
+            _verts.push_back(input);
             _vert_lut[input] = _verts.size() - 1;
             return _verts.size() - 1;
         }
@@ -394,8 +411,8 @@ struct mesh_t
     // insert a segment into the mesh, cutting triangles as necessary
     void insert(const segment_t& seg)
     {
-        vert_t::value_type min_area =
-            _triangles.begin()->second.area * 0.25;
+        vert_t::value_type min_edge =
+            (_triangles.begin()->second.e01) * 0.25;
 
         vert_t::value_type a_min[2];
         vert_t::value_type a_max[2];
@@ -411,20 +428,23 @@ struct mesh_t
         {
             tri_t& tri = _triangles[uid];
 
-            //if (tri.area <= min_area)
-            //{
-            //    continue;
-            //}
-
             // is the first segment endpoint inside a triangle?
-            if (tri.contains(seg.first) && !tri.matches_vertex(seg.first))
+            if (tri.contains2d(seg.first) && 
+                !tri.matches_vertex(seg.first) &&
+                (seg.first-tri.p0).length() > min_edge &&
+                (seg.first-tri.p1).length() > min_edge &&
+                (seg.first-tri.p2).length() > min_edge)
             {
                 inside_split(tri, seg.first, uid_list);
                 continue;
             }
 
             // is the second segment endpoint inside a triangle?
-            if (tri.contains(seg.second) && !tri.matches_vertex(seg.second))
+            if (tri.contains2d(seg.second) && 
+                !tri.matches_vertex(seg.second) &&
+                (seg.second - tri.p0).length() > min_edge &&
+                (seg.second - tri.p1).length() > min_edge &&
+                (seg.second - tri.p2).length() > min_edge)
             {
                 inside_split(tri, seg.second, uid_list);
                 continue;
@@ -435,54 +455,63 @@ struct mesh_t
             UID new_uid;
 
             // does the segment cross first triangle edge?
-            segment_t edge0(tri.p0, tri.p1);
-            if (seg.intersect(edge0, out) && !tri.matches_vertex(out))
+            if (tri.e01 > min_edge)
             {
-                int new_i = get_or_create_vertex(out);
+                segment_t edge0(tri.p0, tri.p1);
+                if (seg.intersect(edge0, out) && !tri.matches_vertex(out))
+                {
+                    int new_i = get_or_create_vertex(out);
 
-                UID uid0 = add_triangle(new_i, tri.i2, tri.i0).uid;
-                uid_list.push_back(uid0);
+                    UID uid0 = add_triangle(new_i, tri.i2, tri.i0).uid;
+                    uid_list.push_back(uid0);
 
-                UID uid1 = add_triangle(new_i, tri.i1, tri.i2).uid;
-                uid_list.push_back(uid1);
+                    UID uid1 = add_triangle(new_i, tri.i1, tri.i2).uid;
+                    uid_list.push_back(uid1);
 
-                remove_triangle(tri);
+                    remove_triangle(tri);
 
-                continue;
+                    continue;
+                }
             }
 
             // does the segment cross second triangle edge?
-            segment_t edge1(tri.p1, tri.p2);
-            if (seg.intersect(edge1, out) && !tri.matches_vertex(out))
+            if (tri.e12 > min_edge)
             {
-                int new_i = get_or_create_vertex(out);
+                segment_t edge1(tri.p1, tri.p2);
+                if (seg.intersect(edge1, out) && !tri.matches_vertex(out))
+                {
+                    int new_i = get_or_create_vertex(out);
 
-                new_uid = add_triangle(new_i, tri.i0, tri.i1).uid;
-                uid_list.push_back(new_uid);
+                    new_uid = add_triangle(new_i, tri.i0, tri.i1).uid;
+                    uid_list.push_back(new_uid);
 
-                new_uid = add_triangle(new_i, tri.i2, tri.i0).uid;
-                uid_list.push_back(new_uid);
+                    new_uid = add_triangle(new_i, tri.i2, tri.i0).uid;
+                    uid_list.push_back(new_uid);
 
-                remove_triangle(tri);
+                    remove_triangle(tri);
 
-                continue;
+                    continue;
+                }
             }
 
             // does the segment cross third triangle edge?
-            segment_t edge2(tri.p2, tri.p0);
-            if (seg.intersect(edge2, out) && !tri.matches_vertex(out))
+            if (tri.e20 > min_edge)
             {
-                int new_i = get_or_create_vertex(out);
+                segment_t edge2(tri.p2, tri.p0);
+                if (seg.intersect(edge2, out) && !tri.matches_vertex(out))
+                {
+                    int new_i = get_or_create_vertex(out);
 
-                new_uid = add_triangle(new_i, tri.i1, tri.i2).uid;
-                uid_list.push_back(new_uid);
+                    new_uid = add_triangle(new_i, tri.i1, tri.i2).uid;
+                    uid_list.push_back(new_uid);
 
-                new_uid = add_triangle(new_i, tri.i0, tri.i1).uid;
-                uid_list.push_back(new_uid);
+                    new_uid = add_triangle(new_i, tri.i0, tri.i1).uid;
+                    uid_list.push_back(new_uid);
 
-                remove_triangle(tri);
+                    remove_triangle(tri);
 
-                continue;
+                    continue;
+                }
             }
         }
     }
@@ -601,9 +630,10 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
 
     for(auto& vert : mesh._verts)
     {
-        verts->push_back(vert);
+        osg::Vec3d v(vert.x(), vert.y(), vert.z());
+        verts->push_back(v);
 
-        osg::Vec3d worldPos = vert * local2world;
+        osg::Vec3d worldPos = v * local2world;
         osg::Vec3d unit;
         locator.worldToUnit(worldPos, unit);
         float marker = VERTEX_MARKER_GRID;
@@ -613,7 +643,7 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
         unit.z() += 1.0;
         osg::Vec3d modelPlusOne;
         locator.unitToWorld(unit, modelPlusOne);
-        osg::Vec3d normal = (modelPlusOne*world2local) - vert;
+        osg::Vec3d normal = (modelPlusOne*world2local) - v;
         normal.normalize();
         normals->push_back(normal);
     }

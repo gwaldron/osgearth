@@ -61,6 +61,11 @@ namespace osgEarth { namespace Util
             mutable std::vector<Edge*> edges;
         };
 
+        bool isVertexInMesh(const Vertex* v)
+        {
+            return !v->edges.empty();
+        }
+
         using VVec = std::vector<const Vertex*>;
 
         struct EdgeIntersection
@@ -678,11 +683,18 @@ namespace osgEarth { namespace Util
             e->destVert() = nullptr;
             e->prevEdge() = nullptr;
             e->nextEdge() = nullptr;
+            e->f = nullptr;
+
             return true;
         }
 
         bool removeFace(Face* f)
         {
+            FacePositionAdapter adapter(*f);
+            osg::BoundingBoxd bbox = polygonBBox2d(adapter.begin(), adapter.end());
+            double minv[2] = {bbox.xMin(), bbox.yMin()};
+            double maxv[2] = {bbox.xMax(), bbox.yMax()};
+            faceIndex.Remove(minv, maxv, f);
             Edge* firstEdge = f->edge;
             // Slightly tortured logic because the edge's members are
             // all set to nullptr when it is removed.
@@ -866,7 +878,7 @@ namespace osgEarth { namespace Util
                 {
                     Coord intersection;
                     Segment2d edgeSeg(edge->origVert()->position, edge->destVert()->position);
-                    if (seg.intersect(edgeSeg, intersection))
+                    if (edgeSeg.intersect(seg, intersection))
                     {
                         return EdgeIntersection(edge, intersection);
                     }
@@ -889,7 +901,7 @@ namespace osgEarth { namespace Util
             const Vertex* a = getVertex(segment._a);
             const Vertex* b = getVertex(segment._b);
             Face *aFace = nullptr, *bFace = nullptr;
-            if (a->edges.empty())
+            if (!isVertexInMesh(a))
             {
                 aFace = getFaceContainingPoint(a->position);
                 if (aFace)
@@ -897,7 +909,7 @@ namespace osgEarth { namespace Util
                     subdivideFace(aFace, a);
                 }
             }
-            if (b->edges.empty())
+            if (!isVertexInMesh(b))
             {
                 bFace = getFaceContainingPoint(b->position);
                 if (bFace)
@@ -905,31 +917,46 @@ namespace osgEarth { namespace Util
                     subdivideFace(bFace, b);
                 }
             }
-            if (aFace && bFace)
+            // Test if the vertices were already in the mesh, or are
+            // now due to a subdivided face
+            if (isVertexInMesh(a) && isVertexInMesh(b))
             {
                 return true;
             }
             // One or both endpoints are not contained in the mesh.
             EdgeIntersection aEdgeInter, bEdgeInter;
-            if (!aFace)
+            if (!isVertexInMesh(a))
             {
                 Ray2d aRay(segment._a, segment._b - segment._a);
                 aEdgeInter = getBorderEdge(aRay);
-                if (aEdgeInter.edge)
-                {
-                    newSegment._a = aEdgeInter.position;
-                }
             }
-            if (!bFace)
+            if (!isVertexInMesh(b))
             {
                 Ray2d bRay(segment._b, segment._a - segment._b);
                 bEdgeInter = getBorderEdge(bRay);
-                if (bEdgeInter.edge)
-                {
-                    newSegment._b = bEdgeInter.position;
-                }
             }
-            return ((aFace || aEdgeInter.edge) && (bFace || bEdgeInter.edge));
+            if (!((isVertexInMesh(a) || aEdgeInter.edge)
+                  && (isVertexInMesh(b) || bEdgeInter.edge)))
+                return false;
+            if (aEdgeInter.edge)
+            {
+                const Vertex* edgeVert = getVertex(aEdgeInter.position);
+                if (!isVertexInMesh(edgeVert))
+                {
+                    splitEdge(const_cast<Edge*>(aEdgeInter.edge), edgeVert);
+                }
+                newSegment._a = aEdgeInter.position;
+            }
+            if (bEdgeInter.edge)
+            {
+                const Vertex* edgeVert = getVertex(bEdgeInter.position);
+                if (!isVertexInMesh(edgeVert))
+                {
+                    splitEdge(const_cast<Edge*>(bEdgeInter.edge), edgeVert);
+                }
+                newSegment._b = bEdgeInter.position;
+            }
+            return true;
         }
 
         // Get Border edge leaving vertex, if any
@@ -977,7 +1004,7 @@ namespace osgEarth { namespace Util
                 {
                     Segment2d seg = fromEdge(e);
                     Coord intersect;
-                    if (ray.intersect(seg, intersect))
+                    if (seg.intersect(ray, intersect))
                     {
                         results.emplace_back(e, intersect);
                     }
@@ -1002,7 +1029,10 @@ namespace osgEarth { namespace Util
             Segment2d realSegment;
             // 1) End points must lie on mesh vertices. If they don't,
             // add those vertices.
-            insureSegmentInMesh(segment, realSegment);
+            if (!insureSegmentInMesh(segment, realSegment))
+            {
+                return false;
+            }
             const Vertex* a = getVertex(realSegment._a);
             const Vertex* b = getVertex(realSegment._b);
             const Vertex* current = a;

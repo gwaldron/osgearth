@@ -925,35 +925,38 @@ namespace osgEarth { namespace Util
             }
             // One or both endpoints are not contained in the mesh.
             EdgeIntersection aEdgeInter, bEdgeInter;
-            if (!aFace)
+            if (!isVertexInMesh(a))
             {
                 Ray2d aRay(segment._a, segment._b - segment._a);
                 aEdgeInter = getBorderEdge(aRay);
-                if (aEdgeInter.edge)
-                {
-                    const Vertex* edgeVert = getVertex(aEdgeInter.position);
-                    if (!isVertexInMesh(edgeVert))
-                    {
-                        splitEdge(const_cast<Edge*>(aEdgeInter.edge), edgeVert);
-                    }
-                    newSegment._a = aEdgeInter.position;
-                }
             }
-            if (!bFace)
+            if (!isVertexInMesh(b))
             {
                 Ray2d bRay(segment._b, segment._a - segment._b);
                 bEdgeInter = getBorderEdge(bRay);
-                if (bEdgeInter.edge)
-                {
-                    const Vertex* edgeVert = getVertex(bEdgeInter.position);
-                    if (!isVertexInMesh(edgeVert))
-                    {
-                        splitEdge(const_cast<Edge*>(bEdgeInter.edge), edgeVert);
-                    }
-                    newSegment._b = bEdgeInter.position;
-                }
             }
-            return ((aFace || aEdgeInter.edge) && (bFace || bEdgeInter.edge));
+            if (!((isVertexInMesh(a) || aEdgeInter.edge)
+                  && (isVertexInMesh(b) || bEdgeInter.edge)))
+                return false;
+            if (aEdgeInter.edge)
+            {
+                const Vertex* edgeVert = getVertex(aEdgeInter.position);
+                if (!isVertexInMesh(edgeVert))
+                {
+                    splitEdge(const_cast<Edge*>(aEdgeInter.edge), edgeVert);
+                }
+                newSegment._a = aEdgeInter.position;
+            }
+            if (bEdgeInter.edge)
+            {
+                const Vertex* edgeVert = getVertex(bEdgeInter.position);
+                if (!isVertexInMesh(edgeVert))
+                {
+                    splitEdge(const_cast<Edge*>(bEdgeInter.edge), edgeVert);
+                }
+                newSegment._b = bEdgeInter.position;
+            }
+            return true;
         }
 
         // Get Border edge leaving vertex, if any

@@ -101,17 +101,19 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     unsigned tileSize = options().tileSize().get();
 
     // Mask generator creates geometry from masking boundaries when they exist.
-    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(key, tileSize, map.get());
-    osg::ref_ptr<MeshEditor> edits = new MeshEditor(key, tileSize, map.get());
+    //osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(key, tileSize, map.get());
+    //osg::ref_ptr<MeshEditor> edits = new MeshEditor(key, tileSize, map.get());
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<SharedGeometry> geom;
     context->getGeometryPool()->getPooledGeometry(
         key,
         tileSize,
-        masks.get(),
-        edits.get(),
+        map.get(),
         geom);
+        //masks.get(),
+        //edits.get(),
+        //geom);
 
     // If we donget an empty, that most likely means the tile was completely
     // contained by a masking boundary. Mark as empty and we are done.

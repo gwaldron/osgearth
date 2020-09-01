@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/FeatureSource>
-
 #include <osgEarth/MeshEditLayer>
 #include <osgEarth/LayerReference>
 
@@ -39,6 +38,9 @@ namespace osgEarth
         public:
             META_LayerOptions(osgEarth, Options, MeshEditLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION(bool, removeInterior);
+            OE_OPTION(bool, removeExterior);
+            OE_OPTION(bool, hasElevation);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );
@@ -51,11 +53,15 @@ namespace osgEarth
         void setFeatureSource(FeatureSource* features);
         FeatureSource* getFeatureSource() const;
 
-    public: // MeshEditLayer
-        EditVector* getOrCreateEditGeometry(
-            float                   heightScale,
-            const TileKey&          key,
-            ProgressCallback*       progress) override;
+        //! Whether the terrain should remove interior geometry
+        bool getRemoveInterior() const { return options().removeInterior().get(); }
+
+        //! Whether the terran should remove exterior geometry
+        bool getRemoveExterior() const { return options().removeExterior().get(); }
+
+        //! Whether the terrain should perserve the Z as elevation in the constraint
+        bool getHasElevation() const { return options().hasElevation().get(); }
+
     public:
 
         virtual Status openImplementation();
@@ -77,7 +83,7 @@ namespace osgEarth
 
         void create();
 
-        osg::ref_ptr<EditVector> _editGeometry;
+        //osg::ref_ptr<EditVector> _editGeometry;
     };
 } // namespace osgEarth
 

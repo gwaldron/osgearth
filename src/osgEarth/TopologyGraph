@@ -25,6 +25,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/Math>
 #include <osg/NodeVisitor>
 #include <osg/Vec3d>
 #include <osg/Geometry>
@@ -46,6 +47,8 @@ namespace osgEarth { namespace Util
         //! Represents a single vertex in the topology graph
         struct Vertex
         {
+            Vertex() { }
+
             Vertex(const Vertex& rhs) : _verts(rhs._verts), _index(rhs._index), _graphID(0u) { }
 
             Vertex(const osg::Vec3Array* verts, unsigned index) : _verts(verts), _index(index), _graphID(0u) { }
@@ -58,12 +61,21 @@ namespace osgEarth { namespace Util
             float y() const { return (*_verts)[_index].y(); }
 
             bool operator < (const Vertex& rhs) const {
-                //if (_verts < rhs._verts) return true;
-                //if (_verts > rhs._verts) return false;
-                //return _index < rhs._index;
                 if (x() < rhs.x()) return true;
                 if (x() > rhs.x()) return false;
                 return y() < rhs.y();
+            }
+
+            bool operator == (const Vertex& rhs) const {
+                return
+                    osg::equivalent(x(), rhs.x()) &&
+                    osg::equivalent(y(), rhs.y());
+            }
+
+            std::size_t operator()(const Vertex& v) const {
+                float x = v.x(), y = v.y();
+                return osgEarth::hash_value_unsigned(
+                    *(unsigned*)(&x), *(unsigned*)(&y));
             }
 
             const osg::Vec3Array* _verts;   //! vertex array from which this vertex originated
@@ -72,7 +84,7 @@ namespace osgEarth { namespace Util
         };
 
         //! One or more Vertex objects
-        typedef std::set<Vertex> VertexSet;
+        typedef std::unordered_set<Vertex,Vertex> VertexSet;
 
         //! Iterator into a VertexSet.
         typedef VertexSet::iterator Index;

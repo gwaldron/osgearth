@@ -232,6 +232,9 @@ namespace osgEarth
          */
         Orientation getOrientation() const;
 
+        //! Whether a closed geometry contains the 2D point
+        virtual bool contains2D(double x, double y) const { return false; }
+
     public:
         virtual Type getType() const { return TYPE_UNKNOWN; }
         virtual Type getComponentType() const { return getType(); }
@@ -246,6 +249,9 @@ namespace osgEarth
         void push_back(double x, double y, double z) { 
             osgEarth::InlineVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,z)); }
 
+        virtual bool isRing() const { return false; }
+        virtual bool isPolygon() const { return false; }
+        virtual bool isOpen() const { return true; }
     protected:
     };
 
@@ -330,7 +336,7 @@ namespace osgEarth
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
 
         // tests whether the point falls within the ring
-        virtual bool contains2D( double x, double y ) const;
+        virtual bool contains2D( double x, double y ) const override;
 
         // gets the signed area of a part that is known to be open.
         virtual double getSignedArea2D() const;
@@ -345,7 +351,7 @@ namespace osgEarth
         virtual void close();
 
         // whether the ring is open (i.e. first and last points are different)
-        virtual bool isOpen() const;
+        virtual bool isOpen() const override;
 
         // opens and winds the ring in the specified direction
         virtual void rewind( Orientation ori );
@@ -353,6 +359,8 @@ namespace osgEarth
     public:
         virtual Type getType() const { return Geometry::TYPE_RING; }
         virtual bool isValid() const { return size() >= 3; }
+
+        virtual bool isRing() const override { return true; }
     };
 
     typedef std::vector<osg::ref_ptr<Ring> > RingCollection;
@@ -375,11 +383,13 @@ namespace osgEarth
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
         virtual int getTotalPointCount() const;
+
+        virtual bool isPolygon() const override { return true; }
         
         virtual unsigned getNumGeometries() const { return 1 + _holes.size(); }
 
         // tests whether the point falls within the polygon (but not its holes)
-        virtual bool contains2D( double x, double y ) const;
+        virtual bool contains2D( double x, double y ) const override;
 
         virtual void open();
 

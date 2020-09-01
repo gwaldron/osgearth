@@ -22,9 +22,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Layer>
-#include <osgEarth/Config>
-#include <osgEarth/MaskSource>
 #include <osgEarth/Containers>
+#include <osgEarth/Feature>
 #include <osg/Node>
 
 namespace osgEarth
@@ -56,16 +55,19 @@ namespace osgEarth
         unsigned getMinLevel() const { return options().minLevel().get(); }
 
     public:
-        typedef Util::RefVector<osg::ref_ptr<osg::Vec3dArray>> EditVector;
+        typedef FeatureList EditVector;
+
+        //typedef Util::RefVector< osg::ref_ptr<Geometry>> EditVector;
         /** 
          * Gets the line segments to cut into the terrain. Each array
          * is a line string or a polygon (same beginning and end)
          * terrain to mask out.
          */
-        virtual EditVector* getOrCreateEditGeometry(
-            float                   heightScale,
+        virtual bool getOrCreateEditGeometry(
+            float heightScale,
             const TileKey& key,
-            ProgressCallback*       progress) { return 0L; }
+            FeatureList& output,
+            ProgressCallback* progress) { return false; }
 
     protected:
 

@@ -36,9 +36,9 @@ namespace osgEarth { namespace REX
 
     struct ModifyBoundingBoxCallback : public osg::Referenced
     {
-        ModifyBoundingBoxCallback(EngineContext* engine);
+        ModifyBoundingBoxCallback(EngineContext* context);
         void operator()(const TileKey& key, osg::BoundingBox& bbox);
-        EngineContext* _engine;
+        EngineContext* _context;
     };
 
     /**

@@ -26,6 +26,7 @@
 using namespace osgEarth;
 
 #define LC "[FeatureMeshEditLayer] "
+REGISTER_OSGEARTH_LAYER(terrainconstraint, FeatureMeshEditLayer);
 REGISTER_OSGEARTH_LAYER(featuremeshedit, FeatureMeshEditLayer);
 REGISTER_OSGEARTH_LAYER(feature_mesh_edit, FeatureMeshEditLayer);
 
@@ -35,6 +36,9 @@ void
 FeatureMeshEditLayer::Options::fromConfig(const Config& conf)
 {
     featureSource().get(conf, "features");
+    conf.get("remove_interior", removeInterior());
+    conf.get("remove_exterior", removeExterior());
+    conf.get("has_elevation", hasElevation());
 }
 
 Config
@@ -42,6 +46,9 @@ FeatureMeshEditLayer::Options::getConfig() const
 {
     Config conf = MeshEditLayer::Options::getConfig();
     featureSource().set(conf, "features");
+    conf.set("remove_interior", removeInterior());
+    conf.set("remove_exterior", removeExterior());
+    conf.set("has_elevation", hasElevation());
     return conf;
 }
 
@@ -78,37 +85,6 @@ FeatureMeshEditLayer::getConfig() const
 {
     Config c = MeshEditLayer::getConfig();
     return c;
-}
-
-MeshEditLayer::EditVector*
-FeatureMeshEditLayer::getOrCreateEditGeometry(float heightScale,
-                                              const TileKey& key,
-                                              ProgressCallback* progress)
-{
-    FeatureSource* fs = getFeatureSource();
-
-    if (fs == NULL)
-        return 0L;
-
-    osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(key, progress);
-    if (cursor.valid())
-    {
-        osg::ref_ptr<EditVector> edit = new EditVector;
-        while (cursor->hasMore())
-        {
-            Feature* f = cursor->nextFeature();
-            if (f && f->getGeometry())
-            {
-                f->transform(key.getExtent().getSRS());
-                edit->push_back(f->getGeometry()->createVec3dArray());
-            }
-        }
-        return edit.release();
-    }
-    else
-    {
-        return nullptr;
-    }
 }
 
 void

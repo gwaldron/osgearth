@@ -51,20 +51,14 @@ _geometryMapMutex("GeometryPool(OE)")
         _enabled = false;
         OE_INFO << LC << "Geometry pool disabled (environment)" << std::endl;
     }
-
-    //if ( ::getenv( "OSGEARTH_MEMORY_PROFILE" ) )
-    //{
-    //    _enabled = false;
-    //    OE_INFO << LC << "Geometry pool disabled (memory profile mode)" << std::endl;
-    //}
 }
 
 void
-GeometryPool::getPooledGeometry(const TileKey&                tileKey,
-                                unsigned                      tileSize,
-                                MaskGenerator*                maskSet,
-                                MeshEditor*                   meshEditor,
-                                osg::ref_ptr<SharedGeometry>& out)
+GeometryPool::getPooledGeometry(
+    const TileKey& tileKey,
+    unsigned tileSize,
+    const Map* map,
+    osg::ref_ptr<SharedGeometry>& out)
 {
     // convert to a unique-geometry key:
     GeometryKey geomKey;
@@ -75,16 +69,17 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
         Threading::ScopedMutexLock lock(_geometryMapMutex);
         if (!_defaultPrimSet.valid())
         {
-            osg::UIntArray* reorder = 0L;
-            _defaultPrimSet = createPrimitiveSet(tileSize, NULL, NULL);
-            _reorder = reorder;
+            _defaultPrimSet = createPrimitiveSet(tileSize);
         }
     }
+
+    MeshEditor meshEditor(tileKey, tileSize, map);
 
     if ( _enabled )
     {
         // if this tile conatins mask/edit, it's a unique geometry - don't share it.
-        bool isUnique = (maskSet && maskSet->hasMasks()) || (meshEditor && meshEditor->hasEdits());
+        //bool isUnique = (maskSet && maskSet->hasMasks()) || (meshEditor && meshEditor->hasEdits());
+        bool isUnique = meshEditor.hasEdits();
 
         if (!isUnique)
         {
@@ -99,7 +94,7 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
 
         if (!out.valid())
         {
-            out = createGeometry(tileKey, tileSize, maskSet, meshEditor);
+            out = createGeometry(tileKey, tileSize, meshEditor);
 
             if (!isUnique)
             {
@@ -111,13 +106,13 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
 
     else
     {
-        out = createGeometry( tileKey, tileSize, maskSet, meshEditor );
+        out = createGeometry( tileKey, tileSize, meshEditor);
     }
 }
 
 void
-GeometryPool::createKeyForTileKey(const TileKey&             tileKey,
-                                  unsigned                   tileSize,
+GeometryPool::createKeyForTileKey(const TileKey& tileKey,
+                                  unsigned tileSize,
                                   GeometryPool::GeometryKey& out) const
 {
     out.lod  = tileKey.getLOD();
@@ -140,26 +135,6 @@ namespace
         if ( (col & 0x1)==1 )                   return 2;
         return 1;
     }
-
-    struct Sort_by_X {
-        osg::Vec3Array& _verts;
-        Sort_by_X(osg::Vec3Array* verts) : _verts(*verts) { }
-        bool operator()(unsigned lhs, unsigned rhs) const {
-            if (_verts[lhs].x() < _verts[rhs].x()) return true;
-            if (_verts[lhs].x() > _verts[rhs].x()) return false;
-            return _verts[lhs].y() < _verts[rhs].y();
-        }
-    };
-
-    struct Sort_by_Y {
-        osg::Vec3Array& _verts;
-        Sort_by_Y(osg::Vec3Array* verts) : _verts(*verts) { }
-        bool operator()(unsigned lhs, unsigned rhs) const {
-            if (_verts[lhs].y() < _verts[rhs].y()) return true;
-            if (_verts[lhs].y() > _verts[rhs].y()) return false;
-            return _verts[lhs].x() < _verts[rhs].x();
-        }
-    };
 }
 
 #define addSkirtDataForIndex(INDEX, HEIGHT) \
@@ -180,19 +155,6 @@ namespace
 
 #define addSkirtTriangles(INDEX0, INDEX1) \
 { \
-    if ( maskSet == 0L || (!maskSet->isMasked((*texCoords)[INDEX0]) && !maskSet->isMasked((*texCoords)[INDEX1])) ) \
-    { \
-        primSet->addElement((INDEX0));   \
-        primSet->addElement((INDEX0)+1); \
-        primSet->addElement((INDEX1));   \
-        primSet->addElement((INDEX1));   \
-        primSet->addElement((INDEX0)+1); \
-        primSet->addElement((INDEX1)+1); \
-    } \
-}
-
-#define addMaskSkirtTriangles(INDEX0, INDEX1) \
-{ \
     primSet->addElement((INDEX0));   \
     primSet->addElement((INDEX0)+1); \
     primSet->addElement((INDEX1));   \
@@ -202,8 +164,8 @@ namespace
 }
 
 osg::DrawElements*
-GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg::Vec3Array* texCoords,
-                                 osg::UIntArray** reorder) const
+GeometryPool::createPrimitiveSet(
+    unsigned tileSize) const
 {
     // Attempt to calculate the number of verts in the surface geometry.
     bool needsSkirt = _options.heightFieldSkirtRatio() > 0.0f;
@@ -220,7 +182,7 @@ GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg:
     primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
 
     // add the elements for the surface:
-    tessellateSurface(tileSize, maskSet, texCoords, primSet.get());
+    tessellateSurface(tileSize, nullptr, nullptr, primSet.get());
 
     if (needsSkirt)
     {
@@ -233,58 +195,12 @@ GeometryPool::createPrimitiveSet(unsigned tileSize, MaskGenerator* maskSet, osg:
         addSkirtTriangles( i, skirtBegin );
     }
 
-    // if there's no mask, assume this is the "global" geometry and optimize it.
-    if (!maskSet)
-    {
-        osg::ref_ptr<osg::Geometry> temp = new osg::Geometry();
-        temp->addPrimitiveSet(primSet.get());
-
-        // optimizer wants this..
-        temp->setVertexArray(new osg::Vec3Array(numVertsInSurface + numVertsInSkirt));
-        osg::ref_ptr<osg::UIntArray> indexArray = new osg::UIntArray(numVertsInSurface + numVertsInSkirt);
-        indexArray->setBinding(osg::Array::BIND_PER_VERTEX);
-        for (int i = 0; i < indexArray->size();++i)
-        {
-            (*indexArray)[i] = i;
-        }
-        temp->setVertexAttribArray(0, indexArray.get());
-
-        osgUtil::VertexCacheVisitor vcv;
-        temp->accept(vcv);
-        vcv.optimizeVertices();
-
-        if (reorder)
-        {
-            osgUtil::VertexAccessOrderVisitor vaov;
-            temp->accept(vaov);
-            vaov.optimizeOrder();
-
-            primSet = (osg::DrawElements*)temp->getPrimitiveSet(0);
-            // The optimizer may (will) make a copy of attributes
-            indexArray = static_cast<osg::UIntArray*>(temp->getVertexAttribArray(0));
-            temp = NULL;
-            *reorder = indexArray.release();
-        }
-    }
-
     primSet->setElementBufferObject(new osg::ElementBufferObject());
 
     return primSet.release();
 }
 
-// Order (destructively) the elements of a Vec3Array according to the
-// values of a UIntArray
 
-void reorder(osg::Array* array, osg::UIntArray* elems)
-{
-    osg::Vec3Array* a = dynamic_cast<osg::Vec3Array*>(array);
-    osg::ref_ptr<osg::Vec3Array> reordered = new osg::Vec3Array(a->size());
-    for (int i = 0; i < a->size(); ++i)
-    {
-        (*reordered)[i] = (*a)[(*elems)[i]];
-    }
-    reordered->swap(*a);
-}
 
 void
 GeometryPool::tessellateSurface(unsigned tileSize, MaskGenerator* maskSet, osg::Vec3Array* texCoords, osg::DrawElements* primSet) const
@@ -333,9 +249,8 @@ GeometryPool::tessellateSurface(unsigned tileSize, MaskGenerator* maskSet, osg::
 
 SharedGeometry*
 GeometryPool::createGeometry(const TileKey& tileKey,
-                             unsigned       tileSize,
-                             MaskGenerator* maskSet,
-                             MeshEditor* editor) const
+                             unsigned tileSize,
+                             MeshEditor& editor) const
 {
     OE_PROFILING_ZONE;
 
@@ -417,13 +332,12 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     GeoLocator locator(tileKey.getExtent());
 
-    if (editor && editor->hasEdits())
+    if (editor.hasEdits())
     {
-        //editor->createTileMesh(geom.get(), tileSize);
-        editor->createTileMesh2(geom.get(), tileSize);
+        editor.createTileMesh2(geom.get(), tileSize);
 
         // Build a skirt for the edited geometry?
-        if (needsSkirt)
+        if (needsSkirt)            
         {
             double height = geom->getBound().radius() * _options.heightFieldSkirtRatio().get();
 
@@ -485,7 +399,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             if ( populateTexCoords )
             {
                 // Use the Z coord as a type marker
-                float marker =  maskSet ? maskSet->getMarker(nx, ny) : VERTEX_MARKER_GRID;
+                float marker = VERTEX_NORMAL; // maskSet ? maskSet->getMarker(nx, ny) : VERTEX_MARKER_GRID;
                 texCoords->push_back( osg::Vec3f(nx, ny, marker) );
             }
 
@@ -535,6 +449,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     // By default we tessellate the surface, but if there's a masking set
     // it might replace some or all of our surface geometry.
     bool tessellateSurface = true;
+#if 0
     if (maskSet)
     {
         // The mask generator adds to the passed-in arrays as necessary,
@@ -615,6 +530,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             tessellateSurface = false;
         }
     }
+#endif
 
     if (tessellateSurface && primSet == NULL)
     {

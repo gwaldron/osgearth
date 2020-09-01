@@ -22,7 +22,7 @@
 #include "Common"
 #include <osgEarth/TileKey>
 #include <osgEarth/Geometry>
-#include <osgEarth/MeshEditLayer>
+#include <osgEarth/FeatureMeshEditLayer>
 #include <osg/Geometry>
 
 namespace osgEarth {
@@ -35,35 +35,49 @@ namespace osgEarth { namespace REX
 
     class SharedGeometry;
     
-    struct EditGeometry
-    {
-        EditGeometry(MeshEditLayer::EditVector* geom,
-                     const osg::Vec3d& ndcMin, const osg::Vec3d& ndcMax)
-            : geometry(geom), _ndcMin(ndcMin), _ndcMax(ndcMax)
-        {
-        }
-        osg::ref_ptr<MeshEditLayer::EditVector> geometry;
-        // XXX Necessary?
-        osg::Vec3d _ndcMin, _ndcMax;
-    };
+    //struct EditGeometry
+    //{
+    //    EditGeometry(MeshEditLayer::EditVector* geom,
+    //                 const osg::Vec3d& ndcMin, const osg::Vec3d& ndcMax)
+    //        : geometry(geom), _ndcMin(ndcMin), _ndcMax(ndcMax)
+    //    {
+    //    }
+    //    //osg::ref_ptr<MeshEditLayer::EditVector> geometry;
+    //    // XXX Necessary?
+    //    //osg::Vec3d _ndcMin, _ndcMax;
+    //};
     
     class MeshEditor : public osg::Referenced
     {
     public:
         MeshEditor(const TileKey& key, unsigned tileSize, const Map* map);
-        void addEditGeometry(MeshEditLayer::EditVector *geometry);
+
+        struct Edit
+        {
+            FeatureList _features;
+            osg::ref_ptr<FeatureMeshEditLayer> _layer;
+        };
+
+        //FeatureList& getFeatures() {
+        //    return _edits;
+        //}
+
         bool hasEdits()
         {
             return !_edits.empty();
         }
-        bool createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize);
+        //bool createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize);
 
         bool createTileMesh2(SharedGeometry* geom, unsigned tileSize);
+
+        //bool isMasked(const osg::Vec3&) const;
+
     protected:
-        std::vector<EditGeometry> _edits;
+        std::vector<Edit> _edits;
+        //FeatureList _edits;
         const TileKey _key;
         unsigned _tileSize;
         osg::Vec3d _ndcMin, _ndcMax;
     };
-    }}
+}}
 #endif

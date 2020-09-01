@@ -33,8 +33,8 @@ using namespace osgEarth;
 
 //........................................................................
 
-ModifyBoundingBoxCallback::ModifyBoundingBoxCallback(EngineContext* engine) : 
-_engine(engine)
+ModifyBoundingBoxCallback::ModifyBoundingBoxCallback(EngineContext* context) : 
+_context(context)
 { 
     //nop
 }
@@ -42,19 +42,23 @@ _engine(engine)
 void
 ModifyBoundingBoxCallback::operator()(const TileKey& key, osg::BoundingBox& bbox)
 {
-    _engine->getEngine()->fireModifyTileBoundingBoxCallbacks(key, bbox);
-
-    osg::ref_ptr<const Map> map = _engine->getMap();
-    if (map.valid())
+    osg::ref_ptr<TerrainEngineNode> engine = _context->getEngine();
+    if (engine.valid())
     {
-        LayerVector layers;
-        map->getLayers(layers);
+        engine->fireModifyTileBoundingBoxCallbacks(key, bbox);
 
-        for (LayerVector::const_iterator layer = layers.begin(); layer != layers.end(); ++layer)
+        osg::ref_ptr<const Map> map = _context->getMap();
+        if (map.valid())
         {
-            if (layer->valid())
+            LayerVector layers;
+            map->getLayers(layers);
+
+            for (LayerVector::const_iterator layer = layers.begin(); layer != layers.end(); ++layer)
             {
-                layer->get()->modifyTileBoundingBox(key, bbox);
+                if (layer->valid())
+                {
+                    layer->get()->modifyTileBoundingBox(key, bbox);
+                }
             }
         }
     }

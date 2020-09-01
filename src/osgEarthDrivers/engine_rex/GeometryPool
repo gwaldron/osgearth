@@ -35,6 +35,12 @@
 #define SUPPORTS_VAO 1
 #endif
 
+#define VERTEX_DISCARD   1    // do not draw
+#define VERTEX_NORMAL      2    // regular grid vertex (not part of mask)
+#define VERTEX_PATCH   4    // not subject to morphing
+#define VERTEX_CONSTRAINT 8    // not subject to elevation texture
+#define VERTEX_SKIRT      16    // it's a skirt vertex (bitmask)
+
 namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
@@ -215,10 +221,9 @@ namespace osgEarth { namespace REX
          * necessary and storing it in the pool.
          */
         void getPooledGeometry(
-            const TileKey&               tileKey,
-            unsigned                     tileSize,
-            MaskGenerator*               maskSet,
-            MeshEditor*                  meshEditor,
+            const TileKey& tileKey,
+            unsigned tileSize,
+            const Map* map,
             osg::ref_ptr<SharedGeometry>& out);
 
         /**
@@ -249,8 +254,8 @@ namespace osgEarth { namespace REX
         virtual ~GeometryPool() { }
 
         mutable Threading::Mutex _geometryMapMutex;
-        GeometryMap                    _geometryMap;
-        const TerrainOptions&          _options;
+        GeometryMap _geometryMap;
+        const TerrainOptions& _options;
         osg::ref_ptr<ResourceReleaser> _releaser;
         osg::ref_ptr<osg::DrawElements> _defaultPrimSet;
         osg::ref_ptr<osg::UIntArray> _reorder;
@@ -264,16 +269,12 @@ namespace osgEarth { namespace REX
 
         SharedGeometry* createGeometry(
             const TileKey& tileKey,
-            unsigned       tileSize,
-            MaskGenerator* maskSet,
-            MeshEditor* meshEditor) const;
+            unsigned  tileSize,
+            MeshEditor& meshEditor) const;
 
         // builds a primitive set to use for any tile without a mask
         osg::DrawElements* createPrimitiveSet(
-            unsigned tileSize,
-            MaskGenerator* maskSet,
-            osg::Vec3Array* texCoords,
-            osg::UIntArray** reorder = 0L) const;
+            unsigned tileSize) const;
 
         void tessellateSurface(
             unsigned tileSize,

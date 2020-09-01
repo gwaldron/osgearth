@@ -197,8 +197,9 @@ CreateTileImplementation::createTile(
         context->getGeometryPool()->getPooledGeometry(
             *subkey,
             tileSize,
-            &maskGen,
-            &meshEdit,
+            map.get(),
+            //&maskGen,
+            //&meshEdit,
             sharedGeom);
 
         osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();

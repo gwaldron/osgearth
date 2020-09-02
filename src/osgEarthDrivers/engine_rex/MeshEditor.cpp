@@ -194,14 +194,14 @@ MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
         {
             continue;
         }
-        auto faceVerts = wmesh.getFaceVertices(&face);
-        if (faceVerts.size() != 3)
+        if (wmesh.getFaceSize(&face) != 3)
         {
-            OE_NOTICE << "face with " << faceVerts.size() << " vertices\n";
+            OE_NOTICE << "face with " << wmesh.getFaceSize(&face) << " vertices\n";
         }
         else
         {
-            for (auto vertPtr : faceVerts)
+            auto faceAdapter = TileMesh::FaceVerticesAdapter(face);
+            for (auto vertPtr : faceAdapter)
             {
                 primSet->addElement(vertPtr->meshIndex);
             }

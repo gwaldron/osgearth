@@ -469,6 +469,14 @@ namespace osgEarth { namespace Util
             }
         };
 
+        // Number of face edges and vertices
+        int getFaceSize(const Face* f)
+        {
+            if (!f->edge)
+                return 0;
+            return std::distance(f->begin(), f->end());
+        }
+
         VVec getFaceVertices(const Face* f)
         {
             VVec result;

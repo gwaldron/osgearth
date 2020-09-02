@@ -37,7 +37,7 @@
 #include <osgEarth/ExampleResources>
 #include <osgEarth/AutoScaleCallback>
 
-#include <osgEarth/FeatureMaskLayer>
+#include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/OGRFeatureSource>
 
 #include <osg/PositionAttitudeTransform>
@@ -203,7 +203,7 @@ main(int argc, char** argv)
 
     if (maskFeatures->open().isOK())
     {
-        FeatureMaskLayer* maskLayer = new FeatureMaskLayer();
+        TerrainConstraintLayer* maskLayer = new TerrainConstraintLayer();
         maskLayer->setFeatureSource(maskFeatures);
         map->addLayer(maskLayer);
     }

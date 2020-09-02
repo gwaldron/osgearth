@@ -90,52 +90,10 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     if (!context)
         return;
 
+    _key = key;
     _context = context;
 
-    _key = key;
-
-    osg::ref_ptr<const Map> map = _context->getMap();
-    if (!map.valid())
-        return;
-
-    unsigned tileSize = options().tileSize().get();
-
-    // Mask generator creates geometry from masking boundaries when they exist.
-    //osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(key, tileSize, map.get());
-    //osg::ref_ptr<MeshEditor> edits = new MeshEditor(key, tileSize, map.get());
-
-    // Get a shared geometry from the pool that corresponds to this tile key:
-    osg::ref_ptr<SharedGeometry> geom;
-    context->getGeometryPool()->getPooledGeometry(
-        key,
-        tileSize,
-        map.get(),
-        geom);
-        //masks.get(),
-        //edits.get(),
-        //geom);
-
-    // If we donget an empty, that most likely means the tile was completely
-    // contained by a masking boundary. Mark as empty and we are done.
-    if (geom->empty())
-    {
-        OE_DEBUG << LC << "Tile " << _key.str() << " is empty.\n";
-        _empty = true;
-        return;
-    }
-
-    // Create the drawable for the terrain surface:
-    TileDrawable* surfaceDrawable = new TileDrawable(
-        key,
-        geom.get(),
-        options().tileSize().get());
-
-    // Give the tile Drawable access to the render model so it can properly
-    // calculate its bounding box and sphere.
-    surfaceDrawable->setModifyBBoxCallback(context->getModifyBBoxCallback());
-
-    // Create the node to house the tile drawable:
-    _surface = new SurfaceNode(key, surfaceDrawable);
+    createGeometry();
 
     // Encode the tile key in a uniform. Note! The X and Y components are presented
     // modulo 2^16 form so they don't overrun single-precision space.
@@ -168,10 +126,60 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 }
 
 void
+TileNode::createGeometry()
+{
+    osg::ref_ptr<const Map> map = _context->getMap();
+    if (!map.valid())
+        return;
+
+    _empty = false;
+
+    unsigned tileSize = options().tileSize().get();
+
+    // Get a shared geometry from the pool that corresponds to this tile key:
+    osg::ref_ptr<SharedGeometry> geom;
+
+    _context->getGeometryPool()->getPooledGeometry(
+        _key,
+        tileSize,
+        map.get(),
+        geom);
+
+    if (geom.valid())
+    {
+        // Create the drawable for the terrain surface:
+        TileDrawable* surfaceDrawable = new TileDrawable(
+            _key,
+            geom.get(),
+            tileSize);
+
+        // Give the tile Drawable access to the render model so it can properly
+        // calculate its bounding box and sphere.
+        surfaceDrawable->setModifyBBoxCallback(_context->getModifyBBoxCallback());
+
+        osg::ref_ptr<const osg::Image> elevationRaster = getElevationRaster();
+        osg::Matrixf elevationMatrix = getElevationMatrix();
+
+        // Create the node to house the tile drawable:
+        _surface = new SurfaceNode(_key, surfaceDrawable);
+
+        if (elevationRaster.valid())
+            _surface->setElevationRaster(elevationRaster.get(), elevationMatrix);
+    }
+    else
+    {
+        _empty = true;
+    }
+
+    dirtyBound();
+}
+
+void
 TileNode::initializeData()
 {
     // Initialize the data model by copying the parent's rendering data
     // and scale/biasing the matrices.
+
     TileNode* parent = getParentTile();
     if (parent)
     {
@@ -318,10 +326,6 @@ TileNode::refreshLayers(const CreateTileManifest& manifest)
     LoadTileData* r = new LoadTileData(manifest, this, _context.get());
     r->setName(_key.str());
     r->setTileKey(_key);
-
-    // if the set is empty, the load job will refresh ALL data
-    //for (std::set<UID>::const_iterator i = layers.begin(); i != layers.end(); ++i)
-    //    r->addLayerToFilter(*i);
 
     _loadQueue.lock();
     _loadQueue.push(r);
@@ -584,13 +588,18 @@ TileNode::traverse(osg::NodeVisitor& nv)
         _lastTraversalFrame.exchange(_context->getClock()->getFrame());
         _lastTraversalTime = _context->getClock()->getTime();
 
-        if (!_empty)
-        {
-            _context->liveTiles()->update(this, nv);
-        }
+        _context->liveTiles()->update(this, nv);
 
-        if (_empty == false)
-        {        
+        if (_empty)
+        {
+            // even if the tile's empty, we need to process its load queue
+            if (dirty())
+            {
+                load(culler);
+            }
+        }
+        else
+        {
             if (culler->_isSpy)
             {
                 accept_cull_spy( culler );
@@ -744,6 +753,14 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
     RenderingPasses& myPasses = _renderModel._passes;
     const CreateTileManifest& manifest = request->getManifest();
     vector_set<UID> uidsLoaded;
+
+    // if terrain constraints are in play, regenerate the tile's geometry.
+    // this could be kinda slow, but meh, if you are adding and removing
+    // constraints, frame drops are not a big concern
+    if (manifest.includesConstraints())
+    {
+        createGeometry();
+    }
 
     // First deal with the rendering passes (for color data):
     const SamplerBinding& color = bindings[SamplerBinding::COLOR];

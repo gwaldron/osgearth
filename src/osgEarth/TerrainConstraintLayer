@@ -17,12 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_FEATURE_MESH_EDIT_LAYER_H
-#define OSGEARTH_FEATURE_MESH_EDIT_LAYER_H 1
+#ifndef OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H
+#define OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/FeatureSource>
-#include <osgEarth/MeshEditLayer>
 #include <osgEarth/LayerReference>
 
 namespace osgEarth
@@ -30,24 +29,25 @@ namespace osgEarth
     /**
      * MeshEditLayer whose geometry comes from a feature source.
      */
-    class OSGEARTH_EXPORT FeatureMeshEditLayer : public MeshEditLayer
+    class OSGEARTH_EXPORT TerrainConstraintLayer : public Layer
     {
     public: // serialization
-        class OSGEARTH_EXPORT Options : public MeshEditLayer::Options
+        class OSGEARTH_EXPORT Options : public Layer::Options
         {
         public:
-            META_LayerOptions(osgEarth, Options, MeshEditLayer::Options);
+            META_LayerOptions(osgEarth, Options, Layer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION(bool, removeInterior);
             OE_OPTION(bool, removeExterior);
             OE_OPTION(bool, hasElevation);
+            OE_OPTION(unsigned, minLevel);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );
         };
 
     public:
-        META_Layer(osgEarth, FeatureMeshEditLayer, Options, MeshEditLayer, FeatureMeshEdit);
+        META_Layer(osgEarth, TerrainConstraintLayer, Options, Layer, TerrainConstraint);
 
         //! Source of the feature(s)
         void setFeatureSource(FeatureSource* features);
@@ -62,11 +62,15 @@ namespace osgEarth
         //! Whether the terrain should perserve the Z as elevation in the constraint
         bool getHasElevation() const { return options().hasElevation().get(); }
 
+        //! Minimum LOD at which to apply this constraint
+        unsigned getMinLevel() const { return options().minLevel().get(); }
+
+        //! Geospatial extent of this layer's data
+        virtual const GeoExtent& getExtent() const override;
+
     public:
 
         virtual Status openImplementation();
-
-        virtual Config getConfig() const;
 
     protected:
 
@@ -77,17 +81,15 @@ namespace osgEarth
     protected:
 
         /** dtor */
-        virtual ~FeatureMeshEditLayer() { }
+        virtual ~TerrainConstraintLayer() { }
 
     private:
 
         void create();
-
-        //osg::ref_ptr<EditVector> _editGeometry;
     };
 } // namespace osgEarth
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureMeshEditLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TerrainConstraintLayer::Options);
 
-#endif // OSGEARTH_FEATURE_MASK_LAYER_H
+#endif // OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H
 

@@ -67,6 +67,9 @@ namespace osgEarth
         void setRewindPolygons(const bool& value);
         const bool& getRewindPolygons() const;
 
+        //! Extents of this layer, if known
+        virtual const GeoExtent& getExtent() const override;
+
     public: // Layer
 
         virtual void init();

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/FeatureMeshEditLayer>
+#include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Map>
 #include <osgEarth/Progress>
@@ -25,51 +25,55 @@
 
 using namespace osgEarth;
 
-#define LC "[FeatureMeshEditLayer] "
-REGISTER_OSGEARTH_LAYER(terrainconstraint, FeatureMeshEditLayer);
-REGISTER_OSGEARTH_LAYER(featuremeshedit, FeatureMeshEditLayer);
-REGISTER_OSGEARTH_LAYER(feature_mesh_edit, FeatureMeshEditLayer);
+#define LC "[TerrainConstraintLayer] "
+REGISTER_OSGEARTH_LAYER(terrainconstraint, TerrainConstraintLayer);
+REGISTER_OSGEARTH_LAYER(featuremask, TerrainConstraintLayer);
+REGISTER_OSGEARTH_LAYER(mask, TerrainConstraintLayer);
 
 //........................................................................
 
 void
-FeatureMeshEditLayer::Options::fromConfig(const Config& conf)
+TerrainConstraintLayer::Options::fromConfig(const Config& conf)
 {
+    minLevel().setDefault(8u);
+
     featureSource().get(conf, "features");
     conf.get("remove_interior", removeInterior());
     conf.get("remove_exterior", removeExterior());
     conf.get("has_elevation", hasElevation());
+    conf.get("min_level", minLevel());
 }
 
 Config
-FeatureMeshEditLayer::Options::getConfig() const
+TerrainConstraintLayer::Options::getConfig() const
 {
-    Config conf = MeshEditLayer::Options::getConfig();
+    Config conf = Layer::Options::getConfig();
     featureSource().set(conf, "features");
     conf.set("remove_interior", removeInterior());
     conf.set("remove_exterior", removeExterior());
     conf.set("has_elevation", hasElevation());
+    conf.set("min_level", minLevel());
     return conf;
 }
 
 //........................................................................
 
 void
-FeatureMeshEditLayer::setFeatureSource(FeatureSource* layer)
+TerrainConstraintLayer::setFeatureSource(FeatureSource* layer)
 {
     options().featureSource().setLayer(layer);
 }
 
 FeatureSource*
-FeatureMeshEditLayer::getFeatureSource() const
+TerrainConstraintLayer::getFeatureSource() const
 {
     return options().featureSource().getLayer();
 }
 
 Status
-FeatureMeshEditLayer::openImplementation()
+TerrainConstraintLayer::openImplementation()
 {
-    Status parent = MeshEditLayer::openImplementation();
+    Status parent = Layer::openImplementation();
     if (parent.isError())
         return parent;
 
@@ -80,31 +84,31 @@ FeatureMeshEditLayer::openImplementation()
     return Status::NoError;
 }
 
-Config
-FeatureMeshEditLayer::getConfig() const
+const GeoExtent&
+TerrainConstraintLayer::getExtent() const
 {
-    Config c = MeshEditLayer::getConfig();
-    return c;
+    return getFeatureSource() ?
+        getFeatureSource()->getExtent() : Layer::getExtent();
 }
 
 void
-FeatureMeshEditLayer::addedToMap(const Map* map)
+TerrainConstraintLayer::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap\n";
-    MeshEditLayer::addedToMap(map);
+    Layer::addedToMap(map);
     options().featureSource().addedToMap(map);
     create();
 }
 
 void
-FeatureMeshEditLayer::removedFromMap(const Map* map)
+TerrainConstraintLayer::removedFromMap(const Map* map)
 {
     options().featureSource().removedFromMap(map);
-    MeshEditLayer::removedFromMap(map);
+    Layer::removedFromMap(map);
 }
 
 void
-FeatureMeshEditLayer::create()
+TerrainConstraintLayer::create()
 {
     FeatureSource* fs = getFeatureSource();
 

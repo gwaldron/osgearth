@@ -20,7 +20,6 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_GEOMETRY_POOL 1
 
 #include "Common"
-#include "MaskGenerator"
 #include "MeshEditor"
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/TileKey>
@@ -35,11 +34,11 @@
 #define SUPPORTS_VAO 1
 #endif
 
-#define VERTEX_DISCARD   1    // do not draw
-#define VERTEX_NORMAL      2    // regular grid vertex (not part of mask)
-#define VERTEX_PATCH   4    // not subject to morphing
-#define VERTEX_CONSTRAINT 8    // not subject to elevation texture
-#define VERTEX_SKIRT      16    // it's a skirt vertex (bitmask)
+#define VERTEX_VISIBLE       1 // draw it
+#define VERTEX_BOUNDARY      2 // vertex lies on a skirt boundary
+#define VERTEX_HAS_ELEVATION 4 // not subject to elevation texture
+#define VERTEX_SKIRT         8 // it's a skirt vertex (bitmask)
+#define VERTEX_CONSTRAINT   16 // part of a non-morphable constraint
 
 namespace osgEarth { namespace REX
 {
@@ -79,9 +78,9 @@ namespace osgEarth { namespace REX
         osg::DrawElements* getDrawElements() { return _drawElements.get(); }
         const osg::DrawElements* getDrawElements() const { return _drawElements.get(); }
 
-        void setMaskElements(osg::DrawElements* array) { _maskElements = array; }
-        osg::DrawElements* getMaskElements() { return _maskElements.get(); }
-        const osg::DrawElements* getMaskElements() const { return _maskElements.get(); }
+        //! Does this geometry include custom constraints?
+        void setHasConstraints(bool value) { _hasConstraints = value; }
+        bool hasConstraints() const { return _hasConstraints; }
 
         // convert to a "real" geometry object
         osg::Geometry* makeOsgGeometry();
@@ -125,7 +124,7 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<osg::Array>        _neighborArray;
         osg::ref_ptr<osg::Array>        _neighborNormalArray;
         osg::ref_ptr<osg::DrawElements> _drawElements;
-        osg::ref_ptr<osg::DrawElements> _maskElements;
+        bool _hasConstraints;
 
     private:
 
@@ -278,8 +277,6 @@ namespace osgEarth { namespace REX
 
         void tessellateSurface(
             unsigned tileSize,
-            MaskGenerator* maskSet,
-            osg::Vec3Array* texCoords,
             osg::DrawElements* primSet) const;
 
         bool _enabled;

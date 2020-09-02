@@ -155,7 +155,7 @@ ElevationPool::refresh(const Map* map)
 {
     _elevationLayers.clear();
 
-    OE_INFO << LC << "Refreshing EP index" << std::endl;
+    OE_DEBUG << LC << "Refreshing EP index" << std::endl;
 
     if (_index)
         delete static_cast<MaxLevelIndex*>(_index);

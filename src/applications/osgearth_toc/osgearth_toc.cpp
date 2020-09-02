@@ -483,15 +483,16 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     int gridRow = grid->getNumRows();
 
     VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
+    TerrainConstraintLayer* constraintLayer = dynamic_cast<TerrainConstraintLayer*>(layer);
 
     // only show layers that derive from VisibleLayer
-    if (!visibleLayer)
+    if (!visibleLayer && !constraintLayer)
         return;
 
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
 
     // don't show hidden coverage layers
-    if (imageLayer && imageLayer->isCoverage()) // && !imageLayer->getVisible())
+    if (imageLayer && imageLayer->isCoverage())
         return;
 
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);

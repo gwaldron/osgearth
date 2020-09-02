@@ -4,8 +4,8 @@
 #include <osgEarth/Locators>
 #include <osgEarth/Map>
 #include <osgEarth/Math>
-#include <osgEarth/WingedEdgeMesh>
-#include <osgEarth/FeatureMeshEditLayer>
+#include <osgEarth/TerrainConstraintLayer>
+#include <osgEarth/rtree.h>
 #include <algorithm>
 #include <iostream>
 
@@ -14,195 +14,63 @@
 using namespace osgEarth;
 using namespace osgEarth::REX;
 
-MeshEditor::MeshEditor(const TileKey& key, unsigned tileSize, const Map* map) :
+MeshEditor::MeshEditor(const TileKey& key, unsigned tileSize, const Map* map, ProgressCallback* progress) :
     _key( key ), 
-    _tileSize(tileSize)
+    _tileSize(tileSize),
+    _tileEmpty(false)
 {
-    std::vector<osg::ref_ptr<FeatureMeshEditLayer>> layers;
-    map->getLayers(layers);
+    // Iterate over all constraint layers:
+    std::vector<osg::ref_ptr<TerrainConstraintLayer>> layers;
+    map->getOpenLayers(layers);
+
+    const GeoExtent& keyExtent = key.getExtent();
 
     for(auto& layer : layers)
     {
-        if ( layer->getMinLevel() <= key.getLevelOfDetail() )
+        // not to the min LOD yet?
+        if (layer->getMinLevel() > key.getLOD())
+            continue;
+
+        // extents don't intersect?
+        if (!layer->getExtent().intersects(keyExtent))
+            continue;
+
+        // For each feature, check that it intersects the tile key,
+        // and then xform it to the correct SRS and clone it for
+        // editing.
+        FeatureSource* fs = layer->getFeatureSource();
+        if (fs)
         {
-            FeatureSource* fs = layer->getFeatureSource();
-            if (fs)
+            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(
+                key,
+                progress);
+
+            Edit edit;
+            while (cursor.valid() && cursor->hasMore())
             {
-                osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(
-                    key,
-                    nullptr);
-
-                while (cursor.valid() && cursor->hasMore())
+                Feature* f = cursor->nextFeature();
+                if (f->getExtent().intersects(keyExtent))
                 {
-                    Edit edit;
-                    cursor->fill(edit._features);
-
-                    if (edit._features.empty() == false)
-                    {
-                        edit._layer = layer;
-                        _edits.emplace_back(edit);
-                    }
+                    osg::ref_ptr<Feature> f_xform = osg::clone(f, osg::CopyOp::DEEP_COPY_ALL);
+                    f_xform->transform(keyExtent.getSRS());
+                    edit._features.push_back(f_xform);
                 }
             }
-        }
-    }
-}
 
-#if 0
-struct TileVertex
-{
-    mutable bool isBorder = false;
-    mutable int meshIndex = -1;
-};
-
-using TileMesh = Util::WingedEdgeMesh<osg::Vec3d, TileVertex>;
-
-bool
-MeshEditor::createTileMesh(SharedGeometry* sharedGeom, unsigned tileSize)
-{
-    // Establish a local reference frame for the tile:
-    osg::Vec3d centerWorld;
-    GeoPoint centroid;
-    _key.getExtent().getCentroid( centroid );
-    centroid.toWorld( centerWorld );
-    osg::Matrix world2local, local2world;
-    centroid.createWorldToLocal( world2local );
-    local2world.invert( world2local );
-    // Attempt to calculate the number of verts in the surface geometry.
-    bool needsSkirt = false; // _options.heightFieldSkirtRatio() > 0.0f;
-    GeoLocator locator(_key.getExtent());
-    auto tileSRS = _key.getExtent().getSRS();
-
-    // Add one row at a time to the mesh. We will make triangles from
-    // two rows as we go along.
-
-    TileMesh wmesh;
-    using RowVec = std::vector<const TileMesh::Vertex*>;
-    RowVec bottomRow;
-    for(unsigned row=0; row<tileSize; ++row)
-    {
-        float ny = (float)row/(float)(tileSize-1);
-        RowVec topRow;
-        for(unsigned col=0; col<tileSize; ++col)
-        {
-            float nx = (float)col/(float)(tileSize-1);
-            osg::Vec3d unit(nx, ny, 0.0f);
-            osg::Vec3d model;
-            osg::Vec3d modelLTP;
-            locator.unitToWorld(unit, model);
-            modelLTP = model*world2local;
-            const TileMesh::Vertex* v = wmesh.getVertex(modelLTP);
-            v->isBorder = (row == 0 || row == tileSize - 1
-                           || col == 0 || col == tileSize -1);
-            topRow.push_back(v);
-            // The mesh triangles
-            if (row > 0 && col > 0)
+            if (!edit._features.empty())
             {
-                const TileMesh::Vertex* t0[3] = {topRow[col - 1], bottomRow[col - 1], bottomRow[col]};
-                const TileMesh::Vertex* t1[3] = {topRow[col - 1], bottomRow[col], topRow[col]};
-                wmesh.addFace(&t0[0], &t0[3]);
-                wmesh.addFace(&t1[0], &t1[3]);
-            }
-        }
-        std::swap(topRow, bottomRow);
-    }
-
-    for (auto& editGeometry : _edits)
-    {
-        for ( auto arrayPtr : *editGeometry._)
-        {
-            // Cut in the segments
-            if (arrayPtr->empty())
-                continue;
-            // Get points into tile coordinate system
-            std::vector<osg::Vec3d> tileLocalPts;
-            std::transform(arrayPtr->begin(), arrayPtr->end(), std::back_inserter(tileLocalPts),
-                           [tileSRS,&world2local](const osg::Vec3d& worldPt)
-                           {
-                               osg::Vec3d result;
-                               tileSRS->transformToWorld(worldPt, result);
-                               return result * world2local;
-                           });
-            for (auto v0Itr = tileLocalPts.begin(), v1Itr = v0Itr + 1;
-                 v1Itr != tileLocalPts.end();
-                 v0Itr = v1Itr++)
-            {
-                Segment2d segment(*v0Itr, *v1Itr);
-                wmesh.cutSegment(segment);
+                edit._layer = layer;
+                _edits.emplace_back(edit);
             }
         }
     }
-
-    // We have an edited mesh, now turn it back into something OSG can
-    // render.
-    int vertexIndex = 0;
-    using Vec3Ptr = osg::ref_ptr<osg::Vec3Array>;
-    Vec3Ptr verts = dynamic_cast<osg::Vec3Array*>(sharedGeom->getVertexArray());
-    Vec3Ptr normals = dynamic_cast<osg::Vec3Array*>(sharedGeom->getNormalArray());
-    Vec3Ptr texCoords = dynamic_cast<osg::Vec3Array*>(sharedGeom->getTexCoordArray());
-    for (auto& meshVertex : wmesh.vertices)
-    {
-        if (meshVertex.second.edges.empty())
-            continue;
-        meshVertex.second.meshIndex = vertexIndex++;
-        verts->push_back(meshVertex.second.position); // convert to Vec3
-        // Back to tile unit coords
-        osg::Vec3d worldPos = meshVertex.second.position * local2world;
-        osg::Vec3d unit;
-        locator.worldToUnit(worldPos, unit);
-        if (texCoords.valid())
-        {
-            texCoords->push_back(osg::Vec3f(unit.x(), unit.y(), VERTEX_MARKER_GRID));
-        }
-        unit.z() += 1.0f;
-        osg::Vec3d modelPlusOne;
-        locator.unitToWorld(unit, modelPlusOne);
-        osg::Vec3d normal = (modelPlusOne*world2local) - meshVertex.second.position;
-        normal.normalize();
-        normals->push_back(normal);
-        // Neighbors for morphing... or something else?
-        // XXX skirts
-    }
-    
-    osg::ref_ptr<osg::DrawElements> primSet(new osg::DrawElementsUShort(GL_TRIANGLES));
-    primSet->reserveElements(wmesh.faces.size() * 3);
-    for (auto& face : wmesh.faces)
-    {
-        if (!face.edge)
-        {
-            continue;
-        }
-        auto faceVerts = wmesh.getFaceVertices(&face);
-        if (faceVerts.size() != 3)
-        {
-            OE_NOTICE << "face with " << faceVerts.size() << " vertices\n";
-        }
-        else
-        {
-            for (auto vertPtr : faceVerts)
-            {
-                primSet->addElement(vertPtr->meshIndex);
-            }
-        }
-    }
-    sharedGeom->setDrawElements(primSet.get());
-    return true;
 }
-
-extern "C" void pfvs(void* vMesh, void* vFace)
-{
-    TileMesh* mesh = static_cast<TileMesh*>(vMesh);
-    TileMesh::Face* face = static_cast<TileMesh::Face*>(vFace);
-    auto faceVerts = mesh->getFaceVertices(face);
-    for (auto vert: faceVerts)
-    {
-        std::cout << std::hex << vert << ": " << vert->position.x() << " " << vert->position.y() << '\n';
-    }
-}
-#endif
 
 namespace
 {
+    // MESHING SDK
+
+    // 2.5D vertex. Holds a Z, but most operations only use X/Y
     struct vert_t
     {
         typedef double value_type;
@@ -234,6 +102,13 @@ namespace
         value_type dot2d(const vert_t& rhs) const {
             return x()*rhs.x() + y() * rhs.y();
         }
+        value_type cross2d(const vert_t& rhs) const {
+            return x()*rhs.y() - rhs.x()*y();
+        }
+        vert_t normalize2d() const {
+            double len = length();
+            return vert_t(x() / len, y() / len, z());
+        }
         void set(value_type a, value_type b, value_type c) {
             _x = a, _y = b, _z = c;
         }
@@ -253,42 +128,38 @@ namespace
     }
 
 
+    // uniquely map vertices to indices
     typedef std::map<vert_t, int> vert_table_t;
 
-    struct vert_array_t : public osg::MixinVector<vert_t>
-    {
-    };
+    // array of vert_t's
+    struct vert_array_t : public osg::MixinVector<vert_t> { };
 
+    // line segment connecting two verts
     struct segment_t : std::pair<vert_t, vert_t>
     {
         segment_t(const vert_t& a, const vert_t& b) :
             std::pair<vert_t, vert_t>(a, b) { }
-
-        // 2D cross product
-        vert_t::value_type cross2d(const vert_t& a, const vert_t& b) const
-        {
-            return a.x()*b.y() - b.x()*a.y();
-        }
 
         // true if 2 segments intersect; intersection point in "out"
         bool intersect(const segment_t& rhs, vert_t& out) const
         {
             vert_t r = second - first;
             vert_t s = rhs.second - rhs.first;
-            vert_t::value_type det = cross2d(r, s);
+            vert_t::value_type det = r.cross2d(s);
 
             if (equivalent(det, zero))
                 return false;
 
-            vert_t::value_type u = cross2d(rhs.first - first, s) / det;
-            vert_t::value_type v = cross2d(rhs.first - first, r) / det;
+            vert_t diff = rhs.first - first;
+            vert_t::value_type u = diff.cross2d(s) / det;
+            vert_t::value_type v = diff.cross2d(r) / det;
 
             out = first + (r * u);
             return (u > 0.0 && u < 1.0 && v > 0.0 && v < 1.0);
         }
     };
 
-    struct tri_t
+    struct triangle_t
     {
         UID uid; // unique id
         vert_t p0, p1, p2; // vertices
@@ -296,7 +167,7 @@ namespace
         vert_t::value_type e01, e12, e20; // edge lengths
         vert_t::value_type a_min[2]; // bbox min
         vert_t::value_type a_max[2]; // bbox max
-        bool _draw;
+        bool _used;
 
         // true if the triangle contains point P (in xy)
         bool contains2d(const vert_t& P) const
@@ -336,35 +207,38 @@ namespace
             return false;
         }
     };
-    typedef RTree<UID, vert_t::value_type, 2> tri_lut_t;
+    typedef RTree<UID, vert_t::value_type, 2> triangle_lut_t;
 
+    // connected mesh of triangles, verts, and associated markers
     struct mesh_t
     {
         int uidgen;
-        std::unordered_map<UID, tri_t> _triangles;
-        tri_lut_t _spatial_index;
+        std::unordered_map<UID, triangle_t> _triangles;
+        triangle_lut_t _spatial_index;
         vert_table_t _vert_lut;
         vert_array_t _verts;
         std::vector<int> _markers;
+        int _num_splits;
 
-        mesh_t() : uidgen(0) {
+        mesh_t() : uidgen(0), _num_splits(0) {
         }
 
         // delete triangle from the mesh
-        void remove_triangle(tri_t& tri)
+        void remove_triangle(triangle_t& tri)
         {
             UID uid = tri.uid;
             _spatial_index.Remove(tri.a_min, tri.a_max, uid);
             _triangles.erase(uid);
+            _num_splits++;
         }
 
         // add new triangle to the mesh from 3 indices
-        tri_t& add_triangle(int i0, int i1, int i2)
+        triangle_t& add_triangle(int i0, int i1, int i2)
         {
             UID uid(uidgen++);
-            tri_t& tri = _triangles[uid];
+            triangle_t& tri = _triangles[uid];
             tri.uid = uid;
-            tri._draw = true;
+            tri._used = true;
             tri.i0 = i0;
             tri.i1 = i1;
             tri.i2 = i2;
@@ -383,16 +257,26 @@ namespace
             return tri;
         }
 
+        // find a vertex by its index
         const vert_t& get_vertex(unsigned i) const
         {
             return _verts[i];
         }
 
+        // find the marker for a vertex
         int& get_marker(const vert_t& vert)
         {
             return _markers[_vert_lut[vert]];
         }
 
+        // find the marker for a vertex index
+        int get_marker(int i)
+        {
+            return _markers[_vert_lut[get_vertex(i)]];
+            // prob _markers[i] is fine :)
+        }
+
+        // add a new vertex (or lookup a matching one) and return its index
         int get_or_create_vertex(const vert_t& input, int marker)
         {
             vert_table_t::iterator i = _vert_lut.find(input);
@@ -415,10 +299,11 @@ namespace
         void insert(const segment_t& seg, int marker)
         {
             // restrict edge length to a fraction of the original edge lengths
-            // (hueristic value)
+            // (hueristic value) - problem is tile is too big (curvature)
             vert_t::value_type min_edge =
-                (_triangles.begin()->second.e01) * 0.1; // 25;
+                (_triangles.begin()->second.e01) * 0.15;
 
+            // search for possible intersecting triangles:
             vert_t::value_type a_min[2];
             vert_t::value_type a_max[2];
             a_min[0] = std::min(seg.first.x(), seg.second.x());
@@ -427,13 +312,22 @@ namespace
             a_max[1] = std::max(seg.first.y(), seg.second.y());
             std::vector<UID> uids;
             _spatial_index.Search(a_min, a_max, &uids, ~0);
+
+            // The working set of triangles which we will add to if we have
+            // to split triangles. Any triangle only needs to be split once,
+            // even if it gets intersected multiple times. That is because each
+            // split generates new traigles, and discards the original, and further
+            // splits will just happen on the new triangles later. (That's why
+            // every split operation is followed by a "continue" to short-circuit
+            // to loop)
             std::list<UID> uid_list;
             std::copy(uids.begin(), uids.end(), std::back_inserter(uid_list));
             for (auto uid : uid_list)
             {
-                tri_t& tri = _triangles[uid];
+                triangle_t& tri = _triangles[uid];
 
-                // is the first segment endpoint inside a triangle?
+                // is the first segment endpoint inside a triangle? if so
+                // insert the point and split it into three new triangles
                 if (tri.contains2d(seg.first) &&
                     tri.dist_to_nearest_vertex(seg.first) > min_edge)
                 {
@@ -441,7 +335,8 @@ namespace
                     continue;
                 }
 
-                // is the second segment endpoint inside a triangle?
+                // is the second segment endpoint inside a triangle? if so
+                // insert the point and split it into three new triangles
                 if (tri.contains2d(seg.second) &&
                     tri.dist_to_nearest_vertex(seg.second) > min_edge)
                 {
@@ -449,7 +344,9 @@ namespace
                     continue;
                 }
 
-                // interect the segment with each triangle edge:
+                // next try to intersect the segment with each triangle edge.
+                // in each case, make sure the intersection point isn't 
+                // coincident with an existing vertex (in which case ignore it)
                 vert_t out;
                 UID new_uid;
                 int new_i;
@@ -524,7 +421,7 @@ namespace
 
         // inserts point "p" into the interior of triangle "tri",
         // adds three new triangles, and removes the original triangle.
-        void inside_split(tri_t& tri, const vert_t& p, std::list<UID>& uid_list, int new_marker)
+        void inside_split(triangle_t& tri, const vert_t& p, std::list<UID>& uid_list, int new_marker)
         {
             int new_i = get_or_create_vertex(p, new_marker);
 
@@ -543,86 +440,280 @@ namespace
         }
     };
 
+    // a mesh edge connecting to verts
     struct edge_t
     {
-        int _i0, _i1; // indices of node endpoints
-        edge_t() : _i0(0), _i1(0) { }
+        int _i0, _i1; // vertex indicies
+        edge_t() : _i0(-1), _i1(-1) { }
         edge_t(int i0, int i1) : _i0(i0), _i1(i1) { }
+
+        // don't care about direction
         bool operator == (const edge_t& rhs) const {
-            return _i0 == rhs._i0 && _i1 == rhs._i1;
+            return
+                (_i0 == rhs._i0 && _i1 == rhs._i1) ||
+                (_i0 == rhs._i1 && _i1 == rhs._i0);
         }
-        bool operator < (const edge_t& rhs) const {
-            if (_i0 < rhs._i0) return true;
-            if (_i0 > rhs._i0) return false;
-            return (_i1 < rhs._i1);
+
+        // hash table function
+        std::size_t operator()(const edge_t& edge) const {
+            return hash_value_unsigned(_i0, _i1);
         }
     };
 
+    // a graph node
     struct node_t
     {
-        int _vi; // vertex index
-        std::vector<std::set<edge_t>::iterator> _edges; // edges terminating at this node
-        node_t(int vi=0) : _vi(vi) { }
+        int _vertex_index; // vertex index
+        int _graphid;
+        std::set<node_t*> _edges;
+        node_t(int vi=0) : _vertex_index(vi), _graphid(-1) { }
         bool operator == (const node_t& rhs) const {
-            return _vi == rhs._vi;
+            return _vertex_index == rhs._vertex_index;
         }
     };
 
+    // collection of edges (optionally corresponding to marker data)
+    struct edgeset_t
+    {
+        std::unordered_set<edge_t, edge_t> _edges;
+
+        edgeset_t(const mesh_t& mesh, int marker_mask)
+        {
+            for (auto& tri_iter : mesh._triangles)
+            {
+                const triangle_t& tri = tri_iter.second;
+                if (tri._used)
+                {
+                    add_triangle(tri, mesh, marker_mask);
+                }
+            }
+        }
+
+        void add_triangle(const triangle_t& tri, const mesh_t& mesh, int marker_mask)
+        {
+            bool m0 = (mesh._markers[tri.i0] & marker_mask) != 0;
+            bool m1 = (mesh._markers[tri.i1] & marker_mask) != 0;
+            bool m2 = (mesh._markers[tri.i2] & marker_mask) != 0;
+            
+            if (m0 && m1)
+                _edges.emplace(edge_t(tri.i0, tri.i1));
+            if (m1 && m2)
+                _edges.emplace(edge_t(tri.i1, tri.i2));
+            if (m2 && m0)
+                _edges.emplace(edge_t(tri.i2, tri.i0));
+        }
+    };
+
+    // undirected graph representing a mesh
+    // (currently unused!)
     struct graph_t
     {
         std::unordered_map<int, node_t> _nodes;
-        std::set<edge_t> _edges;
-    };
+        int _num_subgraphs;
 
-    struct noder
-    {
-        noder(const mesh_t& mesh)
+        graph_t(const mesh_t& mesh)
         {
-            graph_t graph;
             for (auto& tri_iter : mesh._triangles)
             {
-                const tri_t& tri = tri_iter.second;
+                const triangle_t& tri = tri_iter.second;
+                if (tri._used)
+                {
+                    add_triangle(tri);
+                }
+            }
+            assign_graph_ids();
+        }
 
-                auto& node0 = graph._nodes[tri.i0];
-                node0._vi = tri.i0;
-                auto& node1 = graph._nodes[tri.i1];
-                node1._vi = tri.i1;
-                auto& node2 = graph._nodes[tri.i2];
-                node2._vi = tri.i2;
-                
-                auto& edge01 = graph._edges.emplace(edge_t(tri.i0, tri.i1)).first;
-                auto& edge12 = graph._edges.emplace(edge_t(tri.i1, tri.i2)).first;
-                auto& edge20 = graph._edges.emplace(edge_t(tri.i2, tri.i0)).first;
+        node_t& get_or_create_node(int vertex_index)
+        {
+            auto& node = _nodes[vertex_index];
+            node._vertex_index = vertex_index;
+            return node;
+        }
 
-                node0._edges.emplace_back(edge01);
-                node0._edges.emplace_back(edge20);
-                node1._edges.emplace_back(edge12);
-                node1._edges.emplace_back(edge01);
-                node2._edges.emplace_back(edge20);
-                node2._edges.emplace_back(edge12);
+        void add_triangle(const triangle_t& tri)
+        {
+            auto& node0 = get_or_create_node(tri.i0);
+            auto& node1 = get_or_create_node(tri.i1);
+            auto& node2 = get_or_create_node(tri.i2);
+
+            node0._edges.insert(&node1);
+            node0._edges.insert(&node2);
+
+            node1._edges.insert(&node0);
+            node1._edges.insert(&node2);
+
+            node2._edges.insert(&node0);
+            node2._edges.insert(&node1);
+        }
+
+        void assign_graph_ids()
+        {
+            _num_subgraphs = 0;
+            for (auto& node_iter : _nodes)
+            {
+                node_t& node = node_iter.second;
+                if (assign_graph_ids(node, _num_subgraphs))
+                    ++_num_subgraphs;
+            }
+        }
+
+        bool assign_graph_ids(node_t& node, int graphid)
+        {
+            if (node._graphid < 0)
+            {
+                node._graphid = graphid;
+
+                for (auto& edge : node._edges)
+                {
+                    assign_graph_ids(*edge, graphid);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        int get_num_subgraphs() const
+        {
+            return _num_subgraphs;
+        }
+
+        // attempt to find the concave hull by walking the outside of subgraph.
+        void get_hull(int graphid, const mesh_t& mesh, std::vector<int>& hull) const
+        {
+            const node_t* start = nullptr;
+            vert_t::value_type min_y = DBL_MAX;
+            vert_t::value_type min_x = DBL_MAX;
+
+            // find the vertex with minimum y in graph graphid.
+            // TODO: it would be faster to find a vertex in graph graphid,
+            // and then traverse from there.
+            for (const auto& node_iter : _nodes)
+            {
+                const node_t& node = node_iter.second;
+                if (node._graphid == graphid)
+                {
+                    const vert_t& vert = mesh.get_vertex(node._vertex_index);
+                    if (start == nullptr || vert.y() < min_y)
+                    {
+                        start = &node;
+                        min_y = vert.y();
+                    }
+                }
+            }
+
+            if (start == nullptr)
+                return;
+
+            // next walk the boundary in a clockwise direction
+            const node_t* curr_node = start;
+            const vert_t& first = mesh.get_vertex(curr_node->_vertex_index);
+            const node_t* prev_node = nullptr;
+            vert_t prev_vert(first + vert_t(0, -1, 0));
+
+            std::set<const node_t*> visited;
+            
+            while (true)
+            {
+                hull.push_back(curr_node->_vertex_index);
+
+                double best_score = DBL_MAX;
+                const node_t* best_edge = nullptr;
+                const vert_t& curr_vert = mesh.get_vertex(curr_node->_vertex_index);
+
+                vert_t invec = (curr_vert - prev_vert).normalize2d();
+
+                for (auto& edge : curr_node->_edges)
+                {
+                    if (visited.find(edge) != visited.end())
+                        continue;
+                    //if (edge == prev_node) // no backtracking
+                    //    continue;
+
+                    const vert_t& next_vert = mesh.get_vertex(edge->_vertex_index);
+                    vert_t outvec = (next_vert - curr_vert).normalize2d();
+
+                    double turn = invec.cross2d(outvec) > 0.0 ? -1.0 : 1.0;
+                    double dot = 1.0 - (0.5*(invec.dot2d(outvec) + 1.0));
+                    double score = turn * dot;
+
+                    if (score < best_score)
+                    {
+                        best_score = score;
+                        best_edge = edge;
+                    }
+                }
+
+                if (best_edge == nullptr)
+                {
+                    OE_WARN << "got stuck! :(" << std::endl;
+                    break;
+                }
+
+                if (best_edge == start)
+                {
+                    // done!
+                    break;
+                }
+
+                if (curr_node != start)
+                    visited.insert(curr_node);
+
+                prev_node = curr_node;
+                prev_vert = curr_vert;
+                curr_node = best_edge;
             }
         }
     };
 }
 
-//#define USE_UNIT_SPACE
+#define addSkirtDataForIndex(INDEX, HEIGHT) \
+{ \
+    verts->push_back( (*verts)[INDEX] ); \
+    normals->push_back( (*normals)[INDEX] ); \
+    texCoords->push_back( (*texCoords)[INDEX] ); \
+    texCoords->back().z() = (float)((int)texCoords->back().z() | VERTEX_SKIRT); \
+    if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] ); \
+    if ( neighborNormals ) neighborNormals->push_back( (*neighborNormals)[INDEX] ); \
+    verts->push_back( (*verts)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
+    normals->push_back( (*normals)[INDEX] ); \
+    texCoords->push_back( (*texCoords)[INDEX] ); \
+    texCoords->back().z() = (float)((int)texCoords->back().z() | VERTEX_SKIRT); \
+    if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
+    if ( neighborNormals ) neighborNormals->push_back( (*neighborNormals)[INDEX] ); \
+}
+
+#define addSkirtTriangles(PS, INDEX0, INDEX1) \
+{ \
+    PS->addElement((INDEX0));   \
+    PS->addElement((INDEX0)+1); \
+    PS->addElement((INDEX1));   \
+    PS->addElement((INDEX1));   \
+    PS->addElement((INDEX0)+1); \
+    PS->addElement((INDEX1)+1); \
+}
 
 bool
-MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
+MeshEditor::createTileMesh(
+    SharedGeometry* sharedGeom,
+    unsigned tileSize,
+    double skirtHeightRatio)
 {
+    // uncomment for easier debugging
     //static Mutex m;
     //ScopedMutexLock lock(m);
 
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
     GeoPoint centroid;
-    _key.getExtent().getCentroid(centroid);
+    const GeoExtent& keyExtent = _key.getExtent();
+    keyExtent.getCentroid(centroid);
     centroid.toWorld(centerWorld);
     osg::Matrix world2local, local2world;
     centroid.createWorldToLocal(world2local);
     local2world.invert(world2local);
-    GeoLocator locator(_key.getExtent());
-    auto tileSRS = _key.getExtent().getSRS();
+    GeoLocator locator(keyExtent);
+    const SpatialReference* tileSRS = keyExtent.getSRS();
 
     mesh_t mesh;
     mesh._verts.reserve(tileSize*tileSize);
@@ -642,10 +733,17 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
             locator.unitToWorld(unit, model);
             modelLTP = model * world2local;
 
-#ifdef USE_UNIT_SPACE
-            modelLTP.set(unit.x(), unit.y(), modelLTP.z());
-#endif
-            int i = mesh.get_or_create_vertex(modelLTP, VERTEX_NORMAL);
+            int marker =
+                VERTEX_VISIBLE |
+                VERTEX_CONSTRAINT;
+
+            // mark the perimeter as a boundary (for skirt generation)
+            if (row == 0 || row == tileSize - 1 || col == 0 || col == tileSize - 1)
+                marker |= VERTEX_BOUNDARY;
+
+            int i = mesh.get_or_create_vertex(
+                modelLTP,
+                marker);
 
             if (row > 0 && col > 0)
             {
@@ -661,19 +759,34 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
     }
 
     unsigned num_segments = 0;
+    unsigned num_features_containing_key_extent = 0;
 
     // Make the edits
     for (auto& edit : _edits)
     {
-        int marker =
-            edit._layer->getHasElevation() ? VERTEX_CONSTRAINT :
-            VERTEX_NORMAL;
+        // we're marking everything as a CONSTRAINT in order to disable morphing.
+        int default_marker =
+            VERTEX_VISIBLE |
+            VERTEX_CONSTRAINT;
 
-        for (auto& f : edit._features)
+        // this will preserve a "burned-in" Z value.
+        if (edit._layer->getHasElevation())
+            default_marker |= VERTEX_HAS_ELEVATION;
+
+        for (auto& feature : edit._features)
         {
-            // first transform it to the local SRS:
-            osg::ref_ptr<Feature> feature = new Feature(*f, osg::CopyOp::DEEP_COPY_ALL);
-            feature->transform(tileSRS);
+            // track whether any features contain the entire key extent.
+            // if this is the case, and no splits occur in the mesh, that
+            // means the feature entirely encompasses the tile and we need
+            // to return an empty tile.
+            if (edit._layer->getRemoveInterior() && 
+                feature->getGeometry()->isPolygon() &&
+                feature->getExtent().contains(keyExtent))
+            {
+                num_features_containing_key_extent++;
+            }
+
+            int num_splits_start = mesh._num_splits;
 
             GeometryIterator geom_iter(feature->getGeometry(), true);
             osg::Vec3d world, unit;
@@ -690,6 +803,17 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
                 // make sure the part is closed so we get all segments
                 part->close();
 
+                int marker = default_marker;
+
+                // marking as BOUNDARY will allow skirt generation on this part
+                if (part->isPolygon() && (
+                    edit._layer->getRemoveInterior() ||
+                    edit._layer->getRemoveExterior()))
+                {
+                    marker |= VERTEX_BOUNDARY;
+                }
+
+                // slice and dice the mesh!
                 for (auto v0Itr = part->begin(), v1Itr = v0Itr + 1;
                     v1Itr != part->end();
                     v0Itr = v1Itr++)
@@ -709,20 +833,27 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
                 }
             }
 
-            // iterate without holes for tri-in-polygon test:
-            if (num_segments > 0 && (
+            // Find any triangles that we don't want to draw and 
+            // mark them an "unused."
+            int num_splits_this_feature = mesh._num_splits - num_splits_start;
+
+            if (num_splits_this_feature > 0 && (
                     edit._layer->getRemoveInterior() ||
                     edit._layer->getRemoveExterior()))
             {
-                ConstGeometryIterator mask_iter(feature->getGeometry(), false);
+                // Iterate without holes because Polygon::contains deals with them
+                ConstGeometryIterator mask_iter(
+                    feature->getGeometry(),
+                    false); // don't iterate into polygon holes
+
                 while (mask_iter.hasMore())
                 {
                     const Geometry* part = mask_iter.next();
-                    //if (part->isPolygon())
+                    if (part->isPolygon())
                     {
                         for (auto& tri_iter : mesh._triangles)
                         {
-                            tri_t& tri = tri_iter.second;
+                            triangle_t& tri = tri_iter.second;
                             vert_t c = (tri.p0 + tri.p1 + tri.p2) * (1.0 / 3.0);
 
                             bool inside = part->contains2D(c.x(), c.y());
@@ -731,7 +862,7 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
                                 ((inside==true) && edit._layer->getRemoveInterior()) ||
                                 ((inside==false) && edit._layer->getRemoveExterior()))
                             {
-                                tri._draw = false;
+                                tri._used = false;
                             }
                         }
                     }
@@ -739,6 +870,16 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
             }
         }
     }
+
+    // if there were no splits, that means the feautre data completely
+    // contained the tile, and we bail with no geometry.
+    if (mesh._num_splits == 0 &&
+        num_features_containing_key_extent > 0)
+    {
+        _tileEmpty = true;
+        return false;
+    }
+
 
     // We have an edited mesh, now turn it back into something OSG can render.
     using Vec3Ptr = osg::ref_ptr<osg::Vec3Array>;
@@ -751,7 +892,12 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
     Vec3Ptr texCoords = dynamic_cast<osg::Vec3Array*>(sharedGeom->getTexCoordArray());
     texCoords->reserve(mesh._verts.size());
 
+    Vec3Ptr neighbors = dynamic_cast<osg::Vec3Array*>(sharedGeom->getNeighborArray());
+
+    Vec3Ptr neighborNormals = dynamic_cast<osg::Vec3Array*>(sharedGeom->getNeighborNormalArray());
+
     osg::Vec3d world;
+    osg::BoundingSphere tileBound;
 
     for(auto& vert : mesh._verts)
     {
@@ -759,26 +905,11 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
 
         osg::Vec3d v(vert.x(), vert.y(), vert.z());
         osg::Vec3d unit;
-
-#ifdef USE_UNIT_SPACE
-        unit.set(vert.x(), vert.y(), 0.0);
-        locator.unitToWorld(unit, world);
-        v = world * world2local;
-        verts->push_back(v);
-
-        if (texCoords.valid())
-            texCoords->push_back(osg::Vec3f(unit.x(), unit.y(), (float)marker));
-
-        unit.z() = v.z();
-
-#else
         verts->push_back(v);
         world = v * local2world;
         locator.worldToUnit(world, unit);
         if (texCoords.valid())
             texCoords->push_back(osg::Vec3f(unit.x(), unit.y(), (float)marker));
-#endif
-
 
         unit.z() += 1.0;
         osg::Vec3d modelPlusOne;
@@ -786,13 +917,21 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
         osg::Vec3d normal = (modelPlusOne*world2local) - v;
         normal.normalize();
         normals->push_back(normal);
+
+        if (neighbors)
+            neighbors->push_back(v);
+
+        if (neighborNormals)
+            neighborNormals->push_back(normal);
+
+        tileBound.expandBy(verts->back());
     }
 
     osg::DrawElements* de = new osg::DrawElementsUShort(GL_TRIANGLES);
     de->reserveElements(mesh._triangles.size() * 3);
     for (const auto& tri : mesh._triangles)
     {
-        if (tri.second._draw)
+        if (tri.second._used)
         {
             de->addElement(tri.second.i0);
             de->addElement(tri.second.i1);
@@ -800,6 +939,25 @@ MeshEditor::createTileMesh2(SharedGeometry* sharedGeom, unsigned tileSize)
         }
     }
     sharedGeom->setDrawElements(de);
+
+    // make the skirts:
+    if (skirtHeightRatio > 0.0)
+    {
+        double skirtHeight = skirtHeightRatio * tileBound.radius();
+
+        // collect all edges marked as boundaries
+        edgeset_t boundary_edges(mesh, VERTEX_BOUNDARY);
+
+        // add the skirt geometry.
+        // we don't share verts because we need to mark skirts verts
+        // so we can conditionally render them
+        for (auto& edge : boundary_edges._edges)
+        {
+            addSkirtDataForIndex(edge._i0, skirtHeight);
+            addSkirtDataForIndex(edge._i1, skirtHeight);
+            addSkirtTriangles(de, verts->size() - 4, verts->size() - 2);
+        }
+    }
 
     return true;
 }

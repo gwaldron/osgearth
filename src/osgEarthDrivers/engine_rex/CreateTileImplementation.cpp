@@ -19,7 +19,6 @@
 #include "CreateTileImplementation"
 #include "EngineContext"
 #include <osgEarth/TerrainTileModel>
-#include <osgEarth/MaskLayer>
 #include <osgEarth/TileKey>
 #include <osgEarth/Locators>
 #include <osg/Node>
@@ -70,6 +69,8 @@ CreateTileImplementation::createTile(
     TileKey rootkey = area.valid() ? area : model->getKey();
     const SpatialReference* srs = rootkey.getExtent().getSRS();
 
+#if 0 // TODO - replace!
+
     // Find the axis aligned bounding box of the mask boundary for each layer
     MaskLayerVector maskLayers;
     std::vector<MinMax> boundaryMinMaxes;
@@ -105,6 +106,7 @@ CreateTileImplementation::createTile(
 
         boundaryMinMaxes.push_back(minmax);
     }
+#endif
 
     // Will hold keys at reference lod to check
     std::vector<TileKey> keys;
@@ -125,6 +127,7 @@ CreateTileImplementation::createTile(
 
             bool hasMasks = false;
 
+#if 0 // TODO - replace!
             for (std::vector<MinMax>::iterator it = boundaryMinMaxes.begin(); it != boundaryMinMaxes.end(); ++it)
             {
                 // convert that bounding box to "unit" space (0..1 across the tile)
@@ -145,6 +148,7 @@ CreateTileImplementation::createTile(
                     break;
                 }
             }
+#endif
 
             if (hasMasks == true && includeTilesWithMasks == false)
                 continue;
@@ -183,14 +187,17 @@ CreateTileImplementation::createTile(
     for (std::vector<TileKey>::const_iterator subkey = keys.begin(); subkey != keys.end(); ++subkey)
     {
         // Mask generator creates geometry from masking boundaries when they exist.
+        MeshEditor meshEdit(*subkey, tileSize, map.get(), nullptr);
+
+#if 0 // TODO - replace
         MaskGenerator maskGen(*subkey, tileSize, map.get());
-        MeshEditor meshEdit(*subkey, tileSize, map.get());
 
         if (maskGen.hasMasks() == true && includeTilesWithMasks == false)
             continue;
 
         if (maskGen.hasMasks() == false && includeTilesWithoutMasks == false)
             continue;
+#endif
 
         osg::ref_ptr<SharedGeometry> sharedGeom;
 
@@ -198,8 +205,6 @@ CreateTileImplementation::createTile(
             *subkey,
             tileSize,
             map.get(),
-            //&maskGen,
-            //&meshEdit,
             sharedGeom);
 
         osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();
@@ -243,7 +248,7 @@ CreateTileImplementation::createTile(
                         osg::Vec3& tileCoord = (*tileCoords)[i];
 
                         // Skip verts on a masking boundary since their elevations are hard-wired.
-                        if ((VERTEX_MARKER_BOUNDARY & (int)tileCoord.z()) == 0) // if BOUNARY bit not set
+                        if ((VERTEX_HAS_ELEVATION & (int)tileCoord.z()) == 0) // if BOUNARY bit not set
                         {
                             osg::Vec3d n = osg::Vec3d(tileCoord.x(), tileCoord.y(), 0);
                             n = n * scaleBias;
@@ -258,6 +263,7 @@ CreateTileImplementation::createTile(
                     }
                 }
 
+#if 0 // TODO - replace
                 // Encode the masking extents into a user data object
                 if (maskGen.hasMasks())
                 {
@@ -278,6 +284,7 @@ CreateTileImplementation::createTile(
                     udc->setUserValue("mask_patch_min", tkMin);
                     udc->setUserValue("mask_patch_max", tkMax);
                 }
+#endif
             }
 
             // Establish a local reference frame for the tile:

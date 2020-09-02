@@ -16,25 +16,18 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/MeshEditLayer>
 
-#define LC "[MeshEditLayer] "
+#ifndef OSGEARTH_TERRAIN_LAYER_H
+#define OSGEARTH_TERRAIN_LAYER_H 1
 
-using namespace osgEarth;
-
-//------------------------------------------------------------------------
-
-Config
-MeshEditLayer::Options::getConfig() const
+namespace osgEarth
 {
-    Config conf = Layer::Options::getConfig();
-    conf.set( "min_level", _minLevel );
-    return conf;
+    /**
+     * Marker class for layers that manipulate terrain elevation
+     */
+    class TerrainLayer
+    {
+    };
 }
 
-void
-MeshEditLayer::Options::fromConfig( const Config& conf )
-{
-    _minLevel.init( 0 );
-    conf.get( "min_level", _minLevel );
-}
+#endif // OSGEARTH_TERRAIN_LAYER_H

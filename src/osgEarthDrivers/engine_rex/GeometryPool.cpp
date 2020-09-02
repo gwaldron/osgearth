@@ -73,15 +73,13 @@ GeometryPool::getPooledGeometry(
         }
     }
 
-    MeshEditor meshEditor(tileKey, tileSize, map);
+    // TODO: progress callback
+    MeshEditor meshEditor(tileKey, tileSize, map, nullptr);
 
     if ( _enabled )
     {
         // if this tile conatins mask/edit, it's a unique geometry - don't share it.
-        //bool isUnique = (maskSet && maskSet->hasMasks()) || (meshEditor && meshEditor->hasEdits());
-        bool isUnique = meshEditor.hasEdits();
-
-        if (!isUnique)
+        if (!meshEditor.hasEdits())
         {
             Threading::ScopedMutexLock lock(_geometryMapMutex);
             GeometryMap::iterator i = _geometryMap.find(geomKey);
@@ -96,7 +94,7 @@ GeometryPool::getPooledGeometry(
         {
             out = createGeometry(tileKey, tileSize, meshEditor);
 
-            if (!isUnique)
+            if (!meshEditor.hasEdits() && out.valid())
             {
                 Threading::ScopedMutexLock lock(_geometryMapMutex);
                 _geometryMap[geomKey] = out.get();
@@ -142,13 +140,13 @@ namespace
     verts->push_back( (*verts)[INDEX] ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
-    texCoords->back().z() = (float)((int)texCoords->back().z() | VERTEX_MARKER_SKIRT); \
+    texCoords->back().z() = (float)((int)texCoords->back().z() | VERTEX_SKIRT); \
     if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] ); \
     if ( neighborNormals ) neighborNormals->push_back( (*neighborNormals)[INDEX] ); \
     verts->push_back( (*verts)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
-    texCoords->back().z() = (float)((int)texCoords->back().z() | VERTEX_MARKER_SKIRT); \
+    texCoords->back().z() = (float)((int)texCoords->back().z() | VERTEX_SKIRT); \
     if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
     if ( neighborNormals ) neighborNormals->push_back( (*neighborNormals)[INDEX] ); \
 }
@@ -182,7 +180,7 @@ GeometryPool::createPrimitiveSet(
     primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
 
     // add the elements for the surface:
-    tessellateSurface(tileSize, nullptr, nullptr, primSet.get());
+    tessellateSurface(tileSize, primSet.get());
 
     if (needsSkirt)
     {
@@ -203,7 +201,7 @@ GeometryPool::createPrimitiveSet(
 
 
 void
-GeometryPool::tessellateSurface(unsigned tileSize, MaskGenerator* maskSet, osg::Vec3Array* texCoords, osg::DrawElements* primSet) const
+GeometryPool::tessellateSurface(unsigned tileSize, osg::DrawElements* primSet) const
 {
     for (unsigned j = 0; j < tileSize - 1; ++j)
     {
@@ -214,35 +212,13 @@ GeometryPool::tessellateSurface(unsigned tileSize, MaskGenerator* maskSet, osg::
             int i10 = i00 + 1;
             int i11 = i01 + 1;
 
-            // skip any triangles that have a discarded vertex:
-            bool discard = maskSet && (
-                maskSet->isMasked((*texCoords)[i00]) ||
-                maskSet->isMasked((*texCoords)[i11])
-                );
-            // If the three vertices are on the patch boundary, then don't make a
-            // triangle. It would overlap geometry between the patch boundary and the
-            // mask and possibly the masked area too.
-            bool onPatchBoundary = maskSet
-                && maskSet->isPatchBoundary((*texCoords)[i00])
-                && maskSet->isPatchBoundary((*texCoords)[i11]);
-            if (!discard)
-            {
-                discard = maskSet && maskSet->isMasked((*texCoords)[i01]);
-                if (!(discard || (onPatchBoundary && maskSet->isPatchBoundary((*texCoords)[i01]))))
-                {
-                    primSet->addElement(i01);
-                    primSet->addElement(i00);
-                    primSet->addElement(i11);
-                }
+            primSet->addElement(i01);
+            primSet->addElement(i00);
+            primSet->addElement(i11);
 
-                discard = maskSet && maskSet->isMasked((*texCoords)[i10]);
-                if (!(discard || (onPatchBoundary && maskSet->isPatchBoundary((*texCoords)[i10]))))
-                {
-                    primSet->addElement(i00);
-                    primSet->addElement(i10);
-                    primSet->addElement(i11);
-                }
-            }
+            primSet->addElement(i00);
+            primSet->addElement(i10);
+            primSet->addElement(i11);
         }
     }
 }
@@ -304,7 +280,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     osg::ref_ptr<osg::Vec3Array> neighbors = 0L;
     osg::ref_ptr<osg::Vec3Array> neighborNormals = 0L;
-    if ( _options.morphTerrain() == true)
+    if (_options.morphTerrain() == true)
     {
         // neighbor positions (for morphing)
         neighbors = new osg::Vec3Array();
@@ -327,219 +303,108 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     texCoords->setBinding(texCoords->BIND_PER_VERTEX);
     texCoords->setVertexBufferObject(vbo.get());
     texCoords->reserve( numVerts );
-
     geom->setTexCoordArray(texCoords.get());
-
-    GeoLocator locator(tileKey.getExtent());
 
     if (editor.hasEdits())
     {
-        editor.createTileMesh2(geom.get(), tileSize);
+        bool tileHasData = editor.createTileMesh(
+            geom.get(),
+            tileSize,
+            _options.heightFieldSkirtRatio().get());
 
-        // Build a skirt for the edited geometry?
-        if (needsSkirt)            
+        if (tileHasData)
+            geom->setHasConstraints(true);
+        else
+            return nullptr;
+    }
+
+    else // default mesh - no constraints
+    {
+        osg::Vec3d unit;
+        osg::Vec3d model;
+        osg::Vec3d modelLTP;
+        osg::Vec3d modelPlusOne;
+        osg::Vec3d normal;
+
+        GeoLocator locator(tileKey.getExtent());
+
+        for (unsigned row = 0; row < tileSize; ++row)
         {
-            double height = geom->getBound().radius() * _options.heightFieldSkirtRatio().get();
-
-            primSet = geom->getDrawElements();
-            // Construct a node+edge graph out of the masking geometry:
-            osg::ref_ptr<TopologyGraph> graph = TopologyBuilder::create(verts.get(), primSet, tileKey.str());
-
-            // Extract the boundaries (if the topology is discontinuous,
-            // there will be more than one)
-            for (unsigned i = 0; i < graph->getNumBoundaries(); ++i)
+            float ny = (float)row / (float)(tileSize - 1);
+            for (unsigned col = 0; col < tileSize; ++col)
             {
-                TopologyGraph::IndexVector boundary;
-                graph->createBoundary(i, boundary);
+                float nx = (float)col / (float)(tileSize - 1);
 
-                if (boundary.size() >= 3)
+                unit.set(nx, ny, 0.0f);
+                locator.unitToWorld(unit, model);
+                modelLTP = model * world2local;
+                verts->push_back(modelLTP);
+
+                tileBound.expandBy(verts->back());
+
+                if (populateTexCoords)
                 {
-                    unsigned skirtIndex = verts->size();
+                    // Use the Z coord as a type marker
+                    float marker = VERTEX_VISIBLE;
+                    texCoords->push_back(osg::Vec3f(nx, ny, marker));
+                }
 
-                    for (TopologyGraph::IndexVector::const_iterator i = boundary.begin(); i != boundary.end(); ++i)
-                    {
-                        addSkirtDataForIndex((*i)->index(), height);
-                    }
+                unit.z() = 1.0f;
+                locator.unitToWorld(unit, modelPlusOne);
+                normal = (modelPlusOne*world2local) - modelLTP;
+                normal.normalize();
+                normals->push_back(normal);
 
-                    // then create the elements:
-                    int i;
-                    for (i = skirtIndex; i < (int)verts->size() - 2; i += 2)
-                    {
-                        addSkirtTriangles(i, i + 2);
-                    }
+                // neighbor:
+                if (neighbors)
+                {
+                    const osg::Vec3& modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
+                    neighbors->push_back(modelNeighborLTP);
+                }
 
-                    addSkirtTriangles(i, skirtIndex);
+                if (neighborNormals)
+                {
+                    const osg::Vec3& modelNeighborNormalLTP = (*normals)[normals->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
+                    neighborNormals->push_back(modelNeighborNormalLTP);
                 }
             }
         }
 
-        return geom.release();
-    }
-
-    osg::Vec3d unit;
-    osg::Vec3d model;
-    osg::Vec3d modelLTP;
-    osg::Vec3d modelPlusOne;
-    osg::Vec3d normal;
-
-    for(unsigned row=0; row<tileSize; ++row)
-    {
-        float ny = (float)row/(float)(tileSize-1);
-        for(unsigned col=0; col<tileSize; ++col)
+        if (needsSkirt)
         {
-            float nx = (float)col/(float)(tileSize-1);
+            // calculate the skirt extrusion height
+            double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
 
-            unit.set(nx, ny, 0.0f);
-            locator.unitToWorld(unit, model);
-            modelLTP = model*world2local;
-            verts->push_back( modelLTP );
+            // Normal tile skirt first:
+            unsigned skirtIndex = verts->size();
 
-            tileBound.expandBy( verts->back() );
+            // first, create all the skirt verts, normals, and texcoords.
+            for (int c = 0; c < (int)tileSize - 1; ++c)
+                addSkirtDataForIndex(c, height); //top
 
-            if ( populateTexCoords )
-            {
-                // Use the Z coord as a type marker
-                float marker = VERTEX_NORMAL; // maskSet ? maskSet->getMarker(nx, ny) : VERTEX_MARKER_GRID;
-                texCoords->push_back( osg::Vec3f(nx, ny, marker) );
-            }
+            for (int r = 0; r < (int)tileSize - 1; ++r)
+                addSkirtDataForIndex(r*tileSize + (tileSize - 1), height); //right
 
-            unit.z() = 1.0f;
-            locator.unitToWorld(unit, modelPlusOne);
-            normal = (modelPlusOne*world2local)-modelLTP;
-            normal.normalize();
-            normals->push_back(normal);
+            for (int c = tileSize - 1; c >= 0; --c)
+                addSkirtDataForIndex((tileSize - 1)*tileSize + c, height); //bottom
 
-            // neighbor:
-            if ( neighbors )
-            {
-                const osg::Vec3& modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
-                neighbors->push_back(modelNeighborLTP);
-            }
-
-            if ( neighborNormals )
-            {
-                const osg::Vec3& modelNeighborNormalLTP = (*normals)[normals->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
-                neighborNormals->push_back(modelNeighborNormalLTP);
-            }
-        }
-    }
-
-    if (needsSkirt)
-    {
-        // calculate the skirt extrusion height
-        double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
-
-        // Normal tile skirt first:
-        unsigned skirtIndex = verts->size();
-
-        // first, create all the skirt verts, normals, and texcoords.
-        for(int c=0; c<(int)tileSize-1; ++c)
-            addSkirtDataForIndex( c, height ); //top
-
-        for(int r=0; r<(int)tileSize-1; ++r)
-            addSkirtDataForIndex( r*tileSize+(tileSize-1), height ); //right
-
-        for(int c=tileSize-1; c>=0; --c)
-            addSkirtDataForIndex( (tileSize-1)*tileSize+c, height ); //bottom
-
-        for(int r=tileSize-1; r>=0; --r)
-            addSkirtDataForIndex( r*tileSize, height ); //left
-    }
-
-    // By default we tessellate the surface, but if there's a masking set
-    // it might replace some or all of our surface geometry.
-    bool tessellateSurface = true;
-#if 0
-    if (maskSet)
-    {
-        // The mask generator adds to the passed-in arrays as necessary,
-        // and then returns a new primtive set containing all the new triangles.
-        //osg::ref_ptr<osg::DrawElementsUInt> maskElements;
-        osg::ref_ptr<osg::DrawElements> maskElements;
-
-        MaskGenerator::Result r = maskSet->createMaskPrimitives(
-            verts.get(), texCoords.get(), normals.get(), neighbors.get(), neighborNormals.get(),
-            maskElements);
-
-        if (r == MaskGenerator::R_BOUNDARY_INTERSECTS_TILE &&
-            maskElements.valid() &&
-            maskElements->getNumIndices() > 0)
-        {
-            // Share the same EBO as the surface geometry
-            //maskElements->setElementBufferObject(primSet->getElementBufferObject());
-            osg::ElementBufferObject* ebo = new osg::ElementBufferObject();
-            maskElements->setElementBufferObject(ebo);
-            geom->setMaskElements(maskElements.get());
-
-            // Need a custom primitive set, so clone the default one:
-            primSet = createPrimitiveSet(tileSize, maskSet, texCoords.get());
-            primSet->setElementBufferObject(ebo);
-
-            // Build a skirt for the mask geometry?
-            if (needsSkirt)
-            {
-                // calculate the skirt extrusion height
-                double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
-
-                // Construct a node+edge graph out of the masking geometry:
-                osg::ref_ptr<TopologyGraph> graph = TopologyBuilder::create(verts.get(), maskElements.get(), tileKey.str());
-
-                // Extract the boundaries (if the topology is discontinuous,
-                // there will be more than one)
-                for (unsigned i = 0; i<graph->getNumBoundaries(); ++i)
-                {
-                    TopologyGraph::IndexVector boundary;
-                    graph->createBoundary(i, boundary);
-
-                    if (boundary.size() >= 3)
-                    {
-                        unsigned skirtIndex = verts->size();
-
-                        for (TopologyGraph::IndexVector::const_iterator i = boundary.begin(); i != boundary.end(); ++i)
-                        {
-                            addSkirtDataForIndex((*i)->index(), height);
-                        }
-
-                        // then create the elements:
-                        int i;
-                        for (i = skirtIndex; i < (int)verts->size() - 2; i += 2)
-                        {
-                            addSkirtTriangles(i, i + 2);
-                        }
-
-                        addSkirtTriangles(i, skirtIndex);
-                    }
-                }
-            }
+            for (int r = tileSize - 1; r >= 0; --r)
+                addSkirtDataForIndex(r*tileSize, height); //left
         }
 
-        // If the boundary doesn't intersect the tile, draw the entire tile
-        // as we normally would. Need to reset the masking marker.
-        else if (r == MaskGenerator::R_BOUNDARY_DOES_NOT_INTERSECT_TILE)
+        // By default we tessellate the surface, but if there's a masking set
+        // it might replace some or all of our surface geometry.
+        bool tessellateSurface = true;
+
+        if (tessellateSurface && primSet == nullptr)
         {
-            maskSet = 0L;
-            for (osg::Vec3Array::iterator i = texCoords->begin(); i != texCoords->end(); ++i)
-            {
-                i->z() = VERTEX_MARKER_GRID;
-            }
+            primSet = _defaultPrimSet.get();
         }
 
-        // If the boundary contains the entire tile, draw nothing!
-        else // if (r == MaskGenerator::R_BOUNDARY_CONTAINS_ENTIRE_TILE)
+        if (primSet)
         {
-            tessellateSurface = false;
+            geom->setDrawElements(primSet);
         }
-    }
-#endif
-
-    if (tessellateSurface && primSet == NULL)
-    {
-        primSet = _defaultPrimSet.get();
-    }
-
-    if (primSet)
-    {
-        geom->setDrawElements(primSet);
     }
 
     return geom.release();
@@ -624,7 +489,7 @@ GeometryPool::releaseGLObjects(osg::State* state) const
 
             if (_releaser.valid() && !objects.empty())
             {
-                OE_INFO << LC << "Released " << objects.size() << " objects in the geometry pool\n";
+                OE_DEBUG << LC << "Released " << objects.size() << " objects in the geometry pool\n";
             }
         }
     }
@@ -645,6 +510,7 @@ SharedGeometry::SharedGeometry()
     _supportsVertexBufferObjects = true;
     _ptype.resize(64u);
     _ptype.setAllElementsTo(GL_TRIANGLES);
+    _hasConstraints = false;
 }
 
 SharedGeometry::SharedGeometry(const SharedGeometry& rhs,const osg::CopyOp& copyop):
@@ -655,7 +521,7 @@ SharedGeometry::SharedGeometry(const SharedGeometry& rhs,const osg::CopyOp& copy
     _neighborArray(rhs._neighborArray),
     _neighborNormalArray(rhs._neighborNormalArray),
     _drawElements(rhs._drawElements),
-    _maskElements(rhs._maskElements)
+    _hasConstraints(rhs._hasConstraints)
 {
     //nop
 }
@@ -669,8 +535,8 @@ bool
 SharedGeometry::empty() const
 {
     return
-        (_drawElements.valid() == false || _drawElements->getNumIndices() == 0) &&
-        (_maskElements.valid() == false || _maskElements->getNumIndices() == 0);
+        (_drawElements.valid() == false || _drawElements->getNumIndices() == 0); //&&
+        //(_maskElements.valid() == false || _maskElements->getNumIndices() == 0);
 }
 
 #ifdef SUPPORTS_VAO
@@ -718,7 +584,7 @@ void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
     if (_neighborArray.valid()) _neighborArray->resizeGLObjectBuffers(maxSize);
     if (_neighborNormalArray.valid()) _neighborNormalArray->resizeGLObjectBuffers(maxSize);
     if (_drawElements.valid()) _drawElements->resizeGLObjectBuffers(maxSize);
-    if (_maskElements.valid()) _maskElements->resizeGLObjectBuffers(maxSize);
+    //if (_maskElements.valid()) _maskElements->resizeGLObjectBuffers(maxSize);
 
     //osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
     //if (vbo) vbo->resizeGLObjectBuffers(maxSize);
@@ -738,7 +604,7 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
     if (_neighborArray.valid()) _neighborArray->releaseGLObjects(state);
     if (_neighborNormalArray.valid()) _neighborNormalArray->releaseGLObjects(state);
     if (_drawElements.valid()) _drawElements->releaseGLObjects(state);
-    if (_maskElements.valid()) _maskElements->releaseGLObjects(state);
+    //if (_maskElements.valid()) _maskElements->releaseGLObjects(state);
 
     //osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
     //if (vbo) vbo->releaseGLObjects(state);
@@ -842,53 +708,11 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
         if (_drawElements->getNumIndices() > 0u)
         {
-            if (_maskElements.valid() &&
-                _maskElements->getNumIndices() > 0u)
-            {
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
-                if (_maskElements->getDataType() == _drawElements->getDataType())
-                {
-                    GLsizei counts[2];
-                    counts[0] = _drawElements->getNumIndices();
-                    counts[1] = _maskElements->getNumIndices();
-
-                    const GLvoid* indexLocations[2];
-                    indexLocations[0] = (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex()));
-                    indexLocations[1] = (const GLvoid *)(ebo->getOffset(_maskElements->getBufferIndex()));
-
-                    osg::GLExtensions* ext = state.get<osg::GLExtensions>();
-
-                    ext->glMultiDrawElements(
-                        primitiveType,
-                        counts,
-                        _drawElements->getDataType(),
-                        indexLocations,
-                        2);
-                }
-                else
-#endif
-                {
-                    glDrawElements(
-                        primitiveType,
-                        _drawElements->getNumIndices(),
-                        _drawElements->getDataType(),
-                        (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
-
-                    glDrawElements(
-                        primitiveType,
-                        _maskElements->getNumIndices(),
-                        _maskElements->getDataType(),
-                        (const GLvoid *)(ebo->getOffset(_maskElements->getBufferIndex())));
-                }
-            }
-            else
-            {
-                glDrawElements(
-                    primitiveType,
-                    _drawElements->getNumIndices(),
-                    _drawElements->getDataType(),
-                    (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
-            }
+            glDrawElements(
+                primitiveType,
+                _drawElements->getNumIndices(),
+                _drawElements->getDataType(),
+                (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
         }
 
         //if (request_bind_unbind)
@@ -901,11 +725,6 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
         if (_drawElements->getNumIndices() > 0u)
         {
             glDrawElements(primitiveType, _drawElements->getNumIndices(), _drawElements->getDataType(), _drawElements->getDataPointer());
-        }
-
-        if (_maskElements.valid() && _maskElements->getNumIndices() > 0u)
-        {
-            glDrawElements(primitiveType, _maskElements->getNumIndices(), _maskElements->getDataType(), _maskElements->getDataPointer());
         }
     }
 
@@ -962,8 +781,6 @@ SharedGeometry::makeOsgGeometry()
     geom->setTexCoordArray(0, getTexCoordArray());
     if (getDrawElements())
         geom->addPrimitiveSet(getDrawElements());
-    if (getMaskElements())
-        geom->addPrimitiveSet(getMaskElements());
 
     return geom;
 }

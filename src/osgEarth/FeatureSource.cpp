@@ -193,6 +193,15 @@ FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) cons
     }
 }
 
+const GeoExtent&
+FeatureSource::getExtent() const
+{
+    if (_featureProfile.valid())
+        return _featureProfile->getExtent();
+    else
+        return Layer::getExtent();
+}
+
 FeatureCursor*
 FeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
 {

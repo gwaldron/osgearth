@@ -215,6 +215,8 @@ namespace osgEarth
          */
         virtual void close();
 
+        virtual void open() { }
+
         /**
          * Removes consecutive duplicates in the geometry to prepare for tessellation.
          */
@@ -345,10 +347,10 @@ namespace osgEarth
         virtual double getLength() const;
 
         // ensures that the first and last points are not idential.
-        virtual void open();
+        virtual void open() override;
 
         // ensures that the first and last points are identical.
-        virtual void close();
+        virtual void close() override;
 
         // whether the ring is open (i.e. first and last points are different)
         virtual bool isOpen() const override;

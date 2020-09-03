@@ -125,6 +125,14 @@ namespace
     inline bool equivalent(vert_t::value_type a, vert_t::value_type b)
     {
         return osg::equivalent((float)a, (float)b);
+        //return osg::equivalent(a, b);
+    }
+
+    inline bool equivalent(const vert_t& a, const vert_t& b, vert_t::value_type epsilon)
+    {
+        return
+            osg::equivalent(a.x(), b.x(), epsilon) &&
+            osg::equivalent(a.y(), b.y(), epsilon);
     }
 
 
@@ -167,6 +175,7 @@ namespace
         vert_t::value_type e01, e12, e20; // edge lengths
         vert_t::value_type a_min[2]; // bbox min
         vert_t::value_type a_max[2]; // bbox max
+        vert_t::value_type area;
         bool _used;
 
         // true if the triangle contains point P (in xy)
@@ -206,37 +215,141 @@ namespace
                 return true;
             return false;
         }
+
+        bool is_degenerate() const
+        {
+            return
+                equivalent(p0, p1, 0.005) ||
+                equivalent(p1, p2, 0.005) ||
+                equivalent(p2, p0, 0.005);
+        }
     };
-    typedef RTree<UID, vert_t::value_type, 2> triangle_lut_t;
+
+#if 0
+    typedef RTree<UID, vert_t::value_type, 2> spatial_index_t;
+#else
+    // spatial index aligned with the tile size, so we can just
+    // use a triangle centroid to place objects.
+    struct spatial_index_t
+    {
+        double _xmin, _ymin, _xmax, _ymax;
+        int _xdim, _ydim;
+        std::unordered_set<UID>* _index;
+        double _width, _height;
+        double _e;
+        spatial_index_t(double xmin, double ymin, double xmax, double ymax, int xdim, int ydim) :
+            _xmin(xmin), _ymin(ymin), _xmax(xmax), _ymax(ymax),
+            _xdim(xdim), _ydim(ydim)
+        {
+            _index = new std::unordered_set<UID>[_xdim*_ydim];
+            _width = _xmax - _xmin;
+            _height = _ymax - _ymin;
+            _e = 1e-3;
+        }
+        ~spatial_index_t() {
+            delete[] _index;
+        }
+        void bounds(const triangle_t& tri, int& s, int& t) {
+            double x = (tri.p0.x() + tri.p1.x() + tri.p2.x()) / 3.0;
+            double y = (tri.p0.y() + tri.p1.y() + tri.p2.y()) / 3.0;
+            double u = (x - _xmin) / _width;
+            double v = (y - _ymin) / _height;
+            s = clamp((int)(u*(double)_xdim), 0, _xdim - 1);
+            t = clamp((int)(v*(double)_ydim), 0, _ydim - 1);
+        }
+
+        void bounds(double* a_min, double* a_max, int& s0, int& s1, int& t0, int& t1) {
+            double u0 = (a_min[0] - _xmin) / _width;
+            double u1 = (a_max[0] - _xmin) / _width;
+            s0 = clamp((int)(u0*(double)_xdim), 0, _xdim - 1);
+            s1 = clamp((int)(u1*(double)_xdim), 0, _xdim - 1);
+            double v0 = (a_min[1] - _ymin) / _height;
+            double v1 = (a_max[1] - _ymin) / _height;
+            t0 = clamp((int)(v0*(double)_ydim), 0, _ydim - 1);
+            t1 = clamp((int)(v1*(double)_ydim), 0, _ydim - 1);
+        }
+
+        void Insert(const triangle_t& tri, UID uid) {
+            int s, t;
+            bounds(tri, s, t);
+            _index[t*_xdim + s].insert(uid);
+        }
+        void Remove(const triangle_t& tri, UID uid) {
+            int s, t;
+            bounds(tri, s, t);
+            _index[t*_xdim + s].erase(uid);
+        }
+        int Search(double* a_min, double* a_max, std::unordered_set<UID>* hits, int dummy) {
+            int s0, s1, t0, t1;
+            bounds(a_min, a_max, s0, s1, t0, t1);
+            for (int s = s0; s <= s1; ++s) {
+                for (int t = t0; t <= t1; ++t) {
+                    for (auto uid : _index[t*_xdim + s]) {
+                        hits->insert(uid);
+                    }
+                }
+            }
+            return hits->size();
+        }
+    };
+#endif
+
+    // a mesh edge connecting to verts
+    struct edge_t
+    {
+        int _i0, _i1; // vertex indicies
+        //int _tri0, _tri1; // triangle uids
+        triangle_t* _tri0;
+        triangle_t* _tri1;
+        edge_t() : _i0(-1), _i1(-1), _tri0(nullptr), _tri1(nullptr) { } //_tri0(-1), _tri1(-1) { }
+        edge_t(int i0, int i1) : _i0(i0), _i1(i1), _tri0(nullptr), _tri1(nullptr) { }
+
+        // don't care about direction
+        bool operator == (const edge_t& rhs) const {
+            return
+                (_i0 == rhs._i0 && _i1 == rhs._i1) ||
+                (_i0 == rhs._i1 && _i1 == rhs._i0);
+        }
+
+        // hash table function
+        std::size_t operator()(const edge_t& edge) const {
+            return hash_value_unsigned(_i0, _i1);
+        }
+    };
 
     // connected mesh of triangles, verts, and associated markers
     struct mesh_t
     {
         int uidgen;
         std::unordered_map<UID, triangle_t> _triangles;
-        triangle_lut_t _spatial_index;
+        spatial_index_t& _spatial_index;
+        //triangle_lut_t _spatial_index;
         vert_table_t _vert_lut;
         vert_array_t _verts;
         std::vector<int> _markers;
         int _num_splits;
 
-        mesh_t() : uidgen(0), _num_splits(0) {
+        mesh_t(spatial_index_t& s) : uidgen(0), _num_splits(0), _spatial_index(s) {
         }
 
         // delete triangle from the mesh
         void remove_triangle(triangle_t& tri)
         {
             UID uid = tri.uid;
-            _spatial_index.Remove(tri.a_min, tri.a_max, uid);
+            _spatial_index.Remove(tri, uid);
+            //_spatial_index.Remove(tri.a_min, tri.a_max, uid);
             _triangles.erase(uid);
             _num_splits++;
         }
 
         // add new triangle to the mesh from 3 indices
-        triangle_t& add_triangle(int i0, int i1, int i2)
+        UID add_triangle(int i0, int i1, int i2)
         {
+            if (i0 == i1 || i1 == i2 || i2 == i0)
+                return -1;
+
             UID uid(uidgen++);
-            triangle_t& tri = _triangles[uid];
+            triangle_t tri;
             tri.uid = uid;
             tri._used = true;
             tri.i0 = i0;
@@ -252,9 +365,26 @@ namespace
             tri.a_min[1] = std::min(tri.p0.y(), std::min(tri.p1.y(), tri.p2.y()));
             tri.a_max[0] = std::max(tri.p0.x(), std::max(tri.p1.x(), tri.p2.x()));
             tri.a_max[1] = std::max(tri.p0.y(), std::max(tri.p1.y(), tri.p2.y()));
+            tri.area = 0.5 * fabs(
+                tri.p0.x()*(tri.p1.y() - tri.p2.y()) +
+                tri.p1.x()*(tri.p2.y() - tri.p0.y()) +
+                tri.p2.x()*(tri.p0.y() - tri.p1.y()));
 
-            _spatial_index.Insert(tri.a_min, tri.a_max, tri.uid);
-            return tri;
+            if (equivalent(tri.area, 0.0))
+                return -1;
+
+            //if (equivalent(tri.p0, tri.p1) ||
+            //    equivalent(tri.p1, tri.p2) ||
+            //    equivalent(tri.p2, tri.p0))
+            //{
+            //    return -1;
+            //}
+
+            _triangles.emplace(uid, tri);
+            //triangle_t& tri = _triangles[uid];
+            _spatial_index.Insert(tri, uid);
+            //_spatial_index.Insert(tri.a_min, tri.a_max, uid);
+            return uid;
         }
 
         // find a vertex by its index
@@ -272,7 +402,8 @@ namespace
         // find the marker for a vertex index
         int get_marker(int i)
         {
-            return _markers[_vert_lut[get_vertex(i)]];
+            return _markers[i];
+            //return _markers[_vert_lut[get_vertex(i)]];
             // prob _markers[i] is fine :)
         }
 
@@ -295,6 +426,41 @@ namespace
             }
         }
 
+        // insert a point into the mesh, cutting triangles as necessary
+        void insert(const vert_t& vert, int marker)
+        {
+            // restrict edge length to a fraction of the original edge lengths
+            // (hueristic value) - problem is tile is too big (curvature)
+            vert_t::value_type min_edge =
+                (_triangles.begin()->second.e01) * 0.15;
+
+            vert_t::value_type min_area = 1.0;
+
+            // search for possible intersecting triangles (should only be one)
+            vert_t::value_type a_min[2];
+            vert_t::value_type a_max[2];
+            a_min[0] = std::min(vert.x(), vert.y());
+            a_min[1] = std::min(vert.x(), vert.y());
+            a_max[0] = std::max(vert.x(), vert.y());
+            a_max[1] = std::max(vert.x(), vert.y());
+
+            std::unordered_set<UID> uids;
+            _spatial_index.Search(a_min, a_max, &uids, ~0);
+
+            if (uids.empty() == false)
+            {
+                triangle_t& tri = _triangles[*uids.begin()];
+                if (tri.area >= min_area)
+                {
+                    if (tri.contains2d(vert) &&
+                        tri.dist_to_nearest_vertex(vert) > min_edge)
+                    {
+                        inside_split(tri, vert, nullptr, marker);
+                    }
+                }
+            }
+        }
+
         // insert a segment into the mesh, cutting triangles as necessary
         void insert(const segment_t& seg, int marker)
         {
@@ -303,6 +469,9 @@ namespace
             vert_t::value_type min_edge =
                 (_triangles.begin()->second.e01) * 0.15;
 
+            vert_t::value_type min_area = 1.0;
+                //(_triangles.begin()->second.area) * 0.05;
+
             // search for possible intersecting triangles:
             vert_t::value_type a_min[2];
             vert_t::value_type a_max[2];
@@ -310,7 +479,8 @@ namespace
             a_min[1] = std::min(seg.first.y(), seg.second.y());
             a_max[0] = std::max(seg.first.x(), seg.second.x());
             a_max[1] = std::max(seg.first.y(), seg.second.y());
-            std::vector<UID> uids;
+            std::unordered_set<UID> uids;
+            //std::vector<UID> uids;
             _spatial_index.Search(a_min, a_max, &uids, ~0);
 
             // The working set of triangles which we will add to if we have
@@ -326,12 +496,15 @@ namespace
             {
                 triangle_t& tri = _triangles[uid];
 
+                if (tri.area < min_area)
+                    continue;
+
                 // is the first segment endpoint inside a triangle? if so
                 // insert the point and split it into three new triangles
                 if (tri.contains2d(seg.first) &&
                     tri.dist_to_nearest_vertex(seg.first) > min_edge)
                 {
-                    inside_split(tri, seg.first, uid_list, marker);
+                    inside_split(tri, seg.first, &uid_list, marker);
                     continue;
                 }
 
@@ -340,7 +513,7 @@ namespace
                 if (tri.contains2d(seg.second) &&
                     tri.dist_to_nearest_vertex(seg.second) > min_edge)
                 {
-                    inside_split(tri, seg.second, uid_list, marker);
+                    inside_split(tri, seg.second, &uid_list, marker);
                     continue;
                 }
 
@@ -357,15 +530,21 @@ namespace
                     segment_t edge0(tri.p0, tri.p1);
                     if (seg.intersect(edge0, out))
                     {
-                        new_i = get_or_create_vertex(out, marker);
+                        int new_marker = marker;
+                        if ((_markers[tri.i0] & VERTEX_BOUNDARY) && (_markers[tri.i1] & VERTEX_BOUNDARY))
+                            new_marker |= VERTEX_BOUNDARY;
+
+                        new_i = get_or_create_vertex(out, new_marker);
 
                         if (!tri.is_vertex(out))
                         {
-                            new_uid = add_triangle(new_i, tri.i2, tri.i0).uid;
-                            uid_list.push_back(new_uid);
+                            new_uid = add_triangle(new_i, tri.i2, tri.i0);
+                            if (new_uid >= 0)
+                                uid_list.push_back(new_uid);
 
-                            new_uid = add_triangle(new_i, tri.i1, tri.i2).uid;
-                            uid_list.push_back(new_uid);
+                            new_uid = add_triangle(new_i, tri.i1, tri.i2);
+                            if (new_uid >= 0)
+                                uid_list.push_back(new_uid);
 
                             remove_triangle(tri);
                             continue;
@@ -379,15 +558,21 @@ namespace
                     segment_t edge1(tri.p1, tri.p2);
                     if (seg.intersect(edge1, out))
                     {
-                        new_i = get_or_create_vertex(out, marker);
+                        int new_marker = marker;
+                        if ((_markers[tri.i1] & VERTEX_BOUNDARY) &&(_markers[tri.i2] & VERTEX_BOUNDARY))
+                            new_marker |= VERTEX_BOUNDARY;
+
+                        new_i = get_or_create_vertex(out, new_marker);
 
                         if (!tri.is_vertex(out))
                         {
-                            new_uid = add_triangle(new_i, tri.i0, tri.i1).uid;
-                            uid_list.push_back(new_uid);
+                            new_uid = add_triangle(new_i, tri.i0, tri.i1);
+                            if (new_uid >= 0)
+                                uid_list.push_back(new_uid);
 
-                            new_uid = add_triangle(new_i, tri.i2, tri.i0).uid;
-                            uid_list.push_back(new_uid);
+                            new_uid = add_triangle(new_i, tri.i2, tri.i0);
+                            if (new_uid >= 0)
+                                uid_list.push_back(new_uid);
 
                             remove_triangle(tri);
                             continue;
@@ -401,15 +586,21 @@ namespace
                     segment_t edge2(tri.p2, tri.p0);
                     if (seg.intersect(edge2, out))
                     {
-                        new_i = get_or_create_vertex(out, marker);
+                        int new_marker = marker;
+                        if ((_markers[tri.i2] & VERTEX_BOUNDARY) && (_markers[tri.i0] & VERTEX_BOUNDARY))
+                            new_marker |= VERTEX_BOUNDARY;
+
+                        new_i = get_or_create_vertex(out, new_marker);
 
                         if (!tri.is_vertex(out))
                         {
-                            new_uid = add_triangle(new_i, tri.i1, tri.i2).uid;
-                            uid_list.push_back(new_uid);
+                            new_uid = add_triangle(new_i, tri.i1, tri.i2);
+                            if (new_uid >= 0)
+                                uid_list.push_back(new_uid);
 
-                            new_uid = add_triangle(new_i, tri.i0, tri.i1).uid;
-                            uid_list.push_back(new_uid);
+                            new_uid = add_triangle(new_i, tri.i0, tri.i1);
+                            if (new_uid >= 0)
+                                uid_list.push_back(new_uid);
 
                             remove_triangle(tri);
                             continue;
@@ -421,42 +612,25 @@ namespace
 
         // inserts point "p" into the interior of triangle "tri",
         // adds three new triangles, and removes the original triangle.
-        void inside_split(triangle_t& tri, const vert_t& p, std::list<UID>& uid_list, int new_marker)
+        void inside_split(triangle_t& tri, const vert_t& p, std::list<UID>* uid_list, int new_marker)
         {
             int new_i = get_or_create_vertex(p, new_marker);
 
             UID new_uid;
 
-            new_uid = add_triangle(tri.i0, tri.i1, new_i).uid;
-            uid_list.push_back(new_uid);
+            new_uid = add_triangle(tri.i0, tri.i1, new_i);
+            if (new_uid >= 0 && uid_list)
+                uid_list->push_back(new_uid);
 
-            new_uid = add_triangle(tri.i1, tri.i2, new_i).uid;
-            uid_list.push_back(new_uid);
+            new_uid = add_triangle(tri.i1, tri.i2, new_i);
+            if (new_uid >= 0 && uid_list)
+                uid_list->push_back(new_uid);
 
-            new_uid = add_triangle(tri.i2, tri.i0, new_i).uid;
-            uid_list.push_back(new_uid);
+            new_uid = add_triangle(tri.i2, tri.i0, new_i);
+            if (new_uid >= 0 && uid_list)
+                uid_list->push_back(new_uid);
 
             remove_triangle(tri);
-        }
-    };
-
-    // a mesh edge connecting to verts
-    struct edge_t
-    {
-        int _i0, _i1; // vertex indicies
-        edge_t() : _i0(-1), _i1(-1) { }
-        edge_t(int i0, int i1) : _i0(i0), _i1(i1) { }
-
-        // don't care about direction
-        bool operator == (const edge_t& rhs) const {
-            return
-                (_i0 == rhs._i0 && _i1 == rhs._i1) ||
-                (_i0 == rhs._i1 && _i1 == rhs._i0);
-        }
-
-        // hash table function
-        std::size_t operator()(const edge_t& edge) const {
-            return hash_value_unsigned(_i0, _i1);
         }
     };
 
@@ -715,10 +889,25 @@ MeshEditor::createTileMesh(
     GeoLocator locator(keyExtent);
     const SpatialReference* tileSRS = keyExtent.getSRS();
 
-    mesh_t mesh;
-    mesh._verts.reserve(tileSize*tileSize);
+    // calculate the bounding box of the tile in local coords,
+    // for culling purposes:
+    osg::Vec3d c[4];
+    double xmin=DBL_MAX, ymin=DBL_MAX, xmax=-DBL_MAX, ymax=-DBL_MAX;
+    locator.unitToWorld(osg::Vec3d(0, 0, 0), c[0]);
+    locator.unitToWorld(osg::Vec3d(1, 0, 0), c[1]);
+    locator.unitToWorld(osg::Vec3d(0, 1, 0), c[2]);
+    locator.unitToWorld(osg::Vec3d(1, 1, 0), c[3]);
+    for (int i = 0; i < 4; ++i) {
+        c[i] = c[i] * world2local;
+        xmin = std::min(xmin, c[i].x()), xmax = std::max(xmax, c[i].x());
+        ymin = std::min(ymin, c[i].y()), ymax = std::max(ymax, c[i].y());
+    }
 
-    double xmin, ymin, xmax, ymax;
+    // dimensions of spatial index are hueristic measured by tracy
+    //spatial_index_t si(xmin, ymin, xmax, ymax, tileSize-1, tileSize-1);
+    spatial_index_t si(xmin, ymin, xmax, ymax, tileSize - 1, tileSize - 1);
+    mesh_t mesh(si);
+    mesh._verts.reserve(tileSize*tileSize);
 
     for (unsigned row = 0; row < tileSize; ++row)
     {
@@ -750,16 +939,10 @@ MeshEditor::createTileMesh(
                 mesh.add_triangle(i, i - 1, i - tileSize - 1);
                 mesh.add_triangle(i, i - tileSize - 1, i - tileSize);
             }
-
-            if (row == 0 && col == 0)
-                xmin = modelLTP.x(), ymin = modelLTP.y();
-            else if (row == tileSize - 1 && col == tileSize - 1)
-                xmax = modelLTP.x(), ymax = modelLTP.y();
         }
     }
 
-    unsigned num_segments = 0;
-    unsigned num_features_containing_key_extent = 0;
+    unsigned num_feature_extents_containing_key_extent = 0;
 
     // Make the edits
     for (auto& edit : _edits)
@@ -773,21 +956,11 @@ MeshEditor::createTileMesh(
         if (edit._layer->getHasElevation())
             default_marker |= VERTEX_HAS_ELEVATION;
 
+        // track number of unused triangles so we can discard empty tiles
+        int usused_tris = 0;
+
         for (auto& feature : edit._features)
         {
-            // track whether any features contain the entire key extent.
-            // if this is the case, and no splits occur in the mesh, that
-            // means the feature entirely encompasses the tile and we need
-            // to return an empty tile.
-            if (edit._layer->getRemoveInterior() && 
-                feature->getGeometry()->isPolygon() &&
-                feature->getExtent().contains(keyExtent))
-            {
-                num_features_containing_key_extent++;
-            }
-
-            int num_splits_start = mesh._num_splits;
-
             GeometryIterator geom_iter(feature->getGeometry(), true);
             osg::Vec3d world, unit;
             while (geom_iter.hasMore())
@@ -800,12 +973,10 @@ MeshEditor::createTileMesh(
                     point = world * world2local;
                 }
 
-                // make sure the part is closed so we get all segments
-                part->close();
-
                 int marker = default_marker;
 
                 // marking as BOUNDARY will allow skirt generation on this part
+                // for polygons with removed interior/exteriors
                 if (part->isPolygon() && (
                     edit._layer->getRemoveInterior() ||
                     edit._layer->getRemoveExterior()))
@@ -813,42 +984,40 @@ MeshEditor::createTileMesh(
                     marker |= VERTEX_BOUNDARY;
                 }
 
-                // slice and dice the mesh!
-                for (auto v0Itr = part->begin(), v1Itr = v0Itr + 1;
-                    v1Itr != part->end();
-                    v0Itr = v1Itr++)
-                {
-                    const vert_t& p0 = *v0Itr;
-                    const vert_t& p1 = *v1Itr;
+                // slice and dice the mesh.
+                // iterate over segments in the part, closing the loop if it's an open ring.
+                unsigned i = part->isRing() && part->isOpen() ? 0 : 1;
+                unsigned j = part->isRing() && part->isOpen() ? part->size() - 1 : 0;
 
-                    // cull to tile
+                for (; i < part->size(); j = i++)
+                {
+                    const vert_t& p0 = (*part)[i];
+                    const vert_t& p1 = (*part)[j];
+
+                    // cull segment to tile
                     if ((p0.x() >= xmin || p1.x() >= xmin) &&
                         (p0.x() <= xmax || p1.x() <= xmax) &&
                         (p0.y() >= ymin || p1.y() >= ymin) &&
                         (p0.y() <= ymax || p1.y() <= ymax))
                     {
                         mesh.insert(segment_t(p0, p1), marker);
-                        num_segments++;
                     }
                 }
             }
 
             // Find any triangles that we don't want to draw and 
             // mark them an "unused."
-            int num_splits_this_feature = mesh._num_splits - num_splits_start;
-
-            if (num_splits_this_feature > 0 && (
-                    edit._layer->getRemoveInterior() ||
-                    edit._layer->getRemoveExterior()))
+            if (edit._layer->getRemoveExterior() ||
+                edit._layer->getRemoveInterior())
             {
                 // Iterate without holes because Polygon::contains deals with them
-                ConstGeometryIterator mask_iter(
+                GeometryIterator mask_iter(
                     feature->getGeometry(),
                     false); // don't iterate into polygon holes
 
                 while (mask_iter.hasMore())
                 {
-                    const Geometry* part = mask_iter.next();
+                    Geometry* part = mask_iter.next();
                     if (part->isPolygon())
                     {
                         for (auto& tri_iter : mesh._triangles)
@@ -858,28 +1027,31 @@ MeshEditor::createTileMesh(
 
                             bool inside = part->contains2D(c.x(), c.y());
 
-                            if (
-                                ((inside==true) && edit._layer->getRemoveInterior()) ||
-                                ((inside==false) && edit._layer->getRemoveExterior()))
+                            if (((inside == true) && edit._layer->getRemoveInterior()) ||
+                                ((inside == false) && edit._layer->getRemoveExterior()))
                             {
                                 tri._used = false;
+                                usused_tris++;
+                            }
+
+                            else if (tri.is_degenerate())
+                            {
+                                tri._used = false;
+                                usused_tris++;
                             }
                         }
                     }
                 }
+
+                // if ALL triangles are unused, it's an empty tile.
+                if (usused_tris >= mesh._triangles.size())
+                {
+                    _tileEmpty = true;
+                    return false;
+                }
             }
         }
     }
-
-    // if there were no splits, that means the feautre data completely
-    // contained the tile, and we bail with no geometry.
-    if (mesh._num_splits == 0 &&
-        num_features_containing_key_extent > 0)
-    {
-        _tileEmpty = true;
-        return false;
-    }
-
 
     // We have an edited mesh, now turn it back into something OSG can render.
     using Vec3Ptr = osg::ref_ptr<osg::Vec3Array>;
@@ -927,6 +1099,7 @@ MeshEditor::createTileMesh(
         tileBound.expandBy(verts->back());
     }
 
+    // TODO: combine this with the skirt gen for speed
     osg::DrawElements* de = new osg::DrawElementsUShort(GL_TRIANGLES);
     de->reserveElements(mesh._triangles.size() * 3);
     for (const auto& tri : mesh._triangles)
@@ -948,9 +1121,17 @@ MeshEditor::createTileMesh(
         // collect all edges marked as boundaries
         edgeset_t boundary_edges(mesh, VERTEX_BOUNDARY);
 
-        // add the skirt geometry.
-        // we don't share verts because we need to mark skirts verts
-        // so we can conditionally render them
+        // Add the skirt geometry. We don't share verts with the surface mesh
+        // because we need to mark skirts verts so we can conditionally render
+        // skirts in the shader.
+        int mem = verts->size() + boundary_edges._edges.size() * 4;
+        verts->reserve(mem);
+        normals->reserve(mem);
+        texCoords->reserve(mem);
+        if (neighbors) neighbors->reserve(mem);
+        if (neighborNormals) neighborNormals->reserve(mem);
+        de->reserveElements(de->getNumIndices() + boundary_edges._edges.size() * 6);
+
         for (auto& edge : boundary_edges._edges)
         {
             addSkirtDataForIndex(edge._i0, skirtHeight);

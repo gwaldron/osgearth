@@ -22,12 +22,14 @@
 #include <osgViewer/ViewerBase>
 #include <osgViewer/View>
 #include <osgEarth/Memory>
+#include <cstdlib>
 
 using namespace osgEarth::Util;
 
 #define LC "[Metrics] "
 
-static bool s_metricsEnabled = true;
+static bool s_metricsEnabled =
+    ::getenv("OSGEARTH_ENABLE_METRICS_ON_STARTUP") != nullptr;
 
 bool Metrics::enabled()
 {

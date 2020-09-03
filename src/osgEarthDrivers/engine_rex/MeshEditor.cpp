@@ -125,6 +125,7 @@ namespace
     inline bool equivalent(vert_t::value_type a, vert_t::value_type b)
     {
         return osg::equivalent((float)a, (float)b);
+        //return osg::equivalent(a, b);
     }
 
 
@@ -786,7 +787,7 @@ MeshEditor::createTileMesh(
                 num_features_containing_key_extent++;
             }
 
-            int num_splits_start = mesh._num_splits;
+            int num_splits_this_feature_start = mesh._num_splits;
 
             GeometryIterator geom_iter(feature->getGeometry(), true);
             osg::Vec3d world, unit;
@@ -835,34 +836,65 @@ MeshEditor::createTileMesh(
 
             // Find any triangles that we don't want to draw and 
             // mark them an "unused."
-            int num_splits_this_feature = mesh._num_splits - num_splits_start;
+            int num_splits_this_feature = mesh._num_splits - num_splits_this_feature_start;
 
-            if (num_splits_this_feature > 0 && (
-                    edit._layer->getRemoveInterior() ||
-                    edit._layer->getRemoveExterior()))
+            if (edit._layer->getRemoveExterior() ||
+                edit._layer->getRemoveInterior())
             {
-                // Iterate without holes because Polygon::contains deals with them
-                ConstGeometryIterator mask_iter(
-                    feature->getGeometry(),
-                    false); // don't iterate into polygon holes
-
-                while (mask_iter.hasMore())
+                if (num_splits_this_feature > 0)
                 {
-                    const Geometry* part = mask_iter.next();
-                    if (part->isPolygon())
+                    // Iterate without holes because Polygon::contains deals with them
+                    ConstGeometryIterator mask_iter(
+                        feature->getGeometry(),
+                        false); // don't iterate into polygon holes
+
+                    while (mask_iter.hasMore())
                     {
-                        for (auto& tri_iter : mesh._triangles)
+                        const Geometry* part = mask_iter.next();
+                        if (part->isPolygon())
                         {
-                            triangle_t& tri = tri_iter.second;
-                            vert_t c = (tri.p0 + tri.p1 + tri.p2) * (1.0 / 3.0);
-
-                            bool inside = part->contains2D(c.x(), c.y());
-
-                            if (
-                                ((inside==true) && edit._layer->getRemoveInterior()) ||
-                                ((inside==false) && edit._layer->getRemoveExterior()))
+                            for (auto& tri_iter : mesh._triangles)
                             {
-                                tri._used = false;
+                                triangle_t& tri = tri_iter.second;
+                                vert_t c = (tri.p0 + tri.p1 + tri.p2) * (1.0 / 3.0);
+
+                                bool inside = part->contains2D(c.x(), c.y());
+
+                                if (
+                                    ((inside == true) && edit._layer->getRemoveInterior()) ||
+                                    ((inside == false) && edit._layer->getRemoveExterior()))
+                                {
+                                    tri._used = false;
+                                }
+                            }
+                        }
+                    }
+                }
+                else if (
+                    edit._layer->getRemoveInterior() &&
+                    num_features_containing_key_extent > 0)
+                {
+                    // There were no splits. So it's possible that the tile
+                    // lies completely within the feature...check for that now by
+                    // testing the four corner points. (Other checks have been done).
+
+                    // Iterate without holes because Polygon::contains deals with them
+                    ConstGeometryIterator mask_iter(
+                        feature->getGeometry(),
+                        false); // don't iterate into polygon holes
+
+                    while (mask_iter.hasMore())
+                    {
+                        const Geometry* part = mask_iter.next();
+                        if (part->isPolygon())
+                        {
+                            if (part->contains2D(xmin, ymin) &&
+                                part->contains2D(xmin, ymax) &&
+                                part->contains2D(xmax, ymin) &&
+                                part->contains2D(xmax, ymax))
+                            {
+                                _tileEmpty = true;
+                                return false;
                             }
                         }
                     }
@@ -871,15 +903,15 @@ MeshEditor::createTileMesh(
         }
     }
 
-    // if there were no splits, that means the feautre data completely
-    // contained the tile, and we bail with no geometry.
-    if (mesh._num_splits == 0 &&
-        num_features_containing_key_extent > 0)
-    {
-        _tileEmpty = true;
-        return false;
-    }
-
+    // If there were no splits, that means that the tile lies completely
+    // within the feature data's extent. At this point we much check if
+    // it's a true "contains" versus just an extent "contains".
+    //if (mesh._num_splits == 0 &&
+    //    num_features_containing_key_extent > 0)
+    //{
+    //    _tileEmpty = true;
+    //    return false;
+    //}
 
     // We have an edited mesh, now turn it back into something OSG can render.
     using Vec3Ptr = osg::ref_ptr<osg::Vec3Array>;

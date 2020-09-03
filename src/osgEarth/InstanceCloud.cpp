@@ -137,8 +137,6 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
 void
 InstanceCloud::InstancingData::releaseGLObjects(osg::State* state) const
 {
-    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
-
     if (commands)
     {
         delete[] commands;

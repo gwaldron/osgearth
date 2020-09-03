@@ -6,7 +6,6 @@
 #include "dxt.h"
 #include "util.h"
 
-
 #define DXT_INTR 1
 
 void ExtractBlock( const byte *inPtr, int width, byte *colorBlock );
@@ -40,19 +39,26 @@ void EmitAlphaIndices_Intrinsics( const byte *colorBlock, const byte minAlpha, c
 void CompressImageDXT1( const byte *inBuf, byte *outBuf,
 			int width, int height, int &outputBytes )
 {
-  ALIGN16( byte *outData );
-  ALIGN16( byte block[64] );
-  ALIGN16( byte minColor[4] );
-  ALIGN16( byte maxColor[4] );
+   ALIGN16(byte * outData);
+   ALIGN16(byte block[64]);
+#if defined(DXT_INTR)
+   //GetMinMaxColors_Intrinsics copies __m128 into this array
+   //__m128 is 128-bit=16-byte
+   ALIGN16(byte minColor[16]);
+   ALIGN16(byte maxColor[16]);
+#else
+   ALIGN16(byte minColor[4]);
+   ALIGN16(byte maxColor[4]);
+#endif
 
   outData = outBuf;
   for ( int j = 0; j < height; j += 4, inBuf += width * 4*4 ) {
     for ( int i = 0; i < width; i += 4 ) {
 
 #if defined(DXT_INTR)
-	ExtractBlock_Intrinsics( inBuf + i * 4, width, block );
+       ExtractBlock_Intrinsics( inBuf + i * 4, width, block );
 #else
-	ExtractBlock( inBuf + i * 4, width, block );
+       ExtractBlock( inBuf + i * 4, width, block );
 #endif
 
 #if defined(DXT_INTR)
@@ -71,6 +77,7 @@ void CompressImageDXT1( const byte *inBuf, byte *outBuf,
 #endif
     }
   }
+
   outputBytes = (int) ( outData - outBuf );
 }
 
@@ -126,8 +133,15 @@ void CompressImageDXT5( const byte *inBuf, byte *outBuf, int width, int height,
   ALIGN16( byte *outData );
   
   ALIGN16( byte block[64] );
-  ALIGN16( byte minColor[4] );
-  ALIGN16( byte maxColor[4] );
+#if defined(DXT_INTR)
+  //GetMinMaxColors_Intrinsics copies __m128 into this array
+  //__m128 is 128-bit = 16-byte
+  ALIGN16(byte minColor[16]);
+  ALIGN16(byte maxColor[16]);
+#else
+  ALIGN16(byte minColor[4]);
+  ALIGN16(byte maxColor[4]);
+#endif
   
   outData = outBuf;
   for ( int j = 0; j < height; j += 4, inBuf += width * 4*4 ) {

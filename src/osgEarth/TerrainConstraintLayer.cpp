@@ -37,6 +37,13 @@ TerrainConstraintLayer::Options::fromConfig(const Config& conf)
 {
     minLevel().setDefault(8u);
 
+    // backwards compatability
+    if (ciEquals(conf.key(), "featuremask"))
+    {
+        removeInterior() = true;
+        hasElevation() = true;
+    }
+
     featureSource().get(conf, "features");
     conf.get("remove_interior", removeInterior());
     conf.get("remove_exterior", removeExterior());

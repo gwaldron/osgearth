@@ -216,6 +216,7 @@ namespace
             return false;
         }
 
+        // half a centimeter..probably a bit much :)
         bool is_degenerate() const
         {
             return
@@ -231,10 +232,8 @@ namespace
     struct edge_t
     {
         int _i0, _i1; // vertex indicies
-        triangle_t* _tri0;
-        triangle_t* _tri1;
-        edge_t() : _i0(-1), _i1(-1), _tri0(nullptr), _tri1(nullptr) { }
-        edge_t(int i0, int i1) : _i0(i0), _i1(i1), _tri0(nullptr), _tri1(nullptr) { }
+        edge_t() : _i0(-1), _i1(-1) { }
+        edge_t(int i0, int i1) : _i0(i0), _i1(i1) { }
 
         // don't care about direction
         bool operator == (const edge_t& rhs) const {
@@ -243,9 +242,11 @@ namespace
                 (_i0 == rhs._i1 && _i1 == rhs._i0);
         }
 
-        // hash table function
+        // hash table function. This needs to combine i0 and i1 in 
+        // a commutative way, i.e., such that if _i0 and _i1 are 
+        // interchanged, they will return the same hash code.
         std::size_t operator()(const edge_t& edge) const {
-            return hash_value_unsigned(_i0, _i1);
+            return hash_value_unsigned(_i0 + _i1);
         }
     };
 

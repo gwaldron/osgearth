@@ -298,10 +298,9 @@ namespace
     struct edge_t
     {
         int _i0, _i1; // vertex indicies
-        //int _tri0, _tri1; // triangle uids
         triangle_t* _tri0;
         triangle_t* _tri1;
-        edge_t() : _i0(-1), _i1(-1), _tri0(nullptr), _tri1(nullptr) { } //_tri0(-1), _tri1(-1) { }
+        edge_t() : _i0(-1), _i1(-1), _tri0(nullptr), _tri1(nullptr) { }
         edge_t(int i0, int i1) : _i0(i0), _i1(i1), _tri0(nullptr), _tri1(nullptr) { }
 
         // don't care about direction
@@ -373,15 +372,7 @@ namespace
             if (equivalent(tri.area, 0.0))
                 return -1;
 
-            //if (equivalent(tri.p0, tri.p1) ||
-            //    equivalent(tri.p1, tri.p2) ||
-            //    equivalent(tri.p2, tri.p0))
-            //{
-            //    return -1;
-            //}
-
             _triangles.emplace(uid, tri);
-            //triangle_t& tri = _triangles[uid];
             _spatial_index.Insert(tri, uid);
             //_spatial_index.Insert(tri.a_min, tri.a_max, uid);
             return uid;
@@ -403,8 +394,6 @@ namespace
         int get_marker(int i)
         {
             return _markers[i];
-            //return _markers[_vert_lut[get_vertex(i)]];
-            // prob _markers[i] is fine :)
         }
 
         // add a new vertex (or lookup a matching one) and return its index
@@ -439,23 +428,23 @@ namespace
             // search for possible intersecting triangles (should only be one)
             vert_t::value_type a_min[2];
             vert_t::value_type a_max[2];
-            a_min[0] = std::min(vert.x(), vert.y());
-            a_min[1] = std::min(vert.x(), vert.y());
-            a_max[0] = std::max(vert.x(), vert.y());
-            a_max[1] = std::max(vert.x(), vert.y());
+            a_min[0] = a_max[0] = vert.x();
+            a_min[1] = a_max[1] = vert.y();
 
             std::unordered_set<UID> uids;
             _spatial_index.Search(a_min, a_max, &uids, ~0);
 
-            if (uids.empty() == false)
+            for (auto uid : uids)
             {
-                triangle_t& tri = _triangles[*uids.begin()];
+                triangle_t& tri = _triangles[uid];
+
                 if (tri.area >= min_area)
                 {
                     if (tri.contains2d(vert) &&
                         tri.dist_to_nearest_vertex(vert) > min_edge)
                     {
                         inside_split(tri, vert, nullptr, marker);
+                        break;
                     }
                 }
             }
@@ -975,32 +964,48 @@ MeshEditor::createTileMesh(
 
                 int marker = default_marker;
 
-                // marking as BOUNDARY will allow skirt generation on this part
-                // for polygons with removed interior/exteriors
-                if (part->isPolygon() && (
-                    edit._layer->getRemoveInterior() ||
-                    edit._layer->getRemoveExterior()))
+                if (part->isPointSet())
                 {
-                    marker |= VERTEX_BOUNDARY;
+                    for (int i = 0; i < part->size(); ++i)
+                    {
+                        const vert_t& v = (*part)[i];
+                        if (v.x() >= xmin && v.x() <= xmax &&
+                            v.y() >= ymin && v.y() <= ymax)
+                        {
+                            mesh.insert(v, marker);
+                        }
+                    }
                 }
 
-                // slice and dice the mesh.
-                // iterate over segments in the part, closing the loop if it's an open ring.
-                unsigned i = part->isRing() && part->isOpen() ? 0 : 1;
-                unsigned j = part->isRing() && part->isOpen() ? part->size() - 1 : 0;
-
-                for (; i < part->size(); j = i++)
+                else
                 {
-                    const vert_t& p0 = (*part)[i];
-                    const vert_t& p1 = (*part)[j];
-
-                    // cull segment to tile
-                    if ((p0.x() >= xmin || p1.x() >= xmin) &&
-                        (p0.x() <= xmax || p1.x() <= xmax) &&
-                        (p0.y() >= ymin || p1.y() >= ymin) &&
-                        (p0.y() <= ymax || p1.y() <= ymax))
+                    // marking as BOUNDARY will allow skirt generation on this part
+                    // for polygons with removed interior/exteriors
+                    if (part->isPolygon() && (
+                        edit._layer->getRemoveInterior() ||
+                        edit._layer->getRemoveExterior()))
                     {
-                        mesh.insert(segment_t(p0, p1), marker);
+                        marker |= VERTEX_BOUNDARY;
+                    }
+
+                    // slice and dice the mesh.
+                    // iterate over segments in the part, closing the loop if it's an open ring.
+                    unsigned i = part->isRing() && part->isOpen() ? 0 : 1;
+                    unsigned j = part->isRing() && part->isOpen() ? part->size() - 1 : 0;
+
+                    for (; i < part->size(); j = i++)
+                    {
+                        const vert_t& p0 = (*part)[i];
+                        const vert_t& p1 = (*part)[j];
+
+                        // cull segment to tile
+                        if ((p0.x() >= xmin || p1.x() >= xmin) &&
+                            (p0.x() <= xmax || p1.x() <= xmax) &&
+                            (p0.y() >= ymin || p1.y() >= ymin) &&
+                            (p0.y() <= ymax || p1.y() <= ymax))
+                        {
+                            mesh.insert(segment_t(p0, p1), marker);
+                        }
                     }
                 }
             }

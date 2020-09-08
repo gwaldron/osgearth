@@ -176,7 +176,6 @@ namespace
         vert_t::value_type a_min[2]; // bbox min
         vert_t::value_type a_max[2]; // bbox max
         vert_t::value_type area;
-        bool _used;
 
         // true if the triangle contains point P (in xy)
         bool contains2d(const vert_t& P) const
@@ -284,7 +283,6 @@ namespace
             UID uid(uidgen++);
             triangle_t tri;
             tri.uid = uid;
-            tri._used = true;
             tri.i0 = i0;
             tri.i1 = i1;
             tri.i2 = i2;
@@ -614,10 +612,7 @@ namespace
             for (auto& tri_iter : mesh._triangles)
             {
                 const triangle_t& tri = tri_iter.second;
-                if (tri._used)
-                {
-                    add_triangle(tri, mesh, marker_mask);
-                }
+                add_triangle(tri, mesh, marker_mask);
             }
         }
 
@@ -648,10 +643,7 @@ namespace
             for (auto& tri_iter : mesh._triangles)
             {
                 const triangle_t& tri = tri_iter.second;
-                if (tri._used)
-                {
-                    add_triangle(tri);
-                }
+                add_triangle(tri);
             }
             assign_graph_ids();
         }
@@ -897,8 +889,6 @@ MeshEditor::createTileMesh(
         }
     }
 
-    unsigned num_feature_extents_containing_key_extent = 0;
-
     // Make the edits
     for (auto& edit : _edits)
     {
@@ -947,7 +937,7 @@ MeshEditor::createTileMesh(
                 {
                     // marking as BOUNDARY will allow skirt generation on this part
                     // for polygons with removed interior/exteriors
-                    if (part->isPolygon() && (
+                    if (part->isRing() && (
                         edit._layer->getRemoveInterior() ||
                         edit._layer->getRemoveExterior()))
                     {
@@ -1001,21 +991,19 @@ MeshEditor::createTileMesh(
                             if (((inside == true) && edit._layer->getRemoveInterior()) ||
                                 ((inside == false) && edit._layer->getRemoveExterior()))
                             {
-                                tri._used = false;
-                                usused_tris++;
+                                mesh.remove_triangle(tri);
                             }
 
                             else if (tri.is_degenerate())
                             {
-                                tri._used = false;
-                                usused_tris++;
+                                mesh.remove_triangle(tri);
                             }
                         }
                     }
                 }
 
                 // if ALL triangles are unused, it's an empty tile.
-                if (usused_tris >= mesh._triangles.size())
+                if (mesh._triangles.empty())
                 {
                     _tileEmpty = true;
                     return false;
@@ -1075,12 +1063,9 @@ MeshEditor::createTileMesh(
     de->reserveElements(mesh._triangles.size() * 3);
     for (const auto& tri : mesh._triangles)
     {
-        if (tri.second._used)
-        {
-            de->addElement(tri.second.i0);
-            de->addElement(tri.second.i1);
-            de->addElement(tri.second.i2);
-        }
+        de->addElement(tri.second.i0);
+        de->addElement(tri.second.i1);
+        de->addElement(tri.second.i2);
     }
     sharedGeom->setDrawElements(de);
 

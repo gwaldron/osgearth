@@ -225,74 +225,7 @@ namespace
         }
     };
 
-#if 0
     typedef RTree<UID, vert_t::value_type, 2> spatial_index_t;
-#else
-    // spatial index aligned with the tile size, so we can just
-    // use a triangle centroid to place objects.
-    struct spatial_index_t
-    {
-        double _xmin, _ymin, _xmax, _ymax;
-        int _xdim, _ydim;
-        std::unordered_set<UID>* _index;
-        double _width, _height;
-        double _e;
-        spatial_index_t(double xmin, double ymin, double xmax, double ymax, int xdim, int ydim) :
-            _xmin(xmin), _ymin(ymin), _xmax(xmax), _ymax(ymax),
-            _xdim(xdim), _ydim(ydim)
-        {
-            _index = new std::unordered_set<UID>[_xdim*_ydim];
-            _width = _xmax - _xmin;
-            _height = _ymax - _ymin;
-            _e = 1e-3;
-        }
-        ~spatial_index_t() {
-            delete[] _index;
-        }
-        void bounds(const triangle_t& tri, int& s, int& t) {
-            double x = (tri.p0.x() + tri.p1.x() + tri.p2.x()) / 3.0;
-            double y = (tri.p0.y() + tri.p1.y() + tri.p2.y()) / 3.0;
-            double u = (x - _xmin) / _width;
-            double v = (y - _ymin) / _height;
-            s = clamp((int)(u*(double)_xdim), 0, _xdim - 1);
-            t = clamp((int)(v*(double)_ydim), 0, _ydim - 1);
-        }
-
-        void bounds(double* a_min, double* a_max, int& s0, int& s1, int& t0, int& t1) {
-            double u0 = (a_min[0] - _xmin) / _width;
-            double u1 = (a_max[0] - _xmin) / _width;
-            s0 = clamp((int)(u0*(double)_xdim), 0, _xdim - 1);
-            s1 = clamp((int)(u1*(double)_xdim), 0, _xdim - 1);
-            double v0 = (a_min[1] - _ymin) / _height;
-            double v1 = (a_max[1] - _ymin) / _height;
-            t0 = clamp((int)(v0*(double)_ydim), 0, _ydim - 1);
-            t1 = clamp((int)(v1*(double)_ydim), 0, _ydim - 1);
-        }
-
-        void Insert(const triangle_t& tri, UID uid) {
-            int s, t;
-            bounds(tri, s, t);
-            _index[t*_xdim + s].insert(uid);
-        }
-        void Remove(const triangle_t& tri, UID uid) {
-            int s, t;
-            bounds(tri, s, t);
-            _index[t*_xdim + s].erase(uid);
-        }
-        int Search(double* a_min, double* a_max, std::unordered_set<UID>* hits, int dummy) {
-            int s0, s1, t0, t1;
-            bounds(a_min, a_max, s0, s1, t0, t1);
-            for (int s = s0; s <= s1; ++s) {
-                for (int t = t0; t <= t1; ++t) {
-                    for (auto uid : _index[t*_xdim + s]) {
-                        hits->insert(uid);
-                    }
-                }
-            }
-            return hits->size();
-        }
-    };
-#endif
 
     // a mesh edge connecting to verts
     struct edge_t
@@ -321,22 +254,22 @@ namespace
     {
         int uidgen;
         std::unordered_map<UID, triangle_t> _triangles;
-        spatial_index_t& _spatial_index;
-        //triangle_lut_t _spatial_index;
+        spatial_index_t _spatial_index;
         vert_table_t _vert_lut;
         vert_array_t _verts;
         std::vector<int> _markers;
         int _num_splits;
 
-        mesh_t(spatial_index_t& s) : uidgen(0), _num_splits(0), _spatial_index(s) {
+        mesh_t() : uidgen(0), _num_splits(0) {
+            //nop
         }
 
         // delete triangle from the mesh
         void remove_triangle(triangle_t& tri)
         {
             UID uid = tri.uid;
-            _spatial_index.Remove(tri, uid);
-            //_spatial_index.Remove(tri.a_min, tri.a_max, uid);
+            //_spatial_index.Remove(tri, uid);
+            _spatial_index.Remove(tri.a_min, tri.a_max, uid);
             _triangles.erase(uid);
             _num_splits++;
         }
@@ -373,8 +306,8 @@ namespace
                 return -1;
 
             _triangles.emplace(uid, tri);
-            _spatial_index.Insert(tri, uid);
-            //_spatial_index.Insert(tri.a_min, tri.a_max, uid);
+            //_spatial_index.Insert(tri, uid);
+            _spatial_index.Insert(tri.a_min, tri.a_max, uid);
             return uid;
         }
 
@@ -421,7 +354,7 @@ namespace
             // restrict edge length to a fraction of the original edge lengths
             // (hueristic value) - problem is tile is too big (curvature)
             vert_t::value_type min_edge =
-                (_triangles.begin()->second.e01) * 0.15;
+                (_triangles.begin()->second.e01) * 0.01;
 
             vert_t::value_type min_area = 1.0;
 
@@ -527,16 +460,25 @@ namespace
 
                         if (!tri.is_vertex(out))
                         {
+                            int new_tris = 0;
+
                             new_uid = add_triangle(new_i, tri.i2, tri.i0);
-                            if (new_uid >= 0)
+                            if (new_uid >= 0) {
                                 uid_list.push_back(new_uid);
+                                ++new_tris;
+                            }
 
                             new_uid = add_triangle(new_i, tri.i1, tri.i2);
-                            if (new_uid >= 0)
+                            if (new_uid >= 0) {
                                 uid_list.push_back(new_uid);
+                                ++new_tris;
+                            }
 
-                            remove_triangle(tri);
-                            continue;
+                            if (new_tris > 0)
+                            {
+                                remove_triangle(tri);
+                                continue;
+                            }
                         }
                     }
                 }
@@ -555,16 +497,25 @@ namespace
 
                         if (!tri.is_vertex(out))
                         {
+                            int new_tris = 0;
+
                             new_uid = add_triangle(new_i, tri.i0, tri.i1);
-                            if (new_uid >= 0)
+                            if (new_uid >= 0) {
                                 uid_list.push_back(new_uid);
+                                ++new_tris;
+                            }
 
                             new_uid = add_triangle(new_i, tri.i2, tri.i0);
-                            if (new_uid >= 0)
+                            if (new_uid >= 0) {
                                 uid_list.push_back(new_uid);
+                                ++new_tris;
+                            }
 
-                            remove_triangle(tri);
-                            continue;
+                            if (new_tris > 0)
+                            {
+                                remove_triangle(tri);
+                                continue;
+                            }
                         }
                     }
                 }
@@ -583,16 +534,25 @@ namespace
 
                         if (!tri.is_vertex(out))
                         {
+                            int new_tris = 0;
+
                             new_uid = add_triangle(new_i, tri.i1, tri.i2);
-                            if (new_uid >= 0)
+                            if (new_uid >= 0) {
                                 uid_list.push_back(new_uid);
+                                ++new_tris;
+                            }
 
                             new_uid = add_triangle(new_i, tri.i0, tri.i1);
-                            if (new_uid >= 0)
+                            if (new_uid >= 0) {
                                 uid_list.push_back(new_uid);
+                                ++new_tris;
+                            }
 
-                            remove_triangle(tri);
-                            continue;
+                            if (new_tris > 0)
+                            {
+                                remove_triangle(tri);
+                                continue;
+                            }
                         }
                     }
                 }
@@ -606,20 +566,28 @@ namespace
             int new_i = get_or_create_vertex(p, new_marker);
 
             UID new_uid;
+            int new_tris = 0;
 
             new_uid = add_triangle(tri.i0, tri.i1, new_i);
-            if (new_uid >= 0 && uid_list)
+            if (new_uid >= 0 && uid_list) {
                 uid_list->push_back(new_uid);
+                ++new_tris;
+            }
 
             new_uid = add_triangle(tri.i1, tri.i2, new_i);
-            if (new_uid >= 0 && uid_list)
+            if (new_uid >= 0 && uid_list) {
                 uid_list->push_back(new_uid);
+                ++new_tris;
+            }
 
             new_uid = add_triangle(tri.i2, tri.i0, new_i);
-            if (new_uid >= 0 && uid_list)
+            if (new_uid >= 0 && uid_list) {
                 uid_list->push_back(new_uid);
+                ++new_tris;
+            }
 
-            remove_triangle(tri);
+            if (new_tris > 0)
+                remove_triangle(tri);
         }
     };
 
@@ -892,10 +860,7 @@ MeshEditor::createTileMesh(
         ymin = std::min(ymin, c[i].y()), ymax = std::max(ymax, c[i].y());
     }
 
-    // dimensions of spatial index are hueristic measured by tracy
-    //spatial_index_t si(xmin, ymin, xmax, ymax, tileSize-1, tileSize-1);
-    spatial_index_t si(xmin, ymin, xmax, ymax, tileSize - 1, tileSize - 1);
-    mesh_t mesh(si);
+    mesh_t mesh;
     mesh._verts.reserve(tileSize*tileSize);
 
     for (unsigned row = 0; row < tileSize; ++row)

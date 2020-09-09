@@ -278,7 +278,7 @@ FeatureSource::createFeatureCursor(const TileKey& key, const Distance& buffer, P
             UnorderedSet<TileKey> featureKeys;
             for (int i = 0; i < intersectingKeys.size(); ++i)
             {        
-                if (intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
+                if (_featureProfile->getMaxLevel() >= 0 && intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
                     featureKeys.insert(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
                 else
                     featureKeys.insert(intersectingKeys[i]);

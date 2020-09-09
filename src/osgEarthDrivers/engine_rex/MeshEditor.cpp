@@ -124,8 +124,8 @@ namespace
 
     inline bool equivalent(vert_t::value_type a, vert_t::value_type b)
     {
-        return osg::equivalent((float)a, (float)b);
-        //return osg::equivalent(a, b);
+        //return osg::equivalent((float)a, (float)b);
+        return osg::equivalent(a, b);
     }
 
     inline bool equivalent(const vert_t& a, const vert_t& b, vert_t::value_type epsilon)
@@ -176,6 +176,7 @@ namespace
         vert_t::value_type a_min[2]; // bbox min
         vert_t::value_type a_max[2]; // bbox max
         vert_t::value_type area;
+        bool is_2d_degenerate;
 
         // true if the triangle contains point P (in xy)
         bool contains2d(const vert_t& P) const
@@ -214,18 +215,55 @@ namespace
                 return true;
             return false;
         }
-
-        // half a centimeter..probably a bit much :)
-        bool is_degenerate() const
-        {
-            return
-                equivalent(p0, p1, 0.005) ||
-                equivalent(p1, p2, 0.005) ||
-                equivalent(p2, p0, 0.005);
-        }
     };
 
+#if 1
     typedef RTree<UID, vert_t::value_type, 2> spatial_index_t;
+#else
+    //! A dirt-simple (and slow) spatial index, just for testing.
+    struct spatial_index_t {
+        struct rec {
+            UID uid;
+            double a_min[2];
+            double a_max[2];
+            bool operator < (const rec& rhs) const {
+                return uid < rhs.uid;
+            }
+        };
+        std::map<UID, rec> _recs;
+
+        void Insert(double* a_min, double* a_max, UID uid)
+        {
+            rec& r = _recs[uid];
+            r.uid = uid;
+            r.a_min[0] = a_min[0], r.a_min[1] = a_min[1];
+            r.a_max[0] = a_max[0], r.a_max[1] = a_max[1];
+        }
+
+        void Remove(double* a_min, double* a_max, UID uid)
+        {
+            _recs.erase(uid);
+        }
+
+        void Search(double* a_min, double* a_max, std::unordered_set<UID>* hits, int maxHits) const
+        {
+            for (auto& e : _recs)
+            {
+                if (e.second.a_min[0] > a_max[0] ||
+                    e.second.a_max[0] < a_min[0] ||
+                    e.second.a_min[1] > a_max[1] ||
+                    e.second.a_max[1] < a_min[1])
+                {
+                    continue;
+                }
+                else
+                {
+                    hits->emplace(e.first);
+                }
+            }
+        }
+    };
+#endif
 
     // a mesh edge connecting to verts
     struct edge_t
@@ -301,6 +339,15 @@ namespace
                 tri.p1.x()*(tri.p2.y() - tri.p0.y()) +
                 tri.p2.x()*(tri.p0.y() - tri.p1.y()));
 
+            constexpr double E = 0.0005;
+            tri.is_2d_degenerate =
+                equivalent(tri.p0, tri.p1, E) ||
+                equivalent(tri.p1, tri.p2, E) ||
+                equivalent(tri.p2, tri.p0, E) ||
+                equivalent((tri.p1 - tri.p0).normalize2d(), (tri.p2 - tri.p0).normalize2d(), E) ||
+                equivalent((tri.p2 - tri.p1).normalize2d(), (tri.p0 - tri.p1).normalize2d(), E) ||
+                equivalent((tri.p0 - tri.p2).normalize2d(), (tri.p1 - tri.p2).normalize2d(), E);
+
             if (equivalent(tri.area, 0.0))
                 return -1;
 
@@ -312,6 +359,12 @@ namespace
 
         // find a vertex by its index
         const vert_t& get_vertex(unsigned i) const
+        {
+            return _verts[i];
+        }
+
+        // find a vertex by its index
+        vert_t& get_vertex(unsigned i)
         {
             return _verts[i];
         }
@@ -331,20 +384,26 @@ namespace
         // add a new vertex (or lookup a matching one) and return its index
         int get_or_create_vertex(const vert_t& input, int marker)
         {
+            int index;
             vert_table_t::iterator i = _vert_lut.find(input);
             if (i != _vert_lut.end())
             {
-                int index = i->second;
+                index = i->second;
                 _markers[i->second] = marker;
-                return index;
             }
             else
             {
                 _verts.push_back(input);
                 _markers.push_back(marker);
                 _vert_lut[input] = _verts.size() - 1;
-                return _verts.size() - 1;
+                index = _verts.size() - 1;
             }
+            if (index >= 0xFFFF)
+            {
+                OE_WARN << "Exceeded maximum allowable verts" << std::endl;
+            }
+
+            return index;
         }
 
         // insert a point into the mesh, cutting triangles as necessary
@@ -352,10 +411,10 @@ namespace
         {
             // restrict edge length to a fraction of the original edge lengths
             // (hueristic value) - problem is tile is too big (curvature)
-            vert_t::value_type min_edge =
-                (_triangles.begin()->second.e01) * 0.01;
-
-            vert_t::value_type min_area = 1.0;
+            //vert_t::value_type min_edge = (_triangles.begin()->second.e01) * 0.01;
+            //vert_t::value_type min_area = 1.0;
+            vert_t::value_type min_edge = 0.0;
+            vert_t::value_type min_area = 0.0;
 
             // search for possible intersecting triangles (should only be one)
             vert_t::value_type a_min[2];
@@ -370,14 +429,17 @@ namespace
             {
                 triangle_t& tri = _triangles[uid];
 
-                if (tri.area >= min_area)
+                if (tri.is_2d_degenerate)
+                    continue;
+
+                if (tri.area <= min_area) // probably redundant
+                    continue;
+
+                if (tri.contains2d(vert) &&
+                    tri.dist_to_nearest_vertex(vert) > min_edge)
                 {
-                    if (tri.contains2d(vert) &&
-                        tri.dist_to_nearest_vertex(vert) > min_edge)
-                    {
-                        inside_split(tri, vert, nullptr, marker);
-                        break;
-                    }
+                    inside_split(tri, vert, nullptr, marker);
+                    break;
                 }
             }
         }
@@ -390,9 +452,6 @@ namespace
             vert_t::value_type min_edge =
                 (_triangles.begin()->second.e01) * 0.15;
 
-            vert_t::value_type min_area = 1.0;
-                //(_triangles.begin()->second.area) * 0.05;
-
             // search for possible intersecting triangles:
             vert_t::value_type a_min[2];
             vert_t::value_type a_max[2];
@@ -401,7 +460,6 @@ namespace
             a_max[0] = std::max(seg.first.x(), seg.second.x());
             a_max[1] = std::max(seg.first.y(), seg.second.y());
             std::unordered_set<UID> uids;
-            //std::vector<UID> uids;
             _spatial_index.Search(a_min, a_max, &uids, ~0);
 
             // The working set of triangles which we will add to if we have
@@ -417,7 +475,7 @@ namespace
             {
                 triangle_t& tri = _triangles[uid];
 
-                if (tri.area < min_area)
+                if (tri.is_2d_degenerate)
                     continue;
 
                 // is the first segment endpoint inside a triangle? if so
@@ -842,7 +900,7 @@ MeshEditor::createTileMesh(
     // calculate the bounding box of the tile in local coords,
     // for culling purposes:
     osg::Vec3d c[4];
-    double xmin=DBL_MAX, ymin=DBL_MAX, xmax=-DBL_MAX, ymax=-DBL_MAX;
+    double xmin = DBL_MAX, ymin = DBL_MAX, xmax = -DBL_MAX, ymax = -DBL_MAX, zmin = DBL_MAX;
     locator.unitToWorld(osg::Vec3d(0, 0, 0), c[0]);
     locator.unitToWorld(osg::Vec3d(1, 0, 0), c[1]);
     locator.unitToWorld(osg::Vec3d(0, 1, 0), c[2]);
@@ -851,10 +909,14 @@ MeshEditor::createTileMesh(
         c[i] = c[i] * world2local;
         xmin = std::min(xmin, c[i].x()), xmax = std::max(xmax, c[i].x());
         ymin = std::min(ymin, c[i].y()), ymax = std::max(ymax, c[i].y());
+        zmin = std::min(zmin, c[i].z());
     }
 
     mesh_t mesh;
     mesh._verts.reserve(tileSize*tileSize);
+
+    double xscale = -zmin / 0.5*(xmax - xmin);
+    double yscale = -zmin / 0.5*(ymax - ymin);
 
     for (unsigned row = 0; row < tileSize; ++row)
     {
@@ -992,9 +1054,17 @@ MeshEditor::createTileMesh(
                                 ((inside == false) && edit._layer->getRemoveExterior()))
                             {
                                 mesh.remove_triangle(tri);
+                                //mesh.get_vertex(tri.i0).z() -= 25.0;
+                                //mesh.get_vertex(tri.i1).z() -= 25.0;
+                                //mesh.get_vertex(tri.i2).z() -= 25.0;
+                                // Water: calculate the distance from the polygon for each triangle
+                                // vertex and depress it accordingly; then add a surface polygon to match?
                             }
 
-                            else if (tri.is_degenerate())
+                            // this will remove "sliver" triangles that are coincident with
+                            // the boundary, that would otherwise cause skirts to appear 
+                            // where there are (apparently) no surface.
+                            else if (tri.is_2d_degenerate)
                             {
                                 mesh.remove_triangle(tri);
                             }

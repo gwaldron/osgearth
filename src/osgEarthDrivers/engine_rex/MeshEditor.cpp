@@ -999,9 +999,7 @@ MeshEditor::createTileMesh(
                 {
                     // marking as BOUNDARY will allow skirt generation on this part
                     // for polygons with removed interior/exteriors
-                    if (part->isRing() && (
-                        edit._layer->getRemoveInterior() ||
-                        edit._layer->getRemoveExterior()))
+                    if (part->isRing() && edit._layer->getRemoveInterior())
                     {
                         marker |= VERTEX_BOUNDARY;
                     }
@@ -1030,8 +1028,7 @@ MeshEditor::createTileMesh(
 
             // Find any triangles that we don't want to draw and 
             // mark them an "unused."
-            if (edit._layer->getRemoveExterior() ||
-                edit._layer->getRemoveInterior())
+            if (edit._layer->getRemoveInterior())
             {
                 // Iterate without holes because Polygon::contains deals with them
                 GeometryIterator mask_iter(
@@ -1050,15 +1047,16 @@ MeshEditor::createTileMesh(
 
                             bool inside = part->contains2D(c.x(), c.y());
 
-                            if (((inside == true) && edit._layer->getRemoveInterior()) ||
-                                ((inside == false) && edit._layer->getRemoveExterior()))
+                            if ((inside == true) && edit._layer->getRemoveInterior())
                             {
                                 mesh.remove_triangle(tri);
-                                //mesh.get_vertex(tri.i0).z() -= 25.0;
-                                //mesh.get_vertex(tri.i1).z() -= 25.0;
-                                //mesh.get_vertex(tri.i2).z() -= 25.0;
-                                // Water: calculate the distance from the polygon for each triangle
-                                // vertex and depress it accordingly; then add a surface polygon to match?
+
+                                //OPTIONS:
+                                // - remove tri entirely
+                                // - change clamping u/v of elevation;
+                                // - alter elevation offset based on distance from feature;
+                                // - duplicate tris to make water surface+bed
+                                // ... pluggable behavior ?
                             }
 
                             // this will remove "sliver" triangles that are coincident with

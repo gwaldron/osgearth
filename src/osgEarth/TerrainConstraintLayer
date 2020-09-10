@@ -27,7 +27,8 @@
 namespace osgEarth
 {
     /**
-     * MeshEditLayer whose geometry comes from a feature source.
+     * Provides feature data to the terrain engine to use for
+     * customizing the surface mesh.
      */
     class OSGEARTH_EXPORT TerrainConstraintLayer : public Layer
     {
@@ -49,34 +50,38 @@ namespace osgEarth
     public:
         META_Layer(osgEarth, TerrainConstraintLayer, Options, Layer, TerrainConstraint);
 
-        //! Source of the feature(s)
+        //! Source of the feature data
         void setFeatureSource(FeatureSource* features);
         FeatureSource* getFeatureSource() const;
 
-        //! Whether the terrain should remove interior geometry
+        //! Whether the terrain should remove geometry that is interior to polygons
         bool getRemoveInterior() const { return options().removeInterior().get(); }
+        void setRemoveInterior(bool value);
 
-        //! Whether the terran should remove exterior geometry
+        //! Whether the terran should remove geometry that is exterior to polygons
+        //! (experimental)
         bool getRemoveExterior() const { return options().removeExterior().get(); }
+        void setRemoveExterior(bool value);
 
-        //! Whether the terrain should perserve the Z as elevation in the constraint
+        //! Whether the terrain should perserve the Z value in the feature data
+        //! as static elevation
         bool getHasElevation() const { return options().hasElevation().get(); }
+        void setHasElevation(bool value);
 
         //! Minimum LOD at which to apply this constraint
         unsigned getMinLevel() const { return options().minLevel().get(); }
+        void setMinLevel(unsigned value);
 
         //! Geospatial extent of this layer's data
         virtual const GeoExtent& getExtent() const override;
 
-    public:
-
-        virtual Status openImplementation();
-
     protected:
 
-        virtual void addedToMap(const Map*);
+        virtual Status openImplementation() override;
 
-        virtual void removedFromMap(const Map*);
+        virtual void addedToMap(const Map*) override;
+
+        virtual void removedFromMap(const Map*) override;
 
     protected:
 

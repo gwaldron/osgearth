@@ -68,7 +68,13 @@ TerrainConstraintLayer::Options::getConfig() const
 void
 TerrainConstraintLayer::setFeatureSource(FeatureSource* layer)
 {
-    options().featureSource().setLayer(layer);
+    if (layer != getFeatureSource())
+    {
+        bool is_open = isOpen();
+        if (is_open) close();
+        options().featureSource().setLayer(layer);
+        if (is_open) open();
+    }
 }
 
 FeatureSource*
@@ -132,4 +138,28 @@ TerrainConstraintLayer::create()
     }
 
     setStatus(Status::OK());
+}
+
+void
+TerrainConstraintLayer::setRemoveInterior(bool value)
+{
+    setOptionThatRequiresReopen(options().removeInterior(), value);
+}
+
+void
+TerrainConstraintLayer::setRemoveExterior(bool value)
+{
+    setOptionThatRequiresReopen(options().removeExterior(), value);
+}
+
+void
+TerrainConstraintLayer::setHasElevation(bool value)
+{
+    setOptionThatRequiresReopen(options().hasElevation(), value);
+}
+
+void
+TerrainConstraintLayer::setMinLevel(unsigned value)
+{
+    setOptionThatRequiresReopen(options().minLevel(), value);
 }

@@ -775,6 +775,7 @@ SharedGeometry::makeOsgGeometry()
 {
     osg::Geometry* geom = new osg::Geometry();
     geom->setUseVertexBufferObjects(true);
+    geom->setUseDisplayList(false);
 
     geom->setVertexArray(getVertexArray());
     geom->setNormalArray(getNormalArray());

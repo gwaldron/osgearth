@@ -342,6 +342,8 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
     {
         removeDebugNode();
         addDebugNode(box);
+        //_debugNode = makeSphere(getBound());
+        //addChild(_debugNode.get());
     }
 
     // Update the horizon culler.

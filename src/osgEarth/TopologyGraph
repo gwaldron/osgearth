@@ -87,7 +87,7 @@ namespace osgEarth { namespace Util
         typedef std::unordered_set<Vertex,Vertex> VertexSet;
 
         //! Iterator into a VertexSet.
-        typedef VertexSet::iterator Index;
+        typedef VertexSet::const_iterator Index;
 
         //! Custom comparator for Index so we can use it at a std::map key
         struct IndexLess : public std::less<Index> {

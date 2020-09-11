@@ -854,8 +854,8 @@ Ring::contains2D( double x, double y ) const
 Polygon::Polygon( const Polygon& rhs ) :
 Ring( rhs )
 {
-    for( RingCollection::const_iterator r = rhs._holes.begin(); r != rhs._holes.end(); ++r )
-        _holes.push_back( new Ring(*r->get()) );
+    for (auto& hole : rhs._holes)
+        _holes.push_back(new Ring(&hole->asVector()));
 }
 
 Polygon::Polygon( const Vec3dVector* data ) :

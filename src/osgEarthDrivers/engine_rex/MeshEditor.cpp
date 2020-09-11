@@ -51,9 +51,6 @@ MeshEditor::MeshEditor(const TileKey& key, unsigned tileSize, const Map* map, Pr
                 Feature* f = cursor->nextFeature();
                 if (f->getExtent().intersects(keyExtent))
                 {
-                    //osg::ref_ptr<Feature> f_xform = osg::clone(f, osg::CopyOp::DEEP_COPY_ALL);
-                    //f_xform->transform(keyExtent.getSRS());
-                    //edit._features.push_back(f_xform);
                     f->transform(keyExtent.getSRS());
                     edit._features.push_back(f);
                 }

@@ -51,9 +51,11 @@ MeshEditor::MeshEditor(const TileKey& key, unsigned tileSize, const Map* map, Pr
                 Feature* f = cursor->nextFeature();
                 if (f->getExtent().intersects(keyExtent))
                 {
-                    osg::ref_ptr<Feature> f_xform = osg::clone(f, osg::CopyOp::DEEP_COPY_ALL);
-                    f_xform->transform(keyExtent.getSRS());
-                    edit._features.push_back(f_xform);
+                    //osg::ref_ptr<Feature> f_xform = osg::clone(f, osg::CopyOp::DEEP_COPY_ALL);
+                    //f_xform->transform(keyExtent.getSRS());
+                    //edit._features.push_back(f_xform);
+                    f->transform(keyExtent.getSRS());
+                    edit._features.push_back(f);
                 }
             }
 
@@ -90,6 +92,12 @@ namespace
             if (x() > rhs.x()) return false;
             return y() < rhs.y();
         }
+        const value_type& operator[](int i) const {
+            return i == 0 ? _x : i == 1 ? _y : _z;
+        }
+        value_type& operator[](int i) {
+            return i == 0 ? _x : i == 1 ? _y : _z;
+        }
         vert_t operator - (const vert_t& rhs) const {
             return vert_t(x() - rhs.x(), y() - rhs.y(), z() - rhs.z());
         }
@@ -122,13 +130,9 @@ namespace
 
     const vert_t::value_type zero(0.0);
 
-    inline bool equivalent(vert_t::value_type a, vert_t::value_type b)
-    {
-        //return osg::equivalent((float)a, (float)b);
-        return osg::equivalent(a, b);
-    }
+    constexpr vert_t::value_type EPSILON = 1e-6;
 
-    inline bool equivalent(const vert_t& a, const vert_t& b, vert_t::value_type epsilon)
+    inline bool equivalent(const vert_t& a, const vert_t& b, vert_t::value_type epsilon = EPSILON)
     {
         return
             osg::equivalent(a.x(), b.x(), epsilon) &&
@@ -155,7 +159,7 @@ namespace
             vert_t s = rhs.second - rhs.first;
             vert_t::value_type det = r.cross2d(s);
 
-            if (equivalent(det, zero))
+            if (osg::equivalent(det, zero))
                 return false;
 
             vert_t diff = rhs.first - first;
@@ -172,48 +176,59 @@ namespace
         UID uid; // unique id
         vert_t p0, p1, p2; // vertices
         unsigned i0, i1, i2; // indices
-        vert_t::value_type e01, e12, e20; // edge lengths
         vert_t::value_type a_min[2]; // bbox min
         vert_t::value_type a_max[2]; // bbox max
-        vert_t::value_type area;
         bool is_2d_degenerate;
 
-        // true if the triangle contains point P (in xy)
-        bool contains2d(const vert_t& P) const
+        // true if the triangle contains point P (in xy) within
+        // a certain tolerance.
+        inline bool contains_2d(const vert_t& P) const
         {
-            vert_t c = p2 - p0;
-            vert_t b = p1 - p0;
-            vert_t p = P - p0;
-
-            vert_t::value_type cc = c.dot2d(c), bc = b.dot2d(c), pc = c.dot2d(p), bb = b.dot2d(b), pb = b.dot2d(p);
-            vert_t::value_type denom = cc * bb - bc * bc;
-            if (equivalent(denom, zero))
+            vert_t bary;
+            if (!get_barycentric(P, bary))
                 return false;
 
-            float u = (bb*pc - bc * pb) / denom;
-            float v = (cc*pb - bc * pc) / denom;
-
-            return u >= 0 && v >= 0 && (u + v < 1.0);
-        }
-
-        vert_t::value_type dist_to_nearest_vertex(const vert_t& P) const
-        {
-            return std::min((P - p0).length(), std::min((P - p1).length(), (P - p2).length()));
+            return
+                clamp(bary[0], 0.0, 1.0) == bary[0] &&
+                clamp(bary[1], 0.0, 1.0) == bary[1] &&
+                clamp(bary[2], 0.0, 1.0) == bary[2];
         }
 
         // true if point P is one of the triangle's verts
-        bool is_vertex(const vert_t& p) const
+        inline bool is_vertex(const vert_t& p, vert_t::value_type e = EPSILON) const
         {
-            if (equivalent(p.x(), p0.x()) &&
-                equivalent(p.y(), p0.y()))
+            if (osg::equivalent(p.x(), p0.x(), e) &&
+                osg::equivalent(p.y(), p0.y(), e))
                 return true;
-            if (equivalent(p.x(), p1.x()) &&
-                equivalent(p.y(), p1.y()))
+            if (osg::equivalent(p.x(), p1.x(), e) &&
+                osg::equivalent(p.y(), p1.y(), e))
                 return true;
-            if (equivalent(p.x(), p2.x()) &&
-                equivalent(p.y(), p2.y()))
+            if (osg::equivalent(p.x(), p2.x(), e) &&
+                osg::equivalent(p.y(), p2.y(), e))
                 return true;
+
             return false;
+        }
+
+        inline bool get_barycentric(const vert_t& p, vert_t& out) const
+        {
+            vert_t v0 = p1 - p0, v1 = p2 - p0, v2 = p - p0;
+            vert_t::value_type d00 = v0.dot2d(v0);
+            vert_t::value_type d01 = v0.dot2d(v1);
+            vert_t::value_type d11 = v1.dot2d(v1);
+            vert_t::value_type d20 = v2.dot2d(v0);
+            vert_t::value_type d21 = v2.dot2d(v1);
+            vert_t::value_type denom = d00 * d11 - d01 * d01;
+
+            // means that one of more of the triangles points are coincident:
+            if (osg::equivalent(denom, 0.0))
+                return false;
+
+            out.y() = (d11*d20 - d01 * d21) / denom;
+            out.z() = (d00*d21 - d01 * d20) / denom;
+            out.x() = 1.0 - out.y() - out.z();
+
+            return true;
         }
     };
 
@@ -279,6 +294,12 @@ namespace
                 (_i0 == rhs._i1 && _i1 == rhs._i0);
         }
 
+        bool operator < (const edge_t& rhs) const {
+            if (_i0*1e6 < rhs._i0*1e6) return true;
+            if (_i0*1e6 > rhs._i0*1e6) return false;
+            return _i0 < _i1;
+        }
+
         // hash table function. This needs to combine i0 and i1 in 
         // a commutative way, i.e., such that if _i0 and _i1 are 
         // interchanged, they will return the same hash code.
@@ -327,19 +348,14 @@ namespace
             tri.p0 = get_vertex(i0);
             tri.p1 = get_vertex(i1);
             tri.p2 = get_vertex(i2);
-            tri.e01 = (tri.p0 - tri.p1).length();
-            tri.e12 = (tri.p1 - tri.p2).length();
-            tri.e20 = (tri.p2 - tri.p0).length();
             tri.a_min[0] = std::min(tri.p0.x(), std::min(tri.p1.x(), tri.p2.x()));
             tri.a_min[1] = std::min(tri.p0.y(), std::min(tri.p1.y(), tri.p2.y()));
             tri.a_max[0] = std::max(tri.p0.x(), std::max(tri.p1.x(), tri.p2.x()));
             tri.a_max[1] = std::max(tri.p0.y(), std::max(tri.p1.y(), tri.p2.y()));
-            tri.area = 0.5 * fabs(
-                tri.p0.x()*(tri.p1.y() - tri.p2.y()) +
-                tri.p1.x()*(tri.p2.y() - tri.p0.y()) +
-                tri.p2.x()*(tri.p0.y() - tri.p1.y()));
 
-            constexpr double E = 0.0005;
+            // "2d_degenerate" means that either a) at least 2 points are coincident, or
+            // b) at least two edges are basically coincident (in the XY plane)
+            constexpr vert_t::value_type E = 0.0005;
             tri.is_2d_degenerate =
                 equivalent(tri.p0, tri.p1, E) ||
                 equivalent(tri.p1, tri.p2, E) ||
@@ -348,11 +364,7 @@ namespace
                 equivalent((tri.p2 - tri.p1).normalize2d(), (tri.p0 - tri.p1).normalize2d(), E) ||
                 equivalent((tri.p0 - tri.p2).normalize2d(), (tri.p1 - tri.p2).normalize2d(), E);
 
-            if (equivalent(tri.area, 0.0))
-                return -1;
-
             _triangles.emplace(uid, tri);
-            //_spatial_index.Insert(tri, uid);
             _spatial_index.Insert(tri.a_min, tri.a_max, uid);
             return uid;
         }
@@ -391,16 +403,16 @@ namespace
                 index = i->second;
                 _markers[i->second] = marker;
             }
-            else
+            else if (_verts.size() + 1 < 0xFFFF)
             {
                 _verts.push_back(input);
                 _markers.push_back(marker);
                 _vert_lut[input] = _verts.size() - 1;
                 index = _verts.size() - 1;
             }
-            if (index >= 0xFFFF)
+            else
             {
-                OE_WARN << "Exceeded maximum allowable verts" << std::endl;
+                return -1;
             }
 
             return index;
@@ -409,13 +421,6 @@ namespace
         // insert a point into the mesh, cutting triangles as necessary
         void insert(const vert_t& vert, int marker)
         {
-            // restrict edge length to a fraction of the original edge lengths
-            // (hueristic value) - problem is tile is too big (curvature)
-            //vert_t::value_type min_edge = (_triangles.begin()->second.e01) * 0.01;
-            //vert_t::value_type min_area = 1.0;
-            vert_t::value_type min_edge = 0.0;
-            vert_t::value_type min_area = 0.0;
-
             // search for possible intersecting triangles (should only be one)
             vert_t::value_type a_min[2];
             vert_t::value_type a_max[2];
@@ -432,14 +437,11 @@ namespace
                 if (tri.is_2d_degenerate)
                     continue;
 
-                if (tri.area <= min_area) // probably redundant
-                    continue;
-
-                if (tri.contains2d(vert) &&
-                    tri.dist_to_nearest_vertex(vert) > min_edge)
+                if (tri.contains_2d(vert) && !tri.is_vertex(vert))
                 {
                     inside_split(tri, vert, nullptr, marker);
-                    break;
+                    // dont't break -- could split two triangles if on edge.
+                    //break;
                 }
             }
         }
@@ -447,11 +449,6 @@ namespace
         // insert a segment into the mesh, cutting triangles as necessary
         void insert(const segment_t& seg, int marker)
         {
-            // restrict edge length to a fraction of the original edge lengths
-            // (hueristic value) - problem is tile is too big (curvature)
-            vert_t::value_type min_edge =
-                (_triangles.begin()->second.e01) * 0.15;
-
             // search for possible intersecting triangles:
             vert_t::value_type a_min[2];
             vert_t::value_type a_max[2];
@@ -469,148 +466,153 @@ namespace
             // splits will just happen on the new triangles later. (That's why
             // every split operation is followed by a "continue" to short-circuit
             // to loop)
+            vert_t::value_type E = 1e-3;
             std::list<UID> uid_list;
             std::copy(uids.begin(), uids.end(), std::back_inserter(uid_list));
             for (auto uid : uid_list)
             {
                 triangle_t& tri = _triangles[uid];
 
+                // skip triangles that are "degenerate" in 2D. We will keep them
+                // because they may NOT be degenerate in 3D (e.g. steep slopes).
                 if (tri.is_2d_degenerate)
                     continue;
 
-                // is the first segment endpoint inside a triangle? if so
-                // insert the point and split it into three new triangles
-                if (tri.contains2d(seg.first) &&
-                    tri.dist_to_nearest_vertex(seg.first) > min_edge)
+                // first see if one of the endpoints falls within a triangle.
+                // if so, split the triangle into 2 or 3 new ones, and mark
+                // all of its verts as CONSTRAINT so they will not be subject
+                // to morphing.
+                if (tri.contains_2d(seg.first) && !tri.is_vertex(seg.first))
                 {
                     inside_split(tri, seg.first, &uid_list, marker);
                     continue;
                 }
 
-                // is the second segment endpoint inside a triangle? if so
-                // insert the point and split it into three new triangles
-                if (tri.contains2d(seg.second) &&
-                    tri.dist_to_nearest_vertex(seg.second) > min_edge)
+                if (tri.contains_2d(seg.second) && !tri.is_vertex(seg.second))
                 {
                     inside_split(tri, seg.second, &uid_list, marker);
                     continue;
                 }
 
-                // next try to intersect the segment with each triangle edge.
-                // in each case, make sure the intersection point isn't 
-                // coincident with an existing vertex (in which case ignore it)
+                // Next try to intersect the segment with a triangle edge.
+                // In each case, make sure the intersection point isn't 
+                // coincident with an existing vertex (in which case ignore it).
+                // If we do split an edge, mark all of its verts as CONSTRAINT
+                // so they will not be subject to morphing; furthermore, convery
+                // any BOUNDARY markers to the new vert so we can maintain boundaries
+                // for skirt generation.
                 vert_t out;
                 UID new_uid;
                 int new_i;
 
                 // does the segment cross first triangle edge?
-                if (tri.e01 > min_edge)
+                segment_t edge0(tri.p0, tri.p1);
+                if (seg.intersect(edge0, out) && !tri.is_vertex(out, E))
                 {
-                    segment_t edge0(tri.p0, tri.p1);
-                    if (seg.intersect(edge0, out))
+                    int new_marker = marker;
+                    if ((_markers[tri.i0] & VERTEX_BOUNDARY) && (_markers[tri.i1] & VERTEX_BOUNDARY))
+                        new_marker |= VERTEX_BOUNDARY;
+
+                    new_i = get_or_create_vertex(out, new_marker);
+                    if (new_i < 0)
+                        return;
+
+                    int new_tris = 0;
+
+                    new_uid = add_triangle(new_i, tri.i2, tri.i0);
+                    if (new_uid >= 0) {
+                        _markers[tri.i2] |= VERTEX_CONSTRAINT;
+                        _markers[tri.i0] |= VERTEX_CONSTRAINT;
+                        uid_list.push_back(new_uid);
+                        ++new_tris;
+                    }
+
+                    new_uid = add_triangle(new_i, tri.i1, tri.i2);
+                    if (new_uid >= 0) {
+                        _markers[tri.i1] |= VERTEX_CONSTRAINT;
+                        _markers[tri.i2] |= VERTEX_CONSTRAINT;
+                        uid_list.push_back(new_uid);
+                        ++new_tris;
+                    }
+
+                    if (new_tris > 0)
                     {
-                        int new_marker = marker;
-                        if ((_markers[tri.i0] & VERTEX_BOUNDARY) && (_markers[tri.i1] & VERTEX_BOUNDARY))
-                            new_marker |= VERTEX_BOUNDARY;
-
-                        new_i = get_or_create_vertex(out, new_marker);
-
-                        if (!tri.is_vertex(out))
-                        {
-                            int new_tris = 0;
-
-                            new_uid = add_triangle(new_i, tri.i2, tri.i0);
-                            if (new_uid >= 0) {
-                                uid_list.push_back(new_uid);
-                                ++new_tris;
-                            }
-
-                            new_uid = add_triangle(new_i, tri.i1, tri.i2);
-                            if (new_uid >= 0) {
-                                uid_list.push_back(new_uid);
-                                ++new_tris;
-                            }
-
-                            if (new_tris > 0)
-                            {
-                                remove_triangle(tri);
-                                continue;
-                            }
-                        }
+                        remove_triangle(tri);
+                        continue;
                     }
                 }
 
                 // does the segment cross second triangle edge?
-                if (tri.e12 > min_edge)
+                segment_t edge1(tri.p1, tri.p2);
+                if (seg.intersect(edge1, out) && !tri.is_vertex(out, E))
                 {
-                    segment_t edge1(tri.p1, tri.p2);
-                    if (seg.intersect(edge1, out))
+                    int new_marker = marker;
+                    if ((_markers[tri.i1] & VERTEX_BOUNDARY) && (_markers[tri.i2] & VERTEX_BOUNDARY))
+                        new_marker |= VERTEX_BOUNDARY;
+
+                    new_i = get_or_create_vertex(out, new_marker);
+                    if (new_i < 0)
+                        return;
+
+                    int new_tris = 0;
+
+                    new_uid = add_triangle(new_i, tri.i0, tri.i1);
+                    if (new_uid >= 0) {
+                        _markers[tri.i0] |= VERTEX_CONSTRAINT;
+                        _markers[tri.i1] |= VERTEX_CONSTRAINT;
+                        uid_list.push_back(new_uid);
+                        ++new_tris;
+                    }
+
+                    new_uid = add_triangle(new_i, tri.i2, tri.i0);
+                    if (new_uid >= 0) {
+                        _markers[tri.i2] |= VERTEX_CONSTRAINT;
+                        _markers[tri.i0] |= VERTEX_CONSTRAINT;
+                        uid_list.push_back(new_uid);
+                        ++new_tris;
+                    }
+
+                    if (new_tris > 0)
                     {
-                        int new_marker = marker;
-                        if ((_markers[tri.i1] & VERTEX_BOUNDARY) &&(_markers[tri.i2] & VERTEX_BOUNDARY))
-                            new_marker |= VERTEX_BOUNDARY;
-
-                        new_i = get_or_create_vertex(out, new_marker);
-
-                        if (!tri.is_vertex(out))
-                        {
-                            int new_tris = 0;
-
-                            new_uid = add_triangle(new_i, tri.i0, tri.i1);
-                            if (new_uid >= 0) {
-                                uid_list.push_back(new_uid);
-                                ++new_tris;
-                            }
-
-                            new_uid = add_triangle(new_i, tri.i2, tri.i0);
-                            if (new_uid >= 0) {
-                                uid_list.push_back(new_uid);
-                                ++new_tris;
-                            }
-
-                            if (new_tris > 0)
-                            {
-                                remove_triangle(tri);
-                                continue;
-                            }
-                        }
+                        remove_triangle(tri);
+                        continue;
                     }
                 }
 
                 // does the segment cross third triangle edge?
-                if (tri.e20 > min_edge)
+                segment_t edge2(tri.p2, tri.p0);
+                if (seg.intersect(edge2, out) && !tri.is_vertex(out, E))
                 {
-                    segment_t edge2(tri.p2, tri.p0);
-                    if (seg.intersect(edge2, out))
+                    int new_marker = marker;
+                    if ((_markers[tri.i2] & VERTEX_BOUNDARY) && (_markers[tri.i0] & VERTEX_BOUNDARY))
+                        new_marker |= VERTEX_BOUNDARY;
+
+                    new_i = get_or_create_vertex(out, new_marker);
+                    if (new_i < 0)
+                        return;
+
+                    int new_tris = 0;
+
+                    new_uid = add_triangle(new_i, tri.i1, tri.i2);
+                    if (new_uid >= 0) {
+                        _markers[tri.i1] |= VERTEX_CONSTRAINT;
+                        _markers[tri.i2] |= VERTEX_CONSTRAINT;
+                        uid_list.push_back(new_uid);
+                        ++new_tris;
+                    }
+
+                    new_uid = add_triangle(new_i, tri.i0, tri.i1);
+                    if (new_uid >= 0) {
+                        _markers[tri.i0] |= VERTEX_CONSTRAINT;
+                        _markers[tri.i1] |= VERTEX_CONSTRAINT;
+                        uid_list.push_back(new_uid);
+                        ++new_tris;
+                    }
+
+                    if (new_tris > 0)
                     {
-                        int new_marker = marker;
-                        if ((_markers[tri.i2] & VERTEX_BOUNDARY) && (_markers[tri.i0] & VERTEX_BOUNDARY))
-                            new_marker |= VERTEX_BOUNDARY;
-
-                        new_i = get_or_create_vertex(out, new_marker);
-
-                        if (!tri.is_vertex(out))
-                        {
-                            int new_tris = 0;
-
-                            new_uid = add_triangle(new_i, tri.i1, tri.i2);
-                            if (new_uid >= 0) {
-                                uid_list.push_back(new_uid);
-                                ++new_tris;
-                            }
-
-                            new_uid = add_triangle(new_i, tri.i0, tri.i1);
-                            if (new_uid >= 0) {
-                                uid_list.push_back(new_uid);
-                                ++new_tris;
-                            }
-
-                            if (new_tris > 0)
-                            {
-                                remove_triangle(tri);
-                                continue;
-                            }
-                        }
+                        remove_triangle(tri);
+                        continue;
                     }
                 }
             }
@@ -621,26 +623,49 @@ namespace
         void inside_split(triangle_t& tri, const vert_t& p, std::list<UID>* uid_list, int new_marker)
         {
             int new_i = get_or_create_vertex(p, new_marker);
+            if (new_i < 0)
+                return;
+
 
             UID new_uid;
             int new_tris = 0;
 
-            new_uid = add_triangle(tri.i0, tri.i1, new_i);
-            if (new_uid >= 0 && uid_list) {
-                uid_list->push_back(new_uid);
-                ++new_tris;
+            // calculate the barycenric coordinates of the new point
+            // within the target triangle so we can detect any split
+            // that occurs right on an edge and then bypass creating
+            // a degenerate triangle.
+            vert_t bary(1, 1, 1);
+            if (tri.get_barycentric(p, bary) == false)
+                return;
+
+            if (!osg::equivalent(bary[2], 0.0, EPSILON)) {
+                new_uid = add_triangle(tri.i0, tri.i1, new_i);
+                if (new_uid >= 0 && uid_list) {
+                    _markers[tri.i0] |= VERTEX_CONSTRAINT;
+                    _markers[tri.i1] |= VERTEX_CONSTRAINT;
+                    uid_list->push_back(new_uid);
+                    ++new_tris;
+                }
             }
 
-            new_uid = add_triangle(tri.i1, tri.i2, new_i);
-            if (new_uid >= 0 && uid_list) {
-                uid_list->push_back(new_uid);
-                ++new_tris;
+            if (!osg::equivalent(bary[0], 0.0, EPSILON)) {
+                new_uid = add_triangle(tri.i1, tri.i2, new_i);
+                if (new_uid >= 0 && uid_list) {
+                    _markers[tri.i1] |= VERTEX_CONSTRAINT;
+                    _markers[tri.i2] |= VERTEX_CONSTRAINT;
+                    uid_list->push_back(new_uid);
+                    ++new_tris;
+                }
             }
 
-            new_uid = add_triangle(tri.i2, tri.i0, new_i);
-            if (new_uid >= 0 && uid_list) {
-                uid_list->push_back(new_uid);
-                ++new_tris;
+            if (!osg::equivalent(bary[1], 0.0, EPSILON)) {
+                new_uid = add_triangle(tri.i2, tri.i0, new_i);
+                if (new_uid >= 0 && uid_list) {
+                    _markers[tri.i2] |= VERTEX_CONSTRAINT;
+                    _markers[tri.i0] |= VERTEX_CONSTRAINT;
+                    uid_list->push_back(new_uid);
+                    ++new_tris;
+                }
             }
 
             if (new_tris > 0)
@@ -664,6 +689,7 @@ namespace
     struct edgeset_t
     {
         std::unordered_set<edge_t, edge_t> _edges;
+        //std::set<edge_t> _edges;
 
         edgeset_t(const mesh_t& mesh, int marker_mask)
         {
@@ -847,6 +873,14 @@ namespace
             }
         }
     };
+
+    inline int getMorphNeighborIndexOffset(unsigned col, unsigned row, int rowSize)
+    {
+        if ((col & 0x1) == 1 && (row & 0x1) == 1) return rowSize + 2;
+        if ((row & 0x1) == 1)                   return rowSize + 1;
+        if ((col & 0x1) == 1)                   return 2;
+        return 1;
+    }
 }
 
 #define addSkirtDataForIndex(INDEX, HEIGHT) \
@@ -932,8 +966,7 @@ MeshEditor::createTileMesh(
             modelLTP = model * world2local;
 
             int marker =
-                VERTEX_VISIBLE |
-                VERTEX_CONSTRAINT;
+                VERTEX_VISIBLE; // | VERTEX_CONSTRAINT;
 
             // mark the perimeter as a boundary (for skirt generation)
             if (row == 0 || row == tileSize - 1 || col == 0 || col == tileSize - 1)
@@ -951,6 +984,9 @@ MeshEditor::createTileMesh(
         }
     }
 
+    // keep it real
+    int max_num_triangles = mesh._triangles.size() * 100;
+
     // Make the edits
     for (auto& edit : _edits)
     {
@@ -963,15 +999,18 @@ MeshEditor::createTileMesh(
         if (edit._layer->getHasElevation())
             default_marker |= VERTEX_HAS_ELEVATION;
 
-        // track number of unused triangles so we can discard empty tiles
-        int usused_tris = 0;
-
         for (auto& feature : edit._features)
         {
             GeometryIterator geom_iter(feature->getGeometry(), true);
             osg::Vec3d world, unit;
             while (geom_iter.hasMore())
             {
+                if (mesh._triangles.size() >= max_num_triangles)
+                {
+                    // just stop it
+                    break;
+                }
+
                 Geometry* part = geom_iter.next();
 
                 for (auto& point : *part)
@@ -1098,6 +1137,9 @@ MeshEditor::createTileMesh(
     osg::Vec3d world;
     osg::BoundingSphere tileBound;
 
+    int ptr = 0;
+    int original_grid_size = tileSize * tileSize;
+
     for(auto& vert : mesh._verts)
     {
         int marker = mesh.get_marker(vert);
@@ -1117,13 +1159,38 @@ MeshEditor::createTileMesh(
         normal.normalize();
         normals->push_back(normal);
 
-        if (neighbors)
-            neighbors->push_back(v);
+        // assign "neighbors" (for morphing) to any "orignal grid" vertex 
+        // that is NOT marked as a constraint.
+        if (ptr < original_grid_size && !(marker & VERTEX_CONSTRAINT))
+        {
+            int row = (ptr / tileSize);
+            int col = (ptr % tileSize);
 
-        if (neighborNormals)
-            neighborNormals->push_back(normal);
+            if (neighbors)
+            {
+                neighbors->push_back(
+                    (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, tileSize)]);
+            }
+
+            if (neighborNormals)
+            {
+                neighborNormals->push_back(
+                    (*normals)[normals->size() - getMorphNeighborIndexOffset(col, row, tileSize)]);
+            }
+        }
+
+        else
+        {
+            // all new indices...just copy.
+            if (neighbors)
+                neighbors->push_back(v);
+            if (neighborNormals)
+                neighborNormals->push_back(normal);
+        }
 
         tileBound.expandBy(verts->back());
+
+        ++ptr;
     }
 
     // TODO: combine this with the skirt gen for speed
@@ -1158,6 +1225,10 @@ MeshEditor::createTileMesh(
 
         for (auto& edge : boundary_edges._edges)
         {
+            // bail if we run out of UShort space
+            if (verts->size() + 4 > 0xFFFF)
+                break;
+
             addSkirtDataForIndex(edge._i0, skirtHeight);
             addSkirtDataForIndex(edge._i1, skirtHeight);
             addSkirtTriangles(de, verts->size() - 4, verts->size() - 2);

@@ -219,16 +219,21 @@ unsigned int buffer = 30;
 
 inline void addPoint(double lon, double lat, float weight)
 {
-    for (unsigned int level = minLevel; level <= maxLevel; ++level)
+    if (lon >= -180.0 && lon <= 180.0 &&
+        lat >= -90 && lat <= 90.0 &&
+        weight >= 0.0)
     {
-        TileKey key = wgs84->createTileKey(lon, lat, level);
+        for (unsigned int level = minLevel; level <= maxLevel; ++level)
+        {
+            TileKey key = wgs84->createTileKey(lon, lat, level);
 
-        GeoExtent extent = key.getExtent();
+            GeoExtent extent = key.getExtent();
 
-        unsigned int x = osg::clampBetween((unsigned int)(256.0 * (lon - extent.xMin()) / extent.width()), 0u, 255u);
-        unsigned int y = osg::clampBetween((unsigned int)(256.0 * (lat - extent.yMin()) / extent.height()), 0u, 255u);
-        unsigned short index = (unsigned short)(y * 256 + x);
-        s_keys[key][index] += weight;
+            unsigned int x = osg::clampBetween((unsigned int)(256.0 * (lon - extent.xMin()) / extent.width()), 0u, 255u);
+            unsigned int y = osg::clampBetween((unsigned int)(256.0 * (lat - extent.yMin()) / extent.height()), 0u, 255u);
+            unsigned short index = (unsigned short)(y * 256 + x);
+            s_keys[key][index] += weight;
+        }
     }
 }
 

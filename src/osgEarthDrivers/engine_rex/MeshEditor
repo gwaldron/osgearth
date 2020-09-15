@@ -23,6 +23,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/Feature>
+#include <osgEarth/Threading>
 #include <osg/Geometry>
 
 namespace osgEarth {
@@ -71,7 +72,8 @@ namespace osgEarth { namespace REX
         bool createTileMesh(
             SharedGeometry* geom,
             unsigned tileSize,
-            double skirtHeightRatio);
+            double skirtHeightRatio,
+            Cancelable* progress);
 
     protected:
         std::vector<Edit> _edits;

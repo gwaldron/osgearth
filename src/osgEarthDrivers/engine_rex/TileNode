@@ -75,10 +75,10 @@ namespace osgEarth { namespace REX
         void refreshLayers(const CreateTileManifest& manifest);
 
         /** Creates the geometry and state for this tilenode. */
-        void create(const TileKey& key, TileNode* parent, EngineContext* context);
+        void create(const TileKey& key, TileNode* parent, EngineContext* context, Cancelable*);
 
         /** Install new geometry in this tile */
-        void createGeometry();
+        void createGeometry(Cancelable*);
 
         /** Initial inheritance of tile data from the parent node. */
         void initializeData();
@@ -162,8 +162,8 @@ namespace osgEarth { namespace REX
         bool _meshEditsMade;
         bool _createChildAsync;
 
-        typedef Job<osg::ref_ptr<TileNode>> CreateTileJob;
-        std::vector<CreateTileJob> _createChildJobs;
+        typedef Job<TileNode> CreateTileJob;
+        std::vector<CreateTileJob::Result> _createChildJobs;
 
         typedef std::queue<osg::ref_ptr<LoadTileData> > LoadQueue;
         Mutexed<LoadQueue> _loadQueue;
@@ -180,7 +180,10 @@ namespace osgEarth { namespace REX
 
         bool createChildren(EngineContext* context);
 
-        osg::ref_ptr<TileNode> createChild(const TileKey&, EngineContext* context);
+        TileNode* createChild(
+            const TileKey&,
+            EngineContext* context,
+            Cancelable* cancelable);
 
         // Returns false if the Surface node fails visiblity test
         bool cull(TerrainCuller*);

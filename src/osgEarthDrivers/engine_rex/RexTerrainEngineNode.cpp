@@ -27,6 +27,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/MapModelChange>
+#include <osgEarth/Threading>
 #include <osgEarth/Progress>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
@@ -560,7 +561,7 @@ RexTerrainEngineNode::dirtyTerrain()
         TileNode* tileNode = new TileNode();
 
         // Next, build the surface geometry for the node.
-        tileNode->create( keys[i], 0L, _engineContext.get() );
+        tileNode->create( keys[i], 0L, _engineContext.get(), nullptr );
         tileNode->setDoNotExpire(true);
 
         // Add it to the scene graph

@@ -223,7 +223,8 @@ namespace osgEarth { namespace REX
             const TileKey& tileKey,
             unsigned tileSize,
             const Map* map,
-            osg::ref_ptr<SharedGeometry>& out);
+            osg::ref_ptr<SharedGeometry>& out,
+            Cancelable* state);
 
         /**
          * The number of elements (incides) in the terrain skirt, if applicable
@@ -269,7 +270,8 @@ namespace osgEarth { namespace REX
         SharedGeometry* createGeometry(
             const TileKey& tileKey,
             unsigned  tileSize,
-            MeshEditor& meshEditor) const;
+            MeshEditor& meshEditor,
+            Cancelable* state) const;
 
         // builds a primitive set to use for any tile without a mask
         osg::DrawElements* createPrimitiveSet(

@@ -85,7 +85,7 @@ TileNode::setDoNotExpire(bool value)
 }
 
 void
-TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
+TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context, Cancelable* progress)
 {
     if (!context)
         return;
@@ -93,7 +93,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     _key = key;
     _context = context;
 
-    createGeometry();
+    createGeometry(progress);
 
     // Encode the tile key in a uniform. Note! The X and Y components are presented
     // modulo 2^16 form so they don't overrun single-precision space.
@@ -126,7 +126,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 }
 
 void
-TileNode::createGeometry()
+TileNode::createGeometry(Cancelable* progress)
 {
     osg::ref_ptr<const Map> map = _context->getMap();
     if (!map.valid())
@@ -143,7 +143,11 @@ TileNode::createGeometry()
         _key,
         tileSize,
         map.get(),
-        geom);
+        geom,
+        progress);
+
+    if (progress && progress->isCanceled())
+        return;
 
     if (geom.valid())
     {
@@ -675,19 +679,21 @@ TileNode::createChildren(EngineContext* context)
     {
         if (_createChildJobs.empty())
         {
+            TileKey parentkey(_key);
+
             for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
             {
                 TileKey childkey = getKey().createChildKey(quadrant);
 
-                _createChildJobs.emplace_back(
-                    CreateTileJob(
-                        "create child",
-                        &TileNode::createChild,
-                        this,
-                        childkey,
-                        context));
+                CreateTileJob job([context, parentkey, childkey](Cancelable* state) {
+                    osg::ref_ptr<TileNode> tile = context->liveTiles()->get(parentkey);
+                    if (tile.valid() && !state->isCanceled())
+                        return tile->createChild(childkey, context, state);
+                    else
+                        return (TileNode*)nullptr;
+                });
 
-                JobScheduler::schedule(_createChildJobs.back());
+                _createChildJobs.emplace_back(job.schedule());
             }
         }
 
@@ -697,7 +703,7 @@ TileNode::createChildren(EngineContext* context)
 
             for (int i = 0; i < 4; ++i)
             {
-                if (_createChildJobs[i].isReady())
+                if (_createChildJobs[i].isAvailable())
                     ++numChildrenReady;
             }
 
@@ -720,7 +726,7 @@ TileNode::createChildren(EngineContext* context)
         for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
         {
             TileKey childkey = getKey().createChildKey(quadrant);
-            osg::ref_ptr<TileNode> node = createChild(childkey, context);
+            osg::ref_ptr<TileNode> node = createChild(childkey, context, nullptr);
             addChild(node.get());
             node->initializeData();
         }
@@ -729,8 +735,8 @@ TileNode::createChildren(EngineContext* context)
     return _createChildJobs.empty();
 }
 
-osg::ref_ptr<TileNode>
-TileNode::createChild(const TileKey& childkey, EngineContext* context)
+TileNode*
+TileNode::createChild(const TileKey& childkey, EngineContext* context, Cancelable* progress)
 {
     OE_PROFILING_ZONE;
 
@@ -740,9 +746,10 @@ TileNode::createChild(const TileKey& childkey, EngineContext* context)
     osg::ref_ptr<TileNode> node = new TileNode();
 
     // Build the surface geometry:
-    node->create(childkey, this, context);
+    node->create(childkey, this, context, progress);
 
-    return node;
+    return 
+        progress && progress->isCanceled() ? nullptr : node.release();
 }
 
 void
@@ -759,7 +766,9 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
     // constraints, frame drops are not a big concern
     if (manifest.includesConstraints())
     {
-        createGeometry();
+        // todo: progress callback here? I believe progress gets
+        // checked before merge() anyway.
+        createGeometry(nullptr);
     }
 
     // First deal with the rendering passes (for color data):
@@ -1324,6 +1333,8 @@ TileNode::removeSubTiles()
         getChild(i)->releaseGLObjects(NULL);
     }
     this->removeChildren(0, this->getNumChildren());
+
+    _createChildJobs.clear();
 }
 
 

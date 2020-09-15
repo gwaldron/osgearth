@@ -58,7 +58,8 @@ GeometryPool::getPooledGeometry(
     const TileKey& tileKey,
     unsigned tileSize,
     const Map* map,
-    osg::ref_ptr<SharedGeometry>& out)
+    osg::ref_ptr<SharedGeometry>& out,
+    Cancelable* progress)
 {
     // convert to a unique-geometry key:
     GeometryKey geomKey;
@@ -92,7 +93,7 @@ GeometryPool::getPooledGeometry(
 
         if (!out.valid())
         {
-            out = createGeometry(tileKey, tileSize, meshEditor);
+            out = createGeometry(tileKey, tileSize, meshEditor, progress);
 
             if (!meshEditor.hasEdits() && out.valid())
             {
@@ -104,7 +105,7 @@ GeometryPool::getPooledGeometry(
 
     else
     {
-        out = createGeometry( tileKey, tileSize, meshEditor);
+        out = createGeometry(tileKey, tileSize, meshEditor, progress);
     }
 }
 
@@ -226,7 +227,8 @@ GeometryPool::tessellateSurface(unsigned tileSize, osg::DrawElements* primSet) c
 SharedGeometry*
 GeometryPool::createGeometry(const TileKey& tileKey,
                              unsigned tileSize,
-                             MeshEditor& editor) const
+                             MeshEditor& editor,
+                             Cancelable* progress) const
 {
     OE_PROFILING_ZONE;
 
@@ -310,7 +312,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         bool tileHasData = editor.createTileMesh(
             geom.get(),
             tileSize,
-            _options.heightFieldSkirtRatio().get());
+            _options.heightFieldSkirtRatio().get(),
+            progress);
 
         if (tileHasData)
             geom->setHasConstraints(true);

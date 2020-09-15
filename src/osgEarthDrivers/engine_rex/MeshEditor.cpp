@@ -48,6 +48,9 @@ MeshEditor::MeshEditor(const TileKey& key, unsigned tileSize, const Map* map, Pr
             Edit edit;
             while (cursor.valid() && cursor->hasMore())
             {
+                if (progress && progress->isCanceled())
+                    return;
+
                 Feature* f = cursor->nextFeature();
                 if (f->getExtent().intersects(keyExtent))
                 {
@@ -910,7 +913,8 @@ bool
 MeshEditor::createTileMesh(
     SharedGeometry* sharedGeom,
     unsigned tileSize,
-    double skirtHeightRatio)
+    double skirtHeightRatio,
+    Cancelable* progress)
 {
     // uncomment for easier debugging
     //static Mutex m;
@@ -981,6 +985,9 @@ MeshEditor::createTileMesh(
         }
     }
 
+    if (progress && progress->isCanceled())
+        return false;
+
     // keep it real
     int max_num_triangles = mesh._triangles.size() * 100;
 
@@ -1007,6 +1014,9 @@ MeshEditor::createTileMesh(
                     // just stop it
                     break;
                 }
+
+                if (progress && progress->isCanceled())
+                    return false;
 
                 Geometry* part = geom_iter.next();
 
@@ -1073,6 +1083,9 @@ MeshEditor::createTileMesh(
 
                 while (mask_iter.hasMore())
                 {
+                    if (progress && progress->isCanceled())
+                        return false;
+
                     Geometry* part = mask_iter.next();
                     if (part->isPolygon())
                     {

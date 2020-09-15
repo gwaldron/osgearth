@@ -45,7 +45,8 @@ CreateTileImplementation::createTile(
     const TerrainTileModel* model,
     int flags,
     unsigned referenceLOD,
-    const TileKey& area)
+    const TileKey& area,
+    Cancelable* progress)
 {
     if (model == nullptr)
     {
@@ -104,11 +105,14 @@ CreateTileImplementation::createTile(
             *subkey,
             tileSize,
             map.get(),
-            sharedGeom);
+            sharedGeom,
+            progress);
 
         // no data in the tile
-        if (!sharedGeom.valid())
+        if (!sharedGeom.valid() || (progress && progress->isCanceled()))
+        {
             return nullptr;
+        }
 
         osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();
 

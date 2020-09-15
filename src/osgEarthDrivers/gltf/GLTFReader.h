@@ -30,7 +30,6 @@
 #include <osg/CullFace>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
-#include <osgDB/FileNameUtils>
 #include <osgDB/ObjectWrapper>
 #include <osgDB/Registry>
 #include <osgUtil/SmoothingVisitor>

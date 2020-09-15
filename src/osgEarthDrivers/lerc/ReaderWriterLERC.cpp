@@ -141,8 +141,8 @@ public:
                 internalFormat =
                     numBands == 1 ? GL_R32F :
                     numBands == 2 ? GL_RG32F :
-                    numBands == 3 ? GL_RGB32F :
-                    GL_RGBA32F;
+                    numBands == 3 ? GL_RGB32F_ARB :
+                    GL_RGB32F_ARB;
                 break;
             }
             default:
@@ -153,8 +153,8 @@ public:
                 internalFormat =
                     numBands == 1 ? GL_R32F :
                     numBands == 2 ? GL_RG32F :
-                    numBands == 3 ? GL_RGB32F :
-                    GL_RGBA32F;
+                    numBands == 3 ? GL_RGB32F_ARB :
+                    GL_RGB32F_ARB;
                 break;
             }
 

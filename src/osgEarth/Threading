@@ -30,6 +30,7 @@
 #include <queue>
 #include <thread>
 #include <future>
+#include <type_traits>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
 

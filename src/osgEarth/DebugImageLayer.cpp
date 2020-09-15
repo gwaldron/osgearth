@@ -184,8 +184,13 @@ DebugImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
         buf << key.str();
     }
 
-    double r = key.getExtent().computeBoundingGeoCircle().getRadius();
-    buf << "\nr = " << (int)r << "m";
+    GeoExtent e = key.getExtent();
+    if (!e.getSRS()->isProjected())
+    {
+        e = e.transform(e.getSRS()->createTangentPlaneSRS(e.getCentroid()));
+    }
+
+    buf << std::fixed << std::setprecision(1) << "\nh=" << e.height() << "m\nw=" << e.width() << "m";
 
     std::string text;
     text = buf.str();

@@ -21,6 +21,7 @@
 #define OSGEARTH_ARCGIS_TILEPACKAGE_H
 
 #include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
 #include <osgEarth/URI>
 #include <vector>
 
@@ -40,9 +41,9 @@ namespace osgEarth { namespace ArcGIS
 
         void readIndex(const std::string& filename, std::vector<int>& index);
 
-        osg::Image* readImage(const TileKey& key);
+        osg::Image* readImage(const TileKey& key, const osgDB::ReaderWriter* rw);
 
-        osg::Image* readImage(unsigned int index);
+        osg::Image* readImage(unsigned int index, const osgDB::ReaderWriter* rw);
 
     protected:
         std::string _bundleFile;
@@ -69,9 +70,9 @@ namespace osgEarth { namespace ArcGIS
 
         void readIndex(std::vector<unsigned long long>& index);
 
-        osg::Image* readImage(const TileKey& key);
+        osg::Image* readImage(const TileKey& key, const osgDB::ReaderWriter* rw);
 
-        osg::Image* readImage(unsigned int index);
+        osg::Image* readImage(unsigned int index, const osgDB::ReaderWriter* rw);
 
     protected:
         std::string _bundleFile;
@@ -142,7 +143,65 @@ namespace osgEarth
     private:
         optional<ProfileOptions> _profileConf;
         unsigned _bundleSize;
-        std::string _extension;
+        osg::ref_ptr<osgDB::ReaderWriter> _rw;
+        StorageFormat _storageFormat;
+
+        void readConf();
+    };
+
+    /**
+     * Elevation layer connected to an ESRI ArcGIS Tile Package file
+     */
+    class OSGEARTH_EXPORT ArcGISTilePackageElevationLayer : public ElevationLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION(URI, url);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        enum StorageFormat
+        {
+            STORAGE_FORMAT_COMPACT,
+            STORAGE_FORMAT_COMPACTV2
+        };
+
+    public:
+        META_Layer(osgEarth, ArcGISTilePackageElevationLayer, Options, ElevationLayer, ArcGISTilePackageElevation);
+
+    public:
+        //! URL of the map service endpoint
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+    public: // Layer
+
+        //! Establishes a connection to the service
+        virtual Status openImplementation();
+
+        //! Creates a heightfield for the given tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~ArcGISTilePackageElevationLayer();
+
+    private:
+        optional<ProfileOptions> _profileConf;
+        unsigned _bundleSize;
+        osg::ref_ptr<osgDB::ReaderWriter> _rw;
         StorageFormat _storageFormat;
 
         void readConf();
@@ -151,5 +210,6 @@ namespace osgEarth
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISTilePackageImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISTilePackageElevationLayer::Options);
 
 #endif // OSGEARTH_ARCGIS_TILEPACKAGE_H

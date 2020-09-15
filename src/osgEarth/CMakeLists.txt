@@ -218,6 +218,7 @@ SET(LIB_PUBLIC_HEADERS
     SimplexNoise
     SpatialReference
     StateSetCache
+    StateTransition
     Status
     StringUtils
     TDTiles

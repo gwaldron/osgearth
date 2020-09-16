@@ -24,6 +24,8 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgEarth/Notify>
+// For internal format definitions.
+#include <osg/Texture>
 
 #include <Lerc_c_api.h>
 #include <Lerc_types.h>

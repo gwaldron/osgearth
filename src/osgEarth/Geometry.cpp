@@ -39,7 +39,7 @@ namespace
         va_start(args, fmt);
         char buffer[512];
         vsprintf(buffer, fmt, args);
-        OE_WARN << " [GEOS Error] " << buffer << std::endl;
+        OE_DEBUG << " [GEOS Error] " << buffer << std::endl;
         va_end(args);
     }
 
@@ -49,7 +49,7 @@ namespace
         va_start(args, fmt);
         char buffer[512];
         vsprintf(buffer, fmt, args);
-        OE_WARN << " [GEOS Warning] " << buffer << std::endl;
+        OE_DEBUG << " [GEOS Warning] " << buffer << std::endl;
         va_end(args);
     }
 }

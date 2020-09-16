@@ -54,7 +54,7 @@ TerrainConstraintLayer::Options::fromConfig(const Config& conf)
 Config
 TerrainConstraintLayer::Options::getConfig() const
 {
-    Config conf = Layer::Options::getConfig();
+    Config conf = VisibleLayer::Options::getConfig();
     featureSource().set(conf, "features");
     conf.set("remove_interior", removeInterior());
     conf.set("remove_exterior", removeExterior());
@@ -86,7 +86,7 @@ TerrainConstraintLayer::getFeatureSource() const
 Status
 TerrainConstraintLayer::openImplementation()
 {
-    Status parent = Layer::openImplementation();
+    Status parent = VisibleLayer::openImplementation();
     if (parent.isError())
         return parent;
 
@@ -105,10 +105,20 @@ TerrainConstraintLayer::getExtent() const
 }
 
 void
+TerrainConstraintLayer::setVisible(bool value)
+{
+    VisibleLayer::setVisible(value);
+    if (value)
+        open();
+    else
+        close();
+}
+
+void
 TerrainConstraintLayer::addedToMap(const Map* map)
 {
     OE_DEBUG << LC << "addedToMap\n";
-    Layer::addedToMap(map);
+    VisibleLayer::addedToMap(map);
     options().featureSource().addedToMap(map);
     create();
 }
@@ -117,7 +127,7 @@ void
 TerrainConstraintLayer::removedFromMap(const Map* map)
 {
     options().featureSource().removedFromMap(map);
-    Layer::removedFromMap(map);
+    VisibleLayer::removedFromMap(map);
 }
 
 void

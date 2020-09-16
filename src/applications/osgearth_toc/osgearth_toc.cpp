@@ -483,10 +483,9 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     int gridRow = grid->getNumRows();
 
     VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
-    TerrainConstraintLayer* constraintLayer = dynamic_cast<TerrainConstraintLayer*>(layer);
 
     // only show layers that derive from VisibleLayer
-    if (!visibleLayer && !constraintLayer)
+    if (!visibleLayer)
         return;
 
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);

@@ -21,6 +21,7 @@
 #define OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/VisibleLayer>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/LayerReference>
 
@@ -30,13 +31,13 @@ namespace osgEarth
      * Provides feature data to the terrain engine to use for
      * customizing the surface mesh.
      */
-    class OSGEARTH_EXPORT TerrainConstraintLayer : public Layer
+    class OSGEARTH_EXPORT TerrainConstraintLayer : public VisibleLayer
     {
     public: // serialization
-        class OSGEARTH_EXPORT Options : public Layer::Options
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options
         {
         public:
-            META_LayerOptions(osgEarth, Options, Layer::Options);
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION(bool, removeInterior);
             OE_OPTION(bool, removeExterior);
@@ -48,7 +49,7 @@ namespace osgEarth
         };
 
     public:
-        META_Layer(osgEarth, TerrainConstraintLayer, Options, Layer, TerrainConstraint);
+        META_Layer(osgEarth, TerrainConstraintLayer, Options, VisibleLayer, TerrainConstraint);
 
         //! Source of the feature data
         void setFeatureSource(FeatureSource* features);
@@ -69,6 +70,9 @@ namespace osgEarth
 
         //! Geospatial extent of this layer's data
         virtual const GeoExtent& getExtent() const override;
+
+        //! Visibility toggle from VisibleLayer
+        virtual void setVisible(bool value) override;
 
     protected:
 

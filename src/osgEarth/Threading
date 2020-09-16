@@ -593,16 +593,14 @@ namespace osgEarth { namespace Threading
 
     // std::invoke workaround for c++11
     // https://stackoverflow.com/questions/38288042/c11-14-invoke-workaround
-    template<typename Fn, typename... Args,
-        std::enable_if_t < std::is_member_pointer<std::decay_t<Fn>>{}, int > = 0 >
-        constexpr decltype(auto) cpp11invoke(Fn&& f, Args&&... args)
+    template<typename Fn, typename... Args>
+    constexpr decltype(auto) cpp11invoke_member(Fn&& f, Args&&... args)
         noexcept(noexcept(std::mem_fn(f)(std::forward<Args>(args)...)))
     {
         return std::mem_fn(f)(std::forward<Args>(args)...);
     }
-    template<typename Fn, typename... Args,
-        std::enable_if_t < !std::is_member_pointer<std::decay_t<Fn>>{}, int > = 0 >
-        constexpr decltype(auto) cpp11invoke(Fn&& f, Args&&... args)
+    template<typename Fn, typename... Args>
+    constexpr decltype(auto) cpp11invoke(Fn&& f, Args&&... args)
         noexcept(noexcept(std::forward<Fn>(f)(std::forward<Args>(args)...)))
     {
         return std::forward<Fn>(f)(std::forward<Args>(args)...);
@@ -673,9 +671,7 @@ namespace osgEarth { namespace Threading
         //!
         //! @return A future result. You can check the result periodically
         //!         to see whether it is available or has been adandoned.
-        Result schedule() {
-            return JobScheduler::schedule(*this);
-        }
+        inline Result schedule();
 
     private:
         std::function<void()> _delegate;
@@ -745,6 +741,11 @@ namespace osgEarth { namespace Threading
         // threads in the pool
         std::vector<std::thread> _threads;
     };
+
+    template<typename RESULT_TYPE>
+    Future<RESULT_TYPE> Job<RESULT_TYPE>::schedule() {
+        return JobScheduler::schedule(*this);
+    }
 
 } } // namepsace osgEarth::Threading
 

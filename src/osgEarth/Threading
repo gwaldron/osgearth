@@ -594,14 +594,9 @@ namespace osgEarth { namespace Threading
     // std::invoke workaround for c++11
     // https://stackoverflow.com/questions/38288042/c11-14-invoke-workaround
     template<typename Fn, typename... Args>
-    constexpr decltype(auto) cpp11invoke_member(Fn&& f, Args&&... args)
-        noexcept(noexcept(std::mem_fn(f)(std::forward<Args>(args)...)))
-    {
-        return std::mem_fn(f)(std::forward<Args>(args)...);
-    }
-    template<typename Fn, typename... Args>
-    constexpr decltype(auto) cpp11invoke(Fn&& f, Args&&... args)
+    constexpr auto cpp11invoke(Fn&& f, Args&&... args)
         noexcept(noexcept(std::forward<Fn>(f)(std::forward<Args>(args)...)))
+        -> typename std::result_of<Fn(Args...)>::type
     {
         return std::forward<Fn>(f)(std::forward<Args>(args)...);
     }

@@ -29,6 +29,8 @@
 #include <unordered_map>
 #include <queue>
 #include <thread>
+#include <future>
+#include <type_traits>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
 
@@ -198,7 +200,7 @@ namespace osgEarth { namespace Threading
      *   result in Future is available.
      */
     template<typename T>
-    class Future
+    class Future : public Cancelable
     {
     public:
         typedef std::function<void(T*)> Callback;
@@ -243,6 +245,10 @@ namespace osgEarth { namespace Threading
         //! True if the Promise that generated this Future no longer exists.
         bool isAbandoned() const {
             return _objRef->referenceCount() == 1;
+        }
+
+        bool isCanceled() const override {
+            return isAbandoned();
         }
 
         //! The result value; blocks until it is available (or abandonded) and then returns it.
@@ -303,7 +309,7 @@ namespace osgEarth { namespace Threading
      *   the result is available.
      */
     template<typename T>
-    class Promise
+    class Promise : public Cancelable
     {
     public:
         Promise() { }
@@ -332,6 +338,10 @@ namespace osgEarth { namespace Threading
         //! True is there are no Future objects waiting on this Promise.
         bool isAbandoned() const {
             return _future._objRef->referenceCount() == 1;
+        }
+
+        bool isCanceled() const override {
+            return isAbandoned();
         }
 
     private:
@@ -580,6 +590,162 @@ namespace osgEarth { namespace Threading
             setThreadName(_base);
         }
     };
+
+    // std::invoke workaround for c++11
+    // https://stackoverflow.com/questions/38288042/c11-14-invoke-workaround
+    template<typename Fn, typename... Args>
+    constexpr decltype(auto) cpp11invoke_member(Fn&& f, Args&&... args)
+        noexcept(noexcept(std::mem_fn(f)(std::forward<Args>(args)...)))
+    {
+        return std::mem_fn(f)(std::forward<Args>(args)...);
+    }
+    template<typename Fn, typename... Args>
+    constexpr decltype(auto) cpp11invoke(Fn&& f, Args&&... args)
+        noexcept(noexcept(std::forward<Fn>(f)(std::forward<Args>(args)...)))
+    {
+        return std::forward<Fn>(f)(std::forward<Args>(args)...);
+    }
+
+    /**
+     * Task that you can schedule to run in the background.
+     * A Job is single-use. Do not schedule the same Job more than
+     * once - results are undefined.
+     *
+     * Example usage:
+     *
+     *   struct ReturnValue : public osg::Referenced {
+     *       int _result;
+     *       ReturnValue(int x) : _result(x);
+     *   };
+     *
+     *   typedef Job<ReturnValue> AddNumbersJob;
+     *   ...
+     *
+     *   int a = 10, b = 20;
+     *   AddNumbersJob job( [a, b](Cancelable* progress) {
+     *       if (progress->isCanceled())
+     *           return nullptr;
+     *       else
+     *           return new ReturnValue(a + b);
+     *   });
+     *
+     *   AddNumbersJob::Result result = job.schedule();
+     *
+     *   // later...
+     *
+     *   if (result.isAvailable()) {
+     *       std::cout << "Answer = " << result.get()->_result << std::endl;
+     *   }
+     *   else if (result.isAbandoned()) {
+     *       // task was canceled
+     *   }
+     */
+    template<typename RESULT_TYPE>
+    class Job
+    {
+    public:
+        typedef Future<RESULT_TYPE> Result;
+
+        //! Construct a new job
+        //! @param func Function to invoke
+        //! @param args Arguments to pass to "func". (Func must also take a final
+        //!             Cancelable* argument)
+        template<typename FUNC, typename...ARGS>
+        Job(FUNC&& func, ARGS&&... args)
+        {
+            Promise<RESULT_TYPE> promise;
+            _future = promise.getFuture();
+
+            _delegate = [promise, func, args...]() mutable
+            {
+                if (!promise.isAbandoned())
+                {
+                    promise.resolve(cpp11invoke(func, args..., &promise));
+                }
+            };
+        }
+
+        //! Schedule this job to run asynchronously.
+        //! A Job is one-use-only; scheduling the same Job object more
+        //! than once will have undefined results.
+        //!
+        //! @return A future result. You can check the result periodically
+        //!         to see whether it is available or has been adandoned.
+        inline Result schedule();
+
+    private:
+        std::function<void()> _delegate;
+        Future<RESULT_TYPE> _future;
+        friend class JobScheduler;
+    };
+
+    /**
+     * Schedules asynchronous tasks on a thread pool.
+     * You usually don't need to use this class directly.
+     * Use Job::schedule() to queue a new job.
+     */
+    class OSGEARTH_EXPORT JobScheduler : public osg::Referenced
+    {
+    public:
+        //! Allocate a new schedule with "numThreads" threads
+        //! is the thread pool.
+        JobScheduler(unsigned numThreads = 2u);
+
+        //! Destroy
+        ~JobScheduler();
+
+        //! Schedule an asynchronous task.
+        //! @param job Job to schedule
+        //! @return The future result of the task, which you must store
+        //!         otherwise the task will automatically cancel
+        template<typename RESULT_TYPE>
+        static
+        Future<RESULT_TYPE>
+        schedule(Job<RESULT_TYPE>& job) {
+            return singleton()->scheduleJob(job);
+        }
+
+    private:
+
+        //! Access the global singleton job scheduler
+        static JobScheduler* singleton();
+
+        void startThreads();
+
+        void stopThreads();
+
+        template<typename RESULT_TYPE>
+        Future<RESULT_TYPE>
+        scheduleJob(Job<RESULT_TYPE>& job) {
+            std::unique_lock<Mutex> lock(_queueMutex);
+            Future<RESULT_TYPE> result = std::move(job._future);
+            std::function<void()>& delegate = job._delegate;
+            _queue.emplace_back([delegate] { delegate(); });
+            _block.notify_all();
+            return result;
+        }
+
+        // pool name
+        std::string _name;
+        // queued operations to run asynchronously
+        typedef std::deque<std::function<void()>> Queue;
+        Queue _queue;
+        // protect access to the queue
+        Mutex _queueMutex;
+        // number of concurrent threads in the pool
+        unsigned _numThreads;
+        // thread waiter block
+        std::condition_variable_any _block;
+        // set to true when threads should exit
+        bool _done;
+        // threads in the pool
+        std::vector<std::thread> _threads;
+    };
+
+    template<typename RESULT_TYPE>
+    Future<RESULT_TYPE> Job<RESULT_TYPE>::schedule() {
+        return JobScheduler::schedule(*this);
+    }
 
 } } // namepsace osgEarth::Threading
 

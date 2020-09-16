@@ -155,7 +155,7 @@ ElevationPool::refresh(const Map* map)
 {
     _elevationLayers.clear();
 
-    OE_INFO << LC << "Refreshing EP index" << std::endl;
+    OE_DEBUG << LC << "Refreshing EP index" << std::endl;
 
     if (_index)
         delete static_cast<MaxLevelIndex*>(_index);
@@ -203,7 +203,7 @@ ElevationPool::getLOD(double x, double y) const
 
     double minv[2], maxv[2];
     minv[0] = maxv[0] = x, minv[1] = maxv[1] = y;
-    std::vector<unsigned> hits;
+    std::unordered_set<unsigned> hits;
     index->Search(minv, maxv, &hits, 99);
     int maxiestMaxLevel = -1;
     for(auto h = hits.begin(); h != hits.end(); ++h)

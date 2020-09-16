@@ -125,11 +125,11 @@ namespace osgEarth { namespace REX
 
         //! Various methods that trigger when the Map model changes.
         void addLayer(Layer* layer);
-        void addElevationLayer( ElevationLayer* layer );
         void addTileLayer( Layer* layer );
-        void removeImageLayer( ImageLayer* layerRemoved );
-        void removeElevationLayer( ElevationLayer* layerRemoved );
-        void moveElevationLayer( ElevationLayer* layerMoved );
+        void removeImageLayer( ImageLayer* layerRemoved );        
+        void addElevationLayer(Layer* layer);
+        void removeElevationLayer(Layer* layerRemoved );
+        void moveElevationLayer(Layer* layerMoved );
         
         //! refresh the statesets of the terrain and the imagelayer tile surface
         void updateState(); 

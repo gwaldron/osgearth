@@ -58,17 +58,22 @@ in float oe_layer_opacity;
 //in float oe_layer_rangeOpacity;
 
 // Vertex Markers:
-#define VERTEX_MARKER_DISCARD  1
-#define VERTEX_MARKER_GRID     2
-#define VERTEX_MARKER_PATCH    4
-#define VERTEX_MARKER_BOUNDARY 8
-#define VERTEX_MARKER_SKIRT    16
+// Vertex Markers:
+#define VERTEX_VISIBLE  1
+#define VERTEX_BOUNDARY 2
+#define VERTEX_HAS_ELEVATION 4
+#define VERTEX_SKIRT 8
+//#define VERTEX_MARKER_DISCARD  1
+//#define VERTEX_MARKER_GRID     2
+//#define VERTEX_MARKER_PATCH    4
+//#define VERTEX_MARKER_BOUNDARY 8
+//#define VERTEX_MARKER_SKIRT    16
 flat in int oe_terrain_vertexMarker;
 
 void oe_rex_imageLayer_FS(inout vec4 color)
 {
     // if the provoking vertex is marked for discard, skip it:
-    if ((oe_terrain_vertexMarker & VERTEX_MARKER_DISCARD) != 0)
+    if ((oe_terrain_vertexMarker & VERTEX_VISIBLE) == 0)
     {
         discard;
         return;
@@ -82,7 +87,7 @@ void oe_rex_imageLayer_FS(inout vec4 color)
 
     // If this is a depth-only camera, skip terrain skirt geometry:
 #if defined(OE_IS_DEPTH_CAMERA)
-    if ((oe_terrain_vertexMarker & VERTEX_MARKER_SKIRT) != 0)
+    if ((oe_terrain_vertexMarker & VERTEX_SKIRT) != 0)
     {
         discard;
         return;

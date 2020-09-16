@@ -98,7 +98,7 @@ namespace osgEarth
          * recoverable problem occurred and the task is eligible to be
          * tried again later (e.g., HTTP timeout)
          */
-        bool isCanceled() const;
+        bool isCanceled() const override;
 
         //! Resets the cancelation flag
         void reset();

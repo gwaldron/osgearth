@@ -805,6 +805,12 @@ namespace osgEarth { namespace Util
         mutable std::vector<T> _array;
     };
 
+    // A generic osg::Referenced vector
+    template<typename T>
+    class RefVector : public InlineVector<T, osg::Referenced>
+    {
+    };
+
 } }
 
 #endif // OSGEARTH_CONTAINERS_H

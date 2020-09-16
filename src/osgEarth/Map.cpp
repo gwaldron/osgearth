@@ -195,7 +195,8 @@ Map::notifyOnLayerOpenOrClose(Layer* layer)
     }
 
     // reinitialize the elevation pool:
-    if (dynamic_cast<ElevationLayer*>(layer))
+    if (dynamic_cast<ElevationLayer*>(layer) ||
+        dynamic_cast<TerrainConstraintLayer*>(layer))
     {
         _elevationPool->clear();
     }
@@ -570,7 +571,8 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
     }
 
     // if this is an elevation layer, invalidate the elevation pool
-    if (dynamic_cast<ElevationLayer*>(layer))
+    if (dynamic_cast<ElevationLayer*>(layer) ||
+        dynamic_cast<TerrainConstraintLayer*>(layer))
     {
         getElevationPool()->clear();
     }

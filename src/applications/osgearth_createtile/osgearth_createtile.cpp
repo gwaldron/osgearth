@@ -28,7 +28,7 @@
 
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
-#include <osgViewer/Viewer>
+#include <osgViewer/CompositeViewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/MapNode>
@@ -40,8 +40,11 @@
 #include <osgEarth/Controls>
 #include <osgEarth/ExampleResources>
 #include <osg/TriangleFunctor>
+#include <osgGA/TrackballManipulator>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
+#include <osg/ShapeDrawable>
+#include <osg/ComputeBoundsVisitor>
 #include <iomanip>
 #include <sstream>
 
@@ -49,6 +52,7 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 static MapNode*       s_mapNode     = nullptr;
+static osgViewer::View* s_tile_view = nullptr;
 static osg::Group*    s_root        = nullptr;
 static osg::ref_ptr< osg::Node >  marker = osgDB::readNodeFile("../data/red_flag.osg");
 
@@ -118,7 +122,8 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
         drawable.accept(triangleCollector);
         for (unsigned int j = 0; j < triangleCollector.verts->size(); j++)
         {
-            osg::Matrix& matrix = _matrixStack.back();
+            static osg::Matrix identity;
+            osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
             osg::Vec3d v = (*triangleCollector.verts)[j];
             _vertices->push_back(v * matrix);
         }
@@ -161,10 +166,10 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
         mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
         mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");
 
-        osg::BoundingSphere bs = mt->getBound();
-        bs.radius() = bs.radius() * 100;
-        mt->setInitialBound(bs);
-        mt->dirtyBound();
+        //osg::BoundingSphere bs = mt->getBound();
+        //bs.radius() = bs.radius() * 100;
+        //mt->setInitialBound(bs);
+        //mt->dirtyBound();
 
         return mt;
     }
@@ -179,6 +184,26 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
 };
 
 
+
+osg::Node* createBS(const osg::BoundingSphere& bounds)
+{
+    osg::MatrixTransform* mt = new osg::MatrixTransform;
+    mt->setMatrix(osg::Matrixd::translate(bounds.center()));
+    osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(osg::Vec3f(0, 0, 0), bounds.radius()));
+    sd->setColor(osg::Vec4(1, 1, 0, 0.3));
+    mt->addChild(sd);
+    return mt;
+}
+
+osg::Node* createBBOX(const osg::BoundingBox& bbox)
+{
+    osg::MatrixTransform* mt = new osg::MatrixTransform;
+    mt->setMatrix(osg::Matrixd::translate(bbox.center()));
+    osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(osg::Vec3f(0, 0, 0), bbox.radius()));
+    sd->setColor(osg::Vec4(1, 1, 0, 0.3));
+    mt->addChild(sd);
+    return mt;
+}
 
 
 // An event handler that will create a tile that can be used for intersections
@@ -220,10 +245,16 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
     osg::Node* makeCustomTile(const TileKey& key)
     {
         Map* map = s_mapNode->getMap();
-        osg::ref_ptr<TerrainTileModel> model
-            = s_mapNode->getTerrainEngine()->createTileModel(map, key, _manifest, nullptr);
+
+        TerrainTileModelFactory factory(
+            const_cast<const MapNode*>(s_mapNode)->options().terrain().get());
+
+        osg::ref_ptr<TerrainTileModel> model =
+            factory.createStandaloneTileModel(map, key, _manifest, nullptr, nullptr);
+
         osg::ref_ptr<osg::Node> node =
             s_mapNode->getTerrainEngine()->createStandaloneTile(model.get(), _tileFlags, _refLOD, key);
+
         if (node.valid())
         {
             // Extract the triangles from the node that was created
@@ -261,29 +292,20 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
             OE_NOTICE << "Creating tile " << key.str() << std::endl;
         }
         osg::ref_ptr<osg::Node> node;
+
         if (key.valid() && (node = makeCustomTile(key)))
         {
-            if (_node.valid())
+            if (node.valid())
             {
-                s_root->removeChild( _node.get() );
+                osg::Group* g = s_tile_view->getSceneData()->asGroup();
+                g->removeChildren(0, g->getNumChildren());
+                g->addChild(node.get());
+                //osg::ComputeBoundsVisitor v;
+                //node->accept(v);
+                //g->addChild(createBBOX(v.getBoundingBox()));
+                //g->addChild(createBS(node->getBound()));
+                s_tile_view->getCameraManipulator()->home(0.0);
             }
-
-            osg::Group* group = new osg::Group;
-                
-            // Show the actual mesh.
-            group->addChild( node.get() );
-
-            _node = group;
-            // Clamp the marker to the intersection of the triangles created by osgEarth.  This should line up with the mesh that is actually rendered.
-            double z = 0.0;
-            s_mapNode->getTerrain()->getHeight( node.get(), s_mapNode->getMapSRS(), mapPoint.x(), mapPoint.y(), &z);
-
-            GeoTransform* xform = new GeoTransform();
-            xform->setPosition( osgEarth::GeoPoint(s_mapNode->getMapSRS(),mapPoint.x(),  mapPoint.y(), z, ALTMODE_ABSOLUTE) );
-            xform->addChild( marker.get() );
-            group->addChild( xform );
-
-            s_root->addChild( _node.get() );
         }
         else
         {
@@ -340,31 +362,35 @@ int main(int argc, char** argv)
     osgEarth::initialize();
 
     osg::ref_ptr<CreateTileHandler> createTileHandler(new CreateTileHandler(arguments));
-    osgViewer::Viewer viewer(arguments);
 
-    s_root = new osg::Group();
-    
-    // install the programmable manipulator.
-    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
+    osgViewer::CompositeViewer viewer(arguments);
 
-    // The MapNode will render the Map object in the scene graph.
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
-    s_mapNode = MapNode::findMapNode(node);
-    s_root->addChild( node );
+    MapNodeHelper helper;
+    osg::Node* earth = helper.load(arguments, &viewer);
+    s_mapNode = MapNode::findMapNode(earth);
 
-    // disable the small-feature culling
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+    osgViewer::View* main_view = new osgViewer::View();
+    viewer.addView(main_view);
+    main_view->setUpViewInWindow(20, 20, 1600, 800);
+    main_view->setCameraManipulator(new osgEarth::Util::EarthManipulator());
+    main_view->addEventHandler(createTileHandler.get());
+    main_view->setSceneData(earth);
 
-    // set a near/far ratio that is smaller than the default. This allows us to get
-    // closer to the ground without near clipping. If you need more, use --logdepth
-    viewer.getCamera()->setNearFarRatio(0.0001);
-    viewer.getCamera()->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
+    s_tile_view = new osgViewer::View();
+    viewer.addView(s_tile_view);
+    s_tile_view->getCamera()->setGraphicsContext(main_view->getCamera()->getGraphicsContext());
+    s_tile_view->getCamera()->setViewport(0, 0, 400, 400);
+    s_tile_view->getCamera()->setClearColor(Color::Black);
+    s_tile_view->getCamera()->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
+    s_tile_view->getCamera()->getOrCreateStateSet()->setMode(GL_BLEND, 1);
+    s_tile_view->setCameraManipulator(new osgGA::TrackballManipulator());
+    osg::Group* root2 = new osg::Group();
+    root2->addChild(osgDB::readRefNodeFile("../data/axes.osgt"));
+    root2->addChild(createBS(root2->getChild(0)->getBound()));
+    s_tile_view->setSceneData(root2);
 
-
-    // An event handler that will respond to mouse clicks:
-    viewer.addEventHandler( createTileHandler.get() );
-
-    viewer.setSceneData( s_root );
+    helper.configureView(main_view);
+    helper.configureView(s_tile_view);
 
     return viewer.run();
 }

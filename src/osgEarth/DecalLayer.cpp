@@ -162,6 +162,8 @@ DecalImageLayer::addDecal(const std::string& id, const GeoExtent& extent, const 
 
     _decalIndex[id] = --_decalList.end();
 
+    _extent.expandToInclude(extent);
+
     // data changed so up the revsion.
     bumpRevision();
     return true;
@@ -177,6 +179,10 @@ DecalImageLayer::removeDecal(const std::string& id)
     {
         _decalList.erase(i->second);
         _decalIndex.erase(i);
+
+        _extent = GeoExtent();
+        for (auto& decal : _decalList)
+            _extent.expandToInclude(decal._extent);
 
         // data changed so up the revsion.
         bumpRevision();
@@ -201,6 +207,7 @@ DecalImageLayer::clearDecals()
     Threading::ScopedMutexLock lock(layerMutex());
     _decalIndex.clear();
     _decalList.clear();
+    _extent = GeoExtent();
     bumpRevision();
 }
 
@@ -373,6 +380,8 @@ DecalElevationLayer::addDecal(
 
     _decalIndex[id] = --_decalList.end();
 
+    _extent.expandToInclude(extent);
+
     // data changed so up the revsion.
     bumpRevision();
     return true;
@@ -425,6 +434,8 @@ DecalElevationLayer::addDecal(
 
     _decalIndex[id] = --_decalList.end();
 
+    _extent.expandToInclude(extent);
+
     // data changed so up the revsion.
     bumpRevision();
     return true;
@@ -440,6 +451,9 @@ DecalElevationLayer::removeDecal(const std::string& id)
     {
         _decalList.erase(i->second);
         _decalIndex.erase(i);
+
+        for (auto& decal : _decalList)
+            _extent.expandToInclude(decal._heightfield.getExtent());
 
         // data changed so up the revsion.
         bumpRevision();
@@ -464,6 +478,7 @@ DecalElevationLayer::clearDecals()
     Threading::ScopedMutexLock lock(layerMutex());
     _decalIndex.clear();
     _decalList.clear();
+    _extent = GeoExtent();
     bumpRevision();
 }
 
@@ -616,6 +631,8 @@ DecalLandCoverLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 
     _decalIndex[id] = --_decalList.end();
 
+    _extent.expandToInclude(extent);
+
     // data changed so up the revsion.
     bumpRevision();
     return true;
@@ -631,6 +648,10 @@ DecalLandCoverLayer::removeDecal(const std::string& id)
     {
         _decalList.erase(i->second);
         _decalIndex.erase(i);
+
+        _extent = GeoExtent();
+        for (auto& decal : _decalList)
+            _extent.expandToInclude(decal._extent);
 
         // data changed so up the revsion.
         bumpRevision();
@@ -655,5 +676,6 @@ DecalLandCoverLayer::clearDecals()
     Threading::ScopedMutexLock lock(layerMutex());
     _decalIndex.clear();
     _decalList.clear();
+    _extent = GeoExtent();
     bumpRevision();
 }

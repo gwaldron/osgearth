@@ -273,7 +273,7 @@ namespace osgEarth
     }
     
     template<class T>
-    const T& clamp(const T& x, const T& lo, const T& hi)
+    T clamp(const T& x, const T& lo, const T& hi)
     {
         return osg::clampBetween(x, lo, hi);
     }

@@ -51,6 +51,7 @@ ImageLayer::Options::fromConfig(const Config& conf)
     conf.get( "shared",         _shared );
     conf.get( "coverage",       _coverage );
     conf.get( "altitude",       _altitude );
+    conf.get( "accept_draping", acceptDraping());
     conf.get( "edge_buffer_ratio", _edgeBufferRatio);
     conf.get( "reprojected_tilesize", _reprojectedTileSize);
 
@@ -92,6 +93,7 @@ ImageLayer::Options::getConfig() const
     conf.set( "shared",         _shared );
     conf.set( "coverage",       _coverage );
     conf.set( "altitude",       _altitude );
+    conf.set( "accept_draping", acceptDraping());
     conf.set( "edge_buffer_ratio", _edgeBufferRatio);
     conf.set( "reprojected_tilesize", _reprojectedTileSize);
 
@@ -227,6 +229,11 @@ ImageLayer::init()
     {
         setAltitude(options().altitude().get());
     }
+
+    if (options().acceptDraping().isSet())
+    {
+        setAcceptDraping(options().acceptDraping().get());
+    }
 }
 
 
@@ -257,6 +264,23 @@ const Distance&
 ImageLayer::getAltitude() const
 {
     return options().altitude().get();
+}
+
+void
+ImageLayer::setAcceptDraping(bool value)
+{
+    options().acceptDraping() = value;
+
+    if (value == true && getStateSet() != nullptr)
+        getStateSet()->removeDefine("OE_DISABLE_DRAPING");
+    else
+        getOrCreateStateSet()->setDefine("OE_DISABLE_DRAPING");
+}
+
+bool
+ImageLayer::getAcceptDraping() const
+{
+    return options().acceptDraping().get();
 }
 
 void

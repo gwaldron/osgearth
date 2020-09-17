@@ -494,7 +494,7 @@ TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
         if (!_alignment.isSet())
         {
             glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &_alignment.mutable_value());
-            OE_DEBUG << "SSBO Alignment = " << _alignment << std::endl;
+            OE_DEBUG << "SSBO Alignment = " << _alignment.get() << std::endl;
         }
 
         // TODO: fetch the binding

@@ -753,7 +753,7 @@ namespace
         {
             dest->reserveArray(dest->size() + numVerts);
             for(unsigned i=0; i<numVerts; ++i)
-                dest->push_back(T :: ElementDataType ());
+                dest->push_back(typename T :: ElementDataType ());
         }
         else if (src->getBinding() == osg::Array::BIND_PER_VERTEX)
         {
@@ -764,7 +764,7 @@ namespace
             // pad out to match
             if (src->getNumElements() < numVerts)
                 for(unsigned i=0; i<numVerts-src->getNumElements(); ++i)
-                    dest->push_back(T :: ElementDataType ());
+                    dest->push_back(typename T :: ElementDataType ());
 
         }
         else if (src->getBinding() == osg::Array::BIND_OVERALL)

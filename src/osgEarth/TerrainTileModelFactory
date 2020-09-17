@@ -66,12 +66,15 @@ namespace osgEarth
 
         bool includesElevation() const;
 
+        bool includesConstraints() const;
+
         bool includesLandCover() const;
 
     private:
         typedef vector_map<UID, int> LayerTable;
         LayerTable _layers;
         bool _includesElevation;
+        bool _includesConstraints;
         bool _includesLandCover;
     };
 

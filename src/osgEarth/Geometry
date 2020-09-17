@@ -215,6 +215,8 @@ namespace osgEarth
          */
         virtual void close();
 
+        virtual void open() { }
+
         /**
          * Removes consecutive duplicates in the geometry to prepare for tessellation.
          */
@@ -232,6 +234,9 @@ namespace osgEarth
          */
         Orientation getOrientation() const;
 
+        //! Whether a closed geometry contains the 2D point
+        virtual bool contains2D(double x, double y) const { return false; }
+
     public:
         virtual Type getType() const { return TYPE_UNKNOWN; }
         virtual Type getComponentType() const { return getType(); }
@@ -246,6 +251,11 @@ namespace osgEarth
         void push_back(double x, double y, double z) { 
             osgEarth::InlineVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,z)); }
 
+        virtual bool isRing() const { return getComponentType() == TYPE_RING || getComponentType() == TYPE_POLYGON; }
+        virtual bool isPolygon() const { return getComponentType() == TYPE_POLYGON; }
+        virtual bool isPointSet() const { return getComponentType()==TYPE_POINT || getComponentType()==TYPE_POINTSET; }
+        virtual bool isLineString() const { return getComponentType() == TYPE_LINESTRING; }
+        virtual bool isOpen() const { return true; }
     protected:
     };
 
@@ -267,7 +277,7 @@ namespace osgEarth
         virtual void close();
 
     public:
-        virtual Type getType() const { return Geometry::TYPE_POINTSET; }
+        virtual Type getType() const override { return Geometry::TYPE_POINTSET; }
     };
 
     /**
@@ -330,7 +340,7 @@ namespace osgEarth
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
 
         // tests whether the point falls within the ring
-        virtual bool contains2D( double x, double y ) const;
+        virtual bool contains2D( double x, double y ) const override;
 
         // gets the signed area of a part that is known to be open.
         virtual double getSignedArea2D() const;
@@ -339,13 +349,13 @@ namespace osgEarth
         virtual double getLength() const;
 
         // ensures that the first and last points are not idential.
-        virtual void open();
+        virtual void open() override;
 
         // ensures that the first and last points are identical.
-        virtual void close();
+        virtual void close() override;
 
         // whether the ring is open (i.e. first and last points are different)
-        virtual bool isOpen() const;
+        virtual bool isOpen() const override;
 
         // opens and winds the ring in the specified direction
         virtual void rewind( Orientation ori );
@@ -375,11 +385,11 @@ namespace osgEarth
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
         virtual int getTotalPointCount() const;
-        
+
         virtual unsigned getNumGeometries() const { return 1 + _holes.size(); }
 
         // tests whether the point falls within the polygon (but not its holes)
-        virtual bool contains2D( double x, double y ) const;
+        virtual bool contains2D( double x, double y ) const override;
 
         virtual void open();
 

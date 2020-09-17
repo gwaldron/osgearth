@@ -128,10 +128,8 @@ namespace osgEarth
                     _layer->removedFromMap(map);
                 }
 
-                if (map->getLayerByUID(_layer->getUID()) != NULL)
-                {
-                    _layer = NULL;
-                }
+                // Do not set _layer to nullptr. It may still be in use
+                // and this is none of the Map's business.
             }
         }
 

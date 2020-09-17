@@ -70,7 +70,7 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<const Map> getMap() const;
 
         // only call this variant when it's safe to do so (update, cull).
-        TerrainEngineNode* getEngine() const { return _terrainEngine.get(); }
+        osg::ref_ptr<TerrainEngineNode> getEngine() { return osg::ref_ptr<TerrainEngineNode>(_terrainEngine); }
 
         TileNodeRegistry* liveTiles() const { return _liveTiles; }
 

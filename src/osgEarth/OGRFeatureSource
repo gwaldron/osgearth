@@ -80,7 +80,7 @@ namespace osgEarth
         const URI& getGeometryURL() const;
 
         //! Sets an inline geometry to use.
-        void setGeometry(Geometry* geom) { _geometry = geom; }
+        void setGeometry(const Geometry* geom) { _geometry = geom; }
         const Geometry* getGeometry() const { return _geometry.get(); }
 
         //! Profile of feature data
@@ -137,7 +137,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const Profile> _profile;
-        osg::ref_ptr<Geometry> _geometry; // explicit geometry.
+        osg::ref_ptr<const Geometry> _geometry; // explicit geometry.
         std::string _source;
         void* _dsHandle;
         void* _layerHandle;

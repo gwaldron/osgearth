@@ -176,8 +176,6 @@ SET(LIB_PUBLIC_HEADERS
     MapModelChange
     MapNode
     MapNodeObserver
-    MaskLayer
-    MaskSource
     Memory
     MemCache
     MetaTile
@@ -220,6 +218,7 @@ SET(LIB_PUBLIC_HEADERS
     SimplexNoise
     SpatialReference
     StateSetCache
+    StateTransition
     Status
     StringUtils
     TDTiles
@@ -329,7 +328,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureElevationLayer
     FeatureImageLayer
     FeatureIndex
-    FeatureMaskLayer
+    TerrainConstraintLayer
     FeatureModelGraph
     FeatureModelLayer
     FeatureModelSource
@@ -359,6 +358,7 @@ SET(LIB_PUBLIC_HEADERS
     TextureArena.cpp
     TFS
     TransformFilter
+    WingedEdgeMesh
     WireLines
     XYZFeatureSource
     WFS
@@ -428,7 +428,7 @@ SET(LIB_PUBLIC_HEADERS
     RectangleNode
     TrackNode
     WindLayer
-    ElevationConstraintLayer
+    TerrainLayer
 
     rtree.h
 
@@ -548,8 +548,6 @@ set(TARGET_SRC
     MapCallback.cpp
     MapInfo.cpp
     MapNode.cpp
-    MaskLayer.cpp
-    MaskSource.cpp
     MemCache.cpp
     Memory.cpp
     MetaTile.cpp
@@ -682,7 +680,7 @@ set(TARGET_SRC
     FeatureDisplayLayout.cpp
     FeatureElevationLayer.cpp
     FeatureImageLayer.cpp
-    FeatureMaskLayer.cpp
+    TerrainConstraintLayer.cpp
     FeatureModelGraph.cpp
     FeatureModelLayer.cpp
     FeatureModelSource.cpp
@@ -772,7 +770,6 @@ set(TARGET_SRC
     PlaceNode.cpp
     TrackNode.cpp
     WindLayer.cpp
-    ElevationConstraintLayer.cpp
 
     FileGDBFeatureSource.cpp
 

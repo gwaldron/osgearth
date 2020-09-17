@@ -36,9 +36,9 @@ namespace osgEarth { namespace REX
 
     struct ModifyBoundingBoxCallback : public osg::Referenced
     {
-        ModifyBoundingBoxCallback(EngineContext* engine);
+        ModifyBoundingBoxCallback(EngineContext* context);
         void operator()(const TileKey& key, osg::BoundingBox& bbox);
-        EngineContext* _engine;
+        EngineContext* _context;
     };
 
     /**
@@ -68,8 +68,10 @@ namespace osgEarth { namespace REX
         osg::Matrixf                   _elevationScaleBias;
 
         // cached 3D mesh of the terrain tile (derived from the elevation raster)
-        osg::Vec3f* _mesh;
-        GLuint* _meshIndices;
+        //osg::Vec3f* _mesh;
+        //GLuint* _meshIndices;
+        std::vector<osg::Vec3> _mesh;
+        std::vector<GLushort> _meshIndices;
 
         osg::BoundingBox _bboxOffsets;
         ModifyBoundingBoxCallback* _bboxCB;

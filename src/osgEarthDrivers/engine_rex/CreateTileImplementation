@@ -19,6 +19,9 @@
 #ifndef OSGEARTH_REX_CREATE_TILE_IMPLEMENTATION_H
 #define OSGEARTH_REX_CREATE_TILE_IMPLEMENTATION_H
 
+#include "Common"
+#include <osgEarth/Threading>
+
 namespace osg {
     class Node;
 }
@@ -40,7 +43,8 @@ namespace osgEarth { namespace REX
             const TerrainTileModel* model,
             int flags,
             unsigned referenceLOD,
-            const TileKey& area);
+            const TileKey& area,
+            Threading::Cancelable* progress = nullptr);
     };
 
 } }

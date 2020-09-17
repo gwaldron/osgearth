@@ -15,7 +15,6 @@ The *map* is the top-level element in an earth file.
         <:ref:`image     <ImageLayer>`>
         <:ref:`elevation <ElevationLayer>`>
         <:ref:`model     <ModelLayer>`>
-        <:ref:`mask      <MaskLayer>`>
         <:ref:`libraries <Libraries>`>
 
 +------------------------+--------------------------------------------------------------------+

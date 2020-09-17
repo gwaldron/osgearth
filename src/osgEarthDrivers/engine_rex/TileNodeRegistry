@@ -143,6 +143,9 @@ namespace osgEarth { namespace REX
             unsigned maxCount,          // maximum number of tiles to collect
             std::vector<osg::observer_ptr<TileNode> >& output);   // put dormant tiles here
 
+        //! Get a reference to a specific key if found.
+        osg::ref_ptr<TileNode> get(const TileKey& key) const;
+
     protected:
 
         unsigned _firstLOD;

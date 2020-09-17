@@ -70,12 +70,12 @@ namespace osgEarth { namespace Util
 
     protected:
         osg::observer_ptr<RefNodeOperationVector> _postMergeOps;
-        
+
         void runPostMerge( osg::Node* node );
     };
 
     /**
-     * Visitor that looks for empty group nodes and removes them from the 
+     * Visitor that looks for empty group nodes and removes them from the
      * scene graph. (Note, if the entry node is an empty group, it will
      * not be affected.)
      */
@@ -135,7 +135,7 @@ namespace osgEarth { namespace Util
      * redraw the scene because something has changed
      * Usage: ViewVisitor<RequestRedraw> vis; node->accept(vis);
      */
-    struct RequestRedraw 
+    struct RequestRedraw
     {
         void operator()(osg::View* view) {
             osgGA::GUIActionAdapter* aa = dynamic_cast<osgGA::GUIActionAdapter*>(view);
@@ -171,7 +171,7 @@ namespace osgEarth { namespace Util
           T* _foundNode;
     };
 
-    /** 
+    /**
      * Collects all the nodes of type "T"
      */
     template<typename T>
@@ -205,7 +205,7 @@ namespace osgEarth { namespace Util
         node->accept(fnotv);
 
         return fnotv._foundNode;
-    }    
+    }
 
     /**
      * Searchs the scene graph upward starting at [node] and returns the first node found
@@ -252,6 +252,42 @@ namespace osgEarth { namespace Util
             if (node) return node;
         }
         return 0L;
+    }
+
+    class FindNamedNodeVisitor : public osg::NodeVisitor
+    {
+    public:
+        FindNamedNodeVisitor(const std::string& name) :
+            osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+            _name(name)
+        {
+            setTraversalMask(~0);
+        }
+
+        virtual void apply(osg::Node& node)
+        {
+            if (node.getName() == _name)
+            {
+                _foundNodes.push_back(&node);
+            }
+            traverse(node);
+        }
+
+        typedef std::vector< osg::ref_ptr<osg::Node> > NodeList;
+
+        std::string _name;
+        NodeList _foundNodes;
+    };
+
+    inline osg::Node* findNamedNode(osg::Node* node, const std::string& name)
+    {
+        FindNamedNodeVisitor v(name);
+        node->accept(v);
+        if (!v._foundNodes.empty())
+        {
+            return v._foundNodes[0].get();
+        }
+        return 0;
     }
 
     /**
@@ -346,7 +382,7 @@ namespace osgEarth { namespace Util
         std::set<osg::Node*> _orphans;
     };
 
-    
+
     /**
      * Group that acts like a normal group but also notifies another
      * object when a change occurs.

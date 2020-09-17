@@ -25,8 +25,8 @@ FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
     /usr/include
     ~/Library/Frameworks/geos/Headers
     /Library/Frameworks/geos/Headers
-    /sw/include/geos 
-    /sw/include/GEOS 
+    /sw/include/geos
+    /sw/include/GEOS
     /sw/include # Fink
     /opt/local/include/geos
     /opt/local/include/GEOS
@@ -41,8 +41,8 @@ FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
 )
 
 FIND_LIBRARY(GEOS_LIBRARY
-  NAMES geos
-  PATHS  
+  NAMES geos_c
+  PATHS
     ${GEOS_DIR}/lib
     $ENV{GEOS_DIR}
   NO_DEFAULT_PATH
@@ -50,7 +50,7 @@ FIND_LIBRARY(GEOS_LIBRARY
 )
 
 FIND_LIBRARY(GEOS_LIBRARY
-  NAMES geos
+  NAMES geos_c
   PATHS
     ~/Library/Frameworks
     /Library/Frameworks
@@ -60,12 +60,12 @@ FIND_LIBRARY(GEOS_LIBRARY
     /opt/local
     /opt/csw
     /opt
-    /usr/freeware    
+    /usr/freeware
   PATH_SUFFIXES lib64 lib
 )
 
 FIND_LIBRARY(GEOS_LIBRARY_DEBUG
-  NAMES geos_d geos_i_d geosd
+  NAMES geos_cd geos_i_d geosd
   PATHS
     ${GEOS_DIR}/lib
     $ENV{GEOS_DIR}
@@ -74,7 +74,7 @@ FIND_LIBRARY(GEOS_LIBRARY_DEBUG
 )
 
 FIND_LIBRARY(GEOS_LIBRARY_DEBUG
-  NAMES geos_d geos_i_d geosd
+  NAMES geos_cd geos_i_d geosd
   PATHS
     ~/Library/Frameworks
     /Library/Frameworks
@@ -84,7 +84,7 @@ FIND_LIBRARY(GEOS_LIBRARY_DEBUG
     /opt/local
     /opt/csw
     /opt
-    /usr/freeware    
+    /usr/freeware
   PATH_SUFFIXES lib64 lib
 )
 
@@ -92,4 +92,3 @@ SET(GEOS_FOUND "NO")
 IF(GEOS_LIBRARY AND GEOS_INCLUDE_DIR)
   SET(GEOS_FOUND "YES")
 ENDIF(GEOS_LIBRARY AND GEOS_INCLUDE_DIR)
-

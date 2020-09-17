@@ -661,6 +661,11 @@ MBTiles::Driver::read(
         {
             std::istringstream inputStream(dataBuffer);
             result = ImageUtils::readStream(inputStream, _dbOptions.get());
+            // If we couldn't load the image automatically try the reader instead.
+            if (!result && _rw.valid())
+            {
+                result = _rw->readImage(inputStream, _dbOptions.get()).takeImage();
+            }
         }
     }
     else

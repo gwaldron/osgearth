@@ -90,29 +90,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         }
     };
     REGISTER_OSGPLUGIN(3dtiles, ThreeDTilesJSONReaderWriter);
-
-
-    struct CompressAndMipmapTextures : public TextureAndImageVisitor
-    {
-        void apply(osg::Texture& texture)
-        {
-            for(unsigned i=0; i<texture.getNumImages(); ++i)
-            {
-                ImageUtils::compressImageInPlace(texture.getImage(i));
-                ImageUtils::mipmapImageInPlace(texture.getImage(i));
-            }
-        }
-    };
-
-    static Future<osg::Node>::Callback compressAndMipmapTextures = [](osg::Node* node)
-    {
-        if (node)
-        {
-            CompressAndMipmapTextures visitor;
-            node->accept(visitor);
-        }
-    };
-
 } } }
 
 //........................................................................
@@ -124,6 +101,9 @@ Asset::fromJSON(const Json::Value& value)
         version() = value.get("version", "").asString();
     if (value.isMember("tilesetVersion"))
         tilesetVersion() = value.get("tilesetVersion", "").asString();
+    if (value.isMember("gltfUpAxis"))
+        gltfUpAxis() = value.get("gltfUpAxis", "").asString();
+
 }
 
 Json::Value
@@ -134,6 +114,8 @@ Asset::getJSON() const
         value["version"] = version().get();
     if (tilesetVersion().isSet())
         value["tilesetVersion"] = tilesetVersion().get();
+    if (gltfUpAxis().isSet())
+        value["gltfUpAxis"] = gltfUpAxis().get();
     return value;
 }
 
@@ -536,7 +518,7 @@ namespace
 
                         if (tilesetNode.valid())
                         {
-                            compressAndMipmapTextures(tilesetNode.get());
+                            ImageUtils::compressAndMipmapTextures(tilesetNode.get());
 
                             if (ico.valid())
                             {
@@ -677,7 +659,7 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         else
         {
             _content = uri.getNode(_options.get());
-            compressAndMipmapTextures(_content.get());
+            ImageUtils::compressAndMipmapTextures(_content.get());
         }
         if (_content.valid())
         {
@@ -966,8 +948,7 @@ void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
         else
         {
             _contentFuture = uri
-                .readNodeAsync(localOptions.get(), NULL)
-                .then(compressAndMipmapTextures);
+                .readNodeAsync(localOptions.get(), NULL);
         }
 
         _requestedContent = true;
@@ -1259,14 +1240,27 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& author
     // Pointer to last element
     _sentryItr = --_tracker.end();
 
-    addChild(new ThreeDTilesetContentNode(this, tileset, _options.get()));
-
     _debugVP = getOrCreateDebugVirtualProgram();
     getOrCreateStateSet()->setAttribute(_debugVP.get());
     if (_showColorPerTile)
     {
         getOrCreateStateSet()->setDefine("OE_3DTILES_DEBUG", osg::StateAttribute::ON);
     }
+
+    // If the gltfUpAxis property is set to z we don't need to do the y up to z up transformation
+    // so we set an option string telling the gltf loader to not apply the transformation for this tileset.
+    if (tileset->asset().isSet() && osgEarth::toLower(*tileset->asset()->gltfUpAxis()) == "z")
+    {
+        if (!_options.valid())
+        {
+            _options = new osgDB::Options;
+        }
+        std::string optString = _options->getOptionString();
+        optString += " gltfZUp";
+        _options->setOptionString(optString);
+    }
+
+    addChild(new ThreeDTilesetContentNode(this, tileset, _options.get()));
 }
 
 const std::string&

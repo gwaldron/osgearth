@@ -491,7 +491,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
 
     // don't show hidden coverage layers
-    if (imageLayer && imageLayer->isCoverage()) // && !imageLayer->getVisible())
+    if (imageLayer && imageLayer->isCoverage())
         return;
 
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);

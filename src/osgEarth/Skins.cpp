@@ -141,7 +141,7 @@ SkinResource::createTexture(osg::Image* image) const
         ta->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
         tex = ta;
 
-        std::vector<osg::ref_ptr<const osg::Image> > layers;
+        std::vector<osg::ref_ptr<osg::Image> > layers;
         ImageUtils::flattenImage(image, layers);
         for (unsigned i = 0; i < layers.size(); ++i)
         {

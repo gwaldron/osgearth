@@ -1,0 +1,99 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H
+#define OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/LayerReference>
+
+namespace osgEarth
+{
+    /**
+     * Provides feature data to the terrain engine to use for
+     * customizing the surface mesh.
+     */
+    class OSGEARTH_EXPORT TerrainConstraintLayer : public VisibleLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION(bool, removeInterior);
+            OE_OPTION(bool, removeExterior);
+            OE_OPTION(bool, hasElevation);
+            OE_OPTION(unsigned, minLevel);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig( const Config& conf );
+        };
+
+    public:
+        META_Layer(osgEarth, TerrainConstraintLayer, Options, VisibleLayer, TerrainConstraint);
+
+        //! Source of the feature data
+        void setFeatureSource(FeatureSource* features);
+        FeatureSource* getFeatureSource() const;
+
+        //! Whether the terrain should remove geometry that is interior to polygons
+        bool getRemoveInterior() const { return options().removeInterior().get(); }
+        void setRemoveInterior(bool value);
+
+        //! Whether the terrain should perserve the Z value in the feature data
+        //! as static elevation
+        bool getHasElevation() const { return options().hasElevation().get(); }
+        void setHasElevation(bool value);
+
+        //! Minimum LOD at which to apply this constraint
+        unsigned getMinLevel() const { return options().minLevel().get(); }
+        void setMinLevel(unsigned value);
+
+        //! Geospatial extent of this layer's data
+        virtual const GeoExtent& getExtent() const override;
+
+        //! Visibility toggle from VisibleLayer
+        virtual void setVisible(bool value) override;
+
+    protected:
+
+        virtual Status openImplementation() override;
+
+        virtual void addedToMap(const Map*) override;
+
+        virtual void removedFromMap(const Map*) override;
+
+    protected:
+
+        /** dtor */
+        virtual ~TerrainConstraintLayer() { }
+
+    private:
+
+        void create();
+    };
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TerrainConstraintLayer::Options);
+
+#endif // OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H
+

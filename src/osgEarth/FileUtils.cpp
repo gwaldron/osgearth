@@ -25,7 +25,7 @@
 #include <osgDB/ConvertUTF>
 #include <stack>
 
-#include <errno.h> 
+#include <errno.h>
 
 #ifdef WIN32
 #  include <windows.h>
@@ -305,11 +305,11 @@ osgEarth::Util::getTempPath()
 #if defined(WIN32)  && !defined(__CYGWIN__)
     BOOL fSuccess  = FALSE;
 
-    TCHAR lpTempPathBuffer[MAX_PATH];    
+    TCHAR lpTempPathBuffer[MAX_PATH];
 
     //  Gets the temp path env string (no guarantee it's a valid path).
     DWORD dwRetVal = ::GetTempPath(MAX_PATH,          // length of the buffer
-        lpTempPathBuffer); // buffer for path     
+        lpTempPathBuffer); // buffer for path
 
     if (dwRetVal > MAX_PATH || (dwRetVal == 0))
     {
@@ -323,7 +323,7 @@ osgEarth::Util::getTempPath()
 #endif
 }
 
-std::string 
+std::string
 osgEarth::Util::getTempName(const std::string& prefix, const std::string& suffix)
 {
     //tmpname is kind of busted on Windows, it always returns a file of the form \blah which gets put in your root directory but
@@ -331,16 +331,16 @@ osgEarth::Util::getTempName(const std::string& prefix, const std::string& suffix
     while (true)
     {
         std::stringstream ss;
-        ss << prefix << "~" << rand() << suffix;
+        ss << prefix << "~" << osgEarth::Threading::getCurrentThreadId() << "_" << rand() << suffix;
         if (!osgDB::fileExists(ss.str()))
             return ss.str();
     }
 //    return "";
 }
 
-bool 
+bool
 osgEarth::Util::makeDirectory( const std::string &path )
-{    
+{
     if (path.empty())
     {
         OSG_DEBUG << "osgDB::makeDirectory(): cannot create an empty directory" << std::endl;
@@ -380,7 +380,7 @@ osgEarth::Util::makeDirectory( const std::string &path )
             switch( errno )
             {
                 case ENOENT:
-                case ENOTDIR:                    
+                case ENOTDIR:
                     paths.push( dir );
                     break;
 
@@ -409,12 +409,12 @@ osgEarth::Util::makeDirectory( const std::string &path )
 #else
         if( mkdir( dir.c_str(), 0755 )< 0 )
 #endif
-        {            
+        {
             if (osgDB::fileExists(dir))
             {
                 OE_DEBUG << "Attempt to create directory that already exists " << dir << std::endl;
             }
-            else            
+            else
             {
                 OSG_DEBUG << "osgDB::makeDirectory(): "  << strerror(errno) << std::endl;
                 return false;
@@ -425,7 +425,7 @@ osgEarth::Util::makeDirectory( const std::string &path )
     return true;
 }
 
-bool 
+bool
 osgEarth::Util::makeDirectoryForFile( const std::string &path )
 {
     return makeDirectory( osgDB::getFilePath( path ));
@@ -457,7 +457,7 @@ osgEarth::Util::getLastModifiedTime(const std::string& path)
 /**************************************************/
 DirectoryVisitor::DirectoryVisitor()
 {
-}    
+}
 
 void DirectoryVisitor::handleFile( const std::string& filename )
 {
@@ -471,7 +471,7 @@ bool DirectoryVisitor::handleDir( const std::string& path )
 void DirectoryVisitor::traverse(const std::string& path )
 {
 	if ( osgDB::fileType(path) == osgDB::DIRECTORY )
-	{            
+	{
 		if (handleDir( path ))
 		{
 			osgDB::DirectoryContents files = osgDB::getDirectoryContents(path);
@@ -481,23 +481,23 @@ void DirectoryVisitor::traverse(const std::string& path )
 					continue;
 
 				std::string filepath = osgDB::concatPaths( path, *f );
-				traverse( filepath );                
+				traverse( filepath );
 			}
 		}
 	}
 	else if ( osgDB::fileType(path) == osgDB::REGULAR_FILE )
 	{
-		handleFile( path );            
+		handleFile( path );
 	}
 }
 
 /**************************************************/
-CollectFilesVisitor::CollectFilesVisitor()  
+CollectFilesVisitor::CollectFilesVisitor()
 {
 }
 
 void CollectFilesVisitor::handleFile( const std::string& filename )
 {
-	filenames.push_back( filename );        
+	filenames.push_back( filename );
 }
 

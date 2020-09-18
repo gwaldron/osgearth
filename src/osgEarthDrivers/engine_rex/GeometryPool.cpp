@@ -633,6 +633,13 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
 #ifdef SUPPORTS_VAO
     osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
+    
+    // The call to VertexArrayState::setVertexBufferObjectSupported() is included to ensure
+    // that its VBO usage flag is set properly and the VBO gets bound if VBOs are both 
+    // supported and used. Other objects may have changed this VBO usage flag so
+    // we need to set it appropriately to avoid errors with glDrawElements()
+    bool usingVertexBufferObjects = state.useVertexBufferObject(_supportsVertexBufferObjects && _useVertexBufferObjects);
+    vas->setVertexBufferObjectSupported(usingVertexBufferObjects); 
 
     if (!state.useVertexArrayObject(_useVertexArrayObject) || vas->getRequiresSetArrays())
     {

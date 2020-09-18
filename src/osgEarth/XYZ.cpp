@@ -74,12 +74,13 @@ XYZ::Driver::read(const URI& uri,
 {
     unsigned x, y;
     key.getTileXY(x, y);
+    unsigned cols = 0, rows = 0;
+    key.getProfile()->getNumTiles(key.getLevelOfDetail(), cols, rows);
+    unsigned inverted_y = rows - y - 1;
 
     if (invertY == true)
     {
-        unsigned cols=0, rows=0;
-        key.getProfile()->getNumTiles( key.getLevelOfDetail(), cols, rows );
-        y = rows - y - 1;
+        y = inverted_y;
     }
 
     std::string location = _template;
@@ -87,11 +88,14 @@ XYZ::Driver::read(const URI& uri,
     // support OpenLayers template style:
     replaceIn( location, "${x}", Stringify() << x );
     replaceIn( location, "${y}", Stringify() << y );
+    replaceIn( location, "${-y}", Stringify() << inverted_y);
     replaceIn( location, "${z}", Stringify() << key.getLevelOfDetail() );
+
 
     // failing that, legacy osgearth style:
     replaceIn( location, "{x}", Stringify() << x );
     replaceIn( location, "{y}", Stringify() << y );
+    replaceIn( location, "{-y}", Stringify() << inverted_y);
     replaceIn( location, "{z}", Stringify() << key.getLevelOfDetail() );
 
     std::string cacheKey;
@@ -128,6 +132,8 @@ XYZImageLayerOptions::getConfig() const
 void
 XYZImageLayerOptions::fromConfig(const Config& conf)
 {
+    invertY().setDefault(false);
+
     conf.get("url", _url);
     conf.get("format", _format);
     conf.get("invert_y", _invertY);

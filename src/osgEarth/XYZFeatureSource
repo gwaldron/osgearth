@@ -34,7 +34,6 @@ namespace osgEarth
             META_LayerOptions(osgEarth, Options, FeatureSource::Options);
             OE_OPTION(URI, url);
             OE_OPTION(std::string, format);
-            OE_OPTION(bool, invertY);
             OE_OPTION(int, minLevel);
             OE_OPTION(int, maxLevel);
             virtual Config getConfig() const;
@@ -52,10 +51,6 @@ namespace osgEarth
         //! Format of the geometry data (GeoJSON, GML)
         void setFormat(const std::string& value);
         const std::string& getFormat() const;
-
-        //! Whether to flip the Y coordinate for tile access
-        void setInvertY(const bool& value);
-        const bool& getInvertY() const;
 
         //! Minimum level of detail to access
         void setMinLevel(const int& value);

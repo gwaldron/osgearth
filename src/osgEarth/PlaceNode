@@ -101,6 +101,7 @@ namespace osgEarth
         osgText::Text*                      _textDrawable;
         osg::ref_ptr<const osgDB::Options>  _readOptions;
         osg::ref_ptr<ScreenSpaceLayoutData> _dataLayout;
+        osg::ref_ptr<ScreenSpaceLayoutData> _iconDataLayout;
 
         /** rotation of the label **/
         float                    _labelRotationRad;

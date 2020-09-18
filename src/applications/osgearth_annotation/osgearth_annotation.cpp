@@ -382,5 +382,10 @@ main(int argc, char** argv)
     // initialize the viewer:
     viewer.setSceneData( root );
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+    auto opts = ScreenSpaceLayout::getOptions();
+    opts.technique() = opts.TECHNIQUE_CALLOUTS;
+    ScreenSpaceLayout::setOptions(opts);
+
     return viewer.run();
 }

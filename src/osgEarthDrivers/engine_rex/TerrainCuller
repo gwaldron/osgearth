@@ -34,8 +34,9 @@ namespace osgEarth { namespace REX
 {
     struct LayerExtent
     {
-        LayerExtent() : _computed(false) { }
-        bool _computed;
+        LayerExtent() : _revision(-1) { }
+        osg::observer_ptr<const Layer> _layer;
+        Revision _revision;
         GeoExtent _extent;
     };
     typedef UnorderedMap<UID, LayerExtent> LayerExtentMap;
@@ -53,8 +54,8 @@ namespace osgEarth { namespace REX
         TileNode* _currentTileNode;
         DrawTileCommand* _firstDrawCommandForTile;
         unsigned _orphanedPassesDetected;
-        osgUtil::CullVisitor* _cv;
         LayerExtentMap* _layerExtents;
+        osgUtil::CullVisitor* _cv;
         bool _isSpy;
         std::vector<PatchLayer*> _patchLayers;
         bool _acceptSurfaceNodes;

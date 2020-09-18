@@ -102,11 +102,6 @@ main(int argc, char** argv)
     {
         viewer.setSceneData( node );
 
-        // configure the near/far so we don't clip things that are up close
-        viewer.getCamera()->setNearFarRatio(0.00002);
-
-        viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
         viewer.run();
     }
     else

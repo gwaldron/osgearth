@@ -80,7 +80,6 @@ main(int argc, char** argv)
         view->setUpViewInWindow(10+(i*size+30), 10, width, size);
         view->setCameraManipulator(new EarthManipulator(arguments));
         view->setSceneData(node);
-        view->getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
         if (sharedGC)
         {
             view->getCamera()->setViewport(i*size, 0, size, size);

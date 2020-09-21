@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
 #include <osgEarth/URI>
 #include <list>
 
@@ -45,7 +46,7 @@ namespace osgEarth
             int id;
             std::string name;
         };
-        
+
         typedef std::list<MapServiceLayer> MapServiceLayerList;
 
         class OSGEARTH_EXPORT TileInfo
@@ -129,6 +130,17 @@ namespace osgEarth
 
 namespace osgEarth
 {
+    class OSGEARTH_EXPORT ArcGISServerOptions
+    {
+    public:
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, token);
+        OE_OPTION(std::string, format);
+        OE_OPTION(std::string, layers);
+        void readFrom(const Config& conf);
+        void writeTo(Config&) const;
+    };
+
     /**
      * Image layer connected to an ESRI ArcGIS Server API endpoint
      */
@@ -136,14 +148,10 @@ namespace osgEarth
     {
     public:
         // serialization data
-        class OSGEARTH_EXPORT Options : public ImageLayer::Options
+        class OSGEARTH_EXPORT Options : public ArcGISServerOptions, public ImageLayer::Options
         {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-            OE_OPTION(URI, url);
-            OE_OPTION(std::string, token);
-            OE_OPTION(std::string, format);
-            OE_OPTION(std::string, layers);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -161,16 +169,16 @@ namespace osgEarth
         void setToken(const std::string& value);
         const std::string& getToken() const;
 
-        //! Override the imagery format reported in the service's metadata 
+        //! Override the imagery format reported in the service's metadata
         void setFormat(const std::string& value);
         const std::string& getFormat() const;
 
-        //! Override the layer specification reported in the service's metadata 
+        //! Override the layer specification reported in the service's metadata
         void setLayers(const std::string& value);
         const std::string& getLayers() const;
 
     public: // Layer
-        
+
         //! Establishes a connection to the service
         virtual Status openImplementation();
 
@@ -196,8 +204,69 @@ namespace osgEarth
         ArcGISServer::MapService _map_service;
     };
 
+
+
+    /**
+     * Elevation layer connected to an ESRI ArcGIS Server API endpoint
+     */
+    class OSGEARTH_EXPORT ArcGISServerElevationLayer : public ElevationLayer
+    {
+    public:
+        // serialization data
+        class OSGEARTH_EXPORT Options : public ArcGISServerOptions, public ElevationLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, ArcGISServerElevationLayer, Options, ElevationLayer, ArcGISServerElevation);
+
+    public:
+        //! URL of the map service endpoint
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! API security token
+        void setToken(const std::string& value);
+        const std::string& getToken() const;
+
+        //! Override the imagery format reported in the service's metadata
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+        //! Override the layer specification reported in the service's metadata
+        void setLayers(const std::string& value);
+        const std::string& getLayers() const;
+
+    public: // Layer
+
+        virtual Status openImplementation();
+        virtual Status closeImplementation();
+
+        //! Creates a heightfield for the given tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~ArcGISServerElevationLayer() {};
+
+    private:
+        osg::ref_ptr<ArcGISServerImageLayer> _imageLayer;
+    };
+
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISServerImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISServerElevationLayer::Options);
 
 #endif // OSGEARTH_ARCGISSERVER_H

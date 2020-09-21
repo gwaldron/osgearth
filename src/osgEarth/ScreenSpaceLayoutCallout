@@ -531,7 +531,8 @@ namespace osgEarth { namespace Internal
         const osg::Viewport* vp = cam->getViewport();
         local._scalebias =
             osg::Matrix::translate(1, 1, 1) *
-            osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5);
+            osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5) *
+            osg::Matrix::translate(vp->x(), vp->y(), 0.0);
 
         for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
             i != leaves.end();

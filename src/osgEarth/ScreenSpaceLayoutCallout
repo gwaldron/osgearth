@@ -224,7 +224,9 @@ namespace osgEarth { namespace Internal
             if (layoutData)
             {
                 // FLT_MAX priority => don't declutter this element.
-                if (layoutData->getPriority() == FLT_MAX)
+                // Fixed position => don't move the element
+                if (layoutData->getPriority() == FLT_MAX ||
+                    layoutData->getFixed())
                 {
                     element._declutter = false;
                 }
@@ -257,6 +259,9 @@ namespace osgEarth { namespace Internal
             local._leaders->pushVertex(osg::Vec3f());
             local._leadersDirty = true;
         }
+
+        // each one needs a unique mvm
+        leaf->_modelview = new osg::RefMatrix();
 
         if (element._declutter && ScreenSpaceLayout::globallyEnabled)
         {
@@ -399,7 +404,7 @@ namespace osgEarth { namespace Internal
                 osg::Vec3d p0, p1;
                 for(edge = site->edges; edge; edge = edge->next)
                 {
-                    p0.set(edge->pos[0].x, edge->pos[0].y, 0);                    
+                    p0.set(edge->pos[0].x, edge->pos[0].y, 0);
                     p1.set(edge->pos[1].x, edge->pos[1].y, 0);
 
                     if (local._voronoi.valid())
@@ -526,7 +531,8 @@ namespace osgEarth { namespace Internal
         const osg::Viewport* vp = cam->getViewport();
         local._scalebias =
             osg::Matrix::translate(1, 1, 1) *
-            osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5);
+            osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5) *
+            osg::Matrix::translate(vp->x(), vp->y(), 0.0);
 
         for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
             i != leaves.end();

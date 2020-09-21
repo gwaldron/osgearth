@@ -77,6 +77,7 @@ namespace osgEarth
             OE_OPTION(unsigned, reprojectedTileSize);
             OE_OPTION(Distance, altitude);
             OE_OPTION(bool, acceptDraping);
+            OE_OPTION(bool, async);
             OE_OPTION(std::string, shareTexUniformName);
             OE_OPTION(std::string, shareTexMatUniformName);
             virtual Config getConfig() const;
@@ -124,6 +125,16 @@ namespace osgEarth
         //! non-zero altitude (setAltitude). Default is true.
         void setAcceptDraping(bool value);
         bool getAcceptDraping() const;
+
+        //! Marks this layer for asynchronous loading.
+        //! Usually all layers participating in a tile must load before the
+        //! tile is displayed. This flag defers the current layer so it can 
+        //! load asynchronously and display when it is available. This can
+        //! help keep a slow-loading layer from blocking the rest of the tile
+        //! from displaying. The trade-off is possible visual artifacts
+        //! (flashing, no mipmaps/compression) when the new data appears.
+        void setAsyncLoading(bool value);
+        bool getAsyncLoading() const;
 
         //! Whether this layer is marked for render sharing.
         //! Only set this before opening the layer or adding it to a map.

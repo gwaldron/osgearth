@@ -31,6 +31,69 @@
 
 using namespace osgEarth;
 
+class FutureImage : public osg::Image
+{
+public:
+
+    FutureImage(ImageLayer* layer, const TileKey& key)
+    {
+        // install a one pixel transparent placeholder to use until
+        // the real one becomes available.
+        // this causes a flash when a new level comes in -- solve that another day
+        unsigned char* data = new unsigned char[4]{ 0, 0, 0, 0 };
+        setImage(1, 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, data, USE_NEW_DELETE);
+
+        _layer = layer;
+        _key = key;
+
+        osg::observer_ptr<ImageLayer> layer_ptr(_layer);
+
+        Job<const osg::Image> job([layer_ptr, key](Cancelable* progress) mutable {
+            osg::ref_ptr<ImageLayer> safe(layer_ptr);
+            if (safe.valid()) {
+                GeoImage result = safe->createImage(key, nullptr); // progress TODO
+                return result.takeImage();
+            }
+            else return static_cast<const osg::Image*>(nullptr);
+        });
+
+        _result = job.schedule("AsyncLayer");
+    }
+
+    virtual bool requiresUpdateCall() const override
+    {
+        // tricky, because if we return false here, it will
+        // never get called again.
+        return _result.isAvailable() || !_result.isAbandoned();
+    }
+
+    virtual void update(osg::NodeVisitor* nv) override
+    {
+        if (_result.isAvailable())
+        {
+            // no refptr here because we are going to steal the data.
+            osg::Image* i = const_cast<osg::Image*>(_result.release());
+
+            if (i)
+            {
+                this->setImage(
+                    i->s(), i->t(), i->r(),
+                    i->getInternalTextureFormat(), i->getPixelFormat(), i->getDataType(),
+                    i->data(), i->USE_NEW_DELETE,
+                    i->getPacking(),
+                    i->getRowLength());
+
+                // trigger texture(s) that own this image to reapply
+                this->dirty();
+            }
+        }
+    }
+
+    osg::ref_ptr<ImageLayer> _layer;
+    TileKey _key;
+    Job<const osg::Image>::Result _result;
+};
+
 //.........................................................................
 
 CreateTileManifest::CreateTileManifest()
@@ -233,6 +296,22 @@ TerrainTileModelFactory::addImageLayer(
             scaleBiasMatrix = window.getMatrix();
         }
 
+        else if (imageLayer->getAsyncLoading() == true)
+        {
+            osg::Image* image = new FutureImage(imageLayer, key);
+
+            tex = new osg::Texture2D(image);
+            tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+            tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+            tex->setResizeNonPowerOfTwoHint(false);
+            osg::Texture::FilterMode magFilter = imageLayer->options().magFilter().get();
+            osg::Texture::FilterMode minFilter = imageLayer->options().minFilter().get();
+            tex->setFilter(osg::Texture::MAG_FILTER, magFilter);
+            tex->setFilter(osg::Texture::MIN_FILTER, minFilter);
+            tex->setMaxAnisotropy(4.0f);
+            tex->setUnRefImageDataAfterApply(false);
+        }
+
         else
         {
             GeoImage geoImage = imageLayer->createImage(key, progress);
@@ -275,7 +354,7 @@ TerrainTileModelFactory::addImageLayer(
             model->sharedLayers().push_back(layerModel);
         }
 
-        if (imageLayer->isDynamic())
+        if (imageLayer->isDynamic() || imageLayer->getAsyncLoading())
         {
             model->setRequiresUpdateTraverse(true);
         }

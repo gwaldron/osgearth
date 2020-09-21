@@ -82,6 +82,8 @@ ImageLayer::Options::fromConfig(const Config& conf)
     // uniform names
     conf.get("shared_sampler", _shareTexUniformName);
     conf.get("shared_matrix",  _shareTexMatUniformName);
+    
+    conf.get("async", async());
 }
 
 Config
@@ -127,6 +129,8 @@ ImageLayer::Options::getConfig() const
     // uniform names
     conf.set("shared_sampler", _shareTexUniformName);
     conf.set("shared_matrix",  _shareTexMatUniformName);
+
+    conf.set("async", async());
 
     return conf;
 }
@@ -181,6 +185,18 @@ const std::string&
 ImageLayer::getSharedTextureMatrixUniformName() const
 {
     return options().shareTexMatUniformName().get();
+}
+
+void
+ImageLayer::setAsyncLoading(bool value)
+{
+    options().async() = value;
+}
+
+bool
+ImageLayer::getAsyncLoading() const
+{
+    return options().async().get();
 }
 
 ImageLayer*

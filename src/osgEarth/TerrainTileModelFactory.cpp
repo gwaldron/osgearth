@@ -57,7 +57,7 @@ public:
             else return static_cast<const osg::Image*>(nullptr);
         });
 
-        _result = job.schedule();
+        _result = job.schedule("AsyncLayer");
     }
 
     virtual bool requiresUpdateCall() const override

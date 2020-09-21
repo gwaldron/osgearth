@@ -531,15 +531,41 @@ osgEarth::Threading::setThreadName(const std::string& name)
 #undef LC
 #define LC "[JobScheduler] "
 
+Mutex JobScheduler::_arenas_mutex("OE:JobSchedArenas");
+
+std::unordered_map<std::string, osg::ref_ptr<JobScheduler>> JobScheduler::_arenas;
+
 JobScheduler*
-JobScheduler::singleton()
+JobScheduler::arena(const std::string& name)
 {
-    static osg::ref_ptr<JobScheduler> s_singleton = new JobScheduler();
-    return s_singleton.get();
+    ScopedMutexLock lock(_arenas_mutex);
+    osg::ref_ptr<JobScheduler>& arena = _arenas[name];
+    if (!arena.valid())
+    {
+        arena = new JobScheduler(name);
+    }
+    return arena.get();
 }
 
-JobScheduler::JobScheduler(unsigned numThreads) :
-    _name("osgEarth.JobScheduler"),
+void
+JobScheduler::setSize(const std::string& name, unsigned numThreads)
+{
+    ScopedMutexLock lock(_arenas_mutex);
+    osg::ref_ptr<JobScheduler> arena = _arenas[name];
+    if (!arena.valid())
+    {
+        arena = new JobScheduler(name, numThreads);
+    }
+    else
+    {
+        arena->stopThreads();
+        arena->_numThreads = osg::clampAbove(numThreads, 1u);
+        arena->startThreads();
+    }
+}
+
+JobScheduler::JobScheduler(const std::string& name, unsigned numThreads) :
+    _name("OE.JobSched[" + name + "]"),
     _numThreads(numThreads),
     _done(false),
     _queueMutex("JobScheduler")

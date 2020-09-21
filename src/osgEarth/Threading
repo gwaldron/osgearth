@@ -667,6 +667,7 @@ namespace osgEarth { namespace Threading
         //! @return A future result. You can check the result periodically
         //!         to see whether it is available or has been adandoned.
         inline Result schedule();
+        inline Result schedule(const std::string& arena);
 
     private:
         std::function<void()> _delegate;
@@ -684,7 +685,9 @@ namespace osgEarth { namespace Threading
     public:
         //! Allocate a new schedule with "numThreads" threads
         //! is the thread pool.
-        JobScheduler(unsigned numThreads = 2u);
+        JobScheduler(
+            const std::string& name,
+            unsigned numThreads = 2u);
 
         //! Destroy
         ~JobScheduler();
@@ -696,14 +699,19 @@ namespace osgEarth { namespace Threading
         template<typename RESULT_TYPE>
         static
         Future<RESULT_TYPE>
-        schedule(Job<RESULT_TYPE>& job) {
-            return singleton()->scheduleJob(job);
+        schedule(Job<RESULT_TYPE>& job, const std::string& name) {
+            return arena(name)->scheduleJob(job);
         }
+
+        //! Sets the concurrency of a named arena
+        static void setSize(
+            const std::string& name,
+            unsigned numThreads);
 
     private:
 
-        //! Access the global singleton job scheduler
-        static JobScheduler* singleton();
+        //! Access the named arena
+        static JobScheduler* arena(const std::string& name);
 
         void startThreads();
 
@@ -735,11 +743,19 @@ namespace osgEarth { namespace Threading
         bool _done;
         // threads in the pool
         std::vector<std::thread> _threads;
+
+        static Mutex _arenas_mutex;
+        static std::unordered_map<std::string, osg::ref_ptr<JobScheduler>> _arenas;
     };
 
     template<typename RESULT_TYPE>
     Future<RESULT_TYPE> Job<RESULT_TYPE>::schedule() {
-        return JobScheduler::schedule(*this);
+        return JobScheduler::schedule(*this, "");
+    }
+
+    template<typename RESULT_TYPE>
+    Future<RESULT_TYPE> Job<RESULT_TYPE>::schedule(const std::string& arena) {
+        return JobScheduler::schedule(*this, arena);
     }
 
 } } // namepsace osgEarth::Threading

@@ -275,8 +275,8 @@ namespace osgEarth
         static GeoPoint INVALID;
 
     protected:
+        osg::Vec3d _p;
         osg::ref_ptr<const SpatialReference> _srs;
-        osg::Vec3d       _p;
         AltitudeMode _altMode;
     };
 
@@ -557,8 +557,8 @@ namespace osgEarth
         static GeoExtent INVALID;
 
     private:
-        osg::ref_ptr<const SpatialReference> _srs;
         double _west, _width, _south, _height;
+        osg::ref_ptr<const SpatialReference> _srs;
 
         double normalizeX( double longitude ) const;
 
@@ -707,10 +707,10 @@ namespace osgEarth
 		double getUnitsPerPixel() const;
 
     private:
-        osg::ref_ptr<const osg::Image> _myimage;
-        mutable optional<Future<const osg::Image> > _future;
         GeoExtent _extent;
         Status _status;
+        osg::ref_ptr<const osg::Image> _myimage;
+        mutable optional<Future<const osg::Image> > _future;
     };
 
     typedef std::vector<GeoImage> GeoImageVector;
@@ -826,10 +826,10 @@ namespace osgEarth
         };
 
     protected:
-        osg::ref_ptr<const osg::HeightField> _heightField;
         GeoExtent _extent;
-        float _minHeight, _maxHeight;
         Status _status;
+        float _minHeight, _maxHeight;
+        osg::ref_ptr<const osg::HeightField> _heightField;
 
         void init();
     };
@@ -869,9 +869,9 @@ namespace osgEarth
         const GeoExtent& getExtent() const { return _extent; }
 
     private:
-        osg::ref_ptr<const osg::Node> _node;
         GeoExtent _extent;
         Status _status;
+        osg::ref_ptr<const osg::Node> _node;
     };
 
     typedef std::vector<GeoNode> GeoNodeVector;

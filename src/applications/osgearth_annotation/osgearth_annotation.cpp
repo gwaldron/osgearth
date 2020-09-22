@@ -381,6 +381,5 @@ main(int argc, char** argv)
 
     // initialize the viewer:
     viewer.setSceneData( root );
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     return viewer.run();
 }

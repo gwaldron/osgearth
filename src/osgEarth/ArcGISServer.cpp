@@ -19,6 +19,7 @@
 #include <osgEarth/ArcGISServer>
 #include <osgEarth/Registry>
 #include <osgEarth/JsonUtils>
+#include <osgEarth/ImageToHeightFieldConverter>
 
 using namespace osgEarth;
 
@@ -237,21 +238,19 @@ ArcGISServer::MapService::init( const URI& _uri, const osgDB::ReaderWriter::Opti
 
     // Check that the layers list is not empty
     Json::Value j_layers = doc["layers"];
-    if ( j_layers.empty() )
-	{
-        return setError( "Map service contains no layers" );
-	}
-
-	// not required to initialise a layer .. in any case this code does nothing
-    for( unsigned int i=0; i<j_layers.size(); i++ )
+    if (!j_layers.empty())
     {
-        Json::Value layer = j_layers[i];
-        int id = i; // layer.get("id", -1).asInt();
-        std::string name = layer["name"].asString();
-
-        if ( id >= 0 && !name.empty() )
+        // not required to initialise a layer .. in any case this code does nothing
+        for (unsigned int i = 0; i < j_layers.size(); i++)
         {
-            layers.push_back( MapServiceLayer( id, name ) );
+            Json::Value layer = j_layers[i];
+            int id = i; // layer.get("id", -1).asInt();
+            std::string name = layer["name"].asString();
+
+            if (id >= 0 && !name.empty())
+            {
+                layers.push_back(MapServiceLayer(id, name));
+            }
         }
     }
 
@@ -402,25 +401,37 @@ ArcGISServer::MapService::getError() const
 
 //........................................................................
 
+void
+ArcGISServerOptions::readFrom(const Config& conf)
+{
+    conf.get("url", url());
+    conf.get("token", token());
+    conf.get("format", format());
+    conf.get("layers", layers());
+}
+
+void
+ArcGISServerOptions::writeTo(Config& conf) const
+{
+    conf.set("url", url());
+    conf.set("token", token());
+    conf.set("format", format());
+    conf.set("layers", layers());
+}
+
 
 Config
 ArcGISServerImageLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    conf.set("url", url());
-    conf.set("token", token());
-    conf.set("format", format());
-    conf.set("layers", layers());
+    writeTo(conf);
     return conf;
 }
 
 void
 ArcGISServerImageLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("url", url());
-    conf.get("token", token());
-    conf.get("format", format());
-    conf.get("layers", layers());
+    return readFrom(conf);
 }
 
 //........................................................................
@@ -455,24 +466,6 @@ ArcGISServerImageLayer::openImplementation()
         options().url()->full().find("arcgisonline.com") != std::string::npos)
     {
         options().cachePolicy() = CachePolicy::NO_CACHE;
-    }
-
-    _layers = options().layers().getOrUse("_alllayers");
-
-    // image format to request:
-    _format = options().format().getOrUse(_map_service.getTileInfo().getFormat());
-    _format = osgEarth::toLower(_format);
-    if (_format.length() > 3 && _format.substr(0, 3) == "png")
-    {
-        _format = "png";
-    }
-    if (_format == "mixed")
-    {
-        _format = "";
-    }
-    if (!_format.empty())
-    {
-        _dot_format = "." + _format;
     }
 
     if (options().url().isSet() == false)
@@ -527,6 +520,22 @@ ArcGISServerImageLayer::openImplementation()
             Status::ResourceUnavailable, Stringify()
             << "ArcGIS map service initialization failed: "
             << _map_service.getError());
+    }
+
+    // image format to request:
+    _format = options().format().getOrUse(_map_service.getTileInfo().getFormat());
+    _format = osgEarth::toLower(_format);
+    if (_format.length() > 3 && _format.substr(0, 3) == "png")
+    {
+        _format = "png";
+    }
+    if (_format == "mixed")
+    {
+        _format = "";
+    }
+    if (!_format.empty())
+    {
+        _dot_format = "." + _format;
     }
 
     _copyright = _map_service.getCopyright();
@@ -621,3 +630,88 @@ ArcGISServerImageLayer::createImageImplementation(const TileKey& key, ProgressCa
 
     return GeoImage(image, key.getExtent());
 }
+
+
+//........................................................................
+
+Config
+ArcGISServerElevationLayer::Options::getConfig() const
+{
+    Config conf = ElevationLayer::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+ArcGISServerElevationLayer::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
+}
+
+REGISTER_OSGEARTH_LAYER(arcgisserverelevation, ArcGISServerElevationLayer);
+
+OE_LAYER_PROPERTY_IMPL(ArcGISServerElevationLayer, URI, URL, url);
+OE_LAYER_PROPERTY_IMPL(ArcGISServerElevationLayer, std::string, Token, token);
+OE_LAYER_PROPERTY_IMPL(ArcGISServerElevationLayer, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(ArcGISServerElevationLayer, std::string, Layers, layers);
+
+
+void
+ArcGISServerElevationLayer::init()
+{
+    ElevationLayer::init();
+}
+
+Status
+ArcGISServerElevationLayer::openImplementation()
+{
+    Status parent = ElevationLayer::openImplementation();
+    if (parent.isError())
+        return parent;
+
+    _imageLayer = new ArcGISServerImageLayer(options());
+
+    // Initialize and open the image layer
+    _imageLayer->setReadOptions(getReadOptions());
+    Status status = _imageLayer->open();
+
+    if (status.isError())
+        return status;
+
+    setProfile(_imageLayer->getProfile());
+    dataExtents() = _imageLayer->getDataExtents();
+
+    return Status::NoError;
+}
+
+Status
+ArcGISServerElevationLayer::closeImplementation()
+{
+    if (_imageLayer.valid())
+    {
+        _imageLayer->close();
+        _imageLayer = NULL;
+    }
+    return ElevationLayer::closeImplementation();
+}
+
+GeoHeightField
+ArcGISServerElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    // Make an image, then convert it to a heightfield
+    GeoImage image = _imageLayer->createImageImplementation(key, progress);
+    if (image.valid())
+    {
+        ImageToHeightFieldConverter conv;
+        osg::HeightField* hf = conv.convert(image.getImage());
+        return GeoHeightField(hf, key.getExtent());
+    }
+    else
+    {
+        return GeoHeightField(image.getStatus());
+    }
+}
+
+
+
+

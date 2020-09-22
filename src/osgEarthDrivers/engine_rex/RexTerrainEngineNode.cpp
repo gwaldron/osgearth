@@ -784,6 +784,29 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 }
 
 void
+RexTerrainEngineNode::event_traverse(osg::NodeVisitor& nv)
+{
+    OE_PROFILING_ZONE;
+
+    unsigned osgFrame = nv.getFrameStamp()->getFrameNumber();
+    bool newFrame = (osgFrame > _clock.getFrame());
+    if (newFrame)
+    {
+        // Update the cached layer extents as necessary.
+        osg::ref_ptr<const Layer> layer;
+        for (auto& layerExtent : _cachedLayerExtents)
+        {
+            layerExtent.second._layer.lock(layer);
+            if (layer.valid() && layer->getRevision() > layerExtent.second._revision)
+            {
+                layerExtent.second._extent = _map->getProfile()->clampAndTransformExtent(layer->getExtent());
+                layerExtent.second._revision = layer->getRevision();
+            }
+        }
+    }
+}
+
+void
 RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
@@ -818,7 +841,13 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 void
 RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.EVENT_VISITOR)
+    {
+        event_traverse(nv);
+        TerrainEngineNode::traverse(nv);
+    }
+
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
         update_traverse(nv);
         TerrainEngineNode::traverse( nv );
@@ -972,14 +1001,12 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 void
 RexTerrainEngineNode::cacheLayerExtentInMapSRS(Layer* layer)
 {
+    OE_SOFT_ASSERT_AND_RETURN(layer != nullptr, __func__,);
+
     // Store the layer's extent in the map's SRS:
     LayerExtent& le = _cachedLayerExtents[layer->getUID()];
-
-    if (!le._computed && getMap()->getProfile())
-    {
-        le._extent = getMap()->getProfile()->clampAndTransformExtent(layer->getExtent());
-        le._computed = true;
-    }
+    le._layer = layer;
+    le._extent = getMap()->getProfile()->clampAndTransformExtent(layer->getExtent());
 }
 
 void

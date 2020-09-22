@@ -68,7 +68,7 @@ http://readymap.org
     </FeatureModel>
 
     <XYZFeatures name="roads-data">
-        <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{y}.pbf</url>
+        <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>

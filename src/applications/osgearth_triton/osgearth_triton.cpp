@@ -297,9 +297,6 @@ main(int argc, char** argv)
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    // Tell the database pager to not modify the unref settings
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
-
     // install our default manipulator (do this before calling load)
     EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator(manip);
@@ -308,10 +305,7 @@ main(int argc, char** argv)
     // and earth file <external> tags    
     osg::Group* node = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, createUI());
     if ( node )
-    {        
-        viewer.getCamera()->setNearFarRatio(0.00002);
-        viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
+    {
         viewer.setSceneData( node );
 
         s_app.map = MapNode::get( node )->getMap();

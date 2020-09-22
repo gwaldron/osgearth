@@ -269,9 +269,6 @@ main( int argc, char** argv )
     // install a motion model
     viewer.setCameraManipulator( s_manip = new osgEarth::Util::EarthManipulator() );
 
-    // disable the small-feature culling (so text will work)
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
     // Load an earth file
     Container* uiRoot = new VBox();
     uiRoot->setAbsorbEvents(false);

@@ -1,148 +1,151 @@
-<!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
--->
 <map name="ReadyMap.org">
-
     <options>
-        <terrain morph_imagery="false" morph_terrain="false"/>
+        <terrain progressive="false" morph_imagery="true" morph_terrain="true" skirt_ratio="0.01"/>
     </options>
 
-    <TMSImage name="ReadyMap 15m Imagery" opacity="0.5">
+    <TMSImage name="ReadyMap 15m Imagery" opacity="0.4" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
+
+    <GDALImage name="Oahu Imagery1" driver="gdal" async="true">
+        <url>D:/mak/vrv/trunk/data/Terrain/Hawaii/Imagery/oahuImages/1-oahuImage.tif</url>
+    </GDALImage>
+
+    <ArcGISServerImage name="ARC World Imagery" enabled="false">
+        <url>http://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/</url>
+        <nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </ArcGISServerImage>
 
     <TMSElevation name="ReadyMap 90m Elevation" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
         <vdatum>egm96</vdatum>
     </TMSElevation>
 
-    <ElevationConstraint name="Constraint vectors" min_level="10" shared="true" visible="false">
-        <tile_size>17</tile_size>
-        <features>osm:water</features>
-        <shared_sampler>con_tex</shared_sampler>
-        <shared_matrix>con_tex_matrix</shared_matrix>
-        <mag_filter>NEAREST</mag_filter>
-    </ElevationConstraint>
-
-    <terrainshader>
-        <code>
-            <![CDATA[
-            #version 330
-            #pragma vp_entryPoint seeMe
-            #pragma vp_location vertex_model
-            #pragma vp_order last
-            
-            uniform sampler2D con_tex;
-            uniform mat4 con_tex_matrix;   
-            uniform vec2 oe_tile_elevTexelCoeff;         
-            vec4 oe_layer_tilec;
-            uniform float shmoo;
-            
-            void seeMe(inout vec4 vertex) 
-            {            
-                // not sure if we need this
-                vec2 elevc = oe_layer_tilec.xy
-                    * oe_tile_elevTexelCoeff.x * con_tex_matrix[0][0] // scale
-                    + oe_tile_elevTexelCoeff.x * con_tex_matrix[3].st // bias
-                    + oe_tile_elevTexelCoeff.y;
-       
-                vec4 dir = texture(con_tex, elevc);
-                
-                // slider code: use --uniform shmoo 0 1
-                vec4 vertex2 = vertex + vec4(dir.xy,0,0);
-                vec4 tilec2 = oe_layer_tilec + vec4(dir.zw,0,0);
-                vertex = mix(vertex, vertex2, shmoo);
-                oe_layer_tilec = mix(oe_layer_tilec, tilec2, shmoo);
-                
-                // actual code:
-                //vertex.xy += dir.xy;
-                //oe_layer_tilec.xy += dir.zw;
-            }
-          ]]>
-        </code>
-    </terrainshader>
-
-    <FeatureModel name="ridge polys" min_level="10" enabled="false">
-        <features>ridge-data</features>
+    <FeatureImage name="Ridgelines View" features="data:ridgelines" min_level="9" enabled="false">
         <styles>
-            <style>
-                default {
-                    stroke: #ffff00;
-                    stroke-tessellation: 25m;                    
-                    altitude-clamping: terrain;
-                    render-depth-offset: true;
-                }
-            </style>
+            <style> default { stroke:#FFFF00; stroke-width: 5px; } </style>
         </styles>
-    </FeatureModel>    
+    </FeatureImage>
 
-    <TiledFeatureModel name="water polys" min_level="10">
-        <features>osm:water</features>
-        <additive>false</additive>
-        <styles>
-            <style>
-                default {
-                    stroke: #ffff00;
-                    stroke-tessellation: 25m;                    
-                    altitude-clamping: terrain;
-                    render-depth-offset: true;
-                }
-            </style>
-        </styles>
-    </TiledFeatureModel>
+    <XYZFeatures name="data:osm-water">
+        <url>http://vr-theworld.com/vr-theworld/mbtiles/osm-water/{z}/{x}/{-y}.pbf</url>
+        <min_level>0</min_level>
+        <max_level>12</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+    </XYZFeatures>
 
-    <DebugImage/>
-
-    <TFSFeatures name="osm:water">
-        <url>http://readymap.org/readymap/mbtiles/osm-water/</url>
+    <XYZFeatures name="data:osm-roads">
+        <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>10</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
         <format>pbf</format>
-    </TFSFeatures>
+        <filters>
+            <script language="javascript">
+                <![CDATA[ ("highway" in feature.properties); ]]>
+            </script>
+        </filters>
+    </XYZFeatures>
 
-<!--
-    <OGRFeatures name="ridges">
-        <url>D:/data/temp/ridges_uk.shp</url>
-    </OGRFeatures>    
--->
-    <Viewpoints time="0" home="2">
-        <viewpoint>
-            <heading>-0.175995</heading>
-            <pitch>-89.8272</pitch>
-            <range>9456.83m</range>
-            <long>-122.4901782887075</long>
-            <lat>37.71660371731895</lat>
-            <height>-32.38459638506174</height>
+    <OGRFeatures name="data:ridgelines">
+        <!-- <url>D:/data/ridgelines/global_ridgelines_gmted2010.shp</url> -->
+        <url>D:/data/demo/nepal/nepal_ridgetops_50m.shp</url>
+    </OGRFeatures>
+
+    <OGRFeatures name="data:airports">
+        <url>D:/data/airports/APTBoundary_all.shp</url>
+    </OGRFeatures>
+
+    <OGRFeatures name="data:coastlines">
+        <url>D:/data/noaa/coastlines_chopped.shp</url>
+    </OGRFeatures>
+    <TerrainConstraint name="constraint: coastlines" features="data:coastlines" min_level="10" enabled="false" remove_interior="true" />
+
+    <TerrainConstraint name="constraint: ridgelines" features="data:ridgelines" min_level="10" enabled="true"/>
+
+    <TerrainConstraint name="constraint: peaks" min_level="7" enabled="true">
+        <OGRFeatures url="D:/data/ridgelines/nepal_peak_points.shp"/>
+    </TerrainConstraint>
+
+    <TerrainConstraint name="constraint: HNL mask" min_level="6" remove_interior="true" has_elevation="true" enabled="false">
+        <OGRFeatures>
+            <profile>global-geodetic</profile>
+            <geometry>MULTIPOLYGON(
+            ((-157.908911452 21.3063956644 1.99384994153, -157.911181278 21.3063963519 1.92431900371, -157.913451103 21.3063970088 1.86348360218, -157.91572093 21.3063976352 1.81129603833, -157.917990756 21.3063982309 1.76784348208, -157.920260582 21.3063987959 1.73307496961, -157.922530408 21.3063993305 1.70697236154, -157.924800234 21.3063998343 1.68959903065, -157.92707006 21.3064003074 1.68091527931, -157.929339886 21.3064007502 1.68086840678, -157.931609713 21.3064011621 1.68956915103, -157.933879539 21.3064015434 1.70696481317, -157.936149365 21.3064018942 1.73304204177, -157.938419192 21.3064022145 1.76775882021, -157.940689018 21.306402504 1.81122054812, -157.942958844 21.3064027628 1.86339587811, -157.94522867 21.306402992 1.92430780828, -157.947498496 21.3064031897 1.9938249262, -157.947498314 21.3072131245 1.993768638, -157.945228488 21.3072129268 1.92424651422, -157.942958662 21.3072126986 1.86337383837, -157.940688835 21.3072124397 1.81123602018, -157.938419009 21.30721215 1.76782170124, -157.936149183 21.3072118299 1.73304683343, -157.933879357 21.3072114792 1.70696411561, -157.931609531 21.3072110979 1.68957355432, -157.929339705 21.3072106858 1.6809331812, -157.927069878 21.3072102432 1.68092959281, -157.924800052 21.30720977 1.68961815629, -157.922530226 21.3072092651 1.70696253236, -157.9202604 21.3072087306 1.73305907566, -157.917990574 21.3072081656 1.76782142837, -157.915720748 21.3072075699 1.81128251553, -157.913450921 21.3072069435 1.86346207745, -157.911181096 21.3072062866 1.92428773548, -157.908911269 21.307205599 1.99385324866)),
+            ((-157.904991155 21.3248165913 1.99382001534, -157.907417881 21.3248176668 1.91437236685, -157.909844607 21.3248187074 1.84481493477, -157.911119467 21.3248191639 1.86757533252, -157.911852256 21.3243027024 1.85793628078, -157.913160366 21.323380743 1.8443392273, -157.914468459 21.3224587733 1.83529735915, -157.915776536 21.3215367936 1.83076908346, -157.917084597 21.3206148035 1.8307613302, -157.918392642 21.3196928031 1.83529801574, -157.91970067 21.3187707924 1.84436423704, -157.921008682 21.3178487714 1.8579389127, -157.922316677 21.3169267403 1.87605671026, -157.923624656 21.3160046987 1.89869616181, -157.924932619 21.3150826471 1.92587103136, -157.926240565 21.3141605853 1.95757083036, -157.927548496 21.3132385128 1.99381472822, -157.927751627 21.3134887035 1.99371364899, -157.92795476 21.3137388938 1.99380314071, -157.92664683 21.3146609658 1.95755836833, -157.925338883 21.3155830277 1.92586802412, -157.92403092 21.3165050794 1.89869132731, -157.922722941 21.317427121 1.87604962755, -157.921414946 21.3183491523 1.8579420941, -157.920106934 21.3192711732 1.84435725864, -157.918798906 21.3201931838 1.8352917172, -157.917490862 21.3211151842 1.83076181542, -157.916182801 21.3220371744 1.83076628391, -157.914874724 21.3229591541 1.83528847899, -157.91356663 21.3238811238 1.84438248165, -157.91225852 21.3248030828 1.85795676988, -157.912235214 21.3248195087 1.85822562501, -157.912271333 21.3248197128 1.78523325548, -157.913468175 21.3248200628 1.90397256054, -157.913656971 21.3246868577 1.90316045843, -157.914645759 21.3239892142 1.90055113938, -157.915634536 21.323291565 1.90056889411, -157.916623304 21.3225939098 1.90316022094, -157.917612064 21.3218962487 1.90835169796, -157.918600813 21.3211985819 1.91610646807, -157.919589553 21.320500909 1.92648264579, -157.920578284 21.3198032304 1.93941425998, -157.921567006 21.3191055459 1.95496144984, -157.922555718 21.3184078556 1.97308874223, -157.923544421 21.3177101592 1.99380506296, -157.923782668 21.3180033037 1.9936725283, -157.924020917 21.3182964476 1.99379995, -157.923032214 21.3189941439 1.97308644373, -157.922043502 21.3196918343 1.95495548286, -157.92105478 21.3203895188 1.93942223396, -157.920066049 21.3210871974 1.92647277005, -157.919077309 21.3217848701 1.91612639185, -157.91808856 21.322482537 1.90832954179, -157.917099801 21.3231801982 1.90315478388, -157.916111032 21.3238778532 1.9005848961, -157.915122255 21.3245755024 1.90057828836, -157.914774747 21.3248206898 1.90120318998, -157.917124785 21.3248216187 1.69582609553, -157.919551512 21.3248225192 1.66599565279, -157.921978238 21.3248233846 1.64612454176, -157.924404964 21.3248242149 1.63619958889, -157.926831691 21.3248250103 1.63619445357, -157.929258417 21.3248257706 1.64611819107, -157.931685144 21.3248264959 1.66597656161, -157.93411187 21.3248271862 1.69577697758, -157.936538597 21.3248278415 1.73549062107, -157.938965323 21.3248284617 1.7851717798, -157.94139205 21.324829047 1.84474321641, -157.943818776 21.324829597 1.91431669332, -157.946245502 21.3248301121 1.99379680492, -157.946245341 21.3252575783 1.99356092047, -157.94624518 21.3256850437 1.99375134334, -157.943818454 21.3256845286 1.91427627672, -157.941391727 21.3256839783 1.84477678128, -157.938965001 21.3256833931 1.78516745381, -157.936538273 21.3256827734 1.73554273322, -157.934111547 21.3256821182 1.69579914771, -157.931684821 21.3256814279 1.66600979213, -157.929258094 21.3256807026 1.64614262618, -157.926831368 21.3256799422 1.63621367514, -157.924404642 21.3256791469 1.63621625956, -157.921977915 21.3256783166 1.64613587316, -157.919551189 21.3256774512 1.66600019298, -157.917124463 21.3256765507 1.69583441503, -157.914697736 21.3256756152 1.73557516653, -157.913564082 21.3256748735 1.90581391007, -157.913144672 21.3259707836 1.90830227453, -157.912155866 21.3266684154 1.91610196978, -157.911167051 21.3273660412 1.92649128847, -157.910178227 21.3280636609 1.93939534668, -157.909189393 21.328761275 1.95496390481, -157.90820055 21.3294588833 1.97312208544, -157.907211697 21.3301564853 1.99379500467, -157.906973449 21.3298633416 1.99371791258, -157.906735201 21.3295701972 1.99381782394, -157.907724053 21.3288725946 1.97306996584, -157.908712897 21.3281749865 1.95498661883, -157.909701731 21.3274773727 1.93944022618, -157.910690555 21.3267797525 1.92646127101, -157.91167937 21.3260821269 1.91609414574, -157.912256996 21.3256745955 1.9113050336, -157.911022832 21.3256739799 1.87493962422, -157.910950394 21.325725032 1.87608207669, -157.909642252 21.326646971 1.8987362003, -157.908334093 21.3275688991 1.92589695007, -157.907025918 21.3284908175 1.95760871563, -157.905717726 21.329412725 1.99382710271, -157.905514593 21.3291625351 1.99370849784, -157.905311462 21.3289123441 1.99386360776, -157.906619654 21.3279904365 1.95752691012, -157.907927829 21.3270685186 1.92588937934, -157.909235988 21.3261465901 1.89870580751, -157.909907125 21.3256735959 1.88651153632, -157.909844284 21.3256736392 1.84485528711, -157.907417558 21.3256725988 1.91437327396, -157.904990833 21.3256715233 1.99382412527, -157.904990993 21.3252440572 1.99366690218))
+            )
+            </geometry>
+        </OGRFeatures>
+    </TerrainConstraint>
+
+    <TerrainConstraint name="constraint: water" features="data:osm-water" min_level="12" remove_interior="true" enabled="true"/>
+
+    <TerrainConstraint name="constraint: airport footprints" features="data:airports" min_level="11" enabled="false"/>
+
+    <TerrainConstraint name="constraint: points" min_level="7" enabled="false">
+        <OGRFeatures url="D:/data/ecosystem/points.shp"/>
+    </TerrainConstraint>
+
+    <TerrainConstraint name="constraint: roads" features="data:osm-roads" min_level="12" enabled="false"/>
+
+    <DebugImage show_tessellation="true" enabled="true"/>
+
+    <!-- <xi:include href="viewpoints.xml"/> -->
+    <viewpoints>
+        <viewpoint name="Nepal">
+            <heading>-95.2569</heading>
+            <pitch>-11.6282</pitch>
+            <range>78258.3m</range>
+            <long>86.95498284412729</long>
+            <lat>27.98593558247672</lat>
+            <height>6468.469810338691</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
-        <viewpoint>
-            <heading>10.8114</heading>
-            <pitch>-45.4945</pitch>
-            <range>7636.09m</range>
-            <long>-120.0936733884631</long>
-            <lat>38.94334067526717</lat>
-            <height>1978.931499702856</height>
+        <viewpoint name="BUG TEST">
+            <heading>-3.5338e-06</heading>
+            <pitch>-88.9993</pitch>
+            <range>15299.4m</range>
+            <long>-157.9454185388188</long>
+            <lat>21.32468050268001</lat>
+            <height>21.94757425226271</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
-        <viewpoint>
-            <heading>-0.365936</heading>
-            <pitch>-89.8895</pitch>
-            <range>33.014m</range>
-            <long>-120.085653978862</long>
-            <lat>38.94487085099077</lat>
-            <height>1957.812414072454</height>
+        <viewpoint name="Oahu">
+            <heading>-3.55589e-06</heading>
+            <pitch>-88.9993</pitch>
+            <range>116321m</range>
+            <long>-157.9617414418337</long>
+            <lat>21.48730697505627</lat>
+            <height>347.2645856048912</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
-    </Viewpoints>
+        <viewpoint name="Grand Canyon">
+            <heading>-0.0001185</heading>
+            <pitch>-88.9987</pitch>
+            <range>160298m</range>
+            <long>-111.1243527328325</long>
+            <lat>37.09658066182875</lat>
+            <height>1107.548585043289</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+        <viewpoint name="Sion">
+            <heading>-2.76119e-06</heading>
+            <pitch>-89.0028</pitch>
+            <range>19865.8m</range>
+            <long>7.290264823779213</long>
+            <lat>46.2116331852606</lat>
+            <height>528.5030263010412</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+        <viewpoint name="Stelvio Pass">
+            <heading>48.2322</heading>
+            <pitch>-21.2589</pitch>
+            <range>1631.06m</range>
+            <long>10.40785325471311</long>
+            <lat>46.51794239626108</lat>
+            <height>2207.686481455341</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+    </viewpoints>
 </map>

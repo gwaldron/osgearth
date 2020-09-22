@@ -100,9 +100,8 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             if (drawable->_layer)
             {
                 const LayerExtent& le = (*_layerExtents)[drawable->_layer->getUID()];
-                if (le._computed && 
-                    le._extent.isValid() &&
-                    le._extent.intersects(tileNode->getKey().getExtent()) == false)
+                if (le._extent.isValid() &&
+                    ! le._extent.intersects(tileNode->getKey().getExtent(), false))
                 {
                     // culled out!
                     //OE_DEBUG << LC << "Skippping " << drawable->_layer->getName() 

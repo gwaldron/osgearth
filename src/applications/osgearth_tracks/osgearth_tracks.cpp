@@ -329,6 +329,5 @@ main(int argc, char** argv)
     viewer.addUpdateOperation( new TrackSimUpdate(trackSims) );
     viewer.setRunFrameScheme( viewer.CONTINUOUS );
 
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     viewer.run();
 }

@@ -3,7 +3,7 @@
 
     <options>
         <terrain 
-            progressive="false" 
+            progressive="true" 
             cast_shadows="true"
             priority_scale="1.5" />
         <cache 

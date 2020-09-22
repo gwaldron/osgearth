@@ -597,6 +597,10 @@ ImageOverlay::setSouth(double value_deg)
 void
 ImageOverlay::setEast(double value_deg)
 {
+    while (value_deg < _upperLeft.x())
+        value_deg += 360.0;
+    if (value_deg - _upperLeft.x() >= 180.0)
+        return;
     _upperRight.x() = value_deg;
     _lowerRight.x() = value_deg;
     dirty();
@@ -605,6 +609,10 @@ ImageOverlay::setEast(double value_deg)
 void
 ImageOverlay::setWest(double value_deg)
 {
+    while (value_deg > _upperRight.x())
+        value_deg -= 360.0;
+    if (_upperRight.x() - value_deg >= 180.0)
+        return;
     _lowerLeft.x() = value_deg;
     _upperLeft.x() = value_deg;
     dirty();
@@ -634,10 +642,26 @@ ImageOverlay::getBounds() const
     return bounds;
 }
 
-void ImageOverlay::setBounds(const osgEarth::Bounds &extent)
+void ImageOverlay::setBounds(const osgEarth::Bounds &b)
 {
-    setCorners(osg::Vec2d(extent.xMin(), extent.yMin()), osg::Vec2d(extent.xMax(), extent.yMin()),
-               osg::Vec2d(extent.xMin(), extent.yMax()), osg::Vec2d(extent.xMax(), extent.yMax()));
+    if (getMapNode())
+    {
+        GeoExtent e(getMapNode()->getMapSRS(), b);
+
+        setCorners(
+            osg::Vec2d(e.xMin(), e.yMin()),
+            osg::Vec2d(e.xMax(), e.yMin()),
+            osg::Vec2d(e.xMin(), e.yMax()),
+            osg::Vec2d(e.xMax(), e.yMax()));
+    }
+    else
+    {
+        setCorners(
+            osg::Vec2d(b.xMin(), b.yMin()),
+            osg::Vec2d(b.xMin() + b.width(), b.yMin()),
+            osg::Vec2d(b.xMin(), b.yMax()), 
+            osg::Vec2d(b.xMin() + b.width(), b.yMax()));
+    }
 }
 
 void
@@ -647,14 +671,14 @@ ImageOverlay::setBoundsAndRotation(const osgEarth::Bounds& b, const Angular& rot
 
     if ( osg::equivalent( rot_rad, 0.0 ) )
     {
-        setBounds( b );
+        setBounds(b);
     }
     else
     {
         osg::Vec3d ll( b.xMin(), b.yMin(), 0 );
         osg::Vec3d ul( b.xMin(), b.yMax(), 0 );
-        osg::Vec3d ur( b.xMax(), b.yMax(), 0 );
-        osg::Vec3d lr( b.xMax(), b.yMin(), 0 );
+        osg::Vec3d ur( b.xMin() + b.width(), b.yMax(), 0 );
+        osg::Vec3d lr( b.xMin() + b.width(), b.yMin(), 0 );
 
         double sinR = sin(-rot_rad), cosR = cos(-rot_rad);
 
@@ -783,7 +807,7 @@ ImageOverlay::setControlPoint(ControlPoint controlPoint, double lon_deg, double 
         else
         {
             setNorth( lat_deg);
-            setEast( lon_deg );            
+            setEast( lon_deg );
         }
         break;
     case CONTROLPOINT_LOWER_RIGHT:

@@ -551,7 +551,7 @@ void
 JobScheduler::setSize(const std::string& name, unsigned numThreads)
 {
     ScopedMutexLock lock(_arenas_mutex);
-    osg::ref_ptr<JobScheduler> arena = _arenas[name];
+    osg::ref_ptr<JobScheduler>& arena = _arenas[name];
     if (!arena.valid())
     {
         arena = new JobScheduler(name, numThreads);
@@ -565,7 +565,7 @@ JobScheduler::setSize(const std::string& name, unsigned numThreads)
 }
 
 JobScheduler::JobScheduler(const std::string& name, unsigned numThreads) :
-    _name("OE.JobSched[" + name + "]"),
+    _name("OEJobArena[" + name + "]"),
     _numThreads(numThreads),
     _done(false),
     _queueMutex("JobScheduler")
@@ -587,7 +587,7 @@ JobScheduler::startThreads()
     {
         _threads.push_back(std::thread([this]
             {
-                OE_DEBUG << LC << "Thread " << std::this_thread::get_id() << " started." << std::endl;
+                OE_INFO << LC << "Arena " << _name << ": thread " << std::this_thread::get_id() << " started." << std::endl;
 
                 OE_THREAD_NAME(this->_name.c_str());
 

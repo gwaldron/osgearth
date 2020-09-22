@@ -531,30 +531,30 @@ osgEarth::Threading::setThreadName(const std::string& name)
 #undef LC
 #define LC "[JobScheduler] "
 
-Mutex JobScheduler::_arenas_mutex("OE:JobSchedArenas");
+Mutex JobArena::_arenas_mutex("OE:JobArena");
 
-std::unordered_map<std::string, osg::ref_ptr<JobScheduler>> JobScheduler::_arenas;
+std::unordered_map<std::string, osg::ref_ptr<JobArena>> JobArena::_arenas;
 
-JobScheduler*
-JobScheduler::arena(const std::string& name)
+JobArena*
+JobArena::arena(const std::string& name)
 {
     ScopedMutexLock lock(_arenas_mutex);
-    osg::ref_ptr<JobScheduler>& arena = _arenas[name];
+    osg::ref_ptr<JobArena>& arena = _arenas[name];
     if (!arena.valid())
     {
-        arena = new JobScheduler(name);
+        arena = new JobArena(name);
     }
     return arena.get();
 }
 
 void
-JobScheduler::setSize(const std::string& name, unsigned numThreads)
+JobArena::setSize(const std::string& name, unsigned numThreads)
 {
     ScopedMutexLock lock(_arenas_mutex);
-    osg::ref_ptr<JobScheduler>& arena = _arenas[name];
+    osg::ref_ptr<JobArena>& arena = _arenas[name];
     if (!arena.valid())
     {
-        arena = new JobScheduler(name, numThreads);
+        arena = new JobArena(name, numThreads);
     }
     else
     {
@@ -564,7 +564,7 @@ JobScheduler::setSize(const std::string& name, unsigned numThreads)
     }
 }
 
-JobScheduler::JobScheduler(const std::string& name, unsigned numThreads) :
+JobArena::JobArena(const std::string& name, unsigned numThreads) :
     _name("OEJobArena[" + name + "]"),
     _numThreads(numThreads),
     _done(false),
@@ -573,13 +573,13 @@ JobScheduler::JobScheduler(const std::string& name, unsigned numThreads) :
     startThreads();
 }
 
-JobScheduler::~JobScheduler()
+JobArena::~JobArena()
 {
     stopThreads();
 }
 
 void
-JobScheduler::startThreads()
+JobArena::startThreads()
 {
     _done = false;
 
@@ -623,7 +623,7 @@ JobScheduler::startThreads()
     }
 }
 
-void JobScheduler::stopThreads()
+void JobArena::stopThreads()
 {
     _done = true;
     _block.notify_all();

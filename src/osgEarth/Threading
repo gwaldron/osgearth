@@ -683,11 +683,10 @@ namespace osgEarth { namespace Threading
     class OSGEARTH_EXPORT JobArena : public osg::Referenced
     {
     public:
-        //! Allocate a new schedule with "numThreads" threads
-        //! is the thread pool.
+        //! Allocate a new arena with "concurrency" threads.
         JobArena(
             const std::string& name,
-            unsigned numThreads = 2u);
+            unsigned concurrency);
 
         //! Destroy
         ~JobArena();
@@ -745,6 +744,7 @@ namespace osgEarth { namespace Threading
         std::vector<std::thread> _threads;
 
         static Mutex _arenas_mutex;
+        static std::unordered_map<std::string, unsigned> _arenaSizes;
         static std::unordered_map<std::string, osg::ref_ptr<JobArena>> _arenas;
     };
 

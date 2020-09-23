@@ -52,7 +52,6 @@ namespace osgEarth { namespace FeatureImageLayerImpl
     {
         float32() : value(NO_DATA_VALUE) { }
         float32(float v) : value(v) { }
-
         float value;
     };
 
@@ -96,13 +95,21 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         }
     };
 
-#if 0
     // rasterizes a geometry to color
-    void rasterize(const Geometry* geometry, const osg::Vec4& color, RenderFrame& frame,
-                   agg::rasterizer& ras, agg::rendering_buffer& buffer)
+    void rasterize_agglite(
+        const Geometry* geometry,
+        const osg::Vec4& color,
+        RenderFrame& frame,
+        agg::rasterizer& ras,
+        agg::rendering_buffer& buffer)
     {
         unsigned a = (unsigned)(127.0f+(color.a()*255.0f)/2.0f); // scale alpha up
-        agg::rgba8 fgColor = agg::rgba8( (unsigned)(color.r()*255.0f), (unsigned)(color.g()*255.0f), (unsigned)(color.b()*255.0f), a );
+
+        agg::rgba8 fgColor = agg::rgba8( 
+            (unsigned)(color.r()*255.0f), 
+            (unsigned)(color.g()*255.0f), 
+            (unsigned)(color.b()*255.0f), 
+            a );
 
         ConstGeometryIterator gi( geometry );
         while( gi.hasMore() )
@@ -126,7 +133,38 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 
         ras.reset();
     }
-#endif
+
+
+    void rasterizeCoverage_agglite(
+        const Geometry* geometry,
+        float value,
+        RenderFrame& frame,
+        agg::rasterizer& ras,
+        agg::rendering_buffer& buffer)
+    {
+        ConstGeometryIterator gi(geometry);
+        while (gi.hasMore())
+        {
+            const Geometry* g = gi.next();
+
+            for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
+            {
+                const osg::Vec3d& p0 = *p;
+                double x0 = frame.xf*(p0.x() - frame.xmin);
+                double y0 = frame.yf*(p0.y() - frame.ymin);
+
+                if (p == g->begin())
+                    ras.move_to_d(x0, y0);
+                else
+                    ras.line_to_d(x0, y0);
+            }
+        }
+
+        agg::renderer<span_coverage32, float32> ren(buffer);
+        ras.render(ren, value);
+        ras.reset();
+    }
+
 
     void rasterizePolygons(
         const Geometry* geometry, 
@@ -229,65 +267,12 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         ctx.strokePath(path);
     }
 
-#if 0
-    void rasterizeLines(const Geometry* geometry, const osg::Vec4& color, float width, RenderFrame& frame, BLContext& ctx)
-    {
-        BLPath path;
-
-        ConstGeometryIterator gi(geometry);
-        while (gi.hasMore())
-        {
-            const Geometry* g = gi.next();
-
-            for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
-            {
-                const osg::Vec3d& p0 = *p;
-                double x = frame.xf*(p0.x() - frame.xmin);
-                double y = frame.yf*(p0.y() - frame.ymin);
-
-                if (p == g->begin())
-                    path.moveTo(x, y);
-                else
-                    path.lineTo(x, y);
-            }
-        }
-
-        ctx.setStrokeStyle(BLRgba32(color.asRGBA()));
-        ctx.setStrokeWidth(5.0);
-        ctx.setStrokeCaps(BL_STROKE_CAP_ROUND);
-        ctx.setStrokeJoin(BL_STROKE_JOIN_ROUND);
-        ctx.strokePath(path);
-    }
-#endif
-
-
-    void rasterizeCoverage(const Geometry* geometry, float value, RenderFrame& frame,
-                           agg::rasterizer& ras, agg::rendering_buffer& buffer)
-    {
-        ConstGeometryIterator gi( geometry );
-        while( gi.hasMore() )
-        {
-            const Geometry* g = gi.next();
-
-            for( Geometry::const_iterator p = g->begin(); p != g->end(); p++ )
-            {
-                const osg::Vec3d& p0 = *p;
-                double x0 = frame.xf*(p0.x()-frame.xmin);
-                double y0 = frame.yf*(p0.y()-frame.ymin);
-
-                if ( p == g->begin() )
-                    ras.move_to_d( x0, y0 );
-                else
-                    ras.line_to_d( x0, y0 );
-            }
-        }
-
-        agg::renderer<span_coverage32, float32> ren(buffer);
-        ras.render(ren, value);
-        ras.reset();
-    }
-
-    FeatureCursor* createCursor(FeatureSource* fs, FeatureFilterChain* chain, FilterContext& cx, const Query& query, ProgressCallback* progress)
+    FeatureCursor* createCursor(
+        FeatureSource* fs, 
+        FeatureFilterChain* chain, 
+        FilterContext& cx, 
+        const Query& query, 
+        ProgressCallback* progress)
     {
         FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
         if (chain)
@@ -538,20 +523,7 @@ bool
 FeatureImageLayer::preProcess(osg::Image* image) const
 {
     OE_PROFILING_ZONE;
-
-    agg::rendering_buffer rbuf(image->data(), image->s(), image->t(), image->s() * 4);
-
-    // clear the buffer.
-    if (options().coverage() == true)
-    {
-        agg::renderer<span_coverage32, float32> ren(rbuf);
-        ren.clear(float32(NO_DATA_VALUE));
-    }
-    else
-    {
-        agg::renderer<agg::span_abgr32, agg::rgba8> ren(rbuf);
-        ren.clear(agg::rgba8(0, 0, 0, 0));
-    }
+    ::memset(image->data(), 0, image->getTotalSizeInBytes());
     return true;
 }
 
@@ -560,16 +532,18 @@ FeatureImageLayer::postProcess(osg::Image* image) const
 {
     OE_PROFILING_ZONE;
 
+#ifdef USE_AGGLITE
     if (options().coverage() == false)
     {
-        ////convert from ABGR to RGBA
-        //unsigned char* pixel = image->data();
-        //for (int i = 0; i < image->s()*image->t() * 4; i += 4, pixel += 4)
-        //{
-        //    std::swap(pixel[0], pixel[3]);
-        //    std::swap(pixel[1], pixel[2]);
-        //}
+        //convert from ABGR to RGBA
+        unsigned char* pixel = image->data();
+        for (int i = 0; i < image->getTotalSizeInBytes(); i += 4, pixel += 4)
+        {
+            std::swap(pixel[0], pixel[3]);
+            std::swap(pixel[1], pixel[2]);
+        }
     }
+#endif
 
     return true;
 }
@@ -599,15 +573,6 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
     frame.xf = (double)image->s() / imageExtent.width();
     frame.yf = (double)image->t() / imageExtent.height();
 
-    // set up the render target:
-    BLImage buf;
-    buf.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
-    BLContext ctx(buf);
-    //is this necessary?
-    //ctx.setCompOp(BL_COMP_OP_SRC_COPY);
-    //ctx.fillAll();
-    ctx.setCompOp(BL_COMP_OP_SRC_OVER);
-
     // local (shallow) copy
     FeatureList features(in_features);
 
@@ -621,10 +586,23 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
         xform.push(features, context);
     }
 
+#ifndef USE_AGGLITE
+
+    // set up the render target:
+    BLImage buf;
+    buf.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
+    BLContext ctx(buf);
+    
+    //is this necessary?
+    //ctx.setCompOp(BL_COMP_OP_SRC_COPY);
+    //ctx.fillAll();
+
+    ctx.setCompOp(BL_COMP_OP_SRC_OVER);
+
     // render polygons:
     if (masterPoly)
     {
-        for (const auto feature : features)
+        for (const auto& feature : features)
         {
             if (feature->getGeometry())
             {
@@ -655,9 +633,15 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
 
                 Distance lineWidth(lineWidthValue, widthUnits.get());
 
-                double lineWidth_map = lineWidth.asDistance(
+                double lineWidth_map_south = lineWidth.asDistance(
                     imageExtent.getSRS()->getUnits(),
                     imageExtent.yMin());
+
+                double lineWidth_map_north = lineWidth.asDistance(
+                    imageExtent.getSRS()->getUnits(),
+                    imageExtent.yMax());
+
+                double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
 
                 double pixelSize_map = imageExtent.height() / (double)image->t();
 
@@ -675,7 +659,7 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
         }
 
         // Rasterize the lines:
-        for (const auto feature : features)
+        for (const auto& feature : features)
         {
             if (feature->getGeometry())
             {
@@ -684,7 +668,8 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
         }
     }
 
-#if 0
+#else
+
     // sort into bins, making a copy for lines that require buffering.
     FeatureList polygons;
     FeatureList lines;
@@ -825,19 +810,19 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
         xform.push(lines, context);
     }
 
-    //// set up the AGG renderer:
-    //agg::rendering_buffer rbuf(image->data(), image->s(), image->t(), image->s() * 4);
+    // set up the AGG renderer:
+    agg::rendering_buffer rbuf(image->data(), image->s(), image->t(), image->s() * 4);
 
-    //// Create the renderer and the rasterizer
-    //agg::rasterizer ras;
+    // Create the renderer and the rasterizer
+    agg::rasterizer ras;
 
-    //// Setup the rasterizer
-    //if (options().coverage() == true)
-    //    ras.gamma(1.0);
-    //else
-    //    ras.gamma(options().gamma().get());
+    // Setup the rasterizer
+    if (options().coverage() == true)
+        ras.gamma(1.0);
+    else
+        ras.gamma(options().gamma().get());
 
-    //ras.filling_rule(agg::fill_even_odd);
+    ras.filling_rule(agg::fill_even_odd);
 
     // construct an extent for cropping the geometry to our tile.
     // extend just outside the actual extents so we don't get edge artifacts:
@@ -986,11 +971,12 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
 //........................................................................
 
 bool
-FeatureImageRenderer::render(const TileKey& key,
-                             Session* session,
-                             const StyleSheet* styles,
-                             osg::Image* target,
-                             ProgressCallback* progress) const
+FeatureImageRenderer::render(
+    const TileKey& key,
+    Session* session,
+    const StyleSheet* styles,
+    osg::Image* target,
+    ProgressCallback* progress) const
 {
     Query defaultQuery;
     defaultQuery.tileKey() = key;
@@ -1115,12 +1101,13 @@ FeatureImageRenderer::render(const TileKey& key,
 
 
 bool
-FeatureImageRenderer::queryAndRenderFeaturesForStyle(Session*          session,
-                                                     const Style&      style,
-                                                     const Query&      query,
-                                                     const GeoExtent&  imageExtent,
-                                                     osg::Image*       out_image,
-                                                     ProgressCallback* progress) const
+FeatureImageRenderer::queryAndRenderFeaturesForStyle(
+    Session*          session,
+    const Style&      style,
+    const Query&      query,
+    const GeoExtent&  imageExtent,
+    osg::Image*       out_image,
+    ProgressCallback* progress) const
 {
     // Get the features
     FeatureList features;
@@ -1138,11 +1125,12 @@ FeatureImageRenderer::queryAndRenderFeaturesForStyle(Session*          session,
 }
 
 void
-FeatureImageRenderer::getFeatures(Session* session,
-                                  const Query& query,
-                                  const GeoExtent& imageExtent,
-                                  FeatureList& features,
-                                  ProgressCallback* progress) const
+FeatureImageRenderer::getFeatures(
+    Session* session,
+    const Query& query,
+    const GeoExtent& imageExtent,
+    FeatureList& features,
+    ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
 
@@ -1170,26 +1158,12 @@ FeatureImageRenderer::getFeatures(Session* session,
         while (features.empty())
         {
             // query the feature source:
-            osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress); //session->getFeatureSource()->createFeatureCursor(localQuery, progress);
+            osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress);
 
             while( cursor.valid() && cursor->hasMore() )
             {
                 Feature* feature = cursor->nextFeature();
-                Geometry* geom = feature->getGeometry();
-#if 0
-                if ( geom )
-                {
-                    // apply a type override if requested:
-                    if (_options.geometryTypeOverride().isSet() &&
-                        _options.geometryTypeOverride() != geom->getComponentType() )
-                    {
-                        geom = geom->cloneAs( _options.geometryTypeOverride().value() );
-                        if ( geom )
-                            feature->setGeometry( geom );
-                    }
-                }
-#endif
-                if ( geom )
+                if (feature->getGeometry())
                 {
                     features.push_back( feature );
                 }

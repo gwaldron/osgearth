@@ -31,6 +31,10 @@
 #   include <pthread.h>
 #endif
 
+// b/c windows defines override std:: functions
+#undef min
+#undef max
+
 using namespace osgEarth::Threading;
 using namespace osgEarth::Util;
 
@@ -529,57 +533,64 @@ osgEarth::Threading::setThreadName(const std::string& name)
 
 
 #undef LC
-#define LC "[JobScheduler] "
+#define LC "[JobArena] "
 
-Mutex JobScheduler::_arenas_mutex("OE:JobSchedArenas");
+Mutex JobArena::_arenas_mutex("OE:JobArena");
 
-std::unordered_map<std::string, osg::ref_ptr<JobScheduler>> JobScheduler::_arenas;
+std::unordered_map<std::string, osg::ref_ptr<JobArena>> JobArena::_arenas;
 
-JobScheduler*
-JobScheduler::arena(const std::string& name)
+std::unordered_map<std::string, unsigned> JobArena::_arenaSizes;
+
+#define OE_ARENA_DEFAULT_SIZE 2u
+
+JobArena*
+JobArena::arena(const std::string& name)
 {
     ScopedMutexLock lock(_arenas_mutex);
-    osg::ref_ptr<JobScheduler>& arena = _arenas[name];
+    osg::ref_ptr<JobArena>& arena = _arenas[name];
     if (!arena.valid())
     {
-        arena = new JobScheduler(name);
+        auto iter = _arenaSizes.find(name);
+        unsigned numThreads = iter != _arenaSizes.end() ? iter->second : OE_ARENA_DEFAULT_SIZE;
+        arena = new JobArena(name, numThreads);
     }
     return arena.get();
 }
 
 void
-JobScheduler::setSize(const std::string& name, unsigned numThreads)
+JobArena::setSize(const std::string& name, unsigned numThreads)
 {
     ScopedMutexLock lock(_arenas_mutex);
-    osg::ref_ptr<JobScheduler> arena = _arenas[name];
-    if (!arena.valid())
+
+    _arenaSizes[name] = numThreads;
+
+    auto iter = _arenas.find(name);
+    if (iter != _arenas.end())
     {
-        arena = new JobScheduler(name, numThreads);
-    }
-    else
-    {
+        osg::ref_ptr<JobArena>& arena = iter->second;
+        OE_SOFT_ASSERT_AND_RETURN(arena.get() != nullptr, __func__,);
         arena->stopThreads();
-        arena->_numThreads = osg::clampAbove(numThreads, 1u);
+        arena->_numThreads = numThreads;
         arena->startThreads();
     }
 }
 
-JobScheduler::JobScheduler(const std::string& name, unsigned numThreads) :
-    _name("OE.JobSched[" + name + "]"),
+JobArena::JobArena(const std::string& name, unsigned numThreads) :
+    _name("OE.JobArena[" + name + "]"),
     _numThreads(numThreads),
     _done(false),
-    _queueMutex("JobScheduler")
+    _queueMutex("OE.JobArena.Queue")
 {
     startThreads();
 }
 
-JobScheduler::~JobScheduler()
+JobArena::~JobArena()
 {
     stopThreads();
 }
 
 void
-JobScheduler::startThreads()
+JobArena::startThreads()
 {
     _done = false;
 
@@ -587,7 +598,7 @@ JobScheduler::startThreads()
     {
         _threads.push_back(std::thread([this]
             {
-                OE_DEBUG << LC << "Thread " << std::this_thread::get_id() << " started." << std::endl;
+                OE_INFO << LC << "Arena " << _name << ": thread " << std::this_thread::get_id() << " started." << std::endl;
 
                 OE_THREAD_NAME(this->_name.c_str());
 
@@ -623,7 +634,7 @@ JobScheduler::startThreads()
     }
 }
 
-void JobScheduler::stopThreads()
+void JobArena::stopThreads()
 {
     _done = true;
     _block.notify_all();

@@ -35,14 +35,8 @@ class FutureImage : public osg::Image
 {
 public:
 
-    FutureImage(ImageLayer* layer, const TileKey& key)
+    FutureImage(ImageLayer* layer, const TileKey& key) : osg::Image()
     {
-        // install a one pixel transparent placeholder to use until
-        // the real one becomes available.
-        // this causes a flash when a new level comes in -- solve that another day
-        unsigned char* data = new unsigned char[4]{ 0, 0, 0, 0 };
-        setImage(1, 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, data, USE_NEW_DELETE);
-
         _layer = layer;
         _key = key;
 
@@ -57,7 +51,7 @@ public:
             else return static_cast<const osg::Image*>(nullptr);
         });
 
-        _result = job.schedule("AsyncLayer");
+        _result = job.schedule("ASYNC_LAYER");
     }
 
     virtual bool requiresUpdateCall() const override
@@ -72,16 +66,19 @@ public:
         if (_result.isAvailable())
         {
             // no refptr here because we are going to steal the data.
-            osg::Image* i = const_cast<osg::Image*>(_result.release());
+            osg::ref_ptr<osg::Image> i = const_cast<osg::Image*>(_result.release());
 
-            if (i)
+            if (i.valid())
             {
                 this->setImage(
                     i->s(), i->t(), i->r(),
                     i->getInternalTextureFormat(), i->getPixelFormat(), i->getDataType(),
-                    i->data(), i->USE_NEW_DELETE,
+                    i->data(), i->getAllocationMode(),
                     i->getPacking(),
                     i->getRowLength());
+
+                // since we stole the data, make sure we don't double-delete it
+                i->setAllocationMode(osg::Image::NO_DELETE);
 
                 // trigger texture(s) that own this image to reapply
                 this->dirty();

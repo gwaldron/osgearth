@@ -65,7 +65,7 @@ _lastTraversalFrame(0),
 _empty(false),              // an "empty" node exists but has no geometry or children.,
 _imageUpdatesActive(false),
 _doNotExpire(false),
-_revision(0u),
+_revision(0),
 _mutex("TileNode(OE)"),
 _loadQueue("TileNode LoadQueue(OE)"),
 _createChildAsync(true)

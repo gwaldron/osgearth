@@ -58,27 +58,29 @@ createMRTPass(App& app, osg::Node* sceneGraph)
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER2), app.gdepth);
     rtt->setCullingMode(rtt->getCullingMode() & ~osg::CullSettings::SMALL_FEATURE_CULLING);
 
-    static const char* vertSource =
-        "#version " GLSL_VERSION_STR "\n"
-        "out float mrt_depth;\n"
-        "void oe_mrt_vertex(inout vec4 vertexClip)\n"
-        "{\n"
-        "    mrt_depth = (vertexClip.z/vertexClip.w)*0.5+1.0;\n"
-        "}\n";
+    static const char* vertSource = R"(
+        #version 330
+        out float mrt_depth;
+        void oe_mrt_vertex(inout vec4 vertexClip)
+        {
+            mrt_depth = (vertexClip.z/vertexClip.w)*0.5+1.0;
+        }
+    )";
 
-    static const char* fragSource =
-        "#version " GLSL_VERSION_STR "\n"
-        "in float mrt_depth;\n"
-        "in vec3 vp_Normal; \n"
-        "layout(location=0) out vec4 gcolor; \n"
-        "layout(location=1) out vec4 gnormal; \n"
-        "layout(location=2) out vec4 gdepth; \n"
-        "void oe_mrt_fragment(inout vec4 color)\n"
-        "{\n"
-        "    gcolor = color; \n"
-        "    gnormal = vec4((vp_Normal+1.0)/2.0, 1.0); \n"
-        "    gdepth = vec4(mrt_depth, mrt_depth, mrt_depth, 1.0); \n"
-        "}\n";
+    static const char* fragSource = R"(
+        #version 330
+        in float mrt_depth;
+        in vec3 vp_Normal;
+        layout(location=0) out vec4 gcolor;
+        layout(location=1) out vec4 gnormal;
+        layout(location=2) out vec4 gdepth;
+        void oe_mrt_fragment(inout vec4 color)
+        {
+            gcolor = color;
+            gnormal = vec4((vp_Normal+1.0)/2.0, 1.0);
+            gdepth = vec4(mrt_depth, mrt_depth, mrt_depth, 1.0);
+        }
+    )";
 
     VirtualProgram* vp = VirtualProgram::getOrCreate( rtt->getOrCreateStateSet() );
     vp->setFunction( "oe_mrt_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_CLIP );
@@ -133,53 +135,56 @@ createFramebufferPass(App& app)
 
     osg::StateSet* stateset = quad->getOrCreateStateSet();
 
-    static const char* vertSource =
-        "#version " GLSL_VERSION_STR "\n"
-        "out vec4 texcoord;\n"
-        "void effect_vert(inout vec4 vertexView)\n"
-        "{\n"
-        "    texcoord = gl_MultiTexCoord0; \n"
-        "}\n";
+    static const char* vertSource = R"(
+        #version 330
+        out vec4 texcoord;
+        void effect_vert(inout vec4 vertexView)
+        {
+            texcoord = gl_MultiTexCoord0;
+        }
+    )";
 
     // fragment shader that performs edge detection and tints edges red.
-    static const char* fragSource =
-        "#version " GLSL_VERSION_STR "\n"
-        "#extension GL_ARB_texture_rectangle : enable\n"
-        "uniform sampler2DRect gcolor;\n"
-        "uniform sampler2DRect gnormal;\n"
-        "uniform sampler2DRect gdepth;\n"
-        "uniform float osg_FrameTime;\n"
-        "in vec4 texcoord;\n"
+    static const char* fragSource = R"(
+        #version 330
+        #extension GL_ARB_texture_rectangle : enable
+        uniform sampler2DRect gcolor;
+        uniform sampler2DRect gnormal;
+        uniform sampler2DRect gdepth;
+        uniform float osg_FrameTime;
+        in vec4 texcoord;
 
-        "void effect_frag(inout vec4 color)\n"
-        "{\n"
-        "    color = texture(gcolor, texcoord.st); \n"
-        "    float depth = texture(gdepth, texcoord.st).r; \n"
-        "    vec3 normal = texture(gnormal,texcoord.st).xyz *2.0-1.0; \n"
+        void effect_frag(inout vec4 color)
+        {
+            color = texture(gcolor, texcoord.st);
+            float depth = texture(gdepth, texcoord.st).r;
+            vec3 normal = texture(gnormal,texcoord.st).xyz *2.0-1.0;
 
-        // sample radius in pixels:
-        "    float e = 25.0 * sin(osg_FrameTime); \n"
+            // sample radius in pixels:
+            float e = 25.0 * sin(osg_FrameTime);
 
-        // sample the normals around our pixel and find the approximate
-        // deviation from our center normal:
-        "    vec3 avgNormal =\n"
-        "       texture(gnormal, texcoord.st+vec2( e, e)).xyz + \n"
-        "       texture(gnormal, texcoord.st+vec2(-e, e)).xyz + \n"
-        "       texture(gnormal, texcoord.st+vec2(-e,-e)).xyz + \n"
-        "       texture(gnormal, texcoord.st+vec2( e,-e)).xyz + \n"
-        "       texture(gnormal, texcoord.st+vec2( 0, e)).xyz + \n"
-        "       texture(gnormal, texcoord.st+vec2( e, 0)).xyz + \n"
-        "       texture(gnormal, texcoord.st+vec2( 0,-e)).xyz + \n"
-        "       texture(gnormal, texcoord.st+vec2(-e, 0)).xyz;  \n"
-        "    avgNormal = normalize((avgNormal/8.0)*2.0-1.0); \n"
+            // sample the normals around our pixel and find the approximate
+            // deviation from our center normal:
+            vec3 avgNormal =
+               texture(gnormal, texcoord.st+vec2( e, e)).xyz +
+               texture(gnormal, texcoord.st+vec2(-e, e)).xyz +
+               texture(gnormal, texcoord.st+vec2(-e,-e)).xyz +
+               texture(gnormal, texcoord.st+vec2( e,-e)).xyz +
+               texture(gnormal, texcoord.st+vec2( 0, e)).xyz +
+               texture(gnormal, texcoord.st+vec2( e, 0)).xyz +
+               texture(gnormal, texcoord.st+vec2( 0,-e)).xyz +
+               texture(gnormal, texcoord.st+vec2(-e, 0)).xyz;
 
-        // average deviation from normal:
-        "    float deviation = clamp(dot(normal, avgNormal),0.0,1.0); \n"
+            avgNormal = normalize((avgNormal/8.0)*2.0-1.0);
 
-        // use that to tint the pixel red:
-        "    e = 2.5 * (1.0-deviation); \n"
-        "    color.rgb = color.rgb + vec3(e,0,0);\n"
-        "}\n";
+            // average deviation from normal:
+            float deviation = clamp(dot(normal, avgNormal),0.0,1.0);
+
+            // use that to tint the pixel red:
+            e = 2.5 * (1.0-deviation);
+            color.rgb = color.rgb + vec3(e,0,0);
+        }
+    )";
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     vp->setFunction("effect_vert", vertSource, ShaderComp::LOCATION_VERTEX_VIEW);

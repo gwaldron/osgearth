@@ -124,24 +124,25 @@ struct MyPickCallback : public RTTPicker::Callback
 
 // Shaders that will highlight the currently "picked" feature.
 
-const char* highlightVert =
-    "#version " GLSL_VERSION_STR "\n"
-    "uniform uint objectid_to_highlight; \n"
-    "uint oe_index_objectid;      // Stage global containing object id \n"
-    "flat out int selected; \n"
-    "void checkForHighlight(inout vec4 vertex) \n"
-    "{ \n"
-    "    selected = (objectid_to_highlight > 1u && objectid_to_highlight == oe_index_objectid) ? 1 : 0; \n"
-    "} \n";
-
-const char* highlightFrag =
-    "#version " GLSL_VERSION_STR "\n"
-    "flat in int selected; \n"
-    "void highlightFragment(inout vec4 color) \n"
-    "{ \n"
-    "    if ( selected == 1 ) \n"
-    "        color.rgb = mix(color.rgb, clamp(vec3(0.5,2.0,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5); \n"
-    "} \n";
+const char* highlightVert = R"(
+    #version 330
+    uniform uint objectid_to_highlight;
+    uint oe_index_objectid;      // Stage global containing object id
+    flat out int selected;
+    void checkForHighlight(inout vec4 vertex)
+    {
+        selected = (objectid_to_highlight > 1u && objectid_to_highlight == oe_index_objectid) ? 1 : 0;
+    }
+)";
+const char* highlightFrag = R"(
+    #version 330
+    flat in int selected;
+    void highlightFragment(inout vec4 color)
+    {
+        if ( selected == 1 )
+            color.rgb = mix(color.rgb, clamp(vec3(0.5,2.0,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5);
+    }
+)";
 
 void installHighlighter(App& app)
 {
@@ -202,9 +203,9 @@ setupRTTView(osgViewer::View* view, osg::Texture* rttTex)
     stateSet->setMode(GL_CULL_FACE, 0);
     stateSet->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO), 1);
 
-    const char* fs =
-    "#version " GLSL_VERSION_STR "\n"
-    "void swap(inout vec4 c) { c.rgba = c==vec4(0)? vec4(1) : vec4(vec3((c.r+c.g+c.b+c.a)/4.0),1); }\n";
+    const char* fs = R"(
+    #version 330
+    void swap(inout vec4 c) { c.rgba = c==vec4(0)? vec4(1) : vec4(vec3((c.r+c.g+c.b+c.a)/4.0),1); } )";
     osgEarth::Registry::shaderGenerator().run(geode);
     VirtualProgram::getOrCreate(geode->getOrCreateStateSet())->setFunction("swap", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
 

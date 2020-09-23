@@ -322,7 +322,7 @@ namespace osgEarth
         virtual void setTerrainResources(TerrainResources*);
 
         //! Revision number of this layer
-        unsigned getRevision() const { return (unsigned)_revision; }
+        int getRevision() const { return (int)_revision; }
 
         class Options;
 
@@ -370,7 +370,7 @@ namespace osgEarth
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
         Hints _hints;
-        OpenThreads::Atomic _revision;
+        std::atomic_int _revision;
         std::string _runtimeCacheId;
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<CacheSettings> _cacheSettings;

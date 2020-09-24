@@ -463,9 +463,6 @@ namespace osgEarth
          *
          * traversePolyHoles: set to TRUE to return Polygons AND Polygon hole geometries;
          *                    set to FALSE to only return Polygon (outer ring).
-         *
-         * traverseMultiGeometry: set to TRUE to return MG children, but never an MG itself;
-         *                        set to FALSE to return MGs and NOT their children.
          */
         GeometryIterator(
             Geometry* geom,
@@ -476,7 +473,7 @@ namespace osgEarth
 
     private:
         Geometry* _next;
-        std::stack<Geometry*> _stack;
+        std::queue<Geometry*> _stack;
         bool _traverseMulti;
         bool _traversePolyHoles;
 
@@ -491,9 +488,6 @@ namespace osgEarth
          *
          * traversePolyHoles: set to TRUE to return Polygons AND Polygon hole geometries;
          *                    set to FALSE to only return Polygon (outer ring).
-         *
-         * traverseMultiGeometry: set to TRUE to return MG children, but never an MG itself;
-         *                        set to FALSE to return MGs and NOT their children.
          */
         ConstGeometryIterator(
             const Geometry* geom,

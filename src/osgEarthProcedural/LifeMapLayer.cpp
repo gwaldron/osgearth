@@ -462,7 +462,7 @@ LifeMapLayer::addedToMap(const Map* map)
         setLandCoverDictionary(map->getLayer<LandCoverDictionary>());
     
     Status biomeStatus = options().biomeLayer().open(getReadOptions());
-    if (biomeStatus.isOK())
+    if (getBiomeLayer())
     {
         OE_INFO << LC << "Using biome layer \"" << getBiomeLayer()->getName() << "\"" << std::endl;
 
@@ -481,16 +481,6 @@ LifeMapLayer::addedToMap(const Map* map)
                 }
             }
         }
-#if 0
-        const Biome* biome = getBiomeLayer()->getBiomeCatalog()->getAssets();
-        if (biome)
-        {
-            for (const auto tex : biome->textures())
-            {
-                loadMaterials(tex->uri()->full());
-            }
-        }
-#endif
     }
 
     _map = map;

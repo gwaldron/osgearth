@@ -1025,7 +1025,7 @@ GeometryIterator::fetchNext()
     if ( _stack.size() == 0 )
         return;
 
-    Geometry* current = _stack.top();
+    Geometry* current = _stack.front();
     _stack.pop();
 
     if ( current->getType() == Geometry::TYPE_MULTI && _traverseMulti )

@@ -34,6 +34,9 @@ using namespace osgEarth;
 
 #define LC "[FeatureImageLayer] " << getName() << ": "
 
+#ifndef OSGEARTH_HAVE_BLEND2D
+#define USE_AGGLITE
+#endif
 
 REGISTER_OSGEARTH_LAYER(featureimage, FeatureImageLayer);
 REGISTER_OSGEARTH_LAYER(feature_image, FeatureImageLayer);
@@ -48,6 +51,7 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         double xf, yf;
     };
 
+#ifdef USE_AGGLITE
     struct float32
     {
         float32() : value(NO_DATA_VALUE) { }
@@ -165,6 +169,7 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         ras.reset();
     }
 
+#else
 
     void rasterizePolygons(
         const Geometry* geometry, 
@@ -266,6 +271,8 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         ctx.setStrokeJoin(join);
         ctx.strokePath(path);
     }
+
+#endif
 
     FeatureCursor* createCursor(
         FeatureSource* fs, 
@@ -549,11 +556,12 @@ FeatureImageLayer::postProcess(osg::Image* image) const
 }
 
 bool
-FeatureImageLayer::renderFeaturesForStyle(Session*           session,
-                                          const Style&       style,
-                                          const FeatureList& in_features,
-                                          const GeoExtent&   imageExtent,
-                                          osg::Image*        image) const
+FeatureImageLayer::renderFeaturesForStyle(
+    Session*           session,
+    const Style&       style,
+    const FeatureList& in_features,
+    const GeoExtent&   imageExtent,
+    osg::Image*        image) const
 {
     OE_DEBUG << LC << "Rendering " << in_features.size() << " features for " << imageExtent.toString() << "\n";
 
@@ -591,12 +599,8 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
     // set up the render target:
     BLImage buf;
     buf.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
-    BLContext ctx(buf);
-    
-    //is this necessary?
-    //ctx.setCompOp(BL_COMP_OP_SRC_COPY);
-    //ctx.fillAll();
 
+    BLContext ctx(buf);
     ctx.setCompOp(BL_COMP_OP_SRC_OVER);
 
     // render polygons:
@@ -879,13 +883,12 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
                 if (options().coverage() == true && covValue.isSet())
                 {
                     float value = (float)feature->eval(covValue.mutable_value(), &context);
-                    //TODO
-                    //rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
+                    rasterizeCoverage_agglite(croppedGeometry.get(), value, frame, ras, rbuf);
                 }
                 else
                 {
                     Color color = poly ? poly->fill()->color() : Color::White;
-                    rasterize(croppedGeometry.get(), color, frame, ctx);
+                    rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
                 }
             }
         }
@@ -951,13 +954,12 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
                     if (options().coverage() == true && covValue.isSet())
                     {
                         float value = (float)feature->eval(covValue.mutable_value(), &context);
-                        //TODO
-                        //rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
+                        rasterizeCoverage_agglite(croppedGeometry.get(), value, frame, ras, rbuf);
                     }
                     else
                     {
                         osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
-                        rasterizeLines(croppedGeometry.get(), color, lineWidth, frame, ctx);
+                        rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
                     }
                 }
             }

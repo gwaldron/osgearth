@@ -294,12 +294,6 @@ namespace
                 (_i0 == rhs._i1 && _i1 == rhs._i0);
         }
 
-        bool operator < (const edge_t& rhs) const {
-            if (_i0*1e6 < rhs._i0*1e6) return true;
-            if (_i0*1e6 > rhs._i0*1e6) return false;
-            return _i0 < _i1;
-        }
-
         // hash table function. This needs to combine i0 and i1 in 
         // a commutative way, i.e., such that if _i0 and _i1 are 
         // interchanged, they will return the same hash code.
@@ -689,7 +683,6 @@ namespace
     struct edgeset_t
     {
         std::unordered_set<edge_t, edge_t> _edges;
-        //std::set<edge_t> _edges;
 
         edgeset_t(const mesh_t& mesh, int marker_mask)
         {

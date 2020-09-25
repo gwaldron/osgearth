@@ -39,22 +39,21 @@
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/Controls>
 #include <osgEarth/ExampleResources>
+#include <osgEarth/GLUtils>
+#include <osgEarth/VirtualProgram>
 #include <osg/TriangleFunctor>
-#include <osgGA/TrackballManipulator>
-#include <osgDB/ReadFile>
-#include <osgDB/WriteFile>
 #include <osg/ShapeDrawable>
-#include <osg/ComputeBoundsVisitor>
+#include <osg/Depth>
+#include <osgGA/TrackballManipulator>
 #include <iomanip>
 #include <sstream>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-static MapNode*       s_mapNode     = nullptr;
+static MapNode* s_mapNode = nullptr;
 static osgViewer::View* s_tile_view = nullptr;
-static osg::Group*    s_root        = nullptr;
-static osg::ref_ptr< osg::Node >  marker = osgDB::readNodeFile("../data/red_flag.osg");
+static osg::Group* s_root = nullptr;
 
 TileKey makeTileKey(const std::string& str, const Profile* profile)
 {
@@ -106,13 +105,9 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
     {
         osg::Matrix matrix;
         if (!_matrixStack.empty()) matrix = _matrixStack.back();
-
         transform.computeLocalToWorldMatrix(matrix,this);
-
         pushMatrix(matrix);
-
         traverse(transform);
-
         popMatrix();
     }
 
@@ -134,10 +129,6 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
         osg::Geometry* geom = new osg::Geometry;
         osg::Vec3Array* verts = new osg::Vec3Array;
         geom->setVertexArray(verts);
-        osg::Vec4ubArray* colors = new osg::Vec4ubArray(1);
-        (*colors)[0] = osg::Vec4ub(255,0,0,255);
-        geom->setColorArray(colors);
-        geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 
         bool first = true;
         osg::Vec3d anchor;
@@ -152,24 +143,37 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
             verts->push_back((*_vertices)[i] - anchor);
         }
 
-        OSG_NOTICE << "Building scene with " << verts->size() << " verts" << std::endl;
-
         osg::MatrixTransform* mt = new osg::MatrixTransform;
         mt->setMatrix(osg::Matrixd::translate(anchor));
 
-        osg::Geode* geode = new osg::Geode;
-        geode->addDrawable(geom);
+        osg::Group* geode = new osg::Group();
+        geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LESS, 0, 1, true));
+        geode->addChild(geom);
         geode->setCullingActive( false );
         geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, verts->size()));
+        osg::Group* wireframeGroup = new osg::Group();
+        wireframeGroup->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
+        wireframeGroup->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0, 1, true));
+        wireframeGroup->getOrCreateStateSet()->setDefine("WIREFRAME");
+        wireframeGroup->addChild(geom);
+        geode->addChild(wireframeGroup);
         mt->addChild(geode);
-        //mt->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
         mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
         mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");
 
-        //osg::BoundingSphere bs = mt->getBound();
-        //bs.radius() = bs.radius() * 100;
-        //mt->setInitialBound(bs);
-        //mt->dirtyBound();
+        const char* tri_shader = R"(
+            #version 330
+            #pragma import_defines(WIREFRAME)
+            void colorize(inout vec4 color) {
+                #ifdef WIREFRAME
+                    color.rgb = vec3(1,1,1);
+                #else
+                    color.rgb = vec3(0.8,0.4,0.1);
+                #endif
+            }
+        )";
+        VirtualProgram::getOrCreate(geode->getOrCreateStateSet())->setFunction(
+            "colorize", tri_shader, ShaderComp::LOCATION_FRAGMENT_COLORING);
 
         return mt;
     }
@@ -260,7 +264,7 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
             // Extract the triangles from the node that was created
             // and do our own rendering.
             // Simulates what you would do when passing in the triangles to a physics engine.
-            OE_NOTICE << "Created tile for " << key.str() << std::endl;
+            OE_NOTICE << "Created tile " << key.str() << " (refLOD=" << _refLOD << ")" << std::endl;
             CollectTrianglesVisitor v;
             node->accept(v);
             return v.buildNode();
@@ -289,7 +293,6 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
             // Depending on the level of detail key you request, you will get a mesh that should line up exactly with the highest resolution mesh that the terrain engine will draw.
             // At level 15 that is a 257x257 heightfield.  If you select a higher lod, the mesh will be less dense.
             key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), _tileLOD);
-            OE_NOTICE << "Creating tile " << key.str() << std::endl;
         }
         osg::ref_ptr<osg::Node> node;
 
@@ -300,16 +303,12 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
                 osg::Group* g = s_tile_view->getSceneData()->asGroup();
                 g->removeChildren(0, g->getNumChildren());
                 g->addChild(node.get());
-                //osg::ComputeBoundsVisitor v;
-                //node->accept(v);
-                //g->addChild(createBBOX(v.getBoundingBox()));
-                //g->addChild(createBS(node->getBound()));
                 s_tile_view->getCameraManipulator()->home(0.0);
             }
         }
         else
         {
-            OE_NOTICE << "Failed to create tile for " << key.str() << std::endl;
+            OE_WARN << "Failed to create tile for " << key.str() << std::endl;
         }
     }
 
@@ -327,7 +326,7 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
             _node = node;
             return;
         }
-        OE_NOTICE << "Failed to create tile for " << key.str() << std::endl;
+        OE_WARN << "Failed to create tile for " << key.str() << std::endl;
     }
     
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
@@ -359,8 +358,10 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    osgEarth::initialize();
+    osg::DisplaySettings::instance()->setNumMultiSamples(4u);
 
+    osgEarth::initialize();
+    
     osg::ref_ptr<CreateTileHandler> createTileHandler(new CreateTileHandler(arguments));
 
     osgViewer::CompositeViewer viewer(arguments);
@@ -370,27 +371,32 @@ int main(int argc, char** argv)
     s_mapNode = MapNode::findMapNode(earth);
 
     osgViewer::View* main_view = new osgViewer::View();
-    viewer.addView(main_view);
     main_view->setUpViewInWindow(20, 20, 1600, 800);
+    main_view->getCamera()->setViewport(0, 0, 800, 800);
+    main_view->getCamera()->setProjectionMatrixAsPerspective(30, 1.0, 1.0, 10.0);
     main_view->setCameraManipulator(new osgEarth::Util::EarthManipulator());
     main_view->addEventHandler(createTileHandler.get());
     main_view->setSceneData(earth);
+    viewer.addView(main_view);
 
     s_tile_view = new osgViewer::View();
-    viewer.addView(s_tile_view);
+    s_tile_view->getCamera()->setViewport(800, 0, 800, 800);
+    s_tile_view->getCamera()->setProjectionMatrixAsPerspective(30, 1.0, 1.0, 10.0);
     s_tile_view->getCamera()->setGraphicsContext(main_view->getCamera()->getGraphicsContext());
-    s_tile_view->getCamera()->setViewport(0, 0, 400, 400);
     s_tile_view->getCamera()->setClearColor(Color::Black);
-    s_tile_view->getCamera()->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
     s_tile_view->getCamera()->getOrCreateStateSet()->setMode(GL_BLEND, 1);
     s_tile_view->setCameraManipulator(new osgGA::TrackballManipulator());
+    GLUtils::setLineWidth(s_tile_view->getCamera()->getOrCreateStateSet(), 2.0f, osg::StateAttribute::OVERRIDE);
+    GLUtils::setLineSmooth(s_tile_view->getCamera()->getOrCreateStateSet(), osg::StateAttribute::OVERRIDE);
+    viewer.addView(s_tile_view);
+
     osg::Group* root2 = new osg::Group();
-    root2->addChild(osgDB::readRefNodeFile("../data/axes.osgt"));
-    root2->addChild(createBS(root2->getChild(0)->getBound()));
     s_tile_view->setSceneData(root2);
 
     helper.configureView(main_view);
     helper.configureView(s_tile_view);
+
+    OE_NOTICE << "Shift-click to create a tile!" << std::endl;
 
     return viewer.run();
 }

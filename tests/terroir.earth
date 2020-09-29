@@ -11,8 +11,8 @@
             path="cache" />
     </options>
 
-    <xi:include href="land_cover_dictionary.xml"/>
-    <xi:include href="copernicus_land_cover.xml"/>
+    <xi:include href="osm_data.xml"/>
+    <xi:include href="osm_water_data.xml"/>
 
     <TMSElevation name="ReadyMap 90m Elevation">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
@@ -23,19 +23,15 @@
         <url>D:/data/demo/nepal/nepal.mbtiles</url>
     </mbtileselevation>
 
-    <xi:include href="viewpoints.xml"/>
-
-    <GroundCover name="Trees" max_range="5500" max_sse="1000" enabled="true">
+    <GroundCover name="Trees" max_range="4500" max_sse="1000" enabled="true">
         <category>trees</category>
         <cast_shadows>true</cast_shadows>
         <biomes_layer>Biomes</biomes_layer>
-        <mask_layer>OSM MASK</mask_layer>
     </GroundCover>
 
     <Grass name="Grass" max_range="100" max_sse="35" enabled="true">
         <category>grass</category>
         <spacing>1.0</spacing>
-        <mask_layer>OSM MASK</mask_layer>
     </Grass>
 
     <Wind name="Breeze">
@@ -47,9 +43,13 @@
     <contourmap altitude="-10"/>
     <!-- needs to be here or lifemap shader won't render properly...why? -->
 
-    <lifemap name="LifeMap" shared="true" min_level="10">
-        <cache_policy usage="none"/>
+    <lifemap name="Life Map" shared="true" min_level="11">
         <biomes_layer>Biomes</biomes_layer>
+        <density_mask_layer>
+            <xi:include href="osm_density_mask.xml"/>
+        </density_mask_layer>
+        <!-- <density_mask_layer>OSM Density Mask</density_mask_layer> -->
+        <!--
         <landcover_layer>Copernicus</landcover_layer>
         <landcover_mappings>
             <mapping class="cropland"  density="0.8" moisture="0.5" rugged="0.1" temperature="0.5" />
@@ -63,6 +63,7 @@
             <mapping class="tundra"    density="0.1" moisture="1.0" rugged="0.6" temperature="0.5" />
             <mapping class="no-data"   density="0.0" moisture="0.0" rugged="0.0" temperature="0.5" />
         </landcover_mappings>
+        -->
 
         <comment>to support the debug layers below</comment>
         <shared_sampler>LIFEMAP_TEX</shared_sampler>
@@ -145,12 +146,6 @@
         </shader>
     </tmsimage>
 
-    <xi:include comment="mask" href="osm_features.xml"/>
-
-    <xi:include href="osm_water.xml"/>
-    <xi:include href="osm_roads.xml"/>
-    <xi:include href="osm_buildings.xml"/>
-
     <TMSImage name="ReadyMap 15m Imagery" enabled="true" min_range="7500" attenuation_range="6000">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
@@ -162,7 +157,25 @@
             }
           ]]>
         </shader>
-    </TMSImage>	
+    </TMSImage>
+
+    <FeatureImage name="Road Surface" min_level="15" max_data_level="18" opacity="0.8">
+        <profile>spherical-mercator</profile>
+        <features>data:osm</features>
+        <filters>
+            <script>("highway" in feature.properties);</script>
+        </filters>
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #2f2f2f;
+                   stroke-width: 10m;
+                }
+            </style>
+        </styles>
+    </FeatureImage>
+
+    <xi:include href="osm_density_mask.xml"/>
 
     <Biomes name="Biomes">
         <cache_policy usage="none"/>
@@ -172,7 +185,7 @@
         <xi:include href="D:/data/splat/biomes.xml"/>
     </Biomes>
 
-    <FeatureModel name="Country boundaries" enabled="false">    
+    <FeatureModel name="Political Boundaries" enabled="false">    
         <OGRFeatures name="world-data">
             <url>../data/world.shp</url>
         </OGRFeatures>
@@ -183,7 +196,7 @@
                    stroke-width:             3px;
                    stroke-tessellation-size: 1km;
                    render-lighting:          false;
-                   altitude-clamping:        terrain-drape;        
+                   altitude-clamping:        terrain-drape;
                 }            
             </style>
         </styles>
@@ -203,4 +216,21 @@
             </style>
         </styles>
     </FeatureModel>
+
+    <xi:include href="osm_buildings.xml"/>
+
+    <TerrainConstraint name="constraint:water" features="data:osm-water" remove_interior="false" min_level="12"/>
+
+    <FeatureImage name="OSM Water" features="data:osm-water" min_level="12">
+        <profile>spherical-mercator</profile>
+        <styles>
+            <style>
+                water {
+                    fill: #0f1f2f;
+                }
+            </style>
+        </styles>
+    </FeatureImage>
+
+    <xi:include href="viewpoints.xml"/>
 </map>

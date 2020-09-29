@@ -66,14 +66,22 @@
         <height>683.0508383652195</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint>
-        <name>Control Point Example</name>
-        <heading>-57.2662</heading>
-        <pitch>-13.0214</pitch>
-        <range>1251.4m</range>
-        <long>7.21537020162857</long>
-        <lat>46.1972862791111</lat>
-        <height>790.9680772088468</height>
+    <viewpoint name="Lake Anna">
+        <heading>49.7937</heading>
+        <pitch>-26.6006</pitch>
+        <range>57.9473m</range>
+        <long>-77.755348526353</long>
+        <lat>38.04641758070872</lat>
+        <height>42.46923910733312</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+    </viewpoint>
+    <viewpoint name="Wooded path/road">
+        <heading>34.4312</heading>
+        <pitch>-16.2989</pitch>
+        <range>66.1984m</range>
+        <long>-121.6193310135399</long>
+        <lat>46.66096138267813</lat>
+        <height>357.5176040958613</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
     <viewpoint name="Grasslands">

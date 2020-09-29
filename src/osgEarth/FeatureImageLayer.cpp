@@ -28,6 +28,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
 #include <osgEarth/Metrics>
+#include <osgEarth/SDF>
 #include <blend2d.h>
 
 using namespace osgEarth;
@@ -265,7 +266,15 @@ namespace osgEarth { namespace FeatureImageLayerImpl
             }
         }
 
+
+
+        //BLImage texture;
+        //texture.readFromFile("../data/icon.png");
+        //BLPattern pattern(texture);
+        //ctx.setStrokeStyle(pattern);
+
         ctx.setStrokeStyle(BLRgba32(color.asRGBA()));
+
         ctx.setStrokeWidth(lineWidth_px);
         ctx.setStrokeCaps(cap);
         ctx.setStrokeJoin(join);
@@ -282,7 +291,7 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         ProgressCallback* progress)
     {
         FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
-        if (chain)
+        if (cursor && chain)
         {
             cursor = new FilteredFeatureCursor(cursor, chain, cx);
         }
@@ -299,6 +308,7 @@ FeatureImageLayer::Options::getConfig() const
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
     conf.set("gamma", gamma());
+    conf.set("sdf", sdf());
 
     if (filters().empty() == false)
     {
@@ -314,11 +324,13 @@ FeatureImageLayer::Options::getConfig() const
 void
 FeatureImageLayer::Options::fromConfig(const Config& conf)
 {
-    gamma().init(1.3);
+    gamma().setDefault(1.3);
+    sdf().setDefault(false);
 
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
     conf.get("gamma", gamma());
+    conf.get("sdf", sdf());
 
     const Config& filtersConf = conf.child("filters");
     for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
@@ -357,9 +369,29 @@ FeatureImageLayer::openImplementation()
     if (ssStatus.isError())
         return ssStatus;
 
+    establishProfile();
+
     _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
 
     return Status::NoError;
+}
+
+void
+FeatureImageLayer::establishProfile()
+{
+    if (getProfile() == nullptr && getFeatureSource() != nullptr)
+    {
+        const FeatureProfile* fp = getFeatureSource()->getFeatureProfile();
+
+        if (fp->getTilingProfile())
+        {
+            setProfile(fp->getTilingProfile());
+        }
+        else if (fp->getSRS())
+        {
+            setProfile(Profile::create(fp->getSRS()));
+        }
+    }
 }
 
 void
@@ -372,6 +404,7 @@ FeatureImageLayer::addedToMap(const Map* map)
 
     if (getFeatureSource())
     {
+        establishProfile();
         _session = new Session(map, getStyleSheet(), getFeatureSource(), getReadOptions());
         updateSession();
     }
@@ -505,6 +538,11 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     {
         image = LandCover::createImage(getTileSize());
     }
+    else if (options().sdf() == true)
+    {
+        image = new osg::Image();
+        image->allocateImage(getTileSize(), getTileSize(), 1, GL_RED, GL_UNSIGNED_BYTE);
+    }
     else
     {
         image = new osg::Image();
@@ -530,7 +568,16 @@ bool
 FeatureImageLayer::preProcess(osg::Image* image) const
 {
     OE_PROFILING_ZONE;
-    ::memset(image->data(), 0, image->getTotalSizeInBytes());
+
+    if (options().sdf() == true)
+    {
+        ImageUtils::PixelWriter write(image);
+        write.assign(Color::Red);
+    }
+    else
+    {
+        ::memset(image->data(), 0x00, image->getTotalSizeInBytes());
+    }
     return true;
 }
 
@@ -561,25 +608,14 @@ FeatureImageLayer::renderFeaturesForStyle(
     const Style&       style,
     const FeatureList& in_features,
     const GeoExtent&   imageExtent,
-    osg::Image*        image) const
+    osg::Image*        image,
+    Cancelable*        progress) const
 {
     OE_DEBUG << LC << "Rendering " << in_features.size() << " features for " << imageExtent.toString() << "\n";
 
     // A processing context to use with the filters:
     FilterContext context(session);
     context.setProfile(getFeatureSource()->getFeatureProfile());
-
-    // find the symbology:
-    const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
-    const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
-    const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
-
-    // Converts coordinates to image space (s,t):
-    RenderFrame frame;
-    frame.xmin = imageExtent.xMin();
-    frame.ymin = imageExtent.yMin();
-    frame.xf = (double)image->s() / imageExtent.width();
-    frame.yf = (double)image->t() / imageExtent.height();
 
     // local (shallow) copy
     FeatureList features(in_features);
@@ -593,6 +629,35 @@ FeatureImageLayer::renderFeaturesForStyle(
         xform.setLocalizeCoordinates(false);
         xform.push(features, context);
     }
+
+    if (options().sdf() == true)
+    {
+        SDFGenerator sdf;
+
+        sdf.encodeSDF(
+            features,
+            image,
+            imageExtent,
+            GL_RED,
+            context,
+            style.get<RenderSymbol>()->sdfMinDistance().get(),
+            style.get<RenderSymbol>()->sdfMaxDistance().get(),
+            progress);
+
+        return true;
+    }
+
+    // find the symbology:
+    const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
+    const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
+    const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
+
+    // Converts coordinates to image space (s,t):
+    RenderFrame frame;
+    frame.xmin = imageExtent.xMin();
+    frame.ymin = imageExtent.yMin();
+    frame.xf = (double)image->s() / imageExtent.width();
+    frame.yf = (double)image->t() / imageExtent.height();
 
 #ifndef USE_AGGLITE
 
@@ -1006,7 +1071,8 @@ FeatureImageRenderer::render(
                     *feature->style(),
                     list,
                     key.getExtent(),
-                    target );
+                    target,
+                    progress);
             }
         }
     }
@@ -1072,7 +1138,8 @@ FeatureImageRenderer::render(
                                         combinedStyle,
                                         list,
                                         key.getExtent(),
-                                        target);
+                                        target,
+                                        progress);
                                 }
                             }
                         }
@@ -1120,8 +1187,13 @@ FeatureImageRenderer::queryAndRenderFeaturesForStyle(
 
     if (!features.empty())
     {
-        // Render them.
-        return renderFeaturesForStyle(session, style, features, imageExtent, out_image );
+        return renderFeaturesForStyle(
+            session, 
+            style, 
+            features,
+            imageExtent,
+            out_image, 
+            progress);
     }
     return false;
 }

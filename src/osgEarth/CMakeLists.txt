@@ -209,6 +209,7 @@ SET(LIB_PUBLIC_HEADERS
     ScreenSpaceLayoutImpl
     ScreenSpaceLayoutDeclutter
     ScreenSpaceLayoutCallout
+    SDF
     Shaders
     ShaderFactory
     ShaderGenerator
@@ -575,6 +576,7 @@ set(TARGET_SRC
     Revisioning.cpp
     SceneGraphCallback.cpp
     ScreenSpaceLayout.cpp
+    SDF.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp
     ShaderLoader.cpp

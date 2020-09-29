@@ -706,6 +706,9 @@ namespace osgEarth
 		 */
 		double getUnitsPerPixel() const;
 
+        //! Gets the coordinate at the image's s,t
+        bool getCoord(int s, int t, double& out_x, double& out_y) const;
+
     private:
         GeoExtent _extent;
         Status _status;

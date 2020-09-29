@@ -57,6 +57,7 @@ namespace osgEarth { namespace Procedural
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
+            OE_OPTION_LAYER(ImageLayer, densityMaskLayer);
             OE_OPTION_LAYER(LandCoverLayer, landCoverLayer);
             OE_OPTION_LAYER(LandCoverDictionary, landCoverDictionary);
             OE_OPTION_VECTOR(LandCoverLifeMapping, landCoverMappings);
@@ -70,6 +71,9 @@ namespace osgEarth { namespace Procedural
 
         void setBiomeLayer(BiomeLayer*);
         BiomeLayer* getBiomeLayer() const;
+
+        void setDensityMaskLayer(ImageLayer*);
+        ImageLayer* getDensityMaskLayer() const;
 
         void setLandCoverLayer(LandCoverLayer*);
         LandCoverLayer* getLandCoverLayer() const;
@@ -109,7 +113,7 @@ namespace osgEarth { namespace Procedural
 
         const LandCoverLifeMapping* lookupLandCoverLifeMapping(int code) const;
 
-        std::future<void> _loadMaterialsJob;
+        mutable Future<osg::Referenced> _loadMaterialsJob;
         void loadMaterials(const AssetCatalog*);
     };
 

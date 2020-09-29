@@ -23,8 +23,9 @@
 #define OSGEARTH_PROCEDURAL_SPLATTING_LAYER_H
 
 #include "Export"
-#include <osgEarth/VisibleLayer>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
+#include <osgEarth/TextureArena>
 
 namespace osgEarth { namespace Procedural
 {
@@ -37,6 +38,7 @@ namespace osgEarth { namespace Procedural
         {
         public:
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION_LAYER(ImageLayer, lifeMap);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -68,8 +70,7 @@ namespace osgEarth { namespace Procedural
     protected:
         virtual ~TextureSplattingLayer() { }
 
-        TextureImageUnitReservation _splatBinding;
-        TextureImageUnitReservation _lutBinding;
+        osg::ref_ptr<TextureArena> _arena;
 
         void buildStateSets();
     };

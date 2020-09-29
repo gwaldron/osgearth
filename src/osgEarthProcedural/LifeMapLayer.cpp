@@ -152,6 +152,7 @@ LifeMapLayer::Options::getConfig() const
     Config conf = VisibleLayer::Options::getConfig();
     biomeLayer().set(conf, "biomes_layer");
     landCoverLayer().set(conf, "landcover_layer");
+    densityMaskLayer().set(conf, "density_mask_layer");
     
     Config mappings_conf;
     for (const auto& mapping : landCoverMappings())
@@ -166,6 +167,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
 {
     biomeLayer().get(conf, "biomes_layer");
     landCoverLayer().get(conf, "landcover_layer");
+    densityMaskLayer().get(conf, "density_mask_layer");
 
     const ConfigSet mappings_conf = conf.child("landcover_mappings").children("mapping");
     for (const auto& c : mappings_conf)
@@ -435,6 +437,8 @@ LifeMapLayer::openImplementation()
     if (parent.isError())
         return parent;
 
+    options().densityMaskLayer().open(getReadOptions());
+
     setProfile(Profile::create("global-geodetic"));
     return Status::OK();
 }
@@ -451,6 +455,7 @@ LifeMapLayer::addedToMap(const Map* map)
     ImageLayer::addedToMap(map);
 
     options().biomeLayer().addedToMap(map);
+    options().densityMaskLayer().addedToMap(map);
     options().landCoverLayer().addedToMap(map);
     options().landCoverDictionary().addedToMap(map);
 
@@ -474,10 +479,14 @@ LifeMapLayer::addedToMap(const Map* map)
                 const AssetCatalog* assets = cat->getAssets();
                 if (assets)
                 {
-                    _loadMaterialsJob = std::async(
-                        &LifeMapLayer::loadMaterials,
-                        this,
-                        assets);
+                    osg::ref_ptr<LifeMapLayer> layer(this);
+
+                    _loadMaterialsJob = Job<osg::Referenced>(
+                        [layer, assets](Cancelable*) {
+                            layer->loadMaterials(assets);
+                            return new osg::Referenced();
+                        }
+                    ).schedule();
                 }
             }
         }
@@ -520,6 +529,18 @@ LifeMapLayer::getBiomeLayer() const
 }
 
 void
+LifeMapLayer::setDensityMaskLayer(ImageLayer* layer)
+{
+    options().densityMaskLayer().setLayer(layer);
+}
+
+ImageLayer*
+LifeMapLayer::getDensityMaskLayer() const
+{
+    return options().densityMaskLayer().getLayer();
+}
+
+void
 LifeMapLayer::setLandCoverLayer(LandCoverLayer* layer)
 {
     options().landCoverLayer().setLayer(layer);
@@ -548,9 +569,8 @@ LifeMapLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
-    // sync to the async material loader
-    if (_loadMaterialsJob.valid())
-        _loadMaterialsJob.wait();
+    // wait for all materials to load
+    _loadMaterialsJob.wait();
 
     osg::ref_ptr<osg::Image> image = new osg::Image();
     image->allocateImage(
@@ -592,6 +612,29 @@ LifeMapLayer::createImageImplementation(
     GeoImageReader lc_reader(landcover);
 #endif
 
+    GeoImage densityMask;
+    ImageUtils::PixelReader readDensityMask;
+    osg::Vec4 dm_pixel;
+    osg::Matrixf dm_matrix;
+    if (getDensityMaskLayer())
+    {
+        TileKey dm_key(key);
+
+        while(dm_key.valid() && !densityMask.valid())
+        {
+            densityMask = getDensityMaskLayer()->createImage(dm_key, progress);
+            if (!densityMask.valid())
+                dm_key.makeParent();
+        }
+
+        if (densityMask.valid())
+        {
+            readDensityMask.setImage(densityMask.getImage());
+            readDensityMask.setBilinear(true);
+            extent.createScaleBias(dm_key.getExtent(), dm_matrix);
+        }
+    }
+
     // assemble the image:
     ImageUtils::PixelWriter write(image.get());
     osg::Vec4 pixel, temp, lcpixel;
@@ -608,6 +651,8 @@ LifeMapLayer::createImageImplementation(
     ImageUtils::PixelReader noiseSampler(_noiseFunc.get());
     noiseSampler.setBilinear(true);
     noiseSampler.setSampleAsRepeatingTexture(true);
+
+    GeoImage result(image.get(), key.getExtent());
 
     for(int t=0; t<write.t(); ++t)
     {
@@ -650,7 +695,7 @@ LifeMapLayer::createImageImplementation(
                 (0.4*noise[2][CLUMPY]);
 
             // Compensate for low density
-            pixel[DENSITY] *= 1.1;
+            pixel[DENSITY] *= 1.3;
 
             // Discourage density in highly sloped areas
             pixel[DENSITY] -= (0.8*slope);
@@ -663,6 +708,16 @@ LifeMapLayer::createImageImplementation(
             // temperature decreases with altitude
             float temperature = 1.0f - lerpstep(0.0f, 4000.0f, elevation);
             temperature += (0.2 * noise[1][SMOOTH]);
+
+            if (densityMask.valid())
+            {
+                double uu = u * dm_matrix(0, 0) + dm_matrix(3, 0);
+                double vv = v * dm_matrix(1, 1) + dm_matrix(3, 1);
+                readDensityMask(dm_pixel, uu, vv);
+                pixel[DENSITY] *= harden(dm_pixel.r());
+                moisture *= dm_pixel.r();
+                pixel[RUGGED] *= dm_pixel.r();
+            }
 
             // encode moisture and temperature together (4 bits each)
             pixel[MOISTURE] = ((float)(((int)(moisture*16.0f) << 4) | ((int)(temperature*16.0f)))) / 255.0f;
@@ -744,13 +799,12 @@ LifeMapLayer::createImageImplementation(
             }
 #endif
 
-
-
             write(pixel, s, t);
         }
     }
 
-    return GeoImage(image.get(), key.getExtent());
+    return std::move(result);
+    //return GeoImage(image.get(), key.getExtent());
 }
 
 osg::Vec4

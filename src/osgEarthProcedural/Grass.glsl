@@ -142,6 +142,9 @@ void oe_Grass_parametric(inout vec4 vertex_view)
 
     height = mix(-browning*height+height, browning*height+height, oe_noise_wide[NOISE_CLUMPY]);
 
+    //height *= 0.5 + (decel(instance[i].fillEdge)*(1.0 - 0.5));
+    height *= decel(instance[i].fillEdge);
+
     // ratio of adjusted height to nonimal height
     float heightRatio = height/instance[i].height;
 

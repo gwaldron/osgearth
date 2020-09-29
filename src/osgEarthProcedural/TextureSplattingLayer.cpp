@@ -28,11 +28,7 @@
 #include <osg/Drawable>
 #include <cstdlib> // getenv
 
-#define LC "[SplatLayer] " << getName() << ": "
-
-#define SPLAT_SAMPLER    "oe_splatTex"
-#define NOISE_SAMPLER    "oe_splat_noiseTex"
-#define LUT_SAMPLER      "oe_splat_coverageLUT"
+#define LC "[TextureSplattingLayer] " << getName() << ": "
 
 using namespace osgEarth::Procedural;
 
@@ -62,6 +58,17 @@ TextureSplattingLayer::init()
     VisibleLayer::init();
 
     setRenderType(osgEarth::Layer::RENDERTYPE_TERRAIN_SURFACE);
+
+    osg::StateSet* ss = this->getOrCreateStateSet();
+
+    // Arena to hold all the splatting textures
+    _arena = new TextureArena();
+    ss->setAttribute(_arena);
+
+    // Install the texture splatting shader
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    TerrainShaders shaders;
+    shaders.load(vp, shaders.TextureSplatting2, getReadOptions());
 }
 
 void

@@ -285,6 +285,11 @@ namespace osgEarth { namespace Threading
             return out;
         }
 
+        void wait() {
+            while (!_ev->wait(250u))
+                if (isAbandoned()) break;
+        }
+
         Future<T>& then(std::function<void(T*)>& func) {
             std::unique_lock<std::mutex> lock(_objRef->_callbacksMutex);
             if (_ev->isSet())

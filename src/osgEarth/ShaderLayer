@@ -1,0 +1,62 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_SHADER_LAYER_H
+#define OSGEARTH_SHADER_LAYER_H
+
+#include "VisibleLayer"
+
+using namespace osgEarth;
+
+namespace osgEarth
+{
+    /**
+     * Layer that just renders the terrain surface with a shader
+     * and nothing else.
+     */
+    class OSGEARTH_EXPORT ShaderLayer : public VisibleLayer
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            virtual Config getConfig() const override;
+            static Config getMetadata();
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, ShaderLayer, Options, VisibleLayer, Shader);
+
+    public: // Layer
+
+        virtual void init() override;
+
+    protected:
+
+        //! Destructor
+        virtual ~ShaderLayer() { }
+    };
+}
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ShaderLayer::Options);
+
+
+#endif // OSGEARTH_UTIL_DEBUG_IMAGE_LAYER_H

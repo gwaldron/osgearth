@@ -213,6 +213,7 @@ SET(LIB_PUBLIC_HEADERS
     Shaders
     ShaderFactory
     ShaderGenerator
+    ShaderLayer
     ShaderLoader
     ShaderMerger
     ShaderUtils
@@ -579,6 +580,7 @@ set(TARGET_SRC
     SDF.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp
+    ShaderLayer.cpp
     ShaderLoader.cpp
     ShaderMerger.cpp
     ShaderUtils.cpp

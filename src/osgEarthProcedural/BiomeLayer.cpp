@@ -20,11 +20,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "BiomeLayer"
+#include <osgEarth/rtree.h>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(biomes, BiomeLayer);
+
+#define LC "[BiomeLayer] "
 
 //...................................................................
 
@@ -39,6 +42,7 @@ Config
 BiomeLayer::Options::getConfig() const
 {
     Config conf = Layer::Options::getConfig();
+    OE_DEBUG << LC << __func__ << " not yet implemented" << std::endl;
     //TODO
     return conf;
 }
@@ -48,10 +52,17 @@ BiomeLayer::Options::getConfig() const
 #undef LC
 #define LC "[BiomeLayer] " << getName() << ": "
 
+namespace
+{
+    typedef int BiomeID;
+    typedef RTree<BiomeID, double, 2> MySpatialIndex;
+}
+
 void
 BiomeLayer::init()
 {
     Layer::init();
+    _index = nullptr;
 }
 
 Status
@@ -65,19 +76,20 @@ BiomeLayer::openImplementation()
     if (csStatus.isError())
         return csStatus;
 
+    MySpatialIndex* index = new MySpatialIndex();
+    _index = index;
+
     osg::ref_ptr<FeatureCursor> cursor = getControlSet()->createFeatureCursor(Query(), nullptr);
     while (cursor.valid() && cursor->hasMore())
     {
         const Feature* f = cursor->nextFeature();
         if (f)
         {
-            _index.emplace_back(ControlPoint());
-            _index.back().x = f->getGeometry()->begin()->x();
-            _index.back().y = f->getGeometry()->begin()->y();
-            _index.back().biomeid = f->getInt("biomeid");
+            double p[2] = { f->getGeometry()->begin()->x(), f->getGeometry()->begin()->y() };
+            index->Insert(p, p, { (int)f->getInt("biomeid") });
         }
     }
-    OE_INFO << LC << "Loaded control set and found " << _index.size() << " features" << std::endl;
+    OE_INFO << LC << "Loaded control set" << std::endl; // and found " << _index->size() << " features" << std::endl;
 
     // Warn the poor user if the configuration is missing
     if (getBiomeCatalog() == nullptr)
@@ -95,7 +107,9 @@ BiomeLayer::openImplementation()
 Status
 BiomeLayer::closeImplementation()
 {
-    _index.clear();
+    if (_index)
+        delete static_cast<MySpatialIndex*>(_index);
+    _index = nullptr;
 
     options().controlVectors().close();
 
@@ -136,30 +150,25 @@ BiomeLayer::getNearestBiomes(
     //TODO: replace this brute-force search with a proper
     // spatial index.
 
-    double farthest2 = 0.0;
-    std::vector<SearchResult>::iterator farthest2_iter;
+    MySpatialIndex* index = static_cast<MySpatialIndex*>(_index);
+    if (index == nullptr)
+        return;
 
-    for (const auto& cp : _index)
+    std::vector<BiomeID> hits;
+    std::vector<double> ranges_squared;
+    double point[2] = { x, y };
+    
+    index->KNNSearch(
+        point,
+        &hits,
+        &ranges_squared,
+        maxCount,
+        0.0);
+
+    for (int i = 0; i < hits.size(); ++i)
     {
-        double range2 = (cp.x - x)*(cp.x - x) + (cp.y - y)*(cp.y - y);
-
-        if (results.size() < maxCount)
-        {
-            SearchResult sr;
-            sr.biomeid = cp.biomeid;
-            sr.range2 = range2;
-            results.insert(sr);
-        }
-        else
-        {
-            if (range2 < results.rbegin()->range2)
-            {
-                SearchResult sr;
-                sr.biomeid = cp.biomeid;
-                sr.range2 = range2;
-                results.insert(sr);
-                results.erase(std::prev(results.end()));
-            }
-        }
+        results.emplace(SearchResult{
+            hits[i],
+            ranges_squared[i] });
     }
 }

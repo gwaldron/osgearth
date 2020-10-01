@@ -89,12 +89,7 @@ namespace osgEarth
 
             virtual ~BiomeLayer() { }
 
-            struct ControlPoint {
-                double x, y;
-                int biomeid;
-            };
-            typedef std::vector<ControlPoint> SpatialIndex;
-            SpatialIndex _index;
+            void* _index;
         };
 
     }

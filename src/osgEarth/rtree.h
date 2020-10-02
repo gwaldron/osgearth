@@ -628,6 +628,9 @@ ELEMTYPEREAL RTREE_QUAL::RectDistSquared(const ELEMTYPE* p, const Rect& rect) co
 RTREE_TEMPLATE
 int RTREE_QUAL::KNNSearch(const ELEMTYPE* point, std::vector<DATATYPE>* hits, std::vector<ELEMTYPEREAL>* ranges_squared, int maxHits, const ELEMTYPE maxDistance) const
 {
+    hits->clear();
+    ranges_squared->clear();
+
     // priority queue that puts smallest distances first
     std::priority_queue<
         KNNData, 
@@ -685,6 +688,9 @@ int RTREE_QUAL::KNNSearch(const ELEMTYPE* point, std::vector<DATATYPE>* hits, st
             if (maxHits > 0 && hits->size() >= maxHits)
                 return hits->size();
         }
+
+        if (queue.empty())
+            break;
 
         // continue processing the queue from nearest to farthest
         const KNNData& knnData = queue.top();

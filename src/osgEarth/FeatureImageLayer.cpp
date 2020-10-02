@@ -178,6 +178,8 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         RenderFrame& frame, 
         BLContext& ctx)
     {
+        OE_PROFILING_ZONE;
+
         BLPath path;
 
         ConstGeometryIterator gi(geometry);
@@ -212,6 +214,8 @@ namespace osgEarth { namespace FeatureImageLayerImpl
     {
         OE_HARD_ASSERT(geometry != nullptr, __func__);
         OE_HARD_ASSERT(symbol != nullptr, __func__);
+
+        OE_PROFILING_ZONE;
 
         BLPath path;
 
@@ -611,6 +615,8 @@ FeatureImageLayer::renderFeaturesForStyle(
     osg::Image*        image,
     Cancelable*        progress) const
 {
+    OE_PROFILING_ZONE;
+
     OE_DEBUG << LC << "Rendering " << in_features.size() << " features for " << imageExtent.toString() << "\n";
 
     // A processing context to use with the filters:
@@ -1045,6 +1051,8 @@ FeatureImageRenderer::render(
     osg::Image* target,
     ProgressCallback* progress) const
 {
+    OE_PROFILING_ZONE;
+
     Query defaultQuery;
     defaultQuery.tileKey() = key;
 
@@ -1098,6 +1106,9 @@ FeatureImageRenderer::render(
                     getFeatures(session, defaultQuery, key.getExtent(), features, progress);
                     if (!features.empty())
                     {
+                        std::unordered_map<std::string, Style> literal_styles;
+                        std::map<const Style*, FeatureList> style_buckets;
+
                         for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
                         {
                             Feature* feature = itr->get();
@@ -1106,7 +1117,8 @@ FeatureImageRenderer::render(
                             if (!styleString.empty() && styleString != "null")
                             {
                                 // resolve the style:
-                                Style combinedStyle;
+                                //Style combinedStyle;
+                                const Style* resolved_style = nullptr;
 
                                 // if the style string begins with an open bracket, it's an inline style definition.
                                 if ( styleString.length() > 0 && styleString[0] == '{' )
@@ -1114,7 +1126,10 @@ FeatureImageRenderer::render(
                                     Config conf( "style", styleString );
                                     conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );
                                     conf.set( "type", "text/css" );
-                                    combinedStyle = Style(conf);
+                                    Style& literal_style = literal_styles[conf.toJSON()];
+                                    if (literal_style.empty())
+                                        literal_style = Style(conf);
+                                    resolved_style = &literal_style;
                                 }
 
                                 // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
@@ -1123,25 +1138,30 @@ FeatureImageRenderer::render(
                                 // features.
                                 else
                                 {
-                                    const Style* selectedStyle = session->styles()->getStyle(styleString, false);
-                                    if ( selectedStyle )
-                                        combinedStyle = *selectedStyle;
+                                    const Style* selected_style = session->styles()->getStyle(styleString, false);
+                                    if (selected_style)
+                                        resolved_style = selected_style;
                                 }
 
-                                if (!combinedStyle.empty())
+                                if (resolved_style)
                                 {
-                                    FeatureList list;
-                                    list.push_back( feature );
-
-                                    renderFeaturesForStyle(
-                                        session,
-                                        combinedStyle,
-                                        list,
-                                        key.getExtent(),
-                                        target,
-                                        progress);
+                                    style_buckets[resolved_style].push_back(feature);
                                 }
                             }
+                        }
+
+                        for (auto& iter : style_buckets)
+                        {
+                            const Style* style = iter.first;
+                            FeatureList& list = iter.second;
+
+                            renderFeaturesForStyle(
+                                session,
+                                *style,
+                                list,
+                                key.getExtent(),
+                                target,
+                                progress);
                         }
                     }
                 }
@@ -1178,6 +1198,8 @@ FeatureImageRenderer::queryAndRenderFeaturesForStyle(
     osg::Image*       out_image,
     ProgressCallback* progress) const
 {
+    OE_PROFILING_ZONE;
+
     // Get the features
     FeatureList features;
     getFeatures(session, query, imageExtent, features, progress);
@@ -1231,6 +1253,9 @@ FeatureImageRenderer::getFeatures(
         // types along the way if a geometry override is in place:
         while (features.empty())
         {
+            if (progress && progress->isCanceled())
+                break;
+
             // query the feature source:
             osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress);
 

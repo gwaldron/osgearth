@@ -1,50 +1,43 @@
-<CompositeImage name="OSM Density Mask" visible="false" composite_function="less" min_level="11">
-    <!-- <cache_policy usage="none"/> -->
-    <layers>
-        <FeatureImage name="OSM Water" sdf="true" max_data_level="18">
-            <profile>spherical-mercator</profile>
-            <features>data:osm-water</features>
-            <styles>
-                <style>
-                    default {
-                        render-sdf-min-distance: 0;
-                        render-sdf-max-distance: 5;
-                    }
-                </style>
-            </styles>
-        </FeatureImage>
-        
-        <FeatureImage name="roads" min_level="15" max_data_level="18" sdf="true">
-            <profile>spherical-mercator</profile>
-            <features>data:osm</features>
-            <filters>
-                <script>("highway" in feature.properties);</script>
-            </filters>
-            <styles>
-                <style type="text/css">
-                    default {
-                        render-sdf-min-distance: 5;
-                        render-sdf-max-distance: 15;
-                    }
-                </style>
-            </styles>
-        </FeatureImage>  
-
-        <FeatureImage name="buildings" min_level="16" max_data_level="18" sdf="true">
-            <profile>spherical-mercator</profile>
-            <features>data:osm</features>
-            <filters>
-                <script>("building" in feature.properties);</script>
-            </filters>
-            <styles>
-                <style type="text/css">
-                    default {
-                        render-sdf-min-distance: 1;
-                        render-sdf-max-distance: 2;
-                    }
-                </style>
-            </styles>
-        </FeatureImage>
-        
-    </layers>
-</CompositeImage>
+<FeatureImage name="OSM Density Mask" sdf="true" min_level="14" max_data_level="18" visible="true">
+    <cache_policy usage="none"/>
+    <profile>spherical-mercator</profile>
+    <features>data:osm</features>
+    <!--
+    <filters>
+        <script>
+          <![CDATA[
+            ("highway" in feature.properties) ||
+            ("building" in feature.properties) ||
+            ("natural" in feature.properties && feature.properties.natural === "water")
+          ]]>
+        </script>
+    </filters>
+    -->
+    <styles>
+        <style type="text/css">
+            highway {
+                render-sdf-min-distance: 5;
+                render-sdf-max-distance: 15;
+            }
+            building {
+                render-sdf-min-distance: 1;
+                render-sdf-max-distance: 3;
+            }
+            water {
+                render-sdf-min-distance: 5;
+                render-sdf-max-distance: 5;
+            }
+        </style>
+        <script language="javascript">
+          <![CDATA[
+            function getStyle() {
+                if ("highway" in feature.properties) return "highway";
+                if ("building" in feature.properties) return "building";
+                if ("natural" in feature.properties && feature.properties.natural === "water") return "water";
+                return null;
+            }
+          ]]>
+        </script>
+        <selector class_expr="getStyle()"/>
+    </styles>
+</FeatureImage>

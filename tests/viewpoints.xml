@@ -84,13 +84,40 @@
         <height>357.5176040958613</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="Grasslands">
-        <heading>27.8304</heading>
-        <pitch>-13.5693</pitch>
-        <range>33.5138m</range>
-        <long>-87.61713635034261</long>
-        <lat>41.04180176430292</lat>
-        <height>172.7516074106097</height>
+    <viewpoint name="Road">
+        <heading>109.262</heading>
+        <pitch>-10.8273</pitch>
+        <range>30.9386m</range>
+        <long>-121.8616342623421</long>
+        <lat>46.73206930877957</lat>
+        <height>690.9927275199443</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+    </viewpoint>
+    <viewpoint name="Quilotoa Lake">
+        <heading>44.2873</heading>
+        <pitch>-27.5639</pitch>
+        <range>1731.74m</range>
+        <long>-78.90770900060492</long>
+        <lat>-0.861917594231788</lat>
+        <height>3529.603598460555</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+    </viewpoint>
+    <viewpoint name="Sonoma">
+        <heading>-19.7694</heading>
+        <pitch>-89.8951</pitch>
+        <range>1527.08m</range>
+        <long>-122.4600185010713</long>
+        <lat>38.28944457619371</lat>
+        <height>-9.02603252325207</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+    </viewpoint>
+    <viewpoint name="TEST">
+        <heading>89.4463</heading>
+        <pitch>-89.8203</pitch>
+        <range>301.985m</range>
+        <long>12.65702537821809</long>
+        <lat>41.76853783097658</lat>
+        <height>359.8097001286224</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
 </viewpoints>

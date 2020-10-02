@@ -44,6 +44,7 @@
     <!-- needs to be here or lifemap shader won't render properly...why? -->
 
     <lifemap name="Life Map" shared="true" min_level="11">
+        <cache_policy usage="none"/>
         <biomes_layer>Biomes</biomes_layer>
         <density_mask_layer>
             <xi:include href="osm_density_mask.xml"/>
@@ -102,49 +103,49 @@
                 {               
                     ivec2 lifemap_xy = ivec2((LIFEMAP_MAT*oe_layer_tilec).st * 255.0);
                     int biomeid = int(texelFetch(LIFEMAP_TEX, lifemap_xy, 0)[BIOME] * 255.0);
-                    //vec4 quad = texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st);
-                    //int biomeid = int(quad[BIOME]*255.0);
                     color = colors[biomeid];
                 }
             ]]>
         </shader>
     </tmsimage>
 
-    <tmsimage name="DEBUG - LifeMap View" enabled="false">
-        <cache_policy usage="none"/>
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    <Shader name="DEBUG - DENSITY" min_level="11" enabled="false">
         <shader>
             <![CDATA[
-                #version 430
-                #pragma vp_name LifeMap View
-                #pragma vp_entryPoint oe_splat_lifemap_view
+                #version 330
+                #pragma vp_entryPoint debug_density
                 #pragma vp_location fragment_coloring
-                
-                #define DENSITY 0
-                #define MOISTURE 1
-                #define RUGGED 2
-                #define BIOME 3                
-                
                 uniform float density_power = 1.0;
-                uniform float moisture_power = 1.0;
-                uniform float rugged_power = 1.0;
-                
                 uniform sampler2D LIFEMAP_TEX;
                 uniform mat4 LIFEMAP_MAT;
-                
-                vec4 oe_layer_tilec;
-                
-                void oe_splat_lifemap_view(inout vec4 color)
+                in vec4 oe_layer_tilec;
+                void debug_density(inout vec4 color)
                 {               
-                    vec4 quad = texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st);                    
-                    color.g = quad[DENSITY] * density_power;
-                    color.b = quad[MOISTURE] * moisture_power;
-                    color.r = quad[RUGGED] * rugged_power;
-                    color.a = 1;
+                    vec4 quad = texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st);
+                    color = vec4(0, (quad[0] * density_power), 0, 1);
                 }
             ]]>
         </shader>
-    </tmsimage>
+    </Shader>
+
+    <Shader name="DEBUG - RUGGED" min_level="11" enabled="false">
+        <shader>
+            <![CDATA[
+                #version 330
+                #pragma vp_entryPoint debug_rugged
+                #pragma vp_location fragment
+                uniform float rugged_power = 1.0;
+                uniform sampler2D LIFEMAP_TEX;
+                uniform mat4 LIFEMAP_MAT;
+                in vec4 oe_layer_tilec;
+                void debug_rugged(inout vec4 color)
+                {               
+                    vec4 quad = texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st);
+                    color = vec4((quad[2] * rugged_power), 0, 0, 1);
+                }
+            ]]>
+        </shader>
+    </Shader>
 
     <TMSImage name="ReadyMap 15m Imagery" enabled="true" min_range="7500" attenuation_range="6000">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
@@ -175,13 +176,13 @@
         </styles>
     </FeatureImage>
 
-    <xi:include href="osm_density_mask.xml"/>
-
     <Biomes name="Biomes">
         <cache_policy usage="none"/>
-        <OGRFeatures name="Control Points">
-            <url>D:/data/splat/biomes.shp</url>
-        </OGRFeatures>
+        <control_vectors>
+            <OGRFeatures name="Control Points">
+                <url>D:/data/splat/biomes.shp</url>
+            </OGRFeatures>
+        </control_vectors>
         <xi:include href="D:/data/splat/biomes.xml"/>
     </Biomes>
 

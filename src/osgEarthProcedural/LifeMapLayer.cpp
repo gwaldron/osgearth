@@ -682,11 +682,10 @@ LifeMapLayer::createImageImplementation(
             // exaggerate the slope value
             slope = harden(harden(1.0 - (normal * up)));
 
-#if 1
-
             pixel[RUGGED] =
                 //lerpstep(1600.0f, 5000.0f, elevation) +
-                elevTile->getRuggedness(x, y);
+                elevTile->getRuggedness(x, y) -
+                (0.2*noise[1][CLUMPY]);
 
             // Randomize it
             pixel[DENSITY] =
@@ -714,7 +713,8 @@ LifeMapLayer::createImageImplementation(
                 double uu = u * dm_matrix(0, 0) + dm_matrix(3, 0);
                 double vv = v * dm_matrix(1, 1) + dm_matrix(3, 1);
                 readDensityMask(dm_pixel, uu, vv);
-                pixel[DENSITY] *= harden(dm_pixel.r());
+                //pixel[DENSITY] *= harden(dm_pixel.r());
+                pixel[DENSITY] *= dm_pixel.r();
                 moisture *= dm_pixel.r();
                 pixel[RUGGED] *= dm_pixel.r();
             }
@@ -734,70 +734,6 @@ LifeMapLayer::createImageImplementation(
             {
                 pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
             }
-
-#else
-
-            if (landcover.valid())
-            {
-                lc_reader.read(temp, x, y);  
-                const LandCoverLifeMapping* m = lookupLandCoverLifeMapping((int)(temp.r()));
-                if (m)
-                {
-                    pixel[RUGGED] = m->rugged().get();
-                    pixel[DENSITY] = m->density().get();
-                    pixel[MOISTURE] = m->moisture().get();
-                }
-            }
-
-            //pixel[RUGGED] = mix(
-            //    pixel[RUGGED],
-            //    elevTile->getRuggedness(x, y),
-            //    noise[2][CLUMPY]);
-
-            pixel[RUGGED] *=
-                (0.5f) +
-                (0.3f*noise[0][RANDOM]) +
-                (0.3f*noise[1][SMOOTH]) +
-                (0.4f*noise[2][CLUMPY]);
-
-            // Randomize it
-            pixel[DENSITY] *=
-                (0.5f) +
-                (0.3f*noise[0][RANDOM]) +
-                (0.3f*noise[1][SMOOTH]) +
-                (0.4f*noise[2][CLUMPY]);
-
-            // Compensate for low density
-            //pixel[DENSITY] *= 1.4;
-
-            // Discourage density in highly sloped areas
-            pixel[DENSITY] -= (0.8f*slope);
-
-            // moisture is fairly arbitrary
-            float moisture = 1.0f - lerpstep(250.0f, 3000.0f, elevation);
-            moisture += (0.2f * noise[1][SMOOTH]);
-            moisture -= 0.5f*slope;
-
-            // temperature decreases with altitude
-            float temperature = 1.0f - lerpstep(0.0f, 4000.0f, elevation);
-            temperature += (0.2f * noise[1][SMOOTH]);
-
-            // encode moisture and temperature together (4 bits each)
-            pixel[MOISTURE] = ((float)(((int)(moisture*16.0f) << 4) | ((int)(temperature*16.0f)))) / 255.0f;
-
-            // biome lookup
-            float biomeNoise = fract(
-                noise[1][RANDOM] +
-                noise[2][SMOOTH]);
-
-            pixel[BIOME] = (float)lookupBiome(x, y, biomeNoise) / 255.0f;
-
-            // clamp to legal range (not the biome though)
-            for (int i = 0; i < 3; ++i)
-            {
-                pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
-            }
-#endif
 
             write(pixel, s, t);
         }

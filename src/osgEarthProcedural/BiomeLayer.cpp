@@ -79,6 +79,8 @@ BiomeLayer::openImplementation()
     MySpatialIndex* index = new MySpatialIndex();
     _index = index;
 
+    // Populate the in-memory spatial index with all the control points
+    int count = 0;
     osg::ref_ptr<FeatureCursor> cursor = getControlSet()->createFeatureCursor(Query(), nullptr);
     while (cursor.valid() && cursor->hasMore())
     {
@@ -87,9 +89,10 @@ BiomeLayer::openImplementation()
         {
             double p[2] = { f->getGeometry()->begin()->x(), f->getGeometry()->begin()->y() };
             index->Insert(p, p, { (int)f->getInt("biomeid") });
+            ++count;
         }
     }
-    OE_INFO << LC << "Loaded control set" << std::endl; // and found " << _index->size() << " features" << std::endl;
+    OE_INFO << LC << "Loaded control set and found " << count << " features" << std::endl;
 
     // Warn the poor user if the configuration is missing
     if (getBiomeCatalog() == nullptr)

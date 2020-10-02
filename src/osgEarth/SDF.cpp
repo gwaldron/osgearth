@@ -18,6 +18,8 @@
  */
 #include "SDF"
 #include "Math"
+#include "Metrics"
+#include <osgEarth/rtree.h>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -36,6 +38,8 @@ SDFGenerator::encodeSDF(
     OE_SOFT_ASSERT_AND_RETURN(image != nullptr, __func__, );
     OE_SOFT_ASSERT_AND_RETURN(extent.isValid(), __func__, );
 
+    OE_PROFILING_ZONE;
+
     int c = clamp((int)(channel - GL_RED), 0, 3);
     osg::Vec3d p;
     osg::Vec4 pixel;
@@ -47,6 +51,7 @@ SDFGenerator::encodeSDF(
     ImageUtils::PixelReader read(image);
     ImageUtils::PixelWriter write(image);
 
+    // Poor man's degrees-to-meters conversion
     double toMeters = 1.0;
     if (extent.getSRS()->isGeographic())
     {
@@ -54,15 +59,39 @@ SDFGenerator::encodeSDF(
         toMeters = (2.0 * osg::PI * R / 360.0) * cos(osg::DegreesToRadians(extent.yMin()));
     }
 
-    std::vector<std::pair<double, double>> distLUT;
-    distLUT.reserve(features.size());
-    for (auto& f_ptr : features)
+    // Table of min and max SDF distances per feature:
+    std::unordered_map<Feature*, std::pair<double, double>> distLUT;
+
+    // Build a spatial index of features we are considering.
+    // This is WAY faster than just iterating over all features.
+    RTree<Feature*, double, 2> index;
+
+    // The search radius, to constrain our search, will be equal
+    // to the highest "max distance" taken from the feature set.
+    double searchRadius = 0.0;
+
+    double a_min[2], a_max[2];
+    for (auto& feature : features)
     {
-        distLUT.emplace_back(
-            f_ptr->eval(mindist, &fctx),
-            f_ptr->eval(maxdist, &fctx));
+        const GeoExtent& e = feature->getExtent();
+        a_min[0] = e.xMin(), a_min[1] = e.yMin();
+        a_max[0] = e.xMax(), a_max[1] = e.yMax();
+        index.Insert(a_min, a_max, feature.get());
+
+        std::pair<double, double> limits(
+            feature->eval(mindist, &fctx),
+            feature->eval(maxdist, &fctx));
+
+        distLUT[feature.get()] = limits;
+
+        searchRadius = std::max(limits.second, searchRadius);
     }
 
+    std::vector<Feature*> hits;
+    std::vector<double> ranges_squared;
+    double point[2];
+
+    // Iterate over each pixel to create the SDF
     for (int t = 0; t < image->t(); ++t)
     {
         if (progress && progress->isCanceled())
@@ -70,24 +99,44 @@ SDFGenerator::encodeSDF(
 
         for (int s = 0; s < image->s(); ++s)
         {
-            double best = DBL_MAX;
-
-            gi.getCoord(s, t, p.x(), p.y());
-
-            int i = 0;
-            for (auto& f_ptr : features)
-            {
-                double sd = f_ptr->getGeometry()->getSignedDistance2D(p) * toMeters;
-                double sd_unit = unitremap(sd, distLUT[i].first, distLUT[i].second);
-                if (sd_unit < best)
-                    best = sd_unit;
-                if (best == 0.0)
-                    break;
-                ++i;
-            }
             read(pixel, s, t);
-            pixel[c] = best;
-            write(pixel, s, t);
+
+            // if the current pixel is already 0, we can't do any better
+            if (pixel[c] > 0.0)
+            {
+                // get the coordinate at this pixel:
+                gi.getCoord(s, t, p.x(), p.y());
+
+                point[0] = p.x(), point[1] = p.y();
+                double nearest = 1.0;
+
+                // Find all features within the search radius. We can't just say "find the 
+                // one closest element" because the RTree only operates on the bounding-box
+                // level. So instead we have to grab everything within the radius and manually
+                // find the closest one.
+                if (index.KNNSearch(point, &hits, &ranges_squared, 0, searchRadius) > 0)
+                {
+                    for (int i = 0; i < hits.size() && nearest > 0.0; ++i)
+                    {
+                        Feature* feature = hits[i];
+                        double range_squared = ranges_squared[i];
+                        std::pair<double, double>& limits = distLUT[feature];
+
+                        if (range_squared*toMeters <= limits.second*limits.second)
+                        {
+                            double sd = feature->getGeometry()->getSignedDistance2D(p) * toMeters;
+                            double sd_unit = unitremap(sd, limits.first, limits.second);
+                            nearest = std::min(nearest, sd_unit);
+                        }
+                    }
+                }
+
+                if (nearest < pixel[c])
+                {
+                    pixel[c] = nearest;
+                    write(pixel, s, t);
+                }
+            }
         }
     }
 }

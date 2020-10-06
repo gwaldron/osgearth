@@ -129,7 +129,7 @@ namespace osgEarth { namespace REX
 
         void refreshSharedSamplers(const RenderBindings& bindings);
 
-        unsigned getRevision() const { return _revision; }
+        int getRevision() const { return _revision; }
 
         bool isEmpty() const { return _empty; }
         
@@ -158,7 +158,7 @@ namespace osgEarth { namespace REX
         bool                               _imageUpdatesActive;
         TileKey                            _subdivideTestKey;
         bool                               _doNotExpire;
-        unsigned                           _revision;
+        int                                _revision;
         bool _meshEditsMade;
         bool _createChildAsync;
 

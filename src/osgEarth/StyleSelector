@@ -37,6 +37,9 @@ namespace osgEarth
         /** Constructs a style selector */
         StyleSelector( const Config& conf =Config() );
 
+        /** Constructs a style selector with a name and expression */
+        StyleSelector(const std::string& name, const StringExpression& expr);
+
         virtual ~StyleSelector() { }
 
     public: // properties

@@ -660,7 +660,8 @@ FeatureModelGraph::open()
     // Set up backface culling. If the option is unset, enable it by default
     // since shadowing requires it and it's a decent general-purpose setting
     if (_options.backfaceCulling().isSet())
-        stateSet->setMode(GL_CULL_FACE, *_options.backfaceCulling() ? 1 : 0);
+        stateSet->setMode(GL_CULL_FACE,
+            (*_options.backfaceCulling() ? 1 : 0) | osg::StateAttribute::OVERRIDE);
     else
         stateSet->setMode(GL_CULL_FACE, 1);
 
@@ -1871,6 +1872,18 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
 
             getOrCreateStateSet()->setAttributeAndModes(
                 new osg::Depth(osg::Depth::LEQUAL, 0, 1, false));
+        }
+
+        if (render->backfaceCulling().isSet())
+        {
+            if (render->backfaceCulling() == true)
+            {
+                getOrCreateStateSet()->setMode(GL_CULL_FACE, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+            }
+            else
+            {
+                getOrCreateStateSet()->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+            }
         }
     }
 }

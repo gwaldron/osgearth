@@ -109,6 +109,7 @@ DecalImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
         ImageUtils::PixelReader readInput(decal._image.get());
         const GeoExtent& outputExtentInDecalSRS = outputExtentsInDecalSRS[i];
         const GeoExtent& intersection = intersections[i];
+        bool normalizeX = decalExtent.crossesAntimeridian();
 
         for(unsigned t=0; t<(unsigned)output->t(); ++t)
         {
@@ -125,8 +126,16 @@ DecalImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
                 double out_u = (double)s/(double)(output->s()-1);
                 double out_x = outputExtentInDecalSRS.xMin() + (double)out_u * outputExtentInDecalSRS.width();
 
+                if (normalizeX)
+                {
+                    while (out_x < decalExtent.xMin())
+                        out_x += 360.0;
+                    while (out_x > decalExtent.xMax())
+                        out_x -= 360.0;
+                }
+                
                 double in_u = (out_x-decalExtent.xMin())/decalExtent.width();
-
+                
                 if (in_u < 0.0 || in_u > 1.0)
                     continue;
 

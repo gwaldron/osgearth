@@ -167,6 +167,7 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     // force an update traversal in order to compute layer extents.
     _cachedLayerExtentsComputeRequired = true;
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    ADJUST_EVENT_TRAV_COUNT(this, +1);
 }
 
 RexTerrainEngineNode::~RexTerrainEngineNode()

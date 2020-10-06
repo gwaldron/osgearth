@@ -7,7 +7,7 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
 
-    <GDALImage name="Oahu Imagery1" driver="gdal">
+    <GDALImage name="Oahu Imagery1" driver="gdal" async="true">
         <url>D:/mak/vrv/trunk/data/Terrain/Hawaii/Imagery/oahuImages/1-oahuImage.tif</url>
     </GDALImage>
 
@@ -90,7 +90,7 @@
     <TerrainConstraint name="constraint: roads" features="data:osm-roads" min_level="12" enabled="false"/>
 
     <DebugImage show_tessellation="true" enabled="true"/>
-    
+
     <!-- <xi:include href="viewpoints.xml"/> -->
     <viewpoints>
         <viewpoint name="Nepal">
@@ -136,6 +136,15 @@
             <long>7.290264823779213</long>
             <lat>46.2116331852606</lat>
             <height>528.5030263010412</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+        <viewpoint name="Stelvio Pass">
+            <heading>48.2322</heading>
+            <pitch>-21.2589</pitch>
+            <range>1631.06m</range>
+            <long>10.40785325471311</long>
+            <lat>46.51794239626108</lat>
+            <height>2207.686481455341</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
     </viewpoints>

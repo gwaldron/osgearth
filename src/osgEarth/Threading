@@ -672,7 +672,7 @@ namespace osgEarth { namespace Threading
     private:
         std::function<void()> _delegate;
         Future<RESULT_TYPE> _future;
-        friend class JobScheduler;
+        friend class JobArena;
     };
 
     /**
@@ -680,17 +680,16 @@ namespace osgEarth { namespace Threading
      * You usually don't need to use this class directly.
      * Use Job::schedule() to queue a new job.
      */
-    class OSGEARTH_EXPORT JobScheduler : public osg::Referenced
+    class OSGEARTH_EXPORT JobArena : public osg::Referenced
     {
     public:
-        //! Allocate a new schedule with "numThreads" threads
-        //! is the thread pool.
-        JobScheduler(
+        //! Allocate a new arena with "concurrency" threads.
+        JobArena(
             const std::string& name,
-            unsigned numThreads = 2u);
+            unsigned concurrency);
 
         //! Destroy
-        ~JobScheduler();
+        ~JobArena();
 
         //! Schedule an asynchronous task.
         //! @param job Job to schedule
@@ -711,7 +710,7 @@ namespace osgEarth { namespace Threading
     private:
 
         //! Access the named arena
-        static JobScheduler* arena(const std::string& name);
+        static JobArena* arena(const std::string& name);
 
         void startThreads();
 
@@ -745,17 +744,18 @@ namespace osgEarth { namespace Threading
         std::vector<std::thread> _threads;
 
         static Mutex _arenas_mutex;
-        static std::unordered_map<std::string, osg::ref_ptr<JobScheduler>> _arenas;
+        static std::unordered_map<std::string, unsigned> _arenaSizes;
+        static std::unordered_map<std::string, osg::ref_ptr<JobArena>> _arenas;
     };
 
     template<typename RESULT_TYPE>
     Future<RESULT_TYPE> Job<RESULT_TYPE>::schedule() {
-        return JobScheduler::schedule(*this, "");
+        return JobArena::schedule(*this, "");
     }
 
     template<typename RESULT_TYPE>
     Future<RESULT_TYPE> Job<RESULT_TYPE>::schedule(const std::string& arena) {
-        return JobScheduler::schedule(*this, arena);
+        return JobArena::schedule(*this, arena);
     }
 
 } } // namepsace osgEarth::Threading

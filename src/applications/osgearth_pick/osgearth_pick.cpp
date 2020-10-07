@@ -82,7 +82,14 @@ struct MyPickCallback : public RTTPicker::Callback
         if ( feature )
         {
             _app.fidLabel->setText( Stringify() << "Feature ID = " << feature->getFID() << " (oid = " << id << ")" );
-            _app.nameLabel->setText( Stringify() << "Name = " << feature->getString("name") );
+            //_app.nameLabel->setText( Stringify() << "Name = " << feature->getString("name") );
+
+            std::stringstream buf;
+            for (auto& attr : feature->getAttrs())
+            {
+                buf << attr.first << " = " << attr.second.getString() << std::endl;
+            }
+            _app.nameLabel->setText(buf.str());
         }
 
         else

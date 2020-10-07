@@ -49,19 +49,6 @@ TiledFeatureModelGraph::setOwnerName(const std::string& value)
     _ownerName = value;
 }
 
-
-FeatureCursor*
-TiledFeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const
-{
-    NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
-    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
-    if (_filterChain.valid())
-    {
-        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), cx);
-    }
-    return cursor;
-}
-
 osg::ref_ptr<osg::Node>
 TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
 {
@@ -83,7 +70,12 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
     if (progress && progress->isCanceled())
         return nullptr;
 
-    osg::ref_ptr< FeatureCursor > cursor = _features->createFeatureCursor(query, progress);
+    osg::ref_ptr< FeatureCursor > cursor = _features->createFeatureCursor(
+        query,
+        _filterChain.get(),
+        &fc,
+        progress);
+
     osg::ref_ptr<osg::Node> node = new osg::Group;
     if (cursor)
     {

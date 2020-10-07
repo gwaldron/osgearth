@@ -640,6 +640,14 @@ FlatteningLayer::Options::getConfig() const
 
     featureSource().set(conf, "features");
 
+    if (filters().empty() == false)
+    {
+        Config temp;
+        for (unsigned i = 0; i < filters().size(); ++i)
+            temp.add(filters()[i].getConfig());
+        conf.set("filters", temp);
+    }
+
     conf.set("line_width", _lineWidth);
     conf.set("buffer_width", _bufferWidth);
     conf.set("fill", _fill);
@@ -674,6 +682,10 @@ FlatteningLayer::Options::fromConfig(const Config& conf)
     URIContext uriContext = URIContext(conf.referrer());
 
     featureSource().get(conf, "features");
+
+    const Config& filtersConf = conf.child("filters");
+    for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
+        filters().push_back(ConfigOptions(*i));
 
     conf.get("line_width", _lineWidth);
     conf.get("buffer_width", _bufferWidth);
@@ -741,6 +753,8 @@ FlatteningLayer::openImplementation()
     Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
+
+    _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
     
     const Profile* profile = getProfile();
     if ( !profile )
@@ -914,7 +928,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         UnorderedSet<TileKey> featureKeys;
         for (int i = 0; i < intersectingKeys.size(); ++i)
         {        
-            if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
+            if ((int)intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
                 featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
             else
                 featureKeys.insert(intersectingKeys[i]);
@@ -926,7 +940,12 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
             Query query;        
             query.tileKey() = *i;
 
-            osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
+            osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
+                query,
+                _filterChain.get(),
+                nullptr,
+                progress);
+
             while (cursor.valid() && cursor->hasMore())
             {
                 Feature* feature = cursor->nextFeature();
@@ -973,8 +992,13 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         Query query;
         query.bounds() = queryExtent.bounds();
 
+        osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
+            query,
+            _filterChain.get(),
+            nullptr,
+            progress);
+
         // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
         while (cursor.valid() && cursor->hasMore())
         {
             Feature* feature = cursor->nextFeature();

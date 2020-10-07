@@ -203,9 +203,29 @@ FeatureSource::getExtent() const
 }
 
 FeatureCursor*
-FeatureSource::createFeatureCursor(const Query& query, ProgressCallback* progress)
+FeatureSource::createFeatureCursor(
+    const Query& query, 
+    ProgressCallback* progress)
 {
-    return createFeatureCursorImplementation(query, progress);
+    return createFeatureCursor(
+        query,
+        nullptr, // filters
+        nullptr, // context
+        progress);
+}
+
+FeatureCursor*
+FeatureSource::createFeatureCursor(
+    const Query& query,
+    FeatureFilterChain* filters,
+    FilterContext* context,
+    ProgressCallback* progress)
+{
+    FeatureCursor* cursor = createFeatureCursorImplementation(query, progress);
+    if (cursor && filters)
+        return new FilteredFeatureCursor(cursor, filters, context);
+    else
+        return cursor;
 }
 
 namespace
@@ -245,13 +265,40 @@ namespace
 }
 
 FeatureCursor*
-FeatureSource::createFeatureCursor(const TileKey& key, ProgressCallback* progress)
+FeatureSource::createFeatureCursor(
+    const TileKey& key,
+    ProgressCallback* progress)
 {
-    return createFeatureCursor(key, Distance(0.0, Units::METERS), progress);
+    return createFeatureCursor(
+        key,
+        Distance(0.0, Units::METERS),
+        nullptr, // filters
+        nullptr, // context
+        progress);
 }
 
 FeatureCursor*
-FeatureSource::createFeatureCursor(const TileKey& key, const Distance& buffer, ProgressCallback* progress)
+FeatureSource::createFeatureCursor(
+    const TileKey& key,
+    FeatureFilterChain* filters,
+    FilterContext* context,
+    ProgressCallback* progress)
+{
+    return createFeatureCursor(
+        key, 
+        Distance(0.0, Units::METERS),
+        filters,
+        context,
+        progress);
+}
+
+FeatureCursor*
+FeatureSource::createFeatureCursor(
+    const TileKey& key, 
+    const Distance& buffer,
+    FeatureFilterChain* filters,
+    FilterContext* context,
+    ProgressCallback* progress)
 {
     if (_featureProfile.valid())
     {
@@ -278,7 +325,7 @@ FeatureSource::createFeatureCursor(const TileKey& key, const Distance& buffer, P
             UnorderedSet<TileKey> featureKeys;
             for (int i = 0; i < intersectingKeys.size(); ++i)
             {        
-                if (_featureProfile->getMaxLevel() >= 0 && intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
+                if (_featureProfile->getMaxLevel() >= 0 && intersectingKeys[i].getLOD() > (int)_featureProfile->getMaxLevel())
                     featureKeys.insert(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
                 else
                     featureKeys.insert(intersectingKeys[i]);
@@ -292,7 +339,12 @@ FeatureSource::createFeatureCursor(const TileKey& key, const Distance& buffer, P
                 Query query;        
                 query.tileKey() = *i;
 
-                osg::ref_ptr<FeatureCursor> cursor = createFeatureCursor(query, progress);
+                osg::ref_ptr<FeatureCursor> cursor = createFeatureCursor(
+                    query,
+                    filters,
+                    context,
+                    progress);
+
                 if (cursor.valid())
                 {
                     multi->_cursors.push_back(cursor.get());
@@ -318,7 +370,11 @@ FeatureSource::createFeatureCursor(const TileKey& key, const Distance& buffer, P
             Query query;
             query.bounds() = localExtent.bounds();
 
-            return createFeatureCursor(query, progress);
+            return createFeatureCursor(
+                query, 
+                filters,
+                context,
+                progress);
         }
     }
 

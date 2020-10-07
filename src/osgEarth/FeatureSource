@@ -97,11 +97,24 @@ namespace osgEarth
 
         /**
         * Creates a cursor that iterates over all features corresponding to the
+        * specified TileKey, passing them through the specified filter chain.
+        * Caller takes ownership of the returned object.
+        */
+        FeatureCursor* createFeatureCursor(
+            const TileKey& key,
+            FeatureFilterChain* filters,
+            FilterContext* context,
+            ProgressCallback* progress);
+
+        /**
+        * Creates a cursor that iterates over all features corresponding to the
         * specified TileKey with a buffer. Caller takes ownership of the returned object.
         */
         FeatureCursor* createFeatureCursor(
             const TileKey& key,
             const Distance& buffer,
+            FeatureFilterChain* filters,
+            FilterContext* context,
             ProgressCallback* progress);
 
         /**
@@ -110,6 +123,17 @@ namespace osgEarth
          */
         FeatureCursor* createFeatureCursor(
             const Query& query,
+            ProgressCallback* progress);
+
+        /**
+        * Creates a cursor that iterates over all features corresponding to the
+        * specified TileKey, passing them through the specified filter chain.
+        * Caller takes ownership of the returned object.
+        */
+        FeatureCursor* createFeatureCursor(
+            const Query& query,
+            FeatureFilterChain* filters,
+            FilterContext* context,
             ProgressCallback* progress);
 
         /**

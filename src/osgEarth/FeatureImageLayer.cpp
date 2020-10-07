@@ -287,20 +287,20 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 
 #endif
 
-    FeatureCursor* createCursor(
-        FeatureSource* fs, 
-        FeatureFilterChain* chain, 
-        FilterContext& cx, 
-        const Query& query, 
-        ProgressCallback* progress)
-    {
-        FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
-        if (cursor && chain)
-        {
-            cursor = new FilteredFeatureCursor(cursor, chain, cx);
-        }
-        return cursor;
-    }
+    //FeatureCursor* createCursor(
+    //    FeatureSource* fs, 
+    //    FeatureFilterChain* chain, 
+    //    FilterContext& cx, 
+    //    const Query& query, 
+    //    ProgressCallback* progress)
+    //{
+    //    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
+    //    if (cursor && chain)
+    //    {
+    //        cursor = new FilteredFeatureCursor(cursor, chain, cx);
+    //    }
+    //    return cursor;
+    //}
 }}
 
 //........................................................................
@@ -1065,7 +1065,13 @@ FeatureImageRenderer::render(
     {
         // Each feature has its own embedded style data, so use that:
         FilterContext context;
-        osg::ref_ptr<FeatureCursor> cursor = createCursor(features, _filterChain.get(), context, defaultQuery, progress);
+
+        osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(
+            defaultQuery,
+            _filterChain.get(),
+            &context,
+            progress);
+
         while( cursor.valid() && cursor->hasMore() )
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();
@@ -1257,7 +1263,13 @@ FeatureImageRenderer::getFeatures(
                 break;
 
             // query the feature source:
-            osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress);
+            //osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress);
+
+            osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(
+                localQuery,
+                _filterChain.get(),
+                &context,
+                progress);
 
             while( cursor.valid() && cursor->hasMore() )
             {

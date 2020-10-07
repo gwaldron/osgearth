@@ -697,50 +697,19 @@ GeometryCloud::add(osg::Node* node, unsigned alignment)
     ImageUtils::PixelWriter write(tex->_image.get());
     osg::Vec4 value;
 
-#if 1
     for(auto& i : _texturesToAdd)
     {
         int layer = _textureLayers[i.get()];
 
         ImageUtils::PixelReader read(i->getImage(0));
+        
+        ImageUtils::ImageIterator iter(write);
 
-        for(int t=0; t<height; ++t)
-        {
-            float v = osg::clampBetween((float)t/(float)(height-1), 0.0f, 1.0f);
-            for(int s=0; s<width; ++s)
-            {
-                float u = osg::clampBetween((float)s/(float)(width-1), 0.0f, 1.0f);
-                read(value, u, v);
-                write(value, s, t, layer);
-            }
-        }
+        iter.forEachPixel([&]() {
+            read(value, iter.u(), iter.v());
+            write(value, iter.s(), iter.t(), layer);
+        });
     }
-
-#else
-    for(auto i : _texturesToAdd)
-    {
-        osg::Image* src = i->getImage(0);
-        int layer = _textureLayers[i.get()];
-
-        // resize if necessary to fit into the miniatlas:
-        osg::ref_ptr<osg::Image> sized;
-        if (src->s() == width && src->t() == height)
-            sized = src;
-        else
-            ImageUtils::resizeImage(src, width, height, sized);
-
-        // copy pixels into atlas
-        ImageUtils::PixelReader read(sized.get());
-        for(int s=0; s<width; ++s)
-        {
-            for(int t=0; t<height; ++t)
-            {
-                read(value, s, t);
-                write(value, s, t, layer);
-            }
-        }
-    }
-#endif
 
     return tex;
 }

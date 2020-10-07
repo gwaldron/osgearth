@@ -169,6 +169,8 @@ ImageUtils::resizeImage(const osg::Image* input,
                         unsigned int mipmapLevel,
                         bool bilinear)
 {
+    //TODO: refactor this with gluScaleImage/CPU?
+
     if ( !input && out_s == 0 && out_t == 0 )
         return false;
 
@@ -899,27 +901,6 @@ ImageUtils::makeTexture2DArray(osg::Image* image)
     return tex2dArray;
 }
 
-namespace
-{
-    struct MixImage
-    {
-        float _a;
-        bool _srcHasAlpha, _destHasAlpha;
-
-        bool operator()( const osg::Vec4f& src, osg::Vec4f& dest )
-        {
-            float sa = _srcHasAlpha ? _a * src.a() : _a;
-            float da = _destHasAlpha ? dest.a() : 1.0f;
-            dest.set(
-                dest.r()*(1.0f-sa) + src.r()*sa,
-                dest.g()*(1.0f-sa) + src.g()*sa,
-                dest.b()*(1.0f-sa) + src.b()*sa,
-                osg::maximum(sa, da) );
-            return true;
-        }
-    };
-}
-
 bool
 ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
 {
@@ -930,12 +911,27 @@ ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
         return false;
     }
 
-    PixelVisitor<MixImage> mixer;
-    mixer._a = osg::clampBetween( a, 0.0f, 1.0f );
-    mixer._srcHasAlpha = hasAlphaChannel(src); //src->getPixelSizeInBits() == 32;
-    mixer._destHasAlpha = hasAlphaChannel(dest); //dest->getPixelSizeInBits() == 32;
+    a = osg::clampBetween( a, 0.0f, 1.0f );
+    bool srcHasAlpha = hasAlphaChannel(src);
+    bool destHasAlpha = hasAlphaChannel(dest);
 
-    mixer.accept( src, dest );
+    osg::Vec4 src_value, dest_value;
+    PixelReader read_src(src), read_dest(dest);
+    PixelReader write_dest(dest);
+    ImageIterator i(src);
+
+    i.forEachPixel([&]() {
+        read_src(src_value, i.s(), i.t());
+        read_dest(dest_value, i.s(), i.t());
+        float sa = srcHasAlpha ? a * src_value.a() : a;
+        float da = destHasAlpha ? dest_value.a() : 1.0f;
+        dest_value.set(
+            dest_value.r()*(1.0f - sa) + src_value.r()*sa,
+            dest_value.g()*(1.0f - sa) + src_value.g()*sa,
+            dest_value.b()*(1.0f - sa) + src_value.b()*sa,
+            osg::maximum(sa, da));
+        write_dest(dest_value, i.s(), i.t());
+        });
 
     return true;
 }
@@ -1098,6 +1094,7 @@ ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
         return false;
 
     PixelReader read(image);
+
     for(unsigned r=0; r<(unsigned)image->r(); ++r)
     {
         for(unsigned t=0; t<(unsigned)image->t(); ++t)
@@ -1250,6 +1247,17 @@ ImageUtils::replaceNoDataValues(osg::Image*       target,
     PixelReader readTarget(target);
     PixelWriter writeTarget(target);
     PixelReader readReference(reference);
+    osg::Vec4 pixel;
+
+    ImageIterator i(target);
+    i.forEachPixel([&]() {
+        readTarget(pixel, i.s(), i.t());
+        if (pixel.r() == NO_DATA_VALUE)
+        {
+            osg::Vec4f refValue = readReference(xscale*i.u() + xbias, yscale*i.v() + ybias);
+            writeTarget(refValue, i.s(), i.t());
+        }
+    });
 
     for(int s=0; s<target->s(); ++s)
     {
@@ -1340,7 +1348,15 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
     else
         result->setInternalTextureFormat( pixelFormat );
 
-    PixelVisitor<CopyImage>().accept( image, result );
+    // copy image to result
+    PixelReader read(image);
+    PixelWriter write(result);
+    osg::Vec4 value;
+    ImageIterator iter(read);
+    iter.forEachPixel([&]() {
+        read(value, iter.s(), iter.t());
+        write(value, iter.s(), iter.t());
+    });
 
     return result;
 }
@@ -1460,14 +1476,13 @@ ImageUtils::convertToPremultipliedAlpha(osg::Image* image)
 
     PixelReader read(image);
     PixelWriter write(image);
-    for(int r=0; r<image->r(); ++r) {
-        for(int s=0; s<image->s(); ++s) {
-            for( int t=0; t<image->t(); ++t ) {
-                osg::Vec4f c = read(s, t, r);
-                write( osg::Vec4f(c.r()*c.a(), c.g()*c.a(), c.b()*c.a(), c.a()), s, t, r);
-            }
-        }
-    }
+    ImageIterator iter(read);
+    osg::Vec4 c;
+    iter.forEachPixel([&]() {
+        read(c, iter.s(), iter.t(), iter.r());
+        c.set(c.r()*c.a(), c.g()*c.a(), c.b()*c.a(), c.a());
+        write(c, iter.s(), iter.t(), iter.r());
+    });
     return true;
 }
 
@@ -2051,11 +2066,11 @@ ImageUtils::PixelReader::setImage(const osg::Image* image)
         _rowBytes = _image->getRowStepInBytes(); //getRowSizeInBytes();
         _imageBytes = _image->getImageSizeInBytes();
         GLenum dataType = _image->getDataType();
-        _reader = getReader( _image->getPixelFormat(), dataType );
-        if ( !_reader )
+        _read = getReader( _image->getPixelFormat(), dataType );
+        if ( !_read)
         {
             OE_WARN << "[PixelReader] No reader found for pixel format " << std::hex << _image->getPixelFormat() << std::endl;
-            _reader = &ColorReader<0,GLbyte>::read;
+            _read = &ColorReader<0,GLbyte>::read;
         }
     }
 }
@@ -2159,7 +2174,7 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
         const float vmin = 1.0f / (2.0f * (float)_image->t());
         int s = u<umin? 0 : u>(1.0f-umin)? _image->s()-1 : (int)floorf(u*(float)_image->s());
         int t = v<vmin? 0 : v>(1.0f-vmin)? _image->t()-1 : (int)floorf(v*(float)_image->t());
-        (*_reader)(this, out, s, t, r, m);
+        _read(this, out, s, t, r, m);
     }
 
     else if (_sampleAsTexture)
@@ -2216,10 +2231,10 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
         }
 
         osg::Vec4f p1, p2, p3, p4;
-        (*_reader)(this, p1, s, t, r, m);
-        (*_reader)(this, p2, splus1, t, r, m);
-        (*_reader)(this, p3, s, tplus1, r, m);
-        (*_reader)(this, p4, splus1, tplus1, r, m);
+        _read(this, p1, s, t, r, m);
+        _read(this, p2, splus1, t, r, m);
+        _read(this, p3, s, tplus1, r, m);
+        _read(this, p4, splus1, tplus1, r, m);
 
         p1 = p1 * (1.0 - fx) + p2 * fx;
         p2 = p3 * (1.0 - fx) + p4 * fx;
@@ -2256,10 +2271,10 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
 
         osg::Vec4f UL, UR, LL, LR;
 
-        (*_reader)(this, UL, (int)s0, (int)t0, r, m); // upper left
-        (*_reader)(this, UR, (int)s1, (int)t0, r, m); // upper right
-        (*_reader)(this, LL, (int)s0, (int)t1, r, m); // lower left
-        (*_reader)(this, LR, (int)s1, (int)t1, r, m); // lower right
+        _read(this, UL, (int)s0, (int)t0, r, m); // upper left
+        _read(this, UR, (int)s1, (int)t0, r, m); // upper right
+        _read(this, LL, (int)s0, (int)t1, r, m); // lower left
+        _read(this, LR, (int)s1, (int)t1, r, m); // lower right
 
         osg::Vec4f TOP = UL * (1.0f - smix) + UR * smix;
         osg::Vec4f BOT = LL * (1.0f - smix) + LR * smix;
@@ -2278,7 +2293,7 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, 
         const double vmin = 1.0 / (2.0 * (double)_image->t());
         int s = u<umin ? 0 : u>(1.0 - umin) ? _image->s() - 1 : (int)floorf(u*(double)_image->s());
         int t = v<vmin ? 0 : v>(1.0 - vmin) ? _image->t() - 1 : (int)floorf(v*(double)_image->t());
-        (*_reader)(this, out, s, t, r, m);
+        _read(this, out, s, t, r, m);
     }
 
     else if (_sampleAsTexture)
@@ -2335,10 +2350,10 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, 
         }
 
         osg::Vec4f p1, p2, p3, p4;
-        (*_reader)(this, p1, s, t, r, m);
-        (*_reader)(this, p2, splus1, t, r, m);
-        (*_reader)(this, p3, s, tplus1, r, m);
-        (*_reader)(this, p4, splus1, tplus1, r, m);
+        _read(this, p1, s, t, r, m);
+        _read(this, p2, splus1, t, r, m);
+        _read(this, p3, s, tplus1, r, m);
+        _read(this, p4, splus1, tplus1, r, m);
 
         p1 = p1 * (1.0 - fx) + p2 * fx;
         p2 = p3 * (1.0 - fx) + p4 * fx;
@@ -2375,10 +2390,10 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, 
 
         osg::Vec4f UL, UR, LL, LR;
 
-        (*_reader)(this, UL, (int)s0, (int)t0, r, m); // upper left
-        (*_reader)(this, UR, (int)s1, (int)t0, r, m); // upper right
-        (*_reader)(this, LL, (int)s0, (int)t1, r, m); // lower left
-        (*_reader)(this, LR, (int)s1, (int)t1, r, m); // lower right
+        _read(this, UL, (int)s0, (int)t0, r, m); // upper left
+        _read(this, UR, (int)s1, (int)t0, r, m); // upper right
+        _read(this, LL, (int)s0, (int)t1, r, m); // lower left
+        _read(this, LR, (int)s1, (int)t1, r, m); // lower right
 
         osg::Vec4f TOP = UL * (1.0f - smix) + UR * smix;
         osg::Vec4f BOT = LL * (1.0f - smix) + LR * smix;

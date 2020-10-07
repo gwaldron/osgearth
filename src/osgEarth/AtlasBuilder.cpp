@@ -46,16 +46,6 @@ namespace
             return _sourceList;
         }
     };
-    
-    /** PixelVisitor functor to fill an image with a value */
-    struct SetDefaults
-    {
-        osg::Vec4f _value;
-        bool operator()(osg::Vec4f& inout) {
-            inout = _value;
-            return true;
-        }
-    };
 }
 
 
@@ -184,9 +174,8 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                     // failing that, create an empty one as a placeholder.
                     auxImage = new osg::Image();
                     auxImage->allocateImage(image->s(), image->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-                    ImageUtils::PixelVisitor<SetDefaults> filler;
-                    filler._value = defaultValue;
-                    filler.accept(auxImage.get());
+                    ImageUtils::PixelWriter write(auxImage.get());
+                    write.assign(defaultValue);
                 }
 
                 if ( auxImage->s() != image->s() || auxImage->t() != image->t() )

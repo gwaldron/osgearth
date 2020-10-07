@@ -718,6 +718,8 @@ namespace osgEarth
 
     typedef std::vector<GeoImage> GeoImageVector;
 
+    typedef ImageUtils::ImageIteratorWithExtent<GeoExtent> GeoImageIterator;
+
     /**
      * A georeferenced heightfield and associated normal/curvature map.
      */

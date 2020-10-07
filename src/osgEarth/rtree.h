@@ -112,7 +112,13 @@ public:
   /// \param maxHits Maximum number of elements to return
   /// \param maxDistance Maximum distance from point to search
   /// \return Returns the number of entries found
-  int KNNSearch(const ELEMTYPE* point, std::vector<DATATYPE>* hits, std::vector<ELEMTYPEREAL>* ranges_squared, int maxHits, const ELEMTYPE maxDistance) const;
+  int KNNSearch(
+      const ELEMTYPE* point, 
+      std::vector<DATATYPE>* hits,
+      std::vector<ELEMTYPEREAL>* ranges_squared, 
+      int maxHits, 
+      const ELEMTYPE maxDistance,
+      std::function<bool(const DATATYPE&)> acceptor = [](const DATATYPE&) { return true; } ) const;
   
   /// Remove all entries from tree
   void RemoveAll();
@@ -626,7 +632,13 @@ ELEMTYPEREAL RTREE_QUAL::RectDistSquared(const ELEMTYPE* p, const Rect& rect) co
 
 //! Adapted from https://github.com/mourner/rbush-knn/blob/master/index.js
 RTREE_TEMPLATE
-int RTREE_QUAL::KNNSearch(const ELEMTYPE* point, std::vector<DATATYPE>* hits, std::vector<ELEMTYPEREAL>* ranges_squared, int maxHits, const ELEMTYPE maxDistance) const
+int RTREE_QUAL::KNNSearch(
+    const ELEMTYPE* point, 
+    std::vector<DATATYPE>* hits, 
+    std::vector<ELEMTYPEREAL>* ranges_squared, 
+    int maxHits, 
+    const ELEMTYPE maxDistance,
+    std::function<bool(const DATATYPE&)> acceptLeaf) const
 {
     hits->clear();
     ranges_squared->clear();
@@ -680,8 +692,11 @@ int RTREE_QUAL::KNNSearch(const ELEMTYPE* point, std::vector<DATATYPE>* hits, st
         while (!queue.empty() && queue.top().is_item())
         {
             const KNNData& candidate = queue.top();
-            hits->emplace_back(*candidate.m_item);
-            ranges_squared->push_back(candidate.m_dist_squared);
+            if (acceptLeaf(*candidate.m_item))
+            {
+                hits->emplace_back(*candidate.m_item);
+                ranges_squared->push_back(candidate.m_dist_squared);
+            }
             queue.pop();
 
             // bail once we reach the maxHits limit

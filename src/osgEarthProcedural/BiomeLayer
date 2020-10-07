@@ -24,7 +24,7 @@
 
 #include "Export"
 #include "Biome"
-#include <osgEarth/Layer>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
 
@@ -34,41 +34,24 @@ namespace osgEarth
     {
         using namespace osgEarth;
 
-        class OSGEARTHPROCEDURAL_EXPORT BiomeLayer : public Layer
+        class OSGEARTHPROCEDURAL_EXPORT BiomeLayer : public ImageLayer
         {
         public:
-            class OSGEARTHPROCEDURAL_EXPORT Options : public Layer::Options
+            class OSGEARTHPROCEDURAL_EXPORT Options : public ImageLayer::Options
             {
             public:
-                META_LayerOptions(osgEarth, Options, Layer::Options);
+                META_LayerOptions(osgEarth, Options, ImageLayer::Options);
                 OE_OPTION_LAYER(FeatureSource, controlVectors);
                 OE_OPTION_REFPTR(BiomeCatalog, biomeCatalog);
+                OE_OPTION(unsigned, numSamples);
+                OE_OPTION(float, tightness);
                 virtual Config getConfig() const;
             private:
                 void fromConfig(const Config& conf);
             };
 
         public:
-            META_Layer(osgEarthProcedural, BiomeLayer, Options, Layer, Biomes);
-
-            //! Results of a call to getNearestBiomes
-            struct SearchResult
-            {
-                int biomeid;
-                double range2;
-
-                // sort functor
-                bool operator < (const SearchResult& rhs) const {
-                    return range2 < rhs.range2;
-                }
-            };
-
-            //! Returns the N nearest biomes to the input location.
-            void getNearestBiomes(
-                double x,
-                double y,
-                unsigned maxCount,
-                std::set<SearchResult>& results) const;
+            META_Layer(osgEarthProcedural, BiomeLayer, Options, ImageLayer, Biomes);
                 
             //! Get the biome corresponding to the input "id"
             const Biome* getBiome(int id) const;
@@ -83,6 +66,10 @@ namespace osgEarth
 
             virtual Status closeImplementation() override;
 
+            virtual GeoImage createImageImplementation(
+                const TileKey& key, 
+                ProgressCallback* progress) const override;
+
         protected:
 
             FeatureSource* getControlSet() const;
@@ -90,6 +77,25 @@ namespace osgEarth
             virtual ~BiomeLayer() { }
 
             void* _index;
+
+            FeatureList _features;
+
+        public:
+
+            struct Record {
+                Segment2d _segment;
+                int _biomeid;
+                double _radius;
+            };
+            typedef std::shared_ptr<Record> RecordPtr;
+
+            //! Returns the N nearest biomes to the input location.
+            void getNearestBiomes(
+                double x,
+                double y,
+                unsigned maxCount,
+                std::vector<RecordPtr>& hits,
+                std::vector<double>& ranges_squared) const;
         };
 
     }

@@ -107,7 +107,7 @@ namespace osgEarth { namespace Procedural
         osg::ref_ptr<TextureArena> _arena;
         std::unordered_map<int, const LandCoverLifeMapping*> _lcLUT;
 
-        int lookupBiome(double x, double y, float noise) const;
+        //int lookupBiome(double x, double y, float noise) const;
 
         osg::Vec4 lookupLandCover(float noise, void*) const;
 

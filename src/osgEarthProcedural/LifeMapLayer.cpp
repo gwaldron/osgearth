@@ -272,14 +272,13 @@ namespace
                 osg::Vec4 temp, temp2;
                 float minh = 1.0f, maxh = 0.0f;
 
-                for(int t=0; t< writeRGBH.t(); ++t)
-                {
-                    for(int s=0; s< writeRGBH.s(); ++s)
+                ImageUtils::ImageIterator iter(rgbh.get());
+                iter.forEachPixel([&]()
                     {
-                        readColor(temp, s, t);
+                        readColor(temp, iter.s(), iter.t());
                         if (height.valid())
                         {
-                            readHeight(temp2, s, t);
+                            readHeight(temp2, iter.s(), iter.t());
                             temp.a() = temp2.r();
                         }
                         else
@@ -289,9 +288,9 @@ namespace
 
                         minh = osg::minimum(minh, temp.a());
                         maxh = osg::maximum(maxh, temp.a());
-                        writeRGBH(temp, s, t);
-                    }
-                }
+                        writeRGBH(temp, iter.s(), iter.t());
+                    });
+
                 OE_INFO << heightURI.base() << ", MinH=" << minh << ", MaxH=" << maxh << std::endl;
 
                 ImageUtils::compressImageInPlace(rgbh.get());
@@ -355,30 +354,28 @@ namespace
                 osg::Vec4 aoVal;
                 osg::Vec4 packed;
 
-                for(int t=0; t<writeMat.t(); ++t)
-                {
-                    for(int s=0; s< writeMat.s(); ++s)
+                ImageUtils::ImageIterator iter(nnra.get());
+                iter.forEachPixel([&]() {
+                    readNormals(normal, iter.s(), iter.t());
+                    normal3.set(normal.x()*2.0 - 1.0, normal.y()*2.0 - 1.0, normal.z()*2.0 - 1.0);
+                    NormalMapGenerator::pack(normal3, packed);
+                    if (roughness.valid())
                     {
-                        readNormals(normal, s, t);
-                        normal3.set(normal.x()*2.0-1.0, normal.y()*2.0-1.0, normal.z()*2.0-1.0);
-                        NormalMapGenerator::pack(normal3, packed);
-                        if (roughness.valid())
-                        {
-                            readRoughness(roughnessVal, s, t);
-                            packed[2] = roughnessVal.r();
-                        }
-                        else packed[2] = DEFAULT_ROUGHNESS;
-
-                        if (ao.valid())
-                        {
-                            readAO(aoVal, s, t);
-                            packed[3] = aoVal.r();
-                        }
-                        else packed[3] = DEFAULT_AO;
-
-                        writeMat(packed, s, t);
+                        readRoughness(roughnessVal, iter.s(), iter.t());
+                        packed[2] = roughnessVal.r();
                     }
-                }
+                    else packed[2] = DEFAULT_ROUGHNESS;
+
+                    if (ao.valid())
+                    {
+                        readAO(aoVal, iter.s(), iter.t());
+                        packed[3] = aoVal.r();
+                    }
+                    else packed[3] = DEFAULT_AO;
+
+                    writeMat(packed, iter.s(), iter.t());
+                    });
+
                 return nnra;
             }
 
@@ -727,7 +724,7 @@ LifeMapLayer::createImageImplementation(
                 noise[1][RANDOM] +
                 noise[2][SMOOTH]);
 
-            pixel[BIOME] = (float)lookupBiome(x, y, biomeNoise) / 255.0f;
+             //pixel[BIOME] = (float)lookupBiome(x, y, biomeNoise) / 255.0f;
 
             // clamp to legal range (not the biome though)
             for (int i = 0; i < 3; ++i)
@@ -767,32 +764,37 @@ LifeMapLayer::lookupLandCover(float noise, void* thing) const
     return *r->rbegin()->data;
 }
 
+#if 0
 int
 LifeMapLayer::lookupBiome(double x, double y, float noise) const
 {    
     BiomeLayer* layer = getBiomeLayer();
     if (layer)
     {
+        constexpr int NUM_BIOMES_TO_SAMPLE = 3;
         std::set<BiomeLayer::SearchResult> results;
-        layer->getNearestBiomes(x, y, 4, results);
+        layer->getNearestBiomes(x, y, NUM_BIOMES_TO_SAMPLE, results);
         if (results.empty())
         {
             return 0;
         }
         else
         {
-            const double strength = 9.0;
-            double total = 0.0;
-            for (auto& i : results)
-                total += pow(1.0 / i.range2, strength);
-
-            double runningTotal = 0.0;
-            double pick = total * (double)noise;
-            for (auto& i : results)
+            if (results.size() > 1)
             {
-                runningTotal += pow(1.0 / i.range2, strength);
-                if (pick < runningTotal)
-                    return i.biomeid;
+                const double strength = 9.0;
+                double total = 0.0;
+                for (auto& i : results)
+                    total += pow(1.0 / i.range2, strength);
+
+                double runningTotal = 0.0;
+                double pick = total * (double)noise;
+                for (auto& i : results)
+                {
+                    runningTotal += pow(1.0 / i.range2, strength);
+                    if (pick < runningTotal)
+                        return i.biomeid;
+                }
             }
 
             // return the last one by default
@@ -801,6 +803,7 @@ LifeMapLayer::lookupBiome(double x, double y, float noise) const
     }
     return 0;
 }
+#endif
 
 const LifeMapLayer::LandCoverLifeMapping*
 LifeMapLayer::lookupLandCoverLifeMapping(int code) const

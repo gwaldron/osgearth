@@ -43,7 +43,17 @@ RoadSurfaceLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
     featureSource().set(conf, "features");
+
+    if (filters().empty() == false)
+    {
+        Config temp;
+        for (unsigned i = 0; i < filters().size(); ++i)
+            temp.add(filters()[i].getConfig());
+        conf.set("filters", temp);
+    }
+
     styleSheet().set(conf, "styles");
+
     conf.set("buffer_width", featureBufferWidth() );
     return conf;
 }
@@ -52,6 +62,11 @@ void
 RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
     featureSource().get(conf, "features");
+
+    const Config& filtersConf = conf.child("filters");
+    for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
+        filters().push_back(ConfigOptions(*i));
+
     styleSheet().get(conf, "styles");
     conf.get("buffer_width", featureBufferWidth() );
 }
@@ -93,6 +108,8 @@ RoadSurfaceLayer::openImplementation()
     {
         _rasterizer = new TileRasterizer(getTileSize(), getTileSize());
     }
+
+    _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
 
     return Status::NoError;
 }
@@ -285,10 +302,12 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     }
 
     GeoExtent featureExtent = key.getExtent().transform(featureSRS);
-
+    
     osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
         key,
         options().featureBufferWidth().get(),
+        _filterChain.get(),
+        nullptr,
         progress);
 
     FeatureList features;

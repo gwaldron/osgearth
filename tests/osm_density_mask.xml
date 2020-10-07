@@ -2,17 +2,6 @@
     <cache_policy usage="none"/>
     <profile>spherical-mercator</profile>
     <features>data:osm</features>
-    <!--
-    <filters>
-        <script>
-          <![CDATA[
-            ("highway" in feature.properties) ||
-            ("building" in feature.properties) ||
-            ("natural" in feature.properties && feature.properties.natural === "water")
-          ]]>
-        </script>
-    </filters>
-    -->
     <styles>
         <style type="text/css">
             highway {

@@ -40,6 +40,7 @@ namespace osgEarth { namespace Procedural
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);
             OE_OPTION(Distance, featureBufferWidth);
             virtual Config getConfig() const;
@@ -95,6 +96,7 @@ namespace osgEarth { namespace Procedural
     private:
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<TileRasterizer> _rasterizer;
+        osg::ref_ptr<FeatureFilterChain> _filterChain;
     };
 
 } } // namespace osgEarth::Procedural

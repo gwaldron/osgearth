@@ -68,6 +68,13 @@ uniform sampler2D OE_LIFEMAP_SAMPLER ;
 uniform mat4 OE_LIFEMAP_MATRIX ;
 #endif
 
+#pragma import_defines(OE_BIOME_SAMPLER)
+#pragma import_defines(OE_BIOME_MATRIX)
+#ifdef OE_BIOME_SAMPLER
+uniform sampler2D OE_BIOME_SAMPLER;
+uniform mat4 OE_BIOME_MATRIX;
+#endif
+
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
 // https://stackoverflow.com/a/17897228/4218920
 vec3 rgb2hsv(vec3 c)
@@ -136,12 +143,12 @@ void generate()
     float fill;
     float lush;
 
-    vec2 lifemap_uv = (OE_LIFEMAP_MATRIX*tilec4).st;
-    ivec2 lifemap_xy = ivec2(lifemap_uv * 255.0 );
-    int biomeid = int(texelFetch(OE_LIFEMAP_SAMPLER, lifemap_xy, 0).w * 255.0);
-
+    vec2 biome_uv = (OE_BIOME_MATRIX*tilec4).st;
+    ivec2 biome_xy = ivec2(biome_uv * 255.0);
+    int biomeid = int(texelFetch(OE_BIOME_SAMPLER, biome_xy, 0).r * 255.0);
     Biome biome = getBiome(biomeid);
 
+    vec2 lifemap_uv = (OE_LIFEMAP_MATRIX*tilec4).st;
     vec3 lifemap = texture(OE_LIFEMAP_SAMPLER, lifemap_uv).xyz;
     fill = lifemap[0] * density_power;
     lush = lifemap[1] * moisture_power;

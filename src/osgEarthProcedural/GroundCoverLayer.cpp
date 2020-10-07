@@ -598,6 +598,17 @@ GroundCoverLayer::buildStateSets()
         stateset->removeDefine("OE_LIFEMAP_MATRIX");
     }
 
+    if (getBiomeLayer())
+    {
+        stateset->setDefine("OE_BIOME_SAMPLER", getBiomeLayer()->getSharedTextureUniformName());
+        stateset->setDefine("OE_BIOME_MATRIX", getBiomeLayer()->getSharedTextureMatrixUniformName());
+    }
+    else
+    {
+        stateset->removeDefine("OE_BIOME_SAMPLER");
+        stateset->removeDefine("OE_BIOME_MATRIX");
+    }
+
     // disable backface culling to support shadow/depth cameras,
     // for which the geometry shader renders cross hatches instead of billboards.
     stateset->setMode(GL_CULL_FACE, osg::StateAttribute::PROTECTED);

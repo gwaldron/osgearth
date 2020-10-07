@@ -111,13 +111,31 @@
         <height>-9.02603252325207</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="TEST">
-        <heading>89.4463</heading>
-        <pitch>-89.8203</pitch>
-        <range>301.985m</range>
-        <long>12.65702537821809</long>
-        <lat>41.76853783097658</lat>
-        <height>359.8097001286224</height>
+    <viewpoint name="Passo dello Stelvio">
+        <heading>-36.0105</heading>
+        <pitch>-44.2402</pitch>
+        <range>1117.34m</range>
+        <long>10.45728639794742</long>
+        <lat>46.53056423352673</lat>
+        <height>2686.409382589161</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+    </viewpoint>
+    <viewpoint>
+        <heading>2.57982</heading>
+        <pitch>-89.8842</pitch>
+        <range>11462.8m</range>
+        <long>-156.3600213388734</long>
+        <lat>20.66245108190387</lat>
+        <height>1271.835115097463</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+    </viewpoint>
+    <viewpoint name="Fork in the Road">
+        <heading>127.589</heading>
+        <pitch>-1.00428</pitch>
+        <range>183.053m</range>
+        <long>12.67303315482497</long>
+        <lat>41.75728202379179</lat>
+        <height>355.305535171181</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
 </viewpoints>

@@ -3,7 +3,7 @@ set_property(TARGET osgEarth PROPERTY FOLDER "Core")
 
 FOREACH( lib
          osgEarthProcedural
-         osgEarthSplat
+         #osgEarthSplat
          osgEarthSilverLining
          osgEarthTriton
          osgEarthDrivers )

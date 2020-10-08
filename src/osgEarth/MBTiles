@@ -137,13 +137,13 @@ namespace osgEarth
     public: // Layer
 
         //! Establishes a connection to the database
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
 
         //! Creates a raster image for the given tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
         //! Writes a raster image for the given key (if the layer is open for writing)
-        virtual Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const;
+        virtual Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const override;
 
         //! Assigns data extents to this layer (if open for writing).
         virtual void setDataExtents(const DataExtentList&);
@@ -151,9 +151,9 @@ namespace osgEarth
     protected: // Layer
 
         //! Called by constructors
-        virtual void init();
+        virtual void init() override;
 
-        virtual bool isWritingSupported() const { return true; }
+        virtual bool isWritingSupported() const  override { return true; }
 
     protected:
 
@@ -196,16 +196,14 @@ namespace osgEarth
 
     public: // Layer
 
-        //! Establishes a connection to the TMS repository
-        virtual Status openImplementation();
-
-        virtual bool isWritingSupported() const { return true; }
+        //! Establishes a connection to the database
+        virtual Status openImplementation() override;
 
         //! Creates a heightfield for the given tile key
-        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
         //! Writes a heightfield image for the given key (if the layer is open for writing)
-        virtual Status writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const;
+        virtual Status writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const override;
 
         //! Assigns data extents to this layer (if open for writing).
         virtual void setDataExtents(const DataExtentList&);
@@ -213,7 +211,9 @@ namespace osgEarth
     protected: // Layer
 
         //! Called by constructors
-        virtual void init();
+        virtual void init() override;
+
+        virtual bool isWritingSupported() const override { return true; }
 
     protected:
 

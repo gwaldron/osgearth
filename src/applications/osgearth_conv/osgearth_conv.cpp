@@ -137,11 +137,13 @@ struct ElevationLayerTileCopy : public TileHandler
             Status s = _dest->writeHeightField(key, hf.getHeightField(), 0L);
             ok = s.isOK();
             if (!ok)
+            {
                 OE_WARN << key.str() << ": " << s.message() << std::endl;
+            }
         }
         else
         {
-            OE_WARN << key.str() << " : " << hf.getStatus().message() << std::endl;
+            //OE_WARN << key.str() << " : " << hf.getStatus().message() << std::endl;
         }
         return ok;
     }
@@ -168,7 +170,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
                         unsigned           totalStages,
                         const std::string& msg )
     {
-        _mutex.lock();
+        ScopedMutexLock lock(_mutex);
 
         if (_first)
         {
@@ -200,8 +202,6 @@ struct ProgressReporter : public osgEarth::ProgressCallback
 
         if ( percentage >= 100.0f )
             std::cout << std::endl;
-
-        _mutex.unlock();
 
         return false;
     }
@@ -282,6 +282,7 @@ main(int argc, char** argv)
 
     // earth file option:
     std::string earthFile;
+    osg::ref_ptr<MapNode> mapNode;
     osg::ref_ptr<const Map> map;
     if (args.read("--in-earth", earthFile))
     {
@@ -293,9 +294,12 @@ main(int argc, char** argv)
         }
 
         osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(earthFile, dbo.get());
-        MapNode* mapNode = MapNode::get(node.get());
-        if (mapNode)
+        mapNode = MapNode::get(node.get());
+        if (mapNode.valid())
+        {
+            mapNode->open();
             map = mapNode->getMap();
+        }
 
         input = map->getLayerByName<TileLayer>(layerName);
         if (!input.valid())
@@ -489,6 +493,9 @@ main(int argc, char** argv)
         visitor->setMaxLevel( maxLevel );
         OE_NOTICE << LC << "Calculated max level = " << maxLevel << std::endl;
     }
+
+    std::cout << "Press enter to continue" << std::endl;
+    getchar();
 
     // Ready!!!
     std::cout << "Working..." << std::endl;

@@ -179,7 +179,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
         }
         osg::Timer_t now = osg::Timer::instance()->tick();
 
-        
+
 
         float percentage = current/total;
 
@@ -195,7 +195,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
             << std::fixed
             << std::setprecision(1) << "\r"
             << (int)current << "/" << (int)total
-            << " " << int(100.0f*percentage) << "% complete, " 
+            << " " << int(100.0f*percentage) << "% complete, "
             << (int)minsTotal << "m" << (int)secsTotal << "s projected, "
             << (int)minsToGo << "m" << (int)secsToGo << "s remaining          "
             << std::flush;
@@ -494,8 +494,8 @@ main(int argc, char** argv)
         OE_NOTICE << LC << "Calculated max level = " << maxLevel << std::endl;
     }
 
-    std::cout << "Press enter to continue" << std::endl;
-    getchar();
+    //std::cout << "Press enter to continue" << std::endl;
+    //getchar();
 
     // Ready!!!
     std::cout << "Working..." << std::endl;

@@ -563,7 +563,7 @@ namespace osgEarth
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
         //! Writes a raster image for he given tile key (if open for writing)
-        virtual Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const;
+        virtual Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const override;
 
     protected: // Layer
 
@@ -620,6 +620,9 @@ namespace osgEarth
 
         //! Creates a heightfield for the given tile key
         virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+        //! Writes a raster image for he given tile key (if open for writing)
+        virtual Status writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const override;
 
     protected: // Layer
 

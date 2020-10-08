@@ -1288,3 +1288,14 @@ TMSElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
         return GeoHeightField(image.getStatus());
     }
 }
+
+Status
+TMSElevationLayer::writeHeightFieldImplementation(
+    const TileKey& key,
+    const osg::HeightField* hf,
+    ProgressCallback* progress) const
+{
+    ImageToHeightFieldConverter conv;
+    osg::ref_ptr<osg::Image> image = conv.convert(hf);
+    return _imageLayer->writeImageImplementation(key, image.get(), progress);
+}

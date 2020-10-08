@@ -403,6 +403,8 @@ main(int argc, char** argv)
         output->setDataExtents(outputExtents);
     }
 
+    bool debug = args.read("--debug");
+
     // Dump out some stuff...
     OE_NOTICE << LC << "FROM:\n"
         << inConf.toJSON(true)
@@ -494,8 +496,11 @@ main(int argc, char** argv)
         OE_NOTICE << LC << "Calculated max level = " << maxLevel << std::endl;
     }
 
-    std::cout << "Press enter to continue" << std::endl;
-    getchar();
+    if (debug)
+    {
+        std::cout << "Press enter to continue" << std::endl;
+        getchar();
+    }
 
     // Ready!!!
     std::cout << "Working..." << std::endl;

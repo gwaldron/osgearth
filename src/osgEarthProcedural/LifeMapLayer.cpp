@@ -153,6 +153,7 @@ LifeMapLayer::Options::getConfig() const
     biomeLayer().set(conf, "biomes_layer");
     landCoverLayer().set(conf, "landcover_layer");
     densityMaskLayer().set(conf, "density_mask_layer");
+    densityColorLayer().set(conf, "density_color_layer");
     
     Config mappings_conf;
     for (const auto& mapping : landCoverMappings())
@@ -168,6 +169,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     biomeLayer().get(conf, "biomes_layer");
     landCoverLayer().get(conf, "landcover_layer");
     densityMaskLayer().get(conf, "density_mask_layer");
+    densityColorLayer().get(conf, "density_color_layer");
 
     const ConfigSet mappings_conf = conf.child("landcover_mappings").children("mapping");
     for (const auto& c : mappings_conf)
@@ -436,6 +438,8 @@ LifeMapLayer::openImplementation()
 
     options().densityMaskLayer().open(getReadOptions());
 
+    options().densityColorLayer().open(getReadOptions());
+
     setProfile(Profile::create("global-geodetic"));
     return Status::OK();
 }
@@ -453,6 +457,8 @@ LifeMapLayer::addedToMap(const Map* map)
 
     options().biomeLayer().addedToMap(map);
     options().densityMaskLayer().addedToMap(map);
+    options().densityColorLayer().addedToMap(map);
+
     options().landCoverLayer().addedToMap(map);
     options().landCoverDictionary().addedToMap(map);
 
@@ -508,6 +514,8 @@ LifeMapLayer::removedFromMap(const Map* map)
 {
     _map = nullptr;
     options().biomeLayer().removedFromMap(map);
+    options().densityMaskLayer().removedFromMap(map);
+    options().densityColorLayer().removedFromMap(map);
     options().landCoverLayer().removedFromMap(map);
     options().landCoverDictionary().removedFromMap(map);
     ImageLayer::removedFromMap(map);
@@ -535,6 +543,18 @@ ImageLayer*
 LifeMapLayer::getDensityMaskLayer() const
 {
     return options().densityMaskLayer().getLayer();
+}
+
+void
+LifeMapLayer::setDensityColorLayer(ImageLayer* layer)
+{
+    options().densityColorLayer().setLayer(layer);
+}
+
+ImageLayer*
+LifeMapLayer::getDensityColorLayer() const
+{
+    return options().densityColorLayer().getLayer();
 }
 
 void
@@ -613,6 +633,8 @@ LifeMapLayer::createImageImplementation(
     ImageUtils::PixelReader readDensityMask;
     osg::Vec4 dm_pixel;
     osg::Matrixf dm_matrix;
+
+    // the mask layer zero's out density(etc)
     if (getDensityMaskLayer())
     {
         TileKey dm_key(key);
@@ -629,6 +651,31 @@ LifeMapLayer::createImageImplementation(
             readDensityMask.setImage(densityMask.getImage());
             readDensityMask.setBilinear(true);
             extent.createScaleBias(dm_key.getExtent(), dm_matrix);
+        }
+    }
+
+    // the color layer alters lifemap values based on colors.
+    GeoImage densityColor;
+    ImageUtils::PixelReader readDensityColor;
+    osg::Vec4 dc_pixel;
+    osg::Matrixf dc_matrix;
+
+    if (getDensityMaskLayer())
+    {
+        TileKey dc_key(key);
+
+        while (dc_key.valid() && !densityColor.valid())
+        {
+            densityColor = getDensityColorLayer()->createImage(dc_key, progress);
+            if (!densityColor.valid())
+                dc_key.makeParent();
+        }
+
+        if (densityColor.valid())
+        {
+            readDensityColor.setImage(densityColor.getImage());
+            readDensityColor.setBilinear(true);
+            extent.createScaleBias(dc_key.getExtent(), dc_matrix);
         }
     }
 
@@ -690,9 +737,6 @@ LifeMapLayer::createImageImplementation(
                 (0.3*noise[1][SMOOTH]) +
                 (0.4*noise[2][CLUMPY]);
 
-            // Compensate for low density
-            pixel[DENSITY] *= 1.3;
-
             // Discourage density in highly sloped areas
             pixel[DENSITY] -= (0.8*slope);
 
@@ -704,6 +748,23 @@ LifeMapLayer::createImageImplementation(
             // temperature decreases with altitude
             float temperature = 1.0f - lerpstep(0.0f, 4000.0f, elevation);
             temperature += (0.2 * noise[1][SMOOTH]);
+
+            if (densityColor.valid())
+            {
+                double uu = u * dc_matrix(0, 0) + dc_matrix(3, 0);
+                double vv = v * dc_matrix(1, 1) + dc_matrix(3, 1);
+                readDensityColor(dc_pixel, uu, vv);
+                // https://www.sciencedirect.com/science/article/pii/S2214317315000347
+                float ExG = 2.0f*dc_pixel.g() - dc_pixel.r() - dc_pixel.b();
+                float ExGR = ExG - (1.4f*dc_pixel.r() - dc_pixel.g());
+                if (ExGR > 0.0)
+                    pixel[DENSITY] *= (1.0 + ExGR);
+            }
+            else
+            {
+                // General compensation for low density
+                pixel[DENSITY] *= 1.3;
+            }
 
             if (densityMask.valid())
             {

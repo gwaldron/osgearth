@@ -68,15 +68,18 @@
     <Shader name="base"/>
 
     <LifeMap name="Life Map" shared="true" min_level="11">
-        <cache_policy usage="none"/>
+        <!-- <cache_policy usage="none"/> -->
         <density_mask_layer>
             <xi:include href="osm_density_mask.xml"/>
         </density_mask_layer>
+        <density_color_layer>
+            ReadyMap 15m Imagery
+        </density_color_layer>
         <shared_sampler>LIFEMAP_TEX</shared_sampler>
         <shared_matrix>LIFEMAP_MAT</shared_matrix>
     </LifeMap>
     
-    <TMSImage name="ReadyMap 15m Imagery" enabled="true" min_range="7500" attenuation_range="6000">
+    <TMSImage name="ReadyMap 15m Imagery" enabled="true" blend="modulate"> <comment min_range="7500" attenuation_range="6000"/>
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
             <![CDATA[
@@ -89,7 +92,7 @@
         </shader>
     </TMSImage>
 
-    <RoadSurface name="Road Surface" min_level="16" max_data_level="19" async="true">
+    <RoadSurface name="Road Surface" min_level="16" max_data_level="19">
         <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
         <features>data:osm</features>
@@ -125,7 +128,7 @@
     </FeatureImage>
 
     <Biomes name="Biomes" shared="true" visible="false" min_level="14" max_data_level="14">
-        <cache_policy usage="none"/>
+        <!-- <cache_policy usage="none"/> -->
         <control_vectors>
             <OGRFeatures>
                 <url>D:/data/splat/biome_package.gpkg</url>
@@ -271,7 +274,7 @@
             <![CDATA[
                 #version 330
                 #pragma vp_entryPoint debug_rugged
-                #pragma vp_location fragment
+                #pragma vp_location fragment_coloring
                 uniform float rugged_power = 1.0;
                 uniform sampler2D LIFEMAP_TEX;
                 uniform mat4 LIFEMAP_MAT;
@@ -284,6 +287,8 @@
             ]]>
         </shader>
     </Shader>
+    
+    <xi:include href="cities.xml"/>
     
     <Debug/>
 

@@ -58,6 +58,7 @@ namespace osgEarth { namespace Procedural
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION_LAYER(ImageLayer, densityMaskLayer);
+            OE_OPTION_LAYER(ImageLayer, densityColorLayer);
             OE_OPTION_LAYER(LandCoverLayer, landCoverLayer);
             OE_OPTION_LAYER(LandCoverDictionary, landCoverDictionary);
             OE_OPTION_VECTOR(LandCoverLifeMapping, landCoverMappings);
@@ -74,6 +75,9 @@ namespace osgEarth { namespace Procedural
 
         void setDensityMaskLayer(ImageLayer*);
         ImageLayer* getDensityMaskLayer() const;
+
+        void setDensityColorLayer(ImageLayer*);
+        ImageLayer* getDensityColorLayer() const;
 
         void setLandCoverLayer(LandCoverLayer*);
         LandCoverLayer* getLandCoverLayer() const;

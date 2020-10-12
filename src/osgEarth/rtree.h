@@ -640,8 +640,13 @@ int RTREE_QUAL::KNNSearch(
     const ELEMTYPE maxDistance,
     std::function<bool(const DATATYPE&)> acceptLeaf) const
 {
+    OE_SOFT_ASSERT_AND_RETURN(point != nullptr, __func__, 0);
+    OE_SOFT_ASSERT_AND_RETURN(hits != nullptr, __func__, 0);
+
     hits->clear();
-    ranges_squared->clear();
+
+    if (ranges_squared)
+        ranges_squared->clear();
 
     // priority queue that puts smallest distances first
     std::priority_queue<
@@ -695,7 +700,8 @@ int RTREE_QUAL::KNNSearch(
             if (acceptLeaf(*candidate.m_item))
             {
                 hits->emplace_back(*candidate.m_item);
-                ranges_squared->push_back(candidate.m_dist_squared);
+                if (ranges_squared)
+                    ranges_squared->push_back(candidate.m_dist_squared);
             }
             queue.pop();
 

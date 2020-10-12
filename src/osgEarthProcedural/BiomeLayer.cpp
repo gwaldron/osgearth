@@ -35,13 +35,13 @@ REGISTER_OSGEARTH_LAYER(biomes, BiomeLayer);
 void
 BiomeLayer::Options::fromConfig(const Config& conf)
 {
-    numSamples().setDefault(1u);
-    tightness().setDefault(9.0f);
+    blendRadius().setDefault(0.0);
+    biomeidField().setDefault("biomeid");
 
     biomeCatalog() = new BiomeCatalog(conf.child("biomecatalog"));
     controlVectors().get(conf, "control_vectors");
-    conf.get("num_samples", numSamples());
-    conf.get("tightness", tightness());
+    conf.get("blend_radius", blendRadius());
+    conf.get("biomeid_field", biomeidField());
 }
 
 Config
@@ -49,9 +49,10 @@ BiomeLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
     OE_DEBUG << LC << __func__ << " not yet implemented" << std::endl;
-    //TODO
-    conf.set("num_samples", numSamples());
-    conf.set("tightness", tightness());
+    controlVectors().set(conf, "control_vectors");
+    //TODO - biomeCatalog
+    conf.set("blend_radius", blendRadius());
+    conf.set("biomeid_field", biomeidField());
     return conf;
 }
 
@@ -62,7 +63,16 @@ BiomeLayer::Options::getConfig() const
 
 namespace
 {
-    typedef RTree<BiomeLayer::RecordPtr, double, 2> MySpatialIndex;
+    struct Record
+    {
+        Segment2d _segment;
+        int _biomeid;
+        double _radius;
+    };
+
+    typedef std::shared_ptr<Record> RecordPtr;
+
+    typedef RTree<RecordPtr, double, 2> MySpatialIndex;
 }
 
 void
@@ -87,6 +97,8 @@ BiomeLayer::openImplementation()
     MySpatialIndex* index = new MySpatialIndex();
     _index = index;
 
+    const std::string& biomeid_field = options().biomeidField().get();
+
     // Populate the in-memory spatial index with all the control points
     int count = 0;
     osg::ref_ptr<FeatureCursor> cursor = getControlSet()->createFeatureCursor(Query(), nullptr);
@@ -96,8 +108,7 @@ BiomeLayer::openImplementation()
 
         for (auto& feature : _features)
         {
-            int biomeid = feature->getInt("wwf_mhtnum");
-            //int biomeid = feature->getInt("biomeid");
+            int biomeid = feature->getInt(biomeid_field);
             double radius = feature->getDouble("radius", 0.0);
 
             const Geometry* g = feature->getGeometry();
@@ -181,63 +192,15 @@ BiomeLayer::getBiome(int id) const
         return nullptr;
 }
 
-void
-BiomeLayer::getNearestBiomes(
-    double x,
-    double y,
-    unsigned maxCount,
-    std::vector<RecordPtr>& hits,
-    std::vector<double>& ranges_squared) const
-{
-    hits.clear();
-    ranges_squared.clear();
-
-    MySpatialIndex* index = static_cast<MySpatialIndex*>(_index);
-    if (index == nullptr)
-        return;
-
-    osg::Vec3d point(x, y, 0);
-
-    std::unordered_set<int> unique_biomeids;
-
-    std::function<bool(const RecordPtr& rec)> acceptor = [unique_biomeids] (const RecordPtr& rec) mutable {
-        if (unique_biomeids.find(rec->_biomeid) == unique_biomeids.end()) {
-            unique_biomeids.insert(rec->_biomeid);
-            return true;
-        }
-        return false;
-    };
-    
-    index->KNNSearch(
-        point.ptr(),
-        &hits,
-        &ranges_squared,
-        maxCount,
-        0.0,
-        acceptor);
-
-    //TODO: still need to look at the results and see which N are closest...?
-
-#if 0
-    for (int i = 0; i < hits.size(); ++i)
-    {
-        double precise_range_squared = hits[i]->_segment.squaredDistanceTo(point);
-
-        if (hits[i]->_radius <= 0.0 || precise_range_squared < hits[0]->_radius)
-        {
-            results.emplace(SearchResult{
-                hits[i]->_biomeid,
-                precise_range_squared });
-        }
-    }
-#endif
-}
-
 GeoImage
 BiomeLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
+    MySpatialIndex* index = static_cast<MySpatialIndex*>(_index);
+    if (index == nullptr)
+        return GeoImage::INVALID;
+
     // allocate an 8-bit image:
     osg::ref_ptr<osg::Image> image = new osg::Image();
     image->allocateImage(
@@ -251,11 +214,10 @@ BiomeLayer::createImageImplementation(
 
     osg::Vec4 value;
     float noise = 1.0f;
-    unsigned samples = options().numSamples().get();
-    float tightness = options().tightness().get();
     std::vector<RecordPtr> hits;
     std::vector<double> ranges_squared;
     Random prng(key.hash());
+    double radius = options().blendRadius().get();
 
     GeoImageIterator iter(image.get(), key.getExtent());
 
@@ -263,36 +225,21 @@ BiomeLayer::createImageImplementation(
         {
             int biomeid = 0;
 
-            getNearestBiomes(iter.x(), iter.y(), samples, hits, ranges_squared);
+            // randomly permute the coordinates in order to blend across biomes
+            double x = iter.x() + radius * (prng.next()*2.0 - 1.0);
+            double y = iter.y() + radius * (prng.next()*2.0 - 1.0);
+
+            // find the closest biome vector to the point:
+            index->KNNSearch(
+                osg::Vec3d(x,y,0).ptr(),
+                &hits,
+                nullptr,
+                1u,
+                0.0);
 
             if (hits.size() > 0)
             {
-                if (hits.size() > 1)
-                {
-                    double total = 0.0;
-                    for (int i = 0; i < ranges_squared.size(); ++i)
-                    {
-                        total += pow(1.0 / ranges_squared[i], tightness);
-                    }
-
-                    double runningTotal = 0.0;
-                    double pick = total * (double)prng.next();
-                    for (int i = 0; i < hits.size(); ++i)
-                    {
-                        runningTotal += pow(1.0 / ranges_squared[i], tightness);
-                        if (pick < runningTotal)
-                        {
-                            biomeid = hits[i]->_biomeid;
-                            break;
-                        }
-                    }
-                }
-
-                // return the last one by default
-                if (biomeid == 0)
-                {
-                    biomeid = hits[hits.size() - 1]->_biomeid;
-                }
+                biomeid = hits[0]->_biomeid;
             }
 
             value.r() = (float)biomeid / 255.0f;

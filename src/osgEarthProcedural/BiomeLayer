@@ -43,8 +43,8 @@ namespace osgEarth
                 META_LayerOptions(osgEarth, Options, ImageLayer::Options);
                 OE_OPTION_LAYER(FeatureSource, controlVectors);
                 OE_OPTION_REFPTR(BiomeCatalog, biomeCatalog);
-                OE_OPTION(unsigned, numSamples);
-                OE_OPTION(float, tightness);
+                OE_OPTION(float, blendRadius);
+                OE_OPTION(std::string, biomeidField);
                 virtual Config getConfig() const;
             private:
                 void fromConfig(const Config& conf);
@@ -79,23 +79,6 @@ namespace osgEarth
             void* _index;
 
             FeatureList _features;
-
-        public:
-
-            struct Record {
-                Segment2d _segment;
-                int _biomeid;
-                double _radius;
-            };
-            typedef std::shared_ptr<Record> RecordPtr;
-
-            //! Returns the N nearest biomes to the input location.
-            void getNearestBiomes(
-                double x,
-                double y,
-                unsigned maxCount,
-                std::vector<RecordPtr>& hits,
-                std::vector<double>& ranges_squared) const;
         };
 
     }

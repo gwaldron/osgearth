@@ -18,12 +18,17 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
         <vdatum>egm96</vdatum>
     </TMSElevation>
+    
+    <XYZElevation name="Flattened Washington State" min_level="15">
+        <url>https://pelican-public.s3.amazonaws.com/tiles/flattened_roads/{z}/{x}/{-y}.tif</url>
+        <profile>global-geodetic</profile>
+    </XYZElevation>
 
     <MBTilesElevation name="Nepal" enabled="false">
         <url>D:/data/demo/nepal/nepal.mbtiles</url>
     </MBTilesElevation>
     
-    <FlattenedElevation name="Road Flattener" min_level="14" max_data_level="16">
+    <FlattenedElevation name="Road Flattener" min_level="15" max_data_level="15">
         <features>data:osm</features>
         <filters>
             <script>("highway" in feature.properties)</script>
@@ -57,6 +62,9 @@
     <Grass name="Grass" max_range="100" max_sse="35" enabled="true">
         <category>grass</category>
         <spacing>1.0</spacing>
+        <color_layer>
+            ReadyMap 15m Imagery
+        </color_layer>
     </Grass>
 
     <Wind name="Breeze">
@@ -79,7 +87,7 @@
         <shared_matrix>LIFEMAP_MAT</shared_matrix>
     </LifeMap>
     
-    <TMSImage name="ReadyMap 15m Imagery" enabled="true" blend="modulate"> <comment min_range="7500" attenuation_range="6000"/>
+    <TMSImage name="ReadyMap 15m Imagery" enabled="true" shared="true" min_range="7500" attenuation_range="6000">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
             <![CDATA[
@@ -93,7 +101,7 @@
     </TMSImage>
 
     <RoadSurface name="Road Surface" min_level="16" max_data_level="19">
-        <cache_policy usage="no_cache"/>
+        <!-- <cache_policy usage="no_cache"/> -->
         <tile_size>512</tile_size>
         <features>data:osm</features>
         <filters>
@@ -111,7 +119,7 @@
     </RoadSurface>
 
     <FeatureImage name="FIL Road Surface" min_level="16" max_data_level="18" enabled="false">
-        <cache_policy usage="no_cache"/>
+        <!-- <cache_policy usage="no_cache"/> -->
         <profile>spherical-mercator</profile>
         <features>data:osm</features>
         <filters>
@@ -135,7 +143,8 @@
                 <layer>macdaddy</layer>
             </OGRFeatures>
         </control_vectors>
-        <num_samples>2</num_samples>
+        <biomeid_field>wwf_mhtnum</biomeid_field>
+        <blend_radius>0.01</blend_radius>
         <xi:include href="D:/data/splat/biomes.xml"/>
         <shared_sampler>BIOME_TEX</shared_sampler>
         <shared_matrix>BIOME_MAT</shared_matrix>
@@ -160,13 +169,16 @@
 
     <FeatureModel name="Biome Names" enabled="false">
         <cache_policy usage="none"/>
-        <OGRFeatures url="../data/biomes.shp"/>
+        <OGRFeatures>
+            <url>D:/data/splat/biome_package.gpkg</url>
+            <layer>macdaddy</layer>
+        </OGRFeatures>
         <styles>
             <style>
                 default {
-                    text-content: [desc];
+                    text-content: [wwf_mhtnam];
                     text-halo: #3f3f3f;
-                    text-size: 28.0;
+                    text-size: 20.0;
                     text-align: center_center;
                 }
             </style>
@@ -194,6 +206,7 @@
             <url>D:/data/splat/biome_package.gpkg</url>
             <layer>macdaddy</layer>
         </OGRFeatures>
+        <layout tile_size="100000"/>
         <Styles>
             <style type="text/css">
                 default { 
@@ -207,7 +220,7 @@
         </Styles>
     </FeatureModel>
 
-    <Shader name="DEBUG - Biome View" min_level="14" enabled="true">
+    <Shader name="DEBUG - Biome View" min_level="14" enabled="false">
         <shader>
             <![CDATA[
                 #version 430
@@ -293,4 +306,6 @@
     <Debug/>
 
     <xi:include href="viewpoints.xml"/>
+    
+    <screen_space_layout sort_by_priority="true"/>
 </map>

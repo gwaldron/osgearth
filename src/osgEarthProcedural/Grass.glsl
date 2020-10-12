@@ -279,6 +279,9 @@ void oe_Grass_main(inout vec4 vertex_view)
         oe_Grass_parametric(vertex_view);
     else
         oe_Grass_model(vertex_view);
+
+    // disable the alpha levels
+    vp_Color.a = 1.0;
 }
 
 
@@ -325,7 +328,6 @@ void oe_Grass_FS(inout vec4 color)
     }
     else if (color.a < oe_gc_maxAlpha)
     {
-        //color.a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
         discard;
     }
 

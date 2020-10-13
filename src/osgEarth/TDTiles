@@ -190,7 +190,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         TileTracker::iterator _trackerItr;
         bool _trackerItrValid;
 
-        void setParentTile(ThreeDTileNode* parentTile);
 
     private:
 

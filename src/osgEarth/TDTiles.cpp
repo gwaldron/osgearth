@@ -602,7 +602,7 @@ namespace
     }
 }
 
-ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool immediateLoad, osgDB::Options* options) :
+ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, ThreeDTileNode* parentTile, bool immediateLoad, osgDB::Options* options) :
     _tileset(tileset),
     _tile(tile),
     _requestedContent(false),
@@ -612,7 +612,8 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     _trackerItrValid(false),
     _lastCulledFrameNumber(0),
     _lastCulledFrameTime(0.0f),
-    _refine(REFINE_ADD)
+    _refine(REFINE_ADD), 
+    _parentTile(parentTile)
 {
     OE_PROFILING_ZONE;
     if (_tile->content().isSet())
@@ -638,6 +639,11 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     {
         _refine = *tile->refine();
     }
+    else
+    {
+        _refine = parentTile->_refine;
+    }
+    
 
     _localBoundingSphere = tile->boundingVolume()->asBoundingSphere();
 
@@ -674,8 +680,7 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         _children = new osg::Group;
         for (unsigned int i = 0; i < _tile->children().size(); ++i)
         {
-            ThreeDTileNode* child = new ThreeDTileNode(_tileset, _tile->children()[i].get(), false, _options.get());
-            child->setParentTile(this);
+            ThreeDTileNode* child = new ThreeDTileNode(_tileset, _tile->children()[i].get(), this, false, _options.get());
             _children->addChild(child);
         }
 
@@ -692,16 +697,6 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     computeBoundingVolume();
 
     createDebugBounds();
-}
-
-void ThreeDTileNode::setParentTile(ThreeDTileNode* parentTile)
-{
-    _parentTile = parentTile;
-    // Inherit the parent's refine policy if this Tile's refine policy isn't set.
-    if (parentTile && !_tile->refine().isSet())
-    {
-        _refine = parentTile->getRefine();
-    }
 }
 
 void ThreeDTileNode::computeBoundingVolume()
@@ -1477,7 +1472,7 @@ ThreeDTilesetContentNode::ThreeDTilesetContentNode(ThreeDTilesetNode* tilesetNod
     // Set up the root tile.
     if (tileset->root().valid())
     {
-        _tileNode = new ThreeDTileNode(_tilesetNode, tileset->root().get(), true, _options.get());
+        _tileNode = new ThreeDTileNode(_tilesetNode, tileset->root().get(), nullptr, true, _options.get());
         addChild(_tileNode);
     }
 }

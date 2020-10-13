@@ -63,35 +63,35 @@ namespace osgEarth
     private:
 
         struct RenderData {
-            bool _initialized;
             osg::ref_ptr<osgUtil::SceneView> _sv;
             mutable osg::buffered_object<GLuint> _samplesQuery;
             mutable osg::buffered_object<GLuint> _pbo;
             osg::observer_ptr<osg::GraphicsContext> _gc;
             unsigned _width, _height;
+            bool _alive;
         };
 
         struct RenderOperation : public osg::GraphicsOperation {
-            RenderOperation(osg::Node* node, const GeoExtent& extent, RenderData& renderData);
+            RenderOperation(osg::Node* node, const GeoExtent& extent, std::shared_ptr<RenderData> renderData);
             Threading::Future<osg::Image> getFuture();
             void operator () (osg::GraphicsContext* context);
             osg::ref_ptr<osg::Node> _node;
             GeoExtent _extent;
             osg::ref_ptr<osg::Image> _image;
             Threading::Promise<osg::Image> _promise;
-            RenderData& _renderData;
+            std::shared_ptr<RenderData> _renderData;
             int _pass;
             bool _async;
             GLuint _pbo;
         };
 
         struct RenderInstaller : public osg::Drawable {
-            RenderInstaller(RenderData& renderData);
+            RenderInstaller(std::shared_ptr<RenderData> renderData);
             void drawImplementation(osg::RenderInfo& ri) const;
-            RenderData& _renderData;
+            std::shared_ptr<RenderData> _renderData;
         };
 
-        RenderData _renderData;
+        std::shared_ptr<RenderData> _renderData;
         osg::ref_ptr<osg::Drawable> _installer;
     };
 

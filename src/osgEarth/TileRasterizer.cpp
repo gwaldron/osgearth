@@ -140,6 +140,8 @@ TileRasterizer::RenderOperation::operator () (osg::GraphicsContext* gc)
 
 TileRasterizer::TileRasterizer(unsigned width, unsigned height)
 {
+    _renderData = std::make_shared<RenderData>();
+
     _renderData->_initialized = false;
     _renderData->_width = width;
     _renderData->_height = height;

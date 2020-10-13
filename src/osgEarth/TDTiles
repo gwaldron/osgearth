@@ -151,7 +151,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     class OSGEARTH_EXPORT ThreeDTileNode : public osg::MatrixTransform
     {
     public:
-        ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool immediateLoad, osgDB::Options* options);
+        ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, ThreeDTileNode* parentTile, bool immediateLoad, osgDB::Options* options);
         osg::BoundingSphere computeBound() const;
 
         bool hasContent();

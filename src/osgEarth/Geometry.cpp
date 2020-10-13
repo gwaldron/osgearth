@@ -39,7 +39,7 @@ namespace
         va_start(args, fmt);
         char buffer[512];
         vsprintf(buffer, fmt, args);
-        OE_WARN << " [GEOS Error] " << buffer << std::endl;
+        OE_DEBUG << " [GEOS Error] " << buffer << std::endl;
         va_end(args);
     }
 
@@ -49,7 +49,7 @@ namespace
         va_start(args, fmt);
         char buffer[512];
         vsprintf(buffer, fmt, args);
-        OE_WARN << " [GEOS Warning] " << buffer << std::endl;
+        OE_DEBUG << " [GEOS Warning] " << buffer << std::endl;
         va_end(args);
     }
 }
@@ -773,10 +773,13 @@ Ring::contains2D( double x, double y ) const
 {
     bool result = false;
     const Ring& poly = *this;
-    for( unsigned i=0, j=size()-1; i<size(); j = i++ )
+    bool is_open = isOpen();
+    unsigned i = is_open ? 0 : 1;
+    unsigned j = is_open ? size() - 1 : 0;
+    for( ; i<size(); j = i++ )
     {
         if ((((poly[i].y() <= y) && (y < poly[j].y())) ||
-            ((poly[j].y() <= y) && (y < poly[i].y()))) &&
+             ((poly[j].y() <= y) && (y < poly[i].y()))) &&
             (x < (poly[j].x()-poly[i].x()) * (y-poly[i].y())/(poly[j].y()-poly[i].y())+poly[i].x()))
         {
             result = !result;
@@ -790,8 +793,8 @@ Ring::contains2D( double x, double y ) const
 Polygon::Polygon( const Polygon& rhs ) :
 Ring( rhs )
 {
-    for( RingCollection::const_iterator r = rhs._holes.begin(); r != rhs._holes.end(); ++r )
-        _holes.push_back( new Ring(*r->get()) );
+    for (auto& hole : rhs._holes)
+        _holes.push_back(new Ring(&hole->asVector()));
 }
 
 Polygon::Polygon( const Vec3dVector* data ) :
@@ -869,7 +872,7 @@ MultiGeometry::MultiGeometry( const MultiGeometry& rhs ) :
 Geometry( rhs )
 {
     for( GeometryCollection::const_iterator i = rhs._parts.begin(); i != rhs._parts.end(); ++i )
-        _parts.push_back( i->get()->clone() ); //i->clone() ); //osg::clone<Geometry>( i->get() ) );
+        _parts.push_back( i->get()->clone() );
 }
 
 MultiGeometry::MultiGeometry( const GeometryCollection& parts ) :
@@ -1022,7 +1025,7 @@ GeometryIterator::fetchNext()
     if ( _stack.size() == 0 )
         return;
 
-    Geometry* current = _stack.top();
+    Geometry* current = _stack.front();
     _stack.pop();
 
     if ( current->getType() == Geometry::TYPE_MULTI && _traverseMulti )

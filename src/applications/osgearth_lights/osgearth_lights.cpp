@@ -181,14 +181,8 @@ main(int argc, char** argv)
     // Whether to test updating material
     bool update = arguments.read("--update");
 
-    // Tell the database pager to not modify the unref settings
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
-
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator(arguments) );
-
-    // disable the small-feature culling
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     viewer.setLightingMode(viewer.NO_LIGHT);
 

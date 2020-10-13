@@ -20,7 +20,7 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_GEOMETRY_POOL 1
 
 #include "Common"
-#include "MaskGenerator"
+#include "MeshEditor"
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/TileKey>
 #include <osgEarth/Threading>
@@ -33,6 +33,12 @@
 #if OSG_MIN_VERSION_REQUIRED(3,5,9)
 #define SUPPORTS_VAO 1
 #endif
+
+#define VERTEX_VISIBLE       1 // draw it
+#define VERTEX_BOUNDARY      2 // vertex lies on a skirt boundary
+#define VERTEX_HAS_ELEVATION 4 // not subject to elevation texture
+#define VERTEX_SKIRT         8 // it's a skirt vertex (bitmask)
+#define VERTEX_CONSTRAINT   16 // part of a non-morphable constraint
 
 namespace osgEarth { namespace REX
 {
@@ -72,9 +78,9 @@ namespace osgEarth { namespace REX
         osg::DrawElements* getDrawElements() { return _drawElements.get(); }
         const osg::DrawElements* getDrawElements() const { return _drawElements.get(); }
 
-        void setMaskElements(osg::DrawElements* array) { _maskElements = array; }
-        osg::DrawElements* getMaskElements() { return _maskElements.get(); }
-        const osg::DrawElements* getMaskElements() const { return _maskElements.get(); }
+        //! Does this geometry include custom constraints?
+        void setHasConstraints(bool value) { _hasConstraints = value; }
+        bool hasConstraints() const { return _hasConstraints; }
 
         // convert to a "real" geometry object
         osg::Geometry* makeOsgGeometry();
@@ -118,7 +124,7 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<osg::Array>        _neighborArray;
         osg::ref_ptr<osg::Array>        _neighborNormalArray;
         osg::ref_ptr<osg::DrawElements> _drawElements;
-        osg::ref_ptr<osg::DrawElements> _maskElements;
+        bool _hasConstraints;
 
     private:
 
@@ -214,10 +220,11 @@ namespace osgEarth { namespace REX
          * necessary and storing it in the pool.
          */
         void getPooledGeometry(
-            const TileKey&               tileKey,
-            unsigned                     tileSize,
-            MaskGenerator*               maskSet,
-            osg::ref_ptr<SharedGeometry>& out);
+            const TileKey& tileKey,
+            unsigned tileSize,
+            const Map* map,
+            osg::ref_ptr<SharedGeometry>& out,
+            Cancelable* state);
 
         /**
          * The number of elements (incides) in the terrain skirt, if applicable
@@ -247,8 +254,8 @@ namespace osgEarth { namespace REX
         virtual ~GeometryPool() { }
 
         mutable Threading::Mutex _geometryMapMutex;
-        GeometryMap                    _geometryMap;
-        const TerrainOptions&          _options;
+        GeometryMap _geometryMap;
+        const TerrainOptions& _options;
         osg::ref_ptr<ResourceReleaser> _releaser;
         osg::ref_ptr<osg::DrawElements> _defaultPrimSet;
         osg::ref_ptr<osg::UIntArray> _reorder;
@@ -262,20 +269,16 @@ namespace osgEarth { namespace REX
 
         SharedGeometry* createGeometry(
             const TileKey& tileKey,
-            unsigned       tileSize,
-            MaskGenerator* maskSet ) const;
+            unsigned  tileSize,
+            MeshEditor& meshEditor,
+            Cancelable* state) const;
 
         // builds a primitive set to use for any tile without a mask
         osg::DrawElements* createPrimitiveSet(
-            unsigned tileSize,
-            MaskGenerator* maskSet,
-            osg::Vec3Array* texCoords,
-            osg::UIntArray** reorder = 0L) const;
+            unsigned tileSize) const;
 
         void tessellateSurface(
             unsigned tileSize,
-            MaskGenerator* maskSet,
-            osg::Vec3Array* texCoords,
             osg::DrawElements* primSet) const;
 
         bool _enabled;

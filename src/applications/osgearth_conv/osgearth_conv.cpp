@@ -28,8 +28,12 @@
 #include <osgEarth/TileVisitor>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
+#include <osgEarth/MapNode>
+
 #include <osg/ArgumentParser>
 #include <osg/Timer>
+#include <osgDB/ReadFile>
+
 #include <iomanip>
 #include <algorithm>
 #include <iterator>
@@ -42,7 +46,9 @@ int usage(char** argv)
     std::cout
         << "Converts tiles from one format to another.\n\n"
         << argv[0]
-        << "\n    --in [prop_name] [prop_value]       : set an input property"
+        << "\n    --in [prop_name] [prop_value]       : set an input property (instead of using --in-earth)"
+        << "\n    --in-earth [earthfile]              : earth file from which to load input layer (instead of using --in)"
+        << "\n    --in-layer [layer name]             : with --in-earth, name of layer to convert"
         << "\n    --out [prop_name] [prop_value]      : set an output property"
         << "\n    --profile [profile def]             : set an output profile (optional; default = same as input)"
         << "\n    --min-level [int]                   : minimum level of detail"
@@ -55,7 +61,7 @@ int usage(char** argv)
     return 0;
 }
 
-
+// Visitor that converts image tiles
 struct ImageLayerTileCopy : public TileHandler
 {
     ImageLayerTileCopy(ImageLayer* source, ImageLayer* dest, bool overwrite)
@@ -102,7 +108,7 @@ struct ImageLayerTileCopy : public TileHandler
     bool _overwrite;
 };
 
-
+// Visitor that converts elevation tiles
 struct ElevationLayerTileCopy : public TileHandler
 {
     ElevationLayerTileCopy(ElevationLayer* source, ElevationLayer* dest, bool overwrite)
@@ -131,11 +137,13 @@ struct ElevationLayerTileCopy : public TileHandler
             Status s = _dest->writeHeightField(key, hf.getHeightField(), 0L);
             ok = s.isOK();
             if (!ok)
+            {
                 OE_WARN << key.str() << ": " << s.message() << std::endl;
+            }
         }
         else
         {
-            OE_WARN << key.str() << " : " << hf.getStatus().message() << std::endl;
+            //OE_WARN << key.str() << " : " << hf.getStatus().message() << std::endl;
         }
         return ok;
     }
@@ -162,7 +170,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
                         unsigned           totalStages,
                         const std::string& msg )
     {
-        _mutex.lock();
+        ScopedMutexLock lock(_mutex);
 
         if (_first)
         {
@@ -171,7 +179,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
         }
         osg::Timer_t now = osg::Timer::instance()->tick();
 
-        
+
 
         float percentage = current/total;
 
@@ -187,15 +195,13 @@ struct ProgressReporter : public osgEarth::ProgressCallback
             << std::fixed
             << std::setprecision(1) << "\r"
             << (int)current << "/" << (int)total
-            << " " << int(100.0f*percentage) << "% complete, " 
+            << " " << int(100.0f*percentage) << "% complete, "
             << (int)minsTotal << "m" << (int)secsTotal << "s projected, "
             << (int)minsToGo << "m" << (int)secsToGo << "s remaining          "
             << std::flush;
 
         if ( percentage >= 100.0f )
             std::cout << std::endl;
-
-        _mutex.unlock();
 
         return false;
     }
@@ -212,17 +218,26 @@ struct ProgressReporter : public osgEarth::ProgressCallback
  * to look in the header file for each driver's Options structure for
  * options :)
  *
- * Example: copy a GDAL file to an MBTiles repo:
+ * Example #2: copy a GDAL file to an MBTiles repo using --in:
  *
  *   osgearth_conv
  *      --in driver gdalimage
  *      --in url world.tif
  *      --out driver mbtilesimage
  *      --out format image/png
- *      --out filename world.db
+ *      --out filename world.mbtiles
  *
- * The "in" properties come from the GDALOptions getConfig method. The
- * "out" properties come from the MBTilesOptions getConfig method.
+ *   The "in" properties come from the GDALOptions getConfig method. The
+ *   "out" properties come from the MBTilesOptions getConfig method.
+ *
+ * Example #2: copy an earth file layer to an MBTiles repo using --in-earth:
+ *
+ *   osgearth_conv
+ *      --in-earth myfile.earth
+ *      --in-layer my_image_layer_name
+ *      --out driver mbtilesimage
+ *      --out format image/png
+ *      --out filename world.mbtiles
  *
  * Other arguments:
  *
@@ -248,29 +263,69 @@ main(int argc, char** argv)
 
     osgDB::readCommandLine(args);
 
-    typedef std::map<std::string,std::string> KeyValue;
-    std::string key, value;
-
-    // collect input configuration:
-    Config inConf;
-    while( args.read("--in", key, value) )
-        inConf.set(key, value);
-    inConf.key() = inConf.value("driver");
-
-    osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
-
     // plugin options, if the user passed them in:
+    osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
     std::string str;
-    while(args.read("--osg-options", str) || args.read("-O", str))
+    while (args.read("--osg-options", str) || args.read("-O", str))
     {
-        dbo->setOptionString( str );
+        dbo->setOptionString(str);
     }
 
-    osg::ref_ptr<TileLayer> input = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(inConf)));
-    if ( !input.valid() )
+    typedef std::unordered_map<std::string,std::string> KeyValue;
+    std::string key, value;
+
+    // There are two paths. Either the user defines a source layer on
+    // the command line using "--in" options, or the user specifies
+    // an earth file and layer name.
+    osg::ref_ptr<TileLayer> input;
+    Config inConf;
+
+    // earth file option:
+    std::string earthFile;
+    osg::ref_ptr<MapNode> mapNode;
+    osg::ref_ptr<const Map> map;
+    if (args.read("--in-earth", earthFile))
     {
-        OE_WARN << LC << "Failed to open input for " << inConf.toJSON(false) << std::endl;
-        return -1;
+        std::string layerName;
+        if (!args.read("--in-layer", layerName))
+        {
+            OE_WARN << "Missing required argument --in-layer" << std::endl;
+            return -1;
+        }
+
+        osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(earthFile, dbo.get());
+        mapNode = MapNode::get(node.get());
+        if (mapNode.valid())
+        {
+            mapNode->open();
+            map = mapNode->getMap();
+        }
+
+        input = map->getLayerByName<TileLayer>(layerName);
+        if (!input.valid())
+        {
+            OE_WARN << "Layer \"" << layerName << "\" not found in the earth file" << std::endl;
+            return -1;
+        }
+
+        inConf = input->getConfig();
+    }
+
+    // command line input option:
+    else
+    {
+        // collect input configuration:
+        while (args.read("--in", key, value))
+            inConf.set(key, value);
+
+        inConf.key() = inConf.value("driver");
+
+        input = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(inConf)));
+        if (!input.valid())
+        {
+            OE_WARN << LC << "Failed to open input for " << inConf.toJSON(false) << std::endl;
+            return -1;
+        }
     }
 
     // Assign a custom tile size to the input source, if possible:
@@ -280,6 +335,7 @@ main(int argc, char** argv)
         input->setTileSize(tileSize);
     }
 
+    // Open the input layer:
     input->setReadOptions(dbo.get());
     Status inputStatus = input->open();
     if ( inputStatus.isError() )
@@ -346,6 +402,8 @@ main(int argc, char** argv)
     {
         output->setDataExtents(outputExtents);
     }
+
+    bool debug = args.read("--debug");
 
     // Dump out some stuff...
     OE_NOTICE << LC << "FROM:\n"
@@ -436,6 +494,12 @@ main(int argc, char** argv)
         maxLevel = outputProfile->getEquivalentLOD( input->getProfile(), maxLevel );
         visitor->setMaxLevel( maxLevel );
         OE_NOTICE << LC << "Calculated max level = " << maxLevel << std::endl;
+    }
+
+    if (debug)
+    {
+        std::cout << "Press enter to continue" << std::endl;
+        getchar();
     }
 
     // Ready!!!

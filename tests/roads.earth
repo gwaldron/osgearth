@@ -35,7 +35,8 @@ http://readymap.org
     </RoadSurface>
 
     <FeatureModel name="Road verts">
-        <feature_source>roads-data</feature_source>
+        <profile>spherical-mercator</profile>
+        <features>roads-data</features>
         <styles>
             <style type="text/css">
                 default {
@@ -51,7 +52,8 @@ http://readymap.org
     </FeatureModel>
 
     <FeatureModel name="Road skeleton" enabled="false">
-        <feature_source>roads-data</feature_source>
+        <profile>spherical-mercator</profile>
+        <features>roads-data</features>
         <styles>
             <style type="text/css">
                 default {
@@ -59,14 +61,14 @@ http://readymap.org
                     stroke-width: 20m;
                     render-depth-test: false;
                     render-order: 2;
-                    stroke-image: "'../data/grid2.png'";
+                    render-depth-offset: true;
                 }
             </style>
         </styles>
     </FeatureModel>
 
-    <TFSFeatures name="roads-data">
-        <url>http://readymap.org/readymap/mbtiles/osm/</url>
+    <XYZFeatures name="roads-data">
+        <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
@@ -76,7 +78,7 @@ http://readymap.org
                 <![CDATA[ ("highway" in feature.properties); ]]>
             </script>
         </filters>
-    </TFSFeatures>
+    </XYZFeatures>
 
     <viewpoints>
         <viewpoint name="45 Lat">

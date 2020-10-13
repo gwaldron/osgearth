@@ -24,7 +24,6 @@
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/Cache>
 #include <osgEarth/ModelSource>
-#include <osgEarth/MaskSource>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/URI>
 #include <osg/Node>
@@ -59,7 +58,6 @@ namespace osgEarth
             OE_OPTION(float, loadingPriorityOffset);
             OE_OPTION(bool, paged);
             OE_OPTION(bool, lightingEnabled);
-            OE_OPTION(MaskSourceOptions, mask);
             OE_OPTION(unsigned, maskMinLevel);
             OE_OPTION(ModelSourceOptions, driver);
             virtual Config getConfig() const;
@@ -114,23 +112,11 @@ namespace osgEarth
         void setShaderPolicy(const ShaderPolicy& value);
         const ShaderPolicy& getShaderPolicy() const;
 
-    public:
-        
-        //! Boundary geometry for the mask (if one exists)
-        virtual osg::Vec3dArray* getOrCreateMaskBoundary(
-            float                   heightScale,
-            const SpatialReference* srs,
-            ProgressCallback*       progress);
-
     public: // deprecated
 
         //! @deprecated - subclass ModelLayer instead of using ModelSource plugins
         //! Access the underlying model source.
         ModelSource* getModelSource() const { return _modelSource.get(); }
-
-        //! @deprecated - subclass ModelLayer and override getOrCreateMaskBoundary
-        //! Underlying mask source, if one exists.
-        MaskSource* getMaskSource() const { return _maskSource.get(); }
 
     public: // Layer
 
@@ -159,9 +145,7 @@ namespace osgEarth
         virtual ~ModelLayer();
 
         osg::ref_ptr<ModelSource>     _modelSource;
-        osg::ref_ptr<MaskSource>      _maskSource;
         Revision                      _modelSourceRev;
-        osg::ref_ptr<osg::Vec3dArray> _maskBoundary;
         osg::ref_ptr<CacheSettings>   _cacheSettings;
         osg::ref_ptr<osg::Group>      _root;
 

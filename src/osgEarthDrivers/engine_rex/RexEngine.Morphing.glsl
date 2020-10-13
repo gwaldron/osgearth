@@ -39,11 +39,11 @@ uniform mat4 oe_shadowToPrimaryMatrix;
 float oe_terrain_getElevation(in vec2 uv);
 
 // Vertex Markers:
-#define VERTEX_MARKER_DISCARD  1
-#define VERTEX_MARKER_GRID     2
-#define VERTEX_MARKER_PATCH    4
-#define VERTEX_MARKER_BOUNDARY 8
-#define VERTEX_MARKER_SKIRT    16
+#define VERTEX_VISIBLE  1
+#define VERTEX_BOUNDARY 2
+#define VERTEX_HAS_ELEVATION 4
+#define VERTEX_SKIRT 8
+#define VERTEX_CONSTRAINT 16
 
 #ifdef OE_ELEVATION_CONSTRAINT_TEX
 void moveToConstraint(in vec4 vertex, in vec4 layer_tilec, out vec4 newVertex, out vec4 new_layer_tilec)
@@ -128,7 +128,7 @@ void oe_rex_morph(inout vec4 vertexModel)
     // compute the morphing factor to send down the pipe.
     // we need this even if vertex-morphing is off since we use it for
     // other things (like image blending)
-    if ((oe_terrain_vertexMarker & VERTEX_MARKER_GRID) != 0)
+    if ((oe_terrain_vertexMarker & VERTEX_CONSTRAINT) == 0)
     {
         oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);
 #ifdef OE_TERRAIN_MORPH_GEOMETRY

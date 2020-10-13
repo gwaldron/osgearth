@@ -789,7 +789,7 @@ OGRFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
     if (_geometry.valid())
     {
         return new GeometryFeatureCursor(
-            _geometry.get(),
+            _geometry->clone(),
             getFeatureProfile(),
             getFilters());
     }

@@ -180,6 +180,9 @@ _blacklist("Reg.BlackList(OE)")
 
     // register the system stock Units.
     Units::registerAll( this );
+
+    // Default concurrency for async image layers
+    JobArena::setSize("ASYNC_LAYER", 4u);
 }
 
 Registry::~Registry()

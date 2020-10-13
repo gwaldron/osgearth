@@ -15,7 +15,6 @@ This tests the rendering of features close to the poles.
     </OGRFeatures>
 
     <FeatureModel name="North polar polygon" features="north-geom">
-        <geo_interpolation>rhumb_line</geo_interpolation>
         <styles>
             <style type="text/css">
                 default {
@@ -34,7 +33,6 @@ This tests the rendering of features close to the poles.
     </OGRFeatures>
 
     <FeatureModel name="South polar polygon" features="south-geom">
-        <geo_interpolation>rhumb_line</geo_interpolation>
         <styles>
             <style type="text/css">
                 default {

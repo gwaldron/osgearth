@@ -37,7 +37,6 @@ XYZFeatureSource::Options::getConfig() const
     Config conf = FeatureSource::Options::getConfig();
     conf.set("url", _url);
     conf.set("format", _format);
-    conf.set("invert_y", _invertY);
     conf.set("min_level", _minLevel);
     conf.set("max_level", _maxLevel);
     return conf;
@@ -46,11 +45,10 @@ XYZFeatureSource::Options::getConfig() const
 void
 XYZFeatureSource::Options::fromConfig(const Config& conf)
 {
-    format().init("json");
+    format().setDefault("json");
 
     conf.get("url", _url);
     conf.get("format", _format);
-    conf.get("invert_y", _invertY);
     conf.get("min_level", _minLevel);
     conf.get("max_level", _maxLevel);
 }
@@ -61,7 +59,6 @@ REGISTER_OSGEARTH_LAYER(xyzfeatures, XYZFeatureSource);
 
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, std::string, Format, format);
-OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, bool, InvertY, invertY);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MinLevel, minLevel);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MaxLevel, maxLevel);
 
@@ -324,24 +321,22 @@ XYZFeatureSource::createURL(const Query& query)
         unsigned int tileY = key.getTileY();
         unsigned int level = key.getLevelOfDetail();
 
-        if (options().invertY() == false)
-        {
-            unsigned int numRows, numCols;
-            key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
-            tileY = numRows - tileY - 1;
-        }
-
+        unsigned int numRows, numCols;
+        key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
+        unsigned inverted_tileY = numRows - tileY - 1;
 
         std::string location = _template;
 
         // support OpenLayers template style:
         replaceIn(location, "${x}", Stringify() << tileX);
         replaceIn(location, "${y}", Stringify() << tileY);
+        replaceIn(location, "${-y}", Stringify() << inverted_tileY);
         replaceIn(location, "${z}", Stringify() << key.getLevelOfDetail());
 
         // failing that, legacy osgearth style:
         replaceIn(location, "{x}", Stringify() << tileX);
         replaceIn(location, "{y}", Stringify() << tileY);
+        replaceIn(location, "{-y}", Stringify() << inverted_tileY);
         replaceIn(location, "{z}", Stringify() << key.getLevelOfDetail());
 
         std::string cacheKey;

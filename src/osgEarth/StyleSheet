@@ -85,6 +85,9 @@ namespace osgEarth
         /** Adds a style to this sheet. */
         void addStyle( const Style& style );
 
+        /** Adds one or more styles from a CSS block */
+        void addStylesFromCSS(const std::string& css);
+
         /** Removes a style from this sheet. */
         void removeStyle( const std::string& name );
         
@@ -103,6 +106,7 @@ namespace osgEarth
         const StyleMap& getStyles() const;
 
         /** Selectors pick a style from the sheet based on some criteria. */
+        void addSelector(const StyleSelector&);
         StyleSelectors& getSelectors();
         const StyleSelectors& getSelectors() const;
         const StyleSelector* getSelector(const std::string& name) const;

@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_TERRAIN_LAYER_H
-#define OSGEARTH_TERRAIN_LAYER_H 1
+#ifndef OSGEARTH_TILE_LAYER_H
+#define OSGEARTH_TILE_LAYER_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
@@ -306,4 +306,4 @@ namespace osgEarth
 
 } // namespace TileLayer
 
-#endif // OSGEARTH_TERRAIN_LAYER_H
+#endif // OSGEARTH_TILE_LAYER_H

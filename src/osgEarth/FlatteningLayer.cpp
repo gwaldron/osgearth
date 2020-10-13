@@ -839,11 +839,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
     //    OE_WARN << LC << "Internal error - Pool layer set is empty\n";
     //    return GeoHeightField::INVALID;
     //}
-
-    OE_START_TIMER(create);
     
-    osg::ref_ptr<osg::HeightField> hf;
-
     // If the feature source has a tiling profile, we are going to have to map the incoming
     // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
     GeoExtent queryExtent;
@@ -1021,25 +1017,41 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
 
     if (!geoms.getComponents().empty())
     {
-        if (!hf.valid())
+        // Make an empty heightfield to populate:
+        osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(
+            queryExtent,
+            osgEarth::ELEVATION_TILE_SIZE,
+            osgEarth::ELEVATION_TILE_SIZE,
+            0u,                 // no border
+            true);              // initialize to HAE (0.0) heights
+
+        // Initialize to NO DATA.
+        hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
+
+        bool fill = (options().fill() == true);
+
+        bool wrote_to_hf = integrate(
+            key, 
+            hf.get(),
+            &geoms, 
+            workingSRS,
+            widths, 
+            _pool.get(),
+            &_elevWorkingSet,
+            fill, 
+            progress);
+
+        if (wrote_to_hf)
         {
-            // Make an empty heightfield to populate:
-            hf = HeightFieldUtils::createReferenceHeightField(
-                queryExtent,
-                osgEarth::ELEVATION_TILE_SIZE,
-                osgEarth::ELEVATION_TILE_SIZE,
-                //257, 257,           // base tile size for elevation data
-                0u,                 // no border
-                true);              // initialize to HAE (0.0) heights
-
-            // Initialize to NO DATA.
-            hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
+            return GeoHeightField(hf.get(), key.getExtent());
         }
-
-        // Create an elevation query envelope at the LOD we are creating
-        bool fill = (options().fill() == true);             
-        integrate(key, hf.get(), &geoms, workingSRS, widths, _pool.get(), &_elevWorkingSet, fill, progress);
+        else
+        {
+            return GeoHeightField::INVALID;
+        }
     }
-
-    return GeoHeightField(hf.get(), key.getExtent());
+    else
+    {
+        return GeoHeightField::INVALID;
+    }
 }

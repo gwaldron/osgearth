@@ -365,11 +365,14 @@ PlaceNode::updateLayoutData()
     if (!_dataLayout.valid())
     {
         _dataLayout = new ScreenSpaceLayoutData();
+
+        _iconDataLayout = new ScreenSpaceLayoutData();
+        _iconDataLayout->setFixed(true);
     }
 
     // re-apply annotation drawable-level stuff as neccesary.
     if (_imageDrawable)
-        _imageDrawable->setUserData(_dataLayout.get());
+        _imageDrawable->setUserData(_iconDataLayout.get());
 
     if (_bboxDrawable)
         _bboxDrawable->setUserData(_dataLayout.get());
@@ -377,7 +380,8 @@ PlaceNode::updateLayoutData()
     if (_textDrawable)
         _textDrawable->setUserData(_dataLayout.get());
 
-    _dataLayout->setPriority(getPriority());    
+    _dataLayout->setPriority(getPriority());
+    _iconDataLayout->setPriority(getPriority());
     
     GeoPoint location = getPosition();
     location.makeGeographic();
@@ -407,6 +411,7 @@ PlaceNode::updateLayoutData()
     if (ts)
     {
         _dataLayout->setPixelOffset(ts->pixelOffset().get());
+        _iconDataLayout->setPixelOffset(ts->pixelOffset().get());
         
         if (_followFixedCourse)
         {

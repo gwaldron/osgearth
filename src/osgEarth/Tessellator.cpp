@@ -21,7 +21,6 @@
 */
 #include <iterator>
 #include <limits.h>
-
 #include <osgEarth/Tessellator>
 
 #ifdef OSGEARTH_CXX11
@@ -39,6 +38,20 @@ namespace mapbox {
         template <>
         struct nth<1, osg::Vec2> {
             inline static float get(const osg::Vec2 &t) {
+                return t.y();
+            };
+        };
+
+        template <>
+        struct nth<0, osg::Vec3d> {
+            inline static float get(const osg::Vec3d &t) {
+                return t.x();
+            };
+        };
+
+        template <>
+        struct nth<1, osg::Vec3d> {
+            inline static float get(const osg::Vec3d &t) {
                 return t.y();
             };
         };
@@ -183,6 +196,52 @@ AreaPlane polygonPlane(osg::Vec3Array& verts)
     }
 
     return AREA_PLANE_XY;
+}
+
+void rotateToXY(std::vector<std::vector<osg::Vec3d>>& polygon)
+{
+    double area[3] = { 0, 0, 0 };
+
+    for (auto& verts : polygon)
+    {
+        // Calculate value of shoelace formula 
+        int j = verts.size() - 1;
+        for (int i = 0; i < verts.size(); i++)
+        {
+            area[AREA_PLANE_XY] += (verts[j].x() + verts[i].x()) * (verts[j].y() - verts[i].y());
+            area[AREA_PLANE_XZ] += (verts[j].x() + verts[i].x()) * (verts[j].z() - verts[i].z());
+            area[AREA_PLANE_YZ] += (verts[j].y() + verts[i].y()) * (verts[j].z() - verts[i].z());
+            j = i;
+        }
+    }
+
+    int plane;
+
+    double absArea[] = { abs(area[AREA_PLANE_XY] / 2.0), abs(area[AREA_PLANE_XZ] / 2.0), abs(area[AREA_PLANE_YZ] / 2.0) };
+    if (absArea[0] > absArea[1] && absArea[0] > absArea[2]) {
+        plane = AREA_PLANE_XY;
+    }
+    if (absArea[1] > absArea[0] && absArea[1] > absArea[2]) {
+        plane = AREA_PLANE_XZ;
+    }
+    if (absArea[2] > absArea[0] && absArea[2] > absArea[1]) {
+        plane = AREA_PLANE_YZ;
+    }
+
+    if (plane != AREA_PLANE_XY)
+    {
+        osg::Vec3d temp;
+        for (auto& verts : polygon)
+        {
+            for (auto& point : verts)
+            {
+                if (plane == AREA_PLANE_XZ)
+                    point.set(point.x(), point.z(), point.y());
+                else if (plane == AREA_PLANE_YZ)
+                    point.set(point.y(), point.z(), point.x());
+            }
+        }
+    }    
 }
 
 }
@@ -505,4 +564,35 @@ Tessellator::isEar(const osg::Vec3Array &vertices, const std::vector<unsigned in
     tradEar = true;
 
         return circEar;
+}
+
+
+bool
+Tessellator::tessellate2D(
+    const osgEarth::Geometry* input,
+    std::vector<uint32_t>& out_indices,
+    Plane plane) const
+{
+    typedef std::vector< std::vector<osg::Vec3d> > poly_t;
+
+    // build the data structure to tessellate:
+    poly_t polygon;
+
+    ConstGeometryIterator iter(input, true);
+    while (iter.hasMore())
+    {
+        const Geometry* part = iter.next();
+        polygon.emplace_back(part->size());
+        std::copy(part->begin(), part->end(), polygon.back().begin());
+    }
+
+    if (plane == PLANE_AUTO)
+    {
+        rotateToXY(polygon);
+    }
+
+    // tessellate:
+    out_indices = mapbox::earcut<uint32_t>(polygon);
+
+    return true;
 }

@@ -21,6 +21,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/LandCoverLayer>
+#include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/Metrics>
 
 #include <osg/Texture2D>
@@ -30,11 +31,72 @@
 
 using namespace osgEarth;
 
+class FutureImage : public osg::Image
+{
+public:
+
+    FutureImage(ImageLayer* layer, const TileKey& key) : osg::Image()
+    {
+        _layer = layer;
+        _key = key;
+
+        osg::observer_ptr<ImageLayer> layer_ptr(_layer);
+
+        Job<const osg::Image> job([layer_ptr, key](Cancelable* progress) mutable {
+            osg::ref_ptr<ImageLayer> safe(layer_ptr);
+            if (safe.valid()) {
+                GeoImage result = safe->createImage(key, nullptr); // progress TODO
+                return result.takeImage();
+            }
+            else return static_cast<const osg::Image*>(nullptr);
+        });
+
+        _result = job.schedule("ASYNC_LAYER");
+    }
+
+    virtual bool requiresUpdateCall() const override
+    {
+        // tricky, because if we return false here, it will
+        // never get called again.
+        return _result.isAvailable() || !_result.isAbandoned();
+    }
+
+    virtual void update(osg::NodeVisitor* nv) override
+    {
+        if (_result.isAvailable())
+        {
+            // no refptr here because we are going to steal the data.
+            osg::ref_ptr<osg::Image> i = const_cast<osg::Image*>(_result.release());
+
+            if (i.valid())
+            {
+                this->setImage(
+                    i->s(), i->t(), i->r(),
+                    i->getInternalTextureFormat(), i->getPixelFormat(), i->getDataType(),
+                    i->data(), i->getAllocationMode(),
+                    i->getPacking(),
+                    i->getRowLength());
+
+                // since we stole the data, make sure we don't double-delete it
+                i->setAllocationMode(osg::Image::NO_DELETE);
+
+                // trigger texture(s) that own this image to reapply
+                this->dirty();
+            }
+        }
+    }
+
+    osg::ref_ptr<ImageLayer> _layer;
+    TileKey _key;
+    Job<const osg::Image>::Result _result;
+};
+
 //.........................................................................
 
 CreateTileManifest::CreateTileManifest()
 {
     _includesElevation = false;
+    _includesConstraints = false;
     _includesLandCover = false;
 }
 
@@ -45,10 +107,19 @@ void CreateTileManifest::insert(const Layer* layer)
         _layers[layer->getUID()] = layer->getRevision();
 
         if (dynamic_cast<const ElevationLayer*>(layer))
+        {
             _includesElevation = true;
+        }
 
-        if (dynamic_cast<const LandCoverLayer*>(layer))
+        else if (dynamic_cast<const TerrainConstraintLayer*>(layer))
+        {
+            _includesConstraints = true;
+        }
+
+        else if (dynamic_cast<const LandCoverLayer*>(layer))
+        {
             _includesLandCover = true;
+        }
     }
 }
 
@@ -107,6 +178,11 @@ bool CreateTileManifest::includes(UID uid) const
 bool CreateTileManifest::includesElevation() const
 {
     return empty() || _includesElevation;
+}
+
+bool CreateTileManifest::includesConstraints() const
+{
+    return _includesConstraints;
 }
 
 bool CreateTileManifest::includesLandCover() const
@@ -217,6 +293,22 @@ TerrainTileModelFactory::addImageLayer(
             scaleBiasMatrix = window.getMatrix();
         }
 
+        else if (imageLayer->getAsyncLoading() == true)
+        {
+            osg::Image* image = new FutureImage(imageLayer, key);
+
+            tex = new osg::Texture2D(image);
+            tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+            tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+            tex->setResizeNonPowerOfTwoHint(false);
+            osg::Texture::FilterMode magFilter = imageLayer->options().magFilter().get();
+            osg::Texture::FilterMode minFilter = imageLayer->options().minFilter().get();
+            tex->setFilter(osg::Texture::MAG_FILTER, magFilter);
+            tex->setFilter(osg::Texture::MIN_FILTER, minFilter);
+            tex->setMaxAnisotropy(4.0f);
+            tex->setUnRefImageDataAfterApply(false);
+        }
+
         else
         {
             GeoImage geoImage = imageLayer->createImage(key, progress);
@@ -259,7 +351,7 @@ TerrainTileModelFactory::addImageLayer(
             model->sharedLayers().push_back(layerModel);
         }
 
-        if (imageLayer->isDynamic())
+        if (imageLayer->isDynamic() || imageLayer->getAsyncLoading())
         {
             model->setRequiresUpdateTraverse(true);
         }
@@ -407,24 +499,49 @@ TerrainTileModelFactory::addElevation(
     bool needElevation = manifest.includesElevation();
     ElevationLayerVector layers;
     map->getLayers(layers);
-    int combinedRevision = map->getDataModelRevision();
 
+    int combinedRevision = map->getDataModelRevision();
     if (!manifest.empty())
     {
-        for(ElevationLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        for (const auto& layer : layers)
         {
-            const ElevationLayer* layer = i->get();
-
-            if (needElevation == false && !manifest.excludes(layer))
+            if (needElevation == false && !manifest.excludes(layer.get()))
             {
                 needElevation = true;
             }
-
             combinedRevision += layer->getRevision();
         }
     }
     if (!needElevation)
         return;
+
+#if 0
+    LayerVector terrain_layers;
+
+    map->getLayers(
+        terrain_layers,
+        [] (const Layer* layer) {
+            return
+                dynamic_cast<const ElevationLayer*>(layer) != nullptr ||
+                dynamic_cast<const TerrainConstraintLayer*>(layer) != nullptr;
+        });
+
+    int combinedRevision = map->getDataModelRevision();
+
+    if (!manifest.empty())
+    {
+        for(const auto& layer : terrain_layers)
+        {
+            if (needElevation == false && !manifest.excludes(layer.get()))
+            {
+                needElevation = true;
+            }
+            combinedRevision += layer->getRevision();
+        }
+    }
+    if (!needElevation)
+        return;
+#endif
 
     osg::ref_ptr<ElevationTexture> elevTex;
 

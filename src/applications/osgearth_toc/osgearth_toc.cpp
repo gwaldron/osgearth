@@ -269,9 +269,6 @@ main( int argc, char** argv )
     // install a motion model
     viewer.setCameraManipulator( s_manip = new osgEarth::Util::EarthManipulator() );
 
-    // disable the small-feature culling (so text will work)
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
     // Load an earth file
     Container* uiRoot = new VBox();
     uiRoot->setAbsorbEvents(false);
@@ -491,7 +488,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
 
     // don't show hidden coverage layers
-    if (imageLayer && imageLayer->isCoverage()) // && !imageLayer->getVisible())
+    if (imageLayer && imageLayer->isCoverage())
         return;
 
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);

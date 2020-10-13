@@ -29,7 +29,7 @@ SET(TARGET_SRC
     RexTerrainEngineDriver.cpp
     LayerDrawable.cpp
     LoadTileData.cpp
-    MaskGenerator.cpp
+    MeshEditor.cpp
 	SelectionInfo.cpp
     SurfaceNode.cpp
     TerrainCuller.cpp
@@ -54,7 +54,7 @@ SET(TARGET_H
     RexTerrainEngineNode
     LayerDrawable
     LoadTileData
-    MaskGenerator
+    MeshEditor
     RenderBindings
     SurfaceNode
     TerrainCuller

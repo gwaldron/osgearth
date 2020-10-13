@@ -1,0 +1,49 @@
+<map name="ReadyMap.org">
+    <options>
+        <terrain progressive="true" morph_imagery="true" morph_terrain="false"/>
+    </options>
+
+    <TMSImage name="ReadyMap 15m Imagery" opacity="1.0">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
+
+    <TMSElevation name="ReadyMap 90m Elevation" enabled="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+        <vdatum>egm96</vdatum>
+    </TMSElevation>
+
+    <OGRFeatures name="ridges">
+        <url>D:/data/demo/nepal/nepal_ridgetops_50m.shp</url>
+    </OGRFeatures>
+
+    <FeatureMeshEdit name="ridge-edit" min_level="9">
+        <features>ridges</features>
+    </FeatureMeshEdit>
+
+    <DebugImage/>
+
+    <FeatureImage name="ridge-debugging" min_level="9">
+        <styles>
+            <style type="text/css">
+                default {
+                       stroke:        #ff0000;
+                    stroke-width:  3px;
+                }
+            </style>
+        </styles>
+        <features>ridges</features>
+    </FeatureImage>
+
+    <xi:include href="viewpoints.xml"/>
+    <viewpoints>
+        <viewpoint name="foo">
+            <heading>-83.3431</heading>
+            <pitch>-51.9833</pitch>
+            <range>14246.3m</range>
+            <long>86.98665661056501</long>
+            <lat>27.9312987743189</lat>
+            <height>5933.471740019508</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+    </viewpoints>
+</map>

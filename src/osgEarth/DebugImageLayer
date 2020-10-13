@@ -40,6 +40,7 @@ namespace osgEarth { namespace Util
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION(std::string, colorCode);
             OE_OPTION(bool, invertY);
+            OE_OPTION(bool, showTessellation);
             virtual Config getConfig() const;
             static Config getMetadata();
         private:

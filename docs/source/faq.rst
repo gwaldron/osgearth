@@ -51,12 +51,12 @@ I loaded a model, but it has no texture/lighting/etc. in osgEarth. Why?
     like sky lighting.
 
 
-Lines or Annotations (FeatureNode, etc.) are not rendering. Why?
+Lines or annotations (FeatureNode, etc.) are not rendering. Why?
 ................................................................
 
     Lines render using a shader that requires some initial state to be set.
     You can apply this state to your top-level camera (or anywhere else 
-    above the geometry) like so:
+    above the geometry) like so::
     
         #include <osgEarth/GLUtils>
         ...
@@ -85,6 +85,16 @@ Lines or Annotations (FeatureNode, etc.) are not rendering. Why?
 
     Again: MapNode does all this automatically so this is only necessary if you do
     not place your annotations as descendants of the MapNode.
+    
+
+Text annotations (LabelNode, PlaceNode) are not rendering. Why?
+...............................................................
+    
+    Rendering text requires that you disable OSG's small-feature culling like so:
+    
+        view->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+    Note: you must do this for each camera.
 
 ----
 

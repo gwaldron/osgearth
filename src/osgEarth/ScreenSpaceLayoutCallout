@@ -224,7 +224,9 @@ namespace osgEarth { namespace Internal
             if (layoutData)
             {
                 // FLT_MAX priority => don't declutter this element.
-                if (layoutData->getPriority() == FLT_MAX)
+                // Fixed position => don't move the element
+                if (layoutData->getPriority() == FLT_MAX ||
+                    layoutData->getFixed())
                 {
                     element._declutter = false;
                 }
@@ -257,6 +259,9 @@ namespace osgEarth { namespace Internal
             local._leaders->pushVertex(osg::Vec3f());
             local._leadersDirty = true;
         }
+
+        // each one needs a unique mvm
+        leaf->_modelview = new osg::RefMatrix();
 
         if (element._declutter && ScreenSpaceLayout::globallyEnabled)
         {
@@ -310,6 +315,11 @@ namespace osgEarth { namespace Internal
         local._points.clear();
         local._lookup.clear();
 
+        jcv_rect bounds;
+        const double K = 0;
+        bounds.min.x = vp->x() + K, bounds.min.y = vp->y() + K;
+        bounds.max.x = vp->x() + vp->width() - K * 2, bounds.max.y = vp->y() + vp->height() - K * 2;
+
         for (Elements::reverse_iterator i = local._elements.rbegin();
             i != local._elements.rend();
             ++i)
@@ -319,19 +329,21 @@ namespace osgEarth { namespace Internal
             if (element._leaf != NULL && element._declutter)
             {
                 // Hm, not sure what this is doing
-                if (element._frame == element._frame)
+                //if (element._frame == element._frame)
+                if (element._frame == local._frame)
                 {
                     // i.e., visible
                     element._leaf->_depth = 1.0f;
 
-                    local._points.resize(local._points.size()+1);
-
-                    jcv_point& back = local._points.back();
-
-                    back.x = element._anchor.x();
-                    back.y = element._anchor.y();
-
-                    local._lookup[back] = &element;
+                    if (element._anchor.x() >= bounds.min.x &&
+                        element._anchor.x() <= bounds.max.x &&
+                        element._anchor.y() >= bounds.min.y &&
+                        element._anchor.y() <= bounds.max.y)
+                    {
+                        jcv_point back{ element._anchor.x(), element._anchor.y() };
+                        local._points.emplace_back(back);
+                        local._lookup[back] = &element;
+                    }
                 }
             }
         }
@@ -340,10 +352,6 @@ namespace osgEarth { namespace Internal
         // Use the "visual center" of the point's site as the label location.
         jcv_diagram diagram;
         ::memset(&diagram, 0, sizeof(jcv_diagram));
-        jcv_rect bounds;
-        const double K = 0;
-        bounds.min.x = vp->x()+K, bounds.min.y = vp->y()+K;
-        bounds.max.x = vp->x() + vp->width()-K*2, bounds.max.y = vp->y() + vp->height()-K*2;
         jcv_diagram_generate(local._points.size(), &local._points[0], &bounds, &diagram);
 
         if (local._voronoi.valid())
@@ -396,7 +404,7 @@ namespace osgEarth { namespace Internal
                 osg::Vec3d p0, p1;
                 for(edge = site->edges; edge; edge = edge->next)
                 {
-                    p0.set(edge->pos[0].x, edge->pos[0].y, 0);                    
+                    p0.set(edge->pos[0].x, edge->pos[0].y, 0);
                     p1.set(edge->pos[1].x, edge->pos[1].y, 0);
 
                     if (local._voronoi.valid())
@@ -523,7 +531,8 @@ namespace osgEarth { namespace Internal
         const osg::Viewport* vp = cam->getViewport();
         local._scalebias =
             osg::Matrix::translate(1, 1, 1) *
-            osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5);
+            osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5) *
+            osg::Matrix::translate(vp->x(), vp->y(), 0.0);
 
         for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
             i != leaves.end();

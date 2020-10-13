@@ -25,7 +25,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ModelLayer>
-#include <osgEarth/MaskLayer>
+#include <osgEarth/TerrainConstraintLayer>
 
 namespace osgEarth
 {
@@ -59,7 +59,7 @@ namespace osgEarth
         ImageLayer* getImageLayer() const { return dynamic_cast<ImageLayer*>(_layer.get()); }
         ElevationLayer* getElevationLayer() const { return dynamic_cast<ElevationLayer*>(_layer.get()); }
         ModelLayer* getModelLayer() const { return dynamic_cast<ModelLayer*>(_layer.get()); }
-        MaskLayer* getMaskLayer() const { return dynamic_cast<MaskLayer*>(_layer.get()); }
+        TerrainConstraintLayer* getConstraintLayer() const { return dynamic_cast<TerrainConstraintLayer*>(_layer.get()); }
 
     private:
         ActionType          _action;

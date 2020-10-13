@@ -27,12 +27,12 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/MapModelChange>
+#include <osgEarth/Threading>
 #include <osgEarth/Progress>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Metrics>
-#include <osgEarth/ElevationConstraintLayer>
 #include <osgEarth/Elevation>
 #include <osgEarth/LandCover>
 
@@ -167,6 +167,7 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     // force an update traversal in order to compute layer extents.
     _cachedLayerExtentsComputeRequired = true;
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    ADJUST_EVENT_TRAV_COUNT(this, +1);
 }
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
@@ -561,11 +562,14 @@ RexTerrainEngineNode::dirtyTerrain()
         TileNode* tileNode = new TileNode();
 
         // Next, build the surface geometry for the node.
-        tileNode->create( keys[i], 0L, _engineContext.get() );
+        tileNode->create( keys[i], 0L, _engineContext.get(), nullptr );
         tileNode->setDoNotExpire(true);
 
         // Add it to the scene graph
         _terrain->addChild( tileNode );
+
+        // Post-add initialization:
+        tileNode->initializeData();
 
         // And load the tile's data synchronously (only for root tiles)
         tileNode->loadSync();
@@ -775,6 +779,29 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 }
 
 void
+RexTerrainEngineNode::event_traverse(osg::NodeVisitor& nv)
+{
+    OE_PROFILING_ZONE;
+
+    unsigned osgFrame = nv.getFrameStamp()->getFrameNumber();
+    bool newFrame = (osgFrame > _clock.getFrame());
+    if (newFrame)
+    {
+        // Update the cached layer extents as necessary.
+        osg::ref_ptr<const Layer> layer;
+        for (auto& layerExtent : _cachedLayerExtents)
+        {
+            layerExtent.second._layer.lock(layer);
+            if (layer.valid() && layer->getRevision() > layerExtent.second._revision)
+            {
+                layerExtent.second._extent = _map->getProfile()->clampAndTransformExtent(layer->getExtent());
+                layerExtent.second._revision = layer->getRevision();
+            }
+        }
+    }
+}
+
+void
 RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
@@ -809,7 +836,13 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 void
 RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.EVENT_VISITOR)
+    {
+        event_traverse(nv);
+        TerrainEngineNode::traverse(nv);
+    }
+
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
         update_traverse(nv);
         TerrainEngineNode::traverse( nv );
@@ -943,9 +976,9 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
             case MapModelChange::REMOVE_LAYER:
             case MapModelChange::CLOSE_LAYER:
                 if (change.getImageLayer())
-                    removeImageLayer( change.getImageLayer() );
-                else if (change.getElevationLayer())
-                    removeElevationLayer(change.getElevationLayer());
+                    removeImageLayer(change.getImageLayer());
+                else if (change.getElevationLayer() || change.getConstraintLayer())
+                    removeElevationLayer(change.getLayer());
                 break;
 
             case MapModelChange::MOVE_LAYER:
@@ -963,14 +996,12 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 void
 RexTerrainEngineNode::cacheLayerExtentInMapSRS(Layer* layer)
 {
+    OE_SOFT_ASSERT_AND_RETURN(layer != nullptr, __func__,);
+
     // Store the layer's extent in the map's SRS:
     LayerExtent& le = _cachedLayerExtents[layer->getUID()];
-
-    if (!le._computed && getMap()->getProfile())
-    {
-        le._extent = getMap()->getProfile()->clampAndTransformExtent(layer->getExtent());
-        le._computed = true;
-    }
+    le._layer = layer;
+    le._extent = getMap()->getProfile()->clampAndTransformExtent(layer->getExtent());
 }
 
 void
@@ -982,8 +1013,8 @@ RexTerrainEngineNode::addLayer(Layer* layer)
         {
             if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
                 addTileLayer(layer);
-            else if (dynamic_cast<ElevationLayer*>(layer))
-                addElevationLayer(dynamic_cast<ElevationLayer*>(layer));
+            else if (dynamic_cast<ElevationLayer*>(layer) || dynamic_cast<TerrainConstraintLayer*>(layer))
+                addElevationLayer(layer);
         }
 
         cacheLayerExtentInMapSRS(layer);
@@ -1061,11 +1092,6 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                         terrainSS->addUniform(new osg::Uniform(newBinding.samplerName().c_str(), newBinding.unit()));
                         terrainSS->setTextureAttribute(newBinding.unit(), tex.get(), 1);
                         OE_INFO << LC << "Bound shared sampler " << newBinding.samplerName() << " to unit " << newBinding.unit() << std::endl;
-                        if (dynamic_cast<ElevationConstraintLayer*>(imageLayer))
-                        {
-                            terrainSS->setDefine("OE_ELEVATION_CONSTRAINT_TEX", newBinding.samplerName());
-                            terrainSS->setDefine("OE_ELEVATION_CONSTRAINT_TEX_MATRIX", newBinding.matrixName());
-                        }
                     }
                 }
             }
@@ -1138,7 +1164,7 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 }
 
 void
-RexTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
+RexTerrainEngineNode::addElevationLayer(Layer* layer )
 {
     if (layer && layer->getEnabled())
     {
@@ -1149,7 +1175,7 @@ RexTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 }
 
 void
-RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layer)
+RexTerrainEngineNode::removeElevationLayer( Layer* layer)
 {
     // only need to refresh is the elevation layer is visible.
     if (layer)
@@ -1161,9 +1187,9 @@ RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layer)
 }
 
 void
-RexTerrainEngineNode::moveElevationLayer(ElevationLayer* layer)
+RexTerrainEngineNode::moveElevationLayer(Layer* layer)
 {
-    if (layer && layer->getEnabled() && layer->getVisible())
+    if (layer && layer->getEnabled())
     {
         std::vector<const Layer*> layers;
         layers.push_back(layer);

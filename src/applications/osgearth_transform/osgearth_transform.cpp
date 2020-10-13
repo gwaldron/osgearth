@@ -179,8 +179,6 @@ main(int argc, char** argv)
     mapNode->addChild( app.geo );
 
     viewer.setSceneData( root );
-    viewer.getCamera()->setNearFarRatio(0.00002);
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     ui::ControlCanvas::getOrCreate(&viewer)->addControl( makeUI(app) );
     app.apply();

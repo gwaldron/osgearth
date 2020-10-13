@@ -292,18 +292,8 @@ main(int argc, char** argv)
     //Create the control panel
     Container* container = createControlPanel(&viewer);
 
-    // Tell the database pager to not modify the unref settings
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
-
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator(new EarthManipulator(arguments));
-
-    // disable the small-feature culling
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
-    // set a near/far ratio that is smaller than the default. This allows us to get
-    // closer to the ground without near clipping. If you need more, use --logdepth
-    viewer.getCamera()->setNearFarRatio(0.0001);
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags

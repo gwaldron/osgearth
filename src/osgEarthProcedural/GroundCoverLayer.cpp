@@ -69,11 +69,7 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 //  - Move normal map conversion code out of here, and move towards a "MaterialTextureSet"
 //    kind of setup that will support N material textures at once.
 
-//  - FEATURE: FADE in 3D models from billboards
 //  - FEATURE: automatically generate billboards? Imposters? Other?
-
-//  - Lighting: do something about billboard lighting. We might have to generate normal 
-//    maps when we make the imposter billboards (if we make them).
 
 //  - Texture management as the catalog gets bigger. Swap in/out criteria and detection??
 //    (This will probably have to wait until we change the Biome meta.)
@@ -93,6 +89,9 @@ REGISTER_OSGEARTH_LAYER(splat_groundcover, GroundCoverLayer);
 //  - variable spacing or clumping by landcovergroup or asset...?
 //  - make the noise texture bindless as well? Stick it in the arena? Why not.
 
+//  - (DONE) Lighting: do something about billboard lighting. We might have to generate normal 
+//    maps when we make the imposter billboards (if we make them).
+//  - (DONE) FEATURE: FADE in 3D models from billboards
 //  - (DONE) BUG: multiple biomes, same asset in each biome; billboard sizes are messed up.
 //  - (DONE - using indexes instead of copies) Reduce the size of the RenderBuffer structure
 //  - (DONE) Fix model culling. The "radius" isn't quite sufficient since the origin is not at the center,

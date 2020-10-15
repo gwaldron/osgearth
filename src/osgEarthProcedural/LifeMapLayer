@@ -41,6 +41,7 @@ namespace osgEarth { namespace Procedural
     class OSGEARTHPROCEDURAL_EXPORT LifeMapLayer : public ImageLayer
     {
     public:
+        // DEPRECATED
         struct LandCoverLifeMapping {
             LandCoverLifeMapping(const Config& c);
             Config getConfig() const;
@@ -58,7 +59,12 @@ namespace osgEarth { namespace Procedural
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION_LAYER(ImageLayer, densityMaskLayer);
+            OE_OPTION_LAYER(FeatureSource, landUseLayer);
+
+            // MEH
             OE_OPTION_LAYER(ImageLayer, densityColorLayer);
+
+            // DEPRECATED
             OE_OPTION_LAYER(LandCoverLayer, landCoverLayer);
             OE_OPTION_LAYER(LandCoverDictionary, landCoverDictionary);
             OE_OPTION_VECTOR(LandCoverLifeMapping, landCoverMappings);
@@ -75,6 +81,9 @@ namespace osgEarth { namespace Procedural
 
         void setDensityMaskLayer(ImageLayer*);
         ImageLayer* getDensityMaskLayer() const;
+
+        void setLandUseLayer(FeatureSource*);
+        FeatureSource* getLandUseLayer() const;
 
         void setDensityColorLayer(ImageLayer*);
         ImageLayer* getDensityColorLayer() const;
@@ -110,8 +119,6 @@ namespace osgEarth { namespace Procedural
         osg::ref_ptr<osg::Image> _noiseFunc;
         osg::ref_ptr<TextureArena> _arena;
         std::unordered_map<int, const LandCoverLifeMapping*> _lcLUT;
-
-        //int lookupBiome(double x, double y, float noise) const;
 
         osg::Vec4 lookupLandCover(float noise, void*) const;
 

@@ -75,14 +75,14 @@
     
     <Shader name="base"/>
 
-    <LifeMap name="Life Map" shared="true" min_level="11">
-        <!-- <cache_policy usage="none"/> -->
+    <LifeMap name="Life Map" shared="true" min_level="12">
+        <cache_policy usage="none"/>
         <density_mask_layer>
             <xi:include href="osm_density_mask.xml"/>
         </density_mask_layer>
-        <density_color_layer>
-            ReadyMap 15m Imagery
-        </density_color_layer>
+        <land_use_layer>
+            data:osm
+        </land_use_layer>
         <shared_sampler>LIFEMAP_TEX</shared_sampler>
         <shared_matrix>LIFEMAP_MAT</shared_matrix>
     </LifeMap>

@@ -28,6 +28,7 @@
 #include <osgEarth/ElevationPool>
 #include <osgEarth/Math>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/rtree.h>
 
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
@@ -154,6 +155,7 @@ LifeMapLayer::Options::getConfig() const
     landCoverLayer().set(conf, "landcover_layer");
     densityMaskLayer().set(conf, "density_mask_layer");
     densityColorLayer().set(conf, "density_color_layer");
+    landUseLayer().set(conf, "land_use_layer");
     
     Config mappings_conf;
     for (const auto& mapping : landCoverMappings())
@@ -170,6 +172,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     landCoverLayer().get(conf, "landcover_layer");
     densityMaskLayer().get(conf, "density_mask_layer");
     densityColorLayer().get(conf, "density_color_layer");
+    landUseLayer().get(conf, "land_use_layer");
 
     const ConfigSet mappings_conf = conf.child("landcover_mappings").children("mapping");
     for (const auto& c : mappings_conf)
@@ -384,6 +387,77 @@ namespace
             return ReadResult::FILE_NOT_HANDLED;
         }
     };
+
+    struct LandUseTile
+    {
+        RTree<osg::ref_ptr<Feature>, double, 2> _index;
+        int _size;
+        const SpatialReference* _tilesrs;
+        const SpatialReference* _featuresrs;
+
+        LandUseTile() : _size(0) { }
+
+        bool empty() const { return _size == 0; }
+
+        void load(const TileKey& key, FeatureSource* fs, FeatureFilterChain* filters)
+        {
+            _tilesrs = key.getExtent().getSRS();
+            _featuresrs = fs->getFeatureProfile()->getSRS();
+
+            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(key, filters, nullptr, nullptr);
+            while (cursor.valid() && cursor->hasMore())
+            {
+                Feature* f = cursor->nextFeature();
+
+                if (f->getGeometry()->isRing() &&
+                    (f->hasAttr("landuse") || f->hasAttr("natural")))
+                {
+                    //if (f->getSRS() != srs)
+                    //{
+                    //    f = osg::clone(f);
+                    //    f->transform(key.getExtent().getSRS());
+                    //}
+                    const GeoExtent& ex = f->getExtent();
+                    double a_min[2] = { ex.xMin(), ex.yMin() };
+                    double a_max[2] = { ex.xMax(), ex.yMax() };
+                    _index.Insert(a_min, a_max, osg::ref_ptr<Feature>(f));
+                    ++_size;
+                }
+            }
+        }
+
+        bool get(double x, double y, std::string& output) const
+        {
+            _tilesrs->transform2D(x, y, _featuresrs, x, y);
+
+            double a_bounds[2] = { x, y };
+
+            std::vector<osg::ref_ptr<Feature>> hits;
+
+            if (_index.Search(a_bounds, a_bounds, &hits, ~0) == 0)
+                return false;
+
+            for (const auto& f : hits)
+            {
+                if (f->getGeometry()->contains2D(x, y))
+                {
+                    if (f->hasAttr("landuse"))
+                    {
+                        output = std::string("landuse.") + f->getString("landuse");
+                        return true;
+                    }
+                    if (f->hasAttr("natural"))
+                    {
+                        output = std::string("natural.") + f->getString("natural");
+                        return true;
+                    }
+                    //else
+                    //    break;
+                }
+            }
+            return false;
+        }
+    };
 }
 
 REGISTER_OSGPLUGIN(oe_splat_rgbh, RGBHPseudoLoader);
@@ -440,6 +514,8 @@ LifeMapLayer::openImplementation()
 
     options().densityColorLayer().open(getReadOptions());
 
+    options().landUseLayer().open(getReadOptions());
+
     setProfile(Profile::create("global-geodetic"));
     return Status::OK();
 }
@@ -458,6 +534,7 @@ LifeMapLayer::addedToMap(const Map* map)
     options().biomeLayer().addedToMap(map);
     options().densityMaskLayer().addedToMap(map);
     options().densityColorLayer().addedToMap(map);
+    options().landUseLayer().addedToMap(map);
 
     options().landCoverLayer().addedToMap(map);
     options().landCoverDictionary().addedToMap(map);
@@ -546,6 +623,18 @@ LifeMapLayer::getDensityMaskLayer() const
 }
 
 void
+LifeMapLayer::setLandUseLayer(FeatureSource* layer)
+{
+    options().landUseLayer().setLayer(layer);
+}
+
+FeatureSource*
+LifeMapLayer::getLandUseLayer() const
+{
+    return options().landUseLayer().getLayer();
+}
+
+void
 LifeMapLayer::setDensityColorLayer(ImageLayer* layer)
 {
     options().densityColorLayer().setLayer(layer);
@@ -612,22 +701,16 @@ LifeMapLayer::createImageImplementation(
     // ensure we have a normal map for slopes and curvatures:
     elevTile->generateNormalMap(map.get(), &_workingSet, progress);
 
-    GeoExtent extent = key.getExtent();
-
-    // if we have landcover data, fetch that now
-    GeoImage landcover;
-
-#if 1
-    if (getLandCoverLayer())
+    // if we're using land use data, fetch that now:
+    LandUseTile landuse;
+    const LandUseCatalog* landuse_cat = nullptr;
+    if (getLandUseLayer() && getBiomeLayer() && getBiomeLayer()->getBiomeCatalog())
     {
-        TileKey lckey = key;
-        for (TileKey lckey=key; !landcover.valid() && lckey.valid(); lckey.makeParent())
-        {
-            landcover = getLandCoverLayer()->createImage(lckey);
-        }
+        landuse.load(key, getLandUseLayer(), nullptr);
+        landuse_cat = getBiomeLayer()->getBiomeCatalog()->getLandUse();
     }
-    GeoImageReader lc_reader(landcover);
-#endif
+
+    GeoExtent extent = key.getExtent();
 
     GeoImage densityMask;
     ImageUtils::PixelReader readDensityMask;
@@ -660,7 +743,7 @@ LifeMapLayer::createImageImplementation(
     osg::Vec4 dc_pixel;
     osg::Matrixf dc_matrix;
 
-    if (getDensityMaskLayer())
+    if (getDensityColorLayer())
     {
         TileKey dc_key(key);
 
@@ -688,6 +771,10 @@ LifeMapLayer::createImageImplementation(
     osg::Vec3 normal;
     float slope;
     const osg::Vec3 up(0,0,1);
+    std::string landuseid;
+    float density, moisture, rugged;
+    float default_mix;
+    float density_mix, moisture_mix, rugged_mix;
 
     osg::Vec2 noiseCoords[4];
     osg::Vec4 noise[4];
@@ -696,19 +783,25 @@ LifeMapLayer::createImageImplementation(
     noiseSampler.setBilinear(true);
     noiseSampler.setSampleAsRepeatingTexture(true);
 
-    GeoImage result(image.get(), key.getExtent());
+    TileKey lu_key = key.createAncestorKey(14u);
+    double x_jitter = lu_key.getExtent().width() * 0.1;
+    double y_jitter = lu_key.getExtent().height() * 0.1;
 
-    for(int t=0; t<write.t(); ++t)
+    GeoImage result(image.get(), extent);
+
+    std::unordered_map<std::string, int> counts;
+
+    for (int t = 0; t < write.t(); ++t)
     {
-        double v = (double)t/(double)(write.t()-1);
+        double v = (double)t / (double)(write.t() - 1);
         double y = extent.yMin() + extent.height()*v;
 
-        for(int s=0; s<write.s(); ++s)
+        for (int s = 0; s < write.s(); ++s)
         {
-            double u = (double)s/(double)(write.s()-1);
+            double u = (double)s / (double)(write.s() - 1);
             double x = extent.xMin() + extent.width()*u;
 
-            for(int n=0; n<4; ++n)
+            for (int n = 0; n < 4; ++n)
             {
                 //TODO: well?
                 if (true)//key.getLOD() >= noiseLOD[n])
@@ -726,44 +819,75 @@ LifeMapLayer::createImageImplementation(
             // exaggerate the slope value
             slope = harden(harden(1.0 - (normal * up)));
 
-            pixel[RUGGED] =
-                //lerpstep(1600.0f, 5000.0f, elevation) +
-                elevTile->getRuggedness(x, y) -
-                (0.2*noise[1][CLUMPY]);
+            density = 0.0f, moisture = 0.0f, rugged = 0.0f;
+            density_mix = moisture_mix = rugged_mix = 0.0f;
 
-            // Randomize it
-            pixel[DENSITY] =
-                (0.3*noise[0][RANDOM]) +
-                (0.3*noise[1][SMOOTH]) +
-                (0.4*noise[2][CLUMPY]);
+            default_mix = 0.5f + 0.5f*noise[2][SMOOTH];
 
-            // Discourage density in highly sloped areas
-            pixel[DENSITY] -= (0.8*slope);
+            if (!landuse.empty())
+            {               
+                double xx = x; // + x_jitter * (noise[1][RANDOM] * 2.0 - 1.0);
+                double yy = y; // + y_jitter * (noise[2][RANDOM] * 2.0 - 1.0);
 
-            // moisture is fairly arbitrary
-            float moisture = 1.0f - lerpstep(250.0f, 3000.0f, elevation);
-            moisture += (0.2 * noise[1][SMOOTH]);
-            moisture -= 0.5*slope;
-
-            // temperature decreases with altitude
-            float temperature = 1.0f - lerpstep(0.0f, 4000.0f, elevation);
-            temperature += (0.2 * noise[1][SMOOTH]);
-
-            if (densityColor.valid())
-            {
-                double uu = u * dc_matrix(0, 0) + dc_matrix(3, 0);
-                double vv = v * dc_matrix(1, 1) + dc_matrix(3, 1);
-                readDensityColor(dc_pixel, uu, vv);
-                // https://www.sciencedirect.com/science/article/pii/S2214317315000347
-                float ExG = 2.0f*dc_pixel.g() - dc_pixel.r() - dc_pixel.b();
-                float ExGR = ExG - (1.4f*dc_pixel.r() - dc_pixel.g());
-                if (ExGR > 0.0)
-                    pixel[DENSITY] *= (1.0 + ExGR);
+                if (landuse.get(xx, yy, landuseid))
+                {
+                    const LandUseType* lu_type = landuse_cat->getLandUse(landuseid);
+                    if (lu_type)
+                    {
+                        density = lu_type->dense().get();
+                        density_mix = lu_type->dense().isSet() ? default_mix : 0.0f;
+                        moisture = lu_type->lush().get();
+                        moisture_mix = lu_type->lush().isSet() ? default_mix : 0.0f;
+                        rugged = lu_type->rugged().get();
+                        rugged_mix = lu_type->rugged().isSet() ? default_mix : 0.0f;
+                        pixel.set(density, moisture, rugged, 0);
+                        counts[landuseid]++;
+                    }
+                }
             }
-            else
+
+            //else
             {
-                // General compensation for low density
-                pixel[DENSITY] *= 1.3;
+                rugged =
+                    //lerpstep(1600.0f, 5000.0f, elevation) +
+                    elevTile->getRuggedness(x, y) -
+                    (0.2*noise[1][CLUMPY]);
+
+                // Randomize it
+                density =
+                    (0.3*noise[0][RANDOM]) +
+                    (0.3*noise[1][SMOOTH]) +
+                    (0.4*noise[2][CLUMPY]);
+
+                // Discourage density in highly sloped areas
+                density -= (0.8*slope);
+
+                // moisture is fairly arbitrary
+
+                moisture = 1.0f - lerpstep(250.0f, 3000.0f, elevation);
+                moisture += (0.2 * noise[1][SMOOTH]);
+                moisture -= 0.5*slope;
+
+                if (densityColor.valid())
+                {
+                    double uu = u * dc_matrix(0, 0) + dc_matrix(3, 0);
+                    double vv = v * dc_matrix(1, 1) + dc_matrix(3, 1);
+                    readDensityColor(dc_pixel, uu, vv);
+                    // https://www.sciencedirect.com/science/article/pii/S2214317315000347
+                    float ExG = 2.0f*dc_pixel.g() - dc_pixel.r() - dc_pixel.b();
+                    float ExGR = ExG - (1.4f*dc_pixel.r() - dc_pixel.g());
+                    if (ExGR > 0.0)
+                        density *= (1.0 + ExGR);
+                }
+                else
+                {
+                    // General compensation for low density
+                    density *= 1.3;
+                }
+
+                density = mix(density, pixel[DENSITY], density_mix);
+                moisture = mix(moisture, pixel[MOISTURE], moisture_mix);
+                rugged_mix = mix(rugged, pixel[RUGGED], rugged_mix);
             }
 
             if (densityMask.valid())
@@ -771,21 +895,12 @@ LifeMapLayer::createImageImplementation(
                 double uu = u * dm_matrix(0, 0) + dm_matrix(3, 0);
                 double vv = v * dm_matrix(1, 1) + dm_matrix(3, 1);
                 readDensityMask(dm_pixel, uu, vv);
-                //pixel[DENSITY] *= harden(dm_pixel.r());
-                pixel[DENSITY] *= dm_pixel.r();
+                density *= dm_pixel.r();
                 moisture *= dm_pixel.r();
-                pixel[RUGGED] *= dm_pixel.r();
+                rugged *= dm_pixel.r();
             }
 
-            // encode moisture and temperature together (4 bits each)
-            pixel[MOISTURE] = ((float)(((int)(moisture*16.0f) << 4) | ((int)(temperature*16.0f)))) / 255.0f;
-
-            // biome lookup
-            float biomeNoise = fract(
-                noise[1][RANDOM] +
-                noise[2][SMOOTH]);
-
-             //pixel[BIOME] = (float)lookupBiome(x, y, biomeNoise) / 255.0f;
+            pixel.set(density, moisture, rugged, 0);
 
             // clamp to legal range (not the biome though)
             for (int i = 0; i < 3; ++i)
@@ -798,7 +913,6 @@ LifeMapLayer::createImageImplementation(
     }
 
     return std::move(result);
-    //return GeoImage(image.get(), key.getExtent());
 }
 
 osg::Vec4

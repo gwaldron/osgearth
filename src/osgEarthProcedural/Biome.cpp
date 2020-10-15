@@ -170,20 +170,70 @@ ModelCategory::getConfig() const
 
 //...................................................................
 
+LandUseType::LandUseType(const Config& conf)
+{
+    dense().setDefault(0.0f);
+    lush().setDefault(0.0f);
+    rugged().setDefault(0.5f);
+
+    conf.get("id", id());
+    conf.get("dense", dense());
+    conf.get("lush", lush());
+    conf.get("rugged", rugged());
+}
+
+Config
+LandUseType::getConfig() const
+{
+    Config conf;
+    //TODO
+    OE_WARN << __func__ << " not implemented" << std::endl;
+    return conf;
+}
+
+//...................................................................
+
+LandUseCatalog::LandUseCatalog(const Config& conf)
+{
+    const ConfigSet& children = conf.children();
+    for (const auto& child : children)
+    {
+        if (!child.empty())
+        {
+            LandUseType type(child);
+
+            if (type.id().isSet())
+            {
+                landUseTypes().push_back(type);
+                const LandUseType* ptr = &landUseTypes().back();
+                _lut[type.id().get()] = type;
+            }
+        }
+    }
+}
+
+Config 
+LandUseCatalog::getConfig() const
+{
+    Config conf;
+    //TODO
+    OE_WARN << __func__ << " not implemented" << std::endl;
+    return conf;
+}
+
+const LandUseType*
+LandUseCatalog::getLandUse(const std::string& id) const
+{
+    auto iter = _lut.find(id);
+    return iter != _lut.end() ? &iter->second : nullptr;
+}
+
+//...................................................................
+
 Biome::Biome(const Config& conf, AssetCatalog* assets)
 {
     conf.get("name", name());
     conf.get("id", id());
-
-#if 0
-    ConfigSet gt = conf.child("groundtextures").children("texture");
-    for (const auto& c : gt)
-    {
-        GroundTextureAsset* gta = assets->getTexture(c.value("name"));
-        if (gta)
-            textures().push_back(gta);
-    }
-#endif
 
     ConfigSet mt = conf.children("modelcategory");
     for (const auto& c : mt)
@@ -223,6 +273,8 @@ BiomeCatalog::BiomeCatalog(const Config& conf)
 {
     _assets = new AssetCatalog(conf.child("assetcatalog"));
 
+    _landuse = new LandUseCatalog(conf.child("landusecatalog"));
+
     ConfigSet biomes_conf = conf.child("biomes").children("biome");
     for (const auto& b_conf : biomes_conf)
     {
@@ -259,4 +311,10 @@ const AssetCatalog*
 BiomeCatalog::getAssets() const
 {
     return _assets.get();
+}
+
+const LandUseCatalog*
+BiomeCatalog::getLandUse() const
+{
+    return _landuse.get();
 }

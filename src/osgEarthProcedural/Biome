@@ -134,7 +134,6 @@ namespace osgEarth
 
             OE_OPTION(std::string, name);
             OE_OPTION(int, id);
-            OE_OPTION_VECTOR(osg::ref_ptr<GroundTextureAsset>, textures); // TODO: remove
             OE_OPTION_VECTOR(osg::ref_ptr<ModelCategory>, modelCategories);
 
             //! Find a named model group
@@ -142,6 +141,42 @@ namespace osgEarth
             
         protected:
             virtual ~Biome() { }
+        };
+
+
+        /**
+         * Mappings from land use classification types to lifemap parameters.
+         */
+        class OSGEARTHPROCEDURAL_EXPORT LandUseType
+        {
+        public:
+            LandUseType() { }
+            LandUseType(const Config& conf);
+            Config getConfig() const;
+
+            OE_OPTION(std::string, id);
+            OE_OPTION(float, dense);
+            OE_OPTION(float, lush);
+            OE_OPTION(float, rugged);
+        };
+
+
+        /**
+         * Mappings from land use classification types to lifemap parameters.
+         */
+        class OSGEARTHPROCEDURAL_EXPORT LandUseCatalog : public osg::Referenced
+        {
+        public:
+            LandUseCatalog() { }
+            LandUseCatalog(const Config& conf);
+            Config getConfig() const;
+
+            OE_OPTION_VECTOR(LandUseType, landUseTypes);
+
+            const LandUseType* getLandUse(const std::string& id) const;
+
+        private:
+            std::unordered_map<std::string, LandUseType> _lut;
         };
 
 
@@ -160,6 +195,9 @@ namespace osgEarth
             //! Asset catalog
             const AssetCatalog* getAssets() const;
 
+            //! Land use catalog
+            const LandUseCatalog* getLandUse() const;
+
         public:
             Config getConfig() const;
 
@@ -167,6 +205,7 @@ namespace osgEarth
             virtual ~BiomeCatalog() { }
 
             osg::ref_ptr<AssetCatalog> _assets;
+            osg::ref_ptr<LandUseCatalog> _landuse;
             std::unordered_map<int, osg::ref_ptr<Biome>> _biomes;
         };
 

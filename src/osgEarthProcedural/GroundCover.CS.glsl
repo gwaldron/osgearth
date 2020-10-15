@@ -154,6 +154,8 @@ void generate()
     lush = lifemap[1] * moisture_power;
     lush = noise[pickNoiseType] * lush;
 
+
+
     // If we're using a mask texture, sample it now:
 #ifdef OE_GROUNDCOVER_MASK_SAMPLER
     float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*tilec4).st).a;
@@ -170,8 +172,7 @@ void generate()
     // It's a keeper - record it to the instance buffer.
 
     // select a billboard at random
-    float pickNoise = lush; // 1.0 - noise[pickNoiseType];
-    int pickIndex = clamp(int(floor(pickNoise * float(biome.count))), 0, biome.count - 1);
+    int pickIndex = clamp(int(floor(lush * float(biome.count))), 0, biome.count - 1);
     int assetIndex = biome.offset + pickIndex;
 
     // Recover the asset we randomly picked:

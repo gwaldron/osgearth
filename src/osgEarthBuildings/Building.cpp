@@ -105,8 +105,8 @@ Building::resolveInstancedModel(BuildContext& bc)
         }
         else
         {
-            OE_WARN << LC << "no matching instanced model:\n"
-                << "SYMBOL= " << getInstancedModelSymbol()->getConfig().toJSON(true) << "\n";
+            //OE_WARN << LC << "no matching instanced model:\n"
+            //    << "SYMBOL= " << getInstancedModelSymbol()->getConfig().toJSON(true) << "\n";
         }
     }
 }

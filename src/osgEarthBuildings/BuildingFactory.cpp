@@ -346,7 +346,7 @@ BuildingFactory::createBuilding(Feature* feature, ProgressCallback* progress)
             }
             else
             {
-                OE_WARN << LC << "Feature " << feature->getFID() << " is not a polygon. Skipping..\n";
+                //OE_WARN << LC << "Feature " << feature->getFID() << " is not a polygon. Skipping..\n";
             }
         }
     }

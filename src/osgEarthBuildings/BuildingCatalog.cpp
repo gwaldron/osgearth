@@ -107,13 +107,13 @@ BuildingCatalog::createBuildings(Feature*              feature,
                     }
                     else
                     {
-                        OE_WARN << "building::build() failed for some reason\n";
+                        //OE_WARN << "building::build() failed for some reason\n";
                     }
                 }
             }
             else
             {
-                OE_WARN << LC << "Feature " << feature->getFID() << " is not a polygon. Skipping..\n";
+                //OE_WARN << LC << "Feature " << feature->getFID() << " is not a polygon. Skipping..\n";
             }
         }
     }

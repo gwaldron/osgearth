@@ -172,7 +172,7 @@ Roof::resolveInstancedModel(const Polygon* footprint, BuildContext& bc)
         }
         else
         {
-            OE_WARN << LC << "no matching custom model\n" << std::flush;
+            //OE_WARN << LC << "no matching custom model\n" << std::flush;
         }
     }
 }

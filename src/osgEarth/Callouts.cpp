@@ -288,7 +288,7 @@ CalloutManager::sort(osg::NodeVisitor& nv)
     float a_min[2], a_max[2];
     float b_min[2], b_max[2];
 
-    std::unordered_set<CalloutRecord*> hits;
+    std::vector<CalloutRecord*> hits;
 
     int frame = nv.getFrameStamp()->getFrameNumber();
 

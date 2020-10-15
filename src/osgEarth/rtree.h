@@ -103,7 +103,7 @@ public:
   /// \param a_resultCallback Callback function to return result.  Callback should return 'true' to continue searching
   /// \param a_context User context to pass as parameter to a_resultCallback
   /// \return Returns the number of entries found
-  int Search(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMDIMS], std::unordered_set<DATATYPE>* hits, int maxHits) const;
+  int Search(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMDIMS], std::vector<DATATYPE>* hits, int maxHits) const;
 
   /// Find nearest neighbors (GW/Pelican 20201001
   /// \param point Point from which to search
@@ -396,7 +396,7 @@ protected:
   bool Overlap(Rect* a_rectA, Rect* a_rectB) const;
   ELEMTYPEREAL RectDistSquared(const ELEMTYPE* point, const Rect& rect) const;
   void ReInsert(Node* a_node, ListNode** a_listNode);
-  bool Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::unordered_set<DATATYPE>* hits, int maxHits) const;
+  bool Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::vector<DATATYPE>* hits, int maxHits) const;
   void RemoveAllRec(Node* a_node);
   void Reset();
   void CountRec(Node* a_node, int& a_count);
@@ -590,7 +590,7 @@ void RTREE_QUAL::Remove(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMD
 
 
 RTREE_TEMPLATE
-int RTREE_QUAL::Search(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMDIMS], std::unordered_set<DATATYPE>* hits, int maxHits) const
+int RTREE_QUAL::Search(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMDIMS], std::vector<DATATYPE>* hits, int maxHits) const
 {
 #ifdef _DEBUG
   for(int index=0; index<NUMDIMS; ++index)
@@ -1769,7 +1769,7 @@ void RTREE_QUAL::ReInsert(Node* a_node, ListNode** a_listNode)
 // Search in an index tree or subtree for all data retangles that overlap the argument rectangle.
 RTREE_TEMPLATE
 //bool RTREE_QUAL::Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::function<bool (const DATATYPE&)> callback) const
-bool RTREE_QUAL::Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::unordered_set<DATATYPE>* hits, int maxHits) const
+bool RTREE_QUAL::Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::vector<DATATYPE>* hits, int maxHits) const
 {
   ASSERT(a_node);
   ASSERT(a_node->m_level >= 0);
@@ -1802,7 +1802,7 @@ bool RTREE_QUAL::Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::unor
 
         if (hits)
         {
-            hits->insert(id);
+            hits->emplace_back(id);
             if (hits->size() >= maxHits)
                 return false;
         }

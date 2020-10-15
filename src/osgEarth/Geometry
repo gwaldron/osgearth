@@ -458,6 +458,8 @@ namespace osgEarth
         virtual double getSignedDistance2D(
             const osg::Vec3d& a) const override;
 
+        virtual bool contains2D(double x, double y) const override;
+
     public:
         GeometryCollection& getComponents() { return _parts; }
         const GeometryCollection& getComponents() const { return _parts; }

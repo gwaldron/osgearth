@@ -1072,6 +1072,17 @@ MultiGeometry::getSignedDistance2D(
     return r;
 }
 
+bool
+MultiGeometry::contains2D(double x, double y) const
+{
+    for (const auto& part : _parts)
+    {
+        if (part->contains2D(x, y))
+            return true;
+    }
+    return false;
+}
+
 //----------------------------------------------------------------------------
 
 GeometryIterator::GeometryIterator( Geometry* geom, bool holes ) :

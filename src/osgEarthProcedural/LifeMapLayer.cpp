@@ -360,25 +360,26 @@ namespace
                 osg::Vec4 packed;
 
                 ImageUtils::ImageIterator iter(nnra.get());
-                iter.forEachPixel([&]() {
-                    readNormals(normal, iter.s(), iter.t());
-                    normal3.set(normal.x()*2.0 - 1.0, normal.y()*2.0 - 1.0, normal.z()*2.0 - 1.0);
-                    NormalMapGenerator::pack(normal3, packed);
-                    if (roughness.valid())
+                iter.forEachPixel([&]() 
                     {
-                        readRoughness(roughnessVal, iter.s(), iter.t());
-                        packed[2] = roughnessVal.r();
-                    }
-                    else packed[2] = DEFAULT_ROUGHNESS;
+                        readNormals(normal, iter.s(), iter.t());
+                        normal3.set(normal.x()*2.0 - 1.0, normal.y()*2.0 - 1.0, normal.z()*2.0 - 1.0);
+                        NormalMapGenerator::pack(normal3, packed);
+                        if (roughness.valid())
+                        {
+                            readRoughness(roughnessVal, iter.s(), iter.t());
+                            packed[2] = roughnessVal.r();
+                        }
+                        else packed[2] = DEFAULT_ROUGHNESS;
 
-                    if (ao.valid())
-                    {
-                        readAO(aoVal, iter.s(), iter.t());
-                        packed[3] = aoVal.r();
-                    }
-                    else packed[3] = DEFAULT_AO;
+                        if (ao.valid())
+                        {
+                            readAO(aoVal, iter.s(), iter.t());
+                            packed[3] = aoVal.r();
+                        }
+                        else packed[3] = DEFAULT_AO;
 
-                    writeMat(packed, iter.s(), iter.t());
+                        writeMat(packed, iter.s(), iter.t());
                     });
 
                 return nnra;
@@ -399,24 +400,19 @@ namespace
 
         bool empty() const { return _size == 0; }
 
-        void load(const TileKey& key, FeatureSource* fs, FeatureFilterChain* filters)
+        void load(const TileKey& key, FeatureSource* fs, FeatureFilterChain* filters, const Distance& buffer)
         {
             _tilesrs = key.getExtent().getSRS();
             _featuresrs = fs->getFeatureProfile()->getSRS();
 
-            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(key, filters, nullptr, nullptr);
+            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(key, buffer, filters, nullptr, nullptr);
             while (cursor.valid() && cursor->hasMore())
             {
                 Feature* f = cursor->nextFeature();
 
-                if (f->getGeometry()->isRing() &&
+                if (f->getGeometry()->isPolygon() &&
                     (f->hasAttr("landuse") || f->hasAttr("natural")))
                 {
-                    //if (f->getSRS() != srs)
-                    //{
-                    //    f = osg::clone(f);
-                    //    f->transform(key.getExtent().getSRS());
-                    //}
                     const GeoExtent& ex = f->getExtent();
                     double a_min[2] = { ex.xMin(), ex.yMin() };
                     double a_max[2] = { ex.xMax(), ex.yMax() };
@@ -430,11 +426,13 @@ namespace
         {
             _tilesrs->transform2D(x, y, _featuresrs, x, y);
 
-            double a_bounds[2] = { x, y };
+            constexpr double e = 0.0;
+            double a_min[2] = { x-e, y-e };
+            double a_max[2] = { x+e, y+e };
 
             std::vector<osg::ref_ptr<Feature>> hits;
 
-            if (_index.Search(a_bounds, a_bounds, &hits, ~0) == 0)
+            if (_index.Search(a_min, a_max, &hits, ~0) == 0)
                 return false;
 
             for (const auto& f : hits)
@@ -704,9 +702,20 @@ LifeMapLayer::createImageImplementation(
     // if we're using land use data, fetch that now:
     LandUseTile landuse;
     const LandUseCatalog* landuse_cat = nullptr;
+
+    TileKey lu_key = key.getLOD() > 14u ? key.createAncestorKey(14u) : key;
+    const GeoExtent& lu_extent = lu_key.getExtent();
+    double x_jitter = lu_extent.width() * 0.1;
+    double y_jitter = lu_extent.height() * 0.1;
+
     if (getLandUseLayer() && getBiomeLayer() && getBiomeLayer()->getBiomeCatalog())
     {
-        landuse.load(key, getLandUseLayer(), nullptr);
+        landuse.load(
+            key, 
+            getLandUseLayer(), 
+            nullptr, // filters
+            Distance(std::max(x_jitter, y_jitter), lu_extent.getSRS()->getUnits()));
+
         landuse_cat = getBiomeLayer()->getBiomeCatalog()->getLandUse();
     }
 
@@ -771,10 +780,10 @@ LifeMapLayer::createImageImplementation(
     osg::Vec3 normal;
     float slope;
     const osg::Vec3 up(0,0,1);
-    std::string landuseid;
-    float density, moisture, rugged;
+    float dense, lush, rugged;
+    float dense_mix, lush_mix, rugged_mix;
     float default_mix;
-    float density_mix, moisture_mix, rugged_mix;
+    std::string lu_id;
 
     osg::Vec2 noiseCoords[4];
     osg::Vec4 noise[4];
@@ -783,134 +792,135 @@ LifeMapLayer::createImageImplementation(
     noiseSampler.setBilinear(true);
     noiseSampler.setSampleAsRepeatingTexture(true);
 
-    TileKey lu_key = key.createAncestorKey(14u);
-    double x_jitter = lu_key.getExtent().width() * 0.1;
-    double y_jitter = lu_key.getExtent().height() * 0.1;
-
     GeoImage result(image.get(), extent);
 
     std::unordered_map<std::string, int> counts;
 
-    for (int t = 0; t < write.t(); ++t)
-    {
-        double v = (double)t / (double)(write.t() - 1);
-        double y = extent.yMin() + extent.height()*v;
+    GeoImageIterator i(image.get(), extent);
+    i.forEachPixelOnCenter([&]() {
 
-        for (int s = 0; s < write.s(); ++s)
+        for (int n = 0; n < 4; ++n)
         {
-            double u = (double)s / (double)(write.s() - 1);
-            double x = extent.xMin() + extent.width()*u;
-
-            for (int n = 0; n < 4; ++n)
+            //TODO: well?
+            if (true)//key.getLOD() >= noiseLOD[n])
             {
-                //TODO: well?
-                if (true)//key.getLOD() >= noiseLOD[n])
-                {
-                    noiseCoords[n].set(u, v);
-                    scaleCoordsToRefLOD(noiseCoords[n], key, noiseLOD[n]);
-                    getNoise(noise[n], noiseSampler, noiseCoords[n]);
-                }
+                noiseCoords[n].set(i.u(), i.v());
+                scaleCoordsToRefLOD(noiseCoords[n], key, noiseLOD[n]);
+                getNoise(noise[n], noiseSampler, noiseCoords[n]);
             }
-
-            elevation = elevTile->getElevation(x, y).elevation().as(Units::METERS);
-
-            normal = elevTile->getNormal(x, y);
-
-            // exaggerate the slope value
-            slope = harden(harden(1.0 - (normal * up)));
-
-            density = 0.0f, moisture = 0.0f, rugged = 0.0f;
-            density_mix = moisture_mix = rugged_mix = 0.0f;
-
-            default_mix = 0.5f + 0.5f*noise[2][SMOOTH];
-
-            if (!landuse.empty())
-            {               
-                double xx = x; // + x_jitter * (noise[1][RANDOM] * 2.0 - 1.0);
-                double yy = y; // + y_jitter * (noise[2][RANDOM] * 2.0 - 1.0);
-
-                if (landuse.get(xx, yy, landuseid))
-                {
-                    const LandUseType* lu_type = landuse_cat->getLandUse(landuseid);
-                    if (lu_type)
-                    {
-                        density = lu_type->dense().get();
-                        density_mix = lu_type->dense().isSet() ? default_mix : 0.0f;
-                        moisture = lu_type->lush().get();
-                        moisture_mix = lu_type->lush().isSet() ? default_mix : 0.0f;
-                        rugged = lu_type->rugged().get();
-                        rugged_mix = lu_type->rugged().isSet() ? default_mix : 0.0f;
-                        pixel.set(density, moisture, rugged, 0);
-                        counts[landuseid]++;
-                    }
-                }
-            }
-
-            //else
-            {
-                rugged =
-                    //lerpstep(1600.0f, 5000.0f, elevation) +
-                    elevTile->getRuggedness(x, y) -
-                    (0.2*noise[1][CLUMPY]);
-
-                // Randomize it
-                density =
-                    (0.3*noise[0][RANDOM]) +
-                    (0.3*noise[1][SMOOTH]) +
-                    (0.4*noise[2][CLUMPY]);
-
-                // Discourage density in highly sloped areas
-                density -= (0.8*slope);
-
-                // moisture is fairly arbitrary
-
-                moisture = 1.0f - lerpstep(250.0f, 3000.0f, elevation);
-                moisture += (0.2 * noise[1][SMOOTH]);
-                moisture -= 0.5*slope;
-
-                if (densityColor.valid())
-                {
-                    double uu = u * dc_matrix(0, 0) + dc_matrix(3, 0);
-                    double vv = v * dc_matrix(1, 1) + dc_matrix(3, 1);
-                    readDensityColor(dc_pixel, uu, vv);
-                    // https://www.sciencedirect.com/science/article/pii/S2214317315000347
-                    float ExG = 2.0f*dc_pixel.g() - dc_pixel.r() - dc_pixel.b();
-                    float ExGR = ExG - (1.4f*dc_pixel.r() - dc_pixel.g());
-                    if (ExGR > 0.0)
-                        density *= (1.0 + ExGR);
-                }
-                else
-                {
-                    // General compensation for low density
-                    density *= 1.3;
-                }
-
-                density = mix(density, pixel[DENSITY], density_mix);
-                moisture = mix(moisture, pixel[MOISTURE], moisture_mix);
-                rugged_mix = mix(rugged, pixel[RUGGED], rugged_mix);
-            }
-
-            if (densityMask.valid())
-            {
-                double uu = u * dm_matrix(0, 0) + dm_matrix(3, 0);
-                double vv = v * dm_matrix(1, 1) + dm_matrix(3, 1);
-                readDensityMask(dm_pixel, uu, vv);
-                density *= dm_pixel.r();
-                moisture *= dm_pixel.r();
-                rugged *= dm_pixel.r();
-            }
-
-            pixel.set(density, moisture, rugged, 0);
-
-            // clamp to legal range (not the biome though)
-            for (int i = 0; i < 3; ++i)
-            {
-                pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
-            }
-
-            write(pixel, s, t);
         }
-    }
+
+        elevation = elevTile->getElevation(i.x(), i.y()).elevation().as(Units::METERS);
+
+        normal = elevTile->getNormal(i.x(), i.y());
+
+        // exaggerate the slope value
+        slope = harden(harden(1.0 - (normal * up)));
+
+        dense = 0.0f, lush = 0.0f, rugged = 0.0f;
+        dense_mix = lush_mix = rugged_mix = 0.0f;
+
+        default_mix = 0.5f + 0.5f*noise[2][SMOOTH];
+
+        float dense_noise =
+            (0.3*noise[0][RANDOM]) +
+            (0.3*noise[1][SMOOTH]) +
+            (0.4*noise[2][CLUMPY]);
+
+        float lush_noise =
+            noise[1][SMOOTH];
+
+        float rugged_noise =
+            noise[1][CLUMPY];
+
+        if (!landuse.empty())
+        {
+            double xx = i.x() + x_jitter * 0.3*(noise[2][CLUMPY] * 2.0 - 1.0);
+            double yy = i.y() + y_jitter * 0.3*(noise[2][SMOOTH] * 2.0 - 1.0);
+
+            if (landuse.get(xx, yy, lu_id))
+            {
+                const LandUseType* lu = landuse_cat->getLandUse(lu_id);
+                if (lu)
+                {
+                    if (lu->dense().isSet())
+                    {
+                        dense = lu->dense().get() + 0.2*(dense_noise*2.0 - 1.0);
+                        dense_mix = default_mix;
+                    }
+
+                    if (lu->lush().isSet())
+                    {
+                        lush = lu->lush().get() + 0.2*(lush_noise*2.0 - 1.0);
+                        lush_mix = default_mix;
+                    }
+
+                    if (lu->rugged().isSet())
+                    {
+                        rugged = lu->rugged().get() + 0.2*(rugged_noise*2.0 - 1.0);
+                        rugged_mix = default_mix;
+                    }
+
+                    pixel.set(dense, lush, rugged, 0);
+
+                    counts[lu_id]++;
+                }
+            }
+        }
+
+        dense =
+            dense_noise - (0.8f*slope);
+
+        lush =
+            (1.0f - lerpstep(250.0f, 3000.0f, elevation))
+            + (0.2f*lush_noise)
+            - (0.5f*slope);
+
+        rugged =
+            //lerpstep(1600.0f, 5000.0f, elevation) +
+            elevTile->getRuggedness(i.x(), i.y()) -
+            (0.2f*rugged_noise);
+
+        if (dense_mix == 0.0f)
+        {
+            if (densityColor.valid())
+            {
+                double uu = i.u() * dc_matrix(0, 0) + dc_matrix(3, 0);
+                double vv = i.v() * dc_matrix(1, 1) + dc_matrix(3, 1);
+                readDensityColor(dc_pixel, uu, vv);
+                // https://www.sciencedirect.com/science/article/pii/S2214317315000347
+                float ExG = 2.0f*dc_pixel.g() - dc_pixel.r() - dc_pixel.b();
+                float ExGR = ExG - (1.4f*dc_pixel.r() - dc_pixel.g());
+                if (ExGR > 0.0)
+                    dense *= (1.0 + ExGR);
+            }
+        }
+
+        dense = mix(dense, pixel[DENSITY], dense_mix);
+        lush = mix(lush, pixel[MOISTURE], lush_mix);
+        rugged = mix(rugged, pixel[RUGGED], rugged_mix);
+
+        if (densityMask.valid())
+        {
+            double uu = i.u() * dm_matrix(0, 0) + dm_matrix(3, 0);
+            double vv = i.v() * dm_matrix(1, 1) + dm_matrix(3, 1);
+            readDensityMask(dm_pixel, uu, vv);
+            dense *= dm_pixel.r();
+            lush *= dm_pixel.r();
+            rugged *= dm_pixel.r();
+        }
+
+        pixel.set(dense, lush, rugged, 0);
+
+        // clamp to legal range (not the biome though)
+        for (int i = 0; i < 4; ++i)
+        {
+            pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
+        }
+
+        write(pixel, i.s(), i.t());
+
+    });
 
     return std::move(result);
 }

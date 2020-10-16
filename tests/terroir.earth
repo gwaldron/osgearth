@@ -28,7 +28,7 @@
         <url>D:/data/demo/nepal/nepal.mbtiles</url>
     </MBTilesElevation>
     
-    <FlattenedElevation name="Road Flattener" min_level="15" max_data_level="15">
+    <FlattenedElevation name="Road Flattener" min_level="15" max_data_level="15" enabled="false">
         <features>data:osm</features>
         <filters>
             <script>("highway" in feature.properties)</script>
@@ -57,14 +57,17 @@
     <GroundCover name="Trees" max_range="4500" max_sse="1000" enabled="true">
         <category>trees</category>
         <cast_shadows>true</cast_shadows>
+        <spacing>12.0</spacing>
     </GroundCover>
 
     <Grass name="Grass" max_range="100" max_sse="35" enabled="true">
         <category>grass</category>
         <spacing>1.0</spacing>
+        <!--
         <color_layer>
             ReadyMap 15m Imagery
         </color_layer>
+        -->
     </Grass>
 
     <Wind name="Breeze">
@@ -76,7 +79,7 @@
     <Shader name="base"/>
 
     <LifeMap name="Life Map" shared="true" min_level="12">
-        <cache_policy usage="none"/>
+        <!-- <cache_policy usage="none"/> -->
         <density_mask_layer>
             <xi:include href="osm_density_mask.xml"/>
         </density_mask_layer>
@@ -101,7 +104,7 @@
     </TMSImage>
 
     <RoadSurface name="Road Surface" min_level="16" max_data_level="19">
-        <!-- <cache_policy usage="no_cache"/> -->
+        <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
         <features>data:osm</features>
         <filters>
@@ -144,7 +147,7 @@
             </OGRFeatures>
         </control_vectors>
         <biomeid_field>wwf_mhtnum</biomeid_field>
-        <blend_radius>0.01</blend_radius>
+        <blend_radius>0.02</blend_radius>
         <xi:include href="D:/data/splat/biomes.xml"/>
         <shared_sampler>BIOME_TEX</shared_sampler>
         <shared_matrix>BIOME_MAT</shared_matrix>
@@ -193,6 +196,20 @@
         <profile>spherical-mercator</profile>
         <styles>
             <style>
+                water {
+                    fill: #0f1f2f;
+                }
+            </style>
+        </styles>
+    </FeatureImage>
+    
+    <FeatureImage name="OSM Ocean" min_level="12">
+        <profile>spherical-mercator</profile>
+        <OGRFeatures>
+            <url>D:/data/osm/water-polygons-split-3857/water_polygons.shp</url>
+        </OGRFeatures>
+        <styles>
+            <style type="text/css">
                 water {
                     fill: #0f1f2f;
                 }
@@ -301,9 +318,11 @@
         </shader>
     </Shader>
     
+    <!--
     <xi:include href="cities.xml"/>
+    -->
     
-    <Debug/>
+    <Debug enabled="false"/>
 
     <xi:include href="viewpoints.xml"/>
     

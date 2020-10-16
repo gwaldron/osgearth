@@ -39,6 +39,7 @@ namespace osgEarth { namespace Util
         //! @param channel Image channel to which to encode distance value
         //! @param minDistance Distances <= minDistance are encoded as 0.0
         //! @param maxDistance Distances >= maxDistance are encoded as 1.0
+        //! @param invert true to invert the selection and encode the interiors instead
         void encodeSDF(
             const FeatureList& features,
             osg::Image* image,
@@ -47,6 +48,7 @@ namespace osgEarth { namespace Util
             FilterContext& fctx,
             const NumericExpression& min_dist_meters,
             const NumericExpression& max_dist_meters,
+            bool invert,
             Cancelable* progress);
     };
 } }

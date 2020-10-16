@@ -82,6 +82,7 @@ namespace osgEarth
             OE_OPTION_LAYER(StyleSheet, styleSheet);
             OE_OPTION(double, gamma);
             OE_OPTION(bool, sdf);
+            OE_OPTION(bool, sdf_invert);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );

@@ -313,6 +313,7 @@ FeatureImageLayer::Options::getConfig() const
     styleSheet().set(conf, "styles");
     conf.set("gamma", gamma());
     conf.set("sdf", sdf());
+    conf.set("sdf_invert", sdf_invert());
 
     if (filters().empty() == false)
     {
@@ -330,11 +331,13 @@ FeatureImageLayer::Options::fromConfig(const Config& conf)
 {
     gamma().setDefault(1.3);
     sdf().setDefault(false);
+    sdf_invert().setDefault(false);
 
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
     conf.get("gamma", gamma());
     conf.get("sdf", sdf());
+    conf.get("sdf_invert", sdf_invert());
 
     const Config& filtersConf = conf.child("filters");
     for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
@@ -648,6 +651,7 @@ FeatureImageLayer::renderFeaturesForStyle(
             context,
             style.get<RenderSymbol>()->sdfMinDistance().get(),
             style.get<RenderSymbol>()->sdfMaxDistance().get(),
+            options().sdf_invert().get(),
             progress);
 
         return true;

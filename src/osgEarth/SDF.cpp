@@ -33,6 +33,7 @@ SDFGenerator::encodeSDF(
     FilterContext& fctx,
     const NumericExpression& min_dist_meters,
     const NumericExpression& max_dist_meters,
+    bool invert,
     Cancelable* progress)
 {
     OE_SOFT_ASSERT_AND_RETURN(image != nullptr, __func__, );
@@ -125,6 +126,7 @@ SDFGenerator::encodeSDF(
                         if (range_squared*toMeters <= limits.second*limits.second)
                         {
                             double sd = feature->getGeometry()->getSignedDistance2D(p) * toMeters;
+                            if (invert) sd = -sd;
                             double sd_unit = unitremap(sd, limits.first, limits.second);
                             nearest = std::min(nearest, sd_unit);
                         }

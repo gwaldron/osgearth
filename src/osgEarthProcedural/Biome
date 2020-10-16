@@ -112,7 +112,7 @@ namespace osgEarth
 
             struct Usage {
                 osg::ref_ptr<ModelAsset> asset;
-                int weight;
+                float weight;
             };
 
             OE_OPTION(std::string, name);

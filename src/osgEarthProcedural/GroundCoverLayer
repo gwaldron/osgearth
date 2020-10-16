@@ -306,7 +306,7 @@ namespace osgEarth { namespace Procedural
             AssetInstance* _assetData;
             const Biome* _biome;
             const ModelCategory* _category;
-            int _weight;
+            float _weight;
         };
 
         void loadAssets(TextureArena*);

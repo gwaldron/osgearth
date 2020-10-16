@@ -149,7 +149,7 @@ ModelCategory::ModelCategory(const Config& conf, AssetCatalog* assets)
         if (asset) {
             _assets.emplace_back(Usage());
             _assets.back().asset = asset;
-            _assets.back().weight = (int)c.value("weight", 1);
+            _assets.back().weight = (float)c.value("weight", 1.0f);
         }
         else {
             OE_WARN << LC << "ModelCategory \"" << name().get() << "\""

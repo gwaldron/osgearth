@@ -221,7 +221,7 @@ BiomeLayer::createImageImplementation(
 
     GeoImageIterator iter(image.get(), key.getExtent());
 
-    iter.forEachPixel([&]()
+    iter.forEachPixelOnCenter([&]()
         {
             int biomeid = 0;
 

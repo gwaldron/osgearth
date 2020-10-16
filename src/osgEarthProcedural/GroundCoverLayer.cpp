@@ -1563,21 +1563,25 @@ GroundCoverLayer::createLUTShader() const
 
     // count total references (weighted) and map biome id's
     std::map<int, int> biomeIdToBiomeIndex;
-    int weightTotal = 0;
+    float weightTotal = 0;
+    float smallestWeight = FLT_MAX;
     int index = 0;
     for (const auto& biome : _assetUsagesPerBiome)
     {
         for (const auto& usage : biome.second)
         {
             weightTotal += usage._weight;
+            smallestWeight = std::min(smallestWeight, usage._weight);
         }
 
         biomeIdToBiomeIndex[biome.first] = index++;
     }
+    float weightMultiplier = 1.0f / smallestWeight;
+    weightTotal = weightMultiplier * weightTotal;
 
     std::ostringstream asset_lut_buf;
     asset_lut_buf <<
-        "int asset_lut[ " << weightTotal << "] = int[](";
+        "int asset_lut[ " << (int)weightTotal << "] = int[](";
 
     biomeBuf <<
         "struct Biome {\n"
@@ -1593,7 +1597,7 @@ GroundCoverLayer::createLUTShader() const
         int offset = lut_ptr;
         for (const auto& usage : usages)
         {
-            for (int w = 0; w < usage._weight; ++w)
+            for (int w = 0; w < (int)(usage._weight*weightMultiplier); ++w)
             {
                 if (lut_ptr > 0) asset_lut_buf << ',';
                 asset_lut_buf << usage._assetData->_index;

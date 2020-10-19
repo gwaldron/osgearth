@@ -371,7 +371,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         }
         else
         {
-            polygonizer = new PolygonizeLinesOperator(*line->stroke());
+            polygonizer = new PolygonizeLinesOperator(line);
         }
         //GPULinesOperator gpuLines(*line->stroke() );
 

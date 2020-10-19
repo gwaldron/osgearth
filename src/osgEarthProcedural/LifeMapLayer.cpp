@@ -711,7 +711,7 @@ LifeMapLayer::createImageImplementation(
     if (getLandUseLayer() && getBiomeLayer() && getBiomeLayer()->getBiomeCatalog())
     {
         landuse.load(
-            key, 
+            lu_key,
             getLandUseLayer(), 
             nullptr, // filters
             Distance(std::max(x_jitter, y_jitter), lu_extent.getSRS()->getUnits()));

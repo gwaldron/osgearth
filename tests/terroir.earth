@@ -78,7 +78,7 @@
     
     <Shader name="base"/>
 
-    <LifeMap name="Life Map" shared="true" min_level="12">
+    <LifeMap name="Life Map" shared="true" min_level="14">
         <!-- <cache_policy usage="none"/> -->
         <density_mask_layer>
             <xi:include href="osm_density_mask.xml"/>
@@ -90,7 +90,7 @@
         <shared_matrix>LIFEMAP_MAT</shared_matrix>
     </LifeMap>
     
-    <TMSImage name="ReadyMap 15m Imagery" enabled="true" shared="true" min_range="7500" attenuation_range="6000">
+    <TMSImage name="ReadyMap 15m Imagery" enabled="true" shared="true" min_range="4500" attenuation_range="4500">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
             <![CDATA[
@@ -103,9 +103,9 @@
         </shader>
     </TMSImage>
 
-    <RoadSurface name="Road Surface" min_level="16" max_data_level="19">
-        <cache_policy usage="no_cache"/>
-        <tile_size>512</tile_size>
+    <RoadSurface name="Road Surface" min_level="17" max_data_level="19">
+        <!-- <cache_policy usage="no_cache"/> -->
+        <tile_size>256</tile_size>
         <features>data:osm</features>
         <filters>
             <script>("highway" in feature.properties)</script>
@@ -317,10 +317,6 @@
             ]]>
         </shader>
     </Shader>
-    
-    <!--
-    <xi:include href="cities.xml"/>
-    -->
     
     <Debug enabled="false"/>
 

@@ -657,13 +657,14 @@ Control::draw(const ControlContext& cx)
                 (*verts)[3].set( rx + _renderSize.x(), vph - ry, 0 );
                 (*verts)[4].set( rx, vph - ry, 0 );
 
-                Stroke stroke;
+                osg::ref_ptr<LineSymbol> line = new LineSymbol;
+                Stroke& stroke = line->stroke().mutable_value();
                 stroke.color() = *_borderColor;
                 stroke.width() = _borderWidth;
                 stroke.lineCap() = Stroke::LINECAP_SQUARE;
                 stroke.lineJoin() = Stroke::LINEJOIN_MITRE;
 
-                PolygonizeLinesOperator makeBorder(stroke);
+                PolygonizeLinesOperator makeBorder(line.get());
                 osg::Geometry* geom = makeBorder( verts.get(), 0L );
 
                 getGeode()->addDrawable( geom );

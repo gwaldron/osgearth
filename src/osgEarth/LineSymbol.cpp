@@ -57,6 +57,7 @@ _tessellation    (rhs._tessellation),
 _creaseAngle     (rhs._creaseAngle),
 _tessellationSize(rhs._tessellationSize),
 _imageURI        (rhs._imageURI),
+_imageLength     (rhs._imageLength),
 _useGLLines      (rhs._useGLLines),
 _useWireLines    (rhs._useWireLines)
 {
@@ -73,6 +74,7 @@ LineSymbol::getConfig() const
     conf.set("crease_angle", _creaseAngle);
     conf.set("tessellation_size", _tessellationSize );
     conf.set("image", _imageURI);
+    conf.set("image_length", imageLength());
     conf.set("use_gl_lines", _useGLLines);
     conf.set("use_wire_lines", _useWireLines);
     return conf;
@@ -86,6 +88,7 @@ LineSymbol::mergeConfig( const Config& conf )
     conf.get("crease_angle", _creaseAngle);
     conf.get("tessellation_size", _tessellationSize);
     conf.get("image", _imageURI);
+    conf.get("image_length", imageLength());
     conf.get("use_gl_lines", _useGLLines);
     conf.get("use_wire_lines", _useWireLines);
 }
@@ -151,6 +154,9 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     }
     else if (match(c.key(), "stroke-image")) {
         style.getOrCreate<LineSymbol>()->imageURI() = StringExpression(stripQuotes(c.value()), c.referrer());
+    }
+    else if (match(c.key(), "stroke-image-length")) {
+        style.getOrCreate<LineSymbol>()->imageLength() = as<float>(c.value(), 0.0f);
     }
     else if (match(c.key(), "stroke-smooth")) {
         style.getOrCreate<LineSymbol>()->stroke()->smooth() = as<bool>(c.value(), false);

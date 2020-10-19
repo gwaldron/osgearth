@@ -118,18 +118,21 @@ namespace
 }
 
 
-PolygonizeLinesOperator::PolygonizeLinesOperator(const Stroke& stroke) :
-_stroke( stroke )
+PolygonizeLinesOperator::PolygonizeLinesOperator(
+    const LineSymbol* line) :
+
+    _line(line)
 {
     //nop
 }
 
 
 osg::Geometry*
-PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts, 
-                                    osg::Vec3Array*  normals,
-                                    Callback*        callback,
-                                    bool             twosided) const
+PolygonizeLinesOperator::operator()(
+    osg::Vec3Array*  verts, 
+    osg::Vec3Array*  normals,
+    Callback*        callback,
+    bool             twosided) const
 {
     // number of verts on the original line.
     unsigned lineSize = verts->size();
@@ -138,10 +141,12 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
     if ( lineSize < 2 )
         return 0L;
 
-    float width            = Distance(*_stroke.width(), *_stroke.widthUnits()).as(Units::METERS);
+    const Stroke& stroke = _line->stroke().get();
+
+    float width            = Distance(stroke.width().get(), stroke.widthUnits().get()).as(Units::METERS);
     float halfWidth        = 0.5f * width;
-    float maxRoundingAngle = asin( _stroke.roundingRatio().get() );
-    float minPixelSize     = _stroke.minPixels().getOrUse( 0.0f );
+    float maxRoundingAngle = asin( stroke.roundingRatio().get() );
+    float minPixelSize     = stroke.minPixels().getOrUse( 0.0f );
     bool  autoScale        = minPixelSize > 0.0f;
 
     osg::Geometry* geom  = new osg::Geometry();
@@ -177,6 +182,11 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
 
     // initialize the texture coordinates.
     float spineLen = 0.0f;
+    float texlen = width;
+    if (_line.valid() && _line->imageLength().isSet())
+        texlen = std::max(_line->imageLength().get(), 1.0f);
+    float aspect_ratio = width / texlen;
+
     osg::Vec2Array* tverts = new osg::Vec2Array( lineSize );
     geom->setTexCoordArray( 0, tverts );
     (*tverts)[0].set( 0.5f, 0.0f );
@@ -185,7 +195,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
         Segment   seg   ( (*verts)[i-1], (*verts)[i] );  // current segment.
         osg::Vec3 dir = seg.second - seg.first;
         spineLen += dir.length();
-        (*tverts)[i].set( 0.5f, spineLen * 1.0f/width );
+        (*tverts)[i].set( 0.5f, spineLen * aspect_ratio/width );
     }
 
     // triangulate the points into a mesh.
@@ -257,7 +267,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
                 if (callback) (*callback)(i);
 
                 // render the front end-cap.
-                if ( _stroke.lineCap() == Stroke::LINECAP_ROUND )
+                if ( stroke.lineCap() == Stroke::LINECAP_ROUND )
                 {
                     float angle = osg::PI_2;
                     int steps = (int)ceil(angle/maxRoundingAngle);
@@ -279,7 +289,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
                         if (callback) (*callback)(i);
                     }
                 }
-                else if ( _stroke.lineCap() == Stroke::LINECAP_SQUARE )
+                else if ( stroke.lineCap() == Stroke::LINECAP_SQUARE )
                 {
                     float cornerWidth = sqrt(2.0*halfWidth*halfWidth);
 
@@ -309,7 +319,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
                 // if this is an inside angle (or we're using mitered corners)
                 // calculate the corner point by finding the convergance of the two
                 // vectors enimating from the previous and next buffered points.
-                if ( isInside || _stroke.lineJoin() == Stroke::LINEJOIN_MITRE )
+                if ( isInside || stroke.lineJoin() == Stroke::LINEJOIN_MITRE )
                 {
                     bool addedVertex = false;
                     {
@@ -354,7 +364,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
                     if (callback) (*callback)(i);
                 }
 
-                else if ( _stroke.lineJoin() == Stroke::LINEJOIN_ROUND )
+                else if ( stroke.lineJoin() == Stroke::LINEJOIN_ROUND )
                 {
                     // for a rounded corner, first create the first rim point:
                     osg::Vec3 start = (*verts)[i] + prevBufVec;
@@ -406,7 +416,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
         if ( spine ) spine->push_back( (*verts)[i] );
         if (callback) (*callback)(i);
 
-        if ( _stroke.lineCap() == Stroke::LINECAP_ROUND )
+        if ( stroke.lineCap() == Stroke::LINECAP_ROUND )
         {
             float angle = osg::PI_2;
             int steps = (int)ceil(angle/maxRoundingAngle);
@@ -428,7 +438,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
                 if (callback) (*callback)(i);
             }
         }
-        else if ( _stroke.lineCap() == Stroke::LINECAP_SQUARE )
+        else if ( stroke.lineCap() == Stroke::LINECAP_SQUARE )
         {
             float cornerWidth = sqrt(2.0*halfWidth*halfWidth);
 
@@ -462,7 +472,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts,
     // generate colors
     {
         osg::Vec4Array* colors = new osg::Vec4Array( osg::Array::BIND_PER_VERTEX, verts->size() );
-        colors->assign( colors->size(), _stroke.color() );
+        colors->assign( colors->size(), stroke.color() );
         geom->setColorArray( colors );
     }
 
@@ -530,10 +540,10 @@ namespace
 void
 PolygonizeLinesOperator::installShaders(osg::Node* node) const
 {
-    if ( !node )
-        return;
+    OE_SOFT_ASSERT_AND_RETURN(node != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(_line.valid(), __func__, );
 
-    float minPixels = _stroke.minPixels().getOrUse( 0.0f );
+    float minPixels = _line->stroke()->minPixels().getOrUse( 0.0f );
     if ( minPixels <= 0.0f )
         return;
 
@@ -622,7 +632,7 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 
     // The operator we'll use to make lines into polygons.
     const LineSymbol* line = _style.get<LineSymbol>();
-    PolygonizeLinesOperator polygonize( line ? (*line->stroke()) : Stroke() );
+    PolygonizeLinesOperator polygonize(line);
 
     // Geode to hold all the geometries.
     osg::Geode* geode = new PixelScalingGeode(); //osg::Geode();

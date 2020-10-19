@@ -21,7 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Filter>
-#include <osgEarth/Stroke>
+#include <osgEarth/LineSymbol>
 #include <osgEarth/OsgGeometryOperator>
 #include <osg/Array>
 #include <osg/Geometry>
@@ -44,7 +44,8 @@ namespace osgEarth { namespace Util
          * Construct the operator
          * @param[in ] stroke Line rendering properties
          */
-        PolygonizeLinesOperator(const Stroke& stoke);
+        PolygonizeLinesOperator(
+            const LineSymbol* symbol);
 
         /**
          * Run the polygonizer.
@@ -60,7 +61,11 @@ namespace osgEarth { namespace Util
          *
          * @return Triangulated geometry, including primitive set
          */
-        osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, Callback* callback =0L, bool twosided =true) const;
+        osg::Geometry* operator()(
+            osg::Vec3Array* verts, 
+            osg::Vec3Array* normals, 
+            Callback* callback =0L, bool 
+            twosided =true) const;
 
         /**
          * Installs an auto-scaling shader on a stateset.
@@ -68,7 +73,7 @@ namespace osgEarth { namespace Util
         void installShaders(osg::Node* node) const;
 
     protected:
-        Stroke _stroke;
+        osg::ref_ptr<const LineSymbol> _line;
         friend class PolygonizeLinesFilter;
     };
 

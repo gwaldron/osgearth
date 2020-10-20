@@ -400,7 +400,12 @@ namespace
 
         bool empty() const { return _size == 0; }
 
-        void load(const TileKey& key, FeatureSource* fs, FeatureFilterChain* filters, const Distance& buffer)
+        void load(
+            const TileKey& key, 
+            FeatureSource* fs, 
+            FeatureFilterChain* filters, 
+            const Distance& buffer, 
+            const LandUseCatalog* cat)
         {
             _tilesrs = key.getExtent().getSRS();
             _featuresrs = fs->getFeatureProfile()->getSRS();
@@ -410,9 +415,12 @@ namespace
             {
                 Feature* f = cursor->nextFeature();
 
-                if (f->getGeometry()->isPolygon() &&
-                    (f->hasAttr("landuse") || f->hasAttr("natural")))
+                if (f->getGeometry()->isPolygon() && (
+                    (cat->getLandUse("landuse." + f->getString("landuse")) ||
+                    (cat->getLandUse("natural." + f->getString("natural"))))))
+                   //(f->hasAttr("landuse") || f->hasAttr("natural")))
                 {
+                    //OE_INFO << "landuse=" << f->getString("landuse") << ", natural=" << f->getString("natural") << std::endl;
                     const GeoExtent& ex = f->getExtent();
                     double a_min[2] = { ex.xMin(), ex.yMin() };
                     double a_max[2] = { ex.xMax(), ex.yMax() };
@@ -422,7 +430,7 @@ namespace
             }
         }
 
-        bool get(double x, double y, std::string& output) const
+        const LandUseType* get(double x, double y, const LandUseCatalog* cat) const
         {
             _tilesrs->transform2D(x, y, _featuresrs, x, y);
 
@@ -435,20 +443,20 @@ namespace
             if (_index.Search(a_min, a_max, &hits, ~0) == 0)
                 return false;
 
+            const LandUseType* result = nullptr;
+
             for (const auto& f : hits)
             {
                 if (f->getGeometry()->contains2D(x, y))
                 {
-                    if (f->hasAttr("landuse"))
-                    {
-                        output = std::string("landuse.") + f->getString("landuse");
-                        return true;
-                    }
-                    if (f->hasAttr("natural"))
-                    {
-                        output = std::string("natural.") + f->getString("natural");
-                        return true;
-                    }
+                    result = cat->getLandUse("landuse." + f->getString("landuse"));
+                    if (result)
+                        return result;
+
+                    result = cat->getLandUse("natural." + f->getString("natural"));
+                    if (result)
+                        return result;
+
                     //else
                     //    break;
                 }
@@ -676,14 +684,6 @@ LifeMapLayer::createImageImplementation(
     // wait for all materials to load
     _loadMaterialsJob.wait();
 
-    osg::ref_ptr<osg::Image> image = new osg::Image();
-    image->allocateImage(
-        getTileSize(),
-        getTileSize(),
-        1,
-        GL_RGBA,
-        GL_UNSIGNED_BYTE);
-
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
         return GeoImage::INVALID;
@@ -710,13 +710,16 @@ LifeMapLayer::createImageImplementation(
 
     if (getLandUseLayer() && getBiomeLayer() && getBiomeLayer()->getBiomeCatalog())
     {
+        // the catalog:
+        landuse_cat = getBiomeLayer()->getBiomeCatalog()->getLandUse();
+
+        // populate the tile with features that exist in the catalog:
         landuse.load(
             lu_key,
-            getLandUseLayer(), 
+            getLandUseLayer(),
             nullptr, // filters
-            Distance(std::max(x_jitter, y_jitter), lu_extent.getSRS()->getUnits()));
-
-        landuse_cat = getBiomeLayer()->getBiomeCatalog()->getLandUse();
+            Distance(std::max(x_jitter, y_jitter), lu_extent.getSRS()->getUnits()),
+            landuse_cat);
     }
 
     GeoExtent extent = key.getExtent();
@@ -772,6 +775,14 @@ LifeMapLayer::createImageImplementation(
     }
 
     // assemble the image:
+    osg::ref_ptr<osg::Image> image = new osg::Image();
+    image->allocateImage(
+        getTileSize(),
+        getTileSize(),
+        1,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE);
+
     ImageUtils::PixelWriter write(image.get());
     osg::Vec4 pixel, temp, lcpixel;
     ControlVectors<osg::Vec4>::ResultSet lc_results;
@@ -838,33 +849,31 @@ LifeMapLayer::createImageImplementation(
             double xx = i.x() + x_jitter * 0.3*(noise[2][CLUMPY] * 2.0 - 1.0);
             double yy = i.y() + y_jitter * 0.3*(noise[2][SMOOTH] * 2.0 - 1.0);
 
-            if (landuse.get(xx, yy, lu_id))
-            {
-                const LandUseType* lu = landuse_cat->getLandUse(lu_id);
-                if (lu)
+            const LandUseType* lu = landuse.get(xx, yy, landuse_cat);
+
+            if (lu)
+        {
+                if (lu->dense().isSet())
                 {
-                    if (lu->dense().isSet())
-                    {
-                        dense = lu->dense().get() + 0.2*(dense_noise*2.0 - 1.0);
-                        dense_mix = default_mix;
-                    }
-
-                    if (lu->lush().isSet())
-                    {
-                        lush = lu->lush().get() + 0.2*(lush_noise*2.0 - 1.0);
-                        lush_mix = default_mix;
-                    }
-
-                    if (lu->rugged().isSet())
-                    {
-                        rugged = lu->rugged().get() + 0.2*(rugged_noise*2.0 - 1.0);
-                        rugged_mix = default_mix;
-                    }
-
-                    pixel.set(dense, lush, rugged, 0);
-
-                    counts[lu_id]++;
+                    dense = lu->dense().get() + 0.2*(dense_noise*2.0 - 1.0);
+                    dense_mix = default_mix;
                 }
+
+                if (lu->lush().isSet())
+                {
+                    lush = lu->lush().get() + 0.2*(lush_noise*2.0 - 1.0);
+                    lush_mix = default_mix;
+                }
+
+                if (lu->rugged().isSet())
+                {
+                    rugged = lu->rugged().get() + 0.2*(rugged_noise*2.0 - 1.0);
+                    rugged_mix = default_mix;
+                }
+
+                pixel.set(dense, lush, rugged, 0);
+
+                counts[lu_id]++;
             }
         }
 

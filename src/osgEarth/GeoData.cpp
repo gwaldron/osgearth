@@ -728,9 +728,9 @@ GeoCircle::intersects( const GeoCircle& rhs ) const
 #define LC "[GeoExtent] "
 
 namespace {
-    bool is_valid(double n) {
+    inline bool is_valid(double n) {
         return
-            osg::isNaN(n) == false &&
+            std::isnan(n) == false &&
             n != DBL_MAX &&
             n != -DBL_MAX;
     }

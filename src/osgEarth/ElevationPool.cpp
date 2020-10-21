@@ -420,29 +420,36 @@ namespace
         osg::Vec4f& out,
         QuickSampleVars& a)
     {
-        double sizeS = (double)(reader.s()-1);
-        double sizeT = (double)(reader.t()-1);
+        const double sizeS = (double)(reader.s()-1);
+        const double sizeT = (double)(reader.t()-1);
 
         // u, v => [0..1]
-        double s = u * sizeS;
-        double t = v * sizeT;
+        const double s = u * sizeS;
+        const double t = v * sizeT;
 
-        double s0 = osg::maximum(floor(s), 0.0);
-        double s1 = osg::minimum(s0 + 1.0, sizeS);
-        double smix = s0 < s1 ? (s - s0) / (s1 - s0) : 0.0;
+        const double s0 = std::max(floor(s), 0.0);
+        const int intS0 = s0;
+        const double s1 = std::min(s0 + 1.0, sizeS);
+        const int intS1 = s1;
+        const double smix = s0 < s1 ? (s - s0) / (s1 - s0) : 0.0;
 
-        double t0 = osg::maximum(floor(t), 0.0);
-        double t1 = osg::minimum(t0 + 1.0, sizeT);
-        double tmix = t0 < t1 ? (t - t0) / (t1 - t0) : 0.0;
+        const double t0 = std::max(floor(t), 0.0);
+        const int intT0 = t0;
+        const double t1 = std::min(t0 + 1.0, sizeT);
+        const int intT1 = t1;
+        const double tmix = t0 < t1 ? (t - t0) / (t1 - t0) : 0.0;
 
-        reader(a.UL, (int)s0, (int)t0, 0, 0); // upper left
-        reader(a.UR, (int)s1, (int)t0, 0, 0); // upper right
-        reader(a.LL, (int)s0, (int)t1, 0, 0); // lower left
-        reader(a.LR, (int)s1, (int)t1, 0, 0); // lower right
+        reader(a.UL, intS0, intT0, 0, 0); // upper left
+        reader(a.UR, intS1, intT0, 0, 0); // upper right
+        reader(a.LL, intS0, intT1, 0, 0); // lower left
+        reader(a.LR, intS1, intT1, 0, 0); // lower right
 
-        a.TOP = a.UL * (1.0f - smix) + a.UR * smix;
-        a.BOT = a.LL * (1.0f - smix) + a.LR * smix;
-        out = a.TOP * (1.0f - tmix) + a.BOT * tmix;
+        const double minusSmix = 1.0 - smix;
+        const double minusTmis = 1.0 - tmix;
+
+        a.TOP = a.UL * minusSmix + a.UR * smix;
+        a.BOT = a.LL * minusSmix + a.LR * smix;
+        out = a.TOP * minusTmis + a.BOT * tmix;
     }
 }
 

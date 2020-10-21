@@ -445,6 +445,7 @@ IF (NOT TINYXML_FOUND)
         ${LIB_PUBLIC_HEADERS}
         tinystr.h
         tinyxml.h
+        weemesh.h
     )
 ENDIF (NOT TINYXML_FOUND)
 

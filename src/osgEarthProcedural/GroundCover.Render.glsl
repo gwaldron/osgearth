@@ -21,6 +21,8 @@ struct oe_TransformSpec {
     mat3 normal;
 } oe_transform;
 
+out vec3 oe_gc_flap;
+
 void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 {
     uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
@@ -41,6 +43,9 @@ void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
     vec4 model = vec4(instance[i].vertex.xyz + geom_vertex.xyz, 1.0);
     oe_vertex.view = oe_transform.modelview * model;
     oe_vertex.normal = oe_transform.normal * vp_Normal;
+
+    // auto-wind :)
+    oe_gc_flap = vec3(geom_vertex.x, geom_vertex.y, geom_vertex.z);
 
     // override the terrain's shader
     vp_Color = gl_Color;
@@ -92,6 +97,12 @@ out float oe_gc_distance;
 uniform vec3 oe_VisibleLayer_ranges; // from VisibleLayer
 uniform vec3 oe_Camera;
 uniform mat4 osg_ViewMatrix;
+
+#pragma import_defines(OE_WIND_TEX, OE_WIND_TEX_MATRIX)
+#ifdef OE_WIND_TEX
+uniform sampler3D OE_WIND_TEX;
+uniform mat4 OE_WIND_TEX_MATRIX;
+#endif
 
 
 float rescale(float d, float v0, float v1)
@@ -272,6 +283,55 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     }
 }
 
+in vec3 oe_gc_flap;
+uniform float osg_FrameTime;
+
+// remap x from [0..1] to [lo..hi]
+float remap(float x, float lo, float hi) {
+    return lo + x * (hi - lo);
+}
+float unit(float x, float lo, float hi) {
+    return clamp((x - lo) / (hi - lo), 0.0, 1.0);
+}
+
+//uniform float shmoo;
+void oe_gc_apply_wind(inout vec4 vert_view, in float width, in float height)
+{
+#ifdef OE_WIND_TEX
+    // sample the local wind map.
+    const float stiffness = 3.8; // todo: tree parameter
+
+    float xy_len = length(oe_gc_flap.xy) + oe_gc_flap.z*0.2;
+    float bendDistance = xy_len;
+    float xy_comp = unit(xy_len, 0, width);
+    float stiffness_factor = pow(xy_comp, stiffness);
+    bendDistance *= stiffness_factor;
+
+    vec4 windData = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vert_view));
+    vec3 windDir = normalize(windData.rgb * 2 - 1); // view space
+
+    const float rate = 0.01;
+    vec4 noise_moving = textureLod(oe_gc_noiseTex, oe_layer_tilec.st + osg_FrameTime * rate, 0);
+    float windSpeedVariation = remap(noise_moving[NOISE_CLUMPY], -0.2, 8.0-stiffness);
+    float windSpeed = windData.a * windSpeedVariation;
+
+    // wind turbulence - once the wind exceeds a certain speed, grass starts buffeting
+    // based on a higher frequency noise function
+    vec3 buffetingDir = vec3(0);
+    if (windSpeed > 0.2 && xy_comp > 0.5)
+    {
+        float buffetingSpeed = windSpeed * 0.2 * stiffness_factor; //  xy_comp * xy_comp * xy_comp;
+        vec4 noise_b = textureLod(oe_gc_noiseTex, oe_layer_tilec.st + osg_FrameTime * buffetingSpeed, 0);
+        //buffetingDir = oe_UpVectorView * vec3(noise_b.xx * 2 - 1, 0) * buffetingSpeed;
+        buffetingDir = oe_transform.normal * vec3(noise_b.xx * 2 - 1, 0) * buffetingSpeed;
+    }
+
+    vec3 bendVec = (windDir + buffetingDir) * windSpeed * bendDistance;
+
+    vert_view.xyz += bendVec;
+#endif
+}
+
 
 void oe_GroundCover_Model(inout vec4 vertex_view)
 {
@@ -303,6 +363,10 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
     }
 
     oe_gc_distance = 0.0;
+
+#ifdef OE_WIND_TEX
+    oe_gc_apply_wind(vertex_view, instance[i].width, instance[i].height);
+#endif
 }
 
 // MAIN ENTRY POINT  

@@ -290,11 +290,11 @@ namespace
             }
             else // TYPE_DIRECTIONAL
             {
-                // transform from world to camera-view space
+                // transform from world to camera-local space
                 osg::Vec3f dir;
                 dir.x() = wind->direction()->x();
                 dir.y() = wind->direction()->y();
-                dir = osg::Matrixf::transform3x3(dir, camera->getViewMatrix());
+                //dir = osg::Matrixf::transform3x3(dir, camera->getViewMatrix());
                 dir.normalize();
 
                 cs._windData[i].direction[0] = dir.x();
@@ -555,7 +555,7 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
         windDrawable->setupPerCameraState(camera);
     }
 
-    // this xforms from clip [-1..1] to texture [0..1] space
+    // this xforms from normalized clip [-1..1] to texture [0..1] space
     static osg::Matrix clipToTexture = 
         osg::Matrix::translate(1.0,1.0,1.0) * 
         osg::Matrix::scale(0.5,0.5,0.5);

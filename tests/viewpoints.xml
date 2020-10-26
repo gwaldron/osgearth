@@ -84,13 +84,13 @@
         <height>357.5176040958613</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="Road">
-        <heading>109.262</heading>
-        <pitch>-10.8273</pitch>
-        <range>30.9386m</range>
-        <long>-121.8616342623421</long>
-        <lat>46.73206930877957</lat>
-        <height>690.9927275199443</height>
+    <viewpoint name="Sunrise">
+        <heading>-41.29</heading>
+        <pitch>-12.7916</pitch>
+        <range>109.137m</range>
+        <long>-121.1443807905112</long>
+        <lat>46.63350874254331</lat>
+        <height>943.3519454756752</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
     <viewpoint name="Quilotoa Lake">

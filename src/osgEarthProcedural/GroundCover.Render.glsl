@@ -294,7 +294,7 @@ float unit(float x, float lo, float hi) {
     return clamp((x - lo) / (hi - lo), 0.0, 1.0);
 }
 
-//uniform float shmoo;
+//uniform float demo_wind;
 void oe_gc_apply_wind(inout vec4 vert_view, in float width, in float height)
 {
 #ifdef OE_WIND_TEX
@@ -308,7 +308,7 @@ void oe_gc_apply_wind(inout vec4 vert_view, in float width, in float height)
     bendDistance *= stiffness_factor;
 
     vec4 windData = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vert_view));
-    vec3 windDir = normalize(windData.rgb * 2 - 1); // view space
+    vec3 windDir = (windData.rgb * 2 - 1);
 
     const float rate = 0.01;
     vec4 noise_moving = textureLod(oe_gc_noiseTex, oe_layer_tilec.st + osg_FrameTime * rate, 0);
@@ -318,12 +318,11 @@ void oe_gc_apply_wind(inout vec4 vert_view, in float width, in float height)
     // wind turbulence - once the wind exceeds a certain speed, grass starts buffeting
     // based on a higher frequency noise function
     vec3 buffetingDir = vec3(0);
-    if (windSpeed > 0.2 && xy_comp > 0.5)
+    if (windSpeed > 0.1 && xy_comp > 0.6)
     {
         float buffetingSpeed = windSpeed * 0.2 * stiffness_factor; //  xy_comp * xy_comp * xy_comp;
         vec4 noise_b = textureLod(oe_gc_noiseTex, oe_layer_tilec.st + osg_FrameTime * buffetingSpeed, 0);
-        //buffetingDir = oe_UpVectorView * vec3(noise_b.xx * 2 - 1, 0) * buffetingSpeed;
-        buffetingDir = oe_transform.normal * vec3(noise_b.xx * 2 - 1, 0) * buffetingSpeed;
+        buffetingDir = vec3(0, noise_b.x * 2 - 1, 0) * buffetingSpeed; // vec3(noise_b.xx * 2 - 1, 0)
     }
 
     vec3 bendVec = (windDir + buffetingDir) * windSpeed * bendDistance;

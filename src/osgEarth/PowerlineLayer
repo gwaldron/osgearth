@@ -34,6 +34,9 @@ namespace osgEarth
             OE_OPTION(std::string, uri);
             OE_OPTION_VECTOR(osg::Vec3d, attachment_points);
             OE_OPTION(float, maxSag);
+            // Create configuration from Feature
+            OE_OPTION(std::string, lineExpr);
+            OE_OPTION(std::string, cableExpr);
         public:
             void fromConfig(const Config& conf);
             virtual Config getConfig() const;
@@ -48,10 +51,9 @@ namespace osgEarth
             OE_OPTION(bool, point_features);
             OE_OPTION_VECTOR(ModelOptions, towerModels);
             virtual Config getConfig() const;
+            void fromConfig(const Config& conf);
         protected: // LayerOptions
             virtual void mergeConfig(const Config& conf);        
-        private:
-            void fromConfig(const Config& conf);
         };
     public:
         META_Layer(osgEarth, PowerlineLayer, Options, FeatureModelLayer, PowerlineModel);

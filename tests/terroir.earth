@@ -63,11 +63,6 @@
     <Grass name="Grass" max_range="100" max_sse="35" enabled="true">
         <category>grass</category>
         <spacing>1.0</spacing>
-        <!--
-        <color_layer>
-            ReadyMap 15m Imagery
-        </color_layer>
-        -->
     </Grass>
 
     <Wind name="Breeze">
@@ -76,32 +71,41 @@
         </winds>
     </Wind>
     
+    <!--
     <Shader name="base"/>
+    -->
+    
+    <!--
+    <TMSImage name="World Imagery" enabled="false" shared="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
+    -->
+    
+    <OGRFeatures name="data:biomes">
+        <url>D:/data/splat/biomes.gpkg</url>
+        <layer>biome_points</layer>
+    </OGRFeatures>
+    
+    <ArcGISServerImage name="World Imagery" shared="true" max_data_level="14">
+        <url>http://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/</url>
+        <nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </ArcGISServerImage>
+
 
     <LifeMap name="Life Map" shared="true" min_level="14" max_data_level="16">
-        <!-- <cache_policy usage="none"/> -->
+        <cache_policy usage="none"/>
         <density_mask_layer>
             <xi:include href="osm_density_mask.xml"/>
         </density_mask_layer>
         <land_use_layer>
             data:osm
         </land_use_layer>
+        <color_layer>
+            World Imagery
+        </color_layer>
         <shared_sampler>LIFEMAP_TEX</shared_sampler>
         <shared_matrix>LIFEMAP_MAT</shared_matrix>
     </LifeMap>
-    
-    <TMSImage name="ReadyMap 15m Imagery" enabled="true" shared="true" min_range="2500" attenuation_range="2500">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-        <shader>
-            <![CDATA[
-            #pragma vp_entryPoint imageryDraw
-            #pragma vp_location fragment
-            void imageryDraw(inout vec4 color) {
-                color.a = max(color.a, 0.15);
-            }
-          ]]>
-        </shader>
-    </TMSImage>
 
     <RoadSurface name="Road Surface" min_level="17" max_data_level="19">
         <!-- <cache_policy usage="no_cache"/> -->
@@ -138,14 +142,9 @@
         </styles>
     </FeatureImage>
 
-    <Biomes name="Biomes" shared="true" visible="false" min_level="14" max_data_level="14">
-        <!-- <cache_policy usage="none"/> -->
-        <control_vectors>
-            <OGRFeatures>
-                <url>D:/data/splat/biome_package.gpkg</url>
-                <layer>macdaddy</layer>
-            </OGRFeatures>
-        </control_vectors>
+    <Biomes name="Biomes" shared="true" visible="false" min_level="4" max_data_level="14">
+        <cache_policy usage="none"/>
+        <control_vectors>data:biomes</control_vectors>
         <biomeid_field>wwf_mhtnum</biomeid_field>
         <blend_radius>0.02</blend_radius>
         <xi:include href="D:/data/splat/biomes.xml"/>
@@ -172,14 +171,11 @@
 
     <FeatureModel name="Biome Names" enabled="false">
         <cache_policy usage="none"/>
-        <OGRFeatures>
-            <url>D:/data/splat/biome_package.gpkg</url>
-            <layer>macdaddy</layer>
-        </OGRFeatures>
+        <features>data:biomes</features>
         <styles>
             <style>
                 default {
-                    text-content: [wwf_mhtnam];
+                    text-content: [RealmMHT];
                     text-halo: #3f3f3f;
                     text-size: 20.0;
                     text-align: center_center;
@@ -190,7 +186,14 @@
 
     <xi:include href="osm_buildings.xml"/>
 
-    <TerrainConstraint name="constraint:water" features="data:osm-water" remove_interior="false" min_level="12"/>
+    <TerrainConstraint name="constraint:water" features="data:osm-water" remove_interior="false" min_level="13"/>
+    
+    <TerrainConstraint name="constraint:ocean" remove_interior="false" min_level="13">
+        <OGRFeatures>
+            <url>D:/data/osm/water-polygons-split-4326/water_polygons.shp</url>
+        </OGRFeatures>
+    </TerrainConstraint>
+    
 
     <FeatureImage name="OSM Water" features="data:osm-water" min_level="12" max_data_level="16">
         <profile>spherical-mercator</profile>
@@ -219,18 +222,13 @@
     
     <FeatureModel name="DEBUG - Biome Shape View" enabled="false">
         <cache_policy usage="none"/>
-        <OGRFeatures>
-            <url>D:/data/splat/biome_package.gpkg</url>
-            <layer>macdaddy</layer>
-        </OGRFeatures>
+        <features>data:biomes</features>
         <layout tile_size="100000"/>
         <Styles>
             <style type="text/css">
                 default { 
                     point-fill: #FFFF00;
-                    point-size: 3px;
-                    stroke: #FF0000; 
-                    stroke-width: 3px;
+                    point-size: 5px;
                     altitude-clamping: terrain-drape;
                 }
             </style>

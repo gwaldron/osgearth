@@ -1,5 +1,14 @@
 <?xml version="1.0" ?>
 <viewpoints time="1.5">
+    <viewpoint name="Fork in the Road">
+        <heading>14.0626</heading>
+        <pitch>-38.0095</pitch>
+        <range>132.467m</range>
+        <long>-121.6061698960621</long>
+        <lat>46.77692277490582</lat>
+        <height>1441.391932760365</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+    </viewpoint>
     <viewpoint>
         <heading>8.806974516644791</heading>
         <height>4465.397310772911</height>
@@ -37,6 +46,15 @@
         <height>1345.386212403886</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
+    <viewpoint name="Sahara Desert">
+        <heading>-121.443</heading>
+        <pitch>-11.05</pitch>
+        <range>131.491m</range>
+        <long>12.87702838363237</long>
+        <lat>25.33350237523004</lat>
+        <height>666.3695949940011</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+    </viewpoint>
     <viewpoint>
         <name>Hallstatt, Austria</name>
         <heading>-21.36</heading>
@@ -66,7 +84,7 @@
         <height>683.0508383652195</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="Lake Anna">
+    <viewpoint name="Lake Anna, VA">
         <heading>49.7937</heading>
         <pitch>-26.6006</pitch>
         <range>57.9473m</range>
@@ -84,13 +102,13 @@
         <height>357.5176040958613</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="Sunrise">
-        <heading>-41.29</heading>
-        <pitch>-12.7916</pitch>
-        <range>109.137m</range>
-        <long>-121.1443807905112</long>
-        <lat>46.63350874254331</lat>
-        <height>943.3519454756752</height>
+    <viewpoint name="Duck, NC (Beach)">
+        <heading>-65.3262</heading>
+        <pitch>-32.1928</pitch>
+        <range>84.6626m</range>
+        <long>-75.76722964595007</long>
+        <lat>36.2183042666146</lat>
+        <height>-40.40036714822054</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
     <viewpoint name="Quilotoa Lake">
@@ -120,22 +138,22 @@
         <height>2686.409382589161</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint>
-        <heading>2.57982</heading>
-        <pitch>-89.8842</pitch>
-        <range>11462.8m</range>
-        <long>-156.3600213388734</long>
-        <lat>20.66245108190387</lat>
-        <height>1271.835115097463</height>
+    <viewpoint name="Big Schloss">
+        <heading>169.243</heading>
+        <pitch>-28.2287</pitch>
+        <range>345.368m</range>
+        <long>-78.66579949472357</long>
+        <lat>38.94076285334965</lat>
+        <height>822.951564357616</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="Fork in the Road">
-        <heading>127.589</heading>
-        <pitch>-1.00428</pitch>
-        <range>183.053m</range>
-        <long>12.67303315482497</long>
-        <lat>41.75728202379179</lat>
-        <height>355.305535171181</height>
+    <viewpoint name="Uluru, Australia">
+        <heading>-1.18119</heading>
+        <pitch>-53.6318</pitch>
+        <range>1985.36m</range>
+        <long>131.0341405855624</long>
+        <lat>-25.34910343183637</lat>
+        <height>614.0726152313873</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
 </viewpoints>

@@ -141,7 +141,7 @@ namespace osgEarth { namespace Util
         osg::Vec2f _centerOffset;
         std::vector< double > _resolutions;
 
-        struct CameraData
+        struct OSGEARTH_EXPORT CameraData
         {
             osg::ref_ptr<osg::StateSet> _stateset;
             osg::ref_ptr<osg::Uniform> _resolutionUniform;

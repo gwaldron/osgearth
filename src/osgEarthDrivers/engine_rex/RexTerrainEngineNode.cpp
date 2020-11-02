@@ -211,6 +211,7 @@ RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
 void
 RexTerrainEngineNode::shutdown()
 {
+    TerrainEngineNode::shutdown();
     _loader->clear();
 }
 

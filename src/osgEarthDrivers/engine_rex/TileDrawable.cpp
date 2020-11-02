@@ -74,29 +74,7 @@ _geom        ( geometry ),
 _tileSize    ( tileSize ),
 _bboxRadius  ( 1.0 ),
 _bboxCB      ( NULL )
-{   
-    // create an initial default collision mesh
-    _mesh.resize(tileSize * tileSize);
-    _meshIndices.reserve(tileSize * tileSize);
-
-    for (int t = 0; t < _tileSize - 1; ++t)
-    {
-        for (int s = 0; s < _tileSize - 1; ++s)
-        {
-            int i00 = t * _tileSize + s;
-            int i10 = i00 + 1;
-            int i01 = i00 + _tileSize;
-            int i11 = i01 + 1;
-
-            _meshIndices.push_back(i00);
-            _meshIndices.push_back(i10);
-            _meshIndices.push_back(i01);
-            _meshIndices.push_back(i01);
-            _meshIndices.push_back(i10);
-            _meshIndices.push_back(i11);
-        }
-    }
-
+{
     // builds the initial mesh.
     setElevationRaster(0L, osg::Matrixf::identity());
 }
@@ -127,8 +105,6 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
     if (_mesh.size() < verts.size())
     {
         _mesh.resize(verts.size());
-        _meshIndices.resize(de->getNumIndices());
-        std::copy(de->begin(), de->end(), _meshIndices.begin());
     }
 
     if ( _elevationRaster.valid() )
@@ -155,12 +131,19 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
 
         for (int i = 0; i < verts.size(); ++i)
         {
-            readElevation(
-                sample,
-                clamp(units[i].x()*scaleU + biasU, 0.0f, 1.0f),
-                clamp(units[i].y()*scaleV + biasV, 0.0f, 1.0f));
+            if ( ((int)units[i].z() & VERTEX_HAS_ELEVATION) == 0)
+            {
+                readElevation(
+                    sample,
+                    clamp(units[i].x()*scaleU + biasU, 0.0f, 1.0f),
+                    clamp(units[i].y()*scaleV + biasV, 0.0f, 1.0f));
 
-            _mesh[i] = verts[i] + normals[i]*sample.r();
+                _mesh[i] = verts[i] + normals[i] * sample.r();
+            }
+            else
+            {
+                _mesh[i] = verts[i];
+            }
         }
     }
 
@@ -177,7 +160,11 @@ void
 TileDrawable::accept(osg::PrimitiveFunctor& f) const
 {
     f.setVertexArray(_mesh.size(), _mesh.data());
-    f.drawElements(GL_TRIANGLES, _meshIndices.size(), _meshIndices.data());
+
+    f.drawElements(
+        GL_TRIANGLES,
+        _geom->getDrawElements()->getNumIndices(),
+        static_cast<const GLushort*>(_geom->getDrawElements()->getDataPointer()));
 }
 
 osg::BoundingSphere

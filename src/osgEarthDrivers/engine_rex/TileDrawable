@@ -68,11 +68,7 @@ namespace osgEarth { namespace REX
         osg::Matrixf                   _elevationScaleBias;
 
         // cached 3D mesh of the terrain tile (derived from the elevation raster)
-        //osg::Vec3f* _mesh;
-        //GLuint* _meshIndices;
         std::vector<osg::Vec3> _mesh;
-        std::vector<GLushort> _meshIndices;
-
         osg::BoundingBox _bboxOffsets;
         ModifyBoundingBoxCallback* _bboxCB;
         mutable float _bboxRadius;
@@ -133,12 +129,11 @@ namespace osgEarth { namespace REX
 
     public:
         META_Object(osgEarth, TileDrawable);
-        TileDrawable() : osg::Drawable(), _tileSize(0), _mesh(NULL), _meshIndices(NULL), _bboxCB(NULL), _bboxRadius(0.0) {}
+        TileDrawable() : osg::Drawable(), _tileSize(0), _mesh(NULL), _bboxCB(NULL), _bboxRadius(0.0) {}
         TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) 
          : osg::Drawable(rhs, cop)
          , _tileSize(rhs._tileSize)
          , _mesh(rhs._mesh)
-         , _meshIndices(rhs._meshIndices)
          , _bboxCB(rhs._bboxCB)
          , _bboxRadius(rhs._bboxRadius)
         {}

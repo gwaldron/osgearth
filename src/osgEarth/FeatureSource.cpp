@@ -314,10 +314,9 @@ FeatureSource::createFeatureCursor(
             }
             else
             {
-                // TODO
-                // total cheat to just get the surrounding tiles :)
                 GeoExtent extent = key.getExtent();
-                extent.expand(extent.width()/2.0, extent.height()/2.0);
+                double d = buffer.asDistance(extent.getSRS()->getUnits(), 0.5*(extent.yMin() + extent.yMax()));
+                extent.expand(d, d);
                 unsigned lod = tilingProfile->getEquivalentLOD(key.getProfile(), key.getLOD());
                 tilingProfile->getIntersectingTiles(extent, lod, intersectingKeys);
             }

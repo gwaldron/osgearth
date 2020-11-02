@@ -58,6 +58,8 @@ namespace osgEarth
 
             const BiomeCatalog* getBiomeCatalog() const;
 
+            virtual void addedToMap(const Map*) override;
+
         protected:
 
             virtual void init() override;

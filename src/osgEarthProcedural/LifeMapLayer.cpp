@@ -41,91 +41,7 @@ using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(lifemap, LifeMapLayer);
 
-template<typename T>
-class ControlVectors
-{
-public:
-    struct Point {
-        double x, y;
-        T data;
-    };
-    struct Result {
-        const T* data;
-        float weight;
-        bool operator < (const Result& rhs) const {
-            return weight < rhs.weight;
-        }
-    };
-    typedef std::set<Result> ResultSet;
-
-    std::vector<Point> _index;
-
-    void add(double x, double y, const T& data)
-    {
-        _index.emplace_back(Point());
-        _index.back().x = x;
-        _index.back().y = y;
-        _index.back().data = data;
-    }
-
-    void lookup(double x, double y, ResultSet& results) const
-    {
-        results.clear();
-
-        //TODO: replace this brute-force search with a proper
-        // spatial index.
-        const int maxCount = 3;
-        double farthest2 = 0.0;
-        std::set<Result>::iterator farthest2_iter;
-
-        for (const auto& cp : _index)
-        {
-            double range2 = (cp.x - x)*(cp.x - x) + (cp.y - y)*(cp.y - y);
-
-            if (results.size() < maxCount)
-            {
-                Result r;
-                r.data = &cp.data;
-                r.weight = range2;
-                results.insert(r);
-            }
-            else
-            {
-                if (range2 < results.rbegin()->weight)
-                {
-                    Result r;
-                    r.data = &cp.data;
-                    r.weight = range2;
-                    results.insert(r);
-                    results.erase(std::prev(results.end()));
-                }
-            }
-        }
-    }
-};
-
 //........................................................................
-
-LifeMapLayer::LandCoverLifeMapping::LandCoverLifeMapping(const Config& conf)
-{
-    conf.get("class", className());
-    conf.get("density", density());
-    conf.get("moisture", moisture());
-    conf.get("rugged", rugged());
-    conf.get("temperature", temperature());
-}
-
-Config
-LifeMapLayer::LandCoverLifeMapping::getConfig() const
-{
-    Config conf("mapping");
-    conf.set("class", className());
-    conf.set("density", density());
-    conf.set("moisture", moisture());
-    conf.set("rugged", rugged());
-    conf.set("temperature", temperature());
-    return conf;
-}
 
 class GeoImageReader
 {
@@ -152,16 +68,9 @@ LifeMapLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
     biomeLayer().set(conf, "biomes_layer");
-    landCoverLayer().set(conf, "landcover_layer");
     densityMaskLayer().set(conf, "density_mask_layer");
-    densityColorLayer().set(conf, "density_color_layer");
+    colorLayer().set(conf, "color_layer");
     landUseLayer().set(conf, "land_use_layer");
-    
-    Config mappings_conf;
-    for (const auto& mapping : landCoverMappings())
-        mappings_conf.add(mapping.getConfig());
-    if (!mappings_conf.empty()) conf.add(mappings_conf);
-
     return conf;
 }
 
@@ -169,14 +78,9 @@ void
 LifeMapLayer::Options::fromConfig(const Config& conf)
 {
     biomeLayer().get(conf, "biomes_layer");
-    landCoverLayer().get(conf, "landcover_layer");
     densityMaskLayer().get(conf, "density_mask_layer");
-    densityColorLayer().get(conf, "density_color_layer");
+    colorLayer().get(conf, "color_layer");
     landUseLayer().get(conf, "land_use_layer");
-
-    const ConfigSet mappings_conf = conf.child("landcover_mappings").children("mapping");
-    for (const auto& c : mappings_conf)
-        landCoverMappings().emplace_back(c);
 }
 
 //........................................................................
@@ -518,7 +422,7 @@ LifeMapLayer::openImplementation()
 
     options().densityMaskLayer().open(getReadOptions());
 
-    options().densityColorLayer().open(getReadOptions());
+    options().colorLayer().open(getReadOptions());
 
     options().landUseLayer().open(getReadOptions());
 
@@ -539,18 +443,12 @@ LifeMapLayer::addedToMap(const Map* map)
 
     options().biomeLayer().addedToMap(map);
     options().densityMaskLayer().addedToMap(map);
-    options().densityColorLayer().addedToMap(map);
+    options().colorLayer().addedToMap(map);
     options().landUseLayer().addedToMap(map);
-
-    options().landCoverLayer().addedToMap(map);
-    options().landCoverDictionary().addedToMap(map);
 
     // not specified; try to find it
     if (!getBiomeLayer())
         setBiomeLayer(map->getLayer<BiomeLayer>());
-
-    if (!getLandCoverDictionary())
-        setLandCoverDictionary(map->getLayer<LandCoverDictionary>());
     
     Status biomeStatus = options().biomeLayer().open(getReadOptions());
     if (getBiomeLayer())
@@ -580,15 +478,12 @@ LifeMapLayer::addedToMap(const Map* map)
 
     _map = map;
 
-    // make the land cover code LUT
-    if (getLandCoverDictionary())
+    // bind the color layer if available
+    if (getColorLayer() && getColorLayer()->isShared())
     {
-        for (const auto& mapping : options().landCoverMappings())
-        {
-            const LandCoverClass* lcc = getLandCoverDictionary()->getClassByName(mapping.className().get());
-            if (lcc)
-                _lcLUT[lcc->getValue()] = &mapping;
-        }
+        osg::StateSet* ss = getOrCreateStateSet();
+        ss->setDefine("OE_COLOR_LAYER_TEX", getColorLayer()->getSharedTextureUniformName());
+        ss->setDefine("OE_COLOR_LAYER_MAT", getColorLayer()->getSharedTextureMatrixUniformName());
     }
 }
 
@@ -598,9 +493,7 @@ LifeMapLayer::removedFromMap(const Map* map)
     _map = nullptr;
     options().biomeLayer().removedFromMap(map);
     options().densityMaskLayer().removedFromMap(map);
-    options().densityColorLayer().removedFromMap(map);
-    options().landCoverLayer().removedFromMap(map);
-    options().landCoverDictionary().removedFromMap(map);
+    options().colorLayer().removedFromMap(map);
     ImageLayer::removedFromMap(map);
 }
 
@@ -641,39 +534,15 @@ LifeMapLayer::getLandUseLayer() const
 }
 
 void
-LifeMapLayer::setDensityColorLayer(ImageLayer* layer)
+LifeMapLayer::setColorLayer(ImageLayer* layer)
 {
-    options().densityColorLayer().setLayer(layer);
+    options().colorLayer().setLayer(layer);
 }
 
 ImageLayer*
-LifeMapLayer::getDensityColorLayer() const
+LifeMapLayer::getColorLayer() const
 {
-    return options().densityColorLayer().getLayer();
-}
-
-void
-LifeMapLayer::setLandCoverLayer(LandCoverLayer* layer)
-{
-    options().landCoverLayer().setLayer(layer);
-}
-
-LandCoverLayer*
-LifeMapLayer::getLandCoverLayer() const
-{
-    return options().landCoverLayer().getLayer();
-}
-
-void
-LifeMapLayer::setLandCoverDictionary(LandCoverDictionary* layer)
-{
-    options().landCoverDictionary().setLayer(layer);
-}
-
-LandCoverDictionary*
-LifeMapLayer::getLandCoverDictionary() const
-{
-    return options().landCoverDictionary().getLayer();
+    return options().colorLayer().getLayer();
 }
 
 GeoImage
@@ -750,27 +619,27 @@ LifeMapLayer::createImageImplementation(
     }
 
     // the color layer alters lifemap values based on colors.
-    GeoImage densityColor;
-    ImageUtils::PixelReader readDensityColor;
-    osg::Vec4 dc_pixel;
-    osg::Matrixf dc_matrix;
+    GeoImage color;
+    ImageUtils::PixelReader readColor;
+    osg::Vec4 color_pixel;
+    osg::Matrixf color_matrix;
 
-    if (getDensityColorLayer())
+    if (getColorLayer())
     {
-        TileKey dc_key(key);
+        TileKey color_key(key);
 
-        while (dc_key.valid() && !densityColor.valid())
+        while (color_key.valid() && !color.valid())
         {
-            densityColor = getDensityColorLayer()->createImage(dc_key, progress);
-            if (!densityColor.valid())
-                dc_key.makeParent();
+            color = getColorLayer()->createImage(color_key, progress);
+            if (!color.valid())
+                color_key.makeParent();
         }
 
-        if (densityColor.valid())
+        if (color.valid())
         {
-            readDensityColor.setImage(densityColor.getImage());
-            readDensityColor.setBilinear(true);
-            extent.createScaleBias(dc_key.getExtent(), dc_matrix);
+            readColor.setImage(color.getImage());
+            readColor.setBilinear(true);
+            extent.createScaleBias(color_key.getExtent(), color_matrix);
         }
     }
 
@@ -784,8 +653,7 @@ LifeMapLayer::createImageImplementation(
         GL_UNSIGNED_BYTE);
 
     ImageUtils::PixelWriter write(image.get());
-    osg::Vec4 pixel, temp, lcpixel;
-    ControlVectors<osg::Vec4>::ResultSet lc_results;
+    osg::Vec4 pixel, temp;
     ElevationSample sample;
     float elevation;
     osg::Vec3 normal;
@@ -852,7 +720,7 @@ LifeMapLayer::createImageImplementation(
             const LandUseType* lu = landuse.get(xx, yy, landuse_cat);
 
             if (lu)
-        {
+            {
                 if (lu->dense().isSet())
                 {
                     dense = lu->dense().get() + 0.2*(dense_noise*2.0 - 1.0);
@@ -890,18 +758,22 @@ LifeMapLayer::createImageImplementation(
             elevTile->getRuggedness(i.x(), i.y()) -
             (0.2f*rugged_noise);
 
-        if (dense_mix == 0.0f)
+        //if (dense_mix == 0.0f)
         {
-            if (densityColor.valid())
+            if (color.valid())
             {
-                double uu = i.u() * dc_matrix(0, 0) + dc_matrix(3, 0);
-                double vv = i.v() * dc_matrix(1, 1) + dc_matrix(3, 1);
-                readDensityColor(dc_pixel, uu, vv);
+                double uu = i.u() * color_matrix(0, 0) + color_matrix(3, 0);
+                double vv = i.v() * color_matrix(1, 1) + color_matrix(3, 1);
+                readColor(color_pixel, uu, vv);
+                // adjust lifemap based on the "greeness" of the pixel
                 // https://www.sciencedirect.com/science/article/pii/S2214317315000347
-                float ExG = 2.0f*dc_pixel.g() - dc_pixel.r() - dc_pixel.b();
-                float ExGR = ExG - (1.4f*dc_pixel.r() - dc_pixel.g());
+                float ExG = 2.0f*color_pixel.g() - color_pixel.r() - color_pixel.b();
+                float ExGR = ExG - (1.4f*color_pixel.r() - color_pixel.g());
                 if (ExGR > 0.0)
+                {
                     dense *= (1.0 + ExGR);
+                    rugged /= (1.0 + ExGR);
+                }
             }
         }
 
@@ -919,6 +791,9 @@ LifeMapLayer::createImageImplementation(
             rugged *= dm_pixel.r();
         }
 
+        // blanket adjustment.
+        dense *= 0.55f;
+
         pixel.set(dense, lush, rugged, 0);
 
         // clamp to legal range (not the biome though)
@@ -932,76 +807,4 @@ LifeMapLayer::createImageImplementation(
     });
 
     return std::move(result);
-}
-
-osg::Vec4
-LifeMapLayer::lookupLandCover(float noise, void* thing) const
-{
-    ControlVectors<osg::Vec4>::ResultSet* r = static_cast<
-        ControlVectors<osg::Vec4>::ResultSet*>(thing);
-
-    const double strength = 9.0;
-    double total = 0.0;
-    for (auto& i : *r)
-        total += pow(1.0 / i.weight, strength);
-
-    double runningTotal = 0.0;
-    double pick = total * (double)noise;
-    for (auto& i : *r)
-    {
-        runningTotal += pow(1.0 / i.weight, strength);
-        if (pick < runningTotal)
-            return *i.data;
-    }
-
-    // return the last one by default
-    return *r->rbegin()->data;
-}
-
-#if 0
-int
-LifeMapLayer::lookupBiome(double x, double y, float noise) const
-{    
-    BiomeLayer* layer = getBiomeLayer();
-    if (layer)
-    {
-        constexpr int NUM_BIOMES_TO_SAMPLE = 3;
-        std::set<BiomeLayer::SearchResult> results;
-        layer->getNearestBiomes(x, y, NUM_BIOMES_TO_SAMPLE, results);
-        if (results.empty())
-        {
-            return 0;
-        }
-        else
-        {
-            if (results.size() > 1)
-            {
-                const double strength = 9.0;
-                double total = 0.0;
-                for (auto& i : results)
-                    total += pow(1.0 / i.range2, strength);
-
-                double runningTotal = 0.0;
-                double pick = total * (double)noise;
-                for (auto& i : results)
-                {
-                    runningTotal += pow(1.0 / i.range2, strength);
-                    if (pick < runningTotal)
-                        return i.biomeid;
-                }
-            }
-
-            // return the last one by default
-            return results.rbegin()->biomeid;
-        }
-    }
-    return 0;
-}
-#endif
-
-const LifeMapLayer::LandCoverLifeMapping*
-LifeMapLayer::lookupLandCoverLifeMapping(int code) const
-{
-    const auto i = _lcLUT.find(code);
-    return i != _lcLUT.end() ? i->second : nullptr;
 }

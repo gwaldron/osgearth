@@ -294,7 +294,6 @@ GroundCoverLayer::closeImplementation()
     _renderer = NULL;
 
     _liveAssets.clear();
-    _zoneStateSets.clear();
 
     return PatchLayer::closeImplementation();
 }
@@ -1674,12 +1673,6 @@ GroundCoverLayer::createLUTShader() const
         << lutbuf.str() << "\n");
 
     return shader;
-}
-
-osg::StateSet*
-GroundCoverLayer::getZoneStateSet(unsigned index) const
-{
-    return index < _zoneStateSets.size() ? _zoneStateSets[index].get() : NULL;
 }
 
 GeometryCloud*

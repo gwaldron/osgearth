@@ -41,18 +41,6 @@ namespace osgEarth { namespace Procedural
     class OSGEARTHPROCEDURAL_EXPORT LifeMapLayer : public ImageLayer
     {
     public:
-        // DEPRECATED
-        struct LandCoverLifeMapping {
-            LandCoverLifeMapping(const Config& c);
-            Config getConfig() const;
-            OE_OPTION(std::string, className);
-            OE_OPTION(float, density);
-            OE_OPTION(float, moisture);
-            OE_OPTION(float, rugged);
-            OE_OPTION(float, temperature);
-        };
-
-    public:
         class OSGEARTHPROCEDURAL_EXPORT Options : public ImageLayer::Options
         {
         public:
@@ -60,14 +48,7 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION_LAYER(ImageLayer, densityMaskLayer);
             OE_OPTION_LAYER(FeatureSource, landUseLayer);
-
-            // MEH
-            OE_OPTION_LAYER(ImageLayer, densityColorLayer);
-
-            // DEPRECATED
-            OE_OPTION_LAYER(LandCoverLayer, landCoverLayer);
-            OE_OPTION_LAYER(LandCoverDictionary, landCoverDictionary);
-            OE_OPTION_VECTOR(LandCoverLifeMapping, landCoverMappings);
+            OE_OPTION_LAYER(ImageLayer, colorLayer);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -85,14 +66,8 @@ namespace osgEarth { namespace Procedural
         void setLandUseLayer(FeatureSource*);
         FeatureSource* getLandUseLayer() const;
 
-        void setDensityColorLayer(ImageLayer*);
-        ImageLayer* getDensityColorLayer() const;
-
-        void setLandCoverLayer(LandCoverLayer*);
-        LandCoverLayer* getLandCoverLayer() const;
-
-        void setLandCoverDictionary(LandCoverDictionary*);
-        LandCoverDictionary* getLandCoverDictionary() const;
+        void setColorLayer(ImageLayer*);
+        ImageLayer* getColorLayer() const;
 
     protected:
 
@@ -118,12 +93,6 @@ namespace osgEarth { namespace Procedural
         mutable ElevationPool::WorkingSet _workingSet;
         osg::ref_ptr<osg::Image> _noiseFunc;
         osg::ref_ptr<TextureArena> _arena;
-        std::unordered_map<int, const LandCoverLifeMapping*> _lcLUT;
-
-        osg::Vec4 lookupLandCover(float noise, void*) const;
-
-        const LandCoverLifeMapping* lookupLandCoverLifeMapping(int code) const;
-
         mutable Future<osg::Referenced> _loadMaterialsJob;
         void loadMaterials(const AssetCatalog*);
     };

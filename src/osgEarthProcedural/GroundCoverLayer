@@ -321,9 +321,6 @@ namespace osgEarth { namespace Procedural
 
         typedef std::vector<osg::ref_ptr<osg::Image> > ImageVector;
 
-        osg::StateSet* getZoneStateSet(unsigned index) const;
-        std::vector<osg::ref_ptr<osg::StateSet> > _zoneStateSets;
-
         GeometryCloud* createGeometryCloud(TextureArena*) const;
 
         osg::ref_ptr<const Profile> _mapProfile;

@@ -94,10 +94,48 @@ BiomeLayer::openImplementation()
     if (csStatus.isError())
         return csStatus;
 
+    // Warn the poor user if the configuration is missing
+    if (getBiomeCatalog() == nullptr)
+    {
+        OE_WARN << LC << "No biome catalog found - could be trouble" << std::endl;
+    }
+    else if (getBiomeCatalog()->getAssets() == nullptr)
+    {
+        OE_WARN << LC << "No asset catalog found - could be trouble" << std::endl;
+    }
+
+    return Status::OK();
+}
+
+Status
+BiomeLayer::closeImplementation()
+{
+    if (_index)
+        delete static_cast<MySpatialIndex*>(_index);
+    _index = nullptr;
+
+    options().controlVectors().close();
+
+    return ImageLayer::closeImplementation();
+}
+
+void
+BiomeLayer::addedToMap(const Map* map)
+{
+    options().controlVectors().addedToMap(map);
+
+    if (!getControlSet())
+    {
+        setStatus(Status::ConfigurationError, "No control set found");
+        return;
+    }
+
     MySpatialIndex* index = new MySpatialIndex();
     _index = index;
 
     const std::string& biomeid_field = options().biomeidField().get();
+
+    OE_INFO << LC << "Loading control set..." << std::endl;
 
     // Populate the in-memory spatial index with all the control points
     int count = 0;
@@ -113,7 +151,7 @@ BiomeLayer::openImplementation()
 
             const Geometry* g = feature->getGeometry();
 
-            if (true) //g->isPointSet())
+            if (g->isPointSet())
             {
                 ConstGeometryIterator iter(g);
                 while (iter.hasMore())
@@ -144,30 +182,6 @@ BiomeLayer::openImplementation()
         }
     }
     OE_INFO << LC << "Loaded control set and found " << count << " features" << std::endl;
-
-    // Warn the poor user if the configuration is missing
-    if (getBiomeCatalog() == nullptr)
-    {
-        OE_WARN << LC << "No biome catalog found - could be trouble" << std::endl;
-    }
-    else if (getBiomeCatalog()->getAssets() == nullptr)
-    {
-        OE_WARN << LC << "No asset catalog found - could be trouble" << std::endl;
-    }
-
-    return Status::OK();
-}
-
-Status
-BiomeLayer::closeImplementation()
-{
-    if (_index)
-        delete static_cast<MySpatialIndex*>(_index);
-    _index = nullptr;
-
-    options().controlVectors().close();
-
-    return ImageLayer::closeImplementation();
 }
 
 FeatureSource*

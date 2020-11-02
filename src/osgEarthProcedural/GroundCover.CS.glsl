@@ -103,8 +103,8 @@ float getElevation(in vec2 tilec) {
     return texture(oe_tile_elevationTex, elevc).r;
 }
 
-uniform float density_power = 1.0;
-uniform float moisture_power = 1.0;
+uniform float dense_power = 1.0;
+uniform float lush_power = 1.0;
 uniform float rugged_power = 1.0;
 
 void generate()
@@ -150,8 +150,8 @@ void generate()
 
     vec2 lifemap_uv = (OE_LIFEMAP_MATRIX*tilec4).st;
     vec3 lifemap = texture(OE_LIFEMAP_SAMPLER, lifemap_uv).xyz;
-    fill = lifemap[0] * density_power;
-    lush = lifemap[1] * moisture_power;
+    fill = lifemap[0] * dense_power;
+    lush = lifemap[1] * lush_power;
     lush = noise[pickNoiseType] * lush;
 
 

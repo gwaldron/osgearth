@@ -81,6 +81,8 @@ in float oe_roughness;
 in float oe_ao;
 const float oe_metallic = 0.0;
 
+uniform float oe_sky_contrast = 1.0;
+
 void atmos_fragment_main_pbr(inout vec4 color)
 {
 #ifndef OE_LIGHTING
@@ -96,6 +98,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
     F0 = mix(F0, albedo, vec3(oe_metallic));
 
     vec3 Lo = vec3(0.0);
+    float contrast = 0.0;
     for (int i = 0; i < OE_NUM_LIGHTS; ++i)
     {
         // per-light radiance:
@@ -116,12 +119,15 @@ void atmos_fragment_main_pbr(inout vec4 color)
         vec3 kD = vec3(1.0) - kS;
         kD *= 1.0 - oe_metallic;
 
+        float NdotL = max(dot(N, L), 0.0);
+
         vec3 numerator = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+        float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL;
         vec3 specular = numerator / max(denominator, 0.001);
 
-        float NdotL = max(dot(N, L), 0.0);
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+
+        contrast += oe_sky_contrast * NdotL;
     }
 
     vec3 ambient = osg_LightSource[0].ambient.rgb * albedo * oe_ao;
@@ -135,4 +141,8 @@ void atmos_fragment_main_pbr(inout vec4 color)
 
     // exposure factor
     color.rgb = 1.0 - exp(-oe_sky_exposure * color.rgb);
+
+    contrast = clamp(contrast, 1.0, 3.0);
+
+    color.rgb = ((color.rgb - 0.5)*contrast + 0.5);
 }

@@ -74,6 +74,7 @@ GroundCoverLayer::Options::getConfig() const
     conf.set("cast_shadows", _castShadows);
     conf.set("max_alpha", maxAlpha());
     conf.set("alpha_to_coverage", alphaToCoverage());
+    conf.set("wind_scale", windScale());
 
     Config zones("zones");
     for (int i = 0; i < _biomeZones.size(); ++i) {
@@ -94,6 +95,7 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     castShadows().setDefault(false);
     maxAlpha().setDefault(0.15f);
     alphaToCoverage().setDefault(true);
+    windScale().setDefault(1.0f);
 
     maskLayer().get(conf, "mask_layer");
     colorLayer().get(conf, "color_layer");
@@ -102,6 +104,7 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     conf.get("cast_shadows", _castShadows);
     conf.get("max_alpha", maxAlpha());
     conf.get("alpha_to_coverage", alphaToCoverage());
+    conf.get("wind_scale", windScale());
 
     const Config* zones = conf.child_ptr("zones");
     if (zones)
@@ -553,6 +556,9 @@ GroundCoverLayer::buildStateSets()
     {
         stateset->setDefine("OE_GROUNDCOVER_USE_TOP_BILLBOARDS");
     }
+
+    // adjust the effect of wind with this factor
+    stateset->setDefine("OE_GROUNDCOVER_WIND_SCALE", Stringify() << options().windScale().get());
 
     osg::Texture* tex = createTextureAtlas();
     stateset->setTextureAttribute(_groundCoverTexBinding.unit(), tex);

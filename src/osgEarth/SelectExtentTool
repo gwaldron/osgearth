@@ -32,22 +32,34 @@ namespace osgEarth { namespace Contrib
 {
     using namespace osgEarth;
 
+    /**
+     * Tool that lets the user draw a GeoExtent, and fire a callback
+     * when it is done.
+     */
     struct OSGEARTH_EXPORT SelectExtentTool : public osgGA::GUIEventHandler
     {
     public:
         typedef std::function<void(const GeoExtent&)> Callback;
 
+        //! Construct a new tool
         SelectExtentTool(MapNode* mapNode);
 
+        //! Clear the visual bounding box
         void clear();
 
+        //! Sets the mouse button that activates the tool
+        //! (osgGA::GUIEventAdapter::MouseButtonMask)
         void setMouseButtonMask(int value);
 
+        //! Sets the mod key mask (shift, ctrl, alt) that activates the tool
+        //! (osgGA::GUIEventAdapter::ModKeyMask)
         void setModKeyMask(int value);
 
-        void setCallback(const Callback& callback);
+        //! Access the style to change the appearance of the box
+        Style& getStyle();
 
-        osg::Node* getNode() const { return _root.get(); }
+        //! Function to call when the user finished drawing the extent
+        void setCallback(const Callback& callback);
 
     public: // osgGA::GUIEventHandler
 

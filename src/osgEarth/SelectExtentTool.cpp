@@ -35,6 +35,10 @@ _modKeyMask(osgGA::GUIEventAdapter::MODKEY_LEFT_ALT)
 {
     _root = new osg::Group();
     _mapNode = mapNode;
+    if (_mapNode.valid())
+    {
+        _mapNode->addChild(_root.get());
+    }
     rebuild();
 }
 
@@ -62,11 +66,6 @@ SelectExtentTool::rebuild()
 
     _feature = new Feature(new Ring(), getMapNode()->getMapSRS());
     _feature->geoInterp() = GEOINTERP_RHUMB_LINE;
-
-    // clamp to the terrain skin as it pages in
-    //AltitudeSymbol* alt = _feature->style()->getOrCreate<AltitudeSymbol>();
-    //alt->clamping() = alt->CLAMP_TO_TERRAIN;
-    //alt->technique() = alt->TECHNIQUE_DRAPE;
 
     // define a style for the line
     LineSymbol* ls = _feature->style()->getOrCreate<LineSymbol>();
@@ -96,7 +95,7 @@ SelectExtentTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
     
     if ((ea.getEventType() == ea.PUSH) &&
         (ea.getButton() & _mouseButtonMask) != 0 &&
-        (ea.getModKeyMask() & _modKeyMask) != 0)
+        (ea.getModKeyMask() == _modKeyMask))
     {
         _mouseDown = getMapNode()->getGeoPointUnderMouse(aa.asView(), ea.getX(), ea.getY(), _mouseDownPoint);
         return true;
@@ -168,4 +167,10 @@ void
 SelectExtentTool::setCallback(const Callback& value)
 {
     _callback = value;
+}
+
+Style&
+SelectExtentTool::getStyle()
+{
+    return _feature->style().mutable_value();
 }

@@ -28,6 +28,10 @@
 #include <osgEarth/Extension>
 #include <osgEarth/TerrainOptions>
 
+namespace osg {
+    class View;
+}
+
 namespace osgEarth
 {
     class Terrain;
@@ -204,6 +208,17 @@ namespace osgEarth
 
         //! Shuts down the terrain engine and any running services.
         void shutdown();
+
+        //! Returns the map coordinates under the provided mouse (window) coordinates.
+        //! @param view View in which to do the query
+        //! @param mx, my Mouse coordinates
+        //! @param out_point Outputs the point under the mouse (when returning true)
+        //! @return true upon success, false upon failure
+        bool getGeoPointUnderMouse(
+            osg::View*  view,
+            float       mx,
+            float       my,
+            GeoPoint&   out_point) const;
 
     public: // osg::Object
 

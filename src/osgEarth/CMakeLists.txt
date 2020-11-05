@@ -153,6 +153,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
+    ImGuiUtils
     InstanceBuilder
     InstanceCloud
     IntersectionPicker

@@ -52,7 +52,7 @@ TerrainRenderData::setup(const Map* map,
     // Create a new State object to track sampler and uniform settings
     _drawState = new DrawState();
     _drawState->_bindings = &bindings;
-    
+
     // Is this a depth camera? Because if it is, we don't need any color layers.
     const osg::Camera* cam = cv->getCurrentCamera();
     bool isDepthCamera = CameraUtils::isDepthCamera(cam);
@@ -76,7 +76,8 @@ TerrainRenderData::setup(const Map* map,
                 VisibleLayer* visLayer = dynamic_cast<VisibleLayer*>(layer);
                 if (visLayer)
                 {
-                    render = visLayer->getVisible();
+                    // Check the visibility flag as well as the cull mask
+                    render = visLayer->getVisible() && ((cv->getTraversalMask() & visLayer->getMask()) != 0);
                 }
 
                 if (render)

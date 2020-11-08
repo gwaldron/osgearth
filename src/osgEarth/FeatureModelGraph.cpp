@@ -56,7 +56,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Util;
 
 #undef USE_PROXY_NODE_FOR_TESTING
 #define OE_TEST OE_NULL

@@ -44,6 +44,7 @@ _modKeyMask(osgGA::GUIEventAdapter::MODKEY_LEFT_ALT)
 
 SelectExtentTool::~SelectExtentTool()
 {
+    //nop
 }
 
 void
@@ -57,12 +58,6 @@ SelectExtentTool::rebuild()
 
     if ( !_mapNode.valid())
         return;
-
-    if ( _mapNode->getMapSRS()->isProjected() )
-    {
-        OE_WARN << LC << "Sorry, MeasureTool does not yet support projected maps" << std::endl;
-        return;
-    }
 
     _feature = new Feature(new Ring(), getMapNode()->getMapSRS());
     _feature->geoInterp() = GEOINTERP_RHUMB_LINE;
@@ -82,7 +77,6 @@ SelectExtentTool::rebuild()
     _root->addChild(_featureNode.get());
 
     GLUtils::setLighting(_featureNode->getOrCreateStateSet(), osg::StateAttribute::OFF);
-
 }
 
 bool

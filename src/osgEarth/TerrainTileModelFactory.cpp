@@ -98,6 +98,7 @@ CreateTileManifest::CreateTileManifest()
     _includesElevation = false;
     _includesConstraints = false;
     _includesLandCover = false;
+    _progressive.setDefault(false);
 }
 
 void CreateTileManifest::insert(const Layer* layer)
@@ -188,6 +189,11 @@ bool CreateTileManifest::includesConstraints() const
 bool CreateTileManifest::includesLandCover() const
 {
     return empty() || _includesLandCover;
+}
+
+void CreateTileManifest::setProgressive(bool value)
+{
+    _progressive = value;
 }
 
 //.........................................................................

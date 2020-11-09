@@ -51,6 +51,10 @@ namespace osgEarth
         //! Does the manifest exclude this layer?
         bool excludes(const Layer* layer) const;
 
+        //! Sets whether to apply the update progressively (in LOD order)
+        void setProgressive(bool value);
+        const optional<bool> progressive() const { return _progressive; }
+
         //! Is the manifest empty (meaning ALL available layers should be loaded)?
         bool empty() const;
 
@@ -76,6 +80,7 @@ namespace osgEarth
         bool _includesElevation;
         bool _includesConstraints;
         bool _includesLandCover;
+        optional<bool> _progressive;
     };
 
     /**

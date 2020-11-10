@@ -56,6 +56,7 @@ int usage(char** argv)
         << "\n    --osg-options [OSG options string]  : options to pass to OSG readers/writers"
         << "\n    --extents [minLat] [minLong] [maxLat] [maxLong] : Lat/Long extends to copy"
         << "\n    --no-overwrite                      : skip tiles that already exist in the destination"
+        << "\n    --threads [int]                     : go faster by using [n] working threads"
         << std::endl;
 
     return 0;
@@ -246,11 +247,13 @@ struct ProgressReporter : public osgEarth::ProgressCallback
  *      --max-level [int]     : max level of detail to copy
  *      --extents [minLat] [minLong] [maxLat] [maxLong] : Lat/Long extends to copy (*)
  *      --no-overwrite        : don't overwrite data that already exists
+ *      --threads [int]       : number of threads to launch
  *
  * OSG arguments:
  *
  *      -O <string>           : OSG Options string (plugin options)
  *
+ * Of course, the output layer must support writing.
  * Of course, the output layer must support writing.
  */
 int

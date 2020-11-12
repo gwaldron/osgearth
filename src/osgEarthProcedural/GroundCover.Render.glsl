@@ -104,10 +104,22 @@ uniform sampler3D OE_WIND_TEX;
 uniform mat4 OE_WIND_TEX_MATRIX;
 #endif
 
+uniform float shmoo;
 
 float rescale(float d, float v0, float v1)
 {
     return clamp((d-v0)/(v1-v0), 0, 1);
+}
+
+in vec3 oe_gc_flap;
+uniform float osg_FrameTime;
+
+// remap x from [0..1] to [lo..hi]
+float remap(float x, float lo, float hi) {
+    return lo + x * (hi - lo);
+}
+float unit(float x, float lo, float hi) {
+    return clamp((x - lo) / (hi - lo), 0.0, 1.0);
 }
 
 flat out uint64_t oe_gc_texHandle;
@@ -134,12 +146,15 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);
-    float width = instance[i].width * falloff;
+    float width = instance[i].width;
     float height = instance[i].height * falloff;
 
     oe_gc_distance = 1.0 - falloff;
 
     int which = gl_VertexID & 7; // mod8 - there are 8 verts per instance
+
+    // apply color darkening by distance
+    vp_Color.rgb *= clamp(1.0 - nRange, 0.5, 1.0);
 
 #ifdef OE_IS_SHADOW_CAMERA
 
@@ -281,17 +296,6 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
             (1.0 + PSR_BUFFER - instance[i].pixelSizeRatio) / PSR_BUFFER, 
             0, 1);
     }
-}
-
-in vec3 oe_gc_flap;
-uniform float osg_FrameTime;
-
-// remap x from [0..1] to [lo..hi]
-float remap(float x, float lo, float hi) {
-    return lo + x * (hi - lo);
-}
-float unit(float x, float lo, float hi) {
-    return clamp((x - lo) / (hi - lo), 0.0, 1.0);
 }
 
 //uniform float demo_wind;

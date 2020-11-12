@@ -164,8 +164,9 @@ namespace osgEarth
                 const FeatureProfile*     profile,
                 const Query&              query,
                 const FeatureFilterChain* filters,
-                ProgressCallback*         progress,
-                bool                      rewindPolygons
+                bool                      rewindPolygons,
+                unsigned                  chunkSize,
+                ProgressCallback*         progress
                 );
 
             //! Create a feature cursor that will just iterate over

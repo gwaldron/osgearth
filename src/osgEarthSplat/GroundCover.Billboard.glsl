@@ -282,6 +282,8 @@ float accel(float x) {
     return x * x;
 }
 
+uniform float shmoo;
+
 void oe_GroundCover_FS(inout vec4 color)
 {
     if (oe_GroundCover_atlasIndex < 0.0)
@@ -292,20 +294,11 @@ void oe_GroundCover_FS(inout vec4 color)
     vec2 tc = oe_GroundCover_texCoord;
 
 #ifdef OE_WIND_TEX
-    // sample the local wind map.
-    float windEffect = abs(tc.x*2.0 - 1.0) * tc.y;
-
+    float windEffect = abs(tc.x*2.0 - 1.0) * tc.y; // strength depends on where on the tree
     vec3 windDir = oe_gc_windData.xyz;
-
-    const float rate = 0.005;
+    float rate = 0.05 * oe_gc_windData.a;
     vec4 noise_moving = textureLod(oe_GroundCover_noiseTex, oe_layer_tilec.st + osg_FrameTime * rate, 0);
-    float windSpeedVariation = remap(noise_moving[2], -0.2, 1.4);
-    float windSpeed = oe_gc_windData.a * windSpeedVariation;
-
-    vec3 b = windDir * windSpeed * windEffect;
-
-    tc.x = clamp(tc.x + b.x, 0, 1);
-
+    tc.x += 0.05 * windEffect * remap(noise_moving[2], -1.0, 1.0);
 #endif
 
     // modulate the texture

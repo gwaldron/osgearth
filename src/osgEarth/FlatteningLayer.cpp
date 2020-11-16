@@ -22,6 +22,7 @@
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Containers>
 #include <osgEarth/rtree.h>
+#include <osgEarth/Metrics>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
@@ -444,6 +445,8 @@ namespace
         WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
         bool fillAllPixels, ProgressCallback* progress)
     {
+        OE_PROFILING_ZONE;
+
         double maxBufferDistance = 0.0;
         for (auto& w : widths)
         {
@@ -458,217 +461,221 @@ namespace
         double col_interval = ex.width() / (double)(hf->getNumColumns() - 1);
         double row_interval = ex.height() / (double)(hf->getNumRows() - 1);
 
-        osg::Vec3d Pex, P, PROJ;
+        osg::Vec3d P, PROJ;
         GeoPoint EP(geomSRS, 0, 0, 0);
 
         ElevationSample elevSample;
 
-        bool needsTransform = ex.getSRS() != geomSRS;
+        Vec3dVector pixels;
+        pixels.reserve(hf->getNumRows() * hf->getNumColumns());
 
-        // Loop over the new heightfield.
-        for (unsigned col = 0; col < hf->getNumColumns(); ++col)
+        // Accumulate all the pixels so we can transform them in one go.
+        for (unsigned row = 0; row < hf->getNumRows(); ++row)
         {
-            Pex.x() = ex.xMin() + (double)col * col_interval;
-
-            for (unsigned row = 0; row < hf->getNumRows(); ++row)
+            double y = ex.yMin() + (double)row * row_interval;
+            for (unsigned col = 0; col < hf->getNumColumns(); ++col)
             {
-                // check for cancelation periodically
-                //if (progress && progress->isCanceled())
-                //    return false;
+                double x = ex.xMin() + (double)col * col_interval;
+                pixels.emplace_back(x, y, 0.0);
+            }
+        }
 
-                Pex.y() = ex.yMin() + (double)row * row_interval;
+        // Transform all of the pixel locations to the geometry SRS at once.
+        if (ex.getSRS() != geomSRS)
+        {
+            ex.getSRS()->transform(pixels, geomSRS);
+        }
 
-                // Move the point into the working SRS if necessary
-                if (needsTransform)
-                    ex.getSRS()->transform(Pex, geomSRS, P);
+        for (unsigned int pix = 0; pix < pixels.size(); ++pix)
+        {
+            osg::Vec3d& P = pixels[pix];
+            unsigned int row = pix / hf->getNumColumns();
+            unsigned int col = pix % hf->getNumColumns();
+
+            // For each point, we need to find the closest line segments to that point
+            // because the elevation values on these line segments will be the flattening
+            // value. There may be more than one line segment that falls within the search
+            // radius; we will collect up to MaxSamples of these for each heightfield point.
+            static const unsigned Maxsamples = 4;
+            Samples samples;
+
+            //const LineSegmentList& candidateSegments = segments;
+            std::vector< unsigned int > hits;
+
+            index.KNNSearch(P.ptr(),
+                &hits,
+                nullptr,
+                ~0u,
+                maxBufferDistance);
+
+            for (auto hit : hits)
+            {
+                const LineSegment& segment = segments[hit];
+
+                Widths w = widths[segment.geomIndex];
+
+                double innerRadius = w.lineWidth * 0.5;
+                double outerRadius = innerRadius + w.bufferWidth;
+                double outerRadius2 = outerRadius * outerRadius;
+
+                // AB is a candidate line segment:
+                const osg::Vec3d& A = segment.A;
+                const osg::Vec3d& B = segment.B;
+
+                osg::Vec3d AB = B - A;    // current segment AB
+
+                double t;                 // parameter [0..1] on segment AB
+                double D2;                // shortest distance from point P to segment AB, squared
+                double L2 = AB.length2(); // length (squared) of segment AB
+                osg::Vec3d AP = P - A;    // vector from endpoint A to point P
+
+                if (L2 == 0.0)
+                {
+                    // trivial case: zero-length segment
+                    t = 0.0;
+                    D2 = AP.length2();
+                }
                 else
-                    P = Pex;
-
-                // For each point, we need to find the closest line segments to that point
-                // because the elevation values on these line segments will be the flattening
-                // value. There may be more than one line segment that falls within the search
-                // radius; we will collect up to MaxSamples of these for each heightfield point.
-                static const unsigned Maxsamples = 4;
-                Samples samples;
-
-                //const LineSegmentList& candidateSegments = segments;
-                std::vector< unsigned int > hits;
-
-                index.KNNSearch(P.ptr(),
-                    &hits,
-                    nullptr,
-                    ~0u,
-                    maxBufferDistance);
-
-                 for (auto hit: hits)
                 {
-                    const LineSegment& segment = segments[hit];
+                    // Calculate parameter "t" [0..1] which will yield the closest point on AB to P.
+                    // Clamping it means the closest point won't be beyond the endpoints of the segment.
+                    t = clamp((AP * AB) / L2, 0.0, 1.0);
 
-                    Widths w = widths[segment.geomIndex];
+                    // project our point P onto segment AB:
+                    PROJ.set(A + AB * t);
 
-                    double innerRadius = w.lineWidth * 0.5;
-                    double outerRadius = innerRadius + w.bufferWidth;
-                    double outerRadius2 = outerRadius * outerRadius;
+                    // measure the distance (squared) from P to the projected point on AB:
+                    D2 = (P - PROJ).length2();
+                }
 
-                    // AB is a candidate line segment:
-                    const osg::Vec3d& A = segment.A;
-                    const osg::Vec3d& B = segment.B;
-
-                    osg::Vec3d AB = B - A;    // current segment AB
-
-                    double t;                 // parameter [0..1] on segment AB
-                    double D2;                // shortest distance from point P to segment AB, squared
-                    double L2 = AB.length2(); // length (squared) of segment AB
-                    osg::Vec3d AP = P - A;    // vector from endpoint A to point P
-
-                    if (L2 == 0.0)
+                // If the distance from our point to the line segment falls within
+                // the maximum flattening distance, store it.
+                if (D2 <= outerRadius2)
+                {
+                    // see if P is a new sample.
+                    Sample* b;
+                    if (samples.size() < Maxsamples)
                     {
-                        // trivial case: zero-length segment
-                        t = 0.0;
-                        D2 = AP.length2();
+                        // If we haven't collected the maximum number of samples yet,
+                        // just add this to the list:
+                        samples.push_back(Sample());
+                        b = &samples.back();
                     }
                     else
                     {
-                        // Calculate parameter "t" [0..1] which will yield the closest point on AB to P.
-                        // Clamping it means the closest point won't be beyond the endpoints of the segment.
-                        t = clamp((AP * AB) / L2, 0.0, 1.0);
+                        // If we are maxed out on samples, find the farthest one we have so far
+                        // and replace it if the new point is closer:
+                        unsigned max_i = 0;
+                        for (unsigned i = 1; i < samples.size(); ++i)
+                            if (samples[i].D2 > samples[max_i].D2)
+                                max_i = i;
 
-                        // project our point P onto segment AB:
-                        PROJ.set(A + AB * t);
+                        b = &samples[max_i];
 
-                        // measure the distance (squared) from P to the projected point on AB:
-                        D2 = (P - PROJ).length2();
+                        if (b->D2 < D2)
+                            b = 0L;
                     }
 
-                    // If the distance from our point to the line segment falls within
-                    // the maximum flattening distance, store it.
-                    if (D2 <= outerRadius2)
+                    if (b)
                     {
-                        // see if P is a new sample.
-                        Sample* b;
-                        if (samples.size() < Maxsamples)
-                        {
-                            // If we haven't collected the maximum number of samples yet,
-                            // just add this to the list:
-                            samples.push_back(Sample());
-                            b = &samples.back();
-                        }
-                        else
-                        {
-                            // If we are maxed out on samples, find the farthest one we have so far
-                            // and replace it if the new point is closer:
-                            unsigned max_i = 0;
-                            for (unsigned i = 1; i < samples.size(); ++i)
-                                if (samples[i].D2 > samples[max_i].D2)
-                                    max_i = i;
-
-                            b = &samples[max_i];
-
-                            if (b->D2 < D2)
-                                b = 0L;
-                        }
-
-                        if (b)
-                        {
-                            b->D2 = D2;
-                            b->A = A;
-                            b->B = B;
-                            b->T = t;
-                            b->innerRadius = innerRadius;
-                            b->outerRadius = outerRadius;
-                        }
+                        b->D2 = D2;
+                        b->A = A;
+                        b->B = B;
+                        b->T = t;
+                        b->innerRadius = innerRadius;
+                        b->outerRadius = outerRadius;
                     }
                 }
+            }
 
-                // Remove unnecessary sample points that lie on the endpoint of a segment
-                // that abuts another segment in our list.
-                for (unsigned i = 0; i < samples.size();) {
-                    if (!isSampleValid(&samples[i], samples)) {
-                        samples[i] = samples[samples.size() - 1];
-                        samples.resize(samples.size() - 1);
-                    }
-                    else ++i;
+            // Remove unnecessary sample points that lie on the endpoint of a segment
+            // that abuts another segment in our list.
+            for (unsigned i = 0; i < samples.size();) {
+                if (!isSampleValid(&samples[i], samples)) {
+                    samples[i] = samples[samples.size() - 1];
+                    samples.resize(samples.size() - 1);
                 }
+                else ++i;
+            }
 
-                // Now that we are done searching for line segments close to our point,
-                // we will collect the elevations at our sample points and use them to
-                // create a new elevation value for our point.
-                if (samples.size() > 0)
+            // Now that we are done searching for line segments close to our point,
+            // we will collect the elevations at our sample points and use them to
+            // create a new elevation value for our point.
+            if (samples.size() > 0)
+            {
+                // The original elevation at our point:
+                //float elevP = pool->getElevation(P.x(), P.y());
+
+                EP.x() = P.x(), EP.y() = P.y();
+
+                elevSample = pool->getSample(EP, workingSet);
+                float elevP = elevSample.elevation().getValue();
+
+                for (unsigned i = 0; i < samples.size(); ++i)
                 {
-                    // The original elevation at our point:
-                    //float elevP = pool->getElevation(P.x(), P.y());
+                    Sample& sample = samples[i];
 
-                    EP.x() = P.x(), EP.y() = P.y();
+                    sample.D = sqrt(sample.D2);
 
-                    elevSample = pool->getSample(EP, workingSet);
-                    float elevP = elevSample.elevation().getValue();
+                    // Blend factor. 0 = distance is less than or equal to the inner radius;
+                    //               1 = distance is greater than or equal to the outer radius.
+                    double blend = clamp(
+                        (sample.D - sample.innerRadius) / (sample.outerRadius - sample.innerRadius),
+                        0.0, 1.0);
 
-                    for (unsigned i = 0; i < samples.size(); ++i)
+                    if (sample.T == 0.0)
                     {
-                        Sample& sample = samples[i];
-
-                        sample.D = sqrt(sample.D2);
-
-                        // Blend factor. 0 = distance is less than or equal to the inner radius;
-                        //               1 = distance is greater than or equal to the outer radius.
-                        double blend = clamp(
-                            (sample.D - sample.innerRadius) / (sample.outerRadius - sample.innerRadius),
-                            0.0, 1.0);
-
-                        if (sample.T == 0.0)
-                        {
-                            EP.x() = sample.A.x(), EP.y() = sample.A.y();
-                            sample.elevPROJ = pool->getSample(EP, workingSet).elevation();
-                            if (sample.elevPROJ == NO_DATA_VALUE)
-                                sample.elevPROJ = elevP;
-                        }
-                        else if (sample.T == 1.0)
-                        {
-                            EP.x() = sample.B.x(), EP.y() = sample.B.y();
-                            sample.elevPROJ = pool->getSample(EP, workingSet).elevation();
-                            if (sample.elevPROJ == NO_DATA_VALUE)
-                                sample.elevPROJ = elevP;
-                        }
-                        else
-                        {
-                            EP.x() = sample.A.x(), EP.y() = sample.A.y();
-                            float elevA = pool->getSample(EP, workingSet).elevation();
-                            if (elevA == NO_DATA_VALUE)
-                                elevA = elevP;
-
-                            EP.x() = sample.B.x(), EP.y() = sample.B.y();
-                            float elevB = pool->getSample(EP, workingSet).elevation();
-                            if (elevB == NO_DATA_VALUE)
-                                elevB = elevP;
-
-                            // linear interpolation of height from point A to point B on the segment:
-                            sample.elevPROJ = mix(elevA, elevB, sample.T);
-                        }
-
-                        // smoothstep interpolation of along the buffer (perpendicular to the segment)
-                        // will gently integrate the new value into the existing terrain.
-                        sample.elev = smootherstep(sample.elevPROJ, elevP, blend);
+                        EP.x() = sample.A.x(), EP.y() = sample.A.y();
+                        sample.elevPROJ = pool->getSample(EP, workingSet).elevation();
+                        if (sample.elevPROJ == NO_DATA_VALUE)
+                            sample.elevPROJ = elevP;
                     }
-
-                    // Finally, combine our new elevation values and set the new value in the output.
-                    float finalElev = interpolateSamplesIDW(samples);
-                    if (finalElev < FLT_MAX)
-                        hf->setHeight(col, row, finalElev);
+                    else if (sample.T == 1.0)
+                    {
+                        EP.x() = sample.B.x(), EP.y() = sample.B.y();
+                        sample.elevPROJ = pool->getSample(EP, workingSet).elevation();
+                        if (sample.elevPROJ == NO_DATA_VALUE)
+                            sample.elevPROJ = elevP;
+                    }
                     else
-                        hf->setHeight(col, row, elevP);
+                    {
+                        EP.x() = sample.A.x(), EP.y() = sample.A.y();
+                        float elevA = pool->getSample(EP, workingSet).elevation();
+                        if (elevA == NO_DATA_VALUE)
+                            elevA = elevP;
 
-                    wroteChanges = true;
+                        EP.x() = sample.B.x(), EP.y() = sample.B.y();
+                        float elevB = pool->getSample(EP, workingSet).elevation();
+                        if (elevB == NO_DATA_VALUE)
+                            elevB = elevP;
+
+                        // linear interpolation of height from point A to point B on the segment:
+                        sample.elevPROJ = mix(elevA, elevB, sample.T);
+                    }
+
+                    // smoothstep interpolation of along the buffer (perpendicular to the segment)
+                    // will gently integrate the new value into the existing terrain.
+                    sample.elev = smootherstep(sample.elevPROJ, elevP, blend);
                 }
 
-                else if (fillAllPixels)
-                {
-                    // No close segments were found, so just copy over the source data.
-                    EP.x() = P.x(), EP.y() = P.y();
-                    float h = pool->getSample(EP, workingSet).elevation();
-                    hf->setHeight(col, row, h);
+                // Finally, combine our new elevation values and set the new value in the output.
+                float finalElev = interpolateSamplesIDW(samples);
+                if (finalElev < FLT_MAX)
+                    hf->setHeight(col, row, finalElev);
+                else
+                    hf->setHeight(col, row, elevP);
 
-                    // Note: do not set wroteChanges to true.
-                }
+                wroteChanges = true;
+            }
+
+            else if (fillAllPixels)
+            {
+                // No close segments were found, so just copy over the source data.
+                EP.x() = P.x(), EP.y() = P.y();
+                float h = pool->getSample(EP, workingSet).elevation();
+                hf->setHeight(col, row, h);
+
+                // Note: do not set wroteChanges to true.
             }
         }
 

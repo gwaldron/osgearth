@@ -29,6 +29,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/MapNode>
+#include <osgEarth/OGRFeatureSource>
 
 #include <osg/ArgumentParser>
 #include <osg/Timer>
@@ -456,6 +457,29 @@ main(int argc, char** argv)
         GeoExtent extent(SpatialReference::get("wgs84"), minlon, minlat, maxlon, maxlat);
         visitor->addExtent( extent );
         userSetExtents = true;
+    }
+
+    // Read in an index shapefile to drive where to tile
+    std::string index;
+    while (args.read("--index", index))
+    {
+        osg::ref_ptr< OGRFeatureSource > indexFeatures = new OGRFeatureSource;
+        indexFeatures->setURL(index);
+        if (indexFeatures->open().isError())
+        {
+            OE_WARN <<  "Failed to open index " << index << ": " << indexFeatures->getStatus().toString() << std::endl;
+            return -1;
+        }
+
+        osg::ref_ptr< FeatureCursor > cursor = indexFeatures->createFeatureCursor(0);
+        while (cursor.valid() && cursor->hasMore())
+        {
+            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+            osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
+            GeoExtent ext(feature->getSRS(), featureBounds);
+            ext = ext.transform(mapNode->getMapSRS());
+            visitor->addExtent(ext);
+        }
     }
 
     // Set the level limits:

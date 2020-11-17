@@ -105,6 +105,10 @@ IF(BUILD_OSGEARTH_EXAMPLES)
         ADD_SUBDIRECTORY(osgearth_imgui)
     ENDIF()
 
+    IF (Protobuf_FOUND AND SQLITE3_FOUND)
+        ADD_SUBDIRECTORY(osgearth_mvtindex)
+    ENDIF()
+
 ENDIF(BUILD_OSGEARTH_EXAMPLES)
 
 ELSE()

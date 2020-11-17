@@ -296,7 +296,6 @@ SpatialReference(key)
 {
     _is_user_defined = true;
     _is_cube         = true;
-    _is_contiguous   = false;
     _domain = PROJECTED;
     _name = "Unified Cube";
 

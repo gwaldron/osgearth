@@ -207,7 +207,7 @@ Profile::create(const std::string& srsInitString,
     {
         OE_INFO << LC << "No extents given, making some up.\n";
         Bounds bounds;
-        if (srs->guessBounds(bounds))
+        if (srs->getBounds(bounds))
         {
             if (numTilesWideAtLod0 == 0 || numTilesHighAtLod0 == 0)
             {

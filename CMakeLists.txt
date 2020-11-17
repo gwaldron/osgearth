@@ -17,19 +17,22 @@ if(COMMAND cmake_policy)
     cmake_policy(SET CMP0028 NEW)
 endif(COMMAND cmake_policy)
 
-#
-# Set up CMake to use Solution Folders in VS.
-#
+# Set up CMake to use Solution Folders in Visual Studio.
 SET_PROPERTY( GLOBAL PROPERTY USE_FOLDERS ON )
 SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 
 PROJECT(OSGEARTH)
 
+# SDK version number (informational)
 SET(OSGEARTH_MAJOR_VERSION 3)
-SET(OSGEARTH_MINOR_VERSION 0)
+SET(OSGEARTH_MINOR_VERSION 1)
 SET(OSGEARTH_PATCH_VERSION 0)
-SET(OSGEARTH_SOVERSION     0)
 
+# Increment this each time the ABI changes
+SET(OSGEARTH_SOVERSION 100)
+
+
+# Assign a custom prefix if necessary.
 SET(OSGEARTH_PLUGIN_PREFIX "")
 
 IF (CYGWIN)
@@ -40,7 +43,7 @@ IF(MINGW)
     SET(OSGEARTH_PLUGIN_PREFIX "mingw_")
 ENDIF()
 
-# Detect out-of-source build
+# Detect out-of-source build. You should always do an out-of-source build!
 if (NOT "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
     SET(OUT_OF_SOURCE_BUILD 1)
 endif()
@@ -48,13 +51,10 @@ endif()
 SET(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 
-# We want to build SONAMES shared libraries
+# Assign SONAMEs to the shared libraries on Linux
 SET(OSGEARTH_SONAMES TRUE)
-SET(OPENTHREADS_SONAMES TRUE)
 
-SET(OpenThreads_SOURCE_DIR ${OSGEARTH_SOURCE_DIR})
-
-# Good place to look for the OSG 3rd party libs
+# Good place to look for dependencies (e.g., vcpkg)
 SET(THIRD_PARTY_DIR "" CACHE PATH "Base 3rd-party dependency folder (containing include, lib, bin)")
 
 IF(THIRD_PARTY_DIR)
@@ -63,46 +63,47 @@ IF(THIRD_PARTY_DIR)
 ENDIF(THIRD_PARTY_DIR)
 
 # We have some custom .cmake scripts not in the official distribution.
-SET(CMAKE_MODULE_PATH "${OSGEARTH_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
+SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${OSGEARTH_SOURCE_DIR}/CMakeModules;${THIRD_PARTY_DIR}")
 
 # Whether to compile for GLES (mobile/web)
 SET(OSGEARTH_USE_GLES FALSE)
 
-# Detect C++11 compiler support and set a variable.
+# C++11 is required. Make sure we have it.
 INCLUDE(CXX11)
 check_for_cxx11_compiler(CXX11_AVAILABLE)
+if (NOT CXX11_AVAILABLE)
+    message(FATAL_ERROR "osgEarth requires a compiler with C++11 support")
+endif()
 
 # Special folder for build-time generated include files
 set(OSGEARTH_BUILDTIME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/build_include")
 include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 
-# Third-party sources included in osgEarth
+# Third-party sources included in the osgEarth repo
 SET(OE_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
 
-# Platform-specific stuff
+# Platform-specific settings
 INCLUDE(oe_ios)
 INCLUDE(oe_osx)
 INCLUDE(oe_unix)
 INCLUDE(oe_win32)
 
-# check if STLport is required
-OPTION(USE_STLPORT "Set to ON to build OSGEARTH with stlport instead of the default STL library." OFF)
-IF(USE_STLPORT)
-	INCLUDE_DIRECTORIES(${STLPORT_DIR}/stlport)
-	LINK_DIRECTORIES(${STLPORT_DIR}/lib)
-ENDIF()
+# ........................................................................
+# Dependencies
 
-# don't think this is necessary since we are using OpenThreads
-#FIND_PACKAGE(Threads)
-
+# Mobile/GLES:
 IF (OSGEARTH_USE_GLES)
     FIND_PACKAGE(OpenGLES) 
 ELSE ()
     FIND_PACKAGE(OpenGL)
 ENDIF (OSGEARTH_USE_GLES)
 
-FIND_PACKAGE(CURL)
-FIND_PACKAGE(GDAL)
+# required
+FIND_PACKAGE(OSG REQUIRED)
+FIND_PACKAGE(CURL REQUIRED)
+FIND_PACKAGE(GDAL REQUIRED)
+
+# optional
 FIND_PACKAGE(GEOS)
 FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(Draco)
@@ -110,15 +111,22 @@ FIND_PACKAGE(BASISU)
 FIND_PACKAGE(Tracy)
 FIND_PACKAGE(GLEW)
 FIND_PACKAGE(LIBZIP)
+FIND_PACKAGE(Protobuf)
+FIND_PACKAGE(WEBP)
+FIND_PACKAGE(Triton QUIET)
+FIND_PACKAGE(SilverLining QUIET)
 
+# Sqlite enables the MBTiles format:
 IF(SQLITE3_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_MBTILES)
 ENDIF(SQLITE3_FOUND)
 
+# DRACO enables geometry compression sometimes used in glTF:
 IF(draco_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_DRACO)
 ENDIF(draco_FOUND)
 
+# GDAL is the underlying geospatial processing SDK
 IF(GDAL_FOUND)
   IF (GDAL_VERSION VERSION_LESS 3)
     message(STATUS "Found GDAL ${GDAL_VERSION}" )
@@ -127,29 +135,30 @@ IF(GDAL_FOUND)
   ENDIF()
 ENDIF(GDAL_FOUND)
 
+# Tracy is a profiler
 OPTION(ENABLE_PROFILING "Build with support for Tracy profiler" OFF)
 IF(TRACY_FOUND AND ENABLE_PROFILING)
     ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
 ENDIF(TRACY_FOUND AND ENABLE_PROFILING)
 
-# the OGR geocoder is not always available so persent an option
+# The OGR geocoder is not always available in GDAL builds, so we turn it off by default
 OPTION(OSGEARTH_ENABLE_GEOCODER "Enable the OGR-based geocoder" OFF)
 
-FIND_PACKAGE(Triton QUIET)
-FIND_PACKAGE(SilverLining QUIET)
-FIND_PACKAGE(WEBP QUIET)
-
-FIND_PACKAGE(Protobuf QUIET)
+# Protobuf enables the MVT (Mapnik Vector Tiles) format
 SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
 
+# Duktape is the JavaScript interpreter
 SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version of Duktape")
 IF (WITH_EXTERNAL_DUKTAPE)
     FIND_PACKAGE(Duktape)
 ENDIF (WITH_EXTERNAL_DUKTAPE)
 
-# option to install shaders:
+# Whether to install shaders (glsl files).
+# If true, shaders install into a resources folder. If false, they are inlined in the 
+# code and you cannot tweak them after install.
 OPTION(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when doing a Make INSTALL" OFF)
 
+# TinyXML is an XML parsing library
 SET (WITH_EXTERNAL_TINYXML FALSE CACHE BOOL "Use bundled or system wide version of TinyXML")
 IF (WITH_EXTERNAL_TINYXML)
     FIND_PACKAGE(TinyXML)
@@ -163,13 +172,12 @@ SET(CMAKE_MINSIZEREL_POSTFIX "s" CACHE STRING "add a MinSizeRel postfix, usually
 
 INCLUDE(OsgEarthMacroUtils)
 
+# OpenSceneGraph is the 3D rendering toolkit
 DETECT_OSG_VERSION()
 
 IF (NOT OPENSCENEGRAPH_VERSION)
 	SET(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
 ENDIF(NOT OPENSCENEGRAPH_VERSION)
-
-FIND_PACKAGE(OSG)
 
 # Make the headers visible to everything
 INCLUDE_DIRECTORIES(
@@ -177,6 +185,7 @@ INCLUDE_DIRECTORIES(
     ${OSG_INCLUDE_DIR}
     ${OSG_GEN_INCLUDE_DIR}
 )
+
 
 ################################################################################
 # Create bin and lib directories if required
@@ -246,7 +255,7 @@ ENDIF(LIBZIP_FOUND)
 OPTION(BUILD_APPLICATIONS "Enable build of Applications" ON)
 OPTION(BUILD_TESTS "Enable build of Tests" ON)
 
-# OE Core
+# OE Libraries
 ADD_SUBDIRECTORY(src)
 
 # Add the docs to the project for convenience

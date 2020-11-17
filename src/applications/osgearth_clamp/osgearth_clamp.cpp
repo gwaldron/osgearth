@@ -25,7 +25,6 @@
 #include <osgEarth/OGRFeatureSource>
 #include <osgEarth/Feature>
 #include <osgEarth/TerrainTileModelFactory>
-#include <OpenThreads/Thread>
 
 #define LC "[clamp] "
 

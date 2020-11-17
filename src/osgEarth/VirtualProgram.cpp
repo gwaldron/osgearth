@@ -36,7 +36,6 @@
 #include <osg/GLExtensions>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
-#include <OpenThreads/Thread>
 #include <fstream>
 #include <sstream>
 #include <stdlib.h> // getenv

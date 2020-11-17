@@ -29,7 +29,6 @@
 #include <osgEarthSplat/GroundCoverLayer>
 #include <osgEarthSplat/NoiseTextureFactory>
 #include <osgEarthSplat/GroundCoverFeatureGenerator>
-#include <OpenThreads/Thread>
 
 #define LC "[exportgroundcover] "
 

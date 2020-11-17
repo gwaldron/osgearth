@@ -306,6 +306,12 @@ unsigned osgEarth::Threading::getCurrentThreadId()
 #endif
 }
 
+unsigned osgEarth::Threading::getConcurrency()
+{
+    int value = std::thread::hardware_concurrency();
+    return value > 0 ? (unsigned)value : 4u;
+}
+
 //...................................................................
 
 Event::Event() :

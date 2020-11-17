@@ -28,9 +28,9 @@
 extern "C" {
 
 #define OSGEARTH_MAJOR_VERSION    3
-#define OSGEARTH_MINOR_VERSION    0
+#define OSGEARTH_MINOR_VERSION    1
 #define OSGEARTH_PATCH_VERSION    0
-#define OSGEARTH_SOVERSION        0
+#define OSGEARTH_SOVERSION        30101
 #define OSGEARTH_RC_VERSION       0
 #define OSGEARTH_DEVEL_VERSION    0    // 0 = release; >0 = interim devel version
 

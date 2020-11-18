@@ -192,7 +192,7 @@ ENDIF (WITH_EXTERNAL_TINYXML)
 # postfix settings for various configs
 SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a Debug postfix, usually d on windows")
 SET(CMAKE_RELEASE_POSTFIX "" CACHE STRING "add a Release postfix, usually empty on windows")
-SET(CMAKE_RELWITHDEBINFO_POSTFIX "rd" CACHE STRING "add a RelWithDebInfo postfix, usually empty on windows")
+SET(CMAKE_RELWITHDEBINFO_POSTFIX "" CACHE STRING "add a RelWithDebInfo postfix, usually empty on windows")
 SET(CMAKE_MINSIZEREL_POSTFIX "s" CACHE STRING "add a MinSizeRel postfix, usually empty on windows")
 
 INCLUDE(OsgEarthMacroUtils)

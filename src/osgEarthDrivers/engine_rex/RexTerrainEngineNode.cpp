@@ -213,6 +213,7 @@ RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
 void
 RexTerrainEngineNode::shutdown()
 {
+    TerrainEngineNode::shutdown();
     _loader->clear();
 }
 
@@ -377,7 +378,8 @@ RexTerrainEngineNode::computeBound() const
 }
 
 void
-RexTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
+RexTerrainEngineNode::invalidateRegion(
+    const GeoExtent& extent,
     unsigned         minLevel,
     unsigned         maxLevel)
 {
@@ -404,7 +406,8 @@ RexTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
 }
 
 void
-RexTerrainEngineNode::invalidateRegion(const std::vector<const Layer*> layers,
+RexTerrainEngineNode::invalidateRegion(
+    const std::vector<const Layer*> layers,
     const GeoExtent& extent,
     unsigned minLevel,
     unsigned maxLevel)
@@ -419,6 +422,10 @@ RexTerrainEngineNode::invalidateRegion(const std::vector<const Layer*> layers,
         }
 
         CreateTileManifest manifest;
+
+        // When updating a subset of layers, override progressive mode
+        // so that the visible LOD gets updated first:
+        manifest.setProgressive(false);
 
         for(std::vector<const Layer*>::const_iterator i = layers.begin();
             i != layers.end();

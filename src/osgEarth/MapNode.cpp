@@ -922,3 +922,17 @@ MapNode::getClampingManager()
 {
     return _clampingManager;
 }
+
+bool
+MapNode::getGeoPointUnderMouse(
+    osg::View* view,
+    float mx, float my,
+    GeoPoint& output) const
+{
+    osg::Vec3d world;
+    if (getTerrain()->getWorldCoordsUnderMouse(view, mx, my, world))
+    {
+        return output.fromWorld(getMapSRS(), world);
+    }
+    return false;
+}

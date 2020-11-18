@@ -196,7 +196,7 @@ namespace
 
                 duk_idx_t geometry_i = duk_push_object(ctx);  // [global] [feature] [geometry]
                 {
-                    duk_push_string(ctx, Geometry::toString(feature->getGeometry()->getType()).c_str()); // [global] [feature] [geometry] [type]
+                    duk_push_string(ctx, Geometry::toString(feature->getGeometry()->getComponentType()).c_str()); // [global] [feature] [geometry] [type]
                     duk_put_prop_string(ctx, geometry_i, "type"); // [global] [feature] [geometry]
                 }
                 duk_put_prop_string(ctx, feature_i, "geometry");

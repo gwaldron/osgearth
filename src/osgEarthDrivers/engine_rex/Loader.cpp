@@ -404,7 +404,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                         if (merged)
                         {
                             req->setState(Request::FINISHED);
-                            //OE_INFO << LC << req->_key.str() << " finished (delays = " << req->_delayCount << ")" << std::endl;
+                            //OE_INFO << LC << req->_key.str() << " finished (pri=" << req->_priority << ")" << std::endl;
                         }
                         else
                         {
@@ -519,6 +519,8 @@ PagerLoader::addChild(osg::Node* node)
 
                     if ( REPORT_ACTIVITY )
                         Registry::instance()->endActivity( req->getName() );
+
+                    //OE_INFO << "Fin: " << req->_key.str() << " : " << _clock->getFrame() << std::endl;
                 }
             }                
 
@@ -577,6 +579,8 @@ PagerLoader::runAndRelease(UID requestUID)
         request->setState(Request::RUNNING);
 
         osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request.get(), this);
+
+        //OE_INFO << LC << "Running: " << request->_key.str() << ", tick=" << request->getLastFrameSubmitted() << std::endl;
 
         if (request->run(prog.get()) == false)
         {

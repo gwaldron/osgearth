@@ -142,7 +142,6 @@ SpatialReference::SpatialReference(void* handle) :
     _is_north_polar(false),
     _is_south_polar(false),
     _is_cube(false),
-    _is_contiguous(true),
     _is_user_defined(false),
     _is_ltp(false),
     _is_spherical_mercator(false),
@@ -164,7 +163,6 @@ SpatialReference::SpatialReference(const Key& key) :
     _is_north_polar(false),
     _is_south_polar(false),
     _is_cube(false),
-    _is_contiguous(true),
     _is_user_defined(false),
     _is_ltp(false),
     _is_spherical_mercator(false),
@@ -173,10 +171,17 @@ SpatialReference::SpatialReference(const Key& key) :
     _mutex("OE.SRS")
 {
     // shortcut for spherical-mercator:
-    if (key.horizLower == "spherical-mercator" || 
-        key.horizLower == "epsg:900913"        || 
-        key.horizLower == "epsg:3785"          || 
-        key.horizLower == "epsg:102113")
+    // https://wiki.openstreetmap.org/wiki/EPSG:3857
+    if (key.horizLower == "spherical-mercator" ||
+        key.horizLower == "global-mercator"    ||
+        key.horizLower == "web-mercator"       ||
+        key.horizLower == "epsg:3857"          ||
+        key.horizLower == "epsg:900913"        ||
+        key.horizLower == "epsg:102100"        ||
+        key.horizLower == "epsg:102113"        ||
+        key.horizLower == "epsg:3785"          ||
+        key.horizLower == "epsg:3587"          ||
+        key.horizLower == "osgeo:41001")
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         _setup.name = "Spherical Mercator";
@@ -185,17 +190,17 @@ SpatialReference::SpatialReference(const Key& key) :
         _setup.vert = key.vertLower;
     }
 
-    // ellipsoidal ("world") mercator:
+    // true ellipsoidal ("world") mercator:
+    // https://epsg.io/3395
+    // https://gis.stackexchange.com/questions/259121/transformation-functions-for-epsg3395-projection-vs-epsg3857
     else if (
         key.horizLower == "world-mercator" ||
+        key.horizLower == "epsg:3395" ||
         key.horizLower == "epsg:54004" ||
         key.horizLower == "epsg:9804" ||
-        key.horizLower == "epsg:3832" ||
-        key.horizLower == "epsg:102100" ||
-        key.horizLower == "esri:102100" ||
-        key.horizLower == "osgeo:41001")
+        key.horizLower == "epsg:3832")
     {
-        _setup.name = "World Mercator";
+        _setup.name = "World Mercator (WGS84)";
         _setup.type = INIT_PROJ;
         _setup.horiz = "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs";
         _setup.vert = key.vertLower;
@@ -232,7 +237,6 @@ SpatialReference::SpatialReference(const Key& key) :
         _setup.type = INIT_USER;
         _setup.horiz = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
         _is_cube = true;
-        _is_contiguous = false;
     }
 
     else if (
@@ -360,6 +364,13 @@ SpatialReference::getLocal() const
     return local;
 }
 
+bool
+SpatialReference::getBounds(Bounds& output) const
+{
+    output = _bounds;
+    return _bounds.isValid();
+}
+
 void*
 SpatialReference::getHandle() const
 {
@@ -436,71 +447,6 @@ SpatialReference::fixWKT()
 
 /****************************************************************************/
 
-#if 0
-SpatialReference::SpatialReference() :
-    _initialized    ( false ),
-    _owns_handle    ( true ),
-    _is_geographic  ( false ),
-    _is_geocentric  ( false ),
-    _is_mercator    ( false ),
-    _is_north_polar ( false ), 
-    _is_south_polar ( false ),
-    _is_cube        ( false ),
-    _is_contiguous  ( false ),
-    _is_user_defined( false ),
-    _is_ltp         ( false ),
-    _is_spherical_mercator( false ),
-    _ellipsoidId(0u),
-    _mutex("SpatialReference(OE)")
-{
-    // nop
-}
-
-SpatialReference::SpatialReference(void* handle,
-                                   const std::string& init_type) :
-_initialized    ( false ),
-_handle         ( handle ),
-_owns_handle    ( true ),
-_init_type      ( init_type ),
-_is_geographic  ( false ),
-_is_geocentric  ( false ),
-_is_mercator    ( false ),
-_is_north_polar ( false ), 
-_is_south_polar ( false ),
-_is_cube        ( false ),
-_is_contiguous  ( false ),
-_is_user_defined( false ),
-_is_ltp         ( false ),
-_is_spherical_mercator( false ),
-_ellipsoidId(0u),
-_mutex("SpatialReference(OE)")
-{
-    // nop
-    _threadId = std::this_thread::get_id();
-}
-
-SpatialReference::SpatialReference(void* handle, bool ownsHandle) :
-osg::Referenced( true ),
-_initialized   ( false ),
-_handle        ( handle ),
-_owns_handle   ( ownsHandle ),
-_is_ltp        ( false ),
-_is_geocentric ( false ),
-_is_geographic ( false ),
-_is_mercator   ( false ),
-_is_spherical_mercator ( false ),
-_is_north_polar  ( false ),
-_is_south_polar  ( false ),
-_is_cube         ( false ),
-_is_contiguous   ( false ),
-_is_user_defined ( false ),
-_mutex("SpatialReference(OE)")
-{
-    //nop
-    _threadId = std::this_thread::get_id();
-}
-#endif
-
 SpatialReference::~SpatialReference()
 {
     //nop
@@ -554,17 +500,16 @@ SpatialReference::getUnits() const
     return _units;
 }
 
+double
+SpatialReference::getReportedLinearUnits() const
+{
+    return _reportedLinearUnits;
+}
 
 const std::string&
 SpatialReference::getWKT() const 
 {
     return _wkt;
-}
-
-const std::string&
-SpatialReference::getInitType() const
-{
-    return _init_type;
 }
 
 const VerticalDatum*
@@ -628,7 +573,6 @@ SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDa
         isSphericalMercator() != rhs->isSphericalMercator() ||
         isNorthPolar()  != rhs->isNorthPolar()  ||
         isSouthPolar()  != rhs->isSouthPolar()  ||
-        isContiguous()  != rhs->isContiguous()  ||
         isUserDefined() != rhs->isUserDefined() ||
         isCube()        != rhs->isCube()        ||
         isLTP()         != rhs->isLTP() )
@@ -849,12 +793,6 @@ SpatialReference::isSouthPolar() const
 }
 
 bool
-SpatialReference::isContiguous() const
-{
-    return _is_contiguous;
-}
-
-bool
 SpatialReference::isUserDefined() const
 {
     return _is_user_defined;
@@ -865,16 +803,6 @@ SpatialReference::isCube() const
 {
     return _is_cube;
 }
-
-#if 0
-osg::CoordinateSystemNode*
-SpatialReference::createCoordinateSystemNode() const
-{
-    osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
-    populateCoordinateSystemNode( csn );
-    return csn;
-}
-#endif
 
 bool
 SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn ) const
@@ -891,12 +819,7 @@ SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn )
         csn->setFormat( "PROJ4" );
         csn->setCoordinateSystem( _proj4 );
     }
-    else
-    {
-        csn->setFormat( _init_type );
-        csn->setCoordinateSystem( getKey().horiz );
-    }
-    
+
     csn->setEllipsoidModel( _ellipsoid.get() );
     
     return true;
@@ -1455,7 +1378,6 @@ SpatialReference::init()
     if (_is_ltp)
     {
         _is_user_defined = true;
-        _is_contiguous = true;
         _domain = PROJECTED;
     }
     else if (_is_cube)
@@ -1527,6 +1449,7 @@ SpatialReference::init()
     else
         _units = Units(units, units, Units::TYPE_LINEAR, unitMultiplier);
 
+    _reportedLinearUnits = OSRGetLinearUnits(handle, nullptr);
     
     // Try to extract the PROJ4 initialization string:
     char* proj4buf;
@@ -1561,51 +1484,36 @@ SpatialReference::init()
     {
         _key.horiz = _proj4;
         _key.horizLower = toLower(_key.horiz);
-        _init_type = "PROJ4";
     }
     else if ( !_wkt.empty() )
     {
         _key.horiz = _wkt;
         _key.horizLower = toLower(_key.horiz);
-        _init_type = "WKT";
     }
     if ( _vdatum.valid() )
     {
         _key.vert = _vdatum->getInitString();
         _key.vertLower = toLower(_key.vert);
     }
-}
 
-bool
-SpatialReference::guessBounds(Bounds& bounds) const
-{
+    // Guess the appropriate bounds for this SRS.
     if (isGeographic() || isGeocentric())
     {
-        bounds.set(-180.0, -90.0, 180.0, 90.0);
-        return true;
+        _bounds.set(-180.0, -90.0, 180.0, 90.0);
     }
-    
+
     if (isMercator() || isSphericalMercator())
     {
-        bounds.set(MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY);
-        return true;
+        _bounds.set(MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY);
     }
 
     int isNorth;
-    if (OSRGetUTMZone(getHandle(), &isNorth))
+    if (OSRGetUTMZone(handle, &isNorth))
     {
         if (isNorth)
-            bounds.set(166000, 0, 834000, 9330000);
+            _bounds.set(166000, 0, 834000, 9330000);
         else
-            bounds.set(166000, 1116915, 834000, 10000000);
-        return true;
+            _bounds.set(166000, 1116915, 834000, 10000000);
     }
-
-    return false;
 }
 
-double
-SpatialReference::getReportedLinearUnits() const
-{
-    return OSRGetLinearUnits(getHandle(), nullptr);
-}

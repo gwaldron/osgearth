@@ -19,7 +19,7 @@
 #include "RocksDBCache"
 #include "RocksDBCacheBin"
 #include <osgEarth/URI>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgDB/Registry>
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileUtils>

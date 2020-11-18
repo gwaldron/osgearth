@@ -447,7 +447,7 @@ namespace osgEarth { namespace Threading
             std::unique_lock<T> lock(_m);
             --_readers;
             if (_readers == 0)
-                _unlocked.notify_all();
+                _unlocked.notify_one();
         }
 
         void write_lock() {
@@ -460,7 +460,7 @@ namespace osgEarth { namespace Threading
         void write_unlock() {
             std::unique_lock<T> lock(_m);
             _writers = 0;
-            _unlocked.notify_all();
+            _unlocked.notify_one();
         }
 
         void setName(const std::string& name) {
@@ -728,7 +728,7 @@ namespace osgEarth { namespace Threading
             Future<RESULT_TYPE> result = std::move(job._future);
             std::function<void()>& delegate = job._delegate;
             _queue.emplace_back([delegate] { delegate(); });
-            _block.notify_all();
+            _block.notify_one();
             return result;
         }
 

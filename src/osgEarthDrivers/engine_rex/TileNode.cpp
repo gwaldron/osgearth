@@ -68,7 +68,8 @@ _doNotExpire(false),
 _revision(0),
 _mutex("TileNode(OE)"),
 _loadQueue("TileNode LoadQueue(OE)"),
-_createChildAsync(true)
+_createChildAsync(true),
+_nextLoadManifestPtr(nullptr)
 {
     //nop
 }
@@ -334,6 +335,10 @@ TileNode::refreshLayers(const CreateTileManifest& manifest)
     _loadQueue.lock();
     _loadQueue.push(r);
     _loadsInQueue = _loadQueue.size();
+    if (_loadsInQueue > 0)
+        _nextLoadManifestPtr = &_loadQueue.front()->getManifest();
+    else
+        _nextLoadManifestPtr = nullptr;
     _loadQueue.unlock();
 }
 
@@ -480,7 +485,7 @@ TileNode::cull(TerrainCuller* culler)
         if (options().progressive() == true)
         {
             TileNode* parent = getParentTile();
-            if (parent && parent->dirty())
+            if (parent && parent->dirty() && parent->nextLoadIsProgressive())
             {
                 canLoadData = false;
 
@@ -1052,6 +1057,10 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
     if (_loadQueue.empty() == false)
         _loadQueue.pop();
     _loadsInQueue = _loadQueue.size();
+    if (_loadsInQueue > 0)
+        _nextLoadManifestPtr = &_loadQueue.front()->getManifest();
+    else
+        _nextLoadManifestPtr = nullptr;
     _loadQueue.unlock();
 
     // Bump the data revision for the tile.
@@ -1439,4 +1448,12 @@ const TerrainOptions&
 TileNode::options() const
 {
     return _context->options();
+}
+
+bool
+TileNode::nextLoadIsProgressive() const
+{
+    return
+        (_context->_options.progressive() == true) &&
+        (_nextLoadManifestPtr == nullptr) || (!_nextLoadManifestPtr->progressive().isSetTo(false));
 }

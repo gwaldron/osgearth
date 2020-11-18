@@ -95,6 +95,7 @@ FeatureSource::init()
 {
     Layer::init();
     _blacklistMutex.setName(getName());
+    _blacklistSize = 0u;
 }
 
 Status
@@ -154,6 +155,7 @@ FeatureSource::addToBlacklist( FeatureID fid )
 {
     Threading::ScopedWriteLock exclusive( _blacklistMutex );
     _blacklist.insert( fid );
+    _blacklistSize = _blacklist.size();
 }
 
 void
@@ -161,6 +163,7 @@ FeatureSource::removeFromBlacklist( FeatureID fid )
 {
     Threading::ScopedWriteLock exclusive( _blacklistMutex );
     _blacklist.erase( fid );
+    _blacklistSize = _blacklist.size();
 }
 
 void
@@ -168,11 +171,15 @@ FeatureSource::clearBlacklist()
 {
     Threading::ScopedWriteLock exclusive( _blacklistMutex );
     _blacklist.clear();
+    _blacklistSize = 0u;
 }
 
 bool
 FeatureSource::isBlacklisted( FeatureID fid ) const
 {
+    // help reduce mutex contention
+    if (_blacklistSize == 0u)
+        return false;
     Threading::ScopedReadLock lock(_blacklistMutex);
     return _blacklist.find( fid ) != _blacklist.end();
 }

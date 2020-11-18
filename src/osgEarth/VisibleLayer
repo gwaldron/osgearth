@@ -54,8 +54,9 @@ namespace osgEarth
             OE_OPTION(float, maxVisibleRange);
             OE_OPTION(float, attenuationRange);
             OE_OPTION(ColorBlending, blend);
+            OE_OPTION(osg::Node::NodeMask, mask);
             virtual Config getConfig() const;
-        private:  
+        private:
             void fromConfig(const Config& conf);
         };
 
@@ -77,14 +78,22 @@ namespace osgEarth
         //! Minimum camera range at which this image layer is visible (if supported)
         float getMinVisibleRange() const;
         void setMinVisibleRange( float minVisibleRange );
-        
+
         //! Maximum camera range at which this image layer is visible (if supported)
         float getMaxVisibleRange() const;
         void setMaxVisibleRange( float maxVisibleRange );
-        
+
         //! Distance (m) over which to ramp min and max range blending
         float getAttenuationRange() const;
         void setAttenuationRange( float value );
+
+        //! The node mask to apply to the layer when rendering.  This works exactly like the node mask would on a node.
+        osg::Node::NodeMask getMask() const;
+        void setMask(osg::Node::NodeMask mask);
+
+        //! Gets/Sets the default mask to use for VisibleLayers.  Default is 0xffffffff.  Set this very early on your application to make all VisibleLayers have this mask by default.
+        static osg::Node::NodeMask getDefaultMask();
+        static void setDefaultMask(osg::Node::NodeMask mask);
 
     public: // Layer
 
@@ -100,7 +109,7 @@ namespace osgEarth
         //! opacity when the layer doesn't handle it itself
         void installDefaultOpacityShader();
 
-    private: 
+    private:
         osg::ref_ptr<osg::Uniform> _opacityU;
         osg::ref_ptr<osg::Uniform> _rangeU;
         void initializeBlending();

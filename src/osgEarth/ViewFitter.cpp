@@ -53,7 +53,10 @@ _buffer_m(0.0)
 bool
 ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outVP) const
 {
-    if (points.empty() || _mapSRS.valid() == false || _camera.valid() == false)
+    OE_SOFT_ASSERT_AND_RETURN(_mapSRS.valid(), __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(_camera.valid(), __func__, false);
+
+    if (points.empty())
         return false;
 
     osg::Matrix projMatrix = _camera->getProjectionMatrix();
@@ -232,4 +235,13 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
     outVP.range()->set(Zbest, Units::METERS);
 
     return true;
+}
+
+bool
+ViewFitter::createViewpoint(const GeoExtent& extent, Viewpoint& outVP) const
+{
+    std::vector<GeoPoint> points;
+    points.emplace_back(extent.getSRS(), extent.xMin(), extent.yMin(), 0);
+    points.emplace_back(extent.getSRS(), extent.xMax(), extent.yMax(), 0);
+    return createViewpoint(points, outVP);
 }

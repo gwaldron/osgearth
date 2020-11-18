@@ -29,6 +29,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/MapNode>
+#include <osgEarth/OGRFeatureSource>
 
 #include <osg/ArgumentParser>
 #include <osg/Timer>
@@ -56,6 +57,7 @@ int usage(char** argv)
         << "\n    --osg-options [OSG options string]  : options to pass to OSG readers/writers"
         << "\n    --extents [minLat] [minLong] [maxLat] [maxLong] : Lat/Long extends to copy"
         << "\n    --no-overwrite                      : skip tiles that already exist in the destination"
+        << "\n    --threads [int]                     : go faster by using [n] working threads"
         << std::endl;
 
     return 0;
@@ -246,11 +248,13 @@ struct ProgressReporter : public osgEarth::ProgressCallback
  *      --max-level [int]     : max level of detail to copy
  *      --extents [minLat] [minLong] [maxLat] [maxLong] : Lat/Long extends to copy (*)
  *      --no-overwrite        : don't overwrite data that already exists
+ *      --threads [int]       : number of threads to launch
  *
  * OSG arguments:
  *
  *      -O <string>           : OSG Options string (plugin options)
  *
+ * Of course, the output layer must support writing.
  * Of course, the output layer must support writing.
  */
 int
@@ -456,6 +460,29 @@ main(int argc, char** argv)
         GeoExtent extent(SpatialReference::get("wgs84"), minlon, minlat, maxlon, maxlat);
         visitor->addExtent( extent );
         userSetExtents = true;
+    }
+
+    // Read in an index shapefile to drive where to tile
+    std::string index;
+    while (args.read("--index", index))
+    {
+        osg::ref_ptr< OGRFeatureSource > indexFeatures = new OGRFeatureSource;
+        indexFeatures->setURL(index);
+        if (indexFeatures->open().isError())
+        {
+            OE_WARN <<  "Failed to open index " << index << ": " << indexFeatures->getStatus().toString() << std::endl;
+            return -1;
+        }
+
+        osg::ref_ptr< FeatureCursor > cursor = indexFeatures->createFeatureCursor(0);
+        while (cursor.valid() && cursor->hasMore())
+        {
+            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+            osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
+            GeoExtent ext(feature->getSRS(), featureBounds);
+            ext = ext.transform(mapNode->getMapSRS());
+            visitor->addExtent(ext);
+        }
     }
 
     // Set the level limits:

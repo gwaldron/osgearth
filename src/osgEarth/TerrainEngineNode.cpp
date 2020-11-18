@@ -138,6 +138,12 @@ TerrainEngineNode::dirtyTerrain()
 }
 
 void
+TerrainEngineNode::shutdown()
+{
+    _tileModelFactory = nullptr;
+}
+
+void
 TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 {
     if (!map) return;
@@ -225,6 +231,8 @@ TerrainEngineNode::createTileModel(const Map* map,
                                    const CreateTileManifest& manifest,
                                    ProgressCallback* progress)
 {
+    if ( !_tileModelFactory.valid() )
+        return nullptr;
     TerrainEngineRequirements* requirements = this;
 
     // Ask the factory to create a new tile model:

@@ -21,10 +21,11 @@ endif(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
 ADD_DEFINITIONS(-DTIXML_USE_STL)
 
 # Builds the HTTPClient with WIN_INET instead of CURL
-OPTION(OSGEARTH_USE_WININET_FOR_HTTP "Whether to use the WinInet library for HTTP requests (instead of cURL)" OFF)
-if (OSGEARTH_USE_WININET_FOR_HTTP)
+option(OSGEARTH_ENABLE_WININET_FOR_HTTP "Whether to use the WinInet library for HTTP requests (instead of cURL)" OFF)
+mark_as_advanced(OSGEARTH_ENABLE_WININET_FOR_HTTP)
+if (OSGEARTH_ENABLE_WININET_FOR_HTTP)
     ADD_DEFINITIONS(-DOSGEARTH_USE_WININET_FOR_HTTP)
-endif (OSGEARTH_USE_WININET_FOR_HTTP)
+endif ()
 
 IF(WIN32)
     IF(MSVC)
@@ -37,10 +38,9 @@ IF(WIN32)
     LIST(APPEND TARGET_EXTERNAL_LIBRARIES psapi)
 ENDIF(WIN32)
 
-# Generate the BuildConfig header
-if(CXX11_AVAILABLE)
-    set(OSGEARTH_CXX11_DEFINE "#define OSGEARTH_CXX11")
-endif()
+# Generate the BuildConfig header.
+# TODO: no longer need to do this since C++11 is required
+set(OSGEARTH_CXX11_DEFINE "#define OSGEARTH_CXX11")
 set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig.h")
 message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
 configure_file(

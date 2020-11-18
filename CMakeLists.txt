@@ -31,6 +31,9 @@ SET(OSGEARTH_PATCH_VERSION 0)
 # Increment this each time the ABI changes
 SET(OSGEARTH_SOVERSION 100)
 
+# C++11 is required for osgEarth 3.x
+set_property(GLOBAL PROPERTY CXX_STANDARD 11)
+set_property(GLOBAL PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # Assign a custom prefix if necessary.
 SET(OSGEARTH_PLUGIN_PREFIX "")
@@ -55,38 +58,52 @@ SET(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEA
 SET(OSGEARTH_SONAMES TRUE)
 
 # Good place to look for dependencies (e.g., vcpkg)
-SET(THIRD_PARTY_DIR "" CACHE PATH "Base 3rd-party dependency folder (containing include, lib, bin)")
+SET(OSGEARTH_DEPENDEPCY_DIR "" CACHE PATH "Folder to search for dependencies (e.g., vcpkg/installed/x64-windows)")
 
-IF(THIRD_PARTY_DIR)
-    LIST(APPEND CMAKE_INCLUDE_PATH ${THIRD_PARTY_DIR}/include)
-    LIST(APPEND CMAKE_LIBRARY_PATH ${THIRD_PARTY_DIR}/lib)
-ENDIF(THIRD_PARTY_DIR)
+IF(OSGEARTH_DEPENDEPCY_DIR)
+    LIST(APPEND CMAKE_INCLUDE_PATH ${OSGEARTH_DEPENDEPCY_DIR}/include)
+    LIST(APPEND CMAKE_LIBRARY_PATH ${OSGEARTH_DEPENDEPCY_DIR}/lib)
+ENDIF()
 
 # We have some custom .cmake scripts not in the official distribution.
-SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${OSGEARTH_SOURCE_DIR}/CMakeModules;${THIRD_PARTY_DIR}")
+SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${OSGEARTH_SOURCE_DIR}/CMakeModules;${OSGEARTH_DEPENDEPCY_DIR}")
 
 # Whether to compile for GLES (mobile/web)
 SET(OSGEARTH_USE_GLES FALSE)
-
-# C++11 is required. Make sure we have it.
-INCLUDE(CXX11)
-check_for_cxx11_compiler(CXX11_AVAILABLE)
-if (NOT CXX11_AVAILABLE)
-    message(FATAL_ERROR "osgEarth requires a compiler with C++11 support")
-endif()
 
 # Special folder for build-time generated include files
 set(OSGEARTH_BUILDTIME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/build_include")
 include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 
 # Third-party sources included in the osgEarth repo
-SET(OE_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
+SET(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
 
 # Platform-specific settings
 INCLUDE(oe_ios)
 INCLUDE(oe_osx)
 INCLUDE(oe_unix)
 INCLUDE(oe_win32)
+
+
+# ........................................................................
+# Optional build targets
+
+option(OSGEARTH_BUILD_TOOLS "Build the osgEarth command-line tools" ON)
+option(OSGEARTH_BUILD_EXAMPLES "Build the osgEarth example applications" ON)
+option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" ON)
+
+option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" ON)
+option(OSGEARTH_BUILD_TRITON_NODEKIT "Build support for SunDog Triton SDK" OFF)
+option(OSGEARTH_BUILD_SILVERLINING_NODEKIT "Build support for SunDog SilverLining SDK" OFF)
+option(OSGEARTH_BUILD_LEVELDB_CACHE "Build the LevelDB cache plugin" OFF)
+option(OSGEARTH_BUILD_ROCKSDB_CACHE "Build the RocksDB cache plugin" OFF)
+option(OSGEARTH_BUILD_DOCS "Include the documentation folder" ON)
+
+# ........................................................................
+# Optional features
+
+option(OSGEARTH_ENABLE_PROFILING "Enable profiling with Tracy" OFF)
+option(OSGEARTH_ENABLE_GEOCODER "Enable the geocoder (GDAL/OGR must be built with geocoder support)" OFF)
 
 # ........................................................................
 # Dependencies
@@ -99,22 +116,34 @@ ELSE ()
 ENDIF (OSGEARTH_USE_GLES)
 
 # required
-FIND_PACKAGE(OSG REQUIRED)
-FIND_PACKAGE(CURL REQUIRED)
-FIND_PACKAGE(GDAL REQUIRED)
+find_package(OSG REQUIRED)
+find_package(CURL REQUIRED)
+find_package(GDAL REQUIRED)
 
 # optional
-FIND_PACKAGE(GEOS)
-FIND_PACKAGE(Sqlite3)
-FIND_PACKAGE(Draco)
-FIND_PACKAGE(BASISU)
-FIND_PACKAGE(Tracy)
-FIND_PACKAGE(GLEW)
-FIND_PACKAGE(LIBZIP)
-FIND_PACKAGE(Protobuf)
-FIND_PACKAGE(WEBP)
-FIND_PACKAGE(Triton QUIET)
-FIND_PACKAGE(SilverLining QUIET)
+find_package(GEOS)
+find_package(Sqlite3)
+find_package(Draco)
+find_package(BASISU)
+find_package(GLEW)
+find_package(Protobuf)
+find_package(WEBP)
+
+if(OSGEARTH_ENABLE_PROFILING)
+    find_package(Tracy)
+endif()
+
+if(OSGEARTH_BUILD_ZIP_PLUGIN)
+    find_package(LIBZIP)
+endif()
+
+if(OSGEARTH_BUILD_TRITON_NODEKIT)
+    find_package(Triton QUIET)
+endif()
+
+if(OSGEARTH_BUILD_SILVERLINING_NODEKIT)
+    find_package(SilverLining QUIET)
+endif()
 
 # Sqlite enables the MBTiles format:
 IF(SQLITE3_FOUND)
@@ -128,21 +157,17 @@ ENDIF(draco_FOUND)
 
 # GDAL is the underlying geospatial processing SDK
 IF(GDAL_FOUND)
-  IF (GDAL_VERSION VERSION_LESS 3)
-    message(STATUS "Found GDAL ${GDAL_VERSION}" )
-  ELSE()
-    message(FATAL_ERROR "GDAL ${GDAL_VERSION} is unsupported at this time. Please use GDAL 2.X" )
-  ENDIF()
-ENDIF(GDAL_FOUND)
+    IF (GDAL_VERSION VERSION_LESS 3)
+        message(STATUS "Found GDAL ${GDAL_VERSION}" )
+    ELSE()
+        message(FATAL_ERROR "GDAL ${GDAL_VERSION} is unsupported at this time. Please use GDAL 2.X" )
+    ENDIF()
+ENDIF()
 
 # Tracy is a profiler
-OPTION(ENABLE_PROFILING "Build with support for Tracy profiler" OFF)
-IF(TRACY_FOUND AND ENABLE_PROFILING)
+IF(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
     ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
-ENDIF(TRACY_FOUND AND ENABLE_PROFILING)
-
-# The OGR geocoder is not always available in GDAL builds, so we turn it off by default
-OPTION(OSGEARTH_ENABLE_GEOCODER "Enable the OGR-based geocoder" OFF)
+ENDIF()
 
 # Protobuf enables the MVT (Mapnik Vector Tiles) format
 SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
@@ -220,12 +245,11 @@ SET(LIBRARY_OUTPUT_PATH ${OUTPUT_LIBDIR})
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${OUTPUT_LIBDIR} )
 
 
-
 # Expose CMAKE_INCLUDE_PATH and CMAKE_LIBARY_PATH to the GUI so users
 # may set these values without needing to manipulate the environment.
-SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} CACHE STRING "You may add additional search paths here. Use ; to separate multiple paths.")
-SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} CACHE STRING "You may add additional search paths here. Use ; to separate multiple paths.")
-SET(CMAKE_PREFIX_PATH  ${CMAKE_PREFIX_PATH}  CACHE STRING "You may add additional search paths here. Use ; to separate multiple paths.")
+SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
+SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
+SET(CMAKE_PREFIX_PATH  ${CMAKE_PREFIX_PATH}  CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
 
 # Dynamic vs Static Linking
 OPTION(DYNAMIC_OSGEARTH "Set to ON to build OSGEARTH for dynamic linking.  Use OFF for static." ON)
@@ -242,18 +266,6 @@ IF(INSTALL_TO_OSG_DIR)
 ELSE (INSTALL_TO_OSG_DIR)
     SET(OSGEARTH_INSTALL_TO_OSG_DIR FALSE)
 ENDIF(INSTALL_TO_OSG_DIR)
-
-# osgEarth Examples
-OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
-
-# Whether to build our custom zip plugin
-IF(LIBZIP_FOUND)
-    OPTION(BUILD_OSGEARTH_ZIP_PLUGIN "Enable to build osgEarth's zip plugin based on libzip" ON)
-ENDIF(LIBZIP_FOUND)
-
-# Applications and tests
-OPTION(BUILD_APPLICATIONS "Enable build of Applications" ON)
-OPTION(BUILD_TESTS "Enable build of Tests" ON)
 
 # OE Libraries
 ADD_SUBDIRECTORY(src)

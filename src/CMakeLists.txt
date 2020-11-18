@@ -1,18 +1,23 @@
+# required:
 add_subdirectory(osgEarth)
+add_subdirectory(osgEarthDrivers)
 set_property(TARGET osgEarth PROPERTY FOLDER "Core")
 
-FOREACH( lib
-         osgEarthSplat
-         osgEarthSilverLining
-         osgEarthTriton
-         osgEarthDrivers )
-    add_subdirectory( ${lib} )
-ENDFOREACH( lib )
+#optionals:
+add_subdirectory(osgEarthSplat)
 
-IF(BUILD_APPLICATIONS AND NOT ANDROID)
-    ADD_SUBDIRECTORY( applications )
+if(OSGEARTH_BUILD_TRITON_NODEKIT)
+    add_subdirectory(osgEarthTriton)
+endif()
+
+if(OSGEARTH_BUILD_SILVERLINING_NODEKIT)
+    add_subdirectory(osgEarthSilverLining)
+endif()
+
+if(OSGEARTH_BUILD_TOOLS OR OSGEARTH_BUILD_EXAMPLES)
+    add_subdirectory( applications )
 ENDIF()
 
-IF(BUILD_TESTS AND NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
-    ADD_SUBDIRECTORY( tests )
+IF(OSGEARTH_BUILD_TESTS AND NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
+    add_subdirectory( tests )
 ENDIF()

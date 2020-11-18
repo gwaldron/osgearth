@@ -21,6 +21,7 @@ Version 3.1 (November 2020)
 * Improved polygon tessellator
 * Mutex contention anaysis in Tracy
 * Various speed improvements and bug fixes
+* Simplifed the CMake configuration process
 
 Version 3.0 (June 2020)
 ----------------------------

@@ -24,7 +24,6 @@
 #include <osgEarth/MemCache>
 
 using namespace osgEarth;
-using namespace OpenThreads;
 
 #define LC "[TileLayer] Layer \"" << getName() << "\" "
 

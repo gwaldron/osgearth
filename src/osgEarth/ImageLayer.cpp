@@ -26,7 +26,6 @@
 #include <cinttypes>
 
 using namespace osgEarth;
-using namespace OpenThreads;
 
 #define LC "[ImageLayer] \"" << getName() << "\" "
 

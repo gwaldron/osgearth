@@ -25,7 +25,6 @@
 #include <cinttypes>
 
 using namespace osgEarth;
-using namespace OpenThreads;
 
 #define LC "[ElevationLayer] \"" << getName() << "\" : "
 

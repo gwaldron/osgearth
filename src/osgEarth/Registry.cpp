@@ -32,7 +32,6 @@
 #include <cstdlib>
 
 using namespace osgEarth;
-using namespace OpenThreads;
 
 #define STR_GLOBAL_GEODETIC    "global-geodetic"
 #define STR_GLOBAL_MERCATOR    "global-mercator"
@@ -549,7 +548,7 @@ Registry::setCapabilities( Capabilities* caps )
 void
 Registry::initCapabilities()
 {
-    ScopedLock<Mutex> lock( _capsMutex ); // double-check pattern (see getCapabilities)
+    ScopedMutexLock lock( _capsMutex ); // double-check pattern (see getCapabilities)
     if ( !_caps.valid() )
         _caps = new Capabilities();
 }

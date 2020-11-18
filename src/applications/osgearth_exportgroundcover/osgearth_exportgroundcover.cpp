@@ -29,7 +29,6 @@
 #include <osgEarthProcedural/GroundCoverLayer>
 #include <osgEarthProcedural/NoiseTextureFactory>
 #include <osgEarthProcedural/GroundCoverFeatureGenerator>
-#include <OpenThreads/Thread>
 
 #define LC "[exportgroundcover] "
 

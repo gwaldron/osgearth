@@ -21,7 +21,6 @@
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
-using namespace OpenThreads;
 
 /****************************************************************/
 

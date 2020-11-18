@@ -28,7 +28,6 @@
 #include <osg/Version>
 #include <osg/Drawable>
 #include <osg/Array>
-#include <OpenThreads/Atomic>
 #include <algorithm>
 
 #define OSGEARTH_OBJECTID_EMPTY   (ObjectID)0
@@ -217,7 +216,7 @@ namespace osgEarth
         int                      _attribLocation;
         std::string              _oidUniformName;
         mutable Threading::Mutex _mutex;
-        OpenThreads::Atomic      _idGen;
+        std::atomic_int          _idGen;
         ShaderPackage            _shaders;
         std::string              _attribName;
 

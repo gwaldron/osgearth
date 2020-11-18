@@ -1,5 +1,5 @@
 IF(LIBZIP_FOUND AND BUILD_OSGEARTH_ZIP_PLUGIN)
-    MESSAGE("Building osgEarth zip plugin")
+    MESSAGE(STATUS "Building osgEarth zip plugin")
     
     SET(TARGET_SRC
         ZipArchive.cpp

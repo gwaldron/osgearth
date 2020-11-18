@@ -869,9 +869,6 @@ int main(int argc, char** argv)
     while(!viewer.done())
     {
         viewer.frame();
-
-        // simulate slow frame rate
-        //OpenThreads::Thread::microSleep(1000*1000);
     }
     return 0;
 }

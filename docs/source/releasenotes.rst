@@ -1,6 +1,28 @@
 Release Notes
 =============
 
+Version 3.1 (November 2020)
+----------------------------
+* TerrainConstraintLayer for masking and custom terrain tessellation
+* LERCImageLayer (ESRI format)
+* ArcGISTilePackageElevationLayer
+* ArcGISServerElevationLayer
+* DebugImageLayer show_tessellation option
+* Map-wide default texture compression setting
+* Started proper use of SONAME for Linux builds
+* osgearth_conv supports a geocell index (--index)
+* SelectExtentTool for drawing a bounding box
+* XYZ layers now support the {-y} notation for Y inversion
+* Write support for TMSElevationLayer
+* Moved to the GEOS C API for stability
+* Normalized on C++11 threading primitives
+* Improved parallelization for some drivers
+* Improved task cancelation support throughout
+* Improved polygon tessellator
+* Mutex contention anaysis in Tracy
+* Various speed improvements and bug fixes
+* Simplifed the CMake configuration process
+
 Version 3.0 (June 2020)
 ----------------------------
 * Layer API overhaul - no more "Options/Config" structures; no more "drivers"

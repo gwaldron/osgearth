@@ -28,7 +28,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
 using namespace osgEarth::Util;
-using namespace OpenThreads;
 
 CacheTileHandler::CacheTileHandler( TileLayer* layer, const Map* map ):
 _layer( layer ),

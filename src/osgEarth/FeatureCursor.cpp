@@ -22,7 +22,6 @@
 #include <osgEarth/Progress>
 
 using namespace osgEarth;
-using namespace OpenThreads;
 
 //---------------------------------------------------------------------------
 

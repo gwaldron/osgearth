@@ -103,6 +103,9 @@ ConsoleProgressCallback::reportProgress(double current, double total,
 DatabasePagerProgressCallback::DatabasePagerProgressCallback()
 {
     // if this is a pager thread, get a handle on it:
+
+    // TODO: figure out a way to do this WITHOUT OpenThreads, since this
+    // is the ONLY reason for the dependency.
     _pagerThread = dynamic_cast<osgDB::DatabasePager::DatabaseThread*>(
         OpenThreads::Thread::CurrentThread());
 }

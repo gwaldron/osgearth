@@ -90,7 +90,7 @@ namespace osgEarth
         typedef LRUCache<std::string, std::string> TileURICache;
         bool _debugDirect;
         TileURICache* _tileURICache;
-        mutable OpenThreads::Atomic _apiCount;
+        mutable std::atomic_int _apiCount;
         std::string _key;
 
         std::string getQuadKey(const TileKey&) const;

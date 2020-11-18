@@ -29,7 +29,6 @@
 #define LC "[ResourceLibrary] "
 
 using namespace osgEarth;
-using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 

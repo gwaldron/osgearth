@@ -2,11 +2,13 @@
 
 IF(WIN32 AND NOT ANDROID)
 
+  # GW: no longer required (keep for posterity)
   # GL CORE Profile build (OSG must also be built with it)
-  FIND_PACKAGE(GLCORE)
-  IF(GLCORE_FOUND)
-      INCLUDE_DIRECTORIES( ${GLCORE_INCLUDE_DIR} )
-  ENDIF()    
+  # FIND_PACKAGE(GLCORE)
+  #IF(GLCORE_FOUND)
+  #    INCLUDE_DIRECTORIES( ${GLCORE_INCLUDE_DIR} )
+  #    message(status "Found GLCORE headers at ${GLCORE_INCLUDE_DIR}")
+  #ENDIF()    
 
   IF(MSVC)
         # This option is to enable the /MP switch for Visual Studio 2005 and above compilers

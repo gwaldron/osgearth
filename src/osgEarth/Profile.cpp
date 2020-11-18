@@ -162,7 +162,7 @@ Profile::create(const SpatialReference* srs)
     OE_SOFT_ASSERT_AND_RETURN(srs != nullptr, __func__, nullptr);
 
     Bounds bounds;
-    if (srs->guessBounds(bounds))
+    if (srs->getBounds(bounds))
     {
         unsigned x = 1, y = 1;
         float ar = (float)bounds.width() / (float)bounds.height();

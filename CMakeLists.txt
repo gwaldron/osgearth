@@ -78,6 +78,10 @@ include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 # Third-party sources included in the osgEarth repo
 SET(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
 
+# Ensure and configure C++11 compiler support.
+INCLUDE(CXX11)
+check_for_cxx11_compiler(CXX11_AVAILABLE)
+
 # Platform-specific settings
 INCLUDE(oe_ios)
 INCLUDE(oe_osx)

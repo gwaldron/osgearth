@@ -161,12 +161,8 @@ ENDIF(draco_FOUND)
 
 # GDAL is the underlying geospatial processing SDK
 IF(GDAL_FOUND)
-    IF (GDAL_VERSION VERSION_LESS 3)
-        message(STATUS "Found GDAL ${GDAL_VERSION}" )
-    ELSE()
-        message(FATAL_ERROR "GDAL ${GDAL_VERSION} is unsupported at this time. Please use GDAL 2.X" )
-    ENDIF()
-ENDIF()
+    message(STATUS "Found GDAL ${GDAL_VERSION}" )
+ENDIF(GDAL_FOUND)
 
 # Tracy is a profiler
 IF(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)

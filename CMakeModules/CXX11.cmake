@@ -108,7 +108,7 @@ macro(check_for_cxx11_compiler _VAR)
     endif()
     
     if (${_VAR})
-        message(STATUS "Confirmed C++11 support")
+        # message(STATUS "Confirmed C++11 support")
         set(CMAKE_CXX_STANDARD 11)
     else()
         message(STATUS "Cannot verify C++11 support because ${NO_CXX11_REASON}")

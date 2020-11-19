@@ -60,32 +60,54 @@ void TileVisitor::resetProgress()
 void TileVisitor::addExtent( const GeoExtent& extent )
 {
     _extents.push_back( extent );
+}
+
+void TileVisitor::addDataExtent(const GeoExtent& extent)
+{
     double min[2] = { extent.xMin(), extent.yMin() };
     double max[2] = { extent.xMax(), extent.yMax() };
-    _extentIndex.Insert(min, max, _extents.size() - 1);
+    _dataExtentIndex.Insert(min, max, _dataExtentIndex.Count());
 }
 
 bool TileVisitor::intersects( const GeoExtent& extent )
 {
-    if ( _extents.empty()) return true;
+    if (_extents.empty()) return true;
     else
     {
-        double min[2] = { extent.xMin(), extent.yMin() };
-        double max[2] = { extent.xMax(), extent.yMax() };
-        std::vector< unsigned int > hits;
-        return _extentIndex.Search(min, max, &hits, 1) > 0;
-        /*
         for (unsigned int i = 0; i < _extents.size(); ++i)
         {
             if (_extents[i].intersects( extent ))
             {
                 return true;
             }
-
         }
-        */
     }
     return false;
+}
+
+bool TileVisitor::hasData(const TileKey& key)
+{
+    GeoExtent extent = key.getExtent();
+
+    // Check the data extents index to see if we might have data in this area.
+    if (_dataExtentIndex.Count() > 0)
+    {
+        double min[2] = { extent.xMin(), extent.yMin() };
+        double max[2] = { extent.xMax(), extent.yMax() };
+        std::vector< unsigned int > hits;
+        if (_dataExtentIndex.Search(min, max, &hits, 1) == 0)
+        {
+            return false;
+        }
+    }
+
+    // Check the tile handler
+    if (_tileHandler.valid())
+    {
+        _tileHandler->hasData(key);
+    }
+
+    return true;
 }
 
 void TileVisitor::setTileHandler( TileHandler* handler )
@@ -144,7 +166,7 @@ void TileVisitor::processKey( const TileKey& key )
     lod = key.getLevelOfDetail();
 
     // Only process this key if it has a chance of succeeding.
-    if (_tileHandler && key.getLOD() >= _minLevel && !_tileHandler->hasData(key))
+    if (!hasData(key))
     {
         return;
     }
@@ -152,7 +174,7 @@ void TileVisitor::processKey( const TileKey& key )
     bool traverseChildren = false;
 
     // If the key intersects the extent attempt to traverse
-    if (intersects( key.getExtent() ))
+    if (intersects(key.getExtent()))
     {
         // If the lod is less than the min level don't do anything but do traverse the children.
         if (lod < _minLevel)
@@ -162,7 +184,7 @@ void TileVisitor::processKey( const TileKey& key )
         else
         {
             // Process the key
-            traverseChildren = handleTile( key );
+            traverseChildren = handleTile(key);
         }
     }
 

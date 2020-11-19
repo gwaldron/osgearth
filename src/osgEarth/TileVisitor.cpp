@@ -291,6 +291,10 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
 
 bool MultithreadedTileVisitor::handleTile(const TileKey& key)
 {
+    while (_threadPool->getNumOperationsInQueue() > 1000)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
     // Add the tile to the task queue.
     _threadPool->run(new HandleTileTask(_tileHandler.get(), this, key, getProgressCallback()));
     return true;

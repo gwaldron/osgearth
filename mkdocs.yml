@@ -1,0 +1,24 @@
+site_name: osgEarth
+repo_name: 'gwaldron/osgearth'
+repo_url: 'https://github.com/gwaldron/osgearth'
+site_url: 'http://osgearth.org'
+     
+theme:
+  name: readthedocs
+  include_sidebar: true
+    
+plugins:
+  - search
+
+nav:
+  - Welcome:
+    - Introduction: "index.md"
+    - Release Notes: "releasenotes.md"
+  - Getting Started:
+    - Install it: "install.md"
+    - Build it: "build.md"
+  - Users:
+    - Preparing Data: "data.md"
+    - 3.x Upgrade Guide: "3.0_upgrade_guide.md"
+  - Developers:
+    - FAQ: "faq.md"

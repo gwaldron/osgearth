@@ -10,7 +10,7 @@ theme:
 plugins:
   - search
 
-nav:
+pages:
   - Welcome:
     - Introduction: "index.md"
     - Release Notes: "releasenotes.md"

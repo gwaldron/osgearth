@@ -10,15 +10,11 @@ theme:
 plugins:
   - search
 
-nav:
-  - Welcome:
-    - Introduction: "index.md"
-    - Release Notes: "releasenotes.md"
-  - Getting Started:
-    - Install it: "install.md"
-    - Build it: "build.md"
-  - Users:
-    - Preparing Data: "data.md"
-    - 3.x Upgrade Guide: "3.0_upgrade_guide.md"
-  - Developers:
-    - FAQ: "faq.md"
+pages:
+  - Introduction: "index.md"
+  - Installing: "install.md"
+  - Building: "build.md"
+  - Preparing Data: "data.md"
+  - 3.x Upgrade Guide: "3.0_upgrade_guide.md"
+  - FAQ: "faq.md"
+  - Release Notes: "releasenotes.md"

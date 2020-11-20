@@ -49,12 +49,12 @@ namespace osgEarth { namespace Contrib
             OE_OPTION(bool, fill);
             StyleSheet::ScriptDef* getScript() const { return _script.get(); }
             virtual Config getConfig() const;
-        
+
         private:
             void fromConfig(const Config&);
             osg::ref_ptr< StyleSheet::ScriptDef > _script;
         };
-        
+
     public:
         META_Layer(osgEarth, FlatteningLayer, Options, ElevationLayer, FlattenedElevation);
 
@@ -88,7 +88,7 @@ namespace osgEarth { namespace Contrib
     protected: // ElevationLayer
 
         virtual GeoHeightField createHeightFieldImplementation(
-            const TileKey& key, 
+            const TileKey& key,
             ProgressCallback* progress) const;
 
         //! called by the map when this layer is added
@@ -107,6 +107,12 @@ namespace osgEarth { namespace Contrib
         mutable ElevationPool::WorkingSet _elevWorkingSet;
         osg::ref_ptr<ScriptEngine> _scriptEngine;
         osg::observer_ptr< const Map > _map;
+
+        FeatureList getFeatures(const TileKey& key);
+
+        typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
+        FeaturesLRU _featuresCache;
+        Threading::Mutex _featuresCacheMutex;
     };
 
 } }

@@ -6,7 +6,7 @@ set(DOCS_ROOT
     build.md
     releasenotes.md
     faq.md
-    3.0_upgrade_guide.md)
+    3.0_upgrade_guide.md
 )
 
 # todo if we need folders later

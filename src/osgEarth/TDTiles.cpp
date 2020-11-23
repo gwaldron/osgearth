@@ -668,21 +668,7 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         OE_PROFILING_ZONE_TEXT("Immediate load");
     }
 
-    if (_tile->children().size() > 0)
-    {
-        _children = new osg::Group;
-        for (unsigned int i = 0; i < _tile->children().size(); ++i)
-        {
-            ThreeDTileNode* child = new ThreeDTileNode(_tileset, _tile->children()[i].get(), false, _options.get());
-            child->setParentTile(this);
-            _children->addChild(child);
-        }
-
-        if (_children->getNumChildren() == 0)
-        {
-            _children = 0;
-        }
-    }
+    
 
     _debugColor = randomColor();
 
@@ -1477,6 +1463,31 @@ ThreeDTilesetContentNode::ThreeDTilesetContentNode(ThreeDTilesetNode* tilesetNod
     if (tileset->root().valid())
     {
         _tileNode = new ThreeDTileNode(_tilesetNode, tileset->root().get(), true, _options.get());
+        std::stack<ThreeDTileNode*> node_stack;
+        node_stack.push(_tileNode);
+        while (!node_stack.empty())
+        {
+            ThreeDTileNode* node = node_stack.top();
+            node_stack.pop();
+            if (node->_tile->children().size() > 0)
+            {
+                node->_children = new osg::Group;
+                for (unsigned int i = 0; i < node->_tile->children().size(); ++i)
+                {
+                    ThreeDTileNode* child = new ThreeDTileNode(node->_tileset, node->_tile->children()[i].get(), false, node->_options.get());
+                    child->setParentTile(node);
+                    node->_children->addChild(child);
+                    node_stack.push(child);
+                }
+
+                if (node->_children->getNumChildren() == 0)
+                {
+                    node->_children = 0;
+                }
+            }
+
+        }
+        
         addChild(_tileNode);
     }
 }

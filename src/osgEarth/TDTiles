@@ -193,7 +193,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         void setParentTile(ThreeDTileNode* parentTile);
 
     private:
-
+        friend class ThreeDTilesetContentNode;
         void createDebugBounds();
 
         void computeBoundingVolume();

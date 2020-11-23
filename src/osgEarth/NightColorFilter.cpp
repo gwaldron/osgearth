@@ -23,7 +23,7 @@
 #include <osgEarthUtil/NightColorFilter>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/StringUtils>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/Program>
 #include <OpenThreads/Atomic>
 

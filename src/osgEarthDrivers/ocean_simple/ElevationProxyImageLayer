@@ -20,7 +20,7 @@
 #define OSGEARTH_DRIVER_SIMPLE_OCEAN_ELEV_PROXY_IMAGE_LAYER 1
 
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 
 namespace osgEarth {
     class Map;

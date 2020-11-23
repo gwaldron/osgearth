@@ -168,8 +168,13 @@ namespace osgEarth { namespace REX
         typedef std::queue<osg::ref_ptr<LoadTileData> > LoadQueue;
         Mutexed<LoadQueue> _loadQueue;
         unsigned _loadsInQueue;
+        const CreateTileManifest* _nextLoadManifestPtr;
 
-        bool dirty() const { return _loadsInQueue>0; }
+        bool dirty() const { 
+            return _loadsInQueue > 0;
+        }
+
+        bool nextLoadIsProgressive() const;
 
         osg::observer_ptr<TileNode> _eastNeighbor;
         osg::observer_ptr<TileNode> _southNeighbor;

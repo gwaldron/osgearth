@@ -38,6 +38,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Metrics>
 #include <osgEarth/WindLayer>
+#include <osgEarth/SelectExtentTool>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -132,7 +133,8 @@ struct SetWindPoint : public osgGA::GUIEventHandler
         //osg::Node* heli = osgDB::readNodeFile("D:/mak/helicopter.osgb.(10,10,10).scale");
         osg::Node* heli = osgDB::readNodeFile("../data/red_flag.osg");
         _xform = new GeoTransform();
-        _xform->addChild(heli);
+        if (heli)
+            _xform->addChild(heli);
         mapNode->addChild(_xform);
     }
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)
@@ -296,6 +298,29 @@ main( int argc, char** argv )
     viewer.addEventHandler(new ToggleMinValidValue(s_mapNode.get(), 'M'));
 
     viewer.addEventHandler(new SetWindPoint(s_mapNode.get(), 'p'));
+
+    // Tool to zoom to a map extent (SHIFT-CTRL-DRAG)
+    Contrib::SelectExtentTool* zoomTool = new Contrib::SelectExtentTool(s_mapNode.get());
+    zoomTool->setModKeyMask(osgGA::GUIEventAdapter::MODKEY_LEFT_SHIFT | osgGA::GUIEventAdapter::MODKEY_LEFT_CTRL); 
+    viewer.addEventHandler(zoomTool);
+    zoomTool->setCallback([&](const GeoExtent& ex) {
+        Viewpoint vp;
+        ViewFitter fitter(s_mapNode->getMapSRS(), viewer.getCamera());
+        if (fitter.createViewpoint(ex, vp))
+            s_manip->setViewpoint(vp, 0.5);
+        zoomTool->clear();
+    });
+
+    // Tool to invalidate a map extent (ALT-DRAG)
+    Contrib::SelectExtentTool* invalidateTool = new Contrib::SelectExtentTool(s_mapNode.get());
+    invalidateTool->setModKeyMask(osgGA::GUIEventAdapter::MODKEY_LEFT_ALT);
+    invalidateTool->getStyle().getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Red;
+    viewer.addEventHandler(invalidateTool);
+    invalidateTool->setCallback([&](const GeoExtent& ex) {
+        OE_NOTICE << "Invalidating extent " << ex.toString() << std::endl;
+        s_mapNode->getTerrainEngine()->invalidateRegion(ex);
+        invalidateTool->clear();
+    });
 
     return Metrics::run(viewer);
 }

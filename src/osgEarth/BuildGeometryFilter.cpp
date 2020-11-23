@@ -371,7 +371,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         }
         else
         {
-            polygonizer = new PolygonizeLinesOperator(*line->stroke());
+            polygonizer = new PolygonizeLinesOperator(line);
         }
         //GPULinesOperator gpuLines(*line->stroke() );
 
@@ -1034,7 +1034,7 @@ BuildGeometryFilter::tileAndBuildPolygon(
 
     int offset = verts->size();
 
-    osg::Vec3d vert;
+    osg::Vec3d temp, vert;
 
     if (outputSRS && outputSRS->isGeographic())
     {
@@ -1044,7 +1044,8 @@ BuildGeometryFilter::tileAndBuildPolygon(
             const Geometry* part = verts_iter.next();
             for (const auto& p : *part)
             {
-                outputSRS->transformToWorld(p, vert);
+                inputSRS->transform(p, outputSRS, temp);
+                outputSRS->transformToWorld(temp, vert);
                 vert = vert * world2local;
                 verts->push_back(vert);
             }

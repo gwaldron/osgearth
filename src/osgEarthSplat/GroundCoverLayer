@@ -49,8 +49,8 @@ namespace osgEarth { namespace Splat
             OE_OPTION(bool, castShadows);
             OE_OPTION(float, maxAlpha);
             OE_OPTION(bool, alphaToCoverage);
-            //OE_OPTION_VECTOR(ZoneOptions, zones);
             OE_OPTION_VECTOR(BiomeZone, biomeZones);
+            OE_OPTION(float, windScale);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

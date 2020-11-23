@@ -95,7 +95,7 @@ CreateTileImplementation::createTile(
         return 0L;
 
     // group to hold all the tiles
-    osg::Group* group = new osg::Group();
+    osg::ref_ptr<osg::Group> group;
 
     for (std::vector<TileKey>::const_iterator subkey = keys.begin(); subkey != keys.end(); ++subkey)
     {
@@ -108,96 +108,70 @@ CreateTileImplementation::createTile(
             sharedGeom,
             progress);
 
-        // no data in the tile
-        if (!sharedGeom.valid() || (progress && progress->isCanceled()))
+        if (progress && progress->isCanceled())
         {
             return nullptr;
         }
 
-        osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();
-
-        osg::UserDataContainer* udc = drawable->getOrCreateUserDataContainer();
-        udc->setUserValue("tile_key", subkey->str());
-
-        if (sharedGeom.valid())
+        if (sharedGeom.valid() && !sharedGeom->empty())
         {
+            if (!group.valid())
+                group = new osg::Group();
+
+            osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();
+
+            osg::UserDataContainer* udc = drawable->getOrCreateUserDataContainer();
+            udc->setUserValue("tile_key", subkey->str());
+
             osg::ref_ptr<osg::Geometry> geom = sharedGeom->makeOsgGeometry();
             drawable = geom.get();
 
             drawable->setUserDataContainer(udc);
 
-            if (!sharedGeom->empty())
+            // Burn elevation data into the vertex list
+            if (model->elevationModel().valid())
             {
-                // Burn elevation data into the vertex list
-                if (model->elevationModel().valid())
+                // Clone the vertex array since it's shared and we're going to alter it
+                geom->setVertexArray(osg::clone(geom->getVertexArray(), osg::CopyOp::DEEP_COPY_ALL));
+
+                // Apply the elevation model to the verts, noting that the texture coordinate
+                // runs [0..1] across the tile and the normal is the up vector at each vertex.
+                osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
+                osg::Vec3Array* ups = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
+                osg::Vec3Array* tileCoords = dynamic_cast<osg::Vec3Array*>(geom->getTexCoordArray(0));
+
+                const osg::HeightField* hf = model->elevationModel()->getHeightField();
+                const osg::RefMatrixf* hfmatrix = model->elevationModel()->getMatrix();
+
+                // Tile coords must be transformed into the local tile's space
+                // for elevation grid lookup:
+                osg::Matrix scaleBias;
+                subkey->getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
+
+                // Apply elevation to each vertex.
+                for (unsigned i = 0; i < verts->size(); ++i)
                 {
-                    // Clone the vertex array since it's shared and we're going to alter it
-                    geom->setVertexArray(osg::clone(geom->getVertexArray(), osg::CopyOp::DEEP_COPY_ALL));
+                    osg::Vec3& vert = (*verts)[i];
+                    osg::Vec3& up = (*ups)[i];
+                    osg::Vec3& tileCoord = (*tileCoords)[i];
 
-                    // Apply the elevation model to the verts, noting that the texture coordinate
-                    // runs [0..1] across the tile and the normal is the up vector at each vertex.
-                    osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
-                    osg::Vec3Array* ups = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
-                    osg::Vec3Array* tileCoords = dynamic_cast<osg::Vec3Array*>(geom->getTexCoordArray(0));
-
-                    const osg::HeightField* hf = model->elevationModel()->getHeightField();
-                    const osg::RefMatrixf* hfmatrix = model->elevationModel()->getMatrix();
-
-                    // Tile coords must be transformed into the local tile's space
-                    // for elevation grid lookup:
-                    osg::Matrix scaleBias;
-                    subkey->getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
-
-                    // Apply elevation to each vertex.
-                    for (unsigned i = 0; i < verts->size(); ++i)
+                    // Skip verts on a masking boundary since their elevations are hard-wired.
+                    if ((VERTEX_HAS_ELEVATION & (int)tileCoord.z()) == 0) // if VERTEX_HAS_ELEVATION bit not set
                     {
-                        osg::Vec3& vert = (*verts)[i];
-                        osg::Vec3& up = (*ups)[i];
-                        osg::Vec3& tileCoord = (*tileCoords)[i];
+                        osg::Vec3d n = osg::Vec3d(tileCoord.x(), tileCoord.y(), 0);
+                        n = n * scaleBias;
+                        if (hfmatrix) n = n * (*hfmatrix);
 
-                        // Skip verts on a masking boundary since their elevations are hard-wired.
-                        if ((VERTEX_HAS_ELEVATION & (int)tileCoord.z()) == 0) // if VERTEX_HAS_ELEVATION bit not set
+                        float z = HeightFieldUtils::getHeightAtNormalizedLocation(hf, n.x(), n.y());
+                        if (z != NO_DATA_VALUE)
                         {
-                            osg::Vec3d n = osg::Vec3d(tileCoord.x(), tileCoord.y(), 0);
-                            n = n * scaleBias;
-                            if (hfmatrix) n = n * (*hfmatrix);
-
-                            float z = HeightFieldUtils::getHeightAtNormalizedLocation(hf, n.x(), n.y());
-                            if (z != NO_DATA_VALUE)
-                            {
-                                vert += up*z;
-                            }
+                            vert += up * z;
                         }
                     }
-
-                    verts->dirty();
                 }
 
-#if 0 // TODO - replace
-                // Encode the masking extents into a user data object
-                if (maskGen.hasMasks())
-                {
-                    // Find the NDC coords of the masking patch geometry:
-                    osg::Vec3d maskMin, maskMax;
-                    maskGen.getMinMax(maskMin, maskMax);
-
-                    // Clamp to the tile's extent
-                    maskMin.x() = osg::clampBetween(maskMin.x(), 0.0, 1.0);
-                    maskMin.y() = osg::clampBetween(maskMin.y(), 0.0, 1.0);
-                    maskMax.x() = osg::clampBetween(maskMax.x(), 0.0, 1.0);
-                    maskMax.y() = osg::clampBetween(maskMax.y(), 0.0, 1.0);
-
-                    const GeoExtent& e = subkey->getExtent();
-                    osg::Vec2d tkMin(e.xMin() + maskMin.x()*e.width(), e.yMin() + maskMin.y()*e.height());
-                    osg::Vec2d tkMax(e.xMin() + maskMax.x()*e.width(), e.yMin() + maskMax.y()*e.height());
-
-                    udc->setUserValue("mask_patch_min", tkMin);
-                    udc->setUserValue("mask_patch_max", tkMax);
-                }
-#endif
+                verts->dirty();
             }
-
-
 
             // Establish a local reference frame for the tile:
             GeoPoint centroid;
@@ -213,5 +187,5 @@ CreateTileImplementation::createTile(
         }
     }
 
-    return group;
+    return group.release();
 }

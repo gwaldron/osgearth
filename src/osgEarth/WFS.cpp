@@ -447,6 +447,8 @@ WFSFeatureSource::createURL(const Query& query) const
     char sep = options().url()->full().find_first_of('?') == std::string::npos ? '?' : '&';
 
     std::stringstream buf;
+    buf.imbue(std::locale::classic());
+
     buf << options().url()->full() << sep << "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature";
     buf << "&TYPENAME=" << options().typeName().get();
 
@@ -464,9 +466,8 @@ WFSFeatureSource::createURL(const Query& query) const
         buf << "&MAXFEATURES=" << options().maxFeatures().get();
     }
 
-    if (query.tileKey().isSet())
+    if (query.tileKey().isSet() && getFeatureProfile()->isTiled())
     {
-
         unsigned int tileX = query.tileKey().get().getTileX();
         unsigned int tileY = query.tileKey().get().getTileY();
         unsigned int level = query.tileKey().get().getLevelOfDetail();

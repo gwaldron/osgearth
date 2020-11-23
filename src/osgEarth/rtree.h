@@ -17,6 +17,7 @@
 #include <vector>
 #include <limits>
 #include <unordered_set>
+#include <queue>
 
 namespace osgEarth
 {
@@ -102,7 +103,22 @@ public:
   /// \param a_resultCallback Callback function to return result.  Callback should return 'true' to continue searching
   /// \param a_context User context to pass as parameter to a_resultCallback
   /// \return Returns the number of entries found
-  int Search(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMDIMS], std::unordered_set<DATATYPE>* hits, int maxHits) const;
+  int Search(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMDIMS], std::vector<DATATYPE>* hits, int maxHits) const;
+
+  /// Find nearest neighbors (GW/Pelican 20201001
+  /// \param point Point from which to search
+  /// \param hits Output containing results (near to far)
+  /// \param ranges_squared Output containing squared distances to element in "hits"
+  /// \param maxHits Maximum number of elements to return
+  /// \param maxDistance Maximum distance from point to search
+  /// \return Returns the number of entries found
+  int KNNSearch(
+      const ELEMTYPE* point, 
+      std::vector<DATATYPE>* hits,
+      std::vector<ELEMTYPEREAL>* ranges_squared, 
+      int maxHits, 
+      const ELEMTYPE maxDistance,
+      std::function<bool(const DATATYPE&)> acceptor = [](const DATATYPE&) { return true; } ) const;
   
   /// Remove all entries from tree
   void RemoveAll();
@@ -319,6 +335,21 @@ protected:
     Node* m_node;                                 ///< Node
   };
 
+  /// Data structure used by the KNNSearch
+  struct KNNData
+  {
+      Node* m_node;
+      DATATYPE* m_item;
+      ELEMTYPE m_dist_squared;
+      bool is_item() const { return m_item != nullptr; }
+      bool operator < (const KNNData& rhs) const {
+          return m_dist_squared < rhs.m_dist_squared;
+      }
+      bool operator > (const KNNData& rhs) const {
+          return m_dist_squared > rhs.m_dist_squared;
+      }
+  };
+
   /// Variables for finding a split partition
   struct PartitionVars
   {
@@ -363,8 +394,9 @@ protected:
   ListNode* AllocListNode();
   void FreeListNode(ListNode* a_listNode);
   bool Overlap(Rect* a_rectA, Rect* a_rectB) const;
+  ELEMTYPEREAL RectDistSquared(const ELEMTYPE* point, const Rect& rect) const;
   void ReInsert(Node* a_node, ListNode** a_listNode);
-  bool Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::unordered_set<DATATYPE>* hits, int maxHits) const;
+  bool Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::vector<DATATYPE>* hits, int maxHits) const;
   void RemoveAllRec(Node* a_node);
   void Reset();
   void CountRec(Node* a_node, int& a_count);
@@ -558,7 +590,7 @@ void RTREE_QUAL::Remove(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMD
 
 
 RTREE_TEMPLATE
-int RTREE_QUAL::Search(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMDIMS], std::unordered_set<DATATYPE>* hits, int maxHits) const
+int RTREE_QUAL::Search(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMDIMS], std::vector<DATATYPE>* hits, int maxHits) const
 {
 #ifdef _DEBUG
   for(int index=0; index<NUMDIMS; ++index)
@@ -581,6 +613,113 @@ int RTREE_QUAL::Search(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMDI
   Search(m_root, &rect, foundCount, hits, maxHits);
 
   return foundCount;
+}
+
+RTREE_TEMPLATE
+ELEMTYPEREAL RTREE_QUAL::RectDistSquared(const ELEMTYPE* p, const Rect& rect) const
+{    
+    ELEMTYPEREAL d2 = 0.0;
+
+    for (int i = 0; i < NUMDIMS; ++i)
+    {
+        ELEMTYPEREAL half_size = 0.5*(rect.m_max[i] - rect.m_min[i]);
+        ELEMTYPEREAL center = (rect.m_min[i] + half_size);
+        ELEMTYPEREAL clamped = std::max(fabs(p[i] - center) - half_size, 0.0);
+        d2 += clamped * clamped;
+    }
+    return d2;
+}
+
+//! Adapted from https://github.com/mourner/rbush-knn/blob/master/index.js
+RTREE_TEMPLATE
+int RTREE_QUAL::KNNSearch(
+    const ELEMTYPE* point, 
+    std::vector<DATATYPE>* hits, 
+    std::vector<ELEMTYPEREAL>* ranges_squared, 
+    int maxHits, 
+    const ELEMTYPE maxDistance,
+    std::function<bool(const DATATYPE&)> acceptLeaf) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(point != nullptr, __func__, 0);
+    OE_SOFT_ASSERT_AND_RETURN(hits != nullptr, __func__, 0);
+
+    hits->clear();
+
+    if (ranges_squared)
+        ranges_squared->clear();
+
+    // priority queue that puts smallest distances first
+    std::priority_queue<
+        KNNData, 
+        std::vector<KNNData>,
+        std::greater<KNNData> > queue;
+
+    ELEMTYPE max_dist_squared = maxDistance * maxDistance;
+
+    Node* node = m_root;
+
+    while (node)
+    {
+        // if this is a leaf node, push all of its data elements on the queue
+        if (node->IsLeaf())
+        {
+            for (int i = 0; i < node->m_count; ++i)
+            {
+                double leaf_dist_squared = RectDistSquared(point, node->m_branch[i].m_rect);
+
+                if (maxDistance == 0 || leaf_dist_squared <= max_dist_squared)
+                {
+                    queue.emplace(KNNData{ node, &node->m_branch[i].m_data, leaf_dist_squared });
+                }
+            }
+        }
+
+        // otherwise push all its child nodes on the queue for further processing
+        else
+        {
+            for (int i = 0; i < node->m_count; ++i)
+            {
+                Branch& branch = node->m_branch[i];
+                Node* child = branch.m_child;
+                if (child)
+                {
+                    ELEMTYPE child_dist_squared = RectDistSquared(point, branch.m_rect);
+
+                    if (maxDistance == 0 || child_dist_squared <= max_dist_squared)
+                    {
+                        queue.emplace(KNNData{ child, nullptr, child_dist_squared });
+                    }
+                }
+            }
+        }
+
+        // any "items" on the front of the queue are best results.
+        while (!queue.empty() && queue.top().is_item())
+        {
+            const KNNData& candidate = queue.top();
+            if (acceptLeaf(*candidate.m_item))
+            {
+                hits->emplace_back(*candidate.m_item);
+                if (ranges_squared)
+                    ranges_squared->push_back(candidate.m_dist_squared);
+            }
+            queue.pop();
+
+            // bail once we reach the maxHits limit
+            if (maxHits > 0 && hits->size() >= maxHits)
+                return hits->size();
+        }
+
+        if (queue.empty())
+            break;
+
+        // continue processing the queue from nearest to farthest
+        const KNNData& knnData = queue.top();
+        node = knnData.m_node;
+        queue.pop();
+    }
+
+    return hits->size();
 }
 
 
@@ -1630,7 +1769,7 @@ void RTREE_QUAL::ReInsert(Node* a_node, ListNode** a_listNode)
 // Search in an index tree or subtree for all data retangles that overlap the argument rectangle.
 RTREE_TEMPLATE
 //bool RTREE_QUAL::Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::function<bool (const DATATYPE&)> callback) const
-bool RTREE_QUAL::Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::unordered_set<DATATYPE>* hits, int maxHits) const
+bool RTREE_QUAL::Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::vector<DATATYPE>* hits, int maxHits) const
 {
   ASSERT(a_node);
   ASSERT(a_node->m_level >= 0);
@@ -1663,7 +1802,7 @@ bool RTREE_QUAL::Search(Node* a_node, Rect* a_rect, int& a_foundCount, std::unor
 
         if (hits)
         {
-            hits->insert(id);
+            hits->emplace_back(id);
             if (hits->size() >= maxHits)
                 return false;
         }

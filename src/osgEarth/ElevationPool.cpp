@@ -203,7 +203,7 @@ ElevationPool::getLOD(double x, double y) const
 
     double minv[2], maxv[2];
     minv[0] = maxv[0] = x, minv[1] = maxv[1] = y;
-    std::unordered_set<unsigned> hits;
+    std::vector<unsigned> hits;
     index->Search(minv, maxv, &hits, 99);
     int maxiestMaxLevel = -1;
     for(auto h = hits.begin(); h != hits.end(); ++h)

@@ -144,7 +144,7 @@ namespace osgEarth
 
         void invalidateRegion(
             const std::vector<const Layer*> layers,
-            const GeoExtent& extent) 
+            const GeoExtent& extent)
         {
             invalidateRegion(layers, extent, 0, INT_MAX);
         }
@@ -162,7 +162,7 @@ namespace osgEarth
         virtual void dirtyTerrain();
 
         //! Shut down the engine
-        virtual void shutdown() { }
+        virtual void shutdown();
 
     public:
         class OSGEARTH_EXPORT ModifyTileBoundingBoxCallback : public osg::Referenced
@@ -204,7 +204,7 @@ namespace osgEarth
         void addCreateTileModelCallback(CreateTileModelCallback* callback);
         void removeCreateTileModelCallback(CreateTileModelCallback* callback);
 
-        //! Flags supporting the createStandaloneTile method.
+        //! Flags supporting the createStandaloneTile method. (NOT USED)
         enum CreateTileFlags
         {
             CREATE_TILE_INCLUDE_TILES_WITH_MASKS     = 1,
@@ -215,10 +215,10 @@ namespace osgEarth
         //! Create a standalone terrain tile. This method is not used by the
         //! actual terrain engine, but rather exists to support external
         //! processes that need tile geometry. The terrain engine implementation
-        //! may or may not provide this capability and will return NULL if 
+        //! may or may not provide this capability and will return NULL if
         //! it does not.
         //! @param model Tile model for which to build a tile
-        //! @param flags Bitwise-OR of the CreateTileFlags enums
+        //! @param flags Bitwise-OR of the CreateTileFlags enums (MAY BE IGNORED)
         //! @param referenceLOD If non-zero, adjust the vertex dimensions of the returned tile
         //!        to match this LOD. Example: ask for a tile at tileKey.lod=15, tile is 17x17.
         //!        Specific a referenceLOD=16, tile will be 33x33.
@@ -270,7 +270,7 @@ namespace osgEarth
         bool _requireParentTextures;
         bool _requireElevationBorder;
         bool _requireFullDataAtFirstLOD;
-        
+
         osg::ref_ptr<const Map> _map;
 
     private:
@@ -287,7 +287,7 @@ namespace osgEarth
 
         typedef std::vector<osg::ref_ptr<TerrainEffect> > TerrainEffectVector;
         TerrainEffectVector effects_;
-        
+
         typedef std::vector<osg::ref_ptr<CreateTileModelCallback> > CreateTileModelCallbacks;
         CreateTileModelCallbacks _createTileModelCallbacks;
         mutable Threading::ReadWriteMutex _createTileModelCallbacksMutex;

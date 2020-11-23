@@ -421,7 +421,7 @@ namespace
             a_min[0] = a_max[0] = vert.x();
             a_min[1] = a_max[1] = vert.y();
 
-            std::unordered_set<UID> uids;
+            std::vector<UID> uids;
             _spatial_index.Search(a_min, a_max, &uids, ~0);
 
             for (auto uid : uids)
@@ -450,7 +450,7 @@ namespace
             a_min[1] = std::min(seg.first.y(), seg.second.y());
             a_max[0] = std::max(seg.first.x(), seg.second.x());
             a_max[1] = std::max(seg.first.y(), seg.second.y());
-            std::unordered_set<UID> uids;
+            std::vector<UID> uids;
             _spatial_index.Search(a_min, a_max, &uids, ~0);
 
             // The working set of triangles which we will add to if we have

@@ -27,6 +27,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Threading>
 #include <osgEarth/Progress>
+#include <osgEarth/rtree.h>
 
 namespace osgEarth { namespace Util
 {
@@ -62,17 +63,21 @@ namespace osgEarth { namespace Util
         * Gets the maximum level to visit
         */
         const unsigned int getMaxLevel() const {return _maxLevel;}
-  
+
 
         /**
         * Extents to visit
         */
-        void addExtent( const GeoExtent& extent ); 
-        const std::vector< GeoExtent >& getExtents() const { return _extents; }  
+        void addExtent( const GeoExtent& extent );
+        const std::vector< GeoExtent >& getExtents() const { return _extents; }
+
+        void addDataExtent(const GeoExtent& extent);
 
         virtual void run(const Profile* mapProfile);
 
-        bool intersects( const GeoExtent& extent );    
+        bool intersects( const GeoExtent& extent );
+
+        bool hasData(const TileKey& key);
 
         void setTileHandler( TileHandler* handler );
 
@@ -83,9 +88,9 @@ namespace osgEarth { namespace Util
         void incrementProgress( unsigned int progress );
 
         void resetProgress();
-        
 
-    protected:        
+
+    protected:
 
         void estimate();
 
@@ -96,7 +101,12 @@ namespace osgEarth { namespace Util
         unsigned int _minLevel;
         unsigned int _maxLevel;
 
+        // The extents to process
         std::vector< GeoExtent > _extents;
+
+        // An index of areas that might have data.  This is an accleration structure to avoid processing areas that might not have data.
+        typedef RTree<unsigned, double, 2> ExtentIndex;
+        ExtentIndex _dataExtentIndex;
 
         osg::ref_ptr< TileHandler > _tileHandler;
 
@@ -104,10 +114,10 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr< const Profile > _profile;
 
-        OpenThreads::Mutex _progressMutex;
+        osgEarth::Threading::Mutex _progressMutex;
 
         unsigned int _total;
-        unsigned int _processed;        
+        unsigned int _processed;
     };
 
 
@@ -138,19 +148,19 @@ namespace osgEarth { namespace Util
 
     typedef std::vector< TileKey > TileKeyList;
 
-    
+
     /**
      * A list of TileKeys that you can serialize to a file
      */
     class OSGEARTH_EXPORT TaskList
-    {    
+    {
     public:
         TaskList(const Profile* profile);
 
         /**
          * Loads the tiles from the given file.
          */
-        bool load( const std::string &filename);          
+        bool load( const std::string &filename);
 
         /**
          * Saves the tiles to the given file.

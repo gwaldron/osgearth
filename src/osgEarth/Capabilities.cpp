@@ -19,6 +19,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Version>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/GEOS>
 #include <osg/FragmentProgram>
 #include <osg/GL2Extensions>
 #include <osg/Version>
@@ -207,6 +208,10 @@ _supportsVertexArrayObjects ( false )
 
 #ifdef GDAL_RELEASE_NAME
         OE_INFO << LC << "  GDAL Version:      " << GDAL_RELEASE_NAME << std::endl;
+#endif
+
+#ifdef GEOS_VERSION
+        OE_INFO << LC << "  GEOS Version:      " << GEOS_VERSION << std::endl;
 #endif
 
         _supportsGLSL = GL2->isGlslSupported;

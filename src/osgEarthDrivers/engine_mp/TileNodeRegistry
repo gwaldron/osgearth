@@ -25,7 +25,7 @@
 #include "Common"
 #include "TileNode"
 #include <osgEarth/Revisioning>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Terrain>
 #include <OpenThreads/Atomic>

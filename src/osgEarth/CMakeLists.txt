@@ -153,6 +153,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
+    ImGuiUtils
     InstanceBuilder
     InstanceCloud
     IntersectionPicker
@@ -215,6 +216,7 @@ SET(LIB_PUBLIC_HEADERS
     ShaderLoader
     ShaderMerger
     ShaderUtils
+    SelectExtentTool
     SimplexNoise
     SpatialReference
     StateSetCache
@@ -578,6 +580,7 @@ set(TARGET_SRC
     ShaderLoader.cpp
     ShaderMerger.cpp
     ShaderUtils.cpp
+    SelectExtentTool.cpp
     SimplexNoise.cpp
     SpatialReference.cpp
     StateSetCache.cpp

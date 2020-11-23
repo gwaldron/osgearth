@@ -498,7 +498,7 @@ ImageUtils::mipmapImage(const osg::Image* input)
 
     // allocate space for the new data and copy over level 0 of the old data
     unsigned char* newData = new unsigned char[totalSizeBytes];
-    ::memcpy(newData, input->data(), input->getTotalSizeInBytes());
+    ::memcpy(newData, input->data(), imageSizeBytes);
 
     output->setImage(
         input->s(), input->t(), input->r(),

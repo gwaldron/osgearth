@@ -35,7 +35,8 @@ TileVisitor::TileVisitor():
 _total(0),
 _processed(0),
 _minLevel(0),
-_maxLevel(99)
+_maxLevel(99),
+_progressMutex("TileVisitor Progress")
 {
 }
 
@@ -45,7 +46,8 @@ _tileHandler( handler ),
 _total(0),
 _processed(0),
 _minLevel(0),
-_maxLevel(99)
+_maxLevel(99),
+_progressMutex("TileVisitor Progress")
 {
 }
 
@@ -60,21 +62,52 @@ void TileVisitor::addExtent( const GeoExtent& extent )
     _extents.push_back( extent );
 }
 
+void TileVisitor::addDataExtent(const GeoExtent& extent)
+{
+    double min[2] = { extent.xMin(), extent.yMin() };
+    double max[2] = { extent.xMax(), extent.yMax() };
+    _dataExtentIndex.Insert(min, max, _dataExtentIndex.Count());
+}
+
 bool TileVisitor::intersects( const GeoExtent& extent )
-{    
-    if ( _extents.empty()) return true;
+{
+    if (_extents.empty()) return true;
     else
     {
         for (unsigned int i = 0; i < _extents.size(); ++i)
         {
-            if (_extents[i].intersects( extent ))                
+            if (_extents[i].intersects( extent ))
             {
                 return true;
             }
-
         }
     }
     return false;
+}
+
+bool TileVisitor::hasData(const TileKey& key)
+{
+    GeoExtent extent = key.getExtent();
+
+    // Check the data extents index to see if we might have data in this area.
+    if (_dataExtentIndex.Count() > 0)
+    {
+        double min[2] = { extent.xMin(), extent.yMin() };
+        double max[2] = { extent.xMax(), extent.yMax() };
+        std::vector< unsigned int > hits;
+        if (_dataExtentIndex.Search(min, max, &hits, 1) == 0)
+        {
+            return false;
+        }
+    }
+
+    // Check the tile handler
+    if (_tileHandler.valid())
+    {
+        _tileHandler->hasData(key);
+    }
+
+    return true;
 }
 
 void TileVisitor::setTileHandler( TileHandler* handler )
@@ -90,10 +123,10 @@ void TileVisitor::setProgressCallback( ProgressCallback* progress )
 void TileVisitor::run( const Profile* mapProfile )
 {
     _profile = mapProfile;
-    
+
     // Reset the progress in case this visitor has been ran before.
     resetProgress();
-    
+
     estimate();
 
     // Get all the root keys and process them.
@@ -108,40 +141,40 @@ void TileVisitor::run( const Profile* mapProfile )
 
 void TileVisitor::estimate()
 {
-    //Estimate the number of tiles    
+    //Estimate the number of tiles
     CacheEstimator est;
     est.setMinLevel( _minLevel );
     est.setMaxLevel( _maxLevel );
-    est.setProfile( _profile.get() ); 
+    est.setProfile( _profile.get() );
     for (unsigned int i = 0; i < _extents.size(); i++)
-    {                
+    {
         est.addExtent( _extents[ i ] );
-    } 
+    }
     _total = est.getNumTiles();
 }
 
 void TileVisitor::processKey( const TileKey& key )
-{        
+{
     // If we've been cancelled then just return.
     if (_progress && _progress->isCanceled())
-    {        
+    {
         return;
-    }    
+    }
 
     unsigned int x, y, lod;
     key.getTileXY(x, y);
-    lod = key.getLevelOfDetail();    
+    lod = key.getLevelOfDetail();
 
     // Only process this key if it has a chance of succeeding.
-    if (_tileHandler && key.getLOD() >= _minLevel && !_tileHandler->hasData(key))
-    {                
+    if (!hasData(key))
+    {
         return;
-    }    
+    }
 
     bool traverseChildren = false;
 
     // If the key intersects the extent attempt to traverse
-    if (intersects( key.getExtent() ))
+    if (intersects(key.getExtent()))
     {
         // If the lod is less than the min level don't do anything but do traverse the children.
         if (lod < _minLevel)
@@ -149,9 +182,9 @@ void TileVisitor::processKey( const TileKey& key )
             traverseChildren = true;
         }
         else
-        {         
+        {
             // Process the key
-            traverseChildren = handleTile( key );
+            traverseChildren = handleTile(key);
         }
     }
 
@@ -162,14 +195,14 @@ void TileVisitor::processKey( const TileKey& key )
         {
             TileKey k = key.createChildKey(i);
             processKey( k );
-        }                                
-    }       
+        }
+    }
 }
 
 void TileVisitor::incrementProgress(unsigned int amount)
 {
     {
-        OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_progressMutex );
+        Threading::ScopedMutexLock lk(_progressMutex );
         _processed += amount;
     }
     if (_progress.valid())
@@ -179,19 +212,19 @@ void TileVisitor::incrementProgress(unsigned int amount)
         {
             _progress->cancel();
         }
-    }    
+    }
 }
 
 bool TileVisitor::handleTile( const TileKey& key )
-{    
+{
     bool result = false;
     if (_tileHandler.valid() )
     {
         result = _tileHandler->handleTile( key, *this );
     }
 
-    incrementProgress(1);    
-    
+    incrementProgress(1);
+
     return result;
 }
 
@@ -251,16 +284,16 @@ TileVisitor( handler ),
 
 unsigned int MultithreadedTileVisitor::getNumThreads() const
 {
-    return _numThreads; 
+    return _numThreads;
 }
 
 void MultithreadedTileVisitor::setNumThreads( unsigned int numThreads)
 {
-    _numThreads = numThreads; 
+    _numThreads = numThreads;
 }
 
 void MultithreadedTileVisitor::run(const Profile* mapProfile)
-{                   
+{
     // Start up the task service
     OE_INFO << "Starting " << _numThreads << " threads " << std::endl;
 
@@ -279,7 +312,11 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
 }
 
 bool MultithreadedTileVisitor::handleTile(const TileKey& key)
-{    
+{
+    while (_threadPool->getNumOperationsInQueue() > 1000)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
     // Add the tile to the task queue.
     _threadPool->run(new HandleTileTask(_tileHandler.get(), this, key, getProgressCallback()));
     return true;
@@ -293,20 +330,20 @@ _profile( profile )
 }
 
 bool TaskList::load( const std::string &filename)
-{          
+{
     std::ifstream in( filename.c_str(), std::ios::in );
 
     std::string line;
     while( getline(in, line) )
-    {            
+    {
         std::vector< std::string > parts;
         StringTokenizer(line, parts, "," );
 
         if (parts.size() >= 3)
         {
             _keys.push_back( TileKey(
-                as<unsigned int>(parts[0], 0u), 
-                as<unsigned int>(parts[1], 0u), 
+                as<unsigned int>(parts[0], 0u),
+                as<unsigned int>(parts[1], 0u),
                 as<unsigned int>(parts[2], 0u),
                 _profile.get() ) );
         }
@@ -317,7 +354,7 @@ bool TaskList::load( const std::string &filename)
 }
 
 void TaskList::save( const std::string& filename )
-{        
+{
     std::ofstream out( filename.c_str() );
     for (TileKeyList::iterator itr = _keys.begin(); itr != _keys.end(); ++itr)
     {

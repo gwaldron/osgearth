@@ -1,12 +1,16 @@
 ### DOCUMENTATION ###
 
 set(DOCS_ROOT
-    index.md
-    install.md
-    build.md
-    releasenotes.md
-    faq.md
-    3.0_upgrade_guide.md)
+    source/3.0_upgrade_guide.md
+    source/build.md
+    source/data.md
+    source/earthfile.md
+    source/faq.md
+    source/index.md
+    source/install.md
+    source/layers.md
+    source/releasenotes.md
+    source/support.md
 )
 
 # todo if we need folders later

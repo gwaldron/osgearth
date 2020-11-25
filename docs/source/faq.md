@@ -1,16 +1,8 @@
 # FAQ
 
-* [Using the API](#Using the API)
-
-* [Community and Support](#Community and Support)
-
-* [Licensing](#Licensing)
-
-  
-
 ## Using the API
 
-### How do I place a 3D model on the map?
+#### How do I place a 3D model on the map?
 
 The `osgEarth::GeoTransform` class inherits from `osg::Transform` and will convert map coordinates into OSG world coordinates for you. Place an object at a geospatial position like this:
 
@@ -31,7 +23,7 @@ xform->setPosition(point);
 
 
 
-### Why does my model have no texture or lighting?
+#### Why does my model have no texture or lighting?
 
 Everything under an osgEarth scene graph is rendered with shaders. So, when using your own models (or creating geometry by hand) you need to create shader components in order for them to render properly.
 
@@ -45,7 +37,7 @@ After that, your node will contain shader snippets that allows osgEarth to rende
 
 
 
-### Lines or annotations (FeatureNode, etc.) are not rendering. Why?
+#### Why are my Lines or Annotations not rendering?
 
 Lines render using a shader that requires some initial state to be set. You can apply this state to your top-level camera (or anywhere else above the geometry) like so:
 
@@ -78,7 +70,7 @@ Again: MapNode does all this automatically so this is only necessary if you do n
 
 
 
-### Text annotations (LabelNode, PlaceNode) are not rendering. Why?
+#### Text annotations (LabelNode, PlaceNode) are not rendering. Why?
 
 Rendering text requires that you disable OSG's small-feature culling like so:
 
@@ -92,7 +84,7 @@ Note: you must do this for each camera.
 
 ## Community and Support
 
-### What is the best practice for using GitHub?
+#### What is the best practice for using GitHub?
 
 The best way to work with the osgEarth repository is to make your own clone on GitHub and to work from that clone. Why not work directly against the main repository? You can, but if you need to make changes, bug fixes, etc., you will need your own clone in order to issue Pull Requests.
 
@@ -100,7 +92,7 @@ The best way to work with the osgEarth repository is to make your own clone on G
 2. Clone the osgEarth repo.
 3. Work from your clone. Sync it to the main repository periodically to get the latest changes.
 
-### How do I submit changes to osgEarth?
+#### How do I submit changes to osgEarth?
 
 We accept contributions and bug fixes through GitHub's [Pull Request](https://help.github.com/articles/using-pull-requests) mechanism.
 
@@ -114,18 +106,7 @@ First you need your own GitHub account and a fork of the repo (see above). Next,
 If we decide NOT to include your submission, you can still keep it in our cloned repository and use it yourself. Doing so maintains compliance with the osgEarth license since your changes are still available to the public - even if they are not merged into the master repository.
 
 
-### Can I hire someone to help me with osgEarth?
+#### Can I hire someone to help me with osgEarth?
 
 Of course! We at Pelican Mapping are in the business of supporting users of the osgEarth SDK and are available for contracting, training, and integration services. The easiest way to get in touch with us is through our web site [contact form](http://pelicanmapping.com/?page_id=2).
 
-
-## Licensing
-
-### Can I use osgEarth in a commercial product?
-
-Yes. The license permits use in a commercial product. The only requirement is that any changes you make to the actual osgEarth library *itself* be made available under the same license as osgEarth. You do *not* need to make other parts of your application public.
-
-
-### Can I use osgEarth in an iOS app?
-
-Yes. Apple's policy requires only statically linked libraries. Technically, the LGPL does not support static linking, but we grant an exception in this case.

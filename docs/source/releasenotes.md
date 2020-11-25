@@ -4,23 +4,29 @@
 
 ## Version 3.1 (November 2020)
 
-- New ```TerrainConstraintLayer``` for masking and custom terrain tessellation
+As of this release, osgEarth requires C++11.
+
+GEOS: We transitioned from the GEOS C++ API to the C API for stability reasons. If you see GEOS compile/linker errors, this is likely the reason and you should make sure to link with the C library from now on. (GEOS is an optional dependency that enables some feature processing operations.)
+
+Release Highlights:
+
+- New ```TerrainConstraintLayer``` for masking and custom terrain tessellation. Please see ```constraints.earth``` for sample applications. This replaces and extends the old ```MaskLayer``` type.
 - New ```LERCImageLayer``` (ESRI format)
 - New ```ArcGISTilePackageElevationLayer```
 - New ```ArcGISServerElevationLayer```
-- New ```DebugImageLayer``` ```show_tessellation``` property to display the terrain mesh
-- Map-wide default texture compression setting
-- Started proper use of SONAME for Linux builds
-- ```osgearth_conv``` supports a geocell index (```--index```)
-- New ```SelectExtentTool``` for drawing a bounding box
-- XYZ layers now support the {-y} notation for Y inversion
+- New ```DebugImageLayer``` ```show_tessellation``` property to display the terrain mesh; handy for visualizing constraints created with the new ```TerrainConstraintLayer```
+- Map-wide default texture compression setting allows you to enable automatic texture compression in the terrain options section of your earth file
+- SONAME for Linux builds is now properly used. This was preventing ABI stability for some package managers.
+- ```osgearth_conv``` supports a geocell index (```--index```) that can greatly increase the performance of a large tiling operation by implementing a gridded spatial index.
+- New ```SelectExtentTool``` for drawing a bounding box on the map and firing a callback.
+- XYZ layers now support the {-y} notation for Y inversion, a common notation used in web mapping URLs
 - Write support for ```TMSElevationLayer```
-- Moved to the GEOS C API for stability
-- Normalized on C++11 threading primitives
+- Improved task cancellation support throughout. Task cancellation occurs when the results of data-loading task are no longer required (because the camera moved) and we want to cut short the operation.
+- Improved polygon tessellation (fixes various edge cases)
+- Faster and better vector rasterization using the excellent ```Blend2D``` library (optional dependency)Transitioned to the GEOS C API for stability
 - Improved parallelization for some drivers
-- Improved task cancelation support throughout
-- Improved polygon tessellator
-- Mutex contention analysis in Tracy
+- Mutex contention analysis in Tracy - helps us identify and mitigate contention to improve parallelization
+- Normalized on C++11 threading primitives, almost completely removing the dependency on OpenThreads
 - Various speed improvements and bug fixes
 - Simplified CMake configuration process
 
@@ -52,10 +58,11 @@
 - Tracy integration - profiling
 - Better error reporting infrastructure
 - Performance improvements & bug fixes galore
+- New documentation structure
 
 
 
-## Version 2.10 (TBD 2018)
+## Version 2.10 (November 2018)
 
 - REX terrain engine promoted to default. Old MP engine is now in legacy support mode.
 - Removed the osgEarthQt nodekit from the SDK, along with all Qt examples

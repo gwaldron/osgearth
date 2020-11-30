@@ -1,6 +1,15 @@
 name: windows-x64-Release
 
-on: [workflow_dispatch] # workflow_dispatch push
+on:
+  push:
+    branches:
+      - master
+      - 3.1
+  pull_request:
+    branches:
+      - master
+      - 3.1
+  workflow_dispatch:
 
 env:             
   VCPKG_BINARY_SOURCES : 'clear;nuget,GitHub,readwrite'  

@@ -1,6 +1,15 @@
 name: linux-x64 
 
-on: [workflow_dispatch] # workflow_dispatch push
+on:
+  push:
+    branches:
+      - master
+      - 3.1
+  pull_request:
+    branches:
+      - master
+      - 3.1
+  workflow_dispatch:
 
 env:             
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)

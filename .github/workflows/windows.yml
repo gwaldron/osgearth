@@ -1,4 +1,4 @@
-name: windows-x64
+name: windows-x64-Release
 
 on: [workflow_dispatch] # workflow_dispatch push
 

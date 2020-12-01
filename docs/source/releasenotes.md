@@ -2,7 +2,7 @@
 
 
 
-## Version 3.1 (November 2020)
+## Version 3.1 (December 2020)
 
 As of this release, osgEarth requires C++11.
 
@@ -29,6 +29,8 @@ Release Highlights:
 - Normalized on C++11 threading primitives, almost completely removing the dependency on OpenThreads
 - Various speed improvements and bug fixes
 - Simplified CMake configuration process
+- Refreshed the documentation site
+- GitHub actions for CI on Linux, Windows, and MacOS
 
 
 

@@ -45,7 +45,7 @@ These are the public layer types native to osgEarth.
 
 
 
-## Other Layer Types
+## Miscellaneous
 
 | Earth File        | API Class              | Description                                                  |
 | ----------------- | ---------------------- | ------------------------------------------------------------ |
@@ -53,7 +53,7 @@ These are the public layer types native to osgEarth.
 | Debug             | DebugImageLayer        | Renders metadata about each rendered map tile                |
 | GeodeticGraticule | GeodeticGraticuleLayer | Display a simple latitude/longitude graticule                |
 | MGRSGraticule     | MGRSGraticuleLayer     | Displays a simple MGRS graticule with labels                 |
-| Model             | ModelLayer             | Loads and displays an external 3D model at a geospecific location |
+| Model             | ModelLayer             | Loads and displays an external 3D model at a map location    |
 | Ocean             | SimpleOceanLayer       | Renders a very simple ocean surface (requires the map to have bathymetry data) |
 | Sky               | SimpleSkyLayer         | Renders a sky model with realistic lighting and shading      |
 | TerrainConstraint | TerrainConstraintLayer | Alters the triangulation of the terrain skin to incorporate vector data; e.g., to represent ridgelines, coastlines, or to cut out an area where a custom terrain model will go |
@@ -63,3 +63,14 @@ These are the public layer types native to osgEarth.
 | Viewpoints        | ViewpointsLayer        | Pre-set viewpoints that a viewer application can display for the user |
 | Wind              | WindLayer              | Incorporates a wind model (needs other layers that can use the data) |
 
+
+
+## Feature Sources
+
+| Earth File  | API Class        | Description                                                  |
+| ----------- | ---------------- | ------------------------------------------------------------ |
+| MVTFeatures | MVTFeatureSource | Mapnik Vector Tiles specification                            |
+| OGRFeatures | OGRFeatureSource | Uses a GDAL/OGR vector driver to read feature data. This is the most common feature source for reading local data (e.g., ESRI Shapefile) |
+| TFSFeatures | TFSFeatureSource | Reads vector features from a server according to the Tiled Feature Service specification (osgEarth proprietary) |
+| WFSFeatures | WFSFeatureSource | OGC Web Feature Service specification (limited implementation) |
+| XYZFeatures | XZYFeatureSource | Generic specification for reading tiled vector data from a server |

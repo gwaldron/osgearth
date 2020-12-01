@@ -11,7 +11,7 @@ Here is a very simple earth file that you can find in the `tests` folder of the 
 ```xml
 <Map name="Hello, World">
     <GDALImage name="World imagery">
-    	<url>../data/world.tif</url>
+        <url>../data/world.tif</url>
     </GDALImage>
 </Map>
 ```
@@ -29,23 +29,21 @@ That's it! It is that easy to get a map up and running.
 You can add as many layers to your **Map** as you like. Here's an example called `hires-inset.earth` :
 
 ```xml
-<Map name="Hello, World">
-    
+<Map name="Hello, World">    
     <!-- Worldwide image -->
-	<GDALImage name="World">
+    <GDALImage name="World">
         <url>../data/world.tif</url>
     </GDALImage>
 
-	<!-- Higher resolution inset of Boston -->
+    <!-- Higher resolution inset of Boston -->
     <GDALImage name="Boston">
-		<url>../data/boston-inset-wgs84.tif</url>
-	</GDALImage>
-	
-	<!-- Higher resolution inset of New York City -->
+        <url>../data/boston-inset-wgs84.tif</url>
+    </GDALImage>
+    
+    <!-- Higher resolution inset of New York City -->
     <GDALImage name="New York">
-		<url>../data/nyc-inset-wgs84.tif</url>
-	</GDALImage>
-
+        <url>../data/nyc-inset-wgs84.tif</url>
+    </GDALImage>
 </Map>
 ```
 
@@ -57,14 +55,14 @@ Now let's add some height field data, also knows as a **DEM** or Digital Elevati
 
 ```xml
 <Map name="ReadyMap">
-	<TMSImage name="ReadyMap 15m Imagery">
-		<url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-	</TMSImage>
+    <TMSImage name="ReadyMap 15m Imagery">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
 
-	<TMSElevation name="ReadyMap 90m Elevation">
-		<url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-		<vdatum>egm96</vdatum>
-	</TMSElevation>
+    <TMSElevation name="ReadyMap 90m Elevation">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+        <vdatum>egm96</vdatum>
+    </TMSElevation>
 
     <Viewpoints>
         <Viewpoint name="San Francisco, California">

@@ -243,7 +243,7 @@ SpatialReference::SpatialReference(const Key& key) :
     {
         //_setup.name = key.horiz;
         _setup.type = INIT_PROJ;
-        _setup.horiz = key.horizLower;
+        _setup.horiz = key.horiz;
     }
     else if (
         key.horizLower.find( "epsg:" )  == 0 ||
@@ -251,7 +251,7 @@ SpatialReference::SpatialReference(const Key& key) :
     {
         _setup.name = key.horiz;
         _setup.type = INIT_PROJ;
-        _setup.horiz = std::string("+init=") + key.horizLower;
+        _setup.horiz = std::string("+init=") + key.horiz;
     }
     else if (
         key.horizLower.find( "projcs" ) == 0 || 

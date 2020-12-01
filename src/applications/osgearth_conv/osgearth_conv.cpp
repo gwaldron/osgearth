@@ -481,7 +481,7 @@ main(int argc, char** argv)
             osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
             GeoExtent ext(feature->getSRS(), featureBounds);
             ext = ext.transform(mapNode->getMapSRS());
-            visitor->addExtent(ext);
+            visitor->addDataExtent(ext);
         }
     }
 

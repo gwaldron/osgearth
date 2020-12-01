@@ -71,9 +71,13 @@ namespace osgEarth { namespace Util
         void addExtent( const GeoExtent& extent );
         const std::vector< GeoExtent >& getExtents() const { return _extents; }
 
+        void addDataExtent(const GeoExtent& extent);
+
         virtual void run(const Profile* mapProfile);
 
         bool intersects( const GeoExtent& extent );
+
+        bool hasData(const TileKey& key);
 
         void setTileHandler( TileHandler* handler );
 
@@ -97,10 +101,12 @@ namespace osgEarth { namespace Util
         unsigned int _minLevel;
         unsigned int _maxLevel;
 
+        // The extents to process
         std::vector< GeoExtent > _extents;
 
+        // An index of areas that might have data.  This is an accleration structure to avoid processing areas that might not have data.
         typedef RTree<unsigned, double, 2> ExtentIndex;
-        ExtentIndex _extentIndex;
+        ExtentIndex _dataExtentIndex;
 
         osg::ref_ptr< TileHandler > _tileHandler;
 

@@ -466,9 +466,8 @@ WFSFeatureSource::createURL(const Query& query) const
         buf << "&MAXFEATURES=" << options().maxFeatures().get();
     }
 
-    if (query.tileKey().isSet())
+    if (query.tileKey().isSet() && getFeatureProfile()->isTiled())
     {
-
         unsigned int tileX = query.tileKey().get().getTileX();
         unsigned int tileY = query.tileKey().get().getTileY();
         unsigned int level = query.tileKey().get().getLevelOfDetail();

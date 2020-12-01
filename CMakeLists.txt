@@ -102,11 +102,12 @@ option(OSGEARTH_BUILD_TOOLS "Build the osgEarth command-line tools" ON)
 option(OSGEARTH_BUILD_EXAMPLES "Build the osgEarth example applications" ON)
 option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" ON)
 
-option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" ON)
+option(OSGEARTH_BUILD_PROCEDURAL_NODEKIT "Build the procedural terrain nodekit (splat/procedural)" OFF)
 option(OSGEARTH_BUILD_TRITON_NODEKIT "Build support for SunDog Triton SDK" OFF)
 option(OSGEARTH_BUILD_SILVERLINING_NODEKIT "Build support for SunDog SilverLining SDK" OFF)
 option(OSGEARTH_BUILD_LEVELDB_CACHE "Build the LevelDB cache plugin" OFF)
 option(OSGEARTH_BUILD_ROCKSDB_CACHE "Build the RocksDB cache plugin" OFF)
+option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" ON)
 option(OSGEARTH_BUILD_DOCS "Include the documentation folder" ON)
 
 # ........................................................................

@@ -18,9 +18,6 @@ SET(TARGET_COMMON_LIBRARIES
     osgEarth
 )
 
-# Whether to build the legacy MP terrain engine (default is NO)
-OPTION(OSGEARTH_BUILD_LEGACY_MP_TERRAIN_ENGINE "Build the legacy MP terrain engine plugin" OFF)
-
 # Folder name for plugins
 SET(OSGEARTH_PLUGINS_FOLDER Plugins)
 
@@ -60,10 +57,6 @@ endif()
 
 if(OSGEARTH_BUILD_ROCKSDB_CACHE)
     add_subdirectory(cache_rocksdb)
-endif()
-
-if(OSGEARTH_BUILD_LEGACY_MP_TERRAIN_ENGINE)
-    add_subdirectory(engine_mp)
 endif()
 
 IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE AND NOT ANDROID)

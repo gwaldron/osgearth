@@ -129,7 +129,7 @@ namespace osgEarth { namespace REX
 
     public:
         META_Object(osgEarth, TileDrawable);
-        TileDrawable() : osg::Drawable(), _tileSize(0), _mesh(NULL), _bboxCB(NULL), _bboxRadius(0.0) {}
+        TileDrawable() : osg::Drawable(), _tileSize(0), _bboxCB(NULL), _bboxRadius(0.0) {}
         TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) 
          : osg::Drawable(rhs, cop)
          , _tileSize(rhs._tileSize)

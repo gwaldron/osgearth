@@ -29,6 +29,7 @@ Release Highlights:
 - Normalized on C++11 threading primitives, almost completely removing the dependency on OpenThreads
 - Various speed improvements and bug fixes
 - Simplified CMake configuration process
+- Support for GDAL 3.1 (mostly - see the spherical mercator note in SRS.cpp)
 - Refreshed the documentation site
 - GitHub actions for CI on Linux, Windows, and MacOS
 

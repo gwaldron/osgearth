@@ -7,14 +7,9 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
 
-    <GDALImage name="Oahu Imagery1" driver="gdal" async="true">
-        <url>D:/mak/vrv/trunk/data/Terrain/Hawaii/Imagery/oahuImages/1-oahuImage.tif</url>
-    </GDALImage>
-
-    <ArcGISServerImage name="ARC World Imagery" enabled="false">
-        <url>http://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/</url>
-        <nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
-    </ArcGISServerImage>
+    <XYZImage name="Arc World Imagery" enabled="false">
+        <url>http://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/{z}/{y}/{x}</url>
+    </XYZImage>
 
     <TMSElevation name="ReadyMap 90m Elevation" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
@@ -49,7 +44,6 @@
     </XYZFeatures>
 
     <OGRFeatures name="data:ridgelines">
-        <!-- <url>D:/data/ridgelines/global_ridgelines_gmted2010.shp</url> -->
         <url>D:/data/demo/nepal/nepal_ridgetops_50m.shp</url>
     </OGRFeatures>
 
@@ -60,6 +54,7 @@
     <OGRFeatures name="data:coastlines">
         <url>D:/data/noaa/coastlines_chopped.shp</url>
     </OGRFeatures>
+    
     <TerrainConstraint name="constraint: coastlines" features="data:coastlines" min_level="10" enabled="false" remove_interior="true" />
 
     <TerrainConstraint name="constraint: ridgelines" features="data:ridgelines" min_level="10" enabled="true"/>
@@ -91,8 +86,16 @@
 
     <DebugImage show_tessellation="true" enabled="true"/>
 
-    <!-- <xi:include href="viewpoints.xml"/> -->
     <viewpoints>
+        <viewpoint name="Grand Canyon">
+            <heading>44.3337</heading>
+            <pitch>-20.1218</pitch>
+            <range>18503.6m</range>
+            <long>-111.1835343396965</long>
+            <lat>37.08967928224208</lat>
+            <height>1172.659356549382</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
         <viewpoint name="Nepal">
             <heading>-95.2569</heading>
             <pitch>-11.6282</pitch>
@@ -100,15 +103,6 @@
             <long>86.95498284412729</long>
             <lat>27.98593558247672</lat>
             <height>6468.469810338691</height>
-            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-        </viewpoint>
-        <viewpoint name="BUG TEST">
-            <heading>-3.5338e-06</heading>
-            <pitch>-88.9993</pitch>
-            <range>15299.4m</range>
-            <long>-157.9454185388188</long>
-            <lat>21.32468050268001</lat>
-            <height>21.94757425226271</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
         <viewpoint name="Oahu">
@@ -120,15 +114,6 @@
             <height>347.2645856048912</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
-        <viewpoint name="Grand Canyon">
-            <heading>-0.0001185</heading>
-            <pitch>-88.9987</pitch>
-            <range>160298m</range>
-            <long>-111.1243527328325</long>
-            <lat>37.09658066182875</lat>
-            <height>1107.548585043289</height>
-            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-        </viewpoint>
         <viewpoint name="Sion">
             <heading>-2.76119e-06</heading>
             <pitch>-89.0028</pitch>
@@ -136,15 +121,6 @@
             <long>7.290264823779213</long>
             <lat>46.2116331852606</lat>
             <height>528.5030263010412</height>
-            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-        </viewpoint>
-        <viewpoint name="Stelvio Pass">
-            <heading>48.2322</heading>
-            <pitch>-21.2589</pitch>
-            <range>1631.06m</range>
-            <long>10.40785325471311</long>
-            <lat>46.51794239626108</lat>
-            <height>2207.686481455341</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
         </viewpoint>
     </viewpoints>

@@ -42,11 +42,10 @@ extern "C" {
         static int osgearth_version_init = 1;
         if (osgearth_version_init)
         {
-            sprintf(osgearth_version,"%d.%d.%d%s Build %d",
+            sprintf(osgearth_version,"%d.%d.%d build %d",
                 OSGEARTH_MAJOR_VERSION,
                 OSGEARTH_MINOR_VERSION,
                 OSGEARTH_PATCH_VERSION,
-                isDevelopmentVersion,
                 OSGEARTH_SOVERSION);
 
             osgearth_version_init = 0;

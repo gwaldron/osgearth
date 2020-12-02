@@ -26,14 +26,12 @@ jobs:
     - name: Free disk space / Setup environment
       # https://github.com/actions/virtual-environments/issues/709
       run: |
-        df -h
         echo "Removing large packages"
         sudo rm -rf "/usr/local/share/boost"
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
         docker rmi $(docker image ls -aq)      
         sudo apt-get autoremove -y
         sudo apt-get clean
-        df -h
         sudo apt-get install libgl-dev
         
     - uses: actions/checkout@v2
@@ -69,10 +67,10 @@ jobs:
       run: >
         ${{ matrix.mono }} `./vcpkg/vcpkg fetch nuget | tail -n 1`
         sources add
-        -source "https://nuget.pkg.github.com/remoe/index.json"
+        -source "https://nuget.pkg.github.com/${{ github.actor }}/index.json"
         -storepasswordincleartext
         -name "GitHub"
-        -username "remoe"
+        -username "${{ github.actor }}"
         -password "${{ secrets.GITHUB_TOKEN }}"
         
     # Omit this step if you're using manifests

@@ -127,10 +127,14 @@ SpatialReference::create( const std::string& horiz, const std::string& vert )
 SpatialReference*
 SpatialReference::createFromKey(const SpatialReference::Key& key)
 {
+    osg::ref_ptr<SpatialReference> srs;
+
     if (key.horizLower == "unified-cube")
-        return new Contrib::CubeSpatialReference(key);
+        srs = new Contrib::CubeSpatialReference(key);
     else
-        return new SpatialReference(key);
+        srs = new SpatialReference(key);
+
+    return (srs.valid() && srs->valid()) ? srs.release() : nullptr;
 }
 
 SpatialReference::SpatialReference(void* handle) :
@@ -382,16 +386,6 @@ SpatialReference::createFromHandle(void* ogrHandle)
     OE_SOFT_ASSERT_AND_RETURN(ogrHandle!=nullptr, __func__, nullptr);
 
     return new SpatialReference(ogrHandle);
-
-    //ThreadLocal& local = _local.get();
-    //local._handle = OSRClone(ogrHandle);
-    //if (!local._handle)
-    //{
-    //    OE_WARN << LC << "Internal error: createFromHandle() failed to clone" << std::endl;
-    //    return 0L;
-    //}
-
-    //return new SpatialReference(clonedHandle);
 }
 
 #if 0
@@ -560,7 +554,10 @@ SpatialReference::isVertEquivalentTo( const SpatialReference* rhs ) const
 bool
 SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDatum ) const
 {
-    if ( !rhs )
+    if (!valid())
+        return false;
+
+    if (rhs == nullptr || !rhs->valid())
         return false;
 
     if ( this == rhs )
@@ -717,6 +714,9 @@ SpatialReference::getGeocentricSRS() const
 const SpatialReference*
 SpatialReference::createTangentPlaneSRS(const osg::Vec3d& origin) const
 {
+    if (!valid())
+        return nullptr;
+
     osg::Vec3d lla;
     const SpatialReference* srs = getGeographicSRS();
     if ( srs && transform(origin, srs, lla) )
@@ -735,6 +735,9 @@ SpatialReference::createTangentPlaneSRS(const osg::Vec3d& origin) const
 const SpatialReference*
 SpatialReference::createTransMercFromLongitude( const Angle& lon ) const
 {
+    if (!valid())
+        return nullptr;
+
     // note. using tmerc with +lat_0 <> 0 is sloooooow.
     std::string datum = getDatumName();
     std::string horiz = Stringify()
@@ -748,6 +751,9 @@ SpatialReference::createTransMercFromLongitude( const Angle& lon ) const
 const SpatialReference*
 SpatialReference::createUTMFromLonLat(const Angle& lon, const Angle& lat) const
 {
+    if (!valid())
+        return nullptr;
+
     // note. UTM is up to 10% faster than TMERC for the same meridian.
     unsigned zone = 1 + (unsigned)floor((lon.as(Units::DEGREES)+180.0)/6.0);
     std::string datum = getDatumName();
@@ -762,6 +768,9 @@ SpatialReference::createUTMFromLonLat(const Angle& lon, const Angle& lat) const
 const SpatialReference*
 SpatialReference::createEquirectangularSRS() const
 {
+    if (!valid())
+        return nullptr;
+
     return SpatialReference::create(
         "+proj=eqc +units=m +no_defs", 
         getVertInitString());
@@ -827,6 +836,9 @@ SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn )
 bool
 SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_local2world ) const
 {
+    if (!valid())
+        return false;
+
     if ( isProjected() && !isCube() )
     {
         osg::Vec3d world;
@@ -869,6 +881,9 @@ SpatialReference::transform(const osg::Vec3d&       input,
 {
     OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
 
+    if (!valid())
+        return false;
+
     std::vector<osg::Vec3d> v(1, input);
 
     if ( transform(v, outputSRS) )
@@ -885,6 +900,9 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
                             const SpatialReference*  outputSRS) const
 {
     OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
+
+    if (!valid())
+        return false;
 
     // trivial equivalency:
     if ( isEquivalentTo(outputSRS) )
@@ -991,6 +1009,9 @@ SpatialReference::transform2D(double x, double y,
 {
     OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
 
+    if (!valid())
+        return false;
+
     osg::Vec3d temp(x,y,0);
     bool ok = transform(temp, outputSRS, temp);
     if ( ok ) {
@@ -1010,6 +1031,9 @@ SpatialReference::transformXYPointArrays(
     const SpatialReference* out_srs) const
 {  
     OE_SOFT_ASSERT_AND_RETURN(out_srs!=nullptr, __func__, false);
+
+    if (!valid())
+        return false;
 
     // Transform the X and Y values inside an exclusive GDAL/OGR lock
     optional<TransformInfo>& xform = local._xformCache[out_srs->getWKT()];
@@ -1052,6 +1076,9 @@ SpatialReference::transformZ(std::vector<osg::Vec3d>& points,
                              bool                     pointsAreLatLong) const
 {
     OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
+
+    if (!valid())
+        return false;
 
     const VerticalDatum* outVDatum = outputSRS->getVerticalDatum();
 
@@ -1115,6 +1142,9 @@ bool
 SpatialReference::transformToWorld(const osg::Vec3d& input,
                                    osg::Vec3d&       output ) const
 {
+    if (!valid())
+        return false;
+
     if ( isGeographic() || isCube() )
     {
         return transform(input, getGeocentricSRS(), output);
@@ -1243,6 +1273,9 @@ SpatialReference::transformExtentToMBR(
 {
     OE_SOFT_ASSERT_AND_RETURN(to_srs!=nullptr, __func__, false);
 
+    if (!valid())
+        return false;
+
     // Transform all points and take the maximum bounding rectangle the resulting points
     std::vector<osg::Vec3d> v;
 
@@ -1321,6 +1354,9 @@ SpatialReference::transformExtentPoints(
     unsigned int numx, unsigned int numy ) const
 {
     OE_SOFT_ASSERT_AND_RETURN(to_srs!=nullptr, __func__, false);
+
+    if (!valid())
+        return false;
 
     std::vector<osg::Vec3d> points;
 

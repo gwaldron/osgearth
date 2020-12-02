@@ -540,6 +540,9 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
 
     osg::ref_ptr<Map> map = new Map(mapOptions);
 
+    if (map->getProfile() == nullptr)
+        return nullptr;
+
     // First go through and update to version 3.
     updateVersion2ToVersion3(conf);
 

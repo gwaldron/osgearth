@@ -314,7 +314,7 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     // fallback in case none is specified:
     if (!node.valid())
     {
-        OE_WARN << LC << "No earth file loaded - aborting" << std::endl;
+        OE_WARN << LC << "No valid earth file loaded - aborting" << std::endl;
         return NULL;
     }
 

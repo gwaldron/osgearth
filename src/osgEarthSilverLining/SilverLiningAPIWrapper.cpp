@@ -149,12 +149,10 @@ void CloudLayer::GetCloudAnimationEffects(double& a, bool& b, int& c, int& d) { 
 void CloudLayer::SeedClouds(Atmosphere& a) { HANDLE->SeedClouds(*(::SilverLining::Atmosphere*)a._handle); }
 
 //................................
-#ifdef OSGEARTH_SILVERLINING_USE_PRE_5_079_API
-CloudLayer CloudLayerFactory::Create(int kind) {
-    return CloudLayer((uintptr_t)::SilverLining::CloudLayerFactory::Create((::CloudTypes)kind));
-}
-#else
 CloudLayer CloudLayerFactory::Create(int kind, Atmosphere& a) {
+#ifdef OSGEARTH_SILVERLINING_USE_PRE_5_079_API
+    return CloudLayer((uintptr_t)::SilverLining::CloudLayerFactory::Create((::CloudTypes)kind));
+#else
     return CloudLayer((uintptr_t)::SilverLining::CloudLayerFactory::Create((::CloudTypes)kind, *(::SilverLining::Atmosphere*)a._handle));
-}
 #endif
+}

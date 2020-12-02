@@ -189,6 +189,7 @@ SpatialReference::SpatialReference(const Key& key) :
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         _setup.name = "Spherical Mercator";
         _setup.type = INIT_PROJ;
+        // GDAL 3 note: this results in an incorrect reporting of the minor axis. TODO.
         _setup.horiz = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +towgs84=0,0,0,0,0,0,0 +wktext +no_defs";
         _setup.vert = key.vertLower;
     }
@@ -1444,15 +1445,16 @@ SpatialReference::init()
             getOGRAttrValue( handle, "PROJCS", 0 );
     }
     std::string proj = getOGRAttrValue( handle, "PROJECTION", 0, true );
+    std::string proj_lc = Strings::toLower(proj);
 
     // check for the Mercator projection:
-    _is_mercator = !proj.empty() && proj.find("mercator")==0;
+    _is_mercator = !proj_lc.empty() && proj_lc.find("mercator")==0;
 
     // check for spherical mercator (a special case)
     _is_spherical_mercator = _is_mercator && osg::equivalent(semi_major_axis, semi_minor_axis);
 
     // check for the Polar projection:
-    if ( !proj.empty() && proj.find("polar_stereographic") != std::string::npos )
+    if ( !proj_lc.empty() && proj_lc.find("polar_stereographic") != std::string::npos )
     {
         double lat = as<double>( getOGRAttrValue( handle, "latitude_of_origin", 0, true ), -90.0 );
         _is_north_polar = lat > 0.0;

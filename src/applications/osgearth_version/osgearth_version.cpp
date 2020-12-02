@@ -47,45 +47,42 @@ int main( int argc, char** argv)
     {
         cout << arguments.getApplicationUsage()->getCommandLineUsage() << endl;
         arguments.getApplicationUsage()->write(cout, arguments.getApplicationUsage()->getCommandLineOptions());
-        return 1;
     }
 
-    if (arguments.read("--version-number"))
+    else if (arguments.read("--version-number"))
     {
         cout << osgEarthGetVersion() << endl;
-        return 0;
     }
 
-    if (arguments.read("--major-number"))
+    else if (arguments.read("--major-number"))
     {
         cout << OSGEARTH_MAJOR_VERSION << endl;
-        return 0;
     }
 
-    if (arguments.read("--minor-number"))
+    else if (arguments.read("--minor-number"))
     {
         cout << OSGEARTH_MINOR_VERSION << endl;
-        return 0;
     }
 
-    if (arguments.read("--patch-number"))
+    else if (arguments.read("--patch-number"))
     {
         cout << OSGEARTH_PATCH_VERSION << endl;
-        return 0;
     }
 
-    if (arguments.read("--soversion-number") || arguments.read("--so-number") )
+    else if (arguments.read("--soversion-number") || arguments.read("--so-number") )
     {
         cout << osgEarthGetSOVersion() << endl;
-        return 0;
     }    
 
-    cout << osgEarthGetLibraryName() << " " << osgEarthGetVersion() << endl << endl;
-
-    if ( arguments.read("--caps") )
+    else if (arguments.read("--caps"))
     {
-        osgEarth::setNotifyLevel( osg::INFO );
+        osgEarth::setNotifyLevel(osg::INFO);
         osgEarth::Registry::instance()->getCapabilities();
+    }
+
+    else
+    {
+        cout << osgEarthGetLibraryName() << " " << osgEarthGetVersion() << endl;
     }
 
     return 0;

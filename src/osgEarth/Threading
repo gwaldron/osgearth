@@ -116,6 +116,12 @@ namespace osgEarth { namespace Threading
     typedef std::lock_guard<RecursiveMutex> ScopedRecursiveMutexLock;
 
     /**
+     * Gets the approximate number of available threading contexts.
+     * Result is guaranteed to be greater than zero
+     */
+    extern OSGEARTH_EXPORT unsigned getConcurrency();
+
+    /**
      * Gets the unique ID of the running thread.
      */
     extern OSGEARTH_EXPORT unsigned getCurrentThreadId();

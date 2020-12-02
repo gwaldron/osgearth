@@ -269,7 +269,7 @@ namespace
 }
 
 MultithreadedTileVisitor::MultithreadedTileVisitor():
-_numThreads( OpenThreads::GetNumberOfProcessors() )
+_numThreads(Threading::getConcurrency())
 {
     // We must do this to avoid an error message in OpenSceneGraph b/c the findWrapper method doesn't appear to be threadsafe.
     // This really isn't a big deal b/c this only effects data that is already cached.
@@ -278,7 +278,7 @@ _numThreads( OpenThreads::GetNumberOfProcessors() )
 
 MultithreadedTileVisitor::MultithreadedTileVisitor( TileHandler* handler ):
 TileVisitor( handler ),
-    _numThreads( OpenThreads::GetNumberOfProcessors() )
+    _numThreads(Threading::getConcurrency())
 {
 }
 

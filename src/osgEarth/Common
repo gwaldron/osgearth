@@ -73,7 +73,6 @@ namespace osgEarth
 #pragma warning (disable: 4180)
 #endif
 
-// Library build configuration (like C++11 support)
 #include "osgEarth/BuildConfig.h"
 
 // FINAL keyword for C++11

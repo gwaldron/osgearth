@@ -34,7 +34,6 @@
 #include <osgEarth/Geocoder>
 #include <osgEarth/ViewFitter>
 #include <osgEarth/NetworkMonitor>
-#include <OpenThreads/Mutex>
 
 using namespace osgEarth;
 using namespace ImGui;
@@ -67,7 +66,7 @@ class ImGuiNotifyHandler : public osg::NotifyHandler
 public:
     void notify(osg::NotifySeverity severity, const char *message)
     {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lk(_mutex);
+        ScopedMutexLock lk(_mutex);
         int old_size = Buf.size();
         Buf.append(message);
         for (int new_size = Buf.size(); old_size < new_size; old_size++)
@@ -82,7 +81,7 @@ public:
         LineOffsets.push_back(0);
     }
 
-    OpenThreads::Mutex  _mutex;
+    Mutex _mutex;
     ImGuiTextBuffer     Buf;
     ImVector<int>       LineOffsets;        // Index to lines offset. We maintain this with AddLog() calls, allowing us to have a random access on lines
 };

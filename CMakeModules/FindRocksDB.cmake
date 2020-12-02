@@ -1,43 +1,40 @@
 # Locate RocksDB
+# - Find RocksDB
+#
+#  ROCKSDB_INCLUDE_DIR - Where to find rocksdb/db.h
+#  ROCKSDB_LIBRARY     - List of libraries when using ROCKSDB.
+#  ROCKSDB_FOUND      - True if ROCKSDB found.
 
-SET(ROCKSDB_DIR "" CACHE PATH "Root directory of RocksDB distribution (OPTIONAL)")
+get_filename_component(module_file_path ${CMAKE_CURRENT_LIST_FILE} PATH)
 
-FIND_PATH(ROCKSDB_INCLUDE_DIR rocksdb/db.h
-  PATHS
-  ${ROCKSDB_DIR}
-)
+# Look for the header file.
+find_path(ROCKSDB_INCLUDE_DIR NAMES rocksdb/db.h PATHS $ENV{ROCKSDB_ROOT}/include /opt/local/include /usr/local/include /usr/include    DOC "Path in which the file rocksdb/db.h is located." )
+mark_as_advanced(ROCKSDB_INCLUDE_DIR)
 
-if(RocksDB_FIND_REQUIRED_STATIC)
-	set(ROCKSDB_LIB "rocksdblib")
-else()
-	set(ROCKSDB_LIB "rocksdb-shared")
-endif()
+# Look for the library.
+# Does this work on UNIX systems? (LINUX)
+find_library(ROCKSDB_LIBRARY NAMES rocksdb PATHS /usr/lib $ENV{ROCKSDB_ROOT}/lib DOC "Path to rocksdb library." )
+mark_as_advanced(ROCKSDB_LIBRARY)
 
-find_library(ROCKSDB_LIBRARY NAMES ${ROCKSDB_LIB}
-			 PATHS
-			   ${ROCKSDB_DIR}
-			   ${ROCKSDB_DIR}/lib
-			 PATH_SUFFIXES lib lib64
-		)
+# Copy the results to the output variables.
+if (ROCKSDB_INCLUDE_DIR AND ROCKSDB_LIBRARY)
+  message(STATUS "Found rocksdb in ${ROCKSDB_INCLUDE_DIR} ${ROCKSDB_LIBRARY}")
+  set(ROCKSDB_FOUND 1)
+  include(CheckCXXSourceCompiles)
+  #set(CMAKE_REQUIRED_LIBRARY ${ROCKSDB_LIBRARY} pthread)
+  set(CMAKE_REQUIRED_INCLUDES ${ROCKSDB_INCLUDE_DIR})
+  find_package(zlib REQUIRED)
+else ()
+  set(ROCKSDB_FOUND 0)
+endif ()
 
+ # Report the results.
+if (NOT ROCKSDB_FOUND AND NOT QUIET)
+   set(ROCKSDB_DIR_MESSAGE "ROCKSDB was not found. Make sure ROCKSDB_LIBRARY and ROCKSDB_INCLUDE_DIR are set.")
+   if (ROCKSDB_FIND_REQUIRED)
+     message(FATAL_ERROR "${ROCKSDB_DIR_MESSAGE}")
+   elseif (NOT ROCKSDB_FIND_QUIETLY)
+     message(STATUS "${ROCKSDB_DIR_MESSAGE}")
+   endif ()
+endif ()
 
-find_library(ROCKSDB_LIBRARY_DEBUG NAMES ${ROCKSDB_LIB}d ${ROCKSDB_LIB}
-			 PATHS
-			   ${ROCKSDB_DIR}
-			   ${ROCKSDB_DIR}/debug
-			   ${ROCKSDB_DIR}/debug/lib
-			 PATH_SUFFIXES lib lib64
-			)
-
-find_package_handle_standard_args(ROCKSDB
-    FOUND_VAR
-      ROCKSDB_FOUND
-    REQUIRED_VARS
-      ROCKSDB_LIBRARY
-      ROCKSDB_INCLUDE_DIR
-    FAIL_MESSAGE
-      "Could NOT find ROCKSDB"
-)
-
-set(ROCKSDB_INCLUDE_DIRS ${ROCKSDB_INCLUDE_DIR} )
-set(ROCKSDB_LIBRARIES ${ROCKSDB_LIBRARY})

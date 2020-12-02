@@ -22,7 +22,6 @@
 #ifndef OSGEARTH_GLTF_READER_H
 #define OSGEARTH_GLTF_READER_H
 
-#include <OpenThreads/ScopedLock>
 #include <osg/Node>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -547,7 +546,7 @@ public:
                                 TextureCache* texCache = reader->_texCache;
                                 if (!imageEmbedded && texCache)
                                 {
-                                    OpenThreads::ScopedLock<TextureCache> lock(*texCache);
+                                    ScopedMutexLock lock(*texCache);
                                     auto texItr = texCache->find(imageURI.full());
                                     if (texItr != texCache->end())
                                     {
@@ -565,7 +564,7 @@ public:
                                 {
                                     if (!imageEmbedded && texCache && !cachedTex)
                                     {
-                                        OpenThreads::ScopedLock<TextureCache> lock(*texCache);
+                                        ScopedMutexLock lock(*texCache);
                                         auto insResult = texCache->insert(TextureCache::value_type(imageURI.full(), tex));
                                         if (insResult.second)
                                         {

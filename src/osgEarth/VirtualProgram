@@ -309,7 +309,7 @@ namespace osgEarth
      *
      * DO NOT DERIVE FROM VirtualProgram! IT WILL NOT WORK.
      */
-    class OSGEARTH_EXPORT VirtualProgram OSGEARTH_FINAL : public osg::StateAttribute
+    class OSGEARTH_EXPORT VirtualProgram final : public osg::StateAttribute
     {
     public:
         static const osg::StateAttribute::Type SA_TYPE;

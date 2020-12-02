@@ -739,11 +739,13 @@ std::string Feature::featuresToGeoJSON( const FeatureList& features)
 void Feature::transform( const SpatialReference* srs )
 {
     if (!getGeometry())
-    {
         return;
-    }
 
-    if (getSRS()->isEquivalentTo( srs )) return;
+    if (!getSRS() || !srs)
+        return;
+
+    if (getSRS()->isEquivalentTo( srs ))
+        return;
 
     // iterate over the feature geometry.
     GeometryIterator iter( getGeometry() );

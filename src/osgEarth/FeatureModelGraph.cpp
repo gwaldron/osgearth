@@ -1919,7 +1919,7 @@ FeatureModelGraph::runPostMergeOperations(osg::Node* node)
 void
 FeatureModelGraph::redraw()
 {
-    OpenThreads::ScopedLock< OpenThreads::ReentrantMutex > lk(_redrawMutex);
+    ScopedRecursiveMutexLock lk(_redrawMutex);
 
     OE_TEST << LC << "redraw " << std::endl;
 

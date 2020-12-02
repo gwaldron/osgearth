@@ -201,12 +201,12 @@ namespace osgEarth { namespace Util
         osg::BoundingSphered             _fullWorldBound;
         bool                             _useTiledSource;
         std::vector<const FeatureLevel*> _lodmap;
-        OpenThreads::ReentrantMutex      _redrawMutex;
+        RecursiveMutex                   _redrawMutex;
         optional<float> _minRange;
         optional<float> _maxRange;
 
-        OpenThreads::Atomic _cacheReads;
-        OpenThreads::Atomic _cacheHits;
+        std::atomic_int _cacheReads;
+        std::atomic_int _cacheHits;
 
         osg::ref_ptr<osgDB::FileLocationCallback> _defaultFileLocationCallback;
 

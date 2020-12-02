@@ -173,7 +173,9 @@ _supportsVertexArrayObjects ( false )
         enableATIworkarounds = false;
 
     // logical CPUs (cores)
-    _numProcessors = OpenThreads::GetNumberOfProcessors();
+    _numProcessors = std::thread::hardware_concurrency();
+    if (_numProcessors <= 0)
+        _numProcessors = 4;
 
     // GLES compile?
 #if (defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE))

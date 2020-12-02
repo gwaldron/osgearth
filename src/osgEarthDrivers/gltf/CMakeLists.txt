@@ -9,7 +9,10 @@ SET(TARGET_SRC
     ReaderWriterGLTF.cpp
 )
 
-INCLUDE_DIRECTORIES(${OE_THIRD_PARTY_DIR}/tinygltf ${OE_THIRD_PARTY_DIR}/rapidjson/include/rapidjson)
+INCLUDE_DIRECTORIES(
+    ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/tinygltf 
+    ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/rapidjson/include/rapidjson
+)
 
 IF(draco_FOUND)
     INCLUDE_DIRECTORIES( ${draco_INCLUDE_DIRS} )

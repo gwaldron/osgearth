@@ -29,8 +29,6 @@ TerrainOptions::getConfig() const
     conf.key() = "terrain";
     
     conf.set( "tile_size", _tileSize );
-    conf.set( "vertical_scale", _verticalScale );
-    conf.set( "vertical_offset", _verticalOffset );
     conf.set( "min_tile_range_factor", _minTileRangeFactor );
     conf.set( "range_factor", _minTileRangeFactor );  
     conf.set( "max_lod", _maxLOD );
@@ -72,8 +70,6 @@ void
 TerrainOptions::fromConfig(const Config& conf)
 {
     tileSize().init(17);
-    verticalScale().init(1.0f);
-    verticalOffset().init(0.0f);
     minTileRangeFactor().init(7.0);
     maxLOD().init(19u);
     minLOD().init(0u);
@@ -106,8 +102,6 @@ TerrainOptions::fromConfig(const Config& conf)
     textureCompression().setDefault("");
 
     conf.get( "tile_size", _tileSize );
-    conf.get( "vertical_scale", _verticalScale );
-    conf.get( "vertical_offset", _verticalOffset );
     conf.get( "min_tile_range_factor", _minTileRangeFactor );   
     conf.get( "range_factor", _minTileRangeFactor );   
     conf.get( "max_lod", _maxLOD ); conf.get( "max_level", _maxLOD );
@@ -150,8 +144,6 @@ _ptr(optionsPtr)
     //nop
 }
 
-OE_PROPERTY_IMPL(TerrainOptionsAPI, float, VerticalScale, verticalScale);
-OE_PROPERTY_IMPL(TerrainOptionsAPI, float, VerticalOffset, verticalOffset);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, int, TileSize, tileSize);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, float, MinTileRangeFactor, minTileRangeFactor);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, MaxLOD, maxLOD);

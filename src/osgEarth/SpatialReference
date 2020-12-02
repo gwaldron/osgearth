@@ -307,6 +307,9 @@ namespace osgEarth
         //! Get (a best guess at) the appropriate bounding box for this SRS
         bool getBounds(Bounds& output) const;
 
+        //! Whether this SRS was successfully initialized and is valid for use
+        bool valid() const { return _valid; }
+
     protected:
         virtual ~SpatialReference();
 

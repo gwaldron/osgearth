@@ -21,9 +21,9 @@
 #define OSGEARTH_REVISIONING_H 1
 
 #include <osgEarth/Common>
-#include <OpenThreads/Atomic>
 #include <osg/observer_ptr>
 #include <vector>
+#include <atomic>
 
 namespace osgEarth { namespace Util
 {
@@ -178,8 +178,8 @@ namespace osgEarth { namespace Util
         bool changed(bool reset=true) const { unsigned r = reset? _dirty.exchange(0) : (unsigned)_dirty; return r==1; }
         void clean() { _dirty.exchange(0); }
     private:
-        T                           _value;
-        mutable OpenThreads::Atomic _dirty;
+        T _value;
+        mutable std::atomic_int _dirty;
     };
 
 } }

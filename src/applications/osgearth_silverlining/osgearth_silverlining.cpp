@@ -123,11 +123,8 @@ struct SLCallback : public osgEarth::SilverLining::Callback
 {
     void onInitialize(Atmosphere& atmosphere)
     {
-#ifdef OSGEARTH_SILVERLINING_USE_PRE_5_079_API
-        CloudLayer cumulus = CloudLayerFactory::Create(CUMULUS_CONGESTUS);
-#else
         CloudLayer cumulus = CloudLayerFactory::Create(CUMULUS_CONGESTUS, atmosphere);
-#endif
+
         cumulus.SetIsInfinite(true);
         cumulus.SetBaseAltitude(3000);
         cumulus.SetThickness(50);

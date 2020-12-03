@@ -1,7 +1,9 @@
 osgEarth - 3D Mapping Engine & C++ SDK
 
 ![Windows](https://github.com/gwaldron/osgearth/workflows/windows-x64-Release/badge.svg)
+
 ![Linux](https://github.com/gwaldron/osgearth/workflows/linux-x64/badge.svg)
+
 ![OSX](https://github.com/gwaldron/osgearth/workflows/macosx-x64/badge.svg)
 
 [![Coverity Status](https://scan.coverity.com/projects/9251/badge.svg)](https://scan.coverity.com/projects/gwaldron-osgearth)

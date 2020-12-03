@@ -189,8 +189,11 @@ SpatialReference::SpatialReference(const Key& key) :
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         _setup.name = "Spherical Mercator";
         _setup.type = INIT_PROJ;
-        // GDAL 3 note: this results in an incorrect reporting of the minor axis. TODO.
+#if(GDAL_VERSION_MAJOR >= 3)
+        _setup.horiz = "+proj=webmerc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +towgs84=0,0,0,0,0,0,0 +wktext +no_defs";
+#else
         _setup.horiz = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +towgs84=0,0,0,0,0,0,0 +wktext +no_defs";
+#endif
         _setup.vert = key.vertLower;
     }
 

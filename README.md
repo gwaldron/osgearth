@@ -1,23 +1,19 @@
+osgEarth - 3D Mapping Engine & C++ SDK
+
 [![Build Status](https://travis-ci.org/gwaldron/osgearth.svg?branch=master)](https://travis-ci.org/gwaldron/osgearth)
 [![Coverity Status](https://scan.coverity.com/projects/9251/badge.svg)](https://scan.coverity.com/projects/gwaldron-osgearth)
 
-osgEarth - Geospatial SDK for OpenSceneGraph
-Copyright 2018 Pelican Mapping
 
-http://osgearth.org
 
-osgEarth is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
+## Welcome to osgEarth!
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+osgEarth gives you the power to add beautiful 2D or 3D maps to your C++ application. Get started at the links below!
 
-You should have received a copy of the GNU Lesser General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>
+* [Fork on GitHub](https://github.com/gwaldron/osgearth)
+* [Getting Started - Documentation](http://docs.osgearth.org/en/latest/)
+* [Community Support Forum](http://forum.osgearth.org/)
+
+osgEarth is Free Open Source Software distributed under the LGPL.
+
+Copyright 2020 [Pelican Mapping](http://web.pelicanmapping.com/).
+

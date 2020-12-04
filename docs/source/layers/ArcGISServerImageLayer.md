@@ -21,6 +21,3 @@ Inherits from: [Image Layer](ImageLayer.md)
 </ArcGISServerImage>
 ```
 
-### Inherited Properties
-
-<iframe src="VisibleLayer.html"/>

@@ -4,20 +4,20 @@ These are the public layer types native to osgEarth.
 
 ## Imagery
 
-| Earth File             | API class                   | Description                                                  |
-| ---------------------- | --------------------------- | ------------------------------------------------------------ |
-| ArcGISServerImage      | ArcGISServerImageLayer      | Connects to an ESRI ArcGIS Server instance                   |
-| ArcGISTilePackageImage | ArcGISTilePackageImageLayer | Reads an ESRI ArcGIS Tile Package                            |
-| BingImage              | BingImageLayer              | Connects to Microsoft Bing service. License key required     |
-| CesiumIonImage         | CesiumIonImageLayer         | Connects to a Cesium Ion server instance. Key required       |
-| CompositeImage         | CompositeImageLayer         | Combines multiple image layers into a single map layer       |
-| ContourMap             | ContourMapLayer             | Renders a colored representation of the elevation data in the map |
-| GDALImage              | GDALImageLayer              | Loads any imagery format supported by the GDAL library, including GeoTIFF |
-| GDALDEM                | GDALDEMLayer                | Renders various rasterized shaded elevation maps             |
-| MBTilesImage           | MBTilesImageLayer           | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
-| TMSImage               | TMSImageLayer               | Connects to a TMS (TileMapService) data source               |
-| WMSImage               | WMSImageLayer               | Connects to an OGC Web Map Service server                    |
-| XYZImage               | XYZImageLayer               | Reads imagery tiles in standard XYZ format (no metadata)     |
+| Earth File                                            | API class                   | Description                                                  |
+| ----------------------------------------------------- | --------------------------- | ------------------------------------------------------------ |
+| [ArcGISServerImage](layers/ArcGISServerImageLayer.md) | ArcGISServerImageLayer      | Connects to an ESRI ArcGIS Server instance                   |
+| ArcGISTilePackageImage                                | ArcGISTilePackageImageLayer | Reads an ESRI ArcGIS Tile Package                            |
+| BingImage                                             | BingImageLayer              | Connects to Microsoft Bing service. License key required     |
+| CesiumIonImage                                        | CesiumIonImageLayer         | Connects to a Cesium Ion server instance. Key required       |
+| CompositeImage                                        | CompositeImageLayer         | Combines multiple image layers into a single map layer       |
+| ContourMap                                            | ContourMapLayer             | Renders a colored representation of the elevation data in the map |
+| GDALImage                                             | GDALImageLayer              | Loads any imagery format supported by the GDAL library, including GeoTIFF |
+| GDALDEM                                               | GDALDEMLayer                | Renders various rasterized shaded elevation maps             |
+| MBTilesImage                                          | MBTilesImageLayer           | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
+| TMSImage                                              | TMSImageLayer               | Connects to a TMS (TileMapService) data source               |
+| WMSImage                                              | WMSImageLayer               | Connects to an OGC Web Map Service server                    |
+| XYZImage                                              | XYZImageLayer               | Reads imagery tiles in standard XYZ format (no metadata)     |
 
 
 

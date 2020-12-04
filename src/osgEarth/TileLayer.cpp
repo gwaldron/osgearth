@@ -34,16 +34,16 @@ TileLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
 
-    conf.set( "min_level", _minLevel );
-    conf.set( "max_level", _maxLevel );
-    conf.set( "min_resolution", _minResolution );
-    conf.set( "max_resolution", _maxResolution );
-    conf.set( "max_data_level", _maxDataLevel );
-    conf.set( "tile_size", _tileSize);
-    conf.set( "profile", _profile);
-    conf.set( "no_data_value", _noDataValue);
-    conf.set( "min_valid_value", _minValidValue);
-    conf.set( "max_valid_value", _maxValidValue);
+    conf.set("max_level", _maxLevel);
+    conf.set("max_resolution", _maxResolution);
+    conf.set("max_valid_value", _maxValidValue);
+    conf.set("max_data_level", _maxDataLevel);
+    conf.set("min_level", _minLevel);
+    conf.set("min_valid_value", _minValidValue);
+    conf.set("min_resolution", _minResolution);
+    conf.set("no_data_value", _noDataValue);
+    conf.set("profile", _profile);
+    conf.set("tile_size", _tileSize);
 
     return conf;
 }

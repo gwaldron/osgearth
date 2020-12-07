@@ -4,8 +4,9 @@ add_subdirectory(osgEarthDrivers)
 set_property(TARGET osgEarth PROPERTY FOLDER "Core")
 
 #optionals:
-add_subdirectory(osgEarthProcedural)
-
+if(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)
+    add_subdirectory(osgEarthProcedural)
+endif()
 if(OSGEARTH_BUILD_TRITON_NODEKIT)
     add_subdirectory(osgEarthTriton)
 endif()

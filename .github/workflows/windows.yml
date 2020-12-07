@@ -1,0 +1,104 @@
+name: windows-x64-Release
+
+on: [push, pull_request, workflow_dispatch]
+
+env:             
+  VCPKG_BINARY_SOURCES : 'clear;nuget,GitHub,readwrite'  
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  VCPKG_VERSION: '2020.11' 
+
+jobs:
+  
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: ['windows-2019']
+        include:
+          - os: 'windows-2019'
+            triplet: 'x64-windows'
+            mono: ''
+            VCPKG_WORKSPACE: 'c:/vcpkg_own'
+
+    steps:       
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+        ref: 3.1  
+
+    - name: vcpkg cache
+      id: vcpkgcache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ${{ matrix.VCPKG_WORKSPACE }}
+          !${{ matrix.VCPKG_WORKSPACE }}/packages
+          !${{ matrix.VCPKG_WORKSPACE }}/buildtrees
+          !${{ matrix.VCPKG_WORKSPACE }}/downloads
+        key: vcpkg-${{ matrix.triplet }}
+    
+    - name: Installing vcpkg (windows)
+      if: steps.vcpkgcache.outputs.cache-hit != 'true'
+      shell: 'bash'
+      run: |
+        cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}
+        cd ${{ matrix.VCPKG_WORKSPACE }}
+        git clone --depth 1 --branch ${{env.VCPKG_VERSION}} https://github.com/microsoft/vcpkg 
+        ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
+        ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
+
+    - name: 'Setup NuGet Credentials'
+      working-directory: ${{ matrix.VCPKG_WORKSPACE }}
+      shell: 'bash'
+      run: >
+        ${{ matrix.mono }} `./vcpkg/vcpkg fetch nuget | tail -n 1`
+        sources add
+        -source "https://nuget.pkg.github.com/${{ github.actor }}/index.json"
+        -storepasswordincleartext
+        -name "GitHub"
+        -username "${{ github.actor }}"
+        -password "${{ secrets.GITHUB_TOKEN }}"
+
+    # Omit this step if you're using manifests
+    - name: 'vcpkg package restore'
+      working-directory: ${{ matrix.VCPKG_WORKSPACE }}
+      shell: 'bash'
+      run: >
+        ./vcpkg/vcpkg install osg curl gdal geos sqlite3 protobuf basisu draco --triplet ${{ matrix.triplet }} 
+
+    - name: 'Upload library build log artifact'
+      uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: osg-log
+        path: |
+          ${{ env.VCPKG_WORKSPACE }}/vcpkg/buildtrees/osg/install-x64-windows-rel-err.log
+          ${{ env.VCPKG_WORKSPACE }}/vcpkg/buildtrees/osg/install-x64-windows-rel-out.log
+        retention-days: 1
+             
+    - name: Create Build Environment
+      run: |
+        cmake -E make_directory ${{runner.workspace}}/build 
+
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{ runner.workspace }}/build
+      run: cmake $GITHUB_WORKSPACE -DWIN32_USE_MP=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+    - name: 'Upload cmake configure log artifact'
+      uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: cmake-log
+        path: |
+          ${{ runner.workspace }}/build/CMakeCache.txt
+        retention-days: 1
+
+    - name: Build
+      working-directory: ${{ runner.workspace }}/build
+      shell: bash
+      run: cmake --build . --config $BUILD_TYPE
+
+    

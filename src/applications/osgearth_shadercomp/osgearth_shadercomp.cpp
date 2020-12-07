@@ -56,7 +56,6 @@ int usage( const std::string& msg )
         << "USAGE: osgearth_shadercomp \n"
         << "           [--test1]    : Run the function injection test \n"
         << "           [--test2]    : Run the accept callback test \n"
-        << "           [--test3]    : Run the shader LOD test \n"
         << "           [--test4]    : Run the memory test \n"
         << "           [--test5]    : Run the Program state set test \n"
         << "           [--test6]    : Run the 2-camera test \n"

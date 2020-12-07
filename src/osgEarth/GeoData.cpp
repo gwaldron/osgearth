@@ -23,6 +23,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Terrain>
 #include <osgEarth/GDAL>
+#include <osgEarth/Metrics>
 
 using namespace osgEarth;
 
@@ -1877,6 +1878,8 @@ namespace
         unsigned int      width = 0, 
         unsigned int      height = 0)
     {
+        OE_PROFILING_ZONE;
+
         if (width == 0 || height == 0)
         {
             //If no width and height are specified, just use the minimum dimension for the image
@@ -2044,18 +2047,11 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     }
 
     osg::Image* resultImage = 0L;
-
-    bool isNormalized = getImage()->getDataType() != GL_UNSIGNED_BYTE;
-    
-    if ( getSRS()->isUserDefined()      || 
-        to_srs->isUserDefined()         ||
-        getSRS()->isSphericalMercator() ||
-        to_srs->isSphericalMercator()   ||
-        isNormalized )
+    if (getSRS()->isUserDefined() || to_srs->isUserDefined())
     {
         // if either of the SRS is a custom projection, we have to do a manual reprojection since
         // GDAL will not recognize the SRS.
-        resultImage = manualReproject(getImage(), getExtent(), destExtent, useBilinearInterpolation && isNormalized, width, height);
+        resultImage = manualReproject(getImage(), getExtent(), destExtent, useBilinearInterpolation, width, height);
     }
     else
     {

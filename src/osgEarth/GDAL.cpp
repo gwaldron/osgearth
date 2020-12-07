@@ -2304,6 +2304,8 @@ osg::Image* osgEarth::GDAL::reprojectImage(
     int height, 
     bool useBilinearInterpolation)
 {
+    OE_PROFILING_ZONE;
+
     // Unnessecary since this is totally self-contained with thread-safe DataSets
     //GDAL_SCOPED_LOCK;
 

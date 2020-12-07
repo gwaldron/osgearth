@@ -24,6 +24,7 @@
 #include <osg/ImageSequence>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
+#include <locale>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -507,8 +508,10 @@ WMS::Driver::open(osg::ref_ptr<const Profile>& profile,
 
     std::string wmsFormatToUse = options().wmsFormat().value();
 
-    //Initialize the WMS request prototype
+    // Initialize the WMS request prototype
+    // Ensure we use the "C" locale for separators
     std::stringstream buf;
+    buf.imbue(std::locale::classic());
 
     // first the mandatory keys:
     buf
@@ -521,13 +524,11 @@ WMS::Driver::open(osg::ref_ptr<const Profile>& profile,
         << "&STYLES=" << options().style().value()
         << (options().wmsVersion().value() == "1.3.0" ? "&CRS=" : "&SRS=") << _srsToUse
         << "&WIDTH=" << options().tileSize().get()
-        << "&HEIGHT=" << options().tileSize().get()
-        << "&BBOX=%lf,%lf,%lf,%lf";
+        << "&HEIGHT=" << options().tileSize().get();
 
     // then the optional keys:
     if (options().transparent().isSet())
         buf << "&TRANSPARENT=" << (options().transparent() == true ? "TRUE" : "FALSE");
-
 
     _prototype = "";
     _prototype = buf.str();
@@ -702,14 +703,16 @@ WMS::Driver::createURI(const TileKey& key) const
     double minx, miny, maxx, maxy;
     key.getExtent().getBounds(minx, miny, maxx, maxy);
 
-    char buf[2048];
-    sprintf(buf, _prototype.c_str(), minx, miny, maxx, maxy);
+    std::ostringstream buf;
+    buf.imbue(std::locale::classic());
+    buf << _prototype
+        << "&BBOX=" << minx << "," << miny << "," << maxx << "," << maxy;
 
-    std::string uri(buf);
+    std::string uri(buf.str());
 
     // url-ize the uri before returning it
     if (osgDB::containsServerAddress(uri))
-        uri = replaceIn(uri, " ", "%20");
+        uri = Strings::replaceIn(uri, " ", "%20");
 
     return uri;
 }

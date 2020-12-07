@@ -325,6 +325,8 @@ MBTiles::Driver::open(
 {
     _name = name;
 
+    _dbOptions = readOptions;
+
     std::string fullFilename = options.url()->full();
     if (!osgDB::fileExists(fullFilename))
     {

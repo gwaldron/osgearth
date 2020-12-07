@@ -1,0 +1,74 @@
+name: macosx-x64 
+
+on: [push, pull_request, workflow_dispatch]
+
+env:             
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: ['macos-10.15']
+        include:
+          - os: 'macos-10.15'
+            triplet: 'x64-macosx'
+
+    steps:       
+    - name: Setup environment
+      run: |
+        # brew install cmake
+        brew install gdal
+        brew install geos
+        brew install sqlite
+        brew install protobuf
+        brew install poco
+        brew install open-scene-graph
+        sudo xcode-select -p
+        
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+        ref: 3.1  
+             
+    - name: Create Build Environment
+      run: |
+        # patch for opengl warnings
+        macos_xcode_defs="ADD_DEFINITIONS(-DGL_SILENCE_DEPRECATION=1)\nadd_compile_options(-Wno-inconsistent-missing-override)\n"
+        echo -e "${macos_xcode_defs}\n$(cat ${{runner.workspace}}/osgearth/src/CMakeLists.txt)" > ${{runner.workspace}}/osgearth/src/CMakeLists.txt
+        # gltf doesn't compile
+        sed -i '' "s/add_subdirectory(gltf)//g" ${{runner.workspace}}/osgearth/src/osgEarthDrivers/CMakeLists.txt
+        cmake -E make_directory ${{runner.workspace}}/build 
+    
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{ runner.workspace }}/build
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD:STRING=11 -DCMAKE_CXX_STANDARD_REQUIRED:BOOL=ON -DCMAKE_CXX_EXTENSIONS:BOOL=OFF -GXcode 
+
+    - name: 'Upload cmake configure log artifact'
+      uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: cmake-configure-log
+        path: |
+          ${{ runner.workspace }}/build/CMakeCache.txt
+        retention-days: 1
+
+    - name: Build
+      working-directory: ${{ runner.workspace }}/build
+      shell: bash
+      run: cmake --build . --config $BUILD_TYPE 
+
+    - name: 'Upload cmake build log artifact'
+      uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: cmake-build-log
+        path: |
+          ${{ runner.workspace }}/build/CMakeCache.txt
+        retention-days: 1
+    

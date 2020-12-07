@@ -128,10 +128,14 @@ SpatialReference::create( const std::string& horiz, const std::string& vert )
 SpatialReference*
 SpatialReference::createFromKey(const SpatialReference::Key& key)
 {
+    osg::ref_ptr<SpatialReference> srs;
+
     if (key.horizLower == "unified-cube")
-        return new Contrib::CubeSpatialReference(key);
+        srs = new Contrib::CubeSpatialReference(key);
     else
-        return new SpatialReference(key);
+        srs = new SpatialReference(key);
+
+    return (srs.valid() && srs->valid()) ? srs.release() : nullptr;
 }
 
 SpatialReference::SpatialReference(void* handle) :
@@ -186,7 +190,11 @@ SpatialReference::SpatialReference(const Key& key) :
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         _setup.name = "Spherical Mercator";
         _setup.type = INIT_PROJ;
+#if(GDAL_VERSION_MAJOR >= 3)
+        _setup.horiz = "+proj=webmerc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +towgs84=0,0,0,0,0,0,0 +wktext +no_defs";
+#else
         _setup.horiz = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +towgs84=0,0,0,0,0,0,0 +wktext +no_defs";
+#endif
         _setup.vert = key.vertLower;
     }
 
@@ -244,7 +252,7 @@ SpatialReference::SpatialReference(const Key& key) :
     {
         //_setup.name = key.horiz;
         _setup.type = INIT_PROJ;
-        _setup.horiz = key.horizLower;
+        _setup.horiz = key.horiz;
     }
     else if (
         key.horizLower.find( "epsg:" )  == 0 ||
@@ -252,7 +260,7 @@ SpatialReference::SpatialReference(const Key& key) :
     {
         _setup.name = key.horiz;
         _setup.type = INIT_PROJ;
-        _setup.horiz = std::string("+init=") + key.horizLower;
+        _setup.horiz = std::string("+init=") + key.horiz;
     }
     else if (
         key.horizLower.find( "projcs" ) == 0 || 
@@ -383,16 +391,6 @@ SpatialReference::createFromHandle(void* ogrHandle)
     OE_SOFT_ASSERT_AND_RETURN(ogrHandle!=nullptr, __func__, nullptr);
 
     return new SpatialReference(ogrHandle);
-
-    //ThreadLocal& local = _local.get();
-    //local._handle = OSRClone(ogrHandle);
-    //if (!local._handle)
-    //{
-    //    OE_WARN << LC << "Internal error: createFromHandle() failed to clone" << std::endl;
-    //    return 0L;
-    //}
-
-    //return new SpatialReference(clonedHandle);
 }
 
 #if 0
@@ -561,7 +559,10 @@ SpatialReference::isVertEquivalentTo( const SpatialReference* rhs ) const
 bool
 SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDatum ) const
 {
-    if ( !rhs )
+    if (!valid())
+        return false;
+
+    if (rhs == nullptr || !rhs->valid())
         return false;
 
     if ( this == rhs )
@@ -718,6 +719,9 @@ SpatialReference::getGeocentricSRS() const
 const SpatialReference*
 SpatialReference::createTangentPlaneSRS(const osg::Vec3d& origin) const
 {
+    if (!valid())
+        return nullptr;
+
     osg::Vec3d lla;
     const SpatialReference* srs = getGeographicSRS();
     if ( srs && transform(origin, srs, lla) )
@@ -736,12 +740,15 @@ SpatialReference::createTangentPlaneSRS(const osg::Vec3d& origin) const
 const SpatialReference*
 SpatialReference::createTransMercFromLongitude( const Angle& lon ) const
 {
+    if (!valid())
+        return nullptr;
+
     // note. using tmerc with +lat_0 <> 0 is sloooooow.
     std::string datum = getDatumName();
     std::string horiz = Stringify()
         << "+proj=tmerc +lat_0=0"
         << " +lon_0=" << lon.as(Units::DEGREES)
-        << " +datum=" << (!datum.empty() ? "wgs84" : datum);
+        << " +datum=" << (!datum.empty() ? "WGS84" : datum);
 
     return SpatialReference::create( horiz, getVertInitString() );
 }
@@ -749,13 +756,16 @@ SpatialReference::createTransMercFromLongitude( const Angle& lon ) const
 const SpatialReference*
 SpatialReference::createUTMFromLonLat(const Angle& lon, const Angle& lat) const
 {
+    if (!valid())
+        return nullptr;
+
     // note. UTM is up to 10% faster than TMERC for the same meridian.
     unsigned zone = 1 + (unsigned)floor((lon.as(Units::DEGREES)+180.0)/6.0);
     std::string datum = getDatumName();
     std::string horiz = Stringify()
         << "+proj=utm +zone=" << zone
         << (lat.as(Units::DEGREES) < 0 ? " +south" : "")
-        << " +datum=" << (!datum.empty() ? "wgs84" : datum);
+        << " +datum=" << (!datum.empty() ? "WGS84" : datum);
 
     return SpatialReference::create(horiz, getVertInitString());
 }
@@ -763,6 +773,9 @@ SpatialReference::createUTMFromLonLat(const Angle& lon, const Angle& lat) const
 const SpatialReference*
 SpatialReference::createEquirectangularSRS() const
 {
+    if (!valid())
+        return nullptr;
+
     return SpatialReference::create(
         "+proj=eqc +units=m +no_defs", 
         getVertInitString());
@@ -828,6 +841,9 @@ SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn )
 bool
 SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_local2world ) const
 {
+    if (!valid())
+        return false;
+
     if ( isProjected() && !isCube() )
     {
         osg::Vec3d world;
@@ -870,6 +886,9 @@ SpatialReference::transform(const osg::Vec3d&       input,
 {
     OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
 
+    if (!valid())
+        return false;
+
     std::vector<osg::Vec3d> v(1, input);
 
     if ( transform(v, outputSRS) )
@@ -886,6 +905,9 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
                             const SpatialReference*  outputSRS) const
 {
     OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
+
+    if (!valid())
+        return false;
 
     // trivial equivalency:
     if ( isEquivalentTo(outputSRS) )
@@ -992,6 +1014,9 @@ SpatialReference::transform2D(double x, double y,
 {
     OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
 
+    if (!valid())
+        return false;
+
     osg::Vec3d temp(x,y,0);
     bool ok = transform(temp, outputSRS, temp);
     if ( ok ) {
@@ -1011,6 +1036,9 @@ SpatialReference::transformXYPointArrays(
     const SpatialReference* out_srs) const
 {  
     OE_SOFT_ASSERT_AND_RETURN(out_srs!=nullptr, __func__, false);
+
+    if (!valid())
+        return false;
 
     // Transform the X and Y values inside an exclusive GDAL/OGR lock
     optional<TransformInfo>& xform = local._xformCache[out_srs->getWKT()];
@@ -1053,6 +1081,9 @@ SpatialReference::transformZ(std::vector<osg::Vec3d>& points,
                              bool                     pointsAreLatLong) const
 {
     OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
+
+    if (!valid())
+        return false;
 
     const VerticalDatum* outVDatum = outputSRS->getVerticalDatum();
 
@@ -1116,6 +1147,9 @@ bool
 SpatialReference::transformToWorld(const osg::Vec3d& input,
                                    osg::Vec3d&       output ) const
 {
+    if (!valid())
+        return false;
+
     if ( isGeographic() || isCube() )
     {
         return transform(input, getGeocentricSRS(), output);
@@ -1244,6 +1278,9 @@ SpatialReference::transformExtentToMBR(
 {
     OE_SOFT_ASSERT_AND_RETURN(to_srs!=nullptr, __func__, false);
 
+    if (!valid())
+        return false;
+
     // Transform all points and take the maximum bounding rectangle the resulting points
     std::vector<osg::Vec3d> v;
 
@@ -1332,6 +1369,9 @@ SpatialReference::transformExtentPoints(
 {
     OE_SOFT_ASSERT_AND_RETURN(to_srs!=nullptr, __func__, false);
 
+    if (!valid())
+        return false;
+
     std::vector<osg::Vec3d> points;
 
     const double dx = (in_xmax - in_xmin) / (numx - 1);
@@ -1418,15 +1458,16 @@ SpatialReference::init()
             getOGRAttrValue( handle, "PROJCS", 0 );
     }
     std::string proj = getOGRAttrValue( handle, "PROJECTION", 0, true );
+    std::string proj_lc = Strings::toLower(proj);
 
     // check for the Mercator projection:
-    _is_mercator = !proj.empty() && proj.find("mercator")==0;
+    _is_mercator = !proj_lc.empty() && proj_lc.find("mercator")==0;
 
     // check for spherical mercator (a special case)
     _is_spherical_mercator = _is_mercator && osg::equivalent(semi_major_axis, semi_minor_axis);
 
     // check for the Polar projection:
-    if ( !proj.empty() && proj.find("polar_stereographic") != std::string::npos )
+    if ( !proj_lc.empty() && proj_lc.find("polar_stereographic") != std::string::npos )
     {
         double lat = as<double>( getOGRAttrValue( handle, "latitude_of_origin", 0, true ), -90.0 );
         _is_north_polar = lat > 0.0;

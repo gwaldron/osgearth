@@ -78,6 +78,16 @@ include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 # Third-party sources included in the osgEarth repo
 SET(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
 
+# Ensure and configure C++11 compiler support.
+INCLUDE(CXX11)
+check_for_cxx11_compiler(CXX11_AVAILABLE)
+
+# Location of GLCORE headers if you are using GLCORE
+set(OSGEARTH_GLCORE_INCLUDE_DIR CACHE PATH "For OpenGL CORE Profile, location of the GLCORE header files")
+if (OSGEARTH_GLCORE_INCLUDE_DIR)
+    include_directories(${OSGEARTH_GLCORE_INCLUDE_DIR})
+endif()
+
 # Platform-specific settings
 INCLUDE(oe_ios)
 INCLUDE(oe_osx)
@@ -92,11 +102,12 @@ option(OSGEARTH_BUILD_TOOLS "Build the osgEarth command-line tools" ON)
 option(OSGEARTH_BUILD_EXAMPLES "Build the osgEarth example applications" ON)
 option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" ON)
 
-option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" ON)
+option(OSGEARTH_BUILD_PROCEDURAL_NODEKIT "Build the procedural terrain nodekit (splat/procedural)" OFF)
 option(OSGEARTH_BUILD_TRITON_NODEKIT "Build support for SunDog Triton SDK" OFF)
 option(OSGEARTH_BUILD_SILVERLINING_NODEKIT "Build support for SunDog SilverLining SDK" OFF)
 option(OSGEARTH_BUILD_LEVELDB_CACHE "Build the LevelDB cache plugin" OFF)
 option(OSGEARTH_BUILD_ROCKSDB_CACHE "Build the RocksDB cache plugin" OFF)
+option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" ON)
 option(OSGEARTH_BUILD_DOCS "Include the documentation folder" ON)
 
 # ........................................................................
@@ -110,9 +121,9 @@ option(OSGEARTH_ENABLE_GEOCODER "Enable the geocoder (GDAL/OGR must be built wit
 
 # Mobile/GLES:
 IF (OSGEARTH_USE_GLES)
-    FIND_PACKAGE(OpenGLES) 
+    find_package(OpenGLES) 
 ELSE ()
-    FIND_PACKAGE(OpenGL)
+    find_package(OpenGL)
 ENDIF (OSGEARTH_USE_GLES)
 
 # required
@@ -158,12 +169,8 @@ ENDIF(draco_FOUND)
 
 # GDAL is the underlying geospatial processing SDK
 IF(GDAL_FOUND)
-    IF (GDAL_VERSION VERSION_LESS 3)
-        message(STATUS "Found GDAL ${GDAL_VERSION}" )
-    ELSE()
-        message(FATAL_ERROR "GDAL ${GDAL_VERSION} is unsupported at this time. Please use GDAL 2.X" )
-    ENDIF()
-ENDIF()
+    message(STATUS "Found GDAL ${GDAL_VERSION}" )
+ENDIF(GDAL_FOUND)
 
 # Tracy is a profiler
 IF(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
@@ -176,7 +183,7 @@ SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compile
 # Duktape is the JavaScript interpreter
 SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version of Duktape")
 IF (WITH_EXTERNAL_DUKTAPE)
-    FIND_PACKAGE(Duktape)
+    find_package(Duktape)
 ENDIF (WITH_EXTERNAL_DUKTAPE)
 
 # Whether to install shaders (glsl files).
@@ -187,7 +194,7 @@ OPTION(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when doing a Mak
 # TinyXML is an XML parsing library
 SET (WITH_EXTERNAL_TINYXML FALSE CACHE BOOL "Use bundled or system wide version of TinyXML")
 IF (WITH_EXTERNAL_TINYXML)
-    FIND_PACKAGE(TinyXML)
+    find_package(TinyXML)
 ENDIF (WITH_EXTERNAL_TINYXML)
 
 # postfix settings for various configs
@@ -253,23 +260,17 @@ SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} CACHE STRING "Add additional search
 SET(CMAKE_PREFIX_PATH  ${CMAKE_PREFIX_PATH}  CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
 
 # Dynamic vs Static Linking
-OPTION(DYNAMIC_OSGEARTH "Set to ON to build OSGEARTH for dynamic linking.  Use OFF for static." ON)
-IF   (DYNAMIC_OSGEARTH)
-    SET(OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC "SHARED")
-ELSE (DYNAMIC_OSGEARTH)
-    SET(OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC "STATIC")
-ENDIF(DYNAMIC_OSGEARTH)
+OPTION(OSGEARTH_BUILD_SHARED_LIBS "ON to build shared libraries; OFF to build static libraries." ON)
+IF(OSGEARTH_BUILD_SHARED_LIBS)
+    SET(OSGEARTH_DYNAMIC_OR_STATIC "SHARED")
+ELSE()
+    SET(OSGEARTH_DYNAMIC_OR_STATIC "STATIC")
+ENDIF()
 
-# Whether to copy osgEarth to the OSG_DIR during installation
-OPTION(INSTALL_TO_OSG_DIR "Set to ON to install osgEarth to the path defined in the OSG_DIR" OFF)
-IF(INSTALL_TO_OSG_DIR)
-    SET(OSGEARTH_INSTALL_TO_OSG_DIR TRUE)
-ELSE (INSTALL_TO_OSG_DIR)
-    SET(OSGEARTH_INSTALL_TO_OSG_DIR FALSE)
-ENDIF(INSTALL_TO_OSG_DIR)
 
 # OE Libraries
 ADD_SUBDIRECTORY(src)
 
-# Add the docs to the project for convenience
-ADD_SUBDIRECTORY(docs)
+if (OSGEARTH_BUILD_DOCS)
+    ADD_SUBDIRECTORY(docs)
+endif()    

@@ -713,6 +713,9 @@ namespace osgEarth { namespace Threading
             const std::string& name,
             unsigned numThreads);
 
+        //! Returns the number of queued operations in the named arena
+        static size_t queueSize(const std::string& arenaName);
+
     private:
 
         //! Access the named arena

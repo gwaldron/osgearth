@@ -18,3 +18,6 @@ Inherits from: [Visible Layer](VisibleLayer.md)
 | no_data_value   | Specific value to interpret at "NO DATA"                     | float  | none    |
 | profile         | Geospatial profile / spatial reference for this layer. Usually the layer itself will provide this, but in some cases you need to manually specify it. | string |         |
 | tile_size       | Number of elements in each dimension of the tile. For image layers, default is 256. For elevation layers, default is 257. | int    | 256/257 |
+
+<iframe src="VisibleLayer.html"/>
+

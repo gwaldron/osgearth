@@ -200,6 +200,7 @@ namespace osgEarth
 
         /**
          * Gets the default set of osgDB::Options to use.
+         * @deprecated
          */
         const osgDB::Options* getDefaultOptions() const;
 

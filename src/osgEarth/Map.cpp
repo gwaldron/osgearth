@@ -97,9 +97,17 @@ osg::Object()
     init();
 }
 
-Map::Map(const Map::Options& options) :
-osg::Object(),
-_optionsConcrete(options)
+Map::Map(const osgDB::Options* readOptions) :
+    osg::Object(),
+    _readOptions(readOptions ? osg::clone(readOptions) : nullptr)
+{
+    init();
+}
+
+Map::Map(const Map::Options& options, const osgDB::Options* readOptions) :
+    osg::Object(),
+    _optionsConcrete(options),
+    _readOptions(readOptions ? osg::clone(readOptions) : nullptr)
 {
     init();
 }
@@ -140,7 +148,10 @@ Map::init()
     }
 
     // the map-side dbOptions object holds I/O information for all components.
-    _readOptions = osg::clone( Registry::instance()->getDefaultOptions() );
+    if (!_readOptions.valid())
+    {
+        _readOptions = new osgDB::Options();
+    }
 
     // put the CacheSettings object in there. We will propogate this throughout
     // the data model and the renderer. These will be stored in the readOptions

@@ -46,6 +46,9 @@ namespace osgEarth
         //! Construct a new, empty map.
         Map();
 
+        //! Construct a new, empty map with custom read options.
+        Map(const osgDB::Options* readOptions);
+
         //! This Map's unique ID
         UID getUID() const { return _uid; }
 
@@ -212,7 +215,9 @@ namespace osgEarth
         };
 
         //! Internal - create from serialized options
-        Map(const Map::Options& options);
+        Map(
+            const Map::Options& options,
+            const osgDB::Options* readOptions);
 
         //! Ready-only access to the serialization options for this map
         const Options& options() const { return _optionsConcrete; }

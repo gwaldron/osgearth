@@ -81,7 +81,7 @@ namespace osgEarth { namespace MBTiles
         mutable unsigned _maxLevel;
         osg::ref_ptr< osg::Image> _emptyImage;
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
-        osg::ref_ptr<osgDB::Options> _dbOptions;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
         osg::ref_ptr<osgDB::BaseCompressor> _compressor;
         std::string _tileFormat;
         bool _forceRGB;

@@ -225,6 +225,9 @@ namespace osgEarth
         //! Hints that a subclass can set to influence the engine
         const Hints& getHints() const;
 
+        //! Options string to pass to OpenSceneGraph reader/writers
+        const std::string& getOsgOptionString() const;
+
     public:
 
         //! Layer's stateset, creating it is necessary
@@ -421,6 +424,7 @@ namespace osgEarth
             OE_OPTION(ShaderOptions, shader);
             OE_OPTION_VECTOR(ShaderOptions, shaders);
             OE_OPTION(ProxySettings, proxySettings);
+            OE_OPTION(std::string, osgOptionString);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

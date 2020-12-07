@@ -44,6 +44,7 @@ Layer::Options::getConfig() const
     conf.set("attribution", attribution());
     conf.set("terrain", terrainPatch());
     conf.set("proxy", _proxySettings );
+    conf.set("osg_options", osgOptionString());
 
     for(std::vector<ShaderOptions>::const_iterator i = shaders().begin();
         i != shaders().end();
@@ -86,6 +87,7 @@ Layer::Options::fromConfig(const Config& conf)
     conf.get("terrain", terrainPatch());
     conf.get("patch", terrainPatch());
     conf.get("proxy", _proxySettings );
+    conf.get("osg_options", osgOptionString());
 }
 
 //.................................................................
@@ -153,6 +155,13 @@ Layer::setReadOptions(const osgDB::Options* readOptions)
     if (options().proxySettings().isSet())
     {
         options().proxySettings()->apply(_readOptions.get());
+    }
+
+    if (options().osgOptionString().isSet())
+    {
+        _readOptions->setOptionString(
+            options().osgOptionString().get() + " " +
+            _readOptions->getOptionString());
     }
 }
 
@@ -607,4 +616,10 @@ Layer::Hints&
 Layer::layerHints()
 {
     return _hints;
+}
+
+const std::string&
+Layer::getOsgOptionString() const
+{
+    return options().osgOptionString().get();
 }

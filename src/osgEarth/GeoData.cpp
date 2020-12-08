@@ -1273,7 +1273,7 @@ GeoExtent::expandToInclude(const GeoExtent& rhs)
             double w1 = west() > rhs.east()? (180-west())+(rhs.east()-(-180)) : (180-rhs.west()) + (east()-(-180));
 
             // pick the smaller one:
-            if (w0 < w1)
+            if (w0 <= w1)
             {
                 if (w0 > _width)
                 {

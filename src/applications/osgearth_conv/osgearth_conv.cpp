@@ -273,9 +273,6 @@ main(int argc, char** argv)
 
     osgDB::readCommandLine(args);
 
-    char dummy;
-    std::cin >> dummy;
-
     // plugin options, if the user passed them in:
     osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
     std::string str;

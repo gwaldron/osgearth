@@ -62,8 +62,9 @@ CacheEstimator::getNumTiles() const
         }
         else
         {
-            TileKey ll = _profile->createTileKey(extentsUnion.xMin(), extentsUnion.yMin(), level);
-            TileKey ur = _profile->createTileKey(extentsUnion.xMax(), extentsUnion.yMax(), level);
+            constexpr double e = 0.001;
+            TileKey ll = _profile->createTileKey(extentsUnion.xMin()+e, extentsUnion.yMin()+e, level);
+            TileKey ur = _profile->createTileKey(extentsUnion.xMax()-e, extentsUnion.yMax()-e, level);
 
             if (!ll.valid() || !ur.valid()) continue;
                 

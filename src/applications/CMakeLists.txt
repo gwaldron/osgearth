@@ -39,7 +39,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         ADD_SUBDIRECTORY(osgearth_3pv)
         ADD_SUBDIRECTORY(osgearth_clamp)        
         if(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)
-            ADD_SUBDIRECTORY(osgearth_exportgroundcover)
+            #ADD_SUBDIRECTORY(osgearth_exportgroundcover)
         endif()
     ENDIF()
 

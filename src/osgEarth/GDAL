@@ -25,177 +25,173 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/URI>
 
-/**
- * GDAL (Geospatial Data Abstraction Library) Layers
- */
+ /**
+  * GDAL (Geospatial Data Abstraction Library) Layers
+  */
 class GDALDataset;
 class GDALRasterBand;
 
 
-namespace osgEarth { namespace GDAL
-{
-    /**
-     * Encapsulates a user-supplied GDALDataset
-     */
-    class OSGEARTH_EXPORT ExternalDataset : public osg::Referenced // NO EXPORT; header only
+namespace osgEarth {
+    namespace GDAL
     {
-    public:
-        ExternalDataset() : osg::Referenced(), _dataset(NULL), _ownsDataset(true) {};
-        ExternalDataset(GDALDataset* dataset, bool ownsDataset) : osg::Referenced(), _dataset(dataset), _ownsDataset(ownsDataset) {};
+        /**
+         * Encapsulates a user-supplied GDALDataset
+         */
+        class OSGEARTH_EXPORT ExternalDataset : public osg::Referenced // NO EXPORT; header only
+        {
+        public:
+            ExternalDataset() : osg::Referenced(), _dataset(NULL), _ownsDataset(true) {};
+            ExternalDataset(GDALDataset* dataset, bool ownsDataset) : osg::Referenced(), _dataset(dataset), _ownsDataset(ownsDataset) {};
 
-    protected:
-        virtual ~ExternalDataset() {};
+        protected:
+            virtual ~ExternalDataset() {};
 
-    public:
-        GDALDataset* dataset() const { return _dataset; };
-        void setDataset(GDALDataset* dataset) { _dataset = dataset; };
+        public:
+            GDALDataset* dataset() const { return _dataset; };
+            void setDataset(GDALDataset* dataset) { _dataset = dataset; };
 
-        bool ownsDataset() const { return _ownsDataset; };
-        void setOwnsDataset(bool ownsDataset) { _ownsDataset = ownsDataset; };
+            bool ownsDataset() const { return _ownsDataset; };
+            void setOwnsDataset(bool ownsDataset) { _ownsDataset = ownsDataset; };
 
-    private:
-        GDALDataset* _dataset;
-        bool         _ownsDataset;
-    };
+        private:
+            GDALDataset* _dataset;
+            bool         _ownsDataset;
+        };
 
-    // GDAL-specific serialization data to be incorpoated by the LayerOptions below
-    class OSGEARTH_EXPORT Options
-    {
-    public:
-        Options() { }
-        Options(const ConfigOptions& input);
-        OE_OPTION(URI, url);
-        OE_OPTION(std::string, connection);
-        OE_OPTION(unsigned, subDataSet);
-        OE_OPTION(RasterInterpolation, interpolation);
-        OE_OPTION(ProfileOptions, warpProfile);
-        OE_OPTION(bool, useVRT);
-        OE_OPTION(bool, coverageUsesPaletteIndex);
-        OE_OPTION(bool, singleThreaded);
+        // GDAL-specific serialization data to be incorpoated by the LayerOptions below
+        class OSGEARTH_EXPORT Options
+        {
+        public:
+            Options() { }
+            Options(const ConfigOptions& input);
+            OE_OPTION(URI, url);
+            OE_OPTION(std::string, connection);
+            OE_OPTION(unsigned, subDataSet);
+            OE_OPTION(RasterInterpolation, interpolation);
+            OE_OPTION(ProfileOptions, warpProfile);
+            OE_OPTION(bool, useVRT);
+            OE_OPTION(bool, coverageUsesPaletteIndex);
+            OE_OPTION(bool, singleThreaded);
 
-        void readFrom(const Config& conf);
-        void writeTo(Config& conf) const;
-    };
+            void readFrom(const Config& conf);
+            void writeTo(Config& conf) const;
+        };
 
-    /**
-     * Driver for reading raster data using GDAL.
-     * It is rarely necessary to use this object directly; use a
-     * GDALImageLayer or GDALElevationLayer instead.
-     */
-    class OSGEARTH_EXPORT Driver : public osg::Referenced
-    {
-    public:
-        //! Constructs a new driver
-        Driver();
+        /**
+         * Driver for reading raster data using GDAL.
+         * It is rarely necessary to use this object directly; use a
+         * GDALImageLayer or GDALElevationLayer instead.
+         */
+        class OSGEARTH_EXPORT Driver : public osg::Referenced
+        {
+        public:
+            //! Constructs a new driver
+            Driver();
 
-        virtual ~Driver();
+            virtual ~Driver();
 
-        //! Value to interpet as "no data"
-        void setNoDataValue(float value) { _noDataValue = value; }
+            //! Value to interpet as "no data"
+            void setNoDataValue(float value) { _noDataValue = value; }
 
-        //! Minimum valid data value (anything less is "no data")
-        void setMinValidValue(float value) { _minValidValue = value; }
+            //! Minimum valid data value (anything less is "no data")
+            void setMinValidValue(float value) { _minValidValue = value; }
 
-        //! Maximum valid data value (anything more is "no data")
-        void setMaxValidValue(float value) { _maxValidValue = value; }
+            //! Maximum valid data value (anything more is "no data")
+            void setMaxValidValue(float value) { _maxValidValue = value; }
 
-        //! Maximum LOD at which to return real data
-        void setMaxDataLevel(unsigned value) { _maxDataLevel = value; }
+            //! Maximum LOD at which to return real data
+            void setMaxDataLevel(unsigned value) { _maxDataLevel = value; }
 
-        //! Express profile to use (instead of gleaning one from the data source)
-        void setOverrideProfile(const Profile* value) { _profile = value; }
+            //! Express profile to use (instead of gleaning one from the data source)
+            void setOverrideProfile(const Profile* value) { _profile = value; }
 
-        //! Assign an external GDAL dataset to use.
-        void setExternalDataset(ExternalDataset* value);
+            //! Assign an external GDAL dataset to use.
+            void setExternalDataset(ExternalDataset* value);
 
-        //! Opens and initializes the connection to the dataset
-        Status open(
-            const std::string& name,
-            const GDAL::Options& options,
-            unsigned tileSize,
-            DataExtentList* out_dataExtents,
-            const osgDB::Options* readOptions);
+            //! Opens and initializes the connection to the dataset
+            Status open(
+                const std::string& name,
+                const GDAL::Options& options,
+                unsigned tileSize,
+                DataExtentList* out_dataExtents,
+                const osgDB::Options* readOptions);
 
-        //! Creates an image if possible
-        osg::Image* createImage(
-            const TileKey& key,
-            unsigned tileSize,
-            bool isCoverage,
-            ProgressCallback* progress);
+            //! Creates an image if possible
+            osg::Image* createImage(
+                const TileKey& key,
+                unsigned tileSize,
+                bool isCoverage,
+                ProgressCallback* progress);
 
-        //! Creates a heightfield if possible
-        osg::HeightField* createHeightField(
-            const TileKey& key,
-            unsigned tileSize,
-            ProgressCallback* progress);
+            //! Creates a heightfield if possible
+            osg::HeightField* createHeightField(
+                const TileKey& key,
+                unsigned tileSize,
+                ProgressCallback* progress);
 
-        //! Creates a heightfield if possible using a faster path that creates a temporary warped VRT.
-        osg::HeightField* createHeightFieldWithVRT(
-            const TileKey& key,
-            unsigned tileSize,
-            ProgressCallback* progress);
+            //! Creates a heightfield if possible using a faster path that creates a temporary warped VRT.
+            osg::HeightField* createHeightFieldWithVRT(
+                const TileKey& key,
+                unsigned tileSize,
+                ProgressCallback* progress);
 
-        //! Profile of the underlying data source (or the override profile if set)
-        const Profile* getProfile() { return _profile.get(); }
+            //! Profile of the underlying data source (or the override profile if set)
+            const Profile* getProfile() { return _profile.get(); }
 
-    private:
-        void pixelToGeo(double, double, double&, double&);
-        void geoToPixel(double, double, double&, double&);
+        private:
+            void pixelToGeo(double, double, double&, double&);
+            void geoToPixel(double, double, double&, double&);
 
-        bool isValidValue(float, GDALRasterBand*);
-        bool intersects(const TileKey&);
-        float getInterpolatedValue(GDALRasterBand* band, double x, double y, bool applyOffset=true);
+            bool isValidValue(float, GDALRasterBand*);
+            bool intersects(const TileKey&);
+            float getInterpolatedValue(GDALRasterBand* band, double x, double y, bool applyOffset = true);
 
-        optional<float> _noDataValue, _minValidValue, _maxValidValue;
-        optional<unsigned> _maxDataLevel;
-        GDALDataset* _srcDS;
-        GDALDataset* _warpedDS;
-        double _linearUnits;
-        double _geotransform[6];
-        double _invtransform[6];
-        GeoExtent _extents;
-        Bounds _bounds;
-        osg::ref_ptr<const Profile> _profile;
-        GDAL::Options _gdalOptions;
-        const GDAL::Options& gdalOptions() const { return _gdalOptions; }
-        osg::ref_ptr<GDAL::ExternalDataset> _externalDataset;
-        std::string _name;
-        unsigned _threadId;
+            optional<float> _noDataValue, _minValidValue, _maxValidValue;
+            optional<unsigned> _maxDataLevel;
+            GDALDataset* _srcDS;
+            GDALDataset* _warpedDS;
+            double _linearUnits;
+            double _geotransform[6];
+            double _invtransform[6];
+            GeoExtent _extents;
+            Bounds _bounds;
+            osg::ref_ptr<const Profile> _profile;
+            GDAL::Options _gdalOptions;
+            const GDAL::Options& gdalOptions() const { return _gdalOptions; }
+            osg::ref_ptr<GDAL::ExternalDataset> _externalDataset;
+            std::string _name;
+            unsigned _threadId;
 
-        const std::string& getName() const { return _name; }
-    };
+            const std::string& getName() const { return _name; }
+        };
 
-    //! Creates an OSG image from an entire GDAL dataset
-    extern OSGEARTH_EXPORT osg::Image* reprojectImage(
-        const osg::Image* srcImage, 
-        const std::string srcWKT, 
-        double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
-        const std::string destWKT, 
-        double destMinX, double destMinY, double destMaxX, double destMaxY,
-        int width = 0, 
-        int height = 0, 
-        bool useBilinearInterpolation = true);
+        //! Creates an OSG image from an entire GDAL dataset
+        extern OSGEARTH_EXPORT osg::Image* reprojectImage(
+            const osg::Image* srcImage,
+            const std::string srcWKT,
+            double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
+            const std::string destWKT,
+            double destMinX, double destMinY, double destMaxX, double destMaxY,
+            int width = 0,
+            int height = 0,
+            bool useBilinearInterpolation = true);
 
 
-    struct LayerBase
-    {
-    public:
-        const osg::ref_ptr<const Profile>& overrideProfile() const { return _overrideProfile; }
+        struct LayerBase
+        {
+        public:
+            const osg::ref_ptr<const Profile>& overrideProfile() const { return _overrideProfile; }
 
-    protected:
-        mutable PerThread<osg::ref_ptr<GDAL::Driver> > _driverPerThread;
-        mutable osg::ref_ptr<GDAL::Driver> _sharedDriver;
-        mutable Threading::Mutex _singleThreadedMutex;
-        osg::ref_ptr<const Profile> _overrideProfile;
-
-        //Status openOnThisThread(
-        //    osg::ref_ptr<GDAL::Driver>& driver,
-        //    osg::ref_ptr<const Profile>* out_profile,
-        //    osg::ref_ptr<const Profile>* out_overrideProfile) const;
-
-        mutable Threading::ReadWriteMutex _workers;
-    };
-} }
+        protected:
+            mutable Threading::Mutex _driversMutex;
+            mutable Threading::Mutex _singleThreadingMutex;
+            mutable std::unordered_map<unsigned, osg::ref_ptr<GDAL::Driver>> _drivers;
+            osg::ref_ptr<const Profile> _overrideProfile;
+            //mutable Threading::ReadWriteMutex _workers;
+        };
+    }
+}
 
 
 

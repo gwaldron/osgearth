@@ -1,25 +1,8 @@
 <!--
-osgEarth Sample - Image reprojection and caching
-
-This example shows how to:
-
- a) define a custom profile for a projected map
- b) read imagery from a geodetic image source and reproject it to the custom profile
-
-To define a custom profile, you must provide an SRS initialization string. In that case we are
-using a PROJ4 string, but you can also use WKT or an EPSG string. (Note: If you use an EPSG code
-string (example: "epsg:4326") then you must have GDAL_DATA defined in your environment.)
-
-A handy place to find SRS definitions is:
-http://spatialreference.org
-
-osgEarth reprojects tiles before caching them. Note, this does have the side effect that you 
-cannot use the same cache for separate maps in different projections.
-
-Please note that use of ESRI's online maps is subject to certain restrictions.
+osgEarth Sample - State Plane Projection
 -->
 
-<map name="Demo: Custom Projected Profile">
+<map name="Demo: State Plane Projection">
 
     <options>
         <profile name="NAD83 Maryland State Plane (meters)">
@@ -34,7 +17,6 @@ Please note that use of ESRI's online maps is subject to certain restrictions.
     
     <ArcGISServerImage name="Hi-res Imagery">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer</url>
-        <nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
     </ArcGISServerImage> 
    
 </map>

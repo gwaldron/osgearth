@@ -1,23 +1,12 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
+osgEarth Sample - Render ReadyMap imagery as a flat Plate Carre map
 -->
-<map name="readymap.org">    
+<map name="Plate Carre projection">    
     
     <options>
-        <profile>global-mercator</profile>
+        <profile>plate-carre</profile>
+        <terrain tile_size="2"/>
     </options>
     
     <xi:include href="readymap_imagery.xml"/>
-    <xi:include href="readymap_elevation.xml"/>
-    <xi:include href="viewpoints.xml"/>
 </map>

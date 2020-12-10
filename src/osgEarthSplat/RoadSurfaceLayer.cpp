@@ -44,7 +44,7 @@ RoadSurfaceLayer::Options::getConfig() const
     Config conf = ImageLayer::Options::getConfig();
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
-    conf.set("buffer_width", featureBufferWidth() );
+    conf.set("buffer_width", featureBufferWidth());
     return conf;
 }
 
@@ -53,7 +53,7 @@ RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
-    conf.get("buffer_width", featureBufferWidth() );
+    conf.get("buffer_width", featureBufferWidth());
 }
 
 //........................................................................
@@ -176,64 +176,74 @@ namespace
         if (!added)
         {
             FeatureList list;
-            list.push_back( feature );
+            list.push_back(feature);
             map.push_back(std::pair< Style, FeatureList>(style, list));
-        }                                
+        }
     }
 
     void sortFeaturesIntoStyleGroups(StyleSheet* styles, FeatureList& features, FilterContext &context, StyleToFeatures& map)
     {
-        if ( styles == 0L )
+        if (styles == 0L)
             return;
 
-        if ( styles->getSelectors().size() > 0 )
+        if (styles->getSelectors().size() > 0)
         {
-            for( StyleSelectors::const_iterator i = styles->getSelectors().begin(); 
+            for (StyleSelectors::const_iterator i = styles->getSelectors().begin();
                 i != styles->getSelectors().end();
-                ++i )
+                ++i)
             {
                 const StyleSelector& sel = i->second;
 
-                if ( sel.styleExpression().isSet() )
+                if (sel.styleExpression().isSet())
                 {
                     // establish the working bounds and a context:
-                    StringExpression styleExprCopy(  sel.styleExpression().get() );
+                    StringExpression styleExprCopy(sel.styleExpression().get());
 
                     for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
                     {
                         Feature* feature = itr->get();
 
-                        const std::string& styleString = feature->eval( styleExprCopy, &context );
-                        if (!styleString.empty() && styleString != "null")
+                        // resolve the style:
+                        Style combinedStyle;
+
+                        if (feature->style().isSet())
                         {
-                            // resolve the style:
-                            Style combinedStyle;
-
-                            // if the style string begins with an open bracket, it's an inline style definition.
-                            if ( styleString.length() > 0 && styleString[0] == '{' )
-                            {
-                                Config conf( "style", styleString );
-                                conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );
-                                conf.set( "type", "text/css" );
-                                combinedStyle = Style(conf);
-                            }
-
-                            // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                            // style in this case: for style expressions, the user must be explicity about 
-                            // default styling; this is because there is no other way to exclude unwanted
-                            // features.
-                            else
-                            {
-                                const Style* selectedStyle = styles->getStyle(styleString, false);
-                                if ( selectedStyle )
-                                    combinedStyle = *selectedStyle;
-                            }
-
-                            if (!combinedStyle.empty())
-                            {
-                                addFeatureToMap( feature, combinedStyle, map);
-                            }                                
+                            // embedde style:
+                            combinedStyle = feature->style().get();
                         }
+                        else
+                        {
+                            // evaluated style:
+                            const std::string& styleString = feature->eval(styleExprCopy, &context);
+                            if (!styleString.empty() && styleString != "null")
+                            {
+                                // if the style string begins with an open bracket, it's an inline style definition.
+                                if (styleString.length() > 0 && styleString[0] == '{')
+                                {
+                                    Config conf("style", styleString);
+                                    conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                                    conf.set("type", "text/css");
+                                    combinedStyle = Style(conf);
+                                }
+
+                                // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
+                                // style in this case: for style expressions, the user must be explicity about 
+                                // default styling; this is because there is no other way to exclude unwanted
+                                // features.
+                                else
+                                {
+                                    const Style* selectedStyle = styles->getStyle(styleString, false);
+                                    if (selectedStyle)
+                                        combinedStyle = *selectedStyle;
+                                }
+                            }
+                        }
+
+                        if (!combinedStyle.empty())
+                        {
+                            addFeatureToMap(feature, combinedStyle, map);
+                        }
+
                     }
                 }
             }
@@ -244,8 +254,16 @@ namespace
             for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
             {
                 Feature* feature = itr->get();
-                addFeatureToMap( feature, *style, map);
-            }        
+                // resolve the style:
+                if (feature->style().isSet())
+                {
+                    addFeatureToMap(feature, feature->style().get(), map);
+                }
+                else
+                {
+                    addFeatureToMap(feature, *style, map);
+                }
+            }
         }
     }
 }
@@ -253,11 +271,11 @@ namespace
 GeoImage
 RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    if (getStatus().isError())    
+    if (getStatus().isError())
     {
         return GeoImage::INVALID;
     }
-    
+
     if (!getFeatureSource())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
@@ -316,13 +334,13 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         osg::ref_ptr< osg::Group > group;
         if (!map.empty())
         {
-            group = new osg::Group;
+            group = new osg::Group();
             for (unsigned int i = 0; i < map.size(); i++)
             {
                 osg::ref_ptr<osg::Node> node = compiler.compile(map[i].second, map[i].first, fc);
                 if (node.valid() && node->getBound().valid())
                 {
-                    group->addChild( node );
+                    group->addChild(node);
                 }
             }
         }

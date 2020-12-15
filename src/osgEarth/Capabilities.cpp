@@ -206,6 +206,10 @@ _supportsVertexArrayObjects ( false )
 
         OE_INFO << LC << "  osgEarth Version:  " << osgEarthGetVersion() << std::endl;
 
+#ifdef OSGEARTH_EMBED_GIT_SHA
+        OE_INFO << LC << "  osgEarth HEAD SHA: " << osgEarthGitSHA1() << std::endl;
+#endif
+
         OE_INFO << LC << "  OSG Version:       " << osgGetVersion() << std::endl;
 
 #ifdef GDAL_RELEASE_NAME

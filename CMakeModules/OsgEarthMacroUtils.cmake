@@ -67,7 +67,7 @@ MACRO(DETECT_OSG_VERSION)
 
     IF (APPEND_OPENSCENEGRAPH_VERSION AND OPENSCENEGRAPH_VERSION)
         SET(OSG_PLUGINS "osgPlugins-${OPENSCENEGRAPH_VERSION}"  CACHE STRING "" FORCE)
-        MESSAGE(STATUS "Plugins will be installed under osgPlugins-${OPENSCENEGRAPH_VERSION} directory.")
+        #MESSAGE(STATUS "Plugins will be installed under osgPlugins-${OPENSCENEGRAPH_VERSION} directory.")
 	else (APPEND_OPENSCENEGRAPH_VERSION AND OPENSCENEGRAPH_VERSION)
 		SET(OSG_PLUGINS  CACHE STRING "" FORCE)
     ENDIF(APPEND_OPENSCENEGRAPH_VERSION AND OPENSCENEGRAPH_VERSION)
@@ -92,11 +92,6 @@ ENDMACRO(DETECT_OSG_VERSION)
 
 MACRO(LINK_WITH_VARIABLES TRGTNAME)
     FOREACH(varname ${ARGN})
-<<<<<<< .mine
-
-=======
-        #message("${TRGTNAME} ${varname}")
->>>>>>> .theirs
         IF(${varname}_DEBUG)
             IF(${varname}_RELEASE)
                 TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${${varname}_RELEASE}" debug "${${varname}_DEBUG}")

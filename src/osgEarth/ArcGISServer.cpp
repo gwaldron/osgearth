@@ -159,7 +159,7 @@ bool
 ArcGISServer::MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
 {
     uri = _uri;
-    std::string sep = uri.full().find( "?" ) == std::string::npos ? "?" : "&";
+    std::string sep = uri.full().find('?') == std::string::npos ? "?" : "&";
     std::string json_url = uri.full() + sep + std::string("f=pjson");  // request the data in JSON format
 
     ReadResult r = URI(json_url).readString( options );
@@ -484,7 +484,7 @@ ArcGISServerImageLayer::openImplementation()
         std::string token = options().token().value();
         if (!token.empty())
         {
-            std::string sep = url.full().find("?") == std::string::npos ? "?" : "&";
+            std::string sep = url.full().find('?') == std::string::npos ? "?" : "&";
             url = url.append(sep + std::string("token=") + token);
         }
     }
@@ -500,7 +500,7 @@ ArcGISServerImageLayer::openImplementation()
         OE_DEBUG << LC << "_Layers: " << layers << std::endl;
         if (!layers.empty())
         {
-            std::string sep = url.full().find("?") == std::string::npos ? "?" : "&";
+            std::string sep = url.full().find('?') == std::string::npos ? "?" : "&";
             url = url.append(sep + std::string("layers=show:") + layers);
         }
     }
@@ -609,7 +609,7 @@ ArcGISServerImageLayer::createImageImplementation(const TileKey& key, ProgressCa
         {
             std::string str;
             str = buf.str();
-            std::string sep = str.find("?") == std::string::npos ? "?" : "&";
+            std::string sep = str.find('?') == std::string::npos ? "?" : "&";
             buf << sep << "token=" << token;
         }
     }
@@ -619,7 +619,7 @@ ArcGISServerImageLayer::createImageImplementation(const TileKey& key, ProgressCa
     {
         std::string str;
         str = buf.str();
-        std::string sep = str.find("?") == std::string::npos ? "?" : "&";
+        std::string sep = str.find('?') == std::string::npos ? "?" : "&";
         buf << sep << "layers=show:" << _layers;
     }
 

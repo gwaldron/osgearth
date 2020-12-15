@@ -283,7 +283,7 @@ HTTPRequest::getURL() const
         buf << _url;
         for( Parameters::const_iterator i = _parameters.begin(); i != _parameters.end(); i++ )
         {
-            buf << ( i == _parameters.begin() && _url.find( "?" ) == std::string::npos? "?" : "&" );
+            buf << ( i == _parameters.begin() && _url.find('?') == std::string::npos? "?" : "&" );
             buf << i->first << "=" << i->second;
         }
          std::string bufStr;
@@ -845,7 +845,7 @@ namespace
                 std::string opt;
                 while( iss >> opt )
                 {
-                    int index = opt.find( "=" );
+                    int index = opt.find('=');
                     if( opt.substr( 0, index ) == "OSG_CURL_PROXY" )
                     {
                         proxy_host = opt.substr( index+1 );
@@ -1142,7 +1142,7 @@ namespace
                 std::string opt;
                 while( iss >> opt )
                 {
-                    int index = opt.find( "=" );
+                    int index = opt.find('=');
                     if( opt.substr( 0, index ) == "OSG_CURL_PROXY" )
                     {
                         proxy_host = opt.substr( index+1 );
@@ -1384,7 +1384,7 @@ HTTPClient::readOptions(const osgDB::Options* options, std::string& proxy_host, 
         std::string opt;
         while( iss >> opt )
         {
-            int index = opt.find( "=" );
+            int index = opt.find('=');
             if( opt.substr( 0, index ) == "OSG_CURL_PROXY" )
             {
                 proxy_host = opt.substr( index+1 );
@@ -1527,7 +1527,7 @@ namespace
         if ( !reader )
         {
             // try to look up a reader by mime-type first:
-            std::string mimeType = response.getMimeType();
+            const std::string& mimeType = response.getMimeType();
             if ( !mimeType.empty() )
             {
                 reader = osgDB::Registry::instance()->getReaderWriterForMimeType(mimeType);

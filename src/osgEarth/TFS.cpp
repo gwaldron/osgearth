@@ -69,7 +69,7 @@ TFS::ReaderWriter::read(const URI& uri, const osgDB::ReaderWriter::Options *opti
     osgEarth::ReadResult result = uri.readString(options);
     if (result.succeeded())
     {
-        std::string str = result.getString();
+        const std::string& str = result.getString();
         std::stringstream in( str.c_str()  );
         return read( in, layer);
     }

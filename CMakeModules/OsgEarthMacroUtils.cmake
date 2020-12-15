@@ -92,6 +92,11 @@ ENDMACRO(DETECT_OSG_VERSION)
 
 MACRO(LINK_WITH_VARIABLES TRGTNAME)
     FOREACH(varname ${ARGN})
+<<<<<<< .mine
+
+=======
+        #message("${TRGTNAME} ${varname}")
+>>>>>>> .theirs
         IF(${varname}_DEBUG)
             IF(${varname}_RELEASE)
                 TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${${varname}_RELEASE}" debug "${${varname}_DEBUG}")

@@ -462,17 +462,26 @@ ENDIF (NOT TINYXML_FOUND)
 
 
 SET(VERSION_GIT_SOURCE "")
-IF (OSGEARTH_EMBED_GIT_SHA)
-	ADD_DEFINITIONS(-DOSGEARTH_EMBED_GIT_SHA)
+find_package(git)
+if (GIT_FOUND)
+    option(OSGEARTH_EMBED_GIT_SHA "Encode the SHA in the Version header code" OFF)
+    if(OSGEARTH_EMBED_GIT_SHA)
+        include(GetGitRevisionDescription)
+        get_git_head_revision(GIT_REFSPEC OSGEARTH_GIT_SHA1)
+        if(OSGEARTH_GIT_SHA1)
+            message(STATUS "Embedding git SHA = ${OSGEARTH_GIT_SHA1}")
+            ADD_DEFINITIONS(-DOSGEARTH_EMBED_GIT_SHA)
 
-	# auto-generate the VersionGit file to include the git SHA1 variable.
-	configure_file(
-		"${CMAKE_CURRENT_SOURCE_DIR}/VersionGit.cpp.in"
-		"${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp"
-		@ONLY)
+            # auto-generate the VersionGit file to include the git SHA1 variable.
+            configure_file(
+                "${CMAKE_CURRENT_SOURCE_DIR}/VersionGit.cpp.in"
+                "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp"
+                @ONLY)
 
-	set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")
-ENDIF (OSGEARTH_EMBED_GIT_SHA)
+            set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")
+        endif()
+    endif()
+endif()
 
 set(TARGET_SRC
     ArcGISServer.cpp

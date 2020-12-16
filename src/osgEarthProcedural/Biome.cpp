@@ -36,6 +36,9 @@ ModelAsset::ModelAsset(const Config& conf)
     conf.get("size_variation", sizeVariation());
     conf.get("selection_weight", selectionWeight());
     //conf.get("fill", fill());
+
+    // save the original so the user can extract user-defined values
+    _sourceConfig = conf;
 }
 
 Config

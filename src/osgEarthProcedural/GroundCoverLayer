@@ -54,7 +54,7 @@ namespace osgEarth { namespace Procedural
             OE_OPTION(float, maxAlpha);
             OE_OPTION(bool, alphaToCoverage);
             OE_OPTION(float, maxSSE);
-            OE_OPTION(float, spacing);
+            OE_OPTION(Distance, spacing);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -87,6 +87,10 @@ namespace osgEarth { namespace Procedural
         void setLOD(unsigned value);
         unsigned getLOD() const;
 
+        //! Average spacing between asset instances
+        void setSpacing(const Distance& value);
+        const Distance& getSpacing() const;
+
         //! Whether the ground cover casts shadows on the terrain
         void setCastShadows(bool value);
         bool getCastShadows() const;
@@ -100,6 +104,10 @@ namespace osgEarth { namespace Procedural
         //! Only use this when multisampling it ON
         void setUseAlphaToCoverage(bool value);
         bool getUseAlphaToCoverage() const;
+
+        //! Biome model category this layer belongs to
+        void setModelCategoryName(const std::string& value);
+        const std::string& getModelCategoryName() const;
 
     protected:
 

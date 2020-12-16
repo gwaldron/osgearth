@@ -77,6 +77,8 @@ namespace osgEarth { namespace Procedural
 
         virtual Status closeImplementation() override;
 
+        virtual void setTerrainResources(TerrainResources*) override;
+            
         virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback*) const override;
 
     public:

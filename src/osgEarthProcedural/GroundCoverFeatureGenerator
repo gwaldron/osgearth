@@ -21,6 +21,9 @@
 
 #include "Export"
 #include "GroundCoverLayer"
+#include "LifeMapLayer"
+#include "BiomeLayer"
+
 #include <osgEarth/Map>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/FeatureCursor>
@@ -49,13 +52,8 @@ namespace osgEarth { namespace Procedural
         //! Sets the groundcover layer from which to generate features (required)
         void setLayer(GroundCoverLayer* layer);
 
-        //! Sets the viewer position so the generator can select the appropriate
-        //! biome zone. Without this, or if you set it to GeoPoint::INVALID,
-        //! the generator will always query the first available zone.
-        void setViewPosition(const GeoPoint& location);
-
         //! Adds a property name to store as a feature attribute
-        void addBillboardPropertyName(const std::string& name);
+        void addAssetPropertyName(const std::string& name);
 
         //! Returns the status of the generator - call this to 
         //! see if there are any setup errors before calling getFeatures.
@@ -74,16 +72,15 @@ namespace osgEarth { namespace Procedural
         osg::ref_ptr<const Map> _map;
         osg::ref_ptr<TerrainTileModelFactory> _factory;
         osg::ref_ptr<GroundCoverLayer> _gclayer;
-        osg::ref_ptr<ImageLayer> _masklayer;
-        osg::ref_ptr<LandCoverLayer> _lclayer;
-        osg::ref_ptr<LandCoverDictionary> _lcdict;
+        osg::ref_ptr<LifeMapLayer> _lifemaplayer;
+        osg::ref_ptr<BiomeLayer> _biomelayer;
         osg::ref_ptr<osg::Texture> _noiseTexture;
         CreateTileManifest _manifest;
         std::vector<std::string> _propNames;
-        GeoPoint _location;
+        typedef std::unordered_map<const ModelAsset*, osg::BoundingBoxf> SizeCache;
+        mutable Threading::Mutexed<SizeCache> _sizeCache;
 
         void initialize();
-        const BiomeZone& selectZone(const GeoPoint&) const;
     };
 
 } } // namespace osgEarth::Procedural

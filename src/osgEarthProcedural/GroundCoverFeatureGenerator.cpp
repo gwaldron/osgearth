@@ -23,6 +23,7 @@
 #include "GroundCoverLayer"
 #include "NoiseTextureFactory"
 #include <osgEarth/ImageUtils>
+#include <osg/ComputeBoundsVisitor>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -58,63 +59,13 @@ namespace
     const int NOISE_RANDOM = 1;
     const int NOISE_RANDOM_2 = 2;
     const int NOISE_CLUMPY = 3;
-
-    // biome weighted index lookup table
-    struct AssetLUTEntry
-    {
-        float width;
-        float height;
-        float sizeVariation;
-        Config assetConfig;
-    };
-
-    typedef std::vector<AssetLUTEntry> AssetLUTVector;
-
-    typedef UnorderedMap<const LandCoverGroup*, AssetLUTVector> AssetLUT;
-
-    void buildLUT(const BiomeZone& zone, AssetLUT& lut)
-    {
-        for(std::vector<LandCoverGroup>::const_iterator b = zone.getLandCoverGroups().begin();
-            b != zone.getLandCoverGroups().end();
-            ++b)
-        {
-            const LandCoverGroup* group = &(*b);
-            AssetLUTVector& assets = lut[group];
-
-            for(std::vector<AssetUsage>::const_iterator i = group->getAssets().begin();
-                i != group->getAssets().end();
-                ++i)
-            {
-                AssetLUTEntry entry;
-                entry.assetConfig = i->getConfig();
-                entry.width = i->options().width().get();
-                entry.height = i->options().height().get();
-                entry.sizeVariation = i->options().sizeVariation().getOrUse(
-                    group->options().sizeVariation().get());
-
-                for(int k=0; k<(int)i->options().selectionWeight().get(); ++k)
-                {
-                    assets.push_back(entry);
-                }
-
-                //OE_INFO << "Asset: " << entry.assetConfig.toJSON(true) << std::endl;
-            }
-        }
-    }
-
-    // custom featurelist cursor that lets us populate the list directly
-    class MyFeatureListCursor : public FeatureListCursor
-    {
-    public:
-        MyFeatureListCursor() : FeatureListCursor(FeatureList()) { }
-        FeatureList& features() { return _features; }
-    };
 }
 
 //...................................................................
 
 GroundCoverFeatureGenerator::GroundCoverFeatureGenerator() :
-    _status(Status::ConfigurationError)
+    _status(Status::ConfigurationError),
+    _sizeCache("OE.GroundCoverFeatureGenerator.modelSizeCache")
 {
     //nop
 }
@@ -141,13 +92,7 @@ GroundCoverFeatureGenerator::setLayer(GroundCoverLayer* layer)
 }
 
 void
-GroundCoverFeatureGenerator::setViewPosition(const GeoPoint& value)
-{
-    _location = value;
-}
-
-void
-GroundCoverFeatureGenerator::addBillboardPropertyName(const std::string& name)
+GroundCoverFeatureGenerator::addAssetPropertyName(const std::string& name)
 {
     _propNames.push_back(name);
 }
@@ -185,31 +130,28 @@ GroundCoverFeatureGenerator::initialize()
         return;
     }
 
-    // optional:
-    _lclayer = _map->getLayer<LandCoverLayer>();
-
-    // required IF _lclayer is found:
-    _lcdict = _map->getLayer<LandCoverDictionary>();
-    if (_lclayer.valid() && !_lcdict.valid())
+    // find a lifemap layer
+    _lifemaplayer = _map->getLayer<LifeMapLayer>();
+    if (!_lifemaplayer.valid())
     {
-        _status.set(Status::ConfigurationError, "No LandCoverDictionary found in the map");
+        _status.set(Status::ConfigurationError, "Missing required LifeMapLayer");
         return;
     }
-    
-    // optional:
-    _masklayer = _gclayer->getMaskLayer();
-
-    // open the landcover layer
-    if (_lclayer.valid() && _lclayer->open().isError())
+    if (_lifemaplayer->open().isError())
     {
-        _status.set(_lclayer->getStatus().code(), Stringify() << "Opening landcover layer: " << _lclayer->getStatus().message());
+        _status.set(_lifemaplayer->getStatus().code(), Stringify() << "Opening life map layer: " << _gclayer->getStatus().message());
         return;
     }
 
-    // open the mask layer
-    if (_masklayer.valid() && _masklayer->open().isError())
+    _biomelayer = _map->getLayer<BiomeLayer>();
+    if (!_biomelayer.valid())
     {
-        _status.set(_masklayer->getStatus().code(), Stringify() << "Opening mask layer: " << _masklayer->getStatus().message());
+        _status.set(Status::ConfigurationError, "Missing required BiomeLayer");
+        return;
+    }
+    if (_biomelayer->open().isError())
+    {
+        _status.set(_biomelayer->getStatus().code(), Stringify() << "Opening biome layer: " << _gclayer->getStatus().message());
         return;
     }
 
@@ -220,19 +162,32 @@ GroundCoverFeatureGenerator::initialize()
         return;
     }
 
+    // make sure the lifemap intersects the LOD of the GC layer
+    if (_gclayer->getLOD() < _lifemaplayer->getMinLevel() ||
+        _gclayer->getLOD() > _lifemaplayer->getMaxLevel())
+    {
+        _status.set(
+            Status::ResourceUnavailable,
+            "GC Layer LOD is outside the min/max LOD of your LifeMap layer");
+        return;
+    }
+
     // open the elevation layers
-    ElevationLayerVector elevLayers;
-    _map->getLayers(elevLayers);
+    ElevationLayerVector elevLayers;   
+    _map->getLayers(elevLayers, [](const Layer* layer) { return layer->getEnabled(); });
     if (elevLayers.empty() == false)
     {
         for(ElevationLayerVector::iterator i = elevLayers.begin();
             i != elevLayers.end();
             ++i)
         {
-            Status s = i->get()->open();
+            Layer* layer = i->get();
+            Status s = layer->open();
             if (s.isError())
             {
-                _status.set(s.code(), Stringify() << "Opening elevation layer: " << s.message());
+                _status.set(s.code(),
+                    Stringify() << "Opening elevation layer \""
+                    << layer->getName() << "\" : " << s.message());
                 return;
             }
         }
@@ -243,14 +198,14 @@ GroundCoverFeatureGenerator::initialize()
     _noiseTexture = noise.create(256u, 4u);
 
     // layers we're going to request
-    if (_lclayer.valid()) 
-        _manifest.insert(_lclayer.get());
-    if (_masklayer.valid()) 
-        _manifest.insert(_masklayer.get());
+    if (_lifemaplayer.valid())
+        _manifest.insert(_lifemaplayer.get());
+    if (_biomelayer.valid())
+        _manifest.insert(_biomelayer.get());
     if (_gclayer.valid()) 
         _manifest.insert(_gclayer.get());
-    if (elevLayers.empty() == false)
-        _manifest.insert(elevLayers.front().get()); // one is sufficient
+    for (auto& i : elevLayers)
+        _manifest.insert(i.get());
 
     _status.set(Status::NoError);
 }
@@ -272,11 +227,9 @@ GroundCoverFeatureGenerator::getFeatures(const GeoExtent& extent, FeatureList& o
     if (keys.empty())
         return Status(Status::AssertionFailure, "No keys intersect extent");
     
-    for(std::vector<TileKey>::const_iterator i = keys.begin();
-        i != keys.end();
-        ++i)
+    for(auto& key : keys)
     {
-        Status s = getFeatures(*i, output);
+        Status s = getFeatures(key, output);
 
         if (s.isError())
             return s;
@@ -285,87 +238,50 @@ GroundCoverFeatureGenerator::getFeatures(const GeoExtent& extent, FeatureList& o
     return Status::NoError;
 }
 
-const BiomeZone&
-GroundCoverFeatureGenerator::selectZone(const GeoPoint& p) const
-{
-    if (p.isValid() == false)
-    {
-        return _gclayer->getZones()[0];
-    }
-
-    // reverse iteration:
-    for(int i=_gclayer->getZones().size()-1; i >= 0; --i)
-    {
-        const BiomeZone& zone = _gclayer->getZones()[i];
-
-        if (zone.contains(p))
-        {
-            return zone;
-        }
-    }
-
-    return _gclayer->getZones()[0];
-}
-
 Status
 GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output) const
 {
     if (key.getLOD() != _gclayer->getLOD())
         return Status(Status::ConfigurationError, "TileKey LOD does not match GroundCoverLayer LOD");
 
-    osg::Vec4f landCover, mask, elev;
-
     // Populate the model, falling back on lower-LOD keys as necessary
     osg::ref_ptr<TerrainTileModel> model = _factory->createStandaloneTileModel(_map.get(), key, _manifest, NULL, NULL);
     if (!model.valid())
+    {
+        OE_INFO << LC << "null model for key " << key.str() << std::endl;
         return Status::NoError;
-
-    // for now, default to zone 0
-    if (_gclayer->getZones().empty())
-        return Status("No zones found in GroundCoverLayer");
-
-    GeoPoint p = _location;
-
-    if (!_location.isValid())
-        key.getExtent().getCentroid(p);
-
-    const BiomeZone& zone = selectZone(p);
+    }
 
     // noise sampler:
     ImageUtils::PixelReader sampleNoise;
     sampleNoise.setTexture(_noiseTexture.get());
 
-    // mask texture/matrix:
-    osg::Texture* maskTex = NULL;
-    osg::Matrix maskMat;
-    if (_masklayer.valid())
+    // lifemap texture:
+    osg::Texture* lifemapTex = nullptr;
+    osg::Matrixf lifemapMat;
+    if (_lifemaplayer.valid())
     {
-        maskTex = model->getTexture(_masklayer->getUID());
-        osg::RefMatrixf* r = model->getMatrix(_masklayer->getUID());
-        if (r) maskMat = *r;
+        lifemapTex = model->getTexture(_lifemaplayer->getUID());
+        osg::RefMatrixf* matptr = model->getMatrix(_lifemaplayer->getUID());
+        if (matptr) lifemapMat = *matptr;
     }
-    ImageUtils::PixelReader maskSampler;
-    maskSampler.setTexture(maskTex);
+    ImageUtils::PixelReader sampleLifemap;
+    sampleLifemap.setTexture(lifemapTex);
+    osg::Vec4 lifemap_value;
 
-    // landcover texture/matrix:
-    osg::Texture* lcTex = NULL;
-    osg::Matrixf lcMat;
-    if (_lclayer.valid())
+    // biome map:
+    osg::Texture* biomeTex = nullptr;
+    osg::Matrixf biomeMat;
+    if (_biomelayer.valid())
     {
-        lcTex = model->getLandCoverTexture();
-        if (!lcTex)
-        {
-            // TODO: how to handle this?
-            //return Status(Status::AssertionFailure, "No landcover texture available");
-        }
-        else
-        {
-            osg::RefMatrixf* r = model->getLandCoverTextureMatrix();
-            if (r) lcMat = *r;
-        }
+        biomeTex = model->getTexture(_biomelayer->getUID());
+        osg::RefMatrixf* matptr = model->getMatrix(_biomelayer->getUID());
+        if (matptr) biomeMat = *matptr;
     }
-    ImageUtils::PixelReader lcSampler;
-    lcSampler.setTexture(lcTex);
+    ImageUtils::PixelReader sampleBiome;
+    sampleBiome.setTexture(biomeTex);
+    sampleBiome.setBilinear(false);
+    osg::Vec4 biome_value;
 
     // elevation
     osg::Texture* elevTex = NULL;
@@ -378,16 +294,10 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     }
     ImageUtils::PixelReader elevSampler;
     elevSampler.setTexture(elevTex);
-
+    osg::Vec4 elev_value;
     // because in the shader oe_terrain_getElevation adjusts the sampling
     // with scale coefficients:
     elevSampler.setSampleAsTexture(false);
-
-    // build the lookup table for the biomes.
-    // TODO: we could do this in initialize(), but we want to leave the door open
-    // for supporting multiple zones in the future -GW
-    AssetLUT assetLUT;
-    buildLUT(zone, assetLUT);
 
     // calculate instance count based on tile extents
     unsigned lod = _gclayer->getLOD();
@@ -396,130 +306,188 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     GeoExtent e = TileKey(lod, tx / 2, ty / 2, _map->getProfile()).getExtent();
     GeoCircle c = e.computeBoundingGeoCircle();
     double tileWidth_m = 2.0 * c.getRadius() / 1.4142;
-    float spacing_m = zone.getSpacing().as(Units::METERS);
-    unsigned vboTileSize = (unsigned)(tileWidth_m / spacing_m);
-    if (vboTileSize & 0x01) vboTileSize += 1;
+    float spacing_m = _gclayer->getSpacing().as(Units::METERS);
+    unsigned numInstances1D = tileWidth_m / spacing_m;
+    if (numInstances1D & 0x01) numInstances1D += 1;
 
     // from here on out, we are mimicing the GroundCover.VS.glsl shader logic.
-    int numInstancesX = vboTileSize;
-    int numInstancesY = vboTileSize;
-    unsigned totalNumInstances = numInstancesX * numInstancesY;
+    osg::Vec2ui numWorkgroups(numInstances1D, numInstances1D);
+    osg::Vec2f numWorkgroupsF((float)numInstances1D, (float)numInstances1D);
+    //unsigned numInstancesX = numInstances1D;
+    //unsigned numInstancesY = numInstances1D;
 
-    osg::Vec2f offset, halfSpacing, tilec, shift;
+    osg::Vec2f offset, tilec, shift;
     osg::Vec4f noise(0,0,0,0);
 
-    for(unsigned instanceID = 0; instanceID < totalNumInstances; ++instanceID)
+    osg::Vec2f halfSpacing(
+        0.5f / numWorkgroupsF.x(),
+        0.5f / numWorkgroupsF.y());
+
+    for(unsigned y = 0; y < numWorkgroups.y(); ++y)
     {
-        offset.set(
-            (float)(instanceID % numInstancesX),
-            (float)(instanceID / numInstancesY));
-
-        halfSpacing.set(
-            0.5f / (float)numInstancesX,
-            0.5f / (float)numInstancesY);
-
-        tilec.set(
-            halfSpacing.x() + offset.x() / (float)numInstancesX,
-            halfSpacing.y() + offset.y() / (float)numInstancesY);
-
-        sampleNoise(noise, tilec.x(), tilec.y());
-
-        shift.set(
-            fract(noise[NOISE_RANDOM]*1.5)*2.0f - 1.0f,
-            fract(noise[NOISE_RANDOM_2]*1.5)*2.0f - 1.0f);
-
-        tilec.x() += shift.x()*halfSpacing.x();
-        tilec.y() += shift.y()*halfSpacing.y();
-
-        // check the land cover
-        const LandCoverGroup* group = NULL;
-        //const GroundCoverBiome* biome = NULL;
-        const LandCoverClass* lcclass = NULL;
-        if (lcTex)
+        for (unsigned x = 0; x < numWorkgroups.x(); ++x)
         {
-            sample(landCover, lcSampler, lcMat, tilec.x(), tilec.y());
-            lcclass = _lcdict->getClassByValue((int)landCover.r());
-            if (lcclass == NULL)
+            offset.set((float)x, (float)y);
+
+            tilec.set(
+                halfSpacing.x() + offset.x() / numWorkgroupsF.x(),
+                halfSpacing.y() + offset.y() / numWorkgroupsF.y());
+
+            sampleNoise(noise, tilec.x(), tilec.y());
+
+            shift.set(
+                fract(noise[NOISE_RANDOM] * 1.5)*2.0f - 1.0f,
+                fract(noise[NOISE_RANDOM_2] * 1.5)*2.0f - 1.0f);
+
+            tilec.x() += shift.x() * halfSpacing.x();
+            tilec.y() += shift.y() * halfSpacing.y();
+
+            // look up the lifemap:
+            sampleLifemap(lifemap_value, tilec.x(), tilec.y());
+            float fill = lifemap_value[0]; // density
+            float lush = lifemap_value[1];
+            lush = noise[NOISE_CLUMPY] * lush;
+
+            if (noise[NOISE_SMOOTH] > fill)
                 continue;
-            group = zone.getLandCoverGroup(lcclass);
-            if (!group)
-                continue;
-        }
+            else
+                noise[NOISE_SMOOTH] /= fill;
 
-        // check the mask
-        if (maskTex)
-        {
-            sample(mask, maskSampler, maskMat, tilec.x(), tilec.y());
-            if (mask.r() > 0.0)
-                continue;
-        }
-
-        // check the fill
-        float fill =
-            group->options().fill().isSet() ? group->options().fill().get() :
-            zone.options().fill().get();
-
-        if (noise[NOISE_SMOOTH] > fill)
-            continue;
-        else
-            noise[NOISE_SMOOTH] /= fill;
-
-        // clamp
-        float z = 0.0;
-        if (elevTex)
-        {
-            sample(elev, elevSampler, elevMat, tilec.x(), tilec.y());
-            //if (fabs(elev.r()) > 30000.0f)
-            //{
-            //    OE_WARN << "That's a problem.. elevation value is " << elev.r() << std::endl;
-            //    osg::Vec4f val;
-            //    sample(val, elevSampler, elevMat, tilec.x(), tilec.y());
-            //    OE_WARN << "val.r() = " << val.r() << std::endl;
-            //    
-            //}
-            if (elev.r() != NO_DATA_VALUE)
+            // look up the biome:
+            sampleBiome(biome_value, tilec.x(), tilec.y());
+            int biome_id = (int)(biome_value.r()*255.0f);
+            const Biome* biome = _biomelayer->getBiome(biome_id);
+            if (biome == nullptr)
             {
-                z = elev.r();
+                return Status(
+                    Status::ConfigurationError,
+                    Stringify() << "Biome " << biome_id << " not found in the catalog");
             }
-        }
 
-        // keeper
-        Point* point = new Point();
-
-        point->push_back(osg::Vec3d(
-            key.getExtent().xMin() + tilec.x()*key.getExtent().width(),
-            key.getExtent().yMin() + tilec.y()*key.getExtent().height(),
-            0.0));
-
-        osg::ref_ptr<Feature> feature = new Feature(point, key.getExtent().getSRS());
-        feature->set("elevation", z);
-
-        // Resolve the symbol so we can add attributes
-        if (group)
-        {
-            AssetLUTVector& bblut = assetLUT[group];
-            unsigned index = (unsigned)(clamp(1.0-noise[NOISE_RANDOM], 0.0, 0.9999999) * (float)(bblut.size()));
-            AssetLUTEntry& asset = bblut[index];
-            float sizeScale = asset.sizeVariation * (noise[NOISE_RANDOM_2] * 2.0 - 1.0);
-            float width = asset.width + asset.width*sizeScale;
-            float height = asset.height + asset.height*sizeScale;
-            feature->set("width", width);
-            feature->set("height", height);
-
-            // Store any pass-thru properties
-            for(std::vector<std::string>::const_iterator i = _propNames.begin();
-                i != _propNames.end(); 
-                ++i)
+            // and the model category to use:
+            const std::string mcatName = _gclayer->getModelCategoryName();
+            const ModelCategory* mcat = biome->getModelCategory(mcatName);
+            if (!mcat)
             {
-                std::string value = asset.assetConfig.value(*i);
-                if (!value.empty())
+                return Status(
+                    Status::ConfigurationError,
+                    Stringify() << "Model category " << mcatName << " not found in the catalog");
+            }
+
+            // randomly select an asset from the category:
+            int assetCount = mcat->assets().size();
+            if (assetCount == 0)
+            {
+                return Status(
+                    Status::ConfigurationError,
+                    Stringify() << "Model category " << mcatName << " is empty");
+            }
+
+            int pickIndex = clamp(int(floor(lush * float(assetCount))), 0, assetCount - 1);
+
+            const ModelCategory::Usage& asset_usage = mcat->assets()[pickIndex];
+            ModelAsset* asset = asset_usage.asset.get();
+            if (!asset)
+            {
+                return Status(
+                    Status::ConfigurationError,
+                    Stringify() << "Asset #" << pickIndex << " in " << mcatName << " was null");
+            }
+
+            // clamp the asset to the elevation data:
+            float z = 0.0;
+            if (elevTex)
+            {
+                sample(elev_value, elevSampler, elevMat, tilec.x(), tilec.y());
+                //if (fabs(elev.r()) > 30000.0f)
+                //{
+                //    OE_WARN << "That's a problem.. elevation value is " << elev.r() << std::endl;
+                //    osg::Vec4f val;
+                //    sample(val, elevSampler, elevMat, tilec.x(), tilec.y());
+                //    OE_WARN << "val.r() = " << val.r() << std::endl;
+                //    
+                //}
+                if (elev_value.r() != NO_DATA_VALUE)
                 {
-                    feature->set(*i, value);
+                    z = elev_value.r();
                 }
             }
-        }
 
-        output.push_back(feature.get());
+            // record the asset's position and properties as a point feature:
+            Point* point = new Point();
+
+            point->push_back(osg::Vec3d(
+                key.getExtent().xMin() + tilec.x()*key.getExtent().width(),
+                key.getExtent().yMin() + tilec.y()*key.getExtent().height(),
+                0.0));
+
+            osg::ref_ptr<Feature> feature = new Feature(point, key.getExtent().getSRS());
+            feature->set("elevation", z);
+
+            float width = 0.0f, height = 0.0f;
+            if (asset->modelURI().isSet() &&
+                (!asset->width().isSet() || !asset->height().isSet()))
+            {
+                ScopedMutexLock lock(_sizeCache);
+                osg::BoundingBoxf* bbox;
+
+                auto i = _sizeCache.find(asset);
+                if (i == _sizeCache.end())
+                {
+                    bbox = &_sizeCache[asset];
+                    osg::ref_ptr<osg::Node> node = asset->modelURI()->getNode();
+                    if (node.valid())
+                    {
+                        osg::ComputeBoundsVisitor cbv;
+                        node->accept(cbv);
+                        *bbox = cbv.getBoundingBox();
+                    }
+                    else
+                    {
+                        bbox->set(0, 0, 0, 0, 0, 0);
+                    }
+                }
+                else
+                {
+                    bbox = &i->second;
+                }
+
+                width = asset->width().isSet()
+                    ? asset->width().get()
+                    : std::max(bbox->xMax() - bbox->xMin(), bbox->yMax() - bbox->yMin());
+
+                height = asset->height().isSet()
+                    ? asset->height().get()
+                    : bbox->zMax() - bbox->zMin();
+            }
+
+            // Resolve the symbol so we can add attributes   
+            float sizeScale = 1.0 + asset->sizeVariation().get() * (noise[NOISE_RANDOM_2] * 2.0 - 1.0);
+            feature->set("width", width * sizeScale);
+            feature->set("height", height * sizeScale);
+
+            // We can recover rotation but it's unnecessary at this time -gw
+
+            // Store any pass-thru properties
+            if (!_propNames.empty())
+            {
+                // TODO: slow. optimize by precomputing elsewhere.
+                const Config& assetConfig = asset->getSourceConfig();
+
+                for (std::vector<std::string>::const_iterator i = _propNames.begin();
+                    i != _propNames.end();
+                    ++i)
+                {
+                    std::string value = assetConfig.value(*i);
+                    if (!value.empty())
+                    {
+                        feature->set(*i, value);
+                    }
+                }
+            }
+
+            output.push_back(feature.get());
+        }
     }
 
     return Status::NoError;

@@ -454,26 +454,6 @@ LifeMapLayer::addedToMap(const Map* map)
     if (getBiomeLayer())
     {
         OE_INFO << LC << "Using biome layer \"" << getBiomeLayer()->getName() << "\"" << std::endl;
-
-        if (getBiomeLayer())
-        {
-            const BiomeCatalog* cat = getBiomeLayer()->getBiomeCatalog();
-            if (cat)
-            {
-                const AssetCatalog* assets = cat->getAssets();
-                if (assets)
-                {
-                    osg::ref_ptr<LifeMapLayer> layer(this);
-
-                    _loadMaterialsJob = Job<osg::Referenced>(
-                        [layer, assets](Cancelable*) {
-                            layer->loadMaterials(assets);
-                            return new osg::Referenced();
-                        }
-                    ).schedule();
-                }
-            }
-        }
     }
 
     _map = map;
@@ -484,6 +464,31 @@ LifeMapLayer::addedToMap(const Map* map)
         osg::StateSet* ss = getOrCreateStateSet();
         ss->setDefine("OE_COLOR_LAYER_TEX", getColorLayer()->getSharedTextureUniformName());
         ss->setDefine("OE_COLOR_LAYER_MAT", getColorLayer()->getSharedTextureMatrixUniformName());
+    }
+}
+
+void
+LifeMapLayer::setTerrainResources(TerrainResources*)
+{
+    // Since we're actually rendering, load the materials for splatting
+    if (getBiomeLayer())
+    {
+        const BiomeCatalog* cat = getBiomeLayer()->getBiomeCatalog();
+        if (cat)
+        {
+            const AssetCatalog* assets = cat->getAssets();
+            if (assets)
+            {
+                osg::ref_ptr<LifeMapLayer> layer(this);
+
+                _loadMaterialsJob = Job<osg::Referenced>(
+                    [layer, assets](Cancelable*) {
+                        layer->loadMaterials(assets);
+                        return new osg::Referenced();
+                    }
+                ).schedule();
+            }
+        }
     }
 }
 

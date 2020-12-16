@@ -150,7 +150,7 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     castShadows().setDefault(false);
     maxAlpha().setDefault(0.15f);
     alphaToCoverage().setDefault(true);
-    spacing().setDefault(20.0); // m
+    spacing().setDefault(Distance(20.0, Units::METERS));
 
     maskLayer().get(conf, "mask_layer");
     colorLayer().get(conf, "color_layer");
@@ -229,6 +229,13 @@ unsigned GroundCoverLayer::getLOD() const {
     return options().lod().get();
 }
 
+void GroundCoverLayer::setSpacing(const Distance& value) {
+    options().spacing() = value;
+}
+const Distance& GroundCoverLayer::getSpacing() const {
+    return options().spacing().get();
+}
+
 void GroundCoverLayer::setCastShadows(bool value) {
     options().castShadows() = value;
 }
@@ -236,15 +243,20 @@ bool GroundCoverLayer::getCastShadows() const {
     return options().castShadows().get();
 }
 
-void GroundCoverLayer::setMaxSSE(float value)
-{
+void GroundCoverLayer::setMaxSSE(float value) {
     options().maxSSE() = value;
     if (_sseU.valid())
         _sseU->set(value);
 }
-float GroundCoverLayer::getMaxSSE() const
-{
+float GroundCoverLayer::getMaxSSE() const {
     return options().maxSSE().get();
+}
+
+void GroundCoverLayer::setModelCategoryName(const std::string& value) {
+    options().category() = value;
+}
+const std::string& GroundCoverLayer::getModelCategoryName() const {
+    return options().category().get();
 }
 
 void
@@ -428,34 +440,6 @@ GroundCoverLayer::addedToMap(const Map* map)
         setStatus(Status::ResourceUnavailable, "No LifeMap available in the Map");
         return;
     }
-
-    // Now that we have access to all the layers we need...
-
-    // Make the texture atlas from the images found in the asset list
-    _renderer->_texArena = new TextureArena();
-
-    // Add to the stateset so it gets compiled and applied
-    getOrCreateStateSet()->setAttribute(_renderer->_texArena.get());
-
-    // Load asset data from the configuration.
-    loadAssets(_renderer->_texArena.get());
-
-    // Prepare model assets and add their textures to the atlas:
-    _renderer->_geomCloud = createGeometryCloud(_renderer->_texArena.get());
-
-    // bind the cloud's stateset to this layer.
-    if (_renderer->_geomCloud.valid())
-    {
-        osg::StateSet* cloudSS = _renderer->_geomCloud->getGeometry()->getStateSet();
-        if (cloudSS)
-            getOrCreateStateSet()->merge(*cloudSS);
-    }
-
-    // now that we have HANDLES, we can make the LUT shader.
-    // TODO: this probably needs to be Per-Context...
-    osg::ref_ptr<osg::Shader> lutShader = createLUTShader();
-    lutShader->setName("GroundCover CS LUT");
-    _renderer->_computeProgram->addShader(lutShader.get());
 }
 
 void
@@ -511,6 +495,34 @@ GroundCoverLayer::setTerrainResources(TerrainResources* res)
             setMaxVisibleRange(maxRange);
             OE_INFO << LC << "Setting max visibility range for LOD " << getLOD() << " to " << maxRange << "m" << std::endl;
         }
+
+        // Now that we have access to all the layers we need...
+
+        // Make the texture atlas from the images found in the asset list
+        _renderer->_texArena = new TextureArena();
+
+        // Add to the stateset so it gets compiled and applied
+        getOrCreateStateSet()->setAttribute(_renderer->_texArena.get());
+
+        // Load asset data from the configuration.
+        loadAssets(_renderer->_texArena.get());
+
+        // Prepare model assets and add their textures to the atlas:
+        _renderer->_geomCloud = createGeometryCloud(_renderer->_texArena.get());
+
+        // bind the cloud's stateset to this layer.
+        if (_renderer->_geomCloud.valid())
+        {
+            osg::StateSet* cloudSS = _renderer->_geomCloud->getGeometry()->getStateSet();
+            if (cloudSS)
+                getOrCreateStateSet()->merge(*cloudSS);
+        }
+
+        // now that we have HANDLES, we can make the LUT shader.
+        // TODO: this probably needs to be Per-Context...
+        osg::ref_ptr<osg::Shader> lutShader = createLUTShader();
+        lutShader->setName("GroundCover CS LUT");
+        _renderer->_computeProgram->addShader(lutShader.get());
 
         buildStateSets();
     }
@@ -894,7 +906,7 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
 
         unsigned numInstances1D = 64u;
 
-        float spacing_m = _layer->options().spacing().get();
+        float spacing_m = _layer->getSpacing().as(Units::METERS);
         numInstances1D = _tileWidth / spacing_m;
         _spacing = spacing_m;
 

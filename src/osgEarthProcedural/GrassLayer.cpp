@@ -62,7 +62,7 @@ GrassLayer::init()
     options().castShadows().setDefault(false);
 
     // small default spacing
-    options().spacing().setDefault(0.55); // m
+    options().spacing().setDefault(Distance(0.55, Units::METERS)); // m
 
     // smooth picking for grouped instances of grass (3=clumpy)
     //getOrCreateStateSet()->setDefine("OE_GROUNDCOVER_PICK_NOISE_TYPE", "3");

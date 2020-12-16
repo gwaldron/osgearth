@@ -34,11 +34,10 @@ set(TARGET_IN
     ProceduralShaders.cpp.in)
 
 set(TARGET_SRC
-    AssetCatalog.cpp
     Biome.cpp
     BiomeLayer.cpp
     GrassLayer.cpp
-    #GroundCoverFeatureGenerator.cpp
+    GroundCoverFeatureGenerator.cpp
     #GroundCoverFeatureSource.cpp
     GroundCoverLayer.cpp
     NoiseTextureFactory.cpp
@@ -48,12 +47,11 @@ set(TARGET_SRC
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
-    AssetCatalog
     Biome
     BiomeLayer
 	Export
     GrassLayer
-    #GroundCoverFeatureGenerator
+    GroundCoverFeatureGenerator
     #GroundCoverFeatureSource
     GroundCoverLayer
     NoiseTextureFactory

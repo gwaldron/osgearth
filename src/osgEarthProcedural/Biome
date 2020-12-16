@@ -52,6 +52,16 @@ namespace osgEarth
             ModelAsset(const Config& conf);
 
             Config getConfig() const;
+
+            //! Get Config from which this asset was originally loaded,
+            //! which will give the caller access to user-defined values
+            //! if they exist.
+            const Config& getSourceConfig() const {
+                return _sourceConfig;
+            }
+
+        private:
+            Config _sourceConfig;
         };
 
         /**
@@ -179,7 +189,10 @@ namespace osgEarth
             std::unordered_map<std::string, LandUseType> _lut;
         };
 
-
+        /**
+         * Defines all biomes, assets, and land use mappings used
+         * by the procedural system.
+         */
         class OSGEARTHPROCEDURAL_EXPORT BiomeCatalog : public osg::Referenced
         {
         public:

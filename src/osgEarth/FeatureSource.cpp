@@ -108,7 +108,8 @@ FeatureSource::openImplementation()
 
     if (l2CacheSize > 0)
     {
-        _featuresCache = std::make_unique<FeaturesLRU>(l2CacheSize);
+        // note: cannot use std::make_unique in C++11
+        _featuresCache = std::unique_ptr<FeaturesLRU>(new FeaturesLRU(l2CacheSize));
     }
 
     Status parent = Layer::openImplementation();

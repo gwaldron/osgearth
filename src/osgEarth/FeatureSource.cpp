@@ -100,6 +100,17 @@ FeatureSource::init()
 Status
 FeatureSource::openImplementation()
 {
+    unsigned int l2CacheSize = 0u;
+    if (options().l2CacheSize().isSet())
+    {
+        l2CacheSize = options().l2CacheSize().get();
+    }
+
+    if (l2CacheSize > 0)
+    {
+        _featuresCache = std::make_unique<FeaturesLRU>(l2CacheSize);
+    }
+
     Status parent = Layer::openImplementation();
     if (parent.isError())
         return parent;
@@ -210,7 +221,7 @@ FeatureSource::getExtent() const
 
 FeatureCursor*
 FeatureSource::createFeatureCursor(
-    const Query& query, 
+    const Query& query,
     ProgressCallback* progress)
 {
     return createFeatureCursor(
@@ -227,11 +238,46 @@ FeatureSource::createFeatureCursor(
     FilterContext* context,
     ProgressCallback* progress)
 {
-    FeatureCursor* cursor = createFeatureCursorImplementation(query, progress);
-    if (cursor && filters)
-        return new FilteredFeatureCursor(cursor, filters, context);
+    osg::ref_ptr< FeatureCursor > cursor;
+
+    bool fromCache = false;
+
+    if (_featuresCache)
+    {
+        // Try reading from the cache first if we have a TileKey.
+        if (query.tileKey().isSet())
+        {
+            OpenThreads::ScopedLock< Threading::Mutex > lk(_featuresCacheMutex);
+            FeaturesLRU::Record result;
+            _featuresCache->get(*query.tileKey(), result);
+            if (result.valid())
+            {
+                cursor = new FeatureListCursor(result.value());
+                fromCache = true;
+            }
+        }
+    }
+
+    // Call the implementation if we didn't get a cursor from the cache.
+    if (!cursor.valid())
+    {
+        cursor = createFeatureCursorImplementation(query, progress);
+    }
+
+    // Insert it into the cache if we read it from the source itself.
+    if (_featuresCache && !fromCache && cursor.valid() && query.tileKey().isSet())
+    {
+        OpenThreads::ScopedLock< Threading::Mutex > lk(_featuresCacheMutex);
+        FeatureList features;
+        cursor->fill(features);
+        _featuresCache->insert(*query.tileKey(), features);
+        cursor = new FeatureListCursor(features);
+    }
+
+    if (cursor.valid() && filters)
+        return new FilteredFeatureCursor(cursor.get(), filters, context);
     else
-        return cursor;
+        return cursor.release();
 }
 
 namespace
@@ -239,7 +285,7 @@ namespace
     struct MultiCursor : public FeatureCursor
     {
         typedef std::vector<osg::ref_ptr<FeatureCursor> > Cursors;
-        
+
         Cursors _cursors;
         Cursors::iterator _iter;
 
@@ -291,7 +337,7 @@ FeatureSource::createFeatureCursor(
     ProgressCallback* progress)
 {
     return createFeatureCursor(
-        key, 
+        key,
         Distance(0.0, Units::METERS),
         filters,
         context,
@@ -300,7 +346,7 @@ FeatureSource::createFeatureCursor(
 
 FeatureCursor*
 FeatureSource::createFeatureCursor(
-    const TileKey& key, 
+    const TileKey& key,
     const Distance& buffer,
     FeatureFilterChain* filters,
     FilterContext* context,
@@ -329,7 +375,7 @@ FeatureSource::createFeatureCursor(
 
             UnorderedSet<TileKey> featureKeys;
             for (int i = 0; i < intersectingKeys.size(); ++i)
-            {        
+            {
                 if (_featureProfile->getMaxLevel() >= 0 && intersectingKeys[i].getLOD() > (int)_featureProfile->getMaxLevel())
                     featureKeys.insert(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
                 else
@@ -341,7 +387,7 @@ FeatureSource::createFeatureCursor(
             // Query and collect all the features we need for this tile.
             for (UnorderedSet<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
             {
-                Query query;        
+                Query query;
                 query.tileKey() = *i;
 
                 osg::ref_ptr<FeatureCursor> cursor = createFeatureCursor(
@@ -376,7 +422,7 @@ FeatureSource::createFeatureCursor(
             query.bounds() = localExtent.bounds();
 
             return createFeatureCursor(
-                query, 
+                query,
                 filters,
                 context,
                 progress);

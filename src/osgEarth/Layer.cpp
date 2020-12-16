@@ -45,6 +45,7 @@ Layer::Options::getConfig() const
     conf.set("terrain", terrainPatch());
     conf.set("proxy", _proxySettings );
     conf.set("osg_options", osgOptionString());
+    conf.set("l2_cache_size", l2CacheSize());
 
     for(std::vector<ShaderOptions>::const_iterator i = shaders().begin();
         i != shaders().end();
@@ -69,6 +70,7 @@ Layer::Options::fromConfig(const Config& conf)
     conf.get("cacheid", cacheId());
     conf.get("attribution", attribution());
     conf.get("cache_policy", cachePolicy());
+    conf.get("l2_cache_size", l2CacheSize());
 
     // legacy support:
     if (!cachePolicy().isSet())

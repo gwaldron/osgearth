@@ -425,6 +425,7 @@ namespace osgEarth
             OE_OPTION_VECTOR(ShaderOptions, shaders);
             OE_OPTION(ProxySettings, proxySettings);
             OE_OPTION(std::string, osgOptionString);
+            OE_OPTION(unsigned int, l2CacheSize);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

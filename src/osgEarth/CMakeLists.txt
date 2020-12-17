@@ -320,6 +320,7 @@ SET(LIB_PUBLIC_HEADERS
     ViewFitter
 
     AltitudeFilter
+    AttributesFilter
     BufferFilter
     BuildGeometryFilter
     BuildTextFilter
@@ -684,6 +685,7 @@ set(TARGET_SRC
     ViewFitter.cpp
 
     AltitudeFilter.cpp
+    AttributesFilter.cpp
     BufferFilter.cpp
     BuildGeometryFilter.cpp
     BuildTextFilter.cpp
@@ -817,7 +819,7 @@ endif()
 
 message(STATUS "Building ${LIB_NAME} as a ${OSGEARTH_DYNAMIC_OR_STATIC} library")
 
-ADD_LIBRARY(${LIB_NAME} 
+ADD_LIBRARY(${LIB_NAME}
     ${OSGEARTH_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TINYXML_SRC}

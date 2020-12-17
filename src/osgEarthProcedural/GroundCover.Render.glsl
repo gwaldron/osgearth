@@ -10,9 +10,9 @@ vec3 vp_Normal;
 vec4 vp_Color;
 
 struct oe_VertexSpec {
-    //vec4 model;
-    vec4 view;
-    vec3 normal; // always in view
+    vec3 local;  // instance-local vert
+    vec4 view;   // view space vert
+    vec3 normal; // view space normal
 } oe_vertex;
 
 struct oe_TransformSpec {
@@ -20,8 +20,6 @@ struct oe_TransformSpec {
     mat4 projection;
     mat3 normal;
 } oe_transform;
-
-out vec3 oe_gc_flap;
 
 void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 {
@@ -40,12 +38,9 @@ void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 
     geom_vertex.xyz *= instance[i].sizeScale;
 
-    vec4 model = vec4(instance[i].vertex.xyz + geom_vertex.xyz, 1.0);
-    oe_vertex.view = oe_transform.modelview * model;
+    oe_vertex.local = geom_vertex.xyz;
+    oe_vertex.view = oe_transform.modelview * vec4(instance[i].vertex.xyz + geom_vertex.xyz, 1.0);
     oe_vertex.normal = oe_transform.normal * vp_Normal;
-
-    // auto-wind :)
-    oe_gc_flap = vec3(geom_vertex.x, geom_vertex.y, geom_vertex.z);
 
     // override the terrain's shader
     vp_Color = gl_Color;
@@ -65,9 +60,9 @@ void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 struct oe_VertexSpec {
-    //vec4 model;
-    vec4 view;
-    vec3 normal;
+    vec3 local;  // instance-local vert
+    vec4 view;   // view space vert
+    vec3 normal; // view space normal
 } oe_vertex;
 
 struct oe_TransformSpec {
@@ -104,14 +99,11 @@ uniform sampler3D OE_WIND_TEX;
 uniform mat4 OE_WIND_TEX_MATRIX;
 #endif
 
-uniform float shmoo;
-
 float rescale(float d, float v0, float v1)
 {
     return clamp((d-v0)/(v1-v0), 0, 1);
 }
 
-in vec3 oe_gc_flap;
 uniform float osg_FrameTime;
 
 // remap x from [0..1] to [lo..hi]
@@ -175,7 +167,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         which -= 4;
     }
 
-    vec3 halfWidthTangentVector = cross(tangentVector, oe_UpVectorView) * 0.5 * width;
+    vec3 halfWidthTangentVector = tangentVector * 0.5 * width;
 
     vertex_view.xyz =
         which==0? vertex_view.xyz - halfWidthTangentVector :
@@ -183,12 +175,12 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         which==2? vertex_view.xyz - halfWidthTangentVector + heightVector :
         vertex_view.xyz + halfWidthTangentVector + heightVector;
 
-    vp_Normal = normalize(cross(tangentVector, heightVector));
+    //vp_Normal = normalize(cross(tangentVector, heightVector));
 
     if (instance[i].sideSamplerIndex >= 0)
     {
         oe_gc_texHandle = texHandle[instance[i].sideSamplerIndex];
-        oe_gc_nmlHandle = texHandle[instance[i].sideSamplerIndex+1];
+    //    oe_gc_nmlHandle = texHandle[instance[i].sideSamplerIndex+1];
     }
 
 #else // normal render camera - draw as a billboard:
@@ -305,7 +297,7 @@ void oe_gc_apply_wind(inout vec4 vert_view, in float width, in float height)
     // sample the local wind map.
     const float stiffness = 3.8; // todo: tree parameter
 
-    float xy_len = length(oe_gc_flap.xy) + oe_gc_flap.z*0.2;
+    float xy_len = length(oe_vertex.local.xy) + oe_vertex.local.z*0.2;
     float bendDistance = xy_len;
     float xy_comp = unit(xy_len, 0, width);
     float stiffness_factor = pow(xy_comp, stiffness);
@@ -411,14 +403,6 @@ in mat3 oe_gc_TBN;
 
 in float oe_gc_transition;
 in float oe_gc_distance;
-
-float CalcMipLevel(vec2 texture_coord)
-{
-    vec2 dx = dFdx(texture_coord);
-    vec2 dy = dFdy(texture_coord);
-    float delta_max_sqr = max(dot(dx, dx), dot(dy, dy));
-    return max(0.0, 0.5 * log2(delta_max_sqr));
-}
 
 void oe_GroundCover_FS(inout vec4 color)
 {

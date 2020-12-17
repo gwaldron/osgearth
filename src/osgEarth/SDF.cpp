@@ -44,7 +44,7 @@ SDFGenerator::encodeSDF(
     int c = clamp((int)(channel - GL_RED), 0, 3);
     osg::Vec3d p;
     osg::Vec4 pixel;
-    GeoImage gi(image, extent);
+    //GeoImage gi(image, extent);
 
     NumericExpression mindist(min_dist_meters);
     NumericExpression maxdist(max_dist_meters);
@@ -87,35 +87,26 @@ SDFGenerator::encodeSDF(
 
         searchRadius = std::max(limits.second, searchRadius);
     }
+    searchRadius *= 1.1;
 
     std::vector<Feature*> hits;
     std::vector<double> ranges_squared;
-    double point[2];
 
-    // Iterate over each pixel to create the SDF
-    for (int t = 0; t < image->t(); ++t)
-    {
-        if (progress && progress->isCanceled())
-            return;
+    GeoImageIterator iter(image, extent);
 
-        for (int s = 0; s < image->s(); ++s)
+    iter.forEachPixelOnCenter([&]()
         {
-            read(pixel, s, t);
-
-            // if the current pixel is already 0, we can't do any better
+            read(pixel, iter.s(), iter.t());
             if (pixel[c] > 0.0)
             {
-                // get the coordinate at this pixel:
-                gi.getCoord(s, t, p.x(), p.y());
-
-                point[0] = p.x(), point[1] = p.y();
+                p.x() = iter.x(), p.y() = iter.y();
                 double nearest = 1.0;
 
                 // Find all features within the search radius. We can't just say "find the 
                 // one closest element" because the RTree only operates on the bounding-box
                 // level. So instead we have to grab everything within the radius and manually
                 // find the closest one.
-                if (index.KNNSearch(point, &hits, &ranges_squared, 0, searchRadius) > 0)
+                if (index.KNNSearch(p.ptr(), &hits, &ranges_squared, 0, searchRadius) > 0)
                 {
                     for (int i = 0; i < hits.size() && nearest > 0.0; ++i)
                     {
@@ -136,9 +127,8 @@ SDFGenerator::encodeSDF(
                 if (nearest < pixel[c])
                 {
                     pixel[c] = nearest;
-                    write(pixel, s, t);
+                    write(pixel, iter.s(), iter.t());
                 }
             }
-        }
-    }
+        });
 }

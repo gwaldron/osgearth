@@ -104,12 +104,12 @@ public:
   /// \param maxDistance Maximum distance from point to search
   /// \return Returns the number of entries found
   int KNNSearch(
-      const ELEMTYPE* point, 
+      const ELEMTYPE* point,
       std::vector<DATATYPE>* hits,
-      std::vector<ELEMTYPEREAL>* ranges_squared, 
-      int maxHits, 
-      const ELEMTYPE maxDistance,
-      std::function<bool(const DATATYPE&)> acceptor = [](const DATATYPE&) { return true; } ) const;
+      std::vector<ELEMTYPEREAL>* ranges_squared,
+      int maxHits,
+      const ELEMTYPE maxDistance) const;
+      //std::function<bool(const DATATYPE&)> acceptor = [](const DATATYPE&) { return true; } ) const;
   
   /// Remove all entries from tree
   void RemoveAll();
@@ -628,8 +628,8 @@ int RTREE_QUAL::KNNSearch(
     std::vector<DATATYPE>* hits, 
     std::vector<ELEMTYPEREAL>* ranges_squared, 
     int maxHits, 
-    const ELEMTYPE maxDistance,
-    std::function<bool(const DATATYPE&)> acceptLeaf) const
+    const ELEMTYPE maxDistance) const
+    //std::function<bool(const DATATYPE&)> acceptLeaf) const
 {
     OE_SOFT_ASSERT_AND_RETURN(point != nullptr, __func__, 0);
     OE_SOFT_ASSERT_AND_RETURN(hits != nullptr, __func__, 0);
@@ -688,7 +688,7 @@ int RTREE_QUAL::KNNSearch(
         while (!queue.empty() && queue.top().is_item())
         {
             const KNNData& candidate = queue.top();
-            if (acceptLeaf(*candidate.m_item))
+            //if (acceptLeaf(*candidate.m_item))
             {
                 hits->emplace_back(*candidate.m_item);
                 if (ranges_squared)

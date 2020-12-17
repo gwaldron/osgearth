@@ -619,6 +619,7 @@ LifeMapLayer::createImageImplementation(
         {
             readDensityMask.setImage(densityMask.getImage());
             readDensityMask.setBilinear(true);
+            readDensityMask.setSampleAsTexture(true);
             extent.createScaleBias(dm_key.getExtent(), dm_matrix);
         }
     }
@@ -644,6 +645,7 @@ LifeMapLayer::createImageImplementation(
         {
             readColor.setImage(color.getImage());
             readColor.setBilinear(true);
+            readColor.setSampleAsTexture(true);
             extent.createScaleBias(color_key.getExtent(), color_matrix);
         }
     }
@@ -678,7 +680,7 @@ LifeMapLayer::createImageImplementation(
 
     GeoImage result(image.get(), extent);
 
-    std::unordered_map<std::string, int> counts;
+    //std::unordered_map<std::string, int> counts;
 
     GeoImageIterator i(image.get(), extent);
     i.forEachPixelOnCenter([&]() {
@@ -746,8 +748,13 @@ LifeMapLayer::createImageImplementation(
 
                 pixel.set(dense, lush, rugged, 0);
 
-                counts[lu_id]++;
+                //counts[lu_id]++;
             }
+            //else
+            //{
+            //    pixel.set(1.0f, 0.0f, 0.0f, 0);
+            //    dense_mix = rugged_mix = lush_mix = default_mix;
+            //}
         }
 
         dense =
@@ -797,7 +804,7 @@ LifeMapLayer::createImageImplementation(
         }
 
         // blanket adjustment.
-        dense *= 0.55f;
+        //dense *= 0.55f;
 
         pixel.set(dense, lush, rugged, 0);
 

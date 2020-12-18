@@ -112,6 +112,7 @@ namespace osgEarth
     private:
         osg::ref_ptr<osg::Uniform> _opacityU;
         osg::ref_ptr<osg::Uniform> _rangeU;
+        osg::ref_ptr<osg::NodeCallback> _noDrawCallback;
         void initializeBlending();
         void initializeMinMaxRangeOpacity();
     };

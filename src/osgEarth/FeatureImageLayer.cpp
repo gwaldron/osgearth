@@ -182,23 +182,20 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 
         BLPath path;
 
-        ConstGeometryIterator gi(geometry);
-        while (gi.hasMore())
-        {
-            const Geometry* g = gi.next();
-
-            for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
+        geometry->forEachPart([&](const Geometry* part)
             {
-                const osg::Vec3d& p0 = *p;
-                double x = frame.xf*(p0.x() - frame.xmin);
-                double y = frame.yf*(p0.y() - frame.ymin);
+                for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                {
+                    const osg::Vec3d& p0 = *p;
+                    double x = frame.xf*(p0.x() - frame.xmin);
+                    double y = frame.yf*(p0.y() - frame.ymin);
 
-                if (p == g->begin())
-                    path.moveTo(x, y);
-                else
-                    path.lineTo(x, y);
-            }
-        }
+                    if (p == part->begin())
+                        path.moveTo(x, y);
+                    else
+                        path.lineTo(x, y);
+                }
+            });
 
         osg::Vec4 color = symbol->fill().isSet() ? symbol->fill()->color() : Color::White;
         ctx.setFillStyle(BLRgba32(color.asRGBA()));
@@ -219,32 +216,29 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 
         BLPath path;
 
-        ConstGeometryIterator gi(geometry);
-        while (gi.hasMore())
-        {
-            const Geometry* g = gi.next();
-
-            for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
+        geometry->forEachPart(true, [&](const Geometry* part)
             {
-                const osg::Vec3d& p0 = *p;
-                double x = frame.xf*(p0.x() - frame.xmin);
-                double y = frame.yf*(p0.y() - frame.ymin);
+                for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                {
+                    const osg::Vec3d& p0 = *p;
+                    double x = frame.xf*(p0.x() - frame.xmin);
+                    double y = frame.yf*(p0.y() - frame.ymin);
 
-                if (p == g->begin())
-                    path.moveTo(x, y);
-                else
+                    if (p == part->begin())
+                        path.moveTo(x, y);
+                    else
+                        path.lineTo(x, y);
+                }
+
+                if ((part->getType() == Geometry::TYPE_RING || part->getType() == Geometry::TYPE_POLYGON) &&
+                    (part->front() != part->back()))
+                {
+                    const osg::Vec3d& p0 = part->front();
+                    double x = frame.xf*(p0.x() - frame.xmin);
+                    double y = frame.yf*(p0.y() - frame.ymin);
                     path.lineTo(x, y);
-            }
-
-            if ((g->getType() == Geometry::TYPE_RING || g->getType() == Geometry::TYPE_POLYGON) &&
-                (g->front() != g->back()))
-            {
-                const osg::Vec3d& p0 = g->front();
-                double x = frame.xf*(p0.x() - frame.xmin);
-                double y = frame.yf*(p0.y() - frame.ymin);
-                path.lineTo(x, y);
-            }
-        }
+                }
+            });
 
         Color color(Color::White);
         uint32_t cap = BL_STROKE_CAP_ROUND;

@@ -70,7 +70,7 @@ InstanceCloud::InstancingData::~InstancingData()
 void
 InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned numTiles)
 {
-    if (numTilesAllocated < numTiles)
+    if (numTilesAllocated < numTiles || commands == nullptr)
     {
         OE_DEBUG << LC << "Reallocate from " << numTilesAllocated << " to " << numTiles << " tiles" << std::endl;
 

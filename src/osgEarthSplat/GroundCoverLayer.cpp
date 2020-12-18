@@ -153,7 +153,7 @@ GroundCoverLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 
 namespace
 {
-    // Trickt o store the BiomeLayout pointer in a stateattribute so we can track it during cull/draw
+    // Trick to store the BiomeLayout pointer in a stateattribute so we can track it during cull/draw
     struct ZoneSA : public osg::StateAttribute
     {
         META_StateAttribute(osgEarth, ZoneSA, (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY + 90210));
@@ -285,7 +285,7 @@ GroundCoverLayer::closeImplementation()
     setCullCallback(NULL);
 
     _zoneStateSets.clear();
-    getOrCreateStateSet()->clear();
+    //getOrCreateStateSet()->clear();
 
     _noiseBinding.release();
     _groundCoverTexBinding.release();
@@ -619,7 +619,7 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
         _renderer->releaseGLObjects(state);
     }
 
-    PatchLayer::releaseGLObjects(state);
+    //PatchLayer::releaseGLObjects(state);
 }
 
 namespace
@@ -809,6 +809,12 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatc
         needsCompute = true;
     }
 
+    // this can happen for a new instancer or after releaseGLobjects is called:
+    if (instancer->_data.commands == nullptr)
+    {
+        needsCompute = true;
+    }
+
     if (needsCompute)
     {
         // I'm not sure why we have to push the layer's stateset here.
@@ -971,18 +977,18 @@ GroundCoverLayer::Renderer::resizeGLObjectBuffers(unsigned maxSize)
 void
 GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
 {
-    for(unsigned i=0; i<_drawStateBuffer.size(); ++i)
+    for (unsigned i = 0; i < _drawStateBuffer.size(); ++i)
     {
         const DrawState& ds = _drawStateBuffer[i];
-        for(DrawState::InstancerPerGroundCover::const_iterator j = ds._instancers.begin();
-            j != ds._instancers.end();
-            ++j)
+
+        for (const auto& i : ds._instancers)
         {
-            if (j->second.valid())
+            InstanceCloud* cloud = i.second.get();
+            if (cloud)
             {
-                j->second->releaseGLObjects(state);
+                cloud->releaseGLObjects(state);
             }
-        }        
+        }
     }
 }
 
@@ -1289,7 +1295,7 @@ GroundCoverLayer::createLUTShader() const
 
         // apply the selection weight by adding the object multiple times
 
-        for(unsigned w=0; w<weight; ++w)
+        for(int w=0; w<weight; ++w)
         {
             if (numAssetInstancesAdded > 0)
                 assetBuf << ", \n";

@@ -596,6 +596,20 @@ Geometry::close()
         push_back( front() );
 }
 
+void
+Geometry::forEachPart(bool includePolygonHoles, const std::function<void(Geometry*)>& func)
+{
+    GeometryIterator i(this, includePolygonHoles);
+    i.forEach(func);
+}
+
+void
+Geometry::forEachPart(bool includePolygonHoles, const std::function<void(const Geometry*)>& func) const
+{
+    ConstGeometryIterator i(this, includePolygonHoles);
+    i.forEach(func);
+}
+
 //----------------------------------------------------------------------------
 
 PointSet::PointSet( const PointSet& rhs ) :

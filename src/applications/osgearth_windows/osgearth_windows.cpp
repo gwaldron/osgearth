@@ -45,11 +45,79 @@ usage(const char* name)
     return 0;
 }
 
+struct App
+{
+    osgViewer::CompositeViewer _viewer;
+    bool _sharedGC;
+    int _size;
+    osg::ref_ptr<osg::Node> _node;
+
+    App(osg::ArgumentParser& args) :
+        _viewer(args),
+        _size(500)
+    {
+        _viewer.setThreadingModel(_viewer.SingleThreaded);
+        _sharedGC = args.read("--shared");
+    }
+
+    void addView()
+    {
+        int i = _viewer.getNumViews();
+        osgViewer::View* view = new osgViewer::View();
+        int width = _sharedGC ? _size * _viewer.getNumViews() : _size;
+        view->setUpViewInWindow(10 + (i*_size) + 30, 10, width, _size);
+        view->setCameraManipulator(new EarthManipulator());
+        view->setSceneData(_node.get());
+        if (_sharedGC)
+        {
+            view->getCamera()->setViewport(i*_size, 0, _size, _size);
+            view->getCamera()->setProjectionMatrixAsPerspective(45, 1, 1, 10);
+            view->getCamera()->setName(Stringify() << "View " << i);
+            if (i > 0)
+            {
+                view->getCamera()->setGraphicsContext(_viewer.getView(0)->getCamera()->getGraphicsContext());
+            }
+        }
+        MapNodeHelper().configureView(view);
+        _viewer.addView(view);
+    }
+
+    void releaseGLObjects()
+    {
+        OE_NOTICE << "Calling releaseGLObjects" << std::endl;
+        _viewer.releaseGLObjects(nullptr);
+    }
+};
+
+
+struct AddWindow : public osgGA::GUIEventHandler
+{
+    App& _app;
+    bool _sharedGC;
+    int _size;
+
+    AddWindow(App& app) :
+        _app(app)
+    { }
+
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override
+    {
+        if (ea.getEventType() == ea.KEYUP && ea.getKey() == ea.KEY_N)
+        {
+            _app.addView();
+            return true;
+        }
+        return false;
+    }
+};
+
 
 int
 main(int argc, char** argv)
 {
     osgEarth::initialize();
+
+    osgEarth::Registry::instance()->unRefImageDataAfterApply() = false;
 
     osg::ArgumentParser arguments(&argc,argv);
 
@@ -60,45 +128,26 @@ main(int argc, char** argv)
     int numViews = 1;
     arguments.read("--views", numViews);
 
-    bool sharedGC;
-    sharedGC = arguments.read("--shared");
-
     // create a viewer:
-    osgViewer::CompositeViewer viewer(arguments);
-    viewer.setThreadingModel(viewer.SingleThreaded);
+    App app(arguments);
 
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
-    if (!node)
+    app._node = MapNodeHelper().load(arguments, &app._viewer);
+    if (!app._node.get())
         return usage(argv[0]);
-
-    int size = 500;
 
     for(int i=0; i<numViews; ++i)
     {
-        osgViewer::View* view = new osgViewer::View();
-        int width = sharedGC? size*numViews : size;
-        view->setUpViewInWindow(10+(i*size+30), 10, width, size);
-        view->setCameraManipulator(new EarthManipulator(arguments));
-        view->setSceneData(node);
-        if (sharedGC)
-        {
-            view->getCamera()->setViewport(i*size, 0, size, size);
-            view->getCamera()->setProjectionMatrixAsPerspective(45, 1, 1, 10);
-            view->getCamera()->setName(Stringify()<<"View "<<i);
-
-        }
-        MapNodeHelper().configureView(view);
-        viewer.addView(view);
+        app.addView();
     }
 
-    if (sharedGC)
-    {
-        for(int i=1; i<numViews; ++i)
-        {
-            osgViewer::View* view = viewer.getView(i);
-            view->getCamera()->setGraphicsContext(viewer.getView(0)->getCamera()->getGraphicsContext());
-        }
-    }
+    EventRouter* router = new EventRouter();
+    app._viewer.getView(0)->addEventHandler(router);
 
-    return viewer.run();
+    OE_NOTICE << "Press 'n' to create a new view" << std::endl;
+    router->onKeyPress(EventRouter::KEY_N, [&]() { app.addView(); });
+
+    OE_NOTICE << "Press 'r' to call releaseGLObjects" << std::endl;
+    router->onKeyPress(EventRouter::KEY_R, [&]() { app.releaseGLObjects(); });
+
+    return app._viewer.run();
 }

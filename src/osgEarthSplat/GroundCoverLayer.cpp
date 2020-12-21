@@ -285,13 +285,13 @@ GroundCoverLayer::closeImplementation()
     setCullCallback(NULL);
 
     _zoneStateSets.clear();
-    //getOrCreateStateSet()->clear();
 
     _noiseBinding.release();
     _groundCoverTexBinding.release();
     
     _liveAssets.clear();
     _atlasImages.clear();
+    _atlas = nullptr;
 
     return PatchLayer::closeImplementation();
 }
@@ -563,6 +563,7 @@ GroundCoverLayer::buildStateSets()
     osg::Texture* tex = createTextureAtlas();
     stateset->setTextureAttribute(_groundCoverTexBinding.unit(), tex);
     stateset->addUniform(new osg::Uniform(GCTEX_SAMPLER, _groundCoverTexBinding.unit()));
+    _atlas = tex;
 
     // Assemble zone-specific statesets:
     float maxVisibleRange = getMaxVisibleRange();
@@ -619,7 +620,18 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
         _renderer->releaseGLObjects(state);
     }
 
-    //PatchLayer::releaseGLObjects(state);
+    PatchLayer::releaseGLObjects(state);
+
+    if (isOpen())
+    {
+        if (_atlas.valid())
+        {
+            // Workaround for
+            // https://github.com/openscenegraph/OpenSceneGraph/issues/1013
+            for (int i = 0; i < _atlas->getNumImages(); ++i)
+                _atlas->getImage(i)->dirty();
+        }
+    }
 }
 
 namespace
@@ -636,7 +648,7 @@ namespace
                 4,5, 5,7, 7,6, 6,4
             };
 
-            LineDrawable* lines = new LineDrawable(GL_LINES);            
+            LineDrawable* lines = new LineDrawable(GL_LINES);
             for(int i=0; i<24; i+=2)
             {
                 lines->pushVertex(bbox.corner(index[i]));
@@ -699,15 +711,6 @@ namespace
         
         return cruncher._geom.release();
     }
-}
-
-osg::Node*
-GroundCoverLayer::createNodeImplementation(const DrawContext& dc)
-{
-    osg::Node* node = NULL;
-    if (_debug)
-        node = makeBBox(*dc._geomBBox, *dc._key);
-    return node;
 }
 
 osg::Geometry*
@@ -794,6 +797,8 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatc
     if (!instancer.valid())
     {
         instancer = new InstanceCloud();
+        ds._lastTileBatchID = -1;
+        ds._uniforms.clear();
     }
 
     // Pull the per-camera data
@@ -935,7 +940,10 @@ GroundCoverLayer::Renderer::drawTile(osg::RenderInfo& ri, const PatchLayer::Draw
     osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
     if (!pcp)
+    {
+        OE_WARN << "nullptr PCP in Renderer::drawTile, how odd" << std::endl;
         return;
+    }
 
     UniformState& u = ds._uniforms[pcp];
 
@@ -977,9 +985,12 @@ GroundCoverLayer::Renderer::resizeGLObjectBuffers(unsigned maxSize)
 void
 GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
 {
-    for (unsigned i = 0; i < _drawStateBuffer.size(); ++i)
+    if (state)
     {
-        const DrawState& ds = _drawStateBuffer[i];
+        DrawState& ds = _drawStateBuffer[state->getContextID()];
+
+        ds._uniforms.clear();
+        ds._lastTileBatchID = -1;
 
         for (const auto& i : ds._instancers)
         {
@@ -990,6 +1001,28 @@ GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
             }
         }
     }
+    else
+    {
+        for (unsigned i = 0; i < _drawStateBuffer.size(); ++i)
+        {
+            DrawState& ds = _drawStateBuffer[i];
+
+            ds._uniforms.clear();
+            ds._lastTileBatchID = -1;
+
+            for (const auto& i : ds._instancers)
+            {
+                InstanceCloud* cloud = i.second.get();
+                if (cloud)
+                {
+                    cloud->releaseGLObjects(state);
+                }
+            }
+        }
+    }
+
+    _computeStateSet->releaseGLObjects(state);
+    _a2cBlending->releaseGLObjects(state);
 }
 
 void

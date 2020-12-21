@@ -628,8 +628,9 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
         {
             // Workaround for
             // https://github.com/openscenegraph/OpenSceneGraph/issues/1013
-            for (int i = 0; i < _atlas->getNumImages(); ++i)
-                _atlas->getImage(i)->dirty();
+            for (unsigned i = 0; i < _atlas->getNumImages(); ++i)
+                if (_atlas->getImage(i))
+                    _atlas->getImage(i)->dirty();
         }
     }
 }

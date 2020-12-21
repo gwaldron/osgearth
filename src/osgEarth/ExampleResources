@@ -28,6 +28,7 @@
 #include <osgEarth/Sky>
 #include <osgEarth/SimpleOceanLayer>
 #include <osgEarth/Viewpoint>
+#include <osgGA/GUIEventHandler>
 
 namespace osgEarth {
     class MapNode;
@@ -169,6 +170,72 @@ namespace osgEarth { namespace Util
     public:
         Control* create(MapNode* mapNode) const;
     };
+
+    
+    /**
+     * Helper class for easily creating event handlers
+     */
+    struct EventRouter :
+        public osgGA::GUIEventHandler,
+        public osgGA::GUIEventAdapter
+    {
+        typedef std::function<void()> Function;
+
+        void onKeyPress(KeySymbol key, const Function& func) {
+            _keypress[key].emplace_back(func);
+        }
+
+        void onClick(const Function& func) {
+            onClick(LEFT_MOUSE_BUTTON, 0, func);
+        }
+
+        void onClick(int button, const Function& func) {
+            _click[button].emplace_back(func);
+        }
+
+        void onClick(int button, int modkey, const Function& func) {
+            _click[button | (modkey<<3)].emplace_back(func);
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override
+        {
+            unsigned count = 0u;
+
+            if (ea.getEventType() == ea.KEYUP) {
+                for (auto& func : _keypress[(KeySymbol)ea.getKey()]) {
+                    func();
+                    ++count;
+                }
+            }
+            else if (ea.getEventType() == ea.PUSH) {
+                _pushes[ea.getButton()].set(true, ea.getModKeyMask());
+            }
+            else if (ea.getEventType() == ea.RELEASE) {
+                Push& push = _pushes[ea.getButton()];
+                if (push == true) {
+                    int combo = ea.getButton() | push._modkeymask;
+                    push.set(false, 0);
+                    for (auto& func : _click[combo]) {
+                        func(), ++count;
+                    }
+                }
+            }
+
+            return count > 0u;
+        }
+
+        struct Push {
+            Push() : _value(false) { }
+            bool _value;
+            int _modkeymask;
+            void set(bool value, int mask) { _value = value, _modkeymask = mask; }
+            operator bool() { return _value; }
+        };
+        std::unordered_map<KeySymbol, std::list<Function>> _keypress;
+        std::unordered_map<int, Push> _pushes;
+        std::unordered_map<int, std::list<Function>> _click;
+    };
+
 
 } } // namespace osgEarth::Util
 

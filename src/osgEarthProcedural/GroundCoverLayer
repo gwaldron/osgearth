@@ -112,26 +112,23 @@ namespace osgEarth { namespace Procedural
     protected:
 
         //! Override post-ctor init
-        virtual void init();
+        virtual void init() override;
 
         //! Override layer open
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
 
         //! Override layer close
-        virtual Status closeImplementation();
-
-        //! Get geometry for a tilekey
-        virtual osg::Node* createNodeImplementation(const DrawContext& dc);
+        virtual Status closeImplementation() override;
 
     public:
 
         //! Called when this layer is added to the map
-        virtual void addedToMap(const Map* map);
-        virtual void removedFromMap(const Map* map);
-        virtual void setTerrainResources(TerrainResources*);
+        virtual void addedToMap(const Map* map) override;
+        virtual void removedFromMap(const Map* map) override;
+        virtual void setTerrainResources(TerrainResources*) override;
 
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
-        virtual void releaseGLObjects(osg::State* state) const;
+        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
+        virtual void releaseGLObjects(osg::State* state) const override;
 
     protected:
         virtual ~GroundCoverLayer();
@@ -224,6 +221,7 @@ namespace osgEarth { namespace Procedural
                 // compute pass
                 unsigned _pass;
             };
+            
             typedef PerObjectFastMap<const osg::Camera*, CameraState> CameraStateMap;
 
             mutable CameraStateMap _cameraState;

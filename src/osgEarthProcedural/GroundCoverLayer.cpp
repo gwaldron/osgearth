@@ -696,15 +696,6 @@ namespace
     }
 }
 
-osg::Node*
-GroundCoverLayer::createNodeImplementation(const DrawContext& dc)
-{
-    osg::Node* node = NULL;
-    if (_debug)
-        node = makeBBox(*dc._tileBBox, *dc._key);
-    return node;
-}
-
 osg::Geometry*
 GroundCoverLayer::createParametricGeometry() const    
 {
@@ -869,7 +860,7 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
 
 GroundCoverLayer::Renderer::~Renderer()
 {
-    releaseGLObjects(0);
+    releaseGLObjects(nullptr);
 }
 
 namespace 
@@ -903,6 +894,8 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
     {
         OE_PROFILING_ZONE_NAMED("IC Setup");
         ds._instancer = new InstanceCloud();
+        ds._lastTileBatchID = -1;
+        ds._pcpState.clear();
 
         unsigned numInstances1D = 64u;
 
@@ -1230,7 +1223,6 @@ GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const PatchLayer::Dra
 void
 GroundCoverLayer::Renderer::resizeGLObjectBuffers(unsigned maxSize)
 {
-    //_drawStateBuffer.resize(osg::maximum(maxSize, _drawStateBuffer.size()));
 }
 
 void
@@ -1238,7 +1230,9 @@ GroundCoverLayer::Renderer::CameraStateRGLO::operator()(
     const GroundCoverLayer::Renderer::CameraState& ds) const
 {
     if (ds._instancer.valid())
+    {
         ds._instancer->releaseGLObjects(_state);
+    }
 }
 
 void

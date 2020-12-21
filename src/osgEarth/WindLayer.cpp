@@ -254,13 +254,9 @@ namespace
 
             if (!ds._buffer.valid() || ds._bufferSize < requiredBufferSize)
             {
-                ds._buffer = new GLBuffer();
-
-                ext->glGenBuffers(1, &ds._buffer->_handle);
+                ds._buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, *state, "OE WindLayer Data");
 
                 ds._bufferSize = requiredBufferSize;
-
-                state->getGraphicsContext()->add(new GLBufferReleaser(ds._buffer.get()));
 
                 if (!ds._glBufferStorage)
                 {
@@ -268,12 +264,12 @@ namespace
                     osg::setGLExtensionFuncPtr(ds._glBufferStorage, "glBufferStorage", "glBufferStorageARB");
                 }
 
-                ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer->_handle);
+                ds._buffer->bind();
                 ds._glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
             }
             else
             {
-                ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer->_handle);
+                ds._buffer->bind();
             }
 
             // download to GPU
@@ -376,7 +372,7 @@ namespace
         compileGLObjects(ri, ds);
 
         // activate layout() binding point:
-        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ds._buffer->_handle);
+        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ds._buffer->name());
 
         // run it
         ext->glDispatchCompute(WIND_DIM_X, WIND_DIM_Y, WIND_DIM_Z);

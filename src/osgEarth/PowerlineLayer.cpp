@@ -636,6 +636,24 @@ namespace
         }
         return false;
     }
+
+    void setCableStyleDefaults(Style& cableStyle)
+    {
+        osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
+        if (!lineSymbol->stroke()->width().isSet())
+        {
+            lineSymbol->stroke()->width() = .05;
+            lineSymbol->stroke()->widthUnits() = Units::METERS;
+        }
+        if (!lineSymbol->tessellationSize().isSet())
+        {
+            lineSymbol->tessellationSize() = Distance(20, Units::METERS);
+        }
+        if (!lineSymbol->useWireLines().isSet())
+        {
+            lineSymbol->useWireLines() = true;
+        }
+    }
 }
 
 FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
@@ -748,6 +766,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
             if (_cableExpr.isSet())
             {
                 evalStyle(feature, cx, _cableExpr.get(), localStyle);
+                setCableStyleDefaults(localStyle);
             }
             const Style& styleRef = _cableExpr.isSet() ? localStyle : cableStyle;
             
@@ -945,9 +964,23 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     results->addChild(pointsNode.get());
     FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX, query,
                                                    cableStyle);
+
     GeometryCompiler compiler;
-    osg::Node* cables = compiler.compile(cableFeatures, cableStyle, localCX);
-    results->addChild(cables);
+    if (_cableExpr.isSet())
+    {
+        for (FeatureList::iterator i = cableFeatures.begin(); i != cableFeatures.end(); ++i)
+        {
+            Style localStyle;
+            evalStyle(*i, localCX, _cableExpr.get(), localStyle);
+            osg::Node* cable = compiler.compile(*i, localStyle, localCX);
+            results->addChild(cable);
+        }
+    }
+    else
+    {
+        osg::Node* cables = compiler.compile(cableFeatures, cableStyle, localCX);
+        results->addChild(cables);
+    }
     node = results;
     return true;
 }

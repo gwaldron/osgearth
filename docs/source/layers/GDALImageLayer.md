@@ -13,7 +13,9 @@ Inherits from: [Image Layer](ImageLayer.md)
 | single_threaded | Force single-threaded access to the GDAL driver. Most GDAL drivers are thread-safe, but not all. If you are having issues with a GDAL driver crashing, try setting this to true. | bool   | false   |
 | subdataset      | Identifier of a sub-dataset within a larger GDAL dataset. Some drivers require this in order to access sub-layers within the database. | string |         |
 
-### Example
+### Examples
+
+Layer displaying a local GeoTIFF:
 
 ```xml
 <GDALImage name="Local Data">

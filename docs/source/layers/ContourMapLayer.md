@@ -6,9 +6,7 @@ Renders a visual representation of the elevation data in the Map using a color r
 
 Inherits from: [Image Layer](ImageLayer.md)
 
-| Earth file | Description | Type | Default |
-| ---------- | ----------- | ---- | ------- |
-|            |             |      |         |
+None.
 
 ### Example
 
@@ -19,4 +17,4 @@ Inherits from: [Image Layer](ImageLayer.md)
 
 
 
-![image](/images/ContourMap.png)
+![image](/_static/images/ContourMap.png)

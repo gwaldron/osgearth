@@ -364,11 +364,6 @@ SplatLayer::releaseGLObjects(osg::State* state) const
     }
 
     VisibleLayer::releaseGLObjects(state);
-
-    // For some unknown reason, release doesn't work on the zone 
-    // texture def data (SplatTextureDef). So we have to recreate
-    // it here.
-    //const_cast<SplatLayer*>(this)->buildStateSets();
 }
 
 

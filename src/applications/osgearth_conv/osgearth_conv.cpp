@@ -30,6 +30,7 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/MapNode>
 #include <osgEarth/OGRFeatureSource>
+#include <osgEarth/ImageUtils>
 
 #include <osg/ArgumentParser>
 #include <osg/Timer>
@@ -66,8 +67,8 @@ int usage(char** argv)
 // Visitor that converts image tiles
 struct ImageLayerTileCopy : public TileHandler
 {
-    ImageLayerTileCopy(ImageLayer* source, ImageLayer* dest, bool overwrite)
-        : _source(source), _dest(dest), _overwrite(overwrite)
+    ImageLayerTileCopy(ImageLayer* source, ImageLayer* dest, bool overwrite, bool compress)
+        : _source(source), _dest(dest), _overwrite(overwrite), _compress(compress)
     {
         //nop
     }
@@ -89,7 +90,11 @@ struct ImageLayerTileCopy : public TileHandler
         GeoImage image = _source->createImage(key);
         if (image.valid())
         {
-            Status status = _dest->writeImage(key, image.getImage(), 0L);
+            osg::ref_ptr<const osg::Image> imageToWrite = image.getImage();
+            if (_compress)
+                imageToWrite = ImageUtils::compressImage(image.getImage(), "cpu");
+
+            Status status = _dest->writeImage(key, imageToWrite.get(), 0L);
             ok = status.isOK();
             if (!ok)
             {
@@ -108,6 +113,7 @@ struct ImageLayerTileCopy : public TileHandler
     osg::ref_ptr<ImageLayer> _source;
     osg::ref_ptr<ImageLayer> _dest;
     bool _overwrite;
+    bool _compress;
 };
 
 // Visitor that converts elevation tiles
@@ -349,9 +355,20 @@ main(int argc, char** argv)
     }
 
     // collect output configuration:
+    bool compress = false;
     Config outConf;
-    while( args.read("--out", key, value) )
+    while (args.read("--out", key, value))
+    {
         outConf.set(key, value);
+
+        // special case: turn on compression when using dds at the output format
+        // and disable the built-in image flipping logic
+        if (key == "format" && value == "dds")
+        {
+            compress = true;
+            //dbo->setOptionString("ddsNoAutoFlipWrite " + dbo->getOptionString());
+        }
+    }
     outConf.key() = outConf.value("driver");
 
     // are we changing profiles?
@@ -442,7 +459,8 @@ main(int argc, char** argv)
         visitor->setTileHandler(new ImageLayerTileCopy(
             dynamic_cast<ImageLayer*>(input.get()),
             dynamic_cast<ImageLayer*>(output.get()),
-            overwrite));
+            overwrite,
+            compress));
     }
     else if (dynamic_cast<ElevationLayer*>(input.get()) && dynamic_cast<ElevationLayer*>(output.get()))
     {

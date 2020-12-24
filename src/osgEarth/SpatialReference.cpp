@@ -104,12 +104,16 @@ SpatialReference::ThreadLocal::~ThreadLocal()
     if (_workspace)
         delete [] _workspace;
 
+    // Causing a crash under GDAL3/PROJ6 - comment out until further notice
+    // This only happens on program exist anyway
+#if GDAL_VERSION_MAJOR < 3
     for(auto& xformEntry : _xformCache)
     {
         optional<TransformInfo>& ti = xformEntry.second;
         if (ti.isSet() && ti->_handle != nullptr)
             OCTDestroyCoordinateTransformation(ti->_handle);
     }
+#endif
 
     if (_handle)
     {

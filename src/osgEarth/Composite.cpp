@@ -140,7 +140,7 @@ CompositeImageLayer::openImplementation()
     if (getCacheSettings()->cachePolicy()->isCacheOnly())
         return Status::NoError;
 
-    osg::ref_ptr<const Profile> profile;
+    osg::ref_ptr<const Profile> profile = getProfile();
 
     bool dataExtentsValid = true;
 
@@ -254,22 +254,25 @@ CompositeImageLayer::openImplementation()
         }
     }
 
-    // If there is no profile set by the user or by a component, fall back
-    // on a default profile. This will allow the Layer to continue to operate
-    // off the cache even if all components fail to initialize for some reason.
-    if (profile.valid() == false)
+    if (!getProfile())
     {
-        if (getCacheSettings()->isCacheEnabled())
+        // If there is no profile set by the user or by a component, fall back
+        // on a default profile. This will allow the Layer to continue to operate
+        // off the cache even if all components fail to initialize for some reason.
+        if (profile.valid() == false)
         {
-            profile = Profile::create("global-geodetic");
+            if (getCacheSettings()->isCacheEnabled())
+            {
+                profile = Profile::create("global-geodetic");
+            }
+            else
+            {
+                return Status(Status::ResourceUnavailable, "Unable to open any component layers");
+            }
         }
-        else
-        {
-            return Status(Status::ResourceUnavailable, "Unable to open any component layers");
-        }
-    }
 
-    setProfile( profile.get() );
+        setProfile(profile.get());
+    }
 
     return Status::NoError;
 }

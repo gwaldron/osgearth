@@ -1,26 +1,15 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
+osgEarth Sample - UTM Projection
 -->
-<map name="readymap.org">  
+<map name="UTM Example">  
     
     <options>
         <profile>
-            <srs>+proj=utm +zone=31 +units=m +no_defs</srs>
+            <srs>+proj=utm +zone=31 +north +datum=WGS84 +units=m +no_defs</srs>
         </profile>
         
         <terrain tile_size="2" morph_terrain="false"/>
     </options>
     
     <xi:include href="readymap_imagery.xml"/>
-    <xi:include href="readymap_elevation.xml"/>
 </map>

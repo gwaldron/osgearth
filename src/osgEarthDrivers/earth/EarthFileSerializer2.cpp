@@ -510,7 +510,10 @@ _rewriteAbsolutePaths( false )
 
 
 osg::Node*
-EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& referrer ) const
+EarthFileSerializer2::deserialize( 
+    const Config& const_conf, 
+    const std::string& referrer,
+    const osgDB::Options* readOptions) const
 {
     Config conf = const_conf;
 
@@ -538,7 +541,7 @@ EarthFileSerializer2::deserialize( const Config& const_conf, const std::string& 
             mapOptions.profileLayer() = profileLayer;
     }
 
-    osg::ref_ptr<Map> map = new Map(mapOptions);
+    osg::ref_ptr<Map> map = new Map(mapOptions, readOptions);
 
     if (map->getProfile() == nullptr)
         return nullptr;

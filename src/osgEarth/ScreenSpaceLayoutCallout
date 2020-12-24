@@ -115,7 +115,7 @@ namespace osgEarth { namespace Internal
         CalloutImplementation(ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f);
 
         //! Override from SortCallback
-        void sortImplementation(osgUtil::RenderBin*);
+        void sortImplementation(osgUtil::RenderBin*) override;
 
         void push(osgUtil::RenderLeaf* leaf, CameraLocal& local);
 

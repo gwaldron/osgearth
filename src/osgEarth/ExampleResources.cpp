@@ -308,6 +308,13 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
 {
     osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
 
+    // pass through OSG options
+    std::string str;
+    if (args.read("--osg-options", str) || args.read("-O", str))
+    {
+        myReadOptions->setOptionString(str);
+    }
+
     // read in the Earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
 
@@ -431,9 +438,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
 {
     if ( !root )
         root = mapNode;
-
-    // options to use for the load
-    osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
     // parse out custom example arguments first:
     bool useCoords     = args.read("--coords");

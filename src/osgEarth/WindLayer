@@ -104,23 +104,24 @@ namespace osgEarth
     protected: // Layer
 
         // post-ctor initialization
-        virtual void init();
+        virtual void init() override;
 
-        // open the layer
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
 
-        virtual Status closeImplementation();
+        virtual Status closeImplementation() override;
 
-        virtual osg::Node* getNode() const;
+        virtual osg::Node* getNode() const override;
 
-        virtual void setTerrainResources(TerrainResources*);
+        virtual void setTerrainResources(TerrainResources*) override;
 
-        osg::StateSet* getSharedStateSet(osg::NodeVisitor* nv) const;
+        virtual osg::StateSet* getSharedStateSet(osg::NodeVisitor* nv) const override;
+
+        virtual void releaseGLObjects(osg::State*) const override;
+
+        virtual void resizeGLObjectBuffers(unsigned) override;
 
     private:
-        osg::ref_ptr<osg::Group> _node;
         osg::ref_ptr<osg::Node> _drawable;
-        double _radius;
     };
 
 } // namespace osgEarth

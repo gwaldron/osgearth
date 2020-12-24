@@ -622,7 +622,7 @@ WMS::Driver::fetchTileImage(const TileKey&     key,
     std::string uri = createURI(key);
     if (!extraAttrs.empty())
     {
-        std::string delim = uri.find("?") == std::string::npos ? "?" : "&";
+        std::string delim = uri.find('?') == std::string::npos ? "?" : "&";
         uri = uri + delim + extraAttrs;
     }
 

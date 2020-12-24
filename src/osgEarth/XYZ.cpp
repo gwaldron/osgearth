@@ -52,8 +52,8 @@ XYZ::Driver::open(const URI& uri,
     _template = uri.full();
 
     // Set up a rotating element in the template
-    _rotateStart = _template.find("[");
-    _rotateEnd = _template.find("]");
+    _rotateStart = _template.find('[');
+    _rotateEnd = _template.find(']');
     if (_rotateStart != std::string::npos && _rotateEnd != std::string::npos && _rotateEnd - _rotateStart > 1)
     {
         _rotateString = _template.substr(_rotateStart, _rotateEnd - _rotateStart + 1);

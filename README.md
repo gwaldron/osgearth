@@ -6,9 +6,6 @@ osgEarth - 3D Mapping Engine & C++ SDK
 
 ![OSX](https://github.com/gwaldron/osgearth/workflows/macosx-x64/badge.svg)
 
-[![Coverity Status](https://scan.coverity.com/projects/9251/badge.svg)](https://scan.coverity.com/projects/gwaldron-osgearth)
-
-
 
 ## Welcome to osgEarth!
 

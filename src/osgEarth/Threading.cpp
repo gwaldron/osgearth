@@ -287,7 +287,7 @@ RecursiveMutex::try_lock()
 //...................................................................
 
 unsigned osgEarth::Threading::getCurrentThreadId()
-{  
+{
 #ifdef _WIN32
   return (unsigned)::GetCurrentThreadId();
 #elif __APPLE__
@@ -486,7 +486,7 @@ void ThreadPool::stopThreads()
     }
 
     _threads.clear();
-    
+
     // Clear out the queue
     {
         Threading::ScopedMutexLock lock(_queueMutex);
@@ -579,6 +579,20 @@ JobArena::setSize(const std::string& name, unsigned numThreads)
         arena->_numThreads = numThreads;
         arena->startThreads();
     }
+}
+
+size_t
+JobArena::queueSize(const std::string& arenaName)
+{
+    osg::ref_ptr<JobArena> arena;
+    {
+        ScopedMutexLock lock(_arenas_mutex);
+        arena = _arenas[arenaName];
+    }
+    if (!arena.valid())
+        return 0u;
+    Threading::ScopedMutexLock lock(arena->_queueMutex);
+    return arena->_queue.size();
 }
 
 JobArena::JobArena(const std::string& name, unsigned numThreads) :

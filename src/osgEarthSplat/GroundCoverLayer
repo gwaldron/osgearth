@@ -100,25 +100,22 @@ namespace osgEarth { namespace Splat
     protected:
 
         //! Override post-ctor init
-        virtual void init();
+        virtual void init() override;
 
         //! Override layer open
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
 
-        virtual Status closeImplementation();
-
-        //! Get geometry for a tilekey
-        virtual osg::Node* createNodeImplementation(const DrawContext& dc);
+        virtual Status closeImplementation() override;
 
     public:
 
         //! Called when this layer is added to the map
-        virtual void addedToMap(const Map* map);
-        virtual void removedFromMap(const Map* map);
-        virtual void setTerrainResources(TerrainResources*);
+        virtual void addedToMap(const Map* map) override;
+        virtual void removedFromMap(const Map* map) override;
+        virtual void setTerrainResources(TerrainResources*) override;
 
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
-        virtual void releaseGLObjects(osg::State* state) const;
+        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
+        virtual void releaseGLObjects(osg::State* state) const override;
 
     protected:
         virtual ~GroundCoverLayer();
@@ -187,7 +184,7 @@ namespace osgEarth { namespace Splat
             };
 
             // one per graphics context
-            osg::buffered_object<DrawState> _drawStateBuffer;
+            mutable osg::buffered_object<DrawState> _drawStateBuffer;
 
             // uniform IDs
             unsigned _computeDataUName;
@@ -218,6 +215,7 @@ namespace osgEarth { namespace Splat
         bool _isModel;
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
+        osg::ref_ptr<osg::Texture> _atlas;
 
         struct PerCameraData {
             const osg::StateAttribute* _previousZoneSA;

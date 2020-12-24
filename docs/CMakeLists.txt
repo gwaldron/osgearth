@@ -18,8 +18,8 @@ set(DOCS_ROOT
     source/layers/ImageLayer.md
     
     source/layers/ArcGISServerImageLayer.md
-    source/layers/ArcGISTilePackageImage.md
-    source/layers/BingImage.md
+    source/layers/ArcGISTilePackageImageLayer.md
+    source/layers/BingImageLayer.md
     source/layers/ContourMapLayer.md
     source/layers/GDALImageLayer.md
 )

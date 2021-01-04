@@ -5,7 +5,7 @@
 #extension GL_ARB_gpu_shader_int64 : enable
 
 #define NUM_LEVELS 1
-const int levels[1] = int[](17); // , 19);
+const int levels[1] = int[](18); // , 19);
 
 // from REX SDK:
 vec4 oe_terrain_getNormalAndCurvature();
@@ -129,6 +129,8 @@ float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)
 // 3x3 material matrix
 const int TEX_DIM = 3;
 const float TEX_DIM_F = 3.0;
+//const int TEX_DIM = 2;
+//const float TEX_DIM_F = 2.0;
 
 struct Pixel {
     vec4 rgbh;
@@ -140,14 +142,14 @@ struct Pixel {
 float dense, lush, rugged;
 
 
-void resolveColumn(out Pixel pixel, int x, int level)
+void resolveColumn(out Pixel pixel, int level, int x, float yvar)
 {
     vec4 rgbh[2];
     vec4 material[2];
     vec3 normal[2];
 
     // calulate row mixture
-    float yf = dense * (TEX_DIM_F - 1.0);
+    float yf = yvar * (TEX_DIM_F - 1.0);
     float yf_floor = floor(yf);
     int y = int(yf_floor);
     float y_mix = yf - yf_floor;
@@ -173,20 +175,20 @@ void resolveColumn(out Pixel pixel, int x, int level)
     pixel.ao = mix(material[0][2], material[1][2], m);
 }
 
-void resolveLevel(out Pixel pixel, int level)
+void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
 {
     Pixel col[2];
 
     // calulate col mixture
-    float xf = rugged * (TEX_DIM_F - 1.0);
+    float xf = xvar * (TEX_DIM_F - 1.0);
     float xf_floor = floor(xf);
     int x = int(xf_floor);
     float x_mix = xf - xf_floor;
 
-    resolveColumn(col[0], x, level);
+    resolveColumn(col[0], level, x, yvar);
 
 #if 1 // ifdef out for one-column testing
-    resolveColumn(col[1], clamp(x + 1, 0, TEX_DIM - 1), level);
+    resolveColumn(col[1], level, clamp(x + 1, 0, TEX_DIM - 1), yvar);
 
     // blend with working image using both heightmap and effect:
     float m = heightAndEffectMix(col[0].rgbh.a, 1.0 - x_mix, col[1].rgbh.a, x_mix);
@@ -217,7 +219,7 @@ void oe_splat_Frag(inout vec4 quad)
     rugged = amplify(rugged, rugged_power);
 
     Pixel pixel;
-    resolveLevel(pixel, 0);
+    resolveLevel(pixel, 0, rugged, lush);
 
     // final normal output:
     vp_Normal = normalize(tbn * pixel.normal);

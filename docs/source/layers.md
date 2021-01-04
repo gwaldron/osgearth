@@ -13,7 +13,7 @@ These are the public layer types native to osgEarth.
 | CompositeImage                                               | CompositeImageLayer         | Combines multiple image layers into a single map layer       |
 | [ContourMap](layers/ContourMapLayer.html)                    | ContourMapLayer             | Renders a colored representation of the elevation data in the map |
 | [GDALImage](layers/GDALImageLayer.html)                      | GDALImageLayer              | Loads any imagery format supported by the GDAL library, including GeoTIFF |
-| GDALDEM                                                      | GDALDEMLayer                | Renders various rasterized shaded elevation maps             |
+| [GDALDEM](layers/GDALDEMLayer.html)                          | GDALDEMLayer                | Renders various rasterized shaded elevation maps             |
 | MBTilesImage                                                 | MBTilesImageLayer           | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
 | TMSImage                                                     | TMSImageLayer               | Connects to a TMS (TileMapService) data source               |
 | WMSImage                                                     | WMSImageLayer               | Connects to an OGC Web Map Service server                    |

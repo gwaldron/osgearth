@@ -23,7 +23,14 @@
             </style>
             <script language="javascript">
               <![CDATA[
-                  function getCableStyle() { return "{stroke: #ff0000; stroke-width: 0.05m;}";}
+function getCableStyle()
+{
+    if (feature.properties.voltage > 60000)
+        return "{stroke: #ff0000; stroke-width: 0.05m;}";
+    else
+        return "{stroke: #00ffff; stroke-width: 0.05m;}";
+}
+
 ]]>
             </script> 
         </styles>

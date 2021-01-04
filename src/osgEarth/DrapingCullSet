@@ -54,7 +54,7 @@ namespace osgEarth { namespace Util
         /** Pushes a node and its matrix into the cull set */
         void push(DrapeableNode* node, const osg::NodePath& path, const osg::FrameStamp* stamp);
 
-        /** Runs a node visitor on the cull set, optionally popping as it goes along. */
+        /** Runs a node visitor on the cull set, clearing it when complete */
         void accept(osg::NodeVisitor& nv);
 
         /** Bounds of this set */
@@ -66,7 +66,6 @@ namespace osgEarth { namespace Util
     private:
         std::vector<Entry>  _entries;
         osg::BoundingSphere _bs;
-        bool                _frameCulled;
     };
 
     /**

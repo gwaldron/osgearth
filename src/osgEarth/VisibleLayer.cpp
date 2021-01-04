@@ -30,6 +30,16 @@ namespace
 {
     static osg::Node::NodeMask DEFAULT_LAYER_MASK = 0xffffffff;
 
+    struct EmptyRenderBin : public osgUtil::RenderBin
+    {
+        EmptyRenderBin(osgUtil::RenderStage* stage) :
+            osgUtil::RenderBin()
+        {
+            setName("OE_EMPTY_RENDER_BIN");
+            _stage = stage;
+        }
+    };
+
     // Cull callback that will permit culling but will supress rendering.
     // We use this to toggle node visibility to that paged scene graphs
     // will continue to page in/out even when the layer is not visible.
@@ -42,7 +52,7 @@ namespace
             if (cv)
             {
                 savedBin = cv->getCurrentRenderBin();
-                cv->setCurrentRenderBin(new osgUtil::RenderBin());
+                cv->setCurrentRenderBin(new EmptyRenderBin(savedBin->getStage()));
             }
 
             traverse(node, nv);

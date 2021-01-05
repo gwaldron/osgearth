@@ -972,6 +972,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         {
             Style localStyle;
             evalStyle(*i, localCX, _cableExpr.get(), localStyle);
+            setCableStyleDefaults(localStyle);
             osg::Node* cable = compiler.compile(*i, localStyle, localCX);
             results->addChild(cable);
         }

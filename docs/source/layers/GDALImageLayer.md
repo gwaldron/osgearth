@@ -19,7 +19,7 @@ Layer displaying a local GeoTIFF:
 
 ```xml
 <GDALImage name="Local Data">
-    <url>sample.tif</url>
+    <url>world.tif</url>
 </GDALImage>
 ```
 

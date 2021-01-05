@@ -9,15 +9,15 @@ These are the public layer types native to osgEarth.
 | [ArcGISServerImage](layers/ArcGISServerImageLayer.html)      | ArcGISServerImageLayer      | Connects to an ESRI ArcGIS Server instance                   |
 | [ArcGISTilePackageImage](layers/ArcGISTilePackageImageLayer.html) | ArcGISTilePackageImageLayer | Reads an ESRI ArcGIS Tile Package                            |
 | [BingImage](layers/BingImageLayer.html)                      | BingImageLayer              | Connects to Microsoft Bing service. License key required     |
-| CesiumIonImage                                               | CesiumIonImageLayer         | Connects to a Cesium Ion server instance. Key required       |
-| CompositeImage                                               | CompositeImageLayer         | Combines multiple image layers into a single map layer       |
+| [CesiumIonImage](layers/CesiumIonImageLayer.html)            | CesiumIonImageLayer         | Connects to a Cesium Ion server instance. Key required       |
+| [CompositeImage](layers/CompositeImageLayer.html)            | CompositeImageLayer         | Combines multiple image layers into a single map layer       |
 | [ContourMap](layers/ContourMapLayer.html)                    | ContourMapLayer             | Renders a colored representation of the elevation data in the map |
 | [GDALImage](layers/GDALImageLayer.html)                      | GDALImageLayer              | Loads any imagery format supported by the GDAL library, including GeoTIFF |
 | [GDALDEM](layers/GDALDEMLayer.html)                          | GDALDEMLayer                | Renders various rasterized shaded elevation maps             |
-| MBTilesImage                                                 | MBTilesImageLayer           | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
-| TMSImage                                                     | TMSImageLayer               | Connects to a TMS (TileMapService) data source               |
-| WMSImage                                                     | WMSImageLayer               | Connects to an OGC Web Map Service server                    |
-| XYZImage                                                     | XYZImageLayer               | Reads imagery tiles in standard XYZ format (no metadata)     |
+| [MBTilesImage](layers/MBTilesImageLayer.html)                | MBTilesImageLayer           | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
+| [TMSImage](layers/TMSImageLayer.html)                        | TMSImageLayer               | Connects to a TMS (TileMapService) data source               |
+| [WMSImage](layers/WMSImageLayer.md)                          | WMSImageLayer               | Connects to an OGC Web Map Service server                    |
+| [XYZImage](layers/XYZImageLayer.html)                        | XYZImageLayer               | Reads imagery tiles in standard XYZ format (no metadata)     |
 
 
 

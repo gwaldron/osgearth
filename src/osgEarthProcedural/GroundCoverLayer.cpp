@@ -1192,7 +1192,7 @@ GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const PatchLayer::Dra
 
                     //OE_INFO << "Gen: " << tile._key->str() << ", slot=" << slot << std::endl;
 
-                    ds._instancer->generate_tile(slot, ri);
+                    ds._instancer->generate_tile(ri);
                     
                     ++ds._numTilesGenerated;
                 }
@@ -1243,6 +1243,11 @@ GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
     if (_texArena.valid())
     {
         _texArena->releaseGLObjects(state);
+    }
+
+    if (_geomCloud.valid())
+    {
+        _geomCloud->releaseGLObjects(state);
     }
 }
 

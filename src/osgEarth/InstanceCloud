@@ -202,18 +202,20 @@ namespace osgEarth
         
         //! Run the generate compute shader pass (only when tile batch changes)
         void generate_begin(osg::RenderInfo&);
-        void generate_tile(unsigned slot, osg::RenderInfo&);
+        void generate_tile(osg::RenderInfo&);
         void generate_end(osg::RenderInfo&);
 
         //! Run the cull/sort compute shader (only when generating or when the camera moves)
         void cull(osg::RenderInfo&);
 
-
-        void endFrame(osg::RenderInfo&);
         //! Render the entire tile batch (every frame)
         void draw(osg::RenderInfo&);
 
-        virtual void releaseGLObjects(osg::State* state) const;
+        //! Clean up at the end of the frame
+        void endFrame(osg::RenderInfo&);
+
+        //! Free up GL objects
+        void releaseGLObjects(osg::State* state) const;
 
     private:
 

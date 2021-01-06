@@ -413,7 +413,7 @@ InstanceCloud::generate_begin(osg::RenderInfo& ri)
 }
 
 void
-InstanceCloud::generate_tile(unsigned slot, osg::RenderInfo& ri)
+InstanceCloud::generate_tile(osg::RenderInfo& ri)
 {
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
     ext->glDispatchCompute(_data._numX, _data._numY, 1);

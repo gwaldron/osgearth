@@ -139,6 +139,7 @@ find_package(BASISU)
 find_package(GLEW)
 find_package(Protobuf)
 find_package(WEBP)
+find_package(H3 CONFIG)
 
 if(OSGEARTH_ENABLE_PROFILING)
     find_package(Tracy)

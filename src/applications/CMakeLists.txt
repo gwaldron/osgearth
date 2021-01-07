@@ -105,6 +105,10 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         IF (Protobuf_FOUND AND SQLITE3_FOUND)
             ADD_SUBDIRECTORY(osgearth_mvtindex)
         ENDIF()
+        
+        IF (H3_FOUND)
+            ADD_SUBDIRECTORY(osgearth_h3)
+        ENDIF()
 
     ENDIF(OSGEARTH_BUILD_EXAMPLES)
 

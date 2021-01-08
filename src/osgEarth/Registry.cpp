@@ -84,6 +84,10 @@ _blacklist("Reg.BlackList(OE)")
     // Redirect GDAL/OGR console errors to our own handler
     CPLPushErrorHandler(myCPLErrorHandler);
 
+    // Set the GDAL shared block cache size. This defaults to 5% of
+    // available memory which is too high.
+    GDALSetCacheMax(40 * 1024 * 1024);
+
     // global initialization for CURL (not thread safe)
     HTTPClient::globalInit();
 

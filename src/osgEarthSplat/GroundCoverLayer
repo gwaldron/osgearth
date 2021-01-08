@@ -111,6 +111,9 @@ namespace osgEarth { namespace Splat
 
     public:
 
+        //! Update traversal
+        virtual void update(osg::NodeVisitor& nv) override;
+
         //! Called when this layer is added to the map
         virtual void addedToMap(const Map* map) override;
         virtual void removedFromMap(const Map* map) override;
@@ -210,6 +213,8 @@ namespace osgEarth { namespace Splat
             osg::Program* _computeProgram;
             int _counter;
             float _spacing;
+
+            std::atomic<int> _frameLastActive;
         };
 
         osg::ref_ptr<Renderer> _renderer;
@@ -217,6 +222,7 @@ namespace osgEarth { namespace Splat
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
         osg::ref_ptr<osg::Texture> _atlas;
+        int _frameLastUpdate;
 
         struct PerCameraData {
             const osg::StateAttribute* _previousZoneSA;

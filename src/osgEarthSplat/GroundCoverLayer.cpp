@@ -246,6 +246,7 @@ GroundCoverLayer::init()
 
     _debug = (::getenv("OSGEARTH_GROUNDCOVER_DEBUG") != NULL);
 
+    _frameLastUpdate = 0U;
 }
 
 GroundCoverLayer::~GroundCoverLayer()
@@ -381,6 +382,21 @@ bool
 GroundCoverLayer::getUseAlphaToCoverage() const
 {
     return options().alphaToCoverage().get();
+}
+
+void
+GroundCoverLayer::update(osg::NodeVisitor& nv)
+{
+    int frame = nv.getFrameStamp()->getFrameNumber();
+
+    if (frame > _frameLastUpdate &&
+        _renderer.valid() && 
+        _renderer->_frameLastActive > 0u &&
+        (frame - _renderer->_frameLastActive) > 2)
+    {
+        releaseGLObjects(nullptr);
+        _renderer->_frameLastActive = 0u;
+    }
 }
 
 void
@@ -780,11 +796,15 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     _computeStateSet->setAttribute(_computeProgram, osg::StateAttribute::ON);
 
     _counter = 0;
+
+    _frameLastActive = ~0U;
 }
 
 void
 GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
 {
+    _frameLastActive = ri.getState()->getFrameStamp()->getFrameNumber();
+
     DrawState& ds = _drawStateBuffer[ri.getContextID()];
     ds._renderer = this;
     osg::State* state = ri.getState();

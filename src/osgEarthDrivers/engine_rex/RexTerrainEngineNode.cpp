@@ -837,6 +837,14 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
             _cachedLayerExtentsComputeRequired = false;
             ADJUST_UPDATE_TRAV_COUNT(this, -1);
         }
+
+        // Call update() on all open layers
+        LayerVector layers;
+        _map->getOpenLayers(layers);
+        for (auto& layer : layers)
+        {
+            layer->update(nv);
+        }
     }
 }
 

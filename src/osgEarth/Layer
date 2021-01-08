@@ -286,11 +286,16 @@ namespace osgEarth
         };
 
         //! Callback invoked by the terrain engine on this layer before applying
+        //! @deprecated replace with cull() override
         void setCullCallback(TraversalCallback* tc);
         const TraversalCallback* getCullCallback() const;
 
         //! Called to traverse this layer
+        //! @deprecated Replace with cull() override
         void apply(osg::Node* node, osg::NodeVisitor* nv) const;
+
+        //! Called by the terrain engine during the update traversal
+        virtual void update(osg::NodeVisitor& nv) { }
 
         //! Map will call this function when this Layer is added to a Map.
         virtual void addedToMap(const class Map*) { }

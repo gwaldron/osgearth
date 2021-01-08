@@ -108,6 +108,9 @@ _blacklist("Reg.BlackList(OE)")
     // Default unref-after apply policy:
     _unRefImageDataAfterApply = true;
 
+    if (::getenv("OSGEARTH_DISABLE_UNREF_AFTER_APPLY"))
+        _unRefImageDataAfterApply = false;
+
     // Default object index for tracking scene object by UID.
     _objectIndex = new ObjectIndex();
 

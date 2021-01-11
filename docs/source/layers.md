@@ -4,20 +4,20 @@ These are the public layer types native to osgEarth.
 
 ## Imagery
 
-| Earth File             | API class                   | Description                                                  |
-| ---------------------- | --------------------------- | ------------------------------------------------------------ |
-| ArcGISServerImage      | ArcGISServerImageLayer      | Connects to an ESRI ArcGIS Server instance                   |
-| ArcGISTilePackageImage | ArcGISTilePackageImageLayer | Reads an ESRI ArcGIS Tile Package                            |
-| BingImage              | BingImageLayer              | Connects to Microsoft Bing service. License key required     |
-| CesiumIonImage         | CesiumIonImageLayer         | Connects to a Cesium Ion server instance. Key required       |
-| CompositeImage         | CompositeImageLayer         | Combines multiple image layers into a single map layer       |
-| ContourMap             | ContourMapLayer             | Renders a colored representation of the elevation data in the map |
-| GDALImage              | GDALImageLayer              | Loads any imagery format supported by the GDAL library, including GeoTIFF |
-| GDALDEM                | GDALDEMLayer                | Renders various rasterized shaded elevation maps             |
-| MBTilesImage           | MBTilesImageLayer           | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
-| TMSImage               | TMSImageLayer               | Connects to a TMS (TileMapService) data source               |
-| WMSImage               | WMSImageLayer               | Connects to an OGC Web Map Service server                    |
-| XYZImage               | XYZImageLayer               | Reads imagery tiles in standard XYZ format (no metadata)     |
+| Earth File                                                   | API class                   | Description                                                  |
+| ------------------------------------------------------------ | --------------------------- | ------------------------------------------------------------ |
+| [ArcGISServerImage](layers/ArcGISServerImageLayer.html)      | ArcGISServerImageLayer      | Connects to an ESRI ArcGIS Server instance                   |
+| [ArcGISTilePackageImage](layers/ArcGISTilePackageImageLayer.html) | ArcGISTilePackageImageLayer | Reads an ESRI ArcGIS Tile Package                            |
+| [BingImage](layers/BingImageLayer.html)                      | BingImageLayer              | Connects to Microsoft Bing service. License key required     |
+| [CesiumIonImage](layers/CesiumIonImageLayer.html)            | CesiumIonImageLayer         | Connects to a Cesium Ion server instance. Key required       |
+| [CompositeImage](layers/CompositeImageLayer.html)            | CompositeImageLayer         | Combines multiple image layers into a single map layer       |
+| [ContourMap](layers/ContourMapLayer.html)                    | ContourMapLayer             | Renders a colored representation of the elevation data in the map |
+| [GDALImage](layers/GDALImageLayer.html)                      | GDALImageLayer              | Loads any imagery format supported by the GDAL library, including GeoTIFF |
+| [GDALDEM](layers/GDALDEMLayer.html)                          | GDALDEMLayer                | Renders various rasterized shaded elevation maps             |
+| [MBTilesImage](layers/MBTilesImageLayer.html)                | MBTilesImageLayer           | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
+| [TMSImage](layers/TMSImageLayer.html)                        | TMSImageLayer               | Connects to a TMS (TileMapService) data source               |
+| [WMSImage](layers/WMSImageLayer.html)                          | WMSImageLayer               | Connects to an OGC Web Map Service server                    |
+| [XYZImage](layers/XYZImageLayer.html)                        | XYZImageLayer               | Reads imagery tiles in standard XYZ format (no metadata)     |
 
 
 
@@ -40,7 +40,7 @@ These are the public layer types native to osgEarth.
 | Earth File        | API Class              | Description                                                  |
 | ----------------- | ---------------------- | ------------------------------------------------------------ |
 | FeatureImage      | FeatureImageLayer      | Rasterizes vector data into an image layer                   |
-| FeatureModel      | FeatureModelLayer      | Renders vector data as OpenSceneGraph geometry               |
+| FeatureModel      | FeatureModelLayer      | Renders vector data as *OpenSceneGraph* geometry             |
 | TiledFeatureModel | TiledFeatureModelLayer | Like a `FeatureModel` layer, but optimized for pre-tiled vector datasets |
 
 

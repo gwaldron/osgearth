@@ -74,18 +74,8 @@ TerrainEngineNode::removeEffect(TerrainEffect* effect)
 
 
 TerrainResources*
-TerrainEngineNode::getResources()
+TerrainEngineNode::getResources() const
 {
-    if (!_textureResourceTracker.valid())
-    {
-        // Install an object to manage texture image unit usage:
-        _textureResourceTracker = new TerrainResources();
-
-        std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
-        for (std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
-            _textureResourceTracker->setTextureImageUnitOffLimits(*i);
-    }
-
     return _textureResourceTracker.get();
 }
 

@@ -468,8 +468,10 @@ LifeMapLayer::addedToMap(const Map* map)
 }
 
 void
-LifeMapLayer::setTerrainResources(TerrainResources*)
+LifeMapLayer::prepareForRenderingImplementation(TerrainEngine* engine)
 {
+    ImageLayer::prepareForRenderingImplementation(engine);
+
     // Since we're actually rendering, load the materials for splatting
     if (getBiomeLayer())
     {

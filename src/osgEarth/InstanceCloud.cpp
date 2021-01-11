@@ -102,7 +102,8 @@ InstanceCloud::CommandBuffer::reset()
 void
 InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::State& state)
 {
-    if (numTilesAllocated < numTiles || commands == nullptr)
+    _requiredSize = numTiles * sizeof(Data);
+    if (_requiredSize > _allocatedSize)
     {
         OE_PROFILING_GPU_ZONE("TileBuffer::allocate");
         release();
@@ -292,7 +293,6 @@ void
 InstanceCloud::releaseGLObjects(osg::State* state) const
 {
     _data.releaseGLObjects(state);
-    _geom->releaseGLObjects(state);
 }
 
 void

@@ -259,8 +259,6 @@ namespace
 
                 ds._bufferSize = requiredBufferSize;
 
-                state->getGraphicsContext()->add(new GLBufferReleaser(ds._buffer.get()));
-
                 if (!ds._glBufferStorage)
                 {
                     // polyfill for pre-OSG 3.6 support

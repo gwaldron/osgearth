@@ -85,11 +85,11 @@ TextureSplattingLayer::removedFromMap(const Map* map)
 }
 
 void
-TextureSplattingLayer::setTerrainResources(TerrainResources* res)
+TextureSplattingLayer::prepareForRenderingImplementation(TerrainEngine* engine)
 {
-    VisibleLayer::setTerrainResources(res);
+    VisibleLayer::prepareForRenderingImplementation(engine);
 
-    if (res)
+    if (engine)
     {
     }
 }

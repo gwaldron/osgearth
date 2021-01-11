@@ -54,16 +54,26 @@ namespace osgEarth
         class TerrainEngineNodeFactory;
     }
 
-    /**
-     * Interface for and object that can create a new terrain tile models
-     */
     class /*interface*/ TerrainEngine
     {
     public:
-        /**
-         * Unique ID of this engine.
-         */
-        virtual UID getUID() const =0;
+        //! Unique ID of the terrain engine instance
+        virtual UID getUID() const = 0;
+
+        //! Access the shared GL resources associated with the terrain engine
+        virtual TerrainResources* getResources() const = 0;
+
+        //! Map associated with this terrain engine
+        virtual const Map* getMap() const = 0;
+    };
+
+#if 0
+    /**
+     * Interface for and object that can create a new terrain tile models
+     */
+    class /*interface*/ TerrainEngineTileModelCreator
+    {
+    public:
 
         /**
          * Creates a new data model for a terrain tile, calling any registered
@@ -80,7 +90,7 @@ namespace osgEarth
             const CreateTileManifest& manifest,
             ProgressCallback* progress ) =0;
     };
-
+#endif
 
     /**
      * A callback that lets you customize the computed range for a terrain tile.
@@ -98,20 +108,34 @@ namespace osgEarth
      * A map engine lives under a MapNode and is responsible for generating the
      * actual geometry representing the Earth.
      */
-    class OSGEARTH_EXPORT TerrainEngineNode : public osg::CoordinateSystemNode,
-                                              public TerrainEngine,
-                                              public TerrainEngineRequirements
+    class OSGEARTH_EXPORT TerrainEngineNode : 
+        public osg::CoordinateSystemNode,
+        public TerrainEngine,
+        //public TerrainEngineTileModelCreator,
+        public TerrainEngineRequirements
     {
-    public:
+    public: // TerrainEngine interface
+
         //! Map that this engine is rendering
-        const Map* getMap() const { return _map.get(); }
+        const Map* getMap() const override { return _map.get(); }
+
+        //! Access the shared GL resources associated with the terrain engine
+        TerrainResources* getResources() const override;
+
+
+    public: // TerrainEngineTileModelCreator interface
+
+        TerrainTileModel* createTileModel(
+            const Map* map,
+            const TileKey& key,
+            const CreateTileManifest& manifest,
+            ProgressCallback* progress);
+
+    public:
 
         /** Gets the Terrain interface for interacting with the scene graph */
         Terrain* getTerrain() { return _terrainInterface.get(); }
         const Terrain* getTerrain() const { return _terrainInterface.get(); }
-
-        /** Accesses the object that keeps track of GPU resources in use */
-        TerrainResources* getResources() const;
 
         /** Adds a terrain effect */
         void addEffect( TerrainEffect* effect );
@@ -173,14 +197,6 @@ namespace osgEarth
 
         void addModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
         void removeModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
-
-    public: // TerrainEngine
-
-        TerrainTileModel* createTileModel(
-            const Map* map,
-            const TileKey& key,
-            const CreateTileManifest& manifest,
-            ProgressCallback* progress );
 
     public:
 

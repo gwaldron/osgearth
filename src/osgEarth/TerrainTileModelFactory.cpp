@@ -340,7 +340,9 @@ TerrainTileModelFactory::addImageLayer(
 
     if (tex)
     {
-        tex->setName(model->getKey().str());
+        tex->setName(
+            model->getKey().str() + ":" +
+            (imageLayer->getName().empty() ? "(unnamed image layer)" : imageLayer->getName()));
 
         layerModel = new TerrainTileImageLayerModel();
 
@@ -566,6 +568,9 @@ TerrainTileModelFactory::addElevation(
             // Make a normal map if it doesn't already exist
             elevTex->generateNormalMap(map, &_workingSet, progress);
 
+            if (elevTex->getNormalMapTexture())
+                elevTex->getNormalMapTexture()->setName(key.str() + ":normalmap");
+
             // Made an image, so store this as a texture with no matrix.
             layerModel->setTexture( elevTex.get() );
 
@@ -667,7 +672,7 @@ TerrainTileModelFactory::addLandCover(
 
     if (tex)
     {
-        tex->setName(model->getKey().str());
+        tex->setName(model->getKey().str() + ":landcover");
 
         landCoverModel = new TerrainTileLandCoverModel();
         landCoverModel->setRevision(combinedRevision);

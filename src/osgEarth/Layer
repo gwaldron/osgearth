@@ -108,6 +108,7 @@ namespace osgEarth
 {
     class GeoExtent;
     class SequenceControl;
+    class TerrainEngine;
     class TerrainResources;
     class TileKey;
 
@@ -167,19 +168,22 @@ namespace osgEarth
         const osgDB::Options* getReadOptions() const;
 
         //! Open a layer.
-        virtual const Status& open() final;
+        virtual Status open() final;
 
         //! Open a layer. Shortcut for calling setReadOptions() followed by open().
-        virtual const Status& open(const osgDB::Options* options) final;
+        virtual Status open(const osgDB::Options* options) final;
 
         //! Close this layer.
-        virtual Status close() final;
+        virtual Status close();
 
         //! Whether the layer is open
         bool isOpen() const;
 
         //! Status of this layer
         const Status& getStatus() const;
+
+        //! Prepares the layer for rendering if necessary.
+        virtual void prepareForRendering(TerrainEngine*) final;
 
         //! @deprecated (remove after 2.10)
         //! Sequence controller if the layer has one.
@@ -326,9 +330,6 @@ namespace osgEarth
         //! Removes a property notification callback from this layer
         void removeCallback(LayerCallback* cb);
 
-        //! MapNode will call this function when terrain resources are available.
-        virtual void setTerrainResources(TerrainResources*);
-
         //! Revision number of this layer
         int getRevision() const { return (int)_revision; }
 
@@ -357,6 +358,9 @@ namespace osgEarth
         //! Called by close() to shut down the resources associated with a layer.
         virtual Status closeImplementation();
 
+        //! Called by the MapNode so the layer can prepare to render in a terrain engine
+        virtual void prepareForRenderingImplementation(TerrainEngine*);
+
         //! Sets the status for this layer - internal
         const Status& setStatus(const Status& status) const;
 
@@ -368,6 +372,10 @@ namespace osgEarth
 
         //! mutable layer hints for the subclas to optionally access
         Hints& layerHints();
+
+        //! MapNode will call this function when terrain resources are available.
+        //! @deprecated Implement prepareForRenderingImplementation instead
+        virtual void setTerrainResources(TerrainResources*) { }
 
     private:
         const std::string& _layerName;

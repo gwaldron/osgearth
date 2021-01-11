@@ -23,6 +23,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/GLUtils>
+#include <osgEarth/TerrainEngineNode>
 #include <osg/Texture3D>
 #include <osg/Program>
 #include <osgUtil/CullVisitor>
@@ -531,14 +532,16 @@ WindLayer::getNode() const
 }
 
 void
-WindLayer::setTerrainResources(TerrainResources* res)
+WindLayer::prepareForRenderingImplementation(TerrainEngine* engine)
 {
+    Layer::prepareForRenderingImplementation(engine);
+
     // Create the wind drawable that will provide a wind texture
     WindDrawable* wd = new WindDrawable(getReadOptions());
     _drawable = wd;
 
     // texture image unit for the shared wind LUT
-    res->reserveTextureImageUnit(wd->_unitReservation, "WindLayer");
+    engine->getResources()->reserveTextureImageUnit(wd->_unitReservation, "WindLayer");
 
 #if 0 // TESTING
     Wind* wind = new Wind();

@@ -23,6 +23,7 @@
 #include "SplatShaders"
 #include "NoiseTextureFactory"
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/TerrainEngineNode>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Drawable>
@@ -201,10 +202,11 @@ SplatLayer::removedFromMap(const Map* map)
 }
 
 void
-SplatLayer::setTerrainResources(TerrainResources* res)
+SplatLayer::prepareForRenderingImplementation(TerrainEngine* engine)
 {
-    VisibleLayer::setTerrainResources(res);
+    VisibleLayer::prepareForRenderingImplementation(engine);
 
+    TerrainResources* res = engine->getResources();
     if (res)
     {
         // TODO.

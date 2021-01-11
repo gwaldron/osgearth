@@ -147,16 +147,12 @@ ContourMapLayer::init()
     installDefaultOpacityShader();
 }
 
-Status
-ContourMapLayer::openImplementation()
-{
-    return VisibleLayer::openImplementation();
-}
-
 void
-ContourMapLayer::setTerrainResources(TerrainResources* res)
+ContourMapLayer::prepareForRenderingImplementation(TerrainEngine* engine)
 {
-    if (!res->reserveTextureImageUnitForLayer(_reservation, this, "ContourMap"))
+    VisibleLayer::prepareForRenderingImplementation(engine);
+
+    if (!engine->getResources()->reserveTextureImageUnitForLayer(_reservation, this, "ContourMap"))
     {
         setStatus(Status::ResourceUnavailable, "No texture image units available");
         return;

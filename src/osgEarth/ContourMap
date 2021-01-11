@@ -62,11 +62,8 @@ namespace osgEarth
         //! Called by constructors
         virtual void init();
 
-        //! Establishes a connection to the WMS service
-        virtual Status openImplementation();
-
         //! MapNode will call this function when terrain resources are available
-        virtual void setTerrainResources(TerrainResources*);
+        virtual void prepareForRenderingImplementation(TerrainEngine*) override;
 
     protected:
 

@@ -107,12 +107,13 @@ namespace osgEarth { namespace Splat
 
         virtual Status closeImplementation() override;
 
+        virtual void prepareForRenderingImplementation(TerrainEngine*) override;
+
     public:
 
         //! Called when this layer is added to the map
         virtual void addedToMap(const Map* map) override;
         virtual void removedFromMap(const Map* map) override;
-        virtual void setTerrainResources(TerrainResources*) override;
 
         virtual void resizeGLObjectBuffers(unsigned maxSize) override;
         virtual void releaseGLObjects(osg::State* state) const override;

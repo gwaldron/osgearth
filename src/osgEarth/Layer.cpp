@@ -22,6 +22,7 @@
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/TileKey>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TerrainResources>
 #include <osg/StateSet>
 
@@ -323,7 +324,7 @@ Layer::init()
     _mutex = new Threading::Mutex(options().name().isSet() ? options().name().get() : "Unnamed Layer(OE)");
 }
 
-const Status&
+Status
 Layer::open()
 {
     // Cannot open a layer that's already open OR is disabled.
@@ -358,7 +359,7 @@ Layer::open()
     return getStatus();
 }
 
-const Status&
+Status
 Layer::open(const osgDB::Options* readOptions)
 {
     setReadOptions(readOptions);
@@ -441,16 +442,24 @@ Layer::getStatus() const
 }
 
 void
-Layer::setTerrainResources(TerrainResources* res)
+Layer::prepareForRendering(TerrainEngine* engine)
+{
+    prepareForRenderingImplementation(engine);
+
+    // deprecation path; call this in case some older layer is still
+    // implementing it.
+    setTerrainResources(engine->getResources());
+}
+
+void
+Layer::prepareForRenderingImplementation(TerrainEngine* engine)
 {
     // Install an earth-file shader if necessary (once)
-    for(std::vector<ShaderOptions>::const_iterator i = options().shaders().begin();
-        i != options().shaders().end();
-        ++i)
+    for (const auto& shaderOptions : options().shaders())
     {
-        LayerShader* shader = new LayerShader(*i);
-        shader->install(this, res);
-        _shaders.push_back(shader);
+        LayerShader* shader = new LayerShader(shaderOptions);
+        shader->install(this, engine->getResources());
+        _shaders.emplace_back(shader);
     }
 }
 

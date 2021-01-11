@@ -63,23 +63,47 @@ struct App
     void addView()
     {
         int i = _viewer.getNumViews();
-        osgViewer::View* view = new osgViewer::View();
-        int width = _sharedGC ? _size * _viewer.getNumViews() : _size;
-        view->setUpViewInWindow(10 + (i*_size) + 30, 10, width, _size);
+
+        int x = 10 + i*(_size + 20);
+        osg::GraphicsContext* gc_to_share = _sharedGC && i > 0 ? _viewer.getView(0)->getCamera()->getGraphicsContext() : nullptr;
+
+        osgViewer::View* view = createView(x, 10, _size, _size, gc_to_share);
+
         view->setCameraManipulator(new EarthManipulator());
         view->setSceneData(_node.get());
-        if (_sharedGC)
-        {
-            view->getCamera()->setViewport(i*_size, 0, _size, _size);
-            view->getCamera()->setProjectionMatrixAsPerspective(45, 1, 1, 10);
-            view->getCamera()->setName(Stringify() << "View " << i);
-            if (i > 0)
-            {
-                view->getCamera()->setGraphicsContext(_viewer.getView(0)->getCamera()->getGraphicsContext());
-            }
-        }
         MapNodeHelper().configureView(view);
+
         _viewer.addView(view);
+    }
+
+    osgViewer::View* createView(int x, int y, int width, int height, osg::GraphicsContext* sharedGC)
+    {
+        osg::ref_ptr<osg::DisplaySettings>& ds = osg::DisplaySettings::instance();
+        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds.get());
+        traits->readDISPLAY();
+        if (traits->displayNum < 0) traits->displayNum = 0;
+        traits->x = x;
+        traits->y = y;
+        traits->width = width;
+        traits->height = height;
+        traits->windowDecoration = true;
+        traits->doubleBuffer = true;
+        traits->sharedContext = sharedGC;
+
+        osg::GraphicsContext* gc = osg::GraphicsContext::createGraphicsContext(traits.get());
+
+        osgViewer::View* view = new osgViewer::View();
+        view->getCamera()->setGraphicsContext(gc);
+
+        view->getCamera()->setViewport(0, 0, width, height);
+        view->getCamera()->setProjectionMatrixAsPerspective(45, 1, 1, 10);
+
+        GLenum buffer = traits->doubleBuffer ? GL_BACK : GL_FRONT;
+        view->getCamera()->setDrawBuffer(buffer);
+        view->getCamera()->setReadBuffer(buffer);
+        
+        return view;
+            
     }
 
     void releaseGLObjects()

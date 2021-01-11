@@ -88,21 +88,21 @@ namespace osgEarth
     public: // Layer
 
         /** callback that ensures proper culling */
-        void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
-        
-        void setTerrainResources(TerrainResources* res);
+        void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const override;
 
     protected: // Layer
 
-        virtual void init();
+        virtual void init() override;
 
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
 
-        virtual void addedToMap(const class Map*);
+        virtual void addedToMap(const class Map*) override;
 
-        virtual void removedFromMap(const class Map*);
+        virtual void removedFromMap(const class Map*) override;
 
-        virtual Config getConfig() const;
+        virtual void prepareForRenderingImplementation(TerrainEngine* engine) override;
+
+        virtual Config getConfig() const override;
 
     protected:
 

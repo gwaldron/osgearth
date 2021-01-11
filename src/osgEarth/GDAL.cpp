@@ -1737,9 +1737,9 @@ namespace
     Status openOnThisThread(
         const T* layer,
         osg::ref_ptr<GDAL::Driver>& driver,
-        osg::ref_ptr<const Profile>* out_profile,
-        osg::ref_ptr<const Profile>* out_overrideProfile,
-        DataExtentList* dataExtents)
+        osg::ref_ptr<const Profile>* out_profile = nullptr,
+        osg::ref_ptr<const Profile>* out_overrideProfile = nullptr,
+        DataExtentList* dataExtents = nullptr)
     {
         driver = new GDAL::Driver();
 
@@ -1892,12 +1892,7 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         {
             // calling openImpl with NULL params limits the setup
             // since we already called this during openImplementation
-            openOnThisThread(
-                this,
-                test_driver,
-                nullptr,
-                nullptr,
-                nullptr);
+            openOnThisThread(this, test_driver);
         }
 
         // assign to a ref_ptr to continue
@@ -1988,7 +1983,8 @@ GDALElevationLayer::openImplementation()
 
     ScopedMutexLock lock(_driversMutex);
 
-    osg::ref_ptr<Driver>& driver = _drivers[id];
+    // Open the dataset temporarily to query the profile and extents.
+    osg::ref_ptr<Driver> driver;
 
     Status s = openOnThisThread(
         this,

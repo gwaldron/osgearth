@@ -257,9 +257,6 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     // the geometry:
     osg::ref_ptr<SharedGeometry> geom = new SharedGeometry();
-#if OSG_VERSION_LESS_THAN(3,6,0)
-    geom->setUseVertexBufferObjects(true);
-#endif
 
     osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
 
@@ -402,6 +399,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         if (tessellateSurface && primSet == nullptr)
         {
             primSet = _defaultPrimSet.get();
+            //primSet = createPrimitiveSet(tileSize);
         }
 
         if (primSet)
@@ -507,13 +505,16 @@ GeometryPool::releaseGLObjects(osg::State* state) const
 //.........................................................................
 // Code mostly adapted from osgTerrain SharedGeometry.
 
-SharedGeometry::SharedGeometry()
+SharedGeometry::SharedGeometry() :
+    osg::Drawable()
 {
-    setSupportsDisplayList(false);
     _supportsVertexBufferObjects = true;
     _ptype.resize(64u);
     _ptype.setAllElementsTo(GL_TRIANGLES);
     _hasConstraints = false;
+    setSupportsDisplayList(false);
+    setUseDisplayList(false);
+    setUseVertexBufferObjects(true);
 }
 
 SharedGeometry::SharedGeometry(const SharedGeometry& rhs,const osg::CopyOp& copyop):
@@ -526,7 +527,8 @@ SharedGeometry::SharedGeometry(const SharedGeometry& rhs,const osg::CopyOp& copy
     _drawElements(rhs._drawElements),
     _hasConstraints(rhs._hasConstraints)
 {
-    //nop
+    _ptype.resize(64u);
+    _ptype.setAllElementsTo(GL_TRIANGLES);
 }
 
 SharedGeometry::~SharedGeometry()
@@ -542,7 +544,6 @@ SharedGeometry::empty() const
         //(_maskElements.valid() == false || _maskElements->getNumIndices() == 0);
 }
 
-#ifdef SUPPORTS_VAO
 #if OSG_MIN_VERSION_REQUIRED(3,5,9)
 osg::VertexArrayState* SharedGeometry::createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const
 #else
@@ -574,7 +575,6 @@ osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& r
 
     return vas;
 }
-#endif
 
 void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
 {
@@ -587,13 +587,6 @@ void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
     if (_neighborArray.valid()) _neighborArray->resizeGLObjectBuffers(maxSize);
     if (_neighborNormalArray.valid()) _neighborNormalArray->resizeGLObjectBuffers(maxSize);
     if (_drawElements.valid()) _drawElements->resizeGLObjectBuffers(maxSize);
-    //if (_maskElements.valid()) _maskElements->resizeGLObjectBuffers(maxSize);
-
-    //osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
-    //if (vbo) vbo->resizeGLObjectBuffers(maxSize);
-
-    //osg::BufferObject* ebo = _drawElements->getElementBufferObject();
-    //if (ebo) ebo->resizeGLObjectBuffers(maxSize);
 }
 
 void SharedGeometry::releaseGLObjects(osg::State* state) const
@@ -607,142 +600,162 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
     if (_neighborArray.valid()) _neighborArray->releaseGLObjects(state);
     if (_neighborNormalArray.valid()) _neighborNormalArray->releaseGLObjects(state);
     if (_drawElements.valid()) _drawElements->releaseGLObjects(state);
-    //if (_maskElements.valid()) _maskElements->releaseGLObjects(state);
-
-    //osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
-    //if (vbo) vbo->releaseGLObjects(state);
-
-    //osg::BufferObject* ebo = _drawElements->getElementBufferObject();
-    //if (ebo) ebo->releaseGLObjects(state);
 }
 
-// called from DrawTileCommand
-void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
+void
+SharedGeometry::compileGLObjects(osg::RenderInfo& renderInfo) const
 {
+    // Note: this method is not currently called. -gw
     osg::State& state = *renderInfo.getState();
 
-#if OSG_VERSION_LESS_THAN(3,5,6)
-    osg::ArrayDispatchers& dispatchers = state.getArrayDispatchers();
-#else
-    osg::AttributeDispatchers& dispatchers = state.getAttributeDispatchers();
-#endif
-
-    dispatchers.reset();
-    dispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
-    dispatchers.activateNormalArray(_normalArray.get());
-
-#ifdef SUPPORTS_VAO
-    osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
-    
-    // The call to VertexArrayState::setVertexBufferObjectSupported() is included to ensure
-    // that its VBO usage flag is set properly and the VBO gets bound if VBOs are both 
-    // supported and used. Other objects may have changed this VBO usage flag so
-    // we need to set it appropriately to avoid errors with glDrawElements()
-    bool usingVertexBufferObjects = state.useVertexBufferObject(_supportsVertexBufferObjects && _useVertexBufferObjects);
-    vas->setVertexBufferObjectSupported(usingVertexBufferObjects); 
-
-    if (!state.useVertexArrayObject(_useVertexArrayObject) || vas->getRequiresSetArrays())
+    if (state.useVertexBufferObject(_supportsVertexBufferObjects && _useVertexBufferObjects))
     {
-        vas->lazyDisablingOfVertexAttributes();
+        // VBO:
+        _vertexArray->getBufferObject()->getOrCreateGLBufferObject(renderInfo.getContextID())->compileBuffer();
+        _drawElements->getBufferObject()->getOrCreateGLBufferObject(renderInfo.getContextID())->compileBuffer();
 
-        // set up arrays
-        if( _vertexArray.valid() )
-            vas->setVertexArray(state, _vertexArray.get());
-
-        if (_normalArray.valid() && _normalArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-            vas->setNormalArray(state, _normalArray.get());
-
-        if (_colorArray.valid() && _colorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-            vas->setColorArray(state, _colorArray.get());
-
-        if (_texcoordArray.valid() && _texcoordArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-            vas->setTexCoordArray(state, 0, _texcoordArray.get());
-
-        if (_neighborArray.valid() && _neighborArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-            vas->setTexCoordArray(state, 1, _neighborArray.get());
-
-        if (_neighborNormalArray.valid() && _neighborNormalArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-            vas->setTexCoordArray(state, 2, _neighborNormalArray.get());
-
-        vas->applyDisablingOfVertexAttributes(state);
-    }
-    else
-#endif
-
-    {
-        state.lazyDisablingOfVertexAttributes();
-
-        if( _vertexArray.valid() )
-            state.setVertexPointer(_vertexArray.get());
-
-        if (_normalArray.valid())
-            state.setNormalPointer(_normalArray.get());
-
-        if (_texcoordArray.valid())
-            state.setTexCoordPointer(0, _texcoordArray.get());
-
-        if (_neighborArray.valid())
-            state.setTexCoordPointer(1, _neighborArray.get());
-
-        if (_neighborNormalArray.valid())
-            state.setTexCoordPointer(2, _neighborNormalArray.get());
-
-        state.applyDisablingOfVertexAttributes();
-    }
-
-
-#ifdef SUPPORTS_VAO
-    bool request_bind_unbind = !state.useVertexArrayObject(_useVertexArrayObject) || state.getCurrentVertexArrayState()->getRequiresSetArrays();
-#else
-    bool request_bind_unbind = true;
-#endif
-
-    GLenum primitiveType = _ptype[state.getContextID()];
-
-    osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(state.getContextID());
-
-    if (ebo)
-    {
-        osg::GLExtensions* ext = state.get<osg::GLExtensions>();
-
-        // Someday, figure out exactly WHY this does not work.
-        // i.e., why we have to bind/unbind the same shared EBO
-        // for every tile. I suspect it's because OSG reallocates
-        // the underlying EBO buffer, but I don't really know.
-        // Anyway it's 2 extra GL calls per tile.
-
-        //if (request_bind_unbind)
+        // VAO:
+        if (state.useVertexArrayObject(_useVertexArrayObject))
         {
-            state.bindElementBufferObject(ebo);
+            osg::VertexArrayState* vas = 0;
+
+            _vertexArrayStateList[renderInfo.getContextID()] = vas = createVertexArrayState(renderInfo);
+
+            osg::State::SetCurrentVertexArrayStateProxy setVASProxy(state, vas);
+
+            state.bindVertexArrayObject(vas);
+
+            drawVertexArraysImplementation(renderInfo);
+
+            state.unbindVertexArrayObject();
         }
 
-        if (_drawElements->getNumIndices() > 0u)
+        // unbind the BufferObjects
+        osg::GLExtensions* extensions = renderInfo.getState()->get<osg::GLExtensions>();
+        extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB, 0);
+        extensions->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    }
+    else
+    {
+        osg::Drawable::compileGLObjects(renderInfo);
+    }
+}
+
+void
+SharedGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
+{
+    osg::State& state = *renderInfo.getState();
+    osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
+
+    osg::AttributeDispatchers& attributeDispatchers = state.getAttributeDispatchers();
+
+    attributeDispatchers.reset();
+    attributeDispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
+
+    // activate or dispatch any attributes that are bound overall
+    attributeDispatchers.activateNormalArray(_normalArray.get());
+    attributeDispatchers.activateColorArray(_colorArray.get());
+
+    if (state.useVertexArrayObject(_useVertexArrayObject))
+    {
+        if (!vas->getRequiresSetArrays()) return;
+    }
+
+    vas->lazyDisablingOfVertexAttributes();
+
+    // set up arrays
+    if (_vertexArray.valid())
+        vas->setVertexArray(state, _vertexArray.get());
+
+    if (_normalArray.valid() && _normalArray->getBinding() == osg::Array::BIND_PER_VERTEX)
+        vas->setNormalArray(state, _normalArray.get());
+
+    if (_colorArray.valid() && _colorArray->getBinding() == osg::Array::BIND_PER_VERTEX)
+        vas->setColorArray(state, _colorArray.get());
+
+    if (_texcoordArray.valid() && _texcoordArray->getBinding() == osg::Array::BIND_PER_VERTEX)
+        vas->setTexCoordArray(state, 0, _texcoordArray.get());
+
+    if (_neighborArray.valid() && _neighborArray->getBinding() == osg::Array::BIND_PER_VERTEX)
+        vas->setTexCoordArray(state, 1, _neighborArray.get());
+
+    if (_neighborNormalArray.valid() && _neighborNormalArray->getBinding() == osg::Array::BIND_PER_VERTEX)
+        vas->setTexCoordArray(state, 2, _neighborNormalArray.get());
+
+    vas->applyDisablingOfVertexAttributes(state);
+}
+
+
+void
+SharedGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
+{
+    if (_drawElements->getNumIndices() > 0u)
+    {
+        osg::State& state = *renderInfo.getState();
+        osg::AttributeDispatchers& attributeDispatchers = state.getAttributeDispatchers();
+        bool usingVertexBufferObjects = state.useVertexBufferObject(_supportsVertexBufferObjects && _useVertexBufferObjects);
+        bool usingVertexArrayObjects = usingVertexBufferObjects && state.useVertexArrayObject(_useVertexArrayObject);
+
+        GLenum primitiveType = _ptype[state.getContextID()];
+
+        if (usingVertexArrayObjects || !usingVertexBufferObjects)
         {
             glDrawElements(
                 primitiveType,
                 _drawElements->getNumIndices(),
                 _drawElements->getDataType(),
-                (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
+                _drawElements->getDataPointer());
         }
-
-        //if (request_bind_unbind)
+        else
         {
-            state.unbindElementBufferObject();
+            osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(state.getContextID());
+
+            if (ebo)
+            {
+                state.getCurrentVertexArrayState()->bindElementBufferObject(ebo);
+
+                glDrawElements(
+                    primitiveType,
+                    _drawElements->getNumIndices(),
+                    _drawElements->getDataType(),
+                    (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
+            }
+            else
+            {
+                state.getCurrentVertexArrayState()->unbindElementBufferObject();
+
+                glDrawElements(
+                    primitiveType, 
+                    _drawElements->getNumIndices(), 
+                    _drawElements->getDataType(), 
+                    _drawElements->getDataPointer());
+            }
         }
     }
-    else
-    {
-        if (_drawElements->getNumIndices() > 0u)
-        {
-            glDrawElements(primitiveType, _drawElements->getNumIndices(), _drawElements->getDataType(), _drawElements->getDataPointer());
-        }
-    }
+}
 
-    // unbind the VBO's if any are used.
-    // Absolutely required if not using VAOs (OSG3.4)
-    if (request_bind_unbind)
+void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
+{
+    osg::State& state = *renderInfo.getState();
+
+    bool usingVertexBufferObjects = state.useVertexBufferObject(_supportsVertexBufferObjects && _useVertexBufferObjects);
+    bool usingVertexArrayObjects = usingVertexBufferObjects && state.useVertexArrayObject(_useVertexArrayObject);
+
+    osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
+    vas->setVertexBufferObjectSupported(usingVertexBufferObjects);
+
+    bool checkForGLErrors = state.getCheckForGLErrors() == osg::State::ONCE_PER_ATTRIBUTE;
+    if (checkForGLErrors) state.checkGLErrors("start of Geometry::drawImplementation()");
+
+    drawVertexArraysImplementation(renderInfo);
+
+    drawPrimitivesImplementation(renderInfo);
+
+    if (usingVertexBufferObjects && !usingVertexArrayObjects)
     {
-        state.unbindVertexBufferObject();
+        // unbind the VBO's if any are used.
+        vas->unbindVertexBufferObject();
+        vas->unbindElementBufferObject();
     }
 }
 

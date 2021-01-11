@@ -30,9 +30,9 @@
 #include <osgEarth/Math>
 #include <osg/Geometry>
 
-#if OSG_MIN_VERSION_REQUIRED(3,5,9)
-#define SUPPORTS_VAO 1
-#endif
+//#if OSG_MIN_VERSION_REQUIRED(3,5,9)
+//#define SUPPORTS_VAO 1
+//#endif
 
 #define VERTEX_VISIBLE       1 // draw it
 #define VERTEX_BOUNDARY      2 // vertex lies on a skirt boundary
@@ -90,14 +90,19 @@ namespace osgEarth { namespace REX
 
     public: // osg::Drawable
 
-#ifdef SUPPORTS_VAO
-        osg::VertexArrayState* createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const;
-#endif
+        osg::VertexArrayState* createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const override;
 
-        void drawImplementation(osg::RenderInfo& renderInfo) const;
+        void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
+        
+        void drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const;
 
-        void resizeGLObjectBuffers(unsigned int maxSize);
-        void releaseGLObjects(osg::State* state) const;
+        void drawImplementation(osg::RenderInfo& renderInfo) const override;
+
+        void compileGLObjects(osg::RenderInfo& renderInfo) const override;
+
+        void resizeGLObjectBuffers(unsigned int maxSize) override;
+
+        void releaseGLObjects(osg::State* state) const override;
 
         bool supports(const osg::Drawable::AttributeFunctor&) const { return true; }
         void accept(osg::Drawable::AttributeFunctor&);

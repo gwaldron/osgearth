@@ -53,15 +53,10 @@ REGISTER_OSGEARTH_LAYER(PowerlineModel, PowerlineLayer);
 
 void PowerlineLayer::ModelOptions::fromConfig(const Config& conf)
 {
-    if (conf.hasChild("line_expr"))
+    if (conf.hasChild("name"))
     {
-        lineExpr() = conf.child("line_expr").value();
+        name() = conf.child("name").value();
     }
-    if (conf.hasChild("cable_expr"))
-    {
-        cableExpr() = conf.child("cable_expr").value();
-    }
-
     if (conf.hasChild("attachment_points"))
     {
         osg::ref_ptr<Geometry> attachGeom = GeometryUtils::geometryFromWKT(conf.child("attachment_points").value());
@@ -114,7 +109,14 @@ void PowerlineLayer::Options::fromConfig(const Config& conf)
     FeatureDisplayLayout layout = _layout.get();
     layout.cropFeatures() = true;
     _layout = layout;
-    std::string styleExpr;
+    if (conf.hasChild("line_expr"))
+    {
+        lineExpr() = conf.child("line_expr").value();
+    }
+    if (conf.hasChild("cable_expr"))
+    {
+        cableExpr() = conf.child("cable_expr").value();
+    }
     ConfigSet models = conf.children("tower_model");
     for(ConfigSet::const_iterator i = models.begin(); i != models.end(); ++i)
     {
@@ -176,7 +178,7 @@ private:
     bool _point_features;
     optional<StringExpression> _lineExpr;
     optional<StringExpression> _cableExpr; 
-    PowerlineLayer::ModelOptions _renderData;
+    std::vector<PowerlineLayer::ModelOptions> _renderData;
 };
 
 PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
@@ -187,15 +189,14 @@ PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::O
 {
     if (options.towerModels().empty())
         return;
-    // Just use first model for now
-    _renderData = options.towerModels().front();
-    if (_renderData.lineExpr().isSet())
+    _renderData = options.towerModels();
+    if (options.lineExpr().isSet())
     {
-        _lineExpr = _renderData.lineExpr().get();
+        _lineExpr = options.lineExpr().get();
     }
-    if (_renderData.cableExpr().isSet())
+    if (options.cableExpr().isSet())
     {
-        _cableExpr = _renderData.cableExpr().get();
+        _cableExpr = options.cableExpr().get();
     }
         
 }
@@ -667,7 +668,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
 
     // the map against which we'll be doing elevation clamping
     osg::ref_ptr<const Map> map = session->getMap();
-    if (!map.valid() || (_renderData.attachment_points().empty() && !_lineExpr.isSet()))
+    if (!map.valid() || (_renderData[0].attachment_points().empty() && !_lineExpr.isSet()))
         return result;
 
     const SpatialReference* mapSRS = map->getSRS();
@@ -714,7 +715,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     PowerlineLayer::ModelOptions featureRenderData;
     if (!_lineExpr.isSet())
     {
-        featureRenderData = _renderData;
+        featureRenderData = _renderData[0];
     }
     else
     {
@@ -756,11 +757,26 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
 
             {
                 std::string renderDataString = feature->eval(lineExprCopy, &cx);
-                std::stringstream renderDataStream(renderDataString);
-                Config renderDataConfig;
-                renderDataConfig.fromXML(renderDataStream);
-                ConfigSet models = renderDataConfig.children("tower_model");
-                featureRenderData.fromConfig(models.front());
+                if (renderDataString[0] == '<')
+                {
+                    std::stringstream renderDataStream(renderDataString);
+                    Config renderDataConfig;
+                    renderDataConfig.fromXML(renderDataStream);
+                    ConfigSet models = renderDataConfig.children("tower_model");
+                    featureRenderData.fromConfig(models.front());
+                }
+                else
+                {
+                    // It's the name of a model
+                    for (auto& towerModel : _renderData)
+                    {
+                        if (towerModel.name().isSet() && towerModel.name() == renderDataString)
+                        {
+                            featureRenderData = towerModel;
+                            break;
+                        }
+                    }
+                }
             }
             Style localStyle;
             if (_cableExpr.isSet())

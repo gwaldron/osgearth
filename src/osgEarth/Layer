@@ -182,9 +182,6 @@ namespace osgEarth
         //! Status of this layer
         const Status& getStatus() const;
 
-        //! Prepares the layer for rendering if necessary.
-        virtual void prepareForRendering(TerrainEngine*) final;
-
         //! @deprecated (remove after 2.10)
         //! Sequence controller if the layer has one.
         virtual SequenceControl* getSequenceControl() { return 0L; }
@@ -358,8 +355,8 @@ namespace osgEarth
         //! Called by close() to shut down the resources associated with a layer.
         virtual Status closeImplementation();
 
-        //! Called by the MapNode so the layer can prepare to render in a terrain engine
-        virtual void prepareForRenderingImplementation(TerrainEngine*);
+        //! Prepares the layer for rendering if necessary.
+        virtual void prepareForRendering(TerrainEngine*);
 
         //! Sets the status for this layer - internal
         const Status& setStatus(const Status& status) const;
@@ -374,7 +371,7 @@ namespace osgEarth
         Hints& layerHints();
 
         //! MapNode will call this function when terrain resources are available.
-        //! @deprecated Implement prepareForRenderingImplementation instead
+        //! @deprecated Implement prepareForRendering instead
         virtual void setTerrainResources(TerrainResources*) { }
 
     private:
@@ -393,6 +390,9 @@ namespace osgEarth
         std::vector<osg::ref_ptr<LayerShader> > _shaders;
         mutable Threading::Mutex* _mutex;
         bool _isClosing;
+
+        //! Prepares the layer for rendering if necessary.
+        void invoke_prepareForRendering(TerrainEngine*);
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;

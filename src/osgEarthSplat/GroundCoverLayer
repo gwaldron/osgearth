@@ -107,7 +107,7 @@ namespace osgEarth { namespace Splat
 
         virtual Status closeImplementation() override;
 
-        virtual void prepareForRenderingImplementation(TerrainEngine*) override;
+        virtual void prepareForRendering(TerrainEngine*) override;
 
     public:
 

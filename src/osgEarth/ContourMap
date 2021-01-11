@@ -63,7 +63,7 @@ namespace osgEarth
         virtual void init();
 
         //! MapNode will call this function when terrain resources are available
-        virtual void prepareForRenderingImplementation(TerrainEngine*) override;
+        virtual void prepareForRendering(TerrainEngine*) override;
 
     protected:
 

@@ -202,9 +202,9 @@ SplatLayer::removedFromMap(const Map* map)
 }
 
 void
-SplatLayer::prepareForRenderingImplementation(TerrainEngine* engine)
+SplatLayer::prepareForRendering(TerrainEngine* engine)
 {
-    VisibleLayer::prepareForRenderingImplementation(engine);
+    VisibleLayer::prepareForRendering(engine);
 
     TerrainResources* res = engine->getResources();
     if (res)

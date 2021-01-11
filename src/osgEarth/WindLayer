@@ -110,9 +110,9 @@ namespace osgEarth
 
         virtual Status closeImplementation() override;
 
-        virtual osg::Node* getNode() const override;
+        virtual void prepareForRenderingImplementation(TerrainEngine*) override;
 
-        virtual void setTerrainResources(TerrainResources*) override;
+        virtual osg::Node* getNode() const override;
 
         virtual osg::StateSet* getSharedStateSet(osg::NodeVisitor* nv) const override;
 

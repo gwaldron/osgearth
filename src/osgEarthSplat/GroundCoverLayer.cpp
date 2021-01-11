@@ -30,6 +30,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Math>
+#include <osgEarth/TerrainEngineNode>
 #include <osg/BlendFunc>
 #include <osg/Multisample>
 #include <osg/Texture2D>
@@ -436,10 +437,11 @@ GroundCoverLayer::removedFromMap(const Map* map)
 }
 
 void
-GroundCoverLayer::setTerrainResources(TerrainResources* res)
+GroundCoverLayer::prepareForRenderingImplementation(TerrainEngine* engine)
 {
-    PatchLayer::setTerrainResources(res);
+    PatchLayer::prepareForRenderingImplementation(engine);
 
+    TerrainResources* res = engine->getResources();
     if (res)
     {
         if (_groundCoverTexBinding.valid() == false)

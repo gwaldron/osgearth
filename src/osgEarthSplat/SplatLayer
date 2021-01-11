@@ -64,22 +64,22 @@ namespace osgEarth { namespace Splat
     protected:
 
         //! Override post-ctor init
-        virtual void init();
-        virtual void setTerrainResources(TerrainResources* res);
+        virtual void init() override;
+        virtual void prepareForRenderingImplementation(TerrainEngine*) override;
 
         //! Serialize
-        virtual Config getConfig() const;
+        virtual Config getConfig() const override;
 
     public:
 
         //! Called when this layer is added to the map
-        virtual void addedToMap(const Map* map);
-        virtual void removedFromMap(const Map* map);
+        virtual void addedToMap(const Map* map) override;
+        virtual void removedFromMap(const Map* map) override;
 
     public:
 
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
-        virtual void releaseGLObjects(osg::State* state) const;
+        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
+        virtual void releaseGLObjects(osg::State* state) const override;
 
     protected:
         virtual ~SplatLayer() { }

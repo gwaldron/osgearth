@@ -24,6 +24,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Lighting>
+#include <osgEarth/TerrainEngineNode>
 #include <osg/CullFace>
 #include <osg/Texture2D>
 
@@ -146,13 +147,13 @@ SimpleOceanLayer::openImplementation()
 }
 
 void
-SimpleOceanLayer::setTerrainResources(TerrainResources* res)
+SimpleOceanLayer::prepareForRenderingImplementation(TerrainEngine* engine)
 {
-    VisibleLayer::setTerrainResources(res);
+    VisibleLayer::prepareForRenderingImplementation(engine);
 
     if (options().textureURI().isSet()) // texture
     {
-        if (res->reserveTextureImageUnitForLayer(_texReservation, this) == false)
+        if (engine->getResources()->reserveTextureImageUnitForLayer(_texReservation, this) == false)
         {
             OE_WARN << LC << "Failed to reserve a TIU...will not apply texture" << std::endl;
             return;

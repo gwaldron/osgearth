@@ -16,7 +16,7 @@ These are the public layer types native to osgEarth.
 | [GDALDEM](layers/GDALDEMLayer.html)                          | GDALDEMLayer                | Renders various rasterized shaded elevation maps             |
 | [MBTilesImage](layers/MBTilesImageLayer.html)                | MBTilesImageLayer           | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
 | [TMSImage](layers/TMSImageLayer.html)                        | TMSImageLayer               | Connects to a TMS (TileMapService) data source               |
-| [WMSImage](layers/WMSImageLayer.md)                          | WMSImageLayer               | Connects to an OGC Web Map Service server                    |
+| [WMSImage](layers/WMSImageLayer.html)                          | WMSImageLayer               | Connects to an OGC Web Map Service server                    |
 | [XYZImage](layers/XYZImageLayer.html)                        | XYZImageLayer               | Reads imagery tiles in standard XYZ format (no metadata)     |
 
 

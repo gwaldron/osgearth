@@ -11,6 +11,17 @@ set(DOCS_ROOT
     source/layers.md
     source/releasenotes.md
     source/support.md
+    
+    source/layers/Layer.md
+    source/layers/TileLayer.md
+    source/layers/VisibleLayer.md
+    source/layers/ImageLayer.md
+    
+    source/layers/ArcGISServerImageLayer.md
+    source/layers/ArcGISTilePackageImageLayer.md
+    source/layers/BingImageLayer.md
+    source/layers/ContourMapLayer.md
+    source/layers/GDALImageLayer.md
 )
 
 # todo if we need folders later

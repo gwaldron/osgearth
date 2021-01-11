@@ -1,10 +1,18 @@
 <map name="power tower test">
-    <PowerlineModel name="towers" max_range="6000" attenuation_range="1000">
+    <PowerlineModel name="towers" max_range="6000" attenuation_range="1000"  line_expr="getLineStyle()" cable_expr="getCableStyle()">
         <features>power-lines</features>
-        <tower_model line_expr="getLineStyle()" cable_expr="getCableStyle()">
+        <tower_model name="6wires">
             <model>../data/power_tower.osgb</model>
             <attachment_points>
                 LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89, 6.385 0.0 21.077, -6.35 -0.01 21.077)
+            </attachment_points>
+            <!-- maximum sag or droop of a single cable -->
+            <max_sag>5.0</max_sag>
+        </tower_model>
+        <tower_model name="4wires">
+            <model>../data/power_tower.osgb</model>
+            <attachment_points>
+                LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89)
             </attachment_points>
             <!-- maximum sag or droop of a single cable -->
             <max_sag>5.0</max_sag>
@@ -25,7 +33,15 @@
               <![CDATA[
                        function getStyleClass() {return "towers";}
 
-                       function getLineStyle() {return "<tower_model>\n\
+                       function getLineStyle()
+                       {
+                         if (feature.properties.voltage > 60000)
+                           return "6wires";
+                         else
+                           return "4wires";
+                       }
+
+                       function getLineStyle2() {return "<tower_model>\n\
                                                  <model>../data/power_tower.osgb</model>\n\
                                                  <attachment_points>\n\
                                                    LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89, 6.385 0.0 21.077, -6.35 -0.01 21.077)\n\

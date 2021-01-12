@@ -729,11 +729,10 @@ namespace osgEarth { namespace Threading
         Future<RESULT_TYPE>
         scheduleJob(Job<RESULT_TYPE>& job) {
             std::unique_lock<Mutex> lock(_queueMutex);
-            Future<RESULT_TYPE> result = std::move(job._future);
             std::function<void()>& delegate = job._delegate;
             _queue.emplace_back([delegate] { delegate(); });
             _block.notify_one();
-            return result;
+            return std::move(job._future);
         }
 
         // pool name

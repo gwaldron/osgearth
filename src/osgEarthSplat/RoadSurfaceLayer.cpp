@@ -349,16 +349,12 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         {
             OE_PROFILING_ZONE_NAMED("Rasterize");
 
-            Future<osg::Image> result = _rasterizer->render(group.release(), outputExtent);
-            osg::ref_ptr<osg::Image> image = result.release(progress);
+            Future<osg::ref_ptr<osg::Image>> result = _rasterizer->render(group.release(), outputExtent);
+            osg::ref_ptr<osg::Image> image = result.get(progress);
             if (image.valid() && image->data() != nullptr)
                 return GeoImage(image.release(), key.getExtent());
             else
                 return GeoImage::INVALID;
-            //return GeoImage(result.release(progress), key.getExtent());
-
-            // TODO: consider storing a Future right in the geoimage.
-            //return GeoImage(result, key.getExtent());
         }
     }
 

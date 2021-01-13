@@ -480,7 +480,7 @@ namespace
     class LoadTilesetOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
     {
     public:
-        LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options, osgEarth::Threading::Promise<osg::Node> promise) :
+        LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options, Threading::Promise<osg::ref_ptr<osg::Node>> promise) :
             _uri(uri),
             _promise(promise),
             _options(options),
@@ -551,7 +551,7 @@ namespace
                         }
                     }
                 }
-                _promise.resolve(tilesetNode.get());
+                _promise.resolve(osg::ref_ptr<osg::Node>(tilesetNode));
             }
         }
 
@@ -564,7 +564,7 @@ namespace
             return true;
         }
 
-        osgEarth::Threading::Promise<osg::Node> _promise;
+        Threading::Promise<osg::ref_ptr<osg::Node>> _promise;
         osg::ref_ptr< osgDB::Options > _options;
         osg::observer_ptr<ThreeDTilesetNode> _parentTileset;
         osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
@@ -573,7 +573,7 @@ namespace
         std::string _requestLayer;
     };
 
-    Threading::Future<osg::Node> readTilesetAsync(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options)
+    Threading::Future<osg::ref_ptr<osg::Node>> readTilesetAsync(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options)
     {
         osg::ref_ptr<ThreadPool> threadPool;
         if (options)
@@ -581,7 +581,7 @@ namespace
             threadPool = ThreadPool::get(options);
         }
 
-        Threading::Promise<osg::Node> promise;
+        Threading::Promise<osg::ref_ptr<osg::Node>> promise;
 
         osg::ref_ptr< osg::Operation > operation = new LoadTilesetOperation(parentTileset, uri, options, promise);
 
@@ -652,8 +652,7 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
 
         if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
         {
-            _content = readTilesetAsync(_tileset, uri, options)
-                .get();
+            _content = readTilesetAsync(_tileset, uri, options).get();
         }
         else
         {
@@ -891,7 +890,7 @@ void ThreeDTileNode::resolveContent()
     // Resolve the future
     if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
     {
-        _content = _contentFuture.release();
+        _content = _contentFuture.get();
 
         if (_content.valid())
         {
@@ -999,7 +998,7 @@ bool ThreeDTileNode::unloadContent()
     _firstVisit = true;
     _content = 0;
     _requestedContent = false;
-    _contentFuture = Future<osg::Node>();
+    _contentFuture = Future<osg::ref_ptr<osg::Node>>();
 
     return true;
 }

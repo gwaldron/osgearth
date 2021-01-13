@@ -53,7 +53,7 @@ namespace osgEarth
         * @param extent geospatial extent of the node to render.
         * @return Future image - blocks on .get() or .release()
         */
-        Threading::Future<osg::Image> render(osg::Node* node, const GeoExtent& extent);
+        Threading::Future<osg::ref_ptr<osg::Image>> render(osg::Node* node, const GeoExtent& extent);
 
         //! destructor
         virtual ~TileRasterizer();
@@ -73,12 +73,12 @@ namespace osgEarth
 
         struct RenderOperation : public osg::GraphicsOperation {
             RenderOperation(osg::Node* node, const GeoExtent& extent, RenderData& renderData);
-            Threading::Future<osg::Image> getFuture();
+            Threading::Future<osg::ref_ptr<osg::Image>> getFuture();
             void operator () (osg::GraphicsContext* context);
             osg::ref_ptr<osg::Node> _node;
             GeoExtent _extent;
             osg::ref_ptr<osg::Image> _image;
-            Threading::Promise<osg::Image> _promise;
+            Threading::Promise<osg::ref_ptr<osg::Image>> _promise;
             RenderData& _renderData;
             int _pass;
             bool _async;

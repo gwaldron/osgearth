@@ -162,7 +162,7 @@ namespace osgEarth { namespace REX
         bool _meshEditsMade;
         bool _createChildAsync;
 
-        typedef Job<TileNode> CreateTileJob;
+        typedef Job<osg::ref_ptr<TileNode>> CreateTileJob;
         std::vector<CreateTileJob::Result> _createChildJobs;
 
         typedef std::queue<osg::ref_ptr<LoadTileData> > LoadQueue;

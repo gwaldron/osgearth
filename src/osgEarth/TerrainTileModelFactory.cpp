@@ -42,13 +42,14 @@ public:
 
         osg::observer_ptr<ImageLayer> layer_ptr(_layer);
 
-        Job<const osg::Image> job([layer_ptr, key](Cancelable* progress) mutable {
+        Job<osg::ref_ptr<osg::Image>> job([layer_ptr, key](Cancelable* progress) mutable {
             osg::ref_ptr<ImageLayer> safe(layer_ptr);
+            osg::ref_ptr<osg::Image> result;
             if (safe.valid()) {
-                GeoImage result = safe->createImage(key, nullptr); // progress TODO
-                return result.takeImage();
+                GeoImage geoimage = safe->createImage(key, nullptr); // progress TODO
+                result = const_cast<osg::Image*>(geoimage.getImage());
             }
-            else return static_cast<const osg::Image*>(nullptr);
+            return result;
         });
 
         _result = job.schedule("ASYNC_LAYER");
@@ -66,7 +67,7 @@ public:
         if (_result.isAvailable())
         {
             // no refptr here because we are going to steal the data.
-            osg::ref_ptr<osg::Image> i = const_cast<osg::Image*>(_result.release());
+            osg::ref_ptr<osg::Image> i = _result.get();
 
             if (i.valid())
             {
@@ -88,7 +89,7 @@ public:
 
     osg::ref_ptr<ImageLayer> _layer;
     TileKey _key;
-    Job<const osg::Image>::Result _result;
+    Job<osg::ref_ptr<osg::Image>>::Result _result;
 };
 
 //.........................................................................

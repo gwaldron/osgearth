@@ -158,9 +158,9 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             float seconds = osg::Timer::instance()->delta_s(_asyncSampleStart, end);
             Duration duration(seconds, Units::SECONDS);
 
-            osg::ref_ptr<RefElevationSample> sample = _asyncSample.release();
+            const ElevationSample& sample = _asyncSample.get();
 
-            if (!sample.valid() || !sample->hasData())
+            if (!sample.hasData())
             {
                 s_asyncLabel->setText("NO DATA");
             }
@@ -168,10 +168,10 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             {
                 // want to express resolution in meters:
                 Distance cartesianResolution = _asyncSamplePoint.transformResolution(
-                    sample->resolution(),
+                    sample.resolution(),
                     Units::METERS);
 
-                s_asyncLabel->setText(sample->elevation().asString());
+                s_asyncLabel->setText(sample.elevation().asString());
                 s_asyncResLabel->setText(cartesianResolution.asString());
                 s_asyncTimeLabel->setText(duration.to(Units::MILLISECONDS).asString());
             }
@@ -211,7 +211,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                 s_asyncResLabel->setText("");
                 s_asyncTimeLabel->setText("");
 
-                _asyncSample = Future<RefElevationSample>();
+                _asyncSample = Future<ElevationSample>();
             }
         }
 
@@ -230,7 +230,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
     osg::ref_ptr<AsyncElevationSampler> _async;
     GeoPoint _asyncSamplePoint;
-    Future<RefElevationSample> _asyncSample;
+    Future<ElevationSample> _asyncSample;
     osg::Timer_t _asyncSampleStart;
 
     ElevationPool::WorkingSet _workingSet;

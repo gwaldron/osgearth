@@ -45,7 +45,7 @@ namespace
     class LoadNodeOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
     {
     public:
-        LoadNodeOperation(const URI& uri, const osgDB::Options* options, Promise<osg::Node> promise) :
+        LoadNodeOperation(const URI& uri, const osgDB::Options* options, Promise<osg::ref_ptr<osg::Node>> promise) :
             _uri(uri),
             _promise(promise),
             _options(options),
@@ -104,7 +104,7 @@ namespace
                     }
                 }
 
-                _promise.resolve(result.getNode());
+                _promise.resolve(osg::ref_ptr<osg::Node>(result.getNode()));
             }
         }
 
@@ -117,7 +117,7 @@ namespace
             return true;
         }
 
-        Promise<osg::Node> _promise;
+        Promise<osg::ref_ptr<osg::Node>> _promise;
         osg::ref_ptr<const osgDB::Options> _options;
         osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
         Threading::Event _block;
@@ -789,7 +789,7 @@ URI::readString(const osgDB::Options* dbOptions,
 }
 
 
-Future<osg::Node>
+Future<osg::ref_ptr<osg::Node>>
 URI::readNodeAsync(const osgDB::Options* dbOptions,
                    ProgressCallback* progress) const
 {
@@ -799,7 +799,7 @@ URI::readNodeAsync(const osgDB::Options* dbOptions,
         threadPool = ThreadPool::get(dbOptions);
     }
 
-    Promise<osg::Node> promise;
+    Promise<osg::ref_ptr<osg::Node>> promise;
 
     osg::ref_ptr<osg::Operation> operation = new LoadNodeOperation(*this, dbOptions, promise);
 

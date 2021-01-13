@@ -77,7 +77,7 @@ TileRasterizer::RenderOperation::RenderOperation(osg::Node* node, const GeoExten
     //nop
 }
 
-Future<osg::Image>
+Future<osg::ref_ptr<osg::Image>>
 TileRasterizer::RenderOperation::getFuture()
 {
     return _promise.getFuture();
@@ -128,7 +128,8 @@ TileRasterizer::RenderOperation::operator () (osg::GraphicsContext* gc)
     if (samples == 0u)
         _image = NULL;
 
-    _promise.resolve(_image.release());
+    _promise.resolve(_image);
+    _image = nullptr;
 }
 
 
@@ -196,20 +197,21 @@ TileRasterizer::getNode() const
     return _installer.get();
 }
 
-Future<osg::Image>
+Future<osg::ref_ptr<osg::Image>>
 TileRasterizer::render(osg::Node* node, const GeoExtent& extent)
 {
+    Future<osg::ref_ptr<osg::Image>> result;
+
     if (_renderData._sv.valid())
     {
         osg::ref_ptr<osg::GraphicsContext> gc = _renderData._gc.get();
         if (gc.valid())
         {
             osg::ref_ptr<RenderOperation> op = new RenderOperation(node, extent, _renderData);
-            Future<osg::Image> result = op->getFuture();   
+            result = op->getFuture();
             gc->add(op.get());
-            return result;
         }
     }
 
-    return Future<osg::Image>();
+    return result;
 }

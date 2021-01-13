@@ -237,10 +237,10 @@ namespace osgEarth
             const Map* map,
             unsigned threads =1u);
 
-        Future<RefElevationSample> getSample(
+        Future<ElevationSample> getSample(
             const GeoPoint& p);
 
-        Future<RefElevationSample> getSample(
+        Future<ElevationSample> getSample(
             const GeoPoint& p,
             const Distance& resolution);
 

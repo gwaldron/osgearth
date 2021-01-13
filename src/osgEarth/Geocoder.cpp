@@ -149,7 +149,7 @@ namespace
             {
                 osg::ref_ptr<FeatureCursor> cursor;
                 Status status = _impl->search(_input, cursor);
-                _promise.resolve(new Geocoder::OutputData(status, cursor.get()));
+                _promise.resolve(Geocoder::OutputData(status, cursor.get()));
             }
         }
     };
@@ -205,7 +205,7 @@ Geocoder::setImplementation(Geocoder::Implementation* impl)
 }
 
 Geocoder::Results::Results(const Status& status, FeatureCursor* cursor) :
-    FutureResult(new Geocoder::OutputData(status, cursor))
+    FutureResult(Geocoder::OutputData(status, cursor))
 {
     //NOP - error status
 }
@@ -219,11 +219,14 @@ Geocoder::Results::Results(Future<Geocoder::OutputData> data) :
 Status
 Geocoder::Results::getStatus()
 {
-    return _future.get() ? _future.get()->_status : Status(Status::ServiceUnavailable);
+    return _future.isAbandoned() ? Status(Status::ServiceUnavailable) :
+        _future.get()._status;
 }
 
 FeatureCursor*
 Geocoder::Results::getFeatures()
 {
-    return _future.get() ? _future.get()->_cursor.get() : NULL;
+    return _future.isAbandoned() ?
+        nullptr :
+        _future.get()._cursor.get();
 }

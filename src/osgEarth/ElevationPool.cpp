@@ -883,7 +883,7 @@ namespace osgEarth { namespace Internal
         GeoPoint _p;
         Distance _res;
         ElevationPool::WorkingSet* _ws;
-        Promise<RefElevationSample> _promise;
+        Promise<ElevationSample> _promise;
 
         SampleElevationOp(osg::observer_ptr<const Map> map, const GeoPoint& p, const Distance& res, ElevationPool::WorkingSet* ws) :
             _map(map), _p(p), _res(res), _ws(ws), _promise(OE_MUTEX_NAME) { }
@@ -896,12 +896,12 @@ namespace osgEarth { namespace Internal
                 if (_map.lock(map))
                 {
                     ElevationSample sample = map->getElevationPool()->getSample(_p, _res, _ws);
-                    _promise.resolve(new RefElevationSample(sample.elevation(), sample.resolution()));
+                    _promise.resolve(sample);
                     return;
                 }
             }
 
-            _promise.resolve(NULL);
+            _promise.resolve();
         }
     };
 }}
@@ -915,19 +915,19 @@ AsyncElevationSampler::AsyncElevationSampler(
     _threadPool = new ThreadPool("osgEarth.ElevationPool", numThreads);
 }
 
-Future<RefElevationSample>
+Future<ElevationSample>
 AsyncElevationSampler::getSample(const GeoPoint& p)
 {
     return getSample(p, Distance(0, p.getXYUnits()));
 }
 
-Future<RefElevationSample>
+Future<ElevationSample>
 AsyncElevationSampler::getSample(
     const GeoPoint& p,
     const Distance& resolution)
 {
     Internal::SampleElevationOp* op = new Internal::SampleElevationOp(_map, p, resolution, &_ws);
-    Future<RefElevationSample> result = op->_promise.getFuture();
+    Future<ElevationSample> result = op->_promise.getFuture();
     _threadPool->run(op);
     return result;
 }

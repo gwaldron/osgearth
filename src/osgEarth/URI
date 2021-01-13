@@ -240,7 +240,7 @@ namespace osgEarth
             const osgDB::Options* dbOptions   =0L,
             ProgressCallback*     progress    =0L ) const;
 
-        Future<osg::Node> readNodeAsync(
+        Future<osg::ref_ptr<osg::Node>> readNodeAsync(
             const osgDB::Options* dbOptions   =0L,
             ProgressCallback*     progress    =0L) const;
 

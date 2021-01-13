@@ -209,13 +209,16 @@ namespace osgEarth { namespace Threading
     class Future : public Cancelable
     {
     public:
-        typedef std::function<void(T*)> Callback;
+        typedef std::function<void(const T&)> Callback;
 
     private:
         // internal structure to track referenced to the result
-        struct RefPtrRef : public osg::Referenced {
-            RefPtrRef(T* obj = 0L) : _obj(obj) { }
-            osg::ref_ptr<T> _obj;
+        struct Container {
+            Container() { }
+            Container(const T& obj) { set(obj); }
+            void set(const T& obj) { _obj = std::move(obj); }
+            T _obj;
+            const T& obj() const { return _obj; }
             std::vector<Callback> _callbacks;
             std::mutex _callbacksMutex;
         };
@@ -224,22 +227,22 @@ namespace osgEarth { namespace Threading
         //! Blank CTOR
         Future() {
             _ev = new RefEvent();
-            _objRef = new RefPtrRef();
+            _shared = std::make_shared<Container>();
         }
 
         Future(const std::string& name) {
             _ev = new RefEvent(name);
-            _objRef = new RefPtrRef();
+            _shared = std::make_shared<Container>();
         }
 
         //! Copy CTOR
         Future(const Future& rhs) :
             _ev(rhs._ev),
-            _objRef(rhs._objRef) { }
+            _shared(rhs._shared) { }
 
         Future<T>& operator = (const Future<T>& rhs) {
             _ev = rhs._ev;
-            _objRef = rhs._objRef;
+            _shared = rhs._shared;
             return *this;
         }
 
@@ -250,7 +253,7 @@ namespace osgEarth { namespace Threading
 
         //! True if the Promise that generated this Future no longer exists.
         bool isAbandoned() const {
-            return _objRef->referenceCount() == 1;
+            return _shared.use_count() == 1;
         }
 
         bool isCanceled() const override {
@@ -258,51 +261,57 @@ namespace osgEarth { namespace Threading
         }
 
         //! The result value; blocks until it is available (or abandonded) and then returns it.
-        T* get() {
-            while(!_ev->wait(1000u))
-                if (isAbandoned()) return 0L;
-            return _objRef->_obj.get();
+        const T& get() {
+            while (!_ev->wait(1000u))
+                if (isAbandoned())
+                    break;
+            return _shared->obj();
         }
 
-        T* get(const Cancelable* cancelable) {
+        const T& get(const Cancelable* cancelable) {
             while(!_ev->wait(1000u)) {
-                if (isAbandoned()) return 0L;
-                if (cancelable && cancelable->isCanceled()) return 0L;
+                if (isAbandoned()) 
+                    break;
+                if (cancelable && cancelable->isCanceled()) 
+                    break;
             }
-            return _objRef->_obj.get();
+            return _shared->obj();
         }
 
-        //! The result value; blocks until available (or abandoned) and returns it; then resets to initial state.
-        T* release() {
-            while(!_ev->wait(1000u))
-                if (isAbandoned()) return 0L;
-            T* out = _objRef->_obj.release();
-            _ev->reset();
-            return out;
-        }
+        ////! The result value; blocks until available (or abandoned) and returns it; then resets to initial state.
+        //T release() {
+        //    while(!_ev->wait(1000u))
+        //        if (isAbandoned()) return 0L;
+        //    T out = _objRef->_obj;
+        //    _objRef->_obj.unset();
+        //    _ev->reset();
+        //    return out;
+        //}
 
-        T* release(const Cancelable* cancelable) {
-            while(!_ev->wait(1000u)) {
-                if (isAbandoned()) return 0L;
-                if (cancelable && cancelable->isCanceled()) return 0L;
+        //T release(const Cancelable* cancelable) {
+        //    while(!_ev->wait(1000u)) {
+        //        if (isAbandoned()) return 0L;
+        //        if (cancelable && cancelable->isCanceled()) return 0L;
+        //    }
+        //    T* out = _objRef->_obj.release();
+        //    _ev->reset();
+        //    return out;
+        //}
+
+        Future<T>& then(std::function<void(T&)>& func) {
+            std::unique_lock<std::mutex> lock(_shared->_callbacksMutex);
+            if (_ev->isSet()) {
+                if (_shared->empty() == false)
+                    func(_shared->_obj());
             }
-            T* out = _objRef->_obj.release();
-            _ev->reset();
-            return out;
-        }
-
-        Future<T>& then(std::function<void(T*)>& func) {
-            std::unique_lock<std::mutex> lock(_objRef->_callbacksMutex);
-            if (_ev->isSet())
-                func(_objRef->_obj.get());
             else
-                _objRef->_callbacks.push_back(func);
+                _shared->_callbacks.push_back(func);
             return *this;
         }
 
     private:
         osg::ref_ptr<RefEvent> _ev;
-        osg::ref_ptr<RefPtrRef> _objRef;
+        std::shared_ptr<Container> _shared;
         template<typename U> friend class Promise;
     };
 
@@ -326,13 +335,18 @@ namespace osgEarth { namespace Threading
         Future<T> getFuture() const { return _future; }
 
         //! Resolve (fulfill) the promise with the provided result value.
-        void resolve(T* value) {
-            _future._objRef->_obj = value;
+        void resolve(const T& value) {
+            _future._shared->set(value);
             {
-                std::unique_lock<std::mutex> lock(_future._objRef->_callbacksMutex);
-                for(auto& f : _future._objRef->_callbacks)
+                std::unique_lock<std::mutex> lock(_future._shared->_callbacksMutex);
+                for(auto& f : _future._shared->_callbacks)
                     f(value);
             }
+            _future._ev->set();
+        }
+
+        //! Resolve (fulfill) the promise with a default result.
+        void resolve() {
             _future._ev->set();
         }
 
@@ -343,7 +357,7 @@ namespace osgEarth { namespace Threading
 
         //! True is there are no Future objects waiting on this Promise.
         bool isAbandoned() const {
-            return _future._objRef->referenceCount() == 1;
+            return _future._shared.use_count() == 1;
         }
 
         bool isCanceled() const override {
@@ -362,14 +376,16 @@ namespace osgEarth { namespace Threading
     class FutureResult
     {
     public:
-        bool isReady() const { return _future.isAvailable() || _future.isAbandoned(); }
+        bool isReady() const { 
+            return _future.isAvailable() || _future.isAbandoned();
+        }
 
     protected:
         //! Asynchronous constructor
         FutureResult(Future<T> f) : _future(f) { }
 
         //! Immediate synchronous resolve constructor
-        FutureResult(T* data) {
+        FutureResult(const T& data) {
             Promise<T> p;
             _future = p.getFuture();
             p.resolve(data);
@@ -729,11 +745,10 @@ namespace osgEarth { namespace Threading
         Future<RESULT_TYPE>
         scheduleJob(Job<RESULT_TYPE>& job) {
             std::unique_lock<Mutex> lock(_queueMutex);
-            Future<RESULT_TYPE> result = std::move(job._future);
             std::function<void()>& delegate = job._delegate;
             _queue.emplace_back([delegate] { delegate(); });
             _block.notify_one();
-            return result;
+            return std::move(job._future);
         }
 
         // pool name

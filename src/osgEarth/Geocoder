@@ -41,8 +41,9 @@ namespace osgEarth
         };
 
         //! Internal - do not use
-        struct OutputData : public osg::Referenced
+        struct OutputData
         {
+            OutputData() { }
             OutputData(const Status& status, FeatureCursor* cursor) : _status(status), _cursor(cursor) { }
             Status _status;
             osg::ref_ptr<FeatureCursor> _cursor;

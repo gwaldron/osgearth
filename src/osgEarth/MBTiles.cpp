@@ -176,6 +176,16 @@ MBTilesImageLayer::writeImageImplementation(const TileKey& key, const osg::Image
     return _driver.write( key, image, progress );
 }
 
+bool MBTilesImageLayer::getMetaData(const std::string& name, std::string& value)
+{
+    return _driver.getMetaData(name, value);
+}
+
+bool MBTilesImageLayer::putMetaData(const std::string& name, const std::string& value)
+{
+    return _driver.putMetaData(name, value);
+}
+
 //...................................................................
 
 Config
@@ -297,6 +307,15 @@ MBTilesElevationLayer::writeHeightFieldImplementation(const TileKey& key, const 
     }
 }
 
+bool MBTilesElevationLayer::getMetaData(const std::string& name, std::string& value)
+{
+    return _driver.getMetaData(name, value);
+}
+
+bool MBTilesElevationLayer::putMetaData(const std::string& name, const std::string& value)
+{
+    return _driver.putMetaData(name, value);
+}
 
 //...................................................................
 

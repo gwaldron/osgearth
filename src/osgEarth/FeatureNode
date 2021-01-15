@@ -96,6 +96,16 @@ namespace osgEarth
         void setIndex(FeatureIndexBuilder* index);
 
         /**
+        * Gets the GeometryCompilerOptions
+        */
+        const GeometryCompilerOptions& getGeometryCompilerOptions() const;
+
+        /**
+        * Sets the GeometryCompilerOptions
+        */
+        void setGeometryCompilerOptions(GeometryCompilerOptions& options);
+
+        /**
          * Call init to force a rebuild of this FeatureNode.  If you modify the features in the features list or add/remove features
          * call this function to rebuild the node.
          */
@@ -152,7 +162,7 @@ namespace osgEarth
         FeatureIndexBuilder* _index;
 
         FeatureNode() : _attachPoint(NULL), _needsRebuild(true), _clampDirty(false), _index(NULL) { }
-        FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) 
+        FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op)
          : _attachPoint(rhs._attachPoint)
          , _needsRebuild(rhs._needsRebuild)
          , _clampDirty(rhs._clampDirty)

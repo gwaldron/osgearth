@@ -21,6 +21,7 @@
 */
 #include <osgEarth/Notify>
 #include <osgEarth/Geocoder>
+#include <osgEarth/Utils>
 
 #define LC "[geocode] "
 
@@ -37,8 +38,6 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
-    osgEarth::initialize();
-
     osg::ArgumentParser args(&argc, argv);
 
     if (argc < 2)
@@ -47,12 +46,15 @@ main(int argc, char** argv)
     bool async = args.read("--async");
 
     osg::ref_ptr<osgDB::Options> options;
-    osg::ref_ptr<ThreadPool> pool;
+    std::shared_ptr<JobArena> arena;
+
+    // if the user chose async, create a job arena and store it
+    // in the options.
     if (async)
     {
         options = new osgDB::Options();
-        pool = new ThreadPool("Geocoder");
-        pool->put(options.get());
+        arena = std::make_shared<JobArena>("Geocoder", 1U);
+        OptionsData<JobArena>::set(options.get(), arena);
     }
 
     Geocoder geocoder;
@@ -73,11 +75,7 @@ main(int argc, char** argv)
         {
             OE_NOTICE << "Result -------------------------------------------" << std::endl;
             Feature* f = results.getFeatures()->nextFeature();
-            const AttributeTable& attrs = f->getAttrs();
-            for(AttributeTable::const_iterator i = attrs.begin(); i != attrs.end(); ++i)
-            {
-                OE_NOTICE << i->first << " = " << i->second.getString() << std::endl;
-            }
+            OE_NOTICE << f->getGeoJSON() << std::endl;
         }
     }
     else

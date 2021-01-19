@@ -306,6 +306,13 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
                     Container*             userContainer,
                     const osgDB::Options*  readOptions) const
 {
+    // Pause do the user can attach a debugger
+    if (args.read("--pause"))
+    {
+        std::cout << "Press <ENTER> to continue" << std::endl;
+        ::getchar();
+    }
+
     osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
 
     // pass through OSG options

@@ -17,9 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Utils>
+#include <osgEarth/Threading>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/Metrics>
 #include <osgUtil/MeshOptimizers>
+#include <osgUtil/IncrementalCompileOperation>
 
 using namespace osgEarth;
+using namespace osgEarth::Threading;
 using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
@@ -619,4 +624,87 @@ RenderBinUtils::getTotalNumRenderLeaves(osgUtil::RenderBin* bin)
     }
 
     return count;
+}
+
+
+namespace
+{
+    struct NodePreCompilerImplementation
+    {
+        using ICO = osgUtil::IncrementalCompileOperation;
+
+        struct ICOCallback : public ICO::CompileCompletedCallback
+        {
+            ICO::CompileSet* _compileSet;
+            std::shared_ptr<Event> _block;
+
+            ICOCallback(std::shared_ptr<Event> block, ICO::CompileSet* compileSet) :
+                _block(block),
+                _compileSet(compileSet)
+            {
+            }
+
+            bool compileCompleted(ICO::CompileSet* compileSet) override
+            {
+                _compileSet = nullptr;
+                _block->set();
+                return true;
+            }
+        };
+
+        void run(osg::Node* node, const osgDB::Options* options, Cancelable* progress)
+        {
+            // Compress and mipmap any textures in the node before sending it to the ICO
+            ImageUtils::compressAndMipmapTextures(node);
+
+            // Find an ICO in the Options
+            osg::ref_ptr<ICO> ico = OptionsData<ICO>::get(options, typeid(ICO).name());
+
+            // If we have an ICO, wait for it to be compiled
+            if (ico.valid())
+            {
+                OE_PROFILING_ZONE_NAMED("ICO compile");
+
+                std::shared_ptr<Event> block = std::make_shared<Event>();
+
+                osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> compileSet =
+                    new osgUtil::IncrementalCompileOperation::CompileSet(node);
+
+                compileSet->_compileCompletedCallback = new ICOCallback(block, compileSet.get());
+
+                ico->add(compileSet.get());
+
+                unsigned int numTries = 0;
+                // block until the compile completes, checking once and a while for
+                // an abandoned operation (to avoid deadlock)
+                while (!block->wait(10)) // 10ms
+                {
+                    // Limit the number of tries and give up after awhile to avoid the case where
+                    // the ICO still has work to do but the application has exited.
+                    ++numTries;
+
+                    if ((progress && progress->isCanceled()) || (numTries == 1000)) // 10 seconds
+                    {
+                        compileSet->_compileCompletedCallback = nullptr;
+                        ico->remove(compileSet.get());
+                        compileSet = nullptr;
+                        break;
+                    }
+                }
+            }
+        }
+    };
+}
+
+void
+NodePreCompiler::compile(
+    osg::Node* node,
+    const osgDB::Options* options,
+    Cancelable* progress)
+{
+    if (node)
+    {
+        NodePreCompilerImplementation impl;
+        impl.run(node, options, progress);
+    }
 }

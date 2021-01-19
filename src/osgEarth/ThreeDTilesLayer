@@ -76,8 +76,6 @@ namespace osgEarth { namespace Contrib
 
     protected:
 
-        osg::ref_ptr< Threading::ThreadPool > _threadPool;
-
         virtual ~ThreeDTilesLayer();
 
         osg::ref_ptr<osgEarth::Contrib::ThreeDTiles::ThreeDTilesetNode> _tilesetNode;

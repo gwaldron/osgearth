@@ -24,6 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Threading>
 
 #include <osg/Vec3f>
 #include <osg/AutoTransform>
@@ -35,11 +36,7 @@
 #include <string>
 #include <list>
 #include <map>
-
-namespace osg
-{
-    class EllipsoidModel;
-}
+#include <typeinfo>
 
 namespace osgEarth { namespace Util
 {    
@@ -49,7 +46,7 @@ namespace osgEarth { namespace Util
     template<typename T>
     class OptionsData : public osg::Object {
     public:
-        static void set(osg::Object* o, const std::string& name, T* obj) {            
+        static void set(osg::Object* o, const std::string& name, T* obj) {
             osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
             unsigned i = udc->getUserObjectIndex(name);
             if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
@@ -65,13 +62,28 @@ namespace osgEarth { namespace Util
             bool ok = lock(o, name, result);
             return result;
         }
+        static void set(osg::Object* o, std::shared_ptr<T> obj) {
+            const char* name = typeid(T).name();
+            osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
+            unsigned i = udc->getUserObjectIndex(name);
+            if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
+            udc->addUserObject(new OptionsData<T>(name, obj));
+        }
+        static std::shared_ptr<T> get(const osg::Object* o) {
+            const char*name = typeid(T).name();
+            if (!o) return false;
+            const OptionsData<T>* data = dynamic_cast<const OptionsData<T>*>(osg::getUserObject(o, name));
+            return data ? data->_shared_obj : std::shared_ptr<T>();
+        }
     public:
         META_Object(osgEarth,OptionsData);
         OptionsData(const std::string& name, T* obj) : _obj(obj) { setName(name); }
+        OptionsData(const std::string& name, std::shared_ptr<T> obj) : _shared_obj(obj) { setName(name); }
         OptionsData() { }
         OptionsData(const OptionsData& rhs, const osg::CopyOp& copy) : osg::Object(rhs, copy), _obj(rhs._obj) { }
     private:
         osg::observer_ptr<T> _obj;
+        std::shared_ptr<T> _shared_obj;
     };
 
     struct Utils
@@ -157,6 +169,18 @@ namespace osgEarth { namespace Util
         void apply(osg::Drawable& drawable);
     };
 
+
+    /**
+     * Utility to "pre-compile" a node by compressing and mipmapping its
+     * textures and running it through the ICO if one exists in the Options.
+     */
+    struct OSGEARTH_EXPORT NodePreCompiler
+    {
+        static void compile(
+            osg::Node* node,
+            const osgDB::Options* options,
+            osgEarth::Threading::Cancelable* progress);
+    };
 } }
 
 #endif // OSGEARTH_UTILS_H

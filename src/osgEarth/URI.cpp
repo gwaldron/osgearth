@@ -28,6 +28,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
 #include <osgUtil/IncrementalCompileOperation>
+#include <typeinfo>
 
 #define LC "[URI] "
 
@@ -42,6 +43,7 @@ using namespace osgEarth::Threading;
 
 namespace
 {
+#if 0
     class LoadNodeOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
     {
     public:
@@ -124,6 +126,7 @@ namespace
         URI _uri;
         std::string _requestLayer;
     };
+#endif
 }
 
 //------------------------------------------------------------------------
@@ -786,37 +789,6 @@ URI::readString(const osgDB::Options* dbOptions,
                 ProgressCallback*     progress ) const
 {
     return doRead<ReadString>( *this, dbOptions, progress );
-}
-
-
-Future<osg::ref_ptr<osg::Node>>
-URI::readNodeAsync(const osgDB::Options* dbOptions,
-                   ProgressCallback* progress) const
-{
-    osg::ref_ptr<ThreadPool> threadPool;
-    if (dbOptions)
-    {
-        threadPool = ThreadPool::get(dbOptions);
-    }
-
-    Promise<osg::ref_ptr<osg::Node>> promise;
-
-    osg::ref_ptr<osg::Operation> operation = new LoadNodeOperation(*this, dbOptions, promise);
-
-    if (operation.valid())
-    {
-        if (threadPool.valid())
-        {
-            threadPool->run(operation.get());
-        }
-        else
-        {
-            OE_DEBUG << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
-            operation->operator()(0);
-        }
-    }
-
-    return promise.getFuture();
 }
 
 //------------------------------------------------------------------------

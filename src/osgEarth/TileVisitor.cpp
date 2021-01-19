@@ -232,42 +232,6 @@ bool TileVisitor::handleTile( const TileKey& key )
 
 /*****************************************************************************************/
 
-namespace
-{
-    /**
-     * A TaskRequest that runs a TileHandler in a background thread.
-     */
-    class HandleTileTask : public osg::Operation
-    {
-    public:
-        HandleTileTask(TileHandler* handler, TileVisitor* visitor, const TileKey& key, ProgressCallback* progress) :
-            _handler(handler),
-            _visitor(visitor),
-            _key(key),
-            _progress(progress)
-        {
-
-        }
-
-        virtual void operator()(osg::Object*)
-        {
-            if (_progress.valid() && _progress->isCanceled())
-                return;
-
-            if (_handler.valid())
-            {
-                _handler->handleTile(_key, *_visitor.get());
-                _visitor->incrementProgress(1);
-            }
-        }
-
-        osg::ref_ptr<TileHandler> _handler;
-        TileKey _key;
-        osg::ref_ptr<TileVisitor> _visitor;
-        osg::ref_ptr<ProgressCallback> _progress;
-    };
-}
-
 MultithreadedTileVisitor::MultithreadedTileVisitor():
 _numThreads(Threading::getConcurrency())
 {
@@ -276,8 +240,8 @@ _numThreads(Threading::getConcurrency())
     osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper( "osg::Image" );
 }
 
-MultithreadedTileVisitor::MultithreadedTileVisitor( TileHandler* handler ):
-TileVisitor( handler ),
+MultithreadedTileVisitor::MultithreadedTileVisitor(TileHandler* handler) :
+    TileVisitor(handler),
     _numThreads(Threading::getConcurrency())
 {
 }
@@ -297,28 +261,51 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
     // Start up the task service
     OE_INFO << "Starting " << _numThreads << " threads " << std::endl;
 
-    _threadPool = new ThreadPool("osgEarth.TileVisitor", _numThreads);
+    _arena = std::make_shared<JobArena>("oe.mttilevisitor", _numThreads);
+
+    _numTiles = 0;
 
     // Produce the tiles
     TileVisitor::run( mapProfile );
 
-    OE_INFO << _threadPool->getNumOperationsInQueue() << " tasks in the queue." << std::endl;
-
-    // Wait for everything to finish, checking for cancellation while we wait so we can kill all the existing tasks.
-    while(_threadPool->getNumOperationsInQueue() > 0)
-    {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
+    OE_INFO << _arena->queueSize() << " tasks in the queue" << std::endl;
+    
+    // Wait for everything to finish
+    Mutex _doneMx;
+    std::unique_lock<Mutex> doneLock(_doneMx);
+    _done.wait(doneLock, [this] {
+        return _numTiles == 0;
+    });
 }
 
 bool MultithreadedTileVisitor::handleTile(const TileKey& key)
 {
-    while (_threadPool->getNumOperationsInQueue() > 1000)
+    // atomically increment the task count
+    _numTiles++;
+
+    // don't let the task queue get too large...?
+    while (_arena->queueSize() > 1000)
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
+
     // Add the tile to the task queue.
-    _threadPool->run(new HandleTileTask(_tileHandler.get(), this, key, getProgressCallback()));
+    std::function<void()> delegate = [=]()
+    {
+        if ((_tileHandler.valid()) &&
+            (!_progress.valid() || !_progress->isCanceled()))
+        {
+            _tileHandler->handleTile(key, *this);
+            this->incrementProgress(1);
+        }
+
+        // atomically decrement the task count
+        _numTiles--;
+
+        _done.notify_all();
+    };
+
+    _arena->dispatch(delegate);
     return true;
 }
 

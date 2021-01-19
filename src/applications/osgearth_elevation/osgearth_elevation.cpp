@@ -175,6 +175,8 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                 s_asyncResLabel->setText(cartesianResolution.asString());
                 s_asyncTimeLabel->setText(duration.to(Units::MILLISECONDS).asString());
             }
+
+            _asyncSample.abandon();
         }
     }
 
@@ -211,7 +213,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                 s_asyncResLabel->setText("");
                 s_asyncTimeLabel->setText("");
 
-                _asyncSample = Future<ElevationSample>();
+                _asyncSample.abandon();
             }
         }
 

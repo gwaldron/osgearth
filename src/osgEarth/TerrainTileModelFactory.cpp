@@ -34,6 +34,7 @@ using namespace osgEarth;
 class FutureImage : public osg::Image
 {
 public:
+    typedef Job<osg::ref_ptr<osg::Image>> ImageJob;
 
     FutureImage(ImageLayer* layer, const TileKey& key) : osg::Image()
     {
@@ -42,17 +43,20 @@ public:
 
         osg::observer_ptr<ImageLayer> layer_ptr(_layer);
 
-        Job<osg::ref_ptr<osg::Image>> job([layer_ptr, key](Cancelable* progress) mutable {
-            osg::ref_ptr<ImageLayer> safe(layer_ptr);
-            osg::ref_ptr<osg::Image> result;
-            if (safe.valid()) {
-                GeoImage geoimage = safe->createImage(key, nullptr); // progress TODO
-                result = const_cast<osg::Image*>(geoimage.getImage());
+        _result = ImageJob::dispatch(
+            "oe.async_layer",
+            [layer_ptr, key](Cancelable* progress) mutable
+            {
+                osg::ref_ptr<ImageLayer> safe(layer_ptr);
+                osg::ref_ptr<osg::Image> result;
+                if (safe.valid())
+                {
+                    GeoImage geoimage = safe->createImage(key, nullptr); // progress TODO
+                    result = const_cast<osg::Image*>(geoimage.getImage());
+                }
+                return result;
             }
-            return result;
-        });
-
-        _result = job.schedule("ASYNC_LAYER");
+        );
     }
 
     virtual bool requiresUpdateCall() const override

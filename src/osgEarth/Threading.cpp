@@ -543,22 +543,45 @@ osgEarth::Threading::setThreadName(const std::string& name)
 
 Mutex JobArena::_arenas_mutex("OE:JobArena");
 
-std::unordered_map<std::string, osg::ref_ptr<JobArena>> JobArena::_arenas;
+std::unordered_map<std::string, std::shared_ptr<JobArena>> JobArena::_arenas;
 
 std::unordered_map<std::string, unsigned> JobArena::_arenaSizes;
 
+std::string JobArena::_defaultArenaName = "oe.default";
+
 #define OE_ARENA_DEFAULT_SIZE 2u
+
+JobArena::JobArena(const std::string& name, unsigned numThreads) :
+    _name(name),
+    _numThreads(numThreads),
+    _done(false),
+    _queueMutex("OE.JobArena.Queue")
+{
+    startThreads();
+}
+
+JobArena::~JobArena()
+{
+    stopThreads();
+}
+
+const std::string&
+JobArena::defaultArenaName()
+{
+    return _defaultArenaName;
+}
 
 JobArena*
 JobArena::arena(const std::string& name)
 {
     ScopedMutexLock lock(_arenas_mutex);
-    osg::ref_ptr<JobArena>& arena = _arenas[name];
-    if (!arena.valid())
+    std::shared_ptr<JobArena>& arena = _arenas[name];
+    if (arena == nullptr)
     {
         auto iter = _arenaSizes.find(name);
         unsigned numThreads = iter != _arenaSizes.end() ? iter->second : OE_ARENA_DEFAULT_SIZE;
-        arena = new JobArena(name, numThreads);
+        
+        arena = std::make_shared<JobArena>(name, numThreads);
     }
     return arena.get();
 }
@@ -573,41 +596,48 @@ JobArena::setSize(const std::string& name, unsigned numThreads)
     auto iter = _arenas.find(name);
     if (iter != _arenas.end())
     {
-        osg::ref_ptr<JobArena>& arena = iter->second;
-        OE_SOFT_ASSERT_AND_RETURN(arena.get() != nullptr, __func__,);
+        std::shared_ptr<JobArena> arena = iter->second;
+        OE_SOFT_ASSERT_AND_RETURN(arena != nullptr, __func__,);
         arena->stopThreads();
         arena->_numThreads = numThreads;
         arena->startThreads();
     }
 }
 
-size_t
+std::size_t
 JobArena::queueSize(const std::string& arenaName)
 {
-    osg::ref_ptr<JobArena> arena;
+    std::shared_ptr<JobArena> arena;
     {
         ScopedMutexLock lock(_arenas_mutex);
         arena = _arenas[arenaName];
     }
-    if (!arena.valid())
+    if (arena == nullptr)
+    {
         return 0u;
-    Threading::ScopedMutexLock lock(arena->_queueMutex);
-    return arena->_queue.size();
+    }
+    else
+    {
+        Threading::ScopedMutexLock lock(arena->_queueMutex);
+        return arena->_queue.size();
+    }
 }
 
-JobArena::JobArena(const std::string& name, unsigned numThreads) :
-    _name("OE.JobArena[" + name + "]"),
-    _numThreads(numThreads),
-    _done(false),
-    _queueMutex("OE.JobArena.Queue")
+void
+JobArena::dispatch(std::function<void()>& job)
 {
-    startThreads();
+    std::unique_lock<Mutex> lock(_queueMutex);
+    _queue.emplace_back(job);
+    _block.notify_one();
 }
 
-JobArena::~JobArena()
+std::size_t
+JobArena::queueSize() const
 {
-    stopThreads();
+    std::unique_lock<Mutex> lock(_queueMutex);
+    return _queue.size();
 }
+
 
 void
 JobArena::startThreads()
@@ -618,9 +648,9 @@ JobArena::startThreads()
     {
         _threads.push_back(std::thread([this]
             {
-                OE_INFO << LC << "Arena " << _name << ": thread " << std::this_thread::get_id() << " started." << std::endl;
+                OE_INFO << LC << "Arena \"" << _name << "\" starting thread " << std::this_thread::get_id() << std::endl;
 
-                OE_THREAD_NAME(this->_name.c_str());
+                OE_THREAD_NAME(std::string("OE.JobArena[" + _name + "]").c_str());
 
                 while (!_done)
                 {
@@ -629,11 +659,9 @@ JobArena::startThreads()
                     {
                         std::unique_lock<Mutex> lock(_queueMutex);
 
-                        //_block.wait_for(lock, std::chrono::seconds(1));
-
                         _block.wait(lock, [this] {
                             return _queue.empty() == false || _done == true;
-                            });
+                        });
 
                         if (!_queue.empty() && !_done)
                         {
@@ -648,7 +676,7 @@ JobArena::startThreads()
                         job();
                     }
                 }
-                OE_DEBUG << LC << "Thread " << std::this_thread::get_id() << " exiting." << std::endl;
+                //OE_INFO << LC << "Arena \"" << _name << "\" stopping thread " << std::this_thread::get_id() << std::endl;
             }
         ));
     }

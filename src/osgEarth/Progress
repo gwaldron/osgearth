@@ -21,7 +21,6 @@
 #define OSGEARTH_PROGRESS_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Containers>
 #include <osgEarth/Threading>
 
 namespace osgEarth
@@ -30,14 +29,16 @@ namespace osgEarth
     * ProgressCallback is a general purpose interface for functions that need to report progress
     * or handle cancelation of a task.
     */
-    class OSGEARTH_EXPORT ProgressCallback : public osg::Referenced, public Threading::Cancelable
+    class OSGEARTH_EXPORT ProgressCallback : 
+        public osg::Referenced, 
+        public Threading::Cancelable
     {
     public:
-        /**
-        * Creates a new ProgressCallback
-        */
+        //! Creates a new ProgressCallback
         ProgressCallback();
-        virtual ~ProgressCallback() { }
+
+        //! Createa a new ProgressCallback that proxies an existing Cancelable
+        ProgressCallback(Cancelable* c);
 
         /**
          * Report an error and set the canceled flag to true.
@@ -112,14 +113,16 @@ namespace osgEarth
         float getRetryDelay() const { return _retryDelay_s; }
 
     protected:
-        std::string       _message;
-        mutable  bool     _canceled;
-        mutable  float    _retryDelay_s;
+        virtual ~ProgressCallback() { }
+
+        Cancelable* _cancelable;
+        std::string _message;
+        mutable bool _canceled;
+        mutable float _retryDelay_s;
 
         //! Override this to tell the Progress to cancel.
         virtual bool shouldCancel() const { return false; }
     };
-
 
     /**
     * ConsoleProgressCallback is a simple ProgressCallback that reports progress to the console

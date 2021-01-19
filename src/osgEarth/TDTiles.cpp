@@ -24,6 +24,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/NetworkMonitor>
+#include <osgEarth/Threading>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 #include <osgUtil/IncrementalCompileOperation>
@@ -32,6 +33,7 @@
 #include <osgEarth/LineDrawable>
 
 using namespace osgEarth;
+using namespace osgEarth::Threading;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib::ThreeDTiles;
 
@@ -40,6 +42,9 @@ using namespace osgEarth::Contrib::ThreeDTiles;
 #define SENTRY_VALUE NULL
 
 //........................................................................
+
+using ICO = osgUtil::IncrementalCompileOperation;
+
 
 namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 {
@@ -76,14 +81,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
             // Clone the read options and if there isn't a ThreadPool create one.
             osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
-            osg::ref_ptr< ThreadPool > threadPool = ThreadPool::get(readOptions.get());
-            if (!threadPool.valid())
-            {
-                unsigned int numThreads = 2;
-                threadPool = new ThreadPool("osgEarth.3DTiles", numThreads);
-                threadPool->put(readOptions.get());
-            }
-
             osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, "", NULL, readOptions.get());
             node->setMaximumScreenSpaceError(15.0f);
             return node.release();
@@ -477,12 +474,11 @@ randomColor()
 
 namespace
 {
-    class LoadTilesetOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
+    class LoadTilesetOperation : public ICO::CompileCompletedCallback
     {
     public:
-        LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options, Threading::Promise<osg::ref_ptr<osg::Node>> promise) :
+        LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options) : 
             _uri(uri),
-            _promise(promise),
             _options(options),
             _parentTileset(parentTileset)
         {
@@ -490,115 +486,129 @@ namespace
             _requestLayer = NetworkMonitor::getRequestLayer();
         }
 
-        void operator()(osg::Object*)
+        osg::ref_ptr<osg::Node> loadTileSet(Cancelable* progress)
         {
             NetworkMonitor::ScopedRequestLayer layerRequest(_requestLayer);
-            if (!_promise.isAbandoned())
+
+            if (progress && progress->isCanceled())
+                return nullptr;
+
+            osg::ref_ptr<ThreeDTilesetContentNode> tilesetNode;
+
+            osg::ref_ptr<ICO> ico = OptionsData<ICO>::get(_options.get(), typeid(ICO).name());
+
+            osg::ref_ptr<ThreeDTilesetNode> parentTileset;
+            _parentTileset.lock(parentTileset);
+            if (parentTileset.valid())
             {
-                osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico = OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
-                osg::ref_ptr<ThreeDTilesetContentNode> tilesetNode;
-                osg::ref_ptr<ThreeDTilesetNode> parentTileset;
-                _parentTileset.lock(parentTileset);
-                if (parentTileset.valid())
+                // load the tile set:
+                ReadResult rr = _uri.readString(_options.get());
+
+                if (rr.failed())
                 {
-                    // load the tile set:
-                    ReadResult rr = _uri.readString(_options.get());
+                    OE_WARN << "Fail to read tileset \"" << _uri.full() << ": " << rr.errorDetail() << std::endl;
+                }
 
-                    if (rr.failed())
+                //std::string fullPath = osgEarth::getAbsolutePath(_url);
+
+                osg::ref_ptr<Tileset> tileset = Tileset::create(rr.getString(), _uri.full());
+                if (tileset.valid())
+                {
+                    if (progress && progress->isCanceled())
+                        return nullptr;
+
+                    tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset.get(), _options.get());
+
+                    if (tilesetNode.valid())
+
+                        if (progress && progress->isCanceled())
+                            return nullptr;
                     {
-                        OE_WARN << "Fail to read tileset \"" << _uri.full() << ": " << rr.errorDetail() << std::endl;
-                    }
+                        ImageUtils::compressAndMipmapTextures(tilesetNode.get());
 
-                    //std::string fullPath = osgEarth::getAbsolutePath(_url);
-
-                    osg::ref_ptr<Tileset> tileset = Tileset::create(rr.getString(), _uri.full());
-                    if (tileset)
-                    {
-                        tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset.get(), _options.get());
-
-                        if (tilesetNode.valid())
+                        if (ico.valid())
                         {
-                            ImageUtils::compressAndMipmapTextures(tilesetNode.get());
+                            OE_PROFILING_ZONE_NAMED("ICO compile");
 
-                            if (ico.valid())
+                            osg::Node* contentNode = static_cast<ThreeDTileNode*>(tilesetNode->getChild(0))->getContent();
+                            if (contentNode)
                             {
-                                OE_PROFILING_ZONE_NAMED("ICO compile");
+                                _compileSet = new ICO::CompileSet(contentNode);
+                                _compileSet->_compileCompletedCallback = this;
+                                ico->add(_compileSet.get());
 
-                                osg::Node* contentNode = static_cast<ThreeDTileNode*>(tilesetNode->getChild(0))->getContent();
-                                if (contentNode)
+                                unsigned int numTries = 0;
+                                // block until the compile completes, checking once and a while for
+                                // an abandoned operation (to avoid deadlock)
+                                while (!_block.wait(10)) // 10ms
                                 {
-                                    _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(contentNode);
-                                    _compileSet->_compileCompletedCallback = this;
-                                    ico->add(_compileSet.get());
-
-                                    unsigned int numTries = 0;
-                                    // block until the compile completes, checking once and a while for
-                                    // an abandoned operation (to avoid deadlock)
-                                    while (!_block.wait(10)) // 10ms
+                                    // Limit the number of tries and give up after awhile to avoid the case where the ICO still has work to do but the application has exited.
+                                    ++numTries;
+                                    if ((progress && progress->isCanceled()) ||
+                                        numTries == 1000)
                                     {
-                                        // Limit the number of tries and give up after awhile to avoid the case where the ICO still has work to do but the application has exited.
-                                        ++numTries;
-                                        if (_promise.isAbandoned() || numTries == 1000)
-                                        {
-                                            _compileSet->_compileCompletedCallback = NULL;
-                                            ico->remove(_compileSet.get());
-                                            _compileSet = 0;
-                                            break;
-                                        }
+                                        _compileSet->_compileCompletedCallback = NULL;
+                                        ico->remove(_compileSet.get());
+                                        _compileSet = 0;
+                                        break;
                                     }
                                 }
                             }
                         }
                     }
                 }
-                _promise.resolve(osg::ref_ptr<osg::Node>(tilesetNode));
             }
+
+            return tilesetNode;
         }
 
-        bool compileCompleted(osgUtil::IncrementalCompileOperation::CompileSet* compileSet)
+        bool compileCompleted(ICO::CompileSet* compileSet)
         {
             // Clear the _compileSet to avoid keeping a circular reference to the content.
-            _compileSet = 0;
+            _compileSet = nullptr;
             // release the wait.
             _block.set();
             return true;
         }
 
-        Threading::Promise<osg::ref_ptr<osg::Node>> _promise;
         osg::ref_ptr< osgDB::Options > _options;
         osg::observer_ptr<ThreeDTilesetNode> _parentTileset;
-        osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
+        osg::ref_ptr<ICO::CompileSet> _compileSet;
         Threading::Event _block;
         URI _uri;
         std::string _requestLayer;
     };
 
-    Threading::Future<osg::ref_ptr<osg::Node>> readTilesetAsync(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options)
+
+    typedef Job<osg::ref_ptr<osg::Node>> AsyncTileJob;
+
+    osg::ref_ptr<osg::Node> readTilesetSync(
+        ThreeDTilesetNode* parentTileset,
+        const URI& uri,
+        osgDB::Options* options)
     {
-        osg::ref_ptr<ThreadPool> threadPool;
-        if (options)
-        {
-            threadPool = ThreadPool::get(options);
-        }
+        osg::ref_ptr<LoadTilesetOperation> operation = new LoadTilesetOperation(
+            parentTileset, uri, options);
 
-        Threading::Promise<osg::ref_ptr<osg::Node>> promise;
+        return operation->loadTileSet(nullptr);
+    }
 
-        osg::ref_ptr< osg::Operation > operation = new LoadTilesetOperation(parentTileset, uri, options, promise);
+    AsyncTileJob::Result readTilesetAsync(
+        ThreeDTilesetNode* parentTileset, 
+        const URI& uri, 
+        osgDB::Options* options)
+    {
+        osg::ref_ptr<LoadTilesetOperation> operation = new LoadTilesetOperation(
+            parentTileset, uri, options);
 
-        if (operation.valid())
-        {
-            if (threadPool.valid())
+        return AsyncTileJob::dispatch(
+            "oe.3dtiles",
+            [operation, options](Cancelable* progress)
             {
-                threadPool->run(operation.get());
+                return operation->loadTileSet(progress);
+                // Note: it already runs the ICO so we don't call NodePreCompiler here
             }
-            else
-            {
-                OE_WARN << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
-                operation->operator()(0);
-            }
-        }
-
-        return promise.getFuture();
+        );
     }
 }
 
@@ -652,7 +662,8 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
 
         if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
         {
-            _content = readTilesetAsync(_tileset, uri, options).get();
+            //_content = readTilesetAsync(_tileset, uri, options).get();
+            _content = readTilesetSync(_tileset, uri, options).get();
         }
         else
         {
@@ -912,7 +923,7 @@ void ThreeDTileNode::resolveContent()
 }
 
 
-void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
+void ThreeDTileNode::requestContent(ICO* ico)
 {
     if (!_content.valid() && !_requestedContent && hasContent())
     {
@@ -921,7 +932,8 @@ void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
         if (ico)
         {
             localOptions = Registry::instance()->cloneOrCreateOptions(_options.get());
-            OptionsData<osgUtil::IncrementalCompileOperation>::set(localOptions.get(), "osg::ico", ico);
+            //OptionsData<osgUtil::IncrementalCompileOperation>::set(localOptions.get(), "osg::ico", ico);
+            OptionsData<ICO>::set(localOptions.get(), typeid(ICO).name(), ico);
         }
         else
         {
@@ -945,8 +957,16 @@ void ThreeDTileNode::requestContent(osgUtil::IncrementalCompileOperation* ico)
         }
         else
         {
-            _contentFuture = uri
-                .readNodeAsync(localOptions.get(), NULL);
+            // asynchronously load the pre-compile the node
+            _contentFuture = Job<osg::ref_ptr<osg::Node>>::dispatch(
+                "oe.3dtiles",
+                [uri, localOptions](Cancelable* progress)
+                {
+                    osg::ref_ptr<osg::Node> node = uri.getNode(localOptions.get(), nullptr);
+                    NodePreCompiler::compile(node.get(), localOptions.get(), progress);
+                    return node;
+                }
+            );
         }
 
         _requestedContent = true;
@@ -988,17 +1008,14 @@ bool ThreeDTileNode::unloadContent()
 
     if (_content.valid())
     {
-        if (_content.valid())
-        {
-            _content->releaseGLObjects();
-            _content = 0;
-        }
+        _content->releaseGLObjects();
+        _content = nullptr;
     }
 
     _firstVisit = true;
     _content = 0;
     _requestedContent = false;
-    _contentFuture = Future<osg::ref_ptr<osg::Node>>();
+    _contentFuture.abandon(); // = Future<osg::ref_ptr<osg::Node>>();
 
     return true;
 }
@@ -1078,7 +1095,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
         }
 
         // Get the ICO so we can do incremental compiliation
-        osgUtil::IncrementalCompileOperation* ico = 0;
+        ICO* ico = 0;
         osgViewer::View* osgView = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
         if (osgView)
         {

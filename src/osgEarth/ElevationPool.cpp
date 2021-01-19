@@ -910,9 +910,10 @@ AsyncElevationSampler::AsyncElevationSampler(
     const Map* map,
     unsigned numThreads) :
 
-    _map(map)
+    _map(map),
+    _arena("oe.AsyncElevationSampler", numThreads)
 {
-    _threadPool = new ThreadPool("osgEarth.ElevationPool", numThreads);
+    //nop
 }
 
 Future<ElevationSample>
@@ -923,11 +924,29 @@ AsyncElevationSampler::getSample(const GeoPoint& p)
 
 Future<ElevationSample>
 AsyncElevationSampler::getSample(
-    const GeoPoint& p,
+    const GeoPoint& point,
     const Distance& resolution)
 {
-    Internal::SampleElevationOp* op = new Internal::SampleElevationOp(_map, p, resolution, &_ws);
-    Future<ElevationSample> result = op->_promise.getFuture();
-    _threadPool->run(op);
-    return result;
+    return Job<ElevationSample>::dispatch(
+        _arena,
+        [=](Cancelable* cancelable)
+        {
+            ElevationSample sample;
+            if (cancelable == nullptr || !cancelable->isCanceled())
+            {
+                osg::ref_ptr<const Map> map(_map);
+                if (map.valid())
+                {
+                    osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(cancelable);
+
+                    sample = map->getElevationPool()->getSample(
+                        point,
+                        resolution,
+                        &_ws,
+                        progress.get());
+                }
+            }
+            return sample;
+        }
+    );
 }

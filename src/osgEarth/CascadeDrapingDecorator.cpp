@@ -525,6 +525,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
     osg::Texture::FilterMode minifyFilter, magnifyFilter;
     osg::Vec4 clearColor;
     bool mipmapping = decorator._mipmapping;
+    float anisotropy;
 
     // if the master cam is a picker, just limit to one cascade with no sampling.
     bool isPickCamera = camera->getName() == "osgEarth::RTTPicker";
@@ -538,6 +539,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
         magnifyFilter = osg::Texture::NEAREST;
         clearColor.set(0,0,0,0);
         mipmapping = false;
+        anisotropy = 1.0f;
     }
     else
     {
@@ -548,6 +550,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
         minifyFilter = mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR : osg::Texture::LINEAR;
         magnifyFilter = osg::Texture::LINEAR;
         clearColor.set(1,1,1,0);
+        anisotropy = 4.0f;
     }
 
     // Create the shared draping texture.
@@ -561,7 +564,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
     tex->setFilter(tex->MAG_FILTER, magnifyFilter);
     tex->setWrap(tex->WRAP_S, tex->CLAMP_TO_EDGE);
     tex->setWrap(tex->WRAP_T, tex->CLAMP_TO_EDGE);
-    tex->setMaxAnisotropy(4.0f);
+    tex->setMaxAnisotropy(anisotropy);
     
     // set up the global RTT camera state:
     _rttSS = new osg::StateSet();

@@ -396,7 +396,7 @@ namespace
         if (_jobArena)
         {
             // first check the write-pending cache. The record will be there
-            // if the object is queued for asynchronous writing but hasn't 
+            // if the object is queued for asynchronous writing but hasn't
             // actually been saved out yet.
 
             ScopedReadLock lock(_writeCacheRWM);
@@ -467,9 +467,9 @@ namespace
         if (_jobArena)
         {
             // first check the write-pending cache. The record will be there
-            // if the object is queued for asynchronous writing but hasn't 
+            // if the object is queued for asynchronous writing but hasn't
             // actually been saved out yet.
-        
+
             ScopedReadLock lock(_writeCacheRWM);
 
             auto i = _writeCache.find(fileURI.full());
@@ -545,9 +545,9 @@ namespace
 
     bool
     FileSystemCacheBin::write(
-        const std::string& key, 
-        const osg::Object* raw_object, 
-        const Config& meta, 
+        const std::string& key,
+        const osg::Object* raw_object,
+        const Config& meta,
         const osgDB::Options* raw_writeOptions)
     {
         if ( !binValidForWriting() || !raw_object)
@@ -560,7 +560,7 @@ namespace
         osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(raw_writeOptions);
 
         // Temporary: Check whether it's a node because we can't thread
-        // out the NODE writes until we figure out the thread-safety 
+        // out the NODE writes until we figure out the thread-safety
         // issue and make all the reads return CONST objects
         bool isNode = dynamic_cast<const osg::Node*>(raw_object) != nullptr;
 
@@ -588,19 +588,19 @@ namespace
             if (dynamic_cast<const osg::Image*>(object.get()))
             {
                 std::string filename = fileURI.full() + OSG_EXT;
-                r = _rw->writeImage(*static_cast<const osg::Image*>(object.get()), filename, writeOptions);
+                r = _rw->writeImage(*static_cast<const osg::Image*>(object.get()), filename, writeOptions.get());
                 writeOK = r.success();
             }
             else if (dynamic_cast<const osg::Node*>(object.get()))
             {
                 std::string filename = fileURI.full() + OSG_EXT;
-                r = _rw->writeNode(*static_cast<const osg::Node*>(object.get()), filename, writeOptions);
+                r = _rw->writeNode(*static_cast<const osg::Node*>(object.get()), filename, writeOptions.get());
                 writeOK = r.success();
             }
             else
             {
                 std::string filename = fileURI.full() + OSG_EXT;
-                r = _rw->writeObject(*object.get(), filename, writeOptions);
+                r = _rw->writeObject(*object.get(), filename, writeOptions.get());
                 writeOK = r.success();
             }
 
@@ -633,7 +633,7 @@ namespace
         if (_jobArena != nullptr && !isNode)
         {
             // Store in the write-cache until it's actually written.
-            // Will override any existing entry and that's OK since the 
+            // Will override any existing entry and that's OK since the
             // most recent one is the valid one.
             _writeCacheRWM.write_lock();
             WriteCacheRecord& record = _writeCache[fileURI.full()];

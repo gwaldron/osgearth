@@ -75,6 +75,9 @@ namespace osgEarth { namespace MBTiles
 
         void setDataExtents(const DataExtentList&);
 
+        bool getMetaData(const std::string& name, std::string& value);
+        bool putMetaData(const std::string& name, const std::string& value);
+
     private:
         void* _database;
         mutable unsigned _minLevel;
@@ -90,8 +93,6 @@ namespace osgEarth { namespace MBTiles
         // because no one knows if/when sqlite3 is threadsafe.
         mutable Threading::Mutex _mutex;
 
-        bool getMetaData(const std::string& name, std::string& value);
-        bool putMetaData(const std::string& name, const std::string& value);
         bool createTables();
         void computeLevels();
 
@@ -147,6 +148,13 @@ namespace osgEarth
 
         //! Assigns data extents to this layer (if open for writing).
         virtual void setDataExtents(const DataExtentList&);
+
+    public:
+        //! Gets the value of the metadata key
+        bool getMetaData(const std::string& name, std::string& value);
+
+        //! Put the metadata key
+        bool putMetaData(const std::string& name, const std::string& value);
 
     protected: // Layer
 
@@ -207,6 +215,13 @@ namespace osgEarth
 
         //! Assigns data extents to this layer (if open for writing).
         virtual void setDataExtents(const DataExtentList&);
+
+    public:
+        //! Gets the value of the metadata key
+        bool getMetaData(const std::string& name, std::string& value);
+
+        //! Put the metadata key
+        bool putMetaData(const std::string& name, const std::string& value);
 
     protected: // Layer
 

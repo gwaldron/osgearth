@@ -23,6 +23,7 @@ void oe_Draping_VS(inout vec4 vertexView)
 #pragma vp_order      0.6
 
 #pragma import_defines(OE_IS_PICK_CAMERA)
+#pragma import_defines(OE_DISABLE_DRAPING)
 #pragma import_defines(OE_DRAPING_MAX_CASCADES)
 
 uniform sampler2DArray oe_Draping_tex;
@@ -31,6 +32,10 @@ in vec4 oe_Draping_vertexView;
 
 void oe_Draping_FS(inout vec4 color)
 {
+#ifdef OE_DISABLE_DRAPING
+    return;
+#endif
+
     vec4 texel = vec4(0,0,0,0);
 
     // the [3][3] slot will be zero if we have exceeded the current number of cascades

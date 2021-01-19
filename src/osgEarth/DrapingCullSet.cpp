@@ -48,7 +48,8 @@ DrapingManager::get(const osg::Camera* cam)
 //............................................................................
 
 
-DrapingCullSet::DrapingCullSet()
+DrapingCullSet::DrapingCullSet() :
+_frameCulled( true )
 {
     // nop
 }
@@ -56,6 +57,14 @@ DrapingCullSet::DrapingCullSet()
 void
 DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path, const osg::FrameStamp* fs)
 {
+    // Reset the set if this is the first push after a cull.
+    if ( _frameCulled )
+    {
+        _frameCulled = false;
+        _entries.clear();
+        _bs.init();
+    }
+
     _entries.push_back( Entry() );
     Entry& entry = _entries.back();
     entry._node = node;
@@ -140,9 +149,7 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
             }
         }
 
-        // since each DrapedCullSet is locked to a camera (and thus no
-        // threading issues) it should be OK to clear it out after accept is complete
-        _entries.clear();
-        _bs.init();
+        // mark this set so it will reset for the next frame
+        _frameCulled = true;
     }
 }

@@ -623,7 +623,7 @@ namespace osgEarth
         GeoImage(const osg::Image* image, const GeoExtent& extent);
 
         //! Constructs a new goereferenced image from a future.
-        GeoImage(Future<osg::ref_ptr<const osg::Image>> image, const GeoExtent& extent);
+        GeoImage(Future<osg::ref_ptr<osg::Image>> image, const GeoExtent& extent);
 
         /** dtor */
         virtual ~GeoImage() { }
@@ -710,7 +710,7 @@ namespace osgEarth
         GeoExtent _extent;
         Status _status;
         osg::ref_ptr<const osg::Image> _myimage;
-        mutable optional<Future<osg::ref_ptr<const osg::Image>>> _future;
+        mutable optional<Future<osg::ref_ptr<osg::Image>>> _future;
     };
 
     typedef std::vector<GeoImage> GeoImageVector;

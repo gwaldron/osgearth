@@ -26,6 +26,7 @@
 
 #include <osg/ComputeBoundsVisitor>
 #include <osg/TextureBuffer>
+#include <osgDB/ObjectWrapper>
 #include <osgUtil/Optimizer>
 
 #define LC "[DrawInstanced] "
@@ -47,7 +48,7 @@ namespace osgEarth { namespace Util
     class MakeTransformsStatic : public osg::NodeVisitor
     {
     public:
-        MakeTransformsStatic() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) 
+        MakeTransformsStatic() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
         {
             setNodeMaskOverride(~0);
         }
@@ -170,7 +171,7 @@ _tboUnit(defaultUnit)
 }
 
 
-void 
+void
 ConvertToDrawInstanced::apply(osg::Drawable& drawable)
 {
     osg::Geometry* geom = drawable.asGeometry();
@@ -243,7 +244,7 @@ DrawInstanced::install(osg::StateSet* stateset)
 {
     if ( !stateset )
         return false;
-    
+
     if ( !Registry::capabilities().supportsDrawInstanced() )
         return false;
 
@@ -269,6 +270,54 @@ DrawInstanced::remove(osg::StateSet* stateset)
     Shaders pkg;
     pkg.unload( vp, pkg.Instancing );
 }
+
+
+void InstanceGroup::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+    {
+        for (unsigned int i = 0; i < getNumChildren(); ++i)
+        {
+            osg::Node* child = getChild(i);
+
+            osg::ref_ptr< osg::MatrixTransform > mt = new osg::MatrixTransform;
+            mt->addChild(child);
+
+            const DrawInstanced::MatrixRefVector* matrices = DrawInstanced::getMatrixVector(child);
+            if (matrices)
+            {
+                for (unsigned int j = 0; j < matrices->size(); ++j)
+                {
+                    mt->setMatrix((*matrices)[j]);
+                    mt->accept(nv);
+                }
+            }
+        }
+    }
+    else
+    {
+        osg::Group::traverse(nv);
+    }
+}
+
+
+
+namespace osgEarth {
+    namespace Serializers {
+        namespace InstanceGroup
+        {
+            REGISTER_OBJECT_WRAPPER(
+                InstanceGroup,
+                new osgEarth::Util::DrawInstanced::InstanceGroup,
+                osgEarth::Util::DrawInstanced::InstanceGroup,
+                "osg::Object osg::Node osg::Group osgEarth::Util::DrawInstanced::InstanceGroup")
+            {
+                //nop
+            }
+        }
+    }
+}
+
 
 bool
 DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
@@ -317,14 +366,14 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     // get rid of the old matrix transforms.
     parent->removeChildren(0, parent->getNumChildren());
 
-	// This is the maximum size of the tbo 
+	// This is the maximum size of the tbo
 	int maxTBOSize = Registry::capabilities().getMaxTextureBufferSize();
 	// This is the total number of instances it can store
 	// We will iterate below. If the number of instances is larger than the buffer can store
     // we make more tbos
     int matrixSize = 4 * 4 * sizeof(float); // 4 vec4's.
     int maxTBOInstancesSize = maxTBOSize / matrixSize;
-        
+
     osgUtil::Optimizer optimizer;
 
     // For each model:
@@ -366,7 +415,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 			tboSize = maxTBOInstancesSize;
 			numInstancesToStore = maxTBOInstancesSize;
 		}
-		
+
         // Assign matrix vectors to the node, so the application can easily retrieve
         // the original position data if necessary.
         MatrixRefVector* nodeMats = new MatrixRefVector();
@@ -375,7 +424,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         node->getOrCreateUserDataContainer()->addUserObject(nodeMats);
 
         // this group is simply a container for the uniform:
-        osg::Group* instanceGroup = new osg::Group();
+        InstanceGroup* instanceGroup = new InstanceGroup();
 
         // sampler that will hold the instance matrices:
         osg::Image* image = new osg::Image();
@@ -400,7 +449,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 			}
 
 			// encode the ObjectID in the last column, which is always (0,0,0,1)
-			// in a standard scale/rot/trans matrix. We will reinstate it in the 
+			// in a standard scale/rot/trans matrix. We will reinstate it in the
 			// shader after extracting the object ID.
 			*ptr++ = (float)((i.objectID      ) & 0xff);
 			*ptr++ = (float)((i.objectID >>  8) & 0xff);
@@ -431,7 +480,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         // geometries. (As DI's they cannot report bounds naturally.)
         ConvertToDrawInstanced cdi(numInstancesToStore, bbox, true, posTBO, 0);
         node->accept( cdi );
-        
+
         // Bind the TBO sampler:
         osg::StateSet* stateset = instanceGroup->getOrCreateStateSet();
         stateset->setTextureAttribute(cdi.getTextureImageUnit(), posTBO);

@@ -34,10 +34,12 @@
 
 namespace osgEarth
 {
+    using namespace Threading;
+
     /**
     * Render node graphs to textures, one at a time.
     */
-    class OSGEARTH_EXPORT TileRasterizer : public osg::Referenced
+    class OSGEARTH_EXPORT TileRasterizer : public osg::Drawable
     {
     public:
         //! Construct a new tile rasterizer camera
@@ -53,46 +55,56 @@ namespace osgEarth
         * @param extent geospatial extent of the node to render.
         * @return Future image - blocks on .get() or .release()
         */
-        Threading::Future<osg::ref_ptr<osg::Image>> render(osg::Node* node, const GeoExtent& extent);
+        Future<osg::ref_ptr<osg::Image>> render(
+            osg::Node* node, 
+            const GeoExtent& extent);
 
         //! destructor
         virtual ~TileRasterizer();
 
-        osg::Node* getNode() const;
+    public: // Drawable
+
+        void drawImplementation(osg::RenderInfo& ri) const override;
 
     private:
 
-        struct RenderData {
+        // TR installs itself on a simple GraphicsContext, so there is no need
+        // to store per-context data
+        struct RenderData
+        {
+            RenderData() : _samplesQuery(0), _pbo(0), _initialized(false) { }
+
             bool _initialized;
             osg::ref_ptr<osgUtil::SceneView> _sv;
-            mutable osg::buffered_object<GLuint> _samplesQuery;
-            mutable osg::buffered_object<GLuint> _pbo;
-            osg::observer_ptr<osg::GraphicsContext> _gc;
+            GLuint _samplesQuery;
+            GLuint _pbo;
             unsigned _width, _height;
+            osg::ref_ptr<osg::Texture2D> _tex;
+
+            osg::observer_ptr<osg::GraphicsContext> _gc;
         };
 
-        struct RenderOperation : public osg::GraphicsOperation {
+        // One render op for the GC queue
+        struct RenderOperation : public osg::GraphicsOperation
+        {
             RenderOperation(osg::Node* node, const GeoExtent& extent, RenderData& renderData);
-            Threading::Future<osg::ref_ptr<osg::Image>> getFuture();
+            Future<osg::ref_ptr<osg::Image>> getFuture();
             void operator () (osg::GraphicsContext* context);
             osg::ref_ptr<osg::Node> _node;
             GeoExtent _extent;
-            osg::ref_ptr<osg::Image> _image;
-            Threading::Promise<osg::ref_ptr<osg::Image>> _promise;
-            RenderData& _renderData;
-            int _pass;
-            bool _async;
-            GLuint _pbo;
+            Promise<osg::ref_ptr<osg::Image>> _promise;
+            RenderData& _rd;
         };
 
-        struct RenderInstaller : public osg::Drawable {
-            RenderInstaller(RenderData& renderData);
-            void drawImplementation(osg::RenderInfo& ri) const;
-            RenderData& _renderData;
-        };
+        // Installs the TR on a GC operations queue
+        //struct RenderInstaller : public osg::Drawable
+        //{
+        //    RenderInstaller(RenderData& renderData);
+        //    void drawImplementation(osg::RenderInfo& ri) const;
+        //    RenderData& _renderData;
+        //};
 
-        RenderData _renderData;
-        osg::ref_ptr<osg::Drawable> _installer;
+        mutable RenderData _renderData;
     };
 
 } // namespace osgEarth

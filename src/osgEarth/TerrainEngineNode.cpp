@@ -121,12 +121,6 @@ TerrainEngineNode::requestRedraw()
 }
 
 void
-TerrainEngineNode::dirtyTerrain()
-{
-    requestRedraw();
-}
-
-void
 TerrainEngineNode::shutdown()
 {
     // DO NOT destroy the tile model factory; it may still be in use

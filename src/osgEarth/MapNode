@@ -150,7 +150,7 @@ namespace osgEarth
         /**
          * Gets the underlying terrain engine that renders the terrain surface of the map.
          */
-        TerrainEngineNode* getTerrainEngine() const;
+        TerrainEngine* getTerrainEngine() const;
 
         /**
          * Gets a service that you can use to release GL objects.

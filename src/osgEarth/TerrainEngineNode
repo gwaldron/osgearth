@@ -54,44 +54,6 @@ namespace osgEarth
         class TerrainEngineNodeFactory;
     }
 
-    class /*interface*/ TerrainEngine
-    {
-    public:
-        //! Unique ID of the terrain engine instance
-        virtual UID getUID() const = 0;
-
-        //! Access the shared GL resources associated with the terrain engine
-        virtual TerrainResources* getResources() const = 0;
-
-        //! Map associated with this terrain engine
-        virtual const Map* getMap() const = 0;
-    };
-
-#if 0
-    /**
-     * Interface for and object that can create a new terrain tile models
-     */
-    class /*interface*/ TerrainEngineTileModelCreator
-    {
-    public:
-
-        /**
-         * Creates a new data model for a terrain tile, calling any registered
-         * CreateTileModelCallbacks before returning the new object.
-         *
-         * @param frame    Map frame from which to create the new tile model
-         * @param key      Key for which to create the new tile model
-         * @param manifest UIDs of layers to fetch data for; empty => all layers
-         * @param progress Optional progress/stats tracking callback
-         */
-        virtual TerrainTileModel* createTileModel(
-            const Map* map,
-            const TileKey& key,
-            const CreateTileManifest& manifest,
-            ProgressCallback* progress ) =0;
-    };
-#endif
-
     /**
      * A callback that lets you customize the computed range for a terrain tile.
      * Providing a custom range can let applications better control how paging behaves.
@@ -101,107 +63,14 @@ namespace osgEarth
         virtual float operator()(osg::Node* node, osg::NodeVisitor& nv) = 0;
     };
 
-
     /**
-     * TerrainEngineNode is the base class and interface for map engine implementations.
-     *
-     * A map engine lives under a MapNode and is responsible for generating the
-     * actual geometry representing the Earth.
+     * Terrain Engine interface. (Pure virtual)
+     * Access to the low-level API for the terrain engine, the node graph that
+     * renders the planet's surface.
      */
-    class OSGEARTH_EXPORT TerrainEngineNode : 
-        public osg::CoordinateSystemNode,
-        public TerrainEngine,
-        //public TerrainEngineTileModelCreator,
-        public TerrainEngineRequirements
+    class /*interface*/ TerrainEngine
     {
-    public: // TerrainEngine interface
-
-        //! Map that this engine is rendering
-        const Map* getMap() const override { return _map.get(); }
-
-        //! Access the shared GL resources associated with the terrain engine
-        TerrainResources* getResources() const override;
-
-
-    public: // TerrainEngineTileModelCreator interface
-
-        TerrainTileModel* createTileModel(
-            const Map* map,
-            const TileKey& key,
-            const CreateTileManifest& manifest,
-            ProgressCallback* progress);
-
     public:
-
-        /** Gets the Terrain interface for interacting with the scene graph */
-        Terrain* getTerrain() { return _terrainInterface.get(); }
-        const Terrain* getTerrain() const { return _terrainInterface.get(); }
-
-        /** Adds a terrain effect */
-        void addEffect( TerrainEffect* effect );
-
-        /** Removes a terrain effect */
-        void removeEffect( TerrainEffect* effect );
-
-        //! Marks the terrain tiles intersecting the provied extent as invalid
-        void invalidateRegion(const GeoExtent& extent) {
-            invalidateRegion(extent, 0, INT_MAX);
-        }
-
-        void invalidateRegion(const GeoExtent& extent, unsigned minLevel) {
-            invalidateRegion(extent, minLevel, INT_MAX);
-        }
-
-        virtual void invalidateRegion(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel)
-        {
-            //NOP by default
-        }
-
-        virtual void invalidateRegion(
-            const std::vector<const Layer*> layers,
-            const GeoExtent& extent,
-            unsigned minLevel,
-            unsigned maxLevel)
-        {
-            //NOP by default
-        }
-
-        void invalidateRegion(
-            const std::vector<const Layer*> layers,
-            const GeoExtent& extent)
-        {
-            invalidateRegion(layers, extent, 0, INT_MAX);
-        }
-
-        /** Access the stateset used to render the terrain. */
-        virtual osg::StateSet* getSurfaceStateSet() { return getOrCreateStateSet(); }
-
-        /** Gets the ComputeRangeCallback for this TerrainEngineNode */
-        ComputeRangeCallback* getComputeRangeCallback() const;
-
-        /** Sets the ComputeRangeCallback for this TerrainEngineNode */
-        void setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback);
-
-        // Request that the terrain tiles be rebuilt.
-        virtual void dirtyTerrain();
-
-        //! Shut down the engine
-        virtual void shutdown();
-
-    public:
-        class OSGEARTH_EXPORT ModifyTileBoundingBoxCallback : public osg::Referenced
-        {
-        public:
-            virtual void modifyBoundingBox(const TileKey& key, osg::BoundingBox& box) const =0;
-        };
-
-        void addModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
-        void removeModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
-
-    public:
-
-        static TerrainEngineNode* create(const TerrainOptions& options);
-
         /**
          * Callback for customizing the TileModel.
          */
@@ -213,19 +82,166 @@ namespace osgEarth
                 TerrainTileModel*  model) = 0;
         };
 
-        /**
-         * Adds a TileModel creation callback, so you can add custom data
-         * to the TileModel after it's created.
-         */
-        void addCreateTileModelCallback(CreateTileModelCallback* callback);
-        void removeCreateTileModelCallback(CreateTileModelCallback* callback);
+    public:
+        //! Unique ID of the terrain engine instance
+        virtual UID getUID() const = 0;
 
-        //! Flags supporting the createStandaloneTile method. (NOT USED)
+        //! Create a tile data model from the map
+        virtual TerrainTileModel* createTileModel(
+            const Map* map,
+            const TileKey& key,
+            const CreateTileManifest& manifest,
+            ProgressCallback* progress) = 0;
+
+        //! Access the shared GL resources associated with the terrain engine
+        virtual TerrainResources* getResources() const = 0;
+
+        //! Map associated with this terrain engine
+        virtual const Map* getMap() const = 0;
+
+        //! Gets the Terrain interface for interacting with the scene graph
+        virtual Terrain* getTerrain() = 0;
+        virtual const Terrain* getTerrain() const = 0;
+
+        //! Adds a terrain effect
+        virtual void addEffect(TerrainEffect* effect) = 0;
+
+        //! Removes a terrain effect
+        virtual void removeEffect(TerrainEffect* effect) = 0;
+
+        //! Marks the terrain tiles intersecting the provied extent as invalid
+        virtual void invalidateRegion(const GeoExtent& extent) = 0;
+
+        //! Marks the terrain tiles intersecting the provied extent as invalid
+        virtual void invalidateRegion(
+            const GeoExtent& extent, 
+            unsigned minLevel) = 0;
+
+        //! Marks the terrain tiles intersecting the provied extent as invalid
+        virtual void invalidateRegion(
+            const GeoExtent& extent, 
+            unsigned minLevel, 
+            unsigned maxLevel) = 0;
+
+        //! Marks the terrain tiles intersecting the provied extent as invalid
+        virtual void invalidateRegion(
+            const std::vector<const Layer*> layers,
+            const GeoExtent& extent,
+            unsigned minLevel,
+            unsigned maxLevel) = 0;
+
+        //! Marks the terrain tiles intersecting the provied extent as invalid
+        virtual void invalidateRegion(
+            const std::vector<const Layer*> layers,
+            const GeoExtent& extent) = 0;
+
+        //! Access the stateset used to render the terrain.
+        virtual osg::StateSet* getSurfaceStateSet() = 0;
+
+        //! Gets the ComputeRangeCallback for this TerrainEngineNode */
+        virtual ComputeRangeCallback* getComputeRangeCallback() const = 0;
+
+        //! Sets the ComputeRangeCallback for this TerrainEngineNode */
+        virtual void setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback) = 0;
+
+        //! Scene graph root of the terrain engine
+        virtual osg::Node* getNode() = 0;
+
+        //! Adds a TileModel creation callback, so you can add custom data
+        //! to the TileModel after it's created.
+        virtual void addCreateTileModelCallback(CreateTileModelCallback* callback) = 0;
+        virtual void removeCreateTileModelCallback(CreateTileModelCallback* callback) = 0;
+
+        //! Create a standalone terrain tile. This method is not used by the
+        //! actual terrain engine, but rather exists to support external
+        //! processes that need tile geometry. The terrain engine implementation
+        //! may or may not provide this capability and will return NULL if
+        //! it does not.
+        //! @param model Tile model for which to build a tile
+        //! @param flags Bitwise-OR of the CreateTileFlags enums (MAY BE IGNORED)
+        //! @param referenceLOD If non-zero, adjust the vertex dimensions of the returned tile
+        //!        to match this LOD. Example: ask for a tile at tileKey.lod=15, tile is 17x17.
+        //!        Specific a referenceLOD=16, tile will be 33x33.
+        //! @param area Restrict the processed area to a subarea of the tile model.
+        //!        If not valid then the entire tile model will be used.
+        virtual osg::Node* createStandaloneTile(
+            const TerrainTileModel* model,
+            int createTileFlags,
+            unsigned referenceLOD,
+            const TileKey& subRegion) = 0;
+    };
+
+    /**
+     * TerrainEngineNode is the base class and interface for map engine implementations.
+     *
+     * A map engine lives under a MapNode and is responsible for generating the
+     * actual geometry representing the Earth.
+     */
+    class OSGEARTH_EXPORT TerrainEngineNode : 
+        public osg::CoordinateSystemNode,
+        public TerrainEngine,
+        public TerrainEngineRequirements
+    {
+    public:
+
+        TerrainTileModel* createTileModel(
+            const Map* map,
+            const TileKey& key,
+            const CreateTileManifest& manifest,
+            ProgressCallback* progress) override;
+
+        const Map* getMap() const override { return _map.get(); }
+
+        TerrainResources* getResources() const override;
+
+        Terrain* getTerrain() override { return _terrainInterface.get(); }
+        const Terrain* getTerrain() const override { return _terrainInterface.get(); }
+
+        void addEffect( TerrainEffect* effect ) override;
+
+        void removeEffect( TerrainEffect* effect ) override;
+
+        void invalidateRegion(const GeoExtent& extent) override {
+            invalidateRegion(extent, 0, INT_MAX);
+        }
+
+        void invalidateRegion(const GeoExtent& extent, unsigned minLevel) override {
+            invalidateRegion(extent, minLevel, INT_MAX);
+        }
+
+        virtual void invalidateRegion(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel) override {
+            //NOP by default
+        }
+
+        virtual void invalidateRegion(
+            const std::vector<const Layer*> layers,
+            const GeoExtent& extent,
+            unsigned minLevel,
+            unsigned maxLevel) override
+        {
+            //NOP by default
+        }
+
+        void invalidateRegion(
+            const std::vector<const Layer*> layers,
+            const GeoExtent& extent) override
+        {
+            invalidateRegion(layers, extent, 0, INT_MAX);
+        }
+
+        virtual osg::StateSet* getSurfaceStateSet() override { return getOrCreateStateSet(); }
+
+        //! Adds a TileModel creation callback, so you can add custom data
+        //! to the TileModel after it's created.
+        void addCreateTileModelCallback(CreateTileModelCallback* callback) override;
+        void removeCreateTileModelCallback(CreateTileModelCallback* callback) override;
+
+        //! Flags supporting the createStandaloneTile method
         enum CreateTileFlags
         {
-            CREATE_TILE_INCLUDE_TILES_WITH_MASKS     = 1,
-            CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS  = 2,
-            CREATE_TILE_INCLUDE_ALL                  = ~0
+            CREATE_TILE_INCLUDE_TILES_WITH_MASKS = 1,
+            CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS = 2,
+            CREATE_TILE_INCLUDE_ALL = ~0
         };
 
         //! Create a standalone terrain tile. This method is not used by the
@@ -244,7 +260,32 @@ namespace osgEarth
             const TerrainTileModel* model,
             int createTileFlags,
             unsigned referenceLOD,
-            const TileKey& subRegion) { return 0L; }
+            const TileKey& subRegion) { return nullptr; }
+
+        //! Shut down the engine
+        virtual void shutdown();
+
+        ComputeRangeCallback* getComputeRangeCallback() const override;
+
+        void setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback) override;
+
+        osg::Node* getNode() override {
+            return this;
+        }
+
+    public:
+        class OSGEARTH_EXPORT ModifyTileBoundingBoxCallback : public osg::Referenced
+        {
+        public:
+            virtual void modifyBoundingBox(const TileKey& key, osg::BoundingBox& box) const =0;
+        };
+
+        void addModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
+        void removeModifyTileBoundingBoxCallback(ModifyTileBoundingBoxCallback* callback);
+
+    public:
+
+        static TerrainEngineNode* create(const TerrainOptions& options);
 
 
     public: // TerrainEngineRequirements

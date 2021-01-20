@@ -226,7 +226,7 @@ void TerrainProfileCalculator::computeTerrainProfile( osgEarth::MapNode* mapNode
     slice.setStartPoint( startvec );
     slice.setEndPoint( endvec );
     slice.setDatabaseCacheReadCallback( 0 );
-    slice.computeIntersections( mapNode->getTerrainEngine());
+    slice.computeIntersections(mapNode->getTerrainEngine()->getNode());
 
     profile.clear();
     for (unsigned int i = 0; i < slice.getDistanceHeightIntersections().size(); i++)

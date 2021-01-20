@@ -71,7 +71,7 @@ namespace osgEarth { namespace Util
         }
         static std::shared_ptr<T> get(const osg::Object* o) {
             const char*name = typeid(T).name();
-            if (!o) return false;
+            if (!o) return std::shared_ptr<T>();
             const OptionsData<T>* data = dynamic_cast<const OptionsData<T>*>(osg::getUserObject(o, name));
             return data ? data->_shared_obj : std::shared_ptr<T>();
         }

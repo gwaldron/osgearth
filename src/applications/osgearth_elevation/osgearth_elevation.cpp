@@ -60,13 +60,10 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 {
     QueryElevationHandler()
         : _mouseDown( false ),
-          _terrain  ( s_mapNode->getTerrain() )
+          _terrain( s_mapNode->getTerrain() ),
+          _async(s_mapNode->getMap())
     {
-        _map = s_mapNode->getMap();
-        _path.push_back( s_mapNode->getTerrainEngine() );
-
-        // utility for asynchronous sampling requests
-        _async = new AsyncElevationSampler(_map);
+        _path.push_back( s_mapNode->getTerrainEngine()->getNode() );
     }
 
     void update( float x, float y, osgViewer::View* view )
@@ -204,7 +201,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
                 // Start the request. A resolution of 0.0 means please
                 // use the highest resolution available.
-                _asyncSample = _async->getSample(_asyncSamplePoint);
+                _asyncSample = _async.getSample(_asyncSamplePoint);
                 _asyncSampleStart = osg::Timer::instance()->tick();
             }
             else
@@ -230,7 +227,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
     bool             _mouseDown;
     osg::NodePath    _path;
 
-    osg::ref_ptr<AsyncElevationSampler> _async;
+    AsyncElevationSampler _async;
     GeoPoint _asyncSamplePoint;
     Future<ElevationSample> _asyncSample;
     osg::Timer_t _asyncSampleStart;

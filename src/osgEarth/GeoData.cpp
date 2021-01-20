@@ -1733,7 +1733,7 @@ GeoImage::GeoImage(const osg::Image* image, const GeoExtent& extent) :
     }
 }
 
-GeoImage::GeoImage(Threading::Future<osg::ref_ptr<const osg::Image>> fimage, const GeoExtent& extent) :
+GeoImage::GeoImage(Threading::Future<osg::ref_ptr<osg::Image>> fimage, const GeoExtent& extent) :
     _myimage(0L),
     _extent(extent)
 {

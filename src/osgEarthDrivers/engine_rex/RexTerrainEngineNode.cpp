@@ -593,28 +593,7 @@ RexTerrainEngineNode::dirtyTerrain()
 
     // Set up the state sets.
     updateState();
-
-    // Call the base class
-    TerrainEngineNode::dirtyTerrain();
 }
-
-namespace
-{
-    // debugging
-    struct CheckForOrphans : public TileNodeRegistry::ConstOperation {
-        void operator()( const TileNodeRegistry::TileTable& tiles ) const {
-            unsigned count = 0;
-            for(TileNodeRegistry::TileTable::const_iterator i = tiles.begin(); i != tiles.end(); ++i ) {
-                if ( i->second._tile->referenceCount() == 1 ) {
-                    count++;
-                }
-            }
-            if ( count > 0 )
-                OE_WARN << LC << "Oh no! " << count << " orphaned tiles in the reg" << std::endl;
-        }
-    };
-}
-
 
 void
 RexTerrainEngineNode::dirtyState()

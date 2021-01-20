@@ -714,8 +714,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
             ShadowCaster* caster = new ShadowCaster();
             caster->setTextureImageUnit( unit );
             caster->setLight( view->getLight() );
-            caster->getShadowCastingGroup()->addChild( mapNode->getLayerNodeGroup() );
-            caster->getShadowCastingGroup()->addChild(mapNode->getTerrainEngine());
+            caster->getShadowCastingGroup()->addChild(mapNode->getLayerNodeGroup());
+            caster->getShadowCastingGroup()->addChild(mapNode->getTerrainEngine()->getNode());
             if ( mapNode->getNumParents() > 0 )
             {
                 osgEarth::insertGroup(caster, mapNode->getParent(0));

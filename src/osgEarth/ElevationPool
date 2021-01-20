@@ -230,7 +230,7 @@ namespace osgEarth
     /**
     * Utility to run elevation queries in the background.
     */
-    class OSGEARTH_EXPORT AsyncElevationSampler : public osg::Referenced
+    class OSGEARTH_EXPORT AsyncElevationSampler
     {
     public:
         //! Construct a new sampler
@@ -239,6 +239,9 @@ namespace osgEarth
         AsyncElevationSampler(
             const Map* map,
             unsigned threads =1u);
+
+        //! Destructor
+        virtual ~AsyncElevationSampler() { }
 
         //! Sample elevation at a point at highest available resolution
         //! @param p Point at which to sample terrain elevation
@@ -255,7 +258,6 @@ namespace osgEarth
             const Distance& resolution);
 
     protected:
-        virtual ~AsyncElevationSampler() { }
 
         osg::observer_ptr<const Map> _map;
         ElevationPool::WorkingSet _ws;

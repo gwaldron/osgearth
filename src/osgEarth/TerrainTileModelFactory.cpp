@@ -727,6 +727,9 @@ osg::Texture*
 TerrainTileModelFactory::createImageTexture(const osg::Image* image,
                                             const ImageLayer* layer) const
 {
+    if (image == nullptr || layer == nullptr)
+        return nullptr;
+
     osg::Texture* tex = nullptr;
     bool hasMipMaps = false;
     bool isCompressed = false;

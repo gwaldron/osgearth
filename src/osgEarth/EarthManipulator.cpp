@@ -1372,7 +1372,7 @@ EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg:
         osgUtil::IntersectionVisitor iv(lsi.get());
         iv.setTraversalMask(_intersectTraversalMask);
 
-        mapNode->getTerrainEngine()->accept(iv);
+        mapNode->getTerrainEngine()->getNode()->accept(iv);
 
         if (lsi->containsIntersections())
         {
@@ -1407,7 +1407,7 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
         osgUtil::IntersectionVisitor iv(lsi.get());
         iv.setTraversalMask(_intersectTraversalMask);
 
-        mapNode->getTerrainEngine()->accept(iv);
+        mapNode->getTerrainEngine()->getNode()->accept(iv);
 
         if (lsi->containsIntersections())
         {

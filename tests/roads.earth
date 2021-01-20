@@ -99,6 +99,15 @@ http://readymap.org
             <height>-3.306940197944641e-005</height>
             <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
+        <viewpoint name="Nawlins">
+            <heading>2.26704e-07</heading>
+            <pitch>-89</pitch>
+            <range>7627.42m</range>
+            <long>-90.06802181788174</long>
+            <lat>29.95108448386778</lat>
+            <height>-0.0001322757452726364</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
     </viewpoints>
 
     <libraries>osgEarthSplat</libraries>

@@ -415,7 +415,7 @@ LinearLineOfSightNode::getNode()
 {
     if (_terrainOnly && _mapNode.valid() )
     {
-        return _mapNode->getTerrainEngine();
+        return _mapNode->getTerrainEngine()->getNode();
     }
     return _mapNode.get();
 }

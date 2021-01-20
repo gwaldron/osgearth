@@ -214,7 +214,8 @@ void RadialLineOfSightNode::setTerrainOnly( bool terrainOnly )
 osg::Node*
 RadialLineOfSightNode::getNode()
 {
-    if (_terrainOnly && getMapNode()) return getMapNode()->getTerrainEngine();
+    if (_terrainOnly && getMapNode())
+        return getMapNode()->getTerrainEngine()->getNode();
     return _mapNode.get();
 }
 

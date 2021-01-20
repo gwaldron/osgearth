@@ -129,7 +129,7 @@ namespace osgEarth { namespace Triton
             if (_tritonLayer->getUseHeightMap() == true)
             {
                 TritonHeightMap* heightMapGen = new TritonHeightMap();
-                heightMapGen->setTerrain(mapNode->getTerrainEngine());
+                heightMapGen->setTerrain(mapNode->getTerrainEngine()->getNode());
                 if (_maskLayer.getLayer())
                     heightMapGen->setMaskLayer(_maskLayer.getLayer());
                 this->addChild(heightMapGen);

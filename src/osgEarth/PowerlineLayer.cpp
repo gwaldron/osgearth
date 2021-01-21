@@ -122,6 +122,7 @@ void PowerlineLayer::Options::fromConfig(const Config& conf)
     {
         towerModels().push_back(ModelOptions(*i));
     }
+    referrer = conf.referrer();
 }
 
 Config
@@ -173,19 +174,22 @@ public:
 private:
     FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures,
                                   FilterContext& cx, const Query& query, const Style& style);
+    PowerlineLayer::ModelOptions evalTowerModel(Feature* f, const FilterContext& context);
     std::string _lineSourceLayer;
     FeatureSource::Options _lineSource;
     bool _point_features;
     optional<StringExpression> _lineExpr;
     optional<StringExpression> _cableExpr; 
     std::vector<PowerlineLayer::ModelOptions> _renderData;
+    PowerlineLayer::Options _powerlineOptions;
 };
 
 PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
     : GeomFeatureNodeFactory(options),    
       _lineSourceLayer(options.lineSourceLayerName().get()),
       _lineSource(options.lineSourceEmbeddedOptions().get()),
-      _point_features(options.point_features().get())
+      _point_features(options.point_features().get()),
+      _powerlineOptions(options)
 {
     if (options.towerModels().empty())
         return;
@@ -655,6 +659,68 @@ namespace
             lineSymbol->useWireLines() = true;
         }
     }
+
+    void setModelStyleDefaults(Style& modelStyle, bool force = true)
+    {
+        osg::ref_ptr<ModelSymbol> modelSymbol = modelStyle.getOrCreate<ModelSymbol>();
+        osg::ref_ptr<AltitudeSymbol> altitudeSymbol = modelStyle.getOrCreate<AltitudeSymbol>();
+        if (!modelSymbol->orientationFromFeature().isSet() || force)
+        {
+            modelSymbol->orientationFromFeature() = true;
+        }
+        if (!altitudeSymbol->clamping().isSet() || force)
+        {
+            altitudeSymbol->clamping()  = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        }
+    }
+
+    void setModelStyleDefaults(Style& modelStyle, const std::string& modelName, const std::string& referrer, bool force = true)
+    {
+        setModelStyleDefaults(modelStyle, force);
+        osg::ref_ptr<ModelSymbol> modelSymbol = modelStyle.getOrCreate<ModelSymbol>();
+        if (!modelSymbol->url().isSet() || force)
+        {
+            modelSymbol->url() = modelName;
+            modelSymbol->url()->setURIContext(referrer);
+        }
+    }
+}
+
+PowerlineLayer::ModelOptions PowerlineFeatureNodeFactory::evalTowerModel(Feature *f, const FilterContext& cx)
+{
+    if (_powerlineOptions.lineExpr().isSet())
+    {
+        StringExpression lineExprCopy(_powerlineOptions.lineExpr().get());
+        std::string renderDataString = f->eval(lineExprCopy, &cx);
+        if (renderDataString[0] == '<')
+        {
+            PowerlineLayer::ModelOptions featureRenderData;
+            std::stringstream renderDataStream(renderDataString);
+            Config renderDataConfig;
+            renderDataConfig.fromXML(renderDataStream);
+            ConfigSet models = renderDataConfig.children("tower_model");
+            featureRenderData.fromConfig(models.front());
+            return featureRenderData;
+        }
+        else
+        {
+            // It's the name of a model
+            for (auto& towerModel : _powerlineOptions.towerModels())
+            {
+                if (towerModel.name().isSet() && towerModel.name() == renderDataString)
+                {
+                    return towerModel;
+                }
+            }
+            // No model? Shouldn't happen
+            return PowerlineLayer::ModelOptions();
+
+        }
+    }
+    else
+    {
+        return _powerlineOptions.towerModels().front();
+    }
 }
 
 FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
@@ -712,15 +778,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
 
     StringExpression lineExprCopy;
     StringExpression cableExprCopy;
-    PowerlineLayer::ModelOptions featureRenderData;
-    if (!_lineExpr.isSet())
-    {
-        featureRenderData = _renderData[0];
-    }
-    else
-    {
-        lineExprCopy = _lineExpr.get();
-    }
+
     if (_cableExpr.isSet())
     {
         cableExprCopy = _cableExpr.get();
@@ -753,31 +811,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                 osg::Matrixd geodMat = getLocalToWorld(itr->first, featureSRS.get(), targetSRS);
                 towerMats.push_back(headingMat * geodMat);
             }
-            if (_lineExpr.isSet())
-
-            {
-                std::string renderDataString = feature->eval(lineExprCopy, &cx);
-                if (renderDataString[0] == '<')
-                {
-                    std::stringstream renderDataStream(renderDataString);
-                    Config renderDataConfig;
-                    renderDataConfig.fromXML(renderDataStream);
-                    ConfigSet models = renderDataConfig.children("tower_model");
-                    featureRenderData.fromConfig(models.front());
-                }
-                else
-                {
-                    // It's the name of a model
-                    for (auto& towerModel : _renderData)
-                    {
-                        if (towerModel.name().isSet() && towerModel.name() == renderDataString)
-                        {
-                            featureRenderData = towerModel;
-                            break;
-                        }
-                    }
-                }
-            }
+            PowerlineLayer::ModelOptions featureRenderData = evalTowerModel(feature, cx);
             Style localStyle;
             if (_cableExpr.isSet())
             {
@@ -915,27 +949,31 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     osg::ref_ptr<osg::Node> pointsNode;
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
     StyleSheet* sheet = context.getSession()->styles();
+    // The tower model should come from the "model" attribute of
+    // tower_model if it is not specified in the tower model style
+    // (usually called "towers"). If the tower_model is chosen
+    // dynamically, the model set there still needs to be the default
+    // in the model style.
     auto& selectors = sheet->getSelectors();
-    if (!selectors.empty() && selectors.begin()->second.styleExpression().isSet())
+    bool useSelectorExp = !selectors.empty() && selectors.begin()->second.styleExpression().isSet();
+    Style combinedStyle;
+    if (useSelectorExp || _powerlineOptions.lineExpr().isSet())
     {
         osg::Group* towersNode = new osg::Group;
         pointsNode = towersNode;
-        // See if multiple selectors become necessary
-        const StyleSelector& sel = selectors.begin()->second;
-        // Only deal with one style selector
-        if (sel.styleExpression().isSet())
+        while (listCursor->hasMore())
         {
-            StringExpression styleExprCopy(sel.styleExpression().get());
-            while (listCursor->hasMore())
+            osg::ref_ptr<osg::Node> pointsNode;
+            Feature* f = listCursor->nextFeature();
+
+            if (useSelectorExp)
             {
-                osg::ref_ptr<osg::Node> pointsNode;
-                Feature* f = listCursor->nextFeature();
+                const StyleSelector& sel = selectors.begin()->second;
+                StringExpression styleExprCopy(sel.styleExpression().get());
                 const std::string& styleString = f->eval(styleExprCopy, &context);
                 if (!styleString.empty() && styleString != "null")
                 {
                     // resolve the style:
-                    Style combinedStyle;
-
                     // if the style string begins with an open bracket, it's an inline style definition.
                     if (styleString.length() > 0 && styleString[0] == '{')
                     {
@@ -955,18 +993,27 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
                         if (selectedStyle)
                             combinedStyle = *selectedStyle;
                     }
+                }
+                setModelStyleDefaults(combinedStyle, false);
+            }
+            else
+            {
+                PowerlineLayer::ModelOptions modelOptions = evalTowerModel(f, context);
+                if (modelOptions.uri().isSet())
+                {
+                    setModelStyleDefaults(combinedStyle, modelOptions.uri().get(), _powerlineOptions.referrer, true);
+                }
+            }
 
-                    if (!combinedStyle.empty())
-                    {
-                        osg::ref_ptr<osg::Node> towerNode;
-                        osg::ref_ptr<Feature> featureRef(f);
-                        FeatureList flist = {featureRef};
-                        osg::ref_ptr<FeatureListCursor> towerCursor = new FeatureListCursor(flist);
-                        // See comment below
-                        GeomFeatureNodeFactory::createOrUpdateNode(towerCursor.get(), combinedStyle, localCX, towerNode, query);
-                        towersNode->addChild(towerNode.get());
-                    }
-                }                
+            if (!combinedStyle.empty())
+            {
+                osg::ref_ptr<osg::Node> towerNode;
+                osg::ref_ptr<Feature> featureRef(f);
+                FeatureList flist = {featureRef};
+                osg::ref_ptr<FeatureListCursor> towerCursor = new FeatureListCursor(flist);
+                // See comment below
+                GeomFeatureNodeFactory::createOrUpdateNode(towerCursor.get(), combinedStyle, localCX, towerNode, query);
+                towersNode->addChild(towerNode.get());
             }
         }
     }
@@ -976,6 +1023,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         // model style sheet. We rely on this in makeCableFeatures().
         GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), *sessionTowerStyle, localCX, pointsNode, query);
     }
+
     osg::ref_ptr<osg::Group> results(new osg::Group);
     results->addChild(pointsNode.get());
     FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX, query,

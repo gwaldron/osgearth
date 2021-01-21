@@ -53,6 +53,7 @@ namespace osgEarth
             OE_OPTION_VECTOR(ModelOptions, towerModels);
             virtual Config getConfig() const;
             void fromConfig(const Config& conf);
+            std::string referrer;
         protected: // LayerOptions
             virtual void mergeConfig(const Config& conf);        
         };

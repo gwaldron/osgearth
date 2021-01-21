@@ -776,7 +776,7 @@ namespace osgEarth { namespace Threading
 
     template<typename RESULT_TYPE>
     void Job<RESULT_TYPE>::dispatchAndForget(
-        const Job::Function& function)
+        const typename Job::Function& function)
     {
         dispatchAndForget(JobArena::defaultArenaName(), function);
     }
@@ -784,7 +784,7 @@ namespace osgEarth { namespace Threading
     template<typename RESULT_TYPE>
     void Job<RESULT_TYPE>::dispatchAndForget(
         const std::string& arenaName,
-        const Job::Function& function)
+        const typename Job::Function& function)
     {
         JobArena* arena = JobArena::arena(arenaName);
         dispatchAndForget(arena, function);
@@ -793,7 +793,7 @@ namespace osgEarth { namespace Threading
     template<typename RESULT_TYPE>
     void Job<RESULT_TYPE>::dispatchAndForget(
         JobArena& arena,
-        const Job::Function& function)
+        const typename Job::Function& function)
     {
         std::function<void()> delegate = [function]() mutable
         {

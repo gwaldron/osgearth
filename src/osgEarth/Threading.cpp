@@ -744,11 +744,25 @@ JobArena::dispatch(
         sema->acquire();
     }
 
-    QueuedJob entry(job, sema);
+    if (_numThreads > 0)
+    {
+        QueuedJob entry(job, sema);
 
-    std::unique_lock<Mutex> lock(_queueMutex);
-    _queue.emplace_back(entry);
-    _block.notify_one();
+        std::unique_lock<Mutex> lock(_queueMutex);
+        _queue.emplace_back(entry);
+        _block.notify_one();
+    }
+    
+    else
+    {
+        // no threads? run synchronously.
+        job();
+
+        if (sema)
+        {
+            sema->release();
+        }
+    }
 }
 
 std::size_t

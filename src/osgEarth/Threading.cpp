@@ -537,16 +537,125 @@ osgEarth::Threading::setThreadName(const std::string& name)
 #endif
 }
 
+#undef LC
+#define LC "[Semaphore]"
+
+Semaphore::Semaphore() :
+    _count(0),
+    _m("oe.Semaphore")
+{
+    //nop
+}
+
+Semaphore::Semaphore(const std::string& name) :
+    _count(0),
+    _m(name)
+{
+    //nop
+}
+
+void
+Semaphore::acquire()
+{
+    ScopedMutexLock lock(_m);
+    ++_count;
+}
+
+void
+Semaphore::release()
+{
+    ScopedMutexLock lock(_m);
+    _count = std::max(_count - 1, 0);
+    if (_count == 0)
+        _cv.notify_all();
+}
+
+void
+Semaphore::reset()
+{
+    ScopedMutexLock lock(_m);
+    _count = 0;
+    _cv.notify_all();
+}
+
+std::size_t
+Semaphore::count() const
+{
+    ScopedMutexLock lock(_m);
+    return _count;
+}
+
+void
+Semaphore::join()
+{
+    ScopedMutexLock lock(_m);
+    _cv.wait(
+        _m, 
+        [this]()
+        {
+            return _count == 0;
+        }
+    );
+}
+
+void
+Semaphore::join(Cancelable* cancelable)
+{
+    ScopedMutexLock lock(_m);
+    _cv.wait_for(
+        _m,
+        std::chrono::seconds(1),
+        [this, cancelable]() {
+            return
+                (_count == 0) ||
+                (cancelable && cancelable->isCanceled());
+        }
+    );
+    _count = 0;
+}
+
+
+#undef LC
+#define LC "[JobGroup]"
+
+JobGroup::JobGroup() :
+    _sema(std::make_shared<Semaphore>())
+{
+    //nop
+}
+
+JobGroup::JobGroup(const std::string& name) :
+    _sema(std::make_shared<Semaphore>(name))
+{
+    //nop
+}
+
+void
+JobGroup::join()
+{
+    if (_sema != nullptr && _sema.use_count() > 1)
+    {
+        _sema->join();
+    }
+}
+
+void
+JobGroup::join(Cancelable* cancelable)
+{
+    if (_sema != nullptr && _sema.use_count() > 1)
+    {
+        _sema->join(cancelable);
+    }
+}
+
 
 #undef LC
 #define LC "[JobArena] "
 
+// JobArena statics:
 Mutex JobArena::_arenas_mutex("OE:JobArena");
-
 std::unordered_map<std::string, std::shared_ptr<JobArena>> JobArena::_arenas;
-
 std::unordered_map<std::string, unsigned> JobArena::_arenaSizes;
-
 std::string JobArena::_defaultArenaName = "oe.default";
 
 #define OE_ARENA_DEFAULT_SIZE 2u
@@ -555,7 +664,7 @@ JobArena::JobArena(const std::string& name, unsigned numThreads) :
     _name(name),
     _numThreads(numThreads),
     _done(false),
-    _queueMutex("OE.JobArena.Queue")
+    _queueMutex("OE.JobArena[" + name + "]")
 {
     startThreads();
 }
@@ -624,10 +733,21 @@ JobArena::queueSize(const std::string& arenaName)
 }
 
 void
-JobArena::dispatch(std::function<void()>& job)
+JobArena::dispatch(
+    std::function<void()>& job,
+    JobGroup* group)
 {
+    // If we have a group semaphore, acquire it BEFORE queuing the job
+    std::shared_ptr<Semaphore> sema = group ? group->_sema : nullptr;
+    if (sema)
+    {
+        sema->acquire();
+    }
+
+    QueuedJob entry(job, sema);
+
     std::unique_lock<Mutex> lock(_queueMutex);
-    _queue.emplace_back(job);
+    _queue.emplace_back(entry);
     _block.notify_one();
 }
 
@@ -654,8 +774,9 @@ JobArena::startThreads()
 
                 while (!_done)
                 {
-                    std::function<void()> job;
-                    bool have_job = false;
+                    QueuedJob next;
+
+                    bool have_next = false;
                     {
                         std::unique_lock<Mutex> lock(_queueMutex);
 
@@ -665,15 +786,21 @@ JobArena::startThreads()
 
                         if (!_queue.empty() && !_done)
                         {
-                            job = std::move(_queue.front());
-                            have_job = true;
+                            next = std::move(_queue.front());
+                            have_next = true;
                             _queue.pop_front();
                         }
                     }
 
-                    if (have_job)
+                    if (have_next)
                     {
-                        job();
+                        next._job();
+
+                        // release the group semaphore if necessary
+                        if (next._groupsema != nullptr)
+                        {
+                            next._groupsema->release();
+                        }
                     }
                 }
                 //OE_INFO << LC << "Arena \"" << _name << "\" stopping thread " << std::this_thread::get_id() << std::endl;
@@ -700,6 +827,17 @@ void JobArena::stopThreads()
     // Clear out the queue
     {
         Threading::ScopedMutexLock lock(_queueMutex);
+
+        // reset any group semaphores so that JobGroup.join()
+        // will not deadlock.
+        for (auto& entry : _queue)
+        {
+            if (entry._groupsema != nullptr)
+            {
+                entry._groupsema->reset();
+            }
+        }
+
         _queue.clear();
     }
 }

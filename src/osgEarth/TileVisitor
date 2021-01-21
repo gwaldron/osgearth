@@ -143,10 +143,7 @@ namespace osgEarth { namespace Util
         unsigned int _numThreads;
 
         std::shared_ptr<JobArena> _arena;
-
-        std::atomic<int> _numTiles;
-
-        std::condition_variable_any _done;
+        JobGroup _group;
     };
 
 

@@ -596,7 +596,77 @@ namespace osgEarth { namespace Threading
         }
     };
 
+    /**
+     * Sempahore lets N users aquire it and then notifies when the
+     * count goes back down to zero.
+     */
+    class Semaphore
+    {
+    public:
+        //! Construct a semaphore
+        Semaphore();
+
+        //! Construct a named semaphore
+        Semaphore(const std::string& name);
+
+        //! Acquire, increasing the usage count by one
+        void acquire();
+
+        //! Release, decreasing the usage count by one.
+        //! When the count reaches zero, joiners will be notified and
+        //! the semaphore will reset to its initial state.
+        void release();
+
+        //! Reset to initialize state; this will cause a join to occur
+        //! even if no acquisitions have taken place.
+        void reset();
+
+        //! Current count in the semaphore
+        std::size_t count() const;
+
+        //! Block until the semaphore count returns to zero.
+        //! (It must first have left zero)
+        //! Warning: this method will block forever if the count
+        //! never reaches zero!
+        void join();
+
+        //! Block until the semaphore count returns to zero, or
+        //! the operation is canceled.
+        //! (It must first have left zero)
+        void join(Cancelable* cancelable);
+
+    private:
+        int _count;
+        std::condition_variable_any _cv;
+        mutable Mutex _m;
+    };
+
     class JobArena;
+
+    /**
+     * A job group. Dispatch jobs along with a group, and you 
+     * can then wait on the entire group to finish.
+     */
+    class OSGEARTH_EXPORT JobGroup
+    {
+    public:
+        //! Construct a new job group
+        JobGroup();
+
+        //! Construct a new named job group
+        JobGroup(const std::string& name);
+
+        //! Block until all jobs dispatched under this group are complete.
+        void join();
+
+        //! Block until all jobs dispatched under this group are complete,
+        //! or the operation is canceled.
+        void join(Cancelable*);
+
+    private:
+        std::shared_ptr<Semaphore> _sema;
+        friend class JobArena;
+    };
 
     /**
      * API for scheduling a task to run in the background.
@@ -644,10 +714,28 @@ namespace osgEarth { namespace Threading
             const Function& function);
 
         //! Dispatch a background job and return the future-result.
+        //! @param arena Named arena in which to run the job.
+        //! @param group Job group this job belongs to
+        //! @function Function to execute asynchronously.
+        static Result dispatch(
+            const std::string& arena,
+            JobGroup& group,
+            const Function& function);
+
+        //! Dispatch a background job and return the future-result.
         //! @param arena Arena in which to run the job.
         //! @function Function to execute asynchronously.
         static Result dispatch(
             JobArena& arena,
+            const Function& function);
+
+        //! Dispatch a background job and return the future-result.
+        //! @param arena Arena in which to run the job.
+        //! @param group Job group this job belongs to
+        //! @function Function to execute asynchronously.
+        static Result dispatch(
+            JobArena& arena,
+            JobGroup& group,
             const Function& function);
 
         //! Dispatch a background job and forget about it.
@@ -663,10 +751,28 @@ namespace osgEarth { namespace Threading
             const Function& function);
 
         //! Dispatch a background job and forget about it.
+        //! @param arena Named arena in which to run the job.
+        //! @param group Job group this job belongs to
+        //! @function Function to execute asynchronously.
+        static void dispatchAndForget(
+            const std::string& arena,
+            JobGroup& group,
+            const Function& function);
+
+        //! Dispatch a background job and forget about it.
         //! @param arena Arena in which to run the job.
         //! @function Function to execute asynchronously.
         static void dispatchAndForget(
             JobArena& arena,
+            const Function& function);
+
+        //! Dispatch a background job and forget about it.
+        //! @param arena Arena in which to run the job.
+        //! @param group Job group this job belongs to
+        //! @function Function to execute asynchronously.
+        static void dispatchAndForget(
+            JobArena& arena,
+            JobGroup& group,
             const Function& function);
     };
 
@@ -702,8 +808,11 @@ namespace osgEarth { namespace Threading
 
         //! Schedule an asynchronous task on this arena.
         //! Consider using the Job<> interface before using this method directly.
-        //! @param delegate Function to execute asynhronously
-        void dispatch(std::function<void()>& job);
+        //! @param job Function to execute asynhronously
+        //! @param group Group this job belongs to, or nullptr if none
+        void dispatch(
+            std::function<void()>& job,
+            JobGroup* group);
 
         //! Name of the arena to use when none is specified
         static const std::string& defaultArenaName();
@@ -714,10 +823,18 @@ namespace osgEarth { namespace Threading
 
         void stopThreads();
 
+        struct QueuedJob {
+            QueuedJob() { }
+            QueuedJob(const std::function<void()>& job, std::shared_ptr<Semaphore> sema) :
+                _job(job), _groupsema(sema) { }
+            std::function<void()> _job;
+            std::shared_ptr<Semaphore> _groupsema;
+        };
+
         // pool name
         std::string _name;
         // queued operations to run asynchronously
-        typedef std::deque<std::function<void()>> Queue;
+        typedef std::deque<QueuedJob> Queue;
         Queue _queue;
         // protect access to the queue
         mutable Mutex _queueMutex;
@@ -754,6 +871,16 @@ namespace osgEarth { namespace Threading
         return dispatch(*arena, function);
     }
 
+    template<typename RESULT_TYPE>
+    Future<RESULT_TYPE>
+    Job<RESULT_TYPE>::dispatch(
+        const std::string& arenaName,
+        JobGroup& group,
+        const Function& function)
+    {
+        JobArena* arena = JobArena::arena(arenaName);
+        return dispatch(*arena, group, function);
+    }
 
     template<typename RESULT_TYPE>
     Future<RESULT_TYPE>
@@ -771,7 +898,28 @@ namespace osgEarth { namespace Threading
                 promise.resolve(function(&promise));
             }
         };
-        arena.dispatch(delegate);
+        arena.dispatch(delegate, nullptr);
+        return std::move(future);
+    }
+
+    template<typename RESULT_TYPE>
+    Future<RESULT_TYPE>
+    Job<RESULT_TYPE>::dispatch(
+        JobArena& arena,
+        JobGroup& group,
+        const Function& function)
+    {
+        Promise<RESULT_TYPE> promise;
+        Future<RESULT_TYPE> future = promise.getFuture();
+
+        std::function<void()> delegate = [function, promise]() mutable
+        {
+            if (!promise.isAbandoned())
+            {
+                promise.resolve(function(&promise));
+            }
+        };
+        arena.dispatch(delegate, &group);
         return std::move(future);
     }
 
@@ -792,6 +940,15 @@ namespace osgEarth { namespace Threading
 
     template<typename RESULT_TYPE>
     void Job<RESULT_TYPE>::dispatchAndForget(
+        const std::string& arenaName,
+        JobGroup& group,
+        const Function& function)
+    {
+        dispatchAndForget(JobArena::arena(arenaName), group, function);
+    }
+
+    template<typename RESULT_TYPE>
+    void Job<RESULT_TYPE>::dispatchAndForget(
         JobArena& arena,
         const Function& function)
     {
@@ -799,7 +956,20 @@ namespace osgEarth { namespace Threading
         {
             function(nullptr);
         };
-        arena.dispatch(delegate);
+        arena.dispatch(delegate, nullptr);
+    }
+
+    template<typename RESULT_TYPE>
+    void Job<RESULT_TYPE>::dispatchAndForget(
+        JobArena& arena,
+        JobGroup& group,
+        const Function& function)
+    {
+        std::function<void()> delegate = [function]() mutable
+        {
+            function(nullptr);
+        };
+        arena.dispatch(delegate, &group);
     }
 
 } } // namepsace osgEarth::Threading

@@ -263,25 +263,27 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
 
     _arena = std::make_shared<JobArena>("oe.mttilevisitor", _numThreads);
 
-    _numTiles = 0;
+    //_numTiles = 0;
 
     // Produce the tiles
     TileVisitor::run( mapProfile );
 
     OE_INFO << _arena->queueSize() << " tasks in the queue" << std::endl;
+
+    _group.join();
     
-    // Wait for everything to finish
-    Mutex _doneMx;
-    std::unique_lock<Mutex> doneLock(_doneMx);
-    _done.wait(doneLock, [this] {
-        return _numTiles == 0;
-    });
+    //// Wait for everything to finish
+    //Mutex _doneMx;
+    //std::unique_lock<Mutex> doneLock(_doneMx);
+    //_done.wait(doneLock, [this] {
+    //    return _numTiles == 0;
+    //});
 }
 
 bool MultithreadedTileVisitor::handleTile(const TileKey& key)
 {
     // atomically increment the task count
-    _numTiles++;
+    //_numTiles++;
 
     // don't let the task queue get too large...?
     while (_arena->queueSize() > 1000)
@@ -300,12 +302,11 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
         }
 
         // atomically decrement the task count
-        _numTiles--;
-
-        _done.notify_all();
+        //_numTiles--;
+        //_done.notify_all();
     };
 
-    _arena->dispatch(delegate);
+    _arena->dispatch(delegate, &_group);
     return true;
 }
 

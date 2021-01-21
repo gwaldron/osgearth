@@ -321,7 +321,6 @@ namespace
         void remove_triangle(triangle_t& tri)
         {
             UID uid = tri.uid;
-            //_spatial_index.Remove(tri, uid);
             _spatial_index.Remove(tri.a_min, tri.a_max, uid);
             _triangles.erase(uid);
             _num_splits++;
@@ -1082,6 +1081,8 @@ MeshEditor::createTileMesh(
                     Geometry* part = mask_iter.next();
                     if (part->isPolygon())
                     {
+                        std::list<triangle_t*> trisToRemove;
+
                         for (auto& tri_iter : mesh._triangles)
                         {
                             triangle_t& tri = tri_iter.second;
@@ -1091,7 +1092,7 @@ MeshEditor::createTileMesh(
 
                             if ((inside == true) && edit._layer->getRemoveInterior())
                             {
-                                mesh.remove_triangle(tri);
+                                trisToRemove.push_back(&tri);
 
                                 //OPTIONS:
                                 // - remove tri entirely
@@ -1106,8 +1107,13 @@ MeshEditor::createTileMesh(
                             // where there are (apparently) no surface.
                             else if (tri.is_2d_degenerate)
                             {
-                                mesh.remove_triangle(tri);
+                                trisToRemove.push_back(&tri);
                             }
+                        }
+
+                        for (auto tri : trisToRemove)
+                        {
+                            mesh.remove_triangle(*tri);
                         }
                     }
                 }

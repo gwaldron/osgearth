@@ -87,7 +87,7 @@ namespace osgEarth { namespace Internal
 
         typedef std::map<osg::Drawable*, Element> Elements;
 
-        struct CameraLocal 
+        struct CameraLocal
         {
             CameraLocal();
             const osg::Camera* _camera;      // camera associated with the data structure
@@ -148,11 +148,11 @@ namespace osgEarth { namespace Internal
         const double rotation = osg::PI / 16; //1.7; //osg::PI / 32; //1.6;
         const osg::Quat q(dir*rotation, osg::Vec3d(0, 0, 1));
         _offsetVector = q * _offsetVector;
-    }   
+    }
 
     CalloutImplementation::CameraLocal::CameraLocal() :
-        _camera(0), 
-        _frame(0), 
+        _camera(0),
+        _frame(0),
         _vpmChanged(true),
         _leadersDirty(false),
         _leaderColor(1,1,1,1)
@@ -160,7 +160,6 @@ namespace osgEarth { namespace Internal
         _leaders = new LineDrawable(GL_LINES);
         _leaders->setCullingActive(false);
         _leaders->setDataVariance(osg::Object::DYNAMIC);
-        _leaders->setUseGPU(false);
         _leaders->setColor(_leaderColor);
         _leaders->setLineSmooth(true);
         GLUtils::setLighting(_leaders->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
@@ -200,7 +199,7 @@ namespace osgEarth { namespace Internal
         std::pair<Elements::iterator,bool> result = local._elements.insert(std::make_pair(drawable,prototype));
         Element& element = result.first->second;
 
-        bool isNew = 
+        bool isNew =
             (result.second == true) ||
             (local._frame - element._frame > 1);
 
@@ -220,7 +219,7 @@ namespace osgEarth { namespace Internal
             element._text = dynamic_cast<osgEarth::Text*>(drawable);
             element._drawable->setDataVariance(osg::Object::DYNAMIC);
             element._declutter = true;
-            
+
             if (layoutData)
             {
                 // FLT_MAX priority => don't declutter this element.
@@ -233,10 +232,10 @@ namespace osgEarth { namespace Internal
             }
         }
 
-        element._anchor = 
-            zero * 
-            (*leaf->_modelview) * 
-            (*leaf->_projection) * 
+        element._anchor =
+            zero *
+            (*leaf->_modelview) *
+            (*leaf->_projection) *
             local._scalebias;
 
         const osg::Viewport* vp = local._camera->getViewport();
@@ -393,7 +392,7 @@ namespace osgEarth { namespace Internal
                     }
                 }
 
-                // now compute a rotation that transforms the longest edge so that 
+                // now compute a rotation that transforms the longest edge so that
                 // it is parallel with x=0
                 osg::Vec3d v(longestEdge->pos[1].x-longestEdge->pos[0].x, longestEdge->pos[1].y-longestEdge->pos[0].y, 0);
                 q.makeRotate(v, osg::Vec3d(0,1,0));
@@ -424,7 +423,7 @@ namespace osgEarth { namespace Internal
                     bb.LL.x() + 0.5*(bb.UR.x()-bb.LL.x()),
                     bb.LL.y() + 0.5*(bb.UR.y()-bb.LL.y()),
                     0);
-                
+
                 centroid = q.inverse()*centroid;
 
 #else
@@ -655,9 +654,15 @@ namespace osgEarth { namespace Internal
 
                 renderInfo.getState()->applyModelViewMatrix(osg::Matrix::identity());
 
-                renderInfo.getState()->apply(local._leaders->getStateSet());
-                // don't need when setting setUseGPU(false)
-                //renderInfo.getState()->apply(local._leaders->getGPUStateSet());
+                if (local._leaders->getUseGPU())
+                {
+                    renderInfo.getState()->pushStateSet(local._leaders->getGPUStateSet());
+                }
+
+                renderInfo.getState()->pushStateSet(local._leaders->getStateSet());
+
+                renderInfo.getState()->apply();
+
                 glDepthFunc(GL_ALWAYS);
                 glDepthMask(GL_FALSE);
                 glEnable(GL_BLEND);
@@ -666,6 +671,14 @@ namespace osgEarth { namespace Internal
                     renderInfo.getState()->applyModelViewAndProjectionUniformsIfRequired();
 
                 local._leaders->draw(renderInfo);
+
+                renderInfo.getState()->popStateSet();
+                if (local._leaders->getUseGPU())
+                {
+                    renderInfo.getState()->popStateSet();
+                }
+
+
 
                 // the debug diagram
                 if (local._voronoi.valid())

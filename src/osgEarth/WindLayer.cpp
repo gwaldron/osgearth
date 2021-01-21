@@ -528,9 +528,9 @@ WindLayer::getNode() const
 }
 
 void
-WindLayer::prepareForRenderingImplementation(TerrainEngine* engine)
+WindLayer::prepareForRendering(TerrainEngine* engine)
 {
-    Layer::prepareForRenderingImplementation(engine);
+    Layer::prepareForRendering(engine);
 
     // Create the wind drawable that will provide a wind texture
     WindDrawable* wd = new WindDrawable(getReadOptions());

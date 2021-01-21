@@ -180,6 +180,7 @@ namespace osgEarth { namespace Util
         public osgGA::GUIEventAdapter
     {
         typedef std::function<void()> Function;
+        typedef std::function<void(osg::View*, float, float)> MouseFunction;
 
         void onKeyPress(KeySymbol key, const Function& func) {
             _keypress[key].emplace_back(func);
@@ -195,6 +196,14 @@ namespace osgEarth { namespace Util
 
         void onClick(int button, int modkey, const Function& func) {
             _click[button | (modkey<<3)].emplace_back(func);
+        }
+
+        void onMove(const MouseFunction& func) {
+            _move.emplace_back(func);
+        }
+
+        void onDrag(const MouseFunction& func) {
+            _drag.emplace_back(func);
         }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override
@@ -220,6 +229,16 @@ namespace osgEarth { namespace Util
                     }
                 }
             }
+            else if (ea.getEventType() == ea.MOVE) {
+                for (auto& func : _move) {
+                    func(aa.asView(), ea.getX(), ea.getY()); // do not increment count
+                }
+            }
+            else if (ea.getEventType() == ea.DRAG) {
+                for (auto& func : _drag) {
+                    func(aa.asView(), ea.getX(), ea.getY()); // do not increment count
+                }
+            }
 
             return count > 0u;
         }
@@ -234,6 +253,8 @@ namespace osgEarth { namespace Util
         std::unordered_map<KeySymbol, std::list<Function>> _keypress;
         std::unordered_map<int, Push> _pushes;
         std::unordered_map<int, std::list<Function>> _click;
+        std::list<MouseFunction> _move;
+        std::list<MouseFunction> _drag;
     };
 
 

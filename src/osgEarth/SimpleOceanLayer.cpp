@@ -147,9 +147,9 @@ SimpleOceanLayer::openImplementation()
 }
 
 void
-SimpleOceanLayer::prepareForRenderingImplementation(TerrainEngine* engine)
+SimpleOceanLayer::prepareForRendering(TerrainEngine* engine)
 {
-    VisibleLayer::prepareForRenderingImplementation(engine);
+    VisibleLayer::prepareForRendering(engine);
 
     if (options().textureURI().isSet()) // texture
     {

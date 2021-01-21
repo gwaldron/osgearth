@@ -67,26 +67,27 @@ namespace osgEarth { namespace Splat
     public: // ImageLayer
 
         // Opens the layer and returns a status
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
+
+        // Closes the layer
+        virtual Status closeImplementation() override;
 
         // Creates an image for a tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
         // Called by Map when it adds this layer
-        virtual void addedToMap(const class Map*);
+        virtual void addedToMap(const class Map*) override;
 
         // Called by Map when it removes this layer
-        virtual void removedFromMap(const class Map*);
+        virtual void removedFromMap(const class Map*) override;
 
-        //! Serialize
-        virtual Config getConfig() const;
-
-        osg::Node* getNode() const;
+        // Return the scene graph node associated with this layer
+        osg::Node* getNode() const override;
 
     protected: // Layer
 
         // post-ctor initialization
-        virtual void init();
+        virtual void init() override;
 
     protected:
 

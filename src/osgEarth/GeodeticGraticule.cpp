@@ -359,7 +359,7 @@ GeodeticGraticule::setMapNode(MapNode* mapNode)
 
         if (_callback.valid())
         {
-            oldMapNode->getTerrainEngine()->removeCullCallback(_callback.get());
+            oldMapNode->getTerrainEngine()->getNode()->removeCullCallback(_callback.get());
         }
     }
 
@@ -381,7 +381,7 @@ GeodeticGraticule::setMapNode(MapNode* mapNode)
         updateGridLineVisibility();
 
         _callback = new GraticuleTerrainCallback(this);
-        mapNode->getTerrainEngine()->addCullCallback(_callback.get());
+        mapNode->getTerrainEngine()->getNode()->addCullCallback(_callback.get());
     }
 }
 

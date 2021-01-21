@@ -23,9 +23,17 @@
 using namespace osgEarth;
 
 ProgressCallback::ProgressCallback() :
-osg::Referenced( true ),
-_canceled      ( false ),
-_retryDelay_s  ( 0.0f )
+    _canceled(false),
+    _retryDelay_s(0.0f),
+    _cancelable(nullptr)
+{
+    //NOP
+}
+
+ProgressCallback::ProgressCallback(Cancelable* cancelable) :
+    _canceled(false),
+    _retryDelay_s(0.0f),
+    _cancelable(cancelable)
 {
     //NOP
 }
@@ -45,8 +53,14 @@ ProgressCallback::reset()
 bool
 ProgressCallback::isCanceled() const
 {
-    if (!_canceled && shouldCancel())
-        _canceled = true;
+    if (!_canceled)
+    {
+        if ((shouldCancel()) ||
+            (_cancelable && _cancelable->isCanceled()))
+        {
+            _canceled = true;
+        }
+    }
     return _canceled;
 }
 

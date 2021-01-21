@@ -100,7 +100,7 @@ namespace osgEarth
 
         virtual void removedFromMap(const class Map*) override;
 
-        virtual void prepareForRenderingImplementation(TerrainEngine* engine) override;
+        virtual void prepareForRendering(TerrainEngine* engine) override;
 
         virtual Config getConfig() const override;
 

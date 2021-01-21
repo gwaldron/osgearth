@@ -142,7 +142,8 @@ namespace osgEarth { namespace Util
 
         unsigned int _numThreads;
 
-        osg::ref_ptr<osgEarth::Threading::ThreadPool> _threadPool;
+        std::shared_ptr<JobArena> _arena;
+        JobGroup _group;
     };
 
 

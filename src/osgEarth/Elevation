@@ -53,16 +53,6 @@ namespace osgEarth
     };
 
     /**
-     * Reference-counted wrapper for ElevationSample
-     */
-    class OSGEARTH_EXPORT RefElevationSample : public ElevationSample, public osg::Referenced
-    {
-    public:
-        RefElevationSample(const Distance& e, const Distance& r) :
-            ElevationSample(e, r) { }
-    };
-
-    /**
      * Elevation grid as a texture with in optional associated normal map.
      */
     class OSGEARTH_EXPORT ElevationTexture : public osg::Texture2D

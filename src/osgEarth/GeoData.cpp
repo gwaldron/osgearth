@@ -1733,7 +1733,7 @@ GeoImage::GeoImage(const osg::Image* image, const GeoExtent& extent) :
     }
 }
 
-GeoImage::GeoImage(Threading::Future<const osg::Image> fimage, const GeoExtent& extent) :
+GeoImage::GeoImage(Threading::Future<osg::ref_ptr<osg::Image>> fimage, const GeoExtent& extent) :
     _myimage(0L),
     _extent(extent)
 {
@@ -1757,14 +1757,16 @@ GeoImage::valid() const
         return false;
 
     return
-        (_future.isSet() && _future->get() != NULL) ||
+        (_future.isSet() && !_future->isAbandoned()) ||
         _myimage.valid();
 }
 
 const osg::Image*
 GeoImage::getImage() const
 {
-    return _future.isSet() ? _future->get() : _myimage.get();
+    return _future.isSet() && _future->isAvailable() ?
+        _future->get().get() :
+        _myimage.get();
 }
 
 const SpatialReference*
@@ -2070,7 +2072,17 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
 const osg::Image*
 GeoImage::takeImage()
 {
-    return _future.isSet() ? _future->release() : _myimage.release();
+    osg::ref_ptr<const osg::Image> result;
+    if (_future.isSet())
+    {
+        result = _future->get();
+        _future->abandon();
+    }
+    else
+    {
+        result = _myimage.release();
+    }
+    return result.release();
 }
 
 /***************************************************************************/

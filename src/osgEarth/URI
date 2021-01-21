@@ -240,10 +240,6 @@ namespace osgEarth
             const osgDB::Options* dbOptions   =0L,
             ProgressCallback*     progress    =0L ) const;
 
-        Future<osg::Node> readNodeAsync(
-            const osgDB::Options* dbOptions   =0L,
-            ProgressCallback*     progress    =0L) const;
-
     public: // get methods call the read* methods, then just return the raw data.
 
         osg::Object* getObject(

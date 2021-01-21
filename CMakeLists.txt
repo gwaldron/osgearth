@@ -29,7 +29,7 @@ SET(OSGEARTH_MINOR_VERSION 1)
 SET(OSGEARTH_PATCH_VERSION 0)
 
 # Increment this each time the ABI changes
-SET(OSGEARTH_SOVERSION 101)
+SET(OSGEARTH_SOVERSION 104)
 
 # C++11 is required for osgEarth 3.x
 set_property(GLOBAL PROPERTY CXX_STANDARD 11)
@@ -121,7 +121,7 @@ option(OSGEARTH_ENABLE_GEOCODER "Enable the geocoder (GDAL/OGR must be built wit
 
 # Mobile/GLES:
 IF (OSGEARTH_USE_GLES)
-    find_package(OpenGLES) 
+    find_package(OpenGLES)
 ELSE ()
     find_package(OpenGL)
 ENDIF (OSGEARTH_USE_GLES)
@@ -187,7 +187,7 @@ IF (WITH_EXTERNAL_DUKTAPE)
 ENDIF (WITH_EXTERNAL_DUKTAPE)
 
 # Whether to install shaders (glsl files).
-# If true, shaders install into a resources folder. If false, they are inlined in the 
+# If true, shaders install into a resources folder. If false, they are inlined in the
 # code and you cannot tweak them after install.
 OPTION(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when doing a Make INSTALL" OFF)
 
@@ -277,4 +277,4 @@ ADD_SUBDIRECTORY(src)
 
 if (OSGEARTH_BUILD_DOCS)
     ADD_SUBDIRECTORY(docs)
-endif()    
+endif()

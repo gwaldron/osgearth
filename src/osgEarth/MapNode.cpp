@@ -556,7 +556,7 @@ MapNode::computeBound() const
     osg::BoundingSphere bs;
     if ( getTerrainEngine() )
     {
-        bs.expandBy( getTerrainEngine()->getBound() );
+        bs.expandBy( getTerrainEngine()->getNode()->getBound() );
     }
 
     if (_layerNodes)
@@ -615,7 +615,7 @@ MapNode::getTerrain() const
     return getTerrainEngine()->getTerrain();
 }
 
-TerrainEngineNode*
+TerrainEngine*
 MapNode::getTerrainEngine() const
 {
     return _terrainEngine;
@@ -745,7 +745,7 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
         return;
     
     // Communicate terrain resources to the layer:
-    layer->prepareForRendering(getTerrainEngine());
+    layer->invoke_prepareForRendering(getTerrainEngine());
 
     // Create the layer's node, if it has one:
     osg::Node* node = layer->getNode();

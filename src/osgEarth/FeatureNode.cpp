@@ -256,6 +256,19 @@ FeatureNode::setStyle(const Style& style)
     build();
 }
 
+const GeometryCompilerOptions&
+FeatureNode::getGeometryCompilerOptions() const
+{
+    return _options;
+}
+
+void
+FeatureNode::setGeometryCompilerOptions(GeometryCompilerOptions& options)
+{
+    _options = options;
+    dirty();
+}
+
 StyleSheet* FeatureNode::getStyleSheet() const
 {
     return _styleSheet.get();

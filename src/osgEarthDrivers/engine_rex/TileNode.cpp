@@ -682,7 +682,7 @@ TileNode::createChildren(EngineContext* context)
 {
     if (_createChildAsync)
     {
-        if (_createChildJobs.empty())
+        if (_createChildResults.empty())
         {
             TileKey parentkey(_key);
 
@@ -690,15 +690,18 @@ TileNode::createChildren(EngineContext* context)
             {
                 TileKey childkey = getKey().createChildKey(quadrant);
 
-                CreateTileJob job([context, parentkey, childkey](Cancelable* state) {
+                TileJob::Function op = [context, parentkey, childkey](Cancelable* state)
+                {
                     osg::ref_ptr<TileNode> tile = context->liveTiles()->get(parentkey);
                     if (tile.valid() && !state->isCanceled())
                         return tile->createChild(childkey, context, state);
                     else
                         return (TileNode*)nullptr;
-                });
+                };
 
-                _createChildJobs.emplace_back(job.schedule());
+                _createChildResults.emplace_back(
+                    TileJob::dispatch("oe.rex", op)
+                );
             }
         }
 
@@ -708,7 +711,7 @@ TileNode::createChildren(EngineContext* context)
 
             for (int i = 0; i < 4; ++i)
             {
-                if (_createChildJobs[i].isAvailable())
+                if (_createChildResults[i].isAvailable())
                     ++numChildrenReady;
             }
 
@@ -716,12 +719,12 @@ TileNode::createChildren(EngineContext* context)
             {
                 for (int i = 0; i < 4; ++i)
                 {
-                    osg::ref_ptr<TileNode> child = _createChildJobs[i].get();
+                    osg::ref_ptr<TileNode> child = _createChildResults[i].get();
                     addChild(child);
                     child->initializeData();
                 }
 
-                _createChildJobs.clear();
+                _createChildResults.clear();
             }
         }
     }
@@ -737,7 +740,7 @@ TileNode::createChildren(EngineContext* context)
         }
     }
 
-    return _createChildJobs.empty();
+    return _createChildResults.empty();
 }
 
 TileNode*
@@ -1343,7 +1346,7 @@ TileNode::removeSubTiles()
     }
     this->removeChildren(0, this->getNumChildren());
 
-    _createChildJobs.clear();
+    _createChildResults.clear();
 }
 
 

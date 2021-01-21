@@ -70,10 +70,8 @@ namespace
         void setNumThreads(unsigned) override;
 
     protected:
-
         std::string _rootPath;
-
-        osg::ref_ptr<ThreadPool> _threadPool;
+        std::shared_ptr<JobArena> _jobArena;
     };
 
     struct WriteCacheRecord {
@@ -89,10 +87,10 @@ namespace
     class FileSystemCacheBin : public CacheBin
     {
     public:
-        FileSystemCacheBin( 
-            const std::string& name, 
+        FileSystemCacheBin(
+            const std::string& name,
             const std::string& rootPath,
-            ThreadPool* threadPool);
+            std::shared_ptr<JobArena>& jobArena);
 
         static bool _s_debug;
 
@@ -131,7 +129,7 @@ namespace
         osg::ref_ptr<osgDB::Options>      _zlibOptions;
 
         // pool for asynchronous writes
-        ThreadPool* _threadPool;
+        std::shared_ptr<JobArena> _jobArena;
 
     public:
         // cache for objects waiting to be written; this supports reading from
@@ -210,27 +208,19 @@ namespace
         OE_INFO << LC << "Opened a filesystem cache at \"" << _rootPath << "\"\n";
 
         // create a thread pool dedicated to asynchronous cache writes
-        if (fsco.threads() > 0u)
-        {
-            _threadPool = new ThreadPool(
-                "osgEarth.FileSystemCache",
-                osg::maximum(fsco.threads().get(), 1u) );
-        }
+        setNumThreads(fsco.threads().get());
     }
 
     void
     FileSystemCache::setNumThreads(unsigned num)
     {
-        if (_threadPool.valid())
-        {
-            _threadPool = NULL;
-        }
-
         if (num > 0u)
         {
-            _threadPool = new ThreadPool(
-                "osgEarth.FileSystemCache",
-                osg::clampBetween(num, 1u, 8u));
+            _jobArena = std::make_shared<JobArena>("oe.FileSystemCache", osg::clampBetween(num, 1u, 8u));
+        }
+        else
+        {
+            _jobArena = nullptr;
         }
     }
 
@@ -240,7 +230,7 @@ namespace
         if (getStatus().isError())
             return NULL;
 
-        return _bins.getOrCreate( name, new FileSystemCacheBin( name, _rootPath, _threadPool.get() ) );
+        return _bins.getOrCreate(name, new FileSystemCacheBin(name, _rootPath, _jobArena));
     }
 
     CacheBin*
@@ -255,7 +245,7 @@ namespace
             ScopedMutexLock lock( s_defaultBinMutex );
             if ( !_defaultBin.valid() ) // double-check
             {
-                _defaultBin = new FileSystemCacheBin( "__default", _rootPath, _threadPool.get() );
+                _defaultBin = new FileSystemCacheBin("__default", _rootPath, _jobArena);
             }
         }
         return _defaultBin.get();
@@ -326,10 +316,10 @@ namespace
     FileSystemCacheBin::FileSystemCacheBin(
         const std::string& binID,
         const std::string& rootPath,
-        ThreadPool* threadPool) :
+        std::shared_ptr<JobArena>& jobArena) :
 
         CacheBin(binID),
-        _threadPool(threadPool),
+        _jobArena(jobArena),
         _binPathExists(false),
         _ok(true),
         _fileGate("CacheBinFileGate(OE)"),
@@ -403,10 +393,10 @@ namespace
         // lock the file:
         ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
 
-        if (_threadPool)
+        if (_jobArena)
         {
             // first check the write-pending cache. The record will be there
-            // if the object is queued for asynchronous writing but hasn't 
+            // if the object is queued for asynchronous writing but hasn't
             // actually been saved out yet.
 
             ScopedReadLock lock(_writeCacheRWM);
@@ -474,12 +464,12 @@ namespace
         // lock the file:
         ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
 
-        if (_threadPool)
+        if (_jobArena)
         {
             // first check the write-pending cache. The record will be there
-            // if the object is queued for asynchronous writing but hasn't 
+            // if the object is queued for asynchronous writing but hasn't
             // actually been saved out yet.
-        
+
             ScopedReadLock lock(_writeCacheRWM);
 
             auto i = _writeCache.find(fileURI.full());
@@ -547,122 +537,103 @@ namespace
         }
     }
 
+
     namespace
     {
-        struct WriteOperation : public osg::Operation
-        {
-        public:
-            WriteOperation(
-                const URI& uri,
-                const osg::Object* object,
-                const Config& meta,
-                const osgDB::Options* writeOptions,
-                FileSystemCacheBin* bin) :
-
-                osg::Operation(bin->getID(), false),
-                _uri(uri),
-                _object(object),
-                _meta(meta),
-                _writeOptions(writeOptions),
-                _bin(bin)
-            {
-                //nop
-            }
-
-            void operator()(osg::Object*) override
-            {
-                OE_PROFILING_ZONE_NAMED("FS Cache Write");
-
-                // prevent more than one thread from writing to the same key at the same time
-                ScopedGate<std::string> lockFile(_bin->_fileGate, _uri.full());
-
-                // make a home for it..
-                if (!osgDB::fileExists(osgDB::getFilePath(_uri.full())))
-                {
-                    osgEarth::makeDirectoryForFile(_uri.full());
-                }
-
-                osgDB::ReaderWriter::WriteResult r;
-
-                bool writeOK = false;
-
-                if (dynamic_cast<const osg::Image*>(_object.get()))
-                {
-                    std::string filename = _uri.full() + OSG_EXT;
-                    r = _bin->_rw->writeImage(*static_cast<const osg::Image*>(_object.get()), filename, _writeOptions.get());
-                    writeOK = r.success();
-                }
-                else if (dynamic_cast<const osg::Node*>(_object.get()))
-                {
-                    std::string filename = _uri.full() + OSG_EXT;
-                    r = _bin->_rw->writeNode(*static_cast<const osg::Node*>(_object.get()), filename, _writeOptions.get());
-                    writeOK = r.success();
-                }
-                else
-                {
-                    std::string filename = _uri.full() + OSG_EXT;
-                    r = _bin->_rw->writeObject(*_object.get(), filename, _writeOptions.get());
-                    writeOK = r.success();
-                }
-
-                // write metadata
-                if (!_meta.empty() && writeOK)
-                {
-                    std::string metaname = _uri.full() + ".meta";
-                    writeMeta(metaname, _meta);
-                }
-
-                if (!writeOK)
-                {
-                    OE_WARN << LC << "FAILED to write \"" << _uri.full() << "\" to cache bin \"" << 
-                        _bin->getID() << "\"; msg = \"" << r.message() << "\"" << std::endl;
-                }
-                else
-                {
-                    OE_DEBUG << LC << "Wrote " << _uri.full() << " to cache bin " << _bin->getID() << std::endl;
-                }
-
-                // remove it from the write cache now that we're done.
-                {
-                    ScopedWriteLock lock(_bin->_writeCacheRWM);
-                    _bin->_writeCache.erase(_uri.full());
-                }
-            }
-
-        private:
-            URI _uri;
-            osg::ref_ptr<const osg::Object> _object;
-            Config _meta;
-            osg::ref_ptr<const osgDB::Options> _writeOptions;
-            osg::ref_ptr<FileSystemCacheBin> _bin;
-        };
+        typedef Job<bool> CacheWriteJob;
     }
 
     bool
     FileSystemCacheBin::write(
-        const std::string& key, 
-        const osg::Object* object, 
-        const Config& meta, 
-        const osgDB::Options* writeOptions)
+        const std::string& key,
+        const osg::Object* raw_object,
+        const Config& meta,
+        const osgDB::Options* raw_writeOptions)
     {
-        if ( !binValidForWriting() || !object )
+        if ( !binValidForWriting() || !raw_object)
             return false;
 
         // convert the key into a legal filename:
         URI fileURI( key, _metaPath );
 
         // combine custom options with cache options:
-        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(writeOptions);
+        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(raw_writeOptions);
 
         // Temporary: Check whether it's a node because we can't thread
-        // out the NODE writes until we figure out the thread-safety 
+        // out the NODE writes until we figure out the thread-safety
         // issue and make all the reads return CONST objects
-        bool isNode = dynamic_cast<const osg::Node*>(object) != nullptr;
+        bool isNode = dynamic_cast<const osg::Node*>(raw_object) != nullptr;
 
-        if (_threadPool && !isNode)
+        // Wrap input objects in ref_ptrs so they will persist in our write functor lambda
+        osg::ref_ptr<const osg::Object> object(raw_object);
+        osg::ref_ptr<const osgDB::Options> writeOptions(raw_writeOptions);
+
+        CacheWriteJob::Function write_op = [=](Cancelable*)
+        {
+            OE_PROFILING_ZONE_NAMED("FS Cache Write");
+
+            // prevent more than one thread from writing to the same key at the same time
+            ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
+
+            // make a home for it..
+            if (!osgDB::fileExists(osgDB::getFilePath(fileURI.full())))
+            {
+                osgEarth::makeDirectoryForFile(fileURI.full());
+            }
+
+            osgDB::ReaderWriter::WriteResult r;
+
+            bool writeOK = false;
+
+            if (dynamic_cast<const osg::Image*>(object.get()))
+            {
+                std::string filename = fileURI.full() + OSG_EXT;
+                r = _rw->writeImage(*static_cast<const osg::Image*>(object.get()), filename, writeOptions.get());
+                writeOK = r.success();
+            }
+            else if (dynamic_cast<const osg::Node*>(object.get()))
+            {
+                std::string filename = fileURI.full() + OSG_EXT;
+                r = _rw->writeNode(*static_cast<const osg::Node*>(object.get()), filename, writeOptions.get());
+                writeOK = r.success();
+            }
+            else
+            {
+                std::string filename = fileURI.full() + OSG_EXT;
+                r = _rw->writeObject(*object.get(), filename, writeOptions.get());
+                writeOK = r.success();
+            }
+
+            // write metadata
+            if (!meta.empty() && writeOK)
+            {
+                std::string metaname = fileURI.full() + ".meta";
+                writeMeta(metaname, meta);
+            }
+
+            if (!writeOK)
+            {
+                OE_WARN << LC << "FAILED to write \"" << fileURI.full() << "\" to cache bin \"" <<
+                    getID() << "\"; msg = \"" << r.message() << "\"" << std::endl;
+            }
+            else
+            {
+                OE_DEBUG << LC << "Wrote " << fileURI.full() << " to cache bin " << getID() << std::endl;
+            }
+
+            // remove it from the write cache now that we're done.
+            {
+                ScopedWriteLock lock(_writeCacheRWM);
+                _writeCache.erase(fileURI.full());
+            }
+
+            return true;
+        };
+
+        if (_jobArena != nullptr && !isNode)
         {
             // Store in the write-cache until it's actually written.
-            // Will override any existing entry and that's OK since the 
+            // Will override any existing entry and that's OK since the
             // most recent one is the valid one.
             _writeCacheRWM.write_lock();
             WriteCacheRecord& record = _writeCache[fileURI.full()];
@@ -670,26 +641,14 @@ namespace
             record.object = object;
             _writeCacheRWM.write_unlock();
 
-            // queue the asynchronous write.
-            WriteOperation* writer = new WriteOperation(
-                fileURI,
-                object,
-                meta,
-                dbo.get(),
-                this);
-
-            _threadPool->run(writer);
+            // asynchronous write
+            CacheWriteJob::dispatchAndForget(*_jobArena, write_op);
         }
-        else // synchronous write:
-        { 
-            WriteOperation writeOp(
-                fileURI,
-                object,
-                meta,
-                dbo.get(),
-                this);
 
-            writeOp.operator()(nullptr);
+        else
+        {
+            // synchronous write
+            write_op(nullptr);
         }
 
         return true;

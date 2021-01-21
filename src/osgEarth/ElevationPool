@@ -230,26 +230,38 @@ namespace osgEarth
     /**
     * Utility to run elevation queries in the background.
     */
-    class OSGEARTH_EXPORT AsyncElevationSampler : public osg::Referenced
+    class OSGEARTH_EXPORT AsyncElevationSampler
     {
     public:
+        //! Construct a new sampler
+        //! @param map Map the sampler will use to sample elevation data
+        //! @param threads Number of threads the sampler should use
         AsyncElevationSampler(
             const Map* map,
             unsigned threads =1u);
 
-        Future<RefElevationSample> getSample(
+        //! Destructor
+        virtual ~AsyncElevationSampler() { }
+
+        //! Sample elevation at a point at highest available resolution
+        //! @param p Point at which to sample terrain elevation
+        //! @return Future result of the sample
+        Future<ElevationSample> getSample(
             const GeoPoint& p);
 
-        Future<RefElevationSample> getSample(
+        //! Sample elevation at a point and a target resolution
+        //! @param p Point at which to sample terrain elevation
+        //! @param resolution Resolution at which to sample terrain
+        //! @return Future result of the sample
+        Future<ElevationSample> getSample(
             const GeoPoint& p,
             const Distance& resolution);
 
-        virtual ~AsyncElevationSampler() { }
-
     protected:
+
         osg::observer_ptr<const Map> _map;
         ElevationPool::WorkingSet _ws;
-        osg::ref_ptr<ThreadPool> _threadPool;
+        JobArena _arena;
     };
 } // namespace
 

@@ -309,6 +309,13 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
                     Container*             userContainer,
                     const osgDB::Options*  readOptions) const
 {
+    // Pause do the user can attach a debugger
+    if (args.read("--pause"))
+    {
+        std::cout << "Press <ENTER> to continue" << std::endl;
+        ::getchar();
+    }
+
     osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
 
     // pass through OSG options
@@ -712,8 +719,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
             ShadowCaster* caster = new ShadowCaster();
             caster->setTextureImageUnit( unit );
             caster->setLight( view->getLight() );
-            caster->getShadowCastingGroup()->addChild( mapNode->getLayerNodeGroup() );
-            caster->getShadowCastingGroup()->addChild(mapNode->getTerrainEngine());
+            caster->getShadowCastingGroup()->addChild(mapNode->getLayerNodeGroup());
+            caster->getShadowCastingGroup()->addChild(mapNode->getTerrainEngine()->getNode());
             if ( mapNode->getNumParents() > 0 )
             {
                 osgEarth::insertGroup(caster, mapNode->getParent(0));

@@ -28,6 +28,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
 #include <osgUtil/IncrementalCompileOperation>
+#include <typeinfo>
 
 #define LC "[URI] "
 
@@ -42,10 +43,11 @@ using namespace osgEarth::Threading;
 
 namespace
 {
+#if 0
     class LoadNodeOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
     {
     public:
-        LoadNodeOperation(const URI& uri, const osgDB::Options* options, Promise<osg::Node> promise) :
+        LoadNodeOperation(const URI& uri, const osgDB::Options* options, Promise<osg::ref_ptr<osg::Node>> promise) :
             _uri(uri),
             _promise(promise),
             _options(options),
@@ -104,7 +106,7 @@ namespace
                     }
                 }
 
-                _promise.resolve(result.getNode());
+                _promise.resolve(osg::ref_ptr<osg::Node>(result.getNode()));
             }
         }
 
@@ -117,13 +119,14 @@ namespace
             return true;
         }
 
-        Promise<osg::Node> _promise;
+        Promise<osg::ref_ptr<osg::Node>> _promise;
         osg::ref_ptr<const osgDB::Options> _options;
         osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
         Threading::Event _block;
         URI _uri;
         std::string _requestLayer;
     };
+#endif
 }
 
 //------------------------------------------------------------------------
@@ -786,37 +789,6 @@ URI::readString(const osgDB::Options* dbOptions,
                 ProgressCallback*     progress ) const
 {
     return doRead<ReadString>( *this, dbOptions, progress );
-}
-
-
-Future<osg::Node>
-URI::readNodeAsync(const osgDB::Options* dbOptions,
-                   ProgressCallback* progress) const
-{
-    osg::ref_ptr<ThreadPool> threadPool;
-    if (dbOptions)
-    {
-        threadPool = ThreadPool::get(dbOptions);
-    }
-
-    Promise<osg::Node> promise;
-
-    osg::ref_ptr<osg::Operation> operation = new LoadNodeOperation(*this, dbOptions, promise);
-
-    if (operation.valid())
-    {
-        if (threadPool.valid())
-        {
-            threadPool->run(operation.get());
-        }
-        else
-        {
-            OE_DEBUG << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
-            operation->operator()(0);
-        }
-    }
-
-    return promise.getFuture();
 }
 
 //------------------------------------------------------------------------

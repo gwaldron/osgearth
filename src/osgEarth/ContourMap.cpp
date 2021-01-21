@@ -148,9 +148,9 @@ ContourMapLayer::init()
 }
 
 void
-ContourMapLayer::prepareForRenderingImplementation(TerrainEngine* engine)
+ContourMapLayer::prepareForRendering(TerrainEngine* engine)
 {
-    VisibleLayer::prepareForRenderingImplementation(engine);
+    VisibleLayer::prepareForRendering(engine);
 
     if (!engine->getResources()->reserveTextureImageUnitForLayer(_reservation, this, "ContourMap"))
     {

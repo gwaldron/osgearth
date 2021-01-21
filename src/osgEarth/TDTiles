@@ -206,7 +206,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         osg::ref_ptr< osg::Node > _boundsDebug;
         ThreeDTilesetNode* _tileset;
 
-        Threading::Future<osg::Node> _contentFuture;
+        Threading::Future< osg::ref_ptr<osg::Node> > _contentFuture;
         bool _requestedContent;
 
         bool _immediateLoad;

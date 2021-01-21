@@ -442,9 +442,9 @@ Layer::getStatus() const
 }
 
 void
-Layer::prepareForRendering(TerrainEngine* engine)
+Layer::invoke_prepareForRendering(TerrainEngine* engine)
 {
-    prepareForRenderingImplementation(engine);
+    prepareForRendering(engine);
 
     // deprecation path; call this in case some older layer is still
     // implementing it.
@@ -452,7 +452,7 @@ Layer::prepareForRendering(TerrainEngine* engine)
 }
 
 void
-Layer::prepareForRenderingImplementation(TerrainEngine* engine)
+Layer::prepareForRendering(TerrainEngine* engine)
 {
     // Install an earth-file shader if necessary (once)
     for (const auto& shaderOptions : options().shaders())

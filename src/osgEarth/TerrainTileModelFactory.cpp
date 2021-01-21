@@ -34,6 +34,7 @@ using namespace osgEarth;
 class FutureImage : public osg::Image
 {
 public:
+    typedef Job<osg::ref_ptr<osg::Image>> ImageJob;
 
     FutureImage(ImageLayer* layer, const TileKey& key) : osg::Image()
     {
@@ -42,16 +43,20 @@ public:
 
         osg::observer_ptr<ImageLayer> layer_ptr(_layer);
 
-        Job<const osg::Image> job([layer_ptr, key](Cancelable* progress) mutable {
-            osg::ref_ptr<ImageLayer> safe(layer_ptr);
-            if (safe.valid()) {
-                GeoImage result = safe->createImage(key, nullptr); // progress TODO
-                return result.takeImage();
+        _result = ImageJob::dispatch(
+            "oe.async_layer",
+            [layer_ptr, key](Cancelable* progress) mutable
+            {
+                osg::ref_ptr<ImageLayer> safe(layer_ptr);
+                osg::ref_ptr<osg::Image> result;
+                if (safe.valid())
+                {
+                    GeoImage geoimage = safe->createImage(key, nullptr); // progress TODO
+                    result = const_cast<osg::Image*>(geoimage.getImage());
+                }
+                return result;
             }
-            else return static_cast<const osg::Image*>(nullptr);
-        });
-
-        _result = job.schedule("ASYNC_LAYER");
+        );
     }
 
     virtual bool requiresUpdateCall() const override
@@ -66,7 +71,7 @@ public:
         if (_result.isAvailable())
         {
             // no refptr here because we are going to steal the data.
-            osg::ref_ptr<osg::Image> i = const_cast<osg::Image*>(_result.release());
+            osg::ref_ptr<osg::Image> i = _result.get();
 
             if (i.valid())
             {
@@ -88,7 +93,7 @@ public:
 
     osg::ref_ptr<ImageLayer> _layer;
     TileKey _key;
-    Job<const osg::Image>::Result _result;
+    Job<osg::ref_ptr<osg::Image>>::Result _result;
 };
 
 //.........................................................................
@@ -722,6 +727,9 @@ osg::Texture*
 TerrainTileModelFactory::createImageTexture(const osg::Image* image,
                                             const ImageLayer* layer) const
 {
+    if (image == nullptr || layer == nullptr)
+        return nullptr;
+
     osg::Texture* tex = nullptr;
     bool hasMipMaps = false;
     bool isCompressed = false;

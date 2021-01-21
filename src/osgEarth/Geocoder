@@ -41,8 +41,9 @@ namespace osgEarth
         };
 
         //! Internal - do not use
-        struct OutputData : public osg::Referenced
+        struct OutputData
         {
+            OutputData() { }
             OutputData(const Status& status, FeatureCursor* cursor) : _status(status), _cursor(cursor) { }
             Status _status;
             osg::ref_ptr<FeatureCursor> _cursor;
@@ -61,6 +62,7 @@ namespace osgEarth
             //! Internal constructors
             Results(const Status& status, FeatureCursor* cursor);
             Results(Future<OutputData> future);
+            Results(const OutputData& results);
         };
 
     public:
@@ -72,7 +74,7 @@ namespace osgEarth
         void setServiceOption(const std::string& key, const std::string& value);
 
         //! Geocode a search string
-        //! If the options contains a ThreadPool, will run asynchronously
+        //! If the options contains a JobArena, will run asynchronously
         Results search(const std::string& input, const osgDB::Options* ioOptions =NULL);
 
         //! Set the underlying implementation to use.

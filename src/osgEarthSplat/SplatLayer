@@ -65,7 +65,7 @@ namespace osgEarth { namespace Splat
 
         //! Override post-ctor init
         virtual void init() override;
-        virtual void prepareForRenderingImplementation(TerrainEngine*) override;
+        virtual void prepareForRendering(TerrainEngine*) override;
 
         //! Serialize
         virtual Config getConfig() const override;

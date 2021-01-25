@@ -21,6 +21,8 @@
 */
 #include <osgEarth/GLUtils>
 #include <osgEarth/Lighting>
+#include <osgEarth/StringUtils>
+#include <osgEarth/Math>
 
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
@@ -247,6 +249,194 @@ GLBufferReleaser::operator () (osg::GraphicsContext* context)
         ext->glDeleteBuffers(1, &_handle);
         _handle = (GLuint)~0;
         setKeep(false);
+    }
+}
+
+#undef LC
+#define LC "[GPUJobArena] "
+
+#if 0
+GPUJobArena<bool>::Result
+GPUJobArena::dispatchOnAllContexts(
+    GPUJobArena::Function& function)
+{
+    if (_gcs.size() == 1)
+    {
+        return dispatch(function);
+    }
+
+    else
+    {
+        Job<bool>::dispatch(
+            [...](Cancelable* progress)
+            {
+                std::queue<Future<bool>> futures;
+
+                for (auto& gc : _gcs)
+                {
+                    Future<bool> f = arena(gc).dispatch(...);
+                    futures.emplace_back(f);
+                }
+
+                while (futures.empty() == false)
+                {
+                    futures.front().get(progress);
+                    futures.pop_front();
+                }
+            }
+        );
+    }
+}
+#endif
+
+
+//static defs
+osg::ref_ptr<GPUJobArena> GPUJobArena::_arena_pool;
+Mutex GPUJobArena::_arena_pool_mutex;
+
+GPUJobArena&
+GPUJobArena::arena()
+{
+    ScopedMutexLock lock(_arena_pool_mutex);
+
+    if (_arena_pool.valid() == false)
+    {
+        _arena_pool = new GPUJobArena();
+    }
+
+    return *_arena_pool.get();
+}
+
+GPUJobArena::GPUJobArena() :
+    osg::GraphicsOperation("oe.GPUJobArena", true),
+    _timeSlice(2), // default time slice (milliseconds)
+    _done(false)
+{
+    const char* value = ::getenv("OSGEARTH_GPU_TIME_SLICE_MS");
+    if (value)
+    {
+        _timeSlice = std::chrono::milliseconds(clamp(atoi(value), 1, 1000));
+    }
+}
+
+GPUJobArena::~GPUJobArena()
+{
+    setGraphicsContext(nullptr);
+}
+
+void
+GPUJobArena::setGraphicsContext(osg::GraphicsContext* gc)
+{
+    if (gc != _gc.get() || gc == nullptr)
+    {
+        osg::ref_ptr<osg::GraphicsContext> old_gc(_gc);
+        if (old_gc.valid())
+        {
+            old_gc->remove(this);
+        }
+
+        _gc = nullptr;
+
+        if (gc)
+        {
+            _gc = gc;
+            gc->add(this);
+            OE_INFO << LC << getName() << " attached to GC " << std::hex << gc << std::dec << std::endl;
+        }
+    }
+}
+
+osg::ref_ptr<osg::GraphicsContext>
+GPUJobArena::getGraphicsContext()
+{
+    return osg::ref_ptr<osg::GraphicsContext>(_gc);
+}
+
+void
+GPUJobArena::setTimeSlice(const std::chrono::milliseconds& value)
+{
+    _timeSlice = value;
+}
+
+const std::chrono::milliseconds&
+GPUJobArena::getTimeSlice() const
+{
+    return _timeSlice;
+}
+
+void
+GPUJobArena::dispatch(Delegate& del)
+{
+    std::unique_lock<Mutex> lock(_queue_mutex);
+    _queue.emplace_back(del);
+}
+
+void
+GPUJobArena::operator()(osg::GraphicsContext* gc)
+{
+    typedef std::chrono::high_resolution_clock Clock;
+    typedef std::chrono::milliseconds ms;
+
+    // always run at least one job.
+    Clock::time_point start = Clock::now();
+    while (!_done)
+    {
+        Delegate next;
+
+        _queue_mutex.lock();
+        if (!_queue.empty() && !_done)
+        {
+            next = std::move(_queue.front());
+            _queue.pop_front();
+        }
+        _queue_mutex.unlock();
+
+        if (next != nullptr)
+        {
+            // run the job
+            next(gc->getState());
+
+            // check the time slice:
+            auto timeElapsed = std::chrono::duration_cast<ms>(Clock::now() - start);
+            if (timeElapsed >= _timeSlice)
+            {
+                break;
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+GPUJobArenaConnector::GPUJobArenaConnector() :
+    osg::Drawable()
+{
+    // ensure it doesn't get culled out
+    setCullingActive(false);
+
+    // ensure the draw runs synchronously:
+    setDataVariance(DYNAMIC);
+
+    // force the draw to run every frame:
+    setUseDisplayList(false);
+}
+
+GPUJobArenaConnector::~GPUJobArenaConnector()
+{
+    GPUJobArena& arena = GPUJobArena::arena();
+    arena.setGraphicsContext(nullptr);
+}
+
+void
+GPUJobArenaConnector::drawImplementation(osg::RenderInfo& ri) const
+{
+    GPUJobArena& arena = GPUJobArena::arena();
+
+    if (arena.getGraphicsContext().valid() == false)
+    {
+        arena.setGraphicsContext(ri.getState()->getGraphicsContext());
     }
 }
 

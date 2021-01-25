@@ -25,12 +25,16 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/optional>
+#include <osgEarth/Threading>
 #include <osg/StateSet>
 #include <osg/OperationThread>
 #include <osg/GraphicsContext>
+#include <osg/Drawable>
 
 namespace osgEarth
 {
+    using namespace Threading;
+
     struct OSGEARTH_EXPORT GLUtils
     {
         //! Sets any default uniforms required by the implementation
@@ -87,6 +91,120 @@ namespace osgEarth
         GLBufferReleaser(GLBuffer* buffer);
         void operator () (osg::GraphicsContext* context);
     };
+
+    /**
+     * API for launching GPU thread jobs. Any function dispatched here will
+     * execute on the OSG graphics thread and return a future result.
+     *
+     * NOTE: This implementation will run the job under an arbitrary graphics
+     * context. So it is not currently suitable for operations that must be
+     * executed on multiple contexts.
+     *
+     * Example usage (graphics thread operation returning a bool):
+     *
+     *  // Dispatch the asynchronous job:
+     *  GPUJob<bool>::Result result = GPUJob<bool>::dispatch(
+     *      [=](osg::State* state, Cancelable* progress)
+     *      {
+     *           // do something 
+     *           return bool;
+     *      }
+     *  );
+     *
+     *  // Block until the result is ready:
+     *  bool value = result.get();
+     */
+    template<typename RESULT_TYPE>
+    class GPUJob
+    {
+    public:
+        //! Result type - future that will eventually contain the return value
+        typedef Future<RESULT_TYPE> Result;
+
+        //! Function type of async job
+        typedef std::function<RESULT_TYPE(osg::State*, Cancelable*)> Function;
+
+        //! Dispatch the asynchronous function.
+        //! @param function Function to execute in the graphics thread
+        //! @return Future result value. If this object goes out of scope,
+        //!   the job may by canceled.
+        static Result dispatch(
+            const Function& function);
+    };
+
+    /**
+     * Arena for dispatching GPU jobs.
+     * Use the GPUJob<> API instead of accessing this directly.
+     */
+    class OSGEARTH_EXPORT GPUJobArena : public osg::GraphicsOperation
+    {
+    public:
+        typedef std::function<void(osg::State*)> Delegate;
+
+    public:
+        //! Attach the arena to a graphics context
+        void setGraphicsContext(osg::GraphicsContext*);
+        osg::ref_ptr<osg::GraphicsContext> getGraphicsContext();
+
+        //! Time (ms) allocated to running GPU jobs per frame
+        void setTimeSlice(const std::chrono::milliseconds& value);
+        const std::chrono::milliseconds& getTimeSlice() const;
+
+        //! Dispatch a GPU job delegate
+        //! Use GPUJob::dispatch instead of calling this directly
+        void dispatch(Delegate& job);
+
+        //! Access to the job arena
+        static GPUJobArena& arena();
+
+    public:
+
+        void operator()(osg::GraphicsContext*) override;
+
+    protected:
+
+        virtual ~GPUJobArena();
+
+    private:
+        GPUJobArena();
+
+        mutable Mutex _queue_mutex;
+        std::deque<Delegate> _queue;
+        mutable osg::observer_ptr<osg::GraphicsContext> _gc;
+        std::chrono::milliseconds _timeSlice;
+        bool _done;
+        static osg::ref_ptr<GPUJobArena> _arena_pool;
+        static Mutex _arena_pool_mutex;
+    };
+
+    /**
+     * Activates a GPUJobArena - place anywhere in the scene graph.
+     */
+    class OSGEARTH_EXPORT GPUJobArenaConnector : public osg::Drawable
+    {
+    public:
+        GPUJobArenaConnector();
+        void drawImplementation(osg::RenderInfo& ri) const override;
+    protected:
+        virtual ~GPUJobArenaConnector();
+    };
+
+    template<typename RESULT_TYPE>
+    Future<RESULT_TYPE> GPUJob<RESULT_TYPE>::dispatch(const Function& function)
+    {
+        Promise<RESULT_TYPE> promise;
+        Future<RESULT_TYPE> future = promise.getFuture();
+
+        std::function<void(osg::State*)> delegate = [function, promise](osg::State* state) mutable
+        {
+            if (!promise.isAbandoned())
+            {
+                promise.resolve(function(state, &promise));
+            }
+        };
+        GPUJobArena::arena().dispatch(delegate);
+        return std::move(future);
+    }
 }
 
 

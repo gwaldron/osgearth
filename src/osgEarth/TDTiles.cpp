@@ -25,6 +25,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/Threading>
+#include <osgEarth/GLUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 #include <osgUtil/IncrementalCompileOperation>
@@ -474,9 +475,8 @@ randomColor()
 
 namespace
 {
-    class LoadTilesetOperation : public ICO::CompileCompletedCallback
+    struct LoadTilesetOperation
     {
-    public:
         LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options) : 
             _uri(uri),
             _options(options),
@@ -495,8 +495,6 @@ namespace
 
             osg::ref_ptr<ThreeDTilesetContentNode> tilesetNode;
 
-            osg::ref_ptr<ICO> ico = OptionsData<ICO>::get(_options.get(), typeid(ICO).name());
-
             osg::ref_ptr<ThreeDTilesetNode> parentTileset;
             _parentTileset.lock(parentTileset);
             if (parentTileset.valid())
@@ -509,8 +507,6 @@ namespace
                     OE_WARN << "Fail to read tileset \"" << _uri.full() << ": " << rr.errorDetail() << std::endl;
                 }
 
-                //std::string fullPath = osgEarth::getAbsolutePath(_url);
-
                 osg::ref_ptr<Tileset> tileset = Tileset::create(rr.getString(), _uri.full());
                 if (tileset.valid())
                 {
@@ -518,43 +514,14 @@ namespace
                         return nullptr;
 
                     tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset.get(), _options.get());
-
                     if (tilesetNode.valid())
-
+                    {
                         if (progress && progress->isCanceled())
                             return nullptr;
-                    {
-                        ImageUtils::compressAndMipmapTextures(tilesetNode.get());
 
-                        if (ico.valid())
-                        {
-                            OE_PROFILING_ZONE_NAMED("ICO compile");
-
-                            osg::Node* contentNode = static_cast<ThreeDTileNode*>(tilesetNode->getChild(0))->getContent();
-                            if (contentNode)
-                            {
-                                _compileSet = new ICO::CompileSet(contentNode);
-                                _compileSet->_compileCompletedCallback = this;
-                                ico->add(_compileSet.get());
-
-                                unsigned int numTries = 0;
-                                // block until the compile completes, checking once and a while for
-                                // an abandoned operation (to avoid deadlock)
-                                while (!_block.wait(10)) // 10ms
-                                {
-                                    // Limit the number of tries and give up after awhile to avoid the case where the ICO still has work to do but the application has exited.
-                                    ++numTries;
-                                    if ((progress && progress->isCanceled()) ||
-                                        numTries == 1000)
-                                    {
-                                        _compileSet->_compileCompletedCallback = NULL;
-                                        ico->remove(_compileSet.get());
-                                        _compileSet = 0;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
+                        // mipmaps, compression, and ICO compilation
+                        NodePreCompiler compiler;
+                        compiler.compile(tilesetNode.get(), _options.get(), progress);
                     }
                 }
             }
@@ -562,19 +529,8 @@ namespace
             return tilesetNode;
         }
 
-        bool compileCompleted(ICO::CompileSet* compileSet)
-        {
-            // Clear the _compileSet to avoid keeping a circular reference to the content.
-            _compileSet = nullptr;
-            // release the wait.
-            _block.set();
-            return true;
-        }
-
         osg::ref_ptr< osgDB::Options > _options;
         osg::observer_ptr<ThreeDTilesetNode> _parentTileset;
-        osg::ref_ptr<ICO::CompileSet> _compileSet;
-        Threading::Event _block;
         URI _uri;
         std::string _requestLayer;
     };
@@ -587,10 +543,8 @@ namespace
         const URI& uri,
         osgDB::Options* options)
     {
-        osg::ref_ptr<LoadTilesetOperation> operation = new LoadTilesetOperation(
-            parentTileset, uri, options);
-
-        return operation->loadTileSet(nullptr);
+        LoadTilesetOperation operation(parentTileset, uri, options);
+        return operation.loadTileSet(nullptr);
     }
 
     AsyncTileJob::Result readTilesetAsync(
@@ -598,7 +552,7 @@ namespace
         const URI& uri, 
         osgDB::Options* options)
     {
-        osg::ref_ptr<LoadTilesetOperation> operation = new LoadTilesetOperation(
+        std::shared_ptr<LoadTilesetOperation> operation = std::make_shared<LoadTilesetOperation>(
             parentTileset, uri, options);
 
         return AsyncTileJob::dispatch(
@@ -606,7 +560,6 @@ namespace
             [operation, options](Cancelable* progress)
             {
                 return operation->loadTileSet(progress);
-                // Note: it already runs the ICO so we don't call NodePreCompiler here
             }
         );
     }
@@ -662,7 +615,6 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
 
         if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
         {
-            //_content = readTilesetAsync(_tileset, uri, options).get();
             _content = readTilesetSync(_tileset, uri, options).get();
         }
         else

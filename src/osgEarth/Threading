@@ -273,6 +273,14 @@ namespace osgEarth { namespace Threading
             return _shared->obj();
         }
 
+        //! Waits for the result to become available (abandoned)
+        void join() {
+            get();
+        }
+        void join(const Cancelable* cancelable) {
+            get(cancelable);
+        }
+
         Future<T>& then(std::function<void(T&)>& func) {
             std::unique_lock<std::mutex> lock(_shared->_callbacksMutex);
             if (_ev->isSet()) {

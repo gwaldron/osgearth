@@ -496,8 +496,7 @@ namespace
             osg::ref_ptr<ThreeDTilesetContentNode> tilesetNode;
 
             osg::ref_ptr<ThreeDTilesetNode> parentTileset;
-            _parentTileset.lock(parentTileset);
-            if (parentTileset.valid())
+            if (_parentTileset.lock(parentTileset))
             {
                 // load the tile set:
                 ReadResult rr = _uri.readString(_options.get());
@@ -514,15 +513,6 @@ namespace
                         return nullptr;
 
                     tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset.get(), _options.get());
-                    if (tilesetNode.valid())
-                    {
-                        if (progress && progress->isCanceled())
-                            return nullptr;
-
-                        // mipmaps, compression, and ICO compilation
-                        NodePreCompiler compiler;
-                        compiler.compile(tilesetNode.get(), _options.get(), progress);
-                    }
                 }
             }
 
@@ -560,6 +550,40 @@ namespace
             [operation, options](Cancelable* progress)
             {
                 return operation->loadTileSet(progress);
+            }
+        );
+    }
+
+    osg::ref_ptr<osg::Node> readTileContentSync(
+        const URI& uri,
+        osg::ref_ptr<const osgDB::Options> options)
+    {
+        osg::ref_ptr<osg::Node> node = uri.getNode(options.get(), nullptr);
+        if (node.valid())
+        {
+            ImageUtils::compressAndMipmapTextures(node.get());
+            GLObjectsCompiler compiler;
+            compiler.compileNow(node.get(), options.get(), nullptr);
+        }
+        return node;
+    }
+
+    AsyncTileJob::Result readTileContentAsync(
+        const URI& uri,
+        osg::ref_ptr<const osgDB::Options> options)
+    {
+        return Job<osg::ref_ptr<osg::Node>>::dispatch(
+            "oe.3dtiles",
+            [uri, options](Cancelable* progress)
+            {
+                osg::ref_ptr<osg::Node> node = uri.getNode(options.get(), nullptr);
+                if (node.valid())
+                {
+                    ImageUtils::compressAndMipmapTextures(node.get());
+                    GLObjectsCompiler compiler;
+                    compiler.compileNow(node.get(), options.get(), progress);
+                }
+                return node;
             }
         );
     }
@@ -619,9 +643,9 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         }
         else
         {
-            _content = uri.getNode(_options.get());
-            ImageUtils::compressAndMipmapTextures(_content.get());
+            _content = readTileContentSync(uri, _options);
         }
+
         if (_content.valid())
         {
             _tileset->runPreMergeOperations(_content.get());
@@ -884,8 +908,7 @@ void ThreeDTileNode::requestContent(ICO* ico)
         if (ico)
         {
             localOptions = Registry::instance()->cloneOrCreateOptions(_options.get());
-            //OptionsData<osgUtil::IncrementalCompileOperation>::set(localOptions.get(), "osg::ico", ico);
-            OptionsData<ICO>::set(localOptions.get(), typeid(ICO).name(), ico);
+            OptionsData<ICO>::set(localOptions.get(), ico);
         }
         else
         {
@@ -904,21 +927,13 @@ void ThreeDTileNode::requestContent(ICO* ico)
 
         if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
         {
-            _contentFuture =
-                readTilesetAsync(_tileset, uri, localOptions.get());
+            // "json" extension = external tileset:
+            _contentFuture = readTilesetAsync(_tileset, uri, localOptions.get());
         }
         else
         {
-            // asynchronously load the pre-compile the node
-            _contentFuture = Job<osg::ref_ptr<osg::Node>>::dispatch(
-                "oe.3dtiles",
-                [uri, localOptions](Cancelable* progress)
-                {
-                    osg::ref_ptr<osg::Node> node = uri.getNode(localOptions.get(), nullptr);
-                    NodePreCompiler::compile(node.get(), localOptions.get(), progress);
-                    return node;
-                }
-            );
+            // else, actual content:
+            _contentFuture = readTileContentAsync(uri, localOptions);
         }
 
         _requestedContent = true;

@@ -205,6 +205,23 @@ namespace osgEarth
         GPUJobArena::arena().dispatch(delegate);
         return std::move(future);
     }
+
+    /**
+     * Utility to "pre-compile" a node by running it through the ICO
+     * if one exists in the Options. If there is no ICO, this is a no-op
+     */
+    struct OSGEARTH_EXPORT GLObjectsCompiler
+    {
+        void compileNow(
+            osg::Node* node,
+            const osgDB::Options* options,
+            osgEarth::Threading::Cancelable* progress) const;
+
+        Future<bool> compileAsync(
+            osg::Node* node,
+            const osgDB::Options* options,
+            osgEarth::Threading::Cancelable* progress) const;
+    };
 }
 
 

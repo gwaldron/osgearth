@@ -40,6 +40,8 @@
 
 namespace osgEarth { namespace Util
 {    
+    using namespace osgEarth::Threading;
+
     /**
      * Utility for storing observables in an osg::Object
      */
@@ -52,6 +54,12 @@ namespace osgEarth { namespace Util
             if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
             udc->addUserObject(new OptionsData<T>(name, obj));
         }
+        static void set(osg::Object* o, T* obj) {
+            osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
+            unsigned i = udc->getUserObjectIndex(name);
+            if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
+            udc->addUserObject(new OptionsData<T>(typeid(T).name(), obj));
+        }
         static bool lock(const osg::Object* o, const std::string& name, osg::ref_ptr<T>& out) {
             if (!o) return false;
             const OptionsData<T>* data = dynamic_cast<const OptionsData<T>*>(osg::getUserObject(o, name));
@@ -60,6 +68,11 @@ namespace osgEarth { namespace Util
         static osg::ref_ptr<T> get(const osg::Object* o, const std::string& name) {
             osg::ref_ptr<T> result;
             bool ok = lock(o, name, result);
+            return result;
+        }
+        static osg::ref_ptr<T> get(const osg::Object* o) {
+            osg::ref_ptr<T> result;
+            bool ok = lock(o, typeid(T).name(), result);
             return result;
         }
         static void set(osg::Object* o, std::shared_ptr<T> obj) {
@@ -167,19 +180,6 @@ namespace osgEarth { namespace Util
         AllocateAndMergeBufferObjectsVisitor();
         virtual ~AllocateAndMergeBufferObjectsVisitor() { }
         void apply(osg::Drawable& drawable);
-    };
-
-
-    /**
-     * Utility to "pre-compile" a node by compressing and mipmapping its
-     * textures and running it through the ICO if one exists in the Options.
-     */
-    struct OSGEARTH_EXPORT NodePreCompiler
-    {
-        static void compile(
-            osg::Node* node,
-            const osgDB::Options* options,
-            osgEarth::Threading::Cancelable* progress);
     };
 } }
 

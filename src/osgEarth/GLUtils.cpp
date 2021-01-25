@@ -23,9 +23,11 @@
 #include <osgEarth/Lighting>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Math>
+#include <osgEarth/Utils>
 
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
+#include <osgUtil/IncrementalCompileOperation>
 #include <osgViewer/GraphicsWindow>
 
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
@@ -439,6 +441,63 @@ GPUJobArenaConnector::drawImplementation(osg::RenderInfo& ri) const
         arena.setGraphicsContext(ri.getState()->getGraphicsContext());
     }
 }
+
+
+namespace
+{
+    using ICO = osgUtil::IncrementalCompileOperation;
+
+    struct ICOCallback : public ICO::CompileCompletedCallback
+    {
+        Promise<bool> _promise;
+
+        bool compileCompleted(ICO::CompileSet* compileSet) override
+        {
+            _promise.resolve(true);
+            return true;
+        }
+    };
+}
+
+Future<bool>
+GLObjectsCompiler::compileAsync(
+    osg::Node* node,
+    const osgDB::Options* options,
+    Cancelable* progress) const
+{
+    Future<bool> result;
+    if (node)
+    {
+        // if there is an ICO available, schedule the GPU compilation
+        osg::ref_ptr<ICO> ico = OptionsData<ICO>::get(options);
+        if (ico.valid())
+        {
+            auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(node);
+
+            ICOCallback* callback = new ICOCallback();
+            result = callback->_promise.getFuture();
+            compileSet->_compileCompletedCallback = callback;
+
+            ico->add(compileSet);
+        }
+    }
+    return result;
+}
+
+
+void
+GLObjectsCompiler::compileNow(
+    osg::Node* node,
+    const osgDB::Options* options,
+    Cancelable* progress) const
+{
+    if (node)
+    {
+        Future<bool> result = compileAsync(node, options, progress);
+        result.join(progress);
+    }
+}
+
 
 
 #ifndef OE_HAVE_BINDIMAGETEXTURE

@@ -294,6 +294,9 @@ MapNode::init()
     _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
 
     this->addChild( _layerNodes );
+
+    // Connector to active the global GPUJobArena
+    this->addChild(new GPUJobArenaConnector());
 }
 
 bool

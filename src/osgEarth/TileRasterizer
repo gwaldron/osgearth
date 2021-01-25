@@ -39,7 +39,7 @@ namespace osgEarth
     /**
     * Render node graphs to textures, one at a time.
     */
-    class OSGEARTH_EXPORT TileRasterizer : public osg::Drawable
+    class OSGEARTH_EXPORT TileRasterizer
     {
     public:
         //! Construct a new tile rasterizer camera
@@ -62,10 +62,6 @@ namespace osgEarth
         //! destructor
         virtual ~TileRasterizer();
 
-    public: // Drawable
-
-        void drawImplementation(osg::RenderInfo& ri) const override;
-
     private:
 
         // TR installs itself on a simple GraphicsContext, so there is no need
@@ -84,27 +80,20 @@ namespace osgEarth
             osg::observer_ptr<osg::GraphicsContext> _gc;
         };
 
-        // One render op for the GC queue
-        struct RenderOperation : public osg::GraphicsOperation
+        // One render pass for the GC queue
+        struct RenderOperation
         {
-            RenderOperation(osg::Node* node, const GeoExtent& extent, RenderData& renderData);
-            Future<osg::ref_ptr<osg::Image>> getFuture();
-            void operator () (osg::GraphicsContext* context);
+            RenderOperation(
+                osg::Node* node, 
+                const GeoExtent& extent, 
+                std::shared_ptr<RenderData> renderData);
+            osg::ref_ptr<osg::Image> run(osg::State*);
             osg::ref_ptr<osg::Node> _node;
             GeoExtent _extent;
-            Promise<osg::ref_ptr<osg::Image>> _promise;
-            RenderData& _rd;
+            std::shared_ptr<RenderData> _rd;
         };
 
-        // Installs the TR on a GC operations queue
-        //struct RenderInstaller : public osg::Drawable
-        //{
-        //    RenderInstaller(RenderData& renderData);
-        //    void drawImplementation(osg::RenderInfo& ri) const;
-        //    RenderData& _renderData;
-        //};
-
-        mutable RenderData _renderData;
+        mutable std::shared_ptr<RenderData> _renderData;
     };
 
 } // namespace osgEarth

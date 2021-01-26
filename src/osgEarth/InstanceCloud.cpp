@@ -106,6 +106,15 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
         commandBufferSize = numTilesAllocated * sizeof(DrawElementsIndirectCommand);
         commandBufferSize = align(commandBufferSize, ssboOffsetAlignment);
 
+#if 1
+        commandBuffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, *state, "oe.ic.cmdbuffer");
+        commandBuffer->bind();
+        _glBufferStorage(
+            GL_SHADER_STORAGE_BUFFER,
+            commandBufferSize,
+            nullptr,                 // uninitialized memory
+            GL_DYNAMIC_STORAGE_BIT); // so we can reset each frame
+#else
         commandBuffer = new GLBuffer();
         ext->glGenBuffers(1, &commandBuffer->_handle);
         ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, commandBuffer->_handle);
@@ -115,6 +124,7 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
             NULL,                    // uninitialized memory
             GL_DYNAMIC_STORAGE_BIT); // so we can reset each frame
         state->getGraphicsContext()->add(new GLBufferReleaser(commandBuffer.get()));
+#endif
         
         // Buffer for the output data (culled points, written by compute shader)
         // Align properly to satisfy glBindBufferRange
@@ -122,6 +132,15 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
 
         OE_DEBUG << "NumInstances="<<numInstances<< ", renderBufferTileSize=" << renderBufferTileSize << ", cmdBufferSize=" << commandBufferSize << std::endl;
 
+#if 1
+        renderBuffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, *state, "oe.ic.renderbuffer");
+        renderBuffer->bind();
+        _glBufferStorage(
+            GL_SHADER_STORAGE_BUFFER,
+            numTilesAllocated * renderBufferTileSize,
+            nullptr,   // uninitialized memory
+            0);        // only GPU will write to this buffer
+#else
         renderBuffer = new GLBuffer();
         ext->glGenBuffers(1, &renderBuffer->_handle);
         ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderBuffer->_handle);
@@ -131,6 +150,7 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
             NULL,   // uninitialized memory
             0);     // only GPU will write to this buffer
         state->getGraphicsContext()->add(new GLBufferReleaser(renderBuffer.get()));
+#endif
     }
 }
 
@@ -224,7 +244,11 @@ InstanceCloud::preCull(osg::RenderInfo& ri)
 
     // Reset all the instance counts to zero by copying the empty
     // prototype buffer to the GPU
+#if 1
+    _data.commandBuffer->bind();
+#else
     ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _data.commandBuffer->_handle);
+#endif
 
     ext->glBufferSubData(
         GL_SHADER_STORAGE_BUFFER, 
@@ -233,9 +257,15 @@ InstanceCloud::preCull(osg::RenderInfo& ri)
         &_data.commands[0]);
 
     // Bind our SSBOs to their respective layout indices in the shader
-    ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_COMMAND_BUFFER, _data.commandBuffer->_handle);
+    ext->glBindBufferBase(
+        GL_SHADER_STORAGE_BUFFER,
+        BINDING_COMMAND_BUFFER,
+        _data.commandBuffer->name());
 
-    ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_RENDER_BUFFER, _data.renderBuffer->_handle);
+    ext->glBindBufferBase(
+        GL_SHADER_STORAGE_BUFFER, 
+        BINDING_RENDER_BUFFER, 
+        _data.renderBuffer->name());
 }
 
 void
@@ -298,16 +328,20 @@ InstanceCloud::Renderer::drawImplementation(osg::RenderInfo& ri, const osg::Draw
         osg::GLBufferObject* ebo = geom->getPrimitiveSet(0)->getOrCreateGLBufferObject(state.getContextID());
         state.bindElementBufferObject(ebo);
 
-        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BINDING_COMMAND_BUFFER, _data->commandBuffer->_handle);
+        ext->glBindBufferBase(
+            GL_SHADER_STORAGE_BUFFER, 
+            BINDING_COMMAND_BUFFER, 
+            _data->commandBuffer->name());
 
-        ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _data->commandBuffer->_handle);
+        _data->commandBuffer->bind(GL_DRAW_INDIRECT_BUFFER);
+        //ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _data->commandBuffer->_handle);
     }
 
     // activate the "nth" tile in the render buffer:
     ext->glBindBufferRange(
         GL_SHADER_STORAGE_BUFFER, 
         BINDING_RENDER_BUFFER,
-        _data->renderBuffer->_handle, 
+        _data->renderBuffer->name(), 
         _data->tileToDraw * _data->renderBufferTileSize,
         _data->renderBufferTileSize);
 

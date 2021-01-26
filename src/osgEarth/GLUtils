@@ -29,7 +29,16 @@
 #include <osg/StateSet>
 #include <osg/OperationThread>
 #include <osg/GraphicsContext>
+#include <osg/GLObjects>
 #include <osg/Drawable>
+#include <set>
+
+#ifndef GLintptr
+#define GLintptr std::intptr_t
+#endif
+#ifndef GLsizeiptr
+#define GLsizeiptr std::uintptr_t
+#endif
 
 namespace osgEarth
 {
@@ -73,24 +82,142 @@ namespace osgEarth
     struct OSGEARTH_EXPORT GL3RealizeOperation : public CustomRealizeOperation
     {
         virtual void operator()(osg::Object*);
-    };
-
-    struct GLBuffer : public osg::Referenced
+    };//! Base class for GL object containers
+    class OSGEARTH_EXPORT GLObject : public osg::Referenced
     {
-        mutable GLuint _handle;
+    public:
+        GLObject(osg::State& state, const std::string& label);
+        virtual void release() = 0;
+        osg::GLExtensions* ext() const { return _ext; }
+    protected:
+        std::string _label;
+        osg::GLExtensions* _ext;
     };
 
+    //! A buffer object
+    class OSGEARTH_EXPORT GLBuffer : public GLObject
+    {
+    public:
+        GLBuffer(GLenum target, osg::State& state, const std::string& label = "");
+        void bind();
+        void bind(GLenum target);
+        GLuint name() const { return _name; }
+        GLenum target() const { return _target; }
+        void release();
+    private:
+        GLuint _name;
+        GLenum _target;
+    };
+
+    //! A texture object with optional resident handle
+    class OSGEARTH_EXPORT GLTexture : public GLObject
+    {
+    public:
+        GLTexture(GLenum target, osg::State& state, const std::string& label = "");
+        void bind();
+        GLuint64 handle();
+        GLuint name() const { return _name; }
+        void makeResident(bool toggle);
+        void release();
+    private:
+        GLenum _target;
+        GLuint _name;
+        GLuint64 _handle;
+        bool _isResident;
+    };
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
+#define OE_USE_GRAPHICS_OBJECT_MANAGER
+#endif
+
+#ifdef OE_USE_GRAPHICS_OBJECT_MANAGER
     /**
-     * Operation that will automatically delete a GL buffer 
+     * Mechanism that will automatically delete a GL object
      * when its container goes out of scope
      */
-    struct GLBufferReleaser : public osg::GraphicsOperation
+    struct GLObjectReleaser : public osg::GraphicsObjectManager
     {
-        osg::observer_ptr<GLBuffer> _buffer;
-        GLuint _handle;
-        GLBufferReleaser(GLBuffer* buffer);
-        void operator () (osg::GraphicsContext* context);
+        GLObjectReleaser(unsigned contextID);
+
+        static void watch(GLObject*, osg::State&);
+
+        static void releaseAll(osg::State&);
+
+        virtual void flushDeletedGLObjects(double currentTime, double& availableTime);
+        virtual void flushAllDeletedGLObjects();
+        virtual void deleteAllGLObjects();
+        virtual void discardAllGLObjects();
+
+        std::set<osg::ref_ptr<GLObject> > _objects;
+        std::set<osg::ref_ptr<GLObject> > _temp;
     };
+
+#else // legacy implementation for OSG 3.4
+    struct GLObjectReleaser : public osg::GraphicsOperation
+    {
+        GLObjectReleaser(unsigned contextID);
+
+        static void watch(GLObject*, osg::State&);
+
+        static void releaseAll(osg::State&);
+
+        void operator()(osg::GraphicsContext*);
+
+        std::set<osg::ref_ptr<GLObject> > _objects;
+        std::set<osg::ref_ptr<GLObject> > _temp;
+
+        static osg::buffered_object<osg::ref_ptr<GLObjectReleaser> > _buf;
+    };
+#endif
+
+    //! Base class for a shader storage buffer object
+    class OSGEARTH_EXPORT SSBO
+    {
+    public:
+        SSBO();
+
+        mutable osg::ref_ptr<GLBuffer> _buffer;
+        mutable GLsizei _allocatedSize;
+        mutable GLsizei _requiredSize;
+        GLint _bindingIndex;
+        void bindLayout() const;
+        virtual void release() const;
+    };
+
+    // Functions that aren't in osg::GLExtensions (some in 3.4, some in 3.6+)
+    struct OSGEARTH_EXPORT GLFunctions
+    {
+        static GLFunctions& get(unsigned contextID);
+        static GLFunctions& get(osg::State& state) { return get(state.getContextID()); }
+
+        GLFunctions();
+        void (GL_APIENTRY * glBufferStorage)(GLenum, GLuint, const void*, GLenum);
+        void (GL_APIENTRY * glClearBufferSubData)(GLenum, GLenum, GLintptr, GLsizeiptr, GLenum, GLenum type, const void*);
+        void (GL_APIENTRY * glMultiDrawElementsIndirect)(GLenum, GLenum, const void*, GLsizei, GLsizei);
+        void (GL_APIENTRY * glDispatchComputeIndirect)(GLintptr);
+        void (GL_APIENTRY * glTexStorage3D)(GLenum, GLsizei, GLenum, GLsizei, GLsizei, GLsizei);
+
+
+    private:
+        static GLFunctions _buf[256];
+    };
+
+    //struct GLBuffer : public osg::Referenced
+    //{
+    //    mutable GLuint _handle;
+    //};
+
+    ///**
+    // * Operation that will automatically delete a GL buffer 
+    // * when its container goes out of scope
+    // */
+    //struct GLBufferReleaser : public osg::GraphicsOperation
+    //{
+    //    osg::observer_ptr<GLBuffer> _buffer;
+    //    GLuint _handle;
+    //    GLBufferReleaser(GLBuffer* buffer);
+    //    void operator () (osg::GraphicsContext* context);
+    //};
 
     /**
      * API for launching GPU thread jobs. Any function dispatched here will
@@ -223,107 +350,5 @@ namespace osgEarth
             osgEarth::Threading::Cancelable* progress) const;
     };
 }
-
-
-#ifndef GL_DYNAMIC_STORAGE_BIT
-#define GL_DYNAMIC_STORAGE_BIT 0x0100
-#endif
-
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
-#define OE_HAVE_BINDIMAGETEXTURE
-#endif
-
-
-// OSG 3.4 POLYFILL - Copied directly from OpenSceneGraph 3.6
-#ifndef OE_HAVE_BINDIMAGETEXTURE
-namespace osg
-{
-    /** Bind texture to an image unit (available only if GL version is 4.2 or greater)
-    * The format parameter for the image unit need not exactly match the texture internal format,
-    * but if it is set to 0, the texture internal format will be used.
-    * See http://www.opengl.org/registry/specs/ARB/shader_image_load_store.txt
-    * void bindToImageUnit(unsigned int unit, GLenum access, GLenum format=0, int level=0, bool layered=false, int layer=0);
-    **/
-    class OSGEARTH_EXPORT BindImageTexture : public osg::StateAttribute {
-    public:
-        /** Type of access that will be performed on the texture image. */
-        enum Access
-        {
-            NOT_USED = 0,
-            READ_ONLY = GL_READ_ONLY_ARB,
-            WRITE_ONLY = GL_WRITE_ONLY_ARB,
-            READ_WRITE = GL_READ_WRITE_ARB
-        };
-
-        BindImageTexture(
-            GLuint imageunit = 0,
-            osg::Texture* target = 0,
-            Access access = READ_ONLY,
-            GLenum format = GL_RGBA8,
-            int level = 0,
-            bool layered = GL_FALSE,
-            int layer = 0) : osg::StateAttribute(),
-            _target(target),
-            _imageunit(imageunit),
-            _level(level),
-            _layered(layered),
-            _layer(layer),
-            _access(access),
-            _format(format) {}
-
-        BindImageTexture( const  BindImageTexture&o,osg::CopyOp op=osg::CopyOp::SHALLOW_COPY):
-            osg::StateAttribute(o,op),
-            _target(o._target),
-            _imageunit(o._imageunit),
-            _level(o._level),
-            _layered(o._layered),
-            _layer(o._layer),
-            _access(o._access),
-            _format(o._format) {}
-
-        virtual ~BindImageTexture() {}
-
-        META_StateAttribute(osg, BindImageTexture, (osg::StateAttribute::Type)62) //BINDIMAGETEXTURE)
-
-        inline void setImageUnit(GLuint i) { _imageunit=i; }
-        inline GLuint getImageUnit() const { return _imageunit; }
-
-        inline void setLevel(GLint i) { _level=i; }
-        inline GLint getLevel() const { return _level; }
-
-        inline void setIsLayered(GLboolean i) { _layered=i; }
-        inline GLboolean getIsLayered() const { return _layered; }
-
-        inline void setLayer(GLint i) { _layer=i; }
-        inline GLint getLayer() const { return _layer; }
-
-        inline void setAccess(Access i) { _access=i; }
-        inline Access getAccess() const { return _access; }
-
-        inline void setFormat(GLenum i) { _format=i; }
-        inline GLenum getFormat() const { return _format; }
-
-        inline void setTexture(osg::Texture* target) { _target=target; }
-        inline osg::Texture* getTexture() { return _target.get();}
-        inline const osg::Texture* getTexture() const { return _target.get();}
-
-        virtual void apply(osg::State&state) const;
-
-        virtual int compare(const osg::StateAttribute &sa) const;
-
-        virtual unsigned getMember() const { return static_cast<unsigned int>(_imageunit); }
-
-    protected:
-
-        osg::ref_ptr<osg::Texture> _target;
-        GLuint _imageunit;
-        GLint _level;
-        GLboolean _layered;
-        GLint _layer;
-        Access _access;
-        GLenum _format;
-    };
-}
-#endif // OE_HAVE_BINDIMAGETEXTURE
 
 #endif // OSGEARTH_GLUTILS_H

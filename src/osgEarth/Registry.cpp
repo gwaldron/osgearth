@@ -106,7 +106,7 @@ _blacklist("Reg.BlackList(OE)")
     _stateSetCache = new StateSetCache();
 
     // Default unref-after apply policy:
-    _unRefImageDataAfterApply = true;
+    _unRefImageDataAfterApply = false;
 
     if (::getenv("OSGEARTH_DISABLE_UNREF_AFTER_APPLY"))
         _unRefImageDataAfterApply = false;

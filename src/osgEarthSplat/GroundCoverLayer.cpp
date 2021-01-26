@@ -640,16 +640,15 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
 
     PatchLayer::releaseGLObjects(state);
 
-    if (isOpen())
+    if (isOpen() &&
+        _atlas.valid() &&
+        _atlas->getUnRefImageDataAfterApply() == false)
     {
-        if (_atlas.valid())
-        {
-            // Workaround for
-            // https://github.com/openscenegraph/OpenSceneGraph/issues/1013
-            for (unsigned i = 0; i < _atlas->getNumImages(); ++i)
-                if (_atlas->getImage(i))
-                    _atlas->getImage(i)->dirty();
-        }
+        // Workaround for
+        // https://github.com/openscenegraph/OpenSceneGraph/issues/1013
+        for (unsigned i = 0; i < _atlas->getNumImages(); ++i)
+            if (_atlas->getImage(i))
+                _atlas->getImage(i)->dirty();
     }
 }
 

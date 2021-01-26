@@ -60,6 +60,7 @@ namespace osgEarth { namespace REX
         TileNode();
 
         virtual ~TileNode();
+        virtual const char* className() const { return "Rex::TileNode"; }
 
         /** TileKey of the key representing the data in this node. */
         const TileKey& getKey() const { return _key; }

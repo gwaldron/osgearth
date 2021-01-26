@@ -507,8 +507,9 @@ ThreadPool::put(osgDB::Options* options)
 osg::ref_ptr<ThreadPool>
 ThreadPool::get(const osgDB::Options* options)
 {
-    if (!options) return NULL;
-    return OptionsData<ThreadPool>::get(options, "osgEarth::ThreadPool");
+    osg::ref_ptr<ThreadPool> result;
+    OptionsData<ThreadPool>::get(options, result);
+    return result;
 }
 
 void

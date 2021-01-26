@@ -477,6 +477,16 @@ StateSetCache::clear()
     _stateSetCache.clear();
 }
 
+void
+StateSetCache::protect()
+{
+    Threading::ScopedMutexLock lock( _mutex );
+    for(auto i : _stateSetCache)
+    {
+        i->setDataVariance(osg::Object::DYNAMIC);
+    }
+}
+
 
 void
 StateSetCache::dumpStats()

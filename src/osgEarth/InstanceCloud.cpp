@@ -137,8 +137,6 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsigned num
 void
 InstanceCloud::InstancingData::releaseGLObjects(osg::State* state) const
 {
-    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
-
     if (commands)
     {
         delete[] commands;
@@ -147,6 +145,7 @@ InstanceCloud::InstancingData::releaseGLObjects(osg::State* state) const
 
     commandBuffer = NULL;
     renderBuffer = NULL;
+    numTilesAllocated = 0;
 }
 
 InstanceCloud::InstanceCloud()
@@ -216,6 +215,11 @@ InstanceCloud::allocateGLObjects(osg::RenderInfo& ri, unsigned numTiles)
 void
 InstanceCloud::preCull(osg::RenderInfo& ri)
 {
+   if (!_data.commandBuffer)
+   {
+      return;
+   }
+
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
     // Reset all the instance counts to zero by copying the empty
@@ -275,6 +279,11 @@ InstanceCloud::Renderer::Renderer(InstancingData* data) :
 void
 InstanceCloud::Renderer::drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const
 {
+   if (!_data->commandBuffer)
+   {
+      return;
+   }
+
     osg::State& state = *ri.getState();
 
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();

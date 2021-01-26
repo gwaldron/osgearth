@@ -388,6 +388,11 @@ RexTerrainEngineNode::invalidateRegion(
 
         // Add the entire map to the manifest :)
         CreateTileManifest manifest;
+
+        // When updating a subset of layers, override progressive mode
+        // so that the visible LOD gets updated first:
+        manifest.setProgressive(false);
+
         LayerVector layers;
         _map->getLayers(layers);
         for(LayerVector::const_iterator i=layers.begin(); i != layers.end(); ++i)

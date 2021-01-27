@@ -189,7 +189,7 @@ GeometryPool::createPrimitiveSet(
         int skirtBegin = numVertsInSurface;
         int skirtEnd = skirtBegin + numVertsInSkirt;
         int i;
-        for(i=skirtBegin; i<(int)skirtEnd-2; i+=2)
+        for(i=skirtBegin; i<(int)skirtEnd; i+=2)
             addSkirtTriangles( i, i+2 );
         addSkirtTriangles( i, skirtBegin );
     }

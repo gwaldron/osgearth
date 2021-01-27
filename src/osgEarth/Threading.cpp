@@ -701,16 +701,19 @@ JobArena::setSize(const std::string& name, unsigned numThreads)
 {
     ScopedMutexLock lock(_arenas_mutex);
 
-    _arenaSizes[name] = numThreads;
-
-    auto iter = _arenas.find(name);
-    if (iter != _arenas.end())
+    if (_arenaSizes[name] != numThreads)
     {
-        std::shared_ptr<JobArena> arena = iter->second;
-        OE_SOFT_ASSERT_AND_RETURN(arena != nullptr, __func__,);
-        arena->stopThreads();
-        arena->_numThreads = numThreads;
-        arena->startThreads();
+        _arenaSizes[name] = numThreads;
+
+        auto iter = _arenas.find(name);
+        if (iter != _arenas.end())
+        {
+            std::shared_ptr<JobArena> arena = iter->second;
+            OE_SOFT_ASSERT_AND_RETURN(arena != nullptr, __func__, );
+            arena->stopThreads();
+            arena->_numThreads = numThreads;
+            arena->startThreads();
+        }
     }
 }
 

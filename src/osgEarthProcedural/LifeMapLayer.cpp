@@ -468,9 +468,9 @@ LifeMapLayer::addedToMap(const Map* map)
 }
 
 void
-LifeMapLayer::prepareForRenderingImplementation(TerrainEngine* engine)
+LifeMapLayer::prepareForRendering(TerrainEngine* engine)
 {
-    ImageLayer::prepareForRenderingImplementation(engine);
+    ImageLayer::prepareForRendering(engine);
 
     // Since we're actually rendering, load the materials for splatting
     if (getBiomeLayer())
@@ -483,12 +483,12 @@ LifeMapLayer::prepareForRenderingImplementation(TerrainEngine* engine)
             {
                 osg::ref_ptr<LifeMapLayer> layer(this);
 
-                _loadMaterialsJob = Job<osg::Referenced>(
+                _loadMaterialsJob = Job<bool>::dispatch(
                     [layer, assets](Cancelable*) {
                         layer->loadMaterials(assets);
-                        return new osg::Referenced();
+                        return true;
                     }
-                ).schedule();
+                );
             }
         }
     }

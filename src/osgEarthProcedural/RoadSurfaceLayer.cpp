@@ -43,6 +43,8 @@ RoadSurfaceLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
     featureSource().set(conf, "features");
+    styleSheet().set(conf, "styles");
+    conf.set("buffer_width", featureBufferWidth());
 
     if (filters().empty() == false)
     {
@@ -51,10 +53,6 @@ RoadSurfaceLayer::Options::getConfig() const
             temp.add(filters()[i].getConfig());
         conf.set("filters", temp);
     }
-
-    styleSheet().set(conf, "styles");
-
-    conf.set("buffer_width", featureBufferWidth() );
     return conf;
 }
 
@@ -62,18 +60,25 @@ void
 RoadSurfaceLayer::Options::fromConfig(const Config& conf)
 {
     featureSource().get(conf, "features");
+    styleSheet().get(conf, "styles");
+    conf.get("buffer_width", featureBufferWidth());
 
     const Config& filtersConf = conf.child("filters");
     for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
         filters().push_back(ConfigOptions(*i));
-
-    styleSheet().get(conf, "styles");
-    conf.get("buffer_width", featureBufferWidth() );
 }
 
 //........................................................................
 
-OE_LAYER_PROPERTY_IMPL(RoadSurfaceLayer, Distance, FeatureBufferWidth, featureBufferWidth);
+void
+RoadSurfaceLayer::setFeatureBufferWidth(const Distance& value) {
+    options().featureBufferWidth() = value;
+}
+
+const Distance&
+RoadSurfaceLayer::getFeatureBufferWidth() const {
+    return options().featureBufferWidth().get();
+}
 
 void
 RoadSurfaceLayer::init()
@@ -104,14 +109,25 @@ RoadSurfaceLayer::openImplementation()
         return ssStatus;
 
     // Create a rasterizer for rendering nodes to images.
-    if (!_rasterizer.valid())
+    if (_rasterizer == nullptr)
     {
-        _rasterizer = new TileRasterizer(getTileSize(), getTileSize());
+        _rasterizer = std::make_shared<TileRasterizer>(
+            getTileSize(),
+            getTileSize());
     }
 
     _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
 
     return Status::NoError;
+}
+
+Status
+RoadSurfaceLayer::closeImplementation()
+{
+    _rasterizer = nullptr;
+    _filterChain = nullptr;
+
+    return ImageLayer::closeImplementation();
 }
 
 void
@@ -121,7 +137,7 @@ RoadSurfaceLayer::addedToMap(const Map* map)
 
     // create a session for feature processing based in the Map,
     // but don't set the feature source yet.
-    _session = new Session(map, getStyleSheet(), 0L, getReadOptions());
+    _session = new Session(map, getStyleSheet(), nullptr, getReadOptions());
     _session->setResourceCache(new ResourceCache());
 
     options().featureSource().addedToMap(map);
@@ -134,7 +150,7 @@ RoadSurfaceLayer::removedFromMap(const Map* map)
     ImageLayer::removedFromMap(map);
     options().featureSource().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
-    _session = 0L;
+    _session = nullptr;
 }
 
 void
@@ -193,64 +209,74 @@ namespace
         if (!added)
         {
             FeatureList list;
-            list.push_back( feature );
+            list.push_back(feature);
             map.push_back(std::pair< Style, FeatureList>(style, list));
-        }                                
+        }
     }
 
     void sortFeaturesIntoStyleGroups(StyleSheet* styles, FeatureList& features, FilterContext &context, StyleToFeatures& map)
     {
-        if ( styles == 0L )
+        if (styles == nullptr)
             return;
 
-        if ( styles->getSelectors().size() > 0 )
+        if (styles->getSelectors().size() > 0)
         {
-            for( StyleSelectors::const_iterator i = styles->getSelectors().begin(); 
+            for (StyleSelectors::const_iterator i = styles->getSelectors().begin();
                 i != styles->getSelectors().end();
-                ++i )
+                ++i)
             {
                 const StyleSelector& sel = i->second;
 
-                if ( sel.styleExpression().isSet() )
+                if (sel.styleExpression().isSet())
                 {
                     // establish the working bounds and a context:
-                    StringExpression styleExprCopy(  sel.styleExpression().get() );
+                    StringExpression styleExprCopy(sel.styleExpression().get());
 
                     for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
                     {
                         Feature* feature = itr->get();
 
-                        const std::string& styleString = feature->eval( styleExprCopy, &context );
-                        if (!styleString.empty() && styleString != "null")
+                        // resolve the style:
+                        Style combinedStyle;
+
+                        if (feature->style().isSet())
                         {
-                            // resolve the style:
-                            Style combinedStyle;
-
-                            // if the style string begins with an open bracket, it's an inline style definition.
-                            if ( styleString.length() > 0 && styleString[0] == '{' )
-                            {
-                                Config conf( "style", styleString );
-                                conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );
-                                conf.set( "type", "text/css" );
-                                combinedStyle = Style(conf);
-                            }
-
-                            // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                            // style in this case: for style expressions, the user must be explicity about 
-                            // default styling; this is because there is no other way to exclude unwanted
-                            // features.
-                            else
-                            {
-                                const Style* selectedStyle = styles->getStyle(styleString, false);
-                                if ( selectedStyle )
-                                    combinedStyle = *selectedStyle;
-                            }
-
-                            if (!combinedStyle.empty())
-                            {
-                                addFeatureToMap( feature, combinedStyle, map);
-                            }                                
+                            // embedde style:
+                            combinedStyle = feature->style().get();
                         }
+                        else
+                        {
+                            // evaluated style:
+                            const std::string& styleString = feature->eval(styleExprCopy, &context);
+                            if (!styleString.empty() && styleString != "null")
+                            {
+                                // if the style string begins with an open bracket, it's an inline style definition.
+                                if (styleString.length() > 0 && styleString[0] == '{')
+                                {
+                                    Config conf("style", styleString);
+                                    conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                                    conf.set("type", "text/css");
+                                    combinedStyle = Style(conf);
+                                }
+
+                                // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
+                                // style in this case: for style expressions, the user must be explicity about 
+                                // default styling; this is because there is no other way to exclude unwanted
+                                // features.
+                                else
+                                {
+                                    const Style* selectedStyle = styles->getStyle(styleString, false);
+                                    if (selectedStyle)
+                                        combinedStyle = *selectedStyle;
+                                }
+                            }
+                        }
+
+                        if (!combinedStyle.empty())
+                        {
+                            addFeatureToMap(feature, combinedStyle, map);
+                        }
+
                     }
                 }
             }
@@ -261,8 +287,16 @@ namespace
             for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
             {
                 Feature* feature = itr->get();
-                addFeatureToMap( feature, *style, map);
-            }        
+                // resolve the style:
+                if (feature->style().isSet())
+                {
+                    addFeatureToMap(feature, feature->style().get(), map);
+                }
+                else
+                {
+                    addFeatureToMap(feature, *style, map);
+                }
+            }
         }
     }
 }
@@ -270,11 +304,11 @@ namespace
 GeoImage
 RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    if (getStatus().isError())    
+    if (getStatus().isError())
     {
         return GeoImage::INVALID;
     }
-    
+
     if (!getFeatureSource())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
@@ -302,12 +336,12 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     }
 
     GeoExtent featureExtent = key.getExtent().transform(featureSRS);
-    
+
     osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
         key,
         options().featureBufferWidth().get(),
         _filterChain.get(),
-        nullptr,
+        nullptr, // FilterContext
         progress);
 
     FeatureList features;
@@ -335,13 +369,13 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         osg::ref_ptr< osg::Group > group;
         if (!map.empty())
         {
-            group = new osg::Group;
+            group = new osg::Group();
             for (unsigned int i = 0; i < map.size(); i++)
             {
                 osg::ref_ptr<osg::Node> node = compiler.compile(map[i].second, map[i].first, fc);
                 if (node.valid() && node->getBound().valid())
                 {
-                    group->addChild( node );
+                    group->addChild(node);
                 }
             }
         }
@@ -350,26 +384,19 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         {
             OE_PROFILING_ZONE_NAMED("Rasterize");
 
-            Future<osg::Image> result = _rasterizer->render(group.release(), outputExtent);
-            return GeoImage(result.release(progress), key.getExtent());
+            Future<osg::ref_ptr<osg::Image>> result = _rasterizer->render(
+                group.release(),
+                outputExtent);
 
-            // TODO: consider storing a Future right in the geoimage.
-            //return GeoImage(result, key.getExtent());
+            // Immediately blocks on the result. Consider better ways?
+            const osg::ref_ptr<osg::Image>& image = result.get(progress);
+
+            if (image.valid() && image->data() != nullptr)
+                return GeoImage(image.get(), key.getExtent());
+            else
+                return GeoImage::INVALID;
         }
     }
 
     return GeoImage::INVALID;
-}
-
-Config
-RoadSurfaceLayer::getConfig() const
-{
-    Config c = ImageLayer::getConfig();
-    return c;
-}
-
-osg::Node*
-RoadSurfaceLayer::getNode() const
-{
-    return _rasterizer.valid() ? _rasterizer->getNode() : NULL;
 }

@@ -73,11 +73,11 @@ namespace osgEarth { namespace Procedural
 
         virtual void init() override;
 
+        virtual void prepareForRendering(TerrainEngine*) override;
+
         virtual Status openImplementation() override;
 
         virtual Status closeImplementation() override;
-
-        virtual void prepareForRenderingImplementation(TerrainEngine*) override;
             
         virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback*) const override;
 
@@ -95,7 +95,7 @@ namespace osgEarth { namespace Procedural
         mutable ElevationPool::WorkingSet _workingSet;
         osg::ref_ptr<osg::Image> _noiseFunc;
         osg::ref_ptr<TextureArena> _arena;
-        mutable Future<osg::Referenced> _loadMaterialsJob;
+        mutable Future<bool> _loadMaterialsJob;
         void loadMaterials(const AssetCatalog*);
     };
 

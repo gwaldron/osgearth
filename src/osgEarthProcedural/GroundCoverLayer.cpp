@@ -453,9 +453,9 @@ GroundCoverLayer::removedFromMap(const Map* map)
 }
 
 void
-GroundCoverLayer::prepareForRenderingImplementation(TerrainEngine* engine)
+GroundCoverLayer::prepareForRendering(TerrainEngine* engine)
 {
-    PatchLayer::prepareForRenderingImplementation(engine);
+    PatchLayer::prepareForRendering(engine);
 
     TerrainResources* res = engine->getResources();
     if (res)

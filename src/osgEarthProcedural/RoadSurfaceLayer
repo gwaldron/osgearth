@@ -55,11 +55,11 @@ namespace osgEarth { namespace Procedural
         //! This or setFeatureSource
         void setFeatureSource(FeatureSource* layer);
         FeatureSource* getFeatureSource() const;
-        
+
         //! Buffer around the road vector for querying linear data (should be at least road width/2)
         void setFeatureBufferWidth(const Distance& value);
         const Distance& getFeatureBufferWidth() const;
-        
+
         //! Style for rendering the road
         void setStyleSheet(StyleSheet* value);
         StyleSheet* getStyleSheet() const;
@@ -68,26 +68,24 @@ namespace osgEarth { namespace Procedural
     public: // ImageLayer
 
         // Opens the layer and returns a status
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
+
+        // Closes the layer
+        virtual Status closeImplementation() override;
 
         // Creates an image for a tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
         // Called by Map when it adds this layer
-        virtual void addedToMap(const class Map*);
+        virtual void addedToMap(const class Map*) override;
 
         // Called by Map when it removes this layer
-        virtual void removedFromMap(const class Map*);
-
-        //! Serialize
-        virtual Config getConfig() const;
-
-        osg::Node* getNode() const;
+        virtual void removedFromMap(const class Map*) override;
 
     protected: // Layer
 
         // post-ctor initialization
-        virtual void init();
+        virtual void init() override;
 
     protected:
 
@@ -95,7 +93,7 @@ namespace osgEarth { namespace Procedural
 
     private:
         osg::ref_ptr<Session> _session;
-        osg::ref_ptr<TileRasterizer> _rasterizer;
+        std::shared_ptr<TileRasterizer> _rasterizer;
         osg::ref_ptr<FeatureFilterChain> _filterChain;
     };
 

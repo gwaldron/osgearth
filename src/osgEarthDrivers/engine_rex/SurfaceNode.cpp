@@ -205,6 +205,7 @@ const bool SurfaceNode::_enableDebugNodes = ::getenv("OSGEARTH_REX_DEBUG") != 0L
 
 SurfaceNode::SurfaceNode(const TileKey& tilekey, TileDrawable* drawable)
 {
+    setName(tilekey.str());
     _tileKey = tilekey;
 
     _drawable = drawable;

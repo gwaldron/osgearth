@@ -428,7 +428,7 @@ public:
                     img->setInternalTextureFormat(GL_RGBA8);
 
                 tex = new osg::Texture2D(img.get());
-                tex->setUnRefImageDataAfterApply(imageEmbedded);
+                //tex->setUnRefImageDataAfterApply(imageEmbedded);
                 tex->setResizeNonPowerOfTwoHint(false);
                 tex->setDataVariance(osg::Object::STATIC);
 

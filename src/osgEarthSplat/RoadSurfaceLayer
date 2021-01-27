@@ -81,9 +81,6 @@ namespace osgEarth { namespace Splat
         // Called by Map when it removes this layer
         virtual void removedFromMap(const class Map*) override;
 
-        // Return the scene graph node associated with this layer
-        osg::Node* getNode() const override;
-
     protected: // Layer
 
         // post-ctor initialization
@@ -95,7 +92,7 @@ namespace osgEarth { namespace Splat
 
     private:
         osg::ref_ptr<Session> _session;
-        osg::ref_ptr<TileRasterizer> _rasterizer;
+        std::shared_ptr<TileRasterizer> _rasterizer;
     };
 
 } } // namespace osgEarth::Splat

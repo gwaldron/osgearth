@@ -133,6 +133,9 @@ LayerDrawable*
 TerrainRenderData::addLayerDrawable(const Layer* layer)
 {
     LayerDrawable* drawable = new LayerDrawable();
+    if (layer) {
+        drawable->setName(layer->getName());
+    }
     drawable->_drawOrder = _layerList.size();
     _layerList.push_back(drawable);
 

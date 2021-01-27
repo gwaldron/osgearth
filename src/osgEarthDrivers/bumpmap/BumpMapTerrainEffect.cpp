@@ -128,6 +128,8 @@ BumpMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
             stateset->removeUniform( _intensityUniform.get() );
             stateset->removeUniform( _bumpMapTexUniform.get() );
             stateset->removeTextureAttribute( _bumpMapUnit, osg::StateAttribute::TEXTURE );
+
+            _bumpMapTex->releaseGLObjects(nullptr);
         }
 
         VirtualProgram* vp = VirtualProgram::get(stateset);

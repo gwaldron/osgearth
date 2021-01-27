@@ -176,7 +176,7 @@ osg::Vec3dArray* BoundaryUtil::findHull(osg::Vec3dArray& points)
     // Push all points between maxmin and maxmax onto stack. NOTE: Differs from original CH algorithm in that it keeps collinear points
     while (i <= maxmax)
     {
-      if ((*hull)[top].x() == (*sorted)[i].x() && (*hull)[top].y() == (*hull)[top].y())
+      if ((*hull)[top].x() == (*sorted)[i].x() && (*hull)[top].y() == (*sorted)[i].y())
       {
         if ((*sorted)[i].z() < (*hull)[top].z())
           (*hull)[top].z() = (*sorted)[i].z();
@@ -231,7 +231,7 @@ osg::Vec3dArray* BoundaryUtil::findHull(osg::Vec3dArray& points)
     // Push all points between minmax and minmin onto stack. NOTE: Differs from original CH algorithm in that it keeps collinear points
     while (i > minmin)
     {
-      if ((*hull)[top].x() == (*sorted)[i].x() && (*hull)[top].y() == (*hull)[top].y())
+      if ((*hull)[top].x() == (*sorted)[i].x() && (*hull)[top].y() == (*sorted)[i].y())
       {
         if ((*sorted)[i].z() < (*hull)[top].z())
           (*hull)[top].z() = (*sorted)[i].z();

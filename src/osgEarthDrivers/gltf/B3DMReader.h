@@ -211,8 +211,6 @@ public:
         if (!warn.empty())
             OE_WARN << LC << "GLTF WARNING: " << warn << std::endl;
 
-        osg::MatrixTransform *mt = new osg::MatrixTransform;
-
         GLTFReader gltfReader;
         gltfReader.setTextureCache(_texCache);
         GLTFReader::Env env(location, readOptions);

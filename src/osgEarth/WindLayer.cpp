@@ -24,6 +24,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/GLUtils>
 #include <osgEarth/TerrainEngineNode>
+#include <osg/BindImageTexture>
 #include <osg/Texture3D>
 #include <osg/Program>
 #include <osgUtil/CullVisitor>
@@ -255,22 +256,26 @@ namespace
 
             if (!ds._buffer.valid() || ds._bufferSize < requiredBufferSize)
             {
-                ds._buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, *state, "OE WindLayer Data");
-
+                ds._buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, *state, "oe.wind");
                 ds._bufferSize = requiredBufferSize;
 
-                if (!ds._glBufferStorage)
-                {
-                    // polyfill for pre-OSG 3.6 support
-                    osg::setGLExtensionFuncPtr(ds._glBufferStorage, "glBufferStorage", "glBufferStorageARB");
-                }
+                //if (!ds._glBufferStorage)
+                //{
+                //    // polyfill for pre-OSG 3.6 support
+                //    osg::setGLExtensionFuncPtr(ds._glBufferStorage, "glBufferStorage", "glBufferStorageARB");
+                //}
 
                 ds._buffer->bind();
-                ds._glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+                //ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer->_handle);
+                //ds._glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+                GLFunctions::get(*state).
+                    glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
             }
             else
             {
                 ds._buffer->bind();
+                //ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer->_handle);
             }
 
             // download to GPU
@@ -309,11 +314,11 @@ namespace
             }
             else // TYPE_DIRECTIONAL
             {
-                // transform from world to camera-local space
+                // transform from world to camera-view space
                 osg::Vec3f dir;
                 dir.x() = wind->direction()->x();
                 dir.y() = wind->direction()->y();
-                //dir = osg::Matrixf::transform3x3(dir, camera->getViewMatrix());
+                dir = osg::Matrixf::transform3x3(dir, camera->getViewMatrix());
                 dir.normalize();
 
                 cs._windData[i].direction[0] = dir.x();
@@ -577,7 +582,7 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
         windDrawable->setupPerCameraState(camera);
     }
 
-    // this xforms from normalized clip [-1..1] to texture [0..1] space
+    // this xforms from clip [-1..1] to texture [0..1] space
     static osg::Matrix clipToTexture = 
         osg::Matrix::translate(1.0,1.0,1.0) * 
         osg::Matrix::scale(0.5,0.5,0.5);

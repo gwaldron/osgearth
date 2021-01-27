@@ -97,9 +97,11 @@ RoadSurfaceLayer::openImplementation()
         return ssStatus;
 
     // Create a rasterizer for rendering nodes to images.
-    if (!_rasterizer.valid())
+    if (_rasterizer == nullptr)
     {
-        _rasterizer = new TileRasterizer(getTileSize(), getTileSize());
+        _rasterizer = std::make_shared<TileRasterizer>(
+            getTileSize(),
+            getTileSize());
     }
 
     return Status::NoError;
@@ -380,10 +382,4 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     }
 
     return GeoImage::INVALID;
-}
-
-osg::Node*
-RoadSurfaceLayer::getNode() const
-{
-    return _rasterizer.get();
 }

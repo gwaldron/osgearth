@@ -34,7 +34,8 @@ _camera(0L),
 _currentTileNode(0L),
 _orphanedPassesDetected(0u),
 _cv(cullVisitor),
-_context(context)
+_context(context),
+_layerExtents(nullptr)
 {
     setVisitorType(CULL_VISITOR);
     setTraversalMode(TRAVERSE_ALL_CHILDREN);

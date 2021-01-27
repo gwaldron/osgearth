@@ -87,6 +87,7 @@ _altMode( ALTMODE_ABSOLUTE )
 
 GeoPoint::GeoPoint(const SpatialReference* srs,
                    const GeoPoint&         rhs)
+   :_altMode( rhs._altMode )
 {
      rhs.transform(srs, *this);
 }
@@ -728,9 +729,9 @@ GeoCircle::intersects( const GeoCircle& rhs ) const
 #define LC "[GeoExtent] "
 
 namespace {
-    bool is_valid(double n) {
+    inline bool is_valid(double n) {
         return
-            osg::isNaN(n) == false &&
+            std::isnan(n) == false &&
             n != DBL_MAX &&
             n != -DBL_MAX;
     }
@@ -981,41 +982,51 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
         return false;
 
     osg::Vec3d xy( x, y, 0 );
-    osg::Vec3d local = xy;
+    osg::Vec3d local(x, y, 0);
+    const SpatialReference* pSrs = _srs.get();
 
     // See if we need to xform the input:
-    if (srs && srs->isHorizEquivalentTo(_srs.get()) == false)
+    if (srs && srs->isHorizEquivalentTo(pSrs) == false)
     {
         // If the transform fails, bail out with error
-        if (srs->transform(xy, _srs.get(), local) == false)
+       if (srs->transform(xy, pSrs, local) == false)
         {
             return false;
         }
     }
 
+    const double epsilon = 1e-6;
+    const double lsouth = south();
+    const double lnorth = north();
+    const double least = east();
+    const double lwest = west();
+    const double lwidth = width();
+    double& localx = local.x();
+    double& localy = local.y();
+
     // Quantize the Y coordinate to account for tiny rounding errors:
-    if (osg::equivalent(south(), local.y()))
-        local.y() = south();
-    if (osg::equivalent(north(), local.y()))
-        local.y() = north();
+    if (fabs(lsouth - localy) < epsilon)
+       localy = lsouth;
+    if (fabs(lnorth - localy) < epsilon)
+       localy = lnorth;
 
     // Test the Y coordinate:
-    if (local.y() < south() || local.y() > north())
+    if (localy < lsouth || localy > lnorth)
         return false;
 
     // Bring the X coordinate into normal range:
-    local.x() = normalizeX(local.x());
+    localx = normalizeX(localx);
     
     // Quantize the X coordinate to account for tiny rounding errors:
-    if (osg::equivalent(west(), local.x()))
-        local.x() = west();
-    if (osg::equivalent(east(), local.x()))
-        local.x() = east();
+    if (fabs(lwest - localx) < epsilon)
+       localx = lwest;
+    if (fabs(least - localx) < epsilon)
+       localx = least;
 
     // account for the antimeridian wrap-around:
-    double a0 = west(), a1 = west() + width();
-    double b0 = east() - width(), b1 = east();
-    return (a0 <= local.x() && local.x() <= a1) || (b0 <= local.x() && local.x() <= b1);
+    const double a0 = lwest, a1 = lwest + lwidth;
+    const double b0 = least - lwidth, b1 = least;
+    return (a0 <= localx && localx <= a1) || (b0 <= localx && localx <= b1);
 }
 
 bool
@@ -2279,9 +2290,9 @@ GeoHeightField::createSubSample( const GeoExtent& destEx, unsigned int width, un
     {
         for( y = y0, row = 0; row < (int)height; y += ystep, row++ )
         {
-            float height = HeightFieldUtils::getHeightAtNormalizedLocation(
+            float heightAtNL = HeightFieldUtils::getHeightAtNormalizedLocation(
                 _heightField.get(), x, y, interpolation );
-            dest->setHeight( col, row, height );
+            dest->setHeight( col, row, heightAtNL);
         }
     }
 

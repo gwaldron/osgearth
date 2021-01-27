@@ -257,20 +257,28 @@ namespace osgEarth { namespace Threading
 
         //! The result value; blocks until it is available (or abandonded) and then returns it.
         const T& get() {
-            while (!_ev->wait(1000u))
+            while (!_ev->wait(100u))
                 if (isAbandoned())
                     break;
             return _shared->obj();
         }
 
         const T& get(const Cancelable* cancelable) {
-            while(!_ev->wait(1000u)) {
+            while(!_ev->wait(100u)) {
                 if (isAbandoned()) 
                     break;
                 if (cancelable && cancelable->isCanceled()) 
                     break;
             }
             return _shared->obj();
+        }
+
+        //! Waits for the result to become available (abandoned)
+        void join() {
+            get();
+        }
+        void join(const Cancelable* cancelable) {
+            get(cancelable);
         }
 
         Future<T>& then(std::function<void(T&)>& func) {

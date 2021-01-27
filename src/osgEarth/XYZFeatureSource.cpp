@@ -314,7 +314,7 @@ XYZFeatureSource::isJSON(const std::string& mime) const
 URI
 XYZFeatureSource::createURL(const Query& query)
 {
-    if (query.tileKey().isSet())
+    if (query.tileKey().isSet() && query.tileKey()->valid())
     {
         const TileKey &key = query.tileKey().get();
         unsigned int tileX = key.getTileX();

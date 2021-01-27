@@ -189,8 +189,10 @@ GeometryPool::createPrimitiveSet(
         int skirtBegin = numVertsInSurface;
         int skirtEnd = skirtBegin + numVertsInSkirt;
         int i;
-        for(i=skirtBegin; i<(int)skirtEnd; i+=2)
-            addSkirtTriangles( i, i+2 );
+        for (i = skirtBegin; i < (int)skirtEnd - 3; i += 2)
+        {
+            addSkirtTriangles(i, i + 2);
+        }
         addSkirtTriangles( i, skirtBegin );
     }
 
@@ -385,10 +387,10 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             for (int r = 0; r < (int)tileSize - 1; ++r)
                 addSkirtDataForIndex(r*tileSize + (tileSize - 1), height); //right
 
-            for (int c = tileSize - 1; c >= 0; --c)
+            for (int c = tileSize - 1; c > 0; --c)
                 addSkirtDataForIndex((tileSize - 1)*tileSize + c, height); //bottom
 
-            for (int r = tileSize - 1; r >= 0; --r)
+            for (int r = tileSize - 1; r > 0; --r)
                 addSkirtDataForIndex(r*tileSize, height); //left
         }
 

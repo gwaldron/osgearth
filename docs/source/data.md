@@ -72,7 +72,7 @@ osgearth_conv --in driver GDALImage --in url myLargeData.tif
 
 That will yield a folder (called "myLargeData" in this case) that you can deploy on the web behind any standard web server like Apache.
 
-**Tip:** The `jpg` format does NOT support transparency. If your data was an alpha channel, use `png` instead.
+**Tip:** The `jpg` format does NOT support transparency. If your data has an alpha channel, use `png` instead.
 
 Just type ```osgearth_conv``` for a full list of options. The `--in` and `--out` options correspond directly to properties you would normally include in an Earth file.
 

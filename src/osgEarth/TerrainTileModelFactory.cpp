@@ -70,7 +70,7 @@ public:
     {
         if (_result.isAvailable())
         {
-            // no refptr here because we are going to steal the data.
+            // fetch the result
             osg::ref_ptr<osg::Image> i = _result.get();
 
             if (i.valid())
@@ -88,12 +88,15 @@ public:
                 // trigger texture(s) that own this image to reapply
                 this->dirty();
             }
+
+            // reset the future so update won't be called again
+            _result.abandon();
         }
     }
 
     osg::ref_ptr<ImageLayer> _layer;
     TileKey _key;
-    Job<osg::ref_ptr<osg::Image>>::Result _result;
+    ImageJob::Result _result;
 };
 
 //.........................................................................

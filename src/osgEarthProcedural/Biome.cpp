@@ -118,15 +118,6 @@ AssetCatalog::getConfig() const
     return conf;
 }
 
-#if 0
-GroundTextureAsset*
-AssetCatalog::getTexture(const std::string& name) const
-{
-    auto i = _textures.find(name);
-    return i != _textures.end() ? i->second.get() : nullptr;
-}
-#endif
-
 const std::vector<osg::ref_ptr<GroundTextureAsset>>&
 AssetCatalog::getTextures() const
 {
@@ -173,7 +164,7 @@ ModelCategory::getConfig() const
 
 //...................................................................
 
-LandUseType::LandUseType(const Config& conf)
+LifeMapValue::LifeMapValue(const Config& conf)
 {
     dense().setDefault(0.0f);
     lush().setDefault(0.0f);
@@ -186,7 +177,7 @@ LandUseType::LandUseType(const Config& conf)
 }
 
 Config
-LandUseType::getConfig() const
+LifeMapValue::getConfig() const
 {
     Config conf;
     //TODO
@@ -196,19 +187,23 @@ LandUseType::getConfig() const
 
 //...................................................................
 
-LandUseCatalog::LandUseCatalog(const Config& conf)
+LifeMapValueTable::LifeMapValueTable(const Config& conf)
 {
-    const ConfigSet& children = conf.children();
+    const ConfigSet& children = conf.child("classes").children();
+
+    if (children.size() > 0)
+        values().reserve(children.size());
+
     for (const auto& child : children)
     {
         if (!child.empty())
         {
-            LandUseType type(child);
+            LifeMapValue type(child);
 
             if (type.id().isSet())
             {
-                landUseTypes().push_back(type);
-                const LandUseType* ptr = &landUseTypes().back();
+                values().push_back(type);
+                const LifeMapValue* ptr = &values().back();
                 _lut[type.id().get()] = type;
             }
         }
@@ -216,7 +211,7 @@ LandUseCatalog::LandUseCatalog(const Config& conf)
 }
 
 Config 
-LandUseCatalog::getConfig() const
+LifeMapValueTable::getConfig() const
 {
     Config conf;
     //TODO
@@ -224,8 +219,8 @@ LandUseCatalog::getConfig() const
     return conf;
 }
 
-const LandUseType*
-LandUseCatalog::getLandUse(const std::string& id) const
+const LifeMapValue*
+LifeMapValueTable::getValue(const std::string& id) const
 {
     auto iter = _lut.find(id);
     return iter != _lut.end() ? &iter->second : nullptr;
@@ -276,7 +271,11 @@ BiomeCatalog::BiomeCatalog(const Config& conf)
 {
     _assets = new AssetCatalog(conf.child("assetcatalog"));
 
-    _landuse = new LandUseCatalog(conf.child("landusecatalog"));
+    if (conf.hasChild("landuse_lifemap_table"))
+        _landUseTable = std::make_shared<LifeMapValueTable>(conf.child("landuse_lifemap_table"));
+
+    if (conf.hasChild("landcover_lifemap_table"))
+        _landCoverTable = std::make_shared<LifeMapValueTable>(conf.child("landcover_lifemap_table"));
 
     ConfigSet biomes_conf = conf.child("biomes").children("biome");
     for (const auto& b_conf : biomes_conf)
@@ -316,8 +315,15 @@ BiomeCatalog::getAssets() const
     return _assets.get();
 }
 
-const LandUseCatalog*
-BiomeCatalog::getLandUse() const
+const LifeMapValueTable*
+BiomeCatalog::getLandUseTable() const
 {
-    return _landuse.get();
+    return _landUseTable.get();
 }
+
+const LifeMapValueTable*
+BiomeCatalog::getLandCoverTable() const
+{
+    return _landCoverTable.get();
+}
+

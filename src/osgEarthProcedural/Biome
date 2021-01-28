@@ -106,7 +106,6 @@ namespace osgEarth
             virtual ~AssetCatalog() { }
 
             std::vector<osg::ref_ptr<GroundTextureAsset>> _textures;
-            //std::unordered_map<std::string, osg::ref_ptr<GroundTextureAsset>> _textures;
             std::unordered_map<std::string, osg::ref_ptr<ModelAsset>> _models;
         };
 
@@ -157,11 +156,11 @@ namespace osgEarth
         /**
          * Mappings from land use classification types to lifemap parameters.
          */
-        class OSGEARTHPROCEDURAL_EXPORT LandUseType
+        class OSGEARTHPROCEDURAL_EXPORT LifeMapValue
         {
         public:
-            LandUseType() { }
-            LandUseType(const Config& conf);
+            LifeMapValue() { }
+            LifeMapValue(const Config& conf);
             Config getConfig() const;
 
             OE_OPTION(std::string, id);
@@ -172,21 +171,21 @@ namespace osgEarth
 
 
         /**
-         * Mappings from land use classification types to lifemap parameters.
+         * Mappings from IDs to lifemap parameters.
          */
-        class OSGEARTHPROCEDURAL_EXPORT LandUseCatalog : public osg::Referenced
+        class OSGEARTHPROCEDURAL_EXPORT LifeMapValueTable
         {
         public:
-            LandUseCatalog() { }
-            LandUseCatalog(const Config& conf);
+            LifeMapValueTable() { }
+            LifeMapValueTable(const Config& conf);
             Config getConfig() const;
 
-            OE_OPTION_VECTOR(LandUseType, landUseTypes);
+            OE_OPTION_VECTOR(LifeMapValue, values);
 
-            const LandUseType* getLandUse(const std::string& id) const;
+            const LifeMapValue* getValue(const std::string& id) const;
 
         private:
-            std::unordered_map<std::string, LandUseType> _lut;
+            std::unordered_map<std::string, LifeMapValue> _lut;
         };
 
         /**
@@ -208,8 +207,11 @@ namespace osgEarth
             //! Asset catalog
             const AssetCatalog* getAssets() const;
 
-            //! Land use catalog
-            const LandUseCatalog* getLandUse() const;
+            //! Table that maps land use classes to lifemap values.
+            const LifeMapValueTable* getLandUseTable() const;
+
+            //! Talbe that maps land cover classes to lifemap values.
+            const LifeMapValueTable* getLandCoverTable() const;
 
         public:
             Config getConfig() const;
@@ -217,8 +219,10 @@ namespace osgEarth
         protected:
             virtual ~BiomeCatalog() { }
 
-            osg::ref_ptr<AssetCatalog> _assets;
-            osg::ref_ptr<LandUseCatalog> _landuse;
+
+            osg::ref_ptr<AssetCatalog> _assets;            
+            std::shared_ptr<LifeMapValueTable> _landUseTable;
+            std::shared_ptr<LifeMapValueTable> _landCoverTable;
             std::unordered_map<int, osg::ref_ptr<Biome>> _biomes;
         };
 

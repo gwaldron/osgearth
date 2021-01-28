@@ -249,7 +249,8 @@ void oe_splat_Frag(inout vec4 quad)
 #ifdef OE_COLOR_LAYER_TEX
     vec3 cltexel = texture(OE_COLOR_LAYER_TEX, (OE_COLOR_LAYER_MAT*oe_layer_tilec).st).rgb;
     vec3 clcolor = clamp(2.0 * cltexel * color, 0.0, 1.0);
-    color = mix(color, clcolor, smoothstep(0.0, 0.5, 0.33*(dense+lush+rugged)));
+    //color = mix(color, clcolor, smoothstep(0.0, 0.5, 1.0 - 0.33*(dense+lush+rugged)));
+    color = mix(color, clcolor, smoothstep(0.0, 0.5, 1.0 - 0.5*(dense + lush)));
 #endif
 
     // final color output:

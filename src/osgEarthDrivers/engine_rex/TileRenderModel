@@ -40,14 +40,24 @@ namespace osgEarth { namespace REX
      * is non-identity, that means the sampler inherits the texture from
      * another sampler higher up in the scene graph.
      */
-    struct Sampler
+    class Sampler
     {
+    public:
+        //! Construct
         Sampler() 
             : _revision(0u) { }
 
-        Sampler(const Sampler& rhs)
-            : _texture(rhs._texture), _matrix(rhs._matrix), _revision(rhs._revision) { }
+        //! Construct
+        Sampler(const Sampler& rhs) :
+            _texture(rhs._texture),
+            _matrix(rhs._matrix),
+            _revision(rhs._revision) //,
+            //_futureTexture(rhs._futureTexture)
+        {
+            //nop
+        }
 
+        // Destructor
         ~Sampler()
         {
             // Probably unnecessary since I think OSG does this...?
@@ -57,22 +67,40 @@ namespace osgEarth { namespace REX
             }
         }
 
-        // pointer to the sampler texture data
+        // pointer to the sampler's active texture data
         osg::ref_ptr<osg::Texture> _texture;
 
         // scale and bias matrix for accessing the texture - will be non-identity
         // if the texture is inherited from an ancestor tile
         osg::Matrixf _matrix;
 
+        // point to a texture whose image is still being loaded asynchronously
+        osg::ref_ptr<osg::Texture> _futureTexture;
+
         // revision of the data in this sampler (taken from its source layer)
         unsigned _revision;
 
-        inline bool ownsTexture() const { return _texture.valid() && _matrix.isIdentity(); }
-        inline bool inheritsTexture() const { return !_texture.valid() || !_matrix.isIdentity(); }
-        inline unsigned revision() const { return _revision; }
+        //! True is this sampler is the rightful owner of _texture.
+        inline bool ownsTexture() const { 
+            return _texture.valid() && _matrix.isIdentity();
+        }
 
+        //! True is this sampler is NOT the rightful owner of _texture.
+        inline bool inheritsTexture() const {
+            return !_texture.valid() || !_matrix.isIdentity();
+        }
+
+        //! Revision of the data model use to initialize this sampler.
+        inline unsigned revision() const { 
+            return _revision;
+        }
+
+        //! Set this sampler's matrix to inherit
         inline void inheritFrom(const Sampler& rhs, const osg::Matrixf& scaleBias) {
-            *this = rhs;
+            _texture = rhs._texture;
+            _matrix = rhs._matrix;
+            _revision = rhs._revision;
+            // do NOT copy and overwrite _futureTexture!
             _matrix.preMult(scaleBias);
         }
     };
@@ -83,14 +111,15 @@ namespace osgEarth { namespace REX
      * Samplers (one per RenderBinding) specific to one rendering pass of a tile.
      * These are just the COLOR and COLOR_PARENT samplers.
      */
-    struct RenderingPass
+    class RenderingPass
     {
     public:
         RenderingPass() :
             _sourceUID(-1),
             _samplers(SamplerBinding::COLOR_PARENT+1),
             _visibleLayer(0L),
-            _tileLayer(0L)
+            _tileLayer(0L),
+            _parentPass(nullptr)
             { }
 
         RenderingPass(const RenderingPass& rhs) :
@@ -98,7 +127,8 @@ namespace osgEarth { namespace REX
             _samplers(rhs._samplers),
             _layer(rhs._layer),
             _visibleLayer(rhs._visibleLayer),
-            _tileLayer(rhs._tileLayer)
+            _tileLayer(rhs._tileLayer),
+            _parentPass(rhs._parentPass)
         {
             //nop
         }
@@ -110,10 +140,16 @@ namespace osgEarth { namespace REX
         // the COLOR and COLOR_PARENT (optional) samplers for this rendering pass
         Samplers& samplers() { return _samplers; }
         const Samplers& samplers() const  { return _samplers; }
+        
+        Sampler& sampler(int binding) { return _samplers[binding]; }
+        const Sampler& sampler(int binding) const { return _samplers[binding]; }
 
         const Layer* layer() const { return _layer.get(); }
         const VisibleLayer* visibleLayer() const { return _visibleLayer; }
         const TileLayer* tileLayer() const { return _tileLayer; }
+
+        const RenderingPass* parent() const { return _parentPass; }
+        void setParent(const RenderingPass* value) { _parentPass = value; }
 
         // whether the color sampler in this rendering pass are native
         // or inherited from another tile
@@ -121,23 +157,39 @@ namespace osgEarth { namespace REX
         bool inheritsTexture() const { return !ownsTexture(); }
 
         void inheritFrom(const RenderingPass& rhs, const osg::Matrix& scaleBias) {
-            *this = rhs;
+            _sourceUID = rhs._sourceUID;
+            _samplers = rhs._samplers;
+            _layer = rhs._layer;
+            _visibleLayer = rhs._visibleLayer;
+            _tileLayer = rhs._tileLayer;
+            _parentPass = &rhs;
+
             for (unsigned s = 0; s < samplers().size(); ++s)
-                samplers()[s]._matrix.preMult(scaleBias);
+                sampler(s)._matrix.preMult(scaleBias);
         }
 
         void releaseGLObjects(osg::State* state) const
         {
-            for (unsigned s = 0; s<_samplers.size(); ++s)
-                if (_samplers[s].ownsTexture())
-                    _samplers[s]._texture->releaseGLObjects(state);
+            for (unsigned s = 0; s < _samplers.size(); ++s)
+            {
+                const Sampler& sampler = _samplers[s];
+                if (sampler.ownsTexture())
+                    sampler._texture->releaseGLObjects(state);
+                if (sampler._futureTexture.valid())
+                    sampler._futureTexture->releaseGLObjects(state);
+            }
         }
 
         void resizeGLObjectBuffers(unsigned size)
         {
-            for (unsigned s = 0; s<_samplers.size(); ++s)
-                if (_samplers[s].ownsTexture())
-                    _samplers[s]._texture->resizeGLObjectBuffers(size);
+            for (unsigned s = 0; s < _samplers.size(); ++s)
+            {
+                const Sampler& sampler = _samplers[s];
+                if (sampler.ownsTexture())
+                    sampler._texture->resizeGLObjectBuffers(size);
+                if (sampler._futureTexture.valid())
+                    sampler._futureTexture->resizeGLObjectBuffers(size);
+            }
         }
 
         void setLayer(const Layer* layer) {
@@ -179,6 +231,11 @@ namespace osgEarth { namespace REX
         
         /** VisibleLayer responsible for this rendering pass (is _layer is a TileLayer) */
         const TileLayer* _tileLayer;
+
+        //! Parent rendering pass
+        const RenderingPass* _parentPass;
+
+        friend class TileRenderModel;
     };
 
     /**
@@ -190,8 +247,9 @@ namespace osgEarth { namespace REX
      * Everything necessary to render a single terrain tile.
      * REX renders the terrain in multiple passes, one pass for each visible layer.
      */
-    struct TileRenderModel
+    class TileRenderModel
     {
+    public:
         /** Samplers that are bound for every rendering pass (elevation, normal map, etc.) */
         Samplers _sharedSamplers;
 
@@ -199,9 +257,10 @@ namespace osgEarth { namespace REX
         RenderingPasses _passes;
 
         /** Add a new rendering pass to the end of the list. */
-        RenderingPass& addPass()
+        RenderingPass& addPass(const RenderingPass* parent)
         {
             _passes.resize(_passes.size()+1);
+            _passes.back()._parentPass = parent;
             return _passes.back();
         }
 

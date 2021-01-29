@@ -699,7 +699,7 @@ namespace osgEarth
         /**
          * Returns the underlying OSG image and releases the reference pointer.
          */
-        const osg::Image* takeImage();
+        osg::ref_ptr<osg::Image> takeImage();
 
 		/**
 		 * Gets the units per pixel of this geoimage

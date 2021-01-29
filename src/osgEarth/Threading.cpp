@@ -782,6 +782,11 @@ JobArena::startThreads()
 {
     _done = false;
 
+    if (_numThreads == 0)
+    {
+        OE_INFO << LC << "Arena \"" << _name << "\" starting with no threads" << std::endl;
+    }
+
     for (unsigned i = 0; i < _numThreads; ++i)
     {
         _threads.push_back(std::thread([this]

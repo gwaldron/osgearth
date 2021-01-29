@@ -2080,10 +2080,10 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     return GeoImage(resultImage, destExtent);
 }
 
-const osg::Image*
+osg::ref_ptr<osg::Image>
 GeoImage::takeImage()
 {
-    osg::ref_ptr<const osg::Image> result;
+    osg::ref_ptr<osg::Image> result;
     if (_future.isSet())
     {
         result = _future->get();
@@ -2091,9 +2091,9 @@ GeoImage::takeImage()
     }
     else
     {
-        result = _myimage.release();
+        result = const_cast<osg::Image*>(_myimage.release());
     }
-    return result.release();
+    return result;
 }
 
 /***************************************************************************/

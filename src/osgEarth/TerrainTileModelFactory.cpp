@@ -31,70 +31,76 @@
 
 using namespace osgEarth;
 
-class FutureImage : public osg::Image
+namespace
 {
-public:
-    typedef Job<osg::ref_ptr<osg::Image>> ImageJob;
-
-    FutureImage(ImageLayer* layer, const TileKey& key) : osg::Image()
+    class FutureImage : public osg::Image
     {
-        _layer = layer;
-        _key = key;
+    public:
+        typedef Job<GeoImage> ImageJob;
 
-        osg::observer_ptr<ImageLayer> layer_ptr(_layer);
-
-        _result = ImageJob::dispatch(
-            "oe.async_layer",
-            [layer_ptr, key](Cancelable* progress) mutable
-            {
-                osg::ref_ptr<ImageLayer> safe(layer_ptr);
-                osg::ref_ptr<osg::Image> result;
-                if (safe.valid())
-                {
-                    GeoImage geoimage = safe->createImage(key, nullptr); // progress TODO
-                    result = const_cast<osg::Image*>(geoimage.getImage());
-                }
-                return result;
-            }
-        );
-    }
-
-    virtual bool requiresUpdateCall() const override
-    {
-        // tricky, because if we return false here, it will
-        // never get called again.
-        return _result.isAvailable() || !_result.isAbandoned();
-    }
-
-    virtual void update(osg::NodeVisitor* nv) override
-    {
-        if (_result.isAvailable())
+        FutureImage(ImageLayer* layer, const TileKey& key) : osg::Image()
         {
-            // no refptr here because we are going to steal the data.
-            osg::ref_ptr<osg::Image> i = _result.get();
+            _layer = layer;
+            _key = key;
 
-            if (i.valid())
+            osg::observer_ptr<ImageLayer> layer_ptr(_layer);
+
+            _result = ImageJob::dispatch(
+                "oe.async_layer",
+                [layer_ptr, key](Cancelable* progress) mutable
+                {
+                    GeoImage result;
+                    osg::ref_ptr<ImageLayer> safe(layer_ptr);
+                    if (safe.valid())
+                    {
+                        result = safe->createImage(key, new ProgressCallback(progress));
+                    }
+                    return result;
+                }
+            );
+        }
+
+        bool requiresUpdateCall() const override
+        {
+            // tricky, because if we return false here, it will
+            // never get called again.
+            return _result.isAvailable() || !_result.isAbandoned();
+        }
+
+        void update(osg::NodeVisitor* nv) override
+        {
+            if (_result.isAvailable())
             {
-                this->setImage(
-                    i->s(), i->t(), i->r(),
-                    i->getInternalTextureFormat(), i->getPixelFormat(), i->getDataType(),
-                    i->data(), i->getAllocationMode(),
-                    i->getPacking(),
-                    i->getRowLength());
+                // fetch the result
+                GeoImage geoImage = _result.get();
+                osg::ref_ptr<osg::Image> i = geoImage.takeImage();
 
-                // since we stole the data, make sure we don't double-delete it
-                i->setAllocationMode(osg::Image::NO_DELETE);
+                if (i.valid())
+                {
+                    this->setImage(
+                        i->s(), i->t(), i->r(),
+                        i->getInternalTextureFormat(), i->getPixelFormat(), i->getDataType(),
+                        i->data(), i->getAllocationMode(),
+                        i->getPacking(),
+                        i->getRowLength());
 
-                // trigger texture(s) that own this image to reapply
-                this->dirty();
+                    // since we stole the data, make sure we don't double-delete it
+                    i->setAllocationMode(osg::Image::NO_DELETE);
+
+                    // trigger texture(s) that own this image to reapply
+                    this->dirty();
+                }
+
+                // reset the future so update won't be called again
+                _result.abandon();
             }
         }
-    }
 
-    osg::ref_ptr<ImageLayer> _layer;
-    TileKey _key;
-    Job<osg::ref_ptr<osg::Image>>::Result _result;
-};
+        osg::ref_ptr<ImageLayer> _layer;
+        TileKey _key;
+        ImageJob::Result _result;
+    };
+}
 
 //.........................................................................
 
@@ -318,6 +324,9 @@ TerrainTileModelFactory::addImageLayer(
             tex->setFilter(osg::Texture::MIN_FILTER, minFilter);
             tex->setMaxAnisotropy(4.0f);
             tex->setUnRefImageDataAfterApply(false);
+            
+            // prevent issues with replacing the texture in the middle of a render
+            tex->setDataVariance(osg::Object::DYNAMIC);
         }
 
         else

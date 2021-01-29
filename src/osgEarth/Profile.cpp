@@ -468,7 +468,7 @@ Profile::getAllKeysAtLOD( unsigned lod, std::vector<TileKey>& out_keys ) const
 }
 
 GeoExtent
-Profile::calculateExtent( unsigned int lod, unsigned int tileX, unsigned int tileY )
+Profile::calculateExtent( unsigned int lod, unsigned int tileX, unsigned int tileY ) const
 {
     double width, height;
     getTileDimensions(lod, width, height);

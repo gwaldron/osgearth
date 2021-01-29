@@ -19,11 +19,6 @@
         </tower_model>
         <styles>
             <style type="text/css">
-                towers {
-                    model: "../data/power_tower.osgb";
-                    altitude-clamping: terrain;
-                    model-heading: from_feature;
-                }
                 cables {
                     stroke: #080808;
                     stroke-width: 0.05m;
@@ -31,8 +26,6 @@
             </style>
             <script language="javascript">
               <![CDATA[
-                       function getStyleClass() {return "towers";}
-
                        function getLineStyle()
                        {
                          if (feature.properties.voltage > 60000)

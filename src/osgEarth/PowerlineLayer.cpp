@@ -68,6 +68,10 @@ void PowerlineLayer::ModelOptions::fromConfig(const Config& conf)
     {
         uri() = conf.child("uri").value();
     }
+    else if (conf.hasChild("model"))
+    {
+        uri() = conf.child("model").value();
+    }
     conf.get("max_sag", maxSag());
 }
 
@@ -680,7 +684,7 @@ namespace
         osg::ref_ptr<ModelSymbol> modelSymbol = modelStyle.getOrCreate<ModelSymbol>();
         if (!modelSymbol->url().isSet() || force)
         {
-            modelSymbol->url() = modelName;
+            modelSymbol->url() = "\"" + modelName + "\"";
             modelSymbol->url()->setURIContext(referrer);
         }
     }
@@ -957,8 +961,12 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     auto& selectors = sheet->getSelectors();
     bool useSelectorExp = !selectors.empty() && selectors.begin()->second.styleExpression().isSet();
     Style combinedStyle;
+    // Create the graph for the tower models.
     if (useSelectorExp || _powerlineOptions.lineExpr().isSet())
     {
+        // The style is different for each feature, either explicitly
+        // due to the style selector, or implicitly from a tower_model
+        // expression that selects different models.
         osg::Group* towersNode = new osg::Group;
         pointsNode = towersNode;
         while (listCursor->hasMore())
@@ -1017,11 +1025,26 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
             }
         }
     }
-    else if (const Style* sessionTowerStyle = context.getSession()->styles()->getStyle("towers"))
+    else
     {
+        PowerlineLayer::ModelOptions modelOptions = _powerlineOptions.towerModels().front();
+        const Style* sessionTowerStyle
+            = context.getSession()->styles()->getStyle("towers", false);
+        if (sessionTowerStyle)
+        {
+            combinedStyle = *sessionTowerStyle;
+        }
+        if (modelOptions.uri().isSet())
+        {
+            setModelStyleDefaults(combinedStyle, modelOptions.uri().get(), _powerlineOptions.referrer, true);
+        }
+        else
+        {
+            setModelStyleDefaults(combinedStyle);
+        }
         // This has the side effect of updating the elevations of the point features according to the
         // model style sheet. We rely on this in makeCableFeatures().
-        GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), *sessionTowerStyle, localCX, pointsNode, query);
+        GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), combinedStyle, localCX, pointsNode, query);
     }
 
     osg::ref_ptr<osg::Group> results(new osg::Group);

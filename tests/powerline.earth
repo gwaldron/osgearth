@@ -2,7 +2,7 @@
     <PowerlineModel name="towers" max_range="6000" attenuation_range="1000">
         <features>power-lines</features>
         <tower_model>
-            <model>../data/power_tower.osgb</model>
+            <uri>../data/power_tower.osgb</uri>
             <attachment_points>
                 LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89, 6.385 0.0 21.077, -6.35 -0.01 21.077)
             </attachment_points>
@@ -11,11 +11,6 @@
         </tower_model>
         <styles>
             <style type="text/css">
-                towers {
-                    model: "../data/power_tower.osgb";
-                    altitude-clamping: terrain;
-                    model-heading: from_feature;
-                }
                 cables {
                     stroke: #080808;
                     stroke-width: 0.05m;

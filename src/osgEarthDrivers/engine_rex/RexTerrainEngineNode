@@ -26,6 +26,7 @@
 #include <osgEarth/Threading>
 #include <osgEarth/Containers>
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/FrameClock>
 
 #include "EngineContext"
 #include "TileNodeRegistry"
@@ -37,7 +38,6 @@
 #include "SurfaceNode"
 #include "TileDrawable"
 #include "TerrainCuller"
-#include "FrameClock"
 
 #include <list>
 #include <map>

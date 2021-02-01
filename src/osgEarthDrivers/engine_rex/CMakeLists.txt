@@ -23,7 +23,6 @@ SET(TARGET_SRC
     CreateTileImplementation.cpp
     DrawState.cpp
     DrawTileCommand.cpp
-    FrameClock.cpp
     GeometryPool.cpp
     RexTerrainEngineNode.cpp
     RexTerrainEngineDriver.cpp
@@ -48,7 +47,6 @@ SET(TARGET_H
     CreateTileImplementation
     DrawState
     DrawTileCommand
-    FrameClock
     GeometryPool
     Shaders
     RexTerrainEngineNode

@@ -50,6 +50,7 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(FeatureSource, landUseLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
             OE_OPTION(bool, useLandCover);
+            OE_OPTION(bool, useTerrain);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -72,6 +73,9 @@ namespace osgEarth { namespace Procedural
 
         void setUseLandCover(bool value);
         bool getUseLandCover() const;
+
+        void setUseTerrain(bool value);
+        bool getUseTerrain() const;
 
     protected:
 

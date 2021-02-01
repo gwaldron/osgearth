@@ -61,7 +61,7 @@ BumpMapTerrainEffect::setBumpMapImage(osg::Image* image)
         _bumpMapTex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
         _bumpMapTex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
         _bumpMapTex->setMaxAnisotropy(1.0f);
-        _bumpMapTex->setUnRefImageDataAfterApply(true);
+        _bumpMapTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
         _bumpMapTex->setResizeNonPowerOfTwoHint(false);
     }
     else

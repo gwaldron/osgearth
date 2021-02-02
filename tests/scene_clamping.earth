@@ -8,7 +8,7 @@ osgEarth Sample - Annotations
 
     <DebugImage enabled="false"/>
 
-    <Viewpoints time="0.1">
+    <Viewpoints home="0" time="1">
         <viewpoint name="Circles">
             <heading>25.2721</heading>
             <pitch>-24.7961</pitch>
@@ -44,7 +44,8 @@ osgEarth Sample - Annotations
             <radius value="1.2" units="km"/>
             <style type="text/css">
                 stroke:             #ffff00;
-                stroke-width:       2px;
+                stroke-width:       4px;
+                stroke-stipple-pattern: 0xfff8;
                 altitude-binding:   vertex;
             </style>
         </circle>

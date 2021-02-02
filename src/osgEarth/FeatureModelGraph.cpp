@@ -576,7 +576,7 @@ FeatureModelGraph::open()
 
         // Compute the max range of all the feature levels.  Each subsequent level if half of the parent.
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
-        for (int i = 0; i < featureProfile->getMaxLevel() + 1; i++)
+        for (int i = featureProfile->getFirstLevel(); i < featureProfile->getMaxLevel() + 1; i++)
         {
             OE_INFO << LC << "Computed max range " << maxRange << " for lod " << i << std::endl;
             FeatureLevel* level = new FeatureLevel(0.0, maxRange);

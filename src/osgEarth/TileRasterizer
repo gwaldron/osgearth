@@ -90,7 +90,7 @@ namespace osgEarth
             osg::ref_ptr<osg::Image> run(osg::State*);
             osg::ref_ptr<osg::Node> _node;
             GeoExtent _extent;
-            std::shared_ptr<RenderData> _rd;
+            std::weak_ptr<RenderData> _rd;
         };
 
         mutable std::shared_ptr<RenderData> _renderData;

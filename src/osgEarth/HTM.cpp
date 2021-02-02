@@ -286,7 +286,7 @@ HTMGroup::HTMGroup()
 {
     _settings._maxObjectsPerCell = 128;
     _settings._rangeFactor.init( 7.0f );
-    _settings._debugGeom = true;
+    _settings._debugGeom = false;
     _settings._minCellSize = 10000;
     _settings._maxCellSize = 500000;
     _settings._storeObjectsInLeavesOnly = false;

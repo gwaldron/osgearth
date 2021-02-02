@@ -30,6 +30,10 @@
 #include <osgUtil/IncrementalCompileOperation>
 #include <osgViewer/GraphicsWindow>
 
+#ifdef OE_USE_GRAPHICS_OBJECT_MANAGER
+#include <osg/ContextData>
+#endif
+
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
 #include <osg/LineWidth>
 #include <osg/Point>
@@ -38,6 +42,8 @@
 using namespace osgEarth;
 
 #define LC "[GLUtils] "
+
+#define OE_DEVEL OE_DEBUG
 
 #ifndef GL_LINE_SMOOTH
 #define GL_LINE_SMOOTH 0x0B20
@@ -233,26 +239,282 @@ GL3RealizeOperation::operator()(osg::Object* object)
 
 
 
-GLBufferReleaser::GLBufferReleaser(GLBuffer* buffer) : 
-    osg::GraphicsOperation("osgEarth::GLBufferReleaser", true),
-    _buffer(buffer),
-    _handle(buffer->_handle)
+#undef LC
+#define LC "[GLObjectReleaser] "
+
+GLObject::GLObject(osg::State& state, const std::string& label) :
+    _label(label),
+    _ext(state.get<osg::GLExtensions>())
+{
+    //nop
+}
+
+GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
+    GLObject(state, label),
+    _target(target),
+    _name(~0U)
+{
+    ext()->glGenBuffers(1, &_name);
+    if (_name != ~0U)
+    {
+        bind();
+        ext()->debugObjectLabel(GL_BUFFER, _name, label);
+        GLObjectReleaser::watch(this, state);
+    }
+}
+
+void
+GLBuffer::bind()
+{
+    ext()->glBindBuffer(_target, _name);
+}
+
+void
+GLBuffer::bind(GLenum otherTarget)
+{
+    ext()->glBindBuffer(otherTarget, _name);
+}
+
+void
+GLBuffer::release()
+{
+    if (_name != ~0U)
+    {
+        OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
+        ext()->glDeleteBuffers(1, &_name);
+        _name = ~0U;
+    }
+}
+
+GLTexture::GLTexture(GLenum target, osg::State& state, const std::string& label) :
+    GLObject(state, label),
+    _target(target),
+    _name(~0U),
+    _handle(~0ULL),
+    _isResident(false)
+{
+    glGenTextures(1, &_name);
+    if (_name != ~0U)
+    {
+        bind();
+        ext()->debugObjectLabel(GL_TEXTURE, _name, label);
+        GLObjectReleaser::watch(this, state);
+        // cannot call glGetTextureHandle until all state it set.
+    }
+}
+
+void
+GLTexture::bind()
+{
+    glBindTexture(_target, _name);
+}
+
+GLuint64
+GLTexture::handle()
+{
+    if (_handle == ~0ULL)
+    {
+        bind();
+        _handle = ext()->glGetTextureHandle(_name);
+    }
+    return _handle;
+}
+
+void
+GLTexture::makeResident(bool toggle)
+{
+    if (_isResident != toggle)
+        ext()->glMakeTextureHandleResident(_handle);
+    else
+        ext()->glMakeTextureHandleNonResident(_handle);
+
+    _isResident = toggle;
+}
+
+void
+GLTexture::release()
+{
+    if (_handle != ~0ULL)
+    {
+        ext()->glMakeTextureHandleNonResident(_handle);
+        _handle = ~0ULL;
+    }
+    if (_name != ~0U)
+    {
+        OE_DEVEL << "Releasing texture " << _name << "(" << _label << ")" << std::endl;
+        glDeleteTextures(1, &_name);
+        _name = ~0U;
+    }
+}
+
+
+SSBO::SSBO() :
+    _allocatedSize(0),
+    _bindingIndex(-1)
 {
     //nop
 }
 
 void
-GLBufferReleaser::operator () (osg::GraphicsContext* context)
+SSBO::release() const
 {
-    if (!_buffer.valid() && _handle != (GLuint)~0 && context && context->getState())
+    _buffer = NULL; // triggers the releaser
+    _allocatedSize = 0u;
+}
+
+void
+SSBO::bindLayout() const
+{
+    if (_buffer.valid() && _bindingIndex >= 0)
     {
-        OE_DEBUG << "Note: glDeleteBuffers(1, " << _handle << ")" << std::endl;
-        osg::GLExtensions* ext = context->getState()->get<osg::GLExtensions>();
-        ext->glDeleteBuffers(1, &_handle);
-        _handle = (GLuint)~0;
-        setKeep(false);
+        _buffer->ext()->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bindingIndex, _buffer->name());
     }
 }
+
+#undef LC
+#define LC "[GLObjectReleaser] "
+
+#ifdef OE_USE_GRAPHICS_OBJECT_MANAGER
+
+GLObjectReleaser::GLObjectReleaser(unsigned contextID) :
+    osg::GraphicsObjectManager("OE GLObjectReleaser", contextID)
+{
+    //nop
+}
+
+void
+GLObjectReleaser::watch(GLObject* object, osg::State& state_unused)
+{
+    if (object && object->ext())
+    {
+        GLObjectReleaser* rel = osg::get<GLObjectReleaser>(object->ext()->contextID);
+        if (rel)
+            rel->_objects.insert(object);
+    }
+}
+
+void
+GLObjectReleaser::releaseAll(osg::State& state)
+{
+    GLObjectReleaser* rel = osg::get<GLObjectReleaser>(state.getContextID());
+    if (rel)
+    {
+        for (auto& object : rel->_objects)
+            object->release();
+        rel->_objects.clear();
+    }
+}
+
+void
+GLObjectReleaser::flushDeletedGLObjects(double currentTime, double& availableTime)
+{
+    flushAllDeletedGLObjects();
+}
+
+void
+GLObjectReleaser::flushAllDeletedGLObjects()
+{
+    // keep all non-released objects in the temp container
+    // so we can retain them for next time
+    _temp.clear();
+    for (auto& object : _objects)
+    {
+        if (object->referenceCount() == 1)
+            object->release();
+        else
+            _temp.insert(object);
+    }
+
+    _objects.swap(_temp);
+}
+
+void
+GLObjectReleaser::deleteAllGLObjects()
+{
+    // not really sure what this is supposed to do TBH
+    flushAllDeletedGLObjects();
+}
+
+void
+GLObjectReleaser::discardAllGLObjects()
+{
+    // no graphics context available..just empty the bucket
+    _objects.clear();
+}
+
+#else
+
+osg::buffered_object<osg::ref_ptr<GLObjectReleaser> > GLObjectReleaser::_buf(256);
+
+GLObjectReleaser::GLObjectReleaser(unsigned contextID) :
+    osg::GraphicsOperation("OE GLObjectReleaser", true)
+{
+    //nop
+}
+
+void
+GLObjectReleaser::watch(GLObject* obj, osg::State& state)
+{
+    osg::ref_ptr<GLObjectReleaser>& rel = _buf[state.getContextID()];
+    if (!rel.valid())
+    {
+        rel = new GLObjectReleaser(state.getContextID());
+        state.getGraphicsContext()->add(rel.get());
+    }
+    rel->_objects.insert(obj);
+}
+
+void
+GLObjectReleaser::releaseAll(osg::State& state)
+{
+    osg::ref_ptr<GLObjectReleaser>& rel = _buf[state.getContextID()];
+    if (rel.valid())
+    {
+        for (auto& object : rel->_objects)
+            object->release();
+        rel->_objects.clear();
+    }
+}
+
+void
+GLObjectReleaser::operator()(osg::GraphicsContext* gc)
+{
+    // keep all non-released objects in the temp container
+    // so we can retain them for next time
+    _temp.clear();
+    for (auto& object : _objects)
+    {
+        if (object->referenceCount() == 1)
+            object->release();
+        else
+            _temp.insert(object);
+    }
+
+    _objects.swap(_temp);
+}
+
+#endif
+
+//GLBufferReleaser::GLBufferReleaser(GLBuffer* buffer) : 
+//    osg::GraphicsOperation("osgEarth::GLBufferReleaser", true),
+//    _buffer(buffer),
+//    _handle(buffer->_handle)
+//{
+//    //nop
+//}
+//
+//void
+//GLBufferReleaser::operator () (osg::GraphicsContext* context)
+//{
+//    if (!_buffer.valid() && _handle != (GLuint)~0 && context && context->getState())
+//    {
+//        OE_DEBUG << "Note: glDeleteBuffers(1, " << _handle << ")" << std::endl;
+//        osg::GLExtensions* ext = context->getState()->get<osg::GLExtensions>();
+//        ext->glDeleteBuffers(1, &_handle);
+//        _handle = (GLuint)~0;
+//        setKeep(false);
+//    }
+//}
 
 #undef LC
 #define LC "[GPUJobArena] "
@@ -498,39 +760,24 @@ GLObjectsCompiler::compileNow(
     }
 }
 
-
-
-#ifndef OE_HAVE_BINDIMAGETEXTURE
-using namespace osg;
-
-int BindImageTexture::compare(const osg::StateAttribute &sa) const
+GLFunctions::GLFunctions() :
+    glBufferStorage(NULL)
 {
-    COMPARE_StateAttribute_Types(BindImageTexture,sa)
-        // Compare each parameter in turn against the rhs.
-        COMPARE_StateAttribute_Parameter(_target)
-        COMPARE_StateAttribute_Parameter(_imageunit)
-        COMPARE_StateAttribute_Parameter(_access)
-        COMPARE_StateAttribute_Parameter(_format)
-        COMPARE_StateAttribute_Parameter(_layered)
-        COMPARE_StateAttribute_Parameter(_level)
-        return 0;
+    //nop
 }
+GLFunctions GLFunctions::_buf[256];
 
-void BindImageTexture::apply(osg::State& state) const
+GLFunctions&
+GLFunctions::get(unsigned contextID)
 {
-    if(_target.valid())
+    GLFunctions& f = _buf[contextID];
+    if (f.glBufferStorage == NULL)
     {
-        unsigned int contextID = state.getContextID();
-        osg::Texture::TextureObject *to = _target->getTextureObject( contextID );
-        if( !to ) //|| _target->isDirty( contextID ))
-        {
-            // _target never been applied yet or is dirty
-            state.applyTextureAttribute( state.getActiveTextureUnit(), _target.get());
-            to = _target->getTextureObject( contextID );
-        }
-
-        state.get<osg::GLExtensions>()->glBindImageTexture(_imageunit, to->id(), _level, _layered, _layer, _access, _format);
+        osg::setGLExtensionFuncPtr(f.glBufferStorage, "glBufferStorage", "glBufferStorageARB");
+        osg::setGLExtensionFuncPtr(f.glClearBufferSubData, "glClearBufferSubData", "glClearBufferSubDataARB");
+        osg::setGLExtensionFuncPtr(f.glMultiDrawElementsIndirect, "glMultiDrawElementsIndirect", "glMultiDrawElementsIndirectARB");
+        osg::setGLExtensionFuncPtr(f.glDispatchComputeIndirect, "glDispatchComputeIndirect", "glDispatchComputeIndirectARB");
+        osg::setGLExtensionFuncPtr(f.glTexStorage3D, "glTexStorage3D", "glTexStorage3DARB");
     }
+    return f;
 }
-
-#endif

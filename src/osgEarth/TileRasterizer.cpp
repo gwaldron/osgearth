@@ -61,19 +61,27 @@ TileRasterizer::RenderOperation::run(osg::State* state)
 {
     OE_PROFILING_ZONE_NAMED("TileRasterizer:RenderOperation");
 
-    osg::Camera* camera = _rd->_sv->getCamera();
+    // lock the weak pointer to make sure the TileRasterizer still exists
+    // and didn't disappear out from under us
+    std::shared_ptr<RenderData> rd = _rd.lock();
+    if (rd == nullptr)
+    {
+        return nullptr;
+    }
+
+    osg::Camera* camera = rd->_sv->getCamera();
 
     //unsigned id = gc->getState()->getContextID();
     unsigned id = state->getContextID();
     osg::GLExtensions* ext = osg::GLExtensions::Get(id, true);
 
 #ifdef USE_PBO
-    if (_rd->_pbo == 0 && ext->isPBOSupported)
+    if (rd->_pbo == 0 && ext->isPBOSupported)
     {
         // Allocate a pixel buffer object for DMA readback
-        unsigned size = _rd->_width * _rd->_height * 4u;
-        ext->glGenBuffers(1, &_rd->_pbo);
-        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _rd->_pbo);
+        unsigned size = rd->_width * rd->_height * 4u;
+        ext->glGenBuffers(1, &rd->_pbo);
+        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, rd->_pbo);
         ext->glBufferData(GL_PIXEL_PACK_BUFFER_ARB, size, 0, GL_STREAM_READ);
     }
 #endif
@@ -83,27 +91,27 @@ TileRasterizer::RenderOperation::run(osg::State* state)
         _extent.xMin(), _extent.xMax(),
         _extent.yMin(), _extent.yMax());
 
-    _rd->_sv->setSceneData(_node.get());
+    rd->_sv->setSceneData(_node.get());
 
-    if (_rd->_samplesQuery == 0)
+    if (rd->_samplesQuery == 0)
     {
         // Allocate a sample-counting query
-        ext->glGenQueries(1, &_rd->_samplesQuery);
+        ext->glGenQueries(1, &rd->_samplesQuery);
     }
 
-    _rd->_sv->cull();
+    rd->_sv->cull();
 
     // initiate a query for samples passing the fragment shader
     // to see whether we drew anything.
     GLuint samples = 0u;
-    ext->glBeginQuery(GL_ANY_SAMPLES_PASSED, _rd->_samplesQuery);
+    ext->glBeginQuery(GL_ANY_SAMPLES_PASSED, rd->_samplesQuery);
 
-    _rd->_sv->draw();
+    rd->_sv->draw();
 
     {
         OE_PROFILING_ZONE_NAMED("glEndQuery/glGet");
         ext->glEndQuery(GL_ANY_SAMPLES_PASSED);
-        ext->glGetQueryObjectuiv(_rd->_samplesQuery, GL_QUERY_RESULT, &samples);
+        ext->glGetQueryObjectuiv(rd->_samplesQuery, GL_QUERY_RESULT, &samples);
     }
 
     osg::ref_ptr<osg::Image> image;
@@ -113,19 +121,19 @@ TileRasterizer::RenderOperation::run(osg::State* state)
     {
         // create our new target image:
         image = new osg::Image();
-        image->allocateImage(_rd->_width, _rd->_height, 1, _rd->_tex->getSourceFormat(), _rd->_tex->getSourceType());
-        image->setInternalTextureFormat(_rd->_tex->getInternalFormat());
+        image->allocateImage(rd->_width, rd->_height, 1, rd->_tex->getSourceFormat(), rd->_tex->getSourceType());
+        image->setInternalTextureFormat(rd->_tex->getInternalFormat());
 
         OE_PROFILING_ZONE_NAMED("Readback");
 
         // make the target texture current so we can read it back.
-        _rd->_tex->apply(*state);
+        rd->_tex->apply(*state);
 
-        if (_rd->_pbo > 0)
+        if (rd->_pbo > 0)
         {
             // Use the PBO to perform a DMA transfer (faster than straight glReadPixels)
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _rd->_pbo);
-            glGetTexImage(GL_TEXTURE_2D, 0, _rd->_tex->getSourceFormat(), _rd->_tex->getSourceType(), 0);
+            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, rd->_pbo);
+            glGetTexImage(GL_TEXTURE_2D, 0, rd->_tex->getSourceFormat(), rd->_tex->getSourceType(), 0);
             GLubyte* src = (GLubyte*)ext->glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY_ARB);
             if (src)
             {

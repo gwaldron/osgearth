@@ -20,13 +20,13 @@
 #define OSGEARTH_REX_LOADER 1
 
 #include "Common"
-#include "FrameClock"
 
 #include <osgEarth/IOTypes>
 #include <osgEarth/Threading>
 #include <osgEarth/TileKey>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
+#include <osgEarth/FrameClock>
 #include <osg/ref_ptr>
 #include <osg/Group>
 

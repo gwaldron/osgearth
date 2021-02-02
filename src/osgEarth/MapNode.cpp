@@ -457,6 +457,8 @@ MapNode::open()
 void
 MapNode::shutdown()
 {
+    releaseGLObjects(nullptr);
+
     if (_terrainEngine)
         _terrainEngine->shutdown();
 

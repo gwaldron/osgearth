@@ -16,23 +16,23 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "FrameClock"
+#include <osgEarth/FrameClock>
 
-using namespace osgEarth::REX;
+using namespace osgEarth;
 
 FrameClock::FrameClock() :
     _updateFrame(0u),
     _cullFrame(0u)
 {
-    _timer = osg::Timer::instance();
-    _zero = _timer->tick();
+    _zero = std::chrono::steady_clock::now();
     _tick = _zero;
 }
 
 double
 FrameClock::getTime() const
 {
-    return _timer->delta_s(_zero, _tick);
+    auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(_tick - _zero);
+    return 0.001 * (double)(diff.count());
 }
 
 unsigned
@@ -46,7 +46,7 @@ FrameClock::update()
 {
     if (_updateFrame == _cullFrame)
     {
-        _tick = _timer->tick();
+        _tick = std::chrono::steady_clock::now();
         ++_updateFrame;
         return true;
     }

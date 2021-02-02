@@ -190,10 +190,11 @@ namespace osgEarth
         /** 
          * Calculates an extent given a tile location in this profile.
          */
-        virtual GeoExtent calculateExtent( unsigned int lod, unsigned int tileX, unsigned int tileY );
+        virtual GeoExtent calculateExtent(unsigned int lod, unsigned int tileX, unsigned int tileY) const;
 
         /**
          * Deduces a profile type given an SRS string.
+         * @deprecated
          */
         static ProfileType getProfileTypeFromSRS(const std::string &srs);
 

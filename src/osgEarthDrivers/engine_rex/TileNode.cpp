@@ -203,6 +203,7 @@ TileNode::initializeData()
             // Copy the parent pass:
             _renderModel._passes.push_back(parentPass);
             RenderingPass& myPass = _renderModel._passes.back();
+            myPass.setParent(&parentPass);
 
             // Scale/bias each matrix for this key quadrant.
             Samplers& samplers = myPass.samplers();
@@ -626,7 +627,8 @@ TileNode::traverse(osg::NodeVisitor& nv)
         // Check for image updates.
         if (nv.getVisitorType() == nv.UPDATE_VISITOR && _imageUpdatesActive)
         {
-            unsigned numUpdated = 0u;
+            unsigned numUpdatedTotal = 0u;
+            unsigned numFuturesResolved = 0u;
 
             for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
             {
@@ -644,18 +646,79 @@ TileNode::traverse(osg::NodeVisitor& nv)
                             if (image && image->requiresUpdateCall())
                             {
                                 image->update(&nv);
-                                numUpdated++;
+                                numUpdatedTotal++;
                             }
+                        }
+                    }
+
+                    // handle "future" textures. This is a texture that was installed
+                    // by an "async" image layer that is working in the background
+                    // to load. Once it is available we can merge it into the real texture
+                    // slot for rendering.
+                    if (sampler._futureTexture.valid())
+                    {
+                        unsigned levelsDoneUpdating = sampler._futureTexture->getNumImages();
+                        unsigned numUpdated = 0;
+
+                        for (unsigned i = 0; i < sampler._futureTexture->getNumImages(); ++i)
+                        {
+                            osg::Image* image = sampler._futureTexture->getImage(i);
+                            if (image)
+                            {
+                                if (image->requiresUpdateCall())
+                                {
+                                    //OE_INFO << _key.str() << " image->update..." << std::endl;
+                                    image->update(&nv);
+                                    numUpdated++;
+                                    numUpdatedTotal++;
+                                }
+
+                                // an image with a valid size indicates the job is complete
+                                if (image->s() > 0)
+                                {
+                                    --levelsDoneUpdating;
+                                }
+                            }
+                        }
+
+                        // when all images are complete, update the texture and discard the future object.
+                        if (levelsDoneUpdating == 0)
+                        {
+                            sampler._texture = sampler._futureTexture;
+                            sampler._matrix.makeIdentity();
+                            sampler._futureTexture = nullptr;
+                            ++numFuturesResolved;
+                        }
+
+                        else if (numUpdated == 0)
+                        {
+                            // can happen if the asynchronous request fails.
+                            sampler._futureTexture = nullptr;
                         }
                     }
                 }
             }
 
             // if no updates were detected, don't check next time.
-            if (numUpdated == 0)
+            if (numUpdatedTotal == 0)
             {
                 ADJUST_UPDATE_TRAV_COUNT(this, -1);
                 _imageUpdatesActive = false;
+            }
+
+            // if we resolve any future-textures, inform the children
+            // that they need to update their inherited samplers.
+            if (numFuturesResolved > 0)
+            {
+                for (int i = 0; i < 4; ++i)
+                {
+                    if (getNumChildren() > i)
+                    {
+                        TileNode* child = getSubTile(i);
+                        if (child)
+                            child->refreshInheritedData(this, _context->getRenderBindings());
+                    }
+                }
             }
         }
 
@@ -785,36 +848,50 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
     {
         // loop over all the layers included in the new data model and
         // add them to our render model (or update them if they already exist)
-        for(TerrainTileColorLayerModelVector::const_iterator i = model->colorLayers().begin();
-            i != model->colorLayers().end();
-            ++i)
+        for(const auto& colorLayerModel : model->colorLayers())
         {
-            TerrainTileImageLayerModel* model = dynamic_cast<TerrainTileImageLayerModel*>(i->get());
-            if (model && model->getLayer() && model->getTexture())
-            {
-                RenderingPass* pass = _renderModel.getPass(model->getLayer()->getUID());
-                bool isNewPass = (pass == NULL);
+            if (!colorLayerModel.valid())
+                continue;
 
+            const Layer* layer = colorLayerModel->getLayer();
+            if (!layer)
+                continue;
+
+            // Look up the parent pass in case we need it
+            RenderingPass* pass = 
+                _renderModel.getPass(layer->getUID());
+
+            const RenderingPass* parentPass =
+                pass ? pass->parent() :
+                getParentTile() ? getParentTile()->_renderModel.getPass(layer->getUID()) :
+                nullptr;
+
+            // ImageLayer?
+            TerrainTileImageLayerModel* imageLayerModel = dynamic_cast<TerrainTileImageLayerModel*>(colorLayerModel.get());
+            if (imageLayerModel && imageLayerModel->getTexture())
+            {
+                bool isNewPass = (pass == nullptr);
                 if (isNewPass)
                 {
                     // Pass didn't exist here, so add it now.
-                    pass = &_renderModel.addPass();
-                    pass->setLayer(model->getLayer());
+                    pass = &_renderModel.addPass(parentPass);
+                    pass->setLayer(layer);
                 }
 
-                pass->setSampler(SamplerBinding::COLOR, model->getTexture(), *model->getMatrix(), model->getRevision());
+                pass->setSampler(SamplerBinding::COLOR, imageLayerModel->getTexture(), *imageLayerModel->getMatrix(), imageLayerModel->getRevision());
 
                 // If this is a new rendering pass, just copy the color into the color-parent.
                 if (isNewPass && bindings[SamplerBinding::COLOR_PARENT].isActive())
                 {
-                    pass->samplers()[SamplerBinding::COLOR_PARENT] = pass->samplers()[SamplerBinding::COLOR];
+                    pass->sampler(SamplerBinding::COLOR_PARENT) = pass->sampler(SamplerBinding::COLOR);
                 }
-                    
+
                 // check to see if this data requires an image update traversal.
                 if (_imageUpdatesActive == false)
                 {
-                    osg::Texture* texture = model->getTexture();
-                    for(unsigned i=0; i<texture->getNumImages(); ++i)
+                    osg::Texture* texture = imageLayerModel->getTexture();
+
+                    for (unsigned i = 0; i < texture->getNumImages(); ++i)
                     {
                         const osg::Image* image = texture->getImage(i);
                         if (image && image->requiresUpdateCall())
@@ -826,23 +903,40 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
                     }
                 }
 
+                if (imageLayerModel->getImageLayer()->getAsyncLoading())
+                {
+                    if (pass->parent())
+                    {
+                        pass->inheritFrom(*pass->parent(), scaleBias[_key.getQuadrant()]);
+
+                        if (bindings[SamplerBinding::COLOR_PARENT].isActive())
+                        {
+                            Sampler& colorParent = pass->sampler(SamplerBinding::COLOR_PARENT);
+                            colorParent._texture = pass->parent()->sampler(SamplerBinding::COLOR)._texture;
+                            colorParent._matrix = pass->parent()->sampler(SamplerBinding::COLOR)._matrix;
+                            colorParent._matrix.preMult(scaleBias[_key.getQuadrant()]);
+                        }
+                    }
+                    else
+                    {
+                        OE_INFO << "erm. No parent pass in my pass. key=" << model->getKey().str() << std::endl;
+                    }
+
+                    pass->sampler(SamplerBinding::COLOR)._futureTexture = imageLayerModel->getTexture();
+                }
+
                 uidsLoaded.insert(pass->sourceUID());
             }
 
             else // non-image color layer (like splatting, e.g.)
             {
-                TerrainTileColorLayerModel* model = i->get();
-                if (model && model->getLayer())
+                if (!pass)
                 {
-                    RenderingPass* pass = _renderModel.getPass(model->getLayer()->getUID());
-                    if (!pass)
-                    {
-                        pass = &_renderModel.addPass();
-                        pass->setLayer(model->getLayer());
-                    }
-
-                    uidsLoaded.insert(pass->sourceUID());
+                    pass = &_renderModel.addPass(parentPass);
+                    pass->setLayer(colorLayerModel->getLayer());
                 }
+
+                uidsLoaded.insert(pass->sourceUID());
             }
         }
 
@@ -1153,7 +1247,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
         if (myPass.inheritsTexture())
         {
             RenderingPass* myParentPass = parent->_renderModel.getPass(myPass.sourceUID());
-            if (myParentPass == NULL)
+            if (myParentPass == nullptr)
             {
                 //OE_WARN << _key.str() << " removing orphaned pass " << myPass.sourceUID() << std::endl;
                 myPasses.erase(myPasses.begin()+p);
@@ -1177,10 +1271,10 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
             // Handle the main color:
             if (bindings[SamplerBinding::COLOR].isActive())
             {
-                Sampler& mySampler = myPass->samplers()[SamplerBinding::COLOR];
+                Sampler& mySampler = myPass->sampler(SamplerBinding::COLOR);
                 if (mySampler.inheritsTexture())
                 {
-                    mySampler.inheritFrom(parentPass.samplers()[SamplerBinding::COLOR], scaleBias[quadrant]);
+                    mySampler.inheritFrom(parentPass.sampler(SamplerBinding::COLOR), scaleBias[quadrant]);
                     ++changes;
                 }
             }
@@ -1190,8 +1284,8 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
             // one-time scale/bias.
             if (bindings[SamplerBinding::COLOR_PARENT].isActive())
             {
-                Sampler& mySampler = myPass->samplers()[SamplerBinding::COLOR_PARENT];
-                const Sampler& parentColorSampler = parentPass.samplers()[SamplerBinding::COLOR];
+                Sampler& mySampler = myPass->sampler(SamplerBinding::COLOR_PARENT);
+                const Sampler& parentColorSampler = parentPass.sampler(SamplerBinding::COLOR);
                 osg::Matrixf newMatrix = parentColorSampler._matrix;
                 newMatrix.preMult(scaleBias[quadrant]);
 
@@ -1212,7 +1306,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
                     {
                         // parent has no color texture? Then set our parent-color
                         // equal to our normal color texture.
-                        mySampler = myPass->samplers()[SamplerBinding::COLOR];
+                        mySampler = myPass->sampler(SamplerBinding::COLOR);
                     }
                     ++changes;
                 }
@@ -1223,7 +1317,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
             // Pass exists in the parent node, but not in this node, so add it now.
             if (passInLegalRange(parentPass))
             {
-                myPass = &_renderModel.addPass();
+                myPass = &_renderModel.addPass(&parentPass);
                 myPass->inheritFrom(parentPass, scaleBias[quadrant]);
                 ++changes;
             }
@@ -1340,7 +1434,7 @@ void
 TileNode::removeSubTiles()
 {
     _childrenReady = false;
-    for(int i=0; i<getNumChildren(); ++i)
+    for(int i=0; i<(int)getNumChildren(); ++i)
     {
         getChild(i)->releaseGLObjects(NULL);
     }

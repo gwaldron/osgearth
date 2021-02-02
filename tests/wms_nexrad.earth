@@ -4,16 +4,18 @@ Weather (RADAR and IR) overlaid on the map.
 -->
 
 <map name="Current Weather">
-     
-    <xi:include href="readymap_imagery.xml"/>
+
+    <TMSImage name="ReadyMap 15m Imagery" asnyc="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
 
     <!-- GlobalIR Imgery from http://realearth.ssec.wisc.edu/ -->	
-    <XYZImage name="GlobalIR">
+    <XYZImage name="GlobalIR" async="true">
         <url>http://realearth.ssec.wisc.edu/tiles/globalir/{z}/{x}/{y}.png</url>                
         <profile>spherical-mercator</profile>
         <cache_policy usage="no_cache"/>
-		<shader>
-          <![CDATA[
+        <shader>
+            <![CDATA[
             #version 330
             #pragma vp_entryPoint adjustAlpha
             #pragma vp_location fragment_coloring
@@ -25,9 +27,9 @@ Weather (RADAR and IR) overlaid on the map.
         </shader>
         <altitude>10000</altitude>
     </XYZImage>
-    
+
     <!-- NEXRAD 45 minute RADAR returns -->
-    <WMSImage name="nexrad45min">
+    <WMSImage name="nexrad45min" async="true">
         <url>http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi</url>
         <format>png</format>
         <layers>nexrad-n0r</layers>
@@ -37,12 +39,12 @@ Weather (RADAR and IR) overlaid on the map.
         <cache_policy usage="no_cache"/>
         <altitude>20000</altitude>
     </WMSImage>
-    
+
     <!-- US State Boundaries -->
     <FeatureModel name="US States">
         <OGRFeatures name="US-Data">
-			<url>../data/usa.shp</url>
-		</OGRFeatures>
+            <url>../data/usa.shp</url>
+        </OGRFeatures>
         <style type="text/css">
             states {
                stroke: #7f7f7f; 

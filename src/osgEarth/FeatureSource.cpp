@@ -248,12 +248,23 @@ FeatureSource::createFeatureCursor(
         // Try reading from the cache first if we have a TileKey.
         if (query.tileKey().isSet())
         {
-            OpenThreads::ScopedLock< Threading::Mutex > lk(_featuresCacheMutex);
+            ScopedMutexLock lk(_featuresCacheMutex);
             FeaturesLRU::Record result;
             _featuresCache->get(*query.tileKey(), result);
             if (result.valid())
             {
+#if 1
+                FeatureList copy(result.value().size());
+                std::transform(result.value().begin(), result.value().end(), copy.begin(),
+                    [&](const osg::ref_ptr<Feature>& feature) {
+                        return osg::clone(feature.get(), osg::CopyOp::DEEP_COPY_ALL);
+                    });
+                cursor = new FeatureListCursor(copy);
+#else
+                // original code: stored raw features in the cache, but they are not const.
+                // revisit if/when we refactor this
                 cursor = new FeatureListCursor(result.value());
+#endif
                 fromCache = true;
             }
         }
@@ -268,10 +279,23 @@ FeatureSource::createFeatureCursor(
     // Insert it into the cache if we read it from the source itself.
     if (_featuresCache && !fromCache && cursor.valid() && query.tileKey().isSet())
     {
-        OpenThreads::ScopedLock< Threading::Mutex > lk(_featuresCacheMutex);
+        ScopedMutexLock lk(_featuresCacheMutex);
         FeatureList features;
         cursor->fill(features);
+
+#if 1
+        FeatureList copy(features.size());
+        std::transform(features.begin(), features.end(), copy.begin(),
+            [&](const osg::ref_ptr<Feature>& feature) {
+                return osg::clone(feature.get(), osg::CopyOp::DEEP_COPY_ALL);
+            });
+        _featuresCache->insert(*query.tileKey(), copy);
+#else
+        // original code: stored raw features in the cache, but they are not const.
+        // revisit if/when we refactor this
         _featuresCache->insert(*query.tileKey(), features);
+#endif
+
         cursor = new FeatureListCursor(features);
     }
 

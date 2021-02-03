@@ -38,7 +38,6 @@
 #include <osg/Geometry>
 #include <osg/LineStipple>
 #include <osg/Point>
-#include <osg/MatrixTransform>
 #include <osg/TriangleIndexFunctor>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
@@ -229,7 +228,6 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
 
                     double threshold = osg::DegreesToRadians( *_maxAngle_deg );
                     //OE_TEST << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
-
                     MeshSubdivider ms( _world2local, _local2world );
                     if ( input->geoInterp().isSet() )
                         ms.run( *osgGeom, threshold, *input->geoInterp() );
@@ -979,6 +977,7 @@ BuildGeometryFilter::tileAndBuildPolygon(
             osg::Vec3d temp;
             osg::BoundingBoxd ecef_bb;
 
+            bool allOnEquator = true;
             GeometryIterator xform_iter(proj.get(), true);
             while (xform_iter.hasMore())
             {
@@ -987,6 +986,10 @@ BuildGeometryFilter::tileAndBuildPolygon(
                 for (osg::Vec3d& p : *part)
                 {
                     inputSRS->transform(p, outputSRS, temp);
+                    if (temp.y() != 0.0)
+                    {
+                        allOnEquator = false;
+                    }
                     outputSRS->transformToWorld(temp, p);
                     ecef_bb.expandBy(p);
                 }
@@ -1000,6 +1003,12 @@ BuildGeometryFilter::tileAndBuildPolygon(
                 Geometry* part = proj_iter.next();
                 for (osg::Vec3d& p : *part)
                 {
+                    // The gnomonic equation won't provide any variation in y values if all of the coordinates are on the equator, so
+                    // adjust the point slightly up from the equator if all points lie on the equator.
+                    if (allOnEquator)
+                    {
+                        p.z() += 0.0000001;
+                    }
                     ecef_to_gnomonic(p, center, outputSRS->getEllipsoid());
                 }
             }

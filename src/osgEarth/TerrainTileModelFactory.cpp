@@ -300,7 +300,7 @@ TerrainTileModelFactory::addImageLayer(
     osg::Texture* tex = 0L;
     TextureWindow window;
     osg::Matrix scaleBiasMatrix;
-        
+
     if (imageLayer->isKeyInLegalRange(key) && imageLayer->mayHaveData(key))
     {
         if (imageLayer->useCreateTexture())
@@ -324,7 +324,7 @@ TerrainTileModelFactory::addImageLayer(
             tex->setFilter(osg::Texture::MIN_FILTER, minFilter);
             tex->setMaxAnisotropy(4.0f);
             tex->setUnRefImageDataAfterApply(false);
-            
+
             // prevent issues with replacing the texture in the middle of a render
             tex->setDataVariance(osg::Object::DYNAMIC);
         }
@@ -782,15 +782,12 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
         {
             images[i]->setInternalTextureFormat(internalFormat);
         }
-        
+
         osg::ref_ptr<const osg::Image> compressed;
         for(auto& ref : images)
         {
             compressed = ImageUtils::compressImage(ref.get(), compressionMethod);
             ref = const_cast<osg::Image*>(ImageUtils::mipmapImage(compressed.get()));
-
-            if (layer->getCompressionMethod() == "gpu" && !compressed->isCompressed())
-                tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
 
             hasMipMaps = compressed->isMipmap();
             isCompressed = compressed->isCompressed();
@@ -805,6 +802,9 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
             tex2dArray->setImage(i, const_cast<osg::Image*>(images[i].get()));
 
         tex = tex2dArray;
+
+        if (layer->getCompressionMethod() == "gpu" && !isCompressed)
+            tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
     }
 
     tex->setDataVariance(osg::Object::STATIC);
@@ -838,7 +838,7 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
             break;
         }
     }
-    
+
     return tex;
 }
 

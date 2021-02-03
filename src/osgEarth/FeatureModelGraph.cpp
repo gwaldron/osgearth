@@ -545,10 +545,18 @@ FeatureModelGraph::open()
             maxRange = _options.layout()->maxRange().get();
         }
 
+        double width, height;
+        featureProfile->getTilingProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
+        GeoExtent firstLevelExt(featureProfile->getSRS(),
+                                featureProfile->getExtent().west(),
+                                featureProfile->getExtent().south(),
+                                featureProfile->getExtent().west() + width,
+                                featureProfile->getExtent().south() + height);
+
         // Max range is unspecified, so compute one
         if (maxRange == FLT_MAX)
         {
-            osg::BoundingSphered bounds = getBoundInWorldCoords(featureProfile->getExtent());
+            osg::BoundingSphered bounds = getBoundInWorldCoords(firstLevelExt);
             maxRange = bounds.radius() * _options.layout()->tileSizeFactor().get();
         }
 
@@ -556,15 +564,7 @@ FeatureModelGraph::open()
         // GW: Need this?
         if (!_options.layout()->tileSizeFactor().isSet())
         {
-            double width, height;
-            featureProfile->getTilingProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
-
-            GeoExtent ext(featureProfile->getSRS(),
-                featureProfile->getExtent().west(),
-                featureProfile->getExtent().south(),
-                featureProfile->getExtent().west() + width,
-                featureProfile->getExtent().south() + height);
-            osg::BoundingSphered bounds = getBoundInWorldCoords(ext);
+            osg::BoundingSphered bounds = getBoundInWorldCoords(firstLevelExt);
 
             float tileSizeFactor = maxRange / bounds.radius();
 
@@ -574,7 +574,10 @@ FeatureModelGraph::open()
             _options.layout()->tileSizeFactor() = tileSizeFactor;
         }
 
-        // Compute the max range of all the feature levels.  Each subsequent level if half of the parent.
+        // The max range that has been computed is for the first level of the dataset, which may be greater than 0.  Compute the max range at level 0 to properly fill in the lodmap from level 0 on.
+        maxRange = maxRange * pow(2.0, featureProfile->getFirstLevel());
+
+        // Compute the max range of all the feature levels.  Each subsequent level is half of the parent.
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
         for (int i = 0; i < featureProfile->getMaxLevel() + 1; i++)
         {

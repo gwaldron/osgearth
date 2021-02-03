@@ -256,14 +256,14 @@ namespace osgEarth { namespace Threading
         }
 
         //! The result value; blocks until it is available (or abandonded) and then returns it.
-        const T& get() {
+        const T& get() const {
             while (!_ev->wait(100u))
                 if (isAbandoned())
                     break;
             return _shared->obj();
         }
 
-        const T& get(const Cancelable* cancelable) {
+        const T& get(const Cancelable* cancelable) const {
             while(!_ev->wait(100u)) {
                 if (isAbandoned()) 
                     break;

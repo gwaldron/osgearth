@@ -130,6 +130,8 @@ namespace osgEarth { namespace Procedural
         virtual void resizeGLObjectBuffers(unsigned maxSize) override;
         virtual void releaseGLObjects(osg::State* state) const override;
 
+        virtual void update(osg::NodeVisitor& nv) override;
+
     protected:
         virtual ~GroundCoverLayer();
 
@@ -174,13 +176,52 @@ namespace osgEarth { namespace Procedural
             void release(int slot);
             int getSlot(const TileKey& key) const;
             bool inUse(int slot) const;
+        };        struct AssetInstance : public osg::Referenced
+        {
+            AssetInstance() : _asset(nullptr) { }
+
+            const ModelAsset* _asset;
+
+            osg::ref_ptr<osg::Node> _model;
+
+            int _index;
+
+            // texture atlas indexes
+            osg::ref_ptr<Texture> _sideBillboardTex;
+            int _sideBillboardTexIndex;
+
+            osg::ref_ptr<Texture> _sideBillboardNormalMap;
+            int _sideBillboardNormalMapIndex;
+
+            osg::ref_ptr<Texture> _topBillboardTex;
+            int _topBillboardTexIndex;
+
+            osg::ref_ptr<Texture> _topBillboardNormalMap;
+            int _topBillboardNormalMapIndex;
+
+            osg::ref_ptr<Texture> _modelTex;
+            int _modelTexIndex;
+
+            osg::BoundingBox _modelAABB;
+
+            int _assetID; // sequential unique ID of this asset
+            int _modelID; // sequential unique ID of the asset's model (may or may not have one)
+        };
+
+        struct AssetUsage
+        {
+            AssetInstance* _assetData;
+            const Biome* _biome;
+            const ModelCategory* _category;
+            float _weight;
         };
 
         // Custom GL renderer for ground cover.
         // This is a PatchLayer callback that intercepts the drawing of a
         // terrain tile to do custom rendering with access to the tile's data.
-        struct Renderer : public PatchLayer::DrawCallback
+        class Renderer : public PatchLayer::DrawCallback
         {
+        public:
             Renderer(GroundCoverLayer* layer);
             ~Renderer();
 
@@ -247,7 +288,7 @@ namespace osgEarth { namespace Procedural
             void releaseGLObjects(osg::State* state) const;
 
             double _tileWidth;
-            GroundCoverLayer* _layer;
+            osg::observer_ptr<GroundCoverLayer> _layer;
             osg::ref_ptr<osg::StateAttribute> _a2cBlending;
 
             osg::ref_ptr<osg::StateSet> _computeSS;
@@ -258,12 +299,30 @@ namespace osgEarth { namespace Procedural
             osg::ref_ptr<GeometryCloud> _geomCloud;
             osg::ref_ptr<osg::Texture> _noiseTex;
             osg::ref_ptr<TextureArena> _texArena;
+
+            bool loadAssets();
+            osg::Shader* createLUTShader() const;
+            GeometryCloud* createGeometryCloud() const;
+
+            // list of all asset instances
+            typedef std::vector<osg::ref_ptr<AssetInstance>> AssetInstanceVector;
+            AssetInstanceVector _liveAssets;
+
+            // list of asset references by each biome (by biome id)
+            typedef std::map<int, std::vector<AssetUsage>> AssetUsages;
+            AssetUsages _assetUsagesPerBiome;
+
+            const std::string& getName() const;
+
+            Status _status;
         };
 
+        // future result of the asynchronous loader job
+        Future<osg::ref_ptr<Renderer>> _rendererSetup;
         osg::ref_ptr<Renderer> _renderer;
+
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
-
 
         virtual void loadRenderingShaders(
             VirtualProgram* vp,
@@ -273,61 +332,8 @@ namespace osgEarth { namespace Procedural
         // (for billboards, etc)
         virtual osg::Geometry* createParametricGeometry() const;
 
-        osg::Shader* createLUTShader() const;
-
-        struct AssetInstance : public osg::Referenced
-        {
-            AssetInstance() : _asset(nullptr) { }
-
-            const ModelAsset* _asset;
-
-            osg::ref_ptr<osg::Node> _model;
-
-            int _index;
-
-            // texture atlas indexes
-            osg::ref_ptr<Texture> _sideBillboardTex;
-            int _sideBillboardTexIndex;
-
-            osg::ref_ptr<Texture> _sideBillboardNormalMap;
-            int _sideBillboardNormalMapIndex;
-
-            osg::ref_ptr<Texture> _topBillboardTex;
-            int _topBillboardTexIndex;
-
-            osg::ref_ptr<Texture> _topBillboardNormalMap;
-            int _topBillboardNormalMapIndex;
-
-            osg::ref_ptr<Texture> _modelTex;
-            int _modelTexIndex;
-
-            osg::BoundingBox _modelAABB;
-
-            int _assetID; // sequential unique ID of this asset
-            int _modelID; // sequential unique ID of the asset's model (may or may not have one)
-        };
-
-        struct AssetUsage
-        {
-            AssetInstance* _assetData;
-            const Biome* _biome;
-            const ModelCategory* _category;
-            float _weight;
-        };
-
-        void loadAssets(TextureArena*);
-
-        // the list of actual asset instances
-        typedef std::vector<osg::ref_ptr<AssetInstance>> AssetInstanceVector;
-        AssetInstanceVector _liveAssets;
-
-        // list of asset references by each biome (by biome id)
-        typedef std::map<int, std::vector<AssetUsage>> AssetUsages;
-        AssetUsages _assetUsagesPerBiome;
-
         typedef std::vector<osg::ref_ptr<osg::Image> > ImageVector;
 
-        GeometryCloud* createGeometryCloud(TextureArena*) const;
 
         osg::ref_ptr<const Profile> _mapProfile;
 

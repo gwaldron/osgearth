@@ -287,35 +287,58 @@ GroundCoverLayer::openImplementation()
         return Status(Status::ResourceUnavailable, "Requires GL 4.6+");
     }
 
-    // this layer will do its own custom rendering
-    _renderer = new Renderer(this);
-    setDrawCallback(_renderer.get());
-
-    // make a 4-channel noise texture to use
-    NoiseTextureFactory noise;
-    _renderer->_noiseTex = noise.create(256u, 4u);
-
     return PatchLayer::openImplementation();
 }
 
 Status
 GroundCoverLayer::closeImplementation()
 {
-    releaseGLObjects(NULL);
+    releaseGLObjects(nullptr);
 
-    setDrawCallback(NULL);
-    _renderer = NULL;
-
-    _liveAssets.clear();
+    setDrawCallback(nullptr);
+    _renderer = nullptr;
+    _rendererSetup.abandon();
 
     return PatchLayer::closeImplementation();
+}
+
+void
+GroundCoverLayer::update(osg::NodeVisitor& nv)
+{
+    // check to see whether the asset loading job has completed
+    if (getStatus().isOK() && 
+        !_renderer.valid() &&
+        _rendererSetup.isAvailable())
+    {
+        _renderer = _rendererSetup.get();
+        _rendererSetup.abandon();
+
+        if (_renderer.valid())
+        {
+            if (_renderer->_status.isError())
+            {
+                setStatus(_renderer->_status);
+            }
+            else
+            {
+                OE_INFO << LC << "Renderer is ready." << std::endl;
+
+                // install it as a patch layer draw callback
+                setDrawCallback(_renderer.get());
+
+                // rebuild the state
+                buildStateSets();
+            }
+        }
+    }
 }
 
 void
 GroundCoverLayer::setBiomeLayer(BiomeLayer* layer)
 {
     _biomeLayer.setLayer(layer);
-    if (layer)
+
+    if (layer && _renderer.valid())
     {
         buildStateSets();
     }
@@ -498,42 +521,31 @@ GroundCoverLayer::prepareForRendering(TerrainEngine* engine)
             OE_INFO << LC << "Setting max visibility range for LOD " << getLOD() << " to " << maxRange << "m" << std::endl;
         }
 
-        // Now that we have access to all the layers we need...
+        // Initialize the renderer in the background.
+        osg::observer_ptr<GroundCoverLayer> layer_obs(this);
 
-        // Make the texture atlas from the images found in the asset list
-        _renderer->_texArena = new TextureArena();
+        _rendererSetup = Job<osg::ref_ptr<Renderer>>::dispatch(
+            [layer_obs](Cancelable* progress)
+            {
+                osg::ref_ptr<Renderer> result;
 
-        // Add to the stateset so it gets compiled and applied
-        getOrCreateStateSet()->setAttribute(_renderer->_texArena.get());
+                osg::ref_ptr<GroundCoverLayer> layer;
+                if (layer_obs.lock(layer))
+                    result = new Renderer(layer.get());
 
-        // Load asset data from the configuration.
-        loadAssets(_renderer->_texArena.get());
-
-        // Prepare model assets and add their textures to the atlas:
-        _renderer->_geomCloud = createGeometryCloud(_renderer->_texArena.get());
-
-        // bind the cloud's stateset to this layer.
-        if (_renderer->_geomCloud.valid())
-        {
-            osg::StateSet* cloudSS = _renderer->_geomCloud->getGeometry()->getStateSet();
-            if (cloudSS)
-                getOrCreateStateSet()->merge(*cloudSS);
-        }
-
-        // now that we have HANDLES, we can make the LUT shader.
-        // TODO: this probably needs to be Per-Context...
-        osg::ref_ptr<osg::Shader> lutShader = createLUTShader();
-        lutShader->setName("GroundCover CS LUT");
-        _renderer->_computeProgram->addShader(lutShader.get());
-
-        buildStateSets();
+                return result;
+            }
+        );
     }
 }
 
 void
 GroundCoverLayer::buildStateSets()
 {
-    // assert we have the necessary prereqs:
+    if (!_renderer.valid()) {
+        OE_DEBUG << LC << "buildStateSets deferred.. renderer not yet created" << std::endl;
+        return;
+    }
 
     if (!_noiseBinding.valid()) {
         OE_DEBUG << LC << "buildStateSets deferred.. noise texture not yet bound" << std::endl;
@@ -550,9 +562,15 @@ GroundCoverLayer::buildStateSets()
         return;
     }
 
-    if (!_renderer.valid()) {
-        OE_WARN << LC << "buildStateSets deferred.. Renderer does not exist" << std::endl;
-        return;
+    // Add the Texture Arena to the stateset so it gets compiled and applied
+    getOrCreateStateSet()->setAttribute(_renderer->_texArena.get());
+
+    // Merge in the geometry cloud stateset
+    if (_renderer->_geomCloud.valid())
+    {
+        osg::StateSet* cloudSS = _renderer->_geomCloud->getGeometry()->getStateSet();
+        if (cloudSS)
+            getOrCreateStateSet()->merge(*cloudSS);
     }
 
     // calculate the tile width based on the LOD:
@@ -858,6 +876,29 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     computeShader->setName(shaders.GroundCover_CS);
     _computeProgram->addShader(computeShader);
     _computeSS->setAttribute(_computeProgram, osg::StateAttribute::ON);
+
+    // make a 4-channel noise texture to use
+    NoiseTextureFactory noise;
+    _noiseTex = noise.create(256u, 4u);
+
+    // Make the texture atlas from the images found in the asset list
+    _texArena = new TextureArena();
+
+    // Load asset data from the configuration.
+    if (loadAssets() == false)
+    {
+        _status.set(Status::ConfigurationError, "No assets found");
+        return;
+    }
+
+    // Prepare model assets and add their textures to the atlas:
+    _geomCloud = createGeometryCloud();
+
+    // now that we have HANDLES, we can make the LUT shader.
+    // TODO: this probably needs to be Per-Context...
+    osg::ref_ptr<osg::Shader> lutShader = createLUTShader();
+    lutShader->setName("GroundCover CS LUT");
+    _computeProgram->addShader(lutShader.get());
 }
 
 GroundCoverLayer::Renderer::~Renderer()
@@ -865,23 +906,12 @@ GroundCoverLayer::Renderer::~Renderer()
     releaseGLObjects(nullptr);
 }
 
-namespace 
-{
-    inline bool equivalent(const osg::Matrixf& a, const osg::Matrixf& b, bool epsilon)
-    {
-        const float* aptr = a.ptr();
-        const float* bptr = b.ptr();
-        for(int i=0; i<16; ++i) {
-            if (!osg::equivalent(*aptr++, *bptr++, epsilon))
-                return false;
-        }
-        return true;
-    }
-}
-
 void
 GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
 {
+    if (_status.isError())
+        return;
+
     OE_PROFILING_ZONE_NAMED("GroundCover DrawTileBatch");
     OE_PROFILING_GPU_ZONE("GroundCover DrawTileBatch");
 
@@ -1253,6 +1283,13 @@ GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
     }
 }
 
+const std::string&
+GroundCoverLayer::Renderer::getName() const
+{
+    static std::string empty;
+    return _layer.valid() ? _layer->getName() : empty;
+}
+
 void
 GroundCoverLayer::loadRenderingShaders(VirtualProgram* vp, const osgDB::Options* options) const
 {
@@ -1268,25 +1305,29 @@ namespace {
     };
 }
 
-void
-GroundCoverLayer::loadAssets(TextureArena* arena)
+bool
+GroundCoverLayer::Renderer::loadAssets()
 {
     OE_INFO << LC << "Loading assets ..." << std::endl;
+
+    osg::ref_ptr<GroundCoverLayer> layer(_layer);
+    if (!layer.valid())
+        return false;
 
     // First, add a default normal map to the arena. Any billboard that doesn't
     // have its own normal map will use this one.
     osg::ref_ptr<osg::Texture> tempNMap = osgEarth::createEmptyNormalMapTexture();
-    int defaultNormalMapTextureIndex = arena->size();
+    int defaultNormalMapTextureIndex = _texArena->size();
     osg::ref_ptr<Texture> defaultNormalMap = new Texture();
     defaultNormalMap->_image = tempNMap->getImage(0);
     // no URI so cannot be unloaded.
 
     // all the zones (these will later be called "biomes")
-    const BiomeCatalog* catalog = getBiomeLayer()->getBiomeCatalog();
+    const BiomeCatalog* catalog = layer->getBiomeLayer()->getBiomeCatalog();
     if (catalog == nullptr)
     {
-        setStatus(Status::ConfigurationError, "Missing biome catalog");
-        return;
+        layer->setStatus(Status::ConfigurationError, "Missing biome catalog");
+        return false;
     }
 
     std::vector<osg::ref_ptr<const Biome>> biomes;
@@ -1312,10 +1353,10 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
 
         // each model group represents the art for one groundcover layer,
         // so find the one corresponding to this layer.
-        const ModelCategory* category = biome->getModelCategory(options().category().get());
+        const ModelCategory* category = biome->getModelCategory(layer->options().category().get());
         if (category == nullptr)
         {
-            OE_WARN << LC << "Category \"" << options().category().get() << "\" not found in biome \"" << biome->name().get() << "\"" << std::endl;
+            OE_WARN << LC << "Category \"" << layer->options().category().get() << "\" not found in biome \"" << biome->name().get() << "\"" << std::endl;
             continue;
         }
 
@@ -1357,7 +1398,7 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                     }
                     else
                     {
-                        data->_model = uri.getNode(getReadOptions());
+                        data->_model = uri.getNode(layer->getReadOptions());
                         if (data->_model.valid())
                         {
                             OE_INFO << LC << "Loaded model: " << uri.base() << std::endl;
@@ -1392,14 +1433,14 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                     {
                         data->_sideBillboardTex = new Texture();
                         data->_sideBillboardTex->_uri = uri;
-                        data->_sideBillboardTex->_image = uri.getImage(getReadOptions());
+                        data->_sideBillboardTex->_image = uri.getImage(layer->getReadOptions());
 
                         if (data->_sideBillboardTex->_image.valid())
                         {
                             OE_INFO << LC << "Loaded BB: " << uri.base() << std::endl;
                             texcache[uri] = data.get();
-                            data->_sideBillboardTexIndex = arena->size();
-                            arena->add(data->_sideBillboardTex.get());
+                            data->_sideBillboardTexIndex = _texArena->size();
+                            _texArena->add(data->_sideBillboardTex.get());
 
                             // normal map is the same file name but with _NML inserted before the extension
                             URI normalMapURI(
@@ -1408,21 +1449,21 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                                 osgDB::getFileExtension(uri.full()));
 
                             // silenty fail if no normal map found.
-                            osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(getReadOptions());
+                            osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(layer->getReadOptions());
                             if (normalMap.valid())
                             {
                                 data->_sideBillboardNormalMap = new Texture();
                                 data->_sideBillboardNormalMap->_uri = normalMapURI;
                                 data->_sideBillboardNormalMap->_image = convertNormalMapFromRGBToRG(normalMap.get());
 
-                                data->_sideBillboardNormalMapIndex = arena->size();
-                                arena->add(data->_sideBillboardNormalMap.get());
+                                data->_sideBillboardNormalMapIndex = _texArena->size();
+                                _texArena->add(data->_sideBillboardNormalMap.get());
                             }
                             else
                             {
                                 data->_sideBillboardNormalMapIndex = defaultNormalMapTextureIndex;
                                 // wasteful but simple
-                                arena->add(defaultNormalMap.get());
+                                _texArena->add(defaultNormalMap.get());
                             }
                         }
                         else
@@ -1447,15 +1488,15 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                     {
                         data->_topBillboardTex = new Texture();
                         data->_topBillboardTex->_uri = uri;
-                        data->_topBillboardTex->_image = uri.getImage(getReadOptions());
+                        data->_topBillboardTex->_image = uri.getImage(layer->getReadOptions());
 
                         //TODO: check for errors
                         if (data->_topBillboardTex->_image.valid())
                         {
                             OE_INFO << LC << "Loaded BB: " << uri.base() << std::endl;
                             texcache[uri] = data.get();
-                            data->_topBillboardTexIndex = arena->size();
-                            arena->add(data->_topBillboardTex.get());
+                            data->_topBillboardTexIndex = _texArena->size();
+                            _texArena->add(data->_topBillboardTex.get());
 
                             // normal map is the same file name but with _NML inserted before the extension
                             URI normalMapURI(
@@ -1464,21 +1505,21 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
                                 osgDB::getFileExtension(uri.full()));
 
                             // silenty fail if no normal map found.
-                            osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(getReadOptions());
+                            osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(layer->getReadOptions());
                             if (normalMap.valid())
                             {
                                 data->_topBillboardNormalMap = new Texture();
                                 data->_topBillboardNormalMap->_uri = normalMapURI;
                                 data->_topBillboardNormalMap->_image = convertNormalMapFromRGBToRG(normalMap.get());
 
-                                data->_topBillboardNormalMapIndex = arena->size();
-                                arena->add(data->_topBillboardNormalMap.get());
+                                data->_topBillboardNormalMapIndex = _texArena->size();
+                                _texArena->add(data->_topBillboardNormalMap.get());
                             }
                             else
                             {
                                 data->_topBillboardNormalMapIndex = defaultNormalMapTextureIndex;
                                 // wasteful but simple
-                                arena->add(defaultNormalMap.get());
+                                _texArena->add(defaultNormalMap.get());
                             }
                         }
                         else
@@ -1508,18 +1549,27 @@ GroundCoverLayer::loadAssets(TextureArena* arena)
     {
         OE_WARN << LC << "Failed to load any assets!" << std::endl;
         // TODO: something?
+        return false;
     }
     else
     {
         OE_INFO << LC << "Loaded " << _liveAssets.size() << " assets." << std::endl;
+        return true;
     }
 }
 
 osg::Shader*
-GroundCoverLayer::createLUTShader() const
+GroundCoverLayer::Renderer::createLUTShader() const
 {
-    if (getBiomeLayer() == nullptr || getBiomeLayer()->getBiomeCatalog() == nullptr)
+    osg::ref_ptr<GroundCoverLayer> layer;
+    if (!_layer.lock(layer))
         return nullptr;
+
+    if (layer->getBiomeLayer() == nullptr ||
+        layer->getBiomeLayer()->getBiomeCatalog() == nullptr)
+    {
+        return nullptr;
+    }
 
     std::stringstream biomeBuf;
     biomeBuf << std::fixed << std::setprecision(2);
@@ -1689,19 +1739,23 @@ GroundCoverLayer::createLUTShader() const
 }
 
 GeometryCloud*
-GroundCoverLayer::createGeometryCloud(TextureArena* arena) const
+GroundCoverLayer::Renderer::createGeometryCloud() const
 {
+    osg::ref_ptr<GroundCoverLayer> layer;
+    if (!_layer.lock(layer))
+        return nullptr;
+
     GeometryCloud* geomCloud = new GeometryCloud();
 
     // First entry is the parametric group. Any instance without a 3D model,
     // or that is out of model range, gets rendered as a parametric billboard.
-    osg::Geometry* pg = createParametricGeometry();
+    osg::Geometry* pg = layer->createParametricGeometry();
     geomCloud->add( pg, pg->getVertexArray()->getNumElements() );
 
     // Add each 3D model to the geometry cloud and update the texture
     // atlas along the way.
-    UnorderedMap<int, Texture*> visited;
-    UnorderedMap<Texture*, int> arenaIndex;
+    std::unordered_map<int, Texture*> visited;
+    std::unordered_map<Texture*, int> arenaIndex;
 
     for(const auto& asset : _liveAssets)
     {
@@ -1717,8 +1771,8 @@ GroundCoverLayer::createGeometryCloud(TextureArena* arena) const
                 visited[asset->_modelID] = tex;
                 if (tex)
                 {
-                    asset->_modelTexIndex = arena->size();
-                    arena->add(tex);
+                    asset->_modelTexIndex = _texArena->size();
+                    _texArena->add(tex);
                     arenaIndex[tex] = asset->_modelTexIndex;
                 }
 

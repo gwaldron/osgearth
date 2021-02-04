@@ -715,22 +715,26 @@ LifeMapLayer::createImageImplementation(
     ImageUtils::PixelReader readLandCover;
     osg::Vec4 landcover_pixel;
     osg::Matrixf landcover_matrix;
-    const LifeMapValueTable* landcover_table = getBiomeLayer()->getBiomeCatalog()->getLandCoverTable();
-
-    if (getUseLandCover() && !_landCoverLayers.empty() && _landCoverDictionary.valid() && landcover_table)
+    const LifeMapValueTable* landcover_table;
+    if (getBiomeLayer())
     {
-        TileKey landcover_key(key);
+        landcover_table = getBiomeLayer()->getBiomeCatalog()->getLandCoverTable();
 
-        // fall back until we get a valid result
-        for (; !landcover.valid() && landcover_key.valid(); landcover_key.makeParent())
+        if (getUseLandCover() && !_landCoverLayers.empty() && _landCoverDictionary.valid() && landcover_table)
         {
-            _landCoverLayers.populateLandCoverImage(landcover, landcover_key, progress);
-            if (landcover.valid())
+            TileKey landcover_key(key);
+
+            // fall back until we get a valid result
+            for (; !landcover.valid() && landcover_key.valid(); landcover_key.makeParent())
             {
-                readLandCover.setImage(landcover.get());
-                readLandCover.setBilinear(false);
-                readLandCover.setSampleAsTexture(true);
-                extent.createScaleBias(landcover_key.getExtent(), landcover_matrix);
+                _landCoverLayers.populateLandCoverImage(landcover, landcover_key, progress);
+                if (landcover.valid())
+                {
+                    readLandCover.setImage(landcover.get());
+                    readLandCover.setBilinear(false);
+                    readLandCover.setSampleAsTexture(true);
+                    extent.createScaleBias(landcover_key.getExtent(), landcover_matrix);
+                }
             }
         }
     }

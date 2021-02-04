@@ -543,9 +543,8 @@ InstanceCloud::Renderer::drawImplementation(osg::RenderInfo& ri, const osg::Draw
     }
 
     // engage
-
     {
-    OE_PROFILING_ZONE_NAMED("MEDI");
+    OE_PROFILING_ZONE_NAMED("MDEI");
     GLFunctions::get(state).
         glMultiDrawElementsIndirect(
             GL_TRIANGLES,
@@ -569,15 +568,19 @@ InstanceCloud::Installer::apply(osg::Drawable& drawable)
     osg::Geometry* geom = drawable.asGeometry();
     if (geom)
     {
+        // Custom MDE rendering calls
         geom->setDrawCallback(_callback.get());
+
+        // Culling happens on the GPU:
         geom->setCullingActive(false);
     }
 }
 
 //...................................................................
 
-GeometryCloud::GeometryCloud() :
-    osg::NodeVisitor()
+GeometryCloud::GeometryCloud(TextureArena* texarena) :
+    osg::NodeVisitor(),
+    _texarena(texarena)
 {
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
     setNodeMaskOverride(~0);
@@ -586,17 +589,26 @@ GeometryCloud::GeometryCloud() :
     _geom->setUseVertexBufferObjects(true);
     _geom->setUseDisplayList(false);
 
-    _verts = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    _verts = new osg::Vec3Array();
+    _verts->setBinding(osg::Array::BIND_PER_VERTEX);
     _geom->setVertexArray(_verts);
 
-    _colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
+    _colors = new osg::Vec4Array();
+    _colors->setBinding(osg::Array::BIND_PER_VERTEX);
     _geom->setColorArray(_colors);
 
-    _normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    _normals = new osg::Vec3Array();
+    _normals->setBinding(osg::Array::BIND_PER_VERTEX);
     _geom->setNormalArray(_normals);
 
-    _texcoords = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    _texcoords = new osg::Vec2Array();
+    _texcoords->setBinding(osg::Array::BIND_PER_VERTEX);
     _geom->setTexCoordArray(7, _texcoords);
+
+    _texindices = new osg::ShortArray();
+    _texindices->setBinding(osg::Array::BIND_PER_VERTEX);
+    _texindices->setPreserveDataType(true);
+    _geom->setVertexAttribArray(6, _texindices);
 
     // N.B. UShort is sufficient b/c we are using the DrawElementsIndirect.baseVertex
     // technique to offset element indicies and thereby support a VBO with >65535 verts.
@@ -606,8 +618,10 @@ GeometryCloud::GeometryCloud() :
     _geom->getOrCreateStateSet()->setMode(GL_BLEND, 1);
 }
 
-Texture*
-GeometryCloud::add(osg::Node* node, unsigned alignment)
+bool
+GeometryCloud::add(
+    osg::Node* node,
+    unsigned alignment)
 {
     // convert all primitive sets to GL_TRIANGLES
     osgUtil::Optimizer o;
@@ -633,7 +647,8 @@ GeometryCloud::add(osg::Node* node, unsigned alignment)
             _verts->push_back(osg::Vec3());
             _colors->push_back(osg::Vec4(1,0,0,1));
             _normals->push_back(osg::Vec3(0,0,1));
-            _texcoords->push_back(osg::Vec3(0,0,0));
+            _texcoords->push_back(osg::Vec2(0,0)); //TODO shorten to vec2
+            _texindices->push_back(-1);
         }
     }
 
@@ -651,71 +666,12 @@ GeometryCloud::add(osg::Node* node, unsigned alignment)
     node->accept(*this);
     _elementCounts.push_back(_numElements);
 
-    // finally, consolidate all discovered textures into a single "mini-atlas"
-    // and return it.
-    if (_texturesToAdd.empty())
-        return NULL; // nothing.
-
-    // find the largest image and make that the atlas size.
-    GLenum pixelFormat = GL_RGBA;
-    GLenum dataType = GL_UNSIGNED_BYTE;
-    GLenum internalFormat = GL_RGBA8;
-
-    int width=0, height=0;
-    for(auto i : _texturesToAdd)
-    {
-        osg::Image* src = i->getImage(0);
-        width = osg::maximum(src->s(), width);
-        height = osg::maximum(src->t(), height);
-
-        //// upgrade pixelformat/datatype as we go:
-        //if (pixelFormat == GL_RED && src->getPixelFormat() != GL_RED)
-        //    pixelFormat = src->getPixelFormat();
-        //if (pixelFormat == GL_RGB && src->getPixelFormat() == GL_RGBA)
-        //    pixelFormat = GL_RGBA;
-        //if (dataType == GL_FLOAT && src->getDataType() != GL_FLOAT)
-        //    dataType = src->getDataType();
-    }
-
-    //GLenum internalFormat =
-    //    pixelFormat == GL_RED ? GL_R16F :
-    //    pixelFormat == GL_RG ? GL_RG8 :
-    //    pixelFormat == GL_RGB ? GL_RGB8 :
-    //    pixelFormat == GL_RGBA ? GL_RGBA8 :
-    //    GL_RGBA8;
-
-    // round to a power of 2 so we can properly mipmap/compress the textures
-    width = nextPowerOf2(width);
-    height = nextPowerOf2(height);
-
-    Texture* tex = new Texture();
-
-    tex->_image = new osg::Image();
-    tex->_image->allocateImage(width, height, _texturesToAdd.size(), pixelFormat, dataType);
-    tex->_image->setInternalTextureFormat(internalFormat);
-
-    ImageUtils::PixelWriter write(tex->_image.get());
-    osg::Vec4 value;
-
-    for(auto& i : _texturesToAdd)
-    {
-        int layer = _textureLayers[i.get()];
-
-        ImageUtils::PixelReader read(i->getImage(0));
-        
-        ImageUtils::ImageIterator iter(write);
-
-        iter.forEachPixel([&]() {
-            read(value, iter.u(), iter.v());
-            write(value, iter.s(), iter.t(), layer);
-        });
-    }
-
-    return tex;
+    return true;
 }
 
 namespace
 {
+    // template to append one array onto another
     template<typename T> void append(T* dest, const osg::Array* src, unsigned numVerts)
     {
         if (src == NULL)
@@ -759,12 +715,17 @@ GeometryCloud::pushStateSet(osg::Node& node)
         {
             _textureStack.push_back(tex);
             
-            AtlasIndexLUT::iterator i = _textureLayers.find(tex);
-            if (i == _textureLayers.end())
+            AtlasIndexLUT::iterator i = _atlasIndexLUT.find(tex);
+            if (i == _atlasIndexLUT.end())
             {
                 _texturesToAdd.push_back(tex);
-                _textureLayers[tex] = _texLayer++;
 
+                // arena index of the texture we're about to add:
+                _atlasIndexLUT[tex] = _texarena->size();
+
+                Texture* t = new Texture();
+                t->_image = tex->getImage(0);
+                _texarena->add(t);
             }
 
             return true;
@@ -821,48 +782,31 @@ GeometryCloud::apply(osg::Geometry& node)
             }
         }
     }
-    //TODO: transform normals too if necessary
 
     append(_verts, node.getVertexArray(), size);
     append(_normals, node.getNormalArray(), size);
     append(_colors, node.getColorArray(), size);
+    append(_texcoords, node.getTexCoordArray(0), size);
 
-    unsigned numTexCoords = 0;
-    osg::Vec2Array* texcoords = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
-    if (texcoords)
+    // append the texture handle LUT index for each vertex using 
+    // whichever texture is atop the stack
+    int texHandleIndex = -1;
+    if (!_textureStack.empty())
     {
-        numTexCoords = texcoords->size();
-
-        // find the current texture in the atlas
-        int layer = -1;
-        if (!_textureStack.empty())
+        AtlasIndexLUT::iterator i = _atlasIndexLUT.find(_textureStack.back());
+        if (i != _atlasIndexLUT.end())
         {
-            AtlasIndexLUT::iterator i = _textureLayers.find(_textureStack.back());
-            if (i != _textureLayers.end())
-            {
-                layer = i->second;
-            }
-        }
-
-        _texcoords->reserve(_texcoords->size() + texcoords->size());
-        for(int i=0; i<texcoords->size(); ++i)
-        {
-            _texcoords->push_back(osg::Vec3(
-                (*texcoords)[i].x(),
-                (*texcoords)[i].y(),
-                layer));
+            texHandleIndex = i->second;
         }
     }
 
-    // pad out
-    if (numTexCoords < size)
+    _texindices->reserve(_texindices->size() + size);
+    for (int i = 0; i < size; ++i)
     {
-        for(unsigned i=0; i < size - numTexCoords; ++i)
-        {
-            _texcoords->push_back(osg::Vec3(0,0,-2));
-        }
+        _texindices->push_back(texHandleIndex);
     }
 
+    // assemble the elements set
     for(unsigned i=0; i < node.getNumPrimitiveSets(); ++i)
     {
         osg::DrawElements* de = dynamic_cast<osg::DrawElements*>(node.getPrimitiveSet(i));

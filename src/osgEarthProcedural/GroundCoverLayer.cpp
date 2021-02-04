@@ -662,6 +662,10 @@ GroundCoverLayer::buildStateSets()
 
     // Load shaders particular to this class
     loadRenderingShaders(vp, getReadOptions());
+
+    // Binds the vertex attribute containing the texture handle LUT index
+    // that we assigned in GeometryCloud::add
+    vp->addBindAttribLocation("oe_gc_texLUTindex", 6);
 }
 
 void
@@ -1745,7 +1749,7 @@ GroundCoverLayer::Renderer::createGeometryCloud() const
     if (!_layer.lock(layer))
         return nullptr;
 
-    GeometryCloud* geomCloud = new GeometryCloud();
+    GeometryCloud* geomCloud = new GeometryCloud(_texArena.get());
 
     // First entry is the parametric group. Any instance without a 3D model,
     // or that is out of model range, gets rendered as a parametric billboard.
@@ -1757,7 +1761,7 @@ GroundCoverLayer::Renderer::createGeometryCloud() const
     std::unordered_map<int, Texture*> visited;
     std::unordered_map<Texture*, int> arenaIndex;
 
-    for(const auto& asset : _liveAssets)
+    for (const auto& asset : _liveAssets)
     {
         if (asset->_modelID >= 0)
         {
@@ -1765,6 +1769,8 @@ GroundCoverLayer::Renderer::createGeometryCloud() const
             auto i = visited.find(asset->_modelID);
             if (i == visited.end())
             {
+                geomCloud->add(asset->_model.get());
+#if 0
                 // adds the model, and returns the texture associated with the
                 // FIRST discovered texture from the model.
                 Texture* tex = geomCloud->add(asset->_model.get());
@@ -1782,6 +1788,7 @@ GroundCoverLayer::Renderer::createGeometryCloud() const
             {
                 asset->_modelTex = i->second;
                 asset->_modelTexIndex = arenaIndex[i->second];
+#endif
             }
         }
     }

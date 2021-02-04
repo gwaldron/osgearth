@@ -78,6 +78,9 @@ uniform sampler2D oe_gc_noiseTex;
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
+// Vertex attributes in
+layout(location = 6) in int oe_gc_texLUTindex; // texture handle LUT index
+
 // Stage globals
 vec3 oe_UpVectorView;
 vec4 vp_Color;
@@ -327,7 +330,6 @@ void oe_gc_apply_wind(inout vec4 vert_view, in float width, in float height)
 #endif
 }
 
-
 void oe_GroundCover_Model(inout vec4 vertex_view)
 {
     uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
@@ -341,9 +343,10 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
     //TODO: hard-coded Coord7, is that OK? I guess we could use zero
     oe_gc_texCoord = gl_MultiTexCoord7.xyz;
 
-    // assign texture sampler for this model
-    if (instance[i].modelSamplerIndex >= 0)
-        oe_gc_texHandle = texHandle[instance[i].modelSamplerIndex];
+    // assign texture sampler for this model. The LUT index is in
+    // a vertex attribute. Negative means no texture.
+    if (oe_gc_texLUTindex >= 0)
+        oe_gc_texHandle = texHandle[oe_gc_texLUTindex];
     else
         oe_gc_texHandle = 0UL;
 

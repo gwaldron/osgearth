@@ -257,21 +257,24 @@ namespace osgEarth
     class OSGEARTH_EXPORT GeometryCloud : public osg::NodeVisitor
     {
     public:
-        //! New cloud.
-        GeometryCloud();
+        //! New geometry could that will store its textures in an arena.
+        //! @param arena Texture arena that will hold any textures
+        //!    collected from node added to this cloud
+        GeometryCloud(TextureArena* arena);
 
-        //! Add a model to be incorporated
-        //! "align" means to pad the cloud before adding so that the index
-        //! or the first vertex in this node is a multiple of the alignment
-        //! number. This is necessary for shaders that use gl_VertexID as
-        //! a modulus.
-        //! Returns an object containing a mini-atlas of all
-        //! the textures found in the node.
-        Texture* add(osg::Node*, unsigned alignment =0);
+        //! Add a model to be incorporated into the cloud.
+        //! @param node Node whose geometry to add
+        //! @param alignment If non-zero, pad the cloud's attribute arrays so
+        //!    the index of the first vertex in this node is a multiple of the
+        //!    alignment value. This is necessary for shaders that use gl_VertexID
+        //!    as a  modulus.
+        //! @return True upon sucess
+        bool add(
+            osg::Node* node,
+            unsigned alignment = 0);
 
-        //! After calling finalize, this will return the unified geometry.
+        //! The unified geometry
         osg::Geometry* getGeometry() const { return _geom.get(); }
-        osg::Geometry* releaseGeometry() { return _geom.release(); }
 
         //! How many models were added
         unsigned getNumDrawCommands() const { return _vertexOffsets.size(); }
@@ -279,7 +282,7 @@ namespace osgEarth
         //! Populates the i-th draw command from this cloud
         bool getDrawCommand(unsigned i, DrawElementsIndirectCommand& cmd) const;
 
-        //! Render it.
+        //! Render the cloud
         void draw(osg::RenderInfo& ri);
 
     public: // osg::NodeVisitor
@@ -294,14 +297,15 @@ namespace osgEarth
 
         osg::fast_back_stack<osg::Texture*> _textureStack;
         osg::fast_back_stack<osg::Matrix> _matrixStack;
-        typedef Util::UnorderedMap<osg::Texture*, int> AtlasIndexLUT;
-        AtlasIndexLUT _textureLayers;
+        using AtlasIndexLUT = std::unordered_map<osg::Texture*, int>;
+        AtlasIndexLUT _atlasIndexLUT;
 
         osg::DrawElementsUShort* _primset;
         osg::Vec3Array* _verts;
         osg::Vec4Array* _colors;
         osg::Vec3Array* _normals;
-        osg::Vec3Array* _texcoords;
+        osg::Vec2Array* _texcoords;
+        osg::ShortArray* _texindices;
         std::vector<unsigned> _vertexOffsets;
         std::vector<unsigned> _elementOffsets;
         std::vector<unsigned> _elementCounts;
@@ -310,6 +314,7 @@ namespace osgEarth
         unsigned _numElements;
         int _texLayer;
         std::vector<osg::ref_ptr<osg::Texture> > _texturesToAdd;
+        osg::ref_ptr<TextureArena> _texarena;
     };
 }
 

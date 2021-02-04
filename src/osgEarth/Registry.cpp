@@ -73,8 +73,12 @@ _blacklist("Reg.BlackList(OE)")
     OGRRegisterAll();
     GDALAllRegister();
 
+#ifdef OSG_USE_UTF8_FILENAME
+    CPLSetConfigOption("GDAL_FILENAME_IS_UTF8","YES");
+#else
     // support Chinese character in the file name and attributes in ESRI's shapefile
     CPLSetConfigOption("GDAL_FILENAME_IS_UTF8","NO");
+#endif
     CPLSetConfigOption("SHAPE_ENCODING","");
 
 #if GDAL_VERSION_MAJOR>=3

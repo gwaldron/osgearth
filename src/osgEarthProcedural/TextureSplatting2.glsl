@@ -45,6 +45,11 @@ void oe_splat_View(inout vec4 vertex_view)
 #pragma vp_location fragment
 #extension GL_ARB_gpu_shader_int64 : enable
 
+#pragma import_defines(OE_LIFEMAP_TEX)
+#pragma import_defines(OE_LIFEMAP_MAT)
+uniform sampler2D OE_LIFEMAP_TEX;
+uniform mat4 OE_LIFEMAP_MAT;
+
 #pragma import_defines(OE_COLOR_LAYER_TEX)
 #pragma import_defines(OE_COLOR_LAYER_MAT)
 #ifdef OE_COLOR_LAYER_TEX
@@ -77,6 +82,8 @@ uniform float lush_power = 1.0;
 uniform float rugged_power = 1.0;
 uniform float depth = 0.02; 
 uniform float snow = 0.0;
+
+in float oe_layer_opacity;
 
 vec3 unpackNormal(in vec4 p)
 {
@@ -204,6 +211,8 @@ void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
 
 void oe_splat_Frag(inout vec4 quad)
 {
+    quad = texture(OE_LIFEMAP_TEX, (OE_LIFEMAP_MAT * oe_layer_tilec).st);
+
     // local reference frame for normals:
     vec3 tangent = cross(gl_NormalMatrix * vec3(0, 0, 1), vp_Normal);
     vec3 binormal = cross(tangent, vp_Normal);
@@ -251,8 +260,10 @@ void oe_splat_Frag(inout vec4 quad)
     vec3 clcolor = clamp(2.0 * cltexel * color, 0.0, 1.0);
     //color = mix(color, clcolor, smoothstep(0.0, 0.5, 1.0 - 0.33*(dense+lush+rugged)));
     color = mix(color, clcolor, smoothstep(0.0, 0.5, 1.0 - 0.5*(dense + lush)));
+#else
+    float alpha = (0.5 + 0.25*(dense + lush)) * oe_layer_opacity;
 #endif
 
     // final color output:
-    quad = vec4(color, 1.0);
+    quad = vec4(color, alpha);
 }

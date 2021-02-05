@@ -28,11 +28,6 @@
 #include <osgEarth/ElevationPool>
 #include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
-#include <future>
-
-namespace osgEarth {
-    class TextureArena;
-}
 
 namespace osgEarth { namespace Procedural
 {
@@ -81,8 +76,6 @@ namespace osgEarth { namespace Procedural
 
         virtual void init() override;
 
-        virtual void prepareForRendering(TerrainEngine*) override;
-
         virtual Status openImplementation() override;
 
         virtual Status closeImplementation() override;
@@ -102,11 +95,8 @@ namespace osgEarth { namespace Procedural
         osg::observer_ptr<const Map> _map;
         mutable ElevationPool::WorkingSet _workingSet;
         osg::ref_ptr<osg::Image> _noiseFunc;
-        osg::ref_ptr<TextureArena> _arena;
-        mutable Future<bool> _loadMaterialsJob;
         LandCoverLayerVector _landCoverLayers;
         osg::ref_ptr<LandCoverDictionary> _landCoverDictionary;
-        void loadMaterials(const AssetCatalog*);
     };
 
 } } // namespace osgEarth::Procedural

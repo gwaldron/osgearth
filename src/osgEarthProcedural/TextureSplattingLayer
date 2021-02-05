@@ -23,6 +23,8 @@
 #define OSGEARTH_PROCEDURAL_SPLATTING_LAYER_H
 
 #include "Export"
+#include "BiomeLayer"
+#include "LifeMapLayer"
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/TextureArena>
@@ -38,7 +40,8 @@ namespace osgEarth { namespace Procedural
         {
         public:
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
-            OE_OPTION_LAYER(ImageLayer, lifeMap);
+            OE_OPTION_LAYER(BiomeLayer, biomeLayer);
+            OE_OPTION_LAYER(LifeMapLayer, lifeMapLayer);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -47,30 +50,32 @@ namespace osgEarth { namespace Procedural
     public:
         META_Layer(osgEarthProcedural, TextureSplattingLayer, Options, VisibleLayer, SplatImage);
 
+        //void setBiomeLayer(BimoeLayer*);
+        BiomeLayer* getBiomeLayer() const;
+
+        LifeMapLayer* getLifeMapLayer() const;
+
     protected:
 
         //! Override post-ctor init
         virtual void init() override;
         virtual void prepareForRendering(TerrainEngine* engine) override;
 
-        //! Serialize
-        virtual Config getConfig() const override;
-
     public:
 
-        //! Called when this layer is added to the map
         virtual void addedToMap(const Map* map) override;
         virtual void removedFromMap(const Map* map) override;
-
-    public:
-
+        virtual void update(osg::NodeVisitor&) override;
         virtual void resizeGLObjectBuffers(unsigned maxSize) override;
         virtual void releaseGLObjects(osg::State* state) const override;
 
     protected:
         virtual ~TextureSplattingLayer() { }
 
+        using MaterialsJob = Job<osg::ref_ptr<TextureArena>>;
+        MaterialsJob::Result _materialsJob;
         osg::ref_ptr<TextureArena> _arena;
+        TextureImageUnitReservation _lifemap_res;
 
         void buildStateSets();
     };

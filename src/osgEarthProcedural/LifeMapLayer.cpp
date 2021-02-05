@@ -20,14 +20,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "LifeMapLayer"
-#include "ProceduralShaders"
 #include "NoiseTextureFactory"
 
-#include <osgEarth/TextureArena>
 #include <osgEarth/Map>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/Math>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/rtree.h>
 
 #include <osgDB/ReadFile>
@@ -152,153 +149,6 @@ namespace
         //noise.r() -= 1.0, noise.g() -= 1.0, noise.b() -= 1.0, noise.a() -= 1.0;
     }
 
-    // OSG loader for reading an albedo texture and a heightmap texture
-    // and merging them into a single RGBH texture
-    struct RGBHPseudoLoader : public osgDB::ReaderWriter
-    {
-        RGBHPseudoLoader() {
-            supportsExtension("oe_splat_rgbh", "RGB+H");
-        }
-
-        ReadResult readImage(const std::string& uri, const osgDB::Options* options) const override
-        {
-            std::string ext = osgDB::getLowerCaseFileExtension(uri);
-            if (ext == "oe_splat_rgbh")
-            {
-                URI colorURI(
-                    osgDB::getNameLessExtension(uri) + "_Color.jpg");
-
-                osg::ref_ptr<osg::Image> color = colorURI.getImage(options);
-
-                if (!color.valid())
-                    return ReadResult::FILE_NOT_FOUND;
-
-                URI heightURI(
-                    osgDB::getNameLessExtension(uri) + "_Displacement.jpg");
-
-                osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
-
-                osg::ref_ptr<osg::Image> rgbh = new osg::Image();
-                rgbh->allocateImage(color->s(), color->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-
-                ImageUtils::PixelReader readHeight(height.get());
-                ImageUtils::PixelReader readColor(color.get());
-                ImageUtils::PixelWriter writeRGBH(rgbh.get());
-                osg::Vec4 temp, temp2;
-                float minh = 1.0f, maxh = 0.0f;
-
-                ImageUtils::ImageIterator iter(rgbh.get());
-                iter.forEachPixel([&]()
-                    {
-                        readColor(temp, iter.s(), iter.t());
-                        if (height.valid())
-                        {
-                            readHeight(temp2, iter.s(), iter.t());
-                            temp.a() = temp2.r();
-                        }
-                        else
-                        {
-                            temp.a() = 0.0f;
-                        }
-
-                        minh = osg::minimum(minh, temp.a());
-                        maxh = osg::maximum(maxh, temp.a());
-                        writeRGBH(temp, iter.s(), iter.t());
-                    });
-
-                OE_INFO << heightURI.base() << ", MinH=" << minh << ", MaxH=" << maxh << std::endl;
-
-                ImageUtils::compressImageInPlace(rgbh.get());
-
-                return rgbh;
-            }
-
-            return ReadResult::FILE_NOT_HANDLED;
-        }
-    };
-
-
-#define DEFAULT_ROUGHNESS 0.75
-#define DEFAULT_AO 1.0
-
-    // OSG load for reading normal, roughness, and AO textures and merging
-    // them into a single encoded material texture.
-    struct NNRAPseudoLoader : public osgDB::ReaderWriter
-    {
-        NNRAPseudoLoader() {
-            supportsExtension("oe_splat_nnra", "Normal/Roughness/AO");
-        }
-
-        ReadResult readImage(const std::string& uri, const osgDB::Options* options) const override
-        {
-            std::string ext = osgDB::getLowerCaseFileExtension(uri);
-            if (ext == "oe_splat_nnra")
-            {
-                URI normalsURI(
-                    osgDB::getNameLessExtension(uri) + "_Normal.jpg");
-
-                osg::ref_ptr<osg::Image> normals = 
-                    normalsURI.getImage(options);
-
-                if (!normals.valid())
-                    return ReadResult::FILE_NOT_FOUND;
-
-                URI roughnessURI(
-                    osgDB::getNameLessExtension(uri) + "_Roughness.jpg");
-
-                osg::ref_ptr<osg::Image> roughness =
-                    roughnessURI.getImage(options);
-
-                URI aoURI(
-                    osgDB::getNameLessExtension(uri) + "_AmbientOcclusion.jpg");
-
-                osg::ref_ptr<osg::Image> ao =
-                    aoURI.getImage(options);
-
-                osg::ref_ptr<osg::Image> nnra = new osg::Image();
-                nnra->allocateImage(normals->s(), normals->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-
-                ImageUtils::PixelReader readNormals(normals.get());
-                ImageUtils::PixelReader readAO(ao.get());
-                ImageUtils::PixelReader readRoughness(roughness.get());
-                ImageUtils::PixelWriter writeMat(nnra.get());
-
-                osg::Vec3 normal3;
-                osg::Vec4 normal;
-                osg::Vec4 roughnessVal;
-                osg::Vec4 aoVal;
-                osg::Vec4 packed;
-
-                ImageUtils::ImageIterator iter(nnra.get());
-                iter.forEachPixel([&]() 
-                    {
-                        readNormals(normal, iter.s(), iter.t());
-                        normal3.set(normal.x()*2.0 - 1.0, normal.y()*2.0 - 1.0, normal.z()*2.0 - 1.0);
-                        NormalMapGenerator::pack(normal3, packed);
-                        if (roughness.valid())
-                        {
-                            readRoughness(roughnessVal, iter.s(), iter.t());
-                            packed[2] = roughnessVal.r();
-                        }
-                        else packed[2] = DEFAULT_ROUGHNESS;
-
-                        if (ao.valid())
-                        {
-                            readAO(aoVal, iter.s(), iter.t());
-                            packed[3] = aoVal.r();
-                        }
-                        else packed[3] = DEFAULT_AO;
-
-                        writeMat(packed, iter.s(), iter.t());
-                    });
-
-                return nnra;
-            }
-
-            return ReadResult::FILE_NOT_HANDLED;
-        }
-    };
-
     struct LandUseTile
     {
         RTree<osg::ref_ptr<Feature>, double, 2> _index;
@@ -372,26 +222,7 @@ namespace
     };
 }
 
-REGISTER_OSGPLUGIN(oe_splat_rgbh, RGBHPseudoLoader);
-REGISTER_OSGPLUGIN(oe_splat_nnra, NNRAPseudoLoader);
-
 //........................................................................
-
-void
-LifeMapLayer::loadMaterials(const AssetCatalog* cat)
-{
-    for (const auto tex : cat->getTextures())
-    {
-        Texture* rgbh = new Texture();
-        rgbh->_uri = URI(tex->uri()->full() + ".oe_splat_rgbh");
-        _arena->add(rgbh);
-
-        Texture* nnra = new Texture();
-        nnra->_uri = URI(tex->uri()->full() + ".oe_splat_nnra");
-        _arena->add(nnra);
-    }
-}
-
 
 void
 LifeMapLayer::init()
@@ -400,19 +231,6 @@ LifeMapLayer::init()
 
     NoiseTextureFactory nf;
     _noiseFunc = nf.createImage(1024u, 4u);
-
-    osg::StateSet* ss = this->getOrCreateStateSet();
-
-    // Arena holds all the splatting textures
-    _arena = new TextureArena();
-    ss->setAttribute(_arena);
-
-    // Install the texture splatting shader
-    // TODO: consider moving this to another layer and making the LifeMapLayer
-    // a non-visible data layer.
-    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    TerrainShaders shaders;
-    shaders.load(vp, shaders.TextureSplatting2, getReadOptions());
 }
 
 Status
@@ -460,14 +278,6 @@ LifeMapLayer::addedToMap(const Map* map)
 
     _map = map;
 
-    // bind the color layer if available
-    if (getColorLayer() && getColorLayer()->isShared())
-    {
-        osg::StateSet* ss = getOrCreateStateSet();
-        ss->setDefine("OE_COLOR_LAYER_TEX", getColorLayer()->getSharedTextureUniformName());
-        ss->setDefine("OE_COLOR_LAYER_MAT", getColorLayer()->getSharedTextureMatrixUniformName());
-    }
-
     if (getUseLandCover() == true)
     {
         _landCoverDictionary = map->getLayer<LandCoverDictionary>();
@@ -486,33 +296,6 @@ LifeMapLayer::addedToMap(const Map* map)
                 << "No land cover layers found in the map;"
                 << " Land cover data will not be used."
                 << std::endl;
-        }
-    }
-}
-
-void
-LifeMapLayer::prepareForRendering(TerrainEngine* engine)
-{
-    ImageLayer::prepareForRendering(engine);
-
-    // Since we're actually rendering, load the materials for splatting
-    if (getBiomeLayer())
-    {
-        const BiomeCatalog* cat = getBiomeLayer()->getBiomeCatalog();
-        if (cat)
-        {
-            const AssetCatalog* assets = cat->getAssets();
-            if (assets)
-            {
-                osg::ref_ptr<LifeMapLayer> layer(this);
-
-                _loadMaterialsJob = Job<bool>::dispatch(
-                    [layer, assets](Cancelable*) {
-                        layer->loadMaterials(assets);
-                        return true;
-                    }
-                );
-            }
         }
     }
 }
@@ -633,13 +416,6 @@ namespace
             c.a());
     }
 
-    //const vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-    //vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
-    //vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
-    //float d = q.x - min(q.w, q.y);
-    //const float e = 1.0e-10;
-    //return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-
     struct Value
     {
         Value() : weight(0.0f) { }
@@ -667,9 +443,6 @@ LifeMapLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
-    // wait for all materials to load
-    _loadMaterialsJob.wait();
-
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
         return GeoImage::INVALID;
@@ -809,10 +582,6 @@ LifeMapLayer::createImageImplementation(
     const osg::Vec3 up(0,0,1);
     
     Sample sample[4];
-
-    //float dense, lush, rugged;
-    //float dense_mix, lush_mix, rugged_mix;
-    //float default_mix;
     std::string lu_id;
 
     osg::Vec2 noiseCoords[4];
@@ -823,8 +592,6 @@ LifeMapLayer::createImageImplementation(
     noiseSampler.setSampleAsRepeatingTexture(true);
 
     GeoImage result(image.get(), extent);
-
-    //std::unordered_map<std::string, int> counts;
 
     GeoImageIterator  i(image.get(), extent);
     i.forEachPixelOnCenter([&]() {

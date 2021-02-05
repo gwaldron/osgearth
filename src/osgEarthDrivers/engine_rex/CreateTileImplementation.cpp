@@ -61,8 +61,14 @@ CreateTileImplementation::createTile(
         return nullptr;
     }
 
+    // Copy the terrain options so we can adjust them
+    TerrainOptions options(context->options());
+
+    // Disable skirts - they are not a real part of the tile.
+    options.heightFieldSkirtRatio() = 0.0f;
+
     // Dimension of each tile in vertices
-    unsigned tileSize = context->options().tileSize().get();
+    unsigned tileSize = options.tileSize().get();
     TileKey rootkey = area.valid() ? area : model->getKey();
     const SpatialReference* srs = rootkey.getExtent().getSRS();
 
@@ -97,14 +103,15 @@ CreateTileImplementation::createTile(
     // group to hold all the tiles
     osg::ref_ptr<osg::Group> group;
 
-    for (std::vector<TileKey>::const_iterator subkey = keys.begin(); subkey != keys.end(); ++subkey)
+    for(const auto& subkey : keys)
     {
         osg::ref_ptr<SharedGeometry> sharedGeom;
 
         context->getGeometryPool()->getPooledGeometry(
-            *subkey,
+            subkey,
             tileSize,
             map.get(),
+            options,
             sharedGeom,
             progress);
 
@@ -121,7 +128,7 @@ CreateTileImplementation::createTile(
             osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();
 
             osg::UserDataContainer* udc = drawable->getOrCreateUserDataContainer();
-            udc->setUserValue("tile_key", subkey->str());
+            udc->setUserValue("tile_key", subkey.str());
 
             osg::ref_ptr<osg::Geometry> geom = sharedGeom->makeOsgGeometry();
             drawable = geom.get();
@@ -146,7 +153,7 @@ CreateTileImplementation::createTile(
                 // Tile coords must be transformed into the local tile's space
                 // for elevation grid lookup:
                 osg::Matrix scaleBias;
-                subkey->getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
+                subkey.getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
 
                 // Apply elevation to each vertex.
                 for (unsigned i = 0; i < verts->size(); ++i)
@@ -175,7 +182,7 @@ CreateTileImplementation::createTile(
 
             // Establish a local reference frame for the tile:
             GeoPoint centroid;
-            subkey->getExtent().getCentroid(centroid);
+            subkey.getExtent().getCentroid(centroid);
 
             osg::Matrix local2world;
             centroid.createLocalToWorld(local2world);

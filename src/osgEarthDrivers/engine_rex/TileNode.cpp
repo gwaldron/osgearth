@@ -144,6 +144,7 @@ TileNode::createGeometry(Cancelable* progress)
         _key,
         tileSize,
         map.get(),
+        options(),
         geom,
         progress);
 

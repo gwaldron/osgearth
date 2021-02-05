@@ -285,7 +285,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     this->addChild(_releaser.get());
 
     // A shared geometry pool.
-    _geometryPool = new GeometryPool(options());
+    _geometryPool = new GeometryPool();
     _geometryPool->setReleaser( _releaser.get());
     this->addChild( _geometryPool.get() );
 

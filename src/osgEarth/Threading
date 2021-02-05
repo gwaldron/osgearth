@@ -273,12 +273,20 @@ namespace osgEarth { namespace Threading
             return _shared->obj();
         }
 
-        //! Waits for the result to become available (abandoned)
-        void join() {
+        //! Waits for the result to become available (or abandoned)
+        void join() const {
             get();
         }
-        void join(const Cancelable* cancelable) {
+        void join(const Cancelable* cancelable) const {
             get(cancelable);
+        }
+
+        //! Returns the result value (available or not) and abandons the future.
+        //! It is typical to check isAvailable() prior to calling release.
+        T release() {
+            T result = get();
+            abandon();
+            return result;
         }
 
         Future<T>& then(std::function<void(T&)>& func) {

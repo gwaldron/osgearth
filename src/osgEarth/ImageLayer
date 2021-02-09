@@ -192,6 +192,9 @@ namespace osgEarth
         //! Remove a user callback
         void removeCallback(Callback* callback);
 
+        //! Add a post-processing layer
+        void addPostLayer(ImageLayer* layer);
+
 
     public: // Texture support
 
@@ -215,6 +218,17 @@ namespace osgEarth
 
         //! Modify the bbox if an altitude is set (for culling)
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
+
+        //! Post processing image creation entry points
+        GeoImage createImage(
+            const GeoImage& canvas,
+            const TileKey& key,
+            ProgressCallback* progress);
+
+        virtual GeoImage createImageImplementation(
+            const GeoImage& canvas,
+            const TileKey& key,
+            ProgressCallback* progress) const { return canvas; }
 
     protected: // Layer
 
@@ -253,6 +267,8 @@ namespace osgEarth
 
         typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
         Threading::Mutexed<Callbacks> _callbacks;
+
+        Mutexed<std::vector<osg::ref_ptr<ImageLayer>>> _postLayers;
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

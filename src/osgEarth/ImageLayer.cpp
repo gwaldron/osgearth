@@ -376,9 +376,23 @@ ImageLayer::createImage(
 
     GeoImage result = createImageInKeyProfile( key, progress );
 
+    for (auto& post : _postLayers)
+    {
+        result = post->createImage(result, key, progress);
+    }
+
     //_sentry.unlock(key);
 
     return result;
+}
+
+GeoImage
+ImageLayer::createImage(
+    const GeoImage& canvas,
+    const TileKey& key,
+    ProgressCallback* progress)
+{
+    return createImageImplementation(canvas, key, progress);
 }
 
 GeoImage
@@ -765,4 +779,11 @@ ImageLayer::removeCallback(ImageLayer::Callback* c)
     if (i != _callbacks.end())
         _callbacks.erase(i);
     _callbacks.unlock();
+}
+
+void
+ImageLayer::addPostLayer(ImageLayer* layer)
+{
+    ScopedMutexLock lock(_postLayers);
+    _postLayers.push_back(layer);
 }

@@ -62,7 +62,15 @@ namespace osgEarth { namespace Contrib
     public: // ImageLayer
 
         //! Creates an image for a tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+        virtual GeoImage createImageImplementation(
+            const TileKey& key,
+            ProgressCallback* progress) const override;
+
+        //! Compositing entry point
+        virtual GeoImage createImageImplementation(
+            const GeoImage& canvas,
+            const TileKey& key,
+            ProgressCallback* progress) const override;
 
         //! Extent for this layer
         virtual const GeoExtent& getExtent() const override {

@@ -263,7 +263,7 @@ NormalMapGenerator::createNormalMap(
         east.y() = y;
         west.y() = y;
 
-        for(int s=0; s<write.t(); ++s)
+        for(int s=0; s<write.s(); ++s)
         {
             double u = (double)s/(double)(write.s()-1);
             double x = ex.xMin() + u*ex.width();

@@ -18,6 +18,9 @@
  */
 #include <osgEarth/ArcGISTilePackage>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/MVT>
+#include <osgEarth/Registry>
+#include <osgEarth/JsonUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
@@ -169,6 +172,30 @@ osg::Image* BundleReader::readImage(unsigned int index, const osgDB::ReaderWrite
     return 0;
 }
 
+void BundleReader::readFeatures(const TileKey& key, FeatureList& features)
+{
+    // Figure out the index for the tilekey
+    unsigned int row = key.getTileX() - _colOffset;
+    unsigned int index = key.getTileY() - _rowOffset + (row * _bundleSize);
+
+    if (index < 0 || index >= _index.size()) return;
+
+    _in.seekg(_index[index], std::ios::beg);
+    std::vector<char> sizeBuffer;
+    sizeBuffer.resize(4);
+    _in.read(&sizeBuffer[0], 4);
+    int size = computeOffset(sizeBuffer);
+    if (size > 0)
+    {
+        std::string image;
+        image.resize(size);
+        _in.read(&image[0], size);
+        std::stringstream ss(image);
+
+        osgEarth::MVT::readTile(ss, key, features);
+    }
+}
+
 //........................................................................
 const unsigned long long M = pow(2, 40);
 
@@ -262,6 +289,29 @@ osg::Image* BundleReader2::readImage(unsigned int index, const osgDB::ReaderWrit
     }
 
     return 0;
+}
+
+void BundleReader2::readFeatures(const TileKey& key, FeatureList& features)
+{
+    unsigned int col = key.getTileX() - _colOffset;
+    unsigned int row = key.getTileY() - _rowOffset;
+    unsigned int index = _bundleSize * row + col;
+
+    if (index < 0 || index >= _index.size()) return;
+
+    unsigned long long tile_index = _index[index];
+    unsigned long long tileOffset = tile_index % (unsigned long long)M;
+    unsigned long long tileSize = floor((unsigned long long)tile_index / M);
+
+    _in.seekg(tileOffset, std::ios::beg);
+    if (tileSize > 0)
+    {
+        std::string imageData;
+        imageData.resize(tileSize);
+        _in.read(&imageData[0], tileSize);
+        std::stringstream ss(imageData);
+        osgEarth::MVT::readTile(ss, key, features);
+    }
 }
 
 //........................................................................
@@ -557,4 +607,150 @@ ArcGISTilePackageElevationLayer::readConf()
             _storageFormat = STORAGE_FORMAT_COMPACTV2;
         }
     }
+}
+
+
+//........................................................................
+
+REGISTER_OSGEARTH_LAYER(vtpkfeatures, VTPKFeatureSource);
+
+OE_LAYER_PROPERTY_IMPL(VTPKFeatureSource, URI, URL, url);
+
+
+Status
+VTPKFeatureSource::openImplementation()
+{
+    Status parent = FeatureSource::openImplementation();
+    if (parent.isError())
+        return parent;
+
+    const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+    FeatureProfile* featureProfile = new FeatureProfile(profile->getExtent());
+
+    Json::Reader reader;
+    Json::Value root(Json::objectValue);
+
+    std::stringstream buf;
+    buf << options().url()->full() << "/p12/root.json";
+
+    std::string rootPath = buf.str();
+
+    std::ifstream in(rootPath);
+    if (!reader.parse(in, root, false))
+        return Status::Error(Stringify() << "Failed to parse " << rootPath);
+
+    _bundleSize = root["resourceInfo"]["cacheInfo"]["storageInfo"]["packetSize"].asUInt();
+    std::string storageFormat = root["resourceInfo"]["cacheInfo"]["storageInfo"]["storageFormat"].asString();
+
+    if (ciEquals(storageFormat, "compact"))
+    {
+        _storageFormat = STORAGE_FORMAT_COMPACT;
+    }
+    else if (ciEquals(storageFormat, "compactV2"))
+    {
+        _storageFormat = STORAGE_FORMAT_COMPACTV2;
+    }
+
+    unsigned int minLevel, maxLevel;
+    computeMinMaxLevel(minLevel, maxLevel);
+
+    featureProfile->setFirstLevel(minLevel);
+    featureProfile->setMaxLevel(maxLevel);
+    featureProfile->setTilingProfile(profile);
+    featureProfile->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;
+
+    setFeatureProfile(featureProfile);
+
+    return Status::NoError;
+}
+
+void
+VTPKFeatureSource::init()
+{
+    FeatureSource::init();
+
+    _storageFormat = STORAGE_FORMAT_COMPACTV2;
+    _bundleSize = 128u;
+}
+
+void
+VTPKFeatureSource::computeMinMaxLevel(unsigned int &min, unsigned int &max)
+{
+    // Scan the p12/tile directory to see what directories exist to determine the min and max levels
+    min = UINT_MAX;
+    max = 0;
+    std::stringstream buf;
+    buf << options().url()->full() << "/p12/tile/";
+    auto contents = osgDB::getDirectoryContents(buf.str());
+    for (auto &c : contents)
+    {
+        if (c.compare(".") == 0 || c.compare("..") == 0)
+            continue;
+
+        unsigned int level = as<int>(c.substr(1), 0);
+        if (level < min) min = level;
+        if (level > max) max = level;
+    }
+}
+
+FeatureCursor*
+VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+{
+    if (!query.tileKey().isSet())
+    {
+        OE_WARN << LC << "No tile key in query; no features will be returned\n";
+        return 0L;
+    }
+
+    TileKey key = *query.tileKey();
+
+    // Try to figure out which bundle file the incoming tilekey is in.
+    unsigned int numWide, numHigh;
+    getFeatureProfile()->getTilingProfile()->getNumTiles(key.getLevelOfDetail(), numWide, numHigh);
+
+    std::stringstream buf;
+    buf << options().url()->full() << "/p12/tile/";
+    buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
+
+    unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileX() / _bundleSize) * _bundleSize));
+    unsigned int rowOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileY() / _bundleSize) * _bundleSize));
+
+    buf << "R" << padLeft(toHex(rowOffset), 4) << "C" << padLeft(toHex(colOffset), 4);
+    buf << ".bundle";
+
+    FeatureList features;
+    std::string bundleFile = buf.str();
+    if (osgDB::fileExists(bundleFile))
+    {
+        if (_storageFormat == STORAGE_FORMAT_COMPACT)
+        {
+            BundleReader reader(bundleFile, _bundleSize);
+            reader.readFeatures(key, features);
+        }
+        if (_storageFormat == STORAGE_FORMAT_COMPACTV2)
+        {
+            BundleReader2 reader(bundleFile, _bundleSize);
+            reader.readFeatures(key, features);
+        }
+    }
+
+    if (!features.empty())
+    {
+        return new FeatureListCursor(features);
+    }
+    return nullptr;
+}
+
+Config
+VTPKFeatureSource::Options::getConfig() const
+{
+    Config conf = FeatureSource::Options::getConfig();
+    conf.set("url", url());
+    return conf;
+}
+
+void
+VTPKFeatureSource::Options::fromConfig(const Config& conf)
+{
+    conf.get("url", url());
 }

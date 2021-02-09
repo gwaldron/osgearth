@@ -240,7 +240,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if ( !conf.empty() )
             {
                 // see if we were given a reference URI to use:
-                std::string refURI = uriContext.referrer();
+                const std::string& refURI = uriContext.referrer();
 
                 if ( conf.value("version") == "1" )
                 {
@@ -280,7 +280,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     }
 
                     EarthFileSerializer2 ser;
-                    node = ser.deserialize( conf, refURI );
+                    node = ser.deserialize(conf, refURI, readOptions);
                 }
             }
 

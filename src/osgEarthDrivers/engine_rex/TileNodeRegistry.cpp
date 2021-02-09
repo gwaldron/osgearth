@@ -377,3 +377,19 @@ TileNodeRegistry::collectDormantTiles(
 
     OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
 }
+
+osg::ref_ptr<TileNode>
+TileNodeRegistry::get(const TileKey& key) const
+{
+    osg::ref_ptr<TileNode> result;
+
+    ScopedMutexLock scopelock(_mutex);
+
+    auto iter = _tiles.find(key);
+    if (iter != _tiles.end())
+    {
+        result = iter->second._tile.get();
+    }
+
+    return result;
+}

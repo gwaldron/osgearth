@@ -18,6 +18,15 @@
         <pitch>-21.29241356548601</pitch>
         <range>23926.75258864516</range>
     </viewpoint>
+    <viewpoint name="Mt Whitney, CA">
+        <heading>-10.1722</heading>
+        <pitch>-30.6795</pitch>
+        <range>10034.5m</range>
+        <long>-118.2936168720471</long>
+        <lat>36.57474451155277</lat>
+        <height>4234.804840335622</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+    </viewpoint>
     <viewpoint>
         <heading>-72.70835146844568</heading>
         <height>6334.845537136309</height>

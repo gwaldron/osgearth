@@ -107,7 +107,7 @@ namespace osgEarth { namespace SilverLining
     class OSGEARTHSILVERLINING_EXPORT CloudLayerFactory
     {
     public:
-        static CloudLayer Create(int kind);
+        static CloudLayer Create(int kind, Atmosphere& atmos);
     };
 
     class OSGEARTHSILVERLINING_EXPORT WindVolume

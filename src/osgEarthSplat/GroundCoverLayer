@@ -49,8 +49,8 @@ namespace osgEarth { namespace Splat
             OE_OPTION(bool, castShadows);
             OE_OPTION(float, maxAlpha);
             OE_OPTION(bool, alphaToCoverage);
-            //OE_OPTION_VECTOR(ZoneOptions, zones);
             OE_OPTION_VECTOR(BiomeZone, biomeZones);
+            OE_OPTION(float, windScale);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -100,25 +100,26 @@ namespace osgEarth { namespace Splat
     protected:
 
         //! Override post-ctor init
-        virtual void init();
+        virtual void init() override;
 
         //! Override layer open
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
 
-        virtual Status closeImplementation();
+        virtual Status closeImplementation() override;
 
-        //! Get geometry for a tilekey
-        virtual osg::Node* createNodeImplementation(const DrawContext& dc);
+        virtual void prepareForRendering(TerrainEngine*) override;
 
     public:
 
-        //! Called when this layer is added to the map
-        virtual void addedToMap(const Map* map);
-        virtual void removedFromMap(const Map* map);
-        virtual void setTerrainResources(TerrainResources*);
+        //! Update traversal
+        virtual void update(osg::NodeVisitor& nv) override;
 
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
-        virtual void releaseGLObjects(osg::State* state) const;
+        //! Called when this layer is added to the map
+        virtual void addedToMap(const Map* map) override;
+        virtual void removedFromMap(const Map* map) override;
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
+        virtual void releaseGLObjects(osg::State* state) const override;
 
     protected:
         virtual ~GroundCoverLayer();
@@ -187,7 +188,7 @@ namespace osgEarth { namespace Splat
             };
 
             // one per graphics context
-            osg::buffered_object<DrawState> _drawStateBuffer;
+            mutable osg::buffered_object<DrawState> _drawStateBuffer;
 
             // uniform IDs
             unsigned _computeDataUName;
@@ -212,12 +213,16 @@ namespace osgEarth { namespace Splat
             osg::Program* _computeProgram;
             int _counter;
             float _spacing;
+
+            std::atomic<int> _frameLastActive;
         };
 
         osg::ref_ptr<Renderer> _renderer;
         bool _isModel;
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
+        osg::ref_ptr<osg::Texture> _atlas;
+        int _frameLastUpdate;
 
         struct PerCameraData {
             const osg::StateAttribute* _previousZoneSA;

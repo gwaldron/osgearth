@@ -82,8 +82,9 @@ namespace
         unsigned _renderLeafCount;
 
         META_Object(osgEarth,LocalPerViewData);
-        LocalPerViewData() { }
-        LocalPerViewData(const LocalPerViewData& rhs, const osg::CopyOp& co) { }
+        LocalPerViewData() : _renderLeafCount(0) { }
+        LocalPerViewData(const LocalPerViewData& rhs, const osg::CopyOp& co) 
+           : _renderLeafCount(0) { }
         
         void resizeGLObjectBuffers(unsigned maxSize) {
             if (_rttTexture.valid())

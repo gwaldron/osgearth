@@ -23,17 +23,42 @@
          <vdatum>egm96</vdatum>
     </MBTilesElevation>
 
-    <ElevationConstraint name="Constraint vectors" min_level="10" shared="true" visible="false">
+    <ElevationConstraint name="Constraint vectors" min_level="12" shared="true" visible="false">
         <tile_size>17</tile_size>
         <features>ridges</features>
         <caching_policy usage="none"/>
     </ElevationConstraint>
 
-    <DebugImage/>
+<!--    <DebugImage/> -->
 
     <OGRFeatures name="ridges">
         <url>/home/moore/gis/ridgelines/nepal_ridgetops.shp</url>
     </OGRFeatures>
 
+    <FeatureModel name="ridges-visible" features="ridges">
+      <layout tile_size="2500" max_range="100000"/>
+        <styles>
+            <style type="text/css">
+                world {
+                   stroke:             #ffff00;
+                   stroke-width:       4px;
+                   altitude-clamping:  terrain-drape;
+                }            
+            </style>
+        </styles>
+    </FeatureModel>
+
     <xi:include href="viewpoints.xml"/>
+    <viewpoints>
+<viewpoint name="foo">
+  <heading>-83.3431</heading>
+  <pitch>-51.9833</pitch>
+  <range>14246.3m</range>
+  <long>86.98665661056501</long>
+  <lat>27.9312987743189</lat>
+  <height>5933.471740019508</height>
+  <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+</viewpoint>
+</viewpoints>
+
 </map>

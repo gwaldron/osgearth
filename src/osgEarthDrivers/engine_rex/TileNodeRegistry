@@ -26,7 +26,6 @@
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Containers>
 #include <osgEarth/TerrainTileModelFactory>
-#include <OpenThreads/Atomic>
 #include <osgUtil/RenderBin>
 
 namespace osgEarth { namespace REX
@@ -142,6 +141,9 @@ namespace osgEarth { namespace REX
             float fartherThanRange,     // collect only if tile is farther away than this distance (meters)
             unsigned maxCount,          // maximum number of tiles to collect
             std::vector<osg::observer_ptr<TileNode> >& output);   // put dormant tiles here
+
+        //! Get a reference to a specific key if found.
+        osg::ref_ptr<TileNode> get(const TileKey& key) const;
 
     protected:
 

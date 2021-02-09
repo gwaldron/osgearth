@@ -33,7 +33,6 @@
 #include <osg/Geode>
 #include <osgText/Text>
 #include <osgUtil/CullVisitor>
-#include <OpenThreads/Atomic>
 #include <vector>
 
 namespace osgEarth { namespace REX
@@ -64,6 +63,8 @@ namespace osgEarth { namespace REX
         SurfaceNode(
             const TileKey& tilekey,
             TileDrawable* drawable);
+
+        virtual const char* className() const { return "Rex::SurfaceNode"; }
 
         void setElevationRaster(const osg::Image* raster, const osg::Matrixf& scaleBias);
         const osg::Image* getElevationRaster() const;
@@ -119,7 +120,7 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<osg::Node>     _debugNode;
         osg::ref_ptr<osgText::Text> _debugText;
         static const bool           _enableDebugNodes;
-        OpenThreads::Atomic         _lastFramePassedCull;
+        std::atomic_int             _lastFramePassedCull;
         HorizonTileCuller           _horizonCuller;        
 
         typedef osg::Vec3 VectorPoints[8];

@@ -59,6 +59,10 @@ namespace osgEarth
         optional<StringExpression>& imageURI() { return _imageURI; }
         const optional<StringExpression>& imageURI() const { return _imageURI; }
 
+        //! Length of the image (y dimension) in meters
+        optional<float>& imageLength() { return _imageLength; }
+        const optional<float>& imageLength() const { return _imageLength; }
+
         //! Whether to force the use of legacy OpenGL lines (default=false)
         //! instead of the GPU-based lines that are required by GLCORE/GLES
         optional<bool>& useGLLines() { return _useGLLines; }
@@ -79,6 +83,7 @@ namespace osgEarth
         optional<float>            _creaseAngle;
         optional<Distance>         _tessellationSize;
         optional<StringExpression> _imageURI;
+        optional<float>            _imageLength;
         optional<bool>             _useGLLines;
         optional<bool>             _useWireLines;
     };

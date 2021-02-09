@@ -62,10 +62,7 @@ main(int argc, char** argv)
 
     // general setup:
     osgViewer::Viewer viewer(arguments);
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
     viewer.setCameraManipulator( new EarthManipulator(arguments) );
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-    viewer.getCamera()->setNearFarRatio(0.00002);
 
     // Get the bounds from the command line.
     Bounds bounds;

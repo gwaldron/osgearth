@@ -209,6 +209,21 @@ StyleSheet::removeStyle( const std::string& name )
     options().styles().erase( name );
 }
 
+void
+StyleSheet::addStylesFromCSS(const std::string& css)
+{
+    ConfigSet blocks;
+    CssUtils::readConfig(css, "", blocks);
+
+    for(auto& block : blocks)
+    {
+        Style style;
+        style.fromSLD(block, &_options->styles());
+        if (!style.empty())
+            addStyle(style);
+    }
+}
+
 Style*
 StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault )
 {
@@ -282,6 +297,12 @@ StyleSheet::getSelector(const std::string& name) const
             return &i->second;
     }
     return NULL;
+}
+
+void
+StyleSheet::addSelector(const StyleSelector& value)
+{
+    getSelectors()[value.name().get()] = value;
 }
 
 Style*

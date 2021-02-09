@@ -215,6 +215,8 @@ namespace osgEarth
          */
         virtual void close();
 
+        virtual void open() { }
+
         /**
          * Removes consecutive duplicates in the geometry to prepare for tessellation.
          */
@@ -232,6 +234,21 @@ namespace osgEarth
          */
         Orientation getOrientation() const;
 
+        //! Whether a closed geometry contains the 2D point
+        virtual bool contains2D(double x, double y) const { return false; }
+
+        //! Iterate over all the parts of a geometry
+        void forEachPart(const std::function<void(Geometry*)>& func) { forEachPart(true, func); }
+
+        //! Iterate over all the parts of a geometry
+        void forEachPart(bool includePolygonHoles, const std::function<void(Geometry*)>& func);
+
+        //! Iterate over all the parts of a geometry
+        void forEachPart(const std::function<void(const Geometry*)>& func) const { forEachPart(true, func); }
+
+        //! Iterate over all the parts of a geometry
+        void forEachPart(bool includePolygonHoles, const std::function<void(const Geometry*)>& func) const;
+
     public:
         virtual Type getType() const { return TYPE_UNKNOWN; }
         virtual Type getComponentType() const { return getType(); }
@@ -246,6 +263,11 @@ namespace osgEarth
         void push_back(double x, double y, double z) { 
             osgEarth::InlineVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,z)); }
 
+        virtual bool isRing() const { return getComponentType() == TYPE_RING || getComponentType() == TYPE_POLYGON; }
+        virtual bool isPolygon() const { return getComponentType() == TYPE_POLYGON; }
+        virtual bool isPointSet() const { return getComponentType()==TYPE_POINT || getComponentType()==TYPE_POINTSET; }
+        virtual bool isLineString() const { return getComponentType() == TYPE_LINESTRING; }
+        virtual bool isOpen() const { return true; }
     protected:
     };
 
@@ -267,7 +289,7 @@ namespace osgEarth
         virtual void close();
 
     public:
-        virtual Type getType() const { return Geometry::TYPE_POINTSET; }
+        virtual Type getType() const override { return Geometry::TYPE_POINTSET; }
     };
 
     /**
@@ -330,7 +352,7 @@ namespace osgEarth
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
 
         // tests whether the point falls within the ring
-        virtual bool contains2D( double x, double y ) const;
+        virtual bool contains2D( double x, double y ) const override;
 
         // gets the signed area of a part that is known to be open.
         virtual double getSignedArea2D() const;
@@ -339,13 +361,13 @@ namespace osgEarth
         virtual double getLength() const;
 
         // ensures that the first and last points are not idential.
-        virtual void open();
+        virtual void open() override;
 
         // ensures that the first and last points are identical.
-        virtual void close();
+        virtual void close() override;
 
         // whether the ring is open (i.e. first and last points are different)
-        virtual bool isOpen() const;
+        virtual bool isOpen() const override;
 
         // opens and winds the ring in the specified direction
         virtual void rewind( Orientation ori );
@@ -375,11 +397,11 @@ namespace osgEarth
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
         virtual int getTotalPointCount() const;
-        
+
         virtual unsigned getNumGeometries() const { return 1 + _holes.size(); }
 
         // tests whether the point falls within the polygon (but not its holes)
-        virtual bool contains2D( double x, double y ) const;
+        virtual bool contains2D( double x, double y ) const override;
 
         virtual void open();
 
@@ -448,49 +470,59 @@ namespace osgEarth
     class OSGEARTH_EXPORT GeometryIterator
     {
     public:
-        /**
-         * New iterator.
-         *
-         * traversePolyHoles: set to TRUE to return Polygons AND Polygon hole geometries;
-         *                    set to FALSE to only return Polygon (outer ring).
-         *
-         * traverseMultiGeometry: set to TRUE to return MG children, but never an MG itself;
-         *                        set to FALSE to return MGs and NOT their children.
-         */
+        //! Constructs a new iterator.
+        //! @param geom Geometry over which to iterator
+        //! @param traversePolyHoles Whether to include polygon holes in the traversal
         GeometryIterator(
             Geometry* geom,
-            bool      traversePolygonHoles  =true );
+            bool traversePolygonHoles = true);
 
+        //! Whether next() will return another geometry
         bool hasMore() const;
+
+        //! Returns the next geometry part when hasMore() == true
         Geometry* next();
+
+        //! Visits each part and calls a user-defined functor
+        inline void forEach(const std::function<void(Geometry* part)>& func) {
+            while (hasMore()) func(next());
+        }
 
     private:
         Geometry* _next;
-        std::stack<Geometry*> _stack;
+        std::queue<Geometry*> _stack;
         bool _traverseMulti;
         bool _traversePolyHoles;
 
         void fetchNext();
     };
 
+    /**
+     * Iterates over a Geometry object, returning each component Geometry
+     * in turn. The iterator automatically traverses MultiGeometry objects,
+     * returning their components. The iterator NEVER returns an actual
+     * MultiGeometry object.
+     */
     class OSGEARTH_EXPORT ConstGeometryIterator
     {
     public:
-        /**
-         * New iterator.
-         *
-         * traversePolyHoles: set to TRUE to return Polygons AND Polygon hole geometries;
-         *                    set to FALSE to only return Polygon (outer ring).
-         *
-         * traverseMultiGeometry: set to TRUE to return MG children, but never an MG itself;
-         *                        set to FALSE to return MGs and NOT their children.
-         */
+        //! Constructs a new iterator.
+        //! @param geom Geometry over which to iterator
+        //! @param traversePolyHoles Whether to include polygon holes in the traversal
         ConstGeometryIterator(
             const Geometry* geom,
-            bool            traversePolygonHoles  =true );
+            bool traversePolygonHoles  =true );
 
+        //! Whether next() will return another geometry
         bool hasMore() const;
+
+        //! Returns the next geometry part when hasMore() == true
         const Geometry* next();
+
+        //! Visits each part and calls a user-defined functor
+        inline void forEach(const std::function<void(const Geometry* part)>& func) {
+            while (hasMore()) func(next());
+        }
 
     private:
         const Geometry* _next;
@@ -503,12 +535,29 @@ namespace osgEarth
 
     typedef std::pair<osg::Vec3d, osg::Vec3d> Segment;
 
+    /**
+     * Iterates over geometry, returning each consecutive pair of points
+     * as a line segment.
+     */
     class OSGEARTH_EXPORT ConstSegmentIterator
     {
     public:
-        ConstSegmentIterator( const Geometry* verts, bool forceClosedLoop =false );        
+        //! Construct an iterator.
+        //! @param verts Geometry over which to iterate segments
+        //! @param forceClosedLoop connect the last and first point even if the
+        //!    geometry is not a ring.
+        ConstSegmentIterator( const Geometry* verts, bool forceClosedLoop =false );
+
+        //! Whether next() will return a valid segment
         bool hasMore() const { return !_done; }
+
+        //! Next segment when hasMore() == true
         Segment next();
+
+        //!V isits each segment and calls a user-defined functor
+        inline void forEach(const std::function<void(const Segment&)>& func) {
+            while (hasMore()) func(next());
+        }
 
     private:
         const Vec3dVector* _verts;

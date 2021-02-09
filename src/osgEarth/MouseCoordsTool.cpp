@@ -29,7 +29,7 @@ using namespace osgEarth::Contrib;
 MouseCoordsTool::MouseCoordsTool( MapNode* mapNode, LabelControl* label, Formatter* formatter ) :
 _mapNode( mapNode )
 {
-    _mapNodePath.push_back( mapNode->getTerrainEngine() );
+    _mapNodePath.push_back( mapNode->getTerrainEngine()->getNode() );
 
     if ( label )
     {

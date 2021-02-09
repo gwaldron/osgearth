@@ -26,6 +26,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ExampleResources>
+#include <osgEarth/Threading>
 #include <osgDB/ReaderWriter>
 #include <osgDB/ReadFile>
 #include <osgDB/Registry>
@@ -193,7 +194,7 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
 
         ContextData* getContextData(osg::GraphicsContext* gc) const
         {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+            ScopedMutexLock lock(_mutex);
             osg::ref_ptr<ContextData>& data = _contextDataMap[gc];
             if (!data) data = createContextData(gc);
 
@@ -214,7 +215,7 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
 
         FramePosition               _position;
         GLenum                      _readBuffer;
-        mutable OpenThreads::Mutex  _mutex;
+        mutable Mutex               _mutex;
         mutable ContextDataMap      _contextDataMap;
         osg::ref_ptr< osg::Image>   _image;
 
@@ -402,7 +403,7 @@ public:
 
       osg::Image* getTile(unsigned int z, unsigned int x, unsigned int y)
       {
-          OpenThreads::ScopedLock< OpenThreads::Mutex> lk(_mutex);
+          ScopedMutexLock lk(_mutex);
 
           // Invert the y
           unsigned cols=0, rows=0;
@@ -457,7 +458,7 @@ public:
     osg::ref_ptr< MapNode > _mapNode;
     osg::ref_ptr< osg::Group > _root;
     osg::ref_ptr< WindowCaptureCallback > _windowCaptureCallback;
-    OpenThreads::Mutex _mutex;
+    Mutex _mutex;
 };
 
 

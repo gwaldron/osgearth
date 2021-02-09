@@ -205,6 +205,7 @@ const bool SurfaceNode::_enableDebugNodes = ::getenv("OSGEARTH_REX_DEBUG") != 0L
 
 SurfaceNode::SurfaceNode(const TileKey& tilekey, TileDrawable* drawable)
 {
+    setName(tilekey.str());
     _tileKey = tilekey;
 
     _drawable = drawable;
@@ -328,20 +329,22 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
     // Transform the child corners to world space
     
     const osg::Matrix& local2world = getMatrix();
-    for(int i=0; i<4; ++i)
+    for (int i = 0; i < 4; ++i)
     {
         VectorPoints& childCorners = _childrenCorners[i];
-         for(int j=0; j<8; ++j)
-         {
-             osg::Vec3& corner = childCorners[j];
-             corner = corner*local2world;
-         }
+        for (int j = 0; j < 8; ++j)
+        {
+            osg::Vec3& corner = childCorners[j];
+            corner = corner * local2world;
+        }
     }
 
     if( _enableDebugNodes )
     {
         removeDebugNode();
         addDebugNode(box);
+        //_debugNode = makeSphere(getBound());
+        //addChild(_debugNode.get());
     }
 
     // Update the horizon culler.

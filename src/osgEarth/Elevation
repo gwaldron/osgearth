@@ -30,6 +30,7 @@ namespace osgEarth
 {
     constexpr int ELEVATION_TILE_SIZE = 257;
 
+    class Map;
     class ProgressCallback;
 
     extern OSGEARTH_EXPORT osg::Texture* createEmptyElevationTexture();
@@ -49,16 +50,6 @@ namespace osgEarth
         bool hasData() const { return _e.getValue() != NO_DATA_VALUE && _r.getValue() > 0.0f; }
     private:
         Distance _e, _r;
-    };
-
-    /**
-     * Reference-counted wrapper for ElevationSample
-     */
-    class OSGEARTH_EXPORT RefElevationSample : public ElevationSample, public osg::Referenced
-    {
-    public:
-        RefElevationSample(const Distance& e, const Distance& r) :
-            ElevationSample(e, r) { }
     };
 
     /**
@@ -88,10 +79,10 @@ namespace osgEarth
         const TileKey& getTileKey() const { return _tilekey; }
 
         //! Normal map associated with the elevation data, if available.
-        osg::Texture2D* getNormalMapTexture() const { return _normalTex.get(); }
+        osg::Texture2D* getNormalMapTexture() const;
 
-        //! Set the normal map associated with this data
-        void setNormalMapTexture(osg::Texture2D* value) { _normalTex = value; }
+        //! Generates a normal map for this object.
+        void generateNormalMap(const Map* map, void* workingSet, ProgressCallback* progress);
 
         //! Direct access to the pixel reader
         const ImageUtils::PixelReader& reader() const { return _read; }
@@ -151,8 +142,14 @@ namespace osgEarth
                 return _revision < rhs._revision;
             }
             inline bool operator == (const RevElevationKey& rhs) const {
-                return _tilekey == rhs._tilekey &&
+                return 
+                    _tilekey == rhs._tilekey &&
                     _revision == rhs._revision;
+            }
+            inline bool operator != (const RevElevationKey& rhs) const {
+                return 
+                    _tilekey != rhs._tilekey ||
+                    _revision != rhs._revision;
             }
             inline std::size_t hash() const {
                 return osgEarth::hash_value_unsigned(_tilekey.hash(), (std::size_t)_revision);
@@ -161,7 +158,6 @@ namespace osgEarth
     }
 }
 
-#ifdef OSGEARTH_CXX11
 namespace std {
     // std::hash specialization for Key
     template<> struct hash<osgEarth::Internal::RevElevationKey> {
@@ -170,8 +166,6 @@ namespace std {
         }
     };
 }
-#endif
-
 
 
 #endif // OSGEARTH_ELEVATION_H

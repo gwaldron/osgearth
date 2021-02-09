@@ -28,6 +28,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
 #include <osgUtil/IncrementalCompileOperation>
+#include <typeinfo>
 
 #define LC "[URI] "
 
@@ -36,91 +37,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;
-
-//------------------------------------------------------------------------
-
-
-namespace
-{
-    class LoadNodeOperation : public osg::Operation, public osgUtil::IncrementalCompileOperation::CompileCompletedCallback
-    {
-    public:
-        LoadNodeOperation(const URI& uri, const osgDB::Options* options, Promise<osg::Node> promise) :
-            _uri(uri),
-            _promise(promise),
-            _options(options),
-            _block("URI LoadNodeOp(OE)")
-        {
-            // Get the currently active request layer and reuse it when the operator actually occurs, which will probably be on a different thread.
-            _requestLayer = NetworkMonitor::getRequestLayer();
-        }
-
-        void operator()(osg::Object*)
-        {
-            OE_PROFILING_ZONE_NAMED("loadAsyncNode");
-            OE_PROFILING_ZONE_TEXT(_uri.full());
-
-            NetworkMonitor::ScopedRequestLayer layerRequest(_requestLayer);
-
-            if (!_promise.isAbandoned())
-            {
-                // Read the node
-                osgEarth::ReadResult result = _uri.readNode(_options.get());
-
-                if (result.succeeded())
-                {
-                    osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico =
-                        OptionsData<osgUtil::IncrementalCompileOperation>::get(_options.get(), "osg::ico");
-
-                    // If we have an ICO, wait for it to be compiled
-                    if (ico.valid())
-                    {
-                        OE_PROFILING_ZONE_NAMED("ICO compile");
-
-                        _compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(result.getNode());
-                        _compileSet->_compileCompletedCallback = this;
-                        ico->add(_compileSet.get());
-
-                        unsigned int numTries = 0;
-                        // block until the compile completes, checking once and a while for
-                        // an abandoned operation (to avoid deadlock)
-                        while (!_block.wait(10)) // 10ms
-                        {
-                            // Limit the number of tries and give up after awhile to avoid the case where the ICO still has work to do but the application has exited.
-                            ++numTries;
-                            if (_promise.isAbandoned() || numTries == 1000)
-                            {
-                                _compileSet->_compileCompletedCallback = NULL;
-                                ico->remove(_compileSet.get());
-                                _compileSet = 0;
-                                break;
-                            }
-                        }
-
-                    }
-                }
-
-                _promise.resolve(result.getNode());
-            }
-        }
-
-        bool compileCompleted(osgUtil::IncrementalCompileOperation::CompileSet* compileSet)
-        {
-            // Clear the _compileSet to avoid keeping a circular reference to the content.
-            _compileSet = 0;
-            // release the wait.
-            _block.set();
-            return true;
-        }
-
-        Promise<osg::Node> _promise;
-        osg::ref_ptr<const osgDB::Options> _options;
-        osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
-        Threading::Event _block;
-        URI _uri;
-        std::string _requestLayer;
-    };
-}
 
 //------------------------------------------------------------------------
 
@@ -782,37 +698,6 @@ URI::readString(const osgDB::Options* dbOptions,
                 ProgressCallback*     progress ) const
 {
     return doRead<ReadString>( *this, dbOptions, progress );
-}
-
-
-Future<osg::Node>
-URI::readNodeAsync(const osgDB::Options* dbOptions,
-                   ProgressCallback* progress) const
-{
-    osg::ref_ptr<ThreadPool> threadPool;
-    if (dbOptions)
-    {
-        threadPool = ThreadPool::get(dbOptions);
-    }
-
-    Promise<osg::Node> promise;
-
-    osg::ref_ptr<osg::Operation> operation = new LoadNodeOperation(*this, dbOptions, promise);
-
-    if (operation.valid())
-    {
-        if (threadPool.valid())
-        {
-            threadPool->run(operation.get());
-        }
-        else
-        {
-            OE_DEBUG << "Immediately resolving async operation, please set a ThreadPool on the Options object" << std::endl;
-            operation->operator()(0);
-        }
-    }
-
-    return promise.getFuture();
 }
 
 //------------------------------------------------------------------------

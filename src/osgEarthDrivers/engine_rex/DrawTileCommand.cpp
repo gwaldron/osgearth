@@ -71,13 +71,22 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
     if (_colorSamplers)
     {
-        for (s = 0; s <= SamplerBinding::COLOR_PARENT; ++s)
+        for (s = SamplerBinding::COLOR; s <= SamplerBinding::COLOR_PARENT; ++s)
         {
             const Sampler& sampler = (*_colorSamplers)[s];
             SamplerState& samplerState = ds._samplerState._samplers[s];
 
             if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture.get()))
             {
+                // test for a "placeholder" texture, i.e. a texture whose image
+                // is not yet available -- if encountered, bail and render nothing.
+                if (sampler._texture->getNumImages() > 0 &&
+                    sampler._texture->getImage(0) != nullptr &&
+                    sampler._texture->getImage(0)->valid() == false)
+                {
+                    return;
+                }
+                
                 state.setActiveTextureUnit((*dsMaster._bindings)[s].unit());
                 sampler._texture->apply(state);
                 samplerState._texture = sampler._texture.get();

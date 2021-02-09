@@ -108,6 +108,7 @@ namespace osgEarth
 {
     class GeoExtent;
     class SequenceControl;
+    class TerrainEngine;
     class TerrainResources;
     class TileKey;
 
@@ -167,13 +168,13 @@ namespace osgEarth
         const osgDB::Options* getReadOptions() const;
 
         //! Open a layer.
-        virtual const Status& open() final;
+        virtual Status open() final;
 
         //! Open a layer. Shortcut for calling setReadOptions() followed by open().
-        virtual const Status& open(const osgDB::Options* options) final;
+        virtual Status open(const osgDB::Options* options) final;
 
         //! Close this layer.
-        virtual Status close() final;
+        virtual Status close();
 
         //! Whether the layer is open
         bool isOpen() const;
@@ -224,6 +225,9 @@ namespace osgEarth
 
         //! Hints that a subclass can set to influence the engine
         const Hints& getHints() const;
+
+        //! Options string to pass to OpenSceneGraph reader/writers
+        const std::string& getOsgOptionString() const;
 
     public:
 
@@ -283,11 +287,16 @@ namespace osgEarth
         };
 
         //! Callback invoked by the terrain engine on this layer before applying
+        //! @deprecated replace with cull() override
         void setCullCallback(TraversalCallback* tc);
         const TraversalCallback* getCullCallback() const;
 
         //! Called to traverse this layer
+        //! @deprecated Replace with cull() override
         void apply(osg::Node* node, osg::NodeVisitor* nv) const;
+
+        //! Called by the terrain engine during the update traversal
+        virtual void update(osg::NodeVisitor& nv) { }
 
         //! Map will call this function when this Layer is added to a Map.
         virtual void addedToMap(const class Map*) { }
@@ -318,11 +327,8 @@ namespace osgEarth
         //! Removes a property notification callback from this layer
         void removeCallback(LayerCallback* cb);
 
-        //! MapNode will call this function when terrain resources are available.
-        virtual void setTerrainResources(TerrainResources*);
-
         //! Revision number of this layer
-        unsigned getRevision() const { return (unsigned)_revision; }
+        int getRevision() const { return (int)_revision; }
 
         class Options;
 
@@ -349,6 +355,9 @@ namespace osgEarth
         //! Called by close() to shut down the resources associated with a layer.
         virtual Status closeImplementation();
 
+        //! Prepares the layer for rendering if necessary.
+        virtual void prepareForRendering(TerrainEngine*);
+
         //! Sets the status for this layer - internal
         const Status& setStatus(const Status& status) const;
 
@@ -361,7 +370,12 @@ namespace osgEarth
         //! mutable layer hints for the subclas to optionally access
         Hints& layerHints();
 
+        //! MapNode will call this function when terrain resources are available.
+        //! @deprecated Implement prepareForRendering instead
+        virtual void setTerrainResources(TerrainResources*) { }
+
     private:
+        const std::string& _layerName;
         UID _uid;
         osg::ref_ptr<osg::StateSet> _stateSet;
         RenderType _renderType;
@@ -369,13 +383,16 @@ namespace osgEarth
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
         Hints _hints;
-        OpenThreads::Atomic _revision;
+        std::atomic_int _revision;
         std::string _runtimeCacheId;
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<CacheSettings> _cacheSettings;
         std::vector<osg::ref_ptr<LayerShader> > _shaders;
         mutable Threading::Mutex* _mutex;
         bool _isClosing;
+
+        //! Prepares the layer for rendering if necessary.
+        void invoke_prepareForRendering(TerrainEngine*);
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;
@@ -420,6 +437,8 @@ namespace osgEarth
             OE_OPTION(ShaderOptions, shader);
             OE_OPTION_VECTOR(ShaderOptions, shaders);
             OE_OPTION(ProxySettings, proxySettings);
+            OE_OPTION(std::string, osgOptionString);
+            OE_OPTION(unsigned int, l2CacheSize);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -432,7 +451,7 @@ namespace osgEarth
     private:
         Layer::Options * _options;
         Layer::Options   _optionsConcrete;
-        Layer ( const Layer& rhs, const osg::CopyOp& op ) { }
+        Layer ( const Layer& rhs, const osg::CopyOp& op );
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map;

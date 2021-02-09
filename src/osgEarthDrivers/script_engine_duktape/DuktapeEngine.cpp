@@ -21,6 +21,7 @@
 #include <osgEarth/JsonUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/GeometryUtils>
+#include <osgEarth/Metrics>
 #include <sstream>
 
 #undef  LC
@@ -196,7 +197,7 @@ namespace
 
                 duk_idx_t geometry_i = duk_push_object(ctx);  // [global] [feature] [geometry]
                 {
-                    duk_push_string(ctx, Geometry::toString(feature->getGeometry()->getType()).c_str()); // [global] [feature] [geometry] [type]
+                    duk_push_string(ctx, Geometry::toString(feature->getGeometry()->getComponentType()).c_str()); // [global] [feature] [geometry] [type]
                     duk_put_prop_string(ctx, geometry_i, "type"); // [global] [feature] [geometry]
                 }
                 duk_put_prop_string(ctx, feature_i, "geometry");
@@ -285,6 +286,8 @@ DuktapeEngine::run(const std::string&   code,
                    Feature const*       feature,
                    FilterContext const* context)
 {
+    OE_PROFILING_ZONE;
+
     if (code.empty())
         return ScriptResult(EMPTY_STRING, false, "Script is empty.");
 

@@ -43,6 +43,9 @@ SelectionInfo::getLOD(unsigned lod) const
 void
 SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* profile, double mtrf, bool restrictPolarSubdivision)
 {
+    OE_SOFT_ASSERT_AND_RETURN(profile != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(profile->getSRS() != nullptr && profile->getSRS()->valid(), __func__, );
+
     if (getNumLODs() > 0)
     {
         OE_INFO << LC <<"Error: Selection Information already initialized"<<std::endl;

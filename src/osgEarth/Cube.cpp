@@ -294,28 +294,20 @@ CubeUtils::faceToCube( double& in_out_x, double& in_out_y, int face )
 CubeSpatialReference::CubeSpatialReference(const SpatialReference::Key& key) :
 SpatialReference(key)
 {
-    _key.horiz      = "unified-cube";
-    _key.horizLower = "unified-cube";
-    _name           = "Unified Cube";
-    _is_cube = true;
-    _is_contiguous = false;
-    _domain = PROJECTED;
-}
-
-CubeSpatialReference::~CubeSpatialReference()
-{
     _is_user_defined = true;
     _is_cube         = true;
-    _is_contiguous   = false;
     _domain = PROJECTED;
-    _key.horiz       = "unified-cube";
-    _key.horizLower  = "unified-cube";
-    _name            = "Unified Cube";
+    _name = "Unified Cube";
 
     // Custom units. The big number there roughly converts [0..1] to meters
     // on a spheroid with WGS84-ish radius. Not perfect but close enough for
     // the purposes of this class
     _units = Units("Cube face", "cube", Units::TYPE_LINEAR, 42949672.96/4.0);
+}
+
+CubeSpatialReference::~CubeSpatialReference()
+{
+    //nop
 }
 
 const SpatialReference*

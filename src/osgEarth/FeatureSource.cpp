@@ -22,7 +22,6 @@
 #define LC "[FeatureSource] " << getName() << ": "
 
 using namespace osgEarth;
-using namespace OpenThreads;
 
 //...................................................................
 
@@ -95,6 +94,7 @@ FeatureSource::init()
 {
     Layer::init();
     _blacklistMutex.setName(getName());
+    _blacklistSize = 0u;
 }
 
 Status
@@ -154,6 +154,7 @@ FeatureSource::addToBlacklist( FeatureID fid )
 {
     Threading::ScopedWriteLock exclusive( _blacklistMutex );
     _blacklist.insert( fid );
+    _blacklistSize = _blacklist.size();
 }
 
 void
@@ -161,6 +162,7 @@ FeatureSource::removeFromBlacklist( FeatureID fid )
 {
     Threading::ScopedWriteLock exclusive( _blacklistMutex );
     _blacklist.erase( fid );
+    _blacklistSize = _blacklist.size();
 }
 
 void
@@ -168,11 +170,15 @@ FeatureSource::clearBlacklist()
 {
     Threading::ScopedWriteLock exclusive( _blacklistMutex );
     _blacklist.clear();
+    _blacklistSize = 0u;
 }
 
 bool
 FeatureSource::isBlacklisted( FeatureID fid ) const
 {
+    // help reduce mutex contention
+    if (_blacklistSize == 0u)
+        return false;
     Threading::ScopedReadLock lock(_blacklistMutex);
     return _blacklist.find( fid ) != _blacklist.end();
 }
@@ -191,6 +197,15 @@ FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) cons
             cx = filter->get()->push( features, cx );
         }
     }
+}
+
+const GeoExtent&
+FeatureSource::getExtent() const
+{
+    if (_featureProfile.valid())
+        return _featureProfile->getExtent();
+    else
+        return Layer::getExtent();
 }
 
 FeatureCursor*
@@ -269,7 +284,7 @@ FeatureSource::createFeatureCursor(const TileKey& key, const Distance& buffer, P
             UnorderedSet<TileKey> featureKeys;
             for (int i = 0; i < intersectingKeys.size(); ++i)
             {        
-                if (intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
+                if (_featureProfile->getMaxLevel() >= 0 && intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
                     featureKeys.insert(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
                 else
                     featureKeys.insert(intersectingKeys[i]);

@@ -29,6 +29,7 @@
 #include <osgEarth/MapCallback>
 #include <osg/Timer>
 #include <unordered_map>
+#include <queue>
 #include <atomic>
 
 namespace osgEarth
@@ -44,6 +45,16 @@ namespace osgEarth
         typedef osg::ref_ptr<ElevationTexture> Pointer;
         typedef std::unordered_map<Internal::RevElevationKey, WeakPointer> WeakLUT;
 
+    private:
+        struct OSGEARTH_EXPORT StrongLRU {
+            StrongLRU(unsigned maxSize=64u);
+            Mutexed<std::queue<Pointer>> _lru;
+            unsigned _maxSize;
+            void push(Pointer& p);
+            void clear();
+        };
+
+    public:
         //! User data that a client can use to speed up queries in
         //! a local geographic area or sample a custom set of layers.
         class OSGEARTH_EXPORT WorkingSet
@@ -51,7 +62,7 @@ namespace osgEarth
         public:
             //! Construct a new local working set cache.
             //! @param size Cache size
-            WorkingSet(unsigned size =64);
+            WorkingSet(unsigned size =32u);
 
             //! Assign a specific set of elevation layer to use 
             //! for sampling. Usually this is unnecessary as the Pool
@@ -63,9 +74,13 @@ namespace osgEarth
                 _elevationLayers = layers;
             }
 
-            typedef LRUCache<Internal::RevElevationKey,Pointer> LRU;
-            LRU _lru;
+            //! Invalidate the cache.
+            void clear();
+
+        private:
+            StrongLRU _lru;
             ElevationLayerVector _elevationLayers;
+            friend class ElevationPool;
         };
 
     public:
@@ -147,9 +162,14 @@ namespace osgEarth
         osg::observer_ptr<const Map> _map;
 
         // stores weak pointers to elevation textures wherever they may exist
-        // elsewhere in the system
+        // elsewhere in the system, including the local L2 LRU.
         WeakLUT _globalLUT;
         Threading::ReadWriteMutex _globalLUTMutex;
+
+        // LRU container that stores the last N strong references to accessed tiles.
+        // Not used directly - just used to hold ref_ptrs to things so they stay
+        // alive in the global LUT (see above).
+        StrongLRU _L2;
 
         // internal: spatial index of data extents
         void* _index;
@@ -157,7 +177,7 @@ namespace osgEarth
         // elevation tile size
         unsigned _tileSize;
 
-        WorkingSet* _L2;
+        //WorkingSet* _L2;
 
         bool _mapDataDirty;
 
@@ -188,7 +208,8 @@ namespace osgEarth
             WorkingSet* ws,
             ProgressCallback* progress);
 
-        unsigned getLOD(double x, double y) const;
+        //! Best LOD this a point, or -1 if no data in index
+        int getLOD(double x, double y) const;
 
         osg::ref_ptr<ElevationTexture> getOrCreateRaster(
             const Internal::RevElevationKey& key, 
@@ -209,26 +230,38 @@ namespace osgEarth
     /**
     * Utility to run elevation queries in the background.
     */
-    class OSGEARTH_EXPORT AsyncElevationSampler : public osg::Referenced
+    class OSGEARTH_EXPORT AsyncElevationSampler
     {
     public:
+        //! Construct a new sampler
+        //! @param map Map the sampler will use to sample elevation data
+        //! @param threads Number of threads the sampler should use
         AsyncElevationSampler(
             const Map* map,
             unsigned threads =1u);
 
-        Future<RefElevationSample> getSample(
+        //! Destructor
+        virtual ~AsyncElevationSampler() { }
+
+        //! Sample elevation at a point at highest available resolution
+        //! @param p Point at which to sample terrain elevation
+        //! @return Future result of the sample
+        Future<ElevationSample> getSample(
             const GeoPoint& p);
 
-        Future<RefElevationSample> getSample(
+        //! Sample elevation at a point and a target resolution
+        //! @param p Point at which to sample terrain elevation
+        //! @param resolution Resolution at which to sample terrain
+        //! @return Future result of the sample
+        Future<ElevationSample> getSample(
             const GeoPoint& p,
             const Distance& resolution);
 
-        virtual ~AsyncElevationSampler() { }
-
     protected:
+
         osg::observer_ptr<const Map> _map;
         ElevationPool::WorkingSet _ws;
-        osg::ref_ptr<ThreadPool> _threadPool;
+        JobArena _arena;
     };
 } // namespace
 

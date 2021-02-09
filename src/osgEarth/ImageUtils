@@ -63,8 +63,8 @@ namespace osgEarth { namespace Util
          * Copys a portion of one image into another.
          */
         static bool copyAsSubImage(
-            const osg::Image* src, 
-            osg::Image*       dst, 
+            const osg::Image* src,
+            osg::Image*       dst,
             int dst_start_col, int dst_start_row);
 
         /**
@@ -80,7 +80,7 @@ namespace osgEarth { namespace Util
          * This lets you resize directly into a particular mipmap level of the output image.
          */
         static bool resizeImage(
-            const osg::Image* input, 
+            const osg::Image* input,
             unsigned int new_s, unsigned int new_t,
             osg::ref_ptr<osg::Image>& output,
             unsigned int mipmapLevel =0, bool bilinear=true );
@@ -114,6 +114,20 @@ namespace osgEarth { namespace Util
             double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy);
 
         /**
+         * Crops the input image using the input dimension
+         *  Returns a new image, leaving the input image unaltered.
+         *@param x
+         *       The cropping x coordinate of the input image.
+         *@param y
+         *       The cropping y coordinate of the input image.
+         *@param width
+         *       The width in pixels of the crop.
+         *@param height
+         *       The height in pixels of the crop.
+         */
+        static osg::Image* cropImage(osg::Image* image, unsigned int x, unsigned int y, unsigned int width, unsigned int height);
+
+        /**
          * Blends the "src" image into the "dest" image, based on the "a" value.
          * The two images must be the same.
          */
@@ -127,13 +141,12 @@ namespace osgEarth { namespace Util
 
         /**
          * For each "layer" in the input image (each bitmap in the "r" dimension),
-         * create a new, separate image with r=1. If the input image is r=1, it is
-         * simply placed onto the output vector (no copy).
-         * Returns true upon sucess, false upon failure
+         * create a new, separate image with r=1.
+         * Returns true upon sucess, false upon failure or if r < 2
          */
         static bool flattenImage(
-            const osg::Image* image, 
-            std::vector<osg::ref_ptr<const osg::Image> >& output);
+            const osg::Image* image,
+            std::vector<osg::ref_ptr<osg::Image> >& output);
 
         /**
          * Gets whether the input image's dimensions are powers of 2.
@@ -168,7 +181,7 @@ namespace osgEarth { namespace Util
         static bool isSingleColorImage(const osg::Image* image, float threshold =0.01);
 
         /**
-         * Returns true if it is possible to convert the image to the specified 
+         * Returns true if it is possible to convert the image to the specified
          * format/datatype specification.
          */
         static bool canConvert(const osg::Image* image, GLenum pixelFormat, GLenum dataType);
@@ -216,7 +229,7 @@ namespace osgEarth { namespace Util
         }
 
         /**
-         * Checks whether the image has an alpha component 
+         * Checks whether the image has an alpha component
          */
         static bool hasAlphaChannel( const osg::Image* image );
 
@@ -308,7 +321,7 @@ namespace osgEarth { namespace Util
         */
         static void mipmapImageInPlace(
             osg::Image* image);
-        
+
         //! Returns a compressed copy of the input image.
         //! @param image Image to compress
         //! @param method Compression method to use; see ImageLayer::getCompressionMethod
@@ -321,7 +334,11 @@ namespace osgEarth { namespace Util
         //! @param method Compression method to use; see ImageLayer::getCompressionMethod
         static void compressImageInPlace(
             osg::Image* image,
-            const std::string& method ="");
+            const std::string& method ="auto");
+
+        //! Compresses and mipmaps all textures in the given subgraph
+        //! @param node The node to process
+        static void compressAndMipmapTextures(osg::Node* node);
 
         /**
          * Gets an osgDB::ReaderWriter for the given input stream.
@@ -330,7 +347,7 @@ namespace osgEarth { namespace Util
         static osgDB::ReaderWriter* getReaderWriterForStream(std::istream& stream);
 
         /**
-         * Reads an osg::Image from the given input stream.         
+         * Reads an osg::Image from the given input stream.
          * Returns NULL if the image could not be read.
          */
         static osg::Image* readStream(std::istream& stream, const osgDB::Options* options);
@@ -427,7 +444,7 @@ namespace osgEarth { namespace Util
             bool     _sampleAsTexture;
             bool     _sampleAsRepeatingTexture;
         };
-        
+
         /**
          * Writes color data to an image, regardles of its internal pixel format.
          */
@@ -510,7 +527,7 @@ namespace osgEarth { namespace Util
                         }
                     }
                 }
-            }          
+            }
 
             /**
              * Traverse an image, and call this method on the superclass:

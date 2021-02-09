@@ -21,7 +21,7 @@
 
 #include "Common"
 #include "TileNode"
-#include "FrameClock"
+#include <osgEarth/FrameClock>
 #include <osgEarth/Threading>
 #include <osg/Group>
 

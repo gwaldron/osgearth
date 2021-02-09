@@ -34,6 +34,12 @@ StyleSelector::StyleSelector( const Config& conf )
     mergeConfig( conf );
 }
 
+StyleSelector::StyleSelector(const std::string& name, const StringExpression& expr)
+{
+    _name = name;
+    _styleExpression = expr;
+}
+
 std::string
 StyleSelector::getSelectedStyleName() const 
 {

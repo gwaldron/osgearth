@@ -56,7 +56,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Util;
 
 #undef USE_PROXY_NODE_FOR_TESTING
 #define OE_TEST OE_NULL
@@ -75,7 +74,7 @@ namespace
     // callback to force features onto the high-latency queue.
     struct HighLatencyFileLocationCallback : public osgDB::FileLocationCallback
     {
-        Location fileLocation(const std::string& filename, const osgDB::Options* options)
+        Location fileLocation(const std::string& filename, const osgDB::Options* options) override
         {
             return REMOTE_FILE;
         }
@@ -85,10 +84,12 @@ namespace
 
     struct MyProgressCallback : public DatabasePagerProgressCallback
     {
+        FeatureModelGraph* _graph;
         osg::ref_ptr<const Session> _session;
 
-        MyProgressCallback(const Session* session) :
+        MyProgressCallback(FeatureModelGraph* graph, const Session* session) :
             DatabasePagerProgressCallback(),
+            _graph(graph),
             _session(session)
         {
             //nop
@@ -96,9 +97,18 @@ namespace
 
         virtual bool shouldCancel() const
         {
-            return
+            bool should =
                 DatabasePagerProgressCallback::shouldCancel() ||
-                (!_session.valid() || !_session->hasMap());
+                !_graph->isActive() ||
+                !_session.valid() ||
+                !_session->hasMap();
+
+            if (should)
+            {
+                OE_DEBUG << "FMG: canceling load on thread " << std::this_thread::get_id() << std::endl;
+            }
+
+            return should;
         }
     };
 
@@ -329,9 +339,18 @@ namespace
             osg::ref_ptr<FeatureModelGraph> graph;
             if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
             {
-                OE_WARN << "Internal error - no FeatureModelGraph object in OptionsData\n";
-                return ReadResult::ERROR_IN_READING_FILE;
+                // FMG was shut down
+                return ReadResult(nullptr);
             }
+
+            // Enter as a graph reader:
+            ScopedReadLock reader(graph->getSync());
+
+            OE_SCOPED_THREAD_NAME("DBPager", graph->getOwnerName());
+
+            // make sure it's running:
+            if (!graph->isActive())
+                return ReadResult(nullptr);
 
             Registry::instance()->startActivity(uri);
             osg::ref_ptr<osg::Node> node = graph->load(lod, x, y, uri, readOptions);
@@ -381,7 +400,8 @@ FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
     _options(options),
     _featureExtentClamped(false),
     _useTiledSource(false),
-    _blacklistMutex("FMG BlackList(OE)")
+    _blacklistMutex("FMG BlackList(OE)"),
+    _isActive(false)
 {
     //NOP
 }
@@ -525,10 +545,18 @@ FeatureModelGraph::open()
             maxRange = _options.layout()->maxRange().get();
         }
 
+        double width, height;
+        featureProfile->getTilingProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
+        GeoExtent firstLevelExt(featureProfile->getSRS(),
+                                featureProfile->getExtent().west(),
+                                featureProfile->getExtent().south(),
+                                featureProfile->getExtent().west() + width,
+                                featureProfile->getExtent().south() + height);
+
         // Max range is unspecified, so compute one
         if (maxRange == FLT_MAX)
         {
-            osg::BoundingSphered bounds = getBoundInWorldCoords(featureProfile->getExtent());
+            osg::BoundingSphered bounds = getBoundInWorldCoords(firstLevelExt);
             maxRange = bounds.radius() * _options.layout()->tileSizeFactor().get();
         }
 
@@ -536,15 +564,7 @@ FeatureModelGraph::open()
         // GW: Need this?
         if (!_options.layout()->tileSizeFactor().isSet())
         {
-            double width, height;
-            featureProfile->getTilingProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
-
-            GeoExtent ext(featureProfile->getSRS(),
-                featureProfile->getExtent().west(),
-                featureProfile->getExtent().south(),
-                featureProfile->getExtent().west() + width,
-                featureProfile->getExtent().south() + height);
-            osg::BoundingSphered bounds = getBoundInWorldCoords(ext);
+            osg::BoundingSphered bounds = getBoundInWorldCoords(firstLevelExt);
 
             float tileSizeFactor = maxRange / bounds.radius();
 
@@ -554,7 +574,10 @@ FeatureModelGraph::open()
             _options.layout()->tileSizeFactor() = tileSizeFactor;
         }
 
-        // Compute the max range of all the feature levels.  Each subsequent level if half of the parent.
+        // The max range that has been computed is for the first level of the dataset, which may be greater than 0.  Compute the max range at level 0 to properly fill in the lodmap from level 0 on.
+        maxRange = maxRange * pow(2.0, featureProfile->getFirstLevel());
+
+        // Compute the max range of all the feature levels.  Each subsequent level is half of the parent.
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
         for (int i = 0; i < featureProfile->getMaxLevel() + 1; i++)
         {
@@ -639,7 +662,8 @@ FeatureModelGraph::open()
     // Set up backface culling. If the option is unset, enable it by default
     // since shadowing requires it and it's a decent general-purpose setting
     if (_options.backfaceCulling().isSet())
-        stateSet->setMode(GL_CULL_FACE, *_options.backfaceCulling() ? 1 : 0);
+        stateSet->setMode(GL_CULL_FACE,
+            (*_options.backfaceCulling() ? 1 : 0) | osg::StateAttribute::OVERRIDE);
     else
         stateSet->setMode(GL_CULL_FACE, 1);
 
@@ -663,9 +687,20 @@ FeatureModelGraph::open()
 
     ADJUST_EVENT_TRAV_COUNT(this, 1);
 
+    _isActive = true;
+
     redraw();
 
     return Status::OK();
+}
+
+void
+FeatureModelGraph::shutdown()
+{
+    _isActive = false;
+
+    // Block until all active pager tasks have returned/canceled
+    //ScopedWriteLock waiter(getSync());
 }
 
 FeatureModelGraph::~FeatureModelGraph()
@@ -1246,7 +1281,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
     // Not there? Build it
     if (!group.valid())
     {
-        osg::ref_ptr<ProgressCallback> progress = new MyProgressCallback(_session.get());
+        osg::ref_ptr<ProgressCallback> progress = new MyProgressCallback(this, _session.get());
 
         // set up for feature indexing if appropriate:
         FeatureSourceIndexNode* index = 0L;
@@ -1840,6 +1875,18 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
             getOrCreateStateSet()->setAttributeAndModes(
                 new osg::Depth(osg::Depth::LEQUAL, 0, 1, false));
         }
+
+        if (render->backfaceCulling().isSet())
+        {
+            if (render->backfaceCulling() == true)
+            {
+                getOrCreateStateSet()->setMode(GL_CULL_FACE, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+            }
+            else
+            {
+                getOrCreateStateSet()->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+            }
+        }
     }
 }
 
@@ -1875,7 +1922,7 @@ FeatureModelGraph::runPostMergeOperations(osg::Node* node)
 void
 FeatureModelGraph::redraw()
 {
-    OpenThreads::ScopedLock< OpenThreads::ReentrantMutex > lk(_redrawMutex);
+    ScopedRecursiveMutexLock lk(_redrawMutex);
 
     OE_TEST << LC << "redraw " << std::endl;
 

@@ -55,6 +55,43 @@ int usage( const std::string& app )
     return 0;
 }
 
+// inline CSS, for use with the --script option
+const char* styles_css =
+R"(
+    p {
+        altitude-clamping: terrain-drape;
+        render-backface-culling: false;
+    }
+    p1: p{ fill: #ff3f3f9f; }
+    p2: p{ fill: #3fff3f9f; }
+    p3: p{ fill: #3f3fff9f; }
+    p4: p{ fill: #ff3fff9f; }
+    p5: p{ fill: #ffff3f9f; }
+)";
+
+// JavaScript style selector, for use with the --script option
+const char* script_source =
+R"(
+    function getStyleClass()
+    {
+        // Exclude any countries beginning with the letter A: 
+        if ( feature.properties.name.charAt(0) === 'A' )
+            return null;
+                        
+        // If it starts with the letter C, return an inline style:
+        if ( feature.properties.name.charAt(0) == 'C' )
+            return '{ _fill: #ffc838; stroke: #8f8838; extrusion-height: 250000; }';
+                        
+        // Otherwise, return a named style based on some calculations:
+        var pop = parseFloat(feature.properties.pop);
+        if      ( pop <= 14045470 )  return "p1";
+        else if ( pop <= 43410900 )  return "p2";
+        else if ( pop <= 97228750 )  return "p3";
+        else if ( pop <= 258833000 ) return "p4";
+        else                         return "p5";
+    }
+)";
+
 //
 // NOTE: run this sample from the repo/tests directory.
 //
@@ -72,6 +109,7 @@ int main(int argc, char** argv)
     bool useLabels  = arguments.read("--labels");
     bool useDraping = arguments.read("--drape");
     bool useClamping = arguments.read("--clamp");
+    bool useScript = arguments.read("--script");
 
     std::string outfile;
     arguments.read("--out", outfile);
@@ -145,15 +183,25 @@ int main(int argc, char** argv)
         map->addLayer(layer);
     }
 
-    else //if (useGeom)
+    else
     {
         FeatureModelLayer* layer = new FeatureModelLayer();
         layer->setFeatureSource(features);
 
         StyleSheet* styleSheet = new StyleSheet();
-        styleSheet->addStyle(style);
-        layer->setStyleSheet(styleSheet);
 
+        if (useScript)
+        {
+            styleSheet->addStylesFromCSS(styles_css);
+            styleSheet->setScript(new StyleSheet::ScriptDef(script_source));
+            styleSheet->addSelector(StyleSelector("default", StringExpression("getStyleClass()")));
+        }
+        else
+        {
+            styleSheet->addStyle(style);
+        }
+
+        layer->setStyleSheet(styleSheet);
         map->addLayer(layer);
     }
 

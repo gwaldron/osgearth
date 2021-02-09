@@ -34,7 +34,8 @@ _camera(0L),
 _currentTileNode(0L),
 _orphanedPassesDetected(0u),
 _cv(cullVisitor),
-_context(context)
+_context(context),
+_layerExtents(nullptr)
 {
     setVisitorType(CULL_VISITOR);
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
@@ -100,9 +101,8 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             if (drawable->_layer)
             {
                 const LayerExtent& le = (*_layerExtents)[drawable->_layer->getUID()];
-                if (le._computed && 
-                    le._extent.isValid() &&
-                    le._extent.intersects(tileNode->getKey().getExtent()) == false)
+                if (le._extent.isValid() &&
+                    ! le._extent.intersects(tileNode->getKey().getExtent(), false))
                 {
                     // culled out!
                     //OE_DEBUG << LC << "Skippping " << drawable->_layer->getName() 

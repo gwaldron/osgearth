@@ -27,7 +27,6 @@
 #include "TileNodeRegistry"
 #include "RenderBindings"
 #include "TileDrawable"
-#include "FrameClock"
 
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/Progress>
@@ -41,6 +40,7 @@ using namespace osgEarth;
 
 namespace osgEarth {
     class TerrainEngine;
+    class FrameClock;
 }
 
 namespace osgEarth { namespace REX
@@ -70,7 +70,7 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<const Map> getMap() const;
 
         // only call this variant when it's safe to do so (update, cull).
-        TerrainEngineNode* getEngine() const { return _terrainEngine.get(); }
+        osg::ref_ptr<TerrainEngineNode> getEngine() { return osg::ref_ptr<TerrainEngineNode>(_terrainEngine); }
 
         TileNodeRegistry* liveTiles() const { return _liveTiles; }
 

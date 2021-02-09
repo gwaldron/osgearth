@@ -35,7 +35,7 @@ macro(check_for_cxx11_compiler _VAR)
     set(${_VAR})
 
     # Cmake option - by default it's ON unless we need to turn it off:
-    option(BUILD_USE_CXX11 "Build with C++11 Support" ON)
+    #option(BUILD_USE_CXX11 "Build with C++11 Support" ON)
     
     # By default disable C++11 on GCC 4.x unless the user forces it on
     # by setting BUILD_USE_CXX11_ON_GCC4
@@ -45,7 +45,7 @@ macro(check_for_cxx11_compiler _VAR)
             set(CHECK_FOR_CXX11) #off
             set(NO_CXX11_REASON "to use C++11 on GCC ${CMAKE_CXX_COMPILER_VERSION} you must set BUILD_USE_CXX11_ON_GCC4=ON")
         endif()
-    elseif(BUILD_USE_CXX11)
+    else()
         set(CHECK_FOR_CXX11 1)
     endif()
 
@@ -108,10 +108,10 @@ macro(check_for_cxx11_compiler _VAR)
     endif()
     
     if (${_VAR})
-        message(STATUS "Building with C++11 support")
+        # message(STATUS "Confirmed C++11 support")
         set(CMAKE_CXX_STANDARD 11)
     else()
-        message(STATUS "Building without C++11 support because ${NO_CXX11_REASON}")
+        message(STATUS "Cannot verify C++11 support because ${NO_CXX11_REASON}")
     endif()
     
 endmacro()

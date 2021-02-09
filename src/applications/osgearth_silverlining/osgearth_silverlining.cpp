@@ -123,7 +123,8 @@ struct SLCallback : public osgEarth::SilverLining::Callback
 {
     void onInitialize(Atmosphere& atmosphere)
     {
-        CloudLayer cumulus = CloudLayerFactory::Create(CUMULUS_CONGESTUS);
+        CloudLayer cumulus = CloudLayerFactory::Create(CUMULUS_CONGESTUS, atmosphere);
+
         cumulus.SetIsInfinite(true);
         cumulus.SetBaseAltitude(3000);
         cumulus.SetThickness(50);
@@ -173,9 +174,6 @@ main(int argc, char** argv)
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    // Tell the database pager to not modify the unref settings
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
-
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
@@ -192,9 +190,6 @@ main(int argc, char** argv)
                 "earth file that does not use a sky already.\n";
             return -1;
         }
-
-        viewer.getCamera()->setNearFarRatio(0.00002);
-        viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
         MapNode* mapNode = MapNode::findMapNode( node );
 

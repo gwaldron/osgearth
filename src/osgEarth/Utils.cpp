@@ -17,9 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Utils>
+#include <osgEarth/Threading>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/Metrics>
 #include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth;
+using namespace osgEarth::Threading;
 using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------

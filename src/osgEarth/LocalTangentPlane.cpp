@@ -33,7 +33,6 @@ TangentPlaneSpatialReference::TangentPlaneSpatialReference(
     _originLLA(originLLA)
 {
     _is_user_defined = true;
-    _is_contiguous   = true;
     _is_ltp = true;
     _domain = PROJECTED;
     _name = "Tangent Plane";

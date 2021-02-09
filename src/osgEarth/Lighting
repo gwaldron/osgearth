@@ -44,6 +44,9 @@ namespace osgEarth
 
         //! Removed the lighting mode from a stateset
         static void remove(osg::StateSet* stateSet);
+
+        //! Installs a default material on a stateset
+        static void installDefaultMaterial(osg::StateSet* stateSet);
     };
 
     /**

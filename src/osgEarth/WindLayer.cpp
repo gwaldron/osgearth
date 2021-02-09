@@ -23,6 +23,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/GLUtils>
+#include <osgEarth/TerrainEngineNode>
+#include <osg/BindImageTexture>
 #include <osg/Texture3D>
 #include <osg/Program>
 #include <osgUtil/CullVisitor>
@@ -58,11 +60,10 @@ namespace
     struct DrawState
     {
         DrawState() :
-            _buffer(INT_MAX),
             _bufferSize(0),
-            _glBufferStorage(NULL) { }
+            _glBufferStorage(nullptr) { }
 
-        GLuint _buffer;
+        osg::ref_ptr<GLBuffer> _buffer;
         GLuint _bufferSize;
 
         // pre-OSG 3.6 support
@@ -72,12 +73,6 @@ namespace
     // Data stored per-camera
     struct CameraState
     {
-        CameraState() :
-            _windData(NULL),
-            _numWindsAllocated(0) { }
-
-        ~CameraState();
-
         WindData* _windData;
         unsigned _numWindsAllocated;
 
@@ -86,35 +81,59 @@ namespace
 
         osg::ref_ptr<osg::StateSet> _sharedStateSet;
         osg::ref_ptr<osg::Uniform> _texToViewMatrix;
-    };
 
-    typedef PerObjectFastMap<const osg::Camera*, CameraState> CameraStates;
+        CameraState() :
+            _windData(nullptr),
+            _numWindsAllocated(0) { }
 
-    struct CameraState_ReleaseGLObjects : public CameraStates::Functor
-    {
-        osg::State* _state;
-        CameraState_ReleaseGLObjects(osg::State* state) : _state(state) { }
-        void operator()(CameraState& cs)
-        {
-            if (cs._computeStateSet.valid())
-                cs._computeStateSet->releaseGLObjects(_state);
-            if (cs._sharedStateSet.valid())
-                cs._sharedStateSet->releaseGLObjects(_state);
+        ~CameraState() {
+            if (_windData)
+                delete[] _windData;
+            releaseGLObjects(nullptr);
+        }
+
+        void releaseGLObjects(osg::State* state) const {
+            if (_computeStateSet.valid())
+                _computeStateSet->releaseGLObjects(state);
+            if (_sharedStateSet.valid())
+                _sharedStateSet->releaseGLObjects(state);
+        }
+
+        void resizeGLObjectBuffers(unsigned size) {
+            if (_computeStateSet.valid())
+                _computeStateSet->resizeGLObjectBuffers(size);
+            if (_sharedStateSet.valid())
+                _sharedStateSet->resizeGLObjectBuffers(size);
         }
     };
 
-    CameraState::~CameraState()
+    // mutexed per-camera map of CameraState objects
+    struct CameraStates : public Mutexed<std::unordered_map<const osg::Camera*, CameraState>>
     {
-        if (_windData)
-            delete[] _windData;
+        CameraState& get(const osg::Camera* camera)
+        {
+            ScopedMutexLock lock(mutex());
+            return (*this)[camera];
+        }
 
-        CameraState_ReleaseGLObjects r(NULL);
-        r(*this);
-    }
+        void for_each(const std::function<void(CameraState&)>& func) {
+            ScopedMutexLock lock(mutex());
+            for (auto& i : *this) {
+                func(i.second);
+            }
+        }
 
+        void for_each(const std::function<void(const CameraState&)>& func) const {
+            ScopedMutexLock lock(mutex());
+            for (auto& i : *this) {
+                func(i.second);
+            }
+        }
+    };
 
     struct WindDrawable;
 
+    // custom cull callback for the wind drawable
     struct WindStateCuller : public osg::Drawable::CullCallback
     {
         bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const;
@@ -127,11 +146,12 @@ namespace
         WindDrawable(const osgDB::Options* readOptions);
 
         void setupPerCameraState(const osg::Camera* camera);
-        void drawImplementation(osg::RenderInfo& ri) const;
         void compileGLObjects(osg::RenderInfo& ri, DrawState& ds) const;
-        void releaseGLObjects(osg::State* state) const;
-        void resizeGLObjectBuffers(unsigned maxSize);
         void updateBuffers(CameraState&, const osg::Camera*);
+
+        void drawImplementation(osg::RenderInfo& ri) const override;
+        void releaseGLObjects(osg::State* state) const override;
+        void resizeGLObjectBuffers(unsigned maxSize) override;
 
         osg::ref_ptr<const osgDB::Options> _readOptions;
         osg::ref_ptr<osg::Program> _computeProgram;
@@ -157,8 +177,9 @@ namespace
     }
 
     WindDrawable::WindDrawable(const osgDB::Options* readOptions)
-        : _cameraState(OE_MUTEX_NAME)
     {
+        _cameraState.setName(OE_MUTEX_NAME);
+
         // Always run the shader.
         setCullingActive(false);
 
@@ -169,6 +190,7 @@ namespace
         // and then never calling drawImplementation again. Cry.
         setUseDisplayList(false);
 
+        // Set up our compute shader
         Shaders shaders;
         std::string source = ShaderLoader::load(shaders.WindComputer, shaders, readOptions);
         osg::Shader* computeShader = new osg::Shader(osg::Shader::COMPUTE, source);
@@ -190,11 +212,12 @@ namespace
         tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
         tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
         tex->setWrap(osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE);
+        tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
         // state set for the compute program that populates the wind texture
         CameraState& cs = _cameraState.get(camera);
         cs._computeStateSet = new osg::StateSet();
-        cs._computeStateSet->setAttribute(_computeProgram.get(), 1);        
+        cs._computeStateSet->setAttribute(_computeProgram.get(), 1);
 
         // Binding so the compute shader can write to the texture.
         // Note, setting "layered=GL_TRUE" is required to bind the entire 3D texture.
@@ -231,27 +254,28 @@ namespace
 
             GLuint requiredBufferSize = sizeof(WindData) * (_winds.size()+1);
 
-            if (ds._buffer == INT_MAX || ds._bufferSize < requiredBufferSize)
+            if (!ds._buffer.valid() || ds._bufferSize < requiredBufferSize)
             {
-                if (ds._buffer != INT_MAX)
-                    ext->glDeleteBuffers(1, &ds._buffer);
-
-                ext->glGenBuffers(1, &ds._buffer);
-
+                ds._buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, *state, "oe.wind");
                 ds._bufferSize = requiredBufferSize;
 
-                if (!ds._glBufferStorage)
-                {
-                    // polyfill for pre-OSG 3.6 support
-                    osg::setGLExtensionFuncPtr(ds._glBufferStorage, "glBufferStorage", "glBufferStorageARB");
-                }
+                //if (!ds._glBufferStorage)
+                //{
+                //    // polyfill for pre-OSG 3.6 support
+                //    osg::setGLExtensionFuncPtr(ds._glBufferStorage, "glBufferStorage", "glBufferStorageARB");
+                //}
 
-                ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer);
-                ds._glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, NULL, GL_DYNAMIC_STORAGE_BIT);
+                ds._buffer->bind();
+                //ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer->_handle);
+                //ds._glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+                GLFunctions::get(*state).
+                    glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
             }
             else
             {
-                ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer);
+                ds._buffer->bind();
+                //ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer->_handle);
             }
 
             // download to GPU
@@ -263,7 +287,7 @@ namespace
     {
         if (cs._numWindsAllocated < _winds.size()+1)
         {
-            if (cs._windData != NULL)
+            if (cs._windData != nullptr)
                 delete [] cs._windData;
 
             // add one for the terminator.
@@ -315,30 +339,36 @@ namespace
         if (state)
         {
             DrawState& ds = _ds[state->getContextID()];
-            if (ds._buffer != INT_MAX)
-            {
-                osg::GLExtensions* ext = state->get<osg::GLExtensions>();
-                ext->glDeleteBuffers(1, &ds._buffer);
-            }
-
-            CameraState_ReleaseGLObjects r(state);
-            _cameraState.forEach(r);
+            ds._buffer = nullptr;
         }
         else
         {
-            _cameraState.clear();
+            _ds.clear();
         }
+
+        _cameraState.for_each([&](const CameraState& cs)
+            {
+                cs.releaseGLObjects(state);
+            });
+
+        osg::Drawable::releaseGLObjects(state);
     }
 
     void WindDrawable::resizeGLObjectBuffers(unsigned maxSize)
     {
         _ds.resize(maxSize);
-        _cameraState.clear();
+
+        _cameraState.for_each([&](CameraState& cs)
+            {
+                cs.resizeGLObjectBuffers(maxSize);
+            });
+
+        osg::Drawable::resizeGLObjectBuffers(maxSize);
     }
 
     void WindDrawable::drawImplementation(osg::RenderInfo& ri) const
     {
-        if (ri.getCurrentCamera() == NULL)
+        if (ri.getCurrentCamera() == nullptr)
             return;
 
         DrawState& ds = _ds[ri.getState()->getContextID()];
@@ -348,7 +378,7 @@ namespace
         compileGLObjects(ri, ds);
 
         // activate layout() binding point:
-        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ds._buffer);
+        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ds._buffer->name());
 
         // run it
         ext->glDispatchCompute(WIND_DIM_X, WIND_DIM_Y, WIND_DIM_Z);
@@ -493,11 +523,6 @@ WindLayer::openImplementation()
 Status
 WindLayer::closeImplementation()
 {
-    if (_node.valid())
-    {
-        _node->releaseGLObjects();
-        _node = NULL;
-    }
     return Layer::closeImplementation();
 }
 
@@ -508,14 +533,16 @@ WindLayer::getNode() const
 }
 
 void
-WindLayer::setTerrainResources(TerrainResources* res)
+WindLayer::prepareForRendering(TerrainEngine* engine)
 {
+    Layer::prepareForRendering(engine);
+
     // Create the wind drawable that will provide a wind texture
     WindDrawable* wd = new WindDrawable(getReadOptions());
     _drawable = wd;
 
     // texture image unit for the shared wind LUT
-    res->reserveTextureImageUnit(wd->_unitReservation, "WindLayer");
+    engine->getResources()->reserveTextureImageUnit(wd->_unitReservation, "WindLayer");
 
 #if 0 // TESTING
     Wind* wind = new Wind();
@@ -541,7 +568,7 @@ osg::StateSet*
 WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
 {
     if (!isOpen())
-        return NULL;
+        return nullptr;
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
 
@@ -561,6 +588,8 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
         osg::Matrix::scale(0.5,0.5,0.5);
 
     osg::Matrix rttProjection;
+
+
 
     double R = options().radius()->as(Units::METERS);
 
@@ -590,3 +619,18 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
 
     return cs._sharedStateSet.get();
 }
+
+void
+WindLayer::releaseGLObjects(osg::State* state) const
+{
+    if (_drawable.valid())
+        _drawable->releaseGLObjects(state);
+}
+
+void
+WindLayer::resizeGLObjectBuffers(unsigned maxSize)
+{
+    if (_drawable.valid())
+        _drawable->resizeGLObjectBuffers(maxSize);
+}
+

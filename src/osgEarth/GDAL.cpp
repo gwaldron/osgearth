@@ -25,6 +25,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
+#include <osgEarth/Metrics>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -83,326 +84,328 @@ using namespace osgEarth::GDAL;
 #define GEOTRSFRM_NS_RES               5
 
 
-namespace osgEarth { namespace GDAL
+namespace osgEarth
 {
-    // From easyrgb.com
-    float Hue_2_RGB( float v1, float v2, float vH )
+    namespace GDAL
     {
-       if ( vH < 0.0f ) vH += 1.0f;
-       if ( vH > 1.0f ) vH -= 1.0f;
-       if ( ( 6.0f * vH ) < 1.0f ) return ( v1 + ( v2 - v1 ) * 6.0f * vH );
-       if ( ( 2.0f * vH ) < 1.0f ) return ( v2 );
-       if ( ( 3.0f * vH ) < 2.0f ) return ( v1 + ( v2 - v1 ) * ( ( 2.0f / 3.0f ) - vH ) * 6.0f );
-       return ( v1 );
-    }
+        // From easyrgb.com
+        float Hue_2_RGB(float v1, float v2, float vH)
+        {
+            if (vH < 0.0f) vH += 1.0f;
+            if (vH > 1.0f) vH -= 1.0f;
+            if ((6.0f * vH) < 1.0f) return (v1 + (v2 - v1) * 6.0f * vH);
+            if ((2.0f * vH) < 1.0f) return (v2);
+            if ((3.0f * vH) < 2.0f) return (v1 + (v2 - v1) * ((2.0f / 3.0f) - vH) * 6.0f);
+            return (v1);
+        }
 
-    #ifndef GDAL_VERSION_2_0_OR_NEWER
+#ifndef GDAL_VERSION_2_0_OR_NEWER
         // RasterIO was substantially improved in 2.0
         // See https://trac.osgeo.org/gdal/wiki/rfc51_rasterio_resampling_progress
         typedef int GSpacing;
-    #endif
+#endif
 
-    typedef enum
-    {
-        LOWEST_RESOLUTION,
-        HIGHEST_RESOLUTION,
-        AVERAGE_RESOLUTION
-    } ResolutionStrategy;
-
-    typedef struct
-    {
-        int    isFileOK;
-        int    nRasterXSize;
-        int    nRasterYSize;
-        double adfGeoTransform[6];
-        int    nBlockXSize;
-        int    nBlockYSize;
-    } DatasetProperty;
-
-    typedef struct
-    {
-        GDALColorInterp        colorInterpretation;
-        GDALDataType           dataType;
-        GDALColorTableH        colorTable;
-        int                    bHasNoData;
-        double                 noDataValue;
-    } BandProperty;
-
-
-    // This is simply the method GDALAutoCreateWarpedVRT() with the GDALSuggestedWarpOutput
-    // logic replaced with something that will work properly for polar projections.
-    // see: http://www.mail-archive.com/gdal-dev@lists.osgeo.org/msg01491.html
-    GDALDatasetH GDALAutoCreateWarpedVRTforPolarStereographic(
-        GDALDatasetH hSrcDS,
-        const char *pszSrcWKT,
-        const char *pszDstWKT,
-        GDALResampleAlg eResampleAlg,
-        double dfMaxError,
-        const GDALWarpOptions *psOptionsIn )
-    {
-        GDALWarpOptions *psWO;
-        int i;
-
-        VALIDATE_POINTER1( hSrcDS, "GDALAutoCreateWarpedVRTForPolarStereographic", NULL );
-
-        /* -------------------------------------------------------------------- */
-        /*      Populate the warp options.                                      */
-        /* -------------------------------------------------------------------- */
-        if( psOptionsIn != NULL )
-            psWO = GDALCloneWarpOptions( psOptionsIn );
-        else
-            psWO = GDALCreateWarpOptions();
-
-        psWO->eResampleAlg = eResampleAlg;
-
-        psWO->hSrcDS = hSrcDS;
-
-        psWO->nBandCount = GDALGetRasterCount( hSrcDS );
-        psWO->panSrcBands = (int *) CPLMalloc(sizeof(int) * psWO->nBandCount);
-        psWO->panDstBands = (int *) CPLMalloc(sizeof(int) * psWO->nBandCount);
-
-        for( i = 0; i < psWO->nBandCount; i++ )
+        typedef enum
         {
-            psWO->panSrcBands[i] = i+1;
-            psWO->panDstBands[i] = i+1;
-        }
+            LOWEST_RESOLUTION,
+            HIGHEST_RESOLUTION,
+            AVERAGE_RESOLUTION
+        } ResolutionStrategy;
 
-        /* TODO: should fill in no data where available */
-
-        /* -------------------------------------------------------------------- */
-        /*      Create the transformer.                                         */
-        /* -------------------------------------------------------------------- */
-        psWO->pfnTransformer = GDALGenImgProjTransform;
-        psWO->pTransformerArg =
-            GDALCreateGenImgProjTransformer( psWO->hSrcDS, pszSrcWKT,
-            NULL, pszDstWKT,
-            TRUE, 1.0, 0 );
-
-        if( psWO->pTransformerArg == NULL )
+        typedef struct
         {
-            GDALDestroyWarpOptions( psWO );
-            return NULL;
-        }
+            int    isFileOK;
+            int    nRasterXSize;
+            int    nRasterYSize;
+            double adfGeoTransform[6];
+            int    nBlockXSize;
+            int    nBlockYSize;
+        } DatasetProperty;
 
-        /* -------------------------------------------------------------------- */
-        /*      Figure out the desired output bounds and resolution.            */
-        /* -------------------------------------------------------------------- */
-        double adfDstGeoTransform[6];
-        int    nDstPixels, nDstLines;
-        CPLErr eErr;
-
-        eErr =
-            GDALSuggestedWarpOutput( hSrcDS, psWO->pfnTransformer,
-                psWO->pTransformerArg,
-                adfDstGeoTransform, &nDstPixels, &nDstLines );
-
-        // override the suggestions:
-        nDstPixels = GDALGetRasterXSize( hSrcDS ) * 4;
-        nDstLines  = GDALGetRasterYSize( hSrcDS ) / 2;
-        adfDstGeoTransform[0] = -180.0;
-        adfDstGeoTransform[1] = 360.0/(double)nDstPixels;
-        //adfDstGeoTransform[2] = 0.0;
-        //adfDstGeoTransform[4] = 0.0;
-        //adfDstGeoTransform[5] = (-90 -adfDstGeoTransform[3])/(double)nDstLines;
-
-        /* -------------------------------------------------------------------- */
-        /*      Update the transformer to include an output geotransform        */
-        /*      back to pixel/line coordinates.                                 */
-        /*                                                                      */
-        /* -------------------------------------------------------------------- */
-        GDALSetGenImgProjTransformerDstGeoTransform(
-            psWO->pTransformerArg, adfDstGeoTransform );
-
-        /* -------------------------------------------------------------------- */
-        /*      Do we want to apply an approximating transformation?            */
-        /* -------------------------------------------------------------------- */
-        if( dfMaxError > 0.0 )
+        typedef struct
         {
+            GDALColorInterp        colorInterpretation;
+            GDALDataType           dataType;
+            GDALColorTableH        colorTable;
+            int                    bHasNoData;
+            double                 noDataValue;
+        } BandProperty;
+
+
+        // This is simply the method GDALAutoCreateWarpedVRT() with the GDALSuggestedWarpOutput
+        // logic replaced with something that will work properly for polar projections.
+        // see: http://www.mail-archive.com/gdal-dev@lists.osgeo.org/msg01491.html
+        GDALDatasetH GDALAutoCreateWarpedVRTforPolarStereographic(
+            GDALDatasetH hSrcDS,
+            const char *pszSrcWKT,
+            const char *pszDstWKT,
+            GDALResampleAlg eResampleAlg,
+            double dfMaxError,
+            const GDALWarpOptions *psOptionsIn)
+        {
+            GDALWarpOptions *psWO;
+            int i;
+
+            VALIDATE_POINTER1(hSrcDS, "GDALAutoCreateWarpedVRTForPolarStereographic", NULL);
+
+            /* -------------------------------------------------------------------- */
+            /*      Populate the warp options.                                      */
+            /* -------------------------------------------------------------------- */
+            if (psOptionsIn != NULL)
+                psWO = GDALCloneWarpOptions(psOptionsIn);
+            else
+                psWO = GDALCreateWarpOptions();
+
+            psWO->eResampleAlg = eResampleAlg;
+
+            psWO->hSrcDS = hSrcDS;
+
+            psWO->nBandCount = GDALGetRasterCount(hSrcDS);
+            psWO->panSrcBands = (int *)CPLMalloc(sizeof(int) * psWO->nBandCount);
+            psWO->panDstBands = (int *)CPLMalloc(sizeof(int) * psWO->nBandCount);
+
+            for (i = 0; i < psWO->nBandCount; i++)
+            {
+                psWO->panSrcBands[i] = i + 1;
+                psWO->panDstBands[i] = i + 1;
+            }
+
+            /* TODO: should fill in no data where available */
+
+            /* -------------------------------------------------------------------- */
+            /*      Create the transformer.                                         */
+            /* -------------------------------------------------------------------- */
+            psWO->pfnTransformer = GDALGenImgProjTransform;
             psWO->pTransformerArg =
-                GDALCreateApproxTransformer( psWO->pfnTransformer,
-                psWO->pTransformerArg,
-                dfMaxError );
-            psWO->pfnTransformer = GDALApproxTransform;
-        }
+                GDALCreateGenImgProjTransformer(psWO->hSrcDS, pszSrcWKT,
+                    NULL, pszDstWKT,
+                    TRUE, 1.0, 0);
 
-        /* -------------------------------------------------------------------- */
-        /*      Create the VRT file.                                            */
-        /* -------------------------------------------------------------------- */
-        GDALDatasetH hDstDS;
-
-        hDstDS = GDALCreateWarpedVRT( hSrcDS, nDstPixels, nDstLines,
-            adfDstGeoTransform, psWO );
-
-        GDALDestroyWarpOptions( psWO );
-
-        if( pszDstWKT != NULL )
-            GDALSetProjection( hDstDS, pszDstWKT );
-        else if( pszSrcWKT != NULL )
-            GDALSetProjection( hDstDS, pszDstWKT );
-        else if( GDALGetGCPCount( hSrcDS ) > 0 )
-            GDALSetProjection( hDstDS, GDALGetGCPProjection( hSrcDS ) );
-        else
-            GDALSetProjection( hDstDS, GDALGetProjectionRef( hSrcDS ) );
-
-        return hDstDS;
-    }
-
-    /**
-     * Gets the GeoExtent of the given filename.
-     */
-    GeoExtent getGeoExtent(std::string& filename)
-    {
-        GDALDataset* ds = (GDALDataset*)GDALOpen(filename.c_str(), GA_ReadOnly );
-        if (!ds)
-        {
-            return GeoExtent::INVALID;
-        }
-
-        // Get the geotransforms
-        double geotransform[6];
-        ds->GetGeoTransform(geotransform);
-
-        double minX, minY, maxX, maxY;
-
-        GDALApplyGeoTransform(geotransform, 0.0, ds->GetRasterYSize(), &minX, &minY);
-        GDALApplyGeoTransform(geotransform, ds->GetRasterXSize(), 0.0, &maxX, &maxY);
-
-        std::string srsString = ds->GetProjectionRef();
-        const SpatialReference* srs = SpatialReference::create(srsString);
-
-        GDALClose(ds);
-
-        GeoExtent ext(srs, minX, minY, maxX, maxY);
-        return ext;
-    }
-    /**
-    * Finds a raster band based on color interpretation
-    */
-    GDALRasterBand* findBandByColorInterp(GDALDataset *ds, GDALColorInterp colorInterp)
-    {
-        for (int i = 1; i <= ds->GetRasterCount(); ++i)
-        {
-            if (ds->GetRasterBand(i)->GetColorInterpretation() == colorInterp) return ds->GetRasterBand(i);
-        }
-        return 0;
-    }
-
-    GDALRasterBand* findBandByDataType(GDALDataset *ds, GDALDataType dataType)
-    {
-        for (int i = 1; i <= ds->GetRasterCount(); ++i)
-        {
-            if (ds->GetRasterBand(i)->GetRasterDataType() == dataType) return ds->GetRasterBand(i);
-        }
-        return 0;
-    }
-
-    bool getPalleteIndexColor(GDALRasterBand* band, int index, osg::Vec4ub& color)
-    {
-        const GDALColorEntry *colorEntry = band->GetColorTable()->GetColorEntry( index );
-        GDALPaletteInterp interp = band->GetColorTable()->GetPaletteInterpretation();
-        if (!colorEntry)
-        {
-            //FIXME: What to do here?
-
-            //OE_INFO << "NO COLOR ENTRY FOR COLOR " << rawImageData[i] << std::endl;
-            color.r() = 255;
-            color.g() = 0;
-            color.b() = 0;
-            color.a() = 1;
-            return false;
-        }
-        else
-        {
-            if (interp == GPI_RGB)
+            if (psWO->pTransformerArg == NULL)
             {
-                color.r() = colorEntry->c1;
-                color.g() = colorEntry->c2;
-                color.b() = colorEntry->c3;
-                color.a() = colorEntry->c4;
+                GDALDestroyWarpOptions(psWO);
+                return NULL;
             }
-            else if (interp == GPI_CMYK)
-            {
-                // from wikipedia.org
-                short C = colorEntry->c1;
-                short M = colorEntry->c2;
-                short Y = colorEntry->c3;
-                short K = colorEntry->c4;
-                color.r() = 255 - C*(255 - K) - K;
-                color.g() = 255 - M*(255 - K) - K;
-                color.b() = 255 - Y*(255 - K) - K;
-                color.a() = 255;
-            }
-            else if (interp == GPI_HLS)
-            {
-                // from easyrgb.com
-                float H = colorEntry->c1;
-                float S = colorEntry->c3;
-                float L = colorEntry->c2;
-                float R, G, B;
-                if ( S == 0 )                       //HSL values = 0 - 1
-                {
-                    R = L;                      //RGB results = 0 - 1
-                    G = L;
-                    B = L;
-                }
-                else
-                {
-                    float var_2, var_1;
-                    if ( L < 0.5 )
-                        var_2 = L * ( 1 + S );
-                    else
-                        var_2 = ( L + S ) - ( S * L );
 
-                    var_1 = 2 * L - var_2;
+            /* -------------------------------------------------------------------- */
+            /*      Figure out the desired output bounds and resolution.            */
+            /* -------------------------------------------------------------------- */
+            double adfDstGeoTransform[6];
+            int    nDstPixels, nDstLines;
+            CPLErr eErr;
 
-                    R = Hue_2_RGB( var_1, var_2, H + ( 1.0f / 3.0f ) );
-                    G = Hue_2_RGB( var_1, var_2, H );
-                    B = Hue_2_RGB( var_1, var_2, H - ( 1.0f / 3.0f ) );
-                }
-                color.r() = static_cast<unsigned char>(R*255.0f);
-                color.g() = static_cast<unsigned char>(G*255.0f);
-                color.b() = static_cast<unsigned char>(B*255.0f);
-                color.a() = static_cast<unsigned char>(255.0f);
-            }
-            else if (interp == GPI_Gray)
+            eErr =
+                GDALSuggestedWarpOutput(hSrcDS, psWO->pfnTransformer,
+                    psWO->pTransformerArg,
+                    adfDstGeoTransform, &nDstPixels, &nDstLines);
+
+            // override the suggestions:
+            nDstPixels = GDALGetRasterXSize(hSrcDS) * 4;
+            nDstLines = GDALGetRasterYSize(hSrcDS) / 2;
+            adfDstGeoTransform[0] = -180.0;
+            adfDstGeoTransform[1] = 360.0 / (double)nDstPixels;
+            //adfDstGeoTransform[2] = 0.0;
+            //adfDstGeoTransform[4] = 0.0;
+            //adfDstGeoTransform[5] = (-90 -adfDstGeoTransform[3])/(double)nDstLines;
+
+            /* -------------------------------------------------------------------- */
+            /*      Update the transformer to include an output geotransform        */
+            /*      back to pixel/line coordinates.                                 */
+            /*                                                                      */
+            /* -------------------------------------------------------------------- */
+            GDALSetGenImgProjTransformerDstGeoTransform(
+                psWO->pTransformerArg, adfDstGeoTransform);
+
+            /* -------------------------------------------------------------------- */
+            /*      Do we want to apply an approximating transformation?            */
+            /* -------------------------------------------------------------------- */
+            if (dfMaxError > 0.0)
             {
-                color.r() = static_cast<unsigned char>(colorEntry->c1*255.0f);
-                color.g() = static_cast<unsigned char>(colorEntry->c1*255.0f);
-                color.b() = static_cast<unsigned char>(colorEntry->c1*255.0f);
-                color.a() = static_cast<unsigned char>(255.0f);
+                psWO->pTransformerArg =
+                    GDALCreateApproxTransformer(psWO->pfnTransformer,
+                        psWO->pTransformerArg,
+                        dfMaxError);
+                psWO->pfnTransformer = GDALApproxTransform;
+            }
+
+            /* -------------------------------------------------------------------- */
+            /*      Create the VRT file.                                            */
+            /* -------------------------------------------------------------------- */
+            GDALDatasetH hDstDS;
+
+            hDstDS = GDALCreateWarpedVRT(hSrcDS, nDstPixels, nDstLines,
+                adfDstGeoTransform, psWO);
+
+            GDALDestroyWarpOptions(psWO);
+
+            if (pszDstWKT != NULL)
+                GDALSetProjection(hDstDS, pszDstWKT);
+            else if (pszSrcWKT != NULL)
+                GDALSetProjection(hDstDS, pszDstWKT);
+            else if (GDALGetGCPCount(hSrcDS) > 0)
+                GDALSetProjection(hDstDS, GDALGetGCPProjection(hSrcDS));
+            else
+                GDALSetProjection(hDstDS, GDALGetProjectionRef(hSrcDS));
+
+            return hDstDS;
+        }
+
+        /**
+         * Gets the GeoExtent of the given filename.
+         */
+        GeoExtent getGeoExtent(std::string& filename)
+        {
+            GDALDataset* ds = (GDALDataset*)GDALOpen(filename.c_str(), GA_ReadOnly);
+            if (!ds)
+            {
+                return GeoExtent::INVALID;
+            }
+
+            // Get the geotransforms
+            double geotransform[6];
+            ds->GetGeoTransform(geotransform);
+
+            double minX, minY, maxX, maxY;
+
+            GDALApplyGeoTransform(geotransform, 0.0, ds->GetRasterYSize(), &minX, &minY);
+            GDALApplyGeoTransform(geotransform, ds->GetRasterXSize(), 0.0, &maxX, &maxY);
+
+            std::string srsString = ds->GetProjectionRef();
+            const SpatialReference* srs = SpatialReference::create(srsString);
+
+            GDALClose(ds);
+
+            GeoExtent ext(srs, minX, minY, maxX, maxY);
+            return ext;
+        }
+        /**
+        * Finds a raster band based on color interpretation
+        */
+        GDALRasterBand* findBandByColorInterp(GDALDataset *ds, GDALColorInterp colorInterp)
+        {
+            for (int i = 1; i <= ds->GetRasterCount(); ++i)
+            {
+                if (ds->GetRasterBand(i)->GetColorInterpretation() == colorInterp) return ds->GetRasterBand(i);
+            }
+            return 0;
+        }
+
+        GDALRasterBand* findBandByDataType(GDALDataset *ds, GDALDataType dataType)
+        {
+            for (int i = 1; i <= ds->GetRasterCount(); ++i)
+            {
+                if (ds->GetRasterBand(i)->GetRasterDataType() == dataType) return ds->GetRasterBand(i);
+            }
+            return 0;
+        }
+
+        bool getPalleteIndexColor(GDALRasterBand* band, int index, osg::Vec4ub& color)
+        {
+            const GDALColorEntry *colorEntry = band->GetColorTable()->GetColorEntry(index);
+            GDALPaletteInterp interp = band->GetColorTable()->GetPaletteInterpretation();
+            if (!colorEntry)
+            {
+                //FIXME: What to do here?
+
+                //OE_INFO << "NO COLOR ENTRY FOR COLOR " << rawImageData[i] << std::endl;
+                color.r() = 255;
+                color.g() = 0;
+                color.b() = 0;
+                color.a() = 1;
+                return false;
             }
             else
             {
-                return false;
+                if (interp == GPI_RGB)
+                {
+                    color.r() = colorEntry->c1;
+                    color.g() = colorEntry->c2;
+                    color.b() = colorEntry->c3;
+                    color.a() = colorEntry->c4;
+                }
+                else if (interp == GPI_CMYK)
+                {
+                    // from wikipedia.org
+                    short C = colorEntry->c1;
+                    short M = colorEntry->c2;
+                    short Y = colorEntry->c3;
+                    short K = colorEntry->c4;
+                    color.r() = 255 - C * (255 - K) - K;
+                    color.g() = 255 - M * (255 - K) - K;
+                    color.b() = 255 - Y * (255 - K) - K;
+                    color.a() = 255;
+                }
+                else if (interp == GPI_HLS)
+                {
+                    // from easyrgb.com
+                    float H = colorEntry->c1;
+                    float S = colorEntry->c3;
+                    float L = colorEntry->c2;
+                    float R, G, B;
+                    if (S == 0)                       //HSL values = 0 - 1
+                    {
+                        R = L;                      //RGB results = 0 - 1
+                        G = L;
+                        B = L;
+                    }
+                    else
+                    {
+                        float var_2, var_1;
+                        if (L < 0.5)
+                            var_2 = L * (1 + S);
+                        else
+                            var_2 = (L + S) - (S * L);
+
+                        var_1 = 2 * L - var_2;
+
+                        R = Hue_2_RGB(var_1, var_2, H + (1.0f / 3.0f));
+                        G = Hue_2_RGB(var_1, var_2, H);
+                        B = Hue_2_RGB(var_1, var_2, H - (1.0f / 3.0f));
+                    }
+                    color.r() = static_cast<unsigned char>(R*255.0f);
+                    color.g() = static_cast<unsigned char>(G*255.0f);
+                    color.b() = static_cast<unsigned char>(B*255.0f);
+                    color.a() = static_cast<unsigned char>(255.0f);
+                }
+                else if (interp == GPI_Gray)
+                {
+                    color.r() = static_cast<unsigned char>(colorEntry->c1*255.0f);
+                    color.g() = static_cast<unsigned char>(colorEntry->c1*255.0f);
+                    color.b() = static_cast<unsigned char>(colorEntry->c1*255.0f);
+                    color.a() = static_cast<unsigned char>(255.0f);
+                }
+                else
+                {
+                    return false;
+                }
+                return true;
             }
-            return true;
         }
-    }
 
-    // GDALRasterBand::RasterIO helper method
-    bool rasterIO(GDALRasterBand *band,
-        GDALRWFlag eRWFlag,
-        int nXOff,
-        int nYOff,
-        int nXSize,
-        int nYSize,
-        void *pData,
-        int nBufXSize,
-        int nBufYSize,
-        GDALDataType eBufType,
-        GSpacing nPixelSpace,
-        GSpacing nLineSpace,
-        RasterInterpolation interpolation = INTERP_NEAREST
+        // GDALRasterBand::RasterIO helper method
+        bool rasterIO(GDALRasterBand *band,
+            GDALRWFlag eRWFlag,
+            int nXOff,
+            int nYOff,
+            int nXSize,
+            int nYSize,
+            void *pData,
+            int nBufXSize,
+            int nBufYSize,
+            GDALDataType eBufType,
+            GSpacing nPixelSpace,
+            GSpacing nLineSpace,
+            RasterInterpolation interpolation = INTERP_NEAREST
         )
-    {
-#if GDAL_VERSION_2_0_OR_NEWER
-        GDALRasterIOExtraArg psExtraArg;
-
-        // defaults to GRIORA_NearestNeighbour
-        INIT_RASTERIO_EXTRA_ARG(psExtraArg);
-
-        switch(interpolation)
         {
+#if GDAL_VERSION_2_0_OR_NEWER
+            GDALRasterIOExtraArg psExtraArg;
+
+            // defaults to GRIORA_NearestNeighbour
+            INIT_RASTERIO_EXTRA_ARG(psExtraArg);
+
+            switch (interpolation)
+            {
             case INTERP_AVERAGE:
                 //psExtraArg.eResampleAlg = GRIORA_Average;
                 // for some reason gdal's average resampling produces artifacts occasionally for imagery at higher levels.
@@ -418,31 +421,32 @@ namespace osgEarth { namespace GDAL
             case INTERP_CUBICSPLINE:
                 psExtraArg.eResampleAlg = GRIORA_CubicSpline;
                 break;
-        }
+            }
 
-        CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace, &psExtraArg);
+            CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace, &psExtraArg);
 #else
-        if (interpolation != INTERP_NEAREST)
-        {
-            OE_DEBUG << "RasterIO falling back to INTERP_NEAREST.\n";
-        }
-        CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace);
+            if (interpolation != INTERP_NEAREST)
+            {
+                OE_DEBUG << "RasterIO falling back to INTERP_NEAREST.\n";
+            }
+            CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace);
 #endif
-        if (err != CE_None)
-        {
-            //OE_WARN << LC << "RasterIO failed.\n";
+            if (err != CE_None)
+            {
+                //OE_WARN << LC << "RasterIO failed.\n";
+            }
+            return (err == CE_None);
         }
-        return (err == CE_None);
     }
-} } // namespace osgEarth::GDAL
+} // namespace osgEarth::GDAL
 
 //...................................................................
 
 GDAL::Driver::Driver() :
-_srcDS(NULL),
-_warpedDS(NULL),
-_maxDataLevel(30),
-_linearUnits(1.0)
+    _srcDS(NULL),
+    _warpedDS(NULL),
+    _maxDataLevel(30),
+    _linearUnits(1.0)
 {
     _threadId = osgEarth::Threading::getCurrentThreadId();
 }
@@ -466,13 +470,11 @@ GDAL::Driver::setExternalDataset(GDAL::ExternalDataset* value)
 // Open the data source and prepare it for reading
 Status
 GDAL::Driver::open(const std::string& name,
-                   const GDAL::Options& options,
-                   unsigned tileSize,
-                   DataExtentList* layerDataExtents,
-                   const osgDB::Options* readOptions)
+    const GDAL::Options& options,
+    unsigned tileSize,
+    DataExtentList* layerDataExtents,
+    const osgDB::Options* readOptions)
 {
-    //GDAL_SCOPED_LOCK;
-
     bool info = (layerDataExtents != NULL);
 
     _name = name;
@@ -1028,9 +1030,9 @@ GDAL::Driver::intersects(const TileKey& key)
 
 osg::Image*
 GDAL::Driver::createImage(const TileKey& key,
-                          unsigned tileSize,
-                          bool isCoverage,
-                          ProgressCallback* progress)
+    unsigned tileSize,
+    bool isCoverage,
+    ProgressCallback* progress)
 {
     if (_maxDataLevel.isSet() && key.getLevelOfDetail() > _maxDataLevel.get())
     {
@@ -1038,8 +1040,6 @@ GDAL::Driver::createImage(const TileKey& key,
             << key.getLevelOfDetail() << " max=" << _maxDataLevel.get() << std::endl;
         return NULL;
     }
-
-    //GDAL_SCOPED_LOCK;
 
     if (progress && progress->isCanceled())
     {
@@ -1251,8 +1251,8 @@ GDAL::Driver::createImage(const TileKey& key,
             GDALDataType gdalDataType = bandGray->GetRasterDataType();
 
             int gdalSampleSize =
-                (gdalDataType == GDT_Byte)? 1:
-                (gdalDataType == GDT_UInt16 || gdalDataType == GDT_Int16)? 2:
+                (gdalDataType == GDT_Byte) ? 1 :
+                (gdalDataType == GDT_UInt16 || gdalDataType == GDT_Int16) ? 2 :
                 4;
 
             // Create an un-normalized image to hold coverage values.
@@ -1282,7 +1282,7 @@ GDAL::Driver::createImage(const TileKey& key,
                     unsigned int flippedRow = tileSize - dst_row - 1;
                     for (int src_col = 0, dst_col = tile_offset_left; src_col < target_width; ++src_col, ++dst_col)
                     {
-                        unsigned char* ptr = &data[(src_col + src_row*target_width)*gdalSampleSize];
+                        unsigned char* ptr = &data[(src_col + src_row * target_width)*gdalSampleSize];
 
                         float value =
                             gdalSampleSize == 1 ? (float)(*ptr) :
@@ -1454,8 +1454,8 @@ GDAL::Driver::createImage(const TileKey& key,
 
 osg::HeightField*
 GDAL::Driver::createHeightField(const TileKey& key,
-                                unsigned tileSize,
-                                ProgressCallback* progress)
+    unsigned tileSize,
+    ProgressCallback* progress)
 {
     if (_maxDataLevel.isSet() && key.getLevelOfDetail() > _maxDataLevel.get())
     {
@@ -1696,6 +1696,7 @@ GDAL::Options::readFrom(const Config& conf)
     _interpolation.init(INTERP_AVERAGE);
     _useVRT.init(false);
     coverageUsesPaletteIndex().setDefault(true);
+    singleThreaded().setDefault(false);
 
     conf.get("url", _url);
     conf.get("connection", _connection);
@@ -1708,6 +1709,7 @@ GDAL::Options::readFrom(const Config& conf)
     conf.get("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
     conf.get("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
     conf.get("coverage_uses_palette_index", coverageUsesPaletteIndex());
+    conf.get("single_threaded", singleThreaded());
 }
 
 void
@@ -1724,6 +1726,61 @@ GDAL::Options::writeTo(Config& conf) const
     conf.set("interpolation", "cubic", _interpolation, osgEarth::INTERP_CUBIC);
     conf.set("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
     conf.set("coverage_uses_palette_index", coverageUsesPaletteIndex());
+    conf.set("single_threaded", singleThreaded());
+}
+
+//......................................................................
+
+namespace
+{
+    template<typename T>
+    Status openOnThisThread(
+        const T* layer,
+        osg::ref_ptr<GDAL::Driver>& driver,
+        osg::ref_ptr<const Profile>* out_profile = nullptr,
+        osg::ref_ptr<const Profile>* out_overrideProfile = nullptr,
+        DataExtentList* dataExtents = nullptr)
+    {
+        driver = new GDAL::Driver();
+
+        if (layer->options().noDataValue().isSet())
+            driver->setNoDataValue(layer->options().noDataValue().get());
+        if (layer->options().minValidValue().isSet())
+            driver->setMinValidValue(layer->options().minValidValue().get());
+        if (layer->options().maxValidValue().isSet())
+            driver->setMaxValidValue(layer->options().maxValidValue().get());
+        if (layer->options().maxDataLevel().isSet())
+            driver->setMaxDataLevel(layer->options().maxDataLevel().get());
+
+        // If the user set an override profile, save it
+        // TODO: may want to elevate this to Layer
+        if (layer->getProfile() && out_overrideProfile)
+        {
+            *out_overrideProfile = layer->getProfile();
+        }
+
+        if (layer->overrideProfile().valid())
+        {
+            driver->setOverrideProfile(layer->overrideProfile().get());
+        }
+
+        Status status = driver->open(
+            layer->getName(),
+            layer->options(),
+            layer->options().tileSize().get(),
+            dataExtents,
+            layer->getReadOptions());
+
+        if (status.isError())
+            return status;
+
+        if (driver->getProfile() && out_profile)
+        {
+            *out_profile = driver->getProfile();
+        }
+
+        return Status::NoError;
+    }
 }
 
 //......................................................................
@@ -1752,11 +1809,17 @@ OE_LAYER_PROPERTY_IMPL(GDALImageLayer, unsigned, SubDataSet, subDataSet);
 OE_LAYER_PROPERTY_IMPL(GDALImageLayer, ProfileOptions, WarpProfile, warpProfile);
 OE_LAYER_PROPERTY_IMPL(GDALImageLayer, RasterInterpolation, Interpolation, interpolation);
 
+void GDALImageLayer::setSingleThreaded(bool value) { options().singleThreaded() = value; }
+bool GDALImageLayer::getSingleThreaded() const { return options().singleThreaded().get(); }
+
+
 void
 GDALImageLayer::init()
 {
     // Initialize the image layer (always first)
     ImageLayer::init();
+    _driversMutex.setName("OE.GDALImageLayer.drivers");
+    _singleThreadingMutex.setName("OE.GDALImageLayer.st");
 }
 
 Status
@@ -1766,13 +1829,25 @@ GDALImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
+    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
+
+    osg::ref_ptr<const Profile> profile;
+
     // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
     // So we just encapsulate the entire setup once per thread.
     // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
-    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
 
-    osg::ref_ptr<const Profile> profile;
-    Status s = openOnThisThread(driver, &profile, &_overrideProfile);
+    ScopedMutexLock lock(_driversMutex);
+
+    osg::ref_ptr<GDAL::Driver>& driver = _drivers[id];
+
+    Status s = openOnThisThread(
+        this,
+        driver,
+        &profile,
+        &_overrideProfile,
+        &dataExtents());
+
     if (s.isError())
         return s;
 
@@ -1783,64 +1858,13 @@ GDALImageLayer::openImplementation()
 }
 
 Status
-GDALImageLayer::openOnThisThread(
-    osg::ref_ptr<GDAL::Driver>& driver, 
-    osg::ref_ptr<const Profile>* out_profile,
-    osg::ref_ptr<const Profile>* out_overrideProfile) const
-{
-    driver = new GDAL::Driver();
-
-    if (options().noDataValue().isSet())
-        driver->setNoDataValue( options().noDataValue().get() );
-    if (options().minValidValue().isSet())
-        driver->setMinValidValue( options().minValidValue().get() );
-    if (options().maxValidValue().isSet())
-        driver->setMaxValidValue( options().maxValidValue().get() );
-    if (options().maxDataLevel().isSet())
-        driver->setMaxDataLevel( options().maxDataLevel().get() );
-
-    // If the user set an override profile, save it
-    // TODO: may want to elevate this to Layer
-    if (getProfile() && out_overrideProfile)
-    {
-        *out_overrideProfile = getProfile();
-    }
-
-    if (_overrideProfile.valid())
-    {
-        driver->setOverrideProfile(_overrideProfile.get());
-    }
-
-    DataExtentList* de = out_profile ? &const_cast<GDALImageLayer*>(this)->dataExtents() : NULL;
-
-    Status status = driver->open(
-        getName(),
-        options(),
-        options().tileSize().get(),
-        de,
-        getReadOptions());
-
-    if (status.isError())
-        return status;
-
-    if (driver->getProfile() && out_profile)
-    {
-        *out_profile = driver->getProfile();
-    }
-
-    return Status::NoError;
-}
-
-Status
 GDALImageLayer::closeImplementation()
 {
     // safely shut down all per-thread handles.
-    {
-        Threading::ScopedWriteLock exclusive(_workers);
-        _driverPerThread.clear();
-    }
+    Threading::ScopedMutexLock lock(_driversMutex);
+    _drivers.clear();
     dataExtents().clear();
-    setProfile(NULL); // must do this to support override profiles
+    setProfile(nullptr); // must do this to support override profiles
     return ImageLayer::closeImplementation();
 }
 
@@ -1850,28 +1874,51 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     if (getStatus().isError())
         return GeoImage::INVALID;
 
-    Threading::ScopedReadLock enterReader(_workers);
-    if (isClosing())
-        return GeoImage::INVALID;
+    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
 
-    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
-    if (!driver.valid())
+    osg::ref_ptr<GDAL::Driver> driver;
+
+    // lock while we look up and verify the per-thread driver:
     {
-        // calling openImpl with NULL params limits the setup
-        // since we already called this during openImplementation
-        openOnThisThread(driver, NULL, NULL);
+        ScopedMutexLock lock(_driversMutex);
+
+        // check while locked to ensure we may continue
+        if (isClosing() || !isOpen())
+            return GeoImage::INVALID;
+
+        osg::ref_ptr<GDAL::Driver>& test_driver = _drivers[id];
+
+        if (!test_driver.valid())
+        {
+            // calling openImpl with NULL params limits the setup
+            // since we already called this during openImplementation
+            openOnThisThread(this, test_driver);
+        }
+
+        // assign to a ref_ptr to continue
+        driver = test_driver;
     }
 
-    osg::ref_ptr<osg::Image> image;
     if (driver.valid())
     {
-        image = driver->createImage(
+        OE_PROFILING_ZONE;
+
+        if (getSingleThreaded())
+            _singleThreadingMutex.lock();
+
+        osg::ref_ptr<osg::Image> image = driver->createImage(
             key,
             options().tileSize().get(),
             options().coverage() == true,
             progress);
+
+        if (getSingleThreaded())
+            _singleThreadingMutex.unlock();
+
+        return GeoImage(image.get(), key.getExtent());
     }
-    return GeoImage(image.get(), key.getExtent());
+
+    return GeoImage::INVALID;
 }
 
 //......................................................................
@@ -1901,7 +1948,11 @@ OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, ProfileOptions, WarpProfile, warpProf
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, RasterInterpolation, Interpolation, interpolation);
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, bool, UseVRT, useVRT);
 
-void GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value)
+void GDALElevationLayer::setSingleThreaded(bool value) { options().singleThreaded() = value; }
+bool GDALElevationLayer::getSingleThreaded() const { return options().singleThreaded().get(); }
+
+void
+GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value)
 {
     //_driver->setExternalDataset(value);
     OE_WARN << LC << "setExternalDataset NOT IMPLEMENTED" << std::endl;
@@ -1911,6 +1962,8 @@ void
 GDALElevationLayer::init()
 {
     ElevationLayer::init();
+    _driversMutex.setName("OE.GDALElevationLayer.drivers");
+    _singleThreadingMutex.setName("OE.GDALElevationLayer.st");
 }
 
 Status
@@ -1920,13 +1973,26 @@ GDALElevationLayer::openImplementation()
     if (parent.isError())
         return parent;
 
+    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
+
+    osg::ref_ptr<const Profile> profile;
+
     // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
     // So we just encapsulate the entire setup once per thread.
     // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
-    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
 
-    osg::ref_ptr<const Profile> profile;
-    Status s = openOnThisThread(driver, &profile, &_overrideProfile);
+    ScopedMutexLock lock(_driversMutex);
+
+    // Open the dataset temporarily to query the profile and extents.
+    osg::ref_ptr<Driver> driver;
+
+    Status s = openOnThisThread(
+        this,
+        driver,
+        &profile,
+        &_overrideProfile,
+        &dataExtents());
+
     if (s.isError())
         return s;
 
@@ -1937,64 +2003,13 @@ GDALElevationLayer::openImplementation()
 }
 
 Status
-GDALElevationLayer::openOnThisThread(
-    osg::ref_ptr<GDAL::Driver>& driver, 
-    osg::ref_ptr<const Profile>* out_profile,
-    osg::ref_ptr<const Profile>* out_overrideProfile) const
-{
-    driver = new GDAL::Driver();
-
-    if (options().noDataValue().isSet())
-        driver->setNoDataValue( options().noDataValue().get() );
-    if (options().minValidValue().isSet())
-        driver->setMinValidValue( options().minValidValue().get() );
-    if (options().maxValidValue().isSet())
-        driver->setMaxValidValue( options().maxValidValue().get() );
-    if (options().maxDataLevel().isSet())
-        driver->setMaxDataLevel( options().maxDataLevel().get() );
-
-    // If the user set an override profile, save it
-    // TODO: may want to elevate this to Layer
-    if (getProfile() && out_overrideProfile)
-    {
-        *out_overrideProfile = getProfile();
-    }
-
-    if (_overrideProfile.valid())
-    {
-        driver->setOverrideProfile(_overrideProfile.get());
-    }
-
-    DataExtentList* de = out_profile ? &const_cast<GDALElevationLayer*>(this)->dataExtents() : NULL;
-
-    Status status = driver->open(
-        getName(),
-        options(),
-        options().tileSize().get(),
-        de,
-        getReadOptions());
-
-    if (status.isError())
-        return status;
-
-    if (driver->getProfile() && out_profile)
-    {
-        *out_profile = driver->getProfile();
-    }
-
-    return Status::NoError;
-}
-
-Status
 GDALElevationLayer::closeImplementation()
 {
     // safely shut down all per-thread handles.
-    {
-        Threading::ScopedWriteLock exclusive(_workers);
-        _driverPerThread.clear();
-    }
+    Threading::ScopedMutexLock lock(_driversMutex);
+    _drivers.clear();
     dataExtents().clear();
-    setProfile(NULL); // must do this to support override profiles
+    setProfile(nullptr); // must do this to support override profiles
     return ElevationLayer::closeImplementation();
 }
 
@@ -2002,23 +2017,47 @@ GeoHeightField
 GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     if (getStatus().isError())
-        return GeoHeightField::INVALID;
+        return GeoHeightField(getStatus());
 
-    Threading::ScopedReadLock enterReader(_workers);
-    if (isClosing())
-        return GeoHeightField::INVALID;
+    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
 
-    osg::ref_ptr<GDAL::Driver>& driver = _driverPerThread.get();
-    if (!driver.valid())
+    osg::ref_ptr<GDAL::Driver> driver;
+
+    // lock while we look up and verify the per-thread driver:
     {
-        // calling openImpl with NULL params limits the setup
-        // since we already called this during openImplementation
-        openOnThisThread(driver, NULL, NULL);
+        ScopedMutexLock lock(_driversMutex);
+
+        // check while locked to ensure we may continue
+        if (isClosing() || !isOpen())
+            return GeoHeightField::INVALID;
+
+        osg::ref_ptr<GDAL::Driver>& test_driver = _drivers[id];
+
+        if (!test_driver.valid())
+        {
+            // calling openImpl with NULL params limits the setup
+            // since we already called this during openImplementation
+            openOnThisThread(
+                this,
+                test_driver,
+                nullptr,
+                nullptr,
+                nullptr);
+        }
+
+        // assign to a ref_ptr to continue
+        driver = test_driver;
     }
 
-    osg::ref_ptr<osg::HeightField> heightfield;
-    if (driver)
+    if (driver.valid())
     {
+        OE_PROFILING_ZONE;
+
+        if (getSingleThreaded())
+            _singleThreadingMutex.lock();
+
+        osg::ref_ptr<osg::HeightField> heightfield;
+
         if (*_options->useVRT())
         {
             heightfield = driver->createHeightFieldWithVRT(
@@ -2033,8 +2072,14 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
                 options().tileSize().get(),
                 progress);
         }
+
+        if (getSingleThreaded())
+            _singleThreadingMutex.unlock();
+
+        return GeoHeightField(heightfield.get(), key.getExtent());
     }
-    return GeoHeightField(heightfield.get(), key.getExtent());
+
+    return GeoHeightField::INVALID;
 }
 
 //...................................................................
@@ -2049,14 +2094,14 @@ namespace
         // called internally -- GDAL lock not required
 
         int numBands = ds->GetRasterCount();
-        if ( numBands < 1 )
+        if (numBands < 1)
             return 0L;
 
         GLenum dataType;
         int    sampleSize;
         GLint  internalFormat;
 
-        switch(ds->GetRasterBand(1)->GetRasterDataType())
+        switch (ds->GetRasterBand(1)->GetRasterDataType())
         {
         case GDT_Byte:
             dataType = GL_UNSIGNED_BYTE;
@@ -2088,18 +2133,18 @@ namespace
         image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, pixelFormat, dataType);
 
         CPLErr err = ds->RasterIO(
-            GF_Read, 
-            0, 0, 
-            image->s(), image->t(), 
-            (void*)image->data(), 
-            image->s(), image->t(), 
+            GF_Read,
+            0, 0,
+            image->s(), image->t(),
+            (void*)image->data(),
+            image->s(), image->t(),
             ds->GetRasterBand(1)->GetRasterDataType(),
             numBands,
             NULL,
             pixelBytes,
             pixelBytes * image->s(),
             1);
-        if ( err != CE_None )
+        if (err != CE_None)
         {
             OE_WARN << LC << "RasterIO failed.\n";
         }
@@ -2117,7 +2162,7 @@ namespace
         GDALDriver* memDriver = (GDALDriver*)GDALGetDriverByName("MEM");
         if (!memDriver)
         {
-            OE_WARN  << LC << "Could not get MEM driver" << std::endl;
+            OE_WARN << LC << "Could not get MEM driver" << std::endl;
             return NULL;
         }
 
@@ -2130,7 +2175,7 @@ namespace
         }
 
         //Initialize the color interpretation
-        if ( numBands == 1 )
+        if (numBands == 1)
         {
             ds->GetRasterBand(1)->SetColorInterpretation(GCI_GrayIndex);
         }
@@ -2140,7 +2185,7 @@ namespace
             ds->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
             ds->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
 
-            if ( numBands == 4 )
+            if (numBands == 4)
             {
                 ds->GetRasterBand(4)->SetColorInterpretation(GCI_AlphaBand);
             }
@@ -2171,34 +2216,30 @@ namespace
         clonedImage->flipVertical();
 
         GDALDataType gdalDataType =
-            image->getDataType() == GL_UNSIGNED_BYTE  ? GDT_Byte :
+            image->getDataType() == GL_UNSIGNED_BYTE ? GDT_Byte :
             image->getDataType() == GL_UNSIGNED_SHORT ? GDT_UInt16 :
-            image->getDataType() == GL_FLOAT          ? GDT_Float32 :
+            image->getDataType() == GL_FLOAT ? GDT_Float32 :
             GDT_Byte;
 
-        int numBands =
-            image->getPixelFormat() == GL_RGBA      ? 4 :
-            image->getPixelFormat() == GL_RGB       ? 3 :
-            image->getPixelFormat() == GL_LUMINANCE ? 1 : 0;
+        int numBands = osg::Image::computeNumComponents(image->getPixelFormat());
 
-
-        if ( numBands == 0 )
+        if (numBands == 0)
         {
             OE_WARN << LC << "Failure in createDataSetFromImage: unsupported pixel format\n";
-            return 0L;
+            return nullptr;
         }
 
         int pixelBytes =
-            gdalDataType == GDT_Byte   ?   numBands :
-            gdalDataType == GDT_UInt16 ? 2*numBands :
-            4*numBands;
+            gdalDataType == GDT_Byte ? numBands :
+            gdalDataType == GDT_UInt16 ? 2 * numBands :
+            4 * numBands;
 
         GDALDataset* srcDS = createMemDS(image->s(), image->t(), numBands, gdalDataType, minX, minY, maxX, maxY, projection);
 
-        if ( srcDS )
+        if (srcDS)
         {
             CPLErr err = srcDS->RasterIO(
-                GF_Write, 
+                GF_Write,
                 0, 0,
                 clonedImage->s(), clonedImage->t(),
                 (void*)clonedImage->data(),
@@ -2210,7 +2251,7 @@ namespace
                 pixelBytes,
                 pixelBytes * image->s(),
                 1);
-            if ( err != CE_None )
+            if (err != CE_None)
             {
                 OE_WARN << LC << "RasterIO failed.\n";
             }
@@ -2223,15 +2264,17 @@ namespace
 }
 
 osg::Image* osgEarth::GDAL::reprojectImage(
-    const osg::Image* srcImage, 
-    const std::string srcWKT, 
+    const osg::Image* srcImage,
+    const std::string srcWKT,
     double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
-    const std::string destWKT, 
+    const std::string destWKT,
     double destMinX, double destMinY, double destMaxX, double destMaxY,
-    int width, 
-    int height, 
+    int width,
+    int height,
     bool useBilinearInterpolation)
 {
+    OE_PROFILING_ZONE;
+
     // Unnessecary since this is totally self-contained with thread-safe DataSets
     //GDAL_SCOPED_LOCK;
 
@@ -2239,6 +2282,9 @@ osg::Image* osgEarth::GDAL::reprojectImage(
 
     //Create a dataset from the source image
     GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
+
+    if (srcDS == nullptr)
+        return nullptr;
 
     OE_DEBUG << LC << "Source image is " << srcImage->s() << "x" << srcImage->t() << " in " << srcWKT << std::endl;
 
@@ -2257,7 +2303,7 @@ osg::Image* osgEarth::GDAL::reprojectImage(
             0);
         GDALDestroyGenImgProjTransformer(transformer);
     }
-    OE_DEBUG << "Creating warped output of " << width <<"x" << height << " in " << destWKT << std::endl;
+    OE_DEBUG << "Creating warped output of " << width << "x" << height << " in " << destWKT << std::endl;
 
     int numBands = srcDS->GetRasterCount();
     GDALDataType dataType = srcDS->GetRasterBand(1)->GetRasterDataType();
@@ -2269,24 +2315,24 @@ osg::Image* osgEarth::GDAL::reprojectImage(
         GDALReprojectImage(srcDS, NULL,
             destDS, NULL,
             GRA_Bilinear,
-            0,0,0,0,0);
+            0, 0, 0, 0, 0);
     }
     else
     {
         GDALReprojectImage(srcDS, NULL,
             destDS, NULL,
             GRA_NearestNeighbour,
-            0,0,0,0,0);
+            0, 0, 0, 0, 0);
     }
 
     osg::Image* result = createImageFromDataset(destDS);
 
     delete srcDS;
-    delete destDS;  
+    delete destDS;
 
     osg::Timer_t end = osg::Timer::instance()->tick();
 
-    OE_DEBUG << "Reprojected image in " << osg::Timer::instance()->delta_m(start,end) << std::endl;
+    OE_DEBUG << "Reprojected image in " << osg::Timer::instance()->delta_m(start, end) << std::endl;
 
     return result;
 }

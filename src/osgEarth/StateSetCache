@@ -118,6 +118,10 @@ namespace osgEarth
         */
         unsigned size() const { return _stateSetCache.size(); }
 
+        //! marks all caches statesets as DYNAMIC so they cannot be
+        //! shared again.
+        void protect();
+
         /**
         * Clears out the cache.
         */

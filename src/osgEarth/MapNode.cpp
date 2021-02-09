@@ -294,6 +294,9 @@ MapNode::init()
     _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
 
     this->addChild( _layerNodes );
+
+    // Connector to active the global GPUJobArena
+    this->addChild(new GPUJobArenaConnector());
 }
 
 bool
@@ -451,8 +454,27 @@ MapNode::open()
     return true;
 }
 
+void
+MapNode::shutdown()
+{
+    releaseGLObjects(nullptr);
+
+    if (_terrainEngine)
+        _terrainEngine->shutdown();
+
+    if (_map.valid())
+    {
+        LayerVector layers;
+        _map->getLayers(layers);
+        for(auto& layer : layers)
+            layer->close();
+    }
+}
+
 MapNode::~MapNode()
 {
+    shutdown();
+
     if (_mapCallback.valid())
     {
         // Remove this node's map callback first:
@@ -539,7 +561,7 @@ MapNode::computeBound() const
     osg::BoundingSphere bs;
     if ( getTerrainEngine() )
     {
-        bs.expandBy( getTerrainEngine()->getBound() );
+        bs.expandBy( getTerrainEngine()->getNode()->getBound() );
     }
 
     if (_layerNodes)
@@ -598,7 +620,7 @@ MapNode::getTerrain() const
     return getTerrainEngine()->getTerrain();
 }
 
-TerrainEngineNode*
+TerrainEngine*
 MapNode::getTerrainEngine() const
 {
     return _terrainEngine;
@@ -728,7 +750,7 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
         return;
     
     // Communicate terrain resources to the layer:
-    layer->setTerrainResources(getTerrainEngine()->getResources());
+    layer->invoke_prepareForRendering(getTerrainEngine());
 
     // Create the layer's node, if it has one:
     osg::Node* node = layer->getNode();
@@ -900,4 +922,18 @@ ClampingManager*
 MapNode::getClampingManager()
 {
     return _clampingManager;
+}
+
+bool
+MapNode::getGeoPointUnderMouse(
+    osg::View* view,
+    float mx, float my,
+    GeoPoint& output) const
+{
+    osg::Vec3d world;
+    if (getTerrain()->getWorldCoordsUnderMouse(view, mx, my, world))
+    {
+        return output.fromWorld(getMapSRS(), world);
+    }
+    return false;
 }

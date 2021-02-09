@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/GeometryClamper>
+#include <osgEarth/LineDrawable>
 #include <osg/Geometry>
 
 #define LC "[GeometryClamper] "
@@ -58,19 +59,46 @@ GeometryClamper::apply(osg::Drawable& drawable)
     if ( !geom )
         return;
 
-    osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
+    LineDrawable* lineDrawable = dynamic_cast<LineDrawable*>(geom);
+
+    osg::ref_ptr< osg::Vec3Array > verts = nullptr;
+    if (lineDrawable)
+    {
+        // If we are clamping a LineDrawable we don't want to modify the actual vertex array of the geometry
+        // since that is managed by the LineDrawable itself.  Make a temporary Vec3Array for the GeometryClamper to work on
+        // that contains the vertices in the line instead.
+        verts = new osg::Vec3Array(lineDrawable->getNumVerts());
+        for (unsigned int i = 0; i < verts->size(); ++i)
+        {
+            (*verts)[i] = lineDrawable->getVertex(i);
+        }
+    }
+    else
+    {
+        verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
+    }
 
     if (_revert)
     {
-        GeometryData& data = _localData[verts];
+        GeometryData& data = _localData[static_cast<osg::Vec3Array*>(geom->getVertexArray())];
         if (data._verts.valid() && verts->size() == data._verts->size())
         {
-            std::copy(data._verts->begin(), data._verts->end(), verts->begin());
-            verts->dirty();
+            if (lineDrawable)
+            {
+                for (unsigned int i = 0; i < data._verts->size(); ++i)
+                {
+                    lineDrawable->setVertex(i, (*data._verts)[i]);
+                }
+            }
+            else
+            {
+                std::copy(data._verts->begin(), data._verts->end(), verts->begin());
+                verts->dirty();
+            }
         }
         return;
     }
-    
+
     if ( !_terrainSRS.valid() )
         return;
 
@@ -91,13 +119,14 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
     bool geomDirty = false;
 
-    GeometryData& data = _localData[verts];
-    
+    // Use the vertex array on the geometry as the lookup instead of the verts array as it might be a temporary array for a LineDrawable.
+    GeometryData& data = _localData[static_cast<osg::Vec3Array*>(geom->getVertexArray())];
+
     bool storeAltitudes = false;
 
     if (!data._verts.valid() || data._verts->size() != verts->size())
     {
-        data._verts = osg::clone(verts, osg::CopyOp::DEEP_COPY_ALL);
+        data._verts = osg::clone(verts.get(), osg::CopyOp::DEEP_COPY_ALL);
         data._altitudes = new osg::FloatArray();
         data._altitudes->reserve(verts->size());
         storeAltitudes = true;
@@ -165,19 +194,29 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
     if ( geomDirty )
     {
-        geom->dirtyBound();
-        if ( geom->getUseVertexBufferObjects() )
+        if (lineDrawable)
         {
-            verts->getVertexBufferObject()->setUsage( GL_DYNAMIC_DRAW_ARB );
-            verts->dirty();
+            for (unsigned int i = 0; i < verts->size(); ++i)
+            {
+                lineDrawable->setVertex(i, (*verts)[i]);
+            }
         }
         else
         {
+            geom->dirtyBound();
+            if (geom->getUseVertexBufferObjects())
+            {
+                verts->getVertexBufferObject()->setUsage(GL_DYNAMIC_DRAW_ARB);
+                verts->dirty();
+            }
+            else
+            {
 #if OSG_VERSION_LESS_THAN(3,6,0)
-            geom->dirtyDisplayList();
+                geom->dirtyDisplayList();
 #else
-            geom->dirtyGLObjects();
+                geom->dirtyGLObjects();
 #endif
+            }
         }
 
         OE_DEBUG << LC << "clamped " << count << " verts." << std::endl;
@@ -186,8 +225,8 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
 
 void
-GeometryClamperCallback::onTileUpdate(const TileKey&          key, 
-                                     osg::Node*              tile, 
+GeometryClamperCallback::onTileUpdate(const TileKey&          key,
+                                     osg::Node*              tile,
                                      TerrainCallbackContext& context)
 {
     tile->accept( _clamper );

@@ -24,7 +24,7 @@
 #include "MPTerrainEngineOptions"
 #include <osgEarth/MapInfo>
 #include <osgEarth/TileKey>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osg/Geometry>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine

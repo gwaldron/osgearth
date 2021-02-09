@@ -21,6 +21,8 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Containers>
+#include <osgEarth/rtree.h>
+#include <osgEarth/Metrics>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
@@ -37,23 +39,23 @@ namespace
     // linear interpolation between a and b
     double inline mix(double a, double b, double t)
     {
-        return a + (b-a)*t;
+        return a + (b - a)*t;
     }
 
     // smoothstep (cos approx) interpolation between a and b
     double inline smoothstep(double a, double b, double t)
     {
         // smoothstep (approximates cosine):
-        t = t*t*(3.0-2.0*t);
-        return a + (b-a)*t;
+        t = t * t*(3.0 - 2.0*t);
+        return a + (b - a)*t;
     }
 
     double inline smootherstep(double a, double b, double t)
     {
-        t = t*t*t*(t*(t*6.0 - 15.0)+10.0);
-        return a + (b-a)*t;
+        t = t * t*t*(t*(t*6.0 - 15.0) + 10.0);
+        return a + (b - a)*t;
     }
-    
+
     // clamp "a" to [lo..hi].
     double inline clamp(double a, double lo, double hi)
     {
@@ -71,11 +73,11 @@ namespace
         const T& operator[](int i) const { return _v[i % _v.size()]; }
         const std::vector<T>& _v;
     };
-    
+
     // is P inside the CCW triangle ABC?
     bool triangleContains(const POINT& A, const POINT& B, const POINT& C, const POINT& P)
     {
-        VECTOR AB = B-A, BC = C-B, CA = A-C;
+        VECTOR AB = B - A, BC = C - B, CA = A - C;
         if (((P - A) ^ AB).z() > 0.0) return false;
         if (((P - B) ^ BC).z() > 0.0) return false;
         if (((P - C) ^ CA).z() > 0.0) return false;
@@ -101,8 +103,8 @@ namespace
         for (int i = 0; i < vi.size(); ++i)
         {
             const POINT& V = vi[i];
-            const POINT& A = vi[i-1];
-            const POINT& B = vi[i+1];
+            const POINT& A = vi[i - 1];
+            const POINT& B = vi[i + 1];
 
             if (((V - A) ^ (B - V)).z() > 0.0) // Convex vertex? (assume CCW winding)
             {
@@ -130,14 +132,14 @@ namespace
                 // If no inside point was found, return the midpoint of AB.
                 if (minDistQV2 == DBL_MAX)
                 {
-                    result = (A+B)*0.5;
+                    result = (A + B)*0.5;
                 }
 
                 // Otherwise, use the midpoint of QV.
                 else
                 {
                     const POINT& Q = vi[indexBestQ];
-                    result = (Q+V)*0.5;
+                    result = (Q + V)*0.5;
                 }
 
                 // make sure the resulting point doesn't fall within any of the
@@ -155,7 +157,7 @@ namespace
     }
 
     double getDistanceSquaredToClosestEdge(const osg::Vec3d& P, const Polygon* poly)
-    {        
+    {
         double Dmin = DBL_MAX;
         ConstSegmentIterator segIter(poly, true);
         while (segIter.hasMore())
@@ -163,9 +165,9 @@ namespace
             const Segment segment = segIter.next();
             const POINT& A = segment.first;
             const POINT& B = segment.second;
-            const VECTOR AP = P-A, AB = B-A;
-            double t = clamp((AP*AB)/AB.length2(), 0.0, 1.0);
-            VECTOR PROJ = A + AB*t;
+            const VECTOR AP = P - A, AB = B - A;
+            double t = clamp((AP*AB) / AB.length2(), 0.0, 1.0);
+            VECTOR PROJ = A + AB * t;
             double D = (P - PROJ).length2();
             if (D < Dmin) Dmin = D;
         }
@@ -189,26 +191,26 @@ namespace
     };
 
     typedef std::vector<Widths> WidthsList;
-    
+
     // Creates a heightfield that flattens an area intersecting the input polygon geometry.
     // The height of the area is found by sampling a point internal to the polygon.
     // bufferWidth = width of transition from flat area to natural terrain.
     bool integratePolygons(const TileKey& key, osg::HeightField* hf, const MultiGeometry* geom, const SpatialReference* geomSRS,
-                           WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
-                           bool fillAllPixels, ProgressCallback* progress)
+        WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
+        bool fillAllPixels, ProgressCallback* progress)
     {
         bool wroteChanges = false;
 
         const GeoExtent& ex = key.getExtent();
 
-        double col_interval = ex.width() / (double)(hf->getNumColumns()-1);
-        double row_interval = ex.height() / (double)(hf->getNumRows()-1);
+        double col_interval = ex.width() / (double)(hf->getNumColumns() - 1);
+        double row_interval = ex.height() / (double)(hf->getNumRows() - 1);
 
         POINT Pex, P, internalP;
         GeoPoint EP(geomSRS, 0, 0, 0);
 
         bool needsTransform = ex.getSRS() != geomSRS;
-        
+
         for (unsigned col = 0; col < hf->getNumColumns(); ++col)
         {
             Pex.x() = ex.xMin() + (double)col * col_interval;
@@ -225,7 +227,7 @@ namespace
                     ex.getSRS()->transform(Pex, geomSRS, P);
                 else
                     P = Pex;
-                
+
                 bool done = false;
                 double minD2 = DBL_MAX;//bufferWidth * bufferWidth; // minimum distance(squared) to closest polygon edge
                 double bufferWidth = 0.0;
@@ -264,7 +266,7 @@ namespace
                                     bufferWidth = width.bufferWidth;
                                 }
                             }
-                        }                    
+                        }
                     }
                 }
 
@@ -283,7 +285,7 @@ namespace
                     {
                         EP.x() = P.x(), EP.y() = P.y();
                         float elevNatural = pool->getSample(EP, workingSet).elevation();
-                        double blend = clamp(sqrt(minD2)/bufferWidth, 0.0, 1.0); // [0..1] 0=internal, 1=natural
+                        double blend = clamp(sqrt(minD2) / bufferWidth, 0.0, 1.0); // [0..1] 0=internal, 1=natural
                         h = smootherstep(elevInternal, elevNatural, blend);
                     }
 
@@ -310,6 +312,8 @@ namespace
         double D2;      // distance to segment squared
         osg::Vec3d A;   // endpoint of segment
         osg::Vec3d B;   // other endpoint of segment;
+        double AElev;   // The elevation at start of segment
+        double BElev;   // The elevation at end of segment
         double T;       // segment parameter of closest point
 
         // used later:
@@ -359,7 +363,7 @@ namespace
                 break;
             }
             else {
-                double w = pow(1.0/samples[i].D, powerParam);
+                double w = pow(1.0 / samples[i].D, powerParam);
                 numer += w * samples[i].elev;
                 denom += w;
             }
@@ -372,9 +376,62 @@ namespace
     float interpolateSamplesLinear(Samples& samples)
     {
         double numer = 0.0;
-        for (unsigned i = 0; i<samples.size(); ++i)
+        for (unsigned i = 0; i < samples.size(); ++i)
             numer += samples[i].elev;
         return samples.size() > 0 ? (numer / (double)(samples.size())) : FLT_MAX;
+    }
+
+    struct LineSegment
+    {
+        LineSegment(const osg::Vec3d& _a, const osg::Vec3d& _b, unsigned int _geomIndex) :
+            A(_a),
+            B(_b),
+            geomIndex(_geomIndex)
+        {
+            AB = B - A;
+            length2 = AB.length2();
+        }
+
+        osg::Vec3d A;
+        osg::Vec3d B;
+        osg::Vec3d AB;
+        double length2;
+        unsigned int geomIndex;
+        double AElev = NO_DATA_VALUE;
+        double BElev = NO_DATA_VALUE;;
+    };
+
+    typedef std::vector< LineSegment > LineSegmentList;
+
+    typedef RTree<unsigned, double, 2> LineSegmentIndex;
+
+    void buildSegmentList(const MultiGeometry* geom, LineSegmentList& segments, LineSegmentIndex& index)
+    {
+        for (unsigned int geomIndex = 0; geomIndex < geom->getNumComponents(); geomIndex++)
+        {
+            Geometry* component = geom->getComponents()[geomIndex].get();
+
+            ConstGeometryIterator giter(component);
+            while (giter.hasMore())
+            {
+                const Geometry* part = giter.next();
+
+                for (int i = 0; i < part->size() - 1; ++i)
+                {
+                    // AB is a candidate line segment:
+                    const osg::Vec3d& A = (*part)[i];
+                    const osg::Vec3d& B = (*part)[i + 1];
+                    segments.emplace_back(A, B, geomIndex);
+
+                    double min[2] = { osg::minimum(A.x(), B.x()), osg::minimum(A.y(), B.y()) };
+                    double max[2] = { osg::maximum(A.x(), B.x()), osg::maximum(A.y(), B.y()) };
+
+                    unsigned int segmentIndex = segments.size() - 1;
+
+                    index.Insert(min, max, segmentIndex);
+                }
+            }
+        }
     }
 
     /**
@@ -388,46 +445,58 @@ namespace
      * there will be some discontinuities in the final data, especially along the edges of
      * the flattening buffer.
      *
-     * There is not perfect solution for this, but one improvement would be to copy the 
+     * There is not perfect solution for this, but one improvement would be to copy the
      * source elevation into the heightfield as a starting point, and then sample that
      * modifiable heightfield as we go along.
      */
-    bool integrateLines(const TileKey& key, osg::HeightField* hf, const MultiGeometry* geom, const SpatialReference* geomSRS,
-                        WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
-                        bool fillAllPixels, ProgressCallback* progress)
+    bool integrateLines(const TileKey& key, osg::HeightField* hf, LineSegmentList& segments, LineSegmentIndex& index, const SpatialReference* geomSRS,
+        WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
+        bool fillAllPixels, ProgressCallback* progress)
     {
+        OE_PROFILING_ZONE;
+
+        double maxBufferDistance = 0.0;
+        for (auto& w : widths)
+        {
+            double d = w.bufferWidth + w.lineWidth;
+            if (d > maxBufferDistance) maxBufferDistance = d;
+        }
+
         bool wroteChanges = false;
 
-        const GeoExtent& ex = key.getExtent();
+        GeoExtent ex = key.getExtent();
+        if (ex.getSRS() != geomSRS)
+        {
+            ex = ex.transform(geomSRS);
+        }
 
-        double col_interval = ex.width() / (double)(hf->getNumColumns()-1);
-        double row_interval = ex.height() / (double)(hf->getNumRows()-1);
+        double col_interval = ex.width() / (double)(hf->getNumColumns() - 1);
+        double row_interval = ex.height() / (double)(hf->getNumRows() - 1);
 
-        osg::Vec3d Pex, P, PROJ;
+        osg::Vec3d P, PROJ;
         GeoPoint EP(geomSRS, 0, 0, 0);
 
         ElevationSample elevSample;
 
-        bool needsTransform = ex.getSRS() != geomSRS;
-        
-        // Loop over the new heightfield.
-        for (unsigned col = 0; col < hf->getNumColumns(); ++col)
+        for (unsigned row = 0; row < hf->getNumRows(); ++row)
         {
-            Pex.x() = ex.xMin() + (double)col * col_interval;
+            P.y() = ex.yMin() + (double)row * row_interval;
 
-            for (unsigned row = 0; row < hf->getNumRows(); ++row)
+            std::vector< unsigned int > hits;
+
+            double searchMin[2] = { ex.xMin() - maxBufferDistance, P.y() - maxBufferDistance };
+            double searchMax[2] = { ex.xMax() + maxBufferDistance, P.y() + maxBufferDistance };
+            index.Search(searchMin, searchMax, &hits, ~0u);
+
+            // If there are no hits just skip the whole row.
+            if (hits.size() == 0)
             {
-                // check for cancelation periodically
-                //if (progress && progress->isCanceled())
-                //    return false;
+                continue;
+            }
 
-                Pex.y() = ex.yMin() + (double)row * row_interval;
-
-                // Move the point into the working SRS if necessary
-                if (needsTransform)
-                    ex.getSRS()->transform(Pex, geomSRS, P);
-                else
-                    P = Pex;
+            for (unsigned col = 0; col < hf->getNumColumns(); ++col)
+            {
+                P.x() = ex.xMin() + (double)col * col_interval;
 
                 // For each point, we need to find the closest line segments to that point
                 // because the elevation values on these line segments will be the flattening
@@ -436,90 +505,104 @@ namespace
                 static const unsigned Maxsamples = 4;
                 Samples samples;
 
-                for (unsigned int geomIndex = 0; geomIndex < geom->getNumComponents(); geomIndex++)
+                unsigned int hitIndex = 0;
+                // What is the maximum number of hits we see in this area?
+                for (auto hit : hits)
                 {
-                    Widths w = widths[geomIndex];
+                    LineSegment& segment = segments[hit];
+
+                    const Widths& w = widths[segment.geomIndex];
+
                     double innerRadius = w.lineWidth * 0.5;
                     double outerRadius = innerRadius + w.bufferWidth;
                     double outerRadius2 = outerRadius * outerRadius;
 
-                    Geometry* component = geom->getComponents()[geomIndex].get();
-                    // Search for line segments.
-                    ConstGeometryIterator giter(component);
-                    while (giter.hasMore())
+                    // AB is a candidate line segment:
+                    const osg::Vec3d& A = segment.A;
+                    const osg::Vec3d& B = segment.B;
+
+                    //osg::Vec3d AB = B - A;    // current segment AB
+                    const osg::Vec3d& AB = segment.AB;
+
+                    double t;                 // parameter [0..1] on segment AB
+                    double D2;                // shortest distance from point P to segment AB, squared
+                    //double L2 = AB.length2(); // length (squared) of segment AB
+                    double L2 = segment.length2; // length (squared) of segment AB
+
+                    osg::Vec3d AP = P - A;    // vector from endpoint A to point P
+
+                    if (L2 == 0.0)
                     {
-                        const Geometry* part = giter.next();                        
+                        // trivial case: zero-length segment
+                        t = 0.0;
+                        D2 = AP.length2();
+                    }
+                    else
+                    {
+                        // Calculate parameter "t" [0..1] which will yield the closest point on AB to P.
+                        // Clamping it means the closest point won't be beyond the endpoints of the segment.
+                        t = clamp((AP * AB) / L2, 0.0, 1.0);
 
-                        for (int i = 0; i < part->size()-1; ++i)
+                        // project our point P onto segment AB:
+                        PROJ.set(A + AB * t);
+
+                        // measure the distance (squared) from P to the projected point on AB:
+                        D2 = (P - PROJ).length2();
+                    }
+
+                    // If the distance from our point to the line segment falls within
+                    // the maximum flattening distance, store it.
+                    if (D2 <= outerRadius2)
+                    {
+                        // see if P is a new sample.
+                        Sample* b;
+                        if (samples.size() < Maxsamples)
                         {
-                            // AB is a candidate line segment:
-                            const osg::Vec3d& A = (*part)[i];
-                            const osg::Vec3d& B = (*part)[i+1];
+                            // If we haven't collected the maximum number of samples yet,
+                            // just add this to the list:
+                            samples.emplace_back(std::move(Sample()));
+                            b = &samples.back();
+                        }
+                        else
+                        {
+                            // If we are maxed out on samples, find the farthest one we have so far
+                            // and replace it if the new point is closer:
+                            unsigned max_i = 0;
+                            for (unsigned i = 1; i < samples.size(); ++i)
+                                if (samples[i].D2 > samples[max_i].D2)
+                                    max_i = i;
 
-                            osg::Vec3d AB = B - A;    // current segment AB
+                            b = &samples[max_i];
 
-                            double t;                 // parameter [0..1] on segment AB
-                            double D2;                // shortest distance from point P to segment AB, squared
-                            double L2 = AB.length2(); // length (squared) of segment AB
-                            osg::Vec3d AP = P - A;    // vector from endpoint A to point P
+                            if (b->D2 < D2)
+                                b = 0L;
+                        }
 
-                            if (L2 == 0.0)
+                        if (b)
+                        {
+                            b->D2 = D2;
+                            b->A = A;
+                            b->B = B;
+                            b->T = t;
+
+                            // Sample the segment start and end elevations if they haven't been previously set.
+                            if (segment.AElev == NO_DATA_VALUE)
                             {
-                                // trivial case: zero-length segment
-                                t = 0.0;
-                                D2 = AP.length2();
+                                EP.x() = segment.A.x(), EP.y() = segment.A.y();
+                                segment.AElev = pool->getSample(EP, workingSet).elevation();
                             }
-                            else
+
+                            if (segment.BElev == NO_DATA_VALUE)
                             {
-                                // Calculate parameter "t" [0..1] which will yield the closest point on AB to P.
-                                // Clamping it means the closest point won't be beyond the endpoints of the segment.
-                                t = clamp((AP * AB)/L2, 0.0, 1.0);
-
-                                // project our point P onto segment AB:
-                                PROJ.set( A + AB*t );
-
-                                // measure the distance (squared) from P to the projected point on AB:
-                                D2 = (P - PROJ).length2();
+                                EP.x() = segment.B.x(), EP.y() = segment.B.y();
+                                segment.BElev = pool->getSample(EP, workingSet).elevation();
                             }
 
-                            // If the distance from our point to the line segment falls within
-                            // the maximum flattening distance, store it.
-                            if (D2 <= outerRadius2)
-                            {
-                                // see if P is a new sample.
-                                Sample* b;
-                                if (samples.size() < Maxsamples)
-                                {
-                                    // If we haven't collected the maximum number of samples yet,
-                                    // just add this to the list:
-                                    samples.push_back(Sample());
-                                    b = &samples.back();
-                                }
-                                else
-                                {
-                                    // If we are maxed out on samples, find the farthest one we have so far
-                                    // and replace it if the new point is closer:
-                                    unsigned max_i = 0;
-                                    for (unsigned i=1; i<samples.size(); ++i)
-                                        if (samples[i].D2 > samples[max_i].D2)
-                                            max_i = i;
+                            b->AElev = segment.AElev;
+                            b->BElev = segment.BElev;
 
-                                    b = &samples[max_i];
-
-                                    if (b->D2 < D2)
-                                        b = 0L;
-                                }
-
-                                if (b)
-                                {
-                                    b->D2 = D2;
-                                    b->A = A;
-                                    b->B = B;
-                                    b->T = t;
-                                    b->innerRadius = innerRadius;
-                                    b->outerRadius = outerRadius;
-                                }
-                            }
+                            b->innerRadius = innerRadius;
+                            b->outerRadius = outerRadius;
                         }
                     }
                 }
@@ -535,7 +618,7 @@ namespace
                 }
 
                 // Now that we are done searching for line segments close to our point,
-                // we will collect the elevations at our sample points and use them to 
+                // we will collect the elevations at our sample points and use them to
                 // create a new elevation value for our point.
                 if (samples.size() > 0)
                 {
@@ -545,8 +628,9 @@ namespace
                     EP.x() = P.x(), EP.y() = P.y();
 
                     elevSample = pool->getSample(EP, workingSet);
+
                     float elevP = elevSample.elevation().getValue();
-                    
+
                     for (unsigned i = 0; i < samples.size(); ++i)
                     {
                         Sample& sample = samples[i];
@@ -558,30 +642,26 @@ namespace
                         double blend = clamp(
                             (sample.D - sample.innerRadius) / (sample.outerRadius - sample.innerRadius),
                             0.0, 1.0);
-                        
+
                         if (sample.T == 0.0)
                         {
-                            EP.x() = sample.A.x(), EP.y() = sample.A.y();
-                            sample.elevPROJ = pool->getSample(EP, workingSet).elevation();
+                            sample.elevPROJ = sample.AElev;
                             if (sample.elevPROJ == NO_DATA_VALUE)
                                 sample.elevPROJ = elevP;
                         }
                         else if (sample.T == 1.0)
                         {
-                            EP.x() = sample.B.x(), EP.y() = sample.B.y();
-                            sample.elevPROJ = pool->getSample(EP, workingSet).elevation();
+                            sample.elevPROJ = sample.BElev;
                             if (sample.elevPROJ == NO_DATA_VALUE)
                                 sample.elevPROJ = elevP;
                         }
                         else
                         {
-                            EP.x() = sample.A.x(), EP.y() = sample.A.y();
-                            float elevA = pool->getSample(EP, workingSet).elevation();
+                            float elevA = sample.AElev;
                             if (elevA == NO_DATA_VALUE)
                                 elevA = elevP;
 
-                            EP.x() = sample.B.x(), EP.y() = sample.B.y();
-                            float elevB = pool->getSample(EP, workingSet).elevation();
+                            float elevB = sample.BElev;
                             if (elevB == NO_DATA_VALUE)
                                 elevB = elevP;
 
@@ -618,14 +698,19 @@ namespace
 
         return wroteChanges;
     }
-    
+
 
     bool integrate(const TileKey& key, osg::HeightField* hf, const MultiGeometry* geom, const SpatialReference* geomSRS,
-                   WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
-                   bool fillAllPixels, ProgressCallback* progress)
+        WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
+        bool fillAllPixels, ProgressCallback* progress)
     {
         if (geom->isLinear())
-            return integrateLines(key, hf, geom, geomSRS, widths, pool, workingSet, fillAllPixels, progress);
+        {
+            LineSegmentList segments;
+            LineSegmentIndex index;
+            buildSegmentList(geom, segments, index);
+            return integrateLines(key, hf, segments, index, geomSRS, widths, pool, workingSet, fillAllPixels, progress);
+        }
         else
             return integratePolygons(key, hf, geom, geomSRS, widths, pool, workingSet, fillAllPixels, progress);
     }
@@ -741,12 +826,12 @@ FlatteningLayer::openImplementation()
     Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
-    
+
     const Profile* profile = getProfile();
-    if ( !profile )
+    if (!profile)
     {
         profile = Registry::instance()->getGlobalGeodeticProfile();
-        setProfile( profile );
+        setProfile(profile);
     }
 
     return Status::NoError;
@@ -765,15 +850,15 @@ FlatteningLayer::setFeatureSource(FeatureSource* layer)
 
 void
 FlatteningLayer::addedToMap(const Map* map)
-{   
+{
     ElevationLayer::addedToMap(map);
 
     // Initialize the elevation pool with our map:
     OE_INFO << LC << "Attaching elevation pool to map\n";
-    _pool->setMap( map );
+    _pool->setMap(map);
 
     options().featureSource().addedToMap(map);
-        
+
     // Collect all elevation layers preceding this one and use them for flattening.
     ElevationLayerVector layers;
     map->getLayers(layers);
@@ -800,14 +885,39 @@ FlatteningLayer::removedFromMap(const Map* map)
     ElevationLayer::removedFromMap(map);
 }
 
+FeatureList
+FlatteningLayer::getFeatures(const TileKey& key)
+{
+    OpenThreads::ScopedLock< Threading::Mutex > lk(_featuresCacheMutex);
+
+    FeaturesLRU::Record result;
+    _featuresCache.get(key, result);
+    if (result.valid())
+    {
+        return result.value();
+    }
+
+    Query query;
+    query.tileKey() = key;
+
+    FeatureList features;
+    osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, nullptr);
+    if (cursor.valid())
+    {
+        cursor->fill(features);
+        _featuresCache.insert(key, features);
+    }
+    return features;
+}
+
 GeoHeightField
 FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    if (getStatus().isError())    
+    if (getStatus().isError())
     {
         return GeoHeightField::INVALID;
     }
-    
+
     if (!getFeatureSource())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
@@ -839,10 +949,6 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
     //    OE_WARN << LC << "Internal error - Pool layer set is empty\n";
     //    return GeoHeightField::INVALID;
     //}
-
-    OE_START_TIMER(create);
-    
-    osg::ref_ptr<osg::HeightField> hf;
 
     // If the feature source has a tiling profile, we are going to have to map the incoming
     // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
@@ -899,7 +1005,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
 
     osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet();
     styleSheet->setScript(options().getScript());
-    osg::ref_ptr< Session > session = new Session( _map.get(), styleSheet.get());
+    osg::ref_ptr< Session > session = new Session(_map.get(), styleSheet.get());
 
     // We will collection all the feature geometries in this multigeometry:
     MultiGeometry geoms;
@@ -913,7 +1019,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
 
         UnorderedSet<TileKey> featureKeys;
         for (int i = 0; i < intersectingKeys.size(); ++i)
-        {        
+        {
             if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
                 featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
             else
@@ -923,14 +1029,12 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         // Query and collect all the features we need for this tile.
         for (UnorderedSet<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
         {
-            Query query;        
+            Query query;
             query.tileKey() = *i;
 
-            osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, progress);
-            while (cursor.valid() && cursor->hasMore())
+            FeatureList features = const_cast<FlatteningLayer*>(this)->getFeatures(*i);
+            for (auto& feature: features)
             {
-                Feature* feature = cursor->nextFeature();
-
                 double lineWidth = 0.0;
                 double bufferWidth = 0.0;
                 if (options().lineWidth().isSet())
@@ -1021,25 +1125,41 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
 
     if (!geoms.getComponents().empty())
     {
-        if (!hf.valid())
+        // Make an empty heightfield to populate:
+        osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(
+            queryExtent,
+            osgEarth::ELEVATION_TILE_SIZE,
+            osgEarth::ELEVATION_TILE_SIZE,
+            0u,                 // no border
+            true);              // initialize to HAE (0.0) heights
+
+        // Initialize to NO DATA.
+        hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
+
+        bool fill = (options().fill() == true);
+
+        bool wrote_to_hf = integrate(
+            key,
+            hf.get(),
+            &geoms,
+            workingSRS,
+            widths,
+            _pool.get(),
+            &_elevWorkingSet,
+            fill,
+            progress);
+
+        if (wrote_to_hf)
         {
-            // Make an empty heightfield to populate:
-            hf = HeightFieldUtils::createReferenceHeightField(
-                queryExtent,
-                osgEarth::ELEVATION_TILE_SIZE,
-                osgEarth::ELEVATION_TILE_SIZE,
-                //257, 257,           // base tile size for elevation data
-                0u,                 // no border
-                true);              // initialize to HAE (0.0) heights
-
-            // Initialize to NO DATA.
-            hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
+            return GeoHeightField(hf.get(), key.getExtent());
         }
-
-        // Create an elevation query envelope at the LOD we are creating
-        bool fill = (options().fill() == true);             
-        integrate(key, hf.get(), &geoms, workingSRS, widths, _pool.get(), &_elevWorkingSet, fill, progress);
+        else
+        {
+            return GeoHeightField::INVALID;
+        }
     }
-
-    return GeoHeightField(hf.get(), key.getExtent());
+    else
+    {
+        return GeoHeightField::INVALID;
+    }
 }

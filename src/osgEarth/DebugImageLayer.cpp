@@ -25,7 +25,8 @@
 #include <osgDB/FileNameUtils>
 #include <osgText/Glyph>
 #include <osgText/Font>
-#include <osg/Notify>
+#include <osg/PolygonMode>
+#include <osg/BlendFunc>
 #include <sstream>
 
 using namespace osgEarth;
@@ -89,6 +90,7 @@ DebugImageLayer::Options::getConfig() const
     Config conf = ImageLayer::Options::getConfig();
     conf.set("color", _colorCode);
     conf.set("invert_y", _invertY);
+    conf.set("show_tessellation", showTessellation());
     return conf;
 }
 
@@ -100,6 +102,7 @@ DebugImageLayer::Options::fromConfig(const Config& conf)
 
     conf.get("color", _colorCode);
     conf.get("invert_y", _invertY);
+    conf.get("show_tessellation", showTessellation());
 }
 
 //........................................................................
@@ -124,6 +127,13 @@ DebugImageLayer::init()
     // set a default name
     if (getName().empty())
         setName("Debug");
+
+    if (options().showTessellation() == true)
+    {
+        osg::StateSet* ss = getOrCreateStateSet();
+        ss->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
+        //ss->setAttributeAndModes(new osg::BlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA), 1 | osg::StateAttribute::OVERRIDE);
+    }
 }
 
 Status
@@ -146,6 +156,12 @@ DebugImageLayer::openImplementation()
 GeoImage
 DebugImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
+    if (options().showTessellation() == true)
+    {
+        osg::Image* image = ImageUtils::createOnePixelImage(Color::Black);
+        return GeoImage(image, key.getExtent());
+    }
+
     // first draw the colored outline:
     GeometryRasterizer rasterizer(256, 256);
     rasterizer.draw(_geom.get(), Debug::colors[key.getLevelOfDetail() % 4]);
@@ -168,8 +184,13 @@ DebugImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
         buf << key.str();
     }
 
-    double r = key.getExtent().computeBoundingGeoCircle().getRadius();
-    buf << "\nr = " << (int)r << "m";
+    GeoExtent e = key.getExtent();
+    if (!e.getSRS()->isProjected())
+    {
+        e = e.transform(e.getSRS()->createTangentPlaneSRS(e.getCentroid()));
+    }
+
+    buf << std::fixed << std::setprecision(1) << "\nh=" << e.height() << "m\nw=" << e.width() << "m";
 
     std::string text;
     text = buf.str();

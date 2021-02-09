@@ -111,7 +111,7 @@ namespace osgEarth { namespace Internal
 
         ScreenSpaceLayoutContext()
         {
-            _debug = (::getenv("OSGEARTH_DECLUTTER_DEBUG") != NULL);
+            _debug = (::getenv("OSGEARTH_DECLUTTER_DEBUG") != nullptr);
         }
     };
 

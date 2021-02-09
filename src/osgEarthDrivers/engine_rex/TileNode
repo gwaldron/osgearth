@@ -22,16 +22,13 @@
 #include "Common"
 #include "RenderBindings"
 #include "Loader"
-#include "MaskGenerator"
 #include "TileRenderModel"
 
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/TerrainTileNode>
 #include <osgEarth/TerrainTileModelFactory>
-
-#include <OpenThreads/Atomic>
+#include <osgEarth/Threading>
 #include <vector>
-#include <queue>
 
 namespace osg {
     class CullStack;
@@ -63,6 +60,7 @@ namespace osgEarth { namespace REX
         TileNode();
 
         virtual ~TileNode();
+        virtual const char* className() const { return "Rex::TileNode"; }
 
         /** TileKey of the key representing the data in this node. */
         const TileKey& getKey() const { return _key; }
@@ -78,7 +76,13 @@ namespace osgEarth { namespace REX
         void refreshLayers(const CreateTileManifest& manifest);
 
         /** Creates the geometry and state for this tilenode. */
-        void create(const TileKey& key, TileNode* parent, EngineContext* context);
+        void create(const TileKey& key, TileNode* parent, EngineContext* context, Cancelable*);
+
+        /** Install new geometry in this tile */
+        void createGeometry(Cancelable*);
+
+        /** Initial inheritance of tile data from the parent node. */
+        void initializeData();
 
         /** Whether the tile is expired; i.e. has not been visited in some time. */
         bool isDormant() const;
@@ -112,8 +116,6 @@ namespace osgEarth { namespace REX
         TileNode* getSubTile(unsigned i) { return static_cast<TileNode*>(_children[i].get()); }
         const TileNode* getSubTile(unsigned i) const { return static_cast<TileNode*>(_children[i].get()); }
 
-        void loadChildren();
-
         /** Merge new Tile model data into this tile's rendering data model. */
         void merge(const TerrainTileModel* dataModel, LoadTileData* originator);
 
@@ -128,7 +130,7 @@ namespace osgEarth { namespace REX
 
         void refreshSharedSamplers(const RenderBindings& bindings);
 
-        unsigned getRevision() const { return _revision; }
+        int getRevision() const { return _revision; }
 
         bool isEmpty() const { return _empty; }
         
@@ -147,7 +149,7 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<SurfaceNode>          _surface;
         osg::ref_ptr<EngineContext>        _context;
         Threading::Mutex                   _mutex;
-        OpenThreads::Atomic                _lastTraversalFrame;
+        std::atomic<int>                   _lastTraversalFrame;
         double                             _lastTraversalTime;
         bool                               _childrenReady;
         mutable osg::Vec4f                 _tileKeyValue;
@@ -157,13 +159,22 @@ namespace osgEarth { namespace REX
         bool                               _imageUpdatesActive;
         TileKey                            _subdivideTestKey;
         bool                               _doNotExpire;
-        unsigned                           _revision;
+        int                                _revision;
+        bool _createChildAsync;
+
+        typedef Job<osg::ref_ptr<TileNode>> TileJob;
+        std::vector<TileJob::Result> _createChildResults;
 
         typedef std::queue<osg::ref_ptr<LoadTileData> > LoadQueue;
         Mutexed<LoadQueue> _loadQueue;
         unsigned _loadsInQueue;
+        const CreateTileManifest* _nextLoadManifestPtr;
 
-        bool dirty() const { return _loadsInQueue>0; }
+        bool dirty() const { 
+            return _loadsInQueue > 0;
+        }
+
+        bool nextLoadIsProgressive() const;
 
         osg::observer_ptr<TileNode> _eastNeighbor;
         osg::observer_ptr<TileNode> _southNeighbor;
@@ -172,7 +183,12 @@ namespace osgEarth { namespace REX
 
         void updateNormalMap();
 
-        void createChildren(EngineContext* context);
+        bool createChildren(EngineContext* context);
+
+        TileNode* createChild(
+            const TileKey&,
+            EngineContext* context,
+            Cancelable* cancelable);
 
         // Returns false if the Surface node fails visiblity test
         bool cull(TerrainCuller*);

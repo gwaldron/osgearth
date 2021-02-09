@@ -444,7 +444,15 @@ void
 SplatTextureDef::releaseGLObjects(osg::State* state) const
 {
     if (_texture.valid())
+    {
         _texture->releaseGLObjects(state);
+
+        // Workaround for
+        // https://github.com/openscenegraph/OpenSceneGraph/issues/1013
+        for (unsigned i = 0; i < _texture->getNumImages(); ++i)
+            if (_texture->getImage(i))
+                _texture->getImage(i)->dirty();
+    }
 
     if (_splatLUTBuffer.valid())
         _splatLUTBuffer->releaseGLObjects(state);

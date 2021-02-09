@@ -61,7 +61,7 @@ BumpMapTerrainEffect::setBumpMapImage(osg::Image* image)
         _bumpMapTex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
         _bumpMapTex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
         _bumpMapTex->setMaxAnisotropy(1.0f);
-        _bumpMapTex->setUnRefImageDataAfterApply(true);
+        _bumpMapTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
         _bumpMapTex->setResizeNonPowerOfTwoHint(false);
     }
     else
@@ -128,6 +128,8 @@ BumpMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
             stateset->removeUniform( _intensityUniform.get() );
             stateset->removeUniform( _bumpMapTexUniform.get() );
             stateset->removeTextureAttribute( _bumpMapUnit, osg::StateAttribute::TEXTURE );
+
+            _bumpMapTex->releaseGLObjects(nullptr);
         }
 
         VirtualProgram* vp = VirtualProgram::get(stateset);

@@ -121,9 +121,11 @@ TerrainEngineNode::requestRedraw()
 }
 
 void
-TerrainEngineNode::dirtyTerrain()
+TerrainEngineNode::shutdown()
 {
-    requestRedraw();
+    // DO NOT destroy the tile model factory; it may still be in use
+    // by a loading thread via a ref_ptr lock (see LoadTileData).
+    //_tileModelFactory = nullptr;
 }
 
 void
@@ -214,6 +216,8 @@ TerrainEngineNode::createTileModel(const Map* map,
                                    const CreateTileManifest& manifest,
                                    ProgressCallback* progress)
 {
+    if ( !_tileModelFactory.valid() )
+        return nullptr;
     TerrainEngineRequirements* requirements = this;
 
     // Ask the factory to create a new tile model:

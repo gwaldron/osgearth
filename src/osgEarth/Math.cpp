@@ -27,6 +27,10 @@ using namespace osgEarth;
 
 namespace
 {
+    double cross2d(const osg::Vec3d& a, const osg::Vec3d& b) {
+        return a.x()*b.y() - b.x()*a.y();
+    }
+
     // ignores Z.
     bool intersectRaysXY(const osg::Vec3d& p0, const osg::Vec3d& d0,
                          const osg::Vec3d& p1, const osg::Vec3d& d1,
@@ -34,16 +38,28 @@ namespace
                          double&     out_u,
                          double&     out_v)
     {
-        static const double epsilon = 0.001;
+        double det = cross2d(d0, d1);
 
-        double det = d0.y()*d1.x() - d0.x()*d1.y();
-        if ( osg::equivalent(det, 0.0, epsilon) )
-            return false; // parallel
+        if (osg::equivalent(det, (0.0)))
+            return false;
 
-        out_u = (d1.x()*(p1.y()-p0.y())+d1.y()*(p0.x()-p1.x()))/det;
-        out_v = (d0.x()*(p1.y()-p0.y())+d0.y()*(p0.x()-p1.x()))/det;
-        out_p = p0 + d0*out_u;
+        out_u = cross2d(p1-p0, d1) / det;
+        out_v = cross2d(p1-p0, d0) / det;
+
+        out_p = p0 + d0 * out_u;
+
         return true;
+
+        //static const double epsilon = 0.001;
+
+        //double det = d0.y()*d1.x() - d0.x()*d1.y();
+        //if ( osg::equivalent(det, 0.0, epsilon) )
+        //    return false; // parallel
+
+        //out_u = (d1.x()*(p1.y()-p0.y())+d1.y()*(p0.x()-p1.x()))/det;
+        //out_v = (d0.x()*(p1.y()-p0.y())+d0.y()*(p0.x()-p1.x()))/det;
+        //out_p = p0 + d0*out_u;
+        //return true;
     }
 }
 

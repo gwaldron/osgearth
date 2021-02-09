@@ -188,7 +188,11 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
 void
 SilverLiningContext::setupClouds()
 {
-    ::SilverLining::CloudLayer* clouds = ::SilverLining::CloudLayerFactory::Create( ::CUMULUS_CONGESTUS );
+#ifdef OSGEARTH_SILVERLINING_USE_PRE_5_079_API
+    ::SilverLining::CloudLayer* clouds = ::SilverLining::CloudLayerFactory::Create(::CUMULUS_CONGESTUS);
+#else
+    ::SilverLining::CloudLayer* clouds = ::SilverLining::CloudLayerFactory::Create(::CUMULUS_CONGESTUS, *_atmosphere);
+#endif
     clouds->SetIsInfinite( true );
     clouds->SetFadeTowardEdges(true);
     clouds->SetBaseAltitude( 2000 );

@@ -23,66 +23,86 @@
 #include "Metrics"
 
 #ifdef _WIN32
-  #ifndef OSGEARTH_PROFILING
-    // because Tracy already does this in its header file..
-    extern "C" unsigned long __stdcall GetCurrentThreadId();
-  #endif
+#   include <Windows.h>
+#   include <processthreadsapi.h>
 #elif defined(__APPLE__) || defined(__LINUX__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__ANDROID__)
 #   include <unistd.h>
 #   include <sys/syscall.h>
-#else
 #   include <pthread.h>
 #endif
+
+// b/c windows defines override std:: functions
+#undef min
+#undef max
 
 using namespace osgEarth::Threading;
 using namespace osgEarth::Util;
 
 //...................................................................
 
-#ifdef OSGEARTH_PROFILING
-#define MUTEX_TYPE tracy::Lockable<std::recursive_mutex>
-#else
-#define MUTEX_TYPE std::recursive_mutex
-#endif
+//#ifdef OSGEARTH_PROFILING
+//#define MUTEX_TYPE tracy::Lockable<std::recursive_mutex>
+//#else
+//#define MUTEX_TYPE std::recursive_mutex
+//#endif
 
-Mutex::Mutex()
+Mutex::Mutex() :
+    _metricsData(nullptr)
 {
 #ifdef OSGEARTH_PROFILING
-    tracy::SourceLocationData* s = new tracy::SourceLocationData();
-    s->name = nullptr;
-    s->function = "unnamed";
-    s->file = __FILE__;
-    s->line = __LINE__;
-    s->color = 0;
-    _handle = new tracy::Lockable<std::mutex>(s);
-    _data = s;
+    if (Metrics::enabled())
+    {
+        tracy::SourceLocationData* s = new tracy::SourceLocationData();
+        s->name = nullptr;
+        s->function = "unnamed";
+        s->file = __FILE__;
+        s->line = __LINE__;
+        s->color = 0;
+        _handle = new tracy::Lockable<std::mutex>(s);
+        _metricsData = s;
+    }
+    else
+    {
+        _handle = new std::mutex();
+    }
 #else
     _handle = new std::mutex();
-    _data = NULL;
 #endif
 }
 
 Mutex::Mutex(const std::string& name, const char* file, std::uint32_t line) :
-    _name(name)
+    _name(name),
+    _metricsData(nullptr)
 {
-#ifdef OSGEARTH_PROFILING        
-    tracy::SourceLocationData* s = new tracy::SourceLocationData();
-    s->name = nullptr;
-    s->function = _name.c_str();
-    s->file = file;
-    s->line = line;
-    s->color = 0;
-    _handle = new tracy::Lockable<std::mutex>(s);
-    _data = s;
+#ifdef OSGEARTH_PROFILING
+    if (Metrics::enabled())
+    {
+        tracy::SourceLocationData* s = new tracy::SourceLocationData();
+        s->name = nullptr;
+        s->function = _name.c_str();
+        s->file = file;
+        s->line = line;
+        s->color = 0;
+        _handle = new tracy::Lockable<std::mutex>(s);
+        _metricsData = s;
+    }
+    else
+    {
+        _handle = new std::mutex();
+    }
 #else
     _handle = new std::mutex();
-    _data = NULL;
 #endif
 }
 
 Mutex::~Mutex()
 {
-    delete static_cast<MUTEX_TYPE*>(_handle);
+#ifdef OSGEARTH_PROFILING
+    if (_metricsData)
+        delete static_cast<tracy::Lockable<std::mutex>*>(_handle);
+    else
+#endif
+        delete static_cast<std::mutex*>(_handle);
 }
 
 void
@@ -90,9 +110,9 @@ Mutex::setName(const std::string& name)
 {
     _name = name;
 #ifdef OSGEARTH_PROFILING
-    if (_data)
+    if (_metricsData)
     {
-        tracy::SourceLocationData* s = static_cast<tracy::SourceLocationData*>(_data);
+        tracy::SourceLocationData* s = static_cast<tracy::SourceLocationData*>(_metricsData);
         s->function = _name.c_str();
     }
 #endif
@@ -102,42 +122,61 @@ void
 Mutex::lock()
 {
     if (_name.empty()) {
-        volatile int i=0; // breakpoint for finding unnamed mutexes -GW
+        volatile int x =0 ; // breakpoint for finding unnamed mutexes
     }
-    static_cast<MUTEX_TYPE*>(_handle)->lock();
+
+#ifdef OSGEARTH_PROFILING
+    if (_metricsData)
+        static_cast<tracy::Lockable<std::mutex>*>(_handle)->lock();
+    else
+#endif
+        static_cast<std::mutex*>(_handle)->lock();
 }
 
 void
 Mutex::unlock()
 {
-    static_cast<MUTEX_TYPE*>(_handle)->unlock();
+#ifdef OSGEARTH_PROFILING
+    if (_metricsData)
+        static_cast<tracy::Lockable<std::mutex>*>(_handle)->unlock();
+    else
+#endif
+        static_cast<std::mutex*>(_handle)->unlock();
 }
 
 bool
 Mutex::try_lock()
 {
-    return static_cast<MUTEX_TYPE*>(_handle)->try_lock();
+#ifdef OSGEARTH_PROFILING
+    if (_metricsData)
+        return static_cast<tracy::Lockable<std::mutex>*>(_handle)->try_lock();
+    else
+#endif
+        return static_cast<std::mutex*>(_handle)->try_lock();
 }
 
 //...................................................................
 
-#ifdef OSGEARTH_PROFILING
-#define RECURSIVE_MUTEX_TYPE tracy::Lockable<std::recursive_mutex>
-#else
-#define RECURSIVE_MUTEX_TYPE std::recursive_mutex
-#endif
-
 RecursiveMutex::RecursiveMutex() :
-    _enabled(true)
+    _enabled(true),
+    _metricsData(nullptr)
 {
 #ifdef OSGEARTH_PROFILING
-    tracy::SourceLocationData* s = new tracy::SourceLocationData();
-    s->name = nullptr;
-    s->function = "unnamed recursive";
-    s->file = __FILE__;
-    s->line = __LINE__;
-    s->color = 0;
-    _handle = new tracy::Lockable<std::recursive_mutex>(s);
+    if (Metrics::enabled())
+    {
+        tracy::SourceLocationData* s = new tracy::SourceLocationData();
+        s->name = nullptr;
+        s->function = "unnamed recursive";
+        s->file = __FILE__;
+        s->line = __LINE__;
+        s->color = 0;
+        _handle = new tracy::Lockable<std::recursive_mutex>(s);
+        _metricsData = s;
+    }
+    else
+    {
+        _handle = new std::recursive_mutex();
+    }
 #else
     _handle = new std::recursive_mutex();
 #endif
@@ -145,16 +184,25 @@ RecursiveMutex::RecursiveMutex() :
 
 RecursiveMutex::RecursiveMutex(const std::string& name, const char* file, std::uint32_t line) :
     _name(name),
-    _enabled(true)
+    _enabled(true),
+    _metricsData(nullptr)
 {
-#ifdef OSGEARTH_PROFILING        
-    tracy::SourceLocationData* s = new tracy::SourceLocationData();
-    s->name = nullptr;
-    s->function = _name.c_str();
-    s->file = file;
-    s->line = line;
-    s->color = 0;
-    _handle = new tracy::Lockable<std::recursive_mutex>(s);
+#ifdef OSGEARTH_PROFILING
+    if (Metrics::enabled())
+    {
+        tracy::SourceLocationData* s = new tracy::SourceLocationData();
+        s->name = nullptr;
+        s->function = _name.c_str();
+        s->file = file;
+        s->line = line;
+        s->color = 0;
+        _handle = new tracy::Lockable<std::recursive_mutex>(s);
+        _metricsData = s;
+    }
+    else
+    {
+        _handle = new std::recursive_mutex();
+    }
 #else
     _handle = new std::recursive_mutex();
 #endif
@@ -163,7 +211,14 @@ RecursiveMutex::RecursiveMutex(const std::string& name, const char* file, std::u
 RecursiveMutex::~RecursiveMutex()
 {
     if (_handle)
-        delete static_cast<RECURSIVE_MUTEX_TYPE*>(_handle);
+    {
+#ifdef OSGEARTH_PROFILING
+        if (_metricsData)
+            delete static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle);
+        else
+#endif
+            delete static_cast<std::recursive_mutex*>(_handle);
+    }
 }
 
 void
@@ -173,32 +228,66 @@ RecursiveMutex::disable()
 }
 
 void
+RecursiveMutex::setName(const std::string& name)
+{
+    _name = name;
+
+#ifdef OSGEARTH_PROFILING
+    if (_metricsData)
+    {
+        tracy::SourceLocationData* s = static_cast<tracy::SourceLocationData*>(_metricsData);
+        s->function = _name.c_str();
+    }
+#endif
+}
+
+void
 RecursiveMutex::lock()
 {
     if (_enabled)
-        static_cast<RECURSIVE_MUTEX_TYPE*>(_handle)->lock();
+    {
+#ifdef OSGEARTH_PROFILING
+        if (_metricsData)
+            static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->lock();
+        else
+#endif
+            static_cast<std::recursive_mutex*>(_handle)->lock();
+    }
 }
 
 void
 RecursiveMutex::unlock()
 {
     if (_enabled)
-        static_cast<RECURSIVE_MUTEX_TYPE*>(_handle)->unlock();
+    {
+#ifdef OSGEARTH_PROFILING
+        if (_metricsData)
+            static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->unlock();
+        else
+#endif
+            static_cast<std::recursive_mutex*>(_handle)->unlock();
+    }
 }
 
 bool
 RecursiveMutex::try_lock()
 {
     if (_enabled)
-        return static_cast<RECURSIVE_MUTEX_TYPE*>(_handle)->try_lock();
-    else
-        return true;
+    {
+#ifdef OSGEARTH_PROFILING
+        if (_metricsData)
+            return static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->try_lock();
+        else
+#endif
+            return static_cast<std::recursive_mutex*>(_handle)->try_lock();
+    }
+    else return true;
 }
 
 //...................................................................
 
 unsigned osgEarth::Threading::getCurrentThreadId()
-{  
+{
 #ifdef _WIN32
   return (unsigned)::GetCurrentThreadId();
 #elif __APPLE__
@@ -215,6 +304,12 @@ unsigned osgEarth::Threading::getCurrentThreadId()
   /* :XXX: this truncates to 32 bits, but better than nothing */
   return (unsigned)pthread_self();
 #endif
+}
+
+unsigned osgEarth::Threading::getConcurrency()
+{
+    int value = std::thread::hardware_concurrency();
+    return value > 0 ? (unsigned)value : 4u;
 }
 
 //...................................................................
@@ -291,7 +386,17 @@ void Event::reset()
 #undef LC
 #define LC "[ThreadPool] "
 
-ThreadPool::ThreadPool(unsigned int numThreads) :
+ThreadPool::ThreadPool(unsigned numThreads) :
+    _name("osgEarth.ThreadPool"),
+    _numThreads(numThreads),
+    _done(false),
+    _queueMutex("ThreadPool")
+{
+    startThreads();
+}
+
+ThreadPool::ThreadPool(const std::string& name, unsigned numThreads) :
+    _name(name),
     _numThreads(numThreads),
     _done(false),
     _queueMutex("ThreadPool")
@@ -328,6 +433,9 @@ void ThreadPool::startThreads()
         _threads.push_back(std::thread( [this]
         {
             OE_DEBUG << LC << "Thread " << std::this_thread::get_id() << " started." << std::endl;
+
+            OE_THREAD_NAME(this->_name.c_str());
+
             while(!_done)
             {
                 osg::ref_ptr<osg::Operation> op;
@@ -378,7 +486,7 @@ void ThreadPool::stopThreads()
     }
 
     _threads.clear();
-    
+
     // Clear out the queue
     {
         Threading::ScopedMutexLock lock(_queueMutex);
@@ -399,7 +507,360 @@ ThreadPool::put(osgDB::Options* options)
 osg::ref_ptr<ThreadPool>
 ThreadPool::get(const osgDB::Options* options)
 {
-    if (!options) return NULL;
-    return OptionsData<ThreadPool>::get(options, "osgEarth::ThreadPool");
+    osg::ref_ptr<ThreadPool> result;
+    OptionsData<ThreadPool>::get(options, result);
+    return result;
 }
 
+void
+osgEarth::Threading::setThreadName(const std::string& name)
+{
+#if (defined _WIN32 && defined _WIN32_WINNT_WIN10 && defined _WIN32_WINNT && _WIN32_WINNT >= _WIN32_WINNT_WIN10) || (defined __CYGWIN__)
+
+    wchar_t buf[256];
+    mbstowcs(buf, name.c_str(), 256);
+    ::SetThreadDescription(::GetCurrentThread(), buf);
+
+#elif defined _GNU_SOURCE && !defined __EMSCRIPTEN__ && !defined __CYGWIN__
+
+    const auto sz = strlen( name.c_str() );
+    if( sz <= 15 )
+    {
+        pthread_setname_np( pthread_self(), name.c_str() );
+    }
+    else
+    {
+        char buf[16];
+        memcpy( buf, name.c_str(), 15 );
+        buf[15] = '\0';
+        pthread_setname_np( pthread_self(), buf );
+    }
+#endif
+}
+
+#undef LC
+#define LC "[Semaphore]"
+
+Semaphore::Semaphore() :
+    _count(0),
+    _m("oe.Semaphore")
+{
+    //nop
+}
+
+Semaphore::Semaphore(const std::string& name) :
+    _count(0),
+    _m(name)
+{
+    //nop
+}
+
+void
+Semaphore::acquire()
+{
+    ScopedMutexLock lock(_m);
+    ++_count;
+}
+
+void
+Semaphore::release()
+{
+    ScopedMutexLock lock(_m);
+    _count = std::max(_count - 1, 0);
+    if (_count == 0)
+        _cv.notify_all();
+}
+
+void
+Semaphore::reset()
+{
+    ScopedMutexLock lock(_m);
+    _count = 0;
+    _cv.notify_all();
+}
+
+std::size_t
+Semaphore::count() const
+{
+    ScopedMutexLock lock(_m);
+    return _count;
+}
+
+void
+Semaphore::join()
+{
+    ScopedMutexLock lock(_m);
+    _cv.wait(
+        _m, 
+        [this]()
+        {
+            return _count == 0;
+        }
+    );
+}
+
+void
+Semaphore::join(Cancelable* cancelable)
+{
+    ScopedMutexLock lock(_m);
+    _cv.wait_for(
+        _m,
+        std::chrono::seconds(1),
+        [this, cancelable]() {
+            return
+                (_count == 0) ||
+                (cancelable && cancelable->isCanceled());
+        }
+    );
+    _count = 0;
+}
+
+
+#undef LC
+#define LC "[JobGroup]"
+
+JobGroup::JobGroup() :
+    _sema(std::make_shared<Semaphore>())
+{
+    //nop
+}
+
+JobGroup::JobGroup(const std::string& name) :
+    _sema(std::make_shared<Semaphore>(name))
+{
+    //nop
+}
+
+void
+JobGroup::join()
+{
+    if (_sema != nullptr && _sema.use_count() > 1)
+    {
+        _sema->join();
+    }
+}
+
+void
+JobGroup::join(Cancelable* cancelable)
+{
+    if (_sema != nullptr && _sema.use_count() > 1)
+    {
+        _sema->join(cancelable);
+    }
+}
+
+
+#undef LC
+#define LC "[JobArena] "
+
+// JobArena statics:
+Mutex JobArena::_arenas_mutex("OE:JobArena");
+std::unordered_map<std::string, std::shared_ptr<JobArena>> JobArena::_arenas;
+std::unordered_map<std::string, unsigned> JobArena::_arenaSizes;
+std::string JobArena::_defaultArenaName = "oe.default";
+
+#define OE_ARENA_DEFAULT_SIZE 2u
+
+JobArena::JobArena(const std::string& name, unsigned numThreads) :
+    _name(name),
+    _numThreads(numThreads),
+    _done(false),
+    _queueMutex("OE.JobArena[" + name + "]")
+{
+    startThreads();
+}
+
+JobArena::~JobArena()
+{
+    stopThreads();
+}
+
+const std::string&
+JobArena::defaultArenaName()
+{
+    return _defaultArenaName;
+}
+
+JobArena*
+JobArena::arena(const std::string& name)
+{
+    ScopedMutexLock lock(_arenas_mutex);
+    std::shared_ptr<JobArena>& arena = _arenas[name];
+    if (arena == nullptr)
+    {
+        auto iter = _arenaSizes.find(name);
+        unsigned numThreads = iter != _arenaSizes.end() ? iter->second : OE_ARENA_DEFAULT_SIZE;
+        
+        arena = std::make_shared<JobArena>(name, numThreads);
+    }
+    return arena.get();
+}
+
+void
+JobArena::setSize(const std::string& name, unsigned numThreads)
+{
+    ScopedMutexLock lock(_arenas_mutex);
+
+    if (_arenaSizes[name] != numThreads)
+    {
+        _arenaSizes[name] = numThreads;
+
+        auto iter = _arenas.find(name);
+        if (iter != _arenas.end())
+        {
+            std::shared_ptr<JobArena> arena = iter->second;
+            OE_SOFT_ASSERT_AND_RETURN(arena != nullptr, __func__, );
+            arena->stopThreads();
+            arena->_numThreads = numThreads;
+            arena->startThreads();
+        }
+    }
+}
+
+std::size_t
+JobArena::queueSize(const std::string& arenaName)
+{
+    std::shared_ptr<JobArena> arena;
+    {
+        ScopedMutexLock lock(_arenas_mutex);
+        arena = _arenas[arenaName];
+    }
+    if (arena == nullptr)
+    {
+        return 0u;
+    }
+    else
+    {
+        Threading::ScopedMutexLock lock(arena->_queueMutex);
+        return arena->_queue.size();
+    }
+}
+
+void
+JobArena::dispatch(
+    std::function<void()>& job,
+    JobGroup* group)
+{
+    // If we have a group semaphore, acquire it BEFORE queuing the job
+    std::shared_ptr<Semaphore> sema = group ? group->_sema : nullptr;
+    if (sema)
+    {
+        sema->acquire();
+    }
+
+    if (_numThreads > 0)
+    {
+        QueuedJob entry(job, sema);
+
+        std::unique_lock<Mutex> lock(_queueMutex);
+        _queue.emplace_back(entry);
+        _block.notify_one();
+    }
+    
+    else
+    {
+        // no threads? run synchronously.
+        job();
+
+        if (sema)
+        {
+            sema->release();
+        }
+    }
+}
+
+std::size_t
+JobArena::queueSize() const
+{
+    std::unique_lock<Mutex> lock(_queueMutex);
+    return _queue.size();
+}
+
+
+void
+JobArena::startThreads()
+{
+    _done = false;
+
+    if (_numThreads == 0)
+    {
+        OE_INFO << LC << "Arena \"" << _name << "\" starting with no threads" << std::endl;
+    }
+
+    for (unsigned i = 0; i < _numThreads; ++i)
+    {
+        _threads.push_back(std::thread([this]
+            {
+                OE_INFO << LC << "Arena \"" << _name << "\" starting thread " << std::this_thread::get_id() << std::endl;
+
+                OE_THREAD_NAME(std::string("OE.JobArena[" + _name + "]").c_str());
+
+                while (!_done)
+                {
+                    QueuedJob next;
+
+                    bool have_next = false;
+                    {
+                        std::unique_lock<Mutex> lock(_queueMutex);
+
+                        _block.wait(lock, [this] {
+                            return _queue.empty() == false || _done == true;
+                        });
+
+                        if (!_queue.empty() && !_done)
+                        {
+                            next = std::move(_queue.front());
+                            have_next = true;
+                            _queue.pop_front();
+                        }
+                    }
+
+                    if (have_next)
+                    {
+                        next._job();
+
+                        // release the group semaphore if necessary
+                        if (next._groupsema != nullptr)
+                        {
+                            next._groupsema->release();
+                        }
+                    }
+                }
+                //OE_INFO << LC << "Arena \"" << _name << "\" stopping thread " << std::this_thread::get_id() << std::endl;
+            }
+        ));
+    }
+}
+
+void JobArena::stopThreads()
+{
+    _done = true;
+    _block.notify_all();
+
+    for (unsigned i = 0; i < _numThreads; ++i)
+    {
+        if (_threads[i].joinable())
+        {
+            _threads[i].join();
+        }
+    }
+
+    _threads.clear();
+
+    // Clear out the queue
+    {
+        Threading::ScopedMutexLock lock(_queueMutex);
+
+        // reset any group semaphores so that JobGroup.join()
+        // will not deadlock.
+        for (auto& entry : _queue)
+        {
+            if (entry._groupsema != nullptr)
+            {
+                entry._groupsema->reset();
+            }
+        }
+
+        _queue.clear();
+    }
+}

@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Metrics>
 #include <osgUtil/Optimizer>
 #include <osg/ComputeBoundsVisitor>
 
@@ -36,6 +37,7 @@ InstanceResource( conf ),
 _canScaleToFitXY(true),
 _canScaleToFitZ(true)
 {
+    _mutex.setName("OE.ModelResource");
     mergeConfig( conf );
 }
 
@@ -93,6 +95,8 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
     if (_status.isError())
         return 0L;
 
+    OE_PROFILING_ZONE;
+
     osg::ref_ptr< osgDB::Options > options = dbOptions ? new osgDB::Options( *dbOptions ) : 0L;
 
     // Explicitly cache images so that models that share images will only load one copy.
@@ -146,11 +150,7 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
 
     if (node == 0L && _status.isOK())
     {
-        Threading::ScopedMutexLock lock(_mutex);
-        if (_status.isOK())
-        {
-            _status = Status::Error(Status::ServiceUnavailable, "Failed to load resource file");
-        }
+        _status = Status::Error(Status::ServiceUnavailable, "Failed to load resource file");
     }
 
     return node;

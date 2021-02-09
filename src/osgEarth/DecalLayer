@@ -64,6 +64,11 @@ namespace osgEarth { namespace Contrib
         //! Creates an image for a tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
+        //! Extent for this layer
+        virtual const GeoExtent& getExtent() const override {
+            return _extent;
+        }
+
     protected: // Layer
 
         // post-ctor initialization
@@ -76,6 +81,7 @@ namespace osgEarth { namespace Contrib
             GeoExtent _extent;
             osg::ref_ptr<const osg::Image> _image;
         };
+        GeoExtent _extent;
         std::list<Decal> _decalList;
         typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
         DecalIndex _decalIndex;
@@ -149,6 +155,11 @@ namespace osgEarth { namespace Contrib
 
         //! Creates an image for a tile key
         virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+        
+        //! Extent for this layer
+        virtual const GeoExtent& getExtent() const override {
+            return _extent;
+        }
 
     protected: // Layer
 
@@ -164,6 +175,7 @@ namespace osgEarth { namespace Contrib
         struct Decal {
             GeoHeightField _heightfield;
         };
+        GeoExtent _extent;
         std::list<Decal> _decalList;
         typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
         DecalIndex _decalIndex;
@@ -204,6 +216,11 @@ namespace osgEarth { namespace Contrib
         //! Creates an image for a tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
+        //! Extent for this layer
+        virtual const GeoExtent& getExtent() const override {
+            return _extent;
+        }
+
     protected: // Layer
 
         // post-ctor initialization
@@ -218,6 +235,7 @@ namespace osgEarth { namespace Contrib
             osg::ref_ptr<const osg::Image> _image;
             GeoExtent _extent;
         };
+        GeoExtent _extent;
         std::list<Decal> _decalList;
         typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
         DecalIndex _decalIndex;

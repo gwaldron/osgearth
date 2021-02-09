@@ -176,6 +176,16 @@ MBTilesImageLayer::writeImageImplementation(const TileKey& key, const osg::Image
     return _driver.write( key, image, progress );
 }
 
+bool MBTilesImageLayer::getMetaData(const std::string& name, std::string& value)
+{
+    return _driver.getMetaData(name, value);
+}
+
+bool MBTilesImageLayer::putMetaData(const std::string& name, const std::string& value)
+{
+    return _driver.putMetaData(name, value);
+}
+
 //...................................................................
 
 Config
@@ -297,6 +307,15 @@ MBTilesElevationLayer::writeHeightFieldImplementation(const TileKey& key, const 
     }
 }
 
+bool MBTilesElevationLayer::getMetaData(const std::string& name, std::string& value)
+{
+    return _driver.getMetaData(name, value);
+}
+
+bool MBTilesElevationLayer::putMetaData(const std::string& name, const std::string& value)
+{
+    return _driver.putMetaData(name, value);
+}
 
 //...................................................................
 
@@ -324,6 +343,8 @@ MBTiles::Driver::open(
     const osgDB::Options* readOptions)
 {
     _name = name;
+
+    _dbOptions = readOptions;
 
     std::string fullFilename = options.url()->full();
     if (!osgDB::fileExists(fullFilename))
@@ -661,6 +682,11 @@ MBTiles::Driver::read(
         {
             std::istringstream inputStream(dataBuffer);
             result = ImageUtils::readStream(inputStream, _dbOptions.get());
+            // If we couldn't load the image automatically try the reader instead.
+            if (!result && _rw.valid())
+            {
+                result = _rw->readImage(inputStream, _dbOptions.get()).takeImage();
+            }
         }
     }
     else

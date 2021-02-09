@@ -38,7 +38,6 @@
 #include <osg/Geometry>
 #include <osg/LineStipple>
 #include <osg/Point>
-#include <osg/MatrixTransform>
 #include <osg/TriangleIndexFunctor>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
@@ -51,6 +50,8 @@
 #define LC "[BuildGeometryFilter] "
 
 #define OE_TEST OE_NULL
+
+#define USE_GNOMONIC_TESSELLATION
 
 using namespace osgEarth;
 
@@ -89,6 +90,19 @@ namespace
         }
 
         return false;
+    }
+
+    void ecef_to_gnomonic(osg::Vec3d& p, const osg::Vec3d& c, const osg::EllipsoidModel* e)
+    {
+        double lat0, lon0, alt0;
+        e->convertXYZToLatLongHeight(c.x(), c.y(), c.z(), lat0, lon0, alt0);
+
+        double lat, lon, alt;
+        e->convertXYZToLatLongHeight(p.x(), p.y(), p.z(), lat, lon, alt);
+
+        double d = sin(lat0)*sin(lat) + cos(lat0)*cos(lat)*cos(lon - lon0);
+        p.x() = (cos(lat)*sin(lon - lon0)) / d;
+        p.y() = (cos(lat0)*sin(lat) - sin(lat0)*cos(lat)*cos(lon - lon0)) / d;
     }
 }
 
@@ -214,7 +228,6 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
 
                     double threshold = osg::DegreesToRadians( *_maxAngle_deg );
                     //OE_TEST << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
-
                     MeshSubdivider ms( _world2local, _local2world );
                     if ( input->geoInterp().isSet() )
                         ms.run( *osgGeom, threshold, *input->geoInterp() );
@@ -356,7 +369,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         }
         else
         {
-            polygonizer = new PolygonizeLinesOperator(*line->stroke());
+            polygonizer = new PolygonizeLinesOperator(line);
         }
         //GPULinesOperator gpuLines(*line->stroke() );
 
@@ -932,6 +945,140 @@ namespace
     }
 }
 
+#ifdef USE_GNOMONIC_TESSELLATION
+
+void
+BuildGeometryFilter::tileAndBuildPolygon(
+    Geometry*               input,
+    const SpatialReference* inputSRS,
+    const SpatialReference* outputSRS,
+    bool                    makeECEF,
+    bool                    tessellate,
+    osg::Geometry*          osgGeom,
+    const osg::Matrixd&     world2local)
+{
+    OE_SOFT_ASSERT_AND_RETURN(input != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(input->getType() != Geometry::TYPE_MULTI, __func__, );
+
+    osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array();
+    verts->reserve(input->getTotalPointCount());
+
+    // hard copy so we can project the values
+    osg::ref_ptr<Geometry> proj = input->clone();
+
+    // Automatically figure out what is the closest plane for tessellation
+    Tessellator::Plane plane = Tessellator::PLANE_AUTO;
+
+    if (outputSRS)
+    {
+        // for geographic data we need to project into 2D before tessellating:
+        if (outputSRS->isGeographic())
+        {
+            osg::Vec3d temp;
+            osg::BoundingBoxd ecef_bb;
+
+            bool allOnEquator = true;
+            GeometryIterator xform_iter(proj.get(), true);
+            while (xform_iter.hasMore())
+            {
+                Geometry* part = xform_iter.next();
+                part->open();
+                for (osg::Vec3d& p : *part)
+                {
+                    inputSRS->transform(p, outputSRS, temp);
+                    if (temp.y() != 0.0)
+                    {
+                        allOnEquator = false;
+                    }
+                    outputSRS->transformToWorld(temp, p);
+                    ecef_bb.expandBy(p);
+                }
+            }
+
+            const osg::Vec3d& center = ecef_bb.center();
+
+            GeometryIterator proj_iter(proj.get(), true);
+            while (proj_iter.hasMore())
+            {
+                Geometry* part = proj_iter.next();
+                for (osg::Vec3d& p : *part)
+                {
+                    // The gnomonic equation won't provide any variation in y values if all of the coordinates are on the equator, so
+                    // adjust the point slightly up from the equator if all points lie on the equator.
+                    if (allOnEquator)
+                    {
+                        p.z() += 0.0000001;
+                    }
+                    ecef_to_gnomonic(p, center, outputSRS->getEllipsoid());
+                }
+            }
+        }
+
+        else
+        {
+            GeometryIterator xform_iter(proj.get(), true);
+            while (xform_iter.hasMore())
+            {
+                Geometry* part = xform_iter.next();
+                part->open();
+                inputSRS->transform(part->asVector(), outputSRS);
+            }
+        }
+    }
+
+    // tessellate
+    Tessellator tess;
+
+    std::vector<uint32_t> indices;
+    if (tess.tessellate2D(proj.get(), indices, plane) == false)
+        return;
+
+    if (indices.empty())
+        return;
+
+    int offset = verts->size();
+
+    osg::Vec3d temp, vert;
+
+    if (outputSRS && outputSRS->isGeographic())
+    {
+        ConstGeometryIterator verts_iter(input, true);
+        while (verts_iter.hasMore())
+        {
+            const Geometry* part = verts_iter.next();
+            for (const auto& p : *part)
+            {
+                inputSRS->transform(p, outputSRS, temp);
+                outputSRS->transformToWorld(temp, vert);
+                vert = vert * world2local;
+                verts->push_back(vert);
+            }
+        }
+    }
+    else
+    {
+        ConstGeometryIterator verts_iter(proj.get(), true);
+        while (verts_iter.hasMore())
+        {
+            const Geometry* part = verts_iter.next();
+            for (const auto& p : *part)
+            {
+                verts->push_back(p * world2local);
+            }
+        }
+    }
+
+    osg::DrawElements* de = new osg::DrawElementsUInt(
+        GL_TRIANGLES,
+        indices.size(),
+        &indices[0]);
+
+    osgGeom->setVertexArray(verts.get());
+    osgGeom->addPrimitiveSet(de);
+}
+
+#else
+
 void
 BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                                          const SpatialReference* featureSRS,
@@ -1052,6 +1199,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         osgGeom->setPrimitiveSetList( geode->getDrawable(0)->asGeometry()->getPrimitiveSetList() );
     }
 }
+#endif
 
 // builds and tessellates a polygon (with or without holes)
 void

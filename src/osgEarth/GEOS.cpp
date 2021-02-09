@@ -21,25 +21,7 @@
 #include <osgEarth/GEOS>
 #include <osg/Notify>
 
-#include <geos/geom/PrecisionModel.h>
-#include <geos/geom/GeometryFactory.h>
-#include <geos/geom/Coordinate.h>
-#include <geos/geom/CoordinateSequence.h>
-#include <geos/geom/CoordinateArraySequenceFactory.h>
-#include <geos/geom/Geometry.h>
-#include <geos/geom/Point.h>
-#include <geos/geom/MultiPoint.h>
-#include <geos/geom/Polygon.h>
-#include <geos/geom/MultiPolygon.h>
-#include <geos/geom/LineString.h>
-#include <geos/geom/MultiLineString.h>
-#include <geos/geom/LinearRing.h>
-#include <geos/operation/valid/IsValidOp.h>
-#include <geos/util/IllegalArgumentException.h>
-
 using namespace osgEarth;
-using namespace geos;
-using namespace geos::operation;
 
 #define LC "[GEOS] "
 
@@ -48,323 +30,276 @@ using namespace geos::operation;
 
 namespace
 {
-    geom::CoordinateSequence*
-    vec3dArray2CoordSeq( const Geometry* input, bool close, const geom::CoordinateSequenceFactory* factory )
-    {   
+    GEOSCoordSequence*
+        vec3dArray2CoordSeq(GEOSContextHandle_t handle, const Geometry* input, bool close)
+    {
         bool needToClose = close && input->size() > 2 && input->front() != input->back();
 
-        std::vector<geos::geom::Coordinate>* coords = new std::vector<geom::Coordinate>();
-        coords->reserve( input->size() + (needToClose ? 1 : 0) );
-        for( osg::Vec3dArray::const_iterator i = input->begin(); i != input->end(); ++i )
-        {
-            coords->push_back( geom::Coordinate( i->x(), i->y(), i->z() ));
-        }
-        if ( needToClose )
-        {
-            coords->push_back( coords->front() );
-        }
-        geom::CoordinateSequence* seq = factory->create( coords );
+        unsigned int size = input->size() + (needToClose ? 1 : 0);
 
-        return seq;
+        GEOSCoordSequence* coords = GEOSCoordSeq_create_r(handle, size, 3);
+
+        unsigned int idx = 0;
+        for (osg::Vec3dArray::const_iterator i = input->begin(); i != input->end(); ++i)
+        {
+            GEOSCoordSeq_setX_r(handle, coords, idx, i->x());
+            GEOSCoordSeq_setY_r(handle, coords, idx, i->y());
+            GEOSCoordSeq_setZ_r(handle, coords, idx, i->z());
+            ++idx;
+        }
+        if (needToClose)
+        {
+            GEOSCoordSeq_setX_r(handle, coords, idx, input->begin()->x());
+            GEOSCoordSeq_setY_r(handle, coords, idx, input->begin()->y());
+            GEOSCoordSeq_setZ_r(handle, coords, idx, input->begin()->z());
+        }
+        return coords;
     }
 
-    geom::Geometry*
-    import( const Geometry* input, const geom::GeometryFactory* f )
+    GEOSGeometry*
+        import(GEOSContextHandle_t handle, const Geometry* input)
     {
-        geom::Geometry* output = 0L;
+        GEOSGeometry* output = 0L;
 
-        if ( input->getType() == Geometry::TYPE_UNKNOWN )
+        if (input->getType() == Geometry::TYPE_UNKNOWN)
         {
             output = 0L;
         }
-        else if ( input->getType() == Geometry::TYPE_MULTI )
+        else if (input->getType() == Geometry::TYPE_MULTI)
         {
-            const MultiGeometry* multi = static_cast<const MultiGeometry*>( input );
+            const MultiGeometry* multi = static_cast<const MultiGeometry*>(input);
 
             Geometry::Type compType = multi->getComponentType();
 
-            std::vector<geom::Geometry*>* children = new std::vector<geom::Geometry*>();
-            for( GeometryCollection::const_iterator i = multi->getComponents().begin(); i != multi->getComponents().end(); ++i ) 
+            std::vector<GEOSGeom> children;
+            for (GeometryCollection::const_iterator i = multi->getComponents().begin(); i != multi->getComponents().end(); ++i)
             {
-                geom::Geometry* child = import( i->get(), f );
-                if ( child )
-                    children->push_back( child );
+                GEOSGeometry* child = import(handle, i->get());
+                if (child)
+                    children.push_back(child);
             }
-            if ( children->size() > 0 )
+
+            if (children.size() > 0)
             {
-                if ( compType == Geometry::TYPE_POLYGON )
-                    output = f->createMultiPolygon( children );
-                else if ( compType == Geometry::TYPE_LINESTRING )
-                    output = f->createMultiLineString( children );
-                else if ( compType == Geometry::TYPE_POINT || compType == Geometry::TYPE_POINTSET )
-                    output = f->createMultiPoint( children );
+                if (compType == Geometry::TYPE_POLYGON)
+                    output = GEOSGeom_createCollection_r(handle, GEOSGeomTypes::GEOS_MULTIPOLYGON, children.data(), children.size());
+                else if (compType == Geometry::TYPE_LINESTRING)
+                    output = GEOSGeom_createCollection_r(handle, GEOSGeomTypes::GEOS_MULTILINESTRING, children.data(), children.size());
+                else if (compType == Geometry::TYPE_POINT || compType == Geometry::TYPE_POINTSET)
+                    output = GEOSGeom_createCollection_r(handle, GEOSGeomTypes::GEOS_MULTIPOINT, children.data(), children.size());
                 else
-                    output = f->createGeometryCollection( children );
+                    output = GEOSGeom_createCollection_r(handle, GEOSGeomTypes::GEOS_GEOMETRYCOLLECTION, children.data(), children.size());
             }
-            else
-                delete children;
         }
         else
         {
             // any other type will at least contain points:
-            geom::CoordinateSequence* seq = 0L;
-            try
+            GEOSCoordSequence* seq = 0;
+            switch (input->getType())
             {
-                switch( input->getType() )
+            case Geometry::TYPE_UNKNOWN:
+                break;
+            case Geometry::TYPE_MULTI: break;
+
+            case Geometry::TYPE_POINT:
+            case Geometry::TYPE_POINTSET:
+                seq = vec3dArray2CoordSeq(handle, input, false);
+                if (seq) output = GEOSGeom_createPoint_r(handle, seq);
+                break;
+
+            case Geometry::TYPE_LINESTRING:
+                seq = vec3dArray2CoordSeq(handle, input, false);
+                if (seq) output = GEOSGeom_createLineString_r(handle, seq);
+                break;
+
+            case Geometry::TYPE_RING:
+                seq = vec3dArray2CoordSeq(handle, input, true);
+                if (seq) output = GEOSGeom_createLinearRing_r(handle, seq);
+                break;
+
+            case Geometry::TYPE_POLYGON:
+                seq = vec3dArray2CoordSeq(handle, input, true);
+                GEOSGeometry* shell = 0L;
+                if (seq)
+                    shell = GEOSGeom_createLinearRing_r(handle, seq);
+
+                if (shell)
                 {
-                case Geometry::TYPE_UNKNOWN: 
-                    break;
-                case Geometry::TYPE_MULTI: break;
+                    const Polygon* poly = static_cast<const Polygon*>(input);
+                    std::vector<GEOSGeom> holes;
 
-                case Geometry::TYPE_POINT:
-                case Geometry::TYPE_POINTSET:
-                    seq = vec3dArray2CoordSeq( input, false, f->getCoordinateSequenceFactory() );
-                    if ( seq ) output = f->createPoint( seq );
-                    break;
-
-                case Geometry::TYPE_LINESTRING:
-                    seq = vec3dArray2CoordSeq( input, false, f->getCoordinateSequenceFactory() );
-                    if ( seq ) output = f->createLineString( seq );
-                    break;
-
-                case Geometry::TYPE_RING:
-                    seq = vec3dArray2CoordSeq( input, true, f->getCoordinateSequenceFactory() );
-                    if ( seq ) output = f->createLinearRing( seq );
-                    break;
-
-                case Geometry::TYPE_POLYGON:
-                    seq = vec3dArray2CoordSeq( input, true, f->getCoordinateSequenceFactory() );
-                    geom::LinearRing* shell = 0L;
-                    if ( seq )
-                        shell = f->createLinearRing( seq );
-
-                    if ( shell )
+                    if (poly->getHoles().size() > 0)
                     {
-                        const Polygon* poly = static_cast<const Polygon*>(input);
-                        std::vector<geom::Geometry*>* holes = poly->getHoles().size() > 0 ? new std::vector<geom::Geometry*>() : 0L;
-                        if (holes)
+                        for (RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r)
                         {
-                            for( RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r )
+                            GEOSGeometry* hole = import(handle, r->get());
+                            if (hole)
                             {
-                                geom::Geometry* hole = import( r->get(), f );
-                                if (hole)
+                                if (GEOSGeomTypeId_r(handle, hole) == GEOSGeomTypes::GEOS_LINEARRING)
                                 {
-                                    if (hole->getGeometryTypeId() == geos::geom::GEOS_LINEARRING)
-                                    {
-                                        holes->push_back(hole);
-                                    }
-                                    else
-                                    {
-                                        delete hole;
-                                    }
+                                    holes.push_back(hole);
+                                }
+                                else
+                                {
+                                    GEOSGeom_destroy_r(handle, hole);
                                 }
                             }
-                            if (holes->size() == 0)
-                            {
-                                delete holes;
-                                holes = 0L;
-                            }
                         }
-                        output = f->createPolygon( shell, holes );
                     }
-                
-                    break;
+                    output = GEOSGeom_createPolygon_r(handle, shell, holes.data(), holes.size());
                 }
-            }
-            catch( util::IllegalArgumentException )
-            {
-                // catch GEOS exceptions..
-                //if ( seq )
-                //    delete seq;
 
-                OE_DEBUG << "GEOS::import: Removed degenerate geometry" << std::endl;
+                break;
             }
         }
 
         return output;
     }
 
+
     Geometry*
-    exportPolygon( const geom::Polygon* input )
+        exportPolygon_c(GEOSContextHandle_t handle, const GEOSGeometry* input)
     {
         Polygon* output = 0L;
 
-        const geom::LineString* outerRing = input->getExteriorRing();
-        if ( outerRing )
+        const GEOSGeometry* outerRing = GEOSGetExteriorRing_r(handle, input);
+
+        if (outerRing)
         {
-            const geom::CoordinateSequence* s = outerRing->getCoordinatesRO();
+            const GEOSCoordSequence* s = GEOSGeom_getCoordSeq_r(handle, outerRing);
 
-            output = new Polygon( s->getSize() );
+            unsigned int outerSize;
+            GEOSCoordSeq_getSize_r(handle, s, &outerSize);
+            output = new Polygon(outerSize);
 
-            for( unsigned int j=0; j<s->getSize(); j++ ) 
+            for (unsigned int j = 0; j < outerSize; j++)
             {
-                const geom::Coordinate& c = s->getAt( j );
-                output->push_back( osg::Vec3d( c.x, c.y, !osg::isNaN(c.z)? c.z : 0.0) );
+                double x, y, z;
+                GEOSCoordSeq_getX_r(handle, s, j, &x);
+                GEOSCoordSeq_getY_r(handle, s, j, &y);
+                GEOSCoordSeq_getZ_r(handle, s, j, &z);
+                output->push_back(osg::Vec3d(x, y, !osg::isNaN(z) ? z : 0.0));
                 //OE_NOTICE << "c.z = " << c.z << "\n";
             }
-            output->rewind( Ring::ORIENTATION_CCW );
+            output->rewind(Ring::ORIENTATION_CCW);
 
-            for( unsigned k=0; k < input->getNumInteriorRing(); k++ )
+            unsigned int numInteriorRings = GEOSGetNumInteriorRings_r(handle, input);
+            for (unsigned k = 0; k < numInteriorRings; k++)
             {
-                const geom::LineString* inner = input->getInteriorRingN( k );
-                const geom::CoordinateSequence* s = inner->getCoordinatesRO();
-                Ring* hole = new Ring( s->getSize() );
-                for( unsigned int m = 0; m<s->getSize(); m++ )
+                const GEOSGeometry* inner = GEOSGetInteriorRingN_r(handle, input, k);
+                const GEOSCoordSequence* s = GEOSGeom_getCoordSeq_r(handle, inner);
+                unsigned int innerSize;
+                GEOSCoordSeq_getSize_r(handle, s, &innerSize);
+                Ring* hole = new Ring(innerSize);
+                for (unsigned int m = 0; m < innerSize; m++)
                 {
-                    const geom::Coordinate& c = s->getAt( m );
-                    hole->push_back( osg::Vec3d( c.x, c.y, !osg::isNaN(c.z)? c.z : 0.0) );
+                    double x, y, z;
+                    GEOSCoordSeq_getX_r(handle, s, m, &x);
+                    GEOSCoordSeq_getY_r(handle, s, m, &y);
+                    GEOSCoordSeq_getZ_r(handle, s, m, &z);
+                    hole->push_back(osg::Vec3d(x, y, !osg::isNaN(z) ? z : 0.0));
                 }
-                hole->rewind( Ring::ORIENTATION_CW );
-                output->getHoles().push_back( hole );
+                hole->rewind(Ring::ORIENTATION_CW);
+                output->getHoles().push_back(hole);
             }
         }
         return output;
     }
 }
 
-
-GEOSContext::GEOSContext()
+GEOSGeometry* GEOS::importGeometry(GEOSContextHandle_t handle, const Geometry* input)
 {
-    // double-precison:
-    geos::geom::PrecisionModel* pm = new geos::geom::PrecisionModel(geom::PrecisionModel::FLOATING);
-
-    // Factory will clone the PM
-#if GEOS_VERSION_AT_LEAST(3,6)
-    _factory = geos::geom::GeometryFactory::create( pm );
-#else
-    _factory = new geos::geom::GeometryFactory( pm );
-#endif
-
-    // Delete the template.
-    delete pm;
+    return import(handle, input);
 }
 
-GEOSContext::~GEOSContext()
-{
-#if !GEOS_VERSION_AT_LEAST(3,6)
-    delete _factory;
-#endif
-}
-
-geom::Geometry*
-GEOSContext::importGeometry(const Geometry* input)
-{
-    geom::Geometry* output = 0L;
-    if ( input && input->isValid() )
-    {
-#if GEOS_VERSION_AT_LEAST(3,6)
-        output = import( input, _factory.get() );
-#else
-        output = import( input, _factory );
-
-        // if output is ok, it will have a pointer to f. this is probably a leak.
-        // TODO: Check whether this is a leak!! -gw
-        //if ( !output )
-        //    delete f;
-#endif
-    }
-    return output;
-}
-
-
-
-Geometry*
-GEOSContext::exportGeometry(const geom::Geometry* input)
+Geometry* GEOS::exportGeometry(GEOSContextHandle_t handle, const GEOSGeometry* input)
 {
     GeometryCollection parts;
 
-    if ( dynamic_cast<const geom::Point*>( input ) )
+    int typeId = GEOSGeomTypeId_r(handle, input);
+    if (typeId == GEOSGeomTypes::GEOS_POINT)
     {
-        const geom::Point* point = dynamic_cast< const geom::Point* >(input);
+        const GEOSCoordSequence* s = GEOSGeom_getCoordSeq_r(handle, input);
         Point* part = new Point();
-        const geom::Coordinate* c = point->getCoordinate();
-        part->set(osg::Vec3d(c->x, c->y, c->z));
+        double x, y, z;
+        GEOSCoordSeq_getX_r(handle, s, 0, &x);
+        GEOSCoordSeq_getY_r(handle, s, 0, &y);
+        GEOSCoordSeq_getZ_r(handle, s, 0, &z);
+        part->set(osg::Vec3d(x, y, z));
         return part;
     }
-    else if ( dynamic_cast<const geom::MultiPoint*>( input ) )
+    else if (typeId == GEOSGeomTypes::GEOS_MULTIPOINT)
     {
-        const geom::MultiPoint* mp = dynamic_cast<const geom::MultiPoint*>( input );
-        PointSet* part = new PointSet( mp->getNumPoints() );
-        for( unsigned int i=0; i < mp->getNumPoints(); i++ )
+        unsigned int numGeometries = GEOSGetNumGeometries_r(handle, input);
+        PointSet* part = new PointSet(numGeometries);
+        for (unsigned int i = 0; i < numGeometries; i++)
         {
-            const geom::Geometry* g = mp->getGeometryN(i);
-            if ( g )
+            const GEOSGeometry* g = GEOSGetGeometryN_r(handle, input, i);
+            if (g)
             {
-                const geom::Coordinate* c = mp->getCoordinate();
-                if ( c )
-                {
-                    part->push_back( osg::Vec3d( c->x, c->y, c->z ) ); //p->getX(), p->getY(), 0 ) );
-                }
+                const GEOSCoordSequence* s = GEOSGeom_getCoordSeq_r(handle, g);
+                double x, y, z;
+                GEOSCoordSeq_getX_r(handle, s, 0, &x);
+                GEOSCoordSeq_getY_r(handle, s, 0, &y);
+                GEOSCoordSeq_getZ_r(handle, s, 0, &z);
+                part->push_back(osg::Vec3d(x, y, z));
             }
         }
-        parts.push_back( part );
+        parts.push_back(part);
     }
-    else if ( dynamic_cast<const geom::LineString*>( input ) )
+    else if (typeId == GEOSGeomTypes::GEOS_LINESTRING)
     {
-        const geom::LineString* line = dynamic_cast<const geom::LineString*>( input );
-        LineString* part = new LineString( line->getNumPoints() );
-        for( unsigned int i=0; i<line->getNumPoints(); i++ )
+        const GEOSCoordSequence* s = GEOSGeom_getCoordSeq_r(handle, input);
+        unsigned int size;
+        GEOSCoordSeq_getSize_r(handle, s, &size);
+        LineString* part = new LineString(size);
+        for (unsigned int i = 0; i < size; i++)
         {
-            const geom::Coordinate& c = line->getCoordinateN(i);
-            part->push_back( osg::Vec3d( c.x, c.y, c.z ) ); //0 ) );
+            double x, y, z;
+            GEOSCoordSeq_getX_r(handle, s, i, &x);
+            GEOSCoordSeq_getY_r(handle, s, i, &y);
+            GEOSCoordSeq_getZ_r(handle, s, i, &z);
+            part->push_back(osg::Vec3d(x, y, z));
         }
-        parts.push_back( part );
+        parts.push_back(part);
     }
-    else if ( dynamic_cast<const geom::MultiLineString*>( input ) )
+    else if (typeId == GEOSGeomTypes::GEOS_MULTILINESTRING)
     {
-        const geom::MultiLineString* m = dynamic_cast<const geom::MultiLineString*>( input );
-        for( unsigned int i=0; i<m->getNumGeometries(); i++ ) 
+        unsigned int numGeometries = GEOSGetNumGeometries_r(handle, input);
+        for (unsigned int i = 0; i < numGeometries; i++)
         {
-            Geometry* part = exportGeometry( m->getGeometryN(i) );
-            if ( part ) parts.push_back( part );
+            Geometry* part = GEOS::exportGeometry(handle, GEOSGetGeometryN_r(handle, input, i));
+            if (part) parts.push_back(part);
         }
     }
-    else if ( dynamic_cast<const geom::Polygon*>( input ) )
+    else if (typeId == GEOSGeomTypes::GEOS_POLYGON)
     {
-        const geom::Polygon* poly = dynamic_cast<const geom::Polygon*>( input );
-        Geometry* part = exportPolygon( poly );
-        if ( part ) parts.push_back( part );
+        Geometry* part = exportPolygon_c(handle, input);
+        if (part) parts.push_back(part);
     }
-    else if ( dynamic_cast<const geom::MultiPolygon*>( input ) )
+    else if (typeId == GEOSGeomTypes::GEOS_MULTIPOLYGON)
     {
-        //OE_NOTICE << "Multipolygon" << std::endl;
-        const geom::MultiPolygon* mpoly = dynamic_cast<const geom::MultiPolygon*>( input );
-        for( unsigned int i=0; i<mpoly->getNumGeometries(); i++ )
+        unsigned int numGeometries = GEOSGetNumGeometries_r(handle, input);
+        for (unsigned int i = 0; i < numGeometries; i++)
         {
-            Geometry* part = exportPolygon( dynamic_cast<const geom::Polygon*>( mpoly->getGeometryN(i) ) );
-            if ( part ) parts.push_back( part );
-        }        
+            Geometry* part = exportPolygon_c(handle, GEOSGetGeometryN_r(handle, input, i));
+            if (part) parts.push_back(part);
+        }
     }
 
-    if ( parts.size() == 1 )
+    if (parts.size() == 1)
     {
         osg::ref_ptr<Geometry> part = parts.front().get();
         parts.clear();
         return part.release();
     }
-    else if ( parts.size() > 1 )
+    else if (parts.size() > 1)
     {
-        return new MultiGeometry( parts );
+        return new MultiGeometry(parts);
     }
     else
     {
         return 0L;
-    }
-}
-
-
-void
-GEOSContext::disposeGeometry(geom::Geometry* input)
-{
-    if (input)
-    {
-#if GEOS_VERSION_AT_LEAST(3,6)
-        _factory->destroyGeometry(input);
-#else
-        geom::GeometryFactory* f = const_cast<geom::GeometryFactory*>(input->getFactory());
-        if ( f != _factory )
-            delete f;
-#endif
     }
 }
 

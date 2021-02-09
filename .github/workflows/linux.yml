@@ -1,0 +1,79 @@
+name: linux-x64 
+
+on:
+  push:
+    branches:
+      - master
+      - 3.1
+  pull_request:
+    branches:
+      - master
+      - 3.1
+  workflow_dispatch:
+
+env:             
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: ['ubuntu-20.04']
+        include:
+          - os: 'ubuntu-20.04'
+            triplet: 'x64-linux'
+
+    steps:       
+    - name: Setup environment
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install libgl-dev
+        sudo apt-get install -y cmake
+        sudo apt-get install -y libopenscenegraph-dev
+        sudo apt-get install -y libgdal-dev
+        sudo apt-get install -y libgeos-dev
+        sudo apt-get install -y libsqlite3-dev
+        sudo apt-get install -y protobuf-compiler libprotobuf-dev
+        sudo apt-get install -y libpoco-dev
+        
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+        ref: 3.1  
+             
+    - name: Create Build Environment
+      run: |
+        cmake -E make_directory ${{runner.workspace}}/build 
+    
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{ runner.workspace }}/build
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE 
+
+    - name: 'Upload cmake configure log artifact'
+      uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: cmake-configure-log
+        path: |
+          ${{ runner.workspace }}/build/CMakeCache.txt
+        retention-days: 1
+
+    - name: Build
+      working-directory: ${{ runner.workspace }}/build
+      shell: bash
+      run: cmake --build . --parallel 4 --config $BUILD_TYPE 
+
+    - name: 'Upload cmake build log artifact'
+      uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: cmake-build-log
+        path: |
+          ${{ runner.workspace }}/build/CMakeCache.txt
+        retention-days: 1
+    

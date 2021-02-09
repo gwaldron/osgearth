@@ -24,7 +24,6 @@
 #include <osgEarth/MemCache>
 
 using namespace osgEarth;
-using namespace OpenThreads;
 
 #define LC "[TileLayer] Layer \"" << getName() << "\" "
 
@@ -35,16 +34,16 @@ TileLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
 
-    conf.set( "min_level", _minLevel );
-    conf.set( "max_level", _maxLevel );
-    conf.set( "min_resolution", _minResolution );
-    conf.set( "max_resolution", _maxResolution );
-    conf.set( "max_data_level", _maxDataLevel );
-    conf.set( "tile_size", _tileSize);
-    conf.set( "profile", _profile);
-    conf.set( "no_data_value", _noDataValue);
-    conf.set( "min_valid_value", _minValidValue);
-    conf.set( "max_valid_value", _maxValidValue);
+    conf.set("max_level", _maxLevel);
+    conf.set("max_resolution", _maxResolution);
+    conf.set("max_valid_value", _maxValidValue);
+    conf.set("max_data_level", _maxDataLevel);
+    conf.set("min_level", _minLevel);
+    conf.set("min_valid_value", _minValidValue);
+    conf.set("min_resolution", _minResolution);
+    conf.set("no_data_value", _noDataValue);
+    conf.set("profile", _profile);
+    conf.set("tile_size", _tileSize);
 
     return conf;
 }
@@ -318,7 +317,7 @@ TileLayer::addedToMap(const Map* map)
 
     unsigned l2CacheSize = 0u;
 
-    // If the profiles don't match, mosaicing will be likely so set up a 
+    // If the profiles don't match, mosaicing will be likely so set up a
     // small L2 cache for this layer.
     if (map &&
         map->getProfile() &&
@@ -328,6 +327,12 @@ TileLayer::addedToMap(const Map* map)
         _profileMatchesMapProfile = false;
         l2CacheSize = 16u;
         OE_INFO << LC << "Map/Layer profiles differ; requesting L2 cache" << std::endl;
+    }
+
+    // Use the user defined option if it's set.
+    if (options().l2CacheSize().isSet())
+    {
+        l2CacheSize = options().l2CacheSize().get();
     }
 
     setUpL2Cache(l2CacheSize);
@@ -392,14 +397,15 @@ TileLayer::openForWriting()
     if (isWritingSupported())
     {
         _writingRequested = true;
-        return open();
+        open();
+        return getStatus();
     }
     return setStatus(Status::ServiceUnavailable, "Layer does not support writing");
 }
 
 Status
 TileLayer::closeImplementation()
-{    
+{
     return Layer::closeImplementation();
 }
 
@@ -494,7 +500,7 @@ TileLayer::getCacheBin(const Profile* profile)
             if (meta->isOK())
             {
                 metadataOK = true;
-                
+
                 if (cacheSettings->cachePolicy()->isCacheOnly() && !_profile.valid())
                 {
                     // in cacheonly mode, create a profile from the first cache bin accessed
@@ -763,7 +769,7 @@ TileLayer::getDataExtentsUnion() const
                         _dataExtentsUnion.minLevel() = osg::minimum(_dataExtentsUnion.minLevel().get(), de[i].minLevel().get());
                     if (de[i].maxLevel().isSet())
                         _dataExtentsUnion.maxLevel() = osg::maximum(_dataExtentsUnion.maxLevel().get(), de[i].maxLevel().get());
-                    
+
                 }
             }
         }

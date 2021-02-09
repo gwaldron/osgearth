@@ -87,7 +87,7 @@ namespace osgEarth { namespace Internal
 
         typedef std::map<osg::Drawable*, Element> Elements;
 
-        struct CameraLocal 
+        struct CameraLocal
         {
             CameraLocal();
             const osg::Camera* _camera;      // camera associated with the data structure
@@ -115,7 +115,7 @@ namespace osgEarth { namespace Internal
         CalloutImplementation(ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f);
 
         //! Override from SortCallback
-        void sortImplementation(osgUtil::RenderBin*);
+        void sortImplementation(osgUtil::RenderBin*) override;
 
         void push(osgUtil::RenderLeaf* leaf, CameraLocal& local);
 
@@ -148,11 +148,11 @@ namespace osgEarth { namespace Internal
         const double rotation = osg::PI / 16; //1.7; //osg::PI / 32; //1.6;
         const osg::Quat q(dir*rotation, osg::Vec3d(0, 0, 1));
         _offsetVector = q * _offsetVector;
-    }   
+    }
 
     CalloutImplementation::CameraLocal::CameraLocal() :
-        _camera(0), 
-        _frame(0), 
+        _camera(0),
+        _frame(0),
         _vpmChanged(true),
         _leadersDirty(false),
         _leaderColor(1,1,1,1)
@@ -160,7 +160,6 @@ namespace osgEarth { namespace Internal
         _leaders = new LineDrawable(GL_LINES);
         _leaders->setCullingActive(false);
         _leaders->setDataVariance(osg::Object::DYNAMIC);
-        _leaders->setUseGPU(false);
         _leaders->setColor(_leaderColor);
         _leaders->setLineSmooth(true);
         GLUtils::setLighting(_leaders->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
@@ -200,7 +199,7 @@ namespace osgEarth { namespace Internal
         std::pair<Elements::iterator,bool> result = local._elements.insert(std::make_pair(drawable,prototype));
         Element& element = result.first->second;
 
-        bool isNew = 
+        bool isNew =
             (result.second == true) ||
             (local._frame - element._frame > 1);
 
@@ -220,21 +219,23 @@ namespace osgEarth { namespace Internal
             element._text = dynamic_cast<osgEarth::Text*>(drawable);
             element._drawable->setDataVariance(osg::Object::DYNAMIC);
             element._declutter = true;
-            
+
             if (layoutData)
             {
                 // FLT_MAX priority => don't declutter this element.
-                if (layoutData->getPriority() == FLT_MAX)
+                // Fixed position => don't move the element
+                if (layoutData->getPriority() == FLT_MAX ||
+                    layoutData->getFixed())
                 {
                     element._declutter = false;
                 }
             }
         }
 
-        element._anchor = 
-            zero * 
-            (*leaf->_modelview) * 
-            (*leaf->_projection) * 
+        element._anchor =
+            zero *
+            (*leaf->_modelview) *
+            (*leaf->_projection) *
             local._scalebias;
 
         const osg::Viewport* vp = local._camera->getViewport();
@@ -257,6 +258,9 @@ namespace osgEarth { namespace Internal
             local._leaders->pushVertex(osg::Vec3f());
             local._leadersDirty = true;
         }
+
+        // each one needs a unique mvm
+        leaf->_modelview = new osg::RefMatrix();
 
         if (element._declutter && ScreenSpaceLayout::globallyEnabled)
         {
@@ -310,6 +314,11 @@ namespace osgEarth { namespace Internal
         local._points.clear();
         local._lookup.clear();
 
+        jcv_rect bounds;
+        const double K = 0;
+        bounds.min.x = vp->x() + K, bounds.min.y = vp->y() + K;
+        bounds.max.x = vp->x() + vp->width() - K * 2, bounds.max.y = vp->y() + vp->height() - K * 2;
+
         for (Elements::reverse_iterator i = local._elements.rbegin();
             i != local._elements.rend();
             ++i)
@@ -319,19 +328,21 @@ namespace osgEarth { namespace Internal
             if (element._leaf != NULL && element._declutter)
             {
                 // Hm, not sure what this is doing
-                if (element._frame == element._frame)
+                //if (element._frame == element._frame)
+                if (element._frame == local._frame)
                 {
                     // i.e., visible
                     element._leaf->_depth = 1.0f;
 
-                    local._points.resize(local._points.size()+1);
-
-                    jcv_point& back = local._points.back();
-
-                    back.x = element._anchor.x();
-                    back.y = element._anchor.y();
-
-                    local._lookup[back] = &element;
+                    if (element._anchor.x() >= bounds.min.x &&
+                        element._anchor.x() <= bounds.max.x &&
+                        element._anchor.y() >= bounds.min.y &&
+                        element._anchor.y() <= bounds.max.y)
+                    {
+                        jcv_point back{ element._anchor.x(), element._anchor.y() };
+                        local._points.emplace_back(back);
+                        local._lookup[back] = &element;
+                    }
                 }
             }
         }
@@ -340,10 +351,6 @@ namespace osgEarth { namespace Internal
         // Use the "visual center" of the point's site as the label location.
         jcv_diagram diagram;
         ::memset(&diagram, 0, sizeof(jcv_diagram));
-        jcv_rect bounds;
-        const double K = 0;
-        bounds.min.x = vp->x()+K, bounds.min.y = vp->y()+K;
-        bounds.max.x = vp->x() + vp->width()-K*2, bounds.max.y = vp->y() + vp->height()-K*2;
         jcv_diagram_generate(local._points.size(), &local._points[0], &bounds, &diagram);
 
         if (local._voronoi.valid())
@@ -385,7 +392,7 @@ namespace osgEarth { namespace Internal
                     }
                 }
 
-                // now compute a rotation that transforms the longest edge so that 
+                // now compute a rotation that transforms the longest edge so that
                 // it is parallel with x=0
                 osg::Vec3d v(longestEdge->pos[1].x-longestEdge->pos[0].x, longestEdge->pos[1].y-longestEdge->pos[0].y, 0);
                 q.makeRotate(v, osg::Vec3d(0,1,0));
@@ -396,7 +403,7 @@ namespace osgEarth { namespace Internal
                 osg::Vec3d p0, p1;
                 for(edge = site->edges; edge; edge = edge->next)
                 {
-                    p0.set(edge->pos[0].x, edge->pos[0].y, 0);                    
+                    p0.set(edge->pos[0].x, edge->pos[0].y, 0);
                     p1.set(edge->pos[1].x, edge->pos[1].y, 0);
 
                     if (local._voronoi.valid())
@@ -416,7 +423,7 @@ namespace osgEarth { namespace Internal
                     bb.LL.x() + 0.5*(bb.UR.x()-bb.LL.x()),
                     bb.LL.y() + 0.5*(bb.UR.y()-bb.LL.y()),
                     0);
-                
+
                 centroid = q.inverse()*centroid;
 
 #else
@@ -523,7 +530,8 @@ namespace osgEarth { namespace Internal
         const osg::Viewport* vp = cam->getViewport();
         local._scalebias =
             osg::Matrix::translate(1, 1, 1) *
-            osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5);
+            osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5) *
+            osg::Matrix::translate(vp->x(), vp->y(), 0.0);
 
         for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
             i != leaves.end();
@@ -646,9 +654,15 @@ namespace osgEarth { namespace Internal
 
                 renderInfo.getState()->applyModelViewMatrix(osg::Matrix::identity());
 
-                renderInfo.getState()->apply(local._leaders->getStateSet());
-                // don't need when setting setUseGPU(false)
-                //renderInfo.getState()->apply(local._leaders->getGPUStateSet());
+                if (local._leaders->getUseGPU())
+                {
+                    renderInfo.getState()->pushStateSet(local._leaders->getGPUStateSet());
+                }
+
+                renderInfo.getState()->pushStateSet(local._leaders->getStateSet());
+
+                renderInfo.getState()->apply();
+
                 glDepthFunc(GL_ALWAYS);
                 glDepthMask(GL_FALSE);
                 glEnable(GL_BLEND);
@@ -657,6 +671,14 @@ namespace osgEarth { namespace Internal
                     renderInfo.getState()->applyModelViewAndProjectionUniformsIfRequired();
 
                 local._leaders->draw(renderInfo);
+
+                renderInfo.getState()->popStateSet();
+                if (local._leaders->getUseGPU())
+                {
+                    renderInfo.getState()->popStateSet();
+                }
+
+
 
                 // the debug diagram
                 if (local._voronoi.valid())

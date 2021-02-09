@@ -19,7 +19,7 @@
 #include "LevelDBCache"
 #include "LevelDBCacheBin"
 #include <osgEarth/URI>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Threading>
 #include <osgDB/Registry>
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileUtils>

@@ -306,7 +306,21 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
                     Container*             userContainer,
                     const osgDB::Options*  readOptions) const
 {
+    // Pause do the user can attach a debugger
+    if (args.read("--pause"))
+    {
+        std::cout << "Press <ENTER> to continue" << std::endl;
+        ::getchar();
+    }
+
     osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
+
+    // pass through OSG options
+    std::string str;
+    if (args.read("--osg-options", str) || args.read("-O", str))
+    {
+        myReadOptions->setOptionString(str);
+    }
 
     // read in the Earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
@@ -314,7 +328,7 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     // fallback in case none is specified:
     if (!node.valid())
     {
-        OE_WARN << LC << "No earth file loaded - aborting" << std::endl;
+        OE_WARN << LC << "No valid earth file loaded - aborting" << std::endl;
         return NULL;
     }
 
@@ -431,9 +445,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
 {
     if ( !root )
         root = mapNode;
-
-    // options to use for the load
-    osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
     // parse out custom example arguments first:
     bool useCoords     = args.read("--coords");
@@ -703,8 +714,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
             ShadowCaster* caster = new ShadowCaster();
             caster->setTextureImageUnit( unit );
             caster->setLight( view->getLight() );
-            caster->getShadowCastingGroup()->addChild( mapNode->getLayerNodeGroup() );
-            caster->getShadowCastingGroup()->addChild(mapNode->getTerrainEngine());
+            caster->getShadowCastingGroup()->addChild(mapNode->getLayerNodeGroup());
+            caster->getShadowCastingGroup()->addChild(mapNode->getTerrainEngine()->getNode());
             if ( mapNode->getNumParents() > 0 )
             {
                 osgEarth::insertGroup(caster, mapNode->getParent(0));
@@ -726,6 +737,16 @@ MapNodeHelper::configureView( osgViewer::View* view ) const
 {
     // default uniform values:
     GLUtils::setGlobalDefaults(view->getCamera()->getOrCreateStateSet());
+
+    // disable small feature culling (otherwise Text annotations won't render)
+    view->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+    // instruct the database pager to not modify the unref settings
+    view->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
+
+    // thread-safe initialization of the OSG wrapper manager. Calling this here
+    // prevents the "unsupported wrapper" messages from OSG
+    osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
 
     // add some stock OSG handlers:
     view->addEventHandler(new osgViewer::StatsHandler());

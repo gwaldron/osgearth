@@ -23,9 +23,17 @@
 using namespace osgEarth;
 
 ProgressCallback::ProgressCallback() :
-osg::Referenced( true ),
-_canceled      ( false ),
-_retryDelay_s  ( 0.0f )
+    _canceled(false),
+    _retryDelay_s(0.0f),
+    _cancelable(nullptr)
+{
+    //NOP
+}
+
+ProgressCallback::ProgressCallback(Cancelable* cancelable) :
+    _canceled(false),
+    _retryDelay_s(0.0f),
+    _cancelable(cancelable)
 {
     //NOP
 }
@@ -45,8 +53,14 @@ ProgressCallback::reset()
 bool
 ProgressCallback::isCanceled() const
 {
-    if (!_canceled && shouldCancel())
-        _canceled = true;
+    if (!_canceled)
+    {
+        if ((shouldCancel()) ||
+            (_cancelable && _cancelable->isCanceled()))
+        {
+            _canceled = true;
+        }
+    }
     return _canceled;
 }
 
@@ -103,6 +117,9 @@ ConsoleProgressCallback::reportProgress(double current, double total,
 DatabasePagerProgressCallback::DatabasePagerProgressCallback()
 {
     // if this is a pager thread, get a handle on it:
+
+    // TODO: figure out a way to do this WITHOUT OpenThreads, since this
+    // is the ONLY reason for the dependency.
     _pagerThread = dynamic_cast<osgDB::DatabasePager::DatabaseThread*>(
         OpenThreads::Thread::CurrentThread());
 }

@@ -31,6 +31,7 @@
 
 #include <string>
 
+
 #define REPORT_ACTIVITY true
 
 using namespace osgEarth::REX;
@@ -83,20 +84,30 @@ namespace osgEarth { namespace REX
      */
     struct RequestProgressCallback : public DatabasePagerProgressCallback
     {
+        osg::ref_ptr<Loader> _loader;
         Loader::Request* _request;
 
-        RequestProgressCallback(Loader::Request* req) :
+        RequestProgressCallback(Loader::Request* req, Loader* loader) :
             DatabasePagerProgressCallback(),
-            _request(req)
+            _request(req),
+            _loader(loader)
         {
             //NOP
         }
 
         virtual bool shouldCancel() const
         {
-            return
+            bool should = 
+                (!_loader->isValid(_request)) ||
                 (!_request->isRunning()) ||
                 (DatabasePagerProgressCallback::shouldCancel());
+
+            if (should)
+            {
+                OE_DEBUG << "REX: canceling load on thread " << std::this_thread::get_id() << std::endl;
+            }
+
+            return should;
         }
     };
 } }
@@ -240,6 +251,7 @@ _requests(OE_MUTEX_NAME)
     _myNodePath.push_back( this );
 
     _dboptions = new osgDB::Options();
+
     _dboptions->setFileLocationCallback( new FileLocationCallback() );
 
     OptionsData<PagerLoader>::set(_dboptions.get(), "osgEarth.PagerLoader", this);
@@ -355,6 +367,14 @@ PagerLoader::clear()
     _checkpoint = _clock->getTime();
 }
 
+bool
+PagerLoader::isValid(Request* req) const
+{
+    return 
+        req && 
+        req->_lastTick >= _checkpoint;
+}
+
 void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
@@ -382,7 +402,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                         if (merged)
                         {
                             req->setState(Request::FINISHED);
-                            //OE_INFO << LC << req->_key.str() << " finished (delays = " << req->_delayCount << ")" << std::endl;
+                            //OE_INFO << LC << req->_key.str() << " finished (pri=" << req->_priority << ")" << std::endl;
                         }
                         else
                         {
@@ -458,7 +478,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
         }
     }
 
-    LoaderGroup::traverse( nv );
+    Loader::traverse( nv );
 }
 
 
@@ -497,6 +517,8 @@ PagerLoader::addChild(osg::Node* node)
 
                     if ( REPORT_ACTIVITY )
                         Registry::instance()->endActivity( req->getName() );
+
+                    //OE_INFO << "Fin: " << req->_key.str() << " : " << _clock->getFrame() << std::endl;
                 }
             }                
 
@@ -554,7 +576,9 @@ PagerLoader::runAndRelease(UID requestUID)
 
         request->setState(Request::RUNNING);
 
-        osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request.get());
+        osg::ref_ptr<ProgressCallback> prog = new RequestProgressCallback(request.get(), this);
+
+        //OE_INFO << LC << "Running: " << request->_key.str() << ", tick=" << request->getLastFrameSubmitted() << std::endl;
 
         if (request->run(prog.get()) == false)
         {
@@ -583,7 +607,7 @@ namespace osgEarth { namespace REX
     {
         PagerLoaderAgent()
         {
-            // nop
+            //nop
         }
 
         virtual const char* className() const
@@ -601,6 +625,8 @@ namespace osgEarth { namespace REX
             std::string ext = osgDB::getFileExtension(uri);
             if ( acceptsExtension(ext) )
             {
+                OE_SCOPED_THREAD_NAME("DBPager", "REX");
+
                 // parse the tile key and engine ID:
                 std::string requestdef = osgDB::getNameLessExtension(uri);
                 unsigned requestUID;

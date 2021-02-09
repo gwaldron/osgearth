@@ -5,5 +5,8 @@
 // If C++11 is available there will be a define here:
 @OSGEARTH_CXX11_DEFINE@
 
+// The SOVERSION will be a define here:
+#define OSGEARTH_SOVERSION @OSGEARTH_SOVERSION_VALUE@
+
 #endif // OSGEARTH_BUILDCONFIG_H
 

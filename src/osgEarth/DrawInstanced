@@ -41,7 +41,7 @@ namespace osgEarth { namespace Util
     {
         /**
         * Referenced-counted vector of instance matrices. These are stored
-        * in the node that's been instanced so the app can recover the 
+        * in the node that's been instanced so the app can recover the
         * original positioning data.
         */
         class MatrixRefVector : public InlineVector<osg::Matrixf,osg::Object>
@@ -51,6 +51,16 @@ namespace osgEarth { namespace Util
             MatrixRefVector() : InlineVector<osg::Matrixf,osg::Object>() { }
         protected:
             MatrixRefVector(const MatrixRefVector& rhs, const osg::CopyOp& op) { }
+        };
+
+        /**
+        * Special group that traverses instanced nodes as if they were in the scene graph as regular nodes under MatrixTransforms.
+        * This allows visitors like the IntersectionVisitor and primitive collection to function on instanced models.
+        */
+        class OSGEARTH_EXPORT InstanceGroup : public osg::Group
+        {
+        public:
+            void traverse(osg::NodeVisitor& nv);
         };
 
         /**
@@ -107,7 +117,7 @@ namespace osgEarth { namespace Util
             * NOTE: You must also call install(StateSet) to activate instancing.
             * @return false If instancing is not available
             */
-        extern OSGEARTH_EXPORT bool convertGraphToUseDrawInstanced( 
+        extern OSGEARTH_EXPORT bool convertGraphToUseDrawInstanced(
             osg::Group* graph );
 
         /**

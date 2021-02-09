@@ -1,92 +1,37 @@
-# Locate leveldb.
-# This module defines
-# LEVELDB_LIBRARY
-# LEVELDB_FOUND, if false, do not try to link to libnoise
-# LEVELDB_INCLUDE_DIR, where to find the headers
+# - Find LevelDB
+#
+#  LEVELDB_INCLUDE - Where to find leveldb/db.h
+#  LEVELDB_LIBS    - List of libraries when using LevelDB.
+#  LEVELDB_FOUND   - True if LevelDB found.
 
-SET(LEVELDB_DIR "" CACHE PATH "Root folder of LevelDB distribution")
+get_filename_component(module_file_path ${CMAKE_CURRENT_LIST_FILE} PATH)
 
-FIND_PATH(LEVELDB_INCLUDE_DIR leveldb/db.h
-  PATHS
-  ${LEVELDB_DIR}
-  $ENV{LEVELDB_DIR}
-  NO_DEFAULT_PATH
-    PATH_SUFFIXES include
-)
+# Look for the header file.
+find_path(LEVELDB_INCLUDE_DIR NAMES leveldb/db.h PATHS $ENV{LEVELDB_ROOT}/include /opt/local/include /usr/local/include /usr/include DOC "Path in which the file leveldb/db.h is located." )
+mark_as_advanced(LEVELDB_INCLUDE_DIR)
 
-FIND_PATH(LEVELDB_INCLUDE_DIR leveldb/db.h
-  PATHS
-  ~/Library/Frameworks/noise/Headers
-  /Library/Frameworks/noise/Headers
-  /usr/local/include/leveldb
-  /usr/local/include/leveldb
-  /usr/local/include
-  /usr/include/leveldb
-  /usr/include/leveldb
-  /usr/include
-  /sw/include/leveldb 
-  /sw/include/leveldb 
-  /sw/include # Fink
-  /opt/local/include/leveldb
-  /opt/local/include/leveldb
-  /opt/local/include # DarwinPorts
-  /opt/csw/include/leveldb
-  /opt/csw/include/leveldb
-  /opt/csw/include # Blastwave
-  /opt/include/leveldb
-  /opt/include/leveldb
-  /opt/include  
-)
+# Look for the library.
+# Does this work on UNIX systems? (LINUX)
+find_library(LEVELDB_LIBRARY NAMES leveldb PATHS /usr/lib $ENV{LEVELDB_ROOT}/lib DOC "Path to leveldb library." )
+mark_as_advanced(LEVELDB_LIBRARY)
 
-FIND_LIBRARY(LEVELDB_LIBRARY
-  NAMES libleveldb leveldb leveldb_static
-  PATHS
-    ${LEVELDB_DIR}
-    $ENV{LEVELDB_DIR}
-    NO_DEFAULT_PATH
-    PATH_SUFFIXES lib64 lib
-)
+# Copy the results to the output variables.
+if (LEVELDB_INCLUDE_DIR AND LEVELDB_LIBRARY)
+  message(STATUS "Found leveldb in ${LEVELDB_INCLUDE_DIR} ${LEVELDB_LIBRARY}")
+  set(LEVELDB_FOUND 1)
+  include(CheckCXXSourceCompiles)
+  #set(CMAKE_REQUIRED_LIBRARY ${LEVELDB_LIBRARY} pthread)
+  set(CMAKE_REQUIRED_INCLUDES ${LEVELDB_INCLUDE_DIR})
+ else ()
+   set(LEVELDB_FOUND 0)
+ endif ()
 
-FIND_LIBRARY(LEVELDB_LIBRARY
-  NAMES libleveldb leveldb leveldb_static
-  PATHS
-    ~/Library/Frameworks
-    /Library/Frameworks
-    /usr/local
-    /usr
-    /sw
-    /opt/local
-    /opt/csw
-    /opt
-    /usr/freeware    
-  PATH_SUFFIXES lib64 lib
-)
-FIND_LIBRARY(LEVELDB_LIBRARY_DEBUG
-  NAMES libleveldbd leveldbd leveldb_staticd
-  PATHS
-    ${LEVELDB_DIR}
-    $ENV{LEVELDB_DIR}
-    NO_DEFAULT_PATH
-    PATH_SUFFIXES lib64 lib
-)
-
-FIND_LIBRARY(LEVELDB_LIBRARY_DEBUG
-  NAMES libleveldbd leveldbd leveldb_staticd
-  PATHS
-    ~/Library/Frameworks
-    /Library/Frameworks
-    /usr/local
-    /usr
-    /sw
-    /opt/local
-    /opt/csw
-    /opt
-    /usr/freeware    
-  PATH_SUFFIXES lib64 lib
-)
-
-SET(LEVELDB_FOUND "NO")
-IF(LEVELDB_LIBRARY AND LEVELDB_INCLUDE_DIR)
-  SET(LEVELDB_FOUND "YES")
-ENDIF(LEVELDB_LIBRARY AND LEVELDB_INCLUDE_DIR)
-
+ # Report the results.
+ if (NOT LEVELDB_FOUND)
+   set(LEVELDB_DIR_MESSAGE "LEVELDB was not found. Make sure LEVELDB_LIBRARY and LEVELDB_INCLUDE_DIR are set.")
+   if (LEVELDB_FIND_REQUIRED)
+     message(FATAL_ERROR "${LEVELDB_DIR_MESSAGE}")
+   elseif (NOT LEVELDB_FIND_QUIETLY)
+     message(STATUS "${LEVELDB_DIR_MESSAGE}")
+   endif ()
+ endif ()

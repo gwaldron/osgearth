@@ -20,13 +20,13 @@
 #define OSGEARTH_REX_LOADER 1
 
 #include "Common"
-#include "FrameClock"
 
 #include <osgEarth/IOTypes>
 #include <osgEarth/Threading>
 #include <osgEarth/TileKey>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
+#include <osgEarth/FrameClock>
 #include <osg/ref_ptr>
 #include <osg/Group>
 
@@ -43,7 +43,7 @@ namespace osgEarth { namespace REX
     /**
      * Interface for a utility to satisty Tile loading requests.
      */
-    class Loader
+    class Loader : public osg::Group
     {
     public:
         class Handler;
@@ -129,24 +129,19 @@ namespace osgEarth { namespace REX
             virtual void operator()(Request* request) =0;
         };
 
-        /** Start or continue loading a request. */
+        //! Start or continue loading a request.
         virtual bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv) =0;
 
-        /** Clear out all pending requests. */
+        //! Clear out all pending requests.
         virtual void clear() =0;
-    };
 
-
-    /**
-     * A Loader encapsulated in a Group Node.
-     */
-    class LoaderGroup : public osg::Group, public Loader
-    {
+        //! Whether a request is still valid (for cancelation)
+        virtual bool isValid(Request*) const { return true; }
     };
 
 
     /** Loader that immediately invokes and applies synchronously. */
-    class SimpleLoader : public LoaderGroup
+    class SimpleLoader : public Loader
     {
     public:
         SimpleLoader();
@@ -161,7 +156,7 @@ namespace osgEarth { namespace REX
     /**
      * Loader that uses the OSG database pager to run requests in the background.
      */
-    class PagerLoader : public LoaderGroup
+    class PagerLoader : public Loader
     {
     public:
         PagerLoader(TerrainEngineNode* engine);
@@ -189,10 +184,10 @@ namespace osgEarth { namespace REX
 
         /** Asks the loader to begin or continue loading something.
             Returns true if a NEW request was scheduled; false if an existing request was updated. */
-        bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv);
+        bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv) override;
 
         /** Cancel all pending requests. */
-        void clear();
+        void clear() override;
 
     public: // osg::Group
 
@@ -207,6 +202,9 @@ namespace osgEarth { namespace REX
 
         /** Returns the tilekey associated with the request (or TileKey::INVALID if none) */
         TileKey getTileKeyForRequest(UID requestUID) const;
+
+        //! Compare a time against the checkpoint to see if a request is still valid
+        bool isValid(Request*) const override;
 
     protected:
 

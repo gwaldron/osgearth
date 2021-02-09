@@ -26,6 +26,7 @@
 #include <osgEarth/Threading>
 #include <osgEarth/Containers>
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/FrameClock>
 
 #include "EngineContext"
 #include "TileNodeRegistry"
@@ -37,7 +38,6 @@
 #include "SurfaceNode"
 #include "TileDrawable"
 #include "TerrainCuller"
-#include "FrameClock"
 
 #include <list>
 #include <map>
@@ -85,6 +85,9 @@ namespace osgEarth { namespace REX
             unsigned referenceLOD,
             const TileKey& subRegion);
 
+        //! Shutdown the engine and any running services
+        void shutdown() override;
+
     public: // osg::Node
 
         void traverse(osg::NodeVisitor& nv);
@@ -114,6 +117,7 @@ namespace osgEarth { namespace REX
 
     private:
 
+        void event_traverse(osg::NodeVisitor& nv);
         void update_traverse(osg::NodeVisitor& nv);
         void cull_traverse(osg::NodeVisitor& nv);
 
@@ -122,11 +126,11 @@ namespace osgEarth { namespace REX
 
         //! Various methods that trigger when the Map model changes.
         void addLayer(Layer* layer);
-        void addElevationLayer( ElevationLayer* layer );
         void addTileLayer( Layer* layer );
-        void removeImageLayer( ImageLayer* layerRemoved );
-        void removeElevationLayer( ElevationLayer* layerRemoved );
-        void moveElevationLayer( ElevationLayer* layerMoved );
+        void removeImageLayer( ImageLayer* layerRemoved );        
+        void addElevationLayer(Layer* layer);
+        void removeElevationLayer(Layer* layerRemoved );
+        void moveElevationLayer(Layer* layerMoved );
         
         //! refresh the statesets of the terrain and the imagelayer tile surface
         void updateState(); 
@@ -155,7 +159,6 @@ namespace osgEarth { namespace REX
         bool _morphTerrainSupported;
 
         // extents of each layer, in the Map's SRS. UID = vector index (for speed)
-        //typedef UnorderedMap<UID, LayerExtent> LayerExtentMap; // fast_map?
         LayerExtentMap _cachedLayerExtents;
         bool _cachedLayerExtentsComputeRequired;
 
@@ -169,7 +172,7 @@ namespace osgEarth { namespace REX
 
         RenderBindings _renderBindings;
         osg::ref_ptr<GeometryPool> _geometryPool;
-        osg::ref_ptr<LoaderGroup>  _loader;
+        osg::ref_ptr<Loader>  _loader;
         osg::ref_ptr<UnloaderGroup> _unloader;
         
         osg::ref_ptr<osg::Group> _terrain;

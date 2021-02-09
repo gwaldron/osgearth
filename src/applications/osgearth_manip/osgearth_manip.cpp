@@ -866,14 +866,9 @@ int main(int argc, char** argv)
     viewer.addEventHandler(calc);
     manip->setUpdateCameraCallback(new CameraUpdater(calc));
 
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
     while(!viewer.done())
     {
         viewer.frame();
-
-        // simulate slow frame rate
-        //OpenThreads::Thread::microSleep(1000*1000);
     }
     return 0;
 }

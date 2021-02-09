@@ -8,39 +8,39 @@ Demonstrates how to select a style name using javascript.
     <GDALImage name="world">
         <url>../data/world.tif</url>
     </GDALImage>
-    
+
     <OGRFeatures name="country-data">
         <url>../data/world.shp</url>
         <filters>
             <buffer distance="-0.05"/>
         </filters>
     </OGRFeatures>
-    
+
     <FeatureModel name="countries" features="country-data">        
         <styles>        
             <style type="text/css">
                 p { altitude-clamping: terrain-drape;
                     render-backface-culling: false; }
-                p1 : p { fill: #ffffff9f; }
-                p2 : p { fill: #cccccc9f; }
-                p3 : p { fill: #9999999f; }
-                p4 : p { fill: #6666669f; }
-                p5 : p { fill: #3333339f; }
+                p1 : p { fill: #ff3f3f9f; }
+                p2 : p { fill: #3fff3f9f; }
+                p3 : p { fill: #3f3fff9f; }
+                p4 : p { fill: #ff3fff9f; }
+                p5 : p { fill: #ffff3f9f; }
             </style>
-            
+
             <script language="javascript">
-            <![CDATA[
+              <![CDATA[
                 function getStyleClass()
                 {
-					// Exclude any countries beginning with the letter A: 
-					if ( feature.properties.name.charAt(0) === 'A' )
-						return null;
-						
-					// If it starts with the letter C, return an inline style:
-					if ( feature.properties.name.charAt(0) == 'C' )
-						return '{ fill: #ffc838; stroke: #8f8838; extrusion-height: 250000; }';
-						
-					// Otherwise, color by population and return a stylesheet style:
+                    // Exclude any countries beginning with the letter A: 
+                    if ( feature.properties.name.charAt(0) === 'A' )
+                        return null;
+                        
+                    // If it starts with the letter C, return an inline style:
+                    if ( feature.properties.name.charAt(0) == 'C' )
+                        return '{ _fill: #ffc838; stroke: #8f8838; extrusion-height: 250000; }';
+                        
+                    // Otherwise, color by population and return a stylesheet style:
                     var pop = parseFloat(feature.properties.pop);
                     if      ( pop <= 14045470 )  return "p1";
                     else if ( pop <= 43410900 )  return "p2";
@@ -48,11 +48,11 @@ Demonstrates how to select a style name using javascript.
                     else if ( pop <= 258833000 ) return "p4";
                     else                         return "p5";
                 }
-            ]]>
+              ]]>
             </script>
-            
+
             <selector class_expr="getStyleClass()"/>
         </styles>        
     </FeatureModel>
-    
+
 </map>

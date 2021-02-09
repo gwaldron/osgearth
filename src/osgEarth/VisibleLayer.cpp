@@ -18,11 +18,52 @@
  */
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Utils>
 #include <osg/BlendFunc>
+#include <osgUtil/RenderBin>
 
 using namespace osgEarth;
 
 #define LC "[VisibleLayer] Layer \"" << getName() << "\" "
+
+namespace
+{
+    static osg::Node::NodeMask DEFAULT_LAYER_MASK = 0xffffffff;
+
+    struct EmptyRenderBin : public osgUtil::RenderBin
+    {
+        EmptyRenderBin(osgUtil::RenderStage* stage) :
+            osgUtil::RenderBin()
+        {
+            setName("OE_EMPTY_RENDER_BIN");
+            _stage = stage;
+        }
+    };
+
+    // Cull callback that will permit culling but will supress rendering.
+    // We use this to toggle node visibility to that paged scene graphs
+    // will continue to page in/out even when the layer is not visible.
+    struct NoDrawCullCallback : public osg::NodeCallback
+    {
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) override
+        {
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+            osg::ref_ptr<osgUtil::RenderBin> savedBin;
+            if (cv)
+            {
+                savedBin = cv->getCurrentRenderBin();
+                cv->setCurrentRenderBin(new EmptyRenderBin(savedBin->getStage()));
+            }
+
+            traverse(node, nv);
+
+            if (cv)
+            {
+                cv->setCurrentRenderBin(savedBin.get());
+            }
+        }
+    };
+}
 
 //------------------------------------------------------------------------
 
@@ -32,6 +73,7 @@ VisibleLayer::Options::getConfig() const
     Config conf = Layer::Options::getConfig();
     conf.set( "visible", visible() );
     conf.set( "opacity", opacity() );
+    conf.set( "mask", mask());
     conf.set( "min_range", minVisibleRange() );
     conf.set( "max_range", maxVisibleRange() );
     conf.set( "attenuation_range", attenuationRange() );
@@ -49,12 +91,14 @@ VisibleLayer::Options::fromConfig(const Config& conf)
     _maxVisibleRange.init( FLT_MAX );
     _attenuationRange.init(0.0f);
     _blend.init( BLEND_INTERPOLATE );
+    _mask.init(DEFAULT_LAYER_MASK);
 
     conf.get( "visible", _visible );
     conf.get( "opacity", _opacity);
     conf.get( "min_range", _minVisibleRange );
     conf.get( "max_range", _maxVisibleRange );
     conf.get( "attenuation_range", _attenuationRange );
+    conf.get( "mask", _mask );
     conf.get( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.get( "blend", "modulate", _blend, BLEND_MODULATE );
 }
@@ -79,7 +123,7 @@ VisibleLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    if (options().visible().isSet())
+    if (options().visible().isSet() || options().mask().isSet() )
     {
         setVisible(options().visible().get());
     }
@@ -102,9 +146,54 @@ VisibleLayer::setVisible(bool value)
     // if this layer has a scene graph node, toggle its node mask
     osg::Node* node = getNode();
     if (node)
-        node->setNodeMask(value? ~0 : 0);
+    {
+        if (value == true)
+        {
+            if (_noDrawCallback.valid())
+            {
+                node->removeCullCallback(_noDrawCallback.get());
+                _noDrawCallback = nullptr;
+            }
+        }
+        else
+        {
+            if (!_noDrawCallback.valid())
+            {
+                _noDrawCallback = new NoDrawCullCallback();
+                node->addCullCallback(_noDrawCallback.get());
+            }
+        }
+    }
 
     fireCallback(&VisibleLayerCallback::onVisibleChanged);
+}
+
+osg::Node::NodeMask
+VisibleLayer::getMask() const
+{
+    return options().mask().get();
+}
+
+void
+VisibleLayer::setMask(osg::Node::NodeMask mask)
+{
+    // Set the new mask value
+    options().mask() = mask;
+
+    // Call setVisible to make sure the mask gets applied to a node if necessary
+    setVisible(options().visible().get());;
+}
+
+osg::Node::NodeMask
+VisibleLayer::getDefaultMask()
+{
+    return DEFAULT_LAYER_MASK;
+}
+
+void
+VisibleLayer::setDefaultMask(osg::Node::NodeMask mask)
+{
+    DEFAULT_LAYER_MASK = mask;
 }
 
 bool
@@ -134,7 +223,7 @@ namespace
         "uniform vec3 oe_VisibleLayer_ranges; \n"
         "uniform vec3 oe_Camera; // (vp width, vp height, lodscale)\n"
         "out float oe_layer_opacity; \n"
-        
+
         "void oe_VisibleLayer_applyMinMaxRange(inout vec4 vertexView) \n"
         "{ \n"
         "  #ifndef OE_DISABLE_RANGE_OPACITY \n"
@@ -225,7 +314,7 @@ VisibleLayer::initializeBlending()
                     new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
                     osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
             }
-        }        
+        }
     }
 }
 

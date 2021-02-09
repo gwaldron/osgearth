@@ -22,24 +22,27 @@
 #ifndef OSGEARTH_GLTF_READER_H
 #define OSGEARTH_GLTF_READER_H
 
-#include <OpenThreads/ScopedLock>
 #include <osg/Node>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
 #include <osg/Texture2D>
+#include <osg/CullFace>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
-#include <osgDB/FileNameUtils>
 #include <osgDB/ObjectWrapper>
 #include <osgDB/Registry>
 #include <osgUtil/SmoothingVisitor>
 #include <osgEarth/Notify>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/URI>
 #include <osgEarth/Containers>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/InstanceBuilder>
+#include <osgEarth/StateTransition>
 
+using namespace osgEarth;
+using namespace osgEarth::Util;
 
 
 #undef LC
@@ -184,12 +187,60 @@ public:
         return makeNodeFromModel(model, env);
     }
 
+
+    /**
+     * Node to support the OWT_State extension.
+     */
+    class StateTransitionNode : public osg::Group, public StateTransition
+    {
+    public:
+
+        virtual std::vector< std::string > getStates()
+        {
+            std::vector< std::string > states;
+            for (auto& s : _stateToNode)
+            {
+                states.push_back(s.first);
+            }
+            return states;
+        }
+
+        virtual void transitionToState(const std::string& state)
+        {
+            auto itr = _stateToNode.find(state);
+            if (itr != _stateToNode.end())
+            {
+                osg::ref_ptr< osg::Node > node;
+                itr->second.lock(node);
+                if (node.valid())
+                {
+                    // Turn the destination node on.
+                    node->setNodeMask(~0);
+
+                    // Turn this node off
+                    setNodeMask(0);
+                }
+            }
+        }
+
+        typedef std::map< std::string, osg::observer_ptr< osg::Node > > StateToNodeMap;
+        typedef std::map< std::string, std::string > StateToNodeName;
+
+        StateToNodeMap _stateToNode;
+        StateToNodeName _stateToNodeName;
+    };
+
     osg::Node* makeNodeFromModel(const tinygltf::Model &model, const Env& env) const
     {
         NodeBuilder builder(this, model, env);
-        // Rotate y-up to z-up
+        bool zUp = env.readOptions && env.readOptions->getOptionString().find("gltfZUp") != std::string::npos;
+
+        // Rotate y-up to z-up if necessary
         osg::MatrixTransform* transform = new osg::MatrixTransform;
-        transform->setMatrix(osg::Matrixd::rotate(osg::Vec3d(0.0, 1.0, 0.0), osg::Vec3d(0.0, 0.0, 1.0)));
+        if (!zUp)
+        {
+            transform->setMatrix(osg::Matrixd::rotate(osg::Vec3d(0.0, 1.0, 0.0), osg::Vec3d(0.0, 0.0, 1.0)));
+        }
 
         for (unsigned int i = 0; i < model.scenes.size(); i++)
         {
@@ -204,8 +255,36 @@ public:
             }
         }
 
+        // Enable backface culling on the nodes
+        transform->getOrCreateStateSet()->setAttributeAndModes(new osg::CullFace(osg::CullFace::BACK), osg::StateAttribute::ON);
+
+        // Find all the StateTransitionNodes that were created and try to establishs links between the nodes.
+        osgEarth::FindNodesVisitor<StateTransitionNode> findStateTransitions;
+        transform->accept(findStateTransitions);
+
+        for (auto& st : findStateTransitions._results)
+        {
+            for (auto& stateToNodeName : st->_stateToNodeName)
+            {
+                std::string state = stateToNodeName.first;
+                std::string name = stateToNodeName.second;
+
+                // Find the named node
+                osg::Node* node = findNamedNode(transform, name);
+                if (node)
+                {
+                    st->_stateToNode[state] = node;
+                }
+                else
+                {
+                    OE_WARN << LC << "Failed to find transition state node " << state << "=" << name << std::endl;
+                }
+            }
+        }
+
         return transform;
     }
+
 
     struct NodeBuilder
     {
@@ -223,7 +302,6 @@ public:
         osg::Node* createNode(const tinygltf::Node& node) const
         {
             osg::MatrixTransform* mt = new osg::MatrixTransform;
-            mt->setName(node.name);
             if (node.matrix.size() == 16)
             {
                 osg::Matrixd mat;
@@ -276,7 +354,27 @@ public:
                     mt->addChild(child);
                 }
             }
-            return mt;
+
+            osg::Node* top = mt;
+
+            // If we have an OWT_state extension setup all the state names
+            if (node.extensions.find("OWT_state") != node.extensions.end())
+            {
+                StateTransitionNode* st = new StateTransitionNode;
+                st->addChild(mt);
+
+                auto ext = node.extensions.find("OWT_state")->second;
+                for (auto& key : ext.Keys())
+                {
+                    std::string value = ext.Get(key).Get<std::string>();
+                    st->_stateToNodeName[key] = value;
+                }
+                top = st;
+            }
+
+            top->setName(node.name);
+
+            return top;
         }
 
         osg::Texture2D* makeTextureFromModel(const tinygltf::Texture& texture) const
@@ -330,7 +428,7 @@ public:
                     img->setInternalTextureFormat(GL_RGBA8);
 
                 tex = new osg::Texture2D(img.get());
-                tex->setUnRefImageDataAfterApply(imageEmbedded);
+                //tex->setUnRefImageDataAfterApply(imageEmbedded);
                 tex->setResizeNonPowerOfTwoHint(false);
                 tex->setDataVariance(osg::Object::STATIC);
 
@@ -448,7 +546,7 @@ public:
                                 TextureCache* texCache = reader->_texCache;
                                 if (!imageEmbedded && texCache)
                                 {
-                                    OpenThreads::ScopedLock<TextureCache> lock(*texCache);
+                                    ScopedMutexLock lock(*texCache);
                                     auto texItr = texCache->find(imageURI.full());
                                     if (texItr != texCache->end())
                                     {
@@ -466,7 +564,7 @@ public:
                                 {
                                     if (!imageEmbedded && texCache && !cachedTex)
                                     {
-                                        OpenThreads::ScopedLock<TextureCache> lock(*texCache);
+                                        ScopedMutexLock lock(*texCache);
                                         auto insResult = texCache->insert(TextureCache::value_type(imageURI.full(), tex));
                                         if (insResult.second)
                                         {
@@ -613,8 +711,10 @@ public:
                     // Generate normals automatically if we're not given any in the file itself.
                     if (!geom->getNormalArray())
                     {
+                        osg::ref_ptr<osg::Geode> tempGeode = new osg::Geode();
+                        tempGeode->addChild(geom);
                         osgUtil::SmoothingVisitor sv;
-                        geom->accept(sv);
+                        tempGeode->accept(sv);
                     }
                 }
 

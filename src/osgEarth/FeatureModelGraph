@@ -78,6 +78,13 @@ namespace osgEarth { namespace Util
         //! Initialized the graph after setting all parameters.
         Status open();
 
+        //! Shut down the service, notifying any active loading
+        //! threads to stop working
+        void shutdown();
+
+        //! Returns true is open() was called, false if shutdown was called
+        bool isActive() const { return _isActive; }
+
         /**
          * Loads and returns a subnode. Used internally for paging.
          */
@@ -93,6 +100,9 @@ namespace osgEarth { namespace Util
 
         //! Set the name of the object that owns this graph (for debugging)
         void setOwnerName(const std::string& name);
+        const std::string& getOwnerName() const { return _ownerName; }
+
+        ReadWrite<Mutex>& getSync() { return _sync; }
 
     public: // osg::Node
 
@@ -177,6 +187,8 @@ namespace osgEarth { namespace Util
         void redraw();
 
     private:
+        std::string _ownerName;
+        bool _isActive;
         FeatureModelOptions              _options;
         osg::ref_ptr<FeatureNodeFactory> _factory;
         osg::ref_ptr<Session>            _session;
@@ -189,12 +201,12 @@ namespace osgEarth { namespace Util
         osg::BoundingSphered             _fullWorldBound;
         bool                             _useTiledSource;
         std::vector<const FeatureLevel*> _lodmap;
-        OpenThreads::ReentrantMutex      _redrawMutex;
+        RecursiveMutex                   _redrawMutex;
         optional<float> _minRange;
         optional<float> _maxRange;
 
-        OpenThreads::Atomic _cacheReads;
-        OpenThreads::Atomic _cacheHits;
+        std::atomic_int _cacheReads;
+        std::atomic_int _cacheHits;
 
         osg::ref_ptr<osgDB::FileLocationCallback> _defaultFileLocationCallback;
 
@@ -206,7 +218,8 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<osgDB::ObjectCache> _nodeCachingImageCache;
 
-        std::string _ownerName;
+
+        ReadWrite<Mutex> _sync;
 
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);

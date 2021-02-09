@@ -19,6 +19,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Version>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/GEOS>
 #include <osg/FragmentProgram>
 #include <osg/GL2Extensions>
 #include <osg/Version>
@@ -172,7 +173,9 @@ _supportsVertexArrayObjects ( false )
         enableATIworkarounds = false;
 
     // logical CPUs (cores)
-    _numProcessors = OpenThreads::GetNumberOfProcessors();
+    _numProcessors = std::thread::hardware_concurrency();
+    if (_numProcessors <= 0)
+        _numProcessors = 4;
 
     // GLES compile?
 #if (defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE))
@@ -203,10 +206,18 @@ _supportsVertexArrayObjects ( false )
 
         OE_INFO << LC << "  osgEarth Version:  " << osgEarthGetVersion() << std::endl;
 
+#ifdef OSGEARTH_EMBED_GIT_SHA
+        OE_INFO << LC << "  osgEarth HEAD SHA: " << osgEarthGitSHA1() << std::endl;
+#endif
+
         OE_INFO << LC << "  OSG Version:       " << osgGetVersion() << std::endl;
 
 #ifdef GDAL_RELEASE_NAME
         OE_INFO << LC << "  GDAL Version:      " << GDAL_RELEASE_NAME << std::endl;
+#endif
+
+#ifdef GEOS_VERSION
+        OE_INFO << LC << "  GEOS Version:      " << GEOS_VERSION << std::endl;
 #endif
 
         _supportsGLSL = GL2->isGlslSupported;

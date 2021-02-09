@@ -23,7 +23,7 @@
 #define OSGEARTH_TESSELLATOR_H 1
 
 #include <osgEarth/Common>
-
+#include <osgEarth/Geometry>
 #include <osg/Geometry>
     
 namespace osgEarth { namespace Util
@@ -34,7 +34,24 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT Tessellator
     {
     public:
-        bool tessellateGeometry(osg::Geometry &geom);
+        enum Plane {
+            PLANE_XY,
+            PLANE_AUTO
+        };
+
+        //! Take a geometry and output a triangulated mesh in the form of
+        //! an index vector. By default it will tessellate in the XY plane
+        //! and ignore the Z value. You can pass in AUTO and it will
+        //! attempt to pick the "dominant" plane of the geometry and tessellate
+        //! in that plane.
+        bool tessellate2D(
+            const osgEarth::Geometry* geom,
+            std::vector<uint32_t>& out_indices,
+            Plane plane = PLANE_XY) const;
+
+        //! Old method to tessellate a pre-existing geometry object
+        bool tessellateGeometry(
+            osg::Geometry &geom);
 
     protected:
         osg::PrimitiveSet* tessellatePrimitive(osg::PrimitiveSet* primitive, osg::Vec3Array* vertices);

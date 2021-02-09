@@ -27,6 +27,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
+#include <osgEarth/Metrics>
 
 using namespace osgEarth;
 
@@ -401,6 +402,8 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 bool
 FeatureImageLayer::preProcess(osg::Image* image) const
 {
+    OE_PROFILING_ZONE;
+
     agg::rendering_buffer rbuf(image->data(), image->s(), image->t(), image->s() * 4);
 
     // clear the buffer.
@@ -420,6 +423,8 @@ FeatureImageLayer::preProcess(osg::Image* image) const
 bool
 FeatureImageLayer::postProcess(osg::Image* image) const
 {
+    OE_PROFILING_ZONE;
+
     if (options().coverage() == false)
     {
         //convert from ABGR to RGBA
@@ -524,6 +529,7 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
         // operation taking forever on very high-res input data.
         if (true) //options().optimizeLineSampling() == true)
         {
+            OE_PROFILING_ZONE;
             ResampleFilter resample;
             resample.minLength() = osg::minimum(xres, yres);
             context = resample.push(lines, context);
@@ -583,15 +589,19 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
             }
         }
 
+        OE_PROFILING_ZONE_NAMED("Buffer");
         buffer.distance() = lineWidth * 0.5;   // since the distance is for one side
         buffer.push(lines, context);
     }
 
     // Transform the features into the map's SRS:
-    TransformFilter xform(imageExtent.getSRS());
-    xform.setLocalizeCoordinates(false);
-    FilterContext polysContext = xform.push(polygons, context);
-    FilterContext linesContext = xform.push(lines, context);
+    {
+        OE_PROFILING_ZONE_NAMED("Transform");
+        TransformFilter xform(imageExtent.getSRS());
+        xform.setLocalizeCoordinates(false);
+        xform.push(polygons, context);
+        xform.push(lines, context);
+    }
 
     // set up the AGG renderer:
     agg::rendering_buffer rbuf(image->data(), image->s(), image->t(), image->s() * 4);
@@ -643,55 +653,58 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
     if (covsym && covsym->valueExpression().isSet())
         covValue = covsym->valueExpression().get();
 
-    // render the polygons
-    for (FeatureList::iterator i = polygons.begin(); i != polygons.end(); i++)
     {
-        Feature*  feature = i->get();
-        Geometry* geometry = feature->getGeometry();
+        OE_PROFILING_ZONE_NAMED("Crop/Render");
 
-        osg::ref_ptr<Geometry> croppedGeometry;
-        if (geometry->crop(cropPoly.get(), croppedGeometry))
+        // render the polygons
+        for (FeatureList::iterator i = polygons.begin(); i != polygons.end(); i++)
         {
-            const PolygonSymbol* poly =
-                feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
-                masterPoly;
+            Feature*  feature = i->get();
+            Geometry* geometry = feature->getGeometry();
 
-            if (options().coverage() == true && covValue.isSet())
+            osg::ref_ptr<Geometry> croppedGeometry;
+            if (geometry->crop(cropPoly.get(), croppedGeometry))
             {
-                float value = (float)feature->eval(covValue.mutable_value(), &context);
-                rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
-            }
-            else
-            {
-                Color color = poly ? poly->fill()->color() : Color::White;
-                rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
-            }
+                const PolygonSymbol* poly =
+                    feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
+                    masterPoly;
 
+                if (options().coverage() == true && covValue.isSet())
+                {
+                    float value = (float)feature->eval(covValue.mutable_value(), &context);
+                    rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
+                }
+                else
+                {
+                    Color color = poly ? poly->fill()->color() : Color::White;
+                    rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
+                }
+            }
         }
-    }
 
-    // render the lines
-    for (FeatureList::iterator i = lines.begin(); i != lines.end(); i++)
-    {
-        Feature*  feature = i->get();
-        Geometry* geometry = feature->getGeometry();
-
-        osg::ref_ptr<Geometry> croppedGeometry;
-        if (geometry->crop(cropPoly.get(), croppedGeometry))
+        // render the lines
+        for (FeatureList::iterator i = lines.begin(); i != lines.end(); i++)
         {
-            const LineSymbol* line =
-                feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
-                masterLine;
+            Feature*  feature = i->get();
+            Geometry* geometry = feature->getGeometry();
 
-            if (options().coverage() == true && covValue.isSet())
+            osg::ref_ptr<Geometry> croppedGeometry;
+            if (geometry->crop(cropPoly.get(), croppedGeometry))
             {
-                float value = (float)feature->eval(covValue.mutable_value(), &context);
-                rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
-            }
-            else
-            {
-                osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
-                rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
+                const LineSymbol* line =
+                    feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
+                    masterLine;
+
+                if (options().coverage() == true && covValue.isSet())
+                {
+                    float value = (float)feature->eval(covValue.mutable_value(), &context);
+                    rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
+                }
+                else
+                {
+                    osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
+                    rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
+                }
             }
         }
     }
@@ -860,6 +873,8 @@ FeatureImageRenderer::getFeatures(Session* session,
                                   FeatureList& features,
                                   ProgressCallback* progress) const
 {
+    OE_PROFILING_ZONE;
+
     // first we need the overall extent of the layer:
     const GeoExtent& featuresExtent = session->getFeatureSource()->getFeatureProfile()->getExtent();
 

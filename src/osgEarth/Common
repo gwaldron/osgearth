@@ -25,6 +25,7 @@
 #include <osg/ref_ptr>
 #include <osg/Referenced>
 #include <osg/Math>
+#include <memory>
 
 // define the OSG Version checks for older OSG versions
 
@@ -73,7 +74,6 @@ namespace osgEarth
 #pragma warning (disable: 4180)
 #endif
 
-// Library build configuration (like C++11 support)
 #include "osgEarth/BuildConfig.h"
 
 // FINAL keyword for C++11

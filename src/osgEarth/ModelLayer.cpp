@@ -52,10 +52,6 @@ ModelLayer::Options::getConfig() const
     conf.set( "lighting",       _lightingEnabled );
     conf.set( "mask_min_level", _maskMinLevel );
 
-    // Merge the MaskSource options
-    if ( mask().isSet() )
-        conf.set( "mask", mask()->getConfig() );
-
     if ( driver().isSet() )
         conf.merge(driver()->getConfig());
 
@@ -90,9 +86,6 @@ ModelLayer::Options::fromConfig( const Config& conf )
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
-
-    if ( conf.hasChild("mask") )
-        mask() = MaskSourceOptions(conf.child("mask"));
 }
 
 //------------------------------------------------------------------------
@@ -239,35 +232,8 @@ ModelLayer::openImplementation()
         if ( _modelSource.valid() )
         {
             _modelSource->setName( this->getName() );
-
             const Status& modelStatus = _modelSource->open(getReadOptions());
-            if (modelStatus.isOK())
-            {
-                // the mask, if there is one:
-                if ( !_maskSource.valid() && options().mask().isSet() )
-                {
-                    OE_INFO << LC << "...initializing mask, driver=" << driverName << std::endl;
-
-                    _maskSource = MaskSourceFactory::create( options().mask().get() );
-                    if ( _maskSource.valid() )
-                    {
-                        const Status& maskStatus = _maskSource->open(getReadOptions());
-                        if (maskStatus.isError())
-                        {
-                            return maskStatus;
-                        }
-                    }
-                    else
-                    {
-                        return Status(Status::ServiceUnavailable, Stringify() << "Cannot find mask driver \"" << options().mask()->getDriver() << "\"");
-                    }
-                }
-            }
-            else
-            {
-                // propagate the model source's error status
-                return modelStatus;
-            }
+            return modelStatus;
         }
         else
         {
@@ -568,34 +534,4 @@ ModelLayer::fireCallback(ModelLayerCallback::MethodPtr method)
         ModelLayerCallback* cb = dynamic_cast<ModelLayerCallback*>(i->get());
         if (cb) (cb->*method)( this );
     }
-}
-
-
-osg::Vec3dArray*
-ModelLayer::getOrCreateMaskBoundary(float                   heightScale,
-                                    const SpatialReference* srs, 
-                                    ProgressCallback*       progress )
-{
-    if (_maskSource.valid() && !_maskBoundary.valid() && getStatus().isOK())
-    {
-        Threading::ScopedMutexLock excl(layerMutex());
-
-        if ( !_maskBoundary.valid() ) // double-check pattern
-        {
-            // make the geometry:
-            _maskBoundary = _maskSource->createBoundary( srs, progress );
-            if (_maskBoundary.valid())
-            {
-                // scale to the height scale factor:
-                for (osg::Vec3dArray::iterator vIt = _maskBoundary->begin(); vIt != _maskBoundary->end(); ++vIt)
-                    vIt->z() = vIt->z() * heightScale;
-            }
-            else
-            {
-                setStatus(Status::Error("Failed to create masking boundary"));
-            }
-        }
-    }
-
-    return _maskBoundary.get();
 }

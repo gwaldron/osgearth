@@ -113,7 +113,7 @@ FeatureFilterRegistry::add( FeatureFilterFactory* factory )
 FeatureFilter*
 FeatureFilterRegistry::create(const Config& conf, const osgDB::Options* dbo)
 {
-    std::string driver = conf.key();
+    const std::string& driver = conf.key();
 
     osg::ref_ptr<FeatureFilter> result;
 

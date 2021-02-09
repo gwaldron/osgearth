@@ -23,6 +23,7 @@
 #include "SplatShaders"
 #include "NoiseTextureFactory"
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/TerrainEngineNode>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Drawable>
@@ -201,10 +202,11 @@ SplatLayer::removedFromMap(const Map* map)
 }
 
 void
-SplatLayer::setTerrainResources(TerrainResources* res)
+SplatLayer::prepareForRendering(TerrainEngine* engine)
 {
-    VisibleLayer::setTerrainResources(res);
+    VisibleLayer::prepareForRendering(engine);
 
+    TerrainResources* res = engine->getResources();
     if (res)
     {
         // TODO.
@@ -364,11 +366,6 @@ SplatLayer::releaseGLObjects(osg::State* state) const
     }
 
     VisibleLayer::releaseGLObjects(state);
-
-    // For some unknown reason, release doesn't work on the zone 
-    // texture def data (SplatTextureDef). So we have to recreate
-    // it here.
-    //const_cast<SplatLayer*>(this)->buildStateSets();
 }
 
 

@@ -56,17 +56,17 @@ namespace
 
     osg::Node* getDrapingDump(osg::Node* node)
     {
+        CascadeDrapingDecorator* cdd = getCDD(node);
+        if (cdd) return cdd->getDump();
         OverlayDecorator* od = osgEarth::Util::findTopMostNodeOfType<OverlayDecorator>(node);
         if (od) return od->getDump();
-        CascadeDrapingDecorator* cdd = osgEarth::Util::findTopMostNodeOfType<CascadeDrapingDecorator>(node);
-        if (cdd) return cdd->getDump();
         return 0L;
     }
 
     void requestDrapingDump(osg::Node* node)
     {
         OverlayDecorator* od = osgEarth::Util::findTopMostNodeOfType<OverlayDecorator>(node);
-        if (od) return od->requestDump();
+        if (od) od->requestDump();
     }
 
     struct App

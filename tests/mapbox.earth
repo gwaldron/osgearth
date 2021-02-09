@@ -29,7 +29,6 @@ Please change your API key to your own MapBox account, this key is for demo purp
             <max_level>15</max_level>
             <profile>spherical-mercator</profile>
             <format>pbf</format>
-            <invert_y>true</invert_y>
         </XYZFeatures>
 
         <feature_indexing enabled="true"></feature_indexing>

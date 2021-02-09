@@ -30,6 +30,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Math>
+#include <osgEarth/TerrainEngineNode>
 #include <osg/BlendFunc>
 #include <osg/Multisample>
 #include <osg/Texture2D>
@@ -74,6 +75,7 @@ GroundCoverLayer::Options::getConfig() const
     conf.set("cast_shadows", _castShadows);
     conf.set("max_alpha", maxAlpha());
     conf.set("alpha_to_coverage", alphaToCoverage());
+    conf.set("wind_scale", windScale());
 
     Config zones("zones");
     for (int i = 0; i < _biomeZones.size(); ++i) {
@@ -94,6 +96,7 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     castShadows().setDefault(false);
     maxAlpha().setDefault(0.15f);
     alphaToCoverage().setDefault(true);
+    windScale().setDefault(1.0f);
 
     maskLayer().get(conf, "mask_layer");
     colorLayer().get(conf, "color_layer");
@@ -102,6 +105,7 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     conf.get("cast_shadows", _castShadows);
     conf.get("max_alpha", maxAlpha());
     conf.get("alpha_to_coverage", alphaToCoverage());
+    conf.get("wind_scale", windScale());
 
     const Config* zones = conf.child_ptr("zones");
     if (zones)
@@ -150,7 +154,7 @@ GroundCoverLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 
 namespace
 {
-    // Trickt o store the BiomeLayout pointer in a stateattribute so we can track it during cull/draw
+    // Trick to store the BiomeLayout pointer in a stateattribute so we can track it during cull/draw
     struct ZoneSA : public osg::StateAttribute
     {
         META_StateAttribute(osgEarth, ZoneSA, (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY + 90210));
@@ -242,6 +246,7 @@ GroundCoverLayer::init()
 
     _debug = (::getenv("OSGEARTH_GROUNDCOVER_DEBUG") != NULL);
 
+    _frameLastUpdate = 0U;
 }
 
 GroundCoverLayer::~GroundCoverLayer()
@@ -282,13 +287,13 @@ GroundCoverLayer::closeImplementation()
     setCullCallback(NULL);
 
     _zoneStateSets.clear();
-    getOrCreateStateSet()->clear();
 
     _noiseBinding.release();
     _groundCoverTexBinding.release();
     
     _liveAssets.clear();
     _atlasImages.clear();
+    _atlas = nullptr;
 
     return PatchLayer::closeImplementation();
 }
@@ -380,6 +385,21 @@ GroundCoverLayer::getUseAlphaToCoverage() const
 }
 
 void
+GroundCoverLayer::update(osg::NodeVisitor& nv)
+{
+    int frame = nv.getFrameStamp()->getFrameNumber();
+
+    if (frame > _frameLastUpdate &&
+        _renderer.valid() && 
+        _renderer->_frameLastActive > 0u &&
+        (frame - _renderer->_frameLastActive) > 2)
+    {
+        releaseGLObjects(nullptr);
+        _renderer->_frameLastActive = 0u;
+    }
+}
+
+void
 GroundCoverLayer::addedToMap(const Map* map)
 {
     PatchLayer::addedToMap(map);
@@ -433,10 +453,11 @@ GroundCoverLayer::removedFromMap(const Map* map)
 }
 
 void
-GroundCoverLayer::setTerrainResources(TerrainResources* res)
+GroundCoverLayer::prepareForRendering(TerrainEngine* engine)
 {
-    PatchLayer::setTerrainResources(res);
+    PatchLayer::prepareForRendering(engine);
 
+    TerrainResources* res = engine->getResources();
     if (res)
     {
         if (_groundCoverTexBinding.valid() == false)
@@ -554,9 +575,13 @@ GroundCoverLayer::buildStateSets()
         stateset->setDefine("OE_GROUNDCOVER_USE_TOP_BILLBOARDS");
     }
 
+    // adjust the effect of wind with this factor
+    stateset->setDefine("OE_GROUNDCOVER_WIND_SCALE", Stringify() << options().windScale().get());
+
     osg::Texture* tex = createTextureAtlas();
     stateset->setTextureAttribute(_groundCoverTexBinding.unit(), tex);
     stateset->addUniform(new osg::Uniform(GCTEX_SAMPLER, _groundCoverTexBinding.unit()));
+    _atlas = tex;
 
     // Assemble zone-specific statesets:
     float maxVisibleRange = getMaxVisibleRange();
@@ -614,6 +639,17 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
     }
 
     PatchLayer::releaseGLObjects(state);
+
+    if (isOpen() &&
+        _atlas.valid() &&
+        _atlas->getUnRefImageDataAfterApply() == false)
+    {
+        // Workaround for
+        // https://github.com/openscenegraph/OpenSceneGraph/issues/1013
+        for (unsigned i = 0; i < _atlas->getNumImages(); ++i)
+            if (_atlas->getImage(i))
+                _atlas->getImage(i)->dirty();
+    }
 }
 
 namespace
@@ -630,7 +666,7 @@ namespace
                 4,5, 5,7, 7,6, 6,4
             };
 
-            LineDrawable* lines = new LineDrawable(GL_LINES);            
+            LineDrawable* lines = new LineDrawable(GL_LINES);
             for(int i=0; i<24; i+=2)
             {
                 lines->pushVertex(bbox.corner(index[i]));
@@ -693,15 +729,6 @@ namespace
         
         return cruncher._geom.release();
     }
-}
-
-osg::Node*
-GroundCoverLayer::createNodeImplementation(const DrawContext& dc)
-{
-    osg::Node* node = NULL;
-    if (_debug)
-        node = makeBBox(*dc._geomBBox, *dc._key);
-    return node;
 }
 
 osg::Geometry*
@@ -768,11 +795,15 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     _computeStateSet->setAttribute(_computeProgram, osg::StateAttribute::ON);
 
     _counter = 0;
+
+    _frameLastActive = ~0U;
 }
 
 void
 GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
 {
+    _frameLastActive = ri.getState()->getFrameStamp()->getFrameNumber();
+
     DrawState& ds = _drawStateBuffer[ri.getContextID()];
     ds._renderer = this;
     osg::State* state = ri.getState();
@@ -788,6 +819,8 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatc
     if (!instancer.valid())
     {
         instancer = new InstanceCloud();
+        ds._lastTileBatchID = -1;
+        ds._uniforms.clear();
     }
 
     // Pull the per-camera data
@@ -800,6 +833,12 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatc
     if (ds._lastTileBatchID != tiles->getBatchID())
     {
         ds._lastTileBatchID = tiles->getBatchID();
+        needsCompute = true;
+    }
+
+    // this can happen for a new instancer or after releaseGLobjects is called:
+    if (instancer->_data.commands == nullptr)
+    {
         needsCompute = true;
     }
 
@@ -923,7 +962,10 @@ GroundCoverLayer::Renderer::drawTile(osg::RenderInfo& ri, const PatchLayer::Draw
     osg::ref_ptr<InstanceCloud>& instancer = ds._instancers[sa->_obj];
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
     if (!pcp)
+    {
+        OE_WARN << "nullptr PCP in Renderer::drawTile, how odd" << std::endl;
         return;
+    }
 
     UniformState& u = ds._uniforms[pcp];
 
@@ -965,19 +1007,44 @@ GroundCoverLayer::Renderer::resizeGLObjectBuffers(unsigned maxSize)
 void
 GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
 {
-    for(unsigned i=0; i<_drawStateBuffer.size(); ++i)
+    if (state)
     {
-        const DrawState& ds = _drawStateBuffer[i];
-        for(DrawState::InstancerPerGroundCover::const_iterator j = ds._instancers.begin();
-            j != ds._instancers.end();
-            ++j)
+        DrawState& ds = _drawStateBuffer[state->getContextID()];
+
+        ds._uniforms.clear();
+        ds._lastTileBatchID = -1;
+
+        for (const auto& i : ds._instancers)
         {
-            if (j->second.valid())
+            InstanceCloud* cloud = i.second.get();
+            if (cloud)
             {
-                j->second->releaseGLObjects(state);
+                cloud->releaseGLObjects(state);
             }
-        }        
+        }
     }
+    else
+    {
+        for (unsigned i = 0; i < _drawStateBuffer.size(); ++i)
+        {
+            DrawState& ds = _drawStateBuffer[i];
+
+            ds._uniforms.clear();
+            ds._lastTileBatchID = -1;
+
+            for (const auto& i : ds._instancers)
+            {
+                InstanceCloud* cloud = i.second.get();
+                if (cloud)
+                {
+                    cloud->releaseGLObjects(state);
+                }
+            }
+        }
+    }
+
+    _computeStateSet->releaseGLObjects(state);
+    _a2cBlending->releaseGLObjects(state);
 }
 
 void
@@ -1283,7 +1350,7 @@ GroundCoverLayer::createLUTShader() const
 
         // apply the selection weight by adding the object multiple times
 
-        for(unsigned w=0; w<weight; ++w)
+        for(int w=0; w<weight; ++w)
         {
             if (numAssetInstancesAdded > 0)
                 assetBuf << ", \n";

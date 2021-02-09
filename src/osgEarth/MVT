@@ -51,7 +51,7 @@ namespace osgEarth { namespace MVT
 namespace osgEarth
 {
     /**
-     * Feature Layer that accesses features via one of the many GDAL/OGR drivers.
+     * Feature Layer that accesses features according to the Mapnik Vector Tiles specification.
      */
     class OSGEARTH_EXPORT MVTFeatureSource : public FeatureSource
     {   
@@ -79,7 +79,7 @@ namespace osgEarth
 
         virtual void init();
 
-    public: // FeatureLayer
+    public: // FeatureSource
 
         virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
         

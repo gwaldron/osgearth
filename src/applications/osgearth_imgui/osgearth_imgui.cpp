@@ -31,6 +31,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Threading>
 #include <osgEarth/Geocoder>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/StateTransition>
 
 #include <iostream>
 
@@ -67,6 +69,43 @@ protected:
     LayersGUI _layers;
 };
 
+// An event handler that will print out the elevation at the clicked point
+struct StateTransitionHandler : public osgGA::GUIEventHandler
+{
+    StateTransitionHandler()
+    {
+    }
+
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+    {
+        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+        if (ea.getEventType() == ea.PUSH && ea.getButton() == ea.LEFT_MOUSE_BUTTON)
+        {
+            osg::Vec3d world;
+            osgUtil::LineSegmentIntersector::Intersections hits;
+            if (view->computeIntersections(ea.getX(), ea.getY(), hits))
+            {
+                StateTransition* stateTransition = 0;
+                for (auto& i: hits.begin()->nodePath)
+                {
+                    stateTransition = dynamic_cast<StateTransition*>(i);
+                    if (stateTransition)
+                    {
+                        std::vector< std::string > states = stateTransition->getStates();
+                        if (!states.empty())
+                        {
+                            stateTransition->transitionToState(states[0]);
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+};
+
 int
 usage(const char* name)
 {
@@ -96,23 +135,9 @@ main(int argc, char** argv)
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    // Tell the database pager to not modify the unref settings
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
-
-    // thread-safe initialization of the OSG wrapper manager. Calling this here
-    // prevents the "unsupported wrapper" messages from OSG
-    osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
-
     // install our default manipulator (do this before calling load)
     EarthManipulator* manip = new EarthManipulator(arguments);
     viewer.setCameraManipulator(manip);
-
-    // disable the small-feature culling
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
-    // set a near/far ratio that is smaller than the default. This allows us to get
-    // closer to the ground without near clipping. If you need more, use --logdepth
-    viewer.getCamera()->setNearFarRatio(0.0001);
 
     // Setup the viewer for imgui
     viewer.setRealizeOperation(new ImGuiDemo::RealizeOperation);
@@ -129,6 +154,8 @@ main(int argc, char** argv)
         {
             viewer.getEventHandlers().push_front(new ImGuiDemo(&viewer, mapNode, manip));
         }
+
+        viewer.addEventHandler(new StateTransitionHandler());
 
         viewer.setSceneData(node);
         return viewer.run();// return Metrics::run(viewer);

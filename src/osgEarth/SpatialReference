@@ -213,11 +213,6 @@ namespace osgEarth
             well-known SRS. (i.e. whether the SRS is unsupported by GDAL) */
         virtual bool isUserDefined() const;
 
-        /** Tests whether coordinates in this SRS form a contiguous space. A non-contiguous
-            SRS is one in which adjacent coordinates may not necessarily represent 
-            adjacent map locations. */
-        virtual bool isContiguous() const;
-
         /** Tests whether this SRS is a Unified Cube projection (osgEarth-internal) */
         virtual bool isCube() const;
 
@@ -233,9 +228,6 @@ namespace osgEarth
         /** Gets the WKT string */
         const std::string& getWKT() const;
 
-        /** Gets the initialization type (PROJ4, WKT, etc.) */
-        const std::string& getInitType() const;
-
         /** Gets the initialization key. */
         const Key& getKey() const;
 
@@ -250,6 +242,9 @@ namespace osgEarth
 
         /** Gets the base units of data in this SRS */
         const Units& getUnits() const;
+
+        //! Gets the reported linear unit conversion
+        double getReportedLinearUnits() const;
 
         /** Whether the two SRS are completely equivalent. */
         virtual bool isEquivalentTo( const SpatialReference* rhs ) const;
@@ -309,13 +304,11 @@ namespace osgEarth
         //! is thread-specific.
         void* getHandle() const;
 
-        /**
-         * Guess at an appropriate bounding box for this SRS.
-         */
-        bool guessBounds(Bounds& output) const;
+        //! Get (a best guess at) the appropriate bounding box for this SRS
+        bool getBounds(Bounds& output) const;
 
-        //! Linear reported units for scaling
-        double getReportedLinearUnits() const;
+        //! Whether this SRS was successfully initialized and is valid for use
+        bool valid() const { return _valid; }
 
     protected:
         virtual ~SpatialReference();
@@ -387,15 +380,14 @@ namespace osgEarth
         bool _is_spherical_mercator;
         bool _is_north_polar, _is_south_polar;
         bool _is_cube;
-        bool _is_contiguous;
         bool _is_user_defined;
         bool _is_ltp;
 
         unsigned _ellipsoidId;
         std::string _proj4;
-        std::string _init_type;
         std::string _datum;
         Units _units;
+        double _reportedLinearUnits;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
         mutable osg::ref_ptr<SpatialReference> _geo_srs;
         mutable osg::ref_ptr<SpatialReference> _geodetic_srs;  // _geo_srs with a NULL vdatum.
@@ -404,6 +396,7 @@ namespace osgEarth
         mutable bool _valid;
         mutable bool _initialized;
         Setup _setup;
+        Bounds _bounds;
         mutable PerThread<ThreadLocal> _local;
 
         // user can override these methods in a subclass to perform custom functionality; must

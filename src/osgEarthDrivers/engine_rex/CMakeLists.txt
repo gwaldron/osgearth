@@ -23,13 +23,12 @@ SET(TARGET_SRC
     CreateTileImplementation.cpp
     DrawState.cpp
     DrawTileCommand.cpp
-    FrameClock.cpp
     GeometryPool.cpp
     RexTerrainEngineNode.cpp
     RexTerrainEngineDriver.cpp
     LayerDrawable.cpp
     LoadTileData.cpp
-    MaskGenerator.cpp
+    MeshEditor.cpp
 	SelectionInfo.cpp
     SurfaceNode.cpp
     TerrainCuller.cpp
@@ -48,13 +47,12 @@ SET(TARGET_H
     CreateTileImplementation
     DrawState
     DrawTileCommand
-    FrameClock
     GeometryPool
     Shaders
     RexTerrainEngineNode
     LayerDrawable
     LoadTileData
-    MaskGenerator
+    MeshEditor
     RenderBindings
     SurfaceNode
     TerrainCuller

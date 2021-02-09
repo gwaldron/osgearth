@@ -117,8 +117,6 @@ main(int argc, char** argv)
     em->getSettings()->setMinMaxPitch(-89, 89);
     viewer.setCameraManipulator( em );
 
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
     osg::ref_ptr<osg::Image> mark = osgDB::readRefImageFile("../data/placemark32.png");
 
     App app;

@@ -389,9 +389,9 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
     // Try the L2 memory cache first:
     if ( _memCache.valid() )
     {
-        sprintf(memCacheKey, "%d/%s/%s", 
-            getRevision(), 
-            key.str().c_str(), 
+        sprintf(memCacheKey, "%d/%s/%s",
+            getRevision(),
+            key.str().c_str(),
             key.getProfile()->getHorizSignature().c_str());
 
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
@@ -487,6 +487,12 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
                 hf = 0L; // to fall back on cached data if possible.
             }
 
+            // Pre-caching operations:
+            {
+                OE_PROFILING_ZONE_NAMED("nodata normalize");
+                normalizeNoDataValues(hf.get());
+            }
+
             // If the result is good, we now have a heightfield but its vertical values
             // are still relative to the source's vertical datum. Convert them.
             if (hf.valid() && !key.getExtent().getSRS()->isVertEquivalentTo(getProfile()->getSRS()))
@@ -497,13 +503,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
                     getProfile()->getSRS()->getVerticalDatum(),    // from
                     key.getExtent().getSRS()->getVerticalDatum(),  // to
                     key.getExtent(),
-                    hf.get() );
-            }
-
-            // Pre-caching operations:
-            {
-                OE_PROFILING_ZONE_NAMED("nodata normalize");
-                normalizeNoDataValues(hf.get());
+                    hf.get());
             }
 
             // Invoke user callbacks
@@ -904,7 +904,7 @@ ElevationLayerVector::populateHeightField(
                         if (layerHF.valid())
                         {
                             //TODO: check this. Should it be actualKey != keyToUse...?
-                            heightFallback[i] = 
+                            heightFallback[i] =
                                 contenders[i].isFallback ||
                                 (actualKey != contenderKey);
 

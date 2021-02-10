@@ -54,6 +54,7 @@ using namespace osgEarth::Util;
 static MapNode* s_mapNode = nullptr;
 static osgViewer::View* s_tile_view = nullptr;
 static osg::Group* s_root = nullptr;
+static bool s_extractTriangles = false;
 
 TileKey makeTileKey(const std::string& str, const Profile* profile)
 {
@@ -71,6 +72,68 @@ TileKey makeTileKey(const std::string& str, const Profile* profile)
     if (stream.fail())
         return TileKey();
     return TileKey(lod, x, y, profile);
+}
+
+osg::Node* installMultiPassRendering(osg::Node* node)
+{
+    osg::Group* geode = new osg::Group();
+    geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LESS, 0, 1, true));
+    geode->addChild(node);
+    geode->setCullingActive(false);
+
+    osg::Group* wireframeGroup = new osg::Group();
+    wireframeGroup->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
+    wireframeGroup->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0, 1, true));
+    wireframeGroup->getOrCreateStateSet()->setDefine("WIREFRAME");
+    wireframeGroup->addChild(node);
+    geode->addChild(wireframeGroup);
+
+    osg::Group* pointframeGroup = new osg::Group();
+    pointframeGroup->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::POINT), 1);
+    pointframeGroup->getOrCreateStateSet()->setMode(GL_PROGRAM_POINT_SIZE, 1);
+    pointframeGroup->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0, 1, true));
+    pointframeGroup->getOrCreateStateSet()->setDefine("POINTFRAME");
+    pointframeGroup->addChild(node);
+    geode->addChild(pointframeGroup);
+
+    geode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    geode->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");
+
+    const char* tri_vs = R"(
+            #version 330
+            #define VERTEX_VISIBLE       1 // draw it
+            #define VERTEX_BOUNDARY      2 // vertex lies on a skirt boundary
+            #define VERTEX_HAS_ELEVATION 4 // not subject to elevation texture
+            #define VERTEX_SKIRT         8 // it's a skirt vertex (bitmask)
+            #define VERTEX_CONSTRAINT   16 // part of a non-morphable constraint
+            #pragma import_defines(WIREFRAME)
+            #pragma import_defines(POINTFRAME)
+            vec4 vp_Color;
+            void colorize_vs(inout vec4 vertex)
+            {
+                vp_Color = vec4(0.2,0.2,0.2,1.0);
+
+              #ifdef POINTFRAME
+                gl_PointSize = 12.0;
+                int m = int(gl_MultiTexCoord0.z);
+                if ((m & VERTEX_CONSTRAINT) != 0)
+                    vp_Color.r = 1.0;
+                if ((m & VERTEX_BOUNDARY) != 0)
+                    vp_Color.g = 1.0;
+                if (m <= 1)
+                    vp_Color.a = 0.0;
+              #endif
+
+              #ifdef WIREFRAME
+                vp_Color = vec4(0.75);
+              #endif
+            }
+        )";
+
+    VirtualProgram::getOrCreate(geode->getOrCreateStateSet())->setFunction(
+        "colorize_vs", tri_vs, ShaderComp::LOCATION_VERTEX_VIEW);
+
+    return geode;
 }
 
 struct CollectTriangles
@@ -142,38 +205,11 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
             }
             verts->push_back((*_vertices)[i] - anchor);
         }
+        geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, verts->size()));
 
         osg::MatrixTransform* mt = new osg::MatrixTransform;
         mt->setMatrix(osg::Matrixd::translate(anchor));
-
-        osg::Group* geode = new osg::Group();
-        geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LESS, 0, 1, true));
-        geode->addChild(geom);
-        geode->setCullingActive( false );
-        geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, verts->size()));
-        osg::Group* wireframeGroup = new osg::Group();
-        wireframeGroup->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
-        wireframeGroup->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0, 1, true));
-        wireframeGroup->getOrCreateStateSet()->setDefine("WIREFRAME");
-        wireframeGroup->addChild(geom);
-        geode->addChild(wireframeGroup);
-        mt->addChild(geode);
-        mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-        mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");
-
-        const char* tri_shader = R"(
-            #version 330
-            #pragma import_defines(WIREFRAME)
-            void colorize(inout vec4 color) {
-                #ifdef WIREFRAME
-                    color.rgb = vec3(1,1,1);
-                #else
-                    color.rgb = vec3(0.8,0.4,0.1);
-                #endif
-            }
-        )";
-        VirtualProgram::getOrCreate(geode->getOrCreateStateSet())->setFunction(
-            "colorize", tri_shader, ShaderComp::LOCATION_FRAGMENT_COLORING);
+        mt->addChild(installMultiPassRendering(geom));
 
         return mt;
     }
@@ -223,19 +259,24 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
         : CreateTileHandler()
     {
         // new tile LOD for interactive use
-        while (arguments.read("--tilelod", _tileLOD))
-            ;
-        // Create a standalone tile explicitly, for debugging various problems
-        while (arguments.read("--tilekey", _keyString))
-            ;
-        while (arguments.read("--reflod", _refLOD))
-            ;
+        arguments.read("--tilelod", _tileLOD);
+
+        // specific key
+        arguments.read("--tilekey", _keyString);
+
+        // LOD at which to create tile geometry
+        arguments.read("--reflod", _refLOD);
+
+        // some optinos
         bool tilesWithMasks = false;
         bool tilesWithoutMasks = false;
-        while (arguments.read("--with-masks", tilesWithMasks))
-            ;
-        while (arguments.read("--without-masks", tilesWithoutMasks))
-            ;
+
+        tilesWithMasks = arguments.read("--with-masks");
+        tilesWithoutMasks = arguments.read("--without-masks");
+
+        // whether to simulate triangle extraction (like a collision mesh would)
+        s_extractTriangles = arguments.read("--extract");
+
         if (tilesWithMasks)
         {
             _tileFlags = TerrainEngineNode::CREATE_TILE_INCLUDE_TILES_WITH_MASKS;
@@ -261,17 +302,36 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
 
         if (node.valid())
         {
-            // Extract the triangles from the node that was created
-            // and do our own rendering.
-            // Simulates what you would do when passing in the triangles to a physics engine.
-            OE_NOTICE << "Created tile " << key.str() << " (refLOD=" << _refLOD << ")" << std::endl;
-            CollectTrianglesVisitor v;
-            node->accept(v);
-            return v.buildNode();
+            if (s_extractTriangles)
+            {
+                OE_NOTICE << "Extracted tile " << key.str() << " (refLOD=" << _refLOD << ")" << std::endl;
+                // Extract the triangles from the node that was created
+                // and do our own rendering.
+                // Simulates what you would do when passing in the triangles to a physics engine.
+                CollectTrianglesVisitor v;
+                node->accept(v);
+                return v.buildNode();
+            }
+            else
+            {
+                OE_NOTICE << "Created tile " << key.str() << " (refLOD=" << _refLOD << ")" << std::endl;
+                return installMultiPassRendering(node.get());
+            }
         }
         else
         {
             return nullptr;
+        }
+    }
+
+    void install(osg::Node* node)
+    {
+        if (node)
+        {
+            osg::Group* g = s_tile_view->getSceneData()->asGroup();
+            g->removeChildren(0, g->getNumChildren());
+            g->addChild(node);
+            s_tile_view->getCameraManipulator()->home(0.0);
         }
     }
 
@@ -298,13 +358,7 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
 
         if (key.valid() && (node = makeCustomTile(key)))
         {
-            if (node.valid())
-            {
-                osg::Group* g = s_tile_view->getSceneData()->asGroup();
-                g->removeChildren(0, g->getNumChildren());
-                g->addChild(node.get());
-                s_tile_view->getCameraManipulator()->home(0.0);
-            }
+            install(node.get());
         }
         else
         {
@@ -318,12 +372,7 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
         osg::ref_ptr<osg::Node> node;
         if (key.valid() && (node = makeCustomTile(key)))
         {
-            if (_node.valid())
-            {
-                s_root->removeChild(_node.get());
-            }
-            s_root->addChild(node.get());
-            _node = node;
+            install(node.get());
             return;
         }
         OE_WARN << "Failed to create tile for " << key.str() << std::endl;
@@ -346,7 +395,6 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
         return false;
     }
 
-    osg::ref_ptr< osg::Node > _node;
     CreateTileManifest _manifest; // Empty should be fine
     std::string _keyString;
     unsigned _tileLOD;

@@ -274,8 +274,8 @@ namespace osgEarth { namespace REX
 
         SharedGeometry* createGeometry(
             const TileKey& tileKey,
-            unsigned  tileSize,
-            MeshEditor& meshEditor,
+            unsigned tileSize,
+            MeshEditor& editor,
             Cancelable* state) const;
 
         // builds a primitive set to use for any tile without a mask

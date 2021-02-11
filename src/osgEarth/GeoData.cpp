@@ -2047,10 +2047,10 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     }
 
     osg::Image* resultImage = 0L;
-    if (getSRS()->isUserDefined() || to_srs->isUserDefined())
+    if (getSRS()->isUserDefined() || to_srs->isUserDefined() || getImage()->r() > 1)
     {
-        // if either of the SRS is a custom projection, we have to do a manual reprojection since
-        // GDAL will not recognize the SRS.
+        // if either of the SRS is a custom projection or it is a 3D image, we have to do a manual reprojection since
+        // GDAL will not recognize the SRS and does not handle 3D images.
         resultImage = manualReproject(getImage(), getExtent(), destExtent, useBilinearInterpolation, width, height);
     }
     else

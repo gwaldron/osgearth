@@ -218,7 +218,7 @@ namespace osgEarth
         class OSGEARTH_EXPORT Options : public FeatureSource::Options
         {
         public:
-            META_LayerOptions(osgEarth, VTPKFeatureSource::Options, FeatureSource::Options);
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
             OE_OPTION(URI, url);
             virtual Config getConfig() const;
         private:

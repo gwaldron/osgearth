@@ -40,6 +40,10 @@
 #define GLsizeiptr std::uintptr_t
 #endif
 
+#ifndef GL_DYNAMIC_STORAGE_BIT
+#define GL_DYNAMIC_STORAGE_BIT 0x0100
+#endif
+
 namespace osgEarth
 {
     using namespace Threading;

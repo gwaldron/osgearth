@@ -259,15 +259,7 @@ namespace
                 ds._buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, *state, "oe.wind");
                 ds._bufferSize = requiredBufferSize;
 
-                //if (!ds._glBufferStorage)
-                //{
-                //    // polyfill for pre-OSG 3.6 support
-                //    osg::setGLExtensionFuncPtr(ds._glBufferStorage, "glBufferStorage", "glBufferStorageARB");
-                //}
-
                 ds._buffer->bind();
-                //ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer->_handle);
-                //ds._glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
 
                 GLFunctions::get(*state).
                     glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
@@ -275,7 +267,6 @@ namespace
             else
             {
                 ds._buffer->bind();
-                //ext->glBindBuffer(GL_SHADER_STORAGE_BUFFER, ds._buffer->_handle);
             }
 
             // download to GPU

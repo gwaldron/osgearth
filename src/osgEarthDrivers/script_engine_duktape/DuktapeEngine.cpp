@@ -144,7 +144,7 @@ namespace
     // Create a "feature" object in the global namespace.
     void setFeature(duk_context* ctx, Feature const* feature, bool complete)
     {
-        duk_push_global_object(ctx);                             // [global]
+        duk_push_global_object(ctx); // [global]
 
         // Complete profile: properties, geometry, and API bindings.
         if ( complete )
@@ -214,13 +214,14 @@ namespace
 
 DuktapeEngine::Context::Context()
 {
-    _ctx = 0L;
+    _ctx = nullptr;
+    _bytecode = nullptr;
 }
 
 void
 DuktapeEngine::Context::initialize(const ScriptEngineOptions& options, bool complete)
 {
-    if ( _ctx == 0L )
+    if ( _ctx == nullptr)
     {
         // new heap + context.
         _ctx = duk_create_heap_default();
@@ -293,23 +294,14 @@ DuktapeEngine::run(const std::string&   code,
 
     bool complete = false;
 
-    // gw: broken; disable until we can address (if necessary)
-    //bool complete = (getProfile() == "full");
-
-#ifdef MAXIMUM_ISOLATION
-    // brand new context every time
-    Context c;
-    c.initialize( _options, complete );
-    duk_context* ctx = c._ctx;
-#else
     // cache the Context on a per-thread basis
     Context& c = _contexts.get();
     c.initialize( _options, complete );
     duk_context* ctx = c._ctx;
-#endif
 
 	if ( feature && feature != c._feature.get() )
     {
+        OE_PROFILING_ZONE_NAMED("setFeature");
 		// encode the feature in the global object and push a native pointer:
 		setFeature(ctx, feature, complete);
 	}
@@ -321,21 +313,59 @@ DuktapeEngine::run(const std::string&   code,
     // message instead of the return value.
     std::string resultString;
 
-    duk_int_t r = (duk_peval_string(ctx, code.c_str()) == 0); // [ "result" ]
-    const char* resultVal = duk_to_string(ctx, -1);
-    if ( resultVal )
-        resultString = resultVal;
+    duk_int_t r = 0;
 
-    if (resultString.find("Error:") != std::string::npos)
+    // Has the code changed? If so, compile new bytecode and execute it.
+    if (code != c._bytecodeSource)
     {
-        OE_WARN << LC << "Javascript ERROR: " << resultString << std::endl;
-        r = -1;
+        OE_PROFILING_ZONE_NAMED("duk_compile");
+
+        if (duk_pcompile_string(ctx, 0, code.c_str()) != 0) // [function|error]
+        {
+            resultString = duk_safe_to_string(ctx, -1);
+            OE_WARN << LC << "Javascript ERROR: " << resultString << std::endl;
+            duk_pop(ctx); // []
+            return ScriptResult("", false, resultString); // return error.
+        }
+
+        duk_dump_function(ctx); // [buffer]
+        duk_size_t size;
+        void* bytecode = duk_get_buffer(ctx, 0, &size);
+        if (bytecode == nullptr)
+        {
+            duk_pop(ctx); // []
+            return ScriptResult("", false, "Allocation error"); // return error.
+        }
+
+        if (c._bytecode) delete[] c._bytecode;
+        c._bytecode = new unsigned char[size];
+        ::memcpy(c._bytecode, (unsigned char*)bytecode, size);
+        c._bytecodeSize = size;
+        c._bytecodeSource = code;
+
+        // reload it immediately so we can run it
+        duk_load_function(ctx);
+    }
+    else
+    {
+        //TODO: load cached bytecode
+        void* buf = duk_push_buffer(ctx, (duk_size_t)c._bytecodeSize, (duk_bool_t)0); // [buffer]
+        ::memcpy(buf, c._bytecode, c._bytecodeSize);
+        duk_load_function(ctx); // [function]
+    }   
+
+    {
+        OE_PROFILING_ZONE_NAMED("duk_call");
+        duk_call(ctx, 0); // [result]
+        resultString = duk_safe_to_string(ctx, -1);
+        duk_pop(ctx); // []
+
+        if (resultString.find("Error:") != std::string::npos)
+        {
+            OE_WARN << LC << "Javascript ERROR: " << resultString << std::endl;
+            return ScriptResult("", false, resultString); // return error.
+        }
     }
 
-    // pop the return value:
-    duk_pop(ctx); // []
-
-    return r >= 0 ?
-        ScriptResult(resultString, true) :
-        ScriptResult("", false, resultString);
+    return ScriptResult(resultString, true);
 }

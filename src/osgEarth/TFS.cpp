@@ -29,6 +29,7 @@
 #include <osgEarth/MVT>
 #include <osgEarth/OgrUtils>
 #include <osgEarth/FeatureCursor>
+#include <osgEarth/Metrics>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -257,6 +258,8 @@ TFSFeatureSource::openImplementation()
 FeatureCursor*
 TFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
 {
+    OE_PROFILING_ZONE;
+
     FeatureCursor* result = 0L;
 
     std::string url = createURL(query);

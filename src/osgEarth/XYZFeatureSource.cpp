@@ -23,6 +23,7 @@
 #include <osgEarth/Filter>
 #include <osgEarth/MVT>
 #include <osgEarth/Registry>
+#include <osgEarth/Metrics>
 
 #define LC "[XYZFeatureSource] "
 
@@ -121,6 +122,8 @@ XYZFeatureSource::init()
 FeatureCursor*
 XYZFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
 {
+    OE_PROFILING_ZONE;
+
     FeatureCursor* result = 0L;
 
     URI uri = createURL(query);

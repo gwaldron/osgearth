@@ -47,9 +47,9 @@ namespace osgEarth { namespace Drivers { namespace Duktape
 
         /** Run a javascript code snippet. */
         ScriptResult run(
-            const std::string&             code, 
+            const std::string&             code,
             osgEarth::Feature const*       feature,
-            osgEarth::FilterContext const* context);
+            osgEarth::FilterContext const* context) override;
 
     protected:
         virtual ~DuktapeEngine();
@@ -61,6 +61,9 @@ namespace osgEarth { namespace Drivers { namespace Duktape
             void initialize(const ScriptEngineOptions&, bool);
             duk_context* _ctx;
             osg::observer_ptr<const Feature> _feature;
+            std::string _bytecodeSource;
+            unsigned char* _bytecode;
+            unsigned _bytecodeSize;
         };
 
         PerThread<Context> _contexts;

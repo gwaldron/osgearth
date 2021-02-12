@@ -99,13 +99,11 @@ ScriptFilter::push( FeatureList& input, FilterContext& context )
         {
             if (results[i].asBool() == true)
             {
-                output.emplace_back(std::move(feature));
+                output.emplace_back(feature.get());
             }
             ++i;
         }
     }
-
-    OE_INFO << "SF in=" << input.size() << " out=" << output.size() << std::endl;
 
     input.swap(output);
     return context;

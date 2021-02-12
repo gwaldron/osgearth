@@ -116,21 +116,14 @@ TileBlacklist::write(const std::string &filename) const
     write(out);
 }
 
-namespace {
-    struct WriteFunctor : public LRUCache<TileKey,bool>::Functor {
-        std::ostream& _out;
-        WriteFunctor(std::ostream& out) : _out(out) { }
-        void operator()(const TileKey& key, const bool& value) {
-            _out << key.getLOD() << ' ' << key.getTileX() << ' ' << key.getTileY() << std::endl;
-        }
-    };
-}
-
 void
 TileBlacklist::write(std::ostream &output) const
 {
-    WriteFunctor writer(output);
-    _tiles.iterate(writer);
+    _tiles.forEach(
+        [&output](const TileKey& key, const bool& value) mutable {
+            output << key.getLOD() << ' ' << key.getTileX() << ' ' << key.getTileY() << std::endl;
+        }
+    );
 }
 
 

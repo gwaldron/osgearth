@@ -1,13 +1,13 @@
-name: macosx-x64 
+name: macosx-x64
 
 on: [push, pull_request, workflow_dispatch]
 
-env:             
+env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
 
 jobs:
-  
+
   build:
     runs-on: ${{ matrix.os }}
 
@@ -18,7 +18,7 @@ jobs:
           - os: 'macos-10.15'
             triplet: 'x64-macosx'
 
-    steps:       
+    steps:
     - name: Setup environment
       run: |
         # brew install cmake
@@ -29,12 +29,11 @@ jobs:
         brew install poco
         brew install open-scene-graph
         sudo xcode-select -p
-        
+
     - uses: actions/checkout@v2
       with:
         submodules: recursive
-        ref: master  
-             
+
     - name: Create Build Environment
       run: |
         # patch for opengl warnings
@@ -42,12 +41,12 @@ jobs:
         echo -e "${macos_xcode_defs}\n$(cat ${{runner.workspace}}/osgearth/src/CMakeLists.txt)" > ${{runner.workspace}}/osgearth/src/CMakeLists.txt
         # gltf doesn't compile
         sed -i '' "s/add_subdirectory(gltf)//g" ${{runner.workspace}}/osgearth/src/osgEarthDrivers/CMakeLists.txt
-        cmake -E make_directory ${{runner.workspace}}/build 
-    
+        cmake -E make_directory ${{runner.workspace}}/build
+
     - name: Configure CMake
       shell: bash
       working-directory: ${{ runner.workspace }}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD:STRING=11 -DCMAKE_CXX_STANDARD_REQUIRED:BOOL=ON -DCMAKE_CXX_EXTENSIONS:BOOL=OFF -GXcode 
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD:STRING=11 -DCMAKE_CXX_STANDARD_REQUIRED:BOOL=ON -DCMAKE_CXX_EXTENSIONS:BOOL=OFF -GXcode
 
     - name: 'Upload cmake configure log artifact'
       uses: actions/upload-artifact@v2
@@ -61,7 +60,7 @@ jobs:
     - name: Build
       working-directory: ${{ runner.workspace }}/build
       shell: bash
-      run: cmake --build . --config $BUILD_TYPE 
+      run: cmake --build . --config $BUILD_TYPE
 
     - name: 'Upload cmake build log artifact'
       uses: actions/upload-artifact@v2
@@ -71,4 +70,3 @@ jobs:
         path: |
           ${{ runner.workspace }}/build/CMakeCache.txt
         retention-days: 1
-    

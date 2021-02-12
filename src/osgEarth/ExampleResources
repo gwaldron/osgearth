@@ -41,6 +41,15 @@ namespace osgViewer {
     class ViewerBase;
 };
 
+struct EnumClassHash
+{
+    template <typename T>
+    std::size_t operator()(T t) const noexcept
+	{
+        return static_cast<std::size_t>(t);
+    }
+};
+
 /**
  * This is a collection of resources used by the osgEarth example applications.
  */
@@ -250,7 +259,7 @@ namespace osgEarth { namespace Util
             void set(bool value, int mask) { _value = value, _modkeymask = mask; }
             operator bool() { return _value; }
         };
-        std::unordered_map<KeySymbol, std::list<Function>> _keypress;
+        std::unordered_map<KeySymbol, std::list<Function>, EnumClassHash> _keypress;
         std::unordered_map<int, Push> _pushes;
         std::unordered_map<int, std::list<Function>> _click;
         std::list<MouseFunction> _move;

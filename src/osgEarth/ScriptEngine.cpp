@@ -19,6 +19,7 @@
 #include <osgEarth/ScriptEngine>
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
+#include <osgEarth/Feature>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -61,6 +62,22 @@ ScriptEngineOptions::getConfig() const
     }
 
     return conf;
+}
+
+//------------------------------------------------------------------------
+
+bool
+ScriptEngine::run(
+    const std::string& code,
+    const FeatureList& features,
+    std::vector<ScriptResult>& results,
+    FilterContext const* context)
+{
+    for (auto& feature : features)
+    {
+        results.emplace_back(run(code, feature, context));
+    }
+    return true;
 }
 
 //------------------------------------------------------------------------

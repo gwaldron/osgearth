@@ -144,6 +144,11 @@ namespace
     // Create a "feature" object in the global namespace.
     void setFeature(duk_context* ctx, Feature const* feature, bool complete)
     {
+        if (!feature)
+            return;
+
+        OE_PROFILING_ZONE;
+
         duk_push_global_object(ctx); // [global]
 
         // Complete profile: properties, geometry, and API bindings.
@@ -282,50 +287,25 @@ DuktapeEngine::~DuktapeEngine()
     //nop
 }
 
-ScriptResult
-DuktapeEngine::run(const std::string&   code,
-                   Feature const*       feature,
-                   FilterContext const* context)
+bool
+DuktapeEngine::compile(
+    Context& c,
+    const std::string& code,
+    ScriptResult& result)
 {
-    OE_PROFILING_ZONE;
+    //OE_PROFILING_ZONE;
 
-    if (code.empty())
-        return ScriptResult(EMPTY_STRING, false, "Script is empty.");
-
-    bool complete = false;
-
-    // cache the Context on a per-thread basis
-    Context& c = _contexts.get();
-    c.initialize( _options, complete );
     duk_context* ctx = c._ctx;
 
-	if ( feature && feature != c._feature.get() )
-    {
-        OE_PROFILING_ZONE_NAMED("setFeature");
-		// encode the feature in the global object and push a native pointer:
-		setFeature(ctx, feature, complete);
-	}
-
-    // remember the feature so we don't re-create it if not necessary
-    c._feature = feature;
-
-    // run the script. On error, the top of stack will hold the error
-    // message instead of the return value.
-    std::string resultString;
-
-    duk_int_t r = 0;
-
-    // Has the code changed? If so, compile new bytecode and execute it.
     if (code != c._bytecodeSource)
     {
-        OE_PROFILING_ZONE_NAMED("duk_compile");
-
         if (duk_pcompile_string(ctx, 0, code.c_str()) != 0) // [function|error]
         {
-            resultString = duk_safe_to_string(ctx, -1);
+            std::string resultString = duk_safe_to_string(ctx, -1);
             OE_WARN << LC << "Javascript ERROR: " << resultString << std::endl;
             duk_pop(ctx); // []
-            return ScriptResult("", false, resultString); // return error.
+            result = ScriptResult("", false, resultString); // return error.
+            return false;
         }
 
         duk_dump_function(ctx); // [buffer]
@@ -333,8 +313,10 @@ DuktapeEngine::run(const std::string&   code,
         void* bytecode = duk_get_buffer(ctx, 0, &size);
         if (bytecode == nullptr)
         {
+            // error. remove the buffer and return.
             duk_pop(ctx); // []
-            return ScriptResult("", false, "Allocation error"); // return error.
+            result = ScriptResult("", false, "Allocation error"); // return error
+            return false;
         }
 
         if (c._bytecode) delete[] c._bytecode;
@@ -342,20 +324,124 @@ DuktapeEngine::run(const std::string&   code,
         ::memcpy(c._bytecode, (unsigned char*)bytecode, size);
         c._bytecodeSize = size;
         c._bytecodeSource = code;
-
-        // reload it immediately so we can run it
-        duk_load_function(ctx);
     }
     else
     {
         //TODO: load cached bytecode
         void* buf = duk_push_buffer(ctx, (duk_size_t)c._bytecodeSize, (duk_bool_t)0); // [buffer]
         ::memcpy(buf, c._bytecode, c._bytecodeSize);
-        duk_load_function(ctx); // [function]
-    }   
+    }
 
+    // convert bytecode to a function object:
+    duk_load_function(ctx); // [function]
+
+    return true;
+}
+
+bool
+DuktapeEngine::run(
+    const std::string& code,
+    const FeatureList& features,
+    std::vector<ScriptResult>& results,
+    FilterContext const* context)
+{
+    if (code.empty())
     {
-        OE_PROFILING_ZONE_NAMED("duk_call");
+        for (auto& f : features)
+            results.emplace_back(EMPTY_STRING, false, "Script is empty.");
+        return false;
+    }
+
+    OE_PROFILING_ZONE;
+
+    const bool complete = false;
+
+    // cache the Context on a per-thread basis
+    Context& c = _contexts.get();
+    c.initialize(_options, complete);
+    duk_context* ctx = c._ctx;
+
+    std::string resultString;
+    ScriptResult result;
+
+    if (!compile(c, code, result)) // [function | null]
+    {
+        for (auto& f : features)
+            results.push_back(result);
+        return false;
+    }
+
+    for (auto& feature : features)
+    {
+        // Load the next feature into the global object:
+        setFeature(c._ctx, feature, complete);
+
+        // Duplicate the function on the top since we'll be calling it multiple times
+        duk_dup_top(ctx); // [function function]
+
+        // Run the script:
+        {
+            //OE_PROFILING_ZONE_NAMED("duk_call");
+            duk_call(ctx, 0); // [function result]
+            resultString = duk_safe_to_string(ctx, -1);
+            duk_pop(ctx); // [function]
+        }
+
+        if (resultString.find("Error:") != std::string::npos)
+        {
+            OE_WARN << LC << "Javascript ERROR: " << resultString << std::endl;
+            results.emplace_back(EMPTY_STRING, false, resultString); // error
+        }
+        else
+        {
+            results.emplace_back(resultString, true);
+        }
+    }
+
+    // Pop the function, clearing the stack
+    duk_pop(ctx); // []
+
+    return true;
+}
+
+ScriptResult
+DuktapeEngine::run(
+    const std::string& code,
+    Feature const* feature,
+    FilterContext const* context)
+{
+    if (code.empty())
+        return ScriptResult(EMPTY_STRING, false, "Script is empty");
+
+    if (!feature)
+        return ScriptResult(EMPTY_STRING, false, "Feature is null");
+
+    OE_PROFILING_ZONE;
+
+    const bool complete = false;
+
+    // cache the Context on a per-thread basis
+    Context& c = _contexts.get();
+    c.initialize( _options, complete );
+    duk_context* ctx = c._ctx;
+
+    // compile the function:
+    ScriptResult result;
+    if (!compile(c, code, result)) // [function]
+    {
+        return result;
+    }
+
+    // load the feature into the global namespace:
+	if ( feature != c._feature.get() )
+    {
+		setFeature(ctx, feature, complete);
+        c._feature = feature;
+	}
+
+    std::string resultString;
+    {
+        //OE_PROFILING_ZONE_NAMED("duk_call");
         duk_call(ctx, 0); // [result]
         resultString = duk_safe_to_string(ctx, -1);
         duk_pop(ctx); // []

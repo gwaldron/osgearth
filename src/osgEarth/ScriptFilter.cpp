@@ -86,18 +86,27 @@ ScriptFilter::push( FeatureList& input, FilterContext& context )
         return context;
     }
 
-    bool ok = true;
-    for( FeatureList::iterator i = input.begin(); i != input.end(); )
+    FeatureList output;
+
+    std::vector<ScriptResult> results;
+    results.reserve(input.size());
+
+    if (_engine->run(_expression.get(), input, results, &context) &&
+        results.size() == input.size())
     {
-        if ( push( i->get(), context ) )
+        unsigned i = 0;
+        for (auto& feature : input)
         {
+            if (results[i].asBool() == true)
+            {
+                output.emplace_back(std::move(feature));
+            }
             ++i;
-        }
-        else
-        {
-            i = input.erase(i);
         }
     }
 
+    OE_INFO << "SF in=" << input.size() << " out=" << output.size() << std::endl;
+
+    input.swap(output);
     return context;
 }

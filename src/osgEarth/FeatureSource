@@ -120,6 +120,13 @@ namespace osgEarth
             return createFeatureCursor(Query(), progress);
         }
 
+        //! Gets a vector of keys required to cover the input key and
+        //! a buffering distance.
+        unsigned getKeys(
+            const TileKey& key,
+            const Distance& buffer,
+            std::vector<TileKey>& output) const;
+
         /**
          * Gets a reference to the metadata that describes features that you can
          * get from this FeatureSource. A valid feature profile indiciates that the

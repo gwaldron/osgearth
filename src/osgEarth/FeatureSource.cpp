@@ -330,3 +330,45 @@ FeatureSource::createFeatureCursor(const TileKey& key, const Distance& buffer, P
 
     return NULL;
 }
+
+unsigned
+FeatureSource::getKeys(
+    const TileKey& key,
+    const Distance& buffer,
+    std::vector<TileKey>& output) const
+{
+    if (_featureProfile.valid())
+    {
+        // If this is a tiled FS we need to translate the caller's tilekey into
+        // feature source tilekeys and combine multiple queries into one.
+        const Profile* tilingProfile = _featureProfile->getTilingProfile();
+        if (tilingProfile)
+        {
+            std::vector<TileKey> intersectingKeys;
+            if (buffer.as(Units::METERS) == 0.0)
+            {
+                tilingProfile->getIntersectingTiles(key, intersectingKeys);
+            }
+            else
+            {
+                // TODO
+                // total cheat to just get the surrounding tiles :)
+                GeoExtent extent = key.getExtent();
+                extent.expand(extent.width() / 2.0, extent.height() / 2.0);
+                unsigned lod = tilingProfile->getEquivalentLOD(key.getProfile(), key.getLOD());
+                tilingProfile->getIntersectingTiles(extent, lod, intersectingKeys);
+            }
+
+            for (int i = 0; i < intersectingKeys.size(); ++i)
+            {
+                if (_featureProfile->getMaxLevel() >= 0 && intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
+                    output.push_back(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
+                else
+                    output.push_back(intersectingKeys[i]);
+            }
+        }
+    }
+
+
+    return output.size();
+}

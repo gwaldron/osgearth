@@ -322,7 +322,7 @@ public:
     {
         _options = new osgDB::Options();
         arena = std::make_shared<JobArena>("Geocoder", 1U);
-        OptionsData<JobArena>::set(_options.get(), arena);
+        ObjectStorage::set(_options.get(), arena);
     }
 
     void draw(EarthManipulator* manip)

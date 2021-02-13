@@ -47,9 +47,9 @@ namespace
                 return ReadResult::FILE_NOT_HANDLED;
 
             osg::ref_ptr<PagedNode> node;
-            if (!OptionsData<PagedNode>::lock(options, "osgEarth.PagedNode", node))
+            if (!ObjectStorage::get(options, node))
             {
-                OE_WARN << "Internal error - no PagedNode object in OptionsData\n";
+                OE_WARN << "Internal error - no PagedNode object in ObjectStorage\n";
                 return ReadResult::ERROR_IN_READING_FILE;
             }
 
@@ -97,7 +97,7 @@ void PagedNode::setupPaging()
       
         // assemble data to pass to the pseudoloader
         osgDB::Options* options = new osgDB::Options();
-        OptionsData<PagedNode>::set(options, "osgEarth.PagedNode", this);
+        ObjectStorage::set(options, this);
         _plod->setDatabaseOptions( options );
 
         // Setup the min and max ranges.

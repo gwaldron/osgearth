@@ -732,7 +732,7 @@ GLObjectsCompiler::compileAsync(
     {
         // if there is an ICO available, schedule the GPU compilation
         osg::ref_ptr<ICO> ico;
-        if (OptionsData<ICO>::get(options, ico))
+        if (ObjectStorage::get(options, ico))
         {
             auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(node);
 

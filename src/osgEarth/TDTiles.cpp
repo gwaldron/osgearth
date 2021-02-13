@@ -908,7 +908,7 @@ void ThreeDTileNode::requestContent(ICO* ico)
         if (ico)
         {
             localOptions = Registry::instance()->cloneOrCreateOptions(_options.get());
-            OptionsData<ICO>::set(localOptions.get(), ico);
+            ObjectStorage::set(localOptions.get(), ico);
         }
         else
         {

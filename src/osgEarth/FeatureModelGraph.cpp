@@ -301,7 +301,7 @@ namespace
         options->setFileLocationCallback(flc);
         p->setDatabaseOptions(options);
         // so we can find the FMG instance in the pseudoloader.
-        OptionsData<FeatureModelGraph>::set(options, USER_OBJECT_NAME, fmg);
+        ObjectStorage::set(options, fmg);
 
         return p;
 
@@ -337,7 +337,7 @@ namespace
             sscanf(uri.c_str(), "%u_%u_%u.%*s", &lod, &x, &y);
 
             osg::ref_ptr<FeatureModelGraph> graph;
-            if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
+            if (!ObjectStorage::get(readOptions, graph))
             {
                 // FMG was shut down
                 return ReadResult(nullptr);

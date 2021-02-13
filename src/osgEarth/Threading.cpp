@@ -500,7 +500,7 @@ ThreadPool::put(osgDB::Options* options)
 {
     if (options)
     {
-        OptionsData<ThreadPool>::set(options, "osgEarth::ThreadPool", this);
+        ObjectStorage::set(options, this);
     }
 }
 
@@ -508,7 +508,7 @@ osg::ref_ptr<ThreadPool>
 ThreadPool::get(const osgDB::Options* options)
 {
     osg::ref_ptr<ThreadPool> result;
-    OptionsData<ThreadPool>::get(options, result);
+    ObjectStorage::get(options, result);
     return result;
 }
 

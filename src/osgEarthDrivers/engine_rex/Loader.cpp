@@ -254,7 +254,7 @@ _requests(OE_MUTEX_NAME)
 
     _dboptions->setFileLocationCallback( new FileLocationCallback() );
 
-    OptionsData<PagerLoader>::set(_dboptions.get(), "osgEarth.PagerLoader", this);
+    ObjectStorage::set(_dboptions.get(), this);
 
     // initialize the LOD priority scales and offsets
     for (unsigned i = 0; i < 64; ++i)
@@ -633,7 +633,7 @@ namespace osgEarth { namespace REX
                 sscanf(requestdef.c_str(), "%u", &requestUID);
 
                 osg::ref_ptr<PagerLoader> loader;
-                if (OptionsData<PagerLoader>::lock(dboptions, "osgEarth.PagerLoader", loader))
+                if (ObjectStorage::get(dboptions, loader))
                 {
                     osg::ref_ptr<Loader::Request> req = loader->runAndRelease(requestUID);
 

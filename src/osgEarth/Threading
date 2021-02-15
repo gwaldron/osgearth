@@ -721,6 +721,11 @@ namespace osgEarth { namespace Threading
             const std::string& arena,
             const Function& function);
 
+        static Result dispatch(
+            const std::string& arena,
+            float priority,
+            const Function& function);
+
         //! Dispatch a background job and return the future-result.
         //! @param arena Named arena in which to run the job.
         //! @param group Job group this job belongs to
@@ -735,6 +740,14 @@ namespace osgEarth { namespace Threading
         //! @function Function to execute asynchronously.
         static Result dispatch(
             JobArena& arena,
+            const Function& function);
+
+        //! Dispatch a background job and return the future-result.
+        //! @param arena Arena in which to run the job.
+        //! @function Function to execute asynchronously.
+        static Result dispatch(
+            JobArena& arena,
+            float priority,
             const Function& function);
 
         //! Dispatch a background job and return the future-result.
@@ -817,9 +830,12 @@ namespace osgEarth { namespace Threading
         //! Schedule an asynchronous task on this arena.
         //! Consider using the Job<> interface before using this method directly.
         //! @param job Function to execute asynhronously
+        //! @param priority Priority at which to run this job relative to other jobs in the queue
         //! @param group Group this job belongs to, or nullptr if none
+        using Delegate = std::function<bool()>;
         void dispatch(
-            std::function<void()>& job,
+            Delegate& job,
+            float priority,
             JobGroup* group);
 
         //! Name of the arena to use when none is specified
@@ -832,17 +848,20 @@ namespace osgEarth { namespace Threading
         void stopThreads();
 
         struct QueuedJob {
-            QueuedJob() { }
-            QueuedJob(const std::function<void()>& job, std::shared_ptr<Semaphore> sema) :
-                _job(job), _groupsema(sema) { }
-            std::function<void()> _job;
+            QueuedJob() :_priority(0.0f) { }
+            QueuedJob(const Delegate& job, float priority, std::shared_ptr<Semaphore> sema) :
+                _job(job), _priority(priority), _groupsema(sema) { }
+            Delegate _job;
+            float _priority;
             std::shared_ptr<Semaphore> _groupsema;
+            bool operator < (const QueuedJob& rhs) const { return _priority <= rhs._priority;  }
         };
 
         // pool name
         std::string _name;
         // queued operations to run asynchronously
-        typedef std::deque<QueuedJob> Queue;
+        //typedef std::deque<QueuedJob> Queue;
+        typedef std::priority_queue<QueuedJob, std::deque<QueuedJob>> Queue;
         Queue _queue;
         // protect access to the queue
         mutable Mutex _queueMutex;
@@ -866,7 +885,7 @@ namespace osgEarth { namespace Threading
     Job<RESULT_TYPE>::dispatch(
         const Function& function)
     {
-        return dispatch(JobArena::defaultArenaName(), function);
+        return dispatch(JobArena::defaultArenaName(), 0.0f, function);
     }
 
     template<typename RESULT_TYPE>
@@ -876,7 +895,18 @@ namespace osgEarth { namespace Threading
         const Function& function)
     {
         JobArena* arena = JobArena::arena(arenaName);
-        return dispatch(*arena, function);
+        return dispatch(*arena, 0.0f, function);
+    }
+
+    template<typename RESULT_TYPE>
+    Future<RESULT_TYPE>
+    Job<RESULT_TYPE>::dispatch(
+        const std::string& arenaName,
+        float priority,
+        const Function& function)
+    {
+        JobArena* arena = JobArena::arena(arenaName);
+        return dispatch(*arena, priority, function);
     }
 
     template<typename RESULT_TYPE>
@@ -887,7 +917,7 @@ namespace osgEarth { namespace Threading
         const Function& function)
     {
         JobArena* arena = JobArena::arena(arenaName);
-        return dispatch(*arena, group, function);
+        return dispatch(*arena, group, 0.0f, function);
     }
 
     template<typename RESULT_TYPE>
@@ -899,14 +929,39 @@ namespace osgEarth { namespace Threading
         Promise<RESULT_TYPE> promise;
         Future<RESULT_TYPE> future = promise.getFuture();
 
-        std::function<void()> delegate = [function, promise]() mutable
+        JobArena::Delegate delegate = [function, promise]() mutable
         {
             if (!promise.isAbandoned())
             {
                 promise.resolve(function(&promise));
+                return true;
             }
+            return false;
         };
-        arena.dispatch(delegate, nullptr);
+        arena.dispatch(delegate, 0.0f, nullptr);
+        return std::move(future);
+    }
+
+    template<typename RESULT_TYPE>
+    Future<RESULT_TYPE>
+    Job<RESULT_TYPE>::dispatch(
+        JobArena& arena,
+        float priority,
+        const Function& function)
+    {
+        Promise<RESULT_TYPE> promise;
+        Future<RESULT_TYPE> future = promise.getFuture();
+
+        JobArena::Delegate delegate = [function, promise]() mutable
+        {
+            if (!promise.isAbandoned())
+            {
+                promise.resolve(function(&promise));
+                return true;
+            }
+            return false;
+        };
+        arena.dispatch(delegate, priority, nullptr);
         return std::move(future);
     }
 
@@ -920,14 +975,16 @@ namespace osgEarth { namespace Threading
         Promise<RESULT_TYPE> promise;
         Future<RESULT_TYPE> future = promise.getFuture();
 
-        std::function<void()> delegate = [function, promise]() mutable
+        JobArena::Delegate delegate = [function, promise]() mutable
         {
             if (!promise.isAbandoned())
             {
                 promise.resolve(function(&promise));
+                return true;
             }
+            return false;
         };
-        arena.dispatch(delegate, &group);
+        arena.dispatch(delegate, 0.0f, &group);
         return std::move(future);
     }
 
@@ -960,11 +1017,12 @@ namespace osgEarth { namespace Threading
         JobArena& arena,
         const Function& function)
     {
-        std::function<void()> delegate = [function]() mutable
+        JobArena::Delegate delegate = [function]() mutable
         {
             function(nullptr);
+            return true;
         };
-        arena.dispatch(delegate, nullptr);
+        arena.dispatch(delegate, 0.0f, nullptr);
     }
 
     template<typename RESULT_TYPE>
@@ -973,11 +1031,12 @@ namespace osgEarth { namespace Threading
         JobGroup& group,
         const Function& function)
     {
-        std::function<void()> delegate = [function]() mutable
+        JobArena::Delegate delegate = [function]() mutable
         {
             function(nullptr);
+            return true;
         };
-        arena.dispatch(delegate, &group);
+        arena.dispatch(delegate, 0.0f, &group);
     }
 
 } } // namepsace osgEarth::Threading

@@ -292,21 +292,23 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
     }
 
     // Add the tile to the task queue.
-    std::function<void()> delegate = [=]()
+    JobArena::Delegate delegate = [=]()
     {
         if ((_tileHandler.valid()) &&
             (!_progress.valid() || !_progress->isCanceled()))
         {
             _tileHandler->handleTile(key, *this);
             this->incrementProgress(1);
+            return true;
         }
+        return false;
 
         // atomically decrement the task count
         //_numTiles--;
         //_done.notify_all();
     };
 
-    _arena->dispatch(delegate, &_group);
+    _arena->dispatch(delegate, 0.0f, &_group);
     return true;
 }
 

@@ -345,12 +345,12 @@ namespace osgEarth
     {
         void compileNow(
             osg::Node* node,
-            const osgDB::Options* options,
+            const osg::Object* host,
             osgEarth::Threading::Cancelable* progress) const;
 
         Future<bool> compileAsync(
             osg::Node* node,
-            const osgDB::Options* options,
+            const osg::Object* host,
             osgEarth::Threading::Cancelable* progress) const;
     };
 }

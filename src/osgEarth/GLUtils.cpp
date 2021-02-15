@@ -724,7 +724,7 @@ namespace
 Future<bool>
 GLObjectsCompiler::compileAsync(
     osg::Node* node,
-    const osgDB::Options* options,
+    const osg::Object* host,
     Cancelable* progress) const
 {
     Future<bool> result;
@@ -732,7 +732,7 @@ GLObjectsCompiler::compileAsync(
     {
         // if there is an ICO available, schedule the GPU compilation
         osg::ref_ptr<ICO> ico;
-        if (ObjectStorage::get(options, ico))
+        if (ObjectStorage::get(host, ico))
         {
             auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(node);
 
@@ -750,12 +750,12 @@ GLObjectsCompiler::compileAsync(
 void
 GLObjectsCompiler::compileNow(
     osg::Node* node,
-    const osgDB::Options* options,
+    const osg::Object* host,
     Cancelable* progress) const
 {
     if (node)
     {
-        Future<bool> result = compileAsync(node, options, progress);
+        Future<bool> result = compileAsync(node, host, progress);
         result.join(progress);
     }
 }

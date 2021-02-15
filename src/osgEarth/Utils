@@ -74,7 +74,7 @@ namespace osgEarth { namespace Util
             obj = nullptr;
             if (o == nullptr) return false;
             const Data<T>* data = dynamic_cast<const Data<T>*>(osg::getUserObject(o, name));
-            return data ? data->_obj.lock(out) : false;
+            return data ? data->_obj.lock(obj) : false;
         }
         template<typename T>
         static void set(osg::Object* o, T* obj) {

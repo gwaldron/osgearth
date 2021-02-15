@@ -23,6 +23,7 @@
 #include "RenderBindings"
 #include "Loader"
 #include "TileRenderModel"
+#include "LoadTileData"
 
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/TerrainTileNode>
@@ -42,7 +43,7 @@ namespace osgEarth {
 
 namespace osgEarth { namespace REX
 {
-    class LoadTileData;
+    class LoadTileOperation;
     class EngineContext;
     class SurfaceNode;
     class SelectionInfo;
@@ -117,7 +118,9 @@ namespace osgEarth { namespace REX
         const TileNode* getSubTile(unsigned i) const { return static_cast<TileNode*>(_children[i].get()); }
 
         /** Merge new Tile model data into this tile's rendering data model. */
-        void merge(const TerrainTileModel* dataModel, LoadTileData* originator);
+        void merge(
+            const TerrainTileModel* dataModel,
+            const CreateTileManifest& manifest);
 
         /** Access the rendering model for this tile */
         TileRenderModel& renderModel() { return _renderModel; }
@@ -162,10 +165,10 @@ namespace osgEarth { namespace REX
         int                                _revision;
         bool _createChildAsync;
 
-        typedef Job<osg::ref_ptr<TileNode>> TileJob;
-        std::vector<TileJob::Result> _createChildResults;
+        typedef Job<osg::ref_ptr<TileNode>> CreateChildJob;
+        std::vector<CreateChildJob::Result> _createChildResults;
 
-        typedef std::queue<osg::ref_ptr<LoadTileData> > LoadQueue;
+        using LoadQueue = std::queue<LoadTileDataOperationPtr>;
         Mutexed<LoadQueue> _loadQueue;
         unsigned _loadsInQueue;
         const CreateTileManifest* _nextLoadManifestPtr;

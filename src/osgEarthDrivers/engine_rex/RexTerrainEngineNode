@@ -43,11 +43,11 @@
 #include <map>
 #include <vector>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace REX
 {
-    class RexTerrainEngineNode : public TerrainEngineNode
+    using namespace osgEarth;
+
+    class RexTerrainEngineNode : public osgEarth::TerrainEngineNode
     {
     public:
         META_Node(osgEarth, RexTerrainEngineNode);
@@ -102,8 +102,8 @@ namespace osgEarth { namespace REX
 
         void onMapModelChanged( const MapModelChange& change ); // not virtual!
 
-        //! Access to the asychronous data loader
-        Loader* getLoader() const { return _loader.get(); }
+        //! Access to the data merger
+        Merger* getMerger() const { return _merger.get(); }
 
     protected: // TerrainEngineNode protected
 
@@ -172,7 +172,7 @@ namespace osgEarth { namespace REX
 
         RenderBindings _renderBindings;
         osg::ref_ptr<GeometryPool> _geometryPool;
-        osg::ref_ptr<Loader>  _loader;
+        osg::ref_ptr<Merger> _merger;
         osg::ref_ptr<UnloaderGroup> _unloader;
         
         osg::ref_ptr<osg::Group> _terrain;

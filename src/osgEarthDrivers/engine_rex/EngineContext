@@ -39,7 +39,6 @@ using namespace osgEarth;
 #define ENGINE_CONTEXT_TAG "osgEarth::Rex::EngineContext"
 
 namespace osgEarth {
-    class TerrainEngine;
     class FrameClock;
 }
 
@@ -54,14 +53,14 @@ namespace osgEarth { namespace REX
             const Map*                          map,
             TerrainEngineNode*                  engine,
             GeometryPool*                       geometryPool,
-            Loader*                             loader,
+            Merger*                             merger,
             TileNodeRegistry*                   liveTiles,
             const RenderBindings&               renderBindings,
             const TerrainOptions&               options,
             const SelectionInfo&                selectionInfo,
             const FrameClock*                   clock);
         
-        Loader* getLoader() const { return _loader; }
+        Merger* getMerger() const { return _merger; }
 
         const RenderBindings& getRenderBindings() const { return _renderBindings; }
 
@@ -100,7 +99,7 @@ namespace osgEarth { namespace REX
         const TerrainOptions&                 _options;
         const RenderBindings&                 _renderBindings;
         GeometryPool*                         _geometryPool;
-        Loader*                               _loader;
+        Merger*                               _merger;
         const SelectionInfo&                  _selectionInfo;
         osg::Timer_t                          _tick;
         int                                   _tilesLastCull;

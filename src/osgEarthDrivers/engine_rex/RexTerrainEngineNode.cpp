@@ -212,7 +212,7 @@ void
 RexTerrainEngineNode::shutdown()
 {
     TerrainEngineNode::shutdown();
-    _loader->clear();
+    _merger->clear();
 }
 
 void
@@ -287,15 +287,17 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     _geometryPool->setReleaser( _releaser.get());
     this->addChild( _geometryPool.get() );
 
-    // Make a tile loader
-    PagerLoader* loader = new PagerLoader( this );
-    loader->setFrameClock(&_clock);
-    loader->setNumLODs(options().maxLOD().getOrUse(DEFAULT_MAX_LOD));
-    loader->setMergesPerFrame(options().mergesPerFrame().get() );
-    loader->setOverallPriorityScale(options().priorityScale().get());
+    // Geometry compiler/merger
+    _merger = new Merger();
+    _merger->setMergesPerFrame(options().mergesPerFrame().get());
+    this->addChild(_merger.get());
 
-    _loader = loader;
-    this->addChild( _loader.get() );
+    // Threads?
+    unsigned loaderThreads = 4u;
+    const char* loaderThreads_str = ::getenv("OSGEARTH_TERRAIN_LOADER_THREADS");
+    if (loaderThreads_str)
+        loaderThreads = Strings::as<unsigned>(loaderThreads_str, loaderThreads);
+    JobArena::setSize("oe.rex.loader", loaderThreads);
 
     // if the envvar for tile expiration is set, override the options setting
     unsigned expirationThreshold = options().expirationThreshold().get();
@@ -340,7 +342,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         map,
         this, // engine
         _geometryPool.get(),
-        _loader.get(),
+        _merger.get(),
         _liveTiles.get(),
         _renderBindings,
         options(),
@@ -550,7 +552,7 @@ RexTerrainEngineNode::dirtyTerrain()
     }
 
     // clear the loader:
-    _loader->clear();
+    _merger->clear();
 
     // clear out the tile registry:
     if ( _liveTiles.valid() )
@@ -768,7 +770,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
     // traverse all the other children (geometry pool, loader/unloader, etc.)
     _geometryPool->accept(nv);
-    _loader->accept(nv);
+    _merger->accept(nv);
     _unloader->accept(nv);
     _releaser->accept(nv);
 }

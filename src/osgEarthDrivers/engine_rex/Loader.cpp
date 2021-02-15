@@ -18,16 +18,20 @@
  */
 #include "Loader"
 #include "RexTerrainEngineNode"
+#include "LoadTileData"
 
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Metrics>
+#include <osgEarth/GLUtils>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <osgDB/ReaderWriter>
+#include <osgUtil/IncrementalCompileOperation>
+#include <osgViewer/View>
 
 #include <string>
 
@@ -36,6 +40,8 @@
 
 using namespace osgEarth::REX;
 
+
+#if 0
 
 Loader::Request::Request() :
     _delay_s(0.0),
@@ -657,3 +663,281 @@ namespace osgEarth { namespace REX
     REGISTER_OSGPLUGIN(osgearth_rex_loader, PagerLoaderAgent);
 
 } } // namespace osgEarth::REX
+#endif
+
+//...................................................................
+
+#if 0
+ArenaLoader::ArenaLoader(TerrainEngineNode* engine) :
+    _checkpoint(0.0),
+    _mergesPerFrame(0),
+    _frameLastUpdated(0u),
+    _numLODs(20u),
+    _requests(OE_MUTEX_NAME)
+{
+    // initialize the LOD priority scales and offsets
+    for (unsigned i = 0; i < 64; ++i)
+    {
+        _priorityScales[i] = 1.0f;
+        _priorityOffsets[i] = 0.0f;
+    }
+}
+
+void
+ArenaLoader::setNumLODs(unsigned lods)
+{
+    _numLODs = osg::maximum(lods, 1u);
+}
+
+void
+ArenaLoader::setMergesPerFrame(int value)
+{
+    _mergesPerFrame = osg::maximum(value, 0);
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    OE_DEBUG << LC << "Merges per frame = " << _mergesPerFrame << std::endl;
+
+}
+
+void
+ArenaLoader::setLODPriorityScale(unsigned lod, float priorityScale)
+{
+    if (lod < 64)
+        _priorityScales[lod] = priorityScale;
+}
+
+void
+ArenaLoader::setLODPriorityOffset(unsigned lod, float offset)
+{
+    if (lod < 64)
+        _priorityOffsets[lod] = offset;
+}
+
+void
+ArenaLoader::setOverallPriorityScale(float value)
+{
+    for (int i = 0; i < 64; ++i)
+    {
+        _priorityScales[i] = value;
+    }
+}
+
+bool
+ArenaLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv)
+{
+    OE_SOFT_ASSERT_AND_RETURN(request != nullptr, __func__, false);
+
+    ScopedMutexLock lock(_requests);
+
+    osg::ref_ptr<Loader::Request> safeRequest(request);
+
+    _requests.emplace_back( LoaderJob::dispatch(
+        "oe.rex.loader",
+        [safeRequest](Cancelable* progress)
+        {
+            safeRequest->run(new ProgressCallback(progress));
+            return safeRequest;
+        }
+    ));
+
+    return true;
+}
+
+void
+ArenaLoader::clear()
+{
+    ScopedMutexLock lock(_requests);
+    _requests.clear();
+}
+
+void
+ArenaLoader::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        // prevent UPDATE from running more than once per frame
+        unsigned frame = _clock->getFrame();
+        bool runUpdate = (_frameLastUpdated < frame);
+
+        if (runUpdate)
+        {
+            _frameLastUpdated = frame;
+
+            // process pending merges.
+            {
+                OE_PROFILING_ZONE_NAMED("oe.rex.loader.merge");
+
+                ScopedMutexLock lock(_requests);
+
+                int count = 0;
+                for(RequestList::iterator i = _requests.begin();
+                    i != _requests.end() && count < _mergesPerFrame; )
+                {
+                    LoaderJob::Result& result = *i;
+
+                    if (result.isAvailable())
+                    {
+                        //todo : merge
+                        const osg::ref_ptr<Request>& request = result.get();
+                        if (request.valid())
+                        {
+                            request->merge();
+                        }
+
+                        i = _requests.erase(i);
+                    }
+
+                    else if (result.isAbandoned())
+                    {
+                        i = _requests.erase(i);
+                    }
+
+                    else
+                    {
+                        ++i;
+                    }
+                }
+            }
+        }
+    }
+
+    Loader::traverse(nv);
+}
+#endif
+
+#undef LC
+#define LC "[Merger] "
+
+Merger::Merger() :
+    _mergesPerFrame(~0)
+{
+    setCullingActive(false);
+    setNumChildrenRequiringUpdateTraversal(+1);
+    _mutex.setName(OE_MUTEX_NAME);
+}
+
+Merger::~Merger()
+{
+    //nop
+}
+
+void
+Merger::setMergesPerFrame(unsigned value)
+{
+    _mergesPerFrame = value;
+}
+
+void
+Merger::clear()
+{
+    ScopedMutexLock lock(_mutex);
+    _compileQueue.swap(CompileQueue());
+    _mergeQueue.swap(MergeQueue());
+}
+
+void
+Merger::merge(LoadTileDataOperationPtr data)
+{
+    if (_ico.valid())
+    {
+        osg::ref_ptr<osg::Node> node = new osg::Node();
+        std::vector<osg::Texture*> textures;
+        data->_result.get()->getDataToCompile(textures);
+        osg::StateSet* ss = node->getOrCreateStateSet();
+        unsigned unit = 0;
+        for (auto tex : textures)
+            ss->setTextureAttribute(unit++, tex, 1);
+
+        ScopedMutexLock lock(_mutex);
+        _compileQueue.emplace();
+
+        GLObjectsCompiler glcompiler;
+        _compileQueue.back()._data = data;
+        _compileQueue.back()._compileJob = glcompiler.compileAsync(node.get(), this, nullptr);
+
+    }
+    else
+    {
+        ScopedMutexLock lock(_mutex);
+        _mergeQueue.push(data);
+    }
+}
+
+void
+Merger::traverse(osg::NodeVisitor& nv)
+{
+    if (!_ico.valid() && nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        // Detect an ICO so we can do GL compiliation
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        if (cv)
+        {
+            osgViewer::View* osgView = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
+            if (osgView)
+            {
+                _ico = osgView->getDatabasePager()->getIncrementalCompileOperation();
+                if (_ico.valid())
+                    ObjectStorage::set(this, _ico.get());
+            }
+        }
+    }
+
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        ScopedMutexLock lock(_mutex);
+
+        // First check the GL compile queue
+        while (!_compileQueue.empty())
+        {
+            ToCompile& next = _compileQueue.front();
+
+            if (next._compileJob.isAvailable())
+            {
+                // compile finished, put it on the merge queue
+                _mergeQueue.emplace(std::move(next._data));
+                _compileQueue.pop();
+            }
+            else if (next._compileJob.isAbandoned())
+            {
+                // compile canceled, ditch it
+                _compileQueue.pop();
+            }
+            else
+            {
+                // nothing to do -- bail out
+                break;
+            }
+        }
+
+        unsigned count = 0u;
+        unsigned max_count = _mergesPerFrame;
+        if (max_count == 0)
+            max_count = INT_MAX;
+
+        while (!_mergeQueue.empty() && count < max_count)
+        {
+            LoadTileDataOperationPtr next = _mergeQueue.front();
+            _mergeQueue.pop();
+
+            if (next != nullptr)
+            {
+                if (next->_result.isAvailable())
+                {
+                    next->merge();
+                }
+                else
+                {
+                    //OE_INFO << LC << "Abandoned " << next->_name << std::endl;
+                }
+            }
+
+            ++count;
+        }
+
+        //if (count > 0)
+        //{
+        //    OE_INFO << LC << "Merged " << count << std::endl;
+        //}
+    }
+
+    osg::Node::traverse(nv);
+}

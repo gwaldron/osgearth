@@ -20,220 +20,59 @@
 #define OSGEARTH_REX_LOADER 1
 
 #include "Common"
+#include "LoadTileData"
 
-#include <osgEarth/IOTypes>
 #include <osgEarth/Threading>
-#include <osgEarth/TileKey>
-#include <osgEarth/Progress>
-#include <osgEarth/Metrics>
-#include <osgEarth/FrameClock>
-#include <osg/ref_ptr>
-#include <osg/Group>
-
-#include <osgDB/Options>
-#include <set>
-
-namespace osgEarth
-{
-    class TerrainEngineNode;
-}
+#include <osg/Node>
+#include <queue>
 
 namespace osgEarth { namespace REX
 {
     /**
-     * Interface for a utility to satisty Tile loading requests.
+     * A queue that merges new tile data into the respective tile.
      */
-    class Loader : public osg::Group
+    class Merger : public osg::Node
     {
     public:
-        class Handler;
+        //! Construct a new merger
+        Merger();
 
-        class Request : public osg::Referenced
-        {
-        public:
-            typedef std::vector<osg::Node*> ChangeSet;
+        //! Merge the tile load results into the host tile
+        void merge(LoadTileDataOperationPtr data);
 
-        public:
-            Request();
+        //! Maximum number of merges to perform per UPDATE frame
+        //! Default = unlimited
+        void setMergesPerFrame(unsigned value);
 
-            /** Name the request */
-            void setName(const std::string& name) { _name = name; }
-            const std::string& getName() const { return _name; }
-
-            /** TileKey associated with this request */
-            void setTileKey(const TileKey& key) { _key = key; }
-            const TileKey& getTileKey() const { return _key; }
-
-            /** Invoke the operation - not safe to alter the graph */
-            virtual bool run(ProgressCallback*) =0;
-
-            /** Apply the results of the invoke operation - runs safely in update stage.
-                If this returns false, the request needs to be rerun. */
-            virtual bool merge() =0;
-
-            //! Comparison for sorting
-            bool operator()(const Request& lhs, const Request& rhs) const {
-                return lhs._uid < rhs._uid;
-            }
-
-            UID getUID() const { return _uid; }
-
-            /** Creates a stateset that holds GL-compilable objects. */
-            virtual osg::StateSet* createStateSet() const =0;
-
-            void setFrameNumber(unsigned fn) { _lastFrameSubmitted = fn; }
-            unsigned getLastFrameSubmitted() const { return _lastFrameSubmitted; }
-
-            enum State {
-                IDLE,
-                RUNNING,
-                MERGING,
-                FINISHED
-            };
-
-            void setState(State value);
-
-            //! Sets a minimum delay before the request will be processed.
-            //! This exists to prevent retry requests from spamming a resource
-            //! (like the network)
-            void setDelay(double seconds);
-
-            bool isIdle() const { return _state == IDLE; }
-            bool isRunning() const { return _state == RUNNING; }
-            bool isMerging() const { return _state == MERGING; }
-            bool isFinished() const { return _state == FINISHED; }
-
-            UID                           _uid;
-            std::string                   _name;
-            TileKey                       _key;
-            State                         _state;
-            osg::Timer_t                  _stateTick;
-            osg::Timer_t                  _readyTick;
-            float                         _priority;
-            osg::ref_ptr<osg::Referenced> _internalHandle;
-            unsigned                      _lastFrameSubmitted;
-            double                        _lastTick;
-            Threading::Mutex              _mutex;
-            int                           _loadCount;
-            double                        _delay_s;
-            int                           _delayCount;
-            char                          _filename[64];
-
-            void lock() { _mutex.lock(); }
-            void unlock() { _mutex.unlock(); }
-        };
-
-        class Handler : public osg::Referenced
-        {
-        public:
-            virtual void operator()(Request* request) =0;
-        };
-
-        //! Start or continue loading a request.
-        virtual bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv) =0;
-
-        //! Clear out all pending requests.
-        virtual void clear() =0;
-
-        //! Whether a request is still valid (for cancelation)
-        virtual bool isValid(Request*) const { return true; }
-    };
-
-
-    /** Loader that immediately invokes and applies synchronously. */
-    class SimpleLoader : public Loader
-    {
-    public:
-        SimpleLoader();
-
-    public: // Loader
-        bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv);
-
+        //! clear it
         void clear();
-    };
-
-
-    /**
-     * Loader that uses the OSG database pager to run requests in the background.
-     */
-    class PagerLoader : public Loader
-    {
-    public:
-        PagerLoader(TerrainEngineNode* engine);
-
-        /** Tell the loader the maximum LOD so it can properly scale the priorities. */
-        void setNumLODs(unsigned num);
-
-        /** Sets the maximum number of requests to merge per frame. 0=infinity */
-        void setMergesPerFrame(int);
-
-        /** Sets a priority offset for an LOD. The units are LODs. For example, setting the
-            offset for LOD 10 to +3 will give it the priority of an LOD 13 request. */
-        void setLODPriorityOffset(unsigned lod, float offset);
-
-        /** Set the priority scale for an LOD. */
-        void setLODPriorityScale(unsigned lod, float scale);
-
-        //! Set the priority scale for all LODs */
-        void setOverallPriorityScale(float scale);
-
-        //! Install the frame clock
-        void setFrameClock(const FrameClock* clock) { _clock = clock; }
-
-    public: // Loader
-
-        /** Asks the loader to begin or continue loading something.
-            Returns true if a NEW request was scheduled; false if an existing request was updated. */
-        bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv) override;
-
-        /** Cancel all pending requests. */
-        void clear() override;
-
-    public: // osg::Group
-
-        bool addChild(osg::Node*);
-
-        void traverse(osg::NodeVisitor& nv);
 
     public:
-
-        /** Internal method to invoke a request that was previously queued with load(). */
-        Request* runAndRelease(UID requestUID);
-
-        /** Returns the tilekey associated with the request (or TileKey::INVALID if none) */
-        TileKey getTileKeyForRequest(UID requestUID) const;
-
-        //! Compare a time against the checkpoint to see if a request is still valid
-        bool isValid(Request*) const override;
+        void traverse(osg::NodeVisitor& nv) override;
 
     protected:
+        virtual ~Merger();
 
-        typedef UnorderedMap<UID, osg::ref_ptr<Loader::Request> > UnsafeRequestMap;
-        typedef Threading::Mutexed<UnsafeRequestMap> Requests;
+    private:
 
-        typedef osg::ref_ptr<Loader::Request> RefRequest;
-
-        struct SortRequest {
-            bool operator()(const RefRequest& lhs, const RefRequest& rhs) const {
-                return lhs->_priority > rhs->_priority;
-            }
+        // GL objects compile task
+        struct ToCompile {
+            std::shared_ptr<LoadTileDataOperation> _data;
+            Future<bool> _compileJob;
         };
 
-        typedef std::multiset<RefRequest, SortRequest> MergeQueue;
+        // Queue of GL object compilations to perform per-merge,
+        // if an ICO is installed
+        using CompileQueue = std::queue<ToCompile>;
+        CompileQueue _compileQueue;
 
-        osg::NodePath    _myNodePath;
-        Requests         _requests;
-        MergeQueue       _mergeQueue;
-        double           _checkpoint;
-        int              _mergesPerFrame;
-        unsigned         _frameNumber;
-        unsigned         _frameLastUpdated;
-        unsigned         _numLODs;
-        float            _priorityScales[64];
-        float            _priorityOffsets[64];
-        const FrameClock* _clock;
+        // Queue of tile data to merge during UPDATE traversal
+        using MergeQueue = std::queue<LoadTileDataOperationPtr>;
+        MergeQueue _mergeQueue;
 
-        osg::ref_ptr<osgDB::Options> _dboptions;
+        Mutex _mutex;
+        unsigned _mergesPerFrame;
+        osg::observer_ptr<osg::Referenced> _ico;
     };
 
 } }

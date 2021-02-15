@@ -1446,8 +1446,7 @@ TileNode::loadSync()
         std::make_shared<LoadTileDataOperation>(this, _context.get());
 
     loadTileData->setEnableCancelation(false);
-    loadTileData->dispatch();
-    loadTileData->_result.join();
+    loadTileData->dispatch(false);
     loadTileData->merge();
 }
 

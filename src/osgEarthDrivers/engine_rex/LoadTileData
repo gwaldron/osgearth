@@ -57,7 +57,7 @@ namespace osgEarth { namespace REX
         void setEnableCancelation(bool value) { _enableCancel = value; }
 
         //! Dispatch the job.
-        bool dispatch();
+        bool dispatch(bool async = true);
 
         //! Merge the results into the TileNode
         bool merge();

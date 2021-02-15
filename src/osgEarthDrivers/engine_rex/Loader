@@ -24,6 +24,7 @@
 
 #include <osgEarth/Threading>
 #include <osg/Node>
+#include <osgUtil/IncrementalCompileOperation>
 #include <queue>
 
 namespace osgEarth { namespace REX
@@ -72,7 +73,8 @@ namespace osgEarth { namespace REX
 
         Mutex _mutex;
         unsigned _mergesPerFrame;
-        osg::observer_ptr<osg::Referenced> _ico;
+        osg::observer_ptr<osgUtil::IncrementalCompileOperation> _ico;
+        bool _ico_tried;
     };
 
 } }

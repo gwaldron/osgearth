@@ -808,7 +808,8 @@ ArenaLoader::traverse(osg::NodeVisitor& nv)
 #define LC "[Merger] "
 
 Merger::Merger() :
-    _mergesPerFrame(~0)
+    _mergesPerFrame(~0),
+    _ico_tried(false)
 {
     setCullingActive(false);
     setNumChildrenRequiringUpdateTraversal(+1);
@@ -853,7 +854,6 @@ Merger::merge(LoadTileDataOperationPtr data)
         GLObjectsCompiler glcompiler;
         _compileQueue.back()._data = data;
         _compileQueue.back()._compileJob = glcompiler.compileAsync(node.get(), this, nullptr);
-
     }
     else
     {
@@ -865,19 +865,24 @@ Merger::merge(LoadTileDataOperationPtr data)
 void
 Merger::traverse(osg::NodeVisitor& nv)
 {
-    if (!_ico.valid() && nv.getVisitorType() == nv.CULL_VISITOR)
+    if (!_ico_tried &&
+        !_ico.valid() &&
+        nv.getVisitorType() == nv.CULL_VISITOR)
     {
         // Detect an ICO so we can do GL compiliation
         osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-        if (cv)
+        if (cv && cv->getCurrentCamera())
         {
             osgViewer::View* osgView = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
             if (osgView)
             {
                 _ico = osgView->getDatabasePager()->getIncrementalCompileOperation();
                 if (_ico.valid())
+                {
                     ObjectStorage::set(this, _ico.get());
+                }
             }
+            _ico_tried = true;
         }
     }
 
@@ -886,7 +891,7 @@ Merger::traverse(osg::NodeVisitor& nv)
         ScopedMutexLock lock(_mutex);
 
         // First check the GL compile queue
-        while (!_compileQueue.empty())
+        while (_ico.valid() && !_compileQueue.empty())
         {
             ToCompile& next = _compileQueue.front();
 

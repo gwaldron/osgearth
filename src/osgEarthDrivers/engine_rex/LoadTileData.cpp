@@ -70,7 +70,7 @@ LoadTileDataOperation::~LoadTileDataOperation()
 }
 
 bool
-LoadTileDataOperation::dispatch()
+LoadTileDataOperation::dispatch(bool async)
 {
     // Make local copies that we want to pass to the lambda
     osg::ref_ptr<TerrainEngineNode> engine;
@@ -87,11 +87,8 @@ LoadTileDataOperation::dispatch()
     bool enableCancel = _enableCancel;
 
     TileKey key(_tilenode->getKey());
-    
-    // Launch the loader job
-    _result = LoadJob::dispatch(
-        "oe.rex.loader",
-        _priority,
+
+    LoadJob::Function func =
         [engine, map, key, manifest, enableCancel](Cancelable* progress)
         {
             osg::ref_ptr<ProgressCallback> wrapper =
@@ -104,8 +101,18 @@ LoadTileDataOperation::dispatch()
                 wrapper.get());
 
             return result;
-        }
-    );
+        };
+
+    if (async)
+    {
+        _result = LoadJob::dispatch("oe.rex.loader", _priority, func);
+    }
+    else
+    {
+        Promise<osg::ref_ptr<TerrainTileModel>> promise;
+        _result = promise.getFuture();
+        promise.resolve(func(nullptr));
+    }
 
     return true;
 }

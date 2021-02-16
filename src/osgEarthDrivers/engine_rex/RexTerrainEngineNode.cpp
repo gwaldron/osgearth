@@ -297,7 +297,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     const char* loaderThreads_str = ::getenv("OSGEARTH_TERRAIN_LOADER_THREADS");
     if (loaderThreads_str)
         loaderThreads = Strings::as<unsigned>(loaderThreads_str, loaderThreads);
-    JobArena::setSize("oe.rex.loader", loaderThreads);
+    JobArena::setSize("oe.rex.loadTile", loaderThreads);
 
     // if the envvar for tile expiration is set, override the options setting
     unsigned expirationThreshold = options().expirationThreshold().get();

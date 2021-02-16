@@ -37,7 +37,6 @@ LoadTileDataOperation::LoadTileDataOperation(
 
     _tilenode(tilenode),
     _enableCancel(true),
-    _priority(0.0f),
     _dispatched(false),
     _merged(false)
 {
@@ -53,7 +52,6 @@ LoadTileDataOperation::LoadTileDataOperation(
     _manifest(manifest),
     _tilenode(tilenode),
     _enableCancel(true),
-    _priority(0.0f),
     _dispatched(false),
     _merged(false)
 {
@@ -88,30 +86,40 @@ LoadTileDataOperation::dispatch(bool async)
 
     TileKey key(_tilenode->getKey());
 
-    LoadJob::Function func =
-        [engine, map, key, manifest, enableCancel](Cancelable* progress)
-        {
-            osg::ref_ptr<ProgressCallback> wrapper =
-                enableCancel ? new ProgressCallback(progress) : nullptr;
+    auto load = [engine, map, key, manifest, enableCancel] (Cancelable* progress)
+    {
+        osg::ref_ptr<ProgressCallback> wrapper =
+            enableCancel ? new ProgressCallback(progress) : nullptr;
 
-            osg::ref_ptr<TerrainTileModel> result = engine->createTileModel(
-                map.get(),
-                key,
-                manifest,
-                wrapper.get());
+        osg::ref_ptr<TerrainTileModel> result = engine->createTileModel(
+            map.get(),
+            key,
+            manifest,
+            wrapper.get());
 
-            return result;
-        };
+        return result;
+    };
+
+    osg::observer_ptr<TileNode> tile_obs(_tilenode);
+    auto priority_func = [tile_obs]() -> float
+    {
+        osg::ref_ptr<TileNode> tilenode;
+        return tile_obs.lock(tilenode) ? tilenode->getLoadPriority() : 0.0f;
+    };
+
 
     if (async)
     {
-        _result = LoadJob::dispatch("oe.rex.loader", _priority, func);
+        Job job;
+        job.setArena("oe.rex.loadTile");
+        job.setPriorityFunction(priority_func);
+        _result = job.dispatch<LoadResult>(load);
     }
     else
     {
-        Promise<osg::ref_ptr<TerrainTileModel>> promise;
+        Promise<LoadResult> promise;
         _result = promise.getFuture();
-        promise.resolve(func(nullptr));
+        promise.resolve(load(nullptr));
     }
 
     return true;

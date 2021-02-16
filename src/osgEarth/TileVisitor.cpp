@@ -292,7 +292,7 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
     }
 
     // Add the tile to the task queue.
-    JobArena::Delegate delegate = [=]()
+    auto delegate = [this, key](Cancelable*)
     {
         if ((_tileHandler.valid()) &&
             (!_progress.valid() || !_progress->isCanceled()))
@@ -302,13 +302,12 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
             return true;
         }
         return false;
-
-        // atomically decrement the task count
-        //_numTiles--;
-        //_done.notify_all();
     };
 
-    _arena->dispatch(delegate, 0.0f, &_group);
+    Job job(_arena.get(), &_group);
+    job.setName("Geocode");
+    job.dispatch<bool>(delegate);
+
     return true;
 }
 

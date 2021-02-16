@@ -62,14 +62,14 @@ namespace osgEarth { namespace REX
         //! Merge the results into the TileNode
         bool merge();
 
-        using LoadJob = Job<osg::ref_ptr<TerrainTileModel>>;
-        LoadJob::Result _result;
+        using LoadResult= osg::ref_ptr<TerrainTileModel>;
+        Future<LoadResult> _result;
         CreateTileManifest _manifest;
         bool _enableCancel;
         osg::observer_ptr<TileNode> _tilenode;
         osg::observer_ptr<TerrainEngineNode> _engine;
         std::string _name;
-        float _priority;
+        //float _priority;
         bool _dispatched;
         bool _merged;
     };

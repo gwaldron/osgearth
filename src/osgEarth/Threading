@@ -683,7 +683,9 @@ namespace osgEarth { namespace Threading
      *
      *   int a = 10, b = 20;
      *
-     *   Future<int> result = Job<int>::dispatch(
+     *   Job job;
+     *   
+     *   Future<int> result = job.dispatch<int>(
      *      "My Arena",
      *      [a, b](Cancelable* progress) {
      *          return (a + b);
@@ -698,104 +700,84 @@ namespace osgEarth { namespace Threading
      *   else if (result.isAbandoned()) {
      *       // task was canceled
      *   }
+     *
+     * @notes Once you call dispatch, you can discard the job,
+     *        or you can keep it around and dispatch it again later.
+     *        Any changes you make to a Job after dispatch will
+     *        not affect the already-dispatched Job.
      */
-    template<typename RESULT_TYPE>
     class Job
     {
     public:
-        //! Result of a dispatched Job
-        typedef Future<RESULT_TYPE> Result;
 
-        //! Function signature for a job's operation method
-        typedef std::function<RESULT_TYPE(Cancelable*)> Function;
+        //! Construct a new blank job
+        Job() :
+            _arena(nullptr), _group(nullptr), _priority(0.0f) { }
 
-        //! Dispatch a background job and return the future-result.
-        //! @function Function to execute asynchronously.
-        static Result dispatch(
-            const Function& function);
+        //! Construct a new job in the specified arena
+        Job(JobArena* arena) :
+            _arena(arena), _group(nullptr), _priority(0.0f) { }
 
-        //! Dispatch a background job and return the future-result.
-        //! @param arena Named arena in which to run the job.
-        //! @function Function to execute asynchronously.
-        static Result dispatch(
-            const std::string& arena,
-            const Function& function);
+        //! Construct a new job in the specified arena and job group
+        Job(JobArena* arena, JobGroup* group) :
+            _arena(arena), _group(group), _priority(0.0f) { }
 
-        static Result dispatch(
-            const std::string& arena,
-            float priority,
-            const Function& function);
+        //! Name of this job
+        void setName(const std::string& value) {
+            _name = value;
+        }
+        const std::string& getName() const {
+            return _name;
+        }
 
-        //! Dispatch a background job and return the future-result.
-        //! @param arena Named arena in which to run the job.
-        //! @param group Job group this job belongs to
-        //! @function Function to execute asynchronously.
-        static Result dispatch(
-            const std::string& arena,
-            JobGroup& group,
-            const Function& function);
+        //! Set the job arena in which to run this Job.
+        void setArena(JobArena* arena) {
+            _arena = arena;
+        }
+        inline void setArena(const std::string& arenaName);
 
-        //! Dispatch a background job and return the future-result.
-        //! @param arena Arena in which to run the job.
-        //! @function Function to execute asynchronously.
-        static Result dispatch(
-            JobArena& arena,
-            const Function& function);
+        //! Static priority
+        void setPriority(float value) {
+            _priority = value;
+        }
 
-        //! Dispatch a background job and return the future-result.
-        //! @param arena Arena in which to run the job.
-        //! @function Function to execute asynchronously.
-        static Result dispatch(
-            JobArena& arena,
-            float priority,
-            const Function& function);
+        //! Function to call to get this job's priority
+        void setPriorityFunction(const std::function<float()>& func) {
+            _priorityFunc = func;
+        }
 
-        //! Dispatch a background job and return the future-result.
-        //! @param arena Arena in which to run the job.
-        //! @param group Job group this job belongs to
-        //! @function Function to execute asynchronously.
-        static Result dispatch(
-            JobArena& arena,
-            JobGroup& group,
-            const Function& function);
+        //! Get the priority of this job
+        float getPriority() const {
+            return _priorityFunc != nullptr ? _priorityFunc() : _priority;
+        }
 
-        //! Dispatch a background job and forget about it.
-        //! @function Function to execute asynchronously.
-        static void dispatchAndForget(
-            const Function& function);
+        //! Assign this job to a group
+        void setGroup(JobGroup* group) {
+            _group = group;
+        }
+        JobGroup* getGroup() const {
+            return _group;
+        }
 
-        //! Dispatch a background job and forget about it.
-        //! @param arena Named arena in which to run the job.
-        //! @function Function to execute asynchronously.
-        static void dispatchAndForget(
-            const std::string& arena,
-            const Function& function);
+        //! Dispatch this job to the default job arena
+        template<typename T>
+        Future<T> dispatch(
+            std::function<T(Cancelable*)> func) const;
 
-        //! Dispatch a background job and forget about it.
-        //! @param arena Named arena in which to run the job.
-        //! @param group Job group this job belongs to
-        //! @function Function to execute asynchronously.
-        static void dispatchAndForget(
-            const std::string& arena,
-            JobGroup& group,
-            const Function& function);
+        //! Dispatch the job and forget about it.
+        //! No return value.
+        inline void dispatch(
+            std::function<void(Cancelable*)> func) const;
 
-        //! Dispatch a background job and forget about it.
-        //! @param arena Arena in which to run the job.
-        //! @function Function to execute asynchronously.
-        static void dispatchAndForget(
-            JobArena& arena,
-            const Function& function);
-
-        //! Dispatch a background job and forget about it.
-        //! @param arena Arena in which to run the job.
-        //! @param group Job group this job belongs to
-        //! @function Function to execute asynchronously.
-        static void dispatchAndForget(
-            JobArena& arena,
-            JobGroup& group,
-            const Function& function);
+    private:
+        std::string _name;
+        float _priority;
+        JobArena* _arena;
+        JobGroup* _group;
+        std::function<float()> _priorityFunc;
+        friend class JobArena;
     };
+
 
     /**
      * Schedules asynchronous tasks on a thread pool.
@@ -825,18 +807,17 @@ namespace osgEarth { namespace Threading
         static std::size_t queueSize(const std::string& arenaName);
 
         //! Access a named arena
-        static JobArena* arena(const std::string& name);
+        static JobArena* get(const std::string& name);
+
+        using Delegate = std::function<bool()>;
 
         //! Schedule an asynchronous task on this arena.
-        //! Consider using the Job<> interface before using this method directly.
-        //! @param job Function to execute asynhronously
-        //! @param priority Priority at which to run this job relative to other jobs in the queue
-        //! @param group Group this job belongs to, or nullptr if none
-        using Delegate = std::function<bool()>;
+        //! Use Job::dispatch to run jobs (no need to call this directly)
+        //! @param job Job details
+        //! @param delegate Function to execute
         void dispatch(
-            Delegate& job,
-            float priority,
-            JobGroup* group);
+            const Job& job,
+            Delegate& delegate);
 
         //! Name of the arena to use when none is specified
         static const std::string& defaultArenaName();
@@ -848,19 +829,20 @@ namespace osgEarth { namespace Threading
         void stopThreads();
 
         struct QueuedJob {
-            QueuedJob() :_priority(0.0f) { }
-            QueuedJob(const Delegate& job, float priority, std::shared_ptr<Semaphore> sema) :
-                _job(job), _priority(priority), _groupsema(sema) { }
-            Delegate _job;
-            float _priority;
+            QueuedJob() { }
+            QueuedJob(const Job& job, const Delegate& delegate, std::shared_ptr<Semaphore> sema) :
+                _job(job), _delegate(delegate), _groupsema(sema) { }
+            Job _job;
+            Delegate _delegate;
             std::shared_ptr<Semaphore> _groupsema;
-            bool operator < (const QueuedJob& rhs) const { return _priority <= rhs._priority;  }
+            bool operator < (const QueuedJob& rhs) const { 
+                return _job.getPriority() <= rhs._job.getPriority();
+            }
         };
 
         // pool name
         std::string _name;
         // queued operations to run asynchronously
-        //typedef std::deque<QueuedJob> Queue;
         typedef std::priority_queue<QueuedJob, std::deque<QueuedJob>> Queue;
         Queue _queue;
         // protect access to the queue
@@ -880,163 +862,39 @@ namespace osgEarth { namespace Threading
         static std::string _defaultArenaName;
     };
 
-    template<typename RESULT_TYPE>
-    Future<RESULT_TYPE>
-    Job<RESULT_TYPE>::dispatch(
-        const Function& function)
+    // Job inlines
+    void Job::setArena(const std::string& arenaName)
     {
-        return dispatch(JobArena::defaultArenaName(), 0.0f, function);
+        setArena(JobArena::get(arenaName));
     }
 
-    template<typename RESULT_TYPE>
-    Future<RESULT_TYPE>
-    Job<RESULT_TYPE>::dispatch(
-        const std::string& arenaName,
-        const Function& function)
+    template<typename T>
+    Future<T> Job::dispatch(
+        std::function<T(Cancelable*)> function) const
     {
-        JobArena* arena = JobArena::arena(arenaName);
-        return dispatch(*arena, 0.0f, function);
-    }
-
-    template<typename RESULT_TYPE>
-    Future<RESULT_TYPE>
-    Job<RESULT_TYPE>::dispatch(
-        const std::string& arenaName,
-        float priority,
-        const Function& function)
-    {
-        JobArena* arena = JobArena::arena(arenaName);
-        return dispatch(*arena, priority, function);
-    }
-
-    template<typename RESULT_TYPE>
-    Future<RESULT_TYPE>
-    Job<RESULT_TYPE>::dispatch(
-        const std::string& arenaName,
-        JobGroup& group,
-        const Function& function)
-    {
-        JobArena* arena = JobArena::arena(arenaName);
-        return dispatch(*arena, group, 0.0f, function);
-    }
-
-    template<typename RESULT_TYPE>
-    Future<RESULT_TYPE>
-    Job<RESULT_TYPE>::dispatch(
-        JobArena& arena,
-        const Function& function)
-    {
-        Promise<RESULT_TYPE> promise;
-        Future<RESULT_TYPE> future = promise.getFuture();
-
+        Promise<T> promise;
+        Future<T> future = promise.getFuture();
         JobArena::Delegate delegate = [function, promise]() mutable
         {
-            if (!promise.isAbandoned())
-            {
+            bool good = !promise.isAbandoned();
+            if (good)
                 promise.resolve(function(&promise));
-                return true;
-            }
-            return false;
+            return good;
         };
-        arena.dispatch(delegate, 0.0f, nullptr);
+        JobArena* arena = _arena ? _arena : JobArena::get("");
+        arena->dispatch(*this, delegate);
         return std::move(future);
     }
 
-    template<typename RESULT_TYPE>
-    Future<RESULT_TYPE>
-    Job<RESULT_TYPE>::dispatch(
-        JobArena& arena,
-        float priority,
-        const Function& function)
+    void Job::dispatch(
+        std::function<void(Cancelable*)> function) const
     {
-        Promise<RESULT_TYPE> promise;
-        Future<RESULT_TYPE> future = promise.getFuture();
-
-        JobArena::Delegate delegate = [function, promise]() mutable
-        {
-            if (!promise.isAbandoned())
-            {
-                promise.resolve(function(&promise));
-                return true;
-            }
-            return false;
-        };
-        arena.dispatch(delegate, priority, nullptr);
-        return std::move(future);
-    }
-
-    template<typename RESULT_TYPE>
-    Future<RESULT_TYPE>
-    Job<RESULT_TYPE>::dispatch(
-        JobArena& arena,
-        JobGroup& group,
-        const Function& function)
-    {
-        Promise<RESULT_TYPE> promise;
-        Future<RESULT_TYPE> future = promise.getFuture();
-
-        JobArena::Delegate delegate = [function, promise]() mutable
-        {
-            if (!promise.isAbandoned())
-            {
-                promise.resolve(function(&promise));
-                return true;
-            }
-            return false;
-        };
-        arena.dispatch(delegate, 0.0f, &group);
-        return std::move(future);
-    }
-
-    template<typename RESULT_TYPE>
-    void Job<RESULT_TYPE>::dispatchAndForget(
-        const Function& function)
-    {
-        dispatchAndForget(JobArena::defaultArenaName(), function);
-    }
-
-    template<typename RESULT_TYPE>
-    void Job<RESULT_TYPE>::dispatchAndForget(
-        const std::string& arenaName,
-        const Function& function)
-    {
-        dispatchAndForget(JobArena::arena(arenaName), function);
-    }
-
-    template<typename RESULT_TYPE>
-    void Job<RESULT_TYPE>::dispatchAndForget(
-        const std::string& arenaName,
-        JobGroup& group,
-        const Function& function)
-    {
-        dispatchAndForget(JobArena::arena(arenaName), group, function);
-    }
-
-    template<typename RESULT_TYPE>
-    void Job<RESULT_TYPE>::dispatchAndForget(
-        JobArena& arena,
-        const Function& function)
-    {
-        JobArena::Delegate delegate = [function]() mutable
-        {
+        JobArena* arena = _arena ? _arena : JobArena::get("");
+        JobArena::Delegate delegate = [function]() {
             function(nullptr);
             return true;
         };
-        arena.dispatch(delegate, 0.0f, nullptr);
-    }
-
-    template<typename RESULT_TYPE>
-    void Job<RESULT_TYPE>::dispatchAndForget(
-        JobArena& arena,
-        JobGroup& group,
-        const Function& function)
-    {
-        JobArena::Delegate delegate = [function]() mutable
-        {
-            function(nullptr);
-            return true;
-        };
-        arena.dispatch(delegate, 0.0f, &group);
+        arena->dispatch(*this, delegate);
     }
 
 } } // namepsace osgEarth::Threading

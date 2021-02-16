@@ -682,7 +682,7 @@ JobArena::defaultArenaName()
 }
 
 JobArena*
-JobArena::arena(const std::string& name)
+JobArena::get(const std::string& name)
 {
     ScopedMutexLock lock(_arenas_mutex);
     std::shared_ptr<JobArena>& arena = _arenas[name];
@@ -736,15 +736,13 @@ JobArena::queueSize(const std::string& arenaName)
     }
 }
 
-
-
 void
 JobArena::dispatch(
-    Delegate& job,
-    float priority,
-    JobGroup* group)
+    const Job& job,
+    Delegate& delegate)
 {
     // If we have a group semaphore, acquire it BEFORE queuing the job
+    JobGroup* group = job.getGroup();
     std::shared_ptr<Semaphore> sema = group ? group->_sema : nullptr;
     if (sema)
     {
@@ -754,14 +752,14 @@ JobArena::dispatch(
     if (_numThreads > 0)
     {
         std::unique_lock<Mutex> lock(_queueMutex);
-        _queue.emplace(job, priority, sema);
+        _queue.emplace(job, delegate, sema);
         _block.notify_one();
     }
 
     else
     {
         // no threads? run synchronously.
-        job();
+        delegate();
 
         if (sema)
         {
@@ -818,7 +816,7 @@ JobArena::startThreads()
 
                     if (have_next)
                     {
-                        bool job_executed = next._job();
+                        bool job_executed = next._delegate();
 
                         if (!job_executed)
                         {

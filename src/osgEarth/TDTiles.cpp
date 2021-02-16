@@ -526,7 +526,9 @@ namespace
     };
 
 
-    typedef Job<osg::ref_ptr<osg::Node>> AsyncTileJob;
+    using ReadTileData = osg::ref_ptr<osg::Node>;
+    using ReadTileResult = Future<ReadTileData>;
+    //typedef Job<osg::ref_ptr<osg::Node>> AsyncTileJob;
 
     osg::ref_ptr<osg::Node> readTilesetSync(
         ThreeDTilesetNode* parentTileset,
@@ -537,7 +539,7 @@ namespace
         return operation.loadTileSet(nullptr);
     }
 
-    AsyncTileJob::Result readTilesetAsync(
+    ReadTileResult readTilesetAsync(
         ThreeDTilesetNode* parentTileset, 
         const URI& uri, 
         osgDB::Options* options)
@@ -545,8 +547,8 @@ namespace
         std::shared_ptr<LoadTilesetOperation> operation = std::make_shared<LoadTilesetOperation>(
             parentTileset, uri, options);
 
-        return AsyncTileJob::dispatch(
-            "oe.3dtiles",
+        JobArena* arena = JobArena::get("oe.3dtiles");
+        return Job(arena).dispatch<ReadTileData>(
             [operation, options](Cancelable* progress)
             {
                 return operation->loadTileSet(progress);
@@ -568,12 +570,13 @@ namespace
         return node;
     }
 
-    AsyncTileJob::Result readTileContentAsync(
+    ReadTileResult readTileContentAsync(
         const URI& uri,
         osg::ref_ptr<const osgDB::Options> options)
     {
-        return Job<osg::ref_ptr<osg::Node>>::dispatch(
-            "oe.3dtiles",
+        JobArena* arena = JobArena::get("oe.3dtiles");
+
+        return Job(arena).dispatch<ReadTileData>(
             [uri, options](Cancelable* progress)
             {
                 osg::ref_ptr<osg::Node> node = uri.getNode(options.get(), nullptr);

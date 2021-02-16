@@ -78,7 +78,8 @@ _revision(0),
 _mutex("TileNode(OE)"),
 _loadQueue("TileNode LoadQueue(OE)"),
 _createChildAsync(true),
-_nextLoadManifestPtr(nullptr)
+_nextLoadManifestPtr(nullptr),
+_loadPriority(0.0f)
 {
     //nop
 }
@@ -761,7 +762,7 @@ TileNode::createChildren(EngineContext* context)
             {
                 TileKey childkey = getKey().createChildKey(quadrant);
 
-                CreateChildJob::Function op = [context, parentkey, childkey](Cancelable* state)
+                auto op = [context, parentkey, childkey](Cancelable* state)
                 {
                     osg::ref_ptr<TileNode> tile = context->liveTiles()->get(parentkey);
                     if (tile.valid() && !state->isCanceled())
@@ -770,8 +771,12 @@ TileNode::createChildren(EngineContext* context)
                         return (TileNode*)nullptr;
                 };
 
+                Job job;
+                job.setArena("oe.rex.createChild");
+                job.setName(childkey.str());
+
                 _createChildResults.emplace_back(
-                    CreateChildJob::dispatch("oe.rex.createChild", op)
+                    job.dispatch<CreateChildResult>(op)
                 );
             }
         }
@@ -1409,6 +1414,9 @@ TileNode::load(TerrainCuller* culler)
     // (because of the biggest range), and second by distance.
     float priority = lodPriority + distPriority;
 
+    // set atomically
+    _loadPriority = priority;
+
     // Check the status of the load
     ScopedMutexLock lock(_loadQueue);
 
@@ -1420,7 +1428,7 @@ TileNode::load(TerrainCuller* culler)
         {
             // Actually this means that the task has not yet been dispatched,
             // so assign the priority and do it now.
-            op->_priority = priority;
+            //op->_priority = priority;
             op->dispatch();
         }
 

@@ -171,7 +171,7 @@ Geocoder::search(const std::string& input, const osgDB::Options* io_options)
 {
     if (_impl)
     {
-        Job<OutputData>::Function function = [=](Cancelable* progress)
+        auto geocode = [=](Cancelable* progress)
         {
             osg::ref_ptr<FeatureCursor> cursor;
             Status status = _impl->search(input, cursor);
@@ -181,12 +181,12 @@ Geocoder::search(const std::string& input, const osgDB::Options* io_options)
         std::shared_ptr<JobArena> arena;
         if (ObjectStorage::get(io_options, arena))
         {
-            Future<OutputData> out = Job<OutputData>::dispatch(*arena.get(), function);
+            Future<OutputData> out = Job(arena.get()).dispatch<OutputData>(geocode);
             return Geocoder::Results(out);
         }
         else
         {
-            return Geocoder::Results(function(nullptr));
+            return Geocoder::Results(geocode(nullptr));
         }
     }
     else

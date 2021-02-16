@@ -36,8 +36,6 @@ namespace
     class FutureImage : public osg::Image
     {
     public:
-        typedef Job<GeoImage> ImageJob;
-
         FutureImage(ImageLayer* layer, const TileKey& key) : osg::Image()
         {
             _layer = layer;
@@ -45,8 +43,9 @@ namespace
 
             osg::observer_ptr<ImageLayer> layer_ptr(_layer);
 
-            _result = ImageJob::dispatch(
-                "oe.async_layer",
+            Job job(JobArena::get("oe.async_layer"));
+
+            job.dispatch<GeoImage>(
                 [layer_ptr, key](Cancelable* progress) mutable
                 {
                     GeoImage result;
@@ -98,7 +97,7 @@ namespace
 
         osg::ref_ptr<ImageLayer> _layer;
         TileKey _key;
-        ImageJob::Result _result;
+        Future<GeoImage> _result;
     };
 }
 

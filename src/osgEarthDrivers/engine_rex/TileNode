@@ -136,6 +136,8 @@ namespace osgEarth { namespace REX
         int getRevision() const { return _revision; }
 
         bool isEmpty() const { return _empty; }
+
+        float getLoadPriority() const { return _loadPriority; }
         
     public: // osg::Node
 
@@ -164,9 +166,10 @@ namespace osgEarth { namespace REX
         bool                               _doNotExpire;
         int                                _revision;
         bool _createChildAsync;
+        std::atomic<float> _loadPriority;
 
-        typedef Job<osg::ref_ptr<TileNode>> CreateChildJob;
-        std::vector<CreateChildJob::Result> _createChildResults;
+        using CreateChildResult = osg::ref_ptr<TileNode>;
+        std::vector<Future<CreateChildResult>> _createChildResults;
 
         using LoadQueue = std::queue<LoadTileDataOperationPtr>;
         Mutexed<LoadQueue> _loadQueue;

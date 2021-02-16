@@ -24,10 +24,20 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/optional>
+#include <osgEarth/Threading>
 #include <osg/PagedLOD>
+#include <queue>
+#include <memory>
+
+namespace osgUtil {
+    class IncrementalCompileOperation;
+}
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Threading;
+
     /**
      * PagedNode is a group with a self-contained paged child.
      * It wraps the details of a PagedNode node into a container
@@ -89,7 +99,55 @@ namespace osgEarth { namespace Util
         bool _additive;
         optional<float> _range;
         float _rangeFactor;
-    };    
+    };
+
+
+
+    class OSGEARTH_EXPORT PagedNode2 : public osg::Group
+    {
+    public:
+
+        void traverse(osg::NodeVisitor& nv) override;
+
+    private:
+
+        void merge();
+
+        Future<osg::ref_ptr<osg::Node>> _result;
+
+        friend class PagingManager;
+    };
+
+
+    class OSGEARTH_EXPORT PagingManager : public osg::Group
+    {
+    public:
+
+        PagingManager();
+
+        void merge(PagedNode2* host);
+
+    public:
+        void traverse(osg::NodeVisitor& nv) override;
+
+    private:
+
+        struct PagingOperation {
+            osg::observer_ptr<PagedNode2> _host;
+            Future<bool> _compileJob;
+        };
+        using PagingOperationPtr = std::shared_ptr<PagingOperation>;
+
+        using CompileQueue = std::queue<PagingOperationPtr>;
+        using MergeQueue = std::queue<PagingOperationPtr>;
+
+        CompileQueue _compileQueue;
+        MergeQueue _mergeQueue;
+        mutable Mutex _mutex;
+
+        optional<osg::observer_ptr<osgUtil::IncrementalCompileOperation>> _ico;
+    };
+
 } }
 
 #endif // OSGEARTHUTIL_PAGEDNODE_H

@@ -18,6 +18,7 @@
  */
 #include <osgEarth/PagedNode>
 #include <osgEarth/Utils>
+#include <osgEarth/GLUtils>
 
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
@@ -164,3 +165,108 @@ bool PagedNode::hasChild() const
     return true;
 }
 
+
+
+
+
+
+void
+PagedNode2::merge()
+{
+    const osg::ref_ptr<osg::Node>& node = _result.get();
+    if (node.valid())
+    {
+        addChild(node);
+    }
+}
+
+void
+PagedNode2::traverse(osg::NodeVisitor& nv)
+{
+}
+
+
+
+
+
+PagingManager::PagingManager() :
+    _mutex(OE_MUTEX_NAME)
+{
+    //nop
+}
+
+void
+PagingManager::merge(PagedNode2* host)
+{
+    OE_SOFT_ASSERT_AND_RETURN(host != nullptr, __func__, );
+
+    ScopedMutexLock lock(_mutex);
+
+    if (_ico.isSet() && _ico.get().valid())
+    {
+        ScopedMutexLock lock(_mutex);
+
+        GLObjectsCompiler glcompiler;
+
+        _compileQueue.emplace(std::make_shared<PagingOperation>());
+        PagingOperationPtr& op = _compileQueue.back();
+
+        op->_host = host;
+        op->_compileJob = glcompiler.compileAsync(
+            host->_result.get(),
+            this,
+            nullptr);
+    }
+    else
+    {
+        _mergeQueue.emplace(std::make_shared<PagingOperation>());
+        PagingOperationPtr& op = _compileQueue.back();
+        op->_host = host;
+    }
+}
+
+void
+PagingManager::traverse(osg::NodeVisitor& nv)
+{
+    if (!_ico.isSet() && nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        // detect presence of an ICO
+        osg::ref_ptr<osgUtil::IncrementalCompileOperation> temp;
+        ObjectStorage::get(&nv, temp);
+        _ico = temp.get();
+    }
+
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        //todo: check the queues...
+        ScopedMutexLock lock(_mutex);
+
+        while (!_compileQueue.empty())
+        {
+            PagingOperationPtr& op = _compileQueue.front();
+            if (op->_compileJob.isAvailable())
+            {
+                _mergeQueue.emplace(std::move(op));
+                _compileQueue.pop();
+            }
+            else if (op->_compileJob.isAbandoned())
+            {
+                _compileQueue.pop(); // discard
+            }
+            else break;
+        }
+
+        while (!_mergeQueue.empty()) // TODO: meter it
+        {
+            PagingOperationPtr& op = _mergeQueue.front();
+            osg::ref_ptr<PagedNode2> host;
+            if (op->_host.lock(host))
+            {
+                host->merge();
+            }
+            _mergeQueue.pop();
+        }
+    }
+
+    osg::Group::traverse(nv);
+}

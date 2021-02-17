@@ -25,12 +25,7 @@
 #include <sstream>
 
 #undef  LC
-#define LC "[duktape] "
-
-// defining this will setup and tear down a complete duktape heap/context
-// for each and every invocation. Good for testing memory usage until we
-// complete the feature set.
-//#define MAXIMUM_ISOLATION
+#define LC "[JavaScript] "
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers::Duktape;
@@ -89,7 +84,7 @@ namespace
                 }
                 else if (duk_is_boolean(ctx, -1))
                 {
-                    feature->set( key, duk_get_boolean(ctx, -1) );
+                    feature->set( key, duk_get_boolean(ctx, -1) != 0 );
                 }
                 else if( duk_is_null_or_undefined( ctx, -1 ) )
                 {
@@ -123,7 +118,7 @@ namespace
             }
             else
             {
-                feature->setGeometry(0L);
+                feature->setGeometry(nullptr);
             }
         }
         else
@@ -190,7 +185,7 @@ namespace
                         switch(type) {
                         case ATTRTYPE_DOUBLE: duk_push_number (ctx, a->second.getDouble()); break;          // [global] [feature] [properties] [name]
                         case ATTRTYPE_INT:    duk_push_number(ctx, (double)a->second.getInt()); break;             // [global] [feature] [properties] [name]
-                        case ATTRTYPE_BOOL:   duk_push_boolean(ctx, a->second.getBool()); break;            // [global] [feature] [properties] [name]
+                        case ATTRTYPE_BOOL:   duk_push_boolean(ctx, a->second.getBool()?1:0); break;            // [global] [feature] [properties] [name]
                         case ATTRTYPE_DOUBLEARRAY: break;
                         case ATTRTYPE_STRING:
                         default:              duk_push_string (ctx, a->second.getString().c_str()); break;  // [global] [feature] [properties] [name]
@@ -221,6 +216,7 @@ DuktapeEngine::Context::Context()
 {
     _ctx = nullptr;
     _bytecode = nullptr;
+    _errorCount = 0u;
 }
 
 void
@@ -235,7 +231,8 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options, bool comp
         // any functions or objects with the EcmaScript global object.
         if ( options.script().isSet() )
         {
-            bool ok = (duk_peval_string(_ctx, options.script()->getCode().c_str()) == 0); // [ "result" ]
+            std::string temp(options.script()->getCode());
+            bool ok = (duk_peval_string(_ctx, temp.c_str()) == 0); // [ "result" ]
             if ( !ok )
             {
                 const char* err = duk_safe_to_string(_ctx, -1);
@@ -268,7 +265,7 @@ DuktapeEngine::Context::~Context()
     if ( _ctx )
     {
         duk_destroy_heap(_ctx);
-        _ctx = 0L;
+        _ctx = nullptr;
     }
 }
 
@@ -299,10 +296,14 @@ DuktapeEngine::compile(
 
     if (code != c._bytecodeSource)
     {
+        c._bytecodeSource = code;
+        c._errorCount = 0u;
+
         if (duk_pcompile_string(ctx, 0, code.c_str()) != 0) // [function|error]
         {
             std::string resultString = duk_safe_to_string(ctx, -1);
-            OE_WARN << LC << "Javascript ERROR: " << resultString << std::endl;
+            OE_WARN << LC << "Compile error: " << resultString << std::endl;
+            c._errorCount++;
             duk_pop(ctx); // []
             result = ScriptResult("", false, resultString); // return error.
             return false;
@@ -315,7 +316,9 @@ DuktapeEngine::compile(
         {
             // error. remove the buffer and return.
             duk_pop(ctx); // []
+            OE_WARN << LC << "Allocation error; cannot continue" << std::endl;
             result = ScriptResult("", false, "Allocation error"); // return error
+            c._errorCount++;
             return false;
         }
 
@@ -323,13 +326,16 @@ DuktapeEngine::compile(
         c._bytecode = new unsigned char[size];
         ::memcpy(c._bytecode, (unsigned char*)bytecode, size);
         c._bytecodeSize = size;
-        c._bytecodeSource = code;
+    }
+    else if (c._errorCount == 0u)
+    {
+        void* buf = duk_push_buffer(ctx, (duk_size_t)c._bytecodeSize, (duk_bool_t)0); // [buffer]
+        ::memcpy(buf, c._bytecode, c._bytecodeSize);
     }
     else
     {
-        //TODO: load cached bytecode
-        void* buf = duk_push_buffer(ctx, (duk_size_t)c._bytecodeSize, (duk_bool_t)0); // [buffer]
-        ::memcpy(buf, c._bytecode, c._bytecodeSize);
+        // this code caused a previous compile error, so bail out.
+        return false;
     }
 
     // convert bytecode to a function object:
@@ -380,16 +386,14 @@ DuktapeEngine::run(
         duk_dup_top(ctx); // [function function]
 
         // Run the script:
-        {
-            //OE_PROFILING_ZONE_NAMED("duk_call");
-            duk_call(ctx, 0); // [function result]
-            resultString = duk_safe_to_string(ctx, -1);
-            duk_pop(ctx); // [function]
-        }
+        duk_int_t rc = duk_pcall(ctx, 0); // [function result]
+        resultString = duk_safe_to_string(ctx, -1);
+        duk_pop(ctx); // [function]
 
-        if (resultString.find("Error:") != std::string::npos)
+        if (rc != DUK_EXEC_SUCCESS)
         {
-            OE_WARN << LC << "Javascript ERROR: " << resultString << std::endl;
+            OE_WARN << LC << "Runtime error: " << resultString << std::endl;
+            c._errorCount++;
             results.emplace_back(EMPTY_STRING, false, resultString); // error
         }
         else
@@ -440,17 +444,16 @@ DuktapeEngine::run(
 	}
 
     std::string resultString;
-    {
-        //OE_PROFILING_ZONE_NAMED("duk_call");
-        duk_call(ctx, 0); // [result]
-        resultString = duk_safe_to_string(ctx, -1);
-        duk_pop(ctx); // []
 
-        if (resultString.find("Error:") != std::string::npos)
-        {
-            OE_WARN << LC << "Javascript ERROR: " << resultString << std::endl;
-            return ScriptResult("", false, resultString); // return error.
-        }
+    duk_int_t rc = duk_pcall(ctx, 0); // [result]
+    resultString = duk_safe_to_string(ctx, -1);
+    duk_pop(ctx); // []
+
+    if (rc != DUK_EXEC_SUCCESS)
+    {
+        OE_WARN << LC << "Runtime error: " << resultString << std::endl;
+        c._errorCount++;
+        return ScriptResult(EMPTY_STRING, false, resultString); // error
     }
 
     return ScriptResult(resultString, true);

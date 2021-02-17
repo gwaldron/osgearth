@@ -71,7 +71,7 @@ namespace osgEarth { namespace Util
         }
         template<typename T>
         static bool get(const osg::Object* o, const std::string& name, osg::ref_ptr<T>& out) {
-            obj = nullptr;
+            out = nullptr;
             if (o == nullptr) return false;
             const Data<T>* data = dynamic_cast<const Data<T>*>(osg::getUserObject(o, name));
             return data ? data->_obj.lock(out) : false;
@@ -104,6 +104,7 @@ namespace osgEarth { namespace Util
         }
         template<typename T>
         static bool get(const osg::Object* o, std::shared_ptr<T>& out) {
+            out = nullptr;
             const char* name = typeid(T).name();
             if (!o) return false;
             const Data<T>* data = dynamic_cast<const Data<T>*>(osg::getUserObject(o, name));

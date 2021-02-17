@@ -52,18 +52,46 @@ MonitorUI::MonitorUI()
     _ppb->setHorizAlign(ALIGN_RIGHT);
     this->setControl(1, r, _ppb.get());
     ++r;
+
+    //this->setControl(0, r, new ui::LabelControl("Jobs pending:"));
+    //_jobspending = new ui::LabelControl();
+    //_jobspending->setHorizAlign(ALIGN_RIGHT);
+    //this->setControl(1, r, _jobspending.get());
+    //++r;
+
+    this->setControl(0, r, new ui::LabelControl("Job Arenas:"));
+    _jobdata = new ui::LabelControl();
+    _jobdata->setHorizAlign(ALIGN_RIGHT);
+    this->setControl(1, r, _jobdata.get());
+    ++r;
 }
 
 void
 MonitorUI::update(const osg::FrameStamp* fs)
 {
-    if (fs && fs->getFrameNumber() % 15 == 0)
+    if (fs && fs->getFrameNumber() % 5 == 0)
     {
         _ws->setText(Stringify() << (Memory::getProcessPhysicalUsage() / 1048576) << " M");
         _pb->setText(Stringify() << (Memory::getProcessPrivateUsage() / 1048576) << " M");
         _ppb->setText(Stringify() << (Memory::getProcessPeakPrivateUsage() / 1048576) << " M");
 
-        //Registry::instance()->startActivity("Current Mem", Stringify() <<  (bytes / 1048576) << " M");
-        //Registry::instance()->startActivity("Peak Mem", Stringify() << (Memory::getProcessPeakUsage() / 1048576) << " M");
+        std::stringstream buf;
+        const JobArena::Metrics& m = JobArena::metrics();
+        int pending = 0, running = 0;
+        for (int i = 0; i <= m.maxArenaIndex; ++i)
+        {
+            if (m.arena(i).active)
+            {
+                buf << m.arena(i).arenaName
+                    << " ["
+                    << m.arena(i).numJobsRunning
+                    << "/"
+                    << m.arena(i).numJobsPending
+                    << "/"
+                    << m.arena(i).numThreads
+                    << "]\n";
+            }
+        }
+        _jobdata->setText(buf.str());
     }
 }

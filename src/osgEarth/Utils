@@ -70,7 +70,7 @@ namespace osgEarth { namespace Util
             udc->addUserObject(new Data<T>(name, obj));
         }
         template<typename T>
-        static bool get(const osg::Object* o, const std::string& name, osg::ref_ptr<T>& obj) {
+        static bool get(const osg::Object* o, const std::string& name, osg::ref_ptr<T>& out) {
             obj = nullptr;
             if (o == nullptr) return false;
             const Data<T>* data = dynamic_cast<const Data<T>*>(osg::getUserObject(o, name));
@@ -194,6 +194,37 @@ namespace osgEarth { namespace Util
         virtual ~AllocateAndMergeBufferObjectsVisitor() { }
         void apply(osg::Drawable& drawable);
     };
+
+
+    /** @deprecated - please use ObjectStorage instead */
+    template<typename T>
+    class OptionsData : public osg::Object {
+    public:
+        static void set(osg::Object* o, const std::string& name, T* obj) {
+            osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
+            unsigned i = udc->getUserObjectIndex(name);
+            if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
+            udc->addUserObject(new OptionsData<T>(name, obj));
+        }
+        static bool lock(const osg::Object* o, const std::string& name, osg::ref_ptr<T>& out) {
+            if (!o) return false;
+            const OptionsData<T>* data = dynamic_cast<const OptionsData<T>*>(osg::getUserObject(o, name));
+            return data ? data->_obj.lock(out) : false;
+        }
+        static osg::ref_ptr<T> get(const osg::Object* o, const std::string& name) {
+            osg::ref_ptr<T> result;
+            bool ok = lock(o, name, result);
+            return result;
+        }
+    public:
+        META_Object(osgEarth, OptionsData);
+        OptionsData(const std::string& name, T* obj) : _obj(obj) { setName(name); }
+        OptionsData() { }
+        OptionsData(const OptionsData& rhs, const osg::CopyOp& copy) : osg::Object(rhs, copy), _obj(rhs._obj) { }
+    private:
+        osg::observer_ptr<T> _obj;
+    };
+
 } }
 
 #endif // OSGEARTH_UTILS_H

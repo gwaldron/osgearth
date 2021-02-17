@@ -234,7 +234,7 @@ Registry::instance(bool reset)
     {
         s_registryInit = true;
         s_registry = new Registry;
-        atexit(destroyRegistry);
+        std::atexit(destroyRegistry);
     }
 
     if (reset)

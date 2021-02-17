@@ -20,6 +20,7 @@
 #include <osgDB/Options>
 #include "Utils"
 #include "Metrics"
+#include <cstdlib>
 
 #ifdef _WIN32
 #   include <Windows.h>
@@ -528,6 +529,7 @@ Mutex JobArena::_arenas_mutex("OE:JobArena");
 std::unordered_map<std::string, std::shared_ptr<JobArena>> JobArena::_arenas;
 std::unordered_map<std::string, unsigned> JobArena::_arenaSizes;
 std::string JobArena::_defaultArenaName = "oe.default";
+JobArena::Metrics JobArena::_allMetrics;
 
 #define OE_ARENA_DEFAULT_SIZE 2u
 
@@ -537,11 +539,25 @@ JobArena::JobArena(const std::string& name, unsigned numThreads) :
     _done(false),
     _queueMutex("OE.JobArena[" + name + "]")
 {
+    // find a slot in the stats
+    int new_index = -1;
+    for (int i = 0; i < 512 && new_index < 0; ++i)
+        if (_allMetrics._arenas[i].active == false)
+            new_index = i;
+    _metrics = &_allMetrics._arenas[new_index];
+    _metrics->arenaName = name;
+    _metrics->numThreads = 0;
+    _metrics->active = true;
+    if (new_index >= _allMetrics.maxArenaIndex)
+        _allMetrics.maxArenaIndex = new_index;
+
     startThreads();
 }
 
 JobArena::~JobArena()
 {
+    _metrics->free();
+
     stopThreads();
 }
 
@@ -551,10 +567,24 @@ JobArena::defaultArenaName()
     return _defaultArenaName;
 }
 
+void
+JobArena::shutdownAll()
+{
+    ScopedMutexLock lock(_arenas_mutex);
+    OE_INFO << LC << "Shutting down all job arenas." << std::endl;
+    _arenas.clear();
+}
+
 JobArena*
 JobArena::get(const std::string& name)
 {
     ScopedMutexLock lock(_arenas_mutex);
+    
+    if (_arenas.empty())
+    {
+        std::atexit(JobArena::shutdownAll);
+    }
+
     std::shared_ptr<JobArena>& arena = _arenas[name];
     if (arena == nullptr)
     {
@@ -623,6 +653,7 @@ JobArena::dispatch(
     {
         std::unique_lock<Mutex> lock(_queueMutex);
         _queue.emplace(job, delegate, sema);
+        _metrics->numJobsPending++;
         _block.notify_one();
     }
 
@@ -661,6 +692,7 @@ JobArena::startThreads()
         _threads.push_back(std::thread([this]
             {
                 OE_INFO << LC << "Arena \"" << _name << "\" starting thread " << std::this_thread::get_id() << std::endl;
+                _metrics->numThreads++;
 
                 OE_THREAD_NAME(std::string("OE.JobArena[" + _name + "]").c_str());
 
@@ -686,6 +718,9 @@ JobArena::startThreads()
 
                     if (have_next)
                     {
+                        _metrics->numJobsRunning++;
+                        _metrics->numJobsPending--;
+
                         bool job_executed = next._delegate();
 
                         if (!job_executed)
@@ -698,6 +733,8 @@ JobArena::startThreads()
                         {
                             next._groupsema->release();
                         }
+
+                        _metrics->numJobsRunning--;
                     }
                 }
                 //OE_INFO << LC << "Arena \"" << _name << "\" stopping thread " << std::this_thread::get_id() << std::endl;
@@ -735,7 +772,34 @@ void JobArena::stopThreads()
         {
             _threads[i].join();
         }
+        _metrics->numThreads--;
     }
 
     _threads.clear();
+}
+
+const JobArena::Metrics::Arena&
+JobArena::Metrics::arena(int index) const
+{
+    return _arenas[index];
+}
+
+int
+JobArena::Metrics::totalJobsPending() const
+{
+    int count = 0;
+    for (int i = 0; i < maxArenaIndex; ++i)
+        if (arena(i).active)
+            count += arena(i).numJobsPending;
+    return count;
+}
+
+int
+JobArena::Metrics::totalJobsRunning() const
+{
+    int count = 0;
+    for (int i = 0; i < maxArenaIndex; ++i)
+        if (arena(i).active)
+            count += arena(i).numJobsPending;
+    return count;
 }

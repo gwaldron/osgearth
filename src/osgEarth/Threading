@@ -629,7 +629,6 @@ namespace osgEarth { namespace Threading
      *   Job job;
      *   
      *   Future<int> result = job.dispatch<int>(
-     *      "My Arena",
      *      [a, b](Cancelable* progress) {
      *          return (a + b);
      *      }
@@ -765,11 +764,60 @@ namespace osgEarth { namespace Threading
         //! Name of the arena to use when none is specified
         static const std::string& defaultArenaName();
 
+
+        /**
+         * Reflects the current state of the JobArena system
+         * This structure is designed to be accessed atomically
+         * with no lock contention
+         */
+        class OSGEARTH_EXPORT Metrics
+        {
+        public:
+            //! Per-arena metrics. ALWAYS check the "active" flag
+            struct Arena {
+                bool active;
+                std::string arenaName;
+                std::atomic<int> numThreads;
+                std::atomic<int> numJobsPending;
+                std::atomic<int> numJobsRunning;
+
+                Arena() : active(false) { }
+                void free() {
+                    active = false, numJobsPending = 0, numJobsRunning = 0;
+                }
+            };
+
+            std::atomic<int> maxArenaIndex;
+
+            //! metrics about the arena at index "index"
+            const Arena& arena(int index) const;
+
+            //! Total number of pending jobs across all arenas
+            int totalJobsPending() const;
+
+            //! Total number of running jobs across all arenas
+            int totalJobsRunning() const;
+
+            int totalJobs() const {
+                return totalJobsPending() + totalJobsRunning();
+            }
+
+        private:
+            std::vector<Arena> _arenas;
+            Metrics() : _arenas(512), maxArenaIndex(-1) { }
+            friend class JobArena;
+        };
+
+        //! Access to the system-wide job arena metrics
+        static const Metrics& metrics() { return _allMetrics; }
+
     private:
 
         void startThreads();
 
         void stopThreads();
+
+        static void shutdownAll();
 
         struct QueuedJob {
             QueuedJob() { }
@@ -798,11 +846,14 @@ namespace osgEarth { namespace Threading
         bool _done;
         // threads in the pool
         std::vector<std::thread> _threads;
+        // pointer to the stats structure for this arena
+        Metrics::Arena* _metrics;
 
         static Mutex _arenas_mutex;
         static std::unordered_map<std::string, unsigned> _arenaSizes;
         static std::unordered_map<std::string, std::shared_ptr<JobArena>> _arenas;
         static std::string _defaultArenaName;
+        static Metrics _allMetrics;
     };
 
     // Job inlines

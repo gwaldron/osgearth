@@ -80,7 +80,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
             if (!tileset)
                 return ReadResult("Unable to parse tileset");
 
-            // Clone the read options and if there isn't a ThreadPool create one.
             osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
             osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, "", NULL, readOptions.get());
             node->setMaximumScreenSpaceError(15.0f);

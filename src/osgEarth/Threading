@@ -31,11 +31,6 @@
 #include <future>
 #include <type_traits>
 
-#define USE_CUSTOM_READ_WRITE_LOCK 1
-
-namespace osg {
-    class Operation;
-}
 namespace osgDB {
     class Options;
 }
@@ -503,58 +498,6 @@ namespace osgEarth { namespace Threading
     typedef ScopedWrite<Mutex> ScopedWriteLock;
     typedef ScopedRead<RecursiveMutex> ScopedRecursiveReadLock;
     typedef ScopedWrite<RecursiveMutex> ScopedRecursiveWriteLock;
-
-    /**
-     * A ThreadPool that contains a work queue and one or more
-     * threads that process the operations on the queue.
-     * @deprecated Use Job/JobArena instead
-     */
-    class OSGEARTH_EXPORT ThreadPool : public osg::Referenced
-    {
-    public:
-        //! Allocate a new pool with "numThreads" threads.
-        ThreadPool(
-            unsigned numThreads =2u);
-
-        //! Allocate a new pool with "numThreads" threads
-        ThreadPool(
-            const std::string& name,
-            unsigned numThreads =2u);
-
-        //! Destroy
-        ~ThreadPool();
-
-        //! Run an asynchronous operation in this thread pool.
-        void run(osg::Operation*);
-
-        //! How many operations are queued up?
-        unsigned getNumOperationsInQueue() const;
-
-        //! Store/retrieve thread pool stored in an options structure
-        void put(class osgDB::Options*);
-        static osg::ref_ptr<ThreadPool> get(const class osgDB::Options*);
-
-    private:
-        void startThreads();
-        void stopThreads();
-
-        // thread name
-        std::string _name;
-
-        // queued operations to run asynchronously
-        typedef std::queue<osg::ref_ptr<osg::Operation> > Queue;
-        Queue _queue;
-        // protect access to the queue
-        Mutex _queueMutex;
-        // number of concurrent threads in the pool
-        unsigned int _numThreads;
-        // thread waiter block
-        std::condition_variable_any _block;
-        // set to true when threads should exit
-        bool _done;
-        // threads in the pool
-        std::vector<std::thread> _threads;
-    };
 
     /**
      * Simple convenience construct to make another type "lockable"

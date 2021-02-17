@@ -70,6 +70,7 @@ namespace osgEarth { namespace Drivers { namespace Duktape
             std::string _bytecodeSource;
             unsigned char* _bytecode;
             unsigned _bytecodeSize;
+            unsigned _errorCount;
         };
 
         PerThread<Context> _contexts;

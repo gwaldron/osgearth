@@ -155,7 +155,7 @@ namespace osgEarth { namespace FeatureImageLayerImpl
     FeatureCursor* createCursor(FeatureSource* fs, FeatureFilterChain* chain, FilterContext& cx, const Query& query, ProgressCallback* progress)
     {
         FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
-        if (chain)
+        if (cursor && chain)
         {
             cursor = new FilteredFeatureCursor(cursor, chain, cx);
         }

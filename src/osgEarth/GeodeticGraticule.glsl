@@ -60,6 +60,8 @@ void oe_GeodeticGraticule_fragment(inout vec4 color)
         float hae = length(eye) - 6378137.0;
         float maxHAE = 2000.0;
         float alpha = clamp(hae / maxHAE, 0.0, 1.0) * antialias;
+        if (antialias < 0.)
+          alpha = 0.;
         color.rgb = mix(color.rgb, oe_GeodeticGraticule_color.rgb, oe_GeodeticGraticule_color.a * alpha);
     }
 #endif

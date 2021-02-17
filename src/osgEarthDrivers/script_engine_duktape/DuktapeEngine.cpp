@@ -25,12 +25,7 @@
 #include <sstream>
 
 #undef  LC
-#define LC "[duktape] "
-
-// defining this will setup and tear down a complete duktape heap/context
-// for each and every invocation. Good for testing memory usage until we
-// complete the feature set.
-//#define MAXIMUM_ISOLATION
+#define LC "[JavaScript] "
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers::Duktape;
@@ -123,7 +118,7 @@ namespace
             }
             else
             {
-                feature->setGeometry(0L);
+                feature->setGeometry(nullptr);
             }
         }
         else
@@ -217,14 +212,6 @@ namespace
 
 //............................................................................
 
-namespace
-{
-    static void my_fatal(void* udata, const char* msg)
-    {
-        OE_WARN << LC << "my_fatal: " << msg << std::endl;
-    }
-}
-
 DuktapeEngine::Context::Context()
 {
     _ctx = nullptr;
@@ -278,7 +265,7 @@ DuktapeEngine::Context::~Context()
     if ( _ctx )
     {
         duk_destroy_heap(_ctx);
-        _ctx = 0L;
+        _ctx = nullptr;
     }
 }
 
@@ -315,7 +302,7 @@ DuktapeEngine::compile(
         if (duk_pcompile_string(ctx, 0, code.c_str()) != 0) // [function|error]
         {
             std::string resultString = duk_safe_to_string(ctx, -1);
-            OE_WARN << LC << "JavaScript compile error: " << resultString << std::endl;
+            OE_WARN << LC << "Compile error: " << resultString << std::endl;
             c._errorCount++;
             duk_pop(ctx); // []
             result = ScriptResult("", false, resultString); // return error.
@@ -329,7 +316,7 @@ DuktapeEngine::compile(
         {
             // error. remove the buffer and return.
             duk_pop(ctx); // []
-            OE_WARN << LC << "JavaScript allocation error; cannot continue" << std::endl;
+            OE_WARN << LC << "Allocation error; cannot continue" << std::endl;
             result = ScriptResult("", false, "Allocation error"); // return error
             c._errorCount++;
             return false;
@@ -405,7 +392,7 @@ DuktapeEngine::run(
 
         if (rc != DUK_EXEC_SUCCESS)
         {
-            OE_WARN << LC << "JavaScript error: " << resultString << std::endl;
+            OE_WARN << LC << "Runtime error: " << resultString << std::endl;
             c._errorCount++;
             results.emplace_back(EMPTY_STRING, false, resultString); // error
         }
@@ -464,7 +451,7 @@ DuktapeEngine::run(
 
     if (rc != DUK_EXEC_SUCCESS)
     {
-        OE_WARN << LC << "JavaScript error: " << resultString << std::endl;
+        OE_WARN << LC << "Runtime error: " << resultString << std::endl;
         c._errorCount++;
         return ScriptResult(EMPTY_STRING, false, resultString); // error
     }

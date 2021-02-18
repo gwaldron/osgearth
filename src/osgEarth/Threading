@@ -701,13 +701,16 @@ namespace osgEarth { namespace Threading
             return _group;
         }
 
-        //! Dispatch this job to the default job arena
+        //! Dispatch this job for asynchronous execution.
+        //! @func Function to execute
+        //! @return Future result. If this objects goes out of scope,
+        //!         the job will be canceled and may not run at all.
         template<typename T>
         Future<T> dispatch(
             std::function<T(Cancelable*)> func) const;
 
-        //! Dispatch the job and forget about it.
-        //! No return value.
+        //! Dispatch the job for asynchronous execution and forget
+        //! about it. No return value.
         inline void dispatch(
             std::function<void(Cancelable*)> func) const;
 
@@ -740,10 +743,6 @@ namespace osgEarth { namespace Threading
         //! Set the concurrency of this job arena
         void setConcurrency(unsigned value);
 
-        //! Returns the number of queued operations in the arena
-        //! @deprecated, use metrics()
-        std::size_t queueSize() const;
-
     public: // statics
 
         //! Access a named arena
@@ -751,9 +750,6 @@ namespace osgEarth { namespace Threading
 
         //! Sets the concurrency of a named arena
         static void setConcurrency(const std::string& name, unsigned value);
-
-        //! Returns the number of queued operations in the named arena
-        static std::size_t queueSize(const std::string& arenaName);
 
         //! Name of the arena to use when none is specified
         static const std::string& defaultArenaName();

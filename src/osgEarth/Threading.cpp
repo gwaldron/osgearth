@@ -626,25 +626,6 @@ JobArena::setConcurrency(const std::string& name, unsigned value)
     }
 }
 
-std::size_t
-JobArena::queueSize(const std::string& arenaName)
-{
-    std::shared_ptr<JobArena> arena;
-    {
-        ScopedMutexLock lock(_arenas_mutex);
-        arena = _arenas[arenaName];
-    }
-    if (arena == nullptr)
-    {
-        return 0u;
-    }
-    else
-    {
-        Threading::ScopedMutexLock lock(arena->_queueMutex);
-        return arena->_queue.size();
-    }
-}
-
 void
 JobArena::dispatch(
     const Job& job,
@@ -677,14 +658,6 @@ JobArena::dispatch(
         }
     }
 }
-
-std::size_t
-JobArena::queueSize() const
-{
-    std::unique_lock<Mutex> lock(_queueMutex);
-    return _queue.size();
-}
-
 
 void
 JobArena::startThreads()

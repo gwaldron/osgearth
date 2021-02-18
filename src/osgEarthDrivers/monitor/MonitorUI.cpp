@@ -53,15 +53,9 @@ MonitorUI::MonitorUI()
     this->setControl(1, r, _ppb.get());
     ++r;
 
-    //this->setControl(0, r, new ui::LabelControl("Jobs pending:"));
-    //_jobspending = new ui::LabelControl();
-    //_jobspending->setHorizAlign(ALIGN_RIGHT);
-    //this->setControl(1, r, _jobspending.get());
-    //++r;
-
-    this->setControl(0, r, new ui::LabelControl("Job Arenas:"));
+    this->setControl(0, r, new ui::LabelControl("Jobs:"));
     _jobdata = new ui::LabelControl();
-    _jobdata->setHorizAlign(ALIGN_RIGHT);
+    _jobdata->setHorizAlign(ALIGN_LEFT);
     this->setControl(1, r, _jobdata.get());
     ++r;
 }
@@ -83,13 +77,11 @@ MonitorUI::update(const osg::FrameStamp* fs)
             if (m.arena(i).active)
             {
                 buf << m.arena(i).arenaName
-                    << " ["
+                    << " (" << m.arena(i).concurrency << ") "
                     << m.arena(i).numJobsRunning
-                    << "/"
+                    << " / "
                     << m.arena(i).numJobsPending
-                    << "/"
-                    << m.arena(i).numThreads
-                    << "]\n";
+                    << "\n";
             }
         }
         _jobdata->setText(buf.str());

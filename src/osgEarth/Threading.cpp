@@ -533,9 +533,9 @@ JobArena::Metrics JobArena::_allMetrics;
 
 #define OE_ARENA_DEFAULT_SIZE 2u
 
-JobArena::JobArena(const std::string& name, unsigned numThreads) :
+JobArena::JobArena(const std::string& name, unsigned concurrency) :
     _name(name),
-    _numThreads(numThreads),
+    _targetConcurrency(concurrency),
     _done(false),
     _queueMutex("OE.JobArena[" + name + "]")
 {
@@ -546,7 +546,7 @@ JobArena::JobArena(const std::string& name, unsigned numThreads) :
             new_index = i;
     _metrics = &_allMetrics._arenas[new_index];
     _metrics->arenaName = name;
-    _metrics->numThreads = 0;
+    _metrics->concurrency = 0;
     _metrics->active = true;
     if (new_index >= _allMetrics.maxArenaIndex)
         _allMetrics.maxArenaIndex = new_index;
@@ -597,22 +597,31 @@ JobArena::get(const std::string& name)
 }
 
 void
-JobArena::setSize(const std::string& name, unsigned numThreads)
+JobArena::setConcurrency(unsigned value)
 {
-    ScopedMutexLock lock(_arenas_mutex);
+    value = std::max(value, 1u);
+    _targetConcurrency = value;
+    startThreads();
+}
+void
+JobArena::setConcurrency(const std::string& name, unsigned value)
+{
+    // this method exists so you can set an arena's concurrency
+    // before the arena is actually created
 
-    if (_arenaSizes[name] != numThreads)
+    value = std::max(value, 1u);
+
+    ScopedMutexLock lock(_arenas_mutex);
+    if (_arenaSizes[name] != value)
     {
-        _arenaSizes[name] = numThreads;
+        _arenaSizes[name] = value;
 
         auto iter = _arenas.find(name);
         if (iter != _arenas.end())
         {
             std::shared_ptr<JobArena> arena = iter->second;
             OE_SOFT_ASSERT_AND_RETURN(arena != nullptr, __func__, );
-            arena->stopThreads();
-            arena->_numThreads = numThreads;
-            arena->startThreads();
+            arena->setConcurrency(value);
         }
     }
 }
@@ -649,7 +658,7 @@ JobArena::dispatch(
         sema->acquire();
     }
 
-    if (_numThreads > 0)
+    if (_targetConcurrency > 0)
     {
         std::unique_lock<Mutex> lock(_queueMutex);
         _queue.emplace(job, delegate, sema);
@@ -682,19 +691,17 @@ JobArena::startThreads()
 {
     _done = false;
 
-    if (_numThreads == 0)
-    {
-        OE_INFO << LC << "Arena \"" << _name << "\" starting with no threads" << std::endl;
-    }
+    OE_INFO << LC << "Arena \"" << _name << "\" concurrency=" << _targetConcurrency << std::endl;
 
-    for (unsigned i = 0; i < _numThreads; ++i)
+    // Not enough? Start up more
+    while(_metrics->concurrency < _targetConcurrency)
     {
         _threads.push_back(std::thread([this]
             {
-                OE_INFO << LC << "Arena \"" << _name << "\" starting thread " << std::this_thread::get_id() << std::endl;
-                _metrics->numThreads++;
+                //OE_INFO << LC << "Arena \"" << _name << "\" starting thread " << std::this_thread::get_id() << std::endl;
+                _metrics->concurrency++;
 
-                OE_THREAD_NAME(std::string("OE.JobArena[" + _name + "]").c_str());
+                OE_THREAD_NAME(std::string("oe.arena[" + _name + "]").c_str());
 
                 while (!_done)
                 {
@@ -725,6 +732,7 @@ JobArena::startThreads()
 
                         if (!job_executed)
                         {
+                            _metrics->numJobsCanceled++;
                             //OE_INFO << LC << "Job canceled" << std::endl;
                         }
 
@@ -736,8 +744,19 @@ JobArena::startThreads()
 
                         _metrics->numJobsRunning--;
                     }
+
+                    // See if we no longer need this thread because the
+                    // target concurrency has been reduced
+                    ScopedMutexLock quitLock(_quitMutex);
+                    if (_targetConcurrency < _metrics->concurrency)
+                    {
+                        _metrics->concurrency--;
+                        break;
+                    }
                 }
-                //OE_INFO << LC << "Arena \"" << _name << "\" stopping thread " << std::this_thread::get_id() << std::endl;
+
+                // exit thread here
+                //OE_INFO << LC << "Thread " << std::this_thread::get_id() << " exiting" << std::endl;
             }
         ));
     }
@@ -762,17 +781,17 @@ void JobArena::stopThreads()
             _queue.pop();
         }
 
+        // wake up all threads so they can exit
         _block.notify_all();
     }
 
-    // join up all the threads
-    for (unsigned i = 0; i < _numThreads; ++i)
+    // wait for them to exit
+    for (unsigned i = 0; i < _threads.size(); ++i)
     {
         if (_threads[i].joinable())
         {
             _threads[i].join();
         }
-        _metrics->numThreads--;
     }
 
     _threads.clear();
@@ -801,5 +820,15 @@ JobArena::Metrics::totalJobsRunning() const
     for (int i = 0; i < maxArenaIndex; ++i)
         if (arena(i).active)
             count += arena(i).numJobsPending;
+    return count;
+}
+
+int
+JobArena::Metrics::totalJobsCanceled() const
+{
+    int count = 0;
+    for (int i = 0; i < maxArenaIndex; ++i)
+        if (arena(i).active)
+            count += arena(i).numJobsCanceled;
     return count;
 }

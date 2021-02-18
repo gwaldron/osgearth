@@ -292,34 +292,20 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     _merger->setMergesPerFrame(options().mergesPerFrame().get());
     this->addChild(_merger.get());
 
-    // Threads?
-    unsigned loaderThreads = 4u;
-    const char* loaderThreads_str = ::getenv("OSGEARTH_TERRAIN_LOADER_THREADS");
-    if (loaderThreads_str)
-        loaderThreads = Strings::as<unsigned>(loaderThreads_str, loaderThreads);
-    JobArena::setSize("oe.rex.loadTile", loaderThreads);
-
-    // if the envvar for tile expiration is set, override the options setting
-    unsigned expirationThreshold = options().expirationThreshold().get();
-    const char* val = ::getenv("OSGEARTH_EXPIRATION_THRESHOLD");
-    if (val)
-    {
-        expirationThreshold = as<unsigned>(val, options().expirationThreshold().get());
-        OE_INFO << LC << "Expiration threshold set by env var = " << options().expirationThreshold().get() << "\n";
-    }
+    // Loader concurrency (size of the thread pool)
+    unsigned concurrency = options().concurrency().get();
+    const char* concurrency_str = ::getenv("OSGEARTH_TERRAIN_CONCURRENCY");
+    if (concurrency_str)
+        concurrency = Strings::as<unsigned>(concurrency_str, concurrency);
+    JobArena::setConcurrency(ARENA_LOAD_TILE, concurrency);
 
     // Make a tile unloader
     _unloader = new UnloaderGroup( _liveTiles.get() );
     _unloader->setFrameClock(&_clock);
-    _unloader->setCacheSize(expirationThreshold);
     _unloader->setMaxAge(options().minExpiryTime().get());
     _unloader->setMaxTilesToUnloadPerFrame(options().maxTilesToUnloadPerFrame().get());
     _unloader->setMinimumRange(options().minExpiryRange().get());
-    //_unloader->setReleaser(_releaser.get());
     this->addChild( _unloader.get() );
-
-    // Tile rasterizer in case we need one
-    //_rasterizer = new TileRasterizer();
 
     // Initialize the core render bindings.
     setupRenderBindings();

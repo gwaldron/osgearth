@@ -737,33 +737,26 @@ namespace osgEarth { namespace Threading
         //! Destroy
         ~JobArena();
 
-        //! Sets the concurrency of a named arena
-        static void setSize(
-            const std::string& name,
-            unsigned numThreads);
+        //! Set the concurrency of this job arena
+        void setConcurrency(unsigned value);
 
         //! Returns the number of queued operations in the arena
+        //! @deprecated, use metrics()
         std::size_t queueSize() const;
 
-        //! Returns the number of queued operations in the named arena
-        static std::size_t queueSize(const std::string& arenaName);
+    public: // statics
 
         //! Access a named arena
         static JobArena* get(const std::string& name);
 
-        using Delegate = std::function<bool()>;
+        //! Sets the concurrency of a named arena
+        static void setConcurrency(const std::string& name, unsigned value);
 
-        //! Schedule an asynchronous task on this arena.
-        //! Use Job::dispatch to run jobs (no need to call this directly)
-        //! @param job Job details
-        //! @param delegate Function to execute
-        void dispatch(
-            const Job& job,
-            Delegate& delegate);
+        //! Returns the number of queued operations in the named arena
+        static std::size_t queueSize(const std::string& arenaName);
 
         //! Name of the arena to use when none is specified
         static const std::string& defaultArenaName();
-
 
         /**
          * Reflects the current state of the JobArena system
@@ -777,13 +770,15 @@ namespace osgEarth { namespace Threading
             struct Arena {
                 bool active;
                 std::string arenaName;
-                std::atomic<int> numThreads;
+                std::atomic<int> concurrency;
                 std::atomic<int> numJobsPending;
                 std::atomic<int> numJobsRunning;
+                std::atomic<int> numJobsCanceled;
 
                 Arena() : active(false) { }
                 void free() {
-                    active = false, numJobsPending = 0, numJobsRunning = 0;
+                    active = false, numJobsPending = 0, numJobsRunning = 0,
+                        numJobsCanceled = 0;
                 }
             };
 
@@ -798,6 +793,10 @@ namespace osgEarth { namespace Threading
             //! Total number of running jobs across all arenas
             int totalJobsRunning() const;
 
+            //! Total number of running jobs across all arenas
+            int totalJobsCanceled() const;
+
+            //! Total number of active jobs in the system
             int totalJobs() const {
                 return totalJobsPending() + totalJobsRunning();
             }
@@ -819,6 +818,16 @@ namespace osgEarth { namespace Threading
 
         static void shutdownAll();
 
+        using Delegate = std::function<bool()>;
+
+        //! Schedule an asynchronous task on this arena.
+        //! Use Job::dispatch to run jobs (no need to call this directly)
+        //! @param job Job details
+        //! @param delegate Function to execute
+        void dispatch(
+            const Job& job,
+            Delegate& delegate);
+
         struct QueuedJob {
             QueuedJob() { }
             QueuedJob(const Job& job, const Delegate& delegate, std::shared_ptr<Semaphore> sema) :
@@ -838,8 +847,9 @@ namespace osgEarth { namespace Threading
         Queue _queue;
         // protect access to the queue
         mutable Mutex _queueMutex;
-        // number of concurrent threads in the pool
-        unsigned _numThreads;
+        mutable Mutex _quitMutex;
+        // target number of concurrent threads in the pool
+        std::atomic<unsigned> _targetConcurrency;
         // thread waiter block
         std::condition_variable_any _block;
         // set to true when threads should exit
@@ -854,6 +864,8 @@ namespace osgEarth { namespace Threading
         static std::unordered_map<std::string, std::shared_ptr<JobArena>> _arenas;
         static std::string _defaultArenaName;
         static Metrics _allMetrics;
+
+        friend class Job; // allow access to private dispatch method
     };
 
     // Job inlines

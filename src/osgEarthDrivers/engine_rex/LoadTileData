@@ -21,7 +21,6 @@
 
 #include "Common"
 #include <osgEarth/TerrainTileModelFactory>
-#include <osgEarth/Progress>
 #include <memory>
 
 namespace osgEarth {
@@ -69,7 +68,6 @@ namespace osgEarth { namespace REX
         osg::observer_ptr<TileNode> _tilenode;
         osg::observer_ptr<TerrainEngineNode> _engine;
         std::string _name;
-        //float _priority;
         bool _dispatched;
         bool _merged;
     };

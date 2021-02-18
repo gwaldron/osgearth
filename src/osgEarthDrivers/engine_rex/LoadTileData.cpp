@@ -111,7 +111,7 @@ LoadTileDataOperation::dispatch(bool async)
     if (async)
     {
         Job job;
-        job.setArena("oe.rex.loadTile");
+        job.setArena(ARENA_LOAD_TILE);
         job.setPriorityFunction(priority_func);
         _result = job.dispatch<LoadResult>(load);
     }

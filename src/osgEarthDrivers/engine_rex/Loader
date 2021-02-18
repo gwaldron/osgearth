@@ -29,6 +29,8 @@
 
 namespace osgEarth { namespace REX
 {
+    using namespace osgEarth::Threading;
+
     /**
      * A queue that merges new tile data into the respective tile.
      */

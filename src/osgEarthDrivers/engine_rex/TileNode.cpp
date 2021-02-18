@@ -772,7 +772,7 @@ TileNode::createChildren(EngineContext* context)
                 };
 
                 Job job;
-                job.setArena("oe.rex.createChild");
+                job.setArena(ARENA_CREATE_CHILD);
                 job.setName(childkey.str());
 
                 _createChildResults.emplace_back(
@@ -824,9 +824,6 @@ TileNode::createChild(const TileKey& childkey, EngineContext* context, Cancelabl
 {
     OE_PROFILING_ZONE;
 
-    // Note! There's a chance that the TileNode we want to create here
-    // already exists in the registry as an orphan. We should probably 
-    // check that out and try to re-attach it...?
     osg::ref_ptr<TileNode> node = new TileNode();
 
     // Build the surface geometry:

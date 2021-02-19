@@ -25,9 +25,17 @@
 #include <osgEarth/Common>
 #include <osgEarth/optional>
 #include <osgEarth/Threading>
+#include <osgEarth/URI>
+#include <osgEarth/SceneGraphCallback>
+
 #include <osg/PagedLOD>
+#include <osg/LOD>
+
 #include <queue>
+#include <list>
 #include <memory>
+#include <iterator>
+#include <unordered_map>
 
 namespace osgUtil {
     class IncrementalCompileOperation;
@@ -102,20 +110,186 @@ namespace osgEarth { namespace Util
     };
 
 
-
-    class OSGEARTH_EXPORT PagedNode2 : public osg::Group
+    class OSGEARTH_EXPORT PagedNode2 : public osg::Node
     {
     public:
+        using Loader = std::function<osg::ref_ptr<osg::Node>(Cancelable*)>;
 
-        void traverse(osg::NodeVisitor& nv) override;
+    public:
+        PagedNode2();
+
+        void setFunction(const Loader& value) {
+            _load = value;
+        }
+
+        void setURI(const URI& uri) {
+            _uri = uri;
+        }
+
+        void setCenter(const osg::Vec3& value) {
+            _userBS->center() = value;
+        }
+
+        void setRadius(float value) {
+            _userBS->radius() = value;
+        }
+
+        void setMaxRange(float value) {
+            _maxRange = value;
+        }
+
+        void setSceneGraphCallbacks(SceneGraphCallbacks* value) {
+            _callbacks = value;
+        }
+
+        void setReadOptions(const osgDB::Options* value) {
+            _readOptions = value;
+        }
+
+        void reset();
+
+    public:
+        
+        virtual void traverse(osg::NodeVisitor& nv) override;
+
+        virtual osg::BoundingSphere computeBound() const override;
+
+        virtual void resizeGLObjectBuffers(unsigned) override;
+
+        virtual void releaseGLObjects(osg::State*) const override;
+
+    protected:
+
+        virtual ~PagedNode2();
 
     private:
-
-        void merge();
-
-        Future<osg::ref_ptr<osg::Node>> _result;
-
         friend class PagingManager;
+
+        void* _token;
+        class PagingManager* _pagingManager;
+        osg::ref_ptr<const osgDB::Options> _readOptions;
+        osg::ref_ptr<SceneGraphCallbacks> _callbacks;
+        osg::ref_ptr<osg::Node> _placeholder;
+        std::atomic_bool _loadTriggered;
+        std::atomic_bool _callbackFired;
+        Future<osg::ref_ptr<osg::Node>> _future;
+        Mutex _mutex;
+        optional<osg::BoundingSphere> _userBS;
+        float _maxRange;
+        URI _uri;
+        Job _job;
+        std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load;
+    };
+
+
+    template<typename T>
+    class SentryTracker
+    {
+    public:
+        struct ListEntry
+        {
+            ListEntry(T* data) : _data(data) { }
+            T* _data;
+        };
+
+        using List = std::list<ListEntry>;
+        using ListIterator = typename List::iterator;
+
+        struct TableEntry
+        {
+            ListIterator _listptr;
+            T* _data;
+        };
+
+        using DataTable = std::unordered_map<T*, TableEntry>;
+
+        SentryTracker()
+        {
+            _list.emplace_front(nullptr);
+            _sentryptr = _list.begin();
+        }
+
+        List _list;
+        DataTable _table;
+        ListIterator _sentryptr;
+
+        inline void* use(T* data, void* token)
+        {
+            // Find the tracker for this tile and update its timestamp
+            if (token)
+            {
+                TableEntry& e = *static_cast<TableEntry*>(token);
+            //auto i = _table.find(data);
+            //if (i != _table.end())
+            //{
+                // existing entry:
+                //TableEntry& e = i->second;
+                ListEntry& se = (*e._listptr);
+                //se->_lastTime = _clock->getTime();
+                //se->_lastFrame = _clock->getFrame();
+
+                //const osg::BoundingSphere& bs = data->getBound();
+                //float range = nv.getDistanceToViewPoint(bs.center(), true) - bs.radius();
+                //se->_lastRange = std::min(se->_lastRange, range);
+
+                // Move the tracker to the front of the list (ahead of the sentry).
+                // Once a cull traversal is complete, all visited tiles will be
+                // in front of the sentry, leaving all non-visited tiles behind it.
+                _list.splice(_list.begin(), _list, e._listptr);
+                e._listptr = _list.begin();
+                return &e;
+            }
+            else
+            {
+                // New entry:
+                _list.emplace_front(data); // ListEntry
+                TableEntry& e = _table[data];
+                e._data = data;
+                e._listptr = _list.begin();
+                return &e;
+            }
+        }
+
+        inline void collectTrash(
+            osg::NodeVisitor& nv,
+            float fartherThanRange,
+            unsigned maxCount,
+            const std::function<void(T* obj)>& dispose)
+        {
+            // After cull, all visited tiles are in front of the sentry, and all
+            // non-visited tiles are behind it. Start at the sentry position and
+            // iterate over the non-visited tiles, checking them for deletion.
+            ListIterator i = _sentryptr;
+            ListIterator tmp;
+            unsigned count = 0;
+
+            //std::list<osg::observer_ptr<T>> trash;
+
+            for (++i; i != _list.end() && count < maxCount; ++i)
+            {
+                ListEntry& se = *i;
+
+                // back up the iterator so we can safely erase the entry:
+                tmp = i;
+                --i;
+
+                // user disposal function
+                dispose(se._data);
+
+                // remove it from the main tile table:
+                _table.erase(se._data);
+
+                // remove it from the tracker list:
+                _list.erase(tmp);
+
+                ++count;
+            }
+
+            // reset the sentry.
+            _list.emplace_front(nullptr);
+            _list.erase(_sentryptr);
+            _sentryptr = _list.begin();
+        }
     };
 
 
@@ -125,7 +299,10 @@ namespace osgEarth { namespace Util
 
         PagingManager();
 
-        void merge(PagedNode2* host);
+        inline void* use(PagedNode2* node, void* token) {
+            ScopedMutexLock lock(_trackerMutex);
+            return _tracker.use(node, token);
+        }
 
     public:
         void traverse(osg::NodeVisitor& nv) override;
@@ -137,7 +314,6 @@ namespace osgEarth { namespace Util
             Future<bool> _compileJob;
         };
         using PagingOperationPtr = std::shared_ptr<PagingOperation>;
-
         using CompileQueue = std::queue<PagingOperationPtr>;
         using MergeQueue = std::queue<PagingOperationPtr>;
 
@@ -146,6 +322,13 @@ namespace osgEarth { namespace Util
         mutable Mutex _mutex;
 
         optional<osg::observer_ptr<osgUtil::IncrementalCompileOperation>> _ico;
+
+        Mutex _trackerMutex;
+        SentryTracker<PagedNode2> _tracker;
+
+        std::list<osg::observer_ptr<PagedNode2>> _trash;
+
+        friend class PagedNode2;
     };
 
 } }

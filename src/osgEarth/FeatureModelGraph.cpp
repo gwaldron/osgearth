@@ -37,6 +37,7 @@
 #include <osgEarth/ElevationRanges>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/NetworkMonitor>
+#include <osgEarth/PagedNode>
 
 #include <osg/CullFace>
 #include <osg/PagedLOD>
@@ -61,6 +62,8 @@ using namespace osgEarth::Util;
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
 
+#define USE_PAGING_MANAGER
+
 #define USER_OBJECT_NAME "osgEarth.FeatureModelGraph"
 
 // Whether to install a cull callback on PagedLODs that adds an extra
@@ -71,6 +74,7 @@ using namespace osgEarth::Util;
 
 namespace
 {
+#ifndef USE_PAGING_MANAGER
     // callback to force features onto the high-latency queue.
     struct HighLatencyFileLocationCallback : public osgDB::FileLocationCallback
     {
@@ -81,6 +85,7 @@ namespace
 
         bool useFileCache() const { return false; }
     };
+#endif
 
     struct MyProgressCallback : public DatabasePagerProgressCallback
     {
@@ -241,8 +246,10 @@ namespace
         return str;
     }
 
-    osg::Group* createPagedNode(const osg::BoundingSphered& bs,
+    osg::Node* createPagedNode(
+        const osg::BoundingSphered& bs,
         const std::string& uri,
+        const std::function<osg::ref_ptr<osg::Node>(Cancelable*)>& func,
         float minRange,
         float maxRange,
         const FeatureDisplayLayout& layout,
@@ -251,6 +258,7 @@ namespace
         const osgDB::Options* readOptions,
         FeatureModelGraph* fmg)
     {
+
 #ifdef USE_PROXY_NODE
 
         osg::ProxyNode* p = new osg::ProxyNode();
@@ -266,6 +274,18 @@ namespace
         // so we can find the FMG instance in the pseudoloader.
         options->getOrCreateUserDataContainer()->addUserObject(fmg);
 
+        return p;
+
+#elif defined(USE_PAGING_MANAGER)
+
+        PagedNode2* p = new PagedNode2();
+        p->setName(uri);
+        p->setFunction(func);
+        p->setCenter(bs.center());
+        p->setRadius(bs.radius());
+        p->setMaxRange(maxRange);
+        p->setSceneGraphCallbacks(sgCallbacks);
+        p->setReadOptions(readOptions);
         return p;
 
 #else
@@ -456,8 +476,10 @@ FeatureModelGraph::open()
 
     _nodeCachingImageCache = new osgDB::ObjectCache();
 
+#ifndef USE_PAGING_MANAGER
     // an FLC that queues feature data on the high-latency thread.
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
+#endif
 
     if (!_session.valid())
     {
@@ -854,13 +876,28 @@ FeatureModelGraph::setupPaging()
     std::string uri = s_makeURI(0, 0, 0);
 
     // bulid the top level node:
-    osg::ref_ptr<osg::Node> topNode;
+    osg::ref_ptr<osg::Group> topNode;
+    osg::ref_ptr<osg::Node> node;
+
+#ifdef USE_PAGING_MANAGER
+    topNode = new PagingManager();
+#else
+    topNode = new osg::Group();
+#endif
 
     if (_options.layout()->paged() == true)
     {
-        topNode = createPagedNode(
+        osg::ref_ptr<FeatureModelGraph> graph(this);
+
+        auto load_func = [graph, uri](Cancelable* c)
+        {
+            return graph->load(0, 0, 0, uri, nullptr);
+        };
+
+        node = createPagedNode(
             bs,
             uri,
+            load_func,
             0.0f,
             maxRange,
             _options.layout().get(),
@@ -871,7 +908,12 @@ FeatureModelGraph::setupPaging()
     }
     else
     {
-        topNode = load(0, 0, 0, uri, _session->getDBOptions());
+        node = load(0, 0, 0, uri, _session->getDBOptions());
+    }
+
+    if (node.valid())
+    {
+        topNode->addChild(node);
     }
 
     return topNode;
@@ -1108,9 +1150,18 @@ FeatureModelGraph::buildSubTilePagedLODs(
 
                 if (_options.layout()->paged() == true)
                 {
+                    osg::ref_ptr<FeatureModelGraph> graph(this);
+                    osg::ref_ptr<const osgDB::Options> ro(readOptions);
+
+                    auto load_func = [graph, subtileLOD, u, v, uri, ro](Cancelable* c)
+                    {
+                        return graph->load(subtileLOD, u, v, uri, ro);
+                    };
+
                     childNode = createPagedNode(
                         subtile_bs,
                         uri,
+                        load_func,
                         0.0f, maxRange,
                         _options.layout().get(),
                         _sgCallbacks.get(),

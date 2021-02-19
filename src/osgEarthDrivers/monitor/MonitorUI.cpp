@@ -36,27 +36,19 @@ MonitorUI::MonitorUI()
     int r=0;
 
     this->setControl(0, r, new ui::LabelControl("Physical RAM:"));
-    _ws = new ui::LabelControl();
-    _ws->setHorizAlign(ALIGN_RIGHT);
-    this->setControl(1, r, _ws.get());
+    _ws = this->setControl(1, r, new ui::LabelControl());
     ++r;
 
     this->setControl(0, r, new ui::LabelControl("Total RAM:"));
-    _pb = new ui::LabelControl();
-    _pb->setHorizAlign(ALIGN_RIGHT);
-    this->setControl(1, r, _pb.get());
+    _pb = this->setControl(1, r, new ui::LabelControl());
     ++r;
 
     this->setControl(0, r, new ui::LabelControl("Peak RAM:"));
-    _ppb = new ui::LabelControl();
-    _ppb->setHorizAlign(ALIGN_RIGHT);
-    this->setControl(1, r, _ppb.get());
+    _ppb = this->setControl(1, r, new ui::LabelControl());
     ++r;
 
     this->setControl(0, r, new ui::LabelControl("Jobs:"));
-    _jobdata = new ui::LabelControl();
-    _jobdata->setHorizAlign(ALIGN_LEFT);
-    this->setControl(1, r, _jobdata.get());
+    _jobdata = this->setControl(1, r, new ui::LabelControl());
     ++r;
 }
 

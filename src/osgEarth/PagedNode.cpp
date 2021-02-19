@@ -19,6 +19,9 @@
 #include <osgEarth/PagedNode>
 #include <osgEarth/Utils>
 #include <osgEarth/GLUtils>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/Progress>
+#include <osgEarth/Registry>
 
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
@@ -27,6 +30,8 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+
+#define PAGEDNODE_ARENA_NAME "oe.nodepager"
 
 namespace
 {    
@@ -165,107 +170,248 @@ bool PagedNode::hasChild() const
     return true;
 }
 
+//...................................................................
 
+PagedNode2::PagedNode2() :
+    osg::Node(),
+    _pagingManager(nullptr),
+    _token(nullptr),
+    _loadTriggered(false),
+    _callbackFired(false)
+{
+    _job.setName("oe.PagedNode");
+    _job.setArena(PAGEDNODE_ARENA_NAME);
+}
 
-
-
+PagedNode2::~PagedNode2()
+{
+    reset();
+}
 
 void
-PagedNode2::merge()
+PagedNode2::reset()
 {
-    const osg::ref_ptr<osg::Node>& node = _result.get();
-    if (node.valid())
-    {
-        addChild(node);
-    }
+    releaseGLObjects(nullptr);
+    _future.abandon();
+    _token = nullptr;
+    _loadTriggered = false;
+    _callbackFired = false;
 }
 
 void
 PagedNode2::traverse(osg::NodeVisitor& nv)
 {
+    // locate the paging manager if there is one
+    if (_pagingManager == nullptr)
+    {
+        ScopedMutexLock lock(_mutex);
+        if (_pagingManager == nullptr) // double check
+        {
+            osg::ref_ptr<PagingManager> pm;
+            if (ObjectStorage::get(&nv, pm))
+                _pagingManager = pm.get();
+        }
+    }
+
+    if (_placeholder.valid())
+    {
+        _placeholder->accept(nv);
+    }
+
+    if (nv.getTraversalMode() == nv.TRAVERSE_ALL_CHILDREN)
+    {
+        if (_future.isAvailable() && _future.get().valid())
+        {
+            _future.get()->accept(nv);
+        }
+    }
+
+    else if (nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN)
+    {
+        float range = nv.getDistanceToViewPoint(getBound().center(), true);
+        if (range <= _maxRange)
+        {
+            if (_loadTriggered.exchange(true) == false)
+            {
+                //OE_INFO << "Dispatch load for " << getName() << std::endl;
+                // Dispatch the asynchronous loading job.
+
+                osg::ref_ptr<SceneGraphCallbacks> callbacks(_callbacks);
+                PagingManager* pm = _pagingManager;
+
+                _job.setPriority(-range);
+
+                if (_load != nullptr)
+                {
+                    Loader load(_load);
+
+                    _future = _job.dispatch<osg::ref_ptr<osg::Node>>(
+                        [load, callbacks, pm](Cancelable* p)
+                        {
+                            osg::ref_ptr<osg::Node> node = load(p);
+                            if (node.valid())
+                            {
+                                GLObjectsCompiler compiler;
+                                compiler.compileNow(node.get(), pm, p);
+
+                                if (callbacks.valid())
+                                    callbacks->firePreMergeNode(node.get());
+                            }
+                            return node;
+                        }
+                    );
+                }
+
+                else if (!_uri.empty())
+                {
+                    URI uri(_uri);
+                    osg::ref_ptr<const osgDB::Options> readOptions(_readOptions.get());
+                    osg::ref_ptr<PagingManager> pm(_pagingManager);
+
+                    _future = _job.dispatch<osg::ref_ptr<osg::Node>>(
+                        [uri, callbacks, readOptions, pm](Cancelable* c)
+                        {
+                            osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
+                            osg::ref_ptr<osg::Node> node = uri.getNode(readOptions, progress.get());
+                            if (node.valid())
+                            {
+                                GLObjectsCompiler compiler;
+                                compiler.compileNow(node.get(), pm.get(), c);
+
+                                if (callbacks.valid())
+                                    callbacks->firePreMergeNode(node.get());
+                            }
+                            return node;
+                        }
+                    );
+                }
+            }
+
+            else if (_future.isAvailable() && _future.get().valid())
+            {
+                // if we haven't fired the post-merge callback yet, do so now
+                if (_callbackFired.exchange(true) == false && _callbacks.valid())
+                {
+                    _callbacks->firePostMergeNode(_future.get().get());
+                }
+
+                // update our usage
+                if (_pagingManager)
+                {
+                    _token = _pagingManager->use(this, _token);
+                }
+
+                // future is good, traverse it
+                _future.get()->accept(nv);
+            }
+        }
+    }
 }
 
-
-
-
-
-PagingManager::PagingManager() :
-    _mutex(OE_MUTEX_NAME)
+osg::BoundingSphere
+PagedNode2::computeBound() const
 {
-    //nop
+    osg::BoundingSphere bs;
+
+    if (_placeholder.valid())
+    {
+        bs = _placeholder->computeBound();
+    }
+
+    if (_loadTriggered == true &&
+        _future.isAvailable() &&
+        _future.get().valid())
+    {
+        bs.expandBy(_future.get()->computeBound());
+    }
+    else if (_userBS.isSet())
+    {
+        // if the future node isn't loaded yet, use the 
+        // user-supplied center and radius
+
+        bs.expandBy(_userBS.get());
+    }
+
+    return bs;
 }
 
 void
-PagingManager::merge(PagedNode2* host)
+PagedNode2::resizeGLObjectBuffers(unsigned m)
 {
-    OE_SOFT_ASSERT_AND_RETURN(host != nullptr, __func__, );
+    osg::Node::resizeGLObjectBuffers(m);
 
-    ScopedMutexLock lock(_mutex);
+    if (_placeholder.valid())
+        _placeholder->resizeGLObjectBuffers(m);
 
-    if (_ico.isSet() && _ico.get().valid())
-    {
-        ScopedMutexLock lock(_mutex);
+    if (_future.isAvailable() && _future.get().valid())
+        _future.get()->resizeGLObjectBuffers(m);
+}
 
-        GLObjectsCompiler glcompiler;
+void
+PagedNode2::releaseGLObjects(osg::State* state) const
+{
+    osg::Node::releaseGLObjects(state);
 
-        _compileQueue.emplace(std::make_shared<PagingOperation>());
-        PagingOperationPtr& op = _compileQueue.back();
+    if (_placeholder.valid())
+        _placeholder->releaseGLObjects(state);
 
-        op->_host = host;
-        op->_compileJob = glcompiler.compileAsync(
-            host->_result.get(),
-            this,
-            nullptr);
-    }
-    else
-    {
-        _mergeQueue.emplace(std::make_shared<PagingOperation>());
-        PagingOperationPtr& op = _compileQueue.back();
-        op->_host = host;
-    }
+    if (_future.isAvailable() && _future.get().valid())
+        _future.get()->releaseGLObjects(state);
+}
+
+
+PagingManager::PagingManager() :
+    _mutex(OE_MUTEX_NAME),
+    _tracker()
+{
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    JobArena::get(PAGEDNODE_ARENA_NAME)->setConcurrency(4u);
 }
 
 void
 PagingManager::traverse(osg::NodeVisitor& nv)
 {
-    if (!_ico.isSet() && nv.getVisitorType() == nv.CULL_VISITOR)
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        // detect presence of an ICO
-        osg::ref_ptr<osgUtil::IncrementalCompileOperation> temp;
-        ObjectStorage::get(&nv, temp);
-        _ico = temp.get();
+        // make this object available to PageNode's
+        ObjectStorage::set(&nv, this);
+
+        if (!_ico.isSet())
+        {
+            // detect presence of an ICO
+            osg::ref_ptr<osgUtil::IncrementalCompileOperation> temp;
+            if (ObjectStorage::get(&nv, temp))
+            {
+                ObjectStorage::set(this, temp.get());
+                _ico = temp.get();
+            }
+        }
     }
 
     else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
-        //todo: check the queues...
-        ScopedMutexLock lock(_mutex);
+        ScopedMutexLock lock(_trackerMutex);
 
-        while (!_compileQueue.empty())
-        {
-            PagingOperationPtr& op = _compileQueue.front();
-            if (op->_compileJob.isAvailable())
-            {
-                _mergeQueue.emplace(std::move(op));
-                _compileQueue.pop();
-            }
-            else if (op->_compileJob.isAbandoned())
-            {
-                _compileQueue.pop(); // discard
-            }
-            else break;
-        }
+        _trash.clear();
 
-        while (!_mergeQueue.empty()) // TODO: meter it
+        // Collect the expired nodes, pushing them in reverse order
+        // so that we can release them in the most efficient manner
+        // possible (top-down in the scene graph)
+        _tracker.collectTrash(nv, 0.0f, ~0u, 
+            [this](PagedNode2* node) { _trash.push_front(node); });
+
+        int count = 0;
+        for (auto& node : _trash)
         {
-            PagingOperationPtr& op = _mergeQueue.front();
-            osg::ref_ptr<PagedNode2> host;
-            if (op->_host.lock(host))
+            osg::ref_ptr<PagedNode2> safe(node);
+            if (safe.valid())
             {
-                host->merge();
+                safe->reset();
+                count++;
             }
-            _mergeQueue.pop();
         }
+        //if (count > 0)
+        //    OE_INFO << LC << "Trashed " << count << "/" << _trash.size() << std::endl;
     }
 
     osg::Group::traverse(nv);

@@ -208,8 +208,6 @@ namespace osgEarth { namespace Threading
             void set(const T& obj) { _obj = std::move(obj); }
             T _obj;
             const T& obj() const { return _obj; }
-            std::vector<Callback> _callbacks;
-            std::mutex _callbacksMutex;
         };
 
     public:
@@ -251,40 +249,27 @@ namespace osgEarth { namespace Threading
         }
 
         //! The result value; blocks until it is available (or abandonded) and then returns it.
-        const T& get() {
-            while (!_ev->wait(100u))
-                if (isAbandoned())
-                    break;
+        const T& get() const {
+            while (
+                !isAbandoned() && 
+                !_ev->wait(1u));
             return _shared->obj();
         }
 
-        const T& get(const Cancelable* cancelable) {
-            while(!_ev->wait(100u)) {
-                if (isAbandoned()) 
-                    break;
-                if (cancelable && cancelable->isCanceled()) 
-                    break;
-            }
+        const T& get(const Cancelable* cancelable) const {
+            while (
+                !isAbandoned() &&
+                !(cancelable && cancelable->isCanceled()) &&
+                !_ev->wait(1u));
             return _shared->obj();
         }
 
         //! Waits for the result to become available (abandoned)
-        void join() {
+        void join() const {
             get();
         }
-        void join(const Cancelable* cancelable) {
+        void join(const Cancelable* cancelable) const {
             get(cancelable);
-        }
-
-        Future<T>& then(std::function<void(T&)>& func) {
-            std::unique_lock<std::mutex> lock(_shared->_callbacksMutex);
-            if (_ev->isSet()) {
-                if (_shared->empty() == false)
-                    func(_shared->_obj());
-            }
-            else
-                _shared->_callbacks.push_back(func);
-            return *this;
         }
 
         //! Release reference to a promise, resetting this future to its default state
@@ -322,11 +307,6 @@ namespace osgEarth { namespace Threading
         //! Resolve (fulfill) the promise with the provided result value.
         void resolve(const T& value) {
             _future._shared->set(value);
-            {
-                std::unique_lock<std::mutex> lock(_future._shared->_callbacksMutex);
-                for(auto& f : _future._shared->_callbacks)
-                    f(value);
-            }
             _future._ev->set();
         }
 

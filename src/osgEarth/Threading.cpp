@@ -341,19 +341,25 @@ Event::setName(const std::string& name)
 
 bool Event::wait()
 {
-    std::unique_lock<Mutex> lock(_m);
     if (!_set)
-        _cond.wait(lock);
+    {
+        std::unique_lock<Mutex> lock(_m);
+        if (!_set)
+            _cond.wait(lock);
+    }
     return true;
 }
 
 bool Event::wait(unsigned timeout_ms)
 {
-    std::unique_lock<Mutex> lock(_m);
     if (!_set)
     {
-        std::cv_status result = _cond.wait_for(lock, std::chrono::milliseconds(timeout_ms));
-        return result == std::cv_status::no_timeout ? true : false;
+        std::unique_lock<Mutex> lock(_m);
+        if (!_set) // double check
+        {
+            std::cv_status result = _cond.wait_for(lock, std::chrono::milliseconds(timeout_ms));
+            return result == std::cv_status::no_timeout ? true : false;
+        }
     }
     return true;
 }
@@ -369,10 +375,13 @@ bool Event::waitAndReset()
 
 void Event::set()
 {
-    std::unique_lock<Mutex> lock(_m);
-    if (!_set) {
-        _set = true;
-        _cond.notify_all();
+    if (!_set)
+    {
+        std::unique_lock<Mutex> lock(_m);
+        if (!_set) {
+            _set = true;
+            _cond.notify_all();
+        }
     }
 }
 

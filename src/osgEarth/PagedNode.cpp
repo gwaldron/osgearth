@@ -179,6 +179,8 @@ PagedNode2::PagedNode2() :
     _loadTriggered(false),
     _compileTriggered(false),
     _callbackFired(false),
+    _minRange(0.0f),
+    _maxRange(FLT_MAX),
     _priorityScale(1.0f)
 {
     _job.setName("oe.PagedNode");
@@ -234,29 +236,25 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
     else if (nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN)
     {
         float range = nv.getDistanceToViewPoint(getBound().center(), true);
-        if (range <= _maxRange)
+        if (range >= _minRange && range <= _maxRange)
         {
-            if (_loadTriggered.exchange(true) == false)
+            if (_load != nullptr && _loadTriggered.exchange(true) == false)
             {
                 // Load the asynchronous node.
                 Loader load(_load);
-                URI uri(_uri);
-                osg::ref_ptr<const osgDB::Options> readOptions(_readOptions.get());
                 osg::ref_ptr<SceneGraphCallbacks> callbacks(_callbacks);
 
                 _job.setPriority(-range * _priorityScale);
 
                 _loaded = _job.dispatch<osg::ref_ptr<osg::Node>>(
-                    [load, uri, readOptions, callbacks](Cancelable* c)
+                    [load, callbacks](Cancelable* c)
                     {
-                        osg::ref_ptr<osg::Node> node;
                         osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
 
-                        if (load != nullptr)
-                            node = load(progress.get());
-                        else if (!uri.empty())
-                            node = uri.getNode(readOptions.get(), progress.get());
+                        // invoke the loader function
+                        osg::ref_ptr<osg::Node> node = load(progress.get());
 
+                        // Fire any pre-merge callbacks
                         if (node.valid() && callbacks.valid())
                             callbacks->firePreMergeNode(node.get());
 
@@ -299,29 +297,29 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
 osg::BoundingSphere
 PagedNode2::computeBound() const
 {
-    osg::BoundingSphere bs;
-
-    if (_placeholder.valid())
+    if (_userBS.isSet() && _userBS->radius() >= 0.0f)
     {
-        bs = _placeholder->computeBound();
+        return _userBS.get();
     }
 
-    if (_loadTriggered == true &&
-        _loaded.isAvailable() &&
-        _loaded.get().valid())
+    else
     {
-        bs.expandBy(_loaded.get()->computeBound());
+        osg::BoundingSphere bs;
+
+        if (_placeholder.valid())
+        {
+            bs = _placeholder->computeBound();
+        }
+
+        if (_loadTriggered == true &&
+            _loaded.isAvailable() &&
+            _loaded.get().valid())
+        {
+            bs.expandBy(_loaded.get()->computeBound());
+        }
+
+        return bs;
     }
-
-    else if (_userBS.isSet())
-    {
-        // if the future node isn't loaded yet, use the
-        // user-supplied center and radius
-
-        bs.expandBy(_userBS.get());
-    }
-
-    return bs;
 }
 
 void

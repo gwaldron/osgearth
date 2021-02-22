@@ -119,41 +119,47 @@ namespace osgEarth { namespace Util
     public:
         PagedNode2();
 
-        void setFunction(const Loader& value) {
+        //! Function to run to load the asychronous child
+        void setLoadFunction(const Loader& value) {
             _load = value;
         }
 
-        void setURI(const URI& uri) {
-            _uri = uri;
-        }
-
+        //! Set the center of this node, which is necessary since we
+        //! cannot compute the bounding sphere before the asynchronous load
         void setCenter(const osg::Vec3& value) {
             _userBS->center() = value;
         }
 
+        //! Set the radius of this node's bounding sphere, which is necessary
+        //! since we cannot compute the bounding sphere before the asynchronous load
         void setRadius(float value) {
             _userBS->radius() = value;
         }
 
+        //! Minimum distance from camera at which to render
+        void setMinRange(float value) {
+            _minRange = value;
+        }
+
+        //! Maximum distance from camera at which to render
         void setMaxRange(float value) {
             _maxRange = value;
         }
 
+        //! Multiple the load job's priority by this number
         void setPriorityScale(float value) {
             _priorityScale = value;
         }
 
+        //! Pre- and post-merge callbacks for the async data
         void setSceneGraphCallbacks(SceneGraphCallbacks* value) {
             _callbacks = value;
         }
 
-        void setReadOptions(const osgDB::Options* value) {
-            _readOptions = value;
-        }
-
+        //! Delete the async child and start over
         void reset();
 
-    public:
+    public: // osg::Node overrides
         
         virtual void traverse(osg::NodeVisitor& nv) override;
 
@@ -172,7 +178,6 @@ namespace osgEarth { namespace Util
 
         void* _token;
         class PagingManager* _pagingManager;
-        osg::ref_ptr<const osgDB::Options> _readOptions;
         osg::ref_ptr<SceneGraphCallbacks> _callbacks;
         osg::ref_ptr<osg::Node> _placeholder;
         std::atomic_bool _loadTriggered;
@@ -182,9 +187,9 @@ namespace osgEarth { namespace Util
         Future<osg::ref_ptr<osg::Node>> _compiled;
         Mutex _mutex;
         optional<osg::BoundingSphere> _userBS;
+        float _minRange;
         float _maxRange;
         float _priorityScale;
-        URI _uri;
         Job _job;
         std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load;
     };

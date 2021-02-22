@@ -280,13 +280,13 @@ namespace
 
         PagedNode2* p = new PagedNode2();
         p->setName(uri);
-        p->setFunction(func);
+        p->setLoadFunction(func);
         p->setCenter(bs.center());
         p->setRadius(bs.radius());
+        p->setMinRange(minRange);
         p->setMaxRange(maxRange);
         p->setPriorityScale(layout.priorityScale().get());
         p->setSceneGraphCallbacks(sgCallbacks);
-        p->setReadOptions(readOptions);
         return p;
 
 #else
@@ -331,6 +331,7 @@ namespace
 }
 
 
+#ifndef USE_PAGING_MANAGER
 namespace
 {
     /**
@@ -381,7 +382,7 @@ namespace
     };
 }
 REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader);
-
+#endif
 
 namespace
 {
@@ -1163,7 +1164,8 @@ FeatureModelGraph::buildSubTilePagedLODs(
                         subtile_bs,
                         uri,
                         load_func,
-                        0.0f, maxRange,
+                        0.0f,
+                        maxRange,
                         _options.layout().get(),
                         _sgCallbacks.get(),
                         _defaultFileLocationCallback.get(),

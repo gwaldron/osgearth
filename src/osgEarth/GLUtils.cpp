@@ -731,7 +731,7 @@ namespace
     };
 }
 
-std::atomic_int GLObjectsCompiler::_jobsActive = 0;
+std::atomic_int GLObjectsCompiler::_jobsActive;
 
 Future<osg::ref_ptr<osg::Node>>
 GLObjectsCompiler::compileAsync(

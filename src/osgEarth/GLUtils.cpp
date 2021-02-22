@@ -631,7 +631,7 @@ GPUJobArena::getTimeSlice() const
 void
 GPUJobArena::dispatch(Delegate& del)
 {
-    std::unique_lock<Mutex> lock(_queue_mutex);
+    std::lock_guard<Mutex> lock(_queue_mutex);
     _queue.emplace_back(del);
 }
 

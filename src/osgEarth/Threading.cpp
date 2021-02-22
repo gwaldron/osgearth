@@ -387,7 +387,7 @@ void Event::set()
 
 void Event::reset()
 {
-    std::unique_lock<Mutex> lock(_m);
+    std::lock_guard<Mutex> lock(_m);
     _set = false;
 }
 
@@ -650,7 +650,7 @@ JobArena::dispatch(
 
     if (_targetConcurrency > 0)
     {
-        std::unique_lock<Mutex> lock(_queueMutex);
+        std::lock_guard<Mutex> lock(_queueMutex);
         _queue.emplace(job, delegate, sema);
         _metrics->numJobsPending++;
         _block.notify_one();
@@ -750,7 +750,7 @@ void JobArena::stopThreads()
 
     // Clear out the queue
     {
-        std::unique_lock<Mutex> lock(_queueMutex);
+        std::lock_guard<Mutex> lock(_queueMutex);
 
         // reset any group semaphores so that JobGroup.join()
         // will not deadlock.

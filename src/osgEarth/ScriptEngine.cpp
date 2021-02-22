@@ -33,7 +33,7 @@ ScriptEngineOptions::fromConfig( const Config& conf )
     if (conf.get<std::string>( "script_code", val))
     {
         Script cfgScript(val.get());
-        
+
         if (conf.get<std::string>( "script_language", val ))
           cfgScript.setLanguage(val.get());
 
@@ -75,7 +75,7 @@ ScriptEngine::run(
 {
     for (auto& feature : features)
     {
-        results.emplace_back(run(code, feature, context));
+        results.emplace_back(run(code, feature.get(), context));
     }
     return true;
 }

@@ -74,7 +74,7 @@ struct App
             OE_WARN << "Failed to load elev decal image!" << std::endl;
             return;
         }
-		
+
 		_image_for_rgb = osgDB::readRefImageFile("../data/crater.png");
 		if (!_image_for_rgb.valid())
 		{
@@ -159,17 +159,17 @@ struct App
         if (_imageLayer.valid())
         {
             _imageLayer->addDecal(
-                id, 
-                extent, 
+                id,
+                extent,
                 _image_for_rgb.get());
         }
 
         if (_elevLayer.valid())
         {
             _elevLayer->addDecal(
-                id, 
-                extent, 
-                _image_for_elev.get(), 
+                id,
+                extent,
+                _image_for_elev.get(),
                 _size / 15.0f, -_size / 15.0f,  // min value (0.0), max value(1.0)
                 GL_ALPHA);
         }
@@ -178,8 +178,8 @@ struct App
 		if (_landCoverLayer.valid())
         {
            _landCoverLayer->addDecal(
-               id, 
-               extent, 
+               id,
+               extent,
                _landCover.get());
         }
 
@@ -329,7 +329,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator(new EarthManipulator(arguments));
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
+    // and earth file <external> tags
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
@@ -346,7 +346,7 @@ main(int argc, char** argv)
         viewer.setSceneData(node);
         viewer.addEventHandler(new ClickToDecal(app));
 
-        OE_WARN << LC << 
+        OE_WARN << LC <<
             "\n\n-- Zoom in close ..."
             "\n-- Press 'd' to drop bombs"
             "\n-- Press 'u' to undo last drop"

@@ -380,7 +380,7 @@ DuktapeEngine::run(
     for (auto& feature : features)
     {
         // Load the next feature into the global object:
-        setFeature(c._ctx, feature, complete);
+        setFeature(c._ctx, feature.get(), complete);
 
         // Duplicate the function on the top since we'll be calling it multiple times
         duk_dup_top(ctx); // [function function]

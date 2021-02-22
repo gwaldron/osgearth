@@ -1156,7 +1156,7 @@ FeatureModelGraph::buildSubTilePagedLODs(
 
                     auto load_func = [graph, subtileLOD, u, v, uri, ro](Cancelable* c)
                     {
-                        return graph->load(subtileLOD, u, v, uri, ro);
+                        return graph->load(subtileLOD, u, v, uri, ro.get());
                     };
 
                     childNode = createPagedNode(

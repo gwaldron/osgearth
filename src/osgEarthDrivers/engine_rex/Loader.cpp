@@ -58,8 +58,10 @@ void
 Merger::clear()
 {
     ScopedMutexLock lock(_mutex);
-    _compileQueue.swap(CompileQueue());
-    _mergeQueue.swap(MergeQueue());
+    CompileQueue emptyCq;
+    _compileQueue.swap(emptyCq);
+    MergeQueue emptyMq;
+    _mergeQueue.swap(emptyMq);
 }
 
 void

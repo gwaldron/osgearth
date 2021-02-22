@@ -812,7 +812,7 @@ namespace osgEarth { namespace Threading
             Delegate _delegate;
             std::shared_ptr<Semaphore> _groupsema;
             bool operator < (const QueuedJob& rhs) const { 
-                return _job.getPriority() <= rhs._job.getPriority();
+                return _job.getPriority() < rhs._job.getPriority();
             }
         };
 

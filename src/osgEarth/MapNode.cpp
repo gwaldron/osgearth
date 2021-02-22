@@ -31,7 +31,9 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/HorizonClipPlane>
 #include <osgEarth/SceneGraphCallback>
+#include <osgEarth/Utils>
 #include <osgUtil/Optimizer>
+#include <osgDB/DatabasePager>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -841,6 +843,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
             _lastNumBlacklistedFilenames = numBlacklist;
             RemoveBlacklistedFilenamesVisitor v;
             _terrainEngine->accept( v );
+
         }
 
         // traverse:
@@ -850,6 +853,17 @@ MapNode::traverse( osg::NodeVisitor& nv )
     else if ( nv.getVisitorType() == nv.CULL_VISITOR)
     {
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+
+        // find a database pager with an ICO
+        if (cv && cv->getCurrentCamera())
+        {
+            osgDB::DatabasePager* pager = dynamic_cast<osgDB::DatabasePager*>(
+                nv.getDatabaseRequestHandler());
+
+            if (pager)
+                ObjectStorage::set(&nv, pager->getIncrementalCompileOperation());
+        }
+
 
         LayerVector layers;
         getMap()->getLayers(layers);

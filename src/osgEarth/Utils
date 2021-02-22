@@ -197,6 +197,111 @@ namespace osgEarth { namespace Util
     };
 
 
+    /**
+     * Tracks usage data by maintaining a sentry-blocked linked list.
+     * Each time a use called "use" the corresponding record moves to
+     * the right of the sentry marker. After a cycle you can call
+     * collectTrash to process all users that did not call use() in the
+     * that cycle, and dispose of them.
+     */
+    template<typename T>
+    class SentryTracker
+    {
+    public:
+        struct ListEntry
+        {
+            ListEntry(T* data) : _data(data) { }
+            T* _data;
+        };
+
+        using List = std::list<ListEntry>;
+        using ListIterator = typename List::iterator;
+
+        struct TableEntry
+        {
+            ListIterator _listptr;
+            T* _data;
+        };
+
+        using DataTable = std::unordered_map<T*, TableEntry>;
+
+        SentryTracker()
+        {
+            _list.emplace_front(nullptr);
+            _sentryptr = _list.begin();
+        }
+
+        List _list;
+        DataTable _table;
+        ListIterator _sentryptr;
+
+        inline void* use(T* data, void* token)
+        {
+            // Find the tracker for this tile and update its timestamp
+            if (token)
+            {
+                // Existing entry (stored in the token):
+                TableEntry& e = *static_cast<TableEntry*>(token);
+                ListEntry& se = (*e._listptr);
+
+                // Move the tracker to the front of the list (ahead of the sentry).
+                // Once a cull traversal is complete, all visited tiles will be
+                // in front of the sentry, leaving all non-visited tiles behind it.
+                _list.splice(_list.begin(), _list, e._listptr);
+                e._listptr = _list.begin();
+                return &e;
+            }
+            else
+            {
+                // New entry:
+                _list.emplace_front(data); // ListEntry
+                TableEntry& e = _table[data];
+                e._data = data;
+                e._listptr = _list.begin();
+                return &e;
+            }
+        }
+
+        inline void collectTrash(
+            osg::NodeVisitor& nv,
+            float fartherThanRange,
+            unsigned maxCount,
+            const std::function<void(T* obj)>& dispose)
+        {
+            // After cull, all visited tiles are in front of the sentry, and all
+            // non-visited tiles are behind it. Start at the sentry position and
+            // iterate over the non-visited tiles, checking them for deletion.
+            ListIterator i = _sentryptr;
+            ListIterator tmp;
+            unsigned count = 0;
+
+            for (++i; i != _list.end() && count < maxCount; ++i)
+            {
+                ListEntry& se = *i;
+
+                // back up the iterator so we can safely erase the entry:
+                tmp = i;
+                --i;
+
+                // user disposal function
+                dispose(se._data);
+
+                // remove it from the main tile table:
+                _table.erase(se._data);
+
+                // remove it from the tracker list:
+                _list.erase(tmp);
+
+                ++count;
+            }
+
+            // reset the sentry.
+            _list.splice(_list.begin(), _list, _sentryptr);
+            _sentryptr = _list.begin();
+        }
+    };
+
+
     /** @deprecated - please use ObjectStorage instead */
     template<typename T>
     class OptionsData : public osg::Object {

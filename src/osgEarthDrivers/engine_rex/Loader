@@ -41,7 +41,9 @@ namespace osgEarth { namespace REX
         Merger();
 
         //! Merge the tile load results into the host tile
-        void merge(LoadTileDataOperationPtr data);
+        void merge(
+            LoadTileDataOperationPtr data,
+            osg::NodeVisitor& nv);
 
         //! Maximum number of merges to perform per UPDATE frame
         //! Default = unlimited
@@ -55,13 +57,12 @@ namespace osgEarth { namespace REX
 
     protected:
         virtual ~Merger();
-
     private:
 
         // GL objects compile task
         struct ToCompile {
             std::shared_ptr<LoadTileDataOperation> _data;
-            Future<bool> _compileJob;
+            Future<osg::ref_ptr<osg::Node>> _compiled;
         };
 
         // Queue of GL object compilations to perform per-merge,
@@ -75,8 +76,6 @@ namespace osgEarth { namespace REX
 
         Mutex _mutex;
         unsigned _mergesPerFrame;
-        osg::observer_ptr<osgUtil::IncrementalCompileOperation> _ico;
-        bool _ico_tried;
     };
 
 } }

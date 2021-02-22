@@ -711,36 +711,83 @@ namespace
 
     struct ICOCallback : public ICO::CompileCompletedCallback
     {
-        Promise<bool> _promise;
+        Promise<osg::ref_ptr<osg::Node>> _promise;
+        osg::ref_ptr<osg::Node> _node;
+        std::atomic_int& _jobsActive;
+
+        ICOCallback(const osg::ref_ptr<osg::Node>& node, std::atomic_int& jobsActive) :
+            _node(node),
+            _jobsActive(jobsActive) { }
+
+        virtual ~ICOCallback() {
+            _jobsActive--;
+        }
 
         bool compileCompleted(ICO::CompileSet* compileSet) override
         {
-            _promise.resolve(true);
+            _promise.resolve(_node);
             return true;
         }
     };
 }
 
-Future<bool>
+std::atomic_int GLObjectsCompiler::_jobsActive = 0;
+
+Future<osg::ref_ptr<osg::Node>>
 GLObjectsCompiler::compileAsync(
-    osg::Node* node,
+    const osg::ref_ptr<osg::Node>& node,
     const osg::Object* host,
     Cancelable* progress) const
 {
-    Future<bool> result;
-    if (node)
+    Future<osg::ref_ptr<osg::Node>> result;
+    if (node.valid())
+    {
+        osgUtil::StateToCompile state(
+            osgUtil::GLObjectsVisitor::COMPILE_STATE_ATTRIBUTES |
+            osgUtil::GLObjectsVisitor::CHECK_BLACK_LISTED_MODES,
+            nullptr);
+
+        node->accept(state);
+
+        result = compileAsync(node, state, host, progress);
+    }
+    return result;
+}
+
+Future<osg::ref_ptr<osg::Node>>
+GLObjectsCompiler::compileAsync(
+    const osg::ref_ptr<osg::Node>& node,
+    osgUtil::StateToCompile& state,
+    const osg::Object* host,
+    Cancelable* progress) const
+{
+    Future<osg::ref_ptr<osg::Node>> result;
+    if (node.valid())
     {
         // if there is an ICO available, schedule the GPU compilation
-        osg::ref_ptr<ICO> ico;
-        if (ObjectStorage::get(host, ico))
+        bool compileScheduled = false;
+        if (!state.empty())
         {
-            auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet(node);
+            osg::ref_ptr<ICO> ico;
+            if (ObjectStorage::get(host, ico) && ico->isActive())
+            {
+                auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
+                compileSet->buildCompileMap(ico->getContextSet(), state);
+                ICOCallback* callback = new ICOCallback(node, _jobsActive);
+                result = callback->_promise.getFuture();
+                compileSet->_compileCompletedCallback = callback;
+                _jobsActive++;
+                ico->add(compileSet, false);
+                compileScheduled = true;
+            }
+        }
 
-            ICOCallback* callback = new ICOCallback();
-            result = callback->_promise.getFuture();
-            compileSet->_compileCompletedCallback = callback;
-
-            ico->add(compileSet);
+        if (!compileScheduled)
+        {
+            // no ICO available - just resolve the future immediately
+            Promise<osg::ref_ptr<osg::Node>> promise;
+            result = promise.getFuture();
+            promise.resolve(node);
         }
     }
     return result;
@@ -749,13 +796,13 @@ GLObjectsCompiler::compileAsync(
 
 void
 GLObjectsCompiler::compileNow(
-    osg::Node* node,
+    const osg::ref_ptr<osg::Node>& node,
     const osg::Object* host,
     Cancelable* progress) const
 {
     if (node)
     {
-        Future<bool> result = compileAsync(node, host, progress);
+        Future<osg::ref_ptr<osg::Node>> result = compileAsync(node, host, progress);
         result.join(progress);
     }
 }

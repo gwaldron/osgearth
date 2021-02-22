@@ -35,8 +35,7 @@ using namespace osgEarth::REX;
 #define LC "[Merger] "
 
 Merger::Merger() :
-    _mergesPerFrame(~0),
-    _ico_tried(false)
+    _mergesPerFrame(~0)
 {
     setCullingActive(false);
     setNumChildrenRequiringUpdateTraversal(+1);
@@ -58,29 +57,42 @@ void
 Merger::clear()
 {
     ScopedMutexLock lock(_mutex);
-    _compileQueue.swap(CompileQueue());
-    _mergeQueue.swap(MergeQueue());
+    _compileQueue = CompileQueue();
+    _mergeQueue = MergeQueue();
 }
 
 void
-Merger::merge(LoadTileDataOperationPtr data)
+Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
 {
-    if (_ico.valid())
+    osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico;
+    if (ObjectStorage::get(&nv, ico))
     {
-        osg::ref_ptr<osg::Node> node = new osg::Node();
-        std::vector<osg::Texture*> textures;
-        data->_result.get()->getDataToCompile(textures);
-        osg::StateSet* ss = node->getOrCreateStateSet();
-        unsigned unit = 0;
-        for (auto tex : textures)
-            ss->setTextureAttribute(unit++, tex, 1);
+        osgUtil::StateToCompile state(
+            osgUtil::GLObjectsVisitor::COMPILE_STATE_ATTRIBUTES |
+            osgUtil::GLObjectsVisitor::CHECK_BLACK_LISTED_MODES,
+            nullptr);
 
+        data->_result.get()->getStateToCompile(state);
+        
         ScopedMutexLock lock(_mutex);
-        _compileQueue.emplace();
 
-        GLObjectsCompiler glcompiler;
-        _compileQueue.back()._data = data;
-        _compileQueue.back()._compileJob = glcompiler.compileAsync(node.get(), this, nullptr);
+        if (!state.empty())
+        {
+            static osg::ref_ptr<osg::Node> unusedNode = new osg::Node();
+            _compileQueue.emplace();
+
+            GLObjectsCompiler glcompiler;
+            ToCompile toCompile;
+            toCompile._data = data;
+            toCompile._compiled = glcompiler.compileAsync(
+                unusedNode, state, &nv, nullptr);
+
+            _compileQueue.emplace(toCompile);
+        }
+        else
+        {
+            _mergeQueue.push(data);
+        }
     }
     else
     {
@@ -92,43 +104,22 @@ Merger::merge(LoadTileDataOperationPtr data)
 void
 Merger::traverse(osg::NodeVisitor& nv)
 {
-    if (!_ico_tried &&
-        !_ico.valid() &&
-        nv.getVisitorType() == nv.CULL_VISITOR)
-    {
-        // Detect an ICO so we can do GL compiliation
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-        if (cv && cv->getCurrentCamera())
-        {
-            osgViewer::View* osgView = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
-            if (osgView)
-            {
-                _ico = osgView->getDatabasePager()->getIncrementalCompileOperation();
-                if (_ico.valid())
-                {
-                    ObjectStorage::set(this, _ico.get());
-                }
-            }
-            _ico_tried = true;
-        }
-    }
-
-    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
         ScopedMutexLock lock(_mutex);
 
         // First check the GL compile queue
-        while (_ico.valid() && !_compileQueue.empty())
+        while (!_compileQueue.empty())
         {
             ToCompile& next = _compileQueue.front();
 
-            if (next._compileJob.isAvailable())
+            if (next._compiled.isAvailable())
             {
                 // compile finished, put it on the merge queue
                 _mergeQueue.emplace(std::move(next._data));
                 _compileQueue.pop();
             }
-            else if (next._compileJob.isAbandoned())
+            else if (next._compiled.isAbandoned())
             {
                 // compile canceled, ditch it
                 _compileQueue.pop();

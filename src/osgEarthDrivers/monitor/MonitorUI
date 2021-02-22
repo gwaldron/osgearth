@@ -39,8 +39,7 @@ namespace osgEarth { namespace Monitor
 
     private:
         osg::ref_ptr<ui::LabelControl> _pb, _ws, _ppb,
-            _jobdata,
-            _jobthreads, _jobspending, _jobsrunning;
+            _jobdata, _ico;
     };
 
 } } // namespace

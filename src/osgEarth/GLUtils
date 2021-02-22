@@ -44,6 +44,10 @@
 #define GL_DYNAMIC_STORAGE_BIT 0x0100
 #endif
 
+namespace osgUtil {
+    class StateToCompile;
+}
+
 namespace osgEarth
 {
     using namespace Threading;
@@ -341,17 +345,29 @@ namespace osgEarth
      * Utility to "pre-compile" a node by running it through the ICO
      * if one exists in the Options. If there is no ICO, this is a no-op
      */
-    struct OSGEARTH_EXPORT GLObjectsCompiler
+    class OSGEARTH_EXPORT GLObjectsCompiler
     {
+    public:
         void compileNow(
-            osg::Node* node,
+            const osg::ref_ptr<osg::Node>& node,
             const osg::Object* host,
             osgEarth::Threading::Cancelable* progress) const;
 
-        Future<bool> compileAsync(
-            osg::Node* node,
+        Future<osg::ref_ptr<osg::Node>> compileAsync(
+            const osg::ref_ptr<osg::Node>& node,
             const osg::Object* host,
             osgEarth::Threading::Cancelable* progress) const;
+
+        Future<osg::ref_ptr<osg::Node>> compileAsync(
+            const osg::ref_ptr<osg::Node>& node,
+            osgUtil::StateToCompile& state,
+            const osg::Object* host,
+            osgEarth::Threading::Cancelable* progress) const;
+
+        static int totalJobs() { return (int)_jobsActive; }
+
+    private:
+        static std::atomic_int _jobsActive;
     };
 }
 

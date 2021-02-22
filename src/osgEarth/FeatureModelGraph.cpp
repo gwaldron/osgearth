@@ -284,6 +284,7 @@ namespace
         p->setCenter(bs.center());
         p->setRadius(bs.radius());
         p->setMaxRange(maxRange);
+        p->setPriorityScale(layout.priorityScale().get());
         p->setSceneGraphCallbacks(sgCallbacks);
         p->setReadOptions(readOptions);
         return p;

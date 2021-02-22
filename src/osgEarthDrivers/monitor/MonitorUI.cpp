@@ -18,6 +18,7 @@
  */
 #include "MonitorUI"
 #include <osgEarth/Memory>
+#include <osgEarth/GLUtils>
 #include <osgEarth/Registry>
 
 using namespace osgEarth::Monitor;
@@ -50,6 +51,10 @@ MonitorUI::MonitorUI()
     this->setControl(0, r, new ui::LabelControl("Jobs:"));
     _jobdata = this->setControl(1, r, new ui::LabelControl());
     ++r;
+
+    this->setControl(0, r, new ui::LabelControl("ICO Jobs:"));
+    _ico = this->setControl(1, r, new ui::LabelControl());
+    ++r;
 }
 
 void
@@ -77,5 +82,7 @@ MonitorUI::update(const osg::FrameStamp* fs)
             }
         }
         _jobdata->setText(buf.str());
+
+        _ico->setText(Stringify() << GLObjectsCompiler::totalJobs());
     }
 }

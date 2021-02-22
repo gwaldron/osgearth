@@ -29,6 +29,8 @@
 
 #define LC "[TerrainTileModelFactory] "
 
+#define ARENA_ASYNC_LAYER "oe.layer.async"
+
 using namespace osgEarth;
 
 namespace
@@ -43,9 +45,9 @@ namespace
 
             osg::observer_ptr<ImageLayer> layer_ptr(_layer);
 
-            Job job(JobArena::get("oe.async_layer"));
+            Job job(JobArena::get(ARENA_ASYNC_LAYER));
 
-            job.dispatch<GeoImage>(
+            _result = job.dispatch<GeoImage>(
                 [layer_ptr, key](Cancelable* progress) mutable
                 {
                     GeoImage result;

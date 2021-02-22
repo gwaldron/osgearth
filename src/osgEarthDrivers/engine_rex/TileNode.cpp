@@ -1433,7 +1433,7 @@ TileNode::load(TerrainCuller* culler)
         {
             // The task completed, so submit it to the merger.
             // (We can't merge here in the CULL traversal)
-            _context->getMerger()->merge(op);
+            _context->getMerger()->merge(op, *culler);
             _loadQueue.pop();
             _loadsInQueue = _loadQueue.size();
             if (!_loadQueue.empty())

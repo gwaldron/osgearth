@@ -192,7 +192,7 @@ _blacklist("Reg.BlackList(OE)")
     Units::registerAll( this );
 
     // Default concurrency for async image layers
-    JobArena::setConcurrency("oe.layer.async", 2u);
+    JobArena::setConcurrency("oe.layer.async", 8u);
 }
 
 Registry::~Registry()

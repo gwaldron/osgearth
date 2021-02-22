@@ -254,7 +254,7 @@ namespace
                                 }
 
                                 // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                                // style in this case: for style expressions, the user must be explicity about 
+                                // style in this case: for style expressions, the user must be explicity about
                                 // default styling; this is because there is no other way to exclude unwanted
                                 // features.
                                 else
@@ -320,7 +320,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     {
         setStatus(getFeatureSource()->getStatus());
         return GeoImage::INVALID;
-    }    
+    }
 
     const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
     if (!featureProfile)
@@ -354,8 +354,8 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         osg::ref_ptr<const SpatialReference> srs = keySRS->createTangentPlaneSRS(pos);
         outputExtent = outputExtent.transform(srs.get());
 
-        // Set the LTP as our output SRS. 
-        // The geometry compiler will transform all our features into the 
+        // Set the LTP as our output SRS.
+        // The geometry compiler will transform all our features into the
         // LTP so we can render using an orthographic camera (TileRasterizer)
         FilterContext fc(_session.get(), featureProfile, featureExtent);
         fc.setOutputSRS(outputExtent.getSRS());
@@ -385,7 +385,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             OE_PROFILING_ZONE_NAMED("Rasterize");
 
             Future<osg::ref_ptr<osg::Image>> result = _rasterizer->render(
-                group.release(), 
+                group.release(),
                 outputExtent);
 
             // Immediately blocks on the result. Consider better ways?
@@ -458,6 +458,6 @@ RoadSurfaceLayer::getFeatures(
             sublist.begin(),
             sublist.end(),
             std::back_inserter(output),
-            [](Feature* f) { return osg::clone(f, osg::CopyOp::DEEP_COPY_ALL); });
+            [](osg::ref_ptr< Feature > f) { return osg::clone(f.get(), osg::CopyOp::DEEP_COPY_ALL); });
     }
 }

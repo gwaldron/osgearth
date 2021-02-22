@@ -34,7 +34,7 @@ using namespace osgEarth::Util;
 #define PAGEDNODE_ARENA_NAME "oe.nodepager"
 
 namespace
-{    
+{
     struct PagedNodePseudoLoader : public osgDB::ReaderWriter
     {
         PagedNodePseudoLoader()
@@ -75,7 +75,7 @@ PagedNode::PagedNode() :
 
     _attachPoint = new osg::Group;
 
-    _plod->addChild( _attachPoint );     
+    _plod->addChild( _attachPoint );
 }
 
 void PagedNode::setRangeMode(osg::LOD::RangeMode mode)
@@ -93,14 +93,14 @@ void PagedNode::setupPaging()
 {
     osg::BoundingSphere bs = getChildBound();
 
-    _plod->setCenter( bs.center() ); 
+    _plod->setCenter( bs.center() );
     _plod->setRadius( bs.radius() );
 
     if ( hasChild() )
-    {    
+    {
         // Now setup a filename on the PagedLOD that will load all of the children of this node.
         _plod->setFileName(1, ".osgearth_pseudo_pagednode");
-      
+
         // assemble data to pass to the pseudoloader
         osgDB::Options* options = new osgDB::Options();
         ObjectStorage::set(options, this);
@@ -115,7 +115,7 @@ void PagedNode::setupPaging()
         else
         {
             if (_plod->getRangeMode() == _plod->DISTANCE_FROM_EYE_POINT)
-            {                
+            {
                 minRange = (float)(bs.radius() * _rangeFactor);
             }
             else
@@ -157,7 +157,7 @@ void PagedNode::setupPaging()
     {
         // no children, so max out the visibility range.
         _plod->setRange( 0, 0, FLT_MAX );
-    }   
+    }
 }
 
 osg::BoundingSphere PagedNode::getChildBound() const
@@ -251,11 +251,11 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                     {
                         osg::ref_ptr<osg::Node> node;
                         osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
-                        
+
                         if (load != nullptr)
                             node = load(progress.get());
                         else if (!uri.empty())
-                            node = uri.getNode(readOptions, progress.get());
+                            node = uri.getNode(readOptions.get(), progress.get());
 
                         if (node.valid() && callbacks.valid())
                             callbacks->firePreMergeNode(node.get());
@@ -270,7 +270,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 // Compile the loaded node.
                 GLObjectsCompiler compiler;
                 osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
-                _compiled = compiler.compileAsync(_loaded.get(), &nv, p);
+                _compiled = compiler.compileAsync(_loaded.get(), &nv, p.get());
             }
 
             else if (_compiled.isAvailable() && _compiled.get().valid())
@@ -315,7 +315,7 @@ PagedNode2::computeBound() const
 
     else if (_userBS.isSet())
     {
-        // if the future node isn't loaded yet, use the 
+        // if the future node isn't loaded yet, use the
         // user-supplied center and radius
 
         bs.expandBy(_userBS.get());
@@ -373,7 +373,7 @@ PagingManager::traverse(osg::NodeVisitor& nv)
         // You can change this to push_back and put a limiter on it
         // to gradually release stuff instead
 
-        _tracker.collectTrash(nv, 0.0f, ~0u, 
+        _tracker.collectTrash(nv, 0.0f, ~0u,
             [this](PagedNode2* node) { _trash.push_front(node); });
 
         //_tracker.collectTrash(nv, 0.0f, 1u,

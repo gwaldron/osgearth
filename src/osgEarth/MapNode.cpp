@@ -300,6 +300,10 @@ MapNode::init()
 
     // Connector to active the global GPUJobArena
     this->addChild(new GPUJobArenaConnector());
+
+    // Make sure the Registry is not destroyed until we are done using
+    // it (in ~MapNode).
+    _registry = Registry::instance();
 }
 
 bool

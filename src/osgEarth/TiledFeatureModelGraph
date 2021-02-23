@@ -55,6 +55,8 @@ namespace osgEarth {
         osg::ref_ptr< Session > _session;
         osg::ref_ptr< FeatureFilterChain > _filterChain;
         std::string _ownerName;
+
+        FeatureCursor* createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const;
     };
 }
 

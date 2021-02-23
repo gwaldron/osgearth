@@ -57,7 +57,7 @@ TiledFeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const
     FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
     if (cursor && _filterChain.valid())
     {
-        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), cx);
+        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), &cx);
     }
     return cursor;
 }

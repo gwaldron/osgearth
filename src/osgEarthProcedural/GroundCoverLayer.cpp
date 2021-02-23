@@ -310,8 +310,7 @@ GroundCoverLayer::update(osg::NodeVisitor& nv)
         !_renderer.valid() &&
         _rendererSetup.isAvailable())
     {
-        _renderer = _rendererSetup.get();
-        _rendererSetup.abandon();
+        _renderer = _rendererSetup.release();
 
         if (_renderer.valid())
         {
@@ -524,7 +523,7 @@ GroundCoverLayer::prepareForRendering(TerrainEngine* engine)
         // Initialize the renderer in the background.
         osg::observer_ptr<GroundCoverLayer> layer_obs(this);
 
-        _rendererSetup = Job<osg::ref_ptr<Renderer>>::dispatch(
+        _rendererSetup = Job().dispatch<osg::ref_ptr<Renderer>>(
             [layer_obs](Cancelable* progress)
             {
                 osg::ref_ptr<Renderer> result;

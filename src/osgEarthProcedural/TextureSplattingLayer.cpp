@@ -308,7 +308,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
             osg::ref_ptr<const AssetCatalog> assets = cat->getAssets();
             if (assets.valid())
             {
-                _materialsJob = MaterialsJob::dispatch(
+                _materials = Job().dispatch<osg::ref_ptr<TextureArena>>(
                     [assets](Cancelable* progress)
                     {
                         return loadMaterials(assets.get(), progress);
@@ -335,9 +335,9 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 void
 TextureSplattingLayer::update(osg::NodeVisitor& nv)
 {
-    if (!_arena.valid() && _materialsJob.isAvailable())
+    if (!_arena.valid() && _materials.isAvailable())
     {
-        _arena = _materialsJob.release();
+        _arena = _materials.release();
         buildStateSets();
     }
 }

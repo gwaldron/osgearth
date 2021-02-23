@@ -72,8 +72,7 @@ namespace osgEarth { namespace Procedural
     protected:
         virtual ~TextureSplattingLayer() { }
 
-        using MaterialsJob = Job<osg::ref_ptr<TextureArena>>;
-        MaterialsJob::Result _materialsJob;
+        Future<osg::ref_ptr<TextureArena>> _materials;
         osg::ref_ptr<TextureArena> _arena;
         TextureImageUnitReservation _lifemap_res;
 

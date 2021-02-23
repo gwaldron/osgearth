@@ -554,21 +554,30 @@ FeatureModelGraph::open()
 
     if (featureProfile->isTiled())
     {
-        float maxRange = FLT_MAX;
+        float maxRangeAtFirstLevel = FLT_MAX;
 
+        // Use the layout parameters if set
         if (_options.layout().isSet())
         {
             if (_options.layout()->getNumLevels() > 0)
             {
                 OE_WARN << LC << "Levels are not allowed on a tiled data source - ignoring" << std::endl;
             }
+
+            if (_options.layout()->maxRange().isSet())
+            {
+                maxRangeAtFirstLevel = _options.layout()->maxRange().get();
+            }
         }
 
-        if (_options.layout().isSet() && _options.layout()->maxRange().isSet())
+        // use the layer maxRange if set
+        if (maxRangeAtFirstLevel == FLT_MAX && // still unset
+            _maxRange.isSet())
         {
-            maxRange = _options.layout()->maxRange().get();
+            maxRangeAtFirstLevel = _maxRange.get();
         }
 
+        // calculate an extent at the first level of data
         double width, height;
         featureProfile->getTilingProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
         GeoExtent firstLevelExt(featureProfile->getSRS(),
@@ -577,38 +586,41 @@ FeatureModelGraph::open()
                                 featureProfile->getExtent().west() + width,
                                 featureProfile->getExtent().south() + height);
 
-        // Max range is unspecified, so compute one
-        if (maxRange == FLT_MAX)
+        // Max range is still unset? compute it based on a tile extent at the level where
+        // the data starts
+        if (maxRangeAtFirstLevel == FLT_MAX)
         {
             osg::BoundingSphered bounds = getBoundInWorldCoords(firstLevelExt);
-            maxRange = bounds.radius() * _options.layout()->tileSizeFactor().get();
+            double radius = bounds.radius();
+            maxRangeAtFirstLevel = radius * _options.layout()->tileSizeFactor().get();
         }
 
-        // Aautomatically compute the tileSizeFactor based on the max range if necessary
-        // GW: Need this?
+        // Automatically reverse-engineer the tileSizeFactor based on the max range
+        // if the user hasn't set it
         if (!_options.layout()->tileSizeFactor().isSet())
         {
             osg::BoundingSphered bounds = getBoundInWorldCoords(firstLevelExt);
 
-            float tileSizeFactor = maxRange / bounds.radius();
+            float tileSizeFactor = maxRangeAtFirstLevel / bounds.radius();
 
-            //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere.
+            // The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere.
             tileSizeFactor = osg::maximum(tileSizeFactor, 1.0f);
-            OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRange << std::endl;
+            OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRangeAtFirstLevel << std::endl;
             _options.layout()->tileSizeFactor() = tileSizeFactor;
         }
 
         // The max range that has been computed is for the first level of the dataset, which may be greater than 0.  Compute the max range at level 0 to properly fill in the lodmap from level 0 on.
-        maxRange = maxRange * pow(2.0, featureProfile->getFirstLevel());
+        maxRangeAtFirstLevel *= pow(2.0, featureProfile->getFirstLevel());
 
         // Compute the max range of all the feature levels.  Each subsequent level is half of the parent.
+        float maxRange = maxRangeAtFirstLevel;
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
         for (int i = 0; i < featureProfile->getMaxLevel() + 1; i++)
         {
             OE_INFO << LC << "Computed max range " << maxRange << " for lod " << i << std::endl;
-            FeatureLevel* level = new FeatureLevel(0.0, maxRange);
+            FeatureLevel* level = new FeatureLevel(0.0f, maxRange);
             _lodmap[i] = level;
-            maxRange /= 2.0;
+            maxRange /= 2.0f;
         }
     }
 

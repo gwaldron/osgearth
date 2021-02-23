@@ -902,10 +902,10 @@ FeatureModelGraph::setupPaging()
     if (_options.layout()->paged() == true)
     {
         osg::ref_ptr<FeatureModelGraph> graph(this);
-
-        auto load_func = [graph, uri](Cancelable* c)
+        osg::ref_ptr<const osgDB::Options> readOptions = _session->getDBOptions();
+        auto load_func = [graph, uri, readOptions](Cancelable* c)
         {
-            return graph->load(0, 0, 0, uri, graph->getSession()->getDBOptions());
+            return graph->load(0, 0, 0, uri, readOptions.get());
         };
 
         node = createPagedNode(

@@ -1,0 +1,21 @@
+
+<FeatureImage name="OSM Roads" min_level="14" max_data_level="15" async="true">
+
+    <features>data:osm</features>
+    
+    <filters>
+        <attributes>highway</attributes>
+    </filters>
+    
+    <profile>spherical-mercator</profile>
+
+    <styles>
+        <style type="text/css">
+            default {
+               stroke: #0f0f0f;
+               stroke-width: 10m;
+            }
+        </style>
+    </styles>
+    
+</FeatureImage>

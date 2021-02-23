@@ -31,11 +31,13 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/Threading>
+#include <osgEarth/Utils>
 #include <osgEarth/Geocoder>
 #include <osgEarth/ViewFitter>
 #include <osgEarth/NetworkMonitor>
 
 using namespace osgEarth;
+using namespace osgEarth::Threading;
 using namespace ImGui;
 
 class GlewInitOperation : public osg::Operation
@@ -318,10 +320,9 @@ public:
         _search(""),
         _results(Status::Code::ServiceUnavailable, 0)
     {
-        osg::ref_ptr<ThreadPool> pool = new ThreadPool();
         _options = new osgDB::Options();
-        pool->put(_options.get());
-
+        arena = std::make_shared<JobArena>("Geocoder", 1U);
+        ObjectStorage::set(_options.get(), arena);
     }
 
     void draw(EarthManipulator* manip)
@@ -330,7 +331,6 @@ public:
         if (ImGui::InputText("Search", _search, 128, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
         {
             _features.clear();
-            Geocoder geocoder;
             _results = geocoder.search(_search, _options.get());
         }
 
@@ -374,8 +374,9 @@ public:
     char _search[128];
     Geocoder::Results _results;
     osg::ref_ptr<osgDB::Options> _options;
-
+    std::shared_ptr<JobArena> arena;
     FeatureList _features;
+    Geocoder geocoder;
 };
 
 class LayersGUI

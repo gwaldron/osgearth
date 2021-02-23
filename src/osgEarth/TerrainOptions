@@ -65,6 +65,7 @@ namespace osgEarth
         OE_OPTION(unsigned, mergesPerFrame);
         OE_OPTION(float, priorityScale);
         OE_OPTION(std::string, textureCompression);
+        OE_OPTION(unsigned, concurrency);
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config&);
@@ -227,6 +228,10 @@ namespace osgEarth
         //! Texture compression to use by default on terrain image textures
         void setTextureCompressionMethod(const std::string& method);
         const std::string& getTextureCompressionMethod() const;
+
+        //! Target concurrency of terrain data loading operations. Default = 4.
+        void setConcurrency(const unsigned& value);
+        const unsigned& getConcurrency() const;
 
     public: // Legacy support
 

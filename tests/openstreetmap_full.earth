@@ -13,6 +13,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
         <profile>spherical-mercator</profile>
         <format>pbf</format>
         <fid_attribute>@id</fid_attribute>
+        <attributes>buildings, landuse, natural, surface, amenity</attributes>
     </TFSFeatures>
 
     <FeatureModel name="OSM">
@@ -104,7 +105,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
             </style>
 
             <selector name="default" style_expr="selectStyle()"/>
-
+        
             <script language="javascript">
                 <![CDATA[
 
@@ -189,13 +190,11 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
         <profile>spherical-mercator</profile>
         <format>pbf</format>
         <filters>
-            <script language="javascript">
-                <![CDATA[ ("highway" in feature.properties) ]]>
-            </script>
+            <attributes>highway</attributes>
         </filters>
     </TFSFeatures>
 
-    <FeatureImage name="OSM Roads" min_level="14">
+    <FeatureImage name="OSM Roads" min_level="14" max_data_level="16">
         <features>data:roads</features>
         <max_data_level>14</max_data_level>
         <profile>spherical-mercator</profile>

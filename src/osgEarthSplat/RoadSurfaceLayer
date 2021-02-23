@@ -24,6 +24,7 @@
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/StyleSheet>
+#include <osgEarth/Containers>
 #include "Export"
 
 namespace osgEarth { namespace Splat
@@ -94,6 +95,15 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<Session> _session;
         std::shared_ptr<TileRasterizer> _rasterizer;
         mutable ReadWriteMutex _inUseMutex;
+
+        mutable Gate<TileKey> _keygate;
+        using FeatureListCache = LRUCache<TileKey, FeatureList>;
+        mutable std::unique_ptr<FeatureListCache> _lru;
+
+        void getFeatures(
+            const TileKey& key,
+            FeatureList& output,
+            ProgressCallback* progress) const;
     };
 
 } } // namespace osgEarth::Splat

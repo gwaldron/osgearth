@@ -48,6 +48,7 @@ _layerExtents(nullptr)
     pushProjectionMatrix(_cv->getProjectionMatrix());
     pushModelViewMatrix(_cv->getModelViewMatrix(), _cv->getCurrentCamera()->getReferenceFrame());
     setLODScale(_cv->getLODScale());
+    setUserDataContainer(_cv->getUserDataContainer());
     _camera = _cv->getCurrentCamera();
     _isSpy = VisitorData::isSet(*cullVisitor, "osgEarth.Spy");
 

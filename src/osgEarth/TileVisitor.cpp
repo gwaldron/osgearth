@@ -268,8 +268,6 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
     // Produce the tiles
     TileVisitor::run( mapProfile );
 
-    OE_INFO << _arena->queueSize() << " tasks in the queue" << std::endl;
-
     _group.join();
     
     //// Wait for everything to finish
@@ -286,13 +284,13 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
     //_numTiles++;
 
     // don't let the task queue get too large...?
-    while (_arena->queueSize() > 1000)
+    while (_arena->metrics().totalJobsPending() > 1000)
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     // Add the tile to the task queue.
-    std::function<void()> delegate = [=]()
+    auto delegate = [this, key](Cancelable*)
     {
         if ((_tileHandler.valid()) &&
             (!_progress.valid() || !_progress->isCanceled()))
@@ -300,13 +298,12 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
             _tileHandler->handleTile(key, *this);
             this->incrementProgress(1);
         }
-
-        // atomically decrement the task count
-        //_numTiles--;
-        //_done.notify_all();
     };
 
-    _arena->dispatch(delegate, &_group);
+    Job job(_arena.get(), &_group);
+    job.setName("handleTile");
+    job.dispatch(delegate);
+
     return true;
 }
 

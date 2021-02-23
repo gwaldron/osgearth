@@ -55,6 +55,15 @@ namespace
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.0f,0,1.0f),
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f)
     };
+
+    struct ObserverProgress : public ProgressCallback
+    {
+        osg::observer_ptr< osg::Referenced> _host;
+        ObserverProgress(osg::Referenced* host) : _host(host) { }
+        bool shouldCancel() const override {
+            return !_host.valid();
+        }
+    };
 }
 
 TileNode::TileNode() : 
@@ -69,14 +78,15 @@ _revision(0),
 _mutex("TileNode(OE)"),
 _loadQueue("TileNode LoadQueue(OE)"),
 _createChildAsync(true),
-_nextLoadManifestPtr(nullptr)
+_nextLoadManifestPtr(nullptr),
+_loadPriority(0.0f)
 {
     //nop
 }
 
 TileNode::~TileNode()
 {
-    //OE_INFO << LC << "Tile " << _key.str() << " destroyed" << std::endl;
+    //nop
 }
 
 void
@@ -330,15 +340,14 @@ TileNode::refreshAllLayers()
 void
 TileNode::refreshLayers(const CreateTileManifest& manifest)
 {
-    LoadTileData* r = new LoadTileData(manifest, this, _context.get());
-    r->setName(_key.str());
-    r->setTileKey(_key);
+    LoadTileDataOperationPtr r =
+        std::make_shared<LoadTileDataOperation>(manifest, this, _context.get());
 
     _loadQueue.lock();
     _loadQueue.push(r);
     _loadsInQueue = _loadQueue.size();
     if (_loadsInQueue > 0)
-        _nextLoadManifestPtr = &_loadQueue.front()->getManifest();
+        _nextLoadManifestPtr = &_loadQueue.front()->_manifest;
     else
         _nextLoadManifestPtr = nullptr;
     _loadQueue.unlock();
@@ -713,7 +722,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
             {
                 for (int i = 0; i < 4; ++i)
                 {
-                    if (getNumChildren() > i)
+                    if ((int)getNumChildren() > i)
                     {
                         TileNode* child = getSubTile(i);
                         if (child)
@@ -754,7 +763,7 @@ TileNode::createChildren(EngineContext* context)
             {
                 TileKey childkey = getKey().createChildKey(quadrant);
 
-                TileJob::Function op = [context, parentkey, childkey](Cancelable* state)
+                auto op = [context, parentkey, childkey](Cancelable* state)
                 {
                     osg::ref_ptr<TileNode> tile = context->liveTiles()->get(parentkey);
                     if (tile.valid() && !state->isCanceled())
@@ -763,8 +772,12 @@ TileNode::createChildren(EngineContext* context)
                         return (TileNode*)nullptr;
                 };
 
+                Job job;
+                job.setArena(ARENA_CREATE_CHILD);
+                job.setName(childkey.str());
+
                 _createChildResults.emplace_back(
-                    TileJob::dispatch("oe.rex", op)
+                    job.dispatch<CreateChildResult>(op)
                 );
             }
         }
@@ -812,9 +825,6 @@ TileNode::createChild(const TileKey& childkey, EngineContext* context, Cancelabl
 {
     OE_PROFILING_ZONE;
 
-    // Note! There's a chance that the TileNode we want to create here
-    // already exists in the registry as an orphan. We should probably 
-    // check that out and try to re-attach it...?
     osg::ref_ptr<TileNode> node = new TileNode();
 
     // Build the surface geometry:
@@ -825,12 +835,13 @@ TileNode::createChild(const TileKey& childkey, EngineContext* context, Cancelabl
 }
 
 void
-TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
+TileNode::merge(
+    const TerrainTileModel* model,
+    const CreateTileManifest& manifest)
 {
     bool newElevationData = false;
     const RenderBindings& bindings = _context->getRenderBindings();
     RenderingPasses& myPasses = _renderModel._passes;
-    const CreateTileManifest& manifest = request->getManifest();
     vector_set<UID> uidsLoaded;
 
     // if terrain constraints are in play, regenerate the tile's geometry.
@@ -920,7 +931,8 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
                     }
                     else
                     {
-                        OE_INFO << "erm. No parent pass in my pass. key=" << model->getKey().str() << std::endl;
+                        // note: this can happen with an async layer load
+                        OE_DEBUG << "no parent pass in my pass. key=" << model->getKey().str() << std::endl;
                     }
 
                     pass->sampler(SamplerBinding::COLOR)._futureTexture = imageLayerModel->getTexture();
@@ -1156,7 +1168,7 @@ TileNode::merge(const TerrainTileModel* model, LoadTileData* request)
         _loadQueue.pop();
     _loadsInQueue = _loadQueue.size();
     if (_loadsInQueue > 0)
-        _nextLoadManifestPtr = &_loadQueue.front()->getManifest();
+        _nextLoadManifestPtr = &_loadQueue.front()->_manifest; // getManifest();
     else
         _nextLoadManifestPtr = nullptr;
     _loadQueue.unlock();
@@ -1401,22 +1413,47 @@ TileNode::load(TerrainCuller* culler)
     // (because of the biggest range), and second by distance.
     float priority = lodPriority + distPriority;
 
-    // Submit to the loader.
-    _loadQueue.lock(); // lock the load queue
+    // set atomically
+    _loadPriority = priority;
+
+    // Check the status of the load
+    ScopedMutexLock lock(_loadQueue);
+
     if (_loadQueue.empty() == false)
     {
-        LoadTileData* r = _loadQueue.front().get();
-        _context->getLoader()->load(r, priority, *culler);
+        LoadTileDataOperationPtr& op = _loadQueue.front();
+
+        if (op->_result.isAbandoned())
+        {
+            // Actually this means that the task has not yet been dispatched,
+            // so assign the priority and do it now.
+            //op->_priority = priority;
+            op->dispatch();
+        }
+
+        else if (op->_result.isAvailable())
+        {
+            // The task completed, so submit it to the merger.
+            // (We can't merge here in the CULL traversal)
+            _context->getMerger()->merge(op, *culler);
+            _loadQueue.pop();
+            _loadsInQueue = _loadQueue.size();
+            if (!_loadQueue.empty())
+                _nextLoadManifestPtr = &_loadQueue.front()->_manifest;
+            else
+                _nextLoadManifestPtr = nullptr;
+        }
     }
-    _loadQueue.unlock(); // unlock the load queue
 }
 
 void
 TileNode::loadSync()
 {
-    osg::ref_ptr<LoadTileData> loadTileData = new LoadTileData(this, _context.get());
+    LoadTileDataOperationPtr loadTileData =
+        std::make_shared<LoadTileDataOperation>(this, _context.get());
+
     loadTileData->setEnableCancelation(false);
-    loadTileData->run(0L);
+    loadTileData->dispatch(false);
     loadTileData->merge();
 }
 

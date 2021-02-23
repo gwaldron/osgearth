@@ -23,6 +23,8 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/URI>
+#include <osgEarth/Feature>
+#include <osgEarth/FeatureSource>
 #include <vector>
 
 /**
@@ -31,6 +33,13 @@
  */
 namespace osgEarth { namespace ArcGIS
 {
+    enum StorageFormat
+    {
+        STORAGE_FORMAT_COMPACT,
+        STORAGE_FORMAT_COMPACTV2
+    };
+
+
     // esriMapCacheStorageModeCompact bundle reader
     class OSGEARTH_EXPORT BundleReader
     {
@@ -42,8 +51,9 @@ namespace osgEarth { namespace ArcGIS
         void readIndex(const std::string& filename, std::vector<int>& index);
 
         osg::Image* readImage(const TileKey& key, const osgDB::ReaderWriter* rw);
-
         osg::Image* readImage(unsigned int index, const osgDB::ReaderWriter* rw);
+
+        void readFeatures(const TileKey& key, FeatureList& features);
 
     protected:
         std::string _bundleFile;
@@ -73,6 +83,9 @@ namespace osgEarth { namespace ArcGIS
         osg::Image* readImage(const TileKey& key, const osgDB::ReaderWriter* rw);
 
         osg::Image* readImage(unsigned int index, const osgDB::ReaderWriter* rw);
+
+        void readFeatures(const TileKey& key, FeatureList& features);
+
 
     protected:
         std::string _bundleFile;
@@ -108,13 +121,6 @@ namespace osgEarth
         };
 
     public:
-        enum StorageFormat
-        {
-            STORAGE_FORMAT_COMPACT,
-            STORAGE_FORMAT_COMPACTV2
-        };
-
-    public:
         META_Layer(osgEarth, ArcGISTilePackageImageLayer, Options, ImageLayer, ArcGISTilePackageImage);
 
     public:
@@ -144,7 +150,7 @@ namespace osgEarth
         optional<ProfileOptions> _profileConf;
         unsigned _bundleSize;
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
-        StorageFormat _storageFormat;
+        ArcGIS::StorageFormat _storageFormat;
 
         void readConf();
     };
@@ -163,13 +169,6 @@ namespace osgEarth
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
-        };
-
-    public:
-        enum StorageFormat
-        {
-            STORAGE_FORMAT_COMPACT,
-            STORAGE_FORMAT_COMPACTV2
         };
 
     public:
@@ -202,14 +201,64 @@ namespace osgEarth
         optional<ProfileOptions> _profileConf;
         unsigned _bundleSize;
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
-        StorageFormat _storageFormat;
+        ArcGIS::StorageFormat _storageFormat;
 
         void readConf();
+    };
+
+
+    /**
+    * Feature Layer that accesses ESRI VTPK layers.  This format is not very well documented.
+    * https://github.com/syncpoint/openvtpk is a good starting point to understand it.
+    */
+    class OSGEARTH_EXPORT VTPKFeatureSource : public FeatureSource
+    {
+    public: // serialization
+
+        class OSGEARTH_EXPORT Options : public FeatureSource::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            OE_OPTION(URI, url);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, VTPKFeatureSource, Options, FeatureSource, VTPKFeatures);
+
+        //! Location of the resource
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+    public: // Layer
+
+        virtual Status openImplementation();
+
+    protected:
+
+        virtual void init();
+
+    public: // FeatureSource
+
+        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);
+
+    protected:
+
+        virtual ~VTPKFeatureSource() { }
+
+        void computeMinMaxLevel(unsigned int &min, unsigned int &max);
+
+    private:
+        unsigned _bundleSize;
+        ArcGIS::StorageFormat _storageFormat;
     };
 
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISTilePackageImageLayer::Options);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISTilePackageElevationLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::VTPKFeatureSource::Options);
 
 #endif // OSGEARTH_ARCGIS_TILEPACKAGE_H

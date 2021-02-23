@@ -29,6 +29,10 @@
 #include <osg/Matrix>
 #include <osg/Node>
 
+namespace osgUtil {
+    class StateToCompile;
+}
+
 namespace osgEarth
 {
     using namespace Util;
@@ -239,7 +243,7 @@ namespace osgEarth
     public:
         void compileGLObjects(class osg::State& state) const;
 
-        void getDataToCompile(std::vector<osg::Texture*>& textures) const;
+        void getStateToCompile(osgUtil::StateToCompile& out) const;
 
     protected:
         TileKey                                 _key;

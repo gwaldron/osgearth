@@ -294,6 +294,12 @@ FeatureModelLayer::create()
             fmg->setSceneGraphCallbacks(getSceneGraphCallbacks());
             fmg->setStyleSheet(getStyleSheet());
 
+            // pass though the min/max ranges
+            if (options().maxVisibleRange().isSet())
+                fmg->setMaxRange(options().maxVisibleRange().get());
+            if (options().minVisibleRange().isSet())
+                fmg->setMinRange(options().minVisibleRange().get());
+
             Status status = fmg->open();
 
             if (status.isError())

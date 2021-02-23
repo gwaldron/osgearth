@@ -24,10 +24,29 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/optional>
+#include <osgEarth/Threading>
+#include <osgEarth/URI>
+#include <osgEarth/SceneGraphCallback>
+#include <osgEarth/Utils>
+
 #include <osg/PagedLOD>
+#include <osg/LOD>
+
+#include <queue>
+#include <list>
+#include <memory>
+#include <iterator>
+#include <unordered_map>
+
+namespace osgUtil {
+    class IncrementalCompileOperation;
+}
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Threading;
+
     /**
      * PagedNode is a group with a self-contained paged child.
      * It wraps the details of a PagedNode node into a container
@@ -89,7 +108,116 @@ namespace osgEarth { namespace Util
         bool _additive;
         optional<float> _range;
         float _rangeFactor;
-    };    
+    };
+
+
+    class OSGEARTH_EXPORT PagedNode2 : public osg::Node
+    {
+    public:
+        using Loader = std::function<osg::ref_ptr<osg::Node>(Cancelable*)>;
+
+    public:
+        PagedNode2();
+
+        //! Function to run to load the asychronous child
+        void setLoadFunction(const Loader& value) {
+            _load = value;
+        }
+
+        //! Set the center of this node, which is necessary since we
+        //! cannot compute the bounding sphere before the asynchronous load
+        void setCenter(const osg::Vec3& value) {
+            _userBS->center() = value;
+        }
+
+        //! Set the radius of this node's bounding sphere, which is necessary
+        //! since we cannot compute the bounding sphere before the asynchronous load
+        void setRadius(float value) {
+            _userBS->radius() = value;
+        }
+
+        //! Minimum distance from camera at which to render
+        void setMinRange(float value) {
+            _minRange = value;
+        }
+
+        //! Maximum distance from camera at which to render
+        void setMaxRange(float value) {
+            _maxRange = value;
+        }
+
+        //! Multiple the load job's priority by this number
+        void setPriorityScale(float value) {
+            _priorityScale = value;
+        }
+
+        //! Pre- and post-merge callbacks for the async data
+        void setSceneGraphCallbacks(SceneGraphCallbacks* value) {
+            _callbacks = value;
+        }
+
+        //! Delete the async child and start over
+        void reset();
+
+    public: // osg::Node overrides
+        
+        virtual void traverse(osg::NodeVisitor& nv) override;
+
+        virtual osg::BoundingSphere computeBound() const override;
+
+        virtual void resizeGLObjectBuffers(unsigned) override;
+
+        virtual void releaseGLObjects(osg::State*) const override;
+
+    protected:
+
+        virtual ~PagedNode2();
+
+    private:
+        friend class PagingManager;
+
+        void* _token;
+        class PagingManager* _pagingManager;
+        osg::ref_ptr<SceneGraphCallbacks> _callbacks;
+        osg::ref_ptr<osg::Node> _placeholder;
+        std::atomic_bool _loadTriggered;
+        std::atomic_bool _compileTriggered;
+        std::atomic_bool _callbackFired;
+        Future<osg::ref_ptr<osg::Node>> _loaded;
+        Future<osg::ref_ptr<osg::Node>> _compiled;
+        Mutex _mutex;
+        optional<osg::BoundingSphere> _userBS;
+        float _minRange;
+        float _maxRange;
+        float _priorityScale;
+        Job _job;
+        std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load;
+    };
+
+
+    class OSGEARTH_EXPORT PagingManager : public osg::Group
+    {
+    public:
+
+        PagingManager();
+
+        inline void* use(PagedNode2* node, void* token) {
+            ScopedMutexLock lock(_trackerMutex);
+            return _tracker.use(node, token);
+        }
+
+    public:
+        void traverse(osg::NodeVisitor& nv) override;
+
+    private:
+        mutable Mutex _mutex;
+        Mutex _trackerMutex;
+        SentryTracker<PagedNode2> _tracker;
+        std::list<osg::observer_ptr<PagedNode2>> _trash;
+
+        friend class PagedNode2;
+    };
+
 } }
 
 #endif // OSGEARTHUTIL_PAGEDNODE_H

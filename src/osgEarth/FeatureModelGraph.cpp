@@ -37,6 +37,7 @@
 #include <osgEarth/ElevationRanges>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/NetworkMonitor>
+#include <osgEarth/PagedNode>
 
 #include <osg/CullFace>
 #include <osg/PagedLOD>
@@ -61,6 +62,8 @@ using namespace osgEarth::Util;
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
 
+#define USE_PAGING_MANAGER
+
 #define USER_OBJECT_NAME "osgEarth.FeatureModelGraph"
 
 // Whether to install a cull callback on PagedLODs that adds an extra
@@ -71,6 +74,7 @@ using namespace osgEarth::Util;
 
 namespace
 {
+#ifndef USE_PAGING_MANAGER
     // callback to force features onto the high-latency queue.
     struct HighLatencyFileLocationCallback : public osgDB::FileLocationCallback
     {
@@ -81,6 +85,7 @@ namespace
 
         bool useFileCache() const { return false; }
     };
+#endif
 
     struct MyProgressCallback : public DatabasePagerProgressCallback
     {
@@ -241,8 +246,10 @@ namespace
         return str;
     }
 
-    osg::Group* createPagedNode(const osg::BoundingSphered& bs,
+    osg::Node* createPagedNode(
+        const osg::BoundingSphered& bs,
         const std::string& uri,
+        const std::function<osg::ref_ptr<osg::Node>(Cancelable*)>& func,
         float minRange,
         float maxRange,
         const FeatureDisplayLayout& layout,
@@ -251,6 +258,7 @@ namespace
         const osgDB::Options* readOptions,
         FeatureModelGraph* fmg)
     {
+
 #ifdef USE_PROXY_NODE
 
         osg::ProxyNode* p = new osg::ProxyNode();
@@ -266,6 +274,19 @@ namespace
         // so we can find the FMG instance in the pseudoloader.
         options->getOrCreateUserDataContainer()->addUserObject(fmg);
 
+        return p;
+
+#elif defined(USE_PAGING_MANAGER)
+
+        PagedNode2* p = new PagedNode2();
+        p->setName(uri);
+        p->setLoadFunction(func);
+        p->setCenter(bs.center());
+        p->setRadius(bs.radius());
+        p->setMinRange(minRange);
+        p->setMaxRange(maxRange);
+        p->setPriorityScale(layout.priorityScale().get());
+        p->setSceneGraphCallbacks(sgCallbacks);
         return p;
 
 #else
@@ -301,7 +322,7 @@ namespace
         options->setFileLocationCallback(flc);
         p->setDatabaseOptions(options);
         // so we can find the FMG instance in the pseudoloader.
-        OptionsData<FeatureModelGraph>::set(options, USER_OBJECT_NAME, fmg);
+        ObjectStorage::set(options, fmg);
 
         return p;
 
@@ -310,6 +331,7 @@ namespace
 }
 
 
+#ifndef USE_PAGING_MANAGER
 namespace
 {
     /**
@@ -337,7 +359,7 @@ namespace
             sscanf(uri.c_str(), "%u_%u_%u.%*s", &lod, &x, &y);
 
             osg::ref_ptr<FeatureModelGraph> graph;
-            if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
+            if (!ObjectStorage::get(readOptions, graph))
             {
                 // FMG was shut down
                 return ReadResult(nullptr);
@@ -360,7 +382,7 @@ namespace
     };
 }
 REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader);
-
+#endif
 
 namespace
 {
@@ -456,8 +478,10 @@ FeatureModelGraph::open()
 
     _nodeCachingImageCache = new osgDB::ObjectCache();
 
+#ifndef USE_PAGING_MANAGER
     // an FLC that queues feature data on the high-latency thread.
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
+#endif
 
     if (!_session.valid())
     {
@@ -530,21 +554,30 @@ FeatureModelGraph::open()
 
     if (featureProfile->isTiled())
     {
-        float maxRange = FLT_MAX;
+        float maxRangeAtFirstLevel = FLT_MAX;
 
+        // Use the layout parameters if set
         if (_options.layout().isSet())
         {
             if (_options.layout()->getNumLevels() > 0)
             {
                 OE_WARN << LC << "Levels are not allowed on a tiled data source - ignoring" << std::endl;
             }
+
+            if (_options.layout()->maxRange().isSet())
+            {
+                maxRangeAtFirstLevel = _options.layout()->maxRange().get();
+            }
         }
 
-        if (_options.layout().isSet() && _options.layout()->maxRange().isSet())
+        // use the layer maxRange if set
+        if (maxRangeAtFirstLevel == FLT_MAX && // still unset
+            _maxRange.isSet())
         {
-            maxRange = _options.layout()->maxRange().get();
+            maxRangeAtFirstLevel = _maxRange.get();
         }
 
+        // calculate an extent at the first level of data
         double width, height;
         featureProfile->getTilingProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
         GeoExtent firstLevelExt(featureProfile->getSRS(),
@@ -553,38 +586,41 @@ FeatureModelGraph::open()
                                 featureProfile->getExtent().west() + width,
                                 featureProfile->getExtent().south() + height);
 
-        // Max range is unspecified, so compute one
-        if (maxRange == FLT_MAX)
+        // Max range is still unset? compute it based on a tile extent at the level where
+        // the data starts
+        if (maxRangeAtFirstLevel == FLT_MAX)
         {
             osg::BoundingSphered bounds = getBoundInWorldCoords(firstLevelExt);
-            maxRange = bounds.radius() * _options.layout()->tileSizeFactor().get();
+            double radius = bounds.radius();
+            maxRangeAtFirstLevel = radius * _options.layout()->tileSizeFactor().get();
         }
 
-        // Aautomatically compute the tileSizeFactor based on the max range if necessary
-        // GW: Need this?
+        // Automatically reverse-engineer the tileSizeFactor based on the max range
+        // if the user hasn't set it
         if (!_options.layout()->tileSizeFactor().isSet())
         {
             osg::BoundingSphered bounds = getBoundInWorldCoords(firstLevelExt);
 
-            float tileSizeFactor = maxRange / bounds.radius();
+            float tileSizeFactor = maxRangeAtFirstLevel / bounds.radius();
 
-            //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere.
+            // The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere.
             tileSizeFactor = osg::maximum(tileSizeFactor, 1.0f);
-            OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRange << std::endl;
+            OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRangeAtFirstLevel << std::endl;
             _options.layout()->tileSizeFactor() = tileSizeFactor;
         }
 
         // The max range that has been computed is for the first level of the dataset, which may be greater than 0.  Compute the max range at level 0 to properly fill in the lodmap from level 0 on.
-        maxRange = maxRange * pow(2.0, featureProfile->getFirstLevel());
+        maxRangeAtFirstLevel *= pow(2.0, featureProfile->getFirstLevel());
 
         // Compute the max range of all the feature levels.  Each subsequent level is half of the parent.
+        float maxRange = maxRangeAtFirstLevel;
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
         for (int i = 0; i < featureProfile->getMaxLevel() + 1; i++)
         {
             OE_INFO << LC << "Computed max range " << maxRange << " for lod " << i << std::endl;
-            FeatureLevel* level = new FeatureLevel(0.0, maxRange);
+            FeatureLevel* level = new FeatureLevel(0.0f, maxRange);
             _lodmap[i] = level;
-            maxRange /= 2.0;
+            maxRange /= 2.0f;
         }
     }
 
@@ -854,13 +890,28 @@ FeatureModelGraph::setupPaging()
     std::string uri = s_makeURI(0, 0, 0);
 
     // bulid the top level node:
-    osg::ref_ptr<osg::Node> topNode;
+    osg::ref_ptr<osg::Group> topNode;
+    osg::ref_ptr<osg::Node> node;
+
+#ifdef USE_PAGING_MANAGER
+    topNode = new PagingManager();
+#else
+    topNode = new osg::Group();
+#endif
 
     if (_options.layout()->paged() == true)
     {
-        topNode = createPagedNode(
+        osg::ref_ptr<FeatureModelGraph> graph(this);
+
+        auto load_func = [graph, uri](Cancelable* c)
+        {
+            return graph->load(0, 0, 0, uri, nullptr);
+        };
+
+        node = createPagedNode(
             bs,
             uri,
+            load_func,
             0.0f,
             maxRange,
             _options.layout().get(),
@@ -871,7 +922,12 @@ FeatureModelGraph::setupPaging()
     }
     else
     {
-        topNode = load(0, 0, 0, uri, _session->getDBOptions());
+        node = load(0, 0, 0, uri, _session->getDBOptions());
+    }
+
+    if (node.valid())
+    {
+        topNode->addChild(node);
     }
 
     return topNode;
@@ -1108,10 +1164,20 @@ FeatureModelGraph::buildSubTilePagedLODs(
 
                 if (_options.layout()->paged() == true)
                 {
+                    osg::ref_ptr<FeatureModelGraph> graph(this);
+                    osg::ref_ptr<const osgDB::Options> ro(readOptions);
+
+                    auto load_func = [graph, subtileLOD, u, v, uri, ro](Cancelable* c)
+                    {
+                        return graph->load(subtileLOD, u, v, uri, ro.get());
+                    };
+
                     childNode = createPagedNode(
                         subtile_bs,
                         uri,
-                        0.0f, maxRange,
+                        load_func,
+                        0.0f,
+                        maxRange,
                         _options.layout().get(),
                         _sgCallbacks.get(),
                         _defaultFileLocationCallback.get(),
@@ -1417,6 +1483,18 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
     {
         return 0L;
     }
+}
+
+FeatureCursor*
+FeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const
+{
+    NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
+    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
+    if (cursor && _filterChain.valid())
+    {
+        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), cx);
+    }
+    return cursor;
 }
 
 osg::Group*

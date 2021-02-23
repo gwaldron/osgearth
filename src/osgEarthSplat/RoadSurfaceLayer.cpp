@@ -80,6 +80,8 @@ RoadSurfaceLayer::init()
         setName("Road surface");
 
     _inUseMutex.setName("oe.RoadSurfaceLayer");
+
+    _lru = std::unique_ptr<FeatureListCache>(new FeatureListCache(true, 1u));
 }
 
 Status
@@ -252,7 +254,7 @@ namespace
                                 }
 
                                 // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                                // style in this case: for style expressions, the user must be explicity about 
+                                // style in this case: for style expressions, the user must be explicity about
                                 // default styling; this is because there is no other way to exclude unwanted
                                 // features.
                                 else
@@ -318,7 +320,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     {
         setStatus(getFeatureSource()->getStatus());
         return GeoImage::INVALID;
-    }    
+    }
 
     const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
     if (!featureProfile)
@@ -334,42 +336,43 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         return GeoImage::INVALID;
     }
 
-    GeoExtent featureExtent = key.getExtent().transform(featureSRS);
-
-    osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
-        key,
-        options().featureBufferWidth().get(),
-        progress);
-
+    // Fetch the set of features to render
     FeatureList features;
-    if (cursor.valid())
-        cursor->fill(features);
+    getFeatures(key, features, progress);
 
     if (!features.empty())
     {
+        GeoExtent featureExtent = key.getExtent().transform(featureSRS);
+
         // Create the output extent:
         GeoExtent outputExtent = key.getExtent();
 
+        // Establish a local tangent plane near the output extent. This will allow
+        // the compiler to render the tile in a location cartesian space.
         const SpatialReference* keySRS = outputExtent.getSRS();
         osg::Vec3d pos(outputExtent.west(), outputExtent.south(), 0);
         osg::ref_ptr<const SpatialReference> srs = keySRS->createTangentPlaneSRS(pos);
         outputExtent = outputExtent.transform(srs.get());
 
+        // Set the LTP as our output SRS.
+        // The geometry compiler will transform all our features into the
+        // LTP so we can render using an orthographic camera (TileRasterizer)
         FilterContext fc(_session.get(), featureProfile, featureExtent);
         fc.setOutputSRS(outputExtent.getSRS());
 
         // compile the features into a node.
         GeometryCompiler compiler;
-
-        StyleToFeatures map;
-        sortFeaturesIntoStyleGroups(getStyleSheet(), features, fc, map);
+        StyleToFeatures mapping;
+        sortFeaturesIntoStyleGroups(getStyleSheet(), features, fc, mapping);
         osg::ref_ptr< osg::Group > group;
-        if (!map.empty())
+        if (!mapping.empty())
         {
+            OE_PROFILING_ZONE_NAMED("Style");
+
             group = new osg::Group();
-            for (unsigned int i = 0; i < map.size(); i++)
+            for (unsigned int i = 0; i < mapping.size(); i++)
             {
-                osg::ref_ptr<osg::Node> node = compiler.compile(map[i].second, map[i].first, fc);
+                osg::ref_ptr<osg::Node> node = compiler.compile(mapping[i].second, mapping[i].first, fc);
                 if (node.valid() && node->getBound().valid())
                 {
                     group->addChild(node);
@@ -382,7 +385,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             OE_PROFILING_ZONE_NAMED("Rasterize");
 
             Future<osg::ref_ptr<osg::Image>> result = _rasterizer->render(
-                group.release(), 
+                group.release(),
                 outputExtent);
 
             // Immediately blocks on the result. Consider better ways?
@@ -396,4 +399,65 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     }
 
     return GeoImage::INVALID;
+}
+
+void
+RoadSurfaceLayer::getFeatures(
+    const TileKey& key,
+    FeatureList& output,
+    ProgressCallback* progress) const
+{
+    OE_PROFILING_ZONE;
+
+    FeatureSource* fs = getFeatureSource();
+    OE_SOFT_ASSERT_AND_RETURN(fs != nullptr, __func__, );
+
+    // Get the collection of keys accounting for the buffer width
+    std::vector<TileKey> keys;
+    fs->getKeys(key, options().featureBufferWidth().get(), keys);
+
+    // Collect all the features, using a small LRU cache and a
+    // Gate to optimize fetching and sharing with other threads
+    osg::ref_ptr<FeatureCursor> cursor;
+
+    for (const auto& subkey : keys)
+    {
+        FeatureList sublist;
+
+        FeatureListCache::Record r;
+        if (_lru->get(subkey, r))
+        {
+            sublist = r.value();
+        }
+        else
+        {
+            // the Gate prevents 2 threads that requesting the same TileKey
+            // at the same time from the featuresource.
+            ScopedGate<TileKey> gatelock(_keygate, subkey);
+
+            // double-check the cache now that we are gate-locked:
+            if (_lru->get(subkey, r))
+            {
+                sublist = r.value();
+            }
+            else
+            {
+                cursor = fs->createFeatureCursor(subkey, progress);
+                if (cursor.valid())
+                {
+                    cursor->fill(sublist);
+                    //TODO: run script filter(s) on output
+                    _lru->insert(subkey, sublist);
+                }
+            }
+        }
+
+        // Clone features onto the end of the output list.
+        // We must always clone since osgEarth modifies the feature data
+        std::transform(
+            sublist.begin(),
+            sublist.end(),
+            std::back_inserter(output),
+            [](osg::ref_ptr< Feature > f) { return osg::clone(f.get(), osg::CopyOp::DEEP_COPY_ALL); });
+    }
 }

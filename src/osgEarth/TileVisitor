@@ -122,7 +122,8 @@ namespace osgEarth { namespace Util
 
 
     /**
-    * A TileVisitor that pushes all of it's generated keys onto a ThreadPool queue and handles them in background threads.
+    * A TileVisitor that pushes all of it's generated keys onto a 
+    * JobArena queue and handles them in background threads.
     */
     class OSGEARTH_EXPORT MultithreadedTileVisitor: public TileVisitor
     {

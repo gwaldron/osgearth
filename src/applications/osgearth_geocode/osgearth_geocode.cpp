@@ -54,7 +54,7 @@ main(int argc, char** argv)
     {
         options = new osgDB::Options();
         arena = std::make_shared<JobArena>("Geocoder", 1U);
-        OptionsData<JobArena>::set(options.get(), arena);
+        ObjectStorage::set(options.get(), arena);
     }
 
     Geocoder geocoder;

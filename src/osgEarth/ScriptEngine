@@ -22,15 +22,13 @@
 #include <osgEarth/Common>
 #include <osgEarth/Script>
 #include <osgEarth/Config>
+#include <osgEarth/Feature>
 #include <osgEarth/Threading>
-
-namespace osgEarth
-{
-    class Feature;
-}
 
 namespace osgEarth { namespace Util
 {
+  using namespace osgEarth;
+
   class FilterContext;
 
   /**
@@ -88,8 +86,19 @@ namespace osgEarth { namespace Util
     void setProfile(const std::string& profile) { _profile = profile; }
     const std::string& getProfile() const { return _profile; }
 
-    /** Runs a code snippet. */
-    virtual ScriptResult run(const std::string& code, Feature const* feature=0L, FilterContext const* context=0L) =0;
+    //! Runs a code snippet against a single feature
+    virtual ScriptResult run(
+        const std::string& code, 
+        Feature const* feature, 
+        FilterContext const* context = nullptr) =0;
+
+    //! Runs a code snippet against a list of features
+    //! If a feature fails, return its result and abort the iteration
+    virtual bool run(
+        const std::string& code,
+        const FeatureList& features,
+        std::vector<ScriptResult>& results,
+        FilterContext const* context);
 
     /** Runs a script */
     virtual ScriptResult run(Script* script, Feature const* feature=0L, FilterContext const* context=0L)

@@ -19,6 +19,7 @@
 #include <osgEarth/ScriptEngine>
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
+#include <osgEarth/Feature>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -32,7 +33,7 @@ ScriptEngineOptions::fromConfig( const Config& conf )
     if (conf.get<std::string>( "script_code", val))
     {
         Script cfgScript(val.get());
-        
+
         if (conf.get<std::string>( "script_language", val ))
           cfgScript.setLanguage(val.get());
 
@@ -61,6 +62,22 @@ ScriptEngineOptions::getConfig() const
     }
 
     return conf;
+}
+
+//------------------------------------------------------------------------
+
+bool
+ScriptEngine::run(
+    const std::string& code,
+    const FeatureList& features,
+    std::vector<ScriptResult>& results,
+    FilterContext const* context)
+{
+    for (auto& feature : features)
+    {
+        results.emplace_back(run(code, feature.get(), context));
+    }
+    return true;
 }
 
 //------------------------------------------------------------------------

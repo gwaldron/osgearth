@@ -255,13 +255,13 @@ namespace weemesh
         vert_table_t _vert_lut;
         vert_array_t _verts;
         std::vector<int> _markers;
-        int _num_splits;
+        int _num_edits;
         int _boundary_marker;
         int _constraint_marker;
 
         mesh_t() : 
             uidgen(0),
-            _num_splits(0),
+            _num_edits(0),
             _boundary_marker(1<<0),
             _constraint_marker(1<<2)
         {
@@ -282,10 +282,10 @@ namespace weemesh
         void remove_triangle(triangle_t& tri)
         {
             UID uid = tri.uid;
-            //_spatial_index.Remove(tri, uid);
             _spatial_index.Remove(tri.a_min, tri.a_max, uid);
             _triangles.erase(uid);
-            _num_splits++;
+
+            ++_num_edits;
         }
 
         // add new triangle to the mesh from 3 indices
@@ -321,6 +321,9 @@ namespace weemesh
 
             _triangles.emplace(uid, tri);
             _spatial_index.Insert(tri.a_min, tri.a_max, uid);
+
+            ++_num_edits;
+
             return uid;
         }
 
@@ -581,7 +584,6 @@ namespace weemesh
             if (new_i < 0)
                 return;
 
-
             UID new_uid;
             int new_tris = 0;
 
@@ -828,6 +830,13 @@ namespace weemesh
         }
     };
 
+    int getMorphNeighborIndexOffset(unsigned col, unsigned row, int rowSize)
+    {
+        if ((col & 0x1) == 1 && (row & 0x1) == 1) return rowSize + 2;
+        if ((row & 0x1) == 1)                   return rowSize + 1;
+        if ((col & 0x1) == 1)                   return 2;
+        return 1;
+    }
 }
 
 #endif // OSGEARTH_WEE_MESH

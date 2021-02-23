@@ -146,7 +146,7 @@ FilteredFeatureCursor::FilteredFeatureCursor(
     FeatureCursor* cursor,
     FeatureFilterChain* chain) :
 
-    FeatureCursor(cursor->getProgress()),
+    FeatureCursor(cursor ? cursor->getProgress() : nullptr),
     _cursor(cursor),
     _chain(chain),
     _user_cx(nullptr)

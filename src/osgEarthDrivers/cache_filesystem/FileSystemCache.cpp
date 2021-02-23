@@ -537,12 +537,6 @@ namespace
         }
     }
 
-
-    namespace
-    {
-        typedef Job<bool> CacheWriteJob;
-    }
-
     bool
     FileSystemCacheBin::write(
         const std::string& key,
@@ -568,7 +562,7 @@ namespace
         osg::ref_ptr<const osg::Object> object(raw_object);
         osg::ref_ptr<const osgDB::Options> writeOptions(raw_writeOptions);
 
-        CacheWriteJob::Function write_op = [=](Cancelable*)
+        auto write_op = [=](Cancelable*)
         {
             OE_PROFILING_ZONE_NAMED("FS Cache Write");
 
@@ -626,8 +620,6 @@ namespace
                 ScopedWriteLock lock(_writeCacheRWM);
                 _writeCache.erase(fileURI.full());
             }
-
-            return true;
         };
 
         if (_jobArena != nullptr && !isNode)
@@ -642,7 +634,7 @@ namespace
             _writeCacheRWM.write_unlock();
 
             // asynchronous write
-            CacheWriteJob::dispatchAndForget(*_jobArena, write_op);
+            Job(_jobArena.get()).dispatch(write_op);
         }
 
         else

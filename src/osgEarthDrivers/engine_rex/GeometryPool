@@ -273,7 +273,7 @@ namespace osgEarth { namespace REX
 
         SharedGeometry* createGeometry(
             const TileKey& tileKey,
-            unsigned  tileSize,
+            unsigned tileSize,
             float skirtRatio,
             bool gpuTessellation,
             bool morphTerrain,

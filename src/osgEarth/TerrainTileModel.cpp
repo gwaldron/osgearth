@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/TerrainTileModel>
+#include <osgUtil/IncrementalCompileOperation>
 
 using namespace osgEarth;
 
@@ -111,20 +112,20 @@ TerrainTileModel::compileGLObjects(osg::State& state) const
 }
 
 void
-TerrainTileModel::getDataToCompile(std::vector<osg::Texture*>& output) const
+TerrainTileModel::getStateToCompile(osgUtil::StateToCompile& out) const
 {
     for(auto& colorLayer : _colorLayers)
         if (colorLayer->getTexture())
-            output.push_back(colorLayer->getTexture());
+            out._textures.insert(colorLayer->getTexture());
 
     if (getNormalTexture())
-        output.push_back(getNormalTexture());
+        out._textures.insert(getNormalTexture());
 
     if (getElevationTexture())
-        output.push_back(getElevationTexture());
+        out._textures.insert(getElevationTexture());
 
     if (getLandCoverTexture())
-        output.push_back(getLandCoverTexture());
+        out._textures.insert(getLandCoverTexture());
 }
 
 osg::Texture*

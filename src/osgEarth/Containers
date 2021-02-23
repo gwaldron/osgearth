@@ -225,9 +225,7 @@ namespace osgEarth { namespace Util
             friend class LRUCache;
         };
 
-        struct Functor {
-            virtual void operator()(const K& key, const T& value) =0;
-        };
+        using Functor = std::function<void(const K&, const T&)>;
 
     protected:
         typedef typename std::list<K>::iterator      lru_iter;
@@ -331,7 +329,7 @@ namespace osgEarth { namespace Util
                 _map.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
         }
 
-        void iterate(Functor& functor) const {
+        void forEach(const Functor& functor) const {
             if (_threadsafe) {
                 Threading::ScopedMutexLock lock(_mutex);
                 iterate_impl(functor);
@@ -410,10 +408,9 @@ namespace osgEarth { namespace Util
             }
         }
 
-        void iterate_impl(Functor& f) const {
-            for (map_const_iter i = _map.begin(); i != _map.end(); ++i) {
-                f(i->first, i->second.first);
-            }
+        void iterate_impl(const Functor& func) const {
+            for (auto i : _map)
+                func(i.first, i.second.first);
         }
     };
 

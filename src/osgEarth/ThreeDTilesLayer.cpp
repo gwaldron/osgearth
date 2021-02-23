@@ -77,7 +77,6 @@ ThreeDTilesLayer::openImplementation()
     if (parentStatus.isError())
         return parentStatus;
 
-    // Clone the read options and if there isn't a ThreadPool create one.
     osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
 
     ReadResult rr = _options->url()->readString(readOptions.get());

@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Threading>
+#include <osg/observer_ptr>
 
 namespace osgEarth
 {
@@ -173,8 +174,29 @@ namespace osgEarth
 
         DatabasePagerProgressCallback();
 
-        virtual bool shouldCancel() const;
+    protected:
+        virtual bool shouldCancel() const override;
     };
+
+    /**
+     * Progress callback that will invoke cancelation if
+     * a referenced object gets destructed.
+     */
+    class OSGEARTH_EXPORT ObserverProgressCallback : public ProgressCallback
+    {
+    public:
+        ObserverProgressCallback(osg::Referenced* host) :
+            _host(host) { }
+
+    protected:
+        bool shouldCancel() const override {
+            return _host.valid() == false;
+        }
+
+    private:
+        osg::observer_ptr<osg::Referenced> _host;
+    };
+
 }
 
 #endif

@@ -80,7 +80,6 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
             if (!tileset)
                 return ReadResult("Unable to parse tileset");
 
-            // Clone the read options and if there isn't a ThreadPool create one.
             osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
             osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, "", NULL, readOptions.get());
             node->setMaximumScreenSpaceError(15.0f);
@@ -526,7 +525,9 @@ namespace
     };
 
 
-    typedef Job<osg::ref_ptr<osg::Node>> AsyncTileJob;
+    using ReadTileData = osg::ref_ptr<osg::Node>;
+    using ReadTileResult = Future<ReadTileData>;
+    //typedef Job<osg::ref_ptr<osg::Node>> AsyncTileJob;
 
     osg::ref_ptr<osg::Node> readTilesetSync(
         ThreeDTilesetNode* parentTileset,
@@ -537,7 +538,7 @@ namespace
         return operation.loadTileSet(nullptr);
     }
 
-    AsyncTileJob::Result readTilesetAsync(
+    ReadTileResult readTilesetAsync(
         ThreeDTilesetNode* parentTileset, 
         const URI& uri, 
         osgDB::Options* options)
@@ -545,8 +546,8 @@ namespace
         std::shared_ptr<LoadTilesetOperation> operation = std::make_shared<LoadTilesetOperation>(
             parentTileset, uri, options);
 
-        return AsyncTileJob::dispatch(
-            "oe.3dtiles",
+        JobArena* arena = JobArena::get("oe.3dtiles");
+        return Job(arena).dispatch<ReadTileData>(
             [operation, options](Cancelable* progress)
             {
                 return operation->loadTileSet(progress);
@@ -568,12 +569,13 @@ namespace
         return node;
     }
 
-    AsyncTileJob::Result readTileContentAsync(
+    ReadTileResult readTileContentAsync(
         const URI& uri,
         osg::ref_ptr<const osgDB::Options> options)
     {
-        return Job<osg::ref_ptr<osg::Node>>::dispatch(
-            "oe.3dtiles",
+        JobArena* arena = JobArena::get("oe.3dtiles");
+
+        return Job(arena).dispatch<ReadTileData>(
             [uri, options](Cancelable* progress)
             {
                 osg::ref_ptr<osg::Node> node = uri.getNode(options.get(), nullptr);
@@ -908,7 +910,7 @@ void ThreeDTileNode::requestContent(ICO* ico)
         if (ico)
         {
             localOptions = Registry::instance()->cloneOrCreateOptions(_options.get());
-            OptionsData<ICO>::set(localOptions.get(), ico);
+            ObjectStorage::set(localOptions.get(), ico);
         }
         else
         {

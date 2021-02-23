@@ -183,12 +183,10 @@ main(int argc, char** argv)
 
     for(const auto& key : keys)
     {
-        Job<bool>::dispatchAndForget(
-            arena,
+        Job().dispatch(
             [&app, key](Cancelable*)
             {
                 app.exportKey(key);
-                return true;
             }
         );
     }

@@ -2,14 +2,14 @@ name: windows-x64-Release
 
 on: [push, pull_request, workflow_dispatch]
 
-env:             
-  VCPKG_BINARY_SOURCES : 'clear;nuget,GitHub,readwrite'  
+env:
+  VCPKG_BINARY_SOURCES : 'clear;nuget,GitHub,readwrite'
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
-  VCPKG_VERSION: '2020.11' 
+  VCPKG_VERSION: '2020.11'
 
 jobs:
-  
+
   build:
     runs-on: ${{ matrix.os }}
 
@@ -22,11 +22,10 @@ jobs:
             mono: ''
             VCPKG_WORKSPACE: 'c:/vcpkg_own'
 
-    steps:       
+    steps:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
-        ref: 3.1  
 
     - name: vcpkg cache
       id: vcpkgcache
@@ -38,14 +37,14 @@ jobs:
           !${{ matrix.VCPKG_WORKSPACE }}/buildtrees
           !${{ matrix.VCPKG_WORKSPACE }}/downloads
         key: vcpkg-${{ matrix.triplet }}
-    
+
     - name: Installing vcpkg (windows)
       if: steps.vcpkgcache.outputs.cache-hit != 'true'
       shell: 'bash'
       run: |
         cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}
         cd ${{ matrix.VCPKG_WORKSPACE }}
-        git clone --depth 1 --branch ${{env.VCPKG_VERSION}} https://github.com/microsoft/vcpkg 
+        git clone --depth 1 --branch ${{env.VCPKG_VERSION}} https://github.com/microsoft/vcpkg
         ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
         ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
 
@@ -66,7 +65,7 @@ jobs:
       working-directory: ${{ matrix.VCPKG_WORKSPACE }}
       shell: 'bash'
       run: >
-        ./vcpkg/vcpkg install osg curl gdal geos sqlite3 protobuf basisu draco --triplet ${{ matrix.triplet }} 
+        ./vcpkg/vcpkg install osg curl gdal geos sqlite3 protobuf basisu draco --triplet ${{ matrix.triplet }}
 
     - name: 'Upload library build log artifact'
       uses: actions/upload-artifact@v2
@@ -77,10 +76,10 @@ jobs:
           ${{ env.VCPKG_WORKSPACE }}/vcpkg/buildtrees/osg/install-x64-windows-rel-err.log
           ${{ env.VCPKG_WORKSPACE }}/vcpkg/buildtrees/osg/install-x64-windows-rel-out.log
         retention-days: 1
-             
+
     - name: Create Build Environment
       run: |
-        cmake -E make_directory ${{runner.workspace}}/build 
+        cmake -E make_directory ${{runner.workspace}}/build
 
     - name: Configure CMake
       shell: bash
@@ -100,5 +99,3 @@ jobs:
       working-directory: ${{ runner.workspace }}/build
       shell: bash
       run: cmake --build . --config $BUILD_TYPE
-
-    

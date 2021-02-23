@@ -101,16 +101,16 @@ namespace
             sscanf( uri.c_str(), "%u_%u_%u.%*s", &lod, &x, &y );
 
             osg::ref_ptr<SimplePager> pager;
-            if (!OptionsData<SimplePager>::lock(options, "osgEarth.SimplePager", pager))
+            if (!ObjectStorage::get(options, pager))
             {
-                OE_WARN << LC << "Internal error - no SimplePager object in OptionsData\n";
+                OE_WARN << LC << "Internal error - no SimplePager object in ObjectStorage\n";
                 return ReadResult::ERROR_IN_READING_FILE;
             }
 
             osg::ref_ptr<SimplePager::ProgressTracker> tracker;
-            if (!OptionsData<SimplePager::ProgressTracker>::lock(options, "osgEarth.SimplePager.ProgressTracker", tracker))
+            if (!ObjectStorage::get(options, tracker))
             {
-                OE_WARN << LC << "Internal error - no ProgressTracker object in OptionsData\n";
+                OE_WARN << LC << "Internal error - no ProgressTracker object in ObjectStorage\n";
                 return ReadResult::ERROR_IN_READING_FILE;
             }
             
@@ -338,8 +338,8 @@ osg::ref_ptr<osg::Node> SimplePager::createPagedNode(const TileKey& key, Progres
 
         // assemble data to pass to the pseudoloader
         osgDB::Options* options = new osgDB::Options();
-        OptionsData<SimplePager>::set(options, "osgEarth.SimplePager", this);
-        OptionsData<ProgressTracker>::set(options, "osgEarth.SimplePager.ProgressTracker", tracker);
+        ObjectStorage::set(options, this);
+        ObjectStorage::set(options, tracker);
         plod->setDatabaseOptions( options );
         
         // Install an FLC if the caller provided one

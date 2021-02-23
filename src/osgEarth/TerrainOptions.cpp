@@ -20,6 +20,9 @@
 
 using namespace osgEarth;
 
+#undef LC
+#define LC "[TerrainOptions] "
+
 //...................................................................
 
 Config
@@ -62,6 +65,7 @@ TerrainOptions::getConfig() const
     conf.set( "merges_per_frame", mergesPerFrame() );
     conf.set( "priority_scale", priorityScale() );
     conf.set( "texture_compression", textureCompression());
+    conf.set( "concurrency", concurrency());
 
     return conf;
 }
@@ -100,6 +104,8 @@ TerrainOptions::fromConfig(const Config& conf)
     mergesPerFrame().init(20u);
     priorityScale().init(1.0f);
     textureCompression().setDefault("");
+    concurrency().setDefault(4u);
+
 
     conf.get( "tile_size", _tileSize );
     conf.get( "min_tile_range_factor", _minTileRangeFactor );   
@@ -134,6 +140,22 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "merges_per_frame", mergesPerFrame() );
     conf.get( "priority_scale", priorityScale());
     conf.get( "texture_compression", textureCompression());
+    conf.get( "concurrency", concurrency());
+
+    // report on deprecated usage
+    const std::string deprecated_keys[] = {
+        "compress_normal_maps",
+        "min_expiry_frames",
+        "expiration_threshold",
+        "priority_scale"
+    };
+    for (const auto& key : deprecated_keys)
+    {
+        if (conf.hasValue(key))
+        {
+            OE_INFO << LC << "Deprecated key \"" << key << "\" ignored" << std::endl;
+        }
+    }
 }
 
 //...................................................................
@@ -175,6 +197,7 @@ OE_PROPERTY_IMPL(TerrainOptionsAPI, bool, MorphImagery, morphImagery);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, MergesPerFrame, mergesPerFrame);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, float, PriorityScale, priorityScale);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, std::string, TextureCompressionMethod, textureCompression);
+OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, Concurrency, concurrency);
 
 void
 TerrainOptionsAPI::setDriver(const std::string& value)

@@ -20,54 +20,59 @@
 #define OSGEARTH_REX_LOAD_TILE_DATA 1
 
 #include "Common"
-#include "Loader"
-#include "RenderBindings"
-#include "TileNode"
-#include "EngineContext"
-#include "TileRenderModel"
-#include <osgEarth/Progress>
+#include <osgEarth/TerrainTileModelFactory>
+#include <memory>
+
+namespace osgEarth {
+    class TerrainEngineNode;
+}
 
 namespace osgEarth { namespace REX
 {
-    class LoadTileData : public Loader::Request
+    using namespace osgEarth;
+
+    class TileNode;
+    class EngineContext;
+
+    /**
+     * Handles the loading of data of an individual tile node
+     */
+    class LoadTileDataOperation
     {
     public:
-        //! New tile data request for all layers
-        LoadTileData(TileNode* tilenode, EngineContext* factory);
+        LoadTileDataOperation(
+            TileNode* tilenode,
+            EngineContext* factory);
 
         //! New tile data request for a subset of layers (in the manifest)
-        LoadTileData(const CreateTileManifest& manifest, TileNode* tilenode, EngineContext* factory);
+        LoadTileDataOperation(
+            const CreateTileManifest& manifest,
+            TileNode* tilenode,
+            EngineContext* context);
+
+        virtual ~LoadTileDataOperation();
 
         //! Whether to allow the request to cancel midstream. Default is true
         void setEnableCancelation(bool value) { _enableCancel = value; }
 
-    public: // Loader::Request
+        //! Dispatch the job.
+        bool dispatch(bool async = true);
 
-        /** Fetches the data for the tile node. Return true upon success, false upon
-            failure or cancelation */
-        bool run(ProgressCallback*);
-
-        /** Applies the fetched data to the tile node (scene-graph safe)
-            return false if the request failed and must be re-queued */
+        //! Merge the results into the TileNode
         bool merge();
 
-        //! Creates a stateset containing GL compilable objects from the model
-        osg::StateSet* createStateSet() const;
-
-        //! Set of data requested
-        const CreateTileManifest& getManifest() const { return _manifest; }
-
-    protected:
+        using LoadResult= osg::ref_ptr<TerrainTileModel>;
+        Future<LoadResult> _result;
+        CreateTileManifest _manifest;
+        bool _enableCancel;
         osg::observer_ptr<TileNode> _tilenode;
         osg::observer_ptr<TerrainEngineNode> _engine;
-        osg::observer_ptr<EngineContext> _context;
-        osg::ref_ptr<TerrainTileModel> _dataModel;
-        CreateTileManifest _manifest;
-        osg::observer_ptr< const Map > _map;
-        bool _enableCancel;
-
-        virtual ~LoadTileData() { }
+        std::string _name;
+        bool _dispatched;
+        bool _merged;
     };
+
+    typedef std::shared_ptr<LoadTileDataOperation> LoadTileDataOperationPtr;
 
 } } // namespace osgEarth::REX
 

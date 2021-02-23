@@ -631,7 +631,7 @@ GPUJobArena::getTimeSlice() const
 void
 GPUJobArena::dispatch(Delegate& del)
 {
-    std::unique_lock<Mutex> lock(_queue_mutex);
+    std::lock_guard<Mutex> lock(_queue_mutex);
     _queue.emplace_back(del);
 }
 
@@ -731,7 +731,7 @@ namespace
     };
 }
 
-std::atomic_int GLObjectsCompiler::_jobsActive = 0;
+std::atomic_int GLObjectsCompiler::_jobsActive;
 
 Future<osg::ref_ptr<osg::Node>>
 GLObjectsCompiler::compileAsync(

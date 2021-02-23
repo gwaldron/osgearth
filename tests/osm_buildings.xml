@@ -1,0 +1,54 @@
+<FeatureModel name="OSM Buildings" features="data:osm">
+    <max_range>15000</max_range>
+    <attenuation_range>2000</attenuation_range>
+    <fading duration="1"/>
+    <filters>
+        <attributes>building</attributes>
+    </filters>
+    <styles>          
+        <library name="us_resources">
+            <url>../data/resources/textures_us/catalog.xml</url>
+        </library>
+        
+        <style type="text/css">
+            default {
+                extrusion-height:        getBuildingHeight();
+                extrusion-flatten:       true;
+                extrusion-wall-style:    building-wall;
+                extrusion-wall-gradient: 0.5;
+                extrusion-roof-style:    building-rooftop;
+                altitude-clamping:       terrain;
+            }            
+            building-wall {
+                skin-library:     us_resources;
+                skin-tags:        building;
+                skin-random-seed: 1;
+            }
+            building-rooftop {
+                skin-library:     us_resources;
+                skin-tags:        rooftop;
+                skin-tiled:       true;
+                skin-random-seed: 1;
+            }
+        </style>
+        
+        <!-- <selector style_expr="selectStyle()"/> -->
+        <script language="javascript">
+            <![CDATA[
+                function getBuildingHeight() {
+                    if ("height" in feature.properties) {
+                        var h = feature.properties["height"].replace('m','');
+                        return Math.max(h, 4.0);
+                    } else if ("building:height" in feature.properties) {
+                        var h = feature.properties["building:height"].replace('m','');
+                        return Math.max(h, 4.0);
+                    } else if ("building:levels" in feature.properties){
+                        var l = feature.properties["building:levels"];
+                        return Math.max(l * 4.0, 4.0);
+                    }
+                    return Math.floor((Math.random() * 5.0) + 4.0);
+                }
+              ]]>
+        </script>
+    </styles>
+</FeatureModel>

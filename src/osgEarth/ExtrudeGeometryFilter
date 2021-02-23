@@ -150,7 +150,7 @@ namespace osgEarth { namespace Util
 
         // a set of geodes indexed by stateset pointer, for pre-sorting geodes based on 
         // their texture usage
-        typedef std::map<osg::StateSet*, osg::ref_ptr<osg::Geode> > SortedGeodeMap;
+        typedef std::map<osg::StateSet*, osg::ref_ptr<osg::Group> > SortedGeodeMap;
         SortedGeodeMap                 _geodes;
         SortedGeodeMap                 _lineGroups;
         osg::ref_ptr<osg::StateSet>    _noTextureStateSet;

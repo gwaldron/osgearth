@@ -54,7 +54,7 @@ namespace osgEarth { namespace Serializers { namespace LineGroup
         LineGroup,
         new osgEarth::LineGroup,
         osgEarth::LineGroup,
-        "osg::Object osg::Node osg::Group osg::Geode osgEarth::LineGroup")
+        "osg::Object osg::Node osg::Group osgEarth::LineGroup")
     {
         // no properties
     }
@@ -66,7 +66,7 @@ LineGroup::LineGroup()
 }
 
 LineGroup::LineGroup(const LineGroup& rhs, const osg::CopyOp& copy) :
-osg::Geode(rhs, copy)
+osg::Group(rhs, copy)
 {
     //nop
 }
@@ -314,6 +314,7 @@ namespace osgEarth { namespace Serializers { namespace LineDrawable
         "osg::Object osg::Node osg::Drawable osg::Geometry osgEarth::LineDrawable")
     {
         ADD_UINT_SERIALIZER( Mode, GL_LINE_STRIP );
+        ADD_BOOL_SERIALIZER( UseGPU, true );
         ADD_INT_SERIALIZER( StippleFactor, 1 );
         ADD_USHORT_SERIALIZER( StipplePattern, 0xFFFF );
         ADD_VEC4_SERIALIZER( Color, osg::Vec4(1,1,1,1) );
@@ -468,6 +469,8 @@ LineDrawable::initialize()
             setVertexAttribArray(NextVertexAttrLocation, _next);
         }
     }
+
+    setupShaders();
 }
 
 void
@@ -1275,6 +1278,13 @@ LineDrawable::accept(osg::NodeVisitor& nv)
             _useGPU &&
             nv.getVisitorType() == nv.CULL_VISITOR &&
             _gpuStateSet.valid();
+
+        if (!_current)
+        {
+            ScopedMutexLock lock(_mutex);
+            if (!_current)
+                initialize();
+        }
 
         osgUtil::CullVisitor* cv = shade? Culling::asCullVisitor(nv) : 0L;
 

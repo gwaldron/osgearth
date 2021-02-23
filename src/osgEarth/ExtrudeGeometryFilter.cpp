@@ -954,7 +954,7 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*       drawable,
 {
     // find the geode for the active stateset, creating a new one if necessary. NULL is a 
     // valid key as well.
-    osg::Geode* geode;
+    osg::Group* geode;
     
     if (dynamic_cast<LineDrawable*>(drawable))
     {
@@ -980,7 +980,7 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*       drawable,
         }
     }
 
-    geode->addDrawable( drawable );
+    geode->addChild( drawable );
 
     if ( !name.empty() )
     {

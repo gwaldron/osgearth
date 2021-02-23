@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/TraversalData>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/Threading>
 #include <osgEarth/SpatialReference>
@@ -261,10 +260,6 @@ namespace osgEarth
         void setTextureImageUnitOffLimits(int unit);
         const std::set<int> getOffLimitsTextureImageUnits() const;
 
-        /** General purpose transient data store to support VisitorData in pre-osg 3.4 */
-        TransientUserDataStore& dataStore() { return _dataStore; }
-        const TransientUserDataStore& dataStore() const { return _dataStore; }
-
         /**
          * Gets the device pixel ratio.
          */
@@ -357,13 +352,10 @@ namespace osgEarth
 
         std::set<int> _offLimitsTextureImageUnits;
 
-        TransientUserDataStore _dataStore;
-
         float _devicePixelRatio;
 
         typedef std::unordered_map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
         Threading::Mutexed<SRSCache> _srsCache;
-        //mutable PerThread<SRSCache> _srsCache;
 
         unsigned _maxVertsPerDrawable;
     };

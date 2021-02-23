@@ -253,7 +253,6 @@ SET(LIB_PUBLIC_HEADERS
     TileVisitor
     TileCache
     TimeControl
-    TraversalData
     Threading
     TMS
     Units
@@ -625,7 +624,6 @@ set(TARGET_SRC
     TileSourceImageLayer.cpp
     TileCache.cpp
     TimeControl.cpp
-    TraversalData.cpp
     Threading.cpp
     TMS.cpp
     Units.cpp

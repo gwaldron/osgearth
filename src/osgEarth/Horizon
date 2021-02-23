@@ -42,11 +42,11 @@ namespace osgEarth
 
         // Retrieve a Horizon object from the NodeVisitor. Returns NULL
         // if this operation is not supported.
-        static Horizon* get(osg::NodeVisitor& nv);
+        //static Horizon* get(osg::NodeVisitor& nv);
 
         // Stores this object in the NodeVisitor. Returns false if the
         // operation is not supported.
-        bool put(osg::NodeVisitor& nv);
+        //bool put(osg::NodeVisitor& nv);
 
     public:
         /** Construct a horizon using a default WGS84 ellipsoid model. */

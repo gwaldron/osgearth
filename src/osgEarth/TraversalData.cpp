@@ -22,6 +22,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
+#if 0
 TransientUserDataStore::TransientUserDataStore() :
     _mutex(OE_MUTEX_NAME)
 {
@@ -166,3 +167,4 @@ VisitorData::isSet(osg::NodeVisitor& nv, const std::string& key)
     return Registry::instance()->dataStore().exists( &nv, key );
 }
 
+#endif

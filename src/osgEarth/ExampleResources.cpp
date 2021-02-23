@@ -140,8 +140,6 @@ namespace
         void onValueChanged(Control* c, double value)
         {
             _u->set( float(value) );
-            osgEarth::Registry::instance()->dataStore().store(
-                osgEarth::Registry::instance(), _u->getName(), _u.get());
         }
     };
 

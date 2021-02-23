@@ -905,7 +905,7 @@ FeatureModelGraph::setupPaging()
 
         auto load_func = [graph, uri](Cancelable* c)
         {
-            return graph->load(0, 0, 0, uri, nullptr);
+            return graph->load(0, 0, 0, uri, graph->getSession()->getDBOptions());
         };
 
         node = createPagedNode(

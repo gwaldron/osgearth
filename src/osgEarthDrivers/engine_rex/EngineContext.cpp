@@ -18,7 +18,6 @@
 */
 #include "EngineContext"
 #include "TileNodeRegistry"
-#include <osgEarth/TraversalData>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 

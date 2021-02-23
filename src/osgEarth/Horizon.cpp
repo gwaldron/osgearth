@@ -20,6 +20,7 @@
 #include <osgUtil/CullVisitor>
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Utils>
 #include <osg/Geometry>
 #include <osg/Geode>
 
@@ -77,17 +78,6 @@ _minVCmag( rhs._minVCmag ),
 _minHAE  ( rhs._minHAE )
 {
     // nop
-}
-
-bool
-Horizon::put(osg::NodeVisitor& nv)
-{
-    return VisitorData::store( nv, OSGEARTH_HORIZON_UDC_NAME, this );
-}
-
-Horizon* Horizon::get(osg::NodeVisitor& nv)
-{
-    return VisitorData::fetch<Horizon>( nv, OSGEARTH_HORIZON_UDC_NAME );
 }
 
 void
@@ -376,7 +366,8 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
     if ( !node )
         return false;
 
-    osg::ref_ptr<Horizon> horizon = Horizon::get(*nv);
+    osg::ref_ptr<Horizon> horizon;
+    ObjectStorage::get(nv, horizon);
 
     if (_customEllipsoidSet)
     {
@@ -492,7 +483,8 @@ HorizonNode::HorizonNode()
 void
 HorizonNode::traverse(osg::NodeVisitor& nv)
 {
-    bool isSpy = (VisitorData::isSet(nv, "osgEarth.Spy"));
+    bool temp;
+    bool isSpy = nv.getUserValue("osgEarth.Spy", temp);
 
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {

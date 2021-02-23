@@ -21,6 +21,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Utils>
 
 #define LC "[TritonHeightMap] "
 
@@ -395,7 +396,8 @@ TritonHeightMap::traverse(osg::NodeVisitor& nv)
                 if (local._mvpw != *cv->getMVPW())
                 {
                     // update the RTT based on the current camera:
-                    osgEarth::Horizon* horizon = osgEarth::Horizon::get(nv);
+                    osg::ref_ptr<Horizon> horizon;
+                    ObjectStorage::get(&nv, horizon);
                     update(local, camera, horizon);
 
                     // finally, traverse the camera to build the height map.

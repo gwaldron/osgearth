@@ -22,6 +22,7 @@
 #include <osgEarth/HorizonClipPlane>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
+#include <osgEarth/Utils>
 #include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
@@ -67,7 +68,8 @@ HorizonClipPlane::operator()(osg::Node* node, osg::NodeVisitor* nv)
     }
 
     // push this horizon on to the nodevisitor so modules can access it
-    d.horizon->put(*nv);
+    //d.horizon->put(*nv);
+    ObjectStorage::set(nv, d.horizon.get());
 
     // update with current eyepoint
     if (d.horizon->setEye(nv->getViewPoint()))

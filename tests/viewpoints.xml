@@ -89,4 +89,14 @@
         <height>172.7516074106097</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
+    <viewpoint>
+        <heading>106.341</heading>
+        <pitch>-13.0779</pitch>
+        <range>3971.3m</range>
+        <long>-87.74521164702807</long>
+        <lat>41.90297390696925</lat>
+        <height>154.1877543888986</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+    </viewpoint>
+
 </viewpoints>

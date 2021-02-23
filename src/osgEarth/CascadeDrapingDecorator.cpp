@@ -29,6 +29,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Utils>
 
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
@@ -899,10 +900,13 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
 
     if (decorator._srs->isGeographic())
     {
-        Horizon* horizon = Horizon::get(*cv);
-        horizon->getPlane(horizonPlane);
-        dh = horizon->getDistanceToVisibleHorizon();
-        dp = horizonPlane.distance(camEye);
+        osg::ref_ptr<Horizon> horizon;
+        if (ObjectStorage::get(cv, horizon))
+        {
+            horizon->getPlane(horizonPlane);
+            dh = horizon->getDistanceToVisibleHorizon();
+            dp = horizonPlane.distance(camEye);
+        }
     }
     else
     {

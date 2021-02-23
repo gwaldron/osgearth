@@ -66,7 +66,7 @@ namespace osgEarth { namespace Util
             if (o == nullptr || obj == nullptr) return;
             osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
             unsigned i = udc->getUserObjectIndex(name);
-            if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
+            if (i < udc->getNumUserObjects()) udc->removeUserObject(i);
             udc->addUserObject(new Data<T>(name, obj));
         }
         template<typename T>
@@ -82,7 +82,7 @@ namespace osgEarth { namespace Util
             const char* name = typeid(T).name();
             osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
             unsigned i = udc->getUserObjectIndex(name);
-            if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
+            if (i < udc->getNumUserObjects()) udc->removeUserObject(i);
             udc->addUserObject(new Data<T>(name, obj));
         }
         template<typename T>
@@ -99,7 +99,7 @@ namespace osgEarth { namespace Util
             const char* name = typeid(T).name();
             osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
             unsigned i = udc->getUserObjectIndex(name);
-            if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
+            if (i < udc->getNumUserObjects()) udc->removeUserObject(i);
             udc->addUserObject(new Data<T>(name, obj));
         }
         template<typename T>
@@ -111,6 +111,34 @@ namespace osgEarth { namespace Util
             out = data->_shared_obj;
             return data->_shared_obj != nullptr;
         }
+
+        template<typename T>
+        struct Install : public osg::NodeCallback
+        {
+            osg::ref_ptr<T> _data;
+
+            Install(T* data) : _data(data) { }
+
+            void operator()(osg::Node* node, osg::NodeVisitor* nv)
+            {
+                ObjectStorage::set(nv, _data.get());
+                traverse(node, nv);
+            }
+        };
+
+        template<typename T>
+        struct SetValue : public osg::NodeCallback
+        {
+            std::string _key;
+            T _value;
+
+            SetValue(const std::string& key, const T& value) : _key(key), _value(value) { }
+            void operator()(osg::Node* node, osg::NodeVisitor* nv)
+            {
+                nv->setUserValue(_key, _value);
+                traverse(node, nv);
+            }
+        };
     };
 
     struct Utils

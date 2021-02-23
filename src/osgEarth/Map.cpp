@@ -156,22 +156,22 @@ Map::init()
     // put the CacheSettings object in there. We will propogate this throughout
     // the data model and the renderer. These will be stored in the readOptions
     // (and ONLY there)
-    CacheSettings* cacheSettings = new CacheSettings();
+    _cacheSettings = new CacheSettings();
 
     // Set up a cache if there's one in the options:
     if (options().cache().isSet())
-        cacheSettings->setCache(CacheFactory::create(options().cache().get()));
+        _cacheSettings->setCache(CacheFactory::create(options().cache().get()));
 
     // Otherwise use the registry default cache if there is one:
-    if (cacheSettings->getCache() == 0L)
-        cacheSettings->setCache(Registry::instance()->getDefaultCache());
+    if (_cacheSettings->getCache() == nullptr)
+        _cacheSettings->setCache(Registry::instance()->getDefaultCache());
 
     // Integrate local cache policy (which can be overridden by the environment)
-    cacheSettings->integrateCachePolicy(options().cachePolicy());
+    _cacheSettings->integrateCachePolicy(options().cachePolicy());
 
     // store in the options so we can propagate it to layers, etc.
-    cacheSettings->store(_readOptions.get());
-    OE_INFO << LC << cacheSettings->toString() << "\n";
+    _cacheSettings->store(_readOptions.get());
+    OE_INFO << LC << _cacheSettings->toString() << "\n";
 
     // remember the referrer for relative-path resolution:
     URIContext( options().referrer() ).store( _readOptions.get() );

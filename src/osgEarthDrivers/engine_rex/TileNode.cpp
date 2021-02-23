@@ -930,7 +930,8 @@ TileNode::merge(
                     }
                     else
                     {
-                        OE_INFO << "erm. No parent pass in my pass. key=" << model->getKey().str() << std::endl;
+                        // note: this can happen with an async layer load
+                        OE_DEBUG << "no parent pass in my pass. key=" << model->getKey().str() << std::endl;
                     }
 
                     pass->sampler(SamplerBinding::COLOR)._futureTexture = imageLayerModel->getTexture();

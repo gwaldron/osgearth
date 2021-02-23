@@ -145,7 +145,7 @@ GeometryFeatureCursor::nextFeature()
 FilteredFeatureCursor::FilteredFeatureCursor(FeatureCursor* cursor,
                                              FeatureFilterChain* chain,
                                              FilterContext& context) :
-    FeatureCursor(cursor->getProgress()),
+    FeatureCursor(cursor ? cursor->getProgress() : nullptr),
     _cursor(cursor),
     _chain(chain),
     _context(context)

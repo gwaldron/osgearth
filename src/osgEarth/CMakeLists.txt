@@ -240,6 +240,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileNode
     Tessellator
     Text
+    TextureBuffer
     ThreeDTilesLayer
     TileKey
     TileLayer
@@ -610,6 +611,7 @@ set(TARGET_SRC
     TerrainTileModelFactory.cpp
     Tessellator.cpp
     Text.cpp
+    TextureBuffer.cpp
     ThreeDTilesLayer.cpp
     TextureBufferSerializer.cpp
     TileKey.cpp

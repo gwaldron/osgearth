@@ -25,10 +25,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
 #include <osg/Drawable>
-
-namespace osg {
-    class TextureBuffer;
-}
+#include <osg/TextureBuffer>
 
 /**
  * Some utilities to support *DrawInstanced rendering.
@@ -40,27 +37,28 @@ namespace osgEarth { namespace Util
     namespace DrawInstanced
     {
         /**
-        * Referenced-counted vector of instance matrices. These are stored
-        * in the node that's been instanced so the app can recover the
-        * original positioning data.
-        */
-        class MatrixRefVector : public InlineVector<osg::Matrixf,osg::Object>
-        {
-        public:
-            META_Object(osgEarth,MatrixRefVector);
-            MatrixRefVector() : InlineVector<osg::Matrixf,osg::Object>() { }
-        protected:
-            MatrixRefVector(const MatrixRefVector& rhs, const osg::CopyOp& op) { }
-        };
-
-        /**
         * Special group that traverses instanced nodes as if they were in the scene graph as regular nodes under MatrixTransforms.
         * This allows visitors like the IntersectionVisitor and primitive collection to function on instanced models.
         */
         class OSGEARTH_EXPORT InstanceGroup : public osg::Group
         {
         public:
+            InstanceGroup();
+
+            InstanceGroup(const InstanceGroup&, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+
+            META_Node(osgEarth::Util::DrawInstanced, InstanceGroup);
+
             void traverse(osg::NodeVisitor& nv);
+
+            const std::vector< osg::Matrixf >& getMatrices() const;
+
+            void setMatrices(const std::vector< osg::Matrixf >& values);
+
+            void addMatrix(const osg::Matrixf& value);
+
+        protected:
+            std::vector< osg::Matrixf > _matrices;
         };
 
         /**
@@ -119,13 +117,6 @@ namespace osgEarth { namespace Util
             */
         extern OSGEARTH_EXPORT bool convertGraphToUseDrawInstanced(
             osg::Group* graph );
-
-        /**
-            * Gets the vector of instance matrices attached to a node,
-            * or NULL if not found.
-            */
-        extern OSGEARTH_EXPORT const MatrixRefVector* getMatrixVector(
-            osg::Node* node );
     }
 } }
 

@@ -3,6 +3,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Metrics>
+#include <osgEarth/PagedNode>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/ShapeDrawable>
@@ -11,6 +12,8 @@
 using namespace osgEarth::Util;
 
 #define LC "[SimplerPager] "
+
+#define USE_PAGING_MANAGER
 
 namespace
 {
@@ -77,6 +80,7 @@ namespace
     };
 
 
+#ifndef USE_PAGING_MANAGER
     /**
     * A pseudo-loader for paged feature tiles.
     */
@@ -130,6 +134,7 @@ namespace
     };
 
     REGISTER_OSGPLUGIN(osgearth_pseudo_simple, SimplePagerPseudoLoader);
+#endif
 }
 
 
@@ -217,7 +222,11 @@ osg::BoundingSphere SimplePager::getBounds(const TileKey& key) const
 
 osg::ref_ptr<osg::Node> SimplePager::buildRootNode()
 {   
+#ifdef USE_PAGING_MANAGER
+    osg::ref_ptr<osg::Group> root = new PagingManager();
+#else
     osg::ref_ptr<osg::Group> root = new osg::Group();
+#endif
 
     std::vector<TileKey> keys;
     _profile->getRootKeys( keys );
@@ -244,6 +253,109 @@ osg::ref_ptr<osg::Node> SimplePager::createNode(const TileKey& key, ProgressCall
     mt->addChild(geode);
     return mt;
 }
+
+#ifdef USE_PAGING_MANAGER
+
+osg::ref_ptr<osg::Node>
+SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
+{
+    osg::BoundingSphere tileBounds = getBounds(key);
+    float tileRadius = tileBounds.radius();
+
+    // restrict subdivision to max level:
+    bool hasChildren = key.getLOD() < _maxLevel;
+
+    // Create the actual data for this tile.
+    osg::ref_ptr<osg::Node> node;
+
+    // only create real node if we are at least at the min LOD:
+    if (key.getLOD() >= _minLevel)
+    {
+        node = createNode(key, progress);
+        hasChildren = node.valid();
+    }
+
+    osg::ref_ptr<PagedNode2> pagedNode = new PagedNode2();
+    pagedNode->setSceneGraphCallbacks(getSceneGraphCallbacks());
+
+    if (node.valid())
+    {
+        pagedNode->addChild(node);
+        fire_onCreateNode(key, node.get());
+    }
+
+    tileRadius = osg::maximum(
+        tileBounds.radius(), 
+        static_cast<osg::BoundingSphere::value_type>(tileRadius));
+
+    pagedNode->setCenter(tileBounds.center());
+    pagedNode->setRadius(tileRadius);
+
+    // Assume geocentric for now.
+    if (true)
+    {
+        const GeoExtent& ccExtent = key.getExtent();
+        if (ccExtent.isValid())
+        {
+            // if the extent is more than 90 degrees, bail
+            GeoExtent geodeticExtent = ccExtent.transform(ccExtent.getSRS()->getGeographicSRS());
+            if (geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0)
+            {
+                // get the geocentric tile center:
+                osg::Vec3d tileCenter;
+                ccExtent.getCentroid(tileCenter.x(), tileCenter.y());
+
+                osg::Vec3d centerECEF;
+                const SpatialReference* mapSRS = osgEarth::SpatialReference::get("epsg:4326");
+                if (mapSRS)
+                {
+                    ccExtent.getSRS()->transform(tileCenter, mapSRS->getGeocentricSRS(), centerECEF);
+                    osg::NodeCallback* ccc = ClusterCullingFactory::create(geodeticExtent);
+                    if (ccc)
+                        pagedNode->addCullCallback(ccc);
+                }
+            }
+        }
+    }
+
+    float loadRange = FLT_MAX;
+
+    if (hasChildren)
+    {
+        if (getName().empty())
+            pagedNode->setName(key.str());
+        else
+            pagedNode->setName(getName() + " " + key.str());
+
+        // install a callback that will update the progress tracker whenever the PagedNode
+        // gets traversed. The children, once activated, will have access to its
+        // ProgressCallback within and be able to check for cancelation, use stats, etc.
+        //ProgressTracker* tracker = new ProgressTracker(_progressMaster.get());
+        //pagedNode->addCullCallback(tracker);
+
+        // Now setup a filename on the PagedLOD that will load all of the children of this node.
+        pagedNode->setPriorityScale(_priorityScale);
+        //pager->setPriorityOffset(_priorityOffset);
+
+        pagedNode->setLoadFunction(
+            [this, key](Cancelable* progress)
+            {
+                return loadKey(key, nullptr); // tracker);
+            }
+        );
+
+        loadRange = (float)(tileRadius * _rangeFactor);
+        pagedNode->setRefinePolicy(_additive ? pagedNode->REFINE_ADD : pagedNode->REFINE_REPLACE);
+    }
+
+    pagedNode->setMaxRange(loadRange);
+
+    //OE_INFO << "PagedNode2: key="<<key.str()<<" hasChildren=" << hasChildren << ", range=" << loadRange << std::endl;
+
+    return pagedNode;
+}
+
+#else
 
 osg::ref_ptr<osg::Node> SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
 {
@@ -370,7 +482,7 @@ osg::ref_ptr<osg::Node> SimplePager::createPagedNode(const TileKey& key, Progres
 
     return plod;
 }
-
+#endif
 
 /**
 * Loads the PagedLOD hierarchy for this key.
@@ -384,7 +496,7 @@ SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
     {
         TileKey childKey = key.createChildKey( i );
 
-        osg::ref_ptr<osg::Node> plod = createPagedNode( childKey, tracker->_progress[i].get() );
+        osg::ref_ptr<osg::Node> plod = createPagedNode(childKey, nullptr); // tracker->_progress[i].get() );
         if (plod.valid())
         {
             group->addChild( plod );
@@ -394,7 +506,7 @@ SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
     {
         return group;
     }
-    return 0;
+    return nullptr;
 }
 
 const osgEarth::Profile* SimplePager::getProfile() const

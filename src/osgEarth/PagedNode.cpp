@@ -173,7 +173,7 @@ bool PagedNode::hasChild() const
 //...................................................................
 
 PagedNode2::PagedNode2() :
-    osg::Node(),
+    osg::Group(),
     _pagingManager(nullptr),
     _token(nullptr),
     _loadTriggered(false),
@@ -181,7 +181,8 @@ PagedNode2::PagedNode2() :
     _callbackFired(false),
     _minRange(0.0f),
     _maxRange(FLT_MAX),
-    _priorityScale(1.0f)
+    _priorityScale(1.0f),
+    _refinePolicy(REFINE_REPLACE)
 {
     _job.setName("oe.PagedNode");
     _job.setArena(PAGEDNODE_ARENA_NAME);
@@ -189,14 +190,14 @@ PagedNode2::PagedNode2() :
 
 PagedNode2::~PagedNode2()
 {
-    reset();
+    //nop
 }
 
 void
 PagedNode2::reset()
 {
     releaseGLObjects(nullptr);
-    _compiled.abandon();
+    _compiled.abandon();    
     _loaded.abandon();
     _token = nullptr;
     _loadTriggered = false;
@@ -219,14 +220,11 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         }
     }
 
-    // traverse the placeholder
-    if (_placeholder.valid())
-    {
-        _placeholder->accept(nv);
-    }
-
     if (nv.getTraversalMode() == nv.TRAVERSE_ALL_CHILDREN)
     {
+        for (auto& child : _children)
+            child->accept(nv);
+
         if (_compiled.isAvailable() && _compiled.get().valid())
         {
             _compiled.get()->accept(nv);
@@ -235,7 +233,10 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
 
     else if (nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN)
     {
+        bool acceptChildren = true;
+
         float range = nv.getDistanceToViewPoint(getBound().center(), true);
+
         if (range >= _minRange && range <= _maxRange)
         {
             if (_load != nullptr && _loadTriggered.exchange(true) == false)
@@ -265,6 +266,8 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
 
             else if (_loaded.isAvailable() && _loaded.get().valid() && _compileTriggered.exchange(true)==false)
             {
+                dirtyBound();
+
                 // Compile the loaded node.
                 GLObjectsCompiler compiler;
                 osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
@@ -289,7 +292,15 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
 
                 // all is good, traverse it
                 _compiled.get()->accept(nv);
+
+                acceptChildren = (_refinePolicy == REFINE_ADD);
             }
+        }
+
+        if (acceptChildren)
+        {
+            for (auto& child : _children)
+                child->accept(nv);
         }
     }
 }
@@ -304,12 +315,7 @@ PagedNode2::computeBound() const
 
     else
     {
-        osg::BoundingSphere bs;
-
-        if (_placeholder.valid())
-        {
-            bs = _placeholder->computeBound();
-        }
+        osg::BoundingSphere bs = osg::Group::computeBound();
 
         if (_loadTriggered == true &&
             _loaded.isAvailable() &&
@@ -323,24 +329,18 @@ PagedNode2::computeBound() const
 }
 
 void
-PagedNode2::resizeGLObjectBuffers(unsigned m)
+PagedNode2::resizeGLObjectBuffers(unsigned size)
 {
-    osg::Node::resizeGLObjectBuffers(m);
-
-    if (_placeholder.valid())
-        _placeholder->resizeGLObjectBuffers(m);
+    osg::Group::resizeGLObjectBuffers(size);
 
     if (_compiled.isAvailable() && _compiled.get().valid())
-        _compiled.get()->resizeGLObjectBuffers(m);
+        _compiled.get()->resizeGLObjectBuffers(size);
 }
 
 void
 PagedNode2::releaseGLObjects(osg::State* state) const
 {
-    osg::Node::releaseGLObjects(state);
-
-    if (_placeholder.valid())
-        _placeholder->releaseGLObjects(state);
+    osg::Group::releaseGLObjects(state);
 
     if (_compiled.isAvailable() && _compiled.get().valid())
         _compiled.get()->releaseGLObjects(state);
@@ -358,6 +358,9 @@ PagingManager::PagingManager() :
 void
 PagingManager::traverse(osg::NodeVisitor& nv)
 {
+    // Make this object accesible to children
+    ObjectStorage::set(&nv, this);
+
     if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
         ScopedMutexLock lock(_trackerMutex);

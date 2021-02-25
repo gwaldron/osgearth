@@ -28,7 +28,6 @@
 #include <osgEarth/Progress>
 #include <osgEarth/SceneGraphCallback>
 #include <osg/Group>
-#include <osg/PagedLOD>
 
 namespace osgEarth { namespace Util
 {

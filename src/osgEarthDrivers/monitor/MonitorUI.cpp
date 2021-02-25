@@ -78,6 +78,8 @@ MonitorUI::update(const osg::FrameStamp* fs)
                     << m.arena(i).numJobsRunning
                     << " / "
                     << m.arena(i).numJobsPending
+                    << " // "
+                    << m.arena(i).numJobsCanceled
                     << "\n";
             }
         }

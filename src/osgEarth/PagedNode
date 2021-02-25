@@ -38,10 +38,6 @@
 #include <iterator>
 #include <unordered_map>
 
-namespace osgUtil {
-    class IncrementalCompileOperation;
-}
-
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
@@ -111,11 +107,15 @@ namespace osgEarth { namespace Util
     };
 
 
-    class OSGEARTH_EXPORT PagedNode2 : public osg::Node
+    class OSGEARTH_EXPORT PagedNode2 : public osg::Group
     {
     public:
         using Loader = std::function<osg::ref_ptr<osg::Node>(Cancelable*)>;
 
+        enum RefinePolicy {
+            REFINE_REPLACE,
+            REFINE_ADD
+        };
     public:
         PagedNode2();
 
@@ -156,6 +156,12 @@ namespace osgEarth { namespace Util
             _callbacks = value;
         }
 
+        //! Whether to continue rendering the normal children after
+        //! the asynchronous node becomes visible
+        void setRefinePolicy(RefinePolicy value) {
+            _refinePolicy = value;
+        }
+
         //! Delete the async child and start over
         void reset();
 
@@ -179,7 +185,7 @@ namespace osgEarth { namespace Util
         void* _token;
         class PagingManager* _pagingManager;
         osg::ref_ptr<SceneGraphCallbacks> _callbacks;
-        osg::ref_ptr<osg::Node> _placeholder;
+        RefinePolicy _refinePolicy;
         std::atomic_bool _loadTriggered;
         std::atomic_bool _compileTriggered;
         std::atomic_bool _callbackFired;
@@ -207,7 +213,10 @@ namespace osgEarth { namespace Util
         }
 
     public:
-        void traverse(osg::NodeVisitor& nv) override;
+        virtual void traverse(osg::NodeVisitor& nv) override;
+
+    protected:
+        virtual ~PagingManager() { }
 
     private:
         mutable Mutex _mutex;

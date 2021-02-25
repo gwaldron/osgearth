@@ -36,7 +36,7 @@ namespace osgEarth
     /**
      * Set of layers that the TerrainTileModelFactory can use
      * to determine what data to create for a tile. If the manifest
-     * is empty, that represents that the factory should create 
+     * is empty, that represents that the factory should create
      * data for ALL available layers. But if it contains at least
      * one entry, the creation is limited to those entries.
      */
@@ -196,7 +196,7 @@ namespace osgEarth
         osg::Texture* createElevationTexture(
             const osg::Image* image) const;
 
-        const TerrainOptions& _options;
+        TerrainOptions _options;
         osg::ref_ptr<osg::Texture> _emptyColorTexture;
         osg::ref_ptr<osg::Texture> _emptyLandCoverTexture;
         ElevationPool::WorkingSet _workingSet;

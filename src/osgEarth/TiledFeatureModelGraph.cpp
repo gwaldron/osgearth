@@ -166,5 +166,6 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
         }
     }
 
-    return node;
+    return node->getBound().valid() ? node : nullptr;
+    //return node;
 }

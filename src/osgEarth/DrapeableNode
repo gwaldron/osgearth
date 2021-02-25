@@ -21,9 +21,6 @@
 #define OSGEARTH_DRAPEABLE_NODE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/optional>
-#include <osgEarth/MapNode>
-#include <osgEarth/MapNodeObserver>
 #include <osg/Group>
 
 namespace osgEarth
@@ -34,41 +31,30 @@ namespace osgEarth
      *
      * Usage: Create this node and place it as a descendant of a MapNode.
      */
-    class OSGEARTH_EXPORT DrapeableNode : public osg::Group, public MapNodeObserver
+    class OSGEARTH_EXPORT DrapeableNode : public osg::Group
     {
     public:
         META_Object(osgEarth, DrapeableNode);
 
-        /**
-         * Constructs a new drapeable node.
-         */
+        //! Constructs a new drapeable node.
         DrapeableNode();
 
-        /** Copy */
+        //! Copy ctor
         DrapeableNode(const DrapeableNode& rhs, const osg::CopyOp& copy);
 
-        /**
-         * Whether draping is enabled.
-         */
+        //! Whether draping is enabled. Defaults to true.
         void setDrapingEnabled(bool value);
-        bool getDrapingEnabled() const     { return _drapingEnabled; }
+        bool getDrapingEnabled() const { return _drapingEnabled; }
 
     public: // osg::Group/Node
 
-        virtual void traverse(osg::NodeVisitor& nv);
-
-    public: // osgEarth::MapNodeObserver
-
-        virtual void setMapNode(MapNode* mapNode) { _mapNode = mapNode; }
-        virtual MapNode* getMapNode() { return _mapNode.get(); }
+        virtual void traverse(osg::NodeVisitor& nv) override;
 
     protected:
         /** dtor */
         virtual ~DrapeableNode() { }
 
         bool _drapingEnabled;
-        bool _updateRequested;
-        osg::observer_ptr<MapNode> _mapNode;
     };
 
 } // namespace osgEarth

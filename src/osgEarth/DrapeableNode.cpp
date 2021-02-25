@@ -21,6 +21,9 @@
 #include <osgEarth/DrapingCullSet>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Utils>
+
+#include <osgDB/ObjectWrapper>
 
 #define LC "[DrapeableNode] "
 
@@ -28,8 +31,7 @@ using namespace osgEarth;
 
 
 DrapeableNode::DrapeableNode() :
-_drapingEnabled( true ),
-_updateRequested( true )
+_drapingEnabled( true )
 {
     // Unfortunetly, there's no way to return a correct bounding sphere for
     // the node since the draping will move it to the ground. The bounds
@@ -37,16 +39,13 @@ _updateRequested( true )
     // have to ensure that this node makes it into the draping cull set so it
     // can be frustum-culled at the proper time.
     setCullingActive( !_drapingEnabled );
-
-    // activate an update traversal to find the MapNode
-    ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
 DrapeableNode::DrapeableNode(const DrapeableNode& rhs, const osg::CopyOp& copy) :
-osg::Group(rhs, copy)
+osg::Group(rhs, copy),
+_drapingEnabled(rhs._drapingEnabled)
 {
-    _drapingEnabled = rhs._drapingEnabled;
-    _updateRequested = rhs._updateRequested;
+    //nop
 }
 
 void
@@ -62,38 +61,18 @@ DrapeableNode::setDrapingEnabled(bool value)
 void
 DrapeableNode::traverse(osg::NodeVisitor& nv)
 {
-    if ( _drapingEnabled && nv.getVisitorType() == nv.CULL_VISITOR )
+    if (_drapingEnabled && nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        // find the cull set for this camera:
-        osg::ref_ptr<MapNode> mapNode;
-        if (_mapNode.lock(mapNode))
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        if (cv->getCurrentRenderBin()->getName() != "OE_EMPTY_RENDER_BIN")
         {
-            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            if (cv->getCurrentRenderBin()->getName() != "OE_EMPTY_RENDER_BIN")
+            std::shared_ptr<DrapingManager> dm;
+            if (ObjectStorage::get(&nv, dm))
             {
-                DrapingCullSet& cullSet = mapNode->getDrapingManager()->get(cv->getCurrentCamera());
+                DrapingCullSet& cullSet = dm->get(cv->getCurrentCamera());
                 cullSet.push(this, cv->getNodePath(), nv.getFrameStamp());
             }
         }
-    }
-
-    else if (_drapingEnabled && nv.getVisitorType() == nv.UPDATE_VISITOR)
-    {        
-        if (_updateRequested)
-        {
-            if (_mapNode.valid() == false)
-            {
-                _mapNode = osgEarth::findInNodePath<MapNode>(nv);
-            }
-
-            if (_mapNode.valid())
-            {
-                _updateRequested = false;
-                ADJUST_UPDATE_TRAV_COUNT(this, -1);
-            }
-        }
-
-        osg::Group::traverse(nv);
     }
     else
     {

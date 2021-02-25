@@ -248,7 +248,7 @@ namespace osgEarth
         TerrainEngineNode* _terrainEngine;
         osg::Group*        _terrainGroup;
         ResourceReleaser*  _resourceReleaser;
-        DrapingManager*    _drapingManager;
+        std::shared_ptr<DrapingManager> _drapingManager;
         ClampingManager*   _clampingManager;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
@@ -267,7 +267,7 @@ namespace osgEarth
     
         void init();
 
-        DrapingManager* getDrapingManager();
+        //std::shared_ptr<DrapingManager>& getDrapingManager();
         friend class DrapingTechnique;
         friend class DrapeableNode;
         

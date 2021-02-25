@@ -186,6 +186,8 @@ _constrainRttBoxToDrapingSetBounds(true),
 _useProjectionFitting(true),
 _minNearFarRatio(0.25)
 {
+    _manager = std::make_shared<DrapingManager>();
+
     if (::getenv("OSGEARTH_DRAPING_DEBUG"))
         _debug = true;
 
@@ -275,7 +277,7 @@ CascadeDrapingDecorator::traverse(osg::NodeVisitor& nv)
             // only proceed if there is geometry to drape.
             // TODO: is this correct? if there's nothing, should we clear out any
             // pre-existing projected texture or set a uniform or something?
-            const osg::BoundingSphere& bound = _manager.get(camera).getBound();
+            const osg::BoundingSphere& bound = _manager->get(camera).getBound();
             if (bound.valid())
             {
                 // if we don't have a texture unit reserved, do so now.
@@ -349,7 +351,7 @@ namespace
     class DrapingCamera : public osg::Camera
     {
     public:
-        DrapingCamera(DrapingManager& dm, const osg::Camera* parentCamera) 
+        DrapingCamera(std::shared_ptr<DrapingManager> dm, const osg::Camera* parentCamera)
             : osg::Camera(), _parentCamera(parentCamera), _dm(dm)
         {
             setCullingActive( false );
@@ -364,7 +366,7 @@ namespace
 
         void traverse(osg::NodeVisitor& nv)
         {
-            DrapingCullSet& cullSet = _dm.get(_parentCamera);
+            DrapingCullSet& cullSet = _dm->get(_parentCamera);
             cullSet.accept( nv );
 
             // manhandle the render bin sorting, since OSG ignores the override
@@ -392,7 +394,7 @@ namespace
     protected:
         virtual ~DrapingCamera() { }
         const osg::Camera* _parentCamera;
-        DrapingManager& _dm;
+        std::shared_ptr<DrapingManager> _dm;
     };
 
 

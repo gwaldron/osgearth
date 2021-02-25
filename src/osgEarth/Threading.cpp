@@ -789,7 +789,7 @@ int
 JobArena::Metrics::totalJobsPending() const
 {
     int count = 0;
-    for (int i = 0; i < maxArenaIndex; ++i)
+    for (int i = 0; i <= maxArenaIndex; ++i)
         if (arena(i).active)
             count += arena(i).numJobsPending;
     return count;
@@ -799,9 +799,9 @@ int
 JobArena::Metrics::totalJobsRunning() const
 {
     int count = 0;
-    for (int i = 0; i < maxArenaIndex; ++i)
+    for (int i = 0; i <= maxArenaIndex; ++i)
         if (arena(i).active)
-            count += arena(i).numJobsPending;
+            count += arena(i).numJobsRunning;
     return count;
 }
 
@@ -809,7 +809,7 @@ int
 JobArena::Metrics::totalJobsCanceled() const
 {
     int count = 0;
-    for (int i = 0; i < maxArenaIndex; ++i)
+    for (int i = 0; i <= maxArenaIndex; ++i)
         if (arena(i).active)
             count += arena(i).numJobsCanceled;
     return count;

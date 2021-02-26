@@ -178,9 +178,13 @@ PagedNode2::PagedNode2() :
     _token(nullptr),
     _loadTriggered(false),
     _compileTriggered(false),
-    _callbackFired(false),
+    _mergeTriggered(false),
+    _merged(false),
     _minRange(0.0f),
     _maxRange(FLT_MAX),
+    _minPixels(0.0f),
+    _maxPixels(FLT_MAX),
+    _useRange(true),
     _priorityScale(1.0f),
     _refinePolicy(REFINE_REPLACE)
 {
@@ -191,18 +195,26 @@ PagedNode2::PagedNode2() :
 PagedNode2::~PagedNode2()
 {
     //nop
+    // note: do not call reset() from here, we never want to
+    // releaseGLObjects in this dtor b/c it could be called
+    // from a pager thread at cancelation
 }
 
 void
 PagedNode2::reset()
 {
-    releaseGLObjects(nullptr);
+    if (_compiled.isAvailable() && _compiled.get().valid())
+    {
+        _compiled.get()->releaseGLObjects(nullptr);
+    }
+    removeChild(_compiled.get().get());
     _compiled.abandon();    
     _loaded.abandon();
     _token = nullptr;
     _loadTriggered = false;
     _compileTriggered = false;
-    _callbackFired = false;
+    _mergeTriggered = false;
+    _merged = false;
 }
 
 void
@@ -222,30 +234,59 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
 
     if (nv.getTraversalMode() == nv.TRAVERSE_ALL_CHILDREN)
     {
+        if (nv.getVisitorType() == nv.UPDATE_VISITOR &&
+            _merged == false &&
+            _mergeTriggered == true &&
+            _compiled.isAvailable() &&
+            _compiled.get().valid())
+        {
+            addChild(_compiled.get());
+
+            if (_callbacks.valid())
+                _callbacks->firePostMergeNode(_compiled.get().get());
+
+            _merged = true;
+
+            ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        }
+
         for (auto& child : _children)
             child->accept(nv);
-
-        if (_compiled.isAvailable() && _compiled.get().valid())
-        {
-            _compiled.get()->accept(nv);
-        }
     }
 
     else if (nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN)
     {
-        bool acceptChildren = true;
+        bool inRange = false;
+        float priority = 0.0f;
 
-        float range = nv.getDistanceToViewPoint(getBound().center(), true);
-
-        if (range >= _minRange && range <= _maxRange)
+        if (_useRange)
         {
-            if (_load != nullptr && _loadTriggered.exchange(true) == false)
+            float range = nv.getDistanceToViewPoint(getBound().center(), true);
+            inRange = (range > 0.0f && range >= _minRange && range <= _maxRange);
+            priority = -range * _priorityScale;
+        }
+        else // pixels
+        {
+            osg::CullStack* cullStack = nv.asCullStack();
+            if (cullStack != nullptr && cullStack->getLODScale() > 0.0f)
+            {
+                float pixels = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
+                inRange = (pixels >= _minPixels && pixels <= _maxPixels);
+                priority = pixels * _priorityScale;
+            }
+        }
+
+        // check that range > 0 to avoid trouble from some visitors
+        if (inRange)
+        {
+            if (_load != nullptr && 
+                _loadTriggered.exchange(true) == false)
             {
                 // Load the asynchronous node.
                 Loader load(_load);
                 osg::ref_ptr<SceneGraphCallbacks> callbacks(_callbacks);
 
-                _job.setPriority(-range * _priorityScale);
+                _job.setPriority(priority);
 
                 _loaded = _job.dispatch<osg::ref_ptr<osg::Node>>(
                     [load, callbacks](Cancelable* c)
@@ -264,7 +305,9 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 );
             }
 
-            else if (_loaded.isAvailable() && _loaded.get().valid() && _compileTriggered.exchange(true)==false)
+            else if (
+                _loaded.isAvailable() && _loaded.get().valid() && 
+                _compileTriggered.exchange(true) == false)
             {
                 dirtyBound();
 
@@ -274,33 +317,39 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 _compiled = compiler.compileAsync(_loaded.get(), &nv, p.get());
             }
 
-            else if (_compiled.isAvailable() && _compiled.get().valid())
+            else if (
+                _compiled.isAvailable() && _compiled.get().valid() &&
+                _mergeTriggered.exchange(true) == false)
             {
-                // render the compiled node.
+                // schedule an update traversal so we can merge our node.
+                // todo: consider moving this to the PagingManager so we
+                // can "meter" merges across frames.
+                ADJUST_UPDATE_TRAV_COUNT(this, +1);
+            }
 
-                // if we haven't fired the post-merge callback yet, do so now
-                if (_callbackFired.exchange(true) == false && _callbacks.valid())
-                {
-                    _callbacks->firePostMergeNode(_compiled.get().get());
-                }
-
-                // update our usage
-                if (_pagingManager)
-                {
-                    _token = _pagingManager->use(this, _token);
-                }
-
-                // all is good, traverse it
+            // finally, traverse children and paged data.
+            if (_merged && _refinePolicy == REFINE_REPLACE)
+            {
                 _compiled.get()->accept(nv);
+            }
+            else
+            {
+                for (auto& child : _children)
+                    child->accept(nv);
+            }
 
-                acceptChildren = (_refinePolicy == REFINE_ADD);
+            // update our usage tracker so the async child doesn't get removed
+            if (_pagingManager)
+            {
+                _token = _pagingManager->use(this, _token);
             }
         }
-
-        if (acceptChildren)
+        else
         {
+            // child out of range; just accept static children
             for (auto& child : _children)
-                child->accept(nv);
+                if (child.get() != _compiled.get().get())
+                    child->accept(nv);
         }
     }
 }
@@ -318,6 +367,7 @@ PagedNode2::computeBound() const
         osg::BoundingSphere bs = osg::Group::computeBound();
 
         if (_loadTriggered == true &&
+            _merged == false &&
             _loaded.isAvailable() &&
             _loaded.get().valid())
         {

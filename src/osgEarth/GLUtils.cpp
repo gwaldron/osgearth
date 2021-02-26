@@ -740,17 +740,43 @@ GLObjectsCompiler::compileAsync(
     Cancelable* progress) const
 {
     Future<osg::ref_ptr<osg::Node>> result;
+
     if (node.valid())
     {
-        osgUtil::StateToCompile state(
-            osgUtil::GLObjectsVisitor::COMPILE_STATE_ATTRIBUTES |
-            osgUtil::GLObjectsVisitor::CHECK_BLACK_LISTED_MODES,
-            nullptr);
+        bool compileScheduled = false;
 
-        node->accept(state);
+        osg::ref_ptr<ICO> ico;
+        if (ObjectStorage::get(host, ico))
+        {
+            osgUtil::StateToCompile state(
+                osgUtil::GLObjectsVisitor::COMPILE_STATE_ATTRIBUTES |
+                osgUtil::GLObjectsVisitor::CHECK_BLACK_LISTED_MODES,
+                nullptr);
 
-        result = compileAsync(node, state, host, progress);
+            node->accept(state);
+
+            if (state.empty() == false)
+            {
+                auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
+                compileSet->buildCompileMap(ico->getContextSet(), state);
+                ICOCallback* callback = new ICOCallback(node, _jobsActive);
+                result = callback->_promise.getFuture();
+                compileSet->_compileCompletedCallback = callback;
+                _jobsActive++;
+                ico->add(compileSet, false);
+                compileScheduled = true;
+            }
+        }
+
+        if (!compileScheduled)
+        {
+            // no ICO available - just resolve the future immediately
+            Promise<osg::ref_ptr<osg::Node>> promise;
+            result = promise.getFuture();
+            promise.resolve(node);
+        }
     }
+
     return result;
 }
 

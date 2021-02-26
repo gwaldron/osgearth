@@ -683,7 +683,7 @@ JobArena::startThreads()
                 //OE_INFO << LC << "Arena \"" << _name << "\" starting thread " << std::this_thread::get_id() << std::endl;
                 _metrics->concurrency++;
 
-                OE_THREAD_NAME(std::string("oe.arena[" + _name + "]").c_str());
+                OE_THREAD_NAME(_name.c_str());
 
                 while (!_done)
                 {

@@ -88,7 +88,11 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
 
         for(auto& entry : _entries)
         {
-            if (entry._node->getDrapingEnabled() == false)
+            osg::ref_ptr<DrapeableNode> drapeable;
+            if (entry._node.lock(drapeable) == false)
+                continue;
+
+            if (drapeable->getDrapingEnabled() == false)
                 continue;
 
             // If there's an active (non-identity matrix), apply it
@@ -100,7 +104,7 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
             }
 
             // After pushing the matrix, we can perform the culling bounds test.
-            if ( !cv->isCulled( entry._node->getBound() ) )
+            if ( !cv->isCulled(drapeable->getBound() ) )
             {
                 // Apply the statesets in the entry's node path, but skip over the ones that are
                 // shared with the current visitor's path since they are already in effect.
@@ -129,7 +133,7 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
                 // Cull the DrapeableNode's children (but not the DrapeableNode itself!)
                 for(unsigned i=0; i<entry._node->getNumChildren(); ++i)
                 {
-                    entry._node->getChild(i)->accept( nv );
+                    drapeable->getChild(i)->accept( nv );
                 }
             
                 // pop the same number we pushed

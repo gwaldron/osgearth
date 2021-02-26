@@ -30,6 +30,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Utils>
 
 #include <osg/PolygonOffset>
 #include <osg/Depth>
@@ -39,6 +40,7 @@
 #endif
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 #define LC "[AnnotationNode] "
 
@@ -95,16 +97,16 @@ AnnotationNode::traverse(osg::NodeVisitor& nv)
         // MapNode auto discovery.
         if (_mapNodeRequired)
         {
-            if (getMapNode() == 0L)
+            if (getMapNode() == nullptr)
             {
-                MapNode* mapNode = osgEarth::findInNodePath<MapNode>(nv);
-                if (mapNode)
+                osg::ref_ptr<MapNode> mapNode;
+                if (ObjectStorage::get(&nv, mapNode))
                 {
-                    setMapNode(mapNode);
+                    setMapNode(mapNode.get());
                 }
             }
 
-            if (getMapNode() != 0L)
+            if (getMapNode() != nullptr)
             {
                 _mapNodeRequired = false;
                 ADJUST_UPDATE_TRAV_COUNT(this, -1);

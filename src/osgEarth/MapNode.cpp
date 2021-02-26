@@ -859,6 +859,9 @@ MapNode::traverse( osg::NodeVisitor& nv )
         // find a database pager with an ICO
         if (cv && cv->getCurrentCamera())
         {
+            // Store this MapNode itself
+            ObjectStorage::set(&nv, this);
+
             osgDB::DatabasePager* pager = dynamic_cast<osgDB::DatabasePager*>(
                 nv.getDatabaseRequestHandler());
 
@@ -894,7 +897,12 @@ MapNode::traverse( osg::NodeVisitor& nv )
     else
     {
         if (dynamic_cast<osgUtil::BaseOptimizerVisitor*>(&nv) == 0L)
-            osg::Group::traverse( nv );
+        {
+            // Store this MapNode itself
+            ObjectStorage::set(&nv, this);
+
+            osg::Group::traverse(nv);
+        }
     }
 }
 

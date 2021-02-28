@@ -748,8 +748,10 @@ GLObjectsCompiler::compileAsync(
         osg::ref_ptr<ICO> ico;
         if (ObjectStorage::get(host, ico))
         {
+            // (note: COMPILE_DISPLAY_LISTS actually compiles Drawables)
             osgUtil::StateToCompile state(
                 osgUtil::GLObjectsVisitor::COMPILE_STATE_ATTRIBUTES |
+                osgUtil::GLObjectsVisitor::COMPILE_DISPLAY_LISTS |
                 osgUtil::GLObjectsVisitor::CHECK_BLACK_LISTED_MODES,
                 nullptr);
 

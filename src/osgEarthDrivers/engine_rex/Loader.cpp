@@ -64,11 +64,13 @@ Merger::clear()
 void
 Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
 {
+#if 1
     osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico;
     if (ObjectStorage::get(&nv, ico))
     {
         osgUtil::StateToCompile state(
             osgUtil::GLObjectsVisitor::COMPILE_STATE_ATTRIBUTES |
+            osgUtil::GLObjectsVisitor::COMPILE_DISPLAY_LISTS |
             osgUtil::GLObjectsVisitor::CHECK_BLACK_LISTED_MODES,
             nullptr);
 
@@ -79,7 +81,6 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
         if (!state.empty())
         {
             static osg::ref_ptr<osg::Node> unusedNode = new osg::Node();
-            _compileQueue.emplace();
 
             GLObjectsCompiler glcompiler;
             ToCompile toCompile;
@@ -87,7 +88,7 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
             toCompile._compiled = glcompiler.compileAsync(
                 unusedNode, state, &nv, nullptr);
 
-            _compileQueue.emplace(toCompile);
+            _compileQueue.push(std::move(toCompile));
         }
         else
         {
@@ -95,6 +96,7 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
         }
     }
     else
+#endif
     {
         ScopedMutexLock lock(_mutex);
         _mergeQueue.push(data);

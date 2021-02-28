@@ -214,16 +214,17 @@ namespace osgEarth { namespace Util
 
         virtual osg::BoundingSphere computeBound() const override;
 
-        virtual void resizeGLObjectBuffers(unsigned) override;
-
-        virtual void releaseGLObjects(osg::State*) const override;
-
     protected:
 
         virtual ~PagedNode2();
 
     private:
         friend class PagingManager;
+
+        struct Loaded {
+            osg::ref_ptr<osg::Node> _node;
+            osg::ref_ptr<osgUtil::StateToCompile> _state;
+        };
 
         void* _token;
         class PagingManager* _pagingManager;
@@ -233,7 +234,7 @@ namespace osgEarth { namespace Util
         std::atomic_bool _compileTriggered;
         std::atomic_bool _mergeTriggered;
         bool _merged;
-        Future<osg::ref_ptr<osg::Node>> _loaded;
+        Future<Loaded> _loaded;
         Future<osg::ref_ptr<osg::Node>> _compiled;
         Mutex _mutex;
         optional<osg::BoundingSphere> _userBS;
@@ -245,6 +246,9 @@ namespace osgEarth { namespace Util
         float _priorityScale;
         Job _job;
         std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load;
+        std::atomic_int _revision;
+
+        bool merge(int revision);
     };
 
 
@@ -266,10 +270,25 @@ namespace osgEarth { namespace Util
         virtual ~PagingManager() { }
 
     private:
-        mutable Mutex _mutex;
         Mutex _trackerMutex;
         SentryTracker<PagedNode2> _tracker;
         std::list<osg::observer_ptr<PagedNode2>> _trash;
+
+        mutable Mutex _mergeMutex;
+        struct ToMerge {
+            osg::observer_ptr<PagedNode2> _node;
+            int _revision;
+        };
+        std::queue<ToMerge> _mergeQueue;
+        unsigned _mergesPerFrame;
+
+        inline void merge(PagedNode2* host) {
+            ScopedMutexLock lock(_mergeMutex);
+            ToMerge toMerge;
+            toMerge._node = host;
+            toMerge._revision = host->_revision;
+            _mergeQueue.push(std::move(toMerge));
+        }
 
         friend class PagedNode2;
     };

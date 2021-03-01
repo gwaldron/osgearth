@@ -1078,7 +1078,10 @@ FeatureModelGraph::load(
     }
 
     // Done - run the pre-merge operations.
+#ifndef USE_PAGING_MANAGER
+    // Not when using the PAGING_MANAGER - these are run in the PagedNode load function.
     runPreMergeOperations(result.get());
+#endif
 
     return result;
 }
@@ -2017,8 +2020,6 @@ FeatureModelGraph::redraw()
 
         //Remove all current children
         node = buildTile(defaultLevel, GeoExtent::INVALID, 0, _session->getDBOptions());
-        // We're just building the entire node now with no paging, so run the post merge operations immediately.
-        runPostMergeOperations(node.get());
     }
 
 #if 0
@@ -2059,7 +2060,11 @@ FeatureModelGraph::redraw()
         node = fader;
     }
 
+    runPreMergeOperations(node.get());
+
     addChild(node);
+    
+    runPostMergeOperations(node.get());
 }
 
 void

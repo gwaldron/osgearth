@@ -273,10 +273,12 @@ namespace osgEarth { namespace Threading
         }
 
         //! Release reference to a promise, resetting this future to its default state
-        void abandon()
-        {
-            _shared = std::make_shared<Container>();
+        void abandon() {
+            _shared.reset(new Container());
             _ev->reset();
+        }
+        void reset() {
+            abandon();
         }
 
     private:

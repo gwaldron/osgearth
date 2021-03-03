@@ -729,9 +729,28 @@ namespace
             return true;
         }
     };
+
+    static osg::ref_ptr<osg::DummyObject> s_icoMarker = new osg::DummyObject();
 }
 
 std::atomic_int GLObjectsCompiler::_jobsActive;
+
+osg::ref_ptr<osgUtil::StateToCompile>
+GLObjectsCompiler::collectState(osg::Node* node) const
+{
+    // (note: COMPILE_DISPLAY_LISTS actually compiles Drawables)
+    osg::ref_ptr<osgUtil::StateToCompile> state = new osgUtil::StateToCompile(
+        osgUtil::GLObjectsVisitor::COMPILE_STATE_ATTRIBUTES |
+        osgUtil::GLObjectsVisitor::COMPILE_DISPLAY_LISTS,
+        s_icoMarker.get());
+
+    if (node)
+    {
+        node->accept(*state.get());
+    }
+
+    return state;
+}
 
 Future<osg::ref_ptr<osg::Node>>
 GLObjectsCompiler::compileAsync(
@@ -749,18 +768,12 @@ GLObjectsCompiler::compileAsync(
         if (ObjectStorage::get(host, ico))
         {
             // (note: COMPILE_DISPLAY_LISTS actually compiles Drawables)
-            osgUtil::StateToCompile state(
-                osgUtil::GLObjectsVisitor::COMPILE_STATE_ATTRIBUTES |
-                osgUtil::GLObjectsVisitor::COMPILE_DISPLAY_LISTS |
-                osgUtil::GLObjectsVisitor::CHECK_BLACK_LISTED_MODES,
-                nullptr);
+            osg::ref_ptr<osgUtil::StateToCompile> state = collectState(node.get());
 
-            node->accept(state);
-
-            if (state.empty() == false)
+            if (state->empty() == false)
             {
                 auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
-                compileSet->buildCompileMap(ico->getContextSet(), state);
+                compileSet->buildCompileMap(ico->getContextSet(), *state.get());
                 ICOCallback* callback = new ICOCallback(node, _jobsActive);
                 result = callback->_promise.getFuture();
                 compileSet->_compileCompletedCallback = callback;
@@ -785,39 +798,41 @@ GLObjectsCompiler::compileAsync(
 Future<osg::ref_ptr<osg::Node>>
 GLObjectsCompiler::compileAsync(
     const osg::ref_ptr<osg::Node>& node,
-    osgUtil::StateToCompile& state,
+    osgUtil::StateToCompile* state,
     const osg::Object* host,
     Cancelable* progress) const
 {
     Future<osg::ref_ptr<osg::Node>> result;
-    if (node.valid())
-    {
-        // if there is an ICO available, schedule the GPU compilation
-        bool compileScheduled = false;
-        if (!state.empty())
-        {
-            osg::ref_ptr<ICO> ico;
-            if (ObjectStorage::get(host, ico) && ico->isActive())
-            {
-                auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
-                compileSet->buildCompileMap(ico->getContextSet(), state);
-                ICOCallback* callback = new ICOCallback(node, _jobsActive);
-                result = callback->_promise.getFuture();
-                compileSet->_compileCompletedCallback = callback;
-                _jobsActive++;
-                ico->add(compileSet, false);
-                compileScheduled = true;
-            }
-        }
 
-        if (!compileScheduled)
+    OE_SOFT_ASSERT_AND_RETURN(node.valid(), __func__, result);
+    //OE_SOFT_ASSERT_AND_RETURN(state != nullptr, __func__, result);
+
+    // if there is an ICO available, schedule the GPU compilation
+    bool compileScheduled = false;
+    if (state != nullptr && !state->empty())
+    {
+        osg::ref_ptr<ICO> ico;
+        if (ObjectStorage::get(host, ico) && ico->isActive())
         {
-            // no ICO available - just resolve the future immediately
-            Promise<osg::ref_ptr<osg::Node>> promise;
-            result = promise.getFuture();
-            promise.resolve(node);
+            auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
+            compileSet->buildCompileMap(ico->getContextSet(), *state);
+            ICOCallback* callback = new ICOCallback(node, _jobsActive);
+            result = callback->_promise.getFuture();
+            compileSet->_compileCompletedCallback = callback;
+            _jobsActive++;
+            ico->add(compileSet, false);
+            compileScheduled = true;
         }
     }
+
+    if (!compileScheduled)
+    {
+        // no ICO available - just resolve the future immediately
+        Promise<osg::ref_ptr<osg::Node>> promise;
+        result = promise.getFuture();
+        promise.resolve(node);
+    }
+
     return result;
 }
 

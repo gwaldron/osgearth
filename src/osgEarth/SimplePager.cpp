@@ -140,7 +140,7 @@ namespace
 
 SimplePager::ProgressTracker::ProgressTracker(osg::NodeCallback* master)
 {
-    setName( "osgEarth::Util::SimplerPager::ProgressTracker" );
+    setName( "osgEarth::Util::SimplePager::ProgressTracker" );
     for(int i=0; i<4; ++i)
         _progress[i] = new MyProgressCallback( static_cast<ProgressMaster*>(master) );
 }
@@ -165,7 +165,7 @@ _canCancel(true),
 _mutex("SimplePager(OE)")
 {
     // required in order to pass our "this" pointer to the pseudo loader:
-    this->setName( "osgEarth::Util::SimplerPager::this" );
+    this->setName("osgEarth::Util::SimplePager::this" );
     
     // install the master framestamp tracker:
     _progressMaster = new ProgressMaster();

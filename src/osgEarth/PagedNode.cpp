@@ -186,9 +186,10 @@ PagedNode2::PagedNode2() :
     _maxPixels(FLT_MAX),
     _useRange(true),
     _priorityScale(1.0f),
-    _refinePolicy(REFINE_REPLACE)
+    _refinePolicy(REFINE_REPLACE),
+    _preCompile(true)
 {
-    _job.setName("oe.PagedNode");
+    _job.setName(typeid(*this).name());
     _job.setArena(PAGEDNODE_ARENA_NAME);
 }
 
@@ -203,10 +204,11 @@ PagedNode2::~PagedNode2()
 void
 PagedNode2::reset()
 {
-    if (_compiled.isAvailable() && _compiled.get().valid())
-    {
-        _compiled.get()->releaseGLObjects(nullptr);
-    }
+    // Note: don't do this. PLOD didn't so neither shall we
+    //if (_compiled.isAvailable() && _compiled.get().valid())
+    //{
+    //    _compiled.get()->releaseGLObjects(nullptr);
+    //}
     if (_merged)
     {
         removeChild(_compiled.get().get());
@@ -250,7 +252,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         bool inRange = false;
         float priority = 0.0f;
 
-        if (_useRange)
+        if (_useRange) // meters
         {
             float range = nv.getDistanceToViewPoint(getBound().center(), true);
             inRange = (range > 0.0f && range >= _minRange && range <= _maxRange);
@@ -276,11 +278,12 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 // Load the asynchronous node.
                 Loader load(_load);
                 osg::ref_ptr<SceneGraphCallbacks> callbacks(_callbacks);
+                bool preCompile = _preCompile;
 
                 _job.setPriority(priority);
 
                 _loaded = _job.dispatch<Loaded>(
-                    [load, callbacks](Cancelable* c)
+                    [load, callbacks, preCompile](Cancelable* c)
                     {
                         Loaded result;
 
@@ -295,15 +298,13 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                             if (callbacks.valid())
                                 callbacks->firePreMergeNode(result._node.get());
 
-                            // collect the compilable state for this node:
-                            // (note: COMPILE_DISPLAY_LISTS actually compiles Drawables)
-                            result._state = new osgUtil::StateToCompile(
-                                osgUtil::GLObjectsVisitor::COMPILE_STATE_ATTRIBUTES |
-                                osgUtil::GLObjectsVisitor::COMPILE_DISPLAY_LISTS |
-                                osgUtil::GLObjectsVisitor::CHECK_BLACK_LISTED_MODES,
-                                nullptr);
-
-                            result._node->accept(*result._state.get());
+                            if (preCompile)
+                            {
+                                // Collect the GL objects for later compilation.
+                                // Don't waste precious ICO time doing this later
+                                GLObjectsCompiler compiler;
+                                result._state = compiler.collectState(result._node.get());
+                            }
                         }
 
                         return result;
@@ -318,15 +319,25 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             {
                 dirtyBound();
 
-                // Compile the loaded node.
-                GLObjectsCompiler compiler;
-                osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
+                if (_preCompile)
+                {
+                    // Compile the loaded node.
+                    GLObjectsCompiler compiler;
+                    osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
 
-                _compiled = compiler.compileAsync(
-                    _loaded.get()._node,
-                    *_loaded.get()._state.get(),
-                    &nv,
-                    p.get());
+                    _compiled = compiler.compileAsync(
+                        _loaded.get()._node,
+                        _loaded.get()._state.get(),
+                        &nv,
+                        p.get());
+                }
+                else
+                {
+                    // resolve immediately
+                    Promise<osg::ref_ptr<osg::Node>> promise;
+                    _compiled = promise.getFuture();
+                    promise.resolve(_loaded.get()._node);
+                }
 
                 // done with it, let it go
                 _loaded.abandon();
@@ -337,6 +348,11 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 _compiled.get().valid() &&
                 _mergeTriggered.exchange(true) == false)
             {
+                // Generate shaders
+                //Registry::instance()->shaderGenerator().run(
+                //    _compiled.get().get(),
+                //    Registry::stateSetCache());
+
                 // Submit this node to the paging manager for merging.
                 _pagingManager->merge(this);
             }
@@ -484,7 +500,6 @@ PagingManager::traverse(osg::NodeVisitor& nv)
                 _mergeQueue.pop();
             }
         }
-
     }
 
     osg::Group::traverse(nv);

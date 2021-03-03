@@ -205,6 +205,14 @@ namespace osgEarth { namespace Util
             return _refinePolicy;
         }
 
+        //! Whether to pre-compile GL objects before merging
+        void setPreCompileGLObjects(bool value) {
+            _preCompile = value;
+        }
+        bool getPreCompileGLObjects() const {
+            return _preCompile;
+        }
+
         //! Delete the async child and start over
         void reset();
 
@@ -245,6 +253,7 @@ namespace osgEarth { namespace Util
         bool _useRange;
         float _priorityScale;
         Job _job;
+        bool _preCompile;
         std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load;
         std::atomic_int _revision;
 

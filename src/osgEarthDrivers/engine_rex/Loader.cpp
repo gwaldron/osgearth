@@ -104,7 +104,11 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
 void
 Merger::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        _clock.cull();
+    }
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR && _clock.update())
     {
         ScopedMutexLock lock(_mutex);
 

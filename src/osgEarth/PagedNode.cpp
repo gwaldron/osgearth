@@ -440,6 +440,7 @@ PagingManager::PagingManager() :
     _mergesPerFrame(4u),
     _newFrame(false)
 {
+    setCullingActive(false);
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     JobArena::get(PAGEDNODE_ARENA_NAME)->setConcurrency(4u);
 }

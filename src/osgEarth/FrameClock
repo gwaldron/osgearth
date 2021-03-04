@@ -21,6 +21,7 @@
 
 #include "Common"
 #include <chrono>
+#include <atomic>
 
 namespace osgEarth
 {
@@ -36,22 +37,28 @@ namespace osgEarth
         //! Seconds since creation of this object
         double getTime() const;
 
-        //! Number of times frame() called
+        //! Current frame number. This will increment each time a
+        //! cull() and update() pair are called in succession.
         unsigned getFrame() const;
 
-        //! Advance the clock and frame counter if permitted;
-        //! Return true if the update succeeded.
-        bool update();
-
-        //! Register a cull traversal
+        //! Register a cull traversal.
         void cull();
+
+        //! Register an update traversal. If cull() was called before
+        //! the last call to update(), this will increment the frame
+        //! number and return true. Otherwise it returns false, which
+        //! means that update() was already called for this frame and
+        //! the frame number was not incremented.
+        //! (i.e., multiple calls to update in one frame will only
+        //! result in the frame number incrementing once.)
+        bool update();
 
     private:
         using Time = std::chrono::time_point<std::chrono::steady_clock>;
         Time _zero;
         Time _tick;
-        unsigned _updateFrame;
-        unsigned _cullFrame;
+        unsigned _frame;
+        std::atomic_bool _newframe;
     };
 
 } // namespace osgEarth

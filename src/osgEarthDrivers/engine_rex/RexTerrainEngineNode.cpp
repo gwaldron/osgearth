@@ -789,15 +789,12 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
 
-    unsigned osgFrame = nv.getFrameStamp()->getFrameNumber();
-    bool newFrame = (osgFrame > _clock.getFrame());
+    //unsigned osgFrame = nv.getFrameStamp()->getFrameNumber();
+    //bool newFrame = (osgFrame > _clock.getFrame());
 
     // prevent from running more than once per frame
-    if (newFrame)
+    if (_clock.update())
     {
-        // advance the frame clock for this new frame.
-        _clock.update();
-
         if (_renderModelUpdateRequired)
         {
             PurgeOrphanedLayers visitor(getMap(), _renderBindings);

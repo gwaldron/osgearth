@@ -27,6 +27,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Extension>
 #include <osgEarth/TerrainOptions>
+#include <osgEarth/Registry>
 
 namespace osg {
     class View;
@@ -241,6 +242,7 @@ namespace osgEarth
 
     private:
 
+        osg::ref_ptr<Registry> _registry;
         osg::ref_ptr<Map>  _map;
         osg::Group*        _layerNodes;
         unsigned           _lastNumBlacklistedFilenames;

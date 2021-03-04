@@ -1609,6 +1609,18 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
             response.getCodeCategory() == HTTPResponse::CATEGORY_SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
             ReadResult::RESULT_UNKNOWN_ERROR);
 
+        // for request errors, return an error result with the part data intact
+        // so the user can parse it as needed. We only do this for readString.
+        if (response.getNumParts() > 0u)
+        {
+            result.setErrorDetail(response.getPartAsString(0));
+
+            if (s_HTTP_DEBUG)
+            {
+                OE_WARN << LC << "SERVER REPORTS: " << result.errorDetail() << std::endl;
+            }
+        }
+
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
         if (HTTPClient::isRecoverable( result.code() ) )
         {
@@ -1703,6 +1715,18 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
             response.getCodeCategory() == HTTPResponse::CATEGORY_SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
             ReadResult::RESULT_UNKNOWN_ERROR);
 
+        // for request errors, return an error result with the part data intact
+        // so the user can parse it as needed. We only do this for readString.
+        if (response.getNumParts() > 0u)
+        {
+            result.setErrorDetail(response.getPartAsString(0));
+
+            if (s_HTTP_DEBUG)
+            {
+                OE_WARN << LC << "SERVER REPORTS: " << result.errorDetail() << std::endl;
+            }
+        }
+
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
         if (HTTPClient::isRecoverable( result.code() ) )
         {
@@ -1788,6 +1812,18 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
             response.getCodeCategory() == HTTPResponse::CATEGORY_SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
             ReadResult::RESULT_UNKNOWN_ERROR);
 
+        // for request errors, return an error result with the part data intact
+        // so the user can parse it as needed. We only do this for readString.
+        if (response.getNumParts() > 0u)
+        {
+            result.setErrorDetail(response.getPartAsString(0));
+
+            if (s_HTTP_DEBUG)
+            {
+                OE_WARN << LC << "SERVER REPORTS: " << result.errorDetail() << std::endl;
+            }
+        }
+
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
         if (HTTPClient::isRecoverable( result.code() ) )
         {
@@ -1845,6 +1881,11 @@ HTTPClient::doReadString(const HTTPRequest&    request,
         if (response.getNumParts() > 0u)
         {
             result.setErrorDetail(response.getPartAsString(0));
+
+            if (s_HTTP_DEBUG)
+            {
+                OE_NOTICE << LC << "SERVER REPORTS: " << result.errorDetail() << std::endl;
+            }
         }
 
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.

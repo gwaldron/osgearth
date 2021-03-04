@@ -27,6 +27,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Extension>
 #include <osgEarth/TerrainOptions>
+#include <osgEarth/Registry>
 
 namespace osg {
     class View;
@@ -39,7 +40,6 @@ namespace osgEarth
     class SpatialReference;
     class DrapableNode;
     class ClampableNode;
-    class Registry;
 
     namespace Util
     {

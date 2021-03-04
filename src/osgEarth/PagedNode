@@ -290,6 +290,7 @@ namespace osgEarth { namespace Util
         };
         std::queue<ToMerge> _mergeQueue;
         unsigned _mergesPerFrame;
+        std::atomic_bool _newFrame;
 
         inline void merge(PagedNode2* host) {
             ScopedMutexLock lock(_mergeMutex);

@@ -437,7 +437,8 @@ PagingManager::PagingManager() :
     _trackerMutex(OE_MUTEX_NAME),
     _mergeMutex(OE_MUTEX_NAME),
     _tracker(),
-    _mergesPerFrame(4u)
+    _mergesPerFrame(4u),
+    _newFrame(false)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     JobArena::get(PAGEDNODE_ARENA_NAME)->setConcurrency(4u);
@@ -449,7 +450,14 @@ PagingManager::traverse(osg::NodeVisitor& nv)
     // Make this object accesible to children
     ObjectStorage::set(&nv, this);
 
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        _newFrame.exchange(true);
+    }
+
+    else if (
+        nv.getVisitorType() == nv.UPDATE_VISITOR &&
+        _newFrame.exchange(false)==true)
     {
         {
             ScopedMutexLock lock(_trackerMutex); // need this?

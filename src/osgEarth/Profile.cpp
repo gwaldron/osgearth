@@ -592,6 +592,13 @@ Profile::clampAndTransformExtent(const GeoExtent& input, bool* out_clamped) cons
     if (input.isInvalid())
         return GeoExtent::INVALID;
 
+    if (input.isWholeEarth())
+    {
+        if (out_clamped && !getExtent().isWholeEarth())
+            *out_clamped = true;
+        return getExtent();
+    }
+
     // begin by transforming the input extent to this profile's SRS.
     GeoExtent inputInMySRS = input.transform(getSRS());
 

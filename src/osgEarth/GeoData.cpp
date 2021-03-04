@@ -798,6 +798,13 @@ GeoExtent::isGeographic() const
     return _srs.valid() && _srs->isGeographic();
 }
 
+bool
+GeoExtent::isWholeEarth() const
+{
+    return (_srs.valid() && _srs->isGeographic()
+            && width() == 360.0 && height() == 180.0);
+}
+
 void
 GeoExtent::set(double west, double south, double east, double north)
 {

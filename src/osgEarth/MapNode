@@ -39,6 +39,7 @@ namespace osgEarth
     class SpatialReference;
     class DrapableNode;
     class ClampableNode;
+    class Registry;
 
     namespace Util
     {
@@ -241,6 +242,7 @@ namespace osgEarth
 
     private:
 
+        osg::ref_ptr<Registry> _registry;
         osg::ref_ptr<Map>  _map;
         osg::Group*        _layerNodes;
         unsigned           _lastNumBlacklistedFilenames;

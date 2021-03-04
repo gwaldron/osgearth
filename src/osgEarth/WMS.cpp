@@ -633,6 +633,14 @@ WMS::Driver::fetchTileImage(const TileKey&     key,
     {
         image = out_response.getImage();
     }
+    else if (out_response.errorDetail().empty() == false)
+    {
+        Config conf;
+        conf.fromXML(std::istringstream(out_response.errorDetail()));
+        const Config* serviceEx = conf.find("serviceexception");
+        std::string msg = serviceEx ? serviceEx->value() : out_response.errorDetail();
+        OE_WARN << LC << _options->name().get() << ": Service Exception: " << msg << " (URI=" << uri << ")" << std::endl;
+    }
 
     return image.release();
 }
@@ -705,7 +713,7 @@ WMS::Driver::createURI(const TileKey& key) const
 
     std::ostringstream buf;
     buf.imbue(std::locale::classic());
-    buf << _prototype
+    buf << _prototype << std::fixed
         << "&BBOX=" << minx << "," << miny << "," << maxx << "," << maxy;
 
     std::string uri(buf.str());

@@ -168,7 +168,7 @@ namespace osgEarth
 
         /** Copy construct */
         ReadResult( const ReadResult& rhs )
-            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta), _fromCache(rhs._fromCache), _lmt(rhs._lmt), _duration_s(rhs._duration_s) { }
+            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta), _fromCache(rhs._fromCache), _lmt(rhs._lmt), _duration_s(rhs._duration_s), _detail(rhs._detail) { }
 
         /** dtor */
         virtual ~ReadResult() { }

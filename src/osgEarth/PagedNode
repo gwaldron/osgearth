@@ -280,8 +280,8 @@ namespace osgEarth { namespace Util
 
     private:
         Mutex _trackerMutex;
-        SentryTracker<PagedNode2> _tracker;
-        std::list<osg::observer_ptr<PagedNode2>> _trash;
+        SentryTracker<osg::ref_ptr<PagedNode2>> _tracker;
+        std::list<PagedNode2*> _trash;
 
         mutable Mutex _mergeMutex;
         struct ToMerge {

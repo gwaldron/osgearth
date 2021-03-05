@@ -348,11 +348,6 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 _compiled.get().valid() &&
                 _mergeTriggered.exchange(true) == false)
             {
-                // Generate shaders
-                //Registry::instance()->shaderGenerator().run(
-                //    _compiled.get().get(),
-                //    Registry::stateSetCache());
-
                 // Submit this node to the paging manager for merging.
                 _pagingManager->merge(this);
             }
@@ -460,45 +455,23 @@ PagingManager::traverse(osg::NodeVisitor& nv)
         nv.getVisitorType() == nv.UPDATE_VISITOR &&
         _newFrame.exchange(false)==true)
     {
+        // Discard expired nodes
         {
-            ScopedMutexLock lock(_trackerMutex); // need this?
+            ScopedMutexLock lock(_trackerMutex); // unnecessary?
 
-            _trash.clear();
-
-            // Collect the expired nodes, pushing them in reverse order
-            // so that we can release them in the most efficient manner
-            // possible (top-down in the scene graph)
-
-            // You can change this to push_back and put a limiter on it
-            // to gradually release stuff instead
-
-#if 1
-            // Release as much as possible quickly
-            _tracker.collectTrash(nv, 0.0f, ~0u,
-                [this](PagedNode2* node) { _trash.push_front(node); });
-#else
-            // Release the higher LOD nodes first, gradually
-            _tracker.collectTrash(nv, 0.0f, _mergesPerFrame,
-                [this](PagedNode2* node) { _trash.push_back(node); });
-#endif
-
-            //int count = 0;
-            for (auto& node : _trash)
-            {
-                osg::ref_ptr<PagedNode2> safe(node);
-                if (safe.valid())
-                {
-                    safe->reset();
-                    //count++;
-                }
-            }
-            //if (count > 0)
-            //    OE_INFO << LC << "Trashed " << count << "/" << _trash.size() << std::endl;
+            _tracker.flush(
+                nv,
+                0.0f,
+                _mergesPerFrame,
+                [this](osg::ref_ptr<PagedNode2>& node) {
+                    node->reset();
+                });
         }
 
+        // Handle merges
         if (_mergeQueue.empty() == false)
         {
-            ScopedMutexLock lock(_mergeMutex);
+            ScopedMutexLock lock(_mergeMutex); // unnecessary?
 
             unsigned count = 0u;
             while (_mergeQueue.empty() == false && count < _mergesPerFrame)

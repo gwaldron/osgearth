@@ -182,6 +182,8 @@ Map::init()
     // elevation sampling
     _elevationPool = new ElevationPool();
     _elevationPool->setMap( this );
+
+    _numTerrainPatchLayers = 0;
 }
 
 Map::~Map()
@@ -439,6 +441,9 @@ Map::addLayer(Layer* layer)
         _layers.push_back( layer );
         index = _layers.size() - 1;
         newRevision = ++_dataModelRevision;
+
+        if (layer->options().terrainPatch() == true)
+            ++_numTerrainPatchLayers;
     }
 
     // a separate block b/c we don't need the mutex
@@ -487,6 +492,9 @@ Map::insertLayer(Layer* layer, unsigned index)
             _layers.insert(_layers.begin() + index, layer);
 
         newRevision = ++_dataModelRevision;
+
+        if (layer->options().terrainPatch() == true)
+            ++_numTerrainPatchLayers;
     }
 
     // a separate block b/c we don't need the mutex
@@ -529,6 +537,10 @@ Map::removeLayer(Layer* layer)
             {
                 _layers.erase( i );
                 newRevision = ++_dataModelRevision;
+
+                if (layer->options().terrainPatch() == true)
+                    --_numTerrainPatchLayers;
+
                 break;
             }
         }
@@ -842,4 +854,10 @@ Map::isFast(const TileKey& key, const LayerVector& layers) const
         }
     }
     return true;
+}
+
+int 
+Map::getNumTerrainPatchLayers() const
+{
+    return _numTerrainPatchLayers;
 }

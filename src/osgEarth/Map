@@ -193,6 +193,9 @@ namespace osgEarth
         //! List of attribution strings to be displayed by the application
         void getAttributions(StringSet& attributions) const;
 
+        //! Number of layers marked as terrain pathes
+        int getNumTerrainPatchLayers() const;
+
     protected:
 
         virtual ~Map();
@@ -236,6 +239,7 @@ namespace osgEarth
         osg::ref_ptr<ElevationPool> _elevationPool;
         mutable ElevationPool _ElevationPool;
         osg::ref_ptr<CacheSettings> _cacheSettings;
+        int _numTerrainPatchLayers;
 
         struct LayerCB : public LayerCallback {
             LayerCB(Map*);

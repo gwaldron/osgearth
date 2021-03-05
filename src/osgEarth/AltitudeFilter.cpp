@@ -23,6 +23,8 @@
 
 #define LC "[AltitudeFilter] "
 
+#define USE_EP_SESSION
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -151,10 +153,12 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
 void
 AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 {
-    OE_START_TIMER(pushAndClamp);
     unsigned total = 0;
 
     const Session* session = cx.getSession();
+
+    if (features.empty())
+        return;
 
     // the map against which we'll be doing elevation clamping
     osg::ref_ptr<const Map> map = session->getMap();
@@ -163,6 +167,12 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
     const SpatialReference* mapSRS = map->getSRS();
     osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
+
+    // see if we can use the session-based clamper (faster)
+    // only implemented for CLAMP_TO_TERRAIN so far -gw
+    bool useElevationQuery =
+        map->getNumTerrainPatchLayers() > 0 &&
+        _altitude->clamping() == _altitude->CLAMP_TO_TERRAIN;
 
     // establish an elevation query interface based on the features' SRS.
     ElevationQuery eq(map.get());
@@ -187,6 +197,19 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     // whether the SRS's have a compatible vertical datum.
     bool vertEquiv =
         featureSRS->isVertEquivalentTo( mapSRS );
+
+    ElevationPool::WorkingSet workingSet;
+    ElevationPool::SampleSession epSession;
+    if (!useElevationQuery)
+    {
+        osg::Vec3d refPoint;
+        featureSRS->transform(features.begin()->get()->getExtent().getCentroid(), map->getSRS(), refPoint);
+        map->getElevationPool()->beginSession(
+            epSession,
+            refPoint,
+            Distance(_maxRes, map->getSRS()->getUnits()),
+            &workingSet);
+    }
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
@@ -224,7 +247,18 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
         // are clamped to the whole multipolygon and not per polygon.
         if (!perVertex)
         {
-            centroidElevation = eq.getElevation( centroid, _maxRes );
+            if (useElevationQuery)
+            {
+                centroidElevation = eq.getElevation(centroid, _maxRes);
+            }
+            else
+            {
+                std::vector<osg::Vec3d> temp(1);
+                temp[0].set(centroid.x(), centroid.y(), 0);
+                map->getElevationPool()->sampleMapCoords(temp, epSession, nullptr);
+                centroid.z() = temp[0].z();
+            }
+
             // Check for NO_DATA_VALUE and use zero instead.
             if (centroidElevation == NO_DATA_VALUE)
             {
@@ -395,7 +429,36 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             {
                 if ( perVertex )
                 {
-                    eq.getElevations( geom->asVector(), featureSRS.get(), true, _maxRes );
+                    if (useElevationQuery)
+                    {
+                        eq.getElevations(geom->asVector(), featureSRS.get(), true, _maxRes);
+                    }
+
+                    else
+                    {
+                        bool xform = !featureSRS->isHorizEquivalentTo(map->getSRS());
+
+                        std::vector<osg::Vec3d>* points = &geom->asVector();
+                        std::vector<osg::Vec3d> transformed;
+
+                        if (xform)
+                        {
+                            transformed = *points;
+                            featureSRS->transform(transformed, map->getSRS());
+                            points = &transformed;
+                        }
+
+                        map->getElevationPool()->sampleMapCoords(
+                            *points,
+                            epSession,
+                            nullptr);
+
+                        if (xform)
+                        {
+                            for (int i = 0; i < points->size(); ++i)
+                                geom->asVector()[i].z() = (*points)[i].z();
+                        }
+                    }
                     
                     // if necessary, transform the Z values (which are now in the map SRS) back
                     // into the feature's SRS.
@@ -452,7 +515,4 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             feature->set( "__max_terrain_z", maxTerrainZ );
         }
     }
-
-    double t = OE_GET_TIMER(pushAndClamp);
-    OE_DEBUG << LC << "pushAndClamp: tpp = " << (t / (double)total)*1000000.0 << " us\n";
 }

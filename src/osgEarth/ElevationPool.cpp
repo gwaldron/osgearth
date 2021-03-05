@@ -133,6 +133,8 @@ ElevationPool::sync(const Map* map, WorkingSet* ws)
 {
     if (_mapDataDirty)
     {
+        OE_PROFILING_ZONE;
+
         while(_workers > 0)
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -236,62 +238,37 @@ ElevationPool::findExistingRaster(
     bool* fromL2,
     bool* fromLUT)
 {   
+    OE_PROFILING_ZONE;
+
     *fromWS = false;
     *fromL2 = false;
     *fromLUT = false;
 
-#if 0
-    // First check the workingset. No mutex required since the
-    // LRU has its own mutex. (TODO: maybe just combine mutexes here)
-    if (ws)
-    {
-        WorkingSet::LRU::Record record;
-        if (ws->_lru.get(key, record))
-        {
-            OE_DEBUG << LC << key._tilekey.str() << " - Cache hit (Working set)" << std::endl;
-            output = record.value();
-            *fromWS = true;
-            return true;
-        }
-    }
-
-    if (_L2)
-    {
-        WorkingSet::LRU::Record record;
-        if (_L2->_lru.get(key, record))
-        {
-            OE_DEBUG << LC << key._tilekey.str() << " - Cache hit (L2 cache)" << std::endl;
-            output = record.value();
-            *fromL2 = true;
-            return true;
-        }
-    }
-#endif
-
     // Next check the system LUT -- see if someone somewhere else
     // already has it (the terrain or another WorkingSet)
     optional<Internal::RevElevationKey> orphanedKey;
-    _globalLUTMutex.read_lock();
-    OE_DEBUG << "Global LUT size = " << _globalLUT.size() << std::endl;
-    auto i =_globalLUT.find(key);
-    if (i != _globalLUT.end())
     {
-        i->second.lock(output);
-        if (output.valid())
+        ScopedReadLock lock(_globalLUTMutex);
+
+        auto i = _globalLUT.find(key);
+        if (i != _globalLUT.end())
         {
-            *fromLUT = true;
-        }
-        else
-        {
-            // observer was orphaned..remove it
-            orphanedKey = key;
+            i->second.lock(output);
+            if (output.valid())
+            {
+                *fromLUT = true;
+            }
+            else
+            {
+                // observer was orphaned..remove it
+                orphanedKey = key;
+            }
         }
     }
-    _globalLUTMutex.read_unlock();
 
     if (orphanedKey.isSet())
     {
-        Threading::ScopedWriteLock lock(_globalLUTMutex);
+        ScopedWriteLock lock(_globalLUTMutex);
         _globalLUT.erase(orphanedKey.get());
     }
 
@@ -400,7 +377,7 @@ ElevationPool::getOrCreateRaster(
     // update system weak-LUT:
     if (!fromLUT)
     {
-        Threading::ScopedWriteLock lock(_globalLUTMutex);
+        ScopedWriteLock lock(_globalLUTMutex);
         _globalLUT[key] = result.get();
     }
 
@@ -409,23 +386,23 @@ ElevationPool::getOrCreateRaster(
 
 namespace
 {
-    typedef vector_map<
-        Internal::RevElevationKey,
-        osg::ref_ptr<ElevationTexture> > QuickCache;
+    //typedef vector_map<
+    //    Internal::RevElevationKey,
+    //    osg::ref_ptr<ElevationTexture> > QuickCache;
 
-    struct QuickSampleVars {
-        double sizeS, sizeT;
-        double s, t;
-        double s0, s1, smix;
-        double t0, t1, tmix;
-        osg::Vec4f UL, UR, LL, LR, TOP, BOT;
-    };
+    //struct QuickSampleVars {
+    //    double sizeS, sizeT;
+    //    double s, t;
+    //    double s0, s1, smix;
+    //    double t0, t1, tmix;
+    //    osg::Vec4f UL, UR, LL, LR, TOP, BOT;
+    //};
 
     inline void quickSample(
         const ImageUtils::PixelReader& reader, 
         double u, double v, 
         osg::Vec4f& out,
-        QuickSampleVars& a)
+        ElevationPool::SampleSession::QuickSampleVars& a)
     {
         const double sizeS = (double)(reader.s()-1);
         const double sizeT = (double)(reader.t()-1);
@@ -458,6 +435,54 @@ namespace
         a.BOT = a.LL * minusSmix + a.LR * smix;
         out = a.TOP * minusTmis + a.BOT * tmix;
     }
+}
+
+bool
+ElevationPool::beginSession(
+    SampleSession& session,
+    const osg::Vec3d& refPoint,
+    const Distance& resolution,
+    WorkingSet* ws)
+{
+    session.map = nullptr;
+    session.profile = nullptr;
+    if (_map.lock(session.map) == false || session.map->getProfile() == nullptr)
+        return false;
+
+    session.profile = session.map->getProfile();
+
+    sync(session.map.get(), ws);
+
+    session.key._revision = getElevationRevision(session.map.get());
+
+    session.raster = nullptr;
+    session.cache.clear();
+
+    session.pw = session.profile->getExtent().width();
+    session.ph = session.profile->getExtent().height();
+    session.pxmin = session.profile->getExtent().xMin();
+    session.pymin = session.profile->getExtent().yMin();
+
+    const Units& units = session.map->getSRS()->getUnits();
+    Distance pointRes(0.0, units);
+
+    double resolutionInMapUnits = resolution.asDistance(units, refPoint.y());
+
+    int maxLOD = session.profile->getLevelOfDetailForHorizResolution(
+        resolutionInMapUnits,
+        ELEVATION_TILE_SIZE);
+
+    session.lod = osg::minimum(getLOD(refPoint.x(), refPoint.y()), (int)maxLOD);
+
+    //TODO: Fix this mess, doesn't work for insets.
+    if (session.lod < 0)
+        session.lod = 0;
+
+    session.profile->getNumTiles(session.lod, session.tw, session.th);
+
+    session.ws = ws;
+
+    return true;
 }
 
 int
@@ -493,8 +518,8 @@ ElevationPool::sampleMapCoords(
 
     int count = 0;
 
-    QuickCache quickCache;
-    QuickSampleVars qvars;
+    SampleSession::QuickCache quickCache;
+    SampleSession::QuickSampleVars qvars;
 
     //TODO: TESTING..?
     //ws = NULL;
@@ -617,7 +642,7 @@ ElevationPool::sampleMapCoords(
     WorkingSet* ws,
     ProgressCallback* progress)
 {
-    //OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE;
 
     if (points.empty())
         return -1;
@@ -644,8 +669,8 @@ ElevationPool::sampleMapCoords(
 
     int count = 0;
 
-    QuickCache quickCache;
-    QuickSampleVars qvars;
+    SampleSession::QuickCache quickCache;
+    SampleSession::QuickSampleVars qvars;
 
     //TODO: TESTING..?
     //ws = NULL;
@@ -655,8 +680,8 @@ ElevationPool::sampleMapCoords(
     int tx, ty;
     int tx_prev = INT_MAX, ty_prev = INT_MAX;
     float lastRes = -1.0f;
-    unsigned lod;
-    unsigned lod_prev = INT_MAX;
+    int lod;
+    int lod_prev = INT_MAX;
     const Units& units = map->getSRS()->getUnits();
     Distance pointRes(0.0, units);
 
@@ -731,6 +756,109 @@ ElevationPool::sampleMapCoords(
                     v = osg::clampBetween(v, 0.0, 1.0);
 
                     quickSample(raster->reader(), u, v, elev, qvars);
+                    p.z() = elev.r();
+                }
+                else
+                {
+                    p.z() = NO_DATA_VALUE;
+                }
+            }
+        }
+        else
+        {
+            p.z() = NO_DATA_VALUE;
+        }
+
+        if (p.z() != NO_DATA_VALUE)
+            ++count;
+    }
+
+    return count;
+}
+
+int
+ElevationPool::sampleMapCoords(
+    std::vector<osg::Vec3d>& points,
+    SampleSession& session,
+    ProgressCallback* progress)
+{
+    OE_PROFILING_ZONE;
+
+    if (points.empty())
+        return -1;
+
+    ScopedAtomicCounter counter(_workers);
+
+    //TODO: TESTING..?
+    //ws = NULL;
+
+    double u, v;
+    double rx, ry;
+    int tx, ty;
+    int tx_prev = INT_MAX, ty_prev = INT_MAX;
+    float lastRes = -1.0f;
+    int lod = session.lod;
+    int lod_prev = INT_MAX;
+    osg::Vec4f elev;
+    int count = 0;
+
+    for (auto& p : points)
+    {
+        {
+            //OE_PROFILING_ZONE_NAMED("createTileKey");
+
+            rx = (p.x() - session.pxmin) / session.pw, ry = (p.y() - session.pymin) / session.ph;
+            tx = osg::clampBelow((unsigned)(rx * (double)session.tw), session.tw - 1u); // TODO: wrap around for geo
+            ty = osg::clampBelow((unsigned)((1.0 - ry) * (double)session.th), session.th - 1u);
+
+            if (lod != lod_prev || tx != tx_prev || ty != ty_prev)
+            {
+                session.key._tilekey = TileKey(lod, tx, ty, session.profile.get());
+                lod_prev = lod;
+                tx_prev = tx;
+                ty_prev = ty;
+            }
+        }
+
+        if (session.key._tilekey.valid())
+        {
+            auto iter = session.cache.find(session.key);
+
+            if (iter == session.cache.end())
+            {
+                session.raster = getOrCreateRaster(
+                    session.key,   // key to query
+                    session.map.get(), // map to query
+                    true,  // fall back on lower resolution data if necessary
+                    session.ws,    // user's workingset
+                    progress);
+
+                // bail on cancelation before using the quickcache
+                if (progress && progress->isCanceled())
+                {
+                    return -1;
+                }
+
+                session.cache[session.key] = session.raster.get();
+            }
+            else
+            {
+                session.raster = iter->second;
+            }
+
+            {
+                //OE_PROFILING_ZONE_NAMED("sample");
+                if (session.raster.valid())
+                {
+                    u = (p.x() - session.raster->getExtent().xMin()) / session.raster->getExtent().width();
+                    v = (p.y() - session.raster->getExtent().yMin()) / session.raster->getExtent().height();
+
+                    // Note: This can happen on the map edges..
+                    // TODO: consider looping around for geo and clamping for projected
+                    u = osg::clampBetween(u, 0.0, 1.0);
+                    v = osg::clampBetween(v, 0.0, 1.0);
+
+                    quickSample(session.raster->reader(), u, v, elev, session.vars);
                     p.z() = elev.r();
                 }
                 else

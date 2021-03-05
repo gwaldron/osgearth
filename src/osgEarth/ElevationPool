@@ -83,6 +83,35 @@ namespace osgEarth
             friend class ElevationPool;
         };
 
+        //! User data that internal ops can use to speed up localized
+        //! queries when using sampleMapCoords
+        //! INTERNAL DATA - DO NOT access directly
+        struct SampleSession
+        {
+            using QuickCache = vector_map<
+                Internal::RevElevationKey,
+                osg::ref_ptr<ElevationTexture>>;
+
+            struct QuickSampleVars {
+                double sizeS, sizeT;
+                double s, t;
+                double s0, s1, smix;
+                double t0, t1, tmix;
+                osg::Vec4f UL, UR, LL, LR, TOP, BOT;
+            };
+
+            Internal::RevElevationKey key;
+            QuickCache cache;
+            QuickSampleVars vars;
+            double pw, ph, pxmin, pymin;
+            osg::ref_ptr<ElevationTexture> raster;
+            int lod;
+            unsigned tw, th;
+            WorkingSet* ws;
+            osg::ref_ptr<const Map> map;
+            osg::ref_ptr<const Profile> profile;
+        };
+
     public:
         //! Construct the elevation pool
         ElevationPool();
@@ -148,6 +177,24 @@ namespace osgEarth
             std::vector<osg::Vec3d>& points,
             const Distance& resolution,
             WorkingSet* ws,
+            ProgressCallback* progress);;
+
+        //! Creates a session that may be passed to sampleMapCoords
+        bool beginSession(
+            SampleSession& out,
+            const osg::Vec3d& refPoint,
+            const Distance& resolution,
+            WorkingSet* ws);
+
+        //! For each point in an array of points, sample the elevation and store
+        //! the result in the Z coordinate. Input points must be in the map's SRS.
+        //! @param points Array of points in map coords for which to sample elevation
+        //! @param session Session created by calling beginSession
+        //! @param progress Optional progress callback
+        //! @return Number of valid elevations sampled, or -1 if there was an error
+        int sampleMapCoords(
+            std::vector<osg::Vec3d>& points,
+            SampleSession& session,
             ProgressCallback* progress);
 
         //! Invalidates all caches in the ElevationPool

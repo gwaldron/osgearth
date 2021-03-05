@@ -121,9 +121,9 @@ Mutex::setName(const std::string& name)
 void
 Mutex::lock()
 {
-    if (_name.empty()) {
-        volatile int x =0 ; // breakpoint for finding unnamed mutexes
-    }
+    //if (_name.empty()) {
+    //    volatile int x =0 ; // breakpoint for finding unnamed mutexes
+    //}
 
 #ifdef OSGEARTH_PROFILING
     if (_metricsData)

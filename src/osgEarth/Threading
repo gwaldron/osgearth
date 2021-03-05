@@ -422,8 +422,7 @@ namespace osgEarth { namespace Threading
 
         void read_lock() {
             std::unique_lock<T> lock(_m);
-            while (_writers > 0)
-                _unlocked.wait(lock);
+            _unlocked.wait(lock, [&]() { return _writers == 0; });
             ++_readers;
         }
 
@@ -436,8 +435,7 @@ namespace osgEarth { namespace Threading
 
         void write_lock() {
             std::unique_lock<T> lock(_m);
-            while (_writers > 0 || _readers > 0)
-                _unlocked.wait(lock);
+            _unlocked.wait(lock, [&]() { return _writers == 0 && _readers == 0; });
             ++_writers;
         }
 

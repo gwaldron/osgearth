@@ -472,11 +472,15 @@ PagingManager::traverse(osg::NodeVisitor& nv)
             // You can change this to push_back and put a limiter on it
             // to gradually release stuff instead
 
+#if 1
+            // Release as much as possible quickly
             _tracker.collectTrash(nv, 0.0f, ~0u,
                 [this](PagedNode2* node) { _trash.push_front(node); });
-
-            //_tracker.collectTrash(nv, 0.0f, 1u,
-            //    [this](PagedNode2* node) { _trash.push_back(node); });
+#else
+            // Release the higher LOD nodes first, gradually
+            _tracker.collectTrash(nv, 0.0f, _mergesPerFrame,
+                [this](PagedNode2* node) { _trash.push_back(node); });
+#endif
 
             //int count = 0;
             for (auto& node : _trash)

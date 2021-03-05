@@ -636,7 +636,8 @@ WMS::Driver::fetchTileImage(const TileKey&     key,
     else if (out_response.errorDetail().empty() == false)
     {
         Config conf;
-        conf.fromXML(std::istringstream(out_response.errorDetail()));
+        std::istringstream errorDetailStream(out_response.errorDetail());
+        conf.fromXML(errorDetailStream);
         const Config* serviceEx = conf.find("serviceexception");
         std::string msg = serviceEx ? serviceEx->value() : out_response.errorDetail();
         OE_WARN << LC << _options->name().get() << ": Service Exception: " << msg << " (URI=" << uri << ")" << std::endl;

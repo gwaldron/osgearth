@@ -75,7 +75,7 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
 
         // populate it with the tile model contents:
         data->_result.get()->getStateToCompile(*state.get());
-        
+
         ScopedMutexLock lock(_mutex);
 
         if (!state->empty())
@@ -85,7 +85,7 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
             ToCompile toCompile;
             toCompile._data = data;
             toCompile._compiled = glcompiler.compileAsync(
-                dummyNode, state, &nv, nullptr);
+                dummyNode.get(), state.get(), &nv, nullptr);
 
             _compileQueue.push(std::move(toCompile));
         }

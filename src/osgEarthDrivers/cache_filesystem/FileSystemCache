@@ -60,7 +60,7 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            threads().setDefault(2u);
+            threads().setDefault(1u);
             conf.get( "path", rootPath() );
             conf.get( "threads", threads() );
         }

@@ -397,12 +397,11 @@ namespace osgEarth
         //! North-to-south span of the extent
         inline double height() const { return _height; }
 
-        /**
-         * Gets the centroid of the bounds
-         */
-        bool getCentroid( double& out_x, double& out_y ) const;
-        osg::Vec3d getCentroid() const { osg::Vec3d r; getCentroid(r.x(), r.y()); return r; }
-        bool getCentroid( GeoPoint& output ) const;
+        //! Gets the centroid of the bounds
+        GeoPoint getCentroid() const;
+
+        //! Legacy @deprecated
+        bool getCentroid(double& out_x, double& out_y) const;
 
         //! True if the extent is geographic and crosses the 180 degree meridian.
         bool crossesAntimeridian() const;

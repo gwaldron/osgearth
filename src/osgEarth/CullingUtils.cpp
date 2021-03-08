@@ -458,8 +458,7 @@ ClusterCullingFactory::create(const osg::Vec3& controlPoint,
 osg::NodeCallback*
 ClusterCullingFactory::create(const GeoExtent& extent)
 {
-    GeoPoint centerPoint;
-    extent.getCentroid( centerPoint );
+    GeoPoint centerPoint = extent.getCentroid();
 
     // select the farthest corner:
     GeoPoint edgePoint;

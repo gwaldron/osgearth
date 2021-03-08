@@ -198,17 +198,13 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     bool vertEquiv =
         featureSRS->isVertEquivalentTo( mapSRS );
 
-    ElevationPool::WorkingSet workingSet;
-    ElevationPool::SampleSession epSession;
+    ElevationPool::Envelope envelope;
     if (!useElevationQuery)
     {
-        osg::Vec3d refPoint;
-        featureSRS->transform(features.begin()->get()->getExtent().getCentroid(), map->getSRS(), refPoint);
-        map->getElevationPool()->beginSession(
-            epSession,
-            refPoint,
-            Distance(_maxRes, map->getSRS()->getUnits()),
-            &workingSet);
+        map->getElevationPool()->prepareEnvelope(
+            envelope,
+            features.begin()->get()->getExtent().getCentroid(),
+            Distance(_maxRes, map->getSRS()->getUnits()));
     }
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
@@ -255,7 +251,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             {
                 std::vector<osg::Vec3d> temp(1);
                 temp[0].set(centroid.x(), centroid.y(), 0);
-                map->getElevationPool()->sampleMapCoords(temp, epSession, nullptr);
+                envelope.sampleMapCoords(temp, nullptr);
                 centroid.z() = temp[0].z();
             }
 
@@ -448,10 +444,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                             points = &transformed;
                         }
 
-                        map->getElevationPool()->sampleMapCoords(
-                            *points,
-                            epSession,
-                            nullptr);
+                        envelope.sampleMapCoords(*points, nullptr);
 
                         if (xform)
                         {

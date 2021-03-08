@@ -60,8 +60,8 @@ namespace osgEarth { namespace SimpleSky
             _skynode = createSkyNode();
             if (mapNode->getMapSRS()->isProjected())
             {
-                GeoPoint refPoint;
-                mapNode->getMap()->getProfile()->getExtent().getCentroid(refPoint);
+                GeoPoint refPoint = 
+                    mapNode->getMap()->getProfile()->getExtent().getCentroid();
                 _skynode->setReferencePoint(refPoint);
             }                
             osgEarth::insertParent(_skynode.get(), mapNode);

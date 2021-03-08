@@ -131,15 +131,10 @@ BingImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     else
     {
         // center point of the tile (will be in spherical mercator)
-        double x, y;
-        key.getExtent().getCentroid(x, y);
+        GeoPoint cen = key.getExtent().getCentroid();
 
         // transform it to lat/long:
-        GeoPoint geo;
-
-        GeoPoint(getProfile()->getSRS(), x, y).transform(
-            getProfile()->getSRS()->getGeographicSRS(),
-            geo);
+        GeoPoint geo = cen.transform(cen.getSRS()->getGeographicSRS());
 
         // contact the REST API. Docs are here:
         // http://msdn.microsoft.com/en-us/library/ff701716.aspx

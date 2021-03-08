@@ -901,8 +901,8 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                 }
                 else 
                 {
-                    unsigned rni = vi==0u? numVerts-4u : ri-4u;
-                    unsigned rpi = vi==numVerts-1u ? 0u : ri+4u;
+                    unsigned rni = vi == 0u ? (numVerts - 1u) * 4u : ri - 4u;
+                    unsigned rpi = vi == numVerts - 1u ? 0u : ri + 4u;
 
                     for(unsigned n=0; n<rnum; ++n)
                     {

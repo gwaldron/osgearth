@@ -94,8 +94,7 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
     double zfar;
 
     // Calculate the centroid, which will become the focal point of the view:
-    GeoPoint centroidMap;
-    extent.getCentroid(centroidMap);
+    GeoPoint centroidMap = extent.getCentroid();
 
     osg::Vec3d centroid;
     centroidMap.toWorld(centroid);

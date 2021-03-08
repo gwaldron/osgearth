@@ -710,12 +710,25 @@ JobArena::startThreads()
                         _metrics->numJobsRunning++;
                         _metrics->numJobsPending--;
 
+                        auto t0 = std::chrono::steady_clock::now();
+
                         bool job_executed = next._delegate();
 
-                        if (!job_executed)
+                        auto duration = std::chrono::steady_clock::now() - t0;
+
+                        if (job_executed)
+                        {
+                            if (_allMetrics._report != nullptr)
+                            {
+                                if (duration >= _allMetrics._reportMinDuration)
+                                {
+                                    _allMetrics._report(Metrics::Report(next._job, _name, duration));
+                                }
+                            }
+                        }
+                        else
                         {
                             _metrics->numJobsCanceled++;
-                            //OE_INFO << LC << "Job canceled" << std::endl;
                         }
 
                         // release the group semaphore if necessary
@@ -777,6 +790,36 @@ void JobArena::stopThreads()
     }
 
     _threads.clear();
+}
+
+
+JobArena::Metrics::Metrics() :
+    _arenas(512),
+    maxArenaIndex(-1),
+    _report(nullptr),
+    _reportMinDuration(0)
+{
+    // nop
+
+    const char* report_us = ::getenv("OSGEARTH_JOB_REPORT_THRESHOLD");
+    if (report_us)
+    {
+        _report = [](const Report& r)
+        {
+            static Mutex _mutex;
+            ScopedMutexLock lock(_mutex);
+            std::string jobname = r.job.getName().empty() ? "unknown" : r.job.getName();
+            OE_INFO
+                << "[Job] " << jobname
+                << " (" << r.arena << ") "
+                << std::fixed << std::setprecision(1)
+                << 0.001f*(float)(std::chrono::duration_cast<std::chrono::microseconds>(r.duration).count()) << " ms" << std::endl;
+        };
+
+        _reportMinDuration = std::chrono::microseconds(as<int>(report_us, 132));
+
+        OE_INFO << LC << "Job report min duration set to " << report_us << "us" << std::endl;
+    }
 }
 
 const JobArena::Metrics::Arena&

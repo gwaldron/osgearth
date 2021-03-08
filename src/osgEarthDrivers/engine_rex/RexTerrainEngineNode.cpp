@@ -882,8 +882,7 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
 {
     osg::MatrixTransform* mt = new osg::MatrixTransform;
 
-    GeoPoint centroid;
-    geoHF.getExtent().getCentroid(centroid);
+    GeoPoint centroid = geoHF.getExtent().getCentroid();
 
     osg::Matrix world2local, local2world;
     centroid.createWorldToLocal( world2local );

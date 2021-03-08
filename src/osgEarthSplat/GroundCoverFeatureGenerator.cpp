@@ -358,7 +358,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     GeoPoint p = _location;
 
     if (!_location.isValid())
-        key.getExtent().getCentroid(p);
+        p = key.getExtent().getCentroid();
 
     const BiomeZone& zone = selectZone(p);
 

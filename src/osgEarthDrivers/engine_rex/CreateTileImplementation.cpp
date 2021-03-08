@@ -201,8 +201,7 @@ CreateTileImplementation::createTile(
             }
 
             // Establish a local reference frame for the tile:
-            GeoPoint centroid;
-            subkey->getExtent().getCentroid(centroid);
+            GeoPoint centroid = subkey->getExtent().getCentroid();
 
             osg::Matrix local2world;
             centroid.createLocalToWorld(local2world);

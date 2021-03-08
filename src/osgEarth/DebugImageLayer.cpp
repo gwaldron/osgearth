@@ -187,7 +187,7 @@ DebugImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
     GeoExtent e = key.getExtent();
     if (!e.getSRS()->isProjected())
     {
-        e = e.transform(e.getSRS()->createTangentPlaneSRS(e.getCentroid()));
+        e = e.transform(e.getSRS()->createTangentPlaneSRS(e.getCentroid().vec3d()));
     }
 
     buf << std::fixed << std::setprecision(1) << "\nh=" << e.height() << "m\nw=" << e.width() << "m";

@@ -83,11 +83,18 @@ namespace osgEarth
             friend class ElevationPool;
         };
 
-        //! User data that internal ops can use to speed up localized
-        //! queries when using sampleMapCoords
-        //! INTERNAL DATA - DO NOT access directly
-        struct SampleSession
+        /**
+         * Object for doing lots of queries in a localized area.
+         * Call newEnvelope to initialize one.
+         */
+        class OSGEARTH_EXPORT Envelope
         {
+        public:
+            int sampleMapCoords(
+                std::vector<osg::Vec3d>& points,
+                ProgressCallback* progress);
+
+        public:
             using QuickCache = vector_map<
                 Internal::RevElevationKey,
                 osg::ref_ptr<ElevationTexture>>;
@@ -100,16 +107,20 @@ namespace osgEarth
                 osg::Vec4f UL, UR, LL, LR, TOP, BOT;
             };
 
-            Internal::RevElevationKey key;
-            QuickCache cache;
-            QuickSampleVars vars;
-            double pw, ph, pxmin, pymin;
-            osg::ref_ptr<ElevationTexture> raster;
-            int lod;
-            unsigned tw, th;
-            WorkingSet* ws;
-            osg::ref_ptr<const Map> map;
-            osg::ref_ptr<const Profile> profile;
+        private:
+            Internal::RevElevationKey _key;
+            QuickCache _cache;
+            QuickSampleVars _vars;
+            double _pw, _ph, _pxmin, _pymin;
+            osg::ref_ptr<ElevationTexture> _raster;
+            int _lod;
+            unsigned _tw, _th;
+            WorkingSet* _ws;
+            osg::ref_ptr<const Map> _map;
+            osg::ref_ptr<const Profile> _profile;
+            ElevationPool* _pool;
+
+            friend class ElevationPool;
         };
 
     public:
@@ -179,10 +190,10 @@ namespace osgEarth
             WorkingSet* ws,
             ProgressCallback* progress);;
 
-        //! Creates a session that may be passed to sampleMapCoords
-        bool beginSession(
-            SampleSession& out,
-            const osg::Vec3d& refPoint,
+        //! Creates an envelope for sampling lots of points in a localized region
+        bool newEnvelope(
+            Envelope& out,
+            const GeoPoint& refPoint,
             const Distance& resolution,
             WorkingSet* ws);
 
@@ -192,10 +203,10 @@ namespace osgEarth
         //! @param session Session created by calling beginSession
         //! @param progress Optional progress callback
         //! @return Number of valid elevations sampled, or -1 if there was an error
-        int sampleMapCoords(
-            std::vector<osg::Vec3d>& points,
-            SampleSession& session,
-            ProgressCallback* progress);
+        //int sampleMapCoords(
+        //    std::vector<osg::Vec3d>& points,
+        //    SampleSession& session,
+        //    ProgressCallback* progress);
 
         //! Invalidates all caches in the ElevationPool
         void clear();

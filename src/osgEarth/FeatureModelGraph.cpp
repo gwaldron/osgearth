@@ -786,8 +786,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
     return workingExtent.createWorldBoundingSphere(-11000, 9000); // lowest and highest points on earth
 #endif
 
-    GeoPoint center;
-    workingExtent.getCentroid(center);
+    GeoPoint center = workingExtent.getCentroid();
 
     if (_session.valid())
     {
@@ -1462,14 +1461,13 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
                 if (geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0)
                 {
                     // get the geocentric tile center:
-                    osg::Vec3d tileCenter;
-                    ccExtent.getCentroid(tileCenter.x(), tileCenter.y());
+                    GeoPoint tileCenter = ccExtent.getCentroid();
 
                     osg::Vec3d centerECEF;
                     const SpatialReference* mapSRS = _session->getMapSRS();
                     if (mapSRS)
                     {
-                        ccExtent.getSRS()->transform(tileCenter, mapSRS->getGeocentricSRS(), centerECEF);
+                        ccExtent.getSRS()->transform(tileCenter.vec3d(), mapSRS->getGeocentricSRS(), centerECEF);
 
                         osg::NodeCallback* ccc = ClusterCullingFactory::create2(group.get(), centerECEF);
                         if (ccc)
@@ -2059,6 +2057,8 @@ FeatureModelGraph::redraw()
         fader->addChild(node);
         node = fader;
     }
+
+    OE_SOFT_ASSERT_AND_RETURN(node.valid(), __func__, );
 
     runPreMergeOperations(node.get());
 

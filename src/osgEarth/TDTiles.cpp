@@ -709,8 +709,7 @@ void ThreeDTileNode::computeBoundingVolume()
             return;
         }
 
-        GeoPoint centroid;
-        extent.getCentroid(centroid);
+        GeoPoint centroid = extent.getCentroid();
 
         osg::Matrixd worldToLocal, localToWorld;
         centroid.createWorldToLocal(worldToLocal);

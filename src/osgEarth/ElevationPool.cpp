@@ -402,7 +402,7 @@ namespace
         const ImageUtils::PixelReader& reader, 
         double u, double v, 
         osg::Vec4f& out,
-        ElevationPool::SampleSession::QuickSampleVars& a)
+        ElevationPool::Envelope::QuickSampleVars& a)
     {
         const double sizeS = (double)(reader.s()-1);
         const double sizeT = (double)(reader.t()-1);
@@ -438,51 +438,156 @@ namespace
 }
 
 bool
-ElevationPool::beginSession(
-    SampleSession& session,
-    const osg::Vec3d& refPoint,
+ElevationPool::newEnvelope(
+    ElevationPool::Envelope& env,
+    const GeoPoint& refPoint,
     const Distance& resolution,
     WorkingSet* ws)
 {
-    session.map = nullptr;
-    session.profile = nullptr;
-    if (_map.lock(session.map) == false || session.map->getProfile() == nullptr)
+    env._pool = this;
+    env._map = nullptr;
+    env._profile = nullptr;
+    if (_map.lock(env._map) == false || env._map->getProfile() == nullptr)
         return false;
 
-    session.profile = session.map->getProfile();
+    env._profile = env._map->getProfile();
 
-    sync(session.map.get(), ws);
+    sync(env._map.get(), ws);
 
-    session.key._revision = getElevationRevision(session.map.get());
+    env._key._revision = getElevationRevision(env._map.get());
 
-    session.raster = nullptr;
-    session.cache.clear();
+    env._raster = nullptr;
+    env._cache.clear();
 
-    session.pw = session.profile->getExtent().width();
-    session.ph = session.profile->getExtent().height();
-    session.pxmin = session.profile->getExtent().xMin();
-    session.pymin = session.profile->getExtent().yMin();
+    env._pw = env._profile->getExtent().width();
+    env._ph = env._profile->getExtent().height();
+    env._pxmin = env._profile->getExtent().xMin();
+    env._pymin = env._profile->getExtent().yMin();
 
-    const Units& units = session.map->getSRS()->getUnits();
+    const Units& units = env._map->getSRS()->getUnits();
     Distance pointRes(0.0, units);
 
-    double resolutionInMapUnits = resolution.asDistance(units, refPoint.y());
+    GeoPoint refPointMap = refPoint.transform(env._map->getSRS());
 
-    int maxLOD = session.profile->getLevelOfDetailForHorizResolution(
+    double resolutionInMapUnits = resolution.asDistance(units, refPointMap.y());
+
+    int maxLOD = env._profile->getLevelOfDetailForHorizResolution(
         resolutionInMapUnits,
         ELEVATION_TILE_SIZE);
 
-    session.lod = osg::minimum(getLOD(refPoint.x(), refPoint.y()), (int)maxLOD);
+    env._lod = osg::minimum(getLOD(refPointMap.x(), refPointMap.y()), (int)maxLOD);
 
     //TODO: Fix this mess, doesn't work for insets.
-    if (session.lod < 0)
-        session.lod = 0;
+    if (env._lod < 0)
+        env._lod = 0;
 
-    session.profile->getNumTiles(session.lod, session.tw, session.th);
+    env._profile->getNumTiles(env._lod, env._tw, env._th);
 
-    session.ws = ws;
+    env._ws = ws;
 
     return true;
+}
+
+int
+ElevationPool::Envelope::sampleMapCoords(
+    std::vector<osg::Vec3d>& points,
+    ProgressCallback* progress)
+{
+    OE_PROFILING_ZONE;
+
+    if (points.empty())
+        return -1;
+
+    ScopedAtomicCounter counter(_pool->_workers);
+
+    //TODO: TESTING..?
+    //ws = NULL;
+
+    double u, v;
+    double rx, ry;
+    int tx, ty;
+    int tx_prev = INT_MAX, ty_prev = INT_MAX;
+    float lastRes = -1.0f;
+    int lod = _lod;
+    int lod_prev = INT_MAX;
+    osg::Vec4f elev;
+    int count = 0;
+
+    for (auto& p : points)
+    {
+        {
+            //OE_PROFILING_ZONE_NAMED("createTileKey");
+
+            rx = (p.x() - _pxmin) / _pw, ry = (p.y() - _pymin) / _ph;
+            tx = osg::clampBelow((unsigned)(rx * (double)_tw), _tw - 1u); // TODO: wrap around for geo
+            ty = osg::clampBelow((unsigned)((1.0 - ry) * (double)_th), _th - 1u);
+
+            if (lod != lod_prev || tx != tx_prev || ty != ty_prev)
+            {
+                _key._tilekey = TileKey(lod, tx, ty, _profile.get());
+                lod_prev = lod;
+                tx_prev = tx;
+                ty_prev = ty;
+            }
+        }
+
+        if (_key._tilekey.valid())
+        {
+            auto iter = _cache.find(_key);
+
+            if (iter == _cache.end())
+            {
+                _raster = _pool->getOrCreateRaster(
+                    _key,   // key to query
+                    _map.get(), // map to query
+                    true,  // fall back on lower resolution data if necessary
+                    _ws,    // user's workingset
+                    progress);
+
+                // bail on cancelation before using the quickcache
+                if (progress && progress->isCanceled())
+                {
+                    return -1;
+                }
+
+                _cache[_key] = _raster.get();
+            }
+            else
+            {
+                _raster = iter->second;
+            }
+
+            {
+                //OE_PROFILING_ZONE_NAMED("sample");
+                if (_raster.valid())
+                {
+                    u = (p.x() - _raster->getExtent().xMin()) / _raster->getExtent().width();
+                    v = (p.y() - _raster->getExtent().yMin()) / _raster->getExtent().height();
+
+                    // Note: This can happen on the map edges..
+                    // TODO: consider looping around for geo and clamping for projected
+                    u = osg::clampBetween(u, 0.0, 1.0);
+                    v = osg::clampBetween(v, 0.0, 1.0);
+
+                    quickSample(_raster->reader(), u, v, elev, _vars);
+                    p.z() = elev.r();
+                }
+                else
+                {
+                    p.z() = NO_DATA_VALUE;
+                }
+            }
+        }
+        else
+        {
+            p.z() = NO_DATA_VALUE;
+        }
+
+        if (p.z() != NO_DATA_VALUE)
+            ++count;
+    }
+
+    return count;
 }
 
 int
@@ -518,8 +623,8 @@ ElevationPool::sampleMapCoords(
 
     int count = 0;
 
-    SampleSession::QuickCache quickCache;
-    SampleSession::QuickSampleVars qvars;
+    Envelope::QuickCache quickCache;
+    Envelope::QuickSampleVars qvars;
 
     //TODO: TESTING..?
     //ws = NULL;
@@ -669,11 +774,8 @@ ElevationPool::sampleMapCoords(
 
     int count = 0;
 
-    SampleSession::QuickCache quickCache;
-    SampleSession::QuickSampleVars qvars;
-
-    //TODO: TESTING..?
-    //ws = NULL;
+    Envelope::QuickCache quickCache;
+    Envelope::QuickSampleVars qvars;
 
     unsigned tw, th;
     double rx, ry;
@@ -756,109 +858,6 @@ ElevationPool::sampleMapCoords(
                     v = osg::clampBetween(v, 0.0, 1.0);
 
                     quickSample(raster->reader(), u, v, elev, qvars);
-                    p.z() = elev.r();
-                }
-                else
-                {
-                    p.z() = NO_DATA_VALUE;
-                }
-            }
-        }
-        else
-        {
-            p.z() = NO_DATA_VALUE;
-        }
-
-        if (p.z() != NO_DATA_VALUE)
-            ++count;
-    }
-
-    return count;
-}
-
-int
-ElevationPool::sampleMapCoords(
-    std::vector<osg::Vec3d>& points,
-    SampleSession& session,
-    ProgressCallback* progress)
-{
-    OE_PROFILING_ZONE;
-
-    if (points.empty())
-        return -1;
-
-    ScopedAtomicCounter counter(_workers);
-
-    //TODO: TESTING..?
-    //ws = NULL;
-
-    double u, v;
-    double rx, ry;
-    int tx, ty;
-    int tx_prev = INT_MAX, ty_prev = INT_MAX;
-    float lastRes = -1.0f;
-    int lod = session.lod;
-    int lod_prev = INT_MAX;
-    osg::Vec4f elev;
-    int count = 0;
-
-    for (auto& p : points)
-    {
-        {
-            //OE_PROFILING_ZONE_NAMED("createTileKey");
-
-            rx = (p.x() - session.pxmin) / session.pw, ry = (p.y() - session.pymin) / session.ph;
-            tx = osg::clampBelow((unsigned)(rx * (double)session.tw), session.tw - 1u); // TODO: wrap around for geo
-            ty = osg::clampBelow((unsigned)((1.0 - ry) * (double)session.th), session.th - 1u);
-
-            if (lod != lod_prev || tx != tx_prev || ty != ty_prev)
-            {
-                session.key._tilekey = TileKey(lod, tx, ty, session.profile.get());
-                lod_prev = lod;
-                tx_prev = tx;
-                ty_prev = ty;
-            }
-        }
-
-        if (session.key._tilekey.valid())
-        {
-            auto iter = session.cache.find(session.key);
-
-            if (iter == session.cache.end())
-            {
-                session.raster = getOrCreateRaster(
-                    session.key,   // key to query
-                    session.map.get(), // map to query
-                    true,  // fall back on lower resolution data if necessary
-                    session.ws,    // user's workingset
-                    progress);
-
-                // bail on cancelation before using the quickcache
-                if (progress && progress->isCanceled())
-                {
-                    return -1;
-                }
-
-                session.cache[session.key] = session.raster.get();
-            }
-            else
-            {
-                session.raster = iter->second;
-            }
-
-            {
-                //OE_PROFILING_ZONE_NAMED("sample");
-                if (session.raster.valid())
-                {
-                    u = (p.x() - session.raster->getExtent().xMin()) / session.raster->getExtent().width();
-                    v = (p.y() - session.raster->getExtent().yMin()) / session.raster->getExtent().height();
-
-                    // Note: This can happen on the map edges..
-                    // TODO: consider looping around for geo and clamping for projected
-                    u = osg::clampBetween(u, 0.0, 1.0);
-                    v = osg::clampBetween(v, 0.0, 1.0);
-
-                    quickSample(session.raster->reader(), u, v, elev, session.vars);
                     p.z() = elev.r();
                 }
                 else

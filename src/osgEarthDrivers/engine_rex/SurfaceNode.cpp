@@ -214,8 +214,7 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey, TileDrawable* drawable)
     addChild(_drawable.get());
 
     // Establish a local reference frame for the tile:
-    GeoPoint centroid;
-    tilekey.getExtent().getCentroid(centroid);
+    GeoPoint centroid = tilekey.getExtent().getCentroid();
 
     osg::Matrix local2world;
     centroid.createLocalToWorld( local2world );

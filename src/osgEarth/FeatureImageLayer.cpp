@@ -571,9 +571,8 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
                             // latitude of the tile's centroid.
                             double lineWidthM = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
                             double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI);
-                            double lon, lat;
-                            imageExtent.getCentroid(lon, lat);
-                            lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(lat));
+                            GeoPoint ll = imageExtent.getCentroid();
+                            lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(ll.y()));
                         }
                     }
 
@@ -628,7 +627,7 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
     // we must clamp the scaled extent back to a legal range.
     if (cropExtent.crossesAntimeridian())
     {
-        osg::Vec3d centroid = imageExtent.getCentroid();
+        GeoPoint centroid = imageExtent.getCentroid();
         if (centroid.x() < 0.0) // tile is east of antimeridian
         {
             cropXMin = -180.0;

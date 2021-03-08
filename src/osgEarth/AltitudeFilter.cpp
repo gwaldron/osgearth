@@ -198,15 +198,13 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     bool vertEquiv =
         featureSRS->isVertEquivalentTo( mapSRS );
 
-    ElevationPool::WorkingSet workingSet;
     ElevationPool::Envelope envelope;
     if (!useElevationQuery)
     {
-        map->getElevationPool()->newEnvelope(
+        map->getElevationPool()->prepareEnvelope(
             envelope,
             features.begin()->get()->getExtent().getCentroid(),
-            Distance(_maxRes, map->getSRS()->getUnits()),
-            &workingSet);
+            Distance(_maxRes, map->getSRS()->getUnits()));
     }
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )

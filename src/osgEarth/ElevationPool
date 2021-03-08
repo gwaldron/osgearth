@@ -116,6 +116,7 @@ namespace osgEarth
             int _lod;
             unsigned _tw, _th;
             WorkingSet* _ws;
+            WorkingSet _default_ws;
             osg::ref_ptr<const Map> _map;
             osg::ref_ptr<const Profile> _profile;
             ElevationPool* _pool;
@@ -191,11 +192,11 @@ namespace osgEarth
             ProgressCallback* progress);;
 
         //! Creates an envelope for sampling lots of points in a localized region
-        bool newEnvelope(
+        bool prepareEnvelope(
             Envelope& out,
             const GeoPoint& refPoint,
             const Distance& resolution,
-            WorkingSet* ws);
+            WorkingSet* ws =nullptr);
 
         //! For each point in an array of points, sample the elevation and store
         //! the result in the Z coordinate. Input points must be in the map's SRS.

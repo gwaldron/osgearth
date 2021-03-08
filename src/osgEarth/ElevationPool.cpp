@@ -438,7 +438,7 @@ namespace
 }
 
 bool
-ElevationPool::newEnvelope(
+ElevationPool::prepareEnvelope(
     ElevationPool::Envelope& env,
     const GeoPoint& refPoint,
     const Distance& resolution,
@@ -447,6 +447,7 @@ ElevationPool::newEnvelope(
     env._pool = this;
     env._map = nullptr;
     env._profile = nullptr;
+
     if (_map.lock(env._map) == false || env._map->getProfile() == nullptr)
         return false;
 
@@ -484,6 +485,9 @@ ElevationPool::newEnvelope(
     env._profile->getNumTiles(env._lod, env._tw, env._th);
 
     env._ws = ws;
+
+    if (env._ws == nullptr)
+        env._ws = &env._default_ws;
 
     return true;
 }

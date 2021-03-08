@@ -380,10 +380,6 @@ ArcGISTilePackageImageLayer::openImplementation()
 GeoImage
 ArcGISTilePackageImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    // Try to figure out which bundle file the incoming tilekey is in.
-    unsigned int numWide, numHigh;
-    getProfile()->getNumTiles(key.getLevelOfDetail(), numWide, numHigh);
-
     std::stringstream buf;
     buf << options().url()->full() << "/_alllayers/";
     buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
@@ -526,10 +522,6 @@ ArcGISTilePackageElevationLayer::openImplementation()
 GeoHeightField
 ArcGISTilePackageElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    // Try to figure out which bundle file the incoming tilekey is in.
-    unsigned int numWide, numHigh;
-    getProfile()->getNumTiles(key.getLevelOfDetail(), numWide, numHigh);
-
     std::stringstream buf;
     buf << options().url()->full() << "/_alllayers/";
     buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
@@ -616,16 +608,12 @@ REGISTER_OSGEARTH_LAYER(vtpkfeatures, VTPKFeatureSource);
 
 OE_LAYER_PROPERTY_IMPL(VTPKFeatureSource, URI, URL, url);
 
-
 Status
 VTPKFeatureSource::openImplementation()
 {
     Status parent = FeatureSource::openImplementation();
     if (parent.isError())
         return parent;
-
-    const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
-    FeatureProfile* featureProfile = new FeatureProfile(profile->getExtent());
 
     Json::Reader reader;
     Json::Value root(Json::objectValue);
@@ -651,15 +639,31 @@ VTPKFeatureSource::openImplementation()
         _storageFormat = STORAGE_FORMAT_COMPACTV2;
     }
 
+    const osgEarth::Profile* profile = nullptr;
+    std::string wkid = root["tileInfo"]["spatialReference"]["latestWkid"].asString();
+    if (wkid == "3857")
+    {
+        profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
+    }
+    else if (wkid == "4326")
+    {
+        profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+    }
+    if (!profile)
+    {
+        // Assume it's mercator
+        profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
+    }
+
+    FeatureProfile* featureProfile = new FeatureProfile(profile);
     unsigned int minLevel, maxLevel;
     computeMinMaxLevel(minLevel, maxLevel);
-
     featureProfile->setFirstLevel(minLevel);
     featureProfile->setMaxLevel(maxLevel);
     featureProfile->setTilingProfile(profile);
     featureProfile->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;
-
     setFeatureProfile(featureProfile);
+
 
     return Status::NoError;
 }
@@ -703,17 +707,24 @@ VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, Progres
     }
 
     TileKey key = *query.tileKey();
-
-    // Try to figure out which bundle file the incoming tilekey is in.
-    unsigned int numWide, numHigh;
-    getFeatureProfile()->getTilingProfile()->getNumTiles(key.getLevelOfDetail(), numWide, numHigh);
+    unsigned int z = key.getLevelOfDetail();
+    unsigned int x = key.getTileX();
+    unsigned int y = key.getTileY();
+    // Arcgis uses a 360x360 profile for geodetic, which is kind of like global geodetic but only the top half.
+    // We offset the zoom level by one to get the correct tile key level.
+    // However, it is important not to modify the existing key as it contains the correct extents for the requested tile, which is
+    // used by readFeatures/osgEarth::MVT::readTile to properly scale the encoded features to the proper geospatial coordinates.
+    if (key.getProfile()->getSRS()->isGeodetic())
+    {
+        z += 1;
+    }
 
     std::stringstream buf;
     buf << options().url()->full() << "/p12/tile/";
-    buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
+    buf << "L" << padLeft(toString<unsigned int>(z), 2) << "/";
 
-    unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileX() / _bundleSize) * _bundleSize));
-    unsigned int rowOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileY() / _bundleSize) * _bundleSize));
+    unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(x / _bundleSize) * _bundleSize));
+    unsigned int rowOffset = static_cast<unsigned int>(floor(static_cast<double>(y / _bundleSize) * _bundleSize));
 
     buf << "R" << padLeft(toHex(rowOffset), 4) << "C" << padLeft(toHex(colOffset), 4);
     buf << ".bundle";

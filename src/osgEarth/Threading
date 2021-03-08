@@ -758,6 +758,15 @@ namespace osgEarth { namespace Threading
                 }
             };
 
+            //! Report sent to the user reporting function if set
+            struct Report {
+                Report(const Job& job_, const std::string& arena_, const std::chrono::steady_clock::duration& duration_)
+                    : job(job_), arena(arena_), duration(duration_) { }
+                const Job& job;
+                std::string arena;
+                std::chrono::steady_clock::duration duration;
+            };
+
             std::atomic<int> maxArenaIndex;
 
             //! metrics about the arena at index "index"
@@ -777,9 +786,20 @@ namespace osgEarth { namespace Threading
                 return totalJobsPending() + totalJobsRunning();
             }
 
+            //! Set a user reporting function and threshold
+            void setReportFunction(
+                std::function<void(const Report&)> function,
+                std::chrono::steady_clock::duration minDuration = std::chrono::steady_clock::duration(0))
+            {
+                _report = function;
+                _reportMinDuration = minDuration;
+            }
+
         private:
+            Metrics();
             std::vector<Arena> _arenas;
-            Metrics() : _arenas(512), maxArenaIndex(-1) { }
+            std::function<void(const Report&)> _report;
+            std::chrono::steady_clock::duration _reportMinDuration;
             friend class JobArena;
         };
 

@@ -573,20 +573,23 @@ WMS::Driver::open(osg::ref_ptr<const Profile>& profile,
         if (!result.valid())
         {
             const SpatialReference* srs = SpatialReference::create(_srsToUse);
-            GeoExtent totalExtent(srs);
-            for (DataExtentList::const_iterator itr = dataExtents.begin(); itr != dataExtents.end(); ++itr)
+            if (srs)
             {
-                GeoExtent dataExtent = *itr;
-                GeoExtent nativeExtent;
-                dataExtent.transform(srs, nativeExtent);
-                totalExtent.expandToInclude(nativeExtent);
+                GeoExtent totalExtent(srs);
+                for (DataExtentList::const_iterator itr = dataExtents.begin(); itr != dataExtents.end(); ++itr)
+                {
+                    GeoExtent dataExtent = *itr;
+                    GeoExtent nativeExtent;
+                    dataExtent.transform(srs, nativeExtent);
+                    totalExtent.expandToInclude(nativeExtent);
+                }
+                result = Profile::create(srs, totalExtent.xMin(), totalExtent.yMin(), totalExtent.xMax(), totalExtent.yMax());
             }
-            result = Profile::create(srs, totalExtent.xMin(), totalExtent.yMin(), totalExtent.xMax(), totalExtent.yMax());
         }
     }
 
     // Last resort: create a global extent profile (only valid for global maps)
-    if (!result.valid() && wms_srs->isGeographic())
+    if (!result.valid() && wms_srs.valid() && wms_srs->isGeographic())
     {
         result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
     }

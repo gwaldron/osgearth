@@ -561,6 +561,12 @@ RexTerrainEngineNode::dirtyTerrain()
     // can use its observer_ptr back to the terrain engine.
     this->ref();
 
+    // Load all the root key tiles.
+    JobGroup loadGroup;
+    Job load;
+    load.setArena(ARENA_LOAD_TILE);
+    load.setGroup(&loadGroup);
+
     for( unsigned i=0; i<keys.size(); ++i )
     {
         TileNode* tileNode = new TileNode();
@@ -575,11 +581,16 @@ RexTerrainEngineNode::dirtyTerrain()
         // Post-add initialization:
         tileNode->initializeData();
 
-        // And load the tile's data synchronously (only for root tiles)
-        tileNode->loadSync();
+        // And load the tile's data
+        load.dispatch([tileNode](Cancelable*) {
+                tileNode->loadSync();
+            });
 
         OE_DEBUG << " - " << (i+1) << "/" << keys.size() << " : " << keys[i].str() << std::endl;
     }
+
+    // wait for all loadSync calls to complete
+    loadGroup.join();
 
     // release the self-ref.
     this->unref_nodelete();

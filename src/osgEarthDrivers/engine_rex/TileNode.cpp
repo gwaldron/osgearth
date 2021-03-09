@@ -255,9 +255,6 @@ TileNode::initializeData()
     // register me.
     _context->liveTiles()->add( this );
 
-    // signal the tile to start loading data:
-    refreshAllLayers();
-
     // tell the world.
     OE_DEBUG << LC << "notify (create) key " << getKey().str() << std::endl;
     _context->getEngine()->getTerrain()->notifyTileUpdate(getKey(), this);
@@ -798,6 +795,7 @@ TileNode::createChildren(EngineContext* context)
                     osg::ref_ptr<TileNode> child = _createChildResults[i].get();
                     addChild(child);
                     child->initializeData();
+                    child->refreshAllLayers();
                 }
 
                 _createChildResults.clear();
@@ -810,9 +808,10 @@ TileNode::createChildren(EngineContext* context)
         for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
         {
             TileKey childkey = getKey().createChildKey(quadrant);
-            osg::ref_ptr<TileNode> node = createChild(childkey, context, nullptr);
-            addChild(node.get());
-            node->initializeData();
+            osg::ref_ptr<TileNode> child = createChild(childkey, context, nullptr);
+            addChild(child);
+            child->initializeData();
+            child->refreshAllLayers();
         }
     }
 

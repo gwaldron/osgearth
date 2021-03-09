@@ -458,8 +458,7 @@ ClusterCullingFactory::create(const osg::Vec3& controlPoint,
 osg::NodeCallback*
 ClusterCullingFactory::create(const GeoExtent& extent)
 {
-    GeoPoint centerPoint;
-    extent.getCentroid( centerPoint );
+    GeoPoint centerPoint = extent.getCentroid();
 
     // select the farthest corner:
     GeoPoint edgePoint;
@@ -995,8 +994,8 @@ ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
     osg::ref_ptr<osg::ClipPlane> clipPlane;
     if ( _clipPlane.lock(clipPlane) )
     {
-        osg::ref_ptr<Horizon> horizon = Horizon::get(*nv);
-        if ( !horizon.valid() ) 
+        osg::ref_ptr<Horizon> horizon;
+        if (!ObjectStorage::get(nv, horizon))
         {
             horizon = new Horizon(*_horizon.get());
             horizon->setEye( nv->getViewPoint() );
@@ -1019,8 +1018,8 @@ AltitudeCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
     if (_maxAltitude.isSet())
     {
-        Horizon* horizon = Horizon::get(*nv);
-        if (horizon)
+        osg::ref_ptr<Horizon> horizon;
+        if (ObjectStorage::get(nv, horizon))
         {
             visible = nv->getDistanceToViewPoint(osg::Vec3(0, 0, 0), true) <
                 _maxAltitude.get() + horizon->getRadius();

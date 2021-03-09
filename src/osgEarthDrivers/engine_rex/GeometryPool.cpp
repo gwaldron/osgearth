@@ -261,8 +261,7 @@ GeometryPool::createGeometry(
 
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
-    GeoPoint centroid;
-    tileKey.getExtent().getCentroid( centroid );
+    GeoPoint centroid = tileKey.getExtent().getCentroid();
     centroid.toWorld( centerWorld );
 
     osg::Matrix world2local, local2world;

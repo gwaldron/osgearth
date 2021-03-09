@@ -216,7 +216,7 @@ namespace
     {
         if (num > 0u)
         {
-            _jobArena = std::make_shared<JobArena>("oe.FileSystemCache", osg::clampBetween(num, 1u, 8u));
+            _jobArena = std::make_shared<JobArena>("oe.fscache", osg::clampBetween(num, 1u, 8u));
         }
         else
         {
@@ -420,7 +420,7 @@ namespace
         if (!r.success())
         {
             NetworkMonitor::end(handle, "failed");
-            return ReadResult();
+            return ReadResult(r.message());
         }
         else
         {
@@ -445,6 +445,8 @@ namespace
     ReadResult
     FileSystemCacheBin::readObject(const std::string& key, const osgDB::Options* readOptions)
     {
+        OE_PROFILING_ZONE;
+
         if ( !binValidForReading() )
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
@@ -491,7 +493,7 @@ namespace
         if (!r.success())
         {
             NetworkMonitor::end(handle, "failed");
-            return ReadResult();
+            return ReadResult(r.message());
         }
         else
         {
@@ -528,7 +530,7 @@ namespace
             }
             else
             {
-                return ReadResult();
+                return ReadResult("Empty string");
             }
         }
         else
@@ -544,6 +546,8 @@ namespace
         const Config& meta,
         const osgDB::Options* raw_writeOptions)
     {
+        OE_PROFILING_ZONE;
+
         if ( !binValidForWriting() || !raw_object)
             return false;
 
@@ -553,10 +557,15 @@ namespace
         // combine custom options with cache options:
         osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(raw_writeOptions);
 
+        bool isNode = dynamic_cast<const osg::Node*>(raw_object) != nullptr;
+
         // Temporary: Check whether it's a node because we can't thread
         // out the NODE writes until we figure out the thread-safety
         // issue and make all the reads return CONST objects
-        bool isNode = dynamic_cast<const osg::Node*>(raw_object) != nullptr;
+        // This is not typical a big deal since most node geometry comes
+        // from a URI anyway and the URI data will get cached.
+        if (_jobArena != nullptr && isNode)
+            return true;
 
         // Wrap input objects in ref_ptrs so they will persist in our write functor lambda
         osg::ref_ptr<const osg::Object> object(raw_object);
@@ -564,7 +573,7 @@ namespace
 
         auto write_op = [=](Cancelable*)
         {
-            OE_PROFILING_ZONE_NAMED("FS Cache Write");
+            OE_PROFILING_ZONE_NAMED("OE FS Cache Write");
 
             // prevent more than one thread from writing to the same key at the same time
             ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
@@ -622,7 +631,7 @@ namespace
             }
         };
 
-        if (_jobArena != nullptr && !isNode)
+        if (_jobArena != nullptr)
         {
             // Store in the write-cache until it's actually written.
             // Will override any existing entry and that's OK since the

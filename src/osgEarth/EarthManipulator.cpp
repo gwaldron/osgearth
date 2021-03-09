@@ -795,8 +795,7 @@ EarthManipulator::established()
         {
             Viewpoint vp;
             const Profile* profile = _mapNode->getMap()->getProfile();
-            vp.focalPoint() = GeoPoint(_srs.get(), profile->getExtent().getCentroid(), ALTMODE_ABSOLUTE);
-            //vp.range()->set(safeNode->getBound().radius(), Units::METERS);
+            vp.focalPoint() = profile->getExtent().getCentroid();
             vp.range()->set(2.0 * std::max(profile->getExtent().width(), profile->getExtent().height()), Units::METERS);
             vp.positionOffset()->set(0, 0, 0);
             vp.heading()->set(0.0, Units::DEGREES);

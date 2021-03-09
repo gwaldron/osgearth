@@ -27,6 +27,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Extension>
 #include <osgEarth/TerrainOptions>
+#include <osgEarth/Registry>
 
 namespace osg {
     class View;
@@ -241,6 +242,7 @@ namespace osgEarth
 
     private:
 
+        osg::ref_ptr<Registry> _registry;
         osg::ref_ptr<Map>  _map;
         osg::Group*        _layerNodes;
         unsigned           _lastNumBlacklistedFilenames;
@@ -248,7 +250,7 @@ namespace osgEarth
         TerrainEngineNode* _terrainEngine;
         osg::Group*        _terrainGroup;
         ResourceReleaser*  _resourceReleaser;
-        DrapingManager*    _drapingManager;
+        std::shared_ptr<DrapingManager> _drapingManager;
         ClampingManager*   _clampingManager;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
@@ -267,7 +269,7 @@ namespace osgEarth
     
         void init();
 
-        DrapingManager* getDrapingManager();
+        //std::shared_ptr<DrapingManager>& getDrapingManager();
         friend class DrapingTechnique;
         friend class DrapeableNode;
         

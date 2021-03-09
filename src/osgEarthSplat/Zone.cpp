@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "Zone"
-#include <osgEarth/TraversalData>
 #include <osgUtil/CullVisitor>
 
 #define LC "[Zone] "

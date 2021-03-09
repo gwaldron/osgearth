@@ -9,7 +9,7 @@ osgEarth Sample - OpenStreetMap Features
     <xi:include href="osm_data.xml"/>    
 
     <xi:include href="osm_buildings.xml"/>
-    <xi:include href="osm_roads.xml"/>
+    <!-- <xi:include href="osm_roads.xml"/> -->
 
     <xi:include href="viewpoints.xml"/>
 </map>

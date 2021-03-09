@@ -22,9 +22,12 @@
 #include <osgEarth/PagedNode>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Text>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+
+#define TILE_FACTOR 6.0f
 
 namespace
 {
@@ -36,10 +39,10 @@ namespace
         double ySample = extent.height() / (double)samples;
 
         osg::BoundingSphere bs;
-        for (int c = 0; c < samples+1; c++)
+        for (int c = 0; c < samples + 1; c++)
         {
             double x = extent.xMin() + (double)c * xSample;
-            for (int r = 0; r < samples+1; r++)
+            for (int r = 0; r < samples + 1; r++)
             {
                 double y = extent.yMin() + (double)r * ySample;
                 osg::Vec3d world;
@@ -65,7 +68,7 @@ namespace
     {
         int lonCell = floor((lon - -180.0) / 0.5);
         int latCell = floor((lat - -90.0) / 0.5);
-     
+
         // Format the lon cell
         std::stringstream buf;
         if (lonCell < 9)
@@ -104,7 +107,7 @@ namespace
         return buf.str();
     }
 
-    class GridNode : public PagedNode
+    class GridNode : public PagedNode2
     {
     public:
         GridNode(GARSGraticule* graticule, const GeoExtent& extent, GARSLevel level);
@@ -122,14 +125,30 @@ namespace
         GARSLevel _level;
     };
 
-    GridNode::GridNode(GARSGraticule* graticule, const GeoExtent& extent, GARSLevel level):
-    _graticule(graticule),
-    _extent(extent),
-    _level(level),
-    PagedNode()
+    GridNode::GridNode(GARSGraticule* graticule, const GeoExtent& extent, GARSLevel level) :
+        PagedNode2(),
+        _graticule(graticule),
+        _extent(extent),
+        _level(level)
     {
         build();
-        setupPaging();
+
+        if (hasChild())
+        {
+            osg::observer_ptr<GridNode> obs(this);
+
+            setLoadFunction([obs](Cancelable* c) mutable
+                {
+                    osg::ref_ptr<GridNode> safe(obs);
+                    return safe.valid() ? safe->loadChild() : nullptr;
+                }
+            );
+
+            osg::BoundingSphere bs = getChildBound();
+            setCenter(bs.center());
+            setRadius(bs.radius());
+            setMaxRange(TILE_FACTOR * bs.radius());
+        }
     }
 
     osg::Node* GridNode::loadChild()
@@ -156,7 +175,7 @@ namespace
             for (unsigned int r = 0; r < dim; r++)
             {
                 double west = _extent.west() + (double)c * width;
-                double south= _extent.south() + (double)r * height;
+                double south = _extent.south() + (double)r * height;
                 double east = west + width;
                 double north = south + height;
 
@@ -164,17 +183,17 @@ namespace
 
             }
         }
-        return group;    
+        return group;
     }
 
     void GridNode::build()
-    { 
+    {
         Feature* feature = new Feature(new LineString(5), SpatialReference::create("wgs84"));
         feature->getGeometry()->push_back(_extent.west(), _extent.south(), 0.0);
         feature->getGeometry()->push_back(_extent.east(), _extent.south(), 0.0);
         feature->getGeometry()->push_back(_extent.east(), _extent.north(), 0.0);
         feature->getGeometry()->push_back(_extent.west(), _extent.north(), 0.0);
-        feature->getGeometry()->push_back(_extent.west(), _extent.south(), 0.0);    
+        feature->getGeometry()->push_back(_extent.west(), _extent.south(), 0.0);
         FeatureList features;
         features.push_back(feature);
 
@@ -183,11 +202,11 @@ namespace
         double lon, lat;
         _extent.getCentroid(lon, lat);
         std::string label = getGARSLabel(lon, lat, _level);
-    
+
         FeatureNode* featureNode = new FeatureNode(features, style);
         // Add the node to the attachpoint.
-        _attachPoint->addChild(featureNode);
-       
+        addChild(featureNode);
+
         GeoPoint centroid(_extent.getSRS(), lon, lat, 0.0f);
         GeoPoint ll(_extent.getSRS(), _extent.west(), _extent.south(), 0.0f);
 
@@ -200,7 +219,7 @@ namespace
         if (textSym->alignment().isSet() == false)
             textSym->alignment() = textSym->ALIGN_LEFT_BASE_LINE;
 
-        TextSymbolizer symbolizer(textSym.get());                
+        TextSymbolizer symbolizer(textSym.get());
 
         osgText::Text* text = new osgEarth::Text(label);
         symbolizer.apply(text);
@@ -218,9 +237,11 @@ namespace
         ll.createLocalToWorld(local2World);
         mt->setMatrix(local2World);
 
-       _attachPoint->addChild(mt);
+        addChild(mt);
 
-       //Registry::shaderGenerator().run(this, Registry::stateSetCache());
+        setName(label);
+
+        //Registry::shaderGenerator().run(this, Registry::stateSetCache());
     }
 
     osg::BoundingSphere GridNode::getChildBound() const
@@ -235,7 +256,7 @@ namespace
 
 
     /*******/
-    class IndexNode : public PagedNode
+    class IndexNode : public PagedNode2
     {
     public:
         IndexNode(GARSGraticule* graticule, const GeoExtent& extent);
@@ -250,12 +271,24 @@ namespace
         GARSGraticule* _graticule;
     };
 
-    IndexNode::IndexNode(GARSGraticule* graticule, const GeoExtent& extent):
-    _graticule(graticule),
-    _extent(extent),
-    PagedNode()
+    IndexNode::IndexNode(GARSGraticule* graticule, const GeoExtent& extent) :
+        PagedNode2(),
+        _graticule(graticule),
+        _extent(extent)
     {
-        setupPaging();
+        osg::observer_ptr<IndexNode> obs(this);
+
+        setLoadFunction([obs](Cancelable* p) mutable
+            {
+                osg::ref_ptr<IndexNode> safe(obs);
+                return safe.valid() ? safe->loadChild() : nullptr;
+            }
+        );
+
+        osg::BoundingSphere bs = getChildBound();
+        setCenter(bs.center());
+        setRadius(bs.radius());
+        setMaxRange(hasChild() ? TILE_FACTOR * bs.radius() : FLT_MAX);
     }
 
     osg::Node* IndexNode::loadChild()
@@ -267,14 +300,14 @@ namespace
         int numRows = ceil(_extent.height() / 0.5);
 
         for (int c = 0; c < numCols; c++)
-        {    
+        {
             for (int r = 0; r < numRows; r++)
             {
                 double west = _extent.xMin() + 0.5 * (double)c;
                 double south = _extent.yMin() + 0.5 * r;
-                group->addChild(new GridNode(_graticule, GeoExtent(_extent.getSRS(), west, south, west + 0.5, south + 0.5), GARS_30));         
+                group->addChild(new GridNode(_graticule, GeoExtent(_extent.getSRS(), west, south, west + 0.5, south + 0.5), GARS_30));
             }
-        }        
+        }
         return group;
     }
 
@@ -310,7 +343,14 @@ GARSGraticule::Options::fromConfig(const Config& conf)
 REGISTER_OSGEARTH_LAYER(garsgraticule, GARSGraticule);
 REGISTER_OSGEARTH_LAYER(gars_graticule, GARSGraticule);
 
-OE_LAYER_PROPERTY_IMPL(GARSGraticule, Style, Style, style);
+void GARSGraticule::setStyle(const Style& value) {
+    options().style() = value;
+}
+const Style& GARSGraticule::getStyle() const {
+    return options().style().get();
+}
+
+#define USE_PAGING_MANAGER
 
 void
 GARSGraticule::dirty()
@@ -324,14 +364,14 @@ GARSGraticule::init()
     VisibleLayer::init();
 
     osg::StateSet* ss = this->getOrCreateStateSet();
-    ss->setMode( GL_DEPTH_TEST, 0 );
+    ss->setMode(GL_DEPTH_TEST, 0);
     GLUtils::setLighting(ss, 0);
-    ss->setMode( GL_BLEND, 1 );
+    ss->setMode(GL_BLEND, 1);
 
 
     // force it to render after the terrain.
     ss->setRenderBinDetails(1, "RenderBin");
-    
+
     if (options().style().isSet() == false)
     {
         options().style()->getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Blue;
@@ -343,7 +383,11 @@ GARSGraticule::init()
     options().style()->getOrCreateSymbol<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
     options().style()->getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
+#ifdef USE_PAGING_MANAGER
+    _root = new PagingManager();
+#else
     _root = new osg::Group();
+#endif
 }
 
 void

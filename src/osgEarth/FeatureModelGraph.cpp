@@ -786,8 +786,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
     return workingExtent.createWorldBoundingSphere(-11000, 9000); // lowest and highest points on earth
 #endif
 
-    GeoPoint center;
-    workingExtent.getCentroid(center);
+    GeoPoint center = workingExtent.getCentroid();
 
     if (_session.valid())
     {
@@ -902,10 +901,10 @@ FeatureModelGraph::setupPaging()
     if (_options.layout()->paged() == true)
     {
         osg::ref_ptr<FeatureModelGraph> graph(this);
-
-        auto load_func = [graph, uri](Cancelable* c)
+        osg::ref_ptr<const osgDB::Options> readOptions = _session->getDBOptions();
+        auto load_func = [graph, uri, readOptions](Cancelable* c)
         {
-            return graph->load(0, 0, 0, uri, nullptr);
+            return graph->load(0, 0, 0, uri, readOptions.get());
         };
 
         node = createPagedNode(
@@ -1078,7 +1077,10 @@ FeatureModelGraph::load(
     }
 
     // Done - run the pre-merge operations.
+#ifndef USE_PAGING_MANAGER
+    // Not when using the PAGING_MANAGER - these are run in the PagedNode load function.
     runPreMergeOperations(result.get());
+#endif
 
     return result;
 }
@@ -1459,14 +1461,13 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
                 if (geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0)
                 {
                     // get the geocentric tile center:
-                    osg::Vec3d tileCenter;
-                    ccExtent.getCentroid(tileCenter.x(), tileCenter.y());
+                    GeoPoint tileCenter = ccExtent.getCentroid();
 
                     osg::Vec3d centerECEF;
                     const SpatialReference* mapSRS = _session->getMapSRS();
                     if (mapSRS)
                     {
-                        ccExtent.getSRS()->transform(tileCenter, mapSRS->getGeocentricSRS(), centerECEF);
+                        ccExtent.getSRS()->transform(tileCenter.vec3d(), mapSRS->getGeocentricSRS(), centerECEF);
 
                         osg::NodeCallback* ccc = ClusterCullingFactory::create2(group.get(), centerECEF);
                         if (ccc)
@@ -2030,8 +2031,6 @@ FeatureModelGraph::redraw()
 
         //Remove all current children
         node = buildTile(defaultLevel, GeoExtent::INVALID, 0, _session->getDBOptions());
-        // We're just building the entire node now with no paging, so run the post merge operations immediately.
-        runPostMergeOperations(node.get());
     }
 
 #if 0
@@ -2072,7 +2071,13 @@ FeatureModelGraph::redraw()
         node = fader;
     }
 
+    OE_SOFT_ASSERT_AND_RETURN(node.valid(), __func__, );
+
+    runPreMergeOperations(node.get());
+
     addChild(node);
+    
+    runPostMergeOperations(node.get());
 }
 
 void

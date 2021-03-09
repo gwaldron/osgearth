@@ -65,12 +65,11 @@ DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path, const osg::
         _bs.init();
     }
 
-    _entries.push_back( Entry() );
+    _entries.emplace_back();
     Entry& entry = _entries.back();
     entry._node = node;
     entry._path.setNodePath( path );
     entry._matrix = new osg::RefMatrix( osg::computeLocalToWorld(path) );
-    entry._frame = fs ? fs->getFrameNumber() : 0;
     _bs.expandBy( osg::BoundingSphere(
         node->getBound().center() * (*entry._matrix.get()),
         node->getBound().radius() ));
@@ -87,30 +86,32 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
         // of common ancestors
         const osg::NodePath& nvPath = nv.getNodePath();
 
-        int frame = nv.getFrameStamp() ? nv.getFrameStamp()->getFrameNumber() : 0u;
-
-        for( std::vector<Entry>::iterator entry = _entries.begin(); entry != _entries.end(); ++entry )
+        for(auto& entry : _entries)
         {
-            if ( frame - entry->_frame > 1 )
+            osg::ref_ptr<DrapeableNode> drapeable;
+            if (entry._node.lock(drapeable) == false)
+                continue;
+
+            if (drapeable->getDrapingEnabled() == false)
                 continue;
 
             // If there's an active (non-identity matrix), apply it
-            if ( entry->_matrix.valid() )
+            if ( entry._matrix.valid() )
             {
-                osg::ref_ptr<osg::RefMatrix> m = osg::clone(entry->_matrix.get());
+                osg::ref_ptr<osg::RefMatrix> m = osg::clone(entry._matrix.get());
                 m->postMult( *cv->getModelViewMatrix() );
                 cv->pushModelViewMatrix( m.get(), osg::Transform::RELATIVE_RF );
             }
 
             // After pushing the matrix, we can perform the culling bounds test.
-            if ( !cv->isCulled( entry->_node->getBound() ) )
+            if ( !cv->isCulled(drapeable->getBound() ) )
             {
                 // Apply the statesets in the entry's node path, but skip over the ones that are
                 // shared with the current visitor's path since they are already in effect.
                 // Count them so we can pop them later.
                 int numStateSets = 0;
                 osg::RefNodePath nodePath;
-                if ( entry->_path.getRefNodePath(nodePath) )
+                if ( entry._path.getRefNodePath(nodePath) )
                 {
                     for(unsigned i=0; i<nodePath.size(); ++i)
                     {
@@ -130,9 +131,9 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
                 }
 
                 // Cull the DrapeableNode's children (but not the DrapeableNode itself!)
-                for(unsigned i=0; i<entry->_node->getNumChildren(); ++i)
+                for(unsigned i=0; i<entry._node->getNumChildren(); ++i)
                 {
-                    entry->_node->getChild(i)->accept( nv );
+                    drapeable->getChild(i)->accept( nv );
                 }
             
                 // pop the same number we pushed
@@ -143,7 +144,7 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
             }
 
             // pop the model view:
-            if ( entry->_matrix.valid() )
+            if ( entry._matrix.valid() )
             {
                 cv->popModelViewMatrix();
             }

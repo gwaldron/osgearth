@@ -73,6 +73,12 @@ FeatureModelOptions::fromConfig(const Config& conf)
     const Config& filtersConf = conf.child("filters");
     for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
         filters().push_back( ConfigOptions(*i) );
+
+    // shorthand for enabling feature indexing
+    if (featureIndexing().isSet() == false && conf.value("pickable", false) == true)
+    {
+        featureIndexing()->enabled() = true;
+    }
 }
 
 Config

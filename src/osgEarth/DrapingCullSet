@@ -41,7 +41,7 @@ namespace osgEarth { namespace Util
     public:
         struct Entry
         {            
-            osg::ref_ptr<osg::Group>     _node;
+            osg::observer_ptr<DrapeableNode> _node;
             osg::ref_ptr<osg::RefMatrix> _matrix;
             osg::ObserverNodePath        _path;
             int                          _frame;

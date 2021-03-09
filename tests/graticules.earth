@@ -7,10 +7,10 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
 
     <xi:include href="readymap_imagery.xml"/>
     
-    <GARSGraticule name="GARS" visible="false">
+    <GARSGraticule name="GARS" enabled="false">
         <style type="text/css">
                 default {
-                    stroke: #ffff0059;
+                    stroke: #ffff00;
                     stroke-width: 3px;
                     stroke-tessellation-segments: 10;
                     text-size: 28;
@@ -20,7 +20,7 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
         </style>
     </GARSGraticule>  
     
-    <MGRSGraticule name="MGRS" visible="true">
+    <MGRSGraticule name="MGRS" enabled="false">
         <sqid_data>../data/mgrs_sqid.bin</sqid_data>
         <styles>
             <style type="text/css">
@@ -62,7 +62,7 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
         </styles>
     </MGRSGraticule>
     
-    <MGRSGraticule name="UTM" visible="false">
+    <MGRSGraticule name="UTM" enabled="false">
         <use_default_styles>false</use_default_styles>
         <styles>
             <style type="text/css">
@@ -87,4 +87,5 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
         <edge_labels_visible>true</edge_labels_visible>
     </GeodeticGraticule>
     
+    <xi:include href="viewpoints.xml"/>
 </map>

@@ -83,6 +83,47 @@ namespace osgEarth
             friend class ElevationPool;
         };
 
+        /**
+         * Object for doing lots of queries in a localized area.
+         * Call newEnvelope to initialize one.
+         */
+        class OSGEARTH_EXPORT Envelope
+        {
+        public:
+            int sampleMapCoords(
+                std::vector<osg::Vec3d>& points,
+                ProgressCallback* progress);
+
+        public:
+            using QuickCache = vector_map<
+                Internal::RevElevationKey,
+                osg::ref_ptr<ElevationTexture>>;
+
+            struct QuickSampleVars {
+                double sizeS, sizeT;
+                double s, t;
+                double s0, s1, smix;
+                double t0, t1, tmix;
+                osg::Vec4f UL, UR, LL, LR, TOP, BOT;
+            };
+
+        private:
+            Internal::RevElevationKey _key;
+            QuickCache _cache;
+            QuickSampleVars _vars;
+            double _pw, _ph, _pxmin, _pymin;
+            osg::ref_ptr<ElevationTexture> _raster;
+            int _lod;
+            unsigned _tw, _th;
+            WorkingSet* _ws;
+            WorkingSet _default_ws;
+            osg::ref_ptr<const Map> _map;
+            osg::ref_ptr<const Profile> _profile;
+            ElevationPool* _pool;
+
+            friend class ElevationPool;
+        };
+
     public:
         //! Construct the elevation pool
         ElevationPool();
@@ -148,7 +189,25 @@ namespace osgEarth
             std::vector<osg::Vec3d>& points,
             const Distance& resolution,
             WorkingSet* ws,
-            ProgressCallback* progress);
+            ProgressCallback* progress);;
+
+        //! Creates an envelope for sampling lots of points in a localized region
+        bool prepareEnvelope(
+            Envelope& out,
+            const GeoPoint& refPoint,
+            const Distance& resolution,
+            WorkingSet* ws =nullptr);
+
+        //! For each point in an array of points, sample the elevation and store
+        //! the result in the Z coordinate. Input points must be in the map's SRS.
+        //! @param points Array of points in map coords for which to sample elevation
+        //! @param session Session created by calling beginSession
+        //! @param progress Optional progress callback
+        //! @return Number of valid elevations sampled, or -1 if there was an error
+        //int sampleMapCoords(
+        //    std::vector<osg::Vec3d>& points,
+        //    SampleSession& session,
+        //    ProgressCallback* progress);
 
         //! Invalidates all caches in the ElevationPool
         void clear();

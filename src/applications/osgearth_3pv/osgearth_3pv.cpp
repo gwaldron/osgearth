@@ -24,9 +24,9 @@
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MouseCoordsTool>
+#include <osgEarth/Utils>
 
 #include <osgEarth/Horizon>
-#include <osgEarth/TraversalData>
 #include <osgEarth/Lighting>
 #include <osgEarth/GLUtils>
 #include <osgEarth/LineDrawable>
@@ -267,7 +267,9 @@ main( int argc, char** argv )
     viewer.getView(0)->getCamera()->addCullCallback(new CaptureFrustum(proj));
 
     viewer.getView(1)->getCamera()->setName("Spy");
-    viewer.getView(1)->getCamera()->setCullCallback( new VisitorData::Install("osgEarth.Spy") );
+
+    viewer.getView(1)->getCamera()->setCullCallback(
+        new ObjectStorage::SetValue<bool>("osgEarth.Spy", true));
 
     while (!viewer.done())
     {

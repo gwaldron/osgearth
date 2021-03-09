@@ -64,7 +64,8 @@ void Terrain::onTileUpdateOperation::operator()(osg::Object*)
 Terrain::Terrain(osg::Node* graph, const Profile* mapProfile) :
 _graph         ( graph ),
 _profile       ( mapProfile ),
-_callbacksMutex(OE_MUTEX_NAME)
+_callbacksMutex(OE_MUTEX_NAME),
+_callbacksSize (0)
 {
     _updateQueue = new osg::OperationQueue();
 }

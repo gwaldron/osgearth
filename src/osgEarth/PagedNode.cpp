@@ -173,35 +173,57 @@ bool PagedNode::hasChild() const
 //...................................................................
 
 PagedNode2::PagedNode2() :
-    osg::Node(),
+    osg::Group(),
     _pagingManager(nullptr),
     _token(nullptr),
     _loadTriggered(false),
     _compileTriggered(false),
-    _callbackFired(false),
+    _mergeTriggered(false),
+    _merged(false),
     _minRange(0.0f),
     _maxRange(FLT_MAX),
-    _priorityScale(1.0f)
+    _minPixels(0.0f),
+    _maxPixels(FLT_MAX),
+    _useRange(true),
+    _priorityScale(1.0f),
+    _refinePolicy(REFINE_REPLACE),
+    _preCompile(true)
 {
-    _job.setName("oe.PagedNode");
+    _job.setName(typeid(*this).name());
     _job.setArena(PAGEDNODE_ARENA_NAME);
 }
 
 PagedNode2::~PagedNode2()
 {
-    reset();
+    //nop
+    // note: do not call reset() from here, we never want to
+    // releaseGLObjects in this dtor b/c it could be called
+    // from a pager thread at cancelation
 }
 
 void
 PagedNode2::reset()
 {
-    releaseGLObjects(nullptr);
-    _compiled.abandon();
+    // Note: don't do this. PLOD didn't so neither shall we
+    //if (_compiled.isAvailable() && _compiled.get().valid())
+    //{
+    //    _compiled.get()->releaseGLObjects(nullptr);
+    //}
+    if (_merged)
+    {
+        removeChild(_compiled.get().get());
+    }
+    _compiled.abandon();    
     _loaded.abandon();
     _token = nullptr;
     _loadTriggered = false;
     _compileTriggered = false;
-    _callbackFired = false;
+    _mergeTriggered = false;
+    _merged = false;
+
+    // prevents a node in the PagingManager's merge queue from 
+    // being merged with old data.
+    _revision++;
 }
 
 void
@@ -219,79 +241,167 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         }
     }
 
-    // traverse the placeholder
-    if (_placeholder.valid())
-    {
-        _placeholder->accept(nv);
-    }
-
     if (nv.getTraversalMode() == nv.TRAVERSE_ALL_CHILDREN)
     {
-        if (_compiled.isAvailable() && _compiled.get().valid())
-        {
-            _compiled.get()->accept(nv);
-        }
+        for (auto& child : _children)
+            child->accept(nv);
     }
 
     else if (nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN)
     {
-        float range = nv.getDistanceToViewPoint(getBound().center(), true);
-        if (range >= _minRange && range <= _maxRange)
+        bool inRange = false;
+        float priority = 0.0f;
+
+        if (_useRange) // meters
         {
-            if (_load != nullptr && _loadTriggered.exchange(true) == false)
+            float range = nv.getDistanceToViewPoint(getBound().center(), true);
+            inRange = (range > 0.0f && range >= _minRange && range <= _maxRange);
+            priority = -range * _priorityScale;
+        }
+        else // pixels
+        {
+            osg::CullStack* cullStack = nv.asCullStack();
+            if (cullStack != nullptr && cullStack->getLODScale() > 0.0f)
+            {
+                float pixels = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
+                inRange = (pixels >= _minPixels && pixels <= _maxPixels);
+                priority = pixels * _priorityScale;
+            }
+        }
+
+        // check that range > 0 to avoid trouble from some visitors
+        if (inRange)
+        {
+            if (_load != nullptr && 
+                _loadTriggered.exchange(true) == false)
             {
                 // Load the asynchronous node.
                 Loader load(_load);
                 osg::ref_ptr<SceneGraphCallbacks> callbacks(_callbacks);
+                bool preCompile = _preCompile;
 
-                _job.setPriority(-range * _priorityScale);
+                _job.setPriority(priority);
 
-                _loaded = _job.dispatch<osg::ref_ptr<osg::Node>>(
-                    [load, callbacks](Cancelable* c)
+                _loaded = _job.dispatch<Loaded>(
+                    [load, callbacks, preCompile](Cancelable* c)
                     {
+                        Loaded result;
+
                         osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
 
                         // invoke the loader function
-                        osg::ref_ptr<osg::Node> node = load(progress.get());
+                        result._node = load(progress.get());
 
                         // Fire any pre-merge callbacks
-                        if (node.valid() && callbacks.valid())
-                            callbacks->firePreMergeNode(node.get());
+                        if (result._node.valid())
+                        {
+                            if (callbacks.valid())
+                                callbacks->firePreMergeNode(result._node.get());
 
-                        return node;
+                            if (preCompile)
+                            {
+                                // Collect the GL objects for later compilation.
+                                // Don't waste precious ICO time doing this later
+                                GLObjectsCompiler compiler;
+                                result._state = compiler.collectState(result._node.get());
+                            }
+                        }
+
+                        return result;
                     }
                 );
             }
 
-            else if (_loaded.isAvailable() && _loaded.get().valid() && _compileTriggered.exchange(true)==false)
+            else if (
+                _loaded.isAvailable() && 
+                _loaded.get()._node.valid() && 
+                _compileTriggered.exchange(true) == false)
             {
-                // Compile the loaded node.
-                GLObjectsCompiler compiler;
-                osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
-                _compiled = compiler.compileAsync(_loaded.get(), &nv, p.get());
+                dirtyBound();
+
+                if (_preCompile)
+                {
+                    // Compile the loaded node.
+                    GLObjectsCompiler compiler;
+                    osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
+
+                    _compiled = compiler.compileAsync(
+                        _loaded.get()._node,
+                        _loaded.get()._state.get(),
+                        &nv,
+                        p.get());
+                }
+                else
+                {
+                    // resolve immediately
+                    Promise<osg::ref_ptr<osg::Node>> promise;
+                    _compiled = promise.getFuture();
+                    promise.resolve(_loaded.get()._node);
+                }
+
+                // done with it, let it go
+                _loaded.abandon();
             }
 
-            else if (_compiled.isAvailable() && _compiled.get().valid())
+            else if (
+                _compiled.isAvailable() && 
+                _compiled.get().valid() &&
+                _mergeTriggered.exchange(true) == false)
             {
-                // render the compiled node.
+                // Submit this node to the paging manager for merging.
+                _pagingManager->merge(this);
+            }
 
-                // if we haven't fired the post-merge callback yet, do so now
-                if (_callbackFired.exchange(true) == false && _callbacks.valid())
-                {
-                    _callbacks->firePostMergeNode(_compiled.get().get());
-                }
-
-                // update our usage
-                if (_pagingManager)
-                {
-                    _token = _pagingManager->use(this, _token);
-                }
-
-                // all is good, traverse it
+            // finally, traverse children and paged data.
+            if (_merged && _refinePolicy == REFINE_REPLACE)
+            {
                 _compiled.get()->accept(nv);
             }
+            else
+            {
+                for (auto& child : _children)
+                    child->accept(nv);
+            }
+
+            // tell the paging manager this node is still alive
+            // (and should not be removed from the scene graph)
+            if (_pagingManager)
+            {
+                _token = _pagingManager->use(this, _token);
+            }
+        }
+        else
+        {
+            // child out of range; just accept static children
+            for (auto& child : _children)
+                if (child.get() != _compiled.get().get())
+                    child->accept(nv);
         }
     }
+}
+
+bool
+PagedNode2::merge(int revision)
+{
+    // Check the revision, b/c it is possible for a node in the merge queue
+    // to be expired before it pops to the front of the merge queue and 
+    // this method gets invoked.
+    if (_revision == revision)
+    {
+        // This is called from PagingManager.
+        // We're in the UPDATE traversal.
+        OE_SOFT_ASSERT_AND_RETURN(_merged == false, __func__, false);
+        OE_SOFT_ASSERT_AND_RETURN(_compiled.isAvailable(), __func__, false);
+        OE_SOFT_ASSERT_AND_RETURN(_compiled.get().valid(), __func__, false);
+
+        addChild(_compiled.get());
+
+        if (_callbacks.valid())
+            _callbacks->firePostMergeNode(_compiled.get().get());
+
+        _merged = true;
+    }
+    return _merged;
 }
 
 osg::BoundingSphere
@@ -304,53 +414,28 @@ PagedNode2::computeBound() const
 
     else
     {
-        osg::BoundingSphere bs;
-
-        if (_placeholder.valid())
-        {
-            bs = _placeholder->computeBound();
-        }
+        osg::BoundingSphere bs = osg::Group::computeBound();
 
         if (_loadTriggered == true &&
+            _merged == false &&
             _loaded.isAvailable() &&
-            _loaded.get().valid())
+            _loaded.get()._node.valid() )
         {
-            bs.expandBy(_loaded.get()->computeBound());
+            bs.expandBy(_loaded.get()._node->computeBound());
         }
 
         return bs;
     }
 }
 
-void
-PagedNode2::resizeGLObjectBuffers(unsigned m)
-{
-    osg::Node::resizeGLObjectBuffers(m);
-
-    if (_placeholder.valid())
-        _placeholder->resizeGLObjectBuffers(m);
-
-    if (_compiled.isAvailable() && _compiled.get().valid())
-        _compiled.get()->resizeGLObjectBuffers(m);
-}
-
-void
-PagedNode2::releaseGLObjects(osg::State* state) const
-{
-    osg::Node::releaseGLObjects(state);
-
-    if (_placeholder.valid())
-        _placeholder->releaseGLObjects(state);
-
-    if (_compiled.isAvailable() && _compiled.get().valid())
-        _compiled.get()->releaseGLObjects(state);
-}
-
-
 PagingManager::PagingManager() :
-    _mutex(OE_MUTEX_NAME),
-    _tracker()
+    _trackerMutex(OE_MUTEX_NAME),
+    _mergeMutex(OE_MUTEX_NAME),
+    _tracker(),
+    _mergesPerFrame(4u),
+    _newFrame(false)
 {
+    setCullingActive(false);
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     JobArena::get(PAGEDNODE_ARENA_NAME)->setConcurrency(4u);
 }
@@ -358,37 +443,49 @@ PagingManager::PagingManager() :
 void
 PagingManager::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    // Make this object accesible to children
+    ObjectStorage::set(&nv, this);
+
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        ScopedMutexLock lock(_trackerMutex);
+        _newFrame.exchange(true);
+    }
 
-        _trash.clear();
-
-        // Collect the expired nodes, pushing them in reverse order
-        // so that we can release them in the most efficient manner
-        // possible (top-down in the scene graph)
-
-        // You can change this to push_back and put a limiter on it
-        // to gradually release stuff instead
-
-        _tracker.collectTrash(nv, 0.0f, ~0u,
-            [this](PagedNode2* node) { _trash.push_front(node); });
-
-        //_tracker.collectTrash(nv, 0.0f, 1u,
-        //    [this](PagedNode2* node) { _trash.push_back(node); });
-
-        //int count = 0;
-        for (auto& node : _trash)
+    else if (
+        nv.getVisitorType() == nv.UPDATE_VISITOR &&
+        _newFrame.exchange(false)==true)
+    {
+        // Discard expired nodes
         {
-            osg::ref_ptr<PagedNode2> safe(node);
-            if (safe.valid())
+            ScopedMutexLock lock(_trackerMutex); // unnecessary?
+
+            _tracker.flush(
+                nv,
+                0.0f,
+                _mergesPerFrame,
+                [this](osg::ref_ptr<PagedNode2>& node) {
+                    node->reset();
+                });
+        }
+
+        // Handle merges
+        if (_mergeQueue.empty() == false)
+        {
+            ScopedMutexLock lock(_mergeMutex); // unnecessary?
+
+            unsigned count = 0u;
+            while (_mergeQueue.empty() == false && count < _mergesPerFrame)
             {
-                safe->reset();
-                //count++;
+                ToMerge& front = _mergeQueue.front();
+                osg::ref_ptr<PagedNode2> next;
+                if (front._node.lock(next))
+                {
+                    if (next->merge(front._revision))
+                        ++count;
+                }
+                _mergeQueue.pop();
             }
         }
-        //if (count > 0)
-        //    OE_INFO << LC << "Trashed " << count << "/" << _trash.size() << std::endl;
     }
 
     osg::Group::traverse(nv);

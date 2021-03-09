@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/TraversalData>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/Threading>
 #include <osgEarth/SpatialReference>
@@ -261,10 +260,6 @@ namespace osgEarth
         void setTextureImageUnitOffLimits(int unit);
         const std::set<int> getOffLimitsTextureImageUnits() const;
 
-        /** General purpose transient data store to support VisitorData in pre-osg 3.4 */
-        TransientUserDataStore& dataStore() { return _dataStore; }
-        const TransientUserDataStore& dataStore() const { return _dataStore; }
-
         /**
          * Gets the device pixel ratio.
          */
@@ -292,6 +287,16 @@ namespace osgEarth
         //! Release any resources held by the registry so it can be re-used
         void release();
 
+        //! Register singleton objects with the registry and defer
+        //! their destruction to happen with the registry's own.
+        template<typename R>
+            R* registerSingleton(R* singleton)
+        {
+            Threading::ScopedMutexLock lock(_regMutex);
+            _singletons.push_back(singleton);
+            return singleton;
+        }
+
     protected:
         virtual ~Registry();
         Registry();
@@ -302,6 +307,8 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _cube_profile;
 
         mutable Threading::Mutex _regMutex;
+
+        ProgramRepo _programRepo;
 
         mutable osg::ref_ptr<Cache>   _defaultCache;
         mutable optional<CachePolicy> _defaultCachePolicy;
@@ -349,23 +356,19 @@ namespace osgEarth
         std::set<Activity,ActivityLess> _activities;
         mutable Threading::Mutex _activityMutex;
 
-        ProgramRepo _programRepo;
-
         optional<bool> _unRefImageDataAfterApply;
 
         osg::ref_ptr<ObjectIndex> _objectIndex;
 
         std::set<int> _offLimitsTextureImageUnits;
 
-        TransientUserDataStore _dataStore;
-
         float _devicePixelRatio;
 
         typedef std::unordered_map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
         Threading::Mutexed<SRSCache> _srsCache;
-        //mutable PerThread<SRSCache> _srsCache;
 
         unsigned _maxVertsPerDrawable;
+        std::vector<osg::ref_ptr<osg::Referenced>> _singletons;
     };
 }
 

@@ -41,6 +41,7 @@ namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
+#if 0
     // internal utility class supporing VisitorData
     class OSGEARTH_EXPORT TransientUserDataStore
     {
@@ -76,7 +77,9 @@ namespace osgEarth { namespace Util
     public:
         static bool unitTest();
     };
+#endif
 
+#if 0
     struct OSGEARTH_EXPORT VisitorData
     {
         static bool isSet(osg::NodeVisitor& nv, const std::string& key);
@@ -106,6 +109,7 @@ namespace osgEarth { namespace Util
 
         static osg::Referenced* _fetch(osg::NodeVisitor& nv, const std::string& key);
     };
+#endif
 
 } } // namespace osgEarth
 

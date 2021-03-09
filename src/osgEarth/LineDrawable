@@ -20,13 +20,15 @@
 #define OSGEARTH_LINEDRAWABLE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Threading>
 #include <osg/Array>
 #include <osg/Geometry>
 #include <osg/Version>
-#include <osg/Geode>
 
 namespace osgEarth
 {
+    using namespace osgEarth::Threading;
+
     /**
      * Drawable that renders lines using the GPU. It will fall back on rendering
      * OpenGL lines when shader-based rendering is unavailable.
@@ -208,6 +210,7 @@ namespace osgEarth
 
         static osg::observer_ptr<osg::StateSet> s_gpuStateSet;
         osg::ref_ptr<osg::StateSet> _gpuStateSet;
+        mutable Mutex _mutex;
     };
 
 
@@ -219,7 +222,7 @@ namespace osgEarth
      * the OSG 3.4 MergeGeometryVisitor (which only works on Geodes). Once we
      * make OSG 3.6 the minimum supported version, we can change this to Group.
      */
-    class OSGEARTH_EXPORT LineGroup : public osg::Geode
+    class OSGEARTH_EXPORT LineGroup : public osg::Group
     {
     public:
         META_Node(osgEarth, LineGroup);

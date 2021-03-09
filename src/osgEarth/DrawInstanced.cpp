@@ -23,9 +23,9 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Shaders>
 #include <osgEarth/ObjectIndex>
+#include <osgEarth/TextureBuffer>
 
 #include <osg/ComputeBoundsVisitor>
-#include <osg/TextureBuffer>
 #include <osgDB/ObjectWrapper>
 #include <osgUtil/Optimizer>
 
@@ -35,8 +35,6 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 // Ref: http://sol.gfxile.net/instancing.html
-
-#define TAG_MATRIX_VECTOR "osgEarth::DrawInstanced::MatrixRefVector"
 
 //Uncomment to experiment with instance count adjustment
 //#define USE_INSTANCE_LODS
@@ -283,14 +281,10 @@ void InstanceGroup::traverse(osg::NodeVisitor& nv)
             osg::ref_ptr< osg::MatrixTransform > mt = new osg::MatrixTransform;
             mt->addChild(child);
 
-            const DrawInstanced::MatrixRefVector* matrices = DrawInstanced::getMatrixVector(child);
-            if (matrices)
+            for (unsigned int j = 0; j < _matrices.size(); ++j)
             {
-                for (unsigned int j = 0; j < matrices->size(); ++j)
-                {
-                    mt->setMatrix((*matrices)[j]);
-                    mt->accept(nv);
-                }
+                mt->setMatrix(_matrices[j]);
+                mt->accept(nv);
             }
         }
     }
@@ -300,19 +294,74 @@ void InstanceGroup::traverse(osg::NodeVisitor& nv)
     }
 }
 
+InstanceGroup::InstanceGroup()
+{
+}
+
+InstanceGroup::InstanceGroup(const InstanceGroup& rhs, const osg::CopyOp& copyop):
+    _matrices(rhs._matrices)
+{
+}
+
+const std::vector< osg::Matrixf >& InstanceGroup::getMatrices() const
+{
+    return _matrices;
+}
+
+void InstanceGroup::setMatrices(const std::vector< osg::Matrixf >& values)
+{
+    _matrices = values;
+}
+
+void InstanceGroup::addMatrix(const osg::Matrixf& value)
+{
+    _matrices.push_back(value);
+}
+
 
 
 namespace osgEarth {
     namespace Serializers {
         namespace InstanceGroup
         {
+            static bool checkMatrices(const osgEarth::Util::DrawInstanced::InstanceGroup& g)
+            {
+                return g.getMatrices().size() > 0;
+            }
+
+            static bool readMatrices(osgDB::InputStream& is, osgEarth::Util::DrawInstanced::InstanceGroup& g)
+            {
+                unsigned int size = is.readSize(); is >> is.BEGIN_BRACKET;
+                for (unsigned int i = 0; i < size; ++i)
+                {
+                    osg::Matrixf value;
+                    is >> value;
+                    g.addMatrix(value);
+                }
+                is >> is.END_BRACKET;
+                return true;
+            }
+
+            static bool writeMatrices(osgDB::OutputStream& os, const osgEarth::Util::DrawInstanced::InstanceGroup& g)
+            {
+                const std::vector< osg::Matrixf>& matrices = g.getMatrices();
+                os.writeSize(matrices.size()); os << os.BEGIN_BRACKET << std::endl;
+                for (auto itr = matrices.begin(); itr != matrices.end(); ++itr)
+                {
+                    os << *itr << std::endl;
+                }
+                os << os.END_BRACKET << std::endl;
+                return true;
+            }
+
+
             REGISTER_OBJECT_WRAPPER(
                 InstanceGroup,
                 new osgEarth::Util::DrawInstanced::InstanceGroup,
                 osgEarth::Util::DrawInstanced::InstanceGroup,
                 "osg::Object osg::Node osg::Group osgEarth::Util::DrawInstanced::InstanceGroup")
             {
-                //nop
+                ADD_USER_SERIALIZER(Matrices);
             }
         }
     }
@@ -330,6 +379,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     const osg::BoundingSphere& bs = parent->getBound();
     parent->setInitialBound(bs);
     //parent->setComputeBoundingSphereCallback(new StaticBound(bs));
+    parent->setCullingActive(false);
     parent->dirtyBound();
 
     ModelInstanceMap models;
@@ -416,13 +466,6 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 			numInstancesToStore = maxTBOInstancesSize;
 		}
 
-        // Assign matrix vectors to the node, so the application can easily retrieve
-        // the original position data if necessary.
-        MatrixRefVector* nodeMats = new MatrixRefVector();
-        nodeMats->setName(TAG_MATRIX_VECTOR);
-        nodeMats->reserve(numInstancesToStore);
-        node->getOrCreateUserDataContainer()->addUserObject(nodeMats);
-
         // this group is simply a container for the uniform:
         InstanceGroup* instanceGroup = new InstanceGroup();
 
@@ -457,17 +500,17 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 			*ptr++ = (float)((i.objectID >> 24) & 0xff);
 
 			// store them int the metadata as well
-			nodeMats->push_back(mat);
+            instanceGroup->addMatrix(mat);
 		}
 
         // so the TBO will serialize properly.
         image->setWriteHint(osg::Image::STORE_INLINE);
 
         // Constuct the TBO:
-        osg::TextureBuffer* posTBO = new osg::TextureBuffer;
+        osg::TextureBuffer* posTBO = new osgEarth::TextureBuffer;
 		posTBO->setImage(image);
         posTBO->setInternalFormat( GL_RGBA32F_ARB );
-        posTBO->setUnRefImageDataAfterApply( true );
+        posTBO->setUnRefImageDataAfterApply( false );
 
         // Flatten any transforms in the node graph:
         MakeTransformsStatic makeStatic;
@@ -498,23 +541,4 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     }
 
     return true;
-}
-
-
-const DrawInstanced::MatrixRefVector*
-DrawInstanced::getMatrixVector(osg::Node* node)
-{
-    if ( !node )
-        return 0L;
-
-    osg::UserDataContainer* udc = node->getUserDataContainer();
-    if ( !udc )
-        return 0L;
-
-    osg::Object* obj = udc->getUserObject(TAG_MATRIX_VECTOR);
-    if ( !obj )
-        return 0L;
-
-    // cast is safe because of our unique tag
-    return static_cast<const MatrixRefVector*>( obj );
 }

@@ -109,9 +109,8 @@ MeshEditor::createTileMesh(
 
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
-    GeoPoint centroid;
     const GeoExtent& keyExtent = _key.getExtent();
-    keyExtent.getCentroid(centroid);
+    GeoPoint centroid = keyExtent.getCentroid();
     centroid.toWorld(centerWorld);
     osg::Matrix world2local, local2world;
     centroid.createWorldToLocal(world2local);

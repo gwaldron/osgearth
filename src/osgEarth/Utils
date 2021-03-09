@@ -66,7 +66,7 @@ namespace osgEarth { namespace Util
             if (o == nullptr || obj == nullptr) return;
             osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
             unsigned i = udc->getUserObjectIndex(name);
-            if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
+            if (i < udc->getNumUserObjects()) udc->removeUserObject(i);
             udc->addUserObject(new Data<T>(name, obj));
         }
         template<typename T>
@@ -82,7 +82,7 @@ namespace osgEarth { namespace Util
             const char* name = typeid(T).name();
             osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
             unsigned i = udc->getUserObjectIndex(name);
-            if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
+            if (i < udc->getNumUserObjects()) udc->removeUserObject(i);
             udc->addUserObject(new Data<T>(name, obj));
         }
         template<typename T>
@@ -99,7 +99,7 @@ namespace osgEarth { namespace Util
             const char* name = typeid(T).name();
             osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
             unsigned i = udc->getUserObjectIndex(name);
-            if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
+            if (i < udc->getNumUserObjects()) udc->removeUserObject(i);
             udc->addUserObject(new Data<T>(name, obj));
         }
         template<typename T>
@@ -111,6 +111,34 @@ namespace osgEarth { namespace Util
             out = data->_shared_obj;
             return data->_shared_obj != nullptr;
         }
+
+        template<typename T>
+        struct Install : public osg::NodeCallback
+        {
+            osg::ref_ptr<T> _data;
+
+            Install(T* data) : _data(data) { }
+
+            void operator()(osg::Node* node, osg::NodeVisitor* nv)
+            {
+                ObjectStorage::set(nv, _data.get());
+                traverse(node, nv);
+            }
+        };
+
+        template<typename T>
+        struct SetValue : public osg::NodeCallback
+        {
+            std::string _key;
+            T _value;
+
+            SetValue(const std::string& key, const T& value) : _key(key), _value(value) { }
+            void operator()(osg::Node* node, osg::NodeVisitor* nv)
+            {
+                nv->setUserValue(_key, _value);
+                traverse(node, nv);
+            }
+        };
     };
 
     struct Utils
@@ -210,63 +238,59 @@ namespace osgEarth { namespace Util
     public:
         struct ListEntry
         {
-            ListEntry(T* data) : _data(data) { }
-            T* _data;
+            ListEntry(T data, void* token) : _data(data), _token(token) { }
+            T _data;
+            void* _token;
         };
 
         using List = std::list<ListEntry>;
         using ListIterator = typename List::iterator;
 
-        struct TableEntry
+        struct Token
         {
             ListIterator _listptr;
-            T* _data;
+            T _data;
         };
-
-        using DataTable = std::unordered_map<T*, TableEntry>;
 
         SentryTracker()
         {
-            _list.emplace_front(nullptr);
+            _list.emplace_front(nullptr, nullptr); // the sentry marker
             _sentryptr = _list.begin();
         }
 
         List _list;
-        DataTable _table;
         ListIterator _sentryptr;
 
-        inline void* use(T* data, void* token)
+        inline void* use(const T& data, void* token)
         {
             // Find the tracker for this tile and update its timestamp
             if (token)
             {
-                // Existing entry (stored in the token):
-                TableEntry& e = *static_cast<TableEntry*>(token);
-                ListEntry& se = (*e._listptr);
+                Token& te = *static_cast<Token*>(token);
 
                 // Move the tracker to the front of the list (ahead of the sentry).
                 // Once a cull traversal is complete, all visited tiles will be
                 // in front of the sentry, leaving all non-visited tiles behind it.
-                _list.splice(_list.begin(), _list, e._listptr);
-                e._listptr = _list.begin();
-                return &e;
+                _list.splice(_list.begin(), _list, te._listptr);
+                te._listptr = _list.begin();
+                return token;
             }
             else
             {
                 // New entry:
-                _list.emplace_front(data); // ListEntry
-                TableEntry& e = _table[data];
-                e._data = data;
-                e._listptr = _list.begin();
-                return &e;
+                Token* te = new Token();
+                _list.emplace_front(data, te); // ListEntry
+                te->_data = data;
+                te->_listptr = _list.begin();
+                return te;
             }
         }
 
-        inline void collectTrash(
+        inline void flush(
             osg::NodeVisitor& nv,
             float fartherThanRange,
             unsigned maxCount,
-            const std::function<void(T* obj)>& dispose)
+            std::function<void(T& obj)> dispose)
         {
             // After cull, all visited tiles are in front of the sentry, and all
             // non-visited tiles are behind it. Start at the sentry position and
@@ -277,17 +301,18 @@ namespace osgEarth { namespace Util
 
             for (++i; i != _list.end() && count < maxCount; ++i)
             {
-                ListEntry& se = *i;
+                ListEntry& le = *i;
 
                 // back up the iterator so we can safely erase the entry:
                 tmp = i;
                 --i;
 
                 // user disposal function
-                dispose(se._data);
+                if (dispose != nullptr)
+                    dispose(le._data);
 
-                // remove it from the main tile table:
-                _table.erase(se._data);
+                // delete the token
+                delete static_cast<Token*>(le._token);
 
                 // remove it from the tracker list:
                 _list.erase(tmp);

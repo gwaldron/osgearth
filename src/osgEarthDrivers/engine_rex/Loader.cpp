@@ -67,27 +67,27 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
     osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico;
     if (ObjectStorage::get(&nv, ico))
     {
-        osgUtil::StateToCompile state(
-            osgUtil::GLObjectsVisitor::COMPILE_STATE_ATTRIBUTES |
-            osgUtil::GLObjectsVisitor::CHECK_BLACK_LISTED_MODES,
-            nullptr);
+        GLObjectsCompiler glcompiler;
 
-        data->_result.get()->getStateToCompile(state);
-        
+        // create an empty state:
+        osg::ref_ptr<osgUtil::StateToCompile> state = glcompiler.collectState(nullptr);
+        OE_SOFT_ASSERT_AND_RETURN(state.valid(), __func__, );
+
+        // populate it with the tile model contents:
+        data->_result.get()->getStateToCompile(*state.get());
+
         ScopedMutexLock lock(_mutex);
 
-        if (!state.empty())
+        if (!state->empty())
         {
-            static osg::ref_ptr<osg::Node> unusedNode = new osg::Node();
-            _compileQueue.emplace();
+            static osg::ref_ptr<osg::Node> dummyNode = new osg::Node();
 
-            GLObjectsCompiler glcompiler;
             ToCompile toCompile;
             toCompile._data = data;
             toCompile._compiled = glcompiler.compileAsync(
-                unusedNode, state, &nv, nullptr);
+                dummyNode.get(), state.get(), &nv, nullptr);
 
-            _compileQueue.emplace(toCompile);
+            _compileQueue.push(std::move(toCompile));
         }
         else
         {
@@ -104,7 +104,11 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
 void
 Merger::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        _clock.cull();
+    }
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR && _clock.update())
     {
         ScopedMutexLock lock(_mutex);
 

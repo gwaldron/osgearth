@@ -32,6 +32,7 @@
 
 namespace osgEarth
 {
+    class MapNode;
     class TerrainEngineNode;
 }
 
@@ -133,8 +134,8 @@ namespace osgEarth { namespace Util
         bool                          _attachStencil;
         double                        _maxFarNearRatio;
 
-        mutable DrapingManager _drapingManager;
-        DrapingManager& getDrapingManager() { return _drapingManager; }
+        mutable std::shared_ptr<DrapingManager> _drapingManager;
+        std::shared_ptr<DrapingManager>& getDrapingManager() { return _drapingManager; }
         friend class osgEarth::MapNode;
 
         struct TechData : public osg::Referenced

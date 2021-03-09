@@ -66,12 +66,12 @@ namespace
     class DrapingCamera : public osg::Camera
     {
     public:
-        DrapingCamera(DrapingManager& dm) : osg::Camera(), _dm(dm), _camera(0L)
+        DrapingCamera(std::shared_ptr<DrapingManager> dm) : osg::Camera(), _dm(dm), _camera(0L)
         {
             setCullingActive( false );
             osg::StateSet* ss = getOrCreateStateSet();
             ss->setMode(GL_DEPTH_TEST, 0);
-            ss->setRenderBinDetails(dm.getRenderBinNumber(), "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
+            ss->setRenderBinDetails(dm->getRenderBinNumber(), "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
         }
 
     public: // osg::Node
@@ -84,7 +84,7 @@ namespace
 
         void traverse(osg::NodeVisitor& nv)
         {
-            DrapingCullSet& cullSet = _dm.get(_camera);
+            DrapingCullSet& cullSet = _dm->get(_camera);
             cullSet.accept( nv );
 
             // manhandle the render bin sorting, since OSG ignores the override
@@ -111,7 +111,7 @@ namespace
 
     protected:
         virtual ~DrapingCamera() { }
-        DrapingManager& _dm;
+        std::shared_ptr<DrapingManager> _dm;
         const osg::Camera* _camera;
     };
 
@@ -382,6 +382,8 @@ _maxFarNearRatio ( 5.0 )
 {
     _supported = Registry::capabilities().supportsGLSL();
 
+    _drapingManager = std::make_shared<DrapingManager>();
+
     // try newer version
     const char* nfr2 = ::getenv("OSGEARTH_OVERLAY_RESOLUTION_RATIO");
     if ( nfr2 )
@@ -623,7 +625,7 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
 const osg::BoundingSphere&
 DrapingTechnique::getBound(OverlayDecorator::TechRTTParams& params) const
 {
-    return _drapingManager.get(params._mainCamera).getBound();
+    return _drapingManager->get(params._mainCamera).getBound();
 }
 
 void

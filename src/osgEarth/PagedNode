@@ -38,10 +38,6 @@
 #include <iterator>
 #include <unordered_map>
 
-namespace osgUtil {
-    class IncrementalCompileOperation;
-}
-
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
@@ -111,17 +107,29 @@ namespace osgEarth { namespace Util
     };
 
 
-    class OSGEARTH_EXPORT PagedNode2 : public osg::Node
+    class OSGEARTH_EXPORT PagedNode2 : public osg::Group
     {
     public:
         using Loader = std::function<osg::ref_ptr<osg::Node>(Cancelable*)>;
 
+        //! What to do with the children nodes when the async node
+        //! becomes visible
+        enum RefinePolicy
+        {
+            REFINE_REPLACE,  // async node replaces children
+            REFINE_ADD       // async node combines with children
+        };
+
     public:
+        //! Construct an empty paged node
         PagedNode2();
 
         //! Function to run to load the asychronous child
         void setLoadFunction(const Loader& value) {
             _load = value;
+        }
+        const Loader& getLoadFunction() const {
+            return _load;
         }
 
         //! Set the center of this node, which is necessary since we
@@ -129,31 +137,80 @@ namespace osgEarth { namespace Util
         void setCenter(const osg::Vec3& value) {
             _userBS->center() = value;
         }
+        const osg::Vec3& getCenter() const {
+            return _userBS->center();
+        }
 
         //! Set the radius of this node's bounding sphere, which is necessary
         //! since we cannot compute the bounding sphere before the asynchronous load
         void setRadius(float value) {
             _userBS->radius() = value;
         }
+        float getRadius() const {
+            return _userBS->radius();
+        }
 
-        //! Minimum distance from camera at which to render
+        //! Minimum distance from camera at which to render.
         void setMinRange(float value) {
-            _minRange = value;
+            _minRange = value, _useRange = true;
         }
 
         //! Maximum distance from camera at which to render
         void setMaxRange(float value) {
-            _maxRange = value;
+            _maxRange = value, _useRange = true;
+        }
+        float getMaxRange() const {
+            return _maxRange;
+        }
+
+        //! Minimum pixel extent at which to render.
+        void setMinPixels(float value) {
+            _minPixels = value, _useRange = false;
+        }
+        float getMinPixels() const {
+            return _minPixels;
+        }
+
+        //! Maximum pixel extent at which to render.
+        void setMaxPixels(float value) {
+            _maxPixels = value, _useRange = false;
+        }
+        float getMaxPixels() const {
+            return _maxPixels;
         }
 
         //! Multiple the load job's priority by this number
         void setPriorityScale(float value) {
             _priorityScale = value;
         }
+        float getPriorityScale() const {
+            return _priorityScale;
+        }
 
         //! Pre- and post-merge callbacks for the async data
         void setSceneGraphCallbacks(SceneGraphCallbacks* value) {
             _callbacks = value;
+        }
+        SceneGraphCallbacks* getSceneGraphCallbacks() const {
+            return _callbacks.get();
+        }
+
+        //! Whether to continue rendering the normal children after
+        //! the asynchronous node becomes visible
+        //! Default value = REFINE_REPLACE
+        void setRefinePolicy(RefinePolicy value) {
+            _refinePolicy = value;
+        }
+        RefinePolicy getRefinePolicy() const {
+            return _refinePolicy;
+        }
+
+        //! Whether to pre-compile GL objects before merging
+        void setPreCompileGLObjects(bool value) {
+            _preCompile = value;
+        }
+        bool getPreCompileGLObjects() const {
+            return _preCompile;
         }
 
         //! Delete the async child and start over
@@ -165,10 +222,6 @@ namespace osgEarth { namespace Util
 
         virtual osg::BoundingSphere computeBound() const override;
 
-        virtual void resizeGLObjectBuffers(unsigned) override;
-
-        virtual void releaseGLObjects(osg::State*) const override;
-
     protected:
 
         virtual ~PagedNode2();
@@ -176,22 +229,35 @@ namespace osgEarth { namespace Util
     private:
         friend class PagingManager;
 
+        struct Loaded {
+            osg::ref_ptr<osg::Node> _node;
+            osg::ref_ptr<osgUtil::StateToCompile> _state;
+        };
+
         void* _token;
         class PagingManager* _pagingManager;
         osg::ref_ptr<SceneGraphCallbacks> _callbacks;
-        osg::ref_ptr<osg::Node> _placeholder;
+        RefinePolicy _refinePolicy;
         std::atomic_bool _loadTriggered;
         std::atomic_bool _compileTriggered;
-        std::atomic_bool _callbackFired;
-        Future<osg::ref_ptr<osg::Node>> _loaded;
+        std::atomic_bool _mergeTriggered;
+        bool _merged;
+        Future<Loaded> _loaded;
         Future<osg::ref_ptr<osg::Node>> _compiled;
         Mutex _mutex;
         optional<osg::BoundingSphere> _userBS;
         float _minRange;
         float _maxRange;
+        float _minPixels;
+        float _maxPixels;
+        bool _useRange;
         float _priorityScale;
         Job _job;
+        bool _preCompile;
         std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load;
+        std::atomic_int _revision;
+
+        bool merge(int revision);
     };
 
 
@@ -207,13 +273,32 @@ namespace osgEarth { namespace Util
         }
 
     public:
-        void traverse(osg::NodeVisitor& nv) override;
+        virtual void traverse(osg::NodeVisitor& nv) override;
+
+    protected:
+        virtual ~PagingManager() { }
 
     private:
-        mutable Mutex _mutex;
         Mutex _trackerMutex;
-        SentryTracker<PagedNode2> _tracker;
-        std::list<osg::observer_ptr<PagedNode2>> _trash;
+        SentryTracker<osg::ref_ptr<PagedNode2>> _tracker;
+        std::list<PagedNode2*> _trash;
+
+        mutable Mutex _mergeMutex;
+        struct ToMerge {
+            osg::observer_ptr<PagedNode2> _node;
+            int _revision;
+        };
+        std::queue<ToMerge> _mergeQueue;
+        unsigned _mergesPerFrame;
+        std::atomic_bool _newFrame;
+
+        inline void merge(PagedNode2* host) {
+            ScopedMutexLock lock(_mergeMutex);
+            ToMerge toMerge;
+            toMerge._node = host;
+            toMerge._revision = host->_revision;
+            _mergeQueue.push(std::move(toMerge));
+        }
 
         friend class PagedNode2;
     };

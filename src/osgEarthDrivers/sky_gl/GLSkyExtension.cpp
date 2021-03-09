@@ -102,8 +102,8 @@ GLSkyExtension::connect(MapNode* mapNode)
     // Projected map? Set up a reference point at the center of the map
     if (mapNode->getMapSRS()->isProjected())
     {
-        GeoPoint refPoint;
-        mapNode->getMap()->getProfile()->getExtent().getCentroid(refPoint);
+        GeoPoint refPoint = 
+            mapNode->getMap()->getProfile()->getExtent().getCentroid();
         _skyNode->setReferencePoint(refPoint);
     }
 

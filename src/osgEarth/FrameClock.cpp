@@ -21,8 +21,8 @@
 using namespace osgEarth;
 
 FrameClock::FrameClock() :
-    _updateFrame(0u),
-    _cullFrame(0u)
+    _frame(0u),
+    _newframe(false)
 {
     _zero = std::chrono::steady_clock::now();
     _tick = _zero;
@@ -38,23 +38,26 @@ FrameClock::getTime() const
 unsigned
 FrameClock::getFrame() const
 {
-    return _updateFrame;
-}
-
-bool
-FrameClock::update()
-{
-    if (_updateFrame == _cullFrame)
-    {
-        _tick = std::chrono::steady_clock::now();
-        ++_updateFrame;
-        return true;
-    }
-    return false;
+    return _frame;
 }
 
 void
 FrameClock::cull()
 {
-    _cullFrame = _updateFrame;
+    _newframe.exchange(true);
+}
+
+bool
+FrameClock::update()
+{
+    // this block will only execute if cull() was called since
+    // the previous call to update, guaranteeing that the frame
+    // number will only increment once per cull/update pair.
+    if (_newframe.exchange(false) == true)
+    {
+        _tick = std::chrono::steady_clock::now();
+        ++_frame;
+        return true;
+    }
+    return false;
 }

@@ -348,6 +348,10 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLObjectsCompiler
     {
     public:
+        //! Analyze the node and collect the compilable state
+        osg::ref_ptr<osgUtil::StateToCompile> collectState(
+            osg::Node* node) const;
+
         void compileNow(
             const osg::ref_ptr<osg::Node>& node,
             const osg::Object* host,
@@ -360,7 +364,7 @@ namespace osgEarth
 
         Future<osg::ref_ptr<osg::Node>> compileAsync(
             const osg::ref_ptr<osg::Node>& node,
-            osgUtil::StateToCompile& state,
+            osgUtil::StateToCompile* state,
             const osg::Object* host,
             osgEarth::Threading::Cancelable* progress) const;
 

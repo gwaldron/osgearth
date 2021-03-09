@@ -567,6 +567,12 @@ RexTerrainEngineNode::dirtyTerrain()
     // can use its observer_ptr back to the terrain engine.
     this->ref();
 
+    // Load all the root key tiles.
+    JobGroup loadGroup;
+    Job load;
+    load.setArena(ARENA_LOAD_TILE);
+    load.setGroup(&loadGroup);
+
     for( unsigned i=0; i<keys.size(); ++i )
     {
         TileNode* tileNode = new TileNode();
@@ -581,11 +587,16 @@ RexTerrainEngineNode::dirtyTerrain()
         // Post-add initialization:
         tileNode->initializeData();
 
-        // And load the tile's data synchronously (only for root tiles)
-        tileNode->loadSync();
+        // And load the tile's data
+        load.dispatch([tileNode](Cancelable*) {
+                tileNode->loadSync();
+            });
 
         OE_DEBUG << " - " << (i+1) << "/" << keys.size() << " : " << keys[i].str() << std::endl;
     }
+
+    // wait for all loadSync calls to complete
+    loadGroup.join();
 
     // release the self-ref.
     this->unref_nodelete();
@@ -795,15 +806,12 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
 
-    unsigned osgFrame = nv.getFrameStamp()->getFrameNumber();
-    bool newFrame = (osgFrame > _clock.getFrame());
+    //unsigned osgFrame = nv.getFrameStamp()->getFrameNumber();
+    //bool newFrame = (osgFrame > _clock.getFrame());
 
     // prevent from running more than once per frame
-    if (newFrame)
+    if (_clock.update())
     {
-        // advance the frame clock for this new frame.
-        _clock.update();
-
         if (_renderModelUpdateRequired)
         {
             PurgeOrphanedLayers visitor(getMap(), _renderBindings);
@@ -891,8 +899,7 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
 {
     osg::MatrixTransform* mt = new osg::MatrixTransform;
 
-    GeoPoint centroid;
-    geoHF.getExtent().getCentroid(centroid);
+    GeoPoint centroid = geoHF.getExtent().getCentroid();
 
     osg::Matrix world2local, local2world;
     centroid.createWorldToLocal( world2local );

@@ -23,12 +23,13 @@
 #include "LoadTileData"
 
 #include <osgEarth/Threading>
+#include <osgEarth/FrameClock>
 #include <osg/Node>
-#include <osgUtil/IncrementalCompileOperation>
 #include <queue>
 
 namespace osgEarth { namespace REX
 {
+    using namespace osgEarth;
     using namespace osgEarth::Threading;
 
     /**
@@ -40,17 +41,17 @@ namespace osgEarth { namespace REX
         //! Construct a new merger
         Merger();
 
-        //! Merge the tile load results into the host tile
-        void merge(
-            LoadTileDataOperationPtr data,
-            osg::NodeVisitor& nv);
-
         //! Maximum number of merges to perform per UPDATE frame
         //! Default = unlimited
         void setMergesPerFrame(unsigned value);
 
         //! clear it
         void clear();
+
+        //! Merge the tile load results into the host tile
+        void merge(
+            LoadTileDataOperationPtr data,
+            osg::NodeVisitor& nv);
 
     public:
         void traverse(osg::NodeVisitor& nv) override;
@@ -76,6 +77,8 @@ namespace osgEarth { namespace REX
 
         Mutex _mutex;
         unsigned _mergesPerFrame;
+
+        FrameClock _clock;
     };
 
 } }

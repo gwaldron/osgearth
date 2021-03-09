@@ -573,20 +573,23 @@ WMS::Driver::open(osg::ref_ptr<const Profile>& profile,
         if (!result.valid())
         {
             const SpatialReference* srs = SpatialReference::create(_srsToUse);
-            GeoExtent totalExtent(srs);
-            for (DataExtentList::const_iterator itr = dataExtents.begin(); itr != dataExtents.end(); ++itr)
+            if (srs)
             {
-                GeoExtent dataExtent = *itr;
-                GeoExtent nativeExtent;
-                dataExtent.transform(srs, nativeExtent);
-                totalExtent.expandToInclude(nativeExtent);
+                GeoExtent totalExtent(srs);
+                for (DataExtentList::const_iterator itr = dataExtents.begin(); itr != dataExtents.end(); ++itr)
+                {
+                    GeoExtent dataExtent = *itr;
+                    GeoExtent nativeExtent;
+                    dataExtent.transform(srs, nativeExtent);
+                    totalExtent.expandToInclude(nativeExtent);
+                }
+                result = Profile::create(srs, totalExtent.xMin(), totalExtent.yMin(), totalExtent.xMax(), totalExtent.yMax());
             }
-            result = Profile::create(srs, totalExtent.xMin(), totalExtent.yMin(), totalExtent.xMax(), totalExtent.yMax());
         }
     }
 
     // Last resort: create a global extent profile (only valid for global maps)
-    if (!result.valid() && wms_srs->isGeographic())
+    if (!result.valid() && wms_srs.valid() && wms_srs->isGeographic())
     {
         result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
     }
@@ -632,6 +635,15 @@ WMS::Driver::fetchTileImage(const TileKey&     key,
     if (out_response.succeeded())
     {
         image = out_response.getImage();
+    }
+    else if (out_response.errorDetail().empty() == false)
+    {
+        Config conf;
+        std::istringstream errorDetailStream(out_response.errorDetail());
+        conf.fromXML(errorDetailStream);
+        const Config* serviceEx = conf.find("serviceexception");
+        std::string msg = serviceEx ? serviceEx->value() : out_response.errorDetail();
+        OE_WARN << LC << _options->name().get() << ": Service Exception: " << msg << " (URI=" << uri << ")" << std::endl;
     }
 
     return image.release();
@@ -705,7 +717,7 @@ WMS::Driver::createURI(const TileKey& key) const
 
     std::ostringstream buf;
     buf.imbue(std::locale::classic());
-    buf << _prototype
+    buf << _prototype << std::fixed
         << "&BBOX=" << minx << "," << miny << "," << maxx << "," << maxy;
 
     std::string uri(buf.str());

@@ -22,7 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TerrainEngineNode>
-
+#include <osgEarth/Utils>
 
 #define LC "[GeodeticGraticule] "
 
@@ -553,7 +553,9 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
     {
         double f, a, zn, zf;
         proj.getPerspective(f,a,zn,zf);
-        zf = Horizon::get(*cullVisitor)->getDistanceToVisibleHorizon();
+        osg::ref_ptr<Horizon> horizon;
+        ObjectStorage::get(cullVisitor, horizon);
+        zf = horizon.valid() ? horizon->getDistanceToVisibleHorizon() : 1e6;
         zn = zf * cullVisitor->getNearFarRatio();
         proj.makePerspective(f, a, zn, zf);
 

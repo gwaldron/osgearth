@@ -242,6 +242,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileNode
     Tessellator
     Text
+    TextureBuffer
     ThreeDTilesLayer
     TileKey
     TileLayer
@@ -255,7 +256,6 @@ SET(LIB_PUBLIC_HEADERS
     TileVisitor
     TileCache
     TimeControl
-    TraversalData
     Threading
     TMS
     Units
@@ -618,6 +618,7 @@ set(TARGET_SRC
     TerrainTileModelFactory.cpp
     Tessellator.cpp
     Text.cpp
+    TextureBuffer.cpp
     ThreeDTilesLayer.cpp
     TextureBufferSerializer.cpp
     TileKey.cpp
@@ -632,7 +633,6 @@ set(TARGET_SRC
     TileSourceImageLayer.cpp
     TileCache.cpp
     TimeControl.cpp
-    TraversalData.cpp
     Threading.cpp
     TMS.cpp
     Units.cpp

@@ -156,22 +156,22 @@ Map::init()
     // put the CacheSettings object in there. We will propogate this throughout
     // the data model and the renderer. These will be stored in the readOptions
     // (and ONLY there)
-    CacheSettings* cacheSettings = new CacheSettings();
+    _cacheSettings = new CacheSettings();
 
     // Set up a cache if there's one in the options:
     if (options().cache().isSet())
-        cacheSettings->setCache(CacheFactory::create(options().cache().get()));
+        _cacheSettings->setCache(CacheFactory::create(options().cache().get()));
 
     // Otherwise use the registry default cache if there is one:
-    if (cacheSettings->getCache() == 0L)
-        cacheSettings->setCache(Registry::instance()->getDefaultCache());
+    if (_cacheSettings->getCache() == nullptr)
+        _cacheSettings->setCache(Registry::instance()->getDefaultCache());
 
     // Integrate local cache policy (which can be overridden by the environment)
-    cacheSettings->integrateCachePolicy(options().cachePolicy());
+    _cacheSettings->integrateCachePolicy(options().cachePolicy());
 
     // store in the options so we can propagate it to layers, etc.
-    cacheSettings->store(_readOptions.get());
-    OE_INFO << LC << cacheSettings->toString() << "\n";
+    _cacheSettings->store(_readOptions.get());
+    OE_INFO << LC << _cacheSettings->toString() << "\n";
 
     // remember the referrer for relative-path resolution:
     URIContext( options().referrer() ).store( _readOptions.get() );
@@ -182,6 +182,8 @@ Map::init()
     // elevation sampling
     _elevationPool = new ElevationPool();
     _elevationPool->setMap( this );
+
+    _numTerrainPatchLayers = 0;
 }
 
 Map::~Map()
@@ -439,6 +441,9 @@ Map::addLayer(Layer* layer)
         _layers.push_back( layer );
         index = _layers.size() - 1;
         newRevision = ++_dataModelRevision;
+
+        if (layer->options().terrainPatch() == true)
+            ++_numTerrainPatchLayers;
     }
 
     // a separate block b/c we don't need the mutex
@@ -487,6 +492,9 @@ Map::insertLayer(Layer* layer, unsigned index)
             _layers.insert(_layers.begin() + index, layer);
 
         newRevision = ++_dataModelRevision;
+
+        if (layer->options().terrainPatch() == true)
+            ++_numTerrainPatchLayers;
     }
 
     // a separate block b/c we don't need the mutex
@@ -529,6 +537,10 @@ Map::removeLayer(Layer* layer)
             {
                 _layers.erase( i );
                 newRevision = ++_dataModelRevision;
+
+                if (layer->options().terrainPatch() == true)
+                    --_numTerrainPatchLayers;
+
                 break;
             }
         }
@@ -842,4 +854,10 @@ Map::isFast(const TileKey& key, const LayerVector& layers) const
         }
     }
     return true;
+}
+
+int 
+Map::getNumTerrainPatchLayers() const
+{
+    return _numTerrainPatchLayers;
 }

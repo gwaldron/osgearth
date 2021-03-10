@@ -37,7 +37,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         ADD_SUBDIRECTORY(osgearth_atlas)
         ADD_SUBDIRECTORY(osgearth_conv)
         ADD_SUBDIRECTORY(osgearth_3pv)
-        ADD_SUBDIRECTORY(osgearth_clamp)        
+        ADD_SUBDIRECTORY(osgearth_clamp)
         if(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)
             ADD_SUBDIRECTORY(osgearth_exportgroundcover)
         endif()
@@ -100,6 +100,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         IF (OSGEARTH_ENABLE_GEOCODER)
             ADD_SUBDIRECTORY(osgearth_geocode)
             ADD_SUBDIRECTORY(osgearth_imgui)
+            ADD_SUBDIRECTORY(osgearth_collecttriangles)
         ENDIF()
 
         IF (Protobuf_FOUND AND SQLITE3_FOUND)
@@ -110,7 +111,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
 
 ELSE()
 
-    # ios 
+    # ios
     IF(OSGEARTH_BUILD_EXAMPLES)
         SET(TARGET_DEFAULT_LABEL_PREFIX "Example")
         SET(TARGET_DEFAULT_APPLICATION_FOLDER "Examples")

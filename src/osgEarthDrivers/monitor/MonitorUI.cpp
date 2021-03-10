@@ -31,29 +31,17 @@ namespace ui = osgEarth::Util::Controls;
 
 MonitorUI::MonitorUI()
 {
-    this->setHorizAlign(ALIGN_LEFT);
-    this->setVertAlign(ALIGN_BOTTOM);
+    //this->setHorizAlign(ALIGN_LEFT);
+    //this->setVertAlign(ALIGN_BOTTOM);
 
     int r=0;
 
-    this->setControl(0, r, new ui::LabelControl("Physical RAM:"));
-    _ws = this->setControl(1, r, new ui::LabelControl());
-    ++r;
-
-    this->setControl(0, r, new ui::LabelControl("Total RAM:"));
-    _pb = this->setControl(1, r, new ui::LabelControl());
-    ++r;
-
-    this->setControl(0, r, new ui::LabelControl("Peak RAM:"));
-    _ppb = this->setControl(1, r, new ui::LabelControl());
+    this->setControl(0, r, new ui::LabelControl("RAM:"));
+    _ram = this->setControl(1, r, new ui::LabelControl());
     ++r;
 
     this->setControl(0, r, new ui::LabelControl("Jobs:"));
-    _jobdata = this->setControl(1, r, new ui::LabelControl());
-    ++r;
-
-    this->setControl(0, r, new ui::LabelControl("ICO Jobs:"));
-    _ico = this->setControl(1, r, new ui::LabelControl());
+    _jobs = this->setControl(1, r, new ui::LabelControl());
     ++r;
 }
 
@@ -62,9 +50,10 @@ MonitorUI::update(const osg::FrameStamp* fs)
 {
     if (fs && fs->getFrameNumber() % 5 == 0)
     {
-        _ws->setText(Stringify() << (Memory::getProcessPhysicalUsage() / 1048576) << " M");
-        _pb->setText(Stringify() << (Memory::getProcessPrivateUsage() / 1048576) << " M");
-        _ppb->setText(Stringify() << (Memory::getProcessPeakPrivateUsage() / 1048576) << " M");
+        _ram->setText(Stringify() 
+            << (Memory::getProcessPhysicalUsage() / 1048576) << " M / "
+            << (Memory::getProcessPrivateUsage() / 1048576) << " M // "
+            << (Memory::getProcessPeakPrivateUsage() / 1048576) << " M");
 
         std::stringstream buf;
         const JobArena::Metrics& m = JobArena::metrics();
@@ -83,8 +72,8 @@ MonitorUI::update(const osg::FrameStamp* fs)
                     << "\n";
             }
         }
-        _jobdata->setText(buf.str());
+        buf << "ico: " << GLObjectsCompiler::totalJobs();
 
-        _ico->setText(Stringify() << GLObjectsCompiler::totalJobs());
+        _jobs->setText(buf.str());
     }
 }

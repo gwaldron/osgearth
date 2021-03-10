@@ -100,11 +100,16 @@ LoadTileDataOperation::dispatch(bool async)
         return result;
     };
 
+    // Priority function. This return the maximum priority if the tile
+    // has disappeared so that it will be immediately rejected from the job queue.
+    // You can change it to -FLT_MAX to let it fester on the end of the queue,
+    // but that may slow down the job queue's sorting algorithm.
     osg::observer_ptr<TileNode> tile_obs(_tilenode);
     auto priority_func = [tile_obs]() -> float
     {
+        if (tile_obs.valid() == false) return FLT_MAX; // quick trivial reject
         osg::ref_ptr<TileNode> tilenode;
-        return tile_obs.lock(tilenode) ? tilenode->getLoadPriority() : 0.0f;
+        return tile_obs.lock(tilenode) ? tilenode->getLoadPriority() : FLT_MAX;
     };
 
 

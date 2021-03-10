@@ -839,7 +839,7 @@ namespace osgEarth { namespace Threading
         // pool name
         std::string _name;
         // queued operations to run asynchronously
-        typedef std::priority_queue<QueuedJob, std::deque<QueuedJob>> Queue;
+        using Queue = std::vector<QueuedJob>;
         Queue _queue;
         // protect access to the queue
         mutable Mutex _queueMutex;

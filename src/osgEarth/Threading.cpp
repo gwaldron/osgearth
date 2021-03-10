@@ -585,7 +585,7 @@ JobArena::shutdownAll()
 }
 
 JobArena*
-JobArena::get(const std::string& name)
+JobArena::get(const std::string& name_)
 {
     ScopedMutexLock lock(_arenas_mutex);
     
@@ -593,6 +593,8 @@ JobArena::get(const std::string& name)
     {
         std::atexit(JobArena::shutdownAll);
     }
+
+    std::string name(name_.empty() ? "oe.default" : name_);
 
     std::shared_ptr<JobArena>& arena = _arenas[name];
     if (arena == nullptr)
@@ -651,7 +653,8 @@ JobArena::dispatch(
     if (_targetConcurrency > 0)
     {
         std::lock_guard<Mutex> lock(_queueMutex);
-        _queue.emplace(job, delegate, sema);
+        //_queue.emplace(job, delegate, sema);
+        _queue.emplace_back(job, delegate, sema);
         _metrics->numJobsPending++;
         _block.notify_one();
     }
@@ -699,9 +702,16 @@ JobArena::startThreads()
 
                         if (!_queue.empty() && !_done)
                         {
-                            next = std::move(_queue.top());
+                            // Quickly find the highest priority item in the "queue"
+                            std::partial_sort(
+                                _queue.rbegin(), _queue.rbegin() + 1, _queue.rend(),
+                                [](const QueuedJob& lhs, const QueuedJob& rhs) {
+                                    return lhs._job.getPriority() > rhs._job.getPriority();
+                                });
+
+                            next = std::move(_queue.back());
                             have_next = true;
-                            _queue.pop();
+                            _queue.pop_back();
                         }
                     }
 
@@ -767,14 +777,23 @@ void JobArena::stopThreads()
 
         // reset any group semaphores so that JobGroup.join()
         // will not deadlock.
-        while (_queue.empty() == false)
+        for (auto& queuedjob : _queue)
         {
-            if (_queue.top()._groupsema != nullptr)
+            if (queuedjob._groupsema != nullptr)
             {
-                _queue.top()._groupsema->reset();
+                queuedjob._groupsema->reset();
             }
-            _queue.pop();
         }
+        _queue.clear();
+
+        //while (_queue.empty() == false)
+        //{
+        //    if (_queue.back()._groupsema != nullptr)
+        //    {
+        //        _queue.back()._groupsema->reset();
+        //    }
+        //    _queue.pop_back();
+        //}
 
         // wake up all threads so they can exit
         _block.notify_all();

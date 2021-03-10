@@ -213,7 +213,7 @@ PagedNode2::reset()
     {
         removeChild(_compiled.get().get());
     }
-    _compiled.abandon();    
+    _compiled.abandon();
     _loaded.abandon();
     _token = nullptr;
     _loadTriggered = false;
@@ -221,7 +221,7 @@ PagedNode2::reset()
     _mergeTriggered = false;
     _merged = false;
 
-    // prevents a node in the PagingManager's merge queue from 
+    // prevents a node in the PagingManager's merge queue from
     // being merged with old data.
     _revision++;
 }
@@ -255,7 +255,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         if (_useRange) // meters
         {
             float range = nv.getDistanceToViewPoint(getBound().center(), true);
-            inRange = (range > 0.0f && range >= _minRange && range <= _maxRange);
+            inRange = (range >= 0.0f && range >= _minRange && range <= _maxRange);
             priority = -range * _priorityScale;
         }
         else // pixels
@@ -272,7 +272,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         // check that range > 0 to avoid trouble from some visitors
         if (inRange)
         {
-            if (_load != nullptr && 
+            if (_load != nullptr &&
                 _loadTriggered.exchange(true) == false)
             {
                 // Load the asynchronous node.
@@ -313,8 +313,8 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             }
 
             else if (
-                _loaded.isAvailable() && 
-                _loaded.get()._node.valid() && 
+                _loaded.isAvailable() &&
+                _loaded.get()._node.valid() &&
                 _compileTriggered.exchange(true) == false)
             {
                 dirtyBound();
@@ -344,7 +344,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             }
 
             else if (
-                _compiled.isAvailable() && 
+                _compiled.isAvailable() &&
                 _compiled.get().valid() &&
                 _mergeTriggered.exchange(true) == false)
             {
@@ -384,7 +384,7 @@ bool
 PagedNode2::merge(int revision)
 {
     // Check the revision, b/c it is possible for a node in the merge queue
-    // to be expired before it pops to the front of the merge queue and 
+    // to be expired before it pops to the front of the merge queue and
     // this method gets invoked.
     if (_revision == revision)
     {

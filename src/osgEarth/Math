@@ -271,9 +271,15 @@ namespace osgEarth
         }
         return windingNum != 0;
     }
+
+    template<typename T>
+    inline T step(const T& edge, const T& x)
+    {
+        return x < edge ? static_cast<T>(0.0) : static_cast<T>(1.0);
+    }
     
-    template<class T>
-    T clamp(const T& x, const T& lo, const T& hi)
+    template<typename T>
+    inline T clamp(const T& x, const T& lo, const T& hi)
     {
         return x<lo ? lo : x>hi ? hi : x;
     }

@@ -80,6 +80,7 @@ flat in int maxLevel;
 uniform float dense_power = 1.0;
 uniform float lush_power = 1.0;
 uniform float rugged_power = 1.0;
+uniform float normal_power = 1.0;
 uniform float depth = 0.02; 
 uniform float snow = 0.0;
 
@@ -148,7 +149,6 @@ struct Pixel {
 
 float dense, lush, rugged;
 
-
 void resolveColumn(out Pixel pixel, int level, int x, float yvar)
 {
     vec4 rgbh[2];
@@ -209,6 +209,13 @@ void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
 #endif
 }
 
+vec2 decel(in vec2 v, in float p)
+{
+    return vec2(
+        1.0 - pow(1.0 - v.x, p),
+        1.0 - pow(1.0 - v.y, p));
+}
+
 void oe_splat_Frag(inout vec4 quad)
 {
     quad = texture(OE_LIFEMAP_TEX, (OE_LIFEMAP_MAT * oe_layer_tilec).st);
@@ -229,6 +236,8 @@ void oe_splat_Frag(inout vec4 quad)
 
     Pixel pixel;
     resolveLevel(pixel, 0, rugged, lush);
+
+    pixel.normal.xy = decel(pixel.normal.xy, normal_power);
 
     // final normal output:
     vp_Normal = normalize(tbn * pixel.normal);
@@ -255,15 +264,19 @@ void oe_splat_Frag(inout vec4 quad)
     color = pixel.rgbh.rgb;
 #endif
 
+    float alpha = 1.0;
+
 #ifdef OE_COLOR_LAYER_TEX
     vec3 cltexel = texture(OE_COLOR_LAYER_TEX, (OE_COLOR_LAYER_MAT*oe_layer_tilec).st).rgb;
     vec3 clcolor = clamp(2.0 * cltexel * color, 0.0, 1.0);
     //color = mix(color, clcolor, smoothstep(0.0, 0.5, 1.0 - 0.33*(dense+lush+rugged)));
     color = mix(color, clcolor, smoothstep(0.0, 0.5, 1.0 - 0.5*(dense + lush)));
 #else
-    float alpha = (0.5 + 0.25*(dense + lush)) * oe_layer_opacity;
+    //float alpha = mix((0.5 + 0.25*(dense + lush)), 1.0, oe_layer_opacity);
+    //alpha = 1.0; // oe_layer_opacity;
 #endif
 
+    alpha *= oe_layer_opacity;
     // final color output:
     quad = vec4(color, alpha);
 }

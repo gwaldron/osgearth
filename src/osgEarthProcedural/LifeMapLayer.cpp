@@ -583,6 +583,7 @@ LifeMapLayer::createImageImplementation(
     
     Sample sample[4];
     std::string lu_id;
+    osg::Vec4f hsl;
 
     osg::Vec2 noiseCoords[4];
     osg::Vec4 noise[4];
@@ -624,7 +625,8 @@ LifeMapLayer::createImageImplementation(
             (0.4*noise[2][CLUMPY]);
 
         float lush_noise =
-            noise[1][SMOOTH];
+            noise[2][SMOOTH];
+            //noise[1][SMOOTH];
 
         float rugged_noise =
             noise[1][CLUMPY];
@@ -728,12 +730,12 @@ LifeMapLayer::createImageImplementation(
             //c = color_pixel;
             
             // normalized color: (do this???)
-            osg::Vec4f c(color_pixel.r(), color_pixel.g(), color_pixel.b(), 0.0f);
+            Color c(color_pixel.r(), color_pixel.g(), color_pixel.b(), 0.0f);
             c /= (c.r() + c.g() + c.b());
 
             // convert to HSL:
-            osg::Vec4f hsl;
-            rgb2hsl(c, hsl);
+            hsl = c.asHSL();
+            //rgb2hsl(c, hsl);
 
             constexpr float red = 0.0f;
             constexpr float green = 0.3333333f;

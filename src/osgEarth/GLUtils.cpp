@@ -324,9 +324,12 @@ void
 GLTexture::makeResident(bool toggle)
 {
     if (_isResident != toggle)
-        ext()->glMakeTextureHandleResident(_handle);
-    else
-        ext()->glMakeTextureHandleNonResident(_handle);
+    {
+        if (toggle == true)
+            ext()->glMakeTextureHandleResident(_handle);
+        else
+            ext()->glMakeTextureHandleNonResident(_handle);
+    }
 
     _isResident = toggle;
 }

@@ -268,15 +268,15 @@ TextureArena::~TextureArena()
     releaseGLObjects(NULL);
 }
 
-void
+bool
 TextureArena::add(Texture* tex)
 {
-    if (!tex) return;
+    OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, __func__, false);
 
     if (tex->_image.valid() == false)
     {
-        //TODO support read options for caching
-        tex->_image = tex->_uri->getImage(NULL);
+        // TODO support read options for caching
+        tex->_image = tex->_uri->getImage(nullptr);
     }
 
     if (tex->_image.valid())
@@ -310,6 +310,12 @@ TextureArena::add(Texture* tex)
         }
 
         _textures.push_back(tex);
+
+        return true;
+    }
+    else
+    {
+        return false;
     }
 
     //TODO: consider issues like multiple GCs and "unref after apply"

@@ -83,7 +83,8 @@ namespace osgEarth
 
         //! Adds a texture to the arena. On next apply() GL handles will allocate.
         //! You only need to call this once for each texture.
-        void add(Texture* tex);
+        //! Returns false if the texture could not find a valid image
+        bool add(Texture* tex);
 
         //! Makes a texture fully available on the GPU.
         void activate(Texture* tex);

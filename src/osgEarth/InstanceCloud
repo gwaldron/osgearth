@@ -286,20 +286,16 @@ namespace osgEarth
         void draw(osg::RenderInfo& ri);
 
     public: // osg::NodeVisitor
-        void apply(osg::Node& node);
-        void apply(osg::Transform& xform);
-        void apply(osg::Geometry& geom);
+        void apply(osg::Node& node) override;
+        void apply(osg::Transform& xform) override;
+        void apply(osg::Geometry& geom) override;
         osg::ref_ptr<osg::Geometry> _geom;
 
     private:
         bool pushStateSet(osg::Node&);
         void popStateSet();
 
-        osg::fast_back_stack<osg::Texture*> _textureStack;
-        osg::fast_back_stack<osg::Matrix> _matrixStack;
-        using AtlasIndexLUT = std::unordered_map<osg::Texture*, int>;
-        AtlasIndexLUT _atlasIndexLUT;
-
+        osg::ref_ptr<TextureArena> _texarena;
         osg::DrawElementsUShort* _primset;
         osg::Vec3Array* _verts;
         osg::Vec4Array* _colors;
@@ -310,11 +306,12 @@ namespace osgEarth
         std::vector<unsigned> _elementOffsets;
         std::vector<unsigned> _elementCounts;
 
-        //traversal data
+        //traversal data - must be cleared before each traversal
+        using AtlasIndexLUT = std::unordered_map<osg::Texture*, int>;
+        AtlasIndexLUT _atlasIndexLUT;
         unsigned _numElements;
-        int _texLayer;
-        std::vector<osg::ref_ptr<osg::Texture> > _texturesToAdd;
-        osg::ref_ptr<TextureArena> _texarena;
+        std::stack<int> _arenaIndexStack;
+        std::stack<osg::Matrix> _matrixStack;
     };
 }
 

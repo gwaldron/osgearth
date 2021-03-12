@@ -578,6 +578,21 @@ InstanceCloud::Installer::apply(osg::Drawable& drawable)
 
 //...................................................................
 
+namespace
+{
+    struct CBCB : public osg::Drawable::ComputeBoundingBoxCallback
+    {
+        osg::BoundingBox computeBound(const osg::Drawable& drawable) const override
+        {
+            const osg::Geometry& g = *drawable.asGeometry();
+            osg::BoundingBox bs;
+            const osg::Vec3Array* verts = dynamic_cast<const osg::Vec3Array*>(g.getVertexArray());
+            std::for_each(verts->begin(), verts->end(), [&bs](const osg::Vec3& vert) { bs.expandBy(vert); });
+            return bs;
+        }
+    };
+}
+
 GeometryCloud::GeometryCloud(TextureArena* texarena) :
     osg::NodeVisitor(),
     _texarena(texarena)
@@ -616,6 +631,8 @@ GeometryCloud::GeometryCloud(TextureArena* texarena) :
     _geom->addPrimitiveSet(_primset);
 
     _geom->getOrCreateStateSet()->setMode(GL_BLEND, 1);
+
+    _geom->setComputeBoundingBoxCallback(new CBCB());
 }
 
 bool
@@ -661,10 +678,22 @@ GeometryCloud::add(
     // traverse the model, consolidating arrays and rewriting texture indices
     // and counting elements indices
     _numElements = 0u;
-    _texLayer = 0;
-    _texturesToAdd.clear();
+
+    _arenaIndexStack = std::stack<int>();
+    _arenaIndexStack.push(-1);
+
+    _matrixStack = std::stack<osg::Matrix>();
+
+    // This is needed b/c we are using a RAW pointer in the LUT.
+    // So it can (and will) be reused.
+    // Consider using some other way to uniquely identify textures;
+    // that way we can share them across models
+    _atlasIndexLUT.clear();
+
     node->accept(*this);
+
     _elementCounts.push_back(_numElements);
+    _geom->dirtyBound();
 
     return true;
 }
@@ -708,36 +737,51 @@ GeometryCloud::pushStateSet(osg::Node& node)
     osg::StateSet* stateset = node.getStateSet();
     if (stateset)
     {
+        int arenaIndex = _arenaIndexStack.top();
+
         osg::Texture* tex = dynamic_cast<osg::Texture*>(
             stateset->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
 
-        if (tex)
+        if (tex && tex->getImage(0))
         {
-            _textureStack.push_back(tex);
-            
             AtlasIndexLUT::iterator i = _atlasIndexLUT.find(tex);
             if (i == _atlasIndexLUT.end())
             {
-                _texturesToAdd.push_back(tex);
-
                 // arena index of the texture we're about to add:
-                _atlasIndexLUT[tex] = _texarena->size();
+                int nextIndex = _texarena->size();
 
                 Texture* t = new Texture();
                 t->_image = tex->getImage(0);
-                _texarena->add(t);
-            }
 
-            return true;
+                if (_texarena->add(t))
+                {
+                    _atlasIndexLUT[tex] = nextIndex;
+                    arenaIndex = nextIndex;
+                }
+                else
+                {
+                    OE_WARN << "Failed to add a texture. Contact support!" << std::endl;
+                }
+            }
+            else
+            {
+                arenaIndex = i->second;
+            }
         }
+
+        _arenaIndexStack.push(arenaIndex);
+        return true;
     }
-    return false;
+    else
+    {
+        return false;
+    }
 }
 
 void
 GeometryCloud::popStateSet()
 {
-    _textureStack.pop_back();
+    _arenaIndexStack.pop();
 }
 
 void
@@ -751,11 +795,11 @@ GeometryCloud::apply(osg::Node& node)
 void
 GeometryCloud::apply(osg::Transform& node)
 {
-    osg::Matrix m = _matrixStack.empty() ? osg::Matrix() : _matrixStack.back();
+    osg::Matrix m = _matrixStack.empty() ? osg::Matrix() : _matrixStack.top();
     node.computeLocalToWorldMatrix(m, this);
-    _matrixStack.push_back(m);
-    traverse(node);
-    _matrixStack.pop_back();
+    _matrixStack.push(m);
+    apply(static_cast<osg::Group&>(node));
+    _matrixStack.pop();
 }
 
 void
@@ -776,10 +820,8 @@ GeometryCloud::apply(osg::Geometry& node)
         osg::Vec3Array* nodeVerts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
         if (nodeVerts)
         {
-            for(unsigned i=0; i<nodeVerts->size(); ++i)
-            {
-                (*nodeVerts)[i] = (*nodeVerts)[i] * _matrixStack.back();
-            }
+            for (auto& vert : *nodeVerts)
+                vert = vert * _matrixStack.top();
         }
     }
 
@@ -788,22 +830,10 @@ GeometryCloud::apply(osg::Geometry& node)
     append(_colors, node.getColorArray(), size);
     append(_texcoords, node.getTexCoordArray(0), size);
 
-    // append the texture handle LUT index for each vertex using 
-    // whichever texture is atop the stack
-    int texHandleIndex = -1;
-    if (!_textureStack.empty())
-    {
-        AtlasIndexLUT::iterator i = _atlasIndexLUT.find(_textureStack.back());
-        if (i != _atlasIndexLUT.end())
-        {
-            texHandleIndex = i->second;
-        }
-    }
-
     _texindices->reserve(_texindices->size() + size);
     for (int i = 0; i < size; ++i)
     {
-        _texindices->push_back(texHandleIndex);
+        _texindices->push_back(_arenaIndexStack.top());
     }
 
     // assemble the elements set

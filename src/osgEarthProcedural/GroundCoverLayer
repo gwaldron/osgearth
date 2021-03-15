@@ -176,7 +176,9 @@ namespace osgEarth { namespace Procedural
             void release(int slot);
             int getSlot(const TileKey& key) const;
             bool inUse(int slot) const;
-        };        struct AssetInstance : public osg::Referenced
+        };        
+        
+        struct AssetInstance : public osg::Referenced
         {
             AssetInstance() : _asset(nullptr) { }
 

@@ -76,7 +76,7 @@ layout(binding=4, std430) buffer RenderLUT
 };
 layout(binding=5, std430) buffer TextureLUT
 {
-    uint64_t texHandle[];
+    uint64_t texArena[];
 };
 
 // transition buffer (in pixel size ratio space) b/w billboards and models

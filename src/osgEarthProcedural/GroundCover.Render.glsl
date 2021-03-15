@@ -182,8 +182,8 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
     if (instance[i].sideSamplerIndex >= 0)
     {
-        oe_gc_texHandle = texHandle[instance[i].sideSamplerIndex];
-    //    oe_gc_nmlHandle = texHandle[instance[i].sideSamplerIndex+1];
+        oe_gc_texHandle = texArena[instance[i].sideSamplerIndex];
+    //    oe_gc_nmlHandle = texArena[instance[i].sideSamplerIndex+1];
     }
 
 #else // normal render camera - draw as a billboard:
@@ -221,9 +221,9 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
                 which == 0 || which == 2? mix(-tangentVector, faceNormalVector, blend) :
                 mix( tangentVector, faceNormalVector, blend);
 
-            oe_gc_texHandle = texHandle[instance[i].sideSamplerIndex];
+            oe_gc_texHandle = texArena[instance[i].sideSamplerIndex];
 
-            oe_gc_nmlHandle = texHandle[instance[i].sideSamplerIndex+1];
+            oe_gc_nmlHandle = texArena[instance[i].sideSamplerIndex+1];
 
             // normal mapping ref frame
             oe_gc_TBN = mat3(
@@ -241,7 +241,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
     else if (which >= 4 && instance[i].topSamplerIndex > 0 && topDownAmount > 0.0) // top-down billboard
     {
-        oe_gc_texHandle = texHandle[instance[i].topSamplerIndex];
+        oe_gc_texHandle = texArena[instance[i].topSamplerIndex];
 
         // estiblish the local tangent plane:
         vec3 Z = mat3(osg_ViewMatrix) * vec3(0,0,1); //north pole
@@ -270,7 +270,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         vp_Normal = vertex_view.xyz - C;
 
         // normal map handle and ref frame:
-        oe_gc_nmlHandle = texHandle[instance[i].topSamplerIndex+1];
+        oe_gc_nmlHandle = texArena[instance[i].topSamplerIndex+1];
         oe_gc_TBN = mat3(E, N, oe_UpVectorView);
 
         vp_Color.a = topDownAmount;
@@ -346,7 +346,7 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
     // assign texture sampler for this model. The LUT index is in
     // a vertex attribute. Negative means no texture.
     if (oe_gc_texLUTindex >= 0)
-        oe_gc_texHandle = texHandle[oe_gc_texLUTindex];
+        oe_gc_texHandle = texArena[oe_gc_texLUTindex];
     else
         oe_gc_texHandle = 0UL;
 

@@ -80,14 +80,14 @@ GrassLayer::loadRenderingShaders(VirtualProgram* vp, const osgDB::Options* optio
 osg::Geometry*
 GrassLayer::createParametricGeometry() const    
 {
-    const unsigned vertsPerInstance = 16;
-    const unsigned indiciesPerInstance = 54;
+    constexpr unsigned vertsPerInstance = 16;
+    constexpr unsigned indiciesPerInstance = 54;
 
     osg::Geometry* out_geom = new osg::Geometry();
     out_geom->setUseVertexBufferObjects(true);
     out_geom->setUseDisplayList(false);
 
-    static const GLushort indices[54] = {
+    static const GLushort indices[indiciesPerInstance] = {
         0,1,4, 4,1,5, 1,2,5, 5,2,6, 2,3,6, 6,3,7,
         4,5,8, 8,5,9, 5,6,9, 9,6,10, 6,7,10, 10,7,11,
         8,9,12, 12,9,13, 9,10,13, 13,10,14, 10,11,14, 14,11,15
@@ -95,10 +95,10 @@ GrassLayer::createParametricGeometry() const
 
     out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, indiciesPerInstance, &indices[0]));
 
-    out_geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 16));
+    out_geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, vertsPerInstance));
 
-    osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
-    normals->push_back(osg::Vec3(0,1,0));
+    osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, vertsPerInstance);
+    normals->assign(vertsPerInstance, osg::Vec3(0, 1, 0));
     out_geom->setNormalArray(normals);
 
     return out_geom;

@@ -77,6 +77,9 @@ uniform sampler2D oe_gc_noiseTex;
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
+// Vertex attributes in
+layout(location = 6) in int oe_gc_texLUTindex; // texture handle LUT index
+
 // Stage globals
 vec3 oe_UpVectorView;
 vec4 vp_Color;
@@ -159,7 +162,7 @@ void oe_Grass_parametric(inout vec4 vertex_view)
     // find the texture atlas index:
     oe_gc_texHandle = 0UL;
     if (instance[i].sideSamplerIndex >= 0)
-        oe_gc_texHandle = texHandle[instance[i].sideSamplerIndex];
+        oe_gc_texHandle = texArena[instance[i].sideSamplerIndex];
 
     // make the grass smoothly disappear in the distance
     float falloff = clamp(2.0-(nRange + oe_noise[NOISE_SMOOTH]), 0, 1);
@@ -270,10 +273,12 @@ void oe_Grass_model(inout vec4 vertex_view)
     // TODO: don't hard-code this..? or meh
     oe_gc_texCoord.xyz = gl_MultiTexCoord7.xyz;
 
-    // pick the sampler
-    oe_gc_texHandle = instance[i].modelSamplerIndex >= 0?
-        texHandle[instance[i].modelSamplerIndex] :
-        0UL;
+    // assign texture sampler for this model. The LUT index is in
+    // a vertex attribute. Negative means no texture.
+    if (oe_gc_texLUTindex >= 0)
+        oe_gc_texHandle = texArena[oe_gc_texLUTindex];
+    else
+        oe_gc_texHandle = 0UL;
 }
 
 void oe_Grass_main(inout vec4 vertex_view)

@@ -29,7 +29,10 @@
 #include <osgEarth/LandCover>
 #include <osgEarth/Metrics>
 #include <osgEarth/SDF>
+
+#ifdef OSGEARTH_HAVE_BLEND2D
 #include <blend2d.h>
+#endif
 
 using namespace osgEarth;
 

@@ -78,7 +78,9 @@ GrassLayer::loadRenderingShaders(VirtualProgram* vp, const osgDB::Options* optio
 }
 
 osg::Geometry*
-GrassLayer::createParametricGeometry() const    
+GrassLayer::createParametricGeometry(
+    int tex_index_0,
+    int tex_index_1) const    
 {
     constexpr unsigned vertsPerInstance = 16;
     constexpr unsigned indiciesPerInstance = 54;
@@ -100,6 +102,11 @@ GrassLayer::createParametricGeometry() const
     osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, vertsPerInstance);
     normals->assign(vertsPerInstance, osg::Vec3(0, 1, 0));
     out_geom->setNormalArray(normals);
+
+    osg::ShortArray* handles = new osg::ShortArray(vertsPerInstance);
+    handles->setBinding(osg::Array::BIND_PER_VERTEX);
+    handles->assign(vertsPerInstance, tex_index_0);
+    out_geom->setVertexAttribArray(6, handles);
 
     return out_geom;
 }

@@ -43,7 +43,7 @@ namespace osgEarth
         GLuint  instanceCount;  // how many instances of the geometry to draw
         GLuint  firstIndex;     // index of the first element in the EBO to use
         GLuint  baseVertex;     // offset to add to each element index (lets us use USHORT even when >65535 verts)
-        GLuint  baseInstance;   // offset to instace # when fetching vertex attrs (does NOT affect gl_InstanceID)
+        GLuint  baseInstance;   // offset to instance # when fetching vertex attrs (does NOT affect gl_InstanceID)
     };
 
     //! A dispatch command for indirect compute
@@ -81,9 +81,9 @@ namespace osgEarth
         {
             struct Data {
                 GLfloat _modelViewMatrix[16];   // 64
-                GLint   _inUse;
-                GLfloat _padding[7];
-                //GLfloat _normalMatrix[16];      // +64 = 128 (no mat3's allowed!!)
+
+                GLint   _inUse; // 4
+                GLfloat _padding[3]; // 12
             };
             Data* _buf;
             TileBuffer() : _buf(NULL) { }
@@ -92,25 +92,28 @@ namespace osgEarth
             void update() const;
         };
 
+        // Data about each rendered instance.
+        // Use the _padding field to maintain vec4-alignment (16 bytes)
         struct InstanceData
         {
             GLfloat vertex[4];   // 16
-            GLfloat tilec[2];    //  + 8 = 24
-            GLint64 modelSampler;    //  + 4 = 28
-            GLint64 sideSampler;     //  + 4 = 32
-            GLint64 topSampler;      //  + 4 = 36
-            GLfloat width;       //  + 4 = 40
-            GLfloat height;      //  + 4 = 44
-            GLfloat sinrot;      //  + 4 = 48
-            GLfloat cosrot;      //  + 4 = 52
-            GLfloat fillEdge;    //  + 4 = 56
-            GLint modelId;       //  + 4 = 60
-            GLuint tileNum;      //  + 4 = 64
-            GLint  drawCommand;  //  + 4 = 68
-            GLfloat instanceId;  //  + 4 = 72
-            GLfloat sizeScale;   //  + 4 = 76
-            GLfloat pixelSizeRatio;//+ 4 = 80
-            GLfloat _padding[1];
+
+            GLfloat tilec[2];    // 8
+            GLfloat width;       // 4
+            GLfloat height;      // 4
+
+            GLfloat sinrot;      // 4
+            GLfloat cosrot;      // 4
+            GLfloat fillEdge;    // 4
+            GLfloat sizeScale;   // 4
+
+            GLfloat pixelSizeRatio;  // 4
+            GLint modelCommand;      // 4
+            GLint billboardCommmand; // 4
+            GLint tileNum;          // 4
+
+            GLuint drawMask;         // 4
+            GLfloat _padding[3];     // 12
         };
 
         // Buffer containing information on each instance in each tile.
@@ -128,7 +131,11 @@ namespace osgEarth
         // Buffer containing the index of each index to cull.
         struct CullBuffer : public SSBO
         {
-            DispatchIndirectCommand* _buf;
+            struct Data {
+                DispatchIndirectCommand di;
+                GLfloat _padding[1];
+            };
+            Data* _buf;
             CullBuffer() : _buf(NULL) { }
             ~CullBuffer() { if (_buf) delete[] _buf; }
             void allocate(unsigned numTiles, GLsizei alignment, osg::State&);
@@ -268,6 +275,9 @@ namespace osgEarth
         //!    the index of the first vertex in this node is a multiple of the
         //!    alignment value. This is necessary for shaders that use gl_VertexID
         //!    as a  modulus.
+        //! @param generateTextureHandles Whether to visit the node, add textures
+        //!    to the arena, and generate texture handle vertex attribute. If false,
+        //!    copy the pre-existing handles from the incoming geometry.
         //! @return True upon sucess
         bool add(
             osg::Node* node,

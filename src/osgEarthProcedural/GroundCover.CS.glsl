@@ -9,10 +9,8 @@ struct Biome {
 };
 struct Asset {
     int assetId;
-    int modelId;
-    int modelSamplerIndex;
-    int sideSamplerIndex;
-    int topSamplerIndex;
+    int modelCommand;
+    int billboardCommand;
     float width;
     float height;
     float sizeVariation;
@@ -112,7 +110,7 @@ void generate()
     const uint x = gl_GlobalInvocationID.x;
     const uint y = gl_GlobalInvocationID.y;
 
-    uint tileNum = uint(oe_tile[4]);
+    int tileNum = int(oe_tile[4]);
 
     uint local_i =
         gl_GlobalInvocationID.y * gl_NumWorkGroups.x
@@ -121,8 +119,8 @@ void generate()
         tileNum * (gl_NumWorkGroups.x * gl_NumWorkGroups.y)
         + local_i;
 
-    instance[i].instanceId = 0; // means the slot is unoccupied
-    instance[i].tileNum = tileNum; // need this for merge
+    // tileNum -1 = slot unoccupied
+    instance[i].tileNum = -1;
 
     vec2 offset = vec2(float(x), float(y));
     vec2 halfSpacing = 0.5 / vec2(gl_NumWorkGroups.xy);
@@ -140,6 +138,13 @@ void generate()
         return;
 #endif
 
+    // If we're using a mask texture, sample it now:
+#ifdef OE_GROUNDCOVER_MASK_SAMPLER
+    float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*tilec4).st).a;
+    if (mask > 0.0)
+        return;
+#endif
+
     float fill;
     float lush;
 
@@ -154,22 +159,15 @@ void generate()
     lush = lifemap[1] * lush_power;
     lush = noise[pickNoiseType] * lush;
 
-
-
-    // If we're using a mask texture, sample it now:
-#ifdef OE_GROUNDCOVER_MASK_SAMPLER
-    float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*tilec4).st).a;
-    if ( mask > 0.0 )
-        return;
-#endif
-
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
     if (noise[NOISE_SMOOTH] > fill)
         return;
+
     noise[NOISE_SMOOTH] /= fill;
 
     // It's a keeper - record it to the instance buffer.
+    instance[i].tileNum = tileNum; // need this for merge
 
     // select a billboard at random
     int pickIndex = clamp(int(floor(lush * float(biome.count))), 0, biome.count - 1);
@@ -191,24 +189,17 @@ void generate()
     if (noise[NOISE_SMOOTH] > xx)
         instance[i].fillEdge = 1.0-((noise[NOISE_SMOOTH]-xx)/(1.0-xx));
 
-    instance[i].modelId = asset.modelId;
-
-    instance[i].modelSamplerIndex = asset.modelSamplerIndex;
-    instance[i].sideSamplerIndex = asset.sideSamplerIndex;
-    instance[i].topSamplerIndex = asset.topSamplerIndex;
+    instance[i].modelCommand = asset.modelCommand;
+    instance[i].billboardCommand = asset.billboardCommand;
 
     //a pseudo-random scale factor to the width and height of a billboard
     instance[i].sizeScale = 1.0 + asset.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
     instance[i].width = asset.width * instance[i].sizeScale;
     instance[i].height = asset.height * instance[i].sizeScale;
 
-    //float rotation = 6.283185 * noise[NOISE_RANDOM];
     float rotation = 6.283185 * fract(noise[NOISE_RANDOM_2]*5.5);
     instance[i].sinrot = sin(rotation);
     instance[i].cosrot = cos(rotation);
-
-    // non-zero instanceID means this slot is occupied
-    instance[i].instanceId = 1 + int(i);
 }
 
 
@@ -218,10 +209,11 @@ void merge()
     uint i = gl_GlobalInvocationID.x;
 
     // only if instance is set and tile is active:
-    if (instance[i].instanceId > 0 && tileData[instance[i].tileNum].inUse == 1)
+    int tileNum = instance[i].tileNum;
+    if (tileNum >= 0 && tileData[tileNum].inUse == 1)
     {
         uint k = atomicAdd(di.num_groups_x, 1);
-        instanceLUT[k] = i;
+        cullSet[k] = i;
     }
 }
 
@@ -231,15 +223,18 @@ uniform vec3 oe_Camera;
 uniform int oe_gc_numCommands; // total number of draw commands
 uniform float oe_gc_sse = 100.0; // pixels
 
+#define MASK_BILLBOARD 1
+#define MASK_MODEL 2
+
 void cull()
 {
-    uint i = instanceLUT[ gl_GlobalInvocationID.x ];
+    uint i = cullSet[ gl_GlobalInvocationID.x ];
 
-    // initialize to -1, meaning the instance will be ignored.
-    instance[i].drawId = -1;
+    // initialize the drawMask to 0, meaning no render leaf for this instance (yet)
+    instance[i].drawMask = 0;
 
-    // Which tile did this come from
-    uint tileNum = instance[i].tileNum;
+    // Which tile did this come from?
+    int tileNum = instance[i].tileNum;
 
     // Bring into view space:
     vec4 vertex_view = tileData[tileNum].modelViewMatrix * instance[i].vertex;
@@ -252,21 +247,19 @@ void cull()
         return;
 
     // frustum culling:
-    //vec4 clipLL = gl_ProjectionMatrix * (vertex_view - vec4(instance[i].radius, 0, 0, 0));
     vec4 clipLL = gl_ProjectionMatrix * (vertex_view + vec4(-instance[i].width, 0, 0, 0));
     clipLL.xy /= clipLL.w;
     if (clipLL.x > 1.0 || clipLL.y > 1.0)
         return;
 
-    //vec4 clipUR = gl_ProjectionMatrix * (vertex_view + vec4(instance[i].radius, 2*instance[i].radius, 0, 0));
     vec4 clipUR = gl_ProjectionMatrix * (vertex_view + vec4(instance[i].width, instance[i].height, 0, 0));
     clipUR.xy /= clipUR.w;
     if (clipUR.x < -1.0 || clipUR.y < -1.0)
         return;
 
     // Model versus billboard selection:
-    bool bbExists = instance[i].sideSamplerIndex >= 0;
-    bool modelExists = instance[i].modelId >= 0;
+    bool bbExists = instance[i].billboardCommand >= 0;
+    bool modelExists = instance[i].modelCommand >= 0;
 
     // If model, make sure we're within the SSE limit:
     vec2 pixelSizeRatio = vec2(1);
@@ -274,63 +267,68 @@ void cull()
     {
         vec2 pixelSize = 0.5*(clipUR.xy-clipLL.xy) * oe_Camera.xy;
         pixelSizeRatio = pixelSize / vec2(oe_gc_sse);
-        //if (all(lessThan(pixelSizeRatio, vec2(1))))
-        //    chooseModel = false;
     }
 
     float psr = min(pixelSizeRatio.x, pixelSizeRatio.y);
+    instance[i].pixelSizeRatio = psr;
 
-    bool drawBB = bbExists && (psr < 1.0+PSR_BUFFER || !modelExists);
+    bool drawBB = bbExists && (psr < 1.0 + PSR_BUFFER || !modelExists);
     bool drawModel = modelExists && (psr > 1.0 - PSR_BUFFER || bbExists == false);
 
-    instance[i].pixelSizeRatio = psr;
+    if (drawBB)
+    {
+        instance[i].drawMask |= MASK_BILLBOARD;
+        int first_index = instance[i].billboardCommand;
+        for (uint k = first_index+1; k < oe_gc_numCommands; ++k)
+            atomicAdd(cmd[k].baseInstance, 1);
+    }
 
     if (drawModel)
     {
-        int modelDrawId = instance[i].modelId + 1;
-        instance[i].drawId = modelDrawId;
-        for (uint drawId = modelDrawId + 1; drawId < oe_gc_numCommands; ++drawId)
-            atomicAdd(cmd[drawId].baseInstance, 1);
-    }
-    if (drawBB)
-    {
-        const int bb_drawId = 0;
-        if (instance[i].drawId < 0)
-            instance[i].drawId = bb_drawId;
-        for (uint drawId = bb_drawId + 1; drawId < oe_gc_numCommands; ++drawId)
-            atomicAdd(cmd[drawId].baseInstance, 1);
+        instance[i].drawMask |= MASK_MODEL;
+        int first_index = instance[i].modelCommand;
+        for (uint k = first_index+1; k < oe_gc_numCommands; ++k)
+            atomicAdd(cmd[k].baseInstance, 1);
     }
 }
 
 
 void sort()
 {
-    uint i = instanceLUT[gl_GlobalInvocationID.x];
+    uint i = cullSet[gl_GlobalInvocationID.x];
 
-    int drawId = instance[i].drawId;
-    if (drawId >= 0)
+    if ((instance[i].drawMask & MASK_BILLBOARD) != 0)
     {
+        int cmd_index = instance[i].billboardCommand;
+
         // find the index of the first instance for this bin:
-        uint cmdStartIndex = cmd[drawId].baseInstance;
+        uint cmdStartIndex = cmd[cmd_index].baseInstance;
 
         // bump the instance count for this command; the new instanceCount
         // is also the index within the command:
-        uint instanceIndex = atomicAdd(cmd[drawId].instanceCount, 1);
+        uint instanceIndex = atomicAdd(cmd[cmd_index].instanceCount, 1);
 
         // copy to the right place in the render list
         uint index = cmdStartIndex + instanceIndex;
-        renderLUT[index] = i;
+        renderSet[index].instance = i;
+        renderSet[index].drawMask = MASK_BILLBOARD;
+    }
 
-        // if we queued a model, but are within the transition range, queue a billboard also.
-        if (drawId > 0 && 
-            instance[i].sideSamplerIndex >= 0 &&
-            instance[i].pixelSizeRatio < (1.0+PSR_BUFFER))
-        {
-            cmdStartIndex = cmd[0].baseInstance;
-            instanceIndex = atomicAdd(cmd[0].instanceCount, 1);
-            index = cmdStartIndex + instanceIndex;
-            renderLUT[index] = i;
-        }
+    if ((instance[i].drawMask & MASK_MODEL) != 0)
+    {
+        int cmd_index = instance[i].modelCommand;
+
+        // find the index of the first instance for this bin:
+        uint cmdStartIndex = cmd[cmd_index].baseInstance;
+
+        // bump the instance count for this command; the new instanceCount
+        // is also the index within the command:
+        uint instanceIndex = atomicAdd(cmd[cmd_index].instanceCount, 1);
+
+        // insert in the render leaf list
+        uint index = cmdStartIndex + instanceIndex;
+        renderSet[index].instance = i;
+        renderSet[index].drawMask = MASK_MODEL;
     }
 }
 

@@ -134,11 +134,10 @@ InstanceCloud::TileBuffer::update() const
 void
 InstanceCloud::CullBuffer::allocate(unsigned numInstances, GLsizei alignment, osg::State& state)
 {
-    _requiredSize = 
-        sizeof(DispatchIndirectCommand) +
-        sizeof(GLuint) +
-        (numInstances * sizeof(GLuint));
-        //(numInstances * sizeof(InstanceData));
+    _requiredSize = sizeof(Data) + (numInstances * sizeof(GLuint));
+        //sizeof(DispatchIndirectCommand) +
+        //sizeof(GLfloat) +
+        //(numInstances * sizeof(GLuint));
 
     if (_requiredSize > _allocatedSize)
     {
@@ -147,15 +146,15 @@ InstanceCloud::CullBuffer::allocate(unsigned numInstances, GLsizei alignment, os
         release();
         if (_buf) delete[] _buf;
 
-        _buf = new DispatchIndirectCommand;
+        _buf = new Data();
         _allocatedSize = align(_requiredSize, alignment);
 
-        _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, "OE IC InstBuffer");
+        _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, "OE IC CullBuffer");
 
         _buffer->bind();
 
         GLFunctions::get(state).
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, NULL, GL_DYNAMIC_STORAGE_BIT);
+            glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     }
 }
 
@@ -165,12 +164,13 @@ InstanceCloud::CullBuffer::clear()
     OE_PROFILING_GPU_ZONE("CullBuffer::clear");
 
     // Zero out the workgroup/instance count.
-    _buf->num_groups_x = 0u;
-    _buf->num_groups_y = 1u;
-    _buf->num_groups_z = 1u;
+    _buf->di.num_groups_x = 0u;
+    _buf->di.num_groups_y = 1u;
+    _buf->di.num_groups_z = 1u;
+    _buf->_padding[0] = 0;
 
     _buffer->bind();
-    _buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(DispatchIndirectCommand), _buf);
+    _buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(Data), _buf);
 }
 
 void
@@ -200,7 +200,7 @@ InstanceCloud::InstanceBuffer::allocate(unsigned numTiles, unsigned numInstances
 void
 InstanceCloud::RenderBuffer::allocate(unsigned numInstances, GLsizei alignment, osg::State& state)
 {
-    _requiredSize = numInstances*sizeof(GLuint);
+    _requiredSize = numInstances * (sizeof(GLuint)*2); // sizeof RenderLeaf
     if (_requiredSize > _allocatedSize)
     {
         OE_PROFILING_GPU_ZONE("RenderBuffer::allocate");
@@ -214,7 +214,7 @@ InstanceCloud::RenderBuffer::allocate(unsigned numInstances, GLsizei alignment, 
         _buffer->bind();
 
         GLFunctions::get(state).
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, NULL, 0);
+            glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, nullptr, 0);
     }
 }
 
@@ -247,7 +247,7 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State& state, unsigned num
     if (_alignment < 0)
     {
         glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &_alignment);
-        OE_DEBUG << "SSBO Alignment = " << _alignment << std::endl;
+        OE_DEBUG << LC << "SSBO Alignment = " << _alignment << std::endl;
     }
 
     _numTilesActive = numTiles;
@@ -830,10 +830,17 @@ GeometryCloud::apply(osg::Geometry& node)
     append(_colors, node.getColorArray(), size);
     append(_texcoords, node.getTexCoordArray(0), size);
 
-    _texindices->reserve(_texindices->size() + size);
-    for (int i = 0; i < size; ++i)
+    if (node.getVertexAttribArray(6) != nullptr)
     {
-        _texindices->push_back(_arenaIndexStack.top());
+        append(_texindices, node.getVertexAttribArray(6), size);
+    }
+    else
+    {
+        _texindices->reserve(_texindices->size() + size);
+        for (int i = 0; i < size; ++i)
+        {
+            _texindices->push_back(_arenaIndexStack.top());
+        }
     }
 
     // assemble the elements set

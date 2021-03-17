@@ -14,42 +14,37 @@ struct DispatchIndirectCommand
     uint num_groups_y;
     uint num_groups_z;
 };
-struct InstanceHeaderData
-{
-    uint count;
-    uint _padding[3];
-};
 struct InstanceData
 {
     vec4 vertex;       // 16
+
     vec2 tilec;        // 8
-
-    int modelSamplerIndex;
-    int sideSamplerIndex;
-    int topSamplerIndex;
-
     float width;       // 4
     float height;      // 4
+
     float sinrot;      // 4
     float cosrot;      // 4
-
     float fillEdge;    // 4
-    int modelId;       // 4
-    uint tileNum;      // 4
-    int drawId;        // 4
-
-    int instanceId;    // 4 // -1 = unused
     float sizeScale;   // 4
-    float pixelSizeRatio;
 
-    float _padding[1];
+    float pixelSizeRatio; // 4
+    int modelCommand;  // 4
+    int billboardCommand; // 4
+    int tileNum;      // 4
+
+    uint drawMask; // 4
+    float _padding[3]; // 12
 };
 struct TileData
 {
-    mat4 modelViewMatrix; // 4 x vec4 = 64 bytes
-    int inUse;
-    float _padding[7];
-    //mat4 normalMatrix;    // 4 x vec4 = 64 bytes // NO mat3 allowed!
+    mat4 modelViewMatrix; // 64 //4 x vec4 = 64 bytes
+    int inUse;            // 4
+    float _padding[3];    // 12
+};
+struct RenderLeaf
+{
+    uint instance;
+    uint drawMask; //1=bb, 2=model
 };
 
 layout(binding=0, std430) buffer DrawCommandsBuffer
@@ -62,9 +57,9 @@ layout(binding=1, std430) buffer InstanceBuffer
 };
 layout(binding=2, std430) buffer CullLUT
 {
-    DispatchIndirectCommand di;
-    float _padding[1];
-    uint instanceLUT[];
+    DispatchIndirectCommand di; // 12
+    float _padding;           // 4
+    uint cullSet[];
 };
 layout(binding=3, std430) buffer TileDataBuffer
 {
@@ -72,7 +67,7 @@ layout(binding=3, std430) buffer TileDataBuffer
 };
 layout(binding=4, std430) buffer RenderLUT
 {
-    uint renderLUT[];
+    RenderLeaf renderSet[];
 };
 layout(binding=5, std430) buffer TextureLUT
 {

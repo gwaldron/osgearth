@@ -23,7 +23,8 @@ struct oe_TransformSpec {
 
 void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 {
-    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
+    RenderLeaf leaf = renderSet[gl_InstanceID + cmd[gl_DrawID].baseInstance];
+    uint i = leaf.instance;
     uint tileNum = instance[i].tileNum;
 
     oe_transform.modelview = tileData[tileNum].modelViewMatrix;
@@ -79,7 +80,7 @@ uniform sampler2D oe_gc_noiseTex;
 #define NOISE_CLUMPY   3
 
 // Vertex attributes in
-layout(location = 6) in int oe_gc_texLUTindex; // texture handle LUT index
+layout(location = 6) in int oe_gc_texArenaIndex; // texture handle LUT index
 
 // Stage globals
 vec3 oe_UpVectorView;
@@ -120,11 +121,8 @@ float unit(float x, float lo, float hi) {
 flat out uint64_t oe_gc_texHandle;
 flat out uint64_t oe_gc_nmlHandle;
 
-void oe_GroundCover_Billboard(inout vec4 vertex_view)
+void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
 {
-    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
-    uint t = instance[i].tileNum;
-
     vp_Color = vec4(1,1,1,0); // start alpha at ZERO for billboard transitions
     oe_gc_texHandle = 0UL; // 0UL = untextured
     oe_gc_nmlHandle = 0UL; // oUL = no normal map
@@ -180,9 +178,11 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
 
     //vp_Normal = normalize(cross(tangentVector, heightVector));
 
-    if (instance[i].sideSamplerIndex >= 0)
+    if (oe_gc_texArenaIndex >= 0)
+    //if (instance[i].sideSamplerIndex >= 0)
     {
-        oe_gc_texHandle = texArena[instance[i].sideSamplerIndex];
+        oe_gc_texHandle = texArena[oe_gc_texArenaIndex];
+        oe_gc_nmlHandle = -1;
     //    oe_gc_nmlHandle = texArena[instance[i].sideSamplerIndex+1];
     }
 
@@ -200,7 +200,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
     float topDownAmount = rescale(d, 0.4, 0.6);
     float billboardAmount = rescale(1.0-d, 0.0, 0.25);
 
-    if (which < 4 && instance[i].sideSamplerIndex >= 0 && billboardAmount > 0.0) // Front-facing billboard
+    if (which < 4 && billboardAmount > 0.0) // Front-facing billboard
     {
         vertex_view = 
             which == 0? vec4(vertex_view.xyz - halfWidthTangentVector, 1.0) :
@@ -221,10 +221,6 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
                 which == 0 || which == 2? mix(-tangentVector, faceNormalVector, blend) :
                 mix( tangentVector, faceNormalVector, blend);
 
-            oe_gc_texHandle = texArena[instance[i].sideSamplerIndex];
-
-            oe_gc_nmlHandle = texArena[instance[i].sideSamplerIndex+1];
-
             // normal mapping ref frame
             oe_gc_TBN = mat3(
                 tangentVector,
@@ -239,17 +235,13 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
         }
     }
 
-    else if (which >= 4 && instance[i].topSamplerIndex > 0 && topDownAmount > 0.0) // top-down billboard
+    else if (which >= 4 && topDownAmount > 0.0) // top-down billboard
     {
-        oe_gc_texHandle = texArena[instance[i].topSamplerIndex];
-
         // estiblish the local tangent plane:
         vec3 Z = mat3(osg_ViewMatrix) * vec3(0,0,1); //north pole
         vec3 E = cross(Z, oe_UpVectorView);
         vec3 N = cross(oe_UpVectorView, E);
         Z = cross(E, N);
-
-        //oe_gc_TBN = mat3(E, -N, oe_UpVectorView);
 
         // now introduce a "random" rotation
         vec2 b = normalize(clamp(vec2(noise[NOISE_RANDOM], noise[NOISE_RANDOM_2]), 0.01, 1.0)*2.0-1.0);
@@ -268,12 +260,15 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
             vec4(C + E*k + N*k, 1.0);
 
         vp_Normal = vertex_view.xyz - C;
-
-        // normal map handle and ref frame:
-        oe_gc_nmlHandle = texArena[instance[i].topSamplerIndex+1];
         oe_gc_TBN = mat3(E, N, oe_UpVectorView);
 
         vp_Color.a = topDownAmount;
+    }
+
+    if (oe_gc_texArenaIndex >= 0)
+    {
+        oe_gc_texHandle = texArena[oe_gc_texArenaIndex];
+        oe_gc_nmlHandle = texArena[oe_gc_texArenaIndex + 1];
     }
 
 #endif // !OE_IS_SHADOW_CAMERA
@@ -285,7 +280,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view)
                                   vec2(1, 1);
 
     // apply fade from bb->model
-    if (instance[i].modelId >= 0)
+    if (instance[i].modelCommand >= 0)
     {
         oe_gc_transition = clamp(
             (1.0 + PSR_BUFFER - instance[i].pixelSizeRatio) / PSR_BUFFER, 
@@ -330,10 +325,8 @@ void oe_gc_apply_wind(inout vec4 vert_view, in float width, in float height)
 #endif
 }
 
-void oe_GroundCover_Model(inout vec4 vertex_view)
+void oe_GroundCover_Model(inout vec4 vertex_view, in uint i)
 {
-    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
-
     oe_layer_tilec = vec4(instance[i].tilec, 0, 1);
 
     vertex_view = oe_vertex.view;
@@ -345,8 +338,8 @@ void oe_GroundCover_Model(inout vec4 vertex_view)
 
     // assign texture sampler for this model. The LUT index is in
     // a vertex attribute. Negative means no texture.
-    if (oe_gc_texLUTindex >= 0)
-        oe_gc_texHandle = texArena[oe_gc_texLUTindex];
+    if (oe_gc_texArenaIndex >= 0)
+        oe_gc_texHandle = texArena[oe_gc_texArenaIndex];
     else
         oe_gc_texHandle = 0UL;
 
@@ -372,13 +365,15 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 {
     oe_gc_transition = 1.0;
 
-    if (gl_DrawID == 0)
+    RenderLeaf leaf = renderSet[gl_InstanceID + cmd[gl_DrawID].baseInstance];
+
+    if (leaf.drawMask == 0x01)
     {
-        oe_GroundCover_Billboard(vertex_view);
+        oe_GroundCover_Billboard(vertex_view, leaf.instance);
     }
-    else
+    else //if (leaf.drawMask == 0x02)
     {
-        oe_GroundCover_Model(vertex_view);
+        oe_GroundCover_Model(vertex_view, leaf.instance);
     }
 }
 

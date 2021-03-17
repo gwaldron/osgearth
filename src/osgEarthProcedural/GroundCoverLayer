@@ -186,6 +186,8 @@ namespace osgEarth { namespace Procedural
 
             osg::ref_ptr<osg::Node> _model;
 
+            osg::ref_ptr<osg::Node> _billboard;
+
             int _index;
 
             // texture atlas indexes
@@ -208,6 +210,7 @@ namespace osgEarth { namespace Procedural
 
             int _assetID; // sequential unique ID of this asset
             int _modelID; // sequential unique ID of the asset's model (may or may not have one)
+            int _billboardID;
         };
 
         struct AssetUsage
@@ -332,7 +335,9 @@ namespace osgEarth { namespace Procedural
 
         // create a stand-in geometry for the shader to manipulate
         // (for billboards, etc)
-        virtual osg::Geometry* createParametricGeometry() const;
+        virtual osg::Geometry* createParametricGeometry(
+            int tex_index_0,
+            int tex_index_1) const;
 
         typedef std::vector<osg::ref_ptr<osg::Image> > ImageVector;
 

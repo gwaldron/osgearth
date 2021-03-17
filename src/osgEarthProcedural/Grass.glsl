@@ -24,7 +24,8 @@ struct oe_TransformSpec {
 
 void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
 {
-    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
+    RenderLeaf leaf = renderSet[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
+    uint i = leaf.instance;
     uint tileNum = instance[i].tileNum;
 
     oe_transform.modelview = tileData[tileNum].modelViewMatrix;
@@ -78,7 +79,7 @@ uniform sampler2D oe_gc_noiseTex;
 #define NOISE_CLUMPY   3
 
 // Vertex attributes in
-layout(location = 6) in int oe_gc_texLUTindex; // texture handle LUT index
+layout(location = 6) in int oe_gc_texArenaIndex; // texture handle LUT index
 
 // Stage globals
 vec3 oe_UpVectorView;
@@ -140,9 +141,8 @@ void oe_Grass_apply_wind(in vec4 vertex_base, in float vertexHeight, in float fa
 
 const float browning = 0.25;
 
-void oe_Grass_parametric(inout vec4 vertex_view)
+void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
 {
-    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
     uint t = instance[i].tileNum;
 
     vp_Color = vec4(1);
@@ -161,8 +161,8 @@ void oe_Grass_parametric(inout vec4 vertex_view)
 
     // find the texture atlas index:
     oe_gc_texHandle = 0UL;
-    if (instance[i].sideSamplerIndex >= 0)
-        oe_gc_texHandle = texArena[instance[i].sideSamplerIndex];
+    if (oe_gc_texArenaIndex >= 0)
+        oe_gc_texHandle = texArena[oe_gc_texArenaIndex];
 
     // make the grass smoothly disappear in the distance
     float falloff = clamp(2.0-(nRange + oe_noise[NOISE_SMOOTH]), 0, 1);
@@ -260,9 +260,8 @@ float rescale(float d, float v0, float v1)
     return clamp((d-v0)/(v1-v0), 0, 1);
 }
 
-void oe_Grass_model(inout vec4 vertex_view)
+void oe_Grass_model(inout vec4 vertex_view, in uint i)
 {
-    uint i = renderLUT[ gl_InstanceID + cmd[gl_DrawID].baseInstance ];
     oe_layer_tilec = vec4(instance[i].tilec, 0, 1);
     vertex_view = oe_vertex.view;
     vp_Normal = oe_vertex.normal;
@@ -275,18 +274,19 @@ void oe_Grass_model(inout vec4 vertex_view)
 
     // assign texture sampler for this model. The LUT index is in
     // a vertex attribute. Negative means no texture.
-    if (oe_gc_texLUTindex >= 0)
-        oe_gc_texHandle = texArena[oe_gc_texLUTindex];
-    else
-        oe_gc_texHandle = 0UL;
+    oe_gc_texHandle = 0UL;
+    if (oe_gc_texArenaIndex >= 0)
+        oe_gc_texHandle = texArena[oe_gc_texArenaIndex];
 }
 
 void oe_Grass_main(inout vec4 vertex_view)
 {
-    if (gl_DrawID == 0)
-        oe_Grass_parametric(vertex_view);
+    RenderLeaf leaf = renderSet[gl_InstanceID + cmd[gl_DrawID].baseInstance];
+
+    if (leaf.drawMask == 0x01)
+        oe_Grass_parametric(vertex_view, leaf.instance);
     else
-        oe_Grass_model(vertex_view);
+        oe_Grass_model(vertex_view, leaf.instance);
 
     // disable the alpha levels
     vp_Color.a = 1.0;

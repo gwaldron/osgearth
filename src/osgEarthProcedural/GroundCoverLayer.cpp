@@ -664,7 +664,7 @@ GroundCoverLayer::buildStateSets()
 
     // Binds the vertex attribute containing the texture handle LUT index
     // that we assigned in GeometryCloud::add
-    vp->addBindAttribLocation("oe_gc_texLUTindex", 6);
+    vp->addBindAttribLocation("oe_gc_texArenaIndex", 6);
 }
 
 void
@@ -720,20 +720,36 @@ namespace
 }
 
 osg::Geometry*
-GroundCoverLayer::createParametricGeometry() const    
+GroundCoverLayer::createParametricGeometry(
+    int tex_index_0,
+    int tex_index_1) const
 {
     // Billboard geometry
-    const unsigned vertsPerInstance = 8;
-    const unsigned indiciesPerInstance = 12;
+    constexpr unsigned vertsPerInstance = 8;
+    constexpr unsigned indiciesPerInstance = 12;
 
     osg::Geometry* out_geom = new osg::Geometry();
     out_geom->setUseVertexBufferObjects(true);
     out_geom->setUseDisplayList(false);
 
-    out_geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8));
+    static const GLushort indices[indiciesPerInstance] = { 
+        0,1,2, 2,1,3,
+        4,5,6, 6,5,7
+    }; 
+    out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, indiciesPerInstance, &indices[0]));
 
-    static const GLushort indices[12] = { 0,1,2,2,1,3, 4,5,6,6,5,7 };
-    out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
+    out_geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, vertsPerInstance));
+
+    osg::ShortArray* handles = new osg::ShortArray(vertsPerInstance);
+    handles->setBinding(osg::Array::BIND_PER_VERTEX);
+    handles->setPreserveDataType(true);
+    int half = vertsPerInstance / 2;
+    for (int i = 0; i < half; ++i)
+    {
+        (*handles)[i] = tex_index_0;
+        (*handles)[i + half] = tex_index_1;
+    }
+    out_geom->setVertexAttribArray(6, handles);
 
     return out_geom;
 }
@@ -960,6 +976,7 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
         needsGenerate = true;
     }
 
+#if 1
     // not a bug. Do this as a 32-bit matrix to avoid wierd micro-precision changes.
     // NOTE: this can cause jittering in the tree positions when you zoom :(
     bool needsCull = needsGenerate;
@@ -972,6 +989,9 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
             needsCull = true;
         }
     }
+#else
+    bool needsCull = true;
+#endif
 
     // I'm not sure why we have to push the layer's stateset here.
     // It should have been applied already in the render bin.
@@ -1343,7 +1363,7 @@ GroundCoverLayer::Renderer::loadAssets()
 
     int biomeIndex = -1;
     int assetIDGen = 0;
-    int modelIDGen = 0;
+    int cloudSequence = 0;
 
     std::unordered_map<const ModelAsset*, osg::ref_ptr<AssetInstance>> instanceMap;
 
@@ -1382,6 +1402,7 @@ GroundCoverLayer::Renderer::loadAssets()
                 data = new AssetInstance();
                 data->_asset = asset;
                 data->_modelID = -1;
+                data->_billboardID = -1;
                 data->_assetID = -1;
                 data->_sideBillboardTexIndex = -1;
                 data->_topBillboardTexIndex = -1;
@@ -1405,7 +1426,7 @@ GroundCoverLayer::Renderer::loadAssets()
                         if (data->_model.valid())
                         {
                             OE_INFO << LC << "Loaded model: " << uri.base() << std::endl;
-                            data->_modelID = modelIDGen++;
+                            data->_modelID = cloudSequence++;
                             modelcache[uri]._node = data->_model.get();
                             modelcache[uri]._modelID = data->_modelID;
 
@@ -1474,62 +1495,75 @@ GroundCoverLayer::Renderer::loadAssets()
                             OE_WARN << LC << "Failed to load asset " << uri.full() << std::endl;
                         }
                     }
-                }
 
-                if (asset->topBillboardURI().isSet())
-                {
-                    const URI& uri = asset->topBillboardURI().get();
 
-                    auto ic = texcache.find(uri);
-                    if (ic != texcache.end())
+                    if (asset->topBillboardURI().isSet())
                     {
-                        data->_topBillboardTex = ic->second->_topBillboardTex;
-                        data->_topBillboardTexIndex = ic->second->_topBillboardTexIndex;
-                        data->_topBillboardNormalMapIndex = ic->second->_topBillboardNormalMapIndex;
-                    }
-                    else
-                    {
-                        data->_topBillboardTex = new Texture();
-                        data->_topBillboardTex->_uri = uri;
-                        data->_topBillboardTex->_image = uri.getImage(layer->getReadOptions());
+                        const URI& uri = asset->topBillboardURI().get();
 
-                        //TODO: check for errors
-                        if (data->_topBillboardTex->_image.valid())
+                        auto ic = texcache.find(uri);
+                        if (ic != texcache.end())
                         {
-                            OE_INFO << LC << "Loaded BB: " << uri.base() << std::endl;
-                            texcache[uri] = data.get();
-                            data->_topBillboardTexIndex = _texArena->size();
-                            _texArena->add(data->_topBillboardTex.get());
-
-                            // normal map is the same file name but with _NML inserted before the extension
-                            URI normalMapURI(
-                                osgDB::getNameLessExtension(uri.full()) +
-                                "_NML." +
-                                osgDB::getFileExtension(uri.full()));
-
-                            // silenty fail if no normal map found.
-                            osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(layer->getReadOptions());
-                            if (normalMap.valid())
-                            {
-                                data->_topBillboardNormalMap = new Texture();
-                                data->_topBillboardNormalMap->_uri = normalMapURI;
-                                data->_topBillboardNormalMap->_image = convertNormalMapFromRGBToRG(normalMap.get());
-
-                                data->_topBillboardNormalMapIndex = _texArena->size();
-                                _texArena->add(data->_topBillboardNormalMap.get());
-                            }
-                            else
-                            {
-                                data->_topBillboardNormalMapIndex = defaultNormalMapTextureIndex;
-                                // wasteful but simple
-                                _texArena->add(defaultNormalMap.get());
-                            }
+                            data->_topBillboardTex = ic->second->_topBillboardTex;
+                            data->_topBillboardTexIndex = ic->second->_topBillboardTexIndex;
+                            data->_topBillboardNormalMapIndex = ic->second->_topBillboardNormalMapIndex;
                         }
                         else
                         {
-                            OE_WARN << LC << "Failed to load asset " << uri.full() << std::endl;
+                            data->_topBillboardTex = new Texture();
+                            data->_topBillboardTex->_uri = uri;
+                            data->_topBillboardTex->_image = uri.getImage(layer->getReadOptions());
+
+                            //TODO: check for errors
+                            if (data->_topBillboardTex->_image.valid())
+                            {
+                                OE_INFO << LC << "Loaded BB: " << uri.base() << std::endl;
+                                texcache[uri] = data.get();
+                                data->_topBillboardTexIndex = _texArena->size();
+                                _texArena->add(data->_topBillboardTex.get());
+
+                                // normal map is the same file name but with _NML inserted before the extension
+                                URI normalMapURI(
+                                    osgDB::getNameLessExtension(uri.full()) +
+                                    "_NML." +
+                                    osgDB::getFileExtension(uri.full()));
+
+                                // silenty fail if no normal map found.
+                                osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(layer->getReadOptions());
+                                if (normalMap.valid())
+                                {
+                                    data->_topBillboardNormalMap = new Texture();
+                                    data->_topBillboardNormalMap->_uri = normalMapURI;
+                                    data->_topBillboardNormalMap->_image = convertNormalMapFromRGBToRG(normalMap.get());
+
+                                    data->_topBillboardNormalMapIndex = _texArena->size();
+                                    _texArena->add(data->_topBillboardNormalMap.get());
+                                }
+                                else
+                                {
+                                    data->_topBillboardNormalMapIndex = defaultNormalMapTextureIndex;
+                                    // wasteful but simple
+                                    _texArena->add(defaultNormalMap.get());
+                                }
+                            }
+                            else
+                            {
+                                OE_WARN << LC << "Failed to load asset " << uri.full() << std::endl;
+                            }
                         }
                     }
+
+                    data->_billboard = layer->createParametricGeometry(
+                        data->_sideBillboardTexIndex,
+                        data->_topBillboardTexIndex);
+
+                    //data->_modelID = modelIDGen++;
+
+                    //osg::ComputeBoundsVisitor cbv;
+                    //data->_model->accept(cbv);
+                    //data->_modelAABB = cbv.getBoundingBox();
+
+                    data->_billboardID = cloudSequence++;
                 }
 
                 if (data->_sideBillboardTex.valid() || data->_model.valid())
@@ -1617,9 +1651,10 @@ GroundCoverLayer::Renderer::createLUTShader() const
         assetBuf << "  Asset("
             << in->_assetID
             << ", " << in->_modelID
-            << ", " << (in->_modelTex.valid() ? in->_modelTexIndex : -1)
-            << ", " << (in->_sideBillboardTex.valid() ? in->_sideBillboardTexIndex : -1)
-            << ", " << (in->_topBillboardTex.valid() ? in->_topBillboardTexIndex : -1)
+            //<< ", " << (in->_modelTex.valid() ? in->_modelTexIndex : -1)
+            //<< ", " << (in->_sideBillboardTex.valid() ? in->_sideBillboardTexIndex : -1)
+            //<< ", " << (in->_topBillboardTex.valid() ? in->_topBillboardTexIndex : -1)
+            << ", " << in->_billboardID
             << ", " << width
             << ", " << height
             << ", " << sizeVariation
@@ -1679,10 +1714,8 @@ GroundCoverLayer::Renderer::createLUTShader() const
     assetWrapperBuf <<
         "struct Asset { \n"
         "  int assetId; \n"
-        "  int modelId; \n"
-        "  int modelSamplerIndex; \n"
-        "  int sideSamplerIndex; \n"
-        "  int topSamplerIndex; \n"
+        "  int modelCommand; \n"
+        "  int billboardCommand; \n"
         "  float width; \n"
         "  float height; \n"
         "  float sizeVariation; \n"
@@ -1752,42 +1785,32 @@ GroundCoverLayer::Renderer::createGeometryCloud() const
 
     // First entry is the parametric group. Any instance without a 3D model,
     // or that is out of model range, gets rendered as a parametric billboard.
-    osg::Geometry* pg = layer->createParametricGeometry();
-    geomCloud->add( pg, pg->getVertexArray()->getNumElements() );
+    //osg::Geometry* pg = layer->createParametricGeometry();
+    //geomCloud->add( pg, pg->getVertexArray()->getNumElements() );
 
     // Add each 3D model to the geometry cloud and update the texture
     // atlas along the way.
     std::unordered_map<int, Texture*> visited;
-    std::unordered_map<Texture*, int> arenaIndex;
 
     for (const auto& asset : _liveAssets)
     {
         if (asset->_modelID >= 0)
         {
-            int atlasIndex = -1;
             auto i = visited.find(asset->_modelID);
             if (i == visited.end())
             {
                 geomCloud->add(asset->_model.get());
-#if 0
-                // adds the model, and returns the texture associated with the
-                // FIRST discovered texture from the model.
-                Texture* tex = geomCloud->add(asset->_model.get());
-                visited[asset->_modelID] = tex;
-                if (tex)
-                {
-                    asset->_modelTexIndex = _texArena->size();
-                    _texArena->add(tex);
-                    arenaIndex[tex] = asset->_modelTexIndex;
-                }
-
-                asset->_modelTex = tex;
             }
-            else
+        }
+
+        if (asset->_billboardID >= 0)
+        {
+            auto i = visited.find(asset->_billboardID);
+            if (i == visited.end())
             {
-                asset->_modelTex = i->second;
-                asset->_modelTexIndex = arenaIndex[i->second];
-#endif
+                geomCloud->add(
+                    asset->_billboard.get(),
+                    asset->_billboard->asGeometry()->getVertexArray()->getNumElements());
             }
         }
     }

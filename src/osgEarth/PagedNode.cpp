@@ -187,7 +187,8 @@ PagedNode2::PagedNode2() :
     _useRange(true),
     _priorityScale(1.0f),
     _refinePolicy(REFINE_REPLACE),
-    _preCompile(true)
+    _preCompile(true),
+    _autoUnload(true)
 {
     _job.setName(typeid(*this).name());
     _job.setArena(PAGEDNODE_ARENA_NAME);
@@ -199,31 +200,6 @@ PagedNode2::~PagedNode2()
     // note: do not call reset() from here, we never want to
     // releaseGLObjects in this dtor b/c it could be called
     // from a pager thread at cancelation
-}
-
-void
-PagedNode2::reset()
-{
-    // Note: don't do this. PLOD didn't so neither shall we
-    //if (_compiled.isAvailable() && _compiled.get().valid())
-    //{
-    //    _compiled.get()->releaseGLObjects(nullptr);
-    //}
-    if (_merged)
-    {
-        removeChild(_compiled.get().get());
-    }
-    _compiled.abandon();
-    _loaded.abandon();
-    _token = nullptr;
-    _loadTriggered = false;
-    _compileTriggered = false;
-    _mergeTriggered = false;
-    _merged = false;
-
-    // prevents a node in the PagingManager's merge queue from
-    // being merged with old data.
-    _revision++;
 }
 
 void
@@ -272,85 +248,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         // check that range > 0 to avoid trouble from some visitors
         if (inRange)
         {
-            if (_load != nullptr &&
-                _loadTriggered.exchange(true) == false)
-            {
-                // Load the asynchronous node.
-                Loader load(_load);
-                osg::ref_ptr<SceneGraphCallbacks> callbacks(_callbacks);
-                bool preCompile = _preCompile;
-
-                _job.setPriority(priority);
-
-                _loaded = _job.dispatch<Loaded>(
-                    [load, callbacks, preCompile](Cancelable* c)
-                    {
-                        Loaded result;
-
-                        osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
-
-                        // invoke the loader function
-                        result._node = load(progress.get());
-
-                        // Fire any pre-merge callbacks
-                        if (result._node.valid())
-                        {
-                            if (callbacks.valid())
-                                callbacks->firePreMergeNode(result._node.get());
-
-                            if (preCompile)
-                            {
-                                // Collect the GL objects for later compilation.
-                                // Don't waste precious ICO time doing this later
-                                GLObjectsCompiler compiler;
-                                result._state = compiler.collectState(result._node.get());
-                            }
-                        }
-
-                        return result;
-                    }
-                );
-            }
-
-            else if (
-                _loaded.isAvailable() &&
-                _loaded.get()._node.valid() &&
-                _compileTriggered.exchange(true) == false)
-            {
-                dirtyBound();
-
-                if (_preCompile)
-                {
-                    // Compile the loaded node.
-                    GLObjectsCompiler compiler;
-                    osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
-
-                    _compiled = compiler.compileAsync(
-                        _loaded.get()._node,
-                        _loaded.get()._state.get(),
-                        &nv,
-                        p.get());
-                }
-                else
-                {
-                    // resolve immediately
-                    Promise<osg::ref_ptr<osg::Node>> promise;
-                    _compiled = promise.getFuture();
-                    promise.resolve(_loaded.get()._node);
-                }
-
-                // done with it, let it go
-                _loaded.abandon();
-            }
-
-            else if (
-                _compiled.isAvailable() &&
-                _compiled.get().valid() &&
-                _mergeTriggered.exchange(true) == false)
-            {
-                // Submit this node to the paging manager for merging.
-                _pagingManager->merge(this);
-            }
+            load(priority, &nv);
 
             // finally, traverse children and paged data.
             if (_merged && _refinePolicy == REFINE_REPLACE)
@@ -428,6 +326,118 @@ PagedNode2::computeBound() const
     }
 }
 
+void PagedNode2::load(float priority, const osg::Object* host)
+{
+    if (_load != nullptr &&
+        _loadTriggered.exchange(true) == false)
+    {
+        // Load the asynchronous node.
+        Loader load(_load);
+        osg::ref_ptr<SceneGraphCallbacks> callbacks(_callbacks);
+        bool preCompile = _preCompile;
+
+        _job.setPriority(priority);
+
+        _loaded = _job.dispatch<Loaded>(
+            [load, callbacks, preCompile](Cancelable* c)
+        {
+            Loaded result;
+
+            osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
+
+            // invoke the loader function
+            result._node = load(progress.get());
+
+            // Fire any pre-merge callbacks
+            if (result._node.valid())
+            {
+                if (callbacks.valid())
+                    callbacks->firePreMergeNode(result._node.get());
+
+                if (preCompile)
+                {
+                    // Collect the GL objects for later compilation.
+                    // Don't waste precious ICO time doing this later
+                    GLObjectsCompiler compiler;
+                    result._state = compiler.collectState(result._node.get());
+                }
+            }
+
+            return result;
+        }
+        );
+    }
+
+    else if (
+        _loaded.isAvailable() &&
+        _loaded.get()._node.valid() &&
+        _compileTriggered.exchange(true) == false)
+    {
+        dirtyBound();
+
+        if (_preCompile)
+        {
+            // Compile the loaded node.
+            GLObjectsCompiler compiler;
+            osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
+
+            _compiled = compiler.compileAsync(
+                _loaded.get()._node,
+                _loaded.get()._state.get(),
+                host,
+                p.get());
+        }
+        else
+        {
+            // resolve immediately
+            Promise<osg::ref_ptr<osg::Node>> promise;
+            _compiled = promise.getFuture();
+            promise.resolve(_loaded.get()._node);
+        }
+
+        // done with it, let it go
+        _loaded.abandon();
+    }
+
+    else if (
+        _compiled.isAvailable() &&
+        _compiled.get().valid() &&
+        _mergeTriggered.exchange(true) == false)
+    {
+        // Submit this node to the paging manager for merging.
+        _pagingManager->merge(this);
+    }
+}
+
+void PagedNode2::unload()
+{
+    // Note: don't do this. PLOD didn't so neither shall we
+    //if (_compiled.isAvailable() && _compiled.get().valid())
+    //{
+    //    _compiled.get()->releaseGLObjects(nullptr);
+    //}
+    if (_merged)
+    {
+        removeChild(_compiled.get().get());
+    }
+    _compiled.abandon();
+    _loaded.abandon();
+    _loadTriggered = false;
+    _compileTriggered = false;
+    _mergeTriggered = false;
+    _merged = false;
+    _token = nullptr;
+
+    // prevents a node in the PagingManager's merge queue from
+    // being merged with old data.
+    _revision++;
+}
+
+bool PagedNode2::isLoaded() const
+{
+    return _merged;
+}
+
 PagingManager::PagingManager() :
     _trackerMutex(OE_MUTEX_NAME),
     _mergeMutex(OE_MUTEX_NAME),
@@ -463,8 +473,13 @@ PagingManager::traverse(osg::NodeVisitor& nv)
                 nv,
                 0.0f,
                 _mergesPerFrame,
-                [this](osg::ref_ptr<PagedNode2>& node) {
-                    node->reset();
+                [](osg::ref_ptr<PagedNode2>& node) -> bool {
+                    if (node->getAutoUnload())
+                    {
+                        node->unload();
+                        return true;
+                    }
+                    return false;
                 });
         }
 

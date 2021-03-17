@@ -39,7 +39,7 @@
 #include <typeinfo>
 
 namespace osgEarth { namespace Util
-{    
+{
     using namespace osgEarth::Threading;
 
     /**
@@ -144,7 +144,7 @@ namespace osgEarth { namespace Util
     struct Utils
     {
         /**
-         * Clamps v to [vmin..vmax], then remaps its range to [r0..r1]. 
+         * Clamps v to [vmin..vmax], then remaps its range to [r0..r1].
          */
         static double remap( double v, double vmin, double vmax, double r0, double r1 )
         {
@@ -205,7 +205,7 @@ namespace osgEarth { namespace Util
 
     /**
      * Scans geometry and validates that it's set up properly.
-     */    
+     */
     struct OSGEARTH_EXPORT GeometryValidator : public osg::NodeVisitor
     {
         GeometryValidator();
@@ -290,7 +290,7 @@ namespace osgEarth { namespace Util
             osg::NodeVisitor& nv,
             float fartherThanRange,
             unsigned maxCount,
-            std::function<void(T& obj)> dispose)
+            std::function<bool(T& obj)> dispose)
         {
             // After cull, all visited tiles are in front of the sentry, and all
             // non-visited tiles are behind it. Start at the sentry position and
@@ -303,19 +303,24 @@ namespace osgEarth { namespace Util
             {
                 ListEntry& le = *i;
 
-                // back up the iterator so we can safely erase the entry:
-                tmp = i;
-                --i;
+                bool disposed = true;
 
                 // user disposal function
                 if (dispose != nullptr)
-                    dispose(le._data);
+                    disposed = dispose(le._data);
 
-                // delete the token
-                delete static_cast<Token*>(le._token);
+                if (disposed)
+                {
+                    // back up the iterator so we can safely erase the entry:
+                    tmp = i;
+                    --i;
 
-                // remove it from the tracker list:
-                _list.erase(tmp);
+                    // delete the token
+                    delete static_cast<Token*>(le._token);
+
+                    // remove it from the tracker list:
+                    _list.erase(tmp);
+                }
 
                 ++count;
             }

@@ -49,7 +49,7 @@ namespace osgEarth { namespace Util
      * that is easier to manage.
      *
      * To use, override the class. Call setNode() with the default
-     * node to display, and implement loadChild() to load the 
+     * node to display, and implement loadChild() to load the
      * paged child node when it comes within range. Set the page-in
      * range for the paged child node with setRange() and setRangeMode().
      * Finally, call setupPaging() to complete setup.
@@ -213,11 +213,28 @@ namespace osgEarth { namespace Util
             return _preCompile;
         }
 
-        //! Delete the async child and start over
-        void reset();
+        //! Whether this node will automatically unload it's content if it's not visible.
+        bool getAutoUnload() const {
+            return _autoUnload;
+        }
+
+        void setAutoUnload(bool value) {
+            _autoUnload = value;
+        }
+
+
+        //! Loads the data for this node asynchronously
+        void load(float priority, const osg::Object* host);
+
+        //! Unloads the data for this node
+        void unload();
+
+        //! Whether the data is loaded for this node.
+        bool isLoaded() const;
+
 
     public: // osg::Node overrides
-        
+
         virtual void traverse(osg::NodeVisitor& nv) override;
 
         virtual osg::BoundingSphere computeBound() const override;
@@ -256,6 +273,7 @@ namespace osgEarth { namespace Util
         bool _preCompile;
         std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load;
         std::atomic_int _revision;
+        bool _autoUnload;
 
         bool merge(int revision);
     };

@@ -514,6 +514,7 @@ namespace osgEarth { namespace Threading
         void lock() const { _lockable_mutex.lock(); }
         void unlock() { _lockable_mutex.unlock(); }
         void unlock() const { _lockable_mutex.unlock(); }
+        void scoped_lock(std::function<void()> func) { lock(); func(); unlock(); }
         Mutex& mutex() const { return _lockable_mutex; }
     private:
         mutable Mutex _lockable_mutex;

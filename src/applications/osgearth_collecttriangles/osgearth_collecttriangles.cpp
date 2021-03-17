@@ -33,10 +33,13 @@
 #include <osgEarth/Threading>
 #include <osgEarth/Geocoder>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/StateTransition>
+#include <osgEarth/PagedNode>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/AnnotationUtils>
 #include <osg/TriangleFunctor>
 #include <osg/Depth>
 #include <osg/PolygonMode>
+#include <osg/io_utils>
 
 #include <iostream>
 
@@ -53,7 +56,48 @@ using namespace osgEarth::ImGuiUtil;
 float query_range = 100.0;
 long long query_time_ns = 0;
 long long query_triangle_count = 0;
+static unsigned int observer_id = 1;
+static bool loading_data = false;
 
+static osg::Group* root;
+
+
+class Observer : public osg::Object
+{
+public:
+    Observer()
+    {
+    }
+
+    Observer(const Observer& rhs, const osg::CopyOp& copy = osg::CopyOp::SHALLOW_COPY):
+        _bounds(rhs._bounds)
+    {
+    }
+
+    Observer(osg::BoundingSphered& bounds):
+        _bounds(bounds)
+    {
+    }
+
+    META_Object(osgEarth, Observer);
+
+    const osg::BoundingSphered& getBounds() const
+    {
+        return _bounds;
+    }
+
+    void setBounds(const osg::BoundingSphered& bounds)
+    {
+        _bounds = bounds;
+    }
+
+private:
+    osg::BoundingSphered _bounds;
+};
+
+typedef std::vector< osg::ref_ptr< Observer > > ObserverList;
+
+static ObserverList observers;
 
 osg::Node* installMultiPassRendering(osg::Node* node)
 {
@@ -77,7 +121,7 @@ osg::Node* installMultiPassRendering(osg::Node* node)
             vec4 vp_Color;
             void colorize_vs(inout vec4 vertex)
             {
-                vp_Color = vec4(2.0, 0.0, 0.0, 1.0);
+                vp_Color = vec4(1.0, 0.0, 0.0, 1.0);
             }
         )";
 
@@ -86,8 +130,6 @@ osg::Node* installMultiPassRendering(osg::Node* node)
 
     return geode;
 }
-
-
 
 struct CollectTriangles
 {
@@ -112,7 +154,6 @@ struct CollectTriangles
 struct CollectTrianglesVisitor : public osg::NodeVisitor
 {
     CollectTrianglesVisitor() :
-        //osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
         osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
     {
         _vertices.reserve(1000000);
@@ -209,18 +250,14 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
     osg::BoundingSphere _queryBounds;
 };
 
-
-static osg::Group* root;
-
 struct QueryTrianglesHandler : public osgGA::GUIEventHandler
 {
     QueryTrianglesHandler(MapNode* mapNode)
         : _mapNode(mapNode)
     {
         _marker = new osg::MatrixTransform;
-        _marker->addChild(osgDB::readNodeFile("d:/dev/osgearth/tests/sphere.obj"));
+        _marker->addChild(AnnotationUtils::createSphere(1.0, Color::White));
         _marker->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
-        osgEarth::Registry::shaderGenerator().run(_marker);
         root->addChild(_marker);
     }
 
@@ -258,7 +295,6 @@ struct QueryTrianglesHandler : public osgGA::GUIEventHandler
 
                 CollectTrianglesVisitor v;
                 v._queryBounds = osg::BoundingSphere(world, query_range);
-                // TODO:  Bounding sphere
                 _mapNode->accept(v);
 
                 auto endTime = std::chrono::high_resolution_clock::now();
@@ -282,15 +318,77 @@ struct QueryTrianglesHandler : public osgGA::GUIEventHandler
         return false;
     }
 
-    osg::Node* _boundsDisplay = nullptr;
     osgEarth::MapNode* _mapNode;
     osg::ref_ptr< osg::Node > _extractedTriangles;
     osg::MatrixTransform* _marker;
 };
 
+struct AddObserverHandler : public osgGA::GUIEventHandler
+{
+    AddObserverHandler(MapNode* mapNode)
+        : _mapNode(mapNode)
+    {
+    }
 
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+    {
+        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
 
+        if (ea.getEventType() == ea.PUSH && ea.getButton() == ea.LEFT_MOUSE_BUTTON && ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL)
+        {
+            osg::Vec3d world;
+            osgUtil::LineSegmentIntersector::Intersections hits;
+            osg::NodePath path;
+            path.push_back(_mapNode);
+            if (view->computeIntersections(ea.getX(), ea.getY(), path, hits))
+            {
 
+                // Get the point under the mouse:
+                world = hits.begin()->getWorldIntersectPoint();
+
+                Observer* observer = new Observer(osg::BoundingSphered(world, query_range));
+                observer->setName(Stringify() << "Observer " << observer_id++);
+                observers.push_back(observer);
+            }
+        }
+        return false;
+    }
+
+    osgEarth::MapNode* _mapNode;
+};
+
+class ObserversNode : public osg::Group
+{
+public:
+    ObserversNode():
+        osg::Group()
+    {
+        setNumChildrenRequiringUpdateTraversal(1);
+        _marker = AnnotationUtils::createSphere(1.0, Color::Yellow);
+        _marker->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
+    }
+
+    void traverse(osg::NodeVisitor& nv)
+    {
+        if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
+        {
+            removeChildren(0, getNumChildren());
+
+            for (auto& o : observers)
+            {
+                osg::MatrixTransform* mt = new osg::MatrixTransform;
+                mt->addChild(_marker);
+                double radius = o->getBounds().radius();
+                mt->setMatrix(osg::Matrixd::scale(radius, radius, radius) * osg::Matrixd::translate(o->getBounds().center()));
+                addChild(mt);
+            }
+
+        }
+        osg::Group::traverse(nv);
+    }
+
+    osg::ref_ptr< osg::Node > _marker;
+};
 
 class ImGuiDemo : public OsgImGuiHandler
 {
@@ -306,12 +404,69 @@ protected:
     void drawUi(osg::RenderInfo& renderInfo) override
     {
         // ImGui code goes here...
-        //ImGui::ShowDemoWindow();
+        ImGui::ShowDemoWindow();
         _layers.draw(renderInfo, _mapNode.get(), _view->getCamera(), _earthManip.get());
 
 
-        ImGui::Begin("Triangle Stuff");
+        ImGui::Begin("Triangle Query");
+
         ImGui::SliderFloat("Query Range", &query_range, 1.0, 2000.0f);
+
+        if (loading_data)
+        {
+            ImGui::Text("Loading data....");
+        }
+        else if (ImGui::Button("Load data"))
+        {
+            loading_data = true;
+        }
+
+        if (ImGui::Button("Enable auto unload"))
+        {
+            EnableAutoUnloadVisitor v;
+            _mapNode->accept(v);
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Observers");
+
+        if (ImGui::Button("Add san francisco"))
+        {
+            auto observer = new Observer(osg::BoundingSphered(osg::Vec3d(-2709463.117513461, -4278909.160321064, 3864024.782792999), 1000.0));
+            osgEarth::GeoPoint pt;
+            pt.fromWorld(SpatialReference::create("wgs84"), observer->getBounds().center());
+            observer->setName("San Francisco");
+            observers.push_back(observer);
+        }
+        ImGui::BeginGroup();
+
+        for (auto itr = observers.begin(); itr != observers.end();)
+        {
+            osg::ref_ptr< Observer > observer = itr->get();
+            ImGui::PushID(observer.get());
+            ImGui::Text(observer->getName().c_str()); ImGui::SameLine();
+            if (ImGui::Button("Delete"))
+            {
+                observers.erase(itr);
+            }
+            else
+            {
+                itr++;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Zoom to"))
+            {
+                GeoPoint pt;
+                pt.fromWorld(SpatialReference::create("wgs84"), observer->getBounds().center());
+                _earthManip->setViewpoint(Viewpoint("", pt.x(), pt.y(), pt.alt(), 0, -90, observer->getBounds().radius() * 1.5), 0.0);
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndGroup();
+
+        ImGui::Separator();
+
+
         ImGui::Text("Collected %d triangles in %lf ms", query_triangle_count, (double)query_time_ns / 1.0e6);
         ImGui::End();
     }
@@ -374,11 +529,32 @@ main(int argc, char** argv)
         }
 
         viewer.getEventHandlers().push_front(new QueryTrianglesHandler(mapNode));
+        viewer.getEventHandlers().push_front(new AddObserverHandler(mapNode));
 
+        root->addChild(new ObserversNode());
         root->addChild(node);
 
         viewer.setSceneData(root);
-        return viewer.run();
+
+        while (!viewer.done())
+        {
+            if (loading_data)
+            {
+                LoadDataVisitor v;
+                for (auto& o : observers)
+                {
+                    v.getAreasToLoad().push_back(o->getBounds());
+                }
+                root->accept(v);
+                if (v.isFullyLoaded())
+                {
+                    loading_data = false;
+                }
+            }
+
+            viewer.frame();
+        }
+        return 0;
     }
     else
     {

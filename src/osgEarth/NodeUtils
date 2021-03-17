@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osg/View>
 #include <osg/PagedLOD>
+#include <osgEarth/PagedNode>
 #include <osgGA/GUIActionAdapter>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/Threading>
@@ -449,6 +450,62 @@ namespace osgEarth { namespace Util
             OE_INFO << "**INTERNAL: ADJUST_EVENT_TRAV_COUNT wrapped around" << std::endl; \
         } \
     }
+
+
+     /**
+      * Enables auto unloading on any PagedNode2 in the scene graph
+      * This is useful if you've used the LoadDataVisitor to
+      * preload an area and you no longer care about it.
+      */
+    struct OSGEARTH_EXPORT EnableAutoUnloadVisitor : public osg::NodeVisitor
+    {
+        EnableAutoUnloadVisitor();
+
+        void apply(osg::Node& node);
+
+        void apply(PagedNode2& pagedNode);
+    };
+
+    /**
+      * Preloads data within a list of bounding spheres so that the data is available without
+      * actually viewing it first.
+      * Once the visitor has been sent down a scene graph, you can check the isFullyLoaded
+      * property to determine if all of the data in that area has been loaded.  If isFullyLoaded is false
+      * then send the visitor down again until isFullyLoaded returns true.
+      *
+      * This currently only supports PagedNode2 based scene graphs.
+      */
+    struct OSGEARTH_EXPORT LoadDataVisitor : public osg::NodeVisitor
+    {
+        LoadDataVisitor();
+
+        //! Whether all potential data in the areas are loaded
+        bool isFullyLoaded() const;
+
+        //! Resets isFullyLoaded so you can reuse the same visitor multiple times.
+        void reset();
+
+        bool intersects(osg::Node& node);
+
+        //! A list of bounding spheres in world coordinates to intersect the scene graph against.
+        std::vector<osg::BoundingSphered>& getAreasToLoad();
+
+        void apply(osg::Node& node);
+
+        void apply(PagedNode2& pagedNode);
+
+        void apply(osg::Transform& transform);
+
+        inline void pushMatrix(osg::Matrix& matrix) { _matrixStack.push_back(matrix); }
+        inline void popMatrix() { _matrixStack.pop_back(); }
+
+        typedef std::vector<osg::Matrix> MatrixStack;
+        MatrixStack _matrixStack;
+        bool _fullyLoaded = true;
+
+        std::vector< osg::BoundingSphered > _areasToLoad;
+    };
+
 } }
 
 #endif // OSGEARTH_CACHING_H

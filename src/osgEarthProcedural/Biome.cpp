@@ -85,16 +85,14 @@ AssetCatalog::AssetCatalog(const Config& conf)
     ConfigSet texturesConf = conf.child("groundtextures").children("texture");
     for (const auto& textureConf : texturesConf)
     {
-        auto obj = new GroundTextureAsset(textureConf);
-        _textures.push_back(obj);
-        //_textures[obj->name().get()] = obj;
+        _textures.emplace_back(textureConf);
     }
 
     ConfigSet modelsConf = conf.child("models").children("model");
     for (const auto& modelConf : modelsConf)
     {
-        auto obj = new ModelAsset(modelConf);
-        _models[obj->name().get()] = obj;
+        ModelAsset asset(modelConf);
+        _models[asset.name().get()] = asset;
     }
 }
 
@@ -104,31 +102,37 @@ AssetCatalog::getConfig() const
     Config conf("AssetCatalog");
 
     Config textures("GroundTextures");
-    for (auto& i : _textures)
-        textures.add(i->getConfig()); // i.second->getConfig());
+    for (auto& texture : _textures)
+        textures.add(texture.getConfig());
     if (!textures.empty())
         conf.add(textures);
 
     Config models("Models");
-    for (auto& i : _models)
-        models.add(i.second->getConfig());
+    for (auto& model : _models)
+        models.add(model.second.getConfig());
     if (!models.empty())
         conf.add(models);
 
     return conf;
 }
 
-const std::vector<osg::ref_ptr<GroundTextureAsset>>&
+const std::vector<GroundTextureAsset>&
 AssetCatalog::getTextures() const
 {
     return _textures;
 }
 
-ModelAsset*
+const ModelAsset*
 AssetCatalog::getModel(const std::string& name) const
 {
     auto i = _models.find(name);
-    return i != _models.end() ? i->second.get() : nullptr;
+    return i != _models.end() ? &i->second : nullptr;
+}
+
+bool
+AssetCatalog::empty() const
+{
+    return _models.empty() && _textures.empty();
 }
 
 //..........................................................
@@ -139,13 +143,16 @@ ModelCategory::ModelCategory(const Config& conf, AssetCatalog* assets)
     ConfigSet mc = conf.children("model");
     for (const auto& c : mc)
     {
-        ModelAsset* asset = assets->getModel(c.value("name"));
-        if (asset) {
-            _assets.emplace_back(Usage());
-            _assets.back().asset = asset;
-            _assets.back().weight = (float)c.value("weight", 1.0f);
+        const ModelAsset* asset = assets->getModel(c.value("name"));
+        if (asset)
+        {
+            Member member;
+            member.asset = asset;
+            member.weight = (float)c.value("weight", 1.0f);
+            _members.push_back(std::move(member));
         }
-        else {
+        else
+        {
             OE_WARN << LC << "ModelCategory \"" << name().get() << "\""
                 << " references unknown asset \"" << c.value("name")  << "\""
                 << std::endl;
@@ -233,10 +240,10 @@ Biome::Biome(const Config& conf, AssetCatalog* assets)
     conf.get("name", name());
     conf.get("id", id());
 
-    ConfigSet mt = conf.children("modelcategory");
-    for (const auto& c : mt)
+    ConfigSet categories = conf.children("modelcategory");
+    for (const auto& child : categories)
     {
-        modelCategories().push_back(new ModelCategory(c, assets));
+        modelCategories().emplace_back(child, assets);
     }
 }
 
@@ -255,11 +262,11 @@ Biome::getConfig() const
 const ModelCategory*
 Biome::getModelCategory(const std::string& name) const
 {
-    for (const auto i : modelCategories())
+    for (const auto& i : modelCategories())
     {
-        if (Strings::ciEquals(i->name().get(), name))
+        if (Strings::ciEquals(i.name().get(), name))
         {
-            return i.get();
+            return &i;
         }
     }
     return nullptr;
@@ -269,7 +276,7 @@ Biome::getModelCategory(const std::string& name) const
 
 BiomeCatalog::BiomeCatalog(const Config& conf)
 {
-    _assets = new AssetCatalog(conf.child("assetcatalog"));
+    _assets = AssetCatalog(conf.child("assetcatalog"));
 
     if (conf.hasChild("landuse_lifemap_table"))
         _landUseTable = std::make_shared<LifeMapValueTable>(conf.child("landuse_lifemap_table"));
@@ -280,8 +287,8 @@ BiomeCatalog::BiomeCatalog(const Config& conf)
     ConfigSet biomes_conf = conf.child("biomes").children("biome");
     for (const auto& b_conf : biomes_conf)
     {
-        Biome* biome = new Biome(b_conf, _assets.get());
-        _biomes[biome->id().get()] = biome;
+        Biome biome(b_conf, &_assets);
+        _biomes[biome.id().get()] = std::move(biome);
     }
 }
 
@@ -298,21 +305,21 @@ const Biome*
 BiomeCatalog::getBiome(int id) const
 {
     const auto i = _biomes.find(id);
-    return i != _biomes.end() ? i->second.get() : nullptr;
+    return i != _biomes.end() ? &i->second : nullptr;
 }
 
 void
-BiomeCatalog::getBiomes(std::vector<osg::ref_ptr<const Biome>>& output) const
+BiomeCatalog::getBiomes(std::vector<const Biome*>& output) const
 {
     output.clear();
-    for (const auto i : _biomes)
-        output.push_back(i.second);
+    for (auto& i : _biomes)
+        output.push_back(&i.second);
 }
 
-const AssetCatalog*
+const AssetCatalog&
 BiomeCatalog::getAssets() const
 {
-    return _assets.get();
+    return _assets;
 }
 
 const LifeMapValueTable*
@@ -326,4 +333,3 @@ BiomeCatalog::getLandCoverTable() const
 {
     return _landCoverTable.get();
 }
-

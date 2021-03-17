@@ -620,10 +620,10 @@ GeometryCloud::GeometryCloud(TextureArena* texarena) :
     _texcoords->setBinding(osg::Array::BIND_PER_VERTEX);
     _geom->setTexCoordArray(7, _texcoords);
 
-    _texindices = new osg::ShortArray();
-    _texindices->setBinding(osg::Array::BIND_PER_VERTEX);
-    _texindices->setPreserveDataType(true);
-    _geom->setVertexAttribArray(6, _texindices);
+    _arenaIndices = new osg::ShortArray();
+    _arenaIndices->setBinding(osg::Array::BIND_PER_VERTEX);
+    _arenaIndices->setPreserveDataType(true);
+    _geom->setVertexAttribArray(6, _arenaIndices);
 
     // N.B. UShort is sufficient b/c we are using the DrawElementsIndirect.baseVertex
     // technique to offset element indicies and thereby support a VBO with >65535 verts.
@@ -665,7 +665,7 @@ GeometryCloud::add(
             _colors->push_back(osg::Vec4(1,0,0,1));
             _normals->push_back(osg::Vec3(0,0,1));
             _texcoords->push_back(osg::Vec2(0,0)); //TODO shorten to vec2
-            _texindices->push_back(-1);
+            _arenaIndices->push_back(-1);
         }
     }
 
@@ -688,7 +688,7 @@ GeometryCloud::add(
     // So it can (and will) be reused.
     // Consider using some other way to uniquely identify textures;
     // that way we can share them across models
-    _atlasIndexLUT.clear();
+    _arenaIndexLUT.clear();
 
     node->accept(*this);
 
@@ -744,8 +744,8 @@ GeometryCloud::pushStateSet(osg::Node& node)
 
         if (tex && tex->getImage(0))
         {
-            AtlasIndexLUT::iterator i = _atlasIndexLUT.find(tex);
-            if (i == _atlasIndexLUT.end())
+            auto i = _arenaIndexLUT.find(tex);
+            if (i == _arenaIndexLUT.end())
             {
                 // arena index of the texture we're about to add:
                 int nextIndex = _texarena->size();
@@ -755,7 +755,7 @@ GeometryCloud::pushStateSet(osg::Node& node)
 
                 if (_texarena->add(t))
                 {
-                    _atlasIndexLUT[tex] = nextIndex;
+                    _arenaIndexLUT[tex] = nextIndex;
                     arenaIndex = nextIndex;
                 }
                 else
@@ -832,14 +832,14 @@ GeometryCloud::apply(osg::Geometry& node)
 
     if (node.getVertexAttribArray(6) != nullptr)
     {
-        append(_texindices, node.getVertexAttribArray(6), size);
+        append(_arenaIndices, node.getVertexAttribArray(6), size);
     }
     else
     {
-        _texindices->reserve(_texindices->size() + size);
+        _arenaIndices->reserve(_arenaIndices->size() + size);
         for (int i = 0; i < size; ++i)
         {
-            _texindices->push_back(_arenaIndexStack.top());
+            _arenaIndices->push_back(_arenaIndexStack.top());
         }
     }
 

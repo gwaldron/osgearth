@@ -36,7 +36,7 @@ namespace osgEarth
         /**
          * Individual artwork asset reference within a biome
          */
-        class OSGEARTHPROCEDURAL_EXPORT ModelAsset : public osg::Referenced
+        class OSGEARTHPROCEDURAL_EXPORT ModelAsset
         {
         public:
             OE_OPTION(std::string, name);
@@ -67,7 +67,7 @@ namespace osgEarth
         /**
          * Individual artwork asset reference within a biome
          */
-        class OSGEARTHPROCEDURAL_EXPORT GroundTextureAsset : public osg::Referenced
+        class OSGEARTHPROCEDURAL_EXPORT GroundTextureAsset
         {
         public:
             OE_OPTION(std::string, name);
@@ -79,53 +79,54 @@ namespace osgEarth
             GroundTextureAsset() { }
             GroundTextureAsset(const Config& conf);
             Config getConfig() const;
-
-        protected:
-            ~GroundTextureAsset() { }
         };
 
         /**
          * Contains all assets.
          */
-        class OSGEARTHPROCEDURAL_EXPORT AssetCatalog : public osg::Referenced
+        class OSGEARTHPROCEDURAL_EXPORT AssetCatalog
         {
         public:
             AssetCatalog() { }
             AssetCatalog(const Config& conf);
 
-            //GroundTextureAsset* getTexture(const std::string& name) const;
+            //! Model asset associated with given name
+            //! @param name Name of model asset to return
+            //! @return ModelAsset or nullptr if no match
+            const ModelAsset* getModel(const std::string& name) const;
 
-            ModelAsset* getModel(const std::string& name) const;
+            //! Collection of ground textures
+            const std::vector<GroundTextureAsset>& getTextures() const;
 
-            const std::vector<osg::ref_ptr<GroundTextureAsset>>& getTextures() const;
+            //! Is the catalog empty?
+            bool empty() const;
 
         public:
             Config getConfig() const;
 
         protected:
-            virtual ~AssetCatalog() { }
-
-            std::vector<osg::ref_ptr<GroundTextureAsset>> _textures;
-            std::unordered_map<std::string, osg::ref_ptr<ModelAsset>> _models;
+            std::vector<GroundTextureAsset> _textures;
+            std::unordered_map<std::string, ModelAsset> _models;
         };
 
         /**
          * Groups together some ModelAssets for use in a single
          * ground cover layer
          */
-        class OSGEARTHPROCEDURAL_EXPORT ModelCategory : public osg::Referenced
+        class OSGEARTHPROCEDURAL_EXPORT ModelCategory
         {
         public:
             ModelCategory() { }
             ModelCategory(const Config& conf, AssetCatalog* assets);
 
-            struct Usage {
-                osg::ref_ptr<ModelAsset> asset;
+            struct Member
+            {
+                const ModelAsset* asset;
                 float weight;
             };
 
             OE_OPTION(std::string, name);
-            OE_OPTION_VECTOR(Usage, assets);
+            OE_OPTION_VECTOR(Member, members);
 
             Config getConfig() const;
         };
@@ -134,7 +135,7 @@ namespace osgEarth
          * A subset of graphical assets that will be used
          * in a particular geographic region.
          */
-        class OSGEARTHPROCEDURAL_EXPORT Biome : public osg::Referenced
+        class OSGEARTHPROCEDURAL_EXPORT Biome
         {
         public:
             Biome() { }
@@ -143,13 +144,12 @@ namespace osgEarth
 
             OE_OPTION(std::string, name);
             OE_OPTION(int, id);
-            OE_OPTION_VECTOR(osg::ref_ptr<ModelCategory>, modelCategories);
+            OE_OPTION_VECTOR(ModelCategory, modelCategories);
 
-            //! Find a named model group
+            //! Find a named model category by name
+            //! @param name Name of object to find
+            //! @return model category, or nullptr if no match
             const ModelCategory* getModelCategory(const std::string& name) const;
-            
-        protected:
-            virtual ~Biome() { }
         };
 
 
@@ -192,20 +192,21 @@ namespace osgEarth
          * Defines all biomes, assets, and land use mappings used
          * by the procedural system.
          */
-        class OSGEARTHPROCEDURAL_EXPORT BiomeCatalog : public osg::Referenced
+        class OSGEARTHPROCEDURAL_EXPORT BiomeCatalog
         {
         public:
             BiomeCatalog() { }
             BiomeCatalog(const Config& conf);
 
             //! Fetch a biome by its unique ID
+            //! @return nullptr if no match
             const Biome* getBiome(int id) const;
 
             //! Vector of all biomes in the catalog
-            void getBiomes(std::vector<osg::ref_ptr<const Biome>>& biomes) const;
+            void getBiomes(std::vector<const Biome*>& biomes) const;
 
             //! Asset catalog
-            const AssetCatalog* getAssets() const;
+            const AssetCatalog& getAssets() const;
 
             //! Table that maps land use classes to lifemap values.
             const LifeMapValueTable* getLandUseTable() const;
@@ -216,14 +217,10 @@ namespace osgEarth
         public:
             Config getConfig() const;
 
-        protected:
-            virtual ~BiomeCatalog() { }
-
-
-            osg::ref_ptr<AssetCatalog> _assets;            
+            AssetCatalog _assets;            
             std::shared_ptr<LifeMapValueTable> _landUseTable;
             std::shared_ptr<LifeMapValueTable> _landCoverTable;
-            std::unordered_map<int, osg::ref_ptr<Biome>> _biomes;
+            std::unordered_map<int, Biome> _biomes;
         };
 
 } } // namespace osgEarth::Procedural

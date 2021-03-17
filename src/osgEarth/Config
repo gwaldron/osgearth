@@ -652,6 +652,14 @@ namespace osgEarth
     osg::ref_ptr< TYPE >& NAME () { return _ ## NAME; } \
     const osg::ref_ptr< TYPE >& NAME () const { return _ ## NAME; }
 
+//! ref_ptr property macro
+#define OE_OPTION_SHAREDPTR(TYPE, NAME) \
+    private: \
+    std::shared_ptr< TYPE > _ ## NAME ; \
+    public: \
+    std::shared_ptr< TYPE >& NAME () { return _ ## NAME; } \
+    const std::shared_ptr< TYPE >& NAME () const { return _ ## NAME; }
+
 //! vector property macro
 #define OE_OPTION_VECTOR(TYPE, NAME) \
     private: \

@@ -2105,6 +2105,18 @@ GeoImage::takeImage()
     return result;
 }
 
+void
+GeoImage::setTrackingToken(osg::Object* value)
+{
+    _token = value;
+}
+
+osg::Object*
+GeoImage::getTrackingToken() const
+{
+    return _token.get();
+}
+
 /***************************************************************************/
 
 #undef  LC

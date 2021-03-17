@@ -1346,14 +1346,14 @@ GroundCoverLayer::Renderer::loadAssets()
     // no URI so cannot be unloaded.
 
     // all the zones (these will later be called "biomes")
-    const BiomeCatalog* catalog = layer->getBiomeLayer()->getBiomeCatalog();
+    const auto catalog = layer->getBiomeLayer()->getBiomeCatalog();
     if (catalog == nullptr)
     {
         layer->setStatus(Status::ConfigurationError, "Missing biome catalog");
         return false;
     }
 
-    std::vector<osg::ref_ptr<const Biome>> biomes;
+    std::vector<const Biome*> biomes;
     catalog->getBiomes(biomes);
 
     typedef std::map<URI, osg::ref_ptr<AssetInstance> > TextureShareCache;
@@ -1368,25 +1368,23 @@ GroundCoverLayer::Renderer::loadAssets()
     std::unordered_map<const ModelAsset*, osg::ref_ptr<AssetInstance>> instanceMap;
 
     // Each biome is an art collection
-    for (const auto& biome : biomes)
+    for (auto biome : biomes)
     {
-        if (!biome.valid()) continue;
-
-        int biome_id = biome->id().get();
-
         // each model group represents the art for one groundcover layer,
         // so find the one corresponding to this layer.
         const ModelCategory* category = biome->getModelCategory(layer->options().category().get());
         if (category == nullptr)
         {
-            OE_WARN << LC << "Category \"" << layer->options().category().get() << "\" not found in biome \"" << biome->name().get() << "\"" << std::endl;
+            OE_WARN << LC 
+                << "Category \"" << layer->options().category().get() 
+                << "\" not found in biome \"" << biome->name().get() << "\"" << std::endl;
             continue;
         }
 
         // The category points to multiple assets, which we will analyze and load.
-        for (const auto& asset_ptr : category->assets())
+        for (const auto& member : category->members())
         {
-            const ModelAsset* asset = asset_ptr.asset.get();
+            const ModelAsset* asset = member.asset;
 
             if (asset == nullptr)
                 continue;
@@ -1557,12 +1555,6 @@ GroundCoverLayer::Renderer::loadAssets()
                         data->_sideBillboardTexIndex,
                         data->_topBillboardTexIndex);
 
-                    //data->_modelID = modelIDGen++;
-
-                    //osg::ComputeBoundsVisitor cbv;
-                    //data->_model->accept(cbv);
-                    //data->_modelAABB = cbv.getBoundingBox();
-
                     data->_billboardID = cloudSequence++;
                 }
 
@@ -1574,11 +1566,12 @@ GroundCoverLayer::Renderer::loadAssets()
             }
 
             // Record a reference to it:
-            auto& usages = _assetUsagesPerBiome[biome_id];
-            usages.emplace_back(AssetUsage());
-            AssetUsage& usage = usages.back();
+            auto& usages = _assetUsagesPerBiome[biome->id().get()];
+
+            AssetUsage usage;
             usage._assetData = data.get();
-            usage._weight = asset_ptr.weight;
+            usage._weight = member.weight;
+            usages.push_back(std::move(usage));
         }
     }
 
@@ -1651,9 +1644,6 @@ GroundCoverLayer::Renderer::createLUTShader() const
         assetBuf << "  Asset("
             << in->_assetID
             << ", " << in->_modelID
-            //<< ", " << (in->_modelTex.valid() ? in->_modelTexIndex : -1)
-            //<< ", " << (in->_sideBillboardTex.valid() ? in->_sideBillboardTexIndex : -1)
-            //<< ", " << (in->_topBillboardTex.valid() ? in->_topBillboardTexIndex : -1)
             << ", " << in->_billboardID
             << ", " << width
             << ", " << height

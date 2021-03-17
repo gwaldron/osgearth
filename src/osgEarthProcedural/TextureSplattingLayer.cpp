@@ -206,18 +206,18 @@ namespace
 
     // Job for loading materials into an arena
     osg::ref_ptr<TextureArena>
-    loadMaterials(const AssetCatalog* cat, Cancelable* progress)
+    loadMaterials(const AssetCatalog& cat, Cancelable* progress)
     {
         osg::ref_ptr<TextureArena> arena = new TextureArena();
 
-        for (const auto tex : cat->getTextures())
+        for (auto& tex : cat.getTextures())
         {
             Texture* rgbh = new Texture();
-            rgbh->_uri = URI(tex->uri()->full() + ".oe_splat_rgbh");
+            rgbh->_uri = URI(tex.uri()->full() + ".oe_splat_rgbh");
             arena->add(rgbh);
 
             Texture* nnra = new Texture();
-            nnra->_uri = URI(tex->uri()->full() + ".oe_splat_nnra");
+            nnra->_uri = URI(tex.uri()->full() + ".oe_splat_nnra");
             arena->add(nnra);
 
             if (progress && progress->isCanceled())
@@ -301,20 +301,16 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
     // Since we're actually rendering, load the materials for splatting
     if (getBiomeLayer())
     {
-        const BiomeCatalog* cat = getBiomeLayer()->getBiomeCatalog();
-        if (cat)
+        std::shared_ptr<const BiomeCatalog> biome_cat = getBiomeLayer()->getBiomeCatalog();
+
+        if (biome_cat && !biome_cat->getAssets().empty())
         {
-            // Begin asynchronous loading of materials texture arena:
-            osg::ref_ptr<const AssetCatalog> assets = cat->getAssets();
-            if (assets.valid())
-            {
-                _materials = Job().dispatch<osg::ref_ptr<TextureArena>>(
-                    [assets](Cancelable* progress)
-                    {
-                        return loadMaterials(assets.get(), progress);
-                    }
-                );
-            }
+            _materials = Job().dispatch<osg::ref_ptr<TextureArena>>(
+                [biome_cat](Cancelable* progress)
+                {
+                    return loadMaterials(biome_cat->getAssets(), progress);
+                }
+            );
         }
     }
     else

@@ -38,7 +38,7 @@ BiomeLayer::Options::fromConfig(const Config& conf)
     blendRadius().setDefault(0.0);
     biomeidField().setDefault("biomeid");
 
-    biomeCatalog() = new BiomeCatalog(conf.child("biomecatalog"));
+    biomeCatalog() = std::make_shared<BiomeCatalog>(conf.child("biomecatalog"));
     controlVectors().get(conf, "control_vectors");
     conf.get("blend_radius", blendRadius());
     conf.get("biomeid_field", biomeidField());
@@ -99,7 +99,7 @@ BiomeLayer::openImplementation()
     {
         OE_WARN << LC << "No biome catalog found - could be trouble" << std::endl;
     }
-    else if (getBiomeCatalog()->getAssets() == nullptr)
+    else if (getBiomeCatalog()->getAssets().empty())
     {
         OE_WARN << LC << "No asset catalog found - could be trouble" << std::endl;
     }
@@ -190,16 +190,16 @@ BiomeLayer::getControlSet() const
     return options().controlVectors().getLayer();
 }
 
-const BiomeCatalog*
+std::shared_ptr<const BiomeCatalog>
 BiomeLayer::getBiomeCatalog() const
 {
-    return options().biomeCatalog().get();
+    return options().biomeCatalog();
 }
 
 const Biome*
 BiomeLayer::getBiome(int id) const
 {
-    const BiomeCatalog* cat = getBiomeCatalog();
+    const auto cat = getBiomeCatalog();
     if (cat)
         return cat->getBiome(id);
     else
@@ -261,5 +261,28 @@ BiomeLayer::createImageImplementation(
             write(value, iter.s(), iter.t());
         });
 
-    return GeoImage(image.get(), key.getExtent());
+    GeoImage result(image.get(), key.getExtent());
+
+    // Create a "token" object that we can track for destruction.
+    // This will inform us when the image created by this call
+    // destructs, and we can update the BiomeManager accordingly.
+    osg::Object* token = new osg::DummyObject();
+    token->setName(Stringify() << "BiomeLayer " << key.str());
+    result.setTrackingToken(token);
+
+    token->addObserver(const_cast<BiomeLayer*>(this));
+    _tracker.scoped_lock([&]() { _tracker[token] = key; });
+
+    return std::move(result);
+}
+
+void
+BiomeLayer::objectDeleted(void* value)
+{
+    osg::Object* token = static_cast<osg::Object*>(value);
+
+    _tracker.scoped_lock([&]() {
+        OE_WARN << "Unloaded " << token->getName() << std::endl;
+        _tracker.erase(token);
+        });
 }

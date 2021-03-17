@@ -311,14 +311,14 @@ namespace osgEarth
         osg::Vec4Array* _colors;
         osg::Vec3Array* _normals;
         osg::Vec2Array* _texcoords;
-        osg::ShortArray* _texindices;
+        osg::ShortArray* _arenaIndices;
         std::vector<unsigned> _vertexOffsets;
         std::vector<unsigned> _elementOffsets;
         std::vector<unsigned> _elementCounts;
 
         //traversal data - must be cleared before each traversal
-        using AtlasIndexLUT = std::unordered_map<osg::Texture*, int>;
-        AtlasIndexLUT _atlasIndexLUT;
+        using ArenaIndexLUT = std::unordered_map<osg::Texture*, int>;
+        ArenaIndexLUT _arenaIndexLUT;
         unsigned _numElements;
         std::stack<int> _arenaIndexStack;
         std::stack<osg::Matrix> _matrixStack;

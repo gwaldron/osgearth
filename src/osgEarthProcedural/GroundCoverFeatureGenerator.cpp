@@ -375,7 +375,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
             }
 
             // randomly select an asset from the category:
-            int assetCount = mcat->assets().size();
+            int assetCount = mcat->members().size();
             if (assetCount == 0)
             {
                 return Status(
@@ -385,8 +385,8 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
 
             int pickIndex = clamp(int(floor(lush * float(assetCount))), 0, assetCount - 1);
 
-            const ModelCategory::Usage& asset_usage = mcat->assets()[pickIndex];
-            ModelAsset* asset = asset_usage.asset.get();
+            const ModelCategory::Member& member = mcat->members()[pickIndex];
+            const ModelAsset* asset = member.asset;
             if (!asset)
             {
                 return Status(

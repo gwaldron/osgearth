@@ -340,6 +340,13 @@ TerrainTileModelFactory::addImageLayer(
                     tex = createCoverageTexture(geoImage.getImage());
                 else
                     tex = createImageTexture(geoImage.getImage(), imageLayer);
+
+                // Propagate the tracking token to the texture if there is one:
+                if (tex && geoImage.getTrackingToken())
+                {
+                    tex->getOrCreateUserDataContainer()->addUserObject(
+                        geoImage.getTrackingToken());
+                }
             }
         }
     }

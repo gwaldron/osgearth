@@ -34,7 +34,7 @@ namespace osgEarth
     {
         using namespace osgEarth;
 
-        class OSGEARTHPROCEDURAL_EXPORT BiomeLayer : public ImageLayer
+        class OSGEARTHPROCEDURAL_EXPORT BiomeLayer : public ImageLayer, public osg::Observer
         {
         public:
             class OSGEARTHPROCEDURAL_EXPORT Options : public ImageLayer::Options
@@ -42,7 +42,7 @@ namespace osgEarth
             public:
                 META_LayerOptions(osgEarth, Options, ImageLayer::Options);
                 OE_OPTION_LAYER(FeatureSource, controlVectors);
-                OE_OPTION_REFPTR(BiomeCatalog, biomeCatalog);
+                OE_OPTION_SHAREDPTR(BiomeCatalog, biomeCatalog);
                 OE_OPTION(float, blendRadius);
                 OE_OPTION(std::string, biomeidField);
                 virtual Config getConfig() const;
@@ -56,7 +56,7 @@ namespace osgEarth
             //! Get the biome corresponding to the input "id"
             const Biome* getBiome(int id) const;
 
-            const BiomeCatalog* getBiomeCatalog() const;
+            std::shared_ptr<const BiomeCatalog> getBiomeCatalog() const;
 
             virtual void addedToMap(const Map*) override;
 
@@ -81,6 +81,10 @@ namespace osgEarth
             void* _index;
 
             FeatureList _features;
+
+            using Tracker = std::unordered_map<osg::Object*, TileKey>;
+            mutable Mutexed<Tracker> _tracker;
+            void objectDeleted(void*) override;
         };
 
     }

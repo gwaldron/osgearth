@@ -261,12 +261,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                     child->accept(nv);
             }
 
-            // tell the paging manager this node is still alive
-            // (and should not be removed from the scene graph)
-            if (_pagingManager)
-            {
-                _token = _pagingManager->use(this, _token);
-            }
+            touch();
         }
         else
         {
@@ -275,6 +270,17 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 if (child.get() != _compiled.get().get())
                     child->accept(nv);
         }
+    }
+}
+
+void
+PagedNode2::touch()
+{
+    // tell the paging manager this node is still alive
+            // (and should not be removed from the scene graph)
+    if (_pagingManager)
+    {
+        _token = _pagingManager->use(this, _token);
     }
 }
 

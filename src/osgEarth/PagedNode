@@ -155,6 +155,10 @@ namespace osgEarth { namespace Util
             _minRange = value, _useRange = true;
         }
 
+        float getMinRange() const {
+            return _minRange;
+        }
+
         //! Maximum distance from camera at which to render
         void setMaxRange(float value) {
             _maxRange = value, _useRange = true;
@@ -222,7 +226,6 @@ namespace osgEarth { namespace Util
             _autoUnload = value;
         }
 
-
         //! Loads the data for this node asynchronously
         void load(float priority, const osg::Object* host);
 
@@ -231,6 +234,8 @@ namespace osgEarth { namespace Util
 
         //! Whether the data is loaded for this node.
         bool isLoaded() const;
+
+        void touch();
 
 
     public: // osg::Node overrides

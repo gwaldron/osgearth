@@ -55,12 +55,14 @@ using namespace osgEarth::ImGuiUtil;
 
 float query_range = 100.0;
 long long query_time_ns = 0;
+long long predictive_data_loading_time_ns = 0;
 long long query_triangle_count = 0;
 static unsigned int observer_id = 1;
 static bool loading_data = false;
-
 static osg::Group* root;
-
+static float range_boost = 1.0;
+std::string message;
+static bool predictive_loading = true;
 
 class Observer : public osg::Object
 {
@@ -74,7 +76,7 @@ public:
     {
     }
 
-    Observer(osg::BoundingSphered& bounds):
+    Observer(const osg::BoundingSphered& bounds):
         _bounds(bounds)
     {
     }
@@ -94,6 +96,8 @@ public:
 private:
     osg::BoundingSphered _bounds;
 };
+
+static osg::ref_ptr< Observer > cameraObserver;
 
 typedef std::vector< osg::ref_ptr< Observer > > ObserverList;
 
@@ -253,7 +257,8 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
 struct QueryTrianglesHandler : public osgGA::GUIEventHandler
 {
     QueryTrianglesHandler(MapNode* mapNode)
-        : _mapNode(mapNode)
+        : _mapNode(mapNode),
+        _observer(nullptr)
     {
         _marker = new osg::MatrixTransform;
         _marker->addChild(AnnotationUtils::createSphere(1.0, Color::White));
@@ -271,6 +276,17 @@ struct QueryTrianglesHandler : public osgGA::GUIEventHandler
             osgUtil::LineSegmentIntersector::Intersections hits;
             osg::NodePath path;
             path.push_back(_mapNode);
+
+            if (_observer)
+            {
+                auto itr = std::find(observers.begin(), observers.end(), _observer);
+                if (itr != observers.end())
+                {
+                    observers.erase(itr);
+                }
+                _observer = nullptr;
+            }
+
             if (view->computeIntersections(ea.getX(), ea.getY(), path, hits))
             {
                 _marker->setNodeMask(~0u);
@@ -309,6 +325,11 @@ struct QueryTrianglesHandler : public osgGA::GUIEventHandler
                     root->addChild(_extractedTriangles.get());
                 }
 
+#if 0
+                _observer = new Observer(osg::BoundingSphered(world, query_range));
+                _observer->setName("Mouse cursor");
+                observers.push_back(_observer);
+#endif
             }
             else
             {
@@ -321,6 +342,8 @@ struct QueryTrianglesHandler : public osgGA::GUIEventHandler
     osgEarth::MapNode* _mapNode;
     osg::ref_ptr< osg::Node > _extractedTriangles;
     osg::MatrixTransform* _marker;
+
+    Observer* _observer;
 };
 
 struct AddObserverHandler : public osgGA::GUIEventHandler
@@ -390,6 +413,126 @@ public:
     osg::ref_ptr< osg::Node > _marker;
 };
 
+struct PredictiveDataLoader : public osg::NodeVisitor
+{
+    PredictiveDataLoader():
+        osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+    {
+    }
+
+    //! Whether all potential data in the areas are loaded
+    bool isFullyLoaded() const
+    {
+        return _fullyLoaded;
+    }
+
+    //! Resets isFullyLoaded so you can reuse the same visitor multiple times.
+    void reset()
+    {
+        _fullyLoaded = true;
+    }
+
+    bool intersects(osg::Node& node)
+    {
+        static osg::Matrix identity;
+        osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
+
+        osg::BoundingSphere nodeBounds = node.getBound();
+        osg::BoundingSphered worldBounds(nodeBounds.center(), nodeBounds.radius());
+        worldBounds.center() += matrix.getTrans();
+
+        bool result = false;
+        for (auto& bs : _areasToLoad)
+        {
+            if (bs.intersects(worldBounds))
+            {
+                result = true;
+                break;
+            }
+        }
+
+
+        return result;
+    }
+
+    float getMinRange(PagedNode2& node)
+    {
+        static osg::Matrix identity;
+        osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
+
+        osg::BoundingSphere nodeBounds = node.getBound();
+        osg::BoundingSphered worldBounds(nodeBounds.center(), nodeBounds.radius());
+        worldBounds.center() += matrix.getTrans();
+
+        float minRange = FLT_MAX;
+
+        for (auto& bs : _areasToLoad)
+        {
+            float range = (bs.center() - worldBounds.center()).length();
+            range /= range_boost;
+            if (range < minRange) minRange = range;
+        }
+
+        return minRange;
+    }
+
+    //! A list of bounding spheres in world coordinates to intersect the scene graph against.
+    std::vector<osg::BoundingSphered>& getAreasToLoad() { return _areasToLoad; }
+
+    void apply(osg::Node& node)
+    {
+        if (intersects(node))
+        {
+            PagedNode2* pagedNode = dynamic_cast<PagedNode2*>(&node);
+            if (pagedNode)
+            {
+                apply(*pagedNode);
+            }
+            traverse(node);
+        }
+    }
+
+    void apply(PagedNode2& pagedNode)
+    {
+        float range = getMinRange(pagedNode);
+        if (range < pagedNode.getMaxRange())
+        {
+            if (!pagedNode.isLoaded())
+            {
+                float priority = -range;
+                // TODO:  ICO
+                pagedNode.load(priority, nullptr);
+                _fullyLoaded = false;
+            }
+            pagedNode.touch();
+        }
+    }
+
+    void apply(osg::Transform& transform)
+    {
+        if (intersects(transform))
+        {
+            osg::Matrix matrix;
+            if (!_matrixStack.empty()) matrix = _matrixStack.back();
+            transform.computeLocalToWorldMatrix(matrix, this);
+            pushMatrix(matrix);
+
+            traverse(transform);
+
+            popMatrix();
+        }
+    }
+
+    inline void pushMatrix(osg::Matrix& matrix) { _matrixStack.push_back(matrix); }
+    inline void popMatrix() { _matrixStack.pop_back(); }
+
+    typedef std::vector<osg::Matrix> MatrixStack;
+    MatrixStack _matrixStack;
+    bool _fullyLoaded = true;
+
+    std::vector< osg::BoundingSphered > _areasToLoad;
+};
+
 class ImGuiDemo : public OsgImGuiHandler
 {
 public:
@@ -410,6 +553,7 @@ protected:
 
         ImGui::Begin("Triangle Query");
 
+        ImGui::SliderFloat("Range Boost", &range_boost, 1.0, 10.0);
         ImGui::SliderFloat("Query Range", &query_range, 1.0, 2000.0f);
 
         if (loading_data)
@@ -427,12 +571,14 @@ protected:
             _mapNode->accept(v);
         }
 
+        ImGui::Checkbox("Predictive Loading", &predictive_loading);
+
         ImGui::Separator();
         ImGui::Text("Observers");
 
         if (ImGui::Button("Add san francisco"))
         {
-            auto observer = new Observer(osg::BoundingSphered(osg::Vec3d(-2709463.117513461, -4278909.160321064, 3864024.782792999), 1000.0));
+            auto observer = new Observer(osg::BoundingSphered(osg::Vec3d(-2709463.117513461, -4278909.160321064, 3864024.782792999), 10000.0));
             osgEarth::GeoPoint pt;
             pt.fromWorld(SpatialReference::create("wgs84"), observer->getBounds().center());
             observer->setName("San Francisco");
@@ -468,6 +614,7 @@ protected:
 
 
         ImGui::Text("Collected %d triangles in %lf ms", query_triangle_count, (double)query_time_ns / 1.0e6);
+        ImGui::Text("Data load took %lf", (double)predictive_data_loading_time_ns / 1.0e6);
         ImGui::End();
     }
 
@@ -551,6 +698,47 @@ main(int argc, char** argv)
                     loading_data = false;
                 }
             }
+
+
+            if (predictive_loading)
+            {
+                PredictiveDataLoader loader;
+                for (auto& o : observers)
+                {
+                    loader.getAreasToLoad().push_back(o->getBounds());
+                }
+
+                // Add an observer for the camera
+                osg::Vec3d eye, center, up;
+                viewer.getCamera()->getViewMatrixAsLookAt(eye, center, up);
+
+#if 0
+                if (!cameraObserver.valid())
+                {
+                    cameraObserver = new Observer();
+                    cameraObserver->setName("Camera");
+                    observers.push_back(cameraObserver);
+                }
+
+                if (cameraObserver.valid())
+                {
+                    double fovy, ar, zNear, zFar;
+                    viewer.getCamera()->getProjectionMatrixAsPerspective(fovy, ar, zNear, zFar);
+                    osg::BoundingSphered bounds(eye, 100000.0);
+                    cameraObserver->setBounds(bounds);
+                    loader.getAreasToLoad().push_back(cameraObserver->getBounds());
+                }
+#endif
+
+                auto startTime = std::chrono::high_resolution_clock::now();
+                //root->accept(loader);
+                mapNode->getLayerNodeGroup()->accept(loader);
+                auto endTime = std::chrono::high_resolution_clock::now();
+                predictive_data_loading_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
+
+                loading_data = !loader.isFullyLoaded();
+            }
+
 
             viewer.frame();
         }

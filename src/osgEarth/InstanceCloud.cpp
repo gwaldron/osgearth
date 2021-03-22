@@ -620,10 +620,15 @@ GeometryCloud::GeometryCloud(TextureArena* texarena) :
     _texcoords->setBinding(osg::Array::BIND_PER_VERTEX);
     _geom->setTexCoordArray(7, _texcoords);
 
-    _arenaIndices = new osg::ShortArray();
-    _arenaIndices->setBinding(osg::Array::BIND_PER_VERTEX);
-    _arenaIndices->setPreserveDataType(true);
-    _geom->setVertexAttribArray(6, _arenaIndices);
+    _albedoArenaIndices = new osg::ShortArray();
+    _albedoArenaIndices->setBinding(osg::Array::BIND_PER_VERTEX);
+    _albedoArenaIndices->setPreserveDataType(true);
+    _geom->setVertexAttribArray(6, _albedoArenaIndices);
+
+    _normalArenaIndices = new osg::ShortArray();
+    _normalArenaIndices->setBinding(osg::Array::BIND_PER_VERTEX);
+    _normalArenaIndices->setPreserveDataType(true);
+    _geom->setVertexAttribArray(7, _normalArenaIndices);
 
     // N.B. UShort is sufficient b/c we are using the DrawElementsIndirect.baseVertex
     // technique to offset element indicies and thereby support a VBO with >65535 verts.
@@ -635,10 +640,11 @@ GeometryCloud::GeometryCloud(TextureArena* texarena) :
     _geom->setComputeBoundingBoxCallback(new CBCB());
 }
 
-bool
+int
 GeometryCloud::add(
     osg::Node* node,
-    unsigned alignment)
+    unsigned alignment,
+    int normalMapTextureImageUnit)
 {
     // convert all primitive sets to GL_TRIANGLES
     osgUtil::Optimizer o;
@@ -654,18 +660,19 @@ GeometryCloud::add(
         vcv.optimizeVertices();
     }
 
-    // pad the arrays to the alignment:
+    // pad the arrays to the alignment (to make gl_VertexID modulus work correctly)
     if (alignment > 0u)
     {
         unsigned padding = align((unsigned)_verts->size(), alignment) - _verts->size();
-        OE_DEBUG << "vert size = " << _verts->size() << " so we gonna pad it with " << padding << " bytes" << std::endl;
+        OE_DEBUG << "vert size = " << _verts->size() << " so pad it with " << padding << " bytes" << std::endl;
         for(unsigned i=0; i<padding; ++i)
         {   
             _verts->push_back(osg::Vec3());
             _colors->push_back(osg::Vec4(1,0,0,1));
             _normals->push_back(osg::Vec3(0,0,1));
-            _texcoords->push_back(osg::Vec2(0,0)); //TODO shorten to vec2
-            _arenaIndices->push_back(-1);
+            _texcoords->push_back(osg::Vec2(0,0));
+            _albedoArenaIndices->push_back(-1);
+            _normalArenaIndices->push_back(-1);
         }
     }
 
@@ -679,10 +686,15 @@ GeometryCloud::add(
     // and counting elements indices
     _numElements = 0u;
 
-    _arenaIndexStack = std::stack<int>();
-    _arenaIndexStack.push(-1);
+    _albedoArenaIndexStack = std::stack<int>();
+    _albedoArenaIndexStack.push(-1);
+
+    _normalArenaIndexStack = std::stack<int>();
+    _normalArenaIndexStack.push(-1);
 
     _matrixStack = std::stack<osg::Matrix>();
+
+    _normalMapTextureImageUnit = normalMapTextureImageUnit;
 
     // This is needed b/c we are using a RAW pointer in the LUT.
     // So it can (and will) be reused.
@@ -695,7 +707,8 @@ GeometryCloud::add(
     _elementCounts.push_back(_numElements);
     _geom->dirtyBound();
 
-    return true;
+    // return the draw command number of the newly added geometry.
+    return getNumDrawCommands() - 1;
 }
 
 namespace
@@ -737,39 +750,80 @@ GeometryCloud::pushStateSet(osg::Node& node)
     osg::StateSet* stateset = node.getStateSet();
     if (stateset)
     {
-        int arenaIndex = _arenaIndexStack.top();
+        int albedoArenaIndex = _albedoArenaIndexStack.top();
 
-        osg::Texture* tex = dynamic_cast<osg::Texture*>(
-            stateset->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
-
-        if (tex && tex->getImage(0))
+        // Albedo texture in slot 0 always:
+        if (true) // might make this conditional someday
         {
-            auto i = _arenaIndexLUT.find(tex);
-            if (i == _arenaIndexLUT.end())
+            osg::Texture* tex = dynamic_cast<osg::Texture*>(
+                stateset->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
+
+            if (tex && tex->getImage(0))
             {
-                // arena index of the texture we're about to add:
-                int nextIndex = _texarena->size();
-
-                Texture* t = new Texture();
-                t->_image = tex->getImage(0);
-
-                if (_texarena->add(t))
+                auto i = _arenaIndexLUT.find(tex);
+                if (i == _arenaIndexLUT.end())
                 {
-                    _arenaIndexLUT[tex] = nextIndex;
-                    arenaIndex = nextIndex;
+                    // arena index of the texture we're about to add:
+                    int nextIndex = _texarena->size();
+
+                    Texture* t = new Texture();
+                    t->_image = tex->getImage(0);
+
+                    if (_texarena->add(t))
+                    {
+                        _arenaIndexLUT[tex] = nextIndex;
+                        albedoArenaIndex = nextIndex;
+                    }
+                    else
+                    {
+                        OE_WARN << "Failed to add a texture. Contact support!" << std::endl;
+                    }
                 }
                 else
                 {
-                    OE_WARN << "Failed to add a texture. Contact support!" << std::endl;
+                    albedoArenaIndex = i->second;
                 }
             }
-            else
+        }
+        _albedoArenaIndexStack.push(albedoArenaIndex);
+
+        // check normal map texture, if available
+        int normalArenaIndex = _albedoArenaIndexStack.top();
+        if (_normalMapTextureImageUnit > 0)
+        {
+
+            osg::Texture* tex = dynamic_cast<osg::Texture*>(
+                stateset->getTextureAttribute(_normalMapTextureImageUnit, osg::StateAttribute::TEXTURE));
+
+            if (tex && tex->getImage(0))
             {
-                arenaIndex = i->second;
+                auto i = _arenaIndexLUT.find(tex);
+                if (i == _arenaIndexLUT.end())
+                {
+                    // arena index of the texture we're about to add:
+                    int nextIndex = _texarena->size();
+
+                    Texture* t = new Texture();
+                    t->_image = tex->getImage(0);
+
+                    if (_texarena->add(t))
+                    {
+                        _arenaIndexLUT[tex] = nextIndex;
+                        normalArenaIndex = nextIndex;
+                    }
+                    else
+                    {
+                        OE_WARN << "Failed to add a normal map. Contact support!" << std::endl;
+                    }
+                }
+                else
+                {
+                    normalArenaIndex = i->second;
+                }
             }
         }
+        _normalArenaIndexStack.push(normalArenaIndex);
 
-        _arenaIndexStack.push(arenaIndex);
         return true;
     }
     else
@@ -781,7 +835,8 @@ GeometryCloud::pushStateSet(osg::Node& node)
 void
 GeometryCloud::popStateSet()
 {
-    _arenaIndexStack.pop();
+    _albedoArenaIndexStack.pop();
+    _normalArenaIndexStack.pop();
 }
 
 void
@@ -830,17 +885,16 @@ GeometryCloud::apply(osg::Geometry& node)
     append(_colors, node.getColorArray(), size);
     append(_texcoords, node.getTexCoordArray(0), size);
 
-    if (node.getVertexAttribArray(6) != nullptr)
+    _albedoArenaIndices->reserve(_albedoArenaIndices->size() + size);
+    for (int i = 0; i < size; ++i)
     {
-        append(_arenaIndices, node.getVertexAttribArray(6), size);
+        _albedoArenaIndices->push_back(_albedoArenaIndexStack.top());
     }
-    else
+
+    _normalArenaIndices->reserve(_normalArenaIndices->size() + size);
+    for (int i = 0; i < size; ++i)
     {
-        _arenaIndices->reserve(_arenaIndices->size() + size);
-        for (int i = 0; i < size; ++i)
-        {
-            _arenaIndices->push_back(_arenaIndexStack.top());
-        }
+        _normalArenaIndices->push_back(_normalArenaIndexStack.top());
     }
 
     // assemble the elements set

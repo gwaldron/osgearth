@@ -524,7 +524,7 @@ TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
         // copy handles to buffer:
         refresh(textures, state);
 
-        _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state);
+        _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, "OE TextureArena");
 
         _buffer->bind();
 

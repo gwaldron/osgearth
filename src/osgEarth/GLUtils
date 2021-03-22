@@ -78,6 +78,9 @@ namespace osgEarth
         //! Removes the state associated with a GL capability, causing it to inherit from above.
         //! and if one of: GL_LIGHTING, GL_LINE_WIDTH, GL_LINE_STIPPLE, GL_LINE_SMOOTH, GL_POINT_SIZE
         static void remove(osg::StateSet* stateSet, GLenum cap);
+
+        //! Computes the driver's reported alignment for SSBO allocation
+        static GLsizei getSSBOAlignment(osg::State&);
     };
 
     struct OSGEARTH_EXPORT CustomRealizeOperation : public osg::Operation
@@ -190,6 +193,93 @@ namespace osgEarth
         GLint _bindingIndex;
         void bindLayout() const;
         virtual void release() const;
+    };
+
+    template<typename T>
+    class ArraySSBO
+    {
+    public:
+        ArraySSBO() : _buf(nullptr), _numElements(0), _bindingIndex(0)
+        {
+            _dirty.setAllElementsTo(false);
+        }
+
+        //! Sets the number of elements this object can hold
+        void setNumElements(unsigned value)
+        {
+            if (value > _numElements)
+            {
+                _numElements = value;
+                if (_buf) delete[] _buf;
+                _buf = new T[_numElements];
+                _dirty.setAllElementsTo(true);
+            }
+        }
+
+        void setBindingIndex(unsigned value)
+        {
+            _bindingIndex = value;
+        }
+
+        T& operator[](int index)
+        {
+            return _buf[index];
+        }
+
+        void dirty()
+        {
+            _dirty.setAllElementsTo(1);
+        }
+
+        void apply(osg::State& state) const
+        {
+            if (_numElements == 0)
+                return;
+
+            bool bound = false;
+
+            int i = state.getContextID();
+
+            SSBO& ssbo = _ssbo[i];
+
+            GLsizei contentSize = _numElements * sizeof(T);
+
+            if (ssbo._allocatedSize < contentSize)
+            {
+                // reallocate the SSBO
+                ssbo.release();
+                ssbo._bindingIndex = _bindingIndex;
+                ssbo._allocatedSize = align(contentSize, GLUtils::getSSBOAlignment(state));
+                ssbo._buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, typeid(*this).name());
+                ssbo._buffer->bind();
+                bound = true;
+                ssbo._buffer->ext()->glBufferStorage(GL_SHADER_STORAGE_BUFFER, ssbo._allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+                _dirty[i] = 1;
+            }
+
+            if (_dirty[i])
+            {
+                if (!bound) ssbo._buffer->bind();
+                ssbo._buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, contentSize, (const GLvoid*)_buf);
+                _dirty[i] = 0;
+            }
+
+            ssbo.bindLayout();
+        }
+
+        void resizeGLObjectBuffers(unsigned maxSize)
+        {
+            _ssbo.resize(maxSize);
+            _dirty.resize(maxSize);
+            _dirty.setAllElementsTo(1);
+        }
+
+    private:
+        mutable osg::buffered_object<SSBO> _ssbo;
+        mutable osg::buffered_object<int> _dirty;
+        T* _buf;
+        unsigned _numElements;
+        unsigned _bindingIndex;
     };
 
     // Functions that aren't in osg::GLExtensions (some in 3.4, some in 3.6+)

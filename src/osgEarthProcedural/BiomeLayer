@@ -24,6 +24,7 @@
 
 #include "Export"
 #include "Biome"
+#include "BiomeManager"
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
@@ -56,7 +57,11 @@ namespace osgEarth
             //! Get the biome corresponding to the input "id"
             const Biome* getBiome(int id) const;
 
+            //! The catalog holding all biome information
             std::shared_ptr<const BiomeCatalog> getBiomeCatalog() const;
+
+            //! Manager that paged biome data in and out
+            BiomeManager& getBiomeManager() { return _biomeMan; }
 
             virtual void addedToMap(const Map*) override;
 
@@ -78,9 +83,14 @@ namespace osgEarth
 
             virtual ~BiomeLayer() { }
 
+            // control features for biome selection
+            FeatureList _features;
+
+            // spatial index for _features
             void* _index;
 
-            FeatureList _features;
+            // handles memory residency of biome asset data
+            BiomeManager _biomeMan;
 
             using Tracker = std::unordered_map<osg::Object*, TileKey>;
             mutable Mutexed<Tracker> _tracker;

@@ -232,6 +232,7 @@ BiomeLayer::createImageImplementation(
     std::vector<double> ranges_squared;
     Random prng(key.hash());
     double radius = options().blendRadius().get();
+    std::set<int> biomeids_seen;
 
     GeoImageIterator iter(image.get(), key.getExtent());
 
@@ -254,6 +255,9 @@ BiomeLayer::createImageImplementation(
             if (hits.size() > 0)
             {
                 biomeid = hits[0]->_biomeid;
+
+                if (biomeid > 0)
+                    biomeids_seen.insert(biomeid);
             }
 
             value.r() = (float)biomeid / 255.0f;
@@ -263,13 +267,23 @@ BiomeLayer::createImageImplementation(
 
     GeoImage result(image.get(), key.getExtent());
 
+    // inform the biome manager that we are using the biomes corresponding
+    // to the biome ID's we collected
+    for (auto biomeid : biomeids_seen)
+    {
+        const Biome* biome = getBiomeCatalog()->getBiome(biomeid);
+        if (biome)
+            const_cast<BiomeManager*>(&_biomeMan)->ref(biome);
+    }
+
     // Create a "token" object that we can track for destruction.
     // This will inform us when the image created by this call
-    // destructs, and we can update the BiomeManager accordingly.
+    // destructs, and we can unref the usage in the BiomeManager accordingly.
+    // This works, but reverses the flow of control, so maybe
+    // there is a better solution -gw
     osg::Object* token = new osg::DummyObject();
     token->setName(Stringify() << "BiomeLayer " << key.str());
     result.setTrackingToken(token);
-
     token->addObserver(const_cast<BiomeLayer*>(this));
     _tracker.scoped_lock([&]() { _tracker[token] = key; });
 
@@ -281,8 +295,9 @@ BiomeLayer::objectDeleted(void* value)
 {
     osg::Object* token = static_cast<osg::Object*>(value);
 
-    _tracker.scoped_lock([&]() {
-        OE_WARN << "Unloaded " << token->getName() << std::endl;
-        _tracker.erase(token);
+    _tracker.scoped_lock([&]() 
+        {
+            OE_INFO << LC << "Unloaded " << token->getName() << std::endl;
+            _tracker.erase(token);
         });
 }

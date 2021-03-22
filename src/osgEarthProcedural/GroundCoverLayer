@@ -26,6 +26,8 @@
 #include "Biome"
 #include "LifeMapLayer"
 #include "BiomeLayer"
+#include "BiomeManager"
+
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
@@ -176,50 +178,7 @@ namespace osgEarth { namespace Procedural
             void release(int slot);
             int getSlot(const TileKey& key) const;
             bool inUse(int slot) const;
-        };        
-        
-        struct AssetInstance : public osg::Referenced
-        {
-            AssetInstance() : _asset(nullptr) { }
-
-            const ModelAsset* _asset;
-
-            osg::ref_ptr<osg::Node> _model;
-
-            osg::ref_ptr<osg::Node> _billboard;
-
-            int _index;
-
-            // texture atlas indexes
-            osg::ref_ptr<Texture> _sideBillboardTex;
-            int _sideBillboardTexIndex;
-
-            osg::ref_ptr<Texture> _sideBillboardNormalMap;
-            int _sideBillboardNormalMapIndex;
-
-            osg::ref_ptr<Texture> _topBillboardTex;
-            int _topBillboardTexIndex;
-
-            osg::ref_ptr<Texture> _topBillboardNormalMap;
-            int _topBillboardNormalMapIndex;
-
-            osg::ref_ptr<Texture> _modelTex;
-            int _modelTexIndex;
-
-            osg::BoundingBox _modelAABB;
-
-            int _assetID; // sequential unique ID of this asset
-            int _modelID; // sequential unique ID of the asset's model (may or may not have one)
-            int _billboardID;
-        };
-
-        struct AssetUsage
-        {
-            AssetInstance* _assetData;
-            const Biome* _biome;
-            const ModelCategory* _category;
-            float _weight;
-        };
+        }; 
 
         // Custom GL renderer for ground cover.
         // This is a PatchLayer callback that intercepts the drawing of a
@@ -229,6 +188,8 @@ namespace osgEarth { namespace Procedural
         public:
             Renderer(GroundCoverLayer* layer);
             ~Renderer();
+
+            //osg::ref_ptr<BiomeManager::BiomeGPUData> _biomeGPUData;
 
             // Uniform data must be maintained for each unique PCP
             struct PCPState
@@ -306,16 +267,6 @@ namespace osgEarth { namespace Procedural
             osg::ref_ptr<TextureArena> _texArena;
 
             bool loadAssets();
-            osg::Shader* createLUTShader() const;
-            GeometryCloud* createGeometryCloud() const;
-
-            // list of all asset instances
-            typedef std::vector<osg::ref_ptr<AssetInstance>> AssetInstanceVector;
-            AssetInstanceVector _liveAssets;
-
-            // list of asset references by each biome (by biome id)
-            typedef std::map<int, std::vector<AssetUsage>> AssetUsages;
-            AssetUsages _assetUsagesPerBiome;
 
             const std::string& getName() const;
 
@@ -335,9 +286,8 @@ namespace osgEarth { namespace Procedural
 
         // create a stand-in geometry for the shader to manipulate
         // (for billboards, etc)
-        virtual osg::Geometry* createParametricGeometry(
-            int tex_index_0,
-            int tex_index_1) const;
+        virtual osg::Node* createParametricGeometry(
+            std::vector<osg::Texture*>& textures) const;
 
         typedef std::vector<osg::ref_ptr<osg::Image> > ImageVector;
 

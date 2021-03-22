@@ -274,14 +274,17 @@ namespace osgEarth
         //! @param alignment If non-zero, pad the cloud's attribute arrays so
         //!    the index of the first vertex in this node is a multiple of the
         //!    alignment value. This is necessary for shaders that use gl_VertexID
-        //!    as a  modulus.
+        //!    as a modulus.
         //! @param generateTextureHandles Whether to visit the node, add textures
         //!    to the arena, and generate texture handle vertex attribute. If false,
         //!    copy the pre-existing handles from the incoming geometry.
-        //! @return True upon sucess
-        bool add(
+        //! @param normalMapTextureImageUnit If the model contains normal map textures,
+        //!    the TIU containing them. -1 = no normal maps.
+        //! @return Success: command number of the geometry; Failure: -1
+        int add(
             osg::Node* node,
-            unsigned alignment = 0);
+            unsigned alignment = 0,
+            int normalMapTextureImageUnit = -1);
 
         //! The unified geometry
         osg::Geometry* getGeometry() const { return _geom.get(); }
@@ -311,7 +314,8 @@ namespace osgEarth
         osg::Vec4Array* _colors;
         osg::Vec3Array* _normals;
         osg::Vec2Array* _texcoords;
-        osg::ShortArray* _arenaIndices;
+        osg::ShortArray* _albedoArenaIndices;
+        osg::ShortArray* _normalArenaIndices;
         std::vector<unsigned> _vertexOffsets;
         std::vector<unsigned> _elementOffsets;
         std::vector<unsigned> _elementCounts;
@@ -320,8 +324,10 @@ namespace osgEarth
         using ArenaIndexLUT = std::unordered_map<osg::Texture*, int>;
         ArenaIndexLUT _arenaIndexLUT;
         unsigned _numElements;
-        std::stack<int> _arenaIndexStack;
+        std::stack<int> _albedoArenaIndexStack;
+        std::stack<int> _normalArenaIndexStack;
         std::stack<osg::Matrix> _matrixStack;
+        int _normalMapTextureImageUnit;
     };
 }
 

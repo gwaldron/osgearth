@@ -83,7 +83,7 @@ SDFGenerator::encodeSDF(
             feature->eval(mindist, &fctx),
             feature->eval(maxdist, &fctx));
 
-        distLUT[feature.get()] = limits;
+        distLUT.emplace(feature.get(), limits);
 
         searchRadius = std::max(limits.second, searchRadius);
     }

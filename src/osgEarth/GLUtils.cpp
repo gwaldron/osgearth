@@ -188,6 +188,15 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
     }
 }
 
+GLsizei
+GLUtils::getSSBOAlignment(osg::State& state)
+{
+    static GLsizei _ssboAlignment = -1;
+    if (_ssboAlignment < 0)
+        glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &_ssboAlignment);
+    return _ssboAlignment;
+}
+
 void
 CustomRealizeOperation::setSyncToVBlank(bool value)
 {

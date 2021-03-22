@@ -36,6 +36,7 @@ set(TARGET_IN
 set(TARGET_SRC
     Biome.cpp
     BiomeLayer.cpp
+    BiomeManager.cpp
     GrassLayer.cpp
     GroundCoverFeatureGenerator.cpp
     #GroundCoverFeatureSource.cpp
@@ -49,6 +50,7 @@ set(TARGET_SRC
 set(LIB_PUBLIC_HEADERS
     Biome
     BiomeLayer
+    BiomeManager
 	Export
     GrassLayer
     GroundCoverFeatureGenerator

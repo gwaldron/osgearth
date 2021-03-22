@@ -54,9 +54,8 @@ namespace osgEarth { namespace Procedural
             VirtualProgram* vp, 
             const osgDB::Options* options) const;
 
-        virtual osg::Geometry* createParametricGeometry(
-            int tex_handle_0,
-            int tex_handle_1) const override;
+        virtual osg::Node* createParametricGeometry(
+            std::vector<osg::Texture*>& textures) const override;
     };
 
 } } // namespace osgEarth::Procedural

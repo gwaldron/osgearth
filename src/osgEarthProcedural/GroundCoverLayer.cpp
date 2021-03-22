@@ -719,39 +719,45 @@ namespace
     }
 }
 
-osg::Geometry*
+osg::Node*
 GroundCoverLayer::createParametricGeometry(
-    int tex_index_0,
-    int tex_index_1) const
+    std::vector<osg::Texture*>& textures) const
 {
-    // Billboard geometry
-    constexpr unsigned vertsPerInstance = 8;
-    constexpr unsigned indiciesPerInstance = 12;
+    osg::Group* group = new osg::Group();
+    osg::Geometry* geom[2];
 
-    osg::Geometry* out_geom = new osg::Geometry();
-    out_geom->setUseVertexBufferObjects(true);
-    out_geom->setUseDisplayList(false);
+    // one part if we only have side textures;
+    // two parts if we also have top textures
+    int parts = textures.size() > 2 ? 2 : 1;
 
-    static const GLushort indices[indiciesPerInstance] = { 
-        0,1,2, 2,1,3,
-        4,5,6, 6,5,7
-    }; 
-    out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, indiciesPerInstance, &indices[0]));
-
-    out_geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, vertsPerInstance));
-
-    osg::ShortArray* handles = new osg::ShortArray(vertsPerInstance);
-    handles->setBinding(osg::Array::BIND_PER_VERTEX);
-    handles->setPreserveDataType(true);
-    int half = vertsPerInstance / 2;
-    for (int i = 0; i < half; ++i)
+    for (int i = 0; i < parts; ++i)
     {
-        (*handles)[i] = tex_index_0;
-        (*handles)[i + half] = tex_index_1;
-    }
-    out_geom->setVertexAttribArray(6, handles);
+        geom[i] = new osg::Geometry();
+        geom[i]->setUseVertexBufferObjects(true);
+        geom[i]->setUseDisplayList(false);
 
-    return out_geom;
+        static const GLushort indices[6] = { 0,1,2, 2,1,3 };
+        geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 6, &indices[0]));
+        geom[i]->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4));
+
+        osg::StateSet* ss = geom[i]->getOrCreateStateSet();
+        if (i == 0)
+        {
+            if (textures.size() > 0)
+                ss->setTextureAttribute(0, textures[0], 1); // side albedo
+            if (textures.size() > 1)
+                ss->setTextureAttribute(1, textures[1], 1); // side normal
+        }
+        else
+        {
+            if (textures.size() > 2)
+                ss->setTextureAttribute(0, textures[2], 1); // top albedo
+            if (textures.size() > 3)
+                ss->setTextureAttribute(1, textures[3], 1); // top normal
+        }
+        group->addChild(geom[i]);
+    }
+    return group;
 }
 
 //........................................................................
@@ -910,14 +916,19 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
         return;
     }
 
-    // Prepare model assets and add their textures to the atlas:
-    _geomCloud = createGeometryCloud();
+    OE_SOFT_ASSERT_AND_RETURN(layer->getBiomeLayer(), __func__, );
 
-    // now that we have HANDLES, we can make the LUT shader.
-    // TODO: this probably needs to be Per-Context...
-    osg::ref_ptr<osg::Shader> lutShader = createLUTShader();
-    lutShader->setName("GroundCover CS LUT");
-    _computeProgram->addShader(lutShader.get());
+    BiomeManager& biomeMan = layer->getBiomeLayer()->getBiomeManager();
+
+    // construct out cloud for instancing
+    _geomCloud = biomeMan.createGeometryCloud(
+        layer->options().category().get(),
+        _texArena.get());
+    
+    // add LUTs to the stateset to enable geometry cloud rendering
+    _computeSS->setAttribute(
+        biomeMan.createGPULookupTables(layer->options().category().get()),
+        osg::StateAttribute::ON);
 }
 
 GroundCoverLayer::Renderer::~Renderer()
@@ -1320,14 +1331,6 @@ GroundCoverLayer::loadRenderingShaders(VirtualProgram* vp, const osgDB::Options*
     shaders.load(vp, shaders.GroundCover_Render);
 }
 
-namespace {
-    struct ModelCacheEntry {
-        osg::ref_ptr<osg::Node> _node;
-        int _modelID;
-        osg::BoundingBox _modelAABB;
-    };
-}
-
 bool
 GroundCoverLayer::Renderer::loadAssets()
 {
@@ -1337,14 +1340,6 @@ GroundCoverLayer::Renderer::loadAssets()
     if (!layer.valid())
         return false;
 
-    // First, add a default normal map to the arena. Any billboard that doesn't
-    // have its own normal map will use this one.
-    osg::ref_ptr<osg::Texture> tempNMap = osgEarth::createEmptyNormalMapTexture();
-    int defaultNormalMapTextureIndex = _texArena->size();
-    osg::ref_ptr<Texture> defaultNormalMap = new Texture();
-    defaultNormalMap->_image = tempNMap->getImage(0);
-    // no URI so cannot be unloaded.
-
     // all the zones (these will later be called "biomes")
     const auto catalog = layer->getBiomeLayer()->getBiomeCatalog();
     if (catalog == nullptr)
@@ -1353,457 +1348,25 @@ GroundCoverLayer::Renderer::loadAssets()
         return false;
     }
 
+    // TEMPORARY. PRE-LOAD EVERYTHING FOR TESTING.
+    
+    BiomeManager& biomeMan = layer->getBiomeLayer()->getBiomeManager();
+
+    // Tell the BiomeManager that we're using everything in the catalog.
+    // This way we can pre-load it all for testing, and it won't page out.
     std::vector<const Biome*> biomes;
     catalog->getBiomes(biomes);
-
-    typedef std::map<URI, osg::ref_ptr<AssetInstance> > TextureShareCache;
-    TextureShareCache texcache;
-    typedef std::map<URI, ModelCacheEntry> ModelCache;
-    ModelCache modelcache;
-
-    int biomeIndex = -1;
-    int assetIDGen = 0;
-    int cloudSequence = 0;
-
-    std::unordered_map<const ModelAsset*, osg::ref_ptr<AssetInstance>> instanceMap;
-
-    // Each biome is an art collection
     for (auto biome : biomes)
     {
-        // each model group represents the art for one groundcover layer,
-        // so find the one corresponding to this layer.
-        const ModelCategory* category = biome->getModelCategory(layer->options().category().get());
-        if (category == nullptr)
-        {
-            OE_WARN << LC 
-                << "Category \"" << layer->options().category().get() 
-                << "\" not found in biome \"" << biome->name().get() << "\"" << std::endl;
-            continue;
-        }
-
-        // The category points to multiple assets, which we will analyze and load.
-        for (const auto& member : category->members())
-        {
-            const ModelAsset* asset = member.asset;
-
-            if (asset == nullptr)
-                continue;
-
-            // Look up this instance:
-            osg::ref_ptr<AssetInstance>& data = instanceMap[asset];
-
-            bool newInstance = (data.valid() == false);
-
-            // First reference to this instance? Populate it:
-            if (newInstance)
-            {
-                data = new AssetInstance();
-                data->_asset = asset;
-                data->_modelID = -1;
-                data->_billboardID = -1;
-                data->_assetID = -1;
-                data->_sideBillboardTexIndex = -1;
-                data->_topBillboardTexIndex = -1;
-                data->_modelTexIndex = -1;
-                data->_sideBillboardNormalMapIndex = -1;
-                data->_topBillboardNormalMapIndex = -1;
-
-                if (asset->modelURI().isSet())
-                {
-                    const URI& uri = asset->modelURI().get();
-                    ModelCache::iterator ic = modelcache.find(uri);
-                    if (ic != modelcache.end())
-                    {
-                        data->_model = ic->second._node.get();
-                        data->_modelID = ic->second._modelID;
-                        data->_modelAABB = ic->second._modelAABB;
-                    }
-                    else
-                    {
-                        data->_model = uri.getNode(layer->getReadOptions());
-                        if (data->_model.valid())
-                        {
-                            OE_INFO << LC << "Loaded model: " << uri.base() << std::endl;
-                            data->_modelID = cloudSequence++;
-                            modelcache[uri]._node = data->_model.get();
-                            modelcache[uri]._modelID = data->_modelID;
-
-                            osg::ComputeBoundsVisitor cbv;
-                            data->_model->accept(cbv);
-                            data->_modelAABB = cbv.getBoundingBox();
-                            modelcache[uri]._modelAABB = data->_modelAABB;
-                        }
-                        else
-                        {
-                            OE_WARN << LC << "Failed to load asset " << uri.full() << std::endl;
-                        }
-                    }
-                }
-
-                if (asset->sideBillboardURI().isSet())
-                {
-                    const URI& uri = asset->sideBillboardURI().get();
-
-                    auto ic = texcache.find(uri);
-                    if (ic != texcache.end())
-                    {
-                        data->_sideBillboardTex = ic->second->_sideBillboardTex.get();
-                        data->_sideBillboardTexIndex = ic->second->_sideBillboardTexIndex;
-                        data->_sideBillboardNormalMapIndex = ic->second->_sideBillboardNormalMapIndex;
-                    }
-                    else
-                    {
-                        data->_sideBillboardTex = new Texture();
-                        data->_sideBillboardTex->_uri = uri;
-                        data->_sideBillboardTex->_image = uri.getImage(layer->getReadOptions());
-
-                        if (data->_sideBillboardTex->_image.valid())
-                        {
-                            OE_INFO << LC << "Loaded BB: " << uri.base() << std::endl;
-                            texcache[uri] = data.get();
-                            data->_sideBillboardTexIndex = _texArena->size();
-                            _texArena->add(data->_sideBillboardTex.get());
-
-                            // normal map is the same file name but with _NML inserted before the extension
-                            URI normalMapURI(
-                                osgDB::getNameLessExtension(uri.full()) +
-                                "_NML." +
-                                osgDB::getFileExtension(uri.full()));
-
-                            // silenty fail if no normal map found.
-                            osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(layer->getReadOptions());
-                            if (normalMap.valid())
-                            {
-                                data->_sideBillboardNormalMap = new Texture();
-                                data->_sideBillboardNormalMap->_uri = normalMapURI;
-                                data->_sideBillboardNormalMap->_image = convertNormalMapFromRGBToRG(normalMap.get());
-
-                                data->_sideBillboardNormalMapIndex = _texArena->size();
-                                _texArena->add(data->_sideBillboardNormalMap.get());
-                            }
-                            else
-                            {
-                                data->_sideBillboardNormalMapIndex = defaultNormalMapTextureIndex;
-                                // wasteful but simple
-                                _texArena->add(defaultNormalMap.get());
-                            }
-                        }
-                        else
-                        {
-                            OE_WARN << LC << "Failed to load asset " << uri.full() << std::endl;
-                        }
-                    }
-
-
-                    if (asset->topBillboardURI().isSet())
-                    {
-                        const URI& uri = asset->topBillboardURI().get();
-
-                        auto ic = texcache.find(uri);
-                        if (ic != texcache.end())
-                        {
-                            data->_topBillboardTex = ic->second->_topBillboardTex;
-                            data->_topBillboardTexIndex = ic->second->_topBillboardTexIndex;
-                            data->_topBillboardNormalMapIndex = ic->second->_topBillboardNormalMapIndex;
-                        }
-                        else
-                        {
-                            data->_topBillboardTex = new Texture();
-                            data->_topBillboardTex->_uri = uri;
-                            data->_topBillboardTex->_image = uri.getImage(layer->getReadOptions());
-
-                            //TODO: check for errors
-                            if (data->_topBillboardTex->_image.valid())
-                            {
-                                OE_INFO << LC << "Loaded BB: " << uri.base() << std::endl;
-                                texcache[uri] = data.get();
-                                data->_topBillboardTexIndex = _texArena->size();
-                                _texArena->add(data->_topBillboardTex.get());
-
-                                // normal map is the same file name but with _NML inserted before the extension
-                                URI normalMapURI(
-                                    osgDB::getNameLessExtension(uri.full()) +
-                                    "_NML." +
-                                    osgDB::getFileExtension(uri.full()));
-
-                                // silenty fail if no normal map found.
-                                osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(layer->getReadOptions());
-                                if (normalMap.valid())
-                                {
-                                    data->_topBillboardNormalMap = new Texture();
-                                    data->_topBillboardNormalMap->_uri = normalMapURI;
-                                    data->_topBillboardNormalMap->_image = convertNormalMapFromRGBToRG(normalMap.get());
-
-                                    data->_topBillboardNormalMapIndex = _texArena->size();
-                                    _texArena->add(data->_topBillboardNormalMap.get());
-                                }
-                                else
-                                {
-                                    data->_topBillboardNormalMapIndex = defaultNormalMapTextureIndex;
-                                    // wasteful but simple
-                                    _texArena->add(defaultNormalMap.get());
-                                }
-                            }
-                            else
-                            {
-                                OE_WARN << LC << "Failed to load asset " << uri.full() << std::endl;
-                            }
-                        }
-                    }
-
-                    data->_billboard = layer->createParametricGeometry(
-                        data->_sideBillboardTexIndex,
-                        data->_topBillboardTexIndex);
-
-                    data->_billboardID = cloudSequence++;
-                }
-
-                if (data->_sideBillboardTex.valid() || data->_model.valid())
-                {
-                    data->_assetID = assetIDGen++;
-                    _liveAssets.push_back(data.get());
-                }
-            }
-
-            // Record a reference to it:
-            auto& usages = _assetUsagesPerBiome[biome->id().get()];
-
-            AssetUsage usage;
-            usage._assetData = data.get();
-            usage._weight = member.weight;
-            usages.push_back(std::move(usage));
-        }
+        biomeMan.ref(biome);
     }
 
-    if (_liveAssets.empty())
-    {
-        OE_WARN << LC << "Failed to load any assets!" << std::endl;
-        // TODO: something?
-        return false;
-    }
-    else
-    {
-        OE_INFO << LC << "Loaded " << _liveAssets.size() << " assets." << std::endl;
-        return true;
-    }
-}
+    // Tell the biome manager to make everything resident.    
+    biomeMan.loadCategory(
+        layer->options().category().get(),
+        [&](std::vector<osg::Texture*>& v) { 
+            return layer->createParametricGeometry(v); },
+        layer->getReadOptions());
 
-osg::Shader*
-GroundCoverLayer::Renderer::createLUTShader() const
-{
-    osg::ref_ptr<GroundCoverLayer> layer;
-    if (!_layer.lock(layer))
-        return nullptr;
-
-    if (layer->getBiomeLayer() == nullptr ||
-        layer->getBiomeLayer()->getBiomeCatalog() == nullptr)
-    {
-        return nullptr;
-    }
-
-    std::stringstream biomeBuf;
-    biomeBuf << std::fixed << std::setprecision(2);
-
-    std::stringstream assetBuf;
-    assetBuf << std::fixed << std::setprecision(1);
-
-    int numBiomesAdded = 0;
-    float maxWidth = -1.0f, maxHeight = -1.0f;
-    AssetInstance* in = nullptr;
-
-    for (int a = 0; a < _liveAssets.size(); ++a)
-    {
-        in = _liveAssets[a].get();
-        in->_index = a;
-
-        // record an asset:
-        float width = in->_asset->width().get();
-        if (in->_asset->width().isSet() == false &&
-            in->_modelAABB.valid())
-        {
-            width = osg::maximum(
-                in->_modelAABB.xMax() - in->_modelAABB.xMin(),
-                in->_modelAABB.yMax() - in->_modelAABB.yMin());
-        }
-
-        float height = in->_asset->height().get();
-        if (in->_asset->height().isSet() == false &&
-            in->_modelAABB.valid())
-        {
-            height = in->_modelAABB.zMax() - in->_modelAABB.zMin();
-        }
-
-        float sizeVariation = in->_asset->sizeVariation().get();
-
-        maxWidth = osg::maximum(maxWidth, width + (width*sizeVariation));
-        maxHeight = osg::maximum(maxHeight, height + (height*sizeVariation));
-
-        if (a > 0)
-            assetBuf << ", \n";
-
-        assetBuf << "  Asset("
-            << in->_assetID
-            << ", " << in->_modelID
-            << ", " << in->_billboardID
-            << ", " << width
-            << ", " << height
-            << ", " << sizeVariation
-            << ")";
-    }
-
-    // count total references (weighted) and map biome id's
-    std::map<int, int> biomeIdToBiomeIndex;
-    float weightTotal = 0;
-    float smallestWeight = FLT_MAX;
-    int index = 0;
-    for (const auto& biome : _assetUsagesPerBiome)
-    {
-        for (const auto& usage : biome.second)
-        {
-            weightTotal += usage._weight;
-            smallestWeight = std::min(smallestWeight, usage._weight);
-        }
-
-        biomeIdToBiomeIndex[biome.first] = index++;
-    }
-    float weightMultiplier = 1.0f / smallestWeight;
-    weightTotal = weightMultiplier * weightTotal;
-
-    std::ostringstream asset_lut_buf;
-    asset_lut_buf <<
-        "int asset_lut[ " << (int)weightTotal << "] = int[](";
-
-    biomeBuf <<
-        "struct Biome {\n"
-        "  int offset;\n"
-        "  int count;\n"
-        "}; \n"
-        "const Biome biomes[" << _assetUsagesPerBiome.size() << "] = Biome[]( \n";
-    
-    int lut_ptr = 0;
-    for (const auto& biome : _assetUsagesPerBiome)
-    {
-        const auto& usages = biome.second;
-        int offset = lut_ptr;
-        for (const auto& usage : usages)
-        {
-            for (int w = 0; w < (int)(usage._weight*weightMultiplier); ++w)
-            {
-                if (lut_ptr > 0) asset_lut_buf << ',';
-                asset_lut_buf << usage._assetData->_index;
-                ++lut_ptr;
-            }
-        }
-        if (offset > 0) biomeBuf << ",\n";
-        biomeBuf << "  Biome(" << offset << "," << lut_ptr - offset << ")";
-    }
-    asset_lut_buf << ");\n";
-    biomeBuf << "\n);\n";
-
-    std::stringstream assetWrapperBuf;
-    assetWrapperBuf <<
-        "struct Asset { \n"
-        "  int assetId; \n"
-        "  int modelCommand; \n"
-        "  int billboardCommand; \n"
-        "  float width; \n"
-        "  float height; \n"
-        "  float sizeVariation; \n"
-        "}; \n"
-        "const Asset assets[" << _liveAssets.size() << "] = Asset[]( \n"
-        << assetBuf.str()
-        << "\n); \n";
-
-    // next, create the master LUT.
-    std::stringstream lutbuf;
-
-    lutbuf << assetWrapperBuf.str() << "\n";
-    
-    lutbuf << asset_lut_buf.str() << "\n";
-
-    lutbuf << biomeBuf.str() << "\n";
-
-    lutbuf <<
-        "Biome getBiome(in int id) {\n";
-
-    UnorderedSet<std::string> exprs;
-    std::stringstream exprBuf;
-
-    for(const auto& bb : biomeIdToBiomeIndex)
-    {
-        exprBuf.str("");
-        exprBuf 
-            << "  if (id == " << bb.first
-            << ") { return biomes[" << bb.second << "]; }\n";
-
-        std::string exprString = exprBuf.str();
-        if (exprs.find(exprString) == exprs.end())
-        {
-            exprs.insert(exprString);
-            lutbuf << exprString;
-        }
-    }
-
-    lutbuf
-        << "  return biomes[0];\n"
-        << "}\n";
-
-    lutbuf <<
-        "Asset getAsset(in int index) { "
-        "  return assets[asset_lut[index]];\n"
-        "}\n";
-
-    osg::Shader* shader = new osg::Shader(osg::Shader::COMPUTE);
-    shader->setName( "GroundCover LUTs" );
-    shader->setShaderSource(
-        Stringify() 
-        << "#version " GLSL_VERSION_STR "\n"
-        << "#extension GL_ARB_gpu_shader_int64 : enable\n"
-        << lutbuf.str() << "\n");
-
-    return shader;
-}
-
-GeometryCloud*
-GroundCoverLayer::Renderer::createGeometryCloud() const
-{
-    osg::ref_ptr<GroundCoverLayer> layer;
-    if (!_layer.lock(layer))
-        return nullptr;
-
-    GeometryCloud* geomCloud = new GeometryCloud(_texArena.get());
-
-    // First entry is the parametric group. Any instance without a 3D model,
-    // or that is out of model range, gets rendered as a parametric billboard.
-    //osg::Geometry* pg = layer->createParametricGeometry();
-    //geomCloud->add( pg, pg->getVertexArray()->getNumElements() );
-
-    // Add each 3D model to the geometry cloud and update the texture
-    // atlas along the way.
-    std::unordered_map<int, Texture*> visited;
-
-    for (const auto& asset : _liveAssets)
-    {
-        if (asset->_modelID >= 0)
-        {
-            auto i = visited.find(asset->_modelID);
-            if (i == visited.end())
-            {
-                geomCloud->add(asset->_model.get());
-            }
-        }
-
-        if (asset->_billboardID >= 0)
-        {
-            auto i = visited.find(asset->_billboardID);
-            if (i == visited.end())
-            {
-                geomCloud->add(
-                    asset->_billboard.get(),
-                    asset->_billboard->asGeometry()->getVertexArray()->getNumElements());
-            }
-        }
-    }
-
-    return geomCloud;
+    return true;
 }

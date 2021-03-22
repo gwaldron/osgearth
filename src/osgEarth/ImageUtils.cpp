@@ -700,6 +700,10 @@ ImageUtils::compressImageInPlace(
 {
     OE_PROFILING_ZONE;
 
+    // prevent 2 threads from compressing the same object at the same time
+    static Threading::Gate<void*> gate;
+    Threading::ScopedGate<void*> lock(gate, input);
+
     if (!input)
         return;
 

@@ -81,6 +81,7 @@ uniform sampler2D oe_gc_noiseTex;
 
 // Vertex attributes in
 layout(location = 6) in int oe_gc_texArenaIndex; // texture handle LUT index
+layout(location = 7) in int oe_gc_nmlArenaIndex; // normal map LUT index
 
 // Stage globals
 vec3 oe_UpVectorView;
@@ -124,8 +125,6 @@ flat out uint64_t oe_gc_nmlHandle;
 void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
 {
     vp_Color = vec4(1,1,1,0); // start alpha at ZERO for billboard transitions
-    oe_gc_texHandle = 0UL; // 0UL = untextured
-    oe_gc_nmlHandle = 0UL; // oUL = no normal map
 
     oe_layer_tilec = vec4(instance[i].tilec, 0, 1);
     vertex_view = oe_vertex.view;
@@ -176,15 +175,8 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
         which==2? vertex_view.xyz - halfWidthTangentVector + heightVector :
         vertex_view.xyz + halfWidthTangentVector + heightVector;
 
-    //vp_Normal = normalize(cross(tangentVector, heightVector));
-
-    if (oe_gc_texArenaIndex >= 0)
-    //if (instance[i].sideSamplerIndex >= 0)
-    {
-        oe_gc_texHandle = texArena[oe_gc_texArenaIndex];
-        oe_gc_nmlHandle = -1;
-    //    oe_gc_nmlHandle = texArena[instance[i].sideSamplerIndex+1];
-    }
+    oe_gc_texHandle = oe_gc_texArenaIndex >= 0 ? texArena[oe_gc_texArenaIndex] : 0UL;
+    oe_gc_nmlHandle = 0UL; // no normal map for shadows
 
 #else // normal render camera - draw as a billboard:
 
@@ -265,11 +257,8 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
         vp_Color.a = topDownAmount;
     }
 
-    if (oe_gc_texArenaIndex >= 0)
-    {
-        oe_gc_texHandle = texArena[oe_gc_texArenaIndex];
-        oe_gc_nmlHandle = texArena[oe_gc_texArenaIndex + 1];
-    }
+    oe_gc_texHandle = oe_gc_texArenaIndex >= 0 ? texArena[oe_gc_texArenaIndex] : 0UL;
+    oe_gc_nmlHandle = oe_gc_nmlArenaIndex >= 0 ? texArena[oe_gc_nmlArenaIndex] : 0UL;
 
 #endif // !OE_IS_SHADOW_CAMERA
 
@@ -337,13 +326,11 @@ void oe_GroundCover_Model(inout vec4 vertex_view, in uint i)
     oe_gc_texCoord = gl_MultiTexCoord7.xyz;
 
     // assign texture sampler for this model. The LUT index is in
-    // a vertex attribute. Negative means no texture.
-    if (oe_gc_texArenaIndex >= 0)
-        oe_gc_texHandle = texArena[oe_gc_texArenaIndex];
-    else
-        oe_gc_texHandle = 0UL;
+    // a vertex attribute. 0UL == no texture.
+    oe_gc_texHandle = oe_gc_texArenaIndex >= 0 ? texArena[oe_gc_texArenaIndex] : 0UL;
 
-    oe_gc_nmlHandle = 0UL; // no normal map
+    // They should be -1, but they aren't -- check into that someday
+    oe_gc_nmlHandle = 0UL; // oe_gc_nmlArenaIndex >= 0 ? texArena[oe_gc_nmlArenaIndex] : 0UL;
 
     // apply fade from bb->model
     if (instance[i].pixelSizeRatio < 1.0)
@@ -395,7 +382,6 @@ uniform int oe_gc_isMultisampled;
 in vec3 oe_gc_texCoord;
 vec3 vp_Normal;
 flat in uint64_t oe_gc_texHandle;
-
 flat in uint64_t oe_gc_nmlHandle;
 in mat3 oe_gc_TBN;
 
@@ -413,6 +399,7 @@ void oe_GroundCover_FS(inout vec4 color)
         // "cast" the bindless handle to a sampler array and sample it
         color *= texture(sampler2DArray(oe_gc_texHandle), oe_gc_texCoord);
 
+#ifndef OE_IS_SHADOW_CAMERA
         if (oe_gc_nmlHandle > 0UL)
         {
             vec4 n = texture(sampler2DArray(oe_gc_nmlHandle), oe_gc_texCoord);
@@ -423,8 +410,9 @@ void oe_GroundCover_FS(inout vec4 color)
             //n.x += (n.x > 0)? -t : t;
             //n.y += (n.y > 0)? -t : t;
             vp_Normal = normalize(oe_gc_TBN * n.xyz);
-            //color.rgb = (vp_Normal + 1.0)*0.5;
+            //color.rgb = (vp_Normal + 1.0)*0.5; // debug
         }
+#endif
     }
 
 #ifdef OE_IS_SHADOW_CAMERA

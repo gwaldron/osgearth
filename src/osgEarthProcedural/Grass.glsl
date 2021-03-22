@@ -143,8 +143,6 @@ const float browning = 0.25;
 
 void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
 {
-    uint t = instance[i].tileNum;
-
     vp_Color = vec4(1);
 
     oe_layer_tilec = vec4(instance[i].tilec, 0, 1);

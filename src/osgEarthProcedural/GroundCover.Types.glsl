@@ -46,6 +46,22 @@ struct RenderLeaf
     uint instance;
     uint drawMask; //1=bb, 2=model
 };
+struct Biome
+{
+    int offset;
+    int count;
+    float _padding[2];
+};
+struct Asset
+{
+    int modelCommand;
+    int billboardCommand;
+    float width;
+    float height;
+
+    float sizeVariation;
+    float _padding[3];
+};
 
 layout(binding=0, std430) buffer DrawCommandsBuffer
 {
@@ -72,6 +88,14 @@ layout(binding=4, std430) buffer RenderLUT
 layout(binding=5, std430) buffer TextureLUT
 {
     uint64_t texArena[];
+};
+layout(binding=6, std430) buffer BiomeLUT
+{
+    Biome biomes[];
+};
+layout(binding=7, std430) buffer AssetLUT
+{
+    Asset assets[];
 };
 
 // transition buffer (in pixel size ratio space) b/w billboards and models

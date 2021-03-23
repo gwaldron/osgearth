@@ -113,6 +113,8 @@ Texture::compileGLObjects(osg::State& state) const
     glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
+    glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 4.0f);
+
     // Foce creation of the bindless handle - once you do this, you can
     // no longer change the texture parameters.
     gc._gltexture->handle();

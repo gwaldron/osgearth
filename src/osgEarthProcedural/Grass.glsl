@@ -28,10 +28,10 @@ void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
     uint i = leaf.instance;
     uint tileNum = instance[i].tileNum;
 
-    oe_transform.modelview = tileData[tileNum].modelViewMatrix;
+    oe_transform.modelview = tile[tileNum].modelViewMatrix;
 
     // Shortcut works as long as the matrix is isotropic w.r.t. scale
-    oe_transform.normal = mat3(tileData[tileNum].modelViewMatrix);
+    oe_transform.normal = mat3(tile[tileNum].modelViewMatrix);
 
     float s = instance[i].sinrot, c = instance[i].cosrot;
     mat2 rot = mat2(c, -s, s, c);

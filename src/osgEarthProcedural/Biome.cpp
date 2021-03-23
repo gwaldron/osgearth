@@ -308,12 +308,13 @@ BiomeCatalog::getBiome(int id) const
     return i != _biomes.end() ? &i->second : nullptr;
 }
 
-void
-BiomeCatalog::getBiomes(std::vector<const Biome*>& output) const
+std::vector<const Biome*>
+BiomeCatalog::getBiomes() const
 {
-    output.clear();
+    std::vector<const Biome*> result;
     for (auto& i : _biomes)
-        output.push_back(&i.second);
+        result.push_back(&i.second);
+    return std::move(result);
 }
 
 const AssetCatalog&

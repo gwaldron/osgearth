@@ -14,7 +14,7 @@ struct DispatchIndirectCommand
     uint num_groups_y;
     uint num_groups_z;
 };
-struct InstanceData
+struct Instance
 {
     vec4 vertex;       // 16
 
@@ -35,7 +35,7 @@ struct InstanceData
     uint drawMask; // 4
     float _padding[3]; // 12
 };
-struct TileData
+struct Tile
 {
     mat4 modelViewMatrix; // 64 //4 x vec4 = 64 bytes
     int inUse;            // 4
@@ -69,17 +69,17 @@ layout(binding=0, std430) buffer DrawCommandsBuffer
 };
 layout(binding=1, std430) buffer InstanceBuffer
 {
-    InstanceData instance[];
+    Instance instance[];
 };
 layout(binding=2, std430) buffer CullLUT
 {
     DispatchIndirectCommand di; // 12
-    float _padding;           // 4
+    float _padding; // 4
     uint cullSet[];
 };
 layout(binding=3, std430) buffer TileDataBuffer
 {
-    TileData tileData[];
+    Tile tile[];
 };
 layout(binding=4, std430) buffer RenderLUT
 {

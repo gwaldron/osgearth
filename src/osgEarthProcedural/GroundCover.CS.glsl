@@ -198,7 +198,7 @@ void merge()
 
     // only if instance is set and tile is active:
     int tileNum = instance[i].tileNum;
-    if (tileNum >= 0 && tileData[tileNum].inUse == 1)
+    if (tileNum >= 0 && tile[tileNum].inUse == 1)
     {
         uint k = atomicAdd(di.num_groups_x, 1);
         cullSet[k] = i;
@@ -225,7 +225,7 @@ void cull()
     int tileNum = instance[i].tileNum;
 
     // Bring into view space:
-    vec4 vertex_view = tileData[tileNum].modelViewMatrix * instance[i].vertex;
+    vec4 vertex_view = tile[tileNum].modelViewMatrix * instance[i].vertex;
 
     float range = -vertex_view.z;
     float maxRange = oe_VisibleLayer_ranges[1] / oe_Camera.z;

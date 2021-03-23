@@ -415,10 +415,11 @@ BiomeManager::createGeometryCloud(
 {
     GeometryCloud* cloud = new GeometryCloud(arena);
 
-    // Add each 3D model to the geometry cloud and update the texture
-    // atlas along the way.
+    // Add each 3D model to the geometry cloud.
     std::unordered_set<void*> visited;
 
+    // For each resident biome, locate all asset instances that belong
+    // to the specified category. Add each to the geometry cloud.
     for (const auto& b_iter : _residentBiomeData)
     {
         const ModelCategory* cat = b_iter.first->getModelCategory(category);
@@ -450,6 +451,11 @@ BiomeManager::createGeometryCloud(
         }
     }
 
+    // generate the GPU lookup data for our cloud.
+    cloud->getGeometry()->getOrCreateStateSet()->setAttribute(
+        createGPULookupTables(category),
+        osg::StateAttribute::ON);
+
     return cloud;
 }
 
@@ -461,6 +467,8 @@ BiomeManager::createGPULookupTables(
     auto luts = new BiomeManager::BiomeGPUData();
 
     // SSBO bindings corresponding to the "layout" directives in the shader
+    // Consider making these configuration if necessary. These need to match
+    // the buffer bindings in GroundCover.Types.glsl.
     luts->biomeLUT().setBindingIndex(6);
     luts->assetLUT().setBindingIndex(7);
 

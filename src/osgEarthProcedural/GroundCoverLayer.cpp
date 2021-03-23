@@ -926,9 +926,9 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
         _texArena.get());
     
     // add LUTs to the stateset to enable geometry cloud rendering
-    _computeSS->setAttribute(
-        biomeMan.createGPULookupTables(layer->options().category().get()),
-        osg::StateAttribute::ON);
+    //_computeSS->setAttribute(
+    //    biomeMan.createGPULookupTables(layer->options().category().get()),
+    //    osg::StateAttribute::ON);
 }
 
 GroundCoverLayer::Renderer::~Renderer()
@@ -1354,8 +1354,7 @@ GroundCoverLayer::Renderer::loadAssets()
 
     // Tell the BiomeManager that we're using everything in the catalog.
     // This way we can pre-load it all for testing, and it won't page out.
-    std::vector<const Biome*> biomes;
-    catalog->getBiomes(biomes);
+    std::vector<const Biome*> biomes = catalog->getBiomes();
     for (auto biome : biomes)
     {
         biomeMan.ref(biome);

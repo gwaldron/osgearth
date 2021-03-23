@@ -204,7 +204,7 @@ namespace osgEarth
             const Biome* getBiome(int id) const;
 
             //! Vector of all biomes in the catalog
-            void getBiomes(std::vector<const Biome*>& biomes) const;
+            std::vector<const Biome*> getBiomes() const;
 
             //! Asset catalog
             const AssetCatalog& getAssets() const;

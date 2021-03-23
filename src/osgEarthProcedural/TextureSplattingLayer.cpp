@@ -301,7 +301,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
     // Since we're actually rendering, load the materials for splatting
     if (getBiomeLayer())
     {
-        std::shared_ptr<const BiomeCatalog> biome_cat = getBiomeLayer()->getBiomeCatalog();
+        auto biome_cat = getBiomeLayer()->getBiomeCatalog();
 
         if (biome_cat && !biome_cat->getAssets().empty())
         {

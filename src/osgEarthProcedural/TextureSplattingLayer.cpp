@@ -71,6 +71,8 @@ namespace
             std::string ext = osgDB::getLowerCaseFileExtension(uri);
             if (ext == "oe_splat_rgbh")
             {
+                auto t0 = std::chrono::steady_clock::now();
+
                 URI colorURI(
                     osgDB::getNameLessExtension(uri) + "_Color.jpg");
 
@@ -112,9 +114,13 @@ namespace
                         writeRGBH(temp, iter.s(), iter.t());
                     });
 
-                OE_INFO << heightURI.base() << ", MinH=" << minh << ", MaxH=" << maxh << std::endl;
+                auto t1 = std::chrono::steady_clock::now();
 
-                ImageUtils::compressImageInPlace(rgbh.get());
+                OE_INFO << heightURI.base() << ", MinH=" << minh << ", MaxH=" << maxh
+                    << ", t=" << std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count() << "ms" 
+                    << std::endl;
+
+                //ImageUtils::compressImageInPlace(rgbh.get());
 
                 return rgbh;
             }
@@ -212,6 +218,8 @@ namespace
 
         for (auto& tex : cat.getTextures())
         {
+            auto t0 = std::chrono::steady_clock::now();
+
             Texture* rgbh = new Texture();
             rgbh->_uri = URI(tex.uri()->full() + ".oe_splat_rgbh");
             arena->add(rgbh);
@@ -219,6 +227,12 @@ namespace
             Texture* nnra = new Texture();
             nnra->_uri = URI(tex.uri()->full() + ".oe_splat_nnra");
             arena->add(nnra);
+
+            auto t1 = std::chrono::steady_clock::now();
+
+            OE_INFO << tex.uri()->base()
+                << ", t=" << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << "ms"
+                << std::endl;
 
             if (progress && progress->isCanceled())
                 return nullptr;

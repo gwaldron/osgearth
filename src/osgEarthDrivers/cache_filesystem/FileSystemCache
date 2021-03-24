@@ -63,7 +63,7 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             threads().setDefault(1u);
-            format().setDefault("png");
+            format().setDefault("osgb");
             conf.get("path", rootPath() );
             conf.get("threads", threads() );
             conf.get("image_format", format());

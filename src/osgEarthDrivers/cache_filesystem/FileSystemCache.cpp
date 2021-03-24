@@ -585,7 +585,7 @@ namespace
 
         // Wrap input objects in ref_ptrs so they will persist in our write functor lambda
         osg::ref_ptr<const osg::Object> object(raw_object);
-        osg::ref_ptr<const osgDB::Options> writeOptions(raw_writeOptions);
+        osg::ref_ptr<const osgDB::Options> writeOptions(dbo);
 
         auto write_op = [=](Cancelable*)
         {

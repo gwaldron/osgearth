@@ -287,56 +287,6 @@ struct App
     }
 };
 
-
-struct ClickToDecal : public osgGA::GUIEventHandler
-{
-    App _app;
-    Random rng;
-    ClickToDecal(App& app) : _app(app) { }
-
-    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
-    {
-        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'd')
-        {
-            osg::Vec3d world;
-            if (!_app._mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
-            {
-                OE_WARN << LC << "No intersection under mouse." << std::endl;
-                return false;
-            }
-
-            GeoPoint mapPoint;
-            mapPoint.fromWorld(_app._mapNode->getMapSRS(), world);
-
-            mapPoint.transformInPlace(SpatialReference::get("spherical-mercator"));
-
-            //TODO: re-enable the decals-per-click 
-            //for (unsigned i = 0; i < _app._decalsPerClick; ++i)
-            {
-                _app.addCrater(
-                    mapPoint,
-                    Distance(_app._size, Units::METERS));
-            }
-
-            return true;
-        }
-
-        else if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'u')
-        {
-            _app.undoLastAdd();
-            return true;
-        }
-
-        else if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'c')
-        {
-            _app.reset();
-            return true;
-        }
-
-        return false;
-    }
-};
-
 int
 main(int argc, char** argv)
 {
@@ -362,14 +312,44 @@ main(int argc, char** argv)
         arguments.read("--size", app._size);
 
         app._decalsPerClick = 1u;
-        //arguments.read("--count", app._decalsPerClick);
 
         app.init(MapNode::get(node));
-
         viewer.setSceneData(node);
-        viewer.addEventHandler(new ClickToDecal(app));
 
-        OE_WARN << LC << 
+        EventRouter* ui = new EventRouter();
+        viewer.addEventHandler(ui);
+
+        // Press 'D' to drop a crater under the mouse
+        ui->onKeyPress(ui->KEY_D, [&](osg::View* view, float x, float y)
+            {
+                osg::Vec3d world;
+                if (app._mapNode->getTerrain()->getWorldCoordsUnderMouse(view, x, y, world))
+                {
+                    OE_WARN << LC << "No intersection under mouse." << std::endl;
+                    return;
+                }
+
+                GeoPoint mapPoint;
+                mapPoint.fromWorld(app._mapNode->getMapSRS(), world);
+                mapPoint.transformInPlace(SpatialReference::get("spherical-mercator"));
+
+                //TODO: re-enable the decals-per-click 
+                //for (unsigned i = 0; i < _app._decalsPerClick; ++i)
+                {
+                    app.addCrater(
+                        mapPoint,
+                        Distance(app._size, Units::METERS));
+                }
+            }
+        );
+
+        // Press 'U' to undo the last crater
+        ui->onKeyPress(ui->KEY_U, [&]() { app.undoLastAdd(); });
+
+        // Press 'C' to clear all craters
+        ui->onKeyPress(ui->KEY_C, [&]() { app.reset(); });
+
+        OE_NOTICE << LC << 
             "\n\n-- Zoom in close ..."
             "\n-- Press 'd' to drop bombs"
             "\n-- Press 'u' to undo last drop"

@@ -609,11 +609,12 @@ FeatureModelGraph::open()
             _options.layout()->tileSizeFactor() = tileSizeFactor;
         }
 
-        // The max range that has been computed is for the first level of the dataset, which may be greater than 0.  Compute the max range at level 0 to properly fill in the lodmap from level 0 on.
-        maxRangeAtFirstLevel *= pow(2.0, featureProfile->getFirstLevel());
+        // The max range that has been computed is for the first level of the dataset, which may be greater than 0.
+        // Compute the max range at level 0 to properly fill in the lodmap from level 0 on.
+        float maxRangeAtLodZero = maxRangeAtFirstLevel * pow(2.0, featureProfile->getFirstLevel());
 
         // Compute the max range of all the feature levels.  Each subsequent level is half of the parent.
-        float maxRange = maxRangeAtFirstLevel;
+        float maxRange = maxRangeAtLodZero;
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
         for (int i = 0; i < featureProfile->getMaxLevel() + 1; i++)
         {
@@ -642,9 +643,17 @@ FeatureModelGraph::open()
             maxRange = osg::minimum(maxRange.get(), _options.layout()->getLevel(0)->maxRange().get());
         }
 
+        // if still not set, use the level's max range:
+        if (maxRange.isSet() == false &&
+            _maxRange.isSet() == true)
+        {
+            maxRange = _maxRange;
+        }
+
         // If the user asked for a particular tile size, give it to them!
-        if (_options.layout()->tileSize().isSet() &&
-            _options.layout()->tileSize() > 0.0)
+        if (_options.layout().isSet() &&
+            _options.layout()->tileSize().isSet() &&
+            _options.layout()->tileSize().get() > 0.0)
         {
             if (maxRange.isSet())
             {
@@ -659,7 +668,8 @@ FeatureModelGraph::open()
                 (*_options.layout()->tileSizeFactor()) << "\n";
         }
 
-        if (_options.layout()->getNumLevels() > 0)
+        if (_options.layout().isSet() &&
+            _options.layout()->getNumLevels() > 0)
         {
             // for each custom level, calculate the best LOD match and store it in the level
             // layout data. We will use this information later when constructing the SG in
@@ -680,12 +690,15 @@ FeatureModelGraph::open()
         else
         {
             FeatureLevel* level = new FeatureLevel(0.0f, maxRange.get());
-            unsigned lod = _options.layout()->chooseLOD(*level, _fullWorldBound.radius());
+            unsigned lod = _options.layout().isSet() ?
+                _options.layout()->chooseLOD(*level, _fullWorldBound.radius()) :
+                0u;
             _lodmap.resize(lod + 1, 0L);
             _lodmap[lod] = level;
 
             OE_INFO << LC << _session->getFeatureSource()->getName()
-                << ": No levels specified, so adding one for LOD=" << lod
+                << ": No levels specified, so adding one for LOD=" << lod 
+                << ", maxRange=" << maxRange.get()
                 << std::endl;
         }
     }

@@ -47,7 +47,7 @@ PagedLODWithNodeOperations::runPostMerge( osg::Node* node )
 }
 
 
-bool 
+bool
 PagedLODWithNodeOperations::addChild( osg::Node* child )
 {
     bool ok = false;
@@ -61,7 +61,7 @@ PagedLODWithNodeOperations::addChild( osg::Node* child )
 }
 
 
-bool 
+bool
 PagedLODWithNodeOperations::insertChild( unsigned index, Node* child )
 {
     bool ok = false;
@@ -75,7 +75,7 @@ PagedLODWithNodeOperations::insertChild( unsigned index, Node* child )
 }
 
 
-bool 
+bool
 PagedLODWithNodeOperations::replaceChild( Node* origChild, Node* newChild )
 {
     bool ok = false;
@@ -125,7 +125,7 @@ RemoveEmptyGroupsVisitor::apply( osg::Group& group )
 
                     group.removeChild( i-- );
                     removed = true;
-                }                
+                }
             }
         }
     }
@@ -399,3 +399,101 @@ ObserverGroup::traverse( osg::NodeVisitor& nv )
 
     osg::Group::traverse( nv );
 }
+
+//----------------------------------------------------------------------------
+EnableAutoUnloadVisitor::EnableAutoUnloadVisitor() :
+    osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+{
+}
+
+void EnableAutoUnloadVisitor::apply(osg::Node& node)
+{
+    PagedNode2* pagedNode = dynamic_cast<PagedNode2*>(&node);
+    if (pagedNode)
+    {
+        apply(*pagedNode);
+    }
+    traverse(node);
+}
+
+void EnableAutoUnloadVisitor::apply(PagedNode2& pagedNode)
+{
+    pagedNode.setAutoUnload(true);
+}
+
+//----------------------------------------------------------------------------
+
+LoadDataVisitor::LoadDataVisitor() :
+    osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+{
+}
+
+bool LoadDataVisitor::isFullyLoaded() const
+{
+    return _fullyLoaded;
+}
+
+void LoadDataVisitor::reset()
+{
+    _fullyLoaded = false;
+}
+
+bool LoadDataVisitor::intersects(osg::Node& node)
+{
+    static osg::Matrix identity;
+    osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
+
+    osg::BoundingSphere nodeBounds = node.getBound();
+    osg::BoundingSphered worldBounds(nodeBounds.center(), nodeBounds.radius());
+    worldBounds.center() += matrix.getTrans();
+
+    for (auto& bs : _areasToLoad)
+    {
+        if (bs.intersects(worldBounds))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<osg::BoundingSphered>& LoadDataVisitor::getAreasToLoad() { return _areasToLoad; }
+
+void LoadDataVisitor::apply(osg::Node& node)
+{
+    if (intersects(node))
+    {
+        PagedNode2* pagedNode = dynamic_cast<PagedNode2*>(&node);
+        if (pagedNode)
+        {
+            apply(*pagedNode);
+        }
+        traverse(node);
+    }
+}
+
+void LoadDataVisitor::apply(PagedNode2& pagedNode)
+{
+    pagedNode.setAutoUnload(false);
+
+    if (!pagedNode.isLoaded())
+    {
+        // TODO:  ICO
+        pagedNode.load(0.0, nullptr);
+        _fullyLoaded = false;
+    }
+}
+
+void LoadDataVisitor::apply(osg::Transform& transform)
+{
+    if (intersects(transform))
+    {
+        osg::Matrix matrix;
+        if (!_matrixStack.empty()) matrix = _matrixStack.back();
+        transform.computeLocalToWorldMatrix(matrix, this);
+        pushMatrix(matrix);
+        traverse(transform);
+        popMatrix();
+    }
+}
+//----------------------------------------------------------------------------

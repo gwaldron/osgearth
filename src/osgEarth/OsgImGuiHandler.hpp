@@ -13,13 +13,13 @@ public:
     OsgImGuiHandler();
 
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
-    class RealizeOperation : public GlewInitOperation
+    class RealizeOperation : public osgEarth::ImGuiUtil::GlewInitOperation
     {
         void operator()(osg::Object* object) override;
     };
 protected:
     // Put your ImGui code inside this function
-    virtual void drawUi() = 0;
+    virtual void drawUi(osg::RenderInfo& renderInfo) = 0;
     friend class RealizeOperation;
 private:
     static void init();

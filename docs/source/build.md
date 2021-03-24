@@ -21,7 +21,7 @@ vcpkg install osg:x64-windows gdal:x64-windows curl:x64-windows
 For full functionality, you can install optional dependences as well:
 
 ```
-vcpkg install sqlite3:x64-windows protobuf:x64-windows geos:x64-windows blend2d:x64-windows webp:x64-windows basisu:x64-windows draco:x64-windows libzip:x64-windows
+vcpkg install sqlite3:x64-windows protobuf:x64-windows geos:x64-windows blend2d:x64-windows libwebp:x64-windows basisu:x64-windows draco:x64-windows libzip:x64-windows
 ```
 
 This will take awhile the first time you run it as this pulls down lots of dependencies, so go get a cup of coffee.

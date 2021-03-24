@@ -98,6 +98,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         IF (OSGEARTH_ENABLE_GEOCODER)
             ADD_SUBDIRECTORY(osgearth_geocode)
             ADD_SUBDIRECTORY(osgearth_imgui)
+            ADD_SUBDIRECTORY(osgearth_collecttriangles)
         ENDIF()
 
         IF (Protobuf_FOUND AND SQLITE3_FOUND)
@@ -117,7 +118,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
 
 ELSE()
 
-    # ios 
+    # ios
     IF(OSGEARTH_BUILD_EXAMPLES)
         SET(TARGET_DEFAULT_LABEL_PREFIX "Example")
         SET(TARGET_DEFAULT_APPLICATION_FOLDER "Examples")

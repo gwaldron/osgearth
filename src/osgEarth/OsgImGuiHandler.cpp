@@ -157,9 +157,9 @@ void OsgImGuiHandler::newFrame(osg::RenderInfo& renderInfo)
     ImGui::NewFrame();
 }
 
-void OsgImGuiHandler::render(osg::RenderInfo&)
+void OsgImGuiHandler::render(osg::RenderInfo& ri)
 {
-    drawUi();
+    drawUi(ri);
     ImGui::Render();
 }
 

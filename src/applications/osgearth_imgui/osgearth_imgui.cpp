@@ -44,6 +44,12 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
+using namespace osgEarth::ImGuiUtil;
+
+
+
+
+
 
 class ImGuiDemo : public OsgImGuiHandler
 {
@@ -56,11 +62,11 @@ public:
     }
 
 protected:
-    void drawUi() override
+    void drawUi(osg::RenderInfo& renderInfo) override
     {
         // ImGui code goes here...
         //ImGui::ShowDemoWindow();
-        _layers.draw(_mapNode.get(), _view->getCamera(), _earthManip.get());
+        _layers.draw(renderInfo, _mapNode.get(), _view->getCamera(), _earthManip.get());
     }
 
     osg::ref_ptr< MapNode > _mapNode;

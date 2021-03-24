@@ -73,6 +73,15 @@ namespace
     typedef std::shared_ptr<Record> RecordPtr;
 
     typedef RTree<RecordPtr, double, 2> MySpatialIndex;
+    
+    struct BiomeTrackerToken : public osg::Object
+    {
+        META_Object(osgEarth, BiomeTrackerToken);
+        BiomeTrackerToken() { }
+        BiomeTrackerToken(std::set<int>&& seen) : _biomeids(seen) { }
+        BiomeTrackerToken(const BiomeTrackerToken& rhs, const osg::CopyOp& op) { }
+        std::set<int> _biomeids;
+    };
 }
 
 void
@@ -281,7 +290,7 @@ BiomeLayer::createImageImplementation(
     // destructs, and we can unref the usage in the BiomeManager accordingly.
     // This works, but reverses the flow of control, so maybe
     // there is a better solution -gw
-    osg::Object* token = new osg::DummyObject();
+    osg::Object* token = new BiomeTrackerToken(std::move(biomeids_seen));
     token->setName(Stringify() << "BiomeLayer " << key.str());
     result.setTrackingToken(token);
     token->addObserver(const_cast<BiomeLayer*>(this));
@@ -293,11 +302,17 @@ BiomeLayer::createImageImplementation(
 void
 BiomeLayer::objectDeleted(void* value)
 {
-    osg::Object* token = static_cast<osg::Object*>(value);
+    BiomeTrackerToken* token = static_cast<BiomeTrackerToken*>(value);
 
     _tracker.scoped_lock([&]() 
         {
-            OE_INFO << LC << "Unloaded " << token->getName() << std::endl;
+            OE_DEBUG << LC << "Unloaded " << token->getName() << std::endl;
+            for (auto biomeid : token->_biomeids)
+            {
+                const Biome* biome = getBiomeCatalog()->getBiome(biomeid);
+                if (biome)
+                    _biomeMan.unref(biome);
+            }
             _tracker.erase(token);
         });
 }

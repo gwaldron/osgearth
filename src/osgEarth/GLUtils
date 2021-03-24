@@ -193,6 +193,7 @@ namespace osgEarth
         GLint _bindingIndex;
         void bindLayout() const;
         virtual void release() const;
+        inline bool valid() const { return _buffer.valid(); }
     };
 
     template<typename T>

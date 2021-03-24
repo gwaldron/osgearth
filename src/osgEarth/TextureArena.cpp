@@ -267,7 +267,7 @@ TextureArena::TextureArena()
 
 TextureArena::~TextureArena()
 {
-    releaseGLObjects(NULL);
+    releaseGLObjects(nullptr);
 }
 
 bool
@@ -298,11 +298,8 @@ TextureArena::add(Texture* tex)
                 tex->_image->setInternalTextureFormat(internalFormat);
             }
 
-            // TODO: this doesn't quite work with a texture array coming from the GeometryCloud.
             ImageUtils::compressImageInPlace(tex->_image.get());
         }
-
-        //ImageUtils::mipmapImageInPlace(tex->_image.get());
 
         // add to all GCs.
         for(unsigned i=0; i<_gc.size(); ++i)
@@ -347,8 +344,6 @@ TextureArena::deactivate(Texture* tex)
     {
         _gc[i]._toDeactivate.push_back(tex);
     }
-
-    //TODO: consider issues like multiple GCs and "unref after apply"
 }
 
 namespace
@@ -487,6 +482,11 @@ TextureArena::releaseGLObjects(osg::State* state) const
     {
         _gc[state->getContextID()]._handleLUT.release();
     }
+    else
+    {
+        for (int i = 0; i < _gc.size(); ++i)
+            _gc[i]._handleLUT.release();
+    }
 }
 
 void
@@ -568,7 +568,7 @@ TextureArena::HandleLUT::release() const
     if (_buf)
     {
         delete[] _buf;
-        _buf = NULL;
+        _buf = nullptr;
     }
 }
 

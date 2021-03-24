@@ -561,17 +561,6 @@ GroundCoverLayer::buildStateSets()
         return;
     }
 
-    // Add the Texture Arena to the stateset so it gets compiled and applied
-    getOrCreateStateSet()->setAttribute(_renderer->_texArena.get());
-
-    // Merge in the geometry cloud stateset
-    if (_renderer->_geomCloud.valid())
-    {
-        osg::StateSet* cloudSS = _renderer->_geomCloud->getGeometry()->getStateSet();
-        if (cloudSS)
-            getOrCreateStateSet()->merge(*cloudSS);
-    }
-
     // calculate the tile width based on the LOD:
     if (_mapProfile.valid())
     {
@@ -882,6 +871,7 @@ GroundCoverLayer::Renderer::PCPState::PCPState()
 GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
 {
     _layer = layer;
+    _biomeRevision = -1;
 
     // create uniform IDs for each of our uniforms
     _isMSUName = osg::Uniform::getNameID("oe_gc_isMultisampled");
@@ -905,30 +895,6 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
     // make a 4-channel noise texture to use
     NoiseTextureFactory noise;
     _noiseTex = noise.create(256u, 4u);
-
-    // Make the texture atlas from the images found in the asset list
-    _texArena = new TextureArena();
-
-    // Load asset data from the configuration.
-    if (loadAssets() == false)
-    {
-        _status.set(Status::ConfigurationError, "No assets found");
-        return;
-    }
-
-    OE_SOFT_ASSERT_AND_RETURN(layer->getBiomeLayer(), __func__, );
-
-    BiomeManager& biomeMan = layer->getBiomeLayer()->getBiomeManager();
-
-    // construct out cloud for instancing
-    _geomCloud = biomeMan.createGeometryCloud(
-        layer->options().category().get(),
-        _texArena.get());
-    
-    // add LUTs to the stateset to enable geometry cloud rendering
-    //_computeSS->setAttribute(
-    //    biomeMan.createGPULookupTables(layer->options().category().get()),
-    //    osg::StateAttribute::ON);
 }
 
 GroundCoverLayer::Renderer::~Renderer()
@@ -936,10 +902,56 @@ GroundCoverLayer::Renderer::~Renderer()
     releaseGLObjects(nullptr);
 }
 
+bool
+GroundCoverLayer::Renderer::checkForUpdates()
+{
+    BiomeManager& biomeMan = _layer->getBiomeLayer()->getBiomeManager();
+    
+    if (_biomeRevision.exchange(biomeMan.getRevision()) != biomeMan.getRevision())
+    {
+        // revision changed; start a new asset load.
+        osg::ref_ptr<GroundCoverLayer> layer(_layer.get());
+        std::string category(_layer->options().category().get());
+
+        _geomCloudInProgress = Job().dispatch<osg::ref_ptr<GeometryCloud>>(
+            [layer, category](Cancelable* c)
+            {
+                osg::ref_ptr<GeometryCloud> result;
+
+                BiomeManager& biomeMan = layer->getBiomeLayer()->getBiomeManager();
+
+                biomeMan.loadCategory(
+                    category,
+                    [&](std::vector<osg::Texture*>& textures) { return layer->createParametricGeometry(textures); },
+                    layer->getReadOptions());
+
+                result = biomeMan.createGeometryCloud(
+                    category,
+                    nullptr);
+                    
+                return result;
+            }
+        );
+    }
+
+    else if (_geomCloudInProgress.isAvailable())
+    {
+        _geomCloud = _geomCloudInProgress.release();
+        return true;
+    }
+
+    return false;
+}
+
 void
 GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
 {
     if (_status.isError())
+        return;
+
+    bool newDataAvailable = checkForUpdates();
+
+    if (!_geomCloud.valid() || _geomCloud->empty())
         return;
 
     OE_PROFILING_ZONE_NAMED("GroundCover DrawTileBatch");
@@ -969,9 +981,14 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
         ds._instancer->setNumInstancesPerTile(numInstances1D, numInstances1D);
     }
 
+    else if (newDataAvailable)
+    {
+        ds._instancer->setGeometryCloud(_geomCloud.get());
+    }
+
     // If the zone changed, we need to re-generate ALL tiles
-    bool needsGenerate = false;
-    bool needsReset = false;
+    bool needsGenerate = newDataAvailable;
+    bool needsReset = newDataAvailable;
 
     // Debug mode: regenerate every time.
     if (ds._renderer->_layer->_debug)
@@ -1008,6 +1025,10 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
     // It should have been applied already in the render bin.
     // I am missing something. -gw 4/20/20
     state->pushStateSet(_layer->getStateSet());
+
+    // Apply the geometry cloud's stateset, which contains the texture arena
+    // and the GPU lookup tables.
+    state->apply(_geomCloud->getStateSet());
 
     // Ensure we have allocated sufficient GPU memory for the tiles:
     if (needsGenerate)
@@ -1189,6 +1210,9 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, CameraState& ds
 void
 GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const PatchLayer::DrawContext& tile)
 {
+    if (!_geomCloud.valid())
+        return;
+
     // make sure we don't have a shader error or NULL pcp
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
     if (!pcp)
@@ -1329,43 +1353,4 @@ GroundCoverLayer::loadRenderingShaders(VirtualProgram* vp, const osgDB::Options*
 {
     GroundCoverShaders shaders;
     shaders.load(vp, shaders.GroundCover_Render);
-}
-
-bool
-GroundCoverLayer::Renderer::loadAssets()
-{
-    OE_INFO << LC << "Loading assets ..." << std::endl;
-
-    osg::ref_ptr<GroundCoverLayer> layer(_layer);
-    if (!layer.valid())
-        return false;
-
-    // all the zones (these will later be called "biomes")
-    const auto catalog = layer->getBiomeLayer()->getBiomeCatalog();
-    if (catalog == nullptr)
-    {
-        layer->setStatus(Status::ConfigurationError, "Missing biome catalog");
-        return false;
-    }
-
-    // TEMPORARY. PRE-LOAD EVERYTHING FOR TESTING.
-    
-    BiomeManager& biomeMan = layer->getBiomeLayer()->getBiomeManager();
-
-    // Tell the BiomeManager that we're using everything in the catalog.
-    // This way we can pre-load it all for testing, and it won't page out.
-    std::vector<const Biome*> biomes = catalog->getBiomes();
-    for (auto biome : biomes)
-    {
-        biomeMan.ref(biome);
-    }
-
-    // Tell the biome manager to make everything resident.    
-    biomeMan.loadCategory(
-        layer->options().category().get(),
-        [&](std::vector<osg::Texture*>& v) { 
-            return layer->createParametricGeometry(v); },
-        layer->getReadOptions());
-
-    return true;
 }

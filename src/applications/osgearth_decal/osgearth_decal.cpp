@@ -74,8 +74,7 @@ struct CraterRenderer
         ImageUtils::PixelWriter writeElevation(out_elevation.get());
         ImageUtils::ImageIterator e_iter(writeElevation);
         osg::Vec4 value;
-        e_iter.forEachPixel(
-            [&]()
+        e_iter.forEachPixel([&]()
             {
                 float a = (e_iter.u() - 0.5f);
                 float b = (e_iter.v() - 0.5f);
@@ -95,8 +94,7 @@ struct CraterRenderer
 
         ImageUtils::PixelWriter writeLifeMap(out_lifemap.get());
         ImageUtils::ImageIterator lm_iter(writeLifeMap);
-        lm_iter.forEachPixel(
-            [&]()
+        lm_iter.forEachPixel([&]()
             {
                 float a = 2.0f*(lm_iter.u() - 0.5f);
                 float b = 2.0f*(lm_iter.v() - 0.5f);

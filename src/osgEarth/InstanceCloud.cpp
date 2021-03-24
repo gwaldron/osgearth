@@ -63,7 +63,7 @@ InstanceCloud::CommandBuffer::allocate(
 
     _requiredSize = numCommands * sizeof(DrawElementsIndirectCommand);
 
-    if (_requiredSize > _allocatedSize)
+    if (_requiredSize > _allocatedSize || !_buffer.valid())
     {
         OE_PROFILING_GPU_ZONE("CommandBuffer::allocate");
 
@@ -90,20 +90,23 @@ InstanceCloud::CommandBuffer::reset()
     OE_PROFILING_GPU_ZONE("CommandBuffer::reset");
 
     // Initialize and blit to GPU
-    for(unsigned i=0; i<_geom->getNumDrawCommands(); ++i)
+    if (_requiredSize > 0)
     {
-        _geom->getDrawCommand(i, _buf[i]);
-    }
+        for (unsigned i = 0; i < _geom->getNumDrawCommands(); ++i)
+        {
+            _geom->getDrawCommand(i, _buf[i]);
+        }
 
-    _buffer->bind();
-    _buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, _requiredSize, _buf);
+        _buffer->bind();
+        _buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, _requiredSize, _buf);
+    }
 }
 
 void
 InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::State& state)
 {
     _requiredSize = numTiles * sizeof(Data);
-    if (_requiredSize > _allocatedSize)
+    if (_requiredSize > _allocatedSize || !_buffer.valid())
     {
         OE_PROFILING_GPU_ZONE("TileBuffer::allocate");
         release();
@@ -127,19 +130,19 @@ void
 InstanceCloud::TileBuffer::update() const
 {
     OE_PROFILING_GPU_ZONE("TileBuffer::update");
-    _buffer->bind();
-    _buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, _requiredSize, _buf);
+    if (_requiredSize > 0)
+    {
+        _buffer->bind();
+        _buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, _requiredSize, _buf);
+    }
 }
 
 void
 InstanceCloud::CullBuffer::allocate(unsigned numInstances, GLsizei alignment, osg::State& state)
 {
     _requiredSize = sizeof(Data) + (numInstances * sizeof(GLuint));
-        //sizeof(DispatchIndirectCommand) +
-        //sizeof(GLfloat) +
-        //(numInstances * sizeof(GLuint));
 
-    if (_requiredSize > _allocatedSize)
+    if (_requiredSize > _allocatedSize || !_buffer.valid())
     {
         OE_PROFILING_GPU_ZONE("InstanceBuffer::allocate");
 
@@ -162,6 +165,7 @@ void
 InstanceCloud::CullBuffer::clear()
 {
     OE_PROFILING_GPU_ZONE("CullBuffer::clear");
+    OE_SOFT_ASSERT_AND_RETURN(valid(), __func__, );
 
     // Zero out the workgroup/instance count.
     _buf->di.num_groups_x = 0u;
@@ -178,7 +182,7 @@ InstanceCloud::InstanceBuffer::allocate(unsigned numTiles, unsigned numInstances
 {
     unsigned numBytesPerTile = numInstancesPerTile * sizeof(InstanceData);
     _requiredSize = numTiles * numBytesPerTile;
-    if (_requiredSize > _allocatedSize)
+    if (_requiredSize > _allocatedSize || !_buffer.valid())
     {
         OE_PROFILING_GPU_ZONE("GenBuffer::allocate");
 
@@ -201,7 +205,7 @@ void
 InstanceCloud::RenderBuffer::allocate(unsigned numInstances, GLsizei alignment, osg::State& state)
 {
     _requiredSize = numInstances * (sizeof(GLuint)*2); // sizeof RenderLeaf
-    if (_requiredSize > _allocatedSize)
+    if (_requiredSize > _allocatedSize || !_buffer.valid())
     {
         OE_PROFILING_GPU_ZONE("RenderBuffer::allocate");
 
@@ -282,6 +286,7 @@ InstanceCloud::InstancingData::releaseGLObjects(osg::State* state) const
     _tileBuffer.release();
     _cullBuffer.release();
     _renderBuffer.release();
+    _numTilesAllocated = 0;
 }
 
 InstanceCloud::InstanceCloud()
@@ -307,6 +312,8 @@ InstanceCloud::setGeometryCloud(GeometryCloud* geom)
         Installer installer(geom);
         geom->getGeometry()->accept(installer);
     }
+
+    releaseGLObjects(nullptr);
 }
 
 GeometryCloud*
@@ -445,6 +452,9 @@ void
 InstanceCloud::cull(osg::RenderInfo& ri)
 {
     OE_PROFILING_ZONE;
+    OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(_data._cullBuffer.valid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(_data._geom != nullptr, __func__, );
 
     osg::State& state = *ri.getState();
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
@@ -498,6 +508,8 @@ void
 InstanceCloud::draw(osg::RenderInfo& ri)
 {
     OE_PROFILING_GPU_ZONE("IC:Draw");
+    OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(_data._geom != nullptr, __func__, );
 
     // GL_DRAW_INDIRECT_BUFFER buffing binding is NOT part of VAO state (per spec)
     // so we have to bind it here.
@@ -586,8 +598,8 @@ namespace
         {
             const osg::Geometry& g = *drawable.asGeometry();
             osg::BoundingBox bs;
-            const osg::Vec3Array* verts = dynamic_cast<const osg::Vec3Array*>(g.getVertexArray());
-            std::for_each(verts->begin(), verts->end(), [&bs](const osg::Vec3& vert) { bs.expandBy(vert); });
+            const osg::Vec3Array* verts = static_cast<const osg::Vec3Array*>(g.getVertexArray());
+            for (auto& vert : *verts) bs.expandBy(vert);
             return bs;
         }
     };
@@ -620,11 +632,13 @@ GeometryCloud::GeometryCloud(TextureArena* texarena) :
     _texcoords->setBinding(osg::Array::BIND_PER_VERTEX);
     _geom->setTexCoordArray(7, _texcoords);
 
+    // texture arena indices for albedo/diffuse
     _albedoArenaIndices = new osg::ShortArray();
     _albedoArenaIndices->setBinding(osg::Array::BIND_PER_VERTEX);
     _albedoArenaIndices->setPreserveDataType(true);
     _geom->setVertexAttribArray(6, _albedoArenaIndices);
 
+    // texture arena indices for normal map
     _normalArenaIndices = new osg::ShortArray();
     _normalArenaIndices->setBinding(osg::Array::BIND_PER_VERTEX);
     _normalArenaIndices->setPreserveDataType(true);
@@ -637,6 +651,7 @@ GeometryCloud::GeometryCloud(TextureArena* texarena) :
 
     _geom->getOrCreateStateSet()->setMode(GL_BLEND, 1);
 
+    // Need a custom BB computer since this is not a normal geometry
     _geom->setComputeBoundingBoxCallback(new CBCB());
 }
 

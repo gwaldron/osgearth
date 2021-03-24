@@ -30,7 +30,7 @@ using namespace osgEarth::Procedural;
 
 //...................................................................
 
-std::shared_ptr<ModelAssetData>
+ModelAssetData::Ptr
 ModelAssetData::create()
 {
     return std::make_shared<ModelAssetData>();
@@ -114,7 +114,7 @@ BiomeManager::getRevision() const
 void
 BiomeManager::update()
 {
-    ScopedMutexLock lock(_mutex);
+    // NOTE: ASSUMES _mutex is LOCKED
 
     std::vector<const Biome*> biomes_to_remove;
 
@@ -124,16 +124,10 @@ BiomeManager::update()
         const Biome* biome = ref.first;
         int refcount = ref.second;
 
+        // creates the biome data entry if it doesn't exist
         auto& biomeData = _residentBiomeData[biome];
 
-        if (refcount > 0)
-        {
-            if (biomeData.empty())
-            {
-                // need to load the instances for this biome
-            }
-        }
-        else if (refcount == 0)
+        if (refcount == 0)
         {
             biomes_to_remove.push_back(biome);
         }
@@ -147,11 +141,9 @@ BiomeManager::update()
 }
 
 void
-BiomeManager::flush()
+BiomeManager::discardUnreferencedAssets()
 {
-    // scan the resident data list and destroy anything that
-    // is unreferened.
-    ScopedMutexLock lock(_mutex);
+    // NOTE: ASSUMES _mutex is LOCKED
 
     std::list<const ModelAsset*> to_delete;
 
@@ -165,9 +157,30 @@ BiomeManager::flush()
 
     for (auto& asset : to_delete)
     {
-        OE_INFO << LC << "Unloading model asset " << asset->name().get() << std::endl;
+        OE_INFO << LC << "Unloading asset " << asset->name().get() << std::endl;
         _residentModelAssetData.erase(asset);
     }
+}
+
+std::vector<const Biome*>
+BiomeManager::getActiveBiomes() const
+{
+    std::vector<const Biome*> result;
+    ScopedMutexLock lock(_mutex);
+
+    for (auto& ref : _refs)
+    {
+        if (ref.second > 0)
+            result.push_back(ref.first);
+    }
+    return std::move(result);
+}
+
+BiomeManager::ModelAssetDataTable
+BiomeManager::getResidentAssets() const
+{
+    ScopedMutexLock lock(_mutex);
+    return _residentModelAssetData;
 }
 
 namespace
@@ -185,17 +198,17 @@ BiomeManager::loadCategory(
     std::function<osg::Node*(std::vector<osg::Texture*>&)> createImposterGeometry,
     const osgDB::Options* readOptions)
 {
-    // make sure we're current
-    update();
-
     // exclusive access to the biome instance map
     ScopedMutexLock lock(_mutex);
+
+    // update the collection of resident data
+    update();
 
     // Any billboard that doesn't have its own normal map will use this one.
     osg::ref_ptr<osg::Texture> defaultNormalMap = osgEarth::createEmptyNormalMapTexture();
 
     // Some caches to avoid duplicating data
-    typedef std::map<URI, std::shared_ptr<ModelAssetData> > TextureShareCache;
+    typedef std::map<URI, ModelAssetData::Ptr> TextureShareCache;
     TextureShareCache texcache;
     typedef std::map<URI, ModelCacheEntry> ModelCache;
     ModelCache modelcache;
@@ -236,12 +249,12 @@ BiomeManager::loadCategory(
 
             // Look up this model asset. If it's already in the resident set,
             // do nothing; otherwise make it resident by loading all the data.
-            ModelAssetDataPtr& data = _residentModelAssetData[asset];
+            ModelAssetData::Ptr& data = _residentModelAssetData[asset];
 
             // First reference to this instance? Populate it:
             if (data == nullptr)
             {
-                OE_INFO << LC << "Loading model asset " << asset->name().get() << std::endl;
+                OE_INFO << LC << "Loading asset " << asset->name().get() << std::endl;
 
                 data = ModelAssetData::create();
 
@@ -261,7 +274,7 @@ BiomeManager::loadCategory(
                         data->_model = uri.getNode(readOptions);
                         if (data->_model.valid())
                         {
-                            OE_INFO << LC << "Loaded model: " << uri.base() << std::endl;
+                            OE_DEBUG << LC << "Loaded model: " << uri.base() << std::endl;
                             modelcache[uri]._node = data->_model.get();
 
                             osg::ComputeBoundsVisitor cbv;
@@ -271,7 +284,7 @@ BiomeManager::loadCategory(
                         }
                         else
                         {
-                            OE_WARN << LC << "Failed to load asset " << uri.full() << std::endl;
+                            OE_WARN << LC << "Failed to load model " << uri.full() << std::endl;
                         }
                     }
                 }
@@ -293,7 +306,7 @@ BiomeManager::loadCategory(
                         {
                             data->_sideBillboardTex = new osg::Texture2D(image.get());
 
-                            OE_INFO << LC << "Loaded BB: " << uri.base() << std::endl;
+                            OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
                             texcache[uri] = data;
 
                             // normal map is the same file name but with _NML inserted before the extension
@@ -315,7 +328,7 @@ BiomeManager::loadCategory(
                         }
                         else
                         {
-                            OE_WARN << LC << "Failed to load asset " << uri.full() << std::endl;
+                            OE_WARN << LC << "Failed to load side billboard " << uri.full() << std::endl;
                         }
                     }
 
@@ -337,7 +350,7 @@ BiomeManager::loadCategory(
                             {
                                 data->_topBillboardTex = new osg::Texture2D(image.get());
 
-                                OE_INFO << LC << "Loaded BB: " << uri.base() << std::endl;
+                                OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
                                 texcache[uri] = data;
 
                                 // normal map is the same file name but with _NML inserted before the extension
@@ -359,7 +372,7 @@ BiomeManager::loadCategory(
                             }
                             else
                             {
-                                OE_WARN << LC << "Failed to load asset " << uri.full() << std::endl;
+                                OE_WARN << LC << "Failed to load top billboard " << uri.full() << std::endl;
                             }
                         }
                     }
@@ -385,6 +398,9 @@ BiomeManager::loadCategory(
             }
         }
     }
+
+    // discard any resident assets that are no longer referenced
+    discardUnreferencedAssets();
 }
 
 namespace
@@ -413,6 +429,9 @@ BiomeManager::createGeometryCloud(
     const std::string& category,
     TextureArena* arena) const
 {
+    if (arena == nullptr)
+        arena = new TextureArena();
+
     GeometryCloud* cloud = new GeometryCloud(arena);
 
     // Add each 3D model to the geometry cloud.
@@ -452,8 +471,14 @@ BiomeManager::createGeometryCloud(
     }
 
     // generate the GPU lookup data for our cloud.
-    cloud->getGeometry()->getOrCreateStateSet()->setAttribute(
+    osg::StateSet* stateSet = cloud->getGeometry()->getOrCreateStateSet();
+
+    stateSet->setAttribute(
         createGPULookupTables(category),
+        osg::StateAttribute::ON);
+
+    stateSet->setAttribute(
+        arena,
         osg::StateAttribute::ON);
 
     return cloud;

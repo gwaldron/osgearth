@@ -370,7 +370,7 @@ SSBO::SSBO() :
 void
 SSBO::release() const
 {
-    _buffer = NULL; // triggers the releaser
+    _buffer = nullptr; // triggers the releaser
     _allocatedSize = 0u;
 }
 

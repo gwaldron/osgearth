@@ -266,11 +266,13 @@ namespace osgEarth { namespace Procedural
             osg::ref_ptr<osg::Texture> _noiseTex;
             osg::ref_ptr<TextureArena> _texArena;
 
-            bool loadAssets();
-
             const std::string& getName() const;
 
             Status _status;
+
+            Future<osg::ref_ptr<GeometryCloud>> _geomCloudInProgress;
+            std::atomic_int _biomeRevision;
+            bool checkForUpdates();
         };
 
         // future result of the asynchronous loader job

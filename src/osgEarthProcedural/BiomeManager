@@ -37,7 +37,9 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT ModelAssetData
         {
         public:
-            static std::shared_ptr<ModelAssetData> create();
+            using Ptr = std::shared_ptr<ModelAssetData>;
+
+            static Ptr create();
 
             //! the asset being instantiated
             const ModelAsset* _asset;
@@ -75,7 +77,7 @@ namespace osgEarth
             ModelAssetDataInstance() :
                 _weight(1.0f) { }
 
-            std::shared_ptr<ModelAssetData> _data;
+            ModelAssetData::Ptr _data;
             float _weight;
         };
 
@@ -86,8 +88,7 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT BiomeManager
         {
         public:
-            using ModelAssetDataPtr = std::shared_ptr<ModelAssetData>;
-            using ModelAssetDataTable = std::unordered_map<const ModelAsset*, ModelAssetDataPtr>;
+            using ModelAssetDataTable = std::unordered_map<const ModelAsset*, ModelAssetData::Ptr>;
             using ModelAssetInstanceCollection = std::vector<ModelAssetDataInstance>;
             using CategoryInstanceTable = std::unordered_map<const ModelCategory*, ModelAssetInstanceCollection>;
             using BiomeInstanceTable = std::unordered_map<const Biome*, CategoryInstanceTable>;
@@ -109,6 +110,12 @@ namespace osgEarth
             //! every time the set of resident biomes changes, so that a
             //! client can decide to get an updated configuration.
             int getRevision() const;
+
+            //! Collection of all active biomes
+            std::vector<const Biome*> getActiveBiomes() const;
+
+            //! Collection of assets loaded into memory (snapshot)
+            ModelAssetDataTable getResidentAssets() const;
 
             //! make resident all data calculated by update()
             void loadCategory(
@@ -142,8 +149,8 @@ namespace osgEarth
             // recalculate the required resident biome set
             void update();
 
-            // delete any data no longer required by the resident biome set
-            void flush();
+            // release any assets no longer referenced by a resident biome
+            void discardUnreferencedAssets();
 
         public:
 

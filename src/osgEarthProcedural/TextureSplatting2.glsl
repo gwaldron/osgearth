@@ -249,10 +249,10 @@ void oe_splat_Frag(inout vec4 quad)
 
     vec3 color;
 
-#if 0
+#if 1
     // perma-show caps:
     float snowiness = 0.0;
-    float coldness = 1.0 - clamp(temperature, -1, 1);
+    float coldness = 1.0; // 1.0 - clamp(temperature, -1, 1);
     float min_snow_cos_angle = 1.0 - soften(snow*coldness*rugged);
     const float snow_buf = 0.05;
     float b = min(min_snow_cos_angle + snow_buf, 1.0);

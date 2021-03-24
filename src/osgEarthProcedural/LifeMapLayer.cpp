@@ -741,6 +741,7 @@ LifeMapLayer::createImageImplementation(
             constexpr float green = 0.3333333f;
             constexpr float blue = 0.6666667f;
             constexpr float green_amp = 3.0f;
+            constexpr float lush_amp = 2.0f; // old=1.2f
 
             float inv_green = fabs(hsl[0] - green);
             if (inv_green > 0.5f) inv_green = 1.0f - inv_green;
@@ -754,12 +755,12 @@ LifeMapLayer::createImageImplementation(
             sample[COLOR].dense.value = greenness;
             sample[COLOR].dense.weight = 1.0f;
 
-            sample[COLOR].lush.value = clamp(1.2f * (hsl[1] - 0.5f*hsl[2]), 0.0f, 1.0f);
+            sample[COLOR].lush.value = clamp(lush_amp * (hsl[1] - 0.5f*hsl[2]), 0.0f, 1.0f);
             sample[COLOR].lush.weight = 1.0f;
 
             sample[COLOR].rugged.value = (redness + (1.0f - hsl[1]) + hsl[2]) / 3.0f;
             sample[COLOR].rugged.value = clamp(sample[COLOR].rugged.value - 0.5, 0.0, 1.0) * 2.0;
-            sample[COLOR].rugged.weight = 1.0f;
+            sample[COLOR].rugged.weight = (getUseTerrain() ? 0.0f : 1.0f);
 
             sample[COLOR].weight = 1.0f;
         }
@@ -778,15 +779,16 @@ LifeMapLayer::createImageImplementation(
 
                 sample[TERRAIN].lush.value =
                     (1.0f - lerpstep(250.0f, 3000.0f, elevation))
-                    + (0.2f*lush_noise)
-                    - (0.5f*slope);
+                    + (0.5f*lush_noise)
+                    - (0.2f*slope);
                 sample[TERRAIN].lush.weight = 1.0f;
             }
 
             sample[TERRAIN].rugged.value =
-                //lerpstep(1600.0f, 5000.0f, elevation) +
-                elevTile->getRuggedness(i.x(), i.y()) -
-                (0.2f*rugged_noise);
+                lerpstep(1600.0f, 5000.0f, elevation) +
+                //elevTile->getRuggedness(i.x(), i.y()) -
+                (0.2f*rugged_noise) +
+                slope;
             sample[TERRAIN].rugged.weight = 1.0f;
         }
 
@@ -825,7 +827,7 @@ LifeMapLayer::createImageImplementation(
             readDensityMask(dm_pixel, uu, vv);
 
             pixel[DENSE] *= dm_pixel.r();
-            pixel[LUSH] *= dm_pixel.r();
+            pixel[LUSH] *= (0.25 + 0.75*dm_pixel.r()); // 75% effect
             pixel[RUGGED] *= dm_pixel.r();
         }
 

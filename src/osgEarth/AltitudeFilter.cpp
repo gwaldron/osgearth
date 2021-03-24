@@ -253,6 +253,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                 temp[0].set(centroid.x(), centroid.y(), 0);
                 envelope.sampleMapCoords(temp, nullptr);
                 centroid.z() = temp[0].z();
+                centroidElevation = centroid.z();
             }
 
             // Check for NO_DATA_VALUE and use zero instead.
@@ -445,6 +446,11 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                         }
 
                         envelope.sampleMapCoords(*points, nullptr);
+
+                        // replace no-data with zero?
+                        for (auto& point : *points)
+                            if (point.z() == NO_DATA_VALUE)
+                                point.z() = 0.0f;
 
                         if (xform)
                         {

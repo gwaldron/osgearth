@@ -65,7 +65,7 @@ FeatureLevel::getConfig() const
 //------------------------------------------------------------------------
 
 FeatureDisplayLayout::FeatureDisplayLayout( const Config& conf ) :
-_tileSizeFactor( 15.0f ),
+_tileSizeFactor( 3.5f ),
 _minRange      ( 0.0f ),
 _maxRange      ( 0.0f ),
 _cropFeatures  ( false ),

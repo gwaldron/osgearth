@@ -141,15 +141,15 @@ public:
     }
 
 protected:
-    void drawUi() override
+    void drawUi(osg::RenderInfo& ri) override
     {
-        _layers.draw(_app._mapNode, _app._view->getCamera(), _app._manip);
+        _layers.draw(ri, _app._mapNode, _app._view->getCamera(), _app._manip);
         _biomes.draw();
     }
 
     App& _app;
     BiomeGUI _biomes;
-    LayersGUI _layers;
+    ImGuiUtil::LayersGUI _layers;
 };
 
 int

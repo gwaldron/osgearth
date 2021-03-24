@@ -44,6 +44,10 @@ public:
         if (input.s() < 16 || input.t() < 16)
             return;
 
+        // Not already compressed?
+        if (input.isCompressed())
+            return;
+
         //Resize the image to the nearest power of two
         if (!ImageUtils::isPowerOfTwo( &input ))
         {
@@ -61,6 +65,8 @@ public:
             rgba = ImageUtils::convertToRGBA8( &input );
             sourceImage = rgba.get();
         }
+
+        OE_SOFT_ASSERT_AND_RETURN(sourceImage != nullptr, __func__, );
 
         int format;
         GLenum compressedPixelFormat;

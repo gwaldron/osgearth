@@ -175,35 +175,21 @@ osgEarth::Util::isRelativePath(const std::string& fileName)
 #endif
 }
 
-namespace
-{
-    struct PathCache : public osg::Referenced
-    {
-        PathCache()
-            : cacheMutex(OE_MUTEX_NAME)
-        {}
-        Threading::Mutex cacheMutex;
-        std::map<std::string, std::string> cache;
-    };
-}
 std::string
 osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &relativePath)
 {
-    // A cache, since this method uses osgDB::getRealPath which can be
-    // quite slow.
-    // Register the cache with Registry in order to delay its deletion.
-    static PathCache* s_cache = Registry::instance()->registerSingleton(new PathCache);
-    static osg::ref_ptr<PathCache> s_cache_ref(s_cache);
+    static std::unordered_map<std::string, std::string> s_cache;
+    static std::mutex s_cache_mutex;
     //static float tries = 0, hits = 0;
 
     std::string cacheKey = relativeTo + "&" + relativePath;
 
-    Threading::ScopedMutexLock lock(s_cache->cacheMutex);
+    std::lock_guard<std::mutex> lock(s_cache_mutex);
 
     //tries += 1.0f;
 
-    auto i = s_cache->cache.find(cacheKey);
-    if (i != s_cache->cache.end())
+    auto i = s_cache.find(cacheKey);
+    if (i != s_cache.end())
     {
         //hits += 1.0f;
         //OE_INFO << "size=" << s_cache.size() <<  " tries=" << tries << " hits=" << (100.*hits/tries) << std::endl;
@@ -211,8 +197,8 @@ osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &re
     }
 
     // prevent the cache from growing unbounded
-    if (s_cache->cache.size() >= 20000)
-        s_cache->cache.clear();
+    if (s_cache.size() >= 20000)
+        s_cache.clear();
 
     // result that will go into the cache:
     std::string result;
@@ -281,7 +267,7 @@ osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &re
     }
 
     // cache the result and return it.
-    s_cache->cache[cacheKey] = result;
+    s_cache[cacheKey] = result;
     return result;
 }
 

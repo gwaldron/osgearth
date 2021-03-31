@@ -101,9 +101,9 @@ RoadSurfaceLayer::openImplementation()
         return ssStatus;
 
     // Create a rasterizer for rendering nodes to images.
-    if (_rasterizer == nullptr)
+    if (_rasterizer.valid() == false)
     {
-        _rasterizer = std::make_shared<TileRasterizer>(
+        _rasterizer = new TileRasterizer(
             getTileSize(),
             getTileSize());
     }
@@ -143,6 +143,12 @@ RoadSurfaceLayer::removedFromMap(const Map* map)
     options().featureSource().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
     _session = nullptr;
+}
+
+osg::Node*
+RoadSurfaceLayer::getNode() const
+{
+    return _rasterizer.get();
 }
 
 void

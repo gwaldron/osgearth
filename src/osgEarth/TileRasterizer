@@ -39,14 +39,11 @@ namespace osgEarth
     /**
     * Render node graphs to textures, one at a time.
     */
-    class OSGEARTH_EXPORT TileRasterizer
+    class OSGEARTH_EXPORT TileRasterizer : public osg::Node
     {
     public:
         //! Construct a new tile rasterizer camera
         TileRasterizer(unsigned width, unsigned height);
-
-        //! Whether the rasterizer initialized properly and is valid for use.
-        bool valid() const;
 
         /**
         * Schedule a rasterization to an osg::Image.
@@ -62,38 +59,47 @@ namespace osgEarth
         //! destructor
         virtual ~TileRasterizer();
 
+    public: // osg::Node
+
+        void traverse(osg::NodeVisitor& nv) override;
+
     private:
 
-        // TR installs itself on a simple GraphicsContext, so there is no need
-        // to store per-context data
-        struct RenderData
-        {
-            RenderData() : _samplesQuery(0), _pbo(0), _initialized(false) { }
 
-            bool _initialized;
+        struct RenderJob
+        {
+            osg::ref_ptr<osg::Node> _node;
+            GeoExtent _extent;
+            Promise<osg::ref_ptr<osg::Image>> _promise;
+        };
+        Mutexed<std::queue<RenderJob*>> _queue;
+
+        struct RenderContext
+        {
+            RenderContext() : _samplesQuery(0), _pbo(0) { }
             osg::ref_ptr<osgUtil::SceneView> _sv;
             GLuint _samplesQuery;
             GLuint _pbo;
             unsigned _width, _height;
             osg::ref_ptr<osg::Texture2D> _tex;
-
-            osg::observer_ptr<osg::GraphicsContext> _gc;
+            osg::ref_ptr<osg::Camera> _rtt;
+            GLuint _samples;
+            std::atomic_bool _rttActive;
+            RenderJob* _activeJob;
         };
+        mutable std::shared_ptr<RenderContext> _cx;
 
-        // One render pass for the GC queue
-        struct RenderOperation
+        // simple adapter to make draw callbacks smoother
+        struct DrawCallback : public osg::Camera::DrawCallback
         {
-            RenderOperation(
-                osg::Node* node, 
-                const GeoExtent& extent, 
-                std::shared_ptr<RenderData> renderData);
-            osg::ref_ptr<osg::Image> run(osg::State*);
-            osg::ref_ptr<osg::Node> _node;
-            GeoExtent _extent;
-            std::weak_ptr<RenderData> _rd;
+            DrawCallback(std::function<void(osg::RenderInfo&)> func) : _func(func) { }
+            std::function<void(osg::RenderInfo&)> _func;
+            void operator()(osg::RenderInfo& ri) const override { _func(ri); }
+            friend class TileRasterizer;
         };
 
-        mutable std::shared_ptr<RenderData> _renderData;
+        void preDraw(osg::RenderInfo& ri);
+        void postDraw(osg::RenderInfo& ri);
     };
 
 } // namespace osgEarth

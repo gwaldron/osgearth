@@ -785,15 +785,15 @@ MapNode::onLayerRemoved(Layer* layer, unsigned index)
         if (node)
         {
             layer->getSceneGraphCallbacks()->fireRemoveNode(node);
-            rebuildLayerNodes(_map.get(), _layerNodes);
         }
+        rebuildLayerNodes(_map.get(), _layerNodes);
     }
 }
 
 void
 MapNode::onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex)
 {
-    if (layer && layer->getNode())
+    if (layer)
     {
         rebuildLayerNodes(_map.get(), _layerNodes);
     }

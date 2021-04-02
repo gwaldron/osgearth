@@ -531,6 +531,26 @@ namespace osgEarth {
 
             void draw(osg::RenderInfo& renderInfo, osgEarth::MapNode* mapNode, osg::Camera* camera, EarthManipulator* manip)
             {
+                if (!_scannedForViewpoints)
+                {
+                    Config conf = mapNode->getConfig();
+                    for (ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+                    {
+                        if (i->key() == "viewpoints")
+                        {
+                            const ConfigSet& children = i->children("viewpoint");
+                            if (children.size() > 0)
+                            {
+                                for (ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i)
+                                {
+                                    _viewpoints.push_back(Viewpoint(*i));
+                                }
+                            }
+                        }
+                    }
+                    _scannedForViewpoints = true;
+                }
+
                 ImGui::Begin("Layers", NULL, ImGuiWindowFlags_MenuBar);
 
                 if (ImGui::BeginMenuBar())
@@ -552,125 +572,153 @@ namespace osgEarth {
                 _searchGUI.draw(manip);
 
                 ImGui::Separator();
-                ImGui::BeginGroup();
-                ImGui::Text("Layers");
-                osgEarth::VisibleLayerVector layers;
-                mapNode->getMap()->getLayers(layers);
-
-                for (int i = layers.size() - 1; i >= 0; --i)
+                ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+                if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
                 {
-                    osgEarth::Layer* layer = layers[i].get();
-                    ImGui::PushID(layer);
-                    osgEarth::VisibleLayer *visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
-                    if (visibleLayer)
+                    if (ImGui::BeginTabItem("Layers"))
                     {
-                        bool visible = visibleLayer->getVisible();
-                        ImGui::Checkbox(layer->getName().c_str(), &visible);
-                        visibleLayer->setVisible(visible);
-                    }
-                    else
-                    {
-                        ImGui::Text(layer->getName().c_str());
-                    }
+                        ImGui::Text("Layers");
+                        osgEarth::VisibleLayerVector layers;
+                        mapNode->getMap()->getLayers(layers);
 
-                    ImGui::SameLine();
-                    if (i > 0)
-                    {
-                        if (ImGui::ArrowButton("down", ImGuiDir_Down))
+                        for (int i = layers.size() - 1; i >= 0; --i)
                         {
-                            mapNode->getMap()->moveLayer(layer, i - 1);
+                            osgEarth::Layer* layer = layers[i].get();
+                            ImGui::PushID(layer);
+                            osgEarth::VisibleLayer *visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
+                            if (visibleLayer)
+                            {
+                                bool visible = visibleLayer->getVisible();
+                                ImGui::Checkbox(layer->getName().c_str(), &visible);
+                                visibleLayer->setVisible(visible);
+                            }
+                            else
+                            {
+                                ImGui::Text(layer->getName().c_str());
+                            }
+
+                            ImGui::SameLine();
+                            if (i > 0)
+                            {
+                                if (ImGui::ArrowButton("down", ImGuiDir_Down))
+                                {
+                                    mapNode->getMap()->moveLayer(layer, i - 1);
+                                }
+                            }
+                            if (i < layers.size() - 1)
+                            {
+                                ImGui::SameLine();
+                                if (ImGui::ArrowButton("up", ImGuiDir_Up))
+                                {
+                                    mapNode->getMap()->moveLayer(layer, i + 1);
+                                }
+                            }
+
+                            ImGui::SameLine();
+                            if (ImGui::ArrowButton("right", ImGuiDir_Right))
+                            {
+                                const GeoExtent& extent = layer->getExtent();
+                                if (extent.isValid())
+                                {
+                                    std::vector<GeoPoint> points;
+                                    points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
+                                    points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
+
+                                    ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
+                                    Viewpoint vp;
+                                    if (fitter.createViewpoint(points, vp))
+                                    {
+                                        manip->setViewpoint(vp, 2.0);
+                                    }
+                                }
+                                else if (layer->getNode())
+                                {
+                                    const osg::BoundingSphere& bs = layer->getNode()->getBound();
+                                    if (bs.valid())
+                                    {
+                                        osg::Vec3d c = bs.center();
+                                        double r = bs.radius();
+                                        const SpatialReference* mapSRS = mapNode->getMap()->getSRS();
+
+                                        std::vector<GeoPoint> points;
+                                        GeoPoint p;
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x() + r, c.y(), c.z())); points.push_back(p);
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x() - r, c.y(), c.z())); points.push_back(p);
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() + r, c.z())); points.push_back(p);
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() - r, c.z())); points.push_back(p);
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
+
+                                        ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
+                                        Viewpoint vp;
+                                        if (fitter.createViewpoint(points, vp))
+                                        {
+                                            manip->setViewpoint(vp, 2.0);
+                                        }
+                                    }
+                                }
+                            }
+
+                            osgEarth::ImageLayer* imageLayer = dynamic_cast<osgEarth::ImageLayer*>(visibleLayer);
+                            if (imageLayer)
+                            {
+                                float opacity = imageLayer->getOpacity();
+                                ImGui::PushID("opacity");
+                                ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
+                                imageLayer->setOpacity(opacity);
+                                ImGui::PopID();
+                            }
+
+                            osgEarth::Contrib::ThreeDTilesLayer* threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(visibleLayer);
+                            if (threedTiles)
+                            {
+                                float sse = threedTiles->getMaximumScreenSpaceError();
+                                ImGui::PushID("sse");
+                                ImGui::SliderFloat("SSE", &sse, 0.0f, 50.0f);
+                                threedTiles->setMaximumScreenSpaceError(sse);
+                                ImGui::PopID();
+
+                                ImGui::PushID("debugVolumes");
+                                bool showBoundingVolumes = threedTiles->getTilesetNode()->getShowBoundingVolumes();
+                                ImGui::Checkbox("Show debug volumes", &showBoundingVolumes);
+                                threedTiles->getTilesetNode()->setShowBoundingVolumes(showBoundingVolumes);
+                                ImGui::PopID();
+
+                                ImGui::PushID("debugColors");
+                                bool colorPerTile = threedTiles->getTilesetNode()->getColorPerTile();
+                                ImGui::Checkbox("Show color per tile", &colorPerTile);
+                                threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
+                                ImGui::PopID();
+                            }
+                            ImGui::PopID();
+
+                            ImGui::Separator();
                         }
-                    }
-                    if (i < layers.size() - 1)
-                    {
-                        ImGui::SameLine();
-                        if (ImGui::ArrowButton("up", ImGuiDir_Up))
-                        {
-                            mapNode->getMap()->moveLayer(layer, i + 1);
-                        }
+                        ImGui::EndTabItem();
                     }
 
-                    ImGui::SameLine();
-                    if (ImGui::ArrowButton("right", ImGuiDir_Right))
+                    if (!_viewpoints.empty() && ImGui::BeginTabItem("Viewpoints"))
                     {
-                        const GeoExtent& extent = layer->getExtent();
-                        if (extent.isValid())
-                        {
-                            std::vector<GeoPoint> points;
-                            points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
-                            points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
 
-                            ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
-                            Viewpoint vp;
-                            if (fitter.createViewpoint(points, vp))
+                        for (auto& vp : _viewpoints)
+                        {
+                            ImGui::PushID(&vp);
+                            bool selected = false;
+                            std::string name = vp.name().get();
+                            if (name.empty())
+                            {
+                                name = "<no name>";
+                            }
+                            ImGui::Selectable(name.c_str(), &selected);
+                            if (selected)
                             {
                                 manip->setViewpoint(vp, 2.0);
                             }
+                            ImGui::PopID();
                         }
-                        else if (layer->getNode())
-                        {
-                            const osg::BoundingSphere& bs = layer->getNode()->getBound();
-                            if (bs.valid())
-                            {
-                                osg::Vec3d c = bs.center();
-                                double r = bs.radius();
-                                const SpatialReference* mapSRS = mapNode->getMap()->getSRS();
-
-                                std::vector<GeoPoint> points;
-                                GeoPoint p;
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x() + r, c.y(), c.z())); points.push_back(p);
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x() - r, c.y(), c.z())); points.push_back(p);
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() + r, c.z())); points.push_back(p);
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() - r, c.z())); points.push_back(p);
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
-
-                                ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
-                                Viewpoint vp;
-                                if (fitter.createViewpoint(points, vp))
-                                {
-                                    manip->setViewpoint(vp, 2.0);
-                                }
-                            }
-                        }
+                        ImGui::EndTabItem();
                     }
-
-                    osgEarth::ImageLayer* imageLayer = dynamic_cast<osgEarth::ImageLayer*>(visibleLayer);
-                    if (imageLayer)
-                    {
-                        float opacity = imageLayer->getOpacity();
-                        ImGui::PushID("opacity");
-                        ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
-                        imageLayer->setOpacity(opacity);
-                        ImGui::PopID();
-                    }
-
-                    osgEarth::Contrib::ThreeDTilesLayer* threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(visibleLayer);
-                    if (threedTiles)
-                    {
-                        float sse = threedTiles->getMaximumScreenSpaceError();
-                        ImGui::PushID("sse");
-                        ImGui::SliderFloat("SSE", &sse, 0.0f, 50.0f);
-                        threedTiles->setMaximumScreenSpaceError(sse);
-                        ImGui::PopID();
-
-                        ImGui::PushID("debugVolumes");
-                        bool showBoundingVolumes = threedTiles->getTilesetNode()->getShowBoundingVolumes();
-                        ImGui::Checkbox("Show debug volumes", &showBoundingVolumes);
-                        threedTiles->getTilesetNode()->setShowBoundingVolumes(showBoundingVolumes);
-                        ImGui::PopID();
-
-                        ImGui::PushID("debugColors");
-                        bool colorPerTile = threedTiles->getTilesetNode()->getColorPerTile();
-                        ImGui::Checkbox("Show color per tile", &colorPerTile);
-                        threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
-                        ImGui::PopID();
-                    }
-                    ImGui::PopID();
-
-                    ImGui::Separator();
                 }
-                ImGui::EndGroup();
                 ImGui::End();
             }
 
@@ -681,6 +729,9 @@ namespace osgEarth {
             NetworkMonitorGUI _networkMonitor;
             SearchGUI _searchGUI;
             TextureInspectorGUI _textureInspectorGUI;
+
+            std::vector< Viewpoint > _viewpoints;
+            bool _scannedForViewpoints = false;
         };
 
 

@@ -170,6 +170,8 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     _cachedLayerExtentsComputeRequired = true;
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
     ADJUST_EVENT_TRAV_COUNT(this, +1);
+
+    _updatedThisFrame = false;
 }
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
@@ -631,8 +633,6 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
 
-    _clock.cull();
-
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
     // Initialize a new culler
@@ -783,20 +783,15 @@ RexTerrainEngineNode::event_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
 
-    unsigned osgFrame = nv.getFrameStamp()->getFrameNumber();
-    bool newFrame = (osgFrame > _clock.getFrame());
-    if (newFrame)
+    // Update the cached layer extents as necessary.
+    osg::ref_ptr<const Layer> layer;
+    for (auto& layerExtent : _cachedLayerExtents)
     {
-        // Update the cached layer extents as necessary.
-        osg::ref_ptr<const Layer> layer;
-        for (auto& layerExtent : _cachedLayerExtents)
+        layerExtent.second._layer.lock(layer);
+        if (layer.valid() && layer->getRevision() > layerExtent.second._revision)
         {
-            layerExtent.second._layer.lock(layer);
-            if (layer.valid() && layer->getRevision() > layerExtent.second._revision)
-            {
-                layerExtent.second._extent = _map->getProfile()->clampAndTransformExtent(layer->getExtent());
-                layerExtent.second._revision = layer->getRevision();
-            }
+            layerExtent.second._extent = _map->getProfile()->clampAndTransformExtent(layer->getExtent());
+            layerExtent.second._revision = layer->getRevision();
         }
     }
 }
@@ -806,36 +801,29 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
 
-    //unsigned osgFrame = nv.getFrameStamp()->getFrameNumber();
-    //bool newFrame = (osgFrame > _clock.getFrame());
-
-    // prevent from running more than once per frame
-    if (_clock.update())
+    if (_renderModelUpdateRequired)
     {
-        if (_renderModelUpdateRequired)
-        {
-            PurgeOrphanedLayers visitor(getMap(), _renderBindings);
-            _terrain->accept(visitor);
-            _renderModelUpdateRequired = false;
-        }
+        PurgeOrphanedLayers visitor(getMap(), _renderBindings);
+        _terrain->accept(visitor);
+        _renderModelUpdateRequired = false;
+    }
 
-        // Called once on the first update pass to ensure that all existing
-        // layers have their extents cached properly
-        if (_cachedLayerExtentsComputeRequired)
-        {
-            cacheAllLayerExtentsInMapSRS();
-            _cachedLayerExtentsComputeRequired = false;
-            ADJUST_UPDATE_TRAV_COUNT(this, -1);
-        }
+    // Called once on the first update pass to ensure that all existing
+    // layers have their extents cached properly
+    if (_cachedLayerExtentsComputeRequired)
+    {
+        cacheAllLayerExtentsInMapSRS();
+        _cachedLayerExtentsComputeRequired = false;
+        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+    }
 
-        // Call update() on all open layers
-        LayerVector layers;
-        _map->getLayers(layers);
-        for (auto& layer : layers)
-        {
-            if (layer->isOpen())
-                layer->update(nv);
-        }
+    // Call update() on all open layers
+    LayerVector layers;
+    _map->getLayers(layers);
+    for (auto& layer : layers)
+    {
+        if (layer->isOpen())
+            layer->update(nv);
     }
 }
 
@@ -850,12 +838,18 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
     else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
-        update_traverse(nv);
-        TerrainEngineNode::traverse( nv );
+        if (!_updatedThisFrame.exchange(true))
+        {
+            _clock.update();
+            update_traverse(nv);
+            TerrainEngineNode::traverse(nv);
+        }
     }
 
     else if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
+        _updatedThisFrame.exchange(false);
+        _clock.cull();
         cull_traverse(nv);
     }
 

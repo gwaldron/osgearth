@@ -39,6 +39,7 @@
 
 #include <osg/MatrixTransform>
 #include <osg/Timer>
+#include <osg/KdTree>
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
 
@@ -315,15 +316,15 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     if (_options.resampleMode().isSet())
     {
         ResampleFilter resample;
-        resample.resampleMode() = *_options.resampleMode();        
+        resample.resampleMode() = *_options.resampleMode();
         if (_options.resampleMaxLength().isSet())
         {
             resample.maxLength() = *_options.resampleMaxLength();
-        }                   
-        sharedCX = resample.push( workingSet, sharedCX ); 
+        }
+        sharedCX = resample.push( workingSet, sharedCX );
         if ( trackHistory ) history.push_back( "resample" );
-    }    
-    
+    }
+
     // check whether we need to do elevation clamping:
     bool altRequired =
         _options.ignoreAltitudeSymbol() != true &&
@@ -331,7 +332,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             altitude->clamping() != AltitudeSymbol::CLAMP_NONE ||
             altitude->verticalOffset().isSet() ||
             altitude->verticalScale().isSet() ||
-            altitude->script().isSet() );    
+            altitude->script().isSet() );
 
     // instance substitution (replaces marker)
     if ( model )
@@ -340,7 +341,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         // use a separate filter context since we'll be munging the data
         FilterContext localCX = sharedCX;
-        
+
         if ( trackHistory ) history.push_back( "model");
 
         if ( instance->placement() == InstanceSymbol::PLACEMENT_RANDOM   ||
@@ -379,7 +380,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         // activate feature naming
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
-        
+
 
         osg::Node* node = sub.push( workingSet, localCX );
         if ( node )
@@ -418,7 +419,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             if ( trackHistory ) history.push_back( "extrude" );
             resultGroup->addChild( node );
         }
-        
+
     }
 
     // simple geometry
@@ -461,7 +462,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     if ( text || icon )
     {
-        // Only clamp annotation types when the technique is 
+        // Only clamp annotation types when the technique is
         // explicity set to MAP. Otherwise, the annotation subsystem
         // will automatically use SCENE clamping.
         bool altRequiredForAnnotations =
@@ -493,7 +494,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if (shaderPolicy == SHADERPOLICY_GENERATE)
         {
             // no ss cache because we will optimize later.
-            Registry::shaderGenerator().run( 
+            Registry::shaderGenerator().run(
                 resultGroup.get(),
                 "GeometryCompiler shadergen" );
         }
@@ -502,7 +503,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             resultGroup->getOrCreateStateSet()->setAttributeAndModes(
                 new osg::Program(),
                 osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
-        
+
             if ( trackHistory ) history.push_back( "no shaders" );
         }
     }
@@ -519,13 +520,13 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             sscache = sharedCX.getSession()->getStateSetCache();
             sscache->consolidateStateAttributes( resultGroup.get() );
         }
-        else 
+        else
         {
             // isolated: perform full optimization
             sscache = new StateSetCache();
             sscache->optimize( resultGroup.get() );
         }
-        
+
         if ( trackHistory ) history.push_back( "share state" );
     }
 
@@ -555,7 +556,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         if ( trackHistory ) history.push_back( "optimize" );
     }
-    
+
 
     //test: dump the tile to disk
     //OE_WARN << "Writing GC node file to out.osgt..." << std::endl;
@@ -571,7 +572,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     totalTimeMutex.unlock();
     OE_INFO << LC
         << "features = " << p_features
-        << ", time = " << t << " s.  cummulative = " 
+        << ", time = " << t << " s.  cummulative = "
         << totalTime << " s."
         << std::endl;
 #endif
@@ -589,6 +590,10 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         resultGroup->accept(validator);
         OE_NOTICE << LC << "-- End Debugging --\n";
     }
+
+    // Build kdtrees to increase intersection speed.
+    osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
+    resultGroup->accept(*kdTreeBuilder.get());
 
     return resultGroup.release();
 }

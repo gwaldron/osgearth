@@ -1,7 +1,24 @@
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
+IF(GLEW_FOUND)    
+    INCLUDE_DIRECTORIES(
+        ${GLEW_INCLUDE_DIR}
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples
+    )
 
-SET(TARGET_SRC osgearth_windows.cpp )
+    INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS})
+    
+    SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LIBRARY GLEW_LIBRARIES)
 
-#### end var setup  ###
-SETUP_APPLICATION(osgearth_windows)
+    SET(TARGET_SRC
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_demo.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_draw.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_widgets.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples/imgui_impl_opengl3.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/osgEarth/OsgImGuiHandler.cpp
+        osgearth_windows.cpp )
+
+    #### end var setup  ###
+    SETUP_APPLICATION(osgearth_windows)
+    
+ENDIF(GLEW_FOUND)

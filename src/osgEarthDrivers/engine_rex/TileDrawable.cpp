@@ -20,10 +20,12 @@
 #include "EngineContext"
 
 #include <osg/Version>
+#include <osg/KdTree>
 #include <iterator>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
+
 
 using namespace osg;
 using namespace osgEarth::REX;
@@ -33,9 +35,9 @@ using namespace osgEarth;
 
 //........................................................................
 
-ModifyBoundingBoxCallback::ModifyBoundingBoxCallback(EngineContext* context) : 
+ModifyBoundingBoxCallback::ModifyBoundingBoxCallback(EngineContext* context) :
 _context(context)
-{ 
+{
     //nop
 }
 
@@ -96,7 +98,7 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
     {
         OE_WARN << "("<<_key.str()<<") precision error\n";
     }
-    
+
     const osg::Vec3Array& verts = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
     const osg::DrawElementsUShort* de = dynamic_cast<osg::DrawElementsUShort*>(_geom->getDrawElements());
 
@@ -150,6 +152,25 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
     else
     {
         std::copy(verts.begin(), verts.end(), _mesh.begin());
+    }
+
+
+    // Make a temporary geometry to build kdtrees on and copy the shape over
+    osg::ref_ptr< osg::Geometry > tempGeom = new osg::Geometry;
+    osg::Vec3Array* tempVerts = new osg::Vec3Array;
+    tempVerts->reserve(_mesh.size());
+    for (unsigned int i = 0; i < _mesh.size(); i++)
+    {
+        tempVerts->push_back(_mesh[i]);
+    }
+    tempGeom->setVertexArray(tempVerts);
+    tempGeom->addPrimitiveSet(_geom->getDrawElements());
+
+    osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
+    tempGeom->accept(*kdTreeBuilder.get());
+    if (tempGeom->getShape())
+    {
+        setShape(tempGeom->getShape());
     }
 
     dirtyBound();

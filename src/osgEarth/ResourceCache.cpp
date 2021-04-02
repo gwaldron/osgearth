@@ -21,6 +21,7 @@
 
 using namespace osgEarth;
 
+#define LC "[ResourceCache] "
 
 // internal thread-safety not required since we mutex it in this object.
 ResourceCache::ResourceCache() :
@@ -55,8 +56,13 @@ ResourceCache::getOrCreateLineTexture(const URI& uri, osg::ref_ptr<osg::Texture>
             tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
             tex->setMaxAnisotropy( 4.0f );
             tex->setResizeNonPowerOfTwoHint( false );
+            tex->setUnRefImageDataAfterApply(false);
             output = tex;
             _texCache.insert(uri.full(), output.get());
+        }
+        else
+        {
+            OE_WARN << LC << "Unable to load image from " << uri.full() << std::endl;
         }
     }
 

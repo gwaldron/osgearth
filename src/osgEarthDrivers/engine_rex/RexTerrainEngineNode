@@ -190,6 +190,7 @@ namespace osgEarth { namespace REX
         unsigned _frameLastUpdated;
 
         FrameClock _clock;
+        std::atomic_bool _updatedThisFrame;
     };
 
 } } // namespace osgEarth::REX

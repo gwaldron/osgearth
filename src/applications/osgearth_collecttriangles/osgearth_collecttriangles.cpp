@@ -974,7 +974,6 @@ protected:
         // ImGui code goes here...
         ImGui::ShowDemoWindow();
         _layers.draw(renderInfo, _mapNode.get(), _view->getCamera(), _earthManip.get());
-        _sceneHierarchy.draw(_view->getSceneData(), renderInfo, _earthManip.get(), _mapNode.get());
 
         ImGui::Begin("Tools");
 
@@ -1071,7 +1070,6 @@ protected:
     osg::ref_ptr<EarthManipulator> _earthManip;
     osgViewer::View* _view;
     LayersGUI _layers;
-    SceneHierarchy _sceneHierarchy;
 };
 
 int

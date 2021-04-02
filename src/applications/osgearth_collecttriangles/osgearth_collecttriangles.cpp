@@ -34,12 +34,12 @@
 #include <osgEarth/Geocoder>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/PagedNode>
-#include <osgEarth/NodeUtils>
 #include <osgEarth/AnnotationUtils>
 #include <osg/TriangleFunctor>
 #include <osg/Depth>
 #include <osg/PolygonMode>
 #include <osg/io_utils>
+#include <osg/Point>
 
 #include <iostream>
 
@@ -61,8 +61,19 @@ static unsigned int observer_id = 1;
 static bool loading_data = false;
 static osg::Group* root;
 static float range_boost = 1.0;
-std::string message;
 static bool predictive_loading = true;
+long long intersection_time = 0;
+long long num_intersections = 0;
+int num_threads = 4;
+
+static float minLat = -90.0;
+static float maxLat = 90.0;
+static float minLon = -180.0;
+static float maxLon = 180.0;
+static int latSegments = 25;
+static int lonSegments = 50;
+static float altAdjust = 5.0f;
+static bool serial = false;
 
 class Observer : public osg::Object
 {
@@ -158,7 +169,8 @@ struct CollectTriangles
 struct CollectTrianglesVisitor : public osg::NodeVisitor
 {
     CollectTrianglesVisitor() :
-        osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
+        //osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
+        osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
     {
         _vertices.reserve(1000000);
     }
@@ -258,16 +270,27 @@ struct QueryTrianglesHandler : public osgGA::GUIEventHandler
 {
     QueryTrianglesHandler(MapNode* mapNode)
         : _mapNode(mapNode),
-        _observer(nullptr)
+        _observer(nullptr),
+        _enabled(false)
     {
         _marker = new osg::MatrixTransform;
         _marker->addChild(AnnotationUtils::createSphere(1.0, Color::White));
         _marker->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
         root->addChild(_marker);
+        _marker->setNodeMask(_enabled ? ~0u : 0);
+    }
+
+    bool getEnabled() const { return _enabled; }
+    void setEnabled(bool enabled)
+    {
+        _enabled = enabled;
+        _marker->setNodeMask(_enabled ? ~0u : 0);
     }
 
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
     {
+        if (!_enabled) return false;
+
         osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
 
         if (ea.getEventType() == ea.MOVE)
@@ -342,9 +365,411 @@ struct QueryTrianglesHandler : public osgGA::GUIEventHandler
     osgEarth::MapNode* _mapNode;
     osg::ref_ptr< osg::Node > _extractedTriangles;
     osg::MatrixTransform* _marker;
+    bool _enabled;
 
     Observer* _observer;
 };
+
+
+struct IntersectionQuery
+{
+    IntersectionQuery() :
+        valid(false)
+    {
+    }
+
+    IntersectionQuery(const osg::Vec3d& _start, const osg::Vec3d& _end) :
+        valid(false),
+        start(_start),
+        end(_end)
+    {
+    }
+
+    osg::Vec3d start;
+    osg::Vec3d end;
+    bool valid;
+    osg::Vec3d hit;
+};
+
+typedef std::vector< IntersectionQuery > QueryList;
+
+static std::vector < osg::ref_ptr< osgUtil::LineSegmentIntersector > > intersectorCache;
+
+void computeIntersections(osg::Node* node, std::vector< IntersectionQuery >& queries, unsigned int start, unsigned int count)
+{
+    osg::ref_ptr<osgUtil::IntersectorGroup> ivGroup = new osgUtil::IntersectorGroup();
+    for (unsigned int i = start; i < start + count; i++)
+    {
+        const IntersectionQuery& q = queries[i];
+        //osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = new osgUtil::LineSegmentIntersector(q.start, q.end);
+        //ivGroup->addIntersector(lsi.get());
+        // Assumes the size of the intersectorCache matches the size of the query list
+        osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = intersectorCache[i].get();
+        lsi->reset();
+        lsi->setStart(q.start);
+        lsi->setEnd(q.end);
+        ivGroup->addIntersector(lsi.get());
+    }
+    osgUtil::IntersectionVisitor iv;
+    iv.setIntersector(ivGroup.get());
+    node->accept(iv);
+
+    //for (unsigned int i = 0; i < queries.size(); i++)
+    for (unsigned int i = start; i < start + count; i++)
+    {
+        IntersectionQuery& q = queries[i];
+        osgUtil::LineSegmentIntersector* los = static_cast<osgUtil::LineSegmentIntersector*>(ivGroup->getIntersectors()[i - start].get());
+        if (!los)
+            continue;
+
+        osgUtil::LineSegmentIntersector::Intersections& hits = los->getIntersections();
+
+        if (!hits.empty())
+        {
+            q.valid = true;
+            q.hit = hits.begin()->getWorldIntersectPoint();
+        }
+    }
+}
+
+void computeIntersectionsSerial(osg::Node* node, std::vector< IntersectionQuery >& queries)
+{
+    osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = new osgUtil::LineSegmentIntersector(osg::Vec3d(0,0,0), osg::Vec3d(0,0,0));
+    for (unsigned int i = 0; i < queries.size(); ++i)
+    {
+        IntersectionQuery& q = queries[i];
+        osgUtil::IntersectionVisitor iv;
+        lsi->reset();
+        lsi->setStart(q.start);
+        lsi->setEnd(q.end);
+        iv.setIntersector(lsi.get());
+        node->accept(iv);
+        const osgUtil::LineSegmentIntersector::Intersections& hits = lsi->getIntersections();
+        if (!hits.empty())
+        {
+            q.valid = true;
+            q.hit = hits.begin()->getWorldIntersectPoint();
+        }
+    }
+}
+
+void computeIntersectionsThreaded(osg::Node* node, std::vector< IntersectionQuery >& queries)
+{
+    if (intersectorCache.size() < queries.size())
+    {
+        std::cout << "Resizing intersections to " << queries.size() << std::endl;
+        intersectorCache.resize(queries.size());
+        for (unsigned int i = 0; i < intersectorCache.size(); ++i)
+        {
+            if (!intersectorCache[i].valid())
+            {
+                intersectorCache[i] = new osgUtil::LineSegmentIntersector(osg::Vec3d(0,0,0), osg::Vec3d(0,0,0));
+            }
+        }
+    }
+
+    JobArena::get("oe.intersections")->setConcurrency(num_threads);
+
+    // Poor man's parallel for
+    JobGroup intersections;
+
+    //unsigned int workSize = 500;
+    // Try to split the jobs evenly among the threads
+    unsigned int start = 0;
+    unsigned int workSize = ceil((double)queries.size() / (double)num_threads);
+    //std::cout << "Computed a work size of " << workSize << std::endl;
+
+    unsigned int numJobs = 0;
+
+    while (true)
+    {
+        unsigned int curStart = start;
+        unsigned int curSize = curStart + workSize <= queries.size() ? workSize : queries.size() - curStart;
+        if (curSize > 0)
+        {
+            Job job;
+            job.setArena("oe.intersections");
+            job.setGroup(&intersections);
+            job.dispatch([node, curStart, curSize, &queries](Cancelable*) {
+                computeIntersections(node, queries, curStart, curSize);
+            });
+            ++numJobs;
+        }
+        start += workSize;
+        if (start >= queries.size())
+        {
+            break;
+        }
+    }
+    //std::cout << "Dispatched " << numJobs << " jobs" << std::endl;
+    intersections.join();
+}
+
+
+void generateQueries(const GeoPoint& mapPoint, QueryList& queries)
+{
+    osg::Matrixd l2w, w2l;
+    mapPoint.createLocalToWorld(l2w);
+    mapPoint.createWorldToLocal(w2l);
+
+    float latSpan = maxLat - minLat;
+    float lonSpan = maxLon - minLon;
+
+    float latSize = latSpan / latSegments; // degrees
+    float lonSize = lonSpan / lonSegments; // degrees
+
+    double radius = query_range;
+    for (int y = 0; y <= latSegments; ++y)
+    {
+        float lat = minLat + latSize * (float)y;
+        for (int x = 0; x < lonSegments; ++x)
+        {
+            float lon = minLon + lonSize * (float)x;
+
+            float u = osg::DegreesToRadians(lon);
+            float v = osg::DegreesToRadians(lat);
+            float cos_u = cosf(u);
+            float sin_u = sinf(u);
+            float cos_v = cosf(v);
+            float sin_v = sinf(v);
+
+            osg::Vec3d start(0.0, 0.0, 0.0);
+            osg::Vec3d end(radius * cos_u * cos_v,
+                radius * sin_u * cos_v,
+                radius * sin_v);
+            start = start * l2w;
+            end = end * l2w;
+
+            queries.emplace_back(start, end);
+        }
+    }
+}
+
+class QueryRenderer : public osg::MatrixTransform
+{
+public:
+    QueryRenderer()
+    {
+        _geom = new osg::Geometry;
+        _geom->setUseDisplayList(false);
+        _geom->setUseVertexBufferObjects(true);
+        _geom->setDataVariance(osg::Object::DYNAMIC);
+
+        _verts = new osg::Vec3Array;
+        _geom->setVertexArray(_verts);
+
+        _colors = new osg::Vec4Array;
+        _geom->setColorArray(_colors, osg::Array::BIND_PER_VERTEX);
+
+        _verts->getVertexBufferObject()->setUsage(GL_DYNAMIC_DRAW_ARB);
+        _colors->getVertexBufferObject()->setUsage(GL_DYNAMIC_DRAW_ARB);
+
+        _drawArrays = new osg::DrawArrays(GL_LINES);
+        _geom->addPrimitiveSet(_drawArrays);
+
+        _geom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+        addChild(_geom);
+    }
+
+    void update(const QueryList& queries)
+    {
+        if (queries.empty())
+        {
+            setNodeMask(0);
+            return;
+        }
+
+        osg::Vec3d anchor = queries[0].start;
+        setMatrix(osg::Matrixd::translate(anchor));
+
+        if (_verts->size() < queries.size() * 2)
+        {
+            _verts->resize(queries.size() * 2);
+            _colors->resize(queries.size() * 2);
+        }
+
+        unsigned index = 0;
+        for (unsigned int i = 0; i < queries.size(); ++i)
+        {
+            unsigned int index = i * 2;
+            auto& q = queries[i];
+            if (q.valid)
+            {
+                (*_verts)[index] = q.start - anchor;
+                (*_verts)[index+1] = q.hit - anchor;
+                (*_colors)[index] = osg::Vec4(1, 0, 0, 1);
+                (*_colors)[index + 1] = osg::Vec4(1, 0, 0, 1);
+            }
+            else
+            {
+                (*_verts)[index] = q.start - anchor;
+                (*_verts)[index + 1] = q.end - anchor;
+                (*_colors)[index] = osg::Vec4(0, 1, 0, 1);
+                (*_colors)[index + 1] = osg::Vec4(0, 1, 0, 1);
+            }
+        }
+
+        _verts->dirty();
+        _colors->dirty();
+
+        _drawArrays->set(GL_LINES, 0, queries.size() * 2);
+        _drawArrays->dirty();
+    }
+
+    osg::Geometry* _geom;
+    osg::Vec3Array* _verts;
+    osg::Vec4Array* _colors;
+    osg::DrawArrays* _drawArrays;
+};
+
+struct IntersectorHandler : public osgGA::GUIEventHandler
+{
+    IntersectorHandler(MapNode* mapNode)
+        : _mapNode(mapNode),
+        _enabled(false)
+    {
+        _queryRenderer = new QueryRenderer;
+        root->addChild(_queryRenderer);
+        _queryRenderer->setNodeMask(_enabled ? ~0u : 0);
+    }
+
+    bool getEnabled() const { return _enabled; }
+    void setEnabled(bool enabled)
+    {
+        _enabled = enabled;
+        _queryRenderer->setNodeMask(_enabled ? ~0u : 0);
+    }
+
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+    {
+        if (!_enabled) return false;
+
+        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+        if (ea.getEventType() == ea.MOVE)
+        {
+            osg::Vec3d world;
+            osgUtil::LineSegmentIntersector::Intersections hits;
+            osg::NodePath path;
+            path.push_back(_mapNode);
+
+            if (view->computeIntersections(ea.getX(), ea.getY(), path, hits))
+            {
+                _queryRenderer->setNodeMask(~0u);
+                // Get the point under the mouse:
+                world = hits.begin()->getWorldIntersectPoint();
+
+                // convert to map coords:
+                GeoPoint mapPoint;
+                mapPoint.fromWorld(_mapNode->getMapSRS(), world);
+                // Raise it up a bit so it's not right on the ground.
+                mapPoint.alt() += altAdjust;
+                mapPoint.toWorld(world);
+
+                const SpatialReference* geoSRS = SpatialReference::create("wgs84");
+                QueryList queries;
+
+                generateQueries(mapPoint, queries);
+
+#if 0
+                double delta = 0.02;
+                unsigned int numEntitites = 50;
+                Random prng;
+                for (unsigned int i = 0; i < numEntitites; ++i)
+                {
+                    double lon = (mapPoint.x() - delta/2.0) + prng.next() * delta;
+                    double lat = (mapPoint.y() - delta / 2.0) + prng.next() * delta;
+                    GeoPoint pt(geoSRS, lon, lat, mapPoint.alt());
+                    generateQueries(pt, queries);
+                    //generateQueries(mapPoint, queries);
+                }
+#endif
+
+                //generateQueries(mapPoint, queries);
+
+                auto startTime = std::chrono::high_resolution_clock::now();
+                if (serial)
+                {
+                    computeIntersectionsSerial(_mapNode, queries);
+                }
+                else
+                {
+                    computeIntersectionsThreaded(_mapNode, queries);
+                }
+
+                auto endTime = std::chrono::high_resolution_clock::now();
+                intersection_time = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
+                num_intersections = queries.size();
+
+                _queryRenderer->update(queries);
+
+#if 0
+                if (_results)
+                {
+                    root->removeChild(_results);
+                    _results = nullptr;
+                }
+
+                if (queries.size() > 0)
+                {
+                    _results = new osg::MatrixTransform;
+
+                    osg::Geometry* lineGeom = new osg::Geometry;
+                    lineGeom->setUseVertexBufferObjects(true);
+                    lineGeom->setUseDisplayList(false);
+                    osg::Vec3Array* verts = new osg::Vec3Array;
+                    lineGeom->setVertexArray(verts);
+
+                    osg::Vec4Array* colors = new osg::Vec4Array;
+                    lineGeom->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
+
+                    osg::Vec3d anchor = queries[0].start;
+                    _results->setMatrix(osg::Matrixd::translate(anchor));
+
+                    for (auto &q : queries)
+                    {
+                        if (q.valid)
+                        {
+                            verts->push_back(q.start - anchor);
+                            verts->push_back(q.hit - anchor);
+                            colors->push_back(osg::Vec4(1, 0, 0, 1));
+                            colors->push_back(osg::Vec4(1, 0, 0, 1));
+                        }
+                        else
+                        {
+                            verts->push_back(q.start - anchor);
+                            verts->push_back(q.end - anchor);
+                            colors->push_back(osg::Vec4(0, 1, 0, 1));
+                            colors->push_back(osg::Vec4(0, 1, 0, 1));
+                        }
+                    }
+
+                    lineGeom->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, verts->size()));
+                    lineGeom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+                    _results->addChild(lineGeom);
+                    root->addChild(_results);
+                }
+#endif
+            }
+            else
+            {
+                _queryRenderer->setNodeMask(0u);
+            }
+        }
+        return false;
+    }
+
+    osgEarth::MapNode* _mapNode;
+    QueryRenderer* _queryRenderer;
+    osg::MatrixTransform* _results = nullptr;
+
+    bool _enabled;
+};
+
+
+QueryTrianglesHandler* queryTrianglesHandler = nullptr;
+IntersectorHandler* intersectorHandler = nullptr;
+
 
 struct AddObserverHandler : public osgGA::GUIEventHandler
 {
@@ -357,7 +782,7 @@ struct AddObserverHandler : public osgGA::GUIEventHandler
     {
         osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
 
-        if (ea.getEventType() == ea.PUSH && ea.getButton() == ea.LEFT_MOUSE_BUTTON && ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL)
+        if (ea.getEventType() == ea.PUSH && ea.getButton() == ea.LEFT_MOUSE_BUTTON && ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_SHIFT)
         {
             osg::Vec3d world;
             osgUtil::LineSegmentIntersector::Intersections hits;
@@ -549,12 +974,36 @@ protected:
         // ImGui code goes here...
         ImGui::ShowDemoWindow();
         _layers.draw(renderInfo, _mapNode.get(), _view->getCamera(), _earthManip.get());
+        _sceneHierarchy.draw(_view->getSceneData(), renderInfo, _earthManip.get(), _mapNode.get());
 
+        ImGui::Begin("Tools");
 
-        ImGui::Begin("Triangle Query");
+        bool queryTriangleEnabled = queryTrianglesHandler->getEnabled();
+        ImGui::Checkbox("Query Triangles", &queryTriangleEnabled);
+        queryTrianglesHandler->setEnabled(queryTriangleEnabled);
+
+        bool intersectHandlerEnabled = intersectorHandler->getEnabled();
+        ImGui::Checkbox("Collect intersections", &intersectHandlerEnabled);
+        intersectorHandler->setEnabled(intersectHandlerEnabled);
+        if (intersectHandlerEnabled)
+        {
+            ImGui::Checkbox("Serial", &serial);
+            ImGui::InputInt("Num Threads", &num_threads);
+            ImGui::InputFloat("Min Lat", &minLat);
+            ImGui::InputFloat("Max Lat", &maxLat);
+            ImGui::InputFloat("Min Lon", &minLon);
+            ImGui::InputFloat("Max Lon", &maxLon);
+            ImGui::InputInt("Num Lat", &latSegments);
+            ImGui::InputInt("Num Lon", &lonSegments);
+            ImGui::InputFloat("Alt Adjust", &altAdjust);
+
+            ImGui::Text("%d intersections in %lf ms", num_intersections, intersection_time / 1e6);
+            ImGui::Text("%lf intersections/s", num_intersections * (1e9 / intersection_time));
+        }
 
         ImGui::SliderFloat("Range Boost", &range_boost, 1.0, 10.0);
         ImGui::SliderFloat("Query Range", &query_range, 1.0, 2000.0f);
+
 
         if (loading_data)
         {
@@ -622,6 +1071,7 @@ protected:
     osg::ref_ptr<EarthManipulator> _earthManip;
     osgViewer::View* _view;
     LayersGUI _layers;
+    SceneHierarchy _sceneHierarchy;
 };
 
 int
@@ -675,8 +1125,13 @@ main(int argc, char** argv)
             viewer.getEventHandlers().push_front(new ImGuiDemo(&viewer, mapNode, manip));
         }
 
-        viewer.getEventHandlers().push_front(new QueryTrianglesHandler(mapNode));
+        queryTrianglesHandler = new QueryTrianglesHandler(mapNode);
+        intersectorHandler = new IntersectorHandler(mapNode);
+
+        viewer.getEventHandlers().push_front(queryTrianglesHandler);
+        viewer.getEventHandlers().push_front(intersectorHandler);
         viewer.getEventHandlers().push_front(new AddObserverHandler(mapNode));
+        viewer.addEventHandler(new SelectNodeHandler());
 
         root->addChild(new ObserversNode());
         root->addChild(node);

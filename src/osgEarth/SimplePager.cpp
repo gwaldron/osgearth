@@ -337,10 +337,18 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
         pagedNode->setPriorityScale(_priorityScale);
         //pager->setPriorityOffset(_priorityOffset);
 
+        osg::observer_ptr<SimplePager> pager_weakptr(this);
         pagedNode->setLoadFunction(
-            [this, key](Cancelable* progress)
+            [pager_weakptr, key](Cancelable* c)
             {
-                return loadKey(key, nullptr); // tracker);
+                osg::ref_ptr<osg::Node> result;
+                osg::ref_ptr<SimplePager> pager;
+                if (pager_weakptr.lock(pager))
+                {
+                    osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
+                    result = pager->loadKey(key, progress);
+                }
+                return result;
             }
         );
 
@@ -488,7 +496,7 @@ osg::ref_ptr<osg::Node> SimplePager::createPagedNode(const TileKey& key, Progres
 * Loads the PagedLOD hierarchy for this key.
 */
 osg::ref_ptr<osg::Node>
-SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
+SimplePager::loadKey(const TileKey& key, ProgressCallback* progress)
 {       
     osg::ref_ptr< osg::Group >  group = new osg::Group;
 
@@ -496,7 +504,7 @@ SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
     {
         TileKey childKey = key.createChildKey( i );
 
-        osg::ref_ptr<osg::Node> plod = createPagedNode(childKey, nullptr); // tracker->_progress[i].get() );
+        osg::ref_ptr<osg::Node> plod = createPagedNode(childKey, progress); // tracker->_progress[i].get() );
         if (plod.valid())
         {
             group->addChild( plod );

@@ -374,6 +374,12 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
     GeoHeightField result;
     osg::ref_ptr<osg::HeightField> hf;
 
+    osg::ref_ptr< const Profile > profile = getProfile();
+    if (!profile.valid() || !isOpen())
+    {
+        return result;
+    }
+
     // Check the memory cache first
     bool fromMemCache = false;
 
@@ -458,7 +464,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
                 return GeoHeightField::INVALID;
             }
 
-            if (key.getProfile()->isHorizEquivalentTo(getProfile()))
+            if (key.getProfile()->isHorizEquivalentTo(profile.get()))
             {
                 result = createHeightFieldImplementation(key, progress);
             }
@@ -495,12 +501,12 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
 
             // If the result is good, we now have a heightfield but its vertical values
             // are still relative to the source's vertical datum. Convert them.
-            if (hf.valid() && !key.getExtent().getSRS()->isVertEquivalentTo(getProfile()->getSRS()))
+            if (hf.valid() && !key.getExtent().getSRS()->isVertEquivalentTo(profile->getSRS()))
             {
                 OE_PROFILING_ZONE_NAMED("vdatum xform");
 
                 VerticalDatum::transform(
-                    getProfile()->getSRS()->getVerticalDatum(),    // from
+                    profile->getSRS()->getVerticalDatum(),    // from
                     key.getExtent().getSRS()->getVerticalDatum(),  // to
                     key.getExtent(),
                     hf.get());

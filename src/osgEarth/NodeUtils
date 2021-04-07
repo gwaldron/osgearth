@@ -496,12 +496,20 @@ namespace osgEarth { namespace Util
 
         void apply(osg::Transform& transform);
 
+        /**
+        * Most async nodes will require an update traversal to be called.  If you calling this visitor outside
+        * of a normal frame loop you will need to call manualUpdate after you run the visitor in order to update the scene graph properly
+        */
+        void manualUpdate();
+
         inline void pushMatrix(osg::Matrix& matrix) { _matrixStack.push_back(matrix); }
         inline void popMatrix() { _matrixStack.pop_back(); }
 
         typedef std::vector<osg::Matrix> MatrixStack;
         MatrixStack _matrixStack;
         bool _fullyLoaded = true;
+
+        std::set < osg::ref_ptr < PagingManager> > _pagingManagers;
 
         std::vector< osg::BoundingSphered > _areasToLoad;
     };

@@ -435,7 +435,7 @@ bool LoadDataVisitor::isFullyLoaded() const
 
 void LoadDataVisitor::reset()
 {
-    _fullyLoaded = false;
+    _fullyLoaded = true;
 }
 
 bool LoadDataVisitor::intersects(osg::Node& node)
@@ -468,6 +468,13 @@ void LoadDataVisitor::apply(osg::Node& node)
         {
             apply(*pagedNode);
         }
+
+        PagingManager* pagingManager = dynamic_cast<PagingManager*>(&node);
+        if (pagingManager)
+        {
+            _pagingManagers.insert(pagingManager);
+        }
+
         traverse(node);
     }
 }
@@ -494,6 +501,14 @@ void LoadDataVisitor::apply(osg::Transform& transform)
         pushMatrix(matrix);
         traverse(transform);
         popMatrix();
+    }
+}
+
+void LoadDataVisitor::manualUpdate()
+{
+    for (auto& m : _pagingManagers)
+    {
+        m->update();
     }
 }
 //----------------------------------------------------------------------------

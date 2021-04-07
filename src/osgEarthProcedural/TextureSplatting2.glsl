@@ -61,9 +61,9 @@ layout(binding = 5, std430) buffer TextureLUT {
     uint64_t texHandle[];
 };
 
-#define DENSE 0
-#define LUSH 1
-#define RUGGED 2
+#define RUGGED 0
+#define DENSE 1
+#define LUSH 2
 
 vec3 vp_Normal;
 vec3 oe_UpVectorView;
@@ -105,7 +105,7 @@ vec4 get_rgbh(in int index, in int level)
 
 vec4 get_material(in int index, in int level)
 {
-    return texture(sampler2D(texHandle[index + 1]), splatCoords[level]);
+    return texture(sampler2D(texHandle[index+1]), splatCoords[level]);
 }
 
 float amplify(in float val, in float modifier)
@@ -220,11 +220,6 @@ void oe_splat_Frag(inout vec4 quad)
 {
     quad = texture(OE_LIFEMAP_TEX, (OE_LIFEMAP_MAT * oe_layer_tilec).st);
 
-    // local reference frame for normals:
-    vec3 tangent = cross(gl_NormalMatrix * vec3(0, 0, 1), vp_Normal);
-    vec3 binormal = cross(tangent, vp_Normal);
-    mat3 tbn = mat3(normalize(tangent), normalize(binormal), vp_Normal);
-
     dense = quad[DENSE];
     dense = amplify(dense, dense_power);
 
@@ -237,9 +232,17 @@ void oe_splat_Frag(inout vec4 quad)
     Pixel pixel;
     resolveLevel(pixel, 0, rugged, lush);
 
+    // establish the local tangent plane:
+    vec3 Z = gl_NormalMatrix * vec3(0, 0, 1); // north pole
+    vec3 T = normalize(cross(Z, vp_Normal));
+    vec3 B = normalize(cross(vp_Normal, T));
+    mat3 tbn = mat3(T, B, vp_Normal);
+
     pixel.normal.xy = decel(pixel.normal.xy, normal_power);
 
-    // final normal output:
+    // Because the 3dmax normals have a flipped Y -gw
+    pixel.normal.y = -pixel.normal.y;
+
     vp_Normal = normalize(tbn * pixel.normal);
 
     oe_roughness = pixel.roughness;
@@ -258,6 +261,7 @@ void oe_splat_Frag(inout vec4 quad)
     float b = min(min_snow_cos_angle + snow_buf, 1.0);
     float cos_angle = dot(vp_Normal, oe_UpVectorView);
     snowiness = smoothstep(min_snow_cos_angle, b, cos_angle);
+    //snowiness = 0; // cos_angle > snow ? 1 : 0;
     color = mix(pixel.rgbh.rgb, vec3(1), snowiness);
     oe_roughness = mix(oe_roughness, 0.1, snowiness);
 #else
@@ -279,4 +283,20 @@ void oe_splat_Frag(inout vec4 quad)
     alpha *= oe_layer_opacity;
     // final color output:
     quad = vec4(color, alpha);
+
+#if 1 //debug
+    if (snow > 0.5)
+    {
+        quad = vec4(0.5 + 0.5*vp_Normal, 1.0);
+
+        if (vp_Normal.x > 0.0 && vp_Normal.x > vp_Normal.y)
+            quad = vec4(1, 0, 0, 1);
+        else if (vp_Normal.x <= 0.0 && vp_Normal.x < vp_Normal.y)
+            quad = vec4(1, 1, 0, 1);
+        else if (vp_Normal.y > 0.0 && vp_Normal.y > vp_Normal.x)
+            quad = vec4(0, 1, 0, 1);
+        else
+            quad = vec4(0, 0, 1, 1);
+    }
+#endif
 }

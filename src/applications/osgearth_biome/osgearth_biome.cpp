@@ -23,16 +23,25 @@
 #include <osgEarth/ImGuiUtils>
 #include <osgEarth/OsgImGuiHandler.hpp>
 #include <imgui_internal.h>
-#include <osgViewer/Viewer>
+
 #include <osgEarth/Notify>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
-#include <iostream>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Metrics>
+#include <osgEarth/Lighting>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/PhongLightingEffect>
 
 #include <osgEarthProcedural/BiomeLayer>
 #include <osgEarthProcedural/BiomeManager>
+#include <osgEarthProcedural/LifeMapLayer>
+
+#include <osgViewer/Viewer>
+#include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
+#include <iostream>
 
 #define LC "[osgearth_biome] "
 
@@ -55,7 +64,49 @@ struct App
     const Map* _map;
     MapNode* _mapNode;
     EarthManipulator* _manip;
+    EventRouter* _router;
     osgViewer::View* _view;
+    osg::Light* _light;
+};
+
+struct LifeMapGUI
+{
+    App _app;
+    LifeMapLayer* lifemap;
+
+    LifeMapGUI(App& app) : _app(app)
+    {
+        lifemap = _app._map->getLayer<LifeMapLayer>();
+        OE_HARD_ASSERT(lifemap != nullptr, __func__);
+    }
+
+    void draw()
+    {
+        ImGui::Begin("LifeMap Tweaks");
+
+        LifeMapLayer::Options& o = lifemap->options();
+        
+        ImGui::Checkbox("Use landcover data", &o.useLandCover().mutable_value());
+        ImGui::Checkbox("Use terrain data", &o.useTerrain().mutable_value());
+        if (o.useTerrain() == true)
+        {
+            ImGui::SliderFloat("Terrain weight", &o.terrainWeight().mutable_value(), 0.0f, 1.0f);
+        }
+
+        ImGui::SliderFloat(
+            "Slope intensity",
+            &o.slopeIntensity().mutable_value(),
+            1.0f, 10.0f);
+
+        if (ImGui::Button("Apply"))
+        {
+            _app._mapNode->getTerrainEngine()->invalidateRegion(
+                { lifemap },
+                GeoExtent::INVALID);
+        }
+
+        ImGui::End();
+    }
 };
 
 struct BiomeGUI
@@ -136,7 +187,10 @@ struct BiomeGUI
 class MainGUI : public OsgImGuiHandler
 {
 public:
-    MainGUI(App& app) : _app(app), _biomes(app)
+    MainGUI(App& app) : 
+        _app(app), 
+        _lifemap(app),
+        _biomes(app)
     {
     }
 
@@ -144,28 +198,99 @@ protected:
     void drawUi(osg::RenderInfo& ri) override
     {
         _layers.draw(ri, _app._mapNode, _app._view->getCamera(), _app._manip);
+        _lifemap.draw();
         _biomes.draw();
     }
 
     App& _app;
+    LifeMapGUI _lifemap;
     BiomeGUI _biomes;
     ImGuiUtil::LayersGUI _layers;
 };
 
+osg::Vec4
+worldToVec4(const osg::Vec3d& ecef)
+{
+    osg::Vec4 result(0.0f, 0.0f, 0.0f, 1.0f);
+    osg::Vec3d d = ecef;
+    while (d.length() > 1e6)
+    {
+        d *= 0.1;
+        result.w() *= 0.1;
+    }
+    return osg::Vec4(d.x(), d.y(), d.z(), result.w());
+}
+
+// For testing the splatting normal maps
+void
+setupMouseLight(App& app)
+{
+    SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(app._view->getSceneData());
+    if (!sky)
+    {
+        PhongLightingEffect* phong = new PhongLightingEffect();
+        phong->attach(app._view->getSceneData()->getOrCreateStateSet());
+    }
+
+    app._light = new osg::Light(sky ? 1 : 0);
+    app._light->setAmbient(osg::Vec4(0.2, 0.2, 0.2, 1));
+    app._light->setDiffuse(osg::Vec4(1, 1, 1, 1));
+    osg::LightSource* ls = new osg::LightSource();
+    ls->setLight(app._light);
+    app._mapNode->addChild(ls);
+    GenerateGL3LightingUniforms gen;
+    ls->accept(gen);
+    app._light = ls->getLight();
+
+    app._router->onMove([&](osg::View* view, float x, float y) {
+        osg::Vec3d world;
+        if (app._mapNode->getTerrain()->getWorldCoordsUnderMouse(view, x, y, world)) {
+            osg::Vec3d n = world;
+            n.normalize();
+            world += n * 1.0;
+            app._light->setPosition(worldToVec4(world));
+        }
+    });
+}
+
+int
+encodeTexture(osg::ArgumentParser& args)
+{
+    std::string infile;
+    if (args.read("--encode-texture", infile))
+    {
+        std::size_t pos = infile.find("_Color.", 0);
+        if (pos >= 0)
+        {
+            std::string base = infile.substr(0, pos);
+            std::string ext = osgDB::getFileExtension(infile);
+            osg::ref_ptr<osg::Image> image;
+            image = osgDB::readRefImageFile(base + ".oe_splat_rgbh");
+            if (image.valid())
+                osgDB::writeImageFile(*image.get(), base + ".oe_splat_rgbh");
+            image = osgDB::readRefImageFile(base + ".oe_splat_nnra");
+            if (image.valid())
+                osgDB::writeImageFile(*image.get(), base + ".oe_splat_nnra");
+        }
+    }
+    return 0;
+}
+
 int
 main(int argc, char** argv)
 {
-    //ImGuiNotifyHandler* notifyHandler = new ImGuiNotifyHandler();
-    //osg::setNotifyHandler(notifyHandler);
-    //osgEarth::setNotifyHandler(notifyHandler);
-
     osgEarth::initialize();
 
     osg::ArgumentParser arguments(&argc, argv);
     if (arguments.read("--help"))
         return usage(argv[0]);
 
+    if (arguments.find("--encode-texture") >= 0)
+        return encodeTexture(arguments);
+
     osgViewer::Viewer viewer(arguments);
+
+    viewer.setLightingMode(viewer.NO_LIGHT);
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags
@@ -181,12 +306,15 @@ main(int argc, char** argv)
         app._map = app._mapNode->getMap();
         app._view = &viewer;
         app._manip = new EarthManipulator(arguments);
+        app._router = new EventRouter();
+        viewer.addEventHandler(app._router);
         viewer.setCameraManipulator(app._manip);
         viewer.setRealizeOperation(new MainGUI::RealizeOperation());
         viewer.realize();
         viewer.getEventHandlers().push_front(new MainGUI(app));
-
         viewer.setSceneData(node);
+        //setupMouseLight(app);
+
         return viewer.run();
     }
     else

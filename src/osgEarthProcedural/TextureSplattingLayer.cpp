@@ -27,6 +27,8 @@
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Drawable>
+#include <osgDB/Registry>
+#include <osgDB/ReadFile>
 #include <cstdlib> // getenv
 
 #define LC "[TextureSplattingLayer] " << getName() << ": "
@@ -58,158 +60,6 @@ TextureSplattingLayer::Options::fromConfig(const Config& conf)
 
 namespace
 {
-    // OSG loader for reading an albedo texture and a heightmap texture
-    // and merging them into a single RGBH texture
-    struct RGBHPseudoLoader : public osgDB::ReaderWriter
-    {
-        RGBHPseudoLoader() {
-            supportsExtension("oe_splat_rgbh", "RGB+H");
-        }
-
-        ReadResult readImage(const std::string& uri, const osgDB::Options* options) const override
-        {
-            std::string ext = osgDB::getLowerCaseFileExtension(uri);
-            if (ext == "oe_splat_rgbh")
-            {
-                auto t0 = std::chrono::steady_clock::now();
-
-                URI colorURI(
-                    osgDB::getNameLessExtension(uri) + "_Color.jpg");
-
-                osg::ref_ptr<osg::Image> color = colorURI.getImage(options);
-
-                if (!color.valid())
-                    return ReadResult::FILE_NOT_FOUND;
-
-                URI heightURI(
-                    osgDB::getNameLessExtension(uri) + "_Displacement.jpg");
-
-                osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
-
-                osg::ref_ptr<osg::Image> rgbh = new osg::Image();
-                rgbh->allocateImage(color->s(), color->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-
-                ImageUtils::PixelReader readHeight(height.get());
-                ImageUtils::PixelReader readColor(color.get());
-                ImageUtils::PixelWriter writeRGBH(rgbh.get());
-                osg::Vec4 temp, temp2;
-                float minh = 1.0f, maxh = 0.0f;
-
-                ImageUtils::ImageIterator iter(rgbh.get());
-                iter.forEachPixel([&]()
-                    {
-                        readColor(temp, iter.s(), iter.t());
-                        if (height.valid())
-                        {
-                            readHeight(temp2, iter.s(), iter.t());
-                            temp.a() = temp2.r();
-                        }
-                        else
-                        {
-                            temp.a() = 0.0f;
-                        }
-
-                        minh = osg::minimum(minh, temp.a());
-                        maxh = osg::maximum(maxh, temp.a());
-                        writeRGBH(temp, iter.s(), iter.t());
-                    });
-
-                auto t1 = std::chrono::steady_clock::now();
-
-                OE_INFO << heightURI.base() << ", MinH=" << minh << ", MaxH=" << maxh
-                    << ", t=" << std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count() << "ms" 
-                    << std::endl;
-
-                //ImageUtils::compressImageInPlace(rgbh.get());
-
-                return rgbh;
-            }
-
-            return ReadResult::FILE_NOT_HANDLED;
-        }
-    };
-
-    #define DEFAULT_ROUGHNESS 0.75
-    #define DEFAULT_AO 1.0
-
-    // OSG load for reading normal, roughness, and AO textures and merging
-    // them into a single encoded material texture.
-    struct NNRAPseudoLoader : public osgDB::ReaderWriter
-    {
-        NNRAPseudoLoader() {
-            supportsExtension("oe_splat_nnra", "Normal/Roughness/AO");
-        }
-
-        ReadResult readImage(const std::string& uri, const osgDB::Options* options) const override
-        {
-            std::string ext = osgDB::getLowerCaseFileExtension(uri);
-            if (ext == "oe_splat_nnra")
-            {
-                URI normalsURI(
-                    osgDB::getNameLessExtension(uri) + "_Normal.jpg");
-
-                osg::ref_ptr<osg::Image> normals =
-                    normalsURI.getImage(options);
-
-                if (!normals.valid())
-                    return ReadResult::FILE_NOT_FOUND;
-
-                URI roughnessURI(
-                    osgDB::getNameLessExtension(uri) + "_Roughness.jpg");
-
-                osg::ref_ptr<osg::Image> roughness =
-                    roughnessURI.getImage(options);
-
-                URI aoURI(
-                    osgDB::getNameLessExtension(uri) + "_AmbientOcclusion.jpg");
-
-                osg::ref_ptr<osg::Image> ao =
-                    aoURI.getImage(options);
-
-                osg::ref_ptr<osg::Image> nnra = new osg::Image();
-                nnra->allocateImage(normals->s(), normals->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-
-                ImageUtils::PixelReader readNormals(normals.get());
-                ImageUtils::PixelReader readAO(ao.get());
-                ImageUtils::PixelReader readRoughness(roughness.get());
-                ImageUtils::PixelWriter writeMat(nnra.get());
-
-                osg::Vec3 normal3;
-                osg::Vec4 normal;
-                osg::Vec4 roughnessVal;
-                osg::Vec4 aoVal;
-                osg::Vec4 packed;
-
-                ImageUtils::ImageIterator iter(nnra.get());
-                iter.forEachPixel([&]()
-                    {
-                        readNormals(normal, iter.s(), iter.t());
-                        normal3.set(normal.x()*2.0 - 1.0, normal.y()*2.0 - 1.0, normal.z()*2.0 - 1.0);
-                        NormalMapGenerator::pack(normal3, packed);
-                        if (roughness.valid())
-                        {
-                            readRoughness(roughnessVal, iter.s(), iter.t());
-                            packed[2] = roughnessVal.r();
-                        }
-                        else packed[2] = DEFAULT_ROUGHNESS;
-
-                        if (ao.valid())
-                        {
-                            readAO(aoVal, iter.s(), iter.t());
-                            packed[3] = aoVal.r();
-                        }
-                        else packed[3] = DEFAULT_AO;
-
-                        writeMat(packed, iter.s(), iter.t());
-                    });
-
-                return nnra;
-            }
-
-            return ReadResult::FILE_NOT_HANDLED;
-        }
-    };
-
     // Job for loading materials into an arena
     osg::ref_ptr<TextureArena>
     loadMaterials(const AssetCatalog& cat, Cancelable* progress)
@@ -219,6 +69,10 @@ namespace
         for (auto& tex : cat.getTextures())
         {
             auto t0 = std::chrono::steady_clock::now();
+
+            //Texture* encoded = new Texture();
+            //encoded->_uri = URI(tex.uri()->full() + ".oe_splat_texture");
+            //arena->add(encoded);
 
             Texture* rgbh = new Texture();
             rgbh->_uri = URI(tex.uri()->full() + ".oe_splat_rgbh");
@@ -242,8 +96,8 @@ namespace
     }
 }
 
-REGISTER_OSGPLUGIN(oe_splat_rgbh, RGBHPseudoLoader);
-REGISTER_OSGPLUGIN(oe_splat_nnra, NNRAPseudoLoader);
+//REGISTER_OSGPLUGIN(oe_splat_rgbh, RGBHPseudoLoader);
+//REGISTER_OSGPLUGIN(oe_splat_nnra, NNRAPseudoLoader);
 
 //........................................................................
 

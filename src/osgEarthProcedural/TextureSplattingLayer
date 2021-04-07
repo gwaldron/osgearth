@@ -78,7 +78,6 @@ namespace osgEarth { namespace Procedural
 
         void buildStateSets();
     };
-
 } } // namespace osgEarth::Procedural
 
 #endif // OSGEARTH_PROCEDURAL_SPLATTING_LAYER_H

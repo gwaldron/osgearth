@@ -90,6 +90,10 @@ uniform float dense_power = 1.0;
 uniform float lush_power = 1.0;
 uniform float rugged_power = 1.0;
 
+#define RUGGED 0
+#define DENSE 1
+#define LUSH 2
+
 void generate()
 {
     const uint x = gl_GlobalInvocationID.x;
@@ -143,8 +147,8 @@ void generate()
 
     vec2 lifemap_uv = (OE_LIFEMAP_MATRIX*tilec4).st;
     vec3 lifemap = texture(OE_LIFEMAP_SAMPLER, lifemap_uv).xyz;
-    fill = lifemap[0] * dense_power;
-    lush = lifemap[1] * lush_power;
+    fill = lifemap[DENSE] * dense_power;
+    lush = lifemap[LUSH] * lush_power;
     lush = noise[pickNoiseType] * lush;
 
     // discard instances based on noise value threshold (coverage). If it passes,

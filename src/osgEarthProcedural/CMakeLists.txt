@@ -44,6 +44,7 @@ set(TARGET_SRC
     NoiseTextureFactory.cpp
     RoadSurfaceLayer.cpp
     TextureSplattingLayer.cpp
+    TextureSplattingMaterials.cpp
     LifeMapLayer.cpp
     ${SHADERS_CPP})
 	
@@ -60,6 +61,7 @@ set(LIB_PUBLIC_HEADERS
     RoadSurfaceLayer
     ProceduralShaders
     TextureSplattingLayer
+    TextureSplattingMaterials
     LifeMapLayer)
 	
 SET(TARGET_H

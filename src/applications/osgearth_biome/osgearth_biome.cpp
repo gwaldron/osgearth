@@ -41,6 +41,7 @@
 #include <osgViewer/Viewer>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
+#include <osg/Uniform>
 #include <iostream>
 
 #define LC "[osgearth_biome] "
@@ -73,11 +74,20 @@ struct LifeMapGUI
 {
     App _app;
     LifeMapLayer* lifemap;
+    float _splat_blend_start;
+    float _splat_blend_end;
+    float _splat_blend_rgbh_mix;
+    float _splat_blend_normal_mix;
 
     LifeMapGUI(App& app) : _app(app)
     {
         lifemap = _app._map->getLayer<LifeMapLayer>();
         OE_HARD_ASSERT(lifemap != nullptr, __func__);
+
+        _splat_blend_start = 2500.0f;
+        _splat_blend_end = 500.0f;
+        _splat_blend_rgbh_mix = 0.85f;
+        _splat_blend_normal_mix = 0.72f;
     }
 
     void draw()
@@ -104,6 +114,92 @@ struct LifeMapGUI
                 { lifemap },
                 GeoExtent::INVALID);
         }
+
+        // uniforms
+        ImGui::SliderFloat("Splat blend start (m)", &_splat_blend_start, 0.0f, 5000.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_start", _splat_blend_start));
+
+        ImGui::SliderFloat("Splat blend end (m)", &_splat_blend_end, 0.0f, 5000.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_end", _splat_blend_end));
+
+        ImGui::SliderFloat("Splat RGBH mix", &_splat_blend_rgbh_mix, 0.0f, 1.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_rgbh_mix", _splat_blend_rgbh_mix));
+
+        ImGui::SliderFloat("Splat NRML mix", &_splat_blend_normal_mix, 0.0f, 1.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _splat_blend_normal_mix));
+
+
+        ImGui::End();
+    }
+};
+
+struct TextureSplattingGUI
+{
+    App _app;
+    float _blend_start;
+    float _blend_end;
+    float _blend_rgbh_mix;
+    float _blend_normal_mix;
+    float _rugged_power;
+    float _dense_power;
+    float _lush_power;
+    float _normal_power;
+    float _ao_power;
+    float _brightness;
+    float _contrast;
+
+    TextureSplattingGUI(App& app) : _app(app)
+    {
+        _blend_start = 2500.0f;
+        _blend_end = 500.0f;
+        _blend_rgbh_mix = 0.85f;
+        _blend_normal_mix = 0.72f;
+        _rugged_power = 1.0f;
+        _dense_power = 1.0f;
+        _lush_power = 1.0f;
+        _normal_power = 1.0f;
+        _ao_power = 1.0f;
+        _brightness = 1.0f;
+        _contrast = 1.0f;
+    }
+
+    void draw()
+    {
+        ImGui::Begin("Texture Splatting");
+
+        // uniforms
+        ImGui::SliderFloat("Level blend start (m)", &_blend_start, 0.0f, 5000.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_start", _blend_start));
+
+        ImGui::SliderFloat("Level blend end (m)", &_blend_end, 0.0f, 5000.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_end", _blend_end));
+
+        ImGui::SliderFloat("RGBH mix", &_blend_rgbh_mix, 0.0f, 1.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_rgbh_mix", _blend_rgbh_mix));
+
+        ImGui::SliderFloat("Normal mix", &_blend_normal_mix, 0.0f, 1.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _blend_normal_mix));
+
+        ImGui::SliderFloat("Rugged power", &_rugged_power, 0.0f, 4.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("rugged_power", _rugged_power));
+
+        ImGui::SliderFloat("Dense power", &_dense_power, 0.0f, 4.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("dense_power", _dense_power));
+
+        ImGui::SliderFloat("Lush power", &_lush_power, 0.0f, 4.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("lush_power", _lush_power));
+
+        ImGui::SliderFloat("Normal power", &_normal_power, 0.0f, 4.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("normal_power", _normal_power));
+
+        ImGui::SliderFloat("AO power", &_ao_power, 0.0f, 4.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("ao_power", _ao_power));
+
+        ImGui::SliderFloat("Global brightness", &_brightness, 0.0f, 4.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("brightness", _brightness));
+
+        ImGui::SliderFloat("Global contrast", &_contrast, 0.0f, 4.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("contrast", _contrast));
 
         ImGui::End();
     }
@@ -190,7 +286,8 @@ public:
     MainGUI(App& app) : 
         _app(app), 
         _lifemap(app),
-        _biomes(app)
+        _biomes(app),
+        _splatting(app)
     {
     }
 
@@ -200,11 +297,13 @@ protected:
         _layers.draw(ri, _app._mapNode, _app._view->getCamera(), _app._manip);
         _lifemap.draw();
         _biomes.draw();
+        _splatting.draw();
     }
 
     App& _app;
     LifeMapGUI _lifemap;
     BiomeGUI _biomes;
+    TextureSplattingGUI _splatting;
     ImGuiUtil::LayersGUI _layers;
 };
 

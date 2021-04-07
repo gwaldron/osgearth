@@ -225,10 +225,12 @@ NNRA_Loader::readImageFromSourceData(
             if (normals.valid())
             {
                 readNormals(normal, iter.s(), iter.t());
-                normal3.set(normal.x()*2.0 - 1.0, normal.y()*2.0 - 1.0, normal.z()*2.0 - 1.0);
-                
-                //TODO: check on the normal map format. Max uses in inverted Y (which we are
-                // currently applying in the shader). Check the Z for 0..1 versus -1..1.
+
+                // Note: Y-down is standard practice for normal maps
+                normal3.set(
+                    normal.x()*2.0 - 1.0, 
+                    -(normal.y()*2.0 - 1.0),
+                    normal.z()*2.0 - 1.0);
             }
             NormalMapGenerator::pack(normal3, packed);
 

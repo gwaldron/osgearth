@@ -4,17 +4,19 @@
 #pragma vp_location vertex_view
 #extension GL_ARB_gpu_shader_int64 : enable
 
-#define NUM_LEVELS 1
-const int levels[1] = int[](18); // , 19);
+#define NUM_LEVELS 2
+const int levels[2] = int[](14, 19);
+out vec2 splatCoords[2];
 
 // from REX SDK:
 vec4 oe_terrain_getNormalAndCurvature();
 vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
 
 out vec4 oe_layer_tilec;
-
-out vec2 splatCoords[1];
 out float splatLevelBlend;
+
+uniform float oe_splat_blend_start = 2500.0;
+uniform float oe_splat_blend_end = 500.0;
 
 
 float mapToNormalizedRange(in float value, in float lo, in float hi)
@@ -32,9 +34,9 @@ void oe_splat_View(inout vec4 vertex_view)
     }
 
     // transition b/w levels
-    const float start = 175.0;
-    const float end = 100.0;
-    splatLevelBlend = mapToNormalizedRange(-vertex_view.z, start, end);
+    //const float start = 2500.0;
+    //const float end = 250.0;
+    splatLevelBlend = mapToNormalizedRange(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
 }
 
 [break]
@@ -72,8 +74,8 @@ float oe_ao;
 in float splatLevelBlend;
 in vec4 oe_layer_tilec;
 
-#define NUM_LEVELS 1
-in vec2 splatCoords[1];
+#define NUM_LEVELS 2
+in vec2 splatCoords[2];
 
 flat in int maxLevel;
 
@@ -81,8 +83,14 @@ uniform float dense_power = 1.0;
 uniform float lush_power = 1.0;
 uniform float rugged_power = 1.0;
 uniform float normal_power = 1.0;
+uniform float ao_power = 1.0;
 uniform float depth = 0.02; 
 uniform float snow = 0.0;
+
+uniform float oe_splat_blend_rgbh_mix = 0.8;
+uniform float oe_splat_blend_normal_mix = 0.8;
+uniform float brightness = 1.0;
+uniform float contrast = 1.0;
 
 in float oe_layer_opacity;
 
@@ -200,10 +208,27 @@ void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
     // blend with working image using both heightmap and effect:
     float m = heightAndEffectMix(col[0].rgbh.a, 1.0 - x_mix, col[1].rgbh.a, x_mix);
 
-    pixel.rgbh = mix(col[0].rgbh, col[1].rgbh, m);
-    pixel.normal = mix(col[0].normal, col[1].normal, m);
-    pixel.roughness = mix(col[0].roughness, col[1].roughness, m);
-    pixel.ao = mix(col[0].ao, col[1].ao, m);
+    if (level == 0)
+    {
+        pixel.rgbh = mix(col[0].rgbh, col[1].rgbh, m);
+        pixel.normal = mix(col[0].normal, col[1].normal, m);
+        pixel.roughness = mix(col[0].roughness, col[1].roughness, m);
+        pixel.ao = mix(col[0].ao, col[1].ao, m);
+    }
+    else
+    {
+        Pixel temp;
+
+        temp.rgbh = mix(col[0].rgbh, col[1].rgbh, m);
+        temp.normal = mix(col[0].normal, col[1].normal, m);
+        temp.roughness = mix(col[0].roughness, col[1].roughness, m);
+        temp.ao = mix(col[0].ao, col[1].ao, m);
+
+        pixel.rgbh = mix(pixel.rgbh, temp.rgbh, min(splatLevelBlend, oe_splat_blend_rgbh_mix));
+        pixel.normal = mix(pixel.normal, temp.normal, min(splatLevelBlend, oe_splat_blend_normal_mix));
+        pixel.roughness = mix(pixel.roughness, temp.roughness, splatLevelBlend);
+        pixel.ao = min(pixel.ao, temp.ao); // mix(pixel.ao, temp.ao, splatLevelBlend);
+    }
 #else
     pixel = col[0];
 #endif
@@ -230,7 +255,10 @@ void oe_splat_Frag(inout vec4 quad)
     rugged = amplify(rugged, rugged_power);
 
     Pixel pixel;
-    resolveLevel(pixel, 0, rugged, lush);
+    for (int i = 0; i < NUM_LEVELS; ++i)
+    {
+        resolveLevel(pixel, i, rugged, lush);
+    }
 
     // establish the local tangent plane:
     vec3 Z = gl_NormalMatrix * vec3(0, 0, 1); // north pole
@@ -240,17 +268,16 @@ void oe_splat_Frag(inout vec4 quad)
 
     pixel.normal.xy = decel(pixel.normal.xy, normal_power);
 
-    // Because the 3dmax normals have a flipped Y -gw
-    pixel.normal.y = -pixel.normal.y;
-
     vp_Normal = normalize(tbn * pixel.normal);
 
     oe_roughness = pixel.roughness;
 
     // AO effect is very subtle. Consider dumping it.
-    oe_ao = pixel.ao;
+    oe_ao = pixel.ao * ao_power;
 
     vec3 color;
+
+    pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*contrast + 0.5) * brightness, 0, 1);
 
 #if 1
     // perma-show caps:

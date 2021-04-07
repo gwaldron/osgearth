@@ -146,7 +146,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
     int which = gl_VertexID & 7; // mod8 - there are 8 verts per instance
 
     // apply color darkening by distance
-    vp_Color.rgb *= clamp(1.0 - nRange, 0.5, 1.0);
+    //vp_Color.rgb *= clamp(1.0 - nRange, 0.5, 1.0);
 
 #ifdef OE_IS_SHADOW_CAMERA
 

@@ -455,6 +455,11 @@ namespace
         if (_s_debug)
             OE_NOTICE << LC << "Read image \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
 
+        // compressed cache data means there was an internal error
+        OE_SOFT_ASSERT_AND_RETURN(
+            rr.getImage() == nullptr || rr.getImage()->isCompressed() == false, 
+            __func__, ReadResult());
+
         return rr;
     }
     
@@ -607,9 +612,16 @@ namespace
             if (dynamic_cast<const osg::Image*>(object.get()))
             {
                 std::string filename = fileURI.full() + "." + _options.format().get();
-                writeOK = osgDB::writeImageFile(*static_cast<const osg::Image*>(object.get()), filename, writeOptions.get());
-                //r = _rw->writeImage(*static_cast<const osg::Image*>(object.get()), filename, writeOptions.get());
-                //writeOK = r.success();
+                const osg::Image* image = static_cast<const osg::Image*>(object.get());
+
+                if (image->isCompressed())
+                {
+                    OE_SOFT_ASSERT(image->isCompressed() == false, __func__);
+                }
+                else
+                {
+                    writeOK = osgDB::writeImageFile(*image, filename, writeOptions.get());
+                }
             }
             else if (dynamic_cast<const osg::Node*>(object.get()))
             {

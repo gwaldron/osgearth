@@ -211,27 +211,43 @@ Registry::~Registry()
     CPLPopErrorHandler();
 }
 
+static osg::ref_ptr<Registry> s_registry = NULL;
+
+// Destroy the registry explicitly: this is called in an atexit() hook.  See comment in
+// Registry::instance(bool reset).
+void destroyRegistry()
+{
+   s_registry->release();
+   s_registry = NULL;
+}
+
 Registry*
 Registry::instance(bool reset)
 {
     // Make sure the gdal mutex is created before the Registry so it will still be around when the registry is destroyed statically.
     // This is to prevent crash on exit where the gdal mutex is deleted before the registry is.
     osgEarth::getGDALMutex();
-    // Client code may access the registry after the destructors for
-    // libosgEarth have run. A typical case is ~MapNode(), which
-    // calls releaseGLObjects(), which accesses the Registry. But the
-    // ref_ptr to the MapNode is usually declared outside of any
-    // function in the main application, so its destructor is run
-    // quite late.
-    static Registry* s_registry = new Registry();
-    static osg::ref_ptr<Registry> s_registry_ref(s_registry);
-    if (reset)
+
+    static bool s_registryInit = false;
+
+    // Create registry the first time through, explicitly rather than depending on static object
+    // initialization order, which is undefined in c++ across separate compilation units.  An
+    // explicit hook is registered to tear it down on exit.  atexit() hooks are run on exit in
+    // the reverse order of their registration during setup.
+    if (!s_registryInit)
     {
-        s_registry = new Registry();
-        s_registry_ref = s_registry;
+        s_registryInit = true;
+        s_registry = new Registry;
+        std::atexit(destroyRegistry);
     }
 
-    return s_registry;
+    if (reset)
+    {
+        s_registry->release();
+        s_registry = new Registry();
+    }
+
+    return s_registry.get();
 }
 
 void

@@ -512,3 +512,24 @@ void LoadDataVisitor::manualUpdate()
     }
 }
 //----------------------------------------------------------------------------
+
+void osgEarth::Util::loadData(osg::Node* node, std::vector<osg::BoundingSphered>& areasToLoad)
+{
+    // Add the areas to load to the visitor.
+    LoadDataVisitor v;
+    for (auto& a: areasToLoad)
+    {
+        v.getAreasToLoad().push_back(a);
+    }
+
+    // Send the visitor down the scene graph, loading data incrementally until it's fully loaded.
+    bool fullyLoaded = false;
+    while (!fullyLoaded)
+    {
+        v.reset();
+        node->accept(v);
+        fullyLoaded = v.isFullyLoaded();
+        // Call manual update on the PagingManger to peform merges.
+        v.manualUpdate();
+    }
+}

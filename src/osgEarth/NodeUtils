@@ -514,6 +514,11 @@ namespace osgEarth { namespace Util
         std::vector< osg::BoundingSphered > _areasToLoad;
     };
 
+    /**
+    * Loads async data within the given areas and sets the nodes to not expire.
+    */
+    extern OSGEARTH_EXPORT void loadData(osg::Node* node, std::vector<osg::BoundingSphered>& areasToLoad);
+
 } }
 
 #endif // OSGEARTH_CACHING_H

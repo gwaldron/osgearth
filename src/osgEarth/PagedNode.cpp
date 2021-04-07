@@ -457,6 +457,46 @@ PagingManager::PagingManager() :
 }
 
 void
+PagingManager::update()
+{
+    // Discard expired nodes
+    {
+        ScopedMutexLock lock(_trackerMutex); // unnecessary?
+
+        _tracker.flush(
+            0.0f,
+            _mergesPerFrame,
+            [](osg::ref_ptr<PagedNode2>& node) -> bool {
+            if (node->getAutoUnload())
+            {
+                node->unload();
+                return true;
+            }
+            return false;
+        });
+    }
+
+    // Handle merges
+    if (_mergeQueue.empty() == false)
+    {
+        ScopedMutexLock lock(_mergeMutex); // unnecessary?
+
+        unsigned count = 0u;
+        while (_mergeQueue.empty() == false && count < _mergesPerFrame)
+        {
+            ToMerge& front = _mergeQueue.front();
+            osg::ref_ptr<PagedNode2> next;
+            if (front._node.lock(next))
+            {
+                if (next->merge(front._revision))
+                    ++count;
+            }
+            _mergeQueue.pop();
+        }
+    }
+}
+
+void
 PagingManager::traverse(osg::NodeVisitor& nv)
 {
     // Make this object accesible to children
@@ -471,42 +511,7 @@ PagingManager::traverse(osg::NodeVisitor& nv)
         nv.getVisitorType() == nv.UPDATE_VISITOR &&
         _newFrame.exchange(false)==true)
     {
-        // Discard expired nodes
-        {
-            ScopedMutexLock lock(_trackerMutex); // unnecessary?
-
-            _tracker.flush(
-                nv,
-                0.0f,
-                _mergesPerFrame,
-                [](osg::ref_ptr<PagedNode2>& node) -> bool {
-                    if (node->getAutoUnload())
-                    {
-                        node->unload();
-                        return true;
-                    }
-                    return false;
-                });
-        }
-
-        // Handle merges
-        if (_mergeQueue.empty() == false)
-        {
-            ScopedMutexLock lock(_mergeMutex); // unnecessary?
-
-            unsigned count = 0u;
-            while (_mergeQueue.empty() == false && count < _mergesPerFrame)
-            {
-                ToMerge& front = _mergeQueue.front();
-                osg::ref_ptr<PagedNode2> next;
-                if (front._node.lock(next))
-                {
-                    if (next->merge(front._revision))
-                        ++count;
-                }
-                _mergeQueue.pop();
-            }
-        }
+        update();
     }
 
     osg::Group::traverse(nv);

@@ -57,7 +57,7 @@ ElevationPool::StrongLRU::clear()
     while(!_lru.empty())
         _lru.pop();
 }
-    
+
 
 void
 ElevationPool::MapCallbackAdapter::onMapModelChanged(const MapModelChange& c)
@@ -104,7 +104,7 @@ ElevationPool::setMap(const Map* map)
     }
 
     _map = map;
-    
+
     if (map)
     {
         _mapCallback->_pool = this;
@@ -162,13 +162,13 @@ ElevationPool::refresh(const Map* map)
     if (_index)
         delete static_cast<MaxLevelIndex*>(_index);
 
-    map->getLayers(_elevationLayers);
+    map->getOpenLayers(_elevationLayers);
 
     MaxLevelIndex* index = new MaxLevelIndex();
     _index = index;
 
     double a_min[2], a_max[2];
-        
+
     for(auto i : _elevationLayers)
     {
         const ElevationLayer* layer = i.get();
@@ -210,7 +210,7 @@ ElevationPool::getLOD(double x, double y) const
     int maxiestMaxLevel = -1;
     for(auto h = hits.begin(); h != hits.end(); ++h)
     {
-        maxiestMaxLevel = osg::maximum(maxiestMaxLevel, (int)*h); 
+        maxiestMaxLevel = osg::maximum(maxiestMaxLevel, (int)*h);
     }
     return maxiestMaxLevel;
 }
@@ -237,7 +237,7 @@ ElevationPool::findExistingRaster(
     bool* fromWS,
     bool* fromL2,
     bool* fromLUT)
-{   
+{
     OE_PROFILING_ZONE;
 
     *fromWS = false;
@@ -283,7 +283,7 @@ ElevationPool::findExistingRaster(
 
 osg::ref_ptr<ElevationTexture>
 ElevationPool::getOrCreateRaster(
-    const Internal::RevElevationKey& key, 
+    const Internal::RevElevationKey& key,
     const Map* map,
     bool acceptLowerRes,
     WorkingSet* ws,
@@ -315,8 +315,8 @@ ElevationPool::getOrCreateRaster(
             ws && !ws->_elevationLayers.empty() ? ws->_elevationLayers :
             _elevationLayers;
 
-        for(keyToUse = key._tilekey; 
-            keyToUse.valid(); 
+        for(keyToUse = key._tilekey;
+            keyToUse.valid();
             keyToUse.makeParent())
         {
             populated = layersToSample.populateHeightField(
@@ -327,7 +327,7 @@ ElevationPool::getOrCreateRaster(
                 map->getElevationInterpolation(),
                 progress );
 
-            if ((populated == true) || 
+            if ((populated == true) ||
                 (acceptLowerRes == false) ||
                 (progress && progress->isCanceled()))
             {
@@ -399,8 +399,8 @@ namespace
     //};
 
     inline void quickSample(
-        const ImageUtils::PixelReader& reader, 
-        double u, double v, 
+        const ImageUtils::PixelReader& reader,
+        double u, double v,
         osg::Vec4f& out,
         ElevationPool::Envelope::QuickSampleVars& a)
     {
@@ -684,7 +684,7 @@ ElevationPool::sampleMapCoords(
                 ty_prev = ty;
             }
         }
-        
+
         if (key._tilekey.valid())
         {
             auto iter = quickCache.find(key);
@@ -884,9 +884,9 @@ ElevationPool::sampleMapCoords(
 
 ElevationSample
 ElevationPool::getSample(
-    const GeoPoint& p, 
-    unsigned maxLOD, 
-    const Map* map, 
+    const GeoPoint& p,
+    unsigned maxLOD,
+    const Map* map,
     WorkingSet* ws,
     ProgressCallback* progress)
 {
@@ -900,7 +900,7 @@ ElevationPool::getSample(
     maxLOD = osg::minimum(maxLOD, static_cast<unsigned>(std::numeric_limits<int>::max()));
     int lod = osg::minimum( getLOD(p.x(), p.y()), (int)maxLOD );
     if (lod >= 0)
-    {   
+    {
         key._tilekey = map->getProfile()->createTileKey(p.x(), p.y(), lod);
         key._revision = getElevationRevision(map);
 
@@ -921,8 +921,8 @@ ElevationPool::getSample(
 
 ElevationSample
 ElevationPool::getSample(
-    const GeoPoint& p, 
-    WorkingSet* ws, 
+    const GeoPoint& p,
+    WorkingSet* ws,
     ProgressCallback* progress)
 {
     if (!p.isValid())
@@ -946,8 +946,8 @@ ElevationPool::getSample(
 
 ElevationSample
 ElevationPool::getSample(
-    const GeoPoint& p, 
-    const Distance& resolution, 
+    const GeoPoint& p,
+    const Distance& resolution,
     WorkingSet* ws,
     ProgressCallback* progress)
 {
@@ -1002,8 +1002,8 @@ ElevationPool::getTile(
     key._revision = getElevationRevision(map.get());
 
     out_tex = getOrCreateRaster(
-        key, 
-        _map.get(), 
+        key,
+        _map.get(),
         acceptLowerRes,
         ws,
         progress);

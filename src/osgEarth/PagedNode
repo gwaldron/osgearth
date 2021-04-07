@@ -295,6 +295,9 @@ namespace osgEarth { namespace Util
             return _tracker.use(node, token);
         }
 
+        //! Manually call an update on the PagingManager.  This should only be used if you are loading data outside of a traditional frameloop and want to merge data.
+        void update();
+
     public:
         virtual void traverse(osg::NodeVisitor& nv) override;
 

@@ -287,7 +287,6 @@ namespace osgEarth { namespace Util
         }
 
         inline void flush(
-            osg::NodeVisitor& nv,
             float fartherThanRange,
             unsigned maxCount,
             std::function<bool(T& obj)> dispose)

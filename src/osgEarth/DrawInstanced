@@ -25,6 +25,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
 #include <osg/Drawable>
+#include <osg/Geometry>
 #include <osg/TextureBuffer>
 
 /**
@@ -36,29 +37,26 @@ namespace osgEarth { namespace Util
 
     namespace DrawInstanced
     {
-        /**
-        * Special group that traverses instanced nodes as if they were in the scene graph as regular nodes under MatrixTransforms.
-        * This allows visitors like the IntersectionVisitor and primitive collection to function on instanced models.
-        */
-        class OSGEARTH_EXPORT InstanceGroup : public osg::Group
+        class OSGEARTH_EXPORT InstanceGeometry : public osg::Geometry
         {
         public:
-            InstanceGroup();
-
-            InstanceGroup(const InstanceGroup&, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
-
-            META_Node(osgEarth::Util::DrawInstanced, InstanceGroup);
-
-            void traverse(osg::NodeVisitor& nv);
+            InstanceGeometry();
+            InstanceGeometry(const osg::Geometry& geometry);
+            InstanceGeometry(const InstanceGeometry&, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+            META_Node(osgEarth::Util::DrawInstanced, InstanceGeometry);
 
             const std::vector< osg::Matrixf >& getMatrices() const;
+            void setMatrices(const std::vector< osg::Matrixf >& matrices);
 
-            void setMatrices(const std::vector< osg::Matrixf >& values);
+            virtual bool supports(const osg::PrimitiveFunctor& f) const { return true; }
+            virtual void accept(osg::PrimitiveFunctor& f) const;
 
-            void addMatrix(const osg::Matrixf& value);
+            virtual osg::BoundingBox computeBoundingBox() const;
 
-        protected:
-            std::vector< osg::Matrixf > _matrices;
+        private:
+            std::vector<osg::Matrixf> _matrices;
+            std::vector<osg::Vec3> _mesh;
+            osg::ref_ptr< osg::DrawElementsUInt > _meshDrawElements;
         };
 
         /**
@@ -75,7 +73,6 @@ namespace osgEarth { namespace Util
                 */
             ConvertToDrawInstanced(
                 unsigned                numInstances,
-                const osg::BoundingBox& bbox,
                 bool                    optimize,
                 osg::TextureBuffer*     tbo,
                 int                     firstTboUnit);
@@ -89,7 +86,6 @@ namespace osgEarth { namespace Util
 
         protected:
             unsigned _numInstances;
-            osg::BoundingBox _bbox;
             bool _optimize;
             std::list<osg::PrimitiveSet*> _primitiveSets;
             osg::TextureBuffer* _tbo;

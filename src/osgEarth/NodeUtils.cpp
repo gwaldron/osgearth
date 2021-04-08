@@ -435,7 +435,7 @@ bool LoadDataVisitor::isFullyLoaded() const
 
 void LoadDataVisitor::reset()
 {
-    _fullyLoaded = false;
+    _fullyLoaded = true;
 }
 
 bool LoadDataVisitor::intersects(osg::Node& node)
@@ -468,6 +468,13 @@ void LoadDataVisitor::apply(osg::Node& node)
         {
             apply(*pagedNode);
         }
+
+        PagingManager* pagingManager = dynamic_cast<PagingManager*>(&node);
+        if (pagingManager)
+        {
+            _pagingManagers.insert(pagingManager);
+        }
+
         traverse(node);
     }
 }
@@ -496,4 +503,33 @@ void LoadDataVisitor::apply(osg::Transform& transform)
         popMatrix();
     }
 }
+
+void LoadDataVisitor::manualUpdate()
+{
+    for (auto& m : _pagingManagers)
+    {
+        m->update();
+    }
+}
 //----------------------------------------------------------------------------
+
+void osgEarth::Util::loadData(osg::Node* node, std::vector<osg::BoundingSphered>& areasToLoad)
+{
+    // Add the areas to load to the visitor.
+    LoadDataVisitor v;
+    for (auto& a: areasToLoad)
+    {
+        v.getAreasToLoad().push_back(a);
+    }
+
+    // Send the visitor down the scene graph, loading data incrementally until it's fully loaded.
+    bool fullyLoaded = false;
+    while (!fullyLoaded)
+    {
+        v.reset();
+        node->accept(v);
+        fullyLoaded = v.isFullyLoaded();
+        // Call manual update on the PagingManger to peform merges.
+        v.manualUpdate();
+    }
+}

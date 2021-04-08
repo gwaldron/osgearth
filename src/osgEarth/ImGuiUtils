@@ -35,6 +35,9 @@
 #include <osgEarth/Geocoder>
 #include <osgEarth/ViewFitter>
 #include <osgEarth/NetworkMonitor>
+#include <osgEarth/AnnotationUtils>
+#include <osg/PolygonMode>
+
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;
@@ -516,18 +519,445 @@ namespace osgEarth {
         };
 
 
+        // Manages the single selected node in the application.
+        static osg::ref_ptr< osg::Node > s_selectedNode;
+
+        static osg::Node* getSelectedNode()
+        {
+            return s_selectedNode.get();
+        }
+
+        static void setSelectedNode(osg::Node* node)
+        {
+            s_selectedNode = node;
+        }
+
+
+
+        class SceneHierarchy
+        {
+        public:
+
+            class SceneHierarchyVisitor : public osg::NodeVisitor
+            {
+            public:
+                SceneHierarchyVisitor() :
+                    osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+                {
+                }
+
+                void apply(osg::Node& node)
+                {
+                    // Non groups act as leaf nodes
+                    std::string label = getLabel(node);
+                    ImGuiTreeNodeFlags node_flags = base_flags;
+                    node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                    if (getSelectedNode() == &node)
+                    {
+                        node_flags |= ImGuiTreeNodeFlags_Selected;
+                    }
+
+                    ImGui::TreeNodeEx(&node, node_flags, label.c_str());
+                    if (ImGui::IsItemClicked())
+                    {
+                        setSelectedNode(&node);
+                    }
+                }
+
+                void apply(osg::Group& node)
+                {
+                    std::string label = getLabel(node);
+                    ImGuiTreeNodeFlags node_flags = base_flags;
+                    if (getSelectedNode() == &node)
+                    {
+                        node_flags |= ImGuiTreeNodeFlags_Selected;
+                    }
+
+                    if (isInSelectedNodePath(&node))
+                    {
+                        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+                    }
+
+                    bool node_open = ImGui::TreeNodeEx(&node, node_flags, label.c_str());
+                    if (ImGui::IsItemClicked())
+                    {
+                        setSelectedNode(&node);
+                    }
+                    if (node_open)
+                    {
+                        traverse(node);
+                        ImGui::TreePop();
+                    }
+                }
+
+                std::string getLabel(osg::Node& node)
+                {
+                    std::stringstream buf;
+                    buf << node.getName() << " (" << typeid(node).name() << ")";
+
+                    return buf.str();
+                }
+
+                bool isInSelectedNodePath(osg::Node* node)
+                {
+                    if (_selectedNodePaths.empty() && getSelectedNode())
+                    {
+                        _selectedNodePaths = getSelectedNode()->getParentalNodePaths();
+                    }
+
+                    for (unsigned int i = 0; i < _selectedNodePaths.size(); i++)
+                    {
+                        for (unsigned int j = 0; j < _selectedNodePaths[i].size(); j++)
+                        {
+                            if (node == _selectedNodePaths[i][j])
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+
+                ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+                osg::NodePathList _selectedNodePaths;
+            };
+
+            SceneHierarchy() :
+                _selectedBounds(0)
+            {
+            }
+
+            void draw(osg::Node* node, osg::RenderInfo& renderInfo, EarthManipulator* manip, MapNode* mapNode, bool *show)
+            {
+                if (ImGui::Begin("Scene Hierarchy", show))
+                {
+                    auto size = ImGui::GetWindowSize();
+
+                    if (ImGui::CollapsingHeader("Scene"))
+                    {
+                        ImGui::BeginChild("Scene", ImVec2(0, 0.6f * size.y));
+                        SceneHierarchyVisitor v;
+                        node->accept(v);
+
+                        ImGui::EndChild();
+                    }
+
+                    if (getSelectedNode())
+                    {
+                        if (ImGui::CollapsingHeader("Properties"))
+                        {
+                            ImGui::BeginChild("Properties");
+                            properties(getSelectedNode(), renderInfo, manip, mapNode);
+                            ImGui::EndChild();
+                        }
+                    }
+                    ImGui::End();
+                }
+                // If they closed the tool deselect the node.
+                if (!*show && getSelectedNode())
+                {
+                    setSelectedNode(nullptr);
+                }
+                updateBoundsDebug(mapNode);
+
+            }
+
+            void updateBoundsDebug(MapNode* mapNode)
+            {
+                if (_selectedBounds)
+                {
+                    mapNode->removeChild(_selectedBounds);
+                    _selectedBounds = nullptr;
+                }
+
+                auto selectedNode = getSelectedNode();
+
+                if (selectedNode)
+                {
+                    osg::NodePath nodePath = selectedNode->getParentalNodePaths()[0];
+                    osg::Matrixd localToWorld = osg::computeLocalToWorld(nodePath);
+
+                    osg::Drawable* drawable = selectedNode->asDrawable();
+                    if (drawable)
+                    {
+                        osg::BoundingBoxd bb = drawable->getBoundingBox();
+                        if (bb.valid())
+                        {
+                            _selectedBounds = new osg::MatrixTransform;
+                            _selectedBounds->setName("Bounds");
+                            _selectedBounds->setMatrix(localToWorld);
+                            _selectedBounds->addChild(AnnotationUtils::createBoundingBox(bb, Color::Yellow));
+                            mapNode->addChild(_selectedBounds);
+
+                        }
+                    }
+                    else
+                    {
+                        osg::BoundingSphered bs = osg::BoundingSphered(selectedNode->getBound().center(), selectedNode->getBound().radius());
+                        if (bs.radius() > 0)
+                        {
+                            _selectedBounds = new osg::MatrixTransform;
+                            _selectedBounds->setName("Bounds");
+                            _selectedBounds->setMatrix(localToWorld);
+                            _selectedBounds->addChild(AnnotationUtils::createSphere(selectedNode->getBound().radius(), Color::Yellow));
+                            _selectedBounds->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
+                            mapNode->addChild(_selectedBounds);
+                        }
+                    }
+                }
+            }
+
+
+            void properties(osg::Node* node, osg::RenderInfo& renderInfo, EarthManipulator* manip, MapNode* mapNode)
+            {
+                if (ImGui::Button("Zoom to"))
+                {
+                    osg::NodePath nodePath = node->getParentalNodePaths()[0];
+                    osg::Matrixd localToWorld = osg::computeLocalToWorld(nodePath);
+
+                    osg::BoundingSphered& bs = osg::BoundingSphered(node->getBound().center(), node->getBound().radius());
+                    if (bs.valid())
+                    {
+                        bs.center() += localToWorld.getTrans();
+                        osg::Vec3d c = bs.center();
+                        double r = bs.radius();
+                        const SpatialReference* mapSRS = mapNode->getMap()->getSRS();
+
+                        std::vector<GeoPoint> points;
+                        GeoPoint p;
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x() + r, c.y(), c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x() - r, c.y(), c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() + r, c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() - r, c.z())); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
+                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
+
+                        ViewFitter fitter(mapNode->getMap()->getSRS(), renderInfo.getCurrentCamera());
+                        Viewpoint vp;
+                        if (fitter.createViewpoint(points, vp))
+                        {
+                            manip->setViewpoint(vp, 2.0);
+                        }
+                    }
+                }
+
+                if (ImGui::TreeNode("General"))
+                {
+                    ImGui::Text("Type %s", typeid(*node).name());
+                    ImGui::Text("Name %s", node->getName().c_str());
+                    ImGui::TreePop();
+                }
+
+                osg::MatrixTransform* matrixTransform = dynamic_cast<osg::MatrixTransform*>(node);
+                if (matrixTransform)
+                {
+                    if (ImGui::TreeNode("Transform"))
+                    {
+                        bool dirty = false;
+                        osg::Matrix matrix = matrixTransform->getMatrix();
+                        osg::Vec3d translate = matrixTransform->getMatrix().getTrans();
+                        if (ImGui::InputScalarN("Translation", ImGuiDataType_Double, translate._v, 3))
+                        {
+                            dirty = true;
+                        }
+
+                        osg::Vec3d scale = matrixTransform->getMatrix().getScale();
+                        if (ImGui::InputScalarN("Scale", ImGuiDataType_Double, scale._v, 3))
+                        {
+                            dirty = true;
+                        }
+                        osg::Quat rot = matrixTransform->getMatrix().getRotate();
+                        if (ImGui::InputScalarN("Rotation", ImGuiDataType_Double, rot._v, 4))
+                        {
+                            dirty = true;
+                        }
+
+                        if (dirty)
+                        {
+                            osg::Matrix newMatrix = osg::Matrix::translate(translate) * osg::Matrix::rotate(rot) * osg::Matrixd::scale(scale);
+                            matrixTransform->setMatrix(newMatrix);
+                        }
+                        ImGui::TreePop();
+                    }
+                }
+
+                osg::StateSet* stateset = node->getStateSet();
+                if (stateset)
+                {
+                    if (ImGui::TreeNode("State Set"))
+                    {
+                        if (!stateset->getTextureAttributeList().empty() && ImGui::TreeNode("Textures"))
+                        {
+                            unsigned int textureWidth = 50;
+                            for (unsigned int i = 0; i < stateset->getTextureAttributeList().size(); ++i)
+                            {
+                                osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(stateset->getTextureAttribute(i, osg::StateAttribute::TEXTURE));
+
+                                if (texture)
+                                {
+                                    ImGui::PushID(texture);
+                                    ImGui::BeginGroup();
+                                    ImGui::Text("Unit %d", i);
+                                    ImGui::Text("Name %s", texture->getName().c_str());
+                                    ImGuiUtil::Texture(texture, renderInfo, textureWidth);
+                                    ImGui::EndGroup();
+                                }
+                            }
+                            ImGui::TreePop();
+                        }
+
+                        VirtualProgram* virtualProgram = VirtualProgram::get(stateset);
+                        if (virtualProgram && ImGui::TreeNode("Shaders"))
+                        {
+                            VirtualProgram::ShaderMap shaderMap;
+                            virtualProgram->getShaderMap(shaderMap);
+                            for (auto& s : shaderMap)
+                            {
+                                ImGui::Text("Name %s", s.second._shader->getName().c_str());
+                                ImGui::Text("Location %s", FunctionLocationToString(s.second._shader->getLocation()));
+                                ImGui::TextWrapped(s.second._shader->getShaderSource().c_str());
+                                ImGui::Separator();
+                            }
+                            ImGui::TreePop();
+                        }
+
+                        ImGui::TreePop();
+                    }
+                }
+
+                osg::Geometry* geometry = dynamic_cast<osg::Geometry*>(node);
+                if (geometry && ImGui::TreeNode("Geometry Properties"))
+                {
+                    if (geometry->getVertexArray())
+                    {
+                        ImGui::Text("Vertices %d", geometry->getVertexArray()->getNumElements());
+                    }
+
+                    if (geometry->getColorArray())
+                    {
+                        ImGui::Text("Colors %d", geometry->getColorArray()->getNumElements());
+                    }
+
+                    if (geometry->getNormalArray())
+                    {
+                        ImGui::Text("Normals %d", geometry->getNormalArray()->getNumElements());
+                    }
+
+                    for (auto &p : geometry->getPrimitiveSetList())
+                    {
+                        ImGui::Text("%s Mode=%s Primitives=%d Instances=%d", typeid(*p.get()).name(), GLModeToString(p->getMode()), p->getNumPrimitives(), p->getNumInstances());
+                    }
+                }
+            }
+
+            const char* GLModeToString(GLenum mode)
+            {
+                switch (mode)
+                {
+                case(GL_POINTS): return "GL_POINTS";
+                case(GL_LINES): return "GL_LINES";
+                case(GL_TRIANGLES): return "GL_TRIANGLES";
+                case(GL_QUADS): return "GL_QUADS";
+                case(GL_LINE_STRIP): return "GL_LINE_STRIP";
+                case(GL_LINE_LOOP): return "GL_LINE_LOOP";
+                case(GL_TRIANGLE_STRIP): return "GL_TRIANGLE_STRIP";
+                case(GL_TRIANGLE_FAN): return "GL_TRIANGLE_FAN";
+                case(GL_QUAD_STRIP): return "GL_QUAD_STRIP";
+                case(GL_PATCHES): return "GL_PATCHES";
+                case(GL_POLYGON): return "GL_POLYGON";
+                default: return "Unknown";
+                }
+            }
+
+            const char* FunctionLocationToString(ShaderComp::FunctionLocation location)
+            {
+                using namespace osgEarth::ShaderComp;
+
+                switch (location)
+                {
+                case LOCATION_VERTEX_MODEL: return "LOCATION_VERTEX_MODEL";
+                case LOCATION_VERTEX_VIEW: return "LOCATION_VERTEX_VIEW";
+                case LOCATION_VERTEX_CLIP: return "LOCATION_VERTEX_CLIP";
+                case LOCATION_TESS_CONTROL: return "LOCATION_TESS_CONTROL";
+                case LOCATION_TESS_EVALUATION: return "LOCATION_TESS_EVALUATION";
+                case LOCATION_GEOMETRY: return "LOCATION_GEOMETRY";
+                case LOCATION_FRAGMENT_COLORING: return "LOCATION_FRAGMENT_COLORING";
+                case LOCATION_FRAGMENT_LIGHTING: return "LOCATION_FRAGMENT_LIGHTING";
+                case LOCATION_FRAGMENT_OUTPUT: return "LOCATION_FRAGMENT_OUTPUT";
+                case LOCATION_UNDEFINED: return "LOCATION_UNDEFINED";
+                default: return "Undefined";
+                }
+            }
+
+            osg::MatrixTransform* _selectedBounds;
+        };
+
+        struct SelectNodeHandler : public osgGA::GUIEventHandler
+        {
+            SelectNodeHandler()
+            {
+            }
+
+            bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+            {
+                osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+                if (ea.getEventType() == ea.PUSH && ea.getButton() == ea.LEFT_MOUSE_BUTTON && ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL)
+                {
+                    osgUtil::LineSegmentIntersector::Intersections intersections;
+
+                    if (view->computeIntersections(ea, intersections))
+                    {
+                        double currRatio = DBL_MAX;
+                        for (auto& hitr = intersections.begin(); hitr != intersections.end(); ++hitr)
+                        {
+                            if (hitr->ratio < currRatio)
+                            {
+                                setSelectedNode(hitr->drawable.get());
+                                currRatio = hitr->ratio;
+                            }
+
+                        }
+                    }
+                }
+                return false;
+            }
+        };
+
+
         class LayersGUI
         {
         public:
             LayersGUI() :
                 _showLog(false),
                 _showNetworkMonitor(false),
-                _showTextureInspector(false)
+                _showTextureInspector(false),
+                _showSceneHierarchy(false)
             {
             }
 
             void draw(osg::RenderInfo& renderInfo, osgEarth::MapNode* mapNode, osg::Camera* camera, EarthManipulator* manip)
             {
+                if (!_scannedForViewpoints)
+                {
+                    Config conf = mapNode->getConfig();
+                    for (ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+                    {
+                        if (i->key() == "viewpoints")
+                        {
+                            const ConfigSet& children = i->children("viewpoint");
+                            if (children.size() > 0)
+                            {
+                                for (ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i)
+                                {
+                                    _viewpoints.push_back(Viewpoint(*i));
+                                }
+                            }
+                        }
+                    }
+                    _scannedForViewpoints = true;
+                }
+
                 ImGui::Begin("Layers", NULL, ImGuiWindowFlags_MenuBar);
 
                 if (ImGui::BeginMenuBar())
@@ -537,6 +967,7 @@ namespace osgEarth {
                         ImGui::MenuItem("Log", NULL, &_showLog);
                         ImGui::MenuItem("Network Monitor", NULL, &_showNetworkMonitor);
                         ImGui::MenuItem("Texture Inspector", NULL, &_showTextureInspector);
+                        ImGui::MenuItem("Scene Hierarchy", NULL, &_showSceneHierarchy);
                         ImGui::EndMenu();
                     }
                     ImGui::EndMenuBar();
@@ -545,139 +976,174 @@ namespace osgEarth {
                 if (_showLog) _log.draw(&_showLog);
                 if (_showNetworkMonitor) _networkMonitor.draw(&_showNetworkMonitor);
                 if (_showTextureInspector) _textureInspectorGUI.draw(renderInfo, camera, &_showTextureInspector);
+                if (_showSceneHierarchy) _sceneHierarchy.draw(((osgViewer::View*)renderInfo.getView())->getSceneData(), renderInfo, manip, mapNode, &_showSceneHierarchy);
+
 
                 _searchGUI.draw(manip);
 
                 ImGui::Separator();
-                ImGui::BeginGroup();
-                ImGui::Text("Layers");
-                osgEarth::VisibleLayerVector layers;
-                mapNode->getMap()->getLayers(layers);
-
-                for (int i = layers.size() - 1; i >= 0; --i)
+                ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+                if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
                 {
-                    osgEarth::Layer* layer = layers[i].get();
-                    ImGui::PushID(layer);
-                    osgEarth::VisibleLayer *visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
-                    if (visibleLayer)
+                    if (ImGui::BeginTabItem("Layers"))
                     {
-                        bool visible = visibleLayer->getVisible();
-                        ImGui::Checkbox(layer->getName().c_str(), &visible);
-                        visibleLayer->setVisible(visible);
-                    }
-                    else
-                    {
-                        ImGui::Text(layer->getName().c_str());
-                    }
+                        ImGui::Text("Layers");
+                        osgEarth::VisibleLayerVector layers;
+                        mapNode->getMap()->getLayers(layers);
 
-                    ImGui::SameLine();
-                    if (i > 0)
-                    {
-                        if (ImGui::ArrowButton("down", ImGuiDir_Down))
+                        for (int i = layers.size() - 1; i >= 0; --i)
                         {
-                            mapNode->getMap()->moveLayer(layer, i - 1);
+                            osgEarth::Layer* layer = layers[i].get();
+                            ImGui::PushID(layer);
+                            osgEarth::VisibleLayer *visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
+                            if (visibleLayer)
+                            {
+                                bool visible = visibleLayer->getVisible();
+                                ImGui::Checkbox(layer->getName().c_str(), &visible);
+                                visibleLayer->setVisible(visible);
+                            }
+                            else
+                            {
+                                ImGui::Text(layer->getName().c_str());
+                            }
+
+                            ImGui::SameLine();
+                            if (i > 0)
+                            {
+                                if (ImGui::ArrowButton("down", ImGuiDir_Down))
+                                {
+                                    mapNode->getMap()->moveLayer(layer, i - 1);
+                                }
+                            }
+                            if (i < layers.size() - 1)
+                            {
+                                ImGui::SameLine();
+                                if (ImGui::ArrowButton("up", ImGuiDir_Up))
+                                {
+                                    mapNode->getMap()->moveLayer(layer, i + 1);
+                                }
+                            }
+
+                            ImGui::SameLine();
+                            if (ImGui::ArrowButton("right", ImGuiDir_Right))
+                            {
+                                const GeoExtent& extent = layer->getExtent();
+                                if (extent.isValid())
+                                {
+                                    std::vector<GeoPoint> points;
+                                    points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
+                                    points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
+
+                                    ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
+                                    Viewpoint vp;
+                                    if (fitter.createViewpoint(points, vp))
+                                    {
+                                        manip->setViewpoint(vp, 2.0);
+                                    }
+                                }
+                                else if (layer->getNode())
+                                {
+                                    const osg::BoundingSphere& bs = layer->getNode()->getBound();
+                                    if (bs.valid())
+                                    {
+                                        osg::Vec3d c = bs.center();
+                                        double r = bs.radius();
+                                        const SpatialReference* mapSRS = mapNode->getMap()->getSRS();
+
+                                        std::vector<GeoPoint> points;
+                                        GeoPoint p;
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x() + r, c.y(), c.z())); points.push_back(p);
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x() - r, c.y(), c.z())); points.push_back(p);
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() + r, c.z())); points.push_back(p);
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() - r, c.z())); points.push_back(p);
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
+                                        p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
+
+                                        ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
+                                        Viewpoint vp;
+                                        if (fitter.createViewpoint(points, vp))
+                                        {
+                                            manip->setViewpoint(vp, 2.0);
+                                        }
+                                    }
+                                }
+                            }
+
+                            osgEarth::ImageLayer* imageLayer = dynamic_cast<osgEarth::ImageLayer*>(visibleLayer);
+                            if (imageLayer)
+                            {
+                                float opacity = imageLayer->getOpacity();
+                                ImGui::PushID("opacity");
+                                ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
+                                imageLayer->setOpacity(opacity);
+                                ImGui::PopID();
+                            }
+
+                            osgEarth::Contrib::ThreeDTilesLayer* threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(visibleLayer);
+                            if (threedTiles)
+                            {
+                                float sse = threedTiles->getMaximumScreenSpaceError();
+                                ImGui::PushID("sse");
+                                ImGui::SliderFloat("SSE", &sse, 0.0f, 50.0f);
+                                threedTiles->setMaximumScreenSpaceError(sse);
+                                ImGui::PopID();
+
+                                ImGui::PushID("debugVolumes");
+                                bool showBoundingVolumes = threedTiles->getTilesetNode()->getShowBoundingVolumes();
+                                ImGui::Checkbox("Show debug volumes", &showBoundingVolumes);
+                                threedTiles->getTilesetNode()->setShowBoundingVolumes(showBoundingVolumes);
+                                ImGui::PopID();
+
+                                ImGui::PushID("debugColors");
+                                bool colorPerTile = threedTiles->getTilesetNode()->getColorPerTile();
+                                ImGui::Checkbox("Show color per tile", &colorPerTile);
+                                threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
+                                ImGui::PopID();
+                            }
+                            ImGui::PopID();
+
+                            ImGui::Separator();
                         }
-                    }
-                    if (i < layers.size() - 1)
-                    {
-                        ImGui::SameLine();
-                        if (ImGui::ArrowButton("up", ImGuiDir_Up))
-                        {
-                            mapNode->getMap()->moveLayer(layer, i + 1);
-                        }
+                        ImGui::EndTabItem();
                     }
 
-                    ImGui::SameLine();
-                    if (ImGui::ArrowButton("right", ImGuiDir_Right))
+                    if (!_viewpoints.empty() && ImGui::BeginTabItem("Viewpoints"))
                     {
-                        const GeoExtent& extent = layer->getExtent();
-                        if (extent.isValid())
-                        {
-                            std::vector<GeoPoint> points;
-                            points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
-                            points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
 
-                            ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
-                            Viewpoint vp;
-                            if (fitter.createViewpoint(points, vp))
+                        for (auto& vp : _viewpoints)
+                        {
+                            ImGui::PushID(&vp);
+                            bool selected = false;
+                            std::string name = vp.name().get();
+                            if (name.empty())
+                            {
+                                name = "<no name>";
+                            }
+                            ImGui::Selectable(name.c_str(), &selected);
+                            if (selected)
                             {
                                 manip->setViewpoint(vp, 2.0);
                             }
+                            ImGui::PopID();
                         }
-                        else if (layer->getNode())
-                        {
-                            const osg::BoundingSphere& bs = layer->getNode()->getBound();
-                            if (bs.valid())
-                            {
-                                osg::Vec3d c = bs.center();
-                                double r = bs.radius();
-                                const SpatialReference* mapSRS = mapNode->getMap()->getSRS();
-
-                                std::vector<GeoPoint> points;
-                                GeoPoint p;
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x() + r, c.y(), c.z())); points.push_back(p);
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x() - r, c.y(), c.z())); points.push_back(p);
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() + r, c.z())); points.push_back(p);
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y() - r, c.z())); points.push_back(p);
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
-                                p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
-
-                                ViewFitter fitter(mapNode->getMap()->getSRS(), camera);
-                                Viewpoint vp;
-                                if (fitter.createViewpoint(points, vp))
-                                {
-                                    manip->setViewpoint(vp, 2.0);
-                                }
-                            }
-                        }
+                        ImGui::EndTabItem();
                     }
-
-                    osgEarth::ImageLayer* imageLayer = dynamic_cast<osgEarth::ImageLayer*>(visibleLayer);
-                    if (imageLayer)
-                    {
-                        float opacity = imageLayer->getOpacity();
-                        ImGui::PushID("opacity");
-                        ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
-                        imageLayer->setOpacity(opacity);
-                        ImGui::PopID();
-                    }
-
-                    osgEarth::Contrib::ThreeDTilesLayer* threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(visibleLayer);
-                    if (threedTiles)
-                    {
-                        float sse = threedTiles->getMaximumScreenSpaceError();
-                        ImGui::PushID("sse");
-                        ImGui::SliderFloat("SSE", &sse, 0.0f, 50.0f);
-                        threedTiles->setMaximumScreenSpaceError(sse);
-                        ImGui::PopID();
-
-                        ImGui::PushID("debugVolumes");
-                        bool showBoundingVolumes = threedTiles->getTilesetNode()->getShowBoundingVolumes();
-                        ImGui::Checkbox("Show debug volumes", &showBoundingVolumes);
-                        threedTiles->getTilesetNode()->setShowBoundingVolumes(showBoundingVolumes);
-                        ImGui::PopID();
-
-                        ImGui::PushID("debugColors");
-                        bool colorPerTile = threedTiles->getTilesetNode()->getColorPerTile();
-                        ImGui::Checkbox("Show color per tile", &colorPerTile);
-                        threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
-                        ImGui::PopID();
-                    }
-                    ImGui::PopID();
-
-                    ImGui::Separator();
                 }
-                ImGui::EndGroup();
                 ImGui::End();
             }
 
             bool _showLog;
             bool _showNetworkMonitor;
             bool _showTextureInspector;
+            bool _showSceneHierarchy;
             LogGUI _log;
             NetworkMonitorGUI _networkMonitor;
             SearchGUI _searchGUI;
             TextureInspectorGUI _textureInspectorGUI;
+            SceneHierarchy _sceneHierarchy;
+
+            std::vector< Viewpoint > _viewpoints;
+            bool _scannedForViewpoints = false;
         };
     }
 }

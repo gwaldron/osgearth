@@ -111,19 +111,20 @@ public:
         // Determine format by peeking the magic header:
         std::string magic(buffer, 0, 4);
 
-        if (magic == "glTF")
-        {
-            GLTFReader reader;
-            reader.setTextureCache(&_cache);
-            return reader.read(context.referrer(), buffer, options);
-        }
-        else if (magic == "b3dm")
+        if (magic == "b3dm")
         {
             B3DMReader reader;
             reader.setTextureCache(&_cache);
             return reader.read(context.referrer(), buffer, options);
         }
-        else return ReadResult::FILE_NOT_HANDLED;
+        else
+        {
+            GLTFReader reader;
+            reader.setTextureCache(&_cache);
+            return reader.read(context.referrer(), buffer, options);
+        }
+
+        return ReadResult::FILE_NOT_HANDLED;
     }
 
     //! Writes a node to GLTF.

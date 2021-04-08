@@ -22,7 +22,6 @@
 
 #include <osgEarth/ImGuiUtils>
 #include <osgEarth/OsgImGuiHandler.hpp>
-#include <imgui_internal.h>
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
@@ -32,7 +31,6 @@
 #include <osgEarth/Threading>
 #include <osgEarth/Geocoder>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/StateTransition>
 
 #include <iostream>
 
@@ -45,11 +43,6 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
 using namespace osgEarth::ImGuiUtil;
-
-
-
-
-
 
 class ImGuiDemo : public OsgImGuiHandler
 {
@@ -73,43 +66,6 @@ protected:
     osg::ref_ptr<EarthManipulator> _earthManip;
     osgViewer::View* _view;
     LayersGUI _layers;
-};
-
-// An event handler that will print out the elevation at the clicked point
-struct StateTransitionHandler : public osgGA::GUIEventHandler
-{
-    StateTransitionHandler()
-    {
-    }
-
-    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
-    {
-        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-
-        if (ea.getEventType() == ea.PUSH && ea.getButton() == ea.LEFT_MOUSE_BUTTON)
-        {
-            osg::Vec3d world;
-            osgUtil::LineSegmentIntersector::Intersections hits;
-            if (view->computeIntersections(ea.getX(), ea.getY(), hits))
-            {
-                StateTransition* stateTransition = 0;
-                for (auto& i: hits.begin()->nodePath)
-                {
-                    stateTransition = dynamic_cast<StateTransition*>(i);
-                    if (stateTransition)
-                    {
-                        std::vector< std::string > states = stateTransition->getStates();
-                        if (!states.empty())
-                        {
-                            stateTransition->transitionToState(states[0]);
-                        }
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
 };
 
 int
@@ -159,9 +115,8 @@ main(int argc, char** argv)
         if (mapNode)
         {
             viewer.getEventHandlers().push_front(new ImGuiDemo(&viewer, mapNode, manip));
+            viewer.addEventHandler(new SelectNodeHandler());
         }
-
-        viewer.addEventHandler(new StateTransitionHandler());
 
         viewer.setSceneData(node);
         return viewer.run();// return Metrics::run(viewer);

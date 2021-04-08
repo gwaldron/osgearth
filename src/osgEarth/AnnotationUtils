@@ -65,7 +65,7 @@ namespace osgEarth
         {
             return createTextDrawable(text, symbol, 0L, alignmentBox);
         }
-        
+
         static osg::Drawable* createTextDrawable(
             const std::string& text,
             const TextSymbol*  symbol,
@@ -125,15 +125,22 @@ namespace osgEarth
         static osg::Node* createHemisphere( float r, const osg::Vec4& color, float maxAngle =15.0f );
 
         /**
+         * Builds a box geometry
+         * @param bb       Bounding box
+         * @param color    Color
+         */
+        static osg::Node* createBoundingBox(const osg::BoundingBox& bb, Color& color);
+
+        /**
          * TODO: DEPRECATE / move to app that uses this (SIMSDK)
          * Builds the geometry for an ellipsoid.
          */
-        static osg::Geometry* createEllipsoidGeometry( 
+        static osg::Geometry* createEllipsoidGeometry(
             float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =10.0f,
             float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
-        
+
         //! TODO: DEPRECATE / move to app that uses this (SIMSDK)
-        static osg::Node* createEllipsoid( 
+        static osg::Node* createEllipsoid(
             float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =10.0f,
             float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
 
@@ -158,7 +165,7 @@ namespace osgEarth
         AnnotationUtils() { }
     };
 
-    
+
     namespace Util
     {
         /**

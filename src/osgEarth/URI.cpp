@@ -467,16 +467,18 @@ namespace
         if ( !inputURI.empty() )
         {
             // establish our IO options:
-            osg::ref_ptr<const osgDB::Options> localOptions = dbOptions ? dbOptions : Registry::instance()->getDefaultOptions();
+            osg::ref_ptr<osgDB::Options> localOptions = dbOptions ? Registry::cloneOrCreateOptions(dbOptions) : Registry::cloneOrCreateOptions(Registry::instance()->getDefaultOptions());
 
             // if we have an option string, incorporate it.
             if ( inputURI.optionString().isSet() )
             {
-                osgDB::Options* newLocalOptions = Registry::cloneOrCreateOptions(localOptions.get());
-                newLocalOptions->setOptionString(
+                localOptions->setOptionString(
                     inputURI.optionString().get() + " " + localOptions->getOptionString());
-                localOptions = newLocalOptions;
             }
+
+            // Store a new URI context within the local options so that subloaders know the location they are loading from
+            // This is necessary for things like gltf files that can store external binary files that are relative to the gltf file.
+            URIContext(inputURI.full()).store(localOptions.get());
 
             READ_FUNCTOR reader;
 

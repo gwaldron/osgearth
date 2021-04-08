@@ -32,6 +32,7 @@
 #include <osgEarth/ClampableNode>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Text>
+#include <osgEarth/LineDrawable>
 
 #include <osgText/Text>
 #include <osg/Depth>
@@ -96,7 +97,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         }
         drawable->setDrawMode(mask);
     }
-    
+
     return drawable;
 }
 
@@ -153,8 +154,8 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->setVertexArray(verts);
 
     bool flip = image->getOrigin() == osg::Image::TOP_LEFT;
-    
-    osg::Vec2Array* tcoords = new osg::Vec2Array(4);    
+
+    osg::Vec2Array* tcoords = new osg::Vec2Array(4);
     (*tcoords)[0].set(0.0, flip? 1.0: 0.0);
     (*tcoords)[1].set(1.0, flip? 1.0: 0.0);
     (*tcoords)[2].set(1.0, flip? 0.0: 1.0);
@@ -169,6 +170,35 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->addPrimitiveSet( new osg::DrawElementsUShort( GL_TRIANGLES, 6, indices ) );
 
     return geom;
+}
+
+osg::Node*
+AnnotationUtils::createBoundingBox(const osg::BoundingBox& bb, Color& color)
+{
+    const int index[24] = {
+            0, 1, 1, 2, 2, 3, 3, 0,
+            4, 5, 5, 6, 6, 7, 7, 4,
+            0, 4, 1, 5, 2, 6, 3, 7
+    };
+
+    std::vector< osg::Vec3 > corners;
+    osgEarth::LineDrawable* d = new osgEarth::LineDrawable(GL_LINES);
+    d->setUseGPU(false);
+    corners.push_back(osg::Vec3(bb.xMin(), bb.yMin(), bb.zMin()));
+    corners.push_back(osg::Vec3(bb.xMax(), bb.yMin(), bb.zMin()));
+    corners.push_back(osg::Vec3(bb.xMax(), bb.yMax(), bb.zMin()));
+    corners.push_back(osg::Vec3(bb.xMin(), bb.yMax(), bb.zMin()));
+    corners.push_back(osg::Vec3(bb.xMin(), bb.yMin(), bb.zMax()));
+    corners.push_back(osg::Vec3(bb.xMax(), bb.yMin(), bb.zMax()));
+    corners.push_back(osg::Vec3(bb.xMax(), bb.yMax(), bb.zMax()));
+    corners.push_back(osg::Vec3(bb.xMin(), bb.yMax(), bb.zMax()));
+
+    for (int i = 0; i < 24; ++i)
+        d->pushVertex(corners[index[i]]);
+
+    d->setColor(color);
+    d->finish();
+    return d;
 }
 
 osg::Node*

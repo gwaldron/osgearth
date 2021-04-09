@@ -196,12 +196,11 @@ GeoTransform::traverse(osg::NodeVisitor& nv)
     {
         if (_findTerrainInUpdateTraversal)
         {
-            MapNode* mapNode = osgEarth::findInNodePath<MapNode>(nv);
-            if (mapNode)
+            osg::ref_ptr<MapNode> mapNode;
+            if (ObjectStorage::get(&nv, mapNode) && mapNode.valid())
             {
                 _findTerrainInUpdateTraversal = false;
                 ADJUST_UPDATE_TRAV_COUNT(this, -1);
-
                 setTerrain(mapNode->getTerrain());
                 OE_DEBUG << LC << "Discovered terrain.\n";
             }

@@ -85,7 +85,6 @@ namespace
 
         bool useFileCache() const { return false; }
     };
-#endif
 
     struct MyProgressCallback : public DatabasePagerProgressCallback
     {
@@ -116,6 +115,38 @@ namespace
             return should;
         }
     };
+
+#else
+
+    struct MyProgressCallback : public ProgressCallback
+    {
+        osg::observer_ptr<FeatureModelGraph> _graph;
+        osg::ref_ptr<const Session> _session;
+
+        MyProgressCallback(FeatureModelGraph* graph, const Session* session) :
+            _graph(graph),
+            _session(session)
+        {
+            //nop
+        }
+
+        virtual bool shouldCancel() const
+        {
+            bool done =
+                !_graph.valid() ||
+                !_graph->isActive() ||
+                !_session.valid() ||
+                !_session->hasMap();
+
+            if (done)
+            {
+                OE_DEBUG << "FMG: canceling load on thread " << std::this_thread::get_id() << std::endl;
+            }
+
+            return done;
+        }
+    };
+#endif
 
     osg::Node* createBS(const osg::BoundingSphere& bounds)
     {

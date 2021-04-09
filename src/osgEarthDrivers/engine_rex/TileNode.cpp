@@ -55,15 +55,6 @@ namespace
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.0f,0,1.0f),
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f)
     };
-
-    struct ObserverProgress : public ProgressCallback
-    {
-        osg::observer_ptr< osg::Referenced> _host;
-        ObserverProgress(osg::Referenced* host) : _host(host) { }
-        bool shouldCancel() const override {
-            return !_host.valid();
-        }
-    };
 }
 
 TileNode::TileNode() : 

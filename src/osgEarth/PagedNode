@@ -43,6 +43,7 @@ namespace osgEarth { namespace Util
     using namespace osgEarth;
     using namespace osgEarth::Threading;
 
+#if 0
     /**
      * PagedNode is a group with a self-contained paged child.
      * It wraps the details of a PagedNode node into a container
@@ -105,7 +106,7 @@ namespace osgEarth { namespace Util
         optional<float> _range;
         float _rangeFactor;
     };
-
+#endif
 
     class OSGEARTH_EXPORT PagedNode2 : public osg::Group
     {

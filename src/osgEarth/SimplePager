@@ -40,14 +40,12 @@ namespace osgEarth { namespace Util
 
         void build();
 
-        //! Call to notify all threads to stop doing what they're doing.
-        void shutdown();
-
-        /**
-         * Get or set whether this pager uses additive lods.
-         */
-        bool getAdditive() { return _additive; }
+        //! Whether this pager uses additive lods.
+        bool getAdditive() const { return _additive; }
         void setAdditive(bool additive) { _additive = additive; }
+
+        //! Tell the pager to stop paging and cancel pending requests
+        void setDone();
 
         unsigned int getMinLevel() const { return _minLevel; }
         void setMinLevel(unsigned int minLevel) { _minLevel = minLevel; }
@@ -64,25 +62,18 @@ namespace osgEarth { namespace Util
         float getPriorityOffset() const { return _priorityOffset; }
         void setPriorityOffset(float value) { _priorityOffset = value; }
 
-        void setFileLocationCallback(osgDB::FileLocationCallback* cb) { _fileLocationCallback = cb; }
-        osgDB::FileLocationCallback* getFileLocationCallback() const  { return _fileLocationCallback.get(); }
-
         void setEnableCancelation(bool value);
-        bool getEnableCancalation() const;
+        bool getEnableCancelation() const;
 
         //! Scene graph callbacks for notification of changes. Call before calling build().
         void setSceneGraphCallbacks(SceneGraphCallbacks* value) { _sceneGraphCallbacks = value; }
         SceneGraphCallbacks* getSceneGraphCallbacks() const { return _sceneGraphCallbacks.get(); }
 
-        /**
-         * Gets the profile for the SimplePager.
-         */
+        //! Gets the profile for the SimplePager.
         const osgEarth::Profile* getProfile() const;
 
-        /**
-        * Creates a node for the given TileKey.  Doesn't do anything with paging, just gets the raw data.
-        * Subclasses override this method to provide their data for TileKeys
-        */
+        //! Creates a node for the given TileKey.  Doesn't do anything with paging, just gets the raw data.
+        //! Subclasses override this method to provide their data for TileKeys
         virtual osg::ref_ptr<osg::Node> createNode(
             const TileKey& key,
             ProgressCallback* progress);
@@ -92,46 +83,33 @@ namespace osgEarth { namespace Util
          */
         struct Callback : public osg::Referenced
         {
-            /**
-             * Called after a new tile is created, but before it's merged into the live
-             * scene graph. Runs in a pager thread.
-             */
+            //! Called after a new tile is created, but before it's merged into the live
+            //! scene graph. Runs in a pager thread.
             virtual void onCreateNode(const TileKey& key, osg::Node* node) { }
         };
 
-        /** Adds a pager callback. */
+        //! Adds a pager callback.
         void addCallback(Callback* callback);
 
-        /** Removes a pager callback. */
+        //! Removes a pager callback.
         void removeCallback(Callback* callback);
 
     public:
-        struct ProgressTracker : public osg::NodeCallback {
-            ProgressTracker(osg::NodeCallback*);
-            osg::ref_ptr<ProgressCallback> _progress[4];
-            void operator()(osg::Node*, osg::NodeVisitor*);
-        };
 
-        //! Loads the PagedLOD hierarchy for this key.
+        //! (INTERNAL) Loads the geometry hierarchy for this key.
         osg::ref_ptr<osg::Node> loadKey(
             const TileKey& key, 
             ProgressCallback* progress);
 
     protected:
 
-        /**
-        * Gets the bounding sphere for a given TileKey.
-        */
+        //! Gets the bounding sphere for a given TileKey.
         osg::BoundingSphere getBounds(const TileKey& key) const;
 
-        /**
-        * The root node is a special node.
-        */
+        //! The root node is a special node.
         osg::ref_ptr<osg::Node> buildRootNode();
 
-        /**
-        * Creates a PagedLOD for the given TileKEy
-        */
+        //! Creates a paging data for the given TileKey
         osg::ref_ptr<osg::Node> createPagedNode(
             const TileKey& key,
             ProgressCallback* progress);
@@ -140,22 +118,20 @@ namespace osgEarth { namespace Util
         double _rangeFactor;
         unsigned int _minLevel;
         unsigned int _maxLevel;
-        osg::ref_ptr< const osgEarth::Profile > _profile;
-        osg::ref_ptr< osg::NodeCallback > _progressMaster;
-        osg::ref_ptr< osgDB::FileLocationCallback > _fileLocationCallback;
-        osg::ref_ptr< SceneGraphCallbacks > _sceneGraphCallbacks;
+        osg::ref_ptr<const Profile> _profile;
+        osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         float _priorityScale;
         float _priorityOffset;
         bool _canCancel;
+        bool _done;
         
         mutable Threading::Mutex _mutex;
-        typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
+        using Callbacks = std::vector<osg::ref_ptr<Callback>>;
         Callbacks _callbacks;
 
         void fire_onCreateNode(const TileKey& key, osg::Node* node);
     };
 
 } } // namespace osgEarth::Util
-
 
 #endif

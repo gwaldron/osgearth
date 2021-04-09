@@ -190,11 +190,6 @@ TiledFeatureModelLayer::closeImplementation()
     options().featureSource().close();
     options().styleSheet().close();
     _graphDirty = true;
-    if (_root.valid())
-    {
-        TiledFeatureModelGraph* fmg = findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
-        if (fmg) fmg->shutdown();
-    }
     return getStatus();
 }
 
@@ -243,6 +238,8 @@ TiledFeatureModelLayer::removedFromMap(const Map* map)
 
     if (_root.valid())
     {
+        osg::ref_ptr<TiledFeatureModelGraph> tfmg = findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
+        if (tfmg.valid()) tfmg->setDone();
         _root->removeChildren(0, _root->getNumChildren());
     }
 

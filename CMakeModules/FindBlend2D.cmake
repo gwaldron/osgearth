@@ -2,9 +2,7 @@
 find_path(BLEND2D_INCLUDES
     blend2d.h)
 
-find_library(BLEND2D_LIBRARY
-    NAMES blend2d
-    REQUIRED)
+find_library(BLEND2D_LIBRARY NAMES blend2d)
 
 if(BLEND2D_INCLUDES AND BLEND2D_LIBRARY)
   set(BLEND2D_FOUND YES)

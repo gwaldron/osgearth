@@ -52,7 +52,7 @@ namespace osgEarth
     typedef std::vector<osg::ref_ptr<SceneGraphCallback> > SceneGraphCallbackVector;
 
     /**
-     * Cotnainer for scene graph callbacks. Typically an object that
+     * Container for scene graph callbacks. Typically an object that
      * supports scene graph callbacks will host an instance of this
      * object and use it register and fire callbacks at the appropriate times.
      */

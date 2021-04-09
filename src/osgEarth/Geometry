@@ -78,7 +78,7 @@ namespace osgEarth
         };
 
         static std::string toString( Type t ) {
-            return 
+            return
                 t == TYPE_POINT ?      "Point" :
                 t == TYPE_POINTSET ?   "PointSet" :
                 t == TYPE_LINESTRING ? "LineString" :
@@ -120,7 +120,7 @@ namespace osgEarth
 
         /**
          * Creates a new Vec3Array (single-precision), copies the part into it, and
-         * returns the new object. 
+         * returns the new object.
          */
         osg::Vec3Array* createVec3Array() const;
 
@@ -210,7 +210,7 @@ namespace osgEarth
          * Reverses a call the localize(), given the same offset returned by that method.
          */
         void delocalize( const osg::Vec3d& offset );
-        
+
         /**
          * Reorders the points in the geometry so that, if the last point was connected
          * to the first in a ring, they would be would in the specified direction.
@@ -265,9 +265,9 @@ namespace osgEarth
 
         void push_back(const osg::Vec3d& v ) {
             osgEarth::InlineVector<osg::Vec3d,osg::Referenced>::push_back(v); }
-        void push_back(double x, double y) { 
+        void push_back(double x, double y) {
             osgEarth::InlineVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,0.)); }
-        void push_back(double x, double y, double z) { 
+        void push_back(double x, double y, double z) {
             osgEarth::InlineVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,z)); }
 
         virtual bool isRing() const { return getComponentType() == TYPE_RING || getComponentType() == TYPE_POLYGON; }
@@ -406,7 +406,7 @@ namespace osgEarth
 
         /** dtor */
         virtual ~Polygon();
-        
+
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
         virtual int getTotalPointCount() const;
@@ -449,11 +449,11 @@ namespace osgEarth
         virtual ~MultiGeometry();
 
     public:
-        virtual Type getType() const { return Geometry::TYPE_MULTI; }        
+        virtual Type getType() const { return Geometry::TYPE_MULTI; }
         virtual Type getComponentType() const;
-        virtual int getTotalPointCount() const;        
+        virtual int getTotalPointCount() const;
         virtual unsigned getNumComponents() const { return _parts.size(); }
-        
+
         virtual unsigned getNumGeometries() const;
 
         // gets the combined length of all parts

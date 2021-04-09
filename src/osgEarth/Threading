@@ -774,7 +774,7 @@ namespace osgEarth { namespace Threading
                 std::atomic<int> numJobsRunning;
                 std::atomic<int> numJobsCanceled;
 
-                Arena() : active(false) { }
+                Arena() : active(false), concurrency(0), numJobsPending(0), numJobsRunning(0), numJobsCanceled(0) { }
                 void free() {
                     active = false, numJobsPending = 0, numJobsRunning = 0,
                         numJobsCanceled = 0;

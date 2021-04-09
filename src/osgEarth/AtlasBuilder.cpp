@@ -38,7 +38,7 @@ namespace
         {
             return _atlasList;
         }
-        
+
         typedef SourceList SourceListEx;
         typedef Source SourceEx;
         const SourceListEx& getSourceList()
@@ -98,7 +98,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
         tab->setMargin( 1 );
     }
 
-    // clone the Resource library so we can re-write the URIs and add 
+    // clone the Resource library so we can re-write the URIs and add
     // texture matrix information.
     out._lib = new ResourceLibrary( inputLib->getConfig() );
     out._lib->initialize( _options.get() );
@@ -186,7 +186,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                     OE_INFO << "  ...resized " << auxFile << " to match atlas size" << std::endl;
                 }
 
-                if ( !ImageUtils::sameFormat(image.get(), auxImage.get()) ) 
+                if ( !ImageUtils::sameFormat(image.get(), auxImage.get()) )
                 {
                     auxImage = ImageUtils::convertToRGBA8(auxImage.get());
                 }
@@ -244,7 +244,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     OE_INFO << LC <<
         "Final atlas size will be (" << maxS << ", " << maxT << ")" << std::endl;
 
-    
+
     for(TABs::iterator tab = tabs.begin(); tab != tabs.end(); ++tab )
     {
         const TextureAtlasBuilderEx::AtlasListEx& atlasList = tab->getAtlasList();
@@ -285,7 +285,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
         out._images.push_back(imageArray);
     }
 
-    
+
     // for each source in this atlas layer, apply its texture matrix info
     // to the new catalog.
     maxS = osg::maximum(maxS, 1u);

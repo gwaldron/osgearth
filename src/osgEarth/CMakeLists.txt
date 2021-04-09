@@ -444,6 +444,8 @@ SET(LIB_PUBLIC_HEADERS
 
     FileGDBFeatureSource
 
+    SDF
+
     ${OSGEARTH_BUILDCONFIG_HEADER}
 )
 
@@ -795,6 +797,8 @@ set(TARGET_SRC
     PlaceNode.cpp
     TrackNode.cpp
     WindLayer.cpp
+
+    SDF.cpp
 
     FileGDBFeatureSource.cpp
 

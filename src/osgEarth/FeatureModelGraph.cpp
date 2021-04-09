@@ -824,23 +824,19 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
         maxElevation = elevation + 100.0;
 #else
         ElevationLayerVector elevationLayers;
-        osg::ref_ptr<const Map> map = _session->getMap();
-        if (map.valid())
+        _session->getMap()->getLayers<ElevationLayer>(elevationLayers);
+        if (!elevationLayers.empty())
         {
-            map->getLayers<ElevationLayer>(elevationLayers);
-            if (!elevationLayers.empty())
-            {
-                // Get the approximate elevation range if we have elevation data in the map
-                lod = osg::clampBetween(lod, 0u, ElevationRanges::getMaxLevel());
-                GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
-                TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
-                short min, max;
-                ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
-                // Clamp the min value to avoid extreme underwater values.
-                minElevation = osg::maximum(min, (short)-500);
-                // Add a little bit extra of extra height to account for feature data.
-                maxElevation = max + 100.0f;
-            }
+            // Get the approximate elevation range if we have elevation data in the map
+            lod = osg::clampBetween(lod, 0u, ElevationRanges::getMaxLevel());
+            GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
+            TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
+            short min, max;
+            ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+            // Clamp the min value to avoid extreme underwater values.
+            minElevation = osg::maximum(min, (short)-500);
+            // Add a little bit extra of extra height to account for feature data.
+            maxElevation = max + 100.0f;
         }
 #endif
         // Expand the bounding sphere to account for the min/max elevation

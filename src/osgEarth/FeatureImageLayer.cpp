@@ -113,10 +113,10 @@ namespace osgEarth { namespace FeatureImageLayerImpl
     {
         unsigned a = (unsigned)(127.0f+(color.a()*255.0f)/2.0f); // scale alpha up
 
-        agg::rgba8 fgColor = agg::rgba8( 
-            (unsigned)(color.r()*255.0f), 
-            (unsigned)(color.g()*255.0f), 
-            (unsigned)(color.b()*255.0f), 
+        agg::rgba8 fgColor = agg::rgba8(
+            (unsigned)(color.r()*255.0f),
+            (unsigned)(color.g()*255.0f),
+            (unsigned)(color.b()*255.0f),
             a );
 
         ConstGeometryIterator gi( geometry );
@@ -176,9 +176,9 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 #else
 
     void rasterizePolygons(
-        const Geometry* geometry, 
-        const PolygonSymbol* symbol, 
-        RenderFrame& frame, 
+        const Geometry* geometry,
+        const PolygonSymbol* symbol,
+        RenderFrame& frame,
         BLContext& ctx)
     {
         OE_PROFILING_ZONE;
@@ -206,10 +206,10 @@ namespace osgEarth { namespace FeatureImageLayerImpl
     }
 
     void rasterizeLines(
-        const Geometry* geometry, 
-        const LineSymbol* symbol, 
+        const Geometry* geometry,
+        const LineSymbol* symbol,
         float lineWidth_px,
-        RenderFrame& frame, 
+        RenderFrame& frame,
         BLContext& ctx)
     {
         OE_HARD_ASSERT(geometry != nullptr, __func__);
@@ -285,10 +285,10 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 #endif
 
     //FeatureCursor* createCursor(
-    //    FeatureSource* fs, 
-    //    FeatureFilterChain* chain, 
-    //    FilterContext& cx, 
-    //    const Query& query, 
+    //    FeatureSource* fs,
+    //    FeatureFilterChain* chain,
+    //    FilterContext& cx,
+    //    const Query& query,
     //    ProgressCallback* progress)
     //{
     //    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
@@ -1216,11 +1216,11 @@ FeatureImageRenderer::queryAndRenderFeaturesForStyle(
     if (!features.empty())
     {
         return renderFeaturesForStyle(
-            session, 
-            style, 
+            session,
+            style,
             features,
             imageExtent,
-            out_image, 
+            out_image,
             progress);
     }
     return false;
@@ -1281,7 +1281,7 @@ FeatureImageRenderer::getFeatures(
             }
 
             // If we didn't get any features and we have a tilekey set, try falling back.
-            if (features.empty() && 
+            if (features.empty() &&
                 localQuery.tileKey().isSet() &&
                 localQuery.tileKey()->valid())
             {

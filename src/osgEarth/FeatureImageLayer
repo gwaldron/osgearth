@@ -57,11 +57,11 @@ namespace osgEarth
                 const GeoExtent& imageExtent,
                 osg::Image* out_image,
                 ProgressCallback* progress) const;
-        
+
             void getFeatures(
                 Session* session,
-                const Query& query, 
-                const GeoExtent& imageExtent, 
+                const Query& query,
+                const GeoExtent& imageExtent,
                 FeatureList& features,
                 ProgressCallback* progress) const;
         };

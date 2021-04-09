@@ -168,20 +168,20 @@ enum AreaPlane{
     AREA_PLANE_YZ
 };
 
-AreaPlane polygonPlane(osg::Vec3Array& verts) 
+AreaPlane polygonPlane(osg::Vec3Array& verts)
 {
     double area[3];
 
     area[0] = area[1] = area[2] = 0;
 
-    // Calculate value of shoelace formula 
+    // Calculate value of shoelace formula
     int j = verts.size() - 1;
     for (int i = 0; i < verts.size(); i++)
     {
         area[AREA_PLANE_XY] += (verts[j].x() + verts[i].x()) * (verts[j].y() - verts[i].y());
         area[AREA_PLANE_XZ] += (verts[j].x() + verts[i].x()) * (verts[j].z() - verts[i].z());
         area[AREA_PLANE_YZ] += (verts[j].y() + verts[i].y()) * (verts[j].z() - verts[i].z());
-        j = i;  
+        j = i;
     }
 
     double absArea[] = { abs(area[AREA_PLANE_XY] / 2.0), abs(area[AREA_PLANE_XZ] / 2.0), abs(area[AREA_PLANE_YZ] / 2.0) };
@@ -204,7 +204,7 @@ void rotateToXY(std::vector<std::vector<osg::Vec3d>>& polygon)
 
     for (auto& verts : polygon)
     {
-        // Calculate value of shoelace formula 
+        // Calculate value of shoelace formula
         int j = verts.size() - 1;
         for (int i = 0; i < verts.size(); i++)
         {
@@ -215,7 +215,7 @@ void rotateToXY(std::vector<std::vector<osg::Vec3d>>& polygon)
         }
     }
 
-    int plane;
+    int plane = AREA_PLANE_XZ;
 
     double absArea[] = { abs(area[AREA_PLANE_XY] / 2.0), abs(area[AREA_PLANE_XZ] / 2.0), abs(area[AREA_PLANE_YZ] / 2.0) };
     if (absArea[0] > absArea[1] && absArea[0] > absArea[2]) {
@@ -241,7 +241,7 @@ void rotateToXY(std::vector<std::vector<osg::Vec3d>>& polygon)
                     point.set(point.y(), point.z(), point.x());
             }
         }
-    }    
+    }
 }
 
 }
@@ -414,7 +414,7 @@ Tessellator::tessellatePrimitive(unsigned int first, unsigned int last, osg::Vec
                 unsigned int next = cursor == activeVerts.size() - 1 ? 0 : cursor + 1;
 
                 tris.push_back(TriIndices(activeVerts[prev], activeVerts[cursor], activeVerts[next]));
-              
+
                 activeVerts.erase(activeVerts.begin() + cursor);
                 if (cursor >= activeVerts.size())
                     cursor = 0;
@@ -424,7 +424,7 @@ Tessellator::tessellatePrimitive(unsigned int first, unsigned int last, osg::Vec
 
                 continue;
             }
-            
+
             if (tradEar && tradCursor == UINT_MAX)
             {
                 tradCursor = cursor;
@@ -447,7 +447,7 @@ Tessellator::tessellatePrimitive(unsigned int first, unsigned int last, osg::Vec
                 unsigned int next = cursor == activeVerts.size() - 1 ? 0 : cursor + 1;
 
                 tris.push_back(TriIndices(activeVerts[prev], activeVerts[cursor], activeVerts[next]));
-                  
+
                 activeVerts.erase(activeVerts.begin() + cursor);
                 if (cursor >= activeVerts.size())
                     cursor = 0;

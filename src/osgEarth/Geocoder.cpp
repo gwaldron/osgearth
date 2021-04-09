@@ -86,7 +86,7 @@ namespace
             char** str = new char*[_options.size()+1];
             int c = 0;
             for(UnorderedMap<std::string, std::string>::const_iterator i = _options.begin(); i != _options.end(); ++i)
-            {                
+            {
                 buffers.push_back(i->first + "=" + i->second);
                 str[c++] = (char*)(buffers.back().c_str());
             }

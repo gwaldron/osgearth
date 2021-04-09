@@ -1833,6 +1833,8 @@ GDALImageLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile;
 
+    setProfile(nullptr); // must do this to support override profiles
+
     // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
     // So we just encapsulate the entire setup once per thread.
     // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
@@ -1864,7 +1866,6 @@ GDALImageLayer::closeImplementation()
     Threading::ScopedMutexLock lock(_driversMutex);
     _drivers.clear();
     dataExtents().clear();
-    setProfile(nullptr); // must do this to support override profiles
     return ImageLayer::closeImplementation();
 }
 
@@ -1977,6 +1978,8 @@ GDALElevationLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile;
 
+    setProfile(nullptr); // must do this to support override profiles
+
     // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
     // So we just encapsulate the entire setup once per thread.
     // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
@@ -2009,7 +2012,6 @@ GDALElevationLayer::closeImplementation()
     Threading::ScopedMutexLock lock(_driversMutex);
     _drivers.clear();
     dataExtents().clear();
-    setProfile(nullptr); // must do this to support override profiles
     return ElevationLayer::closeImplementation();
 }
 

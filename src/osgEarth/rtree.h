@@ -642,8 +642,8 @@ int RTREE_QUAL::KNNSearch(
     // priority queue that puts smallest distances first
     std::priority_queue<
         KNNData, 
-        std::vector<typename KNNData>,
-        std::greater<typename KNNData>> queue;
+        typename std::vector<KNNData>,
+        typename std::greater<KNNData>> queue;
 
     ELEMTYPE max_dist_squared = maxDistance * maxDistance;
 

@@ -29,6 +29,7 @@
 #include <osg/NodeVisitor>
 #include <osgDB/ReaderWriter>
 #include <vector>
+#include <functional>
 
 //These formats were not added to OSG until after 2.8.3 so we need to define them to use them.
 #ifndef GL_EXT_texture_compression_rgtc
@@ -327,7 +328,7 @@ namespace osgEarth { namespace Util
         //! @param method Compression method to use; see ImageLayer::getCompressionMethod
         static const osg::Image* compressImage(
             const osg::Image* image,
-            const std::string& method ="");
+            const std::string& method ="cpu");
 
         //! Compressed an exsting image.
         //! @param image Image to compress
@@ -353,6 +354,10 @@ namespace osgEarth { namespace Util
         static osg::Image* readStream(std::istream& stream, const osgDB::Options* options);
 
         static osg::Texture2DArray* makeTexture2DArray(osg::Image* image);
+
+        struct IteratorIF
+        {
+        };
 
         /**
          * Reads color data out of an image, regardles of its internal pixel format.
@@ -401,22 +406,22 @@ namespace osgEarth { namespace Util
             //! Returns a color from an image at pixel (s,t,r,m)
             osg::Vec4f operator()(int s, int t, int r=0, int m=0) const {
                 osg::Vec4f temp;
-                (*_reader)(this, temp, s, t, r, m);
+                _read(this, temp, s, t, r, m);
                 return temp;
             }
 
             void operator()(osg::Vec4f& output, int s, int t, int r=0, int m=0) const {
-                (*_reader)(this, output, s, t, r, m);
+                _read(this, output, s, t, r, m);
             }
 
             //! Returns a color from an image at pixel (s,t,r,m)
             osg::Vec4f operator()(unsigned s, unsigned t, unsigned r=0, int m=0) const {
                 osg::Vec4f temp;
-                (*_reader)(this, temp, s, t, r, m);
+                _read(this, temp, s, t, r, m);
                 return temp;
             }
             void operator()(osg::Vec4f& output, unsigned s, unsigned t, int r=0, int m=0) const {
-                (*_reader)(this, output, s, t, r, m);
+                _read(this, output, s, t, r, m);
             }
 
             /** Reads a color from the image by unit coords [0..1] */
@@ -432,9 +437,9 @@ namespace osgEarth { namespace Util
                     _image->getMipmapData(m-1) + (s>>m)*_colBytes + (t>>m)*(_rowBytes>>m) + r*(_imageBytes>>m);
             }
 
-            typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
-
-            ReaderFunc _reader;
+            //typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
+            typedef std::function<void(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m)> ReaderFunc;
+            ReaderFunc _read;
             const osg::Image* _image;
             unsigned _colBytes;
             unsigned _rowBytes;
@@ -503,68 +508,107 @@ namespace osgEarth { namespace Util
         };
 
         /**
-         * Functor that visits every pixel in an image
+         * Convenience object to iterate over an image with a lamdba function
          */
-        template<typename T>
-        struct PixelVisitor : public T
+        struct ImageIterator
         {
-            /**
-             * Traverse an image, and call this method on the superclass:
-             *
-             *   bool operator(osg::Vec4& pixel);
-             *
-             * If that method returns true, write the value back at the same location.
-             */
-            void accept( osg::Image* image ) {
-                PixelReader _reader( image );
-                PixelWriter _writer( image );
-                for( int r=0; r<image->r(); ++r ) {
-                    for( int t=0; t<image->t(); ++t ) {
-                        for( int s=0; s<image->s(); ++s ) {
-                            osg::Vec4f pixel = _reader(s,t,r);
-                            if ( (*this)(pixel) )
-                                _writer(pixel,s,t,r);
+        public:
+            ImageIterator(const osg::Image* image) :
+                _image(image) { }
+
+            ImageIterator(PixelReader& reader) :
+                _image(reader._image) { }
+
+            ImageIterator(PixelWriter& writer) :
+                _image(writer._image) { }
+
+            inline int r() const { return _r; }
+            inline int s() const { return _s; }
+            inline int t() const { return _t; }
+            inline double u() const { return _u; }
+            inline double v() const { return _v; }
+
+            inline void forEachPixel(const std::function<void()>& func)
+            {
+                for (_r = 0; _r < _image->r(); ++_r)
+                {
+                    for (_t = 0; _t < _image->t(); ++_t)
+                    {
+                        _v = (double)_t / (double)(_image->t() - 1);
+
+                        for (_s = 0; _s < _image->s(); ++_s)
+                        {
+                            _u = (double)_s / (double)(_image->s() - 1);
+
+                            func();
                         }
                     }
                 }
             }
 
-            /**
-             * Traverse an image, and call this method on the superclass:
-             *
-             *   bool operator(const osg::Vec4& srcPixel, osg::Vec4& destPixel);
-             *
-             * If that method returns true, write destPixel back at the same location
-             * in the destination image.
-             */
-            void accept( const osg::Image* src, osg::Image* dest ) {
-                PixelReader _readerSrc( src );
-                PixelReader _readerDest( dest );
-                PixelWriter _writerDest( dest );
-                for( int r=0; r<src->r(); ++r ) {
-                    for( int t=0; t<src->t(); ++t ) {
-                        for( int s=0; s<src->s(); ++s ) {
-                            const osg::Vec4f pixelSrc = _readerSrc(s,t,r);
-                            osg::Vec4f pixelDest = _readerDest(s,t,r);
-                            if ( (*this)(pixelSrc, pixelDest) )
-                                _writerDest(pixelDest,s,t,r);
-                        }
-                    }
-                }
-            }
+        private:
+            const osg::Image* _image;
+            int    _r, _s, _t;
+            double _u, _v;
         };
 
         /**
-         * Simple functor to copy pixels from one image to another.
-         *
-         * Usage:
-         *    PixelVisitor<CopyImage>().accept( fromImage, toImage );
+         * Convenience object to iterate over an image, with or without
+         * a geospatial extent, with a lambda function
          */
-        struct CopyImage {
-            bool operator()( const osg::Vec4f& src, osg::Vec4f& dest ) {
-                dest = src;
-                return true;
+        template<typename EXTENT>
+        struct ImageIteratorWithExtent
+        {
+        public:
+            ImageIteratorWithExtent(const osg::Image* image, const EXTENT& extent) :
+                _image(image), _extent(extent) { }
+
+            ImageIteratorWithExtent(PixelReader& reader, const EXTENT& extent) :
+                _image(reader._image), _extent(extent) { }
+
+            ImageIteratorWithExtent(PixelWriter& writer, const EXTENT& extent) :
+                _image(writer._image), _extent(extent) { }
+
+            inline int s() const { return _s; }
+            inline int t() const { return _t; }
+            inline double u() const { return _u; }
+            inline double v() const { return _v; }
+            inline double x() const { return _x; }
+            inline double y() const { return _y; }
+
+            inline void forEachPixel(const std::function<void()>& func)
+            {
+                forEachPixelOnCenter(func);
             }
+
+            inline void forEachPixelOnCenter(const std::function<void()>& func)
+            {
+                double _su = (double)(_image->s() - 1) / (double)(_image->s());
+                double _sv = (double)(_image->t() - 1) / (double)(_image->t());
+                double _bu = 0.5 / (double)_image->s();
+                double _bv = 0.5 / (double)_image->t();
+
+                for (_t = 0; _t < _image->t(); ++_t)
+                {
+                    _v = _bv + _sv * (double)_t / (double)(_image->t() - 1);
+                    _y = _extent.yMin() + _extent.height()*_v;
+
+                    for (_s = 0; _s < _image->s(); ++_s)
+                    {
+                        _u = _bu + _su * (double)_s / (double)(_image->s() - 1);
+                        _x = _extent.xMin() + _extent.width()*_u;
+
+                        func();
+                    }
+                }
+            }
+
+        private:
+            const osg::Image* _image;
+            const EXTENT _extent;
+            int    _s, _t;
+            double _u, _v;
+            double _x, _y;
         };
     };
 

@@ -57,7 +57,7 @@ TiledFeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const
     FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
     if (cursor && _filterChain.valid())
     {
-        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), cx);
+        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), &cx);
     }
     return cursor;
 }
@@ -83,7 +83,12 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
     if (progress && progress->isCanceled())
         return nullptr;
 
-    osg::ref_ptr< FeatureCursor > cursor = _features->createFeatureCursor(query, progress);
+    osg::ref_ptr< FeatureCursor > cursor = _features->createFeatureCursor(
+        query,
+        _filterChain.get(),
+        &fc,
+        progress);
+
     osg::ref_ptr<osg::Node> node = new osg::Group;
     if (cursor)
     {

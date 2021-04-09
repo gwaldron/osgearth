@@ -32,6 +32,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/PolygonMode>
 #include <osgEarth/LineDrawable>
+#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;
@@ -476,7 +477,7 @@ namespace
 {
     struct LoadTilesetOperation
     {
-        LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options) : 
+        LoadTilesetOperation(ThreeDTilesetNode* parentTileset, const URI& uri, osgDB::Options* options) :
             _uri(uri),
             _options(options),
             _parentTileset(parentTileset)
@@ -539,8 +540,8 @@ namespace
     }
 
     ReadTileResult readTilesetAsync(
-        ThreeDTilesetNode* parentTileset, 
-        const URI& uri, 
+        ThreeDTilesetNode* parentTileset,
+        const URI& uri,
         osgDB::Options* options)
     {
         std::shared_ptr<LoadTilesetOperation> operation = std::make_shared<LoadTilesetOperation>(

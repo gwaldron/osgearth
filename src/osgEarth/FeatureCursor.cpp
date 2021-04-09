@@ -142,13 +142,26 @@ GeometryFeatureCursor::nextFeature()
 
 //---------------------------------------------------------------------------
 
-FilteredFeatureCursor::FilteredFeatureCursor(FeatureCursor* cursor,
-                                             FeatureFilterChain* chain,
-                                             FilterContext& context) :
+FilteredFeatureCursor::FilteredFeatureCursor(
+    FeatureCursor* cursor,
+    FeatureFilterChain* chain) :
+
     FeatureCursor(cursor ? cursor->getProgress() : nullptr),
     _cursor(cursor),
     _chain(chain),
-    _context(context)
+    _user_cx(nullptr)
+{
+    //nop
+}
+FilteredFeatureCursor::FilteredFeatureCursor(
+    FeatureCursor* cursor,
+    FeatureFilterChain* chain,
+    FilterContext* context) :
+
+    FeatureCursor(cursor->getProgress()),
+    _cursor(cursor),
+    _chain(chain),
+    _user_cx(context)
 {
     //nop
 }
@@ -160,6 +173,9 @@ FilteredFeatureCursor::hasMore() const
         return true;
 
     const int chunkSize = 500;
+
+    FilterContext temp_cx;
+    FilterContext& cx = _user_cx == nullptr ? temp_cx : *_user_cx;
 
     while(_cursor->hasMore() && _cache.size() < chunkSize)
     {
@@ -174,7 +190,7 @@ FilteredFeatureCursor::hasMore() const
             filter != _chain->end();
             ++filter)
         {
-            _context = filter->get()->push(local, _context);
+            cx = filter->get()->push(local, cx);
         }
 
         std::copy(local.begin(), local.end(), std::back_inserter(_cache));

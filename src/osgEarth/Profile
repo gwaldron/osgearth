@@ -134,6 +134,9 @@ namespace osgEarth
             unsigned int numTilesHighAtLod0 =0 );
 
         static const Profile* create(
+            const SpatialReference* srs);
+
+        static const Profile* create(
             const std::string& srs_string,
             const std::string& vsrs_string,
             unsigned int numTilesWideAtLod0 =0,

@@ -21,6 +21,7 @@
 */
 #include <osgEarth/Geometry>
 #include <osgEarth/GEOS>
+#include <osgEarth/Math>
 #include <algorithm>
 #include <iterator>
 #include <cstdarg>
@@ -431,6 +432,22 @@ Geometry::intersects(
 #endif // OSGEARTH_HAVE_GEOS
 }
 
+double
+Geometry::getSignedDistance2D(
+    const osg::Vec3d& point) const
+{
+    // simple point check.
+    double r2 = DBL_MAX;
+    double d2, x, y;
+    for (const auto& v : *this)
+    {
+        x = v.x() - point.x(), y = v.y() - point.y();
+        d2 = x * x + y * y;
+        if (d2 < r2) r2 = d2;
+    }
+    return sqrt(r2);
+}
+
 osg::Vec3d
 Geometry::localize()
 {
@@ -690,6 +707,23 @@ LineString::close()
     //NOP - dont' close line strings.
 }
 
+double
+LineString::getSignedDistance2D(
+    const osg::Vec3d& a) const
+{
+    double r = DBL_MAX;
+    Segment2d seg;
+
+    for(int i=0; i<size()-1; ++i)
+    {
+        seg._a.set((*this)[i].x(), (*this)[i].y(), 0);
+        seg._b.set((*this)[i + 1].x(), (*this)[i + 1].y(), 0);
+        r = std::min(r, seg.squaredDistanceTo(a));
+    }
+
+    return sqrt(r);
+}
+
 //----------------------------------------------------------------------------
 
 Ring::Ring( const Ring& rhs ) :
@@ -771,6 +805,27 @@ Ring::getSignedArea2D() const
         sum += p0.x()*p1.y() - p1.x()*p0.y();
     }
     return .5*sum;
+}
+
+double
+Ring::getSignedDistance2D(
+    const osg::Vec3d& a) const
+{
+    Segment2d seg;
+    double r = DBL_MAX;
+
+    unsigned i = isOpen() ? 0 : 1;
+    unsigned j = isOpen() ? size() - 1 : 0;
+
+    for (; i < size(); j = i++)
+    {
+        seg._a.set((*this)[i].x(), (*this)[i].y(), 0.0);
+        seg._b.set((*this)[j].x(), (*this)[j].y(), 0.0);
+        r = std::min(r, seg.squaredDistanceTo(a));
+    }
+
+    r = sqrt(r);
+    return contains2D(a.x(), a.y()) ? -r : r;
 }
 
 // opens and rewinds the polygon to the specified orientation.
@@ -878,6 +933,21 @@ Polygon::removeColinearPoints()
     Ring::removeColinearPoints();
     for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
         (*i)->removeColinearPoints();
+}
+
+double
+Polygon::getSignedDistance2D(
+    const osg::Vec3d& a) const
+{
+    Segment2d seg;
+    double r = DBL_MAX;
+
+    r = Ring::getSignedDistance2D(a);
+
+    for (const auto& hole : _holes)
+        r = std::min(r, hole->getSignedDistance2D(a));
+
+    return r;
 }
 
 //----------------------------------------------------------------------------
@@ -1002,6 +1072,29 @@ MultiGeometry::removeColinearPoints()
     {
         i->get()->removeColinearPoints();
     }
+}
+
+double
+MultiGeometry::getSignedDistance2D(
+    const osg::Vec3d& a) const
+{
+    double r = DBL_MAX;
+    for (const auto& part : _parts)
+    {
+        r = std::min(part->getSignedDistance2D(a), r);
+    }
+    return r;
+}
+
+bool
+MultiGeometry::contains2D(double x, double y) const
+{
+    for (const auto& part : _parts)
+    {
+        if (part->contains2D(x, y))
+            return true;
+    }
+    return false;
 }
 
 //----------------------------------------------------------------------------

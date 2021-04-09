@@ -93,6 +93,14 @@ namespace osgEarth
         optional<Distance>& geometricError() { return _geometricError; }
         const optional<Distance>& geometricError() const { return _geometricError; }
 
+        /** minimum distance (maps to 0) when rendering a signed distance field */
+        optional<NumericExpression>& sdfMinDistance() { return _sdfMinDistance; }
+        const optional<NumericExpression>& sdfMinDistance() const { return _sdfMinDistance; }
+
+        /** maximum distance (maps to 1) when rendering a signed distance field */
+        optional<NumericExpression>& sdfMaxDistance() { return _sdfMaxDistance; }
+        const optional<NumericExpression>& sdfMaxDistance() const { return _sdfMaxDistance; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -112,6 +120,8 @@ namespace osgEarth
         optional<Angle>              _maxCreaseAngle;
         optional<Distance>           _maxAltitude;
         optional<Distance>           _geometricError;
+        optional<NumericExpression>  _sdfMinDistance;
+        optional<NumericExpression>  _sdfMaxDistance;
         
         /** dtor */
         virtual ~RenderSymbol() { }

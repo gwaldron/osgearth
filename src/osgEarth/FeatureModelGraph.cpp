@@ -824,23 +824,19 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
         maxElevation = elevation + 100.0;
 #else
         ElevationLayerVector elevationLayers;
-        osg::ref_ptr<const Map> map = _session->getMap();
-        if (map.valid())
+        _session->getMap()->getLayers<ElevationLayer>(elevationLayers);
+        if (!elevationLayers.empty())
         {
-            map->getLayers<ElevationLayer>(elevationLayers);
-            if (!elevationLayers.empty())
-            {
-                // Get the approximate elevation range if we have elevation data in the map
-                lod = osg::clampBetween(lod, 0u, ElevationRanges::getMaxLevel());
-                GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
-                TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
-                short min, max;
-                ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
-                // Clamp the min value to avoid extreme underwater values.
-                minElevation = osg::maximum(min, (short)-500);
-                // Add a little bit extra of extra height to account for feature data.
-                maxElevation = max + 100.0f;
-            }
+            // Get the approximate elevation range if we have elevation data in the map
+            lod = osg::clampBetween(lod, 0u, ElevationRanges::getMaxLevel());
+            GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
+            TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
+            short min, max;
+            ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+            // Clamp the min value to avoid extreme underwater values.
+            minElevation = osg::maximum(min, (short)-500);
+            // Add a little bit extra of extra height to account for feature data.
+            maxElevation = max + 100.0f;
         }
 #endif
         // Expand the bounding sphere to account for the min/max elevation
@@ -1510,7 +1506,7 @@ FeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Quer
     FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
     if (cursor && _filterChain.valid())
     {
-        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), cx);
+        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), &cx);
     }
     return cursor;
 }
@@ -1539,7 +1535,11 @@ FeatureModelGraph::build(const Style&          defaultStyle,
         FilterContext context(_session.get(), featureProfile, workingExtent, index);
 
         // each feature has its own style, so use that and ignore the style catalog.
-        osg::ref_ptr<FeatureCursor> cursor = createCursor(source, context, baseQuery, progress);
+        osg::ref_ptr<FeatureCursor> cursor = source->createFeatureCursor(
+            baseQuery,
+            _filterChain.get(),
+            &context,
+            progress);
 
         while (cursor.valid() && cursor->hasMore())
         {
@@ -1740,7 +1740,12 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
     FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), bounds), index);
 
     // query the feature source:
-    osg::ref_ptr<FeatureCursor> cursor = createCursor(_session->getFeatureSource(), context, query, progress);
+    osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(
+        query,
+        _filterChain.get(),
+        &context,
+        progress);
+
     if (!cursor.valid())
         return;
 
@@ -1890,7 +1895,11 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
     FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), cellBounds), index);
 
     // query the feature source:
-    osg::ref_ptr<FeatureCursor> cursor = createCursor(_session->getFeatureSource(), context, query, progress);
+    osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(
+        query,
+        _filterChain.get(),
+        &context,
+        progress);
 
     if (cursor.valid() && cursor->hasMore())
     {

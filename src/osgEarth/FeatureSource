@@ -97,11 +97,24 @@ namespace osgEarth
 
         /**
         * Creates a cursor that iterates over all features corresponding to the
+        * specified TileKey, passing them through the specified filter chain.
+        * Caller takes ownership of the returned object.
+        */
+        FeatureCursor* createFeatureCursor(
+            const TileKey& key,
+            FeatureFilterChain* filters,
+            FilterContext* context,
+            ProgressCallback* progress);
+
+        /**
+        * Creates a cursor that iterates over all features corresponding to the
         * specified TileKey with a buffer. Caller takes ownership of the returned object.
         */
         FeatureCursor* createFeatureCursor(
             const TileKey& key,
             const Distance& buffer,
+            FeatureFilterChain* filters,
+            FilterContext* context,
             ProgressCallback* progress);
 
         /**
@@ -110,6 +123,17 @@ namespace osgEarth
          */
         FeatureCursor* createFeatureCursor(
             const Query& query,
+            ProgressCallback* progress);
+
+        /**
+        * Creates a cursor that iterates over all features corresponding to the
+        * specified TileKey, passing them through the specified filter chain.
+        * Caller takes ownership of the returned object.
+        */
+        FeatureCursor* createFeatureCursor(
+            const Query& query,
+            FeatureFilterChain* filters,
+            FilterContext* context,
             ProgressCallback* progress);
 
         /**
@@ -190,14 +214,14 @@ namespace osgEarth
          *      The Geometry type of the FeatureSource
          */
         virtual Geometry::Type getGeometryType() const { return Geometry::TYPE_UNKNOWN; }
-        
+
         /**
          *Returns true if this source creates features with embedded style information.
          * By default, this is false (features are not expected to carry their own
          * style definitions).
          */
         virtual bool hasEmbeddedStyles() const { return false; }
-        
+
         /**
          * Accesses the list of feature filters that will transform features
          * before they are returned in a feature cursor.
@@ -218,15 +242,15 @@ namespace osgEarth
          * Clears the blacklist.
          */
         void clearBlacklist();
-        
+
         /**
          * Checks the blacklist for a feature ID.
          */
-        bool isBlacklisted( FeatureID fid ) const; 
+        bool isBlacklisted( FeatureID fid ) const;
 
         //! Build (or rebuild) a disk-based spatial index.
         virtual void buildSpatialIndex() { }
-        
+
         //! dirty (??)
         virtual void dirty() { }
 
@@ -242,6 +266,10 @@ namespace osgEarth
         std::unordered_set<FeatureID>      _blacklist;
         unsigned                           _blacklistSize;
         osg::ref_ptr<FeatureFilterChain>   _filters;
+
+        typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
+        std::unique_ptr< FeaturesLRU > _featuresCache;
+        Threading::Mutex _featuresCacheMutex;
 
         //! Implements the feature cursor creation
         virtual FeatureCursor* createFeatureCursorImplementation(

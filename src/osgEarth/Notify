@@ -62,6 +62,7 @@ namespace osgEarth
 
 #define OE_SOFT_ASSERT(EXPR, WHERE) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE : " << WHERE << " : " #EXPR << std::endl; return; }
 #define OE_SOFT_ASSERT_AND_RETURN(EXPR, WHERE, RETVAL) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE : " << WHERE << " : " #EXPR << std::endl; return RETVAL; }
+#define OE_HARD_ASSERT(EXPR, WHERE) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE : " << WHERE << " : " #EXPR << std::endl; abort(); }
 
 extern OSGEARTH_EXPORT void setNotifyHandler(osg::NotifyHandler *handler);
 

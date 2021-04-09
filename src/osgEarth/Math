@@ -271,22 +271,113 @@ namespace osgEarth
         }
         return windingNum != 0;
     }
-    
-    template<class T>
-    const T& clamp(const T& v, const T& lo, const T& hi)
+
+    template<typename T>
+    inline T step(const T& edge, const T& x)
     {
-        if (v < lo)
-        {
-            return lo;
-        }
-        else if (v > hi)
-        {
-            return hi;
-        }
-        else
-        {
-            return v;
-        }
+        return x < edge ? static_cast<T>(0.0) : static_cast<T>(1.0);
+    }
+    
+    template<typename T>
+    inline T clamp(const T& x, const T& lo, const T& hi)
+    {
+        return x<lo ? lo : x>hi ? hi : x;
+    }
+
+    template<typename T>
+    inline T lerpstep(T lo, T hi, T x)
+    {
+        if (x <= lo) return static_cast<T>(0.0);
+        else if (x >= hi) return static_cast<T>(1.0);
+        else return (x - lo) / (hi - lo);
+    }
+
+    template<typename T>
+    inline T smoothstep(T lo, T hi, T x)
+    {
+        T t = clamp((x - lo) / (hi - lo), static_cast<T>(0.0), static_cast<T>(1.0));
+        return t * t*(static_cast<T>(3.0) - static_cast<T>(2.0)*t);
+    }
+
+    // move closer to one
+    template<typename T>
+    inline T harden(T x)
+    {
+        return static_cast<T>(1.0) - (static_cast<T>(1.0) - x)*(static_cast<T>(1.0) - x);
+    }
+
+    // move closer to zero
+    template<typename T>
+    inline T soften(T x)
+    {
+        return x * x;
+    }
+
+    template<typename T>
+    inline T threshold(T x, T thresh, T buf)
+    {
+        if (x < thresh - buf) return static_cast<T>(0.0);
+        else if (x > thresh + buf) return static_cast<T>(1.0);
+        else return clamp((x - (thresh - buf)) / (buf*static_cast<T>(2.0)), static_cast<T>(0.0), static_cast<T>(1.0));
+    }
+
+    template<typename T>
+    inline T fract(T x)
+    {
+        return x - floor(x);
+    }
+
+    template<typename T>
+    inline double unitremap(T a, T lo, T hi)
+    {
+        return clamp((a - lo) / (hi - lo), static_cast<T>(0.0), static_cast<T>(1.0));
+    }
+
+    template<typename T>
+    inline T mix(const T& a, const T& b, float c)
+    {
+        return a * (1.0 - c) + b * c;
+    }
+
+    template<typename T>
+    inline double dot2D(const T& a, const T& b)
+    {        
+        return a.x()*b.x() + a.y()*b.y();
+    }
+
+    template<typename T>
+    inline double dot3D(const T& a, const T& b)
+    {
+        return a.x()*b.x() + a.y()*b.y() + a.z()*b.z();
+    }
+
+    template<typename T>
+    inline double distanceSquared2D(const T& a, const T& b)
+    {
+        return 
+            (b.x() - a.x())*(b.x() - a.x()) + 
+            (b.y() - a.y())*(b.y() - a.y());
+    }
+
+    template<typename T>
+    inline double distanceSquared3D(const T& a, const T& b)
+    {
+        return
+            (b.x() - a.x())*(b.x() - a.x()) +
+            (b.y() - a.y())*(b.y() - a.y()) +
+            (b.z() - a.z())*(b.z() - a.z());
+    }
+
+    template<typename T>
+    inline double distance2D(const T& a, const T& b)
+    {
+        return sqrt(distanceSquared2D(a, b));
+    }
+
+    template<typename T>
+    inline double distance3D(const T& a, const T& b)
+    {
+        return sqrt(distanceSquared3D(a, b));
     }
 
     // Newton-Raphson solver
@@ -366,7 +457,7 @@ namespace osgEarth
         return a - vecProjection(a, b);
     }
 
-    // Round x to the nearest multiple of "multiple" greater than or equal to x
+    // Round integral x to the nearest multiple of "multiple" greater than or equal to x
     template<typename T>
     T align(T x, T multiple) {
         T isPositive = (T)(x >= 0);

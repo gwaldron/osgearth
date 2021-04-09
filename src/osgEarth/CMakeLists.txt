@@ -440,6 +440,8 @@ SET(LIB_PUBLIC_HEADERS
 
     FileGDBFeatureSource
 
+    SDF
+
     ${OSGEARTH_BUILDCONFIG_HEADER}
 )
 
@@ -789,6 +791,8 @@ set(TARGET_SRC
     TrackNode.cpp
     WindLayer.cpp
 
+    SDF.cpp
+
     FileGDBFeatureSource.cpp
 
     ${SHADERS_CPP}
@@ -868,6 +872,12 @@ IF(FILEGDB_FOUND)
     add_definitions(-DOSGEARTH_HAVE_FILEGDB)
     include_directories(${FILEGDB_INCLUDE_DIR})
     LINK_WITH_VARIABLES(${LIB_NAME} FILEGDB_LIBRARY)
+ENDIF()
+
+IF(BLEND2D_FOUND)
+    add_definitions(-DOSGEARTH_HAVE_BLEND2D)
+    include_directories(${BLEND2D_INCLUDES})
+    link_with_variables(${LIB_NAME} BLEND2D_LIBRARY)
 ENDIF()
 
 IF (WIN32)

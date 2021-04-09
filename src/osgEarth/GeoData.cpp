@@ -1814,6 +1814,19 @@ GeoImage::getUnitsPerPixel() const
     else return 0.0;
 }
 
+bool
+GeoImage::getCoord(int s, int t, double& out_x, double& out_y) const
+{
+    if (!valid()) return false;
+    if (!_myimage.valid()) return false;
+
+    double u = (double)s / (double)(_myimage->s() - 1);
+    double v = (double)t / (double)(_myimage->t() - 1);
+    out_x = _extent.xMin() + u * _extent.width();
+    out_y = _extent.yMin() + v * _extent.height();
+    return true;
+}
+
 GeoImage
 GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigned int height, bool useBilinearInterpolation) const
 {
@@ -2090,6 +2103,18 @@ GeoImage::takeImage()
         result = const_cast<osg::Image*>(_myimage.release());
     }
     return result;
+}
+
+void
+GeoImage::setTrackingToken(osg::Object* value)
+{
+    _token = value;
+}
+
+osg::Object*
+GeoImage::getTrackingToken() const
+{
+    return _token.get();
 }
 
 /***************************************************************************/

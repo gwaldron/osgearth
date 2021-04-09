@@ -23,37 +23,42 @@ using namespace osgEarth;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(render, RenderSymbol);
 
-RenderSymbol::RenderSymbol(const RenderSymbol& rhs,const osg::CopyOp& copyop):
-Symbol(rhs, copyop),
-_depthTest(rhs._depthTest),
-_lighting(rhs._lighting),
-_depthOffset(rhs._depthOffset),
-_backfaceCulling(rhs._backfaceCulling),
-_order(rhs._order),
-_clipPlane(rhs._clipPlane),
-_minAlpha(rhs._minAlpha),
-_renderBin(rhs._renderBin),
-_transparent(rhs._transparent),
-_decal(rhs._decal),
-_maxCreaseAngle(rhs._maxCreaseAngle),
-_maxAltitude(rhs._maxAltitude),
-_geometricError(rhs._geometricError)
+RenderSymbol::RenderSymbol(const RenderSymbol& rhs, const osg::CopyOp& copyop) :
+    Symbol(rhs, copyop),
+    _depthTest(rhs._depthTest),
+    _lighting(rhs._lighting),
+    _depthOffset(rhs._depthOffset),
+    _backfaceCulling(rhs._backfaceCulling),
+    _order(rhs._order),
+    _clipPlane(rhs._clipPlane),
+    _minAlpha(rhs._minAlpha),
+    _renderBin(rhs._renderBin),
+    _transparent(rhs._transparent),
+    _decal(rhs._decal),
+    _maxCreaseAngle(rhs._maxCreaseAngle),
+    _maxAltitude(rhs._maxAltitude),
+    _geometricError(rhs._geometricError),
+    _sdfMinDistance(rhs._sdfMinDistance),
+    _sdfMaxDistance(rhs._sdfMaxDistance)
 {
+    //nop
 }
 
 RenderSymbol::RenderSymbol(const Config& conf) :
-Symbol          ( conf ),
-_depthTest      ( true ),
-_lighting       ( true ),
-_backfaceCulling( true ),
-_order          ( 0 ),
-_clipPlane      ( 0 ),
-_minAlpha       ( 0.0f ),
-_transparent    ( false ),
-_decal          ( false ),
-_maxCreaseAngle ( Angle(0.0, Units::DEGREES) ),
-_maxAltitude    ( Distance(FLT_MAX, Units::METERS) ),
-_geometricError ( Distance(0.0, Units::METERS) )
+    Symbol(conf),
+    _depthTest(true),
+    _lighting(true),
+    _backfaceCulling(true),
+    _order(0),
+    _clipPlane(0),
+    _minAlpha(0.0f),
+    _transparent(false),
+    _decal(false),
+    _maxCreaseAngle(Angle(0.0, Units::DEGREES)),
+    _maxAltitude(Distance(FLT_MAX, Units::METERS)),
+    _geometricError(Distance(0.0, Units::METERS)),
+    _sdfMinDistance(0.0),
+    _sdfMaxDistance(20.0)
 {
     mergeConfig(conf);
 }
@@ -76,6 +81,8 @@ RenderSymbol::getConfig() const
     conf.set( "max_crease_angle", _maxCreaseAngle);
     conf.set( "max_altitude",     _maxAltitude);
     conf.set( "geometric_error",  _geometricError );
+    conf.set( "sdf_min_distance", _sdfMinDistance);
+    conf.set( "sdf_max_distance", _sdfMaxDistance);
     return conf;
 }
 
@@ -95,6 +102,8 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.get( "max_crease_angle", _maxCreaseAngle);
     conf.get( "max_altitude",     _maxAltitude);
     conf.get( "geometric_error",  _geometricError);
+    conf.get( "sdf_min_distance", _sdfMinDistance);
+    conf.get( "sdf_max_distance", _sdfMaxDistance);
 }
 
 void
@@ -170,5 +179,11 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
         float value; Units units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->geometricError() = Distance(value, units);
+    }
+    else if (match(c.key(), "render-sdf-min-distance")) {
+        style.getOrCreate<RenderSymbol>()->sdfMinDistance() = NumericExpression(c.value());
+    }
+    else if (match(c.key(), "render-sdf-max-distance")) {
+        style.getOrCreate<RenderSymbol>()->sdfMaxDistance() = NumericExpression(c.value());
     }
 }

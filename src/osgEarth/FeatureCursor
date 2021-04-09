@@ -103,8 +103,12 @@ namespace osgEarth
     public:
         FilteredFeatureCursor(
             FeatureCursor* cursor,
+            FeatureFilterChain* chain);
+
+        FilteredFeatureCursor(
+            FeatureCursor* cursor,
             FeatureFilterChain* chain,
-            FilterContext& context);
+            FilterContext* context);
 
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
@@ -115,7 +119,7 @@ namespace osgEarth
     private:
         osg::ref_ptr<FeatureCursor> _cursor;
         osg::ref_ptr<FeatureFilterChain> _chain;
-        FilterContext& _context;
+        FilterContext* _user_cx;
         mutable FeatureList _cache;
     };
 

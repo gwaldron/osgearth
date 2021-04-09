@@ -38,22 +38,12 @@ namespace
         {
             return _atlasList;
         }
-        
+
         typedef SourceList SourceListEx;
         typedef Source SourceEx;
         const SourceListEx& getSourceList()
         {
             return _sourceList;
-        }
-    };
-    
-    /** PixelVisitor functor to fill an image with a value */
-    struct SetDefaults
-    {
-        osg::Vec4f _value;
-        bool operator()(osg::Vec4f& inout) {
-            inout = _value;
-            return true;
         }
     };
 }
@@ -108,7 +98,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
         tab->setMargin( 1 );
     }
 
-    // clone the Resource library so we can re-write the URIs and add 
+    // clone the Resource library so we can re-write the URIs and add
     // texture matrix information.
     out._lib = new ResourceLibrary( inputLib->getConfig() );
     out._lib->initialize( _options.get() );
@@ -184,9 +174,8 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                     // failing that, create an empty one as a placeholder.
                     auxImage = new osg::Image();
                     auxImage->allocateImage(image->s(), image->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-                    ImageUtils::PixelVisitor<SetDefaults> filler;
-                    filler._value = defaultValue;
-                    filler.accept(auxImage.get());
+                    ImageUtils::PixelWriter write(auxImage.get());
+                    write.assign(defaultValue);
                 }
 
                 if ( auxImage->s() != image->s() || auxImage->t() != image->t() )
@@ -197,7 +186,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                     OE_INFO << "  ...resized " << auxFile << " to match atlas size" << std::endl;
                 }
 
-                if ( !ImageUtils::sameFormat(image.get(), auxImage.get()) ) 
+                if ( !ImageUtils::sameFormat(image.get(), auxImage.get()) )
                 {
                     auxImage = ImageUtils::convertToRGBA8(auxImage.get());
                 }
@@ -255,7 +244,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     OE_INFO << LC <<
         "Final atlas size will be (" << maxS << ", " << maxT << ")" << std::endl;
 
-    
+
     for(TABs::iterator tab = tabs.begin(); tab != tabs.end(); ++tab )
     {
         const TextureAtlasBuilderEx::AtlasListEx& atlasList = tab->getAtlasList();
@@ -296,7 +285,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
         out._images.push_back(imageArray);
     }
 
-    
+
     // for each source in this atlas layer, apply its texture matrix info
     // to the new catalog.
     maxS = osg::maximum(maxS, 1u);

@@ -710,14 +710,26 @@ namespace osgEarth
 		 */
 		double getUnitsPerPixel() const;
 
+        //! Gets the coordinate at the image's s,t
+        bool getCoord(int s, int t, double& out_x, double& out_y) const;
+
+        //! Sets a token object in this GeoImage. You can use this to
+        //! keep a weak reference to the object after creating it,
+        //! for example to detect destruction.
+        void setTrackingToken(osg::Object* token);
+        osg::Object* getTrackingToken() const;
+
     private:
         GeoExtent _extent;
         Status _status;
         osg::ref_ptr<const osg::Image> _myimage;
         mutable optional<Future<osg::ref_ptr<osg::Image>>> _future;
+        osg::ref_ptr<osg::Object> _token;
     };
 
     typedef std::vector<GeoImage> GeoImageVector;
+
+    typedef ImageUtils::ImageIteratorWithExtent<GeoExtent> GeoImageIterator;
 
     /**
      * A georeferenced heightfield and associated normal/curvature map.

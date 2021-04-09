@@ -157,6 +157,39 @@ Profile::create(const SpatialReference* srs,
 }
 
 const Profile*
+Profile::create(const SpatialReference* srs)
+{
+    OE_SOFT_ASSERT_AND_RETURN(srs != nullptr, __func__, nullptr);
+
+    Bounds bounds;
+    if (srs->getBounds(bounds))
+    {
+        unsigned x = 1, y = 1;
+        float ar = (float)bounds.width() / (float)bounds.height();
+        if (ar > 1.5f)
+        {
+            x = (unsigned)::ceil(ar);
+        }
+        else if (ar < 0.5f)
+        {
+            y = (unsigned)::ceil(1.0f / ar);
+        }
+
+        return new Profile(
+            srs,
+            bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax(),
+            x, y);
+    }
+    else
+    {
+        return create(
+            srs->getHorizInitString(),
+            srs->getVertInitString(),
+            0, 0);
+    }
+}
+
+const Profile*
 Profile::create(const SpatialReference* srs,
                 double xmin, double ymin, double xmax, double ymax,
                 double geoxmin, double geoymin, double geoxmax, double geoymax,

@@ -28,11 +28,19 @@
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
 #include <osgEarth/Metrics>
+#include <osgEarth/SDF>
+
+#ifdef OSGEARTH_HAVE_BLEND2D
+#include <blend2d.h>
+#endif
 
 using namespace osgEarth;
 
 #define LC "[FeatureImageLayer] " << getName() << ": "
 
+#ifndef OSGEARTH_HAVE_BLEND2D
+#define USE_AGGLITE
+#endif
 
 REGISTER_OSGEARTH_LAYER(featureimage, FeatureImageLayer);
 REGISTER_OSGEARTH_LAYER(feature_image, FeatureImageLayer);
@@ -47,11 +55,11 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         double xf, yf;
     };
 
+#ifdef USE_AGGLITE
     struct float32
     {
         float32() : value(NO_DATA_VALUE) { }
         float32(float v) : value(v) { }
-
         float value;
     };
 
@@ -96,11 +104,20 @@ namespace osgEarth { namespace FeatureImageLayerImpl
     };
 
     // rasterizes a geometry to color
-    void rasterize(const Geometry* geometry, const osg::Vec4& color, RenderFrame& frame,
-                   agg::rasterizer& ras, agg::rendering_buffer& buffer)
+    void rasterize_agglite(
+        const Geometry* geometry,
+        const osg::Vec4& color,
+        RenderFrame& frame,
+        agg::rasterizer& ras,
+        agg::rendering_buffer& buffer)
     {
         unsigned a = (unsigned)(127.0f+(color.a()*255.0f)/2.0f); // scale alpha up
-        agg::rgba8 fgColor = agg::rgba8( (unsigned)(color.r()*255.0f), (unsigned)(color.g()*255.0f), (unsigned)(color.b()*255.0f), a );
+
+        agg::rgba8 fgColor = agg::rgba8(
+            (unsigned)(color.r()*255.0f),
+            (unsigned)(color.g()*255.0f),
+            (unsigned)(color.b()*255.0f),
+            a );
 
         ConstGeometryIterator gi( geometry );
         while( gi.hasMore() )
@@ -126,24 +143,28 @@ namespace osgEarth { namespace FeatureImageLayerImpl
     }
 
 
-    void rasterizeCoverage(const Geometry* geometry, float value, RenderFrame& frame,
-                           agg::rasterizer& ras, agg::rendering_buffer& buffer)
+    void rasterizeCoverage_agglite(
+        const Geometry* geometry,
+        float value,
+        RenderFrame& frame,
+        agg::rasterizer& ras,
+        agg::rendering_buffer& buffer)
     {
-        ConstGeometryIterator gi( geometry );
-        while( gi.hasMore() )
+        ConstGeometryIterator gi(geometry);
+        while (gi.hasMore())
         {
             const Geometry* g = gi.next();
 
-            for( Geometry::const_iterator p = g->begin(); p != g->end(); p++ )
+            for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
             {
                 const osg::Vec3d& p0 = *p;
-                double x0 = frame.xf*(p0.x()-frame.xmin);
-                double y0 = frame.yf*(p0.y()-frame.ymin);
+                double x0 = frame.xf*(p0.x() - frame.xmin);
+                double y0 = frame.yf*(p0.y() - frame.ymin);
 
-                if ( p == g->begin() )
-                    ras.move_to_d( x0, y0 );
+                if (p == g->begin())
+                    ras.move_to_d(x0, y0);
                 else
-                    ras.line_to_d( x0, y0 );
+                    ras.line_to_d(x0, y0);
             }
         }
 
@@ -152,16 +173,132 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         ras.reset();
     }
 
-    FeatureCursor* createCursor(FeatureSource* fs, FeatureFilterChain* chain, FilterContext& cx, const Query& query, ProgressCallback* progress)
+#else
+
+    void rasterizePolygons(
+        const Geometry* geometry,
+        const PolygonSymbol* symbol,
+        RenderFrame& frame,
+        BLContext& ctx)
     {
-        FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
-        if (cursor && chain)
-        {
-            cursor = new FilteredFeatureCursor(cursor, chain, cx);
-        }
-        return cursor;
+        OE_PROFILING_ZONE;
+
+        BLPath path;
+
+        geometry->forEachPart([&](const Geometry* part)
+            {
+                for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                {
+                    const osg::Vec3d& p0 = *p;
+                    double x = frame.xf*(p0.x() - frame.xmin);
+                    double y = frame.yf*(p0.y() - frame.ymin);
+
+                    if (p == part->begin())
+                        path.moveTo(x, y);
+                    else
+                        path.lineTo(x, y);
+                }
+            });
+
+        osg::Vec4 color = symbol->fill().isSet() ? symbol->fill()->color() : Color::White;
+        ctx.setFillStyle(BLRgba32(color.asRGBA()));
+        ctx.fillPath(path);
     }
-}};
+
+    void rasterizeLines(
+        const Geometry* geometry,
+        const LineSymbol* symbol,
+        float lineWidth_px,
+        RenderFrame& frame,
+        BLContext& ctx)
+    {
+        OE_HARD_ASSERT(geometry != nullptr, __func__);
+        OE_HARD_ASSERT(symbol != nullptr, __func__);
+
+        OE_PROFILING_ZONE;
+
+        BLPath path;
+
+        geometry->forEachPart(true, [&](const Geometry* part)
+            {
+                for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                {
+                    const osg::Vec3d& p0 = *p;
+                    double x = frame.xf*(p0.x() - frame.xmin);
+                    double y = frame.yf*(p0.y() - frame.ymin);
+
+                    if (p == part->begin())
+                        path.moveTo(x, y);
+                    else
+                        path.lineTo(x, y);
+                }
+
+                if ((part->getType() == Geometry::TYPE_RING || part->getType() == Geometry::TYPE_POLYGON) &&
+                    (part->front() != part->back()))
+                {
+                    const osg::Vec3d& p0 = part->front();
+                    double x = frame.xf*(p0.x() - frame.xmin);
+                    double y = frame.yf*(p0.y() - frame.ymin);
+                    path.lineTo(x, y);
+                }
+            });
+
+        Color color(Color::White);
+        uint32_t cap = BL_STROKE_CAP_ROUND;
+        uint32_t join = BL_STROKE_JOIN_ROUND;
+
+        if (symbol->stroke().isSet())
+        {
+            color = symbol->stroke()->color();
+
+            if (symbol->stroke()->lineCap().isSet())
+            {
+                cap =
+                    symbol->stroke()->lineCap() == Stroke::LINECAP_FLAT ? BL_STROKE_CAP_BUTT :
+                    symbol->stroke()->lineCap() == Stroke::LINECAP_SQUARE ? BL_STROKE_CAP_SQUARE :
+                    BL_STROKE_CAP_ROUND;
+            }
+
+            if (symbol->stroke()->lineJoin().isSet())
+            {
+                join =
+                    symbol->stroke()->lineJoin() == Stroke::LINEJOIN_MITRE ? BL_STROKE_JOIN_MITER_BEVEL :
+                    BL_STROKE_JOIN_ROUND;
+            }
+        }
+
+
+
+        //BLImage texture;
+        //texture.readFromFile("../data/icon.png");
+        //BLPattern pattern(texture);
+        //ctx.setStrokeStyle(pattern);
+
+        ctx.setStrokeStyle(BLRgba32(color.asRGBA()));
+
+        ctx.setStrokeWidth(lineWidth_px);
+        ctx.setStrokeCaps(cap);
+        ctx.setStrokeJoin(join);
+        ctx.strokePath(path);
+    }
+
+#endif
+
+    //FeatureCursor* createCursor(
+    //    FeatureSource* fs,
+    //    FeatureFilterChain* chain,
+    //    FilterContext& cx,
+    //    const Query& query,
+    //    ProgressCallback* progress)
+    //{
+    //    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
+    //    if (cursor && chain)
+    //    {
+    //        cursor = new FilteredFeatureCursor(cursor, chain, cx);
+    //    }
+    //    return cursor;
+    //}
+}}
 
 //........................................................................
 
@@ -172,6 +309,8 @@ FeatureImageLayer::Options::getConfig() const
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
     conf.set("gamma", gamma());
+    conf.set("sdf", sdf());
+    conf.set("sdf_invert", sdf_invert());
 
     if (filters().empty() == false)
     {
@@ -187,11 +326,15 @@ FeatureImageLayer::Options::getConfig() const
 void
 FeatureImageLayer::Options::fromConfig(const Config& conf)
 {
-    gamma().init(1.3);
+    gamma().setDefault(1.3);
+    sdf().setDefault(false);
+    sdf_invert().setDefault(false);
 
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
     conf.get("gamma", gamma());
+    conf.get("sdf", sdf());
+    conf.get("sdf_invert", sdf_invert());
 
     const Config& filtersConf = conf.child("filters");
     for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
@@ -230,9 +373,29 @@ FeatureImageLayer::openImplementation()
     if (ssStatus.isError())
         return ssStatus;
 
+    establishProfile();
+
     _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
 
     return Status::NoError;
+}
+
+void
+FeatureImageLayer::establishProfile()
+{
+    if (getProfile() == nullptr && getFeatureSource() != nullptr)
+    {
+        const FeatureProfile* fp = getFeatureSource()->getFeatureProfile();
+
+        if (fp->getTilingProfile())
+        {
+            setProfile(fp->getTilingProfile());
+        }
+        else if (fp->getSRS())
+        {
+            setProfile(Profile::create(fp->getSRS()));
+        }
+    }
 }
 
 void
@@ -245,6 +408,7 @@ FeatureImageLayer::addedToMap(const Map* map)
 
     if (getFeatureSource())
     {
+        establishProfile();
         _session = new Session(map, getStyleSheet(), getFeatureSource(), getReadOptions());
         updateSession();
     }
@@ -378,6 +542,11 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     {
         image = LandCover::createImage(getTileSize());
     }
+    else if (options().sdf() == true)
+    {
+        image = new osg::Image();
+        image->allocateImage(getTileSize(), getTileSize(), 1, GL_RED, GL_UNSIGNED_BYTE);
+    }
     else
     {
         image = new osg::Image();
@@ -404,18 +573,14 @@ FeatureImageLayer::preProcess(osg::Image* image) const
 {
     OE_PROFILING_ZONE;
 
-    agg::rendering_buffer rbuf(image->data(), image->s(), image->t(), image->s() * 4);
-
-    // clear the buffer.
-    if (options().coverage() == true)
+    if (options().sdf() == true)
     {
-        agg::renderer<span_coverage32, float32> ren(rbuf);
-        ren.clear(float32(NO_DATA_VALUE));
+        ImageUtils::PixelWriter write(image);
+        write.assign(Color::Red);
     }
     else
     {
-        agg::renderer<agg::span_abgr32, agg::rgba8> ren(rbuf);
-        ren.clear(agg::rgba8(0, 0, 0, 0));
+        ::memset(image->data(), 0x00, image->getTotalSizeInBytes());
     }
     return true;
 }
@@ -425,36 +590,161 @@ FeatureImageLayer::postProcess(osg::Image* image) const
 {
     OE_PROFILING_ZONE;
 
+#ifdef USE_AGGLITE
     if (options().coverage() == false)
     {
         //convert from ABGR to RGBA
         unsigned char* pixel = image->data();
-        for (int i = 0; i < image->s()*image->t() * 4; i += 4, pixel += 4)
+        for (int i = 0; i < image->getTotalSizeInBytes(); i += 4, pixel += 4)
         {
             std::swap(pixel[0], pixel[3]);
             std::swap(pixel[1], pixel[2]);
         }
     }
+#endif
 
     return true;
 }
 
 bool
-FeatureImageLayer::renderFeaturesForStyle(Session*           session,
-                                          const Style&       style,
-                                          const FeatureList& features,
-                                          const GeoExtent&   imageExtent,
-                                          osg::Image*        image) const
+FeatureImageLayer::renderFeaturesForStyle(
+    Session*           session,
+    const Style&       style,
+    const FeatureList& in_features,
+    const GeoExtent&   imageExtent,
+    osg::Image*        image,
+    Cancelable*        progress) const
 {
-    OE_DEBUG << LC << "Rendering " << features.size() << " features for " << imageExtent.toString() << "\n";
+    OE_PROFILING_ZONE;
+
+    OE_DEBUG << LC << "Rendering " << in_features.size() << " features for " << imageExtent.toString() << "\n";
 
     // A processing context to use with the filters:
     FilterContext context(session);
     context.setProfile(getFeatureSource()->getFeatureProfile());
 
-    const LineSymbol*    masterLine = style.getSymbol<LineSymbol>();
+    // local (shallow) copy
+    FeatureList features(in_features);
+
+    // TODO: do we need to resample?
+
+    // Transform to map SRS:
+    {
+        OE_PROFILING_ZONE_NAMED("Transform");
+        TransformFilter xform(imageExtent.getSRS());
+        xform.setLocalizeCoordinates(false);
+        xform.push(features, context);
+    }
+
+    if (options().sdf() == true)
+    {
+        SDFGenerator sdf;
+
+        sdf.encodeSDF(
+            features,
+            image,
+            imageExtent,
+            GL_RED,
+            context,
+            style.get<RenderSymbol>()->sdfMinDistance().get(),
+            style.get<RenderSymbol>()->sdfMaxDistance().get(),
+            options().sdf_invert().get(),
+            progress);
+
+        return true;
+    }
+
+    // find the symbology:
+    const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
     const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
     const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
+
+    // Converts coordinates to image space (s,t):
+    RenderFrame frame;
+    frame.xmin = imageExtent.xMin();
+    frame.ymin = imageExtent.yMin();
+    frame.xf = (double)image->s() / imageExtent.width();
+    frame.yf = (double)image->t() / imageExtent.height();
+
+#ifndef USE_AGGLITE
+
+    // set up the render target:
+    BLImage buf;
+    buf.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
+
+    BLContext ctx(buf);
+    ctx.setCompOp(BL_COMP_OP_SRC_OVER);
+
+    // render polygons:
+    if (masterPoly)
+    {
+        for (const auto& feature : features)
+        {
+            if (feature->getGeometry())
+            {
+                rasterizePolygons(feature->getGeometry(), masterPoly, frame, ctx);
+            }
+        }
+    }
+
+    if (masterLine)
+    {
+        float lineWidth_px = 1.0f;
+
+        // Calculate the line width in pixels:
+        if (masterLine->stroke()->width().isSet())
+        {
+            double lineWidthValue = masterLine->stroke()->width().value();
+
+            // if the width units are specified, convert to pixels
+            const optional<Units> widthUnits = masterLine->stroke()->widthUnits();
+
+            if (widthUnits.isSet() && widthUnits != Units::PIXELS)
+            {
+                // NOTE. If the layer is projected (e.g. spherical meractor) but the map
+                // is geographic, the line width will be inaccurate; this is because the
+                // meractor image will be reprojected and the line widths will shrink
+                // by varying degrees depending on location on the globe. Someday we will
+                // address this but not today.
+
+                Distance lineWidth(lineWidthValue, widthUnits.get());
+
+                double lineWidth_map_south = lineWidth.asDistance(
+                    imageExtent.getSRS()->getUnits(),
+                    imageExtent.yMin());
+
+                double lineWidth_map_north = lineWidth.asDistance(
+                    imageExtent.getSRS()->getUnits(),
+                    imageExtent.yMax());
+
+                double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
+
+                double pixelSize_map = imageExtent.height() / (double)image->t();
+
+                lineWidth_px = (lineWidth_map / pixelSize_map);
+
+                // enfore a minimum width of one pixel.
+                float minPixels = masterLine->stroke()->minPixels().getOrUse(1.0f);
+                lineWidth_px = osg::clampAbove(lineWidth_px, minPixels);
+            }
+
+            else // pixels already
+            {
+                lineWidth_px = lineWidthValue;
+            }
+        }
+
+        // Rasterize the lines:
+        for (const auto& feature : features)
+        {
+            if (feature->getGeometry())
+            {
+                rasterizeLines(feature->getGeometry(), masterLine, lineWidth_px, frame, ctx);
+            }
+        }
+    }
+
+#else
 
     // sort into bins, making a copy for lines that require buffering.
     FeatureList polygons;
@@ -502,13 +792,6 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
             }
         }
     }
-
-    // initialize:
-    RenderFrame frame;
-    frame.xmin = imageExtent.xMin();
-    frame.ymin = imageExtent.yMin();
-    frame.xf = (double)image->s() / imageExtent.width();
-    frame.yf = (double)image->t() / imageExtent.height();
 
     if (lines.size() > 0)
     {
@@ -671,42 +954,89 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
                 if (options().coverage() == true && covValue.isSet())
                 {
                     float value = (float)feature->eval(covValue.mutable_value(), &context);
-                    rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
+                    rasterizeCoverage_agglite(croppedGeometry.get(), value, frame, ras, rbuf);
                 }
                 else
                 {
                     Color color = poly ? poly->fill()->color() : Color::White;
-                    rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
+                    rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
                 }
             }
         }
 
-        // render the lines
-        for (FeatureList::iterator i = lines.begin(); i != lines.end(); i++)
+        if (!lines.empty())
         {
-            Feature*  feature = i->get();
-            Geometry* geometry = feature->getGeometry();
+            const SpatialReference* featureSRS = context.profile()->getSRS();
+            float lineWidth = masterLine->stroke()->width().value();
+            lineWidth = masterLine->stroke()->width().value();
+            GeoExtent imageExtentInFeatureSRS = imageExtent.transform(featureSRS);
+            double pixelWidth = imageExtentInFeatureSRS.width() / (double)image->s();
 
-            osg::ref_ptr<Geometry> croppedGeometry;
-            if (geometry->crop(cropPoly.get(), croppedGeometry))
+            // if the width units are specified, process them:
+            if (masterLine->stroke()->widthUnits().isSet() &&
+                masterLine->stroke()->widthUnits().get() != Units::PIXELS)
             {
-                const LineSymbol* line =
-                    feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
-                    masterLine;
+                const Units& featureUnits = featureSRS->getUnits();
+                const Units& strokeUnits = masterLine->stroke()->widthUnits().value();
 
-                if (options().coverage() == true && covValue.isSet())
+                // if the units are different than those of the feature data, we need to
+                // do a units conversion.
+                if (featureUnits != strokeUnits)
                 {
-                    float value = (float)feature->eval(covValue.mutable_value(), &context);
-                    rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
+                    if (Units::canConvert(strokeUnits, featureUnits))
+                    {
+                        // linear to linear, no problem
+                        lineWidth = strokeUnits.convertTo(featureUnits, lineWidth);
+                    }
+                    else if (strokeUnits.isLinear() && featureUnits.isAngular())
+                    {
+                        // linear to angular? approximate degrees per meter at the
+                        // latitude of the tile's centroid.
+                        double lineWidthM = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
+                        double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI);
+                        double lon, lat;
+                        imageExtent.getCentroid(lon, lat);
+                        lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(lat));
+                    }
                 }
-                else
+
+                // enfore a minimum width of one pixel.
+                float minPixels = masterLine->stroke()->minPixels().getOrUse(1.0f);
+                lineWidth = osg::clampAbove(lineWidth, (float)pixelWidth*minPixels);
+            }
+
+            else // pixels
+            {
+                lineWidth *= pixelWidth;
+            }
+
+            for (FeatureList::iterator i = lines.begin(); i != lines.end(); i++)
+            {
+                Feature*  feature = i->get();
+                Geometry* geometry = feature->getGeometry();
+
+                osg::ref_ptr<Geometry> croppedGeometry;
+                if (geometry->crop(cropPoly.get(), croppedGeometry))
                 {
-                    osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
-                    rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
+                    const LineSymbol* line =
+                        feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
+                        masterLine;
+
+                    if (options().coverage() == true && covValue.isSet())
+                    {
+                        float value = (float)feature->eval(covValue.mutable_value(), &context);
+                        rasterizeCoverage_agglite(croppedGeometry.get(), value, frame, ras, rbuf);
+                    }
+                    else
+                    {
+                        osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
+                        rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
+                    }
                 }
             }
         }
     }
+#endif
 
     return true;
 }
@@ -714,12 +1044,15 @@ FeatureImageLayer::renderFeaturesForStyle(Session*           session,
 //........................................................................
 
 bool
-FeatureImageRenderer::render(const TileKey& key,
-                             Session* session,
-                             const StyleSheet* styles,
-                             osg::Image* target,
-                             ProgressCallback* progress) const
+FeatureImageRenderer::render(
+    const TileKey& key,
+    Session* session,
+    const StyleSheet* styles,
+    osg::Image* target,
+    ProgressCallback* progress) const
 {
+    OE_PROFILING_ZONE;
+
     Query defaultQuery;
     defaultQuery.tileKey() = key;
 
@@ -732,7 +1065,13 @@ FeatureImageRenderer::render(const TileKey& key,
     {
         // Each feature has its own embedded style data, so use that:
         FilterContext context;
-        osg::ref_ptr<FeatureCursor> cursor = createCursor(features, _filterChain.get(), context, defaultQuery, progress); //features->createFeatureCursor(defaultQuery, progress);
+
+        osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(
+            defaultQuery,
+            _filterChain.get(),
+            &context,
+            progress);
+
         while( cursor.valid() && cursor->hasMore() )
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();
@@ -746,7 +1085,8 @@ FeatureImageRenderer::render(const TileKey& key,
                     *feature->style(),
                     list,
                     key.getExtent(),
-                    target );
+                    target,
+                    progress);
             }
         }
     }
@@ -772,6 +1112,9 @@ FeatureImageRenderer::render(const TileKey& key,
                     getFeatures(session, defaultQuery, key.getExtent(), features, progress);
                     if (!features.empty())
                     {
+                        std::unordered_map<std::string, Style> literal_styles;
+                        std::map<const Style*, FeatureList> style_buckets;
+
                         for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
                         {
                             Feature* feature = itr->get();
@@ -780,7 +1123,8 @@ FeatureImageRenderer::render(const TileKey& key,
                             if (!styleString.empty() && styleString != "null")
                             {
                                 // resolve the style:
-                                Style combinedStyle;
+                                //Style combinedStyle;
+                                const Style* resolved_style = nullptr;
 
                                 // if the style string begins with an open bracket, it's an inline style definition.
                                 if ( styleString.length() > 0 && styleString[0] == '{' )
@@ -788,7 +1132,10 @@ FeatureImageRenderer::render(const TileKey& key,
                                     Config conf( "style", styleString );
                                     conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );
                                     conf.set( "type", "text/css" );
-                                    combinedStyle = Style(conf);
+                                    Style& literal_style = literal_styles[conf.toJSON()];
+                                    if (literal_style.empty())
+                                        literal_style = Style(conf);
+                                    resolved_style = &literal_style;
                                 }
 
                                 // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
@@ -797,24 +1144,30 @@ FeatureImageRenderer::render(const TileKey& key,
                                 // features.
                                 else
                                 {
-                                    const Style* selectedStyle = session->styles()->getStyle(styleString, false);
-                                    if ( selectedStyle )
-                                        combinedStyle = *selectedStyle;
+                                    const Style* selected_style = session->styles()->getStyle(styleString, false);
+                                    if (selected_style)
+                                        resolved_style = selected_style;
                                 }
 
-                                if (!combinedStyle.empty())
+                                if (resolved_style)
                                 {
-                                    FeatureList list;
-                                    list.push_back( feature );
-
-                                    renderFeaturesForStyle(
-                                        session,
-                                        combinedStyle,
-                                        list,
-                                        key.getExtent(),
-                                        target);
+                                    style_buckets[resolved_style].push_back(feature);
                                 }
                             }
+                        }
+
+                        for (auto& iter : style_buckets)
+                        {
+                            const Style* style = iter.first;
+                            FeatureList& list = iter.second;
+
+                            renderFeaturesForStyle(
+                                session,
+                                *style,
+                                list,
+                                key.getExtent(),
+                                target,
+                                progress);
                         }
                     }
                 }
@@ -843,13 +1196,16 @@ FeatureImageRenderer::render(const TileKey& key,
 
 
 bool
-FeatureImageRenderer::queryAndRenderFeaturesForStyle(Session*          session,
-                                                     const Style&      style,
-                                                     const Query&      query,
-                                                     const GeoExtent&  imageExtent,
-                                                     osg::Image*       out_image,
-                                                     ProgressCallback* progress) const
+FeatureImageRenderer::queryAndRenderFeaturesForStyle(
+    Session*          session,
+    const Style&      style,
+    const Query&      query,
+    const GeoExtent&  imageExtent,
+    osg::Image*       out_image,
+    ProgressCallback* progress) const
 {
+    OE_PROFILING_ZONE;
+
     // Get the features
     FeatureList features;
     getFeatures(session, query, imageExtent, features, progress);
@@ -859,18 +1215,24 @@ FeatureImageRenderer::queryAndRenderFeaturesForStyle(Session*          session,
 
     if (!features.empty())
     {
-        // Render them.
-        return renderFeaturesForStyle(session, style, features, imageExtent, out_image );
+        return renderFeaturesForStyle(
+            session,
+            style,
+            features,
+            imageExtent,
+            out_image,
+            progress);
     }
     return false;
 }
 
 void
-FeatureImageRenderer::getFeatures(Session* session,
-                                  const Query& query,
-                                  const GeoExtent& imageExtent,
-                                  FeatureList& features,
-                                  ProgressCallback* progress) const
+FeatureImageRenderer::getFeatures(
+    Session* session,
+    const Query& query,
+    const GeoExtent& imageExtent,
+    FeatureList& features,
+    ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
 
@@ -897,34 +1259,31 @@ FeatureImageRenderer::getFeatures(Session* session,
         // types along the way if a geometry override is in place:
         while (features.empty())
         {
+            if (progress && progress->isCanceled())
+                break;
+
             // query the feature source:
-            osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress); //session->getFeatureSource()->createFeatureCursor(localQuery, progress);
+            //osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress);
+
+            osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(
+                localQuery,
+                _filterChain.get(),
+                &context,
+                progress);
 
             while( cursor.valid() && cursor->hasMore() )
             {
                 Feature* feature = cursor->nextFeature();
-                Geometry* geom = feature->getGeometry();
-#if 0
-                if ( geom )
-                {
-                    // apply a type override if requested:
-                    if (_options.geometryTypeOverride().isSet() &&
-                        _options.geometryTypeOverride() != geom->getComponentType() )
-                    {
-                        geom = geom->cloneAs( _options.geometryTypeOverride().value() );
-                        if ( geom )
-                            feature->setGeometry( geom );
-                    }
-                }
-#endif
-                if ( geom )
+                if (feature->getGeometry())
                 {
                     features.push_back( feature );
                 }
             }
 
             // If we didn't get any features and we have a tilekey set, try falling back.
-            if (features.empty() && localQuery.tileKey().isSet())
+            if (features.empty() &&
+                localQuery.tileKey().isSet() &&
+                localQuery.tileKey()->valid())
             {
                 localQuery.tileKey() = localQuery.tileKey().get().createParentKey();
                 if (!localQuery.tileKey()->valid())

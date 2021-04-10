@@ -378,7 +378,9 @@ ArcGISServer::MapService::init( const URI& _uri, const osgDB::ReaderWriter::Opti
 		return setError( "Map service could not create a valid profile" );
 	}
 
-    _copyright = trim(doc["copyrightText"].asString());
+	Json::Value j_copyright = doc["copyrightText"];
+    if (!j_copyright.empty())
+    	_copyright = trim(j_copyright.asString());
 
     // now we're good.
     tile_info = ArcGISServer::TileInfo( tile_rows, format, min_level, max_level, num_tiles_wide, num_tiles_high);
@@ -583,10 +585,14 @@ ArcGISServerImageLayer::createImageImplementation(const TileKey& key, ProgressCa
 
     if (_map_service.isTiled())
     {
+        /*buf << options().url()->full() << "/tile"
+            << "/" << level
+            << "/" << tile_y
+            << "/" << tile_x << _dot_format;*/
         buf << options().url()->full() << "/tile"
             << "/" << level
             << "/" << tile_y
-            << "/" << tile_x << _dot_format;
+            << "/" << tile_x;
     }
     else
     {

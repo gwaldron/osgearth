@@ -822,9 +822,12 @@ ImageUtils::getReaderWriterForStream(std::istream& stream) {
     // .png:  89 50 4E 47 0D 0A 1A 0A
     // .gif:  GIF87a
     //        GIF89a
-    // .tiff: 49 49 2A 00
-    //        4D 4D 00 2A
+    // .tiff: 49 49 2A 00 // Classic TIFF, little-endian
+	//        4D 4D 00 2A // Classic TIFF, big-endian
+	//        49 49 2B 00 // Big TIFF, little-endian
+	//        4D 4D 00 2B // Big TIFF, big-endian
     // .bmp:  BM
+    //        BA
     // .webp: RIFF ???? WEBP
     // .ico   00 00 01 00
     //        00 00 02 00 ( cursor files )
@@ -845,20 +848,32 @@ ImageUtils::getReaderWriterForStream(std::istream& stream) {
             osgDB::Registry::instance()->getReaderWriterForExtension("gif") : 0;
 
     case 'I':
-        return (!strncmp((const char*)data, "\x49\x49\x2A\x00", 4)) ?
+        return (!strncmp((const char*)data, "\x49\x49\x2A\x00", 4) || !strncmp((const char*)data, "\x49\x49\x2B\x00", 4)) ?
             osgDB::Registry::instance()->getReaderWriterForExtension("tif") : 0;
 
     case 'M':
-        return (!strncmp((const char*)data, "\x4D\x4D\x00\x2A", 4)) ?
+        return (!strncmp((const char*)data, "\x4D\x4D\x00\x2A", 4) || !strncmp((const char*)data, "\x4D\x4D\x00\x2B", 4)) ?
             osgDB::Registry::instance()->getReaderWriterForExtension("tif") : 0;
 
     case 'B':
-        return ((data[1] == 'M')) ?
+        return ((data[1] == 'M') || (data[1] == 'A')) ?
             osgDB::Registry::instance()->getReaderWriterForExtension("bmp") : 0;
 
     case 'R':
         return (!strncmp((const char*)data, "RIFF", 4)) ?
-            osgDB::Registry::instance()->getReaderWriterForExtension("webp") : 0;
+			osgDB::Registry::instance()->getReaderWriterForExtension("webp") : 0;
+
+	case 'W':
+		return (!strncmp((const char*)data, "WEBP", 4)) ?
+			osgDB::Registry::instance()->getReaderWriterForExtension("webp") : 0;
+
+	case 'L':
+		return (!strncmp((const char*)data, "Lerc2", 5)) ?
+			osgDB::Registry::instance()->getReaderWriterForExtension("lerc") : 0;
+
+	case 'C':
+		return (!strncmp((const char*)data, "CntZImage", 9)) ?
+			osgDB::Registry::instance()->getReaderWriterForExtension("lerc") : 0;
 
 
     default:

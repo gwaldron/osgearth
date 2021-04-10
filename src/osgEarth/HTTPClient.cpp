@@ -19,6 +19,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
+#include <osgEarth/ImageUtils>
 #include <osgEarth/Version>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
@@ -439,6 +440,10 @@ namespace
             curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //0=enable.
             curl_easy_setopt( _curl_handle, CURLOPT_FILETIME, true );
 
+            /* set Referer: automatically when following redirects */
+            curl_easy_setopt( _curl_handle, CURLOPT_AUTOREFERER, (void*)1L );
+            curl_easy_setopt( _curl_handle, CURLOPT_REFERER, "http://XXX" );
+
             // Enable automatic CURL decompression of known types. An empty string will automatically add all supported encoding types that are built into curl.
             // Note that you must have curl built against zlib to support gzip or deflate encoding.
             curl_easy_setopt( _curl_handle, CURLOPT_ENCODING, "");
@@ -650,6 +655,7 @@ namespace
 
             //Disable peer certificate verification to allow us to access in https servers where the peer certificate cannot be verified.
             curl_easy_setopt( _curl_handle, CURLOPT_SSL_VERIFYPEER, (void*)0 );
+            curl_easy_setopt( _curl_handle, CURLOPT_SSL_VERIFYHOST, (void*)0 );
 
             osg::ref_ptr< ConfigHandler > configHandler = HTTPClient::getConfigHandler();
             if (configHandler.valid()) {
@@ -1531,6 +1537,13 @@ namespace
             if ( !mimeType.empty() )
             {
                 reader = osgDB::Registry::instance()->getReaderWriterForMimeType(mimeType);
+            }
+        }
+        if (!reader)
+        {
+            if (response.getNumParts() > 0)
+            {
+                reader = ImageUtils::getReaderWriterForStream(response.getPartStream(0));
             }
         }
 

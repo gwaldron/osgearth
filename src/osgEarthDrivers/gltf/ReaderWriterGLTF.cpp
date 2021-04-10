@@ -40,6 +40,8 @@ using namespace tinygltf;
 #include "GLTFWriter.h"
 #include "B3DMReader.h"
 #include "B3DMWriter.h"
+#include "I3DMReader.h"
+#include "PNTSReader.h"
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
@@ -58,7 +60,9 @@ public:
     {
         supportsExtension("gltf", "glTF ascii loader");
         supportsExtension("glb", "glTF binary loader");
-        supportsExtension("b3dm", "b3dm loader");
+		supportsExtension("b3dm", "b3dm loader");
+		supportsExtension("i3dm", "i3dm loader");
+		supportsExtension("pnts", "pnts loader");
     }
 
     virtual const char* className() const { return "glTF plugin"; }
@@ -94,7 +98,21 @@ public:
             B3DMReader reader;
             reader.setTextureCache(&_cache);
             return reader.read(location, data, options);
-        }
+		}
+		else if (ext == "i3dm")
+		{
+			std::string data = URI(location).getString(options);
+			I3DMReader reader;
+			reader.setTextureCache(&_cache);
+			return reader.read(location, data, options);
+		}
+		else if (ext == "pnts")
+		{
+			std::string data = URI(location).getString(options);
+			PNTSReader reader;
+			reader.setTextureCache(&_cache);
+			return reader.read(location, data, options);
+		}
         else return ReadResult::FILE_NOT_HANDLED;
     }
 
@@ -114,6 +132,18 @@ public:
         if (magic == "b3dm")
         {
             B3DMReader reader;
+            reader.setTextureCache(&_cache);
+            return reader.read(context.referrer(), buffer, options);
+        }
+		else if (magic == "i3dm")
+        {
+            I3DMReader reader;
+            reader.setTextureCache(&_cache);
+            return reader.read(context.referrer(), buffer, options);
+        }
+		else if (magic == "pnts")
+        {
+            PNTSReader reader;
             reader.setTextureCache(&_cache);
             return reader.read(context.referrer(), buffer, options);
         }

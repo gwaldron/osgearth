@@ -3,6 +3,8 @@ SET(TARGET_H
     GLTFWriter.h
     B3DMReader.h
     B3DMWriter.h
+    I3DMReader.h
+    PNTSReader.h
 )
 
 SET(TARGET_SRC

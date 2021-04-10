@@ -248,8 +248,9 @@ namespace osgEarth
 
         /**
          * Calculates the distance in meters from this geopoint to another.
+         * dim = 3, 3d(spatial) distance; dim = 2, 2d(ground) distance
          */
-        double distanceTo(const GeoPoint& rhs) const;
+        double distanceTo(const GeoPoint& rhs, int dim = 3) const;
 
         /**
          * Interpolates a point between this point and another point

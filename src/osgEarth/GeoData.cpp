@@ -572,18 +572,24 @@ GeoPoint::interpolate(const GeoPoint& rhs, double t) const
 }
 
 double
-GeoPoint::distanceTo(const GeoPoint& rhs) const
+GeoPoint::distanceTo(const GeoPoint& rhs, int dim) const
 {
     if ( getSRS()->isProjected() && rhs.getSRS()->isProjected() )
     {
         if ( getSRS()->isEquivalentTo(rhs.getSRS()) )
         {
-            return (vec3d() - rhs.vec3d()).length();
+            osg::Vec3d vec = vec3d() - rhs.vec3d();
+            if (dim == 2)//ground distance
+                vec.z() = 0;
+            return vec.length();
         }
         else
         {
             GeoPoint rhsT = rhs.transform(getSRS());
-            return (vec3d() - rhsT.vec3d()).length();
+			osg::Vec3d vec = vec3d() - rhsT.vec3d();
+			if (dim == 2)//ground distance
+				vec.z() = 0;
+            return vec.length();
         }
     }
     else
@@ -623,7 +629,14 @@ GeoPoint::distanceTo(const GeoPoint& rhs) const
         double dist = Re*(G-(F/2.0)*(X+Y));
 
         // NaN could mean start/end points are the same
-        return osg::isNaN(dist)? 0.0 : dist;
+        dist = osg::isNaN(dist)? 0.0 : dist;
+
+        if (dim == 3)//spatial distance
+        {
+            //altitudeMode of p1 and p2 must be ALTMODE_ABSOLUTE
+            dist = hypot(dist, p2.z() - p1.z());//refer to proj_lpz_dist in proj4
+        }
+        return dist;
     }
 }
 

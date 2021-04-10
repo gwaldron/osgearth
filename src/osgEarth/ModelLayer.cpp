@@ -285,7 +285,8 @@ ModelLayer::openImplementation()
                 osg::DegreesToRadians(options().orientation()->x()), osg::Vec3(0,0,1),
                 osg::DegreesToRadians(options().orientation()->z()), osg::Vec3(0,1,0) );
             pat->setAttitude(rot_mat.getRotate());
-            modelNodeParent = pat;
+			modelNodeParent = pat;
+			result = pat;
         }
 
         if (options().location().isSet())
@@ -295,10 +296,9 @@ ModelLayer::openImplementation()
             if (pat)
                 geo->addChild(pat);
             else
-                modelNodeParent = geo;
+				modelNodeParent = geo;
+			result = geo;
         }
-
-        result = modelNodeParent.get();
         
         if ( options().minVisibleRange().isSet() || options().maxVisibleRange().isSet() )
         {                

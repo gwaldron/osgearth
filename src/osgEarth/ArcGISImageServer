@@ -1,0 +1,294 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_ARCGISIMAGESERVER_H
+#define OSGEARTH_ARCGISIMAGESERVER_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/URI>
+#include <list>
+
+/**
+ * Layers that access an ArcGIS Image Server REST endpoint
+ * http://services.arcgisonline.com/arcgis/sdk/rest/index.html
+ */
+namespace osgEarth
+{
+    namespace ArcGISImageServer
+    {
+        class OSGEARTH_EXPORT ImageServiceLayer
+        {
+        public:
+            ImageServiceLayer(int id, const std::string& name);
+
+            int getId() const;
+            const std::string& getName() const;
+
+        private:
+            int id;
+            std::string name;
+        };
+
+		typedef std::list<ImageServiceLayer> ImageServiceLayerList;
+
+		class OSGEARTH_EXPORT ImageServiceField
+		{
+		public:
+            ImageServiceField(const std::string& name, const std::string& type, const std::string& alias);
+
+			const std::string& getName() const;
+			const std::string& getType() const;
+			const std::string& getAlias() const;
+
+		private:
+			std::string name;
+			std::string type;
+			std::string alias;
+		};
+
+		typedef std::list<ImageServiceField> ImageServiceFieldList;
+
+        class OSGEARTH_EXPORT TileInfo
+        {
+        public:
+            TileInfo();
+            TileInfo(int tile_size, const std::string& format, int min_level, int max_level, int _num_tiles_wide, int _num_tiles_high);
+            TileInfo(const TileInfo& rhs);
+
+            bool isValid() const;
+            int getTileSize() const;
+            const std::string& getFormat() const;
+            int getMinLevel() const;
+            int getMaxLevel() const;
+            int getNumTilesWide() const;
+            int getNumTilesHigh() const;
+
+        private:
+            std::string format;
+            int tile_size;
+            int min_level, max_level;
+            bool is_valid;
+            int num_tiles_wide;
+            int num_tiles_high;
+        };
+
+        class OSGEARTH_EXPORT ImageService
+        {
+        public:
+            ImageService();
+
+            /**
+             * Initializes a map service interface and populates its metadata from the
+             * provided REST API URL (e.g.: http://server/ArcGIS/rest/services/MyImageService)
+             * Call isValid() to verify success.
+             */
+            bool init(const URI& uri, const osgDB::Options* options = 0L);
+
+            /**
+             * Returns true if the map service initialized successfully.
+             */
+            bool isValid() const;
+
+            bool isTiled() const;
+
+            /**
+             * If isValid() returns false, this method will return the error message.
+             */
+            const std::string& getError() const;
+
+            /**
+             * Gets the data profile associated with this map service.
+             */
+            const Profile* getProfile() const;
+
+            /**
+             * Gets the tile information for this service.
+             */
+            const TileInfo& getTileInfo() const;
+
+            /**
+             * Gets the copyright text for the layer
+             */
+            const std::string& getCopyright() const;
+
+        private:
+            bool is_valid;
+			URI uri;
+			double pixelSizeX;
+			double pixelSizeY;
+			int bandCount;
+            std::string pixelType;
+            osg::ref_ptr<const Profile> profile;
+            std::string error_msg;
+			ImageServiceLayerList layers;
+			ImageServiceFieldList fields;
+            bool tiled;
+            TileInfo tile_info;
+            std::string _copyright;
+
+            bool setError(const std::string&);
+        };
+    };
+}
+
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT ArcGISImageServerOptions
+    {
+    public:
+        OE_OPTION(URI, url);
+        OE_OPTION(std::string, token);
+        OE_OPTION(std::string, format);
+        OE_OPTION(std::string, layers);
+        void readFrom(const Config& conf);
+        void writeTo(Config&) const;
+    };
+
+    /**
+     * Image layer connected to an ESRI ArcGIS Image Server API endpoint
+     */
+    class OSGEARTH_EXPORT ArcGISImageServerImageLayer : public ImageLayer
+    {
+    public:
+        // serialization data
+        class OSGEARTH_EXPORT Options : public ArcGISImageServerOptions, public ImageLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, ArcGISImageServerImageLayer, Options, ImageLayer, ArcGISImageServerImage);
+
+    public:
+        //! URL of the map service endpoint
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! API security token
+        void setToken(const std::string& value);
+        const std::string& getToken() const;
+
+        //! Override the imagery format reported in the service's metadata
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+        //! Override the layer specification reported in the service's metadata
+        void setLayers(const std::string& value);
+        const std::string& getLayers() const;
+
+    public: // Layer
+
+        //! Establishes a connection to the service
+        virtual Status openImplementation();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~ArcGISImageServerImageLayer();
+
+    private:
+        optional<ProfileOptions> _profileConf;
+        std::string _map;
+        std::string _layers;
+        std::string _format, _dot_format;
+        std::string _copyright;
+        ArcGISImageServer::ImageService _image_service;
+    };
+
+
+
+    /**
+     * Elevation layer connected to an ESRI ArcGIS Image Server API endpoint
+     */
+    class OSGEARTH_EXPORT ArcGISImageServerElevationLayer : public ElevationLayer
+    {
+    public:
+        // serialization data
+        class OSGEARTH_EXPORT Options : public ArcGISImageServerOptions, public ElevationLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, ArcGISImageServerElevationLayer, Options, ElevationLayer, ArcGISImageServerElevation);
+
+    public:
+        //! URL of the map service endpoint
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! API security token
+        void setToken(const std::string& value);
+        const std::string& getToken() const;
+
+        //! Override the imagery format reported in the service's metadata
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+        //! Override the layer specification reported in the service's metadata
+        void setLayers(const std::string& value);
+        const std::string& getLayers() const;
+
+    public: // Layer
+
+        virtual Status openImplementation();
+        virtual Status closeImplementation();
+
+        //! Creates a heightfield for the given tile key
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~ArcGISImageServerElevationLayer() {};
+
+    private:
+        osg::ref_ptr<ArcGISImageServerImageLayer> _imageLayer;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISImageServerImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ArcGISImageServerElevationLayer::Options);
+
+#endif // OSGEARTH_ARCGISIMAGESERVER_H

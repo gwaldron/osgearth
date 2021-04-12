@@ -93,6 +93,7 @@ configure_shaders(
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(LIB_PUBLIC_HEADERS
+    ArcGISImageServer
     ArcGISServer
     ArcGISTilePackage
     Bing
@@ -488,6 +489,7 @@ if (GIT_FOUND)
 endif()
 
 set(TARGET_SRC
+    ArcGISImageServer.cpp
     ArcGISServer.cpp
     ArcGISTilePackage.cpp
     Bing.cpp

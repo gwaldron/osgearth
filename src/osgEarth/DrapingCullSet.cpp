@@ -48,31 +48,40 @@ DrapingManager::get(const osg::Camera* cam)
 //............................................................................
 
 
-DrapingCullSet::DrapingCullSet() :
-_frameCulled( true )
+DrapingCullSet::DrapingCullSet()
 {
     // nop
+}
+
+const osg::BoundingSphere&
+DrapingCullSet::getBound() const
+{
+    if (_data.empty())
+    {
+        static osg::BoundingSphere s_empty;
+        return s_empty;
+    }
+    else
+    {
+        return _data.rbegin()->second._bs;
+    }
 }
 
 void
 DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path, const osg::FrameStamp* fs)
 {
-    // Reset the set if this is the first push after a cull.
-    if ( _frameCulled )
-    {
-        _frameCulled = false;
-        _entries.clear();
-        _bs.init();
-    }
+    FrameData& data = _data[fs->getFrameNumber()];
 
-    _entries.emplace_back();
-    Entry& entry = _entries.back();
+    Entry entry;
     entry._node = node;
-    entry._path.setNodePath( path );
-    entry._matrix = new osg::RefMatrix( osg::computeLocalToWorld(path) );
-    _bs.expandBy( osg::BoundingSphere(
+    entry._path.setNodePath(path);
+    entry._matrix = new osg::RefMatrix(osg::computeLocalToWorld(path));
+
+    data._entries.emplace_back(std::move(entry));
+
+    data._bs.expandBy(osg::BoundingSphere(
         node->getBound().center() * (*entry._matrix.get()),
-        node->getBound().radius() ));
+        node->getBound().radius()));
 }
 
 void
@@ -80,13 +89,21 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
+        if (nv.getFrameStamp() == nullptr)
+            return;
+
+        if (_data.empty())
+            return;
+
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
 
         // We will use the visitor's path to prevent doubely-applying the statesets
         // of common ancestors
         const osg::NodePath& nvPath = nv.getNodePath();
 
-        for(auto& entry : _entries)
+        FrameData& data = _data.rbegin()->second;
+
+        for(auto& entry : data._entries)
         {
             osg::ref_ptr<DrapeableNode> drapeable;
             if (entry._node.lock(drapeable) == false)
@@ -150,7 +167,6 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
             }
         }
 
-        // mark this set so it will reset for the next frame
-        _frameCulled = true;
+        _data.erase(--_data.end());
     }
 }

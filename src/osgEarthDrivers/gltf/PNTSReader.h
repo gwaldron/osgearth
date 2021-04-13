@@ -310,9 +310,9 @@ public:
             OE_DEBUG << "Read featureTableJson " << featureTableBinary << std::endl;
 			bytesRead += header.featureTableBinaryByteLength;
 
-#ifdef OSGEARTH_HAVE_DRACO
             if (bDracoCompression)
 			{
+#ifdef OSGEARTH_HAVE_DRACO
 				char* buffer = reinterpret_cast<char*>(&featureTableBinary[0]);
 
 				draco::DecoderBuffer decbuffer;
@@ -648,10 +648,10 @@ public:
 							}
 						}
 					}
-                }
+				}
+#endif
             }
             else
-#endif
             {
                 char* buffer = reinterpret_cast<char*>(&featureTableBinary[0]);
                 if (bPositions)

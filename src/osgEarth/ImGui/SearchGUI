@@ -1,0 +1,101 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_SEARCH_GUI
+#define OSGEARTH_IMGUI_SEARCH_GUI
+
+#include <osgEarth/Utils>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/Geocoder>
+
+namespace osgEarth {
+    namespace GUI
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Util;
+
+        class SearchGUI
+        {
+        public:
+            SearchGUI() :
+                _search(""),
+                _results(Status::Code::ServiceUnavailable, 0)
+            {
+                _options = new osgDB::Options();
+                arena = std::make_shared<JobArena>("Geocoder", 1U);
+                ObjectStorage::set(_options.get(), arena);
+            }
+
+            void draw(EarthManipulator* manip)
+            {
+                ImGui::Begin("Search");
+
+                if (ImGui::InputText("Place", _search, 128, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
+                {
+                    _features.clear();
+                    _results = geocoder.search(_search, _options.get());
+                }
+
+                if (_results.isReady())
+                {
+                    if (_results.getStatus().isOK())
+                    {
+                        _results.getFeatures()->fill(_features);
+                    }
+                    _results = Geocoder::Results(Status::Code::ServiceUnavailable, 0);
+                }
+
+                ImGui::BeginGroup();
+                ImGui::BeginChild("Results", ImVec2(0, 100.0f));
+                for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+                {
+                    bool selected = false;
+                    Feature* feature = itr->get();
+                    if (feature->getGeometry())
+                    {
+                        std::string displayName = itr->get()->getString("display_name");
+                        ImGui::Selectable(displayName.c_str(), &selected);
+                        if (selected)
+                        {
+                            GeoExtent extent(feature->getSRS(), feature->getGeometry()->getBounds());
+                            double maxDim = osg::maximum(extent.width(), extent.height());
+                            double range = ((0.5 * maxDim) / 0.267949849) * 111000.0;
+                            double lon, lat;
+                            extent.getCentroid(lon, lat);
+                            manip->setViewpoint(Viewpoint("", lon, lat, 0, 0, -90, range), 3.0);
+                            _features.clear();
+                            break;
+                        }
+                    }
+                }
+                ImGui::EndChild();
+                ImGui::EndGroup();
+                ImGui::End();
+            }
+
+            char _search[128];
+            Geocoder::Results _results;
+            osg::ref_ptr<osgDB::Options> _options;
+            std::shared_ptr<JobArena> arena;
+            FeatureList _features;
+            Geocoder geocoder;
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_SEARCH_GUI

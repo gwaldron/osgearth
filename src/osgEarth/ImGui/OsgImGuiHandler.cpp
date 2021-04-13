@@ -1,5 +1,5 @@
-#include "OsgImGuiHandler.hpp"
-#include "ImGuiUtils"
+#include "ImGui"
+#include "OsgImGuiHandler"
 #include <iostream>
 #include <osg/Camera>
 #include <osgUtil/GLObjectsVisitor>
@@ -9,6 +9,8 @@
 
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
+
+using namespace osgEarth::GUI;
 
 void OsgImGuiHandler::RealizeOperation::operator()(osg::Object* object)
 {

@@ -20,8 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarth/ImGuiUtils>
-#include <osgEarth/OsgImGuiHandler.hpp>
+#include <osgEarth/ImGui/ImGui>
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
@@ -41,31 +40,51 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Contrib;
-using namespace osgEarth::ImGuiUtil;
+using namespace osgEarth::GUI;
 
-class ImGuiDemo : public OsgImGuiHandler
+struct App
 {
-public:
-    ImGuiDemo(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
-        _mapNode(mapNode),
-        _earthManip(earthManip),
-        _view(view)
+    osgViewer::View* _view;
+    osg::ref_ptr<MapNode> _mapNode;
+    osg::ref_ptr<EarthManipulator> _manip;
+};
+
+struct AppGUI : public OsgImGuiHandler
+{
+    AppGUI(App& app) : _app(app),
+        _layers_show(true),
+        _search_show(true),
+        _netmon_show(false),
+        _scenegraph_show(true),
+        _viewpoints_show(true),
+        _texinspector_show(true)
     {
     }
 
-protected:
     void drawUi(osg::RenderInfo& renderInfo) override
     {
-        // ImGui code goes here...
-        //ImGui::ShowDemoWindow();
-        _layers.draw(renderInfo, _mapNode.get(), _view->getCamera(), _earthManip.get());
+        _layers.draw(renderInfo, _app._mapNode, _app._view->getCamera(), _app._manip);
+        _search.draw(_app._manip);
+        _netmon.draw(&_netmon_show);
+        _scenegraph.draw(_app._view->getCamera(), renderInfo, _app._manip.get(), _app._mapNode.get(), &_scenegraph_show);
+        _viewpoints.draw(_app._mapNode.get(), _app._manip.get());
+        _texinspector.draw(renderInfo, _app._view->getCamera(), &_texinspector_show);
     }
-
-    osg::ref_ptr< MapNode > _mapNode;
-    osg::ref_ptr<EarthManipulator> _earthManip;
-    osgViewer::View* _view;
+    
+    App& _app;
     LayersGUI _layers;
+    SearchGUI _search;
+    NetworkMonitorGUI _netmon;
+    SceneGraphGUI _scenegraph;
+    ViewpointsGUI _viewpoints;
+    TextureInspectorGUI _texinspector;
+
+    bool _layers_show;
+    bool _search_show;
+    bool _netmon_show;
+    bool _scenegraph_show;
+    bool _viewpoints_show;
+    bool _texinspector_show;
 };
 
 int
@@ -74,7 +93,6 @@ usage(const char* name)
     OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
-
     return 0;
 }
 
@@ -82,10 +100,6 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
-    ImGuiNotifyHandler* notifyHandler = new ImGuiNotifyHandler();
-    osg::setNotifyHandler(notifyHandler);
-    osgEarth::setNotifyHandler(notifyHandler);
-
     osgEarth::initialize();
 
     osg::ArgumentParser arguments(&argc, argv);
@@ -94,32 +108,31 @@ main(int argc, char** argv)
     if (arguments.read("--help"))
         return usage(argv[0]);
 
-    // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    // install our default manipulator (do this before calling load)
-    EarthManipulator* manip = new EarthManipulator(arguments);
-    viewer.setCameraManipulator(manip);
+    App app;
+    app._view = &viewer;
+    app._manip = new EarthManipulator(arguments);
+
+    viewer.setCameraManipulator(app._manip);
 
     // Setup the viewer for imgui
-    viewer.setRealizeOperation(new ImGuiDemo::RealizeOperation);
-
+    viewer.setRealizeOperation(new AppGUI::RealizeOperation);
     viewer.realize();
 
-    // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags
+    // Load an earth file
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
-        MapNode* mapNode = MapNode::findMapNode(node);
-        if (mapNode)
+        app._mapNode = MapNode::get(node);
+        if (app._mapNode)
         {
-            viewer.getEventHandlers().push_front(new ImGuiDemo(&viewer, mapNode, manip));
+            viewer.setSceneData(node);
+            viewer.addEventHandler(new AppGUI(app));
             viewer.addEventHandler(new SelectNodeHandler());
         }
 
-        viewer.setSceneData(node);
-        return viewer.run();// return Metrics::run(viewer);
+        return viewer.run();
     }
     else
     {

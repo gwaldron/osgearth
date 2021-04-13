@@ -20,9 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarth/ImGuiUtils>
-#include <osgEarth/OsgImGuiHandler.hpp>
-#include <imgui_internal.h>
+#include <osgEarth/ImGui/ImGui>
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
@@ -51,7 +49,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
-using namespace osgEarth::ImGuiUtil;
+using namespace osgEarth::GUI;
 
 float query_range = 100.0;
 long long query_time_ns = 0;

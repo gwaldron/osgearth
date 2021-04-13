@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarth/ImGuiUtils>
-#include <osgEarth/OsgImGuiHandler.hpp>
+#include <osgEarth/ImGui/ImGui>
 #include <imgui_internal.h>
 
 #include <osgViewer/CompositeViewer>
@@ -207,12 +206,12 @@ struct ViewerPanel
     }
 };
 
-struct GUI : public OsgImGuiHandler
+struct AppGUI : public osgEarth::GUI::OsgImGuiHandler
 {
     App& _app;
     ViewerPanel _viewerUI;
     GCPanel _gcUI;
-    GUI(App& app) : _app(app), _viewerUI(app), _gcUI(app) { }
+    AppGUI(App& app) : _app(app), _viewerUI(app), _gcUI(app) { }
 
     void drawUi(osg::RenderInfo& ri) override
     {
@@ -253,9 +252,9 @@ main(int argc, char** argv)
     }
 
     // Setup the viewer for imgui
-    app._viewer.setRealizeOperation(new GUI::RealizeOperation);
+    app._viewer.setRealizeOperation(new AppGUI::RealizeOperation);
 
-    app._viewer.getView(0)->getEventHandlers().push_front(new GUI(app));
+    app._viewer.getView(0)->getEventHandlers().push_front(new AppGUI(app));
 
     EventRouter* router = new EventRouter();
     app._viewer.getView(0)->addEventHandler(router);

@@ -1,0 +1,85 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_H
+#define OSGEARTH_IMGUI_H 1
+
+#include "GL/glew.h"
+#include "imgui.h"
+#include "OsgImGuiHandler"
+#include <osgEarth/Threading>
+#include <osg/Texture2D>
+#include <osg/RenderInfo>
+
+namespace ImGuiUtil
+{
+    static void Texture(osg::Texture2D* texture, osg::RenderInfo& renderInfo, unsigned int width = 0, unsigned int height = 0)
+    {
+        // Get the context id
+        const unsigned int contextID = renderInfo.getState()->getContextID();
+
+        // Apply the texture
+        texture->apply(*renderInfo.getState());
+
+        // Default to the textures size
+        unsigned int w = texture->getTextureWidth();
+        unsigned int h = texture->getTextureHeight();
+
+        // Get the aspect ratio
+        double ar = (double)w / (double)h;
+
+        // If both width and height are specified use that.
+        if (width != 0 && height != 0)
+        {
+            w = width;
+            h = height;
+        }
+        // If just the width is specified compute the height using the ar
+        else if (width != 0)
+        {
+            w = width;
+            h = (1.0 / ar) * w;
+        }
+        // If just the height is specified compute the width using the ar
+        else if (height != 0)
+        {
+            h = height;
+            w = ar * height;
+        }
+
+        // Get the TextureObject.
+        osg::Texture::TextureObject* textureObject = texture->getTextureObject(contextID);
+        if (textureObject)
+        {
+            //double h = 100.0;
+            //double w = ar * h;
+            ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, 1), ImVec2(1, 0));
+        }
+    }
+}
+
+// individual GUI controls
+#include "LayersGUI"
+#include "NetworkMonitorGUI"
+#include "NotifyGUI"
+#include "SceneGraphGUI"
+#include "SearchGUI"
+#include "TextureInspectorGUI"
+#include "ViewpointsGUI"
+
+#endif

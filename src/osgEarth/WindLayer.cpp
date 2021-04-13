@@ -463,30 +463,29 @@ WindLayer::Options::fromConfig(const Config& conf)
 void
 WindLayer::addWind(Wind* wind)
 {
-    WindDrawable* wd = static_cast<WindDrawable*>(_drawable.get());
+    WindDrawable* wd = dynamic_cast<WindDrawable*>(_drawable.get()); // also checks for nullptr
     if (wd)
     {
-       wd->_winds.push_back(wind);
+        wd->_winds.push_back(wind);
     }
-
 }
 
 void
 WindLayer::removeWind(Wind* wind)
 {
-    WindDrawable* wd = static_cast<WindDrawable*>(_drawable.get());
+    WindDrawable* wd = dynamic_cast<WindDrawable*>(_drawable.get()); // also checks for nullptr
     if (wd)
     {
-       for (std::vector<osg::ref_ptr<Wind> >::iterator i = wd->_winds.begin();
-          i != wd->_winds.end();
-          ++i)
-       {
-          if (i->get() == wind)
-          {
-             wd->_winds.erase(i);
-             break;
-          }
-       }
+        for (std::vector<osg::ref_ptr<Wind>>::iterator i = wd->_winds.begin();
+            i != wd->_winds.end();
+            ++i)
+        {
+            if (i->get() == wind)
+            {
+                wd->_winds.erase(i);
+                break;
+            }
+        }
     }
 }
 
@@ -495,7 +494,7 @@ WindLayer::init()
 {
     Layer::init();
 
-    // Never cache decals
+    // Never cache
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
@@ -560,6 +559,8 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
 {
     if (!isOpen())
         return nullptr;
+
+    OE_SOFT_ASSERT_AND_RETURN(_drawable.valid(), __func__, nullptr);
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
 

@@ -61,12 +61,6 @@ namespace osgEarth { namespace Util
         //! Bounds of the latest set
         const osg::BoundingSphere& getBound() const;
 
-        /** Number of elements in the set */
-        //unsigned size() const { return _entries.size(); }
-
-        //! Reset for the next frame
-        void clear();
-
     private:
         struct FrameData {
             std::vector<Entry> _entries;

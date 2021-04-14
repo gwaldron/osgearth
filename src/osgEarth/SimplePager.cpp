@@ -1,4 +1,4 @@
-#include <osgEarth/SimplePager> 
+#include <osgEarth/SimplePager>
 #include <osgEarth/TileKey>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
@@ -78,7 +78,7 @@ osg::BoundingSphere SimplePager::getBounds(const TileKey& key) const
 }
 
 osg::ref_ptr<osg::Node> SimplePager::buildRootNode()
-{   
+{
     osg::ref_ptr<osg::Group> root = new PagingManager();
 
     std::vector<TileKey> keys;
@@ -137,7 +137,7 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
     }
 
     tileRadius = osg::maximum(
-        tileBounds.radius(), 
+        tileBounds.radius(),
         static_cast<osg::BoundingSphere::value_type>(tileRadius));
 
     pagedNode->setCenter(tileBounds.center());
@@ -192,7 +192,7 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
                 if (pager_weakptr.lock(pager))
                 {
                     osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
-                    result = pager->loadKey(key, progress);
+                    result = pager->loadKey(key, progress.get());
                 }
                 else
                 {
@@ -215,7 +215,7 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
 
 osg::ref_ptr<osg::Node>
 SimplePager::loadKey(const TileKey& key, ProgressCallback* progress)
-{       
+{
     if (_done)
     {
         if (progress) progress->cancel();

@@ -177,6 +177,7 @@ SET(LIB_PUBLIC_HEADERS
     LocalTangentPlane
     Math
     Map
+    MapBoxGLImageLayer
     MapCallback
     MapInfo
     MapModelChange
@@ -563,6 +564,7 @@ set(TARGET_SRC
     LocalTangentPlane.cpp
     Math.cpp
     Map.cpp
+    MapBoxGLImageLayer.cpp
     MapCallback.cpp
     MapInfo.cpp
     MapNode.cpp

@@ -19,17 +19,32 @@
 #ifndef OSGEARTH_IMGUI_TEXTURE_INSPECTOR_GUI
 #define OSGEARTH_IMGUI_TEXTURE_INSPECTOR_GUI
 
+#include "ImGui"
+#include <osg/NodeVisitor>
+
 namespace osgEarth {
     namespace GUI
     {
-        class TextureInspectorGUI
+        class TextureInspectorGUI : public BaseGUI
         {
+        public:
+            TextureInspectorGUI() : 
+                BaseGUI("Texture Inspector")
+            {
+                //nop
+            }
+
+            void setNode(osg::Node* node)
+            {
+                _root = node;
+            }
+
         private:
             class FindTexturesVisitor : public osg::NodeVisitor
             {
             public:
                 FindTexturesVisitor() :
-                    osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+                    osg::NodeVisitor(TRAVERSE_ALL_CHILDREN)
                 {
                 }
 
@@ -55,15 +70,21 @@ namespace osgEarth {
             };
 
         public:
-            void draw(osg::RenderInfo& renderInfo, osg::Node* root, bool *show)
+            void draw(osg::RenderInfo& ri) override
             {
-                if (ImGui::Begin("Texture Inspector", show))
+                if (!isVisible())
+                    return;
+
+                if (ImGui::Begin(name(), visible()))
                 {
+                    if (_root.valid() == false)
+                        _root = ri.getCurrentCamera();
+
                     if (ImGui::Button("Refresh"))
                     {
                         _textures.clear();
                         FindTexturesVisitor findTextures;
-                        root->accept(findTextures);
+                        ri.getCurrentCamera()->accept(findTextures);
                         std::copy(findTextures._textures.begin(), findTextures._textures.end(), std::back_inserter(_textures));
                     }
                     ImGui::Text("Found %d textures", _textures.size());
@@ -82,7 +103,7 @@ namespace osgEarth {
                         ImGui::PushID(t.get());
                         ImGui::BeginGroup();
                         ImGui::Text(name.c_str());
-                        ImGuiUtil::Texture(t.get(), renderInfo, textureWidth);
+                        ImGuiUtil::Texture(t.get(), ri, textureWidth);
                         ImGui::EndGroup();
 
                         float last_button_x2 = ImGui::GetItemRectMax().x;
@@ -109,6 +130,7 @@ namespace osgEarth {
             }
 
             std::vector< osg::ref_ptr< osg::Texture2D > > _textures;
+            osg::observer_ptr<osg::Node> _root;
         };
     }
 }

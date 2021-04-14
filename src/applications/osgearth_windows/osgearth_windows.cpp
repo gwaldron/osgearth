@@ -54,6 +54,7 @@ struct App
     bool _sharedGC;
     int _size;
     osg::ref_ptr<osg::Node> _node;
+    osg::ref_ptr<MapNode> _mapNode;
 
     App(osg::ArgumentParser& args) :
         _viewer(args),
@@ -117,14 +118,15 @@ struct App
     }
 };
 
-struct GCPanel
+struct GCPanel : public GUI::BaseGUI
 {
     App& _app;
-    GCPanel(App& app) : _app(app) { }
+    GCPanel(App& app) : GUI::BaseGUI("Graphics Contexts"), _app(app) { }
 
-    void drawUi(osg::RenderInfo& ri)
+    void draw(osg::RenderInfo& ri) override
     {
-        ImGui::Begin("Graphics Contexts");
+        if (!isVisible()) return;
+        ImGui::Begin(name(), visible());
         auto gcs = osg::GraphicsContext::getAllRegisteredGraphicsContexts();
         for (auto gc : gcs)
         {
@@ -153,14 +155,15 @@ struct GCPanel
     }
 };
 
-struct ViewerPanel
+struct ViewerPanel : public GUI::BaseGUI
 {
     App& _app;
-    ViewerPanel(App& app) : _app(app) { }
+    ViewerPanel(App& app) : GUI::BaseGUI("Views"), _app(app) { }
 
-    void drawUi(osg::RenderInfo& ri)
+    void draw(osg::RenderInfo& ri) override
     {
-        ImGui::Begin("Views");
+        if (!isVisible()) return;
+        ImGui::Begin(name(), visible());
 
         if (ImGui::Button("New view"))
         {
@@ -206,17 +209,15 @@ struct ViewerPanel
     }
 };
 
-struct AppGUI : public osgEarth::GUI::OsgImGuiHandler
+struct AppGUI : public GUI::DemoGUI
 {
     App& _app;
-    ViewerPanel _viewerUI;
-    GCPanel _gcUI;
-    AppGUI(App& app) : _app(app), _viewerUI(app), _gcUI(app) { }
-
-    void drawUi(osg::RenderInfo& ri) override
+    AppGUI(App& app) : _app(app)
     {
-        _viewerUI.drawUi(ri);
-        _gcUI.drawUi(ri);
+        setAllVisible(false);
+
+        add(new ViewerPanel(app), true);
+        add(new GCPanel(app), true);
     }
 };
 
@@ -245,6 +246,8 @@ main(int argc, char** argv)
     app._node = MapNodeHelper().load(arguments, &app._viewer);
     if (!app._node.get())
         return usage(argv[0]);
+
+    app._mapNode = MapNode::get(app._node.get());
 
     for(int i=0; i<numViews; ++i)
     {

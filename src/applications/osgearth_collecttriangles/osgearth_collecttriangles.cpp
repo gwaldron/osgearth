@@ -956,10 +956,10 @@ struct PredictiveDataLoader : public osg::NodeVisitor
     std::vector< osg::BoundingSphered > _areasToLoad;
 };
 
-class ImGuiDemo : public OsgImGuiHandler
+class MyGUI : public OsgImGuiHandler
 {
 public:
-    ImGuiDemo(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
+    MyGUI(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
         _mapNode(mapNode),
         _earthManip(earthManip),
         _view(view)
@@ -967,11 +967,11 @@ public:
     }
 
 protected:
-    void drawUi(osg::RenderInfo& renderInfo) override
+    void draw(osg::RenderInfo& renderInfo) override
     {
         // ImGui code goes here...
         ImGui::ShowDemoWindow();
-        _layers.draw(renderInfo, _mapNode.get(), _view->getCamera(), _earthManip.get());
+        _layers.draw(renderInfo);
 
         ImGui::Begin("Tools");
 
@@ -1104,7 +1104,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator(manip);
 
     // Setup the viewer for imgui
-    viewer.setRealizeOperation(new ImGuiDemo::RealizeOperation);
+    viewer.setRealizeOperation(new MyGUI::RealizeOperation);
 
     viewer.realize();
 
@@ -1118,7 +1118,7 @@ main(int argc, char** argv)
         MapNode* mapNode = MapNode::findMapNode(node);
         if (mapNode)
         {
-            viewer.getEventHandlers().push_front(new ImGuiDemo(&viewer, mapNode, manip));
+            viewer.getEventHandlers().push_front(new MyGUI(&viewer, mapNode, manip));
         }
 
         queryTrianglesHandler = new QueryTrianglesHandler(mapNode);

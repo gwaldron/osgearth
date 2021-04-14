@@ -22,9 +22,108 @@
 #include "GL/glew.h"
 #include "imgui.h"
 #include "OsgImGuiHandler"
-#include <osgEarth/Threading>
 #include <osg/Texture2D>
 #include <osg/RenderInfo>
+#include <osgViewer/View>
+#include <osgEarth/MapNode>
+#include <typeinfo>
+
+namespace osgEarth
+{
+    namespace GUI
+    {
+
+        // base class for GUI elements that allows you to toggle visibility
+        class BaseGUI
+        {
+        public:
+            void setVisible(bool value) {
+                _visible = value;
+            }
+
+            //! whether it's current shown
+            bool isVisible() const {
+                return _visible;
+            }
+
+            //! name of the GUI panel
+            virtual const char* name() const final {
+                return _name.c_str();
+            }
+
+            //! override to render with just a renderinfo
+            virtual void draw(osg::RenderInfo& ri) = 0;
+
+        protected:
+            BaseGUI(const char* name) : 
+                _name(name), _visible(false)
+            {
+                //nop
+            }
+            BaseGUI(const char* name, bool visible) :
+                _name(name), _visible(visible)
+            {
+                //nop
+            }
+
+        private:
+            std::string _name;
+            bool _visible;
+
+        public:
+            bool* visible() {
+                return &_visible;
+            }
+        };
+
+
+
+        // Manages the single selected node in the application.
+        static osg::ref_ptr< osg::Node > s_selectedNode;
+
+        static osg::Node* getSelectedNode()
+        {
+            return s_selectedNode.get();
+        }
+
+        static void setSelectedNode(osg::Node* node)
+        {
+            s_selectedNode = node;
+        }
+
+        struct SelectNodeHandler : public osgGA::GUIEventHandler
+        {
+            SelectNodeHandler()
+            {
+            }
+
+            bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+            {
+                osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+                if (ea.getEventType() == ea.PUSH && ea.getButton() == ea.LEFT_MOUSE_BUTTON && ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL)
+                {
+                    osgUtil::LineSegmentIntersector::Intersections intersections;
+
+                    if (view->computeIntersections(ea, intersections))
+                    {
+                        double currRatio = DBL_MAX;
+                        for (auto& hitr = intersections.begin(); hitr != intersections.end(); ++hitr)
+                        {
+                            if (hitr->ratio < currRatio)
+                            {
+                                setSelectedNode(hitr->drawable.get());
+                                currRatio = hitr->ratio;
+                            }
+
+                        }
+                    }
+                }
+                return false;
+            }
+        };
+    }
+}
 
 namespace ImGuiUtil
 {
@@ -73,7 +172,6 @@ namespace ImGuiUtil
     }
 }
 
-// individual GUI controls
 #include "LayersGUI"
 #include "NetworkMonitorGUI"
 #include "NotifyGUI"
@@ -81,5 +179,109 @@ namespace ImGuiUtil
 #include "SearchGUI"
 #include "TextureInspectorGUI"
 #include "ViewpointsGUI"
+#include "SystemGUI"
+
+namespace osgEarth
+{
+    namespace GUI
+    {
+        // ALL-PURPOSE GUI container - create a full-screen menu bar
+        // that includes all built-in GUIs. User can add their own.
+        class DemoGUI : public OsgImGuiHandler
+        {
+        public:
+            using GUIPtr = std::unique_ptr<BaseGUI>;
+            
+            //! Add all the built-in GUIs
+            DemoGUI() : OsgImGuiHandler()
+            {
+                // on by default
+                _menu["Tools"].push_back(GUIPtr(new LayersGUI));
+                _menu["Tools"].push_back(GUIPtr(new ViewpointsGUI));
+                _menu["Tools"].push_back(GUIPtr(new SystemGUI));
+                _menu["Tools"].push_back(GUIPtr(new SearchGUI));
+                _menu["Tools"].push_back(GUIPtr(new NetworkMonitorGUI));
+                _menu["Tools"].push_back(GUIPtr(new NotifyGUI));
+                _menu["Tools"].push_back(GUIPtr(new SceneGraphGUI));
+                _menu["Tools"].push_back(GUIPtr(new TextureInspectorGUI));
+
+                setAllVisible(false);
+            }
+
+            //! User adds a gui to the default User menu
+            void add(BaseGUI* gui, bool visible=false)
+            {
+                OE_SOFT_ASSERT_AND_RETURN(gui, __func__, );
+                gui->setVisible(visible);
+                _menu["User"].push_back(GUIPtr(gui));
+            }
+
+            //! User adds a gui to a named menu
+            void add(const std::string& menu, BaseGUI* gui, bool visible=false)
+            {
+                OE_SOFT_ASSERT_AND_RETURN(gui, __func__, );
+                gui->setVisible(visible);
+                if (menu.empty())
+                    add(gui, visible);
+                else
+                    _menu[menu].push_back(GUIPtr(gui));
+            }
+
+            //! Render everything
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (ImGui::BeginMainMenuBar())
+                {
+                    if (ImGui::BeginMenu("File"))
+                    {
+                        bool quit = false;
+                        ImGui::MenuItem("Quit", nullptr, &quit);
+                        if (quit) exit(0);
+                        ImGui::EndMenu();
+                    }
+
+                    for (auto& iter : _menu)
+                    {
+                        if (ImGui::BeginMenu(iter.first.c_str()))
+                        {
+                            for(auto& gui : iter.second)
+                            {
+                                ImGui::MenuItem(gui->name(), nullptr, gui->visible());
+                            }
+                            ImGui::EndMenu();
+                        }
+                    }
+                    ImGui::EndMainMenuBar();
+                }
+
+                for (auto& iter : _menu)
+                    for (auto& gui : iter.second)
+                        gui->draw(ri);
+            }
+
+            //! Toggle a GUI's visibility by its type
+            void setVisible(const std::type_info& type, bool value)
+            {
+                for (auto& iter : _menu)
+                    for (auto& gui : iter.second)
+                        if (typeid(*gui.get()) == type)
+                            gui->setVisible(value);
+            }
+
+            //! Toggles all GUI elements on or off
+            void setAllVisible(bool value)
+            {
+                for (auto& iter : _menu)
+                    for (auto& gui : iter.second)
+                        gui->setVisible(value);
+            }
+
+        protected:
+            using GUIVector = std::vector<std::unique_ptr<BaseGUI>>;
+            using SortedMenuMap = std::map<std::string, GUIVector>;
+            SortedMenuMap _menu;
+        };
+    }
+}
 
 #endif

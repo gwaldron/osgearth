@@ -28,15 +28,27 @@ namespace osgEarth {
         using namespace osgEarth;
         using namespace osgEarth::Util;
 
-        struct ViewpointsGUI
+        struct ViewpointsGUI : public BaseGUI
         {
-            ViewpointsGUI() : _scannedForViewpoints(false) { }
+            osg::observer_ptr<MapNode> _mapNode;
 
-            void draw(MapNode* mapNode, EarthManipulator* manip)
+            ViewpointsGUI() : 
+                BaseGUI("Viewpoints"),
+                _scannedForViewpoints(false) { }
+
+            void draw(osg::RenderInfo& ri)
             {
+                if (!isVisible())
+                    return;
+
+                if (!_mapNode.valid())
+                    _mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
+
+                OE_SOFT_ASSERT_AND_RETURN(_mapNode.valid(), __func__, );
+
                 if (!_scannedForViewpoints)
                 {
-                    Config conf = mapNode->getConfig();
+                    Config conf = _mapNode->getConfig();
                     for (ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
                     {
                         if (i->key() == "viewpoints")
@@ -54,8 +66,11 @@ namespace osgEarth {
                     _scannedForViewpoints = true;
                 }
 
-                if (!_viewpoints.empty() && ImGui::Begin("Viewpoints"))
+                if (!_viewpoints.empty() && _mapNode.valid() && ImGui::Begin(name(), visible()))
                 {
+                    auto view = dynamic_cast<osgViewer::View*>(ri.getView());
+                    OE_SOFT_ASSERT_AND_RETURN(view, __func__, );
+
                     for (auto& vp : _viewpoints)
                     {
                         ImGui::PushID(&vp);
@@ -68,9 +83,11 @@ namespace osgEarth {
                         ImGui::Selectable(name.c_str(), &selected);
                         if (selected)
                         {
+                            auto manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
                             manip->setViewpoint(vp, 2.0);
                         }
                         ImGui::PopID();
+                        ImGui::Separator();
                     }
                     ImGui::EndTabItem();
                 }

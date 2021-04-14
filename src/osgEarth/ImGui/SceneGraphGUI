@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_IMGUI_SCENE_GRAPH_GUI
 #define OSGEARTH_IMGUI_SCENE_GRAPH_GUI
 
+#include "ImGui"
 #include <osgEarth/AnnotationUtils>
 #include <osg/PolygonMode>
 
@@ -28,22 +29,7 @@ namespace osgEarth {
         using namespace osgEarth;
 
 
-        // Manages the single selected node in the application.
-        static osg::ref_ptr< osg::Node > s_selectedNode;
-
-        static osg::Node* getSelectedNode()
-        {
-            return s_selectedNode.get();
-        }
-
-        static void setSelectedNode(osg::Node* node)
-        {
-            s_selectedNode = node;
-        }
-
-
-
-        class SceneGraphGUI
+        class SceneGraphGUI : public BaseGUI
         {
         public:
 
@@ -132,21 +118,40 @@ namespace osgEarth {
             };
 
             SceneGraphGUI() :
-                _selectedBounds(0)
+                BaseGUI("Scene Graph Inspector"),
+                _installedSelectNodeHandler(false),
+                _selectedBounds(0),
+                _node(nullptr)
             {
             }
 
-            void draw(osg::Node* node, osg::RenderInfo& renderInfo, EarthManipulator* manip, MapNode* mapNode, bool *show)
+            void draw(osg::RenderInfo& ri) override
             {
-                if (ImGui::Begin("Scene Hierarchy", show))
+                if (!isVisible())
+                    return;
+
+                if (ImGui::Begin(name(), visible()))
                 {
+                    if (_node == nullptr)
+                        _node = ri.getCurrentCamera();
+
+                    if (!_mapNode.valid())
+                        _mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
+
+                    if (!_installedSelectNodeHandler)
+                    {
+                        auto view = dynamic_cast<osgViewer::View*>(ri.getView());
+                        view->addEventHandler(new SelectNodeHandler());
+                        _installedSelectNodeHandler = true;
+                    }
+
                     auto size = ImGui::GetWindowSize();
 
                     if (ImGui::CollapsingHeader("Scene"))
                     {
                         ImGui::BeginChild("Scene", ImVec2(0, 0.6f * size.y));
                         SceneHierarchyVisitor v;
-                        node->accept(v);
+                        _node->accept(v);
 
                         ImGui::EndChild();
                     }
@@ -156,19 +161,21 @@ namespace osgEarth {
                         if (ImGui::CollapsingHeader("Properties"))
                         {
                             ImGui::BeginChild("Properties");
-                            properties(getSelectedNode(), renderInfo, manip, mapNode);
+                            auto view = dynamic_cast<osgViewer::View*>(ri.getView());
+                            auto manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+                            properties(getSelectedNode(), ri, manip, _mapNode.get());
                             ImGui::EndChild();
                         }
                     }
                     ImGui::End();
                 }
                 // If they closed the tool deselect the node.
-                if (!*show && getSelectedNode())
+                if (!isVisible() && getSelectedNode())
                 {
                     setSelectedNode(nullptr);
                 }
-                updateBoundsDebug(mapNode);
 
+                updateBoundsDebug(_mapNode.get());
             }
 
             void updateBoundsDebug(MapNode* mapNode)
@@ -217,7 +224,7 @@ namespace osgEarth {
             }
 
 
-            void properties(osg::Node* node, osg::RenderInfo& renderInfo, EarthManipulator* manip, MapNode* mapNode)
+            void properties(osg::Node* node, osg::RenderInfo& ri, EarthManipulator* manip, MapNode* mapNode)
             {
                 if (ImGui::Button("Zoom to"))
                 {
@@ -241,7 +248,7 @@ namespace osgEarth {
                         p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
                         p.fromWorld(mapSRS, osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
 
-                        ViewFitter fitter(mapNode->getMap()->getSRS(), renderInfo.getCurrentCamera());
+                        ViewFitter fitter(mapNode->getMap()->getSRS(), ri.getCurrentCamera());
                         Viewpoint vp;
                         if (fitter.createViewpoint(points, vp))
                         {
@@ -308,7 +315,7 @@ namespace osgEarth {
                                     ImGui::BeginGroup();
                                     ImGui::Text("Unit %d", i);
                                     ImGui::Text("Name %s", texture->getName().c_str());
-                                    ImGuiUtil::Texture(texture, renderInfo, textureWidth);
+                                    ImGuiUtil::Texture(texture, ri, textureWidth);
                                     ImGui::EndGroup();
                                 }
                             }
@@ -398,39 +405,10 @@ namespace osgEarth {
                 }
             }
 
+            bool _installedSelectNodeHandler;
             osg::MatrixTransform* _selectedBounds;
-        };
-
-        struct SelectNodeHandler : public osgGA::GUIEventHandler
-        {
-            SelectNodeHandler()
-            {
-            }
-
-            bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
-            {
-                osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-
-                if (ea.getEventType() == ea.PUSH && ea.getButton() == ea.LEFT_MOUSE_BUTTON && ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL)
-                {
-                    osgUtil::LineSegmentIntersector::Intersections intersections;
-
-                    if (view->computeIntersections(ea, intersections))
-                    {
-                        double currRatio = DBL_MAX;
-                        for (auto& hitr = intersections.begin(); hitr != intersections.end(); ++hitr)
-                        {
-                            if (hitr->ratio < currRatio)
-                            {
-                                setSelectedNode(hitr->drawable.get());
-                                currRatio = hitr->ratio;
-                            }
-
-                        }
-                    }
-                }
-                return false;
-            }
+            osg::observer_ptr<osg::Node> _node;
+            osg::observer_ptr<MapNode> _mapNode;
         };
     }
 }

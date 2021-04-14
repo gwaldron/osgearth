@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_IMGUI_SEARCH_GUI
 #define OSGEARTH_IMGUI_SEARCH_GUI
 
+#include "ImGui"
 #include <osgEarth/Utils>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/Geocoder>
@@ -29,23 +30,28 @@ namespace osgEarth {
         using namespace osgEarth;
         using namespace osgEarth::Util;
 
-        class SearchGUI
+        class SearchGUI : public BaseGUI
         {
         public:
             SearchGUI() :
+                BaseGUI("Search"),
                 _search(""),
                 _results(Status::Code::ServiceUnavailable, 0)
             {
                 _options = new osgDB::Options();
-                arena = std::make_shared<JobArena>("Geocoder", 1U);
+                arena = std::make_shared<JobArena>("oe.geocoder", 1U);
                 ObjectStorage::set(_options.get(), arena);
             }
 
-            void draw(EarthManipulator* manip)
+            void draw(osg::RenderInfo& ri) override
             {
-                ImGui::Begin("Search");
+                if (!isVisible())
+                    return;
 
-                if (ImGui::InputText("Place", _search, 128, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
+                ImGui::Begin(name(), visible());
+
+                ImGui::Text("Enter place name:");
+                if (ImGui::InputText("", _search, 128, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
                 {
                     _features.clear();
                     _results = geocoder.search(_search, _options.get());
@@ -68,6 +74,7 @@ namespace osgEarth {
                     Feature* feature = itr->get();
                     if (feature->getGeometry())
                     {
+                        ImGui::Separator();
                         std::string displayName = itr->get()->getString("display_name");
                         ImGui::Selectable(displayName.c_str(), &selected);
                         if (selected)
@@ -77,6 +84,8 @@ namespace osgEarth {
                             double range = ((0.5 * maxDim) / 0.267949849) * 111000.0;
                             double lon, lat;
                             extent.getCentroid(lon, lat);
+                            auto view = dynamic_cast<osgViewer::View*>(ri.getView());
+                            auto manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
                             manip->setViewpoint(Viewpoint("", lon, lat, 0, 0, -90, range), 3.0);
                             _features.clear();
                             break;

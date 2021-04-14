@@ -20,24 +20,29 @@
 #define OSGEARTH_IMGUI_NETWORK_MONITOR_GUI
 
 #include <osgEarth/NetworkMonitor>
+#include "ImGui"
 
 namespace osgEarth {
     namespace GUI
     {
 
-        class NetworkMonitorGUI
+        class NetworkMonitorGUI : public BaseGUI
         {
         public:
             NetworkMonitorGUI() :
+                BaseGUI("Network Monitor"),
                 _showOnlyActiveRequests(true),
-                filter("")
+                _filter("")
             {
 
             }
 
-            void draw(bool *show)
+            void draw(osg::RenderInfo& ri) override
             {
-                if (ImGui::Begin("Network Monitor", show))
+                if (!isVisible())
+                    return;
+
+                if (ImGui::Begin(name(), visible()))
                 {
                     NetworkMonitor::setEnabled(true);
 
@@ -67,7 +72,7 @@ namespace osgEarth {
 
                     ImGui::Checkbox("Show active requests", &_showOnlyActiveRequests);
 
-                    ImGui::InputText("Filter", filter, 128);
+                    ImGui::InputText("Filter", _filter, 128);
 
                     if (ImGui::Button("Clear"))
                     {
@@ -90,7 +95,7 @@ namespace osgEarth {
                     ImGui::Separator();
 
 
-                    std::string filterLower = osgEarth::toLower(filter);
+                    std::string filterLower = osgEarth::toLower(_filter);
 
                     for (NetworkMonitor::Requests::iterator itr = requests.begin(); itr != requests.end(); ++itr)
                     {
@@ -166,7 +171,7 @@ namespace osgEarth {
             }
 
             bool _showOnlyActiveRequests;
-            char filter[128];
+            char _filter[128];
         };
     }
 }

@@ -36,18 +36,18 @@ private:
 
 struct OsgImGuiHandler::ImGuiRenderCallback : public osg::Camera::DrawCallback
 {
-    ImGuiRenderCallback(OsgImGuiHandler& handler)
-        : handler_(handler)
+    ImGuiRenderCallback(OsgImGuiHandler& handler) :
+        _handler(handler)
     {
     }
 
     void operator()(osg::RenderInfo& renderInfo) const override
     {
-        handler_.render(renderInfo);
+        _handler.render(renderInfo);
     }
 
 private:
-    OsgImGuiHandler& handler_;
+    OsgImGuiHandler& _handler;
 };
 
 OsgImGuiHandler::OsgImGuiHandler()
@@ -161,7 +161,7 @@ void OsgImGuiHandler::newFrame(osg::RenderInfo& renderInfo)
 
 void OsgImGuiHandler::render(osg::RenderInfo& ri)
 {
-    drawUi(ri);
+    draw(ri);
     ImGui::Render();
 }
 

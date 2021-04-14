@@ -450,6 +450,7 @@ SET(LIB_PUBLIC_HEADERS
     ImGui/SearchGUI
     ImGui/TextureInspectorGUI
     ImGui/ViewpointsGUI
+    ImGui/SystemGUI
 
     ${OSGEARTH_BUILDCONFIG_HEADER}
 )

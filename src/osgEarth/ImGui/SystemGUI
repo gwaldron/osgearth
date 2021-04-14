@@ -1,0 +1,116 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_JOBS_GUI
+#define OSGEARTH_IMGUI_JOBS_GUI
+
+#include "ImGui"
+#include <osgEarth/Threading>
+#include <osgEarth/Memory>
+#include <osgEarth/GLUtils>
+#include <chrono>
+#include <list>
+
+namespace osgEarth
+{
+    namespace GUI
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Threading;
+
+        class SystemGUI : public BaseGUI
+        {
+        private:
+            using time_point = std::chrono::time_point<std::chrono::steady_clock>;
+            time_point _lastFrame;
+            //int _fps;
+            int _frame;
+            std::list<int> _fps;
+
+        public:
+            SystemGUI() : 
+                BaseGUI("System Activity"),
+                _fps(0),
+                _frame(0)
+            {
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible())
+                    return;
+
+                ImGui::Begin(name(), visible());
+                {
+                    ImGui::Text("Memory:");
+                    ImGui::Indent();
+                    ImGui::Text("Physical: %ld MB", Memory::getProcessPhysicalUsage() / 1048576U);
+                    ImGui::Text("Private: %ld MB", Memory::getProcessPrivateUsage() / 1048576U);
+                    ImGui::Text("Peak: %ld MB", Memory::getProcessPeakPrivateUsage() / 1048576U);
+                    ImGui::Unindent();
+                    ImGui::Separator();
+
+                    ImGui::Text("Job Activity:");
+                    ImGui::Indent();
+                    const JobArena::Metrics& m = JobArena::metrics();
+                    int pending = 0, running = 0;
+                    for (int i = 0; i <= m.maxArenaIndex; ++i)
+                    {
+                        if (m.arena(i).active)
+                        {
+                            ImGui::Text("%s (%d) %d / %d // %d",
+                                m.arena(i).arenaName.c_str(),
+                                (int)m.arena(i).concurrency,
+                                (int)m.arena(i).numJobsRunning,
+                                (int)m.arena(i).numJobsPending,
+                                (int)m.arena(i).numJobsCanceled);
+                        }
+                    }
+
+                    ImGui::Unindent();
+                    ImGui::Separator();
+                    ImGui::Text("ICO: %d", GLObjectsCompiler::totalJobs());
+
+                    ImGui::Separator();
+                    time_point now = std::chrono::steady_clock::now();
+                    int us = std::chrono::duration_cast<std::chrono::microseconds>(now - _lastFrame).count();
+                    _fps.push_front(1000000 / us);
+                    if (_fps.size() > 64) _fps.pop_back();
+                    _lastFrame = now;
+                    if (_fps.size() > 0)
+                    {
+                        float values[64];
+                        int ptr = 0;
+                        char overlay[32];
+                        float average = 0.0f;
+                        for (auto i : _fps)
+                        {
+                            values[ptr++] = i;
+                            average += (float)i;
+                        }
+                        sprintf(overlay, "FPS: %.1f", (average / (float)_fps.size()));
+                        ImGui::PlotLines("", values, _fps.size(), 0, overlay, 0.0f, 100.0f, ImVec2(0, 40));
+                    }
+                }
+                ImGui::End();
+            }
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_JOBS_GUI

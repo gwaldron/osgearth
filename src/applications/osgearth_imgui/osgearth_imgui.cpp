@@ -21,70 +21,23 @@
 */
 
 #include <osgEarth/ImGui/ImGui>
-
-#include <osgViewer/Viewer>
-#include <osgEarth/Notify>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
-#include <osgEarth/MapNode>
-#include <osgEarth/Threading>
-#include <osgEarth/Geocoder>
-#include <osgEarth/NodeUtils>
+#include <osgViewer/Viewer>
 
-#include <iostream>
-
-#include <osgEarth/Metrics>
-
-
-#define LC "[viewer] "
+#define LC "[imgui] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::GUI;
 
-struct App
+struct AppGUI : public GUI::DemoGUI
 {
-    osgViewer::View* _view;
-    osg::ref_ptr<MapNode> _mapNode;
-    osg::ref_ptr<EarthManipulator> _manip;
-};
-
-struct AppGUI : public OsgImGuiHandler
-{
-    AppGUI(App& app) : _app(app),
-        _layers_show(true),
-        _search_show(true),
-        _netmon_show(false),
-        _scenegraph_show(true),
-        _viewpoints_show(true),
-        _texinspector_show(true)
+    AppGUI() : GUI::DemoGUI()
     {
+        setVisible(typeid(GUI::LayersGUI), true);
+        setVisible(typeid(GUI::ViewpointsGUI), true);
+        setVisible(typeid(GUI::SystemGUI), true);
     }
-
-    void drawUi(osg::RenderInfo& renderInfo) override
-    {
-        _layers.draw(renderInfo, _app._mapNode, _app._view->getCamera(), _app._manip);
-        _search.draw(_app._manip);
-        _netmon.draw(&_netmon_show);
-        _scenegraph.draw(_app._view->getCamera(), renderInfo, _app._manip.get(), _app._mapNode.get(), &_scenegraph_show);
-        _viewpoints.draw(_app._mapNode.get(), _app._manip.get());
-        _texinspector.draw(renderInfo, _app._view->getCamera(), &_texinspector_show);
-    }
-    
-    App& _app;
-    LayersGUI _layers;
-    SearchGUI _search;
-    NetworkMonitorGUI _netmon;
-    SceneGraphGUI _scenegraph;
-    ViewpointsGUI _viewpoints;
-    TextureInspectorGUI _texinspector;
-
-    bool _layers_show;
-    bool _search_show;
-    bool _netmon_show;
-    bool _scenegraph_show;
-    bool _viewpoints_show;
-    bool _texinspector_show;
 };
 
 int
@@ -95,7 +48,6 @@ usage(const char* name)
         << MapNodeHelper().usage() << std::endl;
     return 0;
 }
-
 
 int
 main(int argc, char** argv)
@@ -109,12 +61,7 @@ main(int argc, char** argv)
         return usage(argv[0]);
 
     osgViewer::Viewer viewer(arguments);
-
-    App app;
-    app._view = &viewer;
-    app._manip = new EarthManipulator(arguments);
-
-    viewer.setCameraManipulator(app._manip);
+    viewer.setCameraManipulator(new EarthManipulator(arguments));
 
     // Setup the viewer for imgui
     viewer.setRealizeOperation(new AppGUI::RealizeOperation);
@@ -124,14 +71,8 @@ main(int argc, char** argv)
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
-        app._mapNode = MapNode::get(node);
-        if (app._mapNode)
-        {
-            viewer.setSceneData(node);
-            viewer.addEventHandler(new AppGUI(app));
-            viewer.addEventHandler(new SelectNodeHandler());
-        }
-
+        viewer.setSceneData(node);
+        viewer.addEventHandler(new AppGUI());
         return viewer.run();
     }
     else

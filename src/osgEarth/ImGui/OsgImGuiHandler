@@ -48,7 +48,7 @@ namespace osgEarth { namespace GUI
 
     protected:
         // Put your ImGui code inside this function
-        virtual void drawUi(osg::RenderInfo& renderInfo) = 0;
+        virtual void draw(osg::RenderInfo& renderInfo) = 0;
         friend class RealizeOperation;
 
     private:

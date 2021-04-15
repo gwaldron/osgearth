@@ -258,16 +258,16 @@ main(int argc, char** argv)
         app.addView(Stringify() << "View " << i);
     }
 
-    app._viewer.getView(0)->getEventHandlers().push_front(new AppGUI(app));
-
-    EventRouter* router = new EventRouter();
-    app._viewer.getView(0)->addEventHandler(router);
+    auto view = app._viewer.getView(0);
+    view->getEventHandlers().push_front(new AppGUI(app));
 
     OE_NOTICE << "Press 'n' to create a new view" << std::endl;
-    router->onKeyPress(EventRouter::KEY_N, [&]() { app.addView(Stringify()<<"View " << app._viewer.getNumViews()); });
+    EventRouter::get(view)->onKeyPress(EventRouter::KEY_N, [&]() { 
+        app.addView(Stringify()<<"View " << app._viewer.getNumViews()); });
 
     OE_NOTICE << "Press 'r' to call releaseGLObjects" << std::endl;
-    router->onKeyPress(EventRouter::KEY_R, [&]() { app.releaseGLObjects(); });
+    EventRouter::get(view)->onKeyPress(EventRouter::KEY_R, [&]() { 
+        app.releaseGLObjects(); });
 
     app._viewer.realize();
 

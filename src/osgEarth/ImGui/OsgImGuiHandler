@@ -2,11 +2,14 @@
 #ifndef OSGEARTH_IMGUI_OSGEVENTHANDLER_H
 #define OSGEARTH_IMGUI_OSGEVENTHANDLER_H 1
 
+#include <osgEarth/Config>
 #include <osgViewer/ViewerEventHandlers>
 
 namespace osg {
     class Camera;
 }
+
+struct ImGuiSettingsHandler;
 
 namespace osgEarth { namespace GUI
 {
@@ -46,10 +49,17 @@ namespace osgEarth { namespace GUI
             void operator()(osg::Object* object) override;
         };
 
+        virtual void load(const osgEarth::Config& conf) { }
+
+        virtual void save(osgEarth::Config& conf) { }
+
+        virtual void* find(const char* name) { return nullptr; }
+
     protected:
         // Put your ImGui code inside this function
         virtual void draw(osg::RenderInfo& renderInfo) = 0;
         friend class RealizeOperation;
+
 
     private:
         static void init();
@@ -68,6 +78,16 @@ namespace osgEarth { namespace GUI
         bool mousePressed_[3];
         float mouseWheel_;
         bool initialized_;
+        bool firstFrame_;
+
+        static void* handleStartEntry(
+            ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name);
+
+        static void handleReadSetting(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line);
+
+        static void handleWriteSettings(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf);
+
+        void installSettingsHandler();
     };
 } }
 

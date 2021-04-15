@@ -40,9 +40,17 @@ namespace osgEarth
             time_point _lastFrame;
 
         public:
-            SystemGUI() : 
-                BaseGUI("System Activity")
+            SystemGUI() :
+                BaseGUI("System Activity") { }
+
+            void load(const Config& conf) override
             {
+                conf.get("ImGui.FontGlobalScale", ImGui::GetIO().FontGlobalScale);
+            }
+
+            void save(Config& conf) override
+            {
+                conf.set("ImGui.FontGlobalScale", ImGui::GetIO().FontGlobalScale);
             }
 
             void draw(osg::RenderInfo& ri) override
@@ -52,6 +60,10 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
+                    float scale = ImGui::GetIO().FontGlobalScale;
+                    ImGui::SliderFloat("Font Scale", &scale, 0.5f, 4.0f);
+                    set_and_dirty(ImGui::GetIO().FontGlobalScale, scale);
+
                     ImGui::Text("Memory:");
                     ImGui::Indent();
                     ImGui::Text("Physical: %ld MB", Memory::getProcessPhysicalUsage() / 1048576U);

@@ -21,6 +21,7 @@
 
 #include "GL/glew.h"
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "OsgImGuiHandler"
 #include <osg/Texture2D>
 #include <osg/RenderInfo>
@@ -50,8 +51,14 @@ namespace osgEarth
                 return _name.c_str();
             }
 
-            //! override to render with just a renderinfo
+            //! render this GUI
             virtual void draw(osg::RenderInfo& ri) = 0;
+
+            //! override to set custom values in the .ini file
+            virtual void load(const osgEarth::Config&) { }
+
+            //! override to get custom values from the .ini file
+            virtual void save(osgEarth::Config&) { }
 
         protected:
             BaseGUI(const char* name) : 
@@ -78,6 +85,22 @@ namespace osgEarth
                     node = osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
                 return node.valid();
             }
+
+            //! sets a value and dirties the .ini store
+            template<typename A, typename B>
+            void set_and_dirty(A& var, const B& value)
+            {
+                if (var != value) {
+                    var = value;
+                    dirtySettings();
+                }
+            }
+
+            //! tells ImGui it needs to write a new .ini file
+            void dirtySettings() {
+                ImGui::MarkIniSettingsDirty(ImGui::GetCurrentWindowRead());
+            }
+
         private:
             std::string _name;
             bool _visible;
@@ -241,6 +264,16 @@ namespace osgEarth
                     _menu[menu].push_back(GUIPtr(gui));
             }
 
+            //! Find a GUI element by name
+            void* find(const char* name) override
+            {
+                for (auto& iter : _menu)
+                    for (auto& gui : iter.second)
+                        if (std::string(gui->name()).compare(name) == 0)
+                            return gui.get();
+                return nullptr;
+            }
+
             //! Render everything
             void draw(osg::RenderInfo& ri) override
             {
@@ -288,6 +321,27 @@ namespace osgEarth
                 for (auto& iter : _menu)
                     for (auto& gui : iter.second)
                         gui->setVisible(value);
+            }
+
+            void load(const osgEarth::Config& conf) override
+            {
+                for (auto& iter : _menu)
+                    for (auto& gui : iter.second)
+                        gui->load(conf);
+            }
+
+            void save(osgEarth::Config& conf) override
+            {
+                for (auto& iter : _menu)
+                {
+                    for (auto& gui : iter.second)
+                    {
+                        Config section(gui->name());
+                        gui->save(section);
+                        if (!section.children().empty())
+                            conf.add(section);
+                    }
+                }
             }
 
         protected:

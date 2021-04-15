@@ -51,7 +51,7 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 {
     struct RenderFrame
     {
-        double xmin, ymin;
+        double xmin, ymin, xmax, ymax;
         double xf, yf;
     };
 
@@ -191,7 +191,8 @@ namespace osgEarth { namespace FeatureImageLayerImpl
                 {
                     const osg::Vec3d& p0 = *p;
                     double x = frame.xf*(p0.x() - frame.xmin);
-                    double y = frame.yf*(p0.y() - frame.ymin);
+                    double y =frame.yf*(p0.y() - frame.ymin);
+                    y = ctx.targetHeight() - y;
 
                     if (p == part->begin())
                         path.moveTo(x, y);
@@ -201,7 +202,7 @@ namespace osgEarth { namespace FeatureImageLayerImpl
             });
 
         osg::Vec4 color = symbol->fill().isSet() ? symbol->fill()->color() : Color::White;
-        ctx.setFillStyle(BLRgba32(color.asRGBA()));
+        ctx.setFillStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
         ctx.fillPath(path);
     }
 
@@ -226,6 +227,7 @@ namespace osgEarth { namespace FeatureImageLayerImpl
                     const osg::Vec3d& p0 = *p;
                     double x = frame.xf*(p0.x() - frame.xmin);
                     double y = frame.yf*(p0.y() - frame.ymin);
+                    y = ctx.targetHeight() - y;
 
                     if (p == part->begin())
                         path.moveTo(x, y);
@@ -239,6 +241,8 @@ namespace osgEarth { namespace FeatureImageLayerImpl
                     const osg::Vec3d& p0 = part->front();
                     double x = frame.xf*(p0.x() - frame.xmin);
                     double y = frame.yf*(p0.y() - frame.ymin);
+                    y = ctx.targetHeight() - y;
+
                     path.lineTo(x, y);
                 }
             });
@@ -274,7 +278,7 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         //BLPattern pattern(texture);
         //ctx.setStrokeStyle(pattern);
 
-        ctx.setStrokeStyle(BLRgba32(color.asRGBA()));
+        ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
 
         ctx.setStrokeWidth(lineWidth_px);
         ctx.setStrokeCaps(cap);
@@ -601,6 +605,17 @@ FeatureImageLayer::postProcess(osg::Image* image) const
             std::swap(pixel[1], pixel[2]);
         }
     }
+#else
+    if (options().coverage() == false)
+    {
+        //convert from BGRA to RGBA
+        unsigned char* pixel = image->data();
+        for (int i = 0; i < image->getTotalSizeInBytes(); i += 4, pixel += 4)
+        {
+            std::swap(pixel[0], pixel[2]);
+        }
+    }
+    image->flipVertical();
 #endif
 
     return true;
@@ -663,6 +678,8 @@ FeatureImageLayer::renderFeaturesForStyle(
     RenderFrame frame;
     frame.xmin = imageExtent.xMin();
     frame.ymin = imageExtent.yMin();
+    frame.xmax = imageExtent.xMax();
+    frame.ymax = imageExtent.yMax();
     frame.xf = (double)image->s() / imageExtent.width();
     frame.yf = (double)image->t() / imageExtent.height();
 

@@ -1381,11 +1381,11 @@ HSliderControl::draw( const ControlContext& cx )
 
             float hx = rx + rw * ( (_value-_min)/(_max-_min) );
 
-            (*verts)[4].set( hx-4, vph - ry + 3, 0 );
+            (*verts)[4].set( hx-4, vph - (ry - 3), 0 );
             (*verts)[5].set( hx-4, vph - (ry + rh + 3), 0 );
             (*verts)[6].set( hx+4, vph - (ry + rh + 3), 0 );
             (*verts)[7].set( (*verts)[6] );
-            (*verts)[8].set( hx+4, vph - ry + 3, 0 );
+            (*verts)[8].set( hx+4, vph - (ry - 3), 0 );
             (*verts)[9].set( (*verts)[4] );
             
             g->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLES, 4, 6) );
@@ -1414,6 +1414,160 @@ HSliderControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapte
             setValue( osg::clampBetween(_min + (_max-_min) * ( relX/_renderSize.x() ), _min, _max) );
         else
             setValue( osg::clampBetween(_min - (_min-_max) * ( relX/_renderSize.x() ), _max, _min) );
+
+        aa.requestRedraw();
+
+        return true;
+    }
+    return Control::handle( ea, aa, cx );
+}
+
+// ---------------------------------------------------------------------------
+
+VSliderControl::VSliderControl( float min, float max, float value, ControlEventHandler* handler) :
+_min(min),
+_max(max),
+_value(value)
+{
+    setVertFill( true );
+    setHorizAlign( ALIGN_CENTER );
+    setWidth( 20.0f );
+
+    if ( handler )
+        addEventHandler( handler );
+}
+
+void
+VSliderControl::fireValueChanged( ControlEventHandler* oneHandler )
+{
+    if ( oneHandler )
+    {
+        oneHandler->onValueChanged( this, _value );
+    }
+    else
+    {
+        for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+        {
+            i->get()->onValueChanged( this, _value );
+        }
+    }
+}
+
+void
+VSliderControl::setValue( float value, bool notify )
+{
+    if ( value != _value )
+    {
+        _value = value;
+        if ( notify )
+            fireValueChanged();
+        dirty();
+    }
+}
+
+void
+VSliderControl::setMin( float min, bool notify )
+{
+    if ( min != _min )
+    {
+        _min = min;
+        if ( _min >= _max )
+            _max = _min+1.0f;
+
+        if ( _value < _min || _value > _max ) 
+        {
+            _value = _min;
+            if ( notify )
+                fireValueChanged();
+        }
+        dirty();
+    }
+}
+
+void
+VSliderControl::setMax( float max, bool notify )
+{
+    if ( max != _max )
+    {
+        _max = max;
+        if ( _max <= _min )
+            _max = _min+1.0f;
+
+        if ( _value < _min || _value > _max )
+        {
+            _value = _max;
+            if ( notify )
+                fireValueChanged();
+        }
+        dirty();
+    }
+}
+
+void
+VSliderControl::draw( const ControlContext& cx )
+{
+    Control::draw( cx );
+
+    if ( visible() && parentIsVisible())
+    {
+        osg::ref_ptr<osg::Geometry> g = newGeometry();
+        g->setStateSet(getGeomStateSet());
+
+        float rx = osg::round( _renderPos.x() );
+        float ry = osg::round( _renderPos.y() );
+        float rw = osg::round( _renderSize.x() - padding().x() );
+        float rh = osg::round( _renderSize.y() - padding().y() );
+
+        if ( rw > 0.0f && rh > 0.0f )
+        {
+            float vph = cx._vp->height();
+
+            osg::Vec3Array* verts = new osg::Vec3Array(10);
+            g->setVertexArray( verts );
+            
+            (*verts)[0].set( rx, vph - ry, 0 );
+            (*verts)[1].set( rx, vph - (ry + rh), 0 );
+            (*verts)[2].set( rx + rw, vph - (ry + rh), 0 );
+            (*verts)[3].set( rx + rw, vph - ry, 0 );
+            g->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, 0, 4 ) );
+
+            //float hy = ry + rh * ((_value - _min) / (_max - _min));
+            float hy = ry + rh * ((_max - _value) / (_max - _min));
+
+            (*verts)[4].set( rx - 3, vph - (hy - 4), 0 );
+            (*verts)[5].set( rx - 3, vph - (hy + 4), 0 );
+            (*verts)[6].set( rx + rw + 3, vph - (hy + 4), 0 );
+            (*verts)[7].set( (*verts)[6] );
+            (*verts)[8].set( rx + rw + 3, vph - (hy - 4), 0 );
+            (*verts)[9].set( (*verts)[4] );
+            
+            g->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLES, 4, 6) );
+
+            osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
+            (*c)[0] = *foreColor();
+            g->setColorArray( c );
+
+            getGeode()->addDrawable( g.get() );
+        }
+    }
+}
+
+bool
+VSliderControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
+{
+    if( !visible() || !parentIsVisible() )
+        return false;
+
+    if ( ea.getEventType() == osgGA::GUIEventAdapter::DRAG )
+    {
+		float canvasY = ea.getY() - cx._view->getCamera()->getViewport()->y();
+		//float relY = canvasY - _renderPos.y();
+        float relY = canvasY - (cx._view->getCamera()->getViewport()->height() - (_renderPos.y() + _renderSize.y() - padding().y()));
+
+        if ( _min < _max )
+            setValue( osg::clampBetween(_min + (_max-_min) * ( relY/_renderSize.y() ), _min, _max) );
+        else
+            setValue( osg::clampBetween(_min - (_min-_max) * ( relY/_renderSize.y() ), _max, _min) );
 
         aa.requestRedraw();
 

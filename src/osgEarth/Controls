@@ -510,6 +510,39 @@ namespace osgEarth { namespace Util { namespace Controls
     };
 
     /**
+     * A control that provides a vertical sliding value controller.
+     */
+    class OSGEARTH_EXPORT VSliderControl : public Control
+    {
+    public:
+        VSliderControl( float min = 0.0f, float max = 100.0f, float value = 50.0f, ControlEventHandler* handler =0L );
+
+        /** dtor */
+        virtual ~VSliderControl() { }
+
+        void setMin( float min, bool notify =true );
+        float getMin() const { return _min; }
+
+        void setMax( float max, bool notify =true );
+        float getMax() const { return _max; }
+
+        void setValue( float value, bool notify =true );
+        float getValue() const { return _value; }
+
+    public: // Control
+        //virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void draw( const ControlContext& cx );
+
+    protected:
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
+
+        virtual void fireValueChanged( ControlEventHandler* one =0L );
+
+    private:
+        float _min, _max, _value;
+    };
+
+    /**
      * A check box toggle.
      */
     class OSGEARTH_EXPORT CheckBoxControl : public Control

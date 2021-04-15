@@ -25,7 +25,7 @@
 #include <osg/Texture2D>
 #include <osg/RenderInfo>
 #include <osgViewer/View>
-#include <osgEarth/MapNode>
+#include <osgEarth/NodeUtils>
 #include <typeinfo>
 
 namespace osgEarth
@@ -65,6 +65,19 @@ namespace osgEarth
                 //nop
             }
 
+            // convenience function for finding nodes
+            template<typename T>
+            T* findNode(osg::RenderInfo& ri) const {
+                return osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
+            }
+
+            // convenience function for finding nodes
+            template<typename T>
+            bool findNode(osg::observer_ptr<T>& node, osg::RenderInfo& ri) const {
+                if (!node.valid())
+                    node = osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
+                return node.valid();
+            }
         private:
             std::string _name;
             bool _visible;
@@ -179,6 +192,7 @@ namespace ImGuiUtil
 #include "TextureInspectorGUI"
 #include "ViewpointsGUI"
 #include "SystemGUI"
+#include "EphemerisGUI"
 
 namespace osgEarth
 {
@@ -197,6 +211,7 @@ namespace osgEarth
                 // on by default
                 _menu["Tools"].push_back(GUIPtr(new LayersGUI));
                 _menu["Tools"].push_back(GUIPtr(new ViewpointsGUI));
+                _menu["Tools"].push_back(GUIPtr(new EphemerisGUI));
                 _menu["Tools"].push_back(GUIPtr(new SystemGUI));
                 _menu["Tools"].push_back(GUIPtr(new SearchGUI));
                 _menu["Tools"].push_back(GUIPtr(new NetworkMonitorGUI));

@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_JOBS_GUI
-#define OSGEARTH_IMGUI_JOBS_GUI
+#ifndef OSGEARTH_IMGUI_SYSTEM_GUI
+#define OSGEARTH_IMGUI_SYSTEM_GUI
 
 #include "ImGui"
 #include <osgEarth/Threading>
@@ -94,4 +94,4 @@ namespace osgEarth
     }
 }
 
-#endif // OSGEARTH_IMGUI_JOBS_GUI
+#endif // OSGEARTH_IMGUI_SYSTEM_GUI

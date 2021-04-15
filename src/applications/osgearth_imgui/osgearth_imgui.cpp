@@ -32,11 +32,12 @@ using namespace osgEarth::Util;
 
 struct AppGUI : public GUI::DemoGUI
 {
-    AppGUI() : GUI::DemoGUI()
+    AppGUI(osg::Node* node) : GUI::DemoGUI()
     {
         setVisible(typeid(GUI::LayersGUI), true);
         setVisible(typeid(GUI::ViewpointsGUI), true);
         setVisible(typeid(GUI::SystemGUI), true);
+        setVisible(typeid(GUI::EphemerisGUI), true);
     }
 };
 
@@ -64,11 +65,11 @@ main(int argc, char** argv)
     // Call this to enable ImGui rendering:
     viewer.setRealizeOperation(new AppGUI::RealizeOperation);
 
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
+    osg::Node* node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
     if (node)
     {
         // Call this to add the ImGui GUI panels:
-        viewer.addEventHandler(new AppGUI());
+        viewer.addEventHandler(new AppGUI(node));
 
         viewer.setSceneData(node);
         return viewer.run();

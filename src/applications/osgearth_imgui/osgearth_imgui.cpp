@@ -52,27 +52,25 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
-    osgEarth::initialize();
-
     osg::ArgumentParser arguments(&argc, argv);
-
-    // help?
     if (arguments.read("--help"))
         return usage(argv[0]);
+
+    osgEarth::initialize();
 
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator(new EarthManipulator(arguments));
 
-    // Setup the viewer for imgui
+    // Call this to enable ImGui rendering:
     viewer.setRealizeOperation(new AppGUI::RealizeOperation);
-    viewer.realize();
 
-    // Load an earth file
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
-        viewer.setSceneData(node);
+        // Call this to add the ImGui GUI panels:
         viewer.addEventHandler(new AppGUI());
+
+        viewer.setSceneData(node);
         return viewer.run();
     }
     else

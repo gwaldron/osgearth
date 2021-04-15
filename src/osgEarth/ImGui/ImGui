@@ -32,7 +32,6 @@ namespace osgEarth
 {
     namespace GUI
     {
-
         // base class for GUI elements that allows you to toggle visibility
         class BaseGUI
         {

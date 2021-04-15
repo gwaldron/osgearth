@@ -298,6 +298,19 @@ Control* AttributionControlFactory::create(MapNode* mapNode) const
 #undef  LC
 #define LC "[MapNodeHelper] "
 
+namespace
+{
+    struct MultiRealizeOperation : public osg::Operation
+    {
+        void operator()(osg::Object* obj) override
+        {
+            for (auto& op : _ops)
+                op->operator()(obj);
+        }
+        std::vector<osg::ref_ptr<osg::Operation>> _ops;
+    };
+}
+
 osg::Group*
 MapNodeHelper::load(osg::ArgumentParser&   args,
                     osgViewer::ViewerBase* viewer,
@@ -402,6 +415,11 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
 
     if (viewer)
     {
+        MultiRealizeOperation* op = new MultiRealizeOperation();
+
+        if (viewer->getRealizeOperation())
+            op->_ops.push_back(viewer->getRealizeOperation());
+
 #ifdef OSG_GL3_AVAILABLE
         GL3RealizeOperation* rop = new GL3RealizeOperation();
 #else
@@ -410,7 +428,9 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
         if (vsync.isSet())
             rop->setSyncToVBlank(vsync.get());
 
-        viewer->setRealizeOperation(rop);
+        op->_ops.push_back(rop);
+
+        viewer->setRealizeOperation(op);
     }
 
     return root;

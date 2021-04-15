@@ -240,10 +240,14 @@ main(int argc, char** argv)
     int numUpdates = 1;
     arguments.read("--updates", numUpdates);
 
+
     // create a viewer:
     App app(arguments);
 
-    app._node = MapNodeHelper().load(arguments, &app._viewer);
+    // Setup the viewer for imgui
+    app._viewer.setRealizeOperation(new AppGUI::RealizeOperation);
+
+    app._node = MapNodeHelper().loadWithoutControls(arguments, &app._viewer);
     if (!app._node.get())
         return usage(argv[0]);
 
@@ -253,9 +257,6 @@ main(int argc, char** argv)
     {
         app.addView(Stringify() << "View " << i);
     }
-
-    // Setup the viewer for imgui
-    app._viewer.setRealizeOperation(new AppGUI::RealizeOperation);
 
     app._viewer.getView(0)->getEventHandlers().push_front(new AppGUI(app));
 

@@ -49,7 +49,7 @@ namespace osgEarth { namespace GUI
             void operator()(osg::Object* object) override;
         };
 
-        virtual void load(const osgEarth::Config& conf) { }
+        virtual void load(void* section, const std::string& key, const std::string& value) { }
 
         virtual void save(osgEarth::Config& conf) { }
 

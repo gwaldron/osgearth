@@ -209,18 +209,6 @@ struct ViewerPanel : public GUI::BaseGUI
     }
 };
 
-struct AppGUI : public GUI::DemoGUI
-{
-    App& _app;
-    AppGUI(App& app) : _app(app)
-    {
-        setAllVisible(false);
-
-        add(new ViewerPanel(app), true);
-        add(new GCPanel(app), true);
-    }
-};
-
 int
 main(int argc, char** argv)
 {
@@ -245,7 +233,7 @@ main(int argc, char** argv)
     App app(arguments);
 
     // Setup the viewer for imgui
-    app._viewer.setRealizeOperation(new AppGUI::RealizeOperation);
+    app._viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
 
     app._node = MapNodeHelper().loadWithoutControls(arguments, &app._viewer);
     if (!app._node.get())
@@ -259,7 +247,13 @@ main(int argc, char** argv)
     }
 
     auto view = app._viewer.getView(0);
-    view->getEventHandlers().push_front(new AppGUI(app));
+
+    // install the Gui.
+    GUI::ApplicationGUI* gui = new GUI::ApplicationGUI();
+    gui->addAllBuiltInTools();
+    gui->add(new ViewerPanel(app), true);
+    gui->add(new GCPanel(app), true);
+    view->getEventHandlers().push_front(gui);
 
     OE_NOTICE << "Press 'n' to create a new view" << std::endl;
     EventRouter::get(view)->onKeyPress(EventRouter::KEY_N, [&]() { 

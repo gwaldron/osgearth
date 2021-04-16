@@ -38,8 +38,7 @@ namespace osgEarth
             DateTime _dateTime;
 
         public:
-            EphemerisGUI() :
-                BaseGUI("Sky & Lighting")
+            EphemerisGUI() : BaseGUI("Sky & Lighting")
             {
             }
 
@@ -47,72 +46,70 @@ namespace osgEarth
             {
                 if (!isVisible()) return;
 
-                if (findNode(_skyNode, ri))
-                {
-                    ImGui::Begin(name(), visible());
-                    {   
-                        bool lighting = _skyNode->getLighting();
-                        ImGui::Checkbox("Lighting", &lighting);
-                        _skyNode->setLighting(lighting);
+                if (!findNodeOrHide(_skyNode, ri))
+                    return;
 
-                        DateTime dt = _skyNode->getDateTime();
-                        int year = dt.year();
-                        int month = dt.month();
-                        int day = dt.day();
-                        float hour = dt.hours();
+                ImGui::Begin(name(), visible());
+                {   
+                    bool lighting = _skyNode->getLighting();
+                    ImGui::Checkbox("Lighting", &lighting);
+                    _skyNode->setLighting(lighting);
 
-                        if (lighting)
-                        {
-                            ImGui::Separator();
+                    DateTime dt = _skyNode->getDateTime();
+                    int year = dt.year();
+                    int month = dt.month();
+                    int day = dt.day();
+                    float hour = dt.hours();
 
-                            ImGui::Text("Date & Time:");
-                            ImGui::SliderFloat("Hour", &hour, 0.0f, 24.0f);
-                            ImGui::SliderInt("Day", &day, 1, 31);
-                            ImGui::SliderInt("Month", &month, 1, 12);
-                            ImGui::SliderInt("Year", &year, 1970, 2061);
-
-                            dt = DateTime(year, month, day, hour);
-                            _skyNode->setDateTime(dt);
-
-                            float ambient = _skyNode->getSunLight()->getAmbient().r();
-                            ImGui::SliderFloat("Ambient Level", &ambient, 0.0f, 1.0f);
-                            _skyNode->getSunLight()->setAmbient(osg::Vec4(ambient, ambient, ambient, 1.0f));
-                        }
-
+                    if (lighting)
+                    {
                         ImGui::Separator();
 
-                        bool atmos_visible = _skyNode->getAtmosphereVisible();
-                        ImGui::Checkbox("Atmosphere", &atmos_visible);
-                        _skyNode->setAtmosphereVisible(atmos_visible);
+                        ImGui::Text("Date & Time:");
+                        ImGui::SliderFloat("Hour", &hour, 0.0f, 24.0f);
+                        ImGui::SliderInt("Day", &day, 1, 31);
+                        ImGui::SliderInt("Month", &month, 1, 12);
+                        ImGui::SliderInt("Year", &year, 1970, 2061);
 
-                        bool sun_visible = _skyNode->getSunVisible();
-                        ImGui::Checkbox("Sun", &sun_visible);
-                        _skyNode->setSunVisible(sun_visible);
+                        dt = DateTime(year, month, day, hour);
+                        _skyNode->setDateTime(dt);
 
-                        bool moon_visible = _skyNode->getMoonVisible();
-                        ImGui::Checkbox("Moon", &moon_visible);
-                        _skyNode->setMoonVisible(moon_visible);
-
-                        bool stars_visible = _skyNode->getStarsVisible();
-                        ImGui::Checkbox("Stars", &stars_visible);
-                        _skyNode->setStarsVisible(stars_visible);
-
-                        ImGui::Separator();
-
-                        CelestialBody sun = _skyNode->getEphemeris()->getSunPosition(dt);
-                        ImGui::Text("Sun: RA (%.2f) Decl (%.2f)", 
-                            sun.rightAscension.as(Units::DEGREES),
-                            sun.declination.as(Units::DEGREES));
-
-                        CelestialBody moon = _skyNode->getEphemeris()->getMoonPosition(dt);
-                        ImGui::Text("Moon: RA (%.2f) Decl (%.2f)",
-                            moon.rightAscension.as(Units::DEGREES),
-                            moon.declination.as(Units::DEGREES));
+                        float ambient = _skyNode->getSunLight()->getAmbient().r();
+                        ImGui::SliderFloat("Ambient Level", &ambient, 0.0f, 1.0f);
+                        _skyNode->getSunLight()->setAmbient(osg::Vec4(ambient, ambient, ambient, 1.0f));
                     }
-                    ImGui::End();
+
+                    ImGui::Separator();
+
+                    bool atmos_visible = _skyNode->getAtmosphereVisible();
+                    ImGui::Checkbox("Atmosphere", &atmos_visible);
+                    _skyNode->setAtmosphereVisible(atmos_visible);
+
+                    bool sun_visible = _skyNode->getSunVisible();
+                    ImGui::Checkbox("Sun", &sun_visible);
+                    _skyNode->setSunVisible(sun_visible);
+
+                    bool moon_visible = _skyNode->getMoonVisible();
+                    ImGui::Checkbox("Moon", &moon_visible);
+                    _skyNode->setMoonVisible(moon_visible);
+
+                    bool stars_visible = _skyNode->getStarsVisible();
+                    ImGui::Checkbox("Stars", &stars_visible);
+                    _skyNode->setStarsVisible(stars_visible);
+
+                    ImGui::Separator();
+
+                    CelestialBody sun = _skyNode->getEphemeris()->getSunPosition(dt);
+                    ImGui::Text("Sun: RA (%.2f) Decl (%.2f)", 
+                        sun.rightAscension.as(Units::DEGREES),
+                        sun.declination.as(Units::DEGREES));
+
+                    CelestialBody moon = _skyNode->getEphemeris()->getMoonPosition(dt);
+                    ImGui::Text("Moon: RA (%.2f) Decl (%.2f)",
+                        moon.rightAscension.as(Units::DEGREES),
+                        moon.declination.as(Units::DEGREES));
                 }
-                else
-                    setVisible(false);
+                ImGui::End();
             }
         };
     }

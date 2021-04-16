@@ -178,9 +178,7 @@ void OsgImGuiHandler::handleReadSetting(
     StringTokenizer(std::string(line), tokens, "=");
     if (tokens.size() == 2)
     {
-        Config container;
-        container.add(Config(tokens[0], tokens[1]));
-        s_guiHandler->load(container);
+        s_guiHandler->load(entry, tokens[0], tokens[1]);
     }
 }
 

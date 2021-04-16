@@ -30,17 +30,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-struct AppGUI : public GUI::DemoGUI
-{
-    AppGUI(osg::Node* node) : GUI::DemoGUI()
-    {
-        setVisible(typeid(GUI::LayersGUI), true);
-        setVisible(typeid(GUI::ViewpointsGUI), true);
-        setVisible(typeid(GUI::SystemGUI), true);
-        setVisible(typeid(GUI::EphemerisGUI), true);
-    }
-};
-
 int
 usage(const char* name)
 {
@@ -62,14 +51,18 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator(new EarthManipulator(arguments));
 
-    // Call this to enable ImGui rendering:
-    viewer.setRealizeOperation(new AppGUI::RealizeOperation);
+    // Call this to enable ImGui rendering.
+    // If you use the MapNodeHelper, call this first.
+    viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
 
     osg::Node* node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
     if (node)
     {
-        // Call this to add the ImGui GUI panels:
-        viewer.addEventHandler(new AppGUI(node));
+        // Call this to add the GUI. 
+        // Passing "true" tells it to install all the built-in osgEarth GUI tools.
+        // Put it on the front of the list so events don't filter
+        // through to other handlers.
+        viewer.getEventHandlers().push_front(new GUI::ApplicationGUI(true));
 
         viewer.setSceneData(node);
         return viewer.run();

@@ -452,6 +452,7 @@ SET(LIB_PUBLIC_HEADERS
     ImGui/ViewpointsGUI
     ImGui/SystemGUI
     ImGui/EphemerisGUI
+    ImGui/TerrainGUI
 
     ${OSGEARTH_BUILDCONFIG_HEADER}
 )

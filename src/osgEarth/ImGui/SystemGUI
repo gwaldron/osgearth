@@ -40,8 +40,7 @@ namespace osgEarth
             time_point _lastFrame;
 
         public:
-            SystemGUI() :
-                BaseGUI("System Activity") { }
+            SystemGUI() : BaseGUI("System") { }
 
             void load(const Config& conf) override
             {
@@ -60,9 +59,8 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
-                    float scale = ImGui::GetIO().FontGlobalScale;
-                    ImGui::SliderFloat("Font Scale", &scale, 0.5f, 4.0f);
-                    set_and_dirty(ImGui::GetIO().FontGlobalScale, scale);
+                    if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 4.0f))
+                        dirtySettings();
 
                     ImGui::Text("Memory:");
                     ImGui::Indent();

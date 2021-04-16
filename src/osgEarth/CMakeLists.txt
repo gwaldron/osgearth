@@ -158,7 +158,6 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
-    ImGuiUtils
     InstanceBuilder
     InstanceCloud
     IntersectionPicker
@@ -177,6 +176,7 @@ SET(LIB_PUBLIC_HEADERS
     LocalTangentPlane
     Math
     Map
+    MapBoxGLImageLayer
     MapCallback
     MapInfo
     MapModelChange
@@ -445,6 +445,19 @@ SET(LIB_PUBLIC_HEADERS
     FileGDBFeatureSource
 
     SDF
+    
+    ImGui/ImGui
+    ImGui/OsgImGuiHandler
+    ImGui/LayersGUI
+    ImGui/NetworkMonitorGUI
+    ImGui/NotifyGUI
+    ImGui/SceneGraphGUI
+    ImGui/SearchGUI
+    ImGui/TextureInspectorGUI
+    ImGui/ViewpointsGUI
+    ImGui/SystemGUI
+    ImGui/EphemerisGUI
+    ImGui/TerrainGUI
 
     ${OSGEARTH_BUILDCONFIG_HEADER}
 )
@@ -568,6 +581,7 @@ set(TARGET_SRC
     LocalTangentPlane.cpp
     Math.cpp
     Map.cpp
+    MapBoxGLImageLayer.cpp
     MapCallback.cpp
     MapInfo.cpp
     MapNode.cpp

@@ -1833,7 +1833,7 @@ GDALImageLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile;
 
-    setProfile(nullptr); // must do this to support override profiles
+    //setProfile(nullptr); // must do this to support override profiles
 
     // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
     // So we just encapsulate the entire setup once per thread.

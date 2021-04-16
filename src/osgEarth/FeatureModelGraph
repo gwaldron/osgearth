@@ -81,6 +81,7 @@ namespace osgEarth { namespace Util
         //! Shut down the service, notifying any active loading
         //! threads to stop working
         void shutdown();
+        void setDone() { shutdown(); }
 
         //! Returns true is open() was called, false if shutdown was called
         bool isActive() const { return _isActive; }

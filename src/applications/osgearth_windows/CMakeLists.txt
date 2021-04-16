@@ -15,7 +15,7 @@ IF(GLEW_FOUND)
         ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_draw.cpp
         ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_widgets.cpp
         ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples/imgui_impl_opengl3.cpp
-        ${OSGEARTH_SOURCE_DIR}/src/osgEarth/OsgImGuiHandler.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/osgEarth/ImGui/OsgImGuiHandler.cpp
         osgearth_windows.cpp )
 
     #### end var setup  ###

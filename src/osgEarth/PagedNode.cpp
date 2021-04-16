@@ -33,6 +33,7 @@ using namespace osgEarth::Util;
 
 #define PAGEDNODE_ARENA_NAME "oe.nodepager"
 
+#if 0
 namespace
 {
     struct PagedNodePseudoLoader : public osgDB::ReaderWriter
@@ -169,6 +170,7 @@ bool PagedNode::hasChild() const
 {
     return true;
 }
+#endif
 
 //...................................................................
 
@@ -277,7 +279,7 @@ void
 PagedNode2::touch()
 {
     // tell the paging manager this node is still alive
-            // (and should not be removed from the scene graph)
+    // (and should not be removed from the scene graph)
     if (_pagingManager)
     {
         _token = _pagingManager->use(this, _token);

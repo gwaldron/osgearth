@@ -52,8 +52,8 @@ static LabelControl*  s_resLabel    = 0L;
 static LabelControl*  s_asyncLabel  = 0L;
 static LabelControl*  s_asyncResLabel = 0L;
 static LabelControl*  s_asyncTimeLabel = 0L;
+static LabelControl*  s_xyzLabel = 0L;
 static ModelNode*     s_marker      = 0L;
-
 
 // An event handler that will print out the elevation at the clicked point
 struct QueryElevationHandler : public osgGA::GUIEventHandler
@@ -127,6 +127,8 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             GeoPoint isectPoint;
             isectPoint.fromWorld( _terrain->getSRS()->getGeodeticSRS(), world );
             s_mapLabel->setText( Stringify() << isectPoint.alt() << " m");
+
+            s_xyzLabel->setText(Stringify() << std::fixed << std::setprecision(1) << world.x() << "\n" << world.y() << "\n" << world.z());
 
             // and move the marker.
             s_marker->setPosition(mapPoint);
@@ -295,6 +297,7 @@ int main(int argc, char** argv)
     grid->setControl(0,r++,new LabelControl("Mouse (async) elevation:"));
     grid->setControl(0,r++,new LabelControl("Mouse (async) resolution:"));
     grid->setControl(0,r++,new LabelControl("Mouse (async) time:"));
+    grid->setControl(0, r++, new LabelControl("Geocentric coords:"));
     grid->setControl(0, r++, new ButtonControl("Click to remove all elevation data", new ClickToRemoveElevation()));
 
     r = 1;
@@ -308,6 +311,7 @@ int main(int argc, char** argv)
     s_asyncLabel = grid->setControl(1,r++, new LabelControl(""));
     s_asyncResLabel = grid->setControl(1,r++,new LabelControl(""));
     s_asyncTimeLabel = grid->setControl(1,r++,new LabelControl(""));
+    s_xyzLabel = grid->setControl(1, r++, new LabelControl(""));
 
     Style markerStyle;
     markerStyle.getOrCreate<ModelSymbol>()->url()->setLiteral("../data/axes.osgt.64.scale");

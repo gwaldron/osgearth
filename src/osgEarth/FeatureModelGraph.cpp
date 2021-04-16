@@ -85,7 +85,6 @@ namespace
 
         bool useFileCache() const { return false; }
     };
-#endif
 
     struct MyProgressCallback : public DatabasePagerProgressCallback
     {
@@ -116,6 +115,38 @@ namespace
             return should;
         }
     };
+
+#else
+
+    struct MyProgressCallback : public ProgressCallback
+    {
+        osg::observer_ptr<FeatureModelGraph> _graph;
+        osg::ref_ptr<const Session> _session;
+
+        MyProgressCallback(FeatureModelGraph* graph, const Session* session) :
+            _graph(graph),
+            _session(session)
+        {
+            //nop
+        }
+
+        virtual bool shouldCancel() const
+        {
+            bool done =
+                !_graph.valid() ||
+                !_graph->isActive() ||
+                !_session.valid() ||
+                !_session->hasMap();
+
+            if (done)
+            {
+                OE_DEBUG << "FMG: canceling load on thread " << std::this_thread::get_id() << std::endl;
+            }
+
+            return done;
+        }
+    };
+#endif
 
     osg::Node* createBS(const osg::BoundingSphere& bounds)
     {
@@ -824,19 +855,23 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
         maxElevation = elevation + 100.0;
 #else
         ElevationLayerVector elevationLayers;
-        _session->getMap()->getLayers<ElevationLayer>(elevationLayers);
-        if (!elevationLayers.empty())
+        osg::ref_ptr<const Map> map = _session->getMap();
+        if (map.valid())
         {
-            // Get the approximate elevation range if we have elevation data in the map
-            lod = osg::clampBetween(lod, 0u, ElevationRanges::getMaxLevel());
-            GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
-            TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
-            short min, max;
-            ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
-            // Clamp the min value to avoid extreme underwater values.
-            minElevation = osg::maximum(min, (short)-500);
-            // Add a little bit extra of extra height to account for feature data.
-            maxElevation = max + 100.0f;
+            map->getLayers<ElevationLayer>(elevationLayers);
+            if (!elevationLayers.empty())
+            {
+                // Get the approximate elevation range if we have elevation data in the map
+                lod = osg::clampBetween(lod, 0u, ElevationRanges::getMaxLevel());
+                GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
+                TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
+                short min, max;
+                ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+                // Clamp the min value to avoid extreme underwater values.
+                minElevation = osg::maximum(min, (short)-500);
+                // Add a little bit extra of extra height to account for feature data.
+                maxElevation = max + 100.0f;
+            }
         }
 #endif
         // Expand the bounding sphere to account for the min/max elevation

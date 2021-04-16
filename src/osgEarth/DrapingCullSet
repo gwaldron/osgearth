@@ -28,6 +28,7 @@
 #include <osgEarth/Threading>
 #include <osg/Camera>
 #include <osg/ObserverNodePath>
+#include <queue>
 
 namespace osgEarth { namespace Util
 {
@@ -57,16 +58,16 @@ namespace osgEarth { namespace Util
         /** Runs a node visitor on the cull set, optionally popping as it goes along. */
         void accept(osg::NodeVisitor& nv);
 
-        /** Bounds of this set */
-        const osg::BoundingSphere& getBound() const { return _bs; }
-
-        /** Number of elements in the set */
-        unsigned size() const { return _entries.size(); }
+        //! Bounds of the latest set
+        const osg::BoundingSphere& getBound() const;
 
     private:
-        std::vector<Entry>  _entries;
-        osg::BoundingSphere _bs;
-        bool                _frameCulled;
+        struct FrameData {
+            std::vector<Entry> _entries;
+            osg::BoundingSphere _bs;
+        };
+        std::map<int, FrameData> _data;
+        Threading::Mutex _data_mutex;
     };
 
     /**

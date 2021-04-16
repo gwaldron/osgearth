@@ -79,40 +79,6 @@ bool ProgressCallback::reportProgress(double             current,
 }
 
 /******************************************************************************/
-ConsoleProgressCallback::ConsoleProgressCallback() :
-ProgressCallback()
-{
-    //NOP
-}
-
-void
-ConsoleProgressCallback::reportError(const std::string& msg)
-{
-    ProgressCallback::reportError(msg);
-    OE_NOTICE << "Error: " << msg << std::endl;
-}
-
-bool
-ConsoleProgressCallback::reportProgress(double current, double total, 
-                                        unsigned stage, unsigned numStages,
-                                        const std::string& msg)
-{
-    if (total > 0)
-    {
-        double percentComplete = (current / total) * 100.0;
-        OE_NOTICE 
-            << "Stage " << (stage+1) << "/" << numStages 
-            << "; completed " << percentComplete << "% " << current << " of " << total 
-            << std::endl;
-    }
-    else
-    {
-        OE_NOTICE << msg << std::endl;
-    }
-    return false;
-}
-
-/******************************************************************************/
 
 DatabasePagerProgressCallback::DatabasePagerProgressCallback()
 {

@@ -24,6 +24,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ConvertUTF>
+#include <osg/Object>
 #include <stack>
 
 #include <errno.h>
@@ -270,6 +271,9 @@ osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &re
     s_cache[cacheKey] = result;
     return result;
 }
+
+// force getFullPath's statics to be initialized at startup
+OSG_INIT_SINGLETON_PROXY(osgEarthFileUtilsGetFullPathInitSingletonProxy, osgEarth::Util::getFullPath(std::string(), std::string()));
 
 bool
 osgEarth::Util::isArchive(const std::string& path)

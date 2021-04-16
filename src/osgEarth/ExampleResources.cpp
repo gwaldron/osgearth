@@ -301,6 +301,133 @@ Control* AttributionControlFactory::create(MapNode* mapNode) const
 #undef  LC
 #define LC "[MapNodeHelper] "
 
+namespace
+{
+    struct MultiRealizeOperation : public osg::Operation
+    {
+        void operator()(osg::Object* obj) override
+        {
+            for (auto& op : _ops)
+                op->operator()(obj);
+        }
+        std::vector<osg::ref_ptr<osg::Operation>> _ops;
+    };
+}
+
+osg::Group*
+MapNodeHelper::loadWithoutControls(
+    osg::ArgumentParser&   args,
+    osgViewer::ViewerBase* viewer) const
+{
+    // Pause do the user can attach a debugger
+    if (args.read("--pause"))
+    {
+        std::cout << "Press <ENTER> to continue" << std::endl;
+        ::getchar();
+    }
+
+    // OSG options
+    osg::ref_ptr<osgDB::Options> myReadOptions;
+    std::string str;
+    if (args.read("--osg-options", str) || args.read("-O", str))
+    {
+        myReadOptions = new osgDB::Options();
+        myReadOptions->setOptionString(str);
+    }
+
+    // read in the Earth file:
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
+
+    // fallback in case none is specified:
+    if (!node.valid())
+    {
+        OE_WARN << LC << "No valid earth file loaded - aborting" << std::endl;
+        return nullptr;
+    }
+
+    osg::ref_ptr<MapNode> mapNode = MapNode::get(node.get());
+    if (!mapNode.valid())
+    {
+        OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;
+        return nullptr;
+    }
+
+    // GPU tessellation?
+    if (args.read("--tessellation") || args.read("--tess"))
+    {
+        mapNode->getTerrainOptions().setGPUTessellation(true);
+    }
+
+    // open the map node:
+    if (!mapNode->open())
+    {
+        OE_WARN << LC << "Failed to open MapNode" << std::endl;
+        return nullptr;
+    }
+
+    // collect the views
+    osgViewer::Viewer::Views views;
+    if (viewer)
+    {
+        viewer->getViews(views);
+    }
+
+    // a root node to hold everything:
+    osg::ref_ptr<osg::Group> root = new osg::Group();
+    root->addChild(node);
+
+    // parses common cmdline arguments and apply to the first view:
+    if (!views.empty())
+    {
+        parse(mapNode.get(), args, views.front(), root.get(), (Container*)nullptr, false);
+
+        float lodscale;
+        if (args.read("--lodscale", lodscale))
+        {
+            LODScaleGroup* g = new LODScaleGroup();
+            g->setLODScaleFactor(osg::maximum(lodscale, 0.0001f));
+            osgEarth::insertGroup(g, mapNode->getParent(0));
+            OE_INFO << "LOD Scale set to: " << lodscale << std::endl;
+        }
+    }
+
+    // configures each view with some stock goodies
+    for (auto view : views)
+    {
+        configureView(view);
+    }
+
+    // vsync on/off?
+    optional<bool> vsync;
+    if (args.read("--vsync"))
+        vsync = true;
+    else if (args.read("--novsync"))
+        vsync = false;
+
+    if (viewer)
+    {
+        MultiRealizeOperation* op = new MultiRealizeOperation();
+
+        if (viewer->getRealizeOperation())
+            op->_ops.push_back(viewer->getRealizeOperation());
+
+#ifdef OSG_GL3_AVAILABLE
+        GL3RealizeOperation* rop = new GL3RealizeOperation();
+#else
+        CustomRealizeOperation* rop = new GL3RealizeOperation();
+#endif
+        if (vsync.isSet())
+            rop->setSyncToVBlank(vsync.get());
+
+        op->_ops.push_back(rop);
+
+        viewer->setRealizeOperation(op);
+    }
+
+    return root.release();
+}
+
+
 osg::Group*
 MapNodeHelper::load(osg::ArgumentParser&   args,
                     osgViewer::ViewerBase* viewer,
@@ -378,7 +505,7 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     // parses common cmdline arguments and apply to the first view:
     if ( !views.empty() )
     {
-        parse( mapNode.get(), args, views.front(), root, userContainer );
+        parse( mapNode.get(), args, views.front(), root, userContainer, true );
         
         float lodscale;
         if (args.read("--lodscale", lodscale))
@@ -405,6 +532,11 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
 
     if (viewer)
     {
+        MultiRealizeOperation* op = new MultiRealizeOperation();
+
+        if (viewer->getRealizeOperation())
+            op->_ops.push_back(viewer->getRealizeOperation());
+
 #ifdef OSG_GL3_AVAILABLE
         GL3RealizeOperation* rop = new GL3RealizeOperation();
 #else
@@ -413,46 +545,32 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
         if (vsync.isSet())
             rop->setSyncToVBlank(vsync.get());
 
-        viewer->setRealizeOperation(rop);
+        op->_ops.push_back(rop);
+
+        viewer->setRealizeOperation(op);
     }
 
     return root;
 }
 
-
 void
-MapNodeHelper::parse(MapNode*             mapNode,
-                     osg::ArgumentParser& args,
-                     osgViewer::View*     view,
-                     osg::Group*          root,
-                     LabelControl*        userLabel ) const
-{
-    VBox* vbox = new VBox();
-    vbox->setAbsorbEvents( true );
-    vbox->setBackColor( Color(Color::Black, 0.8) );
-    vbox->setHorizAlign( Control::ALIGN_LEFT );
-    vbox->setVertAlign( Control::ALIGN_BOTTOM );
-    vbox->addControl( userLabel );
-
-    parse(mapNode, args, view, root, vbox);
-}
-
-void
-MapNodeHelper::parse(MapNode*             mapNode,
-                     osg::ArgumentParser& args,
-                     osgViewer::View*     view,
-                     osg::Group*          root,
-                     Container*           userContainer ) const
+MapNodeHelper::parse(
+    MapNode* mapNode,
+    osg::ArgumentParser& args,
+    osgViewer::View* view,
+    osg::Group* root,
+    Container* userContainer,
+    bool useControls) const
 {
     if ( !root )
         root = mapNode;
 
     // parse out custom example arguments first:
-    bool useCoords     = args.read("--coords");
-    bool showActivity  = args.read("--activity");
+    bool useCoords     = useControls && args.read("--coords");
+    bool showActivity  = useControls && args.read("--activity");
     bool useLogDepth2  = args.read("--logdepth2");
     bool useLogDepth   = !args.read("--nologdepth") && !useLogDepth2; //args.read("--logdepth");
-    bool kmlUI         = args.read("--kmlui");
+    bool kmlUI         = useControls && args.read("--kmlui");
 
     std::string kmlFile;
     args.read( "--kml", kmlFile );
@@ -474,25 +592,29 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Install a new Canvas for our UI controls, or use one that already exists.
-    ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
-
-    Container* mainContainer;
-    if ( userContainer )
+    ControlCanvas* canvas = nullptr;
+    Container* mainContainer = nullptr;
+    if (useControls)
     {
-        mainContainer = userContainer;
-    }
-    else
-    {
-        mainContainer = new VBox();
-        mainContainer->setAbsorbEvents( false );
-        mainContainer->setBackColor( Color(Color::Black, 0.8) );
-        mainContainer->setHorizAlign( Control::ALIGN_LEFT );
-        mainContainer->setVertAlign( Control::ALIGN_BOTTOM );
-    }
-    canvas->addControl( mainContainer );
+        canvas = ControlCanvas::getOrCreate(view);
+        
+        if (userContainer)
+        {
+            mainContainer = userContainer;
+        }
+        else
+        {
+            mainContainer = new VBox();
+            mainContainer->setAbsorbEvents(false);
+            mainContainer->setBackColor(Color(Color::Black, 0.8));
+            mainContainer->setHorizAlign(Control::ALIGN_LEFT);
+            mainContainer->setVertAlign(Control::ALIGN_BOTTOM);
+        }
+        canvas->addControl(mainContainer);
 
-    // Add an event handler to toggle the canvas with a key press;
-    view->addEventHandler(new ToggleCanvasEventHandler(canvas, 'y'));
+        // Add an event handler to toggle the canvas with a key press;
+        view->addEventHandler(new ToggleCanvasEventHandler(canvas, 'y'));
+    }
 
     // look for external data in the map node:
     const Config externals = mapNode ? mapNode->externalConfig() : Config();
@@ -552,7 +674,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
 
     // Add the credits display
-    if (mapNode)
+    if (mapNode && canvas)
     {
         canvas->addControl(AttributionControlFactory().create(mapNode));
     }
@@ -600,61 +722,64 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Generic named value uniform with min/max.
-    VBox* uniformBox = 0L;
-    while( args.find( "--uniform" ) >= 0 )
+    if (canvas)
     {
-        std::string name;
-        float minval, maxval;
-        if ( args.read( "--uniform", name, minval, maxval ) )
+        VBox* uniformBox = 0L;
+        while (args.find("--uniform") >= 0)
         {
-            if ( uniformBox == 0L )
+            std::string name;
+            float minval, maxval;
+            if (args.read("--uniform", name, minval, maxval))
             {
-                uniformBox = new VBox();
-                uniformBox->setBackColor(0,0,0,0.5);
-                uniformBox->setAbsorbEvents( true );
-                mainContainer->addControl( uniformBox );
+                if (uniformBox == 0L)
+                {
+                    uniformBox = new VBox();
+                    uniformBox->setBackColor(0, 0, 0, 0.5);
+                    uniformBox->setAbsorbEvents(true);
+                    mainContainer->addControl(uniformBox);
+                }
+                osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT, name);
+                uniform->set(minval);
+                root->getOrCreateStateSet()->addUniform(uniform, osg::StateAttribute::OVERRIDE);
+                HBox* box = new HBox();
+                box->addControl(new LabelControl(name));
+                HSliderControl* hs = box->addControl(new HSliderControl(minval, maxval, minval, new ApplyValueUniform(uniform)));
+                hs->setHorizFill(true, 200);
+                box->addControl(new LabelControl(hs));
+                uniformBox->addControl(box);
+                OE_INFO << LC << "Installed uniform controller for " << name << std::endl;
             }
-            osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT, name);
-            uniform->set( minval );
-            root->getOrCreateStateSet()->addUniform( uniform, osg::StateAttribute::OVERRIDE );
-            HBox* box = new HBox();
-            box->addControl( new LabelControl(name) );
-            HSliderControl* hs = box->addControl( new HSliderControl(minval, maxval, minval, new ApplyValueUniform(uniform)));
-            hs->setHorizFill(true, 200);
-            box->addControl( new LabelControl(hs) );
-            uniformBox->addControl( box );
-            OE_INFO << LC << "Installed uniform controller for " << name << std::endl;
         }
-    }
 
-    while (args.find("--define") >= 0)
-    {
-        std::string name;
-        if (args.read("--define", name))
+        while (args.find("--define") >= 0)
         {
-            if ( uniformBox == 0L )
+            std::string name;
+            if (args.read("--define", name))
             {
-                uniformBox = new VBox();
-                uniformBox->setBackColor(0,0,0,0.5);
-                uniformBox->setAbsorbEvents( true );
-                mainContainer->addControl( uniformBox );
-            }
+                if ( uniformBox == 0L )
+                {
+                    uniformBox = new VBox();
+                    uniformBox->setBackColor(0,0,0,0.5);
+                    uniformBox->setAbsorbEvents( true );
+                    mainContainer->addControl( uniformBox );
+                }
             
-            HBox* box = new HBox();
-            box->addControl(new CheckBoxControl(false, new ToggleDefine(mapNode->getOrCreateStateSet(), name)));
-            box->addControl(new LabelControl(name));
-            uniformBox->addControl(box);
+                HBox* box = new HBox();
+                box->addControl(new CheckBoxControl(false, new ToggleDefine(mapNode->getOrCreateStateSet(), name)));
+                box->addControl(new LabelControl(name));
+                uniformBox->addControl(box);
+            }
         }
     }
 
     // Map inspector:
-    if (args.read("--inspect") && mapNode)
+    if (args.read("--inspect") && mapNode && canvas)
     {
         mapNode->addExtension( Extension::create("mapinspector", ConfigOptions()) );
     }
 
     // Memory monitor:
-    if (args.read("--monitor") && mapNode)
+    if (args.read("--monitor") && mapNode && canvas)
     {
         mapNode->addExtension(Extension::create("monitor", ConfigOptions()) );
     }
@@ -672,8 +797,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         SimpleOceanLayer* layer = new SimpleOceanLayer();
         mapNode->getMap()->addLayer(layer);
-        Control* ui = OceanControlFactory::create(layer);
-        mainContainer->addControl(ui);
+        if (canvas)
+        {
+            Control* ui = OceanControlFactory::create(layer);
+            mainContainer->addControl(ui);
+        }
     }
 
     // Arbitrary extension:
@@ -696,14 +824,17 @@ MapNodeHelper::parse(MapNode*             mapNode,
             Extension* e = eiter->get();
 
             // Check for a View interface:
-            ExtensionInterface<osg::View>* viewIF = ExtensionInterface<osg::View>::get( e );
-            if ( viewIF )
-                viewIF->connect( view );
+            ExtensionInterface<osg::View>* viewIF = ExtensionInterface<osg::View>::get(e);
+            if (viewIF)
+                viewIF->connect(view);
 
-            // Check for a Control interface:
-            ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get( e );
-            if ( controlIF )
-                controlIF->connect( mainContainer );
+            if (canvas)
+            {
+                // Check for a Control interface:
+                ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get(e);
+                if (controlIF)
+                    controlIF->connect(mainContainer);
+            }
         }
     }
 

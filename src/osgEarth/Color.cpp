@@ -29,7 +29,6 @@ using namespace osgEarth;
 
 namespace
 {
-#if 0
     void rgb2hsv( osg::Vec4f& c )
     {
         float minval = osg::minimum( c.r(), osg::minimum( c.g(), c.b() ) );

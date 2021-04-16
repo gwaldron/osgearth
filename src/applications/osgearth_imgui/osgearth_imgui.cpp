@@ -49,6 +49,8 @@ main(int argc, char** argv)
     osgEarth::initialize();
 
     osgViewer::Viewer viewer(arguments);
+    // Use SingleThreaded mode with imgui.
+    viewer.setThreadingModel(viewer.SingleThreaded);
     viewer.setCameraManipulator(new EarthManipulator(arguments));
 
     // Call this to enable ImGui rendering.

@@ -110,6 +110,12 @@ namespace osgEarth
             osg::Image* out_image,
             Cancelable* progress) const;
 
+
+    public:
+        bool static preProcess(osg::Image* image, bool isSDF);
+
+        bool static postProcess(osg::Image* image, bool isCoverage);
+
     public: // ImageLayer
 
         // Opens the layer and returns a status
@@ -148,10 +154,6 @@ namespace osgEarth
             osg::Image*        image ) const;
 
         osg::Image* allocateImage() const;
-
-        bool preProcess(osg::Image* image) const;
-
-        bool postProcess(osg::Image* image) const;
 
         void establishProfile();
     };

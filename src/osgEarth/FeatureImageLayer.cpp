@@ -286,6 +286,71 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         ctx.strokePath(path);
     }
 
+    static const BLFontFace& getOrCreateFontFace()
+    {
+        static BLFontFace fontFace;
+        static std::mutex fontMutex;
+        if (fontFace.empty())
+        {
+            std::lock_guard<std::mutex> lock(fontMutex);
+            // TODO:  Find fonts using osg or pass in fonts.
+            fontFace.createFromFile("D:/dev/blend2d-samples/resources/NotoSans-Regular.ttf");
+        }
+        return fontFace;
+    }
+
+
+    void rasterizeText(
+        const Feature* feature,
+        const TextSymbol* symbol,
+        RenderFrame& frame,
+        BLContext& ctx)
+    {
+        OE_HARD_ASSERT(feature != nullptr, __func__);
+        OE_HARD_ASSERT(symbol != nullptr, __func__);
+
+        OE_PROFILING_ZONE;
+
+        BLFont font;
+
+        Session* session = nullptr;
+
+        NumericExpression fontSizeExpression = symbol->size().get();
+        float fontSize = feature->eval(fontSizeExpression, session);
+        font.createFromFace(getOrCreateFontFace(), fontSize);
+        StringExpression expression = symbol->content().get();
+        std::string text = feature->eval(expression, session);
+
+        feature->getGeometry()->forEachPart([&](const Geometry* part)
+        {
+            // Only label points for now
+            if (part->getType() == osgEarth::Geometry::TYPE_POINT ||
+                part->getType() == osgEarth::Geometry::TYPE_POINTSET)
+            for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+            {
+                const osg::Vec3d& p0 = *p;
+                double x = frame.xf*(p0.x() - frame.xmin);
+                double y = frame.yf*(p0.y() - frame.ymin);
+                y = ctx.targetHeight() - y;
+
+                if (symbol->halo().isSet())
+                {
+                    osgEarth::Color haloColor = osgEarth::Color::White;
+                    ctx.setStrokeStyle(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
+                    ctx.setStrokeWidth(1);
+                    ctx.strokeUtf8Text(BLPoint(x, y), font, text.c_str());
+                }
+
+                if (symbol->fill().isSet())
+                {
+                    osgEarth::Color fillColor = symbol->fill()->color();
+                    ctx.setFillStyle(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
+                    ctx.fillUtf8Text(BLPoint(x, y), font, text.c_str());
+                }
+            }
+        });
+    }
+
 #endif
 
     //FeatureCursor* createCursor(
@@ -557,13 +622,13 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         image->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
     }
 
-    preProcess(image.get());
+    preProcess(image.get(), *options().sdf());
 
     bool ok = render(key, _session.get(), getStyleSheet(), image.get(), progress);
 
     if (ok)
     {
-        postProcess(image.get());
+        postProcess(image.get(), *options().coverage());
         return GeoImage(image.get(), key.getExtent());
     }
     else
@@ -573,11 +638,11 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 }
 
 bool
-FeatureImageLayer::preProcess(osg::Image* image) const
+FeatureImageLayer::preProcess(osg::Image* image, bool isSDF)
 {
     OE_PROFILING_ZONE;
 
-    if (options().sdf() == true)
+    if (isSDF == true)
     {
         ImageUtils::PixelWriter write(image);
         write.assign(Color::Red);
@@ -590,12 +655,12 @@ FeatureImageLayer::preProcess(osg::Image* image) const
 }
 
 bool
-FeatureImageLayer::postProcess(osg::Image* image) const
+FeatureImageLayer::postProcess(osg::Image* image, bool isCoverage)
 {
     OE_PROFILING_ZONE;
 
 #ifdef USE_AGGLITE
-    if (options().coverage() == false)
+    if (isCoverage == false)
     {
         //convert from ABGR to RGBA
         unsigned char* pixel = image->data();
@@ -606,7 +671,7 @@ FeatureImageLayer::postProcess(osg::Image* image) const
         }
     }
 #else
-    if (options().coverage() == false)
+    if (isCoverage == false)
     {
         //convert from BGRA to RGBA
         unsigned char* pixel = image->data();
@@ -673,6 +738,7 @@ FeatureImageLayer::renderFeaturesForStyle(
     const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
     const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
     const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
+    const TextSymbol* masterText = style.getSymbol<TextSymbol>();
 
     // Converts coordinates to image space (s,t):
     RenderFrame frame;
@@ -757,6 +823,18 @@ FeatureImageLayer::renderFeaturesForStyle(
             if (feature->getGeometry())
             {
                 rasterizeLines(feature->getGeometry(), masterLine, lineWidth_px, frame, ctx);
+            }
+        }
+    }
+
+    if (masterText)
+    {
+        // Rasterize the lines:
+        for (const auto& feature : features)
+        {
+            if (feature->getGeometry())
+            {
+                rasterizeText(feature.get(), masterText, frame, ctx);
             }
         }
     }

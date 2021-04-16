@@ -38,10 +38,10 @@ void getIfSet(const Json::Value& object, const std::string& member, optional<std
 {
     if (object.isMember(member))
     {
-        auto jsonValue = object.get(member, "");
+        const Json::Value& jsonValue = object[member];
         if (!jsonValue.isObject())
         {
-            value = object.get(member, "").asString();
+            value = jsonValue.asString();
         }
     }
 }
@@ -154,7 +154,7 @@ const FeatureSource* MapBoxStyleSheet::Source::featureSource() const
     return _featureSource.get();
 }
 
-void MapBoxStyleSheet::Source::loadFeatureSource(const std::string& styleSheetURI)
+void MapBoxStyleSheet::Source::loadFeatureSource(const std::string& styleSheetURI, const osgDB::Options* options)
 {
     if (!_featureSource.valid())
     {
@@ -164,7 +164,8 @@ void MapBoxStyleSheet::Source::loadFeatureSource(const std::string& styleSheetUR
         {
             URI uri(url(), context);
 
-            osg::ref_ptr< VTPKFeatureSource > featureSource = new VTPKFeatureSource;
+            osg::ref_ptr< VTPKFeatureSource > featureSource = new VTPKFeatureSource();
+            featureSource->setReadOptions(options);
             featureSource->setURL(uri);
             featureSource->open();
             _featureSource = featureSource.get();
@@ -179,6 +180,8 @@ void MapBoxStyleSheet::Source::loadFeatureSource(const std::string& styleSheetUR
                 featureSource->setMaxLevel(14);
                 featureSource->setURL(uri);
                 featureSource->setFormat("pbf");
+                featureSource->setReadOptions(options);
+                // Not necessarily?
                 featureSource->options().profile() = ProfileOptions("spherical-mercator");
                 featureSource->open();
                 _featureSource = featureSource.get();
@@ -226,6 +229,46 @@ optional<std::string>& MapBoxStyleSheet::Paint::lineColor()
 optional<float>& MapBoxStyleSheet::Paint::lineWidth()
 {
     return _lineWidth;
+}
+
+const optional<std::string>& MapBoxStyleSheet::Paint::textField() const
+{
+    return _textField;
+}
+
+optional<std::string>& MapBoxStyleSheet::Paint::textField()
+{
+    return _textField;
+}
+
+const optional<std::string>& MapBoxStyleSheet::Paint::textColor() const
+{
+    return _textColor;
+}
+
+optional<std::string>& MapBoxStyleSheet::Paint::textColor()
+{
+    return _textColor;
+}
+
+const optional<std::string>& MapBoxStyleSheet::Paint::textHaloColor() const
+{
+    return _textHaloColor;
+}
+
+optional<std::string>& MapBoxStyleSheet::Paint::textHaloColor()
+{
+    return _textHaloColor;
+}
+
+const optional<float>& MapBoxStyleSheet::Paint::textSize() const
+{
+    return _textSize;
+}
+
+optional<float>& MapBoxStyleSheet::Paint::textSize()
+{
+    return _textSize;
 }
 
 const optional<std::string>& MapBoxStyleSheet::Paint::backgroundColor() const
@@ -429,7 +472,7 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
             }
             source.attribution() = sourceJson.get("attribution", "").asString();
             source.type() = sourceJson.get("type", "").asString();
-            source.loadFeatureSource(location.full());
+            source.loadFeatureSource(location.full(), options);
             styleSheet._sources.push_back(source);
         }
     }
@@ -456,8 +499,24 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
                 getIfSet(paint, "background-opacity", layer.paint().backgroundOpacity());
                 getIfSet(paint, "fill-color", layer.paint().fillColor());
 
+
+                // TODO:  Many of these properties actually support an "interpolate" property with stops that define a value per zoom level.
+                // So we should read those stops and use them per zoom level.
                 getIfSet(paint, "line-color", layer.paint().lineColor());
                 getIfSet(paint, "line-width", layer.paint().lineWidth());
+
+                getIfSet(paint, "text-color", layer.paint().textColor());
+                getIfSet(paint, "text-halo-color", layer.paint().textHaloColor());
+            }
+
+            // Parse layout
+            if (layerJson.isMember("layout"))
+            {
+                const Json::Value& layout = layerJson["layout"];
+
+                // TODO:  This is a layout property, not a paint property
+                getIfSet(layout, "text-field", layer.paint().textField());
+                getIfSet(layout, "text-size", layer.paint().textSize());
             }
 
             if (layerJson.isMember("filter"))
@@ -549,8 +608,6 @@ bool evalFilter(const Json::Value& filter, osgEarth::Feature* feature)
         return false;
     }
 
-    //std::cout << Json::StyledWriter().write(filter) << std::endl;
-
     auto op = osgEarth::trim(filter[0u].asString());
 
     // https://docs.mapbox.com/mapbox-gl-js/style-spec/other/#other-filter
@@ -631,7 +688,7 @@ bool evalFilter(const Json::Value& filter, osgEarth::Feature* feature)
             }
             else if (feature->getGeometry()->getType() == Geometry::Type::TYPE_POINT || feature->getGeometry()->getType() == Geometry::Type::TYPE_POINTSET)
             {
-                typeString = "Polygon";
+                typeString = "Point";
             }
             return typeString == value.asString();
         }
@@ -867,7 +924,6 @@ bool evalFilter(const Json::Value& filter, osgEarth::Feature* feature)
         return true;
     }
 
-
     return true;
 }
 
@@ -882,6 +938,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
     // Allocate the intial image
     osg::ref_ptr<osg::Image> image = new osg::Image;
     image->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    image->setInternalTextureFormat(GL_RGBA8);
     ::memset(image->data(), 0x00, image->getTotalSizeInBytes());
 
     std::map< std::string, LayeredFeatures > sourceToFeatures;
@@ -942,7 +999,13 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                     while (allFeatures.empty() && queryKey.valid())
                     {
                         // Get all the features from the feature source.
-                        osg::ref_ptr< FeatureCursor > cursor = featureImage->getFeatureSource()->createFeatureCursor(queryKey, nullptr);
+                        //osg::ref_ptr< FeatureCursor > cursor = featureImage->getFeatureSource()->createFeatureCursor(queryKey, progress);
+                        double buffer = 0.1;
+                        Distance bufferDistance(buffer * queryKey.getExtent().width(), queryKey.getProfile()->getSRS()->getUnits());
+                        osg::ref_ptr< FeatureCursor > cursor = featureImage->getFeatureSource()->createFeatureCursor(
+                            queryKey,
+                            bufferDistance,
+                            nullptr, nullptr, progress);
                         if (cursor.valid())
                         {
                             cursor->fill(allFeatures);
@@ -995,8 +1058,30 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                     {
                         Style style;
                         style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color(layer.paint().lineColor().get());
-                        style.getOrCreateSymbol<LineSymbol>()->stroke()->width() = layer.paint().lineWidth().get();
+                        style.getOrCreateSymbol<LineSymbol>()->stroke()->width() = layer.paint().lineWidth();
                         style.getOrCreateSymbol<LineSymbol>()->stroke()->widthUnits() = Units::PIXELS;
+                        featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image.get(), nullptr);
+                    }
+                    else if (layer.type() == "symbol")
+                    {
+                        Style style;
+                        if (layer.paint().textField().isSet())
+                        {
+                            style.getOrCreateSymbol<TextSymbol>()->content() = layer.paint().textField().get();
+                        }
+                        if (layer.paint().textColor().isSet())
+                        {
+                            style.getOrCreateSymbol<TextSymbol>()->fill()->color() = Color(layer.paint().textColor().get());
+                        }
+                        if (layer.paint().textHaloColor().isSet())
+                        {
+                            style.getOrCreateSymbol<TextSymbol>()->halo()->color() = Color(layer.paint().textHaloColor().get());
+                        }
+                        if (layer.paint().textSize().isSet())
+                        {
+                            style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().get());
+                        }
+
                         featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image.get(), nullptr);
                     }
                 }
@@ -1005,6 +1090,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
     }
 
 
+    FeatureImageLayer::postProcess(image.get(), false);
 
     return GeoImage(image.get(), key.getExtent());
 }

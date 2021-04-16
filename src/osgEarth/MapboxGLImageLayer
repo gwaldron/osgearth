@@ -52,7 +52,7 @@ namespace osgEarth
             FeatureSource* featureSource();
             const FeatureSource* featureSource() const;
 
-            void loadFeatureSource(const std::string& styleSheetURI);
+            void loadFeatureSource(const std::string& styleSheetURI, const osgDB::Options* options);
 
 
         private:
@@ -89,6 +89,18 @@ namespace osgEarth
             const optional<float>& lineWidth() const;
             optional<float>& lineWidth();
 
+            const optional<std::string>& textField() const;
+            optional<std::string>& textField();
+
+            const optional<std::string>& textColor() const;
+            optional<std::string>& textColor();
+
+            const optional<std::string>& textHaloColor() const;
+            optional<std::string>& textHaloColor();
+
+            const optional<float>& textSize() const;
+            optional<float>& textSize();
+
         private:
 
             //Background
@@ -110,7 +122,15 @@ namespace osgEarth
             optional<std::string> _lineColor;
             optional<float> _lineWidth;
 
+            // Text
+            optional<std::string> _textField;
+            optional<std::string> _textColor;
+            optional<std::string> _textHaloColor;
+            optional<float> _textSize;
+
             optional<std::string> _visibility;
+
+
         };
 
         class FilterExpression

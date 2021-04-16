@@ -191,7 +191,7 @@ void* OsgImGuiHandler::handleStartEntry(
 void OsgImGuiHandler::handleWriteSettings(
     ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf)
 {
-    OE_INFO << "Writing ini settings..." << std::endl;
+    OE_DEBUG << "Writing ini settings..." << std::endl;
     Config sections;
     s_guiHandler->save(sections);
     for (auto& section : sections.children())

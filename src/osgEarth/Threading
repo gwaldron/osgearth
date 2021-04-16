@@ -347,6 +347,10 @@ namespace osgEarth { namespace Threading
             return _future.isAvailable() || _future.isAbandoned();
         }
 
+        bool isWorking() const {
+            return !_future.isAvailable() && !_future.isAbandoned();
+        }
+
     protected:
         //! Asynchronous constructor
         FutureResult(Future<T> f) : _future(f) { }

@@ -20,53 +20,15 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarth/ImGuiUtils>
-#include <osgEarth/OsgImGuiHandler.hpp>
-
-#include <osgViewer/Viewer>
-#include <osgEarth/Notify>
+#include <osgEarth/ImGui/ImGui>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
-#include <osgEarth/MapNode>
-#include <osgEarth/Threading>
-#include <osgEarth/Geocoder>
-#include <osgEarth/NodeUtils>
+#include <osgViewer/Viewer>
 
-#include <iostream>
-
-#include <osgEarth/Metrics>
-
-
-#define LC "[viewer] "
+#define LC "[imgui] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Contrib;
-using namespace osgEarth::ImGuiUtil;
-
-class ImGuiDemo : public OsgImGuiHandler
-{
-public:
-    ImGuiDemo(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
-        _mapNode(mapNode),
-        _earthManip(earthManip),
-        _view(view)
-    {
-    }
-
-protected:
-    void drawUi(osg::RenderInfo& renderInfo) override
-    {
-        // ImGui code goes here...
-        //ImGui::ShowDemoWindow();
-        _layers.draw(renderInfo, _mapNode.get(), _view->getCamera(), _earthManip.get());
-    }
-
-    osg::ref_ptr< MapNode > _mapNode;
-    osg::ref_ptr<EarthManipulator> _earthManip;
-    osgViewer::View* _view;
-    LayersGUI _layers;
-};
 
 int
 usage(const char* name)
@@ -74,52 +36,38 @@ usage(const char* name)
     OE_NOTICE
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
-
     return 0;
 }
-
 
 int
 main(int argc, char** argv)
 {
-    ImGuiNotifyHandler* notifyHandler = new ImGuiNotifyHandler();
-    osg::setNotifyHandler(notifyHandler);
-    osgEarth::setNotifyHandler(notifyHandler);
-
-    osgEarth::initialize();
-
     osg::ArgumentParser arguments(&argc, argv);
-
-    // help?
     if (arguments.read("--help"))
         return usage(argv[0]);
 
-    // create a viewer:
+    osgEarth::initialize();
+
     osgViewer::Viewer viewer(arguments);
+    // Use SingleThreaded mode with imgui.
+    viewer.setThreadingModel(viewer.SingleThreaded);
+    viewer.setCameraManipulator(new EarthManipulator(arguments));
 
-    // install our default manipulator (do this before calling load)
-    EarthManipulator* manip = new EarthManipulator(arguments);
-    viewer.setCameraManipulator(manip);
+    // Call this to enable ImGui rendering.
+    // If you use the MapNodeHelper, call this first.
+    viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
 
-    // Setup the viewer for imgui
-    viewer.setRealizeOperation(new ImGuiDemo::RealizeOperation);
-
-    viewer.realize();
-
-    // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
+    osg::Node* node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
     if (node)
     {
-        MapNode* mapNode = MapNode::findMapNode(node);
-        if (mapNode)
-        {
-            viewer.getEventHandlers().push_front(new ImGuiDemo(&viewer, mapNode, manip));
-            viewer.addEventHandler(new SelectNodeHandler());
-        }
+        // Call this to add the GUI. 
+        // Passing "true" tells it to install all the built-in osgEarth GUI tools.
+        // Put it on the front of the list so events don't filter
+        // through to other handlers.
+        viewer.getEventHandlers().push_front(new GUI::ApplicationGUI(true));
 
         viewer.setSceneData(node);
-        return viewer.run();// return Metrics::run(viewer);
+        return viewer.run();
     }
     else
     {

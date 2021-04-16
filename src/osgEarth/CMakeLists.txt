@@ -158,7 +158,6 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
-    ImGuiUtils
     InstanceBuilder
     InstanceCloud
     IntersectionPicker
@@ -442,6 +441,19 @@ SET(LIB_PUBLIC_HEADERS
     FileGDBFeatureSource
 
     SDF
+    
+    ImGui/ImGui
+    ImGui/OsgImGuiHandler
+    ImGui/LayersGUI
+    ImGui/NetworkMonitorGUI
+    ImGui/NotifyGUI
+    ImGui/SceneGraphGUI
+    ImGui/SearchGUI
+    ImGui/TextureInspectorGUI
+    ImGui/ViewpointsGUI
+    ImGui/SystemGUI
+    ImGui/EphemerisGUI
+    ImGui/TerrainGUI
 
     ${OSGEARTH_BUILDCONFIG_HEADER}
 )

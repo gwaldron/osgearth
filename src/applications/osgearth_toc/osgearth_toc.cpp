@@ -322,19 +322,6 @@ main( int argc, char** argv )
         invalidateTool->clear();
     });
 
-#if 0 // uncomment to test the JobArena::setConcurrency function
-    static unsigned cc = 4u;
-    EventRouter* router = new EventRouter();
-    viewer.addEventHandler(router);
-    router->onKeyPress(router->KEY_Leftbracket, []() {
-        JobArena::get("oe.rex.loadtile")->setConcurrency(++cc);
-        });
-    router->onKeyPress(router->KEY_Rightbracket, []() {
-        cc = std::max(cc - 1u, 1u);
-        JobArena::get("oe.rex.loadtile")->setConcurrency(cc);
-        });
-#endif
-
     return Metrics::run(viewer);
 }
 

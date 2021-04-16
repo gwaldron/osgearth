@@ -1,0 +1,179 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_NETWORK_MONITOR_GUI
+#define OSGEARTH_IMGUI_NETWORK_MONITOR_GUI
+
+#include <osgEarth/NetworkMonitor>
+#include "ImGui"
+
+namespace osgEarth {
+    namespace GUI
+    {
+
+        class NetworkMonitorGUI : public BaseGUI
+        {
+        public:
+            NetworkMonitorGUI() :
+                BaseGUI("Network Monitor"),
+                _showOnlyActiveRequests(true),
+                _filter("")
+            {
+
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible())
+                    return;
+
+                if (ImGui::Begin(name(), visible()))
+                {
+                    NetworkMonitor::setEnabled(true);
+
+                    NetworkMonitor::Requests requests;
+                    NetworkMonitor::getRequests(requests);
+
+                    // Compute the time duration for all of the requests
+                    osg::Timer_t startTime;
+                    double totalTime = 0.0;
+                    if (!requests.empty())
+                    {
+                        startTime = requests.begin()->second.startTime;
+                        if (requests.rbegin()->second.isComplete)
+                        {
+                            totalTime = osg::Timer::instance()->delta_m(startTime, requests.rbegin()->second.endTime);
+                        }
+                        else
+                        {
+                            totalTime = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
+                        }
+                    }
+
+                    if (ImGui::Button("Save"))
+                    {
+                        NetworkMonitor::saveCSV(requests, "network_requests.csv");
+                    }
+
+                    ImGui::Checkbox("Show active requests", &_showOnlyActiveRequests);
+
+                    ImGui::InputText("Filter", _filter, 128);
+
+                    if (ImGui::Button("Clear"))
+                    {
+                        NetworkMonitor::clear();
+                    }
+
+                    ImGui::Text("%d requests", requests.size()); ImGui::SameLine();
+                    ImGui::Text("Finished %f s", totalTime / 1000.0);
+
+                    ImGui::BeginChild("Columns");
+                    ImGui::Columns(7, "requests");
+                    ImGui::Separator();
+                    ImGui::Text("Path"); ImGui::NextColumn();
+                    ImGui::Text("Duration"); ImGui::NextColumn();
+                    ImGui::Text("Start time"); ImGui::NextColumn();
+                    ImGui::Text("End time"); ImGui::NextColumn();
+                    ImGui::Text("Layer"); ImGui::NextColumn();
+                    ImGui::Text("Type"); ImGui::NextColumn();
+                    ImGui::Text("Status"); ImGui::NextColumn();
+                    ImGui::Separator();
+
+
+                    std::string filterLower = osgEarth::toLower(_filter);
+
+                    for (NetworkMonitor::Requests::iterator itr = requests.begin(); itr != requests.end(); ++itr)
+                    {
+                        if (!_showOnlyActiveRequests || !itr->second.isComplete)
+                        {
+                            if (!filterLower.empty())
+                            {
+                                std::string uriLower = osgEarth::toLower(itr->second.uri);
+                                std::string statusLower = osgEarth::toLower(itr->second.status);
+                                std::string layerLower = osgEarth::toLower(itr->second.layer);
+                                std::string typeLower = osgEarth::toLower(itr->second.type);
+
+                                if (strstr(uriLower.c_str(), filterLower.c_str()) == NULL &&
+                                    strstr(statusLower.c_str(), filterLower.c_str()) == NULL &&
+                                    strstr(layerLower.c_str(), filterLower.c_str()) == NULL &&
+                                    strstr(typeLower.c_str(), filterLower.c_str()) == NULL)
+                                {
+                                    continue;
+                                }
+                            }
+
+                            ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
+                            if (itr->second.isComplete)
+                            {
+                                if (strstr(itr->second.status.c_str(), "OK") != NULL)
+                                {
+                                    // Color OK requests green
+                                    color = ImVec4(0.0, 1.0, 0.0, 1.0);
+                                }
+                                else
+                                {
+                                    // Color bad requests red
+                                    color = ImVec4(1.0, 0.0, 0.0, 1.0);
+                                }
+                            }
+
+                            double startMS = osg::Timer::instance()->delta_m(startTime, itr->second.startTime);
+                            double endMS = 0.0;
+                            if (itr->second.isComplete)
+                            {
+                                endMS = osg::Timer::instance()->delta_m(startTime, itr->second.endTime);
+                            }
+                            else
+                            {
+                                endMS = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
+                            }
+
+                            ImGui::TextColored(color, itr->second.uri.c_str());  ImGui::NextColumn();
+                            ImGui::Text("%.2lf ms", itr->second.getDuration()); ImGui::NextColumn();
+                            ImGui::Text("%.2lf ms", startMS); ImGui::NextColumn();
+                            ImGui::Text("%.2lf ms", endMS); ImGui::NextColumn();
+                            ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
+                            ImGui::Text(itr->second.type.c_str()); ImGui::NextColumn();
+                            ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
+                        }
+                    }
+                    ImGui::Columns(1);
+                    ImGui::Separator();
+
+                    // Keep scroll position at the bottom so we can see new network requests as they come in if they are scrolled to the bottom already
+                    if (ImGui::GetScrollY() == ImGui::GetScrollMaxY())
+                    {
+                        ImGui::SetScrollHere(1.0);
+                    }
+                    ImGui::EndChild();
+
+                    ImGui::End();
+                }
+                else
+                {
+                    NetworkMonitor::setEnabled(false);
+                }
+            }
+
+            bool _showOnlyActiveRequests;
+            char _filter[128];
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_NOTIFY_GUI

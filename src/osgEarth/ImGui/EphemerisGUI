@@ -1,0 +1,118 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_EPHEMERIS_GUI
+#define OSGEARTH_IMGUI_EPHEMERIS_GUI
+
+#include "ImGui"
+#include <osgEarth/Ephemeris>
+#include <osgEarth/Sky>
+
+namespace osgEarth
+{
+    namespace GUI
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Util;
+
+        class EphemerisGUI : public BaseGUI
+        {
+        private:
+            osg::observer_ptr<SkyNode> _skyNode;
+            CelestialBody _sun, _moon;
+            DateTime _dateTime;
+
+        public:
+            EphemerisGUI() : BaseGUI("Sky & Lighting")
+            {
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible()) return;
+
+                if (!findNodeOrHide(_skyNode, ri))
+                    return;
+
+                ImGui::Begin(name(), visible());
+                {   
+                    bool lighting = _skyNode->getLighting();
+                    ImGui::Checkbox("Lighting", &lighting);
+                    _skyNode->setLighting(lighting);
+
+                    DateTime dt = _skyNode->getDateTime();
+                    int year = dt.year();
+                    int month = dt.month();
+                    int day = dt.day();
+                    float hour = dt.hours();
+
+                    if (lighting)
+                    {
+                        ImGui::Separator();
+
+                        ImGui::Text("Date & Time:");
+                        ImGui::SliderFloat("Hour", &hour, 0.0f, 24.0f);
+                        ImGui::SliderInt("Day", &day, 1, 31);
+                        ImGui::SliderInt("Month", &month, 1, 12);
+                        ImGui::SliderInt("Year", &year, 1970, 2061);
+
+                        dt = DateTime(year, month, day, hour);
+                        _skyNode->setDateTime(dt);
+
+                        float ambient = _skyNode->getSunLight()->getAmbient().r();
+                        ImGui::SliderFloat("Ambient Level", &ambient, 0.0f, 1.0f);
+                        _skyNode->getSunLight()->setAmbient(osg::Vec4(ambient, ambient, ambient, 1.0f));
+                    }
+
+                    ImGui::Separator();
+
+                    bool atmos_visible = _skyNode->getAtmosphereVisible();
+                    ImGui::Checkbox("Atmosphere", &atmos_visible);
+                    _skyNode->setAtmosphereVisible(atmos_visible);
+
+                    bool sun_visible = _skyNode->getSunVisible();
+                    ImGui::Checkbox("Sun", &sun_visible);
+                    _skyNode->setSunVisible(sun_visible);
+
+                    bool moon_visible = _skyNode->getMoonVisible();
+                    ImGui::Checkbox("Moon", &moon_visible);
+                    _skyNode->setMoonVisible(moon_visible);
+
+                    bool stars_visible = _skyNode->getStarsVisible();
+                    ImGui::Checkbox("Stars", &stars_visible);
+                    _skyNode->setStarsVisible(stars_visible);
+
+                    ImGui::Separator();
+
+                    CelestialBody sun = _skyNode->getEphemeris()->getSunPosition(dt);
+                    ImGui::Text("Sun: RA (%.2f) Decl (%.2f)", 
+                        sun.rightAscension.as(Units::DEGREES),
+                        sun.declination.as(Units::DEGREES));
+
+                    CelestialBody moon = _skyNode->getEphemeris()->getMoonPosition(dt);
+                    ImGui::Text("Moon: RA (%.2f) Decl (%.2f)",
+                        moon.rightAscension.as(Units::DEGREES),
+                        moon.declination.as(Units::DEGREES));
+                }
+                ImGui::End();
+            }
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_EPHEMERIS_GUI

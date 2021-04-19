@@ -29,6 +29,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         SET(TARGET_DEFAULT_LABEL_PREFIX "Tool")
         SET(TARGET_DEFAULT_APPLICATION_FOLDER "Tools")
         ADD_SUBDIRECTORY(osgearth_viewer)
+        ADD_SUBDIRECTORY(osgearth_imgui)
         ADD_SUBDIRECTORY(osgearth_toc)
         ADD_SUBDIRECTORY(osgearth_tfs)
         ADD_SUBDIRECTORY(osgearth_boundarygen)
@@ -86,7 +87,8 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         ADD_SUBDIRECTORY(osgearth_decal)
         ADD_SUBDIRECTORY(osgearth_heatmap)
         ADD_SUBDIRECTORY(osgearth_createtile)
-    
+        ADD_SUBDIRECTORY(osgearth_collecttriangles)
+
         IF(SILVERLINING_FOUND)
             ADD_SUBDIRECTORY(osgearth_silverlining)
         ENDIF(SILVERLINING_FOUND)
@@ -97,13 +99,11 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
 
         IF (OSGEARTH_ENABLE_GEOCODER)
             ADD_SUBDIRECTORY(osgearth_geocode)
-            ADD_SUBDIRECTORY(osgearth_imgui)
-            ADD_SUBDIRECTORY(osgearth_collecttriangles)
         ENDIF()
 
         IF (Protobuf_FOUND AND SQLITE3_FOUND)
             ADD_SUBDIRECTORY(osgearth_mvtindex)
-        ENDIF()
+        ENDIF()        
 
     ENDIF(OSGEARTH_BUILD_EXAMPLES)
     

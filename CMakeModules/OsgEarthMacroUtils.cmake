@@ -418,6 +418,40 @@ MACRO(SETUP_APPLICATION APPLICATION_NAME)
 
 ENDMACRO(SETUP_APPLICATION)
 
+
+# Configure an application for use with IMGUI.
+# Taked optional second arg: APPLICATION_FOLDER
+# Takes optional third arg:  (is_commandline_app?) in ARGV2
+MACRO(SETUP_IMGUI_APPLICATION APPLICATION_NAME)
+    if(GLEW_FOUND)
+        include_directories(
+            ${GLEW_INCLUDE_DIR}
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples
+        )
+            
+        set(TARGET_LIBRARIES_VARS 
+            ${TARGET_LIBRARIES_VARS} 
+            GLEW_LIBRARIES
+        )
+            
+        set(TARGET_SRC
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui.cpp
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_demo.cpp
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_draw.cpp
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_widgets.cpp
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples/imgui_impl_opengl3.cpp
+            ${OSGEARTH_SOURCE_DIR}/src/osgEarth/ImGui/OsgImGuiHandler.cpp
+            ${TARGET_SRC}
+        )
+            
+        SETUP_APPLICATION(${APPLICATION_NAME})
+    else()
+        message(STATUS "ImGui application ${APPLICATION_NAME} skipped because GLEW was not found")
+    endif()
+ENDMACRO(SETUP_IMGUI_APPLICATION)
+
+
 MACRO(SETUP_COMMANDLINE_APPLICATION APPLICATION_NAME)
 
     SETUP_APPLICATION(${APPLICATION_NAME} 1)

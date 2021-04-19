@@ -34,12 +34,37 @@ namespace osgEarth
         {
         private:
             osg::observer_ptr<SkyNode> _skyNode;
-            CelestialBody _sun, _moon;
-            DateTime _dateTime;
+            float _hour;
+            int _day, _month, _year;
+            float _exposure;
+            float _ambient;
 
         public:
-            EphemerisGUI() : BaseGUI("Sky & Lighting")
+            EphemerisGUI() : BaseGUI("Sky & Lighting"),
+                _ambient(0.33f),
+                _exposure(3.3f)
             {
+                DateTime now;
+                _hour = now.hours(), _day = now.day(), _month = now.month(), _year = now.year();
+            }
+
+            void load(const Config& conf) override
+            {
+                conf.get("Hour", _hour);
+                conf.get("Day", _day);
+                conf.get("Month", _month);
+                conf.get("Year", _year);
+                conf.get("Exposure", _exposure);
+                conf.get("Ambient", _ambient);
+            }
+            void save(Config& conf) override
+            {
+                conf.set("Hour", _hour);
+                conf.set("Day", _day);
+                conf.set("Month", _month);
+                conf.set("Year", _year);
+                conf.set("Exposure", _exposure);
+                conf.set("Ambient", _ambient);
             }
 
             void draw(osg::RenderInfo& ri) override
@@ -55,28 +80,27 @@ namespace osgEarth
                     ImGui::Checkbox("Lighting", &lighting);
                     _skyNode->setLighting(lighting);
 
-                    DateTime dt = _skyNode->getDateTime();
-                    int year = dt.year();
-                    int month = dt.month();
-                    int day = dt.day();
-                    float hour = dt.hours();
-
                     if (lighting)
                     {
                         ImGui::Separator();
 
                         ImGui::Text("Date & Time:");
-                        ImGui::SliderFloat("Hour", &hour, 0.0f, 24.0f);
-                        ImGui::SliderInt("Day", &day, 1, 31);
-                        ImGui::SliderInt("Month", &month, 1, 12);
-                        ImGui::SliderInt("Year", &year, 1970, 2061);
+                        if (ImGui::SliderFloat("Hour", &_hour, 0.0f, 24.0f)) dirtySettings();
+                        if (ImGui::SliderInt("Day", &_day, 1, 31)) dirtySettings();
+                        if (ImGui::SliderInt("Month", &_month, 1, 12)) dirtySettings();
+                        if (ImGui::SliderInt("Year", &_year, 1970, 2061)) dirtySettings();
 
-                        dt = DateTime(year, month, day, hour);
-                        _skyNode->setDateTime(dt);
+                        _skyNode->setDateTime(DateTime(_year, _month, _day, _hour));
 
-                        float ambient = _skyNode->getSunLight()->getAmbient().r();
-                        ImGui::SliderFloat("Ambient Level", &ambient, 0.0f, 1.0f);
-                        _skyNode->getSunLight()->setAmbient(osg::Vec4(ambient, ambient, ambient, 1.0f));
+                        if (ImGui::SliderFloat("Exposure", &_exposure, 1.0f, 8.0f)) {
+                            _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_sky_exposure", osg::Uniform::FLOAT)->set(_exposure);
+                            dirtySettings();
+                        }
+
+                        if (ImGui::SliderFloat("Ambient", &_ambient, 0.0f, 1.0f)) {
+                            _skyNode->getSunLight()->setAmbient(osg::Vec4(_ambient, _ambient, _ambient, 1.0f));
+                            dirtySettings();
+                        }
                     }
 
                     ImGui::Separator();
@@ -89,15 +113,19 @@ namespace osgEarth
                     ImGui::Checkbox("Sun", &sun_visible);
                     _skyNode->setSunVisible(sun_visible);
 
+                    ImGui::SameLine();
                     bool moon_visible = _skyNode->getMoonVisible();
                     ImGui::Checkbox("Moon", &moon_visible);
                     _skyNode->setMoonVisible(moon_visible);
 
+                    ImGui::SameLine();
                     bool stars_visible = _skyNode->getStarsVisible();
                     ImGui::Checkbox("Stars", &stars_visible);
                     _skyNode->setStarsVisible(stars_visible);
 
                     ImGui::Separator();
+
+                    DateTime dt = _skyNode->getDateTime();
 
                     CelestialBody sun = _skyNode->getEphemeris()->getSunPosition(dt);
                     ImGui::Text("Sun: RA (%.2f) Decl (%.2f)", 

@@ -235,7 +235,7 @@ namespace ImGuiUtil
         {
             //double h = 100.0;
             //double w = ar * h;
-            ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, 1), ImVec2(1, 0), ImVec4(1, 1, 1, 1), ImVec4(1, 1, 0, 1));
         }
     }
 }

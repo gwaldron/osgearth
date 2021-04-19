@@ -1,20 +1,4 @@
-if(GLEW_FOUND)
-    INCLUDE_DIRECTORIES(
-        ${GLEW_INCLUDE_DIR}
-        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui
-        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples
-    )
-    SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY GLEW_LIBRARIES)
+set(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LIBRARY)
+set(TARGET_SRC osgearth_pick.cpp)
 
-    SET(TARGET_SRC
-        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui.cpp
-        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_demo.cpp
-        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_draw.cpp
-        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_widgets.cpp
-        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples/imgui_impl_opengl3.cpp
-        ${OSGEARTH_SOURCE_DIR}/src/osgEarth/ImGui/OsgImGuiHandler.cpp
-        osgearth_pick.cpp )
-
-    #### end var setup  ###
-    SETUP_APPLICATION(osgearth_pick)
-endif()
+SETUP_IMGUI_APPLICATION(osgearth_pick)

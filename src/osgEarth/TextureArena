@@ -48,7 +48,7 @@ namespace osgEarth
         };
 
     public:
-        Texture() { }
+        Texture() : _compress(true) { }
         GCState& get(const osg::State&) const;
         void makeResident(const osg::State&, bool toggle) const;
         bool isCompiled(const osg::State&) const;
@@ -58,6 +58,7 @@ namespace osgEarth
 
         optional<URI> _uri;
         osg::ref_ptr<osg::Image> _image;
+        bool _compress;
         mutable osg::buffered_object<GCState> _gc;
     };
 

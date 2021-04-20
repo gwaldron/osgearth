@@ -64,14 +64,22 @@ Texture::compileGLObjects(osg::State& state) const
     Texture::GCState& gc = get(state);
 
     // If you change this you must change the typecast in the fragment shader too
-    GLenum target = GL_TEXTURE_2D_ARRAY;
-    //GLenum target = GL_TEXTURE_2D;
+    //GLenum target = GL_TEXTURE_2D_ARRAY;
+    GLenum target = GL_TEXTURE_2D;
 
     gc._gltexture = new GLTexture(target, state, _uri->base());
 
-    unsigned numMipLevels = _image->getNumMipmapLevels();
+    // mipmaps already created and in the image:
+    unsigned numMipLevelsInMemory = _image->getNumMipmapLevels();
 
-    bool useGPUmipmaps = (numMipLevels <= 1);
+    // how much space we need to allocate on the GPU:
+    unsigned numMipLevelsToAllocate = numMipLevelsInMemory;
+
+    if (numMipLevelsInMemory <= 1)
+    {
+        numMipLevelsToAllocate = osg::Image::computeNumberOfMipmapLevels(
+            _image->s(), _image->t(), _image->t());
+    }
     
     GLenum pixelFormat = _image->getPixelFormat();
 
@@ -79,9 +87,16 @@ Texture::compileGLObjects(osg::State& state) const
     GLenum internalFormat =
         _image->isCompressed() ? _image->getInternalTextureFormat() :
         pixelFormat == GL_RG ? GL_RG8 :
-        pixelFormat == GL_RGB ? GL_COMPRESSED_RGB_S3TC_DXT1_EXT :
-        pixelFormat == GL_RGBA ? GL_COMPRESSED_RGBA_S3TC_DXT5_EXT :
+        pixelFormat == GL_RGB ? GL_RGB8 :
         GL_RGBA8;
+
+    if (_compress)
+    {
+        if (pixelFormat == GL_RGB)
+            internalFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+        else if (pixelFormat == GL_RGBA)
+            GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+    }
 
     // Blit our image to the GPU
     gc._gltexture->bind();
@@ -91,7 +106,7 @@ Texture::compileGLObjects(osg::State& state) const
         GLFunctions::get(state).
             glTexStorage3D(
                 target,
-                numMipLevels,
+                numMipLevelsToAllocate,
                 internalFormat,
                 _image->s(),
                 _image->t(),
@@ -101,7 +116,7 @@ Texture::compileGLObjects(osg::State& state) const
     {
         ext->glTexStorage2D(
             target,
-            numMipLevels,
+            numMipLevelsToAllocate,
             internalFormat,
             _image->s(),
             _image->t() );
@@ -124,8 +139,9 @@ Texture::compileGLObjects(osg::State& state) const
 
     bool compressed = _image->isCompressed();
 
-    // Iterate over mipmap levels in this layer:
-    for (unsigned mipLevel = 0; mipLevel < numMipLevels; ++mipLevel)
+    // Iterate over the in-memory mipmap levels in this layer
+    // and download each one
+    for (unsigned mipLevel = 0; mipLevel < numMipLevelsInMemory; ++mipLevel)
     {
         // Note: getImageSizeInBytes() will return the actual data size 
         // even if the data is compressed.
@@ -202,7 +218,7 @@ Texture::compileGLObjects(osg::State& state) const
         }
     }
 
-    if (useGPUmipmaps)
+    if (numMipLevelsInMemory < numMipLevelsToAllocate)
     {
         ext->glGenerateMipmap(target);
     }
@@ -283,6 +299,8 @@ TextureArena::add(Texture* tex)
 
     if (tex->_image.valid())
     {
+        tex->_image->setWriteHint(osg::Image::STORE_INLINE);
+
         if (!tex->_image->isCompressed())
         {
             if (tex->_image->getPixelFormat() == tex->_image->getInternalTextureFormat())
@@ -298,7 +316,10 @@ TextureArena::add(Texture* tex)
                 tex->_image->setInternalTextureFormat(internalFormat);
             }
 
-            ImageUtils::compressImageInPlace(tex->_image.get());
+            if (tex->_compress)
+            {
+                ImageUtils::compressImageInPlace(tex->_image.get());
+            }
         }
 
         // add to all GCs.

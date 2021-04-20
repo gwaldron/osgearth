@@ -66,38 +66,40 @@ namespace
     {
         osg::ref_ptr<TextureArena> arena = new TextureArena();
 
-        for (auto& tex : cat.getTextures())
+        for (int i = 0; i < 2; ++i)
         {
-            auto t0 = std::chrono::steady_clock::now();
+            auto texList =
+                i == 0 ? cat.getLifeMapTextures() :
+                         cat.getSpecialTextures();
 
-            //Texture* encoded = new Texture();
-            //encoded->_uri = URI(tex.uri()->full() + ".oe_splat_texture");
-            //arena->add(encoded);
+            for (auto& tex : texList)
+            {
+                auto t0 = std::chrono::steady_clock::now();
 
-            Texture* rgbh = new Texture();
-            rgbh->_uri = URI(tex.uri()->full() + ".oe_splat_rgbh");
-            arena->add(rgbh);
+                Texture* rgbh = new Texture();
+                rgbh->_uri = URI(tex.uri()->full() + ".oe_splat_rgbh");
+                arena->add(rgbh);
 
-            Texture* nnra = new Texture();
-            nnra->_uri = URI(tex.uri()->full() + ".oe_splat_nnra");
-            arena->add(nnra);
+                // protect the NNRA from compression, b/c it confuses the normal maps
+                Texture* nnra = new Texture();
+                nnra->_uri = URI(tex.uri()->full() + ".oe_splat_nnra");
+                nnra->_compress = false;
+                arena->add(nnra);
 
-            auto t1 = std::chrono::steady_clock::now();
+                auto t1 = std::chrono::steady_clock::now();
 
-            OE_INFO << tex.uri()->base()
-                << ", t=" << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << "ms"
-                << std::endl;
+                OE_INFO << tex.uri()->base()
+                    << ", t=" << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << "ms"
+                    << std::endl;
 
-            if (progress && progress->isCanceled())
-                return nullptr;
+                if (progress && progress->isCanceled())
+                    return nullptr;
+            }
         }
 
         return arena;
     }
 }
-
-//REGISTER_OSGPLUGIN(oe_splat_rgbh, RGBHPseudoLoader);
-//REGISTER_OSGPLUGIN(oe_splat_nnra, NNRAPseudoLoader);
 
 //........................................................................
 
@@ -185,13 +187,6 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
     {
         // without a biome layer we have no textures to splat with
         setStatus(Status::ResourceUnavailable, "No Biome data to splat");
-        return;
-    }
-
-    engine->getResources()->reserveTextureImageUnitForLayer(_lifemap_res, this);
-    if (_lifemap_res.valid() == false)
-    {
-        setStatus(Status::ResourceUnavailable, "Could not reserve a texture image unit");
         return;
     }
 }

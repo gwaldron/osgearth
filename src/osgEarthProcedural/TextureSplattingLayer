@@ -74,7 +74,6 @@ namespace osgEarth { namespace Procedural
 
         Future<osg::ref_ptr<TextureArena>> _materials;
         osg::ref_ptr<TextureArena> _arena;
-        TextureImageUnitReservation _lifemap_res;
 
         void buildStateSets();
     };

@@ -66,6 +66,7 @@ layout(binding = 5, std430) buffer TextureLUT {
 #define RUGGED 0
 #define DENSE 1
 #define LUSH 2
+#define SPECIFIC 3
 
 vec3 vp_Normal;
 vec3 oe_UpVectorView;
@@ -187,7 +188,7 @@ void resolveColumn(out Pixel pixel, int level, int x, float yvar)
     pixel.rgbh = mix(rgbh[0], rgbh[1], m);
     pixel.normal = mix(normal[0], normal[1], m);
     pixel.roughness = mix(material[0][2], material[1][2], m);
-    pixel.ao = mix(material[0][2], material[1][2], m);
+    pixel.ao = mix(material[0][3], material[1][3], m);
 }
 
 void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
@@ -243,7 +244,9 @@ vec2 decel(in vec2 v, in float p)
 
 void oe_splat_Frag(inout vec4 quad)
 {
-    quad = texture(OE_LIFEMAP_TEX, (OE_LIFEMAP_MAT * oe_layer_tilec).st);
+    vec2 uv = (OE_LIFEMAP_MAT * oe_layer_tilec).st;
+
+    quad = texture(OE_LIFEMAP_TEX, uv);
 
     dense = quad[DENSE];
     dense = amplify(dense, dense_power);
@@ -255,9 +258,25 @@ void oe_splat_Frag(inout vec4 quad)
     rugged = amplify(rugged, rugged_power);
 
     Pixel pixel;
-    for (int i = 0; i < NUM_LEVELS; ++i)
+
+    ivec2 xy = ivec2(uv * 255.0);
+    vec4 iquad = texelFetch(OE_LIFEMAP_TEX, xy, 0);
+    int specific = int(iquad[SPECIFIC] * 255.0);
+    if (specific > 0)
     {
-        resolveLevel(pixel, i, rugged, lush);
+        int index = (TEX_DIM * TEX_DIM + specific - 1) * 2;
+        pixel.rgbh = get_rgbh(index, 0);
+        vec4 material = get_material(index, 0);
+        pixel.normal = unpackNormal(material);
+        pixel.roughness = material[2];
+        pixel.ao = material[3];
+    }
+    else
+    {
+        for (int i = 0; i < NUM_LEVELS; ++i)
+        {
+            resolveLevel(pixel, i, rugged, lush);
+        }
     }
 
     // establish the local tangent plane:
@@ -273,7 +292,7 @@ void oe_splat_Frag(inout vec4 quad)
     oe_roughness = pixel.roughness;
 
     // AO effect is very subtle. Consider dumping it.
-    oe_ao = pixel.ao * ao_power;
+    oe_ao = pow(pixel.ao, ao_power);
 
     vec3 color;
 

@@ -99,7 +99,7 @@ namespace
     constexpr unsigned RUGGED = 0;
     constexpr unsigned DENSE = 1;
     constexpr unsigned LUSH = 2;
-    constexpr unsigned SPECIAL = 3;
+    constexpr unsigned SPECIFIC = 3;
 
     // noise channels
     constexpr unsigned SMOOTH = 0;
@@ -389,58 +389,27 @@ LifeMapLayer::getUseTerrain() const
 
 namespace
 {
-    inline float step(float edge, float x)
-    {
-        return x < edge ? 0.0f : 1.0f;
-    }
-
-    osg::Vec4f mix4(osg::Vec4f& a, osg::Vec4f& b, float m)
-    {
-        return osg::Vec4f(
-            mix(a[0], b[0], m),
-            mix(a[1], b[1], m),
-            mix(a[2], b[2], m),
-            mix(a[3], b[3], m));
-    }
-
-    void rgb2hsl(osg::Vec4f& c, osg::Vec4f& out)
-    {
-        osg::Vec4f K(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
-        osg::Vec4f A(c.b(), c.g(), K.w(), K.z());
-        osg::Vec4f B(c.g(), c.b(), K.x(), K.y());
-        osg::Vec4f p = mix(A, B, step(c.b(), c.g()));
-        A.set(p.x(), p.y(), p.w(), c.r());
-        B.set(c.r(), p.y(), p.z(), p.x());
-        osg::Vec4f q = mix(A, B, step(p.x(), c.r()));
-        float d = q.x() - std::min(q.w(), q.y());
-        const float e = 1.0e-10;
-        out.set(
-            fabs(q.z() + (q.w() - q.y()) / (6.0f*d + e)),
-            d / (q.x() + e),
-            q.x(),
-            c.a());
-    }
-
     struct Value
     {
-        Value() : weight(0.0f) { }
+        Value() : value(0.0f), weight(0.0f) { }
         float value;
         float weight;
     };
 
     struct Sample
     {
-        Sample() : dense(), lush(), rugged(), weight(0.0f) { }
+        Sample() : dense(), lush(), rugged(), specific(0), weight(0.0f) { }
         Value dense;
         Value lush;
         Value rugged;
+        int specific;
         float weight;
     };
 
-#define TERRAIN 0
-#define LANDUSE 1
-#define LANDCOVER 2
-#define COLOR 3
+    #define TERRAIN 0
+    #define LANDUSE 1
+    #define LANDCOVER 2
+    #define COLOR 3
 }
 
 GeoImage
@@ -494,6 +463,7 @@ LifeMapLayer::createImageImplementation(
     osg::Vec4 landcover_pixel;
     osg::Matrixf landcover_matrix;
     const LifeMapValueTable* landcover_table;
+    std::unordered_map<std::string, int> specialTextureIndexLUT;
     if (getBiomeLayer())
     {
         landcover_table = getBiomeLayer()->getBiomeCatalog()->getLandCoverTable();
@@ -513,6 +483,12 @@ LifeMapLayer::createImageImplementation(
                     readLandCover.setSampleAsTexture(true);
                     extent.createScaleBias(landcover_key.getExtent(), landcover_matrix);
                 }
+            }
+
+            int index = 1; // start at one b/c zero means no special asset
+            for (auto& tex : getBiomeLayer()->getBiomeCatalog()->getAssets().getSpecialTextures())
+            {
+                specialTextureIndexLUT[tex.name().get()] = index++;
             }
         }
     }
@@ -586,7 +562,6 @@ LifeMapLayer::createImageImplementation(
     float slope;
     const osg::Vec3 up(0,0,1);
     
-    Sample sample[4];
     std::string lu_id;
     osg::Vec4f hsl;
 
@@ -601,6 +576,8 @@ LifeMapLayer::createImageImplementation(
 
     GeoImageIterator  i(image.get(), extent);
     i.forEachPixelOnCenter([&]() {
+
+        Sample sample[4];
 
         // Generate noise:
         for (int n = 0; n < 4; ++n)
@@ -688,9 +665,17 @@ LifeMapLayer::createImageImplementation(
                 const LifeMapValue* value = landcover_table->getValue(lcc->getName());
                 if (value)
                 {
+                    bool has_special = value->special().isSet();
+
+                    if (has_special)
+                    {
+                        sample[LANDCOVER].specific =
+                            specialTextureIndexLUT[value->special().get()];
+                    }
+
                     if (value->dense().isSet())
                     {
-                        float dn = (dense_noise*2.0f - 1.0f)*noise[3][RANDOM];
+                        float dn = has_special ? 0.0f : (dense_noise*2.0f - 1.0f)*noise[3][RANDOM];
                         //sample[LANDCOVER].dense.value = value->dense().get() + 0.2*(dense_noise*2.0 - 1.0);
                         sample[LANDCOVER].dense.value = value->dense().get() + dn;
                         sample[LANDCOVER].dense.weight = 1.0f;
@@ -698,7 +683,7 @@ LifeMapLayer::createImageImplementation(
 
                     if (value->lush().isSet())
                     {
-                        float dn = (lush_noise*2.0f - 1.0f)*noise[3][RANDOM];
+                        float dn = has_special ? 0.0f : (lush_noise*2.0f - 1.0f)*noise[3][RANDOM];
                         //sample[LANDCOVER].lush.value = value->lush().get() + 0.2*(lush_noise*2.0 - 1.0);
                         sample[LANDCOVER].lush.value = value->lush().get() + dn;
                         sample[LANDCOVER].lush.weight = 1.0f;
@@ -706,7 +691,7 @@ LifeMapLayer::createImageImplementation(
 
                     if (value->rugged().isSet())
                     {
-                        float dn = (rugged_noise*2.0f - 1.0f)*noise[3][SMOOTH];
+                        float dn = has_special ? 0.0f : (rugged_noise*2.0f - 1.0f)*noise[3][SMOOTH];
                         //sample[LANDCOVER].rugged.value = value->rugged().get() + 0.2*(rugged_noise*2.0 - 1.0);
                         sample[LANDCOVER].rugged.value = value->rugged().get() + dn;
                         sample[LANDCOVER].rugged.weight = 1.0f;
@@ -799,12 +784,13 @@ LifeMapLayer::createImageImplementation(
         }
 
         // CALCULATE WEIGHTED AVERAGES:
-        pixel.set(0.0f, 0.0f, 0.0f, 1.0f);
+        pixel.set(0.0f, 0.0f, 0.0f, 0.0f);
 
         float
             dense_total = 0.0f,
             lush_total = 0.0f,
             rugged_total = 0.0f;
+
         float
             dense_factor = 0.0f,
             lush_factor = 0.0f,
@@ -823,6 +809,9 @@ LifeMapLayer::createImageImplementation(
             rugged_factor = sample[i].rugged.weight*sample[i].weight;
             pixel[RUGGED] += sample[i].rugged.value*rugged_factor;
             rugged_total += rugged_factor;
+
+            if (sample[i].specific > 0)
+                pixel[SPECIFIC] = (float)sample[i].specific / 255.0f;
         }
 
         for (int i = 0; i < 4; ++i)

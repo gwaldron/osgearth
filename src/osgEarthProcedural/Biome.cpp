@@ -59,8 +59,10 @@ ModelAsset::getConfig() const
 
 //...................................................................
 
-GroundTextureAsset::GroundTextureAsset(const Config& conf)
+LifeMapTextureAsset::LifeMapTextureAsset(const Config& conf)
 {
+    code().setDefault(0);
+
     conf.get("name", name());
     conf.get("url", uri());
     conf.get("width", width());
@@ -68,7 +70,7 @@ GroundTextureAsset::GroundTextureAsset(const Config& conf)
 }
 
 Config
-GroundTextureAsset::getConfig() const
+LifeMapTextureAsset::getConfig() const
 {
     Config conf("texture");
     conf.set("name", name());
@@ -82,16 +84,21 @@ GroundTextureAsset::getConfig() const
 
 AssetCatalog::AssetCatalog(const Config& conf)
 {
-    ConfigSet texturesConf = conf.child("groundtextures").children("texture");
-    for (const auto& textureConf : texturesConf)
+    ConfigSet texturesConf = conf.child("lifemaptextures").children("texture");
+    for (const auto& c : texturesConf)
     {
-        _textures.emplace_back(textureConf);
+        _textures.emplace_back(c);
+    }
+    ConfigSet specialConf = conf.child("specialtextures").children("texture");
+    for (const auto& c : specialConf)
+    {
+        _specialTextures.emplace_back(c);
     }
 
     ConfigSet modelsConf = conf.child("models").children("model");
-    for (const auto& modelConf : modelsConf)
+    for (const auto& c : modelsConf)
     {
-        ModelAsset asset(modelConf);
+        ModelAsset asset(c);
         _models[asset.name().get()] = asset;
     }
 }
@@ -101,11 +108,17 @@ AssetCatalog::getConfig() const
 {
     Config conf("AssetCatalog");
 
-    Config textures("GroundTextures");
+    Config textures("LifeMapTextures");
     for (auto& texture : _textures)
         textures.add(texture.getConfig());
     if (!textures.empty())
         conf.add(textures);
+
+    Config specifictextures("SpecificTextures");
+    for (auto& texture : _specialTextures)
+        specifictextures.add(texture.getConfig());
+    if (!specifictextures.empty())
+        conf.add(specifictextures);
 
     Config models("Models");
     for (auto& model : _models)
@@ -116,10 +129,16 @@ AssetCatalog::getConfig() const
     return conf;
 }
 
-const std::vector<GroundTextureAsset>&
-AssetCatalog::getTextures() const
+const std::vector<LifeMapTextureAsset>&
+AssetCatalog::getLifeMapTextures() const
 {
     return _textures;
+}
+
+const std::vector<LifeMapTextureAsset>&
+AssetCatalog::getSpecialTextures() const
+{
+    return _specialTextures;
 }
 
 const ModelAsset*
@@ -181,6 +200,7 @@ LifeMapValue::LifeMapValue(const Config& conf)
     conf.get("dense", dense());
     conf.get("lush", lush());
     conf.get("rugged", rugged());
+    conf.get("special", special());
 }
 
 Config

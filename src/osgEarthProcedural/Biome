@@ -68,17 +68,18 @@ namespace osgEarth
         /**
          * Individual artwork asset reference within a biome
          */
-        class OSGEARTHPROCEDURAL_EXPORT GroundTextureAsset
+        class OSGEARTHPROCEDURAL_EXPORT LifeMapTextureAsset
         {
         public:
             OE_OPTION(std::string, name);
             OE_OPTION(URI, uri);
             OE_OPTION(float, width);
             OE_OPTION(float, height);
+            OE_OPTION(int, code);
 
         public:
-            GroundTextureAsset() { }
-            GroundTextureAsset(const Config& conf);
+            LifeMapTextureAsset() { }
+            LifeMapTextureAsset(const Config& conf);
             Config getConfig() const;
         };
 
@@ -96,8 +97,11 @@ namespace osgEarth
             //! @return ModelAsset or nullptr if no match
             const ModelAsset* getModel(const std::string& name) const;
 
-            //! Collection of ground textures
-            const std::vector<GroundTextureAsset>& getTextures() const;
+            //! Collection of ground textures in the lifemap matrix
+            const std::vector<LifeMapTextureAsset>& getLifeMapTextures() const;
+
+            //! Collection of special ground textures
+            const std::vector<LifeMapTextureAsset>& getSpecialTextures() const;
 
             //! Is the catalog empty?
             bool empty() const;
@@ -106,7 +110,8 @@ namespace osgEarth
             Config getConfig() const;
 
         protected:
-            std::vector<GroundTextureAsset> _textures;
+            std::vector<LifeMapTextureAsset> _textures;
+            std::vector<LifeMapTextureAsset> _specialTextures;
             std::unordered_map<std::string, ModelAsset> _models;
         };
 
@@ -168,6 +173,7 @@ namespace osgEarth
             OE_OPTION(float, dense);
             OE_OPTION(float, lush);
             OE_OPTION(float, rugged);
+            OE_OPTION(std::string, special);
         };
 
 

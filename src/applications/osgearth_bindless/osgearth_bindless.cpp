@@ -66,7 +66,7 @@ const char* fs = R"(
 
     void fs(inout vec4 color)
     {
-        vec4 texel = texture(sampler2DArray(tex_handle), tex_coord);
+        vec4 texel = texture(sampler2D(tex_handle), tex_coord.st);
         color = texel;
     }
 )";

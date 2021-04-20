@@ -201,15 +201,21 @@ NNRA_Loader::readImageFromSourceData(
     osg::ref_ptr<osg::Image> roughness = roughnessURI.getImage(options);
     osg::ref_ptr<osg::Image> ao = aoURI.getImage(options);
 
-    if (!normals.valid())
-        return ReadResult::FILE_NOT_FOUND;
+    int s = normals.valid() ? normals->s() :
+        roughness.valid() ? roughness->s() :
+        ao.valid() ? ao->s() :
+        1;
+    int t = normals.valid() ? normals->t() :
+        roughness.valid() ? roughness->t() :
+        ao.valid() ? ao->t() :
+        1;
 
     osg::ref_ptr<osg::Image> output = new osg::Image();
-    output->allocateImage(normals->s(), normals->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    output->allocateImage(s, t, 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
     ImageUtils::PixelReader readNormals(normals.get());
-    ImageUtils::PixelReader readAO(ao.get());
     ImageUtils::PixelReader readRoughness(roughness.get());
+    ImageUtils::PixelReader readAO(ao.get());
 
     ImageUtils::PixelWriter write(output.get());
 
@@ -261,7 +267,10 @@ NNRA_Loader::readImageFromSourceData(
             output = resized.release();
     }
 
-    ImageUtils::compressImageInPlace(output.get(), "cpu");
+    // Do NOT compress this image; it messes with the normal maps.
+    //ImageUtils::compressImageInPlace(output.get(), "cpu");
+
+    //ImageUtils::mipmapImageInPlace(output.get());
 
     return output;
 }
@@ -289,16 +298,17 @@ NNRA_Loader::writeImage(
     if (!rw)
         return WriteResult::ERROR_IN_WRITING_FILE;
 
-    if (image.isCompressed() == false)
-    {
-        osg::ref_ptr<osg::Image> c = osg::clone(&image, osg::CopyOp::DEEP_COPY_ALL);
-        OE_SOFT_ASSERT_AND_RETURN(c.valid(), __func__, WriteResult::ERROR_IN_WRITING_FILE);
+    // Do NOT compress, normal maps don't like it
+    //if (image.isCompressed() == false)
+    //{
+    //    osg::ref_ptr<osg::Image> c = osg::clone(&image, osg::CopyOp::DEEP_COPY_ALL);
+    //    OE_SOFT_ASSERT_AND_RETURN(c.valid(), __func__, WriteResult::ERROR_IN_WRITING_FILE);
 
-        ImageUtils::compressImageInPlace(c.get(), "cpu");
-        std::ofstream f(filename, std::ios::binary);
-        return rw->writeImage(*c.get(), f, options);
-    }
-    else
+    //    ImageUtils::compressImageInPlace(c.get(), "cpu");
+    //    std::ofstream f(filename, std::ios::binary);
+    //    return rw->writeImage(*c.get(), f, options);
+    //}
+    //else
     {
         std::ofstream f(filename, std::ios::binary);
         return rw->writeImage(image, f, options);

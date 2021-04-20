@@ -397,12 +397,12 @@ void oe_GroundCover_FS(inout vec4 color)
     {
         // modulate the texture.
         // "cast" the bindless handle to a sampler array and sample it
-        color *= texture(sampler2DArray(oe_gc_texHandle), oe_gc_texCoord);
+        color *= texture(sampler2D(oe_gc_texHandle), oe_gc_texCoord.st);
 
 #ifndef OE_IS_SHADOW_CAMERA
         if (oe_gc_nmlHandle > 0UL)
         {
-            vec4 n = texture(sampler2DArray(oe_gc_nmlHandle), oe_gc_texCoord);
+            vec4 n = texture(sampler2D(oe_gc_nmlHandle), oe_gc_texCoord.st);
             n.xyz = n.xyz*2.0-1.0;
             float curv = n.z;
             n.z = 1.0 - abs(n.x) - abs(n.y);

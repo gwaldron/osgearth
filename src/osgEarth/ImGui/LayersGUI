@@ -74,7 +74,6 @@ namespace osgEarth {
                 osgEarth::VisibleLayerVector layers;
                 map->getLayers(layers);
 
-
                 ImGui::Begin(name(), visible());
                 {
                     if (map->getName().empty() == false)
@@ -120,6 +119,8 @@ namespace osgEarth {
                             {
                                 if (!layer->getEnabled())
                                     layer->setEnabled(true);
+
+                                visibleLayer->setVisible(true);
 
                                 layer->open();
                             }

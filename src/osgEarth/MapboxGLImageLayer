@@ -101,6 +101,10 @@ namespace osgEarth
             const optional<float>& textSize() const;
             optional<float>& textSize();
 
+            const optional<std::string>& iconImage() const;
+            optional<std::string>& iconImage();
+
+
         private:
 
             //Background
@@ -127,6 +131,9 @@ namespace osgEarth
             optional<std::string> _textColor;
             optional<std::string> _textHaloColor;
             optional<float> _textSize;
+
+            // Icon
+            optional<std::string> _iconImage;
 
             optional<std::string> _visibility;
 

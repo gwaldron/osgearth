@@ -29,6 +29,7 @@
 #include <osgEarth/LandCover>
 #include <osgEarth/Metrics>
 #include <osgEarth/SDF>
+#include <osgEarth/JsonUtils>
 
 #ifdef OSGEARTH_HAVE_BLEND2D
 #include <blend2d.h>
@@ -300,14 +301,69 @@ namespace osgEarth { namespace FeatureImageLayerImpl
     }
 
 
-    void rasterizeText(
+    // Simpler than StringExpression for doiing template replacement.
+    std::string templateReplace(const Feature* feature, const std::string& expression)
+    {
+        std::string result = expression;
+        for (auto& attr: feature->getAttrs())
+        {
+            std::string replaceText = Stringify() << "{" << attr.first << "}";
+            osgEarth::replaceIn(result, replaceText, attr.second.getString());
+        }
+        return result;
+    }
+
+    struct GlyphCoords
+    {
+        GlyphCoords()
+        {
+        }
+
+        GlyphCoords(unsigned int x, unsigned int y, unsigned int width, unsigned int height) :
+            x(x),
+            y(y),
+            width(width),
+            height(height)
+        {
+        }
+        unsigned int x;
+        unsigned int y;
+        unsigned int width;
+        unsigned int height;
+    };
+
+    typedef std::map<std::string, GlyphCoords> Glyphs;
+
+    Glyphs loadGlyphs(const std::string& path)
+    {
+        Glyphs glyphs;
+        URI uri(path);
+        auto data = uri.getString();
+        Json::Reader reader;
+        Json::Value root(Json::objectValue);
+        if (reader.parse(data, root, false))
+        {
+            for (Json::Value::iterator i = root.begin(); i != root.end(); ++i)
+            {
+                unsigned int x = (*i).get("x", 0).asUInt();
+                unsigned int y = (*i).get("y", 0).asUInt();
+                unsigned int width = (*i).get("width", 0).asUInt();
+                unsigned int height = (*i).get("height", 0).asUInt();
+                glyphs.emplace(i.key().asString(), std::move(GlyphCoords(x, y, width, height)));
+            }
+        }
+        return std::move(glyphs);
+    }
+
+
+    void rasterizeSymbols(
         const Feature* feature,
-        const TextSymbol* symbol,
+        const TextSymbol* textSymbol,
+        const IconSymbol* iconSymbol,
         RenderFrame& frame,
         BLContext& ctx)
     {
         OE_HARD_ASSERT(feature != nullptr, __func__);
-        OE_HARD_ASSERT(symbol != nullptr, __func__);
 
         OE_PROFILING_ZONE;
 
@@ -315,40 +371,85 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 
         Session* session = nullptr;
 
-        NumericExpression fontSizeExpression = symbol->size().get();
-        float fontSize = feature->eval(fontSizeExpression, session);
-        font.createFromFace(getOrCreateFontFace(), fontSize);
-        StringExpression expression = symbol->content().get();
-        std::string text = feature->eval(expression, session);
-
-        feature->getGeometry()->forEachPart([&](const Geometry* part)
+        if (iconSymbol && iconSymbol->url().isSet())
         {
-            // Only label points for now
-            if (part->getType() == osgEarth::Geometry::TYPE_POINT ||
-                part->getType() == osgEarth::Geometry::TYPE_POINTSET)
-            for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+            Glyphs glyphs = loadGlyphs("d:/dev/osgearth/data/osm-liberty.json");
+
+            StringExpression expression = iconSymbol->url().get();
+            //std::string iconName = feature->eval(expression, session);
+            std::string iconName = templateReplace(feature, expression.expr());
+
+            if (glyphs.find(iconName) != glyphs.end())
             {
-                const osg::Vec3d& p0 = *p;
-                double x = frame.xf*(p0.x() - frame.xmin);
-                double y = frame.yf*(p0.y() - frame.ymin);
-                y = ctx.targetHeight() - y;
+                const GlyphCoords& coords = glyphs[iconName];
+                BLRectI iconRect(coords.x, coords.y, coords.width, coords.height);
 
-                if (symbol->halo().isSet())
-                {
-                    osgEarth::Color haloColor = osgEarth::Color::White;
-                    ctx.setStrokeStyle(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
-                    ctx.setStrokeWidth(1);
-                    ctx.strokeUtf8Text(BLPoint(x, y), font, text.c_str());
-                }
+                BLImage texture;
+                BLResult err = texture.readFromFile("d:/dev/osgearth/data/osm-liberty.png");
+                // Create a pattern.
+                ctx.setCompOp(BL_COMP_OP_SRC_OVER);
 
-                if (symbol->fill().isSet())
+                feature->getGeometry()->forEachPart([&](const Geometry* part)
                 {
-                    osgEarth::Color fillColor = symbol->fill()->color();
-                    ctx.setFillStyle(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
-                    ctx.fillUtf8Text(BLPoint(x, y), font, text.c_str());
-                }
+                    // Only label points for now
+                    if (true ||
+                        part->getType() == osgEarth::Geometry::TYPE_POINT ||
+                        part->getType() == osgEarth::Geometry::TYPE_POINTSET)
+                        for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                        {
+                            const osg::Vec3d& p0 = *p;
+                            double x = frame.xf*(p0.x() - frame.xmin);
+                            double y = frame.yf*(p0.y() - frame.ymin);
+                            y = ctx.targetHeight() - y;
+
+                            ctx.translate(x, y);
+                            //ctx.blitImage(BLPoint(-texture.width() / 2.0, -texture.height() / 2.0), texture);
+                            ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), texture, iconRect);
+                            ctx.resetMatrix();
+                        }
+                });
             }
-        });
+        }
+
+        if (textSymbol)
+        {
+            NumericExpression fontSizeExpression = textSymbol->size().get();
+            float fontSize = feature->eval(fontSizeExpression, session);
+            font.createFromFace(getOrCreateFontFace(), fontSize);
+            StringExpression expression = textSymbol->content().get();
+            std::string text = feature->eval(expression, session);
+
+            feature->getGeometry()->forEachPart([&](const Geometry* part)
+            {
+                // Only label points for now
+                if (part->getType() == osgEarth::Geometry::TYPE_POINT ||
+                    part->getType() == osgEarth::Geometry::TYPE_POINTSET)
+                    for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                    {
+                        const osg::Vec3d& p0 = *p;
+                        double x = frame.xf*(p0.x() - frame.xmin);
+                        double y = frame.yf*(p0.y() - frame.ymin);
+                        y = ctx.targetHeight() - y;
+
+                        if (textSymbol->halo().isSet())
+                        {
+                            osgEarth::Color haloColor = osgEarth::Color::White;
+                            ctx.setStrokeStyle(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
+                            ctx.setStrokeWidth(1);
+                            ctx.strokeUtf8Text(BLPoint(x, y), font, text.c_str());
+                        }
+
+                        if (textSymbol->fill().isSet())
+                        {
+                            osgEarth::Color fillColor = textSymbol->fill()->color();
+                            ctx.setFillStyle(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
+                            ctx.fillUtf8Text(BLPoint(x, y), font, text.c_str());
+                        }
+                    }
+            });
+        }
+
+
     }
 
 #endif
@@ -739,6 +840,7 @@ FeatureImageLayer::renderFeaturesForStyle(
     const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
     const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
     const TextSymbol* masterText = style.getSymbol<TextSymbol>();
+    const IconSymbol* masterIcon = style.getSymbol<IconSymbol>();
 
     // Converts coordinates to image space (s,t):
     RenderFrame frame;
@@ -827,17 +929,19 @@ FeatureImageLayer::renderFeaturesForStyle(
         }
     }
 
-    if (masterText)
+    if (masterText || masterIcon)
     {
         // Rasterize the lines:
         for (const auto& feature : features)
         {
             if (feature->getGeometry())
             {
-                rasterizeText(feature.get(), masterText, frame, ctx);
+                rasterizeSymbols(feature.get(), masterText, masterIcon, frame, ctx);
             }
         }
     }
+
+    ctx.end();
 
 #else
 

@@ -295,6 +295,16 @@ const optional<float>& MapBoxStyleSheet::Paint::lineWidth() const
 {
     return _lineWidth;
 }
+
+const optional<std::string>& MapBoxStyleSheet::Paint::iconImage() const
+{
+    return _iconImage;
+}
+
+optional<std::string>& MapBoxStyleSheet::Paint::iconImage()
+{
+    return _iconImage;
+}
 /*************************/
 
 
@@ -517,6 +527,7 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
                 // TODO:  This is a layout property, not a paint property
                 getIfSet(layout, "text-field", layer.paint().textField());
                 getIfSet(layout, "text-size", layer.paint().textSize());
+                getIfSet(layout, "icon-image", layer.paint().iconImage());
             }
 
             if (layerJson.isMember("filter"))
@@ -1080,6 +1091,12 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                         if (layer.paint().textSize().isSet())
                         {
                             style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().get());
+                        }
+
+                        if (layer.paint().iconImage().isSet())
+                        {
+                            std::cout << "Setting icon image to " << layer.paint().iconImage().get() << std::endl;
+                            style.getOrCreateSymbol<IconSymbol>()->url() = StringExpression(layer.paint().iconImage().get());
                         }
 
                         featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image.get(), nullptr);

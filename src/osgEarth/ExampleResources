@@ -66,15 +66,30 @@ namespace osgEarth { namespace Util
     {
     public:
         /**
+         * Loads a map file and processes all the built-in example command line 
+         * arguemnts and XML externals. Disables the Controls library.
+         */
+        osg::Group* loadWithoutControls(
+            osg::ArgumentParser&   args,
+            osgViewer::ViewerBase* viewer) const;
+
+        /**
          * Loads a map file and processes all the built-in example command line
          * arguemnts and XML externals.
          */
         osg::Group* load(
             osg::ArgumentParser&   args,
-            osgViewer::ViewerBase* viewer,
-            Container*             userContainer = 0L) const
+            osgViewer::ViewerBase* viewer) const
         {
-            return load(args, viewer, userContainer, 0L);
+            return load(args, viewer, nullptr, nullptr);
+        }
+
+        osg::Group* load(
+            osg::ArgumentParser&   args,
+            osgViewer::ViewerBase* viewer,
+            Container*             userContainer) const
+        {
+            return load(args, viewer, userContainer, nullptr);
         }
 
         osg::Group* load(
@@ -92,14 +107,8 @@ namespace osgEarth { namespace Util
             osg::ArgumentParser& args,
             osgViewer::View*     view,
             osg::Group*          parentGroup,
-            Container*           userContainer) const;
-
-        void parse(
-            MapNode*             mapNode,
-            osg::ArgumentParser& args,
-            osgViewer::View*     view,
-            osg::Group*          parentGroup,
-            LabelControl*        userLabel) const;
+            Container*           userContainer,
+            bool                 useControls) const;
 
         /**
          * Configures a view with a stock set of event handlers that are useful
@@ -250,6 +259,19 @@ namespace osgEarth { namespace Util
             }
 
             return count > 0u;
+        }
+
+        //! Accesses the router on the given view, creating one if necessary
+        static EventRouter* get(osgViewer::View* v) {
+            OE_HARD_ASSERT(v != nullptr, __func__);
+            for (auto& eh : v->getEventHandlers()) {
+                EventRouter* r = dynamic_cast<EventRouter*>(eh.get());
+                if (r)
+                    return r;
+            }
+            EventRouter* r = new EventRouter();
+            v->addEventHandler(r);
+            return r;
         }
 
         struct Push {

@@ -1,4 +1,5 @@
 <FeatureModel name="OSM Buildings" features="data:osm">
+    <feature_indexing enabled="true"/>
     <node_caching>true</node_caching>
     <max_range>15000</max_range>
     <attenuation_range>2000</attenuation_range>

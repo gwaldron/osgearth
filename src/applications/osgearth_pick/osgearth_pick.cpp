@@ -19,7 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
+#include <osgEarth/ImGui/ImGui>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ObjectIndex>
@@ -50,20 +50,24 @@ namespace ui = osgEarth::Util::Controls;
 //! Application-wide data.
 struct App
 {
-    App(osg::ArgumentParser& args) : viewer(args), mainView(NULL),
-       rttView(NULL), mapNode(NULL), picker(NULL), fidLabel(NULL),
-       nameLabel(NULL), highlightUniform(NULL)
+    App(osg::ArgumentParser& args) : 
+        viewer(args),
+        previewStateSet(nullptr),
+        previewTexture(nullptr),
+        mapNode(nullptr),
+        picker(nullptr),
+        highlightUniform(nullptr)
     { }
 
-    osgViewer::CompositeViewer viewer;
-    osgViewer::View* mainView;
-    osgViewer::View* rttView;
+    osgViewer::Viewer viewer;
+    osg::StateSet* previewStateSet;
+    osg::Texture2D* previewTexture;
     osgEarth::MapNode* mapNode;
     osgEarth::Util::RTTPicker* picker;
+    osg::Uniform* highlightUniform;
 
-    ui::LabelControl* fidLabel;
-    ui::LabelControl* nameLabel;
-    osg::Uniform*     highlightUniform;
+    osg::ref_ptr<Feature> _pickedFeature;
+    osg::ref_ptr<AnnotationNode> _pickedAnno;
 };
 
 
@@ -79,37 +83,16 @@ struct MyPickCallback : public RTTPicker::Callback
         FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
         Feature* feature = index ? index->getFeature( id ) : 0L;
 
-        if ( feature )
-        {
-            _app.fidLabel->setText( Stringify() << "Feature ID = " << feature->getFID() << " (oid = " << id << ")" );
-            _app.nameLabel->setText( Stringify() << "Name = " << feature->getString("name") );
-        }
-
-        else
-        {
-            // Check whether it's an annotation:
-            AnnotationNode* anno = Registry::objectIndex()->get<AnnotationNode>(id).get();
-            if ( anno )
-            {
-                _app.fidLabel->setText( Stringify() << "ObjectID = " << id );
-                _app.nameLabel->setName( Stringify() << "Name = " << anno->getName() );
-            }
-
-            // None of the above.. clear.
-            else
-            {
-                _app.fidLabel->setText( Stringify() << "unknown oid = " << id );
-                _app.nameLabel->setText( " " );
-            }
-        }
+        _app._pickedFeature = feature;
+        _app._pickedAnno = Registry::objectIndex()->get<AnnotationNode>(id).get();
 
         _app.highlightUniform->set( id );
     }
 
     void onMiss()
     {
-        _app.fidLabel->setText( "No pick." );
-        _app.nameLabel->setText( " " );
+        _app._pickedFeature = nullptr;
+        _app._pickedAnno = nullptr;
         _app.highlightUniform->set( 0u );
     }
 
@@ -117,6 +100,116 @@ struct MyPickCallback : public RTTPicker::Callback
     bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa)
     {
         return ea.getEventType() == ea.MOVE;
+    }
+};
+
+void startPicker(App& app)
+{
+    // Note! Must stop and restart threading when removing the picker
+    // because it changes the OSG View/Slave configuration.
+    app.viewer.stopThreading();
+
+    app.picker = new RTTPicker();
+    app.viewer.addEventHandler(app.picker);
+
+    // add the graph that will be picked.
+    app.picker->addChild(app.mapNode);
+
+    // install a callback that controls the picker and listens for hits.
+    app.picker->setDefaultCallback(new MyPickCallback(app));
+
+    app.viewer.startThreading();
+}
+
+void stopPicker(App& app)
+{
+    // Note! Must stop and restart threading when removing the picker
+    // because it changes the OSG View/Slave configuration.
+    app.viewer.stopThreading();
+    app.viewer.removeEventHandler(app.picker);
+    app.picker = nullptr;
+    app.viewer.startThreading();
+}
+
+struct PickerGUI : public GUI::BaseGUI
+{
+    App& _app;
+    bool _active;
+    bool _preview;
+    bool _installedTexture;
+
+    PickerGUI(App& app) : BaseGUI("Picker"),
+        _app(app),
+        _active(true),
+        _preview(false),
+        _installedTexture(false) { }
+
+    void load(const Config& conf) override {
+        conf.get("ShowPreview", _preview);
+    }
+
+    void save(Config& conf) override {
+        conf.set("ShowPreview", _preview);
+    }
+
+    void draw(osg::RenderInfo& ri) override
+    {
+        if (ImGui::Begin(name(), visible()))
+        {
+            if (ImGui::Checkbox("Picker active", &_active))
+            {
+                if (_active)
+                    startPicker(_app);
+                else
+                    stopPicker(_app);
+            }
+
+            if (_active)
+            {
+                if (ImGui::Checkbox("RTT preview", &_preview))
+                    dirtySettings();
+
+                if (_preview && _app.previewTexture)
+                {
+                    osg::Texture2D* pickTex = _app.picker->getOrCreateTexture(view(ri));
+                    if (_app.previewStateSet->getTextureAttribute(0, osg::StateAttribute::TEXTURE) != pickTex)
+                        _app.previewStateSet->setTextureAttribute(0, pickTex, 1);
+
+                    ImGui::Text("Picker camera preview:");
+                    ImGuiUtil::Texture(_app.previewTexture, ri);
+                }
+
+                if (_app._pickedFeature.valid())
+                {
+                    ImGui::Text("Picked Feature:");
+                    ImGui::Indent();
+                    {
+                        ImGui::Text("FID = %ld", _app._pickedFeature->getFID());
+                        ImGui::Separator();
+                        for (auto& attr : _app._pickedFeature->getAttrs())
+                        {
+                            ImGui::Separator();
+                            ImGui::Text("%s = %s", attr.first.c_str(), attr.second.getString().c_str());
+                        }
+                    }
+                    ImGui::Unindent();
+                }
+
+                else if (_app._pickedAnno.valid())
+                {
+                    ImGui::Text("Picked Annotation:");
+                    ImGui::Indent();
+                    {
+                        ImGui::Text("Object name = %s", _app._pickedAnno->getName().c_str());
+                        ImGui::Text("Object type = %s", typeid(*_app._pickedAnno).name());
+                    }
+                    ImGui::Unindent();
+                }
+            }
+
+            ImGui::End();
+        }
+
     }
 };
 
@@ -164,95 +257,67 @@ void installHighlighter(App& app)
 
 //------------------------------------------------------------------------
 
-// Configures a window that lets you see what the RTT camera sees.
+// A lot of code just to re-color the picker's rtt camera into visible colors :)
+// We are just taking the pick texture and re-rendering it to another quad
+// with a new shader so we can amplify the colors.
 void
-setupRTTView(osgViewer::View* view, osg::Texture* rttTex)
+setupPreviewCamera(App& app)
 {
-    view->setCameraManipulator(0L);
-    view->getCamera()->setName( "osgearth_pick RTT view" );
-    view->getCamera()->setViewport(0,0,256,256);
-    view->getCamera()->setClearColor(osg::Vec4(1,1,1,1));
-    view->getCamera()->setProjectionMatrixAsOrtho2D(-.5,.5,-.5,.5);
-    view->getCamera()->setViewMatrixAsLookAt(osg::Vec3d(0,-1,0), osg::Vec3d(0,0,0), osg::Vec3d(0,0,1));
-    view->getCamera()->setProjectionResizePolicy(osg::Camera::FIXED);
+    // simple fragment shader to recolor a texture
+    const char* recolor_vs = R"(
+        #version 330
+        out vec2 tc;
+        void recolor_vs(inout vec4 clip) {
+            if      (gl_VertexID==0) { clip = vec4(-1,-1,0,1); tc = vec2(0,0); }
+            else if (gl_VertexID==1) { clip = vec4( 1, 1,0,1); tc = vec2(1,1); }
+            else if (gl_VertexID==2) { clip = vec4(-1, 1,0,1); tc = vec2(0,1); }
+            else if (gl_VertexID==3) { clip = vec4( 1, 1,0,1); tc = vec2(1,1); }
+            else if (gl_VertexID==4) { clip = vec4(-1,-1,0,1); tc = vec2(0,0); }
+            else if (gl_VertexID==5) { clip = vec4( 1,-1,0,1); tc = vec2(1,0); }
+        }
+    )";
 
-    osg::Vec3Array* v = new osg::Vec3Array(6);
-    (*v)[0].set(-.5,0,-.5); (*v)[1].set(.5,0,-.5); (*v)[2].set(.5,0,.5); (*v)[3].set((*v)[2]); (*v)[4].set(-.5,0,.5);(*v)[5].set((*v)[0]);
+    const char* recolor_fs = R"(
+        #version 330
+        in vec2 tc;
+        out vec4 frag;
+        uniform sampler2D tex;
+        void recolor_fs(inout vec4 c) {
+            c = texture(tex, tc);
+            frag = c==vec4(0)? vec4(1) : vec4(vec3((c.r+c.g+c.b+c.a)/4.0),1);
+        }
+    )";
 
-    osg::Vec2Array* t = new osg::Vec2Array(6);
-    (*t)[0].set(0,0); (*t)[1].set(1,0); (*t)[2].set(1,1); (*t)[3].set((*t)[2]); (*t)[4].set(0,1); (*t)[5].set((*t)[0]);
+    osg::Geometry* geom = new osg::Geometry();
+    app.previewStateSet = geom->getOrCreateStateSet();
+    geom->setCullingActive(false);
+    geom->setUseVertexBufferObjects(true);
+    geom->setUseDisplayList(false);
+    geom->setVertexArray(new osg::Vec3Array(6));
+    geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, 6));
+    app.previewStateSet->addUniform(new osg::Uniform("tex", 0));
 
-    osg::Geometry* g = new osg::Geometry();
-    g->setUseVertexBufferObjects(true);
-    g->setUseDisplayList(false);
-    g->setVertexArray( v );
-    g->setTexCoordArray( 0, t );
-    g->addPrimitiveSet( new osg::DrawArrays(GL_TRIANGLES, 0, 6) );
+    VirtualProgram* vp = VirtualProgram::getOrCreate(app.previewStateSet);
+    vp->setFunction("recolor_vs", recolor_vs, ShaderComp::LOCATION_VERTEX_CLIP);
+    vp->setFunction("recolor_fs", recolor_fs, ShaderComp::LOCATION_FRAGMENT_OUTPUT);
 
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( g );
+    app.previewTexture = new osg::Texture2D();
+    app.previewTexture->setTextureSize(256, 256);
+    app.previewTexture->setSourceFormat(GL_RGBA);
+    app.previewTexture->setSourceType(GL_UNSIGNED_BYTE);
+    app.previewTexture->setInternalFormat(GL_RGBA8);
 
-    osg::StateSet* stateSet = geode->getOrCreateStateSet();
-    stateSet->setDataVariance(osg::Object::DYNAMIC);
+    osg::Camera* cam = new osg::Camera();
+    cam->addChild(geom);
+    cam->setClearColor(osg::Vec4(1,0,0,1));
+    cam->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    cam->setViewport(0, 0, 256, 256);
+    cam->setRenderOrder(osg::Camera::POST_RENDER);
+    cam->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+    cam->setImplicitBufferAttachmentMask(0, 0);
+    cam->attach(osg::Camera::COLOR_BUFFER, app.previewTexture);
 
-    stateSet->setTextureAttributeAndModes(0, rttTex, 1);
-    rttTex->setUnRefImageDataAfterApply( false );
-    rttTex->setResizeNonPowerOfTwoHint(false);
-
-    GLUtils::setLighting(stateSet, 0);
-    stateSet->setMode(GL_CULL_FACE, 0);
-    stateSet->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO), 1);
-
-    const char* fs = R"(
-    #version 330
-    void swap(inout vec4 c) { c.rgba = c==vec4(0)? vec4(1) : vec4(vec3((c.r+c.g+c.b+c.a)/4.0),1); } )";
-    osgEarth::Registry::shaderGenerator().run(geode);
-    VirtualProgram::getOrCreate(geode->getOrCreateStateSet())->setFunction("swap", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
-
-    view->setSceneData( geode );
-}
-
-void startPicker(App& app)
-{
-    // Note! Must stop and restart threading when removing the picker
-    // because it changes the OSG View/Slave configuration.
-    app.viewer.stopThreading();
-
-    app.picker = new RTTPicker();
-    app.mainView->addEventHandler(app.picker);
-
-    // add the graph that will be picked.
-    app.picker->addChild(app.mapNode);
-
-    // install a callback that controls the picker and listens for hits.
-    app.picker->setDefaultCallback(new MyPickCallback(app));
-
-    // Make a view that lets us see what the picker sees.
-    if (app.rttView == NULL)
-    {
-        app.rttView = new osgViewer::View();
-        app.rttView->getCamera()->setGraphicsContext(app.mainView->getCamera()->getGraphicsContext());
-        app.rttView->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-        app.viewer.addView(app.rttView);
-    }
-    setupRTTView(app.rttView, app.picker->getOrCreateTexture(app.mainView));
-    app.rttView->getCamera()->setNodeMask(~0);
-
-    app.viewer.startThreading();
-}
-
-void stopPicker(App& app)
-{
-    // Note! Must stop and restart threading when removing the picker
-    // because it changes the OSG View/Slave configuration.
-    app.viewer.stopThreading();
-
-    //app.viewer.removeView(app.rttView);
-    app.rttView->getCamera()->setNodeMask(0);
-    app.mainView->removeEventHandler(app.picker);
-    app.picker = 0L;
-
-    app.viewer.startThreading();
+    app.mapNode->addChild(cam);
 }
 
 struct TogglePicker : public ui::ControlEventHandler
@@ -261,7 +326,7 @@ struct TogglePicker : public ui::ControlEventHandler
     TogglePicker(App& app) : _app(app) { }
     void onClick(Control* button)
     {
-        if (_app.picker == 0L)
+        if (_app.picker == nullptr)
             startPicker(_app);
         else
             stopPicker(_app);
@@ -290,42 +355,33 @@ main(int argc, char** argv)
 
     App app(arguments);
 
-    app.mainView = new osgViewer::View();
-    app.mainView->setUpViewInWindow(30, 30, 1024, 1024, 0);
-    app.mainView->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+    app.viewer.setThreadingModel(app.viewer.SingleThreaded);
+    app.viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
 
-    app.viewer.addView(app.mainView);
-
-    app.mainView->getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
-    app.mainView->setCameraManipulator( new EarthManipulator() );
-
-    // Made some UI components:
-    ui::VBox* uiContainer = new ui::VBox();
-    uiContainer->setAlign( ui::Control::ALIGN_LEFT, ui::Control::ALIGN_TOP );
-    uiContainer->setAbsorbEvents( true );
-    uiContainer->setBackColor(0,0,0,0.8);
-
-    uiContainer->addControl( new ui::LabelControl("RTT Picker Test", osg::Vec4(1,1,0,1)) );
-    uiContainer->addControl( new ui::ButtonControl("Toggle picker", new TogglePicker(app)) );
-    app.fidLabel = new ui::LabelControl("---");
-    uiContainer->addControl( app.fidLabel );
-    app.nameLabel = uiContainer->addControl( new ui::LabelControl( "---" ) );
+    app.viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+    app.viewer.setCameraManipulator( new EarthManipulator() );
 
     // Load up the earth file.
-    osg::Node* node = MapNodeHelper().load( arguments, &app.viewer, uiContainer );
+    osg::Node* node = MapNodeHelper().loadWithoutControls(arguments, &app.viewer);
     if ( node )
     {
-        app.mainView->setSceneData( node );
+        GUI::ApplicationGUI* gui = new GUI::ApplicationGUI(true);
+        gui->add("Demo", new PickerGUI(app), true);
 
+        app.viewer.setSceneData(node);
         app.mapNode = MapNode::get(node);
-
-        // start with a picker running
-        startPicker(app);
 
         // Highlight features as we pick'em.
         installHighlighter(app);
 
-        app.mainView->getCamera()->setName( "Main view" );
+        // To display the contents of the pick camera in the imgui panel
+        setupPreviewCamera(app);
+
+        // Install the imgui:
+        app.viewer.getEventHandlers().push_front(gui);
+
+        // Start with a picker running:
+        startPicker(app);
 
         return app.viewer.run();
     }

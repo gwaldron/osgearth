@@ -1,0 +1,160 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_EPHEMERIS_GUI
+#define OSGEARTH_IMGUI_EPHEMERIS_GUI
+
+#include "ImGui"
+#include <osgEarth/Ephemeris>
+#include <osgEarth/Sky>
+
+namespace osgEarth
+{
+    namespace GUI
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Util;
+
+        class EphemerisGUI : public BaseGUI
+        {
+        private:
+            osg::observer_ptr<SkyNode> _skyNode;
+            bool _showDetails;
+            float _hour;
+            int _day, _month, _year;
+            float _exposure;
+            float _ambient;
+
+        public:
+            EphemerisGUI() : BaseGUI("Sky & Lighting"),
+                _ambient(0.033f),
+                _exposure(3.5f),
+                _showDetails(false)
+            {
+                DateTime now;
+                _hour = now.hours(), _day = now.day(), _month = now.month(), _year = now.year();
+            }
+
+            void load(const Config& conf) override
+            {
+                conf.get("ShowDetails", _showDetails);
+                conf.get("Hour", _hour);
+                conf.get("Day", _day);
+                conf.get("Month", _month);
+                conf.get("Year", _year);
+                conf.get("Exposure", _exposure);
+                conf.get("Ambient", _ambient);
+            }
+            void save(Config& conf) override
+            {
+                conf.set("ShowDetails", _showDetails);
+                conf.set("Hour", _hour);
+                conf.set("Day", _day);
+                conf.set("Month", _month);
+                conf.set("Year", _year);
+                conf.set("Exposure", _exposure);
+                conf.set("Ambient", _ambient);
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible()) return;
+
+                if (!findNodeOrHide(_skyNode, ri))
+                    return;
+
+                ImGui::Begin(name(), visible());
+                {   
+                    bool lighting = _skyNode->getLighting();
+                    ImGui::Checkbox("Lighting", &lighting);
+                    _skyNode->setLighting(lighting);
+
+                    ImGui::SameLine();
+                    if (ImGui::Checkbox("Details", &_showDetails))
+                        dirtySettings();
+
+                    if (lighting)
+                    {
+                        ImGui::Separator();
+
+                        ImGui::Text("Date & Time:");
+                        if (ImGui::SliderFloat("Hour", &_hour, 0.0f, 24.0f)) dirtySettings();
+                        if (_showDetails)
+                        {
+                            if (ImGui::SliderInt("Day", &_day, 1, 31)) dirtySettings();
+                            if (ImGui::SliderInt("Month", &_month, 1, 12)) dirtySettings();
+                            if (ImGui::SliderInt("Year", &_year, 1970, 2061)) dirtySettings();
+                        }
+
+                        _skyNode->setDateTime(DateTime(_year, _month, _day, _hour));
+
+                        if (ImGui::SliderFloat("Exposure", &_exposure, 1.0f, 8.0f)) {
+                            _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_sky_exposure", osg::Uniform::FLOAT)->set(_exposure);
+                            dirtySettings();
+                        }
+
+                        if (ImGui::SliderFloat("Ambient", &_ambient, 0.0f, 1.0f)) {
+                            _skyNode->getSunLight()->setAmbient(osg::Vec4(_ambient, _ambient, _ambient, 1.0f));
+                            dirtySettings();
+                        }
+                    }
+
+                    if (_showDetails)
+                    {
+                        ImGui::Separator();
+
+                        bool atmos_visible = _skyNode->getAtmosphereVisible();
+                        ImGui::Checkbox("Atmosphere", &atmos_visible);
+                        _skyNode->setAtmosphereVisible(atmos_visible);
+
+                        bool sun_visible = _skyNode->getSunVisible();
+                        ImGui::Checkbox("Sun", &sun_visible);
+                        _skyNode->setSunVisible(sun_visible);
+
+                        ImGui::SameLine();
+                        bool moon_visible = _skyNode->getMoonVisible();
+                        ImGui::Checkbox("Moon", &moon_visible);
+                        _skyNode->setMoonVisible(moon_visible);
+
+                        ImGui::SameLine();
+                        bool stars_visible = _skyNode->getStarsVisible();
+                        ImGui::Checkbox("Stars", &stars_visible);
+                        _skyNode->setStarsVisible(stars_visible);
+
+                        ImGui::Separator();
+
+                        DateTime dt = _skyNode->getDateTime();
+
+                        CelestialBody sun = _skyNode->getEphemeris()->getSunPosition(dt);
+                        ImGui::Text("Sun: RA (%.2f) Decl (%.2f)",
+                            sun.rightAscension.as(Units::DEGREES),
+                            sun.declination.as(Units::DEGREES));
+
+                        CelestialBody moon = _skyNode->getEphemeris()->getMoonPosition(dt);
+                        ImGui::Text("Moon: RA (%.2f) Decl (%.2f)",
+                            moon.rightAscension.as(Units::DEGREES),
+                            moon.declination.as(Units::DEGREES));
+                    }
+                }
+                ImGui::End();
+            }
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_EPHEMERIS_GUI

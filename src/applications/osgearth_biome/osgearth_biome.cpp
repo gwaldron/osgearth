@@ -121,6 +121,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
     float _ao_power;
     float _brightness;
     float _contrast;
+    float _snow;
 
     TextureSplattingGUI(App& app) : GUI::BaseGUI("Texture Splatting"), _app(app)
     {
@@ -135,6 +136,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         _ao_power = 1.0f;
         _brightness = 1.0f;
         _contrast = 1.0f;
+        _snow = 0.0f;
     }
 
     void draw(osg::RenderInfo& ri) override
@@ -174,6 +176,9 @@ struct TextureSplattingGUI : public GUI::BaseGUI
 
         ImGui::SliderFloat("Global contrast", &_contrast, 0.0f, 4.0f);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("contrast", _contrast));
+
+        ImGui::SliderFloat("Snow", &_snow, 0.0f, 1.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("snow", _snow));
 
         ImGui::End();
     }

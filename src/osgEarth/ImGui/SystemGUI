@@ -62,12 +62,7 @@ namespace osgEarth
                     if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 4.0f))
                         dirtySettings();
 
-                    ImGui::Text("Memory:");
-                    ImGui::Indent();
-                    ImGui::Text("Physical: %ld MB", Memory::getProcessPhysicalUsage() / 1048576U);
-                    ImGui::Text("Private: %ld MB", Memory::getProcessPrivateUsage() / 1048576U);
-                    ImGui::Text("Peak: %ld MB", Memory::getProcessPeakPrivateUsage() / 1048576U);
-                    ImGui::Unindent();
+                    ImGui::Text("Memory: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
                     ImGui::Separator();
 
                     ImGui::Text("Job Activity:");
@@ -90,6 +85,8 @@ namespace osgEarth
 
                     ImGui::Separator();
                     ImGui::Text("ICO: %d", GLObjectsCompiler::totalJobs());
+                    ImGui::SameLine();
+                    ImGui::Text("   GPU: %d", GPUJobArena::arena().size());
 
                     ImGui::Separator();
                     time_point now = std::chrono::steady_clock::now();

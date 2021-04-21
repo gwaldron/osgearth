@@ -14,6 +14,9 @@ vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
 
 out vec4 oe_layer_tilec;
 out float splatLevelBlend;
+out float elev;
+
+float oe_terrain_getElevation();
 
 uniform float oe_splat_blend_start = 2500.0;
 uniform float oe_splat_blend_end = 500.0;
@@ -32,11 +35,9 @@ void oe_splat_View(inout vec4 vertex_view)
         vec2 uv = ((i & 1) == 0) ? oe_layer_tilec.st : oe_layer_tilec.ts;
         splatCoords[i] = oe_terrain_scaleCoordsToRefLOD(uv, levels[i]);
     }
-
-    // transition b/w levels
-    //const float start = 2500.0;
-    //const float end = 250.0;
     splatLevelBlend = mapToNormalizedRange(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
+
+    elev = oe_terrain_getElevation();
 }
 
 [break]
@@ -68,6 +69,11 @@ layout(binding = 5, std430) buffer TextureLUT {
 #define LUSH 2
 #define SPECIFIC 3
 
+float mapToNormalizedRange(in float value, in float lo, in float hi)
+{
+    return clamp((value - lo) / (hi - lo), 0.0, 1.0);
+}
+
 vec3 vp_Normal;
 vec3 oe_UpVectorView;
 float oe_roughness;
@@ -79,6 +85,7 @@ in vec4 oe_layer_tilec;
 in vec2 splatCoords[2];
 
 flat in int maxLevel;
+in float elev;
 
 uniform float dense_power = 1.0;
 uniform float lush_power = 1.0;
@@ -301,8 +308,8 @@ void oe_splat_Frag(inout vec4 quad)
 #if 1
     // perma-show caps:
     float snowiness = 0.0;
-    float coldness = 1.0; // 1.0 - clamp(temperature, -1, 1);
-    float min_snow_cos_angle = 1.0 - soften(snow*coldness*rugged);
+    float coldness = mapToNormalizedRange(elev, 1000, 3500);
+    float min_snow_cos_angle = 1.0 - soften(snow*coldness); // *rugged);
     const float snow_buf = 0.05;
     float b = min(min_snow_cos_angle + snow_buf, 1.0);
     float cos_angle = dot(vp_Normal, oe_UpVectorView);
@@ -330,7 +337,7 @@ void oe_splat_Frag(inout vec4 quad)
     // final color output:
     quad = vec4(color, alpha);
 
-#if 1 //debug
+#if 0 //debug
     if (snow > 0.5)
     {
         quad = vec4(0.5 + 0.5*vp_Normal, 1.0);

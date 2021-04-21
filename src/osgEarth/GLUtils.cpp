@@ -640,6 +640,13 @@ GPUJobArena::getTimeSlice() const
     return _timeSlice;
 }
 
+std::size_t
+GPUJobArena::size() const
+{
+    std::lock_guard<Mutex> lock(_queue_mutex);
+    return _queue.size();
+}
+
 void
 GPUJobArena::dispatch(Delegate& del)
 {
@@ -650,8 +657,9 @@ GPUJobArena::dispatch(Delegate& del)
 void
 GPUJobArena::operator()(osg::GraphicsContext* gc)
 {
-    typedef std::chrono::high_resolution_clock Clock;
-    typedef std::chrono::milliseconds ms;
+    using Clock = std::chrono::high_resolution_clock;
+    using Tick = std::chrono::time_point<Clock>;
+    using ms = std::chrono::milliseconds;
 
     // always run at least one job.
     Clock::time_point start = Clock::now();
@@ -673,6 +681,9 @@ GPUJobArena::operator()(osg::GraphicsContext* gc)
             next(gc->getState());
 
             // check the time slice:
+            if (true)
+                break; // TEMPORARY: ONE PER FRAME
+
             auto timeElapsed = std::chrono::duration_cast<ms>(Clock::now() - start);
             if (timeElapsed >= _timeSlice)
             {

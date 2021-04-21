@@ -26,6 +26,12 @@
 #include "ImageLayer"
 #include "FilterContext"
 #include "Expression"
+#include "FeatureImageLayer"
+#include "GLUtils"
+
+namespace osg {
+    class Uniform;
+}
 
 namespace osgEarth { namespace Util
 {
@@ -52,5 +58,120 @@ namespace osgEarth { namespace Util
             Cancelable* progress);
     };
 } }
+
+namespace osgEarth
+{
+    /**
+     * Rasterizes feature data into an image layer.
+     */
+    class OSGEARTH_EXPORT FeatureSDFLayer : 
+        public osgEarth::ImageLayer,
+        public osgEarth::Util::FeatureImageRenderer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_VECTOR(ConfigOptions, filters);
+            OE_OPTION_LAYER(StyleSheet, styleSheet);
+            OE_OPTION(bool, invert);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, FeatureSDFLayer, Options, osgEarth::ImageLayer, FeatureSDF);
+
+        //! Sets the feature source to get road data from; call either this
+        //! or setFeatureSourceLayer
+        void setFeatureSource(FeatureSource* source);
+        inline FeatureSource* getFeatureSource() const;
+
+        //! Style sheet to use to render feature data
+        void setStyleSheet(StyleSheet* styles);
+        inline StyleSheet* getStyleSheet() const;
+
+    public: // FeatureImageRenderer
+
+        virtual bool renderFeaturesForStyle(
+            Session* session,
+            const Style& style,
+            const FeatureList& features,
+            const GeoExtent& imageExtent,
+            osg::Image* out_image,
+            Cancelable* progress) const override;
+
+    public: // ImageLayer
+
+        // Opens the layer and returns a status
+        virtual Status openImplementation() override;
+
+        virtual GeoImage createImageImplementation(
+            const TileKey& key,
+            ProgressCallback* progress) const override;
+
+    protected: // Layer
+
+        // Called by Map when it adds this layer
+        virtual void addedToMap(const class Map*) override;
+
+        // Called by Map when it removes this layer
+        virtual void removedFromMap(const class Map*) override;
+
+        // post-ctor initialization
+        virtual void init() override;
+
+    protected:
+
+        virtual ~FeatureSDFLayer() { }
+
+    private:
+        osg::ref_ptr<Session> _session;
+        osg::ref_ptr<const FeatureProfile> _featureProfile;
+
+        void updateSession();
+
+        void establishProfile();
+
+        struct LineData
+        {
+            float endpoints[4];
+        };
+
+        osg::ref_ptr<osg::Program> _computeProgram;
+        void setupCompute();
+
+        void compute_sdf_on_gpu(
+            osg::Image* out_image,
+            const FeatureList& lines,
+            const osg::Vec2d& local_origin,
+            const osg::Vec2f& local_extent,
+            const osg::Vec2f& distance_domain) const;
+
+        struct GPUSession {
+            ArraySSBO<LineData> _segments;
+            osg::ref_ptr<osg::StateSet> _stateSet;
+            osg::Uniform* _numSegments_uniform;
+            osg::Uniform* _imageExtent_uniform;
+            osg::Uniform* _domain_uniform;
+            GLuint _pbo;
+            void render(osg::Image* out_image, osg::State* state);
+            void readback(osg::Image* out_image, osg::State* state);
+        };
+
+        using GPUSessionPtr = std::shared_ptr<GPUSession>;
+        using GPUDataPerThread = Mutexed<std::unordered_map<unsigned, GPUSessionPtr>>;
+        mutable GPUDataPerThread _gpuData;
+
+    };    
+    
+    // template/inline impls .................................................
+
+    FeatureSource* FeatureSDFLayer::getFeatureSource() const { return options().featureSource().getLayer(); }
+    StyleSheet* FeatureSDFLayer::getStyleSheet() const { return options().styleSheet().getLayer(); }
+
+}
 
 #endif // OSGEARTH_SDF_H

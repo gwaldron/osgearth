@@ -24,7 +24,7 @@
 
 #ifdef _WIN32
 #   include <Windows.h>
-#   include <processthreadsapi.h>
+//#   include <processthreadsapi.h>
 #elif defined(__APPLE__) || defined(__LINUX__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__ANDROID__)
 #   include <unistd.h>
 #   include <sys/syscall.h>
@@ -396,10 +396,18 @@ void
 osgEarth::Threading::setThreadName(const std::string& name)
 {
 #if (defined _WIN32 && defined _WIN32_WINNT_WIN10 && defined _WIN32_WINNT && _WIN32_WINNT >= _WIN32_WINNT_WIN10) || (defined __CYGWIN__)
-
     wchar_t buf[256];
     mbstowcs(buf, name.c_str(), 256);
-    ::SetThreadDescription(::GetCurrentThread(), buf);
+
+    //::SetThreadDescription(::GetCurrentThread(), buf);
+
+    // Look up the address of the SetThreadDescription function rather than using it directly.
+    typedef ::HRESULT(WINAPI* SetThreadDescription)(::HANDLE hThread, ::PCWSTR lpThreadDescription);
+    auto set_thread_description_func = reinterpret_cast<SetThreadDescription>(::GetProcAddress(::GetModuleHandle("Kernel32.dll"), "SetThreadDescription"));
+    if (set_thread_description_func)
+    {
+        set_thread_description_func(::GetCurrentThread(), buf);
+    }
 
 #elif defined _GNU_SOURCE && !defined __EMSCRIPTEN__ && !defined __CYGWIN__
 
@@ -471,7 +479,7 @@ Semaphore::join()
 {
     ScopedMutexLock lock(_m);
     _cv.wait(
-        _m, 
+        _m,
         [this]()
         {
             return _count == 0;
@@ -588,7 +596,7 @@ JobArena*
 JobArena::get(const std::string& name_)
 {
     ScopedMutexLock lock(_arenas_mutex);
-    
+
     if (_arenas.empty())
     {
         std::atexit(JobArena::shutdownAll);
@@ -601,7 +609,7 @@ JobArena::get(const std::string& name_)
     {
         auto iter = _arenaSizes.find(name);
         unsigned numThreads = iter != _arenaSizes.end() ? iter->second : OE_ARENA_DEFAULT_SIZE;
-        
+
         arena = std::make_shared<JobArena>(name, numThreads);
     }
     return arena.get();

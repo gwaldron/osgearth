@@ -1,0 +1,264 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_MAP_LAYERS_GUI
+#define OSGEARTH_IMGUI_MAP_LAYERS_GUI
+
+#include "ImGui"
+#include <osgEarth/MapNode>
+#include <osgEarth/EarthManipulator>
+#include <osgEarth/ViewFitter>
+#include <osgEarth/ThreeDTilesLayer>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/NodeUtils>
+#include <osg/Camera>
+
+namespace osgEarth {
+    namespace GUI
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Contrib;
+        using namespace osgEarth::Util;
+
+        class LayersGUI : public BaseGUI
+        {
+        private:
+            osg::observer_ptr<MapNode> _mapNode;
+            bool _showDetails;
+            bool _showDisabled;
+
+        public:
+            LayersGUI() : BaseGUI("Map Layers"),
+                _showDetails(false),
+                _showDisabled(false)
+            {
+            }
+
+            void load(const Config& conf) override
+            {
+                conf.get("ShowDetails", _showDetails);
+                conf.get("ShowDisabled", _showDisabled);
+            }
+
+            void save(Config& conf) override
+            {
+                conf.set("ShowDetails", _showDetails);
+                conf.set("ShowDisabled", _showDisabled);
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible())
+                    return;
+
+                if (!findNodeOrHide(_mapNode, ri))
+                    return;
+
+                osg::Camera* camera = ri.getCurrentCamera();
+                const Map* map = _mapNode->getMap();
+                osgEarth::VisibleLayerVector layers;
+                map->getLayers(layers);
+
+                ImGui::Begin(name(), visible());
+                {
+                    if (map->getName().empty() == false)
+                    {
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), map->getName().c_str());
+                    }
+
+                    if (ImGui::Checkbox("Details", &_showDetails)) dirtySettings();
+                    ImGui::SameLine();
+                    if (ImGui::Checkbox("Show All", &_showDisabled)) dirtySettings();
+
+                    ImGui::Separator();
+
+                    for (int i = layers.size() - 1; i >= 0; --i)
+                    {
+                        osgEarth::Layer* layer = layers[i].get();
+
+                        if (!_showDisabled && !layer->isOpen() && !layer->getEnabled())
+                            continue;
+
+                        ImGui::PushID(layer);
+                        bool stylePushed = false;
+
+                        bool error =
+                            layer->getStatus().isError() &&
+                            layer->getStatus().message() != "Layer closed" &&
+                            layer->getStatus().message() != "Layer disabled";
+
+                        if (error)
+                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(ImColor(255, 72, 72))), stylePushed = true;
+                        else if (!layer->isOpen())
+                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(ImColor(127,127,127))), stylePushed = true;
+
+                        osgEarth::VisibleLayer* visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
+                        if (visibleLayer)
+                        {
+                            bool wantOpen = layer->isOpen();
+                            ImGui::Checkbox("", &wantOpen);
+
+                            //TODO: shunt this to a legal calling thread (update)
+
+                            if (wantOpen && !layer->isOpen())
+                            {
+                                if (!layer->getEnabled())
+                                    layer->setEnabled(true);
+
+                                visibleLayer->setVisible(true);
+
+                                layer->open();
+                            }
+                            else if (!wantOpen && layer->isOpen())
+                            {
+                                layer->close();
+                            }
+
+                            ImGui::SameLine();
+
+                            bool selected = false;
+                            ImGui::Selectable(layer->getName().c_str(), &selected);
+                            if (selected)
+                            {
+                                const GeoExtent& extent = layer->getExtent();
+                                if (extent.isValid())
+                                {
+                                    std::vector<GeoPoint> points;
+                                    points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
+                                    points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
+
+                                    ViewFitter fitter(map->getSRS(), camera);
+                                    Viewpoint vp;
+                                    if (fitter.createViewpoint(points, vp))
+                                    {
+                                        auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                                        if (manip) manip->setViewpoint(vp, 2.0);
+                                    }
+                                }
+                                else if (layer->getNode())
+                                {
+                                    const osg::BoundingSphere& bs = layer->getNode()->getBound();
+                                    if (bs.valid())
+                                    {
+                                        osg::Vec3d c = bs.center();
+                                        double r = bs.radius();
+
+                                        std::vector<GeoPoint> points;
+                                        GeoPoint p;
+                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x() + r, c.y(), c.z())); points.push_back(p);
+                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x() - r, c.y(), c.z())); points.push_back(p);
+                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x(), c.y() + r, c.z())); points.push_back(p);
+                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x(), c.y() - r, c.z())); points.push_back(p);
+                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
+                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
+
+                                        ViewFitter fitter(map->getSRS(), camera);
+                                        Viewpoint vp;
+                                        if (fitter.createViewpoint(points, vp))
+                                        {
+                                            auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                                            if (manip) manip->setViewpoint(vp, 2.0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            ImGui::Text(layer->getName().c_str());
+                        }
+
+                        if (_showDetails)
+                        {
+                            if (layer->isOpen())
+                            {
+                                auto tileLayer = dynamic_cast<osgEarth::TileLayer*>(layer);
+                                if (tileLayer)
+                                {
+                                    ImGui::Indent();
+                                    const Profile* profile = tileLayer->getProfile();
+                                    if (profile)
+                                    {
+                                        std::string srsname = profile->getSRS()->getName();
+                                        if (srsname == "unknown")
+                                            srsname = profile->getSRS()->getHorizInitString();
+                                        ImGui::TextColored(ImVec4(.8,.8,.8,1),"%s", srsname.c_str());
+                                    }
+                                    ImGui::Unindent();
+                                }
+
+                                auto elevationLayer = dynamic_cast<osgEarth::ElevationLayer*>(layer);
+                                if (visibleLayer && !elevationLayer)
+                                {
+                                    ImGui::Indent();
+                                    float opacity = visibleLayer->getOpacity();
+                                    ImGui::PushID("opacity");
+                                    ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
+                                    visibleLayer->setOpacity(opacity);
+                                    ImGui::PopID();
+                                    ImGui::Unindent();
+                                }
+
+                                auto threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(layer);
+                                if (threedTiles)
+                                {
+                                    ImGui::Indent();
+
+                                    float sse = threedTiles->getMaximumScreenSpaceError();
+                                    ImGui::PushID("sse");
+                                    ImGui::SliderFloat("SSE", &sse, 0.0f, 50.0f);
+                                    threedTiles->setMaximumScreenSpaceError(sse);
+                                    ImGui::PopID();
+
+                                    ImGui::PushID("debugVolumes");
+                                    bool showBoundingVolumes = threedTiles->getTilesetNode()->getShowBoundingVolumes();
+                                    ImGui::Checkbox("Show debug volumes", &showBoundingVolumes);
+                                    threedTiles->getTilesetNode()->setShowBoundingVolumes(showBoundingVolumes);
+                                    ImGui::PopID();
+
+                                    ImGui::PushID("debugColors");
+                                    bool colorPerTile = threedTiles->getTilesetNode()->getColorPerTile();
+                                    ImGui::Checkbox("Show color per tile", &colorPerTile);
+                                    threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
+                                    ImGui::PopID();
+
+                                    ImGui::Unindent();
+                                }
+                            }
+
+                            else if (layer->getStatus().isError() && layer->getStatus().message() != "Layer closed")
+                            {
+                                ImGui::Text(layer->getStatus().message().c_str());
+                            }
+                        }
+
+                        ImGui::PopID();
+
+                        if (stylePushed)
+                            ImGui::PopStyleColor(1);
+
+                        ImGui::Separator();
+                    }
+                }
+                ImGui::End();
+            }
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_MAP_LAYERS_GUI

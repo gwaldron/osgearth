@@ -1,11 +1,20 @@
 <?xml version="1.0" ?>
 <viewpoints time="0">
+    <viewpoint name="Boston">
+        <heading>-19.6123</heading>
+        <pitch>-23.3699</pitch>
+        <range>7958.63m</range>
+        <long>-71.08905507790192</long>
+        <lat>42.37080107122819</lat>
+        <height>-21.78645514324307</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+    </viewpoint>
     <viewpoint>
         <heading>8.806974516644791</heading>
         <height>4465.397310772911</height>
         <lat>37.55814749233749</lat>
         <long>-122.334535784141</long>
-        <name>San Francisco, California</name>
+        <name>San Francisco</name>
         <pitch>-34.79540299384382</pitch>
         <range>78142.53643278375</range>
     </viewpoint>
@@ -88,15 +97,6 @@
         <lat>41.04180176430292</lat>
         <height>172.7516074106097</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-    </viewpoint>
-    <viewpoint>
-        <heading>106.341</heading>
-        <pitch>-13.0779</pitch>
-        <range>3971.3m</range>
-        <long>-87.74521164702807</long>
-        <lat>41.90297390696925</lat>
-        <height>154.1877543888986</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
 
 </viewpoints>

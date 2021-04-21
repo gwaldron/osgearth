@@ -1,0 +1,157 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_TERRAIN_GUI
+#define OSGEARTH_IMGUI_TERRAIN_GUI
+
+#include "ImGui"
+#include <osgEarth/Threading>
+#include <osgEarth/Memory>
+#include <osgEarth/GLUtils>
+#include <osgEarth/ExampleResources>
+#include <chrono>
+#include <list>
+
+namespace osgEarth
+{
+    namespace GUI
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Threading;
+
+        class TerrainGUI : public BaseGUI
+        {
+        private:
+            osg::observer_ptr<MapNode> _mapNode;
+            bool _installed;
+            float _x, _y;
+            float _ax, _ay;
+            std::unique_ptr<AsyncElevationSampler> _sampler;
+            Future<ElevationSample> _sample;
+
+        public:
+            TerrainGUI() : BaseGUI("Terrain"), _installed(false) { }
+
+            void load(const Config& conf) override
+            {
+            }
+
+            void save(Config& conf) override
+            {
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible()) return;
+                if (!findNodeOrHide(_mapNode, ri)) return;
+
+                if (!_installed)
+                {
+                    EventRouter::get(view(ri))->onMove(
+                        [&](osg::View* view, float x, float y) {
+                            _x = x, _y = y;
+                        });
+
+                    _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap()));
+
+                    _installed = true;
+                }
+
+                ImGui::Begin(name(), visible());
+                {
+                    ImGui::Text("Mouse Coordinates:");
+
+                    ImGui::Indent();
+                    {
+                        osg::Vec3d world;
+                        if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view(ri), _x, _y, world))
+                        {
+                            GeoPoint mp;
+                            mp.fromWorld(_mapNode->getMapSRS(), world);
+
+                            if (_mapNode->getMapSRS()->isGeographic())
+                            {
+                                ImGui::Text("GEO: Lat=%.3f, Long=%.3f, HAE=%.3f", mp.x(), mp.y(), mp.z());
+                                ImGui::Text("ECEF: X=%d, Y=%d, Z=%d", (int)world.x(), (int)world.y(), (int)world.z());
+                            }
+                            else
+                            {
+                                ImGui::Text("GEO: Lat=%.3f, Long=%.3f, Alt=%.3f", mp.x(), mp.y(), mp.z());
+                                ImGui::Text("Map: X=%d, Y=%d, Z=%d", (int)world.x(), (int)world.y(), (int)world.z());
+                            }
+
+                            if (_sample.isAvailable())
+                            {
+                                if (_sample.get().elevation().getValue() == NO_DATA_VALUE)
+                                {
+                                    ImGui::Text("Elevation: 0.0m");
+                                    ImGui::Text("Resolution: n/a (NO DATA)");
+                                }
+                                else
+                                {
+                                    double egm96z = _sample.get().elevation().getValue();
+                                    VerticalDatum::transform(
+                                        mp.getSRS()->getVerticalDatum(),
+                                        VerticalDatum::get("egm96"),
+                                        mp.y(), mp.x(),
+                                        egm96z);
+                                    Distance elevEGM96(egm96z, _sample.get().elevation().getUnits());
+
+                                    Distance cartRes = mp.transformResolution(_sample.get().resolution(), Units::METERS);
+                                    ImGui::Text("Elevation: %s MSL / %s HAE",
+                                        elevEGM96.asParseableString().c_str(),
+                                        _sample.get().elevation().asParseableString().c_str());
+
+                                    ImGui::Text("Resolution: %s",
+                                        cartRes.asParseableString().c_str());
+                                }
+                            }
+                            else
+                            {
+                                ImGui::Text("Elevation: ...");
+                                ImGui::Text("Resolution: ...");
+                            }
+                            if (fabs(_ax-_x)>5 || fabs(_ay-_y)>5)
+                            {
+                                _sample = _sampler->getSample(mp);
+                                _ax = _x, _ay = _y;
+                            }
+                        }
+                    }
+                    ImGui::Unindent();
+
+                    ImGui::Separator();
+
+                    ImGui::Text("Spatial Reference:");
+                    ImGui::Indent();
+                    std::string proj = _mapNode->getMapSRS()->getName();
+                    if (proj != "unknown")
+                        ImGui::TextWrapped("%s", proj.c_str());
+                    ImGui::TextWrapped("%s", _mapNode->getMapSRS()->getHorizInitString().c_str());
+                    if (!_mapNode->getMapSRS()->getVertInitString().empty())
+                        ImGui::TextWrapped("vdatum = %s", _mapNode->getMapSRS()->getVertInitString().c_str());
+
+                    ImGui::Unindent();
+                }
+                ImGui::End();
+            }
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_TERRAIN_GUI

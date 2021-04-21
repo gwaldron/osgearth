@@ -1,0 +1,107 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_SYSTEM_GUI
+#define OSGEARTH_IMGUI_SYSTEM_GUI
+
+#include "ImGui"
+#include <osgEarth/Threading>
+#include <osgEarth/Memory>
+#include <osgEarth/GLUtils>
+#include <chrono>
+#include <list>
+
+namespace osgEarth
+{
+    namespace GUI
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Threading;
+
+        class SystemGUI : public BaseGUI
+        {
+        private:
+            using time_point = std::chrono::time_point<std::chrono::steady_clock>;
+            time_point _lastFrame;
+
+        public:
+            SystemGUI() : BaseGUI("System") { }
+
+            void load(const Config& conf) override
+            {
+                conf.get("ImGui.FontGlobalScale", ImGui::GetIO().FontGlobalScale);
+            }
+
+            void save(Config& conf) override
+            {
+                conf.set("ImGui.FontGlobalScale", ImGui::GetIO().FontGlobalScale);
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible())
+                    return;
+
+                ImGui::Begin(name(), visible());
+                {
+                    if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 4.0f))
+                        dirtySettings();
+
+                    ImGui::Text("Memory:");
+                    ImGui::Indent();
+                    ImGui::Text("Physical: %ld MB", Memory::getProcessPhysicalUsage() / 1048576U);
+                    ImGui::Text("Private: %ld MB", Memory::getProcessPrivateUsage() / 1048576U);
+                    ImGui::Text("Peak: %ld MB", Memory::getProcessPeakPrivateUsage() / 1048576U);
+                    ImGui::Unindent();
+                    ImGui::Separator();
+
+                    ImGui::Text("Job Activity:");
+                    ImGui::Indent();
+                    const JobArena::Metrics& m = JobArena::metrics();
+                    int pending = 0, running = 0;
+                    for (int i = 0; i <= m.maxArenaIndex; ++i)
+                    {
+                        if (m.arena(i).active)
+                        {
+                            ImGui::Text("%s (%d) %d / %d // %d",
+                                m.arena(i).arenaName.c_str(),
+                                (int)m.arena(i).concurrency,
+                                (int)m.arena(i).numJobsRunning,
+                                (int)m.arena(i).numJobsPending,
+                                (int)m.arena(i).numJobsCanceled);
+                        }
+                    }
+                    ImGui::Unindent();
+
+                    ImGui::Separator();
+                    ImGui::Text("ICO: %d", GLObjectsCompiler::totalJobs());
+
+                    ImGui::Separator();
+                    time_point now = std::chrono::steady_clock::now();
+                    int us = std::chrono::duration_cast<std::chrono::microseconds>(now - _lastFrame).count();
+                    _lastFrame = now;
+                    int fps = 1000000 / us;
+                    ImGui::Text("FPS: %d", fps);
+                }
+                ImGui::End();
+            }
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_SYSTEM_GUI

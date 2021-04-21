@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarth/ImGuiUtils>
-#include <osgEarth/OsgImGuiHandler.hpp>
+#include <osgEarth/ImGui/ImGui>
 #include <imgui_internal.h>
 
 #include <osgViewer/CompositeViewer>
@@ -55,6 +54,7 @@ struct App
     bool _sharedGC;
     int _size;
     osg::ref_ptr<osg::Node> _node;
+    osg::ref_ptr<MapNode> _mapNode;
 
     App(osg::ArgumentParser& args) :
         _viewer(args),
@@ -118,14 +118,15 @@ struct App
     }
 };
 
-struct GCPanel
+struct GCPanel : public GUI::BaseGUI
 {
     App& _app;
-    GCPanel(App& app) : _app(app) { }
+    GCPanel(App& app) : GUI::BaseGUI("Graphics Contexts"), _app(app) { }
 
-    void drawUi(osg::RenderInfo& ri)
+    void draw(osg::RenderInfo& ri) override
     {
-        ImGui::Begin("Graphics Contexts");
+        if (!isVisible()) return;
+        ImGui::Begin(name(), visible());
         auto gcs = osg::GraphicsContext::getAllRegisteredGraphicsContexts();
         for (auto gc : gcs)
         {
@@ -154,14 +155,15 @@ struct GCPanel
     }
 };
 
-struct ViewerPanel
+struct ViewerPanel : public GUI::BaseGUI
 {
     App& _app;
-    ViewerPanel(App& app) : _app(app) { }
+    ViewerPanel(App& app) : GUI::BaseGUI("Views"), _app(app) { }
 
-    void drawUi(osg::RenderInfo& ri)
+    void draw(osg::RenderInfo& ri) override
     {
-        ImGui::Begin("Views");
+        if (!isVisible()) return;
+        ImGui::Begin(name(), visible());
 
         if (ImGui::Button("New view"))
         {
@@ -207,20 +209,6 @@ struct ViewerPanel
     }
 };
 
-struct GUI : public OsgImGuiHandler
-{
-    App& _app;
-    ViewerPanel _viewerUI;
-    GCPanel _gcUI;
-    GUI(App& app) : _app(app), _viewerUI(app), _gcUI(app) { }
-
-    void drawUi(osg::RenderInfo& ri) override
-    {
-        _viewerUI.drawUi(ri);
-        _gcUI.drawUi(ri);
-    }
-};
-
 int
 main(int argc, char** argv)
 {
@@ -240,31 +228,40 @@ main(int argc, char** argv)
     int numUpdates = 1;
     arguments.read("--updates", numUpdates);
 
+
     // create a viewer:
     App app(arguments);
 
-    app._node = MapNodeHelper().load(arguments, &app._viewer);
+    // Setup the viewer for imgui
+    app._viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
+
+    app._node = MapNodeHelper().loadWithoutControls(arguments, &app._viewer);
     if (!app._node.get())
         return usage(argv[0]);
+
+    app._mapNode = MapNode::get(app._node.get());
 
     for(int i=0; i<numViews; ++i)
     {
         app.addView(Stringify() << "View " << i);
     }
 
-    // Setup the viewer for imgui
-    app._viewer.setRealizeOperation(new GUI::RealizeOperation);
+    auto view = app._viewer.getView(0);
 
-    app._viewer.getView(0)->getEventHandlers().push_front(new GUI(app));
-
-    EventRouter* router = new EventRouter();
-    app._viewer.getView(0)->addEventHandler(router);
+    // install the Gui.
+    GUI::ApplicationGUI* gui = new GUI::ApplicationGUI();
+    gui->addAllBuiltInTools();
+    gui->add(new ViewerPanel(app), true);
+    gui->add(new GCPanel(app), true);
+    view->getEventHandlers().push_front(gui);
 
     OE_NOTICE << "Press 'n' to create a new view" << std::endl;
-    router->onKeyPress(EventRouter::KEY_N, [&]() { app.addView(Stringify()<<"View " << app._viewer.getNumViews()); });
+    EventRouter::get(view)->onKeyPress(EventRouter::KEY_N, [&]() { 
+        app.addView(Stringify()<<"View " << app._viewer.getNumViews()); });
 
     OE_NOTICE << "Press 'r' to call releaseGLObjects" << std::endl;
-    router->onKeyPress(EventRouter::KEY_R, [&]() { app.releaseGLObjects(); });
+    EventRouter::get(view)->onKeyPress(EventRouter::KEY_R, [&]() { 
+        app.releaseGLObjects(); });
 
     app._viewer.realize();
 

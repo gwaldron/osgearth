@@ -20,9 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarth/ImGuiUtils>
-#include <osgEarth/OsgImGuiHandler.hpp>
-#include <imgui_internal.h>
+#include <osgEarth/ImGui/ImGui>
 
 #include <osgViewer/Viewer>
 #include <osgEarth/Notify>
@@ -51,7 +49,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
-using namespace osgEarth::ImGuiUtil;
+using namespace osgEarth::GUI;
 
 float query_range = 100.0;
 long long query_time_ns = 0;
@@ -958,10 +956,10 @@ struct PredictiveDataLoader : public osg::NodeVisitor
     std::vector< osg::BoundingSphered > _areasToLoad;
 };
 
-class ImGuiDemo : public OsgImGuiHandler
+class MyGUI : public OsgImGuiHandler
 {
 public:
-    ImGuiDemo(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
+    MyGUI(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
         _mapNode(mapNode),
         _earthManip(earthManip),
         _view(view)
@@ -969,11 +967,11 @@ public:
     }
 
 protected:
-    void drawUi(osg::RenderInfo& renderInfo) override
+    void draw(osg::RenderInfo& renderInfo) override
     {
         // ImGui code goes here...
         ImGui::ShowDemoWindow();
-        _layers.draw(renderInfo, _mapNode.get(), _view->getCamera(), _earthManip.get());
+        _layers.draw(renderInfo);
 
         ImGui::Begin("Tools");
 
@@ -1106,7 +1104,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator(manip);
 
     // Setup the viewer for imgui
-    viewer.setRealizeOperation(new ImGuiDemo::RealizeOperation);
+    viewer.setRealizeOperation(new MyGUI::RealizeOperation);
 
     viewer.realize();
 
@@ -1114,13 +1112,13 @@ main(int argc, char** argv)
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
+    osg::Node* node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
     if (node)
     {
         MapNode* mapNode = MapNode::findMapNode(node);
         if (mapNode)
         {
-            viewer.getEventHandlers().push_front(new ImGuiDemo(&viewer, mapNode, manip));
+            viewer.getEventHandlers().push_front(new MyGUI(&viewer, mapNode, manip));
         }
 
         queryTrianglesHandler = new QueryTrianglesHandler(mapNode);

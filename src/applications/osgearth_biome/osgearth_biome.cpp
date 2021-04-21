@@ -71,20 +71,11 @@ struct LifeMapGUI : public GUI::BaseGUI
 {
     App _app;
     LifeMapLayer* lifemap;
-    float _splat_blend_start;
-    float _splat_blend_end;
-    float _splat_blend_rgbh_mix;
-    float _splat_blend_normal_mix;
 
     LifeMapGUI(App& app) : GUI::BaseGUI("Life Map"), _app(app)
     {
         lifemap = _app._map->getLayer<LifeMapLayer>();
         OE_HARD_ASSERT(lifemap != nullptr, __func__);
-
-        _splat_blend_start = 2500.0f;
-        _splat_blend_end = 500.0f;
-        _splat_blend_rgbh_mix = 0.85f;
-        _splat_blend_normal_mix = 0.72f;
     }
 
     void draw(osg::RenderInfo& ri) override
@@ -111,20 +102,6 @@ struct LifeMapGUI : public GUI::BaseGUI
                 { lifemap },
                 GeoExtent::INVALID);
         }
-
-        // uniforms
-        ImGui::SliderFloat("Splat blend start (m)", &_splat_blend_start, 0.0f, 5000.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_start", _splat_blend_start));
-
-        ImGui::SliderFloat("Splat blend end (m)", &_splat_blend_end, 0.0f, 5000.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_end", _splat_blend_end));
-
-        ImGui::SliderFloat("Splat RGBH mix", &_splat_blend_rgbh_mix, 0.0f, 1.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_rgbh_mix", _splat_blend_rgbh_mix));
-
-        ImGui::SliderFloat("Splat NRML mix", &_splat_blend_normal_mix, 0.0f, 1.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _splat_blend_normal_mix));
-
 
         ImGui::End();
     }

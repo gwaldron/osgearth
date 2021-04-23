@@ -585,7 +585,7 @@ GPUJobArena::arena()
 
 GPUJobArena::GPUJobArena() :
     osg::GraphicsOperation("oe.GPUJobArena", true),
-    _timeSlice(2), // default time slice (milliseconds)
+    _timeSlice(0), // default time slice (milliseconds)
     _done(false)
 {
     const char* value = ::getenv("OSGEARTH_GPU_TIME_SLICE_MS");
@@ -679,10 +679,6 @@ GPUJobArena::operator()(osg::GraphicsContext* gc)
         {
             // run the job
             next(gc->getState());
-
-            // check the time slice:
-            if (true)
-                break; // TEMPORARY: ONE PER FRAME
 
             auto timeElapsed = std::chrono::duration_cast<ms>(Clock::now() - start);
             if (timeElapsed >= _timeSlice)

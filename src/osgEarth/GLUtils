@@ -382,6 +382,7 @@ namespace osgEarth
         osg::ref_ptr<osg::GraphicsContext> getGraphicsContext();
 
         //! Time (ms) allocated to running GPU jobs per frame
+        //! Default = 0, meaning one job per frame is allowed.
         void setTimeSlice(const std::chrono::milliseconds& value);
         const std::chrono::milliseconds& getTimeSlice() const;
 

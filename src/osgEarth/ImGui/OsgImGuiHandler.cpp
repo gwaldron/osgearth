@@ -127,7 +127,7 @@ void OsgImGuiHandler::init()
 
     ImGui_ImplOpenGL3_Init();
 
-    io.RenderDrawListsFn = ImGui_ImplOpenGL3_RenderDrawData;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 }
 
 void OsgImGuiHandler::setCameraCallbacks(osg::Camera* camera)
@@ -224,6 +224,7 @@ void OsgImGuiHandler::render(osg::RenderInfo& ri)
 {
     draw(ri);
     ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)

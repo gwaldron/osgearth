@@ -429,22 +429,23 @@ MACRO(SETUP_IMGUI_APPLICATION APPLICATION_NAME)
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples
         )
-            
-        set(TARGET_LIBRARIES_VARS 
-            ${TARGET_LIBRARIES_VARS} 
+
+        set(TARGET_LIBRARIES_VARS
+            ${TARGET_LIBRARIES_VARS}
             GLEW_LIBRARIES
         )
-            
+
         set(TARGET_SRC
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui.cpp
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_demo.cpp
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_draw.cpp
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_widgets.cpp
-            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples/imgui_impl_opengl3.cpp
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_tables.cpp
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/backends/imgui_impl_opengl3.cpp
             ${OSGEARTH_SOURCE_DIR}/src/osgEarth/ImGui/OsgImGuiHandler.cpp
             ${TARGET_SRC}
         )
-            
+
         SETUP_APPLICATION(${APPLICATION_NAME})
     else()
         message(STATUS "ImGui application ${APPLICATION_NAME} skipped because GLEW was not found")

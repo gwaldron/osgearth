@@ -74,8 +74,8 @@ float mapToNormalizedRange(in float value, in float lo, in float hi)
     return clamp((value - lo) / (hi - lo), 0.0, 1.0);
 }
 
-vec3 vp_Normal;
-vec3 oe_UpVectorView;
+in vec3 vp_Normal;
+in vec3 oe_UpVectorView;
 float oe_roughness;
 float oe_ao;
 in float splatLevelBlend;
@@ -101,6 +101,10 @@ uniform float brightness = 1.0;
 uniform float contrast = 1.0;
 
 in float oe_layer_opacity;
+
+
+mat3 oe_normalMapTBN;
+
 
 vec3 unpackNormal(in vec4 p)
 {
@@ -233,9 +237,9 @@ void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
         temp.ao = mix(col[0].ao, col[1].ao, m);
 
         pixel.rgbh = mix(pixel.rgbh, temp.rgbh, min(splatLevelBlend, oe_splat_blend_rgbh_mix));
-        //pixel.normal = mix(pixel.normal, temp.normal, min(splatLevelBlend, oe_splat_blend_normal_mix));
+        pixel.normal = mix(pixel.normal, temp.normal, min(splatLevelBlend, oe_splat_blend_normal_mix));
 
-        pixel.normal = normalize(pixel.normal + temp.normal*min(splatLevelBlend, oe_splat_blend_normal_mix));
+        //pixel.normal = normalize(pixel.normal + temp.normal*min(splatLevelBlend, oe_splat_blend_normal_mix));
 
         pixel.roughness = mix(pixel.roughness, temp.roughness, splatLevelBlend);
         pixel.ao = min(pixel.ao, temp.ao); // mix(pixel.ao, temp.ao, splatLevelBlend);
@@ -290,14 +294,23 @@ void oe_splat_Frag(inout vec4 quad)
     }
 
     // establish the local tangent plane:
+#if 0
     vec3 Z = gl_NormalMatrix * vec3(0, 0, 1); // north pole
     vec3 T = normalize(cross(Z, vp_Normal));
     vec3 B = normalize(cross(vp_Normal, T));
     mat3 tbn = mat3(T, B, vp_Normal);
+#else
+    mat3 tbn = oe_normalMapTBN;
+#endif
+
+    vec3 pre_normal = tbn[2];
 
     pixel.normal.xy = decel(pixel.normal.xy, normal_power);
 
-    vp_Normal = normalize(tbn * pixel.normal);
+    //pixel.normal.xy = pixel.normal.yx;
+
+    // Note the flipped X and Y. Not sure what's up. Prob the source data.
+    vp_Normal = normalize(vp_Normal + tbn * pixel.normal.yxz);
 
     oe_roughness = pixel.roughness;
 
@@ -312,12 +325,11 @@ void oe_splat_Frag(inout vec4 quad)
     // perma-show caps:
     float snowiness = 0.0;
     float coldness = mapToNormalizedRange(elev, 1000, 3500);
-    float min_snow_cos_angle = 1.0 - soften(snow*coldness); // *rugged);
+    float min_snow_cos_angle = 1.0 - soften(snow*coldness);
     const float snow_buf = 0.01;
     float b = min(min_snow_cos_angle + snow_buf, 1.0);
     float cos_angle = dot(vp_Normal, oe_UpVectorView);
     snowiness = smoothstep(min_snow_cos_angle, b, cos_angle);
-    //snowiness = 0; // cos_angle > snow ? 1 : 0;
     color = mix(pixel.rgbh.rgb, vec3(1), snowiness);
     oe_roughness = mix(oe_roughness, 0.1, snowiness);
 #else
@@ -341,9 +353,9 @@ void oe_splat_Frag(inout vec4 quad)
     quad = vec4(color, alpha);
 
 #if 1 //debug
-    if (snow > 0.9)
+    if (snow > 0.95)
     {
-        vec3 n = pixel.normal;
+        vec3 n = vp_Normal;
         //if (n.x > 0.0 && n.x > abs(n.y))
         //    quad = vec4(1, 0, 0, 1);
         //else if (n.x <= 0.0 && n.x < -abs(n.y))

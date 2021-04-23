@@ -23,10 +23,124 @@
 #include <osgEarth/TransformFilter>
 #include <osgEarth/GLUtils>
 #include <osg/BindImageTexture>
+#include <osgDB/WriteFile>
 #include <memory>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+
+#define USE_JFA
+//#define USE_CONVOLVE
+namespace
+{
+    struct ConvolveData : public FeatureImageRenderer::UserData
+    {
+        osg::ref_ptr<osg::Image> source;
+    };
+}
+
+
+
+void FeatureSDFLayer::jfa(
+    Session* session,
+    const FeatureList& features,
+    osg::Image* out_image,
+    std::shared_ptr<UserData>& userdata,
+    const GeoExtent& extent,
+    GLenum channel,
+    const NumericExpression& min_dist_meters,
+    const NumericExpression& max_dist_meters,
+    bool invert,
+    Cancelable* progress) const
+{
+    if (features.empty())
+        return;
+
+    int n = out_image->s();
+
+    float lo = min_dist_meters.eval();
+    float hi = max_dist_meters.eval();
+
+    // STEP 1 - render features to a source image.
+    osg::ref_ptr<osg::Image> source = new osg::Image();
+    source->allocateImage(n, n, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    ImageUtils::PixelWriter writeSource(source);
+    ImageUtils::PixelReader readSource(source);
+    writeSource.assign(osg::Vec4(1, 1, 1, 0));
+
+    Style style;
+
+    if (features.front()->getGeometry()->isLinear())
+        style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Black;
+    else
+        style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
+
+    _sdfRenderer->renderFeaturesForStyle(
+        session,
+        style,
+        features,
+        extent,
+        source,
+        userdata,
+        progress);
+
+    // STEP 2 - convert pixels to local coordinates
+    // R = x, G = y; in [0..1] UV space
+    osg::ref_ptr<osg::Image> buf;
+    buf = new osg::Image();
+    buf->allocateImage(n, n, 1, GL_RG, GL_FLOAT);
+
+    ImageUtils::PixelReader readBuf(buf);
+    ImageUtils::PixelWriter writeBuf(buf);
+
+    constexpr float NODATA = 32767.0f;
+    osg::Vec4f nodata(NODATA, NODATA, NODATA, NODATA);
+    osg::Vec4f pixel, coord;
+    ImageUtils::ImageIterator iter(source.get());
+    iter.forEachPixel([&]()
+        {
+            readSource(pixel, iter.s(), iter.t());
+            if (pixel.a() > 0.0f)
+                coord.set(iter.u(), iter.v(), 0, 0);
+            else
+                coord = nodata;
+
+            writeBuf(coord, iter.s(), iter.t());
+        }
+    );
+
+    if (GPUJobArena::arena().getGraphicsContext().valid())
+    {
+        compute_sdf_on_gpu(buf.get());
+    }
+    else
+    {
+        compute_sdf_on_cpu(buf.get());
+    }
+
+    ImageUtils::PixelReader readOutput(out_image);
+    ImageUtils::PixelWriter writeOutput(out_image);
+    ImageUtils::ImageIterator b_iter(readBuf);
+    osg::Vec4f me, closest;
+    int c = clamp((int)(channel - GL_RED), 0, 3);
+    b_iter.forEachPixel([&]()
+        {
+            readOutput(pixel, b_iter.s(), b_iter.t());
+            if (pixel[c] > 0.0f)
+            {
+                me.set(b_iter.u(), b_iter.v(), 0, 0);
+                readBuf(closest, b_iter.s(), b_iter.t());
+                float d = distance2D(me, closest);
+                d = unitremap(d*(float)extent.height(), lo, hi);
+                if (d < pixel[c])
+                {
+                    pixel[c] = d;
+                    writeOutput(pixel, b_iter.s(), b_iter.t());
+                }
+            }
+        }
+    );
+}
 
 void
 SDFGenerator::encodeSDF(
@@ -211,7 +325,7 @@ FeatureSDFLayer::openImplementation()
 
     _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
 
-    setupCompute();
+    _sdfRenderer = new FeatureImageLayer();
 
     return Status::NoError;
 }
@@ -373,6 +487,10 @@ FeatureSDFLayer::createImageImplementation(
         return GeoImage::INVALID;
     }
 
+    //using Clock = std::chrono::high_resolution_clock;
+    //using Tick = std::chrono::time_point<Clock>;
+    //Tick start = Clock::now();
+
     // allocate the image.
     osg::ref_ptr<osg::Image> image;
 
@@ -381,9 +499,19 @@ FeatureSDFLayer::createImageImplementation(
     ImageUtils::PixelWriter write(image);
     write.assign(Color::Red);
 
-    bool ok = render(key, _session.get(), getStyleSheet(), image.get(), progress);
+    std::shared_ptr<UserData> userdata;
+
+    bool ok = render(key, _session.get(), getStyleSheet(), image, userdata, progress);
+    
+    if (ok)
+        postProcess(image, userdata);
 
     OE_SOFT_ASSERT(ok, __func__);
+
+    //Tick end = Clock::now();
+    //OE_WARN << "SDF: " <<
+    //    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+    //    << "us " << std::endl;
 
     return ok ? GeoImage(image.get(), key.getExtent()) : GeoImage::INVALID;
 }
@@ -396,6 +524,7 @@ FeatureSDFLayer::renderFeaturesForStyle(
     const FeatureList& in_features,
     const GeoExtent& imageExtent,
     osg::Image* out_image,
+    std::shared_ptr<UserData>& userdata,
     Cancelable* progress) const
 {
     OE_PROFILING_ZONE;
@@ -417,7 +546,39 @@ FeatureSDFLayer::renderFeaturesForStyle(
         xform.push(features, context);
     }
 
-#if 1
+#ifdef USE_JFA
+
+    jfa(
+        session,
+        features,
+        out_image,
+        userdata,
+        imageExtent,
+        GL_RED,
+        style.get<RenderSymbol>()->sdfMinDistance().get(),
+        style.get<RenderSymbol>()->sdfMaxDistance().get(),
+        options().invert().get(),
+        progress);
+
+#endif
+
+#ifdef USE_CONVOLVE
+
+    convolve(
+        session,
+        features,
+        out_image,
+        userdata,
+        imageExtent,
+        GL_RED,
+        style.get<RenderSymbol>()->sdfMinDistance().get(),
+        style.get<RenderSymbol>()->sdfMaxDistance().get(),
+        options().invert().get(),
+        progress);
+
+#endif
+
+#ifdef USE_CPU_SDF
 
     SDFGenerator sdf;
 
@@ -432,227 +593,291 @@ FeatureSDFLayer::renderFeaturesForStyle(
         options().invert().get(),
         progress);
 
-#else
-
-    compute_sdf_on_gpu(
-        out_image,
-        features,
-        osg::Vec2d(imageExtent.xMin(), imageExtent.yMin()),
-        osg::Vec2f(imageExtent.width(), imageExtent.height()),
-        osg::Vec2f(
-            style.get<RenderSymbol>()->sdfMinDistance().get().eval(),
-            style.get<RenderSymbol>()->sdfMaxDistance().get().eval()
-        )
-    );
-
 #endif
 
     return true;
 }
 
-const char* sdf_cs = R"(
+
+void
+FeatureSDFLayer::postProcess(
+    osg::Image* out_image,
+    std::shared_ptr<UserData>& userdata) const
+{
+#ifdef USE_CONVOLVE
+    
+    _convolveData.lock();
+    ConvolveSessionPtr& s = _convolveData[getCurrentThreadId()];
+    if (!_program.valid())
+    {
+        _program = new osg::Program();
+        _program->addShader(new osg::Shader(osg::Shader::COMPUTE, convolve_cs));
+    }
+    _convolveData.unlock();
+
+    std::shared_ptr<ConvolveData> data = std::static_pointer_cast<ConvolveData>(userdata);
+    if (data == nullptr)
+        return;
+
+    if (s == nullptr)
+    {
+        s = std::make_shared<ConvolveSession>();
+
+        s->_stateSet = new osg::StateSet();
+        s->_stateSet->setAttribute(_convolveProgram.get(), 1);
+
+        s->_tex = new osg::Texture2D();
+        s->_tex->setSourceFormat(GL_RGBA);
+        s->_tex->setSourceType(GL_UNSIGNED_BYTE);
+        s->_tex->setInternalFormat(GL_RGBA8);
+
+        s->_stateSet->setTextureAttribute(1, s->_tex, 1);
+        s->_stateSet->addUniform(new osg::Uniform("input", 1));
+
+        s->_outputtex = new osg::Texture2D();
+        s->_outputtex->setSourceFormat(GL_RED);
+        s->_outputtex->setSourceType(GL_UNSIGNED_BYTE);
+        s->_outputtex->setInternalFormat(GL_R8);
+
+        s->_stateSet->setTextureAttribute(0, s->_outputtex, 1);
+        s->_stateSet->addUniform(new osg::Uniform("buf", 0));
+        s->_stateSet->setAttribute(new osg::BindImageTexture(
+            0, s->_outputtex, osg::BindImageTexture::READ_WRITE, GL_R8, 0, GL_TRUE));
+
+        s->_pbo = 0;
+    }
+
+    s->_tex->setImage(data->source.get());
+    data->source->dirty();
+
+    s->_outputtex->setImage(out_image);
+    out_image->dirty();
+
+    auto render_job = GPUJob<bool>().dispatch(
+        [s, out_image](osg::State* state, Cancelable* progress)
+        {
+            s->render(out_image, state);
+            return true;
+        }
+    );
+
+    auto readback_job = GPUJob<bool>().dispatch(
+        [s, out_image](osg::State* state, Cancelable* progress)
+        {
+            s->readback(out_image, state);
+            return true;
+        }
+    );
+
+    readback_job.join();
+#endif
+}
+
+
+// https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
+const char* jfa_cs = R"(
 #version 430
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 
 // output image binding
-layout(binding=0, r8) uniform image2D sdf;
+layout(binding=0, rg16f) uniform image2D buf;
 
-// input data
-struct Segment {
-    vec2 a, b;
-};
-layout(binding=0, std430) readonly buffer Segments {
-    Segment segments[];
-};
+uniform int L;
 
-// number of line segments
-uniform int num_segments;
-// width and height of image in local coords
-uniform vec2 image_extent;
-// min and max signed distances (mapped to 0 and 1 respectively)
-uniform vec2 domain;
+#define NODATA 32767.0
 
 float unit_remap(in float a, in float lo, in float hi)
 {
     return clamp((a-lo)/(hi-lo), 0.0, 1.0);
 }
 
-float squared_distance_to_line_segment(in vec2 p, in vec2 a, in vec2 b)
+float squared_distance_2d(in vec4 a, in vec4 b)
 {
-    vec2 n = b - a;
-    vec2 pa = a - p;
-    float c = dot(n, pa);
-    if (c > 0.0) return dot(pa,pa);
-    vec2 bp = p - b;
-    if (dot(n,bp) > 0.0) return dot(bp,bp);   
-    vec2 e = pa - n*(c/dot(n,n));
-    return dot(e,e);
-}
-
-float min_signed_distance(in vec2 local)
-{
-    float d_squared = 9999999;
-    for(int i=0; i<num_segments && d_squared > 0; ++i)
-    {
-        d_squared = min(
-            d_squared,
-            squared_distance_to_line_segment(local, segments[i].a, segments[i].b));
-    }
-    return unit_remap(sqrt(d_squared), domain[0], domain[1]);
+    vec2 c = b.xy-a.xy;
+    return dot(c, c);
 }
 
 void main()
 {
-    // coords in [0..1]
-    vec2 pixelNDC = vec2(
+    vec2 pixel_uv = vec2(
         float(gl_WorkGroupID.x) / float(gl_NumWorkGroups.x-1),
         float(gl_WorkGroupID.y) / float(gl_NumWorkGroups.y-1));
 
-    // coords in local space
-    vec2 pixel_local = pixelNDC * image_extent.xy;
+    int s = int(gl_WorkGroupID.x);
+    int t = int(gl_WorkGroupID.y);
 
-    // calculate SDF value
-    float sd = min_signed_distance(pixel_local);
+    vec4 pixel_points_to = imageLoad(buf, ivec2(gl_WorkGroupID));
+    if (pixel_points_to.x == NODATA)
+        return;
 
-    // write it to the texture
-    imageStore(sdf, ivec2(gl_WorkGroupID), vec4(sd));
+    vec4 remote;
+    vec4 remote_points_to;
+
+    for(int rs = s - L; rs <= s + L; rs += L)
+    {
+        if (rs < 0 || rs >= gl_NumWorkGroups.x) continue;
+        remote.x = float(rs)/float(gl_NumWorkGroups.x-1);
+
+        for(int rt = t - L; rt <= t + L; rt += L)
+        {
+            if (rt < 0 || rt >= gl_NumWorkGroups.y) continue;
+            remote.y = float(rt)/float(gl_NumWorkGroups.y-1);
+
+            remote_points_to = imageLoad(buf, ivec2(rs,rt));
+            if (remote_points_to.x == NODATA)
+            {
+                imageStore(buf, ivec2(rs,rt), pixel_points_to);
+            }
+            else
+            {
+                // compare the distances and pick the closest.
+                float d_existing = squared_distance_2d(remote, remote_points_to);
+                float d_possible = squared_distance_2d(remote, pixel_points_to);
+
+                if (d_possible < d_existing)
+                {
+                    imageStore(buf, ivec2(rs,rt), pixel_points_to);
+                }
+            }
+        }
+    }
 }
 
 )";
 
-// EXPERIMENTAL.
-// ONLY works for LINE SEGMENTS today.
-void
-FeatureSDFLayer::setupCompute()
-{    
-    osg::Shader* cs = new osg::Shader(osg::Shader::COMPUTE);
-    cs->setShaderSource(sdf_cs);
-    _computeProgram = new osg::Program();
-    _computeProgram->addShader(cs);
+
+
+// simple Gaussian blur filter
+const char* convolve_cs = R"(
+#version 430
+layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
+
+uniform sampler2D input;
+
+layout(binding=0, r8) uniform image2D buf;
+
+const float kernel[9] = {
+    1.0/16.0, 2.0/16.0, 1.0/16.0,
+    2.0/16.0, 4.0/16.0, 2.0/16.0,
+    1.0/16.0, 2.0/16.0, 1.0/16.0
+};
+
+void main()
+{
+    int s = int(gl_WorkGroupID.x);
+    int t = int(gl_WorkGroupID.y);
+    int w = int(gl_NumWorkGroups.x);
+    int h = int(gl_NumWorkGroups.y);
+
+    vec4 existing = imageLoad(buf, ivec2(s,t));
+
+    vec4 pixel = vec4(0);
+    int k = 0;
+    for(int y=t-1; y<=t+1; ++y) {
+        for(int x=s-1; x<=s+1; ++x) {
+            int ss = clamp(x, 0, w-1);
+            int tt = clamp(y, 0, h-1);
+            pixel.r += kernel[k++] * texelFetch(input, ivec2(ss,tt), 0).a;
+        }
+    }
+
+    if (pixel.r < existing.r)
+        imageStore(buf, ivec2(s,t), pixel);
 }
+
+)";
+
 
 void
 FeatureSDFLayer::compute_sdf_on_gpu(
-    osg::Image* out_image,
-    const FeatureList& lines,
-    const osg::Vec2d& local_origin,
-    const osg::Vec2f& local_extent,
-    const osg::Vec2f& distance_domain) const
+    osg::Image* image) const
 {
-    // populate the input buffer:
-    _gpuData.lock();
-    GPUSessionPtr& session = _gpuData[getCurrentThreadId()];
-    _gpuData.unlock();
+    _jfa.lock();
+    JFASessionPtr& session = _jfa[getCurrentThreadId()];
+    if (!_program.valid())
+    {
+        _program = new osg::Program();
+        _program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
+    }
+    _jfa.unlock();
+
     if (session == nullptr)
     {
-        session = std::make_shared<GPUSession>();
-        session->_segments.setBindingIndex(0);
+        session = std::make_shared<JFASession>();
 
         session->_stateSet = new osg::StateSet();
-        session->_stateSet->setAttribute(_computeProgram.get(), 1);
+        session->_stateSet->setAttribute(_program.get(), 1);
 
-        session->_numSegments_uniform = session->_stateSet->getOrCreateUniform("num_segments", osg::Uniform::INT);
-        session->_imageExtent_uniform = session->_stateSet->getOrCreateUniform("image_extent", osg::Uniform::FLOAT_VEC2);
-        session->_domain_uniform = session->_stateSet->getOrCreateUniform("domain", osg::Uniform::FLOAT_VEC2);
-        
-        osg::Texture2D* tex = new osg::Texture2D();
-        tex->setTextureSize(out_image->s(), out_image->t());
-        tex->setSourceFormat(GL_RED);
-        tex->setSourceType(GL_UNSIGNED_BYTE);
-        tex->setInternalFormat(GL_R8);
+        // The RG float texture to store seed coordinates in uv space
+        session->_tex = new osg::Texture2D();
+        session->_tex->setSourceFormat(GL_RG);
+        session->_tex->setSourceType(GL_FLOAT);
+        session->_tex->setInternalFormat(GL_RG16F);
 
-        session->_stateSet->setTextureAttribute(0, tex, 1);
-        session->_stateSet->addUniform(new osg::Uniform("sdf", 0));
-        session->_stateSet->setAttribute(new osg::BindImageTexture(0, tex, osg::BindImageTexture::WRITE_ONLY, GL_R8, 0, GL_TRUE));
+        session->_stateSet->setTextureAttribute(0, session->_tex, 1);
+        session->_stateSet->addUniform(new osg::Uniform("buf", 0));
+        session->_stateSet->setAttribute(new osg::BindImageTexture(0, session->_tex, osg::BindImageTexture::READ_WRITE, GL_RG16F, 0, GL_TRUE));
 
         session->_pbo = 0;
     }
 
-    // calculate the required buffer size:
-    int num_segments = 0;
-    for (auto& feature : lines) {
-        ConstGeometryIterator iter(feature->getGeometry());
-        while (iter.hasMore()) {
-            num_segments += iter.next()->size() - 1;
-        }
-    }
+    // transfer the input texture
+    session->_tex->setImage(image);
+    image->dirty();
 
-    session->_segments.setNumElements(num_segments);
-
-    int ptr = 0;
-    for (auto& feature : lines) {
-        ConstGeometryIterator iter(feature->getGeometry());
-        while (iter.hasMore()) {
-            auto part = iter.next();
-            for(int i=0; i<part->size()-1; ++i) {
-                auto& segment = session->_segments[ptr];
-                segment.endpoints[0] = (*part)[i].x() - local_origin.x();
-                segment.endpoints[1] = (*part)[i].y() - local_origin.y();
-                segment.endpoints[2] = (*part)[i+1].x() - local_origin.x();
-                segment.endpoints[3] = (*part)[i+1].y() - local_origin.y();
-                ++ptr;
-            }
-        }
-    }
-
-    // new data so mark dirty for new download.
-    session->_segments.dirty();
-
-    session->_numSegments_uniform->set(num_segments);
-    session->_imageExtent_uniform->set(local_extent);
-    session->_domain_uniform->set(distance_domain);
-    
     auto render_job = GPUJob<bool>().dispatch(
-        [session, out_image](osg::State* state, Cancelable* progress)
+        [session, image](osg::State* state, Cancelable* progress)
         {
-            session->render(out_image, state);
+            session->render(image, state);
             return true;
         }
     );
 
     auto readback_job = GPUJob<bool>().dispatch(
-        [session, out_image](osg::State* state, Cancelable* progress)
+        [session, image](osg::State* state, Cancelable* progress)
         {
-            session->readback(out_image, state);
+            session->readback(image, state);
             return true;
         }
     );
 
-    // wait for completion
     readback_job.join();
 }
 
 void
-FeatureSDFLayer::GPUSession::render(osg::Image* out_image, osg::State* state)
+FeatureSDFLayer::JFASession::render(osg::Image* out_image, osg::State* state)
 {
     osg::GLExtensions* ext = state->get<osg::GLExtensions>();
 
+    state->apply(_stateSet.get());
+
     if (_pbo == 0)
     {
-        int size = out_image->s() * out_image->t() * 1u; // GL_RED
+        int size = out_image->s() * out_image->t() * sizeof(GLfloat) * 2;
         ext->glGenBuffers(1, &_pbo);
         ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
         ext->glBufferData(GL_PIXEL_PACK_BUFFER_ARB, size, 0, GL_STREAM_READ);
+
+        const osg::Program::PerContextProgram* pcp = state->getLastAppliedProgramObject();
+        _L_uniform = pcp->getUniformLocation(osg::Uniform::getNameID("L"));
     }
 
-    _segments.apply(*state);
-    state->apply(_stateSet.get());
-
-    ext->glDispatchCompute(out_image->s(), out_image->t(), 1);
-    //ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
+    for (int L = out_image->s() / 2; L >= 1; L /= 2)
+    {
+        ext->glUniform1i(_L_uniform, L);
+        ext->glDispatchCompute(out_image->s(), out_image->t(), 1);
+        ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    }
 
     // Post an async readback to the GL queue
     ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RG, GL_FLOAT, 0);
 }
 
 void
-FeatureSDFLayer::GPUSession::readback(osg::Image* out_image, osg::State* state)
+FeatureSDFLayer::JFASession::readback(osg::Image* out_image, osg::State* state)
 {
-    using Clock = std::chrono::high_resolution_clock;
-    using Tick = std::chrono::time_point<Clock>;
-    Tick start = Clock::now();
-
     osg::GLExtensions* ext = state->get<osg::GLExtensions>();
 
     ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
@@ -663,10 +888,168 @@ FeatureSDFLayer::GPUSession::readback(osg::Image* out_image, osg::State* state)
         ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
     }
     ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
-
-    Tick end = Clock::now();
-    OE_WARN << "readback: " <<
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-        << "us " << std::endl;
 }
 
+void
+FeatureSDFLayer::compute_sdf_on_cpu(osg::Image* buf) const
+{
+    // Jump-Flood algorithm for computing discrete voronoi
+    // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
+    osg::Vec4f pixel_points_to;
+    osg::Vec4f remote;
+    osg::Vec4f remote_points_to;
+    ImageUtils::PixelReader readBuf(buf);
+    ImageUtils::PixelWriter writeBuf(buf);
+    int n = buf->s();
+    constexpr float NODATA = 32767;
+
+    for (int L = n / 2; L >= 1; L /= 2)
+    {
+        ImageUtils::ImageIterator iter(readBuf);
+        iter.forEachPixel([&]()
+            {
+                readBuf(pixel_points_to, iter.s(), iter.t());
+
+                // no data at this pixel yet? skip it; there is nothing to propagate.
+                if (pixel_points_to.x() == NODATA)
+                    return;
+
+                for (int s = iter.s() - L; s <= iter.s() + L; s += L)
+                {
+                    if (s < 0 || s >= readBuf.s()) continue;
+
+                    remote[0] = (float)s / (float)(readBuf.s() - 1);
+
+                    for (int t = iter.t() - L; t <= iter.t() + L; t += L)
+                    {
+                        if (t < 0 || t >= readBuf.t()) continue;
+                        if (s == iter.s() && t == iter.t()) continue;
+
+                        remote[1] = (float)t / (float)(readBuf.t() - 1);
+
+                        // fetch the coords the remote pixel points to:
+                        readBuf(remote_points_to, s, t);
+
+                        if (remote_points_to.x() == NODATA) // remote is unset? Just copy
+                        {
+                            writeBuf(pixel_points_to, s, t);
+                        }
+                        else
+                        {
+                            // compare the distances and pick the closest.
+                            float d_existing = distanceSquared2D(remote, remote_points_to);
+                            float d_possible = distanceSquared2D(remote, pixel_points_to);
+
+                            if (d_possible < d_existing)
+                            {
+                                writeBuf(pixel_points_to, s, t);
+                            }
+                        }
+                    }
+                }
+            }
+        );
+    }
+}
+
+
+
+
+
+void FeatureSDFLayer::convolve(
+    Session* session,
+    const FeatureList& features,
+    osg::Image* out_image,
+    std::shared_ptr<UserData>& userdata,
+    const GeoExtent& extent,
+    GLenum channel,
+    const NumericExpression& min_dist_meters,
+    const NumericExpression& max_dist_meters,
+    bool invert,
+    Cancelable* progress) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(out_image->s() == out_image->t(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(ImageUtils::isPowerOfTwo(out_image), __func__, );
+    if (features.empty())
+        return;
+
+    int n = out_image->s();
+
+    float lo = min_dist_meters.eval();
+    float hi = max_dist_meters.eval();
+
+    std::shared_ptr<ConvolveData> data;
+    if (userdata)
+        data = std::static_pointer_cast<ConvolveData>(userdata);
+    else
+    {
+        data = std::make_shared<ConvolveData>();// new ConvolveData();
+        data->source = new osg::Image();
+        data->source->allocateImage(n, n, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+        ImageUtils::PixelWriter writeSource(data->source);
+        writeSource.assign(osg::Vec4(1, 1, 1, 0));
+        userdata = data;
+    }
+
+    Style style;
+
+    if (features.front()->getGeometry()->isLinear())
+    {
+        style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Black;
+        style.getOrCreate<LineSymbol>()->stroke()->width() = lo;
+        style.getOrCreate<LineSymbol>()->stroke()->widthUnits() = Units::METERS;
+    }
+    else
+    {
+        style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
+    }
+
+    _sdfRenderer->renderFeaturesForStyle(
+        session,
+        style,
+        features,
+        extent,
+        data->source,
+        userdata,
+        progress);
+}
+
+
+void
+FeatureSDFLayer::ConvolveSession::render(osg::Image* out_image, osg::State* state)
+{
+    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+
+    state->apply(_stateSet.get());
+
+    if (_pbo == 0)
+    {
+        int size = out_image->getTotalSizeInBytes();
+        ext->glGenBuffers(1, &_pbo);
+        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
+        ext->glBufferData(GL_PIXEL_PACK_BUFFER_ARB, size, 0, GL_STREAM_READ);
+    }
+
+    ext->glDispatchCompute(out_image->s(), out_image->t(), 1);
+    ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+    // Post an async readback to the GL queue
+    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
+}
+
+void
+FeatureSDFLayer::ConvolveSession::readback(osg::Image* out_image, osg::State* state)
+{
+    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+
+    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
+    GLubyte* src = (GLubyte*)ext->glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY_ARB);
+    OE_SOFT_ASSERT(src != nullptr, __func__);
+    if (src)
+    {
+        ::memcpy(out_image->data(), src, out_image->getTotalSizeInBytes());
+        ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+    }
+    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
+}

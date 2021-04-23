@@ -101,7 +101,12 @@ namespace osgEarth
             const FeatureList& features,
             const GeoExtent& imageExtent,
             osg::Image* out_image,
+            std::shared_ptr<UserData>& userdata,
             Cancelable* progress) const override;
+
+        virtual void postProcess(
+            osg::Image* out_image,
+            std::shared_ptr<UserData>& userdata) const override;
 
     public: // ImageLayer
 
@@ -135,35 +140,63 @@ namespace osgEarth
 
         void establishProfile();
 
-        struct LineData
-        {
-            float endpoints[4];
-        };
-
-        osg::ref_ptr<osg::Program> _computeProgram;
-        void setupCompute();
+        mutable osg::ref_ptr<osg::Program> _program;
 
         void compute_sdf_on_gpu(
-            osg::Image* out_image,
-            const FeatureList& lines,
-            const osg::Vec2d& local_origin,
-            const osg::Vec2f& local_extent,
-            const osg::Vec2f& distance_domain) const;
+            osg::Image* image) const;
 
-        struct GPUSession {
-            ArraySSBO<LineData> _segments;
+        void compute_sdf_on_cpu(
+            osg::Image* buf) const;
+
+        struct JFASession {
             osg::ref_ptr<osg::StateSet> _stateSet;
-            osg::Uniform* _numSegments_uniform;
-            osg::Uniform* _imageExtent_uniform;
-            osg::Uniform* _domain_uniform;
+            osg::Texture2D* _tex;
+            GLint _L_uniform;
+            GLuint _pbo;
+            void render(osg::Image* out_image, osg::State* state);
+            void readback(osg::Image* out_image, osg::State* state);
+        };
+        using JFASessionPtr = std::shared_ptr<JFASession>;
+        using JFASessionPerThread = Mutexed<std::unordered_map<unsigned, JFASessionPtr>>;
+        mutable JFASessionPerThread _jfa;
+        osg::ref_ptr<FeatureImageLayer> _sdfRenderer;
+
+        void jfa(
+            Session* session,
+            const FeatureList& features,
+            osg::Image* out_image,
+            std::shared_ptr<UserData>& userdata,
+            const GeoExtent& extent,
+            GLenum channel,
+            const NumericExpression& min_dist_meters,
+            const NumericExpression& max_dist_meters,
+            bool invert,
+            Cancelable* progress) const;
+
+        struct ConvolveSession {
+            osg::ref_ptr<osg::StateSet> _stateSet;
+            osg::Texture2D* _tex;
+            osg::Texture2D* _outputtex;
             GLuint _pbo;
             void render(osg::Image* out_image, osg::State* state);
             void readback(osg::Image* out_image, osg::State* state);
         };
 
-        using GPUSessionPtr = std::shared_ptr<GPUSession>;
-        using GPUDataPerThread = Mutexed<std::unordered_map<unsigned, GPUSessionPtr>>;
-        mutable GPUDataPerThread _gpuData;
+        using ConvolveSessionPtr = std::shared_ptr<ConvolveSession>;
+        using ConvolveDataPerThread = Mutexed<std::unordered_map<unsigned, ConvolveSessionPtr>>;
+        mutable ConvolveDataPerThread _convolveData;
+
+        void convolve(
+            Session* session,
+            const FeatureList& features,
+            osg::Image* out_image,
+            std::shared_ptr<UserData>& userdata,
+            const GeoExtent& extent,
+            GLenum channel,
+            const NumericExpression& min_dist_meters,
+            const NumericExpression& max_dist_meters,
+            bool invert,
+            Cancelable* progress) const;
 
     };    
     

@@ -158,7 +158,7 @@ namespace osgEarth {
                     // Keep scroll position at the bottom so we can see new network requests as they come in if they are scrolled to the bottom already
                     if (ImGui::GetScrollY() == ImGui::GetScrollMaxY())
                     {
-                        ImGui::SetScrollHere(1.0);
+                        ImGui::SetScrollHereY(1.0);
                     }
                     ImGui::EndChild();
 

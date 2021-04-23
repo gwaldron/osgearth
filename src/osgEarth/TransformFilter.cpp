@@ -75,9 +75,17 @@ TransformFilter::push( Feature* input, FilterContext& context )
     if ( !input || !input->getGeometry() )
         return true;
 
-    bool needsSRSXform =
+    const SpatialReference* inputSRS =
+        input ? input->getSRS() :
+        context.profile() ? context.profile()->getSRS() :
+        nullptr;
+
+    if (!inputSRS)
+        return false;
+
+    bool needsSRSXform = 
         _outputSRS.valid() &&
-        ( ! context.profile()->getSRS()->isEquivalentTo( _outputSRS.get() ) );
+        !inputSRS->isEquivalentTo(_outputSRS.get());
 
     bool needsMatrixXform = !_mat.isIdentity();
 
@@ -101,7 +109,8 @@ TransformFilter::push( Feature* input, FilterContext& context )
         // first transform the geometry to the output SRS:            
         if ( needsSRSXform )
         {
-            context.profile()->getSRS()->transform( geom->asVector(), _outputSRS.get() );
+            inputSRS->transform(geom->asVector(), _outputSRS.get());
+            //context.profile()->getSRS()->transform( geom->asVector(), _outputSRS.get() );
         }
             //context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom->asVector(), false );
 

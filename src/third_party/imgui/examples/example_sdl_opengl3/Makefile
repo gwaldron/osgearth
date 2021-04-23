@@ -8,26 +8,31 @@
 # Mac OS X:
 #   brew install sdl2
 # MSYS2:
-#   pacman -S mingw-w64-i686-SDL
+#   pacman -S mingw-w64-i686-SDL2
 #
 
 #CXX = g++
 #CXX = clang++
 
 EXE = example_sdl_opengl3
+IMGUI_DIR = ../..
 SOURCES = main.cpp
-SOURCES += ../imgui_impl_sdl.cpp ../imgui_impl_opengl3.cpp
-SOURCES += ../../imgui.cpp ../../imgui_demo.cpp ../../imgui_draw.cpp ../../imgui_widgets.cpp
+SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
+SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl3.cpp
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 UNAME_S := $(shell uname -s)
+LINUX_GL_LIBS = -lGL
 
-CXXFLAGS = -I../ -I../../
+CXXFLAGS = -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends
 CXXFLAGS += -g -Wall -Wformat
 LIBS =
 
 ##---------------------------------------------------------------------
-## OPENGL LOADER
+## OPENGL LOADER / OPENGL ES
 ##---------------------------------------------------------------------
+
+## See below for OpenGL ES option (no loader required) - comment out
+## the following if you want to use OpenGL ES instead of Desktop GL.
 
 ## Using OpenGL loader: gl3w [default]
 SOURCES += ../libs/gl3w/GL/gl3w.c
@@ -35,15 +40,33 @@ CXXFLAGS += -I../libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W
 
 ## Using OpenGL loader: glew
 ## (This assumes a system-wide installation)
-# CXXFLAGS += -lGLEW -DIMGUI_IMPL_OPENGL_LOADER_GLEW
+# CXXFLAGS += -DIMGUI_IMPL_OPENGL_LOADER_GLEW
+# LIBS += -lGLEW
 
 ## Using OpenGL loader: glad
 # SOURCES += ../libs/glad/src/glad.c
 # CXXFLAGS += -I../libs/glad/include -DIMGUI_IMPL_OPENGL_LOADER_GLAD
 
+## Using OpenGL loader: glad2
+# SOURCES += ../libs/glad/src/gl.c
+# CXXFLAGS += -I../libs/glad/include -DIMGUI_IMPL_OPENGL_LOADER_GLAD2
+
 ## Using OpenGL loader: glbinding
-## (This assumes a system-wide installation)
-# CXXFLAGS += -lglbinding -DIMGUI_IMPL_OPENGL_LOADER_GLBINDING
+## This assumes a system-wide installation
+## of either version 3.0.0 (or newer)
+# CXXFLAGS += -DIMGUI_IMPL_OPENGL_LOADER_GLBINDING3
+# LIBS += -lglbinding
+## or the older version 2.x
+# CXXFLAGS += -DIMGUI_IMPL_OPENGL_LOADER_GLBINDING2
+# LIBS += -lglbinding
+
+## Using OpenGL ES, no loader required
+## This assumes a GL ES library available in the system, e.g. libGLESv2.so
+# CXXFLAGS += -DIMGUI_IMPL_OPENGL_ES2
+# LINUX_GL_LIBS = -lGLESv2
+## If you're on a Raspberry Pi and want to use the legacy drivers,
+## use the following instead:
+# LINUX_GL_LIBS = -L/opt/vc/lib -lbrcmGLESv2
 
 ##---------------------------------------------------------------------
 ## BUILD FLAGS PER PLATFORM
@@ -51,7 +74,7 @@ CXXFLAGS += -I../libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W
 
 ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
-	LIBS += -lGL -ldl `sdl2-config --libs`
+	LIBS += $(LINUX_GL_LIBS) -ldl `sdl2-config --libs`
 
 	CXXFLAGS += `sdl2-config --cflags`
 	CFLAGS = $(CXXFLAGS)
@@ -67,12 +90,12 @@ ifeq ($(UNAME_S), Darwin) #APPLE
 	CFLAGS = $(CXXFLAGS)
 endif
 
-ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
-   ECHO_MESSAGE = "MinGW"
-   LIBS += -lgdi32 -lopengl32 -limm32 `pkg-config --static --libs sdl2`
+ifeq ($(OS), Windows_NT)
+    ECHO_MESSAGE = "MinGW"
+    LIBS += -lgdi32 -lopengl32 -limm32 `pkg-config --static --libs sdl2`
 
-   CXXFLAGS += `pkg-config --cflags sdl2`
-   CFLAGS = $(CXXFLAGS)
+    CXXFLAGS += `pkg-config --cflags sdl2`
+    CFLAGS = $(CXXFLAGS)
 endif
 
 ##---------------------------------------------------------------------
@@ -82,10 +105,10 @@ endif
 %.o:%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:../%.cpp
+%.o:$(IMGUI_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:../../%.cpp
+%.o:$(IMGUI_DIR)/backends/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 %.o:../libs/gl3w/GL/%.c

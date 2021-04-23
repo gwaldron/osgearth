@@ -233,7 +233,10 @@ void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
         temp.ao = mix(col[0].ao, col[1].ao, m);
 
         pixel.rgbh = mix(pixel.rgbh, temp.rgbh, min(splatLevelBlend, oe_splat_blend_rgbh_mix));
-        pixel.normal = mix(pixel.normal, temp.normal, min(splatLevelBlend, oe_splat_blend_normal_mix));
+        //pixel.normal = mix(pixel.normal, temp.normal, min(splatLevelBlend, oe_splat_blend_normal_mix));
+
+        pixel.normal = normalize(pixel.normal + temp.normal*min(splatLevelBlend, oe_splat_blend_normal_mix));
+
         pixel.roughness = mix(pixel.roughness, temp.roughness, splatLevelBlend);
         pixel.ao = min(pixel.ao, temp.ao); // mix(pixel.ao, temp.ao, splatLevelBlend);
     }
@@ -310,7 +313,7 @@ void oe_splat_Frag(inout vec4 quad)
     float snowiness = 0.0;
     float coldness = mapToNormalizedRange(elev, 1000, 3500);
     float min_snow_cos_angle = 1.0 - soften(snow*coldness); // *rugged);
-    const float snow_buf = 0.05;
+    const float snow_buf = 0.01;
     float b = min(min_snow_cos_angle + snow_buf, 1.0);
     float cos_angle = dot(vp_Normal, oe_UpVectorView);
     snowiness = smoothstep(min_snow_cos_angle, b, cos_angle);
@@ -337,19 +340,20 @@ void oe_splat_Frag(inout vec4 quad)
     // final color output:
     quad = vec4(color, alpha);
 
-#if 0 //debug
-    if (snow > 0.5)
+#if 1 //debug
+    if (snow > 0.9)
     {
-        quad = vec4(0.5 + 0.5*vp_Normal, 1.0);
+        vec3 n = pixel.normal;
+        //if (n.x > 0.0 && n.x > abs(n.y))
+        //    quad = vec4(1, 0, 0, 1);
+        //else if (n.x <= 0.0 && n.x < -abs(n.y))
+        //    quad = vec4(1, 1, 0, 1);
+        //else if (n.y > 0.0 && n.y > abs(n.x))
+        //    quad = vec4(0, 1, 0, 1);
+        //else
+        //    quad = vec4(0, 0, 1, 1);
 
-        if (vp_Normal.x > 0.0 && vp_Normal.x > vp_Normal.y)
-            quad = vec4(1, 0, 0, 1);
-        else if (vp_Normal.x <= 0.0 && vp_Normal.x < vp_Normal.y)
-            quad = vec4(1, 1, 0, 1);
-        else if (vp_Normal.y > 0.0 && vp_Normal.y > vp_Normal.x)
-            quad = vec4(0, 1, 0, 1);
-        else
-            quad = vec4(0, 0, 1, 1);
+        quad = vec4(n.x, 0, n.y, 1)*0.5 + 0.5;
     }
 #endif
 }

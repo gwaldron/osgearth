@@ -31,31 +31,47 @@ namespace osgEarth
         class OSGEARTH_EXPORT FeatureImageRenderer
         {
         public:
+            struct UserData {
+            };
+
             bool render(
                 const TileKey& key,
                 Session* session,
                 const StyleSheet* styles,
-                osg::Image* target,
+                osg::Image* image,
+                std::shared_ptr<UserData>& userdata,
                 ProgressCallback* progress) const;
 
-        protected:
+            // called before all renderFeaturesForStyle calls
+            virtual void preProcess(
+                osg::Image* image,
+                std::shared_ptr<UserData>& userdata) const { }
+
             virtual bool renderFeaturesForStyle(
                 Session* session,
                 const Style& style,
                 const FeatureList& features,
                 const GeoExtent& imageExtent,
-                osg::Image* out_image,
+                osg::Image* image,
+                std::shared_ptr<UserData>& userdata,
                 Cancelable* progress) const = 0;
+
+            // called after all renderFeaturesForStyle calls
+            virtual void postProcess(
+                osg::Image* out_image,
+                std::shared_ptr<UserData>& userdata) const { }
 
             osg::ref_ptr<FeatureFilterChain> _filterChain;
 
         private:
+
             bool queryAndRenderFeaturesForStyle(
                 Session* session,
                 const Style& style,
                 const Query& query,
                 const GeoExtent& imageExtent,
-                osg::Image* out_image,
+                osg::Image* image,
+                std::shared_ptr<UserData>& userdata,
                 ProgressCallback* progress) const;
 
             void getFeatures(
@@ -108,7 +124,16 @@ namespace osgEarth
             const FeatureList& features,
             const GeoExtent& imageExtent,
             osg::Image* out_image,
+            std::shared_ptr<UserData>& userdata,
             Cancelable* progress) const;
+
+        void preProcess(
+            osg::Image* out_image,
+            std::shared_ptr<UserData>& userdata) const override;
+
+        void postProcess(
+            osg::Image* out_image,
+            std::shared_ptr<UserData>& userdata) const override;
 
     public: // ImageLayer
 
@@ -139,19 +164,7 @@ namespace osgEarth
 
         void updateSession();
 
-        bool renderFeaturesForStyle(
-            Session*           session,
-            const Style&       style,
-            const FeatureList& features,
-            osg::Referenced*   buildData,
-            const GeoExtent&   imageExtent,
-            osg::Image*        image ) const;
-
         osg::Image* allocateImage() const;
-
-        bool preProcess(osg::Image* image) const;
-
-        bool postProcess(osg::Image* image) const;
 
         void establishProfile();
     };

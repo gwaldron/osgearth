@@ -985,11 +985,13 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                         features = layeredFeatures.features[layer.sourceLayer()];
                     }
 
+                    std::shared_ptr<FeatureImageRenderer::UserData> userdata;
+
                     if (layer.type() == "fill")
                     {
                         Style style;
                         style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().get());
-                        featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image.get(), nullptr);
+                        featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image, userdata, nullptr);
                     }
                     else if (layer.type() == "line")
                     {
@@ -997,7 +999,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                         style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color(layer.paint().lineColor().get());
                         style.getOrCreateSymbol<LineSymbol>()->stroke()->width() = layer.paint().lineWidth().get();
                         style.getOrCreateSymbol<LineSymbol>()->stroke()->widthUnits() = Units::PIXELS;
-                        featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image.get(), nullptr);
+                        featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image, userdata, nullptr);
                     }
                 }
             }

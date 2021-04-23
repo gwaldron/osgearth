@@ -201,7 +201,11 @@ namespace osgEarth { namespace FeatureImageLayerImpl
             });
 
         osg::Vec4 color = symbol->fill().isSet() ? symbol->fill()->color() : Color::White;
-        ctx.setFillStyle(BLRgba32(color.asRGBA()));
+        ctx.setFillStyle(BLRgba32(
+            uint32_t(255.0*color.r()),
+            uint32_t(255.0*color.g()),
+            uint32_t(255.0*color.b()),
+            uint32_t(255.0*color.a())));
         ctx.fillPath(path);
     }
 
@@ -274,7 +278,12 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         //BLPattern pattern(texture);
         //ctx.setStrokeStyle(pattern);
 
-        ctx.setStrokeStyle(BLRgba32(color.asRGBA()));
+        //ctx.setStrokeStyle(BLRgba32(color.asRGBA()));
+        ctx.setStrokeStyle(BLRgba32(
+            uint32_t(255.0*color.r()),
+            uint32_t(255.0*color.g()),
+            uint32_t(255.0*color.b()),
+            uint32_t(255.0*color.a())));
 
         ctx.setStrokeWidth(lineWidth_px);
         ctx.setStrokeCaps(cap);
@@ -553,13 +562,15 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         image->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
     }
 
-    preProcess(image.get());
+    std::shared_ptr<UserData> userdata;
 
-    bool ok = render(key, _session.get(), getStyleSheet(), image.get(), progress);
+    preProcess(image.get(), userdata);
+
+    bool ok = render(key, _session.get(), getStyleSheet(), image.get(), userdata, progress);
 
     if (ok)
     {
-        postProcess(image.get());
+        postProcess(image.get(), userdata);
         return GeoImage(image.get(), key.getExtent());
     }
     else
@@ -568,25 +579,28 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     }
 }
 
-bool
-FeatureImageLayer::preProcess(osg::Image* image) const
+void
+FeatureImageLayer::preProcess(
+    osg::Image* out_image,
+    std::shared_ptr<UserData>& userdata) const
 {
     OE_PROFILING_ZONE;
 
     if (options().sdf() == true)
     {
-        ImageUtils::PixelWriter write(image);
+        ImageUtils::PixelWriter write(out_image);
         write.assign(Color::Red);
     }
     else
     {
-        ::memset(image->data(), 0x00, image->getTotalSizeInBytes());
+        ::memset(out_image->data(), 0x00, out_image->getTotalSizeInBytes());
     }
-    return true;
 }
 
-bool
-FeatureImageLayer::postProcess(osg::Image* image) const
+void
+FeatureImageLayer::postProcess(
+    osg::Image* out_image,
+    std::shared_ptr<UserData>& userdata) const
 {
     OE_PROFILING_ZONE;
 
@@ -594,26 +608,25 @@ FeatureImageLayer::postProcess(osg::Image* image) const
     if (options().coverage() == false)
     {
         //convert from ABGR to RGBA
-        unsigned char* pixel = image->data();
-        for (int i = 0; i < image->getTotalSizeInBytes(); i += 4, pixel += 4)
+        unsigned char* pixel = out_image->data();
+        for (int i = 0; i < out_image->getTotalSizeInBytes(); i += 4, pixel += 4)
         {
             std::swap(pixel[0], pixel[3]);
             std::swap(pixel[1], pixel[2]);
         }
     }
 #endif
-
-    return true;
 }
 
 bool
 FeatureImageLayer::renderFeaturesForStyle(
-    Session*           session,
-    const Style&       style,
+    Session* session,
+    const Style& style,
     const FeatureList& in_features,
-    const GeoExtent&   imageExtent,
-    osg::Image*        image,
-    Cancelable*        progress) const
+    const GeoExtent& imageExtent,
+    osg::Image* image,
+    std::shared_ptr<UserData>& userdata,
+    Cancelable* progress) const
 {
     OE_PROFILING_ZONE;
 
@@ -621,7 +634,8 @@ FeatureImageLayer::renderFeaturesForStyle(
 
     // A processing context to use with the filters:
     FilterContext context(session);
-    context.setProfile(getFeatureSource()->getFeatureProfile());
+    if (getFeatureSource())
+        context.setProfile(getFeatureSource()->getFeatureProfile());
 
     // local (shallow) copy
     FeatureList features(in_features);
@@ -669,8 +683,12 @@ FeatureImageLayer::renderFeaturesForStyle(
 #ifndef USE_AGGLITE
 
     // set up the render target:
+    std::uint32_t format =
+        image->getPixelFormat() == GL_RED ? BL_FORMAT_A8 :
+        BL_FORMAT_PRGB32;
+
     BLImage buf;
-    buf.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
+    buf.createFromData(image->s(), image->t(), format, image->data(), image->getRowSizeInBytes()); // image->s() * 4);
 
     BLContext ctx(buf);
     ctx.setCompOp(BL_COMP_OP_SRC_OVER);
@@ -1049,6 +1067,7 @@ FeatureImageRenderer::render(
     Session* session,
     const StyleSheet* styles,
     osg::Image* target,
+    std::shared_ptr<UserData>& userdata,
     ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
@@ -1086,6 +1105,7 @@ FeatureImageRenderer::render(
                     list,
                     key.getExtent(),
                     target,
+                    userdata,
                     progress);
             }
         }
@@ -1167,6 +1187,7 @@ FeatureImageRenderer::render(
                                 list,
                                 key.getExtent(),
                                 target,
+                                userdata,
                                 progress);
                         }
                     }
@@ -1176,19 +1197,19 @@ FeatureImageRenderer::render(
                     const Style* style = styles->getStyle( sel.getSelectedStyleName() );
                     Query query = sel.query().get();
                     query.tileKey() = key;
-                    queryAndRenderFeaturesForStyle(session, *style, query, key.getExtent(), target, progress);
+                    queryAndRenderFeaturesForStyle(session, *style, query, key.getExtent(), target, userdata, progress);
                 }
             }
         }
         else
         {
             const Style* style = styles->getDefaultStyle();
-            queryAndRenderFeaturesForStyle(session, *style, defaultQuery, key.getExtent(), target, progress);
+            queryAndRenderFeaturesForStyle(session, *style, defaultQuery, key.getExtent(), target, userdata, progress);
         }
     }
     else
     {
-        queryAndRenderFeaturesForStyle(session, Style(), defaultQuery, key.getExtent(), target, progress);
+        queryAndRenderFeaturesForStyle(session, Style(), defaultQuery, key.getExtent(), target, userdata, progress);
     }
 
     return true;
@@ -1201,7 +1222,8 @@ FeatureImageRenderer::queryAndRenderFeaturesForStyle(
     const Style&      style,
     const Query&      query,
     const GeoExtent&  imageExtent,
-    osg::Image*       out_image,
+    osg::Image* out_image,
+    std::shared_ptr<UserData>& userdata,
     ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
@@ -1221,6 +1243,7 @@ FeatureImageRenderer::queryAndRenderFeaturesForStyle(
             features,
             imageExtent,
             out_image,
+            userdata,
             progress);
     }
     return false;

@@ -142,8 +142,7 @@ void OsgImGuiHandler::newFrame(osg::RenderInfo& renderInfo)
 
     ImGuiIO& io = ImGui::GetIO();
 
-    osg::Viewport* viewport = renderInfo.getCurrentCamera()->getViewport();
-    io.DisplaySize = ImVec2(viewport->width(), viewport->height());
+    io.DisplaySize = ImVec2(renderInfo.getCurrentCamera()->getGraphicsContext()->getTraits()->width, renderInfo.getCurrentCamera()->getGraphicsContext()->getTraits()->height);
 
     double currentTime = renderInfo.getView()->getFrameStamp()->getSimulationTime();
     io.DeltaTime = currentTime - time_ + 0.0000001;
@@ -222,9 +221,41 @@ void OsgImGuiHandler::installSettingsHandler()
 
 void OsgImGuiHandler::render(osg::RenderInfo& ri)
 {
+    static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_NoDockingInCentralNode | ImGuiDockNodeFlags_PassthruCentralNode;
+
+    auto dockSpaceId = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), dockspace_flags);
+
     draw(ri);
+
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    auto centralNode = ImGui::DockBuilderGetCentralNode(dockSpaceId);
+
+    auto io = ImGui::GetIO();
+
+    auto camera = ri.getCurrentCamera();
+    auto viewport = camera->getViewport();
+    viewport->x() = centralNode->Pos.x;
+    viewport->y() = io.DisplaySize.y - centralNode->Size.y - centralNode->Pos.y;
+    viewport->width() = centralNode->Size.x;
+    viewport->height() = centralNode->Size.y;
+
+    const osg::Matrixd& proj = camera->getProjectionMatrix();
+    bool isOrtho = osg::equivalent(proj(3, 3), 1.0);
+    if (!isOrtho)
+    {
+        double fovy, ar, znear, zfar;
+        camera->getProjectionMatrixAsPerspective(fovy, ar, znear, zfar);
+        camera->setProjectionMatrixAsPerspective(fovy, viewport->width() / viewport->height(), znear, zfar);
+    }
+    else
+    {
+        double left, right, bottom, top, znear, zfar;
+        camera->getProjectionMatrixAsOrtho(left, right, bottom, top, znear, zfar);
+        camera->setProjectionMatrixAsOrtho(viewport->x(), viewport->x() + viewport->width(), viewport->y(), viewport->y() + viewport->height(), znear, zfar);
+
+    }
 }
 
 bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)

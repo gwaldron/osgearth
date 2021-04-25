@@ -293,24 +293,10 @@ void oe_splat_Frag(inout vec4 quad)
         }
     }
 
-    // establish the local tangent plane:
-#if 0
-    vec3 Z = gl_NormalMatrix * vec3(0, 0, 1); // north pole
-    vec3 T = normalize(cross(Z, vp_Normal));
-    vec3 B = normalize(cross(vp_Normal, T));
-    mat3 tbn = mat3(T, B, vp_Normal);
-#else
-    mat3 tbn = oe_normalMapTBN;
-#endif
-
-    vec3 pre_normal = tbn[2];
-
     pixel.normal.xy = decel(pixel.normal.xy, normal_power);
 
-    //pixel.normal.xy = pixel.normal.yx;
-
     // Note the flipped X and Y. Not sure what's up. Prob the source data.
-    vp_Normal = normalize(vp_Normal + tbn * pixel.normal.yxz);
+    vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal.yxz);
 
     oe_roughness = pixel.roughness;
 
@@ -323,13 +309,12 @@ void oe_splat_Frag(inout vec4 quad)
 
 #if 1
     // perma-show caps:
-    float snowiness = 0.0;
     float coldness = mapToNormalizedRange(elev, 1000, 3500);
     float min_snow_cos_angle = 1.0 - soften(snow*coldness);
     const float snow_buf = 0.01;
     float b = min(min_snow_cos_angle + snow_buf, 1.0);
     float cos_angle = dot(vp_Normal, oe_UpVectorView);
-    snowiness = smoothstep(min_snow_cos_angle, b, cos_angle);
+    float snowiness = smoothstep(min_snow_cos_angle, b, cos_angle);
     color = mix(pixel.rgbh.rgb, vec3(1), snowiness);
     oe_roughness = mix(oe_roughness, 0.1, snowiness);
 #else

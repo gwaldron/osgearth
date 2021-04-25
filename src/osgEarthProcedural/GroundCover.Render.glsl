@@ -8,6 +8,8 @@
 
 vec3 vp_Normal;
 vec4 vp_Color;
+out vec3 oe_UpVectorView;
+out float elev;
 
 struct oe_VertexSpec {
     vec3 local;  // instance-local vert
@@ -45,6 +47,8 @@ void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 
     // override the terrain's shader
     vp_Color = gl_Color;
+
+    elev = instance[i].vertex.z;
 }
 
 
@@ -84,7 +88,7 @@ layout(location = 6) in int oe_gc_texArenaIndex; // texture handle LUT index
 layout(location = 7) in int oe_gc_nmlArenaIndex; // normal map LUT index
 
 // Stage globals
-vec3 oe_UpVectorView;
+out vec3 oe_UpVectorView;
 vec4 vp_Color;
 vec3 vp_Normal;
 out vec4 oe_layer_tilec;
@@ -322,6 +326,8 @@ void oe_GroundCover_Model(inout vec4 vertex_view, in uint i)
 
     vp_Normal = oe_vertex.normal;
 
+    oe_UpVectorView = oe_transform.normal * vec3(0, 0, 1);
+
     //TODO: hard-coded Coord7, is that OK? I guess we could use zero
     oe_gc_texCoord = gl_MultiTexCoord7.xyz;
 
@@ -381,12 +387,27 @@ uniform int oe_gc_isMultisampled;
 
 in vec3 oe_gc_texCoord;
 vec3 vp_Normal;
+float oe_roughness;
 flat in uint64_t oe_gc_texHandle;
 flat in uint64_t oe_gc_nmlHandle;
 in mat3 oe_gc_TBN;
+in float elev;
 
 in float oe_gc_transition;
 in float oe_gc_distance;
+in vec3 oe_UpVectorView;
+
+float harden(in float x)
+{
+    return 1.0 - (1.0 - x)*(1.0 - x);
+}
+
+float mapToNormalizedRange(in float value, in float lo, in float hi)
+{
+    return clamp((value - lo) / (hi - lo), 0.0, 1.0);
+}
+
+uniform float snow;
 
 void oe_GroundCover_FS(inout vec4 color)
 {
@@ -436,4 +457,15 @@ void oe_GroundCover_FS(inout vec4 color)
 #endif
 
     //color.rgb = (vp_Normal+1.0)*0.5;
+
+#if 1
+    // TODO: revisit once we can figure out how to get terrain elevation
+    float coldness = mapToNormalizedRange(elev, 1000, 3500);
+    float cos_angle = clamp(dot(vp_Normal, normalize(oe_UpVectorView)), 0, 1);
+    if (cos_angle > 0.3) {
+        float snowiness = step(1.0 - snow*coldness, cos_angle);
+        color.rgb = mix(color.rgb, vec3(1), snowiness);
+        oe_roughness = mix(oe_roughness, 0.1, snowiness);
+    }
+#endif
 }

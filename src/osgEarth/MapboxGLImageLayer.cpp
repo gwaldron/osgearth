@@ -305,6 +305,18 @@ optional<std::string>& MapBoxStyleSheet::Paint::iconImage()
 {
     return _iconImage;
 }
+
+const optional<std::string>& MapBoxStyleSheet::Paint::visibility() const
+{
+    return _visibility;
+}
+
+optional<std::string>& MapBoxStyleSheet::Paint::visibility()
+{
+    return _visibility;
+}
+
+
 /*************************/
 
 
@@ -405,16 +417,6 @@ const std::string& MapBoxStyleSheet::name() const
     return _name;
 }
 
-const std::string& MapBoxStyleSheet::sprite() const
-{
-    return _sprite;
-}
-
-const std::string& MapBoxStyleSheet::glyphs() const
-{
-    return _glyphs;
-}
-
 const std::vector< MapBoxStyleSheet::Layer >& MapBoxStyleSheet::layers() const
 {
     return _layers;
@@ -435,9 +437,20 @@ std::vector< MapBoxStyleSheet::Source >& MapBoxStyleSheet::sources()
     return _sources;
 }
 
+const URI& MapBoxStyleSheet::sprite() const
+{
+    return _sprite;
+}
+
+const ResourceLibrary* MapBoxStyleSheet::spriteLibrary() const
+{
+    return _spriteLibrary.get();
+}
+
 MapBoxStyleSheet::MapBoxStyleSheet()
 {
 }
+
 
 MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Options* options)
 {
@@ -455,8 +468,10 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
 
     styleSheet._version = root.get("version", "").asString();
     styleSheet._name = root.get("name", "").asString();
-    styleSheet._sprite = root.get("sprite", "").asString();
-    styleSheet._glyphs = root.get("glyphs", "").asString();
+    styleSheet._sprite = URI(root.get("sprite", "").asString(), URIContext(location.full()));
+    styleSheet._glyphs = URI(root.get("glyphs", "").asString(), URIContext(location.full()));
+
+    styleSheet._spriteLibrary = loadSpriteLibrary(styleSheet._sprite);
 
     if (root.isMember("sources"))
     {
@@ -515,8 +530,31 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
                 getIfSet(paint, "line-color", layer.paint().lineColor());
                 getIfSet(paint, "line-width", layer.paint().lineWidth());
 
-                getIfSet(paint, "text-color", layer.paint().textColor());
-                getIfSet(paint, "text-halo-color", layer.paint().textHaloColor());
+                if (paint.isMember("text-color"))
+                {
+                    const Json::Value& textColor = paint["text-color"];
+                    if (textColor.isString())
+                    {
+                        layer.paint().textColor() = textColor.asString();
+                    }
+                    else
+                    {
+                        layer.paint().textColor() = "#ff0000";
+                    }
+                }
+
+                if (paint.isMember("text-halo-color"))
+                {
+                    const Json::Value& textHaloColor = paint["text-halo-color"];
+                    if (textHaloColor.isString())
+                    {
+                        layer.paint().textHaloColor() = textHaloColor.asString();
+                    }
+                    else
+                    {
+                        layer.paint().textHaloColor() = "#00ff00";
+                    }
+                }
             }
 
             // Parse layout
@@ -528,6 +566,8 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
                 getIfSet(layout, "text-field", layer.paint().textField());
                 getIfSet(layout, "text-size", layer.paint().textSize());
                 getIfSet(layout, "icon-image", layer.paint().iconImage());
+
+                getIfSet(layout, "visibility", layer.paint().visibility());
             }
 
             if (layerJson.isMember("filter"))
@@ -535,13 +575,52 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
                layer.filter()._filter = layerJson["filter"];
             }
 
-            //std::cout << "Got layer " << layer.id() << " type=" << layer.type() << " source=" << layer.source() << " source-layer=" << layer.sourceLayer() << " zoom=" << layer.minZoom() << "-" << layer.maxZoom() << std::endl;
             styleSheet._layers.emplace_back(std::move(layer));
         }
     }
     std::cout << "Found " << styleSheet._layers.size() << " layers" << std::endl;
 
     return styleSheet;
+}
+
+ResourceLibrary* MapBoxStyleSheet::loadSpriteLibrary(const URI& sprite)
+{
+    ResourceLibrary* library = nullptr;
+    URI uri(Stringify() << sprite.full() << ".json");
+
+    URI imagePath = Stringify() << sprite.full() << ".png";
+    osg::ref_ptr< osg::Image > image = imagePath.getImage();
+    if (image.valid())
+    {
+        unsigned int imageWidth = image->s();
+        unsigned int imageHeight = image->t();
+
+        auto data = uri.getString();
+        Json::Reader reader;
+        Json::Value root(Json::objectValue);
+        if (reader.parse(data, root, false))
+        {
+            library = new ResourceLibrary("mapbox", "");
+            for (Json::Value::iterator i = root.begin(); i != root.end(); ++i)
+            {
+                unsigned int x = (*i).get("x", 0).asUInt();
+                unsigned int y = (*i).get("y", 0).asUInt();
+                unsigned int width = (*i).get("width", 0).asUInt();
+                unsigned int height = (*i).get("height", 0).asUInt();
+
+                SkinResource* skin = new SkinResource();
+                skin->name() = i.key().asString();
+                skin->imageURI() = imagePath;
+                skin->image() = image.get();
+                skin->imageBiasS() = (float)x / (float)imageWidth;
+                skin->imageBiasT() = (float)y / (float)imageHeight;
+                skin->imageScaleS() = (float)width / (float)imageWidth;
+                skin->imageScaleT() = (float)height / (float)imageHeight;
+                library->addResource(skin);
+            }
+        }
+    }
+    return library;
 }
 
 
@@ -578,14 +657,6 @@ MapBoxGLImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-#if 0
-    auto rr = getURL().readString(this->getReadOptions());
-    if (rr.failed())
-    {
-        return Status::Error(Stringify() << "Failed to read style from " << getURL().full());
-    }
-    _styleSheet = MapBoxStyleSheet::load(rr.getString());
-#endif
     _styleSheet = MapBoxStyleSheet::load(getURL(), getReadOptions());
 
     return Status::NoError;
@@ -952,10 +1023,24 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
     image->setInternalTextureFormat(GL_RGBA8);
     ::memset(image->data(), 0x00, image->getTotalSizeInBytes());
 
+
+    osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet;
+    if (_styleSheet.spriteLibrary())
+    {
+        styleSheet->addResourceLibrary(const_cast<ResourceLibrary*>(_styleSheet.spriteLibrary()));
+    }
+    osg::ref_ptr< Session > session = new Session(_map.get(), styleSheet.get(), nullptr, nullptr);
+
     std::map< std::string, LayeredFeatures > sourceToFeatures;
 
     for (auto& layer : _styleSheet.layers())
     {
+        // Skip layers with visibility none
+        if (layer.paint().visibility() == "none")
+        {
+            continue;
+        }
+
         if (key.getLevelOfDetail() >= layer.minZoom() && key.getLevelOfDetail() <= layer.maxZoom())
         {
             if (layer.type() == "background")
@@ -971,8 +1056,6 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
             {
                 osg::ref_ptr< FeatureImageLayer > featureImage;
 
-                osg::ref_ptr< Session > session;
-
                 // Find the Source
                 for (auto& s : _styleSheet.sources())
                 {
@@ -984,8 +1067,6 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                             break;
                         }
 
-                        osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet;
-                        session = new Session(_map.get(), styleSheet.get(), nullptr, nullptr);
                         featureImage = new FeatureImageLayer();
                         featureImage->setFeatureSource(featureSource);
                         featureImage->open();
@@ -1095,8 +1176,11 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
                         if (layer.paint().iconImage().isSet())
                         {
-                            std::cout << "Setting icon image to " << layer.paint().iconImage().get() << std::endl;
-                            style.getOrCreateSymbol<IconSymbol>()->url() = StringExpression(layer.paint().iconImage().get());
+                            //style.getOrCreateSymbol<IconSymbol>()->url() = StringExpression(layer.paint().iconImage().get());
+                            //style.getOrCreateSymbol<SkinSymbol>()->url() = StringExpression(layer.paint().iconImage().get());
+                            style.getOrCreateSymbol<SkinSymbol>()->library() = "mapbox";
+                            style.getOrCreateSymbol<SkinSymbol>()->name() = StringExpression(layer.paint().iconImage().get());
+
                         }
 
                         featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image.get(), nullptr);

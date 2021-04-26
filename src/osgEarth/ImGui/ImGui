@@ -62,7 +62,7 @@ namespace osgEarth
             virtual void save(osgEarth::Config&) { }
 
         protected:
-            BaseGUI(const char* name) : 
+            BaseGUI(const char* name) :
                 _name(name), _visible(false), _last_visible(false)
             {
                 //nop
@@ -261,7 +261,7 @@ namespace osgEarth
         {
         public:
             using GUIPtr = std::unique_ptr<BaseGUI>;
-            
+
             //! Add all the built-in GUIs
             ApplicationGUI(bool addBuiltIns =false) : OsgImGuiHandler()
             {

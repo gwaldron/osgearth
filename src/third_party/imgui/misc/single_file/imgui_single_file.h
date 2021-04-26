@@ -1,4 +1,4 @@
-// imgui_single_file.h
+// dear imgui: single-file wrapper include
 // We use this to validate compiling all *.cpp files in a same compilation unit.
 // Users of that technique (also called "Unity builds") can generally provide this themselves,
 // so we don't really recommend you use this in your projects.
@@ -13,5 +13,6 @@
 #include "../../imgui.cpp"
 #include "../../imgui_demo.cpp"
 #include "../../imgui_draw.cpp"
+#include "../../imgui_tables.cpp"
 #include "../../imgui_widgets.cpp"
 #endif

@@ -93,23 +93,6 @@ namespace osgEarth
         void setStyleSheet(StyleSheet* styles);
         inline StyleSheet* getStyleSheet() const;
 
-#if 0
-    public: // FeatureImageRenderer
-
-        virtual bool renderFeaturesForStyle(
-            Session* session,
-            const Style& style,
-            const FeatureList& features,
-            const GeoExtent& imageExtent,
-            osg::Image* out_image,
-            std::shared_ptr<UserData>& userdata,
-            Cancelable* progress) const override;
-
-        virtual void postProcess(
-            osg::Image* out_image,
-            std::shared_ptr<UserData>& userdata) const override;
-#endif
-
     public: // ImageLayer
 
         // Opens the layer and returns a status
@@ -145,20 +128,17 @@ namespace osgEarth
 
         mutable osg::ref_ptr<osg::Program> _program;
 
-        void compute_sdf_on_gpu(
-            osg::Image* image) const;
+        void compute_sdf_on_gpu(osg::Image* buf) const;
+        void compute_sdf_on_cpu(osg::Image* buf) const;
 
-        void compute_sdf_on_cpu(
-            osg::Image* buf) const;
-
-        struct JFASession {
-            osg::ref_ptr<osg::StateSet> _stateSet;
-            osg::Texture2D* _tex;
+        struct JFASession : public ComputeImageSession
+        {
+        public:
+            JFASession() : _L_uniform(-1) { }
+            void renderImplementation(osg::State* state) override;
             GLint _L_uniform;
-            GLuint _pbo;
-            void render(osg::Image* out_image, osg::State* state);
-            void readback(osg::Image* out_image, osg::State* state);
         };
+
         using JFASessionPtr = std::shared_ptr<JFASession>;
         using JFASessionPerThread = Mutexed<std::unordered_map<unsigned, JFASessionPtr>>;
         mutable JFASessionPerThread _jfa;
@@ -173,32 +153,6 @@ namespace osgEarth
             const NumericExpression& max_dist_meters,
             bool invert,
             Cancelable* progress) const;
-
-#if 0
-        struct ConvolveSession {
-            osg::ref_ptr<osg::StateSet> _stateSet;
-            osg::Texture2D* _tex;
-            osg::Texture2D* _outputtex;
-            GLuint _pbo;
-            void render(osg::Image* out_image, osg::State* state);
-            void readback(osg::Image* out_image, osg::State* state);
-        };
-
-        using ConvolveSessionPtr = std::shared_ptr<ConvolveSession>;
-        using ConvolveDataPerThread = Mutexed<std::unordered_map<unsigned, ConvolveSessionPtr>>;
-        mutable ConvolveDataPerThread _convolveData;
-
-        void convolve(
-            Session* session,
-            const FeatureList& features,
-            osg::Image* out_image,
-            const GeoExtent& extent,
-            GLenum channel,
-            const NumericExpression& min_dist_meters,
-            const NumericExpression& max_dist_meters,
-            bool invert,
-            Cancelable* progress) const;
-#endif
     };    
     
     // template/inline impls .................................................

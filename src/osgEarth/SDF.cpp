@@ -30,19 +30,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-#define USE_JFA
-//#define USE_CONVOLVE
-#ifdef USE_CONVOLVE
-namespace
-{
-    struct ConvolveData : public FeatureImageRenderer::UserData
-    {
-        osg::ref_ptr<osg::Image> source;
-    };
-}
-#endif
-
-
 void FeatureSDFLayer::jfa(
     Session* session,
     const FeatureList& features,
@@ -71,12 +58,6 @@ void FeatureSDFLayer::jfa(
     float hi = max_dist_meters.eval();
 
     // STEP 1 - render features to a source image.
-    //osg::ref_ptr<osg::Image> source = new osg::Image();
-    //source->allocateImage(n, n, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    //ImageUtils::PixelWriter writeSource(source);
-    //ImageUtils::PixelReader readSource(source);
-    //writeSource.assign(osg::Vec4(1, 1, 1, 0));
-
     Style style;
 
     if (features.front()->getGeometry()->isLinear())
@@ -96,6 +77,7 @@ void FeatureSDFLayer::jfa(
     osg::ref_ptr<osg::Image> buf;
     buf = new osg::Image();
     buf->allocateImage(n, n, 1, GL_RG, GL_FLOAT);
+    buf->setInternalTextureFormat(GL_RG16F);
 
     ImageUtils::PixelReader readBuf(buf);
     ImageUtils::PixelWriter writeBuf(buf);
@@ -149,6 +131,7 @@ void FeatureSDFLayer::jfa(
     );
 }
 
+#if 0 // OLD VECTOR-BASED SDF CODE.
 void
 SDFGenerator::encodeSDF(
     const FeatureList& features,
@@ -257,6 +240,7 @@ SDFGenerator::encodeSDF(
         }
     );
 }
+#endif
 
 //..............................................................
 
@@ -297,6 +281,80 @@ FeatureSDFLayer::Options::fromConfig(const Config& conf)
 
 //........................................................................
 
+namespace
+{
+    // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
+    const char* jfa_cs = R"(
+    #version 430
+    layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
+
+    // output image binding
+    layout(binding=0, rg16f) uniform image2D buf;
+
+    uniform int L;
+
+    #define NODATA 32767.0
+
+    float unit_remap(in float a, in float lo, in float hi)
+    {
+        return clamp((a-lo)/(hi-lo), 0.0, 1.0);
+    }
+
+    float squared_distance_2d(in vec4 a, in vec4 b)
+    {
+        vec2 c = b.xy-a.xy;
+        return dot(c, c);
+    }
+
+    void main()
+    {
+        vec2 pixel_uv = vec2(
+            float(gl_WorkGroupID.x) / float(gl_NumWorkGroups.x-1),
+            float(gl_WorkGroupID.y) / float(gl_NumWorkGroups.y-1));
+
+        int s = int(gl_WorkGroupID.x);
+        int t = int(gl_WorkGroupID.y);
+
+        vec4 pixel_points_to = imageLoad(buf, ivec2(gl_WorkGroupID));
+        if (pixel_points_to.x == NODATA)
+            return;
+
+        vec4 remote;
+        vec4 remote_points_to;
+
+        for(int rs = s - L; rs <= s + L; rs += L)
+        {
+            if (rs < 0 || rs >= gl_NumWorkGroups.x) continue;
+            remote.x = float(rs)/float(gl_NumWorkGroups.x-1);
+
+            for(int rt = t - L; rt <= t + L; rt += L)
+            {
+                if (rt < 0 || rt >= gl_NumWorkGroups.y) continue;
+                remote.y = float(rt)/float(gl_NumWorkGroups.y-1);
+
+                remote_points_to = imageLoad(buf, ivec2(rs,rt));
+                if (remote_points_to.x == NODATA)
+                {
+                    imageStore(buf, ivec2(rs,rt), pixel_points_to);
+                }
+                else
+                {
+                    // compare the distances and pick the closest.
+                    float d_existing = squared_distance_2d(remote, remote_points_to);
+                    float d_possible = squared_distance_2d(remote, pixel_points_to);
+
+                    if (d_possible < d_existing)
+                    {
+                        imageStore(buf, ivec2(rs,rt), pixel_points_to);
+                    }
+                }
+            }
+        }
+    }
+
+    )";
+}
+
 #undef LC
 #define LC "[FeatureSDF] "
 
@@ -331,6 +389,9 @@ FeatureSDFLayer::openImplementation()
     establishProfile();
 
     _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
+
+    _program = new osg::Program();
+    _program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
 
     return Status::NoError;
 }
@@ -492,15 +553,10 @@ FeatureSDFLayer::createImageImplementation(
         return GeoImage::INVALID;
     }
 
-    //using Clock = std::chrono::high_resolution_clock;
-    //using Tick = std::chrono::time_point<Clock>;
-    //Tick start = Clock::now();
-
     // allocate the image.
-    osg::ref_ptr<osg::Image> image;
-
-    image = new osg::Image();
+    osg::ref_ptr<osg::Image> image = new osg::Image();
     image->allocateImage(getTileSize(), getTileSize(), 1, GL_RED, GL_UNSIGNED_BYTE);
+    image->setInternalTextureFormat(GL_R8);
     ImageUtils::PixelWriter write(image);
     write.assign(Color::Red);
 
@@ -513,18 +569,11 @@ FeatureSDFLayer::createImageImplementation(
         FilterContext context(_session.get());
         context.setProfile(getFeatureSource()->getFeatureProfile());
 
-        // local (shallow) copy
-        //FeatureList features(features);
-
         // Transform to map SRS:
-        {
-            OE_PROFILING_ZONE_NAMED("Transform");
-            TransformFilter xform(key.getExtent().getSRS());
-            xform.setLocalizeCoordinates(false);
-            xform.push(features, context);
-        }
+        TransformFilter xform(key.getExtent().getSRS());
+        xform.setLocalizeCoordinates(false);
+        xform.push(features, context);
 
-#ifdef USE_JFA
         jfa(
             _session.get(),
             features,
@@ -535,298 +584,13 @@ FeatureSDFLayer::createImageImplementation(
             style.get<RenderSymbol>()->sdfMaxDistance().get(),
             options().invert().get(),
             progress);
-#endif
     };
 
     FeatureStyleSorter sorter;
     sorter.sort(key, _session.get(), _filterChain.get(), renderer, progress);
-    
-
-
-    //bool ok = render(key, _session.get(), getStyleSheet(), image, userdata, progress);
-    
-    //if (ok)
-    //    postProcess(image, userdata);
-
-    //OE_SOFT_ASSERT(ok, __func__);
-
-    //Tick end = Clock::now();
-    //OE_WARN << "SDF: " <<
-    //    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-    //    << "us " << std::endl;
 
     return GeoImage(image.get(), key.getExtent());
 }
-
-#if 0
-bool
-FeatureSDFLayer::renderFeaturesForStyle(
-    Session* session,
-    const Style& style,
-    const FeatureList& in_features,
-    const GeoExtent& imageExtent,
-    osg::Image* out_image,
-    std::shared_ptr<UserData>& userdata,
-    Cancelable* progress) const
-{
-    OE_PROFILING_ZONE;
-
-    OE_DEBUG << LC << "Rendering " << in_features.size() << " features for " << imageExtent.toString() << "\n";
-
-    // A processing context to use with the filters:
-    FilterContext context(session);
-    context.setProfile(getFeatureSource()->getFeatureProfile());
-
-    // local (shallow) copy
-    FeatureList features(in_features);
-
-    // Transform to map SRS:
-    {
-        OE_PROFILING_ZONE_NAMED("Transform");
-        TransformFilter xform(imageExtent.getSRS());
-        xform.setLocalizeCoordinates(false);
-        xform.push(features, context);
-    }
-
-#ifdef USE_JFA
-
-    jfa(
-        session,
-        features,
-        out_image,
-        imageExtent,
-        GL_RED,
-        style.get<RenderSymbol>()->sdfMinDistance().get(),
-        style.get<RenderSymbol>()->sdfMaxDistance().get(),
-        options().invert().get(),
-        progress);
-
-#endif
-
-#ifdef USE_CONVOLVE
-
-    convolve(
-        session,
-        features,
-        out_image,
-        userdata,
-        imageExtent,
-        GL_RED,
-        style.get<RenderSymbol>()->sdfMinDistance().get(),
-        style.get<RenderSymbol>()->sdfMaxDistance().get(),
-        options().invert().get(),
-        progress);
-
-#endif
-
-#ifdef USE_CPU_SDF
-
-    SDFGenerator sdf;
-
-    sdf.encodeSDF(
-        features,
-        out_image,
-        imageExtent,
-        GL_RED,
-        context,
-        style.get<RenderSymbol>()->sdfMinDistance().get(),
-        style.get<RenderSymbol>()->sdfMaxDistance().get(),
-        options().invert().get(),
-        progress);
-
-#endif
-
-    return true;
-}
-
-
-void
-FeatureSDFLayer::postProcess(
-    osg::Image* out_image,
-    std::shared_ptr<UserData>& userdata) const
-{
-#ifdef USE_CONVOLVE
-    
-    _convolveData.lock();
-    ConvolveSessionPtr& s = _convolveData[getCurrentThreadId()];
-    if (!_program.valid())
-    {
-        _program = new osg::Program();
-        _program->addShader(new osg::Shader(osg::Shader::COMPUTE, convolve_cs));
-    }
-    _convolveData.unlock();
-
-    std::shared_ptr<ConvolveData> data = std::static_pointer_cast<ConvolveData>(userdata);
-    if (data == nullptr)
-        return;
-
-    if (s == nullptr)
-    {
-        s = std::make_shared<ConvolveSession>();
-
-        s->_stateSet = new osg::StateSet();
-        s->_stateSet->setAttribute(_convolveProgram.get(), 1);
-
-        s->_tex = new osg::Texture2D();
-        s->_tex->setSourceFormat(GL_RGBA);
-        s->_tex->setSourceType(GL_UNSIGNED_BYTE);
-        s->_tex->setInternalFormat(GL_RGBA8);
-
-        s->_stateSet->setTextureAttribute(1, s->_tex, 1);
-        s->_stateSet->addUniform(new osg::Uniform("input", 1));
-
-        s->_outputtex = new osg::Texture2D();
-        s->_outputtex->setSourceFormat(GL_RED);
-        s->_outputtex->setSourceType(GL_UNSIGNED_BYTE);
-        s->_outputtex->setInternalFormat(GL_R8);
-
-        s->_stateSet->setTextureAttribute(0, s->_outputtex, 1);
-        s->_stateSet->addUniform(new osg::Uniform("buf", 0));
-        s->_stateSet->setAttribute(new osg::BindImageTexture(
-            0, s->_outputtex, osg::BindImageTexture::READ_WRITE, GL_R8, 0, GL_TRUE));
-
-        s->_pbo = 0;
-    }
-
-    s->_tex->setImage(data->source.get());
-    data->source->dirty();
-
-    s->_outputtex->setImage(out_image);
-    out_image->dirty();
-
-    auto render_job = GPUJob<bool>().dispatch(
-        [s, out_image](osg::State* state, Cancelable* progress)
-        {
-            s->render(out_image, state);
-            return true;
-        }
-    );
-
-    auto readback_job = GPUJob<bool>().dispatch(
-        [s, out_image](osg::State* state, Cancelable* progress)
-        {
-            s->readback(out_image, state);
-            return true;
-        }
-    );
-
-    readback_job.join();
-#endif
-}
-#endif
-
-// https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
-const char* jfa_cs = R"(
-#version 430
-layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
-
-// output image binding
-layout(binding=0, rg16f) uniform image2D buf;
-
-uniform int L;
-
-#define NODATA 32767.0
-
-float unit_remap(in float a, in float lo, in float hi)
-{
-    return clamp((a-lo)/(hi-lo), 0.0, 1.0);
-}
-
-float squared_distance_2d(in vec4 a, in vec4 b)
-{
-    vec2 c = b.xy-a.xy;
-    return dot(c, c);
-}
-
-void main()
-{
-    vec2 pixel_uv = vec2(
-        float(gl_WorkGroupID.x) / float(gl_NumWorkGroups.x-1),
-        float(gl_WorkGroupID.y) / float(gl_NumWorkGroups.y-1));
-
-    int s = int(gl_WorkGroupID.x);
-    int t = int(gl_WorkGroupID.y);
-
-    vec4 pixel_points_to = imageLoad(buf, ivec2(gl_WorkGroupID));
-    if (pixel_points_to.x == NODATA)
-        return;
-
-    vec4 remote;
-    vec4 remote_points_to;
-
-    for(int rs = s - L; rs <= s + L; rs += L)
-    {
-        if (rs < 0 || rs >= gl_NumWorkGroups.x) continue;
-        remote.x = float(rs)/float(gl_NumWorkGroups.x-1);
-
-        for(int rt = t - L; rt <= t + L; rt += L)
-        {
-            if (rt < 0 || rt >= gl_NumWorkGroups.y) continue;
-            remote.y = float(rt)/float(gl_NumWorkGroups.y-1);
-
-            remote_points_to = imageLoad(buf, ivec2(rs,rt));
-            if (remote_points_to.x == NODATA)
-            {
-                imageStore(buf, ivec2(rs,rt), pixel_points_to);
-            }
-            else
-            {
-                // compare the distances and pick the closest.
-                float d_existing = squared_distance_2d(remote, remote_points_to);
-                float d_possible = squared_distance_2d(remote, pixel_points_to);
-
-                if (d_possible < d_existing)
-                {
-                    imageStore(buf, ivec2(rs,rt), pixel_points_to);
-                }
-            }
-        }
-    }
-}
-
-)";
-
-
-
-// simple Gaussian blur filter
-const char* convolve_cs = R"(
-#version 430
-layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
-
-uniform sampler2D input;
-
-layout(binding=0, r8) uniform image2D buf;
-
-const float kernel[9] = {
-    1.0/16.0, 2.0/16.0, 1.0/16.0,
-    2.0/16.0, 4.0/16.0, 2.0/16.0,
-    1.0/16.0, 2.0/16.0, 1.0/16.0
-};
-
-void main()
-{
-    int s = int(gl_WorkGroupID.x);
-    int t = int(gl_WorkGroupID.y);
-    int w = int(gl_NumWorkGroups.x);
-    int h = int(gl_NumWorkGroups.y);
-
-    vec4 existing = imageLoad(buf, ivec2(s,t));
-
-    vec4 pixel = vec4(0);
-    int k = 0;
-    for(int y=t-1; y<=t+1; ++y) {
-        for(int x=s-1; x<=s+1; ++x) {
-            int ss = clamp(x, 0, w-1);
-            int tt = clamp(y, 0, h-1);
-            pixel.r += kernel[k++] * texelFetch(input, ivec2(ss,tt), 0).a;
-        }
-    }
-
-    if (pixel.r < existing.r)
-        imageStore(buf, ivec2(s,t), pixel);
-}
-
-)";
 
 
 void
@@ -835,100 +599,36 @@ FeatureSDFLayer::compute_sdf_on_gpu(
 {
     _jfa.lock();
     JFASessionPtr& session = _jfa[getCurrentThreadId()];
-    if (!_program.valid())
-    {
-        _program = new osg::Program();
-        _program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
-    }
     _jfa.unlock();
 
     if (session == nullptr)
     {
         session = std::make_shared<JFASession>();
-
-        session->_stateSet = new osg::StateSet();
-        session->_stateSet->setAttribute(_program.get(), 1);
-
-        // The RG float texture to store seed coordinates in uv space
-        session->_tex = new osg::Texture2D();
-        session->_tex->setSourceFormat(GL_RG);
-        session->_tex->setSourceType(GL_FLOAT);
-        session->_tex->setInternalFormat(GL_RG16F);
-
-        session->_stateSet->setTextureAttribute(0, session->_tex, 1);
-        session->_stateSet->addUniform(new osg::Uniform("buf", 0));
-        session->_stateSet->setAttribute(new osg::BindImageTexture(0, session->_tex, osg::BindImageTexture::READ_WRITE, GL_RG16F, 0, GL_TRUE));
-
-        session->_pbo = 0;
+        session->setProgram(_program.get());
     }
 
-    // transfer the input texture
-    session->_tex->setImage(image);
-    image->dirty();
-
-    auto render_job = GPUJob<bool>().dispatch(
-        [session, image](osg::State* state, Cancelable* progress)
-        {
-            session->render(image, state);
-            return true;
-        }
-    );
-
-    auto readback_job = GPUJob<bool>().dispatch(
-        [session, image](osg::State* state, Cancelable* progress)
-        {
-            session->readback(image, state);
-            return true;
-        }
-    );
-
-    readback_job.join();
+    session->setImage(image);
+    session->execute();
 }
 
-void
-FeatureSDFLayer::JFASession::render(osg::Image* out_image, osg::State* state)
+void 
+FeatureSDFLayer::JFASession::renderImplementation(osg::State* state)
 {
-    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
-
-    state->apply(_stateSet.get());
-
-    if (_pbo == 0)
+    if (_L_uniform < 0)
     {
-        int size = out_image->s() * out_image->t() * sizeof(GLfloat) * 2;
-        ext->glGenBuffers(1, &_pbo);
-        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
-        ext->glBufferData(GL_PIXEL_PACK_BUFFER_ARB, size, 0, GL_STREAM_READ);
-
         const osg::Program::PerContextProgram* pcp = state->getLastAppliedProgramObject();
         _L_uniform = pcp->getUniformLocation(osg::Uniform::getNameID("L"));
     }
 
-    // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
-    for (int L = out_image->s() / 2; L >= 1; L /= 2)
-    {
-        ext->glUniform1i(_L_uniform, L);
-        ext->glDispatchCompute(out_image->s(), out_image->t(), 1);
-        ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-    }
-
-    // Post an async readback to the GL queue
-    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RG, GL_FLOAT, 0);
-}
-
-void
-FeatureSDFLayer::JFASession::readback(osg::Image* out_image, osg::State* state)
-{
     osg::GLExtensions* ext = state->get<osg::GLExtensions>();
 
-    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
-    GLubyte* src = (GLubyte*)ext->glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY_ARB);
-    if (src)
+    // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
+    for (int L = _image->s() / 2; L >= 1; L /= 2)
     {
-        ::memcpy(out_image->data(), src, out_image->getTotalSizeInBytes());
-        ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+        ext->glUniform1i(_L_uniform, L);
+        ext->glDispatchCompute(_image->s(), _image->t(), 1);
+        ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
-    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
 }
 
 void
@@ -992,105 +692,3 @@ FeatureSDFLayer::compute_sdf_on_cpu(osg::Image* buf) const
         );
     }
 }
-
-
-
-
-#ifdef USE_CONVOLVE
-void FeatureSDFLayer::convolve(
-    Session* session,
-    const FeatureList& features,
-    osg::Image* out_image,
-    const GeoExtent& extent,
-    GLenum channel,
-    const NumericExpression& min_dist_meters,
-    const NumericExpression& max_dist_meters,
-    bool invert,
-    Cancelable* progress) const
-{
-    OE_SOFT_ASSERT_AND_RETURN(out_image->s() == out_image->t(), __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(ImageUtils::isPowerOfTwo(out_image), __func__, );
-    if (features.empty())
-        return;
-
-    int n = out_image->s();
-
-    float lo = min_dist_meters.eval();
-    float hi = max_dist_meters.eval();
-
-    std::shared_ptr<ConvolveData> data;
-    if (userdata)
-        data = std::static_pointer_cast<ConvolveData>(userdata);
-    else
-    {
-        data = std::make_shared<ConvolveData>();// new ConvolveData();
-        data->source = new osg::Image();
-        data->source->allocateImage(n, n, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-        ImageUtils::PixelWriter writeSource(data->source);
-        writeSource.assign(osg::Vec4(1, 1, 1, 0));
-        userdata = data;
-    }
-
-    Style style;
-
-    if (features.front()->getGeometry()->isLinear())
-    {
-        style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Black;
-        style.getOrCreate<LineSymbol>()->stroke()->width() = lo;
-        style.getOrCreate<LineSymbol>()->stroke()->widthUnits() = Units::METERS;
-    }
-    else
-    {
-        style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
-    }
-
-    _sdfRenderer->renderFeaturesForStyle(
-        session,
-        style,
-        features,
-        extent,
-        data->source,
-        userdata,
-        progress);
-}
-
-
-void
-FeatureSDFLayer::ConvolveSession::render(osg::Image* out_image, osg::State* state)
-{
-    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
-
-    state->apply(_stateSet.get());
-
-    if (_pbo == 0)
-    {
-        int size = out_image->getTotalSizeInBytes();
-        ext->glGenBuffers(1, &_pbo);
-        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
-        ext->glBufferData(GL_PIXEL_PACK_BUFFER_ARB, size, 0, GL_STREAM_READ);
-    }
-
-    ext->glDispatchCompute(out_image->s(), out_image->t(), 1);
-    ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
-    // Post an async readback to the GL queue
-    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
-}
-
-void
-FeatureSDFLayer::ConvolveSession::readback(osg::Image* out_image, osg::State* state)
-{
-    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
-
-    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
-    GLubyte* src = (GLubyte*)ext->glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY_ARB);
-    OE_SOFT_ASSERT(src != nullptr, __func__);
-    if (src)
-    {
-        ::memcpy(out_image->data(), src, out_image->getTotalSizeInBytes());
-        ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
-    }
-    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
-}
-#endif

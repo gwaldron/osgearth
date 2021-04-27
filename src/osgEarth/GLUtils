@@ -31,6 +31,7 @@
 #include <osg/GraphicsContext>
 #include <osg/GLObjects>
 #include <osg/Drawable>
+#include <osg/Texture2D>
 #include <set>
 
 #ifndef GLintptr
@@ -444,6 +445,42 @@ namespace osgEarth
         GPUJobArena::arena().dispatch(delegate);
         return std::move(future);
     }
+
+    /**
+     * Base class for a GPU Compute job that generates or modifies
+     * a raster image on the GPU and reads it back to the CPU.
+     * The name of the image in the compute shader is "buf" and it
+     * is bound to layout location zero (0).
+     */
+    class OSGEARTH_EXPORT ComputeImageSession
+    {
+    public:
+        //! construct a new session
+        ComputeImageSession();
+
+        //! Sets the compute shader program to use
+        void setProgram(osg::Program* program);
+
+        //! Sets the image to submit to the compute shader
+        void setImage(osg::Image* image);
+
+        //! Runs the compute shader and waits for the result
+        //! to be read back to the CPU.
+        void execute();
+
+    protected:
+        osg::ref_ptr<osg::Image> _image;
+        osg::ref_ptr<osg::StateSet> _stateSet;
+
+        virtual void renderImplementation(osg::State* state) = 0;
+
+    private:
+        GLuint _pbo;
+        osg::Texture2D* _tex;
+
+        void render(osg::State* state);
+        void readback(osg::State* state);
+    };
 
     /**
      * Utility to "pre-compile" a node by running it through the ICO

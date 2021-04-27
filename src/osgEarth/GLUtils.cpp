@@ -29,6 +29,8 @@
 #include <osg/GraphicsContext>
 #include <osgUtil/IncrementalCompileOperation>
 #include <osgViewer/GraphicsWindow>
+#include <osg/Texture2D>
+#include <osg/BindImageTexture>
 
 #ifdef OE_USE_GRAPHICS_OBJECT_MANAGER
 #include <osg/ContextData>
@@ -723,6 +725,101 @@ GPUJobArenaConnector::drawImplementation(osg::RenderInfo& ri) const
     }
 }
 
+//........................................................................
+
+ComputeImageSession::ComputeImageSession() :
+    _stateSet(nullptr),
+    _pbo(INT_MAX)
+{
+    _stateSet = new osg::StateSet();
+    _tex = new osg::Texture2D();
+    _stateSet->setTextureAttribute(0, _tex, 1);
+    _stateSet->addUniform(new osg::Uniform("buf", 0));
+}
+
+void
+ComputeImageSession::setProgram(osg::Program* program)
+{
+    _stateSet->setAttribute(program, 1);
+}
+
+void
+ComputeImageSession::setImage(osg::Image* image)
+{
+    _image = image;
+    _tex->setImage(image);
+    _stateSet->setAttribute(new osg::BindImageTexture(
+        0, _tex, osg::BindImageTexture::READ_WRITE, 
+        image->getInternalTextureFormat(), 0, GL_TRUE));
+    image->dirty();
+}
+
+void
+ComputeImageSession::execute()
+{
+    auto render_job = GPUJob<bool>().dispatch(
+        [this](osg::State* state, Cancelable* progress)
+        {
+            render(state);
+            return true;
+        }
+    );
+
+    auto readback_job = GPUJob<bool>().dispatch(
+        [this](osg::State* state, Cancelable* progress)
+        {
+            readback(state);
+            return true;
+        }
+    );
+
+    render_job.join();
+    readback_job.join();
+}
+
+void
+ComputeImageSession::render(osg::State* state)
+{
+    OE_SOFT_ASSERT_AND_RETURN(_image.valid(), __func__, );
+
+    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+
+    if (_stateSet.valid())
+    {
+        state->apply(_stateSet.get());
+    }
+
+    if (_pbo == INT_MAX)
+    {
+        int size = _image->getTotalSizeInBytes();
+        ext->glGenBuffers(1, &_pbo);
+        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
+        ext->glBufferData(GL_PIXEL_PACK_BUFFER_ARB, size, 0, GL_STREAM_READ);
+    }
+
+    renderImplementation(state);
+
+    // Post an async readback to the GL queue
+    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
+    glGetTexImage(GL_TEXTURE_2D, 0, _image->getPixelFormat(), _image->getDataType(), 0);
+}
+
+void
+ComputeImageSession::readback(osg::State* state)
+{
+    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+
+    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
+    GLubyte* src = (GLubyte*)ext->glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY_ARB);
+    if (src)
+    {
+        ::memcpy(_image->data(), src, _image->getTotalSizeInBytes());
+        ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+    }
+    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
+}
+
+//........................................................................
 
 namespace
 {

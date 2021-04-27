@@ -14,7 +14,7 @@ vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
 
 out vec4 oe_layer_tilec;
 out float splatLevelBlend;
-out float elev;
+out float oe_elev;
 
 float oe_terrain_getElevation();
 
@@ -37,7 +37,7 @@ void oe_splat_View(inout vec4 vertex_view)
     }
     splatLevelBlend = mapToNormalizedRange(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
 
-    elev = oe_terrain_getElevation();
+    oe_elev = oe_terrain_getElevation();
 }
 
 [break]
@@ -46,6 +46,7 @@ void oe_splat_View(inout vec4 vertex_view)
 #pragma vp_name Texture Splatter FS
 #pragma vp_entryPoint oe_splat_Frag
 #pragma vp_location fragment
+#pragma vp_order 0.8
 #extension GL_ARB_gpu_shader_int64 : enable
 
 #pragma import_defines(OE_LIFEMAP_TEX)
@@ -67,7 +68,7 @@ layout(binding = 5, std430) buffer TextureLUT {
 #define RUGGED 0
 #define DENSE 1
 #define LUSH 2
-#define SPECIFIC 3
+#define SPECIAL 3
 
 float mapToNormalizedRange(in float value, in float lo, in float hi)
 {
@@ -85,15 +86,15 @@ in vec4 oe_layer_tilec;
 in vec2 splatCoords[2];
 
 flat in int maxLevel;
-in float elev;
+in float oe_elev;
 
 uniform float dense_power = 1.0;
 uniform float lush_power = 1.0;
 uniform float rugged_power = 1.0;
 uniform float normal_power = 1.0;
 uniform float ao_power = 1.0;
-uniform float depth = 0.02; 
-uniform float snow = 0.0;
+uniform float oe_depth = 0.02; 
+uniform float oe_snow = 0.0;
 
 uniform float oe_splat_blend_rgbh_mix = 0.8;
 uniform float oe_splat_blend_normal_mix = 0.8;
@@ -148,7 +149,7 @@ float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)
 {
     // https://tinyurl.com/y5nkw2l9
     //float depth = 0.02;
-    float ma = max(h1 + a1, h2 + a2) - depth;
+    float ma = max(h1 + a1, h2 + a2) - oe_depth;
     float b1 = max(h1 + a1 - ma, 0.0);
     float b2 = max(h2 + a2 - ma, 0.0);
     return b2 / (b1 + b2);
@@ -275,10 +276,10 @@ void oe_splat_Frag(inout vec4 quad)
 
     ivec2 xy = ivec2(uv * 255.0);
     vec4 iquad = texelFetch(OE_LIFEMAP_TEX, xy, 0);
-    int specific = int(iquad[SPECIFIC] * 255.0);
-    if (specific > 0)
+    int special = int(iquad[SPECIAL] * 255.0);
+    if (dense == 0.0 && lush == 0.0 && rugged == 0.0 && special > 0)
     {
-        int index = (TEX_DIM * TEX_DIM + specific - 1) * 2;
+        int index = (TEX_DIM * TEX_DIM + special - 1) * 2;
         pixel.rgbh = get_rgbh(index, 0);
         vec4 material = get_material(index, 0);
         pixel.normal = unpackNormal(material);
@@ -309,8 +310,8 @@ void oe_splat_Frag(inout vec4 quad)
 
 #if 1
     // perma-show caps:
-    float coldness = mapToNormalizedRange(elev, 1000, 3500);
-    float min_snow_cos_angle = 1.0 - soften(snow*coldness);
+    float coldness = mapToNormalizedRange(oe_elev, 1000, 3500);
+    float min_snow_cos_angle = 1.0 - soften(oe_snow*coldness);
     const float snow_buf = 0.01;
     float b = min(min_snow_cos_angle + snow_buf, 1.0);
     float cos_angle = dot(vp_Normal, oe_UpVectorView);
@@ -337,8 +338,8 @@ void oe_splat_Frag(inout vec4 quad)
     // final color output:
     quad = vec4(color, alpha);
 
-#if 1 //debug
-    if (snow > 0.95)
+#if 0 //debug
+    if (oe_snow > 0.99)
     {
         vec3 n = vp_Normal;
         //if (n.x > 0.0 && n.x > abs(n.y))

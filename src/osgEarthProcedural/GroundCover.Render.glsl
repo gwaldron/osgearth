@@ -407,7 +407,7 @@ float mapToNormalizedRange(in float value, in float lo, in float hi)
     return clamp((value - lo) / (hi - lo), 0.0, 1.0);
 }
 
-uniform float snow;
+uniform float oe_snow;
 
 void oe_GroundCover_FS(inout vec4 color)
 {
@@ -463,7 +463,7 @@ void oe_GroundCover_FS(inout vec4 color)
     float coldness = mapToNormalizedRange(elev, 1000, 3500);
     float cos_angle = clamp(dot(vp_Normal, normalize(oe_UpVectorView)), 0, 1);
     if (cos_angle > 0.3) {
-        float snowiness = step(1.0 - snow*coldness, cos_angle);
+        float snowiness = step(1.0 - oe_snow*coldness, cos_angle);
         color.rgb = mix(color.rgb, vec3(1), snowiness);
         oe_roughness = mix(oe_roughness, 0.1, snowiness);
     }

@@ -44,12 +44,14 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(ImageLayer, densityMaskLayer);
             OE_OPTION_LAYER(FeatureSource, landUseLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
+
             OE_OPTION(bool, useLandCover);
             OE_OPTION(bool, useTerrain);
             OE_OPTION(float, landCoverWeight);
             OE_OPTION(float, terrainWeight);
             OE_OPTION(float, colorWeight);
             OE_OPTION(float, slopeIntensity);
+
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

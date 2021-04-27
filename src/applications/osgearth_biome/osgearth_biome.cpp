@@ -114,6 +114,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
     float _blend_end;
     float _blend_rgbh_mix;
     float _blend_normal_mix;
+    float _depth;
     float _rugged_power;
     float _dense_power;
     float _lush_power;
@@ -129,6 +130,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         _blend_end = 500.0f;
         _blend_rgbh_mix = 0.85f;
         _blend_normal_mix = 0.72f;
+        _depth = 0.02f;
         _rugged_power = 1.0f;
         _dense_power = 1.0f;
         _lush_power = 1.0f;
@@ -156,6 +158,9 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         ImGui::SliderFloat("Normal mix", &_blend_normal_mix, 0.0f, 1.0f);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _blend_normal_mix));
 
+        ImGui::SliderFloat("Displacement depth", &_depth, 0.001f, 0.3f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_depth", _depth));
+
         ImGui::SliderFloat("Rugged power", &_rugged_power, 0.0f, 4.0f);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("rugged_power", _rugged_power));
 
@@ -168,7 +173,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         ImGui::SliderFloat("Normal power", &_normal_power, 0.0f, 4.0f);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("normal_power", _normal_power));
 
-        ImGui::SliderFloat("AO power", &_ao_power, 0.0f, 4.0f);
+        ImGui::SliderFloat("AO power", &_ao_power, 0.0f, 6.0f);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("ao_power", _ao_power));
 
         ImGui::SliderFloat("Global brightness", &_brightness, 0.0f, 4.0f);
@@ -178,7 +183,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("contrast", _contrast));
 
         ImGui::SliderFloat("Snow", &_snow, 0.0f, 1.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("snow", _snow));
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_snow", _snow));
 
         ImGui::End();
     }

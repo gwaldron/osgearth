@@ -99,7 +99,7 @@ namespace
     constexpr unsigned RUGGED = 0;
     constexpr unsigned DENSE = 1;
     constexpr unsigned LUSH = 2;
-    constexpr unsigned SPECIFIC = 3;
+    constexpr unsigned SPECIAL = 3;
 
     // noise channels
     constexpr unsigned SMOOTH = 0;
@@ -195,6 +195,7 @@ namespace
         }
 
         const LifeMapValue* get(double x, double y, const LifeMapValueTable* table) const
+
         {
             _tilesrs->transform2D(x, y, _featuresrs, x, y);
 
@@ -398,11 +399,11 @@ namespace
 
     struct Sample
     {
-        Sample() : dense(), lush(), rugged(), specific(0), weight(0.0f) { }
+        Sample() : dense(), lush(), rugged(), special(0), weight(0.0f) { }
         Value dense;
         Value lush;
         Value rugged;
-        int specific;
+        int special;
         float weight;
     };
 
@@ -655,6 +656,7 @@ LifeMapLayer::createImageImplementation(
         {
             double uu = i.u() * landcover_matrix(0, 0) + landcover_matrix(3, 0);
             double vv = i.v() * landcover_matrix(1, 1) + landcover_matrix(3, 1);
+
             readLandCover(landcover_pixel, uu, vv);
 
             const LandCoverClass* lcc = _landCoverDictionary->getClassByValue(
@@ -669,13 +671,15 @@ LifeMapLayer::createImageImplementation(
 
                     if (has_special)
                     {
-                        sample[LANDCOVER].specific =
+                        sample[LANDCOVER].special =
                             specialTextureIndexLUT[value->special().get()];
                     }
 
+                    const int ni = 3;
+
                     if (value->dense().isSet())
                     {
-                        float dn = has_special ? 0.0f : (dense_noise*2.0f - 1.0f)*noise[3][RANDOM];
+                        float dn = has_special ? 0.0f : (dense_noise*2.0f - 1.0f)*noise[ni][RANDOM];
                         //sample[LANDCOVER].dense.value = value->dense().get() + 0.2*(dense_noise*2.0 - 1.0);
                         sample[LANDCOVER].dense.value = value->dense().get() + dn;
                         sample[LANDCOVER].dense.weight = 1.0f;
@@ -683,7 +687,7 @@ LifeMapLayer::createImageImplementation(
 
                     if (value->lush().isSet())
                     {
-                        float dn = has_special ? 0.0f : (lush_noise*2.0f - 1.0f)*noise[3][RANDOM];
+                        float dn = has_special ? 0.0f : (lush_noise*2.0f - 1.0f)*noise[ni][CLUMPY];
                         //sample[LANDCOVER].lush.value = value->lush().get() + 0.2*(lush_noise*2.0 - 1.0);
                         sample[LANDCOVER].lush.value = value->lush().get() + dn;
                         sample[LANDCOVER].lush.weight = 1.0f;
@@ -691,7 +695,7 @@ LifeMapLayer::createImageImplementation(
 
                     if (value->rugged().isSet())
                     {
-                        float dn = has_special ? 0.0f : (rugged_noise*2.0f - 1.0f)*noise[3][SMOOTH];
+                        float dn = has_special ? 0.0f : (rugged_noise*2.0f - 1.0f)*noise[ni][SMOOTH];
                         //sample[LANDCOVER].rugged.value = value->rugged().get() + 0.2*(rugged_noise*2.0 - 1.0);
                         sample[LANDCOVER].rugged.value = value->rugged().get() + dn;
                         sample[LANDCOVER].rugged.weight = 1.0f;
@@ -775,7 +779,7 @@ LifeMapLayer::createImageImplementation(
                 sample[TERRAIN].dense.value = -(0.8f * slope);
                 sample[TERRAIN].dense.weight = 1.0f;
 
-                sample[TERRAIN].lush.value = -(0.5f*slope);
+                sample[TERRAIN].lush.value = -(0.75f*slope);
                 sample[TERRAIN].lush.weight = 1.0f;
             }
 
@@ -810,14 +814,18 @@ LifeMapLayer::createImageImplementation(
             pixel[RUGGED] += sample[i].rugged.value*rugged_factor;
             rugged_total += rugged_factor;
 
-            if (sample[i].specific > 0)
-                pixel[SPECIFIC] = (float)sample[i].specific / 255.0f;
+            if (sample[i].special > 0)
+                pixel[SPECIAL] = (float)sample[i].special / 255.0f;
         }
 
         for (int i = 0; i < 4; ++i)
         {
             pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
         }
+
+        // for a special encoding, zero out the other values
+        if (pixel[SPECIAL] > 0)
+            pixel[RUGGED] = pixel[DENSE] = pixel[LUSH] = 0.0f;
 
         // MASK CONTRIBUTION (applied to final data)
         if (densityMask.valid())

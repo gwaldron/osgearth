@@ -588,7 +588,7 @@ ResourceLibrary* MapBoxStyleSheet::loadSpriteLibrary(const URI& sprite)
     ResourceLibrary* library = nullptr;
     URI uri(Stringify() << sprite.full() << ".json");
 
-    URI imagePath = Stringify() << sprite.full() << ".png";
+    URI imagePath(Stringify() << sprite.full() << ".png");
     osg::ref_ptr< osg::Image > image = imagePath.getImage();
     if (image.valid())
     {

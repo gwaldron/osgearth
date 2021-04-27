@@ -1,0 +1,275 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_TERRAIN_EDIT_GUI
+#define OSGEARTH_IMGUI_TERRAIN_EDIT_GUI
+
+#include "ImGui"
+#include <osgEarth/DecalLayer>
+#include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Registry>
+#include <osgEarth/CircleNode>
+
+namespace osgEarth
+{
+    namespace GUI
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Threading;
+
+
+        struct CraterRenderer
+        {
+            static void render(
+                const GeoPoint& center,
+                const Distance& radius,
+                GeoExtent& out_extent,
+                osg::ref_ptr<osg::Image>& out_elevation,
+                osg::ref_ptr<osg::Image>& out_lifemap)
+            {
+                out_extent = GeoExtent(center.getSRS());
+                out_extent.expandToInclude(center.x(), center.y());
+                out_extent.expand(radius*2.0, radius*2.0);
+
+                out_elevation = new osg::Image();
+                out_elevation->allocateImage(
+                    ELEVATION_TILE_SIZE,
+                    ELEVATION_TILE_SIZE,
+                    1,
+                    GL_RED,
+                    GL_UNSIGNED_BYTE);
+
+                ImageUtils::PixelWriter writeElevation(out_elevation.get());
+                ImageUtils::ImageIterator e_iter(writeElevation);
+                osg::Vec4 value;
+                e_iter.forEachPixel([&]()
+                    {
+                        float a = (e_iter.u() - 0.5f);
+                        float b = (e_iter.v() - 0.5f);
+                        float d = sqrt((a*a) + (b*b));
+                        value.r() = clamp(d, 0.0f, 0.5f);
+                        writeElevation(value, e_iter.s(), e_iter.t());
+                    }
+                );
+
+                out_lifemap = new osg::Image();
+                out_lifemap->allocateImage(
+                    256,
+                    256,
+                    1,
+                    GL_RGBA,
+                    GL_UNSIGNED_BYTE);
+
+                ImageUtils::PixelWriter writeLifeMap(out_lifemap.get());
+                ImageUtils::ImageIterator lm_iter(writeLifeMap);
+                lm_iter.forEachPixel([&]()
+                    {
+                        float a = 2.0f*(lm_iter.u() - 0.5f);
+                        float b = 2.0f*(lm_iter.v() - 0.5f);
+                        float d = clamp(sqrt((a*a) + (b*b)), 0.0f, 1.0f);
+                        value.set(0.85f, 0.0f, 0.0f, 1.0f - (d*d));
+                        writeLifeMap(value, lm_iter.s(), lm_iter.t());
+                    }
+                );
+            }
+        };
+
+        class TerrainEditGUI : public BaseGUI
+        {
+        private:
+            osg::observer_ptr<MapNode> _mapNode;
+            osg::ref_ptr<DecalElevationLayer> _elevDecal;
+            osg::ref_ptr<DecalImageLayer> _lifemapDecal;
+            std::vector<const Layer*> _layersToRefresh;
+            unsigned _minLevel;
+            std::stack<std::string> _undoStack;
+            bool _placingCraters;
+            float _craterRadius;
+            osg::ref_ptr<CircleNode> _craterCursor;
+
+        public:
+            TerrainEditGUI() : BaseGUI("Terrain Editing"),
+                _placingCraters(false),
+                _craterRadius(100.0f),
+                _minLevel(10u) { }
+
+            void load(const Config& conf) override
+            {
+            }
+
+            void save(Config& conf) override
+            {
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible()) return;
+                if (!findNodeOrHide(_mapNode, ri)) return;
+                
+                if (!_elevDecal.valid())
+                {
+                    setup(ri);
+                }
+
+                ImGui::Begin(name(), visible());
+                {
+                    ImGui::Checkbox("Place a crater", &_placingCraters);
+                    ImGui::SliderFloat("Radius(m)", &_craterRadius, 10.0f, 250.0f);
+                }
+                ImGui::End();
+            }
+
+            GeoPoint getPointAtMouse(osg::View* view, float x, float y)
+            {
+                // Find the point the user clicked:
+                osg::Vec3d world;
+                _mapNode->getTerrain()->getWorldCoordsUnderMouse(view, x, y, world);
+                GeoPoint point;
+                point.fromWorld(_mapNode->getMapSRS(), world);
+                return point;
+            }
+
+            void addCrater(const GeoPoint& center)
+            {
+                GeoExtent extent;
+                osg::ref_ptr<osg::Image> elevation;
+                osg::ref_ptr<osg::Image> lifemap;
+
+                CraterRenderer::render(
+                    center,
+                    Distance(_craterRadius, Units::METERS),
+                    extent,
+                    elevation,
+                    lifemap);
+
+                // ID for the new decal(s). ID's need to be unique in a single decal layer,
+                // but the three different TYPES of layers can share the same ID
+                std::string id = Stringify() << Registry::instance()->createUID();
+                _undoStack.push(id);
+
+                OE_NOTICE << "Adding crater # " << id << std::endl;
+
+                if (_elevDecal.valid())
+                {
+                    _elevDecal->addDecal(id, extent, elevation.get(), -25.0, 25.0, GL_RED);
+                }
+
+                if (_lifemapDecal.valid())
+                {
+                    _lifemapDecal->addDecal(id, extent, lifemap.get());
+                }
+
+                // Tell the terrain engine to regenerate the effected area.
+                _mapNode->getTerrainEngine()->invalidateRegion(
+                    _layersToRefresh,
+                    extent,
+                    _minLevel,
+                    INT_MAX);
+            }
+
+            void handleClick(osg::View* view, float x, float y)
+            {
+                if (_placingCraters)
+                {
+                    GeoPoint p = getPointAtMouse(view, x, y);
+                    if (!p.isValid())
+                    {
+                        OE_WARN << "No intersection under mouse..." << std::endl;
+                        return;
+                    }
+
+                    addCrater(p);
+                    _placingCraters = false;
+                    _craterCursor->setNodeMask(0);
+                }
+            }
+
+            void handleMove(osg::View* view, float x, float y)
+            {
+                if (_placingCraters)
+                {
+                    GeoPoint p = getPointAtMouse(view, x, y);
+                    if (p.isValid())
+                    {
+                        _craterCursor->setNodeMask(~0);
+                        _craterCursor->setRadius(Distance(_craterRadius, Units::METERS));
+                        _craterCursor->setPosition(p);
+                    }
+                }
+            }
+            
+            void setup(osg::RenderInfo& ri)
+            {
+                _elevDecal = new DecalElevationLayer();
+                _elevDecal->setName("Elevation Decals");
+                _elevDecal->setMinLevel(_minLevel);
+                _mapNode->getMap()->addLayer(_elevDecal.get());
+                _layersToRefresh.push_back(_elevDecal.get());
+
+                _lifemapDecal = new DecalImageLayer();
+                _lifemapDecal->setName("LifeMap Decals");
+                _lifemapDecal->setMinLevel(_minLevel);
+
+                // If there is a layer called "Life Map" append to it as a Post,
+                // otherwise standalone decal.
+                std::vector<osg::ref_ptr<Layer>> lifemaplayers;
+                _mapNode->getMap()->getLayers(lifemaplayers,
+                    [&](const Layer* layer) {
+                        return (std::string(layer->className()) == "LifeMapLayer");
+                    });
+
+                ImageLayer* lm = dynamic_cast<ImageLayer*>(
+                    lifemaplayers.empty() ? nullptr : lifemaplayers.front().get());
+
+                if (lm)
+                {
+                    lm->addPostLayer(_lifemapDecal.get());
+                    _layersToRefresh.push_back(lm);
+                }
+                else
+                {
+                    _mapNode->getMap()->addLayer(_lifemapDecal.get());
+                    _layersToRefresh.push_back(_lifemapDecal.get());
+                }
+
+                _craterCursor = new CircleNode();
+                _craterCursor->setNodeMask(0);
+                Style style;
+                style.getOrCreate<LineSymbol>()->stroke()->color().set(1, 1, 0, 1);
+                style.getOrCreate<PolygonSymbol>()->fill()->color().set(1, 1, 0, 0.5);
+                style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+                _craterCursor->setStyle(style);
+                _mapNode->addChild(_craterCursor);
+
+                EventRouter::get(view(ri))->onClick(
+                    [this](osg::View* view, float x, float y) {
+                        handleClick(view, x, y);
+                    });
+
+                EventRouter::get(view(ri))->onMove(
+                    [this](osg::View* view, float x, float y) {
+                        handleMove(view, x, y);
+                    });
+            }
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_TERRAIN_GUI

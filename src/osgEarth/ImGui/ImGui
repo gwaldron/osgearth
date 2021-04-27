@@ -250,6 +250,7 @@ namespace ImGuiUtil
 #include "SystemGUI"
 #include "EphemerisGUI"
 #include "TerrainGUI"
+#include "TerrainEditGUI"
 
 namespace osgEarth
 {
@@ -284,6 +285,7 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new NotifyGUI));
                 _menu["Tools"].push_back(GUIPtr(new SceneGraphGUI));
                 _menu["Tools"].push_back(GUIPtr(new TextureInspectorGUI));
+                _menu["Tools"].push_back(GUIPtr(new TerrainEditGUI));
             }
 
             //! User adds a gui to the default User menu

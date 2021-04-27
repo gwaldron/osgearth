@@ -58,6 +58,14 @@ void FeatureSDFLayer::jfa(
 
     int n = out_image->s();
 
+    // Poor man's degrees-to-meters conversion
+    double toMeters = 1.0;
+    if (extent.getSRS()->isGeographic())
+    {
+        double R = extent.getSRS()->getEllipsoid()->getRadiusEquator();
+        toMeters = (2.0 * osg::PI * R / 360.0) * cos(osg::DegreesToRadians(extent.yMin()));
+    }
+
     float lo = min_dist_meters.eval();
     float hi = max_dist_meters.eval();
 
@@ -131,7 +139,7 @@ void FeatureSDFLayer::jfa(
                 me.set(b_iter.u(), b_iter.v(), 0, 0);
                 readBuf(closest, b_iter.s(), b_iter.t());
                 float d = distance2D(me, closest);
-                d = unitremap(d*(float)extent.height(), lo, hi);
+                d = unitremap(d*(float)(extent.height()*toMeters), lo, hi);
                 if (d < pixel[c])
                 {
                     pixel[c] = d;

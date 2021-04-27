@@ -337,6 +337,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureDisplayLayout
     FeatureElevationLayer
     FeatureImageLayer
+    FeatureRasterizer
     FeatureIndex
     TerrainConstraintLayer
     FeatureModelGraph
@@ -445,7 +446,7 @@ SET(LIB_PUBLIC_HEADERS
     FileGDBFeatureSource
 
     SDF
-    
+
     ImGui/ImGui
     ImGui/OsgImGuiHandler
     ImGui/LayersGUI
@@ -722,6 +723,7 @@ set(TARGET_SRC
     FeatureDisplayLayout.cpp
     FeatureElevationLayer.cpp
     FeatureImageLayer.cpp
+    FeatureRasterizer.cpp
     TerrainConstraintLayer.cpp
     FeatureModelGraph.cpp
     FeatureModelLayer.cpp

@@ -138,6 +138,7 @@ Color Color::DarkGray ( 0x404040ff, Color::RGBA );
 Color Color::Magenta  ( 0xc000c0ff, Color::RGBA );
 Color Color::Cyan     ( 0x00ffffff, Color::RGBA );
 Color Color::Brown    ( 0xaa5500ff, Color::RGBA );
+Color Color::Transparent(0x00000000,Color::RGBA);
 
 Color::Color( unsigned v, Format format )
 {

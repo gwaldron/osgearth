@@ -19,7 +19,7 @@
 #include <osgEarth/MapboxGLImageLayer>
 #include <osgEarth/Session>
 
-#include <osgEarth/FeatureImageLayer>
+#include <osgEarth/FeatureRasterizer>
 #include <osgEarth/ArcGISTilePackage>
 #include <osgEarth/XYZFeatureSource>
 #include <osgEarth/Registry>
@@ -38,10 +38,10 @@ void getIfSet(const Json::Value& object, const std::string& member, optional<std
 {
     if (object.isMember(member))
     {
-        auto jsonValue = object.get(member, "");
+        const Json::Value& jsonValue = object[member];
         if (!jsonValue.isObject())
         {
-            value = object.get(member, "").asString();
+            value = jsonValue.asString();
         }
     }
 }
@@ -154,7 +154,7 @@ const FeatureSource* MapBoxStyleSheet::Source::featureSource() const
     return _featureSource.get();
 }
 
-void MapBoxStyleSheet::Source::loadFeatureSource(const std::string& styleSheetURI)
+void MapBoxStyleSheet::Source::loadFeatureSource(const std::string& styleSheetURI, const osgDB::Options* options)
 {
     if (!_featureSource.valid())
     {
@@ -164,7 +164,8 @@ void MapBoxStyleSheet::Source::loadFeatureSource(const std::string& styleSheetUR
         {
             URI uri(url(), context);
 
-            osg::ref_ptr< VTPKFeatureSource > featureSource = new VTPKFeatureSource;
+            osg::ref_ptr< VTPKFeatureSource > featureSource = new VTPKFeatureSource();
+            featureSource->setReadOptions(options);
             featureSource->setURL(uri);
             featureSource->open();
             _featureSource = featureSource.get();
@@ -179,6 +180,8 @@ void MapBoxStyleSheet::Source::loadFeatureSource(const std::string& styleSheetUR
                 featureSource->setMaxLevel(14);
                 featureSource->setURL(uri);
                 featureSource->setFormat("pbf");
+                featureSource->setReadOptions(options);
+                // Not necessarily?
                 featureSource->options().profile() = ProfileOptions("spherical-mercator");
                 featureSource->open();
                 _featureSource = featureSource.get();
@@ -228,6 +231,46 @@ optional<float>& MapBoxStyleSheet::Paint::lineWidth()
     return _lineWidth;
 }
 
+const optional<std::string>& MapBoxStyleSheet::Paint::textField() const
+{
+    return _textField;
+}
+
+optional<std::string>& MapBoxStyleSheet::Paint::textField()
+{
+    return _textField;
+}
+
+const optional<std::string>& MapBoxStyleSheet::Paint::textColor() const
+{
+    return _textColor;
+}
+
+optional<std::string>& MapBoxStyleSheet::Paint::textColor()
+{
+    return _textColor;
+}
+
+const optional<std::string>& MapBoxStyleSheet::Paint::textHaloColor() const
+{
+    return _textHaloColor;
+}
+
+optional<std::string>& MapBoxStyleSheet::Paint::textHaloColor()
+{
+    return _textHaloColor;
+}
+
+const optional<float>& MapBoxStyleSheet::Paint::textSize() const
+{
+    return _textSize;
+}
+
+optional<float>& MapBoxStyleSheet::Paint::textSize()
+{
+    return _textSize;
+}
+
 const optional<std::string>& MapBoxStyleSheet::Paint::backgroundColor() const
 {
     return _backgroundColor;
@@ -252,6 +295,28 @@ const optional<float>& MapBoxStyleSheet::Paint::lineWidth() const
 {
     return _lineWidth;
 }
+
+const optional<std::string>& MapBoxStyleSheet::Paint::iconImage() const
+{
+    return _iconImage;
+}
+
+optional<std::string>& MapBoxStyleSheet::Paint::iconImage()
+{
+    return _iconImage;
+}
+
+const optional<std::string>& MapBoxStyleSheet::Paint::visibility() const
+{
+    return _visibility;
+}
+
+optional<std::string>& MapBoxStyleSheet::Paint::visibility()
+{
+    return _visibility;
+}
+
+
 /*************************/
 
 
@@ -352,16 +417,6 @@ const std::string& MapBoxStyleSheet::name() const
     return _name;
 }
 
-const std::string& MapBoxStyleSheet::sprite() const
-{
-    return _sprite;
-}
-
-const std::string& MapBoxStyleSheet::glyphs() const
-{
-    return _glyphs;
-}
-
 const std::vector< MapBoxStyleSheet::Layer >& MapBoxStyleSheet::layers() const
 {
     return _layers;
@@ -382,9 +437,20 @@ std::vector< MapBoxStyleSheet::Source >& MapBoxStyleSheet::sources()
     return _sources;
 }
 
+const URI& MapBoxStyleSheet::sprite() const
+{
+    return _sprite;
+}
+
+const ResourceLibrary* MapBoxStyleSheet::spriteLibrary() const
+{
+    return _spriteLibrary.get();
+}
+
 MapBoxStyleSheet::MapBoxStyleSheet()
 {
 }
+
 
 MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Options* options)
 {
@@ -402,8 +468,10 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
 
     styleSheet._version = root.get("version", "").asString();
     styleSheet._name = root.get("name", "").asString();
-    styleSheet._sprite = root.get("sprite", "").asString();
-    styleSheet._glyphs = root.get("glyphs", "").asString();
+    styleSheet._sprite = URI(root.get("sprite", "").asString(), URIContext(location.full()));
+    styleSheet._glyphs = URI(root.get("glyphs", "").asString(), URIContext(location.full()));
+
+    styleSheet._spriteLibrary = loadSpriteLibrary(styleSheet._sprite);
 
     if (root.isMember("sources"))
     {
@@ -429,7 +497,7 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
             }
             source.attribution() = sourceJson.get("attribution", "").asString();
             source.type() = sourceJson.get("type", "").asString();
-            source.loadFeatureSource(location.full());
+            source.loadFeatureSource(location.full(), options);
             styleSheet._sources.push_back(source);
         }
     }
@@ -456,8 +524,50 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
                 getIfSet(paint, "background-opacity", layer.paint().backgroundOpacity());
                 getIfSet(paint, "fill-color", layer.paint().fillColor());
 
+
+                // TODO:  Many of these properties actually support an "interpolate" property with stops that define a value per zoom level.
+                // So we should read those stops and use them per zoom level.
                 getIfSet(paint, "line-color", layer.paint().lineColor());
                 getIfSet(paint, "line-width", layer.paint().lineWidth());
+
+                if (paint.isMember("text-color"))
+                {
+                    const Json::Value& textColor = paint["text-color"];
+                    if (textColor.isString())
+                    {
+                        layer.paint().textColor() = textColor.asString();
+                    }
+                    else
+                    {
+                        layer.paint().textColor() = "#ff0000";
+                    }
+                }
+
+                if (paint.isMember("text-halo-color"))
+                {
+                    const Json::Value& textHaloColor = paint["text-halo-color"];
+                    if (textHaloColor.isString())
+                    {
+                        layer.paint().textHaloColor() = textHaloColor.asString();
+                    }
+                    else
+                    {
+                        layer.paint().textHaloColor() = "#00ff00";
+                    }
+                }
+            }
+
+            // Parse layout
+            if (layerJson.isMember("layout"))
+            {
+                const Json::Value& layout = layerJson["layout"];
+
+                // TODO:  This is a layout property, not a paint property
+                getIfSet(layout, "text-field", layer.paint().textField());
+                getIfSet(layout, "text-size", layer.paint().textSize());
+                getIfSet(layout, "icon-image", layer.paint().iconImage());
+
+                getIfSet(layout, "visibility", layer.paint().visibility());
             }
 
             if (layerJson.isMember("filter"))
@@ -465,13 +575,52 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
                layer.filter()._filter = layerJson["filter"];
             }
 
-            //std::cout << "Got layer " << layer.id() << " type=" << layer.type() << " source=" << layer.source() << " source-layer=" << layer.sourceLayer() << " zoom=" << layer.minZoom() << "-" << layer.maxZoom() << std::endl;
             styleSheet._layers.emplace_back(std::move(layer));
         }
     }
     std::cout << "Found " << styleSheet._layers.size() << " layers" << std::endl;
 
     return styleSheet;
+}
+
+ResourceLibrary* MapBoxStyleSheet::loadSpriteLibrary(const URI& sprite)
+{
+    ResourceLibrary* library = nullptr;
+    URI uri(Stringify() << sprite.full() << ".json");
+
+    URI imagePath(Stringify() << sprite.full() << ".png");
+    osg::ref_ptr< osg::Image > image = imagePath.getImage();
+    if (image.valid())
+    {
+        unsigned int imageWidth = image->s();
+        unsigned int imageHeight = image->t();
+
+        auto data = uri.getString();
+        Json::Reader reader;
+        Json::Value root(Json::objectValue);
+        if (reader.parse(data, root, false))
+        {
+            library = new ResourceLibrary("mapbox", "");
+            for (Json::Value::iterator i = root.begin(); i != root.end(); ++i)
+            {
+                unsigned int x = (*i).get("x", 0).asUInt();
+                unsigned int y = (*i).get("y", 0).asUInt();
+                unsigned int width = (*i).get("width", 0).asUInt();
+                unsigned int height = (*i).get("height", 0).asUInt();
+
+                SkinResource* skin = new SkinResource();
+                skin->name() = i.key().asString();
+                skin->imageURI() = imagePath;
+                skin->image() = image.get();
+                skin->imageBiasS() = (float)x / (float)imageWidth;
+                skin->imageBiasT() = (float)y / (float)imageHeight;
+                skin->imageScaleS() = (float)width / (float)imageWidth;
+                skin->imageScaleT() = (float)height / (float)imageHeight;
+                library->addResource(skin);
+            }
+        }
+    }
+    return library;
 }
 
 
@@ -508,14 +657,6 @@ MapBoxGLImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-#if 0
-    auto rr = getURL().readString(this->getReadOptions());
-    if (rr.failed())
-    {
-        return Status::Error(Stringify() << "Failed to read style from " << getURL().full());
-    }
-    _styleSheet = MapBoxStyleSheet::load(rr.getString());
-#endif
     _styleSheet = MapBoxStyleSheet::load(getURL(), getReadOptions());
 
     return Status::NoError;
@@ -548,8 +689,6 @@ bool evalFilter(const Json::Value& filter, osgEarth::Feature* feature)
     {
         return false;
     }
-
-    //std::cout << Json::StyledWriter().write(filter) << std::endl;
 
     auto op = osgEarth::trim(filter[0u].asString());
 
@@ -631,7 +770,7 @@ bool evalFilter(const Json::Value& filter, osgEarth::Feature* feature)
             }
             else if (feature->getGeometry()->getType() == Geometry::Type::TYPE_POINT || feature->getGeometry()->getType() == Geometry::Type::TYPE_POINTSET)
             {
-                typeString = "Polygon";
+                typeString = "Point";
             }
             return typeString == value.asString();
         }
@@ -867,7 +1006,6 @@ bool evalFilter(const Json::Value& filter, osgEarth::Feature* feature)
         return true;
     }
 
-
     return true;
 }
 
@@ -879,134 +1017,160 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
         return GeoImage::INVALID;
     }
 
-    // Allocate the intial image
-    osg::ref_ptr<osg::Image> image = new osg::Image;
-    image->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    ::memset(image->data(), 0x00, image->getTotalSizeInBytes());
+    // Find the background layer and get the background color
+
+    Color backgroundColor = Color::Transparent;
+    for (auto& layer : _styleSheet.layers())
+    {
+        if (layer.type() == "background")
+        {
+            backgroundColor = Color(layer.paint().backgroundColor().get());
+            break;
+        }
+    }
+
+    FeatureRasterizer featureRasterizer(getTileSize(), getTileSize(), key.getExtent(), backgroundColor);
+
+    osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet;
+    if (_styleSheet.spriteLibrary())
+    {
+        styleSheet->addResourceLibrary(const_cast<ResourceLibrary*>(_styleSheet.spriteLibrary()));
+    }
+    osg::ref_ptr< Session > session = new Session(_map.get(), styleSheet.get(), nullptr, nullptr);
 
     std::map< std::string, LayeredFeatures > sourceToFeatures;
 
     for (auto& layer : _styleSheet.layers())
     {
+        // Skip layers with visibility none
+        if (layer.paint().visibility() == "none")
+        {
+            continue;
+        }
+
         if (key.getLevelOfDetail() >= layer.minZoom() && key.getLevelOfDetail() <= layer.maxZoom())
         {
-            if (layer.type() == "background")
+            osg::ref_ptr< FeatureSource > featureSource;
+
+            for (auto& s : _styleSheet.sources())
             {
-                if (layer.paint().backgroundColor().isSet())
+                if (s.name() == layer.source())
                 {
-                    Color backgroundColor = Color(layer.paint().backgroundColor().get());
-                    ImageUtils::PixelWriter write(image.get());
-                    write.assign(backgroundColor);
+                    featureSource = const_cast<FeatureSource*>(s.featureSource());
+                    break;
                 }
+            }
+            if (!featureSource.valid())
+            {
+                continue;
+            }
+
+            LayeredFeatures layeredFeatures;
+            // See if we already got the features for this tile for this source
+            auto featuresItr = sourceToFeatures.find(layer.source());
+            if (featuresItr == sourceToFeatures.end())
+            {
+                FeatureList allFeatures;
+                TileKey queryKey = key;
+                while (allFeatures.empty() && queryKey.valid())
+                {
+                    // Get all the features from the feature source.
+                    double buffer = 0.1;
+                    Distance bufferDistance(buffer * queryKey.getExtent().width(), queryKey.getProfile()->getSRS()->getUnits());
+                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(
+                        queryKey,
+                        bufferDistance,
+                        nullptr, nullptr, progress);
+                    if (cursor.valid())
+                    {
+                        cursor->fill(allFeatures);
+                    }
+                    if (allFeatures.empty())
+                    {
+                        queryKey = queryKey.createParentKey();
+                    }
+                }
+
+                for (auto& f : allFeatures)
+                {
+                    layeredFeatures.features[f->getString("mvt_layer")].push_back(f.get());
+                }
+
+                sourceToFeatures[layer.source()] = layeredFeatures;
             }
             else
             {
-                osg::ref_ptr< FeatureImageLayer > featureImage;
+                layeredFeatures = featuresItr->second;
+            }
 
-                osg::ref_ptr< Session > session;
 
-                // Find the Source
-                for (auto& s : _styleSheet.sources())
+            if (layeredFeatures.features.find(layer.sourceLayer()) != layeredFeatures.features.end())
+            {
+                // Run any filters on the layer.
+                FeatureList features;
+                if (!layer.filter()._filter.empty())
                 {
-                    if (s.name() == layer.source())
+                    for (auto& f : layeredFeatures.features[layer.sourceLayer()])
                     {
-                        FeatureSource* featureSource = const_cast<FeatureSource*>(s.featureSource());
-                        if (!featureSource)
+                        if (evalFilter(layer.filter()._filter, f.get()))
                         {
-                            break;
-                        }
-
-                        osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet;
-                        session = new Session(_map.get(), styleSheet.get(), nullptr, nullptr);
-                        featureImage = new FeatureImageLayer();
-                        featureImage->setFeatureSource(featureSource);
-                        featureImage->open();
-
-                        break;
-                    }
-                }
-
-                if (!featureImage.valid())
-                {
-                    continue;
-                }
-
-
-                LayeredFeatures layeredFeatures;
-                // See if we already got the features for this tile for this source
-                auto featuresItr = sourceToFeatures.find(layer.source());
-                if (featuresItr == sourceToFeatures.end())
-                {
-                    FeatureList allFeatures;
-                    TileKey queryKey = key;
-                    while (allFeatures.empty() && queryKey.valid())
-                    {
-                        // Get all the features from the feature source.
-                        osg::ref_ptr< FeatureCursor > cursor = featureImage->getFeatureSource()->createFeatureCursor(queryKey, nullptr);
-                        if (cursor.valid())
-                        {
-                            cursor->fill(allFeatures);
-                        }
-                        if (allFeatures.empty())
-                        {
-                            queryKey = queryKey.createParentKey();
+                            features.push_back(f.get());
                         }
                     }
-
-                    for (auto& f : allFeatures)
-                    {
-                        layeredFeatures.features[f->getString("mvt_layer")].push_back(f.get());
-                    }
-
-                    sourceToFeatures[layer.source()] = layeredFeatures;
                 }
                 else
                 {
-                    layeredFeatures = featuresItr->second;
+                    features = layeredFeatures.features[layer.sourceLayer()];
                 }
 
-
-                if (layeredFeatures.features.find(layer.sourceLayer()) != layeredFeatures.features.end())
+                if (layer.type() == "fill")
                 {
-                    // Run any filters on the layer.
-                    FeatureList features;
-                    if (!layer.filter()._filter.empty())
+                    Style style;
+                    style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().get());
+                    featureRasterizer.render(session.get(), style, featureSource->getFeatureProfile(), features);
+                }
+                else if (layer.type() == "line")
+                {
+                    Style style;
+                    style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color(layer.paint().lineColor().get());
+                    style.getOrCreateSymbol<LineSymbol>()->stroke()->width() = layer.paint().lineWidth();
+                    style.getOrCreateSymbol<LineSymbol>()->stroke()->widthUnits() = Units::PIXELS;
+                    featureRasterizer.render(session.get(), style, featureSource->getFeatureProfile(), features);
+                }
+                else if (layer.type() == "symbol")
+                {
+                    Style style;
+                    if (layer.paint().textField().isSet())
                     {
-                        for (auto& f : layeredFeatures.features[layer.sourceLayer()])
-                        {
-                            if (evalFilter(layer.filter()._filter, f.get()))
-                            {
-                                features.push_back(f.get());
-                            }
-                        }
+                        style.getOrCreateSymbol<TextSymbol>()->content() = layer.paint().textField().get();
                     }
-                    else
+                    if (layer.paint().textColor().isSet())
                     {
-                        features = layeredFeatures.features[layer.sourceLayer()];
+                        style.getOrCreateSymbol<TextSymbol>()->fill()->color() = Color(layer.paint().textColor().get());
+                    }
+                    if (layer.paint().textHaloColor().isSet())
+                    {
+                        style.getOrCreateSymbol<TextSymbol>()->halo()->color() = Color(layer.paint().textHaloColor().get());
+                    }
+                    if (layer.paint().textSize().isSet())
+                    {
+                        style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().get());
                     }
 
-                    std::shared_ptr<FeatureImageRenderer::UserData> userdata;
+                    if (layer.paint().iconImage().isSet())
+                    {
+                        style.getOrCreateSymbol<SkinSymbol>()->library() = "mapbox";
+                        style.getOrCreateSymbol<SkinSymbol>()->name() = StringExpression(layer.paint().iconImage().get());
 
-                    if (layer.type() == "fill")
-                    {
-                        Style style;
-                        style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().get());
-                        featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image, userdata, nullptr);
                     }
-                    else if (layer.type() == "line")
-                    {
-                        Style style;
-                        style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color(layer.paint().lineColor().get());
-                        style.getOrCreateSymbol<LineSymbol>()->stroke()->width() = layer.paint().lineWidth().get();
-                        style.getOrCreateSymbol<LineSymbol>()->stroke()->widthUnits() = Units::PIXELS;
-                        featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image, userdata, nullptr);
-                    }
+
+                    featureRasterizer.render(session.get(), style, featureSource->getFeatureProfile(), features);
                 }
             }
         }
     }
 
+    osg::Image* result = featureRasterizer.finalize();
 
-
-    return GeoImage(image.get(), key.getExtent());
+    return GeoImage(result, key.getExtent());
 }

@@ -114,11 +114,12 @@ namespace osgEarth
         static Color DarkGray;
         static Color Magenta;
         static Color Brown;
+        static Color Transparent;
     };
 
 } // namespace osgEarth
 
-    
+
 //------------------------------------------------------------------------
 
 namespace osgEarth

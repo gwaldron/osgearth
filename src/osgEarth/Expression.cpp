@@ -34,7 +34,7 @@ _dirty(true)
     //nop
 }
 
-NumericExpression::NumericExpression( const std::string& expr ) : 
+NumericExpression::NumericExpression( const std::string& expr ) :
 _src  ( expr ),
 _value( 0.0 ),
 _dirty( true )
@@ -233,7 +233,7 @@ NumericExpression::init()
             {
                 s.push( a );
             }
-            else 
+            else
             {
                 while( s.size() > 0 && a.first < s.top().first && IS_OPERATOR(s.top()) )
                 {
@@ -265,7 +265,7 @@ NumericExpression::init()
     }
 }
 
-void 
+void
 NumericExpression::set( const Variable& var, double value )
 {
     Atom& a = _rpn[var.second];
@@ -371,7 +371,7 @@ _dirty(true)
     //nop
 }
 
-StringExpression::StringExpression( const std::string& expr ) : 
+StringExpression::StringExpression( const std::string& expr ) :
 _src( expr ),
 _dirty( true )
 {
@@ -483,11 +483,11 @@ StringExpression::init()
           inVar = 0;
         }
       }
-      else if ((_src[i] == '(' || _src[i] == '[') && inVar)
+      else if ((_src[i] == '(' || _src[i] == '[' || _src[i] == '{') && inVar)
       {
         inVar++;
       }
-      else if ((_src[i] == ')' || _src[i] == ']') && inVar > 1)
+      else if ((_src[i] == ')' || _src[i] == ']' || _src[i] == '}') && inVar > 1)
       {
         inVar--;
       }
@@ -506,7 +506,11 @@ StringExpression::init()
       int length = _src.length() - startPos;
 
       //Check for feature attribute access
-      if (length > 2 && _src[startPos] == '[' && _src[_src.length() - 1] == ']')
+      if (length > 2 &&
+          ((_src[startPos] == '[' && _src[_src.length() - 1] == ']') ||
+           (_src[startPos] == '(' && _src[_src.length() - 1] == ')') ||
+           (_src[startPos] == '{' && _src[_src.length() - 1] == '}'))
+         )
       {
         startPos++;
         length -= 2;
@@ -521,7 +525,7 @@ StringExpression::init()
     }
 }
 
-void 
+void
 StringExpression::set( const Variable& var, const std::string& value )
 {
     Atom& a = _infix[var.second];

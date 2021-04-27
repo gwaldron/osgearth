@@ -52,7 +52,7 @@ namespace osgEarth
             FeatureSource* featureSource();
             const FeatureSource* featureSource() const;
 
-            void loadFeatureSource(const std::string& styleSheetURI);
+            void loadFeatureSource(const std::string& styleSheetURI, const osgDB::Options* options);
 
 
         private:
@@ -89,6 +89,25 @@ namespace osgEarth
             const optional<float>& lineWidth() const;
             optional<float>& lineWidth();
 
+            const optional<std::string>& textField() const;
+            optional<std::string>& textField();
+
+            const optional<std::string>& textColor() const;
+            optional<std::string>& textColor();
+
+            const optional<std::string>& textHaloColor() const;
+            optional<std::string>& textHaloColor();
+
+            const optional<float>& textSize() const;
+            optional<float>& textSize();
+
+            const optional<std::string>& iconImage() const;
+            optional<std::string>& iconImage();
+
+            const optional<std::string>& visibility() const;
+            optional<std::string>& visibility();
+
+
         private:
 
             //Background
@@ -110,7 +129,18 @@ namespace osgEarth
             optional<std::string> _lineColor;
             optional<float> _lineWidth;
 
+            // Text
+            optional<std::string> _textField;
+            optional<std::string> _textColor;
+            optional<std::string> _textHaloColor;
+            optional<float> _textSize;
+
+            // Icon
+            optional<std::string> _iconImage;
+
             optional<std::string> _visibility;
+
+
         };
 
         class FilterExpression
@@ -164,15 +194,18 @@ namespace osgEarth
 
         const std::string& name() const;
 
-        const std::string& sprite() const;
+        const URI& glyphs() const;
 
-        const std::string& glyphs() const;
+        const URI& sprite() const;
+
 
         std::vector< Layer >& layers();
         const std::vector< Layer >& layers() const;
 
         std::vector< Source >& sources();
         const std::vector< Source >& sources() const;
+
+        const ResourceLibrary* spriteLibrary() const;
 
         static MapBoxStyleSheet load(const URI& location, const osgDB::Options* options);
 
@@ -182,11 +215,14 @@ namespace osgEarth
 
         std::string _version;
         std::string _name;
-        std::string _sprite;
-        std::string _glyphs;
+        URI _sprite;
+        URI _glyphs;
 
         std::vector< Source > _sources;
         std::vector< Layer > _layers;
+
+        osg::ref_ptr< ResourceLibrary > _spriteLibrary;
+        static ResourceLibrary* loadSpriteLibrary(const URI& sprite);
     };
 
 

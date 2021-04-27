@@ -22,31 +22,25 @@
 #include <osgEarth/TransformFilter>
 #include <osgEarth/BufferFilter>
 #include <osgEarth/ResampleFilter>
-#include <osgEarth/AGG.h>
 #include <osgEarth/StyleSheet>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
 #include <osgEarth/Metrics>
 #include <osgEarth/SDF>
-
-#ifdef OSGEARTH_HAVE_BLEND2D
-#include <blend2d.h>
-#endif
+#include <osgEarth/JsonUtils>
 
 using namespace osgEarth;
 
 #define LC "[FeatureImageLayer] " << getName() << ": "
 
-#ifndef OSGEARTH_HAVE_BLEND2D
-#define USE_AGGLITE
-#endif
 
 REGISTER_OSGEARTH_LAYER(featureimage, FeatureImageLayer);
 REGISTER_OSGEARTH_LAYER(feature_image, FeatureImageLayer);
 
 //........................................................................
 
+<<<<<<< HEAD
 namespace osgEarth { namespace FeatureImageLayerImpl
 {
     struct RenderFrame
@@ -310,6 +304,8 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 
 //........................................................................
 
+=======
+>>>>>>> master
 Config
 FeatureImageLayer::Options::getConfig() const
 {
@@ -350,8 +346,6 @@ FeatureImageLayer::Options::fromConfig(const Config& conf)
 }
 
 //........................................................................
-
-using namespace osgEarth::FeatureImageLayerImpl;
 
 void
 FeatureImageLayer::init()
@@ -543,6 +537,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         return GeoImage::INVALID;
     }
 
+<<<<<<< HEAD
     // allocate the image.
     osg::ref_ptr<osg::Image> image;
 
@@ -571,6 +566,12 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     {
         postProcess(image.get(), userdata);
         return GeoImage(image.get(), key.getExtent());
+=======
+    osg::Image* result = render(key, _session.get(), getStyleSheet(), progress);
+    if (result)
+    {
+        return GeoImage(result, key.getExtent());
+>>>>>>> master
     }
     else
     {
@@ -578,6 +579,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     }
 }
 
+<<<<<<< HEAD
 void
 FeatureImageLayer::preProcess(
     osg::Image* out_image,
@@ -1058,17 +1060,26 @@ FeatureImageLayer::renderFeaturesForStyle(
     return true;
 }
 
+=======
+>>>>>>> master
 //........................................................................
 
-bool
-FeatureImageRenderer::render(
+osg::Image*
+FeatureImageLayer::render(
     const TileKey& key,
     Session* session,
     const StyleSheet* styles,
+<<<<<<< HEAD
     osg::Image* target,
     std::shared_ptr<UserData>& userdata,
     ProgressCallback* progress) const
+=======
+    ProgressCallback* progress
+) const
+>>>>>>> master
 {
+    FeatureRasterizer featureRasterizer(getTileSize(), getTileSize(), key.getExtent());
+
     OE_PROFILING_ZONE;
 
     Query defaultQuery;
@@ -1076,10 +1087,10 @@ FeatureImageRenderer::render(
 
     FeatureSource* features = session->getFeatureSource();
     if (!features)
-        return false;
+        return nullptr;
 
     // figure out if and how to style the geometry.
-    if (features->hasEmbeddedStyles() )
+    if (features->hasEmbeddedStyles())
     {
         // Each feature has its own embedded style data, so use that:
         FilterContext context;
@@ -1090,12 +1101,13 @@ FeatureImageRenderer::render(
             &context,
             progress);
 
-        while( cursor.valid() && cursor->hasMore() )
+        while (cursor.valid() && cursor->hasMore())
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();
-            if ( feature )
+            if (feature)
             {
                 FeatureList list;
+<<<<<<< HEAD
                 list.push_back( feature );
 
                 renderFeaturesForStyle(
@@ -1106,26 +1118,31 @@ FeatureImageRenderer::render(
                     target,
                     userdata,
                     progress);
+=======
+                list.push_back(feature);
+
+                featureRasterizer.render(session, *feature->style(), getFeatureSource()->getFeatureProfile(), list);
+>>>>>>> master
             }
         }
     }
     else if (styles)
     {
-        if (styles->getSelectors().size() > 0 )
+        if (styles->getSelectors().size() > 0)
         {
-            for(StyleSelectors::const_iterator i = styles->getSelectors().begin();
+            for (StyleSelectors::const_iterator i = styles->getSelectors().begin();
                 i != styles->getSelectors().end();
                 ++i)
             {
                 const StyleSelector& sel = i->second;
 
-                if ( sel.styleExpression().isSet() )
+                if (sel.styleExpression().isSet())
                 {
                     const FeatureProfile* featureProfile = features->getFeatureProfile();
 
                     // establish the working bounds and a context:
                     FilterContext context(session, featureProfile);
-                    StringExpression styleExprCopy(  sel.styleExpression().get() );
+                    StringExpression styleExprCopy(sel.styleExpression().get());
 
                     FeatureList features;
                     getFeatures(session, defaultQuery, key.getExtent(), features, progress);
@@ -1138,7 +1155,7 @@ FeatureImageRenderer::render(
                         {
                             Feature* feature = itr->get();
 
-                            const std::string& styleString = feature->eval( styleExprCopy, &context );
+                            const std::string& styleString = feature->eval(styleExprCopy, &context);
                             if (!styleString.empty() && styleString != "null")
                             {
                                 // resolve the style:
@@ -1146,11 +1163,11 @@ FeatureImageRenderer::render(
                                 const Style* resolved_style = nullptr;
 
                                 // if the style string begins with an open bracket, it's an inline style definition.
-                                if ( styleString.length() > 0 && styleString[0] == '{' )
+                                if (styleString.length() > 0 && styleString[0] == '{')
                                 {
-                                    Config conf( "style", styleString );
-                                    conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );
-                                    conf.set( "type", "text/css" );
+                                    Config conf("style", styleString);
+                                    conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                                    conf.set("type", "text/css");
                                     Style& literal_style = literal_styles[conf.toJSON()];
                                     if (literal_style.empty())
                                         literal_style = Style(conf);
@@ -1180,6 +1197,7 @@ FeatureImageRenderer::render(
                             const Style* style = iter.first;
                             FeatureList& list = iter.second;
 
+<<<<<<< HEAD
                             renderFeaturesForStyle(
                                 session,
                                 *style,
@@ -1188,26 +1206,50 @@ FeatureImageRenderer::render(
                                 target,
                                 userdata,
                                 progress);
+=======
+                            featureRasterizer.render(session, *style, getFeatureSource()->getFeatureProfile(), list);
+>>>>>>> master
                         }
                     }
                 }
                 else
                 {
-                    const Style* style = styles->getStyle( sel.getSelectedStyleName() );
+                    const Style* style = styles->getStyle(sel.getSelectedStyleName());
                     Query query = sel.query().get();
                     query.tileKey() = key;
+<<<<<<< HEAD
                     queryAndRenderFeaturesForStyle(session, *style, query, key.getExtent(), target, userdata, progress);
+=======
+
+
+                    // Get the features
+                    FeatureList features;
+                    getFeatures(session, query, key.getExtent(), features, progress);
+
+                    // Render the features
+                    featureRasterizer.render(session, *style, getFeatureSource()->getFeatureProfile(), features);
+>>>>>>> master
                 }
             }
         }
         else
         {
             const Style* style = styles->getDefaultStyle();
+<<<<<<< HEAD
             queryAndRenderFeaturesForStyle(session, *style, defaultQuery, key.getExtent(), target, userdata, progress);
+=======
+
+            // Get the features
+            FeatureList features;
+            getFeatures(session, defaultQuery, key.getExtent(), features, progress);
+            // Render the features
+            featureRasterizer.render(session, *style, getFeatureSource()->getFeatureProfile(), features);
+>>>>>>> master
         }
     }
     else
     {
+<<<<<<< HEAD
         queryAndRenderFeaturesForStyle(session, Style(), defaultQuery, key.getExtent(), target, userdata, progress);
     }
 
@@ -1244,12 +1286,20 @@ FeatureImageRenderer::queryAndRenderFeaturesForStyle(
             out_image,
             userdata,
             progress);
+=======
+        FeatureList features;
+        getFeatures(session, defaultQuery, key.getExtent(), features, progress);
+
+        // Render the features
+        featureRasterizer.render(session, Style(), getFeatureSource()->getFeatureProfile(), features);
+>>>>>>> master
     }
-    return false;
+
+    return featureRasterizer.finalize();
 }
 
 void
-FeatureImageRenderer::getFeatures(
+FeatureImageLayer::getFeatures(
     Session* session,
     const Query& query,
     const GeoExtent& imageExtent,

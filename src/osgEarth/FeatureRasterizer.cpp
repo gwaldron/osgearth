@@ -350,20 +350,17 @@ namespace osgEarth {
                             feature->getGeometry()->forEachPart([&](const Geometry* part)
                             {
                                 // Only label points for now
-                                if (true ||
-                                    part->getType() == osgEarth::Geometry::TYPE_POINT ||
-                                    part->getType() == osgEarth::Geometry::TYPE_POINTSET)
-                                    for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
-                                    {
-                                        const osg::Vec3d& p0 = *p;
-                                        double x = frame.xf*(p0.x() - frame.xmin);
-                                        double y = frame.yf*(p0.y() - frame.ymin);
-                                        y = ctx.targetHeight() - y;
+                                for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                                {
+                                    const osg::Vec3d& p0 = *p;
+                                    double x = frame.xf*(p0.x() - frame.xmin);
+                                    double y = frame.yf*(p0.y() - frame.ymin);
+                                    y = ctx.targetHeight() - y;
 
-                                        ctx.translate(x, y);
-                                        ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
-                                        ctx.resetMatrix();
-                                    }
+                                    ctx.translate(x, y);
+                                    ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
+                                    ctx.resetMatrix();
+                                }
                             });
                         }
                     }
@@ -383,32 +380,28 @@ namespace osgEarth {
 
                 feature->getGeometry()->forEachPart([&](const Geometry* part)
                 {
-                    // Only label points for now
-                    if (true ||
-                        part->getType() == osgEarth::Geometry::TYPE_POINT ||
-                        part->getType() == osgEarth::Geometry::TYPE_POINTSET)
-                        for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                    for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                    {
+                        const osg::Vec3d& p0 = *p;
+                        double x = frame.xf*(p0.x() - frame.xmin);
+                        double y = frame.yf*(p0.y() - frame.ymin);
+                        y = ctx.targetHeight() - y;
+
+                        if (textSymbol->fill().isSet())
                         {
-                            const osg::Vec3d& p0 = *p;
-                            double x = frame.xf*(p0.x() - frame.xmin);
-                            double y = frame.yf*(p0.y() - frame.ymin);
-                            y = ctx.targetHeight() - y;
-
-                            if (textSymbol->fill().isSet())
-                            {
-                                osgEarth::Color fillColor = textSymbol->fill()->color();
-                                ctx.setFillStyle(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
-                                ctx.fillUtf8Text(BLPoint(x, y), font, text.c_str());
-                            }
-
-                            if (textSymbol->halo().isSet())
-                            {
-                                osgEarth::Color haloColor = textSymbol->halo()->color();
-                                ctx.setStrokeStyle(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
-                                ctx.setStrokeWidth(1);
-                                ctx.strokeUtf8Text(BLPoint(x, y), font, text.c_str());
-                            }
+                            osgEarth::Color fillColor = textSymbol->fill()->color();
+                            ctx.setFillStyle(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
+                            ctx.fillUtf8Text(BLPoint(x, y), font, text.c_str());
                         }
+
+                        if (textSymbol->halo().isSet())
+                        {
+                            osgEarth::Color haloColor = textSymbol->halo()->color();
+                            ctx.setStrokeStyle(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
+                            ctx.setStrokeWidth(1);
+                            ctx.strokeUtf8Text(BLPoint(x, y), font, text.c_str());
+                        }
+                    }
                 });
             }
 

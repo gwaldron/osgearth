@@ -22,6 +22,7 @@
 #include <osgEarth/BufferFilter>
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/AGG.h>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 
@@ -275,13 +276,14 @@ namespace osgEarth {
 
         static const BLFontFace& getOrCreateFontFace()
         {
+            // TODO:  Proper font support
             static BLFontFace fontFace;
             static std::mutex fontMutex;
             if (fontFace.empty())
             {
                 std::lock_guard<std::mutex> lock(fontMutex);
-                // TODO:  Find fonts using osg or pass in fonts.
-                fontFace.createFromFile("D:/dev/blend2d-samples/resources/NotoSans-Regular.ttf");
+                auto defaultFont = osgEarth::Registry::instance()->getDefaultFont();
+                fontFace.createFromFile(defaultFont->getFileName().c_str());
             }
             return fontFace;
         }
@@ -370,7 +372,6 @@ namespace osgEarth {
 
             if (textSymbol)
             {
-                //NumericExpression fontSizeExpression = textSymbol->size().get();
                 NumericExpression fontSizeExpression = textSymbol->size().get();
                 std::string fontSizeText = templateReplace(feature, fontSizeExpression.expr());
 

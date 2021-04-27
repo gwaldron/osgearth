@@ -26,6 +26,7 @@
 #include "ImageLayer"
 #include "FilterContext"
 #include "Expression"
+#include "FeatureRasterizer"
 #include "FeatureImageLayer"
 #include "GLUtils"
 
@@ -65,8 +66,7 @@ namespace osgEarth
      * Rasterizes feature data into an image layer.
      */
     class OSGEARTH_EXPORT FeatureSDFLayer : 
-        public osgEarth::ImageLayer,
-        public osgEarth::Util::FeatureImageRenderer
+        public osgEarth::ImageLayer
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
@@ -93,6 +93,7 @@ namespace osgEarth
         void setStyleSheet(StyleSheet* styles);
         inline StyleSheet* getStyleSheet() const;
 
+#if 0
     public: // FeatureImageRenderer
 
         virtual bool renderFeaturesForStyle(
@@ -107,6 +108,7 @@ namespace osgEarth
         virtual void postProcess(
             osg::Image* out_image,
             std::shared_ptr<UserData>& userdata) const override;
+#endif
 
     public: // ImageLayer
 
@@ -135,6 +137,7 @@ namespace osgEarth
     private:
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
+        osg::ref_ptr<FeatureFilterChain> _filterChain;
 
         void updateSession();
 
@@ -159,13 +162,11 @@ namespace osgEarth
         using JFASessionPtr = std::shared_ptr<JFASession>;
         using JFASessionPerThread = Mutexed<std::unordered_map<unsigned, JFASessionPtr>>;
         mutable JFASessionPerThread _jfa;
-        osg::ref_ptr<FeatureImageLayer> _sdfRenderer;
 
         void jfa(
             Session* session,
             const FeatureList& features,
             osg::Image* out_image,
-            std::shared_ptr<UserData>& userdata,
             const GeoExtent& extent,
             GLenum channel,
             const NumericExpression& min_dist_meters,
@@ -173,6 +174,7 @@ namespace osgEarth
             bool invert,
             Cancelable* progress) const;
 
+#if 0
         struct ConvolveSession {
             osg::ref_ptr<osg::StateSet> _stateSet;
             osg::Texture2D* _tex;
@@ -190,14 +192,13 @@ namespace osgEarth
             Session* session,
             const FeatureList& features,
             osg::Image* out_image,
-            std::shared_ptr<UserData>& userdata,
             const GeoExtent& extent,
             GLenum channel,
             const NumericExpression& min_dist_meters,
             const NumericExpression& max_dist_meters,
             bool invert,
             Cancelable* progress) const;
-
+#endif
     };    
     
     // template/inline impls .................................................

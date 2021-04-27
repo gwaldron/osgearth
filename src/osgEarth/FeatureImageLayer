@@ -78,6 +78,7 @@ namespace osgEarth
         virtual void init();
 
     protected:
+#if 0
         osg::Image* render(
             const TileKey& key,
             Session* session,
@@ -91,6 +92,7 @@ namespace osgEarth
             const GeoExtent& imageExtent,
             FeatureList& features,
             ProgressCallback* progress) const;
+#endif
 
         virtual ~FeatureImageLayer() { }
 

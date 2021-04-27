@@ -19,6 +19,7 @@
 #include "SDF"
 #include "Math"
 #include "Metrics"
+#include "FeatureRasterizer"
 #include <osgEarth/rtree.h>
 #include <osgEarth/TransformFilter>
 #include <osgEarth/GLUtils>
@@ -31,6 +32,7 @@ using namespace osgEarth::Util;
 
 #define USE_JFA
 //#define USE_CONVOLVE
+#ifdef USE_CONVOLVE
 namespace
 {
     struct ConvolveData : public FeatureImageRenderer::UserData
@@ -38,14 +40,13 @@ namespace
         osg::ref_ptr<osg::Image> source;
     };
 }
-
+#endif
 
 
 void FeatureSDFLayer::jfa(
     Session* session,
     const FeatureList& features,
     osg::Image* out_image,
-    std::shared_ptr<UserData>& userdata,
     const GeoExtent& extent,
     GLenum channel,
     const NumericExpression& min_dist_meters,
@@ -70,11 +71,11 @@ void FeatureSDFLayer::jfa(
     float hi = max_dist_meters.eval();
 
     // STEP 1 - render features to a source image.
-    osg::ref_ptr<osg::Image> source = new osg::Image();
-    source->allocateImage(n, n, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    ImageUtils::PixelWriter writeSource(source);
-    ImageUtils::PixelReader readSource(source);
-    writeSource.assign(osg::Vec4(1, 1, 1, 0));
+    //osg::ref_ptr<osg::Image> source = new osg::Image();
+    //source->allocateImage(n, n, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    //ImageUtils::PixelWriter writeSource(source);
+    //ImageUtils::PixelReader readSource(source);
+    //writeSource.assign(osg::Vec4(1, 1, 1, 0));
 
     Style style;
 
@@ -83,14 +84,12 @@ void FeatureSDFLayer::jfa(
     else
         style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
 
-    _sdfRenderer->renderFeaturesForStyle(
-        session,
-        style,
-        features,
-        extent,
-        source,
-        userdata,
-        progress);
+    FeatureRasterizer rasterizer(n, n, extent, Color(1, 1, 1, 0));
+    rasterizer.render(session, style, session->getFeatureSource()->getFeatureProfile(), features);
+    osg::ref_ptr<osg::Image> source = rasterizer.finalize();
+
+    ImageUtils::PixelReader readSource(source);
+
 
     // STEP 2 - convert pixels to local coordinates
     // R = x, G = y; in [0..1] UV space
@@ -333,8 +332,6 @@ FeatureSDFLayer::openImplementation()
 
     _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
 
-    _sdfRenderer = new FeatureImageLayer();
-
     return Status::NoError;
 }
 
@@ -507,24 +504,61 @@ FeatureSDFLayer::createImageImplementation(
     ImageUtils::PixelWriter write(image);
     write.assign(Color::Red);
 
-    std::shared_ptr<UserData> userdata;
+    FeatureStyleSorter::Function renderer = [&](
+        const Style& style,
+        FeatureList& features,
+        ProgressCallback* progress)
+    {
+        // A processing context to use with the filters:
+        FilterContext context(_session.get());
+        context.setProfile(getFeatureSource()->getFeatureProfile());
 
-    bool ok = render(key, _session.get(), getStyleSheet(), image, userdata, progress);
+        // local (shallow) copy
+        //FeatureList features(features);
+
+        // Transform to map SRS:
+        {
+            OE_PROFILING_ZONE_NAMED("Transform");
+            TransformFilter xform(key.getExtent().getSRS());
+            xform.setLocalizeCoordinates(false);
+            xform.push(features, context);
+        }
+
+#ifdef USE_JFA
+        jfa(
+            _session.get(),
+            features,
+            image,
+            key.getExtent(),
+            GL_RED,
+            style.get<RenderSymbol>()->sdfMinDistance().get(),
+            style.get<RenderSymbol>()->sdfMaxDistance().get(),
+            options().invert().get(),
+            progress);
+#endif
+    };
+
+    FeatureStyleSorter sorter;
+    sorter.sort(key, _session.get(), _filterChain.get(), renderer, progress);
     
-    if (ok)
-        postProcess(image, userdata);
 
-    OE_SOFT_ASSERT(ok, __func__);
+
+    //bool ok = render(key, _session.get(), getStyleSheet(), image, userdata, progress);
+    
+    //if (ok)
+    //    postProcess(image, userdata);
+
+    //OE_SOFT_ASSERT(ok, __func__);
 
     //Tick end = Clock::now();
     //OE_WARN << "SDF: " <<
     //    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
     //    << "us " << std::endl;
 
-    return ok ? GeoImage(image.get(), key.getExtent()) : GeoImage::INVALID;
+    return GeoImage(image.get(), key.getExtent());
 }
 
-
+#if 0
 bool
 FeatureSDFLayer::renderFeaturesForStyle(
     Session* session,
@@ -560,7 +594,6 @@ FeatureSDFLayer::renderFeaturesForStyle(
         session,
         features,
         out_image,
-        userdata,
         imageExtent,
         GL_RED,
         style.get<RenderSymbol>()->sdfMinDistance().get(),
@@ -680,7 +713,7 @@ FeatureSDFLayer::postProcess(
     readback_job.join();
 #endif
 }
-
+#endif
 
 // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
 const char* jfa_cs = R"(
@@ -963,12 +996,11 @@ FeatureSDFLayer::compute_sdf_on_cpu(osg::Image* buf) const
 
 
 
-
+#ifdef USE_CONVOLVE
 void FeatureSDFLayer::convolve(
     Session* session,
     const FeatureList& features,
     osg::Image* out_image,
-    std::shared_ptr<UserData>& userdata,
     const GeoExtent& extent,
     GLenum channel,
     const NumericExpression& min_dist_meters,
@@ -1061,3 +1093,4 @@ FeatureSDFLayer::ConvolveSession::readback(osg::Image* out_image, osg::State* st
     }
     ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
 }
+#endif

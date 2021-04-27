@@ -22,6 +22,7 @@
 #include <osgEarth/StyleSheet>
 #include <osgEarth/Session>
 #include <osgEarth/Feature>
+#include <osgEarth/Filter>
 
 namespace osgEarth
 {
@@ -43,6 +44,34 @@ namespace osgEarth
         private:
             GeoExtent _extent;
             osg::ref_ptr< osg::Image > _image;
+        };
+
+        class OSGEARTH_EXPORT FeatureStyleSorter
+        {
+        public:
+            FeatureStyleSorter();
+
+            using Function = std::function<void(
+                const Style& style,
+                FeatureList& features,
+                ProgressCallback* progress
+            )>;
+
+            void sort(
+                const TileKey& key,
+                Session* session,
+                FeatureFilterChain* filters,
+                Function processFeaturesForStyle,
+                ProgressCallback* progress) const;
+
+        protected:
+            void getFeatures(
+                Session* session,
+                const Query& query,
+                const GeoExtent& extent,
+                FeatureFilterChain* filters,
+                FeatureList& output,
+                ProgressCallback* progress) const;
         };
     }
 }

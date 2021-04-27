@@ -19,7 +19,7 @@
 #include <osgEarth/MapboxGLImageLayer>
 #include <osgEarth/Session>
 
-#include <osgEarth/FeatureImageLayer>
+#include <osgEarth/FeatureRasterizer>
 #include <osgEarth/ArcGISTilePackage>
 #include <osgEarth/XYZFeatureSource>
 #include <osgEarth/Registry>
@@ -1017,12 +1017,19 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
         return GeoImage::INVALID;
     }
 
-    // Allocate the intial image
-    osg::ref_ptr<osg::Image> image = new osg::Image;
-    image->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    image->setInternalTextureFormat(GL_RGBA8);
-    ::memset(image->data(), 0x00, image->getTotalSizeInBytes());
+    // Find the background layer and get the background color
 
+    Color backgroundColor = Color::Transparent;
+    for (auto& layer : _styleSheet.layers())
+    {
+        if (layer.type() == "background")
+        {
+            backgroundColor = Color(layer.paint().backgroundColor().get());
+            break;
+        }
+    }
+
+    FeatureRasterizer featureRasterizer(getTileSize(), getTileSize(), key.getExtent(), backgroundColor);
 
     osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet;
     if (_styleSheet.spriteLibrary())
@@ -1043,155 +1050,127 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
         if (key.getLevelOfDetail() >= layer.minZoom() && key.getLevelOfDetail() <= layer.maxZoom())
         {
-            if (layer.type() == "background")
+            osg::ref_ptr< FeatureSource > featureSource;
+
+            for (auto& s : _styleSheet.sources())
             {
-                if (layer.paint().backgroundColor().isSet())
+                if (s.name() == layer.source())
                 {
-                    Color backgroundColor = Color(layer.paint().backgroundColor().get());
-                    ImageUtils::PixelWriter write(image.get());
-                    write.assign(backgroundColor);
+                    featureSource = const_cast<FeatureSource*>(s.featureSource());
+                    break;
                 }
+            }
+            if (!featureSource.valid())
+            {
+                continue;
+            }
+
+            LayeredFeatures layeredFeatures;
+            // See if we already got the features for this tile for this source
+            auto featuresItr = sourceToFeatures.find(layer.source());
+            if (featuresItr == sourceToFeatures.end())
+            {
+                FeatureList allFeatures;
+                TileKey queryKey = key;
+                while (allFeatures.empty() && queryKey.valid())
+                {
+                    // Get all the features from the feature source.
+                    double buffer = 0.1;
+                    Distance bufferDistance(buffer * queryKey.getExtent().width(), queryKey.getProfile()->getSRS()->getUnits());
+                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(
+                        queryKey,
+                        bufferDistance,
+                        nullptr, nullptr, progress);
+                    if (cursor.valid())
+                    {
+                        cursor->fill(allFeatures);
+                    }
+                    if (allFeatures.empty())
+                    {
+                        queryKey = queryKey.createParentKey();
+                    }
+                }
+
+                for (auto& f : allFeatures)
+                {
+                    layeredFeatures.features[f->getString("mvt_layer")].push_back(f.get());
+                }
+
+                sourceToFeatures[layer.source()] = layeredFeatures;
             }
             else
             {
-                osg::ref_ptr< FeatureImageLayer > featureImage;
+                layeredFeatures = featuresItr->second;
+            }
 
-                // Find the Source
-                for (auto& s : _styleSheet.sources())
+
+            if (layeredFeatures.features.find(layer.sourceLayer()) != layeredFeatures.features.end())
+            {
+                // Run any filters on the layer.
+                FeatureList features;
+                if (!layer.filter()._filter.empty())
                 {
-                    if (s.name() == layer.source())
+                    for (auto& f : layeredFeatures.features[layer.sourceLayer()])
                     {
-                        FeatureSource* featureSource = const_cast<FeatureSource*>(s.featureSource());
-                        if (!featureSource)
+                        if (evalFilter(layer.filter()._filter, f.get()))
                         {
-                            break;
-                        }
-
-                        featureImage = new FeatureImageLayer();
-                        featureImage->setFeatureSource(featureSource);
-                        featureImage->open();
-
-                        break;
-                    }
-                }
-
-                if (!featureImage.valid())
-                {
-                    continue;
-                }
-
-
-                LayeredFeatures layeredFeatures;
-                // See if we already got the features for this tile for this source
-                auto featuresItr = sourceToFeatures.find(layer.source());
-                if (featuresItr == sourceToFeatures.end())
-                {
-                    FeatureList allFeatures;
-                    TileKey queryKey = key;
-                    while (allFeatures.empty() && queryKey.valid())
-                    {
-                        // Get all the features from the feature source.
-                        //osg::ref_ptr< FeatureCursor > cursor = featureImage->getFeatureSource()->createFeatureCursor(queryKey, progress);
-                        double buffer = 0.1;
-                        Distance bufferDistance(buffer * queryKey.getExtent().width(), queryKey.getProfile()->getSRS()->getUnits());
-                        osg::ref_ptr< FeatureCursor > cursor = featureImage->getFeatureSource()->createFeatureCursor(
-                            queryKey,
-                            bufferDistance,
-                            nullptr, nullptr, progress);
-                        if (cursor.valid())
-                        {
-                            cursor->fill(allFeatures);
-                        }
-                        if (allFeatures.empty())
-                        {
-                            queryKey = queryKey.createParentKey();
+                            features.push_back(f.get());
                         }
                     }
-
-                    for (auto& f : allFeatures)
-                    {
-                        layeredFeatures.features[f->getString("mvt_layer")].push_back(f.get());
-                    }
-
-                    sourceToFeatures[layer.source()] = layeredFeatures;
                 }
                 else
                 {
-                    layeredFeatures = featuresItr->second;
+                    features = layeredFeatures.features[layer.sourceLayer()];
                 }
 
-
-                if (layeredFeatures.features.find(layer.sourceLayer()) != layeredFeatures.features.end())
+                if (layer.type() == "fill")
                 {
-                    // Run any filters on the layer.
-                    FeatureList features;
-                    if (!layer.filter()._filter.empty())
+                    Style style;
+                    style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().get());
+                    featureRasterizer.render(session.get(), style, featureSource->getFeatureProfile(), features);
+                }
+                else if (layer.type() == "line")
+                {
+                    Style style;
+                    style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color(layer.paint().lineColor().get());
+                    style.getOrCreateSymbol<LineSymbol>()->stroke()->width() = layer.paint().lineWidth();
+                    style.getOrCreateSymbol<LineSymbol>()->stroke()->widthUnits() = Units::PIXELS;
+                    featureRasterizer.render(session.get(), style, featureSource->getFeatureProfile(), features);
+                }
+                else if (layer.type() == "symbol")
+                {
+                    Style style;
+                    if (layer.paint().textField().isSet())
                     {
-                        for (auto& f : layeredFeatures.features[layer.sourceLayer()])
-                        {
-                            if (evalFilter(layer.filter()._filter, f.get()))
-                            {
-                                features.push_back(f.get());
-                            }
-                        }
+                        style.getOrCreateSymbol<TextSymbol>()->content() = layer.paint().textField().get();
                     }
-                    else
+                    if (layer.paint().textColor().isSet())
                     {
-                        features = layeredFeatures.features[layer.sourceLayer()];
+                        style.getOrCreateSymbol<TextSymbol>()->fill()->color() = Color(layer.paint().textColor().get());
+                    }
+                    if (layer.paint().textHaloColor().isSet())
+                    {
+                        style.getOrCreateSymbol<TextSymbol>()->halo()->color() = Color(layer.paint().textHaloColor().get());
+                    }
+                    if (layer.paint().textSize().isSet())
+                    {
+                        style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().get());
                     }
 
-                    if (layer.type() == "fill")
+                    if (layer.paint().iconImage().isSet())
                     {
-                        Style style;
-                        style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().get());
-                        featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image.get(), nullptr);
-                    }
-                    else if (layer.type() == "line")
-                    {
-                        Style style;
-                        style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color(layer.paint().lineColor().get());
-                        style.getOrCreateSymbol<LineSymbol>()->stroke()->width() = layer.paint().lineWidth();
-                        style.getOrCreateSymbol<LineSymbol>()->stroke()->widthUnits() = Units::PIXELS;
-                        featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image.get(), nullptr);
-                    }
-                    else if (layer.type() == "symbol")
-                    {
-                        Style style;
-                        if (layer.paint().textField().isSet())
-                        {
-                            style.getOrCreateSymbol<TextSymbol>()->content() = layer.paint().textField().get();
-                        }
-                        if (layer.paint().textColor().isSet())
-                        {
-                            style.getOrCreateSymbol<TextSymbol>()->fill()->color() = Color(layer.paint().textColor().get());
-                        }
-                        if (layer.paint().textHaloColor().isSet())
-                        {
-                            style.getOrCreateSymbol<TextSymbol>()->halo()->color() = Color(layer.paint().textHaloColor().get());
-                        }
-                        if (layer.paint().textSize().isSet())
-                        {
-                            style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().get());
-                        }
+                        style.getOrCreateSymbol<SkinSymbol>()->library() = "mapbox";
+                        style.getOrCreateSymbol<SkinSymbol>()->name() = StringExpression(layer.paint().iconImage().get());
 
-                        if (layer.paint().iconImage().isSet())
-                        {
-                            //style.getOrCreateSymbol<IconSymbol>()->url() = StringExpression(layer.paint().iconImage().get());
-                            //style.getOrCreateSymbol<SkinSymbol>()->url() = StringExpression(layer.paint().iconImage().get());
-                            style.getOrCreateSymbol<SkinSymbol>()->library() = "mapbox";
-                            style.getOrCreateSymbol<SkinSymbol>()->name() = StringExpression(layer.paint().iconImage().get());
-
-                        }
-
-                        featureImage->renderFeaturesForStyle(session.get(), style, features, key.getExtent(), image.get(), nullptr);
                     }
+
+                    featureRasterizer.render(session.get(), style, featureSource->getFeatureProfile(), features);
                 }
             }
         }
     }
 
+    osg::Image* result = featureRasterizer.finalize();
 
-    FeatureImageLayer::postProcess(image.get(), false);
-
-    return GeoImage(image.get(), key.getExtent());
+    return GeoImage(result, key.getExtent());
 }

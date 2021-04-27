@@ -185,12 +185,16 @@ namespace osgEarth {
 
                         if (_showDetails)
                         {
+                            ImGui::Indent();
+
+                            ImGui::TextColored(
+                                ImVec4(.8, .8, .8, 1), "%s", layer->className());
+
                             if (layer->isOpen())
                             {
                                 auto tileLayer = dynamic_cast<osgEarth::TileLayer*>(layer);
                                 if (tileLayer)
                                 {
-                                    ImGui::Indent();
                                     const Profile* profile = tileLayer->getProfile();
                                     if (profile)
                                     {
@@ -199,26 +203,21 @@ namespace osgEarth {
                                             srsname = profile->getSRS()->getHorizInitString();
                                         ImGui::TextColored(ImVec4(.8,.8,.8,1),"%s", srsname.c_str());
                                     }
-                                    ImGui::Unindent();
                                 }
 
                                 auto elevationLayer = dynamic_cast<osgEarth::ElevationLayer*>(layer);
                                 if (visibleLayer && !elevationLayer)
                                 {
-                                    ImGui::Indent();
                                     float opacity = visibleLayer->getOpacity();
                                     ImGui::PushID("opacity");
                                     ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
                                     visibleLayer->setOpacity(opacity);
                                     ImGui::PopID();
-                                    ImGui::Unindent();
                                 }
 
                                 auto threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(layer);
                                 if (threedTiles)
                                 {
-                                    ImGui::Indent();
-
                                     float sse = threedTiles->getMaximumScreenSpaceError();
                                     ImGui::PushID("sse");
                                     ImGui::SliderFloat("SSE", &sse, 0.0f, 50.0f);
@@ -236,9 +235,9 @@ namespace osgEarth {
                                     ImGui::Checkbox("Show color per tile", &colorPerTile);
                                     threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
                                     ImGui::PopID();
-
-                                    ImGui::Unindent();
                                 }
+
+                                ImGui::Unindent();
                             }
 
                             else if (layer->getStatus().isError() && layer->getStatus().message() != "Layer closed")

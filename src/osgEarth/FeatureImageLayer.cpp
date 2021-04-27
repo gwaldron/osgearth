@@ -202,10 +202,10 @@ namespace osgEarth { namespace FeatureImageLayerImpl
 
         osg::Vec4 color = symbol->fill().isSet() ? symbol->fill()->color() : Color::White;
         ctx.setFillStyle(BLRgba32(
-            uint32_t(255.0*color.r()),
-            uint32_t(255.0*color.g()),
-            uint32_t(255.0*color.b()),
-            uint32_t(255.0*color.a())));
+                uint32_t(255.0*color.b()),
+                uint32_t(255.0*color.g()),
+                uint32_t(255.0*color.r()),
+                uint32_t(255.0*color.a())));
         ctx.fillPath(path);
     }
 
@@ -278,11 +278,10 @@ namespace osgEarth { namespace FeatureImageLayerImpl
         //BLPattern pattern(texture);
         //ctx.setStrokeStyle(pattern);
 
-        //ctx.setStrokeStyle(BLRgba32(color.asRGBA()));
         ctx.setStrokeStyle(BLRgba32(
-            uint32_t(255.0*color.r()),
-            uint32_t(255.0*color.g()),
             uint32_t(255.0*color.b()),
+            uint32_t(255.0*color.g()),
+            uint32_t(255.0*color.r()),
             uint32_t(255.0*color.a())));
 
         ctx.setStrokeWidth(lineWidth_px);

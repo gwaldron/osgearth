@@ -337,6 +337,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureDisplayLayout
     FeatureElevationLayer
     FeatureImageLayer
+    FeatureSDFLayer
     FeatureRasterizer
     FeatureIndex
     TerrainConstraintLayer
@@ -724,6 +725,7 @@ set(TARGET_SRC
     FeatureElevationLayer.cpp
     FeatureImageLayer.cpp
     FeatureRasterizer.cpp
+    FeatureSDFLayer.cpp
     TerrainConstraintLayer.cpp
     FeatureModelGraph.cpp
     FeatureModelLayer.cpp

@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
@@ -16,21 +16,22 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_FEATURES_FEATURE_IMAGE_LAYER
-#define OSGEARTH_FEATURES_FEATURE_IMAGE_LAYER 1
+
+#ifndef OSGEARTH_FEATURE_SDF_LAYER_H
+#define OSGEARTH_FEATURE_SDF_LAYER_H
 
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/StyleSheet>
-#include <osgEarth/FeatureRasterizer>
+#include <osgEarth/SDF>
 
 namespace osgEarth
 {
     /**
-     * Rasterizes feature data into an image layer.
+     * Rasterizes feature data into distance fields.
      */
-    class OSGEARTH_EXPORT FeatureImageLayer : public osgEarth::ImageLayer
+    class OSGEARTH_EXPORT FeatureSDFLayer : public ImageLayer
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
@@ -39,16 +40,13 @@ namespace osgEarth
             OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);
-            OE_OPTION(double, gamma);
-            OE_OPTION(bool, sdf);
-            OE_OPTION(bool, sdf_invert);
             virtual Config getConfig() const;
         private:
-            void fromConfig( const Config& conf );
+            void fromConfig(const Config& conf);
         };
 
     public:
-        META_Layer(osgEarth, FeatureImageLayer, Options, osgEarth::ImageLayer, FeatureImage);
+        META_Layer(osgEarth, FeatureSDFLayer, Options, osgEarth::ImageLayer, FeatureSDF);
 
         //! Sets the feature source to get road data from; call either this
         //! or setFeatureSourceLayer
@@ -62,40 +60,45 @@ namespace osgEarth
     public: // ImageLayer
 
         // Opens the layer and returns a status
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
 
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+        virtual GeoImage createImageImplementation(
+            const TileKey& key,
+            ProgressCallback* progress) const override;
 
     protected: // Layer
 
         // Called by Map when it adds this layer
-        virtual void addedToMap(const class Map*);
+        virtual void addedToMap(const class Map*) override;
 
         // Called by Map when it removes this layer
-        virtual void removedFromMap(const class Map*);
+        virtual void removedFromMap(const class Map*) override;
 
         // post-ctor initialization
-        virtual void init();
+        virtual void init() override;
 
-        virtual ~FeatureImageLayer() { }
+    protected:
+
+        virtual ~FeatureSDFLayer() { }
 
     private:
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        optional<double> _gamma;
         osg::ref_ptr<FeatureFilterChain> _filterChain;
+        SDFGenerator _sdfGenerator;
 
         void updateSession();
 
         void establishProfile();
-    };
-
+    };    
+    
     // template/inline impls .................................................
 
-    FeatureSource* FeatureImageLayer::getFeatureSource() const { return options().featureSource().getLayer(); }
-    StyleSheet* FeatureImageLayer::getStyleSheet() const { return options().styleSheet().getLayer(); }
-} // namespace osgEarth
+    FeatureSource* FeatureSDFLayer::getFeatureSource() const { return options().featureSource().getLayer(); }
+    StyleSheet* FeatureSDFLayer::getStyleSheet() const { return options().styleSheet().getLayer(); }
 
-OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureImageLayer::Options);
+}
 
-#endif // OSGEARTH_FEATURES_FEATURE_IMAGE_LAYER
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureSDFLayer::Options);
+
+#endif // OSGEARTH_FEATURE_SDF_LAYER_H

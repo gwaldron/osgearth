@@ -1,5 +1,5 @@
 /* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+/* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2020 Pelican Mapping
  * http://osgearth.org
  *
@@ -16,38 +16,24 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/FeatureImageLayer>
-#include <osgEarth/Session>
-#include <osgEarth/FeatureCursor>
-#include <osgEarth/TransformFilter>
-#include <osgEarth/BufferFilter>
-#include <osgEarth/ResampleFilter>
-#include <osgEarth/StyleSheet>
-#include <osgEarth/Registry>
-#include <osgEarth/Progress>
-#include <osgEarth/LandCover>
-#include <osgEarth/Metrics>
-#include <osgEarth/JsonUtils>
+#include "FeatureSDFLayer"
+#include "TransformFilter"
+#include "FeatureRasterizer"
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
-#define LC "[FeatureImageLayer] " << getName() << ": "
+#undef LC
+#define LC "[FeatureSDF] "
 
-
-REGISTER_OSGEARTH_LAYER(featureimage, FeatureImageLayer);
-REGISTER_OSGEARTH_LAYER(feature_image, FeatureImageLayer);
-
-//........................................................................
+REGISTER_OSGEARTH_LAYER(featuresdf, FeatureSDFLayer);
 
 Config
-FeatureImageLayer::Options::getConfig() const
+FeatureSDFLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
-    conf.set("gamma", gamma());
-    conf.set("sdf", sdf());
-    conf.set("sdf_invert", sdf_invert());
 
     if (filters().empty() == false)
     {
@@ -61,27 +47,18 @@ FeatureImageLayer::Options::getConfig() const
 }
 
 void
-FeatureImageLayer::Options::fromConfig(const Config& conf)
+FeatureSDFLayer::Options::fromConfig(const Config& conf)
 {
-    gamma().setDefault(1.3);
-    sdf().setDefault(false);
-    sdf_invert().setDefault(false);
-
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
-    conf.get("gamma", gamma());
-    conf.get("sdf", sdf());
-    conf.get("sdf_invert", sdf_invert());
 
     const Config& filtersConf = conf.child("filters");
     for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
         filters().push_back(ConfigOptions(*i));
 }
 
-//........................................................................
-
 void
-FeatureImageLayer::init()
+FeatureSDFLayer::init()
 {
     ImageLayer::init();
 
@@ -93,7 +70,7 @@ FeatureImageLayer::init()
 }
 
 Status
-FeatureImageLayer::openImplementation()
+FeatureSDFLayer::openImplementation()
 {
     Status parent = ImageLayer::openImplementation();
     if (parent.isError())
@@ -112,11 +89,14 @@ FeatureImageLayer::openImplementation()
 
     _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
 
+    //_program = new osg::Program();
+    //_program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
+
     return Status::NoError;
 }
 
 void
-FeatureImageLayer::establishProfile()
+FeatureSDFLayer::establishProfile()
 {
     if (getProfile() == nullptr && getFeatureSource() != nullptr)
     {
@@ -134,7 +114,7 @@ FeatureImageLayer::establishProfile()
 }
 
 void
-FeatureImageLayer::addedToMap(const Map* map)
+FeatureSDFLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
 
@@ -150,7 +130,7 @@ FeatureImageLayer::addedToMap(const Map* map)
 }
 
 void
-FeatureImageLayer::removedFromMap(const Map* map)
+FeatureSDFLayer::removedFromMap(const Map* map)
 {
     options().featureSource().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
@@ -159,7 +139,7 @@ FeatureImageLayer::removedFromMap(const Map* map)
 }
 
 void
-FeatureImageLayer::setFeatureSource(FeatureSource* fs)
+FeatureSDFLayer::setFeatureSource(FeatureSource* fs)
 {
     if (getFeatureSource() != fs)
     {
@@ -183,7 +163,7 @@ FeatureImageLayer::setFeatureSource(FeatureSource* fs)
 }
 
 void
-FeatureImageLayer::setStyleSheet(StyleSheet* value)
+FeatureSDFLayer::setStyleSheet(StyleSheet* value)
 {
     if (getStyleSheet() != value)
     {
@@ -196,7 +176,7 @@ FeatureImageLayer::setStyleSheet(StyleSheet* value)
 }
 
 void
-FeatureImageLayer::updateSession()
+FeatureSDFLayer::updateSession()
 {
     if (_session.valid() && getFeatureSource())
     {
@@ -237,7 +217,9 @@ FeatureImageLayer::updateSession()
 }
 
 GeoImage
-FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
+FeatureSDFLayer::createImageImplementation(
+    const TileKey& key, 
+    ProgressCallback* progress) const
 {
     if (getStatus().isError())
     {
@@ -270,19 +252,94 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         return GeoImage::INVALID;
     }
 
-    FeatureRasterizer rasterizer(getTileSize(), getTileSize(), key.getExtent());
+    // allocate the image.
+    osg::ref_ptr<osg::Image> sdf = new osg::Image();
+    sdf->allocateImage(getTileSize(), getTileSize(), 1, GL_RED, GL_UNSIGNED_BYTE);
+    sdf->setInternalTextureFormat(GL_R8);
+    ImageUtils::PixelWriter write(sdf);
+    write.assign(Color(1, 1, 1, 1));
 
-    FeatureStyleSorter::Function renderer = [&](
+    FeatureRasterizer rasterizer(sdf->s(), sdf->t(), key.getExtent(), Color(1, 1, 1, 0));
+    osg::ref_ptr<osg::Image> rasterizedFeatures;
+    osg::ref_ptr<osg::Image> nnfield;
+
+    FeatureStyleSorter::Function rasterizeFeatures = [&](
         const Style& style,
         FeatureList& features,
         ProgressCallback* progress)
     {
-        rasterizer.render(_session.get(), style, featureProfile, features);
+        if (features.empty())
+            return;
+
+        // Transform to map SRS:
+        FilterContext context(_session.get());
+        context.setProfile(getFeatureSource()->getFeatureProfile());
+        TransformFilter xform(key.getExtent().getSRS());
+        xform.push(features, context);
+
+        // Render features to a temporary image
+        Style r_style;
+        if (features.front()->getGeometry()->isLinear())
+            r_style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Black;
+        else
+            r_style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
+
+        rasterizer.render(
+            _session.get(), 
+            r_style,
+            _session->getFeatureSource()->getFeatureProfile(), 
+            features);
+    };
+
+    FeatureStyleSorter::Function renderSDF = [&](
+        const Style& style,
+        FeatureList& features,
+        ProgressCallback* progress)
+    {
+        const GeoExtent& extent = key.getExtent();
+
+        // Poor man's degrees-to-meters conversion
+        double toMeters = 1.0;
+        if (extent.getSRS()->isGeographic())
+        {
+            double R = extent.getSRS()->getEllipsoid()->getRadiusEquator();
+            toMeters = (2.0 * osg::PI * R / 360.0) * cos(osg::DegreesToRadians(extent.yMin()));
+        }
+
+        _sdfGenerator.createDistanceField(
+            nnfield.get(),
+            sdf,
+            extent.height() * toMeters,
+            style.get<RenderSymbol>()->sdfMinDistance()->eval(),
+            style.get<RenderSymbol>()->sdfMaxDistance()->eval(),
+            progress);
     };
 
     FeatureStyleSorter sorter;
-    sorter.sort(key, _session.get(), _filterChain.get(), renderer, progress);
 
-    osg::ref_ptr<osg::Image> result = rasterizer.finalize();
-    return GeoImage(result.release(), key.getExtent());
+    // rasterize each group of features into a unified image:
+    sorter.sort(
+        key, 
+        _session.get(), 
+        _filterChain.get(), 
+        rasterizeFeatures, 
+        progress);
+
+    rasterizedFeatures = rasterizer.finalize();
+
+    // create a NN field from the rasterized data:
+    _sdfGenerator.createNearestNeighborField(
+        rasterizedFeatures.get(),
+        nnfield,
+        progress);
+
+    // feed the NN field into each feature group to generate an SDF
+    sorter.sort(
+        key,
+        _session.get(),
+        _filterChain.get(),
+        renderSDF,
+        progress);
+
+    return GeoImage(sdf.get(), key.getExtent());
 }

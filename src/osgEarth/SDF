@@ -20,15 +20,10 @@
 #ifndef OSGEARTH_SDF_H
 #define OSGEARTH_SDF_H
 
-#include "Common"
-#include "Feature"
-#include "GeoData"
-#include "ImageLayer"
-#include "FilterContext"
-#include "Expression"
-#include "FeatureRasterizer"
-#include "FeatureImageLayer"
-#include "GLUtils"
+#include <osgEarth/Common>
+#include <osgEarth/Feature>
+#include <osgEarth/GLUtils>
+#include <osg/Image>
 
 namespace osg {
     class Uniform;
@@ -36,6 +31,8 @@ namespace osg {
 
 namespace osgEarth { namespace Util
 {
+    class Session;
+
     class OSGEARTH_EXPORT SDFGenerator
     {
     public:
@@ -45,33 +42,37 @@ namespace osgEarth { namespace Util
         //! the coordinates of the nearest pixel with feature data. The coordinate
         //! system is [x,y] relate to the lower-left corner.
         //!
-        //! You may pass this field to the createSDF function to convert it into
-        //! a distance field.
+        //! You may pass this field to the createDistanceField function to convert
+        //! it to a distance field.
         //!
         //! @param features Features to use for distance calculation
-        //! @param image Image to which to encode the SDF
-        //! @param extent Geospatial extent of the image
-        //! @param channel Image channel to which to encode distance value
-        //! @param minDistance Distances <= minDistance are encoded as 0.0
-        //! @param maxDistance Distances >= maxDistance are encoded as 1.0
-        //! @param invert true to invert the selection and encode the interiors instead
+        //! @param session Feature Session containing feature data context
+        //! @param size Size of raster to create
+        //! @param extent Geospatial extent of the raster
+        //! @param nnfield Input/output nearest neighbor field
+        //! @param progress Progress tracker object
         bool createNearestNeighborField(
             const FeatureList& features,
             Session* session,
             unsigned size,
             const GeoExtent& extent,
-            osg::ref_ptr<osg::Image>& image,
+            osg::ref_ptr<osg::Image>& nnfield,
             Cancelable* progress) const;
 
-        //! Encode a signed distance field into a channel of the geoimage.
-        //! @param features Features to use for distance calculation
-        //! @param image Image to which to encode the SDF
+        //! Encode a nearest-neighbor field from a raster image.
+        bool createNearestNeighborField(
+            const osg::Image* inputRaster,
+            osg::ref_ptr<osg::Image>& nnfield,
+            Cancelable* progress) const;
+
+        //! Encode a distance field into an image.
+        //! @param nnfield Input NN Field to conver to a distance field
+        //! @param sdf Distance field to populate (additively)
         //! @param extent Geospatial extent of the image
-        //! @param channel Image channel to which to encode distance value
-        //! @param minDistance Distances <= minDistance are encoded as 0.0
-        //! @param maxDistance Distances >= maxDistance are encoded as 1.0
-        //! @param invert true to invert the selection and encode the interiors instead
-        void encodeDistanceField(
+        //! @param min_dist Distances <= min_dist are encoded as 0.0
+        //! @param max_dist Distances >= max_dist are encoded as 1.0
+        //! @param progress Progress tracker object
+        void createDistanceField(
             const osg::Image* in_nnfield,
             osg::ref_ptr<osg::Image>& sdf,
             float extent,
@@ -92,100 +93,11 @@ namespace osgEarth { namespace Util
             GLint _L_uniform;
         };
 
-        using NNFSessionPtr = std::shared_ptr<NNFSession>;
-        using NNFSessionPtrPerThread = Mutexed<std::unordered_map<unsigned, NNFSessionPtr>>;
-        mutable NNFSessionPtrPerThread _computeSessions;
-
+        PerThreadComputeSession<NNFSession> _compute;
         osg::ref_ptr<osg::Program> _program;
 
     };
-} }
+} } // osgEarth::Util
 
-namespace osgEarth
-{
-    /**
-     * Rasterizes feature data into an image layer.
-     */
-    class OSGEARTH_EXPORT FeatureSDFLayer : 
-        public osgEarth::ImageLayer
-    {
-    public: // serialization
-        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
-        public:
-            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-            OE_OPTION_LAYER(FeatureSource, featureSource);
-            OE_OPTION_VECTOR(ConfigOptions, filters);
-            OE_OPTION_LAYER(StyleSheet, styleSheet);
-            OE_OPTION(bool, invert);
-            virtual Config getConfig() const;
-        private:
-            void fromConfig(const Config& conf);
-        };
-
-    public:
-        META_Layer(osgEarth, FeatureSDFLayer, Options, osgEarth::ImageLayer, FeatureSDF);
-
-        //! Sets the feature source to get road data from; call either this
-        //! or setFeatureSourceLayer
-        void setFeatureSource(FeatureSource* source);
-        inline FeatureSource* getFeatureSource() const;
-
-        //! Style sheet to use to render feature data
-        void setStyleSheet(StyleSheet* styles);
-        inline StyleSheet* getStyleSheet() const;
-
-    public: // ImageLayer
-
-        // Opens the layer and returns a status
-        virtual Status openImplementation() override;
-
-        virtual GeoImage createImageImplementation(
-            const TileKey& key,
-            ProgressCallback* progress) const override;
-
-    protected: // Layer
-
-        // Called by Map when it adds this layer
-        virtual void addedToMap(const class Map*) override;
-
-        // Called by Map when it removes this layer
-        virtual void removedFromMap(const class Map*) override;
-
-        // post-ctor initialization
-        virtual void init() override;
-
-    protected:
-
-        virtual ~FeatureSDFLayer() { }
-
-    private:
-        osg::ref_ptr<Session> _session;
-        osg::ref_ptr<const FeatureProfile> _featureProfile;
-        osg::ref_ptr<FeatureFilterChain> _filterChain;
-        SDFGenerator _sdfGenerator;
-
-        void updateSession();
-
-        void establishProfile();
-
-        void jfa(
-            Session* session,
-            const FeatureList& features,
-            osg::ref_ptr<osg::Image>& image,
-            unsigned dim,
-            const GeoExtent& extent,
-            GLenum channel,
-            const NumericExpression& min_dist_meters,
-            const NumericExpression& max_dist_meters,
-            bool invert,
-            Cancelable* progress) const;
-    };    
-    
-    // template/inline impls .................................................
-
-    FeatureSource* FeatureSDFLayer::getFeatureSource() const { return options().featureSource().getLayer(); }
-    StyleSheet* FeatureSDFLayer::getStyleSheet() const { return options().styleSheet().getLayer(); }
-
-}
 
 #endif // OSGEARTH_SDF_H

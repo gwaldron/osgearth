@@ -956,24 +956,32 @@ struct PredictiveDataLoader : public osg::NodeVisitor
     std::vector< osg::BoundingSphered > _areasToLoad;
 };
 
-class MyGUI : public OsgImGuiHandler
+
+class TrianglesGUI : public BaseGUI
 {
 public:
-    MyGUI(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
+    TrianglesGUI(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
+        BaseGUI("Triangles"),
         _mapNode(mapNode),
         _earthManip(earthManip),
         _view(view)
     {
     }
 
-protected:
-    void draw(osg::RenderInfo& renderInfo) override
+    void load(const Config& conf) override
     {
-        // ImGui code goes here...
-        ImGui::ShowDemoWindow();
-        _layers.draw(renderInfo);
+    }
 
-        ImGui::Begin("Tools");
+    void save(Config& conf) override
+    {
+    }
+
+protected:
+    void draw(osg::RenderInfo& ri) override
+    {
+        if (!isVisible()) return;
+
+        ImGui::Begin(name(), visible());
 
         bool queryTriangleEnabled = queryTrianglesHandler->getEnabled();
         ImGui::Checkbox("Query Triangles", &queryTriangleEnabled);
@@ -1067,7 +1075,6 @@ protected:
     osg::ref_ptr< MapNode > _mapNode;
     osg::ref_ptr<EarthManipulator> _earthManip;
     osgViewer::View* _view;
-    LayersGUI _layers;
 };
 
 int
@@ -1104,9 +1111,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator(manip);
 
     // Setup the viewer for imgui
-    viewer.setRealizeOperation(new MyGUI::RealizeOperation);
-
-    viewer.realize();
+    viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
 
     root = new osg::Group;
 
@@ -1118,7 +1123,10 @@ main(int argc, char** argv)
         MapNode* mapNode = MapNode::findMapNode(node);
         if (mapNode)
         {
-            viewer.getEventHandlers().push_front(new MyGUI(&viewer, mapNode, manip));
+            //viewer.getEventHandlers().push_front(new MyGUI(&viewer, mapNode, manip));
+            auto gui = new GUI::ApplicationGUI(true);
+            gui->add(new TrianglesGUI(&viewer, mapNode, manip));
+            viewer.getEventHandlers().push_front(gui);
         }
 
         queryTrianglesHandler = new QueryTrianglesHandler(mapNode);
@@ -1127,7 +1135,6 @@ main(int argc, char** argv)
         viewer.getEventHandlers().push_front(queryTrianglesHandler);
         viewer.getEventHandlers().push_front(intersectorHandler);
         viewer.getEventHandlers().push_front(new AddObserverHandler(mapNode));
-        viewer.addEventHandler(new SelectNodeHandler());
 
         root->addChild(new ObserversNode());
         root->addChild(node);

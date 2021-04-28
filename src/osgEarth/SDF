@@ -39,6 +39,30 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT SDFGenerator
     {
     public:
+        SDFGenerator();
+
+        //! Encode a nearest-neighbor field for vector data. Each pixel contains
+        //! the coordinates of the nearest pixel with feature data. The coordinate
+        //! system is [x,y] relate to the lower-left corner.
+        //!
+        //! You may pass this field to the createSDF function to convert it into
+        //! a distance field.
+        //!
+        //! @param features Features to use for distance calculation
+        //! @param image Image to which to encode the SDF
+        //! @param extent Geospatial extent of the image
+        //! @param channel Image channel to which to encode distance value
+        //! @param minDistance Distances <= minDistance are encoded as 0.0
+        //! @param maxDistance Distances >= maxDistance are encoded as 1.0
+        //! @param invert true to invert the selection and encode the interiors instead
+        bool createNearestNeighborField(
+            const FeatureList& features,
+            Session* session,
+            unsigned size,
+            const GeoExtent& extent,
+            osg::ref_ptr<osg::Image>& image,
+            Cancelable* progress) const;
+
         //! Encode a signed distance field into a channel of the geoimage.
         //! @param features Features to use for distance calculation
         //! @param image Image to which to encode the SDF
@@ -47,16 +71,33 @@ namespace osgEarth { namespace Util
         //! @param minDistance Distances <= minDistance are encoded as 0.0
         //! @param maxDistance Distances >= maxDistance are encoded as 1.0
         //! @param invert true to invert the selection and encode the interiors instead
-        void encodeSDF(
-            const FeatureList& features,
-            osg::Image* image,
-            const GeoExtent& extent,
-            GLenum channel,
-            FilterContext& fctx,
-            const NumericExpression& min_dist_meters,
-            const NumericExpression& max_dist_meters,
-            bool invert,
-            Cancelable* progress);
+        void encodeDistanceField(
+            const osg::Image* in_nnfield,
+            osg::ref_ptr<osg::Image>& sdf,
+            float extent,
+            float min_dist,
+            float max_dist,
+            Cancelable* progress) const;
+
+    private:
+
+        void compute_nnf_on_gpu(osg::Image* buf) const;
+        void compute_nnf_on_cpu(osg::Image* buf) const;
+
+        struct NNFSession : public ComputeImageSession
+        {
+        public:
+            NNFSession() : _L_uniform(-1) { }
+            void renderImplementation(osg::State* state) override;
+            GLint _L_uniform;
+        };
+
+        using NNFSessionPtr = std::shared_ptr<NNFSession>;
+        using NNFSessionPtrPerThread = Mutexed<std::unordered_map<unsigned, NNFSessionPtr>>;
+        mutable NNFSessionPtrPerThread _computeSessions;
+
+        osg::ref_ptr<osg::Program> _program;
+
     };
 } }
 
@@ -121,32 +162,17 @@ namespace osgEarth
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         osg::ref_ptr<FeatureFilterChain> _filterChain;
+        SDFGenerator _sdfGenerator;
 
         void updateSession();
 
         void establishProfile();
 
-        mutable osg::ref_ptr<osg::Program> _program;
-
-        void compute_sdf_on_gpu(osg::Image* buf) const;
-        void compute_sdf_on_cpu(osg::Image* buf) const;
-
-        struct JFASession : public ComputeImageSession
-        {
-        public:
-            JFASession() : _L_uniform(-1) { }
-            void renderImplementation(osg::State* state) override;
-            GLint _L_uniform;
-        };
-
-        using JFASessionPtr = std::shared_ptr<JFASession>;
-        using JFASessionPerThread = Mutexed<std::unordered_map<unsigned, JFASessionPtr>>;
-        mutable JFASessionPerThread _jfa;
-
         void jfa(
             Session* session,
             const FeatureList& features,
-            osg::Image* out_image,
+            osg::ref_ptr<osg::Image>& image,
+            unsigned dim,
             const GeoExtent& extent,
             GLenum channel,
             const NumericExpression& min_dist_meters,

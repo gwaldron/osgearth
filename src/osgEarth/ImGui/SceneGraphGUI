@@ -201,6 +201,7 @@ namespace osgEarth {
                         {
                             _selectedBounds = new osg::MatrixTransform;
                             _selectedBounds->setName("Bounds");
+                            localToWorld.preMultTranslate(bb.center());
                             _selectedBounds->setMatrix(localToWorld);
                             _selectedBounds->addChild(AnnotationUtils::createBoundingBox(bb, Color::Yellow));
                             mapNode->addChild(_selectedBounds);
@@ -214,6 +215,7 @@ namespace osgEarth {
                         {
                             _selectedBounds = new osg::MatrixTransform;
                             _selectedBounds->setName("Bounds");
+                            localToWorld.preMultTranslate(selectedNode->getBound().center());
                             _selectedBounds->setMatrix(localToWorld);
                             _selectedBounds->addChild(AnnotationUtils::createSphere(selectedNode->getBound().radius(), Color::Yellow));
                             _selectedBounds->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);

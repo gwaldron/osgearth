@@ -22,6 +22,7 @@
 #include "ImGui"
 #include <osgEarth/Ephemeris>
 #include <osgEarth/Sky>
+#include <osgEarth/Shadowing>
 
 namespace osgEarth
 {
@@ -34,17 +35,23 @@ namespace osgEarth
         {
         private:
             osg::observer_ptr<SkyNode> _skyNode;
+            osg::observer_ptr<ShadowCaster> _shadowCaster;
             bool _showDetails;
             float _hour;
             int _day, _month, _year;
             float _exposure;
             float _ambient;
 
+            bool _shadowCasterSeeked;
+            bool _shadows;
+
         public:
             EphemerisGUI() : BaseGUI("Sky & Lighting"),
                 _ambient(0.033f),
                 _exposure(3.5f),
-                _showDetails(false)
+                _showDetails(false),
+                _shadows(false),
+                _shadowCasterSeeked(false)
             {
                 DateTime now;
                 _hour = now.hours(), _day = now.day(), _month = now.month(), _year = now.year();
@@ -78,11 +85,25 @@ namespace osgEarth
                 if (!findNodeOrHide(_skyNode, ri))
                     return;
 
+                if (!_shadowCasterSeeked)
+                {
+                    findNode(_shadowCaster, ri);
+                    _shadowCasterSeeked = true;
+                    if (_shadowCaster.valid())
+                        _shadows = _shadowCaster->getEnabled();
+                }
+
                 ImGui::Begin(name(), visible());
                 {   
                     bool lighting = _skyNode->getLighting();
                     ImGui::Checkbox("Lighting", &lighting);
                     _skyNode->setLighting(lighting);
+
+                    if (_shadowCaster.valid()) {
+                        ImGui::SameLine();
+                        ImGui::Checkbox("Shadows", &_shadows);
+                        _shadowCaster->setEnabled(_shadows);
+                    }
 
                     ImGui::SameLine();
                     if (ImGui::Checkbox("Details", &_showDetails))
@@ -112,6 +133,10 @@ namespace osgEarth
                             _skyNode->getSunLight()->setAmbient(osg::Vec4(_ambient, _ambient, _ambient, 1.0f));
                             dirtySettings();
                         }
+                    }
+                    else
+                    {
+                        _shadows = false;
                     }
 
                     if (_showDetails)

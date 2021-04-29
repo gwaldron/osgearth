@@ -49,6 +49,7 @@ Shadowing::isShadowCamera(const osg::Camera* camera)
 //...................................................................
 
 ShadowCaster::ShadowCaster() :
+_enabled(true),
 _size         ( 2048 ),
 _texImageUnit ( 7 ),
 _blurFactor   ( 0.001f ),
@@ -235,6 +236,7 @@ void
 ShadowCaster::traverse(osg::NodeVisitor& nv)
 {
     if (_supported                             && 
+        _enabled                               &&
         _light.valid()                         &&
         nv.getVisitorType() == nv.CULL_VISITOR && 
         _castingGroup->getNumChildren() > 0    && 

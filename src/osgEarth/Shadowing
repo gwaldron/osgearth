@@ -57,6 +57,10 @@ namespace osgEarth { namespace Util
         /** Whether shadows are supported (requires GLSL) */
         bool supported() const { return _supported; }
 
+        //! Whether to enable shadowing
+        void setEnabled(bool value) { _enabled = value; }
+        bool getEnabled() const { return _enabled; }
+
         /**
          * The light that will cast shadows.
          * NOTE: Only works for point lights, like the sun.
@@ -133,6 +137,7 @@ namespace osgEarth { namespace Util
         void reinitialize();
 
         bool                                    _supported;
+        bool                                    _enabled;
         osg::ref_ptr<osg::Group>                _castingGroup;
         unsigned                                _size;
         float                                   _blurFactor;

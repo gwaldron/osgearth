@@ -33,6 +33,7 @@
 #define TINYGLTF_USE_RAPIDJSON
 #define TINYGLTF_USE_RAPIDJSON_CRTALLOCATOR
 
+#include <cmath>
 #include "tiny_gltf.h"
 using namespace tinygltf;
 

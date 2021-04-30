@@ -174,7 +174,8 @@ main(int argc, char** argv)
         osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform();
         mt->setMatrix(osg::Matrix::translate(spacing, 0, 0));
         mt->addChild(node);
-        cloud->add(mt);
+        std::vector<Texture::Ptr> added;
+        cloud->add(mt, added);
         
         spacing += radius;
     }
@@ -191,13 +192,13 @@ main(int argc, char** argv)
     router->onKeyPress(router->KEY_Leftbracket, [&arena]() {
         OE_NOTICE << "Activating " << arena->size() << " textures" << std::endl;
         for (auto& tex : arena->getTextures())
-            arena->activate(tex.get());
+            arena->activate(tex);
         });
 
     router->onKeyPress(router->KEY_Rightbracket, [&arena]() {
         OE_NOTICE << "Deactivating " << arena->size() << " textures" << std::endl;
         for (auto& tex : arena->getTextures())
-            arena->deactivate(tex.get());
+            arena->deactivate(tex);
         });
 
     OE_NOTICE 

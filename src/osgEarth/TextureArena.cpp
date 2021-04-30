@@ -54,7 +54,7 @@ Texture::get(const osg::State& state) const
 bool
 Texture::isCompiled(const osg::State& state) const
 {
-    return _gc[state.getContextID()]._gltexture.valid();
+    return _gc[state.getContextID()]._gltexture != nullptr; // .valid();
 }
 
 void
@@ -67,7 +67,10 @@ Texture::compileGLObjects(osg::State& state) const
     //GLenum target = GL_TEXTURE_2D_ARRAY;
     GLenum target = GL_TEXTURE_2D;
 
-    gc._gltexture = new GLTexture(target, state, _uri->base());
+    gc._gltexture = GLTexture::create(target, state, _uri->base());
+
+    // debugging
+    gc._gltexture->id() = _uri->base();
 
     // mipmaps already created and in the image:
     unsigned numMipLevelsInMemory = _image->getNumMipmapLevels();
@@ -133,6 +136,9 @@ Texture::compileGLObjects(osg::State& state) const
     // Foce creation of the bindless handle - once you do this, you can
     // no longer change the texture parameters.
     gc._gltexture->handle();
+
+    // debugging
+    OE_INFO << LC << "GLTexture '" << gc._gltexture->id() << "' name=" << gc._gltexture->name() << " handle=" << gc._gltexture->handle() << std::endl;
 
     // TODO: At this point, if/when we go with SPARSE textures,
     // don't actually copy the image down until activation.
@@ -229,7 +235,7 @@ Texture::makeResident(const osg::State& state, bool toggle) const
 {
     GCState& gc = get(state);
 
-    if (gc._gltexture.valid())
+    if (gc._gltexture != nullptr) //.valid())
     {
         gc._gltexture->makeResident(toggle);
     }
@@ -248,12 +254,12 @@ Texture::releaseGLObjects(osg::State* state) const
 {
     if (state)
     {
-        if (_gc[state->getContextID()]._gltexture.valid())
+        if (_gc[state->getContextID()]._gltexture != nullptr) //.valid())
         {
             GCState& gc = get(*state);
 
             // will activate the releaser
-            gc._gltexture = NULL;
+            gc._gltexture = nullptr;
         }
     }
     else
@@ -262,7 +268,7 @@ Texture::releaseGLObjects(osg::State* state) const
         for(unsigned i=0; i<_gc.size(); ++i)
         {
             // will activate the releaser(s)
-            _gc[i]._gltexture = NULL;
+            _gc[i]._gltexture = nullptr;
         }
     }
 }
@@ -287,7 +293,7 @@ TextureArena::~TextureArena()
 }
 
 bool
-TextureArena::add(Texture* tex)
+TextureArena::add(Texture::Ptr tex)
 {
     OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, __func__, false);
 
@@ -342,7 +348,7 @@ TextureArena::add(Texture* tex)
 }
 
 void
-TextureArena::activate(Texture* tex)
+TextureArena::activate(Texture::Ptr tex)
 {
     if (!tex) return;
 
@@ -356,7 +362,7 @@ TextureArena::activate(Texture* tex)
 }
 
 void
-TextureArena::deactivate(Texture* tex)
+TextureArena::deactivate(Texture::Ptr tex)
 {
     if (!tex) return;
 
@@ -371,9 +377,9 @@ namespace
 {
     struct TextureCompileOp : public osgUtil::IncrementalCompileOperation::CompileOp
     {
-        osg::ref_ptr<Texture> _tex;
+        Texture::Ptr _tex;
 
-        TextureCompileOp(Texture* tex) : _tex(tex) { }
+        TextureCompileOp(Texture::Ptr tex) : _tex(tex) { }
 
         // How many seconds we expect the operation to take. Educated guess.
         double estimatedTimeForCompile(osgUtil::IncrementalCompileOperation::CompileInfo& compileInfo) const {
@@ -427,21 +433,21 @@ TextureArena::apply(osg::State& state) const
                 if (!tex_gc._compileSet.valid())
                 {
                     tex_gc._compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
-                    tex_gc._compileSet->_compileMap[state.getGraphicsContext()].add(new TextureCompileOp(tex.get()));
+                    tex_gc._compileSet->_compileMap[state.getGraphicsContext()].add(new TextureCompileOp(tex));
                     ico->add(tex_gc._compileSet.get());
                 }
 
-                stillCompiling.push_back(tex.get());
+                stillCompiling.push_back(tex);
             }
             else
             {
                 tex->compileGLObjects(state);
-                gc._toActivate.push_back(tex.get());
+                gc._toActivate.push_back(tex);
             }
         }
         else
         {
-            gc._toActivate.push_back(tex.get());
+            gc._toActivate.push_back(tex);
         }
     }
     gc._toAdd.swap(stillCompiling);
@@ -547,7 +553,7 @@ TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
         // copy handles to buffer:
         refresh(textures, state);
 
-        _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, "OE TextureArena");
+        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE TextureArena");
 
         _buffer->bind();
 

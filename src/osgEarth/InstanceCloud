@@ -271,6 +271,8 @@ namespace osgEarth
 
         //! Add a model to be incorporated into the cloud.
         //! @param node Node whose geometry to add
+        //! @param texturesAdded Populated with any textures that were added
+        //!    to the texture arena in the process of adding tis node
         //! @param alignment If non-zero, pad the cloud's attribute arrays so
         //!    the index of the first vertex in this node is a multiple of the
         //!    alignment value. This is necessary for shaders that use gl_VertexID
@@ -283,6 +285,7 @@ namespace osgEarth
         //! @return Success: command number of the geometry; Failure: -1
         int add(
             osg::Node* node,
+            std::vector<Texture::Ptr>& texturesAdded,
             unsigned alignment = 0,
             int normalMapTextureImageUnit = -1);
 

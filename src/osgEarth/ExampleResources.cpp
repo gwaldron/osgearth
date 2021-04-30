@@ -846,7 +846,7 @@ MapNodeHelper::parse(
         if ( mapNode->getTerrainEngine()->getResources()->reserveTextureImageUnit(unit, "ShadowCaster") )
         {
             ShadowCaster* caster = new ShadowCaster();
-            caster->setTextureImageUnit( unit );
+            caster->setTextureImageUnit(unit);
             caster->setLight( view->getLight() );
             caster->getShadowCastingGroup()->addChild(mapNode->getLayerNodeGroup());
             caster->getShadowCastingGroup()->addChild(mapNode->getTerrainEngine()->getNode());

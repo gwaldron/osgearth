@@ -63,7 +63,7 @@ InstanceCloud::CommandBuffer::allocate(
 
     _requiredSize = numCommands * sizeof(DrawElementsIndirectCommand);
 
-    if (_requiredSize > _allocatedSize || !_buffer.valid())
+    if (_requiredSize > _allocatedSize || _buffer == nullptr)
     {
         OE_PROFILING_GPU_ZONE("CommandBuffer::allocate");
 
@@ -75,7 +75,7 @@ InstanceCloud::CommandBuffer::allocate(
         _buf = new DrawElementsIndirectCommand[numCommands];
         _allocatedSize = align(_requiredSize, alignment);
 
-        _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, "OE IC DrawCommands");
+        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC DrawCommands");
 
         _buffer->bind();
 
@@ -106,7 +106,7 @@ void
 InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::State& state)
 {
     _requiredSize = numTiles * sizeof(Data);
-    if (_requiredSize > _allocatedSize || !_buffer.valid())
+    if (_requiredSize > _allocatedSize || _buffer == nullptr)
     {
         OE_PROFILING_GPU_ZONE("TileBuffer::allocate");
         release();
@@ -117,7 +117,7 @@ InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::S
 
         osg::GLExtensions* ext = state.get<osg::GLExtensions>();
 
-        _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, "OE IC TileBuffer");
+        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC TileBuffer");
         
         _buffer->bind();
 
@@ -142,7 +142,7 @@ InstanceCloud::CullBuffer::allocate(unsigned numInstances, GLsizei alignment, os
 {
     _requiredSize = sizeof(Data) + (numInstances * sizeof(GLuint));
 
-    if (_requiredSize > _allocatedSize || !_buffer.valid())
+    if (_requiredSize > _allocatedSize || _buffer == nullptr)
     {
         OE_PROFILING_GPU_ZONE("InstanceBuffer::allocate");
 
@@ -152,7 +152,7 @@ InstanceCloud::CullBuffer::allocate(unsigned numInstances, GLsizei alignment, os
         _buf = new Data();
         _allocatedSize = align(_requiredSize, alignment);
 
-        _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, "OE IC CullBuffer");
+        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC CullBuffer");
 
         _buffer->bind();
 
@@ -182,7 +182,7 @@ InstanceCloud::InstanceBuffer::allocate(unsigned numTiles, unsigned numInstances
 {
     unsigned numBytesPerTile = numInstancesPerTile * sizeof(InstanceData);
     _requiredSize = numTiles * numBytesPerTile;
-    if (_requiredSize > _allocatedSize || !_buffer.valid())
+    if (_requiredSize > _allocatedSize || _buffer == nullptr)
     {
         OE_PROFILING_GPU_ZONE("GenBuffer::allocate");
 
@@ -192,7 +192,7 @@ InstanceCloud::InstanceBuffer::allocate(unsigned numTiles, unsigned numInstances
         _numInstancesPerTile = numInstancesPerTile;
         _allocatedSize = align(_requiredSize, alignment);
 
-        _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, "OE IC GenBuffer");
+        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC GenBuffer");
 
         _buffer->bind();
 
@@ -205,7 +205,7 @@ void
 InstanceCloud::RenderBuffer::allocate(unsigned numInstances, GLsizei alignment, osg::State& state)
 {
     _requiredSize = numInstances * (sizeof(GLuint)*2); // sizeof RenderLeaf
-    if (_requiredSize > _allocatedSize || !_buffer.valid())
+    if (_requiredSize > _allocatedSize || _buffer == nullptr)
     {
         OE_PROFILING_GPU_ZONE("RenderBuffer::allocate");
 
@@ -213,7 +213,7 @@ InstanceCloud::RenderBuffer::allocate(unsigned numInstances, GLsizei alignment, 
 
         _allocatedSize = align(_requiredSize, alignment);
 
-        _buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, "OE IC RenderBuffer");
+        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC RenderBuffer");
 
         _buffer->bind();
 
@@ -658,6 +658,7 @@ GeometryCloud::GeometryCloud(TextureArena* texarena) :
 int
 GeometryCloud::add(
     osg::Node* node,
+    std::vector<Texture::Ptr>& texturesAdded,
     unsigned alignment,
     int normalMapTextureImageUnit)
 {
@@ -781,8 +782,9 @@ GeometryCloud::pushStateSet(osg::Node& node)
                     // arena index of the texture we're about to add:
                     int nextIndex = _texarena->size();
 
-                    Texture* t = new Texture();
+                    Texture::Ptr t = Texture::create();
                     t->_image = tex->getImage(0);
+                    t->_uri = t->_image->getFileName();
 
                     if (_texarena->add(t))
                     {
@@ -818,7 +820,7 @@ GeometryCloud::pushStateSet(osg::Node& node)
                     // arena index of the texture we're about to add:
                     int nextIndex = _texarena->size();
 
-                    Texture* t = new Texture();
+                    Texture::Ptr t = Texture::create();
                     t->_image = tex->getImage(0);
 
                     if (_texarena->add(t))

@@ -94,14 +94,17 @@ namespace osgEarth
     struct OSGEARTH_EXPORT GL3RealizeOperation : public CustomRealizeOperation
     {
         virtual void operator()(osg::Object*);
-    };//! Base class for GL object containers
-    class OSGEARTH_EXPORT GLObject : public osg::Referenced
+    };
+    
+    //! Base class for GL object containers
+    class OSGEARTH_EXPORT GLObject
     {
     public:
-        GLObject(osg::State& state, const std::string& label);
+        using Ptr = std::shared_ptr<GLObject>;
         virtual void release() = 0;
         osg::GLExtensions* ext() const { return _ext; }
     protected:
+        GLObject(osg::State& state, const std::string& label);
         std::string _label;
         osg::GLExtensions* _ext;
     };
@@ -110,12 +113,16 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLBuffer : public GLObject
     {
     public:
-        GLBuffer(GLenum target, osg::State& state, const std::string& label = "");
+        using Ptr = std::shared_ptr<GLBuffer>;
+        static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+
         void bind();
         void bind(GLenum target);
         GLuint name() const { return _name; }
         GLenum target() const { return _target; }
         void release();
+    protected:
+        GLBuffer(GLenum target, osg::State& state, const std::string& label);
     private:
         GLuint _name;
         GLenum _target;
@@ -125,17 +132,23 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLTexture : public GLObject
     {
     public:
-        GLTexture(GLenum target, osg::State& state, const std::string& label = "");
+        using Ptr = std::shared_ptr<GLTexture>;
+        static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+
         void bind();
         GLuint64 handle();
         GLuint name() const { return _name; }
         void makeResident(bool toggle);
         void release();
+        std::string& id() { return _id; }
+    protected:
+        GLTexture(GLenum target, osg::State& state, const std::string& label);
     private:
         GLenum _target;
         GLuint _name;
         GLuint64 _handle;
         bool _isResident;
+        std::string _id;
     };
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
@@ -151,7 +164,7 @@ namespace osgEarth
     {
         GLObjectReleaser(unsigned contextID);
 
-        static void watch(GLObject*, osg::State&);
+        static void watch(GLObject::Ptr, osg::State&);
 
         static void releaseAll(osg::State&);
 
@@ -160,8 +173,10 @@ namespace osgEarth
         virtual void deleteAllGLObjects();
         virtual void discardAllGLObjects();
 
-        std::set<osg::ref_ptr<GLObject> > _objects;
-        std::set<osg::ref_ptr<GLObject> > _temp;
+        std::set<GLObject::Ptr> _objects;
+        std::set<GLObject::Ptr> _temp;
+        //std::set<osg::ref_ptr<GLObject> > _objects;
+        //std::set<osg::ref_ptr<GLObject> > _temp;
     };
 
 #else // legacy implementation for OSG 3.4
@@ -188,13 +203,14 @@ namespace osgEarth
     public:
         SSBO();
 
-        mutable osg::ref_ptr<GLBuffer> _buffer;
+        mutable GLBuffer::Ptr _buffer;
+        //mutable osg::ref_ptr<GLBuffer> _buffer;
         mutable GLsizei _allocatedSize;
         mutable GLsizei _requiredSize;
         GLint _bindingIndex;
         void bindLayout() const;
         virtual void release() const;
-        inline bool valid() const { return _buffer.valid(); }
+        inline bool valid() const { return _buffer != nullptr; } // .valid(); }
     };
 
     template<typename T>
@@ -261,7 +277,7 @@ namespace osgEarth
                 ssbo.release();
                 ssbo._bindingIndex = _bindingIndex;
                 ssbo._allocatedSize = contentSize;
-                ssbo._buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, state, typeid(*this).name());
+                ssbo._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, typeid(*this).name());
                 ssbo._buffer->bind();
                 bound = true;
                 ssbo._buffer->ext()->glBufferStorage(GL_SHADER_STORAGE_BUFFER, alignedAllocationSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
@@ -310,23 +326,6 @@ namespace osgEarth
     private:
         static GLFunctions _buf[256];
     };
-
-    //struct GLBuffer : public osg::Referenced
-    //{
-    //    mutable GLuint _handle;
-    //};
-
-    ///**
-    // * Operation that will automatically delete a GL buffer 
-    // * when its container goes out of scope
-    // */
-    //struct GLBufferReleaser : public osg::GraphicsOperation
-    //{
-    //    osg::observer_ptr<GLBuffer> _buffer;
-    //    GLuint _handle;
-    //    GLBufferReleaser(GLBuffer* buffer);
-    //    void operator () (osg::GraphicsContext* context);
-    //};
 
     /**
      * API for launching GPU thread jobs. Any function dispatched here will

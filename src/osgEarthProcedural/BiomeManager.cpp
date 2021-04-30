@@ -450,10 +450,15 @@ BiomeManager::createGeometryCloud(
             {
                 const auto& data = instance._data;
 
+                std::vector<Texture::Ptr> texturesAdded;
+
                 auto model = data->_model.get();
                 if (model && visited.count(model) == 0)
                 {
-                    data->_modelCommand = cloud->add(model);
+                    data->_modelCommand = cloud->add(
+                        model,
+                        texturesAdded);
+
                     visited.insert(model);
                 }
 
@@ -462,10 +467,14 @@ BiomeManager::createGeometryCloud(
                 {
                     data->_billboardCommand = cloud->add(
                         imposter,
+                        texturesAdded,
                         getNumVertices(imposter),   // apply alignment so shader can use gl_VertexID
                         1);                         // normal maps in texture image unit 1
+
                     visited.insert(imposter);
                 }
+
+               
             }
         }
     }

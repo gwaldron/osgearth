@@ -76,12 +76,12 @@ namespace
             {
                 auto t0 = std::chrono::steady_clock::now();
 
-                Texture* rgbh = new Texture();
+                Texture::Ptr rgbh = Texture::create();
                 rgbh->_uri = URI(tex.uri()->full() + ".oe_splat_rgbh");
                 arena->add(rgbh);
 
                 // protect the NNRA from compression, b/c it confuses the normal maps
-                Texture* nnra = new Texture();
+                Texture::Ptr nnra = Texture::create();
                 nnra->_uri = URI(tex.uri()->full() + ".oe_splat_nnra");
                 nnra->_compress = false;
                 arena->add(nnra);

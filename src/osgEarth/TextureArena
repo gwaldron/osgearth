@@ -39,16 +39,20 @@ namespace osgEarth
      * 3. GPU resident - GPU handle is in GPU table; GPU memory might not be allocated
      * 4. GPU commited - GPU handle active, GPU texture fully available
      */
-    class OSGEARTH_EXPORT Texture : public osg::Referenced
+    class OSGEARTH_EXPORT Texture // : public osg::Referenced
     {
     public:
         struct GCState {
-            osg::ref_ptr<GLTexture> _gltexture;
+            GLTexture::Ptr _gltexture;
             osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
         };
 
     public:
-        Texture() : _compress(true) { }
+        using Ptr = std::shared_ptr<Texture>;
+        static Ptr create() {
+            return Ptr(new Texture());
+        }
+
         GCState& get(const osg::State&) const;
         void makeResident(const osg::State&, bool toggle) const;
         bool isCompiled(const osg::State&) const;
@@ -60,9 +64,12 @@ namespace osgEarth
         osg::ref_ptr<osg::Image> _image;
         bool _compress;
         mutable osg::buffered_object<GCState> _gc;
+
+    protected:
+        Texture() : _compress(true) { }
     };
 
-    typedef std::vector<osg::ref_ptr<Texture> > TextureVector;
+    typedef std::vector<Texture::Ptr> TextureVector;
 
     /**
      * TextureArena is a dynamic bindless texture atlas. Add as many texture
@@ -85,13 +92,13 @@ namespace osgEarth
         //! Adds a texture to the arena. On next apply() GL handles will allocate.
         //! You only need to call this once for each texture.
         //! Returns false if the texture could not find a valid image
-        bool add(Texture* tex);
+        bool add(Texture::Ptr tex);
 
         //! Makes a texture fully available on the GPU.
-        void activate(Texture* tex);
+        void activate(Texture::Ptr tex);
 
         //! Removes the texture from the GPU.
-        void deactivate(Texture* tex);
+        void deactivate(Texture::Ptr tex);
         
         //! Number of textures registered
         size_t size() const { return _textures.size(); }
@@ -114,7 +121,7 @@ namespace osgEarth
         TextureArena(const TextureArena&, const osg::CopyOp&) { } 
 
         //! allocate handles for all add()ed textures
-        void activate(Texture* texture, osg::State& state) const;
+        //void activate(Texture::Ptr texture, osg::State& state) const;
 
         // Lookup table that maps texture ids to bindless handles
         struct HandleLUT : public SSBO {

@@ -62,6 +62,8 @@ namespace osgEarth
             int _modelCommand;
             int _billboardCommand;
 
+            std::vector<Texture*> _textures;
+
         public:
             ModelAssetData();
         };

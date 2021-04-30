@@ -45,7 +45,7 @@ using namespace osgEarth;
 
 #define LC "[GLUtils] "
 
-#define OE_DEVEL OE_DEBUG
+#define OE_DEVEL OE_INFO
 
 #ifndef GL_LINE_SMOOTH
 #define GL_LINE_SMOOTH 0x0B20
@@ -270,8 +270,16 @@ GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
     {
         bind();
         ext()->debugObjectLabel(GL_BUFFER, _name, label);
-        GLObjectReleaser::watch(this, state);
+        //GLObjectReleaser::watch(shared_from_this(), state);
     }
+}
+
+GLBuffer::Ptr
+GLBuffer::create(GLenum target, osg::State& state, const std::string& label)
+{
+    Ptr obj(new GLBuffer(target, state, label));
+    GLObjectReleaser::watch(obj, state);
+    return obj;
 }
 
 void
@@ -309,9 +317,15 @@ GLTexture::GLTexture(GLenum target, osg::State& state, const std::string& label)
     {
         bind();
         ext()->debugObjectLabel(GL_TEXTURE, _name, label);
-        GLObjectReleaser::watch(this, state);
-        // cannot call glGetTextureHandle until all state it set.
     }
+}
+
+GLTexture::Ptr
+GLTexture::create(GLenum target, osg::State& state, const std::string& label)
+{
+    Ptr obj(new GLTexture(target, state, label));
+    GLObjectReleaser::watch(obj, state);
+    return obj;
 }
 
 void
@@ -340,6 +354,8 @@ GLTexture::makeResident(bool toggle)
             ext()->glMakeTextureHandleResident(_handle);
         else
             ext()->glMakeTextureHandleNonResident(_handle);
+
+        OE_DEVEL << "'" << id() << "' name=" << name() <<" resident=" << (toggle ? "yes" : "no") << std::endl;
     }
 
     _isResident = toggle;
@@ -350,7 +366,7 @@ GLTexture::release()
 {
     if (_handle != ~0ULL)
     {
-        ext()->glMakeTextureHandleNonResident(_handle);
+        makeResident(false);
         _handle = ~0ULL;
     }
     if (_name != ~0U)
@@ -379,7 +395,7 @@ SSBO::release() const
 void
 SSBO::bindLayout() const
 {
-    if (_buffer.valid() && _bindingIndex >= 0)
+    if (_buffer != nullptr && _bindingIndex >= 0)
     {
         _buffer->ext()->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bindingIndex, _buffer->name());
     }
@@ -397,7 +413,7 @@ GLObjectReleaser::GLObjectReleaser(unsigned contextID) :
 }
 
 void
-GLObjectReleaser::watch(GLObject* object, osg::State& state_unused)
+GLObjectReleaser::watch(GLObject::Ptr object, osg::State& state_unused)
 {
     if (object && object->ext())
     {
@@ -433,7 +449,7 @@ GLObjectReleaser::flushAllDeletedGLObjects()
     _temp.clear();
     for (auto& object : _objects)
     {
-        if (object->referenceCount() == 1)
+        if (object.use_count() == 1) //referenceCount() == 1)
             object->release();
         else
             _temp.insert(object);

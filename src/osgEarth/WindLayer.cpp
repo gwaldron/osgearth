@@ -63,7 +63,7 @@ namespace
             _bufferSize(0),
             _glBufferStorage(nullptr) { }
 
-        osg::ref_ptr<GLBuffer> _buffer;
+        GLBuffer::Ptr _buffer;
         GLuint _bufferSize;
 
         // pre-OSG 3.6 support
@@ -254,9 +254,9 @@ namespace
 
             GLuint requiredBufferSize = sizeof(WindData) * (_winds.size()+1);
 
-            if (!ds._buffer.valid() || ds._bufferSize < requiredBufferSize)
+            if (ds._buffer == nullptr || ds._bufferSize < requiredBufferSize)
             {
-                ds._buffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, *state, "oe.wind");
+                ds._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state, "oe.wind");
                 ds._bufferSize = requiredBufferSize;
 
                 ds._buffer->bind();

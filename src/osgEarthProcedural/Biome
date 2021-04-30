@@ -129,6 +129,7 @@ namespace osgEarth
             {
                 const ModelAsset* asset;
                 float weight;
+                float fill;
             };
 
             OE_OPTION(std::string, name);

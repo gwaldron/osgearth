@@ -151,22 +151,24 @@ void generate()
     lush = lifemap[LUSH] * lush_power;
     lush = noise[pickNoiseType] * lush;
 
-    // discard instances based on noise value threshold (coverage). If it passes,
-    // scale the noise value back up to [0..1]
-    if (noise[NOISE_SMOOTH] > fill)
-        return;
-
-    noise[NOISE_SMOOTH] /= fill;
-
-    // It's a keeper - record it to the instance buffer.
-    instance[i].tileNum = tileNum; // need this for merge
-
     // select a billboard at random
     int pickIndex = clamp(int(floor(lush * float(biome.count))), 0, biome.count - 1);
     int assetIndex = biome.offset + pickIndex;
 
     // Recover the asset we randomly picked:
     Asset asset = assets[assetIndex]; //getAsset(assetIndex);
+
+    fill *= asset.fill;
+
+    // discard instances based on noise value threshold (coverage). If it passes,
+    // scale the noise value back up to [0..1]
+    if (noise[NOISE_SMOOTH] > fill)
+        return;
+    else
+        noise[NOISE_SMOOTH] /= fill;
+
+    // It's a keeper - record it to the instance buffer.
+    instance[i].tileNum = tileNum; // need this for merge
 
     vec2 LL = vec2(oe_tile[0], oe_tile[1]);
     vec2 UR = vec2(oe_tile[2], oe_tile[3]);

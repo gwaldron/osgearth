@@ -78,10 +78,12 @@ namespace osgEarth
         {
         public:
             ModelAssetDataInstance() :
-                _weight(1.0f) { }
+                _weight(1.0f),
+                _fill(1.0f) { }
 
             ModelAssetData::Ptr _data;
             float _weight;
+            float _fill;
             
             // These references prevent the TextureArena from making
             // the textures non-resident.
@@ -180,8 +182,9 @@ namespace osgEarth
                 GLfloat width;
                 GLfloat height;
 
+                GLfloat fill;
                 GLfloat sizeVariation;
-                GLfloat _padding[3];
+                GLfloat _padding[2];
             };
             using AssetLUT_SSBO = ArraySSBO<AssetLUT_Data>;
 

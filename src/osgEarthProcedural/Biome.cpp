@@ -168,6 +168,7 @@ ModelCategory::ModelCategory(const Config& conf, AssetCatalog* assets)
             Member member;
             member.asset = asset;
             member.weight = (float)c.value("weight", 1.0f);
+            member.fill = (float)c.value("fill", 1.0f);
             _members.push_back(std::move(member));
         }
         else

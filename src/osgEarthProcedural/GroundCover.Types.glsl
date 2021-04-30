@@ -59,8 +59,9 @@ struct Asset
     float width;
     float height;
 
+    float fill;
     float sizeVariation;
-    float _padding[3];
+    float _padding[2];
 };
 
 layout(binding=0, std430) buffer DrawCommandsBuffer

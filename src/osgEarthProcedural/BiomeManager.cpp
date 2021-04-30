@@ -394,6 +394,7 @@ BiomeManager::loadCategory(
                 ModelAssetDataInstance instance;
                 instance._data = data;
                 instance._weight = member.weight;
+                instance._fill = member.fill;
                 categoryInstances.push_back(std::move(instance));
             }
         }
@@ -560,6 +561,7 @@ BiomeManager::createGPULookupTables(
             r.billboardCommand = data->_billboardCommand;
             r.width = width;
             r.height = height;
+            r.fill = instance._fill;
             r.sizeVariation = sizeVariation;
         }
     }

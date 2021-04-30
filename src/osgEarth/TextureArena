@@ -49,6 +49,8 @@ namespace osgEarth
 
     public:
         using Ptr = std::shared_ptr<Texture>;
+        using WeakPtr = std::weak_ptr<Texture>;
+
         static Ptr create() {
             return Ptr(new Texture());
         }

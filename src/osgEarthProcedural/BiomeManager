@@ -62,9 +62,10 @@ namespace osgEarth
             int _modelCommand;
             int _billboardCommand;
 
-            std::vector<Texture*> _textures;
+            // Textures discovered by GeometryCloud. 
+            //std::vector<Texture::WeakPtr> _textures;
 
-        public:
+        private:
             ModelAssetData();
         };
 
@@ -81,6 +82,10 @@ namespace osgEarth
 
             ModelAssetData::Ptr _data;
             float _weight;
+            
+            // These references prevent the TextureArena from making
+            // the textures non-resident.
+            std::vector<Texture::Ptr> _textures;
         };
 
 
@@ -129,7 +134,7 @@ namespace osgEarth
             //! set of biomes.
             GeometryCloud* createGeometryCloud(
                 const std::string& category,
-                TextureArena* arena) const;
+                TextureArena* arena); // const;
 
             //! Generate the lookup tables necessary to render a geometry cloud.
             osg::StateAttribute* createGPULookupTables(

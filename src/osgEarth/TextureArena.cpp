@@ -138,7 +138,7 @@ Texture::compileGLObjects(osg::State& state) const
     gc._gltexture->handle();
 
     // debugging
-    OE_INFO << LC << "GLTexture '" << gc._gltexture->id() << "' name=" << gc._gltexture->name() << " handle=" << gc._gltexture->handle() << std::endl;
+    OE_INFO << LC << "Texture::compileGLObjects '" << gc._gltexture->id() << "' name=" << gc._gltexture->name() << " handle=" << gc._gltexture->handle() << std::endl;
 
     // TODO: At this point, if/when we go with SPARSE textures,
     // don't actually copy the image down until activation.
@@ -257,6 +257,9 @@ Texture::releaseGLObjects(osg::State* state) const
         if (_gc[state->getContextID()]._gltexture != nullptr) //.valid())
         {
             GCState& gc = get(*state);
+
+            // debugging
+            OE_INFO << LC << "Texture::releaseGLObjects '" << gc._gltexture->id() << "' name=" << gc._gltexture->name() << " handle=" << gc._gltexture->handle() << std::endl;
 
             // will activate the releaser
             gc._gltexture = nullptr;
@@ -469,6 +472,22 @@ TextureArena::apply(osg::State& state) const
         gc._toActivate.clear();
         gc._handleLUT._dirty = true;
     }
+
+#if 0
+    // Works, but re-visit so we don't need to call every frame
+    // and re-visit loading/unloading of textures from main memory..
+    for (auto& tex : _textures)
+    {
+        if (tex.use_count() == 1)
+        {
+            tex->makeResident(state, false);
+        }
+        else
+        {
+            tex->makeResident(state, true);
+        }
+    }
+#endif
 
     // update the LUT if it needs more space:
     gc._handleLUT.sync(_textures, state);

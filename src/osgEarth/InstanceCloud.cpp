@@ -718,6 +718,9 @@ GeometryCloud::add(
     // that way we can share them across models
     _arenaIndexLUT.clear();
 
+    // To record the textures we added to the arena
+    _texturesAdded = &texturesAdded;
+
     node->accept(*this);
 
     _elementCounts.push_back(_numElements);
@@ -790,6 +793,7 @@ GeometryCloud::pushStateSet(osg::Node& node)
                     {
                         _arenaIndexLUT[tex] = nextIndex;
                         albedoArenaIndex = nextIndex;
+                        _texturesAdded->push_back(t);
                     }
                     else
                     {
@@ -827,6 +831,7 @@ GeometryCloud::pushStateSet(osg::Node& node)
                     {
                         _arenaIndexLUT[tex] = nextIndex;
                         normalArenaIndex = nextIndex;
+                        _texturesAdded->push_back(t);
                     }
                     else
                     {

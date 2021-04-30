@@ -922,7 +922,8 @@ GroundCoverLayer::Renderer::checkForUpdates()
 
                 biomeMan.loadCategory(
                     category,
-                    [&](std::vector<osg::Texture*>& textures) { return layer->createParametricGeometry(textures); },
+                    [&](std::vector<osg::Texture*>& textures) { 
+                        return layer->createParametricGeometry(textures); },
                     layer->getReadOptions());
 
                 result = biomeMan.createGeometryCloud(

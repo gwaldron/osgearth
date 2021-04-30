@@ -33,7 +33,7 @@ using namespace osgEarth::Procedural;
 ModelAssetData::Ptr
 ModelAssetData::create()
 {
-    return std::make_shared<ModelAssetData>();
+    return Ptr(new ModelAssetData());
 }
 
 ModelAssetData::ModelAssetData() :
@@ -427,37 +427,35 @@ namespace
 GeometryCloud*
 BiomeManager::createGeometryCloud(
     const std::string& category,
-    TextureArena* arena) const
+    TextureArena* arena)
 {
     if (arena == nullptr)
         arena = new TextureArena();
 
     GeometryCloud* cloud = new GeometryCloud(arena);
 
-    // Add each 3D model to the geometry cloud.
+    // Keep track so we don't add the same model twice
     std::unordered_set<void*> visited;
 
     // For each resident biome, locate all asset instances that belong
     // to the specified category. Add each to the geometry cloud.
-    for (const auto& b_iter : _residentBiomeData)
+    for (auto& b_iter : _residentBiomeData)
     {
         const ModelCategory* cat = b_iter.first->getModelCategory(category);
         if (cat && b_iter.second.count(cat) != 0)
         {
-            const auto& catInstances = b_iter.second.at(cat);
+            auto& catInstances = b_iter.second.at(cat);
 
-            for (const auto& instance : catInstances)
+            for (auto& instance : catInstances)
             {
                 const auto& data = instance._data;
-
-                std::vector<Texture::Ptr> texturesAdded;
 
                 auto model = data->_model.get();
                 if (model && visited.count(model) == 0)
                 {
                     data->_modelCommand = cloud->add(
                         model,
-                        texturesAdded);
+                        instance._textures);
 
                     visited.insert(model);
                 }
@@ -467,14 +465,12 @@ BiomeManager::createGeometryCloud(
                 {
                     data->_billboardCommand = cloud->add(
                         imposter,
-                        texturesAdded,
+                        instance._textures,
                         getNumVertices(imposter),   // apply alignment so shader can use gl_VertexID
                         1);                         // normal maps in texture image unit 1
 
                     visited.insert(imposter);
                 }
-
-               
             }
         }
     }

@@ -356,9 +356,10 @@ GLTexture::makeResident(bool toggle)
             ext()->glMakeTextureHandleNonResident(_handle);
 
         OE_DEVEL << "'" << id() << "' name=" << name() <<" resident=" << (toggle ? "yes" : "no") << std::endl;
+
+        _isResident = toggle;
     }
 
-    _isResident = toggle;
 }
 
 void

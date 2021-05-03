@@ -26,7 +26,10 @@
 #include <osg/Texture2D>
 #include <osg/RenderInfo>
 #include <osgViewer/View>
+#include <osgEarth/GeoData>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
 #include <typeinfo>
 
 namespace osgEarth
@@ -104,6 +107,16 @@ namespace osgEarth
                     var = value;
                     dirtySettings();
                 }
+            }
+
+            //! Map point under the mouse cursor
+            GeoPoint getPointAtMouse(MapNode* mapNode, osg::View* v, float x, float y)
+            {
+                osg::Vec3d world;
+                mapNode->getTerrain()->getWorldCoordsUnderMouse(v, x, y, world);
+                GeoPoint point;
+                point.fromWorld(mapNode->getMapSRS(), world);
+                return point;
             }
 
         private:

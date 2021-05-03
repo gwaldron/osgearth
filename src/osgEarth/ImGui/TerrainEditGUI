@@ -134,7 +134,7 @@ namespace osgEarth
                     sdf,
                     out_extent.height(),
                     0.5f * width,
-                    width,
+                    1.0f * width,
                     nullptr);
 
                 out_elevation = new osg::Image();
@@ -199,7 +199,6 @@ namespace osgEarth
             osg::ref_ptr<CircleNode> _craterCursor;
             osg::ref_ptr<FeatureNode> _ditchCursor;
             osg::ref_ptr<Feature> _ditchFeature;
-            osg::ref_ptr<Geometry> _ditchGeom;
             Style _ditchStyle;
 
         public:
@@ -268,16 +267,6 @@ namespace osgEarth
                 ImGui::End();
             }
 
-            GeoPoint getPointAtMouse(osg::View* view, float x, float y)
-            {
-                // Find the point the user clicked:
-                osg::Vec3d world;
-                _mapNode->getTerrain()->getWorldCoordsUnderMouse(view, x, y, world);
-                GeoPoint point;
-                point.fromWorld(_mapNode->getMapSRS(), world);
-                return point;
-            }
-
             void addCrater(const GeoPoint& center)
             {
                 GeoExtent extent;
@@ -328,7 +317,7 @@ namespace osgEarth
 
             void handleClick(osg::View* view, float x, float y)
             {
-                GeoPoint p = getPointAtMouse(view, x, y);
+                GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
                 if (!p.isValid())
                 {
                     OE_WARN << "No intersection under mouse..." << std::endl;
@@ -348,7 +337,7 @@ namespace osgEarth
                     {
                         _ditchStyle.getOrCreate<LineSymbol>()->stroke()->width() = _width;
                         _ditchStyle.getOrCreate<LineSymbol>()->stroke()->widthUnits() = Units::METERS;
-                        _ditchStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(10.0, Units::METERS);
+                        _ditchStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(_width, Units::METERS);
                         _ditchCursor->setStyle(_ditchStyle);
                     }
                     _ditchCursor->setNodeMask(~0);
@@ -363,7 +352,7 @@ namespace osgEarth
 
             void handleMove(osg::View* view, float x, float y)
             {
-                GeoPoint p = getPointAtMouse(view, x, y);
+                GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
                 if (!p.isValid())
                     return;
 

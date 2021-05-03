@@ -24,6 +24,7 @@
 #include <osgEarth/Memory>
 #include <osgEarth/GLUtils>
 #include <osgEarth/ExampleResources>
+#include <osgEarth/FeatureNode>
 #include <chrono>
 #include <list>
 
@@ -43,9 +44,15 @@ namespace osgEarth
             float _ax, _ay;
             std::unique_ptr<AsyncElevationSampler> _sampler;
             Future<ElevationSample> _sample;
+            bool _measuring;
+            osg::ref_ptr<FeatureNode> _measureCursor;
+            osg::ref_ptr<Feature> _measureFeature;
+            float _measureDist;
 
         public:
-            TerrainGUI() : BaseGUI("Terrain"), _installed(false) { }
+            TerrainGUI() : BaseGUI("Terrain"), 
+                _installed(false),
+                _measuring(false) { }
 
             void load(const Config& conf) override
             {
@@ -61,16 +68,7 @@ namespace osgEarth
                 if (!findNodeOrHide(_mapNode, ri)) return;
 
                 if (!_installed)
-                {
-                    EventRouter::get(view(ri)).onMove(
-                        [&](osg::View* view, float x, float y) {
-                            _x = x, _y = y;
-                        });
-
-                    _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap()));
-
-                    _installed = true;
-                }
+                    install(ri);
 
                 ImGui::Begin(name(), visible());
                 {
@@ -147,8 +145,88 @@ namespace osgEarth
                         ImGui::TextWrapped("vdatum = %s", _mapNode->getMapSRS()->getVertInitString().c_str());
 
                     ImGui::Unindent();
+
+                    ImGui::Separator();
+                    if (ImGui::Checkbox("Measure", &_measuring))
+                    {
+                        if (_measuring)
+                        {
+                            _measureFeature->getGeometry()->clear();
+                            _measureCursor->dirty();
+                            _measureCursor->setNodeMask(~0);
+                        }
+                    }
+                    if (_measuring)
+                    {
+                        ImGui::Indent();
+                        float dist = _measureFeature->getGeometry()->getLength();
+                        ImGui::Text("Total distance = %.2f m", dist);
+                        ImGui::Unindent();
+                    }
+                    else
+                    {
+                        _measureCursor->setNodeMask(0);
+                    }
                 }
                 ImGui::End();
+            }
+
+            void install(osg::RenderInfo& ri)
+            {
+                EventRouter::get(view(ri))
+                    .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); })
+                    .onClick([&](osg::View* v, float x, float y) { onClick(v, x, y); });
+
+                _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap()));
+
+                Style measureStyle;
+                measureStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;
+                measureStyle.getOrCreate<LineSymbol>()->stroke()->color().set(1, 0.5, 0.0, 1);
+                measureStyle.getOrCreate<LineSymbol>()->stroke()->stipplePattern() = 0xCCCC;
+                measureStyle.getOrCreate<LineSymbol>()->tessellation() = 128;
+                measureStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                measureStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
+
+                _measureFeature = new Feature(new LineString(), SpatialReference::get("spherical-mercator"));
+                _measureCursor = new FeatureNode(_measureFeature.get(), measureStyle);
+                _mapNode->addChild(_measureCursor);
+
+                _installed = true;
+            }
+
+            void onMove(osg::View* view, float x, float y)
+            {
+                _x = x, _y = y;
+
+                if (_measuring)
+                {
+                    GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
+                    if (!p.isValid()) return;
+
+                    Geometry* geom = _measureFeature->getGeometry();
+                    if (!geom->empty())
+                    {
+                        GeoPoint pf = p.transform(_measureFeature->getSRS());
+                        geom->back().set(pf.x(), pf.y(), 0.0f);
+                        _measureCursor->dirty();
+                    }
+                }
+            }
+
+            void onClick(osg::View* view, float x, float y)
+            {
+                if (_measuring)
+                {
+                    GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
+                    if (!p.isValid()) return;
+
+                    GeoPoint pf = p.transform(_measureFeature->getSRS());
+                    Geometry* geom = _measureFeature->getGeometry();
+                    geom->push_back(pf.x(), pf.y());
+                    if (geom->size() == 1)
+                        geom->push_back(pf.x(), pf.y());
+                    _measureCursor->dirty();
+                }
             }
         };
     }

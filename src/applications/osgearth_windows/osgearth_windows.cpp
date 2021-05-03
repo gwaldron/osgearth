@@ -256,11 +256,11 @@ main(int argc, char** argv)
     view->getEventHandlers().push_front(gui);
 
     OE_NOTICE << "Press 'n' to create a new view" << std::endl;
-    EventRouter::get(view)->onKeyPress(EventRouter::KEY_N, [&]() { 
+    EventRouter::get(view).onKeyPress(EventRouter::KEY_N, [&]() { 
         app.addView(Stringify()<<"View " << app._viewer.getNumViews()); });
 
     OE_NOTICE << "Press 'r' to call releaseGLObjects" << std::endl;
-    EventRouter::get(view)->onKeyPress(EventRouter::KEY_R, [&]() { 
+    EventRouter::get(view).onKeyPress(EventRouter::KEY_R, [&]() { 
         app.releaseGLObjects(); });
 
     app._viewer.realize();

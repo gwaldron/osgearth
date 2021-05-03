@@ -18,8 +18,12 @@ endif()
 
 if(OSGEARTH_BUILD_TOOLS OR OSGEARTH_BUILD_EXAMPLES)
     add_subdirectory( applications )
-ENDIF()
+endif()
 
-IF(OSGEARTH_BUILD_TESTS AND NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
+if(OSGEARTH_BUILD_TESTS AND NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
     add_subdirectory( tests )
-ENDIF()
+endif()
+
+if(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT)
+    add_subdirectory(osgEarthSplat)
+endif()

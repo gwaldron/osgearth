@@ -4,7 +4,7 @@
 #pragma vp_entryPoint oe_GroundCover_VS_MODEL
 #pragma vp_location   vertex_model
 
-#pragma include GroundCover.Types.glsl
+#pragma include Splat.GroundCover.Types.glsl
 
 vec3 vp_Normal;
 vec4 vp_Color;
@@ -55,7 +55,7 @@ void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 #pragma vp_entryPoint oe_GroundCover_VS
 #pragma vp_location   vertex_view
 
-#pragma include GroundCover.Types.glsl
+#pragma include Splat.GroundCover.Types.glsl
 
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 

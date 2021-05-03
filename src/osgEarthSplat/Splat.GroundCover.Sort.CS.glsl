@@ -1,5 +1,5 @@
 #version 430
-#pragma include GroundCover.Types.glsl
+#pragma include Splat.GroundCover.Types.glsl
 
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 

@@ -16,14 +16,14 @@ set(TARGET_GLSL
     Splat.vert.view.glsl
     Splat.frag.glsl
     Splat.util.glsl
-    GroundCover.CS.glsl
-    GroundCover.Sort.CS.glsl
-    GroundCover.Billboard.glsl
-    GroundCover.Model.glsl
-    GroundCover.Generate.CS.glsl
-    GroundCover.Render.glsl
-    GroundCover.Types.glsl
-    Grass.glsl)
+    Splat.GroundCover.CS.glsl
+    Splat.GroundCover.Sort.CS.glsl
+    Splat.GroundCover.Billboard.glsl
+    Splat.GroundCover.Model.glsl
+    Splat.GroundCover.Generate.CS.glsl
+    Splat.GroundCover.Render.glsl
+    Splat.GroundCover.Types.glsl
+    Splat.Grass.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -47,6 +47,7 @@ set(TARGET_SRC
     SplatLayer.cpp
     Surface.cpp
     Zone.cpp
+    OldInstanceCloud.cpp
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
@@ -62,7 +63,8 @@ set(LIB_PUBLIC_HEADERS
     SplatShaders
     SplatLayer
     Surface
-    Zone)
+    Zone
+    OldInstanceCloud)
 	
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS}

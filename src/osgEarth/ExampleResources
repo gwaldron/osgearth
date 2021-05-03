@@ -200,32 +200,39 @@ namespace osgEarth { namespace Util
         typedef std::function<void()> Function;
         typedef std::function<void(osg::View*, float, float)> ViewFunction;
 
-        void onKeyPress(KeySymbol key, const Function& func) {
+        EventRouter& onKeyPress(KeySymbol key, const Function& func) {
             _keypress_simple[key].emplace_back(func);
+            return *this;
         }
 
-        void onKeyPress(KeySymbol key, const ViewFunction& func) {
+        EventRouter& onKeyPress(KeySymbol key, const ViewFunction& func) {
             _keypress[key].emplace_back(func);
+            return *this;
         }
 
-        void onClick(const ViewFunction& func) {
+        EventRouter& onClick(const ViewFunction& func) {
             onClick(LEFT_MOUSE_BUTTON, 0, func);
+            return *this;
         }
 
-        void onClick(int button, const ViewFunction& func) {
+        EventRouter& onClick(int button, const ViewFunction& func) {
             _click[button].emplace_back(func);
+            return *this;
         }
 
-        void onClick(int button, int modkey, const ViewFunction& func) {
+        EventRouter& onClick(int button, int modkey, const ViewFunction& func) {
             _click[button | (modkey<<3)].emplace_back(func);
+            return *this;
         }
 
-        void onMove(const ViewFunction& func) {
+        EventRouter& onMove(const ViewFunction& func) {
             _move.emplace_back(func);
+            return *this;
         }
 
-        void onDrag(const ViewFunction& func) {
+        EventRouter& onDrag(const ViewFunction& func) {
             _drag.emplace_back(func);
+            return *this;
         }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override
@@ -268,16 +275,16 @@ namespace osgEarth { namespace Util
         }
 
         //! Accesses the router on the given view, creating one if necessary
-        static EventRouter* get(osgViewer::View* v) {
+        static EventRouter& get(osgViewer::View* v) {
             OE_HARD_ASSERT(v != nullptr, __func__);
             for (auto& eh : v->getEventHandlers()) {
                 EventRouter* r = dynamic_cast<EventRouter*>(eh.get());
                 if (r)
-                    return r;
+                    return *r;
             }
             EventRouter* r = new EventRouter();
-            v->addEventHandler(r);
-            return r;
+            v->getEventHandlers().push_front(r);
+            return *r;
         }
 
         struct Push {

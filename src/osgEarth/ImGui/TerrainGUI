@@ -62,7 +62,7 @@ namespace osgEarth
 
                 if (!_installed)
                 {
-                    EventRouter::get(view(ri))->onMove(
+                    EventRouter::get(view(ri)).onMove(
                         [&](osg::View* view, float x, float y) {
                             _x = x, _y = y;
                         });

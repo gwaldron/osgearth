@@ -80,6 +80,10 @@ namespace osgEarth { namespace Util
             float max_dist,
             Cancelable* progress) const;
 
+        void setUseGPU(bool value) {
+            _useGPU = value;
+        }
+
     private:
 
         void compute_nnf_on_gpu(osg::Image* buf) const;
@@ -95,6 +99,7 @@ namespace osgEarth { namespace Util
 
         PerThreadComputeSession<NNFSession> _compute;
         osg::ref_ptr<osg::Program> _program;
+        bool _useGPU;
 
     };
 } } // osgEarth::Util

@@ -103,7 +103,8 @@ namespace
     )";
 }
 
-SDFGenerator::SDFGenerator()
+SDFGenerator::SDFGenerator() :
+    _useGPU(true)
 {
     _program = new osg::Program();
     _program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
@@ -123,9 +124,9 @@ SDFGenerator::createNearestNeighborField(
 
     OE_SOFT_ASSERT_AND_RETURN(extent.isValid(), __func__, false);
     OE_SOFT_ASSERT_AND_RETURN(isPositivePowerOfTwo(size), __func__, false);
-    OE_SOFT_ASSERT_AND_RETURN(session, __func__, false);
-    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource(), __func__, false);
-    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource()->getFeatureProfile(), __func__, false);
+    //OE_SOFT_ASSERT_AND_RETURN(session, __func__, false);
+    //OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource(), __func__, false);
+    //OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource()->getFeatureProfile(), __func__, false);
 
     // allocate the field as 2 floats
     osg::ref_ptr<osg::Image> image = new osg::Image();
@@ -139,8 +140,18 @@ SDFGenerator::createNearestNeighborField(
     else
         style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
 
+    osg::ref_ptr<const FeatureProfile> fp;
+    if (session && session->getFeatureSource())
+    {
+        fp = session->getFeatureSource()->getFeatureProfile();
+    }
+    else
+    {
+        fp = new FeatureProfile(extent);
+    }
+
     FeatureRasterizer rasterizer(size, size, extent, Color(1, 1, 1, 0));
-    rasterizer.render(session, style, session->getFeatureSource()->getFeatureProfile(), features);
+    rasterizer.render(session, style, fp.get(), features);
     osg::ref_ptr<osg::Image> source = rasterizer.finalize();
 
     return createNearestNeighborField(
@@ -182,7 +193,7 @@ SDFGenerator::createNearestNeighborField(
         }
     );
 
-    if (GPUJobArena::arena().getGraphicsContext().valid())
+    if (_useGPU && GPUJobArena::arena().getGraphicsContext().valid())
     {
         compute_nnf_on_gpu(nnfield.get());
     }

@@ -191,7 +191,7 @@ namespace osgEarth
             float _craterRadius;
             bool _placingDitch;
             float _width;
-            float _depth;
+            float _height;
             float _rugged;
             float _dense;
             float _lush;
@@ -206,7 +206,7 @@ namespace osgEarth
                 _placingCrater(false),
                 _placingDitch(false),
                 _width(5.0f),
-                _depth(5.0f),
+                _height(5.0f),
                 _rugged(0.75f),
                 _dense(0.0f),
                 _lush(0.0f),
@@ -234,10 +234,16 @@ namespace osgEarth
                 ImGui::Begin(name(), visible());
                 {
                     ImGui::Checkbox("Place a crater", &_placingCrater);
+                    if (_placingCrater)
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Click to place feature");
+                        
                     ImGui::Checkbox("Place a ditch", &_placingDitch);
+                    if (_placingDitch)
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Click points; press ENTER to finish");
+
                     ImGui::Separator();
                     ImGui::SliderFloat("Width(m)", &_width, 1.0f, 25.0f);
-                    ImGui::SliderFloat("Depth(m)", &_depth, 1.0f, 25.0f);
+                    ImGui::SliderFloat("Height(m)", &_height, -10.0f, 10.0f);
                     ImGui::SliderFloat("Rugged", &_rugged, 0.0f, 1.0f);
                     ImGui::SliderFloat("Dense", &_dense, 0.0f, 1.0f);
                     ImGui::SliderFloat("Lush", &_lush, 0.0f, 1.0f);
@@ -299,7 +305,7 @@ namespace osgEarth
 
                 if (_elevDecal.valid() && elevation.valid())
                 {
-                    _elevDecal->addDecal(id, extent, elevation.get(), -_depth, 0.0f, GL_RED);
+                    _elevDecal->addDecal(id, extent, elevation.get(), _height, 0.0f, GL_RED);
                 }
 
                 if (_lifemapDecal.valid() && lifemap.valid())
@@ -317,6 +323,9 @@ namespace osgEarth
 
             void handleClick(osg::View* view, float x, float y)
             {
+                if (!_placingCrater && !_placingDitch)
+                    return;
+
                 GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
                 if (!p.isValid())
                 {
@@ -352,6 +361,9 @@ namespace osgEarth
 
             void handleMove(osg::View* view, float x, float y)
             {
+                if (!_placingCrater && !_placingDitch)
+                    return;
+
                 GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
                 if (!p.isValid())
                     return;

@@ -112,10 +112,10 @@ namespace osgEarth
             //! Map point under the mouse cursor
             GeoPoint getPointAtMouse(MapNode* mapNode, osg::View* v, float x, float y)
             {
-                osg::Vec3d world;
-                mapNode->getTerrain()->getWorldCoordsUnderMouse(v, x, y, world);
                 GeoPoint point;
-                point.fromWorld(mapNode->getMapSRS(), world);
+                osg::Vec3d world;
+                if (mapNode->getTerrain()->getWorldCoordsUnderMouse(v, x, y, world))
+                    point.fromWorld(mapNode->getMapSRS(), world);
                 return point;
             }
 

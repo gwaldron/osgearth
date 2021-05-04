@@ -215,7 +215,7 @@ TextureSplattingLayer::buildStateSets()
         // Install the texture splatting shader
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
         TerrainShaders shaders;
-        shaders.load(vp, shaders.TextureSplatting2, getReadOptions());
+        shaders.load(vp, shaders.TextureSplatting, getReadOptions());
 
         // Find the LifeMap layer and access its share
         ss->setDefine(

@@ -183,7 +183,7 @@ namespace osgEarth
                 measureStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;
                 measureStyle.getOrCreate<LineSymbol>()->stroke()->color().set(1, 0.5, 0.0, 1);
                 measureStyle.getOrCreate<LineSymbol>()->stroke()->stipplePattern() = 0xCCCC;
-                measureStyle.getOrCreate<LineSymbol>()->tessellation() = 128;
+                measureStyle.getOrCreate<LineSymbol>()->tessellation() = 64;
                 measureStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
                 measureStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
 

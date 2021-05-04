@@ -10,18 +10,11 @@ ENDIF()
 SET(LIB_NAME osgEarthProcedural)
 
 set(TARGET_GLSL
-    Splat.types.glsl
-    Splat.Noise.glsl
-    Splat.vert.model.glsl
-    Splat.vert.view.glsl
-    Splat.frag.glsl
-    Splat.util.glsl
-    GroundCover.CS.glsl
-    GroundCover.Render.glsl
-    GroundCover.Types.glsl
-    Grass.glsl
-    TextureSplatting.glsl
-    TextureSplatting2.glsl)
+    Procedural.GroundCover.CS.glsl
+    Procedural.GroundCover.Render.glsl
+    Procedural.GroundCover.Types.glsl
+    Procedural.Grass.glsl
+    Procedural.TextureSplatting.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

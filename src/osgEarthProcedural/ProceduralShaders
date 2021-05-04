@@ -31,15 +31,7 @@ namespace osgEarth { namespace Procedural
         TerrainShaders();
 
         std::string
-            Types,
-            Noise,
-            VertModel,
-            VertView,
-            Frag,
-            FragCommon,
-            Util,
-            TextureSplatting,
-            TextureSplatting2;
+            TextureSplatting;
 	};
 
     struct GroundCoverShaders : public osgEarth::Util::ShaderPackage
@@ -49,10 +41,6 @@ namespace osgEarth { namespace Procedural
         std::string
             Grass,
             GroundCover_CS,
-            GroundCover_Sort_CS,
-            GroundCover_Billboard,
-            GroundCover_Model,
-            GroundCover_Generate,
             GroundCover_Render,
             GroundCover_Types;
 	};

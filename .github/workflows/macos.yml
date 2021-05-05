@@ -39,8 +39,6 @@ jobs:
         # patch for opengl warnings
         macos_xcode_defs="ADD_DEFINITIONS(-DGL_SILENCE_DEPRECATION=1)\nadd_compile_options(-Wno-inconsistent-missing-override)\n"
         echo -e "${macos_xcode_defs}\n$(cat ${{runner.workspace}}/osgearth/src/CMakeLists.txt)" > ${{runner.workspace}}/osgearth/src/CMakeLists.txt
-        # gltf doesn't compile
-        sed -i '' "s/add_subdirectory(gltf)//g" ${{runner.workspace}}/osgearth/src/osgEarthDrivers/CMakeLists.txt
         cmake -E make_directory ${{runner.workspace}}/build
 
     - name: Configure CMake

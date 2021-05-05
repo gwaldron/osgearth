@@ -48,6 +48,8 @@ namespace osgEarth
             osg::ref_ptr<FeatureNode> _measureCursor;
             osg::ref_ptr<Feature> _measureFeature;
             float _measureDist;
+            float _sse;
+            osg::ref_ptr<osg::Uniform> _sse_u;
 
         public:
             TerrainGUI() : BaseGUI("Terrain"), 
@@ -70,8 +72,24 @@ namespace osgEarth
                 if (!_installed)
                     install(ri);
 
+
+                    if (_mapNode->getTerrainOptions().getGPUTessellation())
+                    {
+                        _sse = 50.0f;
+                        _sse_u = new osg::Uniform("oe_terrain_sse", _sse);
+                        _mapNode->getOrCreateStateSet()->addUniform(_sse_u.get(), osg::StateAttribute::OVERRIDE);
+                    }
                 ImGui::Begin(name(), visible());
                 {
+                    if (_mapNode->getTerrainOptions().getGPUTessellation())
+                    {
+                        if (ImGui::SliderFloat("Tessellation SSE", &_sse, 5.0f, 50.0f))
+                        {
+                            _sse_u->set(_sse);
+                        }
+                    }
+                    ImGui::Separator();
+
                     ImGui::Text("Mouse Coordinates:");
 
                     ImGui::Indent();

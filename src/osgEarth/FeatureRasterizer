@@ -31,7 +31,11 @@ namespace osgEarth
         class OSGEARTH_EXPORT FeatureRasterizer
         {
         public:
-            FeatureRasterizer(unsigned int width, unsigned int height, const GeoExtent& extent, const Color& backgroundColor = Color::Transparent);
+            FeatureRasterizer(
+                unsigned int width, 
+                unsigned int height, 
+                const GeoExtent& extent, 
+                const Color& backgroundColor = Color::Transparent);
 
             void render(
                 Session* session,
@@ -39,7 +43,7 @@ namespace osgEarth
                 const FeatureProfile* profile,
                 const FeatureList& in_features) const;
 
-            osg::Image* finalize();
+            GeoImage finalize();
 
         private:
             GeoExtent _extent;
@@ -59,6 +63,7 @@ namespace osgEarth
 
             void sort(
                 const TileKey& key,
+                const Distance& buffer,
                 Session* session,
                 FeatureFilterChain* filters,
                 Function processFeaturesForStyle,
@@ -68,6 +73,7 @@ namespace osgEarth
             void getFeatures(
                 Session* session,
                 const Query& query,
+                const Distance& buffer,
                 const GeoExtent& extent,
                 FeatureFilterChain* filters,
                 FeatureList& output,

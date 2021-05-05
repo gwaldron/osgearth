@@ -119,7 +119,7 @@ namespace osgEarth
                 SDFGenerator sdfgen;
                 sdfgen.setUseGPU(false);
 
-                osg::ref_ptr<osg::Image> nnf;
+                GeoImage nnf;
                 sdfgen.createNearestNeighborField(
                     features,
                     nullptr,
@@ -128,9 +128,12 @@ namespace osgEarth
                     nnf,
                     nullptr);
 
-                osg::ref_ptr<osg::Image> sdf;
+                GeoImage sdf = sdfgen.allocateSDF(
+                    256,
+                    out_extent);
+
                 sdfgen.createDistanceField(
-                    nnf.get(),
+                    nnf,
                     sdf,
                     out_extent.height(),
                     0.5f * width,
@@ -145,7 +148,7 @@ namespace osgEarth
                     GL_RED,
                     GL_UNSIGNED_BYTE);
 
-                ImageUtils::PixelReader readSDF(sdf.get());
+                ImageUtils::PixelReader readSDF(sdf.getImage());
 
                 ImageUtils::PixelWriter writeElevation(out_elevation.get());
                 ImageUtils::ImageIterator e_iter(writeElevation);
@@ -206,7 +209,7 @@ namespace osgEarth
                 _placingCrater(false),
                 _placingDitch(false),
                 _width(5.0f),
-                _height(5.0f),
+                _height(-3.0f),
                 _rugged(0.75f),
                 _dense(0.0f),
                 _lush(0.0f),
@@ -237,7 +240,7 @@ namespace osgEarth
                     if (_placingCrater)
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Click to place feature");
                         
-                    ImGui::Checkbox("Place a ditch", &_placingDitch);
+                    ImGui::Checkbox("Place a ditch/berm", &_placingDitch);
                     if (_placingDitch)
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Click points; press ENTER to finish");
 

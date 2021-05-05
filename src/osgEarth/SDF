@@ -38,11 +38,18 @@ namespace osgEarth { namespace Util
     public:
         SDFGenerator();
 
+        //! Allocate a new SDF image
+        //! @param size X and Y dimension; must be a power of 2
+        //! @param extent Geospatial extent
+        GeoImage allocateSDF(
+            unsigned size,
+            const GeoExtent& extent) const;
+
         //! Encode a nearest-neighbor field for vector data. Each pixel contains
         //! the coordinates of the nearest pixel with feature data. The coordinate
         //! system is [x,y] relate to the lower-left corner.
         //!
-        //! You may pass this field to the createDistanceField function to convert
+        //! You can pass this field to the createDistanceField function to convert
         //! it to a distance field.
         //!
         //! @param features Features to use for distance calculation
@@ -51,38 +58,52 @@ namespace osgEarth { namespace Util
         //! @param extent Geospatial extent of the raster
         //! @param nnfield Input/output nearest neighbor field
         //! @param progress Progress tracker object
+        //! @return True upon success
         bool createNearestNeighborField(
             const FeatureList& features,
             Session* session,
-            unsigned size,
+            unsigned nnfieldSize,
             const GeoExtent& extent,
-            osg::ref_ptr<osg::Image>& nnfield,
+            GeoImage& nnfield,
             Cancelable* progress) const;
 
         //! Encode a nearest-neighbor field from a raster image.
+        //! The input raster is typically rasterized feature data, but can be
+        //! anything.
+        //!
+        //! You can pass this field to the createDistanceField function to convert
+        //! it to a distance field.
+        //!
+        //! @param input Input raster data
+        //! @param nnfield Input/output nearest neighbor field
+        //! @param progress Progress tracker object
+        //! @return True upon success
         bool createNearestNeighborField(
-            const osg::Image* inputRaster,
-            osg::ref_ptr<osg::Image>& nnfield,
+            const GeoImage& input,
+            GeoImage& nnfield,
             Cancelable* progress) const;
 
         //! Encode a distance field into an image.
         //! @param nnfield Input NN Field to conver to a distance field
-        //! @param sdf Distance field to populate (additively)
-        //! @param extent Geospatial extent of the image
+        //! @param sdf Distance field to populate (additively). Distance values are
+        //!    in the range [0..1] normalized from the min_dist and max_dist inputs.
+        //! @param extent Geospatial extent of the resulting SDF
+        //! @param sdfSize pixel dimention (x and y) of the resulting SDF
         //! @param min_dist Distances <= min_dist are encoded as 0.0
         //! @param max_dist Distances >= max_dist are encoded as 1.0
         //! @param progress Progress tracker object
         void createDistanceField(
-            const osg::Image* in_nnfield,
-            osg::ref_ptr<osg::Image>& sdf,
-            float extent,
+            const GeoImage& nnfield,
+            GeoImage& sdf,
+            float tile_size,
             float min_dist,
             float max_dist,
             Cancelable* progress) const;
 
-        void setUseGPU(bool value) {
-            _useGPU = value;
-        }
+        //! Whether to permit use of the GPU. Set this to true if there
+        //! is a running frame loop with an active graphics context available
+        //! and you are willing to shunt the processing to the GPU.
+        void setUseGPU(bool value);
 
     private:
 

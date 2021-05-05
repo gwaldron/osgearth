@@ -149,7 +149,7 @@ namespace osgEarth
         unsigned getKeys(
             const TileKey& key,
             const Distance& buffer,
-            std::vector<TileKey>& output) const;
+            std::unordered_set<TileKey>& output) const;
 
         /**
          * Gets a reference to the metadata that describes features that you can

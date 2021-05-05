@@ -243,7 +243,7 @@ BiomeLayer::createImageImplementation(
     double radius = options().blendRadius().get();
     std::set<int> biomeids_seen;
 
-    GeoImageIterator iter(image.get(), key.getExtent());
+    GeoImageIterator iter(GeoImage(image.get(), key.getExtent()));
 
     iter.forEachPixelOnCenter([&]()
         {

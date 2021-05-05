@@ -575,7 +575,7 @@ LifeMapLayer::createImageImplementation(
 
     GeoImage result(image.get(), extent);
 
-    GeoImageIterator  i(image.get(), extent);
+    GeoImageIterator i(result);
     i.forEachPixelOnCenter([&]() {
 
         Sample sample[4];
@@ -818,11 +818,6 @@ LifeMapLayer::createImageImplementation(
                 pixel[SPECIAL] = (float)sample[i].special / 255.0f;
         }
 
-        for (int i = 0; i < 4; ++i)
-        {
-            pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
-        }
-
         // for a special encoding, zero out the other values
         if (pixel[SPECIAL] > 0)
             pixel[RUGGED] = pixel[DENSE] = pixel[LUSH] = 0.0f;
@@ -830,13 +825,18 @@ LifeMapLayer::createImageImplementation(
         // MASK CONTRIBUTION (applied to final data)
         if (densityMask.valid())
         {
-            double uu = i.u() * dm_matrix(0, 0) + dm_matrix(3, 0);
-            double vv = i.v() * dm_matrix(1, 1) + dm_matrix(3, 1);
+            double uu = clamp(i.u() * dm_matrix(0, 0) + dm_matrix(3, 0), 0.0, 1.0);
+            double vv = clamp(i.v() * dm_matrix(1, 1) + dm_matrix(3, 1), 0.0, 1.0);
             readDensityMask(dm_pixel, uu, vv);
 
             pixel[DENSE] *= dm_pixel.r();
             pixel[LUSH] *= (0.25 + 0.75*dm_pixel.r()); // 75% effect
             pixel[RUGGED] *= dm_pixel.r();
+        }
+
+        for (int i = 0; i < 4; ++i)
+        {
+            pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
         }
 
         write(pixel, i.s(), i.t());

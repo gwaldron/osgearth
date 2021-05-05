@@ -840,16 +840,17 @@ FeatureRasterizer::render(
 #endif
 }
 
-osg::Image* FeatureRasterizer::finalize()
+GeoImage
+FeatureRasterizer::finalize()
 {
 #ifdef USE_AGGLITE
-        //convert from ABGR to RGBA
-        unsigned char* pixel = _image->data();
-        for (int i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
-        {
-            std::swap(pixel[0], pixel[3]);
-            std::swap(pixel[1], pixel[2]);
-        }
+    //convert from ABGR to RGBA
+    unsigned char* pixel = _image->data();
+    for (int i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+    {
+        std::swap(pixel[0], pixel[3]);
+        std::swap(pixel[1], pixel[2]);
+    }
 #else
     //convert from BGRA to RGBA
     unsigned char* pixel = _image->data();
@@ -860,7 +861,7 @@ osg::Image* FeatureRasterizer::finalize()
     _image->flipVertical();
 #endif
 
-    return _image.release();
+    return GeoImage(_image.release(), _extent);
 }
 
 //........................................................................
@@ -873,6 +874,7 @@ FeatureStyleSorter::FeatureStyleSorter()
 void
 FeatureStyleSorter::sort(
     const TileKey& key,
+    const Distance& buffer,
     Session* session,
     FeatureFilterChain* filters,
     Function processFeaturesForStyle,
@@ -896,7 +898,8 @@ FeatureStyleSorter::sort(
         FilterContext context;
 
         osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(
-            defaultQuery,
+            key,
+            buffer,
             filters,
             &context,
             progress);
@@ -928,7 +931,7 @@ FeatureStyleSorter::sort(
                     StringExpression styleExprCopy(sel.styleExpression().get());
 
                     FeatureList features;
-                    getFeatures(session, defaultQuery, key.getExtent(), filters, features, progress);
+                    getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
                     if (!features.empty())
                     {
                         std::unordered_map<std::string, Style> literal_styles;
@@ -979,9 +982,7 @@ FeatureStyleSorter::sort(
                         {
                             const Style* style = iter.first;
                             FeatureList& list = iter.second;
-
                             processFeaturesForStyle(*style, list, progress);
-                            //featureRasterizer.render(session, *style, getFeatureSource()->getFeatureProfile(), list);
                         }
                     }
                 }
@@ -993,7 +994,7 @@ FeatureStyleSorter::sort(
 
                     // Get the features
                     FeatureList features;
-                    getFeatures(session, query, key.getExtent(), filters, features, progress);
+                    getFeatures(session, query, buffer, key.getExtent(), filters, features, progress);
 
                     processFeaturesForStyle(*style, features, progress);
                 }
@@ -1005,7 +1006,7 @@ FeatureStyleSorter::sort(
 
             // Get the features
             FeatureList features;
-            getFeatures(session, defaultQuery, key.getExtent(), filters, features, progress);
+            getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
             
             processFeaturesForStyle(*style, features, progress);
         }
@@ -1013,7 +1014,7 @@ FeatureStyleSorter::sort(
     else
     {
         FeatureList features;
-        getFeatures(session, defaultQuery, key.getExtent(), filters, features, progress);
+        getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
 
         // Render the features
         Style emptyStyle;
@@ -1025,6 +1026,7 @@ void
 FeatureStyleSorter::getFeatures(
     Session* session,
     const Query& query,
+    const Distance& buffer,
     const GeoExtent& workingExtent,
     FeatureFilterChain* filters,
     FeatureList& features,
@@ -1063,14 +1065,25 @@ FeatureStyleSorter::getFeatures(
             if (progress && progress->isCanceled())
                 break;
 
-            // query the feature source:
-            //osg::ref_ptr<FeatureCursor> cursor = createCursor(session->getFeatureSource(), _filterChain.get(), context, localQuery, progress);
-
-            osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(
-                localQuery,
-                filters,
-                &context,
-                progress);
+            osg::ref_ptr<FeatureCursor> cursor;
+            
+            if (localQuery.tileKey().isSet())
+            {
+                cursor = session->getFeatureSource()->createFeatureCursor(
+                    localQuery.tileKey().get(),
+                    buffer,
+                    filters,
+                    &context,
+                    progress);
+            }
+            else
+            {
+                cursor = session->getFeatureSource()->createFeatureCursor(
+                    localQuery,
+                    filters,
+                    &context,
+                    progress);
+            }
 
             while (cursor.valid() && cursor->hasMore())
             {

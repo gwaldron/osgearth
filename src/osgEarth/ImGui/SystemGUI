@@ -86,7 +86,7 @@ namespace osgEarth
                     ImGui::Separator();
                     ImGui::Text("ICO: %d", GLObjectsCompiler::totalJobs());
                     ImGui::SameLine();
-                    ImGui::Text("   GPU: %d", GPUJobArena::arena().size());
+                    ImGui::Text("  Compute: %d", GPUJobArena::arena().size());
 
                     ImGui::Separator();
                     time_point now = std::chrono::steady_clock::now();

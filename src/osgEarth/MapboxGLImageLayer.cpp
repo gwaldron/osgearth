@@ -1170,7 +1170,5 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
         }
     }
 
-    osg::Image* result = featureRasterizer.finalize();
-
-    return GeoImage(result, key.getExtent());
+    return featureRasterizer.finalize();
 }

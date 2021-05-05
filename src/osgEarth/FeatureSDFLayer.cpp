@@ -19,6 +19,8 @@
 #include "FeatureSDFLayer"
 #include "TransformFilter"
 #include "FeatureRasterizer"
+#include <osgDB/WriteFile>
+#include <osgDB/FileUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -67,6 +69,9 @@ FeatureSDFLayer::init()
     {
         setProfile(Profile::create("global-geodetic"));
     }
+
+    // enable GPU processing if available
+    _sdfGenerator.setUseGPU(true);
 }
 
 Status
@@ -88,9 +93,6 @@ FeatureSDFLayer::openImplementation()
     establishProfile();
 
     _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
-
-    //_program = new osg::Program();
-    //_program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
 
     return Status::NoError;
 }
@@ -252,16 +254,38 @@ FeatureSDFLayer::createImageImplementation(
         return GeoImage::INVALID;
     }
 
-    // allocate the image.
-    osg::ref_ptr<osg::Image> sdf = new osg::Image();
-    sdf->allocateImage(getTileSize(), getTileSize(), 1, GL_RED, GL_UNSIGNED_BYTE);
-    sdf->setInternalTextureFormat(GL_R8);
-    ImageUtils::PixelWriter write(sdf);
-    write.assign(Color(1, 1, 1, 1));
+    // allocate the final Unit-SDF and initialize it to all one's,
+    // which indicates maximum distance.
+    GeoImage sdf = _sdfGenerator.allocateSDF(
+        getTileSize(),
+        key.getExtent());
 
-    FeatureRasterizer rasterizer(sdf->s(), sdf->t(), key.getExtent(), Color(1, 1, 1, 0));
-    osg::ref_ptr<osg::Image> rasterizedFeatures;
-    osg::ref_ptr<osg::Image> nnfield;
+    // Rasterizer for rendering features to an image. We are going to make this
+    // larger than the final SDF so we can properly calculate distances to features
+    // just outside the extent.
+    GeoExtent nnfieldExtent = key.getExtent();
+
+#if 1
+    nnfieldExtent.expand(
+        key.getExtent().width(), 
+        key.getExtent().height());
+
+    FeatureRasterizer rasterizer(
+        2 * getTileSize(),
+        2 * getTileSize(),
+        nnfieldExtent,
+        Color(1, 1, 1, 0)); // background
+
+#else
+    FeatureRasterizer rasterizer(
+        getTileSize(),
+        getTileSize(),
+        nnfieldExtent,
+        Color(1, 1, 1, 0)); // background
+
+#endif
+    GeoImage rasterizedFeatures;
+    GeoImage nnfield;
 
     FeatureStyleSorter::Function rasterizeFeatures = [&](
         const Style& style,
@@ -270,12 +294,6 @@ FeatureSDFLayer::createImageImplementation(
     {
         if (features.empty())
             return;
-
-        // Transform to map SRS:
-        FilterContext context(_session.get());
-        context.setProfile(getFeatureSource()->getFeatureProfile());
-        TransformFilter xform(key.getExtent().getSRS());
-        xform.push(features, context);
 
         // Render features to a temporary image
         Style r_style;
@@ -296,20 +314,20 @@ FeatureSDFLayer::createImageImplementation(
         FeatureList& features,
         ProgressCallback* progress)
     {
-        const GeoExtent& extent = key.getExtent();
+        const GeoExtent& sdfExtent = key.getExtent();
 
         // Poor man's degrees-to-meters conversion
         double toMeters = 1.0;
-        if (extent.getSRS()->isGeographic())
+        if (sdfExtent.getSRS()->isGeographic())
         {
-            double R = extent.getSRS()->getEllipsoid()->getRadiusEquator();
-            toMeters = (2.0 * osg::PI * R / 360.0) * cos(osg::DegreesToRadians(extent.yMin()));
+            double R = sdfExtent.getSRS()->getEllipsoid()->getRadiusEquator();
+            toMeters = (2.0 * osg::PI * R / 360.0) * cos(osg::DegreesToRadians(sdfExtent.yMin()));
         }
 
         _sdfGenerator.createDistanceField(
-            nnfield.get(),
+            nnfield,
             sdf,
-            extent.height() * toMeters,
+            nnfieldExtent.height() * toMeters,
             style.get<RenderSymbol>()->sdfMinDistance()->eval(),
             style.get<RenderSymbol>()->sdfMaxDistance()->eval(),
             progress);
@@ -319,7 +337,8 @@ FeatureSDFLayer::createImageImplementation(
 
     // rasterize each group of features into a unified image:
     sorter.sort(
-        key, 
+        key,
+        Distance(key.getExtent().width() / 2.0, key.getExtent().getSRS()->getUnits()),
         _session.get(), 
         _filterChain.get(), 
         rasterizeFeatures, 
@@ -329,17 +348,22 @@ FeatureSDFLayer::createImageImplementation(
 
     // create a NN field from the rasterized data:
     _sdfGenerator.createNearestNeighborField(
-        rasterizedFeatures.get(),
+        rasterizedFeatures,
         nnfield,
         progress);
 
     // feed the NN field into each feature group to generate an SDF
     sorter.sort(
         key,
+        Distance(),
         _session.get(),
         _filterChain.get(),
         renderSDF,
         progress);
 
-    return GeoImage(sdf.get(), key.getExtent());
+    //osgDB::makeDirectoryForFile(Stringify() << "out/" << key.str() << ".out.png");
+    //osgDB::writeImageFile(*rasterizedFeatures.getImage(), Stringify() << "out/" << key.str() << ".out.png");
+    //osgDB::writeImageFile(*sdf.getImage(), Stringify() << "out/" << key.str() << ".sdf.png");
+
+    return sdf;
 }

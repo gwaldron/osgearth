@@ -281,8 +281,14 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     };
 
     FeatureStyleSorter sorter;
-    sorter.sort(key, _session.get(), _filterChain.get(), renderer, progress);
 
-    osg::ref_ptr<osg::Image> result = rasterizer.finalize();
-    return GeoImage(result.release(), key.getExtent());
+    sorter.sort(
+        key,
+        Distance(0, Units::METERS),
+        _session.get(),
+        _filterChain.get(),
+        renderer,
+        progress);
+
+    return rasterizer.finalize();
 }

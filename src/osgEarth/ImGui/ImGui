@@ -244,12 +244,15 @@ namespace ImGuiUtil
 #include "NetworkMonitorGUI"
 #include "NotifyGUI"
 #include "SceneGraphGUI"
-#include "SearchGUI"
 #include "TextureInspectorGUI"
 #include "ViewpointsGUI"
 #include "SystemGUI"
 #include "EphemerisGUI"
 #include "TerrainGUI"
+
+#ifdef OSGEARTH_HAVE_GEOCODER
+#include "SearchGUI"
+#endif
 
 namespace osgEarth
 {
@@ -279,11 +282,14 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new EphemerisGUI));
                 _menu["Tools"].push_back(GUIPtr(new TerrainGUI));
                 _menu["Tools"].push_back(GUIPtr(new SystemGUI));
-                _menu["Tools"].push_back(GUIPtr(new SearchGUI));
                 _menu["Tools"].push_back(GUIPtr(new NetworkMonitorGUI));
                 _menu["Tools"].push_back(GUIPtr(new NotifyGUI));
                 _menu["Tools"].push_back(GUIPtr(new SceneGraphGUI));
                 _menu["Tools"].push_back(GUIPtr(new TextureInspectorGUI));
+
+#ifdef OSGEARTH_HAVE_GEOCODER
+                _menu["Tools"].push_back(GUIPtr(new SearchGUI));
+#endif
             }
 
             //! User adds a gui to the default User menu

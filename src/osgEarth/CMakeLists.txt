@@ -443,21 +443,24 @@ SET(LIB_PUBLIC_HEADERS
 
     SDF
 
-    ImGui/ImGui
-    ImGui/OsgImGuiHandler
-    ImGui/LayersGUI
-    ImGui/NetworkMonitorGUI
-    ImGui/NotifyGUI
-    ImGui/SceneGraphGUI
-    ImGui/SearchGUI
-    ImGui/TextureInspectorGUI
-    ImGui/ViewpointsGUI
-    ImGui/SystemGUI
-    ImGui/EphemerisGUI
-    ImGui/TerrainGUI
-
     ${OSGEARTH_BUILDCONFIG_HEADER}
 )
+
+if(OSGEARTH_ENABLE_IMGUI)
+    set(LIB_PUBLIC_HEADERS ${LIB_PUBLIC_HEADERS}
+        ImGui/ImGui
+        ImGui/OsgImGuiHandler
+        ImGui/LayersGUI
+        ImGui/NetworkMonitorGUI
+        ImGui/NotifyGUI
+        ImGui/SceneGraphGUI
+        ImGui/SearchGUI
+        ImGui/TextureInspectorGUI
+        ImGui/ViewpointsGUI
+        ImGui/SystemGUI
+        ImGui/EphemerisGUI
+        ImGui/TerrainGUI)
+endif()
 
 
 IF (NOT TINYXML_FOUND)

@@ -253,7 +253,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             load(priority, &nv);
 
             // finally, traverse children and paged data.
-            if (_merged && _refinePolicy == REFINE_REPLACE)
+            if (_compiled.isAvailable() && _compiled.get().valid() && _refinePolicy == REFINE_REPLACE)
             {
                 _compiled.get()->accept(nv);
             }
@@ -269,8 +269,15 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         {
             // child out of range; just accept static children
             for (auto& child : _children)
-                if (child.get() != _compiled.get().get())
+            {
+                osg::Node* compiled = nullptr;
+                if (_compiled.isAvailable())
+                {
+                    compiled = _compiled.get().get();
+                }
+                if (child.get() != compiled)
                     child->accept(nv);
+            }
         }
     }
 }
@@ -336,80 +343,95 @@ PagedNode2::computeBound() const
 
 void PagedNode2::load(float priority, const osg::Object* host)
 {
-    if (_load != nullptr &&
-        _loadTriggered.exchange(true) == false)
+    if (_loadTriggered.exchange(true) == false)
     {
-        // Load the asynchronous node.
-        Loader load(_load);
-        osg::ref_ptr<SceneGraphCallbacks> callbacks(_callbacks);
-        bool preCompile = _preCompile;
-
-        _job.setPriority(priority);
-
-        _loaded = _job.dispatch<Loaded>(
-            [load, callbacks, preCompile](Cancelable* c)
+        if (_load != nullptr)
         {
-            Loaded result;
+            // Load the asynchronous node.
+            Loader load(_load);
+            osg::ref_ptr<SceneGraphCallbacks> callbacks(_callbacks);
+            bool preCompile = _preCompile;
 
-            osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
+            _job.setPriority(priority);
 
-            // invoke the loader function
-            result._node = load(progress.get());
-
-            // Fire any pre-merge callbacks
-            if (result._node.valid())
+            _loaded = _job.dispatch<Loaded>(
+                [load, callbacks, preCompile](Cancelable* c)
             {
-                if (callbacks.valid())
-                    callbacks->firePreMergeNode(result._node.get());
+                Loaded result;
 
-                if (preCompile)
+                osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
+
+                // invoke the loader function
+                result._node = load(progress.get());
+
+                // Fire any pre-merge callbacks
+                if (result._node.valid())
                 {
-                    // Collect the GL objects for later compilation.
-                    // Don't waste precious ICO time doing this later
-                    GLObjectsCompiler compiler;
-                    result._state = compiler.collectState(result._node.get());
-                }
-            }
+                    if (callbacks.valid())
+                        callbacks->firePreMergeNode(result._node.get());
 
-            return result;
+                    if (preCompile)
+                    {
+                        // Collect the GL objects for later compilation.
+                        // Don't waste precious ICO time doing this later
+                        GLObjectsCompiler compiler;
+                        result._state = compiler.collectState(result._node.get());
+                    }
+                }
+
+                return result;
+            }
+            );
         }
-        );
+        else
+        {
+            // There is no load function so go all the way to the end of the state machine.
+            _merged = true;
+            _compileTriggered.exchange(true);
+            _mergeTriggered.exchange(true);
+        }
     }
 
     else if (
         _loaded.isAvailable() &&
-        _loaded.get()._node.valid() &&
         _compileTriggered.exchange(true) == false)
     {
-        dirtyBound();
-
-        if (_preCompile)
+        if (_loaded.get()._node.valid())
         {
-            // Compile the loaded node.
-            GLObjectsCompiler compiler;
-            osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
+            dirtyBound();
 
-            _compiled = compiler.compileAsync(
-                _loaded.get()._node,
-                _loaded.get()._state.get(),
-                host,
-                p.get());
+            if (_preCompile)
+            {
+                // Compile the loaded node.
+                GLObjectsCompiler compiler;
+                osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
+
+                _compiled = compiler.compileAsync(
+                    _loaded.get()._node,
+                    _loaded.get()._state.get(),
+                    host,
+                    p.get());
+            }
+            else
+            {
+                // resolve immediately
+                Promise<osg::ref_ptr<osg::Node>> promise;
+                _compiled = promise.getFuture();
+                promise.resolve(_loaded.get()._node);
+            }
         }
         else
         {
-            // resolve immediately
-            Promise<osg::ref_ptr<osg::Node>> promise;
-            _compiled = promise.getFuture();
-            promise.resolve(_loaded.get()._node);
+            // The node returned was null, so we need to just go to the end of the state machine
+            _merged = true;
+            _mergeTriggered.exchange(true);
         }
 
         // done with it, let it go
         _loaded.abandon();
     }
-
     else if (
         _compiled.isAvailable() &&
-        _compiled.get().valid() &&
         _mergeTriggered.exchange(true) == false)
     {
         // Submit this node to the paging manager for merging.
@@ -424,7 +446,7 @@ void PagedNode2::unload()
     //{
     //    _compiled.get()->releaseGLObjects(nullptr);
     //}
-    if (_merged)
+    if (_compiled.isAvailable() && _compiled.get().valid())
     {
         removeChild(_compiled.get().get());
     }

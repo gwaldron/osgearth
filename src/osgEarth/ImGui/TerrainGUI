@@ -43,6 +43,8 @@ namespace osgEarth
             float _ax, _ay;
             std::unique_ptr<AsyncElevationSampler> _sampler;
             Future<ElevationSample> _sample;
+            float _sse;
+            osg::ref_ptr<osg::Uniform> _sse_u;
 
         public:
             TerrainGUI() : BaseGUI("Terrain"), _installed(false) { }
@@ -69,11 +71,27 @@ namespace osgEarth
 
                     _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap()));
 
+                    if (_mapNode->getTerrainOptions().getGPUTessellation())
+                    {
+                        _sse = 50.0f;
+                        _sse_u = new osg::Uniform("oe_terrain_sse", _sse);
+                        _mapNode->getOrCreateStateSet()->addUniform(_sse_u.get(), osg::StateAttribute::OVERRIDE);
+                    }
+
                     _installed = true;
                 }
 
                 ImGui::Begin(name(), visible());
                 {
+                    if (_mapNode->getTerrainOptions().getGPUTessellation())
+                    {
+                        if (ImGui::SliderFloat("Tessellation SSE", &_sse, 5.0f, 50.0f))
+                        {
+                            _sse_u->set(_sse);
+                        }
+                    }
+                    ImGui::Separator();
+
                     ImGui::Text("Mouse Coordinates:");
 
                     ImGui::Indent();

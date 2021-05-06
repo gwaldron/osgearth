@@ -423,7 +423,7 @@ ENDMACRO(SETUP_APPLICATION)
 # Taked optional second arg: APPLICATION_FOLDER
 # Takes optional third arg:  (is_commandline_app?) in ARGV2
 MACRO(SETUP_IMGUI_APPLICATION APPLICATION_NAME)
-    if(GLEW_FOUND)
+    if(OSGEARTH_ENABLE_IMGUI)
         include_directories(
             ${GLEW_INCLUDE_DIR}
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui
@@ -448,7 +448,10 @@ MACRO(SETUP_IMGUI_APPLICATION APPLICATION_NAME)
 
         SETUP_APPLICATION(${APPLICATION_NAME})
     else()
-        message(STATUS "ImGui application ${APPLICATION_NAME} skipped because GLEW was not found")
+        message(STATUS "ImGui application ${APPLICATION_NAME} skipped")
+        if (NOT GLEW_FOUND)
+            message(STATUS "   ...because GLEW not found")
+        endif()
     endif()
 ENDMACRO(SETUP_IMGUI_APPLICATION)
 

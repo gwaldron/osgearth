@@ -177,6 +177,15 @@ IF(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
     ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
 ENDIF()
 
+if(GLEW_FOUND)
+    set(OSGEARTH_ENABLE_IMGUI 1)
+    add_definitions(-DOSGEARTH_ENABLE_IMGUI)
+endif()
+
+if(OSGEARTH_ENABLE_GEOCODER)
+    add_definitions(-DOSGEARTH_HAVE_GEOCODER)
+endif()
+
 # Protobuf enables the MVT (Mapnik Vector Tiles) format
 SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
 

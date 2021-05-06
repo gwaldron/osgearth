@@ -233,7 +233,7 @@ namespace osgEarth {
                     osg::NodePath nodePath = node->getParentalNodePaths()[0];
                     osg::Matrixd localToWorld = osg::computeLocalToWorld(nodePath);
 
-                    osg::BoundingSphered& bs = osg::BoundingSphered(node->getBound().center(), node->getBound().radius());
+                    osg::BoundingSphered bs(node->getBound().center(), node->getBound().radius());
                     if (bs.valid())
                     {
                         bs.center() += localToWorld.getTrans();

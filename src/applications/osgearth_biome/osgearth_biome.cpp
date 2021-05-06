@@ -392,6 +392,7 @@ main(int argc, char** argv)
 
     osgViewer::Viewer viewer(arguments);
     viewer.setThreadingModel(viewer.SingleThreaded);
+    viewer.setRealizeOperation(new MainGUI::RealizeOperation());
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags
@@ -407,11 +408,7 @@ main(int argc, char** argv)
         app._map = app._mapNode->getMap();
         app._view = &viewer;
         app._manip = new EarthManipulator(arguments);
-        app._router = new EventRouter();
-        viewer.addEventHandler(app._router);
         viewer.setCameraManipulator(app._manip);
-        viewer.setRealizeOperation(new MainGUI::RealizeOperation());
-        //viewer.realize();
         viewer.getEventHandlers().push_front(new MainGUI(app));
         viewer.setSceneData(node);
 

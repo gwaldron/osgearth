@@ -408,17 +408,12 @@ EnableAutoUnloadVisitor::EnableAutoUnloadVisitor() :
 
 void EnableAutoUnloadVisitor::apply(osg::Node& node)
 {
-    PagedNode2* pagedNode = dynamic_cast<PagedNode2*>(&node);
-    if (pagedNode)
+    LoadableNode* loadableNode = dynamic_cast<LoadableNode*>(&node);
+    if (loadableNode)
     {
-        apply(*pagedNode);
+        loadableNode->setAutoUnload(true);
     }
     traverse(node);
-}
-
-void EnableAutoUnloadVisitor::apply(PagedNode2& pagedNode)
-{
-    pagedNode.setAutoUnload(true);
 }
 
 //----------------------------------------------------------------------------
@@ -459,14 +454,50 @@ bool LoadDataVisitor::intersects(osg::Node& node)
 
 std::vector<osg::BoundingSphered>& LoadDataVisitor::getAreasToLoad() { return _areasToLoad; }
 
+bool LoadDataVisitor::getLoadHighestResolutionOnly() const
+{
+    return _loadHighestResolutionOnly;
+}
+
+void LoadDataVisitor::setLoadHighestResolutionOnly(bool value)
+{
+    _loadHighestResolutionOnly = value;
+}
+
+void LoadDataVisitor::apply(LoadableNode& node)
+{
+    if (_loadHighestResolutionOnly)
+    {
+        if (!node.isLoaded())
+        {
+            if (node.getRefinePolicy() == REFINE_ADD ||
+                node.isHighestResolution())
+            {
+                node.setAutoUnload(false);
+                node.load();
+                _fullyLoaded = false;
+            }
+        }
+    }
+    else
+    {
+        node.setAutoUnload(false);
+        if (!node.isLoaded())
+        {
+            node.load();
+            _fullyLoaded = false;
+        }
+    }
+}
+
 void LoadDataVisitor::apply(osg::Node& node)
 {
     if (intersects(node))
     {
-        PagedNode2* pagedNode = dynamic_cast<PagedNode2*>(&node);
-        if (pagedNode)
+        LoadableNode* loadableNode = dynamic_cast<LoadableNode*>(&node);
+        if (loadableNode)
         {
-            apply(*pagedNode);
+            apply(*loadableNode);
         }
 
         PagingManager* pagingManager = dynamic_cast<PagingManager*>(&node);
@@ -479,18 +510,6 @@ void LoadDataVisitor::apply(osg::Node& node)
     }
 }
 
-void LoadDataVisitor::apply(PagedNode2& pagedNode)
-{
-    pagedNode.setAutoUnload(false);
-
-    if (!pagedNode.isLoaded())
-    {
-        // TODO:  ICO
-        pagedNode.load(0.0, nullptr);
-        _fullyLoaded = false;
-    }
-}
-
 void LoadDataVisitor::apply(osg::Transform& transform)
 {
     if (intersects(transform))
@@ -499,6 +518,14 @@ void LoadDataVisitor::apply(osg::Transform& transform)
         if (!_matrixStack.empty()) matrix = _matrixStack.back();
         transform.computeLocalToWorldMatrix(matrix, this);
         pushMatrix(matrix);
+
+        LoadableNode* loadableNode = dynamic_cast<LoadableNode*>(&transform);
+        if (loadableNode)
+        {
+            apply(*loadableNode);
+        }
+
+
         traverse(transform);
         popMatrix();
     }

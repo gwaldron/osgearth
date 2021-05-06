@@ -204,6 +204,12 @@ PagedNode2::~PagedNode2()
     // from a pager thread at cancelation
 }
 
+bool
+PagedNode2::isHighestResolution() const
+{
+    return getNumChildren() == 0;
+}
+
 void
 PagedNode2::traverse(osg::NodeVisitor& nv)
 {

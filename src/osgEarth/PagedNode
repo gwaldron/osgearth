@@ -28,6 +28,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/Utils>
+#include <osgEarth/LoadableNode>
 
 #include <osg/PagedLOD>
 #include <osg/LOD>
@@ -108,18 +109,10 @@ namespace osgEarth { namespace Util
     };
 #endif
 
-    class OSGEARTH_EXPORT PagedNode2 : public osg::Group
+    class OSGEARTH_EXPORT PagedNode2 : public osg::Group, public osgEarth::LoadableNode
     {
     public:
         using Loader = std::function<osg::ref_ptr<osg::Node>(Cancelable*)>;
-
-        //! What to do with the children nodes when the async node
-        //! becomes visible
-        enum RefinePolicy
-        {
-            REFINE_REPLACE,  // async node replaces children
-            REFINE_ADD       // async node combines with children
-        };
 
     public:
         //! Construct an empty paged node
@@ -219,13 +212,17 @@ namespace osgEarth { namespace Util
         }
 
         //! Whether this node will automatically unload it's content if it's not visible.
-        bool getAutoUnload() const {
+        bool getAutoUnload() const  {
             return _autoUnload;
         }
 
-        void setAutoUnload(bool value) {
+        void setAutoUnload(bool value)  {
             _autoUnload = value;
         }
+
+        void load() { load(0.0, nullptr); }
+
+        bool isHighestResolution() const;
 
         //! Loads the data for this node asynchronously
         void load(float priority, const osg::Object* host);

@@ -45,6 +45,8 @@ using namespace osgEarth;
 #undef LC
 #define LC "[Texture] "
 
+#define OE_DEVEL OE_DEBUG
+
 Texture::GCState&
 Texture::get(const osg::State& state) const
 {
@@ -138,7 +140,7 @@ Texture::compileGLObjects(osg::State& state) const
     gc._gltexture->handle();
 
     // debugging
-    OE_INFO << LC << "Texture::compileGLObjects '" << gc._gltexture->id() << "' name=" << gc._gltexture->name() << " handle=" << gc._gltexture->handle() << std::endl;
+    OE_DEVEL << LC << "Texture::compileGLObjects '" << gc._gltexture->id() << "' name=" << gc._gltexture->name() << " handle=" << gc._gltexture->handle() << std::endl;
 
     // TODO: At this point, if/when we go with SPARSE textures,
     // don't actually copy the image down until activation.
@@ -259,7 +261,7 @@ Texture::releaseGLObjects(osg::State* state) const
             GCState& gc = get(*state);
 
             // debugging
-            OE_INFO << LC << "Texture::releaseGLObjects '" << gc._gltexture->id() << "' name=" << gc._gltexture->name() << " handle=" << gc._gltexture->handle() << std::endl;
+            OE_DEVEL << LC << "Texture::releaseGLObjects '" << gc._gltexture->id() << "' name=" << gc._gltexture->name() << " handle=" << gc._gltexture->handle() << std::endl;
 
             // will activate the releaser
             gc._gltexture = nullptr;

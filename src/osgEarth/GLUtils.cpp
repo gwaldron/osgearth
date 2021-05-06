@@ -45,7 +45,7 @@ using namespace osgEarth;
 
 #define LC "[GLUtils] "
 
-#define OE_DEVEL OE_INFO
+#define OE_DEVEL OE_DEBUG
 
 #ifndef GL_LINE_SMOOTH
 #define GL_LINE_SMOOTH 0x0B20

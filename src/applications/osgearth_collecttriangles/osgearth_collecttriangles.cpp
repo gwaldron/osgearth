@@ -1064,6 +1064,14 @@ protected:
             _boundsNode = group;
             _mapNode->addChild(_boundsNode.get());
         }
+
+        if (!*visible())
+        {
+            if (_boundsNode.valid())
+            {
+                _mapNode->removeChild(_boundsNode.get());
+            }
+        }
         ImGui::End();
     }
 

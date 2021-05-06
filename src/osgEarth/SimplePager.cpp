@@ -203,7 +203,7 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
         );
 
         loadRange = (float)(tileRadius * _rangeFactor);
-        pagedNode->setRefinePolicy(_additive ? pagedNode->REFINE_ADD : pagedNode->REFINE_REPLACE);
+        pagedNode->setRefinePolicy(_additive ? REFINE_ADD : REFINE_REPLACE);
     }
 
     pagedNode->setMaxRange(loadRange);

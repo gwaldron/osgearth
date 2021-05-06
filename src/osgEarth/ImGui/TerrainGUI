@@ -48,12 +48,13 @@ namespace osgEarth
             osg::ref_ptr<FeatureNode> _measureCursor;
             osg::ref_ptr<Feature> _measureFeature;
             float _measureDist;
-            float _sse;
-            osg::ref_ptr<osg::Uniform> _sse_u;
+            float _tess;
+            osg::ref_ptr<osg::Uniform> _tess_u;
 
         public:
             TerrainGUI() : BaseGUI("Terrain"), 
                 _installed(false),
+                _tess(3.0f),
                 _measuring(false) { }
 
             void load(const Config& conf) override
@@ -72,23 +73,15 @@ namespace osgEarth
                 if (!_installed)
                     install(ri);
 
-
-                    if (_mapNode->getTerrainOptions().getGPUTessellation())
-                    {
-                        _sse = 50.0f;
-                        _sse_u = new osg::Uniform("oe_terrain_sse", _sse);
-                        _mapNode->getOrCreateStateSet()->addUniform(_sse_u.get(), osg::StateAttribute::OVERRIDE);
-                    }
                 ImGui::Begin(name(), visible());
                 {
                     if (_mapNode->getTerrainOptions().getGPUTessellation())
                     {
-                        if (ImGui::SliderFloat("Tessellation SSE", &_sse, 5.0f, 50.0f))
-                        {
-                            _sse_u->set(_sse);
-                        }
+                        //if (ImGui::SliderFloat("Tessellation SSE", &_sse, 5.0f, 50.0f))
+                        if (ImGui::SliderFloat("Tessellation", &_tess, 1.0f, 5.0f))
+                        _tess_u->set(_tess);
+                        ImGui::Separator();
                     }
-                    ImGui::Separator();
 
                     ImGui::Text("Mouse Coordinates:");
 
@@ -142,7 +135,7 @@ namespace osgEarth
                                 ImGui::Text("Elevation: ...");
                                 ImGui::Text("Resolution: ...");
                             }
-                            if (fabs(_ax-_x)>5 || fabs(_ay-_y)>5)
+                            if (fabs(_ax - _x) > 5 || fabs(_ay - _y) > 5)
                             {
                                 _sample = _sampler->getSample(mp);
                                 _ax = _x, _ay = _y;
@@ -176,10 +169,10 @@ namespace osgEarth
                     }
                     if (_measuring)
                     {
-                        ImGui::Indent();
-                        float dist = _measureFeature->getGeometry()->getLength();
-                        ImGui::Text("Total distance = %.2f m", dist);
-                        ImGui::Unindent();
+                        ImGui::SameLine();
+                        float dist = GeoMath::distance(_measureFeature->getGeometry()->asVector());
+                        //float dist = _measureFeature->getGeometry()->getLength();
+                        ImGui::TextColored(ImVec4(1,1,0,1), "  %.2f m", dist);
                     }
                     else
                     {
@@ -205,9 +198,15 @@ namespace osgEarth
                 measureStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
                 measureStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
 
-                _measureFeature = new Feature(new LineString(), SpatialReference::get("spherical-mercator"));
+                _measureFeature = new Feature(new LineString(), SpatialReference::get("wgs84"));
                 _measureCursor = new FeatureNode(_measureFeature.get(), measureStyle);
                 _mapNode->addChild(_measureCursor);
+
+                if (_mapNode->getTerrainOptions().getGPUTessellation())
+                {
+                    _tess_u = new osg::Uniform("oe_terrain_tess", _tess);
+                    _mapNode->getOrCreateStateSet()->addUniform(_tess_u.get(), osg::StateAttribute::OVERRIDE);
+                }
 
                 _installed = true;
             }

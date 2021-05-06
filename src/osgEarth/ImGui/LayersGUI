@@ -236,14 +236,14 @@ namespace osgEarth {
                                     threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
                                     ImGui::PopID();
                                 }
-
-                                ImGui::Unindent();
                             }
 
                             else if (layer->getStatus().isError() && layer->getStatus().message() != "Layer closed")
                             {
                                 ImGui::Text(layer->getStatus().message().c_str());
                             }
+
+                            ImGui::Unindent();
                         }
 
                         ImGui::PopID();

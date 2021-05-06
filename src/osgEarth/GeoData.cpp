@@ -870,6 +870,37 @@ GeoExtent::getCentroid(double& out_x, double& out_y) const
     return p.isValid();
 }
 
+double
+GeoExtent::width(const Units& units) const
+{
+    if (!isValid())
+        return 0.0;
+    else if (getSRS()->isProjected()) {
+        return Units::convert(getSRS()->getUnits(), units, width());
+    }
+    else {
+        Distance d(width(), getSRS()->getUnits());
+        double m_per_deg = 2.0 * getSRS()->getEllipsoid()->getRadiusEquator() * osg::PI / 360.0;
+        double d0 = m_per_deg * cos(yMin()) * width();
+        double d1 = m_per_deg * cos(yMax()) * height();
+        return Distance(std::max(d0, d1), Units::METERS).as(units);
+    }
+}
+
+double
+GeoExtent::height(const Units& units) const
+{
+    if (!isValid())
+        return 0.0;
+    else if (getSRS()->isProjected()) {
+        return Units::convert(getSRS()->getUnits(), units, width());
+    }
+    else {
+        double m_per_deg = 2.0 * getSRS()->getEllipsoid()->getRadiusEquator() * osg::PI / 360.0;
+        return Distance(m_per_deg * height(), Units::METERS).as(units);
+    }
+}
+
 bool
 GeoExtent::operator == ( const GeoExtent& rhs ) const
 {

@@ -176,7 +176,7 @@ namespace osgEarth
                     if (view->computeIntersections(ea, intersections))
                     {
                         double currRatio = DBL_MAX;
-                        for (auto& hitr = intersections.begin(); hitr != intersections.end(); ++hitr)
+                        for (auto hitr = intersections.begin(); hitr != intersections.end(); ++hitr)
                         {
                             if (hitr->ratio < currRatio)
                             {

@@ -73,6 +73,7 @@ namespace osgEarth { namespace REX
             SharedGeometry* geom,
             unsigned tileSize,
             double skirtHeightRatio,
+            GLenum mode,
             Cancelable* progress);
 
     protected:

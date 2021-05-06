@@ -336,6 +336,7 @@ GeometryPool::createGeometry(
             geom.get(),
             tileSize,
             skirtRatio,
+            mode,
             progress);
 
         if (geom->empty())

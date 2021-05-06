@@ -1247,8 +1247,8 @@ RexTerrainEngineNode::updateState()
             package.load(surfaceVP, package.ENGINE_TESSELLATION);
             //package.load(surfaceVP, package.ENGINE_GEOM);
 
-            // Default screen space error = 50 pixels
-            surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_sse", 50.0f));
+            // Default tess level
+            surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_tess", 3.0f));
 
 #ifdef HAVE_PATCH_PARAMETER
             // backwards compatibility

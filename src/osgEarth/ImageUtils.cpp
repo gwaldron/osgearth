@@ -921,7 +921,7 @@ ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
 
     osg::Vec4 src_value, dest_value;
     PixelReader read_src(src), read_dest(dest);
-    PixelReader write_dest(dest);
+    PixelWriter write_dest(dest);
     ImageIterator i(src);
 
     i.forEachPixel([&]() {

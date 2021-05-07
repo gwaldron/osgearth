@@ -181,8 +181,17 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     osg::Matrix terrainRefFrame = osg::computeLocalToWorld(_graph->getParentalNodePaths()[0]);
     matrix.postMult(terrainRefFrame);
 
+    osg::Matrixd proj = camera->getProjectionMatrix();
+    if (proj(3, 3) == 0) //persp
+    {
+        // persp camera: adjust the near plane to 1.0
+        double V, A, N, F;
+        camera->getProjectionMatrixAsPerspective(V, A, N, F);
+        proj.makePerspective(V, A, 1.0, F);
+    }
+
     matrix.postMult(camera->getViewMatrix());
-    matrix.postMult(camera->getProjectionMatrix());
+    matrix.postMult(proj);
 
     double zNear = -1.0;
     double zFar = 1.0;
@@ -198,13 +207,20 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     osg::Vec3d startVertex = osg::Vec3d(local_x,local_y,zNear) * inverse;
     osg::Vec3d endVertex = osg::Vec3d(local_x,local_y,zFar) * inverse;
 
-    osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = 
-        new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
+    //osg::Vec3d sv = startVertex * camera->getViewMatrix();
+    //osg::Vec3d ev = endVertex * camera->getViewMatrix();
+    //OE_INFO << "s=" << sv.x() << "," << sv.y() << "," << sv.z() << std::endl;
+    //OE_INFO << "e=" << ev.x() << "," << ev.y() << "," << ev.z() << std::endl;
+
+    auto picker = new osgUtil::LineSegmentIntersector(
+        osgUtil::Intersector::MODEL, 
+        startVertex, 
+        endVertex);
 
     // Limit it to one intersection; we only care about the nearest.
     picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );
 
-    osgUtil::IntersectionVisitor iv(picker.get());
+    osgUtil::IntersectionVisitor iv(picker);
     _graph->accept(iv);
 
     bool good = false;

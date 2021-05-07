@@ -172,6 +172,7 @@ SET(LIB_PUBLIC_HEADERS
     Lighting
     LineDrawable
     LineFunctor
+    LoadableNode
     Locators
     LocalTangentPlane
     Math
@@ -207,6 +208,7 @@ SET(LIB_PUBLIC_HEADERS
     Profile
     Progress
     Random
+    RefinePolicy
     Registry
     ResourceReleaser
     Revisioning

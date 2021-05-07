@@ -31,6 +31,7 @@
 #include <osg/MatrixTransform>
 #include <osgDB/Options>
 #include <osgUtil/CullVisitor>
+#include <osgEarth/LoadableNode>
 
 
 /**
@@ -41,12 +42,6 @@
 namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 {
     using namespace osgEarth;
-
-    enum RefinePolicy
-    {
-        REFINE_REPLACE,
-        REFINE_ADD
-    };
 
     struct LoadContext
     {
@@ -148,7 +143,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     /**
      * Node that renders a 3D-Tiles Tile
      */
-    class OSGEARTH_EXPORT ThreeDTileNode : public osg::MatrixTransform
+    class OSGEARTH_EXPORT ThreeDTileNode : public osg::MatrixTransform, public LoadableNode
     {
     public:
         ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool immediateLoad, osgDB::Options* options);
@@ -176,7 +171,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         const Tile* getTile() const { return _tile.get(); }
 
-        RefinePolicy getRefine() const { return _refine; }
+        RefinePolicy getRefinePolicy() const { return _refine; }
 
         unsigned int getLastCulledFrameNumber() const;
         float getLastCulledFrameTime() const;
@@ -192,6 +187,44 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         void setParentTile(ThreeDTileNode* parentTile);
 
+    public: // LoadableNode
+        void load()
+        {
+            requestContent(nullptr);
+            resolveContent();
+        }
+
+        void unload()
+        {
+            unloadContent();
+        }
+
+        bool isHighestResolution() const
+        {
+            return getNumChildren() == 0;
+        }
+
+        virtual bool isLoaded() const
+        {
+            auto t = const_cast<ThreeDTileNode*>(this);
+            if (!t->hasContent())
+            {
+                return true;
+            }
+            return t->isContentReady();
+        }
+
+        virtual bool getAutoUnload() const
+        {
+            return _autoUnload;
+        }
+
+        virtual void setAutoUnload(bool value)
+        {
+            _autoUnload = value;
+        }
+
+
     private:
 
         void createDebugBounds();
@@ -200,8 +233,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         osg::ref_ptr< Tile > _tile;
 
-        osg::ref_ptr< osg::Node > _content;
-        osg::ref_ptr< osg::Group > _children;
+        osg::observer_ptr< osg::Node > _content;
+        osg::observer_ptr< osg::Group > _children;
 
         osg::ref_ptr< osg::Node > _boundsDebug;
         ThreeDTilesetNode* _tileset;
@@ -224,6 +257,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         unsigned int _lastCulledFrameNumber;
         float _lastCulledFrameTime;
+
+        bool _autoUnload = true;
 
         RefinePolicy _refine;
 

@@ -671,6 +671,7 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
         {
             _children = 0;
         }
+        addChild(_children.get());
     }
 
     _debugColor = randomColor();
@@ -688,7 +689,7 @@ void ThreeDTileNode::setParentTile(ThreeDTileNode* parentTile)
     // Inherit the parent's refine policy if this Tile's refine policy isn't set.
     if (parentTile && !_tile->refine().isSet())
     {
-        _refine = parentTile->getRefine();
+        _refine = parentTile->getRefinePolicy();
     }
 }
 
@@ -896,6 +897,8 @@ void ThreeDTileNode::resolveContent()
 
             _tileset->runPreMergeOperations(_content.get());
             _tileset->runPostMergeOperations(_content.get());
+
+            addChild(_content.get());
         }
     }
 }
@@ -977,6 +980,8 @@ bool ThreeDTileNode::unloadContent()
 
     if (_content.valid())
     {
+        removeChild(_content.get());
+
         _content->releaseGLObjects();
         _content = nullptr;
     }
@@ -1392,7 +1397,8 @@ void ThreeDTilesetNode::expireTiles(const osg::NodeVisitor& nv)
         if (tile.valid())
         {
             float age = frameTime - tile->getLastCulledFrameTime();
-            bool canUnload = age >= _maxAge;
+            bool canUnload = tile->getAutoUnload() && age >= _maxAge;
+
             if (canUnload && tile->unloadContent())
             {
                 tile->_trackerItrValid = false;

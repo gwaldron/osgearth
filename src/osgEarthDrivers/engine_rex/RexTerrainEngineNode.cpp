@@ -1249,6 +1249,7 @@ RexTerrainEngineNode::updateState()
 
             // Default tess level
             surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_tess", 3.0f));
+            surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_tess_range", 150.0f));
 
 #ifdef HAVE_PATCH_PARAMETER
             // backwards compatibility

@@ -7,6 +7,7 @@
 layout(vertices=3) out;
 
 uniform float oe_terrain_tess;
+uniform float oe_terrain_tess_range;
 
 // temporary: use lifemap texture from earth file
 uniform sampler2D LIFEMAP_TEX;
@@ -34,19 +35,15 @@ void oe_rex_TCS()
             VP_LoadVertex(i);
             v[i] = (gl_ModelViewMatrix * (vp_Vertex + vec4(vp_Normal * oe_terrain_getElevation(), 0.0))).xyz;
             d[i] = 1.0 - texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st).g;
-            d[i] = oe_terrain_tess * pow(d[i], 3.0);
+            d[i] = oe_terrain_tess * d[i] * d[i] * d[i];
         }
 
-        const float max_dist = 150.0;
-        const float min_dist = 25.0;
+        float max_dist = oe_terrain_tess_range;
+        float min_dist = oe_terrain_tess_range / 6.0;
 
         vec3 m12 = 0.5*(v[1] + v[2]);
         vec3 m20 = 0.5*(v[2] + v[0]);
         vec3 m01 = 0.5*(v[0] + v[1]);
-
-        //float f12 = 1.0 - remap_unit(-m12.z, min_dist, max_dist);
-        //float f20 = 1.0 - remap_unit(-m20.z, min_dist, max_dist);
-        //float f01 = 1.0 - remap_unit(-m01.z, min_dist, max_dist);
 
         float f12 = remap_unit(-m12.z, max_dist, min_dist);
         float f20 = remap_unit(-m20.z, max_dist, min_dist);
@@ -55,6 +52,7 @@ void oe_rex_TCS()
         float e0 = max(1.0, max(d[1], d[2]) * f12);
         float e1 = max(1.0, max(d[2], d[0]) * f20);
         float e2 = max(1.0, max(d[0], d[1]) * f01);
+
         float e3 = max(e0, max(e1, e2));
 
         gl_TessLevelOuter[0] = e0;

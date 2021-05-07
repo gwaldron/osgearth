@@ -26,14 +26,15 @@
 #include <osgEarth/Feature>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/LandCover>
-#include <osgEarthSplat/GroundCoverLayer>
-#include <osgEarthSplat/NoiseTextureFactory>
-#include <osgEarthSplat/GroundCoverFeatureGenerator>
+#include <osgEarthProcedural/GroundCoverLayer>
+#include <osgEarthProcedural/NoiseTextureFactory>
+#include <osgEarthProcedural/GroundCoverFeatureGenerator>
+#include <osgDB/ReadFile>
 
 #define LC "[exportgroundcover] "
 
 using namespace osgEarth;
-using namespace osgEarth::Splat;
+using namespace osgEarth::Procedural;
 using namespace osgEarth::Util;
 
 int
@@ -46,7 +47,7 @@ usage(const char* name, const std::string& error)
         << "\n  --layer layername                    ; name of GroundCover layer"
         << "\n  --extents swlong swlat nelong nelat  ; extents in degrees"
         << "\n  --out out.shp                        ; output features"
-        << "\n  --include-billboard-property <name>  ; include billboard property name as attribute (optional)"
+        << "\n  --include-asset-property <name>      ; include asset property name as attribute (optional)"
         << std::endl;
 
     return -1;
@@ -62,12 +63,21 @@ struct App
 
     Threading::Mutexed<std::queue<FeatureList*> > outputQueue;
     Threading::Event gate;
+    bool debug;
 
     App() { }
 
     int open(int argc, char** argv)
     {
         osg::ArgumentParser arguments(&argc, argv);
+
+
+        debug = arguments.read("--debug");
+        if (debug)
+        {
+            std::cout << "Press enter to run..." << std::endl;
+            getchar();
+        }
 
         std::string layername;
         if (!arguments.read("--layer", layername))
@@ -82,7 +92,8 @@ struct App
         if (!arguments.read("--out", outfile))
             return usage(argv[0], "Missing --out");
 
-        mapNode = MapNode::load(arguments);
+        osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(arguments);
+        mapNode = MapNode::get(node.get());
         if (!mapNode.valid())
             return usage(argv[0], "No earth file");
 
@@ -107,9 +118,9 @@ struct App
         outSchema["height"] = ATTRTYPE_DOUBLE;
 
         std::string prop;
-        while(arguments.read("--include-billboard-property", prop))
+        while(arguments.read("--include-asset-property", prop))
         {
-            featureGen.addBillboardPropertyName(prop);
+            featureGen.addAssetPropertyName(prop);
             outSchema[prop] = ATTRTYPE_STRING;
         }
 

@@ -66,7 +66,7 @@ ImageMosaic::createImage()
 {
     if (_images.size() == 0)
     {
-        OE_INFO << "ImageMosaic has no images..." << std::endl;
+        OE_DEBUG << "ImageMosaic has no images..." << std::endl;
         return 0;
     }
 

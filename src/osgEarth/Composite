@@ -35,8 +35,10 @@ namespace osgEarth
     public: // serialization
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
         public:
+            enum Function { FUNCTION_BLEND, FUNCTION_LESS };
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_VECTOR(ConfigOptions, layers);
+            OE_OPTION(int, function);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

@@ -56,7 +56,7 @@ CreateTileImplementation::createTile(
 
     // Verify that we have a map:
     osg::ref_ptr<const Map> map = context->getMap();
-    if(!map.valid())
+    if (!map.valid())
     {
         return nullptr;
     }
@@ -108,6 +108,7 @@ CreateTileImplementation::createTile(
             *subkey,
             tileSize,
             map.get(),
+            context->options(),
             sharedGeom,
             progress);
 
@@ -133,11 +134,11 @@ CreateTileImplementation::createTile(
             group->addChild(empty_tile_group);
         }
 
-        else if(
+        else if (
             sharedGeom.valid() &&
             !sharedGeom->empty() &&
             (
-                (include_constrained && sharedGeom->hasConstraints()) || 
+                (include_constrained && sharedGeom->hasConstraints()) ||
                 (include_unconstrained && !sharedGeom->hasConstraints())
             ))
         {

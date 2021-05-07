@@ -69,6 +69,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osgEarth::Geometry> _geom;
         osg::ref_ptr<osgText::Font> _font;
         osg::Vec4f _color;
+        osg::ref_ptr<const osg::Image> _tessImage;
     };
 
 } }

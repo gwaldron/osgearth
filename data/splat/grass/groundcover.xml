@@ -1,17 +1,26 @@
 <groundcover>
-    <spacing>0.25</spacing>
-    <wind>0.25</wind>
+    <spacing>0.55</spacing>
     <biomes>
-        <biome name="Grass/Grassland" classes="grassland" fill="0.80" source="clipartmax.com">
-            <billboard url="clipart974730_2.png" width="0.6" height="0.8" size_variation="1" selection_weight="10"/>
-            <billboard url="clipart28163.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
-            <billboard url="clipart2383752.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
+
+        <biome classes="grassland" fill="1" source="clipartmax.com">
+            <asset url="clipart974730_dry.png" width="0.8" height="0.5" size_variation="0.5" selection_weight="3"/>
+            <asset url="clipart974730_2.png" width="0.6" height="0.8" size_variation="1" selection_weight="10"/>
+            <asset url="clipart28163.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
+            <asset url="clipart2383752.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
+            <asset model="D:/data/models/knapweed/knapweed.osgb.(0.6).scale" size_variation="0.8" fill="0.5" />
+            <asset model="D:/data/models/fern/fern.osgb.(0.6).scale" size_variation="0.8" fill="0.4"/>
         </biome>
-        <biome name="Grass/Forest" classes="forest" fill="0.50" source="clipartmax.com">
-            <billboard url="clipart974730_2.png" width="0.5" height="0.6" size_variation="0.8" selection_weight="1"/>
+
+        <biome classes="forest" fill="0.5" source="clipartmax.com">
+            <asset url="clipart974730_2.png" width="0.5" height="0.6" size_variation="0.8" weight="11"/>
+            <asset model="D:/data/models/rockinsoil/RockSoil.osgb.(0.20).scale" fill="0.1"/>
+            <asset model="D:/data/models/knapweed/knapweed.osgb" size_variation="0.8" fill="0.2" />
+            <asset model="D:/data/models/fern/fern.osgb" size_variation="0.8" fill="0.1"/>
         </biome>
-        <biome name="Grass/Savanna" classes="savanna" fill="0.3" source="clipartmax.com">
-            <billboard url="clipart974730_2.png" width="0.5" height="0.3" size_variation="1" selection_weight="1"/>
+
+        <biome classes="savanna" fill="0.3" source="clipartmax.com">
+            <asset url="clipart974730_2.png" width="0.5" height="0.3" size_variation="1" selection_weight="1"/>
         </biome>
+
     </biomes>
 </groundcover>

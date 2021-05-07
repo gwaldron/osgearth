@@ -47,8 +47,12 @@ namespace osgEarth { namespace Splat
         std::string
             Grass,
             GroundCover_CS,
+            GroundCover_Sort_CS,
             GroundCover_Billboard,
-            GroundCover_Model;
+            GroundCover_Model,
+            GroundCover_Generate,
+            GroundCover_Render,
+            GroundCover_Types;
 	};
 	
 } } // namespace osgEarth::Splat

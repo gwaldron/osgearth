@@ -156,21 +156,24 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
 
 
     // Make a temporary geometry to build kdtrees on and copy the shape over
-    osg::ref_ptr< osg::Geometry > tempGeom = new osg::Geometry;
-    osg::Vec3Array* tempVerts = new osg::Vec3Array;
-    tempVerts->reserve(_mesh.size());
-    for (unsigned int i = 0; i < _mesh.size(); i++)
+    if (_geom->getDrawElements()->getMode() != GL_PATCHES)
     {
-        tempVerts->push_back(_mesh[i]);
-    }
-    tempGeom->setVertexArray(tempVerts);
-    tempGeom->addPrimitiveSet(_geom->getDrawElements());
+        osg::ref_ptr< osg::Geometry > tempGeom = new osg::Geometry;
+        osg::Vec3Array* tempVerts = new osg::Vec3Array;
+        tempVerts->reserve(_mesh.size());
+        for (unsigned int i = 0; i < _mesh.size(); i++)
+        {
+            tempVerts->push_back(_mesh[i]);
+        }
+        tempGeom->setVertexArray(tempVerts);
+        tempGeom->addPrimitiveSet(_geom->getDrawElements());
 
-    osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
-    tempGeom->accept(*kdTreeBuilder.get());
-    if (tempGeom->getShape())
-    {
-        setShape(tempGeom->getShape());
+        osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
+        tempGeom->accept(*kdTreeBuilder.get());
+        if (tempGeom->getShape())
+        {
+            setShape(tempGeom->getShape());
+        }
     }
 
     dirtyBound();

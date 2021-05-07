@@ -19,116 +19,402 @@
 #include "SDF"
 #include "Math"
 #include "Metrics"
-#include <osgEarth/rtree.h>
+#include "FeatureSource"
+#include "FeatureRasterizer"
+#include "Session"
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-void
-SDFGenerator::encodeSDF(
-    const FeatureList& features,
-    osg::Image* image,
-    const GeoExtent& extent,
-    GLenum channel,
-    FilterContext& fctx,
-    const NumericExpression& min_dist_meters,
-    const NumericExpression& max_dist_meters,
-    bool invert,
-    Cancelable* progress)
+namespace
 {
-    OE_SOFT_ASSERT_AND_RETURN(image != nullptr, __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(extent.isValid(), __func__, );
-
-    OE_PROFILING_ZONE;
-
-    int c = clamp((int)(channel - GL_RED), 0, 3);
-    osg::Vec3d p;
-    osg::Vec4 pixel;
-    //GeoImage gi(image, extent);
-
-    NumericExpression mindist(min_dist_meters);
-    NumericExpression maxdist(max_dist_meters);
-
-    ImageUtils::PixelReader read(image);
-    ImageUtils::PixelWriter write(image);
-
-    // Poor man's degrees-to-meters conversion
-    double toMeters = 1.0;
-    if (extent.getSRS()->isGeographic())
-    {
-        double R = extent.getSRS()->getEllipsoid()->getRadiusEquator();
-        toMeters = (2.0 * osg::PI * R / 360.0) * cos(osg::DegreesToRadians(extent.yMin()));
+    inline bool isPositivePowerOfTwo(unsigned x) {
+        return (x & (x - 1)) == 0;
     }
 
-    // Table of min and max SDF distances per feature:
-    std::unordered_map<Feature*, std::pair<double, double>> distLUT;
+    // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
+    const char* jfa_cs = R"(
+    #version 430
+    layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 
-    // Build a spatial index of features we are considering.
-    // This is WAY faster than just iterating over all features.
-    RTree<Feature*, double, 2> index;
+    // output image binding
+    layout(binding=0, rg16f) uniform image2D buf;
 
-    // The search radius, to constrain our search, will be equal
-    // to the highest "max distance" taken from the feature set.
-    double searchRadius = 0.0;
+    uniform int L;
 
-    double a_min[2], a_max[2];
-    for (auto& feature : features)
+    #define NODATA 32767.0
+
+    float squared_distance_2d(in vec4 a, in vec4 b)
     {
-        const GeoExtent& e = feature->getExtent();
-        a_min[0] = e.xMin(), a_min[1] = e.yMin();
-        a_max[0] = e.xMax(), a_max[1] = e.yMax();
-        index.Insert(a_min, a_max, feature.get());
-
-        std::pair<double, double> limits(
-            feature->eval(mindist, &fctx),
-            feature->eval(maxdist, &fctx));
-
-        distLUT.emplace(feature.get(), limits);
-
-        searchRadius = std::max(limits.second, searchRadius);
+        vec2 c = b.xy-a.xy;
+        return dot(c, c);
     }
-    searchRadius *= 1.1;
 
-    std::vector<Feature*> hits;
-    std::vector<double> ranges_squared;
+    void main()
+    {
+        vec2 pixel_uv = vec2(
+            float(gl_WorkGroupID.x) / float(gl_NumWorkGroups.x-1),
+            float(gl_WorkGroupID.y) / float(gl_NumWorkGroups.y-1));
 
-    GeoImageIterator iter(image, extent);
+        int s = int(gl_WorkGroupID.x);
+        int t = int(gl_WorkGroupID.y);
 
-    iter.forEachPixelOnCenter([&]()
+        vec4 pixel_points_to = imageLoad(buf, ivec2(gl_WorkGroupID));
+        if (pixel_points_to.x == NODATA)
+            return;
+
+        vec4 remote;
+        vec4 remote_points_to;
+
+        for(int rs = s - L; rs <= s + L; rs += L)
         {
-            read(pixel, iter.s(), iter.t());
-            if (pixel[c] > 0.0)
+            if (rs < 0 || rs >= gl_NumWorkGroups.x)
+                continue;
+
+            remote.x = float(rs);
+
+            for(int rt = t - L; rt <= t + L; rt += L)
             {
-                p.x() = iter.x(), p.y() = iter.y();
-                double nearest = 1.0;
+                if (rt < 0 || rt >= gl_NumWorkGroups.y)
+                    continue;
 
-                // Find all features within the search radius. We can't just say "find the 
-                // one closest element" because the RTree only operates on the bounding-box
-                // level. So instead we have to grab everything within the radius and manually
-                // find the closest one.
-                if (index.KNNSearch(p.ptr(), &hits, &ranges_squared, 0, searchRadius) > 0)
+                if (rs == s && rt == t)
+                    continue;
+
+                remote.y = float(rt);
+
+                remote_points_to = imageLoad(buf, ivec2(rs,rt));
+                if (remote_points_to.x == NODATA)
                 {
-                    for (int i = 0; i < hits.size() && nearest > 0.0; ++i)
-                    {
-                        Feature* feature = hits[i];
-                        double range_squared = ranges_squared[i];
-                        std::pair<double, double>& limits = distLUT[feature];
+                    imageStore(buf, ivec2(rs,rt), pixel_points_to);
+                }
+                else
+                {
+                    // compare the distances and pick the closest.
+                    float d_existing = squared_distance_2d(remote, remote_points_to);
+                    float d_possible = squared_distance_2d(remote, pixel_points_to);
 
-                        if (range_squared*toMeters <= limits.second*limits.second)
+                    if (d_possible < d_existing)
+                    {
+                        imageStore(buf, ivec2(rs,rt), pixel_points_to);
+                    }
+                }
+            }
+        }
+    }
+    )";
+}
+
+SDFGenerator::SDFGenerator() :
+    _useGPU(false)
+{
+    //nop
+}
+
+void
+SDFGenerator::setUseGPU(bool value)
+{
+    _useGPU = value;
+
+    if (_useGPU && !_program.valid())
+    {
+        _program = new osg::Program();
+        _program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
+    }
+}
+
+GeoImage
+SDFGenerator::allocateSDF(
+    unsigned size,
+    const GeoExtent& extent) const
+{
+    osg::ref_ptr<osg::Image> sdf = new osg::Image();
+    sdf->allocateImage(size, size, 1, GL_RED, GL_UNSIGNED_BYTE);
+    sdf->setInternalTextureFormat(GL_R8);
+    ImageUtils::PixelWriter write(sdf);
+    write.assign(Color(1, 1, 1, 1));
+    return GeoImage(sdf.release(), extent);
+}
+
+bool
+SDFGenerator::createNearestNeighborField(
+    const FeatureList& features,
+    Session* session,
+    unsigned nnfieldSize,
+    const GeoExtent& extent,
+    GeoImage& nnfield,
+    Cancelable* progress) const
+{
+    if (features.empty())
+        return false;
+
+    OE_SOFT_ASSERT_AND_RETURN(extent.isValid(), __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(isPositivePowerOfTwo(nnfieldSize), __func__, false);
+
+    // Render features to a temporary image
+    Style style;
+    if (features.front()->getGeometry()->isLinear())
+        style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Black;
+    else
+        style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
+
+    osg::ref_ptr<const FeatureProfile> fp;
+    if (session && session->getFeatureSource())
+        fp = session->getFeatureSource()->getFeatureProfile();
+    else
+        fp = new FeatureProfile(extent);
+
+    FeatureRasterizer rasterizer(nnfieldSize, nnfieldSize, extent, Color(1, 1, 1, 0));
+    rasterizer.render(session, style, fp.get(), features);
+    GeoImage source = rasterizer.finalize();
+
+    return createNearestNeighborField(
+        source,
+        nnfield,
+        progress);
+}
+
+bool
+SDFGenerator::createNearestNeighborField(
+    const GeoImage& inputRaster,
+    GeoImage& nnfield,
+    Cancelable* progress) const
+{
+    // Convert pixels to local coordinates relative to the lower-left corner of extent
+    if (!nnfield.valid())
+    {
+        osg::Image* image = new osg::Image();
+        image->allocateImage(inputRaster.getImage()->s(), inputRaster.getImage()->t(), 1, GL_RG, GL_FLOAT);
+        image->setInternalTextureFormat(GL_RG16F);
+        nnfield = std::move(GeoImage(image, inputRaster.getExtent()));
+    }
+
+    // actually need to write to the GeoImage, and that's OK.
+    osg::Image* nnimage = const_cast<osg::Image*>(nnfield.getImage());
+
+    ImageUtils::PixelReader read_raster(inputRaster.getImage());
+    ImageUtils::PixelWriter write_nnf(nnimage);
+
+    constexpr float NODATA = 32767.0f;
+    osg::Vec4f nodata(NODATA, NODATA, NODATA, NODATA);
+    osg::Vec4f pixel, coord;
+    //ImageUtils::ImageIterator iter(inputRaster.getImage());
+    GeoImageIterator iter(inputRaster);
+    iter.forEachPixel([&]()
+        {
+            read_raster(pixel, iter.s(), iter.t());
+            if (pixel.a() > 0.0f)
+                coord.set((float)iter.s(), (float)iter.t(), 0.0f, 0.0f);
+                //coord.set(iter.u(), iter.v(), 0, 0);
+            else
+                coord = nodata;
+
+            write_nnf(coord, iter.s(), iter.t());
+        }
+    );
+
+    if (_useGPU && GPUJobArena::arena().getGraphicsContext().valid())
+    {
+        compute_nnf_on_gpu(nnimage);
+    }
+    else
+    {
+        compute_nnf_on_cpu(nnimage);
+    }
+
+    return true;
+}
+
+void
+SDFGenerator::createDistanceField(
+    const GeoImage& nnfield,
+    GeoImage& sdf,
+    float span,
+    float lo,
+    float hi,
+    Cancelable* progress) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(nnfield.valid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(sdf.valid(), __func__, );
+
+    // That's OK.
+    osg::Image* sdfimage = const_cast<osg::Image*>(sdf.getImage());
+
+    ImageUtils::PixelReader read_sdf(sdfimage);
+    ImageUtils::PixelWriter write_sdf(sdfimage);
+
+    ImageUtils::PixelReader read_nnf(nnfield.getImage());
+    read_nnf.setBilinear(false);
+    
+    GeoImageIterator i(sdf);
+
+    osg::Vec4f me, closest, pixel;
+    int c = 0; // clamp((int)(channel - GL_RED), 0, 3);
+
+#if 0
+
+    int bias_s = (nnfield.getImage()->s() - sdf.getImage()->s()) / 2;
+    int bias_t = (nnfield.getImage()->t() - sdf.getImage()->t()) / 2;
+
+    int nnf_s, nnf_t;
+
+    float cellSize = 1.0f / (float)(nnfield.getImage()->s() - 1);
+
+    constexpr float NODATA = 32767.0f;
+
+    i.forEachPixel([&]()
+        {
+            read_sdf(pixel, i.s(), i.t());
+
+            // convert ndc coords to the NNF domain
+            nnf_s = i.s() + bias_s; 
+            nnf_t = i.t() + bias_t;
+
+            OE_SOFT_ASSERT(nnf_s >= 0 && nnf_s < nnfield.getImage()->s(), __func__);
+            OE_SOFT_ASSERT(nnf_t >= 0 && nnf_t < nnfield.getImage()->t(), __func__);
+
+            me.set((float)nnf_s, (float)nnf_t, 0, 0);
+            read_nnf(closest, nnf_s, nnf_t);
+
+            OE_SOFT_ASSERT(closest.x() != NODATA, __func__);
+
+            float d = distance2D(me, closest);
+
+            d = unitremap(span * (d * cellSize), lo, hi);
+            //d = unitremap(d * span, lo, hi);
+            if (d < pixel[c])
+            {
+                pixel[c] = d;
+                write_sdf(pixel, i.s(), i.t());
+            }
+        }
+    );
+#endif
+
+#if 1
+    osg::Vec2f bias(
+        (sdf.getExtent().xMin() - nnfield.getExtent().xMin()) / nnfield.getExtent().width(),
+        (sdf.getExtent().yMin() - nnfield.getExtent().yMin()) / nnfield.getExtent().height());
+
+    osg::Vec2f scale(
+        sdf.getExtent().width() / nnfield.getExtent().width(),
+        sdf.getExtent().height() / nnfield.getExtent().height());
+
+    float nnf_u, nnf_v;
+
+    float cellSize = 1.0f / (float)(nnfield.getImage()->s() - 1);
+
+    i.forEachPixelOnCenter([&]()
+        {
+            read_sdf(pixel, i.s(), i.t());
+
+            // convert ndc coords to the NNF domain
+            nnf_u = clamp(i.u() * scale.x() + bias.x(), 0.0, 1.0);
+            nnf_v = clamp(i.v() * scale.y() + bias.y(), 0.0, 1.0);
+            me.set(floor(nnf_u * nnfield.getImage()->s()), floor(nnf_v*nnfield.getImage()->t()), 0, 0);
+            read_nnf(closest, nnf_u, nnf_v);
+
+            float d = distance2D(me, closest);
+            d = unitremap(d * cellSize * span, lo, hi);
+            if (d < pixel[c])
+            {
+                pixel[c] = d;
+                write_sdf(pixel, i.s(), i.t());
+            }
+        });
+#endif
+}
+
+
+void
+SDFGenerator::compute_nnf_on_gpu(osg::Image* image) const
+{
+    NNFSession& session = _compute.get(_program.get());
+    session.setImage(image);
+    session.execute();
+}
+
+void
+SDFGenerator::NNFSession::renderImplementation(osg::State* state)
+{
+    if (_L_uniform < 0)
+    {
+        const osg::Program::PerContextProgram* pcp = state->getLastAppliedProgramObject();
+        _L_uniform = pcp->getUniformLocation(osg::Uniform::getNameID("L"));
+    }
+
+    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+
+    // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
+    for (int L = _image->s() / 2; L >= 1; L /= 2)
+    {
+        ext->glUniform1i(_L_uniform, L);
+        ext->glDispatchCompute(_image->s(), _image->t(), 1);
+        ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    }
+}
+
+void
+SDFGenerator::compute_nnf_on_cpu(osg::Image* buf) const
+{
+    // Jump-Flood algorithm for computing discrete voronoi
+    // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
+    osg::Vec4f pixel_points_to;
+    osg::Vec4f remote;
+    osg::Vec4f remote_points_to;
+    ImageUtils::PixelReader readBuf(buf);
+    ImageUtils::PixelWriter writeBuf(buf);
+    int n = buf->s();
+    constexpr float NODATA = 32767;
+
+    for (int L = n / 2; L >= 1; L /= 2)
+    {
+        ImageUtils::ImageIterator iter(readBuf);
+        iter.forEachPixel([&]()
+            {
+                readBuf(pixel_points_to, iter.s(), iter.t());
+
+                // no data at this pixel yet? skip it; there is nothing to propagate.
+                if (pixel_points_to.x() == NODATA)
+                    return;
+
+                for (int s = iter.s() - L; s <= iter.s() + L; s += L)
+                {
+                    if (s < 0 || s >= readBuf.s()) 
+                        continue;
+
+                    remote[0] = (float)s;
+
+                    for (int t = iter.t() - L; t <= iter.t() + L; t += L)
+                    {
+                        if (t < 0 || t >= readBuf.t()) 
+                            continue;
+                        if (s == iter.s() && t == iter.t()) 
+                            continue;
+
+                        remote[1] = (float)t;
+
+                        // fetch the coords the remote pixel points to:
+                        readBuf(remote_points_to, s, t);
+
+                        if (remote_points_to.x() == NODATA) // remote is unset? Just copy
                         {
-                            double sd = feature->getGeometry()->getSignedDistance2D(p) * toMeters;
-                            if (invert) sd = -sd;
-                            double sd_unit = unitremap(sd, limits.first, limits.second);
-                            nearest = std::min(nearest, sd_unit);
+                            writeBuf(pixel_points_to, s, t);
+                        }
+                        else
+                        {
+                            // compare the distances and pick the closest.
+                            float d_existing = distanceSquared2D(remote, remote_points_to);
+                            float d_possible = distanceSquared2D(remote, pixel_points_to);
+
+                            if (d_possible < d_existing)
+                            {
+                                writeBuf(pixel_points_to, s, t);
+                            }
                         }
                     }
                 }
-
-                if (nearest < pixel[c])
-                {
-                    pixel[c] = nearest;
-                    write(pixel, iter.s(), iter.t());
-                }
             }
-        });
+        );
+    }
 }

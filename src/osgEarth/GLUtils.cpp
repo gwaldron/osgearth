@@ -29,6 +29,8 @@
 #include <osg/GraphicsContext>
 #include <osgUtil/IncrementalCompileOperation>
 #include <osgViewer/GraphicsWindow>
+#include <osg/Texture2D>
+#include <osg/BindImageTexture>
 
 #ifdef OE_USE_GRAPHICS_OBJECT_MANAGER
 #include <osg/ContextData>
@@ -188,6 +190,15 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
     }
 }
 
+GLsizei
+GLUtils::getSSBOAlignment(osg::State& state)
+{
+    static GLsizei _ssboAlignment = -1;
+    if (_ssboAlignment < 0)
+        glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &_ssboAlignment);
+    return _ssboAlignment;
+}
+
 void
 CustomRealizeOperation::setSyncToVBlank(bool value)
 {
@@ -259,8 +270,16 @@ GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
     {
         bind();
         ext()->debugObjectLabel(GL_BUFFER, _name, label);
-        GLObjectReleaser::watch(this, state);
+        //GLObjectReleaser::watch(shared_from_this(), state);
     }
+}
+
+GLBuffer::Ptr
+GLBuffer::create(GLenum target, osg::State& state, const std::string& label)
+{
+    Ptr obj(new GLBuffer(target, state, label));
+    GLObjectReleaser::watch(obj, state);
+    return obj;
 }
 
 void
@@ -298,9 +317,15 @@ GLTexture::GLTexture(GLenum target, osg::State& state, const std::string& label)
     {
         bind();
         ext()->debugObjectLabel(GL_TEXTURE, _name, label);
-        GLObjectReleaser::watch(this, state);
-        // cannot call glGetTextureHandle until all state it set.
     }
+}
+
+GLTexture::Ptr
+GLTexture::create(GLenum target, osg::State& state, const std::string& label)
+{
+    Ptr obj(new GLTexture(target, state, label));
+    GLObjectReleaser::watch(obj, state);
+    return obj;
 }
 
 void
@@ -324,11 +349,17 @@ void
 GLTexture::makeResident(bool toggle)
 {
     if (_isResident != toggle)
-        ext()->glMakeTextureHandleResident(_handle);
-    else
-        ext()->glMakeTextureHandleNonResident(_handle);
+    {
+        if (toggle == true)
+            ext()->glMakeTextureHandleResident(_handle);
+        else
+            ext()->glMakeTextureHandleNonResident(_handle);
 
-    _isResident = toggle;
+        OE_DEVEL << "'" << id() << "' name=" << name() <<" resident=" << (toggle ? "yes" : "no") << std::endl;
+
+        _isResident = toggle;
+    }
+
 }
 
 void
@@ -336,7 +367,7 @@ GLTexture::release()
 {
     if (_handle != ~0ULL)
     {
-        ext()->glMakeTextureHandleNonResident(_handle);
+        makeResident(false);
         _handle = ~0ULL;
     }
     if (_name != ~0U)
@@ -358,14 +389,14 @@ SSBO::SSBO() :
 void
 SSBO::release() const
 {
-    _buffer = NULL; // triggers the releaser
+    _buffer = nullptr; // triggers the releaser
     _allocatedSize = 0u;
 }
 
 void
 SSBO::bindLayout() const
 {
-    if (_buffer.valid() && _bindingIndex >= 0)
+    if (_buffer != nullptr && _bindingIndex >= 0)
     {
         _buffer->ext()->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bindingIndex, _buffer->name());
     }
@@ -383,7 +414,7 @@ GLObjectReleaser::GLObjectReleaser(unsigned contextID) :
 }
 
 void
-GLObjectReleaser::watch(GLObject* object, osg::State& state_unused)
+GLObjectReleaser::watch(GLObject::Ptr object, osg::State& state_unused)
 {
     if (object && object->ext())
     {
@@ -419,7 +450,7 @@ GLObjectReleaser::flushAllDeletedGLObjects()
     _temp.clear();
     for (auto& object : _objects)
     {
-        if (object->referenceCount() == 1)
+        if (object.use_count() == 1) //referenceCount() == 1)
             object->release();
         else
             _temp.insert(object);
@@ -573,7 +604,7 @@ GPUJobArena::arena()
 
 GPUJobArena::GPUJobArena() :
     osg::GraphicsOperation("oe.GPUJobArena", true),
-    _timeSlice(2), // default time slice (milliseconds)
+    _timeSlice(0), // default time slice (milliseconds)
     _done(false)
 {
     const char* value = ::getenv("OSGEARTH_GPU_TIME_SLICE_MS");
@@ -628,6 +659,13 @@ GPUJobArena::getTimeSlice() const
     return _timeSlice;
 }
 
+std::size_t
+GPUJobArena::size() const
+{
+    std::lock_guard<Mutex> lock(_queue_mutex);
+    return _queue.size();
+}
+
 void
 GPUJobArena::dispatch(Delegate& del)
 {
@@ -638,8 +676,9 @@ GPUJobArena::dispatch(Delegate& del)
 void
 GPUJobArena::operator()(osg::GraphicsContext* gc)
 {
-    typedef std::chrono::high_resolution_clock Clock;
-    typedef std::chrono::milliseconds ms;
+    using Clock = std::chrono::high_resolution_clock;
+    using Tick = std::chrono::time_point<Clock>;
+    using ms = std::chrono::milliseconds;
 
     // always run at least one job.
     Clock::time_point start = Clock::now();
@@ -660,7 +699,6 @@ GPUJobArena::operator()(osg::GraphicsContext* gc)
             // run the job
             next(gc->getState());
 
-            // check the time slice:
             auto timeElapsed = std::chrono::duration_cast<ms>(Clock::now() - start);
             if (timeElapsed >= _timeSlice)
             {
@@ -704,6 +742,101 @@ GPUJobArenaConnector::drawImplementation(osg::RenderInfo& ri) const
     }
 }
 
+//........................................................................
+
+ComputeImageSession::ComputeImageSession() :
+    _stateSet(nullptr),
+    _pbo(INT_MAX)
+{
+    _stateSet = new osg::StateSet();
+    _tex = new osg::Texture2D();
+    _stateSet->setTextureAttribute(0, _tex, 1);
+    _stateSet->addUniform(new osg::Uniform("buf", 0));
+}
+
+void
+ComputeImageSession::setProgram(osg::Program* program)
+{
+    _stateSet->setAttribute(program, 1);
+}
+
+void
+ComputeImageSession::setImage(osg::Image* image)
+{
+    _image = image;
+    _tex->setImage(image);
+    _stateSet->setAttribute(new osg::BindImageTexture(
+        0, _tex, osg::BindImageTexture::READ_WRITE, 
+        image->getInternalTextureFormat(), 0, GL_TRUE));
+    image->dirty();
+}
+
+void
+ComputeImageSession::execute()
+{
+    auto render_job = GPUJob<bool>().dispatch(
+        [this](osg::State* state, Cancelable* progress)
+        {
+            render(state);
+            return true;
+        }
+    );
+
+    auto readback_job = GPUJob<bool>().dispatch(
+        [this](osg::State* state, Cancelable* progress)
+        {
+            readback(state);
+            return true;
+        }
+    );
+
+    render_job.join();
+    readback_job.join();
+}
+
+void
+ComputeImageSession::render(osg::State* state)
+{
+    OE_SOFT_ASSERT_AND_RETURN(_image.valid(), __func__, );
+
+    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+
+    if (_stateSet.valid())
+    {
+        state->apply(_stateSet.get());
+    }
+
+    if (_pbo == INT_MAX)
+    {
+        int size = _image->getTotalSizeInBytes();
+        ext->glGenBuffers(1, &_pbo);
+        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
+        ext->glBufferData(GL_PIXEL_PACK_BUFFER_ARB, size, 0, GL_STREAM_READ);
+    }
+
+    renderImplementation(state);
+
+    // Post an async readback to the GL queue
+    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
+    glGetTexImage(GL_TEXTURE_2D, 0, _image->getPixelFormat(), _image->getDataType(), 0);
+}
+
+void
+ComputeImageSession::readback(osg::State* state)
+{
+    osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+
+    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
+    GLubyte* src = (GLubyte*)ext->glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY_ARB);
+    if (src)
+    {
+        ::memcpy(_image->data(), src, _image->getTotalSizeInBytes());
+        ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+    }
+    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
+}
+
+//........................................................................
 
 namespace
 {

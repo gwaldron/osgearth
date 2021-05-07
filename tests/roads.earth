@@ -19,7 +19,7 @@ http://readymap.org
 
     <DebugImage name="Tilekeys" enabled="false"/>
 
-    <RoadSurface name="road-surface" min_level="14" max_data_level="18">
+    <RoadSurface name="ROadSurface" min_level="14" max_data_level="18">
         <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
         <features>roads-data</features>
@@ -28,7 +28,7 @@ http://readymap.org
                 default {
                    stroke: #ffffff;
                    stroke-width: 20m;
-                   stroke-image: "'../data/road.png'";
+                   stroke-image: "'../data/road2.png'";
                 }
             </style>
         </styles>
@@ -75,7 +75,7 @@ http://readymap.org
         <format>pbf</format>
         <filters>
             <script language="javascript">
-                <![CDATA[ ("highway" in feature.properties); ]]>
+                <![CDATA[ ("highway" in feature.properties) ]]>
             </script>
         </filters>
     </XYZFeatures>
@@ -110,5 +110,5 @@ http://readymap.org
         </viewpoint>
     </viewpoints>
 
-    <libraries>osgEarthSplat</libraries>
+    <libraries>osgEarthProcedural</libraries>
 </Map>

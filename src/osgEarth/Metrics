@@ -49,6 +49,9 @@ namespace osgEarth {
              * Toggle on metrics collection
              */
             static void setEnabled(bool enabled);
+
+            //! Whether to install GPU profiling.
+            static void setGPUProfilingEnabled(bool enabled);
         };
     }
 }
@@ -70,6 +73,31 @@ namespace osgEarth {
 #define OE_LOCKABLE_NAMED(type, varname, desc) TracyLockableN(type, varname, desc)
 #define OE_LOCKABLE_BASE( type ) LockableBase( type )
 
+#include <osg/GL>
+namespace osgEarth { namespace MetricsGL {
+#ifndef GL_TIMESTAMP
+    constexpr GLenum GL_TIMESTAMP = 0x8E28;
+#endif
+#ifndef GL_QUERY_COUNTER_BITS
+    constexpr GLenum GL_QUERY_COUNTER_BITS = 0x8864;
+#endif
+#ifndef GL_QUERY_RESULT
+    constexpr GLenum GL_QUERY_RESULT = 0x8866;
+#endif
+#ifndef GL_QUERY_RESULT_AVAILABLE
+    constexpr GLenum GL_QUERY_RESULT_AVAILABLE = 0x8867;
+#endif
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * glGenQueries)(GLsizei, GLuint*);
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * glGetInteger64v)(GLenum, GLint64*);
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * glGetQueryiv)(GLenum, GLenum, GLint*);
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * glGetQueryObjectiv)(GLint, GLenum, GLint*);
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * glGetQueryObjectui64v)(GLint, GLenum, GLuint64*);
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * glQueryCounter)(GLuint, GLenum);
+} }
+using namespace osgEarth::MetricsGL;
+#include <TracyClient/TracyOpenGL.hpp>
+#define OE_PROFILING_GPU_ZONE(name) TracyGpuZone( name )
+
 inline void _zoneSetText(tracy::ScopedZone& zone, const char* text) {
     zone.Text(text, strlen(text));
 }
@@ -85,6 +113,7 @@ inline void _zoneSetText(tracy::ScopedZone& zone, const std::string& text) {
 #define OE_PROFILING_FRAME_MARK
 #define OE_LOCKABLE(type, varname) type varname
 #define OE_LOCKABLE_BASE( type ) type
+#define OE_PROFILING_GPU_ZONE(name)
 #endif
 
 #endif

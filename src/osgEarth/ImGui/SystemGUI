@@ -38,9 +38,14 @@ namespace osgEarth
         private:
             using time_point = std::chrono::time_point<std::chrono::steady_clock>;
             time_point _lastFrame;
+            std::queue<int> _times;
+            int _time_accum;
+            int _frameCounter;
+            int _fps;
 
         public:
-            SystemGUI() : BaseGUI("System") { }
+            SystemGUI() : BaseGUI("System"),
+                _frameCounter(0), _time_accum(0) { }
 
             void load(const Config& conf) override
             {
@@ -59,15 +64,7 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
-                    if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 4.0f))
-                        dirtySettings();
-
-                    ImGui::Text("Memory:");
-                    ImGui::Indent();
-                    ImGui::Text("Physical: %ld MB", Memory::getProcessPhysicalUsage() / 1048576U);
-                    ImGui::Text("Private: %ld MB", Memory::getProcessPrivateUsage() / 1048576U);
-                    ImGui::Text("Peak: %ld MB", Memory::getProcessPeakPrivateUsage() / 1048576U);
-                    ImGui::Unindent();
+                    ImGui::Text("Memory: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
                     ImGui::Separator();
 
                     ImGui::Text("Job Activity:");
@@ -90,13 +87,28 @@ namespace osgEarth
 
                     ImGui::Separator();
                     ImGui::Text("ICO: %d", GLObjectsCompiler::totalJobs());
+                    ImGui::SameLine();
+                    ImGui::Text(" Compute: %d", GPUJobArena::arena().size());
 
-                    ImGui::Separator();
                     time_point now = std::chrono::steady_clock::now();
                     int us = std::chrono::duration_cast<std::chrono::microseconds>(now - _lastFrame).count();
                     _lastFrame = now;
-                    int fps = 1000000 / us;
-                    ImGui::Text("FPS: %d", fps);
+
+                    constexpr int interval = 30;
+                    _times.push(us);
+                    _time_accum += us;
+                    if (_times.size() > interval) {
+                        _time_accum -= _times.front();
+                        _times.pop();
+                    }
+                    if (_frameCounter++ % interval == 0)
+                        _fps = 1000000 / (_time_accum / interval);
+                    ImGui::SameLine();
+                    ImGui::Text(" FPS: %d", _fps);
+
+                    ImGui::Separator();
+                    if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 4.0f))
+                        dirtySettings();
                 }
                 ImGui::End();
             }

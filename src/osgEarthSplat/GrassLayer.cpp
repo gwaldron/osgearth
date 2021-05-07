@@ -56,24 +56,24 @@ GrassLayer::init()
     options().maxAlpha().setDefault(0.75f);
 
     // custom LOD for grass
-    options().lod().setDefault(19u);
+    options().lod() = 19u;
 
     // no shadow casting
     options().castShadows().setDefault(false);
 
     // smooth picking for grouped instances of grass (3=clumpy)
-    getOrCreateStateSet()->setDefine("OE_GROUNDCOVER_PICK_NOISE_TYPE", "3");
+    //getOrCreateStateSet()->setDefine("OE_GROUNDCOVER_PICK_NOISE_TYPE", "3");
 }
 
 void
-GrassLayer::loadShaders(VirtualProgram* vp, const osgDB::Options* options) const
+GrassLayer::loadRenderingShaders(VirtualProgram* vp, const osgDB::Options* options) const
 {
     GroundCoverShaders s;
     s.load(vp, s.Grass, options);
 }
 
 osg::Geometry*
-GrassLayer::createGeometry() const    
+GrassLayer::createParametricGeometry() const    
 {
     const unsigned vertsPerInstance = 16;
     const unsigned indiciesPerInstance = 54;
@@ -90,12 +90,11 @@ GrassLayer::createGeometry() const
 
     out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, indiciesPerInstance, &indices[0]));
 
-    // We don't actually need any verts. Is it OK not to set an array?
-    //geom->setVertexArray(new osg::Vec3Array(8));
+    out_geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 16));
 
-    //osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
-    //normals->push_back(osg::Vec3f(0,0,1));
-    //out_geom->setNormalArray(normals);
+    osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
+    normals->push_back(osg::Vec3(0,1,0));
+    out_geom->setNormalArray(normals);
 
     return out_geom;
 }

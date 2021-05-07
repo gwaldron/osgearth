@@ -217,9 +217,11 @@ SET(LIB_PUBLIC_HEADERS
     ScreenSpaceLayoutImpl
     ScreenSpaceLayoutDeclutter
     ScreenSpaceLayoutCallout
+    SDF
     Shaders
     ShaderFactory
     ShaderGenerator
+    ShaderLayer
     ShaderLoader
     ShaderMerger
     ShaderUtils
@@ -312,6 +314,7 @@ SET(LIB_PUBLIC_HEADERS
     SkyView
     StarData
     TerrainProfile
+    TextureArena
     TileIndex
     TileIndexBuilder
     TFSPackager
@@ -336,6 +339,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureDisplayLayout
     FeatureElevationLayer
     FeatureImageLayer
+    FeatureSDFLayer
     FeatureRasterizer
     FeatureIndex
     TerrainConstraintLayer
@@ -365,6 +369,7 @@ SET(LIB_PUBLIC_HEADERS
     SubstituteModelFilter
     TessellateOperator
     TextSymbolizer
+    TextureArena.cpp
     TFS
     TransformFilter
     WingedEdgeMesh
@@ -461,7 +466,8 @@ if(OSGEARTH_ENABLE_IMGUI)
         ImGui/ViewpointsGUI
         ImGui/SystemGUI
         ImGui/EphemerisGUI
-        ImGui/TerrainGUI)
+        ImGui/TerrainGUI
+        ImGui/TerrainEditGUI)
 endif()
 
 
@@ -470,6 +476,7 @@ IF (NOT TINYXML_FOUND)
         ${LIB_PUBLIC_HEADERS}
         tinystr.h
         tinyxml.h
+        weemesh.h
     )
 ENDIF (NOT TINYXML_FOUND)
 
@@ -613,8 +620,10 @@ set(TARGET_SRC
     Revisioning.cpp
     SceneGraphCallback.cpp
     ScreenSpaceLayout.cpp
+    SDF.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp
+    ShaderLayer.cpp
     ShaderLoader.cpp
     ShaderMerger.cpp
     ShaderUtils.cpp
@@ -721,6 +730,7 @@ set(TARGET_SRC
     FeatureElevationLayer.cpp
     FeatureImageLayer.cpp
     FeatureRasterizer.cpp
+    FeatureSDFLayer.cpp
     TerrainConstraintLayer.cpp
     FeatureModelGraph.cpp
     FeatureModelLayer.cpp

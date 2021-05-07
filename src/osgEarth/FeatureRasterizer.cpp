@@ -24,6 +24,9 @@
 #include <osgEarth/AGG.h>
 #include <osgEarth/Registry>
 
+#include <osgEarth/FeatureSource>
+#include <osgEarth/StyleSheet>
+
 using namespace osgEarth;
 
 #define LC "[FeatureRasterizer] : "
@@ -837,16 +840,17 @@ FeatureRasterizer::render(
 #endif
 }
 
-osg::Image* FeatureRasterizer::finalize()
+GeoImage
+FeatureRasterizer::finalize()
 {
 #ifdef USE_AGGLITE
-        //convert from ABGR to RGBA
-        unsigned char* pixel = _image->data();
-        for (int i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
-        {
-            std::swap(pixel[0], pixel[3]);
-            std::swap(pixel[1], pixel[2]);
-        }
+    //convert from ABGR to RGBA
+    unsigned char* pixel = _image->data();
+    for (int i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+    {
+        std::swap(pixel[0], pixel[3]);
+        std::swap(pixel[1], pixel[2]);
+    }
 #else
     //convert from BGRA to RGBA
     unsigned char* pixel = _image->data();
@@ -857,5 +861,256 @@ osg::Image* FeatureRasterizer::finalize()
     _image->flipVertical();
 #endif
 
-    return _image.release();
+    return GeoImage(_image.release(), _extent);
+}
+
+//........................................................................
+
+FeatureStyleSorter::FeatureStyleSorter()
+{
+    //nop
+}
+
+void
+FeatureStyleSorter::sort(
+    const TileKey& key,
+    const Distance& buffer,
+    Session* session,
+    FeatureFilterChain* filters,
+    Function processFeaturesForStyle,
+    ProgressCallback* progress) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(session, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource()->getFeatureProfile(), __func__, );
+
+    OE_PROFILING_ZONE;
+
+    Query defaultQuery;
+    defaultQuery.tileKey() = key;
+
+    FeatureSource* features = session->getFeatureSource();
+
+    // figure out if and how to style the geometry.
+    if (features->hasEmbeddedStyles())
+    {
+        // Each feature has its own embedded style data, so use that:
+        FilterContext context;
+
+        osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(
+            key,
+            buffer,
+            filters,
+            &context,
+            progress);
+
+        while (cursor.valid() && cursor->hasMore())
+        {
+            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+            if (feature.valid())
+            {
+                FeatureList data;
+                data.push_back(feature);
+                processFeaturesForStyle(feature->style().get(), data, progress);
+            }
+        }
+    }
+    else if (session->styles())
+    {
+        if (session->styles()->getSelectors().size() > 0)
+        {
+            for(auto& iter : session->styles()->getSelectors())
+            {
+                const StyleSelector& sel = iter.second;
+                if (sel.styleExpression().isSet())
+                {
+                    const FeatureProfile* featureProfile = features->getFeatureProfile();
+
+                    // establish the working bounds and a context:
+                    FilterContext context(session, featureProfile);
+                    StringExpression styleExprCopy(sel.styleExpression().get());
+
+                    FeatureList features;
+                    getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
+                    if (!features.empty())
+                    {
+                        std::unordered_map<std::string, Style> literal_styles;
+                        std::map<const Style*, FeatureList> style_buckets;
+
+                        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+                        {
+                            Feature* feature = itr->get();
+
+                            const std::string& styleString = feature->eval(styleExprCopy, &context);
+                            if (!styleString.empty() && styleString != "null")
+                            {
+                                // resolve the style:
+                                //Style combinedStyle;
+                                const Style* resolved_style = nullptr;
+
+                                // if the style string begins with an open bracket, it's an inline style definition.
+                                if (styleString.length() > 0 && styleString[0] == '{')
+                                {
+                                    Config conf("style", styleString);
+                                    conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                                    conf.set("type", "text/css");
+                                    Style& literal_style = literal_styles[conf.toJSON()];
+                                    if (literal_style.empty())
+                                        literal_style = Style(conf);
+                                    resolved_style = &literal_style;
+                                }
+
+                                // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
+                                // style in this case: for style expressions, the user must be explicity about
+                                // default styling; this is because there is no other way to exclude unwanted
+                                // features.
+                                else
+                                {
+                                    const Style* selected_style = session->styles()->getStyle(styleString, false);
+                                    if (selected_style)
+                                        resolved_style = selected_style;
+                                }
+
+                                if (resolved_style)
+                                {
+                                    style_buckets[resolved_style].push_back(feature);
+                                }
+                            }
+                        }
+
+                        for (auto& iter : style_buckets)
+                        {
+                            const Style* style = iter.first;
+                            FeatureList& list = iter.second;
+                            processFeaturesForStyle(*style, list, progress);
+                        }
+                    }
+                }
+                else
+                {
+                    const Style* style = session->styles()->getStyle(sel.getSelectedStyleName());
+                    Query query = sel.query().get();
+                    query.tileKey() = key;
+
+                    // Get the features
+                    FeatureList features;
+                    getFeatures(session, query, buffer, key.getExtent(), filters, features, progress);
+
+                    processFeaturesForStyle(*style, features, progress);
+                }
+            }
+        }
+        else
+        {
+            const Style* style = session->styles()->getDefaultStyle();
+
+            // Get the features
+            FeatureList features;
+            getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
+            
+            processFeaturesForStyle(*style, features, progress);
+        }
+    }
+    else
+    {
+        FeatureList features;
+        getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
+
+        // Render the features
+        Style emptyStyle;
+        processFeaturesForStyle(emptyStyle, features, progress);
+    }
+}
+
+void
+FeatureStyleSorter::getFeatures(
+    Session* session,
+    const Query& query,
+    const Distance& buffer,
+    const GeoExtent& workingExtent,
+    FeatureFilterChain* filters,
+    FeatureList& features,
+    ProgressCallback* progress) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(session, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource()->getFeatureProfile(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(workingExtent.isValid(), __func__, );
+
+    OE_PROFILING_ZONE;
+
+    // first we need the overall extent of the layer:
+    const GeoExtent& featuresExtent = session->getFeatureSource()->getFeatureProfile()->getExtent();
+
+    // convert them both to WGS84, intersect the extents, and convert back.
+    GeoExtent featuresExtentWGS84 = featuresExtent.transform(featuresExtent.getSRS()->getGeographicSRS());
+    GeoExtent workingExtentWGS84 = workingExtent.transform(featuresExtent.getSRS()->getGeographicSRS());
+    GeoExtent queryExtentWGS84 = featuresExtentWGS84.intersectionSameSRS(workingExtentWGS84);
+    if (queryExtentWGS84.isValid())
+    {
+        GeoExtent queryExtent = queryExtentWGS84.transform(featuresExtent.getSRS());
+
+        // incorporate the image extent into the feature query for this style:
+        Query localQuery = query;
+        localQuery.bounds() =
+            query.bounds().isSet() ? query.bounds()->unionWith(queryExtent.bounds()) :
+            queryExtent.bounds();
+
+        FilterContext context(session, session->getFeatureSource()->getFeatureProfile(), queryExtent);
+
+        // now copy the resulting feature set into a list, converting the data
+        // types along the way if a geometry override is in place:
+        while (features.empty())
+        {
+            if (progress && progress->isCanceled())
+                break;
+
+            osg::ref_ptr<FeatureCursor> cursor;
+            
+            if (localQuery.tileKey().isSet())
+            {
+                cursor = session->getFeatureSource()->createFeatureCursor(
+                    localQuery.tileKey().get(),
+                    buffer,
+                    filters,
+                    &context,
+                    progress);
+            }
+            else
+            {
+                cursor = session->getFeatureSource()->createFeatureCursor(
+                    localQuery,
+                    filters,
+                    &context,
+                    progress);
+            }
+
+            while (cursor.valid() && cursor->hasMore())
+            {
+                Feature* feature = cursor->nextFeature();
+                if (feature->getGeometry())
+                {
+                    features.push_back(feature);
+                }
+            }
+
+            // If we didn't get any features and we have a tilekey set, try falling back.
+            if (features.empty() &&
+                localQuery.tileKey().isSet() &&
+                localQuery.tileKey()->valid())
+            {
+                localQuery.tileKey() = localQuery.tileKey().get().createParentKey();
+                if (!localQuery.tileKey()->valid())
+                {
+                    // We fell back all the way to lod 0 and got nothing, so bail.
+                    break;
+                }
+            }
+            else
+            {
+                // Just bail, we didn't get any features and aren't using tilekeys
+                break;
+            }
+        }
+    }
 }

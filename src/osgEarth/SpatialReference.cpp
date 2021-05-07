@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
 #include <osgEarth/LocalTangentPlane>
+#include <osgEarth/Math>
 #include <ogr_spatialref.h>
 #include <cpl_conv.h>
 
@@ -1286,6 +1287,15 @@ SpatialReference::transformExtentToMBR(
 
     // Transform all points and take the maximum bounding rectangle the resulting points
     std::vector<osg::Vec3d> v;
+
+    // Start by clamping to the out_srs' legal bounds, if possible.
+    // TODO: GDAL 3 has a new OSRGetAreaOfUse method that might help with this.
+    if (isGeographic() && (to_srs->isMercator() || to_srs->isSphericalMercator()))
+    {
+        const Profile* merc = Registry::instance()->getSphericalMercatorProfile();
+        in_out_ymin = clamp(in_out_ymin, merc->getLatLongExtent().yMin(), merc->getLatLongExtent().yMax());
+        in_out_ymax = clamp(in_out_ymax, merc->getLatLongExtent().yMin(), merc->getLatLongExtent().yMax());
+    }
 
     double height = in_out_ymax - in_out_ymin;
     double width = in_out_xmax - in_out_xmin;

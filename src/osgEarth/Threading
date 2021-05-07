@@ -264,12 +264,20 @@ namespace osgEarth { namespace Threading
             return _shared->obj();
         }
 
-        //! Waits for the result to become available (abandoned)
+        //! Waits for the result to become available (or abandoned)
         void join() const {
             get();
         }
         void join(const Cancelable* cancelable) const {
             get(cancelable);
+        }
+
+        //! Returns the result value (available or not) and abandons the future.
+        //! It is typical to check isAvailable() prior to calling release.
+        T release() {
+            T result = get();
+            abandon();
+            return result;
         }
 
         //! Release reference to a promise, resetting this future to its default state
@@ -279,6 +287,20 @@ namespace osgEarth { namespace Threading
         }
         void reset() {
             abandon();
+        }
+
+        void wait() {
+            while (!_ev->wait(250u))
+                if (isAbandoned()) break;
+        }
+
+        Future<T>& then(std::function<void(T*)>& func) {
+            std::unique_lock<std::mutex> lock(_objRef->_callbacksMutex);
+            if (_ev->isSet())
+                func(_objRef->_obj.get());
+            else
+                _objRef->_callbacks.push_back(func);
+            return *this;
         }
 
     private:
@@ -496,6 +518,7 @@ namespace osgEarth { namespace Threading
         void lock() const { _lockable_mutex.lock(); }
         void unlock() { _lockable_mutex.unlock(); }
         void unlock() const { _lockable_mutex.unlock(); }
+        void scoped_lock(std::function<void()> func) { lock(); func(); unlock(); }
         Mutex& mutex() const { return _lockable_mutex; }
     private:
         mutable Mutex _lockable_mutex;

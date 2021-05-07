@@ -123,10 +123,24 @@ namespace osgEarth
         template<typename T>
         Revision getOpenLayers(std::vector< osg::ref_ptr<T> >& output) const;
 
+        //! Fills the vector with references to all layers satisflying the predicate
+        //! and returns the corresponding revision number.
+        template<typename T>
+        Revision getLayers(
+            std::vector< osg::ref_ptr<T> >& output, 
+            const std::function<bool(const Layer*)>& predicate) const;
+
         //! Fills the vector with references to all layers of the specified type.
         //! and returns the corresponding revision number.
         template<typename T>
         Revision getLayers(osg::MixinVector< osg::ref_ptr<T> >& output) const;
+
+        //! Fills the vector with references to all layers satisflying the predicate
+        //! and returns the corresponding revision number.
+        template<typename T>
+        Revision getLayers(
+            osg::MixinVector<osg::ref_ptr<T>>& output,
+            const std::function<bool(const Layer*)>& predicate) const;
 
         //! Fills the vector with references to all layers of the specified type.
         //! and returns the corresponding revision number.
@@ -278,21 +292,32 @@ namespace osgEarth
     }
 
     template<typename T>
-    Revision Map::getLayers(std::vector< osg::ref_ptr<T> >& output) const {
+    Revision Map::getLayers(std::vector<osg::ref_ptr<T>>& output) const {
         Threading::ScopedReadLock lock(_mapDataMutex);
-        for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
-            T* obj = dynamic_cast<T*>(i->get());
+        for (auto& i : _layers) {
+            T* obj = dynamic_cast<T*>(i.get());
             if (obj) output.push_back(obj);
         }
         return _dataModelRevision;
     }
 
     template<typename T>
-    Revision Map::getOpenLayers(std::vector< osg::ref_ptr<T> >& output) const {
+    Revision Map::getLayers(std::vector<osg::ref_ptr<T>>& output, const std::function<bool(const Layer*)>& predicate) const {
         Threading::ScopedReadLock lock(_mapDataMutex);
-        for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
-            if (i->get()->isOpen()) {
-                T* obj = dynamic_cast<T*>(i->get());
+        for (auto& i : _layers) {
+            T* obj = dynamic_cast<T*>(i.get());
+            if (obj != nullptr && predicate(obj))
+                output.push_back(obj);
+        }
+        return _dataModelRevision;
+    }
+
+    template<typename T>
+    Revision Map::getOpenLayers(std::vector<osg::ref_ptr<T>>& output) const {
+        Threading::ScopedReadLock lock(_mapDataMutex);
+        for (auto& i : _layers) {
+            if (i->isOpen()) {
+                T* obj = dynamic_cast<T*>(i.get());
                 if (obj) output.push_back(obj);
             }
         }
@@ -300,21 +325,32 @@ namespace osgEarth
     }
 
     template<typename T>
-    Revision Map::getLayers(osg::MixinVector< osg::ref_ptr<T> >& output) const {
+    Revision Map::getLayers(osg::MixinVector<osg::ref_ptr<T>>& output) const {
         Threading::ScopedReadLock lock(_mapDataMutex);
-        for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
-            T* obj = dynamic_cast<T*>(i->get());
+        for (auto& i : _layers) {
+            T* obj = dynamic_cast<T*>(i.get());
             if (obj) output.push_back(obj);
         }
         return _dataModelRevision;
     }
 
     template<typename T>
-    Revision Map::getOpenLayers(osg::MixinVector< osg::ref_ptr<T> >& output) const {
+    Revision Map::getLayers(osg::MixinVector<osg::ref_ptr<T>>& output, const std::function<bool(const Layer*)>& predicate) const {
         Threading::ScopedReadLock lock(_mapDataMutex);
-        for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
-            if (i->get()->isOpen()) {
-                T* obj = dynamic_cast<T*>(i->get());
+        for (auto& i : _layers) {
+            T* obj = dynamic_cast<T*>(i.get());
+            if (obj != nullptr && predicate(obj))
+                output.push_back(obj);
+        }
+        return _dataModelRevision;
+    }
+
+    template<typename T>
+    Revision Map::getOpenLayers(osg::MixinVector<osg::ref_ptr<T>>& output) const {
+        Threading::ScopedReadLock lock(_mapDataMutex);
+        for (auto& i : _layers) {
+            if (i->isOpen()) {
+                T* obj = dynamic_cast<T*>(i.get());
                 if (obj) output.push_back(obj);
             }
         }
@@ -323,18 +359,18 @@ namespace osgEarth
 
     template<typename T> T* Map::getLayer() const {
         Threading::ScopedReadLock lock(_mapDataMutex);
-        for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
-            T* obj = dynamic_cast<T*>(i->get());
+        for (auto& i : _layers) {
+            T* obj = dynamic_cast<T*>(i.get());
             if (obj) return obj;
         }
         return 0L;
     }
 
-    Revision Map::getLayers(LayerVector& out_layers, const std::function<bool(const Layer*)>& predicate) const {
+    Revision Map::getLayers(LayerVector& output, const std::function<bool(const Layer*)>& predicate) const {
         Threading::ScopedReadLock lock(_mapDataMutex);
-        for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
-            if (predicate(i->get()))
-                out_layers.push_back(i->get());
+        for (auto& i : _layers) {
+            if (predicate(i.get()))
+                output.push_back(i.get());
         }
         return _dataModelRevision;
     }

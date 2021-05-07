@@ -31,6 +31,7 @@ void AssetUsage::Options::fromConfig(const Config& conf)
     height().setDefault(10.0f);
     sizeVariation().setDefault(0.0f);
     selectionWeight().setDefault(1.0f);
+    fill().setDefault(1.0f);
 
     conf.get("url", sideBillboardURI());
     conf.get("top_url", topBillboardURI());
@@ -39,14 +40,14 @@ void AssetUsage::Options::fromConfig(const Config& conf)
     conf.get("height", height());
     conf.get("size_variation", sizeVariation());
     conf.get("selection_weight", selectionWeight());
+    conf.get("weight", selectionWeight());
+    conf.get("fill", fill());
 }
 
 Config AssetUsage::Options::getConfig() const
 {
-    Config conf = _initConfig;
-    conf.key() = "billboard";
-
     //Config conf("billboard");
+    Config conf("asset");
     conf.set("url", sideBillboardURI());
     conf.set("top_url", topBillboardURI());
     conf.set("model", modelURI());
@@ -54,6 +55,7 @@ Config AssetUsage::Options::getConfig() const
     conf.set("height", height());
     conf.set("size_variation", sizeVariation());
     conf.set("selection_weight", selectionWeight());
+    conf.set("fill", fill());
     return conf;
 }
 
@@ -69,7 +71,7 @@ void LandCoverGroup::Options::fromConfig(const Config& conf)
     conf.get("size_variation", sizeVariation());
     for (ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
     {
-        if (i->key() == "billboard")
+        if (i->key() == "asset" || i->key() == "billboard")
             assets().push_back(AssetUsage(*i));
     }
 }
@@ -82,7 +84,7 @@ Config LandCoverGroup::Options::getConfig() const
     conf.set("size_variation", sizeVariation());
     for (int i = 0; i < assets().size(); ++i)
     {
-        conf.add("billboard", assets()[i].getConfig());
+        conf.add("asset", assets()[i].getConfig());
     }
     return conf;
 }

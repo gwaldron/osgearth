@@ -26,6 +26,7 @@
 #include <osgText/Glyph>
 #include <osgText/Font>
 #include <osg/PolygonMode>
+#include <osg/PolygonOffset>
 #include <osg/BlendFunc>
 #include <sstream>
 
@@ -108,6 +109,7 @@ DebugImageLayer::Options::fromConfig(const Config& conf)
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(debugimage, DebugImageLayer);
+REGISTER_OSGEARTH_LAYER(debug, DebugImageLayer);
 
 void
 DebugImageLayer::init()
@@ -132,7 +134,8 @@ DebugImageLayer::init()
     {
         osg::StateSet* ss = getOrCreateStateSet();
         ss->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
-        //ss->setAttributeAndModes(new osg::BlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA), 1 | osg::StateAttribute::OVERRIDE);
+        ss->setAttributeAndModes(new osg::PolygonOffset(-1, -1), 1);
+        _tessImage = ImageUtils::createOnePixelImage(Color(Color::Yellow, 0.75f));
     }
 }
 
@@ -158,8 +161,7 @@ DebugImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
 {
     if (options().showTessellation() == true)
     {
-        osg::Image* image = ImageUtils::createOnePixelImage(Color::Black);
-        return GeoImage(image, key.getExtent());
+        return GeoImage(_tessImage.get(), key.getExtent());
     }
 
     // first draw the colored outline:
@@ -184,13 +186,12 @@ DebugImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
         buf << key.str();
     }
 
-    GeoExtent e = key.getExtent();
-    if (!e.getSRS()->isProjected())
-    {
-        e = e.transform(e.getSRS()->createTangentPlaneSRS(e.getCentroid().vec3d()));
-    }
+    const GeoExtent& e = key.getExtent();
 
-    buf << std::fixed << std::setprecision(1) << "\nh=" << e.height() << "m\nw=" << e.width() << "m";
+    buf << std::fixed << std::setprecision(1) 
+        << "\nh=" << e.height(Units::METERS)
+        << "m\nw=" << e.width(Units::METERS)
+        << "m";
 
     std::string text;
     text = buf.str();

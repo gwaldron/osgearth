@@ -49,10 +49,11 @@ Shadowing::isShadowCamera(const osg::Camera* camera)
 //...................................................................
 
 ShadowCaster::ShadowCaster() :
+_enabled(true),
 _size         ( 2048 ),
 _texImageUnit ( 7 ),
 _blurFactor   ( 0.001f ),
-_color        ( 0.4f ),
+_color        ( 0.5f ),
 _traversalMask( ~0 )
 {
     _castingGroup = new osg::Group();
@@ -62,9 +63,7 @@ _traversalMask( ~0 )
     {
         // default slices:
         _ranges.push_back(0.0f);
-        _ranges.push_back(100.0f);
-        _ranges.push_back(500.0f);
-        //_ranges.push_back(1250.0f);
+        _ranges.push_back(250.0f);
 
         reinitialize();
     }
@@ -199,6 +198,8 @@ ShadowCaster::reinitialize()
     _shadowColorUniform = _renderStateSet->getOrCreateUniform("oe_shadow_color", osg::Uniform::FLOAT);
 
     _shadowColorUniform->set(_color);
+
+    _renderStateSet->getOrCreateUniform("oe_shadow_maxrange", osg::Uniform::FLOAT)->set(_ranges.back());
 }
 
 void
@@ -235,6 +236,7 @@ void
 ShadowCaster::traverse(osg::NodeVisitor& nv)
 {
     if (_supported                             && 
+        _enabled                               &&
         _light.valid()                         &&
         nv.getVisitorType() == nv.CULL_VISITOR && 
         _castingGroup->getNumChildren() > 0    && 
@@ -296,6 +298,10 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 frustumPH.transform( inverseMVP, MVP );
                 std::vector<osg::Vec3d> verts;
                 frustumPH.getPoints( verts );
+
+                // include the eyepoint in the shadowing volume.
+                if (i == 0)
+                    verts.push_back(camEye);
 
                 // project those on to the plane of the light camera and fit them
                 // to a bounding box. That box will form the extent of our orthographic camera.

@@ -25,7 +25,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Metrics>
 
-#define LC "[XYZFeatureSource] "
+#define LC "[XYZFeatureSource] " << getName() << " : "
 
 using namespace osgEarth;
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
@@ -224,7 +224,7 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
         // fail if we can't find an appropriate OGR driver:
         if (!ogrDriver)
         {
-            OE_WARN << LC << "Error reading TFS response; cannot grok content-type \"" << mimeType << "\""
+            OE_WARN << LC << "Error reading response; cannot grok content-type \"" << mimeType << "\""
                 << std::endl;
             return false;
         }
@@ -233,7 +233,7 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
 
         if (!ds)
         {
-            OE_WARN << LC << "Error reading TFS response" << std::endl;
+            OE_WARN << LC << "Error reading response" << std::endl;
             return false;
         }
 

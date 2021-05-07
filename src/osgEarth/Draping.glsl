@@ -23,7 +23,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint oe_overlay_fragment
 #pragma vp_location   fragment_coloring
-#pragma vp_order      0.6
+#pragma vp_order      1.1
 
 #pragma import_defines(OE_IS_PICK_CAMERA)
 #pragma import_defines(OE_DISABLE_DRAPING)

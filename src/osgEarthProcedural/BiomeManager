@@ -1,0 +1,223 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_PROCEDURAL_BIOME_MANAGER
+#define OSGEARTH_PROCEDURAL_BIOME_MANAGER 1
+
+#include "Biome"
+#include <osgEarth/TextureArena>
+#include <osgEarth/InstanceCloud>
+
+namespace osgEarth
+{
+    namespace Procedural
+    {
+        using namespace osgEarth;
+
+        /**
+         * A ModelAsset that has been "materialized" for rendering by
+         * loading the data from its URIs, including the actual model
+         * node and billboard textures.
+         */
+        class OSGEARTHPROCEDURAL_EXPORT ModelAssetData
+        {
+        public:
+            using Ptr = std::shared_ptr<ModelAssetData>;
+
+            static Ptr create();
+
+            //! the asset being instantiated
+            const ModelAsset* _asset;
+
+            //! the model node loaded from the asset definition
+            osg::ref_ptr<osg::Node> _model;
+
+            //! the imposter node loaded from the asset definition
+            osg::ref_ptr<osg::Node> _billboard;
+
+            //! impostor textures
+            osg::ref_ptr<osg::Texture> _sideBillboardTex;
+            osg::ref_ptr<osg::Texture> _sideBillboardNormalMap;
+            osg::ref_ptr<osg::Texture> _topBillboardTex;
+            osg::ref_ptr<osg::Texture> _topBillboardNormalMap;
+
+            osg::BoundingBox _modelAABB;
+
+            // assigned by createGeometryCloud
+            int _modelCommand;
+            int _billboardCommand;
+
+            // Textures discovered by GeometryCloud. 
+            //std::vector<Texture::WeakPtr> _textures;
+
+        private:
+            ModelAssetData();
+        };
+
+        /**
+         * One usage of a model asset instance within the rendering system.
+         * It is possible to have a single asset data referenced more than once
+         * with varying parameters.
+         */
+        class OSGEARTHPROCEDURAL_EXPORT ModelAssetDataInstance
+        {
+        public:
+            ModelAssetDataInstance() :
+                _weight(1.0f),
+                _fill(1.0f) { }
+
+            ModelAssetData::Ptr _data;
+            float _weight;
+            float _fill;
+            
+            // These references prevent the TextureArena from making
+            // the textures non-resident.
+            std::vector<Texture::Ptr> _textures;
+        };
+
+
+        /**
+         * Manages the collection of active Biomes in memory.
+         */
+        class OSGEARTHPROCEDURAL_EXPORT BiomeManager
+        {
+        public:
+            using ModelAssetDataTable = std::unordered_map<const ModelAsset*, ModelAssetData::Ptr>;
+            using ModelAssetInstanceCollection = std::vector<ModelAssetDataInstance>;
+            using CategoryInstanceTable = std::unordered_map<const ModelCategory*, ModelAssetInstanceCollection>;
+            using BiomeInstanceTable = std::unordered_map<const Biome*, CategoryInstanceTable>;
+
+        public:
+            BiomeManager();
+
+            //! Tell the manager to increase the usage count of a biome by one.
+            //! If there are no users, the manager will make the biome resident.
+            //! @param biome Biome to activate
+            void ref(const Biome* biome);
+
+            //! Tell the manager to decrease the usage count of a biome by one.
+            //! If the user count goes to zero, teh manager will release the
+            //! biome's instance and free its memory.
+            void unref(const Biome* biome);
+
+            //! The revision of the current configuration. This increments
+            //! every time the set of resident biomes changes, so that a
+            //! client can decide to get an updated configuration.
+            int getRevision() const;
+
+            //! Collection of all active biomes
+            std::vector<const Biome*> getActiveBiomes() const;
+
+            //! Collection of assets loaded into memory (snapshot)
+            ModelAssetDataTable getResidentAssets() const;
+
+            //! make resident all data calculated by update()
+            void loadCategory(
+                const std::string& category,
+                std::function<osg::Node*(std::vector<osg::Texture*>&)> createImposterGeometry,
+                const osgDB::Options* readOptions);
+
+            //! Create a geometry cloud containing the current resident
+            //! set of biomes.
+            GeometryCloud* createGeometryCloud(
+                const std::string& category,
+                TextureArena* arena); // const;
+
+            //! Generate the lookup tables necessary to render a geometry cloud.
+            osg::StateAttribute* createGPULookupTables(
+                const std::string& category) const;
+
+        private:
+            mutable Mutex _mutex;
+            int _revision;
+
+            using BiomeRefs = std::unordered_map<const Biome*, int>;
+            BiomeRefs _refs;
+
+            // all currently loaded model assets (regardless of biome)
+            ModelAssetDataTable _residentModelAssetData;
+
+            // all model asset usage records, sorted by biome
+            BiomeInstanceTable _residentBiomeData;
+
+            // recalculate the required resident biome set
+            void update();
+
+            // release any assets no longer referenced by a resident biome
+            void discardUnreferencedAssets();
+
+        public:
+
+            struct BiomeLUT_Data
+            {
+                // please keep me 16-byte aligned
+                GLint offset;   // index of first asset in biome (in asset LUT)
+                GLint count;    // number of assets in biome
+                GLfloat _padding[2];
+                BiomeLUT_Data() : offset(-1), count(-1) { }
+            };
+            using BiomeLUT_SSBO = ArraySSBO<BiomeLUT_Data>;
+
+            // SSBO that holds the model asset information
+            struct AssetLUT_Data
+            {                
+                // please keep me 16-byte aligned
+                GLint modelCommand;
+                GLint billboardCommand;
+                GLfloat width;
+                GLfloat height;
+
+                GLfloat fill;
+                GLfloat sizeVariation;
+                GLfloat _padding[2];
+            };
+            using AssetLUT_SSBO = ArraySSBO<AssetLUT_Data>;
+
+            // State attribute containing our LUTs
+            class BiomeGPUData : public osg::StateAttribute
+            {
+            public:
+                BiomeLUT_SSBO& biomeLUT() { return _biomeLUT; }
+                AssetLUT_SSBO& assetLUT() { return _assetLUT; }
+
+                void apply(osg::State& state) const override
+                {
+                    _biomeLUT.apply(state);
+                    _assetLUT.apply(state);
+                }
+
+                void resizeGLObjectBuffers(unsigned maxSize) override
+                {
+                    _biomeLUT.resizeGLObjectBuffers(maxSize);
+                    _assetLUT.resizeGLObjectBuffers(maxSize);
+                }
+
+                META_StateAttribute(osgEarth, BiomeGPUData, (osg::StateAttribute::Type)12131415);
+                BiomeGPUData() { }
+                BiomeGPUData(const BiomeGPUData& rhs, const osg::CopyOp& op) { }
+                int compare(const osg::StateAttribute& rhs) const override { return -1; }
+
+            private:
+                BiomeLUT_SSBO _biomeLUT;
+                AssetLUT_SSBO _assetLUT;
+            };
+        };
+    }
+} // namespace osgEarth::Procedural
+
+#endif

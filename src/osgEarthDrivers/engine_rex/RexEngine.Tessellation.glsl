@@ -1,55 +1,4 @@
 #version 400
-#pragma vp_name REX Engine TCS
-#pragma vp_entryPoint oe_rex_tessellate
-#pragma vp_location tess_control
-#pragma vp_order first
-
-layout(vertices=3) out;
-
-// feeds the TCS outputer (below)
-in vec4 oe_terrain_tessLevel;
-
-// contains [viewport.x, viewport.y, LOD scale]
-uniform vec3 oe_Camera;
-
-uniform float oe_terrain_sse; // screen space error (pixels)
-
-// inspired by:
-// http://codeflow.org/entries/2010/nov/07/opengl-4-tessellation/
-
-// convert model position to viewport coordinates.
-vec2 toPixels(in vec4 model)
-{    
-    vec4 clip = gl_ModelViewProjectionMatrix * model;
-    return (clip.xy/clip.w) * (oe_Camera.xy*0.5);
-}
-
-// calculate a tesselation level based on the maximum edge length uniform.
-float tessLevel(in vec2 v0, in vec2 v1)
-{
-    return clamp(distance(v0,v1)/oe_terrain_sse, 1.0, 64.0);
-}
-
-void oe_rex_tessellate()
-{
-    if (gl_InvocationID == 0)
-    {
-        vec2 ss0 = toPixels(gl_in[0].gl_Position);
-        vec2 ss1 = toPixels(gl_in[1].gl_Position);
-        vec2 ss2 = toPixels(gl_in[2].gl_Position);
-
-        float e0 = tessLevel(ss1, ss2);
-        float e1 = tessLevel(ss2, ss0);
-        float e2 = tessLevel(ss0, ss1);
-
-        oe_terrain_tessLevel = vec4(e0, e1, e2, (e0+e1+e2)/3.0);
-    }
-}
-
-
-[break]
-
-#version 400
 #pragma vp_name       REX Engine TCS
 #pragma vp_entryPoint oe_rex_TCS
 #pragma vp_location   tess_control
@@ -57,17 +6,59 @@ void oe_rex_tessellate()
 
 layout(vertices=3) out;
 
-in vec4 oe_terrain_tessLevel;
+uniform float oe_terrain_tess;
+uniform float oe_terrain_tess_range;
 
-// MAIN ENTRY POINT
+// temporary: use lifemap texture from earth file
+uniform sampler2D LIFEMAP_TEX;
+uniform mat4 LIFEMAP_MAT;
+vec4 oe_layer_tilec;
+vec4 vp_Vertex;
+vec3 vp_Normal;
+void VP_LoadVertex(in int);
+float oe_terrain_getElevation();
+
+float remap_unit(in float value, in float lo, in float hi)
+{
+    return clamp((value - lo) / (hi - lo), 0.0, 1.0);
+}
+
 void oe_rex_TCS()
 {
     if (gl_InvocationID == 0)
     {
-        gl_TessLevelOuter[0] = oe_terrain_tessLevel[0];
-        gl_TessLevelOuter[1] = oe_terrain_tessLevel[1];
-        gl_TessLevelOuter[2] = oe_terrain_tessLevel[2];
-        gl_TessLevelInner[0] = oe_terrain_tessLevel[3];
+        // iterator backward so we end up loading vertex 0
+        float d[3];
+        vec3 v[3];
+        for (int i = 2; i >= 0; --i)
+        {
+            VP_LoadVertex(i);
+            v[i] = (gl_ModelViewMatrix * (vp_Vertex + vec4(vp_Normal * oe_terrain_getElevation(), 0.0))).xyz;
+            d[i] = 1.0 - texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st).g;
+            d[i] = oe_terrain_tess * d[i] * d[i] * d[i];
+        }
+
+        float max_dist = oe_terrain_tess_range;
+        float min_dist = oe_terrain_tess_range / 6.0;
+
+        vec3 m12 = 0.5*(v[1] + v[2]);
+        vec3 m20 = 0.5*(v[2] + v[0]);
+        vec3 m01 = 0.5*(v[0] + v[1]);
+
+        float f12 = remap_unit(-m12.z, max_dist, min_dist);
+        float f20 = remap_unit(-m20.z, max_dist, min_dist);
+        float f01 = remap_unit(-m01.z, max_dist, min_dist);
+
+        float e0 = max(1.0, max(d[1], d[2]) * f12);
+        float e1 = max(1.0, max(d[2], d[0]) * f20);
+        float e2 = max(1.0, max(d[0], d[1]) * f01);
+
+        float e3 = max(e0, max(e1, e2));
+
+        gl_TessLevelOuter[0] = e0;
+        gl_TessLevelOuter[1] = e1;
+        gl_TessLevelOuter[2] = e2;
+        gl_TessLevelInner[0] = e3;
     }
 }
 

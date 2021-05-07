@@ -89,6 +89,10 @@ namespace osgEarth { namespace REX
         // Renders the tile.
         void draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const;
 
+        // Visits the tile (to state applied, nothing rendered) - useful when collecting
+        // tile data for a compute shader, e.g.
+        void visit(osg::RenderInfo& ri) const;
+
         // Less than operator will ensure that tiles are sorted near to far
         // to minimze overdraw.
         bool operator < (const DrawTileCommand& rhs) const
@@ -116,7 +120,6 @@ namespace osgEarth { namespace REX
      * Ordered list of tile drawing commands.
      * List is faster than vector here (benchmarked)
      */
-    //typedef std::list<DrawTileCommand> DrawTileCommands;
     typedef std::vector<DrawTileCommand> DrawTileCommands;
 
 } } // namespace 

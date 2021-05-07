@@ -1,10 +1,6 @@
 <map>
     <xi:include href="readymap_elevation.xml"/>
-
-    <!-- Procedural imagery -->
-    <xi:include href="land_cover_dictionary.xml"/>
-    <xi:include href="esa_land_cover.xml"/>
-    <xi:include href="splat_imagery.xml"/>
+    <xi:include href="readymap_imagery.xml"/>
 
     <!-- Elevation layer that will "flatten" the terrain along the roads -->
     <FlattenedElevation name="Road Flattener" min_level="14" max_data_level="16">
@@ -30,29 +26,8 @@
         <buffer_width>getBufferWidth()</buffer_width>
     </FlattenedElevation>
 
-    <!-- Procedural trees, masked by the Road layer -->
-    <GroundCover name="Trees">
-        <lod>14</lod>
-        <mask_layer>Road Surface</mask_layer>
-        <zones>
-            <zone name="default">
-                <groundcover>
-                    <spacing>12</spacing>
-                    <fill>0.7</fill>
-                    <biomes>
-                        <biome classes="forest">
-                            <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
-                            <billboard url="../data/splat/pine.png" width="16.0" height="22.0" />
-                            <billboard url="../data/splat/pine2.png" width="15.0" height="18.0"/>
-                        </biome>
-                    </biomes>
-                </groundcover>
-            </zone>
-        </zones>
-    </GroundCover>
-
     <!-- Road surface rendering -->
-    <RoadSurface name="Road Surface" min_level="14" max_data_level="19" shared="true">
+    <RoadSurface name="Road Surface" min_level="14" max_data_level="19" shared="true" enabled="false">
         <features>roads:data</features>
         <buffer_width>15m</buffer_width>
 
@@ -159,5 +134,5 @@
         </filters>
     </TFSFeatures>
 
-    <libraries>osgEarthSplat</libraries>
+    <libraries>osgEarthProcedural</libraries>
 </map>

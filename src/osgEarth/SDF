@@ -20,37 +20,110 @@
 #ifndef OSGEARTH_SDF_H
 #define OSGEARTH_SDF_H
 
-#include "Common"
-#include "Feature"
-#include "GeoData"
-#include "ImageLayer"
-#include "FilterContext"
-#include "Expression"
+#include <osgEarth/Common>
+#include <osgEarth/Feature>
+#include <osgEarth/GLUtils>
+#include <osg/Image>
+
+namespace osg {
+    class Uniform;
+}
 
 namespace osgEarth { namespace Util
 {
+    class Session;
+
     class OSGEARTH_EXPORT SDFGenerator
     {
     public:
-        //! Encode a signed distance field into a channel of the geoimage.
+        SDFGenerator();
+
+        //! Allocate a new SDF image
+        //! @param size X and Y dimension; must be a power of 2
+        //! @param extent Geospatial extent
+        GeoImage allocateSDF(
+            unsigned size,
+            const GeoExtent& extent) const;
+
+        //! Encode a nearest-neighbor field for vector data. Each pixel contains
+        //! the coordinates of the nearest pixel with feature data. The coordinate
+        //! system is [x,y] relate to the lower-left corner.
+        //!
+        //! You can pass this field to the createDistanceField function to convert
+        //! it to a distance field.
+        //!
         //! @param features Features to use for distance calculation
-        //! @param image Image to which to encode the SDF
-        //! @param extent Geospatial extent of the image
-        //! @param channel Image channel to which to encode distance value
-        //! @param minDistance Distances <= minDistance are encoded as 0.0
-        //! @param maxDistance Distances >= maxDistance are encoded as 1.0
-        //! @param invert true to invert the selection and encode the interiors instead
-        void encodeSDF(
+        //! @param session Feature Session containing feature data context
+        //! @param size Size of raster to create
+        //! @param extent Geospatial extent of the raster
+        //! @param nnfield Input/output nearest neighbor field
+        //! @param progress Progress tracker object
+        //! @return True upon success
+        bool createNearestNeighborField(
             const FeatureList& features,
-            osg::Image* image,
+            Session* session,
+            unsigned nnfieldSize,
             const GeoExtent& extent,
-            GLenum channel,
-            FilterContext& fctx,
-            const NumericExpression& min_dist_meters,
-            const NumericExpression& max_dist_meters,
-            bool invert,
-            Cancelable* progress);
+            GeoImage& nnfield,
+            Cancelable* progress) const;
+
+        //! Encode a nearest-neighbor field from a raster image.
+        //! The input raster is typically rasterized feature data, but can be
+        //! anything.
+        //!
+        //! You can pass this field to the createDistanceField function to convert
+        //! it to a distance field.
+        //!
+        //! @param input Input raster data
+        //! @param nnfield Input/output nearest neighbor field
+        //! @param progress Progress tracker object
+        //! @return True upon success
+        bool createNearestNeighborField(
+            const GeoImage& input,
+            GeoImage& nnfield,
+            Cancelable* progress) const;
+
+        //! Encode a distance field into an image.
+        //! @param nnfield Input NN Field to conver to a distance field
+        //! @param sdf Distance field to populate (additively). Distance values are
+        //!    in the range [0..1] normalized from the min_dist and max_dist inputs.
+        //! @param extent Geospatial extent of the resulting SDF
+        //! @param sdfSize pixel dimention (x and y) of the resulting SDF
+        //! @param min_dist Distances <= min_dist are encoded as 0.0
+        //! @param max_dist Distances >= max_dist are encoded as 1.0
+        //! @param progress Progress tracker object
+        void createDistanceField(
+            const GeoImage& nnfield,
+            GeoImage& sdf,
+            float tile_size,
+            float min_dist,
+            float max_dist,
+            Cancelable* progress) const;
+
+        //! Whether to permit use of the GPU. Set this to true if there
+        //! is a running frame loop with an active graphics context available
+        //! and you are willing to shunt the processing to the GPU.
+        void setUseGPU(bool value);
+
+    private:
+
+        void compute_nnf_on_gpu(osg::Image* buf) const;
+        void compute_nnf_on_cpu(osg::Image* buf) const;
+
+        struct NNFSession : public ComputeImageSession
+        {
+        public:
+            NNFSession() : _L_uniform(-1) { }
+            void renderImplementation(osg::State* state) override;
+            GLint _L_uniform;
+        };
+
+        PerThreadComputeSession<NNFSession> _compute;
+        osg::ref_ptr<osg::Program> _program;
+        bool _useGPU;
+
     };
-} }
+} } // osgEarth::Util
+
 
 #endif // OSGEARTH_SDF_H

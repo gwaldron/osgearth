@@ -44,6 +44,7 @@ namespace osgEarth { namespace Contrib
         public:
             META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION(NumericExpression, lineWidth);
             OE_OPTION(NumericExpression, bufferWidth);
             OE_OPTION(bool, fill);
@@ -113,6 +114,8 @@ namespace osgEarth { namespace Contrib
         typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
         FeaturesLRU _featuresCache;
         Threading::Mutex _featuresCacheMutex;
+
+        osg::ref_ptr<FeatureFilterChain> _filterChain;
     };
 
 } }

@@ -435,14 +435,14 @@ GeometryValidator::apply(osg::Geometry& geom)
 {
     if ( geom.getVertexArray() == 0L )
     {
-        OE_NOTICE << LC << "NULL vertex array!!\n";
+        OE_NOTICE << LC << "NULL vertex array!!" << std::endl;
         return;
     }
 
     unsigned numVerts = geom.getVertexArray()->getNumElements();
     if ( numVerts == 0 )
     {
-        OE_NOTICE << LC << "No verts!! name=" << geom.getName() << "\n";
+        OE_NOTICE << LC << "No verts!! name=" << geom.getName() <<  std::endl;
         return;
     }
 
@@ -458,25 +458,25 @@ GeometryValidator::apply(osg::Geometry& geom)
         {
             if ( a->getBinding() == a->BIND_OVERALL && a->getNumElements() != 1 )
             {
-                OE_NOTICE << LC << "Found an array with BIND_OVERALL and size <> 1\n";
+                OE_NOTICE << LC << "Found an array with BIND_OVERALL and size <> 1" << std::endl;
             }
             else if ( a->getBinding() == a->BIND_PER_VERTEX && a->getNumElements() != numVerts )
             {
-                OE_NOTICE << LC << "Found BIND_PER_VERTEX with wrong number of elements (expecting " << numVerts << "; found " << a->getNumElements() << ")\n";
+                OE_NOTICE << LC << a->className () << " : Found BIND_PER_VERTEX with wrong number of elements (expecting " << numVerts << "; found " << a->getNumElements() << ")" << std::endl;
             }
 
             _vbos.insert( a->getVertexBufferObject() );
         }
         else
         {
-            OE_NOTICE << LC << "Found a NULL array\n";
+            OE_NOTICE << LC << "Found a NULL array" << std::endl;
         }
 
     }
 
     if ( _vbos.size() != 1 )
     {
-        OE_NOTICE << LC << "Found a Geometry that uses more than one VBO (non-optimal sharing)\n";
+        OE_NOTICE << LC << "Found a Geometry that uses more than one VBO (non-optimal sharing)" << std::endl;
     }
 
     const osg::Geometry::PrimitiveSetList& plist = geom.getPrimitiveSetList();
@@ -492,15 +492,15 @@ GeometryValidator::apply(osg::Geometry& geom)
         {
             if ( da->getFirst() >= numVerts )
             {
-                OE_NOTICE << LC << "DrawArrays: first > numVerts\n";
+                OE_NOTICE << LC << "DrawArrays: first > numVerts" << std::endl;
             }
             if ( da->getFirst()+da->getCount() > numVerts )
             {
-                OE_NOTICE << LC << "DrawArrays: first/count out of bounds\n";
+                OE_NOTICE << LC << "DrawArrays: first/count out of bounds" << std::endl;
             }
             if ( da->getCount() < 1 )
             {
-                OE_NOTICE << LC << "DrawArrays: count is zero\n";
+                OE_NOTICE << LC << "DrawArrays: count is zero" << std::endl;
             }
         }
 
@@ -529,25 +529,25 @@ GeometryValidator::apply(osg::Geometry& geom)
 
         if ( pset->getNumIndices() == 0 )
         {
-            OE_NOTICE << LC << "Primset: num elements = 0; class=" << pset->className() << ", name=" << pset->getName() << "\n";
+            OE_NOTICE << LC << "Primset: num elements = 0; class=" << pset->className() << ", name=" << pset->getName() << "" << std::endl;
         }
         else if ( pset->getType() >= GL_TRIANGLES && pset->getNumIndices() < 3 )
         {
-            OE_NOTICE << LC << "Primset: not enough indicies for surface prim type\n";
+            OE_NOTICE << LC << "Primset: not enough indicies for surface prim type" << std::endl;
         }
         else if ( pset->getType() >= GL_LINE_STRIP && pset->getNumIndices() < 2 )
         {
-            OE_NOTICE << LC << "Primset: not enough indicies for linear prim type\n";
+            OE_NOTICE << LC << "Primset: not enough indicies for linear prim type" << std::endl;
         }
         else if ( isDe && pset->getType() == GL_LINES && pset->getNumIndices() % 2 != 0 )
         {
-            OE_NOTICE << LC << "Primset: non-even index count for GL_LINES\n";
+            OE_NOTICE << LC << "Primset: non-even index count for GL_LINES" << std::endl;
         }
     }
 
     if ( _ebos.size() != 1 )
     {
-        OE_NOTICE << LC << "Found a Geometry that uses more than one EBO (non-optimal sharing)\n";
+        OE_NOTICE << LC << "Found a Geometry that uses more than one EBO (non-optimal sharing)" << std::endl;
     }
 }
 
@@ -562,7 +562,7 @@ GeometryValidator::apply(osg::Group& group)
             apply( *geom );
             if ( geom->getVertexArray() == 0L )
             {
-                OE_NOTICE << "removing " << geom->getName() << " b/c of null vertex array\n";
+                OE_NOTICE << "removing " << geom->getName() << " b/c of null vertex array" << std::endl;
                 group.removeChild(geom);
                 --i;
             }

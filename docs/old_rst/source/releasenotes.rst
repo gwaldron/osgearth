@@ -124,7 +124,7 @@ Version 2.8 (September 2016)
 * Fixed improper inversion of y tilekey in FeatureModelGraph and updated all drivers.
 * CURLOPT_ENCODING support.  If you've built curl against zlib, proper HTTP headers for gzip and deflate will be added and automatically decompressed.
 * New osgearth_splat example
-* New osgEarthSplat NodeKit
+* New osgEarthProcedural NodeKit
 * New "template" plugin based on NLTemplate that allows you to write templatized earth files
 * Support for xi:include in earth files
 * Minimum OpenSceneGraph version is 3.4.0

@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Color>
+#include <osgEarth/Math>
 #include <algorithm>
 #include <osg/Vec4ub>
 #include <osgEarth/StringUtils>
@@ -354,14 +355,43 @@ Color::as( Format format ) const
 osg::Vec4f
 Color::asHSL() const
 {
-    osg::Vec4f out = *this;
-    rgb2hsv(out);
-    return out;
+    static const osg::Vec4f K(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
+    osg::Vec4f A(b(), g(), K.w(), K.z());
+    osg::Vec4f B(g(), b(), K.x(), K.y());
+    osg::Vec4f p = mix(A, B, step(b(), g()));
+    A.set(p.x(), p.y(), p.w(), r());
+    B.set(r(), p.y(), p.z(), p.x());
+    osg::Vec4f q = mix(A, B, step(p.x(), r()));
+    float d = q.x() - std::min(q.w(), q.y());
+    const float e = 1.0e-10;
+    return osg::Vec4f(
+        fabs(q.z() + (q.w() - q.y()) / (6.0f*d + e)),
+        d / (q.x() + e),
+        q.x(),
+        a());
 }
 
 void
-Color::fromHSL(const osg::Vec4f& hsla)
+Color::fromHSL(const osg::Vec4f& hsl)
 {
-    *this = hsla;
-    hsv2rgb(*this);
+    set(hsl[0], hsl[1], hsl[2], a());
+    float h = x(), s = y(), v = z();
+    if (s == 0.0f) {
+        set(1.0f, 1.0f, 1.0f, a());
+    }
+    else {
+        float vh = h * 6.0f;
+        float vi = floor(vh);
+        float v1 = v * (1.0f - s);
+        float v2 = v * (1.0f - s * (vh - vi));
+        float v3 = v * (1.0f - s * (1.0f - (vh - vi)));
+        float vr, vg, vb;
+        if (vi == 0.0f) { vr = v, vg = v3, vb = v1; }
+        else if (vi == 1.0f) { vr = v2, vg = v, vb = v1; }
+        else if (vi == 2.0f) { vr = v1, vg = v, vb = v3; }
+        else if (vi == 3.0f) { vr = v1, vg = v2, vb = v; }
+        else if (vi == 4.0f) { vr = v3, vg = v1, vb = v; }
+        else { vr = v, vg = v1, vb = v2; }
+        set(vr, vg, vb, a());
+    }
 }

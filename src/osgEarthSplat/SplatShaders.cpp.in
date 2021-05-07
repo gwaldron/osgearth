@@ -30,15 +30,27 @@ SplattingShaders::SplattingShaders()
 
 GroundCoverShaders::GroundCoverShaders()
 {
-    Grass = "Grass.glsl";
-    _sources[Grass] = "@Grass.glsl@";
+    Grass = "Splat.Grass.glsl";
+    _sources[Grass] = "@Splat.Grass.glsl@";
     
-    GroundCover_CS = "GroundCover.CS.glsl";
-    _sources[GroundCover_CS] = "@GroundCover.CS.glsl@";
+    GroundCover_CS = "Splat.GroundCover.CS.glsl";
+    _sources[GroundCover_CS] = "@Splat.GroundCover.CS.glsl@";
+    
+    GroundCover_Sort_CS = "Splat.GroundCover.Sort.CS.glsl";
+    _sources[GroundCover_Sort_CS] = "@Splat.GroundCover.Sort.CS.glsl@";
 
-    GroundCover_Billboard = "GroundCover.Billboard.glsl";
-    _sources[GroundCover_Billboard] = "@GroundCover.Billboard.glsl@";
+    GroundCover_Billboard = "Splat.GroundCover.Billboard.glsl";
+    _sources[GroundCover_Billboard] = "@Splat.GroundCover.Billboard.glsl@";
     
-    GroundCover_Model = "GroundCover.Model.glsl";
-    _sources[GroundCover_Model] = "@GroundCover.Model.glsl";
+    GroundCover_Model = "Splat.GroundCover.Model.glsl";
+    _sources[GroundCover_Model] = "@Splat.GroundCover.Model.glsl@";
+    
+    GroundCover_Generate = "Splat.GroundCover.Generate.CS.glsl";
+    _sources[GroundCover_Generate] = "@Splat.GroundCover.Generate.CS.glsl@";
+    
+    GroundCover_Render = "Splat.GroundCover.Render.glsl";
+    _sources[GroundCover_Render] = "@Splat.GroundCover.Render.glsl@";
+    
+    GroundCover_Types = "Splat.GroundCover.Types.glsl";
+    _sources[GroundCover_Types] = "@Splat.GroundCover.Types.glsl@";
 }

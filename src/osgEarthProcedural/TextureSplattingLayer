@@ -1,0 +1,82 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_PROCEDURAL_SPLATTING_LAYER_H
+#define OSGEARTH_PROCEDURAL_SPLATTING_LAYER_H
+
+#include "Export"
+#include "BiomeLayer"
+#include "LifeMapLayer"
+#include <osgEarth/ImageLayer>
+#include <osgEarth/LayerReference>
+#include <osgEarth/TextureArena>
+
+namespace osgEarth { namespace Procedural
+{
+    //! Layer that renders geotypical textures on the terrain based on
+    //! Biome classification data ("texture splatting").
+    class OSGEARTHPROCEDURAL_EXPORT TextureSplattingLayer : public VisibleLayer
+    {
+    public:
+        class OSGEARTHPROCEDURAL_EXPORT Options : public VisibleLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION_LAYER(BiomeLayer, biomeLayer);
+            OE_OPTION_LAYER(LifeMapLayer, lifeMapLayer);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarthProcedural, TextureSplattingLayer, Options, VisibleLayer, SplatImage);
+
+        //void setBiomeLayer(BimoeLayer*);
+        BiomeLayer* getBiomeLayer() const;
+
+        LifeMapLayer* getLifeMapLayer() const;
+
+    protected:
+
+        //! Override post-ctor init
+        virtual void init() override;
+        virtual void prepareForRendering(TerrainEngine* engine) override;
+
+    public:
+
+        virtual void addedToMap(const Map* map) override;
+        virtual void removedFromMap(const Map* map) override;
+        virtual void update(osg::NodeVisitor&) override;
+        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
+        virtual void releaseGLObjects(osg::State* state) const override;
+
+    protected:
+        virtual ~TextureSplattingLayer() { }
+
+        Future<osg::ref_ptr<TextureArena>> _materials;
+        osg::ref_ptr<TextureArena> _arena;
+
+        void buildStateSets();
+    };
+} } // namespace osgEarth::Procedural
+
+#endif // OSGEARTH_PROCEDURAL_SPLATTING_LAYER_H

@@ -1,0 +1,78 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_PROCEDURAL_GROUNDCOVER_FEATURESOURCE
+#define OSGEARTH_PROCEDURAL_GROUNDCOVER_FEATURESOURCE 1
+
+#include "Export"
+#include "GroundCoverLayer"
+#include "GroundCoverFeatureGenerator"
+#include <osgEarth/FeatureSource>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Procedural
+{
+    /**
+     * Creates features representing the location and configuration
+     * of GroundCover instances.
+     */
+    class OSGEARTHPROCEDURAL_EXPORT GroundCoverFeatureSource :
+        public FeatureSource
+    {
+    public: // serialization
+        class OSGEARTHPROCEDURAL_EXPORT Options : public FeatureSource::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            OE_OPTION_LAYER(GroundCoverLayer, groundCoverLayer);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, GroundCoverFeatureSource, Options, FeatureSource, GroundCoverFeatures);
+
+        //! GroundCoverLayer from which to generate feature data
+        void setGroundCoverLayer(GroundCoverLayer* layer);
+        GroundCoverLayer* getGroundCoverLayer() const;
+
+    public: // FeatureSource
+
+        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);
+
+    protected: // Layer
+
+        virtual void init();
+
+        virtual Status openImplementation();
+
+        virtual Status closeImplementation();
+
+        virtual void addedToMap(const Map*);
+
+        virtual void removedFromMap(const Map*);
+        
+    private:
+        GroundCoverFeatureGenerator _gen;
+    };
+
+} } // namespace osgEarth::Procedural
+
+#endif // OSGEARTH_PROCEDURAL_GROUNDCOVER_FEATURESOURCE

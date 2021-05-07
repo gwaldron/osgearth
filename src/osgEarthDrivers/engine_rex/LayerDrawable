@@ -98,6 +98,7 @@ namespace osgEarth { namespace REX
     public: // TileBatch
 
         void drawTiles(osg::RenderInfo& ri) const;
+        void visitTiles(osg::RenderInfo& ri) const;
         std::size_t size() const { return _tiles.size(); }
         std::size_t getBatchID() const { return _tileBatchId; }
 

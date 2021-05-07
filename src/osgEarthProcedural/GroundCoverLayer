@@ -1,0 +1,305 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_PROCEDURAL_GROUND_COVER_LAYER_H
+#define OSGEARTH_PROCEDURAL_GROUND_COVER_LAYER_H
+
+#include "Export"
+#include "Biome"
+#include "LifeMapLayer"
+#include "BiomeLayer"
+#include "BiomeManager"
+
+#include <osgEarth/PatchLayer>
+#include <osgEarth/LayerReference>
+#include <osgEarth/LandCoverLayer>
+#include <osgEarth/InstanceCloud>
+#include <osgEarth/VirtualProgram>
+
+namespace osgEarth { namespace Procedural
+{
+    using namespace osgEarth;
+
+    //! Layer that renders billboards on the ground using the GPU,
+    //! like trees, grass, rocks, etc.
+    class OSGEARTHPROCEDURAL_EXPORT GroundCoverLayer : public PatchLayer
+    {
+    public:
+        class OSGEARTHPROCEDURAL_EXPORT Options : public PatchLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, PatchLayer::Options);
+            OE_OPTION_LAYER(ImageLayer, maskLayer);
+            OE_OPTION_LAYER(ImageLayer, colorLayer);
+            OE_OPTION_LAYER(BiomeLayer, biomeLayer);
+            OE_OPTION(std::string, category);
+            OE_OPTION(float, colorMinSaturation);
+            OE_OPTION(unsigned, lod);
+            OE_OPTION(bool, castShadows);
+            OE_OPTION(float, maxAlpha);
+            OE_OPTION(bool, alphaToCoverage);
+            OE_OPTION(float, maxSSE);
+            OE_OPTION(Distance, spacing);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, GroundCoverLayer, Options, PatchLayer, GroundCover);
+
+        //! Layer containing biome data
+        void setBiomeLayer(BiomeLayer*);
+        BiomeLayer* getBiomeLayer() const;
+
+        //! Layer containing life map data
+        void setLifeMapLayer(LifeMapLayer*);
+        LifeMapLayer* getLifeMapLayer() const;
+
+        //! Masking layer (optional)
+        void setMaskLayer(ImageLayer* layer);
+        ImageLayer* getMaskLayer() const;
+
+        //! Color modulation layer
+        void setColorLayer(ImageLayer* layer);
+        ImageLayer* getColorLayer() const;
+
+        //! Set the maximum screen-space error (pixels)
+        void setMaxSSE(float pixels);
+        float getMaxSSE() const;
+
+        //! LOD at which to draw ground cover
+        void setLOD(unsigned value);
+        unsigned getLOD() const;
+
+        //! Average spacing between asset instances
+        void setSpacing(const Distance& value);
+        const Distance& getSpacing() const;
+
+        //! Whether the ground cover casts shadows on the terrain
+        void setCastShadows(bool value);
+        bool getCastShadows() const;
+
+        //! Transparency threshold below which to discard fragments.
+        //! Only applies when alpha-to-coverage mode is OFF.
+        void setMaxAlpha(float value);
+        float getMaxAlpha() const;
+
+        //! Whether to enable alpha-to-coverage mode.
+        //! Only use this when multisampling it ON
+        void setUseAlphaToCoverage(bool value);
+        bool getUseAlphaToCoverage() const;
+
+        //! Biome model category this layer belongs to
+        void setModelCategoryName(const std::string& value);
+        const std::string& getModelCategoryName() const;
+
+    protected:
+
+        //! Override post-ctor init
+        virtual void init() override;
+
+        //! Override layer open
+        virtual Status openImplementation() override;
+
+        //! Override layer close
+        virtual Status closeImplementation() override;
+
+    public:
+
+        //! Called when this layer is added to the map
+        virtual void addedToMap(const Map* map) override;
+        virtual void removedFromMap(const Map* map) override;
+        virtual void prepareForRendering(TerrainEngine*) override;
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
+        virtual void releaseGLObjects(osg::State* state) const override;
+
+        virtual void update(osg::NodeVisitor& nv) override;
+
+    protected:
+        virtual ~GroundCoverLayer();
+
+        LayerReference<LifeMapLayer> _lifeMapLayer;
+        LayerReference<BiomeLayer> _biomeLayer;
+
+        TextureImageUnitReservation _noiseBinding;
+
+        void buildStateSets();
+
+        struct LayerAcceptor : public PatchLayer::AcceptCallback
+        {
+            GroundCoverLayer* _layer;
+            LayerAcceptor(GroundCoverLayer* layer) : _layer(layer) { }
+            bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const;
+            bool acceptKey(const TileKey& key) const;
+        };
+        friend struct LayerAcceptor;
+
+        struct TileGenInfo {
+            TileGenInfo() : _revision(-1), _dirty(true), _expired(false) { }
+            TileKey _key;
+            int _revision;
+            bool _dirty;
+            bool _expired;
+        };
+        
+        typedef std::unordered_map<TileKey, TileGenInfo> TileGenInfoMap;
+        
+        typedef std::set<int> TileGenFreeList;
+
+        struct TileManager
+        {
+            std::vector<TileGenInfo> _current;
+            std::vector<TileGenInfo> _new;
+            int _highestOccupiedSlot;
+
+            TileManager();
+            void reset();
+            int allocate(const TileKey& key, int revision);
+            int release(const TileKey& key);
+            void release(int slot);
+            int getSlot(const TileKey& key) const;
+            bool inUse(int slot) const;
+        }; 
+
+        // Custom GL renderer for ground cover.
+        // This is a PatchLayer callback that intercepts the drawing of a
+        // terrain tile to do custom rendering with access to the tile's data.
+        class Renderer : public PatchLayer::DrawCallback
+        {
+        public:
+            Renderer(GroundCoverLayer* layer);
+            ~Renderer();
+
+            //osg::ref_ptr<BiomeManager::BiomeGPUData> _biomeGPUData;
+
+            // Uniform data must be maintained for each unique PCP
+            struct PCPState
+            {
+                PCPState();
+                GLint _generateDataUL;
+                float _generateData[5];
+                GLint _isMSUL;
+                GLint _contextIdUL;
+            };
+            typedef std::unordered_map<const void*, PCPState> PCPStateMap;
+
+            // Data unique to a specific camera traversal
+            // (multiple views, shadow cams, etc)
+            struct CameraState
+            {
+                CameraState() { }
+
+                // Asset catalog differs by zone
+                osg::ref_ptr<InstanceCloud> _instancer;
+
+                // Uniform locations differ by PCP
+                PCPStateMap _pcpState;
+
+                // Points to shared renderer object
+                Renderer* _renderer;
+
+                // tracks the last know batch ID so we know when to regenerate tiles
+                std::size_t _lastTileBatchID;
+                osg::Matrixf _lastMVP;
+                unsigned _numTilesGenerated;
+
+                // Track in-GPU tile set
+                TileManager _tiles;
+
+                // compute pass
+                unsigned _pass;
+            };
+            
+            typedef PerObjectFastMap<const osg::Camera*, CameraState> CameraStateMap;
+
+            mutable CameraStateMap _cameraState;
+
+            struct CameraStateRGLO : public CameraStateMap::ConstFunctor {
+                CameraStateRGLO(osg::State* state) : _state(state) { }
+                void operator()(const CameraState& ds) const;
+                osg::State* _state;
+            };
+
+            // uniform IDs
+            unsigned _computeDataUName;
+            unsigned _isMSUName;
+            unsigned _contextIdUName;
+
+            void applyLocalState(osg::RenderInfo& ri, CameraState& ds);
+
+            // DrawCallback API
+            void visitTileBatch(osg::RenderInfo& ri, const TileBatch* tiles);
+            void visitTile(osg::RenderInfo& ri, const DrawContext& tile);
+
+            void resizeGLObjectBuffers(unsigned maxSize);
+            void releaseGLObjects(osg::State* state) const;
+
+            double _tileWidth;
+            osg::observer_ptr<GroundCoverLayer> _layer;
+            osg::ref_ptr<osg::StateAttribute> _a2cBlending;
+
+            osg::ref_ptr<osg::StateSet> _computeSS;
+            osg::Program* _computeProgram;
+
+            float _spacing;
+
+            osg::ref_ptr<GeometryCloud> _geomCloud;
+            osg::ref_ptr<osg::Texture> _noiseTex;
+            osg::ref_ptr<TextureArena> _texArena;
+
+            const std::string& getName() const;
+
+            Status _status;
+
+            Future<osg::ref_ptr<GeometryCloud>> _geomCloudInProgress;
+            std::atomic_int _biomeRevision;
+            bool checkForUpdates();
+        };
+
+        // future result of the asynchronous loader job
+        Future<osg::ref_ptr<Renderer>> _rendererSetup;
+        osg::ref_ptr<Renderer> _renderer;
+
+        bool _debug;
+        osg::ref_ptr<osg::Drawable> _debugDrawable;
+
+        virtual void loadRenderingShaders(
+            VirtualProgram* vp,
+            const osgDB::Options* options) const;
+
+        // create a stand-in geometry for the shader to manipulate
+        // (for billboards, etc)
+        virtual osg::Node* createParametricGeometry(
+            std::vector<osg::Texture*>& textures) const;
+
+        typedef std::vector<osg::ref_ptr<osg::Image> > ImageVector;
+
+
+        osg::ref_ptr<const Profile> _mapProfile;
+
+        osg::ref_ptr<osg::Uniform> _sseU;
+    };
+
+} } // namespace osgEarth::Procedural
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Procedural::GroundCoverLayer::Options);
+
+#endif // OSGEARTH_PROCEDURAL_GROUND_COVER_LAYER_H

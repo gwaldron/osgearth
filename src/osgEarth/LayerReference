@@ -68,7 +68,7 @@ namespace osgEarth
         }
 
         //! open the layer pointed to in the reference and return a status code
-        Status open(const osgDB::Options* readOptions) //const optional<TypedOptions>& embeddedOptions, const osgDB::Options* readOptions)
+        Status open(const osgDB::Options* readOptions)
         {
             if (_embeddedOptions.isSet())
             {
@@ -85,7 +85,7 @@ namespace osgEarth
                     _layer = typedLayer.get();
                 }
             }
-            else if (_layer && !_layer->isOpen())
+            else if (_layer.valid() && !_layer->isOpen())
             {
                 const Status& layerStatus = _layer->open();
                 if (layerStatus.isError())
@@ -93,7 +93,7 @@ namespace osgEarth
                     return layerStatus;
                 }
             }
-            return Status::OK();
+            return Status::OK(); // _layer.valid() ? _layer->getStatus() : Status(Status::ResourceUnavailable);
         }
 
         void close()
@@ -136,19 +136,38 @@ namespace osgEarth
         //! Get the layer ref from either a name or embedded option
         void get(const Config& conf, const std::string& tag)
         {
+            // first try to store the name of another layer:
             conf.get(tag, _externalLayerName);
 
             if (!_externalLayerName.isSet())
             {
-                for (ConfigSet::const_iterator i = conf.children().begin();
-                    i != conf.children().end();
-                    ++i)
+                // next try to find a child called (tag) and try to make the layer
+                // from it's children:
+                if (conf.hasChild(tag) && conf.child(tag).children().size() >= 1)
                 {
-                    osg::ref_ptr<Layer> layer = Layer::create(*i);
-                    if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                    const Config& tag_content = *conf.child(tag).children().begin();
                     {
-                        _embeddedOptions = TypedOptions(*i);
-                        break;
+                        osg::ref_ptr<Layer> layer = Layer::create(tag_content);
+                        if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                        {
+                            _embeddedOptions = TypedOptions(tag_content);
+                        }
+                    }
+                }
+
+                // failing that, try each child of the config.
+                if (!_embeddedOptions.isSet())
+                {
+                    for (ConfigSet::const_iterator i = conf.children().begin();
+                        i != conf.children().end();
+                        ++i)
+                    {
+                        osg::ref_ptr<Layer> layer = Layer::create(*i);
+                        if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                        {
+                            _embeddedOptions = TypedOptions(*i);
+                            break;
+                        }
                     }
                 }
             }

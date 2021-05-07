@@ -1,0 +1,83 @@
+<BiomeCatalog>
+
+    <AssetCatalog name="Main">    
+        <GroundTextures>
+            <texture name="cc0_bare_rock"    url="textures/Rock030_2K"/>
+            <texture name="cc0_barren"       url="textures/Ground029_2K"/>
+            <texture name="cc0_forest_floor" url="textures/Ground037_2K"/>
+            <texture name="cc0_grass_floor"  url="textures/Ground003_2K"/>
+        </GroundTextures>
+
+        <Models>
+            <model name="st_blue_spurce" url="trees/BlueSpruce/blue_spruce.osgb"
+                                         side_url="trees/BlueSpruce/blue_spruce_bb.png"
+                                         top_url="trees/BlueSpruce/blue_spruce_bb_top.png"/>
+            <model name="st_sugar_maple" url="trees/SugarMaple/sugar_maple.osgb"
+                                         side_url="trees/SugarMaple/sugar_maple_bb.png"
+                                         top_url="trees/SugarMaple/sugar_maple_bb_top.png"/>
+            <model name="st_acacia"      url="trees/Acacia/acacia.osgb"
+                                         side_url="trees/Acacia/acacia_bb.png"
+                                         top_url="trees/Acacia/acacia_bb_top.png"/>
+            <model name="st_queen_palm"  url="trees/QueenPalm/queen_palm.osgb"
+                                         side_url="trees/QueenPalm/queen_palm_bb.png"
+                                         top_url="trees/QueenPalm/queen_palm_bb_top.png"/>
+            <model name="st_red_oak"     url="trees/RedOak/RedOak_white.osgb"
+                                         side_url="trees/RedOak/RedOak_bb.png"
+                                         top_url="trees/RedOak/RedOak_bb_top.png"/>
+            <model name="st_euro_linden" url="trees/EuroLinden/euro_linden.osgb"
+                                         side_url="trees/EuroLinden/euro_linden_bb.png"
+                                         top_url="trees/EuroLinden/euro_linden_bb_top.png"/>
+            
+            <model name="default_grass"    side_url="grass/clipart974730_2.png" width="0.6" height="0.8" size_variation="1" min_moisture="0.3"/>
+            <model name="dry_grass"        side_url="grass/clipart974730_dry.png" width="0.8" height="0.5" size_variation="0.5" selection_weight="3" max_moisture="0.5"/>
+            <model name="flower_daisy"     side_url="grass/clipart28163.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
+            <model name="flower_carnation" side_url="grass/clipart2383752.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
+            <model name="knapweed"         url="grass/knapweed/knapweed.osgb.(0.6).scale" size_variation="0.8"/>
+            <model name="fern"             url="grass/fern/fern.osgb.(0.6).scale" size_variation="0.8"/>
+        </Models>
+    </AssetCatalog>
+
+    <Biomes>
+        <biome name="Default" id="0" description="Default biome when no other is defined">
+            <GroundTextures>
+                <texture name="cc0_bare_rock"/>
+                <texture name="cc0_barren"/>
+                <texture name="cc0_forest_floor"/>
+                <texture name="cc0_grass_floor"/>
+            </GroundTextures>
+
+            <ModelCategory name="trees">
+                <model name="st_sugar_maple"/>
+            </ModelCategory>
+
+            <ModelCategory name="grass">
+                <model name="default_grass"/>
+            </ModelCategory>
+        </biome>
+        
+        <biome id="1" name="Mediterranean Forests, Woodlands and Scrub">
+            <GroundTextures>
+                <texture name="cc0_bare_rock"/>
+                <texture name="cc0_barren"/>
+                <texture name="cc0_forest_floor"/>
+                <texture name="cc0_grass_floor"/>
+            </GroundTextures>
+
+            <ModelCategory name="trees">
+                <model name="st_acacia"/>
+                <model name="st_queen_palm"/>
+                <model name="st_sugar_maple"/>
+            </ModelCategory>
+
+            <ModelCategory name="grass">
+                <model name="default_grass"/>
+                <model name="dry_grass"/>
+                <model name="flower_daisy"/>
+                <model name="flower_carnation"/>
+                <model name="knapweed"/>
+                <model name="fern"/>
+            </ModelCategory>
+        </biome>
+    </Biomes>    
+    
+</BiomeCatalog>

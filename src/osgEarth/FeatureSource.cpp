@@ -253,18 +253,12 @@ FeatureSource::createFeatureCursor(
             _featuresCache->get(*query.tileKey(), result);
             if (result.valid())
             {
-#if 1
                 FeatureList copy(result.value().size());
                 std::transform(result.value().begin(), result.value().end(), copy.begin(),
                     [&](const osg::ref_ptr<Feature>& feature) {
                         return osg::clone(feature.get(), osg::CopyOp::DEEP_COPY_ALL);
                     });
                 cursor = new FeatureListCursor(copy);
-#else
-                // original code: stored raw features in the cache, but they are not const.
-                // revisit if/when we refactor this
-                cursor = new FeatureListCursor(result.value());
-#endif
                 fromCache = true;
             }
         }
@@ -377,6 +371,66 @@ FeatureSource::createFeatureCursor(
     FilterContext* context,
     ProgressCallback* progress)
 {
+    std::unordered_set<TileKey> keys;
+    getKeys(key, buffer, keys);
+
+    if (!keys.empty())
+    {
+        osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
+
+        // Query and collect all the features we need for this tile.
+        for (auto& i : keys)
+        {
+            Query query;
+            query.tileKey() = i;
+
+            osg::ref_ptr<FeatureCursor> cursor = createFeatureCursor(
+                query,
+                filters,
+                context,
+                progress);
+
+            if (cursor.valid())
+            {
+                multi->_cursors.push_back(cursor.get());
+            }
+        }
+
+        if (multi->_cursors.empty())
+            return nullptr;
+
+        multi->finish();
+        return multi.release();
+    }
+
+    else
+    {
+        GeoExtent localExtent = key.getExtent().transform(_featureProfile->getSRS());
+        if (localExtent.isInvalid())
+            return nullptr;
+
+        localExtent.expand(buffer*2.0, buffer*2.0);
+
+        // Set up the query; bounds must be in the feature SRS:
+        Query query;
+        query.bounds() = localExtent.bounds();
+
+        return createFeatureCursor(
+            query,
+            filters,
+            context,
+            progress);
+    }
+
+    return nullptr;
+}
+
+unsigned
+FeatureSource::getKeys(
+    const TileKey& key,
+    const Distance& buffer,
+    std::unordered_set<TileKey>& output) const
+{
     if (_featureProfile.valid())
     {
         // If this is a tiled FS we need to translate the caller's tilekey into
@@ -398,103 +452,15 @@ FeatureSource::createFeatureCursor(
                 tilingProfile->getIntersectingTiles(extent, lod, intersectingKeys);
             }
 
-            UnorderedSet<TileKey> featureKeys;
             for (int i = 0; i < intersectingKeys.size(); ++i)
             {
                 if (_featureProfile->getMaxLevel() >= 0 && (int)intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
-                    featureKeys.insert(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
+                    output.insert(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
                 else
-                    featureKeys.insert(intersectingKeys[i]);
-            }
-
-            osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
-
-            // Query and collect all the features we need for this tile.
-            for (UnorderedSet<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
-            {
-                Query query;
-                query.tileKey() = *i;
-
-                osg::ref_ptr<FeatureCursor> cursor = createFeatureCursor(
-                    query,
-                    filters,
-                    context,
-                    progress);
-
-                if (cursor.valid())
-                {
-                    multi->_cursors.push_back(cursor.get());
-                }
-            }
-
-            if (multi->_cursors.empty())
-                return NULL;
-
-            multi->finish();
-            return multi.release();
-        }
-
-        else
-        {
-            GeoExtent localExtent = key.getExtent().transform(_featureProfile->getSRS());
-            if (localExtent.isInvalid())
-                return NULL;
-
-            localExtent.expand(buffer*2.0, buffer*2.0);
-
-            // Set up the query; bounds must be in the feature SRS:
-            Query query;
-            query.bounds() = localExtent.bounds();
-
-            return createFeatureCursor(
-                query,
-                filters,
-                context,
-                progress);
-        }
-    }
-
-    return NULL;
-}
-
-unsigned
-FeatureSource::getKeys(
-    const TileKey& key,
-    const Distance& buffer,
-    std::vector<TileKey>& output) const
-{
-    if (_featureProfile.valid())
-    {
-        // If this is a tiled FS we need to translate the caller's tilekey into
-        // feature source tilekeys and combine multiple queries into one.
-        const Profile* tilingProfile = _featureProfile->getTilingProfile();
-        if (tilingProfile)
-        {
-            std::vector<TileKey> intersectingKeys;
-            if (buffer.as(Units::METERS) == 0.0)
-            {
-                tilingProfile->getIntersectingTiles(key, intersectingKeys);
-            }
-            else
-            {
-                // TODO
-                // total cheat to just get the surrounding tiles :)
-                GeoExtent extent = key.getExtent();
-                extent.expand(extent.width() / 2.0, extent.height() / 2.0);
-                unsigned lod = tilingProfile->getEquivalentLOD(key.getProfile(), key.getLOD());
-                tilingProfile->getIntersectingTiles(extent, lod, intersectingKeys);
-            }
-
-            for (int i = 0; i < intersectingKeys.size(); ++i)
-            {
-                if (_featureProfile->getMaxLevel() >= 0 && intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
-                    output.push_back(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
-                else
-                    output.push_back(intersectingKeys[i]);
+                    output.insert(intersectingKeys[i]);
             }
         }
     }
-
 
     return output.size();
 }

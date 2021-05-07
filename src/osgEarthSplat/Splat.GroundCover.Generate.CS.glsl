@@ -1,4 +1,5 @@
 #version 430
+#pragma include Splat.GroundCover.Types.glsl
 
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 
@@ -9,48 +10,20 @@ struct oe_gc_LandCoverGroup {
     float fill;
 };
 struct oe_gc_Asset {
-    int atlasIndexSide;
-    int atlasIndexTop;
+    int assetId;
+    int modelId;
+    uint64_t modelSampler;
+    uint64_t sideSampler;
+    uint64_t topSampler;
     float width;
     float height;
     float sizeVariation;
+    float fill;
 };
 bool oe_gc_getLandCoverGroup(in int zone, in int code, out oe_gc_LandCoverGroup result);
 bool oe_gc_getAsset(in int index, out oe_gc_Asset result);
 
-
-struct DrawElementsIndirectCommand
-{
-    uint count;
-    uint instanceCount;
-    uint firstIndex;
-    uint baseVertex;
-    uint baseInstance;
-};
-
-layout(binding=0, std430) buffer DrawCommandsBuffer
-{
-    DrawElementsIndirectCommand cmd[];
-};
-
-struct RenderData
-{
-    vec4 vertex;      // 16
-    vec2 tilec;       // 8
-    int sideIndex;    // 4
-    int  topIndex;    // 4
-    float width;      // 4
-    float height;     // 4
-    float fillEdge;   // 4
-    float _padding;   // 4
-};
-
-layout(binding=1, std430) writeonly buffer RenderBuffer
-{
-    RenderData render[];
-};
-
-uniform sampler2D oe_GroundCover_noiseTex;
+uniform sampler2D oe_gc_noiseTex;
 #define NOISE_SMOOTH   0
 #define NOISE_RANDOM   1
 #define NOISE_RANDOM_2 2
@@ -89,6 +62,7 @@ uniform mat4 OE_GROUNDCOVER_MASK_MATRIX;
   int pickNoiseType = OE_GROUNDCOVER_PICK_NOISE_TYPE ;
 #else
   int pickNoiseType = NOISE_RANDOM;
+  //int pickNoiseType = NOISE_CLUMPY;
 #endif
 
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER
@@ -113,26 +87,6 @@ bool isLegalColor(in vec2 tilec)
 
 #endif // OE_GROUNDCOVER_COLOR_SAMPLER
 
-#if 0
-uniform float oe_GroundCover_maxDistance;
-uniform vec3 oe_Camera;
-
-bool inRange(in vec4 vertex_view)
-{
-    float maxRange = oe_GroundCover_maxDistance / oe_Camera.z;
-    return (-vertex_view.z <= oe_GroundCover_maxDistance);
-}
-#endif
-
-#if 0
-bool inFrustum(in vec4 vertex_view)
-{
-    vec4 clip = gl_ProjectionMatrix * vertex_view;
-    clip.xyz /= clip.w;
-    return abs(clip.x) <= 1.01 && clip.y < 1.0;
-}
-#endif
-
 float getElevation(in vec2 tilec)
 {
     vec2 elevc = tilec
@@ -151,7 +105,7 @@ void main()
     vec2 halfSpacing = 0.5 / vec2(gl_NumWorkGroups.xy);
     vec2 tilec = halfSpacing + offset / vec2(gl_NumWorkGroups.xy);
 
-    vec4 noise = textureLod(oe_GroundCover_noiseTex, tilec, 0);
+    vec4 noise = textureLod(oe_gc_noiseTex, tilec, 0);
 
     vec2 shift = vec2(fract(noise[1]*1.5), fract(noise[2]*1.5))*2.0-1.0;
     tilec += shift * halfSpacing;
@@ -169,10 +123,6 @@ void main()
     if (oe_gc_getLandCoverGroup(oe_gc_zone, code, group) == false)
         return;
 
-    //int biomeIndex = oe_GroundCover_getBiomeIndex(landCoverCode);
-    //if ( biomeIndex < 0 )
-    //    return;
-
     // If we're using a mask texture, sample it now:
 #ifdef OE_GROUNDCOVER_MASK_SAMPLER
     float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*tilec4).st).a;
@@ -180,46 +130,11 @@ void main()
         return;
 #endif
 
-    // look up biome:
-    //oe_GroundCover_Biome biome;
-    //oe_GroundCover_getBiome(biomeIndex, biome);
-
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
     if (noise[NOISE_SMOOTH] > group.fill)
         return;
-
     noise[NOISE_SMOOTH] /= group.fill;
-
-    vec2 LL = vec2(oe_tile[0], oe_tile[1]);
-    vec2 UR = vec2(oe_tile[2], oe_tile[3]);
-
-    vec4 vertex_model = vec4(mix(LL, UR, tilec), getElevation(tilec), 1.0);
-
-#if 0 // Cannot view-cull when we're only computing on demand!
-
-    vec4 vertex_view = gl_ModelViewMatrix * vertex_model;
-
-    if (!inRange(vertex_view))
-        return;
-
-    // Cannot frustum cull when we're only computing on demand!
-    if (!inFrustum(vertex_view))
-        return;
-#endif
-
-    // It's a keeper. Populate the render buffer.
-    uint tileNum = uint(oe_tile[4]);
-    uint start = tileNum * gl_NumWorkGroups.y * gl_NumWorkGroups.x;
-    uint slot = start + atomicAdd(cmd[tileNum].instanceCount, 1);
-
-    render[slot].fillEdge = 1.0;
-    const float xx = 0.5;
-    if (noise[NOISE_SMOOTH] > xx)
-        render[slot].fillEdge = 1.0-((noise[NOISE_SMOOTH]-xx)/(1.0-xx));
-
-    render[slot].vertex = vertex_model;
-    render[slot].tilec = tilec;
 
     // select a billboard at random
     float pickNoise = 1.0-noise[pickNoiseType];
@@ -230,16 +145,41 @@ void main()
     oe_gc_Asset asset;
     oe_gc_getAsset(assetIndex, asset);
 
-    //// for now, assume type == BILLBOARD.
-    //// Find the billboard associated with the object:
-    //oe_GroundCover_Billboard billboard;
-    //oe_GroundCover_getBillboard(object.objectArrayIndex, billboard);
+    // asset fill:
+    if (noise[NOISE_RANDOM_2] > asset.fill)
+        return;
 
-    render[slot].sideIndex = asset.atlasIndexSide;
-    render[slot].topIndex = asset.atlasIndexTop;
+    vec2 LL = vec2(oe_tile[0], oe_tile[1]);
+    vec2 UR = vec2(oe_tile[2], oe_tile[3]);
 
-    // a pseudo-random scale factor to the width and height of a billboard
-    float sizeScale = asset.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
-    render[slot].width = asset.width + asset.width*sizeScale;
-    render[slot].height = asset.height + asset.height*sizeScale;
+    vec4 vertex_model = vec4(mix(LL, UR, tilec), getElevation(tilec), 1.0);
+
+    // It's a keeper - record it to the instance buffer.
+    uint i = atomicAdd(instanceHeader.count, 1);
+
+    instance[i].tileNum = uint(oe_tile[4]);
+    instance[i].vertex = vertex_model;
+    instance[i].tilec = tilec;
+
+    instance[i].fillEdge = 1.0;
+    const float xx = 0.5;
+    if (noise[NOISE_SMOOTH] > xx)
+        instance[i].fillEdge = 1.0-((noise[NOISE_SMOOTH]-xx)/(1.0-xx));
+
+    instance[i].modelId = asset.modelId;
+
+    instance[i].modelSampler = asset.modelSampler;
+    instance[i].sideSampler = asset.sideSampler;
+    instance[i].topSampler = asset.topSampler;
+
+     //a pseudo-random scale factor to the width and height of a billboard
+    instance[i].sizeScale = 1.0 + asset.sizeVariation * (noise[NOISE_RANDOM_2]*2.0-1.0);
+    instance[i].width = asset.width * instance[i].sizeScale;
+    instance[i].height = asset.height * instance[i].sizeScale;
+
+    float rotation = 6.283185 * noise[NOISE_RANDOM];
+    instance[i].sinrot = sin(rotation);
+    instance[i].cosrot = cos(rotation);
+
+    instance[i].instanceId = gl_GlobalInvocationID.y * gl_NumWorkGroups.y + gl_GlobalInvocationID.x;
 }

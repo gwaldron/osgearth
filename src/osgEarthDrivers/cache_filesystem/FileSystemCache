@@ -45,12 +45,14 @@ namespace osgEarth { namespace Drivers
     public:
         OE_OPTION(std::string, rootPath);
         OE_OPTION(unsigned, threads);
+        OE_OPTION(std::string, format);
 
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            conf.set( "path", rootPath() );
-            conf.set( "threads", threads() );
+            conf.set("path", rootPath() );
+            conf.set("threads", threads() );
+            conf.set("image_format", format());
             return conf;
         }
         virtual void mergeConfig( const Config& conf ) {
@@ -61,8 +63,10 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             threads().setDefault(1u);
-            conf.get( "path", rootPath() );
-            conf.get( "threads", threads() );
+            format().setDefault("osgb");
+            conf.get("path", rootPath() );
+            conf.get("threads", threads() );
+            conf.get("image_format", format());
         }
     };
 

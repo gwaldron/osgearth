@@ -24,26 +24,6 @@
 
 using namespace osgEarth;
 
-namespace
-{
-    // octohodreal normal packing
-    void packNormal(const osg::Vec3& v, osg::Vec2& p)
-    {
-        float d = 1.0/(fabs(v.x())+fabs(v.y())+fabs(v.z()));
-        p.x() = v.x() * d;
-        p.y() = v.y() * d;
-
-        if (v.z() < 0.0)
-        {
-            p.x() = (1.0 - fabs(p.y())) * (p.x() >= 0.0? 1.0 : -1.0);
-            p.y() = (1.0 - fabs(p.x())) * (p.y() >= 0.0? 1.0 : -1.0);
-        }
-
-        p.x() = 0.5f*(p.x()+1.0f);
-        p.y() = 0.5f*(p.y()+1.0f);
-    }
-}
-
 osg::Texture*
 osgEarth::createEmptyElevationTexture()
 {
@@ -62,9 +42,9 @@ osgEarth::createEmptyNormalMapTexture()
     osg::Image* image = new osg::Image();
     image->allocateImage(1, 1, 1, GL_RG, GL_UNSIGNED_BYTE);
     ImageUtils::PixelWriter write(image);
-    osg::Vec2 packed;
-    packNormal(osg::Vec3(0,0,1), packed);
-    write(osg::Vec4(packed.x(), packed.y(), 0, 0), 0, 0);
+    osg::Vec4 packed;
+    NormalMapGenerator::pack(osg::Vec3(0,0,1), packed);
+    write(packed, 0, 0);
     osg::Texture2D* tex = new osg::Texture2D(image);
     tex->setInternalFormat(GL_RG8);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
@@ -143,6 +123,36 @@ ElevationTexture::getElevationUV(double u, double v) const
     return ElevationSample(Distance(value.r(),Units::METERS), _resolution);
 }
 
+osg::Vec3
+ElevationTexture::getNormal(double x, double y) const
+{
+    osg::Vec3 normal(0,0,1);
+    if (_normalTex.valid())
+    {
+        double u = (x - getExtent().xMin()) / getExtent().width();
+        double v = (y - getExtent().yMin()) / getExtent().height();
+        osg::Vec4 value;
+        _readNormal(value, u, v);
+        NormalMapGenerator::unpack(value, normal);
+    }
+    return normal;
+}
+
+float
+ElevationTexture::getRuggedness(double x, double y) const
+{
+    float result = 0.0f;
+    if (_ruggedness.valid())
+    {
+        double u = (x - getExtent().xMin()) / getExtent().width();
+        double v = (y - getExtent().yMin()) / getExtent().height();
+        osg::Vec4 value;
+        _readRuggedness(value, u, v);
+        result = value.r();
+    }
+    return result;
+}
+
 osg::Texture2D*
 ElevationTexture::getNormalMapTexture() const
 {
@@ -163,18 +173,30 @@ ElevationTexture::generateNormalMap(
 
         if (!_normalTex.valid())
         {
+            if (!_ruggedness.valid())
+            {
+                _ruggedness = new osg::Image();
+                _ruggedness->allocateImage(_read.s(), _read.t(), 1, GL_RED, GL_UNSIGNED_BYTE);
+                _readRuggedness.setImage(_ruggedness.get());
+                _readRuggedness.setBilinear(true);
+            }
+
             NormalMapGenerator gen;
 
             _normalTex = gen.createNormalMap(
                 getTileKey(),
                 map,
                 workingSet,
+                _ruggedness.get(),
                 progress);
 
             if (_normalTex.valid())
             {
                 // these are pooled, so do not expire them.
                 _normalTex->setUnRefImageDataAfterApply(false);
+
+                _readNormal.setImage(_normalTex->getImage());
+                _readNormal.setBilinear(true);
             }
         }
     }
@@ -189,6 +211,7 @@ NormalMapGenerator::createNormalMap(
     const TileKey& key,
     const Map* map,
     void* ws,
+    osg::Image* ruggedness,
     ProgressCallback* progress)
 {
     if (!map)
@@ -207,6 +230,8 @@ NormalMapGenerator::createNormalMap(
 
     ImageUtils::PixelWriter write(image);
 
+    ImageUtils::PixelWriter writeRuggedness(ruggedness);
+
     osg::Vec3 normal;
     osg::Vec2 packedNormal;
     osg::Vec4 pixel;
@@ -216,9 +241,6 @@ NormalMapGenerator::createNormalMap(
         south(key.getProfile()->getSRS()),
         east(key.getProfile()->getSRS()),
         west(key.getProfile()->getSRS());
-
-    ElevationSample
-        h_north, h_south, h_west, h_east;
 
     osg::Vec3 a[4];
 
@@ -241,7 +263,7 @@ NormalMapGenerator::createNormalMap(
         east.y() = y;
         west.y() = y;
 
-        for(int s=0; s<write.t(); ++s)
+        for(int s=0; s<write.s(); ++s)
         {
             double u = (double)s/(double)(write.s()-1);
             double x = ex.xMin() + u*ex.width();
@@ -281,6 +303,7 @@ NormalMapGenerator::createNormalMap(
 
     Distance res(0.0, key.getProfile()->getSRS()->getUnits());
     double dx, dy;
+    osg::Vec4 riPixel;
 
     for(int t=0; t<write.t(); ++t)
     {
@@ -295,6 +318,8 @@ NormalMapGenerator::createNormalMap(
             dx = res.asDistance(Units::METERS, y_or_lat);
             dy = res.asDistance(Units::METERS, 0.0);
 
+            riPixel.r() = 0.0f;
+
             if (points[p+0].z() != NO_DATA_VALUE &&
                 points[p+1].z() != NO_DATA_VALUE &&
                 points[p+2].z() != NO_DATA_VALUE &&
@@ -307,20 +332,36 @@ NormalMapGenerator::createNormalMap(
 
                 normal = (a[1]-a[0]) ^ (a[3]-a[2]);
                 normal.normalize();
+
+                if (ruggedness)
+                {
+                    // rudimentary normalized ruggedness index
+                    riPixel.r() = 0.25 * (
+                        fabs(points[p + 0].z() - points[p + 3].z()) +
+                        fabs(points[p + 1].z() - points[p + 0].z()) +
+                        fabs(points[p + 2].z() - points[p + 1].z()) +
+                        fabs(points[p + 3].z() - points[p + 2].z()));
+                    riPixel.r() = clamp(riPixel.r() / (float)dy, 0.0f, 1.0f);
+                    riPixel.r() = harden(harden(riPixel.r()));
+                }
             }
             else
             {
                 normal.set(0,0,1);
             }
 
-            packNormal(normal, packedNormal);
-            pixel.r() = packedNormal.x(), pixel.g() = packedNormal.y();
+            NormalMapGenerator::pack(normal, pixel);
 
             // TODO: won't actually be written until we make the format GL_RGB
             // but we need to rewrite the curvature generator first
             //pixel.b() = 0.0f; // 0.5f*(1.0f+normalMap->getCurvature(s, t));
 
             write(pixel, s, t);
+
+            if (ruggedness)
+            {
+                writeRuggedness(riPixel, s, t);
+            }
         }
     }
 
@@ -336,4 +377,34 @@ NormalMapGenerator::createNormalMap(
     normalTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     
     return normalTex;
+}
+
+void
+NormalMapGenerator::pack(const osg::Vec3& n, osg::Vec4& p)
+{
+    // octohodreal normal packing
+    float d = 1.0/(fabs(n.x())+fabs(n.y())+fabs(n.z()));
+    p.x() = n.x() * d;
+    p.y() = n.y() * d;
+
+    if (n.z() < 0.0)
+    {
+        p.x() = (1.0 - fabs(p.y())) * (p.x() >= 0.0? 1.0 : -1.0);
+        p.y() = (1.0 - fabs(p.x())) * (p.y() >= 0.0? 1.0 : -1.0);
+    }
+
+    p.x() = 0.5f*(p.x()+1.0f);
+    p.y() = 0.5f*(p.y()+1.0f);
+}
+
+void
+NormalMapGenerator::unpack(const osg::Vec4& packed, osg::Vec3& normal)
+{
+    normal.x() = packed.x()*2.0-1.0;
+    normal.y() = packed.y()*2.0-1.0;
+    normal.z() = 1.0-fabs(normal.x())-fabs(normal.y());
+    float t = osg::clampBetween(-normal.z(), 0.0f, 1.0f);
+    normal.x() += (normal.x() > 0)? -t : t;
+    normal.y() += (normal.y() > 0)? -t : t;
+    normal.normalize();
 }

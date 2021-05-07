@@ -64,6 +64,7 @@ namespace osgEarth
         {
         public:
             virtual void drawTiles(osg::RenderInfo& ri) const = 0;
+            virtual void visitTiles(osg::RenderInfo& ri) const = 0;
             virtual std::size_t size() const = 0;
             virtual std::size_t getBatchID() const = 0;
         };
@@ -72,12 +73,10 @@ namespace osgEarth
         struct DrawContext
         {
             const TileKey* _key;
-            //float _range;
-            const osg::BoundingBox* _geomBBox;
             const osg::BoundingBox* _tileBBox;
-            //GeometryArrayProvider* _geom;
-            //DrawContext() : _range(0.0f), _geom(NULL), _key(NULL) { }
-            DrawContext() : _geomBBox(NULL), _tileBBox(NULL), _key(NULL) { }
+            const osg::RefMatrix* _modelViewMatrix;
+            int _revision;
+            DrawContext() : _tileBBox(NULL), _key(NULL), _modelViewMatrix(NULL), _revision(-1) { }
         };
 
         /**
@@ -86,11 +85,8 @@ namespace osgEarth
         class DrawCallback : public osg::Referenced
         {
         public:
-            virtual void draw(osg::RenderInfo& ri, const TileBatch* tiles) { }
-            virtual void drawTile(osg::RenderInfo& ri, const DrawContext& tile) { }
-            //virtual void preDraw(osg::RenderInfo& ri, osg::ref_ptr<osg::Referenced>& out_data) { }
-            //virtual void draw(osg::RenderInfo& ri, const DrawContext& di, osg::Referenced* data) =0;
-            //virtual void postDraw(osg::RenderInfo& ri, osg::Referenced* data) { }
+            virtual void visitTileBatch(osg::RenderInfo& ri, const TileBatch* tiles) { }
+            virtual void visitTile(osg::RenderInfo& ri, const DrawContext& tile) { }
         };
 
         /**

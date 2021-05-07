@@ -98,6 +98,14 @@ namespace osgEarth
          */
         bool setTextureImageUnitOffLimits(int unit);
 
+        /**
+         * Access to tile visibility range information.
+         */
+        float getVisibilityRangeHint(unsigned lod) const;
+
+        //! Internal function; do not call this directly
+        void setVisibilityRangeHint(unsigned lod, float range);
+
     private:
         Threading::Mutex _reservedUnitsMutex;
 
@@ -106,6 +114,8 @@ namespace osgEarth
 
         typedef std::unordered_map<const Layer*, ReservedUnits> PerLayerReservedUnits;
         PerLayerReservedUnits _perLayerReservedUnits;
+
+        std::vector<float> _visibilityRanges;
     };
 
     class OSGEARTH_EXPORT TextureImageUnitReservation

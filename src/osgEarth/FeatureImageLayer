@@ -77,21 +77,6 @@ namespace osgEarth
         // post-ctor initialization
         virtual void init();
 
-    protected:
-        osg::Image* render(
-            const TileKey& key,
-            Session* session,
-            const StyleSheet* styles,
-            ProgressCallback* progress
-        ) const;
-
-        void getFeatures(
-            Session* session,
-            const Query& query,
-            const GeoExtent& imageExtent,
-            FeatureList& features,
-            ProgressCallback* progress) const;
-
         virtual ~FeatureImageLayer() { }
 
     private:

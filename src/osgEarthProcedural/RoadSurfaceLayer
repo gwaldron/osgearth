@@ -1,0 +1,104 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_PROCEDURAL_ROAD_SURFACE_LAYER
+#define OSGEARTH_PROCEDURAL_ROAD_SURFACE_LAYER 1
+
+#include <osgEarth/ImageLayer>
+#include <osgEarth/TileRasterizer>
+#include <osgEarth/LayerReference>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/StyleSheet>
+#include "Export"
+
+namespace osgEarth { namespace Procedural
+{
+    using namespace osgEarth;
+
+    /**
+     * Renders a road surface.
+     */
+    class OSGEARTHPROCEDURAL_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
+    {
+    public: // serialization
+        class OSGEARTHPROCEDURAL_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_VECTOR(ConfigOptions, filters);
+            OE_OPTION_LAYER(StyleSheet, styleSheet);
+            OE_OPTION(Distance, featureBufferWidth);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, RoadSurfaceLayer, Options, osgEarth::ImageLayer, RoadSurface);
+
+        //! Sets the map layer from which to pull feature data. Call either
+        //! This or setFeatureSource
+        void setFeatureSource(FeatureSource* layer);
+        FeatureSource* getFeatureSource() const;
+
+        //! Buffer around the road vector for querying linear data (should be at least road width/2)
+        void setFeatureBufferWidth(const Distance& value);
+        const Distance& getFeatureBufferWidth() const;
+
+        //! Style for rendering the road
+        void setStyleSheet(StyleSheet* value);
+        StyleSheet* getStyleSheet() const;
+
+
+    public: // ImageLayer
+
+        // Opens the layer and returns a status
+        virtual Status openImplementation() override;
+
+        // Closes the layer
+        virtual Status closeImplementation() override;
+
+        // Creates an image for a tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
+
+        // Called by Map when it adds this layer
+        virtual void addedToMap(const class Map*) override;
+
+        // Called by Map when it removes this layer
+        virtual void removedFromMap(const class Map*) override;
+
+    protected: // Layer
+
+        // post-ctor initialization
+        virtual void init() override;
+
+    protected:
+
+        virtual ~RoadSurfaceLayer() { }
+
+    private:
+        osg::ref_ptr<Session> _session;
+        std::shared_ptr<TileRasterizer> _rasterizer;
+        osg::ref_ptr<FeatureFilterChain> _filterChain;
+    };
+
+} } // namespace osgEarth::Procedural
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Procedural::RoadSurfaceLayer::Options);
+
+#endif // OSGEARTH_PROCEDURAL_ROAD_SURFACE_LAYER

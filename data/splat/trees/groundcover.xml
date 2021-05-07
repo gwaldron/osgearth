@@ -1,32 +1,66 @@
 <groundcover name="Trees" source="hiclipart.com (non-commercial use only)">
-    <spacing>15</spacing>
+    <spacing>20</spacing>
     <biomes>
-        <biome classes="forest" fill="1" size_variation="0.4">
-            <billboard url="tree_ginkgo.png" width="16.0" height="16.0" />
-            <billboard url="tree_maple.png" width="15.0" height="18.0"/>
-            <billboard url="tree_sycamore.png" width="15.0" height="16.0"/>
-            <billboard url="tree_white_poplar.png" width="15.0" height="18.0"/>
-            <billboard url="tree_transpiration.png" width="15.0" height="18.0"/>
-            <billboard url="tree_pine.png" width="15.0" height="30.0"/>
-            <billboard url="tree_sycamore_2.png" width="15.0" height="18.0"/>
+        <biome classes="forest" fill="1" size_variation="0.4">        
+            <asset>
+                <model>D:/data/models/BlueSpruce/blue_spruce.osgb</model>
+                <url>D:/data/models/BlueSpruce/blue_spruce_bb.png</url>
+                <top_url>D:/data/models/BlueSpruce/blue_spruce_bb_top.png</top_url>
+            </asset> 
+            <asset>
+                <model>D:/data/models/EuroLinden/euro_linden.osgb</model>
+                <url>D:/data/models/EuroLinden/euro_linden_bb.png</url>
+                <top_url>D:/data/models/EuroLinden/euro_linden_bb_top.png</top_url>
+            </asset>      
+            <asset>
+                <model>D:/data/models/OakTree/RedOak_white.osgb</model>
+                <url>D:/data/models/OakTree/RedOak_bb.png</url>
+                <top_url>D:/data/models/OakTree/RedOak_bb_top.png</top_url>
+            </asset> 
+            <asset>
+                <model>D:/data/models/SugarMaple/sugar_maple.osgb</model>
+                <url>D:/data/models/SugarMaple/sugar_maple_bb.png</url>
+                <top_url>D:/data/models/SugarMaple/sugar_maple_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/QueenPalm/queen_palm.osgb</model>
+                <url>D:/data/models/QueenPalm/queen_palm_bb.png</url>
+                <top_url>D:/data/models/QueenPalm/queen_palm_bb_top.png</top_url>
+            </asset>
         </biome>
-        <biome classes="grassland" fill="0.35" size_variation="0.4">
-            <billboard url="tree_ginkgo.png" width="16.0" height="16.0" />
-            <billboard url="tree_maple.png" width="15.0" height="18.0"/>
-            <billboard url="tree_sycamore.png" width="15.0" height="16.0"/>
-            <billboard url="tree_white_poplar.png" width="15.0" height="18.0"/>
-            <billboard url="tree_transpiration.png" width="15.0" height="18.0"/>
-            <billboard url="tree_pine.png" width="15.0" height="30.0"/>
-            <billboard url="tree_sycamore_2.png" width="15.0" height="18.0"/>
-        </biome>
-        <biome classes="savanna" fill="0.2" size_variation="0.4">
-            <billboard url="tree_ginkgo.png" width="16.0" height="16.0" />
-            <billboard url="tree_maple.png" width="15.0" height="18.0"/>
-            <billboard url="tree_sycamore.png" width="15.0" height="16.0"/>
-            <billboard url="tree_white_poplar.png" width="15.0" height="18.0"/>
-            <billboard url="tree_transpiration.png" width="15.0" height="18.0"/>
-            <billboard url="tree_pine.png" width="15.0" height="30.0"/>
-            <billboard url="tree_sycamore_2.png" width="15.0" height="18.0"/>
+        
+        <biome classes="grassland" fill="1" size_variation="0.4"> 
+            <asset>
+                <model>D:/data/models/Acacia/acacia.osgb</model>
+                <url>D:/data/models/Acacia/acacia_bb.png</url>
+                <top_url>D:/data/models/Acacia/acacia_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/SugarMaple/sugar_maple.osgb</model>
+                <url>D:/data/models/SugarMaple/sugar_maple_bb.png</url>
+                <top_url>D:/data/models/SugarMaple/sugar_maple_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/BlueSpruce/blue_spruce.osgb</model>
+                <url>D:/data/models/BlueSpruce/blue_spruce_bb.png</url>
+                <top_url>D:/data/models/BlueSpruce/blue_spruce_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/EuroLinden/euro_linden.osgb</model>
+                <url>D:/data/models/EuroLinden/euro_linden_bb.png</url>
+                <top_url>D:/data/models/EuroLinden/euro_linden_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/OakTree/RedOak_white.osgb</model>
+                <url>D:/data/models/OakTree/RedOak_bb.png</url>
+                <top_url>D:/data/models/OakTree/RedOak_bb_top.png</top_url>
+            </asset>
+            <asset>
+                <model>D:/data/models/QueenPalm/queen_palm.osgb</model>
+                <url>D:/data/models/QueenPalm/queen_palm_bb.png</url>
+                <top_url>D:/data/models/QueenPalm/queen_palm_bb_top.png</top_url>
+            </asset>
         </biome>
     </biomes>
 </groundcover>
+

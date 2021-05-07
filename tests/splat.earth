@@ -29,7 +29,7 @@
     </TMSImage>
     
     <!-- Procedural trees -->
-    <GroundCover name="Trees" max_range="7500">
+    <GroundCover name="Trees" max_range="7500" max_sse="100">
         <xi:include href="../data/splat/trees/groundcover.xml"/>
         <color_layer>World Imagery</color_layer>
         <color_min_saturation>0.1</color_min_saturation>
@@ -38,7 +38,7 @@
     </GroundCover>
 
     <!-- Procedural grass -->
-    <Grass name="Grass" max_range="100">
+    <Grass name="Grass" max_range="100" max_sse="10">
         <xi:include href="../data/splat/grass/groundcover.xml"/>
     </Grass>
     

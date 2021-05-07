@@ -1,0 +1,90 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_SPLAT_LIFE_MAP_LAYER_H
+#define OSGEARTH_SPLAT_LIFE_MAP_LAYER_H
+
+#include "Export"
+#include "BiomeLayer"
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationPool>
+#include <osgEarth/LayerReference>
+
+namespace osgEarth {
+    class TextureArena;
+}
+
+namespace osgEarth { namespace Splat
+{
+    using namespace osgEarth;
+
+    class OSGEARTHSPLAT_EXPORT LifeMapLayer : public ImageLayer
+    {
+    public:
+        class OSGEARTHSPLAT_EXPORT Options : public ImageLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION_LAYER(BiomeLayer, biomes);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarthSplat, LifeMapLayer, Options, ImageLayer, LifeMap);
+
+        BiomeLayer* getBiomeLayer() const;
+
+    protected:
+
+        virtual void init() override;
+
+        virtual Status openImplementation() override;
+
+        virtual Status closeImplementation() override;
+
+        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback*) const override;
+
+    public:
+
+        virtual void addedToMap(const Map* map) override; 
+
+        virtual void removedFromMap(const Map* map) override;
+
+    protected:
+
+        virtual ~LifeMapLayer() { }
+
+        osg::observer_ptr<const Map> _map;
+        mutable ElevationPool::WorkingSet _workingSet;
+
+        osg::ref_ptr<osg::Image> _noiseFunc;
+        osg::ref_ptr<TextureArena> _arena;
+
+        void loadMaterials(const std::string& albedo);
+
+        int lookupBiome(double x, double y, float noise) const;
+    };
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_SPLAT_LIFE_MAP_LAYER_H

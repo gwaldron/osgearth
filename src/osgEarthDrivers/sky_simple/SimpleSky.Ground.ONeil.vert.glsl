@@ -3,7 +3,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint atmos_vertex_main
 #pragma vp_location   vertex_view
-#pragma vp_order      0.5
+#pragma vp_order      1.1
 
 #pragma import_defines(OE_LIGHTING)
 #pragma import_defines(OE_NUM_LIGHTS)
@@ -39,9 +39,12 @@ out vec3 atmos_vert;
 
 vec3 vp_Normal;             // surface normal (from osgEarth)
 
+out float oe_roughness;
+out float oe_ao;
 
 // Toatl number of lights in the scene
 //uniform int osg_NumLights;
+
 
 // Parameters of each light:
 struct osg_LightSourceParameters 
@@ -194,4 +197,7 @@ void atmos_vertex_main(inout vec4 vertexVIEW)
     { 
         atmos_GroundFromAtmosphere(vertexVIEW); 
     } 
+
+    oe_roughness = 0.7;
+    oe_ao = 1.0;
 }

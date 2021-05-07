@@ -30,6 +30,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Random>
+#include <osgEarth/Elevation>
 #include <osgDB/ReadFile>
 #include <iostream>
 
@@ -49,6 +50,62 @@ usage(const char* name)
     return 0;
 }
 
+struct CraterRenderer
+{
+    static void render(
+        const GeoPoint& center,
+        const Distance& radius,
+        GeoExtent& out_extent,
+        osg::ref_ptr<osg::Image>& out_elevation,
+        osg::ref_ptr<osg::Image>& out_lifemap)
+    {
+        out_extent = GeoExtent(center.getSRS());
+        out_extent.expandToInclude(center.x(), center.y());
+        out_extent.expand(radius*2.0, radius*2.0);
+
+        out_elevation = new osg::Image();
+        out_elevation->allocateImage(
+            ELEVATION_TILE_SIZE,
+            ELEVATION_TILE_SIZE,
+            1,
+            GL_RED,
+            GL_UNSIGNED_BYTE);
+
+        ImageUtils::PixelWriter writeElevation(out_elevation.get());
+        ImageUtils::ImageIterator e_iter(writeElevation);
+        osg::Vec4 value;
+        e_iter.forEachPixel([&]()
+            {
+                float a = (e_iter.u() - 0.5f);
+                float b = (e_iter.v() - 0.5f);
+                float d = sqrt((a*a) + (b*b));
+                value.r() = clamp(d, 0.0f, 0.5f);
+                writeElevation(value, e_iter.s(), e_iter.t());
+            }
+        );
+
+        out_lifemap = new osg::Image();
+        out_lifemap->allocateImage(
+            256,
+            256,
+            1,
+            GL_RGBA,
+            GL_UNSIGNED_BYTE);
+
+        ImageUtils::PixelWriter writeLifeMap(out_lifemap.get());
+        ImageUtils::ImageIterator lm_iter(writeLifeMap);
+        lm_iter.forEachPixel([&]()
+            {
+                float a = 2.0f*(lm_iter.u() - 0.5f);
+                float b = 2.0f*(lm_iter.v() - 0.5f);
+                float d = clamp(sqrt((a*a) + (b*b)), 0.0f, 1.0f);
+                value.set(0.0f, 0.0f, 0.85f, 1.0f - (d*d));
+                writeLifeMap(value, lm_iter.s(), lm_iter.t());
+            }
+        );
+    }
+};
+
 struct App
 {
     unsigned _minLevel;
@@ -58,6 +115,7 @@ struct App
     osg::ref_ptr<DecalImageLayer> _imageLayer;
     osg::ref_ptr<DecalElevationLayer> _elevLayer;
     osg::ref_ptr<DecalLandCoverLayer> _landCoverLayer;
+    osg::ref_ptr<DecalImageLayer> _lifemapLayer;
     osg::ref_ptr<osg::Image> _image_for_elev;
 	osg::ref_ptr<osg::Image> _image_for_rgb;
     osg::ref_ptr<osg::Image> _landCover;
@@ -68,66 +126,28 @@ struct App
 
     App()
     {
-        _image_for_elev = osgDB::readRefImageFile("../data/burn.png");
-        if (!_image_for_elev.valid())
-        {
-            OE_WARN << "Failed to load elev decal image!" << std::endl;
-            return;
-        }
-
-		_image_for_rgb = osgDB::readRefImageFile("../data/crater.png");
-		if (!_image_for_rgb.valid())
-		{
-			OE_WARN << "Failed to load rgb decal image!" << std::endl;
-			return;
-		}
         _idGenerator = 0u;
-        _minLevel = 11u;
         _size = 0.0f;
         _decalsPerClick = 1u;
+
+        // Needs to be less than or equal to the underlying terrain
+        // data's max LOD, or else the normal maps won't update.
+        // I do not yet know why that is -gw
+        _minLevel = 10u;
     }
 
     void init(MapNode* mapNode)
     {
         _mapNode = mapNode;
 
-        // read from the visible image:
-        ImageUtils::PixelReader read(_image_for_rgb.get());
-        osg::Vec4 value;
-
-        // Only activate the land cover decal if there's a dictionary in the map:
-		LandCoverDictionary* dic = mapNode->getMap()->getLayer<LandCoverDictionary>();
-        if (dic)
-        {
-            // Synthesize a land cover raster to use as a decal and for masking trees & grass
-            const LandCoverClass* lc_class = dic->getClassByName("rock");
-            if (lc_class)
-            {
-                // write to the landcover raster:
-                _landCover = LandCover::createImage(_image_for_rgb->s(), _image_for_rgb->t());
-                ImageUtils::PixelWriter write(_landCover.get());
-
-                const float lc_code = (float)lc_class->getValue();
-
-                for (int t = 0; t < read.t(); ++t)
-                {
-                    for (int s = 0; s < read.s(); ++s)
-                    {
-                        read(value, s, t);
-						float c = value.a() >= 0.1 ? lc_code : NO_DATA_VALUE;
-                        value.set(c, c, c, c);
-                        write(value, s, t);
-                    }
-                }
-            }
-        }
-
+#if 0
         _imageLayer = new DecalImageLayer();
         _imageLayer->setName("Image Decals");
         _imageLayer->setMinLevel(_minLevel);
         _imageLayer->setOpacity(0.95f);
         mapNode->getMap()->addLayer(_imageLayer.get());
         _layersToRefresh.push_back(_imageLayer.get());
+#endif
 
         _elevLayer = new DecalElevationLayer();
         _elevLayer->setName("Elevation Decals");
@@ -135,59 +155,62 @@ struct App
         mapNode->getMap()->addLayer(_elevLayer.get());
         _layersToRefresh.push_back(_elevLayer.get());
 
+        _lifemapLayer = new DecalImageLayer();
+        _lifemapLayer->setName("LifeMap Decals");
+        _lifemapLayer->setMinLevel(_minLevel);
 
-        if (_landCover.valid())
+        // If there is a layer called "Life Map" append to it as a Post,
+        // otherwise standalone decal.
+        ImageLayer* lm = mapNode->getMap()->getLayerByName<ImageLayer>("Life Map");
+        if (lm)
         {
-            _landCoverLayer = new DecalLandCoverLayer();
-            _landCoverLayer->setName("LandCover Decals");
-            _landCoverLayer->setMinLevel(_minLevel);
-            mapNode->getMap()->addLayer(_landCoverLayer.get());
-            _layersToRefresh.push_back(_landCoverLayer.get());
+            lm->addPostLayer(_lifemapLayer.get());
+            _layersToRefresh.push_back(lm);
         }
-
+        else
+        {
+            mapNode->getMap()->addLayer(_lifemapLayer.get());
+            _layersToRefresh.push_back(_lifemapLayer.get());
+        }
     }
 
-    void addDecal(const GeoExtent& extent)
+    void addCrater(const GeoPoint& center, const Distance& radius)
     {
+        GeoExtent extent;
+        osg::ref_ptr<osg::Image> elevation;
+        osg::ref_ptr<osg::Image> lifemap;
+
+        CraterRenderer::render(
+            center,
+            radius,
+            extent,
+            elevation,
+            lifemap);
+
         // ID for the new decal(s). ID's need to be unique in a single decal layer,
         // but the three different TYPES of layers can share the same ID
         std::string id = Stringify() << _idGenerator++;
         _undoStack.push(id);
 
-        OE_NOTICE << "Dropping bomb #" << id << std::endl;
-
-        if (_imageLayer.valid())
-        {
-            _imageLayer->addDecal(
-                id,
-                extent,
-                _image_for_rgb.get());
-        }
+        OE_NOTICE << "Adding crater # " << id << std::endl;
 
         if (_elevLayer.valid())
         {
-            _elevLayer->addDecal(
-                id,
-                extent,
-                _image_for_elev.get(),
-                _size / 15.0f, -_size / 15.0f,  // min value (0.0), max value(1.0)
-                GL_ALPHA);
+            _elevLayer->addDecal(id, extent, elevation.get(), -25.0, 25.0, GL_RED);
         }
 
-
-		if (_landCoverLayer.valid())
+        if (_lifemapLayer.valid())
         {
-           _landCoverLayer->addDecal(
-               id,
-               extent,
-               _landCover.get());
+            _lifemapLayer->addDecal(id, extent, lifemap.get());
         }
-
 
         // Tell the terrain engine to regenerate the effected area.
-        _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
+        _mapNode->getTerrainEngine()->invalidateRegion(
+            _layersToRefresh, 
+            extent, 
+            _minLevel, 
+            INT_MAX);
     }
-
 
     void undoLastAdd()
     {
@@ -212,15 +235,23 @@ struct App
                 _elevLayer->removeDecal(id);
             }
 
-
             if (_landCoverLayer.valid())
             {
                 extent.expandToInclude(_landCoverLayer->getDecalExtent(id));
                 _landCoverLayer->removeDecal(id);
             }
 
+            if (_lifemapLayer.valid())
+            {
+                extent.expandToInclude(_lifemapLayer->getDecalExtent(id));
+                _lifemapLayer->removeDecal(id);
+            }
 
-            _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, extent, _minLevel, INT_MAX);
+            _mapNode->getTerrainEngine()->invalidateRegion(
+                _layersToRefresh, 
+                extent, 
+                _minLevel, 
+                INT_MAX);
         }
     }
 
@@ -238,79 +269,21 @@ struct App
             _elevLayer->clearDecals();
         }
 
-
         if (_landCoverLayer.valid())
         {
             _landCoverLayer->clearDecals();
         }
 
-        _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
-    }
-};
-
-
-struct ClickToDecal : public osgGA::GUIEventHandler
-{
-    App _app;
-    Random rng;
-    ClickToDecal(App& app) : _app(app) { }
-
-    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
-    {
-        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'd')
+        if (_lifemapLayer.valid())
         {
-            osg::Vec3d world;
-            if (!_app._mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
-            {
-                OE_WARN << LC << "No intersection under mouse." << std::endl;
-                return false;
-            }
-
-            GeoPoint mapPoint;
-            mapPoint.fromWorld(_app._mapNode->getMapSRS(), world);
-
-            double t = aa.asView()->getFrameStamp()->getReferenceTime();
-            t = 500.0 + 250.0 * (t - (long)t);
-
-            mapPoint.transformInPlace(SpatialReference::get("spherical-mercator"));
-
-            for (unsigned i = 0; i < _app._decalsPerClick; ++i)
-            {
-                float d = _app._size * 0.5;
-
-                float offsetx = 0.0f, offsety = 0.0f;
-                if (i > 0)
-                {
-                    offsetx = 2.0*(rng.next()-0.5) * _app._size*2.0;
-                    offsety = 2.0*(rng.next()-0.5) * _app._size*2.0;
-                }
-
-                GeoExtent extent(
-                    mapPoint.getSRS(),
-                    offsetx + mapPoint.x() - d,
-                    offsety + mapPoint.y() - d,
-                    offsetx + mapPoint.x() + d,
-                    offsety + mapPoint.y() + d);
-
-                _app.addDecal(extent);
-            }
-
-            return true;
+            _lifemapLayer->clearDecals();
         }
 
-        else if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'u')
-        {
-            _app.undoLastAdd();
-            return true;
-        }
-
-        else if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'c')
-        {
-            _app.reset();
-            return true;
-        }
-
-        return false;
+        _mapNode->getTerrainEngine()->invalidateRegion(
+            _layersToRefresh,
+            GeoExtent::INVALID,
+            _minLevel,
+            INT_MAX);
     }
 };
 
@@ -329,24 +302,54 @@ main(int argc, char** argv)
     viewer.setCameraManipulator(new EarthManipulator(arguments));
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags
+    // and earth file <external> tags    
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
         App app;
 
-        app._size = 250.0f;
+        app._size = 100.0f;
         arguments.read("--size", app._size);
 
         app._decalsPerClick = 1u;
-        arguments.read("--count", app._decalsPerClick);
 
         app.init(MapNode::get(node));
-
         viewer.setSceneData(node);
-        viewer.addEventHandler(new ClickToDecal(app));
 
-        OE_WARN << LC <<
+        EventRouter* ui = new EventRouter();
+        viewer.addEventHandler(ui);
+
+        // Press 'D' to drop a crater under the mouse
+        ui->onKeyPress(ui->KEY_D, [&](osg::View* view, float x, float y)
+            {
+                osg::Vec3d world;
+                if (app._mapNode->getTerrain()->getWorldCoordsUnderMouse(view, x, y, world))
+                {
+                    OE_WARN << LC << "No intersection under mouse." << std::endl;
+                    return;
+                }
+
+                GeoPoint mapPoint;
+                mapPoint.fromWorld(app._mapNode->getMapSRS(), world);
+                mapPoint.transformInPlace(SpatialReference::get("spherical-mercator"));
+
+                //TODO: re-enable the decals-per-click 
+                //for (unsigned i = 0; i < _app._decalsPerClick; ++i)
+                {
+                    app.addCrater(
+                        mapPoint,
+                        Distance(app._size, Units::METERS));
+                }
+            }
+        );
+
+        // Press 'U' to undo the last crater
+        ui->onKeyPress(ui->KEY_U, [&]() { app.undoLastAdd(); });
+
+        // Press 'C' to clear all craters
+        ui->onKeyPress(ui->KEY_C, [&]() { app.reset(); });
+
+        OE_NOTICE << LC << 
             "\n\n-- Zoom in close ..."
             "\n-- Press 'd' to drop bombs"
             "\n-- Press 'u' to undo last drop"

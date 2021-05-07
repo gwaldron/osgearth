@@ -8,8 +8,10 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 
 uniform mat4 oe_shadow_matrix[$OE_SHADOW_NUM_SLICES];
+uniform float oe_shadow_maxrange;
 
 out vec4 oe_shadow_coord[$OE_SHADOW_NUM_SLICES];
+out float oe_shadow_rf;
 
 void oe_shadow_vertex(inout vec4 VertexVIEW)
 {
@@ -17,6 +19,9 @@ void oe_shadow_vertex(inout vec4 VertexVIEW)
     {
         oe_shadow_coord[i] = oe_shadow_matrix[i] * VertexVIEW;
     }
+
+    oe_shadow_rf = clamp(-VertexVIEW.z / oe_shadow_maxrange, 0.0, 1.0);
+    oe_shadow_rf = oe_shadow_rf * oe_shadow_rf * oe_shadow_rf;
 }
 
 
@@ -38,6 +43,7 @@ uniform float          oe_shadow_blur;
 
 in vec3 vp_Normal; // stage global
 in vec4 oe_shadow_coord[$OE_SHADOW_NUM_SLICES];
+in float oe_shadow_rf;
 
 // Parameters of each light:
 struct osg_LightSourceParameters 
@@ -134,7 +140,9 @@ void oe_shadow_fragment(inout vec4 color)
     }
 
     vec3 colorInFullShadow = color.rgb * oe_shadow_color;
-    color = vec4( mix(colorInFullShadow, color.rgb, factor), alpha );
+//    color = vec4( mix(colorInFullShadow, color.rgb, factor), alpha );
 
-    //color = vec4(factor, 1.0);
+    vec3 shadowed = mix(colorInFullShadow, color.rgb, factor);
+    vec3 ranged = mix(shadowed, color.rgb, oe_shadow_rf);
+    color = vec4(ranged, alpha);
 }

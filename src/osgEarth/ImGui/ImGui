@@ -26,7 +26,10 @@
 #include <osg/Texture2D>
 #include <osg/RenderInfo>
 #include <osgViewer/View>
+#include <osgEarth/GeoData>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
 #include <typeinfo>
 
 namespace osgEarth
@@ -104,6 +107,16 @@ namespace osgEarth
                     var = value;
                     dirtySettings();
                 }
+            }
+
+            //! Map point under the mouse cursor
+            GeoPoint getPointAtMouse(MapNode* mapNode, osg::View* v, float x, float y)
+            {
+                GeoPoint point;
+                osg::Vec3d world;
+                if (mapNode->getTerrain()->getWorldCoordsUnderMouse(v, x, y, world))
+                    point.fromWorld(mapNode->getMapSRS(), world);
+                return point;
             }
 
         private:
@@ -249,6 +262,7 @@ namespace ImGuiUtil
 #include "SystemGUI"
 #include "EphemerisGUI"
 #include "TerrainGUI"
+#include "TerrainEditGUI"
 
 #ifdef OSGEARTH_HAVE_GEOCODER
 #include "SearchGUI"
@@ -286,6 +300,7 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new NotifyGUI));
                 _menu["Tools"].push_back(GUIPtr(new SceneGraphGUI));
                 _menu["Tools"].push_back(GUIPtr(new TextureInspectorGUI));
+                _menu["Tools"].push_back(GUIPtr(new TerrainEditGUI));
 
 #ifdef OSGEARTH_HAVE_GEOCODER
                 _menu["Tools"].push_back(GUIPtr(new SearchGUI));

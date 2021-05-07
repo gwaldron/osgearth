@@ -132,14 +132,16 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
         }
     }
 
-    if (_drawCallback)
+    if (_drawCallback) // need this?
     {
         PatchLayer::DrawContext tileData;
 
         tileData._key = _key;
-        tileData._geomBBox = &_geom->getBoundingBox();
+        tileData._revision = _tileRevision;
+        //tileData._geomBBox = &_geom->getBoundingBox();
         tileData._tileBBox = &_tile->getBoundingBox();
-        _drawCallback->drawTile(ri, tileData);
+        tileData._modelViewMatrix = _modelViewMatrix.get();
+        _drawCallback->visitTile(ri, tileData);
     }
 
     else
@@ -149,6 +151,22 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
         _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode();
         _geom->draw(ri);
     }    
+}
+
+void
+DrawTileCommand::visit(osg::RenderInfo& ri) const
+{
+    if (_drawCallback)
+    {
+        PatchLayer::DrawContext tileData;
+
+        tileData._key = _key;
+        tileData._revision = _tileRevision;
+        //tileData._geomBBox = &_geom->getBoundingBox();
+        tileData._tileBBox = &_tile->getBoundingBox();
+        tileData._modelViewMatrix = _modelViewMatrix.get();
+        _drawCallback->visitTile(ri, tileData);
+    }
 }
 
 void DrawTileCommand::accept(osg::PrimitiveFunctor& functor) const

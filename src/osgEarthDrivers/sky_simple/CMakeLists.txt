@@ -7,6 +7,7 @@ set(TARGET_GLSL
     SimpleSky.Atmosphere.vert.glsl
     SimpleSky.Ground.ONeil.frag.glsl
     SimpleSky.Ground.ONeil.vert.glsl
+    SimpleSky.Ground.PBR.frag.glsl
     SimpleSky.Moon.frag.glsl
     SimpleSky.Moon.vert.glsl
     SimpleSky.Stars.frag.glsl

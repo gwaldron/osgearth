@@ -291,8 +291,13 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
     {
         Map* map = s_mapNode->getMap();
 
-        TerrainTileModelFactory factory(
-            const_cast<const MapNode*>(s_mapNode)->options().terrain().get());
+        // make a copy:
+        TerrainOptions myOptions(const_cast<const MapNode*>(s_mapNode)->options());
+
+        // disable skirts:
+        myOptions.heightFieldSkirtRatio() = 0.0f;
+
+        TerrainTileModelFactory factory(myOptions);
 
         osg::ref_ptr<TerrainTileModel> model =
             factory.createStandaloneTileModel(map, key, _manifest, nullptr, nullptr);

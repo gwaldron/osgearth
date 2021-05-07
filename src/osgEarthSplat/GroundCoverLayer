@@ -24,10 +24,11 @@
 
 #include "Export"
 #include "Biome"
+#include "OldInstanceCloud"
+
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
-#include <osgEarth/InstanceCloud>
 #include <osgEarth/VirtualProgram>
 
 namespace osgEarth { namespace Splat
@@ -175,7 +176,7 @@ namespace osgEarth { namespace Splat
             struct DrawState
             {
                 // Geometry differs by zone/groundcover settings
-                typedef UnorderedMap<const void*, osg::ref_ptr<InstanceCloud> > InstancerPerGroundCover;
+                typedef UnorderedMap<const void*, osg::ref_ptr<LegacyInstanceCloud> > InstancerPerGroundCover;
                 InstancerPerGroundCover _instancers;
 
                 Renderer* _renderer;

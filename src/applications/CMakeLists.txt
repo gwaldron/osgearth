@@ -77,12 +77,10 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         ADD_SUBDIRECTORY(osgearth_ephemeris)
         ADD_SUBDIRECTORY(osgearth_computerangecallback)
         ADD_SUBDIRECTORY(osgearth_skyview)
-        #ADD_SUBDIRECTORY(osgearth_server)
         ADD_SUBDIRECTORY(osgearth_lights)
         ADD_SUBDIRECTORY(osgearth_infinitescroll)
         ADD_SUBDIRECTORY(osgearth_video)
         ADD_SUBDIRECTORY(osgearth_scenegraphcallbacks)
-        ADD_SUBDIRECTORY(osgearth_drawables)
         ADD_SUBDIRECTORY(osgearth_magnify)
         ADD_SUBDIRECTORY(osgearth_eci)
         ADD_SUBDIRECTORY(osgearth_windows)
@@ -108,6 +106,15 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         ENDIF()        
 
     ENDIF(OSGEARTH_BUILD_EXAMPLES)
+    
+    
+    IF(OSGEARTH_BUILD_TESTS)
+        add_subdirectory(osgearth_bindless)
+        ADD_SUBDIRECTORY(osgearth_drawables)
+        if(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)
+            add_subdirectory(osgearth_biome)
+        endif()
+    ENDIF(OSGEARTH_BUILD_TESTS)
 
 ELSE()
 

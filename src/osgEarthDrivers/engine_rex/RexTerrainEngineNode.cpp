@@ -135,6 +135,8 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     _frameLastUpdated(0u)
 {
     // Necessary for pager object data
+    // Note: Do not change this value. Apps depend on it to
+    // detect being inside a terrain traversal.
     this->setName("osgEarth.RexTerrainEngineNode");
 
     // unique ID for this engine:
@@ -285,7 +287,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     this->addChild(_releaser.get());
 
     // A shared geometry pool.
-    _geometryPool = new GeometryPool(options());
+    _geometryPool = new GeometryPool();
     _geometryPool->setReleaser( _releaser.get());
     this->addChild( _geometryPool.get() );
 
@@ -342,12 +344,16 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     _selectionInfo.initialize(
         0u, // always zero, not the terrain options firstLOD
-        osg::minimum(options().maxLOD().get(), maxLOD ),
+        maxLOD,
         map->getProfile(),
         options().minTileRangeFactor().get(),
         true); // restrict polar subdivision for geographic maps
 
-               // set up the initial graph
+    TerrainResources* res = getResources();
+    for(unsigned lod=0; lod<=maxLOD; ++lod)
+        res->setVisibilityRangeHint(lod, _selectionInfo.getLOD(lod)._visibilityRange);
+
+    // set up the initial graph
     refresh();
 
     // now that we have a map, set up to recompute the bounds
@@ -1241,8 +1247,9 @@ RexTerrainEngineNode::updateState()
             package.load(surfaceVP, package.ENGINE_TESSELLATION);
             //package.load(surfaceVP, package.ENGINE_GEOM);
 
-            // Default screen space error = 50 pixels
-            surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_sse", 50.0f));
+            // Default tess level
+            surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_tess", 3.0f));
+            surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_tess_range", 150.0f));
 
 #ifdef HAVE_PATCH_PARAMETER
             // backwards compatibility

@@ -5,7 +5,7 @@ set_property(TARGET osgEarth PROPERTY FOLDER "Core")
 
 #optionals:
 if(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)
-    add_subdirectory(osgEarthSplat)
+    add_subdirectory(osgEarthProcedural)
 endif()
 
 if(OSGEARTH_BUILD_TRITON_NODEKIT)
@@ -18,8 +18,12 @@ endif()
 
 if(OSGEARTH_BUILD_TOOLS OR OSGEARTH_BUILD_EXAMPLES)
     add_subdirectory( applications )
-ENDIF()
+endif()
 
-IF(OSGEARTH_BUILD_TESTS AND NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
+if(OSGEARTH_BUILD_TESTS AND NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
     add_subdirectory( tests )
-ENDIF()
+endif()
+
+if(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT)
+    add_subdirectory(osgEarthSplat)
+endif()

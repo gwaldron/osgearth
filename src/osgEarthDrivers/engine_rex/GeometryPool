@@ -154,7 +154,7 @@ namespace osgEarth { namespace REX
     {
     public:
         /** Construct the geometry pool */
-        GeometryPool(const TerrainOptions& options);
+        GeometryPool();
 
         /** Sets an object to release unused GL resources */
         void setReleaser(ResourceReleaser* releaser);
@@ -228,13 +228,16 @@ namespace osgEarth { namespace REX
             const TileKey& tileKey,
             unsigned tileSize,
             const Map* map,
+            const TerrainOptions& options,
             osg::ref_ptr<SharedGeometry>& out,
             Cancelable* state);
 
         /**
          * The number of elements (incides) in the terrain skirt, if applicable
          */
-        int getNumSkirtElements(unsigned tileSize) const;
+        int getNumSkirtElements(
+            unsigned tileSize,
+            float skirtRatio) const;
 
         /**
          * Are we doing pooling?
@@ -260,12 +263,8 @@ namespace osgEarth { namespace REX
 
         mutable Threading::Mutex _geometryMapMutex;
         GeometryMap _geometryMap;
-        const TerrainOptions& _options;
         osg::ref_ptr<ResourceReleaser> _releaser;
         osg::ref_ptr<osg::DrawElements> _defaultPrimSet;
-        osg::ref_ptr<osg::UIntArray> _reorder;
-
-        mutable osg::ref_ptr<osg::Vec3Array> _sharedTexCoords;
 
         void createKeyForTileKey(
             const TileKey& tileKey,
@@ -275,12 +274,17 @@ namespace osgEarth { namespace REX
         SharedGeometry* createGeometry(
             const TileKey& tileKey,
             unsigned tileSize,
-            MeshEditor& editor,
+            float skirtRatio,
+            bool gpuTessellation,
+            bool morphTerrain,
+            MeshEditor& meshEditor,
             Cancelable* state) const;
 
         // builds a primitive set to use for any tile without a mask
         osg::DrawElements* createPrimitiveSet(
-            unsigned tileSize) const;
+            unsigned tileSize,
+            float skirtRatio,
+            bool UseGpuTessellation) const;
 
         void tessellateSurface(
             unsigned tileSize,

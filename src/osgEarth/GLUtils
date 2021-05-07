@@ -31,6 +31,7 @@
 #include <osg/GraphicsContext>
 #include <osg/GLObjects>
 #include <osg/Drawable>
+#include <osg/Texture2D>
 #include <set>
 
 #ifndef GLintptr
@@ -78,6 +79,9 @@ namespace osgEarth
         //! Removes the state associated with a GL capability, causing it to inherit from above.
         //! and if one of: GL_LIGHTING, GL_LINE_WIDTH, GL_LINE_STIPPLE, GL_LINE_SMOOTH, GL_POINT_SIZE
         static void remove(osg::StateSet* stateSet, GLenum cap);
+
+        //! Computes the driver's reported alignment for SSBO allocation
+        static GLsizei getSSBOAlignment(osg::State&);
     };
 
     struct OSGEARTH_EXPORT CustomRealizeOperation : public osg::Operation
@@ -90,14 +94,17 @@ namespace osgEarth
     struct OSGEARTH_EXPORT GL3RealizeOperation : public CustomRealizeOperation
     {
         virtual void operator()(osg::Object*);
-    };//! Base class for GL object containers
-    class OSGEARTH_EXPORT GLObject : public osg::Referenced
+    };
+    
+    //! Base class for GL object containers
+    class OSGEARTH_EXPORT GLObject
     {
     public:
-        GLObject(osg::State& state, const std::string& label);
+        using Ptr = std::shared_ptr<GLObject>;
         virtual void release() = 0;
         osg::GLExtensions* ext() const { return _ext; }
     protected:
+        GLObject(osg::State& state, const std::string& label);
         std::string _label;
         osg::GLExtensions* _ext;
     };
@@ -106,12 +113,16 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLBuffer : public GLObject
     {
     public:
-        GLBuffer(GLenum target, osg::State& state, const std::string& label = "");
+        using Ptr = std::shared_ptr<GLBuffer>;
+        static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+
         void bind();
         void bind(GLenum target);
         GLuint name() const { return _name; }
         GLenum target() const { return _target; }
         void release();
+    protected:
+        GLBuffer(GLenum target, osg::State& state, const std::string& label);
     private:
         GLuint _name;
         GLenum _target;
@@ -121,17 +132,23 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLTexture : public GLObject
     {
     public:
-        GLTexture(GLenum target, osg::State& state, const std::string& label = "");
+        using Ptr = std::shared_ptr<GLTexture>;
+        static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+
         void bind();
         GLuint64 handle();
         GLuint name() const { return _name; }
         void makeResident(bool toggle);
         void release();
+        std::string& id() { return _id; }
+    protected:
+        GLTexture(GLenum target, osg::State& state, const std::string& label);
     private:
         GLenum _target;
         GLuint _name;
         GLuint64 _handle;
         bool _isResident;
+        std::string _id;
     };
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
@@ -147,7 +164,7 @@ namespace osgEarth
     {
         GLObjectReleaser(unsigned contextID);
 
-        static void watch(GLObject*, osg::State&);
+        static void watch(GLObject::Ptr, osg::State&);
 
         static void releaseAll(osg::State&);
 
@@ -156,8 +173,10 @@ namespace osgEarth
         virtual void deleteAllGLObjects();
         virtual void discardAllGLObjects();
 
-        std::set<osg::ref_ptr<GLObject> > _objects;
-        std::set<osg::ref_ptr<GLObject> > _temp;
+        std::set<GLObject::Ptr> _objects;
+        std::set<GLObject::Ptr> _temp;
+        //std::set<osg::ref_ptr<GLObject> > _objects;
+        //std::set<osg::ref_ptr<GLObject> > _temp;
     };
 
 #else // legacy implementation for OSG 3.4
@@ -184,12 +203,110 @@ namespace osgEarth
     public:
         SSBO();
 
-        mutable osg::ref_ptr<GLBuffer> _buffer;
+        mutable GLBuffer::Ptr _buffer;
+        //mutable osg::ref_ptr<GLBuffer> _buffer;
         mutable GLsizei _allocatedSize;
         mutable GLsizei _requiredSize;
         GLint _bindingIndex;
         void bindLayout() const;
         virtual void release() const;
+        inline bool valid() const { return _buffer != nullptr; } // .valid(); }
+    };
+
+    template<typename T>
+    class ArraySSBO
+    {
+    public:
+        ArraySSBO() : _buf(nullptr), _numElements(0), _bindingIndex(0)
+        {
+            _dirty.setAllElementsTo(false);
+        }
+
+        virtual ~ArraySSBO()
+        {
+            for (unsigned i=0; i<_ssbo.size(); ++i)
+                _ssbo[i].release();
+            if (_buf)
+                delete[] _buf;
+        }
+
+        //! Sets the number of elements this object can hold
+        void setNumElements(unsigned value)
+        {
+            if (value > _numElements)
+            {
+                _numElements = value;
+                if (_buf) delete[] _buf;
+                _buf = new T[_numElements];
+                _dirty.setAllElementsTo(true);
+            }
+        }
+
+        void setBindingIndex(unsigned value)
+        {
+            _bindingIndex = value;
+        }
+
+        T& operator[](int index)
+        {
+            return _buf[index];
+        }
+
+        void dirty()
+        {
+            _dirty.setAllElementsTo(1);
+        }
+
+        void apply(osg::State& state) const
+        {
+            if (_numElements == 0)
+                return;
+
+            bool bound = false;
+
+            int i = state.getContextID();
+
+            SSBO& ssbo = _ssbo[i];
+
+            GLsizei contentSize = _numElements * sizeof(T);
+
+            if (ssbo._allocatedSize < contentSize)
+            {
+                // reallocate the SSBO
+                GLsizei alignedAllocationSize = align(contentSize, GLUtils::getSSBOAlignment(state));
+                ssbo.release();
+                ssbo._bindingIndex = _bindingIndex;
+                ssbo._allocatedSize = contentSize;
+                ssbo._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, typeid(*this).name());
+                ssbo._buffer->bind();
+                bound = true;
+                ssbo._buffer->ext()->glBufferStorage(GL_SHADER_STORAGE_BUFFER, alignedAllocationSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+                _dirty[i] = 1;
+            }
+
+            if (_dirty[i])
+            {
+                if (!bound) ssbo._buffer->bind();
+                ssbo._buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, contentSize, (const GLvoid*)_buf);
+                _dirty[i] = 0;
+            }
+
+            ssbo.bindLayout();
+        }
+
+        void resizeGLObjectBuffers(unsigned maxSize)
+        {
+            _ssbo.resize(maxSize);
+            _dirty.resize(maxSize);
+            _dirty.setAllElementsTo(1);
+        }
+
+    private:
+        mutable osg::buffered_object<SSBO> _ssbo;
+        mutable osg::buffered_object<int> _dirty;
+        T* _buf;
+        unsigned _numElements;
+        unsigned _bindingIndex;
     };
 
     // Functions that aren't in osg::GLExtensions (some in 3.4, some in 3.6+)
@@ -209,23 +326,6 @@ namespace osgEarth
     private:
         static GLFunctions _buf[256];
     };
-
-    //struct GLBuffer : public osg::Referenced
-    //{
-    //    mutable GLuint _handle;
-    //};
-
-    ///**
-    // * Operation that will automatically delete a GL buffer 
-    // * when its container goes out of scope
-    // */
-    //struct GLBufferReleaser : public osg::GraphicsOperation
-    //{
-    //    osg::observer_ptr<GLBuffer> _buffer;
-    //    GLuint _handle;
-    //    GLBufferReleaser(GLBuffer* buffer);
-    //    void operator () (osg::GraphicsContext* context);
-    //};
 
     /**
      * API for launching GPU thread jobs. Any function dispatched here will
@@ -282,6 +382,7 @@ namespace osgEarth
         osg::ref_ptr<osg::GraphicsContext> getGraphicsContext();
 
         //! Time (ms) allocated to running GPU jobs per frame
+        //! Default = 0, meaning one job per frame is allowed.
         void setTimeSlice(const std::chrono::milliseconds& value);
         const std::chrono::milliseconds& getTimeSlice() const;
 
@@ -291,6 +392,9 @@ namespace osgEarth
 
         //! Access to the job arena
         static GPUJobArena& arena();
+
+        //! Jobs in queue
+        std::size_t size() const;
 
     public:
 
@@ -340,6 +444,61 @@ namespace osgEarth
         GPUJobArena::arena().dispatch(delegate);
         return std::move(future);
     }
+
+    /**
+     * Base class for a GPU Compute job that generates or modifies
+     * a raster image on the GPU and reads it back to the CPU.
+     * The name of the image in the compute shader is "buf" and it
+     * is bound to layout location zero (0).
+     */
+    class OSGEARTH_EXPORT ComputeImageSession
+    {
+    public:
+        //! construct a new session
+        ComputeImageSession();
+
+        //! Sets the compute shader program to use
+        void setProgram(osg::Program* program);
+
+        //! Sets the image to submit to the compute shader
+        void setImage(osg::Image* image);
+
+        //! Runs the compute shader and waits for the result
+        //! to be read back to the CPU.
+        void execute();
+
+    protected:
+        osg::ref_ptr<osg::Image> _image;
+        osg::ref_ptr<osg::StateSet> _stateSet;
+
+        virtual void renderImplementation(osg::State* state) = 0;
+
+    private:
+        GLuint _pbo;
+        osg::Texture2D* _tex;
+
+        void render(osg::State* state);
+        void readback(osg::State* state);
+    };
+
+    template<typename T>
+    class PerThreadComputeSession
+    {
+    public:
+        T& get(osg::Program* program) const {
+            ScopedMutexLock lock(_sessions);
+            SessionPtr& ptr = _sessions[getCurrentThreadId()];
+            if (ptr == nullptr) {
+                ptr = std::make_shared<T>();
+                ptr->setProgram(program);
+            }
+            return *ptr.get();
+        }
+    private:
+        using SessionPtr = std::shared_ptr<T>;
+        using SessionPtrPerThread = Mutexed<std::unordered_map<unsigned, SessionPtr>>;
+        mutable SessionPtrPerThread _sessions;
+    };
 
     /**
      * Utility to "pre-compile" a node by running it through the ICO

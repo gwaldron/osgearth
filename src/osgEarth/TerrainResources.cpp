@@ -205,6 +205,22 @@ TerrainResources::setTextureImageUnitOffLimits(int unit)
     return true;
 }
 
+
+float
+TerrainResources::getVisibilityRangeHint(unsigned lod) const
+{
+    return lod < _visibilityRanges.size() ? _visibilityRanges[lod] : FLT_MAX;
+}
+
+void
+TerrainResources::setVisibilityRangeHint(unsigned lod, float range)
+{
+    if (_visibilityRanges.size() <= lod)
+        _visibilityRanges.resize(lod+1);
+
+    _visibilityRanges[lod] = range;
+}
+
 //........................................................................
 TextureImageUnitReservation::TextureImageUnitReservation()
 {

@@ -419,7 +419,7 @@ RoadSurfaceLayer::getFeatures(
     OE_SOFT_ASSERT_AND_RETURN(fs != nullptr, __func__, );
 
     // Get the collection of keys accounting for the buffer width
-    std::vector<TileKey> keys;
+    std::unordered_set<TileKey> keys;
     fs->getKeys(key, options().featureBufferWidth().get(), keys);
 
     // Collect all the features, using a small LRU cache and a

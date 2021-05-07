@@ -1,0 +1,104 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_FEATURE_SDF_LAYER_H
+#define OSGEARTH_FEATURE_SDF_LAYER_H
+
+#include <osgEarth/ImageLayer>
+#include <osgEarth/LayerReference>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/StyleSheet>
+#include <osgEarth/SDF>
+
+namespace osgEarth
+{
+    /**
+     * Rasterizes feature data into distance fields.
+     */
+    class OSGEARTH_EXPORT FeatureSDFLayer : public ImageLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_VECTOR(ConfigOptions, filters);
+            OE_OPTION_LAYER(StyleSheet, styleSheet);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, FeatureSDFLayer, Options, osgEarth::ImageLayer, FeatureSDF);
+
+        //! Sets the feature source to get road data from; call either this
+        //! or setFeatureSourceLayer
+        void setFeatureSource(FeatureSource* source);
+        inline FeatureSource* getFeatureSource() const;
+
+        //! Style sheet to use to render feature data
+        void setStyleSheet(StyleSheet* styles);
+        inline StyleSheet* getStyleSheet() const;
+
+    public: // ImageLayer
+
+        // Opens the layer and returns a status
+        virtual Status openImplementation() override;
+
+        virtual GeoImage createImageImplementation(
+            const TileKey& key,
+            ProgressCallback* progress) const override;
+
+    protected: // Layer
+
+        // Called by Map when it adds this layer
+        virtual void addedToMap(const class Map*) override;
+
+        // Called by Map when it removes this layer
+        virtual void removedFromMap(const class Map*) override;
+
+        // post-ctor initialization
+        virtual void init() override;
+
+    protected:
+
+        virtual ~FeatureSDFLayer() { }
+
+    private:
+        osg::ref_ptr<Session> _session;
+        osg::ref_ptr<const FeatureProfile> _featureProfile;
+        osg::ref_ptr<FeatureFilterChain> _filterChain;
+        SDFGenerator _sdfGenerator;
+
+        void updateSession();
+
+        void establishProfile();
+    };    
+    
+    // template/inline impls .................................................
+
+    FeatureSource* FeatureSDFLayer::getFeatureSource() const { return options().featureSource().getLayer(); }
+    StyleSheet* FeatureSDFLayer::getStyleSheet() const { return options().styleSheet().getLayer(); }
+
+}
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureSDFLayer::Options);
+
+#endif // OSGEARTH_FEATURE_SDF_LAYER_H

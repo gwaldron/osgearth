@@ -27,6 +27,7 @@
 #include <list>
 #include <cpl_error.h>
 #include <ogr_api.h>
+#include <gdal.h>
 #include <queue>
 
 #define LC "[OGRFeatureSource] "
@@ -38,11 +39,11 @@ namespace osgEarth { namespace OGR
     // helper function.
     OGRLayerH openLayer(OGRDataSourceH ds, const std::string& layer)
     {
-        OGRLayerH h = OGR_DS_GetLayerByName(ds, layer.c_str());
+        OGRLayerH h = GDALDatasetGetLayerByName(ds, layer.c_str());
         if ( !h )
         {
             unsigned index = Strings::as<unsigned>(layer, 0);
-            h = OGR_DS_GetLayer(ds, index);
+            h = GDALDatasetGetLayer(ds, index);
         }
         return h;
     }
@@ -84,15 +85,17 @@ namespace osgEarth { namespace OGR
 
 //........................................................................
 
-OGR::OGRFeatureCursor::OGRFeatureCursor(OGRDataSourceH              dsHandle,
-                                        OGRLayerH                   layerHandle,
-                                        const FeatureSource*        source,
-                                        const FeatureProfile*       profile,
-                                        const Query&                query,
-                                        const FeatureFilterChain*   filters,
-                                        ProgressCallback*           progress,
-                                        bool                        rewindPolygons
-                                        ) :
+OGR::OGRFeatureCursor::OGRFeatureCursor(
+    OGRDataSourceH dsHandle,
+    OGRLayerH layerHandle,
+    const FeatureSource* source,
+    const FeatureProfile* profile,
+    const Query& query,
+    const FeatureFilterChain* filters,
+    bool rewindPolygons,
+    unsigned chunkSize,
+    ProgressCallback* progress) :
+
 FeatureCursor     ( progress ),
 _source           ( source ),
 _dsHandle         ( dsHandle ),
@@ -100,17 +103,18 @@ _layerHandle      ( layerHandle ),
 _resultSetHandle  ( 0L ),
 _spatialFilter    ( 0L ),
 _query            ( query ),
-_chunkSize        ( 500 ),
+_chunkSize        ( chunkSize == 0u ? 500u : chunkSize ),
 _nextHandleToQueue( 0L ),
 _resultSetEndReached(false),
 _profile          ( profile ),
 _filters          ( filters ),
-_rewindPolygons   (rewindPolygons)
+_rewindPolygons   ( rewindPolygons )
 {
     std::string expr;
     std::string from = OGR_FD_GetName(OGR_L_GetLayerDefn(_layerHandle));
 
     std::string driverName = OGR_Dr_GetName(OGR_DS_GetDriver(dsHandle));
+
     // Quote the layer name if it is a shapefile, so we can handle any weird filenames like those with spaces or hyphens.
     // Or quote any layers containing spaces for PostgreSQL
     if (driverName == "ESRI Shapefile" || driverName == "VRT" ||
@@ -187,7 +191,7 @@ _rewindPolygons   (rewindPolygons)
 
 
     OE_DEBUG << LC << "SQL: " << expr << std::endl;
-    _resultSetHandle = OGR_DS_ExecuteSQL(_dsHandle, expr.c_str(), _spatialFilter, 0L);
+    _resultSetHandle = GDALDatasetExecuteSQL(_dsHandle, expr.c_str(), _spatialFilter, 0L);
 
     if (_resultSetHandle)
     {
@@ -337,6 +341,11 @@ OGR::OGRFeatureCursor::readChunk()
         {
             _queue.push( i->get() );
         }
+    }
+
+    if (_chunkSize == ~0)
+    {
+        OGR_L_ResetReading(_resultSetHandle);
     }
 }
 
@@ -504,35 +513,49 @@ OGRFeatureSource::openImplementation()
     {
         // otherwise, assume we're loading from the URL/connection:
 
-        // load up the driver, defaulting to shapefile if unspecified.
-        std::string driverName = options().ogrDriver().value();
-        if (driverName.empty())
-            driverName = "ESRI Shapefile";
-
-        _ogrDriverHandle = OGRGetDriverByName(driverName.c_str());
-        
-        if (_ogrDriverHandle == NULL)
-        {
-            return Status(
-                Status::ResourceUnavailable,
-                Stringify() << "OGR driver \"" << driverName << "\" not found");
-        }
-
-        // attempt to open the dataset:
-        int openMode = options().openWrite().isSet() && options().openWrite().value() ? 1 : 0;
-
         // remember the thread so we don't use the handles illegaly.
         _dsHandleThreadId = osgEarth::Threading::getCurrentThreadId();
 
+        // If the user request a particular driver, set that up now:
+        std::string driverName = options().ogrDriver().value();
+        
+        const char* driverList[2] = {
+            driverName.c_str(),
+            nullptr
+        };
+
+        // always opening a vector source:
+        int openFlags = GDAL_OF_VECTOR;
+
+        // whether it's read-only or writable:
+        if (options().openWrite().isSetTo(true))
+            openFlags |= GDAL_OF_UPDATE;
+        else
+            openFlags |= GDAL_OF_READONLY;
+
+        if (osgEarth::getNotifyLevel() >= osg::INFO)
+            openFlags |= GDAL_OF_VERBOSE_ERROR;
+
         // this handle may ONLY be used from this thread!
         // https://github.com/OSGeo/gdal/blob/v2.4.1/gdal/gcore/gdaldataset.cpp#L2577
-        _dsHandle = OGROpenShared(_source.c_str(), openMode, &_ogrDriverHandle);
+        _dsHandle = GDALOpenEx(
+            _source.c_str(),
+            openFlags,
+            driverName.empty() ? nullptr : driverList,
+            nullptr,
+            nullptr);
+
+        //int openMode = options().openWrite().isSet() && options().openWrite().value() ? 1 : 0;
+
+        //_dsHandle = OGROpenShared(_source.c_str(), openMode, &_ogrDriverHandle);
+
         if (!_dsHandle)
         {
             return Status(Status::ResourceUnavailable, Stringify() << "Failed to open \"" << _source << "\"");
         }
 
-        if (openMode == 1)
+        if (openFlags & GDAL_OF_UPDATE)
+        //if (openMode == 1)
         {
             _writable = true;
         }
@@ -798,10 +821,22 @@ OGRFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         OGRDataSourceH dsHandle = 0L;
         OGRLayerH layerHandle = 0L;
 
+        const char* openOptions[2] = {
+            "OGR_GPKG_INTEGRITY_CHECK=NO",
+            nullptr
+        };
+
+        dsHandle = GDALOpenEx(
+            _source.c_str(),
+            GDAL_OF_VECTOR | GDAL_OF_READONLY,
+            nullptr,
+            nullptr, //openOptions,
+            nullptr);
+
         // open the handles safely:
         // Each cursor requires its own DS handle so that multi-threaded access will work.
         // The cursor impl will dispose of the new DS handle.
-        dsHandle = OGROpenShared(_source.c_str(), 0, &_ogrDriverHandle);
+        //dsHandle = OGROpenShared(_source.c_str(), 0, &_ogrDriverHandle);
         if (dsHandle)
         {
             layerHandle = OGR::openLayer(dsHandle, options().layer().get());
@@ -825,8 +860,9 @@ OGRFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
                 getFeatureProfile(),
                 newQuery,
                 getFilters(),
-                progress,
-                *_options->rewindPolygons()
+                _options->rewindPolygons().get(),
+                0, // default chunksize
+                progress
                 );
         }
         else

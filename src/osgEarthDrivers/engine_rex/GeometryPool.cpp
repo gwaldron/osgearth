@@ -32,8 +32,7 @@ using namespace osgEarth::REX;
 #define LC "[GeometryPool] "
 
 
-GeometryPool::GeometryPool(const TerrainOptions& options) :
-_options ( options ),
+GeometryPool::GeometryPool() :
 _enabled ( true ),
 _debug   ( false ),
 _geometryMapMutex("GeometryPool(OE)")
@@ -58,6 +57,7 @@ GeometryPool::getPooledGeometry(
     const TileKey& tileKey,
     unsigned tileSize,
     const Map* map,
+    const TerrainOptions& options,
     osg::ref_ptr<SharedGeometry>& out,
     Cancelable* progress)
 {
@@ -70,7 +70,10 @@ GeometryPool::getPooledGeometry(
         Threading::ScopedMutexLock lock(_geometryMapMutex);
         if (!_defaultPrimSet.valid())
         {
-            _defaultPrimSet = createPrimitiveSet(tileSize);
+            _defaultPrimSet = createPrimitiveSet(
+                tileSize,
+                options.heightFieldSkirtRatio().get(),
+                options.gpuTessellation().get());
         }
     }
 
@@ -92,7 +95,14 @@ GeometryPool::getPooledGeometry(
 
         if (!out.valid())
         {    
-            out = createGeometry(tileKey, tileSize, meshEditor, progress);
+            out = createGeometry(
+                tileKey, 
+                tileSize, 
+                options.heightFieldSkirtRatio().get(),
+                options.gpuTessellation().get(),
+                options.morphTerrain().get(),
+                meshEditor,
+                progress);
             
             // only store as a shared geometry if there are no constraints.
             if (out.valid() && !meshEditor.hasEdits())
@@ -105,7 +115,14 @@ GeometryPool::getPooledGeometry(
 
     else
     {
-        out = createGeometry(tileKey, tileSize, meshEditor, progress);
+        out = createGeometry(
+            tileKey,
+            tileSize,
+            options.heightFieldSkirtRatio().get(),
+            options.gpuTessellation().get(),
+            options.morphTerrain().get(),
+            meshEditor,
+            progress);
     }
 }
 
@@ -120,9 +137,11 @@ GeometryPool::createKeyForTileKey(const TileKey& tileKey,
 }
 
 int
-GeometryPool::getNumSkirtElements(unsigned tileSize) const
+GeometryPool::getNumSkirtElements(
+    unsigned tileSize,
+    float skirtRatio) const
 {
-    return _options.heightFieldSkirtRatio().get() > 0.0 ? (tileSize-1) * 4 * 6 : 0;
+    return skirtRatio > 0.0f ? (tileSize-1) * 4 * 6 : 0;
 }
 
 namespace
@@ -164,18 +183,20 @@ namespace
 
 osg::DrawElements*
 GeometryPool::createPrimitiveSet(
-    unsigned tileSize) const
+    unsigned tileSize,
+    float skirtRatio,
+    bool UseGpuTessellation) const
 {
     // Attempt to calculate the number of verts in the surface geometry.
-    bool needsSkirt = _options.heightFieldSkirtRatio() > 0.0f;
+    bool needsSkirt = skirtRatio > 0.0f;
 
     unsigned numVertsInSurface    = (tileSize*tileSize);
     unsigned numVertsInSkirt      = needsSkirt ? (tileSize-1)*2u * 4u : 0;
     unsigned numVerts             = numVertsInSurface + numVertsInSkirt;
     unsigned numIndiciesInSurface = (tileSize-1) * (tileSize-1) * 6;
-    unsigned numIncidesInSkirt    = getNumSkirtElements(tileSize);
+    unsigned numIncidesInSkirt    = getNumSkirtElements(tileSize, skirtRatio);
 
-    GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
+    GLenum mode = UseGpuTessellation ? GL_PATCHES : GL_TRIANGLES;
 
     osg::ref_ptr<osg::DrawElements> primSet = new osg::DrawElementsUShort(mode);
     primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
@@ -227,10 +248,14 @@ GeometryPool::tessellateSurface(unsigned tileSize, osg::DrawElements* primSet) c
 }
 
 SharedGeometry*
-GeometryPool::createGeometry(const TileKey& tileKey,
-                             unsigned tileSize,
-                             MeshEditor& editor,
-                             Cancelable* progress) const
+GeometryPool::createGeometry(
+    const TileKey& tileKey,
+    unsigned tileSize,
+    float skirtRatio,
+    bool gpuTessellation,
+    bool morphTerrain,
+    MeshEditor& editor,
+    Cancelable* progress) const
 {
     OE_PROFILING_ZONE;
 
@@ -244,15 +269,15 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     local2world.invert( world2local );
 
     // Attempt to calculate the number of verts in the surface geometry.
-    bool needsSkirt = _options.heightFieldSkirtRatio() > 0.0f;
+    bool needsSkirt = skirtRatio > 0.0f;
 
     unsigned numVertsInSurface    = (tileSize*tileSize);
     unsigned numVertsInSkirt      = needsSkirt ? (tileSize-1)*2u * 4u : 0;
     unsigned numVerts             = numVertsInSurface + numVertsInSkirt;
     unsigned numIndiciesInSurface = (tileSize-1) * (tileSize-1) * 6;
-    unsigned numIncidesInSkirt    = getNumSkirtElements(tileSize);
+    unsigned numIncidesInSkirt    = getNumSkirtElements(tileSize, skirtRatio);
 
-    GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
+    GLenum mode = gpuTessellation ? GL_PATCHES : GL_TRIANGLES;
 
     osg::BoundingSphere tileBound;
 
@@ -280,7 +305,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     osg::ref_ptr<osg::Vec3Array> neighbors = 0L;
     osg::ref_ptr<osg::Vec3Array> neighborNormals = 0L;
-    if (_options.morphTerrain() == true)
+    if (morphTerrain == true)
     {
         // neighbor positions (for morphing)
         neighbors = new osg::Vec3Array();
@@ -310,7 +335,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         bool tileHasData = editor.createTileMesh(
             geom.get(),
             tileSize,
-            _options.heightFieldSkirtRatio().get(),
+            skirtRatio,
+            mode,
             progress);
 
         if (geom->empty())
@@ -372,7 +398,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         if (needsSkirt)
         {
             // calculate the skirt extrusion height
-            double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
+            double height = tileBound.radius() * skirtRatio;
 
             // Normal tile skirt first:
             unsigned skirtIndex = verts->size();

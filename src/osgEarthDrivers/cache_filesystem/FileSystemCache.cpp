@@ -29,6 +29,7 @@
 #include <osgEarth/Metrics>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
+#include <osgDB/WriteFile>
 #include <fstream>
 #include <sys/stat.h>
 
@@ -41,6 +42,9 @@ using namespace osgEarth::Drivers;
 
 #define OSG_FORMAT "osgb"
 #define OSG_EXT   ".osgb"
+
+//#define IMAGE_FORMAT "tif"
+//#define IMAGE_EXT "." IMAGE_FORMAT
 
 namespace
 {
@@ -72,6 +76,7 @@ namespace
     protected:
         std::string _rootPath;
         std::shared_ptr<JobArena> _jobArena;
+        FileSystemCacheOptions _options;
     };
 
     struct WriteCacheRecord {
@@ -90,6 +95,7 @@ namespace
         FileSystemCacheBin(
             const std::string& name,
             const std::string& rootPath,
+            const FileSystemCacheOptions& options,
             std::shared_ptr<JobArena>& jobArena);
 
         static bool _s_debug;
@@ -127,6 +133,7 @@ namespace
         std::string                       _binPath;        // full path to the bin's root folder
         std::string                       _compressorName;
         osg::ref_ptr<osgDB::Options>      _zlibOptions;
+        FileSystemCacheOptions _options;
 
         // pool for asynchronous writes
         std::shared_ptr<JobArena> _jobArena;
@@ -185,19 +192,18 @@ bool FileSystemCacheBin::_s_debug = false;
 namespace
 {
     FileSystemCache::FileSystemCache(const CacheOptions& options) :
-        Cache(options)
+        Cache(options),
+        _options(options)
     {
-        FileSystemCacheOptions fsco( options );
-
         // read the root path from ENV is necessary:
-        if ( !fsco.rootPath().isSet())
+        if ( !_options.rootPath().isSet())
         {
             const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
             if ( cachePath )
-                fsco.rootPath() = cachePath;
+                _options.rootPath() = cachePath;
         }
 
-        _rootPath = URI( *fsco.rootPath(), options.referrer() ).full();
+        _rootPath = URI( *_options.rootPath(), options.referrer() ).full();
 
         if (osgDB::makeDirectory(_rootPath) == false)
         {
@@ -208,7 +214,7 @@ namespace
         OE_INFO << LC << "Opened a filesystem cache at \"" << _rootPath << "\"\n";
 
         // create a thread pool dedicated to asynchronous cache writes
-        setNumThreads(fsco.threads().get());
+        setNumThreads(_options.threads().get());
     }
 
     void
@@ -230,7 +236,7 @@ namespace
         if (getStatus().isError())
             return NULL;
 
-        return _bins.getOrCreate(name, new FileSystemCacheBin(name, _rootPath, _jobArena));
+        return _bins.getOrCreate(name, new FileSystemCacheBin(name, _rootPath, _options, _jobArena));
     }
 
     CacheBin*
@@ -245,7 +251,7 @@ namespace
             ScopedMutexLock lock( s_defaultBinMutex );
             if ( !_defaultBin.valid() ) // double-check
             {
-                _defaultBin = new FileSystemCacheBin("__default", _rootPath, _jobArena);
+                _defaultBin = new FileSystemCacheBin("__default", _rootPath, _options, _jobArena);
             }
         }
         return _defaultBin.get();
@@ -316,11 +322,13 @@ namespace
     FileSystemCacheBin::FileSystemCacheBin(
         const std::string& binID,
         const std::string& rootPath,
+        const FileSystemCacheOptions& options,
         std::shared_ptr<JobArena>& jobArena) :
 
         CacheBin(binID),
         _jobArena(jobArena),
         _binPathExists(false),
+        _options(options),
         _ok(true),
         _fileGate("CacheBinFileGate(OE)"),
         _writeCacheRWM("CacheBinWriteL2(OE)")
@@ -379,7 +387,8 @@ namespace
 
         // mangle "key" into a legal path name
         URI fileURI( key, _metaPath );
-        std::string path = fileURI.full() + OSG_EXT;
+        //std::string path = fileURI.full() + OSG_EXT;
+        std::string path = fileURI.full() + "." + _options.format().get();
 
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
@@ -416,7 +425,14 @@ namespace
             }
         }
 
-        osgDB::ReaderWriter::ReadResult r = _rw->readImage(path, dbo.get());
+        osg::ref_ptr<osgDB::ReaderWriter> image_rw = 
+            osgDB::Registry::instance()->getReaderWriterForExtension(_options.format().get());
+
+        if (!image_rw.valid())
+            return ReadResult(Stringify() << "Unknown image format \"" << _options.format().get() << "\"");
+
+        osgDB::ReaderWriter::ReadResult r = image_rw->readImage(path, dbo.get());
+        //osgDB::ReaderWriter::ReadResult r = _rw->readImage(path, dbo.get());
         if (!r.success())
         {
             NetworkMonitor::end(handle, "failed");
@@ -439,9 +455,14 @@ namespace
         if (_s_debug)
             OE_NOTICE << LC << "Read image \"" << key << "\" from cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
 
+        // compressed cache data means there was an internal error
+        OE_SOFT_ASSERT_AND_RETURN(
+            rr.getImage() == nullptr || rr.getImage()->isCompressed() == false, 
+            __func__, ReadResult());
+
         return rr;
     }
-
+    
     ReadResult
     FileSystemCacheBin::readObject(const std::string& key, const osgDB::Options* readOptions)
     {
@@ -569,7 +590,7 @@ namespace
 
         // Wrap input objects in ref_ptrs so they will persist in our write functor lambda
         osg::ref_ptr<const osg::Object> object(raw_object);
-        osg::ref_ptr<const osgDB::Options> writeOptions(raw_writeOptions);
+        osg::ref_ptr<const osgDB::Options> writeOptions(dbo);
 
         auto write_op = [=](Cancelable*)
         {
@@ -590,9 +611,17 @@ namespace
 
             if (dynamic_cast<const osg::Image*>(object.get()))
             {
-                std::string filename = fileURI.full() + OSG_EXT;
-                r = _rw->writeImage(*static_cast<const osg::Image*>(object.get()), filename, writeOptions.get());
-                writeOK = r.success();
+                std::string filename = fileURI.full() + "." + _options.format().get();
+                const osg::Image* image = static_cast<const osg::Image*>(object.get());
+
+                if (image->isCompressed())
+                {
+                    OE_SOFT_ASSERT(image->isCompressed() == false, __func__);
+                }
+                else
+                {
+                    writeOK = osgDB::writeImageFile(*image, filename, writeOptions.get());
+                }
             }
             else if (dynamic_cast<const osg::Node*>(object.get()))
             {

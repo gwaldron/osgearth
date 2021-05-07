@@ -48,10 +48,10 @@ struct osg_MaterialParameters
    vec4 specular;    // Scm   
    float shininess;  // Srm  
 };  
-uniform osg_MaterialParameters osg_FrontMaterial; 
+uniform osg_MaterialParameters osg_FrontMaterial;
 
 
-void atmos_fragment_main(inout vec4 color) 
+void atmos_fragment_main(inout vec4 color)
 { 
 #ifndef OE_LIGHTING
     return;

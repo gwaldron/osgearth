@@ -47,15 +47,20 @@ namespace osgEarth
             bool _measuring;
             osg::ref_ptr<FeatureNode> _measureCursor;
             osg::ref_ptr<Feature> _measureFeature;
+            bool _clamp_measure;
             float _measureDist;
             float _tess;
             osg::ref_ptr<osg::Uniform> _tess_u;
+            float _tess_range;
+            osg::ref_ptr<osg::Uniform> _tess_range_u;
 
         public:
             TerrainGUI() : BaseGUI("Terrain"), 
                 _installed(false),
                 _tess(3.0f),
-                _measuring(false) { }
+                _tess_range(150.0f),
+                _measuring(false),
+                _clamp_measure(true) { }
 
             void load(const Config& conf) override
             {
@@ -78,84 +83,78 @@ namespace osgEarth
                     if (_mapNode->getTerrainOptions().getGPUTessellation())
                     {
                         //if (ImGui::SliderFloat("Tessellation SSE", &_sse, 5.0f, 50.0f))
-                        if (ImGui::SliderFloat("Tessellation", &_tess, 1.0f, 5.0f))
+                        ImGui::SliderFloat("Tessellation", &_tess, 1.0f, 5.0f);
                         _tess_u->set(_tess);
+                        ImGui::SliderFloat("Tess Range", &_tess_range, 150.0f, 1500.0f);
+                        _tess_range_u->set(_tess_range);
                         ImGui::Separator();
                     }
 
-                    ImGui::Text("Mouse Coordinates:");
-
-                    ImGui::Indent();
+                    GeoPoint mp;
+                    if (_mapNode->getGeoPointUnderMouse(view(ri), _x, _y, mp))
                     {
-                        osg::Vec3d world;
-                        if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view(ri), _x, _y, world))
+                        if (mp.getSRS()->isGeographic())
                         {
-                            GeoPoint mp;
-                            mp.fromWorld(_mapNode->getMapSRS(), world);
+                            osg::Vec3d world;
+                            mp.toWorld(world);
 
-                            if (_mapNode->getMapSRS()->isGeographic())
+                            ImGui::Text("GEO: Lat=%.3f, Long=%.3f, HAE=%.3f", mp.x(), mp.y(), mp.z());
+                            ImGui::Text("ECEF: X=%d, Y=%d, Z=%d", (int)world.x(), (int)world.y(), (int)world.z());
+                        }
+                        else
+                        {
+                            GeoPoint LL = mp.transform(mp.getSRS()->getGeographicSRS());
+                            ImGui::Text("GEO: Lat=%.3f, Long=%.3f, Alt=%.3f", LL.x(), LL.y(), LL.z());
+                            ImGui::Text("Map: X=%d, Y=%d, Z=%d", (int)mp.x(), (int)mp.y(), (int)mp.z());
+                        }
+
+                        if (_sample.isAvailable())
+                        {
+                            if (_sample.get().elevation().getValue() == NO_DATA_VALUE)
                             {
-                                ImGui::Text("GEO: Lat=%.3f, Long=%.3f, HAE=%.3f", mp.x(), mp.y(), mp.z());
-                                ImGui::Text("ECEF: X=%d, Y=%d, Z=%d", (int)world.x(), (int)world.y(), (int)world.z());
+                                ImGui::Text("Elevation: 0.0m");
+                                ImGui::Text("Resolution: n/a (NO DATA)");
                             }
                             else
                             {
-                                ImGui::Text("GEO: Lat=%.3f, Long=%.3f, Alt=%.3f", mp.x(), mp.y(), mp.z());
-                                ImGui::Text("Map: X=%d, Y=%d, Z=%d", (int)world.x(), (int)world.y(), (int)world.z());
-                            }
+                                double egm96z = _sample.get().elevation().getValue();
+                                VerticalDatum::transform(
+                                    mp.getSRS()->getVerticalDatum(),
+                                    VerticalDatum::get("egm96"),
+                                    mp.y(), mp.x(),
+                                    egm96z);
+                                Distance elevEGM96(egm96z, _sample.get().elevation().getUnits());
 
-                            if (_sample.isAvailable())
-                            {
-                                if (_sample.get().elevation().getValue() == NO_DATA_VALUE)
-                                {
-                                    ImGui::Text("Elevation: 0.0m");
-                                    ImGui::Text("Resolution: n/a (NO DATA)");
-                                }
-                                else
-                                {
-                                    double egm96z = _sample.get().elevation().getValue();
-                                    VerticalDatum::transform(
-                                        mp.getSRS()->getVerticalDatum(),
-                                        VerticalDatum::get("egm96"),
-                                        mp.y(), mp.x(),
-                                        egm96z);
-                                    Distance elevEGM96(egm96z, _sample.get().elevation().getUnits());
+                                Distance cartRes = mp.transformResolution(_sample.get().resolution(), Units::METERS);
+                                ImGui::Text("Elevation: %s MSL / %s HAE",
+                                    elevEGM96.asParseableString().c_str(),
+                                    _sample.get().elevation().asParseableString().c_str());
 
-                                    Distance cartRes = mp.transformResolution(_sample.get().resolution(), Units::METERS);
-                                    ImGui::Text("Elevation: %s MSL / %s HAE",
-                                        elevEGM96.asParseableString().c_str(),
-                                        _sample.get().elevation().asParseableString().c_str());
-
-                                    ImGui::Text("Resolution: %s",
-                                        cartRes.asParseableString().c_str());
-                                }
-                            }
-                            else
-                            {
-                                ImGui::Text("Elevation: ...");
-                                ImGui::Text("Resolution: ...");
-                            }
-                            if (fabs(_ax - _x) > 5 || fabs(_ay - _y) > 5)
-                            {
-                                _sample = _sampler->getSample(mp);
-                                _ax = _x, _ay = _y;
+                                ImGui::Text("Resolution: %s",
+                                    cartRes.asParseableString().c_str());
                             }
                         }
+                        else
+                        {
+                            ImGui::Text("Elevation: ...");
+                            ImGui::Text("Resolution: ...");
+                        }
+                        if (fabs(_ax - _x) > 5 || fabs(_ay - _y) > 5)
+                        {
+                            _sample = _sampler->getSample(mp);
+                            _ax = _x, _ay = _y;
+                        }
                     }
-                    ImGui::Unindent();
 
                     ImGui::Separator();
 
-                    ImGui::Text("Spatial Reference:");
-                    ImGui::Indent();
+                    ImGui::Text("SRS: "); ImGui::SameLine();
                     std::string proj = _mapNode->getMapSRS()->getName();
                     if (proj != "unknown")
                         ImGui::TextWrapped("%s", proj.c_str());
                     ImGui::TextWrapped("%s", _mapNode->getMapSRS()->getHorizInitString().c_str());
                     if (!_mapNode->getMapSRS()->getVertInitString().empty())
                         ImGui::TextWrapped("vdatum = %s", _mapNode->getMapSRS()->getVertInitString().c_str());
-
-                    ImGui::Unindent();
 
                     ImGui::Separator();
                     if (ImGui::Checkbox("Measure", &_measuring))
@@ -170,9 +169,14 @@ namespace osgEarth
                     if (_measuring)
                     {
                         ImGui::SameLine();
-                        float dist = GeoMath::distance(_measureFeature->getGeometry()->asVector());
-                        //float dist = _measureFeature->getGeometry()->getLength();
-                        ImGui::TextColored(ImVec4(1,1,0,1), "  %.2f m", dist);
+                        if (ImGui::Checkbox("Follow", &_clamp_measure)) {
+                            Style s = _measureCursor->getStyle();
+                            s.getOrCreate<LineSymbol>()->tessellation() = (_clamp_measure ? 64 : 0);
+                            _measureCursor->setStyle(s);
+                        }
+                        ImGui::SameLine();
+                        float dist_m = GeoMath::distance(_measureFeature->getGeometry()->asVector());
+                        ImGui::TextColored(ImVec4(1,1,0,1), " %.2f m", dist_m);
                     }
                     else
                     {
@@ -194,8 +198,9 @@ namespace osgEarth
                 measureStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;
                 measureStyle.getOrCreate<LineSymbol>()->stroke()->color().set(1, 0.5, 0.0, 1);
                 measureStyle.getOrCreate<LineSymbol>()->stroke()->stipplePattern() = 0xCCCC;
-                measureStyle.getOrCreate<LineSymbol>()->tessellation() = 64;
+                measureStyle.getOrCreate<LineSymbol>()->tessellation() = (_clamp_measure ? 64 : 0);
                 measureStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                measureStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
                 measureStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
 
                 _measureFeature = new Feature(new LineString(), SpatialReference::get("wgs84"));
@@ -206,6 +211,8 @@ namespace osgEarth
                 {
                     _tess_u = new osg::Uniform("oe_terrain_tess", _tess);
                     _mapNode->getOrCreateStateSet()->addUniform(_tess_u.get(), osg::StateAttribute::OVERRIDE);
+                    _tess_range_u = new osg::Uniform("oe_terrain_tess_range", _tess_range);
+                    _mapNode->getOrCreateStateSet()->addUniform(_tess_range_u.get(), osg::StateAttribute::OVERRIDE);
                 }
 
                 _installed = true;
@@ -221,7 +228,7 @@ namespace osgEarth
                     if (!p.isValid()) return;
 
                     Geometry* geom = _measureFeature->getGeometry();
-                    if (!geom->empty())
+                    if (geom->size() == 2)
                     {
                         GeoPoint pf = p.transform(_measureFeature->getSRS());
                         geom->back().set(pf.x(), pf.y(), 0.0f);
@@ -234,15 +241,23 @@ namespace osgEarth
             {
                 if (_measuring)
                 {
-                    GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
-                    if (!p.isValid()) return;
-
-                    GeoPoint pf = p.transform(_measureFeature->getSRS());
                     Geometry* geom = _measureFeature->getGeometry();
-                    geom->push_back(pf.x(), pf.y());
-                    if (geom->size() == 1)
+                    if (geom->size() < 2)
+                    {
+                        GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
+                        if (!p.isValid()) return;
+
+                        GeoPoint pf = p.transform(_measureFeature->getSRS());
                         geom->push_back(pf.x(), pf.y());
-                    _measureCursor->dirty();
+                        geom->push_back(pf.x(), pf.y());
+                        _measureCursor->dirty();
+                    }
+                    else
+                    {
+                        // start over
+                        geom->clear();
+                        onClick(view, x, y);
+                    }
                 }
             }
         };

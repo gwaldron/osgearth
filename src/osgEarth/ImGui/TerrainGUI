@@ -25,6 +25,7 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/FeatureNode>
+#include <osgEarth/LabelNode>
 #include <chrono>
 #include <list>
 
@@ -47,6 +48,7 @@ namespace osgEarth
             bool _measuring;
             osg::ref_ptr<FeatureNode> _measureCursor;
             osg::ref_ptr<Feature> _measureFeature;
+            osg::ref_ptr<LabelNode> _measureLabel;
             bool _clamp_measure;
             float _measureDist;
             float _tess;
@@ -164,6 +166,7 @@ namespace osgEarth
                             _measureFeature->getGeometry()->clear();
                             _measureCursor->dirty();
                             _measureCursor->setNodeMask(~0);
+                            _measureLabel->setNodeMask(~0);
                         }
                     }
                     if (_measuring)
@@ -176,11 +179,18 @@ namespace osgEarth
                         }
                         ImGui::SameLine();
                         float dist_m = GeoMath::distance(_measureFeature->getGeometry()->asVector());
-                        ImGui::TextColored(ImVec4(1,1,0,1), " %.2f m", dist_m);
+                        char buf[64];
+                        sprintf(buf, "%.1f m", dist_m);
+                        //ImGui::TextColored(ImVec4(1,1,0,1), " %.2f m", dist_m);    
+                        _measureLabel->setText(buf);
+                        GeoPoint labelPos = _measureFeature->getExtent().getCentroid();
+                        labelPos.altitudeMode() = ALTMODE_RELATIVE;
+                        _measureLabel->setPosition(labelPos);
                     }
                     else
                     {
                         _measureCursor->setNodeMask(0);
+                        _measureLabel->setNodeMask(0);
                     }
                 }
                 ImGui::End();
@@ -206,6 +216,19 @@ namespace osgEarth
                 _measureFeature = new Feature(new LineString(), SpatialReference::get("wgs84"));
                 _measureCursor = new FeatureNode(_measureFeature.get(), measureStyle);
                 _mapNode->addChild(_measureCursor);
+
+                _measureLabel = new LabelNode();
+                _measureLabel->setDynamic(true);
+                Style labelStyle;
+                labelStyle.getOrCreate<TextSymbol>()->size() = 24.0f;
+                labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+                labelStyle.getOrCreate<TextSymbol>()->fill()->color().set(1, 1, 1, 1);
+                labelStyle.getOrCreate<TextSymbol>()->halo()->color().set(.3, .3, .3, 1);
+                labelStyle.getOrCreate<BBoxSymbol>()->fill()->color().set(1, 0.5, 0.0, 0.5);
+                labelStyle.getOrCreate<BBoxSymbol>()->border()->color().set(.8, .8, .8, 1);
+                _measureLabel->setStyle(labelStyle);
+                _measureLabel->setNodeMask(0);
+                _mapNode->addChild(_measureLabel);
 
                 if (_mapNode->getTerrainOptions().getGPUTessellation())
                 {

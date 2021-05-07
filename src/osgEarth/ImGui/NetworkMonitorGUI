@@ -65,33 +65,45 @@ namespace osgEarth {
                         }
                     }
 
-                    if (ImGui::Button("Save"))
-                    {
-                        NetworkMonitor::saveCSV(requests, "network_requests.csv");
-                    }
+                    ImGui::Checkbox("Active", &_showOnlyActiveRequests);
 
-                    ImGui::Checkbox("Show active requests", &_showOnlyActiveRequests);
-
-                    ImGui::InputText("Filter", _filter, 128);
-
+                    ImGui::SameLine();
                     if (ImGui::Button("Clear"))
                     {
                         NetworkMonitor::clear();
                     }
 
-                    ImGui::Text("%d requests", requests.size()); ImGui::SameLine();
-                    ImGui::Text("Finished %f s", totalTime / 1000.0);
+                    ImGui::SameLine();
+                    if (ImGui::Button("Save"))
+                    {
+                        NetworkMonitor::saveCSV(requests, "network_requests.csv");
+                    }
+
+                    ImGui::SameLine();
+                    ImGui::InputText("Filter", _filter, 128);
+
+                    ImGui::Text("%d requests", requests.size());
+                    ImGui::SameLine();
+                    ImGui::Text("Total time = %.1f s", totalTime / 1000.0);
 
                     ImGui::BeginChild("Columns");
-                    ImGui::Columns(7, "requests");
+                    ImGui::Columns(5, "requests");
+
+                    ImGui::SetColumnWidth(0, 300.f);
+                    ImGui::SetColumnWidth(1, 100.f);
+                    ImGui::SetColumnWidth(2, 100.f);
+                    ImGui::SetColumnWidth(3, 100.f);
+                    //ImGui::SetColumnWidth(0, 100.f);
+
+
                     ImGui::Separator();
-                    ImGui::Text("Path"); ImGui::NextColumn();
-                    ImGui::Text("Duration"); ImGui::NextColumn();
-                    ImGui::Text("Start time"); ImGui::NextColumn();
-                    ImGui::Text("End time"); ImGui::NextColumn();
+                    //ImGui::Text("Start time"); ImGui::NextColumn();
+                    //ImGui::Text("End time"); ImGui::NextColumn();
                     ImGui::Text("Layer"); ImGui::NextColumn();
+                    ImGui::Text("Time(ms)"); ImGui::NextColumn();
                     ImGui::Text("Type"); ImGui::NextColumn();
                     ImGui::Text("Status"); ImGui::NextColumn();
+                    ImGui::Text("Path"); ImGui::NextColumn();
                     ImGui::Separator();
 
 
@@ -143,13 +155,17 @@ namespace osgEarth {
                                 endMS = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
                             }
 
-                            ImGui::TextColored(color, itr->second.uri.c_str());  ImGui::NextColumn();
-                            ImGui::Text("%.2lf ms", itr->second.getDuration()); ImGui::NextColumn();
-                            ImGui::Text("%.2lf ms", startMS); ImGui::NextColumn();
-                            ImGui::Text("%.2lf ms", endMS); ImGui::NextColumn();
                             ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
+                            char buf[64];
+                            sprintf(buf, "%.1lf", itr->second.getDuration());
+                            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(buf).x
+                                - ImGui::GetScrollX() - 2 * ImGui::GetStyle().ItemSpacing.x);
+                            ImGui::Text(buf); ImGui::NextColumn();
+                            //ImGui::Text("%.2lf ms", startMS); ImGui::NextColumn();
+                            //ImGui::Text("%.2lf ms", endMS); ImGui::NextColumn();
                             ImGui::Text(itr->second.type.c_str()); ImGui::NextColumn();
                             ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
+                            ImGui::TextColored(color, itr->second.uri.c_str());  ImGui::NextColumn();
                         }
                     }
                     ImGui::Columns(1);

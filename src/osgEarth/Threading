@@ -294,15 +294,6 @@ namespace osgEarth { namespace Threading
                 if (isAbandoned()) break;
         }
 
-        Future<T>& then(std::function<void(T*)>& func) {
-            std::unique_lock<std::mutex> lock(_objRef->_callbacksMutex);
-            if (_ev->isSet())
-                func(_objRef->_obj.get());
-            else
-                _objRef->_callbacks.push_back(func);
-            return *this;
-        }
-
     private:
         std::shared_ptr<Event> _ev;
         std::shared_ptr<Container> _shared;

@@ -148,6 +148,7 @@ SET(LIB_PUBLIC_HEADERS
     GeoMath
     GeoTransform
     GeometryClamper
+    GL
     GLSLChunker
     GLUtils
     HeightFieldUtils
@@ -566,6 +567,7 @@ set(TARGET_SRC
     GeometryClamper.cpp
     GLSLChunker.cpp
     GLUtils.cpp
+    GL.cpp
     HeightFieldUtils.cpp
     Horizon.cpp
     HorizonClipPlane.cpp

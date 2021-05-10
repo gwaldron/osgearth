@@ -51,7 +51,11 @@ namespace osgEarth
         //! Construct a TILED feature profile with a tiling schema
         FeatureProfile(const Profile* tilingProfile);
 
+        //! Copy ctor
+        FeatureProfile(const FeatureProfile& rhs);
+
         //! Spatial extents of the features data
+        void setExtent(const GeoExtent& value) { _extent = value; }
         const GeoExtent& getExtent() const { return _extent; }
 
         //! Spatial reference system of feature data

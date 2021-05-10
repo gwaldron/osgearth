@@ -36,6 +36,7 @@ FeatureSource::Options::getConfig() const
     conf.set( "geo_interpolation", "rhumb_line",   geoInterp(), GEOINTERP_RHUMB_LINE );
     conf.set( "fid_attribute", fidAttribute() );
     conf.set( "rewind_polygons", rewindPolygons());
+    conf.set( "vdatum", vdatum() );
 
     if (!filters().empty())
     {
@@ -61,6 +62,7 @@ FeatureSource::Options::fromConfig(const Config& conf)
     conf.get( "geo_interpolation", "rhumb_line",   geoInterp(), GEOINTERP_RHUMB_LINE );
     conf.get( "fid_attribute", fidAttribute() );
     conf.get( "rewind_polygons", rewindPolygons());
+    conf.get( "vdatum", vdatum() );
 
     const Config& filtersConf = conf.child("filters");
     for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
@@ -136,10 +138,27 @@ FeatureSource::create(
     return setStatus(Status::ResourceUnavailable, "Driver does not support create");
 }
 
-void
+const FeatureProfile*
 FeatureSource::setFeatureProfile(const FeatureProfile* fp)
 {
     _featureProfile = fp;
+
+    if (fp != nullptr && options().vdatum().isSet())
+    {
+        FeatureProfile* new_fp = new FeatureProfile(*fp);
+
+        new_fp->setExtent(GeoExtent(
+            SpatialReference::get(
+                fp->getExtent().getSRS()->getHorizInitString(),
+                options().vdatum().get()),
+            fp->getExtent().bounds()));
+
+        _featureProfile = new_fp;
+
+        OE_INFO << LC << "Set vdatum = " << options().vdatum().get() << std::endl;
+    }
+
+    return _featureProfile.get();
 }
 
 const FeatureProfile*

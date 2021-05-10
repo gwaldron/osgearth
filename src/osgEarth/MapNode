@@ -252,6 +252,7 @@ namespace osgEarth
         ResourceReleaser*  _resourceReleaser;
         std::shared_ptr<DrapingManager> _drapingManager;
         ClampingManager*   _clampingManager;
+        std::atomic<bool>  _readyForUpdate;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
 

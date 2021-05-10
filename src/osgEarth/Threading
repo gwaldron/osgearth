@@ -31,10 +31,6 @@
 #include <future>
 #include <type_traits>
 
-namespace osgDB {
-    class Options;
-}
-
 // to include the file and line as the mutex name
 #define OE_MUTEX_NAME __FILE__ ":" OE_STRINGIFY(__LINE__)
 
@@ -730,15 +726,24 @@ namespace osgEarth { namespace Threading
     class OSGEARTH_EXPORT JobArena
     {
     public:
+        //! Type of Job Arena (thread pool versus traversal)
+        enum Type
+        {
+            THREAD_POOL,
+            UPDATE_TRAVERSAL
+        };
+
         //! Construct a new JobArena
         JobArena(
             const std::string& name,
-            unsigned concurrency = 2u);
+            unsigned concurrency = 2u,
+            const Type& type = THREAD_POOL);
 
         //! Destroy
         ~JobArena();
 
         //! Set the concurrency of this job arena
+        //! (Only applies to THREAD_POOL type arenas)
         void setConcurrency(unsigned value);
 
     public: // statics
@@ -746,11 +751,19 @@ namespace osgEarth { namespace Threading
         //! Access a named arena
         static JobArena* get(const std::string& name);
 
+        //! Access the first arena of type "type". Typically use this to
+        //! access an UPDATE_TRAVERSAL arena singleton.
+        static JobArena* get(const Type& type);
+
         //! Sets the concurrency of a named arena
         static void setConcurrency(const std::string& name, unsigned value);
 
         //! Name of the arena to use when none is specified
         static const std::string& defaultArenaName();
+
+        //! Run one or more pending jobs.
+        //! Internal function - do not call this directly.
+        void runJobs();
 
         /**
          * Reflects the current state of the JobArena system
@@ -856,6 +869,8 @@ namespace osgEarth { namespace Threading
 
         // pool name
         std::string _name;
+        // type of arena
+        Type _type;
         // queued operations to run asynchronously
         using Queue = std::vector<QueuedJob>;
         Queue _queue;

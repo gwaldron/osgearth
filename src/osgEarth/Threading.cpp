@@ -21,6 +21,7 @@
 #include "Utils"
 #include "Metrics"
 #include <cstdlib>
+#include <climits>
 
 #ifdef _WIN32
 #   include <Windows.h>

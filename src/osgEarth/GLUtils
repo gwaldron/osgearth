@@ -26,6 +26,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/optional>
 #include <osgEarth/Threading>
+#include <osgEarth/Math>
 #include <osg/StateSet>
 #include <osg/OperationThread>
 #include <osg/GraphicsContext>

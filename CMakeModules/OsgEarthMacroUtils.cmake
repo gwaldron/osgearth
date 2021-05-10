@@ -424,15 +424,22 @@ ENDMACRO(SETUP_APPLICATION)
 # Takes optional third arg:  (is_commandline_app?) in ARGV2
 MACRO(SETUP_IMGUI_APPLICATION APPLICATION_NAME)
     if(OSGEARTH_ENABLE_IMGUI)
+        if(OSGEARTH_ENABLE_GLBINDING)
+            set(TARGET_EXTERNAL_LIBRARIES ${TARGET_EXTERNAL_LIBRARIES}
+                glbinding::glbinding
+            )
+        else()
+            include_directories(
+                ${GLEW_INCLUDE_DIR}
+            )
+            set(TARGET_LIBRARIES_VARS
+                ${TARGET_LIBRARIES_VARS}
+                GLEW_LIBRARIES
+            )
+        endif()
         include_directories(
-            ${GLEW_INCLUDE_DIR}
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples
-        )
-
-        set(TARGET_LIBRARIES_VARS
-            ${TARGET_LIBRARIES_VARS}
-            GLEW_LIBRARIES
         )
 
         set(TARGET_SRC

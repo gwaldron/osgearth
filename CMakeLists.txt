@@ -115,6 +115,7 @@ option(OSGEARTH_BUILD_DOCS "Include the documentation folder" ON)
 
 option(OSGEARTH_ENABLE_PROFILING "Enable profiling with Tracy" OFF)
 option(OSGEARTH_ENABLE_GEOCODER "Enable the geocoder (GDAL/OGR must be built with geocoder support)" OFF)
+option(OSGEARTH_ENABLE_GLBINDING "Enable glBinding support for IMGUI" OFF)
 
 # ........................................................................
 # Dependencies
@@ -157,6 +158,10 @@ if(OSGEARTH_BUILD_SILVERLINING_NODEKIT)
     find_package(SilverLining QUIET)
 endif()
 
+if(OSGEARTH_ENABLE_GLBINDING)
+    find_package(glbinding)
+endif()
+
 # Sqlite enables the MBTiles format:
 IF(SQLITE3_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_MBTILES)
@@ -177,9 +182,12 @@ IF(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
     ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
 ENDIF()
 
-if(GLEW_FOUND)
+if(GLEW_FOUND OR (OSGEARTH_ENABLE_GLBINDING AND glbinding_FOUND))
     set(OSGEARTH_ENABLE_IMGUI 1)
     add_definitions(-DOSGEARTH_ENABLE_IMGUI)
+    if(glbinding_FOUND)
+        ADD_DEFINITIONS(-DOSGEARTH_HAVE_GLBINDING)
+    endif()
 endif()
 
 if(OSGEARTH_ENABLE_GEOCODER)

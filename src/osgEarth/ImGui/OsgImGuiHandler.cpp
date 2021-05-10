@@ -15,7 +15,7 @@ using namespace osgEarth::GUI;
 
 void OsgImGuiHandler::RealizeOperation::operator()(osg::Object* object)
 {
-    GlewInitOperation::operator()(object);
+    GlInitOperation::operator()(object);
     OsgImGuiHandler::init();
 }
 

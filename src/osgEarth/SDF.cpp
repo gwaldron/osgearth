@@ -131,7 +131,7 @@ SDFGenerator::allocateSDF(
     osg::ref_ptr<osg::Image> sdf = new osg::Image();
     sdf->allocateImage(size, size, 1, GL_RED, GL_UNSIGNED_BYTE);
     sdf->setInternalTextureFormat(GL_R8);
-    ImageUtils::PixelWriter write(sdf);
+    ImageUtils::PixelWriter write(sdf.get());
     write.assign(Color(1, 1, 1, 1));
     return GeoImage(sdf.release(), extent);
 }

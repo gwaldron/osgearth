@@ -100,13 +100,13 @@ namespace osgEarth
                             osg::Vec3d world;
                             mp.toWorld(world);
 
-                            ImGui::Text("GEO: Lat=%.3f, Long=%.3f, HAE=%.3f", mp.x(), mp.y(), mp.z());
+                            ImGui::Text("Geo: Lat=%.3f, Long=%.3f, Z=%.3f", mp.x(), mp.y(), mp.z());
                             ImGui::Text("ECEF: X=%d, Y=%d, Z=%d", (int)world.x(), (int)world.y(), (int)world.z());
                         }
                         else
                         {
                             GeoPoint LL = mp.transform(mp.getSRS()->getGeographicSRS());
-                            ImGui::Text("GEO: Lat=%.3f, Long=%.3f, Alt=%.3f", LL.x(), LL.y(), LL.z());
+                            ImGui::Text("Geo: Lat=%.3f, Long=%.3f, Z=%.3f", LL.x(), LL.y(), LL.z());
                             ImGui::Text("Map: X=%d, Y=%d, Z=%d", (int)mp.x(), (int)mp.y(), (int)mp.z());
                         }
 
@@ -119,18 +119,27 @@ namespace osgEarth
                             }
                             else
                             {
-                                double egm96z = _sample.get().elevation().getValue();
-                                VerticalDatum::transform(
-                                    mp.getSRS()->getVerticalDatum(),
-                                    VerticalDatum::get("egm96"),
-                                    mp.y(), mp.x(),
-                                    egm96z);
-                                Distance elevEGM96(egm96z, _sample.get().elevation().getUnits());
-
                                 Distance cartRes = mp.transformResolution(_sample.get().resolution(), Units::METERS);
-                                ImGui::Text("Elevation: %s MSL / %s HAE",
-                                    elevEGM96.asParseableString().c_str(),
-                                    _sample.get().elevation().asParseableString().c_str());
+                                const VerticalDatum* egm96 = VerticalDatum::get("egm96");
+                                if (egm96)
+                                {
+                                    double egm96z = _sample.get().elevation().getValue();
+                                    VerticalDatum::transform(
+                                        mp.getSRS()->getVerticalDatum(),
+                                        egm96,
+                                        mp.y(), mp.x(),
+                                        egm96z);
+                                    Distance elevEGM96(egm96z, _sample.get().elevation().getUnits());
+
+                                    ImGui::Text("Elevation: %s MSL / %s HAE",
+                                        elevEGM96.asParseableString().c_str(),
+                                        _sample.get().elevation().asParseableString().c_str());
+                                }
+                                else
+                                {
+                                    ImGui::Text("Elevation: %s HAE",
+                                        _sample.get().elevation().asParseableString().c_str());
+                                }
 
                                 ImGui::Text("Resolution: %s",
                                     cartRes.asParseableString().c_str());

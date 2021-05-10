@@ -259,7 +259,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             load(priority, &nv);
 
             // finally, traverse children and paged data.
-            if (_compiled.isAvailable() && _compiled.get().valid() && _refinePolicy == REFINE_REPLACE)
+            if (_refinePolicy == REFINE_REPLACE && _merged)
             {
                 _compiled.get()->accept(nv);
             }

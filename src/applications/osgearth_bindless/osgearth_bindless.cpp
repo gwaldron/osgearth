@@ -175,7 +175,7 @@ main(int argc, char** argv)
         mt->setMatrix(osg::Matrix::translate(spacing, 0, 0));
         mt->addChild(node);
         std::vector<Texture::Ptr> added;
-        cloud->add(mt, added);
+        cloud->add(mt.get(), added);
         
         spacing += radius;
     }

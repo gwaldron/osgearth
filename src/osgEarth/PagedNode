@@ -296,16 +296,18 @@ namespace osgEarth { namespace Util
         //! Manually call an update on the PagingManager.  This should only be used if you are loading data outside of a traditional frameloop and want to merge data.
         void update();
 
-    public:
-        virtual void traverse(osg::NodeVisitor& nv) override;
-
     protected:
         virtual ~PagingManager() { }
+
+    public:
+        void traverse(osg::NodeVisitor& nv);
 
     private:
         Mutex _trackerMutex;
         SentryTracker<osg::ref_ptr<PagedNode2>> _tracker;
         std::list<PagedNode2*> _trash;
+        using UpdateFunc = std::function<void(Cancelable*)>;
+        UpdateFunc _updateFunc;
 
         mutable Mutex _mergeMutex;
         struct ToMerge {

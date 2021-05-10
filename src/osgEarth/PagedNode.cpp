@@ -239,7 +239,8 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         if (_useRange) // meters
         {
             float range = nv.getDistanceToViewPoint(getBound().center(), true);
-            inRange = (range >= 0.0f && range >= _minRange && range <= _maxRange);
+            // check that range > 0 to avoid trouble from some visitors
+            inRange = (range > 0.0f && range >= _minRange && range <= _maxRange);
             priority = -range * _priorityScale;
         }
         else // pixels
@@ -253,13 +254,13 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             }
         }
 
-        // check that range > 0 to avoid trouble from some visitors
         if (inRange)
         {
             load(priority, &nv);
 
             // finally, traverse children and paged data.
-            if (_refinePolicy == REFINE_REPLACE && _merged)
+            if (_refinePolicy == REFINE_REPLACE &&
+                _merged == true)
             {
                 _compiled.get()->accept(nv);
             }
@@ -276,11 +277,10 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             // child out of range; just accept static children
             for (auto& child : _children)
             {
-                osg::Node* compiled = nullptr;
-                if (_compiled.isAvailable())
-                {
-                    compiled = _compiled.get().get();
-                }
+                osg::Node* compiled =
+                    _compiled.isAvailable() ? _compiled.get().get() :
+                    nullptr;
+
                 if (child.get() != compiled)
                     child->accept(nv);
             }
@@ -307,6 +307,10 @@ PagedNode2::merge(int revision)
     // this method gets invoked.
     if (_revision == revision)
     {
+        //static std::set<osg::Node*> nodes;
+        //OE_SOFT_ASSERT_AND_RETURN(nodes.count(this) == 0, __func__, false);
+        //nodes.insert(this);
+
         // This is called from PagingManager.
         // We're in the UPDATE traversal.
         OE_SOFT_ASSERT_AND_RETURN(_merged == false, __func__, false);
@@ -362,31 +366,31 @@ void PagedNode2::load(float priority, const osg::Object* host)
 
             _loaded = _job.dispatch<Loaded>(
                 [load, callbacks, preCompile](Cancelable* c)
-            {
-                Loaded result;
-
-                osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
-
-                // invoke the loader function
-                result._node = load(progress.get());
-
-                // Fire any pre-merge callbacks
-                if (result._node.valid())
                 {
-                    if (callbacks.valid())
-                        callbacks->firePreMergeNode(result._node.get());
+                    Loaded result;
 
-                    if (preCompile)
+                    osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
+
+                    // invoke the loader function
+                    result._node = load(progress.get());
+
+                    // Fire any pre-merge callbacks
+                    if (result._node.valid())
                     {
-                        // Collect the GL objects for later compilation.
-                        // Don't waste precious ICO time doing this later
-                        GLObjectsCompiler compiler;
-                        result._state = compiler.collectState(result._node.get());
-                    }
-                }
+                        if (callbacks.valid())
+                            callbacks->firePreMergeNode(result._node.get());
 
-                return result;
-            }
+                        if (preCompile)
+                        {
+                            // Collect the GL objects for later compilation.
+                            // Don't waste precious ICO time doing this later
+                            GLObjectsCompiler compiler;
+                            result._state = compiler.collectState(result._node.get());
+                        }
+                    }
+
+                    return result;
+                }
             );
         }
         else
@@ -438,9 +442,10 @@ void PagedNode2::load(float priority, const osg::Object* host)
     }
     else if (
         _compiled.isAvailable() &&
+        _pagingManager != nullptr &&
         _mergeTriggered.exchange(true) == false)
     {
-        // Submit this node to the paging manager for merging.
+        // Submit this node to the paging manager for merging.i
         _pagingManager->merge(this);
     }
 }
@@ -482,8 +487,30 @@ PagingManager::PagingManager() :
     _newFrame(false)
 {
     setCullingActive(false);
-    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    //ADJUST_UPDATE_TRAV_COUNT(this, +1);
     JobArena::get(PAGEDNODE_ARENA_NAME)->setConcurrency(4u);
+
+    osg::observer_ptr<PagingManager> pm_ptr(this);
+    _updateFunc = [pm_ptr](Cancelable*) mutable
+    {
+        osg::ref_ptr<PagingManager> pm(pm_ptr);
+        if (pm.valid())
+        {
+            pm->update();
+            Job(JobArena::get(JobArena::UPDATE_TRAVERSAL))
+                .dispatch(pm->_updateFunc);
+        }
+    };
+
+    Job(JobArena::get(JobArena::UPDATE_TRAVERSAL))
+        .dispatch(_updateFunc);
+}
+
+void
+PagingManager::traverse(osg::NodeVisitor& nv)
+{
+    ObjectStorage::set(&nv, this);
+    osg::Group::traverse(nv);
 }
 
 void
@@ -497,13 +524,13 @@ PagingManager::update()
             0.0f,
             _mergesPerFrame,
             [](osg::ref_ptr<PagedNode2>& node) -> bool {
-            if (node->getAutoUnload())
-            {
-                node->unload();
-                return true;
-            }
-            return false;
-        });
+                if (node->getAutoUnload())
+                {
+                    node->unload();
+                    return true;
+                }
+                return false;
+            });
     }
 
     // Handle merges
@@ -524,25 +551,4 @@ PagingManager::update()
             _mergeQueue.pop();
         }
     }
-}
-
-void
-PagingManager::traverse(osg::NodeVisitor& nv)
-{
-    // Make this object accesible to children
-    ObjectStorage::set(&nv, this);
-
-    if (nv.getVisitorType() == nv.CULL_VISITOR)
-    {
-        _newFrame.exchange(true);
-    }
-
-    else if (
-        nv.getVisitorType() == nv.UPDATE_VISITOR &&
-        _newFrame.exchange(false)==true)
-    {
-        update();
-    }
-
-    osg::Group::traverse(nv);
 }

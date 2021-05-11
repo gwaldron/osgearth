@@ -22,6 +22,12 @@
 
 #include <osgEarth/Export>
 
+#ifdef WIN32
+
+#define GLAPI extern OSGEARTH_EXPORT
+
+#endif
+
 #include <osg/GL>
 
 #ifndef GL_TIMESTAMP
@@ -37,14 +43,302 @@ constexpr GLenum GL_QUERY_RESULT = 0x8866;
 constexpr GLenum GL_QUERY_RESULT_AVAILABLE = 0x8867;
 #endif
 
-// Define prototypes if they are aren't already defined in glcoreargb.h or glext.h
+// GL_VERSION_1_2
+#ifndef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glDrawRangeElements(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const void *indices);
+GLAPI void APIENTRY glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const void *pixels);
+GLAPI void APIENTRY glTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void *pixels);
+GLAPI void APIENTRY glCopyTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLint x, GLint y, GLsizei width, GLsizei height);
+#endif
+
+
+// GL_VERSION_1_3
+#ifndef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glActiveTexture(GLenum texture);
+GLAPI void APIENTRY glSampleCoverage(GLfloat value, GLboolean invert);
+GLAPI void APIENTRY glCompressedTexImage3D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLsizei imageSize, const void *data);
+GLAPI void APIENTRY glCompressedTexImage2D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const void *data);
+GLAPI void APIENTRY glCompressedTexImage1D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLint border, GLsizei imageSize, const void *data);
+GLAPI void APIENTRY glCompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void *data);
+GLAPI void APIENTRY glCompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const void *data);
+GLAPI void APIENTRY glCompressedTexSubImage1D(GLenum target, GLint level, GLint xoffset, GLsizei width, GLenum format, GLsizei imageSize, const void *data);
+GLAPI void APIENTRY glGetCompressedTexImage(GLenum target, GLint level, void *img);
+#endif
+
+// GL_VERSION_1_4
+#ifndef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glBlendFuncSeparate(GLenum sfactorRGB, GLenum dfactorRGB, GLenum sfactorAlpha, GLenum dfactorAlpha);
+GLAPI void APIENTRY glMultiDrawArrays(GLenum mode, const GLint *first, const GLsizei *count, GLsizei drawcount);
+GLAPI void APIENTRY glMultiDrawElements(GLenum mode, const GLsizei *count, GLenum type, const void *const*indices, GLsizei drawcount);
+GLAPI void APIENTRY glPointParameterf(GLenum pname, GLfloat param);
+GLAPI void APIENTRY glPointParameterfv(GLenum pname, const GLfloat *params);
+GLAPI void APIENTRY glPointParameteri(GLenum pname, GLint param);
+GLAPI void APIENTRY glPointParameteriv(GLenum pname, const GLint *params);
+GLAPI void APIENTRY glBlendColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
+GLAPI void APIENTRY glBlendEquation(GLenum mode);
+#endif
+
+// GL_VERSION_1_5
 #ifndef GL_GLEXT_PROTOTYPES
 GLAPI void APIENTRY glGenQueries(GLsizei n, GLuint *ids);
-GLAPI void APIENTRY glGetInteger64v(GLenum pname, GLint64 *data);
+GLAPI void APIENTRY glDeleteQueries(GLsizei n, const GLuint *ids);
+GLAPI GLboolean APIENTRY glIsQuery(GLuint id);
+GLAPI void APIENTRY glBeginQuery(GLenum target, GLuint id);
+GLAPI void APIENTRY glEndQuery(GLenum target);
 GLAPI void APIENTRY glGetQueryiv(GLenum target, GLenum pname, GLint *params);
 GLAPI void APIENTRY glGetQueryObjectiv(GLuint id, GLenum pname, GLint *params);
-GLAPI void APIENTRY glGetQueryObjectui64v(GLuint id, GLenum pname, GLuint64 *params);
+GLAPI void APIENTRY glGetQueryObjectuiv(GLuint id, GLenum pname, GLuint *params);
+GLAPI void APIENTRY glBindBuffer(GLenum target, GLuint buffer);
+GLAPI void APIENTRY glDeleteBuffers(GLsizei n, const GLuint *buffers);
+GLAPI void APIENTRY glGenBuffers(GLsizei n, GLuint *buffers);
+GLAPI GLboolean APIENTRY glIsBuffer(GLuint buffer);
+GLAPI void APIENTRY glBufferData(GLenum target, GLsizeiptr size, const void *data, GLenum usage);
+GLAPI void APIENTRY glBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, const void *data);
+GLAPI void APIENTRY glGetBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, void *data);
+GLAPI void *APIENTRY glMapBuffer(GLenum target, GLenum access);
+GLAPI GLboolean APIENTRY glUnmapBuffer(GLenum target);
+GLAPI void APIENTRY glGetBufferParameteriv(GLenum target, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetBufferPointerv(GLenum target, GLenum pname, void **params);
+#endif
+
+// GL_VERSION_2_0
+#ifndef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glBlendEquationSeparate(GLenum modeRGB, GLenum modeAlpha);
+GLAPI void APIENTRY glDrawBuffers(GLsizei n, const GLenum *bufs);
+GLAPI void APIENTRY glStencilOpSeparate(GLenum face, GLenum sfail, GLenum dpfail, GLenum dppass);
+GLAPI void APIENTRY glStencilFuncSeparate(GLenum face, GLenum func, GLint ref, GLuint mask);
+GLAPI void APIENTRY glStencilMaskSeparate(GLenum face, GLuint mask);
+GLAPI void APIENTRY glAttachShader(GLuint program, GLuint shader);
+GLAPI void APIENTRY glBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
+GLAPI void APIENTRY glCompileShader(GLuint shader);
+GLAPI GLuint APIENTRY glCreateProgram(void);
+GLAPI GLuint APIENTRY glCreateShader(GLenum type);
+GLAPI void APIENTRY glDeleteProgram(GLuint program);
+GLAPI void APIENTRY glDeleteShader(GLuint shader);
+GLAPI void APIENTRY glDetachShader(GLuint program, GLuint shader);
+GLAPI void APIENTRY glDisableVertexAttribArray(GLuint index);
+GLAPI void APIENTRY glEnableVertexAttribArray(GLuint index);
+GLAPI void APIENTRY glGetActiveAttrib(GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name);
+GLAPI void APIENTRY glGetActiveUniform(GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name);
+GLAPI void APIENTRY glGetAttachedShaders(GLuint program, GLsizei maxCount, GLsizei *count, GLuint *shaders);
+GLAPI GLint APIENTRY glGetAttribLocation(GLuint program, const GLchar *name);
+GLAPI void APIENTRY glGetProgramiv(GLuint program, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetProgramInfoLog(GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
+GLAPI void APIENTRY glGetShaderiv(GLuint shader, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetShaderInfoLog(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
+GLAPI void APIENTRY glGetShaderSource(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *source);
+GLAPI GLint APIENTRY glGetUniformLocation(GLuint program, const GLchar *name);
+GLAPI void APIENTRY glGetUniformfv(GLuint program, GLint location, GLfloat *params);
+GLAPI void APIENTRY glGetUniformiv(GLuint program, GLint location, GLint *params);
+GLAPI void APIENTRY glGetVertexAttribdv(GLuint index, GLenum pname, GLdouble *params);
+GLAPI void APIENTRY glGetVertexAttribfv(GLuint index, GLenum pname, GLfloat *params);
+GLAPI void APIENTRY glGetVertexAttribiv(GLuint index, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetVertexAttribPointerv(GLuint index, GLenum pname, void **pointer);
+GLAPI GLboolean APIENTRY glIsProgram(GLuint program);
+GLAPI GLboolean APIENTRY glIsShader(GLuint shader);
+GLAPI void APIENTRY glLinkProgram(GLuint program);
+GLAPI void APIENTRY glShaderSource(GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
+GLAPI void APIENTRY glUseProgram(GLuint program);
+GLAPI void APIENTRY glUniform1f(GLint location, GLfloat v0);
+GLAPI void APIENTRY glUniform2f(GLint location, GLfloat v0, GLfloat v1);
+GLAPI void APIENTRY glUniform3f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
+GLAPI void APIENTRY glUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
+GLAPI void APIENTRY glUniform1i(GLint location, GLint v0);
+GLAPI void APIENTRY glUniform2i(GLint location, GLint v0, GLint v1);
+GLAPI void APIENTRY glUniform3i(GLint location, GLint v0, GLint v1, GLint v2);
+GLAPI void APIENTRY glUniform4i(GLint location, GLint v0, GLint v1, GLint v2, GLint v3);
+GLAPI void APIENTRY glUniform1fv(GLint location, GLsizei count, const GLfloat *value);
+GLAPI void APIENTRY glUniform2fv(GLint location, GLsizei count, const GLfloat *value);
+GLAPI void APIENTRY glUniform3fv(GLint location, GLsizei count, const GLfloat *value);
+GLAPI void APIENTRY glUniform4fv(GLint location, GLsizei count, const GLfloat *value);
+GLAPI void APIENTRY glUniform1iv(GLint location, GLsizei count, const GLint *value);
+GLAPI void APIENTRY glUniform2iv(GLint location, GLsizei count, const GLint *value);
+GLAPI void APIENTRY glUniform3iv(GLint location, GLsizei count, const GLint *value);
+GLAPI void APIENTRY glUniform4iv(GLint location, GLsizei count, const GLint *value);
+GLAPI void APIENTRY glUniformMatrix2fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+GLAPI void APIENTRY glUniformMatrix3fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+GLAPI void APIENTRY glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+GLAPI void APIENTRY glValidateProgram(GLuint program);
+GLAPI void APIENTRY glVertexAttrib1d(GLuint index, GLdouble x);
+GLAPI void APIENTRY glVertexAttrib1dv(GLuint index, const GLdouble *v);
+GLAPI void APIENTRY glVertexAttrib1f(GLuint index, GLfloat x);
+GLAPI void APIENTRY glVertexAttrib1fv(GLuint index, const GLfloat *v);
+GLAPI void APIENTRY glVertexAttrib1s(GLuint index, GLshort x);
+GLAPI void APIENTRY glVertexAttrib1sv(GLuint index, const GLshort *v);
+GLAPI void APIENTRY glVertexAttrib2d(GLuint index, GLdouble x, GLdouble y);
+GLAPI void APIENTRY glVertexAttrib2dv(GLuint index, const GLdouble *v);
+GLAPI void APIENTRY glVertexAttrib2f(GLuint index, GLfloat x, GLfloat y);
+GLAPI void APIENTRY glVertexAttrib2fv(GLuint index, const GLfloat *v);
+GLAPI void APIENTRY glVertexAttrib2s(GLuint index, GLshort x, GLshort y);
+GLAPI void APIENTRY glVertexAttrib2sv(GLuint index, const GLshort *v);
+GLAPI void APIENTRY glVertexAttrib3d(GLuint index, GLdouble x, GLdouble y, GLdouble z);
+GLAPI void APIENTRY glVertexAttrib3dv(GLuint index, const GLdouble *v);
+GLAPI void APIENTRY glVertexAttrib3f(GLuint index, GLfloat x, GLfloat y, GLfloat z);
+GLAPI void APIENTRY glVertexAttrib3fv(GLuint index, const GLfloat *v);
+GLAPI void APIENTRY glVertexAttrib3s(GLuint index, GLshort x, GLshort y, GLshort z);
+GLAPI void APIENTRY glVertexAttrib3sv(GLuint index, const GLshort *v);
+GLAPI void APIENTRY glVertexAttrib4Nbv(GLuint index, const GLbyte *v);
+GLAPI void APIENTRY glVertexAttrib4Niv(GLuint index, const GLint *v);
+GLAPI void APIENTRY glVertexAttrib4Nsv(GLuint index, const GLshort *v);
+GLAPI void APIENTRY glVertexAttrib4Nub(GLuint index, GLubyte x, GLubyte y, GLubyte z, GLubyte w);
+GLAPI void APIENTRY glVertexAttrib4Nubv(GLuint index, const GLubyte *v);
+GLAPI void APIENTRY glVertexAttrib4Nuiv(GLuint index, const GLuint *v);
+GLAPI void APIENTRY glVertexAttrib4Nusv(GLuint index, const GLushort *v);
+GLAPI void APIENTRY glVertexAttrib4bv(GLuint index, const GLbyte *v);
+GLAPI void APIENTRY glVertexAttrib4d(GLuint index, GLdouble x, GLdouble y, GLdouble z, GLdouble w);
+GLAPI void APIENTRY glVertexAttrib4dv(GLuint index, const GLdouble *v);
+GLAPI void APIENTRY glVertexAttrib4f(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
+GLAPI void APIENTRY glVertexAttrib4fv(GLuint index, const GLfloat *v);
+GLAPI void APIENTRY glVertexAttrib4iv(GLuint index, const GLint *v);
+GLAPI void APIENTRY glVertexAttrib4s(GLuint index, GLshort x, GLshort y, GLshort z, GLshort w);
+GLAPI void APIENTRY glVertexAttrib4sv(GLuint index, const GLshort *v);
+GLAPI void APIENTRY glVertexAttrib4ubv(GLuint index, const GLubyte *v);
+GLAPI void APIENTRY glVertexAttrib4uiv(GLuint index, const GLuint *v);
+GLAPI void APIENTRY glVertexAttrib4usv(GLuint index, const GLushort *v);
+GLAPI void APIENTRY glVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
+#endif
+
+// GL_VERSION_3_2
+#ifndef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glDrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type, const void *indices, GLint basevertex);
+GLAPI void APIENTRY glDrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const void *indices, GLint basevertex);
+GLAPI void APIENTRY glDrawElementsInstancedBaseVertex(GLenum mode, GLsizei count, GLenum type, const void *indices, GLsizei instancecount, GLint basevertex);
+GLAPI void APIENTRY glMultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count, GLenum type, const void *const*indices, GLsizei drawcount, const GLint *basevertex);
+GLAPI void APIENTRY glProvokingVertex(GLenum mode);
+GLAPI GLsync APIENTRY glFenceSync(GLenum condition, GLbitfield flags);
+GLAPI GLboolean APIENTRY glIsSync(GLsync sync);
+GLAPI void APIENTRY glDeleteSync(GLsync sync);
+GLAPI GLenum APIENTRY glClientWaitSync(GLsync sync, GLbitfield flags, GLuint64 timeout);
+GLAPI void APIENTRY glWaitSync(GLsync sync, GLbitfield flags, GLuint64 timeout);
+GLAPI void APIENTRY glGetInteger64v(GLenum pname, GLint64 *data);
+GLAPI void APIENTRY glGetSynciv(GLsync sync, GLenum pname, GLsizei count, GLsizei *length, GLint *values);
+GLAPI void APIENTRY glGetInteger64i_v(GLenum target, GLuint index, GLint64 *data);
+GLAPI void APIENTRY glGetBufferParameteri64v(GLenum target, GLenum pname, GLint64 *params);
+GLAPI void APIENTRY glFramebufferTexture(GLenum target, GLenum attachment, GLuint texture, GLint level);
+GLAPI void APIENTRY glTexImage2DMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations);
+GLAPI void APIENTRY glTexImage3DMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLboolean fixedsamplelocations);
+GLAPI void APIENTRY glGetMultisamplefv(GLenum pname, GLuint index, GLfloat *val);
+GLAPI void APIENTRY glSampleMaski(GLuint maskNumber, GLbitfield mask);
+#endif
+
+// GL_VERSION_3_3
+#ifndef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glBindFragDataLocationIndexed(GLuint program, GLuint colorNumber, GLuint index, const GLchar *name);
+GLAPI GLint APIENTRY glGetFragDataIndex(GLuint program, const GLchar *name);
+GLAPI void APIENTRY glGenSamplers(GLsizei count, GLuint *samplers);
+GLAPI void APIENTRY glDeleteSamplers(GLsizei count, const GLuint *samplers);
+GLAPI GLboolean APIENTRY glIsSampler(GLuint sampler);
+GLAPI void APIENTRY glBindSampler(GLuint unit, GLuint sampler);
+GLAPI void APIENTRY glSamplerParameteri(GLuint sampler, GLenum pname, GLint param);
+GLAPI void APIENTRY glSamplerParameteriv(GLuint sampler, GLenum pname, const GLint *param);
+GLAPI void APIENTRY glSamplerParameterf(GLuint sampler, GLenum pname, GLfloat param);
+GLAPI void APIENTRY glSamplerParameterfv(GLuint sampler, GLenum pname, const GLfloat *param);
+GLAPI void APIENTRY glSamplerParameterIiv(GLuint sampler, GLenum pname, const GLint *param);
+GLAPI void APIENTRY glSamplerParameterIuiv(GLuint sampler, GLenum pname, const GLuint *param);
+GLAPI void APIENTRY glGetSamplerParameteriv(GLuint sampler, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetSamplerParameterIiv(GLuint sampler, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetSamplerParameterfv(GLuint sampler, GLenum pname, GLfloat *params);
+GLAPI void APIENTRY glGetSamplerParameterIuiv(GLuint sampler, GLenum pname, GLuint *params);
 GLAPI void APIENTRY glQueryCounter(GLuint id, GLenum target);
+GLAPI void APIENTRY glGetQueryObjecti64v(GLuint id, GLenum pname, GLint64 *params);
+GLAPI void APIENTRY glGetQueryObjectui64v(GLuint id, GLenum pname, GLuint64 *params);
+GLAPI void APIENTRY glVertexAttribDivisor(GLuint index, GLuint divisor);
+GLAPI void APIENTRY glVertexAttribP1ui(GLuint index, GLenum type, GLboolean normalized, GLuint value);
+GLAPI void APIENTRY glVertexAttribP1uiv(GLuint index, GLenum type, GLboolean normalized, const GLuint *value);
+GLAPI void APIENTRY glVertexAttribP2ui(GLuint index, GLenum type, GLboolean normalized, GLuint value);
+GLAPI void APIENTRY glVertexAttribP2uiv(GLuint index, GLenum type, GLboolean normalized, const GLuint *value);
+GLAPI void APIENTRY glVertexAttribP3ui(GLuint index, GLenum type, GLboolean normalized, GLuint value);
+GLAPI void APIENTRY glVertexAttribP3uiv(GLuint index, GLenum type, GLboolean normalized, const GLuint *value);
+GLAPI void APIENTRY glVertexAttribP4ui(GLuint index, GLenum type, GLboolean normalized, GLuint value);
+GLAPI void APIENTRY glVertexAttribP4uiv(GLuint index, GLenum type, GLboolean normalized, const GLuint *value);
+#endif
+
+//* GL_VERSION_3_0
+#ifndef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glColorMaski(GLuint index, GLboolean r, GLboolean g, GLboolean b, GLboolean a);
+GLAPI void APIENTRY glGetBooleani_v(GLenum target, GLuint index, GLboolean *data);
+GLAPI void APIENTRY glGetIntegeri_v(GLenum target, GLuint index, GLint *data);
+GLAPI void APIENTRY glEnablei(GLenum target, GLuint index);
+GLAPI void APIENTRY glDisablei(GLenum target, GLuint index);
+GLAPI GLboolean APIENTRY glIsEnabledi(GLenum target, GLuint index);
+GLAPI void APIENTRY glBeginTransformFeedback(GLenum primitiveMode);
+GLAPI void APIENTRY glEndTransformFeedback(void);
+GLAPI void APIENTRY glBindBufferRange(GLenum target, GLuint index, GLuint buffer, GLintptr offset, GLsizeiptr size);
+GLAPI void APIENTRY glBindBufferBase(GLenum target, GLuint index, GLuint buffer);
+GLAPI void APIENTRY glTransformFeedbackVaryings(GLuint program, GLsizei count, const GLchar *const*varyings, GLenum bufferMode);
+GLAPI void APIENTRY glGetTransformFeedbackVarying(GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLsizei *size, GLenum *type, GLchar *name);
+GLAPI void APIENTRY glClampColor(GLenum target, GLenum clamp);
+GLAPI void APIENTRY glBeginConditionalRender(GLuint id, GLenum mode);
+GLAPI void APIENTRY glEndConditionalRender(void);
+GLAPI void APIENTRY glVertexAttribIPointer(GLuint index, GLint size, GLenum type, GLsizei stride, const void *pointer);
+GLAPI void APIENTRY glGetVertexAttribIiv(GLuint index, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetVertexAttribIuiv(GLuint index, GLenum pname, GLuint *params);
+GLAPI void APIENTRY glVertexAttribI1i(GLuint index, GLint x);
+GLAPI void APIENTRY glVertexAttribI2i(GLuint index, GLint x, GLint y);
+GLAPI void APIENTRY glVertexAttribI3i(GLuint index, GLint x, GLint y, GLint z);
+GLAPI void APIENTRY glVertexAttribI4i(GLuint index, GLint x, GLint y, GLint z, GLint w);
+GLAPI void APIENTRY glVertexAttribI1ui(GLuint index, GLuint x);
+GLAPI void APIENTRY glVertexAttribI2ui(GLuint index, GLuint x, GLuint y);
+GLAPI void APIENTRY glVertexAttribI3ui(GLuint index, GLuint x, GLuint y, GLuint z);
+GLAPI void APIENTRY glVertexAttribI4ui(GLuint index, GLuint x, GLuint y, GLuint z, GLuint w);
+GLAPI void APIENTRY glVertexAttribI1iv(GLuint index, const GLint *v);
+GLAPI void APIENTRY glVertexAttribI2iv(GLuint index, const GLint *v);
+GLAPI void APIENTRY glVertexAttribI3iv(GLuint index, const GLint *v);
+GLAPI void APIENTRY glVertexAttribI4iv(GLuint index, const GLint *v);
+GLAPI void APIENTRY glVertexAttribI1uiv(GLuint index, const GLuint *v);
+GLAPI void APIENTRY glVertexAttribI2uiv(GLuint index, const GLuint *v);
+GLAPI void APIENTRY glVertexAttribI3uiv(GLuint index, const GLuint *v);
+GLAPI void APIENTRY glVertexAttribI4uiv(GLuint index, const GLuint *v);
+GLAPI void APIENTRY glVertexAttribI4bv(GLuint index, const GLbyte *v);
+GLAPI void APIENTRY glVertexAttribI4sv(GLuint index, const GLshort *v);
+GLAPI void APIENTRY glVertexAttribI4ubv(GLuint index, const GLubyte *v);
+GLAPI void APIENTRY glVertexAttribI4usv(GLuint index, const GLushort *v);
+GLAPI void APIENTRY glGetUniformuiv(GLuint program, GLint location, GLuint *params);
+GLAPI void APIENTRY glBindFragDataLocation(GLuint program, GLuint color, const GLchar *name);
+GLAPI GLint APIENTRY glGetFragDataLocation(GLuint program, const GLchar *name);
+GLAPI void APIENTRY glUniform1ui(GLint location, GLuint v0);
+GLAPI void APIENTRY glUniform2ui(GLint location, GLuint v0, GLuint v1);
+GLAPI void APIENTRY glUniform3ui(GLint location, GLuint v0, GLuint v1, GLuint v2);
+GLAPI void APIENTRY glUniform4ui(GLint location, GLuint v0, GLuint v1, GLuint v2, GLuint v3);
+GLAPI void APIENTRY glUniform1uiv(GLint location, GLsizei count, const GLuint *value);
+GLAPI void APIENTRY glUniform2uiv(GLint location, GLsizei count, const GLuint *value);
+GLAPI void APIENTRY glUniform3uiv(GLint location, GLsizei count, const GLuint *value);
+GLAPI void APIENTRY glUniform4uiv(GLint location, GLsizei count, const GLuint *value);
+GLAPI void APIENTRY glTexParameterIiv(GLenum target, GLenum pname, const GLint *params);
+GLAPI void APIENTRY glTexParameterIuiv(GLenum target, GLenum pname, const GLuint *params);
+GLAPI void APIENTRY glGetTexParameterIiv(GLenum target, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetTexParameterIuiv(GLenum target, GLenum pname, GLuint *params);
+GLAPI void APIENTRY glClearBufferiv(GLenum buffer, GLint drawbuffer, const GLint *value);
+GLAPI void APIENTRY glClearBufferuiv(GLenum buffer, GLint drawbuffer, const GLuint *value);
+GLAPI void APIENTRY glClearBufferfv(GLenum buffer, GLint drawbuffer, const GLfloat *value);
+GLAPI void APIENTRY glClearBufferfi(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil);
+GLAPI const GLubyte *APIENTRY glGetStringi(GLenum name, GLuint index);
+GLAPI GLboolean APIENTRY glIsRenderbuffer(GLuint renderbuffer);
+GLAPI void APIENTRY glBindRenderbuffer(GLenum target, GLuint renderbuffer);
+GLAPI void APIENTRY glDeleteRenderbuffers(GLsizei n, const GLuint *renderbuffers);
+GLAPI void APIENTRY glGenRenderbuffers(GLsizei n, GLuint *renderbuffers);
+GLAPI void APIENTRY glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height);
+GLAPI void APIENTRY glGetRenderbufferParameteriv(GLenum target, GLenum pname, GLint *params);
+GLAPI GLboolean APIENTRY glIsFramebuffer(GLuint framebuffer);
+GLAPI void APIENTRY glBindFramebuffer(GLenum target, GLuint framebuffer);
+GLAPI void APIENTRY glDeleteFramebuffers(GLsizei n, const GLuint *framebuffers);
+GLAPI void APIENTRY glGenFramebuffers(GLsizei n, GLuint *framebuffers);
+GLAPI GLenum APIENTRY glCheckFramebufferStatus(GLenum target);
+GLAPI void APIENTRY glFramebufferTexture1D(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+GLAPI void APIENTRY glFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+GLAPI void APIENTRY glFramebufferTexture3D(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level, GLint zoffset);
+GLAPI void APIENTRY glFramebufferRenderbuffer(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
+GLAPI void APIENTRY glGetFramebufferAttachmentParameteriv(GLenum target, GLenum attachment, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGenerateMipmap(GLenum target);
+GLAPI void APIENTRY glBlitFramebuffer(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
+GLAPI void APIENTRY glRenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
+GLAPI void APIENTRY glFramebufferTextureLayer(GLenum target, GLenum attachment, GLuint texture, GLint level, GLint layer);
+GLAPI void *APIENTRY glMapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
+GLAPI void APIENTRY glFlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr length);
+GLAPI void APIENTRY glBindVertexArray(GLuint array);
+GLAPI void APIENTRY glDeleteVertexArrays(GLsizei n, const GLuint *arrays);
+GLAPI void APIENTRY glGenVertexArrays(GLsizei n, GLuint *arrays);
+GLAPI GLboolean APIENTRY glIsVertexArray(GLuint array);
 #endif
 
 namespace osgEarth

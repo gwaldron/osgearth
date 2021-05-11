@@ -423,36 +423,25 @@ ENDMACRO(SETUP_APPLICATION)
 # Taked optional second arg: APPLICATION_FOLDER
 # Takes optional third arg:  (is_commandline_app?) in ARGV2
 MACRO(SETUP_IMGUI_APPLICATION APPLICATION_NAME)
-    if(OSGEARTH_ENABLE_IMGUI)
-        include_directories(
-            ${GLEW_INCLUDE_DIR}
-            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui
-            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples
-        )
+    include_directories(
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples
+    )
 
-        set(TARGET_LIBRARIES_VARS
-            ${TARGET_LIBRARIES_VARS}
-            GLEW_LIBRARIES
-        )
+    set(TARGET_SRC
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_demo.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_draw.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_widgets.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_tables.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/backends/imgui_impl_opengl3.cpp
+        ${OSGEARTH_SOURCE_DIR}/src/osgEarth/ImGui/OsgImGuiHandler.cpp
+        ${TARGET_SRC}
+    )
 
-        set(TARGET_SRC
-            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui.cpp
-            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_demo.cpp
-            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_draw.cpp
-            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_widgets.cpp
-            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_tables.cpp
-            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/backends/imgui_impl_opengl3.cpp
-            ${OSGEARTH_SOURCE_DIR}/src/osgEarth/ImGui/OsgImGuiHandler.cpp
-            ${TARGET_SRC}
-        )
+    add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM=<osgEarth/GL>)
 
-        SETUP_APPLICATION(${APPLICATION_NAME})
-    else()
-        message(STATUS "ImGui application ${APPLICATION_NAME} skipped")
-        if (NOT GLEW_FOUND)
-            message(STATUS "   ...because GLEW not found")
-        endif()
-    endif()
+    SETUP_APPLICATION(${APPLICATION_NAME})
 ENDMACRO(SETUP_IMGUI_APPLICATION)
 
 

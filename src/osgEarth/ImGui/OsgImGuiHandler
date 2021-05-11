@@ -13,30 +13,6 @@ struct ImGuiSettingsHandler;
 
 namespace osgEarth { namespace GUI
 {
-    class GlewInitOperation : public osg::Operation
-    {
-    public:
-        GlewInitOperation()
-            : osg::Operation("GlewInitCallback", false)
-        {
-        }
-
-        void operator()(osg::Object* object) override
-        {
-            osg::GraphicsContext* context = dynamic_cast<osg::GraphicsContext*>(object);
-            if (!context)
-            {
-                return;
-            }
-
-            if (glewInit() != GLEW_OK)
-            {
-                OSG_FATAL << "glewInit() failed" << std::endl;
-            }
-        }
-    };
-
-
     class OsgImGuiHandler : public osgGA::GUIEventHandler
     {
     public:
@@ -44,7 +20,7 @@ namespace osgEarth { namespace GUI
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
 
-        class RealizeOperation : public osgEarth::GUI::GlewInitOperation
+        class RealizeOperation : public osg::Operation
         {
             void operator()(osg::Object* object) override;
         };

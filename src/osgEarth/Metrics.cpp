@@ -34,6 +34,13 @@ static bool s_gpuMetricsInstalled = false;
 
 #ifdef OSGEARTH_PROFILING
 
+void (GL_APIENTRY * osgEarth::MetricsGL::glGenQueries)(GLsizei, GLuint*);
+void (GL_APIENTRY * osgEarth::MetricsGL::glGetInteger64v)(GLenum, GLint64*);
+void (GL_APIENTRY * osgEarth::MetricsGL::glGetQueryiv)(GLenum, GLenum, GLint*);
+void (GL_APIENTRY * osgEarth::MetricsGL::glGetQueryObjectiv)(GLint, GLenum, GLint*);
+void (GL_APIENTRY * osgEarth::MetricsGL::glGetQueryObjectui64v)(GLint, GLenum, GLuint64*);
+void (GL_APIENTRY * osgEarth::MetricsGL::glQueryCounter)(GLuint, GLenum);
+
 namespace
 {
     struct TracyGPUCallback : public osg::GraphicsContext::SwapCallback
@@ -46,6 +53,13 @@ namespace
             // Enable and collect tracy gpu stats.  There is a better place for this somewhere else :)
             if (!_tracyInit)
             {
+                osg::setGLExtensionFuncPtr(osgEarth::MetricsGL::glGenQueries, "glGenQueries");
+                osg::setGLExtensionFuncPtr(osgEarth::MetricsGL::glGetInteger64v, "glGetInteger64v");
+                osg::setGLExtensionFuncPtr(osgEarth::MetricsGL::glGetQueryiv, "glGetQueryiv");
+                osg::setGLExtensionFuncPtr(osgEarth::MetricsGL::glGetQueryObjectiv, "glGetQueryObjectiv");
+                osg::setGLExtensionFuncPtr(osgEarth::MetricsGL::glGetQueryObjectui64v, "glGetQueryObjectui64v");
+                osg::setGLExtensionFuncPtr(osgEarth::MetricsGL::glQueryCounter, "glQueryCounter");
+
                 TracyGpuContext;
                 _tracyInit = true;
             }

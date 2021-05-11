@@ -24,7 +24,6 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Math>
 #include <osgEarth/Utils>
-#include <osgEarth/GL>
 
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
@@ -244,9 +243,6 @@ GL3RealizeOperation::operator()(osg::Object* object)
         state->setModeValidity(GL_LINE_STIPPLE, false);
         state->setModeValidity(GL_LINE_SMOOTH, false);
 #endif
-
-        // Initialize the OpenGL extension functions
-        initGLExtensions(state->getContextID());
     }
 
     CustomRealizeOperation::operator()(object);

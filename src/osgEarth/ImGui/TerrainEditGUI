@@ -125,6 +125,7 @@ namespace osgEarth
                     nullptr,
                     256,
                     out_extent,
+                    false,
                     nnf,
                     nullptr);
 

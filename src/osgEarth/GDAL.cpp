@@ -2108,23 +2108,23 @@ namespace
         case GDT_Byte:
             dataType = GL_UNSIGNED_BYTE;
             sampleSize = 1;
-            internalFormat = GL_LUMINANCE8;
+            internalFormat = GL_R8;
             break;
         case GDT_UInt16:
         case GDT_Int16:
             dataType = GL_UNSIGNED_SHORT;
             sampleSize = 2;
-            internalFormat = GL_LUMINANCE16;
+            internalFormat = GL_R16;
             break;
         default:
             dataType = GL_FLOAT;
             sampleSize = 4;
-            internalFormat = GL_LUMINANCE32F_ARB;
+            internalFormat = GL_R32F; // GL_LUMINANCE32F_ARB;
         }
 
         GLenum pixelFormat =
-            numBands == 1 ? GL_LUMINANCE :
-            numBands == 2 ? GL_LUMINANCE_ALPHA :
+            numBands == 1 ? GL_RED :
+            numBands == 2 ? GL_RG :
             numBands == 3 ? GL_RGB :
             GL_RGBA;
 

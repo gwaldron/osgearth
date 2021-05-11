@@ -304,6 +304,8 @@ MapNode::init()
     // Make sure the Registry is not destroyed until we are done using
     // it (in ~MapNode).
     _registry = Registry::instance();
+
+    _readyForUpdate = true;
 }
 
 bool
@@ -896,6 +898,23 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
         for(int i=0; i<count; ++i)
             cv->popStateSet();
+
+        // after any cull, allow an update traversal.
+        _readyForUpdate.exchange(true);
+    }
+
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        ObjectStorage::set(&nv, this);
+
+        // Ensures only one update will happen per frame loop
+        if (_readyForUpdate.exchange(false))
+        {
+            JobArena::get(JobArena::UPDATE_TRAVERSAL)->runJobs();
+        }
+
+        // include these in the above condition as well??
+        osg::Group::traverse(nv);
     }
 
     else

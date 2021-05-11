@@ -649,7 +649,7 @@ FeatureModelGraph::open()
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
         for (int i = 0; i < featureProfile->getMaxLevel() + 1; i++)
         {
-            OE_INFO << LC << "Computed max range " << maxRange << " for lod " << i << std::endl;
+            OE_DEBUG << LC << "Computed max range " << maxRange << " for lod " << i << std::endl;
             FeatureLevel* level = new FeatureLevel(0.0f, maxRange);
             _lodmap[i] = level;
             maxRange /= 2.0f;
@@ -712,7 +712,7 @@ FeatureModelGraph::open()
                 _lodmap.resize(lod + 1, 0L);
                 _lodmap[lod] = level;
 
-                OE_INFO << LC << _session->getFeatureSource()->getName()
+                OE_DEBUG << LC << _session->getFeatureSource()->getName()
                     << ": F.Level max=" << level->maxRange().get() << ", min=" << level->minRange().get()
                     << ", LOD=" << lod
                     << std::endl;

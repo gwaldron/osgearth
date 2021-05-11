@@ -706,7 +706,7 @@ OGRFeatureSource::create(const FeatureProfile* profile,
     if (FeatureSource::openImplementation().isError())
         return getStatus();
 
-    setFeatureProfile(profile);
+    profile = setFeatureProfile(profile);
 
     _schema = schema;
 

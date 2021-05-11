@@ -49,6 +49,16 @@ FeatureProfile::FeatureProfile(const Profile* tilingProfile) :
     //nop
 }
 
+FeatureProfile::FeatureProfile(const FeatureProfile& rhs) :
+    _extent(rhs._extent),
+    _tilingProfile(rhs._tilingProfile.get()),
+    _firstLevel(rhs._firstLevel),
+    _maxLevel(rhs._maxLevel),
+    _geoInterp(rhs._geoInterp)
+{
+    //nop
+}
+
 bool
 FeatureProfile::isTiled() const
 {

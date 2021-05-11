@@ -551,9 +551,10 @@ JobArena::Metrics JobArena::_allMetrics;
 
 #define OE_ARENA_DEFAULT_SIZE 2u
 
-JobArena::JobArena(const std::string& name, unsigned concurrency) :
+JobArena::JobArena(const std::string& name, unsigned concurrency, const Type& type) :
     _name(name),
     _targetConcurrency(concurrency),
+    _type(type),
     _done(false),
     _queueMutex("OE.JobArena[" + name + "]")
 {
@@ -569,14 +570,20 @@ JobArena::JobArena(const std::string& name, unsigned concurrency) :
     if (new_index >= _allMetrics.maxArenaIndex)
         _allMetrics.maxArenaIndex = new_index;
 
-    startThreads();
+    if (_type == THREAD_POOL)
+    {
+        startThreads();
+    }
 }
 
 JobArena::~JobArena()
 {
     _metrics->free();
 
-    stopThreads();
+    if (_type == THREAD_POOL)
+    {
+        stopThreads();
+    }
 }
 
 const std::string&
@@ -616,12 +623,44 @@ JobArena::get(const std::string& name_)
     return arena.get();
 }
 
+JobArena*
+JobArena::get(const Type& type_)
+{
+    if (type_ == THREAD_POOL)
+    {
+        return get("oe.default");
+    }
+
+    ScopedMutexLock lock(_arenas_mutex);
+
+    if (_arenas.empty())
+    {
+        std::atexit(JobArena::shutdownAll);
+    }
+
+    if (type_ == UPDATE_TRAVERSAL)
+    {
+        std::string name("oe.UPDATE");
+        std::shared_ptr<JobArena>& arena = _arenas[name];
+        if (arena == nullptr)
+        {
+            arena = std::make_shared<JobArena>(name, 0, type_);
+        }
+        return arena.get();
+    }
+
+    return nullptr;
+}
+
 void
 JobArena::setConcurrency(unsigned value)
 {
-    value = std::max(value, 1u);
-    _targetConcurrency = value;
-    startThreads();
+    if (_type == THREAD_POOL)
+    {
+        value = std::max(value, 1u);
+        _targetConcurrency = value;
+        startThreads();
+    }
 }
 void
 JobArena::setConcurrency(const std::string& name, unsigned value)
@@ -659,23 +698,130 @@ JobArena::dispatch(
         sema->acquire();
     }
 
-    if (_targetConcurrency > 0)
+    if (_type == THREAD_POOL)
     {
-        std::lock_guard<Mutex> lock(_queueMutex);
-        //_queue.emplace(job, delegate, sema);
-        _queue.emplace_back(job, delegate, sema);
-        _metrics->numJobsPending++;
-        _block.notify_one();
+        if (_targetConcurrency > 0)
+        {
+            std::lock_guard<Mutex> lock(_queueMutex);
+            _queue.emplace_back(job, delegate, sema);
+            _metrics->numJobsPending++;
+            _block.notify_one();
+        }
+        else
+        {
+            // no threads? run synchronously.
+            delegate();
+
+            if (sema)
+            {
+                sema->release();
+            }
+        }
     }
 
-    else
+    else // _type == traversal
     {
-        // no threads? run synchronously.
-        delegate();
+        std::lock_guard<Mutex> lock(_queueMutex);
+        _queue.emplace_back(job, delegate, sema);
+        _metrics->numJobsPending++;
+    }
+}
 
-        if (sema)
+void
+JobArena::runJobs()
+{
+    // cap the number of jobs to run (applies to TRAVERSAL modes only)
+    int jobsLeftToRun = INT_MAX;
+
+    while (!_done)
+    {
+        QueuedJob next;
+
+        bool have_next = false;
         {
-            sema->release();
+            std::unique_lock<Mutex> lock(_queueMutex);
+            
+            if (_type == THREAD_POOL)
+            {
+                _block.wait(lock, [this] {
+                    return _queue.empty() == false || _done == true;
+                    });
+            }
+            else // traversal type
+            {
+                // Prevents jobs that re-queue themselves from running 
+                // during the same traversal frame.
+                if (jobsLeftToRun == INT_MAX)
+                    jobsLeftToRun = _queue.size();
+
+                if (_queue.empty() || jobsLeftToRun == 0)
+                {
+                    return;
+                }
+            }
+
+            if (!_queue.empty() && !_done)
+            {
+                // Quickly find the highest priority item in the "queue"
+                std::partial_sort(
+                    _queue.rbegin(), _queue.rbegin() + 1, _queue.rend(),
+                    [](const QueuedJob& lhs, const QueuedJob& rhs) {
+                        return lhs._job.getPriority() > rhs._job.getPriority();
+                    });
+
+                next = std::move(_queue.back());
+                have_next = true;
+                _queue.pop_back();
+            }
+        }
+
+        if (have_next)
+        {
+            _metrics->numJobsRunning++;
+            _metrics->numJobsPending--;
+
+            auto t0 = std::chrono::steady_clock::now();
+
+            bool job_executed = next._delegate();
+
+            auto duration = std::chrono::steady_clock::now() - t0;
+
+            if (job_executed)
+            {
+                jobsLeftToRun--;
+
+                if (_allMetrics._report != nullptr)
+                {
+                    if (duration >= _allMetrics._reportMinDuration)
+                    {
+                        _allMetrics._report(Metrics::Report(next._job, _name, duration));
+                    }
+                }
+            }
+            else
+            {
+                _metrics->numJobsCanceled++;
+            }
+
+            // release the group semaphore if necessary
+            if (next._groupsema != nullptr)
+            {
+                next._groupsema->release();
+            }
+
+            _metrics->numJobsRunning--;
+        }
+
+        if (_type == THREAD_POOL)
+        {
+            // See if we no longer need this thread because the
+            // target concurrency has been reduced
+            ScopedMutexLock quitLock(_quitMutex);
+            if (_targetConcurrency < _metrics->concurrency)
+            {
+                _metrics->concurrency--;
+                break;
+            }
         }
     }
 }
@@ -697,77 +843,7 @@ JobArena::startThreads()
 
                 OE_THREAD_NAME(_name.c_str());
 
-                while (!_done)
-                {
-                    QueuedJob next;
-
-                    bool have_next = false;
-                    {
-                        std::unique_lock<Mutex> lock(_queueMutex);
-
-                        _block.wait(lock, [this] {
-                            return _queue.empty() == false || _done == true;
-                        });
-
-                        if (!_queue.empty() && !_done)
-                        {
-                            // Quickly find the highest priority item in the "queue"
-                            std::partial_sort(
-                                _queue.rbegin(), _queue.rbegin() + 1, _queue.rend(),
-                                [](const QueuedJob& lhs, const QueuedJob& rhs) {
-                                    return lhs._job.getPriority() > rhs._job.getPriority();
-                                });
-
-                            next = std::move(_queue.back());
-                            have_next = true;
-                            _queue.pop_back();
-                        }
-                    }
-
-                    if (have_next)
-                    {
-                        _metrics->numJobsRunning++;
-                        _metrics->numJobsPending--;
-
-                        auto t0 = std::chrono::steady_clock::now();
-
-                        bool job_executed = next._delegate();
-
-                        auto duration = std::chrono::steady_clock::now() - t0;
-
-                        if (job_executed)
-                        {
-                            if (_allMetrics._report != nullptr)
-                            {
-                                if (duration >= _allMetrics._reportMinDuration)
-                                {
-                                    _allMetrics._report(Metrics::Report(next._job, _name, duration));
-                                }
-                            }
-                        }
-                        else
-                        {
-                            _metrics->numJobsCanceled++;
-                        }
-
-                        // release the group semaphore if necessary
-                        if (next._groupsema != nullptr)
-                        {
-                            next._groupsema->release();
-                        }
-
-                        _metrics->numJobsRunning--;
-                    }
-
-                    // See if we no longer need this thread because the
-                    // target concurrency has been reduced
-                    ScopedMutexLock quitLock(_quitMutex);
-                    if (_targetConcurrency < _metrics->concurrency)
-                    {
-                        _metrics->concurrency--;
-                        break;
-                    }
-                }
+                runJobs();
 
                 // exit thread here
                 //OE_INFO << LC << "Thread " << std::this_thread::get_id() << " exiting" << std::endl;

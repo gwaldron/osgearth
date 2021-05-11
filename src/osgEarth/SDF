@@ -64,6 +64,7 @@ namespace osgEarth { namespace Util
             Session* session,
             unsigned nnfieldSize,
             const GeoExtent& extent,
+            bool inverted,
             GeoImage& nnfield,
             Cancelable* progress) const;
 
@@ -80,6 +81,7 @@ namespace osgEarth { namespace Util
         //! @return True upon success
         bool createNearestNeighborField(
             const GeoImage& input,
+            bool inverted,
             GeoImage& nnfield,
             Cancelable* progress) const;
 

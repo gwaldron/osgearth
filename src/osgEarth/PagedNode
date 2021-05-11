@@ -44,74 +44,17 @@ namespace osgEarth { namespace Util
     using namespace osgEarth;
     using namespace osgEarth::Threading;
 
-#if 0
     /**
-     * PagedNode is a group with a self-contained paged child.
-     * It wraps the details of a PagedNode node into a container
-     * that is easier to manage.
-     *
-     * To use, override the class. Call setNode() with the default
-     * node to display, and implement loadChild() to load the
-     * paged child node when it comes within range. Set the page-in
-     * range for the paged child node with setRange() and setRangeMode().
-     * Finally, call setupPaging() to complete setup.
+     * Internal node type to handle on-demand loading and unloading
+     * of content.
+     * A PagedNode2 must have a PagingManager as a scene graph ancestor.
      */
-    class OSGEARTH_EXPORT PagedNode : public osg::Group
+    class OSGEARTH_EXPORT PagedNode2 : 
+        public osg::Group, 
+        public osgEarth::LoadableNode
     {
     public:
-        PagedNode();
-
-        //! Sets the node to display by default when children
-        //! are not loaded.
-        void setNode(osg::Node* node);
-
-        //! Override to load paged child node
-        virtual osg::Node* loadChild() { return 0L; }
-
-        //! Bounding sphere of paged data
-        virtual osg::BoundingSphere getChildBound() const;
-
-        //! Returns true by default; override for custom behavior
-        virtual bool hasChild() const;
-
-        //! Call this after setting up your data on the attach point
-        void setupPaging();
-
-        /**
-         * Gets the range factor
-         */
-        float getRangeFactor() const { return _rangeFactor; }
-
-        /**
-         * Sets the range factor
-         */
-        void setRangeFactor(float rangeFactor) { _rangeFactor = rangeFactor; }
-
-        //! Sets the page-in rage mode (distance v. pixel-size; default is distance)
-        void setRangeMode(const osg::LOD::RangeMode);
-
-        //! Sets the range (or pixel size) at which to page in the child data.
-        void setRange(float range) { _range = range; }
-
-        //! Gets whether this node is additive.
-        bool getAdditive() const { return _additive; }
-
-        //! Sets whether the child replaces the default node (non-additive)
-        //! or renders alongside the default node (additive)
-        void setAdditive(bool value) { _additive = value; }
-
-    protected:
-        osg::Group* _attachPoint;
-        osg::PagedLOD* _plod;
-        bool _additive;
-        optional<float> _range;
-        float _rangeFactor;
-    };
-#endif
-
-    class OSGEARTH_EXPORT PagedNode2 : public osg::Group, public osgEarth::LoadableNode
-    {
-    public:
+        //! Type of function used to load content.
         using Loader = std::function<osg::ref_ptr<osg::Node>(Cancelable*)>;
 
     public:
@@ -211,28 +154,35 @@ namespace osgEarth { namespace Util
             return _preCompile;
         }
 
-        //! Whether this node will automatically unload it's content if it's not visible.
+        //! Whether this node will automatically unload its content
+        //! when it goes not pass cull.
         bool getAutoUnload() const  {
             return _autoUnload;
         }
-
         void setAutoUnload(bool value)  {
             _autoUnload = value;
         }
 
-        void load() { load(0.0, nullptr); }
-
         bool isHighestResolution() const;
 
-        //! Loads the data for this node asynchronously
-        void load(float priority, const osg::Object* host);
+        //! Loads the content for this node
+        void load(
+            float priority,
+            const osg::Object* host);
 
-        //! Unloads the data for this node
+        //! Loads the content for this node (convenience function)
+        void load() {
+            load(0.0, nullptr);
+        }
+
+        //! Unloads the content for this node
         void unload();
 
-        //! Whether the data is loaded for this node.
+        //! Whether the content is loaded.
         bool isLoaded() const;
 
+        //! Mark the content as "in use" so that it will not
+        //! be removed if setAutoUnload is true.
         void touch();
 
 
@@ -281,7 +231,12 @@ namespace osgEarth { namespace Util
         bool merge(int revision);
     };
 
-
+    /**
+     * Group node class that performs memory management
+     * functions for a graph of PagedNodes. This object
+     * should be an ancestor of any PagedNode objects that
+     * it is going to manage.
+     */
     class OSGEARTH_EXPORT PagingManager : public osg::Group
     {
     public:
@@ -296,16 +251,18 @@ namespace osgEarth { namespace Util
         //! Manually call an update on the PagingManager.  This should only be used if you are loading data outside of a traditional frameloop and want to merge data.
         void update();
 
-    public:
-        virtual void traverse(osg::NodeVisitor& nv) override;
-
     protected:
         virtual ~PagingManager() { }
+
+    public:
+        void traverse(osg::NodeVisitor& nv);
 
     private:
         Mutex _trackerMutex;
         SentryTracker<osg::ref_ptr<PagedNode2>> _tracker;
         std::list<PagedNode2*> _trash;
+        using UpdateFunc = std::function<void(Cancelable*)>;
+        UpdateFunc _updateFunc;
 
         mutable Mutex _mergeMutex;
         struct ToMerge {

@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "FeatureSDFLayer"
-#include "TransformFilter"
 #include "FeatureRasterizer"
 #include <osgDB/WriteFile>
 #include <osgDB/FileUtils>
@@ -36,6 +35,7 @@ FeatureSDFLayer::Options::getConfig() const
     Config conf = ImageLayer::Options::getConfig();
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
+    conf.set("inverted", inverted());
 
     if (filters().empty() == false)
     {
@@ -51,8 +51,11 @@ FeatureSDFLayer::Options::getConfig() const
 void
 FeatureSDFLayer::Options::fromConfig(const Config& conf)
 {
+    inverted().setDefault(false);
+
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
+    conf.get("inverted", inverted());
 
     const Config& filtersConf = conf.child("filters");
     for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
@@ -67,11 +70,21 @@ FeatureSDFLayer::init()
     // Default profile (WGS84) if not set
     if (!getProfile())
     {
-        setProfile(Profile::create("global-geodetic"));
+        //setProfile(Profile::create("global-geodetic"));
     }
 
     // enable GPU processing if available
     _sdfGenerator.setUseGPU(true);
+}
+
+void
+FeatureSDFLayer::setInverted(bool value) {
+    options().inverted() = value;
+}
+
+bool
+FeatureSDFLayer::getInverted() const {
+    return options().inverted().get();
 }
 
 Status
@@ -223,6 +236,9 @@ FeatureSDFLayer::createImageImplementation(
     const TileKey& key, 
     ProgressCallback* progress) const
 {
+    static Mutex m;
+    ScopedMutexLock l(m);
+
     if (getStatus().isError())
     {
         return GeoImage::INVALID;
@@ -295,6 +311,8 @@ FeatureSDFLayer::createImageImplementation(
         if (features.empty())
             return;
 
+        // TODO: bin as line or poly??
+
         // Render features to a temporary image
         Style r_style;
         if (features.front()->getGeometry()->isLinear())
@@ -321,7 +339,8 @@ FeatureSDFLayer::createImageImplementation(
         if (sdfExtent.getSRS()->isGeographic())
         {
             double R = sdfExtent.getSRS()->getEllipsoid()->getRadiusEquator();
-            toMeters = (2.0 * osg::PI * R / 360.0) * cos(osg::DegreesToRadians(sdfExtent.yMin()));
+            double LAT = sdfExtent.yMin() >= 0.0 ? sdfExtent.yMin() : sdfExtent.yMax();
+            toMeters = (2.0 * osg::PI * R / 360.0) * cos(osg::DegreesToRadians(LAT));
         }
 
         _sdfGenerator.createDistanceField(
@@ -349,6 +368,7 @@ FeatureSDFLayer::createImageImplementation(
     // create a NN field from the rasterized data:
     _sdfGenerator.createNearestNeighborField(
         rasterizedFeatures,
+        options().inverted().get(),
         nnfield,
         progress);
 

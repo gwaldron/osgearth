@@ -18,7 +18,6 @@
  */
 #include <osgEarth/FeatureRasterizer>
 #include <osgEarth/Metrics>
-#include <osgEarth/TransformFilter>
 #include <osgEarth/BufferFilter>
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/AGG.h>
@@ -436,8 +435,9 @@ FeatureRasterizer::render(
     const FeatureProfile* profile,
     const FeatureList& in_features) const
 {
+    OE_SOFT_ASSERT_AND_RETURN(session != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(profile != nullptr, __func__, );
     OE_PROFILING_ZONE;
-
     OE_DEBUG << LC << "Rendering " << in_features.size() << " features" << std::endl;
 
     // A processing context to use with the filters:
@@ -450,11 +450,11 @@ FeatureRasterizer::render(
     // TODO: do we need to resample?
 
     // Transform to map SRS:
+    if (!profile->getSRS()->isHorizEquivalentTo(_extent.getSRS()))
     {
         OE_PROFILING_ZONE_NAMED("Transform");
-        TransformFilter xform(_extent.getSRS());
-        xform.setLocalizeCoordinates(false);
-        xform.push(features, context);
+        for (auto& feature : features)
+            feature->transform(_extent.getSRS());
     }
 
     // find the symbology:
@@ -700,10 +700,10 @@ FeatureRasterizer::render(
     // Transform the features into the map's SRS:
     {
         OE_PROFILING_ZONE_NAMED("Transform");
-        TransformFilter xform(_extent.getSRS());
-        xform.setLocalizeCoordinates(false);
-        xform.push(polygons, context);
-        xform.push(lines, context);
+        for (auto& polygon : polygons)
+            polygon->transform(_extent.getSRS());
+        for (auto& line : lines)
+            line->transform(_extent.getSRS());
     }
 
     // set up the AGG renderer:

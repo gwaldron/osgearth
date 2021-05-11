@@ -22,6 +22,7 @@
 #include <osgEarth/GeoData>
 
 #include <osgDB/ReadFile>
+#include <stdlib.h>
 
 using namespace osgEarth;
 
@@ -33,16 +34,30 @@ using namespace osgEarth;
 namespace
 {
     typedef std::map<std::string, osg::ref_ptr<VerticalDatum> > VDatumCache;
-    VDatumCache      _vdatumCache;
+    VDatumCache _vdatumCache;
     Threading::Mutex _vdataCacheMutex("VDatumCache(OE)");
+    bool _vdatumWarning = false;
 } 
 
 VerticalDatum*
 VerticalDatum::get( const std::string& initString )
 {
-    VerticalDatum* result = 0L;
+    VerticalDatum* result = nullptr;
+
+    if (initString.empty())
+        return result;
 
     Threading::ScopedMutexLock exclusive(_vdataCacheMutex);
+
+    if (::getenv("OSGEARTH_IGNORE_VERTICAL_DATUMS"))
+    {
+        if (!_vdatumWarning)
+        {
+            OE_WARN << LC << "WARNING *** Vertical datums have been deactivated; elevation values may be wrong!" << std::endl;
+            _vdatumWarning = true;
+        }
+        return nullptr;
+    }
 
     std::string s = toLower( initString );
     VDatumCache::const_iterator i = _vdatumCache.find( s );

@@ -39,12 +39,12 @@ constexpr GLenum GL_QUERY_RESULT_AVAILABLE = 0x8867;
 
 // Define prototypes if they are aren't already defined in glcoreargb.h or glext.h
 #ifndef GL_GLEXT_PROTOTYPES
-void GL_APIENTRY glGenQueries(GLsizei n, GLuint *ids);
-void GL_APIENTRY glGetInteger64v(GLenum pname, GLint64 *data);
-void GL_APIENTRY glGetQueryiv(GLenum target, GLenum pname, GLint *params);
-void GL_APIENTRY glGetQueryObjectiv(GLuint id, GLenum pname, GLint *params);
-void GL_APIENTRY glGetQueryObjectui64v(GLuint id, GLenum pname, GLuint64 *params);
-void GL_APIENTRY glQueryCounter(GLuint id, GLenum target);
+GLAPI void APIENTRY glGenQueries(GLsizei n, GLuint *ids);
+GLAPI void APIENTRY glGetInteger64v(GLenum pname, GLint64 *data);
+GLAPI void APIENTRY glGetQueryiv(GLenum target, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetQueryObjectiv(GLuint id, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetQueryObjectui64v(GLuint id, GLenum pname, GLuint64 *params);
+GLAPI void APIENTRY glQueryCounter(GLuint id, GLenum target);
 #endif
 
 namespace osgEarth

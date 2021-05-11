@@ -18,16 +18,11 @@
  */
 #include <osgEarth/FeatureImageLayer>
 #include <osgEarth/Session>
-#include <osgEarth/FeatureCursor>
-#include <osgEarth/TransformFilter>
-#include <osgEarth/BufferFilter>
-#include <osgEarth/ResampleFilter>
 #include <osgEarth/StyleSheet>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
 #include <osgEarth/Metrics>
-#include <osgEarth/JsonUtils>
 
 using namespace osgEarth;
 

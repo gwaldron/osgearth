@@ -142,6 +142,7 @@ SDFGenerator::createNearestNeighborField(
     Session* session,
     unsigned nnfieldSize,
     const GeoExtent& extent,
+    bool inverted,
     GeoImage& nnfield,
     Cancelable* progress) const
 {
@@ -170,6 +171,7 @@ SDFGenerator::createNearestNeighborField(
 
     return createNearestNeighborField(
         source,
+        inverted,
         nnfield,
         progress);
 }
@@ -177,6 +179,7 @@ SDFGenerator::createNearestNeighborField(
 bool
 SDFGenerator::createNearestNeighborField(
     const GeoImage& inputRaster,
+    bool inverted,
     GeoImage& nnfield,
     Cancelable* progress) const
 {
@@ -198,17 +201,15 @@ SDFGenerator::createNearestNeighborField(
     constexpr float NODATA = 32767.0f;
     osg::Vec4f nodata(NODATA, NODATA, NODATA, NODATA);
     osg::Vec4f pixel, coord;
-    //ImageUtils::ImageIterator iter(inputRaster.getImage());
     GeoImageIterator iter(inputRaster);
     iter.forEachPixel([&]()
         {
             read_raster(pixel, iter.s(), iter.t());
-            if (pixel.a() > 0.0f)
+            if ((!inverted && pixel.a() > 0.0f) || (inverted && pixel.a() < 1.0f))
                 coord.set((float)iter.s(), (float)iter.t(), 0.0f, 0.0f);
-                //coord.set(iter.u(), iter.v(), 0, 0);
             else
                 coord = nodata;
-
+            
             write_nnf(coord, iter.s(), iter.t());
         }
     );

@@ -19,6 +19,7 @@
 
 #include <osgEarth/GL>
 #include <osg/GLExtensions>
+#include <osg/ref_ptr>
 
 static osg::ref_ptr< osg::GLExtensions > s_glext;
 

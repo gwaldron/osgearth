@@ -272,7 +272,10 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         FeatureList& features,
         ProgressCallback* progress)
     {
-        rasterizer.render(_session.get(), style, featureProfile, features);
+        rasterizer.render(
+            features,
+            style,
+            featureProfile);
     };
 
     FeatureStyleSorter sorter;

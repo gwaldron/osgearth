@@ -122,7 +122,6 @@ namespace osgEarth
                 GeoImage nnf;
                 sdfgen.createNearestNeighborField(
                     features,
-                    nullptr,
                     256,
                     out_extent,
                     false,

@@ -38,16 +38,28 @@ namespace osgEarth
                 const Color& backgroundColor = Color::Transparent);
 
             void render(
-                Session* session,
+                const FeatureList& features,
                 const Style& style,
-                const FeatureProfile* profile,
-                const FeatureList& in_features) const;
+                const FeatureProfile* profile =nullptr,
+                const StyleSheet* sheet =nullptr) const;
 
             GeoImage finalize();
 
         private:
             GeoExtent _extent;
             osg::ref_ptr< osg::Image > _image;
+
+            void render_blend2d(
+                const FeatureList& features,
+                const Style& style,
+                const FeatureProfile* profile,
+                const StyleSheet* sheet) const;
+
+            void render_agglite(
+                const FeatureList& features,
+                const Style& style,
+                const FeatureProfile* profile,
+                const StyleSheet* sheet) const;
         };
 
         class OSGEARTH_EXPORT FeatureStyleSorter

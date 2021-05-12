@@ -362,7 +362,7 @@ Profile::Profile(const SpatialReference* srs,
 
     _extent(srs, xmin, ymin, xmax, ymax)
 {
-    OE_SOFT_ASSERT(srs!=nullptr,);
+    OE_SOFT_ASSERT(srs!=nullptr, __func__);
 
     _numTilesWideAtLod0 = numTilesWideAtLod0 != 0? numTilesWideAtLod0 : srs->isGeographic()? 2 : 1;
     _numTilesHighAtLod0 = numTilesHighAtLod0 != 0? numTilesHighAtLod0 : 1;

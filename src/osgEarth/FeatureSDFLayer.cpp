@@ -318,10 +318,10 @@ FeatureSDFLayer::createImageImplementation(
             r_style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
 
         rasterizer.render(
-            _session.get(), 
+            features,
             r_style,
-            _session->getFeatureSource()->getFeatureProfile(), 
-            features);
+            _session->getFeatureSource()->getFeatureProfile(),
+            _session->styles());
     };
 
     FeatureStyleSorter::Function renderSDF = [&](

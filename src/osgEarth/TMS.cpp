@@ -207,11 +207,11 @@ TileMap::createProfile() const
 
     if (getProfileType() == Profile::TYPE_GEODETIC)
     {
-        profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        profile = Profile::create(Profile::GLOBAL_GEODETIC);
     }
     else if (getProfileType() == Profile::TYPE_MERCATOR)
     {
-        profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+        profile = Profile::create(Profile::SPHERICAL_MERCATOR);
     }
     else if (spatialReference->isSphericalMercator())
     {
@@ -219,14 +219,14 @@ TileMap::createProfile() const
         //       the automatically computed mercator bounds which can cause rendering issues due to the some texture coordinates
         //       crossing the dateline.  If the incoming bounds are nearly the same as our definion of global mercator, just use our definition.
         double eps = 0.01;
-        osg::ref_ptr< const Profile > merc = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+        osg::ref_ptr< const Profile > merc = Profile::create(Profile::SPHERICAL_MERCATOR);
         if (_numTilesWide == 1 && _numTilesHigh == 1 &&
             osg::equivalent(merc->getExtent().xMin(), _minX, eps) &&
             osg::equivalent(merc->getExtent().yMin(), _minY, eps) &&
             osg::equivalent(merc->getExtent().xMax(), _maxX, eps) &&
             osg::equivalent(merc->getExtent().yMax(), _maxY, eps))
         {
-            profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+            profile = merc;
         }
     }
 
@@ -237,11 +237,11 @@ TileMap::createProfile() const
         osg::equivalent(_minY,  -90.) &&
         osg::equivalent(_maxY,   90.) )
     {
-        profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        profile = Profile::create(Profile::GLOBAL_GEODETIC);
     }
     else if ( _profile_type == Profile::TYPE_MERCATOR )
     {
-        profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+        profile = Profile::create(Profile::SPHERICAL_MERCATOR);
     }
 
     if ( !profile )
@@ -649,11 +649,15 @@ tileMapToXmlDocument(const TileMap* tileMap)
 
     osg::ref_ptr<XmlElement> e_tile_sets = new XmlElement ( ELEM_TILESETS );
     std::string profileString = "none";
-    if (profile->isEquivalentTo(osgEarth::Registry::instance()->getGlobalGeodeticProfile()))
+
+    osg::ref_ptr<const Profile> gg(Profile::create(Profile::GLOBAL_GEODETIC));
+    osg::ref_ptr<const Profile> sm(Profile::create(Profile::SPHERICAL_MERCATOR));
+
+    if (profile->isEquivalentTo(gg.get()))
     {
         profileString = "global-geodetic";
     }
-    else if (profile->isEquivalentTo(osgEarth::Registry::instance()->getSphericalMercatorProfile()))
+    else if (profile->isEquivalentTo(sm.get()))
     {
         profileString = "global-mercator";
     }

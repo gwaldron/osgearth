@@ -351,12 +351,12 @@ ArcGISServer::MapService::init( const URI& _uri, const osgDB::ReaderWriter::Opti
 		if ( spatialReference->isGeographic() )
 		{
 			// If we have a geographic SRS, just use the geodetic profile
-			profile = Registry::instance()->getGlobalGeodeticProfile();
+            profile = Profile::create(Profile::GLOBAL_GEODETIC);
 		}
 		else if ( spatialReference->isMercator() )
 		{
 			// If we have a mercator SRS, just use the mercator profile
-			profile = Registry::instance()->getGlobalMercatorProfile();
+            profile = Profile::create(Profile::SPHERICAL_MERCATOR);
 		}
 		else
 		{
@@ -563,7 +563,7 @@ ArcGISServerImageLayer::openImplementation()
         else
         {
             // finally, fall back on lat/long
-            profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+            profile = Profile::create(Profile::GLOBAL_GEODETIC);
         }
         setProfile(profile);
     }

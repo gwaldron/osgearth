@@ -188,9 +188,9 @@ _autoFarPlaneClamping( true )
         }
     }
     else
-    {
-        const Ellipsoid& em = Registry::instance()->getGlobalGeodeticProfile()->getSRS()->getEllipsoid();
-        _rp = std::min( em.getRadiusEquator(), em.getRadiusPolar() );
+    {        
+        Ellipsoid wgs84;
+        _rp = std::min(wgs84.getRadiusEquator(), wgs84.getRadiusPolar() );
         _rp2 = _rp*_rp;
         _active = true;
     }

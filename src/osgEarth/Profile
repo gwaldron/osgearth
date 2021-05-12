@@ -102,6 +102,12 @@ namespace osgEarth
     class OSGEARTH_EXPORT Profile : public osg::Referenced
     {
     public:
+        // well knowns
+        static std::string GLOBAL_GEODETIC;
+        static std::string GLOBAL_MERCATOR;
+        static std::string SPHERICAL_MERCATOR;
+        static std::string PLATE_CARREE;
+
         // profile types:
         enum ProfileType
         {

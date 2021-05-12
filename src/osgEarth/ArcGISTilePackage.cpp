@@ -643,16 +643,16 @@ VTPKFeatureSource::openImplementation()
     std::string wkid = root["tileInfo"]["spatialReference"]["latestWkid"].asString();
     if (wkid == "3857")
     {
-        profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
+        profile = Profile::create(Profile::SPHERICAL_MERCATOR);
     }
     else if (wkid == "4326")
     {
-        profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        profile = Profile::create(Profile::GLOBAL_GEODETIC);
     }
     if (!profile)
     {
         // Assume it's mercator
-        profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
+        profile = Profile::create(Profile::SPHERICAL_MERCATOR);
     }
 
     FeatureProfile* featureProfile = new FeatureProfile(profile);

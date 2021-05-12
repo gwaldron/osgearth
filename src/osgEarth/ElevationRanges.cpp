@@ -29,9 +29,9 @@ unsigned int ElevationRanges::getMaxLevel()
     return s_maxLevel;
 }
 
-const Profile* ElevationRanges::getProfile()
+osg::ref_ptr<const Profile> ElevationRanges::getProfile()
 {
-    return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+    return Profile::create(Profile::GLOBAL_GEODETIC);
 }
 
 bool ElevationRanges::getElevationRange(unsigned int level, unsigned int x, unsigned int y, short& min, short& max)

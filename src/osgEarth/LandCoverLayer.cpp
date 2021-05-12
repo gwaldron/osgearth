@@ -138,7 +138,7 @@ LandCoverLayer::openImplementation()
     const Profile* profile = getProfile();
     if (!profile)
     {
-        profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        profile = Profile::create(Profile::GLOBAL_GEODETIC);
         setProfile(profile);
     }
 

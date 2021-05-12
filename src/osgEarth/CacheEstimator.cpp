@@ -25,7 +25,7 @@ using namespace osgEarth;
 CacheEstimator::CacheEstimator():
 _minLevel (0),
 _maxLevel (12),
-_profile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() )
+_profile( Profile::create(Profile::GLOBAL_GEODETIC))
 {    
     // By default we can give them a somewhat worse case estimate since it's going to be next to impossible to know what the real size of the data is going to be due to the fact that it's 
     // dependant on the dataset itself as well as compression.  So lets just default to about 130 kb per tile to start with.

@@ -35,7 +35,7 @@ namespace osgEarth
         static unsigned int getMaxLevel();
 
         // Always global-geodetic
-        static const Profile* getProfile();
+        static osg::ref_ptr<const Profile> getProfile();
 
         // Gets the min/max elevation at the given tile key index.
         static bool getElevationRange(unsigned int level, unsigned int x, unsigned int y, short& min, short& max);      

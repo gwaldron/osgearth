@@ -207,7 +207,7 @@ typedef std::unordered_map<osgEarth::TileKey, CellIndex> TileKeyMap;
 
 static int numRead = 0;
 
-auto wgs84 = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+osg::ref_ptr<const Profile> wgs84 = Profile::create(Profile::GLOBAL_GEODETIC);
 
 static TileKeyMap s_keys;
 

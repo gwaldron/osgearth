@@ -66,21 +66,21 @@ namespace osgEarth
         /** Access the global Registry singleton. Pass in true to destroy it and create a new one. */
         static Registry* instance(bool reset = false);
 
-        /** Gets a well-known named profile instance. */
+        /** Gets a well-known named profile instance.
+        * @deprecated Use Profile::get(name) */
         const Profile* getNamedProfile( const std::string& name ) const;
 
-        /** Gets the global-geodetic builtin profile */
+        /** Gets the global-geodetic builtin profile
+        * @deprecated Use Profile::get("global-geodetic") */
         const Profile* getGlobalGeodeticProfile() const;
 
-        /** @deprecated Gets the global-meractor builtin profile (mercator/WGS84 datum) */
+        /** @deprecated Gets the global-meractor builtin profile (mercator/WGS84 datum)
+        * @deprecated Use Profile::get("global-mercator") */
         const Profile* getGlobalMercatorProfile() const;
 
-        /** Gets the spherical-mercator builtin profile (mercator/sphere) */
+        /** Gets the spherical-mercator builtin profile (mercator/sphere)
+        * @deprecated Use Profile::get("spherical-mercator") */
         const Profile* getSphericalMercatorProfile() const;
-
-        //! Gets a spatial reference object (internal)
-        //! Please use SpatialReference::get() instead of calling this directly
-        osg::ref_ptr<SpatialReference> getOrCreateSRS(const SpatialReference::Key& key);
 
         /** Gets a default cache object - based on environment settings - unless setDefaultCache
             was called to override it. */
@@ -301,11 +301,6 @@ namespace osgEarth
         virtual ~Registry();
         Registry();
 
-        osg::ref_ptr<const Profile> _global_geodetic_profile;
-        osg::ref_ptr<const Profile> _global_mercator_profile;
-        osg::ref_ptr<const Profile> _spherical_mercator_profile;
-        osg::ref_ptr<const Profile> _cube_profile;
-
         mutable Threading::Mutex _regMutex;
 
         ProgramRepo _programRepo;
@@ -369,6 +364,11 @@ namespace osgEarth
 
         unsigned _maxVertsPerDrawable;
         std::vector<osg::ref_ptr<osg::Referenced>> _singletons;
+
+        //! Gets a spatial reference object (internal)
+        //! Please use SpatialReference::get() instead of calling this directly
+        osg::ref_ptr<SpatialReference> getOrCreateSRS(const SpatialReference::Key& key);
+        friend class SpatialReference;
     };
 }
 

@@ -92,7 +92,7 @@ VideoLayer::openImplementation()
             return Status(Status::ServiceUnavailable, buf.str());
         }
 
-        setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
     }
 
     return getStatus();

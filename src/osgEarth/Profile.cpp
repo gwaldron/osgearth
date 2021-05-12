@@ -117,6 +117,10 @@ ProfileOptions::defined() const
 
 /***********************************************************************/
 
+std::string Profile::GLOBAL_GEODETIC("global-geodetic");
+std::string Profile::GLOBAL_MERCATOR("global-mercator");
+std::string Profile::SPHERICAL_MERCATOR("spherical-mercator");
+std::string Profile::PLATE_CARREE("plate-carree");
 
 // FACTORY METHODS:
 
@@ -335,7 +339,7 @@ const Profile*
 Profile::create(const std::string& name)
 {
     // TODO: move the named profiles from Registry into here.
-    if ( ciEquals(name, "plate-carre") || ciEquals(name, "plate-carree") || ciEquals(name, "eqc-wgs84") )
+    if ( ciEquals(name, PLATE_CARREE) || ciEquals(name, "plate-carre") || ciEquals(name, "eqc-wgs84") )
     {
         // Yes I know this is not really Plate Carre but it will stand in for now.
         osg::Vec3d ex;
@@ -345,10 +349,30 @@ Profile::create(const std::string& name)
 
         return Profile::create(plateCarre, -ex.x(), -ex.y(), ex.x(), ex.y(), 2u, 1u);
     }
-
+    else if (ciEquals(name, GLOBAL_GEODETIC))
+    {
+        return create(
+            SpatialReference::create("wgs84"),
+            -180.0, -90.0, 180.0, 90.0,
+            2, 1);
+    }
+    else if (ciEquals(name, GLOBAL_MERCATOR))
+    {
+        return create(
+            SpatialReference::create("global-mercator"),
+            MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
+            1, 1);
+    }
+    else if (ciEquals(name, SPHERICAL_MERCATOR))
+    {
+        return create(
+            SpatialReference::create("spherical-mercator"),
+            MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
+            1, 1);
+    }
     else
     {
-        return osgEarth::Registry::instance()->getNamedProfile( name );
+        return create(name, "");
     }
 }
 
@@ -836,9 +860,13 @@ Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
     if (rhsProfile->isHorizEquivalentTo( this ) ) 
         return rhsLOD;
 
+    static osg::ref_ptr<const Profile> ggProfile = Profile::create(Profile::GLOBAL_GEODETIC);
+    static osg::ref_ptr<const Profile> smProfile = Profile::create(Profile::SPHERICAL_MERCATOR);
+
     // Special check for geodetic to mercator or vise versa, they should match up in LOD.
-    if ((rhsProfile->isEquivalentTo(Registry::instance()->getSphericalMercatorProfile()) && isEquivalentTo(Registry::instance()->getGlobalGeodeticProfile())) ||
-        (rhsProfile->isEquivalentTo(Registry::instance()->getGlobalGeodeticProfile()) && isEquivalentTo(Registry::instance()->getSphericalMercatorProfile())))
+    // TODO not sure about this.. -gw
+    if ((rhsProfile->isEquivalentTo(smProfile.get()) && isEquivalentTo(ggProfile.get())) ||
+        (rhsProfile->isEquivalentTo(ggProfile.get()) && isEquivalentTo(smProfile.get())))
     {
         return rhsLOD;
     }

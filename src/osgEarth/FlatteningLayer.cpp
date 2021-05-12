@@ -844,7 +844,7 @@ FlatteningLayer::openImplementation()
     const Profile* profile = getProfile();
     if (!profile)
     {
-        profile = Registry::instance()->getGlobalGeodeticProfile();
+        profile = Profile::create(Profile::GLOBAL_GEODETIC);
         setProfile(profile);
     }
 

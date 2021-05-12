@@ -538,13 +538,13 @@ WMS::Driver::open(osg::ref_ptr<const Profile>& profile,
     osg::ref_ptr<SpatialReference> wms_srs = SpatialReference::create(_srsToUse);
 
     // check for spherical mercator:
-    if (wms_srs.valid() && wms_srs->isEquivalentTo(osgEarth::Registry::instance()->getSphericalMercatorProfile()->getSRS()))
+    if (wms_srs.valid() && wms_srs->isSphericalMercator())
     {
-        result = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+        result = Profile::create(Profile::SPHERICAL_MERCATOR);
     }
-    else if (wms_srs.valid() && wms_srs->isEquivalentTo(osgEarth::Registry::instance()->getGlobalGeodeticProfile()->getSRS()))
+    else if (wms_srs.valid() && wms_srs->isEquivalentTo(SpatialReference::get("wgs84")))
     {
-        result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        result = Profile::create(Profile::GLOBAL_GEODETIC);
     }
 
     // Next, try to glean the extents from the layer list
@@ -591,7 +591,7 @@ WMS::Driver::open(osg::ref_ptr<const Profile>& profile,
     // Last resort: create a global extent profile (only valid for global maps)
     if (!result.valid() && wms_srs.valid() && wms_srs->isGeographic())
     {
-        result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        result = Profile::create(Profile::GLOBAL_GEODETIC);
     }
 
 

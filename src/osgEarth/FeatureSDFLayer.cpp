@@ -216,6 +216,7 @@ FeatureSDFLayer::updateSession()
                 dataExtents().push_back(DataExtent(fp->getExtent()));
             }
 
+#if 0 // hopefully fixed
             // warn the user if the feature data is tiled and the
             // layer profile doesn't match the feature source profile
             if (fp->isTiled() &&
@@ -224,6 +225,7 @@ FeatureSDFLayer::updateSession()
                 OE_WARN << LC << "Layer profile doesn't match feature tiling profile - data may not render properly" << std::endl;
                 OE_WARN << LC << "(Feature tiling profile = " << fp->getTilingProfile()->toString() << ")" << std::endl;
             }
+#endif
         }
 
         _session->setFeatureSource(getFeatureSource());
@@ -377,9 +379,30 @@ FeatureSDFLayer::createImageImplementation(
         renderSDF,
         progress);
 
-    //osgDB::makeDirectoryForFile(Stringify() << "out/" << key.str() << ".out.png");
-    //osgDB::writeImageFile(*rasterizedFeatures.getImage(), Stringify() << "out/" << key.str() << ".out.png");
-    //osgDB::writeImageFile(*sdf.getImage(), Stringify() << "out/" << key.str() << ".sdf.png");
+#if 0
+    osg::ref_ptr<osg::Image> nn = new osg::Image();
+    nn->allocateImage(nnfield.getImage()->s(), nnfield.getImage()->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    osg::Vec4f p;
+    ImageUtils::PixelReader read_nnf(nnfield.getImage());
+    ImageUtils::PixelWriter write_out(nn.get());
+    ImageUtils::ImageIterator i(read_nnf);
+    i.forEachPixel([&]()
+        {
+            read_nnf(p, i.s(), i.t());
+            p.set(
+                p.x() / (float)(nn->s() - 1),
+                p.y() / (float)(nn->t() - 1),
+                0,
+                1);
+            write_out(p, i.s(), i.t());
+        }
+    );
+
+    osgDB::makeDirectoryForFile(Stringify() << "out/" << key.str() << ".out.png");
+    osgDB::writeImageFile(*rasterizedFeatures.getImage(), Stringify() << "out/" << key.str() << ".out.png");
+    osgDB::writeImageFile(*nn.get(), Stringify() << "out/" << key.str() << ".nn.png");
+    osgDB::writeImageFile(*sdf.getImage(), Stringify() << "out/" << key.str() << ".sdf.png");
+#endif
 
     return sdf;
 }

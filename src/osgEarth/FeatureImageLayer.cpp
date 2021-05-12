@@ -216,6 +216,7 @@ FeatureImageLayer::updateSession()
                 dataExtents().push_back(DataExtent(fp->getExtent()));
             }
 
+#if 0 // hopefully fixed
             // warn the user if the feature data is tiled and the
             // layer profile doesn't match the feature source profile
             if (fp->isTiled() &&
@@ -224,6 +225,7 @@ FeatureImageLayer::updateSession()
                 OE_WARN << LC << "Layer profile doesn't match feature tiling profile - data may not render properly" << std::endl;
                 OE_WARN << LC << "(Feature tiling profile = " << fp->getTilingProfile()->toString() << ")" << std::endl;
             }
+#endif
         }
 
         _session->setFeatureSource(getFeatureSource());

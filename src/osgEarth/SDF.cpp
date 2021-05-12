@@ -131,6 +131,8 @@ SDFGenerator::allocateSDF(
     osg::ref_ptr<osg::Image> sdf = new osg::Image();
     sdf->allocateImage(size, size, 1, GL_RED, GL_UNSIGNED_BYTE);
     sdf->setInternalTextureFormat(GL_R8);
+    //sdf->allocateImage(size, size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    //sdf->setInternalTextureFormat(GL_RGBA8);
     ImageUtils::PixelWriter write(sdf.get());
     write.assign(Color(1, 1, 1, 1));
     return GeoImage(sdf.release(), extent);
@@ -198,7 +200,7 @@ SDFGenerator::createNearestNeighborField(
     iter.forEachPixel([&]()
         {
             read_raster(pixel, iter.s(), iter.t());
-            if ((!inverted && pixel.a() > 0.0f) || (inverted && pixel.a() < 1.0f))
+            if ((!inverted && pixel.a() >= 0.5f) || (inverted && pixel.a() <= 0.5f))
                 coord.set((float)iter.s(), (float)iter.t(), 0.0f, 0.0f);
             else
                 coord = nodata;
@@ -245,47 +247,6 @@ SDFGenerator::createDistanceField(
     osg::Vec4f me, closest, pixel;
     int c = 0; // clamp((int)(channel - GL_RED), 0, 3);
 
-#if 0
-
-    int bias_s = (nnfield.getImage()->s() - sdf.getImage()->s()) / 2;
-    int bias_t = (nnfield.getImage()->t() - sdf.getImage()->t()) / 2;
-
-    int nnf_s, nnf_t;
-
-    float cellSize = 1.0f / (float)(nnfield.getImage()->s() - 1);
-
-    constexpr float NODATA = 32767.0f;
-
-    i.forEachPixel([&]()
-        {
-            read_sdf(pixel, i.s(), i.t());
-
-            // convert ndc coords to the NNF domain
-            nnf_s = i.s() + bias_s; 
-            nnf_t = i.t() + bias_t;
-
-            OE_SOFT_ASSERT(nnf_s >= 0 && nnf_s < nnfield.getImage()->s(), __func__);
-            OE_SOFT_ASSERT(nnf_t >= 0 && nnf_t < nnfield.getImage()->t(), __func__);
-
-            me.set((float)nnf_s, (float)nnf_t, 0, 0);
-            read_nnf(closest, nnf_s, nnf_t);
-
-            OE_SOFT_ASSERT(closest.x() != NODATA, __func__);
-
-            float d = distance2D(me, closest);
-
-            d = unitremap(span * (d * cellSize), lo, hi);
-            //d = unitremap(d * span, lo, hi);
-            if (d < pixel[c])
-            {
-                pixel[c] = d;
-                write_sdf(pixel, i.s(), i.t());
-            }
-        }
-    );
-#endif
-
-#if 1
     osg::Vec2f bias(
         (sdf.getExtent().xMin() - nnfield.getExtent().xMin()) / nnfield.getExtent().width(),
         (sdf.getExtent().yMin() - nnfield.getExtent().yMin()) / nnfield.getExtent().height());
@@ -294,19 +255,37 @@ SDFGenerator::createDistanceField(
         sdf.getExtent().width() / nnfield.getExtent().width(),
         sdf.getExtent().height() / nnfield.getExtent().height());
 
+    //int bias_s = (nnfield.getImage()->s() - sdf.getImage()->s()) / 2;
+    //int bias_t = (nnfield.getImage()->t() - sdf.getImage()->t()) / 2;
+
     float nnf_u, nnf_v;
 
     float cellSize = 1.0f / (float)(nnfield.getImage()->s() - 1);
 
-    i.forEachPixelOnCenter([&]()
+    i.forEachPixel([&]()
         {
             read_sdf(pixel, i.s(), i.t());
 
+#if 0
+            // this code path assumes perfect centering
+
+            int nnfs = i.s() + bias_s;
+            int nnft = i.t() + bias_t;
+
+            me.set(nnfs, nnft, 0, 0);
+            read_nnf(closest, nnfs, nnft);
+#else
             // convert ndc coords to the NNF domain
             nnf_u = clamp(i.u() * scale.x() + bias.x(), 0.0, 1.0);
             nnf_v = clamp(i.v() * scale.y() + bias.y(), 0.0, 1.0);
-            me.set(floor(nnf_u * nnfield.getImage()->s()), floor(nnf_v*nnfield.getImage()->t()), 0, 0);
+
+            me.set(
+                floor(nnf_u * nnfield.getImage()->s()),
+                floor(nnf_v * nnfield.getImage()->t()),
+                0, 0);
+
             read_nnf(closest, nnf_u, nnf_v);
+#endif
 
             float d = distance2D(me, closest);
             d = unitremap(d * cellSize * span, lo, hi);
@@ -316,7 +295,6 @@ SDFGenerator::createDistanceField(
                 write_sdf(pixel, i.s(), i.t());
             }
         });
-#endif
 }
 
 
@@ -369,41 +347,41 @@ SDFGenerator::compute_nnf_on_cpu(osg::Image* buf) const
                 readBuf(pixel_points_to, iter.s(), iter.t());
 
                 // no data at this pixel yet? skip it; there is nothing to propagate.
-                if (pixel_points_to.x() == NODATA)
-                    return;
-
-                for (int s = iter.s() - L; s <= iter.s() + L; s += L)
+                if (pixel_points_to.x() != NODATA)
                 {
-                    if (s < 0 || s >= readBuf.s()) 
-                        continue;
-
-                    remote[0] = (float)s;
-
-                    for (int t = iter.t() - L; t <= iter.t() + L; t += L)
+                    for (int s = iter.s() - L; s <= iter.s() + L; s += L)
                     {
-                        if (t < 0 || t >= readBuf.t()) 
-                            continue;
-                        if (s == iter.s() && t == iter.t()) 
+                        if (s < 0 || s >= readBuf.s())
                             continue;
 
-                        remote[1] = (float)t;
+                        remote[0] = (float)s;
 
-                        // fetch the coords the remote pixel points to:
-                        readBuf(remote_points_to, s, t);
-
-                        if (remote_points_to.x() == NODATA) // remote is unset? Just copy
+                        for (int t = iter.t() - L; t <= iter.t() + L; t += L)
                         {
-                            writeBuf(pixel_points_to, s, t);
-                        }
-                        else
-                        {
-                            // compare the distances and pick the closest.
-                            float d_existing = distanceSquared2D(remote, remote_points_to);
-                            float d_possible = distanceSquared2D(remote, pixel_points_to);
+                            if (t < 0 || t >= readBuf.t())
+                                continue;
+                            if (s == iter.s() && t == iter.t())
+                                continue;
 
-                            if (d_possible < d_existing)
+                            remote[1] = (float)t;
+
+                            // fetch the coords the remote pixel points to:
+                            readBuf(remote_points_to, s, t);
+
+                            if (remote_points_to.x() == NODATA) // remote is unset? Just copy
                             {
                                 writeBuf(pixel_points_to, s, t);
+                            }
+                            else
+                            {
+                                // compare the distances and pick the closest.
+                                float d_existing = distanceSquared2D(remote, remote_points_to);
+                                float d_possible = distanceSquared2D(remote, pixel_points_to);
+
+                                if (d_possible < d_existing)
+                                {
+                                    writeBuf(pixel_points_to, s, t);
+                                }
                             }
                         }
                     }

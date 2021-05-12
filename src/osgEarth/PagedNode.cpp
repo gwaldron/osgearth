@@ -346,29 +346,35 @@ PagingManager::PagingManager() :
     _newFrame(false)
 {
     setCullingActive(false);
-    //ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
     JobArena::get(PAGEDNODE_ARENA_NAME)->setConcurrency(4u);
 
-    osg::observer_ptr<PagingManager> pm_ptr(this);
-    _updateFunc = [pm_ptr](Cancelable*) mutable
-    {
-        osg::ref_ptr<PagingManager> pm(pm_ptr);
-        if (pm.valid())
-        {
-            pm->update();
-            Job(JobArena::get(JobArena::UPDATE_TRAVERSAL))
-                .dispatch(pm->_updateFunc);
-        }
-    };
+    // NOTE: this is causing multiple model layers to not appear.
+    // Need to debug before using.
+    //osg::observer_ptr<PagingManager> pm_ptr(this);
+    //_updateFunc = [pm_ptr](Cancelable*) mutable
+    //{
+    //    osg::ref_ptr<PagingManager> pm(pm_ptr);
+    //    if (pm.valid())
+    //    {
+    //        pm->update();
+    //        Job(JobArena::get(JobArena::UPDATE_TRAVERSAL))
+    //            .dispatch(pm->_updateFunc);
+    //    }
+    //};
 
-    Job(JobArena::get(JobArena::UPDATE_TRAVERSAL))
-        .dispatch(_updateFunc);
+    //Job(JobArena::get(JobArena::UPDATE_TRAVERSAL))
+    //    .dispatch(_updateFunc);
 }
 
 void
 PagingManager::traverse(osg::NodeVisitor& nv)
 {
     ObjectStorage::set(&nv, this);
+
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+        update();
+
     osg::Group::traverse(nv);
 }
 

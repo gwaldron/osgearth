@@ -300,12 +300,11 @@ bool MeasureToolHandler::getLocationAt(osgViewer::View* view, double x, double y
         osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
         osg::Vec3d point = first.getWorldIntersectPoint();
 
-        double lat_rad, lon_rad, height;       
-        getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight( 
-            point.x(), point.y(), point.z(), lat_rad, lon_rad, height );
+        osg::Vec3d lon_lat_h =
+            getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid().geocentricToGeodetic(point);
 
-        lat = osg::RadiansToDegrees( lat_rad );
-        lon = osg::RadiansToDegrees( lon_rad );
+        lat = lon_lat_h.y();
+        lon = lon_lat_h.x();
         return true;
     }
     return false;

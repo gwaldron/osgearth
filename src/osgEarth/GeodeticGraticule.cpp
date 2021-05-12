@@ -547,7 +547,7 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
         // That will disrupt our extent calculation, so we want to clamp
         // it to be between the eyepoint and the far plane.
         nearPlane = osg::clampBetween(nearPlane, 0.0, farPlane);
-        farPlane = osg::clampBetween(farPlane, 1.0, eye.length() - srs->getEllipsoid()->getRadiusPolar());
+        farPlane = osg::clampBetween(farPlane, 1.0, eye.length() - srs->getEllipsoid().getRadiusPolar());
     }
     else
     {

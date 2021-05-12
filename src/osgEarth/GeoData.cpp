@@ -487,7 +487,7 @@ GeoPoint::createWorldUpVector( osg::Vec3d& out_up ) const
         osg::Vec3d ecef;
         if ( this->toWorld( ecef ) )
         {
-            out_up = _srs->getEllipsoid()->computeLocalUpVector( ecef.x(), ecef.y(), ecef.z() );
+            out_up = _srs->getEllipsoid().geocentricToUpVector(ecef);
             return true;
         }
     }
@@ -529,9 +529,9 @@ GeoPoint::interpolate(const GeoPoint& rhs, double t) const
 
         // Convert each point to unit sphere world space:
         osg::Vec3d unitToEllip(
-            getSRS()->getEllipsoid()->getRadiusEquator(),
-            getSRS()->getEllipsoid()->getRadiusEquator(),
-            getSRS()->getEllipsoid()->getRadiusPolar());
+            getSRS()->getEllipsoid().getRadiusEquator(),
+            getSRS()->getEllipsoid().getRadiusEquator(),
+            getSRS()->getEllipsoid().getRadiusPolar());
 
         osg::Vec3d ellipToUnit = osg::componentDivide(
             osg::Vec3d(1,1,1), unitToEllip);
@@ -593,8 +593,8 @@ GeoPoint::distanceTo(const GeoPoint& rhs) const
         GeoPoint p1 = transform( getSRS()->getGeographicSRS() );
         GeoPoint p2 = rhs.transform( p1.getSRS() );
 
-        double Re = getSRS()->getEllipsoid()->getRadiusEquator();
-        double Rp = getSRS()->getEllipsoid()->getRadiusPolar();
+        double Re = getSRS()->getEllipsoid().getRadiusEquator();
+        double Rp = getSRS()->getEllipsoid().getRadiusPolar();
         double F  = (Re-Rp)/Re; // flattening
 
         double
@@ -623,7 +623,7 @@ GeoPoint::distanceTo(const GeoPoint& rhs) const
         double dist = Re*(G-(F/2.0)*(X+Y));
 
         // NaN could mean start/end points are the same
-        return osg::isNaN(dist)? 0.0 : dist;
+        return std::isnan(dist)? 0.0 : dist;
     }
 }
 
@@ -880,7 +880,7 @@ GeoExtent::width(const Units& units) const
     }
     else {
         Distance d(width(), getSRS()->getUnits());
-        double m_per_deg = 2.0 * getSRS()->getEllipsoid()->getRadiusEquator() * osg::PI / 360.0;
+        double m_per_deg = 2.0 * getSRS()->getEllipsoid().getRadiusEquator() * osg::PI / 360.0;
         double d0 = m_per_deg * cos(yMin()) * width();
         double d1 = m_per_deg * cos(yMax()) * height();
         return Distance(std::max(d0, d1), Units::METERS).as(units);
@@ -896,8 +896,11 @@ GeoExtent::height(const Units& units) const
         return Units::convert(getSRS()->getUnits(), units, width());
     }
     else {
-        double m_per_deg = 2.0 * getSRS()->getEllipsoid()->getRadiusEquator() * osg::PI / 360.0;
-        return Distance(m_per_deg * height(), Units::METERS).as(units);
+        return Distance(
+            getSRS()->getEllipsoid().degreesToMeters(height(), 0.0),
+            Units::METERS).as(units);
+        //double m_per_deg = 2.0 * getSRS()->getEllipsoid().getRadiusEquator() * osg::PI / 360.0;
+        //return Distance(m_per_deg * height(), Units::METERS).as(units);
     }
 }
 

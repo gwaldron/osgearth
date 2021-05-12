@@ -325,7 +325,7 @@ int main(int argc, char** argv)
     const SpatialReference* mapSRS = s_mapNode->getMapSRS();
     s_vdaLabel->setText( mapSRS->getVerticalDatum() ?
         mapSRS->getVerticalDatum()->getName() :
-        Stringify() << "geodetic (" << mapSRS->getEllipsoid()->getName() << ")" );
+        Stringify() << "geodetic (" << mapSRS->getEllipsoid().getName() << ")" );
 
     ControlCanvas* canvas = ControlCanvas::get(&viewer);
     canvas->addControl( grid );

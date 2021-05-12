@@ -441,7 +441,7 @@ namespace
     bool
     intersectRayWithEllipsoid(const osg::Vec3d& p0,
                               const osg::Vec3d& p1,
-                              const osg::EllipsoidModel& ellipsoid,
+                              const Ellipsoid& ellipsoid,
                               osg::Vec3d& output)
     {
         // reference frame (converts world ellipsoid to unit sphere)
@@ -671,15 +671,14 @@ namespace
     }
 }
 
-void CascadeDrapingDecorator::Cascade::computeProjection(const osg::Matrix& rttView,
-                                                  const osg::Matrix& iCamMVP,
-                                                  const osg::EllipsoidModel& ellipsoid,
-                                                  const osg::Plane& plane,
-                                                  double dp,
-                                                  const osg::BoundingBoxd& rttBox)
+void CascadeDrapingDecorator::Cascade::computeProjection(
+    const osg::Matrix& rttView,
+    const osg::Matrix& iCamMVP,
+    const Ellipsoid& ellipsoid,
+    const osg::Plane& plane,
+    double dp,
+    const osg::BoundingBoxd& rttBox)
 {
-    osg::EllipsoidModel e;
-
     // intersect the view frustum's edge vectors with the horizon plane
     osg::Vec3d LL, LR, UL, UR;
     bool LL_ok=false, LR_ok=false, UL_ok=false, UR_ok=false;
@@ -788,11 +787,12 @@ void CascadeDrapingDecorator::Cascade::computeClipCoverage(const osg::Matrix& rt
 #define MAXABS4(A,B,C,D) \
     osg::maximum(fabs(A), osg::maximum(fabs(B), osg::maximum(fabs(C),fabs(D))))
 
-void CascadeDrapingDecorator::CameraLocal::constrainRttBoxToFrustum(const osg::Matrix& iCamMVP, 
-                                                             const osg::Matrix& rttView, 
-                                                             const osg::EllipsoidModel& ellipsoid,
-                                                             bool constrainY,
-                                                             osg::BoundingBoxd& rttBox)
+void CascadeDrapingDecorator::CameraLocal::constrainRttBoxToFrustum(
+    const osg::Matrix& iCamMVP,
+    const osg::Matrix& rttView,
+    const Ellipsoid& ellipsoid,
+    bool constrainY,
+    osg::BoundingBoxd& rttBox)
 {
     // transform camera clip space into RTT view space (the maxExt space)
     osg::Matrix camProjToRttView = iCamMVP * rttView;
@@ -897,8 +897,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     // This the largest possible extent we will need for RTT.
     osg::BoundingBoxd rttBox;
     
-    osg::EllipsoidModel fakeEM;
-    const osg::EllipsoidModel* ellipsoid = decorator._srs->getEllipsoid();
+    const Ellipsoid& ellipsoid = decorator._srs->getEllipsoid();
 
     if (decorator._srs->isGeographic())
     {
@@ -919,27 +918,6 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
         horizonPlane.set(osg::Vec3d(0,0,1), dp);
     }
 
-#if 0
-    // intersect the terrain and build a custom horizon plane.
-    osg::Vec3d camFar = osg::Vec3d(0, 0, 1) * iCamMVP;
-    osg::Vec3d isect;
-    if (intersectTerrain(decorator, camEye, camFar, isect))
-    {
-        //double diff = isect.length() - dp;
-        //if (diff > 0.0)
-        {
-            fakeEM.setRadiusEquator(isect.length());
-            fakeEM.setRadiusPolar(isect.length());
-            osg::ref_ptr<Horizon> horizon = new Horizon(fakeEM);
-            horizon->setEye(camEye);
-            horizon->getPlane(horizonPlane);
-            dh = horizon->getDistanceToVisibleHorizon();
-            dp = horizonPlane.distance(camEye);
-            ellipsoid = &fakeEM;
-        }
-    }
-#endif
-
     // project visible horizon distance into the horizon plane:
     double m = sqrt(dh*dh - dp*dp);
     m = osg::minimum(m, decorator._maxHorizonDistance);
@@ -948,7 +926,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     // Create a view matrix that looks straight down at the horizon plane form the eyepoint.
     // This will be our view matrix for all RTT draping cameras.
     osg::Matrix rttView;
-    osg::Vec3d rttLook = -ellipsoid->computeLocalUpVector(camEye.x(), camEye.y(), camEye.z());
+    osg::Vec3d rttLook = -ellipsoid.geocentricToUpVector(camEye);
     rttLook.normalize();
     osg::Vec3d camLeft = camUp ^ camLook;
     osg::Vec3d rttUp = rttLook ^ camLeft;
@@ -964,7 +942,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     // Constraining the the far clip gives a tigher bounds, but can result in 
     // "resolution jumps" as the camera moves around and the far clip plane
     // jumps around.
-    constrainRttBoxToFrustum(iCamMVP, rttView, *ellipsoid, decorator._constrainMaxYToFrustum, rttBox);
+    constrainRttBoxToFrustum(iCamMVP, rttView, ellipsoid, decorator._constrainMaxYToFrustum, rttBox);
 
     // further constrain the max extent based on the bounds of the draped geometry
     if (decorator._constrainRttBoxToDrapingSetBounds)
@@ -982,7 +960,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     // highest resolution cascade).
     _cascades[0]._minClipY = -1.0;
     _cascades[0]._maxClipY = 1.0;
-    _cascades[0].computeProjection(rttView, iCamMVP, *ellipsoid, horizonPlane, dp, rttBox);
+    _cascades[0].computeProjection(rttView, iCamMVP, ellipsoid, horizonPlane, dp, rttBox);
 
     // Next compute the extent, in pixels, of the full RTT. If it's larger than our
     // texture cascade size, we may need multiple cascases.

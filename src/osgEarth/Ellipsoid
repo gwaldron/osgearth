@@ -1,0 +1,100 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_ELLIPSOID_H
+#define OSGEARTH_ELLIPSOID_H 1
+
+#include <osgEarth/Common>
+#include <osg/Matrix>
+
+namespace osgEarth
+{
+    /**
+     * A 2-axis ellipsoid used to approximate the shape of 
+     * the Earth or other planetary body.
+     */
+    class OSGEARTH_EXPORT Ellipsoid
+    {
+    public:
+        //! Construct a default WGS84 ellipsoid
+        Ellipsoid();
+
+        //! Copy
+        Ellipsoid(const Ellipsoid&);
+
+        //! Construct an ellipsoid
+        //! @param semiMajorRadius Radius at the equator (meters)
+        //! @param semiMinorRadius Radius Radius of the poles (meters)
+        Ellipsoid(
+            double semiMajorRadius,
+            double semiMinorRadius);
+
+        //! Equatorial radius
+        double getSemiMajorAxis() const;
+        double getRadiusEquator() const { return getSemiMajorAxis(); }
+        void setSemiMajorAxis(double value);
+
+        //! Polar radius (meters)
+        double getSemiMinorAxis() const;
+        double getRadiusPolar() const { return getSemiMinorAxis(); }
+        void setSemiMinorAxis(double value);
+
+        //! Name of this ellipsoid (meters)
+        const std::string& getName() const { return _name; }
+        void setName(const std::string& value) { _name = value; }
+
+        //! Matrix to transform from LTP at a point to geocentric
+        osg::Matrix geocentricToLocalToWorld(const osg::Vec3d& xyz) const;
+
+        //! Get local up vector at a geocentric point
+        osg::Vec3d geocentricToUpVector(const osg::Vec3d& xyz) const;
+
+        //! Convert geocentric coords to geodetic (LL DEG + Alt M)
+        osg::Vec3d geocentricToGeodetic(const osg::Vec3d& xyz) const;
+
+        //! Convert geodetic coords to geocentric coord
+        osg::Vec3d geodeticToGeocentric(const osg::Vec3d& lla) const;
+
+        //! Get the coordinate frame at the geocentric point
+        osg::Matrix geodeticToCoordFrame(const osg::Vec3d& xyz) const;
+
+        //! Convert degrees to linear units at a given latitide
+        double degreesToMeters(double deg, double lat_deg) const;
+
+        //! Intersects a geocentric line with the ellipsoid.
+        //! Upon success return true and place the first intersection
+        //! point in "out".
+        bool intersectGeocentricLine(
+            const osg::Vec3d& p0,
+            const osg::Vec3d& p1,
+            osg::Vec3d& out) const;
+
+        //! dtor
+        ~Ellipsoid();
+
+    private:
+        void set(double er, double pr);
+
+        std::string _name;
+        osg::ref_ptr<osg::Referenced> _em;
+        osg::Matrix _ellipsoidToUnitSphere;
+        osg::Matrix _unitSphereToEllipsoid;
+    };
+}
+
+#endif // OSGEARTH_ELLIPSOID_H

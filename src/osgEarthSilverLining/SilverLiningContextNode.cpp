@@ -128,7 +128,7 @@ SilverLiningContextNode::traverse(osg::NodeVisitor& nv)
 					_SL->setCameraPosition( nv.getEyePoint() );
 
 					_lastAltitude = _SL->getSRS()->isGeographic() ?
-						cv->getEyePoint().length() - _SL->getSRS()->getEllipsoid()->getRadiusEquator() :
+						cv->getEyePoint().length() - _SL->getSRS()->getEllipsoid().getRadiusEquator() :
 					cv->getEyePoint().z();
 
 					_SL->updateLocation();

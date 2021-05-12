@@ -115,10 +115,10 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
             // Set the ellipsoid to match the one in our map's SRS.
             if ( _srs->isGeographic() )
             {
-                const osg::EllipsoidModel* ellipsoid = _srs->getEllipsoid();
+                const Ellipsoid& ellipsoid = _srs->getEllipsoid();
                 
-                std::string eqRadius = Stringify() << ellipsoid->getRadiusEquator();
-                std::string poRadius = Stringify() << ellipsoid->getRadiusPolar();
+                std::string eqRadius = Stringify() << ellipsoid.getRadiusEquator();
+                std::string poRadius = Stringify() << ellipsoid.getRadiusPolar();
 
                 _environment->SetConfigOption( "equatorial-earth-radius-meters", eqRadius.c_str() );
                 _environment->SetConfigOption( "polar-earth-radius-meters",      poRadius.c_str() );

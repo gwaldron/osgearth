@@ -190,7 +190,7 @@ TEST_CASE("getGeocentricSRS") {
 
     np_wgs84.set(0.0, 90.0, 0.0);
 
-    np_ecef.set(0.0, 0.0, wgs84->getEllipsoid()->getRadiusPolar());
+    np_ecef.set(0.0, 0.0, wgs84->getEllipsoid().getRadiusPolar());
 
     REQUIRE(wgs84->transform(np_wgs84, ecef, temp));
     REQUIRE(vec_eq(temp, np_ecef));

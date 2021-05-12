@@ -80,8 +80,8 @@ ClampableNode::traverse(osg::NodeVisitor& nv)
 
                     // approximate radius under bs.center:
                     double R = 
-                        osg::absolute(p0.z()) * mapSRS->getEllipsoid()->getRadiusPolar() +
-                        (1.0 - osg::absolute(p0.z())) * mapSRS->getEllipsoid()->getRadiusEquator();
+                        osg::absolute(p0.z()) * mapSRS->getEllipsoid().getRadiusPolar() +
+                        (1.0 - osg::absolute(p0.z())) * mapSRS->getEllipsoid().getRadiusEquator();
 
                     // project to mean surface:
                     bs.center() = p0 * R;
@@ -93,8 +93,8 @@ ClampableNode::traverse(osg::NodeVisitor& nv)
                 else // projected
                 {
                     double R = osg::maximum(
-                        mapSRS->getEllipsoid()->getRadiusPolar(),
-                        mapSRS->getEllipsoid()->getRadiusEquator());
+                        mapSRS->getEllipsoid().getRadiusPolar(),
+                        mapSRS->getEllipsoid().getRadiusEquator());
                     
                     // project to mean surface:
                     bs.center().z() = 0.0;

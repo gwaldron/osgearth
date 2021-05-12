@@ -49,7 +49,7 @@ GeometryFactory::createCircle(const osg::Vec3d& center,
 
     if ( _srs.valid() && _srs->isGeographic() )
     {
-        double earthRadius = _srs->getEllipsoid()->getRadiusEquator();
+        double earthRadius = _srs->getEllipsoid().getRadiusEquator();
         double lat = osg::DegreesToRadians(center.y());
         double lon = osg::DegreesToRadians(center.x());
         double rM  = radius.as(Units::METERS);
@@ -110,7 +110,7 @@ GeometryFactory::createArc(const osg::Vec3d& center,
 
     if ( _srs.valid() && _srs->isGeographic() )
     {
-        double earthRadius = _srs->getEllipsoid()->getRadiusEquator();
+        double earthRadius = _srs->getEllipsoid().getRadiusEquator();
         double lat = osg::DegreesToRadians(center.y());
         double lon = osg::DegreesToRadians(center.x());
         double rM  = radius.as(Units::METERS);
@@ -171,7 +171,7 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
 
     if ( _srs.valid() && _srs->isGeographic() )
     {
-        double earthRadius = _srs->getEllipsoid()->getRadiusEquator();
+        double earthRadius = _srs->getEllipsoid().getRadiusEquator();
         double lat = osg::DegreesToRadians(center.y());
         double lon = osg::DegreesToRadians(center.x());
         double a = radiusMajor.as(Units::METERS);
@@ -249,7 +249,7 @@ GeometryFactory::createEllipticalArc(const osg::Vec3d& center,
 
     if ( _srs.valid() && _srs->isGeographic() )
     {
-        double earthRadius = _srs->getEllipsoid()->getRadiusEquator();
+        double earthRadius = _srs->getEllipsoid().getRadiusEquator();
         double lat = osg::DegreesToRadians(center.y());
         double lon = osg::DegreesToRadians(center.x());
         double a = radiusMajor.as(Units::METERS);
@@ -306,7 +306,7 @@ GeometryFactory::createRectangle(const osg::Vec3d& center,
     
     if ( _srs.valid() && _srs->isGeographic() )
     {
-        double earthRadius = _srs->getEllipsoid()->getRadiusEquator();
+        double earthRadius = _srs->getEllipsoid().getRadiusEquator();
         double lat = osg::DegreesToRadians(center.y());
         double lon = osg::DegreesToRadians(center.x());
         double halfWidthMeters  = width.as(Units::METERS) / 2.0;

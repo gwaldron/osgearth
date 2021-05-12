@@ -609,11 +609,11 @@ bool Feature::getWorldBoundingPolytope( const osg::BoundingSphered& bs, const Sp
         // into world (ECEF) space.
         if ( srs->isGeographic() )
         {
-            const osg::EllipsoidModel* e = srs->getEllipsoid();
+            const Ellipsoid& e = srs->getEllipsoid();
 
             // add a bottom cap, unless the bounds are sufficiently large.
-            double minRad = osg::minimum(e->getRadiusPolar(), e->getRadiusEquator());
-            double maxRad = osg::maximum(e->getRadiusPolar(), e->getRadiusEquator());
+            double minRad = std::min(e.getRadiusPolar(), e.getRadiusEquator());
+            double maxRad = std::max(e.getRadiusPolar(), e.getRadiusEquator());
             double zeroOffset = bs.center().length();
             if ( zeroOffset > minRad * 0.1 )
             {

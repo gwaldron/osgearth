@@ -146,16 +146,6 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // to query the in-memory terrain graph, subscribe to tile events, etc.
     _terrainInterface = new Terrain( this, map->getProfile() );
 
-    // Set up the CSN values. We support this because some manipulators look for it,
-    // but osgEarth itself doesn't use it.
-    _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
-
-    // OSG's CSN likes a NULL ellipsoid to represent projected mode.
-    if ( _map->getSRS()->isProjected())
-    {
-        this->setEllipsoidModel( NULL );
-    }
-
     // Register a callback so we can process further map model changes
     _map->addMapCallback( new TerrainEngineNodeCallbackProxy(this) );
 
@@ -177,19 +167,22 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
 
         // OSG's CSN likes a NULL ellipsoid to represent projected mode.
-        if (_map->getProfile()->getSRS()->isGeographic())
-            this->setEllipsoidModel( NULL );
+        if (_map->getProfile()->getSRS()->isProjected())
+        {
+            this->setEllipsoidModel(nullptr);
+        }
     }
 }
 
 osg::BoundingSphere
 TerrainEngineNode::computeBound() const
 {
-    if ( getEllipsoidModel() )
+    if ( getMap() && getMap()->getSRS())
     {
-        double maxRad = osg::maximum(
-            getEllipsoidModel()->getRadiusEquator(),
-            getEllipsoidModel()->getRadiusPolar());
+        const Ellipsoid& e = getMap()->getSRS()->getEllipsoid();
+        double maxRad = std::max(
+            e.getRadiusEquator(),
+            e.getRadiusPolar());
 
         return osg::BoundingSphere( osg::Vec3(0,0,0), maxRad+25000 );
     }

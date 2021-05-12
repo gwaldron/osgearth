@@ -24,7 +24,6 @@
 #include <osg/MatrixTransform>
 
 namespace osg {
-    class EllipsoidModel;
     class Light;
 }
 
@@ -99,14 +98,14 @@ namespace osgEarth { namespace SimpleSky
 
         osg::ref_ptr<PhongLightingEffect> _phong;
 
-        osg::ref_ptr<const osg::EllipsoidModel> _ellipsoidModel;
+        Ellipsoid _ellipsoid;
 
 		const SimpleSkyOptions _options;
 
         void construct();
 
         void makeSceneLighting();
-        void makeAtmosphere(const osg::EllipsoidModel*);
+        void makeAtmosphere(const Ellipsoid&);
         void makeSun();
         void makeMoon();
 

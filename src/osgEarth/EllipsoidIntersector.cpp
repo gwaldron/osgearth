@@ -21,17 +21,17 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-EllipsoidIntersector::EllipsoidIntersector(const osg::EllipsoidModel* em)
+EllipsoidIntersector::EllipsoidIntersector(const Ellipsoid& em)
 {
     _ellipsoidToUnitSphere.makeScale(
-        1.0 / em->getRadiusEquator(),
-        1.0 / em->getRadiusEquator(),
-        1.0 / em->getRadiusPolar());
+        1.0 / em.getRadiusEquator(),
+        1.0 / em.getRadiusEquator(),
+        1.0 / em.getRadiusPolar());
 
     _unitSphereToEllipsoid.makeScale(
-        em->getRadiusEquator(),
-        em->getRadiusEquator(),
-        em->getRadiusPolar());
+        em.getRadiusEquator(),
+        em.getRadiusEquator(),
+        em.getRadiusPolar());
 }
 
 bool EllipsoidIntersector::intersectLine(const osg::Vec3d& p0_world, const osg::Vec3d& p1_world, osg::Vec3d& out_world)

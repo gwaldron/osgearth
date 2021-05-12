@@ -21,12 +21,8 @@
 #define OSGEARTH_LOCATORS_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoData>
 #include <osg/Matrixd>
-
-namespace osgEarth {
-    class GeoExtent;
-    class SpatialReference;
-}
 
 namespace osgEarth { namespace Util
 {
@@ -34,26 +30,39 @@ namespace osgEarth { namespace Util
      * Object that facilitates the conversion between map or world coordinates
      * and a local unit coordinate space defined by a geospatial extent.
      */
-    class OSGEARTH_EXPORT GeoLocator
+    class /* header only */ GeoLocator
     {
     public:
         //! Construct with an extent that defines the unit [0..1] space
-        GeoLocator(const GeoExtent& extent);
+        GeoLocator(const GeoExtent& extent)
+        {
+            _srs = extent.getSRS();
 
-        //! Sets the extent that defines the unit [0..1] space
-        bool setExtent(const GeoExtent& extent);
+            _transform.set(
+                extent.width(), 0.0, 0.0, 0.0,
+                0.0, extent.height(), 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                extent.xMin(), extent.yMin(), 0.0, 1.0);
 
-        //! Convert map coordinates to unit space
-        void mapToUnit(const osg::Vec3d& map, osg::Vec3d& unit) const;
-        
-        //! Convert unit coordinates to map coords
-        void unitToMap(const osg::Vec3d& unit, osg::Vec3d& map) const;
+            _inverse.invert(_transform);
+        }
 
         //! Convert world coordinates to unit space
-        void worldToUnit(const osg::Vec3d& world, osg::Vec3d& unit) const;
+        inline void worldToUnit(const osg::Vec3d& world, osg::Vec3d& unit) const
+        {
+            if (_srs->isGeographic())
+                unit = _srs->getEllipsoid().geocentricToGeodetic(world) * _inverse;
+            else
+                unit = world * _inverse;
+        }
 
         //! Convert unit coordinates to world space
-        void unitToWorld(const osg::Vec3d& unit, osg::Vec3d& world) const;
+        inline void unitToWorld(const osg::Vec3d& unit, osg::Vec3d& world) const
+        {
+            world = unit * _transform;
+            if (_srs->isGeographic())
+                world = _srs->getEllipsoid().geodeticToGeocentric(world);
+        }
         
     protected:
         osg::Matrixd _transform;

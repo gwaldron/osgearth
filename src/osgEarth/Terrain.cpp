@@ -109,8 +109,8 @@ Terrain::getHeight(osg::Node*              patch,
         }
     }
 
-    const osg::EllipsoidModel* em = getSRS()->getEllipsoid();
-    double r = osg::minimum( em->getRadiusEquator(), em->getRadiusPolar() );
+    const Ellipsoid& em = getSRS()->getEllipsoid();
+    double r = std::min( em.getRadiusEquator(), em.getRadiusPolar() );
 
     // calculate the endpoints for an intersection test:
     osg::Vec3d start(x, y, r);

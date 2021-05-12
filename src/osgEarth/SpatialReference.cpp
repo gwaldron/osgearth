@@ -42,34 +42,19 @@ namespace
         return "";
     } 
 
-    void geodeticToGeocentric(std::vector<osg::Vec3d>& points, const osg::EllipsoidModel* em)
+    void geodeticToGeocentric(std::vector<osg::Vec3d>& points, const Ellipsoid& em)
     {
         for( unsigned i=0; i<points.size(); ++i )
         {
-            double x, y, z;
-            em->convertLatLongHeightToXYZ(
-                osg::DegreesToRadians( points[i].y() ), osg::DegreesToRadians( points[i].x() ), points[i].z(),
-                x, y, z );
-            points[i].set( x, y, z );
+            points[i] = em.geodeticToGeocentric(points[i]);
         }
     }
 
-    void geocentricToGeodetic(std::vector<osg::Vec3d>& points, const osg::EllipsoidModel* em)
+    void geocentricToGeodetic(std::vector<osg::Vec3d>& points, const Ellipsoid& em)
     {
         for( unsigned i=0; i<points.size(); ++i )
         {
-            double lat, lon, alt;
-            em->convertXYZToLatLongHeight(
-                points[i].x(), points[i].y(), points[i].z(),
-                lat, lon, alt );
-
-            // deal with bug in OSG 3.4.x in which convertXYZToLatLongHeight can return
-            // NANs when converting from (0,0,0) with a spherical ellipsoid -gw 2/5/2019
-            if (osg::isNaN(lon)) lon = 0.0;
-            if (osg::isNaN(lat)) lat = 0.0;
-            if (osg::isNaN(alt)) alt = 0.0;
-
-            points[i].set( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), alt );
+            points[i] = em.geocentricToGeodetic(points[i]);
         }
     }
 
@@ -484,10 +469,10 @@ SpatialReference::getName() const
     return _name;
 }
 
-const osg::EllipsoidModel*
+const Ellipsoid&
 SpatialReference::getEllipsoid() const
 {
-    return _ellipsoid.get();
+    return _ellipsoid;
 }
 
 const std::string&
@@ -606,8 +591,8 @@ SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDa
     if (this->isGeographic() && rhs->isGeographic())
     {
         return
-            osg::equivalent( getEllipsoid()->getRadiusEquator(), rhs->getEllipsoid()->getRadiusEquator() ) &&
-            osg::equivalent( getEllipsoid()->getRadiusPolar(), rhs->getEllipsoid()->getRadiusPolar() );
+            osg::equivalent( getEllipsoid().getRadiusEquator(), rhs->getEllipsoid().getRadiusEquator() ) &&
+            osg::equivalent( getEllipsoid().getRadiusPolar(), rhs->getEllipsoid().getRadiusPolar() );
     }
 
     // last resort, since it requires the lock
@@ -837,7 +822,10 @@ SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn )
         csn->setCoordinateSystem( _proj4 );
     }
 
-    csn->setEllipsoidModel( _ellipsoid.get() );
+    csn->setEllipsoidModel(
+        new osg::EllipsoidModel(
+            _ellipsoid.getSemiMajorAxis(),
+            _ellipsoid.getSemiMinorAxis()));
     
     return true;
 }
@@ -857,7 +845,7 @@ SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_lo
     }
     else if ( isGeocentric() )
     {
-        _ellipsoid->computeLocalToWorldTransformFromXYZ(xyz.x(), xyz.y(), xyz.z(), out_local2world);
+        out_local2world = _ellipsoid.geocentricToLocalToWorld(xyz);
     }
     else
     {
@@ -867,7 +855,7 @@ SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_lo
             return false;
 
         // and create the matrix.
-        _ellipsoid->computeLocalToWorldTransformFromXYZ(ecef.x(), ecef.y(), ecef.z(), out_local2world);
+        out_local2world = _ellipsoid.geocentricToLocalToWorld(ecef);
     }
     return true;
 }
@@ -1220,25 +1208,25 @@ SpatialReference::transformUnits(double                  input,
 
     if ( this->isProjected() && outSRS->isGeographic() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
         double inputDegrees = getUnits().convertTo(Units::METERS, input) / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
     }
     else if ( this->isGeocentric() && outSRS->isGeographic() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
         double inputDegrees = input / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
     }
     else if ( this->isGeographic() && outSRS->isProjected() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
         double inputMeters = getUnits().convertTo(Units::DEGREES, input) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
     }
     else if ( this->isGeographic() && outSRS->isGeocentric() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
         return getUnits().convertTo(Units::DEGREES, input) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
     }
     else // both projected or both geographic.
@@ -1256,13 +1244,13 @@ SpatialReference::transformUnits(const Distance&         distance,
 
     if ( distance.getUnits().isLinear() && outSRS->isGeographic() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
         double inputDegrees = distance.as(Units::METERS) / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
     }
     else if ( distance.getUnits().isAngular() && outSRS->isProjected() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
         double inputMeters = distance.as(Units::DEGREES) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
     }
@@ -1442,17 +1430,17 @@ SpatialReference::init()
 
     // extract the ellipsoid parameters:
     int err;
-    double semi_major_axis = OSRGetSemiMajor( handle, &err );
-    double semi_minor_axis = OSRGetSemiMinor( handle, &err );
-    _ellipsoid = new osg::EllipsoidModel( semi_major_axis, semi_minor_axis );
+
+    _ellipsoid.setSemiMajorAxis(OSRGetSemiMajor(handle, &err));
+    _ellipsoid.setSemiMinorAxis(OSRGetSemiMinor(handle, &err));
 
     // unique ID for comparing ellipsoids quickly:
     _ellipsoidId = hashString( Stringify() 
         << std::fixed << std::setprecision(10) 
-        << _ellipsoid->getRadiusEquator() << ";" << _ellipsoid->getRadiusPolar() );
+        << _ellipsoid.getSemiMajorAxis() << ";" << _ellipsoid.getSemiMinorAxis() );
 
     // try to get an ellipsoid name:
-    _ellipsoid->setName( getOGRAttrValue(handle, "SPHEROID", 0, true) );
+    _ellipsoid.setName( getOGRAttrValue(handle, "SPHEROID", 0, true) );
 
     // extract the projection:
     if ( _name.empty() || _name == "unnamed" )
@@ -1468,7 +1456,9 @@ SpatialReference::init()
     _is_mercator = !proj_lc.empty() && proj_lc.find("mercator")==0;
 
     // check for spherical mercator (a special case)
-    _is_spherical_mercator = _is_mercator && osg::equivalent(semi_major_axis, semi_minor_axis);
+    _is_spherical_mercator = _is_mercator && osg::equivalent(
+        _ellipsoid.getSemiMajorAxis(),
+        _ellipsoid.getSemiMinorAxis());
 
     // check for the Polar projection:
     if ( !proj_lc.empty() && proj_lc.find("polar_stereographic") != std::string::npos )

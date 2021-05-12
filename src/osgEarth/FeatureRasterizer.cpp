@@ -674,7 +674,7 @@ FeatureRasterizer::render(
                             // linear to angular? approximate degrees per meter at the
                             // latitude of the tile's centroid.
                             double lineWidthM = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
-                            double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI);
+                            double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI);
                             GeoPoint ll = _extent.getCentroid();
                             lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(ll.y()));
                         }
@@ -802,7 +802,7 @@ FeatureRasterizer::render(
                         // linear to angular? approximate degrees per meter at the
                         // latitude of the tile's centroid.
                         double lineWidthM = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
-                        double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI);
+                        double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI);
                         double lon, lat;
                         _extent.getCentroid(lon, lat);
                         lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(lat));

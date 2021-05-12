@@ -78,11 +78,12 @@ using namespace osgEarth::SimpleSky;
 namespace
 {
     // constucts an ellipsoidal mesh that we will use to draw the atmosphere
-    osg::Geometry* s_makeEllipsoidGeometry(const osg::EllipsoidModel* ellipsoid, 
-                                           double                     outerRadius, 
-                                           bool                       genTexCoords)
+    osg::Geometry* s_makeEllipsoidGeometry(
+        const Ellipsoid& ellipsoid,
+        double outerRadius,
+        bool genTexCoords)
     {
-        double hae = outerRadius - ellipsoid->getRadiusEquator();
+        double hae = outerRadius - ellipsoid.getRadiusEquator();
 
         osg::Geometry* geom = new osg::Geometry();
         geom->setUseVertexBufferObjects(true);
@@ -118,9 +119,8 @@ namespace
             for( int x = 0; x < lonSegments; ++x )
             {
                 double lon = -180.0 + segmentSize * (double)x;
-                double gx, gy, gz;
-                ellipsoid->convertLatLongHeightToXYZ( osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), hae, gx, gy, gz );
-                verts->push_back( osg::Vec3(gx, gy, gz) );
+                osg::Vec3 g = ellipsoid.geodeticToGeocentric(osg::Vec3d(lon, lat, hae));
+                verts->push_back(g);
 
                 if (genTexCoords)
                 {
@@ -131,7 +131,7 @@ namespace
 
                 if (normals)
                 {
-                    osg::Vec3d normal(gx, gy, gz);
+                    osg::Vec3d normal(g);
                     normal.normalize();
                     normals->push_back( osg::Vec3f(normal) );
                 }
@@ -242,10 +242,10 @@ SimpleSkyNode::construct()
     
     // set up the astronomical parameters:
     osg::ref_ptr<const SpatialReference> wgs84 = SpatialReference::get("wgs84");
-    _ellipsoidModel = wgs84->getEllipsoid();
-    _innerRadius = osg::minimum(
-        _ellipsoidModel->getRadiusPolar(),
-        _ellipsoidModel->getRadiusEquator() );
+    _ellipsoid = wgs84->getEllipsoid();
+    _innerRadius = std::min(
+        _ellipsoid.getRadiusPolar(),
+        _ellipsoid.getRadiusEquator() );
     _outerRadius = _innerRadius * 1.025f;
 
     CelestialBody sun = getEphemeris()->getSunPosition(DateTime());
@@ -265,7 +265,7 @@ SimpleSkyNode::construct()
         makeSceneLighting();
 
         // make the sky elements (don't change the order here)
-        makeAtmosphere( _ellipsoidModel.get() );
+        makeAtmosphere(_ellipsoid);
 
         makeSun();
 
@@ -351,24 +351,21 @@ SimpleSkyNode::onSetEphemeris()
 void
 SimpleSkyNode::onSetDateTime()
 {
-    if ( _ellipsoidModel.valid() )
-    {
-        osg::View* view = 0L;
-        const DateTime& dt = getDateTime();
+    osg::View* view = 0L;
+    const DateTime& dt = getDateTime();
 
-        CelestialBody sun = getEphemeris()->getSunPosition(dt);
-        setSunPosition( sun.geocentric );
+    CelestialBody sun = getEphemeris()->getSunPosition(dt);
+    setSunPosition( sun.geocentric );
 
-        CelestialBody moon = getEphemeris()->getMoonPosition(dt);
-        setMoonPosition( moon.geocentric );
+    CelestialBody moon = getEphemeris()->getMoonPosition(dt);
+    setMoonPosition( moon.geocentric );
 
-        // position the stars:
-        double time_r = dt.hours()/24.0; // 0..1
-        double rot_z = -osg::PI + TWO_PI*time_r;
+    // position the stars:
+    double time_r = dt.hours()/24.0; // 0..1
+    double rot_z = -osg::PI + TWO_PI*time_r;
 
-        if ( _starsXform.valid() )
-            _starsXform->setMatrix( osg::Matrixd::rotate(-rot_z, 0, 0, 1) );
-    }
+    if ( _starsXform.valid() )
+        _starsXform->setMatrix( osg::Matrixd::rotate(-rot_z, 0, 0, 1) );
 }
 
 void
@@ -535,7 +532,7 @@ SimpleSkyNode::makeSceneLighting()
 }
 
 void
-SimpleSkyNode::makeAtmosphere(const osg::EllipsoidModel* em)
+SimpleSkyNode::makeAtmosphere(const Ellipsoid& em)
 {
     // create some skeleton geometry to shade:
     osg::Geometry* drawable = s_makeEllipsoidGeometry( em, _outerRadius, false );
@@ -644,9 +641,9 @@ SimpleSkyNode::makeSun()
 void
 SimpleSkyNode::makeMoon()
 {
-    osg::ref_ptr< osg::EllipsoidModel > em = new osg::EllipsoidModel( 1738140.0, 1735970.0 );   
+    Ellipsoid em(1738140.0, 1735970.0);
     
-    osg::Geometry* moonDrawable = s_makeEllipsoidGeometry( em.get(), em->getRadiusEquator()*_options.moonScale().get(), true );    
+    osg::Geometry* moonDrawable = s_makeEllipsoidGeometry( em, em.getRadiusEquator()*_options.moonScale().get(), true );    
     osg::StateSet* stateSet = moonDrawable->getOrCreateStateSet();
 
     osg::ref_ptr<osg::Image> image = _options.moonImageURI()->getImage();

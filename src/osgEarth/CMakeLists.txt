@@ -133,6 +133,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationPool
     ElevationRanges
     ElevationQuery
+    Ellipsoid
     EllipsoidIntersector
     Endian
     Export
@@ -552,6 +553,7 @@ set(TARGET_SRC
     ElevationPool.cpp
     ElevationRanges.cpp
     ElevationQuery.cpp
+    Ellipsoid.cpp
     EllipsoidIntersector.cpp
     Extension.cpp
     FadeEffect.cpp
@@ -585,7 +587,6 @@ set(TARGET_SRC
     LayerShader.cpp
     Lighting.cpp
     LineDrawable.cpp
-    Locators.cpp
     LocalTangentPlane.cpp
     Math.cpp
     Map.cpp

@@ -126,7 +126,7 @@ RectangleNode::setUpperLeft( const GeoPoint& upperLeft )
     GeoPoint center = getPosition();
 
     //Figure out the new width and height
-    double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
+    double earthRadius = center.getSRS()->getEllipsoid().getRadiusEquator();
 
     double lat = osg::DegreesToRadians(center.y());
     double lon = osg::DegreesToRadians(center.x());
@@ -172,7 +172,7 @@ RectangleNode::setUpperRight( const GeoPoint& upperRight )
     GeoPoint center = getPosition();
 
     //Figure out the new width and height
-    double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
+    double earthRadius = center.getSRS()->getEllipsoid().getRadiusEquator();
 
     double lat = osg::DegreesToRadians(center.y());
     double lon = osg::DegreesToRadians(center.x());
@@ -218,7 +218,7 @@ RectangleNode::setLowerLeft( const GeoPoint& lowerLeft )
     GeoPoint center = getPosition();
 
     //Figure out the new width and height
-    double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
+    double earthRadius = center.getSRS()->getEllipsoid().getRadiusEquator();
 
     double lat = osg::DegreesToRadians(center.y());
     double lon = osg::DegreesToRadians(center.x());
@@ -264,7 +264,7 @@ RectangleNode::setLowerRight( const GeoPoint& lowerRight )
     GeoPoint center = getPosition();
 
     //Figure out the new width and height
-    double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
+    double earthRadius = center.getSRS()->getEllipsoid().getRadiusEquator();
     
     double lat = osg::DegreesToRadians(center.y());
     double lon = osg::DegreesToRadians(center.x());
@@ -302,7 +302,7 @@ RectangleNode::getCorner( Corner corner ) const
 {
     GeoPoint center = getPosition();
 
-    double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
+    double earthRadius = center.getSRS()->getEllipsoid().getRadiusEquator();
     double lat = osg::DegreesToRadians(center.y());
     double lon = osg::DegreesToRadians(center.x());
     double halfWidthMeters  =  _width.as(Units::METERS) / 2.0;

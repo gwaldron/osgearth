@@ -34,15 +34,18 @@ static bool s_gpuMetricsInstalled = false;
 
 #ifdef OSGEARTH_PROFILING
 
+#ifdef OSGEARTH_GPU_PROFILING
 void (GL_APIENTRY * osgEarth::MetricsGL::glGenQueries)(GLsizei, GLuint*);
 void (GL_APIENTRY * osgEarth::MetricsGL::glGetInteger64v)(GLenum, GLint64*);
 void (GL_APIENTRY * osgEarth::MetricsGL::glGetQueryiv)(GLenum, GLenum, GLint*);
 void (GL_APIENTRY * osgEarth::MetricsGL::glGetQueryObjectiv)(GLint, GLenum, GLint*);
 void (GL_APIENTRY * osgEarth::MetricsGL::glGetQueryObjectui64v)(GLint, GLenum, GLuint64*);
 void (GL_APIENTRY * osgEarth::MetricsGL::glQueryCounter)(GLuint, GLenum);
+#endif
 
 namespace
 {
+#ifdef OSGEARTH_GPU_PROFILING
     struct TracyGPUCallback : public osg::GraphicsContext::SwapCallback
     {
         TracyGPUCallback() : _tracyInit(false) { }
@@ -74,6 +77,7 @@ namespace
             TracyGpuCollect;
         }
     };
+#endif
 }
 #endif // OSGEARTH_PROFILING
 
@@ -118,6 +122,7 @@ int Metrics::run(osgViewer::ViewerBase& viewer)
     osgViewer::ViewerBase::Views views;
     viewer.getViews(views);
 
+#ifdef OSGEARTH_GPU_PROFILING
     if (s_gpuMetricsEnabled)
     {
         osgViewer::ViewerBase::Contexts contexts;
@@ -127,6 +132,7 @@ int Metrics::run(osgViewer::ViewerBase& viewer)
             context->setSwapCallback(new TracyGPUCallback());
         }
     }
+#endif
 
     while (!viewer.done())
     {

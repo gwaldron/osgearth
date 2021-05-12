@@ -240,7 +240,7 @@ namespace osgEarth {
 
                             else if (layer->getStatus().isError() && layer->getStatus().message() != "Layer closed")
                             {
-                                ImGui::Text(layer->getStatus().message().c_str());
+                                ImGui::TextWrapped(layer->getStatus().message().c_str());
                             }
 
                             ImGui::Unindent();

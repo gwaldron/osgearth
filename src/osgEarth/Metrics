@@ -73,6 +73,8 @@ namespace osgEarth {
 #define OE_LOCKABLE_NAMED(type, varname, desc) TracyLockableN(type, varname, desc)
 #define OE_LOCKABLE_BASE( type ) LockableBase( type )
 
+#define OSGEARTH_GPU_PROFILING
+
 #ifdef OSGEARTH_GPU_PROFILING
 #include <osg/GL>
 namespace osgEarth { namespace MetricsGL {
@@ -88,12 +90,21 @@ namespace osgEarth { namespace MetricsGL {
 #ifndef GL_QUERY_RESULT_AVAILABLE
     constexpr GLenum GL_QUERY_RESULT_AVAILABLE = 0x8867;
 #endif
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * glGenQueries)(GLsizei, GLuint*);
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * glGetInteger64v)(GLenum, GLint64*);
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * glGetQueryiv)(GLenum, GLenum, GLint*);
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * glGetQueryObjectiv)(GLint, GLenum, GLint*);
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * glGetQueryObjectui64v)(GLint, GLenum, GLuint64*);
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * glQueryCounter)(GLuint, GLenum);
+
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGenQueries)(GLsizei, GLuint*);
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGetInteger64v)(GLenum, GLint64*);
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGetQueryiv)(GLenum, GLenum, GLint*);
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGetQueryObjectiv)(GLint, GLenum, GLint*);
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGetQueryObjectui64v)(GLint, GLenum, GLuint64*);
+    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glQueryCounter)(GLuint, GLenum);
+
+    #define glGenQueries _glGenQueries
+    #define glGetInteger64v _glGetInteger64v
+    #define glGetQueryiv _glGetQueryiv
+    #define glGetQueryObjectiv _glGetQueryObjectiv
+    #define glGetQueryObjectui64v _glGetQueryObjectui64v
+    #define glQueryCounter _glQueryCounter
+
 } }
 using namespace osgEarth::MetricsGL;
 #include <TracyClient/TracyOpenGL.hpp>
@@ -101,6 +112,13 @@ using namespace osgEarth::MetricsGL;
 #else
 #define OE_PROFILING_GPU_ZONE(name)
 #endif
+
+#undef glGenQueries
+#undef glGetInteger64v
+#undef glGetQueryiv
+#undef glGetQueryObjectiv
+#undef glGetQueryObjectui64v
+#undef glQueryCounter
 
 inline void _zoneSetText(tracy::ScopedZone& zone, const char* text) {
     zone.Text(text, strlen(text));

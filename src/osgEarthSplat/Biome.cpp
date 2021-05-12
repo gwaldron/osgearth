@@ -182,7 +182,7 @@ BiomeZone::init()
 
         // this only needs to be very approximate.
         double meanRadius = b.extent.getSRS()->isGeographic() ?
-            b.extent.getSRS()->getEllipsoid()->getRadiusEquator() : 0.0;
+            b.extent.getSRS()->getEllipsoid().getRadiusEquator() : 0.0;
         b.meanRadius2 = meanRadius*meanRadius;
     }
 }

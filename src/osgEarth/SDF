@@ -53,15 +53,14 @@ namespace osgEarth { namespace Util
         //! it to a distance field.
         //!
         //! @param features Features to use for distance calculation
-        //! @param session Feature Session containing feature data context
-        //! @param size Size of raster to create
+        //! @param nnfieldSize Size of raster to create
         //! @param extent Geospatial extent of the raster
         //! @param nnfield Input/output nearest neighbor field
+        //! @param inverted Whether to test empty pixels instead of full pixels
         //! @param progress Progress tracker object
         //! @return True upon success
         bool createNearestNeighborField(
             const FeatureList& features,
-            Session* session,
             unsigned nnfieldSize,
             const GeoExtent& extent,
             bool inverted,
@@ -76,6 +75,7 @@ namespace osgEarth { namespace Util
         //! it to a distance field.
         //!
         //! @param input Input raster data
+        //! @param inverted Whether to test empty pixels instead of full pixels
         //! @param nnfield Input/output nearest neighbor field
         //! @param progress Progress tracker object
         //! @return True upon success
@@ -89,8 +89,6 @@ namespace osgEarth { namespace Util
         //! @param nnfield Input NN Field to conver to a distance field
         //! @param sdf Distance field to populate (additively). Distance values are
         //!    in the range [0..1] normalized from the min_dist and max_dist inputs.
-        //! @param extent Geospatial extent of the resulting SDF
-        //! @param sdfSize pixel dimention (x and y) of the resulting SDF
         //! @param min_dist Distances <= min_dist are encoded as 0.0
         //! @param max_dist Distances >= max_dist are encoded as 1.0
         //! @param progress Progress tracker object

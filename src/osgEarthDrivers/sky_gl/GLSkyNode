@@ -23,7 +23,6 @@
 #include <osg/MatrixTransform>
 
 namespace osg {
-    class EllipsoidModel;
     class Light;
     class LightSource;
 }

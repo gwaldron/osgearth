@@ -20,20 +20,21 @@
 #ifndef OSGEARTH_ELLIPSOID_INTERSECTOR_H
 #define OSGEARTH_ELLIPSOID_INTERSECTOR_H 1
 
-#include <osg/Matrix>
-#include <osg/CoordinateSystemNode>
 #include <osgEarth/Common>
+#include <osgEarth/Ellipsoid>
+#include <osg/Matrix>
 
 namespace osgEarth { namespace Util
 {
     /**
     * Utility class to perform ellipsoid intersections
+    * @deprecated. Use Ellipsoid::intersectGeocentricLine.
     */
     class OSGEARTH_EXPORT EllipsoidIntersector
     {
     public:
         //! Construct a new ellipsoid intersector
-        EllipsoidIntersector(const osg::EllipsoidModel* em);
+        EllipsoidIntersector(const Ellipsoid& em);
 
         //! Interects a line (world space) with an ellipsoid.
         //! @param p0 First point on the line

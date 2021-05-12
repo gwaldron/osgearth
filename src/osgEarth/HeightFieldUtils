@@ -192,9 +192,9 @@ namespace osgEarth { namespace Util
          * the ellipsoid model.
          */
         static osg::NodeCallback* createClusterCullingCallback(
-            const osg::HeightField*    grid, 
-            const osg::EllipsoidModel* em, 
-            float                      verticalScale =1.0f );
+            const osg::HeightField* grid, 
+            const Ellipsoid& em,
+            float verticalScale =1.0f );
 
         /**
          * Utility function that will take sample points used for interpolation and copy valid values into any of the samples that are NO_DATA_VALUE.

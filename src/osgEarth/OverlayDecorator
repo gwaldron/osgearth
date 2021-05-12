@@ -153,7 +153,7 @@ namespace osgEarth { namespace Util
         unsigned                      _totalOverlayChildren;
 
         osg::ref_ptr<const SpatialReference>    _srs;
-        osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
+        Ellipsoid _ellipsoid;
         osg::observer_ptr<TerrainEngineNode>    _engine;
 
         // Mapping of each RTT camera params vector to a Camera (per view data)

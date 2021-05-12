@@ -53,7 +53,7 @@ namespace osgEarth
         Horizon();
 
         /** Construct a horizon providing the ellipsoid model. */
-        Horizon(const osg::EllipsoidModel& ellipsoid);
+        Horizon(const Ellipsoid& ellipsoid);
 
         /** Construct a horizon from a spatial reference. */
         Horizon(const SpatialReference* srs);
@@ -64,7 +64,7 @@ namespace osgEarth
         /**
          * Ellipsoid model to use for occlusion testing
          */
-        void setEllipsoid(const osg::EllipsoidModel& ellipsoid);
+        void setEllipsoid(const Ellipsoid& ellipsoid);
 
         /**
          * Set the minimum allowable height-above-ellipsoid to consider when doing
@@ -124,7 +124,7 @@ namespace osgEarth
 
         virtual ~Horizon() { }
 
-        osg::EllipsoidModel _em;
+        Ellipsoid _em;
 
         bool       _valid;
         osg::Vec3d _eye;
@@ -180,8 +180,8 @@ namespace osgEarth
          * from the NodeVisitor, but if you want to use a custom one you 
          * can do so here.
          */
-        void setEllipsoid(const osg::EllipsoidModel& em);
-        const osg::EllipsoidModel& getEllipsoid() const { return _customEllipsoid; }
+        void setEllipsoid(const Ellipsoid& em);
+        const Ellipsoid& getEllipsoid() const { return _customEllipsoid; }
 
     public: // osg::NodeCallback
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
@@ -194,7 +194,7 @@ namespace osgEarth
     private:
         bool _centerOnly;
         bool _enabled;
-        osg::EllipsoidModel _customEllipsoid;
+        Ellipsoid _customEllipsoid;
         bool _customEllipsoidSet;
         osg::observer_ptr<osg::Node> _proxy;
     };

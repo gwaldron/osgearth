@@ -92,13 +92,15 @@ namespace
         return false;
     }
 
-    void ecef_to_gnomonic(osg::Vec3d& p, const osg::Vec3d& c, const osg::EllipsoidModel* e)
+    void ecef_to_gnomonic(osg::Vec3d& p, const osg::Vec3d& c, const Ellipsoid& e)
     {
-        double lat0, lon0, alt0;
-        e->convertXYZToLatLongHeight(c.x(), c.y(), c.z(), lat0, lon0, alt0);
+        osg::Vec3d lla0 = e.geocentricToGeodetic(c);
+        osg::Vec3d lla = e.geocentricToGeodetic(p);
 
-        double lat, lon, alt;
-        e->convertXYZToLatLongHeight(p.x(), p.y(), p.z(), lat, lon, alt);
+        double lon0 = osg::DegreesToRadians(lla0.x());
+        double lat0 = osg::DegreesToRadians(lla0.y());
+        double lon = osg::DegreesToRadians(lla.x());
+        double lat = osg::DegreesToRadians(lla.y());
 
         double d = sin(lat0)*sin(lat) + cos(lat0)*cos(lat)*cos(lon - lon0);
         p.x() = (cos(lat)*sin(lon - lon0)) / d;

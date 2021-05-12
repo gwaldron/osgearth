@@ -236,9 +236,6 @@ FeatureSDFLayer::createImageImplementation(
     const TileKey& key, 
     ProgressCallback* progress) const
 {
-    static Mutex m;
-    ScopedMutexLock l(m);
-
     if (getStatus().isError())
     {
         return GeoImage::INVALID;
@@ -321,10 +318,10 @@ FeatureSDFLayer::createImageImplementation(
             r_style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
 
         rasterizer.render(
-            _session.get(), 
+            features,
             r_style,
-            _session->getFeatureSource()->getFeatureProfile(), 
-            features);
+            _session->getFeatureSource()->getFeatureProfile(),
+            _session->styles());
     };
 
     FeatureStyleSorter::Function renderSDF = [&](
@@ -338,9 +335,8 @@ FeatureSDFLayer::createImageImplementation(
         double toMeters = 1.0;
         if (sdfExtent.getSRS()->isGeographic())
         {
-            double R = sdfExtent.getSRS()->getEllipsoid()->getRadiusEquator();
             double LAT = sdfExtent.yMin() >= 0.0 ? sdfExtent.yMin() : sdfExtent.yMax();
-            toMeters = (2.0 * osg::PI * R / 360.0) * cos(osg::DegreesToRadians(LAT));
+            toMeters = sdfExtent.getSRS()->getEllipsoid().degreesToMeters(1.0, LAT);
         }
 
         _sdfGenerator.createDistanceField(

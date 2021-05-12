@@ -98,7 +98,7 @@ _settings(settings)
 
     if (settings._debugGeom)
     {
-        const double R = SpatialReference::get("wgs84")->getEllipsoid()->getRadiusEquator();
+        const double R = SpatialReference::get("wgs84")->getEllipsoid().getRadiusEquator();
 
         osg::Geometry* geom = new osg::Geometry();
         geom->setUseVertexBufferObjects(true);

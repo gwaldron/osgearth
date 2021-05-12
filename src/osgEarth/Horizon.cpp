@@ -38,10 +38,10 @@ _valid( false ),
 _VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minHAE(0)
 {
     setName(OSGEARTH_HORIZON_UDC_NAME);
-    setEllipsoid(osg::EllipsoidModel());
+    setEllipsoid(Ellipsoid());
 }
 
-Horizon::Horizon(const osg::EllipsoidModel& e) :
+Horizon::Horizon(const Ellipsoid& e) :
 _valid( false ),
 _VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minHAE(0)
 {
@@ -56,7 +56,7 @@ _VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minH
     setName(OSGEARTH_HORIZON_UDC_NAME);
     if ( srs && !srs->isProjected() )
     {
-        setEllipsoid( *srs->getEllipsoid() );
+        setEllipsoid( srs->getEllipsoid() );
     }
 }
 
@@ -81,20 +81,19 @@ _minHAE  ( rhs._minHAE )
 }
 
 void
-Horizon::setEllipsoid(const osg::EllipsoidModel& e)
+Horizon::setEllipsoid(const Ellipsoid& em)
 {
-    _em.setRadiusEquator(e.getRadiusEquator());
-    _em.setRadiusPolar(e.getRadiusPolar());
+    _em = em;
 
     _scaleInv.set(
-        e.getRadiusEquator(),
-        e.getRadiusEquator(),
-        e.getRadiusPolar() );
+        em.getRadiusEquator(),
+        em.getRadiusEquator(),
+        em.getRadiusPolar() );
 
     _scale.set(
-        1.0 / e.getRadiusEquator(),
-        1.0 / e.getRadiusEquator(),
-        1.0 / e.getRadiusPolar() );
+        1.0 / em.getRadiusEquator(),
+        1.0 / em.getRadiusEquator(),
+        1.0 / em.getRadiusPolar() );
 
     _minHAE = 500.0;
     _minVCmag = 1.0 + (_scale*_minHAE).length();
@@ -331,8 +330,11 @@ Horizon::getDistanceToVisibleHorizon() const
     double eyeLen = _eye.length();
 
     osg::Vec3d geodetic;
-    double lat, lon, hasl;
-    _em.convertXYZToLatLongHeight(_eye.x(), _eye.y(), _eye.z(), lat, lon, hasl);
+    //double lat, lon, hasl;
+    //_em.convertXYZToLatLongHeight(_eye.x(), _eye.y(), _eye.z(), lat, lon, hasl);
+
+    geodetic = _em.geocentricToGeodetic(_eye);
+    double hasl = geodetic.z();
 
     // limit it:
     hasl = osg::maximum(hasl, 100.0);
@@ -353,10 +355,10 @@ HorizonCullCallback::HorizonCullCallback() :
 }
 
 void
-HorizonCullCallback::setEllipsoid(const osg::EllipsoidModel& em)
+HorizonCullCallback::setEllipsoid(const Ellipsoid& em)
 {
-    _customEllipsoid.setRadiusEquator(em.getRadiusEquator());
-    _customEllipsoid.setRadiusPolar(em.getRadiusPolar());
+    _customEllipsoid.setSemiMajorAxis(em.getRadiusEquator());
+    _customEllipsoid.setSemiMinorAxis(em.getRadiusPolar());
     _customEllipsoidSet = true;
 }
 

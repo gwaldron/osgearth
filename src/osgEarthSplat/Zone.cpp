@@ -62,7 +62,7 @@ Zone::configure(const Map* map, const osgDB::Options* readOptions)
 
         // this only needs to be very approximate.
         double meanRadius = extent.getSRS()->isGeographic() ?
-            extent.getSRS()->getEllipsoid()->getRadiusEquator() : 0.0;
+            extent.getSRS()->getEllipsoid().getRadiusEquator() : 0.0;
         b.meanRadius2 = meanRadius*meanRadius;
     }
     

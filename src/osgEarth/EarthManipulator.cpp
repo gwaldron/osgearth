@@ -787,7 +787,7 @@ EarthManipulator::established()
             vp.focalPoint() = GeoPoint(_srs.get(), -90.0, 0, 0, ALTMODE_ABSOLUTE);
             vp.heading()->set( 0.0, Units::DEGREES );
             vp.pitch()->set( -89.0, Units::DEGREES );
-            vp.range()->set( _srs->getEllipsoid()->getRadiusEquator() * 3.0, Units::METERS );
+            vp.range()->set( _srs->getEllipsoid().getRadiusEquator() * 3.0, Units::METERS );
             vp.positionOffset()->set(0,0,0);
             setHomeViewpoint( vp );
         }
@@ -1093,7 +1093,7 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
             // Adjust the duration if necessary.
             if ( _settings->getAutoViewpointDurationEnabled() )
             {
-                double maxDistance = _srs->getEllipsoid()->getRadiusEquator();
+                double maxDistance = _srs->getEllipsoid().getRadiusEquator();
                 double ratio = osg::clampBetween( de/maxDistance, 0.0, 1.0 );
                 ratio = accelerationInterp( ratio, -4.5 );
                 double minDur, maxDur;
@@ -1329,7 +1329,7 @@ void EarthManipulator::collisionDetect()
     osg::Vec3d eyeUp = getUpVector(eyeCoordFrame);
 
     // Try to intersect the terrain with a vector going straight up and down.
-    double r = osg::minimum(_srs->getEllipsoid()->getRadiusEquator(), _srs->getEllipsoid()->getRadiusPolar());
+    double r = std::min(_srs->getEllipsoid().getRadiusEquator(), _srs->getEllipsoid().getRadiusPolar());
     osg::Vec3d ip, normal;
 
     if (intersect(eye + eyeUp * r, eye - eyeUp * r, ip, normal))
@@ -3332,7 +3332,7 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
     if (_last_action._type != ACTION_EARTH_DRAG)
         _lastPointOnEarth = zero;
 
-    double radiusEquator = _srs.valid() ? _srs->getEllipsoid()->getRadiusEquator() : 6378137.0;
+    double radiusEquator = _srs.valid() ? _srs->getEllipsoid().getRadiusEquator() : 6378137.0;
 
     float x = _ga_t0->getX(), y = _ga_t0->getY();
     float local_x, local_y;

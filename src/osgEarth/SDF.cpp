@@ -139,7 +139,6 @@ SDFGenerator::allocateSDF(
 bool
 SDFGenerator::createNearestNeighborField(
     const FeatureList& features,
-    Session* session,
     unsigned nnfieldSize,
     const GeoExtent& extent,
     bool inverted,
@@ -159,14 +158,8 @@ SDFGenerator::createNearestNeighborField(
     else
         style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
 
-    osg::ref_ptr<const FeatureProfile> fp;
-    if (session && session->getFeatureSource())
-        fp = session->getFeatureSource()->getFeatureProfile();
-    else
-        fp = new FeatureProfile(extent);
-
     FeatureRasterizer rasterizer(nnfieldSize, nnfieldSize, extent, Color(1, 1, 1, 0));
-    rasterizer.render(session, style, fp.get(), features);
+    rasterizer.render(features, style);
     GeoImage source = rasterizer.finalize();
 
     return createNearestNeighborField(

@@ -65,7 +65,7 @@ GeoMath::distance(const osg::Vec3d& p1, const osg::Vec3d& p2, const SpatialRefer
         return distance(
             osg::DegreesToRadians( p1.y() ), osg::DegreesToRadians( p1.x() ),
             osg::DegreesToRadians( p2.y() ), osg::DegreesToRadians( p2.x() ),
-            srs->getEllipsoid()->getRadiusEquator() );
+            srs->getEllipsoid().getRadiusEquator() );
     }
 }
 

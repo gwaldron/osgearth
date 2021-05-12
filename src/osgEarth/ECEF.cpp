@@ -142,10 +142,13 @@ ECEF::transformAndGetRotationMatrix(const osg::Vec3d&       input,
         geoPoint = input;
 
     // use that information to calculate a rotation matrix:
-    ecefSRS->getEllipsoid()->computeCoordinateFrame(
-        osg::DegreesToRadians( geoPoint.y() ),
-        osg::DegreesToRadians( geoPoint.x() ),
-        out_rotation );
+    out_rotation = ecefSRS->getEllipsoid().geodeticToCoordFrame(
+        osg::Vec3d(geoPoint.x(), geoPoint.y(), geoPoint.z()));
+        
+        //geoPoint..computeCoordinateFrame(
+        //osg::DegreesToRadians( geoPoint.y() ),
+        //osg::DegreesToRadians( geoPoint.x() ),
+        //out_rotation );
 
     // then convert that to ECEF.
     geoSRS->transform(geoPoint, ecefSRS, out_point);

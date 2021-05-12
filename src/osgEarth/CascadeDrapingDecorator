@@ -29,13 +29,13 @@
 
 namespace osg {
     class Camera;
-    class EllipsoidModel;
     class Plane;
 }
 namespace osgUtil {
     class CullVisitor;
 }
 namespace osgEarth {
+    class Ellipsoid;
     class SpatialReference;
     class TerrainResources;
 }
@@ -96,7 +96,7 @@ namespace osgEarth { namespace Contrib
             double _widthNDC, _heightNDC;
 
             void expandToInclude(const osg::Vec3d&);
-            void computeProjection(const osg::Matrix&, const osg::Matrix&, const osg::EllipsoidModel&, const osg::Plane&, double, const osg::BoundingBoxd&);
+            void computeProjection(const osg::Matrix&, const osg::Matrix&, const Ellipsoid&, const osg::Plane&, double, const osg::BoundingBoxd&);
             void computeClipCoverage(const osg::Matrix&, const osg::Matrix&);
             void makeProj(double dp);
 
@@ -119,7 +119,7 @@ namespace osgEarth { namespace Contrib
             void initialize(osg::Camera* camera, CascadeDrapingDecorator&);
             void traverse(osgUtil::CullVisitor*, CascadeDrapingDecorator&, const osg::BoundingSphere&);
             void clear();
-            void constrainRttBoxToFrustum(const osg::Matrix&, const osg::Matrix&, const osg::EllipsoidModel&, bool, osg::BoundingBoxd& rttBox);
+            void constrainRttBoxToFrustum(const osg::Matrix&, const osg::Matrix&, const Ellipsoid&, bool, osg::BoundingBoxd& rttBox);
             void constrainRttBoxToBounds(const osg::Matrix&, const osg::BoundingSphere&, osg::BoundingBoxd& rttBox);
             bool intersectTerrain(CascadeDrapingDecorator& dec, const osg::Vec3d& startWorld, const osg::Vec3d& endWorld, osg::Vec3d& output);
 

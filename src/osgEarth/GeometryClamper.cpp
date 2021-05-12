@@ -106,14 +106,14 @@ GeometryClamper::apply(osg::Drawable& drawable)
     osg::Matrix world2local;
     world2local.invert( local2world );
 
-    const osg::EllipsoidModel* em = _terrainSRS->getEllipsoid();
+    const Ellipsoid& em = _terrainSRS->getEllipsoid();
     osg::Vec3d n_vector(0,0,1), start, end, msl;
 
     bool isGeocentric = _terrainSRS->isGeographic();
 
     osgUtil::IntersectionVisitor iv( _lsi.get() );
 
-    double r = osg::minimum( em->getRadiusEquator(), em->getRadiusPolar() );
+    double r = osg::minimum( em.getRadiusEquator(), em.getRadiusPolar() );
 
     unsigned count = 0;
 
@@ -140,7 +140,8 @@ GeometryClamper::apply(osg::Drawable& drawable)
         if ( isGeocentric )
         {
             // normal to the ellipsoid:
-            n_vector = em->computeLocalUpVector(vw.x(),vw.y(),vw.z());
+            n_vector = em.geocentricToUpVector(vw);
+            //n_vector = em->computeLocalUpVector(vw.x(),vw.y(),vw.z());
 
             // if we need to store the original altitudes:
             if (storeAltitudes)

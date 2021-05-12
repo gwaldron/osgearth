@@ -434,7 +434,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         hasl = osg::maximum( hasl, 100.0 );
 
         // up vector tangent to the ellipsoid under the eye.
-        worldUp = _ellipsoid->computeLocalUpVector(eye.x(), eye.y(), eye.z());
+        worldUp = _ellipsoid.geocentricToUpVector(eye);
 
         // radius of the earth under the eyepoint
         // gw: wrong. use R instead.
@@ -450,7 +450,9 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
         // there "horizon distance" in a projected map is infinity,
         // so just simulate one.
-        horizonDistance = sqrt(2.0*6356752.3142*hasl + hasl*hasl);
+        double Rp = _ellipsoid.getSemiMinorAxis();
+        horizonDistance = sqrt(2.0*Rp*hasl + hasl*hasl);
+        //horizonDistance = sqrt(2.0*6356752.3142*hasl + hasl * hasl);
     }
     
     // update the shared horizon distance.

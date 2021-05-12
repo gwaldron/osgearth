@@ -213,7 +213,7 @@ GraticuleLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data
     osg::Matrix MVPinv;
     MVPinv.invert(MVP);
 
-    EllipsoidIntersector ellipsoid(_srs->getEllipsoid());
+    //EllipsoidIntersector ellipsoid(_srs->getEllipsoid());
 
     // For each corner, transform the clip coordinates at the near and far
     // planes into world space and intersect that line with the ellipsoid:
@@ -223,7 +223,7 @@ GraticuleLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data
     osg::Vec3d LL_world;
     p0 = osg::Vec3d(-1, -1, -1) * MVPinv;
     p1 = osg::Vec3d(-1, -1, +1) * MVPinv;
-    bool LL_ok = ellipsoid.intersectLine(p0, p1, LL_world);
+    bool LL_ok = _srs->getEllipsoid().intersectGeocentricLine(p0, p1, LL_world);
     if (!LL_ok)
         return false;
 
@@ -231,7 +231,7 @@ GraticuleLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data
     osg::Vec3d UL_world;
     p0 = osg::Vec3d(-1, +1, -1) * MVPinv;
     p1 = osg::Vec3d(-1, +1, +1) * MVPinv;
-    bool UL_ok = ellipsoid.intersectLine(p0, p1, UL_world);
+    bool UL_ok = _srs->getEllipsoid().intersectGeocentricLine(p0, p1, UL_world);
     if (!UL_ok)
         return false;
 
@@ -239,7 +239,7 @@ GraticuleLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data
     osg::Vec3d LR_world;
     p0 = osg::Vec3d(+1, -1, -1) * MVPinv;
     p1 = osg::Vec3d(+1, -1, +1) * MVPinv;
-    bool LR_ok = ellipsoid.intersectLine(p0, p1, LR_world);
+    bool LR_ok = _srs->getEllipsoid().intersectGeocentricLine(p0, p1, LR_world);
     if (!LR_ok)
         return false;
 

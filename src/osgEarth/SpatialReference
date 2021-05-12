@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Units>
+#include <osgEarth/Ellipsoid>
 #include <osgEarth/VerticalDatum>
 #include <osgEarth/Threading>
 #include <osgEarth/Containers>
@@ -223,7 +224,7 @@ namespace osgEarth
         const std::string& getName() const;
 
         /** Gets the underlying reference ellipsoid of this SRS */
-        const osg::EllipsoidModel* getEllipsoid() const;
+        const Ellipsoid& getEllipsoid() const;
 
         /** Gets the WKT string */
         const std::string& getWKT() const;
@@ -388,7 +389,7 @@ namespace osgEarth
         std::string _datum;
         Units _units;
         double _reportedLinearUnits;
-        osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
+        Ellipsoid _ellipsoid;
         mutable osg::ref_ptr<SpatialReference> _geo_srs;
         mutable osg::ref_ptr<SpatialReference> _geodetic_srs;  // _geo_srs with a NULL vdatum.
         mutable osg::ref_ptr<SpatialReference> _geocentric_srs;

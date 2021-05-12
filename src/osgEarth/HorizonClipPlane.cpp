@@ -28,15 +28,15 @@
 using namespace osgEarth;
 
 HorizonClipPlane::HorizonClipPlane() :
-_num(0u)
+    _num(0u)
 {
     //nop
 }
 
-HorizonClipPlane::HorizonClipPlane(const osg::EllipsoidModel* em) :
-_ellipsoid(em ? *em : osg::EllipsoidModel()),
-_num(0u),
-_data(OE_MUTEX_NAME)
+HorizonClipPlane::HorizonClipPlane(const Ellipsoid& em) :
+    _ellipsoid(em),
+    _num(0u),
+    _data(OE_MUTEX_NAME)
 {
     //nop
 }

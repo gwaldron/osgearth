@@ -101,7 +101,7 @@ _options  ( options )
     else
     {
         // use the "AL" lettering scheme for these older datum ellipsoids.
-        std::string eName = _refSRS->getEllipsoid()->getName();
+        std::string eName = _refSRS->getEllipsoid().getName();
         _useAL = 
             eName.find("bessel") != std::string::npos ||
             eName.find("clark")  != std::string::npos ||

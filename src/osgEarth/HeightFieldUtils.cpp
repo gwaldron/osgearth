@@ -591,15 +591,16 @@ HeightFieldUtils::resolveInvalidHeights(osg::HeightField* grid,
 }
 
 osg::NodeCallback*
-HeightFieldUtils::createClusterCullingCallback(const osg::HeightField*    grid, 
-                                               const osg::EllipsoidModel* et, 
-                                               float                      verticalScale )
+HeightFieldUtils::createClusterCullingCallback(
+    const osg::HeightField* grid,
+    const Ellipsoid& et,
+    float verticalScale)
 {
     //This code is a very slightly modified version of the DestinationTile::createClusterCullingCallback in VirtualPlanetBuilder.
-    if ( !grid || !et )
+    if ( !grid )
         return 0L;
 
-    double globe_radius = et->getRadiusPolar();
+    double globe_radius = et.getRadiusPolar();
     unsigned int numColumns = grid->getNumColumns();
     unsigned int numRows = grid->getNumRows();
 
@@ -607,8 +608,9 @@ HeightFieldUtils::createClusterCullingCallback(const osg::HeightField*    grid,
     double midLat = grid->getOrigin().y()+grid->getYInterval()*((double)(numRows-1))*0.5;
     double midZ = grid->getOrigin().z();
 
-    double midX,midY;
-    et->convertLatLongHeightToXYZ(osg::DegreesToRadians(midLat),osg::DegreesToRadians(midLong),midZ, midX,midY,midZ);
+    osg::Vec3d mid = et.geodeticToGeocentric(osg::Vec3d(midLong, midLat, midZ));
+    double midX = mid.x(), midY = mid.y();
+    //et->convertLatLongHeightToXYZ(osg::DegreesToRadians(midLat),osg::DegreesToRadians(midLong),midZ, midX,midY,midZ);
 
     osg::Vec3 center_position(midX,midY,midZ);
     osg::Vec3 center_normal(midX,midY,midZ);
@@ -639,11 +641,13 @@ HeightFieldUtils::createClusterCullingCallback(const osg::HeightField*    grid,
             double Z = orig_Z + grid->getHeight(c,r) * verticalScale;
             double height = Z;
 
-            et->convertLatLongHeightToXYZ(
-                osg::DegreesToRadians(Y), osg::DegreesToRadians(X), Z,
-                X, Y, Z);
+            osg::Vec3d v = et.geodeticToGeocentric(osg::Vec3d(X, Y, Z));
 
-            osg::Vec3d v(X,Y,Z);
+            //et->convertLatLongHeightToXYZ(
+            //    osg::DegreesToRadians(Y), osg::DegreesToRadians(X), Z,
+            //    X, Y, Z);
+
+            //osg::Vec3d v(X,Y,Z);
             osg::Vec3 dv = v - center_position;
             double d = sqrt(dv.x()*dv.x() + dv.y()*dv.y() + dv.z()*dv.z());
             double theta = acos( globe_radius/ (globe_radius + fabs(height)) );

@@ -115,8 +115,8 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
             C.z() = fabs(C.z());
             double t = C * osg::Vec3d(0,0,1); // dot product
 
-            zfar = mix(_mapSRS->getEllipsoid()->getRadiusEquator(),
-                       _mapSRS->getEllipsoid()->getRadiusPolar(),
+            zfar = mix(_mapSRS->getEllipsoid().getRadiusEquator(),
+                       _mapSRS->getEllipsoid().getRadiusPolar(),
                        t);
             eyeDist = zfar * 2.0;
         }
@@ -145,8 +145,8 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
             C.z() = fabs(C.z());
             double t = C * osg::Vec3d(0,0,1); // dot product
 
-            zfar = mix(_mapSRS->getEllipsoid()->getRadiusEquator(),
-                       _mapSRS->getEllipsoid()->getRadiusPolar(),
+            zfar = mix(_mapSRS->getEllipsoid().getRadiusEquator(),
+                       _mapSRS->getEllipsoid().getRadiusPolar(),
                        t);
             eyeDist = zfar * 2.0;
         }

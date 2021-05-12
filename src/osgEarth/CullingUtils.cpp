@@ -976,13 +976,14 @@ LODScaleGroup::traverse(osg::NodeVisitor& nv)
 
 //------------------------------------------------------------------
 
-ClipToGeocentricHorizon::ClipToGeocentricHorizon(const osgEarth::SpatialReference* srs,
-                                                 osg::ClipPlane*                   clipPlane)
+ClipToGeocentricHorizon::ClipToGeocentricHorizon(
+    const osgEarth::SpatialReference* srs,
+    osg::ClipPlane* clipPlane)
 {
     if ( srs )
     {
         _horizon = new Horizon();
-        _horizon->setEllipsoid( *srs->getEllipsoid() );
+        _horizon->setEllipsoid(srs->getEllipsoid());
     }
 
     _clipPlane = clipPlane;
@@ -1029,7 +1030,7 @@ AltitudeCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
             if (_srs->isGeographic())
             {
                 visible = nv->getDistanceToViewPoint(osg::Vec3(0, 0, 0), true) <
-                    _maxAltitude.get() + _srs->getEllipsoid()->getRadiusEquator();
+                    _maxAltitude.get() + _srs->getEllipsoid().getRadiusEquator();
             }
             else
             {

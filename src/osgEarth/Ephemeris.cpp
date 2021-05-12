@@ -57,7 +57,7 @@ namespace
         // Test: http://www.satellite-calculations.com/Satellite/suncalc.htm
         CelestialBody getPosition(const DateTime& dt) const
         {
-            static const osg::EllipsoidModel WGS84;
+            static const Ellipsoid WGS84;
 
             // Reference to 1999Dec31.0TDT
             const double JD_REFTIME = DateTime(1999,12,31,0.0).getJulianDay();
@@ -131,11 +131,10 @@ namespace
 
             // geocentric:
             {
-                WGS84.convertLatLongHeightToXYZ(
-                    sun.latitude.as(Units::RADIANS),
-                    sun.longitude.as(Units::RADIANS),
-                    sun.altitude.as(Units::METERS),
-                    sun.geocentric.x(), sun.geocentric.y(), sun.geocentric.z());
+                sun.geocentric = WGS84.geodeticToGeocentric(osg::Vec3d(
+                    sun.longitude.as(Units::DEGREES),
+                    sun.latitude.as(Units::DEGREES),
+                    sun.altitude.as(Units::METERS)));
             }
 
             // ECI:
@@ -164,7 +163,7 @@ namespace
         //osg::Vec3d getEarthLonLatRange(int year, int month, int date, double hoursUTC ) const
         CelestialBody getPosition(const DateTime& dt) const
         {
-            static const osg::EllipsoidModel WGS84;
+            static const Ellipsoid WGS84;
             
             // Reference to 1999Dec31.0TDT
             const double JD_REFTIME = DateTime(1999,12,31,0.0).getJulianDay();
@@ -286,11 +285,10 @@ namespace
 
             // geocentric:
             {
-                WGS84.convertLatLongHeightToXYZ(
-                    moon.latitude.as(Units::RADIANS),
-                    moon.longitude.as(Units::RADIANS),
-                    moon.altitude.as(Units::METERS),
-                    moon.geocentric.x(), moon.geocentric.y(), moon.geocentric.z());
+                moon.geocentric = WGS84.geodeticToGeocentric(osg::Vec3d(
+                    moon.longitude.as(Units::DEGREES),
+                    moon.latitude.as(Units::DEGREES),
+                    moon.altitude.as(Units::METERS)));
             }
 
             // ECI:

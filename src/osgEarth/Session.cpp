@@ -95,7 +95,7 @@ Session::init()
 
     if (!_mapProfile.valid())
     {
-        _mapProfile = Profile::create("global-geodetic");
+        _mapProfile = Profile::create(Profile::GLOBAL_GEODETIC);
     }
 }
 

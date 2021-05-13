@@ -54,7 +54,7 @@ DecalImageLayer::init()
     ImageLayer::init();
 
     // Set the layer profile.
-    setProfile(Profile::create("global-geodetic"));
+    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 
     // Never cache decals
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
@@ -309,7 +309,7 @@ DecalElevationLayer::init()
     ElevationLayer::init();
 
     // Set the layer profile.
-    setProfile(Profile::create("global-geodetic"));
+    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 
     // This is an offset layer (the elevation values are offsets)
     setOffset(true);
@@ -577,7 +577,7 @@ DecalLandCoverLayer::init()
     LandCoverLayer::init();
 
     // Set the layer profile.
-    setProfile(Profile::create("global-geodetic"));
+    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 
     // Never cache decals
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
@@ -594,7 +594,7 @@ DecalLandCoverLayer::openImplementation()
     const Profile* profile = getProfile();
     if (!profile)
     {
-        profile = Profile::create("global-geodetic");
+        profile = Profile::create(Profile::GLOBAL_GEODETIC);
         setProfile(profile);
     }
 

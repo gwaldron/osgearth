@@ -85,7 +85,7 @@ ImageToFeatureSource::openImplementation()
         return parent;
 
     // Establish the feature profile.
-    osg::ref_ptr<const Profile> globalGeodetic = Profile::create("global-geodetic");
+    osg::ref_ptr<const Profile> globalGeodetic = Profile::create(Profile::GLOBAL_GEODETIC);
 
     const GeoExtent& extent = globalGeodetic->getExtent();
     FeatureProfile* profile = new FeatureProfile(extent);

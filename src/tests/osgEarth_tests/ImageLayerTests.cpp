@@ -41,7 +41,7 @@ TEST_CASE( "ImageLayers can be created" )
     {
         const Profile* profile = layer->getProfile();
         REQUIRE(profile != nullptr);
-        REQUIRE(profile->isEquivalentTo(Profile::create("global-geodetic")));
+        REQUIRE(profile->isEquivalentTo(Profile::create(Profile::GLOBAL_GEODETIC)));
     }
 
     SECTION("Images are read correctly")

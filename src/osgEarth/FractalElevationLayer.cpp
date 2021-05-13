@@ -140,7 +140,7 @@ FractalElevationLayer::init()
     _debug = false;
 
     // Global WGS84 profile
-    setProfile(Profile::create("global-geodetic"));
+    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
     
     // Default the tile size to 257
     if (!options().tileSize().isSet())

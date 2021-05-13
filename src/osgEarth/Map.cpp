@@ -133,8 +133,8 @@ Map::init()
     if (options().profile().isSet())
         setProfile(Profile::create(options().profile().get()));
 
-    if (getProfile() == NULL)
-        setProfile( Profile::create("global-geodetic") );
+    if (getProfile() == nullptr)
+        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 
     // If the registry doesn't have a default cache policy, but the
     // map options has one, make the map policy the default.

@@ -268,7 +268,7 @@ CompositeImageLayer::openImplementation()
         {
             if (getCacheSettings()->isCacheEnabled())
             {
-                profile = Profile::create("global-geodetic");
+                profile = Profile::create(Profile::GLOBAL_GEODETIC);
             }
             else
             {
@@ -689,7 +689,7 @@ CompositeElevationLayer::openImplementation()
     {
         if (getCacheSettings()->isCacheEnabled())
         {
-            profile = Profile::create("global-geodetic");
+            profile = Profile::create(Profile::GLOBAL_GEODETIC);
         }
         else
         {
@@ -969,7 +969,7 @@ CompositeLandCoverLayer::openImplementation()
     {
         if (getCacheSettings()->isCacheEnabled())
         {
-            profile = Profile::create("global-geodetic");
+            profile = Profile::create(Profile::GLOBAL_GEODETIC);
         }
         else
         {

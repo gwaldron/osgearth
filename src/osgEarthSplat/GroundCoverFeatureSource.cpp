@@ -71,7 +71,7 @@ GroundCoverFeatureSource::openImplementation()
     {
         _gen.setLayer(getGroundCoverLayer());
 
-        FeatureProfile* fp = new FeatureProfile(Profile::create("global-geodetic"));
+        FeatureProfile* fp = new FeatureProfile(Profile::create(Profile::GLOBAL_GEODETIC));
         fp->setFirstLevel(getGroundCoverLayer()->getLOD());
         fp->setMaxLevel(getGroundCoverLayer()->getLOD());
         setFeatureProfile(fp);

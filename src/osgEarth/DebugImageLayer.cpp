@@ -158,7 +158,7 @@ DebugImageLayer::openImplementation()
 
     if (!getProfile())
     {
-        setProfile( Profile::create("global-geodetic") );
+        setProfile( Profile::create(Profile::GLOBAL_GEODETIC) );
     }
 
     return Status::NoError;

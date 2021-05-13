@@ -116,7 +116,7 @@ namespace osgEarth
      * layer before opening it or adding it to the Map. For example, for the
      * pattern above you might want a spherical mercator profile:
      *
-     *    layer->setProfile( Profile::create("spherical-mercator") );
+     *    layer->setProfile( Profile::create(Profile::SPHERICAL_MERCATOR) );
      */
     class OSGEARTH_EXPORT XYZImageLayer : public ImageLayer
     {

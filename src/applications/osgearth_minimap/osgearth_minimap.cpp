@@ -41,12 +41,12 @@ using namespace osgEarth::Util;
 MapNode* makeMiniMapNode( )
 {
     Map* map = new Map();
-    map->setProfile(Profile::create("spherical-mercator"));
+    map->setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
 
     // add a semi-transparent XYZ layer:
     XYZImageLayer* osm = new XYZImageLayer();
     osm->setURL("http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
-    osm->setProfile(Profile::create("spherical-mercator"));
+    osm->setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
     map->addLayer(osm);
 
     TerrainOptions terrainOptions;

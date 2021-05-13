@@ -284,7 +284,7 @@ BingElevationLayer::init()
     // disable caching by default due to TOS
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 
-    _globalGeodetic = Profile::create("global-geodetic");
+    _globalGeodetic = Profile::create(Profile::GLOBAL_GEODETIC);
 
     const char* key = ::getenv("OSGEARTH_BING_KEY");
     if (key)

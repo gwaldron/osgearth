@@ -83,7 +83,7 @@ FeatureImageLayer::init()
     // Default profile (WGS84) if not set
     if (!getProfile())
     {
-        setProfile(Profile::create("global-geodetic"));
+        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
     }
 }
 

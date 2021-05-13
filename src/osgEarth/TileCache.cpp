@@ -150,7 +150,7 @@ TileCacheImageLayer::openImplementation()
         return parent;
 
     if (!getProfile())
-        setProfile(Profile::create("global-geodetic"));
+        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 
     Status status = _driver.open(
         options().url().get(),

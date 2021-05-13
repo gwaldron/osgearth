@@ -81,7 +81,7 @@ public:
             return Status(Status::ConfigurationError, "no path");
 
         // Establish a geospatial profile for the layer:
-        setProfile(Profile::create("global-geodetic"));
+        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 
         // Tell the layer to call createTexture:
         setUseCreateTexture();
@@ -139,7 +139,7 @@ main(int argc, char** argv)
     // add a semi-transparent XYZ layer:
     XYZImageLayer* osm = new XYZImageLayer();
     osm->setURL("http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
-    osm->setProfile(Profile::create("spherical-mercator"));
+    osm->setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
     osm->setOpacity(0.5f);
     map->addLayer(osm);
 
@@ -199,7 +199,7 @@ main(int argc, char** argv)
 
     OGRFeatureSource* maskFeatures = new OGRFeatureSource();
     maskFeatures->setGeometry(maskGeom);
-    maskFeatures->setProfile(Profile::create("global-geodetic"));
+    maskFeatures->setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 
     if (maskFeatures->open().isOK())
     {

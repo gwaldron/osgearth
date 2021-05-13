@@ -89,7 +89,7 @@ BiomeLayer::init()
 {
     ImageLayer::init();
     _index = nullptr;
-    setProfile(Profile::create("global-geodetic"));
+    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 }
 
 Status

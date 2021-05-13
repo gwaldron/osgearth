@@ -67,7 +67,7 @@ FeatureElevationLayer::init()
     setTileSize(257u);
 
     // Global WGS84 profile
-    setProfile(Profile::create("global-geodetic"));
+    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 }
 
 Config

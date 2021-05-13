@@ -515,7 +515,7 @@ MBTiles::Driver::open(
                 if (profileStr.empty() == false)
                     OE_WARN << LC << "Profile \"" << profileStr << "\" not recognized; defaulting to spherical-mercator\n";
 
-                profile = Profile::create("spherical-mercator");
+                profile = Profile::create(Profile::SPHERICAL_MERCATOR);
             }
 
             inout_profile = profile;
@@ -978,7 +978,7 @@ MBTiles::Driver::setDataExtents(const DataExtentList& values)
         }
 
         // Convert the bounds to wgs84
-        osg::ref_ptr<const Profile> gg = Profile::create("global-geodetic");
+        osg::ref_ptr<const Profile> gg = Profile::create(Profile::GLOBAL_GEODETIC);
         GeoExtent bounds = gg->clampAndTransformExtent(e);
         std::stringstream boundsStr;
         boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();

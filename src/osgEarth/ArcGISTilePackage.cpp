@@ -369,7 +369,7 @@ ArcGISTilePackageImageLayer::openImplementation()
         else
         {
             // finally, fall back on mercator
-            profile = Profile::create("spherical-mercator");
+            profile = Profile::create(Profile::SPHERICAL_MERCATOR);
         }
         setProfile(profile);
     }
@@ -430,11 +430,11 @@ ArcGISTilePackageImageLayer::readConf()
             {
                 if (srs->isMercator())
                 {
-                    setProfile(Profile::create("spherical-mercator"));
+                    setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
                 }
                 else
                 {
-                    setProfile(Profile::create("global-geodetic"));
+                    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
                 }
             }
         }
@@ -511,7 +511,7 @@ ArcGISTilePackageElevationLayer::openImplementation()
         else
         {
             // finally, fall back on mercator
-            profile = Profile::create("spherical-mercator");
+            profile = Profile::create(Profile::SPHERICAL_MERCATOR);
         }
         setProfile(profile);
     }
@@ -574,11 +574,11 @@ ArcGISTilePackageElevationLayer::readConf()
             {
                 if (srs->isMercator())
                 {
-                    setProfile(Profile::create("spherical-mercator"));
+                    setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
                 }
                 else
                 {
-                    setProfile(Profile::create("global-geodetic"));
+                    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
                 }
             }
         }

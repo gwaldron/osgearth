@@ -565,8 +565,6 @@ FeatureRasterizer::render_agglite(
     const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
     const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
     const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
-    const TextSymbol* masterText = style.getSymbol<TextSymbol>();
-    const SkinSymbol* masterSkin = style.getSymbol<SkinSymbol>();
 
     // Converts coordinates to image space (s,t):
     RenderFrame frame;
@@ -876,13 +874,6 @@ FeatureRasterizer::render(
         for (auto& feature : features)
             feature->transform(_extent.getSRS());
     }
-
-    // find the symbology:
-    const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
-    const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
-    const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
-    const TextSymbol* masterText = style.getSymbol<TextSymbol>();
-    const SkinSymbol* masterSkin = style.getSymbol<SkinSymbol>();
 
 #ifdef USE_BLEND2D
     render_blend2d(features, style, profile, sheet);

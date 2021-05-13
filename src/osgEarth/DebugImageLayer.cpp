@@ -21,7 +21,6 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Geometry>
-#include <osgEarth/GeometryRasterizer>
 #include <osgDB/FileNameUtils>
 #include <osgText/Glyph>
 #include <osgText/Font>
@@ -29,6 +28,15 @@
 #include <osg/PolygonOffset>
 #include <osg/BlendFunc>
 #include <sstream>
+
+// do this once FeatureRasterizer supports all the TextSymbol properties
+//#define USE_FEATURE_RASTERIZER
+
+#ifdef USE_FEATURE_RASTERIZER
+#include "FeatureRasterizer"
+#else
+#include "GeometryRasterizer"
+#endif
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -164,6 +172,62 @@ DebugImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
         return GeoImage(_tessImage.get(), key.getExtent());
     }
 
+#ifdef USE_FEATURE_RASTERIZER
+
+    FeatureRasterizer ras(256, 256, key.getExtent());
+
+    const GeoExtent& e = key.getExtent();
+    double bx = e.width() / 20.0, by = e.height() / 20.0;
+    Ring* ring = new Ring();
+    ring->push_back(osg::Vec3d(e.xMin() + bx, e.yMin() + by, 0));
+    ring->push_back(osg::Vec3d(e.xMax() - bx, e.yMin() + by, 0));
+    ring->push_back(osg::Vec3d(e.xMax() - bx, e.yMax() - by, 0));
+    ring->push_back(osg::Vec3d(e.xMin() + bx, e.yMax() - by, 0));
+    Feature* f = new Feature(ring, e.getSRS());
+    FeatureList features{ f };
+    Style lineStyle;
+    lineStyle.getOrCreate<LineSymbol>()->stroke()->color() = Debug::colors[key.getLOD() % 4];
+    ras.render(features, lineStyle);   
+    
+    // next render the text:
+    std::stringstream buf;
+    if (options().invertY() == true)
+    {
+        // TMS format (inverted Y)
+        unsigned int tileX, tileY;
+        key.getTileXY(tileX, tileY);
+        unsigned int numRows, numCols;
+        key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
+        tileY = numRows - tileY - 1;
+        buf << key.getLevelOfDetail() << "/" << tileX << "/" << tileY;
+    }
+    else
+    {
+        buf << key.str();
+    }
+
+    buf << std::fixed << std::setprecision(1)
+        << "\nh=" << e.height(Units::METERS)
+        << "m\nw=" << e.width(Units::METERS)
+        << "m";
+
+
+    PointSet* point = new PointSet();
+    point->push_back(osg::Vec3d(e.xMin() + bx * 2, e.yMin() + by * 2, 0));
+    f->setGeometry(point);
+    Style textStyle;
+    TextSymbol* text = textStyle.getOrCreate<TextSymbol>();
+    text->content() = StringExpression(buf.str());
+    text->fill() = Color::White;
+    text->halo() = Color::Gray;
+    ras.render(features, textStyle);
+
+    GeoImage result = ras.finalize();
+
+    return result;
+
+#else
+
     // first draw the colored outline:
     GeometryRasterizer rasterizer(256, 256);
     rasterizer.draw(_geom.get(), Debug::colors[key.getLevelOfDetail() % 4]);
@@ -216,4 +280,5 @@ DebugImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
     }
 
     return GeoImage(image, key.getExtent());
+#endif
 }

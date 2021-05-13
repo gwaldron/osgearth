@@ -63,6 +63,7 @@ OE_LAYER_PROPERTY_IMPL(BingImageLayer, std::string, ImagerySet, imagerySet);
 OE_LAYER_PROPERTY_IMPL(BingImageLayer, URI, ImageryMetadataURL, imageryMetadataURL);
 
 void BingImageLayer::setAPIKey(const std::string& value) {
+    _key = value;
     setOptionThatRequiresReopen(options().apiKey(), value);
 }
 const std::string& BingImageLayer::getAPIKey() const {
@@ -103,11 +104,6 @@ BingImageLayer::openImplementation()
     else
         _key = options().apiKey().get();
 
-    if (_key.empty())
-    {
-        return Status(Status::ConfigurationError, "Bing API key is required");
-    }
-    
     // Bing maps profile is spherical mercator with 2x2 tiles are the root.
     setProfile(Profile::create(
         SpatialReference::get("spherical-mercator"),
@@ -128,6 +124,12 @@ GeoImage
 BingImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     osg::ref_ptr<osg::Image> image;
+
+    if (_key.empty())
+    {
+        setStatus(Status::ConfigurationError, "Bing API key is required");
+        return GeoImage(getStatus());
+    }
 
     if (_debugDirect)
     {

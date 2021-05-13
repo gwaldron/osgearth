@@ -273,7 +273,8 @@ FeatureSDFLayer::createImageImplementation(
     // which indicates maximum distance.
     GeoImage sdf = _sdfGenerator.allocateSDF(
         getTileSize(),
-        key.getExtent());
+        key.getExtent(),
+        GL_RED);
 
     // Rasterizer for rendering features to an image. We are going to make this
     // larger than the final SDF so we can properly calculate distances to features

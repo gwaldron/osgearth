@@ -43,7 +43,8 @@ namespace osgEarth { namespace Util
         //! @param extent Geospatial extent
         GeoImage allocateSDF(
             unsigned size,
-            const GeoExtent& extent) const;
+            const GeoExtent& extent,
+            GLenum pixelFormat =GL_RED) const;
 
         //! Encode a nearest-neighbor field for vector data. Each pixel contains
         //! the coordinates of the nearest pixel with feature data. The coordinate

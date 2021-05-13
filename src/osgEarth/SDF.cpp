@@ -126,13 +126,20 @@ SDFGenerator::setUseGPU(bool value)
 GeoImage
 SDFGenerator::allocateSDF(
     unsigned size,
-    const GeoExtent& extent) const
+    const GeoExtent& extent,
+    GLenum pixelFormat) const
 {
     osg::ref_ptr<osg::Image> sdf = new osg::Image();
-    sdf->allocateImage(size, size, 1, GL_RED, GL_UNSIGNED_BYTE);
-    sdf->setInternalTextureFormat(GL_R8);
-    //sdf->allocateImage(size, size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    //sdf->setInternalTextureFormat(GL_RGBA8);
+    sdf->allocateImage(size, size, 1, pixelFormat, GL_UNSIGNED_BYTE);
+
+    //todo: replace with a complete ImageUtils function
+    sdf->setInternalTextureFormat(
+        pixelFormat == GL_RED ? GL_R8 :
+        pixelFormat == GL_RG ? GL_RG8 :
+        pixelFormat == GL_RGB ? GL_RGB8 :
+        pixelFormat == GL_RGBA ? GL_RGBA8 :
+        pixelFormat);
+
     ImageUtils::PixelWriter write(sdf.get());
     write.assign(Color(1, 1, 1, 1));
     return GeoImage(sdf.release(), extent);

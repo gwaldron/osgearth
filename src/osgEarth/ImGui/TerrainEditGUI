@@ -27,6 +27,7 @@
 #include <osgEarth/CircleNode>
 #include <osgEarth/SDF>
 #include <osgEarth/FeatureNode>
+#include <osgDB/WriteFile>
 
 namespace osgEarth
 {
@@ -48,9 +49,9 @@ namespace osgEarth
                 osg::ref_ptr<osg::Image>& out_elevation,
                 osg::ref_ptr<osg::Image>& out_lifemap)
             {
-                GeoPoint center_m = center.transform(SpatialReference::get("spherical-mercator"));
-                out_extent = GeoExtent(center_m.getSRS());
-                out_extent.expandToInclude(center_m.x(), center_m.y());
+                GeoPoint local = center.toLocalTangentPlane();
+                out_extent = GeoExtent(local.getSRS());
+                out_extent.expandToInclude(local.x(), local.y());
                 out_extent.expand(width, width);
 
                 out_elevation = new osg::Image();
@@ -69,7 +70,7 @@ namespace osgEarth
                         float a = 2.0*(e_iter.u() - 0.5f);
                         float b = 2.0*(e_iter.v() - 0.5f);
                         float d = sqrt((a*a) + (b*b));
-                        value.r() = clamp(d, 0.0f, 1.0f); // 0.5f);
+                        value.r() = clamp(d, 0.0f, 1.0f);
                         writeElevation(value, e_iter.s(), e_iter.t());
                     }
                 );
@@ -90,6 +91,7 @@ namespace osgEarth
                         float b = 2.0f*(lm_iter.v() - 0.5f);
                         float d = clamp(sqrt((a*a) + (b*b)), 0.0f, 1.0f);
                         value.set(rugged, dense, lush, (1.0f - (d*d)) * lifemapMix);
+
                         writeLifeMap(value, lm_iter.s(), lm_iter.t());
                     }
                 );
@@ -100,7 +102,7 @@ namespace osgEarth
         struct DitchRenderer
         {
             static void render(
-                Feature* feature,
+                const Feature* in_feature,
                 const Distance& width,
                 float rugged, float dense, float lush,
                 float lifemapMix,
@@ -108,13 +110,24 @@ namespace osgEarth
                 osg::ref_ptr<osg::Image>& out_lifemap,
                 GeoExtent& out_extent)
             {
+                osg::ref_ptr<Feature> feature = osg::clone(in_feature, osg::CopyOp::DEEP_COPY_ALL);
+                GeoPoint center = feature->getExtent().getCentroid();
+                center = center.toLocalTangentPlane();
+                feature->transform(center.getSRS());
+
                 out_extent = feature->getExtent();
 
-                // the extent must account for the width of the ditch
-                out_extent.expand(width*2.0, width*2.0);
+                // the extent must account for the width of the ditch,
+                // AND the extent must be square.....
+                out_extent.expand(width, width);
+                double diff = out_extent.width() - out_extent.height();
+                if (diff > 0.0)
+                    out_extent.expand(0.0, diff);
+                else if (diff < 0.0)
+                    out_extent.expand(-diff, 0.0);
 
-                FeatureList features;
-                features.push_back(feature);
+
+                FeatureList features { feature };
 
                 SDFGenerator sdfgen;
                 sdfgen.setUseGPU(false);
@@ -136,8 +149,8 @@ namespace osgEarth
                     nnf,
                     sdf,
                     out_extent.height(),
+                    0.25f * width,
                     0.5f * width,
-                    1.0f * width,
                     nullptr);
 
                 out_elevation = new osg::Image();
@@ -173,10 +186,17 @@ namespace osgEarth
                 lm_iter.forEachPixel([&]()
                     {
                         readSDF(value, lm_iter.s(), lm_iter.t());
-                        value.set(rugged, dense, lush, (1.0f - value.r()) * lifemapMix);
+                        float dist = value.r();
+                        value.set(rugged, dense, lush, (1.0f - dist) * lifemapMix);
                         writeLifeMap(value, lm_iter.s(), lm_iter.t());
                     }
                 );
+
+#if 0
+                osgDB::writeImageFile(*nnf.getImage(), Stringify() << "out/decal_nnf.png");
+                osgDB::writeImageFile(*sdf.getImage(), Stringify() << "out/decal_sdf.png");
+                osgDB::writeImageFile(*out_lifemap.get(), Stringify() << "out/decal_lifemap.png");
+#endif
             }
         };
 
@@ -359,6 +379,8 @@ namespace osgEarth
                     if (geom->size() == 1)
                         geom->push_back(pf.x(), pf.y());
                     _ditchCursor->dirty();
+
+                    OE_INFO << "point = " << pf.x() << ", " << pf.y() << std::endl;
                 }
             }
 
@@ -474,6 +496,7 @@ namespace osgEarth
                 _ditchStyle.getOrCreate<LineSymbol>()->stroke()->color().set(1, 1, 0, 0.65);
                 _ditchStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
                 _ditchStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
+                _ditchStyle.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = true;
                 _ditchFeature = new Feature(new LineString(), SpatialReference::get("spherical-mercator"), _ditchStyle);
                 _ditchCursor = new FeatureNode(_ditchFeature.get(), _ditchStyle);
                 _ditchCursor->setNodeMask(0);

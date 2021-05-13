@@ -462,6 +462,15 @@ GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
     return result;
 }
 
+GeoPoint
+GeoPoint::toLocalTangentPlane() const
+{
+    if (!isValid())
+        return GeoPoint::INVALID;
+
+    return transform(getSRS()->createTangentPlaneSRS(vec3d()));
+}
+
 bool
 GeoPoint::createWorldUpVector( osg::Vec3d& out_up ) const
 {

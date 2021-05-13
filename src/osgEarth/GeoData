@@ -241,6 +241,11 @@ namespace osgEarth
         bool createWorldToLocal( osg::Matrixd& out_world2local ) const;
 
         /**
+         * Converts this point to the same point in a local tangent plane.
+         */
+        GeoPoint toLocalTangentPlane() const;
+
+        /**
          * Outputs an "up" vector corresponding to the given point. The up vector
          * is orthogonal to a local tangent plane at that point on the map.
          */

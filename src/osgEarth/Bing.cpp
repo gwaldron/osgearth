@@ -59,9 +59,16 @@ BingImageLayer::Options::fromConfig(const Config& conf)
 
 REGISTER_OSGEARTH_LAYER(bingimage, BingImageLayer);
 
-OE_LAYER_PROPERTY_IMPL(BingImageLayer, std::string, APIKey, apiKey);
 OE_LAYER_PROPERTY_IMPL(BingImageLayer, std::string, ImagerySet, imagerySet);
 OE_LAYER_PROPERTY_IMPL(BingImageLayer, URI, ImageryMetadataURL, imageryMetadataURL);
+
+void BingImageLayer::setAPIKey(const std::string& value) {
+    setOptionThatRequiresReopen(options().apiKey(), value);
+}
+const std::string& BingImageLayer::getAPIKey() const {
+    return options().apiKey().get();
+}
+
 
 void
 BingImageLayer::init()

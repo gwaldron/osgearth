@@ -36,7 +36,7 @@ osg::ref_ptr<const Profile> ElevationRanges::getProfile()
 
 bool ElevationRanges::getElevationRange(unsigned int level, unsigned int x, unsigned int y, short& min, short& max)
 {
-    const Profile* profile = getProfile();
+    osg::ref_ptr< const Profile > profile = getProfile();
 
     unsigned int width;
     unsigned int height;

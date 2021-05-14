@@ -39,6 +39,7 @@ namespace osgEarth {
                 SceneHierarchyVisitor() :
                     osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
                 {
+                    setNodeMaskOverride(~0);
                 }
 
                 void apply(osg::Node& node)
@@ -146,7 +147,7 @@ namespace osgEarth {
                     }
 
                     auto size = ImGui::GetWindowSize();
-
+                    
                     if (ImGui::CollapsingHeader("Scene"))
                     {
                         ImGui::BeginChild("Scene", ImVec2(0, 0.6f * size.y));
@@ -192,6 +193,15 @@ namespace osgEarth {
                 {
                     osg::NodePath nodePath = selectedNode->getParentalNodePaths()[0];
                     osg::Matrixd localToWorld = osg::computeLocalToWorld(nodePath);
+
+
+                    auto transform = selectedNode->asTransform();
+                    if (transform)
+                    {
+                        osg::Matrixd worldToLocal;
+                        transform->computeWorldToLocalMatrix(worldToLocal, NULL);
+                        localToWorld.postMult(worldToLocal);
+                    }
 
                     osg::Drawable* drawable = selectedNode->asDrawable();
                     if (drawable)
@@ -258,6 +268,14 @@ namespace osgEarth {
                         }
                     }
                 }
+
+                /*
+                bool visible = node->getNodeMask() != 0;
+                if (ImGui::Checkbox("Visible", &visible))
+                {
+                    node->setNodeMask(visible);
+                }
+                */
 
                 if (ImGui::TreeNode("General"))
                 {

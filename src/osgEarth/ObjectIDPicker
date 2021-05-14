@@ -1,0 +1,100 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_OBJECTID_PICKER_H
+#define OSGEARTH_OBJECTID_PICKER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/ObjectIndex>
+#include <osg/Group>
+#include <osg/Image>
+#include <osg/Texture2D>
+#include <osgViewer/View>
+#include <queue>
+#include <list>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Picks objects that are encoded with ObjectIDs.
+     * Usage: see osgearth_pick.cpp
+     */
+    class OSGEARTH_EXPORT ObjectIDPicker : public osg::Node
+    {
+    public:
+        //! Construct a new picker
+        ObjectIDPicker();
+
+        //! View within which to pick
+        void setView(osgViewer::View* view);
+        osgViewer::View* getView() const { return _view.get(); }
+
+        //! Scene graph from which to pick
+        void setGraph(osg::Node*);
+        osg::Node* getGraph() const { return _graph; }
+
+        //! Pixels on each side of the clicked pixel to check for hits.
+        void setBuffer(int value) { _buffer = value; }
+        int getBuffer() const { return _buffer; }
+
+        using Function = std::function<void(ObjectID)>;
+
+        //! Function to call when the user hovers an object
+        void onHover(Function func);
+
+        //! Function to call when the user clicks an object
+        void onClick(Function func);
+
+    public: // for debugging
+
+        /** For debugging only - creates (if nec.) and returns a texture that captures
+            the RTT image so you can display it. */
+        osg::Texture2D* getOrCreateTexture();
+
+    public: // osg::Node
+        void traverse(osg::NodeVisitor&) override;
+
+    protected:
+
+        /** dtor */
+        virtual ~ObjectIDPicker();
+
+        void onMove(osg::View* view, float x, float y);
+        void onClick(osg::View* view, float x, float y);
+
+        osg::observer_ptr<osgViewer::View> _view;
+        osg::ref_ptr<osg::Image> _pickImage;
+        std::vector<Function> _hoverFuncs;
+        std::vector<Function> _clickFuncs;
+        osg::ref_ptr<osg::Camera> _rtt;
+        osg::ref_ptr<osg::Node> _graph;
+        osg::ref_ptr<osg::Texture2D> _debugTex;
+
+        void pick(osg::View* view, float x, float y, std::vector<Function>&);
+
+        void setupRTT(osgViewer::View*);
+
+        int _rttSize; // size of the RTT image (pixels per side)
+        int _buffer; // buffer around pick point to check (pixels)
+
+    };
+
+} }
+
+#endif // OSGEARTH_OBJECTID_PICKER_H

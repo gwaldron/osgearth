@@ -94,6 +94,15 @@ namespace osgEarth { namespace Util
             return data ? data->_obj.lock(out) : false;
         }
         template<typename T>
+        static void remove(osg::Object* o, T* obj) {
+            const char* name = typeid(T).name();
+            osg::UserDataContainer* udc = o->getUserDataContainer();
+            if (udc) {
+                unsigned i = udc->getUserObjectIndex(name);
+                if (i < udc->getNumUserObjects()) udc->removeUserObject(i);
+            }
+        }
+        template<typename T>
         static void set(osg::Object* o, std::shared_ptr<T> obj) {
             if (o == nullptr || obj == nullptr) return;
             const char* name = typeid(T).name();

@@ -21,6 +21,8 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/GLUtils>
+#include "ExampleResources"
+#include "Utils"
 
 #include <osg/BlendFunc>
 

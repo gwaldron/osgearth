@@ -21,29 +21,19 @@
 */
 #include <osgEarth/ImGui/ImGui>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/GLUtils>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
-#include <osgEarth/Controls>
-#include <osgEarth/RTTPicker>
+#include <osgEarth/ObjectIDPicker>
 #include <osgEarth/Feature>
 #include <osgEarth/FeatureIndex>
 #include <osgEarth/AnnotationNode>
-
-#include <osgEarth/IntersectionPicker>
-
-#include <osgViewer/CompositeViewer>
-#include <osgGA/TrackballManipulator>
-#include <osg/BlendFunc>
 
 #define LC "[rttpicker] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-
-namespace ui = osgEarth::Util::Controls;
 
 //-----------------------------------------------------------------------
 
@@ -63,73 +53,12 @@ struct App
     osg::StateSet* previewStateSet;
     osg::Texture2D* previewTexture;
     osgEarth::MapNode* mapNode;
-    osgEarth::Util::RTTPicker* picker;
+    osgEarth::Util::ObjectIDPicker* picker;
     osg::Uniform* highlightUniform;
 
     osg::ref_ptr<Feature> _pickedFeature;
     osg::ref_ptr<AnnotationNode> _pickedAnno;
 };
-
-
-//! Callback that you install on the RTTPicker.
-struct MyPickCallback : public RTTPicker::Callback
-{
-    App& _app;
-    MyPickCallback(App& app) : _app(app) { }
-
-    void onHit(ObjectID id)
-    {
-        // First see whether it's a feature:
-        FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
-        Feature* feature = index ? index->getFeature( id ) : 0L;
-
-        _app._pickedFeature = feature;
-        _app._pickedAnno = Registry::objectIndex()->get<AnnotationNode>(id).get();
-
-        _app.highlightUniform->set( id );
-    }
-
-    void onMiss()
-    {
-        _app._pickedFeature = nullptr;
-        _app._pickedAnno = nullptr;
-        _app.highlightUniform->set( 0u );
-    }
-
-    // pick whenever the mouse moves.
-    bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa)
-    {
-        return ea.getEventType() == ea.MOVE;
-    }
-};
-
-void startPicker(App& app)
-{
-    // Note! Must stop and restart threading when removing the picker
-    // because it changes the OSG View/Slave configuration.
-    app.viewer.stopThreading();
-
-    app.picker = new RTTPicker();
-    app.viewer.addEventHandler(app.picker);
-
-    // add the graph that will be picked.
-    app.picker->addChild(app.mapNode);
-
-    // install a callback that controls the picker and listens for hits.
-    app.picker->setDefaultCallback(new MyPickCallback(app));
-
-    app.viewer.startThreading();
-}
-
-void stopPicker(App& app)
-{
-    // Note! Must stop and restart threading when removing the picker
-    // because it changes the OSG View/Slave configuration.
-    app.viewer.stopThreading();
-    app.viewer.removeEventHandler(app.picker);
-    app.picker = nullptr;
-    app.viewer.startThreading();
-}
 
 struct PickerGUI : public GUI::BaseGUI
 {
@@ -158,10 +87,7 @@ struct PickerGUI : public GUI::BaseGUI
         {
             if (ImGui::Checkbox("Picker active", &_active))
             {
-                if (_active)
-                    startPicker(_app);
-                else
-                    stopPicker(_app);
+                _app.picker->setNodeMask(_active ? ~0 : 0);
             }
 
             if (_active)
@@ -171,12 +97,15 @@ struct PickerGUI : public GUI::BaseGUI
 
                 if (_preview && _app.previewTexture)
                 {
-                    osg::Texture2D* pickTex = _app.picker->getOrCreateTexture(view(ri));
-                    if (_app.previewStateSet->getTextureAttribute(0, osg::StateAttribute::TEXTURE) != pickTex)
-                        _app.previewStateSet->setTextureAttribute(0, pickTex, 1);
+                    osg::Texture2D* pickTex = _app.picker->getOrCreateTexture();
+                    if (pickTex)
+                    {
+                        if (_app.previewStateSet->getTextureAttribute(0, osg::StateAttribute::TEXTURE) != pickTex)
+                            _app.previewStateSet->setTextureAttribute(0, pickTex, 1);
 
-                    ImGui::Text("Picker camera preview:");
-                    ImGuiUtil::Texture(_app.previewTexture, ri);
+                        ImGui::Text("Picker camera preview:");
+                        ImGuiUtil::Texture(_app.previewTexture, ri);
+                    }
                 }
 
                 if (_app._pickedFeature.valid())
@@ -320,19 +249,6 @@ setupPreviewCamera(App& app)
     app.mapNode->addChild(cam);
 }
 
-struct TogglePicker : public ui::ControlEventHandler
-{
-    App& _app;
-    TogglePicker(App& app) : _app(app) { }
-    void onClick(Control* button)
-    {
-        if (_app.picker == nullptr)
-            startPicker(_app);
-        else
-            stopPicker(_app);
-    }
-};
-
 //-----------------------------------------------------------------------
 
 int
@@ -369,7 +285,35 @@ main(int argc, char** argv)
         gui->add("Demo", new PickerGUI(app), true);
 
         app.viewer.setSceneData(node);
+
         app.mapNode = MapNode::get(node);
+
+        app.picker = new ObjectIDPicker();
+        app.picker->setView(&app.viewer);  // which view to pick?
+        app.picker->setGraph(app.mapNode); // which graph to pick?
+        app.mapNode->addChild(app.picker); // put it anywhere in the graph
+
+        ObjectIDPicker::Function pick = [&](ObjectID id)
+        {
+            if (id > 0)
+            {
+                // Got a pick:
+                FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
+                Feature* feature = index ? index->getFeature(id) : 0L;
+                app._pickedFeature = feature;
+                app._pickedAnno = Registry::objectIndex()->get<AnnotationNode>(id).get();
+                app.highlightUniform->set(id);
+            }
+            else
+            {
+                // No pick:
+                app._pickedFeature = nullptr;
+                app._pickedAnno = nullptr;
+                app.highlightUniform->set(0u);
+            }
+        };
+        // Call our handler when hovering over the map
+        app.picker->onHover(pick);
 
         // Highlight features as we pick'em.
         installHighlighter(app);
@@ -379,10 +323,6 @@ main(int argc, char** argv)
 
         // Install the imgui:
         app.viewer.getEventHandlers().push_front(gui);
-
-        // Start with a picker running:
-        startPicker(app);
-
         return app.viewer.run();
     }
     else

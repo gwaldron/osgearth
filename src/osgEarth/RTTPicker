@@ -26,6 +26,7 @@
 #include <osg/Group>
 #include <osg/Image>
 #include <osg/Texture2D>
+#include <osgViewer/View>
 #include <queue>
 #include <list>
 
@@ -154,7 +155,6 @@ namespace osgEarth { namespace Util
         // container for common RTT pick camera children (see addChild et al.)
         osg::ref_ptr<osg::Group> _group;
     };
-
 } }
 
 #endif // OSGEARTH_UTIL_RTT_PICKER_H

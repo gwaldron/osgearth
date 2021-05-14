@@ -372,8 +372,17 @@ PagingManager::traverse(osg::NodeVisitor& nv)
 {
     ObjectStorage::set(&nv, this);
 
-    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        _newFrame.exchange(true);
+    }
+
+    else if (
+        nv.getVisitorType() == nv.UPDATE_VISITOR &&
+        _newFrame.exchange(false) == true)
+    {
         update();
+    }
 
     osg::Group::traverse(nv);
 }

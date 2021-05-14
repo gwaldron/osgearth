@@ -94,8 +94,12 @@ static int ConvertFromOSGKey(int key)
             return ImGuiKey_Enter;
         case KEY::KEY_Escape:
             return ImGuiKey_Escape;
+        case 22:
+            return osgGA::GUIEventAdapter::KeySymbol::KEY_V;
+        case 3:
+            return osgGA::GUIEventAdapter::KeySymbol::KEY_C;
         default: // Not found
-            return -1;
+            return key;
     }
 }
 
@@ -125,6 +129,7 @@ void OsgImGuiHandler::init()
     io.KeyMap[ImGuiKey_Y] = osgGA::GUIEventAdapter::KeySymbol::KEY_Y;
     io.KeyMap[ImGuiKey_Z] = osgGA::GUIEventAdapter::KeySymbol::KEY_Z;
 
+
     ImGui_ImplOpenGL3_Init();
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -151,6 +156,11 @@ void OsgImGuiHandler::newFrame(osg::RenderInfo& renderInfo)
     for (int i = 0; i < 3; i++)
     {
         io.MouseDown[i] = mousePressed_[i];
+    }
+
+    for (int i = 0; i < 3; i++)
+    {
+        io.MouseDoubleClicked[i] = mouseDoubleClicked_[i];
     }
 
     io.MouseWheel = mouseWheel_;
@@ -235,11 +245,11 @@ void OsgImGuiHandler::render(osg::RenderInfo& ri)
     auto io = ImGui::GetIO();
 
     auto camera = ri.getCurrentCamera();
-    auto viewport = camera->getViewport();
+    auto viewport = camera->getViewport();    
     viewport->x() = centralNode->Pos.x;
     viewport->y() = io.DisplaySize.y - centralNode->Size.y - centralNode->Pos.y;
     viewport->width() = centralNode->Size.x;
-    viewport->height() = centralNode->Size.y;
+    viewport->height() = centralNode->Size.y;    
 
     const osg::Matrixd& proj = camera->getProjectionMatrix();
     bool isOrtho = osg::equivalent(proj(3, 3), 1.0);
@@ -280,32 +290,56 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
         case osgGA::GUIEventAdapter::KEYUP:
         {
             const bool isKeyDown = ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN;
-            const int c = ea.getKey();
-            const int special_key = ConvertFromOSGKey(c);
-            if (special_key > 0)
-            {
-                assert((special_key >= 0 && special_key < 512) && "ImGui KeysMap is an array of 512");
+            const int c = ea.getKey();            
 
-                io.KeysDown[special_key] = isKeyDown;
+            // Always update the mod key status.
+            io.KeyCtrl = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL;
+            io.KeyShift = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_SHIFT;
+            io.KeyAlt = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_ALT;
+            io.KeySuper = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_SUPER;
 
-                io.KeyCtrl = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL;
-                io.KeyShift = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_SHIFT;
-                io.KeyAlt = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_ALT;
-                io.KeySuper = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_SUPER;
-            }
-            else if (isKeyDown && c > 0 && c < 0xFF)
+
+            const int imgui_key = ConvertFromOSGKey(c);
+            if (imgui_key > 0 && imgui_key < 512)
             {
-                io.AddInputCharacter((unsigned short)c);
+                //assert((imgui_key >= 0 && imgui_key < 512) && "ImGui KeysMap is an array of 512");
+                io.KeysDown[imgui_key] = isKeyDown;
             }
+
+            // Not sure this < 512 is correct here....
+            if (isKeyDown && imgui_key >= 32 && imgui_key < 512)
+            {
+                io.AddInputCharacter((unsigned int)c);
+            }
+
             return wantCaptureKeyboard;
         }
         case (osgGA::GUIEventAdapter::RELEASE):
+        {
+            io.MousePos = ImVec2(ea.getX(), io.DisplaySize.y - ea.getY());
+            mousePressed_[0] = ea.getButtonMask() & osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
+            mousePressed_[1] = ea.getButtonMask() & osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON;
+            mousePressed_[2] = ea.getButtonMask() & osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON;
+
+            mouseDoubleClicked_[0] = ea.getButtonMask() & osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
+            mouseDoubleClicked_[1] = ea.getButtonMask() & osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON;
+            mouseDoubleClicked_[2] = ea.getButtonMask() & osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON;
+            return wantCaptureMouse;
+        }
         case (osgGA::GUIEventAdapter::PUSH):
         {
             io.MousePos = ImVec2(ea.getX(), io.DisplaySize.y - ea.getY());
             mousePressed_[0] = ea.getButtonMask() & osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
             mousePressed_[1] = ea.getButtonMask() & osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON;
             mousePressed_[2] = ea.getButtonMask() & osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON;
+            return wantCaptureMouse;
+        }
+        case (osgGA::GUIEventAdapter::DOUBLECLICK):
+        {
+            io.MousePos = ImVec2(ea.getX(), io.DisplaySize.y - ea.getY());
+            mouseDoubleClicked_[0] = ea.getButtonMask() & osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
+            mouseDoubleClicked_[1] = ea.getButtonMask() & osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON;
+            mouseDoubleClicked_[2] = ea.getButtonMask() & osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON;
             return wantCaptureMouse;
         }
         case (osgGA::GUIEventAdapter::DRAG):

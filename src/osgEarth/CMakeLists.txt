@@ -196,6 +196,7 @@ SET(LIB_PUBLIC_HEADERS
     NodeUtils
     Notify
     optional
+    ObjectIDPicker
     ObjectIndex
     OverlayDecorator
     PagedNode
@@ -605,6 +606,7 @@ set(TARGET_SRC
     NetworkMonitor.cpp
     NodeUtils.cpp
     Notify.cpp
+    ObjectIDPicker.cpp
     ObjectIndex.cpp
     OverlayDecorator.cpp
     PagedNode.cpp

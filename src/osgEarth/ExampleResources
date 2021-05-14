@@ -286,6 +286,9 @@ namespace osgEarth { namespace Util
             v->getEventHandlers().push_front(r);
             return *r;
         }
+        static EventRouter& get(osg::ref_ptr<osgViewer::View>& v) {
+            return get(v.get());
+        }
 
         struct Push {
             Push() : _value(false) { }

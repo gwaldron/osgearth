@@ -21,22 +21,14 @@
 */
 #include <osgEarth/ImGui/ImGui>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/GLUtils>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
-#include <osgEarth/Controls>
 #include <osgEarth/RTTPicker>
 #include <osgEarth/Feature>
 #include <osgEarth/FeatureIndex>
 #include <osgEarth/AnnotationNode>
-
-#include <osgEarth/IntersectionPicker>
-
-#include <osgViewer/CompositeViewer>
-#include <osgGA/TrackballManipulator>
-#include <osg/BlendFunc>
 
 #define LC "[rttpicker] "
 
@@ -319,19 +311,6 @@ setupPreviewCamera(App& app)
 
     app.mapNode->addChild(cam);
 }
-
-struct TogglePicker : public ui::ControlEventHandler
-{
-    App& _app;
-    TogglePicker(App& app) : _app(app) { }
-    void onClick(Control* button)
-    {
-        if (_app.picker == nullptr)
-            startPicker(_app);
-        else
-            stopPicker(_app);
-    }
-};
 
 //-----------------------------------------------------------------------
 

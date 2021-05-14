@@ -129,6 +129,8 @@ namespace osgEarth {
                                 }
                             }
 
+                            ImGui::PushID(itr->first);
+
                             ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
                             if (itr->second.isComplete)
                             {
@@ -165,7 +167,14 @@ namespace osgEarth {
                             //ImGui::Text("%.2lf ms", endMS); ImGui::NextColumn();
                             ImGui::Text(itr->second.type.c_str()); ImGui::NextColumn();
                             ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
+
+                            if (ImGui::SmallButton("Copy"))
+                            {
+                                ImGui::SetClipboardText(itr->second.uri.c_str());                                
+                            }
+                            ImGui::SameLine();
                             ImGui::TextColored(color, itr->second.uri.c_str());  ImGui::NextColumn();
+                            ImGui::PopID();
                         }
                     }
                     ImGui::Columns(1);

@@ -440,7 +440,7 @@ bool LoadDataVisitor::intersects(osg::Node& node)
 
     osg::BoundingSphere nodeBounds = node.getBound();
     osg::BoundingSphered worldBounds(nodeBounds.center(), nodeBounds.radius());
-    worldBounds.center() += matrix.getTrans();
+    worldBounds.center() = worldBounds.center() * matrix;
 
     for (auto& bs : _areasToLoad)
     {

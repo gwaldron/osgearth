@@ -42,7 +42,7 @@
 
 #include <iostream>
 
-#include <osgEarth/Metrics>
+
 #include <osgEarth/TerrainTileNode>
 
 
@@ -147,10 +147,10 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
     bool intersects(osg::Node& node)
     {
         static osg::Matrix identity;
-        osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
+        osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();        
 
         osg::BoundingSphere nodeBounds = node.getBound();
-        nodeBounds.center() += matrix.getTrans();
+        nodeBounds.center() = nodeBounds.center() * matrix;
 
         return nodeBounds.intersects(_queryBounds);
     }
@@ -273,9 +273,6 @@ struct QueryTrianglesHandler : public osgGA::GUIEventHandler
         if (ea.getEventType() == ea.MOVE)
         {
             osg::Vec3d world;
-            osgUtil::LineSegmentIntersector::Intersections hits;
-            osg::NodePath path;
-            path.push_back(_mapNode);
 
             if (_observer)
             {
@@ -287,11 +284,9 @@ struct QueryTrianglesHandler : public osgGA::GUIEventHandler
                 _observer = nullptr;
             }
 
-            if (view->computeIntersections(ea.getX(), ea.getY(), path, hits))
+            if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view, ea.getX(), ea.getY(), world))
             {
                 _marker->setNodeMask(~0u);
-                // Get the point under the mouse:
-                world = hits.begin()->getWorldIntersectPoint();
 
                 // convert to map coords:
                 GeoPoint mapPoint;
@@ -842,7 +837,7 @@ struct PredictiveDataLoader : public osg::NodeVisitor
 
         osg::BoundingSphere nodeBounds = node.getBound();
         osg::BoundingSphered worldBounds(nodeBounds.center(), nodeBounds.radius());
-        worldBounds.center() += matrix.getTrans();
+        worldBounds.center() = worldBounds.center() * matrix;
 
         bool result = false;
         for (auto& bs : _areasToLoad)
@@ -865,7 +860,7 @@ struct PredictiveDataLoader : public osg::NodeVisitor
 
         osg::BoundingSphere nodeBounds = node.getBound();
         osg::BoundingSphered worldBounds(nodeBounds.center(), nodeBounds.radius());
-        worldBounds.center() += matrix.getTrans();
+        worldBounds.center() = worldBounds.center() * matrix;
 
         float minRange = FLT_MAX;
 
@@ -1244,10 +1239,6 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
-    ImGuiNotifyHandler* notifyHandler = new ImGuiNotifyHandler();
-    osg::setNotifyHandler(notifyHandler);
-    osgEarth::setNotifyHandler(notifyHandler);
-
     osgEarth::initialize();
 
     osg::ArgumentParser arguments(&argc, argv);

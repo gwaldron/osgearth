@@ -267,14 +267,41 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         return GeoImage::INVALID;
     }
 
-    FeatureRasterizer rasterizer(getTileSize(), getTileSize(), key.getExtent());
+    FeatureRasterizer* rasterizer = nullptr;
+
+    osg::ref_ptr<osg::Image> image;
+    if (getStyleSheet())
+    {
+        for (auto& style : getStyleSheet()->getStyles())
+        {
+            if (style.second.getSymbol<CoverageSymbol>())
+            {
+                image = LandCover::createImage(
+                    getTileSize(),
+                    getTileSize());
+
+                rasterizer = new FeatureRasterizer(image.get(), key.getExtent());
+                ImageUtils::PixelWriter writer(image);
+                writer.assign(osg::Vec4(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE));
+                break;
+            }
+        }
+    }
+
+    if (!rasterizer)
+    {
+        rasterizer = new FeatureRasterizer(
+            getTileSize(), 
+            getTileSize(), 
+            key.getExtent());
+    }
 
     FeatureStyleSorter::Function renderer = [&](
         const Style& style,
         FeatureList& features,
         ProgressCallback* progress)
     {
-        rasterizer.render(
+        rasterizer->render(
             features,
             style,
             featureProfile);
@@ -290,5 +317,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         renderer,
         progress);
 
-    return rasterizer.finalize();
+    GeoImage result = rasterizer->finalize();
+    delete rasterizer;
+    return result;
 }

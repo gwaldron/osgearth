@@ -37,29 +37,39 @@ namespace osgEarth
                 const GeoExtent& extent, 
                 const Color& backgroundColor = Color::Transparent);
 
+            FeatureRasterizer(
+                osg::Image* preallocatedImage,
+                const GeoExtent& extent);
+
             void render(
                 const FeatureList& features,
                 const Style& style,
                 const FeatureProfile* profile =nullptr,
-                const StyleSheet* sheet =nullptr) const;
+                const StyleSheet* sheet =nullptr);
 
             GeoImage finalize();
 
         private:
             GeoExtent _extent;
             osg::ref_ptr< osg::Image > _image;
+            enum RenderFormat {
+                RF_BGRA,
+                RF_ABGR
+            };
+            RenderFormat _implPixelFormat;
+            bool _inverted;
 
             void render_blend2d(
                 const FeatureList& features,
                 const Style& style,
                 const FeatureProfile* profile,
-                const StyleSheet* sheet) const;
+                const StyleSheet* sheet);
 
             void render_agglite(
                 const FeatureList& features,
                 const Style& style,
                 const FeatureProfile* profile,
-                const StyleSheet* sheet) const;
+                const StyleSheet* sheet);
         };
 
         class OSGEARTH_EXPORT FeatureStyleSorter

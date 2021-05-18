@@ -41,6 +41,7 @@ PagedNode2::PagedNode2() :
     _compileTriggered(false),
     _mergeTriggered(false),
     _merged(false),
+    _failed(false),
     _minRange(0.0f),
     _maxRange(FLT_MAX),
     _minPixels(0.0f),
@@ -67,6 +68,13 @@ bool
 PagedNode2::isHighestResolution() const
 {
     return getNumChildren() == 0;
+}
+
+void
+PagedNode2::setLoadFunction(const Loader& value)
+{
+    unload();
+    _load = value;
 }
 
 void
@@ -119,6 +127,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
 
             // finally, traverse children and paged data.
             if (_refinePolicy == REFINE_REPLACE &&
+                _compiled.get().valid() &&
                 _merged == true)
             {
                 _compiled.get()->accept(nv);
@@ -182,6 +191,7 @@ PagedNode2::merge(int revision)
             _callbacks->firePostMergeNode(_compiled.get().get());
 
         _merged = true;
+        _failed = false;
     }
     return _merged;
 }
@@ -255,7 +265,7 @@ void PagedNode2::load(float priority, const osg::Object* host)
         else
         {
             // There is no load function so go all the way to the end of the state machine.
-            _merged = true;
+            _failed = true;
             _compileTriggered.exchange(true);
             _mergeTriggered.exchange(true);
         }
@@ -292,7 +302,7 @@ void PagedNode2::load(float priority, const osg::Object* host)
         else
         {
             // The node returned was null, so we need to just go to the end of the state machine
-            _merged = true;
+            _failed = true;
             _mergeTriggered.exchange(true);
         }
 
@@ -304,7 +314,7 @@ void PagedNode2::load(float priority, const osg::Object* host)
         _pagingManager != nullptr &&
         _mergeTriggered.exchange(true) == false)
     {
-        // Submit this node to the paging manager for merging.i
+        // Submit this node to the paging manager for merging.
         _pagingManager->merge(this);
     }
 }
@@ -326,6 +336,7 @@ void PagedNode2::unload()
     _compileTriggered = false;
     _mergeTriggered = false;
     _merged = false;
+    _failed = false;
     _token = nullptr;
 
     // prevents a node in the PagingManager's merge queue from
@@ -335,7 +346,7 @@ void PagedNode2::unload()
 
 bool PagedNode2::isLoaded() const
 {
-    return _merged;
+    return _merged || _failed;
 }
 
 PagingManager::PagingManager() :

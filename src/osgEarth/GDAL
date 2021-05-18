@@ -86,6 +86,8 @@ namespace osgEarth {
         class OSGEARTH_EXPORT Driver : public osg::Referenced
         {
         public:
+            using Ptr = std::shared_ptr<Driver>;
+
             //! Constructs a new driver
             Driver();
 
@@ -102,9 +104,6 @@ namespace osgEarth {
 
             //! Maximum LOD at which to return real data
             void setMaxDataLevel(unsigned value) { _maxDataLevel = value; }
-
-            //! Express profile to use (instead of gleaning one from the data source)
-            void setOverrideProfile(const Profile* value) { _profile = value; }
 
             //! Assign an external GDAL dataset to use.
             void setExternalDataset(ExternalDataset* value);
@@ -136,7 +135,7 @@ namespace osgEarth {
                 unsigned tileSize,
                 ProgressCallback* progress);
 
-            //! Profile of the underlying data source (or the override profile if set)
+            //! Profile of the underlying data source
             const Profile* getProfile() { return _profile.get(); }
 
         private:
@@ -180,15 +179,10 @@ namespace osgEarth {
 
         struct LayerBase
         {
-        public:
-            const osg::ref_ptr<const Profile>& overrideProfile() const { return _overrideProfile; }
-
         protected:
             mutable Threading::Mutex _driversMutex;
             mutable Threading::Mutex _singleThreadingMutex;
-            mutable std::unordered_map<unsigned, osg::ref_ptr<GDAL::Driver>> _drivers;
-            osg::ref_ptr<const Profile> _overrideProfile;
-            //mutable Threading::ReadWriteMutex _workers;
+            mutable std::unordered_map<unsigned, GDAL::Driver::Ptr> _drivers;
         };
     }
 }

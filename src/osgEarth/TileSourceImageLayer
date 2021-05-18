@@ -35,6 +35,7 @@ namespace osgEarth { namespace Contrib
 
     /**
     * A map terrain layer containing bitmap image data.
+    * @deprecated For legacy application support only
     */
     class OSGEARTH_EXPORT TileSourceImageLayer : public ImageLayer
     {

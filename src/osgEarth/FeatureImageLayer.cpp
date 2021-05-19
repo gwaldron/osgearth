@@ -281,7 +281,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
                     getTileSize());
 
                 rasterizer = new FeatureRasterizer(image.get(), key.getExtent());
-                ImageUtils::PixelWriter writer(image);
+                ImageUtils::PixelWriter writer(image.get());
                 writer.assign(osg::Vec4(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE));
                 break;
             }

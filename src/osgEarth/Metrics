@@ -58,6 +58,8 @@ namespace osgEarth {
 
 #ifdef OSGEARTH_PROFILING
 
+#include <osg/GL>
+
 #define TRACY_ENABLE
 #define TRACY_ON_DEMAND
 // #define TRACY_DELAYED_INIT
@@ -76,19 +78,22 @@ namespace osgEarth {
 #define OSGEARTH_GPU_PROFILING
 
 #ifdef OSGEARTH_GPU_PROFILING
-#include <osg/GL>
 namespace osgEarth { namespace MetricsGL {
 #ifndef GL_TIMESTAMP
-    constexpr GLenum GL_TIMESTAMP = 0x8E28;
+#define GL_TIMESTAMP 0x8E28
+    //constexpr GLenum GL_TIMESTAMP = 0x8E28;
 #endif
 #ifndef GL_QUERY_COUNTER_BITS
-    constexpr GLenum GL_QUERY_COUNTER_BITS = 0x8864;
+#define GL_QUERY_COUNTER_BITS 0x8864
+    //constexpr GLenum GL_QUERY_COUNTER_BITS = 0x8864;
 #endif
 #ifndef GL_QUERY_RESULT
-    constexpr GLenum GL_QUERY_RESULT = 0x8866;
+#define GL_QUERY_RESULT 0x8866
+    //constexpr GLenum GL_QUERY_RESULT = 0x8866;
 #endif
 #ifndef GL_QUERY_RESULT_AVAILABLE
-    constexpr GLenum GL_QUERY_RESULT_AVAILABLE = 0x8867;
+#define GL_QUERY_RESULT_AVAILABLE 0x8867
+    //constexpr GLenum GL_QUERY_RESULT_AVAILABLE = 0x8867;
 #endif
 
     extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGenQueries)(GLsizei, GLuint*);

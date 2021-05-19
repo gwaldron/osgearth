@@ -25,7 +25,31 @@
 #include <osgEarth/Utils>
 #include <osgUtil/CullVisitor>
 
+#undef LC
+#define LC "[HorizonClipPlane] "
+
 using namespace osgEarth;
+
+namespace
+{
+    constexpr char* clip_shader = R"(
+        #version 330
+        #pragma import_defines(OE_CLIPPLANE_NUM)
+
+        // OSG built-in to transform from view to world
+        uniform mat4 osg_ViewMatrixInverse;
+
+        // clipping plane
+        uniform vec4 oe_ClipPlane_plane;
+
+        void oe_ClipPlane_vs(inout vec4 vertex_view)
+        {
+        #ifndef GL_ES
+            gl_ClipDistance[OE_CLIPPLANE_NUM] = dot(osg_ViewMatrixInverse * vertex_view, oe_ClipPlane_plane);
+        #endif
+        }
+    )";
+}
 
 HorizonClipPlane::HorizonClipPlane() :
     _num(0u)
@@ -59,12 +83,11 @@ HorizonClipPlane::operator()(osg::Node* node, osg::NodeVisitor* nv)
         d.stateSet = new osg::StateSet();
         d.uniform = new osg::Uniform("oe_ClipPlane_plane", osg::Vec4f());
         d.stateSet->addUniform(d.uniform.get());
+        d.stateSet->setDefine("OE_CLIPPLANE_NUM", Stringify() << getClipPlaneNumber());
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(d.stateSet.get());
         vp->setName("HorizonClipPlane");
-        Shaders shaders;
-        shaders.load(vp, shaders.ClipPlane);
-        d.stateSet->setDefine("OE_CLIPPLANE_NUM", Stringify() << getClipPlaneNumber());
+        vp->setFunction("oe_ClipPlane_vs", clip_shader, ShaderComp::LOCATION_VERTEX_VIEW, FLT_MAX);
     }
 
     // push this horizon on to the nodevisitor so modules can access it
@@ -76,8 +99,10 @@ HorizonClipPlane::operator()(osg::Node* node, osg::NodeVisitor* nv)
     {
         // compute the horizon plane and update the clipping uniform
         osg::Plane horizonPlane;
-        d.horizon->getPlane(horizonPlane);
-        d.uniform->set(osg::Vec4f(horizonPlane.asVec4()));
+        if (d.horizon->getPlane(horizonPlane))
+        {
+            d.uniform->set(osg::Vec4f(horizonPlane.asVec4()));
+        }
     }
     
     cv->pushStateSet(d.stateSet.get());

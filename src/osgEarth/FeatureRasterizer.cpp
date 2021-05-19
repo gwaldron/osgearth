@@ -33,12 +33,11 @@ using namespace osgEarth;
 
 #ifdef USE_BLEND2D
 #include <blend2d.h>
-#else
-#define USE_AGGLITE
+#endif
+
 #include <osgEarth/AGG.h>
 #include <osgEarth/BufferFilter>
 #include <osgEarth/ResampleFilter>
-#endif
 
 namespace osgEarth {
     namespace FeatureImageLayerImpl
@@ -49,7 +48,6 @@ namespace osgEarth {
             double xf, yf;
         };
 
-#ifdef USE_AGGLITE
         struct float32
         {
             float32() : value(NO_DATA_VALUE) { }
@@ -165,9 +163,9 @@ namespace osgEarth {
             ras.reset();
         }
 
-#else
+#ifdef USE_BLEND2D
 
-        void rasterizePolygons(
+        void rasterizePolygons_blend2d(
             const Geometry* geometry,
             const PolygonSymbol* symbol,
             RenderFrame& frame,
@@ -434,14 +432,29 @@ FeatureRasterizer::FeatureRasterizer(
     write.assign(backgroundColor);
 }
 
+
+FeatureRasterizer::FeatureRasterizer(
+    osg::Image* image,
+    const GeoExtent& extent) :
+
+    _image(image),
+    _extent(extent)
+{
+    //nop
+}
+
 void
 FeatureRasterizer::render_blend2d(
     const FeatureList& features,
     const Style& style,
     const FeatureProfile* profile,
-    const StyleSheet* sheet) const
+    const StyleSheet* sheet)
 {
 #ifdef USE_BLEND2D
+
+    // agglite renders in this format:
+    _implPixelFormat = RF_BGRA;
+    _inverted = true;
 
     // find the symbology:
     const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
@@ -473,7 +486,7 @@ FeatureRasterizer::render_blend2d(
         {
             if (feature->getGeometry())
             {
-                rasterizePolygons(feature->getGeometry(), masterPoly, frame, ctx);
+                rasterizePolygons_blend2d(feature->getGeometry(), masterPoly, frame, ctx);
             }
         }
     }
@@ -557,9 +570,11 @@ FeatureRasterizer::render_agglite(
     const FeatureList& features,
     const Style& style,
     const FeatureProfile* profile,
-    const StyleSheet* sheet) const
+    const StyleSheet* sheet)
 {
-#ifdef USE_AGGLITE
+    // agglite renders in this format:
+    _implPixelFormat = RF_ABGR;
+    _inverted = false;
 
     // find the symbology:
     const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
@@ -775,14 +790,23 @@ FeatureRasterizer::render_agglite(
             osg::ref_ptr<Geometry> croppedGeometry;
             if (geometry->crop(cropPoly.get(), croppedGeometry))
             {
-                const PolygonSymbol* poly =
-                    feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
-                    masterPoly;
+                if (!covValue.isSet())
+                {
+                    const PolygonSymbol* poly =
+                        feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
+                        masterPoly;
 
-                Color color = poly ? poly->fill()->color() : Color::White;
-                rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
+                    Color color = poly ? poly->fill()->color() : Color::White;
+                    rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
+                }
+                else
+                {
+                    float value = feature->eval(covValue.mutable_value(), &context);
+                    rasterizeCoverage_agglite(croppedGeometry.get(), value, frame, ras, rbuf);
+                }
             }
         }
+
 
         if (!lines.empty())
         {
@@ -847,7 +871,6 @@ FeatureRasterizer::render_agglite(
             }
         }
     }
-#endif // USE_AGGLITE
 }
 
 void
@@ -855,7 +878,7 @@ FeatureRasterizer::render(
     const FeatureList& features,
     const Style& style,
     const FeatureProfile* profile,
-    const StyleSheet* sheet) const
+    const StyleSheet* sheet)
 {
     if (features.empty())
         return;
@@ -876,7 +899,10 @@ FeatureRasterizer::render(
     }
 
 #ifdef USE_BLEND2D
-    render_blend2d(features, style, profile, sheet);
+    if (style.get<CoverageSymbol>())
+        render_agglite(features, style, profile, sheet);
+    else
+        render_blend2d(features, style, profile, sheet);
 #else
     render_agglite(features, style, profile, sheet);
 #endif
@@ -885,25 +911,34 @@ FeatureRasterizer::render(
 GeoImage
 FeatureRasterizer::finalize()
 {
-#ifdef USE_BLEND2D
-    //convert from BGRA to RGBA
-    unsigned char* pixel = _image->data();
-    for (int i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+    if (_image->getPixelSizeInBits() == 32 &&
+        _image->getDataType() == GL_UNSIGNED_BYTE)
     {
-        std::swap(pixel[0], pixel[2]);
+        if (_implPixelFormat == RF_BGRA)
+        {
+            //convert from BGRA to RGBA
+            unsigned char* pixel = _image->data();
+            for (int i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+            {
+                std::swap(pixel[0], pixel[2]);
+            }
+        }
+        else if (_implPixelFormat == RF_ABGR)
+        {
+            //convert from ABGR to RGBA
+            unsigned char* pixel = _image->data();
+            for (int i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+            {
+                std::swap(pixel[0], pixel[3]);
+                std::swap(pixel[1], pixel[2]);
+            }
+        }
     }
-    _image->flipVertical();
 
-#else // USE_AGGLITE
-
-    //convert from ABGR to RGBA
-    unsigned char* pixel = _image->data();
-    for (int i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+    if (_inverted)
     {
-        std::swap(pixel[0], pixel[3]);
-        std::swap(pixel[1], pixel[2]);
+        _image->flipVertical();
     }
-#endif
 
     return GeoImage(_image.release(), _extent);
 }

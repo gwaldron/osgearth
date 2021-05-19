@@ -53,6 +53,7 @@ namespace osgEarth { namespace Contrib
 {
     /**
      * Configuration options for a tile source driver.
+     * @deprecated For legacy application support only
      */
     class OSGEARTH_EXPORT TileSourceOptions : public DriverConfigOptions
     {
@@ -173,6 +174,7 @@ namespace osgEarth { namespace Contrib
      * A TileSource is an object that can create image and/or heightfield tiles. Driver
      * plugins are responsible for creating and returning a TileSource that the Map
      * will then use to create tiles for tile keys.
+     * @deprecated For legacy application support only
      */
     class OSGEARTH_EXPORT TileSource : public virtual osg::Object
     {

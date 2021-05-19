@@ -193,6 +193,12 @@ GroundCoverFeatureGenerator::initialize()
         }
     }
 
+    // disable texture compression for layers we intend to sample on CPU
+    if (_lifemaplayer.valid())
+        _lifemaplayer->options().textureCompression() = "none";
+    if (_biomelayer.valid())
+        _biomelayer->options().textureCompression() = "none";
+
     // create noise texture
     NoiseTextureFactory noise;
     _noiseTexture = noise.create(256u, 4u);

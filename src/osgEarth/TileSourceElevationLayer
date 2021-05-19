@@ -28,6 +28,7 @@ namespace osgEarth { namespace Contrib
     using namespace osgEarth;
     /**
     * A map terrain layer containing elevation grid heightfields.
+    * @deprecated For legacy application support only
     */
     class OSGEARTH_EXPORT TileSourceElevationLayer : public ElevationLayer
     {

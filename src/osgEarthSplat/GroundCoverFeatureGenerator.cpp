@@ -238,6 +238,13 @@ GroundCoverFeatureGenerator::initialize()
         }
     }
 
+    // make sure the mask layer is not compressed since we are
+    // going to sample it in CPU
+    if (_masklayer.valid())
+    {
+        _masklayer->options().textureCompression() = "none";
+    }
+
     // create noise texture
     NoiseTextureFactory noise;
     _noiseTexture = noise.create(256u, 4u);

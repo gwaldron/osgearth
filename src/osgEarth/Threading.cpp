@@ -655,9 +655,10 @@ JobArena::get(const Type& type_)
 void
 JobArena::setConcurrency(unsigned value)
 {
-    if (_type == THREAD_POOL)
+    value = std::max(value, 1u);
+
+    if (_type == THREAD_POOL && _targetConcurrency != value)
     {
-        value = std::max(value, 1u);
         _targetConcurrency = value;
         startThreads();
     }

@@ -10,10 +10,6 @@ namespace osgEarth { namespace Util
         CascadeDraping = "CascadeDraping.glsl";
         _sources[CascadeDraping] = "@CascadeDraping.glsl@";
 
-        // Clip Plane
-        ClipPlane = "ClipPlane.glsl";
-        _sources[ClipPlane] = "@ClipPlane.glsl@";
-
         // Depth Offset
         DepthOffset = "DepthOffset.glsl";
         _sources[DepthOffset] = "@DepthOffset.glsl@";

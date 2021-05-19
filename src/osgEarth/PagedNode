@@ -62,9 +62,7 @@ namespace osgEarth { namespace Util
         PagedNode2();
 
         //! Function to run to load the asychronous child
-        void setLoadFunction(const Loader& value) {
-            _load = value;
-        }
+        void setLoadFunction(const Loader& value);
         const Loader& getLoadFunction() const {
             return _load;
         }
@@ -211,7 +209,8 @@ namespace osgEarth { namespace Util
         std::atomic_bool _loadTriggered;
         std::atomic_bool _compileTriggered;
         std::atomic_bool _mergeTriggered;
-        bool _merged;
+        bool _merged; // true if the compiled node was added as a child
+        bool _failed; // true if the child load failed and no more action is possible
         Future<Loaded> _loaded;
         Future<osg::ref_ptr<osg::Node>> _compiled;
         Mutex _mutex;

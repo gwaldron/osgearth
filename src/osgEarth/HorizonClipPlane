@@ -38,7 +38,6 @@ namespace osgEarth
      *
      *   HorizonClipPlane* hcp = new HorizonClipPlane();
      *   hcp->setClipPlaneNumber(0);
-     *   hcp->installShaders(mapNode);
      *   mapNode->addCullCallback(hcp);
      *
      * Then, anywhere under that node that you want to apply clipping:

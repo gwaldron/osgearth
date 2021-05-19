@@ -32,7 +32,6 @@ namespace osgEarth { namespace Util
         Shaders();
 
         std::string CascadeDraping;
-        std::string ClipPlane;
         std::string DepthOffset;
         std::string Draping;
         std::string DrawInstancedAttribute;

@@ -47,7 +47,7 @@ namespace osgEarth { namespace Util
 
         //! Scene graph from which to pick
         void setGraph(osg::Node*);
-        osg::Node* getGraph() const { return _graph; }
+        osg::Node* getGraph() const { return _graph.get(); }
 
         //! Pixels on each side of the clicked pixel to check for hits.
         void setBuffer(int value) { _buffer = value; }

@@ -196,7 +196,7 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
                 }
                 else
                 {
-                    OE_WARN << "Task canceled!" << std::endl;
+                    OE_DEBUG << "Task canceled!" << std::endl;
                 }
                 return result;
             }

@@ -169,7 +169,7 @@ ObjectIDPicker::pick(
     float x, float y,
     std::vector<Function>& functions)
 {
-    ImageUtils::PixelReader read(_pickImage);
+    ImageUtils::PixelReader read(_pickImage.get());
 
     const osg::Viewport* vp = view->getCamera()->getViewport();
     float u = (x - vp->x()) / vp->width();

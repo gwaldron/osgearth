@@ -22,6 +22,7 @@
 #include "ImGui"
 #include <osgEarth/AnnotationUtils>
 #include <osg/PolygonMode>
+#include <osgEarth/TerrainEngineNode>
 
 namespace osgEarth {
     namespace GUI
@@ -55,8 +56,8 @@ namespace osgEarth {
 
                     ImGui::TreeNodeEx(&node, node_flags, label.c_str());
                     if (ImGui::IsItemClicked())
-                    {
-                        setSelectedNode(&node);
+                    {                                         
+                        setSelectedNodePath(getNodePath());
                     }
                 }
 
@@ -76,8 +77,8 @@ namespace osgEarth {
 
                     bool node_open = ImGui::TreeNodeEx(&node, node_flags, label.c_str());
                     if (ImGui::IsItemClicked())
-                    {
-                        setSelectedNode(&node);
+                    {                     
+                        setSelectedNodePath(getNodePath());
                     }
                     if (node_open)
                     {
@@ -96,26 +97,19 @@ namespace osgEarth {
 
                 bool isInSelectedNodePath(osg::Node* node)
                 {
-                    if (_selectedNodePaths.empty() && getSelectedNode())
-                    {
-                        _selectedNodePaths = getSelectedNode()->getParentalNodePaths();
-                    }
+                    auto selectedNodePaths = getSelectedNodePath();                    
 
-                    for (unsigned int i = 0; i < _selectedNodePaths.size(); i++)
+                    for (unsigned int i = 0; i < selectedNodePaths.size(); i++)
                     {
-                        for (unsigned int j = 0; j < _selectedNodePaths[i].size(); j++)
+                        if (node == selectedNodePaths[i].get())
                         {
-                            if (node == _selectedNodePaths[i][j])
-                            {
-                                return true;
-                            }
+                            return true;
                         }
                     }
                     return false;
                 }
 
                 ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
-                osg::NodePathList _selectedNodePaths;
             };
 
             SceneGraphGUI() :
@@ -173,7 +167,10 @@ namespace osgEarth {
                 // If they closed the tool deselect the node.
                 if (!isVisible() && getSelectedNode())
                 {
-                    setSelectedNode(nullptr);
+                    // TODO:
+                    //setSelectedNode(nullptr);
+                    osg::NodePath empty;
+                    setSelectedNodePath(empty);
                 }
 
                 updateBoundsDebug(_mapNode.get());
@@ -191,17 +188,19 @@ namespace osgEarth {
 
                 if (selectedNode)
                 {
-                    osg::NodePath nodePath = selectedNode->getParentalNodePaths()[0];
-                    osg::Matrixd localToWorld = osg::computeLocalToWorld(nodePath);
-
-
-                    auto transform = selectedNode->asTransform();
-                    if (transform)
+                    osg::RefNodePath refNodePath = getSelectedNodePath();
+                    osg::NodePath nodePath;
+                    for (unsigned int i = 0; i < refNodePath.size(); ++i)
                     {
-                        osg::Matrixd worldToLocal;
-                        transform->computeWorldToLocalMatrix(worldToLocal, NULL);
-                        localToWorld.postMult(worldToLocal);
+                        nodePath.push_back(refNodePath[i].get());
                     }
+                    
+                    if (nodePath.back()->asTransform())
+                    {
+                        nodePath.pop_back();
+                    }
+
+                    osg::Matrixd localToWorld = osg::computeLocalToWorld(nodePath);
 
                     osg::Drawable* drawable = selectedNode->asDrawable();
                     if (drawable)
@@ -211,11 +210,14 @@ namespace osgEarth {
                         {
                             _selectedBounds = new osg::MatrixTransform;
                             _selectedBounds->setName("Bounds");
-                            localToWorld.preMultTranslate(bb.center());
                             _selectedBounds->setMatrix(localToWorld);
-                            _selectedBounds->addChild(AnnotationUtils::createBoundingBox(bb, Color::Yellow));
-                            mapNode->addChild(_selectedBounds);
 
+                            osg::MatrixTransform* center = new osg::MatrixTransform;
+                            center->addChild(AnnotationUtils::createBoundingBox(bb, Color::Yellow));
+                            _selectedBounds->addChild(center);                           
+
+                            _selectedBounds->setNodeMask(1 << 2);
+                            mapNode->addChild(_selectedBounds);
                         }
                     }
                     else
@@ -225,10 +227,15 @@ namespace osgEarth {
                         {
                             _selectedBounds = new osg::MatrixTransform;
                             _selectedBounds->setName("Bounds");
-                            localToWorld.preMultTranslate(selectedNode->getBound().center());
                             _selectedBounds->setMatrix(localToWorld);
-                            _selectedBounds->addChild(AnnotationUtils::createSphere(selectedNode->getBound().radius(), Color::Yellow));
+
+                            osg::MatrixTransform* center = new osg::MatrixTransform;
+                            center->setMatrix(osg::Matrix::translate(bs.center()));
+                            center->addChild(AnnotationUtils::createSphere(selectedNode->getBound().radius(), Color::Yellow));
+                            _selectedBounds->addChild(center);
+
                             _selectedBounds->getOrCreateStateSet()->setAttributeAndModes(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE), 1);
+                            _selectedBounds->setNodeMask(1 << 2);
                             mapNode->addChild(_selectedBounds);
                         }
                     }
@@ -269,18 +276,19 @@ namespace osgEarth {
                     }
                 }
 
-                /*
                 bool visible = node->getNodeMask() != 0;
                 if (ImGui::Checkbox("Visible", &visible))
                 {
                     node->setNodeMask(visible);
                 }
-                */
 
                 if (ImGui::TreeNode("General"))
                 {
                     ImGui::Text("Type %s", typeid(*node).name());
                     ImGui::Text("Name %s", node->getName().c_str());
+
+                    osg::BoundingSphere bs = node->getBound();
+                    ImGui::Text("Bounding sphere (local) center=(%lf, %lf, %lf) radius=%lf", bs.center().x(), bs.center().y(), bs.center().z(), bs.radius());
                     ImGui::TreePop();
                 }
 

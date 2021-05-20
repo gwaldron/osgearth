@@ -233,8 +233,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
 
         osg::ref_ptr< Tile > _tile;
 
-        osg::observer_ptr< osg::Node > _content;
-        osg::observer_ptr< osg::Group > _children;
+        osg::ref_ptr< osg::Node > _content;
+        osg::ref_ptr< osg::Group > _children;
 
         osg::ref_ptr< osg::Node > _boundsDebug;
         ThreeDTilesetNode* _tileset;

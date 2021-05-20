@@ -802,7 +802,7 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
 }
 
 void
-GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
+GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
 {
     _frameLastActive = ri.getState()->getFrameStamp()->getFrameNumber();
 
@@ -957,17 +957,14 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
 }
 
 void
-GroundCoverLayer::Renderer::drawTile(osg::RenderInfo& ri, const PatchLayer::DrawContext& tile)
+GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const PatchLayer::DrawContext& tile)
 {
     const ZoneSA* sa = ZoneSA::extract(ri.getState());
     DrawState& ds = _drawStateBuffer[ri.getContextID()];
     osg::ref_ptr<LegacyInstanceCloud>& instancer = ds._instancers[sa->_obj];
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
-    if (!pcp)
-    {
-        OE_WARN << "nullptr PCP in Renderer::drawTile, how odd" << std::endl;
-        return;
-    }
+
+    OE_SOFT_ASSERT_AND_RETURN(pcp != nullptr, __func__, );
 
     UniformState& u = ds._uniforms[pcp];
 
@@ -1151,6 +1148,7 @@ GroundCoverLayer::loadAssets()
                         _cache[uri] = data->_sideImage.get();
                         data->_sideImageAtlasIndex = _atlasImages.size();
                        _atlasImages.push_back(data->_sideImage.get());
+                       OE_DEBUG << LC << "Loaded \"" << uri.full() << "\"" << std::endl;
                     }
                 }
 

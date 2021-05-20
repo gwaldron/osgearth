@@ -610,6 +610,25 @@ namespace osgEarth { namespace Util
             double _u, _v;
             double _x, _y;
         };
+
+        template<typename EXTENT>
+        class PixelReaderWithExtent : public PixelReader
+        {
+        public:
+            PixelReaderWithExtent(const osg::Image* image, const EXTENT& extent) :
+                PixelReader(image), _extent(extent) { }
+
+            void readCoord(osg::Vec4f& value, double x, double y, int r = 1, int m = 1) const {
+                PixelReader::operator()(
+                    value,
+                    (double)(x - _extent.xMin()) / _extent.width(),
+                    (double)(y - _extent.yMin()) / _extent.height(),
+                    r, m);
+            }
+
+        private:
+            const EXTENT _extent;
+        };
     };
 
     /** Visitor that finds and operates on textures and images */

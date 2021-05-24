@@ -66,7 +66,7 @@ TileRasterizer::TileRasterizer(unsigned width, unsigned height)
     _cx->_rtt->setClearColor(osg::Vec4(0,0,0,0));
     _cx->_rtt->setClearMask(GL_COLOR_BUFFER_BIT);
     _cx->_rtt->setReferenceFrame(osg::Camera::ABSOLUTE_RF);
-    _cx->_rtt->setRenderOrder(osg::Camera::PRE_RENDER);
+    _cx->_rtt->setRenderOrder(osg::Camera::POST_RENDER);
     _cx->_rtt->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
     _cx->_rtt->setImplicitBufferAttachmentMask(0, 0);
     _cx->_rtt->setSmallFeatureCullingPixelSize(0.0f);
@@ -165,6 +165,7 @@ TileRasterizer::preDraw(osg::RenderInfo& ri)
         ext->glGenBuffers(1, &_cx->_pbo);
         ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _cx->_pbo);
         ext->glBufferData(GL_PIXEL_PACK_BUFFER_ARB, size, 0, GL_STREAM_READ);
+        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
     }
 #endif
 

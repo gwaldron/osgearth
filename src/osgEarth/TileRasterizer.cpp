@@ -229,3 +229,43 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
     // unblock for the next frame.
     _cx->_rttActive.exchange(false);
 }
+
+void
+TileRasterizer::releaseGLObjects(osg::State* state) const
+{
+    osg::Node::releaseGLObjects(state);
+
+    if (_cx != nullptr)
+    {
+        if (_cx->_rtt.valid())
+            _cx->_rtt->releaseGLObjects(state);
+        if (_cx->_tex.valid())
+            _cx->_tex->releaseGLObjects(state);
+
+        if (state)
+        {
+            osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+            if (_cx->_pbo > 0)
+                ext->glDeleteBuffers(1, &_cx->_pbo);
+            if (_cx->_samplesQuery > 0)
+                ext->glDeleteQueries(1, &_cx->_samplesQuery);
+        }
+
+        _cx->_pbo = 0;
+        _cx->_samplesQuery = 0;
+    }
+}
+
+void
+TileRasterizer::resizeGLObjectBuffers(unsigned size)
+{
+    osg::Node::resizeGLObjectBuffers(size);
+
+    if (_cx != nullptr)
+    {
+        if (_cx->_rtt.valid())
+            _cx->_rtt->resizeGLObjectBuffers(size);
+        if (_cx->_tex.valid())
+            _cx->_tex->resizeGLObjectBuffers(size);
+    }
+}

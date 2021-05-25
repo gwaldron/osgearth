@@ -41,6 +41,9 @@
 // Set this to use a Pixel Buffer Object for DMA readback.
 #define USE_PBO
 
+// Set to use GPU sample queries to determine whether any data was rendered.
+#define USE_QUERY
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -72,10 +75,12 @@ TileRasterizer::TileRasterizer(unsigned width, unsigned height)
     _cx->_rtt->setSmallFeatureCullingPixelSize(0.0f);
     _cx->_rtt->setViewMatrix(osg::Matrix::identity());
     _cx->_rtt->setViewport(0, 0, width, height);
-    _cx->_rtt->attach(osg::Camera::COLOR_BUFFER, _cx->_tex.get());
+    _cx->_rtt->attach(osg::Camera::COLOR_BUFFER0, _cx->_tex.get());
 
+#if defined(USE_PBO) || defined(USE_QUERY)
     _cx->_rtt->setPreDrawCallback(new DrawCallback(
         [this](osg::RenderInfo& ri) {this->preDraw(ri); }));
+#endif
 
     _cx->_rtt->setPostDrawCallback(new DrawCallback(
         [this](osg::RenderInfo& ri) {this->postDraw(ri); }));
@@ -133,6 +138,8 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 
             if (_cx->_activeJob)
             {
+                OE_SOFT_ASSERT(_cx->_activeJob->_node.valid(), __func__);
+
                 _cx->_rtt->setProjectionMatrixAsOrtho2D(
                     _cx->_activeJob->_extent.xMin(), _cx->_activeJob->_extent.xMax(),
                     _cx->_activeJob->_extent.yMin(), _cx->_activeJob->_extent.yMax());
@@ -148,7 +155,9 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
                 _cx->_rttActive.exchange(false);
             }
         }
-    }    
+    }
+
+    osg::Node::traverse(nv);
 }
 
 void
@@ -169,6 +178,7 @@ TileRasterizer::preDraw(osg::RenderInfo& ri)
     }
 #endif
 
+#ifdef USE_QUERY
     if (_cx->_samplesQuery == 0)
     {
         // Allocate a sample-counting query
@@ -177,6 +187,7 @@ TileRasterizer::preDraw(osg::RenderInfo& ri)
 
     _cx->_samples = 0u;
     ext->glBeginQuery(GL_ANY_SAMPLES_PASSED, _cx->_samplesQuery);
+#endif
 }
 
 void
@@ -185,14 +196,15 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
     osg::ref_ptr<osg::Image> image;
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
-    // finalize the samples query
+    // finalize the samples query (if in use)
+    if (_cx->_samplesQuery > 0)
     {
         OE_PROFILING_ZONE_NAMED("glEndQuery/glGet");
         ext->glEndQuery(GL_ANY_SAMPLES_PASSED);
         ext->glGetQueryObjectuiv(_cx->_samplesQuery, GL_QUERY_RESULT, &_cx->_samples);
     }
 
-    if (_cx->_samples > 0)
+    if (_cx->_samples > 0 || _cx->_samplesQuery == 0)
     {
         // create our new target image:
         image = new osg::Image();
@@ -208,8 +220,22 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
         {
             // Use the PBO to perform a DMA transfer (faster than straight glReadPixels)
             ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _cx->_pbo);
-            glGetTexImage(GL_TEXTURE_2D, 0, _cx->_tex->getSourceFormat(), _cx->_tex->getSourceType(), 0);
-            GLubyte* src = (GLubyte*)ext->glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY_ARB);
+
+            // begin the transfer from GPU to PBO
+            glGetTexImage(
+                GL_TEXTURE_2D,
+                0,
+                _cx->_tex->getSourceFormat(),
+                _cx->_tex->getSourceType(),
+                nullptr);
+
+            // blocks until the transfer is complete. Later we could break this
+            // up so the map occurs on a subsequent frame.
+            GLubyte* src = (GLubyte*)ext->glMapBuffer(
+                GL_PIXEL_PACK_BUFFER_ARB, 
+                GL_READ_ONLY_ARB);
+
+            OE_SOFT_ASSERT(src != nullptr, __func__);
             if (src)
             {
                 memcpy(image->data(), src, image->getTotalSizeInBytes());
@@ -219,11 +245,27 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
         }
         else
         {
-            image->readImageFromCurrentTexture(ri.getContextID(), false);
+            // read the texture directly into the allocated memory
+            glGetTexImage(
+                GL_TEXTURE_2D, 
+                0,
+                _cx->_tex->getSourceFormat(), 
+                _cx->_tex->getSourceType(), 
+                image->data());
         }
     }
 
+    if (_cx->_samplesQuery == 0)
+    {
+        // when not using sample queries, check the image to see if anything
+        // was actually rendered
+        if (ImageUtils::isEmptyImage(image.get()))
+            image = nullptr;
+    }
+
     _cx->_activeJob->_promise.resolve(image);
+
+    delete _cx->_activeJob;
     _cx->_activeJob = nullptr;
 
     // unblock for the next frame.

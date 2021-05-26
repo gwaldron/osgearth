@@ -111,13 +111,14 @@ TileRasterizer::~TileRasterizer()
 Future<osg::ref_ptr<osg::Image>>
 TileRasterizer::render(osg::Node* node, const GeoExtent& extent)
 {
-    ScopedMutexLock lock(_queue);
-
     RenderJob* job = new RenderJob();
     job->_node = node;
     job->_extent = extent;
     Future<osg::ref_ptr<osg::Image>> result = job->_promise.getFuture();
+
+    ScopedMutexLock lock(_queue);
     _queue.push(job);
+
     return result;
 }
 
@@ -126,33 +127,38 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        if (!_queue.empty() && !_cx->_rttActive.exchange(true))
+        // only enter if an RTT is NOT currently active:
+        if (!_queue.empty())
         {
-            ScopedMutexLock lock(_queue);
-            if (!_queue.empty())
+            if (!_cx->_rttActive.exchange(true))
             {
-                RenderJob* job = _queue.front();
-                _queue.pop();
-                _cx->_activeJob = job;
-            }
+                OE_SOFT_ASSERT(_cx->_activeJob == nullptr, __func__);
 
-            if (_cx->_activeJob)
-            {
-                OE_SOFT_ASSERT(_cx->_activeJob->_node.valid(), __func__);
+                ScopedMutexLock lock(_queue);
 
-                _cx->_rtt->setProjectionMatrixAsOrtho2D(
-                    _cx->_activeJob->_extent.xMin(), _cx->_activeJob->_extent.xMax(),
-                    _cx->_activeJob->_extent.yMin(), _cx->_activeJob->_extent.yMax());
+                if (!_queue.empty()) // double check
+                {
+                    _cx->_activeJob = _queue.front();
+                    _queue.pop();
 
-                _cx->_rtt->removeChildren(0, _cx->_rtt->getNumChildren());
+                    OE_SOFT_ASSERT(_cx->_activeJob->_node.valid(), __func__);
+                    OE_SOFT_ASSERT(!_cx->_activeJob->_promise.isAbandoned(), __func__);
 
-                _cx->_rtt->addChild(_cx->_activeJob->_node.get());
-                
-                _cx->_rtt->accept(nv);
-            }
-            else
-            {
-                _cx->_rttActive.exchange(false);
+                    _cx->_rtt->setProjectionMatrixAsOrtho2D(
+                        _cx->_activeJob->_extent.xMin(), _cx->_activeJob->_extent.xMax(),
+                        _cx->_activeJob->_extent.yMin(), _cx->_activeJob->_extent.yMax());
+
+                    _cx->_rtt->removeChildren(0, _cx->_rtt->getNumChildren());
+
+                    _cx->_rtt->addChild(_cx->_activeJob->_node);
+
+                    _cx->_rtt->accept(nv);
+                }
+                else
+                {
+                    // double check failed, reset active state.
+                    _cx->_rttActive.exchange(false);
+                }
             }
         }
     }
@@ -163,6 +169,12 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 void
 TileRasterizer::preDraw(osg::RenderInfo& ri)
 {
+    OE_SOFT_ASSERT(_cx->_rttActive == true, __func__);
+    OE_SOFT_ASSERT(_cx->_activeJob != nullptr, __func__);
+
+    if (_cx->_activeJob->_promise.isAbandoned())
+        return;
+
     unsigned id = ri.getContextID();
     osg::GLExtensions* ext = osg::GLExtensions::Get(id, true);
 
@@ -193,6 +205,9 @@ TileRasterizer::preDraw(osg::RenderInfo& ri)
 void
 TileRasterizer::postDraw(osg::RenderInfo& ri)
 {
+    OE_SOFT_ASSERT(_cx->_rttActive == true, __func__);
+    OE_SOFT_ASSERT(_cx->_activeJob != nullptr, __func__);
+
     osg::ref_ptr<osg::Image> image;
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
@@ -204,71 +219,72 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
         ext->glGetQueryObjectuiv(_cx->_samplesQuery, GL_QUERY_RESULT, &_cx->_samples);
     }
 
-    if (_cx->_samples > 0 || _cx->_samplesQuery == 0)
+    if (!_cx->_activeJob->_promise.isAbandoned())
     {
-        // create our new target image:
-        image = new osg::Image();
-        image->allocateImage(_cx->_width, _cx->_height, 1, _cx->_tex->getSourceFormat(), _cx->_tex->getSourceType());
-        image->setInternalTextureFormat(_cx->_tex->getInternalFormat());
-
-        OE_PROFILING_ZONE_NAMED("Readback");
-
-        // make the target texture current so we can read it back.
-        _cx->_tex->apply(*ri.getState());
-
-        if (_cx->_pbo > 0)
+        if (_cx->_samples > 0 || _cx->_samplesQuery == 0)
         {
-            // Use the PBO to perform a DMA transfer (faster than straight glReadPixels)
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _cx->_pbo);
+            // create our new target image:
+            image = new osg::Image();
+            image->allocateImage(_cx->_width, _cx->_height, 1, _cx->_tex->getSourceFormat(), _cx->_tex->getSourceType());
+            image->setInternalTextureFormat(_cx->_tex->getInternalFormat());
 
-            // begin the transfer from GPU to PBO
-            glGetTexImage(
-                GL_TEXTURE_2D,
-                0,
-                _cx->_tex->getSourceFormat(),
-                _cx->_tex->getSourceType(),
-                nullptr);
+            OE_PROFILING_ZONE_NAMED("Readback");
 
-            // blocks until the transfer is complete. Later we could break this
-            // up so the map occurs on a subsequent frame.
-            GLubyte* src = (GLubyte*)ext->glMapBuffer(
-                GL_PIXEL_PACK_BUFFER_ARB, 
-                GL_READ_ONLY_ARB);
+            // make the target texture current so we can read it back.
+            _cx->_tex->apply(*ri.getState());
 
-            OE_SOFT_ASSERT(src != nullptr, __func__);
-            if (src)
+            if (_cx->_pbo > 0)
             {
-                memcpy(image->data(), src, image->getTotalSizeInBytes());
-                ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+                // Use the PBO to perform a DMA transfer (faster than straight glReadPixels)
+                ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _cx->_pbo);
+
+                // begin the transfer from GPU to PBO
+                glGetTexImage(
+                    GL_TEXTURE_2D,
+                    0,
+                    _cx->_tex->getSourceFormat(),
+                    _cx->_tex->getSourceType(),
+                    nullptr);
+
+                // blocks until the transfer is complete. Later we could break this
+                // up so the map occurs on a subsequent frame.
+                GLubyte* src = (GLubyte*)ext->glMapBuffer(
+                    GL_PIXEL_PACK_BUFFER_ARB,
+                    GL_READ_ONLY_ARB);
+
+                OE_SOFT_ASSERT(src != nullptr, __func__);
+                if (src)
+                {
+                    memcpy(image->data(), src, image->getTotalSizeInBytes());
+                    ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+                }
+                ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
             }
-            ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
+            else
+            {
+                // read the texture directly into the allocated memory
+                glGetTexImage(
+                    GL_TEXTURE_2D,
+                    0,
+                    _cx->_tex->getSourceFormat(),
+                    _cx->_tex->getSourceType(),
+                    image->data());
+            }
         }
-        else
+
+        if (_cx->_samplesQuery == 0)
         {
-            // read the texture directly into the allocated memory
-            glGetTexImage(
-                GL_TEXTURE_2D, 
-                0,
-                _cx->_tex->getSourceFormat(), 
-                _cx->_tex->getSourceType(), 
-                image->data());
+            // when not using sample queries, check the image to see if anything
+            // was actually rendered
+            if (ImageUtils::isEmptyImage(image.get()))
+                image = nullptr;
         }
-    }
 
-    if (_cx->_samplesQuery == 0)
-    {
-        // when not using sample queries, check the image to see if anything
-        // was actually rendered
-        if (ImageUtils::isEmptyImage(image.get()))
-            image = nullptr;
+        _cx->_activeJob->_promise.resolve(image);
     }
-
-    _cx->_activeJob->_promise.resolve(image);
 
     delete _cx->_activeJob;
     _cx->_activeJob = nullptr;
-
-    // unblock for the next frame.
     _cx->_rttActive.exchange(false);
 }
 

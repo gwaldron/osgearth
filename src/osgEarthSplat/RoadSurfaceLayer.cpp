@@ -25,7 +25,6 @@
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/Containers>
 #include <osgEarth/Metrics>
-#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -390,11 +389,13 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         {
             OE_PROFILING_ZONE_NAMED("Rasterize");
 
+            group->setName(key.str());
+
             Future<osg::ref_ptr<osg::Image>> result = _rasterizer->render(
                 group.release(),
                 outputExtent);
 
-            // Immediately blocks on the result. Consider better ways?
+            // Immediately blocks on the result.
             const osg::ref_ptr<osg::Image>& image = result.get(progress);
 
             if (image.valid() && image->data() != nullptr)

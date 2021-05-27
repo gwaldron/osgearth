@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/NodeUtils>
+#include <osgEarth/TerrainTileNode>
 #include <osg/Geometry>
 
 using namespace osgEarth;
@@ -428,9 +429,15 @@ bool LoadDataVisitor::isFullyLoaded() const
     return _fullyLoaded;
 }
 
+unsigned int LoadDataVisitor::getNumUnloadedNodes() const
+{
+    return _numUnloadedNodes;
+}
+
 void LoadDataVisitor::reset()
 {
     _fullyLoaded = true;
+    _numUnloadedNodes = 0;
 }
 
 bool LoadDataVisitor::intersects(osg::Node& node)
@@ -465,18 +472,41 @@ void LoadDataVisitor::setLoadHighestResolutionOnly(bool value)
 }
 
 void LoadDataVisitor::apply(LoadableNode& node)
-{
+{    
+    node.setAutoUnload(false);
+
     if (_loadHighestResolutionOnly)
-    {
+    {        
         if (!node.isLoaded())
-        {
+        {                    
+            auto terrainTileNode = dynamic_cast<TerrainTileNode*>(&node);
+            if (terrainTileNode)
+            {
+                //if (terrainTileNode->getKey().getLevelOfDetail() >= 10 && terrainTileNode->getKey().getLevelOfDetail() <= 19)
+                if (terrainTileNode->getKey().getLevelOfDetail() == 10)
+                {                 
+                    node.load();
+                    ++_numUnloadedNodes;
+                    _fullyLoaded = false;
+                }
+            }
+
             if (node.getRefinePolicy() == REFINE_ADD ||
-                node.isHighestResolution())
+                node.isHighestResolution()
+                )
             {
                 node.setAutoUnload(false);
                 node.load();
+                ++_numUnloadedNodes;
                 _fullyLoaded = false;
-            }
+            }         
+        }        
+
+        if (node.canSubdivide())
+        {            
+            node.subdivide();
+            ++_numUnloadedNodes;
+            _fullyLoaded = false;
         }
     }
     else
@@ -485,6 +515,7 @@ void LoadDataVisitor::apply(LoadableNode& node)
         if (!node.isLoaded())
         {
             node.load();
+            ++_numUnloadedNodes;
             _fullyLoaded = false;
         }
     }

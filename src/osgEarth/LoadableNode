@@ -37,6 +37,9 @@ namespace osgEarth
 
         virtual bool getAutoUnload() const = 0;
         virtual void setAutoUnload(bool value) = 0;
+
+        virtual bool canSubdivide() const { return false; }
+        virtual void subdivide() {}
     };
 }
 #endif

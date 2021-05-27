@@ -481,6 +481,8 @@ namespace osgEarth { namespace Util
         //! Whether all potential data in the areas are loaded
         bool isFullyLoaded() const;
 
+        unsigned int getNumUnloadedNodes() const;
+
         //! Resets isFullyLoaded so you can reuse the same visitor multiple times.
         void reset();
 
@@ -513,6 +515,7 @@ namespace osgEarth { namespace Util
         std::vector< osg::BoundingSphered > _areasToLoad;
 
         bool _loadHighestResolutionOnly = false;
+        unsigned int _numUnloadedNodes = 0;
     };
 
     /**

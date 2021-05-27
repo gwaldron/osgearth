@@ -51,7 +51,7 @@ namespace osgEarth { namespace REX
         //! Merge the tile load results into the host tile
         void merge(
             LoadTileDataOperationPtr data,
-            osg::NodeVisitor& nv);
+            osg::NodeVisitor* nv);
 
     public:
         void traverse(osg::NodeVisitor& nv) override;

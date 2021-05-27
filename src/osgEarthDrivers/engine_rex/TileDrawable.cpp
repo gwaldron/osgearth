@@ -25,6 +25,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/ElevationRanges>
+#include <osg/io_utils>
 
 
 using namespace osg;
@@ -133,6 +135,7 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
 
         for (int i = 0; i < verts.size(); ++i)
         {
+            // TODO:  This is just for when you have a constraint...
             if ( ((int)units[i].z() & VERTEX_HAS_ELEVATION) == 0)
             {
                 readElevation(
@@ -200,12 +203,52 @@ TileDrawable::computeBound() const
 osg::BoundingBox
 TileDrawable::computeBoundingBox() const
 {
-    osg::BoundingBox box;
+    // TODO:  This might be able to take into account the min/max height.
+    osg::BoundingBox box;    
 
-    // core bbox created from the mesh:
-    for(auto& vert : _mesh)
+    // TODO:  And also check to see if it has elevation data at all?
+    //if (!_elevationRaster.valid()) 
+    //if (!_elevationScaleBias.isIdentity())
+    if (false)
     {
-        box.expandBy(vert);
+        // Lookup the min/max height and use that for the bounds.....
+        // Could take the mesh and just use verts at the min and verts at the max to compute a tight bounds.
+        // In order to actually take advantage of this there has to be an API outside of rex to grab the AABB and be able to do logic against it on the node level.
+        // It is used by the TerrainCuller right now on line 250ish (            if (!_cv->isCulled(surface->getAlignedBoundingBox()))).
+
+        // Get the approximate elevation range if we have elevation data in the map
+        unsigned int lod = osg::clampBetween(_key.getLevelOfDetail(), 0u, ElevationRanges::getMaxLevel());
+
+        GeoPoint center = _key.getExtent().getCentroid();
+
+        TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(center.x(), center.y(), lod);
+
+        short min, max;
+        ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+        //std::cout << "Got min/max " << min << "/" << max << " for " << _key.str() << std::endl;
+        // Clamp the min value to avoid extreme underwater values.
+        //short minElevation = osg::maximum(min, (short)-500);
+        // Add a little bit extra of extra height to account for feature data.
+        //short maxElevation = max + 100.0f;
+
+        const osg::Vec3Array& verts = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
+        const osg::Vec3Array& normals = *static_cast<osg::Vec3Array*>(_geom->getNormalArray());
+
+        for (int i = 0; i < verts.size(); ++i)
+        {
+            osg::Vec3 high = verts[i] + normals[i] * (float)max;
+            osg::Vec3 low = verts[i] + normals[i] * (float)min;
+            box.expandBy(high);
+            box.expandBy(low);
+        }
+    }
+    else
+    {
+        // core bbox created from the mesh:
+        for (auto& vert : _mesh)
+        {
+            box.expandBy(vert);
+        }
     }
 
     // finally see if any of the layers request a bbox change:

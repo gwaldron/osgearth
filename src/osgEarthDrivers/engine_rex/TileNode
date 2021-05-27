@@ -29,6 +29,7 @@
 #include <osgEarth/TerrainTileNode>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/Threading>
+#include <osgEarth/LoadableNode>
 #include <vector>
 
 namespace osg {
@@ -55,7 +56,8 @@ namespace osgEarth { namespace REX
      * and four TileNodes representing the LOD+1 quadtree tiles under this tile.
      */
     class TileNode : public osg::Group,
-                     public osgEarth::TerrainTileNode
+                     public osgEarth::TerrainTileNode,
+                     public LoadableNode
     {
     public:
         TileNode();
@@ -138,6 +140,8 @@ namespace osgEarth { namespace REX
         bool isEmpty() const { return _empty; }
 
         float getLoadPriority() const { return _loadPriority; }
+
+        void processLoadQueue(TerrainCuller* culler);
         
     public: // osg::Node
 
@@ -148,6 +152,22 @@ namespace osgEarth { namespace REX
         void resizeGLObjectBuffers(unsigned maxSize);
 
         void releaseGLObjects(osg::State* state) const;
+
+
+    public: // LoadableNode
+        virtual void load();
+        virtual void unload();
+
+        virtual RefinePolicy getRefinePolicy() const;
+
+        virtual bool isLoaded() const;
+        virtual bool isHighestResolution() const;
+
+        virtual bool getAutoUnload() const;
+        virtual void setAutoUnload(bool value);
+
+        virtual bool canSubdivide() const;
+        virtual void subdivide();
 
     protected:
         TileKey                            _key;
@@ -176,11 +196,14 @@ namespace osgEarth { namespace REX
         unsigned _loadsInQueue;
         const CreateTileManifest* _nextLoadManifestPtr;
 
+        bool _merged = false;
+
         bool dirty() const { 
             return _loadsInQueue > 0;
         }
 
-        bool nextLoadIsProgressive() const;
+        bool 
+            nextLoadIsProgressive() const;
 
         osg::observer_ptr<TileNode> _eastNeighbor;
         osg::observer_ptr<TileNode> _southNeighbor;

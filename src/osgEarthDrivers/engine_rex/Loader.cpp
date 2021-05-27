@@ -62,10 +62,11 @@ Merger::clear()
 }
 
 void
-Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
+Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor* nv)
 {
+    // TODO:  Change this to a pointer to the NodeVisitor so we can pass in null for an async load without culling.
     osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico;
-    if (ObjectStorage::get(&nv, ico))
+    if (ObjectStorage::get(nv, ico))
     {
         GLObjectsCompiler glcompiler;
 
@@ -85,7 +86,7 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
             ToCompile toCompile;
             toCompile._data = data;
             toCompile._compiled = glcompiler.compileAsync(
-                dummyNode.get(), state.get(), &nv, nullptr);
+                dummyNode.get(), state.get(), nv, nullptr);
 
             _compileQueue.push(std::move(toCompile));
         }
@@ -136,9 +137,12 @@ Merger::traverse(osg::NodeVisitor& nv)
         }
 
         unsigned count = 0u;
+        /*
         unsigned max_count = _mergesPerFrame;
         if (max_count == 0)
             max_count = INT_MAX;
+            */
+        unsigned max_count = 5000;
 
         while (!_mergeQueue.empty() && count < max_count)
         {

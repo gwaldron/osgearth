@@ -287,7 +287,7 @@ TerrainCuller::apply(SurfaceNode& node)
     {
         if (!_isSpy)
         {
-            node.setLastFramePassedCull(getFrameStamp()->getFrameNumber());
+            node.setLastFramePassedCull(_context->getClock()->getFrame());
         }
 
         int order = 0;

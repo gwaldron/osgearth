@@ -32,6 +32,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Metrics>
+#include <osg/TriangleFunctor>
 
 using namespace osgEarth::REX;
 using namespace osgEarth;
@@ -57,14 +58,15 @@ namespace
     };
 }
 
-TileNode::TileNode() : 
-_loadsInQueue(0u),
-_childrenReady( false ),
-_lastTraversalTime(0.0),
-_lastTraversalFrame(0),
-_empty(false),              // an "empty" node exists but has no geometry or children.,
-_imageUpdatesActive(false),
-_doNotExpire(false),
+TileNode::TileNode() :
+    _loadsInQueue(0u),
+    _childrenReady(false),
+    _lastTraversalTime(0.0),
+    _lastTraversalFrame(0),
+    _empty(false),              // an "empty" node exists but has no geometry or children.,
+    _imageUpdatesActive(false),
+    //_doNotExpire(false),
+    _doNotExpire(true),
 _revision(0),
 _mutex("TileNode(OE)"),
 _loadQueue("TileNode LoadQueue(OE)"),
@@ -162,6 +164,7 @@ TileNode::createGeometry(Cancelable* progress)
 
         // Give the tile Drawable access to the render model so it can properly
         // calculate its bounding box and sphere.
+        // TODO:  This is really only used if you have a shader that modifies the bounding box.  Don't comment out.
         surfaceDrawable->setModifyBBoxCallback(_context->getModifyBBoxCallback());
 
         osg::ref_ptr<const osg::Image> elevationRaster = getElevationRaster();
@@ -171,7 +174,9 @@ TileNode::createGeometry(Cancelable* progress)
         _surface = new SurfaceNode(_key, surfaceDrawable);
 
         if (elevationRaster.valid())
+        {
             _surface->setElevationRaster(elevationRaster.get(), elevationMatrix);
+        }
     }
     else
     {
@@ -180,6 +185,103 @@ TileNode::createGeometry(Cancelable* progress)
 
     dirtyBound();
 }
+
+
+struct CollectTriangles
+{
+    CollectTriangles()
+    {
+        verts = new osg::Vec3Array();
+    }
+#if OSG_VERSION_LESS_THAN(3,5,6)
+    inline void operator () (const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3, bool treatVertexDataAsTemporary)
+#else
+    inline void operator () (const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3)
+#endif
+    {
+        verts->push_back(v1);
+        verts->push_back(v2);
+        verts->push_back(v3);
+    }
+
+    osg::ref_ptr< osg::Vec3Array > verts;
+};
+
+struct CollectTrianglesVisitor : public osg::NodeVisitor
+{
+    CollectTrianglesVisitor() :
+        //osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
+        osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+    {
+        _vertices.reserve(1000000);
+    }
+
+    void apply(osg::Transform& transform)
+    {
+        osg::Matrix matrix;
+        if (!_matrixStack.empty()) matrix = _matrixStack.back();
+        transform.computeLocalToWorldMatrix(matrix, this);
+        pushMatrix(matrix);
+        traverse(transform);
+        popMatrix();
+    }
+
+    void apply(osg::Drawable& drawable) override
+    {
+        osg::TriangleFunctor<CollectTriangles> triangleCollector;
+        drawable.accept(triangleCollector);
+        for (unsigned int j = 0; j < triangleCollector.verts->size(); j++)
+        {
+            static osg::Matrix identity;
+            osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
+            osg::Vec3d v = (*triangleCollector.verts)[j];
+            _vertices.emplace_back(v * matrix);
+        }
+    }
+
+    float getDistanceToEyePoint(const osg::Vec3& pos, bool /*withLODScale*/) const
+    {
+        // Use highest level of detail
+        return 0.0;
+    }
+
+    osg::Node* buildNode()
+    {
+        osg::Geometry* geom = new osg::Geometry;
+        osg::Vec3Array* verts = new osg::Vec3Array;
+        geom->setVertexArray(verts);
+
+        bool first = true;
+        osg::Vec3d anchor;
+
+        for (unsigned int i = 0; i < _vertices.size(); i++)
+        {
+            if (first)
+            {
+                anchor = _vertices[i];
+                first = false;
+            }
+            verts->push_back(_vertices[i] - anchor);
+        }
+        geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, verts->size()));
+
+        osg::MatrixTransform* mt = new osg::MatrixTransform;
+        mt->setReferenceFrame(osg::MatrixTransform::ABSOLUTE_RF);
+        mt->setMatrix(osg::Matrixd::translate(anchor));
+        mt->addChild(geom);
+
+        return mt;
+    }
+
+    inline void pushMatrix(osg::Matrix& matrix) { _matrixStack.push_back(matrix); }
+
+    inline void popMatrix() { _matrixStack.pop_back(); }
+
+    typedef std::vector<osg::Matrix> MatrixStack;
+    std::vector<osg::Vec3d>  _vertices;
+    MatrixStack _matrixStack;
+};
+
 
 void
 TileNode::initializeData()
@@ -243,6 +345,44 @@ TileNode::initializeData()
             //}
         }
     }
+
+#if 0
+    unsigned int colliderLevel = 16;
+    if (_key.getLevelOfDetail() == colliderLevel)
+    {
+        TerrainTileModelFactory factory(_context->_options);
+
+       
+        // Only load elevation
+        CreateTileManifest manifest;
+        ElevationLayerVector elevation;
+        _context->getMap()->getLayers(elevation);
+        for (auto &l : elevation)
+        {
+            manifest.insert(l.get());
+        }
+
+        osg::ref_ptr<TerrainTileModel> model =
+            factory.createStandaloneTileModel(_context->_map.get(), _key, manifest, nullptr, nullptr);
+
+        unsigned int refLOD = _context->_selectionInfo.getNumLODs() - 1;
+        osg::ref_ptr<osg::Node> node =
+            _context->_terrainEngine->createStandaloneTile(model.get(), TerrainEngineNode::CREATE_TILE_INCLUDE_ALL, refLOD, _key);
+
+        if (node.valid())
+        {
+            CollectTrianglesVisitor v;
+            node->accept(v);
+            std::cout << "Collider has " << v._vertices.size() / 3 << " triangles" << std::endl;
+            osg::ref_ptr< osg::Node > collider = v.buildNode();
+            // Build kdtrees
+            osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
+            collider->accept(*kdTreeBuilder.get());
+            collider->setName("COLLIDER");
+            getOrCreateUserDataContainer()->addUserObject(collider);
+        }
+    }
+#endif
 
     // register me.
     _context->liveTiles()->add( this );
@@ -323,6 +463,18 @@ void
 TileNode::refreshAllLayers()
 {
     refreshLayers(CreateTileManifest());
+
+#if 0
+    // Only load imagery....
+    CreateTileManifest manifest;
+    ImageLayerVector images;
+    _context->getMap()->getLayers(images);
+    for (auto &l : images)
+    {
+        manifest.insert(l.get());
+    }
+    refreshLayers(manifest);
+#endif
 }
 
 void
@@ -440,6 +592,8 @@ TileNode::cull_spy(TerrainCuller* culler)
     return visible;
 }
 
+#define LOAD_NORMALLY
+
 bool
 TileNode::cull(TerrainCuller* culler)
 {
@@ -480,6 +634,7 @@ TileNode::cull(TerrainCuller* culler)
     
     else
     {
+        // TODO:  This makes sure the parent loads it's data before we can load ours.
         // Don't load data OR geometry in progressive mode until the parent is up to date
         if (options().progressive() == true)
         {
@@ -491,7 +646,8 @@ TileNode::cull(TerrainCuller* culler)
                 // comment this out if you want to load the geometry, but not the data --
                 // this will allow the terrain to always show the higest tessellation level
                 // even as the data is still loading ..
-                canCreateChildren = false;
+                // TODO:  this might be a good thing to comment out :)
+                //canCreateChildren = false;
             }
         }
     }    
@@ -507,10 +663,12 @@ TileNode::cull(TerrainCuller* culler)
 
             if ( !_childrenReady ) // double check inside mutex
             {
+#ifdef LOAD_NORMALLY
+                // TODO:  Comment this out to not subdivide in the cull traversal
                 _childrenReady = createChildren( context );
-
                 // This means that you cannot start loading data immediately; must wait a frame.
                 canLoadData = false;
+#endif                
             }
 
             _mutex.unlock();
@@ -544,12 +702,15 @@ TileNode::cull(TerrainCuller* culler)
     if ( canAcceptSurface )
     {
         _surface->accept( *culler );
-    }
+    }    
 
     // If this tile is marked dirty, try loading data.
     if ( dirty() && canLoadData )
     {
+#ifdef LOAD_NORMALLY
+        // Don't load in cull to see if we are actually loading stuff correctly ourselves.
         load( culler );
+#endif
     }
 
     return true;
@@ -722,18 +883,18 @@ TileNode::traverse(osg::NodeVisitor& nv)
 
         // If there are child nodes, traverse them:
         int numChildren = getNumChildren();
-        if ( numChildren > 0 )
+        if (numChildren > 0)
         {
-            for(int i=0; i<numChildren; ++i)
+            for (int i = 0; i < numChildren; ++i)
             {
-                _children[i]->accept( nv );
+                _children[i]->accept(nv);
             }
         }
 
         // Otherwise traverse the surface.
         else if (_surface.valid())
         {
-            _surface->accept( nv );
+            _surface->accept(nv);
         }
     }
 }
@@ -786,7 +947,16 @@ TileNode::createChildren(EngineContext* context)
                 {
                     osg::ref_ptr<TileNode> child = _createChildResults[i].get();
                     addChild(child);
+
+                    // sets up inheritence
                     child->initializeData();
+
+                    // TODO:  
+                    // actually loads data
+                    // When you try to load an lod 19 tile and call refreshInherited data it won't actually load anything b/c the data doesn't exist there, only at 10.
+                    // So it's dependent on the lod 10 being loaded.
+                    // You could check to see what the max elevation data is at a certain level like 10-19 and only load.
+                    // We shouldn't do this automatically here or have an option or something......
                     child->refreshAllLayers();
                 }
 
@@ -1165,6 +1335,8 @@ TileNode::merge(
 
     // Bump the data revision for the tile.
     ++_revision;
+
+    _merged = true;
 }
 
 void TileNode::inheritSharedSampler(int binding)
@@ -1212,6 +1384,66 @@ void TileNode::inheritSharedSampler(int binding)
 //    }
 //    _mutex.unlock();
 //}
+
+
+// LoadableNode
+void TileNode::load()
+{
+    processLoadQueue(nullptr);
+}
+
+void TileNode::unload()
+{
+}
+
+RefinePolicy TileNode::getRefinePolicy() const
+{
+    return REFINE_REPLACE;
+}
+
+bool TileNode::isLoaded() const
+{
+    // What should isLoaded be driven off of?  
+    // TODO:  Maybe when we get the "highest res data" we can make a super high res kdtree where it can stop. 
+    // We'd have to use a kdtree where we set our own verts on it that are higher res than the 17x17 one.
+    //return isHighestResolution() || _childrenReady;
+    return _merged;
+}
+
+bool TileNode::isHighestResolution() const
+{
+    const SelectionInfo& si = _context->getSelectionInfo();
+    return _key.getLOD() == si.getNumLODs() - 1;
+}
+
+bool TileNode::getAutoUnload() const
+{
+    return !getDoNotExpire();
+}
+
+void TileNode::setAutoUnload(bool value)
+{
+    setDoNotExpire(!value);
+}
+
+bool TileNode::canSubdivide() const
+{
+    return !isHighestResolution() && !_childrenReady;
+}
+
+void TileNode::subdivide()
+{
+    ScopedMutexLock lock(_mutex);
+
+    const SelectionInfo& si = _context->getSelectionInfo();
+    if (_key.getLOD() != si.getNumLODs() - 1)
+    {
+        if (!_childrenReady) // double check inside mutex
+        {
+            _childrenReady = createChildren(_context.get());
+        }
+    }
+}
 
 void
 TileNode::refreshSharedSamplers(const RenderBindings& bindings)
@@ -1384,7 +1616,7 @@ TileNode::load(TerrainCuller* culler)
     int lod     = getKey().getLOD();
     int numLods = si.getNumLODs();
     
-    // LOD priority is in the range [0..numLods]
+    // LOD priority is in the range [0..numLods]d
     float lodPriority = (float)lod;
 
     // If progressive mode is enabled, lower LODs get higher priority since
@@ -1406,6 +1638,12 @@ TileNode::load(TerrainCuller* culler)
     // set atomically
     _loadPriority = priority;
 
+    processLoadQueue(culler);
+}
+
+void
+TileNode::processLoadQueue(TerrainCuller* culler)
+{
     // Check the status of the load
     ScopedMutexLock lock(_loadQueue);
 
@@ -1425,7 +1663,7 @@ TileNode::load(TerrainCuller* culler)
         {
             // The task completed, so submit it to the merger.
             // (We can't merge here in the CULL traversal)
-            _context->getMerger()->merge(op, *culler);
+            _context->getMerger()->merge(op, culler);
             _loadQueue.pop();
             _loadsInQueue = _loadQueue.size();
             if (!_loadQueue.empty())

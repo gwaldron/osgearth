@@ -338,6 +338,7 @@ TileNodeRegistry::collectDormantTiles(
             se->_lastRange > farthestAllowableRange &&
             se->_tile->areSiblingsDormant())
         {
+            std::cout << "Expiring " << se->_tile->getKey().str() << std::endl;
             if (_notifyNeighbors)
             {
                 // remove neighbor listeners:

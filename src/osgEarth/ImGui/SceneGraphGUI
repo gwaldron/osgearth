@@ -287,8 +287,22 @@ namespace osgEarth {
                     ImGui::Text("Type %s", typeid(*node).name());
                     ImGui::Text("Name %s", node->getName().c_str());
 
-                    osg::BoundingSphere bs = node->getBound();
-                    ImGui::Text("Bounding sphere (local) center=(%lf, %lf, %lf) radius=%lf", bs.center().x(), bs.center().y(), bs.center().z(), bs.radius());
+                    osg::Drawable* drawable = node->asDrawable();
+                    if (drawable)
+                    {                        
+                        osg::BoundingBox bbox = drawable->getBoundingBox();
+                        double width = bbox.xMax() - bbox.xMin();
+                        double depth = bbox.yMax() - bbox.yMin();
+                        double height = bbox.zMax() - bbox.zMin();
+
+                        ImGui::Text("Bounding box (local) center=(%.3f, %.3f, %.3f) dimensions=%.3f x %.3f %.3f", bbox.center().x(), bbox.center().y(), bbox.center().z(), width, depth, height);
+                    }
+                    else
+                    {
+                        osg::BoundingSphere bs = node->getBound();
+                        ImGui::Text("Bounding sphere (local) center=(%.3f, %.3f, %.3f) radius=%.3f", bs.center().x(), bs.center().y(), bs.center().z(), bs.radius());
+                    }
+
                     ImGui::TreePop();
                 }
 

@@ -142,7 +142,9 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
                     _queue.pop();
 
                     OE_SOFT_ASSERT(_cx->_activeJob->_node.valid(), __func__);
-                    OE_SOFT_ASSERT(!_cx->_activeJob->_promise.isAbandoned(), __func__);
+
+                    // This is OK, just means the client disappeared.
+                    //OE_SOFT_ASSERT(!_cx->_activeJob->_promise.isAbandoned(), __func__);
 
                     _cx->_rtt->setProjectionMatrixAsOrtho2D(
                         _cx->_activeJob->_extent.xMin(), _cx->_activeJob->_extent.xMax(),

@@ -25,7 +25,6 @@
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/Containers>
 #include <osgEarth/Metrics>
-#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -79,8 +78,6 @@ RoadSurfaceLayer::init()
     if (getName().empty())
         setName("Road surface");
 
-    _inUseMutex.setName("oe.RoadSurfaceLayer");
-
     _lru = std::unique_ptr<FeatureListCache>(new FeatureListCache(true, 1u));
 }
 
@@ -114,11 +111,7 @@ RoadSurfaceLayer::openImplementation()
 Status
 RoadSurfaceLayer::closeImplementation()
 {
-    // ensure createImageImplementation is not running
-    ScopedWriteLock lock(_inUseMutex);
-
     _rasterizer = nullptr;
-
     return ImageLayer::closeImplementation();
 }
 
@@ -154,7 +147,6 @@ RoadSurfaceLayer::getNode() const
 void
 RoadSurfaceLayer::setFeatureSource(FeatureSource* layer)
 {
-    ScopedWriteLock lock(_inUseMutex);
     if (getFeatureSource() != layer)
     {
         options().featureSource().setLayer(layer);
@@ -174,7 +166,6 @@ RoadSurfaceLayer::getFeatureSource() const
 void
 RoadSurfaceLayer::setStyleSheet(StyleSheet* value)
 {
-    ScopedWriteLock lock(_inUseMutex);
     options().styleSheet().setLayer(value);
 }
 
@@ -304,34 +295,38 @@ namespace
 GeoImage
 RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    ScopedReadLock lock(_inUseMutex);
-
     if (getStatus().isError())
     {
         return GeoImage::INVALID;
     }
 
-    if (_rasterizer == nullptr)
-    {
-        return GeoImage::INVALID;
-    }
+    // take local refs to isolate this method from the member objects
+    osg::ref_ptr<FeatureSource> featureSource(getFeatureSource());
+    osg::ref_ptr<StyleSheet> styleSheet(getStyleSheet());
+    osg::ref_ptr<TileRasterizer> rasterizer(_rasterizer);
+    osg::ref_ptr<Session> session(_session);
 
-    if (!getFeatureSource())
+    if (!featureSource.valid())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
         return GeoImage::INVALID;
     }
 
-    if (getFeatureSource()->getStatus().isError())
+    if (featureSource->getStatus().isError())
     {
-        setStatus(getFeatureSource()->getStatus());
+        setStatus(featureSource->getStatus());
         return GeoImage::INVALID;
     }
 
-    const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
-    if (!featureProfile)
+    osg::ref_ptr<const FeatureProfile> featureProfile = featureSource->getFeatureProfile();
+    if (!featureProfile.valid())
     {
         setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
+        return GeoImage::INVALID;
+    }
+
+    if (!rasterizer.valid() || !session.valid())
+    {
         return GeoImage::INVALID;
     }
 
@@ -344,7 +339,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
     // Fetch the set of features to render
     FeatureList features;
-    getFeatures(key, features, progress);
+    getFeatures(featureSource.get(), key, features, progress);
 
     if (!features.empty())
     {
@@ -363,13 +358,13 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         // Set the LTP as our output SRS.
         // The geometry compiler will transform all our features into the
         // LTP so we can render using an orthographic camera (TileRasterizer)
-        FilterContext fc(_session.get(), featureProfile, featureExtent);
+        FilterContext fc(session.get(), featureProfile, featureExtent);
         fc.setOutputSRS(outputExtent.getSRS());
 
         // compile the features into a node.
         GeometryCompiler compiler;
         StyleToFeatures mapping;
-        sortFeaturesIntoStyleGroups(getStyleSheet(), features, fc, mapping);
+        sortFeaturesIntoStyleGroups(styleSheet.get(), features, fc, mapping);
         osg::ref_ptr< osg::Group > group;
         if (!mapping.empty())
         {
@@ -390,12 +385,19 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         {
             OE_PROFILING_ZONE_NAMED("Rasterize");
 
-            Future<osg::ref_ptr<osg::Image>> result = _rasterizer->render(
+            group->setName(key.str());
+
+            Future<osg::ref_ptr<osg::Image>> result = rasterizer->render(
                 group.release(),
                 outputExtent);
 
-            // Immediately blocks on the result. Consider better ways?
-            const osg::ref_ptr<osg::Image>& image = result.get(progress);
+            osg::ref_ptr<ProgressCallback> local_progress = new ProgressCallback(
+                progress,
+                [&]() { return !isOpen(); }
+            );
+
+            // Immediately blocks on the result.
+            const osg::ref_ptr<osg::Image>& image = result.get(local_progress);
 
             if (image.valid() && image->data() != nullptr)
                 return GeoImage(image.get(), key.getExtent());
@@ -409,13 +411,13 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
 void
 RoadSurfaceLayer::getFeatures(
+    FeatureSource* fs,
     const TileKey& key,
     FeatureList& output,
     ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
 
-    FeatureSource* fs = getFeatureSource();
     OE_SOFT_ASSERT_AND_RETURN(fs != nullptr, __func__, );
 
     // Get the collection of keys accounting for the buffer width

@@ -34,6 +34,21 @@ CacheOptions::~CacheOptions()
 {
 }
 
+Config
+CacheOptions::getConfig() const
+{
+    Config conf = ConfigOptions::getConfig();
+    conf.set("enable_node_caching", enableNodeCaching());
+    return conf;
+}
+
+void
+CacheOptions::fromConfig(const Config& conf)
+{
+    enableNodeCaching().setDefault(false);
+    conf.get("enable_node_caching", enableNodeCaching());
+}
+
 //------------------------------------------------------------------------
 
 #define CACHESETTINGS_UDC_NAME "osgEarth.CacheSettings"

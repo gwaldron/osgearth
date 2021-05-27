@@ -24,6 +24,7 @@
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/StyleSheet>
+#include <osgEarth/Containers>
 #include "Export"
 
 namespace osgEarth { namespace Procedural
@@ -40,7 +41,6 @@ namespace osgEarth { namespace Procedural
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
-            OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);
             OE_OPTION(Distance, featureBufferWidth);
             virtual Config getConfig() const;
@@ -55,11 +55,11 @@ namespace osgEarth { namespace Procedural
         //! This or setFeatureSource
         void setFeatureSource(FeatureSource* layer);
         FeatureSource* getFeatureSource() const;
-
+        
         //! Buffer around the road vector for querying linear data (should be at least road width/2)
         void setFeatureBufferWidth(const Distance& value);
         const Distance& getFeatureBufferWidth() const;
-
+        
         //! Style for rendering the road
         void setStyleSheet(StyleSheet* value);
         StyleSheet* getStyleSheet() const;
@@ -82,6 +82,8 @@ namespace osgEarth { namespace Procedural
         // Called by Map when it removes this layer
         virtual void removedFromMap(const class Map*) override;
 
+        osg::Node* getNode() const override;
+
     protected: // Layer
 
         // post-ctor initialization
@@ -93,11 +95,20 @@ namespace osgEarth { namespace Procedural
 
     private:
         osg::ref_ptr<Session> _session;
-        std::shared_ptr<TileRasterizer> _rasterizer;
-        osg::ref_ptr<FeatureFilterChain> _filterChain;
+        mutable Gate<TileKey> _keygate;
+        using FeatureListCache = LRUCache<TileKey, FeatureList>;
+        mutable std::unique_ptr<FeatureListCache> _lru;
+
+        void getFeatures(
+            FeatureSource* featureSource,
+            const TileKey& key,
+            FeatureList& output,
+            ProgressCallback* progress) const;
+
+        osg::ref_ptr<TileRasterizer> _rasterizer;
     };
 
-} } // namespace osgEarth::Procedural
+} } // namespace osgEarth::Splat
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Procedural::RoadSurfaceLayer::Options);
 

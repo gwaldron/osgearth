@@ -105,8 +105,8 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
 
         if (_useRange) // meters
         {
-            float range = nv.getDistanceToViewPoint(getBound().center(), true);
-            inRange = (range >= 0.0f && range >= _minRange && range <= _maxRange);
+            float range = std::max(0.0f, nv.getDistanceToViewPoint(getBound().center(), true) - getBound().radius());
+            inRange = (range >= _minRange && range <= _maxRange);
             priority = -range * _priorityScale;
         }
         else // pixels

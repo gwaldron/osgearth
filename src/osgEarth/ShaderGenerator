@@ -99,7 +99,10 @@ namespace osgEarth
          * @param name Name to give to the top level Virtual Program.
          * @param cache StateSet cache to use for sharing state when finished.
          */
-        void run(osg::Node* graph, const std::string& name, StateSetCache* cache);
+        void run(
+            osg::Node* graph,
+            const std::string& name = std::string(),
+            StateSetCache* cache = nullptr);
 
         //! Run the shader generator on a single state set.
         osg::ref_ptr<osg::StateSet> run(osg::StateSet* stateSet);

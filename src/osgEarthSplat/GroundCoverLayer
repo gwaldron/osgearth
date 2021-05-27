@@ -140,8 +140,8 @@ namespace osgEarth { namespace Splat
         {
             GroundCoverLayer* _layer;
             LayerAcceptor(GroundCoverLayer* layer) : _layer(layer) { }
-            bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const;
-            bool acceptKey(const TileKey& key) const;
+            bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const override;
+            bool acceptKey(const TileKey& key) const override;
         };
         friend struct LayerAcceptor;
 
@@ -149,7 +149,7 @@ namespace osgEarth { namespace Splat
         {
             GroundCoverLayer* _layer;
             ZoneSelector(GroundCoverLayer* layer) : _layer(layer) { }
-            void operator()(osg::Node*, osg::NodeVisitor*) const;
+            void operator()(osg::Node*, osg::NodeVisitor*) const override;
         };
         friend struct ZoneSelector;
 
@@ -198,8 +198,8 @@ namespace osgEarth { namespace Splat
             void applyLocalState(osg::RenderInfo& ri, DrawState& ds);
 
             // DrawCallback API
-            void draw(osg::RenderInfo& ri, const TileBatch* tiles);
-            void drawTile(osg::RenderInfo& ri, const DrawContext& tile);
+            void visitTileBatch(osg::RenderInfo& ri, const TileBatch* tiles) override;
+            void visitTile(osg::RenderInfo& ri, const DrawContext& tile) override;
 
             void resizeGLObjectBuffers(unsigned maxSize);
             void releaseGLObjects(osg::State* state) const;

@@ -154,13 +154,14 @@ namespace osgEarth { namespace Threading
         //! DTOR
         ~Event();
 
-        //! Block until the event is set, then return true if set, false on error.
+        //! Block until the event is set, then return true.
         bool wait();
 
-        //! Like wait(), but also returns false on timeout.
+        //! Block until the event is set or the timout expires.
+        //! Return true if the event has set, otherwise false.
         bool wait(unsigned timeout_ms);
 
-        //! Like wait(), but resets the state before returning.
+        //! Like wait(), but resets the state and always returns true.
         bool waitAndReset();
 
         //! Set the event state, causing any waiters to unblock.
@@ -253,10 +254,19 @@ namespace osgEarth { namespace Threading
         }
 
         const T& get(const Cancelable* cancelable) const {
+            //while (
+            //    !isAbandoned() &&
+            //    !(cancelable && cancelable->isCanceled()) &&
+            //    !_ev->wait(1u));
+
             while (
+                !isAvailable() &&
                 !isAbandoned() &&
-                !(cancelable && cancelable->isCanceled()) &&
-                !_ev->wait(1u));
+                !(cancelable && cancelable->isCanceled()))
+            {
+                _ev->wait(1u);
+            }
+
             return _shared->obj();
         }
 

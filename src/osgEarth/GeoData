@@ -740,11 +740,17 @@ namespace osgEarth
 
     typedef std::vector<GeoImage> GeoImageVector;
 
-    //typedef ImageUtils::ImageIteratorWithExtent<GeoExtent> GeoImageIterator;
     struct GeoImageIterator : public ImageUtils::ImageIteratorWithExtent<GeoExtent>
     {
         GeoImageIterator(const GeoImage& im) :
             ImageUtils::ImageIteratorWithExtent<GeoExtent>(
+                im.getImage(), im.getExtent()) { }
+    };
+
+    struct GeoImagePixelReader : public ImageUtils::PixelReaderWithExtent<GeoExtent>
+    {
+        GeoImagePixelReader(const GeoImage& im) :
+            ImageUtils::PixelReaderWithExtent<GeoExtent>(
                 im.getImage(), im.getExtent()) { }
     };
 

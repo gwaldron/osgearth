@@ -751,71 +751,81 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
     bool hasMipMaps = false;
     bool isCompressed = false;
 
-    // figure out the texture compression method to use (if any)
-    std::string compressionMethod = layer->getCompressionMethod();
-    if (compressionMethod.empty())
-        compressionMethod = _options.textureCompression().get();
-
-    GLenum pixelFormat = image->getPixelFormat();
-    GLenum internalFormat = image->getInternalTextureFormat();
-
-    // Fix incorrect internal format if necessary
-    if (internalFormat == pixelFormat)
+    if (image->requiresUpdateCall())
     {
-        if (pixelFormat == GL_RGB) internalFormat = GL_RGB8;
-        else if (pixelFormat == GL_RGBA) internalFormat = GL_RGBA8;
-        else if (pixelFormat == GL_RG) internalFormat = GL_RG8;
-        else if (pixelFormat == GL_RED) internalFormat = GL_R8;
+        // image sequences and other data that updates itself
+        // shall not be mipmapped/compressed here
+        tex = new osg::Texture2D(const_cast<osg::Image*>(image));
     }
-
-    if (image->r() == 1)
+    else
     {
-        osg::ref_ptr<const osg::Image> compressed = ImageUtils::compressImage(image, compressionMethod);
-        const osg::Image* mipmapped = ImageUtils::mipmapImage(compressed.get());
-        tex = new osg::Texture2D(const_cast<osg::Image*>(mipmapped));
-        hasMipMaps = mipmapped->isMipmap();
-        isCompressed = mipmapped->isCompressed();
+        // figure out the texture compression method to use (if any)
+        std::string compressionMethod = layer->getCompressionMethod();
+        if (compressionMethod.empty())
+            compressionMethod = _options.textureCompression().get();
 
-        if (layer->getCompressionMethod() == "gpu" && !mipmapped->isCompressed())
-            tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
-    }
+        GLenum pixelFormat = image->getPixelFormat();
+        GLenum internalFormat = image->getInternalTextureFormat();
 
-    else // if (image->r() > 1)
-    {
-        std::vector< osg::ref_ptr<osg::Image> > images;
-        ImageUtils::flattenImage(image, images);
-
-        // Make sure we are using a proper sized internal format
-        for(int i=0; i<images.size(); ++i)
+        // Fix incorrect internal format if necessary
+        if (internalFormat == pixelFormat)
         {
-            images[i]->setInternalTextureFormat(internalFormat);
+            if (pixelFormat == GL_RGB) internalFormat = GL_RGB8;
+            else if (pixelFormat == GL_RGBA) internalFormat = GL_RGBA8;
+            else if (pixelFormat == GL_RG) internalFormat = GL_RG8;
+            else if (pixelFormat == GL_RED) internalFormat = GL_R8;
         }
 
-        osg::ref_ptr<const osg::Image> compressed;
-        for(auto& ref : images)
+        if (image->r() == 1)
         {
-            compressed = ImageUtils::compressImage(ref.get(), compressionMethod);
-            ref = const_cast<osg::Image*>(ImageUtils::mipmapImage(compressed.get()));
+            osg::ref_ptr<const osg::Image> compressed = ImageUtils::compressImage(image, compressionMethod);
+            const osg::Image* mipmapped = ImageUtils::mipmapImage(compressed.get());
+            tex = new osg::Texture2D(const_cast<osg::Image*>(mipmapped));
+            hasMipMaps = mipmapped->isMipmap();
+            isCompressed = mipmapped->isCompressed();
 
-            hasMipMaps = compressed->isMipmap();
-            isCompressed = compressed->isCompressed();
+            if (layer->getCompressionMethod() == "gpu" && !mipmapped->isCompressed())
+                tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
         }
 
-        osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
+        else // if (image->r() > 1)
+        {
+            std::vector< osg::ref_ptr<osg::Image> > images;
+            ImageUtils::flattenImage(image, images);
 
-        tex2dArray->setTextureSize(image[0].s(), image[0].t(), images.size());
-        tex2dArray->setInternalFormat(images[0]->getInternalTextureFormat());
-        tex2dArray->setSourceFormat(images[0]->getPixelFormat());
-        for (int i = 0; i < (int)images.size(); ++i)
-            tex2dArray->setImage(i, const_cast<osg::Image*>(images[i].get()));
+            // Make sure we are using a proper sized internal format
+            for (int i = 0; i < images.size(); ++i)
+            {
+                images[i]->setInternalTextureFormat(internalFormat);
+            }
 
-        tex = tex2dArray;
+            osg::ref_ptr<const osg::Image> compressed;
+            for (auto& ref : images)
+            {
+                compressed = ImageUtils::compressImage(ref.get(), compressionMethod);
+                ref = const_cast<osg::Image*>(ImageUtils::mipmapImage(compressed.get()));
 
-        if (layer->getCompressionMethod() == "gpu" && !isCompressed)
-            tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
+                hasMipMaps = compressed->isMipmap();
+                isCompressed = compressed->isCompressed();
+            }
+
+            osg::Texture2DArray* tex2dArray = new osg::Texture2DArray();
+
+            tex2dArray->setTextureSize(image[0].s(), image[0].t(), images.size());
+            tex2dArray->setInternalFormat(images[0]->getInternalTextureFormat());
+            tex2dArray->setSourceFormat(images[0]->getPixelFormat());
+            for (int i = 0; i < (int)images.size(); ++i)
+                tex2dArray->setImage(i, const_cast<osg::Image*>(images[i].get()));
+
+            tex = tex2dArray;
+
+            if (layer->getCompressionMethod() == "gpu" && !isCompressed)
+                tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);
+        }
+
+        tex->setDataVariance(osg::Object::STATIC);
     }
 
-    tex->setDataVariance(osg::Object::STATIC);
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint(false);

@@ -34,7 +34,7 @@ namespace
     struct MemCacheBin : public CacheBin
     {
         MemCacheBin( const std::string& id, unsigned maxSize )
-            : CacheBin( id ),
+            : CacheBin( id, true ),
               _lru    ( true /* MT-safe */, maxSize )
         {
             //nop

@@ -63,6 +63,10 @@ namespace osgEarth
 
         void traverse(osg::NodeVisitor& nv) override;
 
+        void releaseGLObjects(osg::State*) const override;
+
+        void resizeGLObjectBuffers(unsigned) override;
+
     private:
 
 
@@ -77,7 +81,6 @@ namespace osgEarth
         struct RenderContext
         {
             RenderContext() : _samplesQuery(0), _pbo(0) { }
-            osg::ref_ptr<osgUtil::SceneView> _sv;
             GLuint _samplesQuery;
             GLuint _pbo;
             unsigned _width, _height;

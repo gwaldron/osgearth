@@ -221,6 +221,15 @@ namespace osgEarth
             float       my,
             GeoPoint&   out_point) const;
 
+        //! Returns the map coordinates under the provided mouse (window) coordinates.
+        //! @param view View in which to do the query
+        //! @param mx, my Mouse coordinates
+        //! @return Outputs the point under the mouse
+        GeoPoint getGeoPointUnderMouse(
+            osg::View* view,
+            float mx,
+            float my) const;
+
     public: // osg::Object
 
         virtual const char* libraryName() const { return "osgEarth"; }

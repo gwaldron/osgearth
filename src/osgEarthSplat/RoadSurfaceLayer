@@ -95,14 +95,12 @@ namespace osgEarth { namespace Splat
 
     private:
         osg::ref_ptr<Session> _session;
-        //std::shared_ptr<TileRasterizer> _rasterizer;
-        mutable ReadWriteMutex _inUseMutex;
-
         mutable Gate<TileKey> _keygate;
         using FeatureListCache = LRUCache<TileKey, FeatureList>;
         mutable std::unique_ptr<FeatureListCache> _lru;
 
         void getFeatures(
+            FeatureSource* featureSource,
             const TileKey& key,
             FeatureList& output,
             ProgressCallback* progress) const;

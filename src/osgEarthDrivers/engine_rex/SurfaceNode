@@ -117,6 +117,7 @@ namespace osgEarth { namespace REX
 
         TileKey                     _tileKey;
         osg::ref_ptr<TileDrawable>  _drawable;
+        osg::ref_ptr<osg::Geometry> _collider;
         osg::ref_ptr<osg::Node>     _debugNode;
         osg::ref_ptr<osgText::Text> _debugText;
         static const bool           _enableDebugNodes;
@@ -133,6 +134,8 @@ namespace osgEarth { namespace REX
 
         typedef VectorPoints (ChildrenCorners) [4];
         ChildrenCorners _childrenCorners;
+
+        void updateCollider();
     };
 
 } } // namespace osgEarth::REX

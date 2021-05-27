@@ -33,6 +33,7 @@
 #include <osg/TriangleFunctor>
 #include <osgText/Text>
 #include <osg/CullStack>
+#include <osgUtil/Simplifier>
 #include <osgUtil/CullVisitor>
 
 #include <numeric>
@@ -210,8 +211,14 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey, TileDrawable* drawable)
 
     _drawable = drawable;
 
+    // Disable intersection.
+    _drawable->setNodeMask((1 << 2));
+
     // Create the final node.
     addChild(_drawable.get());
+
+
+    updateCollider();
 
     // Establish a local reference frame for the tile:
     GeoPoint centroid = tilekey.getExtent().getCentroid();
@@ -223,6 +230,35 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey, TileDrawable* drawable)
     // Initialize the cached bounding box.
     setElevationRaster( 0L, osg::Matrixf::identity() );
 }
+
+void
+SurfaceNode::updateCollider()
+{
+    if (_collider.valid())
+    {
+        removeChild(_collider.get());
+    }
+
+    // Create a simplified collider for the terrain tile
+    _collider = new osg::Geometry;
+    osg::Vec3Array* tempVerts = new osg::Vec3Array;
+    tempVerts->reserve(_drawable->_mesh.size());
+
+    for (unsigned int i = 0; i < _drawable->_mesh.size(); i++)
+    {
+        tempVerts->push_back(_drawable->_mesh[i]);
+    }
+    _collider->setVertexArray(tempVerts);
+    _collider->addPrimitiveSet((osg::PrimitiveSet*)_drawable->_geom->getDrawElements()->clone(osg::CopyOp::DEEP_COPY_ALL));
+    _collider->setNodeMask((1 << 1));
+    float ratio = 0.1;
+    float maxError = 0.1f;
+    osgUtil::Simplifier simplifier(ratio, maxError);
+    _collider->accept(simplifier);
+    _collider->setName("Collider");
+    addChild(_collider.get());
+}
+
 
 osg::BoundingSphere
 SurfaceNode::computeBound() const
@@ -348,6 +384,8 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
 
     // Update the horizon culler.
     _horizonCuller.set( _tileKey.getProfile()->getSRS(), getMatrix(), box );
+
+    updateCollider();
 
     // need this?
     dirtyBound();

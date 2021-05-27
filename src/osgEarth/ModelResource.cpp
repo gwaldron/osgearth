@@ -25,6 +25,7 @@
 #include <osgEarth/Metrics>
 #include <osgUtil/Optimizer>
 #include <osg/ComputeBoundsVisitor>
+#include <osgUtil/Simplifier>
 
 #define LC "[ModelResource] "
 
@@ -137,6 +138,21 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
         // Disable automatic texture unref since resources can be shared/paged.
         SetUnRefPolicyToFalse visitor;
         node->accept( visitor );
+
+        osg::Group * root = new osg::Group;
+        node->setNodeMask((1 << 2));
+        root->addChild(node);
+
+        osg::ref_ptr< osg::Node > collider = (osg::Node*)node->clone(osg::CopyOp::DEEP_COPY_ALL);        
+        float ratio = 0.1;
+        float maxError = 0.5f;
+        osgUtil::Simplifier simplifier(ratio, maxError);
+        collider->accept(simplifier);
+        collider->setNodeMask((1 << 1));
+        collider->setName("Collider");
+        root->addChild(collider.get());
+
+        node = root;
     }
     else // failing that, fall back on the old encoding format..
     {

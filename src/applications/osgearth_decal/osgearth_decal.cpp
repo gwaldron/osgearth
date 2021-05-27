@@ -121,14 +121,12 @@ struct App
     osg::ref_ptr<osg::Image> _landCover;
     std::stack<std::string> _undoStack;
     unsigned _idGenerator;
-    unsigned _decalsPerClick;
     std::vector<const Layer*> _layersToRefresh;
 
     App()
     {
         _idGenerator = 0u;
         _size = 0.0f;
-        _decalsPerClick = 1u;
 
         // Needs to be less than or equal to the underlying terrain
         // data's max LOD, or else the normal maps won't update.
@@ -176,6 +174,9 @@ struct App
 
     void addCrater(const GeoPoint& center, const Distance& radius)
     {
+        if (!center.isValid())
+            return;
+
         GeoExtent extent;
         osg::ref_ptr<osg::Image> elevation;
         osg::ref_ptr<osg::Image> lifemap;
@@ -214,7 +215,7 @@ struct App
 
     void undoLastAdd()
     {
-        for(unsigned i=0; !_undoStack.empty() && i<_decalsPerClick; ++i)
+        if (!_undoStack.empty())
         {
             std::string id = _undoStack.top();
             _undoStack.pop();
@@ -311,43 +312,24 @@ main(int argc, char** argv)
         app._size = 100.0f;
         arguments.read("--size", app._size);
 
-        app._decalsPerClick = 1u;
-
         app.init(MapNode::get(node));
         viewer.setSceneData(node);
 
-        EventRouter* ui = new EventRouter();
-        viewer.addEventHandler(ui);
+        EventRouter& ui = EventRouter::get(&viewer);
 
         // Press 'D' to drop a crater under the mouse
-        ui->onKeyPress(ui->KEY_D, [&](osg::View* view, float x, float y)
+        ui.onKeyPress(ui.KEY_D, [&](osg::View* view, float x, float y)
             {
-                osg::Vec3d world;
-                if (app._mapNode->getTerrain()->getWorldCoordsUnderMouse(view, x, y, world))
-                {
-                    OE_WARN << LC << "No intersection under mouse." << std::endl;
-                    return;
-                }
-
-                GeoPoint mapPoint;
-                mapPoint.fromWorld(app._mapNode->getMapSRS(), world);
-                mapPoint.transformInPlace(SpatialReference::get("spherical-mercator"));
-
-                //TODO: re-enable the decals-per-click 
-                //for (unsigned i = 0; i < _app._decalsPerClick; ++i)
-                {
-                    app.addCrater(
-                        mapPoint,
-                        Distance(app._size, Units::METERS));
-                }
-            }
-        );
+                app.addCrater(
+                    app._mapNode->getGeoPointUnderMouse(view, x, y),
+                    Distance(app._size, Units::METERS));
+            });
 
         // Press 'U' to undo the last crater
-        ui->onKeyPress(ui->KEY_U, [&]() { app.undoLastAdd(); });
+        ui.onKeyPress(ui.KEY_U, [&]() { app.undoLastAdd(); });
 
         // Press 'C' to clear all craters
-        ui->onKeyPress(ui->KEY_C, [&]() { app.reset(); });
+        ui.onKeyPress(ui.KEY_C, [&]() { app.reset(); });
 
         OE_NOTICE << LC << 
             "\n\n-- Zoom in close ..."

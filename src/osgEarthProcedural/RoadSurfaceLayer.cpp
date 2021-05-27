@@ -358,7 +358,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         // Set the LTP as our output SRS.
         // The geometry compiler will transform all our features into the
         // LTP so we can render using an orthographic camera (TileRasterizer)
-        FilterContext fc(session.get(), featureProfile, featureExtent);
+        FilterContext fc(session.get(), featureProfile.get(), featureExtent);
         fc.setOutputSRS(outputExtent.getSRS());
 
         // compile the features into a node.
@@ -397,7 +397,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             );
 
             // Immediately blocks on the result.
-            const osg::ref_ptr<osg::Image>& image = result.get(local_progress);
+            const osg::ref_ptr<osg::Image>& image = result.get(local_progress.get());
 
             if (image.valid() && image->data() != nullptr)
                 return GeoImage(image.get(), key.getExtent());

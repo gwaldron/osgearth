@@ -91,6 +91,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         ADD_SUBDIRECTORY(osgearth_heatmap)
         ADD_SUBDIRECTORY(osgearth_createtile)
         ADD_SUBDIRECTORY(osgearth_collecttriangles)
+        ADD_SUBDIRECTORY(osgearth_imgui_embedded)
 
         IF(SILVERLINING_FOUND)
             ADD_SUBDIRECTORY(osgearth_silverlining)
@@ -106,11 +107,11 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
 
         IF (Protobuf_FOUND AND SQLITE3_FOUND)
             ADD_SUBDIRECTORY(osgearth_mvtindex)
-        ENDIF()        
+        ENDIF()
 
     ENDIF(OSGEARTH_BUILD_EXAMPLES)
-    
-    
+
+
     IF(OSGEARTH_BUILD_TESTS)
         add_subdirectory(osgearth_bindless)
         ADD_SUBDIRECTORY(osgearth_drawables)

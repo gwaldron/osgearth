@@ -6,6 +6,7 @@
 #include <osgUtil/SceneView>
 #include <osgUtil/UpdateVisitor>
 #include <osgViewer/ViewerEventHandlers>
+#include <osg/io_utils>
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -19,35 +20,21 @@ void OsgImGuiHandler::RealizeOperation::operator()(osg::Object* object)
     OsgImGuiHandler::init();
 }
 
-struct OsgImGuiHandler::ImGuiNewFrameCallback : public osg::Camera::DrawCallback
-{
-    ImGuiNewFrameCallback(OsgImGuiHandler& handler)
-        : handler_(handler)
-    {
-    }
-
-    void operator()(osg::RenderInfo& renderInfo) const override
-    {
-        handler_.newFrame(renderInfo);
-    }
-
-private:
-    OsgImGuiHandler& handler_;
-};
-
 struct OsgImGuiHandler::ImGuiRenderCallback : public osg::Camera::DrawCallback
 {
-    ImGuiRenderCallback(OsgImGuiHandler& handler) :
-        _handler(handler)
+    ImGuiRenderCallback(OsgImGuiHandler& handler, osg::Camera::DrawCallback* prev)
+        : _handler(handler), _prev(prev)
     {
     }
 
     void operator()(osg::RenderInfo& renderInfo) const override
     {
+        if (_prev.valid()) _prev->operator()(renderInfo);
         _handler.render(renderInfo);
     }
 
 private:
+    osg::ref_ptr< osg::Camera::DrawCallback> _prev;
     OsgImGuiHandler& _handler;
 };
 
@@ -137,42 +124,7 @@ void OsgImGuiHandler::init()
 
 void OsgImGuiHandler::setCameraCallbacks(osg::Camera* camera)
 {
-    camera->setPreDrawCallback(new ImGuiNewFrameCallback(*this));
-    camera->setPostDrawCallback(new ImGuiRenderCallback(*this));
-}
-
-void OsgImGuiHandler::newFrame(osg::RenderInfo& renderInfo)
-{
-    ImGui_ImplOpenGL3_NewFrame();
-
-    ImGuiIO& io = ImGui::GetIO();
-
-    io.DisplaySize = ImVec2(renderInfo.getCurrentCamera()->getGraphicsContext()->getTraits()->width, renderInfo.getCurrentCamera()->getGraphicsContext()->getTraits()->height);
-
-    double currentTime = renderInfo.getView()->getFrameStamp()->getSimulationTime();
-    io.DeltaTime = currentTime - time_ + 0.0000001;
-    time_ = currentTime;
-
-    for (int i = 0; i < 3; i++)
-    {
-        io.MouseDown[i] = mousePressed_[i];
-    }
-
-    for (int i = 0; i < 3; i++)
-    {
-        io.MouseDoubleClicked[i] = mouseDoubleClicked_[i];
-    }
-
-    io.MouseWheel = mouseWheel_;
-    mouseWheel_ = 0.0f;
-
-    if (firstFrame_ == true)
-    {
-        installSettingsHandler();
-        firstFrame_ = false;
-    }
-
-    ImGui::NewFrame();
+    camera->setPostDrawCallback(new ImGuiRenderCallback(*this, camera->getPostDrawCallback()));
 }
 
 namespace
@@ -231,6 +183,39 @@ void OsgImGuiHandler::installSettingsHandler()
 
 void OsgImGuiHandler::render(osg::RenderInfo& ri)
 {
+    setFocusedView(nullptr);
+
+    ImGui_ImplOpenGL3_NewFrame();
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.DisplaySize = ImVec2(ri.getCurrentCamera()->getGraphicsContext()->getTraits()->width, ri.getCurrentCamera()->getGraphicsContext()->getTraits()->height);
+
+    double currentTime = ri.getView()->getFrameStamp()->getSimulationTime();
+    io.DeltaTime = currentTime - time_ + 0.0000001;
+    time_ = currentTime;
+
+    for (int i = 0; i < 3; i++)
+    {
+        io.MouseDown[i] = mousePressed_[i];
+    }
+
+    for (int i = 0; i < 3; i++)
+    {
+        io.MouseDoubleClicked[i] = mouseDoubleClicked_[i];
+    }
+
+    io.MouseWheel = mouseWheel_;
+    mouseWheel_ = 0.0f;
+
+    if (firstFrame_ == true)
+    {
+        installSettingsHandler();
+        firstFrame_ = false;
+    }
+
+    ImGui::NewFrame();
+
     static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_NoDockingInCentralNode | ImGuiDockNodeFlags_PassthruCentralNode;
 
     auto dockSpaceId = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), dockspace_flags);
@@ -241,8 +226,6 @@ void OsgImGuiHandler::render(osg::RenderInfo& ri)
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     auto centralNode = ImGui::DockBuilderGetCentralNode(dockSpaceId);
-
-    auto io = ImGui::GetIO();
 
     auto camera = ri.getCurrentCamera();
     auto viewport = camera->getViewport();    
@@ -279,6 +262,7 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
             initialized_ = true;
         }
     }
+
 
     ImGuiIO& io = ImGui::GetIO();
     const bool wantCaptureMouse = io.WantCaptureMouse;
@@ -317,6 +301,7 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
         case (osgGA::GUIEventAdapter::RELEASE):
         {
             io.MousePos = ImVec2(ea.getX(), io.DisplaySize.y - ea.getY());
+
             mousePressed_[0] = ea.getButtonMask() & osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
             mousePressed_[1] = ea.getButtonMask() & osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON;
             mousePressed_[2] = ea.getButtonMask() & osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON;
@@ -324,19 +309,69 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
             mouseDoubleClicked_[0] = ea.getButtonMask() & osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
             mouseDoubleClicked_[1] = ea.getButtonMask() & osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON;
             mouseDoubleClicked_[2] = ea.getButtonMask() & osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON;
+
+            if (wantCaptureMouse && getFocusedView())
+            {
+                float x, y;
+                if (getFocusedView()->screenToLocal(ea.getX(), ea.getY(), x, y))
+                {
+                    int button;
+                    if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON) button = 1;
+                    else if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON) button = 2;
+                    else if (ea.getButton() == osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON) button = 3;
+
+                    getFocusedView()->getEventQueue()->mouseButtonRelease(x, y, button);
+                    return true;
+                }
+            }
+
             return wantCaptureMouse;
         }
         case (osgGA::GUIEventAdapter::PUSH):
         {
             io.MousePos = ImVec2(ea.getX(), io.DisplaySize.y - ea.getY());
+
+            if (wantCaptureMouse && getFocusedView())
+            {
+                float x, y;
+                if (getFocusedView()->screenToLocal(ea.getX(), ea.getY(), x, y))
+                {
+                    int button;
+                    if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON) button = 1;
+                    else if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON) button = 2;
+                    else if (ea.getButton() == osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON) button = 3;
+
+                    getFocusedView()->getEventQueue()->mouseButtonPress(x, y, button);
+                    return true;
+                }
+            }
+
             mousePressed_[0] = ea.getButtonMask() & osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
             mousePressed_[1] = ea.getButtonMask() & osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON;
-            mousePressed_[2] = ea.getButtonMask() & osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON;
-            return wantCaptureMouse;
+            mousePressed_[2] = ea.getButtonMask() & osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON;            
+
+            
+            return wantCaptureMouse;            
         }
         case (osgGA::GUIEventAdapter::DOUBLECLICK):
         {
             io.MousePos = ImVec2(ea.getX(), io.DisplaySize.y - ea.getY());
+
+            if (wantCaptureMouse && getFocusedView())
+            {
+                float x, y;
+                if (getFocusedView()->screenToLocal(ea.getX(), ea.getY(), x, y))
+                {
+                    int button;
+                    if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON) button = 1;
+                    else if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON) button = 2;
+                    else if (ea.getButton() == osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON) button = 3;
+
+                    getFocusedView()->getEventQueue()->mouseDoubleButtonPress(x, y, button);
+                    return true;
+                }
+            }
+
             mouseDoubleClicked_[0] = ea.getButtonMask() & osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
             mouseDoubleClicked_[1] = ea.getButtonMask() & osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON;
             mouseDoubleClicked_[2] = ea.getButtonMask() & osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON;
@@ -346,13 +381,30 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
         case (osgGA::GUIEventAdapter::MOVE):
         {
             io.MousePos = ImVec2(ea.getX(), io.DisplaySize.y - ea.getY());
+
+            if (wantCaptureMouse && getFocusedView())
+            {
+                float x, y;
+                if (getFocusedView()->screenToLocal(ea.getX(), ea.getY(), x, y))
+                {
+                    getFocusedView()->getEventQueue()->mouseMotion(x, y);
+                    return true;
+                }
+            }
+
             return wantCaptureMouse;
         }
         case (osgGA::GUIEventAdapter::SCROLL):
-        {
+        {            
+            if (wantCaptureMouse && getFocusedView())
+            {
+                getFocusedView()->getEventQueue()->mouseScroll(ea.getScrollingMotion());
+                return true;
+            }
             mouseWheel_ = ea.getScrollingMotion() == osgGA::GUIEventAdapter::SCROLL_UP ? 1.0 : -1.0;
             return wantCaptureMouse;
         }
+
         default:
         {
             return false;

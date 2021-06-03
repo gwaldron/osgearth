@@ -5,6 +5,7 @@
 #include <osgEarth/Config>
 #include <osgViewer/ViewerEventHandlers>
 
+
 namespace osg {
     class Camera;
 }
@@ -36,6 +37,8 @@ namespace osgEarth { namespace GUI
         }
     };
 
+    
+
 
     class OsgImGuiHandler : public osgGA::GUIEventHandler
     {
@@ -65,8 +68,6 @@ namespace osgEarth { namespace GUI
         static void init();
 
         void setCameraCallbacks(osg::Camera* camera);
-
-        void newFrame(osg::RenderInfo& renderInfo);
 
         void render(osg::RenderInfo& renderInfo);
 

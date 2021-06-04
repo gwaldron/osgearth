@@ -22,55 +22,12 @@
 
 using namespace osgEarth::GUI;
 
-
-struct FBOPreDraw : public osg::Camera::DrawCallback
-{
-    osg::ref_ptr<osg::Texture2D> _tex;
-    mutable osg::ref_ptr<osg::FrameBufferObject> _fbo;
-
-    FBOPreDraw(osg::Texture2D* tex) : _tex(tex){ }
-
-    void operator()(osg::RenderInfo& ri) const override
-    {
-        if (_fbo.valid() == false)
-        {
-            _fbo = new osg::FrameBufferObject();
-
-            _fbo->setAttachment(
-                osg::Camera::COLOR_BUFFER,
-                osg::FrameBufferAttachment(_tex.get()));
-
-            _fbo->setAttachment(
-                osg::Camera::DEPTH_BUFFER,
-                osg::FrameBufferAttachment(
-                    new osg::RenderBuffer(
-                        _tex->getTextureWidth(),
-                        _tex->getTextureHeight(),
-                        GL_DEPTH_COMPONENT24)));
-        }
-
-        _fbo->apply(*ri.getState());
-    }
-};
-
-struct FBOPostDraw : public osg::Camera::DrawCallback
-{
-    FBOPostDraw() {}
-
-    void operator()(osg::RenderInfo& ri) const override
-    {
-        // deactivate the FBO before rendering the ImGui controls:
-        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
-        ext->glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
-    }
-};
-
-
-
 EmbeddedViewer::EmbeddedViewer(osg::Node* node, osg::GraphicsContext* mainContext)
 {
-    _graphicsWindowEmbedded = setUpViewerAsEmbeddedInWindow(0, 0, _width, _height);
-    _graphicsWindowEmbedded->setState(mainContext->getState());
+    getCamera()->setViewport(new osg::Viewport(0, 0, _width, _height));
+    getCamera()->setProjectionMatrixAsPerspective(30.0f, static_cast<double>(_width) / static_cast<double>(_height), 1.0f, 10000.0f);
+
+    getCamera()->setGraphicsContext(mainContext);
 
     setSceneData(node);
 
@@ -107,15 +64,13 @@ EmbeddedViewer::EmbeddedViewer(osg::Node* node, osg::GraphicsContext* mainContex
     _colorTexture->setSourceType(GL_UNSIGNED_BYTE);
     _colorTexture->setInternalFormat(GL_RGB8);
 
-    // install FBO wrapper for camera:
-    getCamera()->setPreDrawCallback(new FBOPreDraw(_colorTexture.get()));
-    getCamera()->setPostDrawCallback(new FBOPostDraw());
+    getCamera()->setRenderOrder(osg::Camera::PRE_RENDER);
+    getCamera()->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+    getCamera()->attach(osg::Camera::BufferComponent::COLOR_BUFFER, _colorTexture.get());
 
     getCamera()->setViewMatrix(osg::Matrixd::lookAt(center + osg::Vec3d(0.0, -dist, 0.0f),
         center,
-        osg::Vec3d(0, 0, 1)));
-
-    realize();
+        osg::Vec3d(0, 0, 1)));    
 }
 
 void EmbeddedViewer::setSize(unsigned int x, unsigned int y)
@@ -125,13 +80,8 @@ void EmbeddedViewer::setSize(unsigned int x, unsigned int y)
     {
         _width = x;
         _height = y;
-        getEventQueue()->windowResize(0, 0, _width, _height);
-        _graphicsWindowEmbedded->resized(0, 0, _width, _height);
-        getCamera()->resize(_width, _height);
-
-        _colorTexture->setTextureSize(_width, _height);
-        _colorTexture->dirtyTextureObject();
-
+        getCamera()->resize(_width, _height, osg::Camera::RESIZE_VIEWPORT | osg::Camera::RESIZE_ATTACHMENTS | osg::Camera::RESIZE_PROJECTIONMATRIX);
+        getEventQueue()->windowResize(0, 0, _width, _height);        
     }
 }
 

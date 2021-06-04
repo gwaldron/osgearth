@@ -39,7 +39,7 @@ namespace osgEarth
     namespace GUI
     {
 
-        class EmbeddedViewer : public osgViewer::Viewer
+        class EmbeddedViewer : public osgViewer::View
         {
         public:
             EmbeddedViewer(osg::Node* node, osg::GraphicsContext* mainContext);
@@ -52,9 +52,7 @@ namespace osgEarth
 
             osg::ref_ptr< osg::Texture2D > _colorTexture;
             unsigned int _width = 512;
-            unsigned int _height = 512;            
-
-            osg::ref_ptr<osgViewer::GraphicsWindowEmbedded> _graphicsWindowEmbedded;
+            unsigned int _height = 512;
         };
 
         extern void setFocusedView(EmbeddedViewer* view);

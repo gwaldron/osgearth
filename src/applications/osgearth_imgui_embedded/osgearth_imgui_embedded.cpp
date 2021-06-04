@@ -24,6 +24,7 @@
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
 #include <osgViewer/Viewer>
+#include <osgViewer/CompositeViewer>
 #include <osgViewer/Renderer>
 #include <osgDB/ReadFile>
 
@@ -32,6 +33,9 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::GUI;
+
+
+static osgViewer::CompositeViewer *s_viewer;
 
 int
 usage(const char* name)
@@ -66,13 +70,11 @@ protected:
     {
         if (!isVisible()) return;
 
-        _view->frame();
-
         ImGuiIO& io = ImGui::GetIO();
 
         ImGui::Begin(name(), visible());        
-        auto size = ImVec2(_view->_colorTexture->getTextureWidth(), _view->_colorTexture->getTextureWidth());
-        //auto size = ImGui::GetWindowSize();
+        //auto size = ImVec2(_view->_colorTexture->getTextureWidth(), _view->_colorTexture->getTextureWidth());
+        auto size = ImGui::GetContentRegionAvail();
         _view->setSize(size.x, size.y);
 
         ImVec2 screen_pos = ImGui::GetCursorScreenPos();        
@@ -82,8 +84,7 @@ protected:
         if (texture)
         {
             // Get the context id
-            const unsigned int currentContextID = renderInfo.getState()->getContextID();
-            const unsigned int contextID = _view->_graphicsWindowEmbedded->getState()->getContextID();
+            const unsigned int contextID = renderInfo.getState()->getContextID();
 
             unsigned int w = size.x;
             unsigned int h = size.y;
@@ -95,7 +96,7 @@ protected:
             osg::Texture::TextureObject* textureObject = texture->getTextureObject(contextID);
             if (textureObject)
             {
-                ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, 1), ImVec2(1, 0), ImVec4(1, 1, 1, 1), ImVec4(1, 1, 0, 1));        
+                ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, 1), ImVec2(1, 0));
                 if (ImGui::IsItemHovered())
                 {
                     setFocusedView(_view.get());
@@ -142,17 +143,18 @@ protected:
             EmbeddedViewer* rttViewer = new EmbeddedViewer(view->getSceneData(), view->getCamera()->getGraphicsContext());
             Viewpoint vp = static_cast<EarthManipulator*>(view->getCameraManipulator())->getViewpoint();
             static_cast<EarthManipulator*>(rttViewer->getCameraManipulator())->setViewpoint(vp);
+            s_viewer->addView(rttViewer);
 
             embeddedViewers.push_back(rttViewer);
         }        
 
         for (auto &view : embeddedViewers)
         {
-            view->frame();
+            //view->frame();
 
             ImGuiIO& io = ImGui::GetIO();
 
-            auto size = ImVec2(scale * view->_colorTexture->getTextureWidth(), scale * view->_colorTexture->getTextureWidth());
+            auto size = ImVec2(scale * view->_colorTexture->getTextureWidth(), scale * view->_colorTexture->getTextureHeight());
 
             auto texture = view->_colorTexture.get();
             if (texture)
@@ -168,6 +170,7 @@ protected:
 
                 // Get the TextureObject.
                 osg::Texture::TextureObject* textureObject = texture->getTextureObject(contextID);
+
                 if (textureObject)
                 {
                     ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, 1), ImVec2(1, 0), ImVec4(1, 1, 1, 1), ImVec4(1, 1, 0, 1));
@@ -189,11 +192,16 @@ main(int argc, char** argv)
 
     osgEarth::initialize();
 
-
-    osgViewer::Viewer viewer(arguments);
-    viewer.setUpViewOnSingleScreen(0);
+    osgViewer::CompositeViewer viewer(arguments);    
+    s_viewer = &viewer;
     viewer.setThreadingModel(viewer.SingleThreaded);
-    viewer.setCameraManipulator(new EarthManipulator(arguments));
+
+    //Setup our main view that will show the loaded earth file.
+    osgViewer::View* mainView = new osgViewer::View();
+    mainView->getCamera()->setNearFarRatio(0.00002);
+    mainView->setCameraManipulator(new EarthManipulator());
+    mainView->setUpViewInWindow(50, 50, 1000, 1000);
+    viewer.addView(mainView);
 
     // Call this to enable ImGui rendering.
     // If you use the MapNodeHelper, call this first.
@@ -216,18 +224,20 @@ main(int argc, char** argv)
 
         for (unsigned int i = 0; i < nodes.size(); ++i)
         {
-            EmbeddedViewer* view = new EmbeddedViewer(nodes[i].get(), viewer.getCamera()->getGraphicsContext());
+            EmbeddedViewer* view = new EmbeddedViewer(nodes[i].get(), mainView->getCamera()->getGraphicsContext());
             std::stringstream buf;
             buf << "View " << i;
             guis->add(new RTTViewerGUI(buf.str(), view));
             embeddedViewers.push_back(view);
+
+            viewer.addView(view);
         }
 
         guis->add(new EmbeddedViewersGUI());
 
-        viewer.getEventHandlers().push_front(guis);
+        mainView->getEventHandlers().push_front(guis);
+        mainView->setSceneData(node.get());
 
-        viewer.setSceneData(node.get());
         return viewer.run();
     }
     else

@@ -387,6 +387,8 @@ namespace osgEarth
 
                 bool dirty = false;
 
+                ImGui::ShowDemoWindow();
+
                 for (auto& iter : _menu)
                 {
                     for (auto& gui : iter.second)

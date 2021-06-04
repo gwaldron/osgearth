@@ -57,6 +57,10 @@ EmbeddedViewer::EmbeddedViewer(osg::Node* node, osg::GraphicsContext* mainContex
     double viewAngle = atan2(dim, 1.);
     dist = radius / sin(viewAngle);
 
+    getCamera()->setViewMatrix(osg::Matrixd::lookAt(center + osg::Vec3d(0.0, -dist, 0.0f),
+        center,
+        osg::Vec3d(0, 0, 1)));
+
     // target texture:
     _colorTexture = new osg::Texture2D();
     _colorTexture->setTextureSize(_width, _height);
@@ -66,11 +70,7 @@ EmbeddedViewer::EmbeddedViewer(osg::Node* node, osg::GraphicsContext* mainContex
 
     getCamera()->setRenderOrder(osg::Camera::PRE_RENDER);
     getCamera()->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-    getCamera()->attach(osg::Camera::BufferComponent::COLOR_BUFFER, _colorTexture.get());
-
-    getCamera()->setViewMatrix(osg::Matrixd::lookAt(center + osg::Vec3d(0.0, -dist, 0.0f),
-        center,
-        osg::Vec3d(0, 0, 1)));    
+    getCamera()->attach(osg::Camera::BufferComponent::COLOR_BUFFER, _colorTexture.get());    
 }
 
 void EmbeddedViewer::setSize(unsigned int x, unsigned int y)

@@ -73,7 +73,21 @@ protected:
         ImGuiIO& io = ImGui::GetIO();
 
         ImGui::Begin(name(), visible());        
-        //auto size = ImVec2(_view->_colorTexture->getTextureWidth(), _view->_colorTexture->getTextureWidth());
+
+        osg::Vec4 clearColor = _view->getCamera()->getClearColor();
+        if (ImGui::ColorEdit4("Clear Color", clearColor._v, ImGuiColorEditFlags_NoInputs))
+        {
+            _view->getCamera()->setClearColor(clearColor);
+        }
+
+        double fovy, ar, znear, zfar;
+        _view->getCamera()->getProjectionMatrixAsPerspective(fovy, ar, znear, zfar);
+        float fovyf = (float)fovy;
+        if (ImGui::SliderFloat("FOV", &fovyf, 1.0, 90.0f))
+        {
+            _view->getCamera()->setProjectionMatrixAsPerspective(fovyf, ar, znear, zfar);
+        }
+
         auto size = ImGui::GetContentRegionAvail();
         _view->setSize(size.x, size.y);
 

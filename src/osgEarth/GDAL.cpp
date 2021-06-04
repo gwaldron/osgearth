@@ -613,7 +613,7 @@ GDAL::Driver::open(const std::string& name,
         ReadResult r = URI(prjLocation).readString(readOptions);
         if (r.succeeded())
         {
-            src_srs = SpatialReference::create(r.getString());
+            src_srs = SpatialReference::create(Strings::trim(r.getString()));
         }
 
         if (!src_srs.valid())
@@ -703,15 +703,15 @@ GDAL::Driver::open(const std::string& name,
     }
 
     //Get the _geotransform
-    if (_profile.valid())
+    if (profile)
     {
-        _geotransform[0] = _profile->getExtent().xMin(); //Top left x
-        _geotransform[1] = _profile->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
+        _geotransform[0] = profile->getExtent().xMin(); //Top left x
+        _geotransform[1] = profile->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
         _geotransform[2] = 0;
 
-        _geotransform[3] = _profile->getExtent().yMax(); //Top left y
+        _geotransform[3] = profile->getExtent().yMax(); //Top left y
         _geotransform[4] = 0;
-        _geotransform[5] = -_profile->getExtent().height() / (double)_warpedDS->GetRasterYSize();//pixel height
+        _geotransform[5] = -profile->getExtent().height() / (double)_warpedDS->GetRasterYSize();//pixel height
 
     }
     else

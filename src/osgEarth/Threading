@@ -254,6 +254,14 @@ namespace osgEarth { namespace Threading
             return _shared->obj();
         }
 
+        //! Deference the result object and then reset the future to
+        //! its uninitalized state.
+        T release() {
+            T result = get();
+            reset();
+            return result;
+        }
+
         //! Blocks until the result becomes available or the future is abandoned;
         //! then returns the result object.
         const T& join() const {

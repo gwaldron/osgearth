@@ -159,7 +159,7 @@ LoadTileDataOperation::merge()
         return false;
     }
 
-    OE_SOFT_ASSERT_AND_RETURN(!_result.isAvailable(), __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(_result.isAvailable(), __func__, false);
 
     OE_PROFILING_ZONE;
 

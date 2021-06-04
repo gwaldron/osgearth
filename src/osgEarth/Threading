@@ -185,11 +185,10 @@ namespace osgEarth { namespace Threading
      * Future is the consumer-side interface to an asynchronous operation.
      *
      * Usage:
-     *   Producer (usually an asynchronous function call) creates a Promise<Object>
+     *   Producer (usually an asynchronous function call) creates a Promise<T>
      *   and immediately returns promise.getFuture(). The Consumer then performs other
-     *   work, and eventually (or immediately) called Future.get() or Future.release().
-     *   Either call will block until the asynchronous operation is complete and the
-     *   result in Future is available.
+     *   work, and eventually (or immediately) checks isAvailable() for a result or
+     *   isAbandoned() for cancelation.
      */
     template<typename T>
     class Future : public Cancelable
@@ -214,6 +213,7 @@ namespace osgEarth { namespace Threading
             _shared = std::make_shared<Container>();
         }
 
+        //! Named CTOR
         Future(const std::string& name) {
             _ev = std::make_shared<Event>(name);
             _shared = std::make_shared<Container>();
@@ -224,6 +224,7 @@ namespace osgEarth { namespace Threading
             _ev(rhs._ev),
             _shared(rhs._shared) { }
 
+        //! Assignment
         Future<T>& operator = (const Future<T>& rhs) {
             _ev = rhs._ev;
             _shared = rhs._shared;
@@ -241,24 +242,30 @@ namespace osgEarth { namespace Threading
             return !isAvailable() && _shared.use_count() == 1;
         }
 
+        //! Synonym for isAbandoned. (Canceleble interface)
         bool isCanceled() const override {
             return isAbandoned();
         }
 
-        //! The result value; blocks until it is available (or abandonded) and then returns it.
+        //! Deference the result object. Make sure you check isAvailable()
+        //! to check that the future was actually resolved; otherwise you
+        //! will just get the default object.
         const T& get() const {
-            while (
-                !isAbandoned() && 
-                !_ev->wait(1u));
             return _shared->obj();
         }
 
-        const T& get(const Cancelable* cancelable) const {
-            //while (
-            //    !isAbandoned() &&
-            //    !(cancelable && cancelable->isCanceled()) &&
-            //    !_ev->wait(1u));
+        //! Blocks until the result becomes available or the future is abandoned;
+        //! then returns the result object.
+        const T& join() const {
+            while (
+                !isAbandoned() &&
+                !_ev->wait(1u));
+            return get();
+        }
 
+        //! Blocks until the result becomes available or the future is abandoned
+        //! or a cancelation flag is set; then returns the result object.
+        const T& join(const Cancelable* cancelable) const {
             while (
                 !isAvailable() &&
                 !isAbandoned() &&
@@ -266,24 +273,7 @@ namespace osgEarth { namespace Threading
             {
                 _ev->wait(1u);
             }
-
-            return _shared->obj();
-        }
-
-        //! Waits for the result to become available (or abandoned)
-        void join() const {
-            get();
-        }
-        void join(const Cancelable* cancelable) const {
-            get(cancelable);
-        }
-
-        //! Returns the result value (available or not) and abandons the future.
-        //! It is typical to check isAvailable() prior to calling release.
-        T release() {
-            T result = get();
-            abandon();
-            return result;
+            return get();
         }
 
         //! Release reference to a promise, resetting this future to its default state
@@ -291,13 +281,10 @@ namespace osgEarth { namespace Threading
             _shared.reset(new Container());
             _ev->reset();
         }
+
+        //! synonym for abandon.
         void reset() {
             abandon();
-        }
-
-        void wait() {
-            while (!_ev->wait(250u))
-                if (isAbandoned()) break;
         }
 
     private:

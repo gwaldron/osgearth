@@ -159,6 +159,8 @@ LoadTileDataOperation::merge()
         return false;
     }
 
+    OE_SOFT_ASSERT_AND_RETURN(!_result.isAvailable(), __func__, false);
+
     OE_PROFILING_ZONE;
 
     const osg::ref_ptr<TerrainTileModel>& model = _result.get();

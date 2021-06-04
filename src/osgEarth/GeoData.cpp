@@ -1828,7 +1828,7 @@ const osg::Image*
 GeoImage::getImage() const
 {
     return _future.isSet() && _future->isAvailable() ?
-        _future->get().get() :
+        _future->join().get() :
         _myimage.get();
 }
 
@@ -2138,7 +2138,7 @@ GeoImage::takeImage()
     osg::ref_ptr<osg::Image> result;
     if (_future.isSet())
     {
-        result = _future->get();
+        result = _future->join();
         _future->abandon();
     }
     else

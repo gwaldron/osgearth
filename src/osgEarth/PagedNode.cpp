@@ -327,7 +327,7 @@ void PagedNode2::unload()
     //}
     if (_compiled.isAvailable() && _compiled.get().valid())
     {
-        removeChild(_compiled.get().get());
+        removeChild(_compiled.get());
     }
     _compiled.abandon();
     _loaded.abandon();

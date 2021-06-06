@@ -95,16 +95,34 @@ namespace
         {
             // any other type will at least contain points:
             GEOSCoordSequence* seq = 0;
+            GEOSGeom* geomsList = 0;
             switch (input->getType())
             {
             case Geometry::TYPE_UNKNOWN:
                 break;
-            case Geometry::TYPE_MULTI: break;
+				
+            case Geometry::TYPE_MULTI: 
+				break;
 
             case Geometry::TYPE_POINT:
-            case Geometry::TYPE_POINTSET:
                 seq = vec3dArray2CoordSeq(handle, input, false);
                 if (seq) output = GEOSGeom_createPoint_r(handle, seq);
+                break;
+
+            case Geometry::TYPE_POINTSET:
+                geomsList=new GEOSGeom[input->size()];
+                for (int i = 0; i < input->size(); i++)
+                {
+                    seq = GEOSCoordSeq_create_r(handle, 1, 3);
+                    {
+                        GEOSCoordSeq_setX_r(handle, seq, 0, input->at(i).x());
+                        GEOSCoordSeq_setY_r(handle, seq, 0, input->at(i).y());
+                        GEOSCoordSeq_setZ_r(handle, seq, 0, input->at(i).z());
+                    }
+                    geomsList[i] = GEOSGeom_createPoint_r(handle, seq);
+                }
+                output = GEOSGeom_createCollection_r(handle, GEOS_MULTIPOINT, geomsList, input->size());
+                delete geomsList;
                 break;
 
             case Geometry::TYPE_LINESTRING:

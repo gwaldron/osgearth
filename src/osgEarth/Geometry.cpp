@@ -414,7 +414,8 @@ Geometry::intersects(
     GEOSGeometry* inGeom = GEOS::importGeometry(handle, this);
     GEOSGeometry* otherGeom = GEOS::importGeometry(handle, other);
 
-    bool intersects = GEOSIntersects_r(handle, inGeom, otherGeom);
+    bool intersects = false;
+    if (inGeom && otherGeom)    intersects = GEOSIntersects_r(handle, inGeom, otherGeom);
 
     //Destroy the geometry
     GEOSGeom_destroy_r(handle, inGeom);

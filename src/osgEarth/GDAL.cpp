@@ -689,6 +689,7 @@ GDAL::Driver::open(const std::string& name,
         if (_warpedDS)
         {
             warpedSRSWKT = _warpedDS->GetProjectionRef();
+            _warpedDS->GetGeoTransform(_geotransform);
         }
     }
     else
@@ -702,6 +703,7 @@ GDAL::Driver::open(const std::string& name,
         return Status::Error("Failed to create a warping VRT");
     }
 
+#if 0
     //Get the _geotransform
     if (profile)
     {
@@ -718,6 +720,7 @@ GDAL::Driver::open(const std::string& name,
     {
         _warpedDS->GetGeoTransform(_geotransform);
     }
+#endif
 
     if (GDALInvGeoTransform(_geotransform, _invtransform) == 0)
     {

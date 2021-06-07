@@ -64,9 +64,14 @@ EmbeddedViewer::EmbeddedViewer(osg::Node* node, osg::GraphicsContext* mainContex
     // target texture:
     _colorTexture = new osg::Texture2D();
     _colorTexture->setTextureSize(_width, _height);
+    /*
     _colorTexture->setSourceFormat(GL_RGB);
     _colorTexture->setSourceType(GL_UNSIGNED_BYTE);
     _colorTexture->setInternalFormat(GL_RGB8);
+    */
+    _colorTexture->setSourceFormat(GL_RGBA);
+    _colorTexture->setInternalFormat(GL_RGBA8);
+    _colorTexture->setSourceType(GL_UNSIGNED_BYTE);
 
     getCamera()->setRenderOrder(osg::Camera::PRE_RENDER);
     getCamera()->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);

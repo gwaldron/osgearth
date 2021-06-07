@@ -165,23 +165,18 @@ GeoPoint::getConfig() const
     {
         conf.set( "lat", _p.y() );
         conf.set( "long", _p.x() );
-        if ( _p.z() != 0.0 )
-        {
-            if ( _altMode == ALTMODE_ABSOLUTE )
-                conf.set( "alt", _p.z() );
-            else
-                conf.set( "hat", _p.z() );
-        }
     }
     else
     {
         conf.set( "x", _p.x() );
         conf.set( "y", _p.y() );
-        if ( _altMode == ALTMODE_ABSOLUTE )
-            conf.set( "z", _p.z() );
-        else
-            conf.set( "hat", _p.z() );
     }
+
+    conf.set("z", _p.z());
+
+    // default is absolute
+    if (_altMode == ALTMODE_RELATIVE)
+        conf.set("mode", "relative");
 
     if ( _srs.valid() )
     {

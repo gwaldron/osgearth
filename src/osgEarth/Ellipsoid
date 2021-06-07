@@ -76,6 +76,19 @@ namespace osgEarth
         //! Convert degrees to linear units at a given latitide
         double degreesToMeters(double deg, double lat_deg) const;
 
+        //! Geodesic distance in meters from one lat/long to another
+        double geodesicDistance(
+            const osg::Vec2d& longlat1_deg, 
+            const osg::Vec2d& longlat2_deg) const;
+
+        //! Geodesic interpolation between two lat/long points
+        void geodesicInterpolate(
+            const osg::Vec3d& longlat1_deg,
+            const osg::Vec3d& longlat2_deg,
+            double t,
+            osg::Vec3d& out_longlat_deg) const;
+
+
         //! Intersects a geocentric line with the ellipsoid.
         //! Upon success return true and place the first intersection
         //! point in "out".

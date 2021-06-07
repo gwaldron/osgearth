@@ -397,7 +397,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             );
 
             // Immediately blocks on the result.
-            const osg::ref_ptr<osg::Image>& image = result.get(local_progress);
+            const osg::ref_ptr<osg::Image>& image = result.join(local_progress);
 
             if (image.valid() && image->data() != nullptr)
                 return GeoImage(image.get(), key.getExtent());

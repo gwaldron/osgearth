@@ -577,10 +577,14 @@ RexTerrainEngineNode::dirtyTerrain()
 
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        TileNode* tileNode = new TileNode();
+        TileNode* tileNode = new TileNode(
+            keys[i],
+            nullptr, // parent
+            _engineContext.get(),
+            nullptr); // progress
 
         // Next, build the surface geometry for the node.
-        tileNode->create( keys[i], 0L, _engineContext.get(), nullptr );
+        //tileNode->create( keys[i], 0L, _engineContext.get(), nullptr );
         tileNode->setDoNotExpire(true);
 
         // Add it to the scene graph

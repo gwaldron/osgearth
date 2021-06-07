@@ -126,8 +126,8 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
 
             // finally, traverse children and paged data.
             if (_refinePolicy == REFINE_REPLACE &&
-                _compiled.get().valid() &&
-                _merged == true)
+                _merged == true &&
+                _compiled.get().valid())
             {
                 _compiled.get()->accept(nv);
             }
@@ -327,7 +327,7 @@ void PagedNode2::unload()
     //}
     if (_compiled.isAvailable() && _compiled.get().valid())
     {
-        removeChild(_compiled.get().get());
+        removeChild(_compiled.get());
     }
     _compiled.abandon();
     _loaded.abandon();

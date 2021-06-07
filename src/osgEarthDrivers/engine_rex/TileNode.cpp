@@ -37,12 +37,6 @@ using namespace osgEarth::REX;
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-#define OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG 0
-
-// Whether to check the child nodes for culling before traversing them.
-// This could prevent premature Loader requests, but it increases cull time.
-//#define VISIBILITY_PRECHECK
-
 #define LC "[TileNode] "
 
 namespace
@@ -57,44 +51,31 @@ namespace
     };
 }
 
-TileNode::TileNode() : 
-_loadsInQueue(0u),
-_childrenReady( false ),
-_lastTraversalTime(0.0),
-_lastTraversalFrame(0),
-_empty(false),              // an "empty" node exists but has no geometry or children.,
-_imageUpdatesActive(false),
-_doNotExpire(false),
-_revision(0),
-_mutex("TileNode(OE)"),
-_loadQueue("TileNode LoadQueue(OE)"),
-_createChildAsync(true),
-_nextLoadManifestPtr(nullptr),
-_loadPriority(0.0f)
+TileNode::TileNode(
+    const TileKey& key,
+    TileNode* parent,
+    EngineContext* context,
+    Cancelable* progress) :
+
+    _key(key),
+    _context(context),
+    _loadsInQueue(0u),
+    _childrenReady(false),
+    _lastTraversalTime(0.0),
+    _lastTraversalFrame(0),
+    _empty(false), // an "empty" node exists but has no geometry or children
+    _imageUpdatesActive(false),
+    _doNotExpire(false),
+    _revision(0),
+    _mutex("TileNode(OE)"),
+    _loadQueue("TileNode LoadQueue(OE)"),
+    _createChildAsync(true),
+    _nextLoadManifestPtr(nullptr),
+    _loadPriority(0.0f)
 {
-    //nop
-}
+    OE_HARD_ASSERT(context != nullptr, __func__);
 
-TileNode::~TileNode()
-{
-    //nop
-}
-
-void
-TileNode::setDoNotExpire(bool value)
-{
-    _doNotExpire = value;
-}
-
-void
-TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context, Cancelable* progress)
-{
-    if (!context)
-        return;
-
-    _key = key;
-    _context = context;
-
+    // build the actual geometry for this node
     createGeometry(progress);
 
     // Encode the tile key in a uniform. Note! The X and Y components are presented
@@ -127,10 +108,21 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context, C
         _subdivideTestKey = _key.createChildKey(3);
 }
 
+TileNode::~TileNode()
+{
+    //nop
+}
+
+void
+TileNode::setDoNotExpire(bool value)
+{
+    _doNotExpire = value;
+}
+
 void
 TileNode::createGeometry(Cancelable* progress)
 {
-    osg::ref_ptr<const Map> map = _context->getMap();
+    osg::ref_ptr<const Map> map(_context->getMap());
     if (!map.valid())
         return;
 
@@ -236,11 +228,6 @@ TileNode::initializeData()
         if (bindings[SamplerBinding::ELEVATION].isActive())
         {
             updateElevationRaster();
-            //const Sampler& elevation = _renderModel._sharedSamplers[SamplerBinding::ELEVATION];
-            //if (elevation._texture.valid())
-            //{
-            //    setElevationRaster(elevation._texture->getImage(0), elevation._matrix);
-            //}
         }
     }
 
@@ -815,13 +802,15 @@ TileNode::createChild(const TileKey& childkey, EngineContext* context, Cancelabl
 {
     OE_PROFILING_ZONE;
 
-    osg::ref_ptr<TileNode> node = new TileNode();
-
-    // Build the surface geometry:
-    node->create(childkey, this, context, progress);
+    osg::ref_ptr<TileNode> node = new TileNode(
+        childkey,
+        this, // parent TileNode
+        context,
+        progress);
 
     return 
-        progress && progress->isCanceled() ? nullptr : node.release();
+        progress && progress->isCanceled() ? nullptr
+        : node.release();
 }
 
 void
@@ -1150,19 +1139,6 @@ TileNode::merge(
         _context->getEngine()->getTerrain()->notifyTileUpdate(getKey(), this);
     }
 
-    // Remove the load request that spawned this merge.
-    // The only time the request will NOT be in the queue is if it was
-    // loadSync() was called.
-    _loadQueue.lock();
-    if (_loadQueue.empty() == false)
-        _loadQueue.pop();
-    _loadsInQueue = _loadQueue.size();
-    if (_loadsInQueue > 0)
-        _nextLoadManifestPtr = &_loadQueue.front()->_manifest; // getManifest();
-    else
-        _nextLoadManifestPtr = nullptr;
-    _loadQueue.unlock();
-
     // Bump the data revision for the tile.
     ++_revision;
 }
@@ -1186,32 +1162,6 @@ void TileNode::inheritSharedSampler(int binding)
     // Bump the data revision for the tile.
     ++_revision;
 }
-
-//void TileNode::loadChildren()
-//{
-//    _mutex.lock();
-//
-//    if ( !_childrenReady )
-//    {        
-//        // Create the children
-//        createChildren( _context.get() );
-//        _childrenReady = true;        
-//        int numChildren = getNumChildren();
-//        if ( numChildren > 0 )
-//        {
-//            for(int i=0; i<numChildren; ++i)
-//            {
-//                TileNode* child = getSubTile(i);
-//                if (child)
-//                {
-//                    // Load the children's data.
-//                    child->loadSync();
-//                }
-//            }
-//        }
-//    }
-//    _mutex.unlock();
-//}
 
 void
 TileNode::refreshSharedSamplers(const RenderBindings& bindings)
@@ -1386,13 +1336,6 @@ TileNode::load(TerrainCuller* culler)
     
     // LOD priority is in the range [0..numLods]
     float lodPriority = (float)lod;
-
-    // If progressive mode is enabled, lower LODs get higher priority since
-    // we want to load them in order
-    //if (options().progressive() == true)
-    //{
-    //    lodPriority = (float)(numLods - lod);
-    //}
 
     // dist priority is in the range [0..1]
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);

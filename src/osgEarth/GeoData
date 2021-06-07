@@ -251,7 +251,16 @@ namespace osgEarth
          */
         bool createWorldUpVector( osg::Vec3d& out_up ) const;
 
+        //! Geodesic distance from this point to another.
+        //! This is the distance along the real-world ellipsoidal surface
+        //! of the Earth (or other body), regardless of map projection.
+        //! It does not account for Z/altitude.
+        //! @param rhs Other point
+        //! @return Geodesic distance between the two points
+        Distance geodesicDistanceTo(const GeoPoint& rhs) const;
+
         /**
+         * @deprecated - ambiguous, will be removed. Use geodesicDistanceTo() or toWorld()/length instead.
          * Calculates the distance in meters from this geopoint to another.
          */
         double distanceTo(const GeoPoint& rhs) const;

@@ -54,7 +54,8 @@ namespace
                     osg::ref_ptr<ImageLayer> safe(layer_ptr);
                     if (safe.valid())
                     {
-                        result = safe->createImage(key, new ProgressCallback(progress));
+                        osg::ref_ptr<ProgressCallback> p = new ProgressCallback(progress);
+                        result = safe->createImage(key, p.get());
                     }
                     return result;
                 }

@@ -31,14 +31,6 @@ using namespace osgEarth::REX;
 #undef LC
 #define LC "[REX::CreateTileImpl] "
 
-namespace
-{
-    struct MinMax {
-        osg::Vec3d min, max;
-    };
-}
-
-
 osg::Node*
 CreateTileImplementation::createTile(
     EngineContext* context,

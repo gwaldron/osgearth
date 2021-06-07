@@ -526,58 +526,45 @@ GeoPoint::interpolate(const GeoPoint& rhs, double t) const
 
     else // geographic
     {
-        // Geometric slerp in unit sphere space
-        // https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
+        osg::Vec3d output;
 
-        double deltaZ = to.z()-z();
+        getSRS()->getEllipsoid().geodesicInterpolate(
+            vec3d(),
+            to.vec3d(),
+            t,
+            output);
 
-        // Convert each point to unit sphere world space:
-        osg::Vec3d unitToEllip(
-            getSRS()->getEllipsoid().getRadiusEquator(),
-            getSRS()->getEllipsoid().getRadiusEquator(),
-            getSRS()->getEllipsoid().getRadiusPolar());
-
-        osg::Vec3d ellipToUnit = osg::componentDivide(
-            osg::Vec3d(1,1,1), unitToEllip);
-        
-        osg::Vec3d w1;
-        toWorld(w1);
-        w1 = osg::componentMultiply(w1, ellipToUnit);
-        w1.normalize();
-
-        osg::Vec3d w2;
-        to.toWorld(w2);
-        w2 = osg::componentMultiply(w2, ellipToUnit);
-        w2.normalize();
-
-        // perform geometric slerp:
-        double dp = w1*w2;
-        if (dp == 1.0)
-            return *this;
-
-        double angle = acos(dp);
-
-        double s = sin(angle);
-        if (s == 0.0)
-            return *this;
-
-        double c1 = sin((1.0-t)*angle)/s;
-        double c2 = sin(t*angle)/s;
-
-        osg::Vec3d n = w1*c1 + w2*c2;
-
-        // convert back to world space and apply altitude lerp
-        n = osg::componentMultiply(n, unitToEllip);
-        result.fromWorld(getSRS(), n);
-        result.z() = z() + t*deltaZ;
+        result.set(
+            getSRS(),
+            output,
+            ALTMODE_ABSOLUTE);
     }
 
     return result;
 }
 
+Distance
+GeoPoint::geodesicDistanceTo(const GeoPoint& rhs) const
+{
+    // Transform both points to lat/long and do a great circle measurement.
+    // https://en.wikipedia.org/wiki/Geographical_distance#Ellipsoidal-surface_formulae
+
+    GeoPoint p1 = transform(getSRS()->getGeographicSRS());
+    GeoPoint p2 = rhs.transform(p1.getSRS());
+
+    return Distance(
+        getSRS()->getEllipsoid().geodesicDistance(
+            osg::Vec2d(p1.x(), p1.y()),
+            osg::Vec2d(p2.x(), p2.y())),
+        Units::METERS);
+}
+
+
 double
 GeoPoint::distanceTo(const GeoPoint& rhs) const
 {
+    // @deprecated, because this method is ambiguous.
+
     if ( getSRS()->isProjected() && rhs.getSRS()->isProjected() )
     {
         if ( getSRS()->isEquivalentTo(rhs.getSRS()) )

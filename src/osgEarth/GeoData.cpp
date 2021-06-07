@@ -857,11 +857,11 @@ GeoPoint
 GeoExtent::getCentroid() const
 {
     if (isValid())
-        return std::move(GeoPoint(
+        return GeoPoint(
             _srs.get(),
             normalizeX(west() + 0.5*width()),
             south() + 0.5*height(),
-            ALTMODE_ABSOLUTE));
+            ALTMODE_ABSOLUTE);
     else
         return GeoPoint::INVALID;
 }
@@ -1659,6 +1659,15 @@ GeoExtent::createWorldBoundingSphere(double minElev, double maxElev) const
         GeoPoint(getSRS(), xMax(), yMin(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
         GeoPoint(getSRS(), xMax(), yMax(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
         GeoPoint(getSRS(), xMin(), yMax(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+        
+        // This additional point accounts for when xMin and xMax are close together on the globe
+        // but very far in the expected x extent
+        // (for example [-170 , +170] -> we need an intermediate point at x=0 to have an accurate bounding sphere)
+        if (width() > 180.0)
+        {
+            GeoPoint(getSRS(), (xMin() + xMax()) / 2.0, (yMin() + yMax()) / 2.0, (minElev + maxElev) / 2.0, ALTMODE_ABSOLUTE).toWorld(w);
+            bs.expandBy(w);
+        }
     }
 
     return bs;

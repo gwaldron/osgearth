@@ -652,7 +652,7 @@ GDAL::Driver::open(const std::string& name,
     if (!profile && src_srs->isGeographic())
     {
         OE_DEBUG << INDENT << "Creating Profile from source's geographic SRS: " << src_srs->getName() << std::endl;
-        profile = Profile::create(src_srs.get(), -180.0, -90.0, 180.0, 90.0, 2u, 1u);
+        profile = Profile::create(src_srs.get());
         if (!profile)
         {
             return Status::Error(Status::ResourceUnavailable, Stringify()

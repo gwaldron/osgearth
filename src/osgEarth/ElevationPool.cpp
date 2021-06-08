@@ -185,7 +185,8 @@ ElevationPool::refresh(const Map* map)
                 de->maxLevel().get(),
                 layer->getMaxDataLevel());
 
-            maxLevel = layer->getProfile()->getEquivalentLOD(map->getProfile(), maxLevel);
+            // Convert the max level so it's relative to the map profile:
+            maxLevel = map->getProfile()->getEquivalentLOD(layer->getProfile(), maxLevel);
 
             index->Insert(a_min, a_max, maxLevel);
         }

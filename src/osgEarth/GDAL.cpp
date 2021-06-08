@@ -824,6 +824,27 @@ GDAL::Driver::open(const std::string& name,
 
     // record the data extent in profile space:
     _bounds = Bounds(minX, minY, maxX, maxY);
+
+    bool clamped = false;
+    if (srs->isGeographic())
+    {
+        if (_bounds.width() > 360)
+        {
+            _bounds.xMin() = -180;
+            _bounds.xMax() = 180;
+            clamped = true;
+        }
+        if (_bounds.height() > 180)
+        {
+            _bounds.yMin() = -90;
+            _bounds.yMax() = 90;
+            clamped = true;
+        }
+        if (clamped)
+        {
+            OE_INFO << LC << "Clamped out-of-range geographic extents" << std::endl;
+        }
+    }
     _extents = GeoExtent(srs.get(), _bounds);
 
     OE_DEBUG << LC << "GeoExtent = " << _extents.toString() << std::endl;

@@ -294,9 +294,6 @@ namespace osgEarth
             SRS but using equatorial meters. */
         const SpatialReference* createEquirectangularSRS() const;
 
-        /** Creates a new CSN based on this spatial reference. */
-        osg::CoordinateSystemNode* createCoordinateSystemNode() const;
-
         /** Populates the provided CSN with information from this SRS. */
         bool populateCoordinateSystemNode( osg::CoordinateSystemNode* csn ) const;
 

@@ -1443,17 +1443,24 @@ SpatialReference::init()
     _ellipsoid.setName( getOGRAttrValue(handle, "SPHEROID", 0, true) );
 
     // extract the projection:
-    if ( _name.empty() || _name == "unnamed" )
+    if ( _name.empty() || _name == "unnamed" || _name == "unknown" )
     {
-        _name = isGeographic()? 
-            getOGRAttrValue( handle, "GEOGCS", 0 ) : 
-            getOGRAttrValue( handle, "PROJCS", 0 );
+        if (isGeographic())
+        {
+            _name = getOGRAttrValue(handle, "GEOGCS", 0);
+            if (_name.empty()) _name = getOGRAttrValue(handle, "GEOGCRS", 0);
+        }
+        else
+        {
+            _name = getOGRAttrValue(handle, "PROJCS", 0);
+            if (_name.empty()) _name = getOGRAttrValue(handle, "PROJCRS", 0);
+        }
     }
-    std::string proj = getOGRAttrValue( handle, "PROJECTION", 0, true );
-    std::string proj_lc = Strings::toLower(proj);
+    std::string projection = getOGRAttrValue( handle, "PROJECTION", 0, true );
+    std::string projection_lc = Strings::toLower(projection);
 
     // check for the Mercator projection:
-    _is_mercator = !proj_lc.empty() && proj_lc.find("mercator")==0;
+    _is_mercator = !projection_lc.empty() && projection_lc.find("mercator")==0;
 
     // check for spherical mercator (a special case)
     _is_spherical_mercator = _is_mercator && osg::equivalent(
@@ -1461,7 +1468,7 @@ SpatialReference::init()
         _ellipsoid.getSemiMinorAxis());
 
     // check for the Polar projection:
-    if ( !proj_lc.empty() && proj_lc.find("polar_stereographic") != std::string::npos )
+    if ( !projection_lc.empty() && projection_lc.find("polar_stereographic") != std::string::npos )
     {
         double lat = as<double>( getOGRAttrValue( handle, "latitude_of_origin", 0, true ), -90.0 );
         _is_north_polar = lat > 0.0;
@@ -1469,8 +1476,8 @@ SpatialReference::init()
     }
     else
     {
-      _is_north_polar = false;
-      _is_south_polar = false;
+        _is_north_polar = false;
+        _is_south_polar = false;
     }
 
     // Try to extract the horizontal datum
@@ -1502,13 +1509,16 @@ SpatialReference::init()
         CPLFree( wktbuf );
     }
 
-    if ( _name == "unnamed" || _name.empty() )
+    if ( _name == "unnamed" || _name == "unknown" || _name.empty() )
     {
         _name =
-            isGeographic()? "Geographic" :
+            isGeographic() && !_datum.empty()? _datum :
+            isGeographic() && !_ellipsoid.getName().empty() ? _ellipsoid.getName() :
+            isGeographic() ? "Geographic" :
             isGeocentric()? "Geocentric" :
             isCube() ? "Unified Cube" :
             isLTP() ? "Tangent Plane" :
+            !projection.empty() ? projection :
             _is_spherical_mercator ? "Spherical Mercator" :
             _is_mercator? "Mercator" :
             ( !_proj4.empty()? _proj4 : "Projected" );

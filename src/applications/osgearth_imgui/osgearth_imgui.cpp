@@ -64,7 +64,7 @@ main(int argc, char** argv)
         // Passing "true" tells it to install all the built-in osgEarth GUI tools.
         // Put it on the front of the list so events don't filter
         // through to other handlers.
-        viewer.getEventHandlers().push_front(new GUI::ApplicationGUI(true));
+        viewer.getEventHandlers().push_front(new GUI::ApplicationGUI(arguments, true));
 
         viewer.setSceneData(node);
         return viewer.run();

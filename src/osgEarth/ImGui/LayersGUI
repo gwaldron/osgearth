@@ -152,28 +152,12 @@ namespace osgEarth {
                                 }
                                 else if (layer->getNode())
                                 {
-                                    const osg::BoundingSphere& bs = layer->getNode()->getBound();
-                                    if (bs.valid())
+                                    ViewFitter fitter(map->getSRS(), camera);
+                                    Viewpoint vp;
+                                    if (fitter.createViewpoint(layer->getNode(), vp))
                                     {
-                                        osg::Vec3d c = bs.center();
-                                        double r = bs.radius();
-
-                                        std::vector<GeoPoint> points;
-                                        GeoPoint p;
-                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x() + r, c.y(), c.z())); points.push_back(p);
-                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x() - r, c.y(), c.z())); points.push_back(p);
-                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x(), c.y() + r, c.z())); points.push_back(p);
-                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x(), c.y() - r, c.z())); points.push_back(p);
-                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
-                                        p.fromWorld(map->getSRS(), osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
-
-                                        ViewFitter fitter(map->getSRS(), camera);
-                                        Viewpoint vp;
-                                        if (fitter.createViewpoint(points, vp))
-                                        {
-                                            auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
-                                            if (manip) manip->setViewpoint(vp, 2.0);
-                                        }
+                                        auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                                        if (manip) manip->setViewpoint(vp, 2.0);
                                     }
                                 }
                             }

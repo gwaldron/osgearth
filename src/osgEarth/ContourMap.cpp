@@ -162,3 +162,11 @@ ContourMapLayer::prepareForRendering(TerrainEngine* engine)
     stateset->setTextureAttributeAndModes(_reservation.unit(), _xferTexture.get(), osg::StateAttribute::ON);
     _xferSampler->set(_reservation.unit());
 }
+
+Status
+ContourMapLayer::closeImplementation()
+{
+    _reservation.release();
+
+    return VisibleLayer::closeImplementation();
+}

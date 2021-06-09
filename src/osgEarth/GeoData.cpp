@@ -888,10 +888,8 @@ GeoExtent::height(const Units& units) const
     }
     else {
         return Distance(
-            getSRS()->getEllipsoid().degreesToMeters(height(), 0.0),
+            getSRS()->getEllipsoid().longitudinalDegreesToMeters(height(), 0.0),
             Units::METERS).as(units);
-        //double m_per_deg = 2.0 * getSRS()->getEllipsoid().getRadiusEquator() * osg::PI / 360.0;
-        //return Distance(m_per_deg * height(), Units::METERS).as(units);
     }
 }
 
@@ -1968,7 +1966,7 @@ namespace
         double *srcPointsX = new double[numPixels * 2];
         double *srcPointsY = srcPointsX + numPixels;
 
-        dest_extent.getSRS()->transformExtentPoints(
+        dest_extent.getSRS()->transformGrid(
             src_extent.getSRS(),
             dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,
             dest_extent.xMax() - .5 * dx, dest_extent.yMax() - .5 * dy,

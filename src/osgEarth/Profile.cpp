@@ -714,26 +714,6 @@ Profile::clampAndTransformExtent(const GeoExtent& input, bool* out_clamped) cons
     }    
 }
 
-namespace
-{
-    double round( double in, int places )
-    {
-        for(int i=0; i<places; ++i)
-            in *= 10.0;
-        in = ceil(in);
-        for(int i=0; i<places; ++i)
-            in *= 0.1;
-        return in;
-    }
-
-    int quantize( double in, double epsilon )
-    {
-        int floored = (int)in;
-        int floored2 = (int)(in + epsilon);
-        return floored == floored2 ? floored : floored2;
-    }
-}
-
 void
 Profile::addIntersectingTiles(const GeoExtent& key_ext, unsigned localLOD, std::vector<TileKey>& out_intersectingKeys) const
 {

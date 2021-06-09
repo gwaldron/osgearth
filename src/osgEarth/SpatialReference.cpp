@@ -1208,26 +1208,31 @@ SpatialReference::transformUnits(double                  input,
 
     if ( this->isProjected() && outSRS->isGeographic() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputDegrees = getUnits().convertTo(Units::METERS, input) / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
-        return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
+        return Units::DEGREES.convertTo(
+            outSRS->getUnits(),
+            outSRS->getEllipsoid().metersToLongitudinalDegrees(
+                getUnits().convertTo(Units::METERS, input),
+                latitude));
     }
     else if ( this->isGeocentric() && outSRS->isGeographic() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputDegrees = input / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
-        return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
+        return Units::DEGREES.convertTo(
+            outSRS->getUnits(),
+            outSRS->getEllipsoid().metersToLongitudinalDegrees(input, latitude));
     }
     else if ( this->isGeographic() && outSRS->isProjected() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputMeters = getUnits().convertTo(Units::DEGREES, input) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
-        return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
+        return Units::METERS.convertTo(
+            outSRS->getUnits(),
+            outSRS->getEllipsoid().longitudinalDegreesToMeters(
+                getUnits().convertTo(Units::DEGREES, input),
+                latitude));
     }
     else if ( this->isGeographic() && outSRS->isGeocentric() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        return getUnits().convertTo(Units::DEGREES, input) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
+        return outSRS->getEllipsoid().longitudinalDegreesToMeters(
+            getUnits().convertTo(Units::DEGREES, input),
+            latitude);
     }
     else // both projected or both geographic.
     {
@@ -1244,15 +1249,19 @@ SpatialReference::transformUnits(const Distance&         distance,
 
     if ( distance.getUnits().isLinear() && outSRS->isGeographic() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputDegrees = distance.as(Units::METERS) / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
-        return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
+        return Units::DEGREES.convertTo(
+            outSRS->getUnits(),
+            outSRS->getEllipsoid().metersToLongitudinalDegrees(
+                distance.as(Units::METERS),
+                latitude));
     }
     else if ( distance.getUnits().isAngular() && outSRS->isProjected() )
     {
-        double metersPerEquatorialDegree = (outSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputMeters = distance.as(Units::DEGREES) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
-        return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
+        return Units::METERS.convertTo(
+            outSRS->getUnits(),
+            outSRS->getEllipsoid().longitudinalDegreesToMeters(
+                distance.as(Units::DEGREES),
+                latitude));
     }
     else // both projected or both geographic.
     {
@@ -1263,12 +1272,12 @@ SpatialReference::transformUnits(const Distance&         distance,
 bool
 SpatialReference::transformExtentToMBR(
     const SpatialReference* to_srs,
-    double&                 in_out_xmin,
-    double&                 in_out_ymin,
-    double&                 in_out_xmax,
-    double&                 in_out_ymax) const
+    double& in_out_xmin,
+    double& in_out_ymin,
+    double& in_out_xmax,
+    double& in_out_ymax) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(to_srs!=nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(to_srs != nullptr, __func__, false);
 
     if (!valid())
         return false;
@@ -1277,7 +1286,7 @@ SpatialReference::transformExtentToMBR(
     std::vector<osg::Vec3d> v;
 
     // Start by clamping to the out_srs' legal bounds, if possible.
-    // TODO: GDAL 3 has a new OSRGetAreaOfUse method that might help with this.
+    // TODO: rethink this to be more generic.
     if (isGeographic() && (to_srs->isMercator() || to_srs->isSphericalMercator()))
     {
         const Profile* merc = Registry::instance()->getSphericalMercatorProfile();
@@ -1352,7 +1361,7 @@ SpatialReference::transformExtentToMBR(
 }
 
 bool 
-SpatialReference::transformExtentPoints(
+SpatialReference::transformGrid(
     const SpatialReference* to_srs,
     double in_xmin, double in_ymin,
     double in_xmax, double in_ymax,
@@ -1542,23 +1551,40 @@ SpatialReference::init()
     }
 
     // Guess the appropriate bounds for this SRS.
-    if (isGeographic() || isGeocentric())
-    {
-        _bounds.set(-180.0, -90.0, 180.0, 90.0);
-    }
-
-    if (isMercator() || isSphericalMercator())
-    {
-        _bounds.set(MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY);
-    }
-
     int isNorth;
-    if (OSRGetUTMZone(handle, &isNorth))
+    _bounds.set(-FLT_MAX, -FLT_MAX, FLT_MAX, FLT_MAX);
+
+#if 0 // this always returns false as of GDAL 3.1.3, so omit until later
+#if GDAL_VERSION_MAJOR >= 3
+    double wlong, elong, slat, nlat;
+    if (OSRGetAreaOfUse(handle, &wlong, &slat, &elong, &nlat, nullptr) &&
+        wlong > -1000.0)
     {
-        if (isNorth)
-            _bounds.set(166000, 0, 834000, 9330000);
-        else
-            _bounds.set(166000, 1116915, 834000, 10000000);
+        osg::ref_ptr<const SpatialReference> geo = getGeographicSRS();
+        geo->transform2D(wlong, slat, this, _bounds.xMin(), _bounds.yMin());
+        geo->transform2D(elong, nlat, this, _bounds.xMax(), _bounds.yMax());
+        OE_INFO << LC << "Bounds: " << _bounds.toString() << std::endl;
+    }
+#endif
+#endif
+
+    if (_bounds.xMin() == -FLT_MAX)
+    {
+        if (isGeographic() || isGeocentric())
+        {
+            _bounds.set(-180.0, -90.0, 180.0, 90.0);
+        }
+        else if (isMercator() || isSphericalMercator())
+        {
+            _bounds.set(MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY);
+        }
+        else if (OSRGetUTMZone(handle, &isNorth))
+        {
+            if (isNorth)
+                _bounds.set(166000, 0, 834000, 9330000);
+            else
+                _bounds.set(166000, 1116915, 834000, 10000000);
+        }
     }
 }
 

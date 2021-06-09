@@ -339,7 +339,7 @@ FeatureSDFLayer::createImageImplementation(
         if (sdfExtent.getSRS()->isGeographic())
         {
             double LAT = sdfExtent.yMin() >= 0.0 ? sdfExtent.yMin() : sdfExtent.yMax();
-            toMeters = sdfExtent.getSRS()->getEllipsoid().degreesToMeters(1.0, LAT);
+            toMeters = sdfExtent.getSRS()->getEllipsoid().longitudinalDegreesToMeters(1.0, LAT);
         }
 
         _sdfGenerator.createDistanceField(

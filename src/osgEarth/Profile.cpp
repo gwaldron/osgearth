@@ -466,7 +466,7 @@ Profile::toString() const
         << std::setprecision(16)
         << "[srs=" << srs->getName() << ", min=" << _extent.xMin() << "," << _extent.yMin()
         << " max=" << _extent.xMax() << "," << _extent.yMax()
-        << " lod0=" << _numTilesWideAtLod0 << "," << _numTilesHighAtLod0
+        << " ar=" << _numTilesWideAtLod0 << ":" << _numTilesHighAtLod0
         << " vdatum=" << (srs->getVerticalDatum() ? srs->getVerticalDatum()->getName() : "geodetic")
         << "]";
 }

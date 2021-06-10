@@ -124,7 +124,6 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
     if (key.getLOD() >= _minLevel)
     {
         node = createNode(key, progress);
-        hasChildren = node.valid();
     }
 
     osg::ref_ptr<PagedNode2> pagedNode = new PagedNode2();
@@ -135,10 +134,6 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
         pagedNode->addChild(node);
         fire_onCreateNode(key, node.get());
     }
-
-    tileRadius = osg::maximum(
-        tileBounds.radius(),
-        static_cast<osg::BoundingSphere::value_type>(tileRadius));
 
     pagedNode->setCenter(tileBounds.center());
     pagedNode->setRadius(tileRadius);
@@ -201,7 +196,6 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
                 return result;
             }
         );
-
         loadRange = (float)(tileRadius * _rangeFactor);
         pagedNode->setRefinePolicy(_additive ? REFINE_ADD : REFINE_REPLACE);
     }

@@ -27,12 +27,74 @@
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;
+using namespace MapBoxGL;
 
 #define LC "[MapboxGLImageLayer] " << getName() << ": "
 
 
 REGISTER_OSGEARTH_LAYER(mapboxglimage, MapBoxGLImageLayer);
 OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, URI, URL, url);
+
+void getIfSet(const Json::Value& object, const std::string& member, PropertyValue<float>& value)
+{
+    if (object.isMember(member))
+    {
+        auto jsonValue = object[member];
+        if (!jsonValue.isObject())
+        {
+            value.setConstant((float)jsonValue.asDouble());
+        }
+        else
+        {
+            if (jsonValue.isMember("stops"))
+            {
+                Json::Value &stopsValue = jsonValue["stops"];
+                if (stopsValue.isArray())
+                {
+                    PropertyExpression<float> expression;
+                    for (unsigned int i = 0; i < stopsValue.size(); ++i)
+                    {
+                        float zoom = stopsValue[i][0u].asDouble();
+                        float value = stopsValue[i][1u].asDouble();
+                        expression.stops().emplace_back(zoom, value);
+                    }
+                    value.setExpression(expression);
+                }
+            }
+        }
+    }
+}
+
+void getIfSet(const Json::Value& object, const std::string& member, PropertyValue<Color>& value)
+{
+    if (object.isMember(member))
+    {
+        auto jsonValue = object[member];
+        // Check for an object value  here as the line-width could be an array which is a series of "stops".  We don't support that yet.
+        if (!jsonValue.isObject())
+        {
+            value.setConstant(Color(jsonValue.asString()));
+        }
+        else
+        {
+            if (jsonValue.isMember("stops"))
+            {
+                Json::Value &stopsValue = jsonValue["stops"];
+                if (stopsValue.isArray())
+                {
+                    PropertyExpression<Color> expression;
+                    for (unsigned int i = 0; i < stopsValue.size(); ++i)
+                    {
+                        float zoom = stopsValue[i][0u].asDouble();
+                        Color value = Color(stopsValue[i][1u].asString());
+                        expression.stops().emplace_back(zoom, value);
+                    }
+                    value.setExpression(expression);
+                }
+            }
+        }
+    }
+}
 
 void getIfSet(const Json::Value& object, const std::string& member, optional<std::string>& value)
 {
@@ -90,71 +152,71 @@ void getIfSet(const Json::Value& object, const std::string& member, optional<int
 
 
 /*************************/
-MapBoxStyleSheet::Source::Source()
+MapBoxGL::StyleSheet::Source::Source()
 {
 }
 
-std::string& MapBoxStyleSheet::Source::attribution()
-{
-    return _attribution;
-}
-
-const std::string& MapBoxStyleSheet::Source::attribution() const
+std::string& MapBoxGL::StyleSheet::Source::attribution()
 {
     return _attribution;
 }
 
-std::string& MapBoxStyleSheet::Source::url()
+const std::string& MapBoxGL::StyleSheet::Source::attribution() const
+{
+    return _attribution;
+}
+
+std::string& MapBoxGL::StyleSheet::Source::url()
 {
     return _url;
 }
 
-const std::string& MapBoxStyleSheet::Source::url() const
+const std::string& MapBoxGL::StyleSheet::Source::url() const
 {
     return _url;
 }
 
-std::string& MapBoxStyleSheet::Source::type()
+std::string& MapBoxGL::StyleSheet::Source::type()
 {
     return _type;
 }
 
-const std::string& MapBoxStyleSheet::Source::type() const
+const std::string& MapBoxGL::StyleSheet::Source::type() const
 {
     return _type;
 }
 
-std::string& MapBoxStyleSheet::Source::name()
+std::string& MapBoxGL::StyleSheet::Source::name()
 {
     return _name;
 }
 
-const std::string& MapBoxStyleSheet::Source::name() const
+const std::string& MapBoxGL::StyleSheet::Source::name() const
 {
     return _name;
 }
 
-const std::vector< std::string >& MapBoxStyleSheet::Source::tiles() const
+const std::vector< std::string >& MapBoxGL::StyleSheet::Source::tiles() const
 {
     return _tiles;
 }
 
-std::vector< std::string >& MapBoxStyleSheet::Source::tiles()
+std::vector< std::string >& MapBoxGL::StyleSheet::Source::tiles()
 {
     return _tiles;
 }
 
-FeatureSource* MapBoxStyleSheet::Source::featureSource()
+FeatureSource* MapBoxGL::StyleSheet::Source::featureSource()
 {
     return _featureSource.get();
 }
 
-const FeatureSource* MapBoxStyleSheet::Source::featureSource() const
+const FeatureSource* MapBoxGL::StyleSheet::Source::featureSource() const
 {
     return _featureSource.get();
 }
 
-void MapBoxStyleSheet::Source::loadFeatureSource(const std::string& styleSheetURI, const osgDB::Options* options)
+void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleSheetURI, const osgDB::Options* options)
 {
     if (!_featureSource.valid())
     {
@@ -192,126 +254,120 @@ void MapBoxStyleSheet::Source::loadFeatureSource(const std::string& styleSheetUR
 
 
 /*************************/
-MapBoxStyleSheet::Paint::Paint() :
-    _backgroundColor("#000000"),
-    _backgroundOpacity(1.0f),
+Paint::Paint() :    
     _fillAntialias(true),
-    _fillColor("#000000"),
-    _fillOpacity(1.0f),
-
-    _lineColor("#000000"),
-    _lineWidth(1.0f),
-
     _visibility("visible")
 {
 }
 
-optional<std::string>& MapBoxStyleSheet::Paint::backgroundColor()
+PropertyValue<Color>& Paint::backgroundColor()
 {
     return _backgroundColor;
 }
 
-optional<float>& MapBoxStyleSheet::Paint::backgroundOpacity()
-{
-    return _backgroundOpacity;
-}
-
-optional<std::string>& MapBoxStyleSheet::Paint::fillColor()
-{
-    return _fillColor;
-}
-
-optional<std::string>& MapBoxStyleSheet::Paint::lineColor()
-{
-    return _lineColor;
-}
-
-optional<float>& MapBoxStyleSheet::Paint::lineWidth()
-{
-    return _lineWidth;
-}
-
-const optional<std::string>& MapBoxStyleSheet::Paint::textField() const
-{
-    return _textField;
-}
-
-optional<std::string>& MapBoxStyleSheet::Paint::textField()
-{
-    return _textField;
-}
-
-const optional<std::string>& MapBoxStyleSheet::Paint::textColor() const
-{
-    return _textColor;
-}
-
-optional<std::string>& MapBoxStyleSheet::Paint::textColor()
-{
-    return _textColor;
-}
-
-const optional<std::string>& MapBoxStyleSheet::Paint::textHaloColor() const
-{
-    return _textHaloColor;
-}
-
-optional<std::string>& MapBoxStyleSheet::Paint::textHaloColor()
-{
-    return _textHaloColor;
-}
-
-const optional<float>& MapBoxStyleSheet::Paint::textSize() const
-{
-    return _textSize;
-}
-
-optional<float>& MapBoxStyleSheet::Paint::textSize()
-{
-    return _textSize;
-}
-
-const optional<std::string>& MapBoxStyleSheet::Paint::backgroundColor() const
+const PropertyValue<Color>& Paint::backgroundColor() const
 {
     return _backgroundColor;
 }
 
-const optional<float>& MapBoxStyleSheet::Paint::backgroundOpacity() const
+
+PropertyValue<float>& Paint::backgroundOpacity()
 {
     return _backgroundOpacity;
 }
 
-const optional<std::string>& MapBoxStyleSheet::Paint::fillColor() const
+const PropertyValue<float>& Paint::backgroundOpacity() const
 {
-    return _fillColor;
+    return _backgroundOpacity;
 }
 
-const optional<std::string>& MapBoxStyleSheet::Paint::lineColor() const
-{
-    return _lineColor;
-}
-
-const optional<float>& MapBoxStyleSheet::Paint::lineWidth() const
+PropertyValue<float>& Paint::lineWidth()
 {
     return _lineWidth;
 }
 
-const optional<std::string>& MapBoxStyleSheet::Paint::iconImage() const
+const optional<std::string>& Paint::textField() const
+{
+    return _textField;
+}
+
+optional<std::string>& Paint::textField()
+{
+    return _textField;
+}
+
+const PropertyValue<Color>& Paint::textColor() const
+{
+    return _textColor;
+}
+
+PropertyValue<Color>& Paint::textColor()
+{
+    return _textColor;
+}
+
+const PropertyValue<Color>& Paint::textHaloColor() const
+{
+    return _textHaloColor;
+}
+
+PropertyValue<Color>& Paint::textHaloColor()
+{
+    return _textHaloColor;
+}
+
+const PropertyValue<float>& Paint::textSize() const
+{
+    return _textSize;
+}
+
+PropertyValue<float>& Paint::textSize()
+{
+    return _textSize;
+}
+
+const PropertyValue<Color>& Paint::fillColor() const
+{
+    return _fillColor;
+}
+
+PropertyValue<Color>& Paint::fillColor()
+{
+    return _fillColor;
+}
+
+const PropertyValue<Color>& Paint::lineColor() const
+{
+    return _lineColor;
+}
+
+PropertyValue<Color>& Paint::lineColor()
+{
+    return _lineColor;
+}
+
+
+const PropertyValue<float>& Paint::lineWidth() const
+{
+    return _lineWidth;
+}
+
+const optional<std::string>& Paint::iconImage() const
 {
     return _iconImage;
 }
 
-optional<std::string>& MapBoxStyleSheet::Paint::iconImage()
+optional<std::string>& Paint::iconImage()
 {
     return _iconImage;
 }
 
-const optional<std::string>& MapBoxStyleSheet::Paint::visibility() const
+const optional<std::string>& Paint::visibility() const
 {
     return _visibility;
 }
 
-optional<std::string>& MapBoxStyleSheet::Paint::visibility()
+optional<std::string>& Paint::visibility()
 {
     return _visibility;
 }
@@ -320,141 +376,146 @@ optional<std::string>& MapBoxStyleSheet::Paint::visibility()
 /*************************/
 
 
-MapBoxStyleSheet::Layer::Layer()
+MapBoxGL::StyleSheet::Layer::Layer()
 {
 }
 
-const std::string& MapBoxStyleSheet::Layer::id() const
-{
-    return _id;
-}
-
-std::string& MapBoxStyleSheet::Layer::id()
+const std::string& MapBoxGL::StyleSheet::Layer::id() const
 {
     return _id;
 }
 
-std::string& MapBoxStyleSheet::Layer::source()
+std::string& MapBoxGL::StyleSheet::Layer::id()
+{
+    return _id;
+}
+
+std::string& MapBoxGL::StyleSheet::Layer::source()
 {
     return _source;
 }
 
-const std::string& MapBoxStyleSheet::Layer::source() const
+const std::string& MapBoxGL::StyleSheet::Layer::source() const
 {
     return _source;
 }
 
-const std::string& MapBoxStyleSheet::Layer::sourceLayer() const
+const std::string& MapBoxGL::StyleSheet::Layer::sourceLayer() const
 {
     return _sourceLayer;
 }
 
-std::string& MapBoxStyleSheet::Layer::sourceLayer()
+std::string& MapBoxGL::StyleSheet::Layer::sourceLayer()
 {
     return _sourceLayer;
 }
 
-const std::string& MapBoxStyleSheet::Layer::type() const
+const std::string& MapBoxGL::StyleSheet::Layer::type() const
 {
     return _type;
 }
 
-std::string& MapBoxStyleSheet::Layer::type()
+std::string& MapBoxGL::StyleSheet::Layer::type()
 {
     return _type;
 }
 
-const unsigned int& MapBoxStyleSheet::Layer::minZoom() const
+const unsigned int& MapBoxGL::StyleSheet::Layer::minZoom() const
 {
     return _minZoom;
 }
 
-unsigned int& MapBoxStyleSheet::Layer::minZoom()
+unsigned int& MapBoxGL::StyleSheet::Layer::minZoom()
 {
     return _minZoom;
 }
 
 
-unsigned int& MapBoxStyleSheet::Layer::maxZoom()
+unsigned int& MapBoxGL::StyleSheet::Layer::maxZoom()
 {
     return _maxZoom;
 }
 
-const unsigned int& MapBoxStyleSheet::Layer::maxZoom() const
+const unsigned int& MapBoxGL::StyleSheet::Layer::maxZoom() const
 {
     return _maxZoom;
 }
 
-MapBoxStyleSheet::Paint& MapBoxStyleSheet::Layer::paint()
+Paint& MapBoxGL::StyleSheet::Layer::paint()
 {
     return _paint;
 }
 
-const MapBoxStyleSheet::Paint& MapBoxStyleSheet::Layer::paint() const
+const Paint& MapBoxGL::StyleSheet::Layer::paint() const
 {
     return _paint;
 }
 
-MapBoxStyleSheet::FilterExpression& MapBoxStyleSheet::Layer::filter()
+MapBoxGL::StyleSheet::FilterExpression& MapBoxGL::StyleSheet::Layer::filter()
 {
     return _filter;
 }
 
-const MapBoxStyleSheet::FilterExpression& MapBoxStyleSheet::Layer::filter() const
+const MapBoxGL::StyleSheet::FilterExpression& MapBoxGL::StyleSheet::Layer::filter() const
 {
     return _filter;
 }
 /*************************/
 
 
-const std::string& MapBoxStyleSheet::version() const
+const std::string& MapBoxGL::StyleSheet::version() const
 {
     return _version;
 }
 
-const std::string& MapBoxStyleSheet::name() const
+const std::string& MapBoxGL::StyleSheet::name() const
 {
     return _name;
 }
 
-const std::vector< MapBoxStyleSheet::Layer >& MapBoxStyleSheet::layers() const
+const std::vector< MapBoxGL::StyleSheet::Layer >& MapBoxGL::StyleSheet::layers() const
 {
     return _layers;
 }
 
-std::vector< MapBoxStyleSheet::Layer >& MapBoxStyleSheet::layers()
+std::vector< MapBoxGL::StyleSheet::Layer >& MapBoxGL::StyleSheet::layers()
 {
     return _layers;
 }
 
-const std::vector< MapBoxStyleSheet::Source >& MapBoxStyleSheet::sources() const
+const std::vector< MapBoxGL::StyleSheet::Source >& MapBoxGL::StyleSheet::sources() const
 {
     return _sources;
 }
 
-std::vector< MapBoxStyleSheet::Source >& MapBoxStyleSheet::sources()
+std::vector< MapBoxGL::StyleSheet::Source >& MapBoxGL::StyleSheet::sources()
 {
     return _sources;
 }
 
-const URI& MapBoxStyleSheet::sprite() const
+const URI& MapBoxGL::StyleSheet::sprite() const
 {
     return _sprite;
 }
 
-const ResourceLibrary* MapBoxStyleSheet::spriteLibrary() const
+const URI& MapBoxGL::StyleSheet::glyphs() const
+{
+    return _glyphs;
+}
+
+const ResourceLibrary* MapBoxGL::StyleSheet::spriteLibrary() const
 {
     return _spriteLibrary.get();
 }
 
-MapBoxStyleSheet::MapBoxStyleSheet()
+MapBoxGL::StyleSheet::StyleSheet()
 {
 }
 
 
-MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Options* options)
+MapBoxGL::StyleSheet MapBoxGL::StyleSheet::load(const URI& location, const osgDB::Options* options)
 {
-    MapBoxStyleSheet styleSheet;
+    MapBoxGL::StyleSheet styleSheet;
 
     auto rr = location.readString(options);
     std::string data = rr.getString();
@@ -524,37 +585,10 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
                 getIfSet(paint, "background-opacity", layer.paint().backgroundOpacity());
                 getIfSet(paint, "fill-color", layer.paint().fillColor());
 
-
-                // TODO:  Many of these properties actually support an "interpolate" property with stops that define a value per zoom level.
-                // So we should read those stops and use them per zoom level.
                 getIfSet(paint, "line-color", layer.paint().lineColor());
                 getIfSet(paint, "line-width", layer.paint().lineWidth());
-
-                if (paint.isMember("text-color"))
-                {
-                    const Json::Value& textColor = paint["text-color"];
-                    if (textColor.isString())
-                    {
-                        layer.paint().textColor() = textColor.asString();
-                    }
-                    else
-                    {
-                        layer.paint().textColor() = "#ff0000";
-                    }
-                }
-
-                if (paint.isMember("text-halo-color"))
-                {
-                    const Json::Value& textHaloColor = paint["text-halo-color"];
-                    if (textHaloColor.isString())
-                    {
-                        layer.paint().textHaloColor() = textHaloColor.asString();
-                    }
-                    else
-                    {
-                        layer.paint().textHaloColor() = "#00ff00";
-                    }
-                }
+                getIfSet(paint, "text-color", layer.paint().textColor());
+                getIfSet(paint, "text-halo-color", layer.paint().textHaloColor());
             }
 
             // Parse layout
@@ -578,12 +612,11 @@ MapBoxStyleSheet MapBoxStyleSheet::load(const URI& location, const osgDB::Option
             styleSheet._layers.emplace_back(std::move(layer));
         }
     }
-    std::cout << "Found " << styleSheet._layers.size() << " layers" << std::endl;
 
     return styleSheet;
 }
 
-ResourceLibrary* MapBoxStyleSheet::loadSpriteLibrary(const URI& sprite)
+ResourceLibrary* MapBoxGL::StyleSheet::loadSpriteLibrary(const URI& sprite)
 {
     ResourceLibrary* library = nullptr;
     URI uri(Stringify() << sprite.full() << ".json");
@@ -657,7 +690,7 @@ MapBoxGLImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    _styleSheet = MapBoxStyleSheet::load(getURL(), getReadOptions());
+    _styleSheet = MapBoxGL::StyleSheet::load(getURL(), getReadOptions());
 
     return Status::NoError;
 }
@@ -1024,10 +1057,13 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
     {
         if (layer.type() == "background")
         {
-            backgroundColor = Color(layer.paint().backgroundColor().get());
+            backgroundColor = Color(layer.paint().backgroundColor().evaluate(key.getLOD()));
             break;
         }
     }
+
+
+    unsigned int numFeaturesRendered = 0;
 
     FeatureRasterizer featureRasterizer(getTileSize(), getTileSize(), key.getExtent(), backgroundColor);
 
@@ -1048,7 +1084,8 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
             continue;
         }
 
-        if (key.getLevelOfDetail() >= layer.minZoom() && key.getLevelOfDetail() <= layer.maxZoom())
+        //if (key.getLevelOfDetail() >= layer.minZoom() && key.getLevelOfDetail() <= layer.maxZoom())
+        if (key.getLevelOfDetail() >= layer.minZoom() && key.getLevelOfDetail() < layer.maxZoom())
         {
             osg::ref_ptr< FeatureSource > featureSource;
 
@@ -1065,6 +1102,8 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                 continue;
             }
 
+            // TODO:  Maybe you don't need to zoom up for each layer, only once per feature source.
+
             LayeredFeatures layeredFeatures;
             // See if we already got the features for this tile for this source
             auto featuresItr = sourceToFeatures.find(layer.source());
@@ -1074,20 +1113,40 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                 TileKey queryKey = key;
                 while (allFeatures.empty() && queryKey.valid())
                 {
-                    // Get all the features from the feature source.
+                    // Get all the features from the feature source as well as it's neighbors so we can render labels and icons nicely along the edges
+                    // TODO:  This is having issues at higher zoom levels and not returning all the features
+                    /*
                     double buffer = 0.1;
                     Distance bufferDistance(buffer * queryKey.getExtent().width(), queryKey.getProfile()->getSRS()->getUnits());
                     osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(
                         queryKey,
                         bufferDistance,
                         nullptr, nullptr, progress);
+                        */
+
+                    // Just get the features for this tile.
+                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(queryKey, progress);
+                    if (progress && progress->isCanceled())
+                    {
+                        return GeoImage::INVALID;
+                    }
+
+
                     if (cursor.valid())
                     {
                         cursor->fill(allFeatures);
                     }
+
                     if (allFeatures.empty())
                     {
-                        queryKey = queryKey.createParentKey();
+                        queryKey = queryKey.createParentKey();           
+                        /*
+                        if (queryKey.getLevelOfDetail() < featureSource->getFeatureProfile()->getMaxLevel())
+                        {
+                            std::cout << "Not underzooming " << key.str() << " to " << queryKey.str() << " with a max level of " << featureSource->getFeatureProfile()->getMaxLevel() << std::endl;
+                            break;
+                        }
+                        */
                     }
                 }
 
@@ -1105,7 +1164,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
 
             if (layeredFeatures.features.find(layer.sourceLayer()) != layeredFeatures.features.end())
-            {
+            {                
                 // Run any filters on the layer.
                 FeatureList features;
                 if (!layer.filter()._filter.empty())
@@ -1123,27 +1182,34 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                     features = layeredFeatures.features[layer.sourceLayer()];
                 }
 
+                if (features.empty())
+                {
+                    continue;
+                }
+
                 if (layer.type() == "fill")
                 {
                     Style style;
-                    style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().get());
+                    style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().evaluate(key.getLOD()));
                     featureRasterizer.render(
                         features,
                         style,
                         featureSource->getFeatureProfile(),
                         session->styles());
+                    numFeaturesRendered += features.size();
                 }
                 else if (layer.type() == "line")
                 {
                     Style style;
-                    style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color(layer.paint().lineColor().get());
-                    style.getOrCreateSymbol<LineSymbol>()->stroke()->width() = layer.paint().lineWidth();
+                    style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = layer.paint().lineColor().evaluate(key.getLOD());
+                    style.getOrCreateSymbol<LineSymbol>()->stroke()->width() = layer.paint().lineWidth().evaluate(key.getLOD());
                     style.getOrCreateSymbol<LineSymbol>()->stroke()->widthUnits() = Units::PIXELS;
                     featureRasterizer.render(
                         features,
                         style,
                         featureSource->getFeatureProfile(),
                         session->styles());
+                    numFeaturesRendered += features.size();
                 }
                 else if (layer.type() == "symbol")
                 {
@@ -1152,18 +1218,9 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                     {
                         style.getOrCreateSymbol<TextSymbol>()->content() = layer.paint().textField().get();
                     }
-                    if (layer.paint().textColor().isSet())
-                    {
-                        style.getOrCreateSymbol<TextSymbol>()->fill()->color() = Color(layer.paint().textColor().get());
-                    }
-                    if (layer.paint().textHaloColor().isSet())
-                    {
-                        style.getOrCreateSymbol<TextSymbol>()->halo()->color() = Color(layer.paint().textHaloColor().get());
-                    }
-                    if (layer.paint().textSize().isSet())
-                    {
-                        style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().get());
-                    }
+                    style.getOrCreateSymbol<TextSymbol>()->fill()->color() = layer.paint().textColor().evaluate(key.getLOD());                    
+                    style.getOrCreateSymbol<TextSymbol>()->halo()->color() = layer.paint().textHaloColor().evaluate(key.getLOD());                                       
+                    style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().evaluate(key.getLOD()));
 
                     if (layer.paint().iconImage().isSet())
                     {
@@ -1177,10 +1234,15 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                         style,
                         featureSource->getFeatureProfile(),
                         session->styles());
+                    numFeaturesRendered += features.size();
                 }
             }
         }
     }
 
-    return featureRasterizer.finalize();
+    if (numFeaturesRendered > 0)
+    {
+        return featureRasterizer.finalize();
+    }
+    return GeoImage::INVALID;
 }

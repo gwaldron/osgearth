@@ -25,48 +25,144 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT MapBoxStyleSheet
+    namespace MapBoxGL
     {
-    public:
-
-        class Source
+        template< class T >
+        class Stop
         {
         public:
-            Source();
+            Stop(float z, T v) :
+                zoom(z),
+                value(std::move(v))
+            {
+            }
 
-            const std::string& attribution() const;
-            std::string& attribution();
+            T value;
+            float zoom;
+        };
 
-            const std::string& url() const;
-            std::string& url();
+        template<typename T>
+        T lerp(float t, const T& a, const T& b)
+        {
+            return (T)(a + (b - a) * t);
+        }
 
-            const std::string& type() const;
-            std::string& type();
+        template<>
+        GeoPoint lerp(float t, const GeoPoint& a, const GeoPoint& b)
+        {
+            return a.interpolate(b, t);
+        }
 
-            const std::string& name() const;
-            std::string& name();
+        template< class T >
+        class PropertyExpression
+        {
+            using StopType = Stop< T >;
 
-            const std::vector< std::string >& tiles() const;
-            std::vector< std::string >& tiles();
+        public:
+            PropertyExpression() = default;
+            const std::vector< StopType >& stops() const {
+                return _stops;
+            }
 
-            FeatureSource* featureSource();
-            const FeatureSource* featureSource() const;
+            std::vector< StopType >& stops() {
+                return _stops;
+            }
 
-            void loadFeatureSource(const std::string& styleSheetURI, const osgDB::Options* options);
+            T evalute(float zoom) const
+            {
+                if (_stops.empty())
+                {
+                    return T();
+                }
+                else if (zoom <= _stops[0].zoom)
+                {
+                    return _stops[0].value;
+                }
+                else if (zoom >= _stops.back().zoom)
+                {
+                    return _stops.back().value;
+                }
+                else
+                {
+                    for (unsigned int i = 0; i < _stops.size(); ++i)
+                    {
+                        const StopType& a = _stops[i];
+                        const StopType& b = _stops[i + 1];
+                        if (a.zoom <= zoom && b.zoom >= zoom)
+                        {
+                            // Normalize the value between 0 and 1 for interpolation.
+                            float t = (zoom - a.zoom) / (b.zoom - a.zoom);
+                            auto val = lerp(t, a.value, b.value);
+                            return val;
+                        }
+                    }
+                }
+
+                return T();
+            }
 
 
         private:
-
-
-            std::string _attribution;
-            std::string _url;
-            std::string _type;
-            std::string _name;
-
-            std::vector< std::string > _tiles;
-
-            osg::ref_ptr< FeatureSource > _featureSource;
+            float _base = 1.0f;
+            std::vector< StopType > _stops;
         };
+
+        template< class T >
+        class PropertyValue
+        {
+        public:
+            PropertyValue() = default;
+
+            PropertyValue(T constant) :
+                _constant(std::move(constant)),
+                _isConstant(true)
+            {
+            }
+
+            PropertyValue(PropertyExpression<T> expression) :
+                _expression(std::move(expression)),
+                _isConstant(false)
+            {
+            }
+
+            void setConstant(T constant)
+            {
+                _constant = std::move(constant);
+                _isConstant = true;
+            }
+
+            void setExpression(PropertyExpression<T> expression)
+            {
+                _expression = std::move(expression);
+                _isConstant = false;
+            }
+
+            bool isConstant() const
+            {
+                return _isConstant;
+            }
+
+            bool isExpression() const
+            {
+                return !_isConstant;
+            }
+
+            T evaluate(float zoom) const
+            {
+                if (_isConstant)
+                {
+                    return _constant;
+                }
+                return _expression.evalute(zoom);
+            }
+
+        private:
+            T _constant;
+            PropertyExpression<T> _expression;
+            bool _isConstant = true;
+        };
+
+
 
         // https://docs.mapbox.com/mapbox-gl-js/style-spec/layers/#paint-property
         class Paint
@@ -74,32 +170,32 @@ namespace osgEarth
         public:
             Paint();
 
-            const optional<std::string>& backgroundColor() const;
-            optional<std::string>& backgroundColor();
+            const PropertyValue<Color>& backgroundColor() const;
+            PropertyValue<Color>& backgroundColor();
 
-            const optional<float>& backgroundOpacity() const;
-            optional<float>& backgroundOpacity();
+            const PropertyValue<float>& backgroundOpacity() const;
+            PropertyValue<float>& backgroundOpacity();
 
-            const optional<std::string>& fillColor() const;
-            optional<std::string>& fillColor();
+            const PropertyValue<Color>& fillColor() const;
+            PropertyValue<Color>& fillColor();
 
-            const optional<std::string>& lineColor() const;
-            optional<std::string>& lineColor();
+            const PropertyValue<Color>& lineColor() const;
+            PropertyValue<Color>& lineColor();
 
-            const optional<float>& lineWidth() const;
-            optional<float>& lineWidth();
+            const PropertyValue<float>& lineWidth() const;
+            PropertyValue<float>& lineWidth();
 
             const optional<std::string>& textField() const;
             optional<std::string>& textField();
 
-            const optional<std::string>& textColor() const;
-            optional<std::string>& textColor();
+            const PropertyValue<Color>& textColor() const;
+            PropertyValue<Color>& textColor();
 
-            const optional<std::string>& textHaloColor() const;
-            optional<std::string>& textHaloColor();
+            const PropertyValue<Color>& textHaloColor() const;
+            PropertyValue<Color>& textHaloColor();
 
-            const optional<float>& textSize() const;
-            optional<float>& textSize();
+            const PropertyValue<float>& textSize() const;
+            PropertyValue<float>& textSize();
 
             const optional<std::string>& iconImage() const;
             optional<std::string>& iconImage();
@@ -111,29 +207,24 @@ namespace osgEarth
         private:
 
             //Background
-            optional<std::string> _backgroundColor;
-            optional<float> _backgroundOpacity;
-            // std::string _backgroundPattern;
+            PropertyValue<Color> _backgroundColor = PropertyValue<Color>(Color::Transparent);
+            PropertyValue<float> _backgroundOpacity = PropertyValue<float>(1.0f);            
 
             // Fill
             optional<bool> _fillAntialias;
-            optional<std::string> _fillColor;
-            optional<float> _fillOpacity;
-            optional<std::string> _fillOutlineColor;
-            // std::string _fillPattern;
-            optional<float> _fillSortKey;
-            // fill-translate
-            // fill-translate-anchor
+            PropertyValue<Color>  _fillColor = PropertyValue<Color>(Color("#000000"));
+            PropertyValue<float> _fillOpacity = PropertyValue<float>(1.0f);
 
             // Line
-            optional<std::string> _lineColor;
-            optional<float> _lineWidth;
+            PropertyValue<Color> _lineColor = PropertyValue<Color>(Color::Green);
+
+            PropertyValue<float> _lineWidth = PropertyValue<float>(1.0f);
 
             // Text
             optional<std::string> _textField;
-            optional<std::string> _textColor;
-            optional<std::string> _textHaloColor;
-            optional<float> _textSize;
+            PropertyValue<Color> _textColor = PropertyValue<Color>(Color::Black);
+            PropertyValue<Color> _textHaloColor = PropertyValue<Color>(Color::Transparent);
+            PropertyValue<float> _textSize = PropertyValue<float>(16.0f);
 
             // Icon
             optional<std::string> _iconImage;
@@ -143,89 +234,133 @@ namespace osgEarth
 
         };
 
-        class FilterExpression
-        {
-            public:
-            Json::Value _filter;
-        };
-
-        class Layer
+        class OSGEARTH_EXPORT StyleSheet
         {
         public:
-            Layer();
 
-            const std::string& id() const;
-            std::string& id();
+            class Source
+            {
+            public:
+                Source();
 
-            const std::string& source() const;
-            std::string& source();
+                const std::string& attribution() const;
+                std::string& attribution();
 
-            const std::string& sourceLayer() const;
-            std::string& sourceLayer();
+                const std::string& url() const;
+                std::string& url();
 
-            const std::string& type() const;
-            std::string& type();
+                const std::string& type() const;
+                std::string& type();
+
+                const std::string& name() const;
+                std::string& name();
+
+                const std::vector< std::string >& tiles() const;
+                std::vector< std::string >& tiles();
+
+                FeatureSource* featureSource();
+                const FeatureSource* featureSource() const;
+
+                void loadFeatureSource(const std::string& styleSheetURI, const osgDB::Options* options);
 
 
-            const unsigned int& minZoom() const;
-            unsigned int& minZoom();
+            private:
 
-            const unsigned int& maxZoom() const;
-            unsigned int& maxZoom();
 
-            Paint& paint();
-            const Paint& paint() const;
+                std::string _attribution;
+                std::string _url;
+                std::string _type;
+                std::string _name;
 
-            FilterExpression& filter();
-            const FilterExpression& filter() const;
+                std::vector< std::string > _tiles;
+
+                osg::ref_ptr< FeatureSource > _featureSource;
+            };
+
+            
+
+            class FilterExpression
+            {
+            public:
+                Json::Value _filter;
+            };
+
+            class Layer
+            {
+            public:
+                Layer();
+
+                const std::string& id() const;
+                std::string& id();
+
+                const std::string& source() const;
+                std::string& source();
+
+                const std::string& sourceLayer() const;
+                std::string& sourceLayer();
+
+                const std::string& type() const;
+                std::string& type();
+
+
+                const unsigned int& minZoom() const;
+                unsigned int& minZoom();
+
+                const unsigned int& maxZoom() const;
+                unsigned int& maxZoom();
+
+                Paint& paint();
+                const Paint& paint() const;
+
+                FilterExpression& filter();
+                const FilterExpression& filter() const;
+
+            private:
+                std::string _id;
+                std::string _source;
+                std::string _sourceLayer;
+                std::string _type;
+                unsigned int _minZoom = 0;
+                unsigned int _maxZoom = 24;
+                Paint _paint;
+                FilterExpression _filter;
+            };
+
+            const std::string& version() const;
+
+            const std::string& name() const;
+
+            const URI& glyphs() const;
+
+            const URI& sprite() const;
+
+
+            std::vector< Layer >& layers();
+            const std::vector< Layer >& layers() const;
+
+            std::vector< Source >& sources();
+            const std::vector< Source >& sources() const;
+
+            const ResourceLibrary* spriteLibrary() const;
+
+            static StyleSheet load(const URI& location, const osgDB::Options* options);
+
+            StyleSheet();
 
         private:
-            std::string _id;
-            std::string _source;
-            std::string _sourceLayer;
-            std::string _type;
-            unsigned int _minZoom = 0;
-            unsigned int _maxZoom = 24;
-            Paint _paint;
-            FilterExpression _filter;
+
+            std::string _version;
+            std::string _name;
+            URI _sprite;
+            URI _glyphs;
+
+            std::vector< Source > _sources;
+            std::vector< Layer > _layers;
+
+            osg::ref_ptr< ResourceLibrary > _spriteLibrary;
+            static ResourceLibrary* loadSpriteLibrary(const URI& sprite);
         };
-
-        const std::string& version() const;
-
-        const std::string& name() const;
-
-        const URI& glyphs() const;
-
-        const URI& sprite() const;
-
-
-        std::vector< Layer >& layers();
-        const std::vector< Layer >& layers() const;
-
-        std::vector< Source >& sources();
-        const std::vector< Source >& sources() const;
-
-        const ResourceLibrary* spriteLibrary() const;
-
-        static MapBoxStyleSheet load(const URI& location, const osgDB::Options* options);
-
-        MapBoxStyleSheet();
-
-    private:
-
-        std::string _version;
-        std::string _name;
-        URI _sprite;
-        URI _glyphs;
-
-        std::vector< Source > _sources;
-        std::vector< Layer > _layers;
-
-        osg::ref_ptr< ResourceLibrary > _spriteLibrary;
-        static ResourceLibrary* loadSpriteLibrary(const URI& sprite);
-    };
-
-
+    }
 
 
     class OSGEARTH_EXPORT MapBoxGLImageLayer : public osgEarth::ImageLayer
@@ -268,7 +403,7 @@ namespace osgEarth
         virtual ~MapBoxGLImageLayer() { }
 
         osg::observer_ptr< const osgEarth::Map > _map;
-        MapBoxStyleSheet _styleSheet;
+        MapBoxGL::StyleSheet _styleSheet;
     };
 } // namespace osgEarth
 

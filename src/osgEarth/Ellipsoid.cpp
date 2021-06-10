@@ -142,10 +142,15 @@ Ellipsoid::set(double er, double pr)
 }
 
 double
-Ellipsoid::degreesToMeters(double value, double lat_deg) const
+Ellipsoid::longitudinalDegreesToMeters(double value, double lat_deg) const
 {
-    double R = getRadiusEquator();
-    return (2.0 * osg::PI * R / 360.0) * cos(osg::DegreesToRadians(lat_deg));
+    return value * (2.0 * osg::PI * getRadiusEquator() / 360.0) * cos(osg::DegreesToRadians(lat_deg));
+}
+
+double
+Ellipsoid::metersToLongitudinalDegrees(double value, double lat_deg) const
+{
+    return value / longitudinalDegreesToMeters(1.0, lat_deg);
 }
 
 bool

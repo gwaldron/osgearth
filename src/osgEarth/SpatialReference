@@ -141,19 +141,17 @@ namespace osgEarth
 
     public: // extent transformations.
         
-        /**
-         * Transforms a spatial extent to another SRS. The transformed extent will
-         * actually be the minimum bounding axis-aligned rectangle that would hold
-         * the source extent.
-         */
+        //! Transforms a minimum bounding rectangle from this SRS to another.
+        //! The operation is not necessarily commutitive.
         virtual bool transformExtentToMBR(
             const SpatialReference* to_srs,
-            double&                 in_out_xmin, 
-            double&                 in_out_ymin,
-            double&                 in_out_xmax, 
-            double&                 in_out_ymax ) const;
+            double& in_out_xmin, 
+            double& in_out_ymin,
+            double& in_out_xmax, 
+            double& in_out_ymax ) const;
         
-        virtual bool transformExtentPoints(
+        //! Transforms a 2D grid of points from this SRS to another.
+        virtual bool transformGrid(
             const SpatialReference* to_srs,
             double in_xmin, double in_ymin,
             double in_xmax, double in_ymax,

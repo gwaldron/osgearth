@@ -466,7 +466,7 @@ Profile::toString() const
         << std::setprecision(16)
         << "[srs=" << srs->getName() << ", min=" << _extent.xMin() << "," << _extent.yMin()
         << " max=" << _extent.xMax() << "," << _extent.yMax()
-        << " lod0=" << _numTilesWideAtLod0 << "," << _numTilesHighAtLod0
+        << " ar=" << _numTilesWideAtLod0 << ":" << _numTilesHighAtLod0
         << " vdatum=" << (srs->getVerticalDatum() ? srs->getVerticalDatum()->getName() : "geodetic")
         << "]";
 }
@@ -712,26 +712,6 @@ Profile::clampAndTransformExtent(const GeoExtent& input, bool* out_clamped) cons
 
         return result;
     }    
-}
-
-namespace
-{
-    double round( double in, int places )
-    {
-        for(int i=0; i<places; ++i)
-            in *= 10.0;
-        in = ceil(in);
-        for(int i=0; i<places; ++i)
-            in *= 0.1;
-        return in;
-    }
-
-    int quantize( double in, double epsilon )
-    {
-        int floored = (int)in;
-        int floored2 = (int)(in + epsilon);
-        return floored == floored2 ? floored : floored2;
-    }
 }
 
 void

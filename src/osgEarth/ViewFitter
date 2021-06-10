@@ -48,6 +48,12 @@ namespace osgEarth { namespace Util
         //! the camera is orthographic.
         bool createViewpoint(const GeoExtent& extent, Viewpoint& out) const;
 
+        //! Creates a Viewpoint that looks straight down on the map and
+        //! encompasses the specified node.
+        //! Returns true upon success, or false if there is missing data or if
+        //! the camera is orthographic.
+        bool createViewpoint(const osg::Node* node, Viewpoint& out) const;
+
         //! Sets a buffer (in meters) to apply to the view fit. Applying a buffer will
         //! expand the view so that the points are at least "buffer" meters inside the
         //! edge of the fitted view.

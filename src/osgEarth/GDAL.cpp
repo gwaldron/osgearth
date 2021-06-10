@@ -825,15 +825,31 @@ GDAL::Driver::open(const std::string& name,
     // record the data extent in profile space:
     _bounds = Bounds(minX, minY, maxX, maxY);
 
+    const char* pora = _srcDS->GetMetadataItem("AREA_OR_POINT");
+    bool is_area = pora != nullptr && Strings::toLower(std::string(pora)) == "area";
+
     bool clamped = false;
     if (srs->isGeographic())
     {
+        if (is_area && (_bounds.xMin() < -180.0 || _bounds.xMax() > 180.0))
+        {
+            _bounds.xMin() += resolutionX * 0.5;
+            _bounds.xMax() -= resolutionX * 0.5;
+        }
+
         if (_bounds.width() > 360)
         {
             _bounds.xMin() = -180;
             _bounds.xMax() = 180;
             clamped = true;
         }
+
+        if (is_area && (_bounds.yMin() < -90.0 || _bounds.yMax() > 90.0))
+        {
+            _bounds.yMin() += resolutionY * 0.5;
+            _bounds.yMax() -= resolutionY * 0.5;
+        }
+
         if (_bounds.height() > 180)
         {
             _bounds.yMin() = -90;

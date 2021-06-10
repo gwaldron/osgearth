@@ -279,6 +279,15 @@ Color::Color( const std::string& input, Format format )
             t.size() >= 1 && t[0] == '#' ? 1 :
             0;
         unsigned len = t.length() - e;
+        if (len == 3)
+        {
+            // This is a 3 digit hex code, so turn it into a 6 digit hex code
+            std::stringstream buf;
+            buf << t[e + 0] << t[e + 0] << t[e + 1] << t[e + 1] << t[e + 2] << t[e + 2];
+            t = buf.str();
+            len = 6;
+            e = 0;
+        }
 
         if (len >= 6) {
             c.r() |= t[e + 0] <= '9' ? (t[e + 0] - '0') << 4 : (10 + (t[e + 0] - 'a')) << 4;
@@ -293,6 +302,7 @@ Color::Color( const std::string& input, Format format )
                 c.a() |= t[e + 7] <= '9' ? (t[e + 7] - '0') : (10 + (t[e + 7] - 'a'));
             }
         }
+
         float w = ((float)c.r()) / 255.0f;
         float x = ((float)c.g()) / 255.0f;
         float y = ((float)c.b()) / 255.0f;

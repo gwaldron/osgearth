@@ -429,7 +429,18 @@ FeatureRasterizer::FeatureRasterizer(
     _image = new osg::Image();
     _image->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
     ImageUtils::PixelWriter write(_image.get());
-    write.assign(backgroundColor);
+
+#ifdef USE_BLEND2D
+    osg::Vec4 bg(backgroundColor.b(), backgroundColor.g(), backgroundColor.r(), backgroundColor.a());
+    _implPixelFormat = RF_BGRA;
+    _inverted = true;
+#else
+    osg::Vec4 bg(backgroundColor);    
+    _implPixelFormat = RF_ABGR;
+    _inverted = false;
+#endif
+
+    write.assign(bg);    
 }
 
 

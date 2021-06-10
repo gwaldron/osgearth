@@ -27,6 +27,7 @@
 #include <osgEarth/TerrainResources>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Extension>
+#include <osgEarth/Color>
 #include <osg/Texture1D>
 #include <osg/Texture2D>
 #include <osg/TransferFunction>
@@ -39,7 +40,12 @@ namespace osgEarth
         class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
-            OE_OPTION(bool, grayscale);
+            struct Stop {
+                float elevation;
+                Color color;
+            };
+            OE_OPTION_VECTOR(Stop, stops);
+            OE_OPTION(bool, grayscale); // @deprecated
             virtual Config getConfig() const;
             static Config getMetadata();
         private:

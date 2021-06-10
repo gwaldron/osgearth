@@ -3,16 +3,15 @@
 osgEarth is a 3D mapping SDK for OpenSceneGraph.
 
 * Get a 2D or 3D map up and running quickly and easily using one simple XML file
-
 * Visualize massive amounts of imagery, elevation data, and vector features
-
 * Use open-standards map data services like WMS, TMS, and GeoTIFF
-
 * Work locally or over the Internet
-
 * Develop applications using a full-featured C++11 API
 
-  
+System Requirements
+
+* Windows 10, Linux, or Mac OSX
+* OpenGL 3.3+ compatible GPU with 8+ GB
 
 Let's get started!
 

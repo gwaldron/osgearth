@@ -28,7 +28,7 @@
 extern "C" {
 
 #define OSGEARTH_MAJOR_VERSION    3
-#define OSGEARTH_MINOR_VERSION    1
+#define OSGEARTH_MINOR_VERSION    2
 #define OSGEARTH_PATCH_VERSION    0
 
 #include "osgEarth/BuildConfig.h"

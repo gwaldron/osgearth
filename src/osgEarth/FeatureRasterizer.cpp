@@ -192,8 +192,15 @@ namespace osgEarth {
             });
 
             osg::Vec4 color = symbol->fill().isSet() ? symbol->fill()->color() : Color::White;
+            // Fill the path
             ctx.setFillStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
             ctx.fillPath(path);
+
+            // Also stroke a 1 pixel path around the polygon with the same color to help cover up any gaps between any adjoining features.
+            ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
+            ctx.setStrokeWidth(1.0);
+            ctx.strokePath(path);
+
         }
 
         void rasterizeLines(

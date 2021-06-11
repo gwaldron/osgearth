@@ -32,7 +32,7 @@ using namespace osgEarth;
 namespace
 {
     std::string
-    getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool lowercase =false)
+    getOGRAttrValue( void* _handle, const std::string& name, int child_num = 0, bool lowercase =false)
     {
         const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
         if ( val )
@@ -381,56 +381,6 @@ SpatialReference::createFromHandle(void* ogrHandle)
 
     return new SpatialReference(ogrHandle);
 }
-
-#if 0
-SpatialReference*
-SpatialReference::fixWKT()
-{
-    std::string proj = getOGRAttrValue( _handle, "PROJECTION", 0 );
-
-    // fix invalid ESRI LCC projections:
-    if ( ciEquals( proj, "Lambert_Conformal_Conic" ) )
-    {
-        bool has_2_sps =
-            !getOGRAttrValue( _handle, "Standard_Parallel_2", 0 ).empty() ||
-            !getOGRAttrValue( _handle, "standard_parallel_2", 0 ).empty();
-
-        std::string new_wkt = getWKT();
-        if ( has_2_sps )
-        {
-            ciReplaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_2SP" );
-        }
-        else 
-        {
-            ciReplaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_1SP" );
-        }
-
-        OE_INFO << LC << "Morphing Lambert_Conformal_Conic to 1SP/2SP" << std::endl;
-        
-        return createFromWKT( new_wkt, _name );
-    }
-
-    // fixes for ESRI Plate_Carree and Equidistant_Cylindrical projections:
-    else if ( proj == "Plate_Carree" )
-    {
-        std::string new_wkt = getWKT();
-        ciReplaceIn( new_wkt, "Plate_Carree", "Equirectangular" );
-        OE_INFO << LC << "Morphing Plate_Carree to Equirectangular" << std::endl;
-        return createFromWKT( new_wkt, _name ); //, input->getReferenceFrame() );
-    }
-    else if ( proj == "Equidistant_Cylindrical" )
-    {
-        std::string new_wkt = getWKT();
-        OE_INFO << LC << "Morphing Equidistant_Cylindrical to Equirectangular" << std::endl;
-        ciReplaceIn( new_wkt, "Equidistant_Cylindrical", "Equirectangular" );
-        return createFromWKT( new_wkt, _name );
-    }
-
-    // no changes.
-    return this;
-}
-#endif
-
 
 /****************************************************************************/
 
@@ -1449,7 +1399,7 @@ SpatialReference::init()
         << _ellipsoid.getSemiMajorAxis() << ";" << _ellipsoid.getSemiMinorAxis() );
 
     // try to get an ellipsoid name:
-    _ellipsoid.setName( getOGRAttrValue(handle, "SPHEROID", 0, true) );
+    _ellipsoid.setName( getOGRAttrValue(handle, "SPHEROID") );
 
     // extract the projection:
     if ( _name.empty() || _name == "unnamed" || _name == "unknown" )
@@ -1457,15 +1407,15 @@ SpatialReference::init()
         if (isGeographic())
         {
             _name = getOGRAttrValue(handle, "GEOGCS", 0);
-            if (_name.empty()) _name = getOGRAttrValue(handle, "GEOGCRS", 0);
+            if (_name.empty()) _name = getOGRAttrValue(handle, "GEOGCRS");
         }
         else
         {
-            _name = getOGRAttrValue(handle, "PROJCS", 0);
-            if (_name.empty()) _name = getOGRAttrValue(handle, "PROJCRS", 0);
+            _name = getOGRAttrValue(handle, "PROJCS");
+            if (_name.empty()) _name = getOGRAttrValue(handle, "PROJCRS");
         }
     }
-    std::string projection = getOGRAttrValue( handle, "PROJECTION", 0, true );
+    std::string projection = getOGRAttrValue( handle, "PROJECTION" );
     std::string projection_lc = Strings::toLower(projection);
 
     // check for the Mercator projection:
@@ -1520,17 +1470,27 @@ SpatialReference::init()
 
     if ( _name == "unnamed" || _name == "unknown" || _name.empty() )
     {
-        _name =
-            isGeographic() && !_datum.empty()? _datum :
-            isGeographic() && !_ellipsoid.getName().empty() ? _ellipsoid.getName() :
-            isGeographic() ? "Geographic" :
-            isGeocentric()? "Geocentric" :
-            isCube() ? "Unified Cube" :
-            isLTP() ? "Tangent Plane" :
-            !projection.empty() ? projection :
-            _is_spherical_mercator ? "Spherical Mercator" :
-            _is_mercator? "Mercator" :
-            ( !_proj4.empty()? _proj4 : "Projected" );
+        StringTable proj4_tok;
+        StringTokenizer(_proj4, proj4_tok);
+        if (proj4_tok["+proj"] == "utm")
+        {
+            _name = Stringify() << "UTM " << proj4_tok["+zone"];
+        }
+        else
+        {
+            _name =
+                isGeographic() && !_datum.empty() ? _datum :
+                isGeographic() && !_ellipsoid.getName().empty() ? _ellipsoid.getName() :
+                isGeographic() ? "Geographic" :
+                isGeocentric() ? "Geocentric" :
+                isCube() ? "Unified Cube" :
+                isLTP() ? "Tangent Plane" :
+                !projection.empty() ? projection :
+                _is_spherical_mercator ? "Spherical Mercator" :
+                _is_mercator ? "Mercator" :
+                (!_proj4.empty() ? _proj4 : 
+                    "Projected");
+        }
     }
 
     // Build a 'normalized' initialization key.

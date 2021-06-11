@@ -165,11 +165,11 @@ namespace osgEarth
 
                     ImGui::Separator();
 
-                    ImGui::Text("SRS: "); ImGui::SameLine();
+                    ImGui::Text("SRS:"); ImGui::SameLine();
                     std::string proj = _mapNode->getMapSRS()->getName();
                     if (proj != "unknown")
                         ImGui::TextWrapped("%s", proj.c_str());
-                    ImGui::TextWrapped("%s", _mapNode->getMapSRS()->getHorizInitString().c_str());
+                    ImGui::TextWrapped("(%s)", _mapNode->getMapSRS()->getHorizInitString().c_str());
                     if (!_mapNode->getMapSRS()->getVertInitString().empty())
                         ImGui::TextWrapped("vdatum = %s", _mapNode->getMapSRS()->getVertInitString().c_str());
 

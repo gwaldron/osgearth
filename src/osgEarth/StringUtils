@@ -31,6 +31,7 @@
 #include <locale>
 #include <iomanip>
 #include <map>
+#include <unordered_map>
 #include <set>
 #include <ctype.h>
 
@@ -38,8 +39,9 @@ namespace osgEarth { namespace Util
 {
     extern OSGEARTH_EXPORT const std::string EMPTY_STRING;
 
-    typedef std::vector<std::string> StringVector;
-    typedef std::set<std::string> StringSet;
+    using StringVector = std::vector<std::string>;
+    using StringSet = std::set<std::string>;
+    using StringTable = std::unordered_map<std::string, std::string>;
 
     /** Replaces all the instances of "pattern" with "replacement" in "in_out" */
     extern OSGEARTH_EXPORT std::string& replaceIn(
@@ -288,12 +290,27 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT StringTokenizer
     {
     public:
-        StringTokenizer( const std::string& delims =" \t\r\n", const std::string& quotes ="'\"" );
+        StringTokenizer( 
+            const std::string& delims =" \t\r\n", 
+            const std::string& quotes ="'\"" );
 
         StringTokenizer(
-            const std::string& input, StringVector& output,
-            const std::string& delims =" \t\r\n", const std::string& quotes ="'\"",
-            bool keepEmpties =true, bool trimTokens =true);
+            const std::string& input,
+            StringVector& output,
+            const std::string& delims =" \t\r\n", 
+            const std::string& quotes ="'\"",
+            bool keepEmpties =true, 
+            bool trimTokens =true);
+
+        StringTokenizer(
+            const std::string& input,
+            StringTable& output,
+            const std::string& delims = " \t\r\n",
+            const std::string& keypairseparators = "=",
+            const std::string& quotes = "'\"",
+            bool keepEmpties = true,
+            bool trimTokens = true);
+
 
         void tokenize( const std::string& input, StringVector& output ) const;
 

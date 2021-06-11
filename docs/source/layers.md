@@ -2,50 +2,33 @@
 
 These are the public layer types native to osgEarth.
 
-## Imagery
+## Raster Data
 
-| Earth File                                                   | API class                   | Description                                                  |
-| ------------------------------------------------------------ | --------------------------- | ------------------------------------------------------------ |
-| [ArcGISServerImage](layers/ArcGISServerImageLayer.html)      | ArcGISServerImageLayer      | Connects to an ESRI ArcGIS Server instance                   |
-| [ArcGISTilePackageImage](layers/ArcGISTilePackageImageLayer.html) | ArcGISTilePackageImageLayer | Reads an ESRI ArcGIS Tile Package                            |
-| [BingImage](layers/BingImageLayer.html)                      | BingImageLayer              | Connects to Microsoft Bing service. License key required     |
-| [CesiumIonImage](layers/CesiumIonImageLayer.html)            | CesiumIonImageLayer         | Connects to a Cesium Ion server instance. Key required       |
-| [CompositeImage](layers/CompositeImageLayer.html)            | CompositeImageLayer         | Combines multiple image layers into a single map layer       |
-| [ContourMap](layers/ContourMapLayer.html)                    | ContourMapLayer             | Renders a colored representation of the elevation data in the map |
-| [GDALImage](layers/GDALImageLayer.html)                      | GDALImageLayer              | Loads any imagery format supported by the GDAL library, including GeoTIFF |
-| [GDALDEM](layers/GDALDEMLayer.html)                          | GDALDEMLayer                | Renders various rasterized shaded elevation maps             |
-| [MBTilesImage](layers/MBTilesImageLayer.html)                | MBTilesImageLayer           | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
-| [TMSImage](layers/TMSImageLayer.html)                        | TMSImageLayer               | Connects to a TMS (TileMapService) data source               |
-| [WMSImage](layers/WMSImageLayer.html)                          | WMSImageLayer               | Connects to an OGC Web Map Service server                    |
-| [XYZImage](layers/XYZImageLayer.html)                        | XYZImageLayer               | Reads imagery tiles in standard XYZ format (no metadata)     |
+| Data Source | Description |
+| ----------- | ------------|
+| [GDAL](gdal.md) | Loads any imagery format supported by the GDAL library, including GeoTIFF |
+| [MBTiles](mbtiles.md) | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
+| [TMS](tms.md) | Connects to a TMS (TileMapService) repository |
+| [WMS](wms.md) | OGC Web Map Service server |
+| [XYZ](xyz.md) | Reads data in standard XYZ format (no metadata) |
+| [Composite](composite.md) | Combines multiple image layers into a single map layer |
+| [ContourMap](contourmap.md) | Renders a colored representation of the elevation data in the map |
+| [Microsoft Bing](bing.md) | ($) Connects to Microsoft Bing service. License key required |
+| [Cesium Ion](cesiumion.md) | ($) Connects to a Cesium Ion server instance. License key required |
+| [ESRI ArcGIS Server](arcgis.md) | ($) Connects to an ESRI ArcGIS Server instance |
 
 
+## Vector Data
 
-## Terrain Elevation
-
-| Earth File         | API Class               | Description                                                  |
-| ------------------ | ----------------------- | ------------------------------------------------------------ |
-| FlattenedElevation | FlatteningLayer         | Alters elevation data to flatten it to a specific elevation value; useful for flattening a region where you intend to place a site model |
-| BingElevation      | BingElevationLayer      | Connects to Microsoft Bing elevation service. License key required |
-| CompositeElevation | CompositeElevationLayer | Combines multiple elevation layers into a single map layer   |
-| GDALElevation      | GDALElevationLayer      | Loads any elevation format supported by the GDAL library, including GeoTIFF |
-| MBTilesElevation   | MBTilesElevationLayer   | Reads elevation data stored in an MBTiles (MapBox Tiles) database file |
-| TMSElevation       | TMSElevationLayer       | Connects to an OSGeo Tile Map Service data source (locally or networked) |
-| XYZElevation       | XYZElevationLayer       | Reads elevation tiles in standard XYZ format (no metadata)   |
+| Earth File        | Description                                                  |
+| ----------------- | ------------------------------------------------------------ |
+| [FeatureImage](featureimage.md) | Rasterizes vector data into an image layer                   |
+| [FeatureModel](featuremodel.md) | Renders vector data as *OpenSceneGraph* geometry             |
+| [TiledFeatureModel](tiledfeaturemodel.md) | Like a `FeatureModel` layer, but optimized for pre-tiled vector datasets |
 
 
 
-## Vector Features
-
-| Earth File        | API Class              | Description                                                  |
-| ----------------- | ---------------------- | ------------------------------------------------------------ |
-| FeatureImage      | FeatureImageLayer      | Rasterizes vector data into an image layer                   |
-| FeatureModel      | FeatureModelLayer      | Renders vector data as *OpenSceneGraph* geometry             |
-| TiledFeatureModel | TiledFeatureModelLayer | Like a `FeatureModel` layer, but optimized for pre-tiled vector datasets |
-
-
-
-## Miscellaneous
+## Miscellaneous Layers
 
 | Earth File        | API Class              | Description                                                  |
 | ----------------- | ---------------------- | ------------------------------------------------------------ |

@@ -2,11 +2,9 @@
 
 Any layer that draws imagery or elevation tiles.
 
-### Properties
+Inherits from: [Visible Layer](visiblelayer.md)
 
-Inherits from: [Visible Layer](VisibleLayer.md)
-
-| Earth file      | Description                                                  | Type   | Default |
+| Property      | Description                                                  | Type   | Default |
 | --------------- | ------------------------------------------------------------ | ------ | ------- |
 | max_data_level  | Forces a maximum LOD at which to generate new data for this layer. Data displayed past this LOD will be upsampled by the GPU. | int    |         |
 | min_level       | Lowest LOD at which to use this layer                        | int    | 0       |
@@ -16,8 +14,6 @@ Inherits from: [Visible Layer](VisibleLayer.md)
 | min_valid_value | Smallest valid value to accept from the underlying data source. This usually only applies to elevation data. Smaller values are converted to "NO DATA" | float  | none    |
 | max_valid_value | Largest valid value to accept from the underlying data source. This usually applies to elevation data. Higher values are interpreted as "NO DATA" | float  | none    |
 | no_data_value   | Specific value to interpret at "NO DATA"                     | float  | none    |
-| profile         | Geospatial profile / spatial reference for this layer. Usually the layer itself will provide this, but in some cases you need to manually specify it. | string |         |
 | tile_size       | Number of elements in each dimension of the tile. For image layers, default is 256. For elevation layers, default is 257. | int    | 256/257 |
 
-<iframe src="VisibleLayer.html"/>
 

@@ -1246,7 +1246,13 @@ SpatialReference::transformExtentToMBR(
 
     double height = in_out_ymax - in_out_ymin;
     double width = in_out_xmax - in_out_xmin;
-    v.push_back( osg::Vec3d(in_out_xmin, in_out_ymin, 0) ); // ll    
+
+    // first point is a centroid. This we will use to make sure none of the corner points
+    // wraps around if the target SRS is geographic.
+    v.push_back(osg::Vec3d(in_out_xmin + width * 0.5, in_out_ymin + height * 0.5, 0)); // centroid.
+
+    // add the four corners
+    v.push_back( osg::Vec3d(in_out_xmin, in_out_ymin, 0) ); // ll
     v.push_back( osg::Vec3d(in_out_xmin, in_out_ymax, 0) ); // ul
     v.push_back( osg::Vec3d(in_out_xmax, in_out_ymax, 0) ); // ur
     v.push_back( osg::Vec3d(in_out_xmax, in_out_ymin, 0) ); // lr
@@ -1287,12 +1293,21 @@ SpatialReference::transformExtentToMBR(
     
     if ( transform(v, to_srs) )
     {
-        bool swapXValues = ( isGeographic() && in_out_xmin > in_out_xmax );
         in_out_xmin = DBL_MAX;
         in_out_ymin = DBL_MAX;
         in_out_xmax = -DBL_MAX;
         in_out_ymax = -DBL_MAX;
 
+        // For a geographic target, make sure the new extents contain the centroid
+        // because they might have wrapped around.
+        // The centroid is in v[0].
+        if (to_srs->isGeographic())
+        {
+            if (in_out_xmin > v[0].x()) in_out_xmin = -180.0;
+            if (in_out_xmax < v[0].x()) in_out_xmax = 180.0;
+        }
+
+        // enforce an MBR:
         for (unsigned int i = 0; i < v.size(); i++)
         {
             in_out_xmin = osg::minimum( v[i].x(), in_out_xmin );
@@ -1301,8 +1316,10 @@ SpatialReference::transformExtentToMBR(
             in_out_ymax = osg::maximum( v[i].y(), in_out_ymax );
         }
 
-        if ( swapXValues )
-            std::swap( in_out_xmin, in_out_xmax );
+        // obe?
+        //bool swapXValues = (isGeographic() && in_out_xmin > in_out_xmax);
+        //if ( swapXValues )
+            //std::swap( in_out_xmin, in_out_xmax );
 
         return true;
     }

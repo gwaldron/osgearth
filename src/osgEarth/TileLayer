@@ -112,9 +112,6 @@ namespace osgEarth
         //! DTOR
         virtual ~TileLayer();
 
-        //! Opens the layer and initializes the data source.
-        virtual Status openImplementation();
-
     public: // Layer
 
         //! Open the layer for writing (calls open)
@@ -246,8 +243,9 @@ namespace osgEarth
 
     protected: // Layer
 
-        // CTOR initialization; call from subclass.
-        virtual void init();
+        virtual void init() override;
+        virtual Status openImplementation() override;
+        virtual Status closeImplementation() override;
 
     protected:
 
@@ -266,7 +264,6 @@ namespace osgEarth
 
     protected:
 
-        optional<bool> _profileMatchesMapProfile;
         osg::ref_ptr<MemCache> _memCache;
         bool _writingRequested;
 
@@ -296,10 +293,6 @@ namespace osgEarth
 
         // Figure out the cache settings for this layer.
         void establishCacheSettings();
-
-    protected:
-        /** Closes the layer, deleting its tile source and any other resources. */
-        virtual Status closeImplementation();
     };
 
     typedef std::vector<osg::ref_ptr<TileLayer> > TileLayerVector;

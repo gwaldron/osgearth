@@ -1,18 +1,21 @@
-# XYZ Image Layer
+# XYZ
 
-A pre-tiled image layer that uses a generic template URL to access imagery tiles.
+A pre-tiled image layer that uses a generic template URL to access raster tiles.
 
 An XYZ layer exposes no metadata, so the user is resposible for telling osgEarth about the `profile` and other aspects of the data source.
 
 The URL template MUST include the template parameters {z} (specifying the tile level), and {x} and {y} (specifying the tile offset within the level). The {y} parameter also suppose a unary negative in the form {-y} since it's common to see datasets that are flipped in the vertical direction.
 
-### Properties
+## XYZImage, XYZElevation
 
-Inherits from: [Image Layer](ImageLayer.md)
+CLASS: XYZImageLayer (inherits from [ImageLayer](image.md))
 
-| Earth file | Description                                                  | Type | Default |
+CLASS: XYZElevationLayer (inherits from [ElevationLayer](elevation.md))
+
+| Property | Description                                                  | Type | Default |
 | ---------- | ------------------------------------------------------------ | ---- | ------- |
-| url        | Location of data source (local or remote), including templated parameters {x}, {y}/{-y}, and {z} (see example). The template also supports round-robin characters by way of square brackets ([]). | URI  |         |
+| url  | Location of data source (local or remote), including templated parameters {x}, {y}/{-y}, and {z} (see example). The template also supports round-robin characters by way of square brackets ([]). | URI  |         |
+| profile | Tiling configuration of the data source (typically `global-geodetic` or `spherical-mercator`) | string | `global-geodetic` |
 
 ### Examples
 

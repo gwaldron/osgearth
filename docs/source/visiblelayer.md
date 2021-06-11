@@ -4,7 +4,7 @@ Any layer that renders something visible to the user.
 
 ## Properties
 
-Inherits from: [Layer](Layer.md)
+Inherits from: [Layer](layer.md)
 
 | Earth file        | Description                                                  | Type   | Default     |
 | ----------------- | ------------------------------------------------------------ | ------ | ----------- |

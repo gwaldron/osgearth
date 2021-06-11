@@ -4,4 +4,5 @@
     <min_level>0</min_level>
     <max_level>14</max_level>
     <format>pbf</format>
+    <fid_attribute>@id</fid_attribute>
 </XYZFeatures>

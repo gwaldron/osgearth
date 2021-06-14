@@ -1299,27 +1299,27 @@ SpatialReference::transformExtentToMBR(
         in_out_ymax = -DBL_MAX;
 
         // For a geographic target, make sure the new extents contain the centroid
-        // because they might have wrapped around.
-        // The centroid is in v[0].
+        // because they might have wrapped around or run into a precision failure.
+        // v[0]=centroid, v[1]=LL, v[2]=UL, v[3]=UR, v[4]=LR
         if (to_srs->isGeographic())
         {
-            if (in_out_xmin > v[0].x()) in_out_xmin = -180.0;
-            if (in_out_xmax < v[0].x()) in_out_xmax = 180.0;
+            if (v[1].x() > v[0].x() || v[2].x() > v[0].x()) in_out_xmin = -180.0;
+            if (v[3].x() < v[0].x() || v[4].x() < v[0].x()) in_out_xmax = 180.0;
         }
 
         // enforce an MBR:
         for (unsigned int i = 0; i < v.size(); i++)
         {
-            in_out_xmin = osg::minimum( v[i].x(), in_out_xmin );
-            in_out_ymin = osg::minimum( v[i].y(), in_out_ymin );
-            in_out_xmax = osg::maximum( v[i].x(), in_out_xmax );
-            in_out_ymax = osg::maximum( v[i].y(), in_out_ymax );
+            in_out_xmin = std::min( v[i].x(), in_out_xmin );
+            in_out_ymin = std::min( v[i].y(), in_out_ymin );
+            in_out_xmax = std::max( v[i].x(), in_out_xmax );
+            in_out_ymax = std::max( v[i].y(), in_out_ymax );
         }
 
         // obe?
         //bool swapXValues = (isGeographic() && in_out_xmin > in_out_xmax);
         //if ( swapXValues )
-            //std::swap( in_out_xmin, in_out_xmax );
+        //    std::swap( in_out_xmin, in_out_xmax );
 
         return true;
     }

@@ -67,13 +67,28 @@ namespace osgEarth { namespace REX
         virtual const char* className() const { return "Rex::SurfaceNode"; }
 
         void setElevationRaster(const osg::Image* raster, const osg::Matrixf& scaleBias);
-        const osg::Image* getElevationRaster() const;
-        const osg::Matrixf& getElevationMatrix() const;
 
-        const osg::BoundingBox& getAlignedBoundingBox() const;
+        //! Elevation raster representing this surface
+        const osg::Image* getElevationRaster() const { 
+            return _drawable->getElevationRaster();
+        }
+
+        //! Elevation matrix representing to this surface
+        const osg::Matrixf& getElevationMatrix() const { 
+            return _drawable->getElevationMatrix(); 
+        }
+
+        //! aligned BBOX for culling (derived from elevation raster)
+        const osg::BoundingBox& getAlignedBoundingBox() const {
+            return _drawable->getBoundingBox();
+        }
         
-        TileDrawable* getDrawable() const { return _drawable.get(); }
+        //! Proxy drawable
+        TileDrawable* getDrawable() const { 
+            return _drawable.get(); 
+        }
 
+        //! Horizon visibility check
         inline bool isVisibleFrom(const osg::Vec3& viewpoint) const {
             return _horizonCuller.isVisible(viewpoint);
         }
@@ -120,7 +135,7 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<osg::Node>     _debugNode;
         osg::ref_ptr<osgText::Text> _debugText;
         static const bool           _enableDebugNodes;
-        std::atomic_int             _lastFramePassedCull;
+        int                         _lastFramePassedCull;
         HorizonTileCuller           _horizonCuller;        
 
         typedef osg::Vec3 VectorPoints[8];

@@ -45,13 +45,6 @@ namespace osgEarth
         };
 
     public:
-        /**
-         * Constructs a caching bin.
-         * @param binID  Name of this caching bin (unique withing a Cache)
-         * @param driver ReaderWriter that serializes data for this caching bin.
-         */
-        CacheBin( const std::string& binID )
-            : _binID(binID), _hashKeys(true), _minTime(0) { }
 
         /** dtor */
         virtual ~CacheBin() { }
@@ -127,16 +120,6 @@ namespace osgEarth
         virtual bool touch(const std::string& key) =0;
 
         /**
-         * Reads custom metadata from the cache.
-         */
-        //virtual Config readMetadata() { return Config(); }
-
-        /**
-         * Writes custom metadata to the cache.
-         */
-        //virtual bool writeMetadata( const Config& meta ) { return false; }
-
-        /**
          * Purges all entries in the cache bin.
          */
         virtual bool clear() { return false; }
@@ -159,18 +142,21 @@ namespace osgEarth
         void setMetadata(osg::Referenced* data) { _metadata = data; }
         osg::Referenced* getMetadata() { return _metadata.get(); }
         
-        /**
-         * If key-hashing is enabled, this method returns the hashed key
-         * corresponding to a raw input key.
-         */
-        //virtual std::string getHashedKey(const std::string& key) const =0;
-
 
     protected:
+        /**
+         * Constructs a caching bin.
+         * @param binID  Name of this caching bin (unique withing a Cache)
+         * @param driver ReaderWriter that serializes data for this caching bin.
+         */
+        CacheBin(const std::string& binID, bool enableNodeCaching)
+            : _binID(binID), _hashKeys(true), _minTime(0), _enableNodeCaching(enableNodeCaching) { }
+
         std::string _binID;
         bool        _hashKeys;
         TimeStamp   _minTime;
         osg::ref_ptr<osg::Referenced> _metadata;
+        bool _enableNodeCaching;
     };
 }
 

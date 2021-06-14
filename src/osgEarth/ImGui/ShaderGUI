@@ -1,0 +1,129 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_SHADER_GUI
+#define OSGEARTH_IMGUI_SHADER_GUI
+
+#include "ImGui"
+#include <osgEarth/Threading>
+#include <osg/Uniform>
+#include <osg/StateSet>
+#include <chrono>
+#include <list>
+
+namespace osgEarth
+{
+    namespace GUI
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Threading;
+
+        class ShaderGUI : public BaseGUI
+        {
+        private:
+            struct UniformSpec {
+                std::string _name;
+                float _minval, _maxval, _value;
+            };
+            std::vector<UniformSpec> _uniforms;
+
+            struct DefineSpec {
+                std::string _name;
+                bool _checked;
+            };
+            std::vector<DefineSpec> _defines;
+
+            osg::observer_ptr<MapNode> _mapNode;
+
+        public:
+            ShaderGUI(osg::ArgumentParser* args) : BaseGUI("Shaders")
+            {
+                if (args)
+                {
+                    while (args->find("--uniform") >= 0)
+                    {
+                        UniformSpec spec;
+                        if (args->read("--uniform", spec._name, spec._minval, spec._maxval))
+                        {
+                            spec._value = clamp(0.0f, spec._minval, spec._maxval);
+                            _uniforms.emplace_back(spec);
+                        }
+                    }
+
+                    while (args->find("--define") >= 0)
+                    {
+                        DefineSpec spec;
+                        if (args->read("--define", spec._name))
+                        {
+                            spec._checked = false;
+                            _defines.push_back(spec);
+                        }
+                    }
+                }
+            }
+
+            void load(const Config& conf) override
+            {
+            }
+
+            void save(Config& conf) override
+            {
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible())
+                    return;
+
+                if (!findNodeOrHide(_mapNode, ri))
+                    return;
+
+                ImGui::Begin(name(), visible());
+                {
+                    if (!_uniforms.empty())
+                        ImGui::Text("Uniforms:");
+
+                    for(auto& def : _uniforms)
+                    {
+                        if (ImGui::SliderFloat(def._name.c_str(), &def._value, def._minval, def._maxval))
+                        {
+                            _mapNode->getOrCreateStateSet()->getOrCreateUniform(def._name, osg::Uniform::FLOAT)->set(def._value);
+                        }
+                    }
+
+                    if (!_defines.empty())
+                        ImGui::Text("Defines:");
+
+                    for(auto& def : _defines)
+                    {
+                        if (ImGui::Checkbox(def._name.c_str(), &def._checked))
+                        {
+                            if (def._checked)
+                                _mapNode->getOrCreateStateSet()->setDefine(def._name, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+                            else
+                                _mapNode->getOrCreateStateSet()->setDefine(def._name, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+                        }
+                    }
+                }
+                ImGui::End();
+            }
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_SHADER_GUI

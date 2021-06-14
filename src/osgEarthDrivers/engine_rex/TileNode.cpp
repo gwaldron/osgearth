@@ -38,12 +38,6 @@ using namespace osgEarth::REX;
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-#define OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG 0
-
-// Whether to check the child nodes for culling before traversing them.
-// This could prevent premature Loader requests, but it increases cull time.
-//#define VISIBILITY_PRECHECK
-
 #define LC "[TileNode] "
 
 namespace
@@ -58,45 +52,31 @@ namespace
     };
 }
 
-TileNode::TileNode() :
+TileNode::TileNode(
+    const TileKey& key,
+    TileNode* parent,
+    EngineContext* context,
+    Cancelable* progress) :
+
+    _key(key),
+    _context(context),
     _loadsInQueue(0u),
     _childrenReady(false),
     _lastTraversalTime(0.0),
     _lastTraversalFrame(0),
-    _empty(false),              // an "empty" node exists but has no geometry or children.,
+    _empty(false), // an "empty" node exists but has no geometry or children
     _imageUpdatesActive(false),
-    //_doNotExpire(false),
-    _doNotExpire(true),
-_revision(0),
-_mutex("TileNode(OE)"),
-_loadQueue("TileNode LoadQueue(OE)"),
-_createChildAsync(true),
-_nextLoadManifestPtr(nullptr),
-_loadPriority(0.0f)
+    _doNotExpire(false),
+    _revision(0),
+    _mutex("TileNode(OE)"),
+    _loadQueue("TileNode LoadQueue(OE)"),
+    _createChildAsync(true),
+    _nextLoadManifestPtr(nullptr),
+    _loadPriority(0.0f)
 {
-    //nop
-}
+    OE_HARD_ASSERT(context != nullptr, __func__);
 
-TileNode::~TileNode()
-{
-    //nop
-}
-
-void
-TileNode::setDoNotExpire(bool value)
-{
-    _doNotExpire = value;
-}
-
-void
-TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context, Cancelable* progress)
-{
-    if (!context)
-        return;
-
-    _key = key;
-    _context = context;
-
+    // build the actual geometry for this node
     createGeometry(progress);
 
     // Encode the tile key in a uniform. Note! The X and Y components are presented
@@ -129,10 +109,21 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context, C
         _subdivideTestKey = _key.createChildKey(3);
 }
 
+TileNode::~TileNode()
+{
+    //nop
+}
+
+void
+TileNode::setDoNotExpire(bool value)
+{
+    _doNotExpire = value;
+}
+
 void
 TileNode::createGeometry(Cancelable* progress)
 {
-    osg::ref_ptr<const Map> map = _context->getMap();
+    osg::ref_ptr<const Map> map(_context->getMap());
     if (!map.valid())
         return;
 
@@ -316,7 +307,7 @@ TileNode::initializeData()
                 samplers[s]._matrix.preMult(scaleBias[quadrant]);
             }
 
-            // Are we using image blending? If so, initialize the color_parent 
+            // Are we using image blending? If so, initialize the color_parent
             // to the color texture.
             if (bindings[SamplerBinding::COLOR_PARENT].isActive())
             {
@@ -338,11 +329,6 @@ TileNode::initializeData()
         if (bindings[SamplerBinding::ELEVATION].isActive())
         {
             updateElevationRaster();
-            //const Sampler& elevation = _renderModel._sharedSamplers[SamplerBinding::ELEVATION];
-            //if (elevation._texture.valid())
-            //{
-            //    setElevationRaster(elevation._texture->getImage(0), elevation._matrix);
-            //}
         }
     }
 
@@ -352,7 +338,7 @@ TileNode::initializeData()
     {
         TerrainTileModelFactory factory(_context->_options);
 
-       
+
         // Only load elevation
         CreateTileManifest manifest;
         ElevationLayerVector elevation;
@@ -401,7 +387,7 @@ TileNode::computeBound() const
         bs = _surface->getBound();
         const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
         _tileKeyValue.a() = osg::maximum( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
-    }    
+    }
     return bs;
 }
 
@@ -412,7 +398,7 @@ TileNode::isDormant() const
     unsigned frame = _context->getClock()->getFrame();
     double now = _context->getClock()->getTime();
 
-    bool dormant = 
+    bool dormant =
         frame - _lastTraversalFrame > osg::maximum(options().minExpiryFrames().get(), minMinExpiryFrames) &&
         now - _lastTraversalTime > options().minExpiryTime().get();
 
@@ -517,11 +503,11 @@ TileNode::resizeGLObjectBuffers(unsigned maxSize)
 
 bool
 TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionInfo)
-{    
+{
     unsigned currLOD = _key.getLOD();
 
     EngineContext* context = culler->getEngineContext();
-    
+
     if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs()-1)
     {
         // In PSOS mode, subdivide when the on-screen size of a tile exceeds the maximum
@@ -533,13 +519,13 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
             if (context->getEngine()->getComputeRangeCallback())
             {
                 tileSizeInPixels = (*context->getEngine()->getComputeRangeCallback())(this, *culler->_cv);
-            }    
+            }
 
             if (tileSizeInPixels <= 0.0)
             {
                 tileSizeInPixels = _surface->getPixelSizeOnScreen(culler);
             }
-        
+
             return (tileSizeInPixels > options().tilePixelSize().get());
         }
 
@@ -553,11 +539,11 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
             return _surface->anyChildBoxWithinRange(range, *culler);
 #else
             return _surface->anyChildBoxIntersectsSphere(
-                culler->getViewPointLocal(), 
+                culler->getViewPointLocal(),
                 range*range / culler->getLODScale());
 #endif
         }
-    }                 
+    }
     return false;
 }
 
@@ -604,7 +590,7 @@ TileNode::cull(TerrainCuller* culler)
     {
         return false;
     }
-    
+
     // determine whether we can and should subdivide to a higher resolution:
     bool childrenInRange = shouldSubDivide(culler, context->getSelectionInfo());
 
@@ -631,7 +617,7 @@ TileNode::cull(TerrainCuller* culler)
         canCreateChildren = false;
         canLoadData = false;
     }
-    
+
     else
     {
         // TODO:  This makes sure the parent loads it's data before we can load ours.
@@ -650,7 +636,7 @@ TileNode::cull(TerrainCuller* culler)
                 //canCreateChildren = false;
             }
         }
-    }    
+    }
 
     if (childrenInRange)
     {
@@ -668,7 +654,7 @@ TileNode::cull(TerrainCuller* culler)
                 _childrenReady = createChildren( context );
                 // This means that you cannot start loading data immediately; must wait a frame.
                 canLoadData = false;
-#endif                
+#endif
             }
 
             _mutex.unlock();
@@ -702,7 +688,7 @@ TileNode::cull(TerrainCuller* culler)
     if ( canAcceptSurface )
     {
         _surface->accept( *culler );
-    }    
+    }
 
     // If this tile is marked dirty, try loading data.
     if ( dirty() && canLoadData )
@@ -720,7 +706,7 @@ bool
 TileNode::accept_cull(TerrainCuller* culler)
 {
     bool visible = false;
-    
+
     if (culler)
     {
         if ( !culler->isCulled(*this) )
@@ -736,7 +722,7 @@ bool
 TileNode::accept_cull_spy(TerrainCuller* culler)
 {
     bool visible = false;
-    
+
     if (culler)
     {
         visible = cull_spy( culler );
@@ -951,7 +937,7 @@ TileNode::createChildren(EngineContext* context)
                     // sets up inheritence
                     child->initializeData();
 
-                    // TODO:  
+                    // TODO:
                     // actually loads data
                     // When you try to load an lod 19 tile and call refreshInherited data it won't actually load anything b/c the data doesn't exist there, only at 10.
                     // So it's dependent on the lod 10 being loaded.
@@ -985,13 +971,15 @@ TileNode::createChild(const TileKey& childkey, EngineContext* context, Cancelabl
 {
     OE_PROFILING_ZONE;
 
-    osg::ref_ptr<TileNode> node = new TileNode();
+    osg::ref_ptr<TileNode> node = new TileNode(
+        childkey,
+        this, // parent TileNode
+        context,
+        progress);
 
-    // Build the surface geometry:
-    node->create(childkey, this, context, progress);
-
-    return 
-        progress && progress->isCanceled() ? nullptr : node.release();
+    return
+        progress && progress->isCanceled() ? nullptr
+        : node.release();
 }
 
 void
@@ -1030,7 +1018,7 @@ TileNode::merge(
                 continue;
 
             // Look up the parent pass in case we need it
-            RenderingPass* pass = 
+            RenderingPass* pass =
                 _renderModel.getPass(layer->getUID());
 
             const RenderingPass* parentPass =
@@ -1120,7 +1108,7 @@ TileNode::merge(
         {
             RenderingPass& myPass = myPasses[p];
 
-            if (myPass.ownsTexture() && 
+            if (myPass.ownsTexture() &&
                 manifest.includes(myPass.layer()) &&
                 !uidsLoaded.contains(myPass.sourceUID()))
             {
@@ -1129,7 +1117,7 @@ TileNode::merge(
                 // release the GL objects associated with this pass.
                 // taking this out...can cause "flashing" issues
                 //myPass.releaseGLObjects(NULL);
-                
+
                 bool deletePass = true;
 
                 TileNode* parent = getParentTile();
@@ -1170,7 +1158,7 @@ TileNode::merge(
         }
 
         else if (
-            manifest.includesElevation() && 
+            manifest.includesElevation() &&
             _renderModel._sharedSamplers[SamplerBinding::ELEVATION].ownsTexture())
         {
             // We OWN elevation data, requested new data, and didn't get any.
@@ -1181,7 +1169,7 @@ TileNode::merge(
 
             newElevationData = true;
         }
-    } 
+    }
 
     // Normals:
     const SamplerBinding& normals = bindings[SamplerBinding::NORMAL];
@@ -1240,7 +1228,7 @@ TileNode::merge(
         {
             osg::Texture* tex = model->landCoverModel()->getTexture();
             int revision = model->landCoverModel()->getRevision();
-        
+
             _renderModel.setSharedSampler(SamplerBinding::LANDCOVER, tex, revision);
         }
 
@@ -1269,7 +1257,7 @@ TileNode::merge(
                 if (bindings[i].isActive() && bindings[i].sourceUID().isSetTo(uid))
                 {
                     bindingIndex = i;
-                }                   
+                }
             }
 
             if (bindingIndex < INT_MAX)
@@ -1286,7 +1274,7 @@ TileNode::merge(
     // requested them, and didn't get updates for them:
     for(unsigned i=SamplerBinding::SHARED; i<bindings.size(); ++i)
     {
-        if (bindings[i].isActive() && 
+        if (bindings[i].isActive() &&
             manifest.includes(bindings[i].sourceUID().get()) &&
             !uidsLoaded.contains(bindings[i].sourceUID().get()))
         {
@@ -1320,19 +1308,6 @@ TileNode::merge(
         _context->getEngine()->getTerrain()->notifyTileUpdate(getKey(), this);
     }
 
-    // Remove the load request that spawned this merge.
-    // The only time the request will NOT be in the queue is if it was
-    // loadSync() was called.
-    _loadQueue.lock();
-    if (_loadQueue.empty() == false)
-        _loadQueue.pop();
-    _loadsInQueue = _loadQueue.size();
-    if (_loadsInQueue > 0)
-        _nextLoadManifestPtr = &_loadQueue.front()->_manifest; // getManifest();
-    else
-        _nextLoadManifestPtr = nullptr;
-    _loadQueue.unlock();
-
     // Bump the data revision for the tile.
     ++_revision;
 
@@ -1364,10 +1339,10 @@ void TileNode::inheritSharedSampler(int binding)
 //    _mutex.lock();
 //
 //    if ( !_childrenReady )
-//    {        
+//    {
 //        // Create the children
 //        createChildren( _context.get() );
-//        _childrenReady = true;        
+//        _childrenReady = true;
 //        int numChildren = getNumChildren();
 //        if ( numChildren > 0 )
 //        {
@@ -1403,8 +1378,8 @@ RefinePolicy TileNode::getRefinePolicy() const
 
 bool TileNode::isLoaded() const
 {
-    // What should isLoaded be driven off of?  
-    // TODO:  Maybe when we get the "highest res data" we can make a super high res kdtree where it can stop. 
+    // What should isLoaded be driven off of?
+    // TODO:  Maybe when we get the "highest res data" we can make a super high res kdtree where it can stop.
     // We'd have to use a kdtree where we set our own verts on it that are higher res than the 17x17 one.
     //return isHighestResolution() || _childrenReady;
     return _merged;
@@ -1447,7 +1422,7 @@ void TileNode::subdivide()
 
 void
 TileNode::refreshSharedSamplers(const RenderBindings& bindings)
-{    
+{
     for (unsigned i = 0; i < _renderModel._sharedSamplers.size(); ++i)
     {
         if (bindings[i].isActive() == false)
@@ -1462,7 +1437,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 {
     // Run through this tile's rendering data and re-inherit textures and matrixes
     // from the parent. When a TileNode gets new data (via a call to merge), any
-    // children of that tile that are inheriting textures or matrixes need to 
+    // children of that tile that are inheriting textures or matrixes need to
     // refresh to inherit that new data. In turn, those tile's children then need
     // to update as well. This method does that.
 
@@ -1564,7 +1539,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     Samplers& mySharedSamplers = _renderModel._sharedSamplers;
 
     for (unsigned binding=0; binding<parentSharedSamplers.size(); ++binding)
-    {        
+    {
         Sampler& mySampler = mySharedSamplers[binding];
 
         if (mySampler.inheritsTexture())
@@ -1604,27 +1579,20 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 bool
 TileNode::passInLegalRange(const RenderingPass& pass) const
 {
-    return 
+    return
         pass.tileLayer() == 0L ||
         pass.tileLayer()->isKeyInVisualRange(getKey());
 }
 
 void
 TileNode::load(TerrainCuller* culler)
-{    
+{
     const SelectionInfo& si = _context->getSelectionInfo();
     int lod     = getKey().getLOD();
     int numLods = si.getNumLODs();
-    
+
     // LOD priority is in the range [0..numLods]d
     float lodPriority = (float)lod;
-
-    // If progressive mode is enabled, lower LODs get higher priority since
-    // we want to load them in order
-    //if (options().progressive() == true)
-    //{
-    //    lodPriority = (float)(numLods - lod);
-    //}
 
     // dist priority is in the range [0..1]
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
@@ -1760,7 +1728,7 @@ TileNode::updateNormalMap()
         osg::Vec4 pixel;
         ImageUtils::PixelReader readThat(thatImage);
         ImageUtils::PixelWriter writeThis(thisImage);
-        
+
         for (int t=0; t<height; ++t)
         {
             readThat(pixel, 0, t);

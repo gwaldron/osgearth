@@ -38,6 +38,15 @@ ProgressCallback::ProgressCallback(Cancelable* cancelable) :
     //NOP
 }
 
+ProgressCallback::ProgressCallback(Cancelable* cancelable, std::function<bool()> predicate) :
+    _canceled(false),
+    _retryDelay_s(0.0f),
+    _cancelable(cancelable),
+    _cancelPredicate(predicate)
+{
+    //NOP
+}
+
 void
 ProgressCallback::cancel()
 {
@@ -56,7 +65,8 @@ ProgressCallback::isCanceled() const
     if (!_canceled)
     {
         if ((shouldCancel()) ||
-            (_cancelable && _cancelable->isCanceled()))
+            (_cancelable && _cancelable->isCanceled()) ||
+            (_cancelPredicate && _cancelPredicate()))
         {
             _canceled = true;
         }

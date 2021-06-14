@@ -325,7 +325,7 @@ namespace
         const FileSystemCacheOptions& options,
         std::shared_ptr<JobArena>& jobArena) :
 
-        CacheBin(binID),
+        CacheBin(binID, options.enableNodeCaching().get()),
         _jobArena(jobArena),
         _binPathExists(false),
         _options(options),
@@ -585,7 +585,7 @@ namespace
         // issue and make all the reads return CONST objects
         // This is not typical a big deal since most node geometry comes
         // from a URI anyway and the URI data will get cached.
-        if (_jobArena != nullptr && isNode)
+        if (_options.enableNodeCaching() == false)
             return true;
 
         // Wrap input objects in ref_ptrs so they will persist in our write functor lambda

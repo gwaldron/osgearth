@@ -26,6 +26,10 @@
 
 using namespace osgEarth;
 
+// Uncomment to enable node caching.
+// Temporarily disabled.
+#define ENABLE_NODE_CACHING
+
 
 // serializer for osg::DummyObject (not present in OSG)
 // We need this because the osgDB::DatabasePager will sometimes
@@ -252,16 +256,19 @@ CacheBin::writeNode(const std::string&    key,
                     const Config&         metadata,
                     const osgDB::Options* writeOptions)
 {
-    // Preparation step - removes things like UserDataContainers
-    PrepareForCaching prep;
-    node->accept( prep );
+    if (_enableNodeCaching)
+    {
+        // Preparation step - removes things like UserDataContainers
+        PrepareForCaching prep;
+        node->accept(prep);
 
-    // Write external refs (like texture images) to the cache bin
-    WriteExternalReferencesToCache writeRefs(this, writeOptions);
-    node->accept( writeRefs );
+        // Write external refs (like texture images) to the cache bin
+        WriteExternalReferencesToCache writeRefs(this, writeOptions);
+        node->accept(writeRefs);
 
-    // finally, write the graph to the bin:
-    write(key, node, metadata, writeOptions);
+        // finally, write the graph to the bin:
+        write(key, node, metadata, writeOptions);
+    }
 
     return true;
 }

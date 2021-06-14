@@ -147,12 +147,40 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
     bool intersects(osg::Node& node)
     {
         static osg::Matrix identity;
-        osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();        
+        osg::Matrix& l2w = _matrixStack.empty() ? identity : _matrixStack.back();
 
-        osg::BoundingSphere nodeBounds = node.getBound();
-        nodeBounds.center() = nodeBounds.center() * matrix;
+        // Dealing with scale, taken from Transform.cpp
+        osg::BoundingSphere bsphere = node.getBound();
 
-        return nodeBounds.intersects(_queryBounds);
+        osg::BoundingSphere::vec_type xdash = bsphere._center;
+        xdash.x() += bsphere._radius;
+        xdash = xdash * l2w;
+
+        osg::BoundingSphere::vec_type ydash = bsphere._center;
+        ydash.y() += bsphere._radius;
+        ydash = ydash * l2w;
+
+        osg::BoundingSphere::vec_type zdash = bsphere._center;
+        zdash.z() += bsphere._radius;
+        zdash = zdash * l2w;
+
+        bsphere._center = bsphere._center*l2w;
+
+        xdash -= bsphere._center;
+        osg::BoundingSphere::value_type sqrlen_xdash = xdash.length2();
+
+        ydash -= bsphere._center;
+        osg::BoundingSphere::value_type sqrlen_ydash = ydash.length2();
+
+        zdash -= bsphere._center;
+        osg::BoundingSphere::value_type sqrlen_zdash = zdash.length2();
+
+        bsphere._radius = sqrlen_xdash;
+        if (bsphere._radius < sqrlen_ydash) bsphere._radius = sqrlen_ydash;
+        if (bsphere._radius < sqrlen_zdash) bsphere._radius = sqrlen_zdash;
+        bsphere._radius = (osg::BoundingSphere::value_type)sqrt(bsphere._radius);
+
+        return bsphere.intersects(_queryBounds);
     }
 
     void apply(osg::Node& node)

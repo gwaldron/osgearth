@@ -65,9 +65,6 @@ FeatureElevationLayer::init()
 {
     ElevationLayer::init();
     setTileSize(257u);
-
-    // Global WGS84 profile
-    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 }
 
 Config
@@ -88,38 +85,6 @@ FeatureElevationLayer::openImplementation()
     if (fsStatus.isError())
         return fsStatus;
 
-    FeatureSource* features = options().featureSource().getLayer();
-    if (!features)
-        return Status::ServiceUnavailable;
-
-    if (features->getFeatureProfile())
-    {
-        if (getProfile() && !getProfile()->getSRS()->isEquivalentTo(features->getFeatureProfile()->getSRS()))
-        {
-            OE_WARN << LC << "Specified profile does not match feature profile, ignoring specified profile." << std::endl;
-        }
-
-        _extent = features->getFeatureProfile()->getExtent();
-
-        // If you didn't specify a profile (hint, you should have), use the feature profile.
-        if (!getProfile())
-        {
-            OE_WARN << LC << "No profile specified; falling back on feature profile." << std::endl;
-
-            const Profile* profile = Profile::create(
-                _extent.getSRS(),
-                _extent.bounds().xMin(),
-                _extent.bounds().yMin(),
-                _extent.bounds().xMax(),
-                _extent.bounds().yMax());
-
-            setProfile(profile);
-        }
-
-        DataExtent de(_extent);
-        dataExtents().push_back(de);
-    }
-
     return Status::NoError;
 }
 
@@ -128,11 +93,32 @@ FeatureElevationLayer::addedToMap(const Map* map)
 {
     ElevationLayer::addedToMap(map);
     options().featureSource().addedToMap(map);
+
+    FeatureSource* features = options().featureSource().getLayer();
+    if (!features) {
+        setStatus(Status::ServiceUnavailable, "Cannot access feature source");
+        return;
+    }
+    if (!features->getFeatureProfile()) {
+        setStatus(Status::ServiceUnavailable, "Cannot establish feature data profile");
+        return;
+    }
+
+    _extent = features->getFeatureProfile()->getExtent();
+
+    DataExtent de(_extent);
+    dataExtents().push_back(de);
+
+    setProfile(
+        map->getProfile() != nullptr ? map->getProfile() :
+        Profile::create(Profile::GLOBAL_GEODETIC));
 }
 
 void
 FeatureElevationLayer::removedFromMap(const Map* map)
 {
+    dataExtents().clear();
+
     options().featureSource().removedFromMap(map);
     ElevationLayer::removedFromMap(map);
 }

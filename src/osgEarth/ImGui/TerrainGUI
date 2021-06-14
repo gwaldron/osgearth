@@ -110,6 +110,12 @@ namespace osgEarth
                             ImGui::Text("Map: X=%d, Y=%d, Z=%d", (int)mp.x(), (int)mp.y(), (int)mp.z());
                         }
 
+                        osg::Vec3d world, eye, center, up;
+                        mp.toWorld(world);
+                        view(ri)->getCamera()->getViewMatrixAsLookAt(eye, center, up);
+                        double dist = (eye - world).length();
+                        ImGui::Text("Distance from camera: %.1lf m", dist);
+
                         if (_sample.isAvailable())
                         {
                             if (_sample.get().elevation().getValue() == NO_DATA_VALUE)

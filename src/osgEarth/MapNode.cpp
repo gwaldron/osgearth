@@ -992,3 +992,13 @@ MapNode::getGeoPointUnderMouse(
     }
     return false;
 }
+
+GeoPoint
+MapNode::getGeoPointUnderMouse(
+    osg::View* view,
+    float mx, float my) const
+{
+    GeoPoint p;
+    getGeoPointUnderMouse(view, mx, my, p);
+    return p;
+}

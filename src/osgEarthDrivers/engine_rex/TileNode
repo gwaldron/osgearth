@@ -60,7 +60,11 @@ namespace osgEarth { namespace REX
                      public LoadableNode
     {
     public:
-        TileNode();
+        TileNode(
+            const TileKey& key,
+            TileNode* parentTile,
+            EngineContext* context,
+            Cancelable* progress);
 
         virtual ~TileNode();
         virtual const char* className() const { return "Rex::TileNode"; }
@@ -79,7 +83,7 @@ namespace osgEarth { namespace REX
         void refreshLayers(const CreateTileManifest& manifest);
 
         /** Creates the geometry and state for this tilenode. */
-        void create(const TileKey& key, TileNode* parent, EngineContext* context, Cancelable*);
+        //void create(const TileKey& key, TileNode* parent, EngineContext* context, Cancelable*);
 
         /** Install new geometry in this tile */
         void createGeometry(Cancelable*);

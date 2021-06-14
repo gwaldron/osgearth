@@ -174,6 +174,7 @@ osg::Image* BundleReader::readImage(unsigned int index, const osgDB::ReaderWrite
 
 void BundleReader::readFeatures(const TileKey& key, FeatureList& features)
 {
+#ifdef OSGEARTH_HAVE_MVT
     // Figure out the index for the tilekey
     unsigned int row = key.getTileX() - _colOffset;
     unsigned int index = key.getTileY() - _rowOffset + (row * _bundleSize);
@@ -194,6 +195,9 @@ void BundleReader::readFeatures(const TileKey& key, FeatureList& features)
 
         osgEarth::MVT::readTile(ss, key, features);
     }
+#else
+    OE_WARN << LC << "osgEarth is not built with MVT/PBF support" << std::endl;
+#endif
 }
 
 //........................................................................

@@ -244,3 +244,30 @@ ViewFitter::createViewpoint(const GeoExtent& extent, Viewpoint& outVP) const
     points.emplace_back(extent.getSRS(), extent.xMax(), extent.yMax(), 0);
     return createViewpoint(points, outVP);
 }
+
+bool
+ViewFitter::createViewpoint(const osg::Node* node, Viewpoint& outVP) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(node != nullptr, __func__, false);
+
+    osg::BoundingSphere bs = node->getBound();
+    if (!bs.valid())
+        return false;
+
+    osg::Matrix m = osg::computeLocalToWorld(node->getParentalNodePaths()[0]);
+    bs.center() = bs.center() * m;
+
+    osg::Vec3d c = bs.center();
+    double r = bs.radius();
+
+    std::vector<GeoPoint> points;
+    GeoPoint p;
+    p.fromWorld(_mapSRS.get(), osg::Vec3d(c.x() + r, c.y(), c.z())); points.push_back(p);
+    p.fromWorld(_mapSRS.get(), osg::Vec3d(c.x() - r, c.y(), c.z())); points.push_back(p);
+    p.fromWorld(_mapSRS.get(), osg::Vec3d(c.x(), c.y() + r, c.z())); points.push_back(p);
+    p.fromWorld(_mapSRS.get(), osg::Vec3d(c.x(), c.y() - r, c.z())); points.push_back(p);
+    p.fromWorld(_mapSRS.get(), osg::Vec3d(c.x(), c.y(), c.z() + r)); points.push_back(p);
+    p.fromWorld(_mapSRS.get(), osg::Vec3d(c.x(), c.y(), c.z() - r)); points.push_back(p);
+
+    return createViewpoint(points, outVP);
+}

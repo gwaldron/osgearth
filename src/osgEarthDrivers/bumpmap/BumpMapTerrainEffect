@@ -68,7 +68,7 @@ namespace osgEarth { namespace BumpMap
 
 
     protected:
-        virtual ~BumpMapTerrainEffect() { }
+        virtual ~BumpMapTerrainEffect();
 
         bool  _ok;
         int   _bumpMapUnit;

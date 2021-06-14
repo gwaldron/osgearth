@@ -50,6 +50,14 @@ _bumpMapUnit(-1)
     _intensityUniform = new osg::Uniform("oe_bumpmap_intensity", defaults.intensity().get());
 }
 
+BumpMapTerrainEffect::~BumpMapTerrainEffect()
+{
+    if (_bumpMapTex.valid())
+    {
+        _bumpMapTex->releaseGLObjects(nullptr);
+    }
+}
+
 void
 BumpMapTerrainEffect::setBumpMapImage(osg::Image* image)
 {

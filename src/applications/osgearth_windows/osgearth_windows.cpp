@@ -134,7 +134,7 @@ struct GCPanel : public GUI::BaseGUI
             {
                 ImGui::Text("Context ID = %d", gc->getState()->getContextID());
                 ImGui::Indent();
-                ImGui::Text("Name = %s", gc->getName());
+                ImGui::Text("Name = %s", gc->getName().c_str());
                 ImGui::Text("Operations = %d", gc->getGraphicsThread() && gc->getGraphicsThread()->getOperationQueue() ? gc->getGraphicsThread()->getOperationQueue()->getNumOperationsInQueue() : 0);
                 ImGui::Text("Size = %d x %d", gc->getTraits() ? gc->getTraits()->width : -1, gc->getTraits() ? gc->getTraits()->height : -1);
                 if (ImGui::Button("release GL objects"))

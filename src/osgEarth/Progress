@@ -38,8 +38,12 @@ namespace osgEarth
         //! Creates a new ProgressCallback
         ProgressCallback();
 
-        //! Createa a new ProgressCallback that proxies an existing Cancelable
+        //! Creates a new ProgressCallback that proxies an existing Cancelable
         ProgressCallback(Cancelable* c);
+
+        //! Creates a new ProgressCallback that proxies an existing Cancelable
+        //! and adds a new predicate
+        ProgressCallback(Cancelable* c, std::function<bool()> shouldCancel);
 
         /**
          * Report an error and set the canceled flag to true.
@@ -120,6 +124,7 @@ namespace osgEarth
         std::string _message;
         mutable bool _canceled;
         mutable float _retryDelay_s;
+        mutable std::function<bool()> _cancelPredicate;
 
         //! Override this to tell the Progress to cancel.
         virtual bool shouldCancel() const { return false; }

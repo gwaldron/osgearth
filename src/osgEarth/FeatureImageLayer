@@ -62,32 +62,40 @@ namespace osgEarth
     public: // ImageLayer
 
         // Opens the layer and returns a status
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
 
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+        virtual GeoImage createImageImplementation(
+            const TileKey& key, 
+            ProgressCallback* progress) const override;
 
     protected: // Layer
 
         // Called by Map when it adds this layer
-        virtual void addedToMap(const class Map*);
+        virtual void addedToMap(const class Map*) override;
 
         // Called by Map when it removes this layer
-        virtual void removedFromMap(const class Map*);
+        virtual void removedFromMap(const class Map*) override;
 
         // post-ctor initialization
-        virtual void init();
+        virtual void init() override;
 
         virtual ~FeatureImageLayer() { }
 
     private:
-        osg::ref_ptr<Session> _session;
-        osg::ref_ptr<const FeatureProfile> _featureProfile;
         optional<double> _gamma;
-        osg::ref_ptr<FeatureFilterChain> _filterChain;
 
         void updateSession();
 
         void establishProfile();
+
+        struct Isolate {
+            Isolate() { }
+            Isolate(const Isolate&);
+            osg::ref_ptr<Session> _session;
+            osg::ref_ptr<FeatureFilterChain> _filterChain;
+        };
+
+        Isolate _global;
     };
 
     // template/inline impls .................................................

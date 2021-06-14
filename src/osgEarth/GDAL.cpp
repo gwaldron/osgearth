@@ -613,7 +613,7 @@ GDAL::Driver::open(const std::string& name,
         ReadResult r = URI(prjLocation).readString(readOptions);
         if (r.succeeded())
         {
-            src_srs = SpatialReference::create(r.getString());
+            src_srs = SpatialReference::create(Strings::trim(r.getString()));
         }
 
         if (!src_srs.valid())
@@ -652,7 +652,7 @@ GDAL::Driver::open(const std::string& name,
     if (!profile && src_srs->isGeographic())
     {
         OE_DEBUG << INDENT << "Creating Profile from source's geographic SRS: " << src_srs->getName() << std::endl;
-        profile = Profile::create(src_srs.get(), -180.0, -90.0, 180.0, 90.0, 2u, 1u);
+        profile = Profile::create(src_srs.get());
         if (!profile)
         {
             return Status::Error(Status::ResourceUnavailable, Stringify()
@@ -689,6 +689,7 @@ GDAL::Driver::open(const std::string& name,
         if (_warpedDS)
         {
             warpedSRSWKT = _warpedDS->GetProjectionRef();
+            _warpedDS->GetGeoTransform(_geotransform);
         }
     }
     else
@@ -702,22 +703,24 @@ GDAL::Driver::open(const std::string& name,
         return Status::Error("Failed to create a warping VRT");
     }
 
+#if 0
     //Get the _geotransform
-    if (_profile.valid())
+    if (profile)
     {
-        _geotransform[0] = _profile->getExtent().xMin(); //Top left x
-        _geotransform[1] = _profile->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
+        _geotransform[0] = profile->getExtent().xMin(); //Top left x
+        _geotransform[1] = profile->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
         _geotransform[2] = 0;
 
-        _geotransform[3] = _profile->getExtent().yMax(); //Top left y
+        _geotransform[3] = profile->getExtent().yMax(); //Top left y
         _geotransform[4] = 0;
-        _geotransform[5] = -_profile->getExtent().height() / (double)_warpedDS->GetRasterYSize();//pixel height
+        _geotransform[5] = -profile->getExtent().height() / (double)_warpedDS->GetRasterYSize();//pixel height
 
     }
     else
     {
         _warpedDS->GetGeoTransform(_geotransform);
     }
+#endif
 
     if (GDALInvGeoTransform(_geotransform, _invtransform) == 0)
     {
@@ -821,6 +824,43 @@ GDAL::Driver::open(const std::string& name,
 
     // record the data extent in profile space:
     _bounds = Bounds(minX, minY, maxX, maxY);
+
+    const char* pora = _srcDS->GetMetadataItem("AREA_OR_POINT");
+    bool is_area = pora != nullptr && Strings::toLower(std::string(pora)) == "area";
+
+    bool clamped = false;
+    if (srs->isGeographic())
+    {
+        if (is_area && (_bounds.xMin() < -180.0 || _bounds.xMax() > 180.0))
+        {
+            _bounds.xMin() += resolutionX * 0.5;
+            _bounds.xMax() -= resolutionX * 0.5;
+        }
+
+        if (_bounds.width() > 360)
+        {
+            _bounds.xMin() = -180;
+            _bounds.xMax() = 180;
+            clamped = true;
+        }
+
+        if (is_area && (_bounds.yMin() < -90.0 || _bounds.yMax() > 90.0))
+        {
+            _bounds.yMin() += resolutionY * 0.5;
+            _bounds.yMax() -= resolutionY * 0.5;
+        }
+
+        if (_bounds.height() > 180)
+        {
+            _bounds.yMin() = -90;
+            _bounds.yMax() = 90;
+            clamped = true;
+        }
+        if (clamped)
+        {
+            OE_INFO << LC << "Clamped out-of-range geographic extents" << std::endl;
+        }
+    }
     _extents = GeoExtent(srs.get(), _bounds);
 
     OE_DEBUG << LC << "GeoExtent = " << _extents.toString() << std::endl;

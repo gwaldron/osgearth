@@ -75,6 +75,12 @@ FeatureImageLayer::Options::fromConfig(const Config& conf)
 
 //........................................................................
 
+FeatureImageLayer::Isolate::Isolate(const Isolate& rhs) :
+    _session(rhs._session),
+    _filterChain(rhs._filterChain)
+{
+}
+
 void
 FeatureImageLayer::init()
 {
@@ -105,7 +111,9 @@ FeatureImageLayer::openImplementation()
 
     establishProfile();
 
-    _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
+    _global._filterChain = FeatureFilterChain::create(
+        options().filters(), 
+        getReadOptions());
 
     return Status::NoError;
 }
@@ -139,7 +147,13 @@ FeatureImageLayer::addedToMap(const Map* map)
     if (getFeatureSource())
     {
         establishProfile();
-        _session = new Session(map, getStyleSheet(), getFeatureSource(), getReadOptions());
+
+        _global._session = new Session(
+            map, 
+            getStyleSheet(), 
+            getFeatureSource(), 
+            getReadOptions());
+
         updateSession();
     }
 }
@@ -159,7 +173,7 @@ FeatureImageLayer::setFeatureSource(FeatureSource* fs)
     if (getFeatureSource() != fs)
     {
         options().featureSource().setLayer(fs);
-        _featureProfile = 0L;
+        //_data._featureProfile = 0L;
 
         if (fs)
         {
@@ -183,9 +197,9 @@ FeatureImageLayer::setStyleSheet(StyleSheet* value)
     if (getStyleSheet() != value)
     {
         options().styleSheet().setLayer(value);
-        if (_session.valid())
+        if (_global._session.valid())
         {
-            _session->setStyles(getStyleSheet());
+            _global._session->setStyles(getStyleSheet());
         }
     }
 }
@@ -193,7 +207,7 @@ FeatureImageLayer::setStyleSheet(StyleSheet* value)
 void
 FeatureImageLayer::updateSession()
 {
-    if (_session.valid() && getFeatureSource())
+    if (_global._session.valid() && getFeatureSource())
     {
         const FeatureProfile* fp = getFeatureSource()->getFeatureProfile();
 
@@ -215,21 +229,10 @@ FeatureImageLayer::updateSession()
                 // Use FeatureProfile's GeoExtent
                 dataExtents().push_back(DataExtent(fp->getExtent()));
             }
-
-#if 0 // hopefully fixed
-            // warn the user if the feature data is tiled and the
-            // layer profile doesn't match the feature source profile
-            if (fp->isTiled() &&
-                fp->getTilingProfile()->isHorizEquivalentTo(getProfile()) == false)
-            {
-                OE_WARN << LC << "Layer profile doesn't match feature tiling profile - data may not render properly" << std::endl;
-                OE_WARN << LC << "(Feature tiling profile = " << fp->getTilingProfile()->toString() << ")" << std::endl;
-            }
-#endif
         }
 
-        _session->setFeatureSource(getFeatureSource());
-        _session->setStyles(getStyleSheet());
+        _global._session->setFeatureSource(getFeatureSource());
+        _global._session->setStyles(getStyleSheet());
     }
 }
 
@@ -241,14 +244,23 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         return GeoImage::INVALID;
     }
 
-    if (!getFeatureSource())
+    // take local refs to prevent threading issues.
+    Isolate local(_global);
+
+    if (!local._session.valid())
+    {
+        setStatus(Status::AssertionFailure, "session is NULL - call support");
+        return GeoImage::INVALID;
+    }
+
+    if (!local._session->getFeatureSource())
     {
         setStatus(Status::ServiceUnavailable, "No feature source");
         return GeoImage::INVALID;
     }
 
-    const FeatureProfile* featureProfile = getFeatureSource()->getFeatureProfile();
-    if (!featureProfile)
+    const FeatureProfile* featureProfile = local._session->getFeatureSource()->getFeatureProfile();
+    if (featureProfile == nullptr)
     {
         setStatus(Status::ConfigurationError, "Feature profile is missing");
         return GeoImage::INVALID;
@@ -261,18 +273,13 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         return GeoImage::INVALID;
     }
 
-    if (!_session.valid())
-    {
-        setStatus(Status::AssertionFailure, "_session is NULL - call support");
-        return GeoImage::INVALID;
-    }
 
     FeatureRasterizer* rasterizer = nullptr;
 
     osg::ref_ptr<osg::Image> image;
-    if (getStyleSheet())
+    if (local._session->styles())
     {
-        for (auto& style : getStyleSheet()->getStyles())
+        for (auto& style : local._session->styles()->getStyles())
         {
             if (style.second.getSymbol<CoverageSymbol>())
             {
@@ -312,8 +319,8 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     sorter.sort(
         key,
         Distance(0, Units::METERS),
-        _session.get(),
-        _filterChain.get(),
+        local._session.get(),
+        local._filterChain.get(),
         renderer,
         progress);
 

@@ -165,23 +165,18 @@ GeoPoint::getConfig() const
     {
         conf.set( "lat", _p.y() );
         conf.set( "long", _p.x() );
-        if ( _p.z() != 0.0 )
-        {
-            if ( _altMode == ALTMODE_ABSOLUTE )
-                conf.set( "alt", _p.z() );
-            else
-                conf.set( "hat", _p.z() );
-        }
     }
     else
     {
         conf.set( "x", _p.x() );
         conf.set( "y", _p.y() );
-        if ( _altMode == ALTMODE_ABSOLUTE )
-            conf.set( "z", _p.z() );
-        else
-            conf.set( "hat", _p.z() );
     }
+
+    conf.set("z", _p.z());
+
+    // default is absolute
+    if (_altMode == ALTMODE_RELATIVE)
+        conf.set("mode", "relative");
 
     if ( _srs.valid() )
     {
@@ -531,58 +526,45 @@ GeoPoint::interpolate(const GeoPoint& rhs, double t) const
 
     else // geographic
     {
-        // Geometric slerp in unit sphere space
-        // https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
+        osg::Vec3d output;
 
-        double deltaZ = to.z()-z();
+        getSRS()->getEllipsoid().geodesicInterpolate(
+            vec3d(),
+            to.vec3d(),
+            t,
+            output);
 
-        // Convert each point to unit sphere world space:
-        osg::Vec3d unitToEllip(
-            getSRS()->getEllipsoid().getRadiusEquator(),
-            getSRS()->getEllipsoid().getRadiusEquator(),
-            getSRS()->getEllipsoid().getRadiusPolar());
-
-        osg::Vec3d ellipToUnit = osg::componentDivide(
-            osg::Vec3d(1,1,1), unitToEllip);
-        
-        osg::Vec3d w1;
-        toWorld(w1);
-        w1 = osg::componentMultiply(w1, ellipToUnit);
-        w1.normalize();
-
-        osg::Vec3d w2;
-        to.toWorld(w2);
-        w2 = osg::componentMultiply(w2, ellipToUnit);
-        w2.normalize();
-
-        // perform geometric slerp:
-        double dp = w1*w2;
-        if (dp == 1.0)
-            return *this;
-
-        double angle = acos(dp);
-
-        double s = sin(angle);
-        if (s == 0.0)
-            return *this;
-
-        double c1 = sin((1.0-t)*angle)/s;
-        double c2 = sin(t*angle)/s;
-
-        osg::Vec3d n = w1*c1 + w2*c2;
-
-        // convert back to world space and apply altitude lerp
-        n = osg::componentMultiply(n, unitToEllip);
-        result.fromWorld(getSRS(), n);
-        result.z() = z() + t*deltaZ;
+        result.set(
+            getSRS(),
+            output,
+            ALTMODE_ABSOLUTE);
     }
 
     return result;
 }
 
+Distance
+GeoPoint::geodesicDistanceTo(const GeoPoint& rhs) const
+{
+    // Transform both points to lat/long and do a great circle measurement.
+    // https://en.wikipedia.org/wiki/Geographical_distance#Ellipsoidal-surface_formulae
+
+    GeoPoint p1 = transform(getSRS()->getGeographicSRS());
+    GeoPoint p2 = rhs.transform(p1.getSRS());
+
+    return Distance(
+        getSRS()->getEllipsoid().geodesicDistance(
+            osg::Vec2d(p1.x(), p1.y()),
+            osg::Vec2d(p2.x(), p2.y())),
+        Units::METERS);
+}
+
+
 double
 GeoPoint::distanceTo(const GeoPoint& rhs) const
 {
+    // @deprecated, because this method is ambiguous.
+
     if ( getSRS()->isProjected() && rhs.getSRS()->isProjected() )
     {
         if ( getSRS()->isEquivalentTo(rhs.getSRS()) )
@@ -862,11 +844,11 @@ GeoPoint
 GeoExtent::getCentroid() const
 {
     if (isValid())
-        return std::move(GeoPoint(
+        return GeoPoint(
             _srs.get(),
             normalizeX(west() + 0.5*width()),
             south() + 0.5*height(),
-            ALTMODE_ABSOLUTE));
+            ALTMODE_ABSOLUTE);
     else
         return GeoPoint::INVALID;
 }
@@ -906,10 +888,8 @@ GeoExtent::height(const Units& units) const
     }
     else {
         return Distance(
-            getSRS()->getEllipsoid().degreesToMeters(height(), 0.0),
+            getSRS()->getEllipsoid().longitudinalDegreesToMeters(height(), 0.0),
             Units::METERS).as(units);
-        //double m_per_deg = 2.0 * getSRS()->getEllipsoid().getRadiusEquator() * osg::PI / 360.0;
-        //return Distance(m_per_deg * height(), Units::METERS).as(units);
     }
 }
 
@@ -1664,6 +1644,15 @@ GeoExtent::createWorldBoundingSphere(double minElev, double maxElev) const
         GeoPoint(getSRS(), xMax(), yMin(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
         GeoPoint(getSRS(), xMax(), yMax(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
         GeoPoint(getSRS(), xMin(), yMax(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+        
+        // This additional point accounts for when xMin and xMax are close together on the globe
+        // but very far in the expected x extent
+        // (for example [-170 , +170] -> we need an intermediate point at x=0 to have an accurate bounding sphere)
+        if (width() > 180.0)
+        {
+            GeoPoint(getSRS(), (xMin() + xMax()) / 2.0, (yMin() + yMax()) / 2.0, (minElev + maxElev) / 2.0, ALTMODE_ABSOLUTE).toWorld(w);
+            bs.expandBy(w);
+        }
     }
 
     return bs;
@@ -1828,7 +1817,7 @@ const osg::Image*
 GeoImage::getImage() const
 {
     return _future.isSet() && _future->isAvailable() ?
-        _future->get().get() :
+        _future->join().get() :
         _myimage.get();
 }
 
@@ -1977,7 +1966,7 @@ namespace
         double *srcPointsX = new double[numPixels * 2];
         double *srcPointsY = srcPointsX + numPixels;
 
-        dest_extent.getSRS()->transformExtentPoints(
+        dest_extent.getSRS()->transformGrid(
             src_extent.getSRS(),
             dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,
             dest_extent.xMax() - .5 * dx, dest_extent.yMax() - .5 * dy,
@@ -2138,7 +2127,7 @@ GeoImage::takeImage()
     osg::ref_ptr<osg::Image> result;
     if (_future.isSet())
     {
-        result = _future->get();
+        result = _future->join();
         _future->abandon();
     }
     else

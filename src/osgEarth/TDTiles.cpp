@@ -1186,6 +1186,7 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
     }
     else if (nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
     {
+        resolveContent();
         if (_content.valid())
         {
             _content->accept(nv);

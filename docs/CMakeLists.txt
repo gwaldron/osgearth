@@ -17,7 +17,6 @@ set(DOCS_ROOT
     featuremodel.md
     gdal.md
     image.md
-    images
     index.md
     install.md
     layer.md

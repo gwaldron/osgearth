@@ -20,7 +20,6 @@ set(DOCS_ROOT
     index.md
     install.md
     layer.md
-    layers
     layers.md
     license.md
     mbtiles.md

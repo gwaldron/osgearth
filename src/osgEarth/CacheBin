@@ -149,7 +149,7 @@ namespace osgEarth
          * @param binID  Name of this caching bin (unique withing a Cache)
          * @param driver ReaderWriter that serializes data for this caching bin.
          */
-        CacheBin(const std::string& binID, bool enableNodeCaching)
+        CacheBin(const std::string& binID, bool enableNodeCaching = false)
             : _binID(binID), _hashKeys(true), _minTime(0), _enableNodeCaching(enableNodeCaching) { }
 
         std::string _binID;

@@ -138,10 +138,11 @@ struct CollectTriangles
 struct CollectTrianglesVisitor : public osg::NodeVisitor
 {
     CollectTrianglesVisitor() :
-        //osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
-        osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+        osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
+        //osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
     {
         _vertices.reserve(1000000);
+        _colors.reserve(1000000);
     }
 
     bool intersects(osg::Node& node)
@@ -208,6 +209,9 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
     {
         if (intersects(drawable))
         {
+            Random prng((unsigned int)&drawable);
+            osg::Vec4 color(prng.next(), prng.next(), prng.next(), 1.0f);
+
             osg::TriangleFunctor<CollectTriangles> triangleCollector;
             drawable.accept(triangleCollector);
             for (unsigned int j = 0; j < triangleCollector.verts->size(); j++)
@@ -216,6 +220,7 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
                 osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
                 osg::Vec3d v = (*triangleCollector.verts)[j];
                 _vertices.emplace_back(v * matrix);
+                _colors.emplace_back(color);
             }
         }
     }
@@ -232,6 +237,9 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
         osg::Vec3Array* verts = new osg::Vec3Array;
         geom->setVertexArray(verts);
 
+        osg::Vec4Array* colors = new osg::Vec4Array();
+        geom->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
+
         bool first = true;
         osg::Vec3d anchor;
 
@@ -243,11 +251,11 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
                 first = false;
             }
             verts->push_back(_vertices[i] - anchor);
+            colors->push_back(_colors[i]);
         }
         geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, verts->size()));
-        osg::Vec4Array* colors = new osg::Vec4Array();
-        colors->push_back(osg::Vec4(1, 0, 0, 1));
-        geom->setColorArray(colors, osg::Array::BIND_OVERALL);
+
+        
         geom->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0, 1, true));
         geom->setCullingActive(false);
 
@@ -267,6 +275,7 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
 
     typedef std::vector<osg::Matrix> MatrixStack;
     std::vector<osg::Vec3d>  _vertices;
+    std::vector<osg::Vec4> _colors;
     MatrixStack _matrixStack;
     osg::BoundingSphere _queryBounds;
 };
@@ -312,8 +321,18 @@ struct QueryTrianglesHandler : public osgGA::GUIEventHandler
                 _observer = nullptr;
             }
 
-            if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view, ea.getX(), ea.getY(), world))
+            
+
+            osgUtil::LineSegmentIntersector::Intersections hits;
+
+            osg::NodePath path;
+            path.push_back(_mapNode);
+
+            if (view->computeIntersections(ea.getX(), ea.getY(), path, hits))
+            //if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view, ea.getX(), ea.getY(), world))
             {
+                world = hits.begin()->getWorldIntersectPoint();
+
                 _marker->setNodeMask(~0u);
 
                 // convert to map coords:

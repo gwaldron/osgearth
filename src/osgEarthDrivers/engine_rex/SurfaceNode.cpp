@@ -250,7 +250,7 @@ SurfaceNode::getPixelSizeOnScreen(osg::CullStack* cull) const
 void
 SurfaceNode::setLastFramePassedCull(unsigned fn)
 {
-    _lastFramePassedCull.exchange(fn);
+    _lastFramePassedCull = fn;
 }
 
 void
@@ -353,18 +353,6 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
     dirtyBound();
 }
 
-const osg::Image*
-SurfaceNode::getElevationRaster() const
-{
-    return _drawable->getElevationRaster();
-}
-
-const osg::Matrixf&
-SurfaceNode::getElevationMatrix() const
-{
-    return _drawable->getElevationMatrix();
-};
-
 void
 SurfaceNode::addDebugNode(const osg::BoundingBox& box)
 {
@@ -391,10 +379,4 @@ SurfaceNode::setDebugText(const std::string& strText)
         return;
     }
     _debugText->setText(strText);
-}
-
-const osg::BoundingBox&
-SurfaceNode::getAlignedBoundingBox() const
-{
-    return _drawable->getBoundingBox();
 }

@@ -193,21 +193,16 @@ namespace osgEarth { namespace REX
 
         void updateNormalMap();
 
-        bool createChildren(EngineContext* context);
+        bool createChildren();
 
         TileNode* createChild(
-            const TileKey&,
-            EngineContext* context,
+            const TileKey& key,
             Cancelable* cancelable);
 
         // Returns false if the Surface node fails visiblity test
         bool cull(TerrainCuller*);
 
-        bool accept_cull(TerrainCuller*);
-
         bool cull_spy(TerrainCuller*);
-
-        bool accept_cull_spy(TerrainCuller*);
 
         bool shouldSubDivide(TerrainCuller*, const SelectionInfo&);
 

@@ -294,20 +294,39 @@ unsigned TileLayer::getTileSize() const
     return options().tileSize().get();
 }
 
-
 void
 TileLayer::init()
 {
     Layer::init();
-
     _writingRequested = false;
-    _profileMatchesMapProfile = true;
+}
+
+Status
+TileLayer::openImplementation()
+{
+    Status parent = VisibleLayer::openImplementation();
+    if (parent.isError())
+        return parent;
 
     // If the user asked for a custom profile, install it now
     if (options().profile().isSet())
-    {
-        _profile = Profile::create(options().profile().get());
-    }
+        setProfile(Profile::create(options().profile().get()));
+
+    if (isOpen())
+        _cacheBinMetadata.clear();
+
+    if (_memCache.valid())
+        _memCache->clear();
+
+    return getStatus();
+}
+
+Status
+TileLayer::closeImplementation()
+{
+    setProfile(nullptr);
+
+    return Layer::closeImplementation();
 }
 
 void
@@ -324,7 +343,6 @@ TileLayer::addedToMap(const Map* map)
         getProfile() &&
         !map->getProfile()->getSRS()->isHorizEquivalentTo(getProfile()->getSRS()))
     {
-        _profileMatchesMapProfile = false;
         l2CacheSize = 16u;
         OE_INFO << LC << "Map/Layer profiles differ; requesting L2 cache" << std::endl;
     }
@@ -342,7 +360,6 @@ void
 TileLayer::removedFromMap(const Map* map)
 {
     VisibleLayer::removedFromMap(map);
-    _profileMatchesMapProfile.unset();
 }
 
 void
@@ -374,23 +391,6 @@ TileLayer::setUpL2Cache(unsigned minSize)
     }
 }
 
-Status
-TileLayer::openImplementation()
-{
-    Status parent = VisibleLayer::openImplementation();
-    if (parent.isError())
-        return parent;
-
-    if (isOpen())
-        _cacheBinMetadata.clear();
-
-    if (_memCache.valid())
-        _memCache->clear();
-
-    return getStatus();
-}
-
-
 const Status&
 TileLayer::openForWriting()
 {
@@ -401,12 +401,6 @@ TileLayer::openForWriting()
         return getStatus();
     }
     return setStatus(Status::ServiceUnavailable, "Layer does not support writing");
-}
-
-Status
-TileLayer::closeImplementation()
-{
-    return Layer::closeImplementation();
 }
 
 void

@@ -430,28 +430,17 @@ TileNode::cull_spy(TerrainCuller* culler)
 bool
 TileNode::cull(TerrainCuller* culler)
 {
-    EngineContext* context = culler->getEngineContext();
-
-    // Horizon check the surface first:
-    if (!_surface->isVisibleFrom(culler->getViewPointLocal()))
-    {
-        return false;
-    }
-    
     // determine whether we can and should subdivide to a higher resolution:
-    bool childrenInRange = shouldSubDivide(culler, context->getSelectionInfo());
+    bool childrenInRange = shouldSubDivide(culler, _context->getSelectionInfo());
 
-    // whether it is OK to create child TileNodes is necessary.
+    // whether it is OK to create child TileNodes (if necessary)
     bool canCreateChildren = childrenInRange;
 
-    // whether it is OK to load data if necessary.
-    bool canLoadData = true;
-
-    const TerrainOptions& opt = _context->options();
-    canLoadData =
+    // whether it is OK to load data (if necessary)
+    bool canLoadData = 
         _doNotExpire ||
-        _key.getLOD() == opt.firstLOD().get() ||
-        _key.getLOD() >= opt.minLOD().get();
+        _key.getLOD() == options().firstLOD().get() ||
+        _key.getLOD() >= options().minLOD().get();
 
     // whether to accept the current surface node and not the children.
     bool canAcceptSurface = false;
@@ -494,7 +483,7 @@ TileNode::cull(TerrainCuller* culler)
 
             if ( !_childrenReady ) // double check inside mutex
             {
-                _childrenReady = createChildren( context );
+                _childrenReady = createChildren();
 
                 // This means that you cannot start loading data immediately; must wait a frame.
                 canLoadData = false;
@@ -542,42 +531,13 @@ TileNode::cull(TerrainCuller* culler)
     return true;
 }
 
-bool
-TileNode::accept_cull(TerrainCuller* culler)
-{
-    bool visible = false;
-    
-    if (culler)
-    {
-        if ( !culler->isCulled(*this) )
-        {
-            visible = cull( culler );
-        }
-    }
-
-    return visible;
-}
-
-bool
-TileNode::accept_cull_spy(TerrainCuller* culler)
-{
-    bool visible = false;
-    
-    if (culler)
-    {
-        visible = cull_spy( culler );
-    }
-
-    return visible;
-}
-
 void
 TileNode::traverse(osg::NodeVisitor& nv)
 {
     // Cull only:
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        TerrainCuller* culler = dynamic_cast<TerrainCuller*>(&nv);
+        TerrainCuller* culler = static_cast<TerrainCuller*>(&nv);
 
         // update the timestamp so this tile doesn't become dormant.
         _lastTraversalFrame.exchange(_context->getClock()->getFrame());
@@ -597,11 +557,17 @@ TileNode::traverse(osg::NodeVisitor& nv)
         {
             if (culler->_isSpy)
             {
-                accept_cull_spy( culler );
+                // spy mode: don't actually cull
+                cull_spy(culler);
             }
-            else
+
+            else if (
+                // coarse bounds check:
+                !culler->isCulled(*this) && 
+                // horizon and bbox check:
+                _surface->isVisibleFrom(culler->getViewPointLocal()))
             {
-                accept_cull( culler );
+                cull(culler);
             }
         }
     }
@@ -726,13 +692,14 @@ TileNode::traverse(osg::NodeVisitor& nv)
 }
 
 bool
-TileNode::createChildren(EngineContext* context)
+TileNode::createChildren()
 {
     if (_createChildAsync)
     {
         if (_createChildResults.empty())
         {
             TileKey parentkey(_key);
+            EngineContext* context(_context.get());
 
             for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
             {
@@ -742,7 +709,7 @@ TileNode::createChildren(EngineContext* context)
                 {
                     osg::ref_ptr<TileNode> tile = context->liveTiles()->get(parentkey);
                     if (tile.valid() && !state->isCanceled())
-                        return tile->createChild(childkey, context, state);
+                        return tile->createChild(childkey, state);
                     else
                         return (TileNode*)nullptr;
                 };
@@ -787,7 +754,7 @@ TileNode::createChildren(EngineContext* context)
         for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
         {
             TileKey childkey = getKey().createChildKey(quadrant);
-            osg::ref_ptr<TileNode> child = createChild(childkey, context, nullptr);
+            osg::ref_ptr<TileNode> child = createChild(childkey, nullptr);
             addChild(child);
             child->initializeData();
             child->refreshAllLayers();
@@ -798,14 +765,14 @@ TileNode::createChildren(EngineContext* context)
 }
 
 TileNode*
-TileNode::createChild(const TileKey& childkey, EngineContext* context, Cancelable* progress)
+TileNode::createChild(const TileKey& childkey, Cancelable* progress)
 {
     OE_PROFILING_ZONE;
 
     osg::ref_ptr<TileNode> node = new TileNode(
         childkey,
         this, // parent TileNode
-        context,
+        _context.get(),
         progress);
 
     return 
@@ -1014,7 +981,7 @@ TileNode::merge(
                 osg::Texture* tex = etex->getNormalMapTexture();
                 int revision = model->elevationModel()->getRevision();
 
-                if (_context->options().normalizeEdges() == true)
+                if (options().normalizeEdges() == true)
                 {
                     // keep the normal map around because we might update it later
                     tex->setUnRefImageDataAfterApply(false);
@@ -1024,21 +991,6 @@ TileNode::merge(
                 updateNormalMap();
             }
         }
-
-        //if (model->normalModel().valid() && model->normalModel()->getTexture())
-        //{
-        //    osg::Texture* tex = model->normalModel()->getTexture();
-        //    int revision = model->normalModel()->getRevision();
-
-        //    if (_context->options().normalizeEdges() == true)
-        //    {
-        //        // keep the normal map around because we might update it later
-        //        tex->setUnRefImageDataAfterApply(false);
-        //    }
-
-        //    _renderModel.setSharedSampler(SamplerBinding::NORMAL, tex, revision);
-        //    updateNormalMap();
-        //}
 
         // If we OWN normal data, requested new data, and didn't get any,
         // that means it disappeared and we need to delete what we have:
@@ -1112,14 +1064,6 @@ TileNode::merge(
             inheritSharedSampler(i);
         }
     }
-
-    // Patch Layers - NOP for now
-#if 0
-    for (unsigned i = 0; i < model->patchLayers().size(); ++i)
-    {
-        TerrainTilePatchLayerModel* layerModel = model->patchLayers()[i].get();
-    }
-#endif
 
     // Propagate changes we made down to this tile's children.
     if (_childrenReady)
@@ -1360,7 +1304,6 @@ TileNode::load(TerrainCuller* culler)
         {
             // Actually this means that the task has not yet been dispatched,
             // so assign the priority and do it now.
-            //op->_priority = priority;
             op->dispatch();
         }
 
@@ -1503,7 +1446,6 @@ TileNode::updateNormalMap()
         {
             readThat(pixel, s, height-1);
             writeThis(pixel, s, 0);
-            //writeThis(readThat(s, height-1), s, 0);
         }
 
         thisImage->dirty();
@@ -1522,6 +1464,6 @@ bool
 TileNode::nextLoadIsProgressive() const
 {
     return
-        (_context->_options.progressive() == true) &&
+        (options().progressive() == true) &&
         (_nextLoadManifestPtr == nullptr) || (!_nextLoadManifestPtr->progressive().isSetTo(false));
 }

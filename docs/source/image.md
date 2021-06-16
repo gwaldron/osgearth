@@ -2,11 +2,9 @@
 
 An Image Layer is any layer that loads and display tiled imagery on the globe. Image layers are stacked, rendered in order of appearance in the Map. In the earth tile, an Image Layer usually has an `Image` suffix.
 
-## Properties
+Inherits from: [Tile Layer](tilelayer.md)
 
-Inherits from: [Tile Layer](TileLayer.md)
-
-| Earth file          | Description                                                  | Type   | Default              |
+| Property          | Description                                                  | Type   | Default              |
 | ------------------- | ------------------------------------------------------------ | ------ | -------------------- |
 | accept_draping      | Whether draped overlays should be rendered on this layer     | bool   | true                 |
 | altitude            | Distance from the ellipsoid at which to offset the rendering of this image layer | float  | 0                    |

@@ -1,14 +1,14 @@
-# WMS Image Layer
+# WMS (Web Map Service)
 
 WMS ([Web Map Service](https://en.wikipedia.org/wiki/Web_Map_Service)) is an Open Geospatial Consortium (OGC) standard protocol for serving raster images over the web. WMS is the most popular format you will encounter when accessing governmental or other public web data repositories. The images are usually backed by a GIS database and generated on demand, though the server may also be configured to serve pre-tiled data.
 
 There are many options for WMS access, and many versions of WMS, and osgEarth only supports a small subset as described below.
 
-### Properties
+## WMSImage
 
-Inherits from: [Image Layer](ImageLayer.md)
+CLASS: WMSImageLayer (inherits from [ImageLayer](image.md))
 
-| Earth file       | Description                                                  | Type    | Default |
+| Property       | Description                                                  | Type    | Default |
 | ---------------- | ------------------------------------------------------------ | ------- | ------- |
 | url              | Location of the WMS service                                  | URI     |         |
 | format           | Image format to generate, usually at a mime-type. Commonly supported formats include `jpg` and `png` (some WMS servers expect the `mime-type` format like `image/jpeg` or `image/png` instead) | string  |         |
@@ -31,4 +31,3 @@ Inherits from: [Image Layer](ImageLayer.md)
     <transparent>true</transparent>
 </WMSImage>
 ```
-

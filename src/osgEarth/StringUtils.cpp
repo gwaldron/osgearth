@@ -47,6 +47,34 @@ _trimTokens  ( trimTokens )
     tokenize( input, output );
 }
 
+StringTokenizer::StringTokenizer(
+    const std::string& input,
+    StringTable&       output,
+    const std::string& delims,
+    const std::string& seps,
+    const std::string& quotes,
+    bool               allowEmpties,
+    bool               trimTokens) :
+
+    _allowEmpties(allowEmpties),
+    _trimTokens(trimTokens)
+{
+    addDelims(delims);
+    addQuotes(quotes);
+    StringVector pairs;
+    tokenize(input, pairs);
+
+    for (auto& pair : pairs)
+    {
+        _delims.clear();
+        addDelims(seps);
+        StringVector keyvalue;
+        tokenize(pair, keyvalue);
+        if (keyvalue.size() == 2)
+            output[keyvalue[0]] = keyvalue[1];
+    }
+}
+
 void
 StringTokenizer::addDelim( char delim, bool keep )
 {

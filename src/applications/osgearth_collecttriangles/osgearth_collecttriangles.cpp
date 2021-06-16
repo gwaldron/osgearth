@@ -56,6 +56,7 @@ using namespace osgEarth::GUI;
 float query_range = 100.0;
 long long query_time_ns = 0;
 long long predictive_data_loading_time_ns = 0;
+long long expire_time_ns = 0;
 long long query_triangle_count = 0;
 static unsigned int observer_id = 1;
 static bool loading_data = false;
@@ -75,6 +76,8 @@ static int latSegments = 25;
 static int lonSegments = 50;
 static float altAdjust = 5.0f;
 static bool serial = false;
+
+static std::vector< LoadableNode* > traversed_nodes;
 
 class Observer : public osg::Object
 {
@@ -105,8 +108,31 @@ public:
         _bounds = bounds;
     }
 
+    const osg::Matrixd& getViewMatrix() const
+    {
+        return _viewMatrix;
+    }
+
+    void setViewMatrix(const osg::Matrixd& viewMatrix)
+    {
+        _viewMatrix = viewMatrix;
+    }
+
+    const osg::Matrixd& getProjectionMatrix() const
+    {
+        return _projectionMatrix;
+    }
+
+    void setProjectionMatrix(const osg::Matrixd& projectionMatrix)
+    {
+        _projectionMatrix = projectionMatrix;
+    }
+
 private:
     osg::BoundingSphered _bounds;
+
+    osg::Matrixd _projectionMatrix;
+    osg::Matrixd _viewMatrix;
 };
 
 static osg::ref_ptr< Observer > cameraObserver;
@@ -858,7 +884,7 @@ struct PredictiveDataLoader : public osg::NodeVisitor
         _fullyLoaded = true;
     }
 
-    bool intersects(osg::Node& node)
+    osg::BoundingSphered getWorldBounds(osg::Node& node)
     {
         static osg::Matrix identity;
         osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
@@ -866,6 +892,18 @@ struct PredictiveDataLoader : public osg::NodeVisitor
         osg::BoundingSphere nodeBounds = node.getBound();
         osg::BoundingSphered worldBounds(nodeBounds.center(), nodeBounds.radius());
         worldBounds.center() = worldBounds.center() * matrix;
+        return worldBounds;
+    }
+
+    bool intersects(osg::Node& node)
+    {
+        auto worldBounds = getWorldBounds(node);
+
+        // StickyGroup has no bounds?
+        if (!worldBounds.valid())
+        {
+            return true;
+        }
 
         bool result = false;
         for (auto& bs : _areasToLoad)
@@ -881,7 +919,7 @@ struct PredictiveDataLoader : public osg::NodeVisitor
         return result;
     }
 
-    float getMinRange(PagedNode2& node)
+    float getMinRange(osg::Node& node)
     {
         static osg::Matrix identity;
         osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
@@ -894,7 +932,8 @@ struct PredictiveDataLoader : public osg::NodeVisitor
 
         for (auto& bs : _areasToLoad)
         {
-            float range = (bs.center() - worldBounds.center()).length();
+            //float range = osg::maximum(0.0, (bs.center() - worldBounds.center()).length() - nodeBounds.radius());
+            float range = (bs.center() - worldBounds.center()).length() * _lodScale;
             range /= range_boost;
             if (range < minRange) minRange = range;
         }
@@ -907,13 +946,17 @@ struct PredictiveDataLoader : public osg::NodeVisitor
 
     void apply(osg::Node& node)
     {
-        if (intersects(node))
+        _numNodesTraversed++;
+        bool inRange = true;
+
+        TerrainTileNode* terrainTile = dynamic_cast<TerrainTileNode*>(&node);
+        if (terrainTile)
         {
-            PagedNode2* pagedNode = dynamic_cast<PagedNode2*>(&node);
-            if (pagedNode)
-            {
-                apply(*pagedNode);
-            }
+            inRange = apply(*terrainTile);
+        }
+
+        if (inRange)
+        {
             traverse(node);
         }
     }
@@ -921,17 +964,44 @@ struct PredictiveDataLoader : public osg::NodeVisitor
     void apply(PagedNode2& pagedNode)
     {
         float range = getMinRange(pagedNode);
-        if (range < pagedNode.getMaxRange())
+        if (range <= pagedNode.getMaxRange())
         {
             if (!pagedNode.isLoaded())
             {
-                float priority = -range;
-                // TODO:  ICO
+                float priority = -range;                
                 pagedNode.load(priority, nullptr);
                 _fullyLoaded = false;
             }
             pagedNode.touch();
         }
+    }
+
+    bool apply(TerrainTileNode& terrainTileNode)
+    {
+        osg::Node* node = dynamic_cast<osg::Node*>(&terrainTileNode);
+        LoadableNode* loadable = dynamic_cast<LoadableNode*>(&terrainTileNode);
+
+        float range = getMinRange(*node);
+
+        if (range < terrainTileNode.getMaxRange())
+        {
+            _traversedNodes.push_back(loadable);            
+            loadable->setAutoUnload(false);
+            if (loadable->canSubdivide())
+            {
+                loadable->subdivide();
+                _fullyLoaded = false;
+            }
+
+            if (!loadable->isLoaded())
+            {
+                float priority = -range;
+                loadable->load();         
+                _fullyLoaded = false;
+            }
+            return true;
+        }
+        return false;
     }
 
     void apply(osg::Transform& transform)
@@ -956,8 +1026,137 @@ struct PredictiveDataLoader : public osg::NodeVisitor
     MatrixStack _matrixStack;
     bool _fullyLoaded = true;
 
+    std::vector< LoadableNode* > _traversedNodes;
+
     std::vector< osg::BoundingSphered > _areasToLoad;
+    float _lodScale = 1.0f;
+    unsigned int _numNodesTraversed = 0;
 };
+
+
+
+
+
+struct ExpireVisitor : public osg::NodeVisitor
+{
+    ExpireVisitor() :
+        osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+    {
+    }
+
+    osg::BoundingSphered getWorldBounds(osg::Node& node)
+    {
+        static osg::Matrix identity;
+        osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
+
+        osg::BoundingSphere nodeBounds = node.getBound();
+        osg::BoundingSphered worldBounds(nodeBounds.center(), nodeBounds.radius());
+        worldBounds.center() = worldBounds.center() * matrix;
+        return worldBounds;
+    }
+
+    float getMinRange(osg::Node& node)
+    {
+        static osg::Matrix identity;
+        osg::Matrix& matrix = _matrixStack.empty() ? identity : _matrixStack.back();
+
+        osg::BoundingSphere nodeBounds = node.getBound();
+        osg::BoundingSphered worldBounds(nodeBounds.center(), nodeBounds.radius());
+        worldBounds.center() = worldBounds.center() * matrix;
+
+        float minRange = FLT_MAX;
+
+        for (auto& bs : _areasToLoad)
+        {
+            //float range = osg::maximum(0.0, (bs.center() - worldBounds.center()).length() - nodeBounds.radius());
+            float range = (bs.center() - worldBounds.center()).length() * _lodScale;
+            range /= range_boost;
+            if (range < minRange) minRange = range;
+        }
+
+        return minRange;
+    }
+
+    //! A list of bounding spheres in world coordinates to intersect the scene graph against.
+    std::vector<osg::BoundingSphered>& getAreasToLoad() { return _areasToLoad; }
+
+    void apply(osg::Node& node)
+    {
+        bool expired = false;
+
+        PagedNode2* pagedNode = dynamic_cast<PagedNode2*>(&node);
+        if (pagedNode)
+        {
+            apply(*pagedNode);
+        }
+
+        TerrainTileNode* terrainTile = dynamic_cast<TerrainTileNode*>(&node);
+        if (terrainTile)
+        {
+            expired = apply(*terrainTile);
+        }
+
+        if (!expired)
+        {
+            traverse(node);
+        }
+    }
+
+    void apply(PagedNode2& pagedNode)
+    {
+        /*
+        float range = getMinRange(pagedNode);
+        if (range < pagedNode.getMaxRange())
+        {
+            if (!pagedNode.isLoaded())
+            {
+                float priority = -range;
+                pagedNode.load(priority, nullptr);
+            }
+            pagedNode.touch();
+        }
+        */
+    }
+
+    bool apply(TerrainTileNode& terrainTileNode)
+    {
+        osg::Node* node = dynamic_cast<osg::Node*>(&terrainTileNode);
+        LoadableNode* loadable = dynamic_cast<LoadableNode*>(&terrainTileNode);
+
+        float range = getMinRange(*node);
+
+        if (range > terrainTileNode.getMaxRange() && loadable->isLoaded())
+        {
+            std::cout << "Expiring " << terrainTileNode.getKey().str() << std::endl;
+            loadable->unload();
+            return true;
+        }
+        return false;
+    }
+
+    void apply(osg::Transform& transform)
+    {
+        osg::Matrix matrix;
+        if (!_matrixStack.empty()) matrix = _matrixStack.back();
+        transform.computeLocalToWorldMatrix(matrix, this);
+        pushMatrix(matrix);
+
+        traverse(transform);
+
+        popMatrix();
+    }
+
+    inline void pushMatrix(osg::Matrix& matrix) { _matrixStack.push_back(matrix); }
+    inline void popMatrix() { _matrixStack.pop_back(); }
+
+    typedef std::vector<osg::Matrix> MatrixStack;
+    MatrixStack _matrixStack;    
+
+    std::vector< osg::BoundingSphered > _areasToLoad;
+    float _lodScale = 1.0f;
+};
+
+
 
 class LoadableNodesGUI : public BaseGUI
 {
@@ -985,7 +1184,7 @@ protected:
 
         ImGui::Begin(name(), visible());
 
-        bool dirty = (ri.getView()->getFrameStamp()->getFrameNumber() % 60 == 0);
+        bool dirty = (ri.getView()->getFrameStamp()->getFrameNumber() % 10 == 0);
         dirty |= ImGui::Checkbox("Loaded", &_loaded); ImGui::SameLine();
         ImGui::Text("%d", _numLoaded);
         dirty |= ImGui::Checkbox("Unloaded", &_unloaded); ImGui::SameLine();
@@ -994,21 +1193,21 @@ protected:
         dirty |= ImGui::Checkbox("PagedNode2", &_pagedNode2); ImGui::SameLine();
         ImGui::Text("Loaded=%d Unloaded=%d", _numLoadedPagedNode2, _numUnloadedPagedNode2);
 
-        //dirty |= ImGui::Checkbox("Terrain Tiles", &_terrainTiles); ImGui::SameLine();
-        //ImGui::Text("Loaded=%d Unloaded=%d", _numLoadedTerrainTiles, _numUnloadedTerrainTiles);
+        dirty |= ImGui::Checkbox("Terrain Tiles", &_terrainTiles); ImGui::SameLine();
+        ImGui::Text("Loaded=%d Unloaded=%d", _numLoadedTerrainTiles, _numUnloadedTerrainTiles);
 
         dirty |= ImGui::Checkbox("3D Tiles", &_threedTiles); ImGui::SameLine();
         ImGui::Text("Loaded=%d Unloaded=%d", _numLoadedThreedTiles, _numUnloadedThreedTiles);
 
-        //ImGui::SliderInt("Min Display Level", &_minDisplayLevel, 0, 19);
-        //ImGui::SliderInt("Max Display Level", &_maxDisplayLevel, 0, 19);
+        ImGui::SliderInt("Min Display Level", &_minDisplayLevel, 0, 19);
+        ImGui::SliderInt("Max Display Level", &_maxDisplayLevel, 0, 19);
 
         if (ImGui::Button("Refresh") || dirty)
         {
             _numLoaded = 0;
             _numUnloaded = 0;
-            //_numLoadedTerrainTiles = 0;
-            //_numUnloadedTerrainTiles = 0;
+            _numLoadedTerrainTiles = 0;
+            _numUnloadedTerrainTiles = 0;
             _numLoadedPagedNode2 = 0;
             _numUnloadedPagedNode2 = 0;
             _numLoadedThreedTiles = 0;
@@ -1017,8 +1216,10 @@ protected:
 
             auto group = new osg::Group;
 
+            /*
             osgEarth::FindNodesVisitor<LoadableNode> findLoadableNodes;
             _mapNode->accept(findLoadableNodes);
+            */
 
             if (_boundsNode.valid())
             {
@@ -1026,14 +1227,15 @@ protected:
                 _boundsNode = nullptr;
             }
 
-            for (auto& node : findLoadableNodes._results)
+            //for (auto& node : findLoadableNodes._results)
+            for (auto& node : traversed_nodes)
             {
                 auto n = dynamic_cast<osg::Node*>(node);
-                //auto terrainTile = dynamic_cast<TerrainTileNode*>(n);
+                auto terrainTile = dynamic_cast<TerrainTileNode*>(n);
                 auto pagedNode2 = dynamic_cast<PagedNode2*>(n);
                 auto threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTiles::ThreeDTileNode*>(n);
-                //if (terrainTile && node->isLoaded()) _numLoadedTerrainTiles++;
-                //if (terrainTile && !node->isLoaded()) _numUnloadedTerrainTiles;
+                if (terrainTile && node->isLoaded()) _numLoadedTerrainTiles++;
+                if (terrainTile && !node->isLoaded()) _numUnloadedTerrainTiles;
 
                 if (pagedNode2 && node->isLoaded()) _numLoadedPagedNode2++;
                 if (pagedNode2 && !node->isLoaded()) _numUnloadedPagedNode2++;
@@ -1044,7 +1246,7 @@ protected:
                 if (node->isLoaded()) _numLoaded++;
                 if (!node->isLoaded()) _numUnloaded++;
 
-                //if (terrainTile && !_terrainTiles) continue;
+                if (terrainTile && !_terrainTiles) continue;
                 if (pagedNode2 && !_pagedNode2) continue;
                 if (threedTiles && !_threedTiles) continue;
 
@@ -1052,7 +1254,6 @@ protected:
                 {
                     osg::Vec4 color = node->isLoaded() ? osg::Vec4(0.0, 1.0, 0.0, 1.0) : osg::Vec4(1.0, 0.0, 0.0, 1.0);
 
-                    /*
                     if (terrainTile)
                     {
                         color = Color::Purple;
@@ -1061,7 +1262,6 @@ protected:
                             continue;
                         }
                     }
-                    */
 
                     if (threedTiles)
                     {
@@ -1087,6 +1287,7 @@ protected:
             _boundsNode = group;
             _mapNode->addChild(_boundsNode.get());
         }
+
 
         if (!*visible())
         {
@@ -1172,8 +1373,8 @@ protected:
             ImGui::Text("%lf intersections/s", num_intersections * (1e9 / intersection_time));
         }
 
-        ImGui::SliderFloat("Range Boost", &range_boost, 1.0, 10.0);
-        ImGui::SliderFloat("Query Range", &query_range, 1.0, 2000.0f);
+        ImGui::SliderFloat("Range Boost", &range_boost, 0.2, 10.0);
+        ImGui::SliderFloat("Query Range", &query_range, 1.0, 20000.0f);
 
         ImGui::Checkbox("Load Highest Resolution Only", &load_highres_only);
 
@@ -1244,7 +1445,8 @@ protected:
 
 
         ImGui::Text("Collected %d triangles in %lf ms", query_triangle_count, (double)query_time_ns / 1.0e6);
-        ImGui::Text("Data load took %lf", (double)predictive_data_loading_time_ns / 1.0e6);
+        ImGui::Text("Data load took %lf ms", (double)predictive_data_loading_time_ns / 1.0e6);
+        ImGui::Text("Expiration took %lf ms", (double)expire_time_ns / 1.0e6);
         ImGui::End();
     }
 
@@ -1309,7 +1511,7 @@ main(int argc, char** argv)
         viewer.getEventHandlers().push_front(intersectorHandler);
         viewer.getEventHandlers().push_front(new AddObserverHandler(mapNode));
 
-        root->addChild(new ObserversNode());
+        //root->addChild(new ObserversNode());
         root->addChild(node);
 
         viewer.setSceneData(root);
@@ -1344,7 +1546,9 @@ main(int argc, char** argv)
                 osg::Vec3d eye, center, up;
                 viewer.getCamera()->getViewMatrixAsLookAt(eye, center, up);
 
-#if 0
+                loader._lodScale = viewer.getCamera()->getLODScale();
+
+#if 1
                 if (!cameraObserver.valid())
                 {
                     cameraObserver = new Observer();
@@ -1363,12 +1567,23 @@ main(int argc, char** argv)
 #endif
 
                 auto startTime = std::chrono::high_resolution_clock::now();
-                //root->accept(loader);
-                mapNode->getLayerNodeGroup()->accept(loader);
+                //mapNode->accept(loader);
+                mapNode->getTerrain()->accept(loader);
+                traversed_nodes = loader._traversedNodes;
                 auto endTime = std::chrono::high_resolution_clock::now();
                 predictive_data_loading_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
-
-                loading_data = !loader.isFullyLoaded();
+                //std::cout << "traversed " << loader._numNodesTraversed << std::endl;
+                
+                ExpireVisitor expire;
+                for (auto& o : observers)
+                {
+                    expire.getAreasToLoad().push_back(o->getBounds());
+                }
+                expire._lodScale = viewer.getCamera()->getLODScale();
+                startTime = std::chrono::high_resolution_clock::now();
+                mapNode->getTerrain()->accept(expire);
+                endTime = std::chrono::high_resolution_clock::now();
+                expire_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
             }
 
 

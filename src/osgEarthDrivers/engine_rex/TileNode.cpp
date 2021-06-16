@@ -501,6 +501,13 @@ TileNode::resizeGLObjectBuffers(unsigned maxSize)
     _renderModel.resizeGLObjectBuffers(maxSize);
 }
 
+float
+TileNode::getMaxRange() const
+{
+    float range = _context->getSelectionInfo().getRange(_subdivideTestKey);
+    return range;
+}
+
 bool
 TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionInfo)
 {
@@ -578,7 +585,7 @@ TileNode::cull_spy(TerrainCuller* culler)
     return visible;
 }
 
-#define LOAD_NORMALLY
+//#define LOAD_NORMALLY
 
 bool
 TileNode::cull(TerrainCuller* culler)
@@ -1369,6 +1376,8 @@ void TileNode::load()
 
 void TileNode::unload()
 {
+    removeSubTiles();
+    _merged = false;
 }
 
 RefinePolicy TileNode::getRefinePolicy() const

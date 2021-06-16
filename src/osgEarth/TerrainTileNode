@@ -39,6 +39,8 @@ namespace osgEarth
         //! TileKey represented by this tile node
         virtual const TileKey& getKey() const = 0;
 
+        virtual float getMaxRange() const = 0;
+
     protected:
         virtual ~TerrainTileNode() { }
     };

@@ -72,6 +72,8 @@ namespace osgEarth { namespace REX
         /** TileKey of the key representing the data in this node. */
         const TileKey& getKey() const { return _key; }
 
+        float getMaxRange() const override;
+
         /** Indicates that this tile should never be unloaded. */
         void setDoNotExpire(bool value);
         bool getDoNotExpire() const { return _doNotExpire; }

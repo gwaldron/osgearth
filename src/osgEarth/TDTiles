@@ -190,8 +190,26 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     public: // LoadableNode
         void load()
         {
+            // Load the content for this tile and attempt to resolve it.
             requestContent(nullptr);
             resolveContent();
+
+            // If this tile has children we also need to load their content so this node is ready to subdivide
+            if (_children.valid())
+            {
+                for (unsigned int i = 0; i < _children->getNumChildren(); i++)
+                {
+                    osg::ref_ptr< ThreeDTileNode > childTile = dynamic_cast<ThreeDTileNode*>(_children->getChild(i));
+                    if (childTile.valid())
+                    {
+                        if (childTile->hasContent() && !childTile->isContentReady())
+                        {
+                            childTile->requestContent(nullptr);   
+                            childTile->resolveContent();
+                        }
+                    }
+                }
+            }
         }
 
         void unload()
@@ -207,11 +225,32 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         virtual bool isLoaded() const
         {
             auto t = const_cast<ThreeDTileNode*>(this);
-            if (!t->hasContent())
+
+            // Check to see if the content of this tile is loaded.
+            bool isContentReady = false;
+            if (t->hasContent())
             {
-                return true;
+                isContentReady = t->isContentReady();
             }
-            return t->isContentReady();
+
+            // If this tile has children, check to make sure it's content is loaded as well.  This will allow this tile to subdivide property.
+            bool areChildrenReady = true;
+            if (_children.valid())
+            {
+                for (unsigned int i = 0; i < _children->getNumChildren(); i++)
+                {
+                    osg::ref_ptr< ThreeDTileNode > childTile = dynamic_cast<ThreeDTileNode*>(_children->getChild(i));
+                    if (childTile.valid())
+                    {
+                        if (childTile->hasContent() && !childTile->isContentReady())
+                        {
+                            areChildrenReady = false;
+                        }
+                    }
+                }
+            }
+
+            return areChildrenReady && isContentReady;
         }
 
         virtual bool getAutoUnload() const

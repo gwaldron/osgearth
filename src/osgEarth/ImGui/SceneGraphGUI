@@ -351,6 +351,17 @@ namespace osgEarth {
                     }
                 }
 
+                osgEarth::Contrib::ThreeDTiles::ThreeDTileNode* threeDTiles = dynamic_cast<osgEarth::Contrib::ThreeDTiles::ThreeDTileNode*>(node);
+                if (threeDTiles)
+                {
+                    if (ImGui::TreeNode("3D Tiles"))
+                    {                       
+                        std::string content = threeDTiles->getTile()->content()->getJSON().toStyledString();
+                        ImGui::Text("Content");
+                        ImGui::TextWrapped(content.c_str());
+                    }
+                }
+
                 osg::StateSet* stateset = node->getStateSet();
                 if (stateset)
                 {

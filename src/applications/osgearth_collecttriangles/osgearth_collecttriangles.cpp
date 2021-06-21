@@ -209,7 +209,7 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
     {
         if (intersects(drawable))
         {
-            Random prng((unsigned int)&drawable);
+            Random prng(static_cast<unsigned int>(reinterpret_cast<uint64_t>(&drawable)));
             osg::Vec4 color(prng.next(), prng.next(), prng.next(), 1.0f);
 
             osg::TriangleFunctor<CollectTriangles> triangleCollector;

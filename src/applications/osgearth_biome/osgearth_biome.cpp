@@ -341,13 +341,13 @@ struct BiomeGUI : public GUI::BaseGUI
 class MainGUI : public GUI::ApplicationGUI
 {
 public:
-    MainGUI(App& app) : 
+    MainGUI(osg::ArgumentParser& args, App& app) : 
         _app(app), 
         _lifemap(app),
         _biomes(app),
         _splatting(app)
     {
-        addAllBuiltInTools();
+        addAllBuiltInTools(&args);
 
         add("Procedural", new LifeMapGUI(app), true);
         add("Procedural", new BiomeGUI(app), true);
@@ -459,7 +459,7 @@ main(int argc, char** argv)
         app._view = &viewer;
         app._manip = new EarthManipulator(arguments);
         viewer.setCameraManipulator(app._manip);
-        viewer.getEventHandlers().push_front(new MainGUI(app));
+        viewer.getEventHandlers().push_front(new MainGUI(arguments, app));
         viewer.setSceneData(node);
 
         return viewer.run();

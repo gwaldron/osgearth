@@ -214,7 +214,9 @@ TerrainCuller::apply(TileNode& node)
     // knows to blend it with the terrain geometry color.
     _firstDrawCommandForTile = 0L;
         
-    if (!_terrain.patchLayers().empty() && node.getSurfaceNode() && !node.isEmpty())
+    if (!_terrain.patchLayers().empty() && 
+        node.getSurfaceNode() != nullptr && 
+        !node.isEmpty())
     {
         const RenderBindings& bindings = _context->getRenderBindings();
         TileRenderModel& renderModel = _currentTileNode->renderModel();
@@ -222,20 +224,23 @@ TerrainCuller::apply(TileNode& node)
         // Render patch layers if applicable.
         _patchLayers.clear();
 
-        for (PatchLayerVector::const_iterator i = _terrain.patchLayers().begin(); i != _terrain.patchLayers().end(); ++i)
+        for(auto& patchLayer : _terrain.patchLayers())
         {
-            PatchLayer* layer = i->get();
-
             // is the layer accepting this key?
-            if (layer->getAcceptCallback() && !layer->getAcceptCallback()->acceptKey(_currentTileNode->getKey()))
+            if (patchLayer->getAcceptCallback() != nullptr &&
+                !patchLayer->getAcceptCallback()->acceptKey(_currentTileNode->getKey()))
+            {
                 continue;
+            }
 
             // is the tile in visible range?
             float range = _cv->getDistanceToViewPoint(node.getBound().center(), true) - node.getBound().radius();
-            if (layer->getMaxVisibleRange() < range)
+            if (patchLayer->getMaxVisibleRange() < range)
+            {
                 continue;
+            }
 
-            _patchLayers.push_back(layer);
+            _patchLayers.push_back(patchLayer.get());
         }
 
         if (!_patchLayers.empty())
@@ -250,17 +255,14 @@ TerrainCuller::apply(TileNode& node)
             if (!_cv->isCulled(surface->getAlignedBoundingBox()))
             {
                 // Add the draw command:
-                for(std::vector<PatchLayer*>::iterator i = _patchLayers.begin();
-                    i != _patchLayers.end();
-                    ++i)
+                for(auto patchLayer : _patchLayers)
                 {
-                    PatchLayer* layer = *i;
-
-                    DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, &node);
+                    DrawTileCommand* cmd = addDrawCommand(patchLayer->getUID(), &renderModel, nullptr, &node);
                     if (cmd)
                     {
                         cmd->_drawPatch = true;
-                        cmd->_drawCallback = layer->getDrawCallback();
+                        cmd->_drawCallback = patchLayer->getRenderer();
+                        //cmd->_drawCallback = patchLayer->getDrawCallback();
                     }
                 }
             }

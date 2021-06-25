@@ -3,7 +3,7 @@ SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OPENTHREADS_
 
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthProcedural)
 
-SET(TARGET_SRC osgearth_exportgroundcover.cpp)
+SET(TARGET_SRC osgearth_exportvegetation.cpp)
 
 #### end var setup  ###
-SETUP_APPLICATION(osgearth_exportgroundcover)
+SETUP_APPLICATION(osgearth_exportvegetation)

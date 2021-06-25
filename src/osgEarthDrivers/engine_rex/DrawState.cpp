@@ -24,64 +24,43 @@ using namespace osgEarth::REX;
 #define LC "[DrawState] "
 
 void
-PerProgramState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings)
+ProgramState::init(
+    const osg::Program::PerContextProgram* pcp,
+    const RenderBindings* bindings)
 {
+    _pcp = pcp;
+
     // Size the sampler states property:
-    if (_samplerState._samplers.size() < bindings->size())
+    _samplerState._samplers.resize(bindings->size());
+
+    // for each sampler binding, initialize its state tracking structure 
+    // and resolve its matrix uniform location:
+    for (unsigned i = 0; i < bindings->size(); ++i)
     {
-        _samplerState._samplers.resize(bindings->size());
+        const SamplerBinding& binding = (*bindings)[i];
+        _samplerState._samplers[i]._name = binding.samplerName();
+        _samplerState._samplers[i]._matrixUL = _pcp->getUniformLocation(
+            osg::Uniform::getNameID(binding.matrixName()));
     }
 
-    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject(); 
-    if (pcp != _pcp)
-    {
-        _pcp = pcp;
+    // resolve all the other uniform locations:
+    _tileKeyUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_key"));
+    _elevTexelCoeffUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_elevTexelCoeff"));
+    _parentTextureExistsUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_texParentExists"));
+    _layerUidUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_uid"));
+    _layerOrderUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_order"));
+    _morphConstantsUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_morph"));
 
-        // Reset all sampler matrix states since their uniform locations are going to change.
-        clear();
-
-        // for each sampler binding, initialize its state tracking structure 
-        // and resolve its matrix uniform location:
-        for (unsigned i = 0; i < bindings->size(); ++i)
-        {
-            const SamplerBinding& binding = (*bindings)[i];
-            _samplerState._samplers[i]._matrixUL = pcp->getUniformLocation(osg::Uniform::getNameID(binding.matrixName()));
-        }
-
-        // resolve all the other uniform locations:
-        _tileKeyUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_key"));
-        _elevTexelCoeffUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_elevTexelCoeff"));
-        _parentTextureExistsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_texParentExists"));
-        _layerUidUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_uid"));
-        _layerOrderUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_order"));
-        _morphConstantsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_morph"));
-    }
+    // Reset all optional states
+    reset();
 }
 
 void
-PerProgramState::clear()
+ProgramState::reset()
 {
     _elevTexelCoeff.clear();
     _morphConstants.clear();
     _parentTextureExists.clear();
+    _layerOrder.clear();
     _samplerState.clear();
-}
-
-
-void
-PerContextDrawState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings)
-{
-    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
-    if (pcp == NULL)
-        return;
-
-    PerProgramState& u = _perProgramStateMap[pcp];
-    u.refresh(ri, bindings);
-}
-
-PerProgramState&
-PerContextDrawState::getPerProgramState(osg::RenderInfo& ri)
-{
-    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
-    return _perProgramStateMap[pcp];
 }

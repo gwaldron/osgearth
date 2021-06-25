@@ -77,15 +77,15 @@ struct oe_TransformSpec {
 } oe_transform;
 
 // Noise texture:
-uniform sampler2D oe_gc_noiseTex;
+uniform sampler2D oe_veg_noiseTex;
 #define NOISE_SMOOTH   0
 #define NOISE_RANDOM   1
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
 // Vertex attributes in
-layout(location = 6) in int oe_gc_texArenaIndex; // texture handle LUT index
-layout(location = 7) in int oe_gc_nmlArenaIndex; // normal map LUT index
+layout(location = 6) in int oe_veg_texArenaIndex; // texture handle LUT index
+layout(location = 7) in int oe_veg_nmlArenaIndex; // normal map LUT index
 
 // Stage globals
 out vec3 oe_UpVectorView;
@@ -93,10 +93,10 @@ vec4 vp_Color;
 vec3 vp_Normal;
 out vec4 oe_layer_tilec;
 
-out vec3 oe_gc_texCoord; // Output tx coords
-out mat3 oe_gc_TBN; // ref frame for normal maps
-out float oe_gc_transition; // fade bb to model
-out float oe_gc_distance;
+out vec3 oe_veg_texCoord; // Output tx coords
+out mat3 oe_veg_TBN; // ref frame for normal maps
+out float oe_veg_transition; // fade bb to model
+out float oe_veg_distance;
 
 uniform vec3 oe_VisibleLayer_ranges; // from VisibleLayer
 uniform vec3 oe_Camera;
@@ -123,8 +123,8 @@ float unit(float x, float lo, float hi) {
     return clamp((x - lo) / (hi - lo), 0.0, 1.0);
 }
 
-flat out uint64_t oe_gc_texHandle;
-flat out uint64_t oe_gc_nmlHandle;
+flat out uint64_t oe_veg_texHandle;
+flat out uint64_t oe_veg_nmlHandle;
 
 void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
 {
@@ -134,7 +134,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
     vertex_view = oe_vertex.view;
     oe_UpVectorView = oe_transform.normal * vec3(0,0,1);
 
-    vec4 noise = textureLod(oe_gc_noiseTex, oe_layer_tilec.st, 0);  
+    vec4 noise = textureLod(oe_veg_noiseTex, oe_layer_tilec.st, 0);  
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
     float maxRange = oe_VisibleLayer_ranges[1] / oe_Camera.z;
@@ -145,7 +145,7 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
     float width = instance[i].width;
     float height = instance[i].height * falloff;
 
-    oe_gc_distance = 1.0 - falloff;
+    oe_veg_distance = 1.0 - falloff;
 
     int which = gl_VertexID & 7; // mod8 - there are 8 verts per instance
 
@@ -179,8 +179,8 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
         which==2? vertex_view.xyz - halfWidthTangentVector + heightVector :
         vertex_view.xyz + halfWidthTangentVector + heightVector;
 
-    oe_gc_texHandle = oe_gc_texArenaIndex >= 0 ? texArena[oe_gc_texArenaIndex] : 0UL;
-    oe_gc_nmlHandle = 0UL; // no normal map for shadows
+    oe_veg_texHandle = oe_veg_texArenaIndex >= 0 ? texArena[oe_veg_texArenaIndex] : 0UL;
+    oe_veg_nmlHandle = 0UL; // no normal map for shadows
 
 #else // normal render camera - draw as a billboard:
 
@@ -218,13 +218,13 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
                 mix( tangentVector, faceNormalVector, blend);
 
             // normal mapping ref frame
-            oe_gc_TBN = mat3(
+            oe_veg_TBN = mat3(
                 tangentVector,
                 -normalize(cross(tangentVector, faceNormalVector)),
                 faceNormalVector);
 
             // up frame prob works better.
-            //oe_gc_TBN = mat3(
+            //oe_veg_TBN = mat3(
             //    tangentVector,
             //    -faceNormalVector,
             //    oe_UpVectorView);
@@ -256,17 +256,17 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
             vec4(C + E*k + N*k, 1.0);
 
         vp_Normal = vertex_view.xyz - C;
-        oe_gc_TBN = mat3(E, N, oe_UpVectorView);
+        oe_veg_TBN = mat3(E, N, oe_UpVectorView);
 
         vp_Color.a = topDownAmount;
     }
 
-    oe_gc_texHandle = oe_gc_texArenaIndex >= 0 ? texArena[oe_gc_texArenaIndex] : 0UL;
-    oe_gc_nmlHandle = oe_gc_nmlArenaIndex >= 0 ? texArena[oe_gc_nmlArenaIndex] : 0UL;
+    oe_veg_texHandle = oe_veg_texArenaIndex >= 0 ? texArena[oe_veg_texArenaIndex] : 0UL;
+    oe_veg_nmlHandle = oe_veg_nmlArenaIndex >= 0 ? texArena[oe_veg_nmlArenaIndex] : 0UL;
 
 #endif // !OE_IS_SHADOW_CAMERA
 
-    oe_gc_texCoord.st =
+    oe_veg_texCoord.st =
         which == 0 || which == 4? vec2(0, 0) :
         which == 1 || which == 5? vec2(1, 0) :
         which == 2 || which == 6? vec2(0, 1) :
@@ -275,14 +275,14 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
     // apply fade from bb->model
     if (instance[i].modelCommand >= 0)
     {
-        oe_gc_transition = clamp(
+        oe_veg_transition = clamp(
             (1.0 + PSR_BUFFER - instance[i].pixelSizeRatio) / PSR_BUFFER, 
             0, 1);
     }
 }
 
 //uniform float demo_wind;
-void oe_gc_apply_wind(inout vec4 vert_view, in float width, in float height)
+void oe_veg_apply_wind(inout vec4 vert_view, in float width, in float height)
 {
 #ifdef OE_WIND_TEX
     // sample the local wind map.
@@ -298,7 +298,7 @@ void oe_gc_apply_wind(inout vec4 vert_view, in float width, in float height)
     vec3 windDir = (windData.rgb * 2 - 1);
 
     const float rate = 0.01;
-    vec4 noise_moving = textureLod(oe_gc_noiseTex, oe_layer_tilec.st + osg_FrameTime * rate, 0);
+    vec4 noise_moving = textureLod(oe_veg_noiseTex, oe_layer_tilec.st + osg_FrameTime * rate, 0);
     float windSpeedVariation = remap(noise_moving[NOISE_CLUMPY], -0.2, 8.0-stiffness);
     float windSpeed = windData.a * windSpeedVariation;
 
@@ -308,7 +308,7 @@ void oe_gc_apply_wind(inout vec4 vert_view, in float width, in float height)
     if (windSpeed > 0.1 && xy_comp > 0.6)
     {
         float buffetingSpeed = windSpeed * 0.2 * stiffness_factor; //  xy_comp * xy_comp * xy_comp;
-        vec4 noise_b = textureLod(oe_gc_noiseTex, oe_layer_tilec.st + osg_FrameTime * buffetingSpeed, 0);
+        vec4 noise_b = textureLod(oe_veg_noiseTex, oe_layer_tilec.st + osg_FrameTime * buffetingSpeed, 0);
         buffetingDir = vec3(0, noise_b.x * 2 - 1, 0) * buffetingSpeed; // vec3(noise_b.xx * 2 - 1, 0)
     }
 
@@ -329,34 +329,34 @@ void oe_GroundCover_Model(inout vec4 vertex_view, in uint i)
     oe_UpVectorView = oe_transform.normal * vec3(0, 0, 1);
 
     //TODO: hard-coded Coord7, is that OK? I guess we could use zero
-    oe_gc_texCoord = gl_MultiTexCoord7.xyz;
+    oe_veg_texCoord = gl_MultiTexCoord7.xyz;
 
     // assign texture sampler for this model. The LUT index is in
     // a vertex attribute. 0UL == no texture.
-    oe_gc_texHandle = oe_gc_texArenaIndex >= 0 ? texArena[oe_gc_texArenaIndex] : 0UL;
+    oe_veg_texHandle = oe_veg_texArenaIndex >= 0 ? texArena[oe_veg_texArenaIndex] : 0UL;
 
     // They should be -1, but they aren't -- check into that someday
-    oe_gc_nmlHandle = 0UL; // oe_gc_nmlArenaIndex >= 0 ? texArena[oe_gc_nmlArenaIndex] : 0UL;
+    oe_veg_nmlHandle = 0UL; // oe_veg_nmlArenaIndex >= 0 ? texArena[oe_veg_nmlArenaIndex] : 0UL;
 
     // apply fade from bb->model
     if (instance[i].pixelSizeRatio < 1.0)
     {
-        oe_gc_transition = clamp( 
+        oe_veg_transition = clamp( 
             (instance[i].pixelSizeRatio - (1.0-PSR_BUFFER))/PSR_BUFFER, 
             0.0, 1.0 );
     }
 
-    oe_gc_distance = 0.0;
+    oe_veg_distance = 0.0;
 
 #ifdef OE_WIND_TEX
-    oe_gc_apply_wind(vertex_view, instance[i].width, instance[i].height);
+    oe_veg_apply_wind(vertex_view, instance[i].width, instance[i].height);
 #endif
 }
 
 // MAIN ENTRY POINT  
 void oe_GroundCover_VS(inout vec4 vertex_view)
 {
-    oe_gc_transition = 1.0;
+    oe_veg_transition = 1.0;
 
     RenderLeaf leaf = renderSet[gl_InstanceID + cmd[gl_DrawID].baseInstance];
 
@@ -383,18 +383,18 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 #pragma import_defines(OE_IS_MULTISAMPLE)
 
-uniform float oe_gc_maxAlpha;
+uniform float oe_veg_maxAlpha;
 
-in vec3 oe_gc_texCoord;
+in vec3 oe_veg_texCoord;
 vec3 vp_Normal;
 float oe_roughness;
-flat in uint64_t oe_gc_texHandle;
-flat in uint64_t oe_gc_nmlHandle;
-in mat3 oe_gc_TBN;
+flat in uint64_t oe_veg_texHandle;
+flat in uint64_t oe_veg_nmlHandle;
+in mat3 oe_veg_TBN;
 in float elev;
 
-in float oe_gc_transition;
-in float oe_gc_distance;
+in float oe_veg_transition;
+in float oe_veg_distance;
 in vec3 oe_UpVectorView;
 
 float harden(in float x)
@@ -412,32 +412,32 @@ uniform float oe_snow;
 void oe_GroundCover_FS(inout vec4 color)
 {
     // apply the transition fade
-    color.a *= oe_gc_transition;
+    color.a *= oe_veg_transition;
 
-    if (oe_gc_texHandle > 0UL)
+    if (oe_veg_texHandle > 0UL)
     {
         // modulate the texture.
         // "cast" the bindless handle to a sampler array and sample it
-        color *= texture(sampler2D(oe_gc_texHandle), oe_gc_texCoord.st);
+        color *= texture(sampler2D(oe_veg_texHandle), oe_veg_texCoord.st);
 
 #ifndef OE_IS_SHADOW_CAMERA
-        if (oe_gc_nmlHandle > 0UL)
+        if (oe_veg_nmlHandle > 0UL)
         {
-            vec4 n = texture(sampler2D(oe_gc_nmlHandle), oe_gc_texCoord.st);
+            vec4 n = texture(sampler2D(oe_veg_nmlHandle), oe_veg_texCoord.st);
             n.xyz = n.xyz*2.0-1.0;
             float curv = n.z;
             n.z = 1.0 - abs(n.x) - abs(n.y);
             //float t = clamp(-n.z, 0, 1);
             //n.x += (n.x > 0)? -t : t;
             //n.y += (n.y > 0)? -t : t;
-            vp_Normal = normalize(oe_gc_TBN * n.xyz);
+            vp_Normal = normalize(oe_veg_TBN * n.xyz);
             //color.rgb = (vp_Normal + 1.0)*0.5; // debug
         }
 #endif
     }
 
 #ifdef OE_IS_SHADOW_CAMERA
-    if (color.a < oe_gc_maxAlpha)
+    if (color.a < oe_veg_maxAlpha)
     {
         discard;
     }
@@ -445,10 +445,10 @@ void oe_GroundCover_FS(inout vec4 color)
     #ifdef OE_IS_MULTISAMPLE
         // mitigate the screen-door effect of A2C in the distance
         // https://tinyurl.com/y7bbbpl9
-        float a = (color.a - oe_gc_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
-        color.a = mix(color.a, a, oe_gc_distance);
+        float a = (color.a - oe_veg_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+        color.a = mix(color.a, a, oe_veg_distance);
     #else
-        if (color.a < oe_gc_maxAlpha)
+        if (color.a < oe_veg_maxAlpha)
         {
             discard;
         }

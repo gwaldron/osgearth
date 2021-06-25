@@ -97,11 +97,13 @@ namespace osgEarth
 
     public: // Layer
 
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
 
     protected: // Layer
 
-        virtual void init();
+        virtual void init() override;
+
+        virtual void prepareForRendering(TerrainEngine*) override;
 
         void fireCallback(VisibleLayerCallback::MethodPtr);
 
@@ -113,8 +115,9 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform> _opacityU;
         osg::ref_ptr<osg::Uniform> _rangeU;
         osg::ref_ptr<osg::NodeCallback> _noDrawCallback;
-        void initializeBlending();
-        void initializeMinMaxRangeOpacity();
+        bool _minMaxRangeShaderAdded;
+        void initializeUniforms();
+        void initializeMinMaxRangeShader();
     };
 
     typedef std::vector< osg::ref_ptr<VisibleLayer> > VisibleLayerVector;

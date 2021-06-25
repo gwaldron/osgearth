@@ -37,7 +37,7 @@ namespace osgEarth { namespace REX
      * they appear. Since all LayerDrawables share a common bounds, this 
      * should happen automatically, but let's keep an eye out for trouble.
      */
-    class LayerDrawable : public osg::Drawable, public PatchLayer::TileBatch
+    class LayerDrawable : public osg::Drawable
     {
     public:
         LayerDrawable();
@@ -81,6 +81,9 @@ namespace osgEarth { namespace REX
         bool _draw;
 
         std::size_t _tileBatchId;
+
+        // draw callback associated with a patchlayer
+        //TileRenderer* _drawCallback;
         
 
     public: // osg::Drawable
@@ -97,10 +100,10 @@ namespace osgEarth { namespace REX
 
     public: // TileBatch
 
-        void drawTiles(osg::RenderInfo& ri) const;
-        void visitTiles(osg::RenderInfo& ri) const;
-        std::size_t size() const { return _tiles.size(); }
-        std::size_t getBatchID() const { return _tileBatchId; }
+        //void drawTiles(osg::RenderInfo& ri) const;
+        //void visitTiles(osg::RenderInfo& ri) const;
+        //std::size_t size() const { return _tiles.size(); }
+        //std::size_t getBatchID() const { return _tileBatchId; }
 
     protected:
         // overriden to prevent OSG from releasing GL objects on an attached stateset.

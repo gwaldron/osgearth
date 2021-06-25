@@ -132,7 +132,7 @@ GroundCoverLayer::Options::getConfig() const
     maskLayer().set(conf, "mask_layer");
     colorLayer().set(conf, "color_layer");
     biomeLayer().set(conf, "biomes_layer");
-    conf.set("category", category());
+    conf.set("group", group());
     conf.set("color_min_saturation", colorMinSaturation());
     conf.set("lod", _lod);
     conf.set("cast_shadows", _castShadows);
@@ -157,7 +157,7 @@ GroundCoverLayer::Options::fromConfig(const Config& conf)
     colorLayer().get(conf, "color_layer");
     biomeLayer().get(conf, "biomes_layer");
 
-    conf.get("category", category());
+    conf.get("group", group());
     conf.get("color_min_saturation", colorMinSaturation());
     conf.get("lod", _lod);
     conf.get("cast_shadows", _castShadows);
@@ -196,33 +196,6 @@ GroundCoverLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 
 //........................................................................
 
-namespace
-{
-    osg::Image* convertNormalMapFromRGBToRG(const osg::Image* in)
-    {
-        osg::Image* out = new osg::Image();
-        out->allocateImage(in->s(), in->t(), 1, GL_RG, GL_UNSIGNED_BYTE);
-        out->setInternalTextureFormat(GL_RG8);
-        osg::Vec4 v;
-        osg::Vec4 packed;
-        ImageUtils::PixelReader read(in);
-        ImageUtils::PixelWriter write(out);
-        for(int t=0; t<read.t(); ++t)
-        {
-            for(int s=0; s<read.s(); ++s)
-            {
-                read(v, s, t);
-                osg::Vec3 normal(v.r()*2.0f-1.0f, v.g()*2.0f-1.0f, v.b()*2.0f-1.0f);
-                NormalMapGenerator::pack(normal, packed);
-                write(packed, s, t);
-            }
-        }
-        return out;
-    }
-}
-
-//........................................................................
-
 void GroundCoverLayer::setLOD(unsigned value) {
     options().lod() = value;
 }
@@ -253,11 +226,11 @@ float GroundCoverLayer::getMaxSSE() const {
     return options().maxSSE().get();
 }
 
-void GroundCoverLayer::setModelCategoryName(const std::string& value) {
-    options().category() = value;
+void GroundCoverLayer::setAssetGroupName(const std::string& value) {
+    options().group() = value;
 }
-const std::string& GroundCoverLayer::getModelCategoryName() const {
-    return options().category().get();
+const std::string& GroundCoverLayer::getAssetGroupName() const {
+    return options().group().get();
 }
 
 void
@@ -911,23 +884,23 @@ GroundCoverLayer::Renderer::checkForUpdates()
     {
         // revision changed; start a new asset load.
         osg::ref_ptr<GroundCoverLayer> layer(_layer.get());
-        std::string category(_layer->options().category().get());
+        std::string assetGroup(_layer->options().group().get());
 
         _geomCloudInProgress = Job().dispatch<osg::ref_ptr<GeometryCloud>>(
-            [layer, category](Cancelable* c)
+            [layer, assetGroup](Cancelable* c)
             {
                 osg::ref_ptr<GeometryCloud> result;
 
                 BiomeManager& biomeMan = layer->getBiomeLayer()->getBiomeManager();
 
-                biomeMan.loadCategory(
-                    category,
+                biomeMan.loadGroup(
+                    assetGroup,
                     [&](std::vector<osg::Texture*>& textures) { 
                         return layer->createParametricGeometry(textures); },
                     layer->getReadOptions());
 
                 result = biomeMan.createGeometryCloud(
-                    category,
+                    ASSET_GROUP_TREES, //assetGroup,
                     nullptr);
                     
                 return result;

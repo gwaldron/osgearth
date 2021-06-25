@@ -26,12 +26,12 @@
 #include <osgEarth/Feature>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/LandCover>
-#include <osgEarthProcedural/GroundCoverLayer>
+#include <osgEarthProcedural/VegetationLayer>
 #include <osgEarthProcedural/NoiseTextureFactory>
-#include <osgEarthProcedural/GroundCoverFeatureGenerator>
+#include <osgEarthProcedural/VegetationFeatureGenerator>
 #include <osgDB/ReadFile>
 
-#define LC "[exportgroundcover] "
+#define LC "[exportvegetation] "
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -44,7 +44,7 @@ usage(const char* name, const std::string& error)
         << "Error: " << error
         << "\nUsage:"
         << "\n" << name << " file.earth"
-        << "\n  --layer layername                    ; name of GroundCover layer"
+        << "\n  --layer layername                    ; name of Vegetation layer (optional)"
         << "\n  --extents swlong swlat nelong nelat  ; extents in degrees"
         << "\n  --out out.shp                        ; output features"
         << "\n  --include-asset-property <name>      ; include asset property name as attribute (optional)"
@@ -56,9 +56,9 @@ usage(const char* name, const std::string& error)
 struct App
 {
     osg::ref_ptr<const MapNode> mapNode;
-    GroundCoverLayer* gclayer;
+    VegetationLayer* veglayer;
     GeoExtent extent;
-    GroundCoverFeatureGenerator featureGen;
+    VegetationFeatureGenerator featureGen;
     osg::ref_ptr<OGRFeatureSource> outfs;
 
     Threading::Mutexed<std::queue<FeatureList*> > outputQueue;
@@ -80,8 +80,7 @@ struct App
         }
 
         std::string layername;
-        if (!arguments.read("--layer", layername))
-            return usage(argv[0], "Missing --layer");
+        arguments.read("--layer", layername);
 
         double xmin, ymin, xmax, ymax;
         if (!arguments.read("--extents", xmin, ymin, xmax, ymax))
@@ -99,12 +98,16 @@ struct App
 
         const Map* map = mapNode->getMap();
 
-        gclayer = map->getLayerByName<GroundCoverLayer>(layername);
-        if (!gclayer)
-            return usage(argv[0], "Cannot find --layer in map; check the layer name");
+        if (!layername.empty())
+            veglayer = map->getLayerByName<VegetationLayer>(layername);
+        else
+            veglayer = map->getLayer<VegetationLayer>();
+
+        if (!veglayer)
+            return usage(argv[0], "Cannot find Vegetation layer in map");
 
         featureGen.setMap(map);
-        featureGen.setLayer(gclayer);
+        featureGen.setLayer(veglayer);
         featureGen.setFactory(new TerrainTileModelFactory(mapNode->options().terrain().get()));
 
         if (featureGen.getStatus().isError())
@@ -147,20 +150,6 @@ struct App
     }
 };
 
-struct ExportOperation : public osg::Operation
-{
-    App& _app;
-    TileKey _key;
-
-    ExportOperation(App& app, const TileKey& key) : 
-        osg::Operation("build", false), _app(app), _key(key) { }
-
-    void operator()(osg::Object*) override
-    {
-        _app.exportKey(_key);
-    }
-};
-
 int
 main(int argc, char** argv)
 {
@@ -173,11 +162,12 @@ main(int argc, char** argv)
 
     // find all intersecting tile keys
     std::vector<TileKey> keys;
-    app.mapNode->getMap()->getProfile()->getIntersectingTiles(app.extent, app.gclayer->getLOD(), keys);
+    unsigned lod = app.veglayer->options().group(AssetGroup::TREES).lod().get();
+    app.mapNode->getMap()->getProfile()->getIntersectingTiles(app.extent, lod, keys);
     if (keys.empty())
         return usage(argv[0], "No data in extent");
 
-    JobArena arena("GroundCover Export", 4u);
+    JobArena arena("Vegetation Export", 4u);
 
     std::cout << "Exporting " << keys.size() << " keys.." << std::endl;
 

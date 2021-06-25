@@ -48,25 +48,13 @@ LayerDrawable::~LayerDrawable()
     // Drawable's DTOR will release GL objects on any attached stateset;
     // we don't want that because our Layer stateset is shared and re-usable.
     // So detach it before OSG has a chance to do so.
-    setStateSet(0L);
+    setStateSet(nullptr);
 }
 
 void
 LayerDrawable::finalize()
 {
-    // if this is a patch layer with a draw callback, we need to
-    // generate a batch ID.
-    if (_patchLayer)
-    {
-        std::stringstream buf;
-        for(DrawTileCommands::const_iterator i = _tiles.begin();
-            i != _tiles.end();
-            ++i)
-        {
-            buf << i->_key->str() << "/" << i->_tileRevision << "/";
-        }
-        _tileBatchId = osgEarth::hashString(buf.str());
-    }
+    //nop
 }
 
 namespace
@@ -98,48 +86,38 @@ namespace
 }
 
 void
-LayerDrawable::drawTiles(osg::RenderInfo& ri) const
-{
-    PerProgramState& pps = _drawState->getPPS(ri);
-    pps.refresh(ri, _drawState->_bindings);
-
-    if (pps._layerUidUL >= 0)
-    {
-        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
-        GLint uid = _layer ? (GLint)_layer->getUID() : (GLint)-1;
-        ext->glUniform1i(pps._layerUidUL, uid);
-    }
-
-    for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
-    {
-        tile->draw(ri, *_drawState, NULL);
-    }
-}
-
-void
-LayerDrawable::visitTiles(osg::RenderInfo& ri) const
-{
-    for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
-    {
-        tile->visit(ri);
-    }
-}
-
-void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
     OE_PROFILING_ZONE;
-    char buf[64];
-    sprintf(buf, "%.36s (%zd tiles)", _layer ? _layer->getName().c_str() : "unknown layer", _tiles.size());
-    OE_PROFILING_ZONE_TEXT(buf);
+    //char buf[64];
+    //sprintf(buf, "%.36s (%zd tiles)", _layer ? _layer->getName().c_str() : "unknown layer", _tiles.size());
+    //OE_PROFILING_ZONE_TEXT(buf);
 
-    if (_patchLayer && _patchLayer->getDrawCallback())
-    {        
-        _patchLayer->getDrawCallback()->visitTileBatch(ri, this);
+    if (_patchLayer && _patchLayer->getRenderer())
+    {
+        TileBatch batch(_drawState.get());
+        batch._tiles.reserve(_tiles.size());
+        for (auto& tile : _tiles)
+            batch._tiles.push_back(&tile);
+
+        _patchLayer->getRenderer()->draw(ri, batch);
     }
     else
     {
-        drawTiles(ri);
+        ProgramState& pps = _drawState->getProgramState(ri);
+
+        if (pps._layerUidUL >= 0)
+        {
+            osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+            GLint uid = _layer ? (GLint)_layer->getUID() : (GLint)-1;
+            ext->glUniform1i(pps._layerUidUL, uid);
+        }
+
+        for (auto& tile : _tiles)
+        {
+            tile.apply(ri, _drawState.get());
+            tile.draw(ri);
+        }
     }
 
     // If set, dirty all OSG state to prevent any leakage - this is sometimes
@@ -158,6 +136,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         // unbind local buffers when finished.
         osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
+        // Not necessary if using VAOs?
         ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
         ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
 
@@ -170,16 +149,12 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
 void LayerDrawable::accept(osg::PrimitiveFunctor& functor) const
 {
-    for (DrawTileCommands::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
-    {
-        itr->accept(functor);
-    }
+    for (auto& tile : _tiles)
+        tile.accept(functor);
 }
 
 void LayerDrawable::accept(osg::PrimitiveIndexFunctor& functor) const
 {
-    for (DrawTileCommands::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
-    {
-        itr->accept(functor);
-    }
+    for (auto& tile : _tiles)
+        tile.accept(functor);
 }

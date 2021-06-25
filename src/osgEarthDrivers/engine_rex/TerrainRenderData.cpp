@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
@@ -125,7 +126,6 @@ namespace
             OE_WARN << "  Drawing Layer: " << _s << std::endl;
             d->drawImplementation(ri);
         }
-
     };
 }
 
@@ -144,12 +144,14 @@ TerrainRenderData::addLayerDrawable(const Layer* layer)
     if (layer)
     {
         _layerMap[layer->getUID()] = drawable;
+
         drawable->_layer = layer;
         drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
         drawable->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
         drawable->_patchLayer = dynamic_cast<const PatchLayer*>(layer);
-        drawable->setStateSet(layer->getStateSet());
         drawable->_renderType = layer->getRenderType();
+
+        drawable->setStateSet(layer->getStateSet());
     }
     else
     {

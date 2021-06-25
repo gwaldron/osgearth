@@ -33,6 +33,9 @@ namespace osgEarth
          * A ModelAsset that has been "materialized" for rendering by
          * loading the data from its URIs, including the actual model
          * node and billboard textures.
+         *
+         * This contains NO per-instance information (like selection
+         * weight or fill percentage).
          */
         class OSGEARTHPROCEDURAL_EXPORT ModelAssetData
         {
@@ -62,27 +65,28 @@ namespace osgEarth
             int _modelCommand;
             int _billboardCommand;
 
-            // Textures discovered by GeometryCloud. 
-            //std::vector<Texture::WeakPtr> _textures;
-
         private:
             ModelAssetData();
         };
 
         /**
-         * One usage of a model asset instance within the rendering system.
-         * It is possible to have a single asset data referenced more than once
-         * with varying parameters.
+         * Usage of a model asset instance within the rendering system.
+         * It is possible to have a single asset data referenced more than
+         * Usage, each with with different placement parameters.
          */
-        class OSGEARTHPROCEDURAL_EXPORT ModelAssetDataInstance
+        class OSGEARTHPROCEDURAL_EXPORT ModelAssetDataUsage
         {
         public:
-            ModelAssetDataInstance() :
+            ModelAssetDataUsage() :
                 _weight(1.0f),
                 _fill(1.0f) { }
 
             ModelAssetData::Ptr _data;
+
+            // selection weight
             float _weight;
+
+            // coverage percentage
             float _fill;
             
             // These references prevent the TextureArena from making
@@ -98,9 +102,9 @@ namespace osgEarth
         {
         public:
             using ModelAssetDataTable = std::unordered_map<const ModelAsset*, ModelAssetData::Ptr>;
-            using ModelAssetInstanceCollection = std::vector<ModelAssetDataInstance>;
-            using CategoryInstanceTable = std::unordered_map<const ModelCategory*, ModelAssetInstanceCollection>;
-            using BiomeInstanceTable = std::unordered_map<const Biome*, CategoryInstanceTable>;
+            using ModelAssetUsageCollection = std::vector<ModelAssetDataUsage>;
+            using AssetGroupUsageTable = std::vector<ModelAssetUsageCollection>;
+            using BiomeInstanceTable = std::unordered_map<const Biome*, AssetGroupUsageTable>;
 
         public:
             BiomeManager();
@@ -123,24 +127,25 @@ namespace osgEarth
             //! Collection of all active biomes
             std::vector<const Biome*> getActiveBiomes() const;
 
-            //! Collection of assets loaded into memory (snapshot)
+            //! Collection of assets loaded into memory (snapshot in time copy)
             ModelAssetDataTable getResidentAssets() const;
 
-            //! make resident all data calculated by update()
-            void loadCategory(
-                const std::string& category,
-                std::function<osg::Node*(std::vector<osg::Texture*>&)> createImposterGeometry,
-                const osgDB::Options* readOptions);
+            //! Calculate the new resident set, and then make it resident.
+            void updateResidency(
+                std::function<osg::Node*(AssetGroup::Type, std::vector<osg::Texture*>&)> createImposterGeometry,
+                const osgDB::Options* readOptions,
+                std::set<AssetGroup::Type>& out_groups);
 
             //! Create a geometry cloud containing the current resident
-            //! set of biomes.
+            //! set of biomes (for one asset group)
             GeometryCloud* createGeometryCloud(
-                const std::string& category,
-                TextureArena* arena); // const;
+                AssetGroup::Type group,
+                TextureArena* arena);
 
-            //! Generate the lookup tables necessary to render a geometry cloud.
+            //! Generate the lookup tables necessary to render a geometry cloud
+            //! for one asset group
             osg::StateAttribute* createGPULookupTables(
-                const std::string& category) const;
+                AssetGroup::Type group) const;
 
         private:
             mutable Mutex _mutex;
@@ -206,6 +211,13 @@ namespace osgEarth
                     _biomeLUT.resizeGLObjectBuffers(maxSize);
                     _assetLUT.resizeGLObjectBuffers(maxSize);
                 }
+
+                //TODO: evaluate.
+                //void releaseGLObjects(osg::State* state) const override
+                //{
+                //    _biomeLUT.releaseGLObjects(state);
+                //    _assetLUT.releaseGLObjects(state);
+                //}
 
                 META_StateAttribute(osgEarth, BiomeGPUData, (osg::StateAttribute::Type)12131415);
                 BiomeGPUData() { }

@@ -632,6 +632,7 @@ RexTerrainEngineNode::cacheAllLayerExtentsInMapSRS()
         cacheLayerExtentInMapSRS(i->get());
     }
 }
+
 void
 RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 {
@@ -662,27 +663,22 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
     // Push all the layers to draw on to the cull visitor in the order in which
     // they appear in the map.
-    LayerDrawable* lastLayer = 0L;
+    LayerDrawable* lastLayer = nullptr;
     unsigned order = 0;
     bool surfaceStateSetPushed = false;
     bool imageLayerStateSetPushed = false;
     int layersDrawn = 0;
 
-    // LOOP over effectlayers..
-    // for each one, call culltraverse() on it to push a stateset;
-
-    for (LayerDrawableList::iterator i = culler._terrain.layers().begin();
-        i != culler._terrain.layers().end();
-        ++i)
+    for(osg::ref_ptr<LayerDrawable>& layerDrawable : culler._terrain.layers())
     {
         // Note: Cannot save lastLayer here because its _tiles may be empty, which can lead to a crash later
-        if (!i->get()->_tiles.empty())
+        if (!layerDrawable->_tiles.empty())
         {
-            lastLayer = i->get();
+            lastLayer = layerDrawable.get();
 
             // if this is a RENDERTYPE_TERRAIN_SURFACE, we need to activate either the
             // default surface state set or the image layer state set.
-            if (lastLayer->_renderType == Layer::RENDERTYPE_TERRAIN_SURFACE)
+            if (layerDrawable->_renderType == Layer::RENDERTYPE_TERRAIN_SURFACE)
             {
                 if (!surfaceStateSetPushed)
                 {
@@ -690,7 +686,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
                     surfaceStateSetPushed = true;
                 }
 
-                if (lastLayer->_imageLayer || lastLayer->_layer == NULL)
+                if (layerDrawable->_imageLayer || layerDrawable->_layer == nullptr)
                 {
                     if (!imageLayerStateSetPushed)
                     {
@@ -723,16 +719,16 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
             }
 
             // perform any pre-draw finalization
-            lastLayer->finalize();
+            layerDrawable->finalize();
 
 
-            if (lastLayer->_layer)
+            if (layerDrawable->_layer)
             {
-                lastLayer->_layer->apply(lastLayer, cv);
+                layerDrawable->_layer->apply(layerDrawable, cv);
             }
             else
             {
-                lastLayer->accept(*cv);
+                layerDrawable->accept(*cv);
             }
 
             ++layersDrawn;

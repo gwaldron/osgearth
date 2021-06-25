@@ -35,6 +35,7 @@
 #include <osgEarthProcedural/BiomeLayer>
 #include <osgEarthProcedural/BiomeManager>
 #include <osgEarthProcedural/LifeMapLayer>
+#include <osgEarthProcedural/VegetationLayer>
 
 #include <osgViewer/Viewer>
 #include <osgDB/ReadFile>
@@ -191,40 +192,87 @@ struct TextureSplattingGUI : public GUI::BaseGUI
 
 struct BiomeGUI : public GUI::BaseGUI
 {
+    using Clock = std::chrono::steady_clock;
+
     App _app;
     float _sse;
+    bool _auto_sse;
+    bool _forceGenerate;
+    Clock::time_point _lastVisit;
     osg::ref_ptr<osg::Uniform> _sseUni;
 
+
     BiomeGUI(App& app) : GUI::BaseGUI("Biomes"),
-        _app(app), _sse(100.0f)
+        _app(app),
+        _sse(100.0f),
+        _auto_sse(false),
+        _forceGenerate(false)
     {
         BiomeLayer* biolayer = _app._map->getLayer<BiomeLayer>();
         OE_HARD_ASSERT(biolayer != nullptr, __func__);
+
+        VegetationLayer* veglayer = _app._map->getLayer<VegetationLayer>();
+        OE_HARD_ASSERT(veglayer != nullptr, __func__);
     }
 
     void load(const Config& conf) override
     {
         conf.get("SSE", _sse);
+        conf.get("AUTO_SSE", _auto_sse);
     }
 
     void save(Config& conf) override
     {
         conf.set("SSE", _sse);
+        conf.set("AUTO_SSE", _auto_sse);
     }
 
     void draw(osg::RenderInfo& ri) override
     {
+        Clock::time_point now = Clock::now();
+        float elapsed_ms = (float)(std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastVisit).count());
+        _lastVisit = now;
+        float target_ms(16.0f);
+
         if (!_sseUni.valid()) {
-            _sseUni = new osg::Uniform("oe_gc_sse", _sse);
+            _sseUni = new osg::Uniform("oe_veg_sse", _sse);
             ri.getCurrentCamera()->getOrCreateStateSet()->addUniform(_sseUni, osg::StateAttribute::OVERRIDE);
         }
 
         ImGui::Begin("Biomes", NULL, ImGuiWindowFlags_MenuBar);
         {
-            if (ImGui::SliderFloat("SSE", &_sse, 0.0f, 1000.0f)) {
+            if (ImGui::SliderFloat("SSE", &_sse, 1.0f, 1000.0f)) {
                 _sseUni->set(_sse);
                 dirtySettings();
             }
+            
+            ImGui::SameLine();
+            if (ImGui::Checkbox("Auto", &_auto_sse)) {
+                dirtySettings();
+            }
+
+            if (_auto_sse)
+            {
+                if (elapsed_ms > target_ms*2.0f)
+                {
+                    _sse = clamp(_sse + 4.0f, 1.0f, 1000.0f);
+                    _sseUni->set(_sse);
+                }
+                else if (elapsed_ms > target_ms*1.01f)
+                {
+                    _sse = clamp(_sse+0.25f, 1.0f, 1000.0f);
+                    _sseUni->set(_sse);
+                }
+                else if (elapsed_ms < target_ms*0.95f)
+                {
+                    _sse = clamp(_sse-0.1f, 1.0f, 1000.0f);
+                    _sseUni->set(_sse);
+                }
+            }
+
+            //if (ImGui::Checkbox("Always generate", &_forceGenerate)) {
+            //    _app._map->getLayer<VegetationLayer>()->setGenerate(_forceGenerate);
+            //}
 
             if (ImGui::CollapsingHeader("Active Biomes", ImGuiTreeNodeFlags_DefaultOpen))
             {
@@ -235,15 +283,17 @@ struct BiomeGUI : public GUI::BaseGUI
                 {
                     if (ImGui::TreeNode(biome->name()->c_str()))
                     {
-                        for (auto cat : biome->modelCategories())
+                        for(int group=0; group<NUM_ASSET_GROUPS; ++group)
                         {
-                            if (ImGui::TreeNode(cat.name()->c_str()))
+                            std::string groupName = group == 0 ? "Trees" : "Undergrowth";
+
+                            if (ImGui::TreeNode(groupName.c_str()))
                             {
-                                for (auto& member : cat.members())
+                                for(auto& pointer : biome->assetPointers(group))
                                 {
-                                    if (ImGui::TreeNode(member.asset->name()->c_str()))
+                                    if (ImGui::TreeNode(pointer.asset->name()->c_str()))
                                     {
-                                        drawModelAsset(member.asset);
+                                        drawModelAsset(pointer.asset);
                                         ImGui::TreePop();
                                     }
                                 }

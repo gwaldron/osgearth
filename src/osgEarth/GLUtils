@@ -136,8 +136,8 @@ namespace osgEarth
         using Ptr = std::shared_ptr<GLTexture>;
         static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
 
-        void bind();
-        GLuint64 handle();
+        void bind(osg::State& state);
+        GLuint64 handle(osg::State& state);
         GLuint name() const { return _name; }
         void makeResident(bool toggle);
         void release();
@@ -205,7 +205,6 @@ namespace osgEarth
         SSBO();
 
         mutable GLBuffer::Ptr _buffer;
-        //mutable osg::ref_ptr<GLBuffer> _buffer;
         mutable GLsizei _allocatedSize;
         mutable GLsizei _requiredSize;
         GLint _bindingIndex;
@@ -300,6 +299,11 @@ namespace osgEarth
             _ssbo.resize(maxSize);
             _dirty.resize(maxSize);
             _dirty.setAllElementsTo(1);
+        }
+
+        void releaseGLObjects(osg::State* state) const
+        {
+            _ssbo.release();
         }
 
     private:

@@ -3,7 +3,7 @@ layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 
 #pragma include Procedural.GroundCover.Types.glsl
 
-uniform sampler2D oe_gc_noiseTex;
+uniform sampler2D oe_veg_noiseTex;
 #define NOISE_SMOOTH   0
 #define NOISE_RANDOM   1
 #define NOISE_RANDOM_2 2
@@ -15,7 +15,7 @@ uniform float oe_tile[5];
 uniform vec2 oe_tile_elevTexelCoeff;
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4 oe_tile_elevationTexMatrix;
-uniform float oe_GroundCover_colorMinSaturation;
+uniform float oe_veg_colorMinSaturation;
 
 #pragma import_defines(OE_LANDCOVER_TEX)
 #pragma import_defines(OE_LANDCOVER_TEX_MATRIX)
@@ -108,7 +108,7 @@ void generate()
     vec2 halfSpacing = 0.5 / vec2(gl_NumWorkGroups.xy);
     vec2 tilec = halfSpacing + offset / vec2(gl_NumWorkGroups.xy);
 
-    vec4 noise = textureLod(oe_gc_noiseTex, tilec, 0);
+    vec4 noise = textureLod(oe_veg_noiseTex, tilec, 0);
 
     vec2 shift = vec2(fract(noise[1]*1.5), fract(noise[2]*1.5))*2.0-1.0;
     tilec += shift * halfSpacing;
@@ -199,9 +199,9 @@ void merge()
 
 
 uniform vec3 oe_Camera;
-uniform int oe_gc_numCommands; // total number of draw commands
-uniform float oe_gc_sse = 100.0; // pixels
-uniform float oe_gc_maxRange;
+uniform int oe_ic_numCommands; // total number of draw commands
+uniform float oe_veg_sse = 100.0; // pixels
+uniform float oe_veg_maxRange;
 
 #define MASK_BILLBOARD 1
 #define MASK_MODEL 2
@@ -220,7 +220,7 @@ void cull()
     vec4 vertex_view = tile[tileNum].modelViewMatrix * instance[i].vertex;
 
     float range = -vertex_view.z;
-    float maxRange = oe_gc_maxRange / oe_Camera.z;
+    float maxRange = oe_veg_maxRange / oe_Camera.z;
 
     // distance culling:
     if (range >= maxRange)
@@ -246,7 +246,7 @@ void cull()
     if (modelExists)
     {
         vec2 pixelSize = 0.5*(clipUR.xy-clipLL.xy) * oe_Camera.xy;
-        pixelSizeRatio = pixelSize / vec2(oe_gc_sse);
+        pixelSizeRatio = pixelSize / vec2(oe_veg_sse);
     }
 
     float psr = min(pixelSizeRatio.x, pixelSizeRatio.y);
@@ -259,7 +259,7 @@ void cull()
     {
         instance[i].drawMask |= MASK_BILLBOARD;
         int first_index = instance[i].billboardCommand;
-        for (uint k = first_index+1; k < oe_gc_numCommands; ++k)
+        for (uint k = first_index+1; k < oe_ic_numCommands; ++k)
             atomicAdd(cmd[k].baseInstance, 1);
     }
 
@@ -267,7 +267,7 @@ void cull()
     {
         instance[i].drawMask |= MASK_MODEL;
         int first_index = instance[i].modelCommand;
-        for (uint k = first_index+1; k < oe_gc_numCommands; ++k)
+        for (uint k = first_index+1; k < oe_ic_numCommands; ++k)
             atomicAdd(cmd[k].baseInstance, 1);
     }
 }

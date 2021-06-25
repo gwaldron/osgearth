@@ -34,8 +34,23 @@ namespace osgEarth
     {
         using namespace osgEarth;
 
+        #define NUM_ASSET_GROUPS 2
+
+        struct OSGEARTHPROCEDURAL_EXPORT AssetGroup
+        {
+            enum Type {
+                UNDEFINED = -1,
+                TREES = 0,
+                UNDERGROWTH = 1
+            };
+
+            static std::string name(Type type);
+
+            static Type type(const std::string& name);
+        };
+
         /**
-         * Individual artwork asset reference within a biome
+         * Individual artwork asset withing the asset catalog.
          */
         class OSGEARTHPROCEDURAL_EXPORT ModelAsset
         {
@@ -47,7 +62,6 @@ namespace osgEarth
             OE_OPTION(float, width);
             OE_OPTION(float, height);
             OE_OPTION(float, sizeVariation);
-            OE_OPTION(float, selectionWeight);
 
             ModelAsset() { }
             ModelAsset(const Config& conf);
@@ -60,6 +74,8 @@ namespace osgEarth
             const Config& getSourceConfig() const {
                 return _sourceConfig;
             }
+
+            AssetGroup::Type _group;
 
         private:
             Config _sourceConfig;
@@ -115,29 +131,6 @@ namespace osgEarth
             std::unordered_map<std::string, ModelAsset> _models;
         };
 
-        /**
-         * Groups together some ModelAssets for use in a single
-         * ground cover layer
-         */
-        class OSGEARTHPROCEDURAL_EXPORT ModelCategory
-        {
-        public:
-            ModelCategory() { }
-            ModelCategory(const Config& conf, AssetCatalog* assets);
-
-            struct Member
-            {
-                const ModelAsset* asset;
-                float weight;
-                float fill;
-            };
-
-            OE_OPTION(std::string, name);
-            OE_OPTION_VECTOR(Member, members);
-
-            Config getConfig() const;
-        };
-
         /** 
          * A subset of graphical assets that will be used
          * in a particular geographic region.
@@ -151,12 +144,26 @@ namespace osgEarth
 
             OE_OPTION(std::string, name);
             OE_OPTION(int, id);
-            OE_OPTION_VECTOR(ModelCategory, modelCategories);
 
-            //! Find a named model category by name
-            //! @param name Name of object to find
-            //! @return model category, or nullptr if no match
-            const ModelCategory* getModelCategory(const std::string& name) const;
+            // points to an asset, adding in some custom parameters.
+            struct ModelAssetPointer
+            {
+                // points to the base asset in the catalog
+                const ModelAsset* asset;
+
+                // selection weight compared to other assets (default = 1.0)
+                float weight;
+
+                // coverage percentage when this asset it selected (default = 1.0)
+                float fill;
+            };
+
+            using ModelAssetPointers = std::vector<ModelAssetPointer>;
+
+            using ModelAssetGroups = ModelAssetPointers[NUM_ASSET_GROUPS];
+            ModelAssetGroups _modelgroups;
+            ModelAssetGroups& assetGroups() { return _modelgroups; }
+            const ModelAssetPointers& assetPointers(int type) const { return _modelgroups[type]; }
         };
 
 

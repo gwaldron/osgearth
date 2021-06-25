@@ -22,11 +22,14 @@
 
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/GeoData>
+#include <osgEarth/TerrainTileNode>
 #include <osg/RenderInfo>
 #include <osg/Texture>
 
 namespace osgEarth
 {
+    class TileRenderer;
+
     /**
      * PatchLayer is a layer that can render terrain tiles using either
      * a geometry shader patch (GL_PATCHES) or a custom draw callback.
@@ -60,35 +63,6 @@ namespace osgEarth
             virtual const osg::BoundingBox& getTileBoundingBox() const = 0;
         };
 
-        class OSGEARTH_EXPORT TileBatch
-        {
-        public:
-            virtual void drawTiles(osg::RenderInfo& ri) const = 0;
-            virtual void visitTiles(osg::RenderInfo& ri) const = 0;
-            virtual std::size_t size() const = 0;
-            virtual std::size_t getBatchID() const = 0;
-        };
-
-        //! Internal
-        struct DrawContext
-        {
-            const TileKey* _key;
-            const osg::BoundingBox* _tileBBox;
-            const osg::RefMatrix* _modelViewMatrix;
-            int _revision;
-            DrawContext() : _tileBBox(NULL), _key(NULL), _modelViewMatrix(NULL), _revision(-1) { }
-        };
-
-        /**
-         * Callback that the terrain engine will call for custom tile rendering.
-         */
-        class DrawCallback : public osg::Referenced
-        {
-        public:
-            virtual void visitTileBatch(osg::RenderInfo& ri, const TileBatch* tiles) { }
-            virtual void visitTile(osg::RenderInfo& ri, const DrawContext& tile) { }
-        };
-
         /**
          * Callback that the terrain engine will call to decide whether to 
          * render a tile in this layer.
@@ -104,20 +78,17 @@ namespace osgEarth
 
     public:
 
-        /**
-         * Draw callback to use to render tiles in this layer
-         */
-        void setDrawCallback(DrawCallback* value) { _drawCallback = value; }
-        DrawCallback* getDrawCallback() const { return _drawCallback.get(); }
+        //! Custom tile renderer for this layer
+        void setRenderer(TileRenderer* value) {
+            _renderer = value;
+        }
+        TileRenderer* getRenderer() const {
+            return _renderer;
+        }
 
-        /**
-         * Terrain LOD at which to render tiles in this patch layer
-         */
+        //! Callback that decides which tiles to accept for rendering
         void setAcceptCallback(AcceptCallback* value) { _acceptCallback = value; }
         AcceptCallback* getAcceptCallback() const { return _acceptCallback.get(); }
-
-        unsigned getNumPrePassStateSets() const { return _prePassStateSets.size(); }
-        osg::StateSet* getPrePassStateSet(unsigned i) const { return _prePassStateSets[i].get(); }
 
 
     protected:
@@ -134,14 +105,63 @@ namespace osgEarth
             return GeoNode::INVALID;
         }
 
-        std::vector< osg::ref_ptr<osg::StateSet> > _prePassStateSets;
-
     private:
-        osg::ref_ptr<DrawCallback> _drawCallback;
         osg::ref_ptr<AcceptCallback> _acceptCallback;
+        TileRenderer* _renderer;
     };
 
-    typedef std::vector< osg::ref_ptr<PatchLayer> > PatchLayerVector;
+    using PatchLayerVector = std::vector<osg::ref_ptr<PatchLayer>>;
+
+
+    /**
+     * Interface for a patchlayer to access information and state
+     * about a terrain tile
+     */
+    class TileState
+    {
+    public:
+        virtual const TileKey& getKey() const = 0;
+
+        virtual int getRevision() const = 0;
+
+        virtual const osg::BoundingBox& getBBox() const = 0;
+
+        virtual const osg::Matrix& getModelViewMatrix() const = 0;
+
+        virtual void apply(
+            osg::RenderInfo& ri,
+            void* implData) const = 0;
+
+        virtual void debug(
+            osg::RenderInfo& ri,
+            void* implData) const { }
+
+    };
+
+    /**
+     * Collection of tiles for a patchlayer to render
+     */
+    struct TileBatch
+    {
+        TileBatch(void* env) : _env(env) { }
+
+        const std::vector<const TileState*>& tiles() const { return _tiles; }
+        void* env() const { return _env; }
+
+        std::vector<const TileState*> _tiles;
+        void* _env;
+    };
+
+    /**
+     * Interface for rendering a tile batch (patchlayer)
+     */
+    class TileRenderer
+    {
+    public:
+        virtual void draw(
+            osg::RenderInfo& ri,
+            const TileBatch& tiles) = 0;
+    };
 
 } // namespace osgEarth
 

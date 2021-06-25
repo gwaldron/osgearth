@@ -198,8 +198,11 @@ namespace osgEarth
         //! Tell the instancer the highest tile index currently in use.
         void setHighestTileSlot(unsigned slot);
 
-        //! Prepare to render a new frame.
-        void newFrame();
+        //! Prepare to render a new frame by binding buffers
+        void bind();
+
+        //! Clean up at the end of the frame and unbind the buffers
+        void unbind(osg::RenderInfo&);
 
         //! Sets the modeview matrix for a tile
         void setMatrix(unsigned tileNum, const osg::Matrix& modelView);
@@ -218,9 +221,6 @@ namespace osgEarth
         //! Render the entire tile batch (every frame)
         void draw(osg::RenderInfo&);
 
-        //! Clean up at the end of the frame
-        void endFrame(osg::RenderInfo&);
-
         //! Free up GL objects
         void releaseGLObjects(osg::State* state) const;
 
@@ -228,6 +228,7 @@ namespace osgEarth
 
         InstancingData _data;
 
+#if 0
         //! Installed on the geometry cloud to intercept drawing and 
         //! run the multi draw indirect commands.
         struct Renderer : public osg::Geometry::DrawCallback
@@ -244,6 +245,7 @@ namespace osgEarth
             void apply(osg::Drawable& drawable);
             osg::ref_ptr<Renderer> _callback;
         };
+#endif
     };
 
     /**

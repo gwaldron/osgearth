@@ -580,7 +580,10 @@ GDAL::Driver::open(
         srcProj = _srcDS->GetGCPProjection();
     }
 
-    src_srs = SpatialReference::create(srcProj);
+    if (!srcProj.empty())
+    {
+        src_srs = SpatialReference::create(srcProj);
+    }
 
     // still no luck? (for example, an ungeoreferenced file lika jpeg?)
     // try to read a .prj file:
@@ -603,12 +606,19 @@ GDAL::Driver::open(
     }
 
     // These are the actual extents of the data:
-    _srcDS->GetGeoTransform(_geotransform);
+    bool hasGCP = false;
+    bool isRotated = false;
+    bool requiresReprojection = false;
+    
+    bool hasGeoTransform = (_srcDS->GetGeoTransform(_geotransform) == CE_None);
 
     // see if a reprojection DS is required...
-    bool hasGCP = _srcDS->GetGCPCount() > 0 && _srcDS->GetGCPProjection();
-    bool isRotated = _geotransform[2] != 0.0 || _geotransform[4];
-    bool requiresReprojection = hasGCP || isRotated;
+    if (hasGeoTransform)
+    {
+        hasGCP = _srcDS->GetGCPCount() > 0 && _srcDS->GetGCPProjection();
+        isRotated = _geotransform[2] != 0.0 || _geotransform[4];
+        requiresReprojection = hasGCP || isRotated;
+    }
 
     // For a geographic SRS, use the whole-globe profile for performance.
     // Otherwise, collect information and make the profile later.
@@ -620,6 +630,18 @@ GDAL::Driver::open(
         {
             return Status::Error(Status::ResourceUnavailable, Stringify()
                 << "Cannot create geographic Profile from dataset's spatial reference information: " << src_srs->getName());
+        }
+
+        // no xform an geographic? Match the profile.
+        if (!hasGeoTransform)
+        {
+            _geotransform[0] = _profile->getExtent().xMin();
+            _geotransform[1] = _profile->getExtent().width() / (double)_srcDS->GetRasterXSize();
+            _geotransform[2] = 0;
+            _geotransform[3] = _profile->getExtent().yMax();
+            _geotransform[4] = 0;
+            _geotransform[5] = -_profile->getExtent().height() / (double)_srcDS->GetRasterYSize();
+            hasGeoTransform = true;
         }
     }
 

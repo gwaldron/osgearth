@@ -18,12 +18,12 @@ GroundCoverShaders::GroundCoverShaders()
     Grass = "Procedural.Grass.glsl";
     _sources[Grass] = "@Procedural.Grass.glsl@";
     
-    GroundCover_CS = "Procedural.GroundCover.CS.glsl";
-    _sources[GroundCover_CS] = "@Procedural.GroundCover.CS.glsl@";
+    Trees = "Procedural.Trees.glsl";
+    _sources[Trees] = "@Procedural.Trees.glsl@";
     
-    GroundCover_Render = "Procedural.GroundCover.Render.glsl";
-    _sources[GroundCover_Render] = "@Procedural.GroundCover.Render.glsl@";
+    Compute = "Procedural.Vegetation.CS.glsl";
+    _sources[Compute] = "@Procedural.Vegetation.CS.glsl@";
     
-    GroundCover_Types = "Procedural.GroundCover.Types.glsl";
-    _sources[GroundCover_Types] = "@Procedural.GroundCover.Types.glsl@";
+    Types = "Procedural.Vegetation.Types.glsl";
+    _sources[Types] = "@Procedural.Vegetation.Types.glsl@";
 }

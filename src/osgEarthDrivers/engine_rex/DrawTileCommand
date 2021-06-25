@@ -23,6 +23,7 @@
 #include "DrawState"
 #include "GeometryPool"
 #include "TileDrawable"
+#include <osgEarth/TerrainTileNode>
 #include <osgEarth/PatchLayer>
 #include <osgEarth/TileKey>
 #include <osg/Matrix>
@@ -36,8 +37,11 @@ namespace osgEarth { namespace REX
     /**
      * All data necessary to draw a single terrain tile.
      */
-    struct DrawTileCommand
+    struct DrawTileCommand : public osgEarth::TileState
     {
+        // Tile key
+        const TileKey* _key;
+
         // ModelView matrix to apply before rendering this tile
         osg::ref_ptr<const osg::RefMatrix> _modelViewMatrix;
 
@@ -51,11 +55,6 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<SharedGeometry> _geom;
 
         TileDrawable* _tile;
-
-        //PatchLayer::GeometryArrayProvider* _provider;
-
-        // Tile key
-        const TileKey* _key;
 
         // Tile key value to push to uniform just before drawing
         osg::Vec4f _keyValue;
@@ -73,7 +72,7 @@ namespace osgEarth { namespace REX
         osg::Vec2f _morphConstants;
 
         // Custom draw callback to call instead of rendering _geom
-        PatchLayer::DrawCallback* _drawCallback;
+        TileRenderer* _drawCallback;
 
         // When drawing _geom, whether to render as GL_PATCHES 
         // instead of GL_TRIANGLES (for patch layers)
@@ -87,11 +86,11 @@ namespace osgEarth { namespace REX
         int _layerOrder;
 
         // Renders the tile.
-        void draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const;
+        void draw(osg::RenderInfo& ri) const;
 
         // Visits the tile (to state applied, nothing rendered) - useful when collecting
         // tile data for a compute shader, e.g.
-        void visit(osg::RenderInfo& ri) const;
+        //void visit(osg::RenderInfo& ri) const;
 
         // Less than operator will ensure that tiles are sorted near to far
         // to minimze overdraw.
@@ -114,6 +113,34 @@ namespace osgEarth { namespace REX
 
         virtual void accept(osg::PrimitiveFunctor& functor) const;
         virtual void accept(osg::PrimitiveIndexFunctor& functor) const;
+
+    public: // TileState
+
+        const TileKey& getKey() const override {
+            return *_key;
+        }
+
+        int getRevision() const override {
+            return _tileRevision;
+        }
+
+        const osg::BoundingBox& getBBox() const override {
+            return _tile->getBoundingBox();
+        }
+
+        const osg::Matrix& getModelViewMatrix() const override {
+            return *_modelViewMatrix.get();
+        }
+
+        //! Apply the GL state for this tile (all samplers and uniforms)
+        //! in preparation for rendering or computation
+        void apply(
+            osg::RenderInfo& ri,
+            void* implData) const override;
+
+        void debug(
+            osg::RenderInfo& ri,
+            void* implData) const override;
     };
 
     /**

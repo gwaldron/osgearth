@@ -16,11 +16,11 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_PROCEDURAL_GroundCoverFeatureGenerator
-#define OSGEARTH_PROCEDURAL_GroundCoverFeatureGenerator 1
+#ifndef OSGEARTH_PROCEDURAL_VEGETATION_FEATURE_GEN
+#define OSGEARTH_PROCEDURAL_VEGETATION_FEATURE_GEN 1
 
 #include "Export"
-#include "GroundCoverLayer"
+#include "VegetationLayer"
 #include "LifeMapLayer"
 #include "BiomeLayer"
 
@@ -35,13 +35,13 @@ namespace osgEarth { namespace Procedural
 {
     /**
      * Creates features representing the location and configuration
-     * of GroundCover instances.
+     * of vegetation objects.
      */
-    class OSGEARTHPROCEDURAL_EXPORT GroundCoverFeatureGenerator
+    class OSGEARTHPROCEDURAL_EXPORT VegetationFeatureGenerator
     {
     public:
         //! Construct a generator.
-        GroundCoverFeatureGenerator();
+        VegetationFeatureGenerator();
 
         //! Sets the map in which to find layers (required)
         void setMap(const Map* map);
@@ -49,8 +49,8 @@ namespace osgEarth { namespace Procedural
         //! Sets the model factory to use (required)
         void setFactory(TerrainTileModelFactory* factory);
 
-        //! Sets the groundcover layer from which to generate features (required)
-        void setLayer(GroundCoverLayer* layer);
+        //! Sets the vegetation layer from which to generate features (required)
+        void setLayer(VegetationLayer* layer);
 
         //! Adds a property name to store as a feature attribute
         void addAssetPropertyName(const std::string& name);
@@ -59,19 +59,19 @@ namespace osgEarth { namespace Procedural
         //! see if there are any setup errors before calling getFeatures.
         const Status& getStatus() const;
 
-        //! Populate the output with groundcover positions corresponding to the tile key.
-        //! The key's LOD should match the GroundCoverLayer's LOD; otherwise no features
+        //! Populate the output with veg positions corresponding to the tile key.
+        //! The key's LOD should match the VegetationLayer's LOD; otherwise no features
         //! will result.
         Status getFeatures(const TileKey& key, FeatureList& output) const;
 
-        //! Populate the output with groundcover positions within the extent.
+        //! Populate the output with veg positions within the extent.
         Status getFeatures(const GeoExtent& extent, FeatureList& output) const;
         
     private:
         Status _status;
         osg::ref_ptr<const Map> _map;
         osg::ref_ptr<TerrainTileModelFactory> _factory;
-        osg::ref_ptr<GroundCoverLayer> _gclayer;
+        osg::ref_ptr<VegetationLayer> _veglayer;
         osg::ref_ptr<LifeMapLayer> _lifemaplayer;
         osg::ref_ptr<BiomeLayer> _biomelayer;
         osg::ref_ptr<osg::Texture> _noiseTexture;
@@ -85,4 +85,4 @@ namespace osgEarth { namespace Procedural
 
 } } // namespace osgEarth::Procedural
 
-#endif // OSGEARTH_PROCEDURAL_GroundCoverFeatureGenerator
+#endif // OSGEARTH_PROCEDURAL_VEGETATION_FEATURE_GEN

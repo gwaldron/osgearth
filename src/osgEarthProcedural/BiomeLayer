@@ -77,6 +77,11 @@ namespace osgEarth
                 const TileKey& key, 
                 ProgressCallback* progress) const override;
 
+            virtual void postCreateImageImplementation(
+                GeoImage& createdImage,
+                const TileKey& key,
+                ProgressCallback* progress) const override;
+
         protected:
 
             FeatureSource* getControlSet() const;
@@ -95,6 +100,11 @@ namespace osgEarth
             using Tracker = std::unordered_map<osg::Object*, TileKey>;
             mutable Mutexed<Tracker> _tracker;
             void objectDeleted(void*) override;
+
+            void trackImage(
+                GeoImage& image,
+                const TileKey& key,
+                std::set<int>& biomeids) const;
         };
 
     }

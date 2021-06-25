@@ -225,10 +225,18 @@ namespace osgEarth
             const TileKey& key,
             ProgressCallback* progress);
 
+        //! Override to write an image over top of an existing image
         virtual GeoImage createImageImplementation(
             const GeoImage& canvas,
             const TileKey& key,
             ProgressCallback* progress) const { return canvas; }
+
+        //! Override to do something to an image before returning
+        //! it from createImage (including a GeoImage read from the cache)
+        virtual void postCreateImageImplementation(
+            GeoImage& createdImage,
+            const TileKey& key,
+            ProgressCallback* progress) const { }
 
     protected: // Layer
 

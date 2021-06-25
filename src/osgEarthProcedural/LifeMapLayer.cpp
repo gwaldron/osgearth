@@ -95,12 +95,6 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
 
 namespace
 {
-    // The four components of a LifeMap pixel
-    constexpr unsigned RUGGED = 0;
-    constexpr unsigned DENSE = 1;
-    constexpr unsigned LUSH = 2;
-    constexpr unsigned SPECIAL = 3;
-
     // noise channels
     constexpr unsigned SMOOTH = 0;
     constexpr unsigned RANDOM = 1;
@@ -803,24 +797,24 @@ LifeMapLayer::createImageImplementation(
         for (int i = 0; i < 4; ++i)
         {
             dense_factor = sample[i].dense.weight*sample[i].weight;
-            pixel[DENSE] += sample[i].dense.value*dense_factor;
+            pixel[LIFEMAP_DENSE] += sample[i].dense.value*dense_factor;
             dense_total += dense_factor;
             
             lush_factor = sample[i].lush.weight*sample[i].weight;
-            pixel[LUSH] += sample[i].lush.value*lush_factor;
+            pixel[LIFEMAP_LUSH] += sample[i].lush.value*lush_factor;
             lush_total += lush_factor;
 
             rugged_factor = sample[i].rugged.weight*sample[i].weight;
-            pixel[RUGGED] += sample[i].rugged.value*rugged_factor;
+            pixel[LIFEMAP_RUGGED] += sample[i].rugged.value*rugged_factor;
             rugged_total += rugged_factor;
 
             if (sample[i].special > 0)
-                pixel[SPECIAL] = (float)sample[i].special / 255.0f;
+                pixel[LIFEMAP_SPECIAL] = (float)sample[i].special / 255.0f;
         }
 
         // for a special encoding, zero out the other values
-        if (pixel[SPECIAL] > 0)
-            pixel[RUGGED] = pixel[DENSE] = pixel[LUSH] = 0.0f;
+        if (pixel[LIFEMAP_SPECIAL] > 0)
+            pixel[LIFEMAP_RUGGED] = pixel[LIFEMAP_DENSE] = pixel[LIFEMAP_LUSH] = 0.0f;
 
         // MASK CONTRIBUTION (applied to final data)
         if (densityMask.valid())
@@ -829,9 +823,9 @@ LifeMapLayer::createImageImplementation(
             double vv = clamp(i.v() * dm_matrix(1, 1) + dm_matrix(3, 1), 0.0, 1.0);
             readDensityMask(dm_pixel, uu, vv);
 
-            pixel[DENSE] *= dm_pixel.r();
-            pixel[LUSH] *= (0.25 + 0.75*dm_pixel.r()); // 75% effect
-            pixel[RUGGED] *= dm_pixel.r();
+            pixel[LIFEMAP_DENSE] *= dm_pixel.r();
+            pixel[LIFEMAP_LUSH] *= (0.25 + 0.75*dm_pixel.r()); // 75% effect
+            pixel[LIFEMAP_RUGGED] *= dm_pixel.r();
         }
 
         for (int i = 0; i < 4; ++i)

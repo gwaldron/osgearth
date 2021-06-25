@@ -104,7 +104,7 @@ Texture::compileGLObjects(osg::State& state) const
     }
 
     // Blit our image to the GPU
-    gc._gltexture->bind();
+    gc._gltexture->bind(state);
 
     if (target == GL_TEXTURE_2D_ARRAY)
     {
@@ -135,12 +135,15 @@ Texture::compileGLObjects(osg::State& state) const
 
     glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 4.0f);
 
-    // Foce creation of the bindless handle - once you do this, you can
+    // Force creation of the bindless handle - once you do this, you can
     // no longer change the texture parameters.
-    gc._gltexture->handle();
+    gc._gltexture->handle(state);
 
     // debugging
-    OE_DEVEL << LC << "Texture::compileGLObjects '" << gc._gltexture->id() << "' name=" << gc._gltexture->name() << " handle=" << gc._gltexture->handle() << std::endl;
+    OE_DEVEL << LC 
+        << "Texture::compileGLObjects '" << gc._gltexture->id() 
+        << "' name=" << gc._gltexture->name() 
+        << " handle=" << gc._gltexture->handle(state) << std::endl;
 
     // TODO: At this point, if/when we go with SPARSE textures,
     // don't actually copy the image down until activation.
@@ -261,7 +264,10 @@ Texture::releaseGLObjects(osg::State* state) const
             GCState& gc = get(*state);
 
             // debugging
-            OE_DEVEL << LC << "Texture::releaseGLObjects '" << gc._gltexture->id() << "' name=" << gc._gltexture->name() << " handle=" << gc._gltexture->handle() << std::endl;
+            OE_DEVEL << LC 
+                << "Texture::releaseGLObjects '" << gc._gltexture->id() 
+                << "' name=" << gc._gltexture->name() 
+                << " handle=" << gc._gltexture->handle(*state) << std::endl;
 
             // will activate the releaser
             gc._gltexture = nullptr;
@@ -501,6 +507,7 @@ TextureArena::apply(osg::State& state) const
 void
 TextureArena::compileGLObjects(osg::State& state) const
 {
+    OE_DEBUG << LC << "Compiling GL objects for arena " << getName() << std::endl;
     apply(state);
 }
 
@@ -598,7 +605,7 @@ TextureArena::HandleLUT::refresh(const TextureVector& textures, osg::State& stat
         GLTexture* glTex = tex->_gc[state.getContextID()]._gltexture.get();
         GLuint64 handle = 0ULL;
         if (glTex)
-            handle = glTex->handle();
+            handle = glTex->handle(state);
 
         if (_buf[i] != handle)
         {

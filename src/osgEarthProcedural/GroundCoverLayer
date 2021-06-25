@@ -49,7 +49,7 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
-            OE_OPTION(std::string, category);
+            OE_OPTION(std::string, group);
             OE_OPTION(float, colorMinSaturation);
             OE_OPTION(unsigned, lod);
             OE_OPTION(bool, castShadows);
@@ -108,8 +108,8 @@ namespace osgEarth { namespace Procedural
         bool getUseAlphaToCoverage() const;
 
         //! Biome model category this layer belongs to
-        void setModelCategoryName(const std::string& value);
-        const std::string& getModelCategoryName() const;
+        void setAssetGroupName(const std::string& value);
+        const std::string& getAssetGroupName() const;
 
     protected:
 

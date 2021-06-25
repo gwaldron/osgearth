@@ -10,9 +10,9 @@ ENDIF()
 SET(LIB_NAME osgEarthProcedural)
 
 set(TARGET_GLSL
-    Procedural.GroundCover.CS.glsl
-    Procedural.GroundCover.Render.glsl
-    Procedural.GroundCover.Types.glsl
+    Procedural.Vegetation.CS.glsl
+    Procedural.Vegetation.Types.glsl
+    Procedural.Trees.glsl
     Procedural.Grass.glsl
     Procedural.TextureSplatting.glsl)
 
@@ -30,15 +30,13 @@ set(TARGET_SRC
     Biome.cpp
     BiomeLayer.cpp
     BiomeManager.cpp
-    GrassLayer.cpp
-    GroundCoverFeatureGenerator.cpp
-    #GroundCoverFeatureSource.cpp
-    GroundCoverLayer.cpp
     NoiseTextureFactory.cpp
     RoadSurfaceLayer.cpp
     TextureSplattingLayer.cpp
     TextureSplattingMaterials.cpp
     LifeMapLayer.cpp
+    VegetationFeatureGenerator.cpp
+    VegetationLayer.cpp
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
@@ -46,16 +44,14 @@ set(LIB_PUBLIC_HEADERS
     BiomeLayer
     BiomeManager
 	Export
-    GrassLayer
-    GroundCoverFeatureGenerator
-    #GroundCoverFeatureSource
-    GroundCoverLayer
     NoiseTextureFactory
     RoadSurfaceLayer
     ProceduralShaders
     TextureSplattingLayer
     TextureSplattingMaterials
-    LifeMapLayer)
+    LifeMapLayer
+    VegetationFeatureGenerator
+    VegetationLayer)
 	
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS}

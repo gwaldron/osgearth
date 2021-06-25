@@ -381,6 +381,11 @@ ImageLayer::createImage(
         result = post->createImage(result, key, progress);
     }
 
+    if (result.valid())
+    {
+        postCreateImageImplementation(result, key, progress);
+    }
+
     //_sentry.unlock(key);
 
     return result;
@@ -469,7 +474,7 @@ ImageLayer::createImageInKeyProfile(
             if (!expired)
             {
                 OE_DEBUG << "Got cached image for " << key.str() << std::endl;
-                return GeoImage( cachedImage.get(), key.getExtent() );
+                return GeoImage(cachedImage.get(), key.getExtent());
             }
             else
             {

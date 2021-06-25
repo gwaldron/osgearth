@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "GroundCoverFeatureGenerator"
-#include "GroundCoverLayer"
+#include "VegetationFeatureGenerator"
 #include "NoiseTextureFactory"
 #include <osgEarth/ImageUtils>
 #include <osg/ComputeBoundsVisitor>
@@ -28,7 +27,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
 
-#define LC "[GroundCoverFeatureGenerator] "
+#define LC "[VegetationFeatureGenerator] "
 
 //...................................................................
 
@@ -63,48 +62,48 @@ namespace
 
 //...................................................................
 
-GroundCoverFeatureGenerator::GroundCoverFeatureGenerator() :
+VegetationFeatureGenerator::VegetationFeatureGenerator() :
     _status(Status::ConfigurationError),
-    _sizeCache("OE.GroundCoverFeatureGenerator.modelSizeCache")
+    _sizeCache("OE.VegetationFeatureGenerator.modelSizeCache")
 {
     //nop
 }
 
 void
-GroundCoverFeatureGenerator::setMap(const Map* map)
+VegetationFeatureGenerator::setMap(const Map* map)
 {
     _map = map;
     initialize();
 }
 
 void
-GroundCoverFeatureGenerator::setFactory(TerrainTileModelFactory* value)
+VegetationFeatureGenerator::setFactory(TerrainTileModelFactory* value)
 {
     _factory = value;
     initialize();
 }
 
 void
-GroundCoverFeatureGenerator::setLayer(GroundCoverLayer* layer)
+VegetationFeatureGenerator::setLayer(VegetationLayer* layer)
 {
-    _gclayer = layer;
+    _veglayer = layer;
     initialize();
 }
 
 void
-GroundCoverFeatureGenerator::addAssetPropertyName(const std::string& name)
+VegetationFeatureGenerator::addAssetPropertyName(const std::string& name)
 {
     _propNames.push_back(name);
 }
 
 const Status&
-GroundCoverFeatureGenerator::getStatus() const
+VegetationFeatureGenerator::getStatus() const
 {
     return _status;
 }
 
 void
-GroundCoverFeatureGenerator::initialize()
+VegetationFeatureGenerator::initialize()
 {
     if (!_map.valid())
     {
@@ -124,9 +123,9 @@ GroundCoverFeatureGenerator::initialize()
         return;
     }
 
-    if (!_gclayer.valid())
+    if (!_veglayer.valid())
     {
-        _status.set(Status::ConfigurationError, "Missing required GroundCoverLayer");
+        _status.set(Status::ConfigurationError, "Missing VegetationLayer");
         return;
     }
 
@@ -139,7 +138,7 @@ GroundCoverFeatureGenerator::initialize()
     }
     if (_lifemaplayer->open().isError())
     {
-        _status.set(_lifemaplayer->getStatus().code(), Stringify() << "Opening life map layer: " << _gclayer->getStatus().message());
+        _status.set(_lifemaplayer->getStatus().code(), Stringify() << "Opening life map layer: " << _lifemaplayer->getStatus().message());
         return;
     }
 
@@ -151,26 +150,28 @@ GroundCoverFeatureGenerator::initialize()
     }
     if (_biomelayer->open().isError())
     {
-        _status.set(_biomelayer->getStatus().code(), Stringify() << "Opening biome layer: " << _gclayer->getStatus().message());
+        _status.set(_biomelayer->getStatus().code(), Stringify() << "Opening biome layer: " << _biomelayer->getStatus().message());
         return;
     }
 
     // open the groundcover layer
-    if (_gclayer->open().isError())
+    if (_veglayer->open().isError())
     {
-        _status.set(_gclayer->getStatus().code(), Stringify() << "Opening groundcover layer: " << _gclayer->getStatus().message());
+        _status.set(_veglayer->getStatus().code(), Stringify() << "Opening vegetation layer: " << _veglayer->getStatus().message());
         return;
     }
 
+#if 0
     // make sure the lifemap intersects the LOD of the GC layer
-    if (_gclayer->getLOD() < _lifemaplayer->getMinLevel() ||
-        _gclayer->getLOD() > _lifemaplayer->getMaxLevel())
+    if (_veglayer->getLOD() < _lifemaplayer->getMinLevel() ||
+        _veglayer->getLOD() > _lifemaplayer->getMaxLevel())
     {
         _status.set(
             Status::ResourceUnavailable,
             "GC Layer LOD is outside the min/max LOD of your LifeMap layer");
         return;
     }
+#endif
 
     // open the elevation layers
     ElevationLayerVector elevLayers;   
@@ -208,8 +209,8 @@ GroundCoverFeatureGenerator::initialize()
         _manifest.insert(_lifemaplayer.get());
     if (_biomelayer.valid())
         _manifest.insert(_biomelayer.get());
-    if (_gclayer.valid()) 
-        _manifest.insert(_gclayer.get());
+    if (_veglayer.valid())
+        _manifest.insert(_veglayer.get());
     for (auto& i : elevLayers)
         _manifest.insert(i.get());
 
@@ -217,19 +218,21 @@ GroundCoverFeatureGenerator::initialize()
 }
 
 Status
-GroundCoverFeatureGenerator::getFeatures(const GeoExtent& extent, FeatureList& output) const
+VegetationFeatureGenerator::getFeatures(const GeoExtent& extent, FeatureList& output) const
 {
     if (!_map.valid() || _map->getProfile()==NULL)
         return Status(Status::ConfigurationError, "No map, or profile not set");
 
-    if (!_gclayer.valid())
-        return Status(Status::ConfigurationError, "No GroundCoverLayer");
+    if (!_veglayer.valid())
+        return Status(Status::ConfigurationError, "No VegetationLayer");
 
     if (extent.isInvalid())
         return Status(Status::ConfigurationError, "Invalid extent");
 
+    unsigned lod = _veglayer->options().groups()[AssetGroup::TREES].lod().get();
+
     std::vector<TileKey> keys;
-    _map->getProfile()->getIntersectingTiles(extent, _gclayer->getLOD(), keys);
+    _map->getProfile()->getIntersectingTiles(extent, lod, keys);
     if (keys.empty())
         return Status(Status::AssertionFailure, "No keys intersect extent");
     
@@ -245,13 +248,22 @@ GroundCoverFeatureGenerator::getFeatures(const GeoExtent& extent, FeatureList& o
 }
 
 Status
-GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output) const
+VegetationFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output) const
 {
-    if (key.getLOD() != _gclayer->getLOD())
+    VegetationLayer::Options::Group& trees = _veglayer->options().groups()[AssetGroup::TREES];
+    unsigned lod = trees.lod().get();
+
+    if (key.getLOD() != lod)
         return Status(Status::ConfigurationError, "TileKey LOD does not match GroundCoverLayer LOD");
 
     // Populate the model, falling back on lower-LOD keys as necessary
-    osg::ref_ptr<TerrainTileModel> model = _factory->createStandaloneTileModel(_map.get(), key, _manifest, NULL, NULL);
+    osg::ref_ptr<TerrainTileModel> model = _factory->createStandaloneTileModel(
+        _map.get(), 
+        key, 
+        _manifest, 
+        nullptr, // requirements
+        nullptr); // progress
+
     if (!model.valid())
     {
         OE_INFO << LC << "null model for key " << key.str() << std::endl;
@@ -290,7 +302,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     osg::Vec4 biome_value;
 
     // elevation
-    osg::Texture* elevTex = NULL;
+    osg::Texture* elevTex = nullptr;
     osg::Matrix elevMat;
     if (model->elevationModel().valid())
     {
@@ -306,21 +318,18 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     elevSampler.setSampleAsTexture(false);
 
     // calculate instance count based on tile extents
-    unsigned lod = _gclayer->getLOD();
     unsigned tx, ty;
     _map->getProfile()->getNumTiles(lod, tx, ty);
     GeoExtent e = TileKey(lod, tx / 2, ty / 2, _map->getProfile()).getExtent();
     GeoCircle c = e.computeBoundingGeoCircle();
     double tileWidth_m = 2.0 * c.getRadius() / 1.4142;
-    float spacing_m = _gclayer->getSpacing().as(Units::METERS);
+    float spacing_m = trees.spacing()->as(Units::METERS);
     unsigned numInstances1D = tileWidth_m / spacing_m;
     if (numInstances1D & 0x01) numInstances1D += 1;
 
     // from here on out, we are mimicing the GroundCover.VS.glsl shader logic.
     osg::Vec2ui numWorkgroups(numInstances1D, numInstances1D);
     osg::Vec2f numWorkgroupsF((float)numInstances1D, (float)numInstances1D);
-    //unsigned numInstancesX = numInstances1D;
-    //unsigned numInstancesY = numInstances1D;
 
     osg::Vec2f offset, tilec, shift;
     osg::Vec4f noise(0,0,0,0);
@@ -350,14 +359,9 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
 
             // look up the lifemap:
             sampleLifemap(lifemap_value, tilec.x(), tilec.y());
-            float fill = lifemap_value[0]; // density
-            float lush = lifemap_value[1];
+            float fill = lifemap_value[LIFEMAP_DENSE];
+            float lush = lifemap_value[LIFEMAP_LUSH];
             lush = noise[NOISE_CLUMPY] * lush;
-
-            if (noise[NOISE_SMOOTH] > fill)
-                continue;
-            else
-                noise[NOISE_SMOOTH] /= fill;
 
             // look up the biome:
             sampleBiome(biome_value, tilec.x(), tilec.y());
@@ -371,34 +375,38 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
             }
 
             // and the model category to use:
-            const std::string mcatName = _gclayer->getModelCategoryName();
-            const ModelCategory* mcat = biome->getModelCategory(mcatName);
-            if (!mcat)
-            {
-                return Status(
-                    Status::ConfigurationError,
-                    Stringify() << "Model category " << mcatName << " not found in the catalog");
-            }
+            AssetGroup::Type group = AssetGroup::TREES;
+            const std::string groupName = AssetGroup::name(group);
 
             // randomly select an asset from the category:
-            int assetCount = mcat->members().size();
-            if (assetCount == 0)
+            auto& pointers = biome->assetPointers(group);
+            if (pointers.size() == 0)
             {
                 return Status(
                     Status::ConfigurationError,
-                    Stringify() << "Model category " << mcatName << " is empty");
+                    Stringify() << "Asset group " << groupName << " is empty in biome " << biome->name().get());
             }
+            int assetCount = pointers.size();
 
             int pickIndex = clamp(int(floor(lush * float(assetCount))), 0, assetCount - 1);
 
-            const ModelCategory::Member& member = mcat->members()[pickIndex];
-            const ModelAsset* asset = member.asset;
+            const Biome::ModelAssetPointer& pointer = pointers[pickIndex];
+            const ModelAsset* asset = pointer.asset;
             if (!asset)
             {
                 return Status(
                     Status::ConfigurationError,
-                    Stringify() << "Asset #" << pickIndex << " in " << mcatName << " was null");
+                    Stringify() << "Asset #" << pickIndex << " in " << groupName << " was null in biome " << biome->name().get());
             }
+
+            // incorporate the biome-specific fill value for this asset:
+            fill *= pointer.fill;
+
+            if (noise[NOISE_SMOOTH] > fill)
+                continue;
+            else
+                noise[NOISE_SMOOTH] /= fill;
+
 
             // clamp the asset to the elevation data:
             float z = 0.0;

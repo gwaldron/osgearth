@@ -21,7 +21,7 @@
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/TileKey>
 #include <osgEarth/Locators>
-#include <osg/Node>
+#include <osg/MatrixTransform>
 #include <osg/ValueObject>
 
 using namespace osgEarth;

@@ -21,26 +21,26 @@
 #define OSGEARTH_TERRAIN_TILE_NODE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/TileKey>
-#include <osgEarth/TerrainTileModel>
-#include <osg/MatrixTransform>
-#include <osg/Texture>
+#include <vector>
+
+namespace osg {
+    class RenderInfo;
+}
 
 namespace osgEarth
 {
+    class TileKey;
+
     /**
      * Base class for a terrain engine's representation of a tile.
      * This is largely for internal use and subject to change, so
      * be careful relying on the structure of this object.
      */
-    class OSGEARTH_EXPORT TerrainTileNode
+    class TerrainTileNode
     {
     public:    
         //! TileKey represented by this tile node
         virtual const TileKey& getKey() const = 0;
-
-    protected:
-        virtual ~TerrainTileNode() { }
     };
 };
 

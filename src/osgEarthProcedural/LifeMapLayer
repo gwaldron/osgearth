@@ -33,6 +33,13 @@ namespace osgEarth { namespace Procedural
 {
     using namespace osgEarth;
 
+    enum LifeMap {
+        LIFEMAP_RUGGED = 0,
+        LIFEMAP_DENSE = 1,
+        LIFEMAP_LUSH = 2,
+        LIFEMAP_SPECIAL = 3
+    };
+
     class OSGEARTHPROCEDURAL_EXPORT LifeMapLayer : public ImageLayer
     {
     public:

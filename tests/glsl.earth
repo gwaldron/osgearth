@@ -11,9 +11,11 @@ osgEarth Sample - Per-layer GLSL shader injection
             #pragma vp_entryPoint gammaCorrection
             #pragma vp_location   fragment
             uniform float gamma;
+            uniform float osg_FrameTime;
             void gammaCorrection(inout vec4 color)
             {
-                color.rgb = pow(color.rgb, vec3(1.0/gamma));
+                if (int(osg_FrameTime) % 2 == 1)
+                    color.rgb = pow(color.rgb, vec3(1.0/gamma));
             }            
           ]]>
         </shader>

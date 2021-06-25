@@ -1,0 +1,358 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_PROCEDURAL_GROUND_VEGETATION_LAYER_H
+#define OSGEARTH_PROCEDURAL_GROUND_VEGETATION_LAYER_H
+
+#include "Export"
+#include "Biome"
+#include "LifeMapLayer"
+#include "BiomeLayer"
+#include "BiomeManager"
+
+#include <osgEarth/PatchLayer>
+#include <osgEarth/LayerReference>
+#include <osgEarth/LandCoverLayer>
+#include <osgEarth/InstanceCloud>
+#include <osgEarth/VirtualProgram>
+
+#include <chrono>
+
+namespace osgEarth { namespace Procedural
+{
+    using namespace osgEarth;
+
+    //! Layer that renders billboards on the ground using the GPU,
+    //! like trees, grass, rocks, etc.
+    class OSGEARTHPROCEDURAL_EXPORT VegetationLayer : public PatchLayer
+    {
+    public:
+        class OSGEARTHPROCEDURAL_EXPORT Options : public PatchLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, PatchLayer::Options);
+            OE_OPTION_LAYER(ImageLayer, colorLayer);
+            OE_OPTION_LAYER(BiomeLayer, biomeLayer);
+            OE_OPTION(float, colorMinSaturation);
+            OE_OPTION(bool, alphaToCoverage);
+            OE_OPTION(float, maxSSE);
+
+            struct OSGEARTHPROCEDURAL_EXPORT Group
+            {
+                OE_OPTION(Distance, spacing);
+                OE_OPTION(float, maxRange);
+                OE_OPTION(unsigned, lod);
+                OE_OPTION(bool, castShadows);
+                OE_OPTION(float, maxAlpha);
+
+                // internal
+                osg::ref_ptr<osg::StateSet> _renderStateSet;
+                std::function<osg::Node*(std::vector<osg::Texture*>&)> _createImposter;
+            };
+            OE_OPTION_VECTOR(Group, groups);
+            const Group& group(AssetGroup::Type t) const { 
+                return groups()[t];
+            }
+            Group& group(AssetGroup::Type t) {
+                return groups()[t];
+            }
+
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, VegetationLayer, Options, PatchLayer, Vegetation);
+
+        //! Layer containing biome data
+        void setBiomeLayer(BiomeLayer*);
+        BiomeLayer* getBiomeLayer() const;
+
+        //! Layer containing life map data
+        void setLifeMapLayer(LifeMapLayer*);
+        LifeMapLayer* getLifeMapLayer() const;
+
+        //! Color modulation layer
+        void setColorLayer(ImageLayer* layer);
+        ImageLayer* getColorLayer() const;
+
+        //! Set the maximum screen-space error (pixels)
+        void setMaxSSE(float pixels);
+        float getMaxSSE() const;
+
+        //! LOD at which to draw ground cover
+        bool hasGroupAtLOD(unsigned lod) const;
+        unsigned getGroupLOD(AssetGroup::Type) const;
+
+        //! Whether any of the vegetation casts shadows on the terrain
+        //void setCastShadows(bool value);
+        bool getCastShadows() const;
+
+        //! Whether to enable alpha-to-coverage mode.
+        //! Only use this when multisampling it ON
+        void setUseAlphaToCoverage(bool value);
+        bool getUseAlphaToCoverage() const;
+
+        //TODO APIS for Group Options
+        // e.g. void setMaxRange(AssetGroupType, float);
+        // e.g. void setLOD(AssetGroupType, unsigned);
+        // ...
+
+        //! Force constant regeneration of locations (for debugging)
+        void setAlwaysGenerate(bool value) {
+            _forceGenerate = value;
+        }
+
+    protected:
+
+        virtual void init() override;
+        virtual Status openImplementation() override;
+        virtual Status closeImplementation() override;
+
+    public:
+
+        virtual void addedToMap(const Map* map) override;
+        virtual void removedFromMap(const Map* map) override;
+        virtual void prepareForRendering(TerrainEngine*) override;
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
+        virtual void releaseGLObjects(osg::State* state) const override;
+
+        virtual void update(osg::NodeVisitor& nv) override;
+
+    protected:
+        virtual ~VegetationLayer();
+
+        LayerReference<LifeMapLayer> _lifeMapLayer;
+        LayerReference<BiomeLayer> _biomeLayer;
+        TextureImageUnitReservation _noiseBinding;
+
+        void buildStateSets();
+
+        struct LayerAcceptor : public PatchLayer::AcceptCallback
+        {
+            VegetationLayer* _layer;
+            LayerAcceptor(VegetationLayer* layer) : _layer(layer) { }
+            bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const;
+            bool acceptKey(const TileKey& key) const;
+        };
+        friend struct LayerAcceptor;
+        
+        // Tracks the state of all GPU tile slots.
+        // This should probably be integrated with the InstanceCloud instead someday
+        struct TileManager
+        {
+            struct Tile
+            {
+                Tile() : _revision(-1), _dirty(true), _expired(false) { }
+                TileKey _key;
+                int _revision;
+                bool _dirty;
+                bool _expired;
+            };
+
+            std::vector<Tile> _current;
+            std::vector<Tile> _new;
+            int _highestOccupiedSlot;
+
+            TileManager();
+            void reset();
+            int allocate(const TileKey& key, int revision);
+            int release(const TileKey& key);
+            void release(int slot);
+            int getSlot(const TileKey& key) const;
+            bool inUse(int slot) const;
+        }; 
+
+
+        using GeometryCloudCollection = std::unordered_map<
+            AssetGroup::Type,
+            osg::ref_ptr<GeometryCloud>>;
+
+
+        // Custom GL renderer for ground cover.
+        // This is a PatchLayer callback that intercepts the drawing of a
+        // terrain tile to do custom rendering with access to the tile's data.
+        class Renderer : public osgEarth::TileRenderer
+        {
+        public:
+            using Ptr = std::shared_ptr<Renderer>;
+
+            Renderer(VegetationLayer* layer);
+            ~Renderer();
+
+            // Uniform data must be maintained for each unique PCP
+            struct PCPUniforms
+            {
+                PCPUniforms();
+                GLint _generateDataUL;
+                float _generateData[5];
+                GLint _maxRangeUL;
+            };
+            typedef std::unordered_map<const void*, PCPUniforms> PCPUniformsMap;
+            PCPUniformsMap _uniforms;
+
+            PCPUniforms* getUniforms(
+                osg::RenderInfo& ri);
+
+            // State corresponding to a single AssetGroup
+            struct GroupState
+            {
+                GroupState();
+
+                AssetGroup::Type _group;
+                int _lod;
+
+                osg::ref_ptr<InstanceCloud> _instancer;
+                osg::ref_ptr<osg::StateSet> _renderSS;
+                TileManager _tilemgr;
+                Renderer::Ptr _renderer;
+                VegetationLayer* _layer;
+                std::size_t _previousHash;
+                TileBatch _batch;
+                bool _castShadows;
+                osg::Uniform* _maxRange_u;
+
+                bool active() const {
+                    return _instancer.valid();
+                }
+
+                bool empty() const {
+                    return _batch._tiles.empty();
+                }
+
+                void setGeometry(
+                    GeometryCloud*);
+
+                bool accepts(
+                    osg::RenderInfo& ri) const;
+
+                bool setTileBatch(
+                    const TileBatch& batch);
+
+                bool reallocate(
+                    osg::RenderInfo& ri);
+
+                void compute(
+                    osg::RenderInfo& ri,
+                    bool generate,
+                    bool cull);
+
+                void collect(
+                    osg::RenderInfo& ri);
+
+                void generate(
+                    osg::RenderInfo& ri);
+
+                void cull(
+                    osg::RenderInfo& ri);
+
+                void render(
+                    osg::RenderInfo& ri);
+            };
+
+            // Data unique to a specific camera traversal
+            // (multiple views, shadow cams, etc)
+            struct CameraState
+            {
+                CameraState();
+
+                osg::Matrix _lastMVP;
+                float _last_sse;
+                Renderer::Ptr _renderer;
+                std::vector<GroupState> _groups;
+                bool _geomDirty;
+
+                bool active() const {
+                    return _renderer != nullptr;
+                }
+
+                void setGeometry(
+                    osg::RenderInfo& ri,
+                    GeometryCloudCollection& clouds);
+
+                void draw(
+                    osg::RenderInfo& ri,
+                    const TileBatch& batch);
+
+            };
+            
+            using CameraStateMap = std::unordered_map<const osg::Camera*, CameraState>;
+
+            mutable CameraStateMap _cameraState;
+
+            // uniform IDs
+            unsigned _computeDataUName;
+            unsigned _maxRangeUName;
+
+            void resizeGLObjectBuffers(unsigned maxSize);
+            void releaseGLObjects(osg::State* state) const;
+
+            double _tileWidths[23]; // per LOD
+            osg::observer_ptr<VegetationLayer> _layer; // owner
+            osg::ref_ptr<osg::StateAttribute> _a2cBlending; // blending function
+            osg::ref_ptr<osg::StateSet> _computeSS; // compute shader stateset
+            GeometryCloudCollection _geomClouds; // veg instance cloud
+            osg::ref_ptr<osg::Texture> _noiseTex; // noise for placement
+            osg::FrameStamp _lastVisit; // for timeouts
+
+            const std::string& getName() const;
+
+            Status _status;
+            Mutex _newGeometryMutex;
+
+            Future<GeometryCloudCollection> _geomCloudsInProgress;
+            std::atomic_int _biomeRevision;
+            bool isNewGeometryCloudAvailable(osg::RenderInfo&);
+
+        public: // TileRenderer API
+
+            void draw(
+                osg::RenderInfo& ri,
+                const TileBatch& batch) override;
+        };
+
+        // future result of the asynchronous loader job
+        Future<Renderer::Ptr> _rendererSetup;
+        Renderer::Ptr _renderer;
+        bool _forceGenerate;
+
+        bool _debug;
+        osg::ref_ptr<osg::Drawable> _debugDrawable;
+
+        // create a stand-in geometry for the shader to manipulate
+        // (for billboards, etc)
+        virtual osg::Node* createParametricGeometry(
+            AssetGroup::Type group,
+            std::vector<osg::Texture*>& textures) const;
+
+        osg::ref_ptr<const Profile> _mapProfile;
+
+        osg::ref_ptr<osg::Uniform> _sseU;
+
+        void configureTrees();
+        void configureUndergrowth();
+    };
+
+} } // namespace osgEarth::Procedural
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Procedural::VegetationLayer::Options);
+
+#endif // OSGEARTH_PROCEDURAL_GROUND_VEGETATION_LAYER_H

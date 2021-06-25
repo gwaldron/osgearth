@@ -39,10 +39,10 @@ namespace osgEarth { namespace Procedural
         GroundCoverShaders();
 
         std::string
-            Grass,
-            GroundCover_CS,
-            GroundCover_Render,
-            GroundCover_Types;
+            Compute,
+            Types,
+            Trees,
+            Grass;
 	};
 	
 } } // namespace osgEarth::Procedural

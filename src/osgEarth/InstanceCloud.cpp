@@ -303,17 +303,14 @@ InstanceCloud::releaseGLObjects(osg::State* state) const
 void
 InstanceCloud::setGeometryCloud(GeometryCloud* geom)
 {
-    GeometryValidator validator;
-    geom->getGeometry()->accept(validator);
-
-    _data._geom = geom;
-    if (geom)
+    if (_data._geom.get() != geom)
     {
-        Installer installer(geom);
-        geom->getGeometry()->accept(installer);
-    }
+        GeometryValidator validator;
+        geom->getGeometry()->accept(validator);
 
-    releaseGLObjects(nullptr);
+        _data._geom = geom;
+        releaseGLObjects(nullptr);
+    }
 }
 
 GeometryCloud*
@@ -344,7 +341,7 @@ InstanceCloud::allocateGLObjects(osg::RenderInfo& ri, unsigned numTiles)
 }
 
 void
-InstanceCloud::newFrame()
+InstanceCloud::bind()
 {
     _data._commandBuffer.bindLayout();
     _data._instanceBuffer.bindLayout();
@@ -394,6 +391,8 @@ InstanceCloud::setMatrix(unsigned tileNum, const osg::Matrix& modelView)
 void
 InstanceCloud::setTileActive(unsigned tileNum, bool value)
 {
+    //OE_SOFT_ASSERT(tileNum < _data._numTilesAllocated, __func__);
+
     if (tileNum < _data._numTilesAllocated)
         _data._tileBuffer._buf[tileNum]._inUse = value ? 1 : 0;
 }
@@ -404,13 +403,13 @@ InstanceCloud::generate_begin(osg::RenderInfo& ri)
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
     // find the "pass" uniform first time in
-    if (_data._passUL < 1)
+    if (_data._passUL < 0)
     {
         const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
         if (!pcp) return;
 
         _data._passUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_pass"));
-        _data._numCommandsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_gc_numCommands"));
+        _data._numCommandsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_ic_numCommands"));
     }
 
     ext->glUniform1i(_data._passUL, PASS_GENERATE);
@@ -424,6 +423,7 @@ InstanceCloud::generate_tile(osg::RenderInfo& ri)
 {
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
     ext->glDispatchCompute(_data._numX, _data._numY, 1);
+    //OE_INFO << LC << "glDispatchCompute(" << _data._numX << ", " << _data._numY << ", 1)" << std::endl;
 }
 
 void
@@ -431,10 +431,7 @@ InstanceCloud::generate_end(osg::RenderInfo& ri)
 {
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
-    // run the merge pass to consolidate gen buffers into instance buffer.
-    // TODO: optimization. During generate, store the count per tile into an
-    // intermediate location (array?) and count the total gens into a DI buffer. Use
-    // that to dispatch indirect.
+    // run the merge pass to consolidate gen buffers into instance buffer
     ext->glUniform1i(_data._passUL, (int)PASS_MERGE);
 
     int numPossibleInstances = (_data._highestTileSlotInUse+1) * _data._numX * _data._numY;
@@ -452,6 +449,7 @@ void
 InstanceCloud::cull(osg::RenderInfo& ri)
 {
     OE_PROFILING_ZONE;
+
     OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), __func__, );
     OE_SOFT_ASSERT_AND_RETURN(_data._cullBuffer.valid(), __func__, );
     OE_SOFT_ASSERT_AND_RETURN(_data._geom != nullptr, __func__, );
@@ -465,13 +463,13 @@ InstanceCloud::cull(osg::RenderInfo& ri)
     // update with the newest tile matrices and data
     _data._tileBuffer.update();
 
+    // Bind the indirect dispatch parameters to the header
+    // of our cull buffer, which contains the X=instance count and YZ=1.
+    _data._cullBuffer._buffer->bind(GL_DISPATCH_INDIRECT_BUFFER);
+
     // need the projection matrix for frustum culling.
     if (state.getUseModelViewAndProjectionUniforms())
         state.applyModelViewAndProjectionUniformsIfRequired();
-
-    // Bind the indirect dispatch parameters to the header
-    // of our instance buffer, which contains the X=instance count and YZ=1.
-    _data._cullBuffer._buffer->bind(GL_DISPATCH_INDIRECT_BUFFER);
 
     // first pass: cull
     {
@@ -498,11 +496,11 @@ InstanceCloud::cull(osg::RenderInfo& ri)
 }
 
 void
-InstanceCloud::endFrame(osg::RenderInfo& ri)
+InstanceCloud::unbind(osg::RenderInfo& ri)
 {
     // be a good citizen
-    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
-    ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+    //osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+    //ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
 }
 void
 InstanceCloud::draw(osg::RenderInfo& ri)
@@ -521,71 +519,9 @@ InstanceCloud::draw(osg::RenderInfo& ri)
 
     // draw the geom
     _data._geom->draw(ri);
-}
 
-
-InstanceCloud::Renderer::Renderer(GeometryCloud* geom) :
-    _geom(geom)
-{
-    //nop
-}
-
-void
-InstanceCloud::Renderer::drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const
-{
-    OE_PROFILING_ZONE_NAMED("drawImplementation");
-
-    osg::State& state = *ri.getState();
-
-    osg::GLExtensions* ext = state.get<osg::GLExtensions>();
-
-    const osg::Geometry* geom = static_cast<const osg::Geometry*>(drawable);
-
-    // prepare the VAO, etc.
-    osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
-    vas->setVertexBufferObjectSupported(true);
-    geom->drawVertexArraysImplementation(ri);
-
-    // bind the combined EBO to the VAO
-    if (vas->getRequiresSetArrays())
-    {
-        OE_PROFILING_ZONE_NAMED("Bind EBO");
-        osg::GLBufferObject* ebo = geom->getPrimitiveSet(0)->getOrCreateGLBufferObject(state.getContextID());
-        state.bindElementBufferObject(ebo);
-    }
-
-    // engage
-    {
-    OE_PROFILING_ZONE_NAMED("MDEI");
-    GLFunctions::get(state).
-        glMultiDrawElementsIndirect(
-            GL_TRIANGLES,
-            GL_UNSIGNED_SHORT,
-            NULL,                         // in GL_DRAW_INDIRECT_BUFFER on GPU
-            _geom->getNumDrawCommands(),  // number of commands to execute
-            0);                           // stride=0, commands are tightly packed
-    }
-}
-
-
-InstanceCloud::Installer::Installer(GeometryCloud* geom) :
-    osg::NodeVisitor(TRAVERSE_ALL_CHILDREN)
-{
-    _callback = new Renderer(geom);
-}
-
-void 
-InstanceCloud::Installer::apply(osg::Drawable& drawable)
-{
-    osg::Geometry* geom = drawable.asGeometry();
-    if (geom)
-    {
-        // Custom MDE rendering calls
-        geom->setDrawCallback(_callback.get());
-
-        // Culling happens on the GPU:
-        geom->setCullingActive(false);
-    }
+    // unbind it after draw is complete.
+    ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
 }
 
 //...................................................................
@@ -603,6 +539,54 @@ namespace
             return bs;
         }
     };
+
+    struct DrawElementsIndirectRenderer : public osg::Geometry::DrawCallback
+    {
+        GeometryCloud* _cloud;
+
+        DrawElementsIndirectRenderer(GeometryCloud* cloud) : 
+            _cloud(cloud) { }
+
+        void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const override
+        {
+            OE_PROFILING_ZONE_NAMED("drawImplementation");
+
+            osg::State& state = *ri.getState();
+
+            osg::GLExtensions* ext = state.get<osg::GLExtensions>();
+
+            const osg::Geometry* geom = static_cast<const osg::Geometry*>(drawable);
+
+            // prepare the VAO, etc.
+            osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
+            vas->setVertexBufferObjectSupported(true);
+            geom->drawVertexArraysImplementation(ri);
+
+            // bind the combined EBO to the VAO
+            osg::GLBufferObject* ebo = geom->getPrimitiveSet(0)->getOrCreateGLBufferObject(state.getContextID());
+            if (vas->getRequiresSetArrays() ||
+                vas->getCurrentElementBufferObject() != ebo)
+            {
+                OE_PROFILING_ZONE_NAMED("Bind EBO");
+                //osg::GLBufferObject* ebo = geom->getPrimitiveSet(0)->getOrCreateGLBufferObject(state.getContextID());
+                vas->bindElementBufferObject(ebo);
+                //state.bindElementBufferObject(ebo);
+            }
+
+            // engage
+            {
+                OE_PROFILING_ZONE_NAMED("glMultiDrawElementsIndirect");
+
+                GLFunctions::get(state).
+                    glMultiDrawElementsIndirect(
+                        GL_TRIANGLES,
+                        GL_UNSIGNED_SHORT,
+                        nullptr,                       // in GL_DRAW_INDIRECT_BUFFER on GPU
+                        _cloud->getNumDrawCommands(),  // number of commands to execute
+                        0);                            // stride=0, commands are tightly packed
+            }
+        }
+    };
 }
 
 GeometryCloud::GeometryCloud(TextureArena* texarena) :
@@ -615,6 +599,9 @@ GeometryCloud::GeometryCloud(TextureArena* texarena) :
     _geom = new osg::Geometry();
     _geom->setUseVertexBufferObjects(true);
     _geom->setUseDisplayList(false);
+
+    _geom->setDrawCallback(new DrawElementsIndirectRenderer(this));
+    _geom->setCullingActive(false);
 
     _verts = new osg::Vec3Array();
     _verts->setBinding(osg::Array::BIND_PER_VERTEX);

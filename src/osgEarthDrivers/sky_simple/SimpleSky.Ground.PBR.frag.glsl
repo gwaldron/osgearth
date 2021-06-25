@@ -8,7 +8,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma import_defines(OE_LIGHTING)
 #pragma import_defines(OE_NUM_LIGHTS)
 
-uniform float oe_sky_exposure;           // HDR scene exposure (ground level)
+uniform float oe_sky_exposure = 3.3; // HDR scene exposure (ground level)
+uniform float oe_sky_contrast = 1.0;
 
 in vec3 atmos_color;       // atmospheric lighting color
 in vec3 atmos_vert; 
@@ -80,8 +81,6 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 in float oe_roughness;
 in float oe_ao;
 const float oe_metallic = 0.0;
-
-uniform float oe_sky_contrast = 1.0;
 
 void atmos_fragment_main_pbr(inout vec4 color)
 {

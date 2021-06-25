@@ -491,44 +491,28 @@ SimpleSkyNode::makeSceneLighting()
 
     // calculate and apply the uniforms:
     // TODO: perhaps we can just hard-code most of these as GLSL consts.
-    float r_wl = ::powf( .65f, 4.0f );
-    float g_wl = ::powf( .57f, 4.0f );
-    float b_wl = ::powf( .475f, 4.0f );
-    osg::Vec3 RGB_wl( 1.0f/r_wl, 1.0f/g_wl, 1.0f/b_wl );
-    float Kr = 0.0025f;
-    float Kr4PI = Kr * 4.0f * osg::PI;
-    float Km = 0.0015f;
-    float Km4PI = Km * 4.0f * osg::PI;
-    float ESun = 15.0f;
-    float MPhase = -.095f;
-    float RayleighScaleDepth = 0.25f;
-    int   Samples = 2;
-    float Weather = 1.0f;
-
-    float Scale = 1.0f / (_outerRadius - _innerRadius);
+    //float r_wl = ::powf( .65f, 4.0f );
+    //float g_wl = ::powf( .57f, 4.0f );
+    //float b_wl = ::powf( .475f, 4.0f );
+    //osg::Vec3 RGB_wl( 1.0f/r_wl, 1.0f/g_wl, 1.0f/b_wl );
+    //float Kr = 0.0025f;
+    //float Kr4PI = Kr * 4.0f * osg::PI;
+    //float Km = 0.0015f;
+    //float Km4PI = Km * 4.0f * osg::PI;
+    //float ESun = 15.0f;
+    //float MPhase = -.095f;
+    //float RayleighScaleDepth = 0.25f;
+    //int   Samples = 2;
+    //float Weather = 1.0f;
+    //float Scale = 1.0f / (_outerRadius - _innerRadius);
 
     //TODO: make all these constants. -gw
-    stateset->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
+    //stateset->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
     stateset->getOrCreateUniform( "atmos_fInnerRadius",    osg::Uniform::FLOAT )->set( _innerRadius );
-    stateset->getOrCreateUniform( "atmos_fInnerRadius2",   osg::Uniform::FLOAT )->set( _innerRadius * _innerRadius );
     stateset->getOrCreateUniform( "atmos_fOuterRadius",    osg::Uniform::FLOAT )->set( _outerRadius );
-    stateset->getOrCreateUniform( "atmos_fOuterRadius2",   osg::Uniform::FLOAT )->set( _outerRadius * _outerRadius );
-    stateset->getOrCreateUniform( "atmos_fKrESun",         osg::Uniform::FLOAT )->set( Kr * ESun );
-    stateset->getOrCreateUniform( "atmos_fKmESun",         osg::Uniform::FLOAT )->set( Km * ESun );
-    stateset->getOrCreateUniform( "atmos_fKr4PI",          osg::Uniform::FLOAT )->set( Kr4PI );
-    stateset->getOrCreateUniform( "atmos_fKm4PI",          osg::Uniform::FLOAT )->set( Km4PI );
-    stateset->getOrCreateUniform( "atmos_fScale",          osg::Uniform::FLOAT )->set( Scale );
-    stateset->getOrCreateUniform( "atmos_fScaleDepth",     osg::Uniform::FLOAT )->set( RayleighScaleDepth );
-    stateset->getOrCreateUniform( "atmos_fScaleOverScaleDepth", osg::Uniform::FLOAT )->set( Scale / RayleighScaleDepth );
-    stateset->getOrCreateUniform( "atmos_g",               osg::Uniform::FLOAT )->set( MPhase );
-    stateset->getOrCreateUniform( "atmos_g2",              osg::Uniform::FLOAT )->set( MPhase * MPhase );
-    stateset->getOrCreateUniform( "atmos_nSamples",        osg::Uniform::INT )->set( Samples );
-    stateset->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
-    stateset->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
-
-    // options:
-    stateset->getOrCreateUniform("oe_sky_exposure",           osg::Uniform::FLOAT )->set( _options.exposure().value() );
-    stateset->getOrCreateUniform("oe_sky_ambientBoostFactor", osg::Uniform::FLOAT)->set(_options.daytimeAmbientBoost().get());
+    //stateset->getOrCreateUniform( "atmos_fScaleDepth",     osg::Uniform::FLOAT )->set( RayleighScaleDepth );
+    stateset->getOrCreateUniform( "oe_sky_exposure",           osg::Uniform::FLOAT )->set( _options.exposure().value() );
+    stateset->getOrCreateUniform( "oe_sky_ambientBoostFactor", osg::Uniform::FLOAT)->set(_options.daytimeAmbientBoost().get());
 }
 
 void

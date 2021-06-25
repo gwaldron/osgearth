@@ -40,18 +40,20 @@ namespace osgEarth
             float _hour;
             int _day, _month, _year;
             float _exposure;
+            float _contrast;
+            float _gamma;
             float _ambient;
-
-            bool _shadowCasterSeeked;
+            bool _first;
             bool _shadows;
 
         public:
             EphemerisGUI() : BaseGUI("Sky & Lighting"),
                 _ambient(0.033f),
                 _exposure(3.5f),
+                _contrast(1.0f),
                 _showDetails(false),
                 _shadows(false),
-                _shadowCasterSeeked(false)
+                _first(true)
             {
                 DateTime now;
                 _hour = now.hours(), _day = now.day(), _month = now.month(), _year = now.year();
@@ -65,6 +67,7 @@ namespace osgEarth
                 conf.get("Month", _month);
                 conf.get("Year", _year);
                 conf.get("Exposure", _exposure);
+                conf.get("Contrast", _contrast);
                 conf.get("Ambient", _ambient);
             }
             void save(Config& conf) override
@@ -75,6 +78,7 @@ namespace osgEarth
                 conf.set("Month", _month);
                 conf.set("Year", _year);
                 conf.set("Exposure", _exposure);
+                conf.set("Contrast", _contrast);
                 conf.set("Ambient", _ambient);
             }
 
@@ -85,12 +89,13 @@ namespace osgEarth
                 if (!findNodeOrHide(_skyNode, ri))
                     return;
 
-                if (!_shadowCasterSeeked)
+                if (_first)
                 {
+                    _first = false;
                     findNode(_shadowCaster, ri);
-                    _shadowCasterSeeked = true;
                     if (_shadowCaster.valid())
                         _shadows = _shadowCaster->getEnabled();
+                    _skyNode->setDateTime(DateTime(_year, _month, _day, _hour));
                 }
 
                 ImGui::Begin(name(), visible());
@@ -106,15 +111,17 @@ namespace osgEarth
                     }
 
                     ImGui::SameLine();
-                    if (ImGui::Checkbox("Details", &_showDetails))
-                        dirtySettings();
+                    if (ImGui::Checkbox("Details", &_showDetails)) dirtySettings();
 
                     if (lighting)
                     {
                         ImGui::Separator();
 
-                        ImGui::Text("Date & Time:");
+                        if (_showDetails)
+                            ImGui::Text("Date & Time:");
+
                         if (ImGui::SliderFloat("Hour", &_hour, 0.0f, 24.0f)) dirtySettings();
+
                         if (_showDetails)
                         {
                             if (ImGui::SliderInt("Day", &_day, 1, 31)) dirtySettings();
@@ -124,15 +131,14 @@ namespace osgEarth
 
                         _skyNode->setDateTime(DateTime(_year, _month, _day, _hour));
 
-                        if (ImGui::SliderFloat("Exposure", &_exposure, 1.0f, 8.0f)) {
-                            _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_sky_exposure", osg::Uniform::FLOAT)->set(_exposure);
-                            dirtySettings();
-                        }
+                        if (ImGui::SliderFloat("Exposure", &_exposure, 1.0f, 8.0f)) dirtySettings();
+                        _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_sky_exposure", osg::Uniform::FLOAT)->set(_exposure);
 
-                        if (ImGui::SliderFloat("Ambient", &_ambient, 0.0f, 1.0f)) {
-                            _skyNode->getSunLight()->setAmbient(osg::Vec4(_ambient, _ambient, _ambient, 1.0f));
-                            dirtySettings();
-                        }
+                        if (ImGui::SliderFloat("Contrast", &_contrast, 0.5f, 4.0f)) dirtySettings();
+                        _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_sky_contrast", osg::Uniform::FLOAT)->set(_contrast);
+
+                        if (ImGui::SliderFloat("Ambient", &_ambient, 0.0f, 1.0f)) dirtySettings();
+                        _skyNode->getSunLight()->setAmbient(osg::Vec4(_ambient, _ambient, _ambient, 1.0f));
                     }
                     else
                     {

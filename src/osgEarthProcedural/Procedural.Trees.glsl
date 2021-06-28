@@ -98,7 +98,7 @@ out mat3 oe_veg_TBN; // ref frame for normal maps
 out float oe_veg_transition; // fade bb to model
 out float oe_veg_distance;
 
-uniform vec3 oe_VisibleLayer_ranges; // from VisibleLayer
+uniform float oe_veg_maxRange;
 uniform vec3 oe_Camera;
 uniform mat4 osg_ViewMatrix;
 
@@ -137,12 +137,12 @@ void oe_GroundCover_Billboard(inout vec4 vertex_view, in uint i)
     vec4 noise = textureLod(oe_veg_noiseTex, oe_layer_tilec.st, 0);  
 
     // Calculate the normalized camera range (oe_Camera.z = LOD Scale)
-    float maxRange = oe_VisibleLayer_ranges[1] / oe_Camera.z;
+    float maxRange = oe_veg_maxRange / oe_Camera.z;
     float nRange = clamp(-vertex_view.z/maxRange, 0.0, 1.0);
 
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);
-    float width = instance[i].width;
+    float width = instance[i].width * falloff;
     float height = instance[i].height * falloff;
 
     oe_veg_distance = 1.0 - falloff;

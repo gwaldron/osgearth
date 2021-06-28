@@ -93,7 +93,6 @@ flat out uint64_t oe_veg_texHandle;
 
 uniform float osg_FrameTime; // OSG frame time (seconds) used for wind animation
 
-//uniform vec3 oe_VisibleLayer_ranges; // distance at which flora disappears
 uniform float oe_veg_maxRange;
 uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 

@@ -244,7 +244,9 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         oe_gc_windData.w = 0.0;
     else {
         oe_gc_windData.xyz = normalize(oe_gc_windData.xyz * 2 - 1);
+#ifdef OE_GROUNDCOVER_WIND_SCALE
         oe_gc_windData.w *= OE_GROUNDCOVER_WIND_SCALE;
+#endif
     }
 #endif
 }

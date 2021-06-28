@@ -154,7 +154,7 @@ namespace osgEarth { namespace Splat
         friend struct ZoneSelector;
 
         // Custom GL renderer for ground cover
-        struct Renderer : public PatchLayer::DrawCallback
+        struct Renderer : public TileRenderer
         {
             Renderer(GroundCoverLayer* layer);
             
@@ -197,9 +197,12 @@ namespace osgEarth { namespace Splat
 
             void applyLocalState(osg::RenderInfo& ri, DrawState& ds);
 
+            // TileRenderer:
+            void draw(osg::RenderInfo& ri, const TileBatch& tiles) override;
             // DrawCallback API
-            void visitTileBatch(osg::RenderInfo& ri, const TileBatch* tiles) override;
-            void visitTile(osg::RenderInfo& ri, const DrawContext& tile) override;
+            //void visitTileBatch(osg::RenderInfo& ri, const TileBatch* tiles) override;
+            //void visitTile(osg::RenderInfo& ri, const DrawContext& tile) override;
+            void visitTile(osg::RenderInfo& ri, const TileState* tile);
 
             void resizeGLObjectBuffers(unsigned maxSize);
             void releaseGLObjects(osg::State* state) const;
@@ -218,7 +221,7 @@ namespace osgEarth { namespace Splat
             std::atomic<int> _frameLastActive;
         };
 
-        osg::ref_ptr<Renderer> _renderer;
+        std::shared_ptr<Renderer> _renderer;
         bool _isModel;
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;

@@ -267,8 +267,10 @@ GroundCoverLayer::openImplementation()
     setCullCallback(new ZoneSelector(this));
 
     // this layer will do its own custom rendering
-    _renderer = new Renderer(this);
-    setDrawCallback(_renderer.get());
+    _renderer = std::make_shared<Renderer>(this);
+    setRenderer(_renderer.get());
+    //setRenderer(_renderer.get());
+    //setDrawCallback(_renderer.get());
 
     installDefaultOpacityShader();
 
@@ -280,7 +282,8 @@ GroundCoverLayer::closeImplementation()
 {
     releaseGLObjects(NULL);
 
-    setDrawCallback(NULL);
+    //setDrawCallback(NULL);
+    setRenderer(nullptr);
     _renderer = NULL;
 
     setAcceptCallback(NULL);
@@ -390,7 +393,7 @@ GroundCoverLayer::update(osg::NodeVisitor& nv)
     int frame = nv.getFrameStamp()->getFrameNumber();
 
     if (frame > _frameLastUpdate &&
-        _renderer.valid() && 
+        _renderer && 
         _renderer->_frameLastActive > 0u &&
         (frame - _renderer->_frameLastActive) > 2)
     {
@@ -429,7 +432,7 @@ GroundCoverLayer::addedToMap(const Map* map)
     }
 
     // calculate the tile width based on the LOD:
-    if (_renderer.valid() && getZones().size() > 0)
+    if (_renderer && getZones().size() > 0)
     {
         unsigned lod = getLOD();
         unsigned tx, ty;
@@ -617,7 +620,7 @@ GroundCoverLayer::resizeGLObjectBuffers(unsigned maxSize)
         i->get()->resizeGLObjectBuffers(maxSize);
     }
 
-    if (_renderer.valid())
+    if (_renderer)
         _renderer->resizeGLObjectBuffers(maxSize);
 
     PatchLayer::resizeGLObjectBuffers(maxSize);
@@ -633,7 +636,7 @@ GroundCoverLayer::releaseGLObjects(osg::State* state) const
         i->get()->releaseGLObjects(state);
     }
 
-    if (_renderer.valid())
+    if (_renderer)
     {
         _renderer->releaseGLObjects(state);
     }
@@ -802,7 +805,7 @@ GroundCoverLayer::Renderer::Renderer(GroundCoverLayer* layer)
 }
 
 void
-GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer::TileBatch* tiles)
+GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const TileBatch& input)
 {
     _frameLastActive = ri.getState()->getFrameStamp()->getFrameNumber();
 
@@ -832,9 +835,18 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
     bool needsCompute = sa != pcd._previousZoneSA;
     pcd._previousZoneSA = sa;
 
-    if (ds._lastTileBatchID != tiles->getBatchID())
+    std::size_t batch_id(0);
+    for (auto tile_ptr : input._tiles)
     {
-        ds._lastTileBatchID = tiles->getBatchID();
+        batch_id = hash_value_unsigned(
+            batch_id,
+            tile_ptr->getKey().hash(),
+            (std::size_t)tile_ptr->getRevision());
+    }
+
+    if (ds._lastTileBatchID != batch_id)
+    {
+        ds._lastTileBatchID = batch_id;
         needsCompute = true;
     }
 
@@ -856,10 +868,15 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
         state->apply(_computeStateSet.get());
         applyLocalState(ri, ds);
 
-        instancer->allocateGLObjects(ri, tiles->size());
+        instancer->allocateGLObjects(ri, input.tiles().size());
         instancer->preCull(ri);
         _pass = 0;
-        tiles->drawTiles(ri);
+        for (auto tile_ptr : input.tiles())
+        {
+            tile_ptr->apply(ri, input.env());
+            visitTile(ri, tile_ptr);
+        }
+        //tiles->drawTiles(ri);
         instancer->postCull(ri);
 
         // restore previous program
@@ -868,7 +885,12 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
         // rendering pass:
         applyLocalState(ri, ds);
         _pass = 1;
-        tiles->drawTiles(ri);
+        for (auto tile_ptr : input.tiles())
+        {
+            tile_ptr->apply(ri, input.env());
+            visitTile(ri, tile_ptr);
+        }
+        //tiles->drawTiles(ri);
 
         state->popStateSet();
     }
@@ -877,7 +899,12 @@ GroundCoverLayer::Renderer::visitTileBatch(osg::RenderInfo& ri, const PatchLayer
     {
         applyLocalState(ri, ds);
         _pass = 1;
-        tiles->drawTiles(ri);
+        for (auto tile_ptr : input.tiles())
+        {
+            tile_ptr->apply(ri, input.env());
+            visitTile(ri, tile_ptr);
+        }
+        //tiles->drawTiles(ri);
 
         instancer->endFrame(ri);
     }
@@ -957,7 +984,7 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
 }
 
 void
-GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const PatchLayer::DrawContext& tile)
+GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const TileState* tile)
 {
     const ZoneSA* sa = ZoneSA::extract(ri.getState());
     DrawState& ds = _drawStateBuffer[ri.getContextID()];
@@ -974,10 +1001,10 @@ GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const PatchLayer::Dra
 
         if (u._computeDataUL >= 0)
         {
-            u._computeData[0] = tile._tileBBox->xMin();
-            u._computeData[1] = tile._tileBBox->yMin();
-            u._computeData[2] = tile._tileBBox->xMax();
-            u._computeData[3] = tile._tileBBox->yMax();
+            u._computeData[0] = tile->getBBox().xMin();
+            u._computeData[1] = tile->getBBox().yMin();
+            u._computeData[2] = tile->getBBox().xMax();
+            u._computeData[3] = tile->getBBox().yMax();
 
             u._computeData[4] = (float)u._tileCounter;
 

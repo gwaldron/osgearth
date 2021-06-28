@@ -65,7 +65,7 @@ InstanceCloud::CommandBuffer::allocate(
 
     if (_requiredSize > _allocatedSize || _buffer == nullptr)
     {
-        OE_PROFILING_GPU_ZONE("CommandBuffer::allocate");
+        //OE_PROFILING_GPU_ZONE("CommandBuffer::allocate");
 
         _geom = geom;
 
@@ -87,7 +87,7 @@ InstanceCloud::CommandBuffer::allocate(
 void
 InstanceCloud::CommandBuffer::reset()
 {
-    OE_PROFILING_GPU_ZONE("CommandBuffer::reset");
+    //OE_PROFILING_GPU_ZONE("CommandBuffer::reset");
 
     // Initialize and blit to GPU
     if (_requiredSize > 0)
@@ -108,7 +108,7 @@ InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::S
     _requiredSize = numTiles * sizeof(Data);
     if (_requiredSize > _allocatedSize || _buffer == nullptr)
     {
-        OE_PROFILING_GPU_ZONE("TileBuffer::allocate");
+        //OE_PROFILING_GPU_ZONE("TileBuffer::allocate");
         release();
         if (_buf) delete [] _buf;
 
@@ -129,7 +129,7 @@ InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::S
 void
 InstanceCloud::TileBuffer::update() const
 {
-    OE_PROFILING_GPU_ZONE("TileBuffer::update");
+    //OE_PROFILING_GPU_ZONE("TileBuffer::update");
     if (_requiredSize > 0)
     {
         _buffer->bind();
@@ -144,7 +144,7 @@ InstanceCloud::CullBuffer::allocate(unsigned numInstances, GLsizei alignment, os
 
     if (_requiredSize > _allocatedSize || _buffer == nullptr)
     {
-        OE_PROFILING_GPU_ZONE("InstanceBuffer::allocate");
+        //OE_PROFILING_GPU_ZONE("InstanceBuffer::allocate");
 
         release();
         if (_buf) delete[] _buf;
@@ -164,7 +164,7 @@ InstanceCloud::CullBuffer::allocate(unsigned numInstances, GLsizei alignment, os
 void
 InstanceCloud::CullBuffer::clear()
 {
-    OE_PROFILING_GPU_ZONE("CullBuffer::clear");
+    //OE_PROFILING_GPU_ZONE("CullBuffer::clear");
     OE_SOFT_ASSERT_AND_RETURN(valid(), __func__, );
 
     // Zero out the workgroup/instance count.
@@ -184,7 +184,7 @@ InstanceCloud::InstanceBuffer::allocate(unsigned numTiles, unsigned numInstances
     _requiredSize = numTiles * numBytesPerTile;
     if (_requiredSize > _allocatedSize || _buffer == nullptr)
     {
-        OE_PROFILING_GPU_ZONE("GenBuffer::allocate");
+        //OE_PROFILING_GPU_ZONE("GenBuffer::allocate");
 
         release();
         if (_buf) delete[] _buf;
@@ -207,7 +207,7 @@ InstanceCloud::RenderBuffer::allocate(unsigned numInstances, GLsizei alignment, 
     _requiredSize = numInstances * (sizeof(GLuint)*2); // sizeof RenderLeaf
     if (_requiredSize > _allocatedSize || _buffer == nullptr)
     {
-        OE_PROFILING_GPU_ZONE("RenderBuffer::allocate");
+        //OE_PROFILING_GPU_ZONE("RenderBuffer::allocate");
 
         release();
 
@@ -473,7 +473,7 @@ InstanceCloud::cull(osg::RenderInfo& ri)
 
     // first pass: cull
     {
-        OE_PROFILING_GPU_ZONE("IC:Cull");
+        //OE_PROFILING_GPU_ZONE("IC:Cull");
 
         ext->glUniform1i(_data._passUL, (int)PASS_CULL);
         ext->glUniform1i(_data._numCommandsUL, (int)_data._geom->getNumDrawCommands());
@@ -485,7 +485,7 @@ InstanceCloud::cull(osg::RenderInfo& ri)
 
     // second pass: sort
     {
-        OE_PROFILING_GPU_ZONE("IC:Sort");
+        //OE_PROFILING_GPU_ZONE("IC:Sort");
 
         ext->glUniform1i(_data._passUL, (int)PASS_SORT);
         ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // prep to read from SSBO
@@ -505,7 +505,7 @@ InstanceCloud::unbind(osg::RenderInfo& ri)
 void
 InstanceCloud::draw(osg::RenderInfo& ri)
 {
-    OE_PROFILING_GPU_ZONE("IC:Draw");
+    //OE_PROFILING_GPU_ZONE("IC:Draw");
     OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), __func__, );
     OE_SOFT_ASSERT_AND_RETURN(_data._geom != nullptr, __func__, );
 

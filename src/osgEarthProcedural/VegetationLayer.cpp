@@ -1102,6 +1102,10 @@ VegetationLayer::Renderer::CameraState::CameraState() :
 {
 }
 
+struct StateEx : public osg::State {
+    UniformMap& getMutableUniformMap() { return _uniformMap; }
+};
+
 void
 VegetationLayer::Renderer::CameraState::setGeometry(
     osg::RenderInfo& ri,
@@ -1192,8 +1196,9 @@ VegetationLayer::Renderer::CameraState::draw(
     // This feels a little janky but it works.
     if (!needsCull)
     {
+        static const std::string sse_name("oe_veg_sse");
         auto& uniforms = ri.getState()->getUniformMap();
-        auto sse_rec = uniforms.find("oe_veg_sse");
+        auto sse_rec = uniforms.find(sse_name);
         if (sse_rec != uniforms.end()) {
             float value;
             if (sse_rec->second.uniformVec.back().first->get(value) &&

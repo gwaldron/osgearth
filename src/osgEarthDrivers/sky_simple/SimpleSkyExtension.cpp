@@ -55,7 +55,7 @@ namespace osgEarth { namespace SimpleSky
 
     public: // ExtensionInterface<MapNode>
 
-        bool connect(MapNode* mapNode)
+        bool connect(MapNode* mapNode) override
         {
             _skynode = createSkyNode();
             if (mapNode->getMapSRS()->isProjected())
@@ -68,7 +68,7 @@ namespace osgEarth { namespace SimpleSky
             return true;
         }
 
-        bool disconnect(MapNode* mapNode)
+        bool disconnect(MapNode* mapNode) override
         {
             osgEarth::removeGroup(_skynode.get());
             _skynode = 0L;
@@ -77,7 +77,7 @@ namespace osgEarth { namespace SimpleSky
 
     public: // ExtensionInterface<osg::View>
 
-        bool connect(osg::View* view)
+        bool connect(osg::View* view) override
         {
             if (view && _skynode.valid())
             {
@@ -86,7 +86,7 @@ namespace osgEarth { namespace SimpleSky
             return true;
         }
 
-        bool disconnect(osg::View* view)
+        bool disconnect(osg::View* view) override
         {
             //todo
             return true;
@@ -95,7 +95,7 @@ namespace osgEarth { namespace SimpleSky
 
     public: // ExtensionInterface<Control>
 
-        bool connect(ui::Control* control)
+        bool connect(ui::Control* control) override
         {
             ui::Container* container = dynamic_cast<ui::Container*>(control);
             if (container)
@@ -103,7 +103,7 @@ namespace osgEarth { namespace SimpleSky
             return true;
         }
 
-        bool disconnect(ui::Control* control)
+        bool disconnect(ui::Control* control) override
         {
             ui::Container* container = dynamic_cast<ui::Container*>(control);
             if (container && _ui.valid())
@@ -113,7 +113,7 @@ namespace osgEarth { namespace SimpleSky
 
     public: // SkyNodeFactory
 
-        SkyNode* createSkyNode() {
+        SkyNode* createSkyNode() override {
             return new SimpleSkyNode(*this);
         }
 

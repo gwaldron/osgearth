@@ -475,11 +475,15 @@ SimpleSkyNode::makeSceneLighting()
         pkg.load( vp, pkg.Ground_ONeil_Vert );
 
         if (_options.usePBR() == true)
+        {
+            OE_INFO << LC << "Using PBR lighting\n";
             pkg.load(vp, pkg.Ground_PBR_Frag);
+        }
         else
-            pkg.load( vp, pkg.Ground_ONeil_Frag );
-
-        OE_INFO << LC << "Using O'Neil atmospheric lighting\n";
+        {
+            OE_INFO << LC << "Using O'Neil lighting\n";
+            pkg.load(vp, pkg.Ground_ONeil_Frag);
+        }
     }
 
     else

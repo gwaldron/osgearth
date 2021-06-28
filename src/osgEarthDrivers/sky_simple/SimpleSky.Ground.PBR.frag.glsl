@@ -93,7 +93,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
     return;
 #endif
 
-    vec3 albedo = color.rgb; // pow(color.rgb, vec3(1.0 / 2.2));
+    vec3 albedo = color.rgb;
 
     vec3 N = normalize(vp_Normal);
     vec3 V = normalize(-atmos_vert);

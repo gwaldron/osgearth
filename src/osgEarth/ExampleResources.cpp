@@ -358,13 +358,6 @@ MapNodeHelper::loadWithoutControls(
         mapNode->getTerrainOptions().setGPUTessellation(true);
     }
 
-    // open the map node:
-    if (!mapNode->open())
-    {
-        OE_WARN << LC << "Failed to open MapNode" << std::endl;
-        return nullptr;
-    }
-
     // collect the views
     osgViewer::Viewer::Views views;
     if (viewer)
@@ -375,6 +368,13 @@ MapNodeHelper::loadWithoutControls(
     // a root node to hold everything:
     osg::ref_ptr<osg::Group> root = new osg::Group();
     root->addChild(node);
+
+    // open the map node:
+    if (!mapNode->open())
+    {
+        OE_WARN << LC << "Failed to open MapNode" << std::endl;
+        return nullptr;
+    }
 
     // parses common cmdline arguments and apply to the first view:
     if (!views.empty())
@@ -616,9 +616,6 @@ MapNodeHelper::parse(
         view->addEventHandler(new ToggleCanvasEventHandler(canvas, 'y'));
     }
 
-    // look for external data in the map node:
-    const Config externals = mapNode ? mapNode->externalConfig() : Config();
-
     // Loading KML from the command line:
     if ( !kmlFile.empty() && mapNode )
     {
@@ -787,9 +784,11 @@ MapNodeHelper::parse(
     // Simple sky model:
     if (args.read("--sky") && mapNode)
     {
-        mapNode->open(); // necessary to resolve the SRS on the next line
-        std::string ext = mapNode->getMapSRS()->isGeographic() ? "sky_simple" : "sky_gl";
-        mapNode->addExtension(Extension::create(ext, ConfigOptions()) );
+        if (mapNode->open()) // necessary to resolve the SRS on the next line
+        {
+            std::string ext = mapNode->getMapSRS()->isGeographic() ? "sky_simple" : "sky_gl";
+            mapNode->addExtension(Extension::create(ext, ConfigOptions()));
+        }
     }
 
     // Simple ocean model:
@@ -813,25 +812,20 @@ MapNodeHelper::parse(
             mapNode->addExtension(ext);
     }
 
-
     // Hook up the extensions!
     if (mapNode)
     {
-        for(std::vector<osg::ref_ptr<Extension> >::const_iterator eiter = mapNode->getExtensions().begin();
-            eiter != mapNode->getExtensions().end();
-            ++eiter)
+        for(auto& extension : mapNode->getExtensions())
         {
-            Extension* e = eiter->get();
-
             // Check for a View interface:
-            ExtensionInterface<osg::View>* viewIF = ExtensionInterface<osg::View>::get(e);
+            ExtensionInterface<osg::View>* viewIF = ExtensionInterface<osg::View>::get(extension.get());
             if (viewIF)
                 viewIF->connect(view);
 
             if (canvas)
             {
                 // Check for a Control interface:
-                ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get(e);
+                ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get(extension.get());
                 if (controlIF)
                     controlIF->connect(mainContainer);
             }
@@ -862,7 +856,10 @@ MapNodeHelper::parse(
         }
     }
 
-    root->addChild( canvas );
+    if (canvas)
+    {
+        root->addChild(canvas);
+    }
 }
 
 

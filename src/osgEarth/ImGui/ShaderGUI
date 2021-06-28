@@ -39,6 +39,7 @@ namespace osgEarth
             struct UniformSpec {
                 std::string _name;
                 float _minval, _maxval, _value;
+                osg::ref_ptr<osg::Uniform> _u;
             };
             std::vector<UniformSpec> _uniforms;
 
@@ -61,6 +62,7 @@ namespace osgEarth
                         if (args->read("--uniform", spec._name, spec._minval, spec._maxval))
                         {
                             spec._value = clamp(0.0f, spec._minval, spec._maxval);
+                            spec._u = new osg::Uniform(spec._name.c_str(), spec._value);
                             _uniforms.emplace_back(spec);
                         }
                     }
@@ -102,7 +104,8 @@ namespace osgEarth
                     {
                         if (ImGui::SliderFloat(def._name.c_str(), &def._value, def._minval, def._maxval))
                         {
-                            _mapNode->getOrCreateStateSet()->getOrCreateUniform(def._name, osg::Uniform::FLOAT)->set(def._value);
+                            def._u->set(def._value);
+                            _mapNode->getOrCreateStateSet()->addUniform(def._u.get(), osg::StateAttribute::OVERRIDE);
                         }
                     }
 

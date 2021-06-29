@@ -442,7 +442,7 @@ FeatureRasterizer::FeatureRasterizer(
     _implPixelFormat = RF_BGRA;
     _inverted = true;
 #else
-    osg::Vec4 bg(backgroundColor);    
+    osg::Vec4 bg(backgroundColor.a(), backgroundColor.b(), backgroundColor.g(), backgroundColor.r());
     _implPixelFormat = RF_ABGR;
     _inverted = false;
 #endif

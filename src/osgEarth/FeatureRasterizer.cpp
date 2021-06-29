@@ -685,7 +685,11 @@ FeatureRasterizer::render_agglite(
 
         // now run the buffer operation on all lines:
         BufferFilter buffer;
-        double lineWidth = 1.0;
+
+        GeoExtent imageExtentInFeatureSRS = _extent.transform(featureSRS);
+        double pixelWidth = imageExtentInFeatureSRS.width() / (double)_image->s();
+        double lineWidth = pixelWidth;
+
         if (masterLine)
         {
             buffer.capStyle() = masterLine->stroke()->lineCap().value();
@@ -693,9 +697,6 @@ FeatureRasterizer::render_agglite(
             if (masterLine->stroke()->width().isSet())
             {
                 lineWidth = masterLine->stroke()->width().value();
-
-                GeoExtent imageExtentInFeatureSRS = _extent.transform(featureSRS);
-                double pixelWidth = imageExtentInFeatureSRS.width() / (double)_image->s();
 
                 // if the width units are specified, process them:
                 if (masterLine->stroke()->widthUnits().isSet() &&

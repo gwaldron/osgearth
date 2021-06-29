@@ -4,6 +4,8 @@
 #pragma vp_location vertex_view
 #extension GL_ARB_gpu_shader_int64 : enable
 
+#pragma import_defines(OSGEARTH_SPLAT_TWEAKS)
+
 #define NUM_LEVELS 2
 const int levels[2] = int[](14, 19);
 out vec2 splatCoords[2];
@@ -18,8 +20,14 @@ out float oe_elev;
 
 float oe_terrain_getElevation();
 
-uniform float oe_splat_blend_start = 2500.0;
-uniform float oe_splat_blend_end = 500.0;
+#ifdef OSGEARTH_SPLAT_TWEAKS
+#define tweakable uniform
+#else
+#define tweakable const
+#endif
+
+tweakable float oe_splat_blend_start = 2500.0;
+tweakable float oe_splat_blend_end = 500.0;
 
 
 float mapToNormalizedRange(in float value, in float lo, in float hi)
@@ -61,6 +69,8 @@ uniform sampler2D OE_COLOR_LAYER_TEX;
 uniform mat4 OE_COLOR_LAYER_MAT;
 #endif
 
+#pragma import_defines(OSGEARTH_SPLAT_TWEAKS)
+
 layout(binding = 5, std430) buffer TextureLUT {
     uint64_t texHandle[];
 };
@@ -88,18 +98,23 @@ in vec2 splatCoords[2];
 flat in int maxLevel;
 in float oe_elev;
 
-uniform float dense_power = 1.0;
-uniform float lush_power = 1.0;
-uniform float rugged_power = 1.0;
-uniform float normal_power = 1.0;
-uniform float ao_power = 1.0;
-uniform float oe_depth = 0.02; 
-uniform float oe_snow = 0.0;
+#ifdef OSGEARTH_SPLAT_TWEAKS
+    #define tweakable uniform
+#else
+    #define tweakable const
+#endif
 
-uniform float oe_splat_blend_rgbh_mix = 0.8;
-uniform float oe_splat_blend_normal_mix = 0.8;
-uniform float brightness = 1.0;
-uniform float contrast = 1.0;
+tweakable float dense_power = 1.0;
+tweakable float lush_power = 1.0;
+tweakable float rugged_power = 1.0;
+tweakable float normal_power = 1.0;
+tweakable float ao_power = 1.0;
+tweakable float oe_depth = 0.02;
+tweakable float oe_snow = 0.0;
+tweakable float oe_splat_blend_rgbh_mix = 0.8;
+tweakable float oe_splat_blend_normal_mix = 0.8;
+tweakable float brightness = 1.0;
+tweakable float contrast = 1.0;
 
 in float oe_layer_opacity;
 

@@ -31,7 +31,8 @@
 #include <osgDB/ReadFile>
 #include <cstdlib> // getenv
 
-#define LC "[TextureSplattingLayer] " << getName() << ": "
+#define LC0 "[TextureSplattingLayer] "
+#define LC LC0 << getName() << ": "
 
 using namespace osgEarth::Procedural;
 
@@ -88,7 +89,7 @@ namespace
 
                 auto t1 = std::chrono::steady_clock::now();
 
-                OE_INFO << tex.uri()->base()
+                OE_INFO << LC0 << "Loaded texture " << tex.uri()->base()
                     << ", t=" << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << "ms"
                     << std::endl;
 
@@ -189,6 +190,11 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
         setStatus(Status::ResourceUnavailable, "No Biome data to splat");
         return;
     }
+
+    // default uniform values
+    osg::StateSet* ss = getOrCreateStateSet();
+    ss->addUniform(new osg::Uniform("oe_splat_blend_start", 2500.0f));
+    ss->addUniform(new osg::Uniform("oe_splat_blend_end", 500.0f));
 }
 
 void

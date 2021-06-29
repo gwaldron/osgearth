@@ -111,6 +111,7 @@ struct LifeMapGUI : public GUI::BaseGUI
 struct TextureSplattingGUI : public GUI::BaseGUI
 {
     App _app;
+    bool _installed;
     float _blend_start;
     float _blend_end;
     float _blend_rgbh_mix;
@@ -127,6 +128,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
 
     TextureSplattingGUI(App& app) : GUI::BaseGUI("Texture Splatting"), _app(app)
     {
+        _installed = false;
         _blend_start = 2500.0f;
         _blend_end = 500.0f;
         _blend_rgbh_mix = 0.85f;
@@ -145,6 +147,12 @@ struct TextureSplattingGUI : public GUI::BaseGUI
     void draw(osg::RenderInfo& ri) override
     {
         ImGui::Begin("Texture Splatting");
+
+        if (!_installed)
+        {
+            // activate tweakable uniforms
+            ri.getCurrentCamera()->getOrCreateStateSet()->setDefine("OSGEARTH_SPLAT_TWEAKS");
+        }
 
         // uniforms
         ImGui::SliderFloat("Level blend start (m)", &_blend_start, 0.0f, 5000.0f);
@@ -174,7 +182,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         ImGui::SliderFloat("Normal power", &_normal_power, 0.0f, 4.0f);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("normal_power", _normal_power));
 
-        ImGui::SliderFloat("AO power", &_ao_power, 0.0f, 6.0f);
+        ImGui::SliderFloat("AO power", &_ao_power, 0.0f, 16.0f);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("ao_power", _ao_power));
 
         ImGui::SliderFloat("Global brightness", &_brightness, 0.0f, 4.0f);

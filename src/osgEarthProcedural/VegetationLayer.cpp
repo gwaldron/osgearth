@@ -153,6 +153,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
+    maxSSE().setDefault(100.0f);
 
     colorLayer().get(conf, "color_layer");
     biomeLayer().get(conf, "biomes_layer");
@@ -615,7 +616,10 @@ VegetationLayer::buildStateSets()
     stateset->setMode(GL_CULL_FACE, osg::StateAttribute::PROTECTED);
 
     if (!_sseU.valid())
+    {
         _sseU = new osg::Uniform("oe_veg_sse", getMaxSSE());
+        _sseU->set(options().maxSSE().get());
+    }
 
     stateset->addUniform(_sseU.get());
 
@@ -1154,6 +1158,10 @@ VegetationLayer::Renderer::CameraState::draw(
     // do not shadow groups marked as not casting shadows
     bool isShadowCam = CameraUtils::isShadowCamera(ri.getCurrentCamera());
 
+    // Why doesn't OSG push this in the LayerDrawable RenderLeaf? No one knows.
+    // Anyway, push it before checking the oe_veg_sse uniform.
+    state->pushStateSet(_renderer->_layer->getStateSet());
+
     // do we need to re-generate some (or all) of the tiles?
     bool needsGenerate =
         _geomDirty ||
@@ -1221,9 +1229,6 @@ VegetationLayer::Renderer::CameraState::draw(
             needsCull = true;
         }
     }
-
-    // Why doesn't OSG push this in the LayerDrawable RenderLeaf? No one knows.
-    state->pushStateSet(_renderer->_layer->getStateSet());
 
     // compute pass:
     if (needsGenerate || needsCull)

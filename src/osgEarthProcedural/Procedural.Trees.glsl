@@ -454,6 +454,7 @@ void oe_GroundCover_FS(inout vec4 color)
         }
     #endif
 
+#if 0
     // TODO: revisit once we can figure out how to get terrain elevation
     float coldness = mapToNormalizedRange(elev, 1000, 3500);
     float cos_angle = clamp(dot(vp_Normal, normalize(oe_UpVectorView)), 0, 1);
@@ -462,6 +463,8 @@ void oe_GroundCover_FS(inout vec4 color)
         color.rgb = mix(color.rgb, vec3(1), snowiness);
         oe_roughness = mix(oe_roughness, 0.1, snowiness);
     }
+#endif
+
 #endif
 }
 

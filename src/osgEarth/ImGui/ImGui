@@ -99,6 +99,18 @@ namespace osgEarth
                 return node.valid();
             }
 
+            template<typename T>
+            bool findLayerOrHide(osg::observer_ptr<T>& layer, osg::RenderInfo& ri) {
+                if (!layer.valid()) {
+                    MapNode* mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
+                    if (mapNode)
+                        layer = mapNode->getMap()->getLayer<T>();
+                }
+                if (!layer.valid())
+                    setVisible(false);
+                return layer.valid();
+            }
+
             //! sets a value and dirties the .ini store
             template<typename A, typename B>
             void set_and_dirty(A& var, const B& value)

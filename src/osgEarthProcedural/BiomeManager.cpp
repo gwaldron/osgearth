@@ -217,7 +217,7 @@ BiomeManager::updateResidency(
     TextureShareCache texcache;
     using ModelCache = std::map<URI, ModelCacheEntry>;
     ModelCache modelcache;
-    
+
     // Clear out each biome's instances so we can start fresh.
     // This is a low-cost operation since anything we can re-use
     // will already by in the _residentModelAssetData collection.
@@ -596,6 +596,12 @@ BiomeManager::createGPULookupTables(
         const ModelAssetUsageCollection& usages = b.second[group];
 
         int biome_id = biome->id().get();
+
+        if (biome_id >= MAX_NUM_BIOMES)
+        {
+            OE_WARN << LC << "Exceeded maximum number of biomes (" << MAX_NUM_BIOMES << ")" << std::endl;
+            break;
+        }
 
         int ptr = offset;
         for (const auto& usage : usages)

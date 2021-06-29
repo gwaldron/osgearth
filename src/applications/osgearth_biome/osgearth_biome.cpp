@@ -205,22 +205,25 @@ struct BiomeGUI : public GUI::BaseGUI
     App _app;
     float _sse;
     bool _auto_sse;
+    std::queue<float> _times;
+    float _total;
+    float _sse_target_ms;
     bool _forceGenerate;
     Clock::time_point _lastVisit;
     osg::ref_ptr<osg::Uniform> _sseUni;
-
+    osg::observer_ptr<BiomeLayer> _biolayer;
+    osg::observer_ptr<VegetationLayer> _veglayer;
 
     BiomeGUI(App& app) : GUI::BaseGUI("Biomes"),
         _app(app),
         _sse(100.0f),
         _auto_sse(false),
-        _forceGenerate(false)
+        _forceGenerate(false),
+        _sse_target_ms(15.0f)
     {
-        BiomeLayer* biolayer = _app._map->getLayer<BiomeLayer>();
-        OE_HARD_ASSERT(biolayer != nullptr, __func__);
-
-        VegetationLayer* veglayer = _app._map->getLayer<VegetationLayer>();
-        OE_HARD_ASSERT(veglayer != nullptr, __func__);
+        //nop
+        for (int i = 0; i < 60; ++i) _times.push(0.0f);
+        _total = 0.0f;
     }
 
     void load(const Config& conf) override
@@ -237,20 +240,24 @@ struct BiomeGUI : public GUI::BaseGUI
 
     void draw(osg::RenderInfo& ri) override
     {
+        if (!findLayerOrHide(_veglayer, ri))
+            return;
+        if (!findLayerOrHide(_biolayer, ri))
+            return;
+
         Clock::time_point now = Clock::now();
         float elapsed_ms = (float)(std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastVisit).count());
         _lastVisit = now;
-        float target_ms(16.0f);
-
-        if (!_sseUni.valid()) {
-            _sseUni = new osg::Uniform("oe_veg_sse", _sse);
-            ri.getCurrentCamera()->getOrCreateStateSet()->addUniform(_sseUni, osg::StateAttribute::OVERRIDE);
-        }
+        _times.push(elapsed_ms);
+        _total += _times.back();
+        _total -= _times.front();
+        _times.pop();
+        float t = _total / (float)_times.size();
 
         ImGui::Begin("Biomes", NULL, ImGuiWindowFlags_MenuBar);
         {
             if (ImGui::SliderFloat("SSE", &_sse, 1.0f, 1000.0f)) {
-                _sseUni->set(_sse);
+                _veglayer->setMaxSSE(_sse);
                 dirtySettings();
             }
             
@@ -261,20 +268,20 @@ struct BiomeGUI : public GUI::BaseGUI
 
             if (_auto_sse)
             {
-                if (elapsed_ms > target_ms*2.0f)
+                if (t > _sse_target_ms*2.0f)
                 {
                     _sse = clamp(_sse + 4.0f, 1.0f, 1000.0f);
-                    _sseUni->set(_sse);
+                    _veglayer->setMaxSSE(_sse);
                 }
-                else if (elapsed_ms > target_ms*1.01f)
+                else if (t > _sse_target_ms*1.01f)
                 {
                     _sse = clamp(_sse+0.25f, 1.0f, 1000.0f);
-                    _sseUni->set(_sse);
+                    _veglayer->setMaxSSE(_sse);
                 }
-                else if (elapsed_ms < target_ms*0.95f)
+                else if (t < _sse_target_ms*0.8f)
                 {
                     _sse = clamp(_sse-0.1f, 1.0f, 1000.0f);
-                    _sseUni->set(_sse);
+                    _veglayer->setMaxSSE(_sse);
                 }
             }
 

@@ -67,13 +67,12 @@ REGISTER_OSGEARTH_LAYER(vegetation, VegetationLayer);
 // TODO LIST
 //
 
+//  - TODO: separate the cloud's LUTs and TextureArena into different statesets, since they
+//    are never used together. This will skip binding all the LUTS when only rendering, and
+//    will skip binding the TA when only computing.
 //  - Move normal map conversion code out of here, and move towards a "MaterialTextureSet"
 //    kind of setup that will support N material textures at once.
-
 //  - FEATURE: automatically generate billboards? Imposters? Other?
-
-//  - [BUG] biomelayer from cache will NOT generate biome update notifications 6/25/21
-
 //  - Idea: include a "model range" or "max SSE" in the InstanceBuffer...?
 //  - [PERF] thin out distant instances automatically in large tiles
 //  - [PERF] cull by "horizon" .. e.g., the lower you are, the fewer distant trees...?
@@ -83,6 +82,7 @@ REGISTER_OSGEARTH_LAYER(vegetation, VegetationLayer);
 //  - variable spacing or clumping by asset...?
 //  - make the noise texture bindless as well? Stick it in the arena? Why not.
 
+//  - (DONE) [BUG] biomelayer from cache will NOT generate biome update notifications 6/25/21
 //  - (DONE) fix the random asset select with weighting...just not really working well.
 //  - (DONE) Allow us to store key, slot, etc data in the actual TileContext coming from the 
 //    PatchLayer. It is silly to have to do TileKey lookups and not be able to simple
@@ -153,7 +153,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
-    maxSSE().setDefault(100.0f);
+    maxSSE().setDefault(150.0f);
 
     colorLayer().get(conf, "color_layer");
     biomeLayer().get(conf, "biomes_layer");
@@ -235,12 +235,18 @@ VegetationLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 
 //........................................................................
 
-void VegetationLayer::setMaxSSE(float value) {
-    options().maxSSE() = value;
-    if (_sseU.valid())
-        _sseU->set(value);
+void VegetationLayer::setMaxSSE(float value)
+{
+    if (value != options().maxSSE().get())
+    {
+        options().maxSSE() = value;
+        if (_sseU.valid())
+            _sseU->set(value);
+    }
 }
-float VegetationLayer::getMaxSSE() const {
+
+float VegetationLayer::getMaxSSE() const
+{
     return options().maxSSE().get();
 }
 
@@ -618,9 +624,9 @@ VegetationLayer::buildStateSets()
     if (!_sseU.valid())
     {
         _sseU = new osg::Uniform("oe_veg_sse", getMaxSSE());
-        _sseU->set(options().maxSSE().get());
     }
 
+    _sseU->set(getMaxSSE());
     stateset->addUniform(_sseU.get());
 
     if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
@@ -989,13 +995,13 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
 
         BiomeManager& biomeMan = _layer->getBiomeLayer()->getBiomeManager();
 
-        std::set<AssetGroupType> groups;
+        std::set<AssetGroup::Type> groups;
 
         biomeMan.updateResidency(
-            [&](AssetGroupType group, std::vector<osg::Texture*>& textures) {
+            [&](AssetGroup::Type group, std::vector<osg::Texture*>& textures) {
                 return _layer->createParametricGeometry(group, textures); },
             _layer->getReadOptions(),
-                    groups);
+            groups);
 
         for (auto group : groups)
         {
@@ -1041,7 +1047,8 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
 
                 biomeMan.updateResidency(
                     [&](AssetGroup::Type group, std::vector<osg::Texture*>& textures) {
-                        return layer->createParametricGeometry(group, textures); },
+                        return layer->createParametricGeometry(group, textures);
+                    },
                     layer->getReadOptions(),
                     groups);
 
@@ -1204,16 +1211,10 @@ VegetationLayer::Renderer::CameraState::draw(
     // This feels a little janky but it works.
     if (!needsCull)
     {
-        static const std::string sse_name("oe_veg_sse");
-        auto& uniforms = ri.getState()->getUniformMap();
-        auto sse_rec = uniforms.find(sse_name);
-        if (sse_rec != uniforms.end()) {
-            float value;
-            if (sse_rec->second.uniformVec.back().first->get(value) &&
-                value != _last_sse) {
-                _last_sse = value;
-                needsCull = true;
-            }
+        if (_last_sse != _renderer->_layer->getMaxSSE())
+        {
+            _last_sse = _renderer->_layer->getMaxSSE();
+            needsCull = true;
         }
     }
 

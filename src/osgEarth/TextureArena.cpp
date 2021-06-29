@@ -47,6 +47,8 @@ using namespace osgEarth;
 
 #define OE_DEVEL OE_DEBUG
 
+//#define USE_ICO 1
+
 Texture::GCState&
 Texture::get(const osg::State& state) const
 {
@@ -243,6 +245,10 @@ Texture::makeResident(const osg::State& state, bool toggle) const
     if (gc._gltexture != nullptr) //.valid())
     {
         gc._gltexture->makeResident(toggle);
+
+        OE_DEVEL << LC
+            << "Texture::makeResident '" << gc._gltexture->id()
+            << "' name=" << gc._gltexture->name() << std::endl;
     }
 }
 
@@ -420,7 +426,9 @@ TextureArena::apply(osg::State& state) const
         std::copy(_textures.begin(), _textures.end(), gc._toAdd.begin());
     }
 
-    osgUtil::IncrementalCompileOperation* ico = NULL;
+    osgUtil::IncrementalCompileOperation* ico = nullptr;
+
+#ifdef USE_ICO
     if (!gc._toAdd.empty())
     {
         const osg::Camera* camera = state.getGraphicsContext()->getCameras().front();
@@ -428,6 +436,7 @@ TextureArena::apply(osg::State& state) const
         if (osgView)
             ico = const_cast<osgViewer::View*>(osgView)->getDatabasePager()->getIncrementalCompileOperation();
     }
+#endif
 
     // allocate textures and resident handles
 

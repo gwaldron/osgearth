@@ -1,7 +1,7 @@
 #version 430
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 
-#pragma include Procedural.GroundCover.Types.glsl
+#pragma include Procedural.Vegetation.Types.glsl
 
 uniform sampler2D oe_veg_noiseTex;
 #define NOISE_SMOOTH   0

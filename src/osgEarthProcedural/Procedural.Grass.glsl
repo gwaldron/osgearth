@@ -5,7 +5,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint oe_Grass_VS_MODEL
 #pragma vp_location   vertex_model
 
-#pragma include Procedural.GroundCover.Types.glsl
+#pragma include Procedural.Vegetation.Types.glsl
 
 vec3 vp_Normal;
 vec4 vp_Color;
@@ -57,7 +57,7 @@ void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
 #pragma vp_entryPoint oe_Grass_main
 #pragma vp_location   vertex_view
 
-#pragma include Procedural.GroundCover.Types.glsl
+#pragma include Procedural.Vegetation.Types.glsl
 
 struct oe_VertexSpec {
     //vec4 model;

@@ -479,9 +479,9 @@ ElevationPool::prepareEnvelope(
 
     env._lod = osg::minimum(getLOD(refPointMap.x(), refPointMap.y()), (int)maxLOD);
 
-    //TODO: Fix this mess, doesn't work for insets.
+    // This can happen if the elevation data publishes no data extents
     if (env._lod < 0)
-        env._lod = 0;
+        env._lod = maxLOD;
 
     env._profile->getNumTiles(env._lod, env._tw, env._th);
 
@@ -900,6 +900,11 @@ ElevationPool::getSample(
     // Need to limit maxLOD <= INT_MAX else osg::minimum for lod will return -1 due to cast
     maxLOD = osg::minimum(maxLOD, static_cast<unsigned>(std::numeric_limits<int>::max()));
     int lod = osg::minimum( getLOD(p.x(), p.y()), (int)maxLOD );
+
+    // this can happen if the elevation data publishes no data extent information
+    if (lod < 0)
+        lod = maxLOD;
+
     if (lod >= 0)
     {
         key._tilekey = map->getProfile()->createTileKey(p.x(), p.y(), lod);

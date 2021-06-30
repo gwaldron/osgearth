@@ -303,7 +303,7 @@ namespace osgEarth
 
         void releaseGLObjects(osg::State* state) const
         {
-            _ssbo.release();
+            _ssbo[state->getContextID()].release();
         }
 
     private:

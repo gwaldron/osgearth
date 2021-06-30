@@ -302,6 +302,11 @@ namespace osgEarth
             _dirty.setAllElementsTo(1);
         }
 
+        void releaseGLObjects(osg::State* state) const
+        {
+            _ssbo[state->getContextID()].release();
+        }
+
     private:
         mutable osg::buffered_object<SSBO> _ssbo;
         mutable osg::buffered_object<int> _dirty;

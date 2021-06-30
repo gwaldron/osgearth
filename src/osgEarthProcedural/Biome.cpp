@@ -24,13 +24,21 @@ using namespace osgEarth::Procedural;
 #undef LC
 #define LC "[Biome] "
 
+namespace
+{
+    static std::string asset_group_names[2] = {
+        "trees",
+        "undergrowth"
+    };
+}
+
 
 AssetGroup::Type
 AssetGroup::type(const std::string& name)
 {
-    if (name == "trees")
+    if (name == asset_group_names[TREES])
         return TREES;
-    else if (name == "undergrowth")
+    else if (name == asset_group_names[UNDERGROWTH])
         return UNDERGROWTH;
     else
         return UNDEFINED;
@@ -39,13 +47,9 @@ AssetGroup::type(const std::string& name)
 std::string
 AssetGroup::name(AssetGroup::Type group)
 {
-    static std::string names[2] = {
-        "trees",
-        "undergrowth"
-    };
 
     return group < NUM_ASSET_GROUPS ?
-        names[group] : 
+        asset_group_names[group] :
         std::string("undefined");
 }
 
@@ -259,8 +263,8 @@ Biome::Biome(const Config& conf, AssetCatalog* assetCatalog)
     conf.get("name", name());
     conf.get("id", id());
 
-    ConfigSet children = conf.children("asset");
-    for (const auto& child : children)
+    ConfigSet assets = conf.child("assets").children("asset");
+    for (const auto& child : assets)
     {
         ModelAssetPointer m;
         m.asset = assetCatalog->getModel(child.value("name"));

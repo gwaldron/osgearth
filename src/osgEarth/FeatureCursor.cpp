@@ -45,6 +45,19 @@ FeatureCursor::fill(FeatureList& list)
     }
 }
 
+void
+FeatureCursor::fill(
+    FeatureList& list,
+    std::function<bool(const Feature*)> predicate)
+{
+    while (hasMore())
+    {
+        osg::ref_ptr<Feature> f = nextFeature();
+        if (predicate(f))
+            list.push_back(f);
+    }
+}
+
 //---------------------------------------------------------------------------
 
 FeatureListCursor::FeatureListCursor(const FeatureList& features) :

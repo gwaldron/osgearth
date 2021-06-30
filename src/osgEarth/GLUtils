@@ -304,7 +304,17 @@ namespace osgEarth
 
         void releaseGLObjects(osg::State* state) const
         {
-            _ssbo[state->getContextID()].release();
+            if (state)
+            {
+                _ssbo[state->getContextID()].release();
+            }
+            else
+            {
+                for (int i = 0; i < _ssbo.size(); ++i)
+                {
+                    _ssbo[i].release();
+                }
+            }
         }
 
     private:

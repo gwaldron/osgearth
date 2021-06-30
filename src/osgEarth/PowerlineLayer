@@ -31,9 +31,11 @@ namespace osgEarth
         class ModelOptions : public ConfigOptions
         {
             META_ConfigOptions(osgEarth, ModelOptions, ConfigOptions);
+            OE_OPTION(std::string, name);
             OE_OPTION(std::string, uri);
             OE_OPTION_VECTOR(osg::Vec3d, attachment_points);
             OE_OPTION(float, maxSag);
+            // Create configuration from Feature
         public:
             void fromConfig(const Config& conf);
             virtual Config getConfig() const;
@@ -46,12 +48,14 @@ namespace osgEarth
             Options(const ConfigOptions& options);
             OE_OPTION_LAYER(FeatureSource, lineSource);
             OE_OPTION(bool, point_features);
+            OE_OPTION(std::string, lineExpr);
+            OE_OPTION(std::string, cableExpr);
             OE_OPTION_VECTOR(ModelOptions, towerModels);
             virtual Config getConfig() const;
+            void fromConfig(const Config& conf);
+            std::string referrer;
         protected: // LayerOptions
             virtual void mergeConfig(const Config& conf);        
-        private:
-            void fromConfig(const Config& conf);
         };
     public:
         META_Layer(osgEarth, PowerlineLayer, Options, FeatureModelLayer, PowerlineModel);

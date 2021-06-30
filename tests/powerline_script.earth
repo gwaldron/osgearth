@@ -1,0 +1,110 @@
+<map name="power tower test">
+    <PowerlineModel name="towers" max_range="6000" attenuation_range="1000"  line_expr="getLineStyle()" cable_expr="getCableStyle()">
+        <features>power-lines</features>
+        <tower_model name="6wires">
+            <model>../data/power_tower.osgb</model>
+            <attachment_points>
+                LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89, 6.385 0.0 21.077, -6.35 -0.01 21.077)
+            </attachment_points>
+            <!-- maximum sag or droop of a single cable -->
+            <max_sag>5.0</max_sag>
+        </tower_model>
+        <tower_model name="4wires">
+            <model>../data/power_tower.osgb</model>
+            <attachment_points>
+                LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89)
+            </attachment_points>
+            <!-- maximum sag or droop of a single cable -->
+            <max_sag>5.0</max_sag>
+        </tower_model>
+        <styles>
+            <style type="text/css">
+                cables {
+                    stroke: #080808;
+                    stroke-width: 0.05m;
+                }
+            </style>
+            <script language="javascript">
+              <![CDATA[
+                       function getLineStyle()
+                       {
+                         if (feature.properties.voltage > 60000)
+                           return "6wires";
+                         else
+                           return "4wires";
+                       }
+
+                       function getLineStyle2() {return "<tower_model>\n\
+                                                 <model>../data/power_tower.osgb</model>\n\
+                                                 <attachment_points>\n\
+                                                   LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89, 6.385 0.0 21.077, -6.35 -0.01 21.077)\n\
+                                                 </attachment_points>\n\
+                                                 <max_sag>5.0</max_sag>\n\
+                                               </tower_model>";}
+                       function getCableStyle()
+                       {
+                         if (feature.properties.voltage > 60000)
+                           return "{stroke: #ff0000; stroke-width: 0.05m;}";
+                         else
+                           return "{stroke: #00ffff; stroke-width: 0.05m;}";
+                       }
+
+]]>
+            </script> 
+        </styles>
+    </PowerlineModel>
+
+    <TFSFeatures name="power-lines">
+        <url>http://readymap.org/readymap/mbtiles/osm/</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <filters>
+            <script language="javascript">
+                <![CDATA[ (feature.properties.power === "line"); ]]>
+            </script>
+        </filters>
+    </TFSFeatures>
+
+    <viewpoints>
+        <viewpoint name="Le Haillan">
+            <heading>0</heading>
+            <pitch>-89.0007</pitch>
+            <range>3664.39m</range>
+            <long>-0.6506</long>
+            <lat>44.8695</lat>
+        </viewpoint>
+        <viewpoint name="Rhone Valley">
+            <heading>62.3351</heading>
+            <pitch>-8.42197</pitch>
+            <range>5279.5m</range>
+            <long>7.297303744118898</long>
+            <lat>46.21744910621433</lat>
+            <height>532.5380253428593</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+        <viewpoint name="Kilo">
+            <pitch>-20</pitch>
+            <heading>27.5</heading>
+            <lat>33.320303</lat>
+            <long>-117.325534</long>
+            <height>155</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+            <range>500</range>
+        </viewpoint>
+        <viewpoint name="problematic">
+            <heading>-52.6766</heading>
+            <pitch>-16.6442</pitch>
+            <range>123.522m</range>
+            <long>-0.6434920611453753</long>
+            <lat>44.89152565710955</lat>
+            <height>53.01278693787754</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        </viewpoint>
+
+    </viewpoints>
+
+    <xi:include href="readymap_imagery.xml"/>
+    <xi:include href="readymap_elevation.xml"/>
+</map>

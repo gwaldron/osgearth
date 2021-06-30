@@ -26,6 +26,8 @@
 #include <osgEarth/Containers>
 #include <osgEarth/Metrics>
 
+#include <osgDB/WriteFile>
+
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
 
@@ -453,8 +455,10 @@ RoadSurfaceLayer::getFeatures(
                 cursor = fs->createFeatureCursor(subkey, progress);
                 if (cursor.valid())
                 {
-                    cursor->fill(sublist);
-                    //TODO: run script filter(s) on output
+                    cursor->fill(
+                        sublist, 
+                        [](const Feature* f) { return f->getGeometry()->isLinear(); });
+
                     _lru->insert(subkey, sublist);
                 }
             }
@@ -462,10 +466,7 @@ RoadSurfaceLayer::getFeatures(
 
         // Clone features onto the end of the output list.
         // We must always clone since osgEarth modifies the feature data
-        std::transform(
-            sublist.begin(),
-            sublist.end(),
-            std::back_inserter(output),
-            [](osg::ref_ptr< Feature > f) { return osg::clone(f.get(), osg::CopyOp::DEEP_COPY_ALL); });
+        for (auto& f : sublist)
+            output.push_back(osg::clone(f.get(), osg::CopyOp::DEEP_COPY_ALL));
     }
 }

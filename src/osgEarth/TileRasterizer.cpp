@@ -21,6 +21,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Metrics>
+#include <osgEarth/CameraUtils>
 #include <osgViewer/Renderer>
 #include <osgViewer/Viewer>
 
@@ -127,6 +128,13 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
+        // disallow shadow cameras or depth cameras
+        if (CameraUtils::isShadowCamera(static_cast<osgUtil::CullVisitor*>(&nv)->getCurrentCamera()) ||
+            CameraUtils::isDepthCamera(static_cast<osgUtil::CullVisitor*>(&nv)->getCurrentCamera()))
+        {
+            return;
+        }
+
         // only enter if an RTT is NOT currently active:
         if (!_queue.empty())
         {

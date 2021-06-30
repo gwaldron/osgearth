@@ -160,11 +160,24 @@ float harden(in float x)
     return 1.0 - (1.0 - x)*(1.0 - x);
 }
 
-float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)
+float decel(in float v, in float p)
 {
+    return 1.0 - pow(1.0 - v, p);
+}
+
+vec2 decel(in vec2 v, in float p)
+{
+    return vec2(
+        1.0 - pow(1.0 - v.x, p),
+        1.0 - pow(1.0 - v.y, p));
+}
+
+float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2, in float roughness)
+{
+    float d = mix(1.0, oe_depth, decel(roughness, 2.3));
     // https://tinyurl.com/y5nkw2l9
     //float depth = 0.02;
-    float ma = max(h1 + a1, h2 + a2) - oe_depth;
+    float ma = max(h1 + a1, h2 + a2) - d;
     float b1 = max(h1 + a1 - ma, 0.0);
     float b2 = max(h2 + a2 - ma, 0.0);
     return b2 / (b1 + b2);
@@ -210,7 +223,8 @@ void resolveColumn(out Pixel pixel, int level, int x, float yvar)
     normal[1] = unpackNormal(material[1]);
 
     // blend with working image using both heightmap and effect:
-    float m = heightAndEffectMix(rgbh[0].a, 1.0-y_mix, rgbh[1].a, y_mix);
+    float rr = max(material[0][2], material[1][2]);
+    float m = heightAndEffectMix(rgbh[0].a, 1.0-y_mix, rgbh[1].a, y_mix, rr);
 
     pixel.rgbh = mix(rgbh[0], rgbh[1], m);
     pixel.normal = mix(normal[0], normal[1], m);
@@ -234,7 +248,8 @@ void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
     resolveColumn(col[1], level, clamp(x + 1, 0, TEX_DIM - 1), yvar);
 
     // blend with working image using both heightmap and effect:
-    float m = heightAndEffectMix(col[0].rgbh.a, 1.0 - x_mix, col[1].rgbh.a, x_mix);
+    float rr = max(col[0].roughness, col[1].roughness);
+    float m = heightAndEffectMix(col[0].rgbh.a, 1.0 - x_mix, col[1].rgbh.a, x_mix, rr);
 
     if (level == 0)
     {
@@ -263,13 +278,6 @@ void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
 #else
     pixel = col[0];
 #endif
-}
-
-vec2 decel(in vec2 v, in float p)
-{
-    return vec2(
-        1.0 - pow(1.0 - v.x, p),
-        1.0 - pow(1.0 - v.y, p));
 }
 
 void oe_splat_Frag(inout vec4 quad)

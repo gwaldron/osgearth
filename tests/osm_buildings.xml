@@ -48,7 +48,7 @@
                         var l = feature.properties["building:levels"];
                         return Math.max(l * 4.0, 4.0);
                     }
-                    return Math.floor((Math.random() * 5.0) + 4.0);
+                    return 4.0 + (feature.id % 10);
                 }
               ]]>
         </script>

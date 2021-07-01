@@ -53,7 +53,7 @@ FeatureCursor::fill(
     while (hasMore())
     {
         osg::ref_ptr<Feature> f = nextFeature();
-        if (predicate(f))
+        if (predicate(f.get()))
             list.push_back(f);
     }
 }

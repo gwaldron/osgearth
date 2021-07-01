@@ -724,7 +724,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
             if (layerDrawable->_layer)
             {
-                layerDrawable->_layer->apply(layerDrawable, cv);
+                layerDrawable->_layer->apply(layerDrawable.get(), cv);
             }
             else
             {

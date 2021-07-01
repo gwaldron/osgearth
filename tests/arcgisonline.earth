@@ -31,9 +31,11 @@ http://services.arcgisonline.com/arcgis/sdk/rest/index.html
         <url>http://services.arcgisonline.com/arcgis/rest/services/World_Shaded_Relief/MapServer</url>
     </ArcGISServerImage>
 
-    <ArcGISServerElevation name="Elevation layer" enabled="true">
+    <ArcGISServerElevation name="Elevation layer" max_data_level="13" enabled="true">
         <url>http://services.arcgisonline.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer</url>
     </ArcGISServerElevation>
+    
+    <Debug/>
 
     <xi:include href="viewpoints.xml"/>
 </Map>

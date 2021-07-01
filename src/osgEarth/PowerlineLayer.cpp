@@ -1058,9 +1058,9 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         for (FeatureList::iterator i = cableFeatures.begin(); i != cableFeatures.end(); ++i)
         {
             Style localStyle;
-            evalStyle(*i, localCX, _cableExpr.get(), localStyle);
+            evalStyle(i->get(), localCX, _cableExpr.get(), localStyle);
             setCableStyleDefaults(localStyle);
-            osg::Node* cable = compiler.compile(*i, localStyle, localCX);
+            osg::Node* cable = compiler.compile(i->get(), localStyle, localCX);
             results->addChild(cable);
         }
     }

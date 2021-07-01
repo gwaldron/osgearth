@@ -167,7 +167,7 @@ namespace osgEarth
          */
         bool populateHeightField(
             osg::HeightField*      hf,
-            float*                 resolutions,
+            std::vector<float>*    resolutions,
             const TileKey&         key,
             const Profile*         haeProfile,
             RasterInterpolation    interpolation,

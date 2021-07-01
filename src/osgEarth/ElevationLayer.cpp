@@ -67,11 +67,11 @@ namespace
     {
         if (!hf)
             return false;
-        if (hf->getNumRows() < 2 || hf->getNumRows() > 1024) {
+        if (hf->getNumRows() < 1 || hf->getNumRows() > 1024) {
             OE_WARN << "row count = " << hf->getNumRows() << std::endl;
             return false;
         }
-        if (hf->getNumColumns() < 2 || hf->getNumColumns() > 1024) {
+        if (hf->getNumColumns() < 1 || hf->getNumColumns() > 1024) {
             OE_WARN << "col count = " << hf->getNumColumns() << std::endl;
             return false;
         }
@@ -656,7 +656,7 @@ namespace
 bool
 ElevationLayerVector::populateHeightField(
     osg::HeightField*   hf,
-    float*              resolutions,
+    std::vector<float>* resolutions,
     const TileKey&      key,
     const Profile*      haeProfile,
     RasterInterpolation interpolation,
@@ -832,7 +832,7 @@ ElevationLayerVector::populateHeightField(
                 {
                     std::pair<double,double> res = contenders[0].key.getResolution(hf->getNumColumns());
                     for(unsigned i=0; i<hf->getNumColumns()*hf->getNumRows(); ++i)
-                        resolutions[i] = res.second;
+                        (*resolutions)[i] = res.second;
                 }
             }
         }
@@ -1026,7 +1026,7 @@ ElevationLayerVector::populateHeightField(
 
                 if (resolutions)
                 {
-                    resolutions[r*numColumns+c] = resolution;
+                    (*resolutions)[r*numColumns+c] = resolution;
                 }
             }
         }

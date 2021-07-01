@@ -61,7 +61,7 @@ namespace osgEarth
         ElevationTexture(
             const TileKey& key,
             const GeoHeightField& hf,
-            float* resolutions);
+            const std::vector<float>& resolutions);
 
         virtual ~ElevationTexture();
 
@@ -92,7 +92,7 @@ namespace osgEarth
         const ImageUtils::PixelReader& reader() const { return _read; }
 
         //! Matching list of sample resolutions
-        const float* getResolutions() const { return _resolutions; }
+        const std::vector<float>& getResolutions() const { return _resolutions; }
 
         //! Get the resolution at s,t
         inline float getResolution(int s, int t) const {
@@ -119,7 +119,7 @@ namespace osgEarth
         ImageUtils::PixelReader _readNormal;
         osg::ref_ptr<osg::Texture2D> _normalTex;
         osg::ref_ptr<const osg::HeightField> _heightField;
-        float* _resolutions;
+        std::vector<float> _resolutions;
         osg::ref_ptr<osg::Image> _ruggedness;
         ImageUtils::PixelReader _readRuggedness;
     };

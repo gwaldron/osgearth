@@ -51,10 +51,14 @@ osgEarth::createEmptyNormalMapTexture()
     return tex;
 }
 
-ElevationTexture::ElevationTexture(const TileKey& key, const GeoHeightField& in_hf, float* resolutions) :
+ElevationTexture::ElevationTexture(
+    const TileKey& key, 
+    const GeoHeightField& in_hf,
+    const std::vector<float>& resolutions) :
+
     _tilekey(key),
     _extent(in_hf.getExtent()),
-    _resolutions(resolutions)
+    _resolutions(std::move(resolutions))
 {
     if (in_hf.valid())
     {
@@ -101,8 +105,7 @@ ElevationTexture::ElevationTexture(const TileKey& key, const GeoHeightField& in_
 
 ElevationTexture::~ElevationTexture()
 {
-    if (_resolutions)
-        delete [] _resolutions;
+    //nop
 }
 
 ElevationSample

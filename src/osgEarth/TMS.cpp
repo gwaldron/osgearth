@@ -604,7 +604,6 @@ TileMapReaderWriter::read( const Config& conf )
         }
     }
 
-
     return tileMap;
 }
 
@@ -920,6 +919,18 @@ TMS::Driver::open(const URI& uri,
             }
         }
     }
+
+    if (dataExtents.empty() && profile.valid())
+    {
+        double xmin, ymin, xmax, ymax;
+        _tileMap->getExtents(xmin, ymin, xmax, ymax);
+
+        dataExtents.push_back(DataExtent(
+            GeoExtent(profile->getSRS(), xmin, ymin, xmax, ymax),
+            0,
+            _tileMap->getMaxLevel()));
+    }
+
     return STATUS_OK;
 }
 
@@ -1313,9 +1324,16 @@ TMSElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
     GeoImage image = _imageLayer->createImageImplementation(key, progress);
     if (image.valid())
     {
-        ImageToHeightFieldConverter conv;
-        osg::HeightField* hf = conv.convert( image.getImage() );
-        return GeoHeightField(hf, key.getExtent());
+        if (image.getImage()->s() > 1 && image.getImage()->t() > 1)
+        {
+            ImageToHeightFieldConverter conv;
+            osg::HeightField* hf = conv.convert(image.getImage());
+            return GeoHeightField(hf, key.getExtent());
+        }
+        else
+        {
+            return GeoHeightField::INVALID;
+        }
     }
     else
     {

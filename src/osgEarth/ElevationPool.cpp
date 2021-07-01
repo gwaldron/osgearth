@@ -307,7 +307,8 @@ ElevationPool::getOrCreateRaster(
             false,      // no border
             true);      // initialize to HAE (0.0) heights
 
-        float* resolutions = new float[_tileSize*_tileSize];
+        std::vector<float> resolutions;
+        resolutions.assign(_tileSize*_tileSize, FLT_MAX);
 
         TileKey keyToUse;
         bool populated = false;
@@ -322,7 +323,7 @@ ElevationPool::getOrCreateRaster(
         {
             populated = layersToSample.populateHeightField(
                 hf.get(),
-                resolutions,
+                &resolutions,
                 keyToUse,
                 map->getProfileNoVDatum(), // want HAE for terrain building...? TODO
                 map->getElevationInterpolation(),
@@ -339,7 +340,6 @@ ElevationPool::getOrCreateRaster(
         // check for cancelation/deferral
         if (progress && progress->isCanceled())
         {
-            delete [] resolutions;
             return NULL;
         }
 
@@ -352,7 +352,6 @@ ElevationPool::getOrCreateRaster(
         }
         else
         {
-            delete [] resolutions;
             return NULL;
         }
     }
@@ -646,6 +645,9 @@ ElevationPool::sampleMapCoords(
 
     for(auto& p : points)
     {
+        if (p.w() == FLT_MAX)
+            continue;
+
         {
             //OE_PROFILING_ZONE_NAMED("createTileKey");
 
@@ -661,7 +663,7 @@ ElevationPool::sampleMapCoords(
                     resolutionInMapUnits,
                     ELEVATION_TILE_SIZE);
 
-                lod = osg::minimum( getLOD(p.x(), p.y()), (int)maxLOD );
+                lod = std::min( getLOD(p.x(), p.y()), (int)maxLOD );
                 if (lod < 0)
                 {
                     p.z() = NO_DATA_VALUE;

@@ -407,7 +407,7 @@ float mapToNormalizedRange(in float value, in float lo, in float hi)
     return clamp((value - lo) / (hi - lo), 0.0, 1.0);
 }
 
-uniform float oe_snow;
+uniform float oe_snow = 0.0;
 
 void oe_GroundCover_FS(inout vec4 color)
 {
@@ -454,7 +454,7 @@ void oe_GroundCover_FS(inout vec4 color)
         }
     #endif
 
-#if 0
+#if 1
     // TODO: revisit once we can figure out how to get terrain elevation
     float coldness = mapToNormalizedRange(elev, 1000, 3500);
     float cos_angle = clamp(dot(vp_Normal, normalize(oe_UpVectorView)), 0, 1);

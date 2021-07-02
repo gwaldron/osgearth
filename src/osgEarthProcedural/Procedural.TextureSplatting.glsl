@@ -111,6 +111,8 @@ tweakable float normal_power = 1.0;
 tweakable float ao_power = 1.0;
 tweakable float oe_depth = 0.02;
 tweakable float oe_snow = 0.0;
+tweakable float oe_snow_min_elev = 1000.0;
+tweakable float oe_snow_max_elev = 3500.0;
 tweakable float oe_splat_blend_rgbh_mix = 0.8;
 tweakable float oe_splat_blend_normal_mix = 0.8;
 tweakable float brightness = 1.0;
@@ -332,13 +334,14 @@ void oe_splat_Frag(inout vec4 quad)
     pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*contrast + 0.5) * brightness, 0, 1);
 
 #if 1
-    // perma-show caps:
-    float coldness = mapToNormalizedRange(oe_elev, 1000, 3500);
+    // perma-snow caps:
+    float coldness = mapToNormalizedRange(oe_elev, oe_snow_min_elev, oe_snow_max_elev);
     float min_snow_cos_angle = 1.0 - soften(oe_snow*coldness);
     const float snow_buf = 0.01;
     float b = min(min_snow_cos_angle + snow_buf, 1.0);
     float cos_angle = dot(vp_Normal, oe_UpVectorView);
-    float snowiness = smoothstep(min_snow_cos_angle, b, cos_angle);
+    //float snowiness = smoothstep(min_snow_cos_angle, b, cos_angle);
+    float snowiness = step(min_snow_cos_angle, cos_angle);
     color = mix(pixel.rgbh.rgb, vec3(1), snowiness);
     oe_roughness = mix(oe_roughness, 0.1, snowiness);
 #else

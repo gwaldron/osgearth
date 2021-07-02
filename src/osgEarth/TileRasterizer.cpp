@@ -24,6 +24,7 @@
 #include <osgEarth/CameraUtils>
 #include <osgViewer/Renderer>
 #include <osgViewer/Viewer>
+#include <osg/BlendFunc>
 
 #define LC "[TileRasterizer] "
 
@@ -94,8 +95,9 @@ TileRasterizer::TileRasterizer(unsigned width, unsigned height)
     _cx->_pbo = 0;
 
     osg::StateSet* ss = _cx->_rtt->getOrCreateStateSet();
-    ss->setMode(GL_BLEND, 1);
+    //ss->setMode(GL_BLEND, 1);
     ss->setMode(GL_CULL_FACE, 0);
+    ss->setAttributeAndModes(new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), 1);
     GLUtils::setLighting(ss, 0);
 
     // default no-op shader

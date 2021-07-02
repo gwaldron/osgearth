@@ -125,6 +125,8 @@ struct TextureSplattingGUI : public GUI::BaseGUI
     float _brightness;
     float _contrast;
     float _snow;
+    float _snow_min_elev;
+    float _snow_max_elev;
 
     TextureSplattingGUI(App& app) : GUI::BaseGUI("Texture Splatting"), _app(app)
     {
@@ -142,6 +144,8 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         _brightness = 1.0f;
         _contrast = 1.0f;
         _snow = 0.0f;
+        _snow_min_elev = 0.0f;
+        _snow_max_elev = 3500.0f;
     }
 
     void draw(osg::RenderInfo& ri) override
@@ -193,6 +197,12 @@ struct TextureSplattingGUI : public GUI::BaseGUI
 
         ImGui::SliderFloat("Snow", &_snow, 0.0f, 1.0f);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_snow", _snow));
+
+        ImGui::SliderFloat("Snow bottom elev", &_snow_min_elev, 0.0f, 2500.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_snow_min_elev", _snow_min_elev));
+
+        ImGui::SliderFloat("Snow top elev", &_snow_max_elev, 2500.0f, 5000.0f);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_snow_max_elev", _snow_max_elev));
 
         ImGui::End();
     }

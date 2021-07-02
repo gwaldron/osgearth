@@ -158,7 +158,12 @@ namespace osgEarth
             //! tells ImGui it needs to write a new .ini file
             static void dirtySettings() {
                 if (ImGui::GetCurrentContext())
-                    ImGui::MarkIniSettingsDirty(ImGui::GetCurrentWindowRead());
+                {
+                    if (ImGui::GetCurrentWindowRead())
+                    {
+                        ImGui::MarkIniSettingsDirty(ImGui::GetCurrentWindowRead());
+                    }
+                }
             }
 
             //! whether the visibility changed (and resets the flag)

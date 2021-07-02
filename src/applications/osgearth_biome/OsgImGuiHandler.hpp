@@ -13,7 +13,7 @@ public:
     OsgImGuiHandler();
 
     bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
-    class RealizeOperation : public GlewInitOperation
+    class RealizeOperation : public GlInitOperation
     {
         void operator()(osg::Object* object) override;
     };

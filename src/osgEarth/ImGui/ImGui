@@ -19,7 +19,12 @@
 #ifndef OSGEARTH_IMGUI_H
 #define OSGEARTH_IMGUI_H 1
 
+#ifdef OSGEARTH_HAVE_GLBINDING
+#include <glbinding/gl/gl.h>
+#include <glbinding/glbinding.h>
+#else
 #include "GL/glew.h"
+#endif
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "OsgImGuiHandler"

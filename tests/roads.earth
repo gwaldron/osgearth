@@ -28,7 +28,7 @@ http://readymap.org
                 default {
                    stroke: #ffffff;
                    stroke-width: 20m;
-                   stroke-image: "'../data/road2.png'";
+                   stroke-image: "'../data/road.png'";
                 }
             </style>
         </styles>

@@ -922,13 +922,7 @@ TMS::Driver::open(const URI& uri,
 
     if (dataExtents.empty() && profile.valid())
     {
-        double xmin, ymin, xmax, ymax;
-        _tileMap->getExtents(xmin, ymin, xmax, ymax);
-
-        dataExtents.push_back(DataExtent(
-            GeoExtent(profile->getSRS(), xmin, ymin, xmax, ymax),
-            0,
-            _tileMap->getMaxLevel()));
+        dataExtents.push_back(DataExtent(profile->getExtent(), 0, _tileMap->getMaxLevel()));
     }
 
     return STATUS_OK;

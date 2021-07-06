@@ -457,7 +457,6 @@ SET(LIB_PUBLIC_HEADERS
 if(OSGEARTH_ENABLE_IMGUI)
     set(LIB_PUBLIC_HEADERS_IMGUI
         ImGui/ImGui
-        ImGui/OsgImGuiHandler
         ImGui/LayersGUI
         ImGui/NetworkMonitorGUI
         ImGui/NotifyGUI
@@ -469,7 +468,8 @@ if(OSGEARTH_ENABLE_IMGUI)
         ImGui/EphemerisGUI
         ImGui/ShaderGUI
         ImGui/TerrainGUI
-        ImGui/TerrainEditGUI)
+        ImGui/TerrainEditGUI
+        )
 endif()
 
 
@@ -944,7 +944,7 @@ if(OSGEARTH_ENABLE_IMGUI)
         source_group("Headers\\ImGui" FILES ${LIB_PUBLIC_HEADERS_IMGUI})
     endif()
 
-    install( 
-        FILES ${LIB_PUBLIC_HEADERS_IMGUI}
+    install(
+        FILES ${LIB_PUBLIC_HEADERS_IMGUI} ImGui/ImGui.cpp
         DESTINATION ${INSTALL_INCDIR}/ImGui)
 endif()

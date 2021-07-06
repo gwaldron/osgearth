@@ -35,7 +35,7 @@ http://services.arcgisonline.com/arcgis/sdk/rest/index.html
         <url>http://services.arcgisonline.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer</url>
     </ArcGISServerElevation>
     
-    <Debug/>
+    <!-- <Debug/>     -->
 
     <xi:include href="viewpoints.xml"/>
 </Map>

@@ -19,8 +19,7 @@
 #include <osgEarth/ImGui/ImGui>
 
 #include "imgui.h"
-#include "imgui_internal.h"
-#include "imgui_impl_opengl3.h"
+#include "backends/imgui_impl_opengl3.h"
 
 using namespace osgEarth::GUI;
 

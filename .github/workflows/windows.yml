@@ -65,7 +65,7 @@ jobs:
       working-directory: ${{ matrix.VCPKG_WORKSPACE }}
       shell: 'bash'
       run: >
-        ./vcpkg/vcpkg install osg curl gdal geos sqlite3 protobuf basisu draco --triplet ${{ matrix.triplet }}
+        ./vcpkg/vcpkg install osg curl gdal geos sqlite3 protobuf basisu draco glew --triplet ${{ matrix.triplet }}
 
     - name: 'Upload library build log artifact'
       uses: actions/upload-artifact@v2

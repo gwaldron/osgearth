@@ -18,4 +18,7 @@ Supported imagery sets are Aerial, AerialWithLabels, and Road.
     <BingElevation name="Bing Elevation">
         <key></key>
     </BingElevation>
+    
+    <xi:include href="viewpoints.xml"/>
+    
 </Map>

@@ -22,20 +22,109 @@
 #include "GL/glew.h"
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "OsgImGuiHandler"
 #include <osg/Texture2D>
 #include <osg/RenderInfo>
 #include <osgViewer/View>
+#include <osgViewer/ViewerEventHandlers>
+#include <osgEarth/Config>
 #include <osgEarth/GeoData>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/Terrain>
 #include <typeinfo>
 
+
+namespace osg {
+    class Camera;
+}
+
+struct ImGuiSettingsHandler;
+
 namespace osgEarth
 {
     namespace GUI
     {
+
+        class GlewInitOperation : public osg::Operation
+        {
+        public:
+            GlewInitOperation()
+                : osg::Operation("GlewInitCallback", false)
+            {
+            }
+
+            void operator()(osg::Object* object) override
+            {
+                osg::GraphicsContext* context = dynamic_cast<osg::GraphicsContext*>(object);
+                if (!context)
+                {
+                    return;
+                }
+
+                if (glewInit() != GLEW_OK)
+                {
+                    OSG_FATAL << "glewInit() failed" << std::endl;
+                }
+            }
+        };
+
+
+        class OsgImGuiHandler : public osgGA::GUIEventHandler
+        {
+        public:
+            OsgImGuiHandler();
+
+            bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
+
+            class RealizeOperation : public osgEarth::GUI::GlewInitOperation
+            {
+                void operator()(osg::Object* object) override;
+            };
+
+            virtual void load(void* section, const std::string& key, const std::string& value) { }
+
+            virtual void save(osgEarth::Config& conf) { }
+
+            virtual void* find(const char* name) { return nullptr; }
+
+        protected:
+            // Put your ImGui code inside this function
+            virtual void draw(osg::RenderInfo& renderInfo) = 0;
+            friend class RealizeOperation;
+
+
+        private:
+            static void init();
+
+            void setCameraCallbacks(osg::Camera* camera);
+
+            void newFrame(osg::RenderInfo& renderInfo);
+
+            void render(osg::RenderInfo& renderInfo);
+
+        private:
+            struct ImGuiNewFrameCallback;
+            struct ImGuiRenderCallback;
+
+            double time_;
+            bool mousePressed_[3];
+            bool mouseDoubleClicked_[3];
+            float mouseWheel_;
+            bool initialized_;
+            bool firstFrame_;
+
+            static void* handleStartEntry(
+                ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name);
+
+            static void handleReadSetting(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line);
+
+            static void handleWriteSettings(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf);
+
+            void installSettingsHandler();
+        };
+
+
+
         // base class for GUI elements that allows you to toggle visibility
         class BaseGUI
         {
@@ -158,7 +247,12 @@ namespace osgEarth
             //! tells ImGui it needs to write a new .ini file
             static void dirtySettings() {
                 if (ImGui::GetCurrentContext())
-                    ImGui::MarkIniSettingsDirty(ImGui::GetCurrentWindowRead());
+                {
+                    if (ImGui::GetCurrentWindowRead())
+                    {
+                        ImGui::MarkIniSettingsDirty(ImGui::GetCurrentWindowRead());
+                    }
+                }
             }
 
             //! whether the visibility changed (and resets the flag)

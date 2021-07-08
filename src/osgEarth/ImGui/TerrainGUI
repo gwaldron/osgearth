@@ -115,6 +115,7 @@ namespace osgEarth
                         view(ri)->getCamera()->getViewMatrixAsLookAt(eye, center, up);
                         double dist = (eye - world).length();
                         ImGui::Text("Distance from camera: %.1lf m", dist);
+                        ImGui::Text("Camera radius: %.1lf m", eye.length());
 
                         if (_sample.isAvailable())
                         {

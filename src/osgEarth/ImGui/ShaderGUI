@@ -49,8 +49,6 @@ namespace osgEarth
             };
             std::vector<DefineSpec> _defines;
 
-            osg::observer_ptr<MapNode> _mapNode;
-
         public:
             ShaderGUI(osg::ArgumentParser* args) : BaseGUI("Shaders")
             {
@@ -92,9 +90,6 @@ namespace osgEarth
                 if (!isVisible())
                     return;
 
-                if (!findNodeOrHide(_mapNode, ri))
-                    return;
-
                 ImGui::Begin(name(), visible());
                 {
                     if (!_uniforms.empty())
@@ -105,7 +100,7 @@ namespace osgEarth
                         if (ImGui::SliderFloat(def._name.c_str(), &def._value, def._minval, def._maxval))
                         {
                             def._u->set(def._value);
-                            _mapNode->getOrCreateStateSet()->addUniform(def._u.get(), osg::StateAttribute::OVERRIDE);
+                            ri.getCurrentCamera()->getOrCreateStateSet()->addUniform(def._u.get(), osg::StateAttribute::OVERRIDE);
                         }
                     }
 
@@ -117,9 +112,9 @@ namespace osgEarth
                         if (ImGui::Checkbox(def._name.c_str(), &def._checked))
                         {
                             if (def._checked)
-                                _mapNode->getOrCreateStateSet()->setDefine(def._name, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+                                ri.getCurrentCamera()->getOrCreateStateSet()->setDefine(def._name, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
                             else
-                                _mapNode->getOrCreateStateSet()->setDefine(def._name, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+                                ri.getCurrentCamera()->getOrCreateStateSet()->setDefine(def._name, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
                         }
                     }
                 }

@@ -387,7 +387,7 @@ uniform float oe_veg_maxAlpha;
 
 in vec3 oe_veg_texCoord;
 vec3 vp_Normal;
-float oe_roughness;
+in float oe_roughness;
 flat in uint64_t oe_veg_texHandle;
 flat in uint64_t oe_veg_nmlHandle;
 in mat3 oe_veg_TBN;
@@ -432,6 +432,7 @@ void oe_GroundCover_FS(inout vec4 color)
             //n.y += (n.y > 0)? -t : t;
             vp_Normal = normalize(oe_veg_TBN * n.xyz);
             //color.rgb = (vp_Normal + 1.0)*0.5; // debug
+
         }
 #endif
     }
@@ -454,7 +455,7 @@ void oe_GroundCover_FS(inout vec4 color)
         }
     #endif
 
-#if 1
+#if 0
     // TODO: revisit once we can figure out how to get terrain elevation
     float coldness = mapToNormalizedRange(elev, 1000, 3500);
     float cos_angle = clamp(dot(vp_Normal, normalize(oe_UpVectorView)), 0, 1);
@@ -465,6 +466,6 @@ void oe_GroundCover_FS(inout vec4 color)
     }
 #endif
 
-#endif
+#endif // OE_LIGHTING
 }
 

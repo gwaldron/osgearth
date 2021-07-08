@@ -48,6 +48,9 @@ vec3 vp_Normal;             // surface normal (from osgEarth)
 out float oe_roughness;
 out float oe_ao;
 
+out vec3 camera_pos;
+out vec3 earth_center;
+
 // Parameters of each light:
 struct osg_LightSourceParameters 
 {   
@@ -89,6 +92,8 @@ void atmos_GroundFromSpace(in vec4 vertexVIEW)
     vec3 earthCenter = ec4.xyz/ec4.w; 
     vec3 normal = normalize(v3Pos-earthCenter); 
     atmos_up = normal;
+
+    earth_center = earthCenter;
 
     // Calculate the closest intersection of the ray with the outer atmosphere 
     // (which is the near point of the ray passing through the atmosphere) 
@@ -145,6 +150,8 @@ void atmos_GroundFromAtmosphere(in vec4 vertexVIEW)
     vec3 normal = normalize(v3Pos-earthCenter); 
     atmos_up = normal; 
 
+    earth_center = earthCenter;
+
     // Calculate the ray's starting position, then calculate its scattering offset 
     float fDepth = exp((atmos_fInnerRadius - atmos_fCameraHeight) / RaleighScaleDepth);
     float fCameraAngle = max(0.0, dot(-v3Ray, normal)); 
@@ -177,6 +184,8 @@ void atmos_GroundFromAtmosphere(in vec4 vertexVIEW)
     atmos_atten = v3Attenuate; 
 } 
 
+out vec3 camera_world, vertex_world;
+
 void atmos_vertex_main(inout vec4 vertexVIEW) 
 {
 #ifndef OE_LIGHTING
@@ -202,6 +211,13 @@ void atmos_vertex_main(inout vec4 vertexVIEW)
     { 
         atmos_GroundFromAtmosphere(vertexVIEW); 
     } 
+
+    //vec4 cw = osg_ViewMatrixInverse * vec4(0, 0, 0, 1);
+    //cw /= cw.w;
+    //camera_world = cw.xyz;
+    //vec4 vw = osg_ViewMatrixInverse * vec4(atmos_vert, 1);
+    //vw /= vw.w;
+    //vertex_world = vw.xyz;
 
     oe_roughness = 0.7;
     oe_ao = 1.0;

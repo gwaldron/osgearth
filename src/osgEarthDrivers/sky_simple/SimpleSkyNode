@@ -100,7 +100,17 @@ namespace osgEarth { namespace SimpleSky
 
         Ellipsoid _ellipsoid;
 
-		const SimpleSkyOptions _options;
+		SimpleSkyOptions _options;
+
+        bool _useBruneton;
+        bool _useONeil;
+        bool _usePBR;
+        bool _usePhong;
+
+        mutable Mutex _eb_mutex;
+        mutable osg::ref_ptr<osg::Drawable> _eb_drawable;
+        TextureImageUnitReservation _eb_res[4];
+        bool _eb_initialized;
 
         void construct();
 
@@ -114,7 +124,6 @@ namespace osgEarth { namespace SimpleSky
         void getDefaultStars(std::vector<StarData>& out_stars);
         bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
 
-        void setAmbientBrightness(float value);
         void setSunPosition(const osg::Vec3d& pos);
         void setMoonPosition(const osg::Vec3d& pos);
     };

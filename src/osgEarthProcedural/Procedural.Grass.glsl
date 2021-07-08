@@ -10,6 +10,9 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 vec3 vp_Normal;
 vec4 vp_Color;
 
+out float oe_roughness;
+out float oe_ao;
+
 struct oe_VertexSpec {
     //vec4 model;
     vec4 view;
@@ -46,6 +49,9 @@ void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
 
     // override the terrain's shader
     vp_Color = gl_Color;
+
+    // grass roughness
+    oe_roughness = 0.85;
 }
 
 
@@ -86,6 +92,7 @@ vec3 oe_UpVectorView;
 vec4 vp_Color;
 vec3 vp_Normal;
 out vec4 oe_layer_tilec;
+out float oe_ao;
 
 // Output texture coordinates to the fragment shader
 out vec3 oe_veg_texCoord;
@@ -221,10 +228,8 @@ void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
     vec4 vertex_base = vertex_view;
 
     float vertexHeight = height * oe_veg_texCoord.t;
-    vertex_view.xyz += oe_UpVectorView * vertexHeight;
 
-    // normal:
-    vp_Normal = oe_UpVectorView;
+    vec3 new_vert = vertex_view.xyz + oe_UpVectorView*vertexHeight;
 
     // For bending, exaggerate effect as we climb the stalk
     float bendPower = pow(3.0*oe_veg_texCoord.t+0.8, 2.0);
@@ -244,17 +249,26 @@ void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
         bendVec = (bendVec/bendLen)*vertexHeight;
     }
 
-    vertex_view.xyz += bendVec;
+    new_vert += bendVec;
+
+    // note: this may cause a specular lighting artifact. check that later.
+    if (row > 0)
+        vp_Normal = oe_UpVectorView + (new_vert - vertex_view.xyz);
+    else
+        vp_Normal = oe_UpVectorView;
+
+    vertex_view.xyz = new_vert;
 
     // Some AO.
+    //vec4 ao = vp_Color;
+    //if (row==0)
+    //    ao.rgb *= 0.5;
+    //if (row==1)
+    //    ao.rgb /= max(1.5*heightRatio,1.0);
 
-    vec4 ao = vp_Color;
-    if (row==0)
-        ao.rgb *= 0.5;
-    if (row==1)
-        ao.rgb /= max(1.5*heightRatio,1.0);
+    //vp_Color = mix(ao, vp_Color, nRange*nRange);
 
-    vp_Color = mix(ao, vp_Color, nRange*nRange);
+    oe_ao = mix(0.0, 1.0, (row / 4.0));
 
     // Some color variation.
     vp_Color.gb -= browning*oe_noise_wide[NOISE_SMOOTH];

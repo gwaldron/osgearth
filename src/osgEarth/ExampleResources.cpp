@@ -782,14 +782,19 @@ MapNodeHelper::parse(
     }
 
     // Simple sky model:
-    if (args.read("--sky") && mapNode)
+    if (mapNode)
     {
-        if (mapNode->open()) // necessary to resolve the SRS on the next line
+        SkyOptions::Quality sky_quality = SkyOptions::parseQuality(args);
+
+        if (sky_quality != SkyOptions::QUALITY_UNSET && mapNode->open())
         {
             std::string ext = mapNode->getMapSRS()->isGeographic() ? "sky_simple" : "sky_gl";
-            mapNode->addExtension(Extension::create(ext, ConfigOptions()));
+            SkyOptions options;
+            options.quality() = sky_quality;
+            mapNode->addExtension(Extension::create(ext, options));
         }
     }
+
 
     // Simple ocean model:
     if (args.read("--ocean") && mapNode)

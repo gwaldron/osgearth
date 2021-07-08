@@ -46,3 +46,4 @@ Shaders::Shaders()
     Sun_Frag = "SimpleSky.Sun.frag.glsl";
     _sources[Sun_Frag] = "@SimpleSky.Sun.frag.glsl@";
 }
+

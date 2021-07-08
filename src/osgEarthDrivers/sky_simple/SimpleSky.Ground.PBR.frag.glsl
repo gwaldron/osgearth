@@ -150,7 +150,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
     color.rgb += atmos_color;
 
     // exposure:
-    color.rgb = 1.0 - exp(-oe_sky_exposure * color.rgb);
+    color.rgb = 1.0 - exp(-oe_sky_exposure*0.33 * color.rgb);
 
     // final contrast:
     contrast = clamp(contrast, 1.0, 3.0);

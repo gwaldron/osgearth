@@ -131,7 +131,7 @@ namespace osgEarth
 
                         _skyNode->setDateTime(DateTime(_year, _month, _day, _hour));
 
-                        if (ImGui::SliderFloat("Exposure", &_exposure, 1.0f, 8.0f)) dirtySettings();
+                        if (ImGui::SliderFloat("Exposure", &_exposure, 1.0f, 10.0f)) dirtySettings();
                         _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_sky_exposure", osg::Uniform::FLOAT)->set(_exposure);
 
                         if (ImGui::SliderFloat("Contrast", &_contrast, 0.5f, 4.0f)) dirtySettings();

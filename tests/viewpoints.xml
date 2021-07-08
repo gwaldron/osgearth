@@ -1,5 +1,17 @@
 <?xml version="1.0" ?>
 <viewpoints time="1.5">
+
+<viewpoint>
+  <heading>96.1243</heading>
+  <pitch>-15.5324</pitch>
+  <range>14473.7m</range>
+  <long>-113.6022189437985</long>
+  <lat>35.83047557479316</lat>
+  <height>794.6655868506059</height>
+  <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+</viewpoint>
+
+
     <viewpoint name="Fork in the Road">
         <heading>14.0626</heading>
         <pitch>-38.0095</pitch>

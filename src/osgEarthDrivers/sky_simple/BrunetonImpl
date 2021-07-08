@@ -1,0 +1,134 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osg/Drawable>
+#include <osg/Texture2D>
+#include <osg/Texture3D>
+#include "eb_atmosphere_model.h"
+
+namespace Bruneton
+{
+    class ComputeDrawable : public osg::Drawable
+    {
+    public:
+        ComputeDrawable(
+            float bottom_radius,
+            float top_radius,
+            bool high_quality = false);
+
+        // runs the pre-computation
+        void drawImplementation(osg::RenderInfo& ri) const override;
+
+        bool isReady() const {
+            return _model != nullptr;
+        }
+
+        // builds the rendering stateset
+        void populateRenderingStateSet(
+            osg::StateSet* ss,
+            bool is_ground, //true=ground, false=sky
+            int transmittance_unit,
+            int scattering_unit,
+            int irradiance_unit,
+            int single_mie_scattering_unit = -1) const;
+
+        mutable std::unique_ptr<dw::AtmosphereModel> _model;
+        mutable osg::Vec3f _white_point;
+
+        bool _use_half_precision;
+        float _sun_angle;
+        bool _use_constant_solar_spectrum;
+        bool _use_ozone;
+        bool _use_combined_textures;
+        bool _use_luminance;
+        bool _do_white_balance;
+
+        float _sun_angular_radius;
+        float _bottom_radius;
+        float _top_radius;
+        float _length_unit_in_meters;
+
+        bool _best_quality;
+
+        mutable osg::ref_ptr<osg::Texture>
+            _transmittance_tex,
+            _scattering_tex,
+            _irradiance_tex,
+            _single_mie_scattering_tex;
+
+    private:
+        osg::Texture* makeOSGTexture(dw::Texture*) const;
+
+    };
+
+    // Wraps a raw GL texture in an osg texture
+    struct WrapTexture2D : osg::Texture2D {
+        WrapTexture2D(dw::Texture2D* t) : osg::Texture2D(), _internal(t) {
+            setFilter(MIN_FILTER, LINEAR);
+            setWrap(WRAP_S, CLAMP_TO_EDGE);
+            setWrap(WRAP_T, CLAMP_TO_EDGE);
+            setWrap(WRAP_R, CLAMP_TO_EDGE);
+        }
+        void apply(osg::State& state) const override {
+            if (getTextureObject(state.getContextID()) == nullptr) {
+                const_cast<WrapTexture2D*>(this)->setTextureObject(state.getContextID(),
+                    new osg::Texture::TextureObject(
+                        const_cast<WrapTexture2D*>(this),
+                        _internal->id(),
+                        _internal->target(),
+                        _internal->mip_levels(),
+                        _internal->internal_format(),
+                        _internal->width(),
+                        _internal->height(),
+                        1, // depth,
+                        0)); // border
+            }
+            osg::Texture2D::apply(state);
+        }
+        dw::Texture2D* _internal;
+    };
+
+    // Wraps a raw GL texture in an osg texture
+    struct WrapTexture3D : osg::Texture3D {
+        WrapTexture3D(dw::Texture3D* t) : osg::Texture3D(), _internal(t) {
+            setFilter(MIN_FILTER, LINEAR);
+            setWrap(WRAP_S, CLAMP_TO_EDGE);
+            setWrap(WRAP_T, CLAMP_TO_EDGE);
+            setWrap(WRAP_R, CLAMP_TO_EDGE);
+        }
+        void apply(osg::State& state) const override {
+            if (getTextureObject(state.getContextID()) == nullptr) {
+                const_cast<WrapTexture3D*>(this)->setTextureObject(state.getContextID(),
+                    new osg::Texture::TextureObject(
+                        const_cast<WrapTexture3D*>(this),
+                        _internal->id(),
+                        _internal->target(),
+                        _internal->mip_levels(),
+                        _internal->internal_format(),
+                        _internal->width(),
+                        _internal->height(),
+                        _internal->depth(), // depth,
+                        0)); // border
+            }
+            osg::Texture3D::apply(state);
+        }
+        dw::Texture3D* _internal;
+    };
+} // namespace Bruneton

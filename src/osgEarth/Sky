@@ -31,6 +31,7 @@
 #include <osg/Group>
 #include <osg/Uniform>
 #include <osg/View>
+#include <osg/ArgumentParser>
 #include <osgDB/ReaderWriter>
 
 namespace osgDB {
@@ -52,29 +53,55 @@ namespace osgEarth
             COORDSYS_ECI
         };
 
+        enum Quality
+        {
+            QUALITY_UNSET,
+            QUALITY_DEFAULT,
+            QUALITY_LOW,
+            QUALITY_MEDIUM,
+            QUALITY_HIGH,
+            QUALITY_BEST
+        };
+
+        static Quality parseQuality(osg::ArgumentParser& args) {
+            return
+                args.read("--sky") ? QUALITY_DEFAULT :
+                args.read("--sky-low") ? QUALITY_LOW :
+                args.read("--sky-medium") ? QUALITY_MEDIUM :
+                args.read("--sky-high") ? QUALITY_HIGH :
+                args.read("--sky-best") ? QUALITY_BEST :
+                QUALITY_UNSET;
+        }
+
         //! Coordinate system for whole-earth maps (default = ECEF)
-        optional<int>& coordinateSystem() { return _coordsys; }
-        const optional<int>& coordinateSystem() const { return _coordsys; }
+        OE_OPTION(CoordinateSystem, coordinateSystem);
 
         /** Time of day - Hours [0..24] component of DateTime */
-        optional<float>& hours() { return _hours; }
-        const optional<float>& hours() const { return _hours; }
+        OE_OPTION(float, hours);
 
-        /** Ambient light level [0..1] */
-        optional<float>& ambient() { return _ambient; }
-        const optional<float>& ambient() const { return _ambient; }
+        OE_OPTION(float, ambient);
+        OE_OPTION(Quality, quality);
 
     public:
         SkyOptions( const ConfigOptions& options =ConfigOptions() ) : DriverConfigOptions(options) {
-            _coordsys.init(COORDSYS_ECEF);
+            coordinateSystem().setDefault(COORDSYS_ECEF);
+            quality().setDefault(QUALITY_DEFAULT);
+            ambient().setDefault(0.033f);
+            hours().setDefault(12.0f);
             fromConfig(_conf);
         }
         virtual ~SkyOptions() { }
         virtual Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
-            conf.set("coordsys", _coordsys);
-            conf.set("hours", _hours);
-            conf.set("ambient", _ambient);
+            conf.set("coordsys", "ecef", coordinateSystem(), COORDSYS_ECEF);
+            conf.set("coordsys", "eci", coordinateSystem(), COORDSYS_ECI);
+            conf.set("hours", hours());
+            conf.set("ambient", ambient());
+            conf.set("quality", "default", quality(), QUALITY_DEFAULT);
+            conf.set("quality", "low", quality(), QUALITY_LOW);
+            conf.set("quality", "medium", quality(), QUALITY_MEDIUM);
+            conf.set("quality", "high", quality(), QUALITY_HIGH);
+            conf.set("quality", "best", quality(), QUALITY_BEST);
             return conf;
         }
 
@@ -86,14 +113,16 @@ namespace osgEarth
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.get("coordsys", _coordsys);
-            conf.get("hours", _hours);
-            conf.get("ambient", _ambient);
+            conf.get("coordsys", "ecef", coordinateSystem(), COORDSYS_ECEF);
+            conf.get("coordsys", "eci", coordinateSystem(), COORDSYS_ECI);
+            conf.get("hours", hours());
+            conf.get("ambient", ambient());
+            conf.get("quality", "default", quality(), QUALITY_DEFAULT);
+            conf.get("quality", "low", quality(), QUALITY_LOW);
+            conf.get("quality", "medium", quality(), QUALITY_MEDIUM);
+            conf.get("quality", "high", quality(), QUALITY_HIGH);
+            conf.get("quality", "best", quality(), QUALITY_BEST);
         }
-
-        optional<int> _coordsys;
-        optional<float> _hours;
-        optional<float> _ambient;
     };
 
 

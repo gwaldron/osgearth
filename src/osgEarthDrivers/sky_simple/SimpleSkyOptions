@@ -35,7 +35,7 @@ namespace osgEarth { namespace SimpleSky
         SimpleSkyOptions(const ConfigOptions& options =ConfigOptions()) :
           SkyOptions(options),
           _atmosphericLighting (true),
-          _exposure            (3.3f),
+          _exposure            (10.0f),
           _daytimeAmbientBoost (5.0f),
           _allowWireframe      (false),
           _starSize            (14.0f),
@@ -45,7 +45,8 @@ namespace osgEarth { namespace SimpleSky
           _moonVisible(true),
           _starsVisible(true),
           _atmosphereVisible(true),
-          _pbr(true)
+          _pbr(true),
+          _eb(false)
         {
             setDriver( "simple" );
             fromConfig( _conf );
@@ -109,6 +110,9 @@ namespace osgEarth { namespace SimpleSky
         optional<bool>& usePBR() { return _pbr; }
         const optional<bool>& usePBR() const { return _pbr; }
 
+        optional<bool>& useEB() { return _eb; }
+        const optional<bool>& useEB() const { return _eb; }
+
     public:
         Config getConfig() const {
             Config conf = SkyOptions::getConfig();
@@ -125,6 +129,7 @@ namespace osgEarth { namespace SimpleSky
             conf.set("moon_scale", _moonScale);
             conf.set("moon_image", _moonImageURI);
             conf.set("pbr", _pbr);
+            conf.set("eb", _eb);
             return conf;
         }
 
@@ -149,6 +154,7 @@ namespace osgEarth { namespace SimpleSky
             conf.get("moon_scale", _moonScale);
             conf.get("moon_image", _moonImageURI);
             conf.get("pbr", _pbr);
+            conf.get("eb", _eb);
         }
 
         optional<bool>        _atmosphericLighting;
@@ -164,6 +170,7 @@ namespace osgEarth { namespace SimpleSky
         optional<float>       _moonScale;
         optional<URI>         _moonImageURI;
         optional<bool>        _pbr;
+        optional<bool> _eb;
     };
 
 } } // namespace osgEarth::SimpleSky

@@ -381,42 +381,30 @@ SimpleSkyNode::traverse( osg::NodeVisitor& nv )
         // If the Bruneton compute shaders are finished, set up the rendering statesets.
         if (_useBruneton &&
             !_eb_initialized &&
-            _eb_drawable.valid() && 
-            static_cast<Bruneton::ComputeDrawable*>(_eb_drawable.get())->isReady())
+            _eb_drawable.valid())
         {
-            TerrainEngineNode* terrain = findTopMostNodeOfType<TerrainEngineNode>(this);
-            if (terrain)
+            auto eb = static_cast<Bruneton::ComputeDrawable*>(_eb_drawable.get());
+            if (eb->isReady())
             {
-                for (int i = 0; i < 4; ++i)
+                TerrainEngineNode* terrain = osgEarth::findTopMostNodeOfType<TerrainEngineNode>(this);
+                if (terrain)
                 {
-                    if (!terrain->getResources()->reserveTextureImageUnit(_eb_res[i], "SimpleSkyNode"))
+                    bool ok = eb->populateRenderingStateSets(
+                        getOrCreateStateSet(),
+                        _atmosphere->getOrCreateStateSet(),
+                        terrain->getResources());
+
+                    _eb_initialized = true;
+
+                    if (!ok)
                     {
-                        OE_WARN << LC << "Failed to reverse texture image units" << std::endl;
+                        OE_WARN << LC << "Bruneton lighting failed to initialize" << std::endl;
+                        _eb_drawable = nullptr;
                     }
                 }
+
+                ADJUST_UPDATE_TRAV_COUNT(this, -1);
             }
-
-            auto eb = static_cast<Bruneton::ComputeDrawable*>(_eb_drawable.get());
-
-            eb->populateRenderingStateSet(
-                getOrCreateStateSet(),
-                true, // is_ground
-                _eb_res[0].unit(),
-                _eb_res[1].unit(),
-                _eb_res[2].unit(),
-                _eb_res[3].unit());
-
-            eb->populateRenderingStateSet(
-                _atmosphere->getOrCreateStateSet(),
-                false, // sky
-                _eb_res[0].unit(),
-                _eb_res[1].unit(),
-                _eb_res[2].unit(),
-                _eb_res[3].unit());
-
-            _eb_initialized = true;
-
-            ADJUST_UPDATE_TRAV_COUNT(this, -1);
         }
     }
 

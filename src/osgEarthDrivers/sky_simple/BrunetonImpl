@@ -21,6 +21,7 @@
 #include <osg/Drawable>
 #include <osg/Texture2D>
 #include <osg/Texture3D>
+#include <osgEarth/TerrainResources>
 #include "eb_atmosphere_model.h"
 
 /**
@@ -73,14 +74,11 @@ namespace Bruneton
             return _model != nullptr;
         }
 
-        // builds the rendering stateset
-        void populateRenderingStateSet(
-            osg::StateSet* ss,
-            bool is_ground, //true=ground, false=sky
-            int transmittance_unit,
-            int scattering_unit,
-            int irradiance_unit,
-            int single_mie_scattering_unit = -1) const;
+        // builds the rendering statesets
+        bool populateRenderingStateSets(
+            osg::StateSet* groundStateSet,
+            osg::StateSet* skyStateSet,
+            osgEarth::TerrainResources* resources) const;
 
         mutable std::unique_ptr<dw::AtmosphereModel> _model;
         mutable osg::Vec3f _white_point;
@@ -109,6 +107,7 @@ namespace Bruneton
     private:
         osg::Texture* makeOSGTexture(dw::Texture*) const;
 
+        mutable osgEarth::TextureImageUnitReservation _reservation[4];
     };
 
     // Wraps a raw GL texture in an osg texture

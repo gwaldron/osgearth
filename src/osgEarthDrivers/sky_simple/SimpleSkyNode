@@ -109,7 +109,6 @@ namespace osgEarth { namespace SimpleSky
 
         mutable Mutex _eb_mutex;
         mutable osg::ref_ptr<osg::Drawable> _eb_drawable;
-        TextureImageUnitReservation _eb_res[4];
         bool _eb_initialized;
 
         void construct();

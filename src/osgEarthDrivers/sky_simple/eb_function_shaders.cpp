@@ -1989,12 +1989,19 @@ rendering_functions = R"(
 #ifdef COMBINED_SCATTERING_TEXTURES
 vec3 GetExtrapolatedSingleMieScattering(vec4 scattering)
 {
-	if (scattering.r == 0.0)
+	if (scattering.r <= 0.0)
 		return vec3(0, 0, 0);
 
-	return scattering.rgb * scattering.a / scattering.r *
+    // GW- modified this "unpacking" function because the
+    // original causes occaisonal rendering artifacts
+#if 1
+    return vec3(scattering.a) / scattering.rgb;
+#else
+	return scattering.rgb *
+        (scattering.a / scattering.r) *
 		(rayleigh_scattering.r / mie_scattering.r) *
 		(mie_scattering / rayleigh_scattering);
+#endif
 }
 #endif
 

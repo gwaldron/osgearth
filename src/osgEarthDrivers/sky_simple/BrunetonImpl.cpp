@@ -136,7 +136,7 @@ ComputeDrawable::drawImplementation(osg::RenderInfo& ri) const
         ground_albedo.push_back(kGroundAlbedo);
     }
 
-    _model = std::make_unique<dw::AtmosphereModel>();
+    _model = std::unique_ptr<dw::AtmosphereModel>(new dw::AtmosphereModel);
 
     _model->m_half_precision = _use_half_precision;
     _model->m_combine_scattering_textures = _use_combined_textures;

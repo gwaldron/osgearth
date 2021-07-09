@@ -94,6 +94,11 @@ void AtmosphereModel::initialize(int num_scattering_orders)
     if (m_combine_scattering_textures)
         defines.push_back("COMBINED_SCATTERING_TEXTURES");
 
+    if (m_half_precision)
+        defines.push_back("INTERNAL_FORMAT rgba16f");
+    else
+        defines.push_back("INTERNAL_FORMAT rgba32f");
+
 #if 0 // original code for reference
     if (!dw::utility::create_compute_program("shader/clear_2d_cs.glsl", &m_clear_2d_shader, &m_clear_2d_program))
         DW_LOG_ERROR("Failed to load shaders");

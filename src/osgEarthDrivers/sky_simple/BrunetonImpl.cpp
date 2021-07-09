@@ -15,7 +15,7 @@ ComputeDrawable::ComputeDrawable(
 
     osg::Drawable(),
 
-    // atmosphere bounds
+    // atmosphere upper and lower bounds
     _bottom_radius(bottom_radius),
     _top_radius(top_radius),
 
@@ -24,19 +24,23 @@ ComputeDrawable::ComputeDrawable(
     // higher values make no visible difference
     _length_unit_in_meters(1.0f),
 
-    // half_prec=true does not work - the scattering texture does not generate properly:
+    // half_prec=true does not work; it results in rendering artifacts.
     _use_half_precision(false),
 
-    // combined=true is 50% faster, BUT introduces an annoying rendering anomaly.
-    // would be nice to figure that out.
-    _use_combined_textures(true),
+    // combined=true is 50% faster and uses one fewer texture.
+    // But... it had rendering artifacts. Something about the
+    // GetExtrapolatedSingleMieScattering shader method is not unpacking
+    // the mie scattering values properly
+    _use_combined_textures(false),
 
-    _use_constant_solar_spectrum(true),
+    // false = use the real solar spectrum
+    _use_constant_solar_spectrum(false),
+
     _use_ozone(true),
     _use_luminance(true),
     _do_white_balance(false),
 
-    // true => per-fragment calculations; slower.
+    // false => per-vertex radiance; true => per-fragment radiance (slower)
     _best_quality(best_quality)
 {
     setCullingActive(false);

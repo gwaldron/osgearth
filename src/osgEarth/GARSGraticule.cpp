@@ -383,11 +383,7 @@ GARSGraticule::init()
     options().style()->getOrCreateSymbol<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
     options().style()->getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
-#ifdef USE_PAGING_MANAGER
-    _root = new PagingManager();
-#else
     _root = new osg::Group();
-#endif
 }
 
 void

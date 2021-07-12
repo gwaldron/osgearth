@@ -253,37 +253,7 @@ namespace
          , _geomCell(rhs._geomCell)
          , _geomGrid(rhs._geomGrid)
         { }
-    };
-
-    struct LocalRoot : public osg::Group
-    {
-#ifdef DEBUG_MODE
-        void traverse(osg::NodeVisitor& nv)
-        {
-            if (nv.getVisitorType() == nv.CULL_VISITOR)
-            {
-                osg::UserDataContainer* udc = nv.getOrCreateUserDataContainer();
-                LocalStats* stats = new LocalStats();
-                stats->setName("stats");
-                unsigned index = udc->addUserObject(stats);
-
-                osg::Group::traverse(nv);
-
-                Registry::instance()->startActivity("GZDGeom", Stringify() << stats->_gzdNode);
-                Registry::instance()->startActivity("GZDText", Stringify() << stats->_gzdText);
-                Registry::instance()->startActivity("SQIDText", Stringify() << stats->_sqidText);
-                Registry::instance()->startActivity("GeomCell", Stringify() << stats->_geomCell);
-                Registry::instance()->startActivity("GeomGrid", Stringify() << stats->_geomGrid);
-
-                udc->removeUserObject(index);
-            }
-            else
-            {
-                osg::Group::traverse(nv);
-            }
-        }
-#endif
-    };
+    };    
 
 #define STATS(nv) (dynamic_cast<LocalStats*>(nv.getUserDataContainer()->getUserObject("stats")))
 }
@@ -332,7 +302,7 @@ MGRSGraticule::init()
     // force it to render after the terrain.
     ss->setRenderBinDetails(1, "RenderBin");
 
-    _root = new LocalRoot();
+    _root = new osg::Group;
 
     GLUtils::setLighting(_root->getOrCreateStateSet(), osg::StateAttribute::OFF);
 

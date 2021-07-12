@@ -15,7 +15,7 @@ ComputeDrawable::ComputeDrawable(
 
     osg::Drawable(),
 
-    // atmosphere bounds
+    // atmosphere upper and lower bounds
     _bottom_radius(bottom_radius),
     _top_radius(top_radius),
 
@@ -24,19 +24,23 @@ ComputeDrawable::ComputeDrawable(
     // higher values make no visible difference
     _length_unit_in_meters(1.0f),
 
-    // half_prec=true does not work - the scattering texture does not generate properly:
+    // half_prec=true does not work; it results in rendering artifacts.
     _use_half_precision(false),
 
-    // combined=true is 50% faster, BUT introduces an annoying rendering anomaly.
-    // would be nice to figure that out.
+    // combined=true is 50% faster and uses one fewer texture.
+    // But... it had rendering artifacts. Something about the
+    // GetExtrapolatedSingleMieScattering shader method is not unpacking
+    // the mie scattering values properly
     _use_combined_textures(false),
 
-    _use_constant_solar_spectrum(true),
+    // false = use the real solar spectrum
+    _use_constant_solar_spectrum(false),
+
     _use_ozone(true),
     _use_luminance(true),
     _do_white_balance(false),
 
-    // true => per-fragment calculations; slower.
+    // false => per-vertex radiance; true => per-fragment radiance (slower)
     _best_quality(best_quality)
 {
     setCullingActive(false);
@@ -136,7 +140,7 @@ ComputeDrawable::drawImplementation(osg::RenderInfo& ri) const
         ground_albedo.push_back(kGroundAlbedo);
     }
 
-    _model = std::make_unique<dw::AtmosphereModel>();
+    _model = std::unique_ptr<dw::AtmosphereModel>(new dw::AtmosphereModel);
 
     _model->m_half_precision = _use_half_precision;
     _model->m_combine_scattering_textures = _use_combined_textures;
@@ -183,154 +187,181 @@ ComputeDrawable::drawImplementation(osg::RenderInfo& ri) const
     ri.getState()->apply();
 }
 
-void
-ComputeDrawable::populateRenderingStateSet(
-    osg::StateSet* ss,
-    bool is_ground,
-    int transmittance_unit,
-    int scattering_unit,
-    int irradiance_unit,
-    int single_mie_scattering_unit) const
+bool
+ComputeDrawable::populateRenderingStateSets(
+    osg::StateSet* groundStateSet,
+    osg::StateSet* skyStateSet,
+    osgEarth::TerrainResources* resources) const
 {
+    OE_SOFT_ASSERT_AND_RETURN(groundStateSet != nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(skyStateSet != nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(resources != nullptr, __func__, false);
+
+    if (!resources->reserveTextureImageUnit(_reservation[0], "Sky transmittance"))
+        return false;
+
+    if (!resources->reserveTextureImageUnit(_reservation[1], "Sky scattering"))
+        return false;
+
+    if (!resources->reserveTextureImageUnit(_reservation[2], "Sky irradiance"))
+        return false;
+
+    if (!_model->m_combine_scattering_textures)
+    {
+        if (!resources->reserveTextureImageUnit(_reservation[3], "Sky single mie scattering"))
+            return false;
+    }
+
     if (!_transmittance_tex.valid())
     {
         _transmittance_tex = makeOSGTexture(_model->m_transmittance_texture);
         _scattering_tex = makeOSGTexture(_model->m_scattering_texture);
         _irradiance_tex = makeOSGTexture(_model->m_irradiance_texture);
         if (!_model->m_combine_scattering_textures)
+        {
             _single_mie_scattering_tex = makeOSGTexture(_model->m_optional_single_mie_scattering_texture);
+        }
     }
 
-    ss->addUniform(new osg::Uniform("transmittance_texture", transmittance_unit));
-    ss->setTextureAttributeAndModes(transmittance_unit, _transmittance_tex, 1);
-
-    ss->addUniform(new osg::Uniform("scattering_texture", scattering_unit));
-    ss->setTextureAttributeAndModes(scattering_unit, _scattering_tex, 1);
-
-    ss->addUniform(new osg::Uniform("irradiance_texture", irradiance_unit));
-    ss->setTextureAttributeAndModes(irradiance_unit, _irradiance_tex, 1);
-
-    if (!_model->m_combine_scattering_textures)
+    for (int i = 0; i < 2; ++i)
     {
-        ss->addUniform(new osg::Uniform("single_mie_scattering_texture", single_mie_scattering_unit));
-        ss->setTextureAttributeAndModes(single_mie_scattering_unit, _single_mie_scattering_tex, 1);
-    }
+        osg::StateSet* ss = (i == 0 ? groundStateSet : skyStateSet);
 
-    ss->addUniform(new osg::Uniform("TRANSMITTANCE_TEXTURE_WIDTH", dw::CONSTANTS::TRANSMITTANCE_WIDTH));
-    ss->addUniform(new osg::Uniform("TRANSMITTANCE_TEXTURE_HEIGHT", dw::CONSTANTS::TRANSMITTANCE_HEIGHT));
-    ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_R_SIZE", dw::CONSTANTS::SCATTERING_R));
-    ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_MU_SIZE", dw::CONSTANTS::SCATTERING_MU));
-    ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_MU_S_SIZE", dw::CONSTANTS::SCATTERING_MU_S));
-    ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_NU_SIZE", dw::CONSTANTS::SCATTERING_NU));
-    ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_WIDTH", dw::CONSTANTS::SCATTERING_WIDTH));
-    ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_HEIGHT", dw::CONSTANTS::SCATTERING_HEIGHT));
-    ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_DEPTH", dw::CONSTANTS::SCATTERING_DEPTH));
-    ss->addUniform(new osg::Uniform("IRRADIANCE_TEXTURE_WIDTH", dw::CONSTANTS::IRRADIANCE_WIDTH));
-    ss->addUniform(new osg::Uniform("IRRADIANCE_TEXTURE_HEIGHT", dw::CONSTANTS::IRRADIANCE_HEIGHT));
+        if (ss == nullptr)
+            continue;
+        
+        ss->addUniform(new osg::Uniform("transmittance_texture", _reservation[0].unit()));
+        ss->setTextureAttributeAndModes(_reservation[0].unit(), _transmittance_tex, 1);
 
-    ss->addUniform(new osg::Uniform("sun_angular_radius", (float)_model->m_sun_angular_radius));
-    ss->addUniform(new osg::Uniform("bottom_radius", (float)(_model->m_bottom_radius / _model->m_length_unit_in_meters)));
-    ss->addUniform(new osg::Uniform("top_radius", (float)(_model->m_top_radius / _model->m_length_unit_in_meters)));
-    ss->addUniform(new osg::Uniform("mie_phase_function_g", (float)_model->m_mie_phase_function_g));
-    ss->addUniform(new osg::Uniform("mu_s_min", (float)cos(_model->m_max_sun_zenith_angle)));
+        ss->addUniform(new osg::Uniform("scattering_texture", _reservation[1].unit()));
+        ss->setTextureAttributeAndModes(_reservation[1].unit(), _scattering_tex, 1);
 
-    glm::vec3 sky_spectral_radiance_to_luminance, sun_spectral_radiance_to_luminance;
-    _model->sky_sun_radiance_to_luminance(sky_spectral_radiance_to_luminance, sun_spectral_radiance_to_luminance);
+        ss->addUniform(new osg::Uniform("irradiance_texture", _reservation[2].unit()));
+        ss->setTextureAttributeAndModes(_reservation[2].unit(), _irradiance_tex, 1);
 
-    ss->addUniform(new osg::Uniform("SKY_SPECTRAL_RADIANCE_TO_LUMINANCE", sky_spectral_radiance_to_luminance));
-    ss->addUniform(new osg::Uniform("SUN_SPECTRAL_RADIANCE_TO_LUMINANCE", sun_spectral_radiance_to_luminance));
+        if (!_model->m_combine_scattering_textures)
+        {
+            ss->addUniform(new osg::Uniform("single_mie_scattering_texture", _reservation[3].unit()));
+            ss->setTextureAttributeAndModes(_reservation[3].unit(), _single_mie_scattering_tex, 1);
+        }
 
-    double lambdas[] = { kLambdaR, kLambdaG, kLambdaB };
+        ss->addUniform(new osg::Uniform("TRANSMITTANCE_TEXTURE_WIDTH", dw::CONSTANTS::TRANSMITTANCE_WIDTH));
+        ss->addUniform(new osg::Uniform("TRANSMITTANCE_TEXTURE_HEIGHT", dw::CONSTANTS::TRANSMITTANCE_HEIGHT));
+        ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_R_SIZE", dw::CONSTANTS::SCATTERING_R));
+        ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_MU_SIZE", dw::CONSTANTS::SCATTERING_MU));
+        ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_MU_S_SIZE", dw::CONSTANTS::SCATTERING_MU_S));
+        ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_NU_SIZE", dw::CONSTANTS::SCATTERING_NU));
+        ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_WIDTH", dw::CONSTANTS::SCATTERING_WIDTH));
+        ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_HEIGHT", dw::CONSTANTS::SCATTERING_HEIGHT));
+        ss->addUniform(new osg::Uniform("SCATTERING_TEXTURE_DEPTH", dw::CONSTANTS::SCATTERING_DEPTH));
+        ss->addUniform(new osg::Uniform("IRRADIANCE_TEXTURE_WIDTH", dw::CONSTANTS::IRRADIANCE_WIDTH));
+        ss->addUniform(new osg::Uniform("IRRADIANCE_TEXTURE_HEIGHT", dw::CONSTANTS::IRRADIANCE_HEIGHT));
 
-    glm::vec3 solar_irradiance = _model->to_vector(_model->m_wave_lengths, _model->m_solar_irradiance, lambdas, 1.0);
-    ss->addUniform(new osg::Uniform("solar_irradiance", solar_irradiance));
+        ss->addUniform(new osg::Uniform("sun_angular_radius", (float)_model->m_sun_angular_radius));
+        ss->addUniform(new osg::Uniform("bottom_radius", (float)(_model->m_bottom_radius / _model->m_length_unit_in_meters)));
+        ss->addUniform(new osg::Uniform("top_radius", (float)(_model->m_top_radius / _model->m_length_unit_in_meters)));
+        ss->addUniform(new osg::Uniform("mie_phase_function_g", (float)_model->m_mie_phase_function_g));
+        ss->addUniform(new osg::Uniform("mu_s_min", (float)cos(_model->m_max_sun_zenith_angle)));
 
-    glm::vec3 rayleigh_scattering = _model->to_vector(_model->m_wave_lengths, _model->m_rayleigh_scattering, lambdas, _model->m_length_unit_in_meters);
-    ss->addUniform(new osg::Uniform("rayleigh_scattering", rayleigh_scattering));
+        glm::vec3 sky_spectral_radiance_to_luminance, sun_spectral_radiance_to_luminance;
+        _model->sky_sun_radiance_to_luminance(sky_spectral_radiance_to_luminance, sun_spectral_radiance_to_luminance);
 
-    glm::vec3 mie_scattering = _model->to_vector(_model->m_wave_lengths, _model->m_mie_scattering, lambdas, _model->m_length_unit_in_meters);
-    ss->addUniform(new osg::Uniform("mie_scattering", mie_scattering));
+        ss->addUniform(new osg::Uniform("SKY_SPECTRAL_RADIANCE_TO_LUMINANCE", sky_spectral_radiance_to_luminance));
+        ss->addUniform(new osg::Uniform("SUN_SPECTRAL_RADIANCE_TO_LUMINANCE", sun_spectral_radiance_to_luminance));
 
-    ss->addUniform(new osg::Uniform("sun_size", osg::Vec2f(tan(_model->m_sun_angular_radius), cos(_model->m_sun_angular_radius))));
+        double lambdas[] = { kLambdaR, kLambdaG, kLambdaB };
 
-    Bruneton::Shaders shaders;
-    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+        glm::vec3 solar_irradiance = _model->to_vector(_model->m_wave_lengths, _model->m_solar_irradiance, lambdas, 1.0);
+        ss->addUniform(new osg::Uniform("solar_irradiance", solar_irradiance));
 
-    std::string common =
-        shaders.header +
-        shaders.constants +
-        shaders.uniforms +
-        shaders.utility +
-        shaders.transmittance_functions +
-        shaders.scattering_functions +
-        shaders.irradiance_functions +
-        shaders.rendering_functions +
-        shaders.radiance_api;
+        glm::vec3 rayleigh_scattering = _model->to_vector(_model->m_wave_lengths, _model->m_rayleigh_scattering, lambdas, _model->m_length_unit_in_meters);
+        ss->addUniform(new osg::Uniform("rayleigh_scattering", rayleigh_scattering));
 
-    vp->setFunction(
-        "atmos_eb_ground_init_vert",
-        shaders.ground_vert_init,
-        ShaderComp::LOCATION_VERTEX_MODEL,
-        0.0f);
+        glm::vec3 mie_scattering = _model->to_vector(_model->m_wave_lengths, _model->m_mie_scattering, lambdas, _model->m_length_unit_in_meters);
+        ss->addUniform(new osg::Uniform("mie_scattering", mie_scattering));
 
-    if (is_ground)
-    {
-        std::string vert =
-            common +
-            (_best_quality ? shaders.ground_best_vert : shaders.ground_fast_vert);
+        ss->addUniform(new osg::Uniform("sun_size", osg::Vec2f(tan(_model->m_sun_angular_radius), cos(_model->m_sun_angular_radius))));
 
-        std::string frag =
-            common +
-            shaders.pbr +
-            (_best_quality ? shaders.ground_best_frag : shaders.ground_fast_frag);
+        Bruneton::Shaders shaders;
+        VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+
+        std::string common =
+            shaders.header +
+            shaders.constants +
+            shaders.uniforms +
+            shaders.utility +
+            shaders.transmittance_functions +
+            shaders.scattering_functions +
+            shaders.irradiance_functions +
+            shaders.rendering_functions +
+            shaders.radiance_api;
 
         vp->setFunction(
-            "atmos_eb_ground_render_vert",
-            vert,
-            ShaderComp::LOCATION_VERTEX_VIEW,
-            1.1f);
+            "atmos_eb_ground_init_vert",
+            shaders.ground_vert_init,
+            ShaderComp::LOCATION_VERTEX_MODEL,
+            0.0f);
 
-        vp->setFunction(
-            "atmos_eb_ground_render_frag",
-            frag,
-            ShaderComp::LOCATION_FRAGMENT_LIGHTING,
-            0.8f);
-    }
-    else
-    {
-        std::string vert =
-            common + shaders.sky_vert;
+        if (i == 0) // ground
+        {
+            std::string vert =
+                common +
+                (_best_quality ? shaders.ground_best_vert : shaders.ground_fast_vert);
+
+            std::string frag =
+                common +
+                shaders.pbr +
+                (_best_quality ? shaders.ground_best_frag : shaders.ground_fast_frag);
+
+            vp->setFunction(
+                "atmos_eb_ground_render_vert",
+                vert,
+                ShaderComp::LOCATION_VERTEX_VIEW,
+                1.1f);
+
+            vp->setFunction(
+                "atmos_eb_ground_render_frag",
+                frag,
+                ShaderComp::LOCATION_FRAGMENT_LIGHTING,
+                0.8f);
+        }
+        else // sky
+        {
+            std::string vert =
+                common + shaders.sky_vert;
             //(_high_quality ? shaders.sky_vert : shaders.sky_vert_fast);
 
-        std::string frag =
-            common + shaders.sky_frag;
+            std::string frag =
+                common + shaders.sky_frag;
             //(_high_quality ? shaders.sky_frag : shaders.sky_frag_fast);
 
-        vp->setFunction(
-            "atmos_eb_sky_render_vert",
-            vert,
-            ShaderComp::LOCATION_VERTEX_VIEW,
-            1.1f);
+            vp->setFunction(
+                "atmos_eb_sky_render_vert",
+                vert,
+                ShaderComp::LOCATION_VERTEX_VIEW,
+                1.1f);
 
-        vp->setFunction(
-            "atmos_eb_sky_render_frag",
-            frag,
-            ShaderComp::LOCATION_FRAGMENT_LIGHTING,
-            0.8f);
+            vp->setFunction(
+                "atmos_eb_sky_render_frag",
+                frag,
+                ShaderComp::LOCATION_FRAGMENT_LIGHTING,
+                0.8f);
 
-        vp->setInheritShaders(false);
+            vp->setInheritShaders(false);
+        }
+
+        if (_model->m_combine_scattering_textures)
+            ss->setDefine("COMBINED_SCATTERING_TEXTURES");
+
+        if (_model->m_use_luminance == dw::NONE)
+            ss->setDefine("RADIANCE_API_ENABLED");
+
+        ss->setDefine(
+            "UNIT_LENGTH_METERS_INVERSE",
+            std::to_string(1.0 / _model->m_length_unit_in_meters));
     }
 
-    if (_model->m_combine_scattering_textures)
-
-        ss->setDefine("COMBINED_SCATTERING_TEXTURES");
-
-    if (_model->m_use_luminance == dw::NONE)
-        ss->setDefine("RADIANCE_API_ENABLED");
-
-    ss->setDefine(
-        "UNIT_LENGTH_METERS_INVERSE", 
-        std::to_string(1.0/_model->m_length_unit_in_meters));
+    return true;
 }
 
 osg::Texture*

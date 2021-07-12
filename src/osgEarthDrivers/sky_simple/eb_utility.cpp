@@ -308,7 +308,17 @@ namespace dw
 
         bool create_compute_program_from_string(const std::string& input, Shader** shader, Program** program, std::vector<std::string> defines)
         {
-            shader[0] = new dw::Shader(GL_COMPUTE_SHADER, input);
+            std::string buf;
+
+            if (defines.size() > 0)
+            {
+                for (auto define : defines)
+                    buf += "#define " + define + "\n";
+                buf += "\n";
+            }
+            buf += input;
+
+            shader[0] = new dw::Shader(GL_COMPUTE_SHADER, buf);
 
             if (shader[0] && shader[0]->compiled())
             {

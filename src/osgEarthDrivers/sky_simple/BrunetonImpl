@@ -21,8 +21,42 @@
 #include <osg/Drawable>
 #include <osg/Texture2D>
 #include <osg/Texture3D>
+#include <osgEarth/TerrainResources>
 #include "eb_atmosphere_model.h"
 
+/**
+ * OSG "connector" for the "Precomputed Atmospheric Scattering" 
+ * implemenentation by Eric Bruneton and Fabrice Neyret.
+ *
+ * References:
+ *
+ * Original paper: https://hal.inria.fr/inria-00288758/en
+ * Reference implementation: https://github.com/ebruneton/precomputed_atmospheric_scattering
+ * Documentation: https://ebruneton.github.io/precomputed_atmospheric_scattering
+ * Unity implementation: https://github.com/Scrawk/Brunetons-Improved-Atmospheric-Scattering
+ * OpenGL/GLSL port of Unity implementation: https://github.com/diharaw/BrunetonSkyModel
+ *
+ * This implementation is based on the final reference (diharaw).
+ * Copyright notices are found throughout the code in the appropriate files.
+ *
+ * Some options don't work for reasons unknown. The defaults are configured
+ * to avoid these options for now. These include:
+ *
+ *   1. combining the rayleigh and mie scattering data into a single texture
+ *   2. disabling luminance
+ *   3. half-precision textures
+ *
+ * Possible future work items:
+ *
+ *   1. Putt the LUTs into bindless textures so the impl doesn't
+ *      require 4 texture image units
+ *   2. Resolve some of the artifacts that appear when you introduce
+ *      "ambient" lighting at night
+ *   3. Combine with the shadowing pass to implement integrated 
+ *      shadows and light shafts
+ *   4. Better lighting of double-sided/translucent geometry (like
+ *      tree leaves)
+ */
 namespace Bruneton
 {
     class ComputeDrawable : public osg::Drawable
@@ -40,14 +74,11 @@ namespace Bruneton
             return _model != nullptr;
         }
 
-        // builds the rendering stateset
-        void populateRenderingStateSet(
-            osg::StateSet* ss,
-            bool is_ground, //true=ground, false=sky
-            int transmittance_unit,
-            int scattering_unit,
-            int irradiance_unit,
-            int single_mie_scattering_unit = -1) const;
+        // builds the rendering statesets
+        bool populateRenderingStateSets(
+            osg::StateSet* groundStateSet,
+            osg::StateSet* skyStateSet,
+            osgEarth::TerrainResources* resources) const;
 
         mutable std::unique_ptr<dw::AtmosphereModel> _model;
         mutable osg::Vec3f _white_point;
@@ -76,6 +107,7 @@ namespace Bruneton
     private:
         osg::Texture* makeOSGTexture(dw::Texture*) const;
 
+        mutable osgEarth::TextureImageUnitReservation _reservation[4];
     };
 
     // Wraps a raw GL texture in an osg texture

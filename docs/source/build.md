@@ -33,9 +33,11 @@ Once all the dependencies are built, you’ll need to actually build osgEarth.
 Pull down the source from GitHub and create a ```build``` folder for your out-of-source build. We always recommend doing an out-of-source build to avoid problems down the road!
 
 ```
-git clone https://github.com/gwaldron/osgearth.git
+git clone --recurse-submodules https://github.com/gwaldron/osgearth.git osgearth
 mkdir build
 ```
+
+This will clone the repository into a folder called `osgearth` and pull down all the submodules.
 
 **Step 3 - Configure CMake**
 

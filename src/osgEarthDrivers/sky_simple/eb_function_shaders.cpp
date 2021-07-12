@@ -1989,10 +1989,14 @@ rendering_functions = R"(
 #ifdef COMBINED_SCATTERING_TEXTURES
 vec3 GetExtrapolatedSingleMieScattering(vec4 scattering)
 {
-	if (scattering.r == 0.0)
+	if (scattering.r <= 0.0)
 		return vec3(0, 0, 0);
 
-	return scattering.rgb * scattering.a / scattering.r *
+    // GW- This 'reconstruction' matches the paper, but it produces
+    // some rendering artifacts on the horizon and in close-up trees..
+    // so we cannot use combined textures until resolving this
+	return scattering.rgb *
+        (scattering.a / scattering.r) *
 		(rayleigh_scattering.r / mie_scattering.r) *
 		(mie_scattering / rayleigh_scattering);
 }

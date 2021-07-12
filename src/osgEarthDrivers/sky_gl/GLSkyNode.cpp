@@ -48,6 +48,8 @@ _options( options )
 void
 GLSkyNode::construct()
 {
+    setCullingActive(false);
+
     _light = new LightGL3(0);
     _light->setDataVariance(_light->DYNAMIC);
     _light->setAmbient(osg::Vec4(0.1f, 0.1f, 0.1f, 1.0f));
@@ -67,11 +69,12 @@ GLSkyNode::construct()
     _lighting->attach( stateset );
 
     // install the Sun as a lightsource.
-    osg::LightSource* lightSource = new osg::LightSource();
-    lightSource->setLight(_light.get());
-    lightSource->setCullingActive(false);
-    this->addChild( lightSource );
-    lightSource->addCullCallback(new LightSourceGL3UniformGenerator());
+    _lightSource = new osg::LightSource();
+    _lightSource->setLight(_light.get());
+    _lightSource->setCullingActive(false);
+    _lightSource->addCullCallback(new LightSourceGL3UniformGenerator());
+
+    // Note: DO NOT install lightsource as a child. Traverse manually.
 
     onSetDateTime();
 }
@@ -157,4 +160,11 @@ GLSkyNode::attach( osg::View* view, int lightNum )
 
     // initial date/time setup.
     onSetDateTime();
+}
+
+void
+GLSkyNode::traverse(osg::NodeVisitor& nv)
+{
+    _lightSource->accept(nv);
+    osg::Group::traverse(nv);
 }

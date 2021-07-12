@@ -16,7 +16,7 @@ in vec3 atmos_mieColor;
 in vec3 atmos_rayleighColor; 
 in float atmos_renderFromSpace;
 
-uniform float oe_sky_exposure = 3.3;
+uniform float oe_sky_exposure;
 
 void atmos_fragment_main(inout vec4 color) 
 {

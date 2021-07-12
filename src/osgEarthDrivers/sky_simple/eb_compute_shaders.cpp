@@ -1,5 +1,4 @@
 
-
 clear_2d_cs = 
     constants + R"(
 //#include <constants.glsl>
@@ -14,7 +13,7 @@ layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = LOC
 // UNIFORMS ---------------------------------------------------------
 // ------------------------------------------------------------------
 
-layout (binding = 0, rgba32f) uniform image2D targetImage;
+layout (binding = 0, INTERNAL_FORMAT) uniform image2D targetImage;
 
 // ------------------------------------------------------------------
 // MAIN -------------------------------------------------------------
@@ -43,7 +42,7 @@ layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = LOC
 // UNIFORMS ---------------------------------------------------------
 // ------------------------------------------------------------------
 
-layout (binding = 0, rgba32f) uniform image3D targetImage;
+layout (binding = 0, INTERNAL_FORMAT) uniform image3D targetImage;
 
 // ------------------------------------------------------------------
 // MAIN -------------------------------------------------------------
@@ -82,9 +81,9 @@ layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) 
 // INPUT ------------------------------------------------------------
 // ------------------------------------------------------------------
 
-layout (binding = 0, rgba32f) uniform image2D irradiance_read;
-layout (binding = 1, rgba32f) uniform image2D irradiance_write;
-layout (binding = 2, rgba32f) uniform image2D delta_irradiance;
+layout (binding = 0, INTERNAL_FORMAT) uniform image2D irradiance_read;
+layout (binding = 1, INTERNAL_FORMAT) uniform image2D irradiance_write;
+layout (binding = 2, INTERNAL_FORMAT) uniform image2D delta_irradiance;
 
 // ------------------------------------------------------------------
 // UNIFORMS ---------------------------------------------------------
@@ -137,9 +136,9 @@ layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) 
 // IMAGES -----------------------------------------------------------
 // ------------------------------------------------------------------
 
-layout (binding = 0, rgba32f) uniform image2D delta_irradiance;
-layout (binding = 1, rgba32f) uniform image2D irradiance_read;
-layout (binding = 2, rgba32f) uniform image2D irradiance_write;
+layout (binding = 0, INTERNAL_FORMAT) uniform image2D delta_irradiance;
+layout (binding = 1, INTERNAL_FORMAT) uniform image2D irradiance_read;
+layout (binding = 2, INTERNAL_FORMAT) uniform image2D irradiance_write;
 
 // ------------------------------------------------------------------
 // UNIFORMS ---------------------------------------------------------
@@ -200,9 +199,9 @@ layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) 
 // IMAGES -----------------------------------------------------------
 // ------------------------------------------------------------------
 
-layout (binding = 0, rgba32f) uniform image3D delta_multiple_scattering;
-layout (binding = 1, rgba32f) uniform image3D scattering_read;
-layout (binding = 2, rgba32f) uniform image3D scattering_write;
+layout (binding = 0, INTERNAL_FORMAT) uniform image3D delta_multiple_scattering;
+layout (binding = 1, INTERNAL_FORMAT) uniform image3D scattering_read;
+layout (binding = 2, INTERNAL_FORMAT) uniform image3D scattering_write;
 
 // ------------------------------------------------------------------
 // UNIFORMS ---------------------------------------------------------
@@ -263,7 +262,7 @@ layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) 
 // IMAGES -----------------------------------------------------------
 // ------------------------------------------------------------------
 
-layout (binding = 0, rgba32f) uniform image3D delta_scattering_density;
+layout (binding = 0, INTERNAL_FORMAT) uniform image3D delta_scattering_density;
 
 // ------------------------------------------------------------------
 // UNIFORMS ---------------------------------------------------------
@@ -321,12 +320,12 @@ layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) 
 // IMAGES -----------------------------------------------------------
 // ------------------------------------------------------------------
 
-layout (binding = 0, rgba32f) uniform image3D delta_rayleigh_scattering;
-layout (binding = 1, rgba32f) uniform image3D delta_mie_scattering;
-layout (binding = 2, rgba32f) uniform image3D scattering_read;
-layout (binding = 3, rgba32f) uniform image3D scattering_write;
-layout (binding = 4, rgba32f) uniform image3D single_mie_scattering_read;
-layout (binding = 5, rgba32f) uniform image3D single_mie_scattering_write;
+layout (binding = 0, INTERNAL_FORMAT) uniform image3D delta_rayleigh_scattering;
+layout (binding = 1, INTERNAL_FORMAT) uniform image3D delta_mie_scattering;
+layout (binding = 2, INTERNAL_FORMAT) uniform image3D scattering_read;
+layout (binding = 3, INTERNAL_FORMAT) uniform image3D scattering_write;
+layout (binding = 4, INTERNAL_FORMAT) uniform image3D single_mie_scattering_read;
+layout (binding = 5, INTERNAL_FORMAT) uniform image3D single_mie_scattering_write;
 
 // ------------------------------------------------------------------
 // UNIFORMS ---------------------------------------------------------
@@ -387,7 +386,7 @@ layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) 
 // UNIFORMS ---------------------------------------------------------
 // ------------------------------------------------------------------
 
-layout (binding = 0, rgba32f) uniform image2D transmittance;
+layout (binding = 0, INTERNAL_FORMAT) uniform image2D transmittance;
 
 // ------------------------------------------------------------------
 // MAIN -------------------------------------------------------------

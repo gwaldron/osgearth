@@ -79,11 +79,11 @@ namespace osgEarth
     public:
 
         //! Custom tile renderer for this layer
-        void setRenderer(TileRenderer* value) {
-            _renderer = value;
-        }
-        TileRenderer* getRenderer() const {
-            return _renderer;
+        //void setRenderer(TileRenderer* value) {
+        //    _renderer = value;
+        //}
+        virtual TileRenderer* getRenderer() const {
+            return nullptr;
         }
 
         //! Callback that decides which tiles to accept for rendering
@@ -107,7 +107,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<AcceptCallback> _acceptCallback;
-        TileRenderer* _renderer;
+        //TileRenderer* _renderer;
     };
 
     using PatchLayerVector = std::vector<osg::ref_ptr<PatchLayer>>;

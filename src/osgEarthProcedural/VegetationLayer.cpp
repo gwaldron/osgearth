@@ -67,18 +67,20 @@ REGISTER_OSGEARTH_LAYER(vegetation, VegetationLayer);
 // TODO LIST
 //
 
+//  - BUG: Close/Open VegLayer doesn't work
+
 //  - TODO: separate the cloud's LUTs and TextureArena into different statesets, since they
 //    are never used together. This will skip binding all the LUTS when only rendering, and
 //    will skip binding the TA when only computing.
 //  - Move normal map conversion code out of here, and move towards a "MaterialTextureSet"
 //    kind of setup that will support N material textures at once.
 //  - FEATURE: automatically generate billboards? Imposters? Other?
+//  - [IDEA] programmable SSE for models?
 //  - Idea: include a "model range" or "max SSE" in the InstanceBuffer...?
 //  - [PERF] thin out distant instances automatically in large tiles
 //  - [PERF] cull by "horizon" .. e.g., the lower you are, the fewer distant trees...?
 //  - Figure out exactly where some of this functionality goes -- VL or IC? For example the
 //    TileManager stuff seems like it would go in IC?
-//  - [IDEA] programmable SSE for models?
 //  - variable spacing or clumping by asset...?
 //  - make the noise texture bindless as well? Stick it in the arena? Why not.
 
@@ -289,8 +291,7 @@ VegetationLayer::closeImplementation()
 {
     releaseGLObjects(nullptr);
 
-    setRenderer(nullptr);
-    _rendererSetup.abandon();
+    _renderer = nullptr;
 
     return PatchLayer::closeImplementation();
 }
@@ -298,46 +299,19 @@ VegetationLayer::closeImplementation()
 void
 VegetationLayer::update(osg::NodeVisitor& nv)
 {
-    // check to see whether the asset loading job has completed
-    if (isOpen())
+    // this code will release memory after the layer's not been
+    // used for a while.
+    if (isOpen() && _renderer != nullptr)
     {
-        if (_renderer == nullptr &&
-            _rendererSetup.isAvailable())
+        int df = nv.getFrameStamp()->getFrameNumber() - _renderer->_lastVisit.getFrameNumber();
+        double dt = nv.getFrameStamp()->getReferenceTime() - _renderer->_lastVisit.getReferenceTime();
+
+        if (dt > 5.0 && df > 60)
         {
-            _renderer = _rendererSetup.release();
-            if (_renderer != nullptr)
-            {
-                if (_renderer->_status.isError())
-                {
-                    setStatus(_renderer->_status);
-                }
-                else
-                {
-                    OE_DEBUG << LC << "Renderer is ready." << std::endl;
-
-                    // install it as a patch layer draw callback
-                    setRenderer(_renderer.get());
-
-                    // rebuild the state
-                    buildStateSets();
-                }
-            }
-        }
-
-        // this code will release memory after the layer's not been
-        // used for a while.
-        if (_renderer != nullptr)
-        {
-            int df = nv.getFrameStamp()->getFrameNumber() - _renderer->_lastVisit.getFrameNumber();
-            double dt = nv.getFrameStamp()->getReferenceTime() - _renderer->_lastVisit.getReferenceTime();
-
-            if (dt > 5.0 && df > 60)
-            {
-                OE_INFO << LC << "timed out for inactivity" << std::endl;
-                releaseGLObjects(nullptr);
-                _renderer->_lastVisit.setReferenceTime(DBL_MAX);
-                _renderer->_cameraState.clear();
-            }
+            OE_INFO << LC << "timed out for inactivity" << std::endl;
+            releaseGLObjects(nullptr);
+            _renderer->_lastVisit.setReferenceTime(DBL_MAX);
+            _renderer->_cameraState.clear();
         }
     }
 }
@@ -521,21 +495,7 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
             }
         }
 
-        // Initialize the renderer in the background.
-        osg::observer_ptr<VegetationLayer> layer_obs(this);
-
-        _rendererSetup = Job().dispatch<Renderer::Ptr>(
-            [layer_obs](Cancelable* progress)
-            {
-                Renderer::Ptr result;
-
-                osg::ref_ptr<VegetationLayer> layer;
-                if (layer_obs.lock(layer))
-                    result = std::make_shared<Renderer>(layer.get());
-
-                return result;
-            }
-        );
+        _renderer = std::make_shared<Renderer>(this);
     }
 
     buildStateSets();
@@ -950,6 +910,7 @@ VegetationLayer::Renderer::Renderer(VegetationLayer* layer)
     _layer = layer;
     _biomeRevision = -1;
     _lastVisit.setReferenceTime(DBL_MAX);
+    _lastVisit.setFrameNumber(~0U);
 
     // create uniform IDs for each of our uniforms
     //_isMSUName = osg::Uniform::getNameID("oe_veg_isMultisampled");

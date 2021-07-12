@@ -268,7 +268,7 @@ GroundCoverLayer::openImplementation()
 
     // this layer will do its own custom rendering
     _renderer = std::make_shared<Renderer>(this);
-    setRenderer(_renderer.get());
+    //setRenderer(_renderer.get());
     //setRenderer(_renderer.get());
     //setDrawCallback(_renderer.get());
 
@@ -283,7 +283,7 @@ GroundCoverLayer::closeImplementation()
     releaseGLObjects(NULL);
 
     //setDrawCallback(NULL);
-    setRenderer(nullptr);
+    //setRenderer(nullptr);
     _renderer = NULL;
 
     setAcceptCallback(NULL);

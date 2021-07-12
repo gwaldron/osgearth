@@ -138,6 +138,13 @@ namespace osgEarth { namespace Procedural
 
         virtual void update(osg::NodeVisitor& nv) override;
 
+
+    public: // PatchLayer API
+
+        TileRenderer* getRenderer() const override {
+            return _renderer.get();
+        }
+
     protected:
         virtual ~VegetationLayer();
 
@@ -331,7 +338,6 @@ namespace osgEarth { namespace Procedural
         };
 
         // future result of the asynchronous loader job
-        Future<Renderer::Ptr> _rendererSetup;
         Renderer::Ptr _renderer;
         bool _forceGenerate;
 

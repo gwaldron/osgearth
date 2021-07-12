@@ -110,6 +110,13 @@ namespace osgEarth { namespace Splat
 
         virtual void prepareForRendering(TerrainEngine*) override;
 
+
+    public: // PatchLayer API
+
+        TileRenderer* getRenderer() const override {
+            return _renderer.get();
+        }
+
     public:
 
         //! Update traversal

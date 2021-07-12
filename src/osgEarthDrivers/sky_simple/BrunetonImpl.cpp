@@ -227,6 +227,9 @@ ComputeDrawable::populateRenderingStateSets(
     {
         osg::StateSet* ss = (i == 0 ? groundStateSet : skyStateSet);
 
+        if (ss == nullptr)
+            continue;
+        
         ss->addUniform(new osg::Uniform("transmittance_texture", _reservation[0].unit()));
         ss->setTextureAttributeAndModes(_reservation[0].unit(), _transmittance_tex, 1);
 

@@ -292,8 +292,8 @@ MapNode::init()
     _terrainGroup = new StickyGroup();
     this->addChild(_terrainGroup);
 
-    // make a group for the model layers. (Sticky otherwise the osg optimizer will remove it)
-    _layerNodes = new StickyGroup();
+    // make a group for the model layers.  This node is a PagingManager instead of a regular Group to allow PagedNode's to be used within the layers.
+    _layerNodes = new PagingManager;
     _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
 
     this->addChild( _layerNodes );

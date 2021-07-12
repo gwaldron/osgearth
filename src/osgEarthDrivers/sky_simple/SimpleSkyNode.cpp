@@ -255,7 +255,7 @@ SimpleSkyNode::construct()
         _ellipsoid.getRadiusPolar(),
         _ellipsoid.getRadiusEquator() );
 
-    _outerRadius = _innerRadius + 60000.0;
+    _outerRadius = _innerRadius * 1.025; // +60000.0;
 
     CelestialBody sun = getEphemeris()->getSunPosition(DateTime());
     _sunDistance = sun.altitude.as(Units::METERS);

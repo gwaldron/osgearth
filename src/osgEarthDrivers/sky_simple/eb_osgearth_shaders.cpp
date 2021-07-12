@@ -359,11 +359,8 @@ in vec3 atmos_view_dir;
 in vec3 atmos_light_dir;
 in vec3 atmos_center_to_camera;
 const vec3 white_point=vec3(1,1,1);
-uniform mat4 osg_ViewMatrix;
 uniform float oe_sky_exposure;
-uniform vec2 sun_size;
-
-uniform float shmoo;
+//uniform vec2 sun_size;
 
 void atmos_eb_sky_render_frag(inout vec4 OUT_COLOR)
 {
@@ -371,8 +368,9 @@ void atmos_eb_sky_render_frag(inout vec4 OUT_COLOR)
 	vec3 radiance = GetSkyRadiance(atmos_center_to_camera, atmos_view_dir, 0.0, atmos_light_dir, transmittance);
 
 	// If the view ray intersects the Sun, add the Sun radiance.
-	if (dot(atmos_view_dir, atmos_light_dir) > sun_size.y) 
-		radiance = radiance + transmittance * GetSolarRadiance();
+    // GW: don't need this.
+	//if (dot(atmos_view_dir, atmos_light_dir) > sun_size.y) 
+	//    radiance = radiance + transmittance * GetSolarRadiance();
 
 	radiance = pow(vec3(1,1,1) - exp(-radiance / white_point * oe_sky_exposure*1e-4), vec3(1.0 / 2.2));
 

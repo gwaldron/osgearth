@@ -216,6 +216,10 @@ SimpleSkyNode::construct()
     // protect us from the ShaderGenerator.
     ShaderGenerator::setIgnoreHint(this, true);
 
+    // containers for sky elements. DO NOT add children directly to 
+    // the skynode; uswe the cullContainer instead!
+    _cullContainer = new osg::Group();
+
     osg::Vec3f lightPos(0.0f, 1.0f, 0.0f);
 
     _light = new LightGL3( 0 );
@@ -228,7 +232,7 @@ SimpleSkyNode::construct()
     osg::LightSource* lightSource = new osg::LightSource();
     lightSource->setLight(_light.get());
     lightSource->setCullingActive(false);
-    this->addChild( lightSource );
+    _cullContainer->addChild( lightSource );
     lightSource->addCullCallback(new LightSourceGL3UniformGenerator());
 
     if ( _options.ambient().isSet() )
@@ -243,9 +247,6 @@ SimpleSkyNode::construct()
         OE_WARN << LC << "Found an ephemeris reference point, but SimpleSky does not support projected maps" << std::endl;
         return;
     }
-
-    // containers for sky elements.
-    _cullContainer = new osg::Group();
     
     // set up the astronomical parameters:
     osg::ref_ptr<const SpatialReference> wgs84 = SpatialReference::get("wgs84");

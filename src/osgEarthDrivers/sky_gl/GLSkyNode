@@ -50,12 +50,15 @@ namespace osgEarth { namespace GLSky
         void onSetDateTime();
         void onSetReferencePoint();
 
+        void traverse(osg::NodeVisitor& nv) override;
+
     protected:
         virtual ~GLSkyNode();
 
     private:
         void construct();
 
+        osg::ref_ptr<osg::LightSource>    _lightSource;
         osg::ref_ptr<osg::Light>          _light;
         osg::ref_ptr<PhongLightingEffect> _lighting;
         GLSkyOptions                      _options;

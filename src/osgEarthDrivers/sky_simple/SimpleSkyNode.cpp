@@ -574,6 +574,10 @@ SimpleSkyNode::makeSceneLighting()
             else
                 OE_INFO << LC << "Using Bruneton per-fragment lighting" << std::endl;
             // nothing to do here since we have to run precomputation first
+
+            //TODO: api
+            stateset->getOrCreateUniform("atmos_haze_cutoff", osg::Uniform::FLOAT)->set(0.0f);
+            stateset->getOrCreateUniform("atmos_haze_strength", osg::Uniform::FLOAT)->set(1.0f);
         }
         else if (_useONeil)
         {
@@ -608,8 +612,20 @@ void
 SimpleSkyNode::makeAtmosphere(const Ellipsoid& em)
 {
     // create some skeleton geometry to shade:
+#if 1
     osg::Geometry* drawable = s_makeEllipsoidGeometry( em, _outerRadius, false );
     drawable->setName("Atmosphere Drawable");
+#else
+    // TEST!
+    osg::Geometry* drawable = new osg::Geometry();
+    drawable->setCullingActive(false);
+    drawable->setName("Atmosphere Drawable");
+    drawable->setUseVertexBufferObjects(true);
+    osg::Vec3Array* verts = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4);
+    drawable->setVertexArray(verts);
+    const unsigned short elements[6] = { 0,2,1,2,0,3 };
+    drawable->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 6, elements));
+#endif
     
     // disable wireframe/point rendering on the atmosphere, since it is distracting.
     if ( _options.allowWireframe() == false )

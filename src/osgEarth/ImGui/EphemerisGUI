@@ -45,12 +45,15 @@ namespace osgEarth
             float _ambient;
             bool _first;
             bool _shadows;
+            float _haze_cutoff, _haze_strength;
 
         public:
             EphemerisGUI() : BaseGUI("Sky & Lighting"),
                 _ambient(0.033f),
                 _exposure(3.5f),
                 _contrast(1.0f),
+                _haze_cutoff(0.0f),
+                _haze_strength(16.0f),
                 _showDetails(false),
                 _shadows(false),
                 _first(true)
@@ -69,6 +72,8 @@ namespace osgEarth
                 conf.get("Exposure", _exposure);
                 conf.get("Contrast", _contrast);
                 conf.get("Ambient", _ambient);
+                conf.get("HazeCutoff", _haze_cutoff);
+                conf.get("HazeStrength", _haze_strength);
             }
             void save(Config& conf) override
             {
@@ -80,6 +85,8 @@ namespace osgEarth
                 conf.set("Exposure", _exposure);
                 conf.set("Contrast", _contrast);
                 conf.set("Ambient", _ambient);
+                conf.set("HazeCutoff", _haze_cutoff);
+                conf.set("HazeStrength", _haze_strength);
             }
 
             void draw(osg::RenderInfo& ri) override
@@ -148,6 +155,12 @@ namespace osgEarth
                     if (_showDetails)
                     {
                         ImGui::Separator();
+
+                        if (ImGui::SliderFloat("Haze cutoff", &_haze_cutoff, 0.0f, 0.2f)) dirtySettings();
+                        _skyNode->getOrCreateStateSet()->getOrCreateUniform("atmos_haze_cutoff", osg::Uniform::FLOAT)->set(_haze_cutoff);
+
+                        if (ImGui::SliderFloat("Haze strength", &_haze_strength, 0.0f, 24.0f)) dirtySettings();
+                        _skyNode->getOrCreateStateSet()->getOrCreateUniform("atmos_haze_strength", osg::Uniform::FLOAT)->set(_haze_strength);
 
                         bool atmos_visible = _skyNode->getAtmosphereVisible();
                         ImGui::Checkbox("Atmosphere", &atmos_visible);

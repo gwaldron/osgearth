@@ -247,6 +247,9 @@ out vec3 atmos_transmittance;
 out vec3 atmos_scatter;
 out vec3 atmos_ambient;
 
+uniform float atmos_haze_cutoff;
+uniform float atmos_haze_strength;
+
 void atmos_eb_ground_render_vert(inout vec4 vertex_view)
 {
 #ifdef OE_LIGHTING
@@ -263,8 +266,11 @@ void atmos_eb_ground_render_vert(inout vec4 vertex_view)
 	vec3 transmittance;
 	vec3 in_scatter = GetSkyRadianceToPoint(center_to_camera, atmos_center_to_vert, 4.0, atmos_light_dir, transmittance);
 
+    float vert_unitz = clamp((length(atmos_center_to_vert)-bottom_radius)/(top_radius-bottom_radius), 0, 1);
+    float atmos_haze = vert_unitz < atmos_haze_cutoff ? mix(atmos_haze_strength, 1, vert_unitz/atmos_haze_cutoff) : 1.0;
+
     atmos_transmittance = transmittance;
-    atmos_scatter = in_scatter;
+    atmos_scatter = in_scatter * atmos_haze;
 #endif
 }
 
@@ -284,8 +290,6 @@ in vec3 vp_Normal;
 
 uniform float oe_sky_exposure;
 const vec3 white_point = vec3(1,1,1);
-
-uniform float shmoo;
 
 #define USE_PBR 1
 

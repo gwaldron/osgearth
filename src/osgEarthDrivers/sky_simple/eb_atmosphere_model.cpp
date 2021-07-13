@@ -58,6 +58,7 @@ AtmosphereModel::~AtmosphereModel()
 
     m_absorption_density.clear();
 
+#if 0 // GW - cannot do this here. Need to make a releaseGLObjects adapter
     DW_SAFE_DELETE(m_mie_density);
     DW_SAFE_DELETE(m_rayleigh_density);
 
@@ -80,6 +81,7 @@ AtmosphereModel::~AtmosphereModel()
     DW_SAFE_DELETE(m_single_scattering_shader);
 
     DW_SAFE_DELETE(m_texture_buffer);
+#endif
 }
 
 // -----------------------------------------------------------------------------------------------------------------------------------

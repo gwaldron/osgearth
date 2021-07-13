@@ -501,6 +501,26 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
     buildStateSets();
 }
 
+namespace
+{
+    // adds the defines for a shared image layer
+    void bind(
+        ImageLayer* layer,
+        const std::string& sampler,
+        const std::string& matrix,
+        osg::StateSet* stateset )
+    {
+        if (layer) {
+            stateset->setDefine(sampler, layer->getSharedTextureUniformName());
+            stateset->setDefine(matrix, layer->getSharedTextureMatrixUniformName());
+        }
+        else {
+            stateset->removeDefine(sampler);
+            stateset->removeDefine(matrix);
+        }
+    }
+}
+
 void
 VegetationLayer::buildStateSets()
 {
@@ -542,40 +562,9 @@ VegetationLayer::buildStateSets()
     stateset->setTextureAttribute(_noiseBinding.unit(), _renderer->_noiseTex.get(), osg::StateAttribute::OVERRIDE);
     stateset->addUniform(new osg::Uniform(NOISE_SAMPLER, _noiseBinding.unit()));
 
-    if (getColorLayer())
-    {
-        stateset->setDefine("OE_GROUNDCOVER_COLOR_SAMPLER", getColorLayer()->getSharedTextureUniformName());
-        stateset->setDefine("OE_GROUNDCOVER_COLOR_MATRIX", getColorLayer()->getSharedTextureMatrixUniformName());
-        stateset->addUniform(new osg::Uniform("oe_GroundCover_colorMinSaturation", options().colorMinSaturation().get()));
-    }
-    else
-    {
-        stateset->removeDefine("OE_GROUNDCOVER_COLOR_SAMPLER");
-        stateset->removeDefine("OE_GROUNDCOVER_COLOR_MATRIX");
-        stateset->removeUniform("oe_GroundCover_colorMinSaturation");
-    }
-
-    if (getLifeMapLayer())
-    {
-        stateset->setDefine("OE_LIFEMAP_SAMPLER", getLifeMapLayer()->getSharedTextureUniformName());
-        stateset->setDefine("OE_LIFEMAP_MATRIX", getLifeMapLayer()->getSharedTextureMatrixUniformName());
-    }
-    else
-    {
-        stateset->removeDefine("OE_LIFEMAP_SAMPLER");
-        stateset->removeDefine("OE_LIFEMAP_MATRIX");
-    }
-
-    if (getBiomeLayer())
-    {
-        stateset->setDefine("OE_BIOME_SAMPLER", getBiomeLayer()->getSharedTextureUniformName());
-        stateset->setDefine("OE_BIOME_MATRIX", getBiomeLayer()->getSharedTextureMatrixUniformName());
-    }
-    else
-    {
-        stateset->removeDefine("OE_BIOME_SAMPLER");
-        stateset->removeDefine("OE_BIOME_MATRIX");
-    }
+    bind(getColorLayer(),   "OE_GROUNDCOVER_COLOR_SAMPLER", "OE_GROUNDCOVER_COLOR_MATRIX", stateset);
+    bind(getLifeMapLayer(), "OE_LIFEMAP_SAMPLER", "OE_LIFEMAP_MATRIX", stateset);
+    bind(getBiomeLayer(),   "OE_BIOME_SAMPLER", "OE_BIOME_MATRIX", stateset);
 
     // disable backface culling to support shadow/depth cameras,
     // for which the geometry shader renders cross hatches instead of billboards.

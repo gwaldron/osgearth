@@ -85,8 +85,9 @@ namespace
         double outerRadius,
         bool genTexCoords)
     {
-        //double hae = outerRadius - ellipsoid.getRadiusEquator();
-        double hae = outerRadius - ellipsoid.getRadiusPolar();
+        double hae = outerRadius - std::max(
+            ellipsoid.getRadiusEquator(),
+            ellipsoid.getRadiusPolar());
 
         osg::Geometry* geom = new osg::Geometry();
         geom->setUseVertexBufferObjects(true);

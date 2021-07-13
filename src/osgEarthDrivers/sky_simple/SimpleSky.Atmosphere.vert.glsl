@@ -149,9 +149,6 @@ void atmos_vertex_main(inout vec4 VertexVIEW)
     // Get camera position and height 
     atmos_vVec = osg_ViewMatrixInverse[3].xyz; 
     atmos_fCameraHeight = length(atmos_vVec); 
-    //atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; 
-
-    //atmos_fCameraHeight = length(osg_ViewMatrixInverse[3].xyz);
     atmos_fCameraHeight2 = atmos_fCameraHeight * atmos_fCameraHeight;
     atmos_fOuterRadius2 = atmos_fOuterRadius * atmos_fOuterRadius;
     atmos_fScale = 1.0 / (atmos_fOuterRadius - atmos_fInnerRadius);
@@ -172,6 +169,6 @@ void atmos_vertex_main(inout vec4 VertexVIEW)
 
     // Transition from space to atmosphere
     atmos_renderFromSpace = 1.0 - clamp(
-        (atmos_fOuterRadius-atmos_fCameraHeight)/50000.0,
+        (atmos_fOuterRadius-atmos_fCameraHeight) * atmos_fScale,
         0.0, 1.0 );
 }

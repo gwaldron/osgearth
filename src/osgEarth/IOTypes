@@ -98,7 +98,7 @@ OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ProxySettings);
 
 namespace osgEarth
 {
-    typedef UnorderedMap<std::string,std::string> Headers;
+    using Headers = std::unordered_map<std::string,std::string>;
 
 
 //--------------------------------------------------------------------

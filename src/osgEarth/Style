@@ -43,7 +43,7 @@ namespace osgEarth
 {
     class Style;
 
-    typedef std::map<std::string, Style> StyleMap;
+    using StyleMap = std::map<std::string, Style>;
 
     /**
      * Style is an unordered collection of Symbols that describes how to render
@@ -170,8 +170,7 @@ namespace osgEarth
         optional<URI>               _uri;
     };
 
-    typedef std::vector<Style>           StyleList;
-    //typedef std::map<std::string, Style> StyleMap;
+    typedef std::vector<Style> StyleList;
 
 } // namespace osgEarth
 

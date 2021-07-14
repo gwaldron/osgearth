@@ -1450,7 +1450,7 @@ GroundCoverLayer::createLUTShader() const
     lutbuf <<
         "bool oe_gc_getLandCoverGroup(in int zone, in int code, out oe_gc_LandCoverGroup result) { \n";
 
-    UnorderedSet<std::string> exprs;
+    std::unordered_set<std::string> exprs;
     std::stringstream exprBuf;
 
     for(int a=0; a<_liveAssets.size(); ++a)

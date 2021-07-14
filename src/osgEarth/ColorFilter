@@ -111,7 +111,7 @@ namespace osgEarth
         virtual Config getConfig() const { return Config(); }
 
     private:
-        typedef std::map<std::string, class ColorFilterFactory*> FactoryMap;
+        typedef std::unordered_map<std::string, class ColorFilterFactory*> FactoryMap;
         FactoryMap _factories;
         ColorFilter* createOne(const Config& conf) const;
     };

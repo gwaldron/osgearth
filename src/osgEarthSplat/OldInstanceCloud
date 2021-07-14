@@ -142,7 +142,7 @@ namespace osgEarth {
                 osg::ref_ptr<osg::Geometry> _geom;
                 osg::ref_ptr<osg::Texture2DArray> _atlas;
                 osg::fast_back_stack<osg::Texture*> _textureStack;
-                typedef Util::UnorderedMap<osg::Texture*, int> AtlasIndexLUT;
+                using AtlasIndexLUT = std::unordered_map<osg::Texture*, int>;
                 AtlasIndexLUT _atlasLUT;
                 std::vector<osg::ref_ptr<osg::Image> > _imagesToAdd;
 

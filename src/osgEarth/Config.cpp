@@ -227,7 +227,7 @@ namespace
             {
                 if ( nicer )
                 {
-                    std::map< std::string, std::vector<Config> > sets;
+                    std::map< std::string, std::vector<Config> > sets; // sorted
 
                     // sort into bins by name:
                     for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )

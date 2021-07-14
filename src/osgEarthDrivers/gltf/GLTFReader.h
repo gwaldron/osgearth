@@ -52,9 +52,8 @@ using namespace osgEarth::Util;
 class GLTFReader
 {
 public:
-    typedef osgEarth::Mutexed<
-        osgEarth::UnorderedMap<std::string, osg::ref_ptr<osg::Texture2D> >
-    > TextureCache;
+    using TextureCache = osgEarth::Mutexed<
+        std::unordered_map<std::string, osg::ref_ptr<osg::Texture2D>> >;
 
     struct NodeBuilder;
 

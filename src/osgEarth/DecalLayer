@@ -91,7 +91,7 @@ namespace osgEarth { namespace Contrib
         };
         GeoExtent _extent;
         std::list<Decal> _decalList;
-        typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
+        using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;
         DecalIndex _decalIndex;
     };
 
@@ -185,7 +185,7 @@ namespace osgEarth { namespace Contrib
         };
         GeoExtent _extent;
         std::list<Decal> _decalList;
-        typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
+        using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;
         DecalIndex _decalIndex;
     };
 
@@ -245,7 +245,7 @@ namespace osgEarth { namespace Contrib
         };
         GeoExtent _extent;
         std::list<Decal> _decalList;
-        typedef UnorderedMap<std::string, std::list<Decal>::iterator> DecalIndex;
+        using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;
         DecalIndex _decalIndex;
     };
 

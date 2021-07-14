@@ -29,24 +29,11 @@
 #include <osg/State>
 #include <list>
 #include <vector>
-#include <set>
-#include <map>
-
-#ifdef OSGEARTH_CXX11
 #include <unordered_set>
 #include <unordered_map>
-#endif
 
 namespace osgEarth { namespace Util
 {
-#ifdef OSGEARTH_CXX11
-    template<typename K> class UnorderedSet : public std::unordered_set<K> { };
-    template<typename K, typename T> class UnorderedMap : public std::unordered_map<K,T> { };
-#else
-    template<typename K> class UnorderedSet : public std::set<K> { };
-    template<typename K, typename T> class UnorderedMap : public std::map<K,T> { };
-#endif
-
     /**
      * A std::map-like map that uses a vector.
      * This benchmarks much faster than std::map or std::unordered_map for small sets.
@@ -606,13 +593,13 @@ namespace osgEarth { namespace Util
         {
             {
                 osgEarth::Threading::ScopedReadLock readLock(_mutex);
-                typename UnorderedMap<KEY,DATA>::iterator i = _data.find(k);
+                typename std::unordered_map<KEY,DATA>::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second;
             }
             {
                 osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                typename UnorderedMap<KEY,DATA>::iterator i = _data.find(k);
+                typename std::unordered_map<KEY,DATA>::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second;
                 else
@@ -627,7 +614,7 @@ namespace osgEarth { namespace Util
         }
 
     private:
-        UnorderedMap<KEY,DATA>              _data;
+        std::unordered_map<KEY,DATA> _data;
         osgEarth::Threading::ReadWriteMutex _mutex;
     };
 
@@ -649,7 +636,7 @@ namespace osgEarth { namespace Util
         DATA& get(KEY k)
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
-            typename UnorderedMap<KEY,DATA>::iterator i = _data.find(k);
+            typename std::unordered_map<KEY,DATA>::iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second;
             else
@@ -665,14 +652,14 @@ namespace osgEarth { namespace Util
         void forEach(Functor& functor)
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
-            for (typename UnorderedMap<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
+            for (typename std::unordered_map<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 
         void forEach(ConstFunctor& functor) const
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
-            for (typename UnorderedMap<KEY, DATA>::const_iterator i = _data.begin(); i != _data.end(); ++i)
+            for (typename std::unordered_map<KEY, DATA>::const_iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 
@@ -689,7 +676,7 @@ namespace osgEarth { namespace Util
         }
 
     private:
-        UnorderedMap<KEY,DATA> _data;
+        std::unordered_map<KEY,DATA> _data;
         mutable osgEarth::Threading::Mutex _mutex;
     };
 
@@ -704,7 +691,7 @@ namespace osgEarth { namespace Util
         DATA* get(KEY k)
         {
             osgEarth::Threading::ScopedReadLock lock(_mutex);
-            typename UnorderedMap<KEY,osg::ref_ptr<DATA > >::const_iterator i = _data.find(k);
+            typename std::unordered_map<KEY,osg::ref_ptr<DATA>>::const_iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second.get();
 
@@ -716,14 +703,14 @@ namespace osgEarth { namespace Util
             osg::ref_ptr<DATA> _refReleaser = newDataIfNeeded;
             {
                 osgEarth::Threading::ScopedReadLock lock(_mutex);
-                typename UnorderedMap<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
+                typename std::unordered_map<KEY,osg::ref_ptr<DATA>>::const_iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second.get();
             }
 
             {
                 osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                typename UnorderedMap<KEY,osg::ref_ptr<DATA> >::iterator i = _data.find(k);
+                typename std::unordered_map<KEY,osg::ref_ptr<DATA>>::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second.get();
 
@@ -741,7 +728,7 @@ namespace osgEarth { namespace Util
         void remove(DATA* data)
         {
             osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
-            for( typename UnorderedMap<KEY,osg::ref_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
+            for( typename std::unordered_map<KEY,osg::ref_ptr<DATA>>::iterator i = _data.begin(); i != _data.end(); ++i )
             {
                 if ( i->second.get() == data )
                 {
@@ -752,8 +739,8 @@ namespace osgEarth { namespace Util
         }
 
     private:
-        UnorderedMap<KEY,osg::ref_ptr<DATA> >    _data;
-        osgEarth::Threading::ReadWriteMutex  _mutex;
+        std::unordered_map<KEY,osg::ref_ptr<DATA>> _data;
+        osgEarth::Threading::ReadWriteMutex _mutex;
     };
 
     // borrowed from osg::buffered_object. Auto-resizing array.

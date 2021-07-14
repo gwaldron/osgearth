@@ -155,7 +155,7 @@ namespace osgEarth
         class osg::Geode* _geode;
         TrackNodeFieldSchema _fieldSchema;
 
-        typedef UnorderedMap<std::string, osg::Drawable*> NamedDrawables;
+        using NamedDrawables = std::unordered_map<std::string, osg::Drawable*>;
         NamedDrawables _namedDrawables;
 
         void compile();

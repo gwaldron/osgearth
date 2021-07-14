@@ -271,7 +271,7 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
         }
     }
 
-    typedef UnorderedMap<URI, int> ImageIndexTable; // track images to prevent dupes
+    using ImageIndexTable = std::unordered_map<URI, int>; // track images to prevent dupes
     ImageIndexTable imageIndices;
     std::vector< osg::ref_ptr<osg::Image> > imagesInOrder;
     int index = 0;

@@ -285,7 +285,7 @@ namespace osgEarth
         // override the runtime options policy if set.
         optional<CachePolicy> _runtimeCachePolicy;
 
-        typedef std::map<std::string, osg::ref_ptr<CacheBinMetadata> > CacheBinMetadataMap;
+        using CacheBinMetadataMap = std::unordered_map<std::string, osg::ref_ptr<CacheBinMetadata>>;
         CacheBinMetadataMap _cacheBinMetadata;
 
         // methods accesible by Map:

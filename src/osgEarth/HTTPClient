@@ -59,7 +59,7 @@ namespace osgEarth { namespace Util
         void addParameter( const std::string& name, int value );
         void addParameter( const std::string& name, double value );
 
-        typedef UnorderedMap<std::string,std::string> Parameters;
+        using Parameters = std::unordered_map<std::string, std::string>;
 
         /** Ready-only access to the parameter list (as built with addParameter) */
         const Parameters& getParameters() const;

@@ -28,8 +28,8 @@
 
 namespace osgEarth
 {
-    typedef std::map<std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraries;
-    typedef std::map<std::string, StyleSelector> StyleSelectors;
+    using ResourceLibraries = std::map<std::string, osg::ref_ptr<ResourceLibrary>>;
+    using StyleSelectors = std::map<std::string, StyleSelector>;
 
     /**
      * A complete definition of style information.

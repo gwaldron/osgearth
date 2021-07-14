@@ -1031,7 +1031,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         std::vector<TileKey> intersectingKeys;
         featureProfile->getTilingProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
 
-        UnorderedSet<TileKey> featureKeys;
+        std::unordered_set<TileKey> featureKeys;
         for (int i = 0; i < intersectingKeys.size(); ++i)
         {
             if ((int)intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
@@ -1041,7 +1041,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         }
 
         // Query and collect all the features we need for this tile.
-        for (UnorderedSet<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
+        for (std::unordered_set<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
         {
             Query query;
             query.tileKey() = *i;

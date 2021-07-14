@@ -28,6 +28,7 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 
+//TODO: unordered?
 typedef std::map<std::string,std::string> StringMap;
 
 

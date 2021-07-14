@@ -199,18 +199,18 @@ namespace osgEarth
          * populate an output table that maps the old ID to the new ID. Internal function
          * used for serialization support.
          */
-        bool updateObjectIDs(osg::Drawable* drawable, std::map<ObjectID, ObjectID>& oldNewTable, osg::Referenced* obj);
+        bool updateObjectIDs(osg::Drawable* drawable, std::unordered_map<ObjectID, ObjectID>& oldNewTable, osg::Referenced* obj);
 
         /**
          * On a node, replace an existing objectID with a new one and return the mapping.
          * Internal function used for serialization support.
          */
-        bool updateObjectID(osg::Node* node, std::map<ObjectID, ObjectID>& oldNewTable, osg::Referenced* obj);
+        bool updateObjectID(osg::Node* node, std::unordered_map<ObjectID, ObjectID>& oldNewTable, osg::Referenced* obj);
 
     protected:
         virtual ~ObjectIndex() { }
         
-        typedef std::map<ObjectID, osg::observer_ptr<osg::Referenced> > IndexMap;
+        using IndexMap = std::unordered_map<ObjectID, osg::observer_ptr<osg::Referenced>>;
 
         IndexMap                 _index;
         int                      _attribLocation;

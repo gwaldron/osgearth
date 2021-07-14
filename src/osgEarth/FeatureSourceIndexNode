@@ -102,7 +102,7 @@ namespace osgEarth
             Threading::ScopedMutexLock lock(_mutex);
             for(InputIter fid = first; fid != last; ++fid )
             {
-                FIDMap::iterator f = _fids.find( *fid );
+                FID_to_RefIDPair::iterator f = _fids.find( *fid );
                 if ( f != _fids.end() && f->second->referenceCount() == 1 )
                 {
                     ObjectID oid = f->second->_oid;
@@ -117,9 +117,10 @@ namespace osgEarth
         
     public: // types
 
-        typedef std::map<ObjectID,  FeatureID>                OIDMap;
-        typedef std::map<FeatureID, osg::ref_ptr<RefIDPair> > FIDMap;
-        typedef std::map<FeatureID, osg::ref_ptr<Feature> >   FeatureMap;
+        using OID_to_OID = std::unordered_map<ObjectID, ObjectID>;
+        using OID_to_FID = std::unordered_map<ObjectID, FeatureID>; // was OIDMap
+        using FID_to_RefIDPair = std::unordered_map<FeatureID, osg::ref_ptr<RefIDPair>>; // was FIDMap
+        using FID_to_Feature = std::unordered_map<FeatureID, osg::ref_ptr<Feature>>; // was FeatureMap
 
     protected:
         virtual ~FeatureSourceIndex();
@@ -132,12 +133,12 @@ namespace osgEarth
         
         mutable Threading::Mutex _mutex;
 
-        OIDMap     _oids;
-        FIDMap     _fids;
-        FeatureMap _embeddedFeatures;
+        OID_to_FID _oids;
+        FID_to_RefIDPair _fids;
+        FID_to_Feature _embeddedFeatures;
 
-        void update(osg::Drawable*, std::map<ObjectID,ObjectID>&, const FIDMap&, FIDMap&);
-        void update(osg::Node*,     std::map<ObjectID,ObjectID>&, const FIDMap&, FIDMap&);
+        void update(osg::Drawable*, OID_to_OID&, const FID_to_RefIDPair&, FID_to_RefIDPair&);
+        void update(osg::Node*, OID_to_OID&, const FID_to_RefIDPair&, FID_to_RefIDPair&);
 
         friend class FeatureSourceIndexNode;
     };
@@ -147,12 +148,17 @@ namespace osgEarth
      * Node that houses a FeatureSourceIndex, so that it can un-register index
      * entries when it pages out.
      */
-    class OSGEARTH_EXPORT FeatureSourceIndexNode : public osg::Group,
-                                                           public FeatureIndexBuilder
+    class OSGEARTH_EXPORT FeatureSourceIndexNode : 
+        public osg::Group,
+        public FeatureIndexBuilder
     {
     public:
         META_Node(osgEarth, FeatureSourceIndexNode);
-        typedef std::map<FeatureID, osg::ref_ptr<RefIDPair> > FIDMap;
+
+        using OID_to_OID = std::unordered_map<ObjectID, ObjectID>;
+        using OID_to_FID = std::unordered_map<ObjectID, FeatureID>; // was OIDMap
+        using FID_to_RefIDPair = std::unordered_map<FeatureID, osg::ref_ptr<RefIDPair>>; // was FIDMap
+        using FID_to_Feature = std::unordered_map<FeatureID, osg::ref_ptr<Feature>>; // was FeatureMap
 
         /** default ctor */
         FeatureSourceIndexNode();
@@ -181,12 +187,12 @@ namespace osgEarth
 
     public: // To support serialization only - do not use directly
 
-        const FIDMap& getFIDMap() const { return _fids; }
-        void setFIDMap(const FIDMap& fids);
+        const FID_to_RefIDPair& getFIDMap() const { return _fids; }
+        void setFIDMap(const FID_to_RefIDPair& fids);
 
-        void reIndex(std::map<ObjectID,ObjectID>&);
-        void reIndexDrawable(osg::Drawable* drawable, std::map<ObjectID,ObjectID>& oldNew, FIDMap& newFIDMap);
-        void reIndexNode(osg::Node* node, std::map<ObjectID,ObjectID>& oldNew, FIDMap& newFIDMap);
+        void reIndex(OID_to_OID&);
+        void reIndexDrawable(osg::Drawable* drawable, OID_to_OID& oldNew, FID_to_RefIDPair& newFIDMap);
+        void reIndexNode(osg::Node* node, OID_to_OID& oldNew, FID_to_RefIDPair& newFIDMap);
 
         /**
          * Call this after deserializing a scene graph that may contain FeatureSourceIndexNodes.
@@ -200,7 +206,7 @@ namespace osgEarth
         virtual ~FeatureSourceIndexNode();
 
     private: // serializable
-        FIDMap _fids;
+        FID_to_RefIDPair _fids;
 
     private: // transient
         osg::ref_ptr<FeatureSourceIndex> _index;

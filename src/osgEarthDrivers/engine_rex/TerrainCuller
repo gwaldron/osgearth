@@ -39,7 +39,7 @@ namespace osgEarth { namespace REX
         Revision _revision;
         GeoExtent _extent;
     };
-    typedef UnorderedMap<UID, LayerExtent> LayerExtentMap;
+    using LayerExtentMap = std::unordered_map<UID, LayerExtent>;
 
     /**
      * Node visitor responsible for assembling a TerrainRenderData that 

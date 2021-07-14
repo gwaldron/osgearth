@@ -156,7 +156,7 @@ namespace osgEarth { namespace Util
             void releaseGLObjects(osg::State*) const;
             ~CameraData();
         };
-        typedef std::map<osg::Camera*, CameraData> CameraDataMap;
+        typedef std::unordered_map<osg::Camera*, CameraData> CameraDataMap;
         mutable CameraDataMap _cameraDataMap;
         mutable Threading::Mutex _cameraDataMapMutex;
 

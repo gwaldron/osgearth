@@ -117,7 +117,7 @@ namespace osgEarth { namespace Util
 
     private:
         GLint  _handle;
-        typedef std::map<unsigned, GLint> UniformMap;
+        using UniformMap = std::unordered_map<unsigned, GLint>;
         UniformMap _uniformLocations;
         const osg::GL2Extensions* _ext;
 

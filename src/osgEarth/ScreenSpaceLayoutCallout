@@ -85,7 +85,7 @@ namespace osgEarth { namespace Internal
             void move(float dir);
         };
 
-        typedef std::map<osg::Drawable*, Element> Elements;
+        using Elements = std::map<osg::Drawable*, Element>;
 
         struct CameraLocal
         {
@@ -100,6 +100,7 @@ namespace osgEarth { namespace Internal
             bool _leadersDirty;
             osg::Vec4f _leaderColor;
             std::vector<jcv_point> _points;
+            // TODO: use unordered_map?
             std::map<jcv_point, Element*, jcv_point_comparator> _lookup;
             osg::ref_ptr<LineDrawable> _voronoi;
 

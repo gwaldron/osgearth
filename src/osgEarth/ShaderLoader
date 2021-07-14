@@ -94,9 +94,9 @@ namespace osgEarth { namespace Util
         }
 
     public:
-        typedef std::map<std::string, std::string> SourceMap;
-        typedef std::map<std::string, std::string> ReplaceMap;
-        typedef std::map<std::string, bool>        DefineMap;
+        using SourceMap = std::map<std::string, std::string>;
+        using ReplaceMap = std::map<std::string, std::string>;
+        using DefineMap = std::map<std::string, bool>;
 
         const SourceMap& context() const { return _sources; }
 

@@ -67,7 +67,7 @@ namespace osgEarth { namespace Util
 
     private:
         AnnotationRegistry() { }
-        typedef std::map<std::string, AnnotationFactory*> FactoryMap;
+        typedef std::unordered_map<std::string, AnnotationFactory*> FactoryMap;
         FactoryMap _factories;
 
         AnnotationNode* createOne( 

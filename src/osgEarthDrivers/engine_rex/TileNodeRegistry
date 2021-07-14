@@ -57,7 +57,7 @@ namespace osgEarth { namespace REX
             Tracker::iterator _trackerptr;
         };
 
-        typedef UnorderedMap <TileKey, TableEntry> TileTable;
+        using TileTable = std::unordered_map<TileKey, TableEntry>;
 
         // Prototype for a locked tileset operation (see run)
         struct Operation {
@@ -158,8 +158,8 @@ namespace osgEarth { namespace REX
         bool _notifyNeighbors;
         const FrameClock* _clock;
 
-        typedef UnorderedSet<TileKey> TileKeySet;
-        typedef UnorderedMap<TileKey, TileKeySet> TileKeyOneToMany;
+        using TileKeySet = std::unordered_set<TileKey>;
+        using TileKeyOneToMany = std::unordered_map<TileKey, TileKeySet>;
 
         TileKeyOneToMany _notifiers;
 

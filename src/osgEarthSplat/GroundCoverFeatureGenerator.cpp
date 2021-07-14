@@ -68,9 +68,9 @@ namespace
         Config assetConfig;
     };
 
-    typedef std::vector<AssetLUTEntry> AssetLUTVector;
+    using AssetLUTVector = std::vector<AssetLUTEntry>;
 
-    typedef UnorderedMap<const LandCoverGroup*, AssetLUTVector> AssetLUT;
+    using AssetLUT = std::unordered_map<const LandCoverGroup*, AssetLUTVector>;
 
     void buildLUT(const BiomeZone& zone, AssetLUT& lut)
     {

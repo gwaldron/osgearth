@@ -261,7 +261,7 @@ ObjectIndex::getObjectID(osg::Node* node, ObjectID& output) const
 
 bool
 ObjectIndex::updateObjectIDs(osg::Drawable* drawable,
-                             std::map<ObjectID, ObjectID>& oldNewMap,
+                             std::unordered_map<ObjectID, ObjectID>& oldNewMap,
                              osg::Referenced* object)
 {
     // in a drawable, replaces each OIDs in map.first with the corresponding OID in map.second
@@ -277,7 +277,7 @@ ObjectIndex::updateObjectIDs(osg::Drawable* drawable,
     for (ObjectIDArray::iterator i = oids->begin(); i != oids->end(); ++i)
     {
         ObjectID newoid;
-        std::map<ObjectID, ObjectID>::iterator k = oldNewMap.find(*i);
+        std::unordered_map<ObjectID, ObjectID>::iterator k = oldNewMap.find(*i);
         if (k != oldNewMap.end()) {
             newoid = k->second;
         }
@@ -295,7 +295,7 @@ ObjectIndex::updateObjectIDs(osg::Drawable* drawable,
 
 bool
 ObjectIndex::updateObjectID(osg::Node* node,
-                            std::map<ObjectID, ObjectID>& oldNewMap,
+                            std::unordered_map<ObjectID, ObjectID>& oldNewMap,
                             osg::Referenced* object)
 {
     if (!node) return false;
@@ -310,7 +310,7 @@ ObjectIndex::updateObjectID(osg::Node* node,
     uniform->get(oldoid);
 
     ObjectID newoid;
-    std::map<ObjectID, ObjectID>::iterator k = oldNewMap.find(oldoid);
+    std::unordered_map<ObjectID, ObjectID>::iterator k = oldNewMap.find(oldoid);
     if (k != oldNewMap.end()) {
         newoid = k->second;
     }

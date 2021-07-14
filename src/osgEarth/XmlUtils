@@ -49,7 +49,7 @@ namespace osgEarth { namespace Util
 
     typedef std::vector<osg::ref_ptr<XmlNode> > XmlNodeList;
 
-    typedef std::map<std::string,std::string> XmlAttributes;
+    typedef std::map<std::string,std::string> XmlAttributes; // sorted
 
     class OSGEARTH_EXPORT XmlElement : public XmlNode
     {

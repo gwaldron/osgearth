@@ -90,9 +90,9 @@ namespace osgEarth { namespace Splat
         Config getConfig() const;
     };
     
-    typedef osgEarth::UnorderedMap<std::string, SplatClass> SplatClassMap;
-  
-    typedef osgEarth::UnorderedMap<std::string /*className*/, SplatRangeDataVector> SplatLUT;
+    using SplatClassMap = std::unordered_map<std::string, SplatClass>;
+
+    using SplatLUT = std::unordered_map<std::string /*className*/, SplatRangeDataVector>;
 
     // Defines the splatting texture and associated lookup table.
     struct SplatTextureDef

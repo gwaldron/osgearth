@@ -157,7 +157,7 @@ namespace osgEarth { namespace Util
         osg::observer_ptr<TerrainEngineNode>    _engine;
 
         // Mapping of each RTT camera params vector to a Camera (per view data)
-        typedef std::map<osg::Camera*, PerViewData> PerViewDataMap;
+        using PerViewDataMap = std::unordered_map<osg::Camera*, PerViewData>;
 
         PerViewDataMap _perViewData;
         mutable Threading::ReadWriteMutex _perViewDataMutex;

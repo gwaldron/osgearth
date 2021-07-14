@@ -284,7 +284,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // A shared geometry pool.
     _geometryPool = new GeometryPool();
-    _geometryPool->setReleaser( _releaser.get());
     this->addChild( _geometryPool.get() );
 
     // Geometry compiler/merger
@@ -547,7 +546,7 @@ RexTerrainEngineNode::dirtyTerrain()
     // clear out the tile registry:
     if ( _liveTiles.valid() )
     {
-        _liveTiles->releaseAll(_releaser.get());
+        _liveTiles->releaseAll(nullptr);
     }
 
     // scrub the geometry pool:
@@ -771,9 +770,6 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     _geometryPool->accept(nv);
     _merger->accept(nv);
     _unloader->accept(nv);
-
-    if (_releaser.valid())
-        _releaser->accept(nv);
 }
 
 void

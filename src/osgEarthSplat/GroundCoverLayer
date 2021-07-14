@@ -183,12 +183,12 @@ namespace osgEarth { namespace Splat
             struct DrawState
             {
                 // Geometry differs by zone/groundcover settings
-                typedef UnorderedMap<const void*, osg::ref_ptr<LegacyInstanceCloud> > InstancerPerGroundCover;
+                using InstancerPerGroundCover = std::unordered_map<const void*, osg::ref_ptr<LegacyInstanceCloud>>;
                 InstancerPerGroundCover _instancers;
 
                 Renderer* _renderer;
 
-                typedef UnorderedMap<const void*, UniformState> UniformsPerPCP;
+                using UniformsPerPCP = std::unordered_map<const void*, UniformState>;
                 UniformsPerPCP _uniforms;
 
                 osg::Matrixd _mvp;

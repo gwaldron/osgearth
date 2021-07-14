@@ -48,7 +48,7 @@ namespace osgEarth { namespace Internal
         bool _visible;
     };
 
-    typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
+    using DrawableMemory = std::unordered_map<const osg::Drawable*, DrawableInfo>;
 
     typedef std::pair<const osg::Node*, osg::BoundingBox> RenderLeafBox;
 

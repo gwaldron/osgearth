@@ -792,7 +792,7 @@ namespace osgEarth { namespace Util { namespace Controls
             osg::ref_ptr<osg::Uniform>        _uniform;
             osg::observer_ptr<osg::Camera>    _canvas;
         };
-        typedef osgEarth::UnorderedMap<osg::Camera*,TravSpecificData> TravSpecificDataMap;
+        using TravSpecificDataMap = std::unordered_map<osg::Camera*,TravSpecificData>;
 
         TravSpecificDataMap    _travDataMap;
         osg::ref_ptr<Control>  _control;

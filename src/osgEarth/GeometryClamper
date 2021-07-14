@@ -42,7 +42,7 @@ namespace osgEarth { namespace Util
             friend class GeometryClamper;
         };
 
-        typedef std::map<osg::Array*, GeometryData> LocalData;      
+        typedef std::unordered_map<osg::Array*, GeometryData> LocalData;
 
     public:
         //! Construct a geometry clamper, passing in a data structure managed

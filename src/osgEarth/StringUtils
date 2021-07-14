@@ -327,7 +327,7 @@ namespace osgEarth { namespace Util
         void addQuotes( const std::string& delims, bool keepInTokens =false );
 
     private:
-        typedef std::map<char,bool> TokenMap;
+        using TokenMap = std::map<char,bool>;
         TokenMap _delims;
         TokenMap _quotes;
         bool     _allowEmpties;

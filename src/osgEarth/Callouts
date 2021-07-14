@@ -23,6 +23,7 @@
 #define OSGEARTH_CALLOUTS_H 1
 
 #include <osgEarth/Text>
+#include <unordered_map>
 
 namespace osgUtil {
     class CullVisitor;

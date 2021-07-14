@@ -306,7 +306,7 @@ namespace
         const osgEarth::SpatialReference* _srs;
     };
 
-    typedef std::map<unsigned,Index> UniqueMap;
+    typedef std::unordered_map<unsigned,Index> UniqueMap;
 
     // A TriangleIndexFunctor that traverses a stream of triangles and builds a
     // topology graph from their points and edges.

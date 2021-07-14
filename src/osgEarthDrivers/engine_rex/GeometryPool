@@ -24,7 +24,6 @@
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/TileKey>
 #include <osgEarth/Threading>
-#include <osgEarth/ResourceReleaser>
 #include <osgEarth/PatchLayer>
 #include <osgEarth/Metrics>
 #include <osgEarth/Math>
@@ -156,9 +155,6 @@ namespace osgEarth { namespace REX
         /** Construct the geometry pool */
         GeometryPool();
 
-        /** Sets an object to release unused GL resources */
-        void setReleaser(ResourceReleaser* releaser);
-
     public:
         /**
          * Hashtable key for unique (and therefore shareable) geometries.
@@ -263,7 +259,6 @@ namespace osgEarth { namespace REX
 
         mutable Threading::Mutex _geometryMapMutex;
         GeometryMap _geometryMap;
-        osg::ref_ptr<ResourceReleaser> _releaser;
         osg::ref_ptr<osg::DrawElements> _defaultPrimSet;
 
         void createKeyForTileKey(

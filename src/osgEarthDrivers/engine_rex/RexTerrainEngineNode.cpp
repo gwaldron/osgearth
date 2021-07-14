@@ -282,10 +282,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     _liveTiles->setNotifyNeighbors(options().normalizeEdges() == true);
     _liveTiles->setFirstLOD(options().firstLOD().get());
 
-    // A resource releaser that will call releaseGLObjects() on expired objects.
-    _releaser = new ResourceReleaser();
-    this->addChild(_releaser.get());
-
     // A shared geometry pool.
     _geometryPool = new GeometryPool();
     _geometryPool->setReleaser( _releaser.get());
@@ -775,7 +771,9 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     _geometryPool->accept(nv);
     _merger->accept(nv);
     _unloader->accept(nv);
-    _releaser->accept(nv);
+
+    if (_releaser.valid())
+        _releaser->accept(nv);
 }
 
 void

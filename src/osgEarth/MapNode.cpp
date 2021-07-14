@@ -26,7 +26,6 @@
 #include <osgEarth/DrapingTechnique>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ResourceReleaser>
 #include <osgEarth/Lighting>
 #include <osgEarth/GLUtils>
 #include <osgEarth/HorizonClipPlane>
@@ -283,10 +282,6 @@ MapNode::init()
     _isOpen = false;
 
     setName( "osgEarth::MapNode" );
-
-    // Create and install a GL resource releaser that this node and extensions can use.
-    _resourceReleaser = new ResourceReleaser();
-    this->addChild(_resourceReleaser);
 
     // Construct the container for the terrain engine, which also hold the options.
     _terrainGroup = new StickyGroup();
@@ -633,12 +628,6 @@ TerrainEngine*
 MapNode::getTerrainEngine() const
 {
     return _terrainEngine;
-}
-
-ResourceReleaser*
-MapNode::getResourceReleaser() const
-{
-    return _resourceReleaser;
 }
 
 void

@@ -437,12 +437,6 @@ GeometryPool::createGeometry(
 }
 
 void
-GeometryPool::setReleaser(ResourceReleaser* releaser)
-{
-    _releaser = releaser;
-}
-
-void
 GeometryPool::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.UPDATE_VISITOR && _enabled)
@@ -499,31 +493,12 @@ GeometryPool::releaseGLObjects(osg::State* state) const
     if (!_enabled)
         return;
 
-    ResourceReleaser::ObjectList objects;
-
     // collect all objects in a thread safe manner
-    {
-        Threading::ScopedMutexLock lock(_geometryMapMutex);
-        {
-            for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
-            {
-                if (_releaser.valid())
-                    objects.push_back(i->second.get());
-                else
-                    i->second->releaseGLObjects(state);
-            }
+    Threading::ScopedMutexLock lock(_geometryMapMutex);
 
-            if (_releaser.valid() && !objects.empty())
-            {
-                OE_DEBUG << LC << "Released " << objects.size() << " objects in the geometry pool\n";
-            }
-        }
-    }
-
-    // submit to the releaser.
-    if (_releaser.valid() && !objects.empty())
+    for (auto& entry : _geometryMap)
     {
-        _releaser->push(objects);
+        entry.second->releaseGLObjects(state);
     }
 }
 

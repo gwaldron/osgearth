@@ -25,7 +25,6 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/Threading>
 #include <osgEarth/Containers>
-#include <osgEarth/ResourceReleaser>
 #include <osgEarth/FrameClock>
 
 #include "EngineContext"
@@ -164,7 +163,6 @@ namespace osgEarth { namespace REX
 
         // node registry is shared across all threads.
         osg::ref_ptr<TileNodeRegistry> _liveTiles; // tiles in the scene graph.
-        osg::ref_ptr<ResourceReleaser> _releaser;
      
         EngineContext* getEngineContext() const { return _engineContext.get(); }
         osg::ref_ptr< EngineContext > _engineContext;

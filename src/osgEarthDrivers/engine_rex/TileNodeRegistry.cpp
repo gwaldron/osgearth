@@ -238,20 +238,14 @@ TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, const TileKey& 
 }
 
 void
-TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
+TileNodeRegistry::releaseAll(osg::State* state)
 {
-    ResourceReleaser::ObjectList objects;
-
     _mutex.lock();
 
-    if (releaser)
+    for (auto& tile : _tiles)
     {
-        for (TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i)
-        {
-            objects.push_back(i->second._tile.get());
-        }
+        tile.second._tile->releaseGLObjects(state);
     }
-
     _tiles.clear();
 
     for (Tracker::iterator i = _tracker.begin(); i != _tracker.end(); ++i)
@@ -268,11 +262,6 @@ TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
     OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
 
     _mutex.unlock();
-
-    if (releaser)
-    {
-        releaser->push(objects);
-    }
 }
 
 void
@@ -315,7 +304,7 @@ TileNodeRegistry::collectDormantTiles(
     unsigned oldestAllowableFrame,
     float farthestAllowableRange,
     unsigned maxTiles,
-    std::vector<osg::observer_ptr<TileNode> >& output)
+    std::vector<osg::observer_ptr<TileNode>>& output)
 {
     _mutex.lock();
 

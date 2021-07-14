@@ -23,7 +23,6 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/Threading>
-#include <osgEarth/ResourceReleaser>
 #include <osgEarth/Containers>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/FrameClock>
@@ -131,7 +130,7 @@ namespace osgEarth { namespace REX
         unsigned size() const { return _tiles.size(); }
 
         //! Empty the registry, releasing all tiles.
-        void releaseAll(ResourceReleaser*);
+        void releaseAll(osg::State* state);
 
         //! Collect dormant tiles. This is called by UnloaderGroup
         //! during update/event to remove dormant scene graphs.

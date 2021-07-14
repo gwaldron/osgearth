@@ -18,7 +18,6 @@
 */
 #include "TileNode"
 #include "SurfaceNode"
-#include "ProxySurfaceNode"
 #include "EngineContext"
 #include "Loader"
 #include "LoadTileData"

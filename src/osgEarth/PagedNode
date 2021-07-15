@@ -134,16 +134,6 @@ namespace osgEarth { namespace Util
             return _callbacks.get();
         }
 
-        //! Whether to continue rendering the normal children after
-        //! the asynchronous node becomes visible
-        //! Default value = REFINE_REPLACE
-        void setRefinePolicy(RefinePolicy value) {
-            _refinePolicy = value;
-        }
-        RefinePolicy getRefinePolicy() const {
-            return _refinePolicy;
-        }
-
         //! Whether to pre-compile GL objects before merging
         void setPreCompileGLObjects(bool value) {
             _preCompile = value;
@@ -152,36 +142,49 @@ namespace osgEarth { namespace Util
             return _preCompile;
         }
 
-        //! Whether this node will automatically unload its content
-        //! when it goes not pass cull.
-        bool getAutoUnload() const  {
-            return _autoUnload;
+        //! Whether to continue rendering the normal children after
+        //! the asynchronous node becomes visible
+        //! Default value = REFINE_REPLACE
+        void setRefinePolicy(RefinePolicy value) {
+            _refinePolicy = value;
         }
-        void setAutoUnload(bool value)  {
-            _autoUnload = value;
-        }
-
-        bool isHighestResolution() const;
 
         //! Loads the content for this node
         void load(
             float priority,
             const osg::Object* host);
 
+        //! Mark the content as "in use" so that it will not
+        //! be removed if setAutoUnload is true.
+        void touch();
+
+    public: // LoadableNode API
+
+        RefinePolicy getRefinePolicy() const override {
+            return _refinePolicy;
+        }
+
+        //! Whether this node will automatically unload its content
+        //! when it goes not pass cull.
+        bool getAutoUnload() const override {
+            return _autoUnload;
+        }
+        void setAutoUnload(bool value) override {
+            _autoUnload = value;
+        }
+
+        bool isHighestResolution() const override;
+
         //! Loads the content for this node (convenience function)
-        void load() {
+        void load() override {
             load(0.0, nullptr);
         }
 
         //! Unloads the content for this node
-        void unload();
+        void unload() override;
 
         //! Whether the content is loaded.
-        bool isLoaded() const;
-
-        //! Mark the content as "in use" so that it will not
-        //! be removed if setAutoUnload is true.
-        void touch();
+        bool isLoaded() const override;
 
 
     public: // osg::Node overrides

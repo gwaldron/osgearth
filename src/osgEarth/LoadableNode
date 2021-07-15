@@ -24,18 +24,34 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT LoadableNode
+    /**
+     * Pure interface for a node that can load or unload data.
+     */
+    class /*interface*/ LoadableNode
     {
     public:
+        //! Instruct the object to load its payload
         virtual void load() = 0;
+
+        //! Instruct the object to discard its payload
         virtual void unload() = 0;
 
+        //! How to behave when higher resolution data is loaded
         virtual RefinePolicy getRefinePolicy() const = 0;
 
+        //! Whether this node's payload was succesfully loaded
         virtual bool isLoaded() const = 0;
+
+        //! Whether the payload associated with this node is the highest
+        //! resolution and no higher resolution data is available
         virtual bool isHighestResolution() const = 0;
 
+        //! Whether to automatically discard the payload when the
+        //! system determines that this node is not currently in use
         virtual bool getAutoUnload() const = 0;
+
+        //! Whether to automatically discard the payload when the
+        //! system determines that this node is not currently in use
         virtual void setAutoUnload(bool value) = 0;
     };
 }

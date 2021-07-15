@@ -1,8 +1,36 @@
 # FAQ
 
-## Using the API
+## Earth File
 
-#### How do I place a 3D model on the map?
+#### How do I place a 3D object on the map in an Earth File?
+
+There are 2 ways. One is to use a `ModelLayer` like so:
+
+```xml
+<Model name="My Model Layer">
+    <url>location_of_my_3d_model.osgb</url>
+    <location srs="wgs84" lat="34.0" long="-80.4"/>
+</Model>
+```
+
+Another way is to use an `Annotation`. Annotations must live inside an `Annotations` layer. With this approach is that you can model symbology to style your model. This approach looks like this:
+```xml
+<Annotations>
+    <Model>
+        <position srs="wgs84" lat="43" long="-100"/>
+        <style>
+            model: "../data/red_flag.osg.45.scale";
+            model-scale: auto;
+        </style>
+    </Model>
+    ...
+```
+
+Please refer rhe various `feature` earth files in the repository for more information and examples.
+
+## API
+
+#### How do I place a 3D model on the map using the API?
 
 The `osgEarth::GeoTransform` class inherits from `osg::Transform` and will convert map coordinates into OSG world coordinates for you. Place an object at a geospatial position like this:
 
@@ -21,13 +49,19 @@ GeoPoint point(srs, -121.0, 34.0);
 xform->setPosition(point);
 ```
 
+The `srs` object in these examples is the `SpatialReference` of the coordinates. For standard **WGS84** longitude/latitude coordinates, you can get a spatial reference by calling
+
+```c++
+auto srs = SpatialReference::get("wgs84");
+```
 
 
 #### Why does my model have no texture or lighting?
 
 Everything under an osgEarth scene graph is rendered with shaders. So, when using your own models (or creating geometry by hand) you need to create shader components in order for them to render properly.
 
-osgEarth has a built-in shader generator for this purpose. Run the shader generator on your node like so:
+osgEarth has a built-in shader generator for this purpose.
+Run the shader generator on your node like so:
 
 ```C++
 osgEarth::Registry::shaderGenerator().run( myNode );
@@ -47,9 +81,10 @@ Lines render using a shader that requires some initial state to be set. You can 
 GLUtils::setGlobalDefaults(camera->getOrCreateStateSet());
 ```
 
-For Annotations (```FeatureNodes```, ```PlaceNodes```, etc.) best practice is to place an Annotation node as a descendant of the ```MapNode``` in your scene graph. You can also add them to an ```AnnotationLayer``` and add that layer to the Map.
+For Annotations (`FeatureNode`, `PlaceNode`, etc.) best practice is to place an Annotation node as a descendant of the `MapNode` in your scene graph. You can also add them to an ```AnnotationLayer``` and add that layer to the Map.
 
-Annotations need access to the ```MapNode``` in order to render properly. If you cannot place them under the ```MapNode```, you will have to manually install a few things to make them work:
+Annotations need access to the `MapNode` in order to render properly.
+If you cannot place them under the `MapNode`, you will have to manually install a few things to make them work:
 
 ```c++
 #include <osgEarth/CullingUtils>
@@ -66,7 +101,7 @@ group->addCullCallback(new InstallViewportSizeUniform());
 GLUtils::setGlobalDefaults(group->getOrCreateStateSet());
 ```
 
-Again: MapNode does all this automatically so this is only necessary if you do not place your annotations as descendants of the MapNode.
+Again: `MapNode` does all this automatically so this is only necessary if you do not place your annotations as descendants of the `MapNode`.
 
 
 

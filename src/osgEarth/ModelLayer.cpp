@@ -72,6 +72,7 @@ ModelLayer::Options::fromConfig( const Config& conf )
     conf.get("url", _url);
     conf.get("lod_scale", _lodScale);
     conf.get("location", _location);
+    conf.get("position", _location);
     conf.get("orientation", _orientation);
     conf.get("loading_priority_scale", _loadingPriorityScale);
     conf.get("loading_priority_offset", _loadingPriorityOffset);

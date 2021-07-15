@@ -124,6 +124,7 @@ namespace osgEarth
         void setEnableBlending(const bool& value);
         const bool& getEnableBlending() const;
 
+        //! @deprecated
         //! Whether to compress the normal maps before sending to the GPU
         void setCompressNormalMaps(const bool& value);
         const bool& getCompressNormalMaps() const;

@@ -713,10 +713,6 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
                 }
             }
 
-            // perform any pre-draw finalization
-            layerDrawable->finalize();
-
-
             if (layerDrawable->_layer)
             {
                 layerDrawable->_layer->apply(layerDrawable.get(), cv);

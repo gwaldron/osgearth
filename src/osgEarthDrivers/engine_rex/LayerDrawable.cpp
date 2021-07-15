@@ -51,12 +51,6 @@ LayerDrawable::~LayerDrawable()
     setStateSet(nullptr);
 }
 
-void
-LayerDrawable::finalize()
-{
-    //nop
-}
-
 namespace
 {
     // Hack State so we can dirty the texture attrs without dirtying the other 

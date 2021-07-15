@@ -209,6 +209,10 @@ GeoPositionNode::setConfig(const Config& conf)
     {
         setPosition( GeoPoint(conf.child("position")) );
     }
+    else if (conf.hasChild("location"))
+    {
+        setPosition(GeoPoint(conf.child("location")));
+    }
     else
     {
         if (conf.hasValue("lat") && conf.hasValue("long"))

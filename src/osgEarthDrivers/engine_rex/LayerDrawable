@@ -44,9 +44,6 @@ namespace osgEarth { namespace REX
 
         void accept(osg::NodeVisitor& nv) { Drawable::accept(nv); }
 
-        // Finalize the tile batch before dispatch
-        void finalize();
-
         // The (sorted) list of tiles to render for this layer
         DrawTileCommands  _tiles;
 

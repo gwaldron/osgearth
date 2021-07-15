@@ -329,7 +329,7 @@ int LineDrawable::PreviousVertexAttrLocation = 9;
 int LineDrawable::NextVertexAttrLocation = 10;
 
 LineDrawable::LineDrawable() :
-osg::Geometry(),
+osg::Drawable(),
 _mode(GL_LINE_STRIP),
 _useGPU(true),
 _factor(1),
@@ -344,6 +344,10 @@ _previous(NULL),
 _next(NULL),
 _colors(NULL)
 {
+    setUseVertexArrayObject(false);
+    setUseVertexBufferObjects(false);
+    setUseDisplayList(false);
+
     if (!Registry::capabilities().supportsGLSL())
         _useGPU = false;
 
@@ -355,7 +359,7 @@ _colors(NULL)
 }
 
 LineDrawable::LineDrawable(GLenum mode) :
-osg::Geometry(),
+osg::Drawable(),
 _mode(mode),
 _useGPU(true),
 _factor(1),
@@ -370,6 +374,13 @@ _previous(NULL),
 _next(NULL),
 _colors(NULL)
 {
+    setUseVertexArrayObject(false);
+    setUseVertexBufferObjects(false);
+    setUseDisplayList(false);
+
+    _geom = new osg::Geometry();
+    _geom->setUseVertexBufferObjects(true);
+
     if (!Registry::capabilities().supportsGLSL())
         _useGPU = false;
 
@@ -381,7 +392,7 @@ _colors(NULL)
 }
 
 LineDrawable::LineDrawable(const LineDrawable& rhs, const osg::CopyOp& copy) :
-osg::Geometry(rhs, copy),
+osg::Drawable(rhs, copy),
 _mode(rhs._mode),
 _useGPU(rhs._useGPU),
 _color(rhs._color),
@@ -396,12 +407,14 @@ _previous(NULL),
 _next(NULL),
 _colors(NULL)
 {
-    _current = static_cast<osg::Vec3Array*>(getVertexArray());
+    _geom = osg::clone(rhs._geom.get(), copy);
+
+    _current = static_cast<osg::Vec3Array*>(_geom->getVertexArray());
 
     if (_useGPU)
     {
-        _previous = static_cast<osg::Vec3Array*>(getVertexAttribArray(PreviousVertexAttrLocation));
-        _next = static_cast<osg::Vec3Array*>(getVertexAttribArray(NextVertexAttrLocation));
+        _previous = static_cast<osg::Vec3Array*>(_geom->getVertexAttribArray(PreviousVertexAttrLocation));
+        _next = static_cast<osg::Vec3Array*>(_geom->getVertexAttribArray(NextVertexAttrLocation));
         setupShaders();
     }
 }
@@ -430,17 +443,17 @@ LineDrawable::initialize()
         return;
 
     // Blow away any existing data (e.g. user vertex attrib arrays)
-    ArrayList arrays;
-    getArrayList(arrays);
-    for(ArrayList::iterator i = arrays.begin(); i != arrays.end(); ++i)
-       i->get()->resizeArray(0u);
+    osg::Geometry::ArrayList arrays;
+    _geom->getArrayList(arrays);
+    for (auto& array_ref : arrays)
+        array_ref->resizeArray(0u);
 
     // See if the arrays already exist:
-    _current = static_cast<osg::Vec3Array*>(getVertexArray());
+    _current = static_cast<osg::Vec3Array*>(_geom->getVertexArray());
     if (_useGPU)
     {
-        _previous = static_cast<osg::Vec3Array*>(getVertexAttribArray(PreviousVertexAttrLocation));
-        _next = static_cast<osg::Vec3Array*>(getVertexAttribArray(NextVertexAttrLocation));
+        _previous = static_cast<osg::Vec3Array*>(_geom->getVertexAttribArray(PreviousVertexAttrLocation));
+        _next = static_cast<osg::Vec3Array*>(_geom->getVertexAttribArray(NextVertexAttrLocation));
     }
 
     setUseVertexBufferObjects(_supportsVertexBufferObjects);
@@ -450,23 +463,23 @@ LineDrawable::initialize()
     {
         _current = new osg::Vec3Array();
         _current->setBinding(osg::Array::BIND_PER_VERTEX);
-        setVertexArray(_current);
+        _geom->setVertexArray(_current);
 
         _colors = new osg::Vec4Array();
         _colors->setBinding(osg::Array::BIND_PER_VERTEX);
-        setColorArray(_colors);
+        _geom->setColorArray(_colors);
 
         if (_useGPU)
         {
             _previous = new osg::Vec3Array();
             _previous->setBinding(osg::Array::BIND_PER_VERTEX);
             _previous->setNormalize(false);
-            setVertexAttribArray(PreviousVertexAttrLocation, _previous);  
+            _geom->setVertexAttribArray(PreviousVertexAttrLocation, _previous);
 
             _next = new osg::Vec3Array();
             _next->setBinding(osg::Array::BIND_PER_VERTEX);
             _next->setNormalize(false);
-            setVertexAttribArray(NextVertexAttrLocation, _next);
+            _geom->setVertexAttribArray(NextVertexAttrLocation, _next);
         }
     }
 
@@ -661,9 +674,9 @@ LineDrawable::updateFirstCount()
     }
     else
     {
-        if (getNumPrimitiveSets() > 0)
+        if (_geom->getNumPrimitiveSets() > 0)
         {
-            osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(getPrimitiveSet(0));
+            osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(_geom->getPrimitiveSet(0));
             if (da)
             {
                 da->setFirst(_first);
@@ -803,9 +816,9 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 
     // if we've already called dirty() that means we are editing a completed
     // drawable and therefore need dynamic variance.
-    if (getNumPrimitiveSets() > 0u && getDataVariance() != DYNAMIC)
+    if (_geom->getNumPrimitiveSets() > 0u && getDataVariance() != DYNAMIC)
     {
-        setDataVariance(DYNAMIC);
+        _geom->setDataVariance(DYNAMIC);
     }
 
     unsigned size = _current->size();
@@ -1081,10 +1094,10 @@ LineDrawable::reserve(unsigned size)
 
     if (actualSize > _current->size())
     {
-        ArrayList arrays;
-        getArrayList(arrays);
-        for (ArrayList::iterator i = arrays.begin(); i != arrays.end(); ++i)
-            i->get()->reserveArray(actualSize);
+        osg::Geometry::ArrayList arrays;
+        _geom->getArrayList(arrays);
+        for (auto& arr : arrays)
+            arr->reserveArray(actualSize);
     }
 }
 
@@ -1096,12 +1109,10 @@ LineDrawable::clear()
     unsigned n = getNumVerts();
     if (n > 0u)
     {
-        ArrayList arrays;
-        getArrayList(arrays);
-        for (ArrayList::iterator i = arrays.begin(); i != arrays.end(); ++i)
-        {
-            i->get()->resizeArray(0);
-        }
+        osg::Geometry::ArrayList arrays;
+        _geom->getArrayList(arrays);
+        for (auto& arr : arrays)
+            arr->reserveArray(0);
         reserve(n);
     }
 }
@@ -1137,9 +1148,9 @@ LineDrawable::dirty()
     }
 
     // rebuild primitive sets.
-    if (getNumPrimitiveSets() > 0)
+    if (_geom->getNumPrimitiveSets() > 0)
     {
-        removePrimitiveSet(0, 1);
+        _geom->removePrimitiveSet(0, 1);
     }
 
     if (_useGPU && _current->size() >= 4)
@@ -1166,7 +1177,7 @@ LineDrawable::dirty()
                 els->addElement(e+0); // PV
             }
             
-            addPrimitiveSet(els);
+            _geom->addPrimitiveSet(els);
         }
 
         else if (_mode == GL_LINE_LOOP)
@@ -1192,7 +1203,7 @@ LineDrawable::dirty()
             els->addElement(1);
             els->addElement(e+0); // PV
             
-            addPrimitiveSet(els);
+            _geom->addPrimitiveSet(els);
         }
 
         else if (_mode == GL_LINES)
@@ -1217,19 +1228,19 @@ LineDrawable::dirty()
                     els->addElement(e+0); // PV
                 }
 
-                addPrimitiveSet(els);
+                _geom->addPrimitiveSet(els);
             }
         }
     }
 
     else
     {
-        ArrayList arrays;
-        getArrayList(arrays);
-        for (unsigned i = 0; i<arrays.size(); ++i)
-            arrays[i]->dirty();
+        osg::Geometry::ArrayList arrays;
+        _geom->getArrayList(arrays);
+        for (auto& arr : arrays)
+            arr->dirty();
 
-        addPrimitiveSet(new osg::DrawArrays(_mode, _first, _count > 0u? _count : _current->size()));
+        _geom->addPrimitiveSet(new osg::DrawArrays(_mode, _first, _count > 0u? _count : _current->size()));
     }
 }
 
@@ -1302,11 +1313,23 @@ LineDrawable::accept(osg::NodeVisitor& nv)
     }
 }
 
+void
+LineDrawable::setVertexAttribArray(unsigned i, osg::Array* arr)
+{
+    OE_SOFT_ASSERT_AND_RETURN(arr != nullptr, __func__, );
+    OE_SOFT_ASSERT(arr->getNumElements() == 0, __func__);
+    OE_HARD_ASSERT(_geom.valid(), __func__);
+
+    _geom->setVertexAttribArray(i, arr);
+}
+
 
 void
 LineDrawable::resizeGLObjectBuffers(unsigned maxSize)
 {
-    osg::Geometry::resizeGLObjectBuffers(maxSize);
+    osg::Drawable::resizeGLObjectBuffers(maxSize);
+    if (_geom.valid())
+        _geom->resizeGLObjectBuffers(maxSize);
     if (_gpuStateSet.valid())
         _gpuStateSet->resizeGLObjectBuffers(maxSize);
 }
@@ -1314,7 +1337,9 @@ LineDrawable::resizeGLObjectBuffers(unsigned maxSize)
 void
 LineDrawable::releaseGLObjects(osg::State* state) const
 {
-    osg::Geometry::releaseGLObjects(state);
+    osg::Drawable::releaseGLObjects(state);
+    if (_geom.valid())
+        _geom->releaseGLObjects(state);
     if (_gpuStateSet.valid())
         _gpuStateSet->releaseGLObjects(state);
 }

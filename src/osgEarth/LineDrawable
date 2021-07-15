@@ -43,7 +43,7 @@ namespace osgEarth
      * formatting internally and accessing the arrays directly will probably
      * cause trouble.
      */
-    class OSGEARTH_EXPORT LineDrawable : public osg::Geometry
+    class OSGEARTH_EXPORT LineDrawable : public osg::Drawable
     {
     public:
 
@@ -109,6 +109,9 @@ namespace osgEarth
         //! Clears all data
         void clear();
 
+        //! Whether the size is zero.
+        bool empty() const { return size() == 0; }
+
         //! Number of vertices in the drawable
         unsigned getNumVerts() const;
 
@@ -141,6 +144,10 @@ namespace osgEarth
         void dirty();
         void finish() { dirty(); }
 
+        //! Sets a vertex attribute array at the designated index.
+        //! The array must be EMPTY.
+        void setVertexAttribArray(unsigned i, osg::Array* a);
+
         //! Sets a line width on a custom stateset that will apply to
         //! all LineDrawables used with that state set.
         static void setLineWidth(osg::StateSet* stateSet, float value, int overrideFlags=osg::StateAttribute::ON);
@@ -163,7 +170,7 @@ namespace osgEarth
         virtual const char* libraryName() const { return "osgEarth"; }
 
         //! Override Node::accept to include the singleton GPU statset
-        virtual void accept(osg::NodeVisitor& nv);
+        virtual void accept(osg::NodeVisitor& nv) override;
 
     public: // osg::Object
 
@@ -211,6 +218,47 @@ namespace osgEarth
         static osg::observer_ptr<osg::StateSet> s_gpuStateSet;
         osg::ref_ptr<osg::StateSet> _gpuStateSet;
         mutable Mutex _mutex;
+        osg::ref_ptr<osg::Geometry> _geom;
+
+    public: // osg::Drawable pass thrus
+
+        virtual void drawImplementation(osg::RenderInfo& ri) const override {
+            _geom->draw(ri);
+        }
+        virtual void traverse(osg::NodeVisitor& nv) override {
+            _geom->accept(nv);
+        }
+        virtual osg::BoundingSphere computeBound() const override {
+            return _geom->computeBound();
+        }
+        virtual osg::BoundingBox computeBoundingBox() const override {
+            return _geom->computeBoundingBox();
+        }
+        virtual bool supports(const AttributeFunctor& f) const override {
+            return _geom->supports(f);
+        }
+        virtual void accept(AttributeFunctor& f) override {
+            return _geom->accept(f);
+        }
+        virtual bool supports(const ConstAttributeFunctor& f) const override {
+            return _geom->supports(f);
+        }
+        virtual void accept(ConstAttributeFunctor& f) const override {
+            return _geom->accept(f);
+        }
+        virtual bool supports(const osg::PrimitiveFunctor& f) const override {
+            return _geom->supports(f);
+        }
+        virtual void accept(osg::PrimitiveFunctor& f) const override {
+            return _geom->accept(f);
+        }
+        virtual bool supports(const osg::PrimitiveIndexFunctor& f) const override {
+            return _geom->supports(f);
+        }
+        virtual void accept(osg::PrimitiveIndexFunctor& f) const {
+            return _geom->accept(f);
+        }
+
     };
 
 
@@ -281,7 +329,7 @@ namespace osgEarth
     void LineDrawable::importVertexAttribArray(unsigned location, const T* data)
     {
         T* vaa = osg::cloneType(data);
-        setVertexAttribArray(location, vaa);
+        _geom->setVertexAttribArray(location, vaa);
         for (unsigned i=0; i < data->getNumElements(); ++i)
             pushVertexAttrib(vaa, (*data)[i]);
     }

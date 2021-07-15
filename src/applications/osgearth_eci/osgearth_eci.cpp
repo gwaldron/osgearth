@@ -206,17 +206,14 @@ public:
     ECITrackDrawable() : LineDrawable(GL_LINE_STRIP)
     {
         Lighting::set(getOrCreateStateSet(), 0);
-        //setPointSmooth(true);
-        //setPointSize(4.0f);
     }
 
     void setDateTime(const DateTime& dt)
     {
-        osg::FloatArray* times = dynamic_cast<osg::FloatArray*>(getVertexAttribArray(6));
         unsigned i;
         for (i = 0; i < getNumVerts(); ++i)
         {
-            if (dt.asTimeStamp() < getVertexAttrib(times, i))
+            if (dt.asTimeStamp() < getVertexAttrib(_times.get(), i))
                 break;
         }
         setCount(i);
@@ -224,9 +221,9 @@ public:
 
     void load(const ECITrack& track, bool drawECEF)
     {
-        osg::FloatArray* times = new osg::FloatArray();
-        times->setBinding(osg::Array::BIND_PER_VERTEX);
-        setVertexAttribArray(6, times);
+        _times = new osg::FloatArray();
+        _times->setBinding(osg::Array::BIND_PER_VERTEX);
+        setVertexAttribArray(6, _times);
 
         osg::Vec4f HSLA;
         Color color;
@@ -235,7 +232,7 @@ public:
         {
             const ECILocation& loc = track[i];
             pushVertex(drawECEF? loc.ecef : loc.eci);
-            pushVertexAttrib(times, (float)loc.timestamp.asTimeStamp());
+            pushVertexAttrib(_times.get(), (float)loc.timestamp.asTimeStamp());
 
             // simple color ramp
             HSLA.set((float)i/(float)(track.size()-1), 1.0f, 1.0f, 1.0f);
@@ -244,6 +241,8 @@ public:
         }
         finish();
     }
+
+    osg::ref_ptr<osg::FloatArray> _times;
 };
 
 osg::Node* createECIAxes()

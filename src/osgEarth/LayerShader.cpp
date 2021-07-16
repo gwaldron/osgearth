@@ -67,6 +67,7 @@ ShaderOptions::getConfig() const
             c.set("value", _uniforms[i]._floatValue);
         else if (_uniforms[i]._vec3Value.isSet())
             c.set("value", Color(_uniforms[i]._vec3Value.get()).toHTML());
+        conf.add(c);
     }
 
     return conf;

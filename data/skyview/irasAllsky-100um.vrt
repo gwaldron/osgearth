@@ -1,0 +1,48 @@
+<VRTDataset rasterXSize="9100" rasterYSize="4550">
+  <SRS dataAxisToSRSAxisMapping="2,1">GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]</SRS>
+  <GeoTransform> -1.8000000000000000e+02,  3.9560439560439559e-02,  0.0000000000000000e+00,  9.0000000000000000e+01,  0.0000000000000000e+00, -3.9560439560439559e-02</GeoTransform>
+  <Metadata>
+    <MDI key="EXIF_ColorSpace">1</MDI>
+    <MDI key="EXIF_DateTime">2007:01:17 18:50:10</MDI>
+    <MDI key="EXIF_Orientation">1</MDI>
+    <MDI key="EXIF_PixelXDimension">9100</MDI>
+    <MDI key="EXIF_PixelYDimension">4550</MDI>
+    <MDI key="EXIF_ResolutionUnit">2</MDI>
+    <MDI key="EXIF_Software">Adobe Photoshop CS3 (10.0x20061114 [20061114.m.1212 2006/11/14:02:00:00 cutoff; m branch])  Macintosh</MDI>
+    <MDI key="EXIF_XResolution">(72)</MDI>
+    <MDI key="EXIF_YResolution">(72)</MDI>
+  </Metadata>
+  <Metadata domain="IMAGE_STRUCTURE">
+    <MDI key="INTERLEAVE">PIXEL</MDI>
+  </Metadata>
+  <VRTRasterBand dataType="Byte" band="1">
+    <ColorInterp>Red</ColorInterp>
+    <SimpleSource>
+      <SourceFilename relativeToVRT="1">irasAllsky-100um.jpg</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="9100" RasterYSize="4550" DataType="Byte" BlockXSize="9100" BlockYSize="1" />
+      <SrcRect xOff="0" yOff="0" xSize="9100" ySize="4550" />
+      <DstRect xOff="0" yOff="0" xSize="9100" ySize="4550" />
+    </SimpleSource>
+  </VRTRasterBand>
+  <VRTRasterBand dataType="Byte" band="2">
+    <ColorInterp>Green</ColorInterp>
+    <SimpleSource>
+      <SourceFilename relativeToVRT="1">irasAllsky-100um.jpg</SourceFilename>
+      <SourceBand>2</SourceBand>
+      <SourceProperties RasterXSize="9100" RasterYSize="4550" DataType="Byte" BlockXSize="9100" BlockYSize="1" />
+      <SrcRect xOff="0" yOff="0" xSize="9100" ySize="4550" />
+      <DstRect xOff="0" yOff="0" xSize="9100" ySize="4550" />
+    </SimpleSource>
+  </VRTRasterBand>
+  <VRTRasterBand dataType="Byte" band="3">
+    <ColorInterp>Blue</ColorInterp>
+    <SimpleSource>
+      <SourceFilename relativeToVRT="1">irasAllsky-100um.jpg</SourceFilename>
+      <SourceBand>3</SourceBand>
+      <SourceProperties RasterXSize="9100" RasterYSize="4550" DataType="Byte" BlockXSize="9100" BlockYSize="1" />
+      <SrcRect xOff="0" yOff="0" xSize="9100" ySize="4550" />
+      <DstRect xOff="0" yOff="0" xSize="9100" ySize="4550" />
+    </SimpleSource>
+  </VRTRasterBand>
+</VRTDataset>

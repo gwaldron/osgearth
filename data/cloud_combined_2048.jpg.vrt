@@ -1,0 +1,48 @@
+<VRTDataset rasterXSize="2048" rasterYSize="1024">
+  <SRS dataAxisToSRSAxisMapping="2,1">GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]</SRS>
+  <GeoTransform> -1.8000000000000000e+02,  1.7578125000000000e-01,  0.0000000000000000e+00,  9.0000000000000000e+01,  0.0000000000000000e+00, -1.7578125000000000e-01</GeoTransform>
+  <Metadata>
+    <MDI key="EXIF_ColorSpace">65535</MDI>
+    <MDI key="EXIF_DateTime">2002:09:04 16:24:12</MDI>
+    <MDI key="EXIF_Orientation">1</MDI>
+    <MDI key="EXIF_PixelXDimension">2048</MDI>
+    <MDI key="EXIF_PixelYDimension">1024</MDI>
+    <MDI key="EXIF_ResolutionUnit">2</MDI>
+    <MDI key="EXIF_Software">Adobe Photoshop 7.0</MDI>
+    <MDI key="EXIF_XResolution">(72)</MDI>
+    <MDI key="EXIF_YResolution">(72)</MDI>
+  </Metadata>
+  <Metadata domain="IMAGE_STRUCTURE">
+    <MDI key="INTERLEAVE">PIXEL</MDI>
+  </Metadata>
+  <VRTRasterBand dataType="Byte" band="1">
+    <ColorInterp>Red</ColorInterp>
+    <SimpleSource>
+      <SourceFilename relativeToVRT="1">cloud_combined_2048.jpg</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="2048" RasterYSize="1024" DataType="Byte" BlockXSize="2048" BlockYSize="1" />
+      <SrcRect xOff="0" yOff="0" xSize="2048" ySize="1024" />
+      <DstRect xOff="0" yOff="0" xSize="2048" ySize="1024" />
+    </SimpleSource>
+  </VRTRasterBand>
+  <VRTRasterBand dataType="Byte" band="2">
+    <ColorInterp>Green</ColorInterp>
+    <SimpleSource>
+      <SourceFilename relativeToVRT="1">cloud_combined_2048.jpg</SourceFilename>
+      <SourceBand>2</SourceBand>
+      <SourceProperties RasterXSize="2048" RasterYSize="1024" DataType="Byte" BlockXSize="2048" BlockYSize="1" />
+      <SrcRect xOff="0" yOff="0" xSize="2048" ySize="1024" />
+      <DstRect xOff="0" yOff="0" xSize="2048" ySize="1024" />
+    </SimpleSource>
+  </VRTRasterBand>
+  <VRTRasterBand dataType="Byte" band="3">
+    <ColorInterp>Blue</ColorInterp>
+    <SimpleSource>
+      <SourceFilename relativeToVRT="1">cloud_combined_2048.jpg</SourceFilename>
+      <SourceBand>3</SourceBand>
+      <SourceProperties RasterXSize="2048" RasterYSize="1024" DataType="Byte" BlockXSize="2048" BlockYSize="1" />
+      <SrcRect xOff="0" yOff="0" xSize="2048" ySize="1024" />
+      <DstRect xOff="0" yOff="0" xSize="2048" ySize="1024" />
+    </SimpleSource>
+  </VRTRasterBand>
+</VRTDataset>

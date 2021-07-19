@@ -6,7 +6,7 @@ osgEarth Sample - Rendering a cloud layer with a layer shader
     <xi:include href="readymap_imagery.xml"/>
     
     <GDALImage name="clouds">
-        <url>../data/cloud_combined_2048.jpg</url>
+        <url>../data/cloud_combined_2048.jpg.vrt</url>
         <profile>global-geodetic</profile>
         <shader>
           <![CDATA[

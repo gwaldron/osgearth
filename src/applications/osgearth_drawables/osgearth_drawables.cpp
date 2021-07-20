@@ -137,6 +137,23 @@ struct TestFirstCount : public osg::NodeCallback
     }
 };
 
+struct RemoveAndReAddVertices : public osg::NodeCallback
+{
+    void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+        if (nv->getFrameStamp()->getFrameNumber() % 20 == 0)
+        {
+            size_ = (size_ == 10) ? 12 : 10;
+            LineDrawable* line = (LineDrawable*)node;
+
+
+            line->clear();
+            addVerts(line, size_ + 20, size_);
+        }
+    }
+    int size_ = 10;
+};
+
 struct RollStipple : public osg::NodeCallback
 {
     void operator()(osg::Node* node, osg::NodeVisitor* nv)
@@ -167,9 +184,11 @@ osg::Node* createDrawables()
 
     x += 20;
     LineDrawable* loop = new LineDrawable(GL_LINE_LOOP);
+    loop->setDataVariance(osg::Object::DYNAMIC);
     loop->setLineWidth(1);
     loop->setColor(osg::Vec4(1,1,0,1));
     addVerts(loop, x, y);
+    loop->addUpdateCallback(new RemoveAndReAddVertices());
     group->addChild(loop);
 
     x += 20;

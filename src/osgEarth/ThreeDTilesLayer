@@ -46,7 +46,7 @@ namespace osgEarth { namespace Contrib
         };
 
     public:
-        META_Layer(osgEarth, ThreeDTilesLayer, Options, VisibleLayer, Model);
+        META_Layer(osgEarth, ThreeDTilesLayer, Options, VisibleLayer, ThreeDTiles);
 
     public:
         //! URL from which to load the tileset from        

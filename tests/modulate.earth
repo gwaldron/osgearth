@@ -6,7 +6,7 @@ osgEarth Sample - Image Layer Modulation Blending
     <xi:include href="readymap_imagery.xml"/>
 
     <GDALImage name="Noise" blend="modulate" opacity="0.5">
-        <url> ../data/fractal.png </url>
+        <url> ../data/fractal.vrt </url>
         <profile> global-geodetic </profile>
     </GDALImage>
 </map>

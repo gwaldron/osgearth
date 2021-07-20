@@ -16,7 +16,7 @@ Run with osgearth_skyview skyview1.earth
     <!-- Wrap the image in the skyview driver to flip it-->
     <SkyView>
         <GDALImage name="Skyview">
-	        <url>../data/skyview/irasAllsky-100um.jpg</url>
+	        <url>../data/skyview/irasAllsky-100um.vrt</url>
 	        <profile>global-geodetic</profile>
 	    </GDALImage>
     </SkyView>

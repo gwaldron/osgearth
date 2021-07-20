@@ -1,0 +1,25 @@
+<VRTDataset rasterXSize="2400" rasterYSize="1200">
+  <SRS dataAxisToSRSAxisMapping="2,1">GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]</SRS>
+  <GeoTransform> -1.8000000000000000e+02,  1.4999999999999999e-01,  0.0000000000000000e+00,  9.0000000000000000e+01,  0.0000000000000000e+00, -1.4999999999999999e-01</GeoTransform>
+  <Metadata>
+    <MDI key="EXIF_ColorSpace">65535</MDI>
+    <MDI key="EXIF_DateTime">2004:10:25 14:44:07</MDI>
+    <MDI key="EXIF_Orientation">1</MDI>
+    <MDI key="EXIF_PixelXDimension">2400</MDI>
+    <MDI key="EXIF_PixelYDimension">1200</MDI>
+    <MDI key="EXIF_ResolutionUnit">2</MDI>
+    <MDI key="EXIF_Software">Adobe Photoshop CS Macintosh</MDI>
+    <MDI key="EXIF_XResolution">(72)</MDI>
+    <MDI key="EXIF_YResolution">(72)</MDI>
+  </Metadata>
+  <VRTRasterBand dataType="Byte" band="1">
+    <ColorInterp>Gray</ColorInterp>
+    <SimpleSource>
+      <SourceFilename relativeToVRT="1">celestial-ref.jpg</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="2400" RasterYSize="1200" DataType="Byte" BlockXSize="2400" BlockYSize="1" />
+      <SrcRect xOff="0" yOff="0" xSize="2400" ySize="1200" />
+      <DstRect xOff="0" yOff="0" xSize="2400" ySize="1200" />
+    </SimpleSource>
+  </VRTRasterBand>
+</VRTDataset>

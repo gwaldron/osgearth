@@ -27,6 +27,7 @@ using namespace osgEarth;
 namespace
 {
     static NetworkMonitor::Requests s_requests;
+    static NetworkMonitor::URICount s_counts;
     osgEarth::Threading::ReadWriteMutex s_requestsMutex("NetworkMonitor(OE)");
     static unsigned long s_requestId = 0;
     static bool s_enabled = false;
@@ -43,6 +44,8 @@ unsigned long NetworkMonitor::begin(const std::string& uri, const std::string& s
         Request req(uri, status);
         req.layer = s_requestLayer[osgEarth::Threading::getCurrentThreadId()];
         req.type = type;
+        req.count = ++s_counts.insert(std::make_pair(uri, 0u)).first->second;
+
         unsigned long id = s_requestId++;
         s_requests[id] = req;
         return id;

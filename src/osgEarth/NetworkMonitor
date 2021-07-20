@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <map>
+#include <unordered_map>
 
 namespace osgEarth {
     class OSGEARTH_EXPORT NetworkMonitor
@@ -30,7 +31,7 @@ namespace osgEarth {
         struct Request
         {
             Request() :
-                isComplete(false)
+                isComplete(false), count(0u)
             {
                 startTime = osg::Timer::instance()->tick();
             }
@@ -59,6 +60,7 @@ namespace osgEarth {
             std::string status;
             osg::Timer_t startTime;
             osg::Timer_t endTime;
+            unsigned count;
         };
 
         struct ScopedRequestLayer
@@ -76,7 +78,8 @@ namespace osgEarth {
             std::string _layer;
         };
 
-        typedef std::map<unsigned long, Request> Requests;
+        using Requests = std::map<unsigned long, Request>; // sorted
+        using URICount = std::unordered_map<std::string, unsigned>;
 
         static unsigned long begin(const std::string& uri, const std::string& status, const std::string& type = "");
         static void end(unsigned long handle, const std::string& status);

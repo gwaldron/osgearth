@@ -173,7 +173,7 @@ namespace osgEarth {
                                 ImGui::SetClipboardText(itr->second.uri.c_str());                                
                             }
                             ImGui::SameLine();
-                            ImGui::TextColored(color, itr->second.uri.c_str());  ImGui::NextColumn();
+                            ImGui::TextColored(color, "%s (%d)", itr->second.uri.c_str(), itr->second.count);  ImGui::NextColumn();
                             ImGui::PopID();
                         }
                     }

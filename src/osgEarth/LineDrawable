@@ -23,25 +23,17 @@
 #include <osgEarth/Threading>
 #include <osg/Array>
 #include <osg/Geometry>
-#include <osg/Version>
 
 namespace osgEarth
 {
-    using namespace osgEarth::Threading;
-
     /**
      * Drawable that renders lines using the GPU. It will fall back on rendering
      * OpenGL lines when shader-based rendering is unavailable.
      *
      * Note: If you use this class you must have the oe_Camera
      * uniform set. MapNode sets it automatically so any LineDrawable under
-     * a MapNode is fine. Otherwise, use the osgEarth::InstallViewportSizeUniform
+     * a MapNode is fine. Otherwise, use the osgEarth::InstallCameraUniform
      * callback on your scene graph.
-     *
-     * Note: Use the provided functions whenever possible. Do not access the
-     * underlying Geometry arrays directly. The implementation uses special
-     * formatting internally and accessing the arrays directly will probably
-     * cause trouble.
      */
     class OSGEARTH_EXPORT LineDrawable : public osg::Drawable
     {
@@ -163,19 +155,19 @@ namespace osgEarth
     public: // osg::Node
 
         //! Replace methods from META_Node so we can override accept
-        virtual osg::Object* cloneType() const { return new LineDrawable(); }
-        virtual osg::Object* clone(const osg::CopyOp& copyop) const { return new LineDrawable(*this,copyop); }
-        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const LineDrawable*>(obj)!=NULL; }
-        virtual const char* className() const { return "LineDrawable"; }
-        virtual const char* libraryName() const { return "osgEarth"; }
+        virtual osg::Object* cloneType() const override { return new LineDrawable(); }
+        virtual osg::Object* clone(const osg::CopyOp& copyop) const override { return new LineDrawable(*this,copyop); }
+        virtual bool isSameKindAs(const osg::Object* obj) const override { return dynamic_cast<const LineDrawable*>(obj)!=nullptr; }
+        virtual const char* className() const override { return "LineDrawable"; }
+        virtual const char* libraryName() const override { return "osgEarth"; }
 
         //! Override Node::accept to include the singleton GPU statset
         virtual void accept(osg::NodeVisitor& nv) override;
 
     public: // osg::Object
 
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
-        virtual void releaseGLObjects(osg::State* state) const;
+        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
+        virtual void releaseGLObjects(osg::State* state) const override;
 
     public:
             
@@ -217,7 +209,7 @@ namespace osgEarth
 
         static osg::observer_ptr<osg::StateSet> s_gpuStateSet;
         osg::ref_ptr<osg::StateSet> _gpuStateSet;
-        mutable Mutex _mutex;
+        mutable Threading::Mutex _mutex;
         osg::ref_ptr<osg::Geometry> _geom;
 
     public: // osg::Drawable pass thrus

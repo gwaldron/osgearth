@@ -1112,7 +1112,7 @@ LineDrawable::clear()
         osg::Geometry::ArrayList arrays;
         _geom->getArrayList(arrays);
         for (auto& arr : arrays)
-            arr->reserveArray(0);
+            arr->resizeArray(0);
         reserve(n);
     }
 }

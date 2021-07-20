@@ -48,7 +48,7 @@ namespace osgEarth { namespace Procedural
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
-            OE_OPTION_LAYER(ImageLayer, densityMaskLayer);
+            OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION_LAYER(FeatureSource, landUseLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
 
@@ -70,8 +70,8 @@ namespace osgEarth { namespace Procedural
         void setBiomeLayer(BiomeLayer*);
         BiomeLayer* getBiomeLayer() const;
 
-        void setDensityMaskLayer(ImageLayer*);
-        ImageLayer* getDensityMaskLayer() const;
+        void setMaskLayer(ImageLayer*);
+        ImageLayer* getMaskLayer() const;
 
         void setLandUseLayer(FeatureSource*);
         FeatureSource* getLandUseLayer() const;

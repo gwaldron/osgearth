@@ -65,7 +65,7 @@ LifeMapLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
     biomeLayer().set(conf, "biomes_layer");
-    densityMaskLayer().set(conf, "density_mask_layer");
+    maskLayer().set(conf, "mask_layer");
     colorLayer().set(conf, "color_layer");
     landUseLayer().set(conf, "land_use_layer");
     conf.set("use_land_cover", useLandCover());
@@ -84,7 +84,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     slopeIntensity() = 1.0f;
 
     biomeLayer().get(conf, "biomes_layer");
-    densityMaskLayer().get(conf, "density_mask_layer");
+    maskLayer().get(conf, "mask_layer");
     colorLayer().get(conf, "color_layer");
     landUseLayer().get(conf, "land_use_layer");
     conf.get("use_land_cover", useLandCover());
@@ -229,6 +229,10 @@ LifeMapLayer::init()
 {
     ImageLayer::init();
 
+    // LifeMap is invisible AND shared by default.
+    options().visible().setDefault(false);
+    options().shared().setDefault(true);
+
     NoiseTextureFactory nf;
     _noiseFunc = nf.createImage(1024u, 4u);
 }
@@ -240,7 +244,7 @@ LifeMapLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    options().densityMaskLayer().open(getReadOptions());
+    options().maskLayer().open(getReadOptions());
 
     options().colorLayer().open(getReadOptions());
 
@@ -262,7 +266,7 @@ LifeMapLayer::addedToMap(const Map* map)
     ImageLayer::addedToMap(map);
 
     options().biomeLayer().addedToMap(map);
-    options().densityMaskLayer().addedToMap(map);
+    options().maskLayer().addedToMap(map);
     options().colorLayer().addedToMap(map);
     options().landUseLayer().addedToMap(map);
 
@@ -305,7 +309,7 @@ LifeMapLayer::removedFromMap(const Map* map)
 {
     _map = nullptr;
     options().biomeLayer().removedFromMap(map);
-    options().densityMaskLayer().removedFromMap(map);
+    options().maskLayer().removedFromMap(map);
     options().colorLayer().removedFromMap(map);
     ImageLayer::removedFromMap(map);
 }
@@ -323,15 +327,15 @@ LifeMapLayer::getBiomeLayer() const
 }
 
 void
-LifeMapLayer::setDensityMaskLayer(ImageLayer* layer)
+LifeMapLayer::setMaskLayer(ImageLayer* layer)
 {
-    options().densityMaskLayer().setLayer(layer);
+    options().maskLayer().setLayer(layer);
 }
 
 ImageLayer*
-LifeMapLayer::getDensityMaskLayer() const
+LifeMapLayer::getMaskLayer() const
 {
-    return options().densityMaskLayer().getLayer();
+    return options().maskLayer().getLayer();
 }
 
 void
@@ -494,13 +498,13 @@ LifeMapLayer::createImageImplementation(
     osg::Matrixf dm_matrix;
 
     // the mask layer zero's out density(etc)
-    if (getDensityMaskLayer())
+    if (getMaskLayer())
     {
         TileKey dm_key(key);
 
         while(dm_key.valid() && !densityMask.valid())
         {
-            densityMask = getDensityMaskLayer()->createImage(dm_key, progress);
+            densityMask = getMaskLayer()->createImage(dm_key, progress);
             if (!densityMask.valid())
                 dm_key.makeParent();
         }

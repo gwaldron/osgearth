@@ -35,7 +35,7 @@ REGISTER_OSGEARTH_LAYER(biomes, BiomeLayer);
 void
 BiomeLayer::Options::fromConfig(const Config& conf)
 {
-    blendRadius().setDefault(0.0);
+    blendRadius().setDefault(0.02);
     biomeidField().setDefault("biomeid");
 
     biomeCatalog() = std::make_shared<BiomeCatalog>(conf.child("biomecatalog"));
@@ -88,6 +88,11 @@ void
 BiomeLayer::init()
 {
     ImageLayer::init();
+
+    // BiomeLayer is invisible AND shared by default.
+    options().visible().setDefault(false);
+    options().shared().setDefault(true);
+
     _index = nullptr;
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 }

@@ -424,7 +424,7 @@ namespace osgEarth
             //! User adds a gui to the default User menu
             void add(BaseGUI* gui, bool visible=false)
             {
-                OE_SOFT_ASSERT_AND_RETURN(gui, __func__, );
+                OE_SOFT_ASSERT_AND_RETURN(gui, void());
                 gui->setVisible(visible);
                 _menu["User"].push_back(GUIPtr(gui));
             }
@@ -432,7 +432,7 @@ namespace osgEarth
             //! User adds a gui to a named menu
             void add(const std::string& menu, BaseGUI* gui, bool visible=false)
             {
-                OE_SOFT_ASSERT_AND_RETURN(gui, __func__, );
+                OE_SOFT_ASSERT_AND_RETURN(gui, void());
                 gui->setVisible(visible);
                 if (menu.empty())
                     add(gui, visible);

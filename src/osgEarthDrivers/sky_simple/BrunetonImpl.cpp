@@ -193,9 +193,9 @@ ComputeDrawable::populateRenderingStateSets(
     osg::StateSet* skyStateSet,
     osgEarth::TerrainResources* resources) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(groundStateSet != nullptr, __func__, false);
-    OE_SOFT_ASSERT_AND_RETURN(skyStateSet != nullptr, __func__, false);
-    OE_SOFT_ASSERT_AND_RETURN(resources != nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(groundStateSet != nullptr, false);
+    OE_SOFT_ASSERT_AND_RETURN(skyStateSet != nullptr, false);
+    OE_SOFT_ASSERT_AND_RETURN(resources != nullptr, false);
 
     if (!resources->reserveTextureImageUnit(_reservation[0], "Sky transmittance"))
         return false;

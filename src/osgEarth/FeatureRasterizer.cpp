@@ -210,8 +210,8 @@ namespace osgEarth {
             RenderFrame& frame,
             BLContext& ctx)
         {
-            OE_HARD_ASSERT(geometry != nullptr, __func__);
-            OE_HARD_ASSERT(symbol != nullptr, __func__);
+            OE_HARD_ASSERT(geometry != nullptr);
+            OE_HARD_ASSERT(symbol != nullptr);
 
             OE_PROFILING_ZONE;
 
@@ -318,7 +318,7 @@ namespace osgEarth {
             RenderFrame& frame,
             BLContext& ctx)
         {
-            OE_HARD_ASSERT(feature != nullptr, __func__);
+            OE_HARD_ASSERT(feature != nullptr);
 
             OE_PROFILING_ZONE;
 
@@ -615,7 +615,7 @@ FeatureRasterizer::render_agglite(
     FilterContext context;
     const SpatialReference* featureSRS = features.front()->getSRS();
 
-    OE_SOFT_ASSERT_AND_RETURN(featureSRS != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(featureSRS != nullptr, void());
 
     for (FeatureList::const_iterator f = features.begin(); f != features.end(); ++f)
     {
@@ -907,7 +907,7 @@ FeatureRasterizer::render(
     OE_DEBUG << LC << "Rendering " << features.size() << " features" << std::endl;
 
     const SpatialReference* featureSRS = features.front()->getSRS();
-    OE_SOFT_ASSERT_AND_RETURN(featureSRS != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(featureSRS != nullptr, void());
 
     // Transform to map SRS:
     if (!featureSRS->isHorizEquivalentTo(_extent.getSRS()))
@@ -937,7 +937,7 @@ FeatureRasterizer::finalize()
         {
             //convert from BGRA to RGBA
             unsigned char* pixel = _image->data();
-            for (int i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+            for (unsigned i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
             {
                 std::swap(pixel[0], pixel[2]);
             }
@@ -946,7 +946,7 @@ FeatureRasterizer::finalize()
         {
             //convert from ABGR to RGBA
             unsigned char* pixel = _image->data();
-            for (int i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+            for (unsigned i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
             {
                 std::swap(pixel[0], pixel[3]);
                 std::swap(pixel[1], pixel[2]);
@@ -978,9 +978,9 @@ FeatureStyleSorter::sort(
     Function processFeaturesForStyle,
     ProgressCallback* progress) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(session, __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource(), __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource()->getFeatureProfile(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(session, void());
+    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource(), void());
+    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource()->getFeatureProfile(), void());
 
     OE_PROFILING_ZONE;
 
@@ -1130,10 +1130,10 @@ FeatureStyleSorter::getFeatures(
     FeatureList& features,
     ProgressCallback* progress) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(session != nullptr, __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource() != nullptr, __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource()->getFeatureProfile() != nullptr, __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(workingExtent.isValid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(session != nullptr, void());
+    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource() != nullptr, void());
+    OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource()->getFeatureProfile() != nullptr, void());
+    OE_SOFT_ASSERT_AND_RETURN(workingExtent.isValid(), void());
 
     OE_PROFILING_ZONE;
 

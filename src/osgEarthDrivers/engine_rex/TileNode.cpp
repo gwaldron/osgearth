@@ -72,7 +72,7 @@ TileNode::TileNode(
     _nextLoadManifestPtr(nullptr),
     _loadPriority(0.0f)
 {
-    OE_HARD_ASSERT(context != nullptr, __func__);
+    OE_HARD_ASSERT(context != nullptr);
 
     // build the actual geometry for this node
     createGeometry(progress);

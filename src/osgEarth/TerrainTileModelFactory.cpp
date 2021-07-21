@@ -38,12 +38,24 @@ namespace
     class FutureImage : public osg::Image
     {
     public:
-        FutureImage(ImageLayer* layer, const TileKey& key) : osg::Image()
+        FutureImage(ImageLayer* layer, const TileKey& key) : 
+            osg::Image(),
+            _resolved(false)
         {
             _layer = layer;
             _key = key;
 
+            allocateImage(1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+            unsigned* c = (unsigned*)(data(0, 0));
+            *c = 0x7F00FF00; // ABGR
+
+            dispatch();
+        }
+
+        void dispatch() const
+        {
             osg::observer_ptr<ImageLayer> layer_ptr(_layer);
+            TileKey key(_key);
 
             Job job(JobArena::get(ARENA_ASYNC_LAYER));
 
@@ -58,15 +70,21 @@ namespace
                         result = safe->createImage(key, p.get());
                     }
                     return result;
-                }
-            );
+                });
         }
 
         bool requiresUpdateCall() const override
         {
             // tricky, because if we return false here, it will
             // never get called again.
-            return _result.isAvailable() || !_result.isAbandoned();
+
+            if (_resolved)
+                return false;
+
+            if (_result.isCanceled())
+                dispatch();
+
+            return true;
         }
 
         void update(osg::NodeVisitor* nv) override
@@ -91,6 +109,19 @@ namespace
 
                     // trigger texture(s) that own this image to reapply
                     this->dirty();
+
+                    _resolved = true;
+                }
+
+                else
+                {
+                    OE_WARN << LC << "FutureImage: result available but image is null!" << std::endl;
+
+                    unsigned* c = (unsigned*)(data(0, 0));
+                    *c = 0x7F0000FF; // ABGR
+                    dirty();
+
+                    OE_WARN << LC << "MESSAGE: " << geoImage.getStatus().message() << std::endl;
                 }
 
                 // reset the future so update won't be called again
@@ -100,7 +131,8 @@ namespace
 
         osg::ref_ptr<ImageLayer> _layer;
         TileKey _key;
-        Future<GeoImage> _result;
+        mutable Future<GeoImage> _result;
+        bool _resolved;
     };
 }
 

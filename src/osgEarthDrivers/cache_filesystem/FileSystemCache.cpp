@@ -458,7 +458,7 @@ namespace
         // compressed cache data means there was an internal error
         OE_SOFT_ASSERT_AND_RETURN(
             rr.getImage() == nullptr || rr.getImage()->isCompressed() == false, 
-            __func__, ReadResult());
+            ReadResult());
 
         return rr;
     }
@@ -616,7 +616,7 @@ namespace
 
                 if (image->isCompressed())
                 {
-                    OE_SOFT_ASSERT(image->isCompressed() == false, __func__);
+                    OE_SOFT_ASSERT(image->isCompressed() == false);
                 }
                 else
                 {

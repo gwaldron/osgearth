@@ -540,8 +540,8 @@ namespace
 void
 PolygonizeLinesOperator::installShaders(osg::Node* node) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(node != nullptr, __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(_line.valid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(node != nullptr, void());
+    OE_SOFT_ASSERT_AND_RETURN(_line.valid(), void());
 
     float minPixels = _line->stroke()->minPixels().getOrUse( 0.0f );
     if ( minPixels <= 0.0f )

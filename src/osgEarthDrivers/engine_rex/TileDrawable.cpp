@@ -102,7 +102,7 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
     const osg::Vec3Array& verts = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
     const osg::DrawElementsUShort* de = dynamic_cast<osg::DrawElementsUShort*>(_geom->getDrawElements());
 
-    OE_SOFT_ASSERT_AND_RETURN(de != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(de != nullptr, void());
 
     if (_mesh.size() < verts.size())
     {

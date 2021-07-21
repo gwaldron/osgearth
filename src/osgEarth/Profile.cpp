@@ -151,7 +151,7 @@ Profile::create(const SpatialReference* srs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    OE_SOFT_ASSERT_AND_RETURN(srs!=nullptr, __func__, nullptr);
+    OE_SOFT_ASSERT_AND_RETURN(srs!=nullptr, nullptr);
 
     return new Profile(
         srs,
@@ -163,7 +163,7 @@ Profile::create(const SpatialReference* srs,
 const Profile*
 Profile::create(const SpatialReference* srs)
 {
-    OE_SOFT_ASSERT_AND_RETURN(srs != nullptr, __func__, nullptr);
+    OE_SOFT_ASSERT_AND_RETURN(srs != nullptr, nullptr);
 
     Bounds bounds;
     if (srs->getBounds(bounds))
@@ -200,7 +200,7 @@ Profile::create(const SpatialReference* srs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    OE_SOFT_ASSERT_AND_RETURN(srs!=nullptr, __func__, nullptr);
+    OE_SOFT_ASSERT_AND_RETURN(srs!=nullptr, nullptr);
 
     return new Profile(
         srs,
@@ -381,7 +381,7 @@ Profile::Profile(const SpatialReference* srs,
 
     _extent(srs, xmin, ymin, xmax, ymax)
 {
-    OE_SOFT_ASSERT(srs!=nullptr, __func__);
+    OE_SOFT_ASSERT(srs!=nullptr);
 
     _numTilesWideAtLod0 = numTilesWideAtLod0 != 0? numTilesWideAtLod0 : srs->isGeographic()? 2 : 1;
     _numTilesHighAtLod0 = numTilesHighAtLod0 != 0? numTilesHighAtLod0 : 1;
@@ -409,7 +409,7 @@ Profile::Profile(const SpatialReference* srs,
 
     _extent(srs, xmin, ymin, xmax, ymax)
 {
-    OE_SOFT_ASSERT(srs!=nullptr, __func__);
+    OE_SOFT_ASSERT(srs!=nullptr);
 
     _numTilesWideAtLod0 = numTilesWideAtLod0 != 0? numTilesWideAtLod0 : srs->isGeographic()? 2 : 1;
     _numTilesHighAtLod0 = numTilesHighAtLod0 != 0? numTilesHighAtLod0 : 1;
@@ -829,7 +829,7 @@ Profile::getIntersectingTiles(const GeoExtent& extent, unsigned localLOD, std::v
 unsigned
 Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(rhsProfile!=nullptr, __func__, rhsLOD);
+    OE_SOFT_ASSERT_AND_RETURN(rhsProfile!=nullptr, rhsLOD);
 
     //If the profiles are equivalent, just use the incoming lod
     if (rhsProfile->isHorizEquivalentTo( this ) ) 

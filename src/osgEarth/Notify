@@ -24,6 +24,7 @@
 #include <osg/Notify>
 #include <osg/Timer>
 #include <string>
+#include <cstring>
 
 namespace osgEarth
 {
@@ -60,9 +61,17 @@ namespace osgEarth
 
 #define OE_DEPRECATED(A, B) OE_WARN << #A << " is deprecated; please use " << #B << std::endl
 
-#define OE_SOFT_ASSERT(EXPR, WHERE) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE : " << WHERE << " : " #EXPR << std::endl; }
-#define OE_SOFT_ASSERT_AND_RETURN(EXPR, WHERE, RETVAL) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE : " << WHERE << " : " #EXPR << std::endl; return RETVAL; }
-#define OE_HARD_ASSERT(EXPR, WHERE) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE : " << WHERE << " : " #EXPR << std::endl; abort(); }
+#if defined(_MSC_VER)
+#define OE_FILE (std::strrchr(__FILE__, '\\') ? std::strrchr(__FILE__, '\\') + 1 : __FILE__)
+#else
+#define OE_FILE (std::strrchr(__FILE__, '/') ? std::strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif
+
+
+#define OE_SOFT_ASSERT(EXPR, ...) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl; }
+#define OE_SOFT_ASSERT_AND_RETURN(EXPR, RETVAL, ...) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl; return RETVAL; }
+#define OE_IF_SOFT_ASSERT(EXPR, ...) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl; } else
+#define OE_HARD_ASSERT(EXPR, ...) if(!(EXPR)) { OE_WARN << "FATAL ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl; abort(); }
 
 extern OSGEARTH_EXPORT void setNotifyHandler(osg::NotifyHandler *handler);
 

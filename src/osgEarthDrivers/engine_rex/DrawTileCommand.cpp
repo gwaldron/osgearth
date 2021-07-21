@@ -209,7 +209,7 @@ DrawTileCommand::debug(
 void
 DrawTileCommand::draw(osg::RenderInfo& ri) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(_geom.valid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(_geom.valid(), void());
 
     _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode();
     _geom->draw(ri);

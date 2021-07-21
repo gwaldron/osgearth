@@ -1185,7 +1185,7 @@ VegetationLayer::Renderer::CameraState::draw(
     if (needsGenerate || needsCull)
     {
         state->pushStateSet(_renderer->_computeSS.get());
-        OE_HARD_ASSERT(state->getLastAppliedProgramObject() != nullptr, __func__); // catch shader error
+        OE_HARD_ASSERT(state->getLastAppliedProgramObject() != nullptr); // catch shader error
 
         for (auto& group : _groups)
         {
@@ -1240,7 +1240,7 @@ void
 VegetationLayer::Renderer::GroupState::setGeometry(
     GeometryCloud* cloud)
 {
-    OE_HARD_ASSERT(cloud != nullptr, __func__);
+    OE_HARD_ASSERT(cloud != nullptr);
 
     _instancer->setGeometryCloud(cloud);
     _tilemgr.reset();
@@ -1335,7 +1335,7 @@ VegetationLayer::Renderer::GroupState::cull(
         else
         {
             OE_WARN << "Internal error -- CULL should not see an inactive tile" << std::endl;
-            OE_SOFT_ASSERT(slot >= 0, __func__);
+            OE_SOFT_ASSERT(slot >= 0);
         }
     }
 
@@ -1468,7 +1468,7 @@ VegetationLayer::Renderer::GroupState::generate(
     _instancer->generate_begin(ri);
 
     PCPUniforms& uniforms = *_renderer->getUniforms(ri);
-    OE_HARD_ASSERT(uniforms._generateDataUL >= 0, __func__);
+    OE_HARD_ASSERT(uniforms._generateDataUL >= 0);
     
     osg::GLExtensions* ext = nullptr;
 

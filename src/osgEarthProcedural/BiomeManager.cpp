@@ -100,8 +100,8 @@ BiomeManager::unref(const Biome* biome)
     ScopedMutexLock lock(_mutex);
 
     auto iter = _refs.find(biome);
-    OE_SOFT_ASSERT_AND_RETURN(iter != _refs.end(), __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(iter->second > 0, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(iter != _refs.end(), void());
+    OE_SOFT_ASSERT_AND_RETURN(iter->second > 0, void());
 
     --iter->second;
     if (iter->second == 0)
@@ -248,7 +248,7 @@ BiomeManager::updateResidency(
             {
                 const ModelAsset* asset = assetPointer.asset;
 
-                OE_SOFT_ASSERT(asset != nullptr, __func__);
+                OE_SOFT_ASSERT(asset != nullptr);
                 if (asset == nullptr)
                     continue;
 

@@ -157,8 +157,8 @@ SDFGenerator::createNearestNeighborField(
     if (features.empty())
         return false;
 
-    OE_SOFT_ASSERT_AND_RETURN(extent.isValid(), __func__, false);
-    OE_SOFT_ASSERT_AND_RETURN(isPositivePowerOfTwo(nnfieldSize), __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(extent.isValid(), false);
+    OE_SOFT_ASSERT_AND_RETURN(isPositivePowerOfTwo(nnfieldSize), false);
 
     // Render features to a temporary image
     Style style;
@@ -237,8 +237,8 @@ SDFGenerator::createDistanceField(
     float hi,
     Cancelable* progress) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(nnfield.valid(), __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(sdf.valid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(nnfield.valid(), void());
+    OE_SOFT_ASSERT_AND_RETURN(sdf.valid(), void());
 
     // That's OK.
     osg::Image* sdfimage = const_cast<osg::Image*>(sdf.getImage());

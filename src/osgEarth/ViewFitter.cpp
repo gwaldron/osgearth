@@ -53,8 +53,8 @@ _buffer_m(0.0)
 bool
 ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outVP) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(_mapSRS.valid(), __func__, false);
-    OE_SOFT_ASSERT_AND_RETURN(_camera.valid(), __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(_mapSRS.valid(), false);
+    OE_SOFT_ASSERT_AND_RETURN(_camera.valid(), false);
 
     if (points.empty())
         return false;
@@ -248,7 +248,7 @@ ViewFitter::createViewpoint(const GeoExtent& extent, Viewpoint& outVP) const
 bool
 ViewFitter::createViewpoint(const osg::Node* node, Viewpoint& outVP) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(node != nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
 
     osg::BoundingSphere bs = node->getBound();
     if (!bs.valid())

@@ -312,7 +312,7 @@ TextureArena::~TextureArena()
 bool
 TextureArena::add(Texture::Ptr tex)
 {
-    OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, false);
 
     if (tex->_image.valid() == false)
     {
@@ -548,7 +548,7 @@ TextureArena::releaseGLObjects(osg::State* state) const
     }
     else
     {
-        for (int i = 0; i < _gc.size(); ++i)
+        for (unsigned i = 0; i < _gc.size(); ++i)
             _gc[i]._handleLUT.release();
     }
 }

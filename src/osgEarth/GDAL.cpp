@@ -719,7 +719,7 @@ GDAL::Driver::open(
             OE_INFO << LC << INDENT << source << " is projected, SRS = " << warpedSRSWKT << std::endl;
     }
 
-    OE_HARD_ASSERT(_profile.valid(), __func__);
+    OE_HARD_ASSERT(_profile.valid());
 
     //Compute the min and max data levels
     double resolutionX = (maxX - minX) / (double)_warpedDS->GetRasterXSize();

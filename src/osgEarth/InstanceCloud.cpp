@@ -165,7 +165,7 @@ void
 InstanceCloud::CullBuffer::clear()
 {
     //OE_PROFILING_GPU_ZONE("CullBuffer::clear");
-    OE_SOFT_ASSERT_AND_RETURN(valid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(valid(), void());
 
     // Zero out the workgroup/instance count.
     _buf->di.num_groups_x = 0u;
@@ -391,7 +391,7 @@ InstanceCloud::setMatrix(unsigned tileNum, const osg::Matrix& modelView)
 void
 InstanceCloud::setTileActive(unsigned tileNum, bool value)
 {
-    //OE_SOFT_ASSERT(tileNum < _data._numTilesAllocated, __func__);
+    //OE_SOFT_ASSERT(tileNum < _data._numTilesAllocated);
 
     if (tileNum < _data._numTilesAllocated)
         _data._tileBuffer._buf[tileNum]._inUse = value ? 1 : 0;
@@ -450,9 +450,9 @@ InstanceCloud::cull(osg::RenderInfo& ri)
 {
     OE_PROFILING_ZONE;
 
-    OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(_data._cullBuffer.valid(), __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(_data._geom != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), void());
+    OE_SOFT_ASSERT_AND_RETURN(_data._cullBuffer.valid(), void());
+    OE_SOFT_ASSERT_AND_RETURN(_data._geom != nullptr, void());
 
     osg::State& state = *ri.getState();
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
@@ -506,8 +506,8 @@ void
 InstanceCloud::draw(osg::RenderInfo& ri)
 {
     //OE_PROFILING_GPU_ZONE("IC:Draw");
-    OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(_data._geom != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), void());
+    OE_SOFT_ASSERT_AND_RETURN(_data._geom != nullptr, void());
 
     // GL_DRAW_INDIRECT_BUFFER buffing binding is NOT part of VAO state (per spec)
     // so we have to bind it here.
@@ -895,13 +895,13 @@ GeometryCloud::apply(osg::Geometry& node)
     append(_texcoords, node.getTexCoordArray(0), size);
 
     _albedoArenaIndices->reserve(_albedoArenaIndices->size() + size);
-    for (int i = 0; i < size; ++i)
+    for (unsigned i = 0; i < size; ++i)
     {
         _albedoArenaIndices->push_back(_albedoArenaIndexStack.top());
     }
 
     _normalArenaIndices->reserve(_normalArenaIndices->size() + size);
-    for (int i = 0; i < size; ++i)
+    for (unsigned i = 0; i < size; ++i)
     {
         _normalArenaIndices->push_back(_normalArenaIndexStack.top());
     }

@@ -2129,7 +2129,7 @@ FeatureModelGraph::redraw()
         node = fader;
     }
 
-    OE_SOFT_ASSERT_AND_RETURN(node.valid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(node.valid(), void());
 
     runPreMergeOperations(node.get());
 

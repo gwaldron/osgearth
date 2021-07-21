@@ -679,7 +679,7 @@ JobArena::setConcurrency(const std::string& name, unsigned value)
         if (iter != _arenas.end())
         {
             std::shared_ptr<JobArena> arena = iter->second;
-            OE_SOFT_ASSERT_AND_RETURN(arena != nullptr, __func__, );
+            OE_SOFT_ASSERT_AND_RETURN(arena != nullptr, void());
             arena->setConcurrency(value);
         }
     }

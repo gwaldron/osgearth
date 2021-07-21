@@ -44,7 +44,7 @@ namespace osgEarth {
                 if (!_mapNode.valid())
                     _mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
 
-                OE_SOFT_ASSERT_AND_RETURN(_mapNode.valid(), __func__, );
+                OE_SOFT_ASSERT_AND_RETURN(_mapNode.valid(), void());
 
                 if (!_scannedForViewpoints)
                 {
@@ -69,7 +69,7 @@ namespace osgEarth {
                 if (!_viewpoints.empty() && _mapNode.valid() && ImGui::Begin(name(), visible()))
                 {
                     auto view = dynamic_cast<osgViewer::View*>(ri.getView());
-                    OE_SOFT_ASSERT_AND_RETURN(view, __func__, );
+                    OE_SOFT_ASSERT_AND_RETURN(view, void());
 
                     for (auto& vp : _viewpoints)
                     {

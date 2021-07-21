@@ -302,7 +302,7 @@ NNRA_Loader::writeImage(
     //if (image.isCompressed() == false)
     //{
     //    osg::ref_ptr<osg::Image> c = osg::clone(&image, osg::CopyOp::DEEP_COPY_ALL);
-    //    OE_SOFT_ASSERT_AND_RETURN(c.valid(), __func__, WriteResult::ERROR_IN_WRITING_FILE);
+    //    OE_SOFT_ASSERT_AND_RETURN(c.valid(), WriteResult::ERROR_IN_WRITING_FILE);
 
     //    ImageUtils::compressImageInPlace(c.get(), "cpu");
     //    std::ofstream f(filename, std::ios::binary);

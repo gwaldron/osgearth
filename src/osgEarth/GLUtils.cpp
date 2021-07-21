@@ -334,7 +334,7 @@ GLTexture::bind(osg::State& state)
 
     // must be called with a compatible state
     // (same context under which the texture was created)
-    OE_SOFT_ASSERT(state.getContextID() == _ext->contextID, __func__);
+    OE_SOFT_ASSERT(state.getContextID() == _ext->contextID);
 
     // Inform OSG of the state change
     state.haveAppliedTextureAttribute(
@@ -803,7 +803,7 @@ ComputeImageSession::execute()
 void
 ComputeImageSession::render(osg::State* state)
 {
-    OE_SOFT_ASSERT_AND_RETURN(_image.valid(), __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(_image.valid(), void());
 
     osg::GLExtensions* ext = state->get<osg::GLExtensions>();
 
@@ -943,8 +943,7 @@ GLObjectsCompiler::compileAsync(
 {
     Future<osg::ref_ptr<osg::Node>> result;
 
-    OE_SOFT_ASSERT_AND_RETURN(node.valid(), __func__, result);
-    //OE_SOFT_ASSERT_AND_RETURN(state != nullptr, __func__, result);
+    OE_SOFT_ASSERT_AND_RETURN(node.valid(), result);
 
     // if there is an ICO available, schedule the GPU compilation
     bool compileScheduled = false;

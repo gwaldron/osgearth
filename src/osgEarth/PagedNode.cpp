@@ -95,7 +95,8 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
     if (nv.getTraversalMode() == nv.TRAVERSE_ALL_CHILDREN)
     {
         for (auto& child : _children)
-            child->accept(nv);
+            OE_IF_SOFT_ASSERT(child.valid())
+                child->accept(nv);
     }
 
     else if (nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN)
@@ -175,14 +176,14 @@ PagedNode2::merge(int revision)
     if (_revision == revision)
     {
         //static std::set<osg::Node*> nodes;
-        //OE_SOFT_ASSERT_AND_RETURN(nodes.count(this) == 0, __func__, false);
+        //OE_SOFT_ASSERT_AND_RETURN(nodes.count(this) == 0, false);
         //nodes.insert(this);
 
         // This is called from PagingManager.
         // We're in the UPDATE traversal.
-        OE_SOFT_ASSERT_AND_RETURN(_merged == false, __func__, false);
-        OE_SOFT_ASSERT_AND_RETURN(_compiled.isAvailable(), __func__, false);
-        OE_SOFT_ASSERT_AND_RETURN(_compiled.get().valid(), __func__, false);
+        OE_SOFT_ASSERT_AND_RETURN(_merged == false, false);
+        OE_SOFT_ASSERT_AND_RETURN(_compiled.isAvailable(), false);
+        OE_SOFT_ASSERT_AND_RETURN(_compiled.get().valid(), false);
 
         addChild(_compiled.get());
 

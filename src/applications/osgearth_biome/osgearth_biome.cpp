@@ -76,7 +76,7 @@ struct LifeMapGUI : public GUI::BaseGUI
     LifeMapGUI(App& app) : GUI::BaseGUI("Life Map"), _app(app)
     {
         lifemap = _app._map->getLayer<LifeMapLayer>();
-        OE_HARD_ASSERT(lifemap != nullptr, __func__);
+        OE_HARD_ASSERT(lifemap != nullptr);
     }
 
     void draw(osg::RenderInfo& ri) override

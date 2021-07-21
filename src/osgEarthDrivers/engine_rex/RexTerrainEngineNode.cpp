@@ -985,7 +985,7 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 void
 RexTerrainEngineNode::cacheLayerExtentInMapSRS(Layer* layer)
 {
-    OE_SOFT_ASSERT_AND_RETURN(layer != nullptr, __func__,);
+    OE_SOFT_ASSERT_AND_RETURN(layer != nullptr, void());
 
     // Store the layer's extent in the map's SRS:
     LayerExtent& le = _cachedLayerExtents[layer->getUID()];

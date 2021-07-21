@@ -420,7 +420,7 @@ RoadSurfaceLayer::getFeatures(
 {
     OE_PROFILING_ZONE;
 
-    OE_SOFT_ASSERT_AND_RETURN(fs != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(fs != nullptr, void());
 
     // Get the collection of keys accounting for the buffer width
     std::unordered_set<TileKey> keys;

@@ -631,8 +631,8 @@ int RTREE_QUAL::KNNSearch(
     const ELEMTYPE maxDistance) const
     //std::function<bool(const DATATYPE&)> acceptLeaf) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(point != nullptr, __func__, 0);
-    OE_SOFT_ASSERT_AND_RETURN(hits != nullptr, __func__, 0);
+    OE_SOFT_ASSERT_AND_RETURN(point != nullptr, 0);
+    OE_SOFT_ASSERT_AND_RETURN(hits != nullptr, 0);
 
     hits->clear();
 

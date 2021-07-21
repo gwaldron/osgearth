@@ -142,7 +142,7 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
         {
             if (!_cx->_rttActive.exchange(true))
             {
-                OE_SOFT_ASSERT(_cx->_activeJob == nullptr, __func__);
+                OE_SOFT_ASSERT(_cx->_activeJob == nullptr);
 
                 ScopedMutexLock lock(_queue);
 
@@ -151,10 +151,10 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
                     _cx->_activeJob = _queue.front();
                     _queue.pop();
 
-                    OE_SOFT_ASSERT(_cx->_activeJob->_node.valid(), __func__);
+                    OE_SOFT_ASSERT(_cx->_activeJob->_node.valid());
 
                     // This is OK, just means the client disappeared.
-                    //OE_SOFT_ASSERT(!_cx->_activeJob->_promise.isAbandoned(), __func__);
+                    //OE_SOFT_ASSERT(!_cx->_activeJob->_promise.isAbandoned());
 
                     _cx->_rtt->setProjectionMatrixAsOrtho2D(
                         _cx->_activeJob->_extent.xMin(), _cx->_activeJob->_extent.xMax(),
@@ -181,8 +181,8 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 void
 TileRasterizer::preDraw(osg::RenderInfo& ri)
 {
-    OE_SOFT_ASSERT(_cx->_rttActive == true, __func__);
-    OE_SOFT_ASSERT(_cx->_activeJob != nullptr, __func__);
+    OE_SOFT_ASSERT(_cx->_rttActive == true);
+    OE_SOFT_ASSERT(_cx->_activeJob != nullptr);
 
     if (_cx->_activeJob->_promise.isAbandoned())
         return;
@@ -217,8 +217,8 @@ TileRasterizer::preDraw(osg::RenderInfo& ri)
 void
 TileRasterizer::postDraw(osg::RenderInfo& ri)
 {
-    OE_SOFT_ASSERT(_cx->_rttActive == true, __func__);
-    OE_SOFT_ASSERT(_cx->_activeJob != nullptr, __func__);
+    OE_SOFT_ASSERT(_cx->_rttActive == true);
+    OE_SOFT_ASSERT(_cx->_activeJob != nullptr);
 
     osg::ref_ptr<osg::Image> image;
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
@@ -264,7 +264,7 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
                     GL_PIXEL_PACK_BUFFER_ARB,
                     GL_READ_ONLY_ARB);
 
-                OE_SOFT_ASSERT(src != nullptr, __func__);
+                OE_SOFT_ASSERT(src != nullptr);
                 if (src)
                 {
                     memcpy(image->data(), src, image->getTotalSizeInBytes());

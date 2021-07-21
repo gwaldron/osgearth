@@ -232,7 +232,7 @@ void OsgImGuiHandler::handleWriteSettings(
 
 void OsgImGuiHandler::installSettingsHandler()
 {
-    OE_HARD_ASSERT(ImGui::GetCurrentContext() != nullptr, __func__);
+    OE_HARD_ASSERT(ImGui::GetCurrentContext() != nullptr);
     s_guiHandler = this;
     ImGuiSettingsHandler s;
     s.TypeName = "osgEarth";

@@ -377,7 +377,7 @@ SpatialReference::getHandle() const
 SpatialReference*
 SpatialReference::createFromHandle(void* ogrHandle)
 {
-    OE_SOFT_ASSERT_AND_RETURN(ogrHandle!=nullptr, __func__, nullptr);
+    OE_SOFT_ASSERT_AND_RETURN(ogrHandle!=nullptr, nullptr);
 
     return new SpatialReference(ogrHandle);
 }
@@ -759,7 +759,7 @@ SpatialReference::isCube() const
 bool
 SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn ) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(csn!=nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(csn!=nullptr, false);
 
     if ( !_wkt.empty() )
     {
@@ -826,7 +826,7 @@ SpatialReference::transform(const osg::Vec3d&       input,
                             const SpatialReference* outputSRS,
                             osg::Vec3d&             output) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, false);
 
     if (!valid())
         return false;
@@ -846,7 +846,7 @@ bool
 SpatialReference::transform(std::vector<osg::Vec3d>& points,
                             const SpatialReference*  outputSRS) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, false);
 
     if (!valid())
         return false;
@@ -954,7 +954,7 @@ SpatialReference::transform2D(double x, double y,
                               const SpatialReference* outputSRS,
                               double& out_x, double& out_y ) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, false);
 
     if (!valid())
         return false;
@@ -977,7 +977,7 @@ SpatialReference::transformXYPointArrays(
     unsigned count,
     const SpatialReference* out_srs) const
 {  
-    OE_SOFT_ASSERT_AND_RETURN(out_srs!=nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(out_srs!=nullptr, false);
 
     if (!valid())
         return false;
@@ -1022,7 +1022,7 @@ SpatialReference::transformZ(std::vector<osg::Vec3d>& points,
                              const SpatialReference*  outputSRS,
                              bool                     pointsAreLatLong) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, false);
 
     if (!valid())
         return false;
@@ -1154,7 +1154,7 @@ SpatialReference::transformUnits(double                  input,
                                  const SpatialReference* outSRS,
                                  double                  latitude) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(outSRS!=nullptr, __func__, input);
+    OE_SOFT_ASSERT_AND_RETURN(outSRS!=nullptr, input);
 
     if ( this->isProjected() && outSRS->isGeographic() )
     {
@@ -1195,7 +1195,7 @@ SpatialReference::transformUnits(const Distance&         distance,
                                  const SpatialReference* outSRS,
                                  double                  latitude)
 {
-    OE_SOFT_ASSERT_AND_RETURN(outSRS!=nullptr, __func__, distance.getValue());
+    OE_SOFT_ASSERT_AND_RETURN(outSRS!=nullptr, distance.getValue());
 
     if ( distance.getUnits().isLinear() && outSRS->isGeographic() )
     {
@@ -1227,7 +1227,7 @@ SpatialReference::transformExtentToMBR(
     double& in_out_xmax,
     double& in_out_ymax) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(to_srs != nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(to_srs != nullptr, false);
 
     if (!valid())
         return false;
@@ -1335,7 +1335,7 @@ SpatialReference::transformGrid(
     double* x, double* y,
     unsigned int numx, unsigned int numy ) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(to_srs!=nullptr, __func__, false);
+    OE_SOFT_ASSERT_AND_RETURN(to_srs!=nullptr, false);
 
     if (!valid())
         return false;

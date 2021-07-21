@@ -133,7 +133,7 @@ Ellipsoid::geocentricToGeodetic(const osg::Vec3d& xyz) const
 void
 Ellipsoid::set(double er, double pr)
 {
-    OE_SOFT_ASSERT_AND_RETURN(er > 0.0 && pr > 0.0, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(er > 0.0 && pr > 0.0, void());
     EM.setRadiusEquator(er);
     EM.setRadiusPolar(pr);
 

@@ -1316,9 +1316,9 @@ LineDrawable::accept(osg::NodeVisitor& nv)
 void
 LineDrawable::setVertexAttribArray(unsigned i, osg::Array* arr)
 {
-    OE_SOFT_ASSERT_AND_RETURN(arr != nullptr, __func__, );
-    OE_SOFT_ASSERT(arr->getNumElements() == 0, __func__);
-    OE_HARD_ASSERT(_geom.valid(), __func__);
+    OE_SOFT_ASSERT_AND_RETURN(arr != nullptr, void());
+    OE_SOFT_ASSERT(arr->getNumElements() == 0);
+    OE_HARD_ASSERT(_geom.valid());
 
     _geom->setVertexAttribArray(i, arr);
 }

@@ -560,7 +560,7 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
     if (!isOpen())
         return nullptr;
 
-    OE_SOFT_ASSERT_AND_RETURN(_drawable.valid(), __func__, nullptr);
+    OE_SOFT_ASSERT_AND_RETURN(_drawable.valid(), nullptr);
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
 

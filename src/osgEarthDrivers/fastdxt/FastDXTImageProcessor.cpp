@@ -66,7 +66,7 @@ public:
             sourceImage = rgba.get();
         }
 
-        OE_SOFT_ASSERT_AND_RETURN(sourceImage != nullptr, __func__, );
+        OE_SOFT_ASSERT_AND_RETURN(sourceImage != nullptr, void());
 
         int format;
         GLenum compressedPixelFormat;

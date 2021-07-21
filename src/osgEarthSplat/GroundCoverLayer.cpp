@@ -991,7 +991,7 @@ GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const TileState* tile
     osg::ref_ptr<LegacyInstanceCloud>& instancer = ds._instancers[sa->_obj];
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
 
-    OE_SOFT_ASSERT_AND_RETURN(pcp != nullptr, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(pcp != nullptr, void());
 
     UniformState& u = ds._uniforms[pcp];
 

@@ -959,8 +959,8 @@ BuildGeometryFilter::tileAndBuildPolygon(
     osg::Geometry*          osgGeom,
     const osg::Matrixd&     world2local)
 {
-    OE_SOFT_ASSERT_AND_RETURN(input != nullptr, __func__, );
-    OE_SOFT_ASSERT_AND_RETURN(input->getType() != Geometry::TYPE_MULTI, __func__, );
+    OE_SOFT_ASSERT_AND_RETURN(input != nullptr, void());
+    OE_SOFT_ASSERT_AND_RETURN(input->getType() != Geometry::TYPE_MULTI, void());
 
     osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array();
     verts->reserve(input->getTotalPointCount());

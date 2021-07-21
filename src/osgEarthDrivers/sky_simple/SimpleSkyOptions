@@ -37,7 +37,7 @@ namespace osgEarth { namespace SimpleSky
           _atmosphericLighting (true),
           _exposure            (10.0f),
           _daytimeAmbientBoost (5.0f),
-          _allowWireframe      (true),
+          _allowWireframe      (false),
           _starSize            (14.0f),
           _moonScale           (2.0f),
           _moonImageURI("moon_1024x512.jpg"),

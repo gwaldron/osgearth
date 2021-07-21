@@ -62,6 +62,7 @@ namespace
             TileKey key(_key);
 
             Job job(JobArena::get(ARENA_ASYNC_LAYER));
+            job.setName(Stringify() << key.str() << " " << _layer->getName());
 
             // prioritize higher LOD tiles.
             job.setPriority(key.getLOD());
@@ -619,8 +620,6 @@ TerrainTileModelFactory::addElevation(
 
     osg::ref_ptr<ElevationTexture> elevTex;
 
-    bool getNormalMap = (_options.normalMaps() == true);
-
     const bool acceptLowerRes = false;
 
     if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, &_workingSet, progress))
@@ -631,11 +630,14 @@ TerrainTileModelFactory::addElevation(
 
         if ( elevTex.valid() )
         {
-            // Make a normal map if it doesn't already exist
-            elevTex->generateNormalMap(map, &_workingSet, progress);
+            if (_options.normalMaps() == true)
+            {
+                // Make a normal map if it doesn't already exist
+                elevTex->generateNormalMap(map, &_workingSet, progress);
 
-            if (elevTex->getNormalMapTexture())
-                elevTex->getNormalMapTexture()->setName(key.str() + ":normalmap");
+                if (elevTex->getNormalMapTexture())
+                    elevTex->getNormalMapTexture()->setName(key.str() + ":normalmap");
+            }
 
             // Made an image, so store this as a texture with no matrix.
             layerModel->setTexture( elevTex.get() );

@@ -144,6 +144,8 @@ namespace osgEarth
 
         typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
         Threading::Mutexed<Callbacks> _callbacks;
+
+        Gate<TileKey> _sentry;
     };
 
 

@@ -100,6 +100,13 @@ ElevationLayer::init()
         options().tileSize().init(257u);
     }
 
+    // a small L2 cache will help with things like normal map creation
+    // (i.e. queries that sample neighboring tiles)
+    if (!options().l2CacheSize().isSet())
+    {
+        options().l2CacheSize() = 4u;
+    }
+
     // Disable max-level support for elevation data because it makes no sense.
     options().maxLevel().clear();
     options().maxResolution().clear();
@@ -358,12 +365,13 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
 
     NetworkMonitor::ScopedRequestLayer layerRequest(getName());
 
-    // prevents 2 threads from creating the same object at the same time
-    //_sentry.lock(key);
+    // Prevents more than one thread from creating the same object
+    // at the same time. This helps a lot with elevation data since
+    // the many queries cross tile boundaries (like calculating 
+    // normal maps)
+    ScopedGate<TileKey> gate(_sentry, key);
 
     GeoHeightField result = createHeightFieldInKeyProfile(key, progress);
-
-    //_sentry.unlock(key);
 
     return result;
 }

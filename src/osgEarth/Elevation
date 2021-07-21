@@ -104,6 +104,8 @@ namespace osgEarth
                 (int)(v*(double)(_read.t()-1)));
         }
 
+        //! Ruggedness value at map coordinates (x,y)
+        //! (Warning: experimental function; may go away or change without notice.)
         inline float getRuggedness(double x, double y) const;
 
         //! The heightfield that was used to populate this object

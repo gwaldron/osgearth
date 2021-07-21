@@ -1754,9 +1754,9 @@ _maxLevel( 19u )
 GeoImage GeoImage::INVALID( 0L, GeoExtent::INVALID );
 
 GeoImage::GeoImage() :
-    _myimage(0L),
+    _myimage(nullptr),
     _extent(GeoExtent::INVALID),
-    _status(Status::GeneralError)
+    _status()
 {
     //nop
 }
@@ -1786,7 +1786,7 @@ GeoImage::GeoImage(const osg::Image* image, const GeoExtent& extent) :
 }
 
 GeoImage::GeoImage(Threading::Future<osg::ref_ptr<osg::Image>> fimage, const GeoExtent& extent) :
-    _myimage(0L),
+    _myimage(nullptr),
     _extent(extent)
 {
     _future = fimage;

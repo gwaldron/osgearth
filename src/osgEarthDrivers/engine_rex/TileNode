@@ -80,9 +80,6 @@ namespace osgEarth { namespace REX
         /** Tells this tile to request data for the data in the manifest */
         void refreshLayers(const CreateTileManifest& manifest);
 
-        /** Creates the geometry and state for this tilenode. */
-        //void create(const TileKey& key, TileNode* parent, EngineContext* context, Cancelable*);
-
         /** Install new geometry in this tile */
         void createGeometry(Cancelable*);
 
@@ -142,6 +139,15 @@ namespace osgEarth { namespace REX
         bool isEmpty() const { return _empty; }
 
         float getLoadPriority() const { return _loadPriority; }
+
+        // whether the TileNodeRegistry should update-traverse this node
+        bool updateRequired() const {
+            return _imageUpdatesActive;
+        }
+
+        // update-traverse this node, updating any images that require 
+        // and update-traverse
+        void update(osg::NodeVisitor& nv);
         
     public: // osg::Node
 

@@ -35,6 +35,8 @@ using namespace osgEarth;
 
 namespace
 {
+//#define FUTURE_IMAGE_DEBUG_PLACEHOLDER
+
     class FutureImage : public osg::Image
     {
     public:
@@ -45,9 +47,11 @@ namespace
             _layer = layer;
             _key = key;
 
+#ifdef FUTURE_IMAGE_DEBUG_PLACEHOLDER
             allocateImage(1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE);
             unsigned* c = (unsigned*)(data(0, 0));
             *c = 0x7F00FF00; // ABGR
+#endif
 
             dispatch();
         }
@@ -58,6 +62,9 @@ namespace
             TileKey key(_key);
 
             Job job(JobArena::get(ARENA_ASYNC_LAYER));
+
+            // prioritize higher LOD tiles.
+            job.setPriority(key.getLOD());
 
             _result = job.dispatch<GeoImage>(
                 [layer_ptr, key](Cancelable* progress) mutable
@@ -75,8 +82,7 @@ namespace
 
         bool requiresUpdateCall() const override
         {
-            // tricky, because if we return false here, it will
-            // never get called again.
+            // careful - if we return false here, it may never get called again.
 
             if (_resolved)
                 return false;
@@ -93,6 +99,12 @@ namespace
             {
                 // fetch the result
                 GeoImage geoImage = _result.get();
+
+                if (geoImage.getStatus().isError())
+                {
+                    OE_WARN << LC << "Error: " << geoImage.getStatus().message() << std::endl;
+                }
+
                 osg::ref_ptr<osg::Image> i = geoImage.takeImage();
 
                 if (i.valid())
@@ -109,23 +121,22 @@ namespace
 
                     // trigger texture(s) that own this image to reapply
                     this->dirty();
-
-                    _resolved = true;
                 }
 
                 else
                 {
-                    OE_WARN << LC << "FutureImage: result available but image is null!" << std::endl;
 
+#ifdef FUTURE_IMAGE_DEBUG_PLACEHOLDER
                     unsigned* c = (unsigned*)(data(0, 0));
                     *c = 0x7F0000FF; // ABGR
                     dirty();
-
-                    OE_WARN << LC << "MESSAGE: " << geoImage.getStatus().message() << std::endl;
+#endif
                 }
 
                 // reset the future so update won't be called again
                 _result.abandon();
+
+                _resolved = true;
             }
         }
 

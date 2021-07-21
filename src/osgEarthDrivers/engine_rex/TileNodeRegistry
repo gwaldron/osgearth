@@ -122,9 +122,9 @@ namespace osgEarth { namespace REX
         //! Adds a tile to the registry. Called by the TileNode itself.
         void add(TileNode* tile);
 
-        //! Update the tile's tracking info. Called by the TileNode itself
-        //! during the cull traversal.
-        void update(TileNode* tile, osg::NodeVisitor& nv);
+        //! Refresh the tile's tracking info. Called by the TileNode itself
+        //! during the cull traversal to let us know it's still active.
+        void touch(TileNode* tile, osg::NodeVisitor& nv);
 
         //! Number of tiles in the registry.
         unsigned size() const { return _tiles.size(); }
@@ -141,6 +141,9 @@ namespace osgEarth { namespace REX
             float fartherThanRange,     // collect only if tile is farther away than this distance (meters)
             unsigned maxCount,          // maximum number of tiles to collect
             std::vector<osg::observer_ptr<TileNode> >& output);   // put dormant tiles here
+
+        //! Update traversal
+        void update(osg::NodeVisitor&);
 
         //! Get a reference to a specific key if found.
         osg::ref_ptr<TileNode> get(const TileKey& key) const;
@@ -162,6 +165,9 @@ namespace osgEarth { namespace REX
         using TileKeyOneToMany = std::unordered_map<TileKey, TileKeySet>;
 
         TileKeyOneToMany _notifiers;
+
+        // tile nodes requiring an udpate traversal
+        std::vector<TileNode*> _tilesToUpdate;
 
     private:
 

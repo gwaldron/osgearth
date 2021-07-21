@@ -542,7 +542,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
         _lastTraversalFrame.exchange(_context->getClock()->getFrame());
         _lastTraversalTime = _context->getClock()->getTime();
 
-        _context->liveTiles()->update(this, nv);
+        _context->liveTiles()->touch(this, nv);
 
         if (_empty)
         {
@@ -574,104 +574,6 @@ TileNode::traverse(osg::NodeVisitor& nv)
     // Everything else: update, GL compile, intersection, compute bound, etc.
     else
     {
-        // Check for image updates.
-        if (nv.getVisitorType() == nv.UPDATE_VISITOR && _imageUpdatesActive)
-        {
-            unsigned numUpdatedTotal = 0u;
-            unsigned numFuturesResolved = 0u;
-
-            for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
-            {
-                RenderingPass& pass = _renderModel._passes[p];
-                Samplers& samplers = pass.samplers();
-                for (unsigned s = 0; s < samplers.size(); ++s)
-                {
-                    Sampler& sampler = samplers[s];
-
-                    if (sampler.ownsTexture())
-                    {
-                        for(unsigned i = 0; i < sampler._texture->getNumImages(); ++i)
-                        {
-                            osg::Image* image = sampler._texture->getImage(i);
-                            if (image && image->requiresUpdateCall())
-                            {
-                                image->update(&nv);
-                                numUpdatedTotal++;
-                            }
-                        }
-                    }
-
-                    // handle "future" textures. This is a texture that was installed
-                    // by an "async" image layer that is working in the background
-                    // to load. Once it is available we can merge it into the real texture
-                    // slot for rendering.
-                    if (sampler._futureTexture.valid())
-                    {
-                        unsigned levelsDoneUpdating = sampler._futureTexture->getNumImages();
-                        unsigned numUpdated = 0;
-
-                        for (unsigned i = 0; i < sampler._futureTexture->getNumImages(); ++i)
-                        {
-                            osg::Image* image = sampler._futureTexture->getImage(i);
-                            if (image)
-                            {
-                                if (image->requiresUpdateCall())
-                                {
-                                    //OE_INFO << _key.str() << " image->update..." << std::endl;
-                                    image->update(&nv);
-                                    numUpdated++;
-                                    numUpdatedTotal++;
-                                }
-
-                                // an image with a valid size indicates the job is complete
-                                if (image->s() > 0)
-                                {
-                                    --levelsDoneUpdating;
-                                }
-                            }
-                        }
-
-                        // when all images are complete, update the texture and discard the future object.
-                        if (levelsDoneUpdating == 0)
-                        {
-                            sampler._texture = sampler._futureTexture;
-                            sampler._matrix.makeIdentity();
-                            sampler._futureTexture = nullptr;
-                            ++numFuturesResolved;
-                        }
-
-                        else if (numUpdated == 0)
-                        {
-                            // can happen if the asynchronous request fails.
-                            sampler._futureTexture = nullptr;
-                        }
-                    }
-                }
-            }
-
-            // if no updates were detected, don't check next time.
-            if (numUpdatedTotal == 0)
-            {
-                ADJUST_UPDATE_TRAV_COUNT(this, -1);
-                _imageUpdatesActive = false;
-            }
-
-            // if we resolve any future-textures, inform the children
-            // that they need to update their inherited samplers.
-            if (numFuturesResolved > 0)
-            {
-                for (int i = 0; i < 4; ++i)
-                {
-                    if ((int)getNumChildren() > i)
-                    {
-                        TileNode* child = getSubTile(i);
-                        if (child)
-                            child->refreshInheritedData(this, _context->getRenderBindings());
-                    }
-                }
-            }
-        }
-
         // If there are child nodes, traverse them:
         int numChildren = getNumChildren();
         if ( numChildren > 0 )
@@ -686,6 +588,103 @@ TileNode::traverse(osg::NodeVisitor& nv)
         else if (_surface.valid())
         {
             _surface->accept( nv );
+        }
+    }
+}
+
+void
+TileNode::update(osg::NodeVisitor& nv)
+{
+    unsigned numUpdatedTotal = 0u;
+    unsigned numFuturesResolved = 0u;
+
+    for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
+    {
+        RenderingPass& pass = _renderModel._passes[p];
+        Samplers& samplers = pass.samplers();
+        for (unsigned s = 0; s < samplers.size(); ++s)
+        {
+            Sampler& sampler = samplers[s];
+
+            if (sampler.ownsTexture())
+            {
+                for (unsigned i = 0; i < sampler._texture->getNumImages(); ++i)
+                {
+                    osg::Image* image = sampler._texture->getImage(i);
+                    if (image && image->requiresUpdateCall())
+                    {
+                        image->update(&nv);
+                        numUpdatedTotal++;
+                    }
+                }
+            }
+
+            // handle "future" textures. This is a texture that was installed
+            // by an "async" image layer that is working in the background
+            // to load. Once it is available we can merge it into the real texture
+            // slot for rendering.
+            if (sampler._futureTexture.valid())
+            {
+                unsigned levelsDoneUpdating = sampler._futureTexture->getNumImages();
+                unsigned numUpdated = 0;
+
+                for (unsigned i = 0; i < sampler._futureTexture->getNumImages(); ++i)
+                {
+                    osg::Image* image = sampler._futureTexture->getImage(i);
+                    if (image)
+                    {
+                        if (image->requiresUpdateCall())
+                        {
+                            //OE_INFO << _key.str() << " image->update..." << std::endl;
+                            image->update(&nv);
+                            numUpdated++;
+                            numUpdatedTotal++;
+                        }
+
+                        // an image with a valid size indicates the job is complete
+                        if (image->s() > 0)
+                        {
+                            --levelsDoneUpdating;
+                        }
+                    }
+                }
+
+                // when all images are complete, update the texture and discard the future object.
+                if (levelsDoneUpdating == 0)
+                {
+                    sampler._texture = sampler._futureTexture;
+                    sampler._matrix.makeIdentity();
+                    sampler._futureTexture = nullptr;
+                    ++numFuturesResolved;
+                }
+
+                else if (numUpdated == 0)
+                {
+                    // can happen if the asynchronous request fails.
+                    sampler._futureTexture = nullptr;
+                }
+            }
+        }
+    }
+
+    // if no updates were detected, don't check next time.
+    if (numUpdatedTotal == 0)
+    {
+        _imageUpdatesActive = false;
+    }
+
+    // if we resolve any future-textures, inform the children
+    // that they need to update their inherited samplers.
+    if (numFuturesResolved > 0)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            if ((int)getNumChildren() > i)
+            {
+                TileNode* child = getSubTile(i);
+                if (child)
+                    child->refreshInheritedData(this, _context->getRenderBindings());
+            }
         }
     }
 }
@@ -853,7 +852,6 @@ TileNode::merge(
                         const osg::Image* image = texture->getImage(i);
                         if (image && image->requiresUpdateCall())
                         {
-                            ADJUST_UPDATE_TRAV_COUNT(this, +1);
                             _imageUpdatesActive = true;
                             break;
                         }

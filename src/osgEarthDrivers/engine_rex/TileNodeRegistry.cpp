@@ -265,7 +265,7 @@ TileNodeRegistry::releaseAll(osg::State* state)
 }
 
 void
-TileNodeRegistry::update(TileNode* tile, osg::NodeVisitor& nv)
+TileNodeRegistry::touch(TileNode* tile, osg::NodeVisitor& nv)
 {
     _mutex.lock();
 
@@ -288,10 +288,44 @@ TileNodeRegistry::update(TileNode* tile, osg::NodeVisitor& nv)
         _tracker.erase(e._trackerptr);
         _tracker.push_front(se);
         e._trackerptr = _tracker.begin();
+
+        // Does it need an update traversal?
+        if (tile->updateRequired())
+        {
+            _tilesToUpdate.push_back(tile);
+        }
     }
     else
     {
         OE_WARN << LC << "UPDATE FAILED - TILE " << tile->getKey().str() << " not in TILE TABLE!" << std::endl;
+    }
+
+    _mutex.unlock();
+}
+
+void
+TileNodeRegistry::update(osg::NodeVisitor& nv)
+{
+    _mutex.lock();
+
+    if (!_tilesToUpdate.empty())
+    {
+        // Sorting these from high to low LOD will reduce the number 
+        // of inheritance steps each updated image will have to perform
+        // against the tile's children
+        std::sort(
+            _tilesToUpdate.begin(),
+            _tilesToUpdate.end(),
+            [](TileNode* lhs, TileNode* rhs) {
+                return lhs->getKey().getLOD() >= rhs->getKey().getLOD();
+            });
+
+        for (auto tile : _tilesToUpdate)
+        {
+            tile->update(nv);
+        }
+
+        _tilesToUpdate.clear();
     }
 
     _mutex.unlock();

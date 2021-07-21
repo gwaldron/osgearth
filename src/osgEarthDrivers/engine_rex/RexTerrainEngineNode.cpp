@@ -815,6 +815,9 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
         if (layer->isOpen())
             layer->update(nv);
     }
+
+    // Call update on the tile registry
+    _liveTiles->update(nv);
 }
 
 void

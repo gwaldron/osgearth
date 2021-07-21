@@ -67,6 +67,14 @@ namespace
     {
         osg::ref_ptr<TextureArena> arena = new TextureArena();
 
+        if (cat.getLifeMapMatrixHeight() * cat.getLifeMapMatrixWidth() !=
+            cat.getLifeMapTextures().size())
+        {
+            OE_WARN << LC0 << "Configuration error: LifeMapTextures count does not match width*height"
+                << std::endl;
+            return nullptr;
+        }
+
         for (int i = 0; i < 2; ++i)
         {
             auto texList =
@@ -231,6 +239,13 @@ TextureSplattingLayer::buildStateSets()
         ss->setDefine(
             "OE_LIFEMAP_MAT",
             getLifeMapLayer()->getSharedTextureMatrixUniformName());
+
+        if (getBiomeLayer())
+        {
+            const auto& assets = getBiomeLayer()->getBiomeCatalog()->getAssets();
+            ss->setDefine("OE_TEX_DIM_X", std::to_string(assets.getLifeMapMatrixWidth()));
+            ss->setDefine("OE_TEX_DIM_Y", std::to_string(assets.getLifeMapMatrixHeight()));
+        }
     }
 }
 

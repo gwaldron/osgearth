@@ -109,6 +109,9 @@ LifeMapTextureAsset::getConfig() const
 
 AssetCatalog::AssetCatalog(const Config& conf)
 {
+    _lifemapMatrixWidth = as<unsigned>(conf.child("lifemaptextures").value("width"), 1);
+    _lifemapMatrixHeight = as<unsigned>(conf.child("lifemaptextures").value("height"), 1);
+
     ConfigSet texturesConf = conf.child("lifemaptextures").children("texture");
     for (const auto& c : texturesConf)
     {
@@ -164,6 +167,18 @@ AssetCatalog::getConfig() const
         conf.add(models);
 
     return conf;
+}
+
+unsigned
+AssetCatalog::getLifeMapMatrixWidth() const
+{
+    return _lifemapMatrixWidth;
+}
+
+unsigned
+AssetCatalog::getLifeMapMatrixHeight() const
+{
+    return _lifemapMatrixHeight;
 }
 
 const std::vector<LifeMapTextureAsset>&

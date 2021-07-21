@@ -105,6 +105,8 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT AssetCatalog
         {
         public:
+            using Dimensions = std::array<unsigned, 2>;
+
             AssetCatalog() { }
             AssetCatalog(const Config& conf);
 
@@ -112,6 +114,10 @@ namespace osgEarth
             //! @param name Name of model asset to return
             //! @return ModelAsset or nullptr if no match
             const ModelAsset* getModel(const std::string& name) const;
+
+            //! Dimensions of the lifemap texture matrix (x,y)
+            unsigned getLifeMapMatrixWidth() const;
+            unsigned getLifeMapMatrixHeight() const;
 
             //! Collection of ground textures in the lifemap matrix
             const std::vector<LifeMapTextureAsset>& getLifeMapTextures() const;
@@ -126,6 +132,7 @@ namespace osgEarth
             Config getConfig() const;
 
         protected:
+            unsigned _lifemapMatrixWidth, _lifemapMatrixHeight;
             std::vector<LifeMapTextureAsset> _textures;
             std::vector<LifeMapTextureAsset> _specialTextures;
             std::unordered_map<std::string, ModelAsset> _models;

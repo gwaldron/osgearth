@@ -613,8 +613,8 @@ LifeMapLayer::createImageImplementation(
             //noise[1][SMOOTH];
 
         float rugged_noise =
-            0.5*noise[1][CLUMPY] +
-            0.5*noise[2][RANDOM];
+            0.5*noise[1][SMOOTH] +
+            0.5*noise[2][CLUMPY];
 
 
         // LAND USE CONTRIBUTION:
@@ -677,7 +677,7 @@ LifeMapLayer::createImageImplementation(
 
                     if (value->dense().isSet())
                     {
-                        float dn = has_special ? 0.0f : (dense_noise*2.0f - 1.0f)*noise[ni][RANDOM];
+                        float dn = has_special ? 0.0f : (dense_noise*2.0f - 1.0f)*noise[ni][CLUMPY];
                         //sample[LANDCOVER].dense.value = value->dense().get() + 0.2*(dense_noise*2.0 - 1.0);
                         sample[LANDCOVER].dense.value = value->dense().get() + dn;
                         sample[LANDCOVER].dense.weight = 1.0f;
@@ -685,7 +685,7 @@ LifeMapLayer::createImageImplementation(
 
                     if (value->lush().isSet())
                     {
-                        float dn = has_special ? 0.0f : (lush_noise*2.0f - 1.0f)*noise[ni][CLUMPY];
+                        float dn = has_special ? 0.0f : (lush_noise*2.0f - 1.0f)*noise[ni][RANDOM];
                         //sample[LANDCOVER].lush.value = value->lush().get() + 0.2*(lush_noise*2.0 - 1.0);
                         sample[LANDCOVER].lush.value = value->lush().get() + dn;
                         sample[LANDCOVER].lush.weight = 1.0f;

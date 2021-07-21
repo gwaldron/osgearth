@@ -28,8 +28,100 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 
-//TODO: unordered?
-typedef std::map<std::string,std::string> StringMap;
+namespace
+{
+    //TODO: unordered?
+    using StringMap = std::map<std::string, std::string>;
+
+
+    bool parseLocation(
+        const std::string& loc,
+        optional<ShaderComp::FunctionLocation>& location)
+    {
+        bool locationSet = true;
+
+        if (ciEquals(loc, "vertex_model"))
+            location = ShaderComp::LOCATION_VERTEX_MODEL;
+        else if (ciEquals(loc, "vertex_view"))
+            location = ShaderComp::LOCATION_VERTEX_VIEW;
+        else if (ciEquals(loc, "vertex_clip"))
+            location = ShaderComp::LOCATION_VERTEX_CLIP;
+        else if (ciEquals(loc, "tess_control") || ciEquals(loc, "tessellation_control"))
+            location = ShaderComp::LOCATION_TESS_CONTROL;
+        else if (ciEquals(loc, "tess_eval") || ciEquals(loc, "tessellation_eval") || ciEquals(loc, "tessellation_evaluation") || ciEquals(loc, "tess_evaluation"))
+            location = ShaderComp::LOCATION_TESS_EVALUATION;
+        else if (ciEquals(loc, "vertex_geometry") || ciEquals(loc, "geometry"))
+            location = ShaderComp::LOCATION_GEOMETRY;
+        else if (ciEquals(loc, "fragment"))
+            location = ShaderComp::LOCATION_FRAGMENT_COLORING;
+        else if (ciEquals(loc, "fragment_coloring"))
+            location = ShaderComp::LOCATION_FRAGMENT_COLORING;
+        else if (ciEquals(loc, "fragment_lighting"))
+            location = ShaderComp::LOCATION_FRAGMENT_LIGHTING;
+        else if (ciEquals(loc, "fragment_output"))
+            location = ShaderComp::LOCATION_FRAGMENT_OUTPUT;
+        else
+            locationSet = false;
+
+        return locationSet;
+    }
+
+
+    struct VPFunction
+    {
+        VPFunction()
+        {
+            order.setDefault(1.0f);
+        }
+
+        std::string entryPoint;
+        optional<ShaderComp::FunctionLocation> location;
+        optional<float> order;
+    };
+
+    void getVPFunction(const std::string& source, VPFunction& f)
+    {
+        std::string::size_type pragmaPos = source.find("#pragma vp_function");
+        if (pragmaPos != std::string::npos)
+        {
+            std::string line = ShaderLoader::getPragmaValue(source, "vp_function");
+            if (!line.empty())
+            {
+                StringVector tokens;
+                StringTokenizer(line, tokens, " ,\t", "", false, true);
+                if (tokens.size() > 0)
+                    f.entryPoint = tokens[0];
+                if (tokens.size() > 1)
+                    parseLocation(tokens[1], f.location);
+                if (tokens.size() > 2)
+                    f.order = atof(tokens[2].c_str());
+            }
+        }
+
+        std::string entryPointStr = ShaderLoader::getPragmaValue(source, "vp_entryPoint");
+        if (!entryPointStr.empty())
+        {
+            f.entryPoint = entryPointStr;
+        }
+
+        std::string locationStr = ShaderLoader::getPragmaValue(source, "vp_location");
+        if (!locationStr.empty())
+        {
+            parseLocation(locationStr, f.location);
+        }
+
+        std::string orderStr = ShaderLoader::getPragmaValue(source, "vp_order");
+        if (!orderStr.empty())
+        {
+            if (ciEquals(orderStr, "FLT_MAX") || ciEquals(orderStr, "last"))
+                f.order = FLT_MAX;
+            else if (ciEquals(orderStr, "-FLT_MAX") || ciEquals(orderStr, "first"))
+                f.order = -FLT_MAX;
+            else
+                f.order = as<float>(orderStr, 1.0f);
+        }
+    }
+}
 
 
 // find the value of a pragma, e.g.:
@@ -318,35 +410,6 @@ ShaderLoader::load(VirtualProgram*       vp,
         // Remove the quotation marks from the source since they are illegal in GLSL
         replaceIn( source, "\"", " ");
 
-        std::string loc = getPragmaValue(source, "vp_location");
-        ShaderComp::FunctionLocation location;
-        bool locationSet = true;
-
-        if      ( ciEquals(loc, "vertex_model") )
-            location = ShaderComp::LOCATION_VERTEX_MODEL;
-        else if ( ciEquals(loc, "vertex_view") )
-            location = ShaderComp::LOCATION_VERTEX_VIEW;
-        else if ( ciEquals(loc, "vertex_clip") )
-            location = ShaderComp::LOCATION_VERTEX_CLIP;
-        else if ( ciEquals(loc, "tess_control") || ciEquals(loc, "tessellation_control") )
-            location = ShaderComp::LOCATION_TESS_CONTROL;
-        else if ( ciEquals(loc, "tess_eval") || ciEquals(loc, "tessellation_eval") || ciEquals(loc, "tessellation_evaluation") || ciEquals(loc, "tess_evaluation") )
-            location = ShaderComp::LOCATION_TESS_EVALUATION;
-        else if ( ciEquals(loc, "vertex_geometry") || ciEquals(loc, "geometry") )
-            location = ShaderComp::LOCATION_GEOMETRY;
-        else if ( ciEquals(loc, "fragment" ) )
-            location = ShaderComp::LOCATION_FRAGMENT_COLORING;
-        else if ( ciEquals(loc, "fragment_coloring") )
-            location = ShaderComp::LOCATION_FRAGMENT_COLORING;
-        else if ( ciEquals(loc, "fragment_lighting") )
-            location = ShaderComp::LOCATION_FRAGMENT_LIGHTING;
-        else if ( ciEquals(loc, "fragment_output") )
-            location = ShaderComp::LOCATION_FRAGMENT_OUTPUT;
-        else
-        {
-            locationSet = false;
-        }
-
         // Named?
         if (vp->getName().empty())
         {
@@ -354,41 +417,33 @@ ShaderLoader::load(VirtualProgram*       vp,
             vp->setName(name);
         }
 
-        // If entry point is set, this is a function; otherwise a simple library.
-        std::string entryPoint = getPragmaValue(source, "vp_entryPoint");
+        VPFunction f;
+        getVPFunction(source, f);
 
-        // order is optional.
-        std::string orderStr = getPragmaValue(source, "vp_order");
-
-        if ( !entryPoint.empty() )
+        if (!f.entryPoint.empty())
         {
-            if ( !locationSet )
-            {
-                OE_WARN << LC << "Illegal: shader \"" << filename << "\" has invalid #pragma vp_location when vp_entryPoint is set\n";
-                return false;
-            }
-
-            float order;
-            if ( ciEquals(orderStr, "FLT_MAX") || ciEquals(orderStr, "last") )
-                order = FLT_MAX;
-            else if ( ciEquals(orderStr, "-FLT_MAX") || ciEquals(orderStr, "first") )
-                order = -FLT_MAX;
-            else
-                order = as<float>(orderStr, 1.0f);
+            if (f.location.isSet() == false)
+                f.location = ShaderComp::LOCATION_FRAGMENT_COLORING;
 
             // set the function!
-            vp->setFunction( entryPoint, source, location, 0L, order );
+            vp->setFunction(
+                f.entryPoint, 
+                source, 
+                f.location.get(),
+                f.order.get());
         }
 
-        else
+        else // no entry point - library shader.
         {
             // install as a simple shader.
-            if ( locationSet )
+            if (f.location.isSet())
             {
                 // If a location is set, install in that location only
                 osg::Shader::Type type =
-                    location == ShaderComp::LOCATION_VERTEX_MODEL || location == ShaderComp::LOCATION_VERTEX_VIEW || location == ShaderComp::LOCATION_VERTEX_CLIP ? osg::Shader::VERTEX :
-                    osg::Shader::FRAGMENT;
+                    f.location == ShaderComp::LOCATION_VERTEX_MODEL || 
+                    f.location == ShaderComp::LOCATION_VERTEX_VIEW || 
+                    f.location == ShaderComp::LOCATION_VERTEX_CLIP ?
+                    osg::Shader::VERTEX : osg::Shader::FRAGMENT;
 
                 osg::Shader* shader = new osg::Shader(type, source);
                 shader->setName( filename );
@@ -398,7 +453,14 @@ ShaderLoader::load(VirtualProgram*       vp,
             else
             {
                 // If no location was set, install in all stages.
-                osg::Shader::Type types[5] = { osg::Shader::VERTEX, osg::Shader::FRAGMENT, osg::Shader::GEOMETRY, osg::Shader::TESSCONTROL, osg::Shader::TESSEVALUATION };
+                osg::Shader::Type types[5] = { 
+                    osg::Shader::VERTEX, 
+                    osg::Shader::FRAGMENT, 
+                    osg::Shader::GEOMETRY, 
+                    osg::Shader::TESSCONTROL, 
+                    osg::Shader::TESSEVALUATION
+                };
+
                 for(int i=0; i<5; ++i)
                 {
                     osg::Shader* shader = new osg::Shader(types[i], source);
@@ -441,17 +503,12 @@ ShaderLoader::unload(VirtualProgram*       vp,
     {
         const std::string& source = sources[i];
 
-        //std::string source = load(filename, package, dbOptions);
-        //if ( source.empty() )
-        //{
-        //    OE_WARN << LC << "Failed to unload shader source from \"" << filename << "\"\n";
-        //    return false;
-        //}
+        VPFunction f;
+        getVPFunction(source, f);
 
-        std::string entryPoint = getPragmaValue(source, "vp_entryPoint");
-        if ( !entryPoint.empty() )
+        if ( !f.entryPoint.empty() )
         {
-            vp->removeShader( entryPoint );
+            vp->removeShader( f.entryPoint );
         }
         else
         {

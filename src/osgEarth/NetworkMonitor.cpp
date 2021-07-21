@@ -91,6 +91,7 @@ void NetworkMonitor::clear()
 {
     osgEarth::Threading::ScopedWriteLock lock(s_requestsMutex);
     s_requests.clear();
+    s_counts.clear();
 }
 
 void NetworkMonitor::saveCSV(Requests& requests, const std::string& filename)

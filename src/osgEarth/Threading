@@ -393,15 +393,21 @@ namespace osgEarth { namespace Threading
 
         inline void lock(T key) {
             std::unique_lock<Mutex> lock(_m);
-            while(_users[key] > 0)
+            for(;;) {
+                auto& count = _users.insert(std::make_pair(key, 0)).first->second;
+                if (count == 0) {
+                    ++count;
+                    break;
+                }
                 _unlocked.wait(lock);
-            ++_users[key];
+            }
         }
 
         inline void unlock(T key) {
             std::unique_lock<Mutex> lock(_m);
-            --_users[key];
-            if (_users[key] == 0) {
+            auto& count = _users[key];
+            --count;
+            if (count == 0) {
                 _users.erase(key);
                 _unlocked.notify_all();
             }

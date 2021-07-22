@@ -1773,8 +1773,6 @@ GeoImage::GeoImage(const osg::Image* image, const GeoExtent& extent) :
     _myimage(image),
     _extent(extent)
 {
-    OE_SOFT_ASSERT(extent.isValid());
-
     if (extent.isInvalid())
     {
         _status.set(Status::AssertionFailure, "Invalid geoextent");
@@ -1786,7 +1784,6 @@ GeoImage::GeoImage(Threading::Future<osg::ref_ptr<osg::Image>> fimage, const Geo
     _extent(extent)
 {
     _future = fimage;
-    OE_SOFT_ASSERT(extent.isValid());
 
     if (_future->isAbandoned())
     {

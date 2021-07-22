@@ -630,7 +630,7 @@ TileNode::update(osg::NodeVisitor& nv)
 
                 for (unsigned i = 0; i < sampler._futureTexture->getNumImages(); ++i)
                 {
-                    osg::Image* image = sampler._futureTexture->getImage(i);
+                    FutureImage* image = dynamic_cast<FutureImage*>(sampler._futureTexture->getImage(i));
                     if (image)
                     {
                         if (image->requiresUpdateCall())
@@ -642,7 +642,7 @@ TileNode::update(osg::NodeVisitor& nv)
                         }
 
                         // an image with a valid size indicates the job is complete
-                        if (image->s() > 0)
+                        if (image->doneLoading())
                         {
                             --levelsDoneUpdating;
                         }

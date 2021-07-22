@@ -806,3 +806,130 @@ ImageLayer::addPostLayer(ImageLayer* layer)
     ScopedMutexLock lock(_postLayers);
     _postLayers.push_back(layer);
 }
+
+//...................................................................
+
+#define ARENA_ASYNC_LAYER "oe.layer.async"
+//#define FUTURE_IMAGE_COLOR_PLACEHOLDER
+
+FutureImage::FutureImage(
+    ImageLayer* layer,
+    const TileKey& key) :
+
+    osg::Image(),
+    _layer(layer),
+    _key(key),
+    _resolved(false),
+    _failed(false)
+{
+    allocateImage(1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    unsigned* c = (unsigned*)(data(0, 0));
+#ifdef FUTURE_IMAGE_COLOR_PLACEHOLDER
+    *c = 0x4F00FF00; // ABGR
+#else
+    *c = 0x00000000; // ABGR
+#endif
+
+    dispatch();
+}
+
+void
+FutureImage::dispatch() const
+{
+    osg::observer_ptr<ImageLayer> layer_ptr(_layer);
+    TileKey key(_key);
+
+    Job job(JobArena::get(ARENA_ASYNC_LAYER));
+    job.setName(Stringify() << key.str() << " " << _layer->getName());
+
+    // prioritize higher LOD tiles.
+    job.setPriority(key.getLOD());
+
+    _result = job.dispatch<GeoImage>(
+        [layer_ptr, key](Cancelable* progress) mutable
+        {
+            GeoImage result;
+            osg::ref_ptr<ImageLayer> safe(layer_ptr);
+            if (safe.valid())
+            {
+                osg::ref_ptr<ProgressCallback> p = new ProgressCallback(progress);
+                result = safe->createImage(key, p.get());
+            }
+            return result;
+        });
+}
+
+bool
+FutureImage::requiresUpdateCall() const
+{
+    // careful - if we return false here, it may never get called again.
+
+    if (_resolved)
+    {
+        return osg::Image::requiresUpdateCall();
+    }
+
+    if (_result.isCanceled())
+    {
+        dispatch();
+    }
+
+    return true;
+}
+
+
+void
+FutureImage::update(osg::NodeVisitor* nv)
+{
+    if (_resolved)
+    {
+        return osg::Image::update(nv);
+    }
+
+    if (_result.isAvailable())
+    {
+        // fetch the result
+        GeoImage geoImage = _result.get();
+
+        if (geoImage.getStatus().isError())
+        {
+            OE_WARN << LC << "Error: " << geoImage.getStatus().message() << std::endl;
+        }
+
+        osg::ref_ptr<osg::Image> i = geoImage.takeImage();
+
+        if (i.valid())
+        {
+            this->setImage(
+                i->s(), i->t(), i->r(),
+                i->getInternalTextureFormat(), i->getPixelFormat(), i->getDataType(),
+                i->data(), i->getAllocationMode(),
+                i->getPacking(),
+                i->getRowLength());
+
+            // since we stole the data, make sure we don't double-delete it
+            i->setAllocationMode(osg::Image::NO_DELETE);
+
+            // trigger texture(s) that own this image to reapply
+            this->dirty();
+        }
+
+        else
+        {
+            _failed = true;
+
+            unsigned* c = (unsigned*)(data(0, 0));
+#ifdef FUTURE_IMAGE_COLOR_PLACEHOLDER
+            *c = 0x4f0000FF; // ABGR
+#else
+            *c = 0x00000000; // ABGR
+#endif
+            dirty();
+        }
+
+        // reset the future so update won't be called again
+        _result.abandon();
+
+        _resolved = true;
+    }
+}

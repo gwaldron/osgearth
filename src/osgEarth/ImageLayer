@@ -283,6 +283,46 @@ namespace osgEarth
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;
 
+
+    /**
+     * An osg::Image loaded in the background.
+     */
+    class OSGEARTH_EXPORT FutureImage : public osg::Image
+    {
+    public:
+        FutureImage(ImageLayer* layer, const TileKey& key);
+
+        // done working?
+        bool doneLoading() const {
+            return _resolved;
+        }
+
+        // got a result image?
+        bool succeeded() const {
+            return _resolved && !_failed;
+        }
+
+        // failed to get a result image?
+        bool failed() const {
+            return _resolved && _failed;
+        }
+
+    public: // osgImage API
+
+        // true if still working.
+        bool requiresUpdateCall() const override;
+
+        void update(osg::NodeVisitor* nv) override;
+
+    private:
+        void dispatch() const;
+
+        osg::ref_ptr<ImageLayer> _layer;
+        TileKey _key;
+        mutable Future<GeoImage> _result;
+        bool _resolved, _failed;
+    };
+
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ImageLayer::Options);

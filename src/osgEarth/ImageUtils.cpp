@@ -21,7 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
-
+#include <osgEarth/ImageLayer>
 #include <osg/GLU>
 #include <osgDB/Registry>
 

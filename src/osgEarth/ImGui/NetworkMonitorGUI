@@ -135,17 +135,22 @@ namespace osgEarth {
 
                             ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
                             bool failed = false;
+                            bool canceled = false;
                             if (itr->second.isComplete)
                             {
-                                if (strstr(itr->second.status.c_str(), "OK") != NULL)
+                                if (itr->second.status.find("OK") != std::string::npos)
                                 {
-                                    // Color OK requests green
-                                    color = ImVec4(0.0, 1.0, 0.0, 1.0);
+                                    color = ImVec4(0, 1, 0, 1); // green
+                                }
+                                else if (itr->second.status.find("Canceled") != std::string::npos)
+                                {
+                                    color = ImVec4(.5,.5,.5,1); // grey
+                                    canceled = true;
                                 }
                                 else
                                 {
                                     // Color bad requests red
-                                    color = ImVec4(1.0, 0.0, 0.0, 1.0);
+                                    color = ImVec4(1, 0, 0, 1);
                                     failed = true;
                                 }
                             }

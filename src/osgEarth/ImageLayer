@@ -277,6 +277,8 @@ namespace osgEarth
         Threading::Mutexed<Callbacks> _callbacks;
 
         Mutexed<std::vector<osg::ref_ptr<ImageLayer>>> _postLayers;
+
+        Gate<TileKey> _sentry;
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

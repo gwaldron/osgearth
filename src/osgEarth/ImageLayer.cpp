@@ -370,11 +370,9 @@ ImageLayer::createImage(
 
     NetworkMonitor::ScopedRequestLayer layerRequest(getName());
 
-    // prevents 2 threads from creating the same object at the same time
-    //TODO use a GATE here on the key?
-    //_sentry.lock(key);
-
     GeoImage result = createImageInKeyProfile( key, progress );
+
+    // Post-cache operations:
 
     for (auto& post : _postLayers)
     {
@@ -385,8 +383,6 @@ ImageLayer::createImage(
     {
         postCreateImageImplementation(result, key, progress);
     }
-
-    //_sentry.unlock(key);
 
     return result;
 }
@@ -417,6 +413,13 @@ ImageLayer::createImageInKeyProfile(
     {
         return GeoImage::INVALID;
     }
+
+    // Tile gate prevents two threads from requesting the same key
+    // at the same time, which would be unnecessary work. Only lock
+    // the gate if there is an L2 cache active
+    ScopedGate<TileKey> scopedGate(_sentry, key, [&]() {
+        return _memCache.valid();
+    });
 
     GeoImage result;
 
@@ -580,6 +583,13 @@ ImageLayer::assembleImage(
 
     if ( intersectingKeys.size() > 0 )
     {
+#if 0
+        GeoExtent ee = key.getExtent().transform(intersectingKeys.front().getProfile()->getSRS());
+        OE_INFO << "Tile " << key.str() << " ... " << ee.toString() << std::endl;
+        for (auto key : intersectingKeys) {
+            OE_INFO << " - " << key.str() << " ... " << key.getExtent().toString() << std::endl;
+        }
+#endif
         double dst_minx, dst_miny, dst_maxx, dst_maxy;
         key.getExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
 

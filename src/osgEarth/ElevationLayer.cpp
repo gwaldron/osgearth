@@ -365,12 +365,6 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
 
     NetworkMonitor::ScopedRequestLayer layerRequest(getName());
 
-    // Prevents more than one thread from creating the same object
-    // at the same time. This helps a lot with elevation data since
-    // the many queries cross tile boundaries (like calculating 
-    // normal maps)
-    ScopedGate<TileKey> gate(_sentry, key);
-
     GeoHeightField result = createHeightFieldInKeyProfile(key, progress);
 
     return result;
@@ -387,6 +381,14 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
     {
         return result;
     }
+
+    // Prevents more than one thread from creating the same object
+    // at the same time. This helps a lot with elevation data since
+    // the many queries cross tile boundaries (like calculating 
+    // normal maps)
+    ScopedGate<TileKey> gate(_sentry, key, [&]() {
+        return _memCache.valid();
+    });
 
     // Check the memory cache first
     bool fromMemCache = false;

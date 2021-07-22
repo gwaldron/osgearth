@@ -238,20 +238,14 @@ TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, const TileKey& 
 }
 
 void
-TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
+TileNodeRegistry::releaseAll(osg::State* state)
 {
-    ResourceReleaser::ObjectList objects;
+    ScopedMutexLock lock(_mutex);
 
-    _mutex.lock();
-
-    if (releaser)
+    for (auto& tile : _tiles)
     {
-        for (TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i)
-        {
-            objects.push_back(i->second._tile.get());
-        }
+        tile.second._tile->releaseGLObjects(state);
     }
-
     _tiles.clear();
 
     for (Tracker::iterator i = _tracker.begin(); i != _tracker.end(); ++i)
@@ -265,20 +259,15 @@ TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
 
     _notifiers.clear();
 
+    _tilesToUpdate.clear();
+
     OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
-
-    _mutex.unlock();
-
-    if (releaser)
-    {
-        releaser->push(objects);
-    }
 }
 
 void
-TileNodeRegistry::update(TileNode* tile, osg::NodeVisitor& nv)
+TileNodeRegistry::touch(TileNode* tile, osg::NodeVisitor& nv)
 {
-    _mutex.lock();
+    ScopedMutexLock lock(_mutex);
 
     // Find the tracker for this tile and update its timestamp
     TileTable::iterator i = _tiles.find(tile->getKey());
@@ -299,13 +288,47 @@ TileNodeRegistry::update(TileNode* tile, osg::NodeVisitor& nv)
         _tracker.erase(e._trackerptr);
         _tracker.push_front(se);
         e._trackerptr = _tracker.begin();
+
+        // Does it need an update traversal?
+        if (tile->updateRequired())
+        {
+            _tilesToUpdate.push_back(tile->getKey());
+        }
     }
     else
     {
         OE_WARN << LC << "UPDATE FAILED - TILE " << tile->getKey().str() << " not in TILE TABLE!" << std::endl;
     }
+}
 
-    _mutex.unlock();
+void
+TileNodeRegistry::update(osg::NodeVisitor& nv)
+{
+    ScopedMutexLock lock(_mutex);
+
+    if (!_tilesToUpdate.empty())
+    {
+        // Sorting these from high to low LOD will reduce the number 
+        // of inheritance steps each updated image will have to perform
+        // against the tile's children
+        std::sort(
+            _tilesToUpdate.begin(),
+            _tilesToUpdate.end(),
+            [](const TileKey& lhs, const TileKey& rhs) {
+                return lhs.getLOD() >= rhs.getLOD();
+            });
+
+        for (auto& key : _tilesToUpdate)
+        {
+            auto iter = _tiles.find(key);
+            if (iter != _tiles.end())
+            {
+                iter->second._tile->update(nv);
+            }
+        }
+
+        _tilesToUpdate.clear();
+    }
 }
 
 void
@@ -315,9 +338,9 @@ TileNodeRegistry::collectDormantTiles(
     unsigned oldestAllowableFrame,
     float farthestAllowableRange,
     unsigned maxTiles,
-    std::vector<osg::observer_ptr<TileNode> >& output)
+    std::vector<osg::observer_ptr<TileNode>>& output)
 {
-    _mutex.lock();
+    ScopedMutexLock lock(_mutex);
 
     unsigned count = 0u;
 
@@ -373,17 +396,15 @@ TileNodeRegistry::collectDormantTiles(
     _tracker.push_front(SENTRY_VALUE);
     _sentryptr =_tracker.begin();
 
-    _mutex.unlock();
-
     OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
 }
 
 osg::ref_ptr<TileNode>
 TileNodeRegistry::get(const TileKey& key) const
 {
-    osg::ref_ptr<TileNode> result;
+    ScopedMutexLock lock(_mutex);
 
-    ScopedMutexLock scopelock(_mutex);
+    osg::ref_ptr<TileNode> result;
 
     auto iter = _tiles.find(key);
     if (iter != _tiles.end())

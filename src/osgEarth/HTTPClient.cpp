@@ -20,6 +20,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
 #include <osgEarth/Version>
+#include <osgEarth/ImageUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
 #include <curl/curl.h>
@@ -54,16 +55,15 @@ namespace osgEarth
         void writeHeader(const char* ptr, size_t realsize)
         {
             std::string header(ptr);
-            StringTokenizer tok(":");
-            StringVector tized;
-            tok.tokenize(header, tized);
-            if ( tized.size() >= 2 )
-                _headers[tized[0]] = tized[1];
+            std::size_t colon = header.find_first_of(':');
+            if (colon != std::string::npos && colon > 0 && colon < header.length() - 1)
+            {
+                _headers[header.substr(0, colon)] = header.substr(colon + 1);
+            }
         }
 
         std::ostream* _stream;
         Headers _headers;
-        std::string     _resultMimeType;
     };
 
     static size_t
@@ -661,6 +661,15 @@ namespace
             curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)0 );
             curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSDATA, (void*)0);
 
+            // check for cancel or timeout:
+            if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT)
+            {
+                // CURLE_ABORTED_BY_CALLBACK means ProgressCallback cancelation.
+                HTTPResponse response;
+                response.setCanceled(true);
+                return response;
+            }
+
             if (!proxy_addr.empty())
             {
                 long connect_code = 0L;
@@ -730,12 +739,6 @@ namespace
                     // Write the headers to the metadata
                     response.getParts().push_back( part.get() );
                 }
-            }
-
-            else if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT)
-            {
-                //If we were aborted by a callback, then it was cancelled by a user
-                response.setCanceled(true);
             }
 
             else
@@ -1534,6 +1537,14 @@ namespace
             }
         }
 
+        if (!reader && response.getNumParts() > 0)
+        {
+            std::istringstream stream(response.getPartAsString(0));
+            reader = ImageUtils::getReaderWriterForStream(stream);
+            if (reader)
+                OE_INFO << LC << "Stream detected image data of type " << reader->getName() << std::endl;
+        }
+
         if ( !reader && s_HTTP_DEBUG )
         {
             OE_WARN << LC << "Cannot find an OSG plugin to read response data (ext="
@@ -1541,6 +1552,11 @@ namespace
                 << ")" << std::endl;
 
             if ( endsWith(response.getMimeType(), "xml", false) && response.getNumParts() > 0 )
+            {
+                OE_WARN << LC << "Content:\n" << response.getPartAsString(0) << "\n";
+            }
+
+            if (endsWith(response.getMimeType(), "html", false) && response.getNumParts() > 0)
             {
                 OE_WARN << LC << "Content:\n" << response.getPartAsString(0) << "\n";
             }
@@ -1567,6 +1583,7 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
         if (!reader)
         {
             result = ReadResult(ReadResult::RESULT_NO_READER);
+            result.setErrorDetail(Stringify() << "Content-Type=" << response.getMimeType());
         }
 
         else
@@ -1595,7 +1612,7 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
         }
 
         // last-modified (file time)
-        result.setLastModifiedTime( response._lastModified ); //getCurlFileTime(_curl_handle) );
+        result.setLastModifiedTime( response._lastModified );
 
         // Time of query
         result.setDuration( response.getDuration() );
@@ -1773,6 +1790,7 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
         if (!reader)
         {
             result = ReadResult(ReadResult::RESULT_NO_READER);
+            result.setErrorDetail(Stringify() << "Content-Type=" << response.getMimeType());
         }
 
         else

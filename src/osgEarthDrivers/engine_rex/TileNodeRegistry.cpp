@@ -315,7 +315,7 @@ TileNodeRegistry::update(osg::NodeVisitor& nv)
             _tilesToUpdate.begin(),
             _tilesToUpdate.end(),
             [](const TileKey& lhs, const TileKey& rhs) {
-                return lhs.getLOD() >= rhs.getLOD();
+                return lhs.getLOD() > rhs.getLOD();
             });
 
         for (auto& key : _tilesToUpdate)

@@ -423,12 +423,41 @@ namespace osgEarth { namespace Threading
         std::unordered_map<T, int> _users;
     };
 
+    //! Gate the locks for the duration of this object's scope
     template<typename T>
     struct ScopedGate {
+    public:
+        //! Lock a gate based on key "key"
+        ScopedGate(Gate<T>& gate, T key) : 
+            _gate(gate), 
+            _key(key), 
+            _active(true)
+        {
+            _gate.lock(key);
+        }
+
+        //! Lock a gate based on key "key" IFF the predicate is true,
+        //! else it's a nop.
+        ScopedGate(Gate<T>& gate, T key, std::function<bool()> pred) :
+            _gate(gate),
+            _key(key),
+            _active(pred())
+        {
+            if (_active)
+                _gate.lock(_key);
+        }
+
+        //! End-of-scope destructor unlocks the gate
+        ~ScopedGate()
+        {
+            if (_active)
+                _gate.unlock(_key);
+        }
+
+    private:
         Gate<T>& _gate;
         T _key;
-        ScopedGate(Gate<T>& gate, T key) : _gate(gate), _key(key) { _gate.lock(key); }
-        ~ScopedGate() { _gate.unlock(_key); }
+        bool _active;
     };
 
     /**

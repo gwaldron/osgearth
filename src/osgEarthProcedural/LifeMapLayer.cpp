@@ -189,7 +189,6 @@ namespace
         }
 
         const LifeMapValue* get(double x, double y, const LifeMapValueTable* table) const
-
         {
             _tilesrs->transform2D(x, y, _featuresrs, x, y);
 
@@ -200,7 +199,7 @@ namespace
             std::vector<osg::ref_ptr<Feature>> hits;
 
             if (_index.Search(a_min, a_max, &hits, ~0) == 0)
-                return false;
+                return nullptr;
 
             const LifeMapValue* result = nullptr;
 
@@ -217,7 +216,7 @@ namespace
                         return result;
                 }
             }
-            return false;
+            return nullptr;
         }
     };
 }

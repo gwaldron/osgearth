@@ -730,20 +730,32 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, unsigned localLOD, std::
     double destTileWidth, destTileHeight;
     getTileDimensions(localLOD, destTileWidth, destTileHeight);
 
-    //OE_DEBUG << std::fixed << "  Source Tile: " << key.getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
-    //OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
-
+    double west = key_ext.xMin() - _extent.xMin();
     double east = key_ext.xMax() - _extent.xMin();
-    bool xMaxOnTileBoundary = fmod(east, destTileWidth) == 0.0;
-
     double south = _extent.yMax() - key_ext.yMin();
-    bool yMaxOnTileBoundary = fmod(south, destTileHeight) == 0.0;
+    double north = _extent.yMax() - key_ext.yMax();
 
-    tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
-    tileMaxX = (int)(east / destTileWidth) - (xMaxOnTileBoundary ? 1 : 0);
+    tileMinX = (int)(west / destTileWidth);
+    tileMaxX = (int)(east / destTileWidth);
 
-    tileMinY = (int)((_extent.yMax() - key_ext.yMax()) / destTileHeight); 
-    tileMaxY = (int)(south / destTileHeight) - (yMaxOnTileBoundary ? 1 : 0);
+    tileMinY = (int)(north / destTileHeight);
+    tileMaxY = (int)(south / destTileHeight);
+
+    // If the east or west border fell right on a tile boundary
+    // but doesn't actually use that tile, detect that and eliminate
+    // the extranous tiles. (This happens commonly when mapping
+    // geodetic to mercator for example)
+
+    double quantized_west = destTileWidth * (double)tileMinX;
+    double quantized_east = destTileWidth * (double)(tileMaxX + 1);
+
+    if (osg::equivalent(west - quantized_west, destTileWidth))
+        ++tileMinX;
+    if (osg::equivalent(quantized_east - east, destTileWidth))
+        --tileMaxX;
+
+    if (tileMaxX < tileMinX)
+        tileMaxX = tileMinX;
 
     unsigned int numWide, numHigh;
     getNumTiles(localLOD, numWide, numHigh);

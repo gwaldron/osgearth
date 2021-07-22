@@ -32,6 +32,7 @@ namespace osgEarth {
             NetworkMonitorGUI() :
                 BaseGUI("Network Monitor"),
                 _showOnlyActiveRequests(true),
+                _showOnlyFailedRequests(false),
                 _filter("")
             {
 
@@ -66,6 +67,9 @@ namespace osgEarth {
                     }
 
                     ImGui::Checkbox("Active", &_showOnlyActiveRequests);
+                    
+                    ImGui::SameLine();
+                    ImGui::Checkbox("Failed", &_showOnlyFailedRequests);
 
                     ImGui::SameLine();
                     if (ImGui::Button("Clear"))
@@ -129,9 +133,8 @@ namespace osgEarth {
                                 }
                             }
 
-                            ImGui::PushID(itr->first);
-
                             ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
+                            bool failed = false;
                             if (itr->second.isComplete)
                             {
                                 if (strstr(itr->second.status.c_str(), "OK") != NULL)
@@ -143,8 +146,14 @@ namespace osgEarth {
                                 {
                                     // Color bad requests red
                                     color = ImVec4(1.0, 0.0, 0.0, 1.0);
+                                    failed = true;
                                 }
                             }
+
+                            if (_showOnlyFailedRequests && !failed)
+                                continue;
+
+                            ImGui::PushID(itr->first);
 
                             double startMS = osg::Timer::instance()->delta_m(startTime, itr->second.startTime);
                             double endMS = 0.0;
@@ -170,7 +179,7 @@ namespace osgEarth {
 
                             if (ImGui::SmallButton("Copy"))
                             {
-                                ImGui::SetClipboardText(itr->second.uri.c_str());                                
+                                ImGui::SetClipboardText(itr->second.uri.c_str());
                             }
                             ImGui::SameLine();
                             ImGui::TextColored(color, "%s (%d)", itr->second.uri.c_str(), itr->second.count);  ImGui::NextColumn();
@@ -196,6 +205,7 @@ namespace osgEarth {
             }
 
             bool _showOnlyActiveRequests;
+            bool _showOnlyFailedRequests;
             char _filter[128];
         };
     }

@@ -240,7 +240,7 @@ TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, const TileKey& 
 void
 TileNodeRegistry::releaseAll(osg::State* state)
 {
-    _mutex.lock();
+    ScopedMutexLock lock(_mutex);
 
     for (auto& tile : _tiles)
     {
@@ -259,15 +259,15 @@ TileNodeRegistry::releaseAll(osg::State* state)
 
     _notifiers.clear();
 
-    OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
+    _tilesToUpdate.clear();
 
-    _mutex.unlock();
+    OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
 }
 
 void
 TileNodeRegistry::touch(TileNode* tile, osg::NodeVisitor& nv)
 {
-    _mutex.lock();
+    ScopedMutexLock lock(_mutex);
 
     // Find the tracker for this tile and update its timestamp
     TileTable::iterator i = _tiles.find(tile->getKey());
@@ -292,21 +292,19 @@ TileNodeRegistry::touch(TileNode* tile, osg::NodeVisitor& nv)
         // Does it need an update traversal?
         if (tile->updateRequired())
         {
-            _tilesToUpdate.push_back(tile);
+            _tilesToUpdate.push_back(tile->getKey());
         }
     }
     else
     {
         OE_WARN << LC << "UPDATE FAILED - TILE " << tile->getKey().str() << " not in TILE TABLE!" << std::endl;
     }
-
-    _mutex.unlock();
 }
 
 void
 TileNodeRegistry::update(osg::NodeVisitor& nv)
 {
-    _mutex.lock();
+    ScopedMutexLock lock(_mutex);
 
     if (!_tilesToUpdate.empty())
     {
@@ -316,19 +314,21 @@ TileNodeRegistry::update(osg::NodeVisitor& nv)
         std::sort(
             _tilesToUpdate.begin(),
             _tilesToUpdate.end(),
-            [](TileNode* lhs, TileNode* rhs) {
-                return lhs->getKey().getLOD() >= rhs->getKey().getLOD();
+            [](const TileKey& lhs, const TileKey& rhs) {
+                return lhs.getLOD() >= rhs.getLOD();
             });
 
-        for (auto tile : _tilesToUpdate)
+        for (auto& key : _tilesToUpdate)
         {
-            tile->update(nv);
+            auto iter = _tiles.find(key);
+            if (iter != _tiles.end())
+            {
+                iter->second._tile->update(nv);
+            }
         }
 
         _tilesToUpdate.clear();
     }
-
-    _mutex.unlock();
 }
 
 void
@@ -340,7 +340,7 @@ TileNodeRegistry::collectDormantTiles(
     unsigned maxTiles,
     std::vector<osg::observer_ptr<TileNode>>& output)
 {
-    _mutex.lock();
+    ScopedMutexLock lock(_mutex);
 
     unsigned count = 0u;
 
@@ -396,17 +396,15 @@ TileNodeRegistry::collectDormantTiles(
     _tracker.push_front(SENTRY_VALUE);
     _sentryptr =_tracker.begin();
 
-    _mutex.unlock();
-
     OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
 }
 
 osg::ref_ptr<TileNode>
 TileNodeRegistry::get(const TileKey& key) const
 {
-    osg::ref_ptr<TileNode> result;
+    ScopedMutexLock lock(_mutex);
 
-    ScopedMutexLock scopelock(_mutex);
+    osg::ref_ptr<TileNode> result;
 
     auto iter = _tiles.find(key);
     if (iter != _tiles.end())

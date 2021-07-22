@@ -167,7 +167,7 @@ namespace osgEarth { namespace REX
         TileKeyOneToMany _notifiers;
 
         // tile nodes requiring an udpate traversal
-        std::vector<TileNode*> _tilesToUpdate;
+        std::vector<TileKey> _tilesToUpdate;
 
     private:
 

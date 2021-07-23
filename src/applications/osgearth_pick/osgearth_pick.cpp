@@ -118,7 +118,7 @@ struct PickerGUI : public GUI::BaseGUI
                         for (auto& attr : _app._pickedFeature->getAttrs())
                         {
                             ImGui::Separator();
-                            ImGui::Text("%s = %s", attr.first.c_str(), attr.second.getString().c_str());
+                            ImGui::TextWrapped("%s = %s", attr.first.c_str(), attr.second.getString().c_str());
                         }
                     }
                     ImGui::Unindent();

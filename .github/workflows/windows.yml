@@ -36,7 +36,7 @@ jobs:
           !${{ matrix.VCPKG_WORKSPACE }}/packages
           !${{ matrix.VCPKG_WORKSPACE }}/buildtrees
           !${{ matrix.VCPKG_WORKSPACE }}/downloads
-        key: vcpkg-${{ matrix.triplet }}
+        key: vcpkg-${{ matrix.triplet }}-v2
 
     - name: Installing vcpkg (windows)
       if: steps.vcpkgcache.outputs.cache-hit != 'true'

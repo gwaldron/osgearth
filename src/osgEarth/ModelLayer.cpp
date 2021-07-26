@@ -20,6 +20,8 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/GeoTransform>
 #include <osgEarth/Registry>
+#include <osgEarth/URI>
+
 #include <osg/CullStack>
 #include <osg/Depth>
 #include <osg/PositionAttitudeTransform>
@@ -253,7 +255,7 @@ ModelLayer::openImplementation()
             osgDB::getFilePath(options().url()->full()) );
             
         // Only support paging if user has enabled it and provided a min/max range
-        bool usePagedLOD = 
+        bool paged = 
             (options().paged() == true) &&
             (options().minVisibleRange().isSet() || options().maxVisibleRange().isSet());
 
@@ -262,7 +264,7 @@ ModelLayer::openImplementation()
         osg::ref_ptr<osg::Group> modelNodeParent;
 
         // If we're not paging, just load the node now:
-        if (!usePagedLOD)
+        if (!paged)
         {
             ReadResult rr = options().url()->readNode(localReadOptions.get());
             if (rr.failed())
@@ -306,38 +308,56 @@ ModelLayer::openImplementation()
             float minRange = options().minVisibleRange().getOrUse(0.0f);
             float maxRange = options().maxVisibleRange().getOrUse(FLT_MAX);
 
-            osg::LOD* lod = 0;
+            osg::Group* group = nullptr;
 
-            if (!usePagedLOD)
+            if (!paged)
             {
                 // Just use a regular LOD
-                lod = new osg::LOD();                
-                lod->addChild(modelNode.release());                    
+                osg::LOD* lod = new osg::LOD();
+                lod->addChild(modelNode.release());
+                lod->setRange(0, minRange, maxRange);
+                group = lod;
             }
             else
             {
-                // Use a PagedLOD
-                osg::PagedLOD* plod =new osg::PagedLOD();                
-                plod->setFileName(0, options().url()->full());     
+                PagedNode2* plod = new PagedNode2();
 
-                // If they want the model to be paged but haven't given us a location we have to load
-                // up the node up front and figure out what it's center and radius are or it won't page in.
-                if (!options().location().isSet() && result.valid())
-                {                    
-                    osg::Vec3d center = result->getBound().center();
-                    OE_DEBUG << "Radius=" << result->getBound().radius() << " center=" << center.x() << "," << center.y() << "," << center.z() << std::endl;                    
-                    plod->setCenter(result->getBound().center());
-                    plod->setRadius(osg::maximum(
-                        result->getBound().radius(), 
-                        static_cast<osg::BoundingSphere::value_type>(maxRange)));
+                URI uri = options().url().get();
 
+                plod->setLoadFunction([uri, localReadOptions](Cancelable*) {
+                    osg::ref_ptr<osg::Node> node = uri.getNode(localReadOptions.get());
+                    ShaderGenerator gen;
+                    node->accept(gen);
+                    return node;
+                });
+
+                plod->setMinRange(minRange);
+                plod->setMaxRange(maxRange);
+
+                osg::Vec3d center;
+                if (options().location().isSet())
+                {
+                    options().location()->toWorld(center);
                 }
-                lod = plod;
+                else
+                {
+                    center = result->getBound().center();
+                }
+                plod->setCenter(center);
+
+                if (result.valid())
+                {
+                    plod->setRadius(std::max(result->getBound().radius(), maxRange));
+                }
+                else
+                {
+                    plod->setRadius(maxRange);
+                }
+
+                group = plod;
             }
 
-            lod->setRange(0, minRange, maxRange);
-
-            modelNodeParent->addChild(lod);
+            modelNodeParent->addChild(group);
         }
         else
         {

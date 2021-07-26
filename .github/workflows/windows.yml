@@ -6,7 +6,7 @@ env:
   VCPKG_BINARY_SOURCES : 'clear;nuget,GitHub,readwrite'
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
-  VCPKG_VERSION: '2020.11'
+  VCPKG_VERSION: 'd417ae59d6e9aa20d9f812b5deb966645c54687d'
 
 jobs:
 
@@ -26,7 +26,7 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
-
+        
     - name: vcpkg cache
       id: vcpkgcache
       uses: actions/cache@v2
@@ -36,7 +36,7 @@ jobs:
           !${{ matrix.VCPKG_WORKSPACE }}/packages
           !${{ matrix.VCPKG_WORKSPACE }}/buildtrees
           !${{ matrix.VCPKG_WORKSPACE }}/downloads
-        key: vcpkg-${{ matrix.triplet }}
+        key: vcpkg-${{ matrix.triplet }}-v2
 
     - name: Installing vcpkg (windows)
       if: steps.vcpkgcache.outputs.cache-hit != 'true'
@@ -44,7 +44,11 @@ jobs:
       run: |
         cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}
         cd ${{ matrix.VCPKG_WORKSPACE }}
-        git clone --depth 1 --branch ${{env.VCPKG_VERSION}} https://github.com/microsoft/vcpkg
+        # git clone --depth 1 --branch ${{env.VCPKG_VERSION}} https://github.com/microsoft/vcpkg
+        git clone https://github.com/microsoft/vcpkg
+        cd vcpkg
+        git checkout ${{env.VCPKG_VERSION}}
+        cd ..
         ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
         ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
 

@@ -106,33 +106,8 @@ namespace osgEarth
     protected:
         virtual ~TerrainTileImageLayerModel() { }
         osg::ref_ptr<ImageLayer> _imageLayer;
-        osg::ref_ptr<osg::Node> _node;
     };
     typedef std::vector< osg::ref_ptr<TerrainTileImageLayerModel> > TerrainTileImageLayerModelVector;
-
-    /**
-     * Layer based on an Layer with RENDERTYPE_PATCH from the map.
-     */
-    class OSGEARTH_EXPORT TerrainTilePatchLayerModel : public TerrainTileLayerModel
-    {
-    public:
-        TerrainTilePatchLayerModel() { }
-
-    public:
-        /** Source layer */
-        void setPatchLayer(PatchLayer* layer) { _layer = layer; }
-        const PatchLayer* getPatchLayer() const { return _layer.get(); }
-
-        //! Node payload
-        void setNode(osg::Node* node) { _node = node; }
-        osg::ref_ptr<osg::Node> getNode() const { return _node; }
-
-    protected:
-        virtual ~TerrainTilePatchLayerModel() { }
-        osg::ref_ptr<PatchLayer> _layer;
-        osg::ref_ptr<osg::Node> _node;
-    };
-    typedef std::vector< osg::ref_ptr<TerrainTilePatchLayerModel> > TerrainTilePatchLayerModelVector;
 
     /**
      * Layer based on aggregated elevation data.
@@ -199,9 +174,6 @@ namespace osgEarth
         TerrainTileColorLayerModelVector& colorLayers() { return _colorLayers; }
         const TerrainTileColorLayerModelVector& colorLayers() const { return _colorLayers; }
 
-        TerrainTilePatchLayerModelVector& patchLayers() { return _patchLayers; }
-        const TerrainTilePatchLayerModelVector& patchLayers() const { return _patchLayers; }
-
         /** Elevation Layer model (one) */
         osg::ref_ptr<TerrainTileElevationModel>& elevationModel() { return _elevationLayer; }
         const osg::ref_ptr<TerrainTileElevationModel>& elevationModel() const { return _elevationLayer; }
@@ -249,7 +221,6 @@ namespace osgEarth
         TileKey                                 _key;
         Revision                                _revision;
         TerrainTileColorLayerModelVector        _colorLayers;
-        TerrainTilePatchLayerModelVector        _patchLayers;
         TerrainTileImageLayerModelVector        _sharedLayers;
         osg::ref_ptr<TerrainTileElevationModel> _elevationLayer;
         osg::ref_ptr<TerrainTileLayerModel>     _normalLayer;

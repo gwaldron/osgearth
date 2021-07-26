@@ -208,8 +208,6 @@ TerrainTileModelFactory::createStandaloneTileModel(
 
     addStandaloneLandCover(model.get(), map, key, requirements, manifest, progress);
 
-    //addPatchLayers(model.get(), map, key, filter, progress, true);
-
     // done.
     return model.release();
 }
@@ -401,46 +399,6 @@ TerrainTileModelFactory::addColorLayers(
         }
     }
 }
-
-#if 0
-void
-TerrainTileModelFactory::addPatchLayers(
-    TerrainTileModel* model,
-    const Map* map,
-    const TileKey&    key,
-    const CreateTileManifest& manifest,
-    ProgressCallback* progress,
-    bool fallback)
-{
-    PatchLayerVector patchLayers;
-    map->getLayers(patchLayers);
-
-    for(PatchLayerVector::const_iterator i = patchLayers.begin();
-        i != patchLayers.end();
-        ++i )
-    {
-        PatchLayer* layer = i->get();
-
-        if (!layer->isOpen())
-            continue;
-
-        if (manifest.excludes(layer))
-            continue;
-
-        if (layer->getAcceptCallback() == 0L || layer->getAcceptCallback()->acceptKey(key))
-        {
-            GeoNode node = layer->createNode(key, progress);
-            if (node.valid())
-            {
-                TerrainTilePatchLayerModel* patchModel = new TerrainTilePatchLayerModel();
-                patchModel->setPatchLayer(layer);
-                patchModel->setRevision(layer->getRevision());
-                patchModel->setNode(node.getNode());
-            }
-        }
-    }
-}
-#endif
 
 void
 TerrainTileModelFactory::addElevation(

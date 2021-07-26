@@ -8,6 +8,7 @@ osgEarth Sample - Per-layer GLSL shader injection
         <shader>
           <uniform name="gamma" value="2.2"/>
           <![CDATA[
+            #version 330
             #pragma vp_entryPoint gammaCorrection
             #pragma vp_location   fragment
             uniform float gamma;

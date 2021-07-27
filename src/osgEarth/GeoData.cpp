@@ -24,6 +24,7 @@
 #include <osgEarth/Terrain>
 #include <osgEarth/GDAL>
 #include <osgEarth/Metrics>
+#include <osg/BoundingBox>
 
 using namespace osgEarth;
 
@@ -1632,27 +1633,53 @@ GeoExtent::createWorldBoundingSphere(double minElev, double maxElev) const
         GeoPoint(getSRS(), xMin(), yMin(), minElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
         GeoPoint(getSRS(), xMax(), yMax(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
     }
-
     else // geocentric
     {
-        osg::Vec3d w;
-        GeoPoint(getSRS(), xMin(), yMin(), minElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
-        GeoPoint(getSRS(), xMax(), yMin(), minElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
-        GeoPoint(getSRS(), xMax(), yMax(), minElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
-        GeoPoint(getSRS(), xMin(), yMax(), minElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
-        GeoPoint(getSRS(), xMin(), yMin(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
-        GeoPoint(getSRS(), xMax(), yMin(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
-        GeoPoint(getSRS(), xMax(), yMax(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
-        GeoPoint(getSRS(), xMin(), yMax(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
-        
-        // This additional point accounts for when xMin and xMax are close together on the globe
-        // but very far in the expected x extent
-        // (for example [-170 , +170] -> we need an intermediate point at x=0 to have an accurate bounding sphere)
-        if (width() > 180.0)
+        // Sample points along the extent
+        std::vector< osg::Vec3d > samplePoints;
+
+        int samples = 7;
+
+        double xSample = width() / (double)(samples - 1);
+        double ySample = height() / (double)(samples - 1);
+
+        for (int c = 0; c < samples; c++)
         {
-            GeoPoint(getSRS(), (xMin() + xMax()) / 2.0, (yMin() + yMax()) / 2.0, (minElev + maxElev) / 2.0, ALTMODE_ABSOLUTE).toWorld(w);
-            bs.expandBy(w);
+            double x = xMin() + (double)c * xSample;
+            for (int r = 0; r < samples; r++)
+            {
+                double y = yMin() + (double)r * ySample;
+                
+                osg::Vec3d world;
+                GeoPoint(getSRS(), x, y, minElev, ALTMODE_ABSOLUTE).toWorld(world);
+                samplePoints.push_back(world);               
+                GeoPoint(getSRS(), x, y, maxElev, ALTMODE_ABSOLUTE).toWorld(world);
+                samplePoints.push_back(world);
+            }
         }
+
+        // Compute the bounding box of the sample points
+        osg::BoundingBoxd bb;
+        for (auto& p : samplePoints)
+        {
+            bb.expandBy(p);
+        }
+
+        // The center of the bounding sphere is the center of the bounding box
+        bs.center() = bb.center();
+
+        // Compute the max radius based on the distance from the bounding boxes center.
+        double maxRadius = -DBL_MAX;
+
+        for (auto& p : samplePoints)
+        {
+            double r = (p - bs.center()).length();
+            if (r > maxRadius) maxRadius = r;
+        }
+
+        bs.radius() = maxRadius;
+
+        return bs;
     }
 
     return bs;

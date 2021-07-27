@@ -49,32 +49,9 @@ void SimplePager::build()
     addChild( buildRootNode() );
 }
 
-osg::BoundingSphere SimplePager::getBounds(const TileKey& key) const
+osg::BoundingSphered SimplePager::getBounds(const TileKey& key) const
 {
-    int samples = 6;
-
-    GeoExtent extent = key.getExtent();
-
-    double xSample = extent.width() / (double)samples;
-    double ySample = extent.height() / (double)samples;
-
-    osg::BoundingSphere bs;
-    for (int c = 0; c < samples+1; c++)
-    {
-        double x = extent.xMin() + (double)c * xSample;
-        for (int r = 0; r < samples+1; r++)
-        {
-            double y = extent.yMin() + (double)r * ySample;
-            osg::Vec3d world;
-
-            GeoPoint samplePoint(extent.getSRS(), x, y, 0, ALTMODE_ABSOLUTE);
-
-            GeoPoint wgs84 = samplePoint.transform(osgEarth::SpatialReference::create("epsg:4326"));
-            wgs84.toWorld(world);
-            bs.expandBy(world);
-        }
-    }
-    return bs;
+    return key.getExtent().createWorldBoundingSphere(-500, 500);    
 }
 
 osg::ref_ptr<osg::Node> SimplePager::buildRootNode()
@@ -96,7 +73,7 @@ osg::ref_ptr<osg::Node> SimplePager::buildRootNode()
 
 osg::ref_ptr<osg::Node> SimplePager::createNode(const TileKey& key, ProgressCallback* progress)
 {
-    osg::BoundingSphere bounds = getBounds( key );
+    osg::BoundingSphered bounds = getBounds( key );
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;
     mt->setMatrix(osg::Matrixd::translate( bounds.center() ) );
@@ -111,8 +88,8 @@ osg::ref_ptr<osg::Node> SimplePager::createNode(const TileKey& key, ProgressCall
 osg::ref_ptr<osg::Node>
 SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
 {
-    osg::BoundingSphere tileBounds = getBounds(key);
-    float tileRadius = tileBounds.radius();
+    osg::BoundingSphered tileBounds = getBounds(key);
+    double tileRadius = tileBounds.radius();
 
     // restrict subdivision to max level:
     bool hasChildren = key.getLOD() < _maxLevel;

@@ -104,7 +104,7 @@ namespace osgEarth { namespace Util
     protected:
 
         //! Gets the bounding sphere for a given TileKey.
-        osg::BoundingSphere getBounds(const TileKey& key) const;
+        osg::BoundingSphered getBounds(const TileKey& key) const;
 
         //! The root node is a special node.
         osg::ref_ptr<osg::Node> buildRootNode();

@@ -136,6 +136,12 @@ Layer::~Layer()
 }
 
 void
+Layer::dirty()
+{
+    bumpRevision();
+}
+
+void
 Layer::bumpRevision()
 {
     ++_revision;

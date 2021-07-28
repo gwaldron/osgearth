@@ -330,6 +330,10 @@ namespace osgEarth
         //! Revision number of this layer
         int getRevision() const { return (int)_revision; }
 
+        //! Increment the revision number for this layer, which will
+        //! invalidate caches.
+        virtual void dirty();
+
         class Options;
 
     protected:

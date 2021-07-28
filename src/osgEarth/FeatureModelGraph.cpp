@@ -889,21 +889,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
         }
 #endif
         // Expand the bounding sphere to account for the min/max elevation
-        osg::BoundingSphered bs = workingExtent.createWorldBoundingSphere(minElevation, maxElevation);
-
-        // account for a worldwide bound:
-        double minRadius = std::min(
-            map->getSRS()->getEllipsoid().getRadiusPolar(),
-            map->getSRS()->getEllipsoid().getRadiusEquator());
-
-        double maxRadius = std::max(
-            map->getSRS()->getEllipsoid().getRadiusPolar(),
-            map->getSRS()->getEllipsoid().getRadiusEquator());
-
-        if (bs.radius() > minRadius / 2.0)
-            return osg::BoundingSphered(osg::Vec3d(0, 0, 0), maxRadius);
-
-        return bs;
+        return workingExtent.createWorldBoundingSphere(minElevation, maxElevation);
     }
 
     // fallback OR projected map approach

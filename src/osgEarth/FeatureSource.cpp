@@ -452,23 +452,26 @@ FeatureSource::getKeys(
 {
     if (_featureProfile.valid())
     {
-        // If this is a tiled FS we need to translate the caller's tilekey into
-        // feature source tilekeys and combine multiple queries into one.
-        const Profile* tilingProfile = _featureProfile->getTilingProfile();
-        if (tilingProfile)
+        // We need to translate the caller's tilekey into feature source
+        // tilekeys and combine multiple queries into one.
+        const Profile* profile =
+            _featureProfile->isTiled() ? _featureProfile->getTilingProfile() :
+            key.getProfile();
+
+        if (profile)
         {
             std::vector<TileKey> intersectingKeys;
             if (buffer.as(Units::METERS) == 0.0)
             {
-                tilingProfile->getIntersectingTiles(key, intersectingKeys);
+                profile->getIntersectingTiles(key, intersectingKeys);
             }
             else
             {
                 GeoExtent extent = key.getExtent();
                 double d = buffer.asDistance(extent.getSRS()->getUnits(), 0.5*(extent.yMin() + extent.yMax()));
                 extent.expand(d, d);
-                unsigned lod = tilingProfile->getEquivalentLOD(key.getProfile(), key.getLOD());
-                tilingProfile->getIntersectingTiles(extent, lod, intersectingKeys);
+                unsigned lod = profile->getEquivalentLOD(key.getProfile(), key.getLOD());
+                profile->getIntersectingTiles(extent, lod, intersectingKeys);
             }
 
             for (int i = 0; i < intersectingKeys.size(); ++i)
@@ -478,6 +481,11 @@ FeatureSource::getKeys(
                 else
                     output.insert(intersectingKeys[i]);
             }
+        }
+        else
+        {
+            // plan B
+            output.insert(key);
         }
     }
 

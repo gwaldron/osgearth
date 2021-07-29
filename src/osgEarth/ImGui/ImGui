@@ -364,6 +364,7 @@ namespace ImGuiUtil
 #include "TerrainGUI"
 #include "TerrainEditGUI"
 #include "ShaderGUI"
+#include "CameraGUI"
 
 #ifdef OSGEARTH_HAVE_GEOCODER
 #include "SearchGUI"
@@ -406,6 +407,7 @@ namespace osgEarth
             {
                 _menu["Tools"].push_back(GUIPtr(new LayersGUI));
                 _menu["Tools"].push_back(GUIPtr(new ViewpointsGUI));
+                _menu["Tools"].push_back(GUIPtr(new CameraGUI));
                 _menu["Tools"].push_back(GUIPtr(new EphemerisGUI));
                 _menu["Tools"].push_back(GUIPtr(new TerrainGUI));
                 _menu["Tools"].push_back(GUIPtr(new SystemGUI));

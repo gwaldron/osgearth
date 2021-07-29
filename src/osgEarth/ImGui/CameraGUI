@@ -1,0 +1,124 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_CAMERA_GUI
+#define OSGEARTH_IMGUI_CAMERA_GUI
+
+#include <osgEarth/MapNode>
+#include <osgEarth/EarthManipulator>
+
+namespace osgEarth {
+    namespace GUI
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Util;
+
+        /**
+         * GUI for the EarthManipulator settings
+         */
+        struct CameraGUI : public BaseGUI
+        {
+            bool _first;
+            bool _singleAxisRotation;
+            bool _lockAzimuthWhilePanning;
+            bool _arcViewpointTransitions;
+            bool _terrainAvoidanceEnabled;
+            bool _throwing;
+            float _throwDecayRate;
+            bool _zoomToMouse;
+
+            CameraGUI() :
+                BaseGUI("Camera"),
+                _first(true)
+            {
+                EarthManipulator::Settings d;
+                _singleAxisRotation = d.getSingleAxisRotation();
+                _lockAzimuthWhilePanning = d.getLockAzimuthWhilePanning();
+                _arcViewpointTransitions = d.getArcViewpointTransitions();
+                _terrainAvoidanceEnabled = d.getTerrainAvoidanceEnabled();
+                _throwing = d.getThrowingEnabled();
+                _throwDecayRate = d.getThrowDecayRate();
+                _zoomToMouse = d.getZoomToMouse();
+            }
+
+            void load(const Config& conf) override
+            {
+                conf.get("SingleAxisRotation", _singleAxisRotation);
+                conf.get("LockAzimuthWhilePanning", _lockAzimuthWhilePanning);
+                conf.get("ArcViewpointTransitions", _arcViewpointTransitions);
+                conf.get("TerrainAvoidance", _terrainAvoidanceEnabled);
+                conf.get("Throwing", _throwing);
+                conf.get("ThrowingDecay", _throwDecayRate);
+                conf.get("ZoomToMouse", _zoomToMouse);
+            }
+
+            void save(Config& conf) override
+            {
+                conf.set("SingleAxisRotation", _singleAxisRotation);
+                conf.set("LockAzimuthWhilePanning", _lockAzimuthWhilePanning);
+                conf.set("ArcViewpointTransitions", _arcViewpointTransitions);
+                conf.set("TerrainAvoidance", _terrainAvoidanceEnabled);
+                conf.set("Throwing", _throwing);
+                conf.set("ThrowingDecay", _throwDecayRate);
+                conf.set("ZoomToMouse", _zoomToMouse);
+            }
+
+            void draw(osg::RenderInfo& ri)
+            {
+                if (!isVisible())
+                    return;
+
+                EarthManipulator* man = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                if (!man)
+                    return;
+
+                EarthManipulator::Settings* s = man->getSettings();
+
+                ImGui::Begin(name(), visible());
+                {
+                    if (ImGui::Checkbox("Single axis continuous rotation", &_singleAxisRotation) || _first)
+                        s->setSingleAxisRotation(_singleAxisRotation), dirtySettings();
+
+                    if (ImGui::Checkbox("Lock azimuth while paaning", &_lockAzimuthWhilePanning) || _first)
+                        s->setLockAzimuthWhilePanning(_lockAzimuthWhilePanning), dirtySettings();
+
+                    if (ImGui::Checkbox("Arc viewpoint transitions", &_arcViewpointTransitions) || _first)
+                        s->setArcViewpointTransitions(_arcViewpointTransitions), dirtySettings();
+
+                    if (ImGui::Checkbox("Terrain avoidance", &_terrainAvoidanceEnabled) || _first)
+                        s->setTerrainAvoidanceEnabled(_terrainAvoidanceEnabled), dirtySettings();
+
+                    if (ImGui::Checkbox("Throwing", &_throwing) || _first)
+                        s->setThrowingEnabled(_throwing), dirtySettings();
+
+                    if (_throwing || _first)
+                        if (ImGui::SliderFloat("Decay", &_throwDecayRate, 0.02f, 0.3f) || _first)
+                            s->setThrowDecayRate(_throwDecayRate), dirtySettings();
+
+                    if (ImGui::Checkbox("Zoom to mouse", &_zoomToMouse) || _first)
+                        s->setZoomToMouse(_zoomToMouse), dirtySettings();
+                }
+
+                _first = false;
+                ImGui::End();
+            }
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_CAMERA_GUI

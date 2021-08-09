@@ -91,10 +91,10 @@ namespace osgEarth {
 
                 ImGui::Begin(name(), visible());
                 {
-                    if (ImGui::Checkbox("Single axis continuous rotation", &_singleAxisRotation) || _first)
-                        s->setSingleAxisRotation(_singleAxisRotation), dirtySettings();
+                    //if (ImGui::Checkbox("Single axis continuous rotation", &_singleAxisRotation) || _first)
+                    //    s->setSingleAxisRotation(_singleAxisRotation), dirtySettings();
 
-                    if (ImGui::Checkbox("Lock azimuth while paaning", &_lockAzimuthWhilePanning) || _first)
+                    if (ImGui::Checkbox("Lock azimuth while panning", &_lockAzimuthWhilePanning) || _first)
                         s->setLockAzimuthWhilePanning(_lockAzimuthWhilePanning), dirtySettings();
 
                     if (ImGui::Checkbox("Arc viewpoint transitions", &_arcViewpointTransitions) || _first)

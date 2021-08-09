@@ -2,6 +2,22 @@
 
 
 
+## Version 3.2 (August 2021)
+
+This is primarily a **release** and bug-fix release.
+
+Release Highlights:
+
+* New ImGui integration, including the new `osgearth_imgui` command line tool.
+
+* `ObjectIDPicker`, a more reliable replacement for `RTTPicker`
+
+* `ContourMap` has new for custom color stops in the earth file
+
+* Build system now uses Git Submodules for some inline dependencies.
+
+  
+
 ## Version 3.1 (December 2020)
 
 As of this release, osgEarth requires C++11.

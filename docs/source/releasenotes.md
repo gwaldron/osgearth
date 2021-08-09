@@ -4,7 +4,7 @@
 
 ## Version 3.2 (August 2021)
 
-This is primarily a **release** and bug-fix release.
+This is primarily a performance and bug-fix release.
 
 Release Highlights:
 
@@ -14,7 +14,7 @@ Release Highlights:
 
 * `ContourMap` has new for custom color stops in the earth file
 
-* Build system now uses Git Submodules for some inline dependencies.
+* Build system now uses Git Submodules for some inline dependencies
 
   
 

@@ -537,7 +537,12 @@ MBTiles::Driver::open(
                 double maxLon = osgEarth::Util::as<double>(tokens[2], 0.0);
                 double maxLat = osgEarth::Util::as<double>(tokens[3], 0.0);
 
-                GeoExtent extent(osgEarth::SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
+                GeoExtent extent;
+                if (profile)
+                    extent = GeoExtent(profile->getSRS(), minLon, minLat, maxLon, maxLat);
+                else
+                    extent = GeoExtent(osgEarth::SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
+
                 if (extent.isValid())
                 {
                     // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
@@ -977,9 +982,17 @@ MBTiles::Driver::setDataExtents(const DataExtentList& values)
             e.expandToInclude(values[i]);
         }
 
-        // Convert the bounds to wgs84
-        osg::ref_ptr<const Profile> gg = Profile::create(Profile::GLOBAL_GEODETIC);
-        GeoExtent bounds = gg->clampAndTransformExtent(e);
+        // Convert the bounds to geographic
+        GeoExtent bounds;
+        if (e.getSRS()->isGeographic())
+        {
+            bounds = e;
+        }
+        else
+        {
+            osg::ref_ptr<const Profile> gg = Profile::create(Profile::GLOBAL_GEODETIC);
+            bounds = gg->clampAndTransformExtent(e);
+        }
         std::stringstream boundsStr;
         boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();
         putMetaData("bounds", boundsStr.str());

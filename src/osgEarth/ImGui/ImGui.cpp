@@ -30,7 +30,6 @@ using namespace osgEarth::GUI;
 void OsgImGuiHandler::RealizeOperation::operator()(osg::Object* object)
 {
     GlewInitOperation::operator()(object);
-    OsgImGuiHandler::init();
 }
 
 struct OsgImGuiHandler::ImGuiNewFrameCallback : public osg::Camera::DrawCallback
@@ -157,6 +156,11 @@ void OsgImGuiHandler::setCameraCallbacks(osg::Camera* camera)
 
 void OsgImGuiHandler::newFrame(osg::RenderInfo& renderInfo)
 {
+    if (firstFrame_ == true)
+    {
+        init();
+    }
+
     ImGui_ImplOpenGL3_NewFrame();
 
     ImGuiIO& io = ImGui::GetIO();
@@ -180,13 +184,13 @@ void OsgImGuiHandler::newFrame(osg::RenderInfo& renderInfo)
     io.MouseWheel = mouseWheel_;
     mouseWheel_ = 0.0f;
 
+    ImGui::NewFrame();
+
     if (firstFrame_ == true)
     {
         installSettingsHandler();
-        firstFrame_ = false;
+        firstFrame_ = false;        
     }
-
-    ImGui::NewFrame();
 }
 
 namespace
@@ -291,6 +295,7 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
         {
             setCameraCallbacks(view->getCamera());
             initialized_ = true;
+            return false;
         }
     }
 

@@ -92,9 +92,10 @@ namespace osgEarth
             virtual void draw(osg::RenderInfo& renderInfo) = 0;
             friend class RealizeOperation;
 
+            virtual void init();
 
         private:
-            static void init();
+            
 
             void setCameraCallbacks(osg::Camera* camera);
 

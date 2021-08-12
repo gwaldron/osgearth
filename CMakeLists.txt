@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.12 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.1 FATAL_ERROR)
 
 if(COMMAND cmake_policy)
     # Works around warnings libraries linked against that don't
@@ -12,8 +12,8 @@ if(COMMAND cmake_policy)
     # Fixes a warning when cache_rocksdb links to target "RocksDB::rocksdb"
     cmake_policy(SET CMP0028 NEW)
     
-    # Defaults find_package to using *_ROOT
-    # (This is probably redundant w.r.t. CMAKE_MINIMUM_REQUIRED>=3.12)
+    # Defaults find_package to using *_ROOT, which did not become the default
+    # policy until CMake 3.12
     if (POLICY CMP0074)
         cmake_policy(SET CMP0074 NEW)
     endif()

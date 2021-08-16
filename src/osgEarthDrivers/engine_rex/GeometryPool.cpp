@@ -94,16 +94,16 @@ GeometryPool::getPooledGeometry(
         }
 
         if (!out.valid())
-        {    
+        {
             out = createGeometry(
-                tileKey, 
-                tileSize, 
+                tileKey,
+                tileSize,
                 options.heightFieldSkirtRatio().get(),
                 options.gpuTessellation().get(),
                 options.morphTerrain().get(),
                 meshEditor,
                 progress);
-            
+
             // only store as a shared geometry if there are no constraints.
             if (out.valid() && !meshEditor.hasEdits())
             {
@@ -690,48 +690,29 @@ SharedGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) cons
 void
 SharedGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 {
-    if (_drawElements->getNumIndices() > 0u)
+    if (_drawElements->getNumIndices() == 0u)
+        return;
+
+    osg::State& state = *renderInfo.getState();
+    GLenum primitiveType = _ptype[state.getContextID()];
+
+    osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(state.getContextID());
+
+    if (ebo)
     {
-        osg::State& state = *renderInfo.getState();
-        osg::AttributeDispatchers& attributeDispatchers = state.getAttributeDispatchers();
-        bool usingVertexBufferObjects = state.useVertexBufferObject(_supportsVertexBufferObjects && _useVertexBufferObjects);
-        bool usingVertexArrayObjects = usingVertexBufferObjects && state.useVertexArrayObject(_useVertexArrayObject);
+        state.bindElementBufferObject(ebo);
 
-        GLenum primitiveType = _ptype[state.getContextID()];
+        glDrawElements(
+            primitiveType,
+            _drawElements->getNumIndices(),
+            _drawElements->getDataType(),
+            (const GLvoid*)(ebo->getOffset(_drawElements->getBufferIndex())));
 
-        if (usingVertexArrayObjects || !usingVertexBufferObjects)
-        {
-            glDrawElements(
-                primitiveType,
-                _drawElements->getNumIndices(),
-                _drawElements->getDataType(),
-                _drawElements->getDataPointer());
-        }
-        else
-        {
-            osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(state.getContextID());
-
-            if (ebo)
-            {
-                state.getCurrentVertexArrayState()->bindElementBufferObject(ebo);
-
-                glDrawElements(
-                    primitiveType,
-                    _drawElements->getNumIndices(),
-                    _drawElements->getDataType(),
-                    (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
-            }
-            else
-            {
-                state.getCurrentVertexArrayState()->unbindElementBufferObject();
-
-                glDrawElements(
-                    primitiveType, 
-                    _drawElements->getNumIndices(), 
-                    _drawElements->getDataType(), 
-                    _drawElements->getDataPointer());
-            }
-        }
+        state.unbindElementBufferObject();
+    }
+    else
+    {
+        glDrawElements(primitiveType, _drawElements->getNumIndices(), _drawElements->getDataType(), _drawElements->getDataPointer());
     }
 }
 

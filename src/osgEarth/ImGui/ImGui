@@ -92,9 +92,10 @@ namespace osgEarth
             virtual void draw(osg::RenderInfo& renderInfo) = 0;
             friend class RealizeOperation;
 
+            virtual void init();
 
         private:
-            static void init();
+            
 
             void setCameraCallbacks(osg::Camera* camera);
 
@@ -348,7 +349,8 @@ namespace ImGuiUtil
         osg::Texture::TextureObject* textureObject = texture->getTextureObject(contextID);
         if (textureObject)
         {
-            ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, 1), ImVec2(1, 0), ImVec4(1, 1, 1, 1), ImVec4(1, 1, 0, 1));
+            bool flip = (texture->getImage() && texture->getImage()->getOrigin() == osg::Image::TOP_LEFT);
+            ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, flip ? 0 : 1), ImVec2(1, flip ? 1 : 0), ImVec4(1, 1, 1, 1), ImVec4(1, 1, 0, 1));
         }
     }
 }

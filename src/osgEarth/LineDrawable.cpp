@@ -186,7 +186,7 @@ namespace
         }
     };
 
-    
+
 
     struct ImportLinesVisitor : public osg::NodeVisitor
     {
@@ -286,7 +286,7 @@ LineGroup::optimize()
     osg::ref_ptr<StateSetCache> cache = new StateSetCache();
     cache->optimize(this);
 
-    // Merge all non-dynamic drawables to reduce the total number of 
+    // Merge all non-dynamic drawables to reduce the total number of
     // OpenGL calls.
     osgUtil::Optimizer::MergeGeometryVisitor mg;
     mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
@@ -427,7 +427,7 @@ LineDrawable::~LineDrawable()
 void
 LineDrawable::setUseGPU(bool value)
 {
-    _current = NULL;    
+    _current = NULL;
     _previous = NULL;
     _next = NULL;
 
@@ -816,14 +816,14 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 
     // if we've already called dirty() that means we are editing a completed
     // drawable and therefore need dynamic variance.
-    if (_geom->getNumPrimitiveSets() > 0u && getDataVariance() != DYNAMIC)
+    if (_geom->getNumPrimitiveSets() > 0u && _geom->getDataVariance() != DYNAMIC)
     {
         _geom->setDataVariance(DYNAMIC);
     }
 
     unsigned size = _current->size();
     unsigned numVerts = getNumVerts();
-    
+
     // "vi" = virtual index, "ri" = real index.
 
     if (vi < numVerts)
@@ -852,7 +852,7 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                     _next->dirty();
                     _previous->dirty();
                 }
-                else 
+                else
                 {
                     if (vi > 0u)
                     {
@@ -912,7 +912,7 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                         (*_next)[i] = (*_previous)[i] = vert;
                     }
                 }
-                else 
+                else
                 {
                     unsigned rni = vi == 0u ? (numVerts - 1u) * 4u : ri - 4u;
                     unsigned rpi = vi == numVerts - 1u ? 0u : ri + 4u;
@@ -923,7 +923,7 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                         (*_previous)[rpi+n] = vert;
                     }
                 }
-                
+
                 _next->dirty();
                 _previous->dirty();
             }
@@ -1059,7 +1059,7 @@ LineDrawable::actualVertsPerVirtualVert(unsigned index) const
     if (_useGPU)
         if (_mode == GL_LINE_STRIP || _mode == GL_LINE_LOOP)
             return 4u; //index == 0u? 2u : 4u;
-        else 
+        else
             return 2u;
     else
         return 1u;
@@ -1165,7 +1165,7 @@ LineDrawable::dirty()
         if (_mode == GL_LINE_STRIP)
         {
             unsigned numEls = (getNumVerts()-1)*6;
-            osg::DrawElements* els = makeDE(numEls);  
+            osg::DrawElements* els = makeDE(numEls);
 
             for (int e = 2; e < _current->size() - 2; e += 4)
             {
@@ -1176,14 +1176,14 @@ LineDrawable::dirty()
                 els->addElement(e+3);
                 els->addElement(e+0); // PV
             }
-            
+
             _geom->addPrimitiveSet(els);
         }
 
         else if (_mode == GL_LINE_LOOP)
         {
             unsigned numEls = getNumVerts()*6;
-            osg::DrawElements* els = makeDE(numEls); 
+            osg::DrawElements* els = makeDE(numEls);
 
             int e;
             for (e = 2; e < _current->size() - 2; e += 4)
@@ -1202,7 +1202,7 @@ LineDrawable::dirty()
             els->addElement(0);
             els->addElement(1);
             els->addElement(e+0); // PV
-            
+
             _geom->addPrimitiveSet(els);
         }
 
@@ -1215,7 +1215,7 @@ LineDrawable::dirty()
             if (numVerts > 0u)
             {
                 unsigned numEls = (numVerts/2)*6;
-                osg::DrawElements* els = makeDE(numEls);  
+                osg::DrawElements* els = makeDE(numEls);
 
                 for(unsigned e=0; e<numVerts*2u; e += 4)
                 {
@@ -1280,10 +1280,10 @@ void
 LineDrawable::accept(osg::NodeVisitor& nv)
 {
     if (nv.validNodeMask(*this))
-    { 
+    {
         // Only push the shader if necessary.
-        // The reason for this approach is go we can inject the singleton 
-        // LineDrawable shader yet still allow the user to customize 
+        // The reason for this approach is go we can inject the singleton
+        // LineDrawable shader yet still allow the user to customize
         // the node's StateSet.
         bool shade =
             _useGPU &&
@@ -1304,7 +1304,7 @@ LineDrawable::accept(osg::NodeVisitor& nv)
         if (cv)
             cv->pushStateSet(_gpuStateSet.get());
 
-        nv.apply(*this); 
+        nv.apply(*this);
 
         if (cv)
             cv->popStateSet();

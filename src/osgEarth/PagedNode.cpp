@@ -101,58 +101,73 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
 
     else if (nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN)
     {
-        bool inRange = false;
-        float priority = 0.0f;
-
-        if (_useRange) // meters
+        if (nv.getVisitorType() == nv.INTERSECTION_VISITOR)
         {
-            float range = std::max(0.0f, nv.getDistanceToViewPoint(getBound().center(), true) - getBound().radius());
-            inRange = (range >= _minRange && range <= _maxRange);
-            priority = -range * _priorityScale;
-        }
-        else // pixels
-        {
-            osg::CullStack* cullStack = nv.asCullStack();
-            if (cullStack != nullptr && cullStack->getLODScale() > 0.0f)
-            {
-                float pixels = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
-                inRange = (pixels >= _minPixels && pixels <= _maxPixels);
-                priority = pixels * _priorityScale;
-            }
-        }
-
-        if (inRange)
-        {
-            load(priority, &nv);
-
-            // finally, traverse children and paged data.
-            if (_refinePolicy == REFINE_REPLACE &&
-                _merged == true &&
-                _compiled.get().valid())
-            {
-                _compiled.get()->accept(nv);
-            }
-            else
-            {
-                for (auto& child : _children)
-                    child->accept(nv);
-            }
-
-            touch();
+            traverseChildren(nv);
         }
         else
         {
-            // child out of range; just accept static children
-            for (auto& child : _children)
-            {
-                osg::Node* compiled =
-                    _compiled.isAvailable() ? _compiled.get().get() :
-                    nullptr;
+            bool inRange = false;
+            float priority = 0.0f;
 
-                if (child.get() != compiled)
-                    child->accept(nv);
+            if (_useRange) // meters
+            {
+                float range = std::max(0.0f, nv.getDistanceToViewPoint(getBound().center(), true) - getBound().radius());
+                inRange = (range >= _minRange && range <= _maxRange);
+                priority = -range * _priorityScale;
+            }
+            else // pixels
+            {
+                osg::CullStack* cullStack = nv.asCullStack();
+                if (cullStack != nullptr && cullStack->getLODScale() > 0.0f)
+                {
+                    float pixels = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
+                    inRange = (pixels >= _minPixels && pixels <= _maxPixels);
+                    priority = pixels * _priorityScale;
+                }
+            }
+
+            if (inRange)
+            {
+                // load paged child if necessary
+                load(priority, &nv);
+
+                // traverse children
+                traverseChildren(nv);
+
+                // stay alive
+                touch();
+            }
+            else
+            {
+                // child out of range; just accept static children
+                for (auto& child : _children)
+                {
+                    osg::Node* compiled =
+                        _compiled.isAvailable() ? _compiled.get().get() :
+                        nullptr;
+
+                    if (child.get() != compiled)
+                        child->accept(nv);
+                }
             }
         }
+    }
+}
+
+void
+PagedNode2::traverseChildren(osg::NodeVisitor& nv)
+{
+    if (_refinePolicy == REFINE_REPLACE &&
+        _merged == true &&
+        _compiled.get().valid())
+    {
+        _compiled.get()->accept(nv);
+    }
+    else
+    {
+        for (auto& child : _children)
+            child->accept(nv);
     }
 }
 

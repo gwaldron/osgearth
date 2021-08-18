@@ -537,7 +537,12 @@ MBTiles::Driver::open(
                 double maxLon = osgEarth::Util::as<double>(tokens[2], 0.0);
                 double maxLat = osgEarth::Util::as<double>(tokens[3], 0.0);
 
-                GeoExtent extent(osgEarth::SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
+                GeoExtent extent;
+                if (profile)
+                    extent = GeoExtent(profile->getSRS()->getGeographicSRS(), minLon, minLat, maxLon, maxLat);
+                else
+                    extent = GeoExtent(osgEarth::SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
+
                 if (extent.isValid())
                 {
                     // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide

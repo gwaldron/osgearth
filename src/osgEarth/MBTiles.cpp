@@ -539,7 +539,7 @@ MBTiles::Driver::open(
 
                 GeoExtent extent;
                 if (profile)
-                    extent = GeoExtent(profile->getSRS(), minLon, minLat, maxLon, maxLat);
+                    extent = GeoExtent(profile->getSRS()->getGeographicSRS(), minLon, minLat, maxLon, maxLat);
                 else
                     extent = GeoExtent(osgEarth::SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
 

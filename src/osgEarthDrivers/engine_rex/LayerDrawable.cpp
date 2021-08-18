@@ -122,13 +122,16 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         // NOTE: cannot call state.dirtyAllAttributes, because that would invalidate
         // positional state like light sources!
         reinterpret_cast<StateEx*>(ri.getState())->dirtyAllTextureAttributes();
-
-        // NOTE: this is a NOOP in OSG 3.5.x, but not in 3.4.x ... Later we will need to
-        // revisit whether to call disableAllVertexArrays() in 3.5.x instead.
-        ri.getState()->dirtyAllVertexArrays();
         
         // unbind local buffers when finished.
         osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+
+        // make sure any VAO is unbound before unbinind the VBO/EBOs,
+        // as failing to do so will remove the VBO/EBO from the VAO
+        if (ri.getState()->useVertexArrayObject(_useVertexArrayObject))
+        {
+            ri.getState()->unbindVertexArrayObject();
+        }
 
         // Not necessary if using VAOs?
         ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);

@@ -231,6 +231,7 @@ namespace osgEarth { namespace Util
         bool _autoUnload;
 
         bool merge(int revision);
+        void traverseChildren(osg::NodeVisitor& nv);
     };
 
     /**

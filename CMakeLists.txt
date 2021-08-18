@@ -5,16 +5,18 @@ if(COMMAND cmake_policy)
     # have absolute paths (e.g. -lpthreads)
     cmake_policy(SET CMP0003 NEW)
 
-    # Works around warnings about escaped quotes in ADD_DEFINITIONS
-    # statements.
-    cmake_policy(SET CMP0005 OLD)
-
     # Qt5 qt5_use_modules usage was causing "Policy CMP0043 is not set: Ignore COMPILE_DEFINITIONS_<Config> properties." warnings
     cmake_policy(SET CMP0043 NEW)
 
     # Double colon in target name means IMPORTED (and not ALIAS or IMPORTED).
     # Fixes a warning when cache_rocksdb links to target "RocksDB::rocksdb"
     cmake_policy(SET CMP0028 NEW)
+    
+    # Defaults find_package to using *_ROOT, which did not become the default
+    # policy until CMake 3.12
+    if (POLICY CMP0074)
+        cmake_policy(SET CMP0074 NEW)
+    endif()
 endif(COMMAND cmake_policy)
 
 # Set up CMake to use Solution Folders in Visual Studio.

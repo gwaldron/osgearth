@@ -19,9 +19,6 @@ Shaders::Shaders()
     Ground_ONeil_Frag = "SimpleSky.Ground.ONeil.frag.glsl";
     _sources[Ground_ONeil_Frag] = "@SimpleSky.Ground.ONeil.frag.glsl@";
 
-    Ground_PBR_Frag = "SimpleSky.Ground.PBR.frag.glsl";
-    _sources[Ground_PBR_Frag] = "@SimpleSky.Ground.PBR.frag.glsl@";
-
     Moon_Vert = "SimpleSky.Moon.vert.glsl";
     _sources[Moon_Vert] = "@SimpleSky.Moon.vert.glsl@";
 

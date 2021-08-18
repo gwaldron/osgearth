@@ -30,7 +30,6 @@ namespace osgEarth { namespace SimpleSky
 		std::string Atmosphere_Frag;
         std::string Ground_ONeil_Vert;
         std::string Ground_ONeil_Frag;
-        std::string Ground_PBR_Frag;
         std::string Moon_Vert;
         std::string Moon_Frag;
         std::string Stars_Vert;

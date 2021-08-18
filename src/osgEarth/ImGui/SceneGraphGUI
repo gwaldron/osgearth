@@ -31,6 +31,36 @@ namespace osgEarth {
         using namespace osgEarth;
 
 
+        
+        template<typename T>
+        std::string printArrayValue(const T* array)
+        {
+            std::stringstream buf;
+            unsigned int size = array->size();
+            for (unsigned i = 0; i < size; ++i)
+            {
+                if (i > 0)
+                {
+                    buf << ", ";
+                }
+                buf << (*array)[i];
+            }
+            return buf.str();
+        }
+
+        static std::string printUniformValue(osg::Uniform* uniform)
+        {            
+            if (uniform->getFloatArray()) return printArrayValue(uniform->getFloatArray());
+            if (uniform->getDoubleArray()) return printArrayValue(uniform->getDoubleArray());
+            if (uniform->getIntArray()) return printArrayValue(uniform->getIntArray());
+            if (uniform->getUIntArray()) return printArrayValue(uniform->getUIntArray());
+            if (uniform->getUInt64Array()) return printArrayValue(uniform->getUInt64Array());
+            if (uniform->getInt64Array()) return printArrayValue(uniform->getInt64Array());
+
+            return "";
+        }
+
+
         class SceneGraphGUI : public BaseGUI
         {
         public:
@@ -401,6 +431,29 @@ namespace osgEarth {
                             }
                             ImGui::TreePop();
                         }
+
+                        if (!stateset->getUniformList().empty())
+                        {
+                            if (ImGui::TreeNode("Uniforms"))
+                            {       
+                                ImGui::BeginTable("Uniforms", 3, ImGuiTableFlags_Borders);
+                                for (auto& u : stateset->getUniformList())
+                                {
+
+                                    osg::Uniform* uniform = dynamic_cast<osg::Uniform*>(u.second.first.get());
+                                    if (uniform)
+                                    {
+                                        // Name
+                                        ImGui::TableNextColumn(); ImGui::Text(u.first.c_str());
+                                        // Type
+                                        ImGui::TableNextColumn(); ImGui::Text(osg::Uniform::getTypename(uniform->getType()));
+                                        // Value
+                                        ImGui::TableNextColumn(); ImGui::Text(printUniformValue(uniform).c_str());
+                                    }                                                                        
+                                }
+                                ImGui::EndTable();
+                            }
+                        }                        
 
                         ImGui::TreePop();
                     }

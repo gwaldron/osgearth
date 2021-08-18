@@ -97,8 +97,6 @@ namespace osgEarth { namespace REX
 
         void drawImplementation(osg::RenderInfo& renderInfo) const override;
 
-        void compileGLObjects(osg::RenderInfo& renderInfo) const override;
-
         void resizeGLObjectBuffers(unsigned int maxSize) override;
 
         void releaseGLObjects(osg::State* state) const override;

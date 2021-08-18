@@ -1,26 +1,5 @@
 <?xml version="1.0" ?>
 <viewpoints time="1.5">
-
-<viewpoint>
-  <heading>96.1243</heading>
-  <pitch>-15.5324</pitch>
-  <range>14473.7m</range>
-  <long>-113.6022189437985</long>
-  <lat>35.83047557479316</lat>
-  <height>794.6655868506059</height>
-  <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
-</viewpoint>
-
-
-    <viewpoint name="Fork in the Road">
-        <heading>14.0626</heading>
-        <pitch>-38.0095</pitch>
-        <range>132.467m</range>
-        <long>-121.6061698960621</long>
-        <lat>46.77692277490582</lat>
-        <height>1441.391932760365</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-    </viewpoint>
     <viewpoint>
         <heading>8.806974516644791</heading>
         <height>4465.397310772911</height>
@@ -176,15 +155,6 @@
         <lat>-25.34910343183637</lat>
         <height>614.0726152313873</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-    </viewpoint>
-    <viewpoint>
-        <heading>106.341</heading>
-        <pitch>-13.0779</pitch>
-        <range>3971.3m</range>
-        <long>-87.74521164702807</long>
-        <lat>41.90297390696925</lat>
-        <height>154.1877543888986</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
 
 </viewpoints>

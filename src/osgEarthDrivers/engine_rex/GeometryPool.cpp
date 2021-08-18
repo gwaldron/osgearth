@@ -485,11 +485,16 @@ GeometryPool::resizeGLObjectBuffers(unsigned maxsize)
 
     // collect all objects in a thread safe manner
     Threading::ScopedMutexLock lock(_geometryMapMutex);
+
+    for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
     {
-        for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
-        {
-            i->second->resizeGLObjectBuffers(maxsize);
-        }
+        i->second->resizeGLObjectBuffers(maxsize);
+    }
+
+    // the shared primitive set
+    if (_defaultPrimSet.valid())
+    {
+        _defaultPrimSet->resizeGLObjectBuffers(maxsize);
     }
 }
 
@@ -524,6 +529,12 @@ GeometryPool::releaseGLObjects(osg::State* state) const
     if (_releaser.valid() && !objects.empty())
     {
         _releaser->push(objects);
+    }
+
+    // the shared primitive set
+    if (_defaultPrimSet.valid())
+    {
+        _defaultPrimSet->releaseGLObjects(state);
     }
 }
 
@@ -612,7 +623,9 @@ void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
     if (_texcoordArray.valid()) _texcoordArray->resizeGLObjectBuffers(maxSize);
     if (_neighborArray.valid()) _neighborArray->resizeGLObjectBuffers(maxSize);
     if (_neighborNormalArray.valid()) _neighborNormalArray->resizeGLObjectBuffers(maxSize);
-    if (_drawElements.valid()) _drawElements->resizeGLObjectBuffers(maxSize);
+
+    // not here - it's shared
+    //if (_drawElements.valid()) _drawElements->resizeGLObjectBuffers(maxSize);
 }
 
 void SharedGeometry::releaseGLObjects(osg::State* state) const
@@ -625,46 +638,9 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
     if (_texcoordArray.valid()) _texcoordArray->releaseGLObjects(state);
     if (_neighborArray.valid()) _neighborArray->releaseGLObjects(state);
     if (_neighborNormalArray.valid()) _neighborNormalArray->releaseGLObjects(state);
-    if (_drawElements.valid()) _drawElements->releaseGLObjects(state);
-}
 
-void
-SharedGeometry::compileGLObjects(osg::RenderInfo& renderInfo) const
-{
-    // Note: this method is not currently called. -gw
-    osg::State& state = *renderInfo.getState();
-
-    if (state.useVertexBufferObject(_supportsVertexBufferObjects && _useVertexBufferObjects))
-    {
-        // VBO:
-        _vertexArray->getBufferObject()->getOrCreateGLBufferObject(renderInfo.getContextID())->compileBuffer();
-        _drawElements->getBufferObject()->getOrCreateGLBufferObject(renderInfo.getContextID())->compileBuffer();
-
-        // VAO:
-        if (state.useVertexArrayObject(_useVertexArrayObject))
-        {
-            osg::VertexArrayState* vas = 0;
-
-            _vertexArrayStateList[renderInfo.getContextID()] = vas = createVertexArrayState(renderInfo);
-
-            osg::State::SetCurrentVertexArrayStateProxy setVASProxy(state, vas);
-
-            state.bindVertexArrayObject(vas);
-
-            drawVertexArraysImplementation(renderInfo);
-
-            state.unbindVertexArrayObject();
-        }
-
-        // unbind the BufferObjects
-        osg::GLExtensions* extensions = renderInfo.getState()->get<osg::GLExtensions>();
-        extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB, 0);
-        extensions->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-    }
-    else
-    {
-        osg::Drawable::compileGLObjects(renderInfo);
-    }
+    // not here - it's shared
+    //if (_drawElements.valid()) _drawElements->releaseGLObjects(state);
 }
 
 void
@@ -682,10 +658,15 @@ SharedGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) cons
     attributeDispatchers.activateNormalArray(_normalArray.get());
     attributeDispatchers.activateColorArray(_colorArray.get());
 
-    if (state.useVertexArrayObject(_useVertexArrayObject))
+    // if we are using VAOs, but the VAO is already recorded, bail out here.
+    bool usingVAOs = state.useVertexArrayObject(_useVertexArrayObject);
+
+    // if the VAO has already been recorded, we're done.
+    if (usingVAOs && vas->getRequiresSetArrays() == false)
     {
-        if (!vas->getRequiresSetArrays()) return;
+        return;
     }
+
 
     vas->lazyDisablingOfVertexAttributes();
 
@@ -709,36 +690,57 @@ SharedGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) cons
         vas->setTexCoordArray(state, 2, _neighborNormalArray.get());
 
     vas->applyDisablingOfVertexAttributes(state);
+
+    // if we're using a VAO, bind the EBO to the VAO here.
+    if (usingVAOs)
+    {
+        osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(state.getContextID());
+        if (ebo)
+        {
+            state.bindElementBufferObject(ebo);
+        }
+    }
 }
 
 
 void
 SharedGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 {
+    OE_SOFT_ASSERT_AND_RETURN(_drawElements.valid(), void(), "null drawelements");
+
     if (_drawElements->getNumIndices() == 0u)
         return;
 
     osg::State& state = *renderInfo.getState();
     GLenum primitiveType = _ptype[state.getContextID()];
 
+    const void* indices;
+    bool usingVAO = state.useVertexArrayObject(_useVertexArrayObject);
     osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(state.getContextID());
 
-    if (ebo)
+    if (usingVAO)
     {
+        // for a VAO, the EBO is already bound, and the indices is
+        // an offset into the GPU buffer.
+        indices = (const GLvoid*)ebo->getOffset(_drawElements->getBufferIndex());
+    }
+    else if (ebo)
+    {
+        // for non-VAO, we must bind the EBO each time.
         state.bindElementBufferObject(ebo);
-
-        glDrawElements(
-            primitiveType,
-            _drawElements->getNumIndices(),
-            _drawElements->getDataType(),
-            (const GLvoid*)(ebo->getOffset(_drawElements->getBufferIndex())));
-
-        state.unbindElementBufferObject();
+        indices = (const GLvoid*)ebo->getOffset(_drawElements->getBufferIndex());
     }
     else
     {
-        glDrawElements(primitiveType, _drawElements->getNumIndices(), _drawElements->getDataType(), _drawElements->getDataPointer());
+        // for legacy GL, use the actual CPU memory address
+        indices = _drawElements->getDataPointer();
     }
+
+    glDrawElements(
+        primitiveType,
+        _drawElements->getNumIndices(),
+        _drawElements->getDataType(),
+        indices);
 }
 
 void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const

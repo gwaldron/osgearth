@@ -381,6 +381,17 @@ namespace osgEarth
                 return true;
             }
         }
+        
+        template<typename T>
+        void applyScaleAndOffset(void* data, int count, double scale, double offset)
+        {
+            T* f = (T*)data;
+            for (int i = 0; i < count; ++i)
+            {
+                double value = static_cast<double>(*f) * scale + offset;
+                *f++ = static_cast<T>(value);
+            }
+        }
 
         // GDALRasterBand::RasterIO helper method
         bool rasterIO(GDALRasterBand *band,
@@ -435,6 +446,28 @@ namespace osgEarth
             {
                 //OE_WARN << LC << "RasterIO failed.\n";
             }
+            else
+            {
+                double scale = band->GetScale();
+                double offset = band->GetOffset();
+
+                if (scale != 1.0 || offset != 0.0)
+                {
+                    int count = nBufXSize * nBufYSize;
+
+                    if (eBufType == GDT_Float32)
+                        applyScaleAndOffset<float>(pData, count, scale, offset);
+                    else if (eBufType == GDT_Float64)
+                        applyScaleAndOffset<double>(pData, count, scale, offset);
+                    else if (eBufType == GDT_Int16)
+                        applyScaleAndOffset<short>(pData, count, scale, offset);
+                    else if (eBufType == GDT_Int32)
+                        applyScaleAndOffset<int>(pData, count, scale, offset);
+                    else if (eBufType == GDT_Byte)
+                        applyScaleAndOffset<char>(pData, count, scale, offset);
+                }
+            }
+
             return (err == CE_None);
         }
     }

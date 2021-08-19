@@ -184,13 +184,13 @@ void OsgImGuiHandler::newFrame(osg::RenderInfo& renderInfo)
     io.MouseWheel = mouseWheel_;
     mouseWheel_ = 0.0f;
 
-    ImGui::NewFrame();
-
     if (firstFrame_ == true)
     {
         installSettingsHandler();
         firstFrame_ = false;        
     }
+
+    ImGui::NewFrame();
 }
 
 namespace

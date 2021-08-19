@@ -24,11 +24,103 @@
 #include <osg/PolygonMode>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/PagedNode>
+#include <osg/io_utils>
 
 namespace osgEarth {
     namespace GUI
     {
         using namespace osgEarth;
+
+
+        
+        template<typename T>
+        std::string printArrayValue(const T* array)
+        {
+            std::stringstream buf;
+            unsigned int size = array->size();
+            for (unsigned i = 0; i < size; ++i)
+            {
+                if (i > 0)
+                {
+                    buf << ", ";
+                }
+                buf << (*array)[i];
+            }
+            return buf.str();
+        }
+
+        template<typename T>
+        void printArrayTable(const std::string& name, const T* array)
+        {
+            if (!array) return;
+
+            if (ImGui::BeginTable(name.c_str(), 2, ImGuiTableFlags_Borders))
+            {
+                unsigned int size = array->size();
+                for (unsigned i = 0; i < size; ++i)
+                {
+                    std::stringstream val;
+                    ImGui::TableNextColumn(); ImGui::Text("%d", i);
+                    val << (*array)[i];
+                    ImGui::TableNextColumn(); ImGui::Text(val.str().c_str());
+                }
+                ImGui::EndTable();
+            }
+        }
+
+        template<typename T>
+        void printArrayTablePretty(const std::string& name, const T* array)
+        {
+            if (!array) return;
+            static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_SizingFixedFit;
+
+            const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
+
+            // When using ScrollX or ScrollY we need to specify a size for our table container!
+            // Otherwise by default the table will fit all available space, like a BeginChild() call.
+            ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 8);
+            if (ImGui::BeginTable(name.c_str(), 2, flags, outer_size))
+            {
+                ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
+                ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_None);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_None);
+                ImGui::TableHeadersRow();
+
+                ImGuiListClipper clipper;
+                clipper.Begin(array->size());
+                while (clipper.Step())
+                {
+                    for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                    {
+                        ImGui::TableNextRow();
+
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%d", i);
+
+                        ImGui::TableSetColumnIndex(1);
+
+                        std::stringstream val;
+                        val << (*array)[i];
+                        ImGui::Text(val.str().c_str());
+                    }
+                }
+                ImGui::EndTable();
+            }
+        }
+
+        
+
+        static std::string printUniformValue(osg::Uniform* uniform)
+        {            
+            if (uniform->getFloatArray()) return printArrayValue(uniform->getFloatArray());
+            if (uniform->getDoubleArray()) return printArrayValue(uniform->getDoubleArray());
+            if (uniform->getIntArray()) return printArrayValue(uniform->getIntArray());
+            if (uniform->getUIntArray()) return printArrayValue(uniform->getUIntArray());
+            if (uniform->getUInt64Array()) return printArrayValue(uniform->getUInt64Array());
+            if (uniform->getInt64Array()) return printArrayValue(uniform->getInt64Array());
+
+            return "";
+        }
 
 
         class SceneGraphGUI : public BaseGUI
@@ -402,6 +494,31 @@ namespace osgEarth {
                             ImGui::TreePop();
                         }
 
+                        if (!stateset->getUniformList().empty())
+                        {
+                            if (ImGui::TreeNode("Uniforms"))
+                            {       
+                                if (ImGui::BeginTable("Uniforms", 3, ImGuiTableFlags_Borders))
+                                {
+                                    for (auto& u : stateset->getUniformList())
+                                    {
+
+                                        osg::Uniform* uniform = dynamic_cast<osg::Uniform*>(u.second.first.get());
+                                        if (uniform)
+                                        {
+                                            // Name
+                                            ImGui::TableNextColumn(); ImGui::Text(u.first.c_str());
+                                            // Type
+                                            ImGui::TableNextColumn(); ImGui::Text(osg::Uniform::getTypename(uniform->getType()));
+                                            // Value
+                                            ImGui::TableNextColumn(); ImGui::Text(printUniformValue(uniform).c_str());
+                                        }
+                                    }
+                                    ImGui::EndTable();
+                                }
+                            }
+                        }                        
+
                         ImGui::TreePop();
                     }
                 }
@@ -411,17 +528,32 @@ namespace osgEarth {
                 {
                     if (geometry->getVertexArray())
                     {
-                        ImGui::Text("Vertices %d", geometry->getVertexArray()->getNumElements());
+                        if (ImGui::TreeNode("Vertices"))
+                        {                            
+                            ImGui::Text("%d elements", geometry->getVertexArray()->getNumElements());
+                            printArrayTablePretty("Vertices", static_cast<osg::Vec3Array*>(geometry->getVertexArray()));
+                            ImGui::TreePop();
+                        }
                     }
 
                     if (geometry->getColorArray())
                     {
-                        ImGui::Text("Colors %d", geometry->getColorArray()->getNumElements());
+                        if (ImGui::TreeNode("Colors"))
+                        {
+                            ImGui::Text("%d elements", geometry->getColorArray()->getNumElements());
+                            printArrayTablePretty("Colors", static_cast<osg::Vec4Array*>(geometry->getColorArray()));
+                            ImGui::TreePop();
+                        }
                     }
 
                     if (geometry->getNormalArray())
                     {
-                        ImGui::Text("Normals %d", geometry->getNormalArray()->getNumElements());
+                        if (ImGui::TreeNode("Normals"))
+                        {
+                            ImGui::Text("%d elements", geometry->getNormalArray()->getNumElements());
+                            printArrayTablePretty("Normals", static_cast<osg::Vec3Array*>(geometry->getNormalArray()));
+                            ImGui::TreePop();
+                        }
                     }
 
                     for (auto &p : geometry->getPrimitiveSetList())

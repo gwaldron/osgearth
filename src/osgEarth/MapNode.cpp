@@ -336,6 +336,9 @@ MapNode::open()
     if ( _terrainEngine )
     {
         _terrainEngine->setMap(_map.get(), options().terrain().get());
+
+        // Define PBR lighting on the terrain engine
+        _terrainEngine->getNode()->getOrCreateStateSet()->setDefine("OE_USE_PBR");
     }
     else
     {

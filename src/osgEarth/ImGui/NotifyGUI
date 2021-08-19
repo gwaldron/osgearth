@@ -68,10 +68,10 @@ namespace osgEarth { namespace GUI
 
         void draw(osg::RenderInfo& ri) override
         {
-            if (!isVisible())
+            if (!isVisible() || _handler == nullptr)
                 return;
 
-            if (_handler != nullptr && ImGui::Begin(name(), visible()))
+            ImGui::Begin(name(), visible());
             {
                 bool clear = ImGui::Button("Clear");
                 ImGui::SameLine();

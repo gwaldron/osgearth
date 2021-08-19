@@ -25,6 +25,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/TimeControl>
 #include <osg/ImageSequence>
+#include <set>
 
 namespace osgEarth {
     class WMSImageLayer;
@@ -44,7 +45,7 @@ namespace osgEarth { namespace WMS
     class WMSImageLayerOptions;
 
     /**
-     * WMS style definition 
+     * WMS style definition
      */
     class OSGEARTH_EXPORT Style : public osg::Referenced
     {
@@ -75,7 +76,7 @@ namespace osgEarth { namespace WMS
         *Sets the title of the style
         */
         void setTitle(const std::string &title) {_title = title;}
-        
+
     protected:
         std::string _name;
         std::string _title;
@@ -152,7 +153,7 @@ namespace osgEarth { namespace WMS
         StyleList& getStyles() {return _styles;}
 
         /**A list of spatial references*/
-        typedef std::vector<std::string> SRSList;
+        typedef std::set<std::string> SRSList;
 
         /**
         *Gets this Layer's list of spatial references
@@ -247,7 +248,7 @@ namespace osgEarth { namespace WMS
         *       The Layer with the given name or NULL if not found.
         */
         Layer* getLayerByName(const std::string &name) const;
-        
+
         //! Finds the child Layer with the given name from a list of layers
         Layer* getLayerByName(const std::string& name, const WMS::Layer::LayerList& layers) const;
 
@@ -275,7 +276,7 @@ namespace osgEarth { namespace WMS
     private:
         CapabilitiesReader(){}
         CapabilitiesReader(const CapabilitiesReader &cr){}
-        
+
         static void readLayers(XmlElement* e, Layer* parentLayer, Layer::LayerList& layers);
     };
 
@@ -297,7 +298,7 @@ namespace osgEarth { namespace WMS
         Status open(
             osg::ref_ptr<const Profile>& profile,
             DataExtentList& out_dataExtents);
-        
+
         //! Create and return an image for the tile key
         osg::Image* createImage( const TileKey& key, ProgressCallback* progress ) const;
 
@@ -309,18 +310,18 @@ namespace osgEarth { namespace WMS
 
         //! Calculate the frame index based on the current time
         int getCurrentSequenceFrameIndex(const osg::FrameStamp* fs, double secondsPerFrame) const;
-        
+
     protected:
         osg::Image* fetchTileImage(
-            const TileKey&     key, 
+            const TileKey&     key,
             const std::string& extraAttrs,
-            ProgressCallback*  progress, 
+            ProgressCallback*  progress,
             ReadResult&        out_response ) const;
-        
+
         osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress ) const;
-        
+
         std::string createURI( const TileKey& key ) const;
-        
+
         const WMSImageLayerOptions* _options;
         const WMSImageLayerOptions& options() const;
 
@@ -354,7 +355,7 @@ namespace osgEarth { namespace WMS
         OE_OPTION(bool, transparent);
         OE_OPTION(std::string, times);
         OE_OPTION(double, secondsPerFrame);
-        
+
         static Config getMetadata();
         virtual Config getConfig() const;
 
@@ -418,13 +419,13 @@ namespace osgEarth
         //! Duration of each WMS-T frame in seconds
         void setSecondsPerFrame(const double& value);
         const double& getSecondsPerFrame() const;
-        
+
 
     public: // Layer
 
         //! Called by constructors
         virtual void init();
-        
+
         //! Establishes a connection to the WMS service
         virtual Status openImplementation();
 

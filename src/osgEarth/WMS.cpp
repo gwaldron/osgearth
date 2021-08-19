@@ -221,7 +221,7 @@ WMS::CapabilitiesReader::readLayers(XmlElement* e, WMS::Layer* parentLayer, WMS:
         for (XmlNodeList::const_iterator srsitr = spatialReferences.begin(); srsitr != spatialReferences.end(); ++srsitr)
         {
             std::string srs = static_cast<XmlElement*>(srsitr->get())->getText();
-            layer->getSpatialReferences().push_back(srs);
+            layer->getSpatialReferences().insert(srs);
         }
 
         //Read all the supported CRS's
@@ -229,21 +229,13 @@ WMS::CapabilitiesReader::readLayers(XmlElement* e, WMS::Layer* parentLayer, WMS:
         for (XmlNodeList::const_iterator srsitr = spatialReferences.begin(); srsitr != spatialReferences.end(); ++srsitr)
         {
             std::string crs = static_cast<XmlElement*>(srsitr->get())->getText();
-            layer->getSpatialReferences().push_back(crs);
+            layer->getSpatialReferences().insert(crs);
         }
 
         if (parentLayer)
         {
             // Also add in any SRS that is defined in the parent layer.  Some servers, like GeoExpress from LizardTech will publish top level SRS's that also apply to the child layers
-            for (WMS::Layer::SRSList::iterator itr = parentLayer->getSpatialReferences().begin(); itr != parentLayer->getSpatialReferences().end(); itr++)
-            {
-                std::string parentSRS = *itr;
-                // Only add the SRS if it's not already present in the SRS list.
-                if (std::find(layer->getSpatialReferences().begin(), layer->getSpatialReferences().end(), parentSRS) == layer->getSpatialReferences().end())
-                {
-                    layer->getSpatialReferences().push_back(parentSRS);
-                }
-            }
+            layer->getSpatialReferences().insert(parentLayer->getSpatialReferences().begin(), parentLayer->getSpatialReferences().end());
         }
 
         osg::ref_ptr<XmlElement> e_bb = e_layer->getSubElement(ELEM_LATLONBOUNDINGBOX);

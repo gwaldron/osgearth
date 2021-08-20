@@ -229,7 +229,7 @@ namespace osgEarth
                 measureStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
                 measureStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
 
-                _measureFeature = new Feature(new LineString(), SpatialReference::get("wgs84"));
+                _measureFeature = new Feature(new LineString(), _mapNode->getMapSRS());
                 _measureCursor = new FeatureNode(_measureFeature.get(), measureStyle);
                 _mapNode->addChild(_measureCursor);
 

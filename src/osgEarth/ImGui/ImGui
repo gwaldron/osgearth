@@ -85,7 +85,9 @@ namespace osgEarth
 
             virtual void save(osgEarth::Config& conf) { }
 
-            virtual void* find(const char* name) { return nullptr; }
+            virtual void* findByName(const char* name) { return nullptr; }
+
+            virtual void* findByType(const std::type_info& type) { return nullptr; }
 
         protected:
             // Put your ImGui code inside this function
@@ -404,6 +406,11 @@ namespace osgEarth
                 }
             }
 
+            template<typename T>
+            T* find() {
+                return dynamic_cast<T*>(reinterpret_cast<GUI::BaseGUI*>(findByType(typeid(T))));
+            }
+
             //! Adds all built-in osgEarth GUI panels
             void addAllBuiltInTools(osg::ArgumentParser* args =nullptr)
             {                
@@ -450,11 +457,21 @@ namespace osgEarth
             }
 
             //! Find a GUI element by name
-            void* find(const char* name) override
+            void* findByName(const char* name) override
             {
                 for (auto& iter : _menu)
                     for (auto& gui : iter.second)
                         if (std::string(gui->name()).compare(name) == 0)
+                            return gui.get();
+                return nullptr;
+            }
+
+            //! Find a GUI element by type
+            void* findByType(const std::type_info& t) override
+            {
+                for (auto& iter : _menu)
+                    for (auto& gui : iter.second)
+                        if (typeid(*gui.get()) == t)
                             return gui.get();
                 return nullptr;
             }

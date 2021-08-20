@@ -56,10 +56,10 @@ void
 GeometryClamper::apply(osg::Drawable& drawable)
 {
     osg::Geometry* geom = drawable.asGeometry();
-    if ( !geom )
+    LineDrawable* lineDrawable = dynamic_cast<LineDrawable*>(&drawable);
+     
+    if ( !geom && !lineDrawable )
         return;
-
-    LineDrawable* lineDrawable = dynamic_cast<LineDrawable*>(geom);
 
     osg::ref_ptr< osg::Vec3Array > verts = nullptr;
     if (lineDrawable)
@@ -80,7 +80,8 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
     if (_revert)
     {
-        GeometryData& data = _localData[static_cast<osg::Vec3Array*>(geom->getVertexArray())];
+        GeometryData& data = _localData[&drawable];
+
         if (data._verts.valid() && verts->size() == data._verts->size())
         {
             if (lineDrawable)
@@ -120,7 +121,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
     bool geomDirty = false;
 
     // Use the vertex array on the geometry as the lookup instead of the verts array as it might be a temporary array for a LineDrawable.
-    GeometryData& data = _localData[static_cast<osg::Vec3Array*>(geom->getVertexArray())];
+    GeometryData& data = _localData[&drawable];
 
     bool storeAltitudes = false;
 
@@ -141,7 +142,6 @@ GeometryClamper::apply(osg::Drawable& drawable)
         {
             // normal to the ellipsoid:
             n_vector = em.geocentricToUpVector(vw);
-            //n_vector = em->computeLocalUpVector(vw.x(),vw.y(),vw.z());
 
             // if we need to store the original altitudes:
             if (storeAltitudes)

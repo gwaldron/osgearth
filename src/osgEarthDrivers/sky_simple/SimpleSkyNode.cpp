@@ -587,6 +587,12 @@ SimpleSkyNode::makeSceneLighting()
             pkg.load(vp, pkg.Ground_ONeil_Frag);
             stateset->getOrCreateUniform("oe_sky_ambientBoostFactor", osg::Uniform::FLOAT)->set(_options.daytimeAmbientBoost().get());
         }
+        else if (_usePhong)
+        {
+            _phong = new PhongLightingEffect();
+            _phong->attach(stateset);
+            OE_INFO << LC << "Using Phong lighting" << std::endl;
+        }
     }
 
     else

@@ -706,7 +706,7 @@ SharedGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) cons
 void
 SharedGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(_drawElements.valid(), void(), "null drawelements");
+    OE_SOFT_ASSERT_AND_RETURN(_drawElements.valid(), __func__, void());
 
     if (_drawElements->getNumIndices() == 0u)
         return;

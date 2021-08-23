@@ -35,7 +35,7 @@ namespace osgEarth
 {
     /**
      * Map is the main data model. A Map hold a collection of
-     * Layers, each of which provides data of some kind to the 
+     * Layers, each of which provides data of some kind to the
      * overall Map. Use a MapNode to render the contents of a
      * Map.
      */
@@ -127,7 +127,7 @@ namespace osgEarth
         //! and returns the corresponding revision number.
         template<typename T>
         Revision getLayers(
-            std::vector< osg::ref_ptr<T> >& output, 
+            std::vector< osg::ref_ptr<T> >& output,
             const std::function<bool(const Layer*)>& predicate) const;
 
         //! Fills the vector with references to all layers of the specified type.
@@ -251,7 +251,6 @@ namespace osgEarth
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<ElevationPool> _elevationPool;
-        mutable ElevationPool _ElevationPool;
         osg::ref_ptr<CacheSettings> _cacheSettings;
         int _numTerrainPatchLayers;
 

@@ -80,9 +80,13 @@ ElevationPool::ElevationPool() :
     _mapCallback = new MapCallbackAdapter();
 }
 
+typedef RTree<unsigned, double, 2> MaxLevelIndex;
+
 ElevationPool::~ElevationPool()
 {
     setMap(NULL);
+    if (_index)
+        delete static_cast<MaxLevelIndex*>(_index);
 }
 
 void
@@ -125,8 +129,6 @@ ElevationPool::getElevationRevision(const Map* map) const
             revision += i->getRevision();
     return revision;
 }
-
-typedef RTree<unsigned, double, 2> MaxLevelIndex;
 
 void
 ElevationPool::sync(const Map* map, WorkingSet* ws)

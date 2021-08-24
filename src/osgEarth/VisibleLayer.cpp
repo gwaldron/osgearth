@@ -49,10 +49,12 @@ namespace
         {
             osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
             osg::ref_ptr<osgUtil::RenderBin> savedBin;
+            osg::ref_ptr< EmptyRenderBin > emptyStage;
             if (cv)
             {
                 savedBin = cv->getCurrentRenderBin();
-                cv->setCurrentRenderBin(new EmptyRenderBin(savedBin->getStage()));
+                emptyStage = new EmptyRenderBin(savedBin->getStage());
+                cv->setCurrentRenderBin(emptyStage.get());
             }
 
             traverse(node, nv);

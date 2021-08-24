@@ -41,12 +41,19 @@ namespace osgEarth {
             osg::observer_ptr<MapNode> _mapNode;
             bool _showDetails;
             bool _showDisabled;
+            std::function<bool(Layer*)> _shownPred;
 
         public:
             LayersGUI() : BaseGUI("Map Layers"),
                 _showDetails(false),
                 _showDisabled(false)
             {
+            }
+
+            //! Sets a predicate that decides whether to include a layer in the GUI
+            void setShowPredicate(std::function<bool(Layer*)> func)
+            {
+                _shownPred = func;
             }
 
             void load(const Config& conf) override
@@ -94,6 +101,9 @@ namespace osgEarth {
                         if (!_showDisabled && !layer->isOpen() && !layer->getEnabled())
                             continue;
 
+                        if (_shownPred && _shownPred(layer) == false)
+                            continue;
+
                         ImGui::PushID(layer);
                         bool stylePushed = false;
 
@@ -112,8 +122,6 @@ namespace osgEarth {
                         {
                             bool wantOpen = layer->isOpen();
                             ImGui::Checkbox("", &wantOpen);
-
-                            //TODO: shunt this to a legal calling thread (update)
 
                             if (wantOpen && !layer->isOpen())
                             {

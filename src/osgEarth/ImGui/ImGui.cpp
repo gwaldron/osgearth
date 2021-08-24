@@ -212,7 +212,7 @@ void OsgImGuiHandler::handleReadSetting(
 void* OsgImGuiHandler::handleStartEntry(
     ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name)
 {
-    return s_guiHandler->find(name);
+    return s_guiHandler->findByName(name);
 }
 
 void OsgImGuiHandler::handleWriteSettings(

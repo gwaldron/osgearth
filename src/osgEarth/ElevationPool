@@ -64,7 +64,7 @@ namespace osgEarth
             //! @param size Cache size
             WorkingSet(unsigned size =32u);
 
-            //! Assign a specific set of elevation layer to use 
+            //! Assign a specific set of elevation layer to use
             //! for sampling. Usually this is unnecessary as the Pool
             //! will synchronize with the map set by setMap, but you
             //! may want to use a custom Pool with a specific subset
@@ -153,7 +153,7 @@ namespace osgEarth
         //! @param ws Optional working set (can be NULL)
         //! @param progress Optional progress callback
         ElevationSample getSample(
-            const GeoPoint& p, 
+            const GeoPoint& p,
             const Distance& resolution,
             WorkingSet* ws,
             ProgressCallback* progress =nullptr);
@@ -211,6 +211,7 @@ namespace osgEarth
         //! Invalidates all caches in the ElevationPool
         void clear();
 
+    protected:
         //! Destructor
         virtual ~ElevationPool();
 
@@ -245,12 +246,12 @@ namespace osgEarth
             void onMapModelChanged(const MapModelChange&);
             ElevationPool* _pool;
         };
-        friend struct MapCallbackAdapter; 
+        friend struct MapCallbackAdapter;
 
         osg::ref_ptr<MapCallbackAdapter> _mapCallback;
 
         ElevationLayerVector _elevationLayers;
-        
+
         std::atomic<int> _workers;
 
         int getElevationRevision(const Map* map) const;
@@ -260,9 +261,9 @@ namespace osgEarth
         void refresh(const Map*);
 
         ElevationSample getSample(
-            const GeoPoint& p, 
-            unsigned maxLOD, 
-            const Map* map, 
+            const GeoPoint& p,
+            unsigned maxLOD,
+            const Map* map,
             WorkingSet* ws,
             ProgressCallback* progress);
 
@@ -270,8 +271,8 @@ namespace osgEarth
         int getLOD(double x, double y) const;
 
         osg::ref_ptr<ElevationTexture> getOrCreateRaster(
-            const Internal::RevElevationKey& key, 
-            const Map* map, 
+            const Internal::RevElevationKey& key,
+            const Map* map,
             bool acceptLowerRes,
             WorkingSet* ws,
             ProgressCallback* progress);

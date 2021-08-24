@@ -85,7 +85,9 @@ namespace osgEarth
 
             virtual void save(osgEarth::Config& conf) { }
 
-            virtual void* find(const char* name) { return nullptr; }
+            virtual void* findByName(const char* name) { return nullptr; }
+
+            virtual void* findByType(const std::type_info& type) { return nullptr; }
 
         protected:
             // Put your ImGui code inside this function
@@ -404,9 +406,14 @@ namespace osgEarth
                 }
             }
 
+            template<typename T>
+            T* find() {
+                return dynamic_cast<T*>(reinterpret_cast<GUI::BaseGUI*>(findByType(typeid(T))));
+            }
+
             //! Adds all built-in osgEarth GUI panels
             void addAllBuiltInTools(osg::ArgumentParser* args =nullptr)
-            {
+            {                
                 _menu["Tools"].push_back(GUIPtr(new LayersGUI));
                 _menu["Tools"].push_back(GUIPtr(new ViewpointsGUI));
                 _menu["Tools"].push_back(GUIPtr(new CameraGUI));
@@ -414,7 +421,7 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new TerrainGUI));
                 _menu["Tools"].push_back(GUIPtr(new SystemGUI));
                 _menu["Tools"].push_back(GUIPtr(new NetworkMonitorGUI));
-                _menu["Tools"].push_back(GUIPtr(new NotifyGUI));
+                //_menu["Tools"].push_back(GUIPtr(new NotifyGUI));
                 _menu["Tools"].push_back(GUIPtr(new SceneGraphGUI));
                 _menu["Tools"].push_back(GUIPtr(new TextureInspectorGUI));
                 _menu["Tools"].push_back(GUIPtr(new TerrainEditGUI));
@@ -423,6 +430,11 @@ namespace osgEarth
 #ifdef OSGEARTH_HAVE_GEOCODER
                 _menu["Tools"].push_back(GUIPtr(new SearchGUI));
 #endif
+
+                std::sort(_menu["Tools"].begin(), _menu["Tools"].end(),
+                    [](const GUIPtr& lhs, const GUIPtr& rhs) {
+                        return std::string(lhs->name()).compare(rhs->name()) < 0;
+                    });
             }
 
             //! User adds a gui to the default User menu
@@ -445,11 +457,21 @@ namespace osgEarth
             }
 
             //! Find a GUI element by name
-            void* find(const char* name) override
+            void* findByName(const char* name) override
             {
                 for (auto& iter : _menu)
                     for (auto& gui : iter.second)
                         if (std::string(gui->name()).compare(name) == 0)
+                            return gui.get();
+                return nullptr;
+            }
+
+            //! Find a GUI element by type
+            void* findByType(const std::type_info& t) override
+            {
+                for (auto& iter : _menu)
+                    for (auto& gui : iter.second)
+                        if (typeid(*gui.get()) == t)
                             return gui.get();
                 return nullptr;
             }

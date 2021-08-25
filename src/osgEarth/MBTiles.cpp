@@ -332,6 +332,13 @@ MBTiles::Driver::Driver() :
     //nop
 }
 
+Driver::~Driver()
+{
+    sqlite3* database = (sqlite3*)_database;
+    if (database)
+        sqlite3_close_v2(database);
+}
+
 Status
 MBTiles::Driver::open(
     const std::string& name,

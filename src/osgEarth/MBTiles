@@ -53,6 +53,7 @@ namespace osgEarth { namespace MBTiles
     {
     public:
         Driver();
+        virtual ~Driver();
 
         Status open(
             const std::string& name,

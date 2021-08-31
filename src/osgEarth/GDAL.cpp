@@ -645,13 +645,9 @@ GDAL::Driver::open(
     
     bool hasGeoTransform = (_srcDS->GetGeoTransform(_geotransform) == CE_None);
 
-    // see if a reprojection DS is required...
-    if (hasGeoTransform)
-    {
-        hasGCP = _srcDS->GetGCPCount() > 0 && _srcDS->GetGCPProjection();
-        isRotated = _geotransform[2] != 0.0 || _geotransform[4];
-        requiresReprojection = hasGCP || isRotated;
-    }
+    hasGCP = _srcDS->GetGCPCount() > 0 && _srcDS->GetGCPProjection();
+    isRotated = hasGeoTransform && (_geotransform[2] != 0.0 || _geotransform[4] != 0.0);
+    requiresReprojection = hasGCP || isRotated;
 
     // For a geographic SRS, use the whole-globe profile for performance.
     // Otherwise, collect information and make the profile later.

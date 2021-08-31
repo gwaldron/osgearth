@@ -551,33 +551,27 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // Proj matrix.
     
     osg::Vec3d up = camLook;
-    osg::Vec3d rttEye;
+    osg::Vec3d center;
 
     if ( _isGeocentric )
     {
-        osg::Vec3d center = eye;
+        center = eye;
         center.normalize();
         center *= R;
-        rttEye = center + worldUp*_maxHeight;
+        
         //establish a valid up vector
-        osg::Vec3d rttLook = -rttEye;
+        osg::Vec3d rttLook = -eye;
         rttLook.normalize();
         if ( fabs(rttLook * camLook) > 0.9999 )
             up.set( camUp );
-
-        // do NOT look at (0,0,0); must look down the ellipsoid up vector.
-        rttViewMatrix.makeLookAt( rttEye, center, up );
     }
     else
     {
-        osg::Vec3d center( camEye.x(), camEye.y(), 0.0 );
-        rttEye = center + worldUp*_maxHeight;
+        center.set( camEye.x(), camEye.y(), 0.0 );
 
         osg::Vec3d rttLook(0, 0, -1);
         if ( fabs(rttLook * camLook) > 0.9999 )
             up.set( camUp );
-
-        rttViewMatrix.makeLookAt( rttEye, center, up );
     }
 
     // Build a polyhedron for the new frustum so we can slice it.
@@ -595,6 +589,19 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // skip empty techniques
         if ( !tech->hasData(params) )
             continue;
+
+        // calculate the view matrix differently depending on 
+        // whether the technique wants a constrained Z.
+        osg::Vec3d rttEye;
+        if (tech->constrainOrthoZ())
+        {
+            rttEye = center + worldUp * _maxHeight;
+        }
+        else
+        {
+            rttEye = eye;
+        }
+        rttViewMatrix.makeLookAt( rttEye, center, up );
 
         // slice it to fit the overlay geometry. (this says 'visible' but it's just everything..
         // perhaps we can truly make it visible)

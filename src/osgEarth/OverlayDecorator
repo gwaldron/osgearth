@@ -203,6 +203,8 @@ namespace osgEarth { namespace Util
     public:
         virtual bool supported() { return _supported; }
 
+        virtual bool constrainOrthoZ() const { return false; }
+
         virtual bool hasData(
             OverlayDecorator::TechRTTParams& params) const { return true; }
 

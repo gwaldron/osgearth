@@ -65,6 +65,73 @@ namespace
             }
         }
     };
+
+    // Shader that just copies the uniform value into a stage global/output
+    const char* opacityVS =
+        "#version " GLSL_VERSION_STR R"(
+        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
+        uniform float oe_VisibleLayer_opacityUniform;
+        out float oe_layer_opacity;
+        void oe_VisibleLayer_initOpacity(inout vec4 vertex)
+        {
+            oe_layer_opacity = oe_VisibleLayer_opacityUniform;
+        }
+    )";
+
+    // Shader that incorporates range-based opacity (min/max range with attenuation)
+    const char* rangeOpacityVS =
+        "#version " GLSL_VERSION_STR R"(
+        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
+        #pragma import_defines(OE_DISABLE_RANGE_OPACITY)
+        uniform vec3 oe_VisibleLayer_ranges;
+        uniform vec3 oe_Camera; // (vp width, vp height, lodscale)
+        out float oe_layer_opacity;
+
+        void oe_VisibleLayer_applyMinMaxRange(inout vec4 vertexView)
+        {
+          #ifndef OE_DISABLE_RANGE_OPACITY
+            float minRange = oe_VisibleLayer_ranges[0];
+            float maxRange = oe_VisibleLayer_ranges[1];
+            float attRange = oe_VisibleLayer_ranges[2];
+            float range = max(-vertexView.z, 0.0) * oe_Camera.z;
+            float maxOpaqueRange = maxRange-attRange;
+            float minOpaqueRange = minRange+attRange;
+            float rangeOpacity =
+                minRange >= maxRange ? 1.0 :
+                range >= maxRange || range <= minRange ? 0.0 :
+                range > maxOpaqueRange ? 1.0-((range-maxOpaqueRange)/(maxRange-maxOpaqueRange)) :
+                range < minOpaqueRange && minRange > 0.0 ? ((range-minRange)/(minOpaqueRange-minRange)) :
+                1.0;
+            oe_layer_opacity *= rangeOpacity;
+          #endif
+        }
+    )";
+
+    // Shader that calculates a modulation color based on the "opacity", i.e. intensity
+    const char* opacityInterpolateFS =
+        "#version " GLSL_VERSION_STR R"(
+        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
+        in float oe_layer_opacity;
+        void oe_VisibleLayer_setOpacity(inout vec4 color)
+        {
+            color.a *= oe_layer_opacity;
+        }
+    )";
+
+    // Shader that calculates a modulation color based on the "opacity", i.e. intensity
+    const char* opacityModulateFS =
+        "#version " GLSL_VERSION_STR R"(
+        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
+        const float OE_MODULATION_EXPOSURE = 2.35;
+        in float oe_layer_opacity;
+        void oe_VisibleLayer_setOpacity(inout vec4 color)
+        {
+            vec3 rgbHi = oe_layer_opacity > 0.0? color.rgb * OE_MODULATION_EXPOSURE/oe_layer_opacity : vec3(1);
+            color.rgb = mix(vec3(1), rgbHi, oe_layer_opacity);
+            color.a = 1.0;
+            oe_layer_opacity = 1.0;
+        }
+    )";
 }
 
 //------------------------------------------------------------------------
@@ -116,7 +183,15 @@ void
 VisibleLayer::init()
 {
     Layer::init();
+
     _minMaxRangeShaderAdded = false;
+
+    if (options().blend() == BLEND_INTERPOLATE)
+    {
+        VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
+        vp->setName("VisibleLayer");
+        vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+    }
 }
 
 Status
@@ -209,76 +284,6 @@ bool
 VisibleLayer::getVisible() const
 {
     return options().visible().get();
-}
-
-namespace
-{
-    // Shader that just copies the uniform value into a stage global/output
-    const char* opacityVS = 
-        "#version " GLSL_VERSION_STR R"(
-        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
-        uniform float oe_VisibleLayer_opacityUniform;
-        out float oe_layer_opacity;
-        void oe_VisibleLayer_initOpacity(inout vec4 vertex)
-        {
-            oe_layer_opacity = oe_VisibleLayer_opacityUniform;
-        }
-    )";
-
-    // Shader that incorporates range-based opacity (min/max range with attenuation)
-    const char* rangeOpacityVS =
-        "#version " GLSL_VERSION_STR R"(
-        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
-        #pragma import_defines(OE_DISABLE_RANGE_OPACITY)
-        uniform vec3 oe_VisibleLayer_ranges;
-        uniform vec3 oe_Camera; // (vp width, vp height, lodscale)
-        out float oe_layer_opacity;
-
-        void oe_VisibleLayer_applyMinMaxRange(inout vec4 vertexView)
-        {
-          #ifndef OE_DISABLE_RANGE_OPACITY
-            float minRange = oe_VisibleLayer_ranges[0];
-            float maxRange = oe_VisibleLayer_ranges[1];
-            float attRange = oe_VisibleLayer_ranges[2];
-            float range = max(-vertexView.z, 0.0) * oe_Camera.z;
-            float maxOpaqueRange = maxRange-attRange;
-            float minOpaqueRange = minRange+attRange;
-            float rangeOpacity =
-                minRange >= maxRange ? 1.0 :
-                range >= maxRange || range <= minRange ? 0.0 :
-                range > maxOpaqueRange ? 1.0-((range-maxOpaqueRange)/(maxRange-maxOpaqueRange)) :
-                range < minOpaqueRange && minRange > 0.0 ? ((range-minRange)/(minOpaqueRange-minRange)) :
-                1.0;
-            oe_layer_opacity *= rangeOpacity;
-          #endif
-        }
-    )";
-
-    // Shader that calculates a modulation color based on the "opacity", i.e. intensity
-    const char* opacityInterpolateFS =
-        "#version " GLSL_VERSION_STR R"(
-        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
-        in float oe_layer_opacity;
-        void oe_VisibleLayer_setOpacity(inout vec4 color)
-        {
-            color.a *= oe_layer_opacity;
-        }
-    )";
-
-    // Shader that calculates a modulation color based on the "opacity", i.e. intensity
-    const char* opacityModulateFS =
-        "#version " GLSL_VERSION_STR R"(
-        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
-        const float OE_MODULATION_EXPOSURE = 2.35;
-        in float oe_layer_opacity;
-        void oe_VisibleLayer_setOpacity(inout vec4 color)
-        {
-            vec3 rgbHi = oe_layer_opacity > 0.0? color.rgb * OE_MODULATION_EXPOSURE/oe_layer_opacity : vec3(1);
-            color.rgb = mix(vec3(1), rgbHi, oe_layer_opacity);
-            color.a = 1.0;
-            oe_layer_opacity = 1.0;
-        }
-    )";
 }
 
 void
@@ -428,10 +433,12 @@ VisibleLayer::fireCallback(VisibleLayerCallback::MethodPtr method)
 void
 VisibleLayer::installDefaultOpacityShader()
 {
-    if (options().blend() == BLEND_INTERPOLATE)
-    {
-        VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
-        vp->setName("VisibleLayer");
-        vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
-    }
+    // Moved this to init().
+
+    //if (options().blend() == BLEND_INTERPOLATE)
+    //{
+    //    VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
+    //    vp->setName("VisibleLayer");
+    //    vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+    //}
 }

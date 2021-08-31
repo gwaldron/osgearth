@@ -80,6 +80,10 @@ namespace osgEarth { namespace Util
 
     public: // OverlayTechnique
 
+        bool constrainOrthoZ() const override {
+            return true;
+        }
+
         bool hasData(
             OverlayDecorator::TechRTTParams& params) const;
 

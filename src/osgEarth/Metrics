@@ -103,6 +103,13 @@ namespace osgEarth { namespace MetricsGL {
     extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGetQueryObjectui64v)(GLint, GLenum, GLuint64*);
     extern OSGEARTH_EXPORT void (GL_APIENTRY * _glQueryCounter)(GLuint, GLenum);
 
+    #undef glGenQueries
+    #undef glGetInteger64v
+    #undef glGetQueryiv
+    #undef glGetQueryObjectiv
+    #undef glGetQueryObjectui64v
+    #undef glQueryCounter
+
     #define glGenQueries _glGenQueries
     #define glGetInteger64v _glGetInteger64v
     #define glGetQueryiv _glGetQueryiv

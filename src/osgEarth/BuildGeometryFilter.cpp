@@ -968,8 +968,7 @@ BuildGeometryFilter::tileAndBuildPolygon(
     // hard copy so we can project the values
     osg::ref_ptr<Geometry> proj = input->clone();
 
-    // Automatically figure out what is the closest plane for tessellation
-    Tessellator::Plane plane = Tessellator::PLANE_AUTO;
+    Tessellator::Plane plane = Tessellator::PLANE_XY;
 
     if (outputSRS)
     {
@@ -1026,6 +1025,12 @@ BuildGeometryFilter::tileAndBuildPolygon(
                 inputSRS->transform(part->asVector(), outputSRS);
             }
         }
+    }
+    else
+    {
+        // with no SRS, we need to automatically figure out what 
+        // is the closest plane for tessellation
+        plane = Tessellator::PLANE_AUTO;
     }
 
     // tessellate

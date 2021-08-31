@@ -70,6 +70,7 @@ uniform mat4 OE_COLOR_LAYER_MAT;
 #pragma import_defines(OE_TEX_DIM_Y)
 
 #pragma import_defines(OSGEARTH_SPLAT_TWEAKS)
+#pragma import_defines(OSGEARTH_LIFEMAP_DIRECT)
 
 layout(binding = 5, std430) buffer TextureLUT {
     uint64_t texHandle[];
@@ -153,8 +154,11 @@ float contrastify(in float v, in float c)
 
 float modify(in float val, in float modifier)
 {
-    //return contrastify(val, modifier);
+#ifdef OSGEARTH_LIFEMAP_DIRECT
+    return clamp(modifier, 0.0, 1.0);
+#else
     return clamp(val * modifier, 0.0, 1.0);
+#endif
 }
 
 float soften(in float x)

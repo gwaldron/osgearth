@@ -117,6 +117,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
     float _blend_rgbh_mix;
     float _blend_normal_mix;
     float _depth;
+    bool _lifemap_direct;
     float _rugged_power;
     float _dense_power;
     float _lush_power;
@@ -136,6 +137,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         _blend_rgbh_mix = 0.85f;
         _blend_normal_mix = 0.72f;
         _depth = 0.02f;
+        _lifemap_direct = false;
         _rugged_power = 1.0f;
         _dense_power = 1.0f;
         _lush_power = 1.0f;
@@ -174,14 +176,23 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         ImGui::SliderFloat("Displacement depth", &_depth, 0.001f, 0.3f);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_depth", _depth));
 
-        ImGui::SliderFloat("Rugged power", &_rugged_power, 0.0f, 4.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("rugged_power", _rugged_power));
+        if (ImGui::Checkbox("LifeMap Direct Set", &_lifemap_direct)) {
+            _app._mapNode->getOrCreateStateSet()->setDefine("OSGEARTH_LIFEMAP_DIRECT");
+        }
+        else {
+            _app._mapNode->getOrCreateStateSet()->removeDefine("OSGEARTH_LIFEMAP_DIRECT");
+        }
+        float lm_max = _lifemap_direct ? 1.0f : 4.0f;
 
-        ImGui::SliderFloat("Dense power", &_dense_power, 0.0f, 4.0f);
+        ImGui::SliderFloat("Dense power", &_dense_power, 0.0f, lm_max);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("dense_power", _dense_power));
 
-        ImGui::SliderFloat("Lush power", &_lush_power, 0.0f, 4.0f);
+        ImGui::SliderFloat("Rugged power", &_rugged_power, 0.0f, lm_max);
+        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("rugged_power", _rugged_power));
+
+        ImGui::SliderFloat("Lush power", &_lush_power, 0.0f, lm_max);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("lush_power", _lush_power));
+
 
         ImGui::SliderFloat("Normal power", &_normal_power, 0.0f, 4.0f);
         _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("normal_power", _normal_power));

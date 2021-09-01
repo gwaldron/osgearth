@@ -920,13 +920,12 @@ ElevationPool::getSample(
     ScopedAtomicCounter counter(_workers);
 
     Internal::RevElevationKey key;
-    // Need to limit maxLOD <= INT_MAX else osg::minimum for lod will return -1 due to cast
-    maxLOD = osg::minimum(maxLOD, static_cast<unsigned>(std::numeric_limits<int>::max()));
-    int lod = osg::minimum( getLOD(p.x(), p.y()), (int)maxLOD );
 
-    // this can happen if the elevation data publishes no data extent information
-    if (lod < 0)
-        lod = maxLOD;
+    // Need to limit maxLOD <= INT_MAX else std::min for lod will return -1 due to cast
+    maxLOD = std::min(maxLOD, static_cast<unsigned>(std::numeric_limits<int>::max()));
+
+    // returns the best LOD for the given point, or -1 if there is no data there
+    int lod = std::min( getLOD(p.x(), p.y()), (int)maxLOD );
 
     if (lod >= 0)
     {

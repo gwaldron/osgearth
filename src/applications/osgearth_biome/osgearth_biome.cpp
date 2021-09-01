@@ -447,19 +447,15 @@ encodeTexture(osg::ArgumentParser& args)
     std::string infile;
     if (args.read("--encode-texture", infile))
     {
-        std::size_t pos = infile.find("_Color.", 0);
-        if (pos >= 0)
-        {
-            std::string base = infile.substr(0, pos);
-            std::string ext = osgDB::getFileExtension(infile);
-            osg::ref_ptr<osg::Image> image;
-            image = osgDB::readRefImageFile(base + ".oe_splat_rgbh");
-            if (image.valid())
-                osgDB::writeImageFile(*image.get(), base + ".oe_splat_rgbh");
-            image = osgDB::readRefImageFile(base + ".oe_splat_nnra");
-            if (image.valid())
-                osgDB::writeImageFile(*image.get(), base + ".oe_splat_nnra");
-        }
+        osg::ref_ptr<osg::Image> image;
+
+        image = osgDB::readRefImageFile(infile + ".oe_splat_rgbh");
+        if (image.valid())
+            osgDB::writeImageFile(*image.get(), infile + ".oe_splat_rgbh");
+
+        image = osgDB::readRefImageFile(infile + ".oe_splat_nnra");
+        if (image.valid())
+            osgDB::writeImageFile(*image.get(), infile + ".oe_splat_nnra");
     }
     return 0;
 }

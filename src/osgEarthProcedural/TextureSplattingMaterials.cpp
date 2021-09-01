@@ -29,6 +29,7 @@
 
 #define LC "[TextureSplattingMaterials] "
 
+using namespace osgEarth;
 using namespace osgEarth::Procedural;
 
 #define DEFAULT_ROUGHNESS 0.75
@@ -47,77 +48,209 @@ RGBH_Loader::readImage(
     const std::string& filename,
     const osgDB::Options* options) const
 {
-    if (osgDB::getFileExtension(filename) != "oe_splat_rgbh")
+    std::string ext = osgDB::getFileExtension(filename);
+    if (ext != "oe_splat_rgbh")
         return ReadResult::FILE_NOT_HANDLED;
 
-    std::string fn = osgDB::getNameLessExtension(filename);
     ReadResult rr = readImageEncoded(filename, options);
-    return rr.success() ? rr : readImageFromSourceData(fn + ".jpg", options);
+
+    return rr.success() ? rr : readImageFromSourceData(
+        osgDB::getNameLessExtension(filename), 
+        options);
+}
+
+namespace
+{
+    osgDB::ReaderWriter::ReadResult assemble_RGBH(
+        osg::ref_ptr<osg::Image> color,
+        osg::ref_ptr<osg::Image> height,
+        int height_channel)
+    {
+        int h_chan = height_channel - GL_RED;
+
+        osg::ref_ptr<osg::Image> output;
+        
+        if (height.valid() || color->getPixelFormat() != GL_RGBA)
+        {
+            output = new osg::Image();
+            output->allocateImage(color->s(), color->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+            ImageUtils::PixelReader readColor(color.get());
+            ImageUtils::PixelReader readHeight(height.get());
+
+            ImageUtils::PixelWriter write(output.get());
+
+            osg::Vec4 temp, temp2;
+            float minh = 1.0f, maxh = 0.0f;
+
+            ImageUtils::ImageIterator iter(output.get());
+            iter.forEachPixel([&]()
+                {
+                    readColor(temp, iter.s(), iter.t());
+                    if (height.valid())
+                    {
+                        readHeight(temp2, iter.s(), iter.t());
+                        temp.a() = temp2[height_channel];
+                    }
+                    else
+                    {
+                        temp.a() = 0.0f;
+                    }
+
+                    minh = osg::minimum(minh, temp.a());
+                    maxh = osg::maximum(maxh, temp.a());
+
+                    write(temp, iter.s(), iter.t());
+                });
+        }
+        else
+        {
+            output = color;
+        }
+
+        //Resize the image to the nearest power of two
+        if (!ImageUtils::isPowerOfTwo(output.get()))
+        {
+            unsigned s = osg::Image::computeNearestPowerOfTwo(output->s());
+            unsigned t = osg::Image::computeNearestPowerOfTwo(output->t());
+            osg::ref_ptr<osg::Image> resized;
+            if (ImageUtils::resizeImage(output.get(), s, t, resized))
+                output = resized.release();
+        }
+
+        ImageUtils::compressImageInPlace(output.get(), "cpu");
+
+        return output;
+    }
+
+    osgDB::ReaderWriter::ReadResult assemble_NNRA(
+        osg::ref_ptr<osg::Image> normals,
+        const osg::Vec3f& normal_scale,
+        osg::ref_ptr<osg::Image> roughness,
+        int roughness_channel,
+        bool roughness_inverted,
+        osg::ref_ptr<osg::Image> ao,
+        int ao_channel)
+    {
+        int s = normals.valid() ? normals->s() :
+            roughness.valid() ? roughness->s() :
+            ao.valid() ? ao->s() :
+            1;
+        int t = normals.valid() ? normals->t() :
+            roughness.valid() ? roughness->t() :
+            ao.valid() ? ao->t() :
+            1;
+
+        osg::ref_ptr<osg::Image> output = new osg::Image();
+        output->allocateImage(s, t, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+        ImageUtils::PixelReader readNormals(normals.get());
+        ImageUtils::PixelReader readRoughness(roughness.get());
+        ImageUtils::PixelReader readAO(ao.get());
+
+        ImageUtils::PixelWriter write(output.get());
+
+        osg::Vec3 normal3(0, 0, 1);
+        osg::Vec4 normal;
+        osg::Vec4 roughnessVal;
+        osg::Vec4 aoVal;
+        osg::Vec4 packed;
+
+        ImageUtils::ImageIterator iter(output.get());
+        iter.forEachPixel([&]()
+            {
+                if (normals.valid())
+                {
+                    readNormals(normal, iter.s(), iter.t());
+
+                    // Note: Y-down is standard practice for normal maps
+                    normal3.set(
+                        normal_scale.x() * (normal.x()*2.0 - 1.0),
+                        normal_scale.y() * (normal.y()*2.0 - 1.0),
+                        normal_scale.z() * (normal.z()*2.0 - 1.0));
+                }
+                NormalMapGenerator::pack(normal3, packed);
+
+                if (roughness.valid())
+                {
+                    readRoughness(roughnessVal, iter.s(), iter.t());
+                    if (roughness_inverted)
+                        packed[2] = 1.0f - roughnessVal[roughness_channel];
+                    else
+                        packed[2] = roughnessVal[roughness_channel];
+                }
+                else packed[2] = DEFAULT_ROUGHNESS;
+
+                if (ao.valid())
+                {
+                    readAO(aoVal, iter.s(), iter.t());
+                    packed[3] = aoVal[ao_channel];
+                }
+                else packed[3] = DEFAULT_AO;
+
+                write(packed, iter.s(), iter.t());
+            });
+
+        //Resize the image to the nearest power of two
+        if (!ImageUtils::isPowerOfTwo(output.get()))
+        {
+            unsigned s = osg::Image::computeNearestPowerOfTwo(output->s());
+            unsigned t = osg::Image::computeNearestPowerOfTwo(output->t());
+            osg::ref_ptr<osg::Image> resized;
+            if (ImageUtils::resizeImage(output.get(), s, t, resized))
+                output = resized.release();
+        }
+
+        // Do NOT compress this image; it messes with the normal maps.
+        //ImageUtils::compressImageInPlace(output.get(), "cpu");
+        //ImageUtils::mipmapImageInPlace(output.get());
+
+        return output;
+    }
 }
 
 osgDB::ReaderWriter::ReadResult
 RGBH_Loader::readImageFromSourceData(
-    const std::string& filename,
+    const std::string& color_filename,
     const osgDB::Options* options) const
 {
     // isolate common image extension
-    std::string extension = osgDB::getLowerCaseFileExtension(filename);
-    // isolate base filename
-    std::string basename = osgDB::getNameLessExtension(filename);
+    std::string extension = osgDB::getLowerCaseFileExtension(color_filename);
+    std::string basename = osgDB::getNameLessExtension(color_filename);
 
-    URI colorURI(basename + "_Color." + extension);
-    URI heightURI(basename + "_Displacement." + extension);
+    osg::ref_ptr<osg::Image> color;
 
-    osg::ref_ptr<osg::Image> color = colorURI.getImage(options);
-    if (!color.valid())
-        return ReadResult::FILE_NOT_FOUND;
-
-    osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
-
-    osg::ref_ptr<osg::Image> output = new osg::Image();
-    output->allocateImage(color->s(), color->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-
-    ImageUtils::PixelReader readColor(color.get());
-    ImageUtils::PixelReader readHeight(height.get());
-
-    ImageUtils::PixelWriter write(output.get());
-
-    osg::Vec4 temp, temp2;
-    float minh = 1.0f, maxh = 0.0f;
-
-    ImageUtils::ImageIterator iter(output.get());
-    iter.forEachPixel([&]()
-        {
-            readColor(temp, iter.s(), iter.t());
-            if (height.valid())
-            {
-                readHeight(temp2, iter.s(), iter.t());
-                temp.a() = temp2.r();
-            }
-            else
-            {
-                temp.a() = 0.0f;
-            }
-
-            minh = osg::minimum(minh, temp.a());
-            maxh = osg::maximum(maxh, temp.a());
-
-            write(temp, iter.s(), iter.t());
-        });
-
-    //Resize the image to the nearest power of two
-    if (!ImageUtils::isPowerOfTwo(output.get()))
+    // attempt to read "materialize" file layout. This includes
+    //   filename_Color.jpg (albedo)
+    //   filename_Displacement.jpg (height)
+    if (Strings::endsWith(basename, "_Color", false))
     {
-        unsigned s = osg::Image::computeNearestPowerOfTwo(output->s());
-        unsigned t = osg::Image::computeNearestPowerOfTwo(output->t());
-        osg::ref_ptr<osg::Image> resized;
-        if (ImageUtils::resizeImage(output.get(), s, t, resized))
-            output = resized.release();
+        URI colorURI(color_filename);
+        color = colorURI.getImage(options);
+        if (color.valid())
+        {
+            basename = basename.substr(0, basename.length() - 6); // strip "_Color"
+            URI heightURI(basename + "_Displacement." + extension);
+            osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
+            return assemble_RGBH(color, height, 0); // height is in RED
+        }
     }
 
-    ImageUtils::compressImageInPlace(output.get(), "cpu");
+    // failing that attempt to read the "vtm" layout. This includes
+    //   filename.png (color)
+    //   filename_MTL_GLS_AO.png (R=metal, G=smoothness, B=ao)
+    //   filename_NML.png (normal)
+    {
+        URI colorURI(color_filename);
+        color = colorURI.getImage(options);
+        if (color.valid())
+        {
+            // there is no height component.
+            return assemble_RGBH(color, nullptr, 0);
+        }
+    }
 
-    return output;
+    return ReadResult::FILE_NOT_FOUND;
 }
 
 osgDB::ReaderWriter::ReadResult
@@ -178,101 +311,69 @@ NNRA_Loader::readImage(
     if (osgDB::getFileExtension(filename) != "oe_splat_nnra")
         return ReadResult::FILE_NOT_HANDLED;
 
-    std::string fn = osgDB::getNameLessExtension(filename);
     ReadResult rr = readImageEncoded(filename, options);
-    return rr.success() ? rr : readImageFromSourceData(fn + ".jpg", options);
+
+    return rr.success() ? rr : readImageFromSourceData(
+        osgDB::getNameLessExtension(filename), 
+        options);
 }
 
 osgDB::ReaderWriter::ReadResult
 NNRA_Loader::readImageFromSourceData(
-    const std::string& filename,
+    const std::string& color_filename,
     const osgDB::Options* options) const
 {
     // isolate common image extension
-    std::string extension = osgDB::getLowerCaseFileExtension(filename);
-    // isolate base filename
-    std::string basename = osgDB::getNameLessExtension(filename);
+    std::string extension = osgDB::getLowerCaseFileExtension(color_filename);
+    std::string basename = osgDB::getNameLessExtension(color_filename);
 
-    URI normalsURI(basename + "_Normal." + extension);
-    URI roughnessURI(basename + "_Roughness." + extension);
-    URI aoURI(basename + "_AmbientOcclusion." + extension);
+    osg::ref_ptr<osg::Image> normals, roughness, ao;
 
-    osg::ref_ptr<osg::Image> normals = normalsURI.getImage(options);
-    osg::ref_ptr<osg::Image> roughness = roughnessURI.getImage(options);
-    osg::ref_ptr<osg::Image> ao = aoURI.getImage(options);
-
-    int s = normals.valid() ? normals->s() :
-        roughness.valid() ? roughness->s() :
-        ao.valid() ? ao->s() :
-        1;
-    int t = normals.valid() ? normals->t() :
-        roughness.valid() ? roughness->t() :
-        ao.valid() ? ao->t() :
-        1;
-
-    osg::ref_ptr<osg::Image> output = new osg::Image();
-    output->allocateImage(s, t, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-
-    ImageUtils::PixelReader readNormals(normals.get());
-    ImageUtils::PixelReader readRoughness(roughness.get());
-    ImageUtils::PixelReader readAO(ao.get());
-
-    ImageUtils::PixelWriter write(output.get());
-
-    osg::Vec3 normal3(0, 0, 1);
-    osg::Vec4 normal;
-    osg::Vec4 roughnessVal;
-    osg::Vec4 aoVal;
-    osg::Vec4 packed;
-
-    ImageUtils::ImageIterator iter(output.get());
-    iter.forEachPixel([&]()
-        {
-            if (normals.valid())
-            {
-                readNormals(normal, iter.s(), iter.t());
-
-                // Note: Y-down is standard practice for normal maps
-                normal3.set(
-                    normal.x()*2.0 - 1.0, 
-                    -(normal.y()*2.0 - 1.0),
-                    normal.z()*2.0 - 1.0);
-            }
-            NormalMapGenerator::pack(normal3, packed);
-
-            if (roughness.valid())
-            {
-                readRoughness(roughnessVal, iter.s(), iter.t());
-                packed[2] = roughnessVal.r();
-            }
-            else packed[2] = DEFAULT_ROUGHNESS;
-
-            if (ao.valid())
-            {
-                readAO(aoVal, iter.s(), iter.t());
-                packed[3] = aoVal.r();
-            }
-            else packed[3] = DEFAULT_AO;
-
-            write(packed, iter.s(), iter.t());
-        });
-
-    //Resize the image to the nearest power of two
-    if (!ImageUtils::isPowerOfTwo(output.get()))
+    // Try the "materialize" layout first. Files include:
+    //   filename_Normal.jpg (normals, X -Y Z)
+    //   filename_Roughness.jpg (roughness)
+    //   filename_AmbientOcclusion (ao)
+    if (Strings::endsWith(basename, "_Color", false))
     {
-        unsigned s = osg::Image::computeNearestPowerOfTwo(output->s());
-        unsigned t = osg::Image::computeNearestPowerOfTwo(output->t());
-        osg::ref_ptr<osg::Image> resized;
-        if (ImageUtils::resizeImage(output.get(), s, t, resized))
-            output = resized.release();
+        basename = basename.substr(0, basename.length() - 6); // strip "_Color"
+
+        URI normalsURI(basename + "_Normal." + extension);
+        URI roughnessURI(basename + "_Roughness." + extension);
+        URI aoURI(basename + "_AmbientOcclusion." + extension);
+
+        normals = normalsURI.getImage(options);
+        roughness = roughnessURI.getImage(options);
+        ao = aoURI.getImage(options);
+
+        if (normals.valid() || roughness.valid() || ao.valid())
+        {
+            return assemble_NNRA(
+                normals, osg::Vec3f(1.0f, -1.0f, 1.0f), // -Y
+                roughness, 0, false,
+                ao, 0);
+        }
     }
 
-    // Do NOT compress this image; it messes with the normal maps.
-    //ImageUtils::compressImageInPlace(output.get(), "cpu");
+    // Try the "vtm" layout next. Files include:
+    //   filename_MTL_GLS_AO.png (metal, inverse roughness, ao)
+    {
+        URI normalsURI(basename + "_NML." + extension);
+        URI metalGlossAoURI(basename + "_MTL_GLS_AO." + extension);
 
-    //ImageUtils::mipmapImageInPlace(output.get());
+        normals = normalsURI.getImage(options);
+        roughness = metalGlossAoURI.getImage(options);
+        ao = roughness;
 
-    return output;
+        if (normals.valid() || roughness.valid() || ao.valid())
+        {
+            return assemble_NNRA(
+                normals, osg::Vec3f(1.0f, 1.0f, 1.0f),
+                roughness, 1, true,
+                ao, 2);
+        }
+    }
+
+    return ReadResult::FILE_NOT_FOUND;
 }
 
 osgDB::ReaderWriter::ReadResult
@@ -299,18 +400,7 @@ NNRA_Loader::writeImage(
         return WriteResult::ERROR_IN_WRITING_FILE;
 
     // Do NOT compress, normal maps don't like it
-    //if (image.isCompressed() == false)
-    //{
-    //    osg::ref_ptr<osg::Image> c = osg::clone(&image, osg::CopyOp::DEEP_COPY_ALL);
-    //    OE_SOFT_ASSERT_AND_RETURN(c.valid(), WriteResult::ERROR_IN_WRITING_FILE);
 
-    //    ImageUtils::compressImageInPlace(c.get(), "cpu");
-    //    std::ofstream f(filename, std::ios::binary);
-    //    return rw->writeImage(*c.get(), f, options);
-    //}
-    //else
-    {
-        std::ofstream f(filename, std::ios::binary);
-        return rw->writeImage(image, f, options);
-    }
+    std::ofstream f(filename, std::ios::binary);
+    return rw->writeImage(image, f, options);
 }

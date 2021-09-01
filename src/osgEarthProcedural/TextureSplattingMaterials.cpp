@@ -66,8 +66,6 @@ namespace
         osg::ref_ptr<osg::Image> height,
         int height_channel)
     {
-        int h_chan = height_channel - GL_RED;
-
         osg::ref_ptr<osg::Image> output;
         
         if (height.valid() || color->getPixelFormat() != GL_RGBA)
@@ -94,7 +92,7 @@ namespace
                     }
                     else
                     {
-                        temp.a() = 0.0f;
+                        temp.a() = 0.0f; // default height
                     }
 
                     minh = osg::minimum(minh, temp.a());
@@ -245,8 +243,9 @@ RGBH_Loader::readImageFromSourceData(
         color = colorURI.getImage(options);
         if (color.valid())
         {
-            // there is no height component.
-            return assemble_RGBH(color, nullptr, 0);
+            URI heightURI(basename + "_HGT" + extension);
+            osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
+            return assemble_RGBH(color, height, 0);
         }
     }
 

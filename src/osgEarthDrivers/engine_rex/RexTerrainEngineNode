@@ -87,6 +87,9 @@ namespace osgEarth { namespace REX
         //! Shutdown the engine and any running services
         void shutdown() override;
 
+        //! Name of the job arena used to load terrain tiles
+        std::string getJobArenaName() const override;
+
     public: // osg::Node
 
         void traverse(osg::NodeVisitor& nv);

@@ -219,6 +219,12 @@ RexTerrainEngineNode::shutdown()
     _merger->clear();
 }
 
+std::string
+RexTerrainEngineNode::getJobArenaName() const
+{
+    return ARENA_LOAD_TILE;
+}
+
 void
 RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 {

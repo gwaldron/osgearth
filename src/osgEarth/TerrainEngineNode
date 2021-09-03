@@ -169,6 +169,10 @@ namespace osgEarth
             int createTileFlags,
             unsigned referenceLOD,
             const TileKey& subRegion) = 0;
+
+        //! Returns the name of the JobArena that handles terrain tile loading,
+        //! or an empty string if the engine does not use an arena.
+        virtual std::string getJobArenaName() const { return ""; }
     };
 
     /**

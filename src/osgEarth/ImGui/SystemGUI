@@ -86,7 +86,9 @@ namespace osgEarth
                     ImGui::Unindent();
 
                     ImGui::Separator();
-                    ImGui::Text("ICO: %d", GLObjectsCompiler::totalJobs());
+                    ImGui::Text("Total: %d", m.totalJobs());
+                    ImGui::SameLine();
+                    ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
                     ImGui::SameLine();
                     ImGui::Text(" Compute: %d", GPUJobArena::arena().size());
 

@@ -29,9 +29,10 @@ using namespace osgEarth::Contrib;
 
 
 SelectExtentTool::SelectExtentTool( osgEarth::MapNode* mapNode ):
+_enabled(true),
 _mouseDown(false),
 _mouseButtonMask(osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
-_modKeyMask(osgGA::GUIEventAdapter::MODKEY_LEFT_ALT)
+_modKeyMask(0)
 {
     _root = new osg::Group();
     _mapNode = mapNode;
@@ -45,6 +46,12 @@ _modKeyMask(osgGA::GUIEventAdapter::MODKEY_LEFT_ALT)
 SelectExtentTool::~SelectExtentTool()
 {
     //nop
+}
+
+void
+SelectExtentTool::setEnabled(bool value)
+{
+    _enabled = value;
 }
 
 void
@@ -82,7 +89,7 @@ SelectExtentTool::rebuild()
 bool
 SelectExtentTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {    
-    if ( ea.getHandled() )
+    if ( ea.getHandled() || !_enabled )
     {
         return false;
     }
@@ -115,14 +122,14 @@ SelectExtentTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
 
     else if (
         (_mouseDown) &&
-        (ea.getEventType() == ea.RELEASE) &&
-        (ea.getButton() & _mouseButtonMask) != 0)
+        (ea.getEventType() == ea.RELEASE))
     {
         _mouseDown = false;
         if (_callback != nullptr)
         {
             _callback(_extent);
         }
+        return true;
     }
     return false;
 }

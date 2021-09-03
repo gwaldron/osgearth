@@ -44,6 +44,10 @@ namespace osgEarth { namespace Contrib
         //! Construct a new tool
         SelectExtentTool(MapNode* mapNode);
 
+        //! Whether this tool is enabled (default is true)
+        void setEnabled(bool value);
+        bool getEnabled() const { return _enabled; }
+
         //! Clear the visual bounding box
         void clear();
 
@@ -67,6 +71,7 @@ namespace osgEarth { namespace Contrib
 
     protected:
 
+        bool _enabled;
         bool _mouseDown;
         int _mouseButtonMask;
         int _modKeyMask;

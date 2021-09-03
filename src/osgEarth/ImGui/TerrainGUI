@@ -26,6 +26,7 @@
 #include <osgEarth/ExampleResources>
 #include <osgEarth/FeatureNode>
 #include <osgEarth/LabelNode>
+#include <osgEarth/SelectExtentTool>
 #include <chrono>
 #include <list>
 
@@ -55,6 +56,8 @@ namespace osgEarth
             osg::ref_ptr<osg::Uniform> _tess_u;
             float _tess_range;
             osg::ref_ptr<osg::Uniform> _tess_range_u;
+            osg::ref_ptr<Contrib::SelectExtentTool> _invalidateTool;
+            bool _invalidating;
 
         public:
             TerrainGUI() : BaseGUI("Terrain"), 
@@ -62,6 +65,7 @@ namespace osgEarth
                 _tess(3.0f),
                 _tess_range(150.0f),
                 _measuring(false),
+                _invalidating(false),
                 _clamp_measure(true) { }
 
             void load(const Config& conf) override
@@ -208,6 +212,11 @@ namespace osgEarth
                         _measureCursor->setNodeMask(0);
                         _measureLabel->setNodeMask(0);
                     }
+
+                    if (ImGui::Checkbox("Drag to invalidate", &_invalidating))
+                    {
+                        _invalidateTool->setEnabled(_invalidating);
+                    }
                 }
                 ImGui::End();
             }
@@ -253,6 +262,20 @@ namespace osgEarth
                     _tess_range_u = new osg::Uniform("oe_terrain_tess_range", _tess_range);
                     _mapNode->getOrCreateStateSet()->addUniform(_tess_range_u.get(), osg::StateAttribute::OVERRIDE);
                 }
+
+                // Tool to invalidate a map extent
+                _invalidateTool = new Contrib::SelectExtentTool(_mapNode.get());
+                _invalidateTool->setEnabled(false);
+                _invalidateTool->getStyle().getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Red;
+                view(ri)->getEventHandlers().push_front(_invalidateTool);
+                _invalidateTool->setCallback([&](const GeoExtent& ex)
+                    {
+                        OE_NOTICE << "Invalidating extent " << ex.toString() << std::endl;
+                        _mapNode->getTerrainEngine()->invalidateRegion(ex);
+                        _invalidateTool->clear();
+                        _invalidateTool->setEnabled(false);
+                        _invalidating = false;
+                    });
 
                 _installed = true;
             }

@@ -673,13 +673,14 @@ LifeMapLayer::createImageImplementation(
                     }
 
                     const int ni = 3;
+                    float weight = 1.0f; // 0.65f + 0.35f*noise[2][SMOOTH];
 
                     if (value->dense().isSet())
                     {
                         float dn = has_special ? 0.0f : (dense_noise*2.0f - 1.0f)*noise[ni][CLUMPY];
                         //sample[LANDCOVER].dense.value = value->dense().get() + 0.2*(dense_noise*2.0 - 1.0);
                         sample[LANDCOVER].dense.value = value->dense().get() + dn;
-                        sample[LANDCOVER].dense.weight = 1.0f;
+                        sample[LANDCOVER].dense.weight = weight;
                     }
 
                     if (value->lush().isSet())
@@ -687,7 +688,7 @@ LifeMapLayer::createImageImplementation(
                         float dn = has_special ? 0.0f : (lush_noise*2.0f - 1.0f)*noise[ni][RANDOM];
                         //sample[LANDCOVER].lush.value = value->lush().get() + 0.2*(lush_noise*2.0 - 1.0);
                         sample[LANDCOVER].lush.value = value->lush().get() + dn;
-                        sample[LANDCOVER].lush.weight = 1.0f;
+                        sample[LANDCOVER].lush.weight = weight;
                     }
 
                     if (value->rugged().isSet())
@@ -695,7 +696,7 @@ LifeMapLayer::createImageImplementation(
                         float dn = has_special ? 0.0f : (rugged_noise*2.0f - 1.0f)*noise[ni][SMOOTH];
                         //sample[LANDCOVER].rugged.value = value->rugged().get() + 0.2*(rugged_noise*2.0 - 1.0);
                         sample[LANDCOVER].rugged.value = value->rugged().get() + dn;
-                        sample[LANDCOVER].rugged.weight = 1.0f;
+                        sample[LANDCOVER].rugged.weight = weight;
                     }
 
                     sample[LANDCOVER].weight = options().landCoverWeight().get(); // 1.0f;

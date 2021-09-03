@@ -328,15 +328,18 @@ void oe_GroundCover_Model(inout vec4 vertex_view, in uint i)
 
     oe_UpVectorView = oe_transform.normal * vec3(0, 0, 1);
 
-    //TODO: hard-coded Coord7, is that OK? I guess we could use zero
-    oe_veg_texCoord = gl_MultiTexCoord7.xyz;
+    oe_veg_texCoord = gl_MultiTexCoord7.xyz; // 7 why not
 
-    // assign texture sampler for this model. The LUT index is in
-    // a vertex attribute. 0UL == no texture.
+    // samplers for this model. The LUT index is in a vert attrib. 0UL=empty
     oe_veg_texHandle = oe_veg_texArenaIndex >= 0 ? texArena[oe_veg_texArenaIndex] : 0UL;
+    oe_veg_nmlHandle = oe_veg_nmlArenaIndex >= 0 ? texArena[oe_veg_nmlArenaIndex] : 0UL;
 
-    // They should be -1, but they aren't -- check into that someday
-    oe_veg_nmlHandle = 0UL; // oe_veg_nmlArenaIndex >= 0 ? texArena[oe_veg_nmlArenaIndex] : 0UL;
+    if (oe_veg_nmlHandle != 0UL)
+    {
+        vec3 E = cross(vp_Normal, oe_UpVectorView);
+        vec3 N = cross(vp_Normal, E);
+        oe_veg_TBN = mat3(normalize(E), normalize(N), vp_Normal);
+    }
 
     // apply fade from bb->model
     if (instance[i].pixelSizeRatio < 1.0)
@@ -369,8 +372,6 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
         oe_GroundCover_Model(vertex_view, leaf.instance);
     }
 }
-
-
 
 [break]
 #version 430
@@ -425,11 +426,10 @@ void oe_GroundCover_FS(inout vec4 color)
         {
             vec4 n = texture(sampler2D(oe_veg_nmlHandle), oe_veg_texCoord.st);
             n.xyz = n.xyz*2.0-1.0;
-            float curv = n.z;
             n.z = 1.0 - abs(n.x) - abs(n.y);
-            //float t = clamp(-n.z, 0, 1);
-            //n.x += (n.x > 0)? -t : t;
-            //n.y += (n.y > 0)? -t : t;
+            float t = clamp(-n.z, 0, 1);
+            n.x += (n.x > 0)? -t : t;
+            n.y += (n.y > 0)? -t : t;
             vp_Normal = normalize(oe_veg_TBN * n.xyz);
             //color.rgb = (vp_Normal + 1.0)*0.5; // debug
 

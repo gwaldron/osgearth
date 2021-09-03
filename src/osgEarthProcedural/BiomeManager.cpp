@@ -20,6 +20,7 @@
 
 #include <osgEarth/Elevation>
 #include <osgEarth/GLUtils>
+#include <osgEarth/MaterialLoader>
 #include <osg/ComputeBoundsVisitor>
 
 using namespace osgEarth;
@@ -27,6 +28,8 @@ using namespace osgEarth::Procedural;
 
 #undef LC
 #define LC "[BiomeManager] "
+
+#define NORMAL_MAP_TEX_UNIT 1
 
 //...................................................................
 
@@ -199,7 +202,7 @@ namespace
 
 void
 BiomeManager::updateResidency(
-    std::function<osg::Node*(AssetGroup::Type, std::vector<osg::Texture*>&)> createImposter,
+    CreateImposterFunction createImposter,
     const osgDB::Options* readOptions,
     std::set<AssetGroup::Type>& out_groups)
 {
@@ -229,6 +232,29 @@ BiomeManager::updateResidency(
         groups.clear();
         groups.resize(NUM_ASSET_GROUPS);
     }
+
+    // This loader will find material textures and install them on
+    // secondary texture image units.. in this case, normal maps.
+    // We can expand this later to include other types of material maps.
+    Util::MaterialLoader materialLoader;
+
+    materialLoader.setMangler(NORMAL_MAP_TEX_UNIT,
+        [](const std::string& filename)
+        {
+            return osgDB::getNameLessExtension(filename) + "_Normal.tga";
+        }
+    );
+
+    materialLoader.setTextureFactory(NORMAL_MAP_TEX_UNIT,
+        [](osg::Image* image)
+        {
+            // compresses the incoming texture if necessary
+            if (image->getPixelFormat() != GL_RG)
+                return new osg::Texture2D(convertNormalMapFromRGBToRG(image));
+            else
+                return new osg::Texture2D(image);
+        }
+    );
 
     // Go through the residency list and make resident any model assets
     // that are not already loaded (and present in _residentModelAssetData);
@@ -279,6 +305,9 @@ BiomeManager::updateResidency(
                             data->_model = uri.getNode(readOptions);
                             if (data->_model.valid())
                             {
+                                // find materials:
+                                data->_model->accept(materialLoader);
+
                                 OE_DEBUG << LC << "Loaded model: " << uri.base() << std::endl;
                                 modelcache[uri]._node = data->_model.get();
 
@@ -471,7 +500,9 @@ BiomeManager::createGeometryCloud(
                 {
                     data->_modelCommand = cloud->add(
                         model,
-                        instance._textures);
+                        instance._textures,
+                        0U,
+                        NORMAL_MAP_TEX_UNIT);
 
                     visited.insert(model);
                 }

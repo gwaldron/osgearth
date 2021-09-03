@@ -175,6 +175,7 @@ SET(LIB_PUBLIC_HEADERS
     LoadableNode
     Locators
     LocalTangentPlane
+    MaterialLoader
     Math
     Map
     MapboxGLImageLayer
@@ -596,6 +597,7 @@ set(TARGET_SRC
     MapCallback.cpp
     MapInfo.cpp
     MapNode.cpp
+    MaterialLoader.cpp
     MemCache.cpp
     Memory.cpp
     MetaTile.cpp

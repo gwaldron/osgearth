@@ -105,6 +105,7 @@ namespace osgEarth
             using ModelAssetUsageCollection = std::vector<ModelAssetDataUsage>;
             using AssetGroupUsageTable = std::vector<ModelAssetUsageCollection>;
             using BiomeInstanceTable = std::unordered_map<const Biome*, AssetGroupUsageTable>;
+            using CreateImposterFunction = std::function<osg::Node*(AssetGroup::Type, std::vector<osg::Texture*>&)>;
 
         public:
             BiomeManager();
@@ -132,7 +133,7 @@ namespace osgEarth
 
             //! Calculate the new resident set, and then make it resident.
             void updateResidency(
-                std::function<osg::Node*(AssetGroup::Type, std::vector<osg::Texture*>&)> createImposterGeometry,
+                CreateImposterFunction createImposterGeometry,
                 const osgDB::Options* readOptions,
                 std::set<AssetGroup::Type>& out_groups);
 

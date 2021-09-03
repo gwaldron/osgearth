@@ -796,7 +796,7 @@ GeometryCloud::pushStateSet(osg::Node& node)
         _albedoArenaIndexStack.push(albedoArenaIndex);
 
         // check normal map texture, if available
-        int normalArenaIndex = _albedoArenaIndexStack.top();
+        int normalArenaIndex = _normalArenaIndexStack.top();
         if (_normalMapTextureImageUnit > 0)
         {
 
@@ -813,6 +813,7 @@ GeometryCloud::pushStateSet(osg::Node& node)
 
                     Texture::Ptr t = Texture::create();
                     t->_image = tex->getImage(0);
+                    t->_compress = false; // do not compress normal maps
 
                     if (_texarena->add(t))
                     {

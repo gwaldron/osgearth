@@ -1,0 +1,96 @@
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_MATERIAL_LOADER
+#define OSGEARTH_MATERIAL_LOADER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/IOTypes>
+#include <osgEarth/URI>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    /**
+     * Loads models and installs material textures alongside
+     * the normal albedo textures as directed.
+     *
+     * Example usage
+     *
+     * <pre>
+     * URI uri(filename);
+     * MaterialLoader loader;
+     *
+     * // set a filename mangler for unit 1:
+     * loader.setMangler(1, [](const std::string& filename) { return filename + "_NML.png"; });
+     *
+     * // set a texture factory for unit 1 (optional):
+     * loader.setTextureFactory(1, [](osg::Image* image) { return new osg::Texture2D(image); });
+     *
+     * // run the loader on a node:
+     * node->accept(loader);
+     * </pre>
+     */
+    class OSGEARTH_EXPORT MaterialLoader : public osg::NodeVisitor
+    {
+    public:
+        //! New material loader
+        MaterialLoader();
+
+        //! Set the db options to use when reading material textures
+        void setOptions(const osgDB::Options* options);
+
+        //! Function used to change the input URI string to
+        //! one referencing a material texture
+        using Mangler = std::function<std::string(const std::string&)>;
+
+        //! Set a function that will mangle the original texture's
+        //! filename into a filename suitable for laoding the material.
+        //! Applies to the material to be installed into unit "unit".
+        void setMangler(
+            int unit,
+            Mangler mangler);
+
+        //! Function that creates a Texture from an Image.
+        using TextureFactory = std::function<osg::Texture*(osg::Image*)>;
+
+        //! Set a function that will create a Texture from the loaded
+        //! material image. Applies to the material to be installed into
+        //! unit "unit".
+        void setTextureFactory(
+            int unit,
+            TextureFactory factory);
+
+    public: // osg::NodeVisitor
+        void apply(osg::Node&) override;
+
+    protected:
+        void apply(osg::StateSet*);
+
+        osg::ref_ptr<const osgDB::Options> _options;
+        std::unordered_map<int, Mangler> _manglers;
+        std::unordered_map<int, TextureFactory> _factories;
+        using Cache = std::unordered_map<std::string, osg::ref_ptr<osg::Texture>>;
+        Cache _cache;
+    };
+} }
+
+#endif // OSGEARTH_MATERIAL_LOADER

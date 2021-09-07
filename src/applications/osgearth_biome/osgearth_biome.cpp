@@ -86,6 +86,11 @@ struct LifeMapGUI : public GUI::BaseGUI
         LifeMapLayer::Options& o = lifemap->options();
         
         ImGui::Checkbox("Use landcover data", &o.useLandCover().mutable_value());
+        if (o.useLandCover() == true)
+        {
+            ImGui::SliderFloat("Landcover blur", &o.landCoverBlur().mutable_value(), 0.0f, 0.5f);
+        }
+
         ImGui::Checkbox("Use terrain data", &o.useTerrain().mutable_value());
         if (o.useTerrain() == true)
         {

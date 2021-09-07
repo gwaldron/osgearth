@@ -26,13 +26,12 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
+#include <osgEarth/Progress>
 #include <osg/Image>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-
-    class ImageLayer;
 
     /**
      * Metadata groups a collection of adjacent data tiles
@@ -44,11 +43,11 @@ namespace osgEarth { namespace Util
         //! Construct a new Metatiled image
         MetaImage() { }
 
-        //! Sets the data elevation at location (x,y), where (0,0) is the center.
+        //! Sets the data at location (x,y), where (0,0) is the center.
         bool setImage(int x, int y, osg::Image* image, const osg::Matrix& scaleBias);
 
         //! Gets the image at the neighbor location (x,y).
-        osg::Image* getImage(int x, int y) const;
+        const osg::Image* getImage(int x, int y) const;
 
         //! Gets the positioning matrix for neightbor location (x,y).
         const osg::Matrix& getScaleBias(int x, int y) const;
@@ -56,22 +55,46 @@ namespace osgEarth { namespace Util
         //! Reads the data from parametric location (u,v), where [u,v] in [-1, +2].
         //! Returns true upon success with the value in [output];
         //! false if there is no tile at the read location.
-        bool read(double u, double v, osg::Vec4& output) const;
+        virtual bool read(double u, double v, osg::Vec4f& output);
 
         void dump() const;
 
-    private:
-        //virtual ~MetaImage() { }
+    protected:
 
         struct Tile {
             Tile();
-            bool _valid;
-            osg::ref_ptr<osg::Image> _imageRef;
+            bool _failed;
+            osg::ref_ptr<const osg::Image> _imageRef;
             ImageUtils::PixelReader _read;
             osg::Matrix _scaleBias;
         };
 
         Tile _tiles[3][3]; // col, row
+    };
+
+
+    class OSGEARTH_EXPORT TileKeyMetaImage : public MetaImage
+    {
+    public:
+        using CreateImageFunction = std::function<
+            GeoImage(const TileKey&, ProgressCallback*)>;
+
+        //! Construct
+        TileKeyMetaImage();
+
+        //! Sets the center tilekey
+        void setTileKey(const TileKey& value);
+
+        //! CreateImage function
+        void setCreateImageFunction(CreateImageFunction value);
+
+    public: // MetaImage
+
+        bool read(double u, double v, osg::Vec4f& output) override;
+
+    private:
+        TileKey _center;
+        CreateImageFunction _createImage;
     };
 
 } }

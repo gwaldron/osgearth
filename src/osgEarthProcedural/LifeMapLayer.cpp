@@ -25,6 +25,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/Math>
+#include <osgEarth/MetaTile>
 #include <osgEarth/rtree.h>
 
 #include <osgDB/ReadFile>
@@ -79,6 +80,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     useLandCover().setDefault(false);
     useTerrain().setDefault(true);
     landCoverWeight() = 1.0f;
+    landCoverBlur() = 0.1f;
     terrainWeight() = 1.0f;
     colorWeight() = 1.0f;
     slopeIntensity() = 1.0f;
@@ -98,7 +100,7 @@ namespace
     // noise channels
     constexpr unsigned SMOOTH = 0;
     constexpr unsigned RANDOM = 1;
-    constexpr unsigned TURBULENT = 2;
+    constexpr unsigned RANDOM2 = 2;
     constexpr unsigned CLUMPY = 3;
 
     // raster sampling coordinate scaler
@@ -462,6 +464,12 @@ LifeMapLayer::createImageImplementation(
     osg::Matrixf landcover_matrix;
     const LifeMapValueTable* landcover_table;
     std::unordered_map<std::string, int> specialTextureIndexLUT;
+
+
+    TileKeyMetaImage landcover_metaimage;
+
+
+
     if (getBiomeLayer())
     {
         landcover_table = getBiomeLayer()->getBiomeCatalog()->getLandCoverTable();
@@ -480,6 +488,16 @@ LifeMapLayer::createImageImplementation(
                     readLandCover.setBilinear(false);
                     readLandCover.setSampleAsTexture(true);
                     extent.createScaleBias(landcover_key.getExtent(), landcover_matrix);
+
+                    landcover_metaimage.setTileKey(landcover_key);
+                    landcover_metaimage.setCreateImageFunction(
+                        [&](const TileKey& key, ProgressCallback* prog)
+                        {
+                            osg::ref_ptr<osg::Image> output;
+                            _landCoverLayers.populateLandCoverImage(output, key, prog);
+                            return GeoImage(output.release(), key.getExtent());
+                        }
+                    );
                 }
             }
 
@@ -654,6 +672,40 @@ LifeMapLayer::createImageImplementation(
             double uu = i.u() * landcover_matrix(0, 0) + landcover_matrix(3, 0);
             double vv = i.v() * landcover_matrix(1, 1) + landcover_matrix(3, 1);
 
+#if 1
+            // read the landcover with a blurring filter.
+            landcover_pixel.set(0, 0, 0, 0);
+            double blur = clamp(options().landCoverBlur().get(), 0.0f, 0.9f);
+            int lc_kernel_count = 0;
+            LifeMapValue lc_temp;
+            for (int a = -1; a <= 1; ++a) {
+                for (int b = -1; b <= 1; ++b) {
+                    osg::Vec4f temp;
+                    landcover_metaimage.read(uu + (double)a*blur, vv + (double)b*blur, temp);
+                    const LandCoverClass* lcc = _landCoverDictionary->getClassByValue((int)temp.r());
+                    if (lcc) {
+                        const LifeMapValue* value = landcover_table->getValue(lcc->getName());
+                        if (value) {
+                            lc_kernel_count++;
+                            landcover_pixel[LIFEMAP_DENSE] += value->dense().get();
+                            landcover_pixel[LIFEMAP_LUSH] += value->lush().get();
+                            landcover_pixel[LIFEMAP_RUGGED] += value->rugged().get();
+                        }
+                    }
+                }
+            }
+            landcover_pixel /= lc_kernel_count;
+
+            sample[LANDCOVER].dense.value = landcover_pixel[LIFEMAP_DENSE];
+            sample[LANDCOVER].dense.weight = 1.0f;
+            sample[LANDCOVER].lush.value = landcover_pixel[LIFEMAP_LUSH];
+            sample[LANDCOVER].lush.weight = 1.0f;
+            sample[LANDCOVER].rugged.value = landcover_pixel[LIFEMAP_RUGGED];
+            sample[LANDCOVER].rugged.weight = 1.0f;
+
+            sample[LANDCOVER].weight = options().landCoverWeight().get();
+
+#else
             readLandCover(landcover_pixel, uu, vv);
 
             const LandCoverClass* lcc = _landCoverDictionary->getClassByValue(
@@ -702,6 +754,7 @@ LifeMapLayer::createImageImplementation(
                     sample[LANDCOVER].weight = options().landCoverWeight().get(); // 1.0f;
                 }
             }
+#endif
         }
 
         // COLOR CONTRIBUTION:

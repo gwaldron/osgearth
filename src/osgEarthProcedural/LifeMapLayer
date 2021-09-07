@@ -55,6 +55,7 @@ namespace osgEarth { namespace Procedural
             OE_OPTION(bool, useLandCover);
             OE_OPTION(bool, useTerrain);
             OE_OPTION(float, landCoverWeight);
+            OE_OPTION(float, landCoverBlur);
             OE_OPTION(float, terrainWeight);
             OE_OPTION(float, colorWeight);
             OE_OPTION(float, slopeIntensity);

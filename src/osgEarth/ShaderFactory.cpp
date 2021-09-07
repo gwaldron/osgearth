@@ -48,6 +48,12 @@ ShaderFactory::ShaderFactory()
 }
 
 void
+ShaderFactory::clearPreProcessorCallbacks()
+{
+    ShaderPreProcessor::_callbacks.clear();
+}
+
+void
 ShaderFactory::addPreProcessorCallback(std::function<void(osg::Shader*)> cb)
 {
     ShaderPreProcessor::_callbacks.push_back(cb);

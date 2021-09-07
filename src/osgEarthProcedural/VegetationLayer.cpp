@@ -1169,11 +1169,9 @@ VegetationLayer::Renderer::CameraState::draw(
     }
 
     // If the camera moved, we need to cull:
-    // (not a bug. Do this as a 32-bit matrix to avoid wierd micro-precision changes.)
-    // (NOTE: this can cause jittering in the tree positions when you zoom)
     if (!needsCull)
     {
-        osg::Matrixf mvp = state->getModelViewMatrix() * state->getProjectionMatrix();
+        osg::Matrix mvp = state->getModelViewMatrix() * state->getProjectionMatrix();
         if (mvp != _lastMVP)
         {
             _lastMVP = mvp;

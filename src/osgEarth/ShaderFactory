@@ -45,20 +45,6 @@ namespace osgEarth { namespace Util
     {
     public:
         /**
-         * Defines the ordering of the COLORING and LIGHTING stages in
-         * the fragment program.
-         */
-        enum FragmentStageOrder
-        {
-            /** Apply lighting before coloring/texturing. This mimics the FFP. */
-            FRAGMENT_STAGE_ORDER_LIGHTING_COLORING,
-
-            /** Apply coloring/texturing before lighting. */
-            FRAGMENT_STAGE_ORDER_COLORING_LIGHTING
-        };
-
-    public:
-        /**
          * Construtor
          */
         ShaderFactory();
@@ -92,13 +78,6 @@ namespace osgEarth { namespace Util
          */
         osg::Uniform* createRangeUniform() const;
 
-        /**
-         * Sets the order in which the shader program generator will create
-         * code for the fragment program's COLORING and LIGHTING stages.
-         */
-        void setFragmentStageOrder(const FragmentStageOrder& value);
-        const FragmentStageOrder& getFragmentStageOrder() const { return _fragStageOrder; }
-
         //! Remove all preprocessor callbacks
         void clearPreProcessorCallbacks();
 
@@ -109,8 +88,6 @@ namespace osgEarth { namespace Util
     protected:
         /** dtor */
         virtual ~ShaderFactory() { }
-
-        FragmentStageOrder _fragStageOrder;
     };
 
 } } // namespace osgEarth

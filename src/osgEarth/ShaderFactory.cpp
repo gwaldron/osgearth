@@ -44,7 +44,7 @@ using namespace osgEarth::Util;
 
 ShaderFactory::ShaderFactory()
 {
-    _fragStageOrder = FRAGMENT_STAGE_ORDER_COLORING_LIGHTING;
+    //nop
 }
 
 void
@@ -985,8 +985,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         buf << INDENT << "vp_Normal = normalize(vp_Normal); \n";
 
-        int coloringPass = _fragStageOrder == FRAGMENT_STAGE_ORDER_COLORING_LIGHTING ? 0 : 1;
-        int lightingPass = 1-coloringPass;
+        constexpr int coloringPass = 0;
+        constexpr int lightingPass = 1;
 
         for(int pass=0; pass<2; ++pass)
         {

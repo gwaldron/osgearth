@@ -28,6 +28,7 @@
 #include <osg/observer_ptr>
 #include <osgDB/Options>
 #include <map>
+#include <functional>
 
 namespace osgEarth
 {
@@ -60,6 +61,8 @@ namespace osgEarth { namespace Util
     {
     public:
         static void run(osg::Shader* shader);
+
+        static std::vector<std::function<void(osg::Shader*)>> _callbacks;
     };
 
     /**

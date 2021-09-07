@@ -21,6 +21,7 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ShaderUtils>
 
 #define LC "[ShaderFactory] "
 
@@ -44,6 +45,12 @@ using namespace osgEarth::Util;
 ShaderFactory::ShaderFactory()
 {
     _fragStageOrder = FRAGMENT_STAGE_ORDER_COLORING_LIGHTING;
+}
+
+void
+ShaderFactory::addPreProcessorCallback(std::function<void(osg::Shader*)> cb)
+{
+    ShaderPreProcessor::_callbacks.push_back(cb);
 }
 
 

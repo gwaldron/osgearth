@@ -263,12 +263,18 @@ ShaderPreProcessor::applySupportForNoFFP(osg::Shader* shader)
 }
 #endif
 
+std::vector<std::function<void(osg::Shader*)>> ShaderPreProcessor::_callbacks;
+
 void
 ShaderPreProcessor::run(osg::Shader* shader)
 {
     if ( shader )
     {
         bool dirty = false;
+
+        // Run callbacks
+        for (auto& callback : _callbacks)
+            callback(shader);
 
         std::string source = shader->getShaderSource();
 
@@ -283,7 +289,7 @@ ShaderPreProcessor::run(osg::Shader* shader)
         GLSLChunker chunker;
         GLSLChunker::Chunks chunks;
         chunker.read( source, chunks );
-
+        
 
         if (shader->getType() != osg::Shader::FRAGMENT)
         {

@@ -99,6 +99,9 @@ namespace osgEarth { namespace Util
         void setFragmentStageOrder(const FragmentStageOrder& value);
         const FragmentStageOrder& getFragmentStageOrder() const { return _fragStageOrder; }
 
+        //! Install a shader post-processing callback
+        //! This will run on each shader before it gets included
+        void addPreProcessorCallback(std::function<void(osg::Shader*)>);
 
     protected:
         /** dtor */

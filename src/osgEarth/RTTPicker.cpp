@@ -23,6 +23,7 @@
 #include <osgEarth/GLUtils>
 #include "ExampleResources"
 #include "Utils"
+#include "CameraUtils"
 
 #include <osg/BlendFunc>
 
@@ -60,7 +61,7 @@ VirtualProgram*
 RTTPicker::createRTTProgram()
 {    
     VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "osgEarth::RTTPicker" );
+    vp->setName( "osgEarth.Picker" );
 
     // Install RTT picker shaders:
     Shaders shaders;
@@ -184,7 +185,8 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     //       etc. of the master camera; since the master renderes first,
     //       the setup should always be in place for the slave
     c._pickCamera = new osg::Camera();
-    c._pickCamera->setName( "osgEarth::RTTPicker" );
+    CameraUtils::setIsPickCamera(c._pickCamera.get());
+    c._pickCamera->setName( "osgEarth.RTTPicker" );
     c._pickCamera->addChild( _group.get() );
     c._pickCamera->setClearColor( osg::Vec4(0,0,0,0) );
     c._pickCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -224,7 +226,6 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     rttSS->setAttribute( vp );
 
     // designate this as a pick camera
-    rttSS->setDefine("OE_IS_PICK_CAMERA");
     rttSS->setDefine("OE_LIGHTING", osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
     // default value for the objectid override uniform:

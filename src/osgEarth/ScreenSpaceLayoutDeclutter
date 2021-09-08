@@ -23,6 +23,7 @@
 #define OSGEARTH_SCREEN_SPACE_LAYOUT_DECLUTTER_H 1
 
 #include <osgEarth/ScreenSpaceLayoutImpl>
+#include <osgEarth/CameraUtils>
 
 #define FADE_UNIFORM_NAME "oe_declutter_fade"
 
@@ -174,11 +175,9 @@ namespace osgEarth { namespace Internal
 
             // If the camera is actually an RTT slave camera, it's our picker, and we need to
             // adjust the scale to match it.
-            if (cam->isRenderToTextureCamera() &&
+            if (CameraUtils::isPickCamera(cam) &&
                 cam->getView() &&
-                cam->getView()->getCamera() &&
-                cam->getView()->getCamera() != cam)
-                //cam->getView()->findSlaveIndexForCamera(cam) < cam->getView()->getNumSlaves())
+                cam->getView()->getCamera())
             {
                 osg::Camera* parentCam = cam->getView()->getCamera();
                 const osg::Viewport* refVP = parentCam->getViewport();

@@ -44,6 +44,12 @@ namespace osgEarth { namespace Util
         //! Whether a camera is marked is a depth camera
         static bool isDepthCamera(const osg::Camera* camera);
 
+        //! Marks a camera as a picker camera
+        static void setIsPickCamera(osg::Camera* camera);
+
+        //! Whether a camera is a picker camera
+        static bool isPickCamera(const osg::Camera* camera);
+
     };
 
 } }

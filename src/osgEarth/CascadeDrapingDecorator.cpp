@@ -30,6 +30,7 @@
 #include <osgEarth/LineDrawable>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Utils>
+#include <osgEarth/CameraUtils>
 
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
@@ -531,7 +532,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
     float anisotropy;
 
     // if the master cam is a picker, just limit to one cascade with no sampling.
-    bool isPickCamera = camera->getName() == "osgEarth::RTTPicker";
+    bool isPickCamera = CameraUtils::isPickCamera(camera);
     if (isPickCamera)
     {
         textureWidth = osg::minimum(512u, decorator._texSize);

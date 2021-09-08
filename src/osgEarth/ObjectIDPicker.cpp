@@ -21,6 +21,7 @@
 #include "ExampleResources"
 #include "GLUtils"
 #include "Utils"
+#include "CameraUtils"
 
 #include <osg/BlendFunc>
 
@@ -221,7 +222,9 @@ ObjectIDPicker::setupRTT(osgViewer::View* view)
 
     // Make an RTT camera and bind it to our image.
     _rtt = new osg::Camera();
-    _rtt->setName("osgEarth::RTTPicker");
+    CameraUtils::setIsPickCamera(_rtt.get());
+    _rtt->setView(view); // so we have access to the 'real' viewport dimensions
+    _rtt->setName("osgEarth.ObjectIDPicker");
     _rtt->addChild(_graph.get());
     _rtt->setClearColor(osg::Vec4(0, 0, 0, 0));
     _rtt->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -265,7 +268,6 @@ ObjectIDPicker::setupRTT(osgViewer::View* view)
     rttSS->setAttribute(vp);
 
     // designate this as a pick camera
-    rttSS->setDefine("OE_IS_PICK_CAMERA");
     rttSS->setDefine("OE_LIGHTING", osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
     // default value for the objectid override uniform:

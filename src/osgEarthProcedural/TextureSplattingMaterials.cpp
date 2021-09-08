@@ -87,7 +87,9 @@ namespace
                     readColor(temp, iter.s(), iter.t());
                     if (height.valid())
                     {
-                        readHeight(temp2, iter.s(), iter.t());
+                        // use (u,v) in case textures are different sizes
+                        readHeight(temp2, iter.u(), iter.v());
+                        //readHeight(temp2, iter.s(), iter.t());
                         temp.a() = temp2[height_channel];
                     }
                     else
@@ -159,7 +161,8 @@ namespace
             {
                 if (normals.valid())
                 {
-                    readNormals(normal, iter.s(), iter.t());
+                    //readNormals(normal, iter.s(), iter.t());
+                    readNormals(normal, iter.u(), iter.v());
 
                     // Note: Y-down is standard practice for normal maps
                     normal3.set(
@@ -171,7 +174,7 @@ namespace
 
                 if (roughness.valid())
                 {
-                    readRoughness(roughnessVal, iter.s(), iter.t());
+                    readRoughness(roughnessVal, iter.u(), iter.v());
                     if (roughness_inverted)
                         packed[2] = 1.0f - roughnessVal[roughness_channel];
                     else
@@ -181,7 +184,7 @@ namespace
 
                 if (ao.valid())
                 {
-                    readAO(aoVal, iter.s(), iter.t());
+                    readAO(aoVal, iter.u(), iter.v());
                     packed[3] = aoVal[ao_channel];
                 }
                 else packed[3] = DEFAULT_AO;

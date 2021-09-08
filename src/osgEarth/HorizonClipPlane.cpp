@@ -32,7 +32,7 @@ using namespace osgEarth;
 
 namespace
 {
-    constexpr char* clip_shader = R"(
+    constexpr const char* clip_shader = R"(
         #version 330
         #pragma import_defines(OE_CLIPPLANE_NUM)
 

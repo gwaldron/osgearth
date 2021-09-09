@@ -323,7 +323,10 @@ NormalMapGenerator::createNormalMap(
 
             riPixel.r() = 0.0f;
 
-            if (points[p+0].z() != NO_DATA_VALUE &&
+            // only attempt to create a normal vector if all the data is valid:
+            // a valid resolution value and four valid corner points.
+            if (res.getValue() != FLT_MAX &&
+                points[p+0].z() != NO_DATA_VALUE &&
                 points[p+1].z() != NO_DATA_VALUE &&
                 points[p+2].z() != NO_DATA_VALUE &&
                 points[p+3].z() != NO_DATA_VALUE)

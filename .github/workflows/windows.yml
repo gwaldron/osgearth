@@ -26,6 +26,15 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
+        
+    - name: Installing vcpkg (windows)
+      shell: 'bash'
+      run: |
+        cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}
+        cd ${{ matrix.VCPKG_WORKSPACE }}
+        git clone --depth 1 --branch ${{env.VCPKG_VERSION}} https://github.com/microsoft/vcpkg
+        ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
+        ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
 
     - name: vcpkg cache
       id: vcpkgcache
@@ -38,17 +47,7 @@ jobs:
           !${{ matrix.VCPKG_WORKSPACE }}/downloads
         # https://github.com/lukka/CppBuildTasks-Validation/blob/master/.github/workflows/hosted-pure-workflow.yml
         key: |
-            ${{ hashFiles( '{{ matrix.VCPKG_WORKSPACE }}/vcpkg/.git/HEAD' )}}-${{ matrix.triplet }}-invalidate
-
-    - name: Installing vcpkg (windows)
-      if: steps.vcpkgcache.outputs.cache-hit != 'true'
-      shell: 'bash'
-      run: |
-        cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}
-        cd ${{ matrix.VCPKG_WORKSPACE }}
-        git clone --depth 1 --branch ${{env.VCPKG_VERSION}} https://github.com/microsoft/vcpkg
-        ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
-        ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
+            ${{ hashFiles( '{{ matrix.VCPKG_WORKSPACE }}/vcpkg/.git/HEAD' )}}-${{ matrix.triplet }}-invalidate    
 
     - name: 'Setup NuGet Credentials'
       working-directory: ${{ matrix.VCPKG_WORKSPACE }}

@@ -37,6 +37,8 @@ jobs:
           !${{ matrix.VCPKG_WORKSPACE }}/buildtrees
           !${{ matrix.VCPKG_WORKSPACE }}/downloads
         key: vcpkg-${{ matrix.triplet }}
+        restore-keys: |
+          vcpkg-${{ matrix.triplet }}
 
     - name: Installing vcpkg (windows)
       if: steps.vcpkgcache.outputs.cache-hit != 'true'
@@ -44,7 +46,6 @@ jobs:
       run: |
         cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}
         cd ${{ matrix.VCPKG_WORKSPACE }}
-        dir
         git clone --depth 1 --branch ${{env.VCPKG_VERSION}} https://github.com/microsoft/vcpkg
         ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
         ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version

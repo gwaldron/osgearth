@@ -167,6 +167,7 @@ ground_best_frag = R"(
 #pragma import_defines(OE_LIGHTING)
 
 uniform float oe_sky_exposure;
+uniform float oe_sky_contrast;
 uniform vec2 sun_size;
 const vec3 white_point = vec3(1,1,1);
 const vec3 camera_pos = vec3(0,0,0);
@@ -202,6 +203,9 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
 
     // apply white point, exposure, and gamma correction:
 	COLOR.rgb = pow(vec3(1,1,1) - exp(-COLOR.rgb / white_point * oe_sky_exposure*1e-5), vec3(1.0 / 2.2));
+
+    // final contrast:
+    COLOR.rgb = ((COLOR.rgb - 0.5)*clamp(oe_sky_contrast, 1.0, 3.0) + 0.5);
 #endif
 }
 
@@ -289,6 +293,7 @@ in vec3 atmos_ambient;
 in vec3 vp_Normal;
 
 uniform float oe_sky_exposure;
+uniform float oe_sky_contrast;
 const vec3 white_point = vec3(1,1,1);
 
 #define USE_PBR 1
@@ -312,6 +317,9 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
 
     // apply white point, exposure, and gamma correction:
 	COLOR.rgb = pow(vec3(1,1,1) - exp(-COLOR.rgb / white_point * oe_sky_exposure*1e-5), vec3(1.0 / 2.2));
+
+    // final contrast:
+    COLOR.rgb = ((COLOR.rgb - 0.5)*clamp(oe_sky_contrast, 1.0, 3.0) + 0.5);
 
 #endif // OE_LIGHTING
 }

@@ -30,7 +30,7 @@ using namespace osgEarth::Util;
 void
 CameraUtils::setIsShadowCamera(osg::Camera* camera)
 {
-    OE_SOFT_ASSERT_AND_RETURN(camera != nullptr, void());
+    if (!camera) return;
     osg::StateSet* ss = camera->getOrCreateStateSet();
     ss->setDefine("OE_IS_SHADOW_CAMERA");
     ss->setDefine("OE_IS_DEPTH_CAMERA");
@@ -49,7 +49,7 @@ CameraUtils::isShadowCamera(const osg::Camera* camera)
 void
 CameraUtils::setIsDepthCamera(osg::Camera* camera)
 {
-    OE_SOFT_ASSERT_AND_RETURN(camera != nullptr, void());
+    if (!camera) return;
     osg::StateSet* ss = camera->getOrCreateStateSet();
     ss->setDefine("OE_IS_DEPTH_CAMERA");
 }
@@ -66,7 +66,7 @@ CameraUtils::isDepthCamera(const osg::Camera* camera)
 void
 CameraUtils::setIsPickCamera(osg::Camera* camera)
 {
-    OE_SOFT_ASSERT_AND_RETURN(camera != nullptr, void());
+    if (!camera) return;
     osg::StateSet* ss = camera->getOrCreateStateSet();
     ss->setDefine("OE_IS_PICK_CAMERA");
 }

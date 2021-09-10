@@ -35,7 +35,6 @@ jobs:
         git clone --depth 1 --branch ${{env.VCPKG_VERSION}} https://github.com/microsoft/vcpkg
         ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
         ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
-        cat c:/vcpkg_own/vcpkg/.git/HEAD
 
     - name: vcpkg cache
       id: vcpkgcache
@@ -46,9 +45,9 @@ jobs:
           !${{ matrix.VCPKG_WORKSPACE }}/packages
           !${{ matrix.VCPKG_WORKSPACE }}/buildtrees
           !${{ matrix.VCPKG_WORKSPACE }}/downloads
-        # https://github.com/lukka/CppBuildTasks-Validation/blob/master/.github/workflows/hosted-pure-workflow.yml
-        key: |
-            ${{ hashFiles( 'c:\vcpkg_own\vcpkg\.git\HEAD') }}-${{ matrix.triplet }}-invalidate    
+        # this key needs to change based on the vcpkg version and the dependencies.  Just using a random sha right now to get things to build.
+        key: |           
+            F14A27BC5F26CF101F7706B5299F719CDD949EC1-${{ matrix.triplet }}
 
     - name: 'Setup NuGet Credentials'
       working-directory: ${{ matrix.VCPKG_WORKSPACE }}

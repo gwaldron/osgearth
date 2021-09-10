@@ -27,21 +27,21 @@ jobs:
       with:
         submodules: recursive
 
-    #- name: vcpkg cache
-    #  id: vcpkgcache
-    #  uses: actions/cache@v2
-    #  with:
-    #    path: |
-    #      ${{ matrix.VCPKG_WORKSPACE }}
-    #      !${{ matrix.VCPKG_WORKSPACE }}/packages
-    #      !${{ matrix.VCPKG_WORKSPACE }}/buildtrees
-    #      !${{ matrix.VCPKG_WORKSPACE }}/downloads
-    #    key: vcpkg-${{ matrix.triplet }}
-    #    restore-keys: |
-    #      vcpkg-${{ matrix.triplet }}
+    - name: vcpkg cache
+      id: vcpkgcache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ${{ matrix.VCPKG_WORKSPACE }}
+          !${{ matrix.VCPKG_WORKSPACE }}/packages
+          !${{ matrix.VCPKG_WORKSPACE }}/buildtrees
+          !${{ matrix.VCPKG_WORKSPACE }}/downloads
+        # https://github.com/lukka/CppBuildTasks-Validation/blob/master/.github/workflows/hosted-pure-workflow.yml
+        key: |
+            ${{ hashFiles( '{{ matrix.VCPKG_WORKSPACE }}/vcpkg/.git/HEAD' )}}-${{ matrix.triplet }}-invalidate
 
     - name: Installing vcpkg (windows)
-      #if: steps.vcpkgcache.outputs.cache-hit != 'true'
+      if: steps.vcpkgcache.outputs.cache-hit != 'true'
       shell: 'bash'
       run: |
         cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}

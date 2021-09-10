@@ -47,7 +47,7 @@ jobs:
           !${{ matrix.VCPKG_WORKSPACE }}/downloads
         # https://github.com/lukka/CppBuildTasks-Validation/blob/master/.github/workflows/hosted-pure-workflow.yml
         key: |
-            ${{ hashFiles( '{{ matrix.VCPKG_WORKSPACE }}/vcpkg/.git/HEAD' )}}-${{ matrix.triplet }}-invalidate    
+            ${{ hashFiles( 'c:/vcpkg_own/vcpkg/.git/HEAD') }}-${{ matrix.triplet }}-invalidate    
 
     - name: 'Setup NuGet Credentials'
       working-directory: ${{ matrix.VCPKG_WORKSPACE }}

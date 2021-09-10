@@ -57,13 +57,14 @@ SilverLiningNode::construct()
     _lightSource = new osg::LightSource();
     _lightSource->setLight( _light.get() );
     _lightSource->setReferenceFrame(osg::LightSource::RELATIVE_RF);
-    GenerateGL3LightingUniforms generateLightingVisitor;
-    _lightSource->accept(generateLightingVisitor);
+    //GenerateGL3LightingUniforms generateLightingVisitor;
+    //_lightSource->accept(generateLightingVisitor);
+    _lightSource->setCullingActive(false);
+    _lightSource->addCullCallback(new LightSourceGL3UniformGenerator());
 
     // scene lighting
     osg::StateSet* stateset = this->getOrCreateStateSet();
     _lighting = new Util::PhongLightingEffect();
-    //_lighting->setCreateLightingUniform( false );
     _lighting->attach( stateset );
 
     // need update traversal.
@@ -81,6 +82,8 @@ SilverLiningNode::attach(osg::View* view, int lightNum)
 {
     _light->setLightNum( lightNum );
     view->setLightingMode(osg::View::NO_LIGHT);
+    view->setLight(_light.get());
+    onSetDateTime();
 }
 
 unsigned

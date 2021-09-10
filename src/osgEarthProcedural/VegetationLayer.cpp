@@ -1561,7 +1561,7 @@ VegetationLayer::Renderer::draw(
         {
             if (newGeometryAvailable)
             {
-                OE_WARN << LC << "New geometry available, but collection is empty. Are you caching the BiomeLayer? That doesn't work yet." << std::endl;
+                OE_INFO << LC << "New geometry available, but collection is empty" << std::endl;
             }
             return;
         }

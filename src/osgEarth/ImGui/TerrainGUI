@@ -104,14 +104,14 @@ namespace osgEarth
                             osg::Vec3d world;
                             mp.toWorld(world);
 
-                            ImGui::Text("Geo: Lat=%.3f, Long=%.3f, Z=%.3f", mp.y(), mp.x(), mp.z());
-                            ImGui::Text("ECEF: X=%d, Y=%d, Z=%d", (int)world.x(), (int)world.y(), (int)world.z());
+                            ImGui::Text("Lat %.3f  Lon %.3f  Z %.3f", mp.y(), mp.x(), mp.z());
+                            ImGui::Text("X %d  Y %d  Z %d", (int)world.x(), (int)world.y(), (int)world.z());
                         }
                         else
                         {
                             GeoPoint LL = mp.transform(mp.getSRS()->getGeographicSRS());
-                            ImGui::Text("Geo: Lat=%.3f, Long=%.3f, Z=%.3f", LL.y(), LL.x(), LL.z());
-                            ImGui::Text("Map: X=%d, Y=%d, Z=%d", (int)mp.x(), (int)mp.y(), (int)mp.z());
+                            ImGui::Text("Lat %.3f  Lon %.3f  Z %.3f", LL.y(), LL.x(), LL.z());
+                            ImGui::Text("X %d  Y %d  Z %d", (int)mp.x(), (int)mp.y(), (int)mp.z());
                         }
 
                         osg::Vec3d world, eye, center, up;

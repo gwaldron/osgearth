@@ -252,6 +252,24 @@ VisibleLayer::setVisible(bool value)
     fireCallback(&VisibleLayerCallback::onVisibleChanged);
 }
 
+void
+VisibleLayer::setColorBlending(ColorBlending value)
+{
+    options().blend() = value;
+    
+    if (_opacityU.valid())
+    {
+        _opacityU = nullptr;
+        initializeUniforms();
+    }
+}
+
+ColorBlending
+VisibleLayer::getColorBlending() const
+{
+    return options().blend().get();
+}
+
 osg::Node::NodeMask
 VisibleLayer::getMask() const
 {
@@ -265,7 +283,7 @@ VisibleLayer::setMask(osg::Node::NodeMask mask)
     options().mask() = mask;
 
     // Call setVisible to make sure the mask gets applied to a node if necessary
-    setVisible(options().visible().get());;
+    setVisible(options().visible().get());
 }
 
 osg::Node::NodeMask
@@ -303,7 +321,10 @@ VisibleLayer::initializeUniforms()
 
         if (options().blend() == BLEND_MODULATE)
         {
-            vp->setFunction("oe_VisibleLayer_setOpacity", opacityModulateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+            vp->setFunction("oe_VisibleLayer_setOpacity", 
+                opacityModulateFS, 
+                ShaderComp::LOCATION_FRAGMENT_COLORING,
+                1.1f);
 
             stateSet->setAttributeAndModes(
                 new osg::BlendFunc(GL_DST_COLOR, GL_ZERO),
@@ -313,12 +334,15 @@ VisibleLayer::initializeUniforms()
         {
             // In this case the fragment shader of the layer is responsible for
             // incorporating the final value of oe_layer_opacity.
-            if (options().blend().isSetTo(BLEND_INTERPOLATE))
-            {
-                stateSet->setAttributeAndModes(
-                    new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
-                    osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
-            }
+
+            vp->setFunction("oe_VisibleLayer_setOpacity", 
+                opacityInterpolateFS, 
+                ShaderComp::LOCATION_FRAGMENT_COLORING,
+                1.1f);
+
+            stateSet->setAttributeAndModes(
+                new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
+                osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
         }
     }    
 

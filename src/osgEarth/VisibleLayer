@@ -87,6 +87,10 @@ namespace osgEarth
         float getAttenuationRange() const;
         void setAttenuationRange( float value );
 
+        //! Blending mode to apply when rendering this layer
+        void setColorBlending(ColorBlending value);
+        ColorBlending getColorBlending() const;
+
         //! The node mask to apply to the layer when rendering.  This works exactly like the node mask would on a node.
         osg::Node::NodeMask getMask() const;
         void setMask(osg::Node::NodeMask mask);

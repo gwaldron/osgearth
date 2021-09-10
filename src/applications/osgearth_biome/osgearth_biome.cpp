@@ -85,16 +85,26 @@ struct LifeMapGUI : public GUI::BaseGUI
 
         LifeMapLayer::Options& o = lifemap->options();
         
-        ImGui::Checkbox("Use landcover data", &o.useLandCover().mutable_value());
+        ImGui::Checkbox("Use landcover", &o.useLandCover().mutable_value());
         if (o.useLandCover() == true)
         {
             ImGui::SliderFloat("Landcover blur", &o.landCoverBlur().mutable_value(), 0.0f, 0.5f);
         }
 
-        ImGui::Checkbox("Use terrain data", &o.useTerrain().mutable_value());
+        ImGui::Checkbox("Use terrain elevation/slope", &o.useTerrain().mutable_value());
         if (o.useTerrain() == true)
         {
             ImGui::SliderFloat("Terrain weight", &o.terrainWeight().mutable_value(), 0.0f, 1.0f);
+        }
+
+        if (lifemap->getLandUseLayer())
+        {
+            ImGui::Checkbox("Use OSM landuse vectors", &o.useLandUse().mutable_value());
+        }
+
+        if (lifemap->getColorLayer())
+        {
+            ImGui::Checkbox("Use coloration", &o.useColor().mutable_value());
         }
 
         ImGui::SliderFloat(

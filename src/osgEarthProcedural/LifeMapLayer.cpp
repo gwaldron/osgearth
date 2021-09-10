@@ -79,6 +79,8 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
 {
     useLandCover().setDefault(false);
     useTerrain().setDefault(true);
+    useLandUse().setDefault(true); // if the layer is set (not serialized)
+    useColor().setDefault(true); // if the layer is set (not serialized)
     landCoverWeight() = 1.0f;
     landCoverBlur() = 0.1f;
     terrainWeight() = 1.0f;
@@ -387,6 +389,30 @@ LifeMapLayer::getUseTerrain() const
     return options().useTerrain().get();
 }
 
+void
+LifeMapLayer::setUseLandUse(bool value)
+{
+    options().useLandUse() = value;
+}
+
+bool
+LifeMapLayer::getUseLandUse() const
+{
+    return options().useLandUse().get();
+}
+
+void
+LifeMapLayer::setUseColor(bool value)
+{
+    options().useColor() = value;
+}
+
+bool
+LifeMapLayer::getUseColor() const
+{
+    return options().useColor().get();
+}
+
 namespace
 {
     struct Value
@@ -441,7 +467,7 @@ LifeMapLayer::createImageImplementation(
     double x_jitter = lu_extent.width() * 0.1;
     double y_jitter = lu_extent.height() * 0.1;
 
-    if (getLandUseLayer() && getBiomeLayer() && getBiomeLayer()->getBiomeCatalog())
+    if (getLandUseLayer() && getUseLandUse() && getBiomeLayer() && getBiomeLayer()->getBiomeCatalog())
     {
         // the catalog:
         landuse_table = getBiomeLayer()->getBiomeCatalog()->getLandUseTable();
@@ -541,7 +567,7 @@ LifeMapLayer::createImageImplementation(
     osg::Vec4 color_pixel;
     osg::Matrixf color_matrix;
 
-    if (getColorLayer())
+    if (getColorLayer() && options().useColor() == true)
     {
         TileKey color_key(key);
 

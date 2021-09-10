@@ -60,6 +60,9 @@ namespace osgEarth { namespace Procedural
             OE_OPTION(float, colorWeight);
             OE_OPTION(float, slopeIntensity);
 
+            OE_OPTION(bool, useLandUse);
+            OE_OPTION(bool, useColor);
+
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -85,6 +88,12 @@ namespace osgEarth { namespace Procedural
 
         void setUseTerrain(bool value);
         bool getUseTerrain() const;
+
+        void setUseLandUse(bool value);
+        bool getUseLandUse() const;
+
+        void setUseColor(bool value);
+        bool getUseColor() const;
 
     protected:
 

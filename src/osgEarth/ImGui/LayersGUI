@@ -204,6 +204,12 @@ namespace osgEarth {
                                     ImGui::PushID("opacity");
                                     ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
                                     visibleLayer->setOpacity(opacity);
+
+                                    bool modulate = visibleLayer->getColorBlending() == BLEND_MODULATE;
+                                    if (ImGui::Checkbox("Modulate", &modulate)) {
+                                        visibleLayer->setColorBlending(modulate ? BLEND_MODULATE : BLEND_INTERPOLATE);
+                                    }
+
                                     ImGui::PopID();
                                 }
 

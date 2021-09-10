@@ -35,7 +35,7 @@ jobs:
         git clone --depth 1 --branch ${{env.VCPKG_VERSION}} https://github.com/microsoft/vcpkg
         ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
         ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
-        more c:/vcpkg_own/vcpkg/.git/HEAD
+        cat c:/vcpkg_own/vcpkg/.git/HEAD
 
     - name: vcpkg cache
       id: vcpkgcache

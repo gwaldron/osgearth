@@ -24,11 +24,10 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
-#include <list>
-#include <cpl_error.h>
-#include <ogr_api.h>
+
 #include <gdal.h>
 #include <queue>
+#include <list>
 
 #define LC "[OGRFeatureSource] "
 

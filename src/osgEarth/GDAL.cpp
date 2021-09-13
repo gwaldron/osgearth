@@ -38,7 +38,7 @@
 #include <stdlib.h>
 #include <memory.h>
 
-#include <gdal_priv.h>
+#include <gdal.h>
 #include <gdalwarper.h>
 #include <ogr_spatialref.h>
 

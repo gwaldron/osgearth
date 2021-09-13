@@ -24,7 +24,7 @@
 #include <osg/GL2Extensions>
 #include <osg/Version>
 #include <osgViewer/Version>
-#include <gdal_priv.h>
+#include <gdal.h>
 #include <sstream>
 
 using namespace osgEarth;

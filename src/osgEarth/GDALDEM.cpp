@@ -22,11 +22,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
 
-#include <cpl_conv.h>
-#include <cpl_string.h>
-#include <cpl_vsi.h>
-#include <gdal.h>
-#include <gdal_priv.h>
+#include <gdal_priv.h> // C++ API
 
 #if GDAL_VERSION_NUM > 2004000
 #define HAS_GDALDEM

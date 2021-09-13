@@ -27,8 +27,8 @@
 #include <osgText/Font>
 #include <osgDB/Registry>
 
-#include <gdal_priv.h>
-#include <ogr_api.h>
+#include <gdal.h>
+#include <cpl_conv.h>
 #include <cstdlib>
 
 using namespace osgEarth;

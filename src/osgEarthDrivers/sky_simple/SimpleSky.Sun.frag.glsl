@@ -11,6 +11,8 @@ float atmos_fastpow(in float x, in float y)
 
 void main( void ) 
 { 
+   if (gl_ProjectionMatrix[3][3] != 0.0)
+      discard;
    float fCos = -atmos_v3Direction[2];          
    float fMiePhase = 0.050387596899224826 * (1.0 + fCos*fCos) / atmos_fastpow(1.9024999999999999 - -1.8999999999999999*fCos, 1.5); 
    out_FragColor.rgb = fMiePhase*vec3(.3,.3,.2);

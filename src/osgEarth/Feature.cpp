@@ -552,7 +552,8 @@ Feature::getWorldBound(const SpatialReference* srs,
 {
     if ( srs && getSRS() && getGeometry() )
     {
-        out_bound.init();
+        osg::BoundingBoxd box;
+        //out_bound.init();
 
         ConstGeometryIterator i( getGeometry(), false);
         while( i.hasMore() )
@@ -566,10 +567,13 @@ Feature::getWorldBound(const SpatialReference* srs,
                 {
                     osg::Vec3d world;
                     srs_point.toWorld(world);
-                    out_bound.expandBy( world );
+                    box.expandBy(world);
+                    //out_bound.expandBy( world );
                 }
             }
         }
+        out_bound = osg::BoundingSphered(box);
+
         if ( out_bound.valid() && out_bound.radius() == 0.0 )
         {
             out_bound.radius() = 1.0;

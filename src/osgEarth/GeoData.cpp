@@ -824,9 +824,9 @@ GeoExtent::set(double west, double south, double east, double north)
         while (east < west)
             east += 360.0;
     }
-    width = osg::maximum(0.0, east - west);
+    width = std::max(0.0, east - west);
 
-    height = osg::maximum(0.0, north-south);
+    height = std::max(0.0, north - south);
 
     setOriginAndSize(west, south, width, height);
 }
@@ -1524,7 +1524,7 @@ GeoExtent::clamp()
         }
         else if (north() > 90.0)
         {
-            _height -= (north()-90.0);            
+            _height -= (north()-90.0);
         }
     }
 }

@@ -24,6 +24,7 @@
 #include <osg/Vec3f>
 #include <osg/Vec4f>
 #include <string>
+#include <vector>
 
 namespace osgEarth
 {
@@ -115,6 +116,12 @@ namespace osgEarth
         static Color Magenta;
         static Color Brown;
         static Color Transparent;
+
+        //! generate a random color ramp
+        static void createRandomColorRamp(
+            unsigned count,
+            std::vector<Color>& output,
+            int seed = -1);
     };
 
 } // namespace osgEarth

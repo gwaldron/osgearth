@@ -18,6 +18,7 @@
  */
 #include <osgEarth/Color>
 #include <osgEarth/Math>
+#include "Random"
 #include <algorithm>
 #include <osg/Vec4ub>
 #include <osgEarth/StringUtils>
@@ -403,5 +404,41 @@ Color::fromHSL(const osg::Vec4f& hsl)
         else if (vi == 4.0f) { vr = v3, vg = v1, vb = v; }
         else { vr = v, vg = v1, vb = v2; }
         set(vr, vg, vb, a());
+    }
+}
+
+void
+Color::createRandomColorRamp(
+    unsigned count,
+    std::vector<Color>& output,
+    int seed)
+{
+    // Code is adapted from QGIS random color ramp feature,
+    // which found the idea here (http://basecase.org/env/on-rainbows)
+    // of adding the "golden ratio" to the hue angle in order to
+    // minimize hue overlap and repetition.
+
+    constexpr int hueMin = 0;
+    constexpr int hueMax = 360;
+    constexpr float satMin = 0.5f;
+    constexpr float satMax = 1.0f;
+    constexpr float valMin = 0.5f;
+    constexpr float valMax = 1.0f;
+
+    Random prng;
+    if (seed >= 0)
+        prng.seed(seed);
+    
+    double hueAngle = (double)prng.next(360);
+    osg::Vec4f hsv(0, 0, 0, 1);
+
+    for (unsigned i = 0; i < count; ++i)
+    {
+        hueAngle = fmod(hueAngle + 137.50776, 360.0);
+        hsv[0] = hueAngle / 360.0;
+        hsv[1] = satMin + (float)prng.next()*(satMax - satMin);
+        hsv[2] = valMin + (float)prng.next()*(valMax - valMin);        
+        hsv2rgb(hsv);
+        output.push_back(Color(hsv));
     }
 }

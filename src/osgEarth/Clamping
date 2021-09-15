@@ -84,12 +84,8 @@ namespace osgEarth { namespace Util
             osg::Node* node,
             float      verticalOffset =0.0f);
 
-        static void applyDefaultClampingAttrs(
-            osg::Geometry* geom,
-            float          verticalOffset =0.0f);
-
         static void setHeights(
-            osg::Geometry*   geom,
+            osg::Node* node,
             osg::FloatArray* heights );
     };
     

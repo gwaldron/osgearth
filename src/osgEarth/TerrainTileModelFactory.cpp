@@ -653,14 +653,16 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
 
         GLenum pixelFormat = image->getPixelFormat();
         GLenum internalFormat = image->getInternalTextureFormat();
+        GLenum dataType = image->getDataType();
 
         // Fix incorrect internal format if necessary
         if (internalFormat == pixelFormat)
         {
-            if (pixelFormat == GL_RGB) internalFormat = GL_RGB8;
-            else if (pixelFormat == GL_RGBA) internalFormat = GL_RGBA8;
-            else if (pixelFormat == GL_RG) internalFormat = GL_RG8;
-            else if (pixelFormat == GL_RED) internalFormat = GL_R8;
+            int bits = dataType == GL_UNSIGNED_BYTE ? 8 : 16;
+            if (pixelFormat == GL_RGB) internalFormat = bits == 8 ? GL_RGB8 : GL_RGB16;
+            else if (pixelFormat == GL_RGBA) internalFormat = bits == 8 ? GL_RGBA8 : GL_RGBA16;
+            else if (pixelFormat == GL_RG) internalFormat = bits == 8 ? GL_RG8 : GL_RG16;
+            else if (pixelFormat == GL_RED) internalFormat = bits == 8 ? GL_R8 : GL_R16;
         }
 
         if (image->r() == 1)

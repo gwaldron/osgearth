@@ -123,7 +123,8 @@ AssetCatalog::AssetCatalog(const Config& conf)
         _specialTextures.emplace_back(c);
     }
 
-    ConfigSet modelassetgroups = conf.child("modelassets").children("group");
+    ConfigSet modelassetgroups = conf.child("models").children("group");
+    if (modelassetgroups.empty()) modelassetgroups = conf.child("modelassets").children("group");
     for (const auto& c : modelassetgroups)
     {
         AssetGroup::Type group = AssetGroup::type(c.value("name"));
@@ -160,7 +161,7 @@ AssetCatalog::getConfig() const
     if (!specifictextures.empty())
         conf.add(specifictextures);
 
-    Config models("ModelAssets");
+    Config models("Models");
     for (auto& model : _models)
         models.add(model.second.getConfig());
     if (!models.empty())
@@ -273,10 +274,13 @@ LifeMapValueTable::getValue(const std::string& id) const
 
 //...................................................................
 
-Biome::Biome(const Config& conf, AssetCatalog* assetCatalog)
+Biome::Biome(const Config& conf, AssetCatalog* assetCatalog) :
+    _parentBiome(nullptr)
 {
-    conf.get("name", name());
     conf.get("id", id());
+    conf.get("name", name());
+    conf.get("parent", parentName());
+    conf.get("inherits_from", parentName());
 
     ConfigSet assets = conf.child("assets").children("asset");
     for (const auto& child : assets)
@@ -291,7 +295,9 @@ Biome::Biome(const Config& conf, AssetCatalog* assetCatalog)
             child.get("fill", m.fill);
 
             if (m.asset->_group < NUM_ASSET_GROUPS)
+            {
                 _modelgroups[m.asset->_group].emplace_back(m);
+            }
         }
     }
 }
@@ -300,17 +306,37 @@ Config
 Biome::getConfig() const
 {
     Config conf("biome");
-    conf.set("name", name());
     conf.set("id", id());
+    conf.set("name", name());
+    conf.set("parent", parentName());
+
     //TODO
     OE_WARN << __func__ << " not implemented" << std::endl;
+    // when we do implement this, take care to skip writing the asset pointers
+    // when the parent biome is set.
 
     return conf;
 }
 
+const Biome::ModelAssetPointers&
+Biome::assetPointers(int type) const
+{   
+    const ModelAssetPointers& pointers = _modelgroups[type];
+    if (!pointers.empty() || _parentBiome == nullptr)
+    {
+        return pointers;
+    }
+    else
+    {
+        // no assets? fall back on parent's assets
+        return _parentBiome->assetPointers(type);
+    }
+}
+
 //..........................................................
 
-BiomeCatalog::BiomeCatalog(const Config& conf)
+BiomeCatalog::BiomeCatalog(const Config& conf) :
+    _biomeIndexGenerator(1) // start at 1; 0 has a special meaning
 {
     _assets = AssetCatalog(conf.child("assetcatalog"));
 
@@ -320,11 +346,25 @@ BiomeCatalog::BiomeCatalog(const Config& conf)
     if (conf.hasChild("landcover_lifemap_table"))
         _landCoverTable = std::make_shared<LifeMapValueTable>(conf.child("landcover_lifemap_table"));
 
-    ConfigSet biomes_conf = conf.child("biomes").children("biome");
+    ConfigSet biomes_conf = conf.child("biomecollection").children("biome"); 
+    if (biomes_conf.empty()) biomes_conf = conf.child("biomes").children("biome");
     for (const auto& b_conf : biomes_conf)
     {
         Biome biome(b_conf, &_assets);
-        _biomes[biome.id().get()] = std::move(biome);
+        biome._index = _biomeIndexGenerator++;
+        _biomes_by_index[biome._index] = std::move(biome);
+    }
+
+    // resolve parent biome pointers.
+    for (auto& iter : _biomes_by_index)
+    {
+        Biome& biome = iter.second;
+        if (biome.parentName().isSet())
+        {
+            const Biome* parent = getBiome(biome.parentName().get());
+            if (parent)
+                biome._parentBiome = parent;
+        }
     }
 }
 
@@ -338,18 +378,31 @@ BiomeCatalog::getConfig() const
 }
 
 const Biome*
-BiomeCatalog::getBiome(int id) const
+BiomeCatalog::getBiomeByIndex(int index) const
 {
-    const auto i = _biomes.find(id);
-    return i != _biomes.end() ? &i->second : nullptr;
+    const auto i = _biomes_by_index.find(index);
+    return i != _biomes_by_index.end() ? &i->second : nullptr;
+}
+
+const Biome*
+BiomeCatalog::getBiome(const std::string& name) const
+{
+    for (auto& iter : _biomes_by_index)
+    {
+        if (iter.second.name() == name)
+        {
+            return &iter.second;
+        }
+    }
+    return nullptr;
 }
 
 std::vector<const Biome*>
 BiomeCatalog::getBiomes() const
 {
     std::vector<const Biome*> result;
-    for (auto& i : _biomes)
-        result.push_back(&i.second);
+    for (auto& iter : _biomes_by_index)
+        result.push_back(&iter.second);
     return std::move(result);
 }
 

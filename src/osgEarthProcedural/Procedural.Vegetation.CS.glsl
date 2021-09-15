@@ -125,8 +125,8 @@ void generate()
 
     vec2 biome_uv = (OE_BIOME_MATRIX*tilec4).st;
     ivec2 biome_xy = ivec2(biome_uv * 255.0);
-    int biomeid = int(texelFetch(OE_BIOME_SAMPLER, biome_xy, 0).r * 255.0);
-    Biome biome = biomes[biomeid];
+    int biome_index = int(texelFetch(OE_BIOME_SAMPLER, biome_xy, 0).r); // *255.0);
+    Biome biome = biomes[biome_index];
 
     if (biome.offset < 0) // undefined biome
         return;
@@ -137,7 +137,7 @@ void generate()
     lush = lifemap[LUSH] * lush_power;
     lush = noise[pickNoiseType] * lush;
 
-    // select a billboard at random
+    // select an asset at random
     int pickIndex = clamp(int(floor(lush * float(biome.count))), 0, biome.count - 1);
     int assetIndex = biome.offset + pickIndex;
 

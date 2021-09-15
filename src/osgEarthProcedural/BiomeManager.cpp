@@ -451,13 +451,13 @@ namespace
         unsigned count = 0u;
         osg::Geometry* geom = node->asGeometry();
         if (geom) {
-            for (int i = 0; i < geom->getNumPrimitiveSets(); ++i)
+            for (unsigned i = 0; i < geom->getNumPrimitiveSets(); ++i)
                 count += geom->getVertexArray()->getNumElements();
         }
         else {
             osg::Group* group = node->asGroup();
             if (group) {
-                for (int i = 0; i < group->getNumChildren(); ++i)
+                for (unsigned i = 0; i < group->getNumChildren(); ++i)
                     count += getNumVertices(group->getChild(i));
             }
         }
@@ -617,7 +617,7 @@ BiomeManager::createGPULookupTables(
     luts->assetLUT().setNumElements(numElements);
 
     // Next, build the asset table using weightings.
-    constexpr int MAX_NUM_BIOMES = 255;
+    constexpr int MAX_NUM_BIOMES = 1024;
     luts->biomeLUT().setNumElements(MAX_NUM_BIOMES);
 
     int offset = 0;
@@ -626,9 +626,9 @@ BiomeManager::createGPULookupTables(
         const Biome* biome = b.first;
         const ModelAssetUsageCollection& usages = b.second[group];
 
-        int biome_id = biome->id().get();
+        int biome_index = biome->index();
 
-        if (biome_id >= MAX_NUM_BIOMES)
+        if (biome_index >= MAX_NUM_BIOMES)
         {
             OE_WARN << LC << "Exceeded maximum number of biomes (" << MAX_NUM_BIOMES << ")" << std::endl;
             break;
@@ -649,8 +649,8 @@ BiomeManager::createGPULookupTables(
         }
 
         // populate the biome LUT:
-        luts->biomeLUT()[biome_id].offset = offset;
-        luts->biomeLUT()[biome_id].count = (ptr - offset);
+        luts->biomeLUT()[biome_index].offset = offset;
+        luts->biomeLUT()[biome_index].count = (ptr - offset);
 
         offset += (ptr - offset);
     }

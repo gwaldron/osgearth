@@ -66,21 +66,28 @@ namespace
     struct Record
     {
         Segment2d _segment;
-        int _biomeid;
+        int _biome_index;
         double _radius;
     };
 
     typedef std::shared_ptr<Record> RecordPtr;
-
     typedef RTree<RecordPtr, double, 2> MySpatialIndex;
+
+    struct PolygonRecord {
+        int _biome_index;
+        osg::ref_ptr<const Geometry> _polygon;
+        double _buffer;
+    };
+    typedef std::shared_ptr<PolygonRecord> PolygonRecordPtr;
+    typedef RTree<PolygonRecordPtr, double, 2> PolygonSpatialIndex;
     
     struct BiomeTrackerToken : public osg::Object
     {
         META_Object(osgEarth, BiomeTrackerToken);
         BiomeTrackerToken() { }
-        BiomeTrackerToken(std::set<int>&& seen) : _biomeids(seen) { }
+        BiomeTrackerToken(std::set<int>&& seen) : _biome_index_set(seen) { }
         BiomeTrackerToken(const BiomeTrackerToken& rhs, const osg::CopyOp& op) { }
-        std::set<int> _biomeids;
+        std::set<int> _biome_index_set;
     };
 }
 
@@ -92,8 +99,11 @@ BiomeLayer::init()
     // BiomeLayer is invisible AND shared by default.
     options().visible().setDefault(false);
     options().shared().setDefault(true);
+    options().textureCompression().setDefault("none");
 
-    _index = nullptr;
+    _pointIndex = nullptr;
+    _polygonIndex = nullptr;
+
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 }
 
@@ -124,9 +134,17 @@ BiomeLayer::openImplementation()
 Status
 BiomeLayer::closeImplementation()
 {
-    if (_index)
-        delete static_cast<MySpatialIndex*>(_index);
-    _index = nullptr;
+    if (_pointIndex)
+    {
+        delete static_cast<MySpatialIndex*>(_pointIndex);
+        _pointIndex = nullptr;
+    }
+
+    if (_polygonIndex)
+    {
+        delete static_cast<PolygonSpatialIndex*>(_polygonIndex);
+        _polygonIndex = nullptr;
+    }
 
     options().controlVectors().close();
 
@@ -144,12 +162,22 @@ BiomeLayer::addedToMap(const Map* map)
         return;
     }
 
-    MySpatialIndex* index = new MySpatialIndex();
-    _index = index;
+    //loadPointControlSet();
 
-    const std::string& biomeid_field = options().biomeidField().get();
+    loadPolygonControlSet();
+}
+
+void
+BiomeLayer::loadPointControlSet()
+{
+    // DEPRECATED?
 
     OE_INFO << LC << "Loading control set..." << std::endl;
+
+    MySpatialIndex* index = new MySpatialIndex();
+    _pointIndex = index;
+
+    const std::string& biomeid_field = options().biomeidField().get();
 
     // Populate the in-memory spatial index with all the control points
     int count = 0;
@@ -198,6 +226,57 @@ BiomeLayer::addedToMap(const Map* map)
     OE_INFO << LC << "Loaded control set and found " << count << " features" << std::endl;
 }
 
+void
+BiomeLayer::loadPolygonControlSet()
+{
+    OE_INFO << LC << "Loading polygon control set..." << std::endl;
+
+    PolygonSpatialIndex* index = new PolygonSpatialIndex();
+    _polygonIndex = index;
+
+    const std::string& biomeid_field = options().biomeidField().get();
+
+    // Populate the in-memory spatial index with all the control points
+    int count = 0;
+    osg::ref_ptr<FeatureCursor> cursor = getControlSet()->createFeatureCursor(Query(), nullptr);
+    if (cursor.valid())
+    {
+        cursor->fill(_features);
+
+        for (auto& feature : _features)
+        {
+            int biomeid = feature->getInt(biomeid_field);
+            double buffer = feature->getDouble("buffer", 0.0);
+
+            Geometry* g = feature->getGeometry();
+            GeometryIterator iter(g, false);
+            while (iter.hasMore())
+            {
+                Geometry* part = iter.next();
+                if (part->isPolygon())
+                {
+                    part->open();
+                    part->removeDuplicates();
+                    part->removeColinearPoints();
+
+                    Bounds b = part->getBounds();
+                    double a_min[2] = { b.xMin(), b.yMin() };
+                    double a_max[2] = { b.xMax(), b.yMax() };
+
+                    index->Insert(
+                        a_min, a_max,
+                        PolygonRecordPtr(new PolygonRecord({ 
+                            biomeid,
+                            part,
+                            buffer })));
+                }
+            }
+        }
+    }
+    OE_INFO << LC << "Loaded control set and found " << count << " features" << std::endl;
+}
+
+
 FeatureSource*
 BiomeLayer::getControlSet() const
 {
@@ -211,11 +290,11 @@ BiomeLayer::getBiomeCatalog() const
 }
 
 const Biome*
-BiomeLayer::getBiome(int id) const
+BiomeLayer::getBiomeByIndex(int index) const
 {
     const auto cat = getBiomeCatalog();
     if (cat)
-        return cat->getBiome(id);
+        return cat->getBiomeByIndex(index);
     else
         return nullptr;
 }
@@ -225,65 +304,148 @@ BiomeLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
-    MySpatialIndex* index = static_cast<MySpatialIndex*>(_index);
-    if (index == nullptr)
-        return GeoImage::INVALID;
+    MySpatialIndex* pointIndex = static_cast<MySpatialIndex*>(_pointIndex);
+    if (pointIndex)
+    {
+        // allocate a 16-bit image so we can represent 32K biomes
+        osg::ref_ptr<osg::Image> image = new osg::Image();
+        image->allocateImage(
+            getTileSize(),
+            getTileSize(),
+            1,
+            GL_RED,
+            GL_FLOAT);
+        image->setInternalTextureFormat(GL_R16F);
 
-    // allocate an 8-bit image:
-    osg::ref_ptr<osg::Image> image = new osg::Image();
-    image->allocateImage(
-        getTileSize(),
-        getTileSize(),
-        1,
-        GL_RED,
-        GL_UNSIGNED_BYTE);
+        ImageUtils::PixelWriter write(image.get());
 
-    ImageUtils::PixelWriter write(image.get());
+        osg::Vec4 value;
+        float noise = 1.0f;
+        std::vector<RecordPtr> hits;
+        std::vector<double> ranges_squared;
+        Random prng(key.hash());
+        double radius = options().blendRadius().get();
+        std::set<int> biomeids_seen;
 
-    osg::Vec4 value;
-    float noise = 1.0f;
-    std::vector<RecordPtr> hits;
-    std::vector<double> ranges_squared;
-    Random prng(key.hash());
-    double radius = options().blendRadius().get();
-    std::set<int> biomeids_seen;
+        GeoImageIterator iter(GeoImage(image.get(), key.getExtent()));
 
-    GeoImageIterator iter(GeoImage(image.get(), key.getExtent()));
-
-    iter.forEachPixelOnCenter([&]()
-        {
-            int biomeid = 0;
-
-            // randomly permute the coordinates in order to blend across biomes
-            double x = iter.x() + radius * (prng.next()*2.0 - 1.0);
-            double y = iter.y() + radius * (prng.next()*2.0 - 1.0);
-
-            // find the closest biome vector to the point:
-            index->KNNSearch(
-                osg::Vec3d(x,y,0).ptr(),
-                &hits,
-                nullptr,
-                1u,
-                0.0);
-
-            if (hits.size() > 0)
+        iter.forEachPixelOnCenter([&]()
             {
-                biomeid = hits[0]->_biomeid;
+                int biome_index = 0;
 
-                if (biomeid > 0)
-                    biomeids_seen.insert(biomeid);
-            }
+                // randomly permute the coordinates in order to blend across biomes
+                double x = iter.x() + radius * (prng.next()*2.0 - 1.0);
+                double y = iter.y() + radius * (prng.next()*2.0 - 1.0);
 
-            value.r() = (float)biomeid / 255.0f;
+                hits.clear();
 
-            write(value, iter.s(), iter.t());
-        });
+                // find the closest biome vector to the point:
+                pointIndex->KNNSearch(
+                    osg::Vec3d(x, y, 0).ptr(),
+                    &hits,
+                    nullptr,
+                    1u,
+                    0.0);
 
-    GeoImage result(image.get(), key.getExtent());
-    
-    trackImage(result, key, biomeids_seen);
+                if (hits.size() > 0)
+                {
+                    biome_index = hits[0]->_biome_index;
 
-    return std::move(result);
+                    if (biome_index > 0)
+                        biomeids_seen.insert(biome_index);
+                }
+
+                value.r() = biome_index;
+
+                write(value, iter.s(), iter.t());
+            });
+
+        GeoImage result(image.get(), key.getExtent());
+
+        trackImage(result, key, biomeids_seen);
+
+        return std::move(result);
+    }
+
+    PolygonSpatialIndex* polygonIndex = static_cast<PolygonSpatialIndex*>(_polygonIndex);
+    if (polygonIndex)
+    {
+        // allocate a 16-bit image so we can represent 32K biomes
+        osg::ref_ptr<osg::Image> image = new osg::Image();
+        image->allocateImage(
+            getTileSize(),
+            getTileSize(),
+            1,
+            GL_RED,
+            GL_FLOAT);
+        image->setInternalTextureFormat(GL_R16F);
+
+        ImageUtils::PixelWriter write(image.get());
+
+        osg::Vec4 value;
+        float noise = 1.0f;
+        std::vector<PolygonRecordPtr> hits;
+        std::vector<double> ranges_squared;
+        Random prng(key.hash());
+        double radius = options().blendRadius().get();
+        std::set<int> biome_indexes_seen;
+
+        GeoImage temp(image.get(), key.getExtent());
+        GeoImageIterator iter(temp);
+
+        iter.forEachPixelOnCenter([&]()
+            {
+                int biome_index = 0;
+
+                // randomly permute the coordinates in order to blend across biomes
+                double x = iter.x();
+                double y = iter.y();
+
+                if (radius > temp.getUnitsPerPixel())
+                {
+                    //double dx = (prng.next()*2.0 - 1.0), dy = (prng.next()*2.0 - 1.0);
+                    //double len = sqrt(dx*dx + dy*dy);
+                    //dx /= len, dy /= len;
+                    //x += radius * dx, y += radius * dy;
+                    x += radius * (prng.next()*2.0 - 1.0);
+                    y += radius * (prng.next()*2.0 - 1.0);
+                }
+
+                double a_point[2] = { x, y };
+
+                hits.clear();
+
+                polygonIndex->Search(
+                    a_point, a_point,
+                    &hits,
+                    999u);
+
+                for (auto& hit : hits)
+                {
+                    if (hit->_polygon->contains2D(x, y))
+                    {
+                        biome_index = hit->_biome_index;
+
+                        if (biome_index > 0)
+                            biome_indexes_seen.insert(biome_index);
+
+                        break;
+                    }
+                }
+
+                value.r() = biome_index;
+
+                write(value, iter.s(), iter.t());
+            });
+
+        GeoImage result(image.get(), key.getExtent());
+
+        trackImage(result, key, biome_indexes_seen);
+
+        return std::move(result);
+    }
+
+    return GeoImage::INVALID;
 }
 
 void
@@ -299,18 +461,18 @@ BiomeLayer::postCreateImageImplementation(
         GeoImageIterator iter(createdImage);
         ImageUtils::PixelReader read(createdImage.getImage());
 
-        std::set<int> biomeids_seen;
+        std::set<int> biome_indexes_seen;
         osg::Vec4 pixel;
 
         iter.forEachPixel([&]()
             {
                 int biomeid = 0;
                 read(pixel, iter.s(), iter.t());
-                int biome = (int)(pixel.r()*255.0f);
-                biomeids_seen.insert(biome);
+                int biome_index = (int)pixel.r();
+                biome_indexes_seen.insert(biome_index);
             });
 
-        trackImage(createdImage, key, biomeids_seen);
+        trackImage(createdImage, key, biome_indexes_seen);
     }
 }
 
@@ -318,13 +480,13 @@ void
 BiomeLayer::trackImage(
     GeoImage& image,
     const TileKey& key,
-    std::set<int>& biomeids) const
+    std::set<int>& biome_index_set) const
 {
     // inform the biome manager that we are using the biomes corresponding
     // to the biome ID's we collected
-    for (auto biomeid : biomeids)
+    for (auto biome_index : biome_index_set)
     {
-        const Biome* biome = getBiomeCatalog()->getBiome(biomeid);
+        const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
         if (biome)
             const_cast<BiomeManager*>(&_biomeMan)->ref(biome);
     }
@@ -334,7 +496,7 @@ BiomeLayer::trackImage(
     // destructs, and we can unref the usage in the BiomeManager accordingly.
     // This works, but reverses the flow of control, so maybe
     // there is a better solution -gw
-    osg::Object* token = new BiomeTrackerToken(std::move(biomeids));
+    osg::Object* token = new BiomeTrackerToken(std::move(biome_index_set));
     token->setName(Stringify() << "BiomeLayer " << key.str());
     image.setTrackingToken(token);
     token->addObserver(const_cast<BiomeLayer*>(this));
@@ -349,9 +511,9 @@ BiomeLayer::objectDeleted(void* value)
     _tracker.scoped_lock([&]() 
         {
             OE_DEBUG << LC << "Unloaded " << token->getName() << std::endl;
-            for (auto biomeid : token->_biomeids)
+            for (auto biome_index : token->_biome_index_set)
             {
-                const Biome* biome = getBiomeCatalog()->getBiome(biomeid);
+                const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
                 if (biome)
                     _biomeMan.unref(biome);
             }

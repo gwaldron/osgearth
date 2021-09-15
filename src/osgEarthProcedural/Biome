@@ -141,6 +141,8 @@ namespace osgEarth
         /** 
          * A subset of graphical assets that will be used
          * in a particular geographic region.
+         * A biome may have a "parent" biome. This means that if the Biome
+         * defines ZERO assets, it will use the parent biome's assets.
          */
         class OSGEARTHPROCEDURAL_EXPORT Biome
         {
@@ -149,8 +151,9 @@ namespace osgEarth
             Biome(const Config& conf, AssetCatalog* assets);
             Config getConfig() const;
 
+            OE_OPTION(std::string, id);
             OE_OPTION(std::string, name);
-            OE_OPTION(int, id);
+            OE_OPTION(std::string, parentName);
 
             // points to an asset, adding in some custom parameters.
             struct ModelAssetPointer
@@ -169,8 +172,22 @@ namespace osgEarth
 
             using ModelAssetGroups = ModelAssetPointers[NUM_ASSET_GROUPS];
             ModelAssetGroups _modelgroups;
+
+            //! The assets groups represented by this biome.
             ModelAssetGroups& assetGroups() { return _modelgroups; }
-            const ModelAssetPointers& assetPointers(int type) const { return _modelgroups[type]; }
+
+            //! Collection of this biome's asset pointers for the specified asset
+            //! group, or the assets from the parent biome if this biome's asset
+            //! list is empty.
+            const ModelAssetPointers& assetPointers(int type) const;
+
+            //! The sequential biome index uses in encoded raster data
+            int index() const { return _index; }
+            
+        private:
+            int _index;
+            const Biome* _parentBiome;
+            friend class BiomeCatalog;
         };
 
 
@@ -220,9 +237,12 @@ namespace osgEarth
             BiomeCatalog() { }
             BiomeCatalog(const Config& conf);
 
-            //! Fetch a biome by its unique ID
+            //! Fetch a biome by its sequential index (as used in raster data)
             //! @return nullptr if no match
-            const Biome* getBiome(int id) const;
+            const Biome* getBiomeByIndex(int index) const;
+
+            //! Fetch a biome by its ID string
+            const Biome* getBiome(const std::string& id) const;
 
             //! Vector of all biomes in the catalog
             std::vector<const Biome*> getBiomes() const;
@@ -239,10 +259,11 @@ namespace osgEarth
         public:
             Config getConfig() const;
 
-            AssetCatalog _assets;            
+            std::atomic_int _biomeIndexGenerator;
+            AssetCatalog _assets;
             std::shared_ptr<LifeMapValueTable> _landUseTable;
             std::shared_ptr<LifeMapValueTable> _landCoverTable;
-            std::unordered_map<int, Biome> _biomes;
+            std::unordered_map<int, Biome> _biomes_by_index;
         };
 
 } } // namespace osgEarth::Procedural

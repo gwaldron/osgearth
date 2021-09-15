@@ -22,6 +22,7 @@
 #include "VegetationFeatureGenerator"
 #include "NoiseTextureFactory"
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Math>
 #include <osg/ComputeBoundsVisitor>
 
 using namespace osgEarth;
@@ -33,17 +34,17 @@ using namespace osgEarth::Procedural;
 
 namespace
 {
-    // GLSL fract
-    inline float fract(float x)
-    {
-        return fmodf(x, 1.0f);
-    }
+    //// GLSL fract
+    //inline float fract(float x)
+    //{
+    //    return fmodf(x, 1.0f);
+    //}
 
-    // GLSL clamp
-    inline float clamp(float x, float m0, float m1)
-    {
-        return osg::clampBetween(x, m0, m1);
-    }
+    //// GLSL clamp
+    //inline float clamp(float x, float m0, float m1)
+    //{
+    //    return osg::clampBetween(x, m0, m1);
+    //}
 
     // Sample a texture with a scale/bias matrix
     inline void sample(osg::Vec4f& output, ImageUtils::PixelReader& texture, const osg::Matrixf& matrix, float u, float v)
@@ -365,13 +366,13 @@ VegetationFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output)
 
             // look up the biome:
             sampleBiome(biome_value, tilec.x(), tilec.y());
-            int biome_id = (int)(biome_value.r()*255.0f);
-            const Biome* biome = _biomelayer->getBiome(biome_id);
+            int biome_index = (int)(biome_value.r()); // *255.0f);
+            const Biome* biome = _biomelayer->getBiomeByIndex(biome_index);
             if (biome == nullptr)
             {
                 return Status(
                     Status::ConfigurationError,
-                    Stringify() << "Biome " << biome_id << " not found in the catalog");
+                    Stringify() << "Biome " << biome_index << " not found in the catalog");
             }
 
             // and the model category to use:

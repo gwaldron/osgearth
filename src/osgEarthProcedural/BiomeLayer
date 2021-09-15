@@ -54,8 +54,8 @@ namespace osgEarth
         public:
             META_Layer(osgEarthProcedural, BiomeLayer, Options, ImageLayer, Biomes);
                 
-            //! Get the biome corresponding to the input "id"
-            const Biome* getBiome(int id) const;
+            //! Get the biome at index "index"
+            const Biome* getBiomeByIndex(int index) const;
 
             //! The catalog holding all biome information
             std::shared_ptr<const BiomeCatalog> getBiomeCatalog() const;
@@ -92,7 +92,8 @@ namespace osgEarth
             FeatureList _features;
 
             // spatial index for _features
-            void* _index;
+            void* _pointIndex;
+            void* _polygonIndex;
 
             // handles memory residency of biome asset data
             BiomeManager _biomeMan;
@@ -105,6 +106,10 @@ namespace osgEarth
                 GeoImage& image,
                 const TileKey& key,
                 std::set<int>& biomeids) const;
+
+            void loadPointControlSet();
+
+            void loadPolygonControlSet();
         };
 
     }

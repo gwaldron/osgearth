@@ -13,7 +13,7 @@ osgEarth gives you the power to add beautiful 2D or 3D maps to your C++ applicat
 
 * [Fork on GitHub](https://github.com/gwaldron/osgearth)
 * [Getting Started - Documentation](http://docs.osgearth.org/en/latest/)
-* [Community Support Forum](http://forum.osgearth.org/)
+* [Community Support &amp; Discussions](https://github.com/gwaldron/osgearth/discussions)
 
 osgEarth is Free Open Source Software distributed under the LGPL.
 

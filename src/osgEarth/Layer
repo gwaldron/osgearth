@@ -51,7 +51,10 @@ namespace osgDB {
         MYCLASS () : SUPERCLASS() { fromConfig(_conf); } \
         \
         OE_COMMENT("Construct layer options from serialized data") \
-        MYCLASS (const osgEarth::ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); }
+        MYCLASS (const osgEarth::ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); } \
+        \
+        Config& _internal() { return _conf; } \
+        const Config& _internal() const { return _conf; }
 
 
 //! Macro to use when defining a Layer class
@@ -275,6 +278,17 @@ namespace osgEarth
         //! Attribution to be displayed by the application
 		virtual void setAttribution(const std::string& attribution);
 
+        //! Set a serialized user property
+        void setUserProperty(
+            const std::string& key, 
+            const std::string& value);
+
+        //! Get a serialized user property
+        template<typename T>
+        inline T getUserProperty(
+            const std::string& key,
+            T fallback) const;
+
     public:
 
         //! Traversal callback
@@ -483,7 +497,10 @@ namespace osgEarth
             if (wasOpen) open();
         }
     }
-
+    template<typename T>
+    T Layer::getUserProperty(const std::string& key, T fallback) const {
+        return options()._internal().value(key, fallback);
+    }
 
 
 #define REGISTER_OSGEARTH_LAYER(NAME,CLASS) \

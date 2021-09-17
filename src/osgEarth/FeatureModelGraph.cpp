@@ -1370,7 +1370,8 @@ FeatureModelGraph::writeTileToCache(const std::string&    cacheKey,
  * data source.
  */
 osg::ref_ptr<osg::Group>
-FeatureModelGraph::buildTile(const FeatureLevel& level,
+FeatureModelGraph::buildTile(
+    const FeatureLevel& level,
     const GeoExtent& extent,
     const TileKey* key,
     const osgDB::Options* readOptions)
@@ -1428,12 +1429,11 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
         // does the level have a style name set?
         if (level.styleName().isSet())
         {
-            osg::Node* node = 0L;
             const Style* style = _session->styles()->getStyle(*level.styleName(), false);
             if (style)
             {
                 // found a specific style to use.
-                node = createStyleGroup(*style, query, index, readOptions, progress.get());
+                osg::Node* node = createStyleGroup(*style, query, index, readOptions, progress.get());
                 if (node)
                     group->addChild(node);
             }
@@ -1445,6 +1445,12 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
                     buildStyleGroups(selector, query, index, group.get(), readOptions, progress.get());
                 }
             }
+        }
+
+        else if (level.styleExpression().isSet())
+        {
+            StyleSelector selector("", level.styleExpression().get());
+            buildStyleGroups(&selector, query, index, group.get(), readOptions, progress.get());
         }
 
         else

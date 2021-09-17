@@ -55,6 +55,10 @@ namespace osgEarth
         optional<std::string>& styleName() { return _styleName; }
         const optional<std::string>& styleName() const { return _styleName; }
 
+        /** Scripting expression to resolve for the style */
+        optional<StringExpression>& styleExpression() { return _styleExpr; }
+        const optional<StringExpression>& styleExpression() const { return _styleExpr; }
+
         
         virtual ~FeatureLevel() { }
 
@@ -68,6 +72,7 @@ namespace osgEarth
         optional<float>       _minRange;
         optional<float>       _maxRange;
         optional<std::string> _styleName;
+        optional<StringExpression> _styleExpr;
     };
 
     /**

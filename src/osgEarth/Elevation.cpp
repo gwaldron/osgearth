@@ -52,7 +52,7 @@ osgEarth::createEmptyNormalMapTexture()
 }
 
 ElevationTexture::ElevationTexture(
-    const TileKey& key, 
+    const TileKey& key,
     const GeoHeightField& in_hf,
     const std::vector<float>& resolutions) :
 
@@ -224,14 +224,14 @@ NormalMapGenerator::createNormalMap(
 
     ElevationPool::WorkingSet* workingSet = static_cast<ElevationPool::WorkingSet*>(ws);
 
-    osg::Image* image = new osg::Image();
+    osg::ref_ptr<osg::Image> image = new osg::Image();
     image->allocateImage(
         ELEVATION_TILE_SIZE, ELEVATION_TILE_SIZE, 1,
         GL_RG, GL_UNSIGNED_BYTE);
 
     ElevationPool* pool = map->getElevationPool();
 
-    ImageUtils::PixelWriter write(image);
+    ImageUtils::PixelWriter write(image.get());
 
     ImageUtils::PixelWriter writeRuggedness(ruggedness);
 
@@ -314,7 +314,7 @@ NormalMapGenerator::createNormalMap(
         double y_or_lat = ex.yMin() + v*ex.height();
 
         for(int s=0; s<write.s(); ++s)
-        {    
+        {
             int p = (4*write.s()*t + 4*s);
 
             res.set(points[p].w(), res.getUnits());
@@ -371,7 +371,7 @@ NormalMapGenerator::createNormalMap(
         }
     }
 
-    osg::Texture2D* normalTex = new osg::Texture2D(image);
+    osg::Texture2D* normalTex = new osg::Texture2D(image.get());
 
     normalTex->setInternalFormat(GL_RG8);
     normalTex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
@@ -381,7 +381,7 @@ NormalMapGenerator::createNormalMap(
     normalTex->setResizeNonPowerOfTwoHint(false);
     normalTex->setMaxAnisotropy(1.0f);
     normalTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    
+
     return normalTex;
 }
 

@@ -39,32 +39,38 @@ namespace osgEarth {
         {
         private:
             osg::observer_ptr<MapNode> _mapNode;
-            bool _showDetails;
             bool _showDisabled;
-            std::function<bool(Layer*)> _shownPred;
+            std::function<bool(const Layer*)> _showPred;
+            LayerVector _layers;
+            std::vector<bool> _layerExpanded;
+            int _mapRevision;
 
         public:
             LayersGUI() : BaseGUI("Map Layers"),
-                _showDetails(false),
-                _showDisabled(false)
+                _showDisabled(false),
+                _mapRevision(-1)
             {
+                _showPred = [this](const Layer* layer)
+                {
+                    return
+                        dynamic_cast<const VisibleLayer*>(layer) &&
+                        layer->getUserProperty("show_in_ui", true);
+                };
             }
 
             //! Sets a predicate that decides whether to include a layer in the GUI
-            void setShowPredicate(std::function<bool(Layer*)> func)
+            void setShowPredicate(std::function<bool(const Layer*)> func)
             {
-                _shownPred = func;
+                _showPred = func;
             }
 
             void load(const Config& conf) override
             {
-                conf.get("ShowDetails", _showDetails);
                 conf.get("ShowDisabled", _showDisabled);
             }
 
             void save(Config& conf) override
             {
-                conf.set("ShowDetails", _showDetails);
                 conf.set("ShowDisabled", _showDisabled);
             }
 
@@ -76,10 +82,23 @@ namespace osgEarth {
                 if (!findNodeOrHide(_mapNode, ri))
                     return;
 
-                osg::Camera* camera = ri.getCurrentCamera();
                 const Map* map = _mapNode->getMap();
-                osgEarth::VisibleLayerVector layers;
-                map->getLayers(layers);
+
+                Revision rev = map->getDataModelRevision();
+                if (rev != _mapRevision)
+                {
+                    _layers.clear();
+                    _layerExpanded.clear();
+
+                    if (_showPred)
+                        _mapRevision = map->getLayers(_layers, _showPred);
+                    else
+                        _mapRevision = map->getLayers(_layers);
+
+                    _layerExpanded.assign(_layers.size(), false);
+                }
+
+                osg::Camera* camera = ri.getCurrentCamera();
 
                 ImGui::Begin(name(), visible());
                 {
@@ -88,20 +107,15 @@ namespace osgEarth {
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), map->getName().c_str());
                     }
 
-                    if (ImGui::Checkbox("Details", &_showDetails)) dirtySettings();
-                    ImGui::SameLine();
                     if (ImGui::Checkbox("Show All", &_showDisabled)) dirtySettings();
 
                     ImGui::Separator();
 
-                    for (int i = layers.size() - 1; i >= 0; --i)
+                    for (int i = _layers.size() - 1; i >= 0; --i)
                     {
-                        osgEarth::Layer* layer = layers[i].get();
+                        osgEarth::Layer* layer = _layers[i].get();
 
                         if (!_showDisabled && !layer->isOpen() && !layer->getEnabled())
-                            continue;
-
-                        if (_shownPred && _shownPred(layer) == false)
                             continue;
 
                         ImGui::PushID(layer);
@@ -139,64 +153,28 @@ namespace osgEarth {
 
                             ImGui::SameLine();
 
-                            bool selected = false;
-                            ImGui::Selectable(layer->getName().c_str(), &selected);
-                            if (selected)
+                            ImGui::PushID("selectable");
+                            bool layerNameClicked = false;
+                            ImGui::Selectable(layer->getName().c_str(), &layerNameClicked);
+                            if (layerNameClicked)
                             {
-                                const GeoExtent& extent = layer->getExtent();
-                                if (extent.isValid())
-                                {
-                                    std::vector<GeoPoint> points;
-                                    points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
-                                    points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
-
-                                    ViewFitter fitter(map->getSRS(), camera);
-                                    Viewpoint vp;
-                                    if (fitter.createViewpoint(points, vp))
-                                    {
-                                        auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
-                                        if (manip) manip->setViewpoint(vp, 2.0);
-                                    }
-                                }
-                                else if (layer->getNode())
-                                {
-                                    ViewFitter fitter(map->getSRS(), camera);
-                                    Viewpoint vp;
-                                    if (fitter.createViewpoint(layer->getNode(), vp))
-                                    {
-                                        auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
-                                        if (manip) manip->setViewpoint(vp, 2.0);
-                                    }
-                                }
+                                _layerExpanded[i] = !_layerExpanded[i];
                             }
+                            ImGui::PopID(); // "selectable"
                         }
                         else
                         {
                             ImGui::Text(layer->getName().c_str());
                         }
 
-                        if (_showDetails)
+                        if (_layerExpanded[i])
                         {
                             ImGui::Indent();
 
-                            ImGui::TextColored(
-                                ImVec4(.8, .8, .8, 1), "%s", layer->className());
+                            ImGui::TextColored(ImVec4(.8, .8, .8, 1), "%s", layer->className());
 
                             if (layer->isOpen())
                             {
-                                auto tileLayer = dynamic_cast<osgEarth::TileLayer*>(layer);
-                                if (tileLayer)
-                                {
-                                    const Profile* profile = tileLayer->getProfile();
-                                    if (profile)
-                                    {
-                                        std::string srsname = profile->getSRS()->getName();
-                                        if (srsname == "unknown")
-                                            srsname = profile->getSRS()->getHorizInitString();
-                                        ImGui::TextColored(ImVec4(.8,.8,.8,1),"%s", srsname.c_str());
-                                    }
-                                }
-
                                 auto elevationLayer = dynamic_cast<osgEarth::ElevationLayer*>(layer);
                                 if (visibleLayer && !elevationLayer)
                                 {
@@ -204,13 +182,11 @@ namespace osgEarth {
                                     ImGui::PushID("opacity");
                                     ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
                                     visibleLayer->setOpacity(opacity);
+                                    ImGui::PopID();
 
                                     bool modulate = visibleLayer->getColorBlending() == BLEND_MODULATE;
-                                    if (ImGui::Checkbox("Modulate", &modulate)) {
+                                    if (ImGui::Checkbox("Modulate", &modulate))
                                         visibleLayer->setColorBlending(modulate ? BLEND_MODULATE : BLEND_INTERPOLATE);
-                                    }
-
-                                    ImGui::PopID();
                                 }
 
                                 auto threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(layer);
@@ -233,6 +209,57 @@ namespace osgEarth {
                                     ImGui::Checkbox("Show color per tile", &colorPerTile);
                                     threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
                                     ImGui::PopID();
+                                }
+
+                                auto tileLayer = dynamic_cast<osgEarth::TileLayer*>(layer);
+                                if (tileLayer)
+                                {
+                                    const Profile* profile = tileLayer->getProfile();
+                                    if (profile)
+                                    {
+                                        std::string srsname = profile->getSRS()->getName();
+                                        if (srsname == "unknown")
+                                            srsname = profile->getSRS()->getHorizInitString();
+                                        ImGui::TextColored(ImVec4(.8, .8, .8, 1), "%s", srsname.c_str());
+                                    }
+                                }
+                                const GeoExtent& extent = layer->getExtent();
+                                if (extent.isValid())
+                                {
+                                    ImGui::TextWrapped("W:%.1f  E:%.1f  S:%.1f  N:%.1f",
+                                        extent.west(), extent.east(), extent.south(), extent.north());
+                                }
+
+                                if (extent.isValid() ||
+                                    (layer->getNode() && layer->getNode()->getBound().valid()))
+                                {
+                                    if (ImGui::Button("Zoom"))
+                                    {
+                                        if (extent.isValid())
+                                        {
+                                            std::vector<GeoPoint> points;
+                                            points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
+                                            points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
+
+                                            ViewFitter fitter(map->getSRS(), camera);
+                                            Viewpoint vp;
+                                            if (fitter.createViewpoint(points, vp))
+                                            {
+                                                auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                                                if (manip) manip->setViewpoint(vp, 2.0);
+                                            }
+                                        }
+                                        else if (layer->getNode())
+                                        {
+                                            ViewFitter fitter(map->getSRS(), camera);
+                                            Viewpoint vp;
+                                            if (fitter.createViewpoint(layer->getNode(), vp))
+                                            {
+                                                auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                                                if (manip) manip->setViewpoint(vp, 2.0);
+                                            }
+                                        }
+                                    }
                                 }
                             }
 

@@ -279,8 +279,8 @@ Biome::Biome(const Config& conf, AssetCatalog* assetCatalog) :
 {
     conf.get("id", id());
     conf.get("name", name());
-    conf.get("parent", parentName());
-    conf.get("inherits_from", parentName());
+    conf.get("parent", parentId());
+    conf.get("inherits_from", parentId());
 
     ConfigSet assets = conf.child("assets").children("asset");
     for (const auto& child : assets)
@@ -308,7 +308,7 @@ Biome::getConfig() const
     Config conf("biome");
     conf.set("id", id());
     conf.set("name", name());
-    conf.set("parent", parentName());
+    conf.set("parent", parentId());
 
     //TODO
     OE_WARN << __func__ << " not implemented" << std::endl;
@@ -359,9 +359,9 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
     for (auto& iter : _biomes_by_index)
     {
         Biome& biome = iter.second;
-        if (biome.parentName().isSet())
+        if (biome.parentId().isSet())
         {
-            const Biome* parent = getBiome(biome.parentName().get());
+            const Biome* parent = getBiome(biome.parentId().get());
             if (parent)
                 biome._parentBiome = parent;
         }
@@ -385,11 +385,11 @@ BiomeCatalog::getBiomeByIndex(int index) const
 }
 
 const Biome*
-BiomeCatalog::getBiome(const std::string& name) const
+BiomeCatalog::getBiome(const std::string& id) const
 {
     for (auto& iter : _biomes_by_index)
     {
-        if (iter.second.name() == name)
+        if (iter.second.id() == id)
         {
             return &iter.second;
         }

@@ -153,7 +153,7 @@ namespace osgEarth
 
             OE_OPTION(std::string, id);
             OE_OPTION(std::string, name);
-            OE_OPTION(std::string, parentName);
+            OE_OPTION(std::string, parentId);
 
             // points to an asset, adding in some custom parameters.
             struct ModelAssetPointer

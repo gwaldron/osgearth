@@ -81,11 +81,11 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     useTerrain().setDefault(true);
     useLandUse().setDefault(true); // if the layer is set (not serialized)
     useColor().setDefault(true); // if the layer is set (not serialized)
-    landCoverWeight() = 1.0f;
-    landCoverBlur() = 0.1f;
-    terrainWeight() = 1.0f;
-    colorWeight() = 1.0f;
-    slopeIntensity() = 1.0f;
+    landCoverWeight().setDefault(1.0f);
+    landCoverBlur().setDefault(Distance(20.0f, Units::METERS));
+    terrainWeight().setDefault(1.0f);
+    colorWeight().setDefault(1.0f);
+    slopeIntensity().setDefault(1.0f);
 
     biomeLayer().get(conf, "biomes_layer");
     maskLayer().get(conf, "mask_layer");
@@ -491,7 +491,7 @@ LifeMapLayer::createImageImplementation(
     const LifeMapValueTable* landcover_table;
     std::unordered_map<std::string, int> specialTextureIndexLUT;
 
-
+    // a "metaimage" lets us sample in the neighborhood of a tilekey image
     TileKeyMetaImage landcover_metaimage;
 
 
@@ -593,7 +593,7 @@ LifeMapLayer::createImageImplementation(
         getTileSize(),
         getTileSize(),
         1,
-        GL_RGBA,
+        GL_RGB, //GL_RGBA,
         GL_UNSIGNED_BYTE);
 
     ImageUtils::PixelWriter write(image.get());
@@ -624,13 +624,9 @@ LifeMapLayer::createImageImplementation(
         // Generate noise:
         for (int n = 0; n < 4; ++n)
         {
-            //TODO: well?
-            if (true)//key.getLOD() >= noiseLOD[n])
-            {
-                noiseCoords[n].set(i.u(), i.v());
-                scaleCoordsToRefLOD(noiseCoords[n], key, noiseLOD[n]);
-                getNoise(noise[n], noiseSampler, noiseCoords[n]);
-            }
+            noiseCoords[n].set(i.u(), i.v());
+            scaleCoordsToRefLOD(noiseCoords[n], key, noiseLOD[n]);
+            getNoise(noise[n], noiseSampler, noiseCoords[n]);
         }
 
         // Establish elevation at this pixel:
@@ -701,13 +697,20 @@ LifeMapLayer::createImageImplementation(
 #if 1
             // read the landcover with a blurring filter.
             landcover_pixel.set(0, 0, 0, 0);
-            double blur = clamp(options().landCoverBlur().get(), 0.0f, 0.9f);
+            double blur_m = std::max(0.0, options().landCoverBlur()->as(Units::METERS));
+
+            double width_m = key.getExtent().width(Units::METERS);
+            double height_m = key.getExtent().height(Units::METERS);
+
+            double blur_u = blur_m / width_m;
+            double blur_v = blur_m / height_m;
+
             int lc_kernel_count = 0;
             LifeMapValue lc_temp;
             for (int a = -1; a <= 1; ++a) {
                 for (int b = -1; b <= 1; ++b) {
                     osg::Vec4f temp;
-                    landcover_metaimage.read(uu + (double)a*blur, vv + (double)b*blur, temp);
+                    landcover_metaimage.read(uu + (double)a*blur_u, vv + (double)b*blur_v, temp);
                     const LandCoverClass* lcc = _landCoverDictionary->getClassByValue((int)temp.r());
                     if (lcc) {
                         const LifeMapValue* value = landcover_table->getValue(lcc->getName());
@@ -907,7 +910,7 @@ LifeMapLayer::createImageImplementation(
             readDensityMask(dm_pixel, uu, vv);
 
             pixel[LIFEMAP_DENSE] *= dm_pixel.r();
-            pixel[LIFEMAP_LUSH] *= (0.25 + 0.75*dm_pixel.r()); // 75% effect
+            pixel[LIFEMAP_LUSH] *= dm_pixel.r(); // (0.25 + 0.75*dm_pixel.r()); // 75% effect
             pixel[LIFEMAP_RUGGED] *= dm_pixel.r();
         }
 

@@ -139,6 +139,7 @@ osgEarth Sample - Annotations
                 stroke-width:        3;
                 stroke-tessellation-size: 1km;
                 altitude-clamping:   terrain-gpu;
+                render-depth-offset: true;
             </style>
         </feature>
         <label text="GPU-Clamped Line" lat="44" long="-115">
@@ -203,12 +204,12 @@ osgEarth Sample - Annotations
                 LINESTRING(10 0, 10 65)
             </geometry>
             <style type="text/css">
-                stroke:              #ffff00;
-                stroke-width:        3;
+                stroke: #ffff00;
+                stroke-width: 3;
                 stroke-tessellation-size: 1km;
-                altitude-clamping:   terrain;
-                altitude-technique:  gpu;
-                render-lighting:     false;
+                altitude-offset: 10000;
+                render-lighting: false;
+                render-depth-offset: true;
             </style>
         </feature>
 

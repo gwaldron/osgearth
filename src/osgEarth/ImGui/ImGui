@@ -387,7 +387,8 @@ namespace osgEarth
 
             //! Add all the built-in GUIs
             ApplicationGUI(
-                bool addBuiltIns = false) : OsgImGuiHandler()
+                bool addBuiltIns = false) : OsgImGuiHandler(),
+                _showDemoWindow(false)
             {
                 if (addBuiltIns)
                 {
@@ -398,7 +399,8 @@ namespace osgEarth
             //! Add all the built-in GUIs
             ApplicationGUI(
                 osg::ArgumentParser& args,
-                bool addBuiltIns =false) : OsgImGuiHandler()
+                bool addBuiltIns =false) : OsgImGuiHandler(),
+                _showDemoWindow(false)
             {
                 if (addBuiltIns)
                 {
@@ -479,13 +481,18 @@ namespace osgEarth
             //! Render everything
             void draw(osg::RenderInfo& ri) override
             {
+                if (_showDemoWindow)
+                    ImGui::ShowDemoWindow();
+
                 if (ImGui::BeginMainMenuBar())
                 {
                     if (ImGui::BeginMenu("File"))
                     {
-                        bool quit = false;
-                        ImGui::MenuItem("Quit", nullptr, &quit);
-                        if (quit) exit(0);
+                        ImGui::MenuItem("ImGui Demo Window", nullptr, &_showDemoWindow);
+
+                        if (ImGui::MenuItem("Quit"))
+                            exit(0);
+
                         ImGui::EndMenu();
                     }
 
@@ -565,6 +572,7 @@ namespace osgEarth
             using GUIVector = std::vector<std::unique_ptr<BaseGUI>>;
             using SortedMenuMap = std::map<std::string, GUIVector>;
             SortedMenuMap _menu;
+            bool _showDemoWindow;
         };
     }
 }

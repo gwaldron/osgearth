@@ -79,9 +79,19 @@ float getElevation(in vec2 tilec) {
     return texture(oe_tile_elevationTex, elevc).r;
 }
 
-uniform float dense_power = 1.0;
-uniform float lush_power = 1.0;
-uniform float rugged_power = 1.0;
+#pragma import_defines(OE_BIOME_INDEX)
+#pragma import_defines(OE_LIFEMAP_DIRECT)
+#pragma import_defines(OE_SPLAT_TWEAKS)
+#ifdef OE_SPLAT_TWEAKS
+#define tweakable uniform
+#else
+#define tweakable const
+#endif
+
+tweakable float dense_power = 1.0;
+tweakable float lush_power = 1.0;
+tweakable float rugged_power = 1.0;
+tweakable int oe_biome_override = 0;
 
 #define RUGGED 0
 #define DENSE 1
@@ -120,22 +130,32 @@ void generate()
         return;
 #endif
 
-    float fill;
-    float lush;
-
+#ifdef OE_BIOME_INDEX
+    int biome_index = OE_BIOME_INDEX;
+#else
     vec2 biome_uv = (OE_BIOME_MATRIX*tilec4).st;
     ivec2 biome_xy = ivec2(biome_uv * 255.0);
-    int biome_index = int(texelFetch(OE_BIOME_SAMPLER, biome_xy, 0).r); // *255.0);
-    Biome biome = biomes[biome_index];
+    int biome_index = int(texelFetch(OE_BIOME_SAMPLER, biome_xy, 0).r);
+#endif
 
+    Biome biome = biomes[biome_index];
+    
     if (biome.offset < 0) // undefined biome
         return;
 
+#ifdef OE_LIFEMAP_DIRECT
+    float fill = dense_power;
+    float lush = lush_power;
+#else
     vec2 lifemap_uv = (OE_LIFEMAP_MATRIX*tilec4).st;
     vec3 lifemap = texture(OE_LIFEMAP_SAMPLER, lifemap_uv).xyz;
-    fill = lifemap[DENSE] * dense_power;
-    lush = lifemap[LUSH] * lush_power;
-    lush = noise[pickNoiseType] * lush;
+    float fill = lifemap[DENSE] * dense_power;
+    float lush = lifemap[LUSH] * lush_power;
+#endif
+
+    // allows lush-based selection to smoothly transition
+    float lush_variation = (0.25*noise[pickNoiseType]) - 0.125;
+    lush = clamp(lush + lush_variation, 0, 1);
 
     // select an asset at random
     int pickIndex = clamp(int(floor(lush * float(biome.count))), 0, biome.count - 1);

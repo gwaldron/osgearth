@@ -263,7 +263,7 @@ namespace osgEarth
             AssetCatalog _assets;
             std::shared_ptr<LifeMapValueTable> _landUseTable;
             std::shared_ptr<LifeMapValueTable> _landCoverTable;
-            std::unordered_map<int, Biome> _biomes_by_index;
+            std::map<int, Biome> _biomes_by_index; // keep ordered by index
         };
 
 } } // namespace osgEarth::Procedural

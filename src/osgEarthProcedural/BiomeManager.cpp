@@ -90,8 +90,7 @@ BiomeManager::ref(const Biome* biome)
 
     auto item = _refs.emplace(biome, 0);
     ++item.first->second;
-    if (item.first->second == 1)
-    //if (item.second == true) // true == new insertion
+    if (item.first->second == 1) // ref count of 1 means it's new
     {
         ++_revision;
     }

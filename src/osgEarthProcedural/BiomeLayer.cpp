@@ -104,6 +104,8 @@ BiomeLayer::init()
     _pointIndex = nullptr;
     _polygonIndex = nullptr;
 
+    _autoBiomeManagement = true;
+
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 }
 
@@ -299,6 +301,18 @@ BiomeLayer::getBiomeByIndex(int index) const
         return nullptr;
 }
 
+void
+BiomeLayer::setAutoBiomeManagement(bool value)
+{
+    _autoBiomeManagement = value;
+}
+
+bool
+BiomeLayer::getAutoBiomeManagement() const
+{
+    return _autoBiomeManagement;
+}
+
 GeoImage
 BiomeLayer::createImageImplementation(
     const TileKey& key,
@@ -482,13 +496,16 @@ BiomeLayer::trackImage(
     const TileKey& key,
     std::set<int>& biome_index_set) const
 {
-    // inform the biome manager that we are using the biomes corresponding
-    // to the biome ID's we collected
-    for (auto biome_index : biome_index_set)
+    if (getAutoBiomeManagement())
     {
-        const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
-        if (biome)
-            const_cast<BiomeManager*>(&_biomeMan)->ref(biome);
+        // inform the biome manager that we are using the biomes corresponding
+        // to the biome ID's we collected
+        for (auto biome_index : biome_index_set)
+        {
+            const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
+            if (biome)
+                const_cast<BiomeManager*>(&_biomeMan)->ref(biome);
+        }
     }
 
     // Create a "token" object that we can track for destruction.
@@ -511,11 +528,17 @@ BiomeLayer::objectDeleted(void* value)
     _tracker.scoped_lock([&]() 
         {
             OE_DEBUG << LC << "Unloaded " << token->getName() << std::endl;
-            for (auto biome_index : token->_biome_index_set)
+
+            if (getAutoBiomeManagement())
             {
-                const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
-                if (biome)
-                    _biomeMan.unref(biome);
+                for (auto biome_index : token->_biome_index_set)
+                {
+                    const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
+                    if (biome)
+                    {
+                        _biomeMan.unref(biome);
+                    }
+                }
             }
             _tracker.erase(token);
         });

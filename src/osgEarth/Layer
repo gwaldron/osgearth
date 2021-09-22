@@ -53,8 +53,8 @@ namespace osgDB {
         OE_COMMENT("Construct layer options from serialized data") \
         MYCLASS (const osgEarth::ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); } \
         \
-        Config& _internal() { return _conf; } \
-        const Config& _internal() const { return _conf; }
+        osgEarth::Config& _internal() { return _conf; } \
+        const osgEarth::Config& _internal() const { return _conf; }
 
 
 //! Macro to use when defining a Layer class
@@ -276,7 +276,7 @@ namespace osgEarth
         virtual std::string getAttribution() const;
 
         //! Attribution to be displayed by the application
-		virtual void setAttribution(const std::string& attribution);
+        virtual void setAttribution(const std::string& attribution);
 
         //! Set a serialized user property
         void setUserProperty(
@@ -385,7 +385,7 @@ namespace osgEarth
         //! invoke layer callbacks
         void fireCallback(LayerCallback::MethodPtr);
 
-        //! mutable layer hints for the subclas to optionally access
+        //! mutable layer hints for the subclass to optionally access
         Hints& layerHints();
 
         //! MapNode will call this function when terrain resources are available.

@@ -31,6 +31,7 @@
 #include <osg/GL>
 #include <osg/Texture2DArray>
 #include <osg/NodeVisitor>
+#include <osg/Program>
 
 namespace osgEarth
 {
@@ -151,6 +152,14 @@ namespace osgEarth
             void allocate(unsigned numTiles, GLsizei alignment, osg::State&);
         };
 
+        struct PCPData
+        {
+            PCPData() : _pcp(nullptr), _passUL(-1), _numCommandsUL(-1) { }
+            const osg::Program::PerContextProgram* _pcp;
+            GLint _passUL;      // uniform location for compute/rendering pass
+            GLint _numCommandsUL; // uniform loc for draw cmd count
+        };
+
         struct InstancingData
         {
             CommandBuffer _commandBuffer; // One for each unique model plus one for billboards
@@ -166,8 +175,8 @@ namespace osgEarth
             unsigned _highestTileSlotInUse;
 
             GLsizei _alignment; // SSBO range alignment
-            GLint _passUL;      // uniform location for compute/rendering pass
-            GLint _numCommandsUL; // uniform loc for draw cmd count
+
+            std::unordered_map<const void*, PCPData> _pcpData;
 
             osg::ref_ptr<GeometryCloud> _geom;  // merged geometry
 
@@ -175,6 +184,18 @@ namespace osgEarth
             ~InstancingData();
             bool allocateGLObjects(osg::State& state, unsigned numTiles);
             void releaseGLObjects(osg::State* state) const;
+
+            inline PCPData* getPCPData(osg::RenderInfo& ri) {
+                auto pcp = ri.getState()->getLastAppliedProgramObject();
+                if (!pcp) return nullptr;
+                PCPData& p = _pcpData[pcp];
+                if (p._pcp == nullptr) {
+                    p._pcp = pcp;
+                    p._passUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_pass"));
+                    p._numCommandsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_ic_numCommands"));
+                }
+                return &p;
+            }
         };
 
     public:
@@ -227,25 +248,6 @@ namespace osgEarth
     private:
 
         InstancingData _data;
-
-#if 0
-        //! Installed on the geometry cloud to intercept drawing and 
-        //! run the multi draw indirect commands.
-        struct Renderer : public osg::Geometry::DrawCallback
-        {
-            Renderer(GeometryCloud* geom);
-            void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const;
-            GeometryCloud* _geom;
-        };
-
-        //! Utility to install the draw callback on the geometry cloud.
-        struct Installer : public osg::NodeVisitor
-        {
-            Installer(GeometryCloud* geom);
-            void apply(osg::Drawable& drawable);
-            osg::ref_ptr<Renderer> _callback;
-        };
-#endif
     };
 
     /**

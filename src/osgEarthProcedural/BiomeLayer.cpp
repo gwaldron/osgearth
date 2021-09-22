@@ -305,6 +305,11 @@ void
 BiomeLayer::setAutoBiomeManagement(bool value)
 {
     _autoBiomeManagement = value;
+    
+    if (_autoBiomeManagement == false)
+    {
+        _biomeMan.reset();
+    }
 }
 
 bool
@@ -468,7 +473,8 @@ BiomeLayer::postCreateImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
-    if (createdImage.getTrackingToken() == nullptr)
+    if (getAutoBiomeManagement() &&
+        createdImage.getTrackingToken() == nullptr)
     {
         // if there's no tracking token (e.g., this image came from the cache)
         // build and attach one now.
@@ -496,16 +502,13 @@ BiomeLayer::trackImage(
     const TileKey& key,
     std::set<int>& biome_index_set) const
 {
-    if (getAutoBiomeManagement())
+    // inform the biome manager that we are using the biomes corresponding
+    // to the biome ID's we collected
+    for (auto biome_index : biome_index_set)
     {
-        // inform the biome manager that we are using the biomes corresponding
-        // to the biome ID's we collected
-        for (auto biome_index : biome_index_set)
-        {
-            const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
-            if (biome)
-                const_cast<BiomeManager*>(&_biomeMan)->ref(biome);
-        }
+        const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
+        if (biome)
+            const_cast<BiomeManager*>(&_biomeMan)->ref(biome);
     }
 
     // Create a "token" object that we can track for destruction.

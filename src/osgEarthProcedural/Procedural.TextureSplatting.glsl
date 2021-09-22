@@ -154,7 +154,7 @@ float contrastify(in float v, in float c)
 
 float modify(in float val, in float modifier)
 {
-#ifdef OE_LIFEMAP_DIRECT
+#if defined(OE_LIFEMAP_DIRECT) && OE_LIFEMAP_DIRECT
     return clamp(modifier, 0.0, 1.0);
 #else
     return clamp(val * modifier, 0.0, 1.0);
@@ -193,12 +193,6 @@ float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2, in 
     float b2 = max(h2 + a2 - ma, 0.0);
     return b2 / (b1 + b2);
 }
-
-// 3x3 material matrix
-//const int TEX_DIM_X = 3;
-//const int TEX_DIM_Y = 3;
-//const float TEX_DIM_X_F = 3.0;
-//const float TEX_DIM_Y_Y = 3.0;
 
 struct Pixel {
     vec4 rgbh;

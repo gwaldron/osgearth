@@ -173,6 +173,14 @@ namespace osgEarth
                 return dynamic_cast<osgViewer::View*>(ri.getCurrentCamera()->getView());
             }
 
+            inline osg::Camera* camera(osg::RenderInfo& ri) const {
+                return ri.getCurrentCamera();
+            }
+
+            inline osg::StateSet* stateset(osg::RenderInfo& ri) const {
+                return ri.getCurrentCamera()->getOrCreateStateSet();
+            }
+
             // convenience function for finding nodes
             template<typename T>
             bool findNode(osg::observer_ptr<T>& node, osg::RenderInfo& ri) const {

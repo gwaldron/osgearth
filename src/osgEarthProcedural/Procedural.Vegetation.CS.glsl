@@ -130,7 +130,7 @@ void generate()
         return;
 #endif
 
-#ifdef OE_BIOME_INDEX
+#if defined(OE_BIOME_INDEX) && (OE_BIOME_INDEX >=0)
     int biome_index = OE_BIOME_INDEX;
 #else
     vec2 biome_uv = (OE_BIOME_MATRIX*tilec4).st;
@@ -143,7 +143,7 @@ void generate()
     if (biome.offset < 0) // undefined biome
         return;
 
-#ifdef OE_LIFEMAP_DIRECT
+#if defined(OE_LIFEMAP_DIRECT) && OE_LIFEMAP_DIRECT
     float fill = dense_power;
     float lush = lush_power;
 #else

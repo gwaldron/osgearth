@@ -90,8 +90,7 @@ BiomeManager::ref(const Biome* biome)
 
     auto item = _refs.emplace(biome, 0);
     ++item.first->second;
-    if (item.first->second == 1)
-    //if (item.second == true) // true == new insertion
+    if (item.first->second == 1) // ref count of 1 means it's new
     {
         ++_revision;
     }
@@ -103,8 +102,13 @@ BiomeManager::unref(const Biome* biome)
     ScopedMutexLock lock(_mutex);
 
     auto iter = _refs.find(biome);
-    OE_SOFT_ASSERT_AND_RETURN(iter != _refs.end(), void());
-    OE_SOFT_ASSERT_AND_RETURN(iter->second > 0, void());
+    
+    // silent assertion
+    if (iter == _refs.end() || iter->second == 0)
+        return;
+
+    //OE_SOFT_ASSERT_AND_RETURN(iter != _refs.end(), void());
+    //OE_SOFT_ASSERT_AND_RETURN(iter->second > 0, void());
 
     --iter->second;
     if (iter->second == 0)
@@ -117,6 +121,17 @@ int
 BiomeManager::getRevision() const
 {
     return _revision;
+}
+
+void
+BiomeManager::reset()
+{
+    ScopedMutexLock lock(_mutex);
+
+    // reset the reference counts, and bump the revision so the
+    // next call to update will remove any resident data
+    _refs.clear();
+    ++_revision;
 }
 
 void

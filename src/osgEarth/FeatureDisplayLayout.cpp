@@ -50,6 +50,8 @@ FeatureLevel::fromConfig( const Config& conf )
     conf.get( "max_range", _maxRange );
     conf.get( "style",     _styleName ); 
     conf.get( "class",     _styleName ); // alias
+    conf.get( "style_expr", _styleExpr );
+    conf.get( "class_expr", _styleExpr ); // alias
 }
 
 Config
@@ -59,6 +61,7 @@ FeatureLevel::getConfig() const
     conf.set( "min_range", _minRange );
     conf.set( "max_range", _maxRange );
     conf.set( "style",     _styleName );
+    conf.set( "style_expr", _styleExpr);
     return conf;
 }
 

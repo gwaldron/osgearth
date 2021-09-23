@@ -1065,6 +1065,7 @@ VegetationLayer::Renderer::CameraState::CameraState() :
 
 struct StateEx : public osg::State {
     UniformMap& getMutableUniformMap() { return _uniformMap; }
+    inline void updateDefines() { _defineMap.updateCurrentDefines(); }
 };
 
 void
@@ -1183,7 +1184,6 @@ VegetationLayer::Renderer::CameraState::draw(
     if (needsGenerate || needsCull)
     {
         state->pushStateSet(_renderer->_computeSS.get());
-        OE_HARD_ASSERT(state->getLastAppliedProgramObject() != nullptr); // catch shader error
 
         for (auto& group : _groups)
         {
@@ -1288,6 +1288,8 @@ VegetationLayer::Renderer::GroupState::compute(
     osg::State* state = ri.getState();
 
     state->apply(_instancer->getGeometryCloud()->getStateSet());
+    
+    OE_HARD_ASSERT(state->getLastAppliedProgramObject() != nullptr); // catch shader error
 
     if (state->getUseModelViewAndProjectionUniforms())
         state->applyModelViewAndProjectionUniformsIfRequired();
@@ -1304,7 +1306,6 @@ VegetationLayer::Renderer::GroupState::compute(
 
         state->applyModelViewMatrix(mvm);
     }
-
 
     if (needs_cull)
     {
@@ -1421,7 +1422,8 @@ VegetationLayer::Renderer::GroupState::collect(
             // Keep it around.
             i._expired = false;
 
-            if (i._revision != tile->getRevision())
+            if (i._revision != tile->getRevision() || 
+                _layer->_forceGenerate)
             {
                 // revision changed! Mark it dirty for regeneration.
                 i._revision = tile->getRevision();

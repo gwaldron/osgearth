@@ -63,6 +63,16 @@ namespace osgEarth
             //! Manager that paged biome data in and out
             BiomeManager& getBiomeManager() { return _biomeMan; }
 
+            //! Whether to automatically load and unload biomes, or to 
+            //! allow the user to manually do so with the setBiome() call.
+            //! Default is true, meaning that as the user navigates the map,
+            //! the manager will automatically load and unload biomes 
+            //! according to location.
+            void setAutoBiomeManagement(bool value);
+            bool getAutoBiomeManagement() const;
+
+        public: // Layer
+
             virtual void addedToMap(const Map*) override;
 
         protected:
@@ -97,6 +107,10 @@ namespace osgEarth
 
             // handles memory residency of biome asset data
             BiomeManager _biomeMan;
+
+            // whether to automatically load and unload biomes based on
+            // the vector control set (defaults to true)
+            bool _autoBiomeManagement;
 
             using Tracker = std::unordered_map<osg::Object*, TileKey>;
             mutable Mutexed<Tracker> _tracker;

@@ -120,6 +120,9 @@ namespace osgEarth
             //! biome's instance and free its memory.
             void unref(const Biome* biome);
 
+            //! Unload everything and set all the refs to zero.
+            void reset();
+
             //! The revision of the current configuration. This increments
             //! every time the set of resident biomes changes, so that a
             //! client can decide to get an updated configuration.

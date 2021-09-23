@@ -673,3 +673,11 @@ Layer::getOsgOptionString() const
 {
     return options().osgOptionString().get();
 }
+
+void
+Layer::setUserProperty(
+    const std::string& key,
+    const std::string& value)
+{
+    options()._internal().set(key, value);
+}

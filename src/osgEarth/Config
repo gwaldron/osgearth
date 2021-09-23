@@ -639,10 +639,10 @@ namespace osgEarth
 //! optional property macro
 #define OE_OPTION(TYPE, NAME) \
     private: \
-    optional< TYPE > _ ## NAME ; \
+    osgEarth::optional< TYPE > _ ## NAME ; \
     public: \
-    optional< TYPE >& NAME () { return _ ## NAME; } \
-    const optional< TYPE >& NAME () const { return _ ## NAME; }
+    osgEarth::optional< TYPE >& NAME () { return _ ## NAME; } \
+    const osgEarth::optional< TYPE >& NAME () const { return _ ## NAME; }
 
 //! ref_ptr property macro
 #define OE_OPTION_REFPTR(TYPE, NAME) \

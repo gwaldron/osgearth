@@ -72,8 +72,16 @@ struct LifeMapGUI : public GUI::BaseGUI
 {
     App _app;
     LifeMapLayer* lifemap;
+    bool _lifemap_direct;
+    float _rugged_power;
+    float _dense_power;
+    float _lush_power;
 
-    LifeMapGUI(App& app) : GUI::BaseGUI("Life Map"), _app(app)
+    LifeMapGUI(App& app) : GUI::BaseGUI("Life Map"), _app(app),
+        _lifemap_direct(false),
+        _rugged_power(1.0f),
+        _dense_power(1.0f),
+        _lush_power(1.0f)
     {
         lifemap = _app._map->getLayer<LifeMapLayer>();
         OE_HARD_ASSERT(lifemap != nullptr);
@@ -81,14 +89,52 @@ struct LifeMapGUI : public GUI::BaseGUI
 
     void draw(osg::RenderInfo& ri) override
     {
-        ImGui::Begin("LifeMap Tweaks");
+        ImGui::Begin("LifeMap");
+
+        // lifemap adjusters
+
+        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Runtime Adjustments");
+        ImGui::Indent();
+
+        if (ImGui::Checkbox("LifeMap Direct Set", &_lifemap_direct))
+        {
+            if (_lifemap_direct) {
+                stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "1", 0x7);
+                _rugged_power = std::min(_rugged_power, 1.0f);
+                _dense_power = std::min(_dense_power, 1.0f);
+                _lush_power = std::min(_lush_power, 1.0f);
+            }
+            else {
+                //stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
+                stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "0", 0x7);
+            }
+        }
+
+        float lm_max = _lifemap_direct ? 1.0f : 4.0f;
+
+        ImGui::SliderFloat(_lifemap_direct ? "Dense" : "Dense multiplier", &_dense_power, 0.0f, lm_max);
+        stateset(ri)->addUniform(new osg::Uniform("dense_power", _dense_power));
+
+        ImGui::SliderFloat(_lifemap_direct ? "Rugged" : "Rugged multiplier", &_rugged_power, 0.0f, lm_max);
+        stateset(ri)->addUniform(new osg::Uniform("rugged_power", _rugged_power));
+
+        ImGui::SliderFloat(_lifemap_direct ? "Lush" : "Lush multiplier", &_lush_power, 0.0f, lm_max);
+        stateset(ri)->addUniform(new osg::Uniform("lush_power", _lush_power));
+
+        ImGui::Unindent();
+        ImGui::Separator();
+
+        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator Settings");
+        ImGui::Indent();
 
         LifeMapLayer::Options& o = lifemap->options();
         
         ImGui::Checkbox("Use landcover", &o.useLandCover().mutable_value());
         if (o.useLandCover() == true)
         {
-            ImGui::SliderFloat("Landcover blur", &o.landCoverBlur().mutable_value(), 0.0f, 0.5f);
+            float value = o.landCoverBlur()->as(Units::METERS);
+            if (ImGui::SliderFloat("Landcover blur (m)", &value, 0.0f, 100.0f))
+                o.landCoverBlur()->set(value, Units::METERS);
         }
 
         ImGui::Checkbox("Use terrain elevation/slope", &o.useTerrain().mutable_value());
@@ -119,6 +165,8 @@ struct LifeMapGUI : public GUI::BaseGUI
                 GeoExtent::INVALID);
         }
 
+        ImGui::Unindent();
+
         ImGui::End();
     }
 };
@@ -132,10 +180,6 @@ struct TextureSplattingGUI : public GUI::BaseGUI
     float _blend_rgbh_mix;
     float _blend_normal_mix;
     float _depth;
-    bool _lifemap_direct;
-    float _rugged_power;
-    float _dense_power;
-    float _lush_power;
     float _normal_power;
     float _ao_power;
     float _brightness;
@@ -144,7 +188,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
     float _snow_min_elev;
     float _snow_max_elev;
 
-    TextureSplattingGUI(App& app) : GUI::BaseGUI("Texture Splatting"), _app(app)
+    TextureSplattingGUI(App& app) : GUI::BaseGUI("Splatting"), _app(app)
     {
         _installed = false;
         _blend_start = 2500.0f;
@@ -152,10 +196,6 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         _blend_rgbh_mix = 0.85f;
         _blend_normal_mix = 0.72f;
         _depth = 0.02f;
-        _lifemap_direct = false;
-        _rugged_power = 1.0f;
-        _dense_power = 1.0f;
-        _lush_power = 1.0f;
         _normal_power = 1.0f;
         _ao_power = 1.0f;
         _brightness = 1.0f;
@@ -172,63 +212,46 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         if (!_installed)
         {
             // activate tweakable uniforms
-            ri.getCurrentCamera()->getOrCreateStateSet()->setDefine("OSGEARTH_SPLAT_TWEAKS");
+            stateset(ri)->setDefine("OE_SPLAT_TWEAKS", 0x7);
         }
 
         // uniforms
-        ImGui::SliderFloat("Level blend start (m)", &_blend_start, 0.0f, 5000.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_start", _blend_start));
-
-        ImGui::SliderFloat("Level blend end (m)", &_blend_end, 0.0f, 5000.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_end", _blend_end));
-
-        ImGui::SliderFloat("RGBH mix", &_blend_rgbh_mix, 0.0f, 1.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_rgbh_mix", _blend_rgbh_mix));
-
-        ImGui::SliderFloat("Normal mix", &_blend_normal_mix, 0.0f, 1.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _blend_normal_mix));
-
-        ImGui::SliderFloat("Displacement depth", &_depth, 0.001f, 0.3f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_depth", _depth));
-
-        if (ImGui::Checkbox("LifeMap Direct Set", &_lifemap_direct)) {
-            _app._mapNode->getOrCreateStateSet()->setDefine("OSGEARTH_LIFEMAP_DIRECT");
-        }
-        else {
-            _app._mapNode->getOrCreateStateSet()->removeDefine("OSGEARTH_LIFEMAP_DIRECT");
-        }
-        float lm_max = _lifemap_direct ? 1.0f : 4.0f;
-
-        ImGui::SliderFloat("Dense power", &_dense_power, 0.0f, lm_max);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("dense_power", _dense_power));
-
-        ImGui::SliderFloat("Rugged power", &_rugged_power, 0.0f, lm_max);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("rugged_power", _rugged_power));
-
-        ImGui::SliderFloat("Lush power", &_lush_power, 0.0f, lm_max);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("lush_power", _lush_power));
-
 
         ImGui::SliderFloat("Normal power", &_normal_power, 0.0f, 4.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("normal_power", _normal_power));
+        stateset(ri)->addUniform(new osg::Uniform("normal_power", _normal_power));
 
         ImGui::SliderFloat("AO power", &_ao_power, 0.0f, 16.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("ao_power", _ao_power));
+        stateset(ri)->addUniform(new osg::Uniform("ao_power", _ao_power));
+
+        ImGui::SliderFloat("Displacement depth", &_depth, 0.001f, 0.3f);
+        stateset(ri)->addUniform(new osg::Uniform("oe_depth", _depth));
+
+        ImGui::SliderFloat("Level blend start (m)", &_blend_start, 0.0f, 5000.0f);
+        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_start", _blend_start));
+
+        ImGui::SliderFloat("Level blend end (m)", &_blend_end, 0.0f, 5000.0f);
+        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_end", _blend_end));
+
+        ImGui::SliderFloat("RGBH mix", &_blend_rgbh_mix, 0.0f, 1.0f);
+        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_rgbh_mix", _blend_rgbh_mix));
+
+        ImGui::SliderFloat("Normal mix", &_blend_normal_mix, 0.0f, 1.0f);
+        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _blend_normal_mix));
 
         ImGui::SliderFloat("Global brightness", &_brightness, 0.0f, 4.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("brightness", _brightness));
+        stateset(ri)->addUniform(new osg::Uniform("brightness", _brightness));
 
         ImGui::SliderFloat("Global contrast", &_contrast, 0.0f, 4.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("contrast", _contrast));
+        stateset(ri)->addUniform(new osg::Uniform("contrast", _contrast));
 
         ImGui::SliderFloat("Snow", &_snow, 0.0f, 1.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_snow", _snow));
+        stateset(ri)->addUniform(new osg::Uniform("oe_snow", _snow));
 
         ImGui::SliderFloat("Snow bottom elev", &_snow_min_elev, 0.0f, 2500.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_snow_min_elev", _snow_min_elev));
+        stateset(ri)->addUniform(new osg::Uniform("oe_snow_min_elev", _snow_min_elev));
 
         ImGui::SliderFloat("Snow top elev", &_snow_max_elev, 2500.0f, 5000.0f);
-        _app._mapNode->getOrCreateStateSet()->addUniform(new osg::Uniform("oe_snow_max_elev", _snow_max_elev));
+        stateset(ri)->addUniform(new osg::Uniform("oe_snow_max_elev", _snow_max_elev));
 
         ImGui::End();
     }
@@ -245,6 +268,8 @@ struct BiomeGUI : public GUI::BaseGUI
     float _total;
     float _sse_target_ms;
     bool _forceGenerate;
+    bool _manualBiomes;
+    std::unordered_map<const Biome*, bool> _isManualBiomeActive;
     Clock::time_point _lastVisit;
     osg::ref_ptr<osg::Uniform> _sseUni;
     osg::observer_ptr<BiomeLayer> _biolayer;
@@ -255,6 +280,7 @@ struct BiomeGUI : public GUI::BaseGUI
         _sse(100.0f),
         _auto_sse(false),
         _forceGenerate(false),
+        _manualBiomes(false),
         _sse_target_ms(15.0f)
     {
         //nop
@@ -321,9 +347,62 @@ struct BiomeGUI : public GUI::BaseGUI
                 }
             }
 
-            //if (ImGui::Checkbox("Always generate", &_forceGenerate)) {
-            //    _app._map->getLayer<VegetationLayer>()->setGenerate(_forceGenerate);
-            //}
+            if (ImGui::Checkbox("Regenerate vegetation every frame", &_forceGenerate)) {
+                _app._map->getLayer<VegetationLayer>()->setAlwaysGenerate(_forceGenerate);
+            }
+
+            if (ImGui::CollapsingHeader("All Biomes"))
+            {
+                auto layer = _app._map->getLayer<BiomeLayer>();
+                auto biocat = layer->getBiomeCatalog();
+                auto& bioman = layer->getBiomeManager();
+
+                if (ImGui::Checkbox("Select biomes manually", &_manualBiomes))
+                {
+                    layer->setAutoBiomeManagement(!_manualBiomes);
+
+                    if (_manualBiomes)
+                    {
+                        _isManualBiomeActive.clear();
+                        for (auto biome : biocat->getBiomes())
+                            _isManualBiomeActive[biome] = false;
+                    }
+                    else
+                    {
+                        stateset(ri)->setDefine("OE_BIOME_INDEX", "-1", 0x7);
+                    }
+                }
+
+                ImGui::Separator();
+
+                if (_manualBiomes)
+                {
+                    int num = 1;
+                    for (auto biome : biocat->getBiomes())
+                    {
+                        ImGui::PushID(biome);
+                        if (ImGui::Checkbox(biome->name()->c_str(), &_isManualBiomeActive[biome]))
+                        {
+                            if (_isManualBiomeActive[biome])
+                            {
+                                bioman.ref(biome);
+                                stateset(ri)->setDefine("OE_BIOME_INDEX", std::to_string(num), 0x7);
+                            }
+                            else
+                            {
+                                bioman.unref(biome);
+                            }
+                        }
+                        ImGui::PopID();
+                        ++num;
+                    }
+                }
+                else
+                {
+                    for (auto biome : biocat->getBiomes())
+                        ImGui::Text(biome->name()->c_str());
+                }
+            }
 
             if (ImGui::CollapsingHeader("Active Biomes", ImGuiTreeNodeFlags_DefaultOpen))
             {

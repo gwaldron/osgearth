@@ -3,7 +3,7 @@
 #pragma vp_function oe_splat_View, vertex_view
 #extension GL_ARB_gpu_shader_int64 : enable
 
-#pragma import_defines(OSGEARTH_SPLAT_TWEAKS)
+#pragma import_defines(OE_SPLAT_TWEAKS)
 
 #define NUM_LEVELS 2
 const int levels[2] = int[](14, 19);
@@ -19,7 +19,7 @@ out float oe_elev;
 
 float oe_terrain_getElevation();
 
-#ifdef OSGEARTH_SPLAT_TWEAKS
+#ifdef OE_SPLAT_TWEAKS
 #define tweakable uniform
 #else
 #define tweakable const
@@ -69,8 +69,8 @@ uniform mat4 OE_COLOR_LAYER_MAT;
 #pragma import_defines(OE_TEX_DIM_X)
 #pragma import_defines(OE_TEX_DIM_Y)
 
-#pragma import_defines(OSGEARTH_SPLAT_TWEAKS)
-#pragma import_defines(OSGEARTH_LIFEMAP_DIRECT)
+#pragma import_defines(OE_SPLAT_TWEAKS)
+#pragma import_defines(OE_LIFEMAP_DIRECT)
 
 layout(binding = 5, std430) buffer TextureLUT {
     uint64_t texHandle[];
@@ -99,7 +99,7 @@ in vec2 splatCoords[2];
 flat in int maxLevel;
 in float oe_elev;
 
-#ifdef OSGEARTH_SPLAT_TWEAKS
+#ifdef OE_SPLAT_TWEAKS
     #define tweakable uniform
 #else
     #define tweakable const
@@ -154,7 +154,7 @@ float contrastify(in float v, in float c)
 
 float modify(in float val, in float modifier)
 {
-#ifdef OSGEARTH_LIFEMAP_DIRECT
+#if defined(OE_LIFEMAP_DIRECT) && OE_LIFEMAP_DIRECT
     return clamp(modifier, 0.0, 1.0);
 #else
     return clamp(val * modifier, 0.0, 1.0);
@@ -193,12 +193,6 @@ float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2, in 
     float b2 = max(h2 + a2 - ma, 0.0);
     return b2 / (b1 + b2);
 }
-
-// 3x3 material matrix
-//const int TEX_DIM_X = 3;
-//const int TEX_DIM_Y = 3;
-//const float TEX_DIM_X_F = 3.0;
-//const float TEX_DIM_Y_Y = 3.0;
 
 struct Pixel {
     vec4 rgbh;
@@ -308,6 +302,7 @@ void oe_splat_Frag(inout vec4 quad)
 
     Pixel pixel;
 
+#if 0
     ivec2 xy = ivec2(uv * 255.0);
     vec4 iquad = texelFetch(OE_LIFEMAP_TEX, xy, 0);
     int special = int(iquad[SPECIAL] * 255.0);
@@ -321,6 +316,7 @@ void oe_splat_Frag(inout vec4 quad)
         pixel.ao = material[3];
     }
     else
+#endif
     {
         for (int i = 0; i < NUM_LEVELS; ++i)
         {

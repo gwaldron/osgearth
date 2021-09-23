@@ -104,6 +104,8 @@ BiomeLayer::init()
     _pointIndex = nullptr;
     _polygonIndex = nullptr;
 
+    _autoBiomeManagement = true;
+
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 }
 
@@ -299,6 +301,23 @@ BiomeLayer::getBiomeByIndex(int index) const
         return nullptr;
 }
 
+void
+BiomeLayer::setAutoBiomeManagement(bool value)
+{
+    _autoBiomeManagement = value;
+    
+    if (_autoBiomeManagement == false)
+    {
+        _biomeMan.reset();
+    }
+}
+
+bool
+BiomeLayer::getAutoBiomeManagement() const
+{
+    return _autoBiomeManagement;
+}
+
 GeoImage
 BiomeLayer::createImageImplementation(
     const TileKey& key,
@@ -454,7 +473,8 @@ BiomeLayer::postCreateImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
-    if (createdImage.getTrackingToken() == nullptr)
+    if (getAutoBiomeManagement() &&
+        createdImage.getTrackingToken() == nullptr)
     {
         // if there's no tracking token (e.g., this image came from the cache)
         // build and attach one now.
@@ -511,11 +531,17 @@ BiomeLayer::objectDeleted(void* value)
     _tracker.scoped_lock([&]() 
         {
             OE_DEBUG << LC << "Unloaded " << token->getName() << std::endl;
-            for (auto biome_index : token->_biome_index_set)
+
+            if (getAutoBiomeManagement())
             {
-                const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
-                if (biome)
-                    _biomeMan.unref(biome);
+                for (auto biome_index : token->_biome_index_set)
+                {
+                    const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
+                    if (biome)
+                    {
+                        _biomeMan.unref(biome);
+                    }
+                }
             }
             _tracker.erase(token);
         });

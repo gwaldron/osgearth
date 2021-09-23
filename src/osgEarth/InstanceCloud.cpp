@@ -225,8 +225,8 @@ InstanceCloud::RenderBuffer::allocate(unsigned numInstances, GLsizei alignment, 
 InstanceCloud::InstancingData::InstancingData() :
     _numTilesAllocated(0u),
     _alignment((GLsizei)-1),
-    _passUL((GLint)-1),
-    _numCommandsUL((GLint)-1),
+    //_passUL((GLint)-1),
+    //_numCommandsUL((GLint)-1),
     _numX(0u),
     _numY(0u)
 {
@@ -402,17 +402,10 @@ InstanceCloud::generate_begin(osg::RenderInfo& ri)
 {
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
-    // find the "pass" uniform first time in
-    if (_data._passUL < 0)
-    {
-        const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
-        if (!pcp) return;
+    PCPData* pcp_data = _data.getPCPData(ri);
+    if (!pcp_data) return;
 
-        _data._passUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_pass"));
-        _data._numCommandsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_ic_numCommands"));
-    }
-
-    ext->glUniform1i(_data._passUL, PASS_GENERATE);
+    ext->glUniform1i(pcp_data->_passUL, PASS_GENERATE);
 
     // Reset the instance buffer so we can generate all new data
     _data._cullBuffer.clear();
@@ -432,7 +425,10 @@ InstanceCloud::generate_end(osg::RenderInfo& ri)
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
     // run the merge pass to consolidate gen buffers into instance buffer
-    ext->glUniform1i(_data._passUL, (int)PASS_MERGE);
+    PCPData* pcp_data = _data.getPCPData(ri);
+    if (!pcp_data) return;
+
+    ext->glUniform1i(pcp_data->_passUL, (int)PASS_MERGE);
 
     int numPossibleInstances = (_data._highestTileSlotInUse+1) * _data._numX * _data._numY;
 
@@ -471,12 +467,14 @@ InstanceCloud::cull(osg::RenderInfo& ri)
     if (state.getUseModelViewAndProjectionUniforms())
         state.applyModelViewAndProjectionUniformsIfRequired();
 
+    PCPData* pcp_data = _data.getPCPData(ri);
+    if (!pcp_data) return;
+
     // first pass: cull
     {
         //OE_PROFILING_GPU_ZONE("IC:Cull");
-
-        ext->glUniform1i(_data._passUL, (int)PASS_CULL);
-        ext->glUniform1i(_data._numCommandsUL, (int)_data._geom->getNumDrawCommands());
+        ext->glUniform1i(pcp_data->_passUL, (int)PASS_CULL);
+        ext->glUniform1i(pcp_data->_numCommandsUL, (int)_data._geom->getNumDrawCommands());
         ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // prep to read from SSBO
 
         GLFunctions::get(state).
@@ -487,7 +485,7 @@ InstanceCloud::cull(osg::RenderInfo& ri)
     {
         //OE_PROFILING_GPU_ZONE("IC:Sort");
 
-        ext->glUniform1i(_data._passUL, (int)PASS_SORT);
+        ext->glUniform1i(pcp_data->_passUL, (int)PASS_SORT);
         ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // prep to read from SSBO
 
         GLFunctions::get(state).

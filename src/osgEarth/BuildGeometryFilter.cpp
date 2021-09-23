@@ -324,10 +324,10 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         if ( !line )
             continue;
 
-        std::string imageURI;
+        URI imageURI;
 
         // Image URI
-        if (line->imageURI().isSet() && context.getSession() && context.getSession()->getResourceCache())
+        if (line->imageURI().isSet() && context.getSession()) // && context.getSession()->getResourceCache())
         {
             StringExpression temp( *line->imageURI() );
             imageURI = URI(input->eval(temp, context.getSession()), temp.uriContext()).full();
@@ -335,7 +335,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
         // Try to find the existing geode, otherwise create one.
         osg::ref_ptr< osg::Geode > geode;
-        TextureToGeodeMap::iterator itr = geodes.find(imageURI);
+        TextureToGeodeMap::iterator itr = geodes.find(imageURI.full());
         if (itr != geodes.end())
         {
             geode = itr->second;
@@ -348,12 +348,34 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             if (imageURI.empty() == false)
             {
                 osg::ref_ptr<osg::Texture> tex;
-                if (context.getSession()->getResourceCache()->getOrCreateLineTexture(imageURI, tex, context.getDBOptions()))
+                if (context.getSession()->getResourceCache())
+                {
+                    context.getSession()->getResourceCache()->getOrCreateLineTexture(
+                        imageURI, tex, context.getDBOptions());
+                }
+                else
+                {
+                    osg::ref_ptr<osg::Image> image = imageURI.getImage(context.getDBOptions());
+                    if (image.valid())
+                    {
+                        tex = new osg::Texture2D(image);
+                        tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+                        tex->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+                        tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
+                        tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+                        tex->setMaxAnisotropy(4.0f);
+                        tex->setResizeNonPowerOfTwoHint(false);
+                        tex->setUnRefImageDataAfterApply(false);
+                    }
+                }
+
+                if (tex.valid())
                 {
                     geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get(), 1);
                 }
             }
-            geodes[imageURI] = geode;
+
+            geodes[imageURI.full()] = geode;
         }
 
         // run a symbol script if present.

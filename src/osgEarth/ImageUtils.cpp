@@ -1796,9 +1796,9 @@ namespace
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float b = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float b = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
             float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
+            float red = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
             out.set(red, g, b, 1.0f);
         }
     };

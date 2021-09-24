@@ -396,6 +396,8 @@ namespace osgEarth {
                         ImGui::Text("Bounding sphere (local) center=(%.3f, %.3f, %.3f) radius=%.3f", bs.center().x(), bs.center().y(), bs.center().z(), bs.radius());
                     }
 
+                    ImGui::Text("Reference count %d", node->referenceCount());
+
                     ImGui::TreePop();
                 }
 

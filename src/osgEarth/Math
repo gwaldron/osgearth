@@ -305,6 +305,8 @@ namespace osgEarth
     {
         return static_cast<T>(1.0) - (static_cast<T>(1.0) - x)*(static_cast<T>(1.0) - x);
     }
+    template<typename T>
+    inline T decel(T x) { return harden(x); }
 
     // move closer to zero
     template<typename T>
@@ -312,6 +314,8 @@ namespace osgEarth
     {
         return x * x;
     }
+    template<typename T>
+    inline T accel(T x) { return soften(x); }
 
     template<typename T>
     inline T threshold(T x, T thresh, T buf)

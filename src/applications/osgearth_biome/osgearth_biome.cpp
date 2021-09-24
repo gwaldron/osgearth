@@ -105,7 +105,6 @@ struct LifeMapGUI : public GUI::BaseGUI
                 _lush_power = std::min(_lush_power, 1.0f);
             }
             else {
-                //stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
                 stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "0", 0x7);
             }
         }
@@ -128,37 +127,35 @@ struct LifeMapGUI : public GUI::BaseGUI
         ImGui::Indent();
 
         LifeMapLayer::Options& o = lifemap->options();
-        
-        ImGui::Checkbox("Use landcover", &o.useLandCover().mutable_value());
-        if (o.useLandCover() == true)
-        {
-            float value = o.landCoverBlur()->as(Units::METERS);
-            if (ImGui::SliderFloat("Landcover blur (m)", &value, 0.0f, 100.0f))
-                o.landCoverBlur()->set(value, Units::METERS);
-        }
 
-        ImGui::Checkbox("Use terrain elevation/slope", &o.useTerrain().mutable_value());
-        if (o.useTerrain() == true)
-        {
-            ImGui::SliderFloat("Terrain weight", &o.terrainWeight().mutable_value(), 0.0f, 1.0f);
-        }
-
-        if (lifemap->getLandUseLayer())
-        {
-            ImGui::Checkbox("Use OSM landuse vectors", &o.useLandUse().mutable_value());
-        }
+        ImGui::TextColored(ImVec4(1,1,0,1),"LifeMap contributions levels:");
+        ImGui::Separator();
+        ImGui::SliderFloat("Landcover contrib", &o.landCoverWeight().mutable_value(), 0.0f, 1.0f);
+        ImGui::Indent();
+        float value = o.landCoverBlur()->as(Units::METERS);
+        if (ImGui::SliderFloat("Landcover blur (m)", &value, 0.0f, 100.0f))
+            o.landCoverBlur()->set(value, Units::METERS);
+        ImGui::Unindent();
 
         if (lifemap->getColorLayer())
         {
-            ImGui::Checkbox("Use coloration", &o.useColor().mutable_value());
+            ImGui::SliderFloat("Imagery color contrib", &o.colorWeight().mutable_value(), 0.0f, 1.0f);
         }
 
-        ImGui::SliderFloat(
-            "Slope intensity",
-            &o.slopeIntensity().mutable_value(),
-            1.0f, 10.0f);
+        ImGui::SliderFloat("Terrain contrib", &o.terrainWeight().mutable_value(), 0.0f, 1.0f);
+        ImGui::Indent();
+        ImGui::SliderFloat("Slope contrib", &o.slopeIntensity().mutable_value(), 1.0f, 10.0f);
+        ImGui::SliderFloat("Slope cutoff", &o.slopeCutoff().mutable_value(), 0.0f, 1.0f);
+        ImGui::Unindent();
 
-        if (ImGui::Button("Apply"))
+        if (lifemap->getLandUseLayer())
+        {
+            ImGui::SliderFloat("Land Use contrib", &o.landUseWeight().mutable_value(), 0.0f, 1.0f);
+        }
+
+        ImGui::SliderFloat("Noise contrib", &o.noiseWeight().mutable_value(), 0.0f, 1.0f);
+
+        if (ImGui::Button("Apply Changes"))
         {
             _app._mapNode->getTerrainEngine()->invalidateRegion(
                 { lifemap },

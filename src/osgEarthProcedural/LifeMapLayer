@@ -52,16 +52,14 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(FeatureSource, landUseLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
 
-            OE_OPTION(bool, useLandCover);
-            OE_OPTION(bool, useTerrain);
             OE_OPTION(float, landCoverWeight);
             OE_OPTION(Distance, landCoverBlur);
             OE_OPTION(float, terrainWeight);
-            OE_OPTION(float, colorWeight);
             OE_OPTION(float, slopeIntensity);
-
-            OE_OPTION(bool, useLandUse);
-            OE_OPTION(bool, useColor);
+            OE_OPTION(float, slopeCutoff);
+            OE_OPTION(float, colorWeight);
+            OE_OPTION(float, noiseWeight);
+            OE_OPTION(float, landUseWeight);
 
             virtual Config getConfig() const;
         private:
@@ -83,17 +81,26 @@ namespace osgEarth { namespace Procedural
         void setColorLayer(ImageLayer*);
         ImageLayer* getColorLayer() const;
 
-        void setUseLandCover(bool value);
+        void setLandCoverWeight(float value);
+        float getLandCoverWeight() const;
+        //void setUseLandCover(bool value);
         bool getUseLandCover() const;
 
-        void setUseTerrain(bool value);
+        void setTerrainWeight(float value);
+        float getTerrainWeight() const;
         bool getUseTerrain() const;
 
-        void setUseLandUse(bool value);
+        void setLandUseWeight(float value);
+        float getLandUseWeight() const;
         bool getUseLandUse() const;
 
-        void setUseColor(bool value);
+        void setColorWeight(float value);
+        float getColorWeight() const;
         bool getUseColor() const;
+
+        void setNoiseWeight(float value);
+        float getNoiseWeight() const;
+        bool getUseNoise() const;
 
     protected:
 

@@ -69,30 +69,36 @@ LifeMapLayer::Options::getConfig() const
     maskLayer().set(conf, "mask_layer");
     colorLayer().set(conf, "color_layer");
     landUseLayer().set(conf, "land_use_layer");
-    conf.set("use_land_cover", useLandCover());
-    conf.set("use_terrain", useTerrain());
+    conf.set("land_cover_weight", landCoverWeight());
+    conf.set("land_cover_blur", landCoverBlur());
+    conf.set("terrain_weight", terrainWeight());
+    conf.set("color_weight", colorWeight());
+    conf.set("noise_weight", noiseWeight());
+    conf.set("land_use_weight", landUseWeight());
     return conf;
 }
 
 void
 LifeMapLayer::Options::fromConfig(const Config& conf)
 {
-    useLandCover().setDefault(false);
-    useTerrain().setDefault(true);
-    useLandUse().setDefault(true); // if the layer is set (not serialized)
-    useColor().setDefault(true); // if the layer is set (not serialized)
     landCoverWeight().setDefault(1.0f);
     landCoverBlur().setDefault(Distance(20.0f, Units::METERS));
     terrainWeight().setDefault(1.0f);
-    colorWeight().setDefault(1.0f);
     slopeIntensity().setDefault(1.0f);
+    colorWeight().setDefault(1.0f);
+    noiseWeight().setDefault(0.3f);
+    landUseWeight().setDefault(1.0f);
 
     biomeLayer().get(conf, "biomes_layer");
     maskLayer().get(conf, "mask_layer");
     colorLayer().get(conf, "color_layer");
     landUseLayer().get(conf, "land_use_layer");
-    conf.get("use_land_cover", useLandCover());
-    conf.get("use_terrain", useTerrain());
+    conf.get("land_cover_weight", landCoverWeight());
+    conf.get("land_cover_blur", landCoverBlur());
+    conf.get("terrain_weight", terrainWeight());
+    conf.get("color_weight", colorWeight());
+    conf.get("noise_weight", noiseWeight());
+    conf.get("land_use_weight", landUseWeight());
 }
 
 //........................................................................
@@ -148,8 +154,8 @@ namespace
         const osg::Vec2& coords)
     {
         read(noise, coords.x(), coords.y());
-        //noise *= 2.0;
-        //noise.r() -= 1.0, noise.g() -= 1.0, noise.b() -= 1.0, noise.a() -= 1.0;
+        noise *= 2.0;
+        noise.r() -= 1.0, noise.g() -= 1.0, noise.b() -= 1.0, noise.a() -= 1.0;
     }
 
     struct LandUseTile
@@ -366,77 +372,102 @@ LifeMapLayer::getColorLayer() const
 }
 
 void
-LifeMapLayer::setUseLandCover(bool value)
+LifeMapLayer::setLandCoverWeight(float value)
 {
-    options().useLandCover() = value;
+    options().landCoverWeight() = value;
+}
+
+float
+LifeMapLayer::getLandCoverWeight() const
+{
+    return options().landCoverWeight().get();
 }
 
 bool
 LifeMapLayer::getUseLandCover() const
 {
-    return options().useLandCover().get();
+    return getLandCoverWeight() > 0;
 }
 
 void
-LifeMapLayer::setUseTerrain(bool value)
+LifeMapLayer::setTerrainWeight(float value)
 {
-    options().useTerrain() = value;
+    options().terrainWeight() = value;
+}
+
+float
+LifeMapLayer::getTerrainWeight() const
+{
+    return options().terrainWeight().get();
 }
 
 bool
 LifeMapLayer::getUseTerrain() const
 {
-    return options().useTerrain().get();
+    return getTerrainWeight() > 0.0f;
 }
 
 void
-LifeMapLayer::setUseLandUse(bool value)
+LifeMapLayer::setColorWeight(float value)
 {
-    options().useLandUse() = value;
+    options().colorWeight() = value;
 }
 
-bool
-LifeMapLayer::getUseLandUse() const
+float
+LifeMapLayer::getColorWeight() const
 {
-    return options().useLandUse().get();
-}
-
-void
-LifeMapLayer::setUseColor(bool value)
-{
-    options().useColor() = value;
+    return options().colorWeight().get();
 }
 
 bool
 LifeMapLayer::getUseColor() const
 {
-    return options().useColor().get();
+    return getColorWeight() > 0.0f;
 }
 
-namespace
+void
+LifeMapLayer::setLandUseWeight(float value)
 {
-    struct Value
-    {
-        Value() : value(0.0f), weight(0.0f) { }
-        float value;
-        float weight;
-    };
-
-    struct Sample
-    {
-        Sample() : dense(), lush(), rugged(), special(0), weight(0.0f) { }
-        Value dense;
-        Value lush;
-        Value rugged;
-        int special;
-        float weight;
-    };
-
-    #define TERRAIN 0
-    #define LANDUSE 1
-    #define LANDCOVER 2
-    #define COLOR 3
+    options().landUseWeight() = value;
 }
+
+float
+LifeMapLayer::getLandUseWeight() const
+{
+    return options().landUseWeight().get();
+}
+
+bool
+LifeMapLayer::getUseLandUse() const
+{
+    return getLandUseWeight() > 0.0f;
+}
+
+void
+LifeMapLayer::setNoiseWeight(float value)
+{
+    options().noiseWeight() = value;
+}
+
+float
+LifeMapLayer::getNoiseWeight() const
+{
+    return options().noiseWeight().get();
+}
+
+bool
+LifeMapLayer::getUseNoise() const
+{
+    return getNoiseWeight() > 0.0f;
+}
+
+#define NUM_INPUTS 5
+
+#define NOISE 0
+#define TERRAIN 1
+#define LANDCOVER 2
+#define LANDUSE 3
+#define COLOR 4
 
 GeoImage
 LifeMapLayer::createImageImplementation(
@@ -486,15 +517,12 @@ LifeMapLayer::createImageImplementation(
     // bring in the land cover data if requested:
     osg::ref_ptr<osg::Image> landcover;
     ImageUtils::PixelReader readLandCover;
-    osg::Vec4 landcover_pixel;
     osg::Matrixf landcover_matrix;
     const LifeMapValueTable* landcover_table;
     std::unordered_map<std::string, int> specialTextureIndexLUT;
 
     // a "metaimage" lets us sample in the neighborhood of a tilekey image
     TileKeyMetaImage landcover_metaimage;
-
-
 
     if (getBiomeLayer())
     {
@@ -526,18 +554,11 @@ LifeMapLayer::createImageImplementation(
                     );
                 }
             }
-
-            int index = 1; // start at one b/c zero means no special asset
-            for (auto& tex : getBiomeLayer()->getBiomeCatalog()->getAssets().getSpecialTextures())
-            {
-                specialTextureIndexLUT[tex.name().get()] = index++;
-            }
         }
     }
 
     GeoImage densityMask;
     ImageUtils::PixelReader readDensityMask;
-    osg::Vec4 dm_pixel;
     osg::Matrixf dm_matrix;
 
     // the mask layer zero's out density(etc)
@@ -564,10 +585,9 @@ LifeMapLayer::createImageImplementation(
     // the color layer alters lifemap values based on colors.
     GeoImage color;
     ImageUtils::PixelReader readColor;
-    osg::Vec4 color_pixel;
     osg::Matrixf color_matrix;
 
-    if (getColorLayer() && options().useColor() == true)
+    if (getColorLayer() && getColorWeight() > 0.0f)
     {
         TileKey color_key(key);
 
@@ -597,8 +617,7 @@ LifeMapLayer::createImageImplementation(
         GL_UNSIGNED_BYTE);
 
     ImageUtils::PixelWriter write(image.get());
-    osg::Vec4 pixel, temp;
-    //ElevationSample elevSample;
+
     float elevation;
     osg::Vec3 normal;
     float slope;
@@ -614,312 +633,222 @@ LifeMapLayer::createImageImplementation(
     noiseSampler.setBilinear(true);
     noiseSampler.setSampleAsRepeatingTexture(true);
 
+    // size of the tile in meters:
+    double width_m = key.getExtent().width(Units::METERS);
+    double height_m = key.getExtent().height(Units::METERS);
+
+    // land cover blurring values
+    double lc_blur_m = std::max(0.0, options().landCoverBlur()->as(Units::METERS));
+    double lc_blur_u = lc_blur_m / width_m;
+    double lc_blur_v = lc_blur_m / height_m;
+
     GeoImage result(image.get(), extent);
 
     GeoImageIterator i(result);
     i.forEachPixelOnCenter([&]() {
 
-        Sample sample[4];
+        osg::Vec4f pixel[NUM_INPUTS];
+        float weight[NUM_INPUTS] = { 0,0,0,0,0 };
+        osg::Vec4f temp;
 
-        // Generate noise:
-        for (int n = 0; n < 4; ++n)
+        // NOISE contribution
+        if (getUseNoise())
         {
-            noiseCoords[n].set(i.u(), i.v());
-            scaleCoordsToRefLOD(noiseCoords[n], key, noiseLOD[n]);
-            getNoise(noise[n], noiseSampler, noiseCoords[n]);
-        }
-
-        // Establish elevation at this pixel:
-        elevation = elevTile->getElevation(i.x(), i.y()).elevation().as(Units::METERS);
-
-        // Normal map at this pixel:
-        normal = elevTile->getNormal(i.x(), i.y());
-
-        // exaggerate the slope value
-        //slope = harden(harden(1.0 - (normal * up)));
-        slope = 1.0 - (normal*up);
-        slope = clamp(slope*2.0f, 0.0f, 1.0f); // make 0.5 the maximum slope
-        slope *= options().slopeIntensity().get();
-
-        // NOISE VALUES:
-        float dense_noise =
-            (0.3*noise[0][RANDOM]) +
-            (0.3*noise[1][SMOOTH]) +
-            (0.4*noise[2][CLUMPY]);
-
-        float lush_noise =
-            noise[2][SMOOTH];
-            //noise[1][SMOOTH];
-
-        float rugged_noise =
-            0.5*noise[1][SMOOTH] +
-            0.5*noise[2][CLUMPY];
-
-
-        // LAND USE CONTRIBUTION:
-        if (!landuse.empty())
-        {
-            double xx = i.x() + x_jitter * 0.3*(noise[2][CLUMPY] * 2.0 - 1.0);
-            double yy = i.y() + y_jitter * 0.3*(noise[2][SMOOTH] * 2.0 - 1.0);
-
-            const LifeMapValue* lu = landuse.get(xx, yy, landuse_table);
-
-            if (lu)
+            for (int n = 0; n < 4; ++n)
             {
-                if (lu->dense().isSet())
-                {
-                    sample[LANDUSE].dense.value = lu->dense().get() + 0.2*(dense_noise*2.0 - 1.0);
-                    sample[LANDUSE].dense.weight = 1.0f;
-                }
-
-                if (lu->lush().isSet())
-                {
-                    sample[LANDUSE].lush.value = lu->lush().get() + 0.2*(lush_noise*2.0 - 1.0);
-                    sample[LANDUSE].lush.weight = 1.0f;
-                }
-
-                if (lu->rugged().isSet())
-                {
-                    sample[LANDUSE].rugged.value = lu->rugged().get() + 0.2*(rugged_noise*2.0 - 1.0);
-                    sample[LANDUSE].rugged.weight = 1.0f;
-                }
-
-                sample[LANDUSE].weight = 1.0f;
+                noiseCoords[n].set(i.u(), i.v());
+                scaleCoordsToRefLOD(noiseCoords[n], key, noiseLOD[n]);
+                getNoise(noise[n], noiseSampler, noiseCoords[n]);
             }
+
+            pixel[NOISE][LIFEMAP_DENSE] = noise[3][CLUMPY];
+            pixel[NOISE][LIFEMAP_LUSH] = 0.0;
+            pixel[NOISE][LIFEMAP_RUGGED] = noise[2][CLUMPY];
+
+            weight[NOISE] = getNoiseWeight();
         }
 
-        // LANDCOVER CONTRIBUTION:
+        // LAND COVER CONTRIBUTION
         if (landcover.valid())
         {
+            // scaled and biased UV coords
             double uu = i.u() * landcover_matrix(0, 0) + landcover_matrix(3, 0);
             double vv = i.v() * landcover_matrix(1, 1) + landcover_matrix(3, 1);
 
-#if 1
             // read the landcover with a blurring filter.
-            landcover_pixel.set(0, 0, 0, 0);
-            double blur_m = std::max(0.0, options().landCoverBlur()->as(Units::METERS));
-
-            double width_m = key.getExtent().width(Units::METERS);
-            double height_m = key.getExtent().height(Units::METERS);
-
-            double blur_u = blur_m / width_m;
-            double blur_v = blur_m / height_m;
-
             int lc_kernel_count = 0;
-            LifeMapValue lc_temp;
-            for (int a = -1; a <= 1; ++a) {
-                for (int b = -1; b <= 1; ++b) {
-                    osg::Vec4f temp;
-                    landcover_metaimage.read(uu + (double)a*blur_u, vv + (double)b*blur_v, temp);
+            osg::Vec4f kernel;
+            for (int a = -1; a <= 1; ++a)
+            {
+                for (int b = -1; b <= 1; ++b)
+                {
+                    landcover_metaimage.read(uu + (double)a*lc_blur_u, vv + (double)b*lc_blur_v, temp);
                     const LandCoverClass* lcc = _landCoverDictionary->getClassByValue((int)temp.r());
-                    if (lcc) {
+                    if (lcc)
+                    {
                         const LifeMapValue* value = landcover_table->getValue(lcc->getName());
-                        if (value) {
+                        if (value)
+                        {
                             lc_kernel_count++;
-                            landcover_pixel[LIFEMAP_DENSE] += value->dense().get();
-                            landcover_pixel[LIFEMAP_LUSH] += value->lush().get();
-                            landcover_pixel[LIFEMAP_RUGGED] += value->rugged().get();
+                            kernel[LIFEMAP_DENSE] += value->dense().get();
+                            kernel[LIFEMAP_LUSH] += value->lush().get();
+                            kernel[LIFEMAP_RUGGED] += value->rugged().get();
                         }
                     }
                 }
             }
-            landcover_pixel /= lc_kernel_count;
-
-            sample[LANDCOVER].dense.value = landcover_pixel[LIFEMAP_DENSE];
-            sample[LANDCOVER].dense.weight = 1.0f;
-            sample[LANDCOVER].lush.value = landcover_pixel[LIFEMAP_LUSH];
-            sample[LANDCOVER].lush.weight = 1.0f;
-            sample[LANDCOVER].rugged.value = landcover_pixel[LIFEMAP_RUGGED];
-            sample[LANDCOVER].rugged.weight = 1.0f;
-
-            sample[LANDCOVER].weight = options().landCoverWeight().get();
-
-#else
-            readLandCover(landcover_pixel, uu, vv);
-
-            const LandCoverClass* lcc = _landCoverDictionary->getClassByValue(
-                (int)landcover_pixel.r());
-
-            if (lcc)
+            if (lc_kernel_count > 0)
             {
-                const LifeMapValue* value = landcover_table->getValue(lcc->getName());
-                if (value)
-                {
-                    bool has_special = value->special().isSet();
-
-                    if (has_special)
-                    {
-                        sample[LANDCOVER].special =
-                            specialTextureIndexLUT[value->special().get()];
-                    }
-
-                    const int ni = 3;
-                    float weight = 1.0f; // 0.65f + 0.35f*noise[2][SMOOTH];
-
-                    if (value->dense().isSet())
-                    {
-                        float dn = has_special ? 0.0f : (dense_noise*2.0f - 1.0f)*noise[ni][CLUMPY];
-                        //sample[LANDCOVER].dense.value = value->dense().get() + 0.2*(dense_noise*2.0 - 1.0);
-                        sample[LANDCOVER].dense.value = value->dense().get() + dn;
-                        sample[LANDCOVER].dense.weight = weight;
-                    }
-
-                    if (value->lush().isSet())
-                    {
-                        float dn = has_special ? 0.0f : (lush_noise*2.0f - 1.0f)*noise[ni][RANDOM];
-                        //sample[LANDCOVER].lush.value = value->lush().get() + 0.2*(lush_noise*2.0 - 1.0);
-                        sample[LANDCOVER].lush.value = value->lush().get() + dn;
-                        sample[LANDCOVER].lush.weight = weight;
-                    }
-
-                    if (value->rugged().isSet())
-                    {
-                        float dn = has_special ? 0.0f : (rugged_noise*2.0f - 1.0f)*noise[ni][SMOOTH];
-                        //sample[LANDCOVER].rugged.value = value->rugged().get() + 0.2*(rugged_noise*2.0 - 1.0);
-                        sample[LANDCOVER].rugged.value = value->rugged().get() + dn;
-                        sample[LANDCOVER].rugged.weight = weight;
-                    }
-
-                    sample[LANDCOVER].weight = options().landCoverWeight().get(); // 1.0f;
-                }
+                kernel /= lc_kernel_count;
+                pixel[LANDCOVER] = kernel;
+                weight[LANDCOVER] = getLandCoverWeight();
             }
-#endif
+            else
+            {
+                weight[LANDCOVER] = 0.0f;
+            }
         }
 
         // COLOR CONTRIBUTION:
         if (color.valid())
         {
-            sample[COLOR].weight = options().colorWeight().get(); // 1.0f;
-
             double uu = i.u() * color_matrix(0, 0) + color_matrix(3, 0);
             double vv = i.v() * color_matrix(1, 1) + color_matrix(3, 1);
-            readColor(color_pixel, uu, vv);
-
-            // adjust lifemap based on the "greenness" of the pixel
-            // https://www.sciencedirect.com/science/article/pii/S2214317315000347
-
-            // normalize
-            //Color c(color_pixel.r(), color_pixel.g(), color_pixel.b(), 0.0f);
-            //float total = c.r() + c.g() + c.b();
-            //c /= total;
-
-            //float ExG = 2.0f*c.g() - c.r() - c.b();
-            //float ExGR = ExG - (1.4f*c.r() - c.g());
-            //if (ExGR > 0.0)
-            //{
-            //    dense *= (1.0 + ExGR);
-            //    rugged /= (1.0 + ExGR);
-            //}
-            //lush = clamp(ExGR, 0.0f, 1.0f);
-
-            ////float VEG = c.g() / (pow(c.r(), 0.667)*pow(c.b(), 0.333));
-            //c = color_pixel;
-            
-            // normalized color: (do this???)
-            Color c(color_pixel.r(), color_pixel.g(), color_pixel.b(), 0.0f);
-            c /= (c.r() + c.g() + c.b());
+            readColor(temp, uu, vv);
 
             // convert to HSL:
+            Color c(temp.r(), temp.g(), temp.b(), 0.0f);
             hsl = c.asHSL();
-            //rgb2hsl(c, hsl);
 
             constexpr float red = 0.0f;
             constexpr float green = 0.3333333f;
             constexpr float blue = 0.6666667f;
-            constexpr float green_amp = 3.0f;
-            constexpr float lush_amp = 2.0f; // old=1.2f
 
-            float inv_green = fabs(hsl[0] - green);
-            if (inv_green > 0.5f) inv_green = 1.0f - inv_green;
-            float greenness = 1.0f - 2.0f*inv_green;
+            // amplification factors for greenness and redness,
+            // obtained empirically
+            constexpr float green_amp = 2.0f;
+            constexpr float red_amp = 5.0f;
+
+            // Set lower limits for saturation and lightness, because
+            // when these levels get too low, the HUE channel starts to
+            // introduce math errors that can result in bad color values
+            // that we do not want. (We determined these empirically
+            // using an interactive shader.)
+            constexpr float saturation_threshold = 0.2f;
+            constexpr float lightness_threshold = 0.03f;
+
+            // "Greenness" implies vegetation
+            float dist_to_green = fabs(green - hsl[0]);
+            if (dist_to_green > 0.5f)
+                dist_to_green = 1.0f - dist_to_green;
+            float greenness = 1.0f - 2.0f*dist_to_green;
+
+            // "redness" implies ruggedness/rock
+            float dist_to_red = fabs(red - hsl[0]);
+            if (dist_to_red > 0.5f)
+                dist_to_red = 1.0f - dist_to_red;
+            float redness = 1.0f - 2.0f*dist_to_red;
+
+            if (hsl[1] < saturation_threshold)
+            {
+                greenness *= hsl[1] / saturation_threshold;
+                redness *= hsl[1] / saturation_threshold;
+            }
+            if (hsl[2] < lightness_threshold)
+            {
+                greenness *= hsl[2] / lightness_threshold;
+                redness *= hsl[2] / lightness_threshold;
+            }
+
             greenness = pow(greenness, green_amp);
+            redness = pow(redness, red_amp);
 
-            float inv_red = fabs(hsl[0] - red);
-            if (inv_red > 0.5f) inv_red = 1.0f - inv_red;
-            float redness = 1.0f - 2.0*inv_red;
+            float w = options().colorWeight().get();
 
-            sample[COLOR].dense.value = greenness;
-            sample[COLOR].dense.weight = 1.0f;
+            pixel[COLOR][LIFEMAP_DENSE] = greenness;
+            pixel[COLOR][LIFEMAP_LUSH] = greenness * (1.0 - hsl.z()); // lighter green is less lush.
+            pixel[COLOR][LIFEMAP_RUGGED] = redness;
 
-            sample[COLOR].lush.value = clamp(lush_amp * (hsl[1] - 0.5f*hsl[2]), 0.0f, 1.0f);
-            sample[COLOR].lush.weight = 1.0f;
-
-            sample[COLOR].rugged.value = (redness + (1.0f - hsl[1]) + hsl[2]) / 3.0f;
-            sample[COLOR].rugged.value = clamp(sample[COLOR].rugged.value - 0.5, 0.0, 1.0) * 2.0;
-            sample[COLOR].rugged.weight = (getUseTerrain() ? 0.0f : 1.0f);
+            // if the lightness value is too high, it's white, which is usually
+            // snow or clouds, and we can't use it for anything meaningful
+            if (pow(hsl[2], 5.0f) > 0.5f)
+                weight[COLOR] = 0.0f;
+            else
+                weight[COLOR] = getColorWeight(); // * max(greeness, redness) ...???
         }
 
         // TERRAIN CONTRIBUTION:
         if (getUseTerrain())
         {
-            sample[TERRAIN].weight = options().terrainWeight().get();
+            // Establish elevation at this pixel:
+            elevation = elevTile->getElevation(i.x(), i.y()).elevation().as(Units::METERS);
 
-            if (sample[COLOR].weight == 0.0f)
-            {
-                sample[TERRAIN].dense.value = -(0.8f * slope);
-                sample[TERRAIN].dense.weight = 1.0f;
+            // Normal map at this pixel:
+            normal = elevTile->getNormal(i.x(), i.y());
 
-                sample[TERRAIN].lush.value = -(0.75f*slope);
-                sample[TERRAIN].lush.weight = 1.0f;
-            }
+            // exaggerate the slope value
+            slope = 1.0 - (normal*up);
+            float r = decel(slope * options().slopeIntensity().get());
+            pixel[TERRAIN][LIFEMAP_RUGGED] = r;
+            pixel[TERRAIN][LIFEMAP_DENSE] = -r;
+            pixel[TERRAIN][LIFEMAP_LUSH] = -r;
 
-            sample[TERRAIN].rugged.value = slope;
-            sample[TERRAIN].rugged.weight = 1.0f;
+            weight[TERRAIN] = getTerrainWeight();
         }
 
-        // CALCULATE WEIGHTED AVERAGES:
-        pixel.set(0.0f, 0.0f, 0.0f, 0.0f);
-
-        float
-            dense_total = 0.0f,
-            lush_total = 0.0f,
-            rugged_total = 0.0f;
-
-        float
-            dense_factor = 0.0f,
-            lush_factor = 0.0f,
-            rugged_factor = 0.0f;
-
-        for (int i = 0; i < 4; ++i)
+        // LAND USE CONTRIBUTION:
+        if (!landuse.empty())
         {
-            dense_factor = sample[i].dense.weight*sample[i].weight;
-            pixel[LIFEMAP_DENSE] += sample[i].dense.value*dense_factor;
-            dense_total += dense_factor;
-            
-            lush_factor = sample[i].lush.weight*sample[i].weight;
-            pixel[LIFEMAP_LUSH] += sample[i].lush.value*lush_factor;
-            lush_total += lush_factor;
+            double xx = i.x(); // +x_jitter * 0.3*(noise[2][CLUMPY] * 2.0 - 1.0);
+            double yy = i.y(); // +y_jitter * 0.3*(noise[2][SMOOTH] * 2.0 - 1.0);
 
-            rugged_factor = sample[i].rugged.weight*sample[i].weight;
-            pixel[LIFEMAP_RUGGED] += sample[i].rugged.value*rugged_factor;
-            rugged_total += rugged_factor;
-
-            if (sample[i].special > 0)
-                pixel[LIFEMAP_SPECIAL] = (float)sample[i].special / 255.0f;
+            const LifeMapValue* lu = landuse.get(xx, yy, landuse_table);
+            if (lu)
+            {
+                pixel[LANDUSE][LIFEMAP_DENSE] = lu->dense().get();
+                pixel[LANDUSE][LIFEMAP_LUSH] = lu->lush().get();
+                pixel[LANDUSE][LIFEMAP_RUGGED] = lu->rugged().get();
+                weight[LANDUSE] = getLandUseWeight();
+            }
         }
 
-        // for a special encoding, zero out the other values
-        if (pixel[LIFEMAP_SPECIAL] > 0)
-            pixel[LIFEMAP_RUGGED] = pixel[LIFEMAP_DENSE] = pixel[LIFEMAP_LUSH] = 0.0f;
+        // CONBINE WITH WEIGHTS:
+        osg::Vec4f combined_pixel;
 
-        // MASK CONTRIBUTION (applied to final data)
+        // first, combine landcover and color by relative weight.
+        float w2 = weight[LANDCOVER] + weight[COLOR];
+        if (w2 > 0.0f)
+        {
+            combined_pixel =
+                pixel[LANDCOVER] * weight[LANDCOVER]/w2 +
+                pixel[COLOR] * weight[COLOR]/w2;
+        }
+
+        // apply terrain additively:
+        combined_pixel += pixel[TERRAIN] * weight[TERRAIN];
+
+        // apply the noise additively:
+        combined_pixel += pixel[NOISE] * weight[NOISE];
+
+        // MASK CONTRIBUTION (applied to final combined pixel data)
         if (densityMask.valid())
         {
             double uu = clamp(i.u() * dm_matrix(0, 0) + dm_matrix(3, 0), 0.0, 1.0);
             double vv = clamp(i.v() * dm_matrix(1, 1) + dm_matrix(3, 1), 0.0, 1.0);
-            readDensityMask(dm_pixel, uu, vv);
-
-            pixel[LIFEMAP_DENSE] *= dm_pixel.r();
-            pixel[LIFEMAP_LUSH] *= dm_pixel.r(); // (0.25 + 0.75*dm_pixel.r()); // 75% effect
-            pixel[LIFEMAP_RUGGED] *= dm_pixel.r();
+            readDensityMask(temp, uu, vv);
+            
+            combined_pixel[LIFEMAP_DENSE] *= temp.r();
+            combined_pixel[LIFEMAP_LUSH] *= temp.r();
+            combined_pixel[LIFEMAP_RUGGED] *= temp.r();
         }
 
+        // Clamp everything to [0..1] and write it out.
         for (int i = 0; i < 4; ++i)
         {
-            pixel[i] = clamp(pixel[i], 0.0f, 1.0f);
+            combined_pixel[i] = clamp(combined_pixel[i], 0.0f, 1.0f);
         }
 
-        write(pixel, i.s(), i.t());
+        write(combined_pixel, i.s(), i.t());
 
     });
 

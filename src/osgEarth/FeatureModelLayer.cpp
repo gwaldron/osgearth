@@ -310,7 +310,7 @@ FeatureModelLayer::create()
             else
             {
                 _root->removeChildren(0, _root->getNumChildren());
-                _root->addChild(fmg.get());
+                _root->addChild(fmg);
 
                 // clear the dirty flag.
                 _graphDirty = false;

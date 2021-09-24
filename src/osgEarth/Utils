@@ -254,17 +254,22 @@ namespace osgEarth { namespace Util
 
         using List = std::list<ListEntry>;
         using ListIterator = typename List::iterator;
-
-        struct Token
-        {
-            ListIterator _listptr;
-            T _data;
-        };
+        using Token = ListIterator;
 
         SentryTracker()
         {
             _list.emplace_front(nullptr, nullptr); // the sentry marker
             _sentryptr = _list.begin();
+        }
+
+        ~SentryTracker()
+        {
+            for (auto& e : _list)
+            {
+                Token* te = static_cast<Token*>(e._token);
+                if (te)
+                    delete te;
+            }
         }
 
         List _list;
@@ -275,23 +280,22 @@ namespace osgEarth { namespace Util
             // Find the tracker for this tile and update its timestamp
             if (token)
             {
-                Token& te = *static_cast<Token*>(token);
+                Token* ptr = static_cast<Token*>(token);
 
                 // Move the tracker to the front of the list (ahead of the sentry).
                 // Once a cull traversal is complete, all visited tiles will be
                 // in front of the sentry, leaving all non-visited tiles behind it.
-                _list.splice(_list.begin(), _list, te._listptr);
-                te._listptr = _list.begin();
-                return token;
+                _list.splice(_list.begin(), _list, *ptr);
+                *ptr = _list.begin();
+                return ptr;
             }
             else
             {
                 // New entry:
-                Token* te = new Token();
-                _list.emplace_front(data, te); // ListEntry
-                te->_data = data;
-                te->_listptr = _list.begin();
-                return te;
+                Token* ptr = new Token();
+                _list.emplace_front(data, ptr); // ListEntry
+                *ptr = _list.begin();
+                return ptr;
             }
         }
 

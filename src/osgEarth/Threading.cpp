@@ -686,6 +686,15 @@ JobArena::setConcurrency(const std::string& name, unsigned value)
 }
 
 void
+JobArena::cancelAll()
+{
+    std::lock_guard<Mutex> lock(_queueMutex);
+    _queue.clear();
+    _metrics->numJobsCanceled += _metrics->numJobsPending;
+    _metrics->numJobsPending = 0;
+}
+
+void
 JobArena::dispatch(
     const Job& job,
     Delegate& delegate)

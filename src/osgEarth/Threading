@@ -786,6 +786,9 @@ namespace osgEarth { namespace Threading
         //! (Only applies to THREAD_POOL type arenas)
         void setConcurrency(unsigned value);
 
+        //! Discard all queued jobs
+        void cancelAll();
+
     public: // statics
 
         //! Access a named arena
@@ -801,9 +804,7 @@ namespace osgEarth { namespace Threading
         //! Name of the arena to use when none is specified
         static const std::string& defaultArenaName();
 
-        //! Run one or more pending jobs.
-        //! Internal function - do not call this directly.
-        void runJobs();
+    public:
 
         /**
          * Reflects the current state of the JobArena system
@@ -876,6 +877,12 @@ namespace osgEarth { namespace Threading
 
         //! Access to the system-wide job arena metrics
         static const Metrics& metrics() { return _allMetrics; }
+
+        public: // INTERNAL
+
+            //! Run one or more pending jobs.
+            //! Internal function - do not call this directly.
+            void runJobs();
 
     private:
 

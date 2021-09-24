@@ -243,13 +243,13 @@ void PagedNode2::load(float priority, const osg::Object* host)
         {
             // Load the asynchronous node.
             Loader load(_load);
-            osg::ref_ptr<SceneGraphCallbacks> callbacks(_callbacks);
+            osg::observer_ptr<SceneGraphCallbacks> callbacks_weakptr(_callbacks);
             bool preCompile = _preCompile;
 
             _job.setPriority(priority);
 
             _loaded = _job.dispatch<Loaded>(
-                [load, callbacks, preCompile](Cancelable* c)
+                [load, callbacks_weakptr, preCompile](Cancelable* c)
                 {
                     Loaded result;
 
@@ -261,7 +261,8 @@ void PagedNode2::load(float priority, const osg::Object* host)
                     // Fire any pre-merge callbacks
                     if (result._node.valid())
                     {
-                        if (callbacks.valid())
+                        osg::ref_ptr<SceneGraphCallbacks> callbacks;
+                        if (callbacks_weakptr.lock(callbacks))
                             callbacks->firePreMergeNode(result._node.get());
 
                         if (preCompile)
@@ -393,6 +394,11 @@ PagingManager::PagingManager() :
     //    .dispatch(_updateFunc);
 }
 
+PagingManager::~PagingManager()
+{
+    //nop
+}
+
 void
 PagingManager::traverse(osg::NodeVisitor& nv)
 {
@@ -423,7 +429,8 @@ PagingManager::update()
         _tracker.flush(
             0.0f,
             _mergesPerFrame,
-            [](osg::ref_ptr<PagedNode2>& node) -> bool {
+            [](osg::ref_ptr<PagedNode2> node) -> bool
+            {
                 if (node->getAutoUnload())
                 {
                     node->unload();

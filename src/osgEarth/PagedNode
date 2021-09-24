@@ -255,7 +255,7 @@ namespace osgEarth { namespace Util
         void update();
 
     protected:
-        virtual ~PagingManager() { }
+        virtual ~PagingManager();
 
     public:
         void traverse(osg::NodeVisitor& nv);

@@ -280,7 +280,7 @@ namespace
     osg::Node* createPagedNode(
         const osg::BoundingSphered& bs,
         const std::string& uri,
-        const std::function<osg::ref_ptr<osg::Node>(Cancelable*)>& func,
+        const std::function<osg::ref_ptr<osg::Node>(Cancelable*)> func,
         float minRange,
         float maxRange,
         const FeatureDisplayLayout& layout,
@@ -800,6 +800,7 @@ FeatureModelGraph::shutdown()
 FeatureModelGraph::~FeatureModelGraph()
 {
     //nop
+    OE_DEBUG << "~FeatureModelGraph" << std::endl;
 }
 
 void
@@ -941,14 +942,19 @@ FeatureModelGraph::setupPaging()
     osg::ref_ptr<osg::Node> node;
 
     topNode = new osg::Group();
+    topNode->setName("Top Node");
 
     if (_options.layout()->paged() == true)
     {
-        osg::ref_ptr<FeatureModelGraph> graph(this);
+        osg::observer_ptr<FeatureModelGraph> graph_weakptr(this);
         osg::ref_ptr<const osgDB::Options> readOptions = _session->getDBOptions();
-        auto load_func = [graph, uri, readOptions](Cancelable* c)
+        auto load_func = [graph_weakptr, uri, readOptions](Cancelable* c)
         {
-            return graph->load(0, 0, 0, uri, readOptions.get());
+            osg::ref_ptr<osg::Group> result;
+            osg::ref_ptr<FeatureModelGraph> graph;
+            if (graph_weakptr.lock(graph))
+                result = graph->load(0, 0, 0, uri, readOptions.get());
+            return result;
         };
 
         node = createPagedNode(
@@ -1210,12 +1216,16 @@ FeatureModelGraph::buildSubTilePagedLODs(
 
                 if (_options.layout()->paged() == true)
                 {
-                    osg::ref_ptr<FeatureModelGraph> graph(this);
+                    osg::observer_ptr<FeatureModelGraph> graph_weakptr(this);
                     osg::ref_ptr<const osgDB::Options> ro(readOptions);
 
-                    auto load_func = [graph, subtileLOD, u, v, uri, ro](Cancelable* c)
+                    auto load_func = [graph_weakptr, subtileLOD, u, v, uri, ro](Cancelable* c)
                     {
-                        return graph->load(subtileLOD, u, v, uri, ro.get());
+                        osg::ref_ptr<osg::Group> result;
+                        osg::ref_ptr<FeatureModelGraph> graph;
+                        if (graph_weakptr.lock(graph))
+                            result = graph->load(subtileLOD, u, v, uri, ro.get());
+                        return result;
                     };
 
                     childNode = createPagedNode(

@@ -32,9 +32,7 @@
 #include <osg/Texture2D>
 #include <osg/BindImageTexture>
 
-#ifdef OE_USE_GRAPHICS_OBJECT_MANAGER
 #include <osg/ContextData>
-#endif
 
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
 #include <osg/LineWidth>
@@ -298,7 +296,7 @@ GLBuffer::release()
 {
     if (_name != ~0U)
     {
-        OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
+        //OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
         ext()->glDeleteBuffers(1, &_name);
         _name = ~0U;
     }
@@ -411,8 +409,6 @@ SSBO::bindLayout() const
 #undef LC
 #define LC "[GLObjectReleaser] "
 
-#ifdef OE_USE_GRAPHICS_OBJECT_MANAGER
-
 GLObjectReleaser::GLObjectReleaser(unsigned contextID) :
     osg::GraphicsObjectManager("OE GLObjectReleaser", contextID)
 {
@@ -426,7 +422,10 @@ GLObjectReleaser::watch(GLObject::Ptr object, osg::State& state_unused)
     {
         GLObjectReleaser* rel = osg::get<GLObjectReleaser>(object->ext()->contextID);
         if (rel)
+        {
             rel->_objects.insert(object);
+            OE_DEVEL << LC << "Added \"" << object->label() << "\"" << std::endl;
+        }
     }
 }
 
@@ -437,7 +436,11 @@ GLObjectReleaser::releaseAll(osg::State& state)
     if (rel)
     {
         for (auto& object : rel->_objects)
+        {
+            OE_DEVEL << LC << "Releasing \"" << object->label() << "\"" << std::endl;
             object->release();
+        }
+
         rel->_objects.clear();
     }
 }
@@ -445,24 +448,30 @@ GLObjectReleaser::releaseAll(osg::State& state)
 void
 GLObjectReleaser::flushDeletedGLObjects(double currentTime, double& availableTime)
 {
+    // OSG calls this method periodically
     flushAllDeletedGLObjects();
 }
 
 void
 GLObjectReleaser::flushAllDeletedGLObjects()
 {
-    // keep all non-released objects in the temp container
-    // so we can retain them for next time
-    _temp.clear();
+    // OSG calls this method periodically
+    std::unordered_set<std::shared_ptr<GLObject>> temp;
+
     for (auto& object : _objects)
     {
-        if (object.use_count() == 1) //referenceCount() == 1)
+        if (object.use_count() == 1)
+        {
+            OE_DEVEL << LC << "Releasing \"" << object->label() << "\"" << std::endl;
             object->release();
+        }
         else
-            _temp.insert(object);
+        {
+            temp.insert(object);
+        }
     }
 
-    _objects.swap(_temp);
+    _objects.swap(temp);
 }
 
 void
@@ -478,80 +487,6 @@ GLObjectReleaser::discardAllGLObjects()
     // no graphics context available..just empty the bucket
     _objects.clear();
 }
-
-#else
-
-osg::buffered_object<osg::ref_ptr<GLObjectReleaser> > GLObjectReleaser::_buf(256);
-
-GLObjectReleaser::GLObjectReleaser(unsigned contextID) :
-    osg::GraphicsOperation("OE GLObjectReleaser", true)
-{
-    //nop
-}
-
-void
-GLObjectReleaser::watch(GLObject* obj, osg::State& state)
-{
-    osg::ref_ptr<GLObjectReleaser>& rel = _buf[state.getContextID()];
-    if (!rel.valid())
-    {
-        rel = new GLObjectReleaser(state.getContextID());
-        state.getGraphicsContext()->add(rel.get());
-    }
-    rel->_objects.insert(obj);
-}
-
-void
-GLObjectReleaser::releaseAll(osg::State& state)
-{
-    osg::ref_ptr<GLObjectReleaser>& rel = _buf[state.getContextID()];
-    if (rel.valid())
-    {
-        for (auto& object : rel->_objects)
-            object->release();
-        rel->_objects.clear();
-    }
-}
-
-void
-GLObjectReleaser::operator()(osg::GraphicsContext* gc)
-{
-    // keep all non-released objects in the temp container
-    // so we can retain them for next time
-    _temp.clear();
-    for (auto& object : _objects)
-    {
-        if (object->referenceCount() == 1)
-            object->release();
-        else
-            _temp.insert(object);
-    }
-
-    _objects.swap(_temp);
-}
-
-#endif
-
-//GLBufferReleaser::GLBufferReleaser(GLBuffer* buffer) : 
-//    osg::GraphicsOperation("osgEarth::GLBufferReleaser", true),
-//    _buffer(buffer),
-//    _handle(buffer->_handle)
-//{
-//    //nop
-//}
-//
-//void
-//GLBufferReleaser::operator () (osg::GraphicsContext* context)
-//{
-//    if (!_buffer.valid() && _handle != (GLuint)~0 && context && context->getState())
-//    {
-//        OE_DEBUG << "Note: glDeleteBuffers(1, " << _handle << ")" << std::endl;
-//        osg::GLExtensions* ext = context->getState()->get<osg::GLExtensions>();
-//        ext->glDeleteBuffers(1, &_handle);
-//        _handle = (GLuint)~0;
-//        setKeep(false);
-//    }
-//}
 
 #undef LC
 #define LC "[GPUJobArena] "
@@ -642,7 +577,7 @@ GPUJobArena::setGraphicsContext(osg::GraphicsContext* gc)
         {
             _gc = gc;
             gc->add(this);
-            OE_INFO << LC << getName() << " attached to GC " << std::hex << gc << std::dec << std::endl;
+            OE_DEVEL << LC << getName() << " attached to GC " << std::hex << gc << std::dec << std::endl;
         }
     }
 }

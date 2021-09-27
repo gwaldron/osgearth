@@ -102,6 +102,7 @@ namespace osgEarth
     {
     public:
         using Ptr = std::shared_ptr<GLObject>;
+        virtual const std::string& label() const { return _label; }
         virtual void release() = 0;
         osg::GLExtensions* ext() const { return _ext; }
     protected:
@@ -152,11 +153,6 @@ namespace osgEarth
         std::string _id;
     };
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
-#define OE_USE_GRAPHICS_OBJECT_MANAGER
-#endif
-
-#ifdef OE_USE_GRAPHICS_OBJECT_MANAGER
     /**
      * Mechanism that will automatically delete a GL object
      * when its container goes out of scope
@@ -174,29 +170,8 @@ namespace osgEarth
         virtual void deleteAllGLObjects();
         virtual void discardAllGLObjects();
 
-        std::set<GLObject::Ptr> _objects;
-        std::set<GLObject::Ptr> _temp;
-        //std::set<osg::ref_ptr<GLObject> > _objects;
-        //std::set<osg::ref_ptr<GLObject> > _temp;
+        std::unordered_set<GLObject::Ptr> _objects;
     };
-
-#else // legacy implementation for OSG 3.4
-    struct GLObjectReleaser : public osg::GraphicsOperation
-    {
-        GLObjectReleaser(unsigned contextID);
-
-        static void watch(GLObject*, osg::State&);
-
-        static void releaseAll(osg::State&);
-
-        void operator()(osg::GraphicsContext*);
-
-        std::set<osg::ref_ptr<GLObject> > _objects;
-        std::set<osg::ref_ptr<GLObject> > _temp;
-
-        static osg::buffered_object<osg::ref_ptr<GLObjectReleaser> > _buf;
-    };
-#endif
 
     //! Base class for a shader storage buffer object
     class OSGEARTH_EXPORT SSBO

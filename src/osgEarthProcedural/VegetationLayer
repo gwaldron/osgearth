@@ -324,6 +324,7 @@ namespace osgEarth { namespace Procedural
             Future<GeometryCloudCollection> _geomCloudsInProgress;
             std::atomic_int _biomeRevision;
             bool isNewGeometryCloudAvailable(osg::RenderInfo&);
+            void compileClouds(osg::RenderInfo&);
 
         public: // TileRenderer API
 

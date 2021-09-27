@@ -242,7 +242,7 @@ Texture::makeResident(const osg::State& state, bool toggle) const
 {
     GCState& gc = get(state);
 
-    if (gc._gltexture != nullptr) //.valid())
+    if (gc._gltexture != nullptr)
     {
         gc._gltexture->makeResident(toggle);
 
@@ -265,7 +265,7 @@ Texture::releaseGLObjects(osg::State* state) const
 {
     if (state)
     {
-        if (_gc[state->getContextID()]._gltexture != nullptr) //.valid())
+        if (_gc[state->getContextID()]._gltexture != nullptr)
         {
             GCState& gc = get(*state);
 

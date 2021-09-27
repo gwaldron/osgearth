@@ -136,13 +136,9 @@ BiomeManager::reset()
         ++_revision;
     }
 
+    // Update will resolve the references and unload any resident
+    // assets from memory.
     update();
-
-    // unload from memory
-    {
-        //ScopedMutexLock lock(_residentData_mutex);
-        //discardUnreferencedAssets();
-    }
 }
 
 void
@@ -211,8 +207,8 @@ BiomeManager::discardUnreferencedAssets()
 
     for (auto& asset : to_delete)
     {
-        OE_DEBUG << LC << "Unloading asset " << asset->name().get() << std::endl;
         _residentModelAssetData.erase(asset);
+        OE_INFO << LC << "Unloaded asset " << asset->name().get() << std::endl;
     }
 }
 

@@ -816,12 +816,19 @@ LifeMapLayer::createImageImplementation(
         osg::Vec4f combined_pixel;
 
         // first, combine landcover and color by relative weight.
-        float w2 = weight[LANDCOVER] + weight[COLOR];
-        if (w2 > 0.0f)
+        if (weight[LANDUSE] > 0.0f)
         {
-            combined_pixel =
-                pixel[LANDCOVER] * weight[LANDCOVER]/w2 +
-                pixel[COLOR] * weight[COLOR]/w2;
+            combined_pixel = pixel[LANDUSE];
+        }
+        else
+        {
+            float w2 = weight[LANDCOVER] + weight[COLOR];
+            if (w2 > 0.0f)
+            {
+                combined_pixel =
+                    pixel[LANDCOVER] * weight[LANDCOVER] / w2 +
+                    pixel[COLOR] * weight[COLOR] / w2;
+            }
         }
 
         // apply terrain additively:

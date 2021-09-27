@@ -190,11 +190,6 @@ namespace osgEarth { namespace Procedural
         }; 
 
 
-        using GeometryCloudCollection = std::unordered_map<
-            AssetGroup::Type,
-            osg::ref_ptr<GeometryCloud>>;
-
-
         // Custom GL renderer for ground cover.
         // This is a PatchLayer callback that intercepts the drawing of a
         // terrain tile to do custom rendering with access to the tile's data.

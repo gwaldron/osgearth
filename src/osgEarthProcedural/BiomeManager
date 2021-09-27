@@ -42,9 +42,11 @@ namespace osgEarth
         public:
             using Ptr = std::shared_ptr<ModelAssetData>;
 
+            //! Create a new instance - you can only create this as 
+            //! a shared_ptr.
             static Ptr create();
 
-            //! the asset being instantiated
+            //! the asset definition being instantiated
             const ModelAsset* _asset;
 
             //! the model node loaded from the asset definition
@@ -95,6 +97,10 @@ namespace osgEarth
         };
 
 
+        using GeometryCloudCollection = std::unordered_map<
+            AssetGroup::Type,
+            osg::ref_ptr<GeometryCloud>>;
+
         /**
          * Manages the collection of active Biomes in memory.
          */
@@ -135,24 +141,26 @@ namespace osgEarth
             ModelAssetDataTable getResidentAssets() const;
 
             //! Calculate the new resident set, and then make it resident.
-            void updateResidency(
+            GeometryCloudCollection updateResidency(
                 CreateImposterFunction createImposterGeometry,
-                const osgDB::Options* readOptions,
-                std::set<AssetGroup::Type>& out_groups);
+                const osgDB::Options* readOptions);
 
             //! Create a geometry cloud containing the current resident
             //! set of biomes (for one asset group)
-            GeometryCloud* createGeometryCloud(
+            static GeometryCloud* createGeometryCloud(
                 AssetGroup::Type group,
+                BiomeInstanceTable& instances,
                 TextureArena* arena);
 
             //! Generate the lookup tables necessary to render a geometry cloud
             //! for one asset group
-            osg::StateAttribute* createGPULookupTables(
-                AssetGroup::Type group) const;
+            static osg::StateAttribute* createGPULookupTables(
+                AssetGroup::Type group,
+                BiomeInstanceTable& instances);
 
         private:
-            mutable Mutex _mutex;
+            mutable Mutex _refsAndRevision_mutex;
+            mutable Mutex _residentData_mutex;
             int _revision;
 
             using BiomeRefs = std::unordered_map<const Biome*, int>;
@@ -164,7 +172,8 @@ namespace osgEarth
             // all model asset usage records, sorted by biome
             BiomeInstanceTable _residentBiomeData;
 
-            // recalculate the required resident biome set
+            // recalculate the required resident biome set and return
+            // a copy of it.
             void update();
 
             // release any assets no longer referenced by a resident biome

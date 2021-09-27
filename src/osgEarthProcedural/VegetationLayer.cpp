@@ -312,6 +312,9 @@ VegetationLayer::update(osg::NodeVisitor& nv)
             releaseGLObjects(nullptr);
             _renderer->_lastVisit.setReferenceTime(DBL_MAX);
             _renderer->_cameraState.clear();
+
+            if (getBiomeLayer())
+                getBiomeLayer()->getBiomeManager().reset();
         }
     }
 }
@@ -995,24 +998,12 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
                 
                 std::set<AssetGroup::Type> groups;
 
-                biomeMan.updateResidency(
-                    [&](AssetGroup::Type group, std::vector<osg::Texture*>& textures) {
+                result = biomeMan.updateResidency(
+                    [&](AssetGroup::Type group, std::vector<osg::Texture*>& textures)
+                    {
                         return layer->createParametricGeometry(group, textures);
                     },
-                    layer->getReadOptions(),
-                    groups);
-
-                for (auto group : groups)
-                {
-                    osg::ref_ptr<GeometryCloud> cloud = biomeMan.createGeometryCloud(
-                        group,
-                        nullptr);
-
-                    if (cloud.valid())
-                    {
-                        result[group] = cloud;
-                    }
-                }
+                    layer->getReadOptions());
 
                 return result;
             }
@@ -1563,7 +1554,7 @@ VegetationLayer::Renderer::draw(
         {
             if (newGeometryAvailable)
             {
-                OE_INFO << LC << "New geometry available, but collection is empty" << std::endl;
+                OE_DEBUG << LC << "New geometry available, but collection is empty" << std::endl;
             }
             return;
         }
@@ -1599,7 +1590,21 @@ VegetationLayer::Renderer::draw(
 void
 VegetationLayer::Renderer::resizeGLObjectBuffers(unsigned maxSize)
 {
-    //?
+    for (auto cs_iter : _cameraState)
+    {
+        for (auto cloud_iter : _geomClouds)
+        {
+            cloud_iter.second->resizeGLObjectBuffers(maxSize);
+        }
+
+        //for (auto& gs : cs_iter.second._groups)
+        //{
+        //    if (gs._instancer.valid())
+        //    {
+        //        gs._instancer->resizeGLObjectBuffers(maxSize);
+        //    }
+        //}
+    }
 }
 
 void

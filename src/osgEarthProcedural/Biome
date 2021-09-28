@@ -182,6 +182,7 @@ namespace osgEarth
             const ModelAssetPointers& assetPointers(int type) const;
 
             //! The sequential biome index uses in encoded raster data
+            //! Note: Starts at 1. Zero means "undefined."
             int index() const { return _index; }
             
         private:

@@ -336,7 +336,7 @@ Biome::assetPointers(int type) const
 //..........................................................
 
 BiomeCatalog::BiomeCatalog(const Config& conf) :
-    _biomeIndexGenerator(1) // start at 1; 0 has a special meaning
+    _biomeIndexGenerator(1) // start at 1; 0 means "undefined"
 {
     _assets = AssetCatalog(conf.child("assetcatalog"));
 

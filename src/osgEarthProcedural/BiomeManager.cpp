@@ -684,6 +684,8 @@ BiomeManager::createGPULookupTables(
     luts->assetLUT().setNumElements(numElements);
 
     // Next, build the asset table using weightings.
+    // Slot zero (0) will not be used because biome index starts at 1.
+    // Reserve it for later use.
     constexpr int MAX_NUM_BIOMES = 1024;
     luts->biomeLUT().setNumElements(MAX_NUM_BIOMES);
 
@@ -694,6 +696,12 @@ BiomeManager::createGPULookupTables(
         const ModelAssetUsageCollection& usages = b.second[group];
 
         int biome_index = biome->index();
+
+        if (biome_index <= 0)
+        {
+            OE_WARN << LC << "Found a biome index <= 0...skipping" << std::endl;
+            continue;
+        }
 
         if (biome_index >= MAX_NUM_BIOMES)
         {

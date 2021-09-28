@@ -344,7 +344,8 @@ struct BiomeGUI : public GUI::BaseGUI
                 }
             }
 
-            if (ImGui::Checkbox("Regenerate vegetation every frame", &_forceGenerate)) {
+            if (ImGui::Checkbox("Regenerate vegetation every frame", &_forceGenerate))
+            {
                 _app._map->getLayer<VegetationLayer>()->setAlwaysGenerate(_forceGenerate);
             }
 
@@ -374,16 +375,17 @@ struct BiomeGUI : public GUI::BaseGUI
 
                 if (_manualBiomes)
                 {
-                    int num = 1;
                     for (auto biome : biocat->getBiomes())
                     {
                         ImGui::PushID(biome);
-                        if (ImGui::Checkbox(biome->name()->c_str(), &_isManualBiomeActive[biome]))
+                        char buf[255];
+                        sprintf(buf, "[%s] %s", biome->id()->c_str(), biome->name()->c_str());
+                        if (ImGui::Checkbox(buf, &_isManualBiomeActive[biome]))
                         {
                             if (_isManualBiomeActive[biome])
                             {
                                 bioman.ref(biome);
-                                stateset(ri)->setDefine("OE_BIOME_INDEX", std::to_string(num), 0x7);
+                                stateset(ri)->setDefine("OE_BIOME_INDEX", std::to_string(biome->index()), 0x7);
                             }
                             else
                             {
@@ -391,13 +393,16 @@ struct BiomeGUI : public GUI::BaseGUI
                             }
                         }
                         ImGui::PopID();
-                        ++num;
                     }
                 }
                 else
                 {
                     for (auto biome : biocat->getBiomes())
-                        ImGui::Text(biome->name()->c_str());
+                    {
+                        char buf[255];
+                        sprintf(buf, "[%s] %s", biome->id()->c_str(), biome->name()->c_str());
+                        ImGui::Text(buf);
+                    }
                 }
             }
 
@@ -408,7 +413,9 @@ struct BiomeGUI : public GUI::BaseGUI
                 auto biomes = bioman.getActiveBiomes();
                 for (auto biome : biomes)
                 {
-                    if (ImGui::TreeNode(biome->name()->c_str()))
+                    char buf[255];
+                    sprintf(buf, "[%s] %s", biome->id()->c_str(), biome->name()->c_str());
+                    if (ImGui::TreeNode(buf))
                     {
                         for(int group=0; group<NUM_ASSET_GROUPS; ++group)
                         {

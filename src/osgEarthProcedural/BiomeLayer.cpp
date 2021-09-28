@@ -247,30 +247,34 @@ BiomeLayer::loadPolygonControlSet()
 
         for (auto& feature : _features)
         {
-            int biomeid = feature->getInt(biomeid_field);
-            double buffer = feature->getDouble("buffer", 0.0);
-
-            Geometry* g = feature->getGeometry();
-            GeometryIterator iter(g, false);
-            while (iter.hasMore())
+            std::string biomeid = feature->getString(biomeid_field);
+            const Biome* biome = getBiomeCatalog()->getBiome(biomeid);
+            if (biome)
             {
-                Geometry* part = iter.next();
-                if (part->isPolygon())
+                double buffer = feature->getDouble("buffer", 0.0);
+
+                Geometry* g = feature->getGeometry();
+                GeometryIterator iter(g, false);
+                while (iter.hasMore())
                 {
-                    part->open();
-                    part->removeDuplicates();
-                    part->removeColinearPoints();
+                    Geometry* part = iter.next();
+                    if (part->isPolygon())
+                    {
+                        part->open();
+                        part->removeDuplicates();
+                        part->removeColinearPoints();
 
-                    Bounds b = part->getBounds();
-                    double a_min[2] = { b.xMin(), b.yMin() };
-                    double a_max[2] = { b.xMax(), b.yMax() };
+                        Bounds b = part->getBounds();
+                        double a_min[2] = { b.xMin(), b.yMin() };
+                        double a_max[2] = { b.xMax(), b.yMax() };
 
-                    index->Insert(
-                        a_min, a_max,
-                        PolygonRecordPtr(new PolygonRecord({ 
-                            biomeid,
-                            part,
-                            buffer })));
+                        index->Insert(
+                            a_min, a_max,
+                            PolygonRecordPtr(new PolygonRecord({
+                                biome->index(),
+                                part,
+                                buffer })));
+                    }
                 }
             }
         }
@@ -443,7 +447,7 @@ BiomeLayer::createImageImplementation(
                 {
                     if (hit->_polygon->contains2D(x, y))
                     {
-                        biome_index = hit->_biome_index;
+                        int biome_index = hit->_biome_index;
 
                         if (biome_index > 0)
                             biome_indexes_seen.insert(biome_index);
@@ -486,10 +490,10 @@ BiomeLayer::postCreateImageImplementation(
 
         iter.forEachPixel([&]()
             {
-                int biomeid = 0;
                 read(pixel, iter.s(), iter.t());
                 int biome_index = (int)pixel.r();
-                biome_indexes_seen.insert(biome_index);
+                if (biome_index > 0)
+                    biome_indexes_seen.insert(biome_index);
             });
 
         trackImage(createdImage, key, biome_indexes_seen);

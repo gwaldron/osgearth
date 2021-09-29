@@ -58,7 +58,7 @@ Texture::get(const osg::State& state) const
 bool
 Texture::isCompiled(const osg::State& state) const
 {
-    return _gc[state.getContextID()]._gltexture != nullptr; // .valid();
+    return _gc[state.getContextID()]._gltexture != nullptr;
 }
 
 void

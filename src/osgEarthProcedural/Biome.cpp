@@ -86,8 +86,6 @@ ModelAsset::getConfig() const
 
 LifeMapTextureAsset::LifeMapTextureAsset(const Config& conf)
 {
-    code().setDefault(0);
-
     conf.get("name", name());
     conf.get("url", uri());
     conf.get("width", width());

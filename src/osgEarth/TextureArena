@@ -39,7 +39,7 @@ namespace osgEarth
      * 3. GPU resident - GPU handle is in GPU table; GPU memory might not be allocated
      * 4. GPU commited - GPU handle active, GPU texture fully available
      */
-    class OSGEARTH_EXPORT Texture // : public osg::Referenced
+    class OSGEARTH_EXPORT Texture
     {
     public:
         struct GCState {

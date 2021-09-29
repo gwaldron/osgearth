@@ -22,9 +22,10 @@
 #ifndef OSGEARTH_PROCEDURAL_SPLATTING_LAYER_H
 #define OSGEARTH_PROCEDURAL_SPLATTING_LAYER_H
 
-#include "Export"
-#include "BiomeLayer"
-#include "LifeMapLayer"
+#include <osgEarthProcedural/Export>
+#include <osgEarthProcedural/BiomeLayer>
+#include <osgEarthProcedural/LifeMapLayer>
+#include <osgEarth/GLUtils>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/TextureArena>
@@ -50,7 +51,6 @@ namespace osgEarth { namespace Procedural
     public:
         META_Layer(osgEarthProcedural, TextureSplattingLayer, Options, VisibleLayer, SplatImage);
 
-        //void setBiomeLayer(BimoeLayer*);
         BiomeLayer* getBiomeLayer() const;
 
         LifeMapLayer* getLifeMapLayer() const;
@@ -71,11 +71,30 @@ namespace osgEarth { namespace Procedural
 
     protected:
         virtual ~TextureSplattingLayer() { }
+        
+        struct RenderParams
+        {
+            RenderParams() : _scaleU(1.0f), _scaleV(1.0f) { }
+            float _scaleU, _scaleV;
+        };
+        using RenderParamsBuf = ArraySSBO<RenderParams>;
 
-        Future<osg::ref_ptr<TextureArena>> _materials;
-        osg::ref_ptr<TextureArena> _arena;
+        struct Materials
+        {
+            using Ptr = std::shared_ptr<Materials>;
+            osg::ref_ptr<TextureArena> _arena;
+            RenderParamsBuf _renderParams;
+            std::vector<const LifeMapTextureAsset*> _assets;
+        };
+
+        Future<Materials::Ptr> _materialsJob;
+        Materials::Ptr _materials;
 
         void buildStateSets();
+
+        Materials::Ptr loadMaterials(
+            const AssetCatalog&,
+            Cancelable*) const;
     };
 } } // namespace osgEarth::Procedural
 

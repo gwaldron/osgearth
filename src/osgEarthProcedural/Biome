@@ -34,23 +34,33 @@ namespace osgEarth
     {
         using namespace osgEarth;
 
+        /**
+         * AssetGroup organizes assets into a certain type that will
+         * determine how the system handles them. Right now there are
+         * only two types -- trees and undergrowth.
+         */
         #define NUM_ASSET_GROUPS 2
-
         struct OSGEARTHPROCEDURAL_EXPORT AssetGroup
         {
-            enum Type {
+            enum Type
+            {
                 UNDEFINED = -1,
                 TREES = 0,
                 UNDERGROWTH = 1
             };
 
+            //! Readable name of the asset group, given the type
             static std::string name(Type type);
 
+            //! Type of the asset group, given the name.
             static Type type(const std::string& name);
         };
 
         /**
-         * Individual artwork asset withing the asset catalog.
+         * Individual artwork asset that lives in the AssetCatalog.
+         * This structure defines the asset only; it does not contain
+         * the actual loaded asset data like the 3D model or billboard
+         * images.
          */
         class OSGEARTHPROCEDURAL_EXPORT ModelAsset
         {
@@ -63,9 +73,13 @@ namespace osgEarth
             OE_OPTION(float, height);
             OE_OPTION(float, sizeVariation);
 
+            //! Construct an empty model asset definition
             ModelAsset() { }
+
+            //! Deserialize the asset def from a Config
             ModelAsset(const Config& conf);
 
+            //! Serialize to a config
             Config getConfig() const;
 
             //! Get Config from which this asset was originally loaded,
@@ -82,16 +96,17 @@ namespace osgEarth
         };
 
         /**
-         * Individual artwork asset reference within a biome
+         * Definition of a ground texture artwork asset.
+         * This structure contains the definition only and does not hold
+         * any actual loaded data.
          */
         class OSGEARTHPROCEDURAL_EXPORT LifeMapTextureAsset
         {
         public:
             OE_OPTION(std::string, name);
             OE_OPTION(URI, uri);
-            OE_OPTION(float, width);
-            OE_OPTION(float, height);
-            OE_OPTION(int, code);
+            OE_OPTION(Distance, width);
+            OE_OPTION(Distance, height);
 
         public:
             LifeMapTextureAsset() { }
@@ -100,7 +115,7 @@ namespace osgEarth
         };
 
         /**
-         * Contains all assets.
+         * Container for all artwork asset definitions.
          */
         class OSGEARTHPROCEDURAL_EXPORT AssetCatalog
         {
@@ -129,6 +144,7 @@ namespace osgEarth
             bool empty() const;
 
         public:
+            //! serialize into a Config
             Config getConfig() const;
 
         protected:
@@ -139,8 +155,8 @@ namespace osgEarth
         };
 
         /** 
-         * A subset of graphical assets that will be used
-         * in a particular geographic region.
+         * Collection of artwork assets that will be used in a particular
+         * geographic resion.
          * A biome may have a "parent" biome. This means that if the Biome
          * defines ZERO assets, it will use the parent biome's assets.
          */
@@ -169,11 +185,12 @@ namespace osgEarth
             };
 
             using ModelAssetPointers = std::vector<ModelAssetPointer>;
-
             using ModelAssetGroups = ModelAssetPointers[NUM_ASSET_GROUPS];
+
+            // A collection of asset pointers for each existing AssetGroup
             ModelAssetGroups _modelgroups;
 
-            //! The assets groups represented by this biome.
+            //! The assets group collections represented by this biome.
             ModelAssetGroups& assetGroups() { return _modelgroups; }
 
             //! Collection of this biome's asset pointers for the specified asset
@@ -193,7 +210,7 @@ namespace osgEarth
 
 
         /**
-         * Mappings from land use classification types to lifemap parameters.
+         * A single lifemap value set.
          */
         class OSGEARTHPROCEDURAL_EXPORT LifeMapValue
         {

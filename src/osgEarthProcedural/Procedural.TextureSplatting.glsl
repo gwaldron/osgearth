@@ -28,8 +28,25 @@ float oe_terrain_getElevation();
 tweakable float oe_splat_blend_start = 2500.0;
 tweakable float oe_splat_blend_end = 500.0;
 
+layout(binding = 6, std430) buffer RenderParamsLUT {
+    vec2 texScale[];
+};
 
-float mapToNormalizedRange(in float value, in float lo, in float hi)
+// testing code for scale
+uniform float tex_size_norm = 0.3;
+uniform vec4 oe_tile_key;
+
+vec2 get_scale()
+{
+    return vec2(1.0 / tex_size_norm);
+}
+
+vec2 get_offset()
+{
+    return fract(oe_tile_key.xy * get_scale());
+}
+
+float mapTo01(in float value, in float lo, in float hi)
 {
     return clamp((value - lo) / (hi - lo), 0.0, 1.0);
 }
@@ -42,7 +59,7 @@ void oe_splat_View(inout vec4 vertex_view)
         vec2 uv = ((i & 1) == 0) ? oe_layer_tilec.st : oe_layer_tilec.ts;
         splatCoords[i] = oe_terrain_scaleCoordsToRefLOD(uv, levels[i]);
     }
-    splatLevelBlend = mapToNormalizedRange(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
+    splatLevelBlend = mapTo01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
 
     oe_elev = oe_terrain_getElevation();
 }
@@ -81,7 +98,7 @@ layout(binding = 5, std430) buffer TextureLUT {
 #define LUSH 2
 #define SPECIAL 3
 
-float mapToNormalizedRange(in float value, in float lo, in float hi)
+float mapTo01(in float value, in float lo, in float hi)
 {
     return clamp((value - lo) / (hi - lo), 0.0, 1.0);
 }
@@ -340,7 +357,7 @@ void oe_splat_Frag(inout vec4 quad)
 
 #if 1
     // perma-snow caps:
-    float coldness = mapToNormalizedRange(oe_elev, oe_snow_min_elev, oe_snow_max_elev);
+    float coldness = mapTo01(oe_elev, oe_snow_min_elev, oe_snow_max_elev);
     float min_snow_cos_angle = 1.0 - soften(oe_snow*coldness);
     const float snow_buf = 0.01;
     float b = min(min_snow_cos_angle + snow_buf, 1.0);

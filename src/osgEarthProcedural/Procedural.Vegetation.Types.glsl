@@ -87,7 +87,7 @@ layout(binding=4, std430) buffer RenderLUT
     RenderLeaf renderSet[];
 };
 layout(binding=5, std430) buffer TextureLUT
-{
+{    
     uint64_t texArena[];
 };
 layout(binding=6, std430) buffer BiomeLUT

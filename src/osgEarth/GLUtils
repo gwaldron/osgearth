@@ -173,6 +173,17 @@ namespace osgEarth
         std::unordered_set<GLObject::Ptr> _objects;
     };
 
+    /**
+     * Interface class for OSG GL functions
+     */
+    class OSGEARTH_EXPORT OSG_GL_API
+    {
+    public:
+        virtual void apply(osg::State& state) const = 0;
+        virtual void resizeGLObjectBuffers(unsigned maxsize) = 0;
+        virtual void releaseGLObjects(osg::State* state) const = 0;
+    };
+
     //! Base class for a shader storage buffer object
     class OSGEARTH_EXPORT SSBO
     {
@@ -189,7 +200,7 @@ namespace osgEarth
     };
 
     template<typename T>
-    class ArraySSBO
+    class ArraySSBO : public OSG_GL_API
     {
     public:
         ArraySSBO() : _buf(nullptr), _numElements(0), _bindingIndex(0)
@@ -232,7 +243,9 @@ namespace osgEarth
             _dirty.setAllElementsTo(1);
         }
 
-        void apply(osg::State& state) const
+    public: // OSG_GL_API
+
+        void apply(osg::State& state) const override
         {
             if (_numElements == 0)
                 return;
@@ -269,14 +282,14 @@ namespace osgEarth
             ssbo.bindLayout();
         }
 
-        void resizeGLObjectBuffers(unsigned maxSize)
+        void resizeGLObjectBuffers(unsigned maxSize) override
         {
             _ssbo.resize(maxSize);
             _dirty.resize(maxSize);
             _dirty.setAllElementsTo(1);
         }
 
-        void releaseGLObjects(osg::State* state) const
+        void releaseGLObjects(osg::State* state) const override
         {
             if (state)
             {
@@ -284,7 +297,7 @@ namespace osgEarth
             }
             else
             {
-                for (int i = 0; i < _ssbo.size(); ++i)
+                for (unsigned i = 0; i < _ssbo.size(); ++i)
                 {
                     _ssbo[i].release();
                 }
@@ -297,6 +310,39 @@ namespace osgEarth
         T* _buf;
         unsigned _numElements;
         unsigned _bindingIndex;
+    };
+
+    // State attribute containing an object with the OSG GL API
+    class OSGEARTH_EXPORT StateAttributeAdapter : public osg::StateAttribute
+    {
+    public:
+        StateAttributeAdapter(OSG_GL_API* object) : _object(object) { }
+
+        void apply(osg::State& state) const override
+        {
+            if (_object)
+                _object->apply(state);
+        }
+
+        void resizeGLObjectBuffers(unsigned maxSize) override
+        {
+            if (_object)
+                _object->resizeGLObjectBuffers(maxSize);
+        }
+
+        void releaseGLObjects(osg::State* state) const override
+        {
+            if (_object)
+                _object->releaseGLObjects(state);
+        }
+
+        META_StateAttribute(osgEarth, StateAttributeAdapter, (osg::StateAttribute::Type)12131416);
+        StateAttributeAdapter() : _object(nullptr) { }
+        StateAttributeAdapter(const StateAttributeAdapter& rhs, const osg::CopyOp& op) { }
+        int compare(const osg::StateAttribute& rhs) const override { return -1; }
+
+    private:
+        OSG_GL_API* _object;
     };
 
     // Functions that aren't in osg::GLExtensions (some in 3.4, some in 3.6+)

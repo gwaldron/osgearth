@@ -243,18 +243,18 @@ DebugImageLayer::createImageImplementation(const TileKey& key, ProgressCallback*
         unsigned int numRows, numCols;
         key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
         tileY = numRows - tileY - 1;
-        buf << key.getLevelOfDetail() << "/" << tileX << "/" << tileY;
+        buf << "Y=" << tileY << "\nX=" << tileX << "\nLOD=" << key.getLOD();
     }
     else
     {
-        buf << key.str();
+        buf << "Y=" << key.getTileY() << "\nX=" << key.getTileX() << "\nLOD=" << key.getLOD();
     }
 
     const GeoExtent& e = key.getExtent();
 
     buf << std::fixed << std::setprecision(1) 
-        << "\nh=" << e.height(Units::METERS)
-        << "m\nw=" << e.width(Units::METERS)
+        << "\nH=" << e.height(Units::METERS)
+        << "m\nW=" << e.width(Units::METERS)
         << "m";
 
     std::string text;

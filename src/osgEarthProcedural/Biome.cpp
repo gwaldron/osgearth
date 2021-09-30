@@ -88,8 +88,7 @@ LifeMapTextureAsset::LifeMapTextureAsset(const Config& conf)
 {
     conf.get("name", name());
     conf.get("url", uri());
-    conf.get("width", width());
-    conf.get("height", height());
+    conf.get("size", size());
 }
 
 Config
@@ -98,8 +97,7 @@ LifeMapTextureAsset::getConfig() const
     Config conf("texture");
     conf.set("name", name());
     conf.set("url", uri());
-    conf.set("width", width());
-    conf.set("height", height());
+    conf.set("size", size());
     return conf;
 }
 

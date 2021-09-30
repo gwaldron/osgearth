@@ -172,6 +172,8 @@ TextureSplattingLayer::removedFromMap(const Map* map)
     options().lifeMapLayer().removedFromMap(map);
 }
 
+#define NUM_LEVELS 1
+
 void
 TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 {
@@ -193,8 +195,13 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
         {
             const AssetCatalog& assets = biome_cat->getAssets();
 
-            GeoExtent ex = engine->getMap()->getProfile()->calculateExtent(14, 0, 0);
-            double tile_height_m = ex.height(Units::METERS);
+            GeoExtent ex[NUM_LEVELS];
+            ex[0] = engine->getMap()->getProfile()->calculateExtent(14, 0, 0);
+            ex[1] = engine->getMap()->getProfile()->calculateExtent(19, 0, 0);
+
+            double tile_height_m[NUM_LEVELS];
+            tile_height_m[0] = ex[0].height(Units::METERS);
+            tile_height_m[1] = ex[1].height(Units::METERS);
 
             // Function to load all material textures.
             auto loadMaterials = [assets, tile_height_m](Cancelable* c) -> Materials::Ptr
@@ -205,7 +212,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                 result->_arena = new TextureArena();
 
                 // contains metadata about the textures (size etc.)
-                result->_renderParams.setNumElements(assets.getLifeMapTextures().size());
+                result->_renderParams.setNumElements(assets.getLifeMapTextures().size() * NUM_LEVELS);
 
                 if (assets.getLifeMapMatrixHeight() * assets.getLifeMapMatrixWidth() !=
                     assets.getLifeMapTextures().size())
@@ -215,7 +222,8 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                     return nullptr;
                 }
 
-                int ptr = 0;
+                int ptr0 = 0;
+                int ptr1 = assets.getLifeMapTextures().size();
 
                 for (auto& tex : assets.getLifeMapTextures())
                 {
@@ -243,10 +251,18 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                         return nullptr;
 
                     // Set up the texture scaling:
-                    RenderParams& params = result->_renderParams[ptr++];
-                    params._scaleV = tex.size().isSet() ? tile_height_m / tex.size()->as(Units::METERS) : 1.0f;
-                    params._scaleU = params._scaleV;
-                    OE_INFO << LC0 << "   size=" << tex.size()->as(Units::METERS) << "m  scale=" << params._scaleU << std::endl;
+                    RenderParams& params0 = result->_renderParams[ptr0++];
+                    params0._scaleV = tex.size().isSet() ? tile_height_m[0] / tex.size()->as(Units::METERS) : 1.0f;
+                    params0._scaleU = params0._scaleV;
+
+                    if (NUM_LEVELS > 1)
+                    {
+                        RenderParams& params1 = result->_renderParams[ptr1++];
+                        params1._scaleV = tex.size().isSet() ? tile_height_m[1] / tex.size()->as(Units::METERS) : 1.0f;
+                        params1._scaleU = params1._scaleV;
+                    }
+
+                    //OE_INFO << LC0 << "   size=" << tex.size()->as(Units::METERS) << "m  scale=" << params._scaleU << std::endl;
                 }
 
                 result->_renderParams.dirty();

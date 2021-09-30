@@ -5,7 +5,7 @@
 
 #pragma import_defines(OE_SPLAT_TWEAKS)
 
-#define NUM_LEVELS 2
+#define NUM_LEVELS 1
 const int levels[2] = int[](14, 19);
 flat out vec2 splat_tilexy[2];
 out vec2 splat_uv[2];
@@ -101,7 +101,7 @@ float oe_ao;
 in float splatLevelBlend;
 in vec4 oe_layer_tilec;
 
-#define NUM_LEVELS 2
+#define NUM_LEVELS 1
 flat in vec2 splat_tilexy[2];
 in vec2 splat_uv[2];
 
@@ -155,7 +155,7 @@ uniform float tex_size_scale = 1.0;
 // overflow the interpolator and pause pixel jitter
 vec2 get_coord(in int index, in int level)
 {
-    vec2 scale = texScale[index] * tex_size_scale;
+    vec2 scale = texScale[index*(level+1)] * tex_size_scale;
     vec2 a = fract(splat_tilexy[level] * scale);
     vec2 b = splat_uv[level] * scale;
     return a + b;

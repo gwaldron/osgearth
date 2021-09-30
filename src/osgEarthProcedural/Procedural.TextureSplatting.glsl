@@ -5,9 +5,10 @@
 
 #pragma import_defines(OE_SPLAT_TWEAKS)
 
-#define NUM_LEVELS 2
+#define NUM_LEVELS 1
 const int levels[2] = int[](14, 19);
-out vec2 splatCoords[2];
+flat out vec2 splat_tilexy[2];
+out vec2 splat_uv[2];
 
 // from REX SDK:
 vec4 oe_terrain_getNormalAndCurvature();
@@ -32,19 +33,7 @@ layout(binding = 6, std430) buffer RenderParamsLUT {
     vec2 texScale[];
 };
 
-// testing code for scale
-uniform float tex_size_norm = 0.3;
 uniform vec4 oe_tile_key;
-
-vec2 get_scale()
-{
-    return vec2(1.0 / tex_size_norm);
-}
-
-vec2 get_offset()
-{
-    return fract(oe_tile_key.xy * get_scale());
-}
 
 float mapTo01(in float value, in float lo, in float hi)
 {
@@ -57,7 +46,10 @@ void oe_splat_View(inout vec4 vertex_view)
     for (int i = 0; i < NUM_LEVELS; ++i)
     {
         vec2 uv = ((i & 1) == 0) ? oe_layer_tilec.st : oe_layer_tilec.ts;
-        splatCoords[i] = oe_terrain_scaleCoordsToRefLOD(uv, levels[i]);
+        
+        splat_uv[i] = oe_terrain_scaleCoordsToRefLOD(uv, levels[i]);
+
+        splat_tilexy[i] = floor(oe_tile_key.xy / exp2(oe_tile_key.z - levels[i]));
     }
     splatLevelBlend = mapTo01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
 
@@ -110,8 +102,9 @@ float oe_ao;
 in float splatLevelBlend;
 in vec4 oe_layer_tilec;
 
-#define NUM_LEVELS 2
-in vec2 splatCoords[2];
+#define NUM_LEVELS 1
+flat in vec2 splat_tilexy[2];
+in vec2 splat_uv[2];
 
 flat in int maxLevel;
 in float oe_elev;
@@ -154,14 +147,32 @@ vec3 unpackNormal(in vec4 p)
     return normalize(n);
 }
 
+
+// testing code for scale
+uniform float tex_size_norm = 1.0;
+
+vec2 get_scale(in int index)
+{
+    //todo: replace with size lookup from LUT...
+    return vec2(1.0 / tex_size_norm);
+}
+
+vec2 get_coord(in int index, in int level)
+{
+    vec2 scale = get_scale(index);
+    vec2 a = fract(splat_tilexy[level] * scale);
+    vec2 b = splat_uv[level] * scale;
+    return a + b;
+}
+
 vec4 get_rgbh(in int index, in int level)
 {
-    return texture(sampler2D(texHandle[index]), splatCoords[level]);
+    return texture(sampler2D(texHandle[index]), get_coord(index, level));
 }
 
 vec4 get_material(in int index, in int level)
 {
-    return texture(sampler2D(texHandle[index+1]), splatCoords[level]);
+    return texture(sampler2D(texHandle[index+1]), get_coord(index, level));
 }
 
 float contrastify(in float v, in float c)

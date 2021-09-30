@@ -88,8 +88,8 @@ TileNode::TileNode(
     double y = (double)(th - _key.getTileY() - 1);
 
     _tileKeyValue.set(
-        (float)fmod(x, m),
-        (float)fmod(y, m),
+        (float)(x-tw/2), //(int)fmod(x, m),
+        (float)(y-th/2), // (int)fmod(y, m),
         (float)_key.getLOD(),
         -1.0f);
 

@@ -246,7 +246,7 @@ RGBH_Loader::readImageFromSourceData(
         color = colorURI.getImage(options);
         if (color.valid())
         {
-            URI heightURI(basename + "_HGT" + extension);
+            URI heightURI(basename + "_HGT." + extension);
             osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
             return assemble_RGBH(color, height, 0);
         }

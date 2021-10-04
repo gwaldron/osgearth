@@ -72,7 +72,7 @@ _numTilesWide(-1),
 _timestamp(0),
 _version("1.0"),
 _tileMapService("http://tms.osgeo.org/1.0.0"),
-_profile_type(Profile::TYPE_MERCATOR)
+_profile_type(TYPE_MERCATOR)
 {
 }
 
@@ -205,11 +205,11 @@ TileMap::createProfile() const
     osg::ref_ptr<const Profile> profile = 0L;
     osg::ref_ptr< SpatialReference > spatialReference =  osgEarth::SpatialReference::create(_srs, _vsrs);
 
-    if (getProfileType() == Profile::TYPE_GEODETIC)
+    if (getProfileType() == TYPE_GEODETIC)
     {
         profile = Profile::create(Profile::GLOBAL_GEODETIC);
     }
-    else if (getProfileType() == Profile::TYPE_MERCATOR)
+    else if (getProfileType() == TYPE_MERCATOR)
     {
         profile = Profile::create(Profile::SPHERICAL_MERCATOR);
     }
@@ -239,7 +239,7 @@ TileMap::createProfile() const
     {
         profile = Profile::create(Profile::GLOBAL_GEODETIC);
     }
-    else if ( _profile_type == Profile::TYPE_MERCATOR )
+    else if ( _profile_type == TYPE_MERCATOR )
     {
         profile = Profile::create(Profile::SPHERICAL_MERCATOR);
     }
@@ -393,7 +393,10 @@ TileMap::create(const std::string& url,
     const GeoExtent& ex = profile->getExtent();
 
     TileMap* tileMap = new TileMap();
-    tileMap->setProfileType(profile->getProfileType());
+    tileMap->setProfileType(
+        profile->getSRS()->isGeographic() ? TYPE_GEODETIC :
+        profile->getSRS()->isMercator() ? TYPE_MERCATOR:
+        TYPE_LOCAL);
     tileMap->setExtents(ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax());
     tileMap->setOrigin(ex.xMin(), ex.yMin());
     tileMap->_filename = url;
@@ -539,10 +542,10 @@ TileMapReaderWriter::read( const Config& conf )
     {
         //Read the profile
         std::string profile = tileSetsConf->value(ATTR_PROFILE);
-        if (profile == "global-geodetic") tileMap->setProfileType( Profile::TYPE_GEODETIC );
-        else if (profile == "global-mercator") tileMap->setProfileType( Profile::TYPE_MERCATOR );
-        else if (profile == "local") tileMap->setProfileType( Profile::TYPE_LOCAL );
-        else tileMap->setProfileType( Profile::TYPE_UNKNOWN );
+        if (profile == "global-geodetic") tileMap->setProfileType( TileMap::TYPE_GEODETIC );
+        else if (profile == "global-mercator") tileMap->setProfileType(TileMap::TYPE_MERCATOR );
+        else if (profile == "local") tileMap->setProfileType(TileMap::TYPE_LOCAL );
+        else tileMap->setProfileType(TileMap::TYPE_UNKNOWN );
 
         //Read each TileSet
         const ConfigSet& setConfs = tileSetsConf->children(ELEM_TILESET);
@@ -558,9 +561,14 @@ TileMapReaderWriter::read( const Config& conf )
     }
 
     //Try to compute the profile based on the SRS if there was no PROFILE tag given
-    if (tileMap->getProfileType() == Profile::TYPE_UNKNOWN && !tileMap->getSRS().empty())
+    if (tileMap->getProfileType() == TileMap::TYPE_UNKNOWN && !tileMap->getSRS().empty())
     {
-        tileMap->setProfileType( Profile::getProfileTypeFromSRS(tileMap->getSRS()) );
+        osg::ref_ptr<const SpatialReference> srs = SpatialReference::get(tileMap->getSRS());
+        tileMap->setProfileType(
+            srs.valid() && srs->isGeographic() ? TileMap::TYPE_GEODETIC :
+            srs.valid() && srs->isMercator() ? TileMap::TYPE_MERCATOR :
+            srs.valid() && srs->isProjected() ? TileMap::TYPE_LOCAL :
+            TileMap::TYPE_UNKNOWN);
     }
 
     tileMap->computeMinMaxLevel();

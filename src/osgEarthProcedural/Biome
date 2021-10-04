@@ -105,8 +105,7 @@ namespace osgEarth
         public:
             OE_OPTION(std::string, name);
             OE_OPTION(URI, uri);
-            OE_OPTION(Distance, width);
-            OE_OPTION(Distance, height);
+            OE_OPTION(Distance, size);
 
         public:
             LifeMapTextureAsset() { }

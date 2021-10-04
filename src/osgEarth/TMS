@@ -141,6 +141,14 @@ namespace osgEarth { namespace TMS
     class OSGEARTH_EXPORT TileMap : public osg::Referenced
     {
     public:
+        enum ProfileType
+        {
+            TYPE_UNKNOWN,
+            TYPE_GEODETIC,
+            TYPE_MERCATOR,
+            TYPE_LOCAL
+        };
+
         TileMap();
 
         /** dtor */
@@ -322,8 +330,8 @@ namespace osgEarth { namespace TMS
         */
         void setNumTilesHigh(unsigned int h) {_numTilesHigh = h;}
 
-        osgEarth::Profile::ProfileType getProfileType() const {return _profile_type;}
-        void setProfileType( osgEarth::Profile::ProfileType type ) {_profile_type = type;}
+        ProfileType getProfileType() const {return _profile_type;}
+        void setProfileType( ProfileType type ) {_profile_type = type;}
 
         const Profile* createProfile() const;
 
@@ -404,7 +412,7 @@ namespace osgEarth { namespace TMS
         unsigned int _numTilesWide;
         unsigned int _numTilesHigh;
 
-        osgEarth::Profile::ProfileType _profile_type;
+        ProfileType _profile_type;
 
         TimeStamp _timestamp;
 

@@ -428,16 +428,6 @@ Profile::Profile(const SpatialReference* srs,
     _hash = std::hash<std::string>()(fullJSON);
 }
 
-Profile::ProfileType
-Profile::getProfileType() const
-{
-    return
-        _extent.isValid() && _extent.getSRS()->isGeographic() ? TYPE_GEODETIC :
-        _extent.isValid() && _extent.getSRS()->isMercator() ? TYPE_MERCATOR :
-        _extent.isValid() && _extent.getSRS()->isProjected() ? TYPE_LOCAL :
-        TYPE_UNKNOWN;
-}
-
 bool
 Profile::isOK() const {
     return _extent.isValid();
@@ -531,18 +521,6 @@ Profile::calculateExtent( unsigned int lod, unsigned int tileX, unsigned int til
     double ymin = ymax - height;
 
     return GeoExtent( getSRS(), xmin, ymin, xmax, ymax );
-}
-
-//TODO: DEPRECATE THIS and replace by examining the SRS itself.
-Profile::ProfileType
-Profile::getProfileTypeFromSRS(const std::string& srs_string)
-{
-    osg::ref_ptr<SpatialReference> srs = SpatialReference::create( srs_string );
-    return 
-        srs.valid() && srs->isGeographic()? Profile::TYPE_GEODETIC :
-        srs.valid() && srs->isMercator()? Profile::TYPE_MERCATOR :
-        srs.valid() && srs->isProjected()? Profile::TYPE_LOCAL :
-        Profile::TYPE_UNKNOWN;
 }
 
 bool

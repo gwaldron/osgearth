@@ -327,6 +327,7 @@ BiomeLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
+#if 0
     MySpatialIndex* pointIndex = static_cast<MySpatialIndex*>(_pointIndex);
     if (pointIndex)
     {
@@ -389,6 +390,7 @@ BiomeLayer::createImageImplementation(
 
         return std::move(result);
     }
+#endif
 
     PolygonSpatialIndex* polygonIndex = static_cast<PolygonSpatialIndex*>(_polygonIndex);
     if (polygonIndex)
@@ -426,10 +428,6 @@ BiomeLayer::createImageImplementation(
 
                 if (radius > temp.getUnitsPerPixel())
                 {
-                    //double dx = (prng.next()*2.0 - 1.0), dy = (prng.next()*2.0 - 1.0);
-                    //double len = sqrt(dx*dx + dy*dy);
-                    //dx /= len, dy /= len;
-                    //x += radius * dx, y += radius * dy;
                     x += radius * (prng.next()*2.0 - 1.0);
                     y += radius * (prng.next()*2.0 - 1.0);
                 }
@@ -447,7 +445,7 @@ BiomeLayer::createImageImplementation(
                 {
                     if (hit->_polygon->contains2D(x, y))
                     {
-                        int biome_index = hit->_biome_index;
+                        biome_index = hit->_biome_index;
 
                         if (biome_index > 0)
                             biome_indexes_seen.insert(biome_index);
@@ -456,7 +454,7 @@ BiomeLayer::createImageImplementation(
                     }
                 }
 
-                value.r() = biome_index;
+                value.r() = (float)biome_index;
 
                 write(value, iter.s(), iter.t());
             });
@@ -465,7 +463,7 @@ BiomeLayer::createImageImplementation(
 
         trackImage(result, key, biome_indexes_seen);
 
-        return std::move(result);
+        return result;
     }
 
     return GeoImage::INVALID;

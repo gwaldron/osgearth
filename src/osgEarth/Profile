@@ -108,15 +108,6 @@ namespace osgEarth
         static std::string SPHERICAL_MERCATOR;
         static std::string PLATE_CARREE;
 
-        // profile types:
-        enum ProfileType
-        {
-            TYPE_UNKNOWN,
-            TYPE_GEODETIC,
-            TYPE_MERCATOR,
-            TYPE_LOCAL
-        };
-
     public:
 
         static const Profile* create(
@@ -175,11 +166,6 @@ namespace osgEarth
         const SpatialReference* getSRS() const;
 
         /**
-         * Gets the profile type
-         */
-        ProfileType getProfileType() const;  
-
-        /**
          * Given an x-resolution, specified in the profile's SRS units, calculates and
          * returns the closest LOD level.
          */
@@ -200,12 +186,6 @@ namespace osgEarth
          * Calculates an extent given a tile location in this profile.
          */
         virtual GeoExtent calculateExtent(unsigned int lod, unsigned int tileX, unsigned int tileY) const;
-
-        /**
-         * Deduces a profile type given an SRS string.
-         * @deprecated
-         */
-        static ProfileType getProfileTypeFromSRS(const std::string &srs);
 
         /**
          * Gets whether the two profiles can be treated as equivalent.

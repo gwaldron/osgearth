@@ -172,6 +172,8 @@ TextureSplattingLayer::removedFromMap(const Map* map)
     options().lifeMapLayer().removedFromMap(map);
 }
 
+#define NUM_LEVELS 1
+
 void
 TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 {
@@ -193,11 +195,24 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
         {
             const AssetCatalog& assets = biome_cat->getAssets();
 
-            auto loadMaterials = [assets](Cancelable* c) -> Materials::Ptr
+            GeoExtent ex[NUM_LEVELS];
+            ex[0] = engine->getMap()->getProfile()->calculateExtent(14, 0, 0);
+            ex[1] = engine->getMap()->getProfile()->calculateExtent(19, 0, 0);
+
+            double tile_height_m[NUM_LEVELS];
+            tile_height_m[0] = ex[0].height(Units::METERS);
+            tile_height_m[1] = ex[1].height(Units::METERS);
+
+            // Function to load all material textures.
+            auto loadMaterials = [assets, tile_height_m](Cancelable* c) -> Materials::Ptr
             {
                 Materials::Ptr result = Materials::Ptr(new Materials);
 
+                // contains the textures and their bindless handles
                 result->_arena = new TextureArena();
+
+                // contains metadata about the textures (size etc.)
+                result->_renderParams.setNumElements(assets.getLifeMapTextures().size() * NUM_LEVELS);
 
                 if (assets.getLifeMapMatrixHeight() * assets.getLifeMapMatrixWidth() !=
                     assets.getLifeMapTextures().size())
@@ -206,6 +221,9 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                         << std::endl;
                     return nullptr;
                 }
+
+                int ptr0 = 0;
+                int ptr1 = assets.getLifeMapTextures().size();
 
                 for (auto& tex : assets.getLifeMapTextures())
                 {
@@ -231,17 +249,31 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 
                     if (c && c->isCanceled())
                         return nullptr;
+
+                    // Set up the texture scaling:
+                    RenderParams& params0 = result->_renderParams[ptr0++];
+                    params0._scaleV = tex.size().isSet() ? tile_height_m[0] / tex.size()->as(Units::METERS) : 1.0f;
+                    params0._scaleU = params0._scaleV;
+
+                    if (NUM_LEVELS > 1)
+                    {
+                        RenderParams& params1 = result->_renderParams[ptr1++];
+                        params1._scaleV = tex.size().isSet() ? tile_height_m[1] / tex.size()->as(Units::METERS) : 1.0f;
+                        params1._scaleU = params1._scaleV;
+                    }
+
+                    //OE_INFO << LC0 << "   size=" << tex.size()->as(Units::METERS) << "m  scale=" << params._scaleU << std::endl;
                 }
 
-                // initialize the size of the rendering parameters to be
-                // equal to the number of texture assets. We will set the
-                // values later.
-                result->_renderParams.setNumElements(result->_assets.size());
+                result->_renderParams.dirty();
+
+                // bind the buffer to a layout index in the shader
                 result->_renderParams.setBindingIndex(RENDERPARAMS_LAYOUT_BINDING_INDEX);
 
                 return result;
             };
 
+            // Load material asynchronously
             _materialsJob = Job().dispatch<Materials::Ptr>(loadMaterials);
         }
     }
@@ -279,6 +311,9 @@ TextureSplattingLayer::buildStateSets()
         // Install the texture arena as a state attribute:
         ss->setAttribute(_materials->_arena);
 
+        // install the LUT buffer for per-texture render parameters.
+        ss->setAttribute(new StateAttributeAdapter(&_materials->_renderParams));
+
         // Install the texture splatting shader
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
         TerrainShaders shaders;
@@ -299,9 +334,6 @@ TextureSplattingLayer::buildStateSets()
             ss->setDefine("OE_TEX_DIM_X", std::to_string(assets.getLifeMapMatrixWidth()));
             ss->setDefine("OE_TEX_DIM_Y", std::to_string(assets.getLifeMapMatrixHeight()));
         }
-
-        // install the LUT buffer for per-texture render parameters.
-        ss->setAttribute(new StateAttributeAdapter(&_materials->_renderParams));
     }
 }
 

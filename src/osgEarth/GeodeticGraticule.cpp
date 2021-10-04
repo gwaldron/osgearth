@@ -142,7 +142,7 @@ GeodeticGraticule::Options::fromConfig(const Config& conf)
     _gridLinesVisible.init(true);
     _gridLabelsVisible.init(true);
     _edgeLabelsVisible.init(true);
-    _resolutions.init("10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125");
+    _resolutions.init("10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.03125");
     Style labelStyle;
     TextSymbol* t = labelStyle.getOrCreate<TextSymbol>();
     t->fill()->color().set(1, 1, 1, 1);

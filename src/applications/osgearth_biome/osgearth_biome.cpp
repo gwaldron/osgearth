@@ -576,12 +576,12 @@ main(int argc, char** argv)
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags
-    osg::Node* node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
-    if (node)
+    osg::ref_ptr<osg::Node> node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
+    if (node.valid())
     {
         App app;
 
-        app._mapNode = MapNode::get(node);
+        app._mapNode = MapNode::get(node.get());
         if (!app._mapNode)
             return usage("No map node");
 

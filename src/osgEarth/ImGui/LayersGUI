@@ -44,6 +44,7 @@ namespace osgEarth {
             LayerVector _layers;
             std::vector<bool> _layerExpanded;
             int _mapRevision;
+            std::unordered_map<Layer*, float> _maxMaxRanges;
 
         public:
             LayersGUI() : BaseGUI("Map Layers"),
@@ -96,6 +97,14 @@ namespace osgEarth {
                         _mapRevision = map->getLayers(_layers);
 
                     _layerExpanded.assign(_layers.size(), false);
+
+                    _maxMaxRanges.clear();
+                    for (auto layer : _layers)
+                    {
+                        VisibleLayer* v = dynamic_cast<VisibleLayer*>(layer.get());
+                        if (v)
+                            _maxMaxRanges[layer.get()] = v->getMaxVisibleRange() * 2.0f;
+                    }
                 }
 
                 osg::Camera* camera = ri.getCurrentCamera();
@@ -179,14 +188,18 @@ namespace osgEarth {
                                 if (visibleLayer && !elevationLayer)
                                 {
                                     float opacity = visibleLayer->getOpacity();
-                                    ImGui::PushID("opacity");
-                                    ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
-                                    visibleLayer->setOpacity(opacity);
-                                    ImGui::PopID();
+                                    if (ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f))
+                                        visibleLayer->setOpacity(opacity);
 
                                     bool modulate = visibleLayer->getColorBlending() == BLEND_MODULATE;
                                     if (ImGui::Checkbox("Modulate", &modulate))
                                         visibleLayer->setColorBlending(modulate ? BLEND_MODULATE : BLEND_INTERPOLATE);
+
+                                    float maxRange = visibleLayer->getMaxVisibleRange();
+                                    if (maxRange < FLT_MAX) {
+                                        if (ImGui::SliderFloat("Max range", &maxRange, 0.0f, _maxMaxRanges[layer]))
+                                            visibleLayer->setMaxVisibleRange(maxRange);
+                                    }
                                 }
 
                                 auto threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(layer);

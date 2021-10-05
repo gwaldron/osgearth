@@ -273,6 +273,12 @@ main(int argc, char** argv)
 
     osgDB::readCommandLine(args);
 
+    if (args.read("--pause"))
+    {
+        std::cout << "Press enter to continue" << std::endl;
+        getchar();
+    }
+
     // plugin options, if the user passed them in:
     osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
     std::string str;
@@ -424,8 +430,6 @@ main(int argc, char** argv)
         output->setDataExtents(outputExtents);
     }
 
-    bool debug = args.read("--debug");
-
     // Dump out some stuff...
     OE_NOTICE << LC << "FROM:\n"
         << inConf.toJSON(true)
@@ -539,12 +543,6 @@ main(int argc, char** argv)
         maxLevel = outputProfile->getEquivalentLOD( input->getProfile(), maxLevel );
         visitor->setMaxLevel( maxLevel );
         OE_NOTICE << LC << "Calculated max level = " << maxLevel << std::endl;
-    }
-
-    if (debug)
-    {
-        std::cout << "Press enter to continue" << std::endl;
-        getchar();
     }
 
     // Ready!!!

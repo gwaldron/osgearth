@@ -1,5 +1,15 @@
 <?xml version="1.0" ?>
 <viewpoints time="1.5">
+<viewpoint>
+  <heading>-5.69775e-06</heading>
+  <pitch>-88.999</pitch>
+  <range>2789.03m</range>
+  <long>18.33586274612923</long>
+  <lat>-33.38459012509401</lat>
+  <height>308.7187225008383</height>
+  <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+</viewpoint>
+
     <viewpoint>
         <heading>8.806974516644791</heading>
         <height>4465.397310772911</height>

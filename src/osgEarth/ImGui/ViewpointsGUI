@@ -31,6 +31,7 @@ namespace osgEarth {
         struct ViewpointsGUI : public BaseGUI
         {
             osg::observer_ptr<MapNode> _mapNode;
+            float _duration;
 
             ViewpointsGUI() : 
                 BaseGUI("Viewpoints"),
@@ -53,6 +54,7 @@ namespace osgEarth {
                     {
                         if (i->key() == "viewpoints")
                         {
+                            _duration = i->value("time", 1.0f);
                             const ConfigSet& children = i->children("viewpoint");
                             if (children.size() > 0)
                             {
@@ -84,7 +86,7 @@ namespace osgEarth {
                         if (selected)
                         {
                             auto manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
-                            manip->setViewpoint(vp, 2.0);
+                            manip->setViewpoint(vp, _duration);
                         }
                         ImGui::PopID();
                         ImGui::Separator();

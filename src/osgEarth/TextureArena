@@ -112,11 +112,11 @@ namespace osgEarth
         virtual ~TextureArena();
 
     public: // StateAttribute
-        void apply(osg::State&) const;
-        void compileGLObjects(osg::State&) const;
-        void resizeGLObjectBuffers(unsigned);
-        void releaseGLObjects(osg::State*) const;
-        int compare(const osg::StateAttribute& rhs) const { return -1; }
+        void apply(osg::State&) const override;
+        void compileGLObjects(osg::State&) const override;
+        void resizeGLObjectBuffers(unsigned) override;
+        void releaseGLObjects(osg::State*) const override;
+        int compare(const osg::StateAttribute& rhs) const override { return -1; }
 
     private:
         //! disable copy

@@ -170,7 +170,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     if (AssetGroup::TREES < NUM_ASSET_GROUPS)
     {
         groups()[AssetGroup::TREES].castShadows() = true;
-        groups()[AssetGroup::TREES].maxRange() = 4500.0f;
+        groups()[AssetGroup::TREES].maxRange() = 2500.0f;
         groups()[AssetGroup::TREES].lod() = 14;
         groups()[AssetGroup::TREES].spacing() = Distance(15.0f, Units::METERS);
         groups()[AssetGroup::TREES].maxAlpha() = 0.15f;
@@ -179,7 +179,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     if (AssetGroup::UNDERGROWTH < NUM_ASSET_GROUPS)
     {
         groups()[AssetGroup::UNDERGROWTH].castShadows() = false;
-        groups()[AssetGroup::UNDERGROWTH].maxRange() = 150.0f;
+        groups()[AssetGroup::UNDERGROWTH].maxRange() = 75.0f;
         groups()[AssetGroup::UNDERGROWTH].lod() = 19;
         groups()[AssetGroup::UNDERGROWTH].spacing() = Distance(1.0f, Units::METERS);
         groups()[AssetGroup::UNDERGROWTH].maxAlpha() = 0.75f;
@@ -410,6 +410,21 @@ VegetationLayer::getGroupLOD(AssetGroup::Type group) const
         return options().group(group).lod().get();
     else
         return 0;
+}
+void
+VegetationLayer::setMaxRange(AssetGroup::Type type, float value)
+{
+    OE_HARD_ASSERT(type < NUM_ASSET_GROUPS);
+
+    auto& group = options().group(type);
+    group.maxRange() = value;
+}
+
+float
+VegetationLayer::getMaxRange(AssetGroup::Type type) const
+{
+    OE_HARD_ASSERT(type < NUM_ASSET_GROUPS);
+    return options().group(type).maxRange().get();
 }
 
 void

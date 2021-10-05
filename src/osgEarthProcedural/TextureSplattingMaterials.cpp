@@ -233,7 +233,16 @@ RGBH_Loader::readImageFromSourceData(
             basename = basename.substr(0, basename.length() - 6); // strip "_Color"
             URI heightURI(basename + "_Displacement." + extension);
             osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
+            if (!height.valid())
+            {
+                OE_WARN << LC << "Failed to load \"" << heightURI.full() << "\"" << std::endl;
+            }
+
             return assemble_RGBH(color, height, 0); // height is in RED
+        }
+        else
+        {
+            OE_WARN << LC << "Failed to load \"" << colorURI.full() << "\"" << std::endl;
         }
     }
 
@@ -249,6 +258,10 @@ RGBH_Loader::readImageFromSourceData(
             URI heightURI(basename + "_HGT." + extension);
             osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
             return assemble_RGBH(color, height, 0);
+        }
+        else
+        {
+            OE_WARN << LC << "Failed to load \"" << colorURI.full() << "\"" << std::endl;
         }
     }
 
@@ -344,8 +357,16 @@ NNRA_Loader::readImageFromSourceData(
         URI aoURI(basename + "_AmbientOcclusion." + extension);
 
         normals = normalsURI.getImage(options);
+        if (!normals.valid())
+            OE_WARN << LC << "Failed to load \"" << normalsURI.full() << "\"" << std::endl;
+
         roughness = roughnessURI.getImage(options);
+        if (!normals.valid())
+            OE_WARN << LC << "Failed to load \"" << roughnessURI.full() << "\"" << std::endl;
+
         ao = aoURI.getImage(options);
+        if (!normals.valid())
+            OE_WARN << LC << "Failed to load \"" << aoURI.full() << "\"" << std::endl;
 
         if (normals.valid() || roughness.valid() || ao.valid())
         {
@@ -363,7 +384,13 @@ NNRA_Loader::readImageFromSourceData(
         URI metalGlossAoURI(basename + "_MTL_GLS_AO." + extension);
 
         normals = normalsURI.getImage(options);
+        if (!normals.valid())
+            OE_WARN << LC << "Failed to load \"" << normalsURI.full() << "\"" << std::endl;
+
         roughness = metalGlossAoURI.getImage(options);
+        if (!normals.valid())
+            OE_WARN << LC << "Failed to load \"" << metalGlossAoURI.full() << "\"" << std::endl;
+
         ao = roughness;
 
         if (normals.valid() || roughness.valid() || ao.valid())

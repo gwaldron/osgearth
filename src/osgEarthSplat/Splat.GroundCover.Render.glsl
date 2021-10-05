@@ -54,6 +54,9 @@ void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 #pragma vp_name       GroundCover VS
 #pragma vp_entryPoint oe_GroundCover_VS
 #pragma vp_location   vertex_view
+// Set the vp_order to run earlier so that a proper view space vertex is generated from our shader so that
+// default view space shaders further down the chain such as the VisibleLayer rangeOpacityVS work correctly
+#pragma vp_order      0.9
 
 #pragma include Splat.GroundCover.Types.glsl
 

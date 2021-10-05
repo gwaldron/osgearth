@@ -4,6 +4,9 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_name       GroundCover vertex shader
 #pragma vp_entryPoint oe_GroundCover_VS
 #pragma vp_location   vertex_view
+// Set the vp_order to run earlier so that a proper view space vertex is generated from our shader so that
+// default view space shaders further down the chain such as the VisibleLayer rangeOpacityVS work correctly
+#pragma vp_order      0.9
 
 #pragma import_defines(OE_GROUNDCOVER_MASK_SAMPLER)
 #pragma import_defines(OE_GROUNDCOVER_MASK_MATRIX)

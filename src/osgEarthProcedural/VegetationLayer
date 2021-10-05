@@ -115,6 +115,8 @@ namespace osgEarth { namespace Procedural
         // e.g. void setMaxRange(AssetGroupType, float);
         // e.g. void setLOD(AssetGroupType, unsigned);
         // ...
+        void setMaxRange(AssetGroup::Type, float);
+        float getMaxRange(AssetGroup::Type) const;
 
         //! Force constant regeneration of locations (for debugging)
         void setAlwaysGenerate(bool value) {

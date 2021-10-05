@@ -71,7 +71,7 @@ struct App
 struct LifeMapGUI : public GUI::BaseGUI
 {
     App _app;
-    LifeMapLayer* lifemap;
+    osg::observer_ptr<LifeMapLayer> _lifemap;
     bool _lifemap_direct;
     float _rugged_power;
     float _dense_power;
@@ -83,12 +83,14 @@ struct LifeMapGUI : public GUI::BaseGUI
         _dense_power(1.0f),
         _lush_power(1.0f)
     {
-        lifemap = _app._map->getLayer<LifeMapLayer>();
-        OE_HARD_ASSERT(lifemap != nullptr);
+        //nop
     }
 
     void draw(osg::RenderInfo& ri) override
     {
+        if (!findLayerOrHide(_lifemap, ri))
+            return;
+
         ImGui::Begin("LifeMap");
 
         // lifemap adjusters
@@ -126,7 +128,7 @@ struct LifeMapGUI : public GUI::BaseGUI
         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator Settings");
         ImGui::Indent();
 
-        LifeMapLayer::Options& o = lifemap->options();
+        LifeMapLayer::Options& o = _lifemap->options();
 
         ImGui::TextColored(ImVec4(1,1,0,1),"LifeMap contributions levels:");
         ImGui::Separator();
@@ -137,7 +139,7 @@ struct LifeMapGUI : public GUI::BaseGUI
             o.landCoverBlur()->set(value, Units::METERS);
         ImGui::Unindent();
 
-        if (lifemap->getColorLayer())
+        if (_lifemap->getColorLayer())
         {
             ImGui::SliderFloat("Imagery color contrib", &o.colorWeight().mutable_value(), 0.0f, 1.0f);
         }
@@ -148,7 +150,7 @@ struct LifeMapGUI : public GUI::BaseGUI
         ImGui::SliderFloat("Slope cutoff", &o.slopeCutoff().mutable_value(), 0.0f, 1.0f);
         ImGui::Unindent();
 
-        if (lifemap->getLandUseLayer())
+        if (_lifemap->getLandUseLayer())
         {
             ImGui::SliderFloat("Land Use contrib", &o.landUseWeight().mutable_value(), 0.0f, 1.0f);
         }
@@ -157,8 +159,11 @@ struct LifeMapGUI : public GUI::BaseGUI
 
         if (ImGui::Button("Apply Changes"))
         {
+            // make sure the cache is off
+            _lifemap->setCachePolicy(CachePolicy::NO_CACHE);
+
             _app._mapNode->getTerrainEngine()->invalidateRegion(
-                { lifemap },
+                { _lifemap.get() },
                 GeoExtent::INVALID);
         }
 
@@ -204,7 +209,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
 
     void draw(osg::RenderInfo& ri) override
     {
-        ImGui::Begin("Texture Splatting");
+        ImGui::Begin("Ground");
 
         if (!_installed)
         {
@@ -254,11 +259,12 @@ struct TextureSplattingGUI : public GUI::BaseGUI
     }
 };
 
-struct BiomeGUI : public GUI::BaseGUI
+struct VegetationGUI : public GUI::BaseGUI
 {
     using Clock = std::chrono::steady_clock;
 
     App _app;
+    bool _first;
     float _sse;
     bool _auto_sse;
     std::queue<float> _times;
@@ -271,16 +277,17 @@ struct BiomeGUI : public GUI::BaseGUI
     osg::ref_ptr<osg::Uniform> _sseUni;
     osg::observer_ptr<BiomeLayer> _biolayer;
     osg::observer_ptr<VegetationLayer> _veglayer;
+    float _maxMaxRanges[NUM_ASSET_GROUPS];
 
-    BiomeGUI(App& app) : GUI::BaseGUI("Biomes"),
+    VegetationGUI(App& app) : GUI::BaseGUI("Vegetation"),
         _app(app),
+        _first(true),
         _sse(100.0f),
         _auto_sse(false),
         _forceGenerate(false),
         _manualBiomes(false),
         _sse_target_ms(15.0f)
     {
-        //nop
         for (int i = 0; i < 60; ++i) _times.push(0.0f);
         _total = 0.0f;
     }
@@ -304,6 +311,13 @@ struct BiomeGUI : public GUI::BaseGUI
         if (!findLayerOrHide(_biolayer, ri))
             return;
 
+        if (_first)
+        {
+            _first = false;
+            for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
+                _maxMaxRanges[i] = _veglayer->options().groups()[i].maxRange().get() * 2.0f;
+        }
+
         Clock::time_point now = Clock::now();
         float elapsed_ms = (float)(std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastVisit).count());
         _lastVisit = now;
@@ -313,7 +327,7 @@ struct BiomeGUI : public GUI::BaseGUI
         _times.pop();
         float t = _total / (float)_times.size();
 
-        ImGui::Begin("Biomes", NULL, ImGuiWindowFlags_MenuBar);
+        ImGui::Begin("Vegetation", nullptr, ImGuiWindowFlags_MenuBar);
         {
             if (ImGui::SliderFloat("SSE", &_sse, 1.0f, 1000.0f)) {
                 _veglayer->setMaxSSE(_sse);
@@ -346,8 +360,23 @@ struct BiomeGUI : public GUI::BaseGUI
 
             if (ImGui::Checkbox("Regenerate vegetation every frame", &_forceGenerate))
             {
-                _app._map->getLayer<VegetationLayer>()->setAlwaysGenerate(_forceGenerate);
+                _veglayer->setAlwaysGenerate(_forceGenerate);
             }
+
+            ImGui::Text("Max ranges:");
+            ImGui::Indent();
+            for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
+            {
+                AssetGroup::Type type = (AssetGroup::Type)i;
+                if (ImGui::SliderFloat(
+                    AssetGroup::name(type).c_str(),
+                    &_veglayer->options().group(type).maxRange().mutable_value(),
+                    0.0f, _maxMaxRanges[i]))
+                {
+                    _veglayer->setMaxRange(type, _veglayer->options().group(type).maxRange().get());
+                }
+            }
+            ImGui::Unindent();
 
             if (ImGui::CollapsingHeader("All Biomes"))
             {
@@ -484,13 +513,13 @@ public:
         addAllBuiltInTools(&args);
 
         add("Procedural", new LifeMapGUI(app), true);
-        add("Procedural", new BiomeGUI(app), true);
+        add("Procedural", new VegetationGUI(app), true);
         add("Procedural", new TextureSplattingGUI(app), true);
     }
 
     App& _app;
     LifeMapGUI _lifemap;
-    BiomeGUI _biomes;
+    VegetationGUI _biomes;
     TextureSplattingGUI _splatting;
 };
 

@@ -304,6 +304,11 @@ void
 Layer::setCachePolicy(const CachePolicy& value)
 {
     options().cachePolicy() = value;
+
+    if (_cacheSettings.valid())
+    {
+        _cacheSettings->integrateCachePolicy(options().cachePolicy());
+    }
 }
 
 const CachePolicy&

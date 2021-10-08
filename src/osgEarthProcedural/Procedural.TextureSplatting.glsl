@@ -4,8 +4,8 @@
 #extension GL_ARB_gpu_shader_int64 : enable
 
 #pragma import_defines(OE_SPLAT_TWEAKS)
+#pragma import_defines(OE_SPLAT_NUM_LEVELS)
 
-#define NUM_LEVELS 1
 const int levels[2] = int[](14, 19);
 flat out vec2 splat_tilexy[2];
 out vec2 splat_uv[2];
@@ -39,13 +39,17 @@ float mapTo01(in float value, in float lo, in float hi)
 void oe_splat_View(inout vec4 vertex_view)
 {
     // texture coordinates
-    for (int i = 0; i < NUM_LEVELS; ++i)
+    for (int i = 0; i < OE_SPLAT_NUM_LEVELS; ++i)
     {
         vec2 uv = ((i & 1) == 0) ? oe_layer_tilec.st : oe_layer_tilec.ts;
         
         splat_uv[i] = oe_terrain_scaleCoordsToRefLOD(uv, levels[i]);
 
-        splat_tilexy[i] = floor(oe_tile_key.xy / exp2(oe_tile_key.z - levels[i]));
+        float div = 1.0;
+        int dL = int(oe_tile_key.z) - levels[i];
+        if (dL > 0)
+            div = float(1 << dL);
+        splat_tilexy[i] = floor(oe_tile_key.xy / div); // exp2());
     }
     splatLevelBlend = mapTo01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
 
@@ -101,7 +105,7 @@ float oe_ao;
 in float splatLevelBlend;
 in vec4 oe_layer_tilec;
 
-#define NUM_LEVELS 1
+#pragma import_defines(OE_SPLAT_NUM_LEVELS)
 flat in vec2 splat_tilexy[2];
 in vec2 splat_uv[2];
 
@@ -155,7 +159,8 @@ uniform float tex_size_scale = 1.0;
 // overflow the interpolator and pause pixel jitter
 vec2 get_coord(in int index, in int level)
 {
-    vec2 scale = texScale[index*(level+1)] * tex_size_scale;
+    vec2 scale = texScale[index] * tex_size_scale;
+    //vec2 scale = texScale[index*(level + 1)] * tex_size_scale; // correct-er?
     vec2 a = fract(splat_tilexy[level] * scale);
     vec2 b = splat_uv[level] * scale;
     return a + b;
@@ -330,7 +335,7 @@ void oe_splat_Frag(inout vec4 quad)
     rugged = modify(rugged, rugged_power);
 
     Pixel pixel;
-    for (int i = 0; i < NUM_LEVELS; ++i)
+    for (int i = 0; i < OE_SPLAT_NUM_LEVELS; ++i)
     {
         resolveLevel(pixel, i, rugged, lush);
     }

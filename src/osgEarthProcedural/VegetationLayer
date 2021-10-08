@@ -123,6 +123,9 @@ namespace osgEarth { namespace Procedural
             _forceGenerate = value;
         }
 
+        //! Number of vegetation tiles passed to the most recent draw call
+        unsigned getNumTilesRendered() const;
+
     protected:
 
         virtual void init() override;
@@ -317,6 +320,7 @@ namespace osgEarth { namespace Procedural
             GeometryCloudCollection _geomClouds; // veg instance cloud
             osg::ref_ptr<osg::Texture> _noiseTex; // noise for placement
             osg::FrameStamp _lastVisit; // for timeouts
+            std::size_t _lastTileBatchSize; // stats use only
 
             const std::string& getName() const;
 

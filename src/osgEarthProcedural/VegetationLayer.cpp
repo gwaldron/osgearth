@@ -283,6 +283,18 @@ VegetationLayer::openImplementation()
         return Status(Status::ResourceUnavailable, "Requires GL 4.6+");
     }
 
+    // Clamp the layer's max visible range the maximum range of the farthest
+    // asset group. This will minimize the number of tiles sent to the
+    // renderer and improve performance. Doing this here (in open) so the
+    // user can close a layer, adjust parameters, and re-open if desired
+    float max_range = 0.0f;
+    for (auto& group : options().groups())
+    {
+        max_range = std::max(max_range, group.maxRange().get());
+    }
+    max_range = std::min(max_range, getMaxVisibleRange());
+    setMaxVisibleRange(max_range);
+
     return PatchLayer::openImplementation();
 }
 
@@ -308,9 +320,10 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 
         if (dt > 5.0 && df > 60)
         {
-            OE_INFO << LC << "timed out for inactivity" << std::endl;
+            OE_DEBUG << LC << "timed out for inactivity" << std::endl;
             releaseGLObjects(nullptr);
             _renderer->_lastVisit.setReferenceTime(DBL_MAX);
+            _renderer->_lastTileBatchSize = 0u;
             _renderer->_cameraState.clear();
             _renderer->_geomClouds.clear();
 
@@ -758,6 +771,12 @@ VegetationLayer::releaseGLObjects(osg::State* state) const
     }
 
     PatchLayer::releaseGLObjects(state);
+}
+
+unsigned
+VegetationLayer::getNumTilesRendered() const
+{
+    return _renderer ? _renderer->_lastTileBatchSize : 0u;
 }
 
 namespace
@@ -1524,6 +1543,7 @@ VegetationLayer::Renderer::draw(
     OE_PROFILING_ZONE_NAMED("VegetationLayer::draw");
 
     _lastVisit = *ri.getState()->getFrameStamp();
+    _lastTileBatchSize = batch.tiles().size();
 
     // state associated with the current camera
     CameraState& this_cs = _cameraState[ri.getCurrentCamera()];

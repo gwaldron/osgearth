@@ -43,6 +43,7 @@ namespace osgEarth { namespace Procedural
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION_LAYER(LifeMapLayer, lifeMapLayer);
+            OE_OPTION(int, numLevels);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

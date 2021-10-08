@@ -30,7 +30,9 @@ using namespace osgEarth;
 
 #define SENTRY_VALUE nullptr
 
-//#define USE_MUTEX
+// mutex-protect tile registry function. We need this for 
+// multi-window setups where there are parallel cull traversals.
+#define USE_MUTEX
 
 #define PROFILING_REX_TILES "Live Terrain Tiles"
 

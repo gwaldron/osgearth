@@ -4,6 +4,9 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_name       Grass VS MODEL
 #pragma vp_entryPoint oe_Grass_VS_MODEL
 #pragma vp_location   vertex_model
+// Set the vp_order to run earlier so that a proper view space vertex is generated from our shader so that
+// default view space shaders further down the chain such as the VisibleLayer rangeOpacityVS work correctly
+#pragma vp_order      0.9
 
 #pragma include Splat.GroundCover.Types.glsl
 

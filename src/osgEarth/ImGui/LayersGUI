@@ -45,6 +45,7 @@ namespace osgEarth {
             std::vector<bool> _layerExpanded;
             int _mapRevision;
             std::unordered_map<Layer*, float> _maxMaxRanges;
+            std::unordered_map<Layer*, float> _maxAttenRanges;
 
         public:
             LayersGUI() : BaseGUI("Map Layers"),
@@ -103,7 +104,10 @@ namespace osgEarth {
                     {
                         VisibleLayer* v = dynamic_cast<VisibleLayer*>(layer.get());
                         if (v)
+                        {
                             _maxMaxRanges[layer.get()] = v->getMaxVisibleRange() * 2.0f;
+                            _maxAttenRanges[layer.get()] = v->getAttenuationRange() * 2.0f;
+                        }
                     }
                 }
 
@@ -195,10 +199,20 @@ namespace osgEarth {
                                     if (ImGui::Checkbox("Modulate", &modulate))
                                         visibleLayer->setColorBlending(modulate ? BLEND_MODULATE : BLEND_INTERPOLATE);
 
-                                    float maxRange = visibleLayer->getMaxVisibleRange();
-                                    if (maxRange < FLT_MAX) {
-                                        if (ImGui::SliderFloat("Max range", &maxRange, 0.0f, _maxMaxRanges[layer]))
-                                            visibleLayer->setMaxVisibleRange(maxRange);
+                                    if (visibleLayer->options().maxVisibleRange().isSet())
+                                    {
+                                        float value = visibleLayer->getMaxVisibleRange();
+                                        if (value < FLT_MAX) {
+                                            if (ImGui::SliderFloat("Max range", &value, 0.0f, _maxMaxRanges[layer]))
+                                                visibleLayer->setMaxVisibleRange(value);
+                                        }
+                                    }
+
+                                    if (visibleLayer->options().attenuationRange().isSet())
+                                    {
+                                        float value = visibleLayer->getAttenuationRange();
+                                        if (ImGui::SliderFloat("Attenuation range", &value, 0.0f, _maxAttenRanges[layer]))
+                                            visibleLayer->setAttenuationRange(value);
                                     }
                                 }
 

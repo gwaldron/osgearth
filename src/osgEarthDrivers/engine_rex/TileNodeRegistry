@@ -146,7 +146,7 @@ namespace osgEarth { namespace REX
         void update(osg::NodeVisitor&);
 
         //! Get a reference to a specific key if found.
-        osg::ref_ptr<TileNode> get(const TileKey& key) const;
+        //osg::ref_ptr<TileNode> get(const TileKey& key) const;
 
     protected:
 

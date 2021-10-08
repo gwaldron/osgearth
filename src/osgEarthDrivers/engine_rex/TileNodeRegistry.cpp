@@ -28,7 +28,9 @@ using namespace osgEarth;
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_INFO
 
-#define SENTRY_VALUE NULL
+#define SENTRY_VALUE nullptr
+
+//#define USE_MUTEX
 
 #define PROFILING_REX_TILES "Live Terrain Tiles"
 
@@ -240,7 +242,9 @@ TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, const TileKey& 
 void
 TileNodeRegistry::releaseAll(osg::State* state)
 {
+#ifdef USE_MUTEX
     ScopedMutexLock lock(_mutex);
+#endif
 
     for (auto& tile : _tiles)
     {
@@ -267,7 +271,9 @@ TileNodeRegistry::releaseAll(osg::State* state)
 void
 TileNodeRegistry::touch(TileNode* tile, osg::NodeVisitor& nv)
 {
+#ifdef USE_MUTEX
     ScopedMutexLock lock(_mutex);
+#endif
 
     // Find the tracker for this tile and update its timestamp
     TileTable::iterator i = _tiles.find(tile->getKey());
@@ -304,7 +310,9 @@ TileNodeRegistry::touch(TileNode* tile, osg::NodeVisitor& nv)
 void
 TileNodeRegistry::update(osg::NodeVisitor& nv)
 {
+#ifdef USE_MUTEX
     ScopedMutexLock lock(_mutex);
+#endif
 
     if (!_tilesToUpdate.empty())
     {
@@ -340,7 +348,9 @@ TileNodeRegistry::collectDormantTiles(
     unsigned maxTiles,
     std::vector<osg::observer_ptr<TileNode>>& output)
 {
+#ifdef USE_MUTEX
     ScopedMutexLock lock(_mutex);
+#endif
 
     unsigned count = 0u;
 
@@ -399,10 +409,13 @@ TileNodeRegistry::collectDormantTiles(
     OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
 }
 
+#if 0
 osg::ref_ptr<TileNode>
 TileNodeRegistry::get(const TileKey& key) const
 {
+#ifdef USE_MUTEX
     ScopedMutexLock lock(_mutex);
+#endif
 
     osg::ref_ptr<TileNode> result;
 
@@ -414,3 +427,4 @@ TileNodeRegistry::get(const TileKey& key) const
 
     return result;
 }
+#endif

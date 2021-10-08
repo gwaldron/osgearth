@@ -708,11 +708,13 @@ TileNode::createChildren()
             for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
             {
                 TileKey childkey = getKey().createChildKey(quadrant);
+                osg::observer_ptr<TileNode> tile_weakptr(this);
 
-                auto op = [context, parentkey, childkey](Cancelable* state)
+                auto op = [context, tile_weakptr, childkey](Cancelable* state)
                 {
-                    osg::ref_ptr<TileNode> tile = context->liveTiles()->get(parentkey);
-                    if (tile.valid() && !state->isCanceled())
+                    //osg::ref_ptr<TileNode> tile = context->liveTiles()->get(parentkey);
+                    osg::ref_ptr<TileNode> tile;
+                    if (tile_weakptr.lock(tile) && !state->isCanceled())
                         return tile->createChild(childkey, state);
                     else
                         return (TileNode*)nullptr;

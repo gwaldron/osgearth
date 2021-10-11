@@ -208,7 +208,7 @@ BiomeManager::discardUnreferencedAssets()
     for (auto& asset : to_delete)
     {
         _residentModelAssetData.erase(asset);
-        OE_INFO << LC << "Unloaded asset " << asset->name().get() << std::endl;
+        OE_DEBUG << LC << "Unloaded asset " << asset->name().get() << std::endl;
     }
 }
 

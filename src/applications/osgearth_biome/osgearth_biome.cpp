@@ -363,6 +363,8 @@ struct VegetationGUI : public GUI::BaseGUI
                 _veglayer->setAlwaysGenerate(_forceGenerate);
             }
 
+            ImGui::Text("Num tiles: %d", _veglayer->getNumTilesRendered());
+
             ImGui::Text("Max ranges:");
             ImGui::Indent();
             for (int i = 0; i < NUM_ASSET_GROUPS; ++i)

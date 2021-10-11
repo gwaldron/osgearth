@@ -322,10 +322,8 @@ VegetationLayer::update(osg::NodeVisitor& nv)
         {
             OE_DEBUG << LC << "timed out for inactivity" << std::endl;
             releaseGLObjects(nullptr);
-            _renderer->_lastVisit.setReferenceTime(DBL_MAX);
-            _renderer->_lastTileBatchSize = 0u;
-            _renderer->_cameraState.clear();
-            _renderer->_geomClouds.clear();
+
+            _renderer->reset();
 
             if (getBiomeLayer())
                 getBiomeLayer()->getBiomeManager().reset();
@@ -934,10 +932,13 @@ VegetationLayer::Renderer::PCPUniforms::PCPUniforms()
 
 VegetationLayer::Renderer::Renderer(VegetationLayer* layer)
 {
+    reset();
+
     _layer = layer;
-    _biomeRevision = -1;
-    _lastVisit.setReferenceTime(DBL_MAX);
-    _lastVisit.setFrameNumber(~0U);
+
+    //_biomeRevision = -1;
+    //_lastVisit.setReferenceTime(DBL_MAX);
+    //_lastVisit.setFrameNumber(~0U);
 
     // create uniform IDs for each of our uniforms
     //_isMSUName = osg::Uniform::getNameID("oe_veg_isMultisampled");
@@ -961,6 +962,19 @@ VegetationLayer::Renderer::Renderer(VegetationLayer* layer)
     // make a 4-channel noise texture to use
     NoiseTextureFactory noise;
     _noiseTex = noise.create(256u, 4u);
+}
+
+void
+VegetationLayer::Renderer::reset()
+{
+    _biomeRevision = -1;
+    _lastVisit.setReferenceTime(DBL_MAX);
+    _lastVisit.setFrameNumber(~0U);
+    _lastTileBatchSize = 0u;
+    _uniforms.clear();
+    _cameraState.clear();
+    _geomClouds.clear();
+    _geomCloudsInProgress.abandon();
 }
 
 VegetationLayer::Renderer::~Renderer()

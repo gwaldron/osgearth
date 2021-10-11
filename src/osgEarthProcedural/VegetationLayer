@@ -206,6 +206,9 @@ namespace osgEarth { namespace Procedural
             Renderer(VegetationLayer* layer);
             ~Renderer();
 
+            //! Resets to initial state.
+            void reset();
+
             // Uniform data must be maintained for each unique PCP
             struct PCPUniforms
             {

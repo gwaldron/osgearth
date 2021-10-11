@@ -41,15 +41,8 @@ void oe_splat_View(inout vec4 vertex_view)
     // texture coordinates
     for (int i = 0; i < OE_SPLAT_NUM_LEVELS; ++i)
     {
-        vec2 uv = ((i & 1) == 0) ? oe_layer_tilec.st : oe_layer_tilec.ts;
-        
-        splat_uv[i] = oe_terrain_scaleCoordsToRefLOD(uv, levels[i]);
-
-        float div = 1.0;
-        int dL = int(oe_tile_key.z) - levels[i];
-        if (dL > 0)
-            div = float(1 << dL);
-        splat_tilexy[i] = floor(oe_tile_key.xy / div); // exp2());
+        splat_uv[i] = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, levels[i]);
+        splat_tilexy[i] = floor(oe_tile_key.xy / exp2(oe_tile_key.z - float(levels[i])));
     }
     splatLevelBlend = mapTo01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
 

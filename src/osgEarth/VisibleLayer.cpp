@@ -126,7 +126,7 @@ namespace
         in float oe_layer_opacity;
         void oe_VisibleLayer_setOpacity(inout vec4 color)
         {
-            vec3 rgbHi = oe_layer_opacity > 0.0? color.rgb * OE_MODULATION_EXPOSURE/oe_layer_opacity : vec3(1);
+            vec3 rgbHi = color.rgb * OE_MODULATION_EXPOSURE;
             color.rgb = mix(vec3(1), rgbHi, oe_layer_opacity);
             color.a = 1.0;
             oe_layer_opacity = 1.0;

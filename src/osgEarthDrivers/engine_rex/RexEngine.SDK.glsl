@@ -105,3 +105,24 @@ vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD)
 
     return result;
 }
+
+/**
+ * Scales repeating texture coordinate such that they are [0..1]
+ * at a specific reference tile LOD.
+ */
+vec4 oe_terrain_scaleCoordsAndTileKeyToRefLOD(in vec2 tc, in float refLOD)
+{
+    float dL = oe_tile_key.z - refLOD;
+    float factor = exp2(dL);
+    float invFactor = 1.0 / factor;
+    vec2 result = tc * vec2(invFactor);
+
+    vec2 a = floor(oe_tile_key.xy * invFactor);
+    vec2 b = a * factor;
+    vec2 c = b + factor;
+
+    float m = floor(clamp(factor, 0.0, 1.0)); // if factor>=1.0
+    result += m * (oe_tile_key.xy - b) / (c - b);
+
+    return vec4(result, a);
+}

@@ -60,6 +60,7 @@ namespace osgEarth { namespace Procedural
             OE_OPTION(float, colorWeight);
             OE_OPTION(float, noiseWeight);
             OE_OPTION(float, landUseWeight);
+            OE_OPTION(float, lushFactor);
 
             virtual Config getConfig() const;
         private:

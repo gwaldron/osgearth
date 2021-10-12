@@ -103,11 +103,11 @@ uniform float osg_FrameTime; // OSG frame time (seconds) used for wind animation
 uniform float oe_veg_maxRange;
 uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 
-#pragma import_defines(OE_WIND_TEX, OE_WIND_TEX_MATRIX)
+#pragma import_defines(OE_WIND_TEX)
+#pragma import_defines(OE_WIND_TEX_MATRIX)
 #ifdef OE_WIND_TEX
 uniform sampler3D OE_WIND_TEX ;
 uniform mat4 OE_WIND_TEX_MATRIX ;
-#define MAX_WIND_SPEED 50.0  // meters per second
 #endif
 
 float decel(float x) {
@@ -119,9 +119,9 @@ float remap(float x, float lo, float hi) {
     return lo+x*(hi-lo);
 }
 
+#ifdef OE_WIND_TEX
 void oe_Grass_apply_wind(in vec4 vertex_base, in float vertexHeight, in float falloff, in float bendPower, inout vec3 bendVec)
 {
-#ifdef OE_WIND_TEX
     // sample the local wind map.
     const float bendDistance = 0.25*vertexHeight;
     vec4 windData = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex_base));
@@ -143,8 +143,8 @@ void oe_Grass_apply_wind(in vec4 vertex_base, in float vertexHeight, in float fa
     }
 
     bendVec += (windDir + buffetingDir) * windSpeed * bendPower * bendDistance * falloff;
-#endif
 }
+#endif
 
 const float browning = 0.25;
 
@@ -170,8 +170,6 @@ void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
         oe_veg_texHandle = texArena[oe_veg_texArenaIndex];
 
     // make the grass smoothly disappear in the distance
-    //float falloff = clamp(2.0-(nRange + oe_noise[NOISE_RANDOM]), 0, 1);
-
     float falloff = 1.0;
     if (nRange > 0.75)
     {
@@ -184,7 +182,7 @@ void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
 
     height = mix(-browning*height+height, browning*height+height, oe_noise_wide[NOISE_CLUMPY]);
 
-    //height *= 0.5 + (decel(instance[i].fillEdge)*(1.0 - 0.5));
+    // height decreases near the edge of the fill threshold
     height *= decel(instance[i].fillEdge);
 
     // ratio of adjusted height to nonimal height
@@ -201,9 +199,8 @@ void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
     float row = float(which/4);
     oe_veg_texCoord.t = (1.0/3.0)*row;
 
+    // bb coord frame:
     vec3 faceVec = oe_vertex.normal;
-
-    // local frame side vector
     vec3 sideVec = cross(faceVec, oe_UpVectorView);
 
     // make a curved billboard
@@ -259,15 +256,7 @@ void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
 
     vertex_view.xyz = new_vert;
 
-    // Some AO.
-    //vec4 ao = vp_Color;
-    //if (row==0)
-    //    ao.rgb *= 0.5;
-    //if (row==1)
-    //    ao.rgb /= max(1.5*heightRatio,1.0);
-
-    //vp_Color = mix(ao, vp_Color, nRange*nRange);
-
+    // more AO near the base
     oe_ao = mix(0.0, 1.0, (row / 4.0));
 
     // Some color variation.

@@ -12,7 +12,7 @@ out vec2 splat_uv[2];
 
 // from REX SDK:
 vec4 oe_terrain_getNormalAndCurvature();
-vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
+vec4 oe_terrain_scaleCoordsAndTileKeyToRefLOD(in vec2 tc, in float refLOD);
 
 out vec4 oe_layer_tilec;
 out float splatLevelBlend;
@@ -31,20 +31,18 @@ tweakable float oe_splat_blend_end = 500.0;
 
 uniform vec4 oe_tile_key;
 
-float mapTo01(in float value, in float lo, in float hi)
-{
-    return clamp((value - lo) / (hi - lo), 0.0, 1.0);
-}
+#define MAP_TO_01(VAL,LO,HI) clamp((VAL-LO) / (HI-LO), 0.0, 1.0)
 
 void oe_splat_View(inout vec4 vertex_view)
 {
     // texture coordinates
     for (int i = 0; i < OE_SPLAT_NUM_LEVELS; ++i)
     {
-        splat_uv[i] = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, levels[i]);
-        splat_tilexy[i] = floor(oe_tile_key.xy / exp2(oe_tile_key.z - float(levels[i])));
+        vec4 uvxy = oe_terrain_scaleCoordsAndTileKeyToRefLOD(oe_layer_tilec.st, levels[i]);
+        splat_uv[i] = uvxy.xy; // oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, levels[i]);
+        splat_tilexy[i] = uvxy.zw; // floor(oe_tile_key.xy / exp2(oe_tile_key.z - float(levels[i])));
     }
-    splatLevelBlend = mapTo01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
+    splatLevelBlend = MAP_TO_01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
 
     oe_elev = oe_terrain_getElevation();
 }
@@ -86,10 +84,7 @@ layout(binding = 6, std430) buffer RenderParamsLUT {
 #define LUSH 2
 #define SPECIAL 3
 
-float mapTo01(in float value, in float lo, in float hi)
-{
-    return clamp((value - lo) / (hi - lo), 0.0, 1.0);
-}
+#define MAP_TO_01(VAL,LO,HI) clamp((VAL-LO) / (HI-LO), 0.0, 1.0)
 
 in vec3 vp_Normal;
 in vec3 oe_UpVectorView;
@@ -153,7 +148,6 @@ uniform float tex_size_scale = 1.0;
 vec2 get_coord(in int index, in int level)
 {
     vec2 scale = texScale[index] * tex_size_scale;
-    //vec2 scale = texScale[index*(level + 1)] * tex_size_scale; // correct-er?
     vec2 a = fract(splat_tilexy[level] * scale);
     vec2 b = splat_uv[level] * scale;
     return a + b;
@@ -302,8 +296,6 @@ void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
         pixel.rgbh = mix(pixel.rgbh, temp.rgbh, min(splatLevelBlend, oe_splat_blend_rgbh_mix));
         pixel.normal = mix(pixel.normal, temp.normal, min(splatLevelBlend, oe_splat_blend_normal_mix));
 
-        //pixel.normal = normalize(pixel.normal + temp.normal*min(splatLevelBlend, oe_splat_blend_normal_mix));
-
         pixel.roughness = mix(pixel.roughness, temp.roughness, splatLevelBlend);
         pixel.ao = min(pixel.ao, temp.ao); // mix(pixel.ao, temp.ao, splatLevelBlend);
     }
@@ -340,7 +332,6 @@ void oe_splat_Frag(inout vec4 quad)
 
     oe_roughness = pixel.roughness;
 
-    // AO effect is very subtle. Consider dumping it.
     oe_ao = pow(pixel.ao, ao_power);
 
     vec3 color;
@@ -349,7 +340,7 @@ void oe_splat_Frag(inout vec4 quad)
 
 #if 1
     // perma-snow caps:
-    float coldness = mapTo01(oe_elev, oe_snow_min_elev, oe_snow_max_elev);
+    float coldness = MAP_TO_01(oe_elev, oe_snow_min_elev, oe_snow_max_elev);
     float min_snow_cos_angle = 1.0 - soften(oe_snow*coldness);
     const float snow_buf = 0.01;
     float b = min(min_snow_cos_angle + snow_buf, 1.0);
@@ -367,11 +358,7 @@ void oe_splat_Frag(inout vec4 quad)
 #ifdef OE_COLOR_LAYER_TEX
     vec3 cltexel = texture(OE_COLOR_LAYER_TEX, (OE_COLOR_LAYER_MAT*oe_layer_tilec).st).rgb;
     vec3 clcolor = clamp(2.0 * cltexel * color, 0.0, 1.0);
-    //color = mix(color, clcolor, smoothstep(0.0, 0.5, 1.0 - 0.33*(dense+lush+rugged)));
     color = mix(color, clcolor, smoothstep(0.0, 0.5, 1.0 - 0.5*(dense + lush)));
-#else
-    //float alpha = mix((0.5 + 0.25*(dense + lush)), 1.0, oe_layer_opacity);
-    //alpha = 1.0; // oe_layer_opacity;
 #endif
 
     alpha *= oe_layer_opacity;
@@ -382,15 +369,6 @@ void oe_splat_Frag(inout vec4 quad)
     if (oe_snow > 0.99)
     {
         vec3 n = vp_Normal;
-        //if (n.x > 0.0 && n.x > abs(n.y))
-        //    quad = vec4(1, 0, 0, 1);
-        //else if (n.x <= 0.0 && n.x < -abs(n.y))
-        //    quad = vec4(1, 1, 0, 1);
-        //else if (n.y > 0.0 && n.y > abs(n.x))
-        //    quad = vec4(0, 1, 0, 1);
-        //else
-        //    quad = vec4(0, 0, 1, 1);
-
         quad = vec4(n.x, 0, n.y, 1)*0.5 + 0.5;
     }
 #endif

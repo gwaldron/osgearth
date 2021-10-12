@@ -320,13 +320,14 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 
         if (dt > 5.0 && df > 60)
         {
-            OE_DEBUG << LC << "timed out for inactivity" << std::endl;
             releaseGLObjects(nullptr);
 
             _renderer->reset();
 
             if (getBiomeLayer())
                 getBiomeLayer()->getBiomeManager().reset();
+
+            OE_INFO << LC << "timed out for inactivity." << std::endl;
         }
     }
 }
@@ -932,13 +933,9 @@ VegetationLayer::Renderer::PCPUniforms::PCPUniforms()
 
 VegetationLayer::Renderer::Renderer(VegetationLayer* layer)
 {
-    reset();
-
     _layer = layer;
 
-    //_biomeRevision = -1;
-    //_lastVisit.setReferenceTime(DBL_MAX);
-    //_lastVisit.setFrameNumber(~0U);
+    reset();
 
     // create uniform IDs for each of our uniforms
     //_isMSUName = osg::Uniform::getNameID("oe_veg_isMultisampled");
@@ -967,7 +964,6 @@ VegetationLayer::Renderer::Renderer(VegetationLayer* layer)
 void
 VegetationLayer::Renderer::reset()
 {
-    _biomeRevision = -1;
     _lastVisit.setReferenceTime(DBL_MAX);
     _lastVisit.setFrameNumber(~0U);
     _lastTileBatchSize = 0u;
@@ -975,6 +971,11 @@ VegetationLayer::Renderer::reset()
     _cameraState.clear();
     _geomClouds.clear();
     _geomCloudsInProgress.abandon();
+
+    OE_SOFT_ASSERT_AND_RETURN(_layer.valid() && _layer->getBiomeLayer(), void());
+
+    BiomeManager& biomeMan = _layer->getBiomeLayer()->getBiomeManager();
+    _biomeRevision = biomeMan.getRevision();
 }
 
 VegetationLayer::Renderer::~Renderer()
@@ -1004,7 +1005,10 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
     {
         // revision changed; start a new asset load.
 
-        OE_DEBUG << LC << "Biomes changed (rev="<< _biomeRevision<<")...building new geom clouds" << std::endl;
+        OE_INFO << LC 
+            << "Biomes changed (rev="<< _biomeRevision
+            <<" fr=" << ri.getState()->getFrameStamp()->getFrameNumber() 
+            <<")...building new veg clouds" << std::endl;
 
         osg::observer_ptr<VegetationLayer> layer_weakptr(_layer.get());
 
@@ -1040,11 +1044,19 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
     {
         _geomClouds = _geomCloudsInProgress.release();
 
-        // Very important that we compile this now so there aren't any
-        // texture conflicts later on.
-        // Strange that osg::Geometry doesn't also compile its StateSet
-        // so we have to do it manually...
-        compileClouds(ri);
+        if (!_geomClouds.empty())
+        {
+            OE_INFO << LC << "New geom clouds complete - compiling (fr="
+                << ri.getState()->getFrameStamp()->getFrameNumber() << ")"
+                << std::endl;
+
+            // Very important that we compile this now so there aren't any
+            // texture conflicts later on.
+            // Strange that osg::Geometry doesn't also compile its StateSet
+            // so we have to do it manually...
+            compileClouds(ri);
+        }
+
         return true;
     }
 

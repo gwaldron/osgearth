@@ -93,6 +93,7 @@ BiomeManager::ref(const Biome* biome)
     if (item.first->second == 1) // ref count of 1 means it's new
     {
         ++_revision;
+        OE_INFO << LC << "Hello, " << biome->name().get() << std::endl;
     }
 }
 
@@ -111,6 +112,7 @@ BiomeManager::unref(const Biome* biome)
     if (iter->second == 0)
     {
         ++_revision;
+        OE_INFO << LC << "Goodbye, " << biome->name().get() << std::endl;
     }
 }
 
@@ -330,7 +332,7 @@ BiomeManager::updateResidency(
                 // First reference to this instance? Populate it:
                 if (data == nullptr)
                 {
-                    OE_DEBUG << LC << "Loading asset " << asset->name().get() << std::endl;
+                    OE_INFO << LC << "  Loading asset " << asset->name().get() << std::endl;
 
                     data = ModelAssetData::create();
 

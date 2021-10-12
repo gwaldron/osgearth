@@ -75,6 +75,7 @@ LifeMapLayer::Options::getConfig() const
     conf.set("color_weight", colorWeight());
     conf.set("noise_weight", noiseWeight());
     conf.set("land_use_weight", landUseWeight());
+    conf.set("lush_factor", lushFactor());
     return conf;
 }
 
@@ -88,6 +89,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     colorWeight().setDefault(1.0f);
     noiseWeight().setDefault(0.3f);
     landUseWeight().setDefault(1.0f);
+    lushFactor().setDefault(1.9f);
 
     biomeLayer().get(conf, "biomes_layer");
     maskLayer().get(conf, "mask_layer");
@@ -99,6 +101,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     conf.get("color_weight", colorWeight());
     conf.get("noise_weight", noiseWeight());
     conf.get("land_use_weight", landUseWeight());
+    conf.get("lush_factor", lushFactor());
 }
 
 //........................................................................
@@ -836,6 +839,9 @@ LifeMapLayer::createImageImplementation(
 
         // apply the noise additively:
         combined_pixel += pixel[NOISE] * weight[NOISE];
+
+        // apply the lushness static factor
+        combined_pixel[LIFEMAP_LUSH] *= options().lushFactor().get();
 
         // MASK CONTRIBUTION (applied to final combined pixel data)
         if (densityMask.valid())

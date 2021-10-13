@@ -333,9 +333,8 @@ void oe_splat_Frag(inout vec4 quad)
     // Note the flipped X and Y. Not sure what's up. Prob the source data.
     vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal.yxz);
 
-    oe_roughness = pixel.roughness;
-
-    oe_ao = pow(pixel.ao, ao_power);
+    oe_roughness *= pixel.roughness;
+    oe_ao *= pow(pixel.ao, ao_power);
 
     vec3 color;
 

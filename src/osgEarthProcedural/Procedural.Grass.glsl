@@ -257,7 +257,7 @@ void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
     vertex_view.xyz = new_vert;
 
     // more AO near the base
-    oe_ao = mix(0.0, 1.0, (row / 4.0));
+    oe_ao *= mix(0.5, 1.0, (row / 4.0));
 
     // Some color variation.
     vp_Color.gb -= browning*oe_noise_wide[NOISE_SMOOTH];

@@ -66,7 +66,7 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
     vec3 L = normalize(vert_to_light);
     vec3 H = normalize(V + L);
 
-    vec3 albedo = COLOR;
+    vec3 albedo = COLOR * oe_ao;
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, vec3(oe_metallic));
 
@@ -105,7 +105,7 @@ out float oe_metallic;
 
 void atmos_eb_ground_init_vert(inout vec4 unused)
 {
-    oe_roughness = 0.8;
+    oe_roughness = 1.0;
     oe_ao = 1.0;
     oe_metallic = 0.0;
 }

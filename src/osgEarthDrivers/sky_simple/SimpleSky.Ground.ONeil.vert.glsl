@@ -219,6 +219,7 @@ void atmos_vertex_main(inout vec4 vertexVIEW)
     //vw /= vw.w;
     //vertex_world = vw.xyz;
 
-    oe_roughness = 0.7;
+    // initialize PBR values
+    oe_roughness = 1.0;
     oe_ao = 1.0;
 }

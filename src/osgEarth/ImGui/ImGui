@@ -115,6 +115,7 @@ namespace osgEarth
             float mouseWheel_;
             bool initialized_;
             bool firstFrame_;
+            bool show_;
 
             static void* handleStartEntry(
                 ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name);

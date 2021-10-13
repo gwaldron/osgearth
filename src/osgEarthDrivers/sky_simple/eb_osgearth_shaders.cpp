@@ -93,7 +93,7 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
     // Original equation for reference
     //vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL;
 
-    COLOR = Lo;
+    COLOR = Lo; // * oe_ao;
 }
 )";
 
@@ -196,6 +196,10 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
     atmos_pbr_spec(atmos_view_dir, atmos_vert_to_light, vp_Normal, ambience, COLOR.rgb);
 #endif
 
+    // diffuse contrast:
+    COLOR.rgb = ((COLOR.rgb - 0.5)*clamp(oe_sky_contrast, 1.0, 3.0) + 0.5);
+
+    // apply radiance:
     COLOR.rgb = COLOR.rgb * max(radiance, ambience*1e4);
 
     // Apply the atmospheric effects:
@@ -203,9 +207,6 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
 
     // apply white point, exposure, and gamma correction:
 	COLOR.rgb = pow(vec3(1,1,1) - exp(-COLOR.rgb / white_point * oe_sky_exposure*1e-5), vec3(1.0 / 2.2));
-
-    // final contrast:
-    COLOR.rgb = ((COLOR.rgb - 0.5)*clamp(oe_sky_contrast, 1.0, 3.0) + 0.5);
 #endif
 }
 
@@ -310,6 +311,10 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
     atmos_pbr_spec(atmos_view_dir, atmos_vert_to_light, vp_Normal, ambience, COLOR.rgb);
 #endif
 
+    // diffuse contrast:
+    COLOR.rgb = ((COLOR.rgb - 0.5)*clamp(oe_sky_contrast, 1.0, 5.0) + 0.5);
+
+    // apply radiance:
     COLOR.rgb = COLOR.rgb * max(radiance, ambience*1e4);
 
     // Apply the atmospheric effects:
@@ -317,9 +322,6 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
 
     // apply white point, exposure, and gamma correction:
 	COLOR.rgb = pow(vec3(1,1,1) - exp(-COLOR.rgb / white_point * oe_sky_exposure*1e-5), vec3(1.0 / 2.2));
-
-    // final contrast:
-    COLOR.rgb = ((COLOR.rgb - 0.5)*clamp(oe_sky_contrast, 1.0, 3.0) + 0.5);
 
 #endif // OE_LIGHTING
 }

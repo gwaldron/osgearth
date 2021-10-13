@@ -116,9 +116,11 @@ tweakable float oe_snow = 0.0;
 tweakable float oe_snow_min_elev = 1000.0;
 tweakable float oe_snow_max_elev = 3500.0;
 tweakable float oe_splat_blend_rgbh_mix = 0.8;
-tweakable float oe_splat_blend_normal_mix = 0.8;
+tweakable float oe_splat_blend_normal_mix = 0.85;
 tweakable float brightness = 1.0;
 tweakable float contrast = 1.0;
+tweakable float dense_contrast = 0.35;
+tweakable float dense_brightness = -0.5;
 
 in float oe_layer_opacity;
 
@@ -293,11 +295,12 @@ void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
         temp.roughness = mix(col[0].roughness, col[1].roughness, m);
         temp.ao = mix(col[0].ao, col[1].ao, m);
 
-        pixel.rgbh = mix(pixel.rgbh, temp.rgbh, min(splatLevelBlend, oe_splat_blend_rgbh_mix));
+        float mat_mix = min(splatLevelBlend, oe_splat_blend_rgbh_mix);
+        pixel.rgbh = mix(pixel.rgbh, temp.rgbh, mat_mix);
         pixel.normal = mix(pixel.normal, temp.normal, min(splatLevelBlend, oe_splat_blend_normal_mix));
 
-        pixel.roughness = mix(pixel.roughness, temp.roughness, splatLevelBlend);
-        pixel.ao = min(pixel.ao, temp.ao); // mix(pixel.ao, temp.ao, splatLevelBlend);
+        pixel.roughness = mix(pixel.roughness, temp.roughness, mat_mix);
+        pixel.ao = mix(pixel.ao, temp.ao, mat_mix);
     }
 #else
     pixel = col[0];
@@ -336,7 +339,11 @@ void oe_splat_Frag(inout vec4 quad)
 
     vec3 color;
 
-    pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*contrast + 0.5) * brightness, 0, 1);
+
+    float f_contrast = contrast + (dense * dense_contrast);
+    float f_brightness = brightness + (dense * dense_brightness);
+
+    pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*f_contrast + 0.5) * f_brightness, 0, 1);
 
 #if 1
     // perma-snow caps:
@@ -369,7 +376,7 @@ void oe_splat_Frag(inout vec4 quad)
     if (oe_snow > 0.99)
     {
         vec3 n = vp_Normal;
-        quad = vec4(n.x, 0, n.y, 1)*0.5 + 0.5;
+        quad = vec4(n.x, 0, 0, 1)*0.5 + 0.5;
     }
 #endif
 }

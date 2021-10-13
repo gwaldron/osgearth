@@ -116,14 +116,22 @@ FeatureSDFLayer::establishProfile()
     if (getProfile() == nullptr && getFeatureSource() != nullptr)
     {
         const FeatureProfile* fp = getFeatureSource()->getFeatureProfile();
-
-        if (fp->getTilingProfile())
+        if (fp)
         {
-            setProfile(fp->getTilingProfile());
+            if (fp->getTilingProfile())
+            {
+                setProfile(fp->getTilingProfile());
+            }
+            else if (fp->getSRS())
+            {
+                setProfile(Profile::create(fp->getSRS()));
+            }
         }
-        else if (fp->getSRS())
+        else
         {
-            setProfile(Profile::create(fp->getSRS()));
+            OE_WARN << LC << "Got a null feature profile from " << getFeatureSource()->getName()
+                << "; did your feature layer open properly?"
+                << std::endl;
         }
     }
 }

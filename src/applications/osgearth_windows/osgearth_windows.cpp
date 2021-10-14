@@ -56,6 +56,8 @@ struct App
     osg::ref_ptr<osg::Node> _node;
     osg::ref_ptr<MapNode> _mapNode;
 
+    std::vector< osg::ref_ptr< osgViewer::View > > _viewsToRemove;
+
     App(osg::ArgumentParser& args) :
         _viewer(args),
         _size(800)
@@ -100,6 +102,7 @@ struct App
 
         osgViewer::View* view = new osgViewer::View();
         view->getCamera()->setGraphicsContext(gc);
+        //osg::GraphicsContext::incrementContextIDUsageCount(gc->getState()->getContextID());
 
         view->getCamera()->setViewport(0, 0, width, height);
         view->getCamera()->setProjectionMatrixAsPerspective(45, 1, 1, 10);
@@ -111,10 +114,14 @@ struct App
         return view;
     }
 
-    void releaseGLObjects()
+    void releaseGLObjects(osg::State* state)
     {
-        OE_NOTICE << "Calling releaseGLObjects" << std::endl;
-        _viewer.releaseGLObjects(nullptr);
+        osgViewer::ViewerBase::Cameras cameras;
+        _viewer.getCameras(cameras);
+        for (auto c : cameras)
+        {
+            c->releaseGLObjects(state);
+        }
     }
 };
 
@@ -139,7 +146,7 @@ struct GCPanel : public GUI::BaseGUI
                 ImGui::Text("Size = %d x %d", gc->getTraits() ? gc->getTraits()->width : -1, gc->getTraits() ? gc->getTraits()->height : -1);
                 if (ImGui::Button("release GL objects"))
                 {
-                    _app._viewer.releaseGLObjects(gc->getState());
+                    _app.releaseGLObjects(gc->getState());
                 }
                 ImGui::Unindent();
             }
@@ -173,7 +180,7 @@ struct ViewerPanel : public GUI::BaseGUI
 
         if (ImGui::Button("Release GL Objects"))
         {
-            _app._viewer.releaseGLObjects(nullptr);
+            _app.releaseGLObjects(nullptr);
         }
 
         ImGui::Text("Active Views");
@@ -198,7 +205,7 @@ struct ViewerPanel : public GUI::BaseGUI
             if (ImGui::Button("close"))
             {
                 OE_WARN << "Closing a view" << std::endl;
-                _app._viewer.removeView(view);
+                _app._viewsToRemove.push_back(view);
             }
 
             ImGui::Unindent();
@@ -257,16 +264,28 @@ main(int argc, char** argv)
 
     OE_NOTICE << "Press 'n' to create a new view" << std::endl;
     EventRouter::get(view).onKeyPress(EventRouter::KEY_N, [&]() { 
+        std::cout << "Creating new view" << std::endl;
         app.addView(Stringify()<<"View " << app._viewer.getNumViews()); });
 
     OE_NOTICE << "Press 'r' to call releaseGLObjects" << std::endl;
     EventRouter::get(view).onKeyPress(EventRouter::KEY_R, [&]() { 
-        app.releaseGLObjects(); });
+        app.releaseGLObjects(nullptr);
+    });
 
     app._viewer.realize();
 
     while (!app._viewer.done())
     {
+        for (unsigned int i = 0; i < app._viewsToRemove.size(); ++i)
+        {            
+            app._viewer.removeView(app._viewsToRemove[i].get());
+            // Set the scene data to null before the View is destroyed when the vector is cleared outside of this loop to prevent
+            // osg from sending down a releaseGLObjects with a null state on camera destruction.  We want
+            // releaseGLObjects to get called on the view that is being removed, not all of them.
+            app._viewsToRemove[i]->setSceneData(nullptr);         
+        }
+        app._viewsToRemove.clear();
+
         app._viewer.advance();
         app._viewer.eventTraversal();
         for (int i = 0; i < numUpdates; ++i)

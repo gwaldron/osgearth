@@ -218,3 +218,19 @@ TileDrawable::computeBoundingBox() const
 
     return box;
 }
+
+void TileDrawable::resizeGLObjectBuffers(unsigned maxsize)
+{
+    if (_geom)
+    {
+        _geom->resizeGLObjectBuffers(maxsize);
+    }
+}
+
+void TileDrawable::releaseGLObjects(osg::State* state) const
+{
+    if (_geom)
+    {
+        _geom->releaseGLObjects(state);
+    }
+}

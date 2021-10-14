@@ -57,7 +57,7 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 
 in float oe_roughness;
 in float oe_ao;
-in float oe_metallic;
+in float oe_metal;
 
 void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout vec3 ambience, inout vec3 COLOR)
 {
@@ -68,7 +68,7 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
 
     vec3 albedo = COLOR * oe_ao;
     vec3 F0 = vec3(0.04);
-    F0 = mix(F0, albedo, vec3(oe_metallic));
+    F0 = mix(F0, albedo, vec3(oe_metal));
 
     // cook-torrance BRDF:
     float NDF = DistributionGGX(N, H, oe_roughness);
@@ -77,7 +77,7 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
 
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - oe_metallic;
+    kD *= 1.0 - oe_metal;
 
     float NdotL = max(dot(N, L), 0.0);
     vec3 numerator = NDF * G * F;
@@ -101,13 +101,13 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
 ground_vert_init = R"(
 out float oe_roughness;
 out float oe_ao;
-out float oe_metallic;
+out float oe_metal;
 
 void atmos_eb_ground_init_vert(inout vec4 unused)
 {
     oe_roughness = 1.0;
     oe_ao = 1.0;
-    oe_metallic = 0.0;
+    oe_metal = 0.0;
 }
 )";
 

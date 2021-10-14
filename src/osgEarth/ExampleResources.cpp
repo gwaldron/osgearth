@@ -419,6 +419,9 @@ MapNodeHelper::loadWithoutControls(
         if (vsync.isSet())
             rop->setSyncToVBlank(vsync.get());
 
+        if (args.read("--gldebug") || args.read("--gl-debug"))
+            rop->setEnableGLDebugging(true);
+
         op->_ops.push_back(rop);
 
         viewer->setRealizeOperation(op);

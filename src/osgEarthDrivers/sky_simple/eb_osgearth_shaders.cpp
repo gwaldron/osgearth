@@ -57,7 +57,7 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 
 in float oe_roughness;
 in float oe_ao;
-in float oe_metallic;
+in float oe_metal;
 
 void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout vec3 ambience, inout vec3 COLOR)
 {
@@ -66,9 +66,9 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
     vec3 L = normalize(vert_to_light);
     vec3 H = normalize(V + L);
 
-    vec3 albedo = COLOR;
+    vec3 albedo = COLOR * oe_ao;
     vec3 F0 = vec3(0.04);
-    F0 = mix(F0, albedo, vec3(oe_metallic));
+    F0 = mix(F0, albedo, vec3(oe_metal));
 
     // cook-torrance BRDF:
     float NDF = DistributionGGX(N, H, oe_roughness);
@@ -77,7 +77,7 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
 
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - oe_metallic;
+    kD *= 1.0 - oe_metal;
 
     float NdotL = max(dot(N, L), 0.0);
     vec3 numerator = NDF * G * F;
@@ -93,7 +93,7 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
     // Original equation for reference
     //vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL;
 
-    COLOR = Lo;
+    COLOR = Lo; // * oe_ao;
 }
 )";
 
@@ -101,13 +101,13 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
 ground_vert_init = R"(
 out float oe_roughness;
 out float oe_ao;
-out float oe_metallic;
+out float oe_metal;
 
 void atmos_eb_ground_init_vert(inout vec4 unused)
 {
-    oe_roughness = 0.8;
+    oe_roughness = 1.0;
     oe_ao = 1.0;
-    oe_metallic = 0.0;
+    oe_metal = 0.0;
 }
 )";
 
@@ -196,6 +196,10 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
     atmos_pbr_spec(atmos_view_dir, atmos_vert_to_light, vp_Normal, ambience, COLOR.rgb);
 #endif
 
+    // diffuse contrast:
+    COLOR.rgb = ((COLOR.rgb - 0.5)*clamp(oe_sky_contrast, 1.0, 3.0) + 0.5);
+
+    // apply radiance:
     COLOR.rgb = COLOR.rgb * max(radiance, ambience*1e4);
 
     // Apply the atmospheric effects:
@@ -203,9 +207,6 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
 
     // apply white point, exposure, and gamma correction:
 	COLOR.rgb = pow(vec3(1,1,1) - exp(-COLOR.rgb / white_point * oe_sky_exposure*1e-5), vec3(1.0 / 2.2));
-
-    // final contrast:
-    COLOR.rgb = ((COLOR.rgb - 0.5)*clamp(oe_sky_contrast, 1.0, 3.0) + 0.5);
 #endif
 }
 
@@ -310,6 +311,10 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
     atmos_pbr_spec(atmos_view_dir, atmos_vert_to_light, vp_Normal, ambience, COLOR.rgb);
 #endif
 
+    // diffuse contrast:
+    COLOR.rgb = ((COLOR.rgb - 0.5)*clamp(oe_sky_contrast, 1.0, 5.0) + 0.5);
+
+    // apply radiance:
     COLOR.rgb = COLOR.rgb * max(radiance, ambience*1e4);
 
     // Apply the atmospheric effects:
@@ -317,9 +322,6 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
 
     // apply white point, exposure, and gamma correction:
 	COLOR.rgb = pow(vec3(1,1,1) - exp(-COLOR.rgb / white_point * oe_sky_exposure*1e-5), vec3(1.0 / 2.2));
-
-    // final contrast:
-    COLOR.rgb = ((COLOR.rgb - 0.5)*clamp(oe_sky_contrast, 1.0, 3.0) + 0.5);
 
 #endif // OE_LIGHTING
 }

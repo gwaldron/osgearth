@@ -186,6 +186,8 @@ struct TextureSplattingGUI : public GUI::BaseGUI
     float _ao_power;
     float _brightness;
     float _contrast;
+    float _dense_contrast;
+    float _dense_brightness;
     float _snow;
     float _snow_min_elev;
     float _snow_max_elev;
@@ -196,15 +198,39 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         _blend_start = 2500.0f;
         _blend_end = 500.0f;
         _blend_rgbh_mix = 0.85f;
-        _blend_normal_mix = 0.72f;
+        _blend_normal_mix = 0.85f;
         _depth = 0.02f;
         _normal_power = 1.0f;
         _ao_power = 1.0f;
         _brightness = 1.0f;
         _contrast = 1.0f;
+        _dense_contrast = 0.0f;
+        _dense_brightness = 0.0f;
         _snow = 0.0f;
         _snow_min_elev = 0.0f;
         _snow_max_elev = 3500.0f;
+    }
+
+    void load(const Config& conf) override
+    {
+        conf.get("brightness", _brightness);
+        conf.get("contrast", _contrast);
+        conf.get("dense_contrast", _dense_contrast);
+        conf.get("dense_brightness", _dense_brightness);
+        conf.get("snow", _snow);
+        conf.get("snow_min_elev", _snow_min_elev);
+        conf.get("snow_max_elev", _snow_max_elev);
+    }
+
+    void save(Config& conf) override
+    {
+        conf.set("brightness", _brightness);
+        conf.set("contrast", _contrast);
+        conf.set("dense_contrast", _dense_contrast);
+        conf.set("dense_brightness", _dense_brightness);
+        conf.set("snow", _snow);
+        conf.set("snow_min_elev", _snow_min_elev);
+        conf.set("snow_max_elev", _snow_max_elev);
     }
 
     void draw(osg::RenderInfo& ri) override
@@ -214,6 +240,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         if (!_installed)
         {
             // activate tweakable uniforms
+            stateset(ri)->setDataVariance(osg::Object::DYNAMIC);
             stateset(ri)->setDefine("OE_SPLAT_TWEAKS", 0x7);
         }
 
@@ -245,6 +272,12 @@ struct TextureSplattingGUI : public GUI::BaseGUI
 
         ImGui::SliderFloat("Global contrast", &_contrast, 0.0f, 4.0f);
         stateset(ri)->addUniform(new osg::Uniform("contrast", _contrast));
+
+        ImGui::SliderFloat("Density contrast boost", &_dense_contrast, -1.0f, 1.0f);
+        stateset(ri)->addUniform(new osg::Uniform("dense_contrast", _dense_contrast));
+
+        ImGui::SliderFloat("Density brightness boost", &_dense_brightness, -1.0f, 1.0f);
+        stateset(ri)->addUniform(new osg::Uniform("dense_brightness", _dense_brightness));
 
         ImGui::SliderFloat("Snow", &_snow, 0.0f, 1.0f);
         stateset(ri)->addUniform(new osg::Uniform("oe_snow", _snow));
@@ -604,22 +637,22 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
     viewer.setThreadingModel(viewer.SingleThreaded);
     viewer.setRealizeOperation(new MainGUI::RealizeOperation());
+    
+    App app;
+    app._view = &viewer;
+    app._manip = new EarthManipulator(arguments);
+    viewer.setCameraManipulator(app._manip);
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags
     osg::ref_ptr<osg::Node> node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
     if (node.valid())
     {
-        App app;
-
         app._mapNode = MapNode::get(node.get());
         if (!app._mapNode)
             return usage("No map node");
 
         app._map = app._mapNode->getMap();
-        app._view = &viewer;
-        app._manip = new EarthManipulator(arguments);
-        viewer.setCameraManipulator(app._manip);
         viewer.getEventHandlers().push_front(new MainGUI(arguments, app));
         viewer.setSceneData(node);
 

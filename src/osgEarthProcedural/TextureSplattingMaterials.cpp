@@ -32,8 +32,9 @@
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
 
-#define DEFAULT_ROUGHNESS 0.75
+#define DEFAULT_ROUGHNESS 1.0
 #define DEFAULT_AO 1.0
+#define DEFAULT_METAL 0.0
 
 REGISTER_OSGPLUGIN(oe_splat_rgbh, RGBH_Loader)
 
@@ -63,50 +64,41 @@ namespace
 {
     osgDB::ReaderWriter::ReadResult assemble_RGBH(
         osg::ref_ptr<osg::Image> color,
-        osg::ref_ptr<osg::Image> height,
-        int height_channel)
+        osg::ref_ptr<osg::Image> height)
     {
         osg::ref_ptr<osg::Image> output;
         
-        if (height.valid() || color->getPixelFormat() != GL_RGBA)
-        {
-            output = new osg::Image();
-            output->allocateImage(color->s(), color->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+        output = new osg::Image();
+        output->allocateImage(color->s(), color->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
-            ImageUtils::PixelReader readColor(color.get());
-            ImageUtils::PixelReader readHeight(height.get());
+        ImageUtils::PixelReader readColor(color.get());
+        ImageUtils::PixelReader readHeight(height.get());
 
-            ImageUtils::PixelWriter write(output.get());
+        ImageUtils::PixelWriter write(output.get());
 
-            osg::Vec4 temp, temp2;
-            float minh = 1.0f, maxh = 0.0f;
+        osg::Vec4 temp, temp2;
+        float minh = 1.0f, maxh = 0.0f;
 
-            ImageUtils::ImageIterator iter(output.get());
-            iter.forEachPixel([&]()
+        ImageUtils::ImageIterator iter(output.get());
+        iter.forEachPixel([&]()
+            {
+                readColor(temp, iter.s(), iter.t());
+                if (height.valid())
                 {
-                    readColor(temp, iter.s(), iter.t());
-                    if (height.valid())
-                    {
-                        // use (u,v) in case textures are different sizes
-                        readHeight(temp2, iter.u(), iter.v());
-                        //readHeight(temp2, iter.s(), iter.t());
-                        temp.a() = temp2[height_channel];
-                    }
-                    else
-                    {
-                        temp.a() = 0.0f; // default height
-                    }
+                    // use (u,v) in case textures are different sizes
+                    readHeight(temp2, iter.u(), iter.v());
+                    temp.a() = temp2[0];
+                }
+                else
+                {
+                    temp.a() = 0.0f; // default height
+                }
 
-                    minh = osg::minimum(minh, temp.a());
-                    maxh = osg::maximum(maxh, temp.a());
+                minh = osg::minimum(minh, temp.a());
+                maxh = osg::maximum(maxh, temp.a());
 
-                    write(temp, iter.s(), iter.t());
-                });
-        }
-        else
-        {
-            output = color;
-        }
+                write(temp, iter.s(), iter.t());
+            });
 
         //Resize the image to the nearest power of two
         if (!ImageUtils::isPowerOfTwo(output.get()))
@@ -161,10 +153,8 @@ namespace
             {
                 if (normals.valid())
                 {
-                    //readNormals(normal, iter.s(), iter.t());
                     readNormals(normal, iter.u(), iter.v());
 
-                    // Note: Y-down is standard practice for normal maps
                     normal3.set(
                         normal_scale.x() * (normal.x()*2.0 - 1.0),
                         normal_scale.y() * (normal.y()*2.0 - 1.0),
@@ -198,7 +188,7 @@ namespace
             unsigned s = osg::Image::computeNearestPowerOfTwo(output->s());
             unsigned t = osg::Image::computeNearestPowerOfTwo(output->t());
             osg::ref_ptr<osg::Image> resized;
-            if (ImageUtils::resizeImage(output.get(), s, t, resized))
+            if (ImageUtils::resizeImage(output.get(), s, t, resized, 0u, false))
                 output = resized.release();
         }
 
@@ -238,7 +228,7 @@ RGBH_Loader::readImageFromSourceData(
                 OE_WARN << LC << "Failed to load \"" << heightURI.full() << "\"" << std::endl;
             }
 
-            return assemble_RGBH(color, height, 0); // height is in RED
+            return assemble_RGBH(color, height);
         }
         else
         {
@@ -247,9 +237,8 @@ RGBH_Loader::readImageFromSourceData(
     }
 
     // failing that attempt to read the "vtm" layout. This includes
-    //   filename.png (color)
-    //   filename_MTL_GLS_AO.png (R=metal, G=smoothness, B=ao)
-    //   filename_NML.png (normal)
+    //   filename.ext (color)
+    //   filename_HGT.ext (displacement map)
     {
         URI colorURI(color_filename);
         color = colorURI.getImage(options);
@@ -257,7 +246,7 @@ RGBH_Loader::readImageFromSourceData(
         {
             URI heightURI(basename + "_HGT." + extension);
             osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
-            return assemble_RGBH(color, height, 0);
+            return assemble_RGBH(color, height);
         }
         else
         {
@@ -352,29 +341,32 @@ NNRA_Loader::readImageFromSourceData(
     {
         basename = basename.substr(0, basename.length() - 6); // strip "_Color"
 
-        URI normalsURI(basename + "_Normal." + extension);
         URI roughnessURI(basename + "_Roughness." + extension);
         URI aoURI(basename + "_AmbientOcclusion." + extension);
 
+        osg::Vec3f normalToGLFrame(1.0f, -1.0f, 1.0f); // DX is -Y
+        URI normalsURI(basename + "_NormalDX." + extension);
         normals = normalsURI.getImage(options);
+        if (!normals.valid()) {
+            normalToGLFrame.set(1.0f, 1.0f, 1.0f); // GL means Y is already inverted
+            normalsURI = URI(basename + "_NormalGL." + extension);
+            normals = normalsURI.getImage(options);
+        }
         if (!normals.valid())
             OE_WARN << LC << "Failed to load \"" << normalsURI.full() << "\"" << std::endl;
 
         roughness = roughnessURI.getImage(options);
-        if (!normals.valid())
+        if (!roughness.valid())
             OE_WARN << LC << "Failed to load \"" << roughnessURI.full() << "\"" << std::endl;
 
         ao = aoURI.getImage(options);
-        if (!normals.valid())
+        if (!ao.valid())
             OE_WARN << LC << "Failed to load \"" << aoURI.full() << "\"" << std::endl;
 
-        if (normals.valid() || roughness.valid() || ao.valid())
-        {
-            return assemble_NNRA(
-                normals, osg::Vec3f(1.0f, -1.0f, 1.0f), // -Y
-                roughness, 0, false,
-                ao, 0);
-        }
+        return assemble_NNRA(
+            normals, normalToGLFrame,
+            roughness, 0, false,
+            ao, 0);
     }
 
     // Try the "vtm" layout next. Files include:
@@ -432,4 +424,21 @@ NNRA_Loader::writeImage(
 
     std::ofstream f(filename, std::ios::binary);
     return rw->writeImage(image, f, options);
+}
+
+
+bool
+RGBH_NNRA_Loader::load(
+    const URI& colorURI,
+    TextureArena* arena)
+{
+    Texture::Ptr rgbh = Texture::create();
+    rgbh->_uri = URI(colorURI.full() + ".oe_splat_rgbh");
+    arena->add(rgbh);
+
+    // protect the NNRA from compression, b/c it confuses the normal maps
+    Texture::Ptr nnra = Texture::create();
+    nnra->_uri = URI(colorURI.full() + ".oe_splat_nnra");
+    nnra->_compress = false;
+    arena->add(nnra);
 }

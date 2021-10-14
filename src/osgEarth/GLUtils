@@ -89,7 +89,9 @@ namespace osgEarth
     {
         virtual void operator()(osg::Object*);
         void setSyncToVBlank(bool);
+        void setEnableGLDebugging(bool);
         optional<bool> _vsync;
+        optional<bool> _gldebug;
     };
 
     struct OSGEARTH_EXPORT GL3RealizeOperation : public CustomRealizeOperation
@@ -170,6 +172,7 @@ namespace osgEarth
         virtual void deleteAllGLObjects();
         virtual void discardAllGLObjects();
 
+        mutable Mutex _mutex;
         std::unordered_set<GLObject::Ptr> _objects;
     };
 
@@ -357,6 +360,10 @@ namespace osgEarth
         void (GL_APIENTRY * glMultiDrawElementsIndirect)(GLenum, GLenum, const void*, GLsizei, GLsizei);
         void (GL_APIENTRY * glDispatchComputeIndirect)(GLintptr);
         void (GL_APIENTRY * glTexStorage3D)(GLenum, GLsizei, GLenum, GLsizei, GLsizei, GLsizei);
+
+        typedef void (GL_APIENTRY* DebugProc)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar*, const void*);
+        void (GL_APIENTRY * glDebugMessageCallback)(DebugProc, const void*);
+        void (GL_APIENTRY * glDebugMessageControl)(GLenum, GLenum, GLenum, GLsizei, const GLuint*, bool);
 
 
     private:

@@ -43,7 +43,7 @@ using namespace osgEarth;
 
 #define LC "[GLUtils] "
 
-#define OE_DEVEL OE_DEBUG
+#define OE_DEVEL OE_DEBUG 
 
 #ifndef GL_LINE_SMOOTH
 #define GL_LINE_SMOOTH 0x0B20
@@ -56,7 +56,6 @@ using namespace osgEarth;
 #ifndef GL_NORMALIZE
 #define GL_NORMALIZE 0x0BA1
 #endif
-
 
 void
 GLUtils::setGlobalDefaults(osg::StateSet* stateSet)
@@ -204,6 +203,65 @@ CustomRealizeOperation::setSyncToVBlank(bool value)
 }
 
 void
+CustomRealizeOperation::setEnableGLDebugging(bool value)
+{
+    _gldebug = value;
+}
+
+namespace
+{
+#ifndef GL_DEBUG_OUTPUT_SYNCHRONOUS
+#define GL_DEBUG_OUTPUT_SYNCHRONOUS       0x8242
+#define GL_DEBUG_NEXT_LOGGED_MESSAGE_LENGTH 0x8243
+#define GL_DEBUG_CALLBACK_FUNCTION        0x8244
+#define GL_DEBUG_CALLBACK_USER_PARAM      0x8245
+#define GL_DEBUG_SOURCE_API               0x8246
+#define GL_DEBUG_SOURCE_WINDOW_SYSTEM     0x8247
+#define GL_DEBUG_SOURCE_SHADER_COMPILER   0x8248
+#define GL_DEBUG_SOURCE_THIRD_PARTY       0x8249
+#define GL_DEBUG_SOURCE_APPLICATION       0x824A
+#define GL_DEBUG_SOURCE_OTHER             0x824B
+#define GL_DEBUG_TYPE_ERROR               0x824C
+#define GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR 0x824D
+#define GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR  0x824E
+#define GL_DEBUG_TYPE_PORTABILITY         0x824F
+#define GL_DEBUG_TYPE_PERFORMANCE         0x8250
+#define GL_DEBUG_TYPE_OTHER               0x8251
+#define GL_MAX_DEBUG_MESSAGE_LENGTH       0x9143
+#define GL_MAX_DEBUG_LOGGED_MESSAGES      0x9144
+#define GL_DEBUG_LOGGED_MESSAGES          0x9145
+#define GL_DEBUG_SEVERITY_HIGH            0x9146
+#define GL_DEBUG_SEVERITY_MEDIUM          0x9147
+#define GL_DEBUG_SEVERITY_LOW             0x9148
+#define GL_DEBUG_TYPE_MARKER              0x8268
+#define GL_DEBUG_TYPE_PUSH_GROUP          0x8269
+#define GL_DEBUG_TYPE_POP_GROUP           0x826A
+#define GL_DEBUG_SEVERITY_NOTIFICATION    0x826B
+#define GL_MAX_DEBUG_GROUP_STACK_DEPTH    0x826C
+#define GL_DEBUG_GROUP_STACK_DEPTH        0x826D
+#endif
+
+    void s_oe_gldebugproc(
+        GLenum source,
+        GLenum type,
+        GLuint id,
+        GLenum severity,
+        GLsizei length,
+        const GLchar* message,
+        const void* userParam)
+    {
+        const std::string severities[3] = { "HIGH", "MEDIUM", "LOW" };
+
+        if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
+        {
+            const std::string& s = severities[severity - GL_DEBUG_SEVERITY_HIGH];
+            OE_WARN << "GL (" << s << ", " << source << ") -- " << message << std::endl;
+        }
+    }
+
+}
+
+void
 CustomRealizeOperation::operator()(osg::Object* object)
 {
     if (_vsync.isSet())
@@ -213,6 +271,20 @@ CustomRealizeOperation::operator()(osg::Object* object)
         {
             win->setSyncToVBlank(_vsync.get());
         }
+    }
+
+    if (_gldebug.isSetTo(true))
+    {
+        osg::GraphicsContext* gc = static_cast<osg::GraphicsContext*>(object);
+        OE_HARD_ASSERT(gc != nullptr);
+
+        OE_INFO << "ENABLING DEBUG GL MESSAGES" << std::endl;
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        GLFunctions& gl = GLFunctions::get(*gc->getState());
+        gl.glDebugMessageCallback(s_oe_gldebugproc, nullptr);
+        gl.glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, nullptr, GL_TRUE);
+        gl.glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
     }
 }
 
@@ -276,18 +348,23 @@ GLBuffer::create(GLenum target, osg::State& state, const std::string& label)
 {
     Ptr obj(new GLBuffer(target, state, label));
     GLObjectReleaser::watch(obj, state);
+    OE_DEVEL << LC << "GLBuffer::create, name=" << obj->name() << std::endl;
     return obj;
 }
 
 void
 GLBuffer::bind()
 {
+    OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
+    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name");
     ext()->glBindBuffer(_target, _name);
 }
 
 void
 GLBuffer::bind(GLenum otherTarget)
 {
+    OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
+    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name");
     ext()->glBindBuffer(otherTarget, _name);
 }
 
@@ -296,6 +373,7 @@ GLBuffer::release()
 {
     if (_name != ~0U)
     {
+        OE_DEVEL << LC << "GLBuffer::release, name=" << name() << std::endl;
         //OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
         ext()->glDeleteBuffers(1, &_name);
         _name = ~0U;
@@ -322,12 +400,16 @@ GLTexture::create(GLenum target, osg::State& state, const std::string& label)
 {
     Ptr obj(new GLTexture(target, state, label));
     GLObjectReleaser::watch(obj, state);
+    OE_DEVEL << LC << "GLTexture::release, name=" << obj->name() << std::endl;
     return obj;
 }
 
 void
 GLTexture::bind(osg::State& state)
 {
+    OE_DEVEL << LC << "GLTexture::bind, name=" << name() << std::endl;
+    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name");
+
     glBindTexture(_target, _name);
 
     // must be called with a compatible state
@@ -347,6 +429,8 @@ GLTexture::handle(osg::State& state)
         bind(state);
         _handle = ext()->glGetTextureHandle(_name);
     }
+
+    OE_SOFT_ASSERT(_handle != ~0ULL, "glGetTextureHandle failed");
     return _handle;
 }
 
@@ -355,6 +439,8 @@ GLTexture::makeResident(bool toggle)
 {
     if (_isResident != toggle)
     {
+        OE_SOFT_ASSERT_AND_RETURN(_handle != ~0ULL, void(), "makeResident() called on invalid handle");
+
         if (toggle == true)
             ext()->glMakeTextureHandleResident(_handle);
         else
@@ -369,6 +455,7 @@ GLTexture::makeResident(bool toggle)
 void
 GLTexture::release()
 {
+    OE_DEVEL << LC << "GLTexture::release, name=" << name() << std::endl;
     if (_handle != ~0ULL)
     {
         makeResident(false);
@@ -423,6 +510,7 @@ GLObjectReleaser::watch(GLObject::Ptr object, osg::State& state_unused)
         GLObjectReleaser* rel = osg::get<GLObjectReleaser>(object->ext()->contextID);
         if (rel)
         {
+            ScopedMutexLock lock(rel->_mutex);
             rel->_objects.insert(object);
             OE_DEVEL << LC << "Added \"" << object->label() << "\"" << std::endl;
         }
@@ -435,6 +523,8 @@ GLObjectReleaser::releaseAll(osg::State& state)
     GLObjectReleaser* rel = osg::get<GLObjectReleaser>(state.getContextID());
     if (rel)
     {
+        ScopedMutexLock lock(rel->_mutex);
+
         for (auto& object : rel->_objects)
         {
             OE_DEVEL << LC << "Releasing \"" << object->label() << "\"" << std::endl;
@@ -455,6 +545,8 @@ GLObjectReleaser::flushDeletedGLObjects(double currentTime, double& availableTim
 void
 GLObjectReleaser::flushAllDeletedGLObjects()
 {
+    ScopedMutexLock lock(_mutex);
+
     // OSG calls this method periodically
     std::unordered_set<std::shared_ptr<GLObject>> temp;
 
@@ -484,6 +576,7 @@ GLObjectReleaser::deleteAllGLObjects()
 void
 GLObjectReleaser::discardAllGLObjects()
 {
+    ScopedMutexLock lock(_mutex);
     // no graphics context available..just empty the bucket
     _objects.clear();
 }
@@ -941,6 +1034,8 @@ GLFunctions::get(unsigned contextID)
         osg::setGLExtensionFuncPtr(f.glMultiDrawElementsIndirect, "glMultiDrawElementsIndirect", "glMultiDrawElementsIndirectARB");
         osg::setGLExtensionFuncPtr(f.glDispatchComputeIndirect, "glDispatchComputeIndirect", "glDispatchComputeIndirectARB");
         osg::setGLExtensionFuncPtr(f.glTexStorage3D, "glTexStorage3D", "glTexStorage3DARB");
+        osg::setGLExtensionFuncPtr(f.glDebugMessageCallback, "glDebugMessageCallback", "glDebugMessageCallbackKHR");
+        osg::setGLExtensionFuncPtr(f.glDebugMessageControl, "glDebugMessageControl", "glDebugMessageControlKHR");
     }
     return f;
 }

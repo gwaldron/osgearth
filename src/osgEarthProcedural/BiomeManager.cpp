@@ -132,6 +132,8 @@ BiomeManager::reset()
 
         for (auto& iter : _refs)
         {
+            const Biome* biome = iter.first;
+            OE_INFO << LC << "Goodbye, " << biome->name().get() << std::endl;
             iter.second = 0;
         }
 

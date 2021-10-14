@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ImGui/ImGui>
+#include <osgEarth/GLUtils>
 
 #include "imgui.h"
 #include "backends/imgui_impl_opengl3.h"
@@ -26,6 +27,7 @@ using namespace osgEarth::GUI;
 
 /***********************************************************************************/
 using namespace osgEarth::GUI;
+
 
 void OsgImGuiHandler::RealizeOperation::operator()(osg::Object* object)
 {
@@ -64,9 +66,15 @@ private:
     OsgImGuiHandler& _handler;
 };
 
-OsgImGuiHandler::OsgImGuiHandler()
-    : time_(0.0f), mousePressed_{ false }, mouseWheel_(0.0f), initialized_(false), firstFrame_(true)
+OsgImGuiHandler::OsgImGuiHandler() :
+    time_(0.0f),
+    mousePressed_{ false },
+    mouseWheel_(0.0f),
+    initialized_(false),
+    firstFrame_(true),
+    show_(true)
 {
+    //nop
 }
 
 /**
@@ -249,25 +257,36 @@ void OsgImGuiHandler::installSettingsHandler()
 
 void OsgImGuiHandler::render(osg::RenderInfo& ri)
 {
-    static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_NoDockingInCentralNode | ImGuiDockNodeFlags_PassthruCentralNode;
-
-    auto dockSpaceId = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), dockspace_flags);
-
-    draw(ri);
-
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-    auto centralNode = ImGui::DockBuilderGetCentralNode(dockSpaceId);
-
-    auto io = ImGui::GetIO();
-
     auto camera = ri.getCurrentCamera();
     auto viewport = camera->getViewport();
-    viewport->x() = centralNode->Pos.x;
-    viewport->y() = io.DisplaySize.y - centralNode->Size.y - centralNode->Pos.y;
-    viewport->width() = centralNode->Size.x;
-    viewport->height() = centralNode->Size.y;
+
+    if (show_)
+    {
+        constexpr ImGuiDockNodeFlags dockspace_flags =
+            ImGuiDockNodeFlags_NoDockingInCentralNode | ImGuiDockNodeFlags_PassthruCentralNode;
+
+        auto dockSpaceId = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), dockspace_flags);
+
+        draw(ri);
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        auto centralNode = ImGui::DockBuilderGetCentralNode(dockSpaceId);
+
+        auto io = ImGui::GetIO();
+        viewport->x() = centralNode->Pos.x;
+        viewport->y() = io.DisplaySize.y - centralNode->Size.y - centralNode->Pos.y;
+        viewport->width() = centralNode->Size.x;
+        viewport->height() = centralNode->Size.y;
+    }
+    else
+    {
+        viewport->x() = 0;
+        viewport->y() = 0;
+        viewport->width() = camera->getGraphicsContext()->getTraits()->width;
+        viewport->height() = camera->getGraphicsContext()->getTraits()->height;
+    }
 
     const osg::Matrixd& proj = camera->getProjectionMatrix();
     bool isOrtho = osg::equivalent(proj(3, 3), 1.0);
@@ -282,7 +301,6 @@ void OsgImGuiHandler::render(osg::RenderInfo& ri)
         double left, right, bottom, top, znear, zfar;
         camera->getProjectionMatrixAsOrtho(left, right, bottom, top, znear, zfar);
         camera->setProjectionMatrixAsOrtho(viewport->x(), viewport->x() + viewport->width(), viewport->y(), viewport->y() + viewport->height(), znear, zfar);
-
     }
 }
 
@@ -311,24 +329,35 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
         const bool isKeyDown = ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN;
         const int c = ea.getKey();
 
-        // Always update the mod key status.
-        io.KeyCtrl = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL;
-        io.KeyShift = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_SHIFT;
-        io.KeyAlt = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_ALT;
-        io.KeySuper = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_SUPER;
-
-
-        const int imgui_key = ConvertFromOSGKey(c);
-        if (imgui_key > 0 && imgui_key < 512)
+        if (wantCaptureKeyboard)
         {
-            //assert((imgui_key >= 0 && imgui_key < 512) && "ImGui KeysMap is an array of 512");
-            io.KeysDown[imgui_key] = isKeyDown;
+            // Always update the mod key status.
+            io.KeyCtrl = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL;
+            io.KeyShift = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_SHIFT;
+            io.KeyAlt = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_ALT;
+            io.KeySuper = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_SUPER;
+
+
+            const int imgui_key = ConvertFromOSGKey(c);
+            if (imgui_key > 0 && imgui_key < 512)
+            {
+                //assert((imgui_key >= 0 && imgui_key < 512) && "ImGui KeysMap is an array of 512");
+                io.KeysDown[imgui_key] = isKeyDown;
+            }
+
+            // Not sure this < 512 is correct here....
+            if (isKeyDown && imgui_key >= 32 && imgui_key < 512)
+            {
+                io.AddInputCharacter((unsigned int)c);
+            }
         }
-
-        // Not sure this < 512 is correct here....
-        if (isKeyDown && imgui_key >= 32 && imgui_key < 512)
+        else
         {
-            io.AddInputCharacter((unsigned int)c);
+            if (isKeyDown && c == 'y')
+            {
+                show_ = !show_;
+                return true;
+            }
         }
 
         return wantCaptureKeyboard;

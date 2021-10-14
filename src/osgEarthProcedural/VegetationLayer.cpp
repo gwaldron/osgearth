@@ -1046,7 +1046,7 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
 
         if (!_geomClouds.empty())
         {
-            OE_INFO << LC << "New geom clouds complete - compiling (fr="
+            OE_INFO << LC << "New geom clouds are ready (fr="
                 << ri.getState()->getFrameStamp()->getFrameNumber() << ")"
                 << std::endl;
 
@@ -1055,6 +1055,10 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
             // Strange that osg::Geometry doesn't also compile its StateSet
             // so we have to do it manually...
             compileClouds(ri);
+
+            //OE_INFO << LC << "New geom clouds finished compiling (fr="
+            //    << ri.getState()->getFrameStamp()->getFrameNumber() << ")"
+            //    << std::endl;
         }
 
         return true;
@@ -1586,7 +1590,7 @@ VegetationLayer::Renderer::draw(
         {
             if (newGeometryAvailable)
             {
-                OE_DEBUG << LC << "New geometry available, but collection is empty" << std::endl;
+                OE_INFO << LC << "New geometry available, but collection is empty" << std::endl;
             }
             return;
         }

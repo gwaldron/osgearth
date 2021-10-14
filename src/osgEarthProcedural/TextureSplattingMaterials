@@ -22,7 +22,8 @@
 #ifndef OSGEARTH_PROCEDURAL_SPLATTING_MATERIALS_H
 #define OSGEARTH_PROCEDURAL_SPLATTING_MATERIALS_H
 
-#include "Export"
+#include <osgEarthProcedural/Export>
+#include <osgEarth/TextureArena>
 #include <osgDB/ReaderWriter>
 
 namespace osgEarth { namespace Procedural
@@ -53,6 +54,14 @@ namespace osgEarth { namespace Procedural
 
         ReadResult readImageFromSourceData(const std::string&, const osgDB::Options*) const;
         ReadResult readImageEncoded(const std::string&, const osgDB::Options*) const;
+    };
+
+    class RGBH_NNRA_Loader
+    {
+    public:
+        static bool load(
+            const URI& colorURI,
+            TextureArena* arena);
     };
 
 } } // namespace osgEarth::Procedural

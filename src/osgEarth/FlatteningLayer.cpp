@@ -915,7 +915,7 @@ FlatteningLayer::getFeatures(const TileKey& key)
     query.tileKey() = key;
 
     FeatureList features;
-    osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, nullptr);
+    osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, _filterChain.get(), nullptr, nullptr);
     if (cursor.valid())
     {
         cursor->fill(features);

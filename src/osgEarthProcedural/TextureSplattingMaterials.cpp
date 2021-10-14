@@ -32,8 +32,9 @@
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
 
-#define DEFAULT_ROUGHNESS 0.75
+#define DEFAULT_ROUGHNESS 1.0
 #define DEFAULT_AO 1.0
+#define DEFAULT_METAL 0.0
 
 REGISTER_OSGPLUGIN(oe_splat_rgbh, RGBH_Loader)
 
@@ -236,9 +237,8 @@ RGBH_Loader::readImageFromSourceData(
     }
 
     // failing that attempt to read the "vtm" layout. This includes
-    //   filename.png (color)
-    //   filename_MTL_GLS_AO.png (R=metal, G=smoothness, B=ao)
-    //   filename_NML.png (normal)
+    //   filename.ext (color)
+    //   filename_HGT.ext (displacement map)
     {
         URI colorURI(color_filename);
         color = colorURI.getImage(options);
@@ -424,4 +424,21 @@ NNRA_Loader::writeImage(
 
     std::ofstream f(filename, std::ios::binary);
     return rw->writeImage(image, f, options);
+}
+
+
+bool
+RGBH_NNRA_Loader::load(
+    const URI& colorURI,
+    TextureArena* arena)
+{
+    Texture::Ptr rgbh = Texture::create();
+    rgbh->_uri = URI(colorURI.full() + ".oe_splat_rgbh");
+    arena->add(rgbh);
+
+    // protect the NNRA from compression, b/c it confuses the normal maps
+    Texture::Ptr nnra = Texture::create();
+    nnra->_uri = URI(colorURI.full() + ".oe_splat_nnra");
+    nnra->_compress = false;
+    arena->add(nnra);
 }

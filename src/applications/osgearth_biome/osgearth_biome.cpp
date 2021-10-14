@@ -198,7 +198,7 @@ struct TextureSplattingGUI : public GUI::BaseGUI
         _blend_start = 2500.0f;
         _blend_end = 500.0f;
         _blend_rgbh_mix = 0.85f;
-        _blend_normal_mix = 0.72f;
+        _blend_normal_mix = 0.85f;
         _depth = 0.02f;
         _normal_power = 1.0f;
         _ao_power = 1.0f;

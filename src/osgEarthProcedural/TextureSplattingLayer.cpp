@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TextureSplattingLayer"
+#include "TextureSplattingMaterials"
 #include "ProceduralShaders"
 #include "NoiseTextureFactory"
 #include <osgEarth/TerrainEngineNode>
@@ -29,6 +30,7 @@
 #include <osg/Drawable>
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
+#include <osgDB/FileNameUtils>
 #include <cstdlib> // getenv
 
 #define LC0 "[TextureSplattingLayer] "
@@ -172,15 +174,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 
                     result->_assets.push_back(&tex);
 
-                    Texture::Ptr rgbh = Texture::create();
-                    rgbh->_uri = URI(tex.uri()->full() + ".oe_splat_rgbh");
-                    result->_arena->add(rgbh);
-
-                    // protect the NNRA from compression, b/c it confuses the normal maps
-                    Texture::Ptr nnra = Texture::create();
-                    nnra->_uri = URI(tex.uri()->full() + ".oe_splat_nnra");
-                    nnra->_compress = false;
-                    result->_arena->add(nnra);
+                    RGBH_NNRA_Loader::load(tex.uri()->full(), result->_arena.get());
 
                     auto t1 = std::chrono::steady_clock::now();
 

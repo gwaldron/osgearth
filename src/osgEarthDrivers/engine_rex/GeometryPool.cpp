@@ -81,6 +81,10 @@ GeometryPool::getPooledGeometry(
 
     if ( _enabled )
     {
+        // Protect access on a per key basis to prevent the same key from being created twice.  
+        // This was causing crashes with multiple windows opening and closing.
+        ScopedGate<GeometryKey> gatelock(_keygate, geomKey);
+
         // first check the sharing cache:
         if (!meshEditor.hasEdits())
         {
@@ -129,7 +133,7 @@ GeometryPool::getPooledGeometry(
 void
 GeometryPool::createKeyForTileKey(const TileKey& tileKey,
                                   unsigned tileSize,
-                                  GeometryPool::GeometryKey& out) const
+                                  GeometryKey& out) const
 {
     out.lod  = tileKey.getLOD();
     out.tileY = tileKey.getProfile()->getSRS()->isGeographic()? tileKey.getTileY() : 0;
@@ -729,7 +733,7 @@ void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     vas->setVertexBufferObjectSupported(usingVertexBufferObjects);
 
     bool checkForGLErrors = state.getCheckForGLErrors() == osg::State::ONCE_PER_ATTRIBUTE;
-    if (checkForGLErrors) state.checkGLErrors("start of Geometry::drawImplementation()");
+    if (checkForGLErrors) state.checkGLErrors("start of SharedGeometry::drawImplementation()");
 
     drawVertexArraysImplementation(renderInfo);
 

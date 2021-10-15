@@ -589,6 +589,9 @@ VegetationLayer::buildStateSets()
     // Layer-wide stateset:
     osg::StateSet* stateset = getOrCreateStateSet();
 
+    // General purpose define indicating that this layer sets PBR values.
+    stateset->setDefine("OE_USE_PBR");
+
     // bind the noise sampler.
     stateset->setTextureAttribute(_noiseBinding.unit(), _renderer->_noiseTex.get(), osg::StateAttribute::OVERRIDE);
     stateset->addUniform(new osg::Uniform(NOISE_SAMPLER, _noiseBinding.unit()));

@@ -254,6 +254,9 @@ TextureSplattingLayer::buildStateSets()
         TerrainShaders shaders;
         shaders.load(vp, shaders.TextureSplatting, getReadOptions());
 
+        // General purpose define indicating that this layer sets PBR values.
+        ss->setDefine("OE_USE_PBR");
+
         // Find the LifeMap layer and access its share
         ss->setDefine(
             "OE_LIFEMAP_TEX",

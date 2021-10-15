@@ -10,9 +10,6 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 vec3 vp_Normal;
 vec4 vp_Color;
 
-out float oe_roughness;
-out float oe_ao;
-
 struct oe_VertexSpec {
     //vec4 model;
     vec4 view;
@@ -49,9 +46,6 @@ void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
 
     // override the terrain's shader
     vp_Color = gl_Color;
-
-    // grass roughness
-    oe_roughness = 0.85;
 }
 
 
@@ -91,24 +85,24 @@ layout(location = 6) in int oe_veg_texArenaIndex; // texture handle LUT index
 vec3 oe_UpVectorView;
 vec4 vp_Color;
 vec3 vp_Normal;
-out vec4 oe_layer_tilec;
-out float oe_ao;
 
-// Output texture coordinates to the fragment shader
-out vec3 oe_veg_texCoord;
-flat out uint64_t oe_veg_texHandle;
+out vec4 oe_layer_tilec; // tile coords
+out vec3 oe_veg_texCoord; // texture coords
+out float oe_veg_ao; // ambient occlusion PBR
+flat out uint64_t oe_veg_texHandle; // texture handle
 
-uniform float osg_FrameTime; // OSG frame time (seconds) used for wind animation
-
-uniform float oe_veg_maxRange;
+uniform float oe_veg_maxRange; // visibility range
 uniform vec3 oe_Camera; // (vp width, vp height, LOD scale)
 
+// Wind:
 #pragma import_defines(OE_WIND_TEX)
 #pragma import_defines(OE_WIND_TEX_MATRIX)
 #ifdef OE_WIND_TEX
 uniform sampler3D OE_WIND_TEX ;
 uniform mat4 OE_WIND_TEX_MATRIX ;
 #endif
+uniform float osg_FrameTime; // used for wind animation (seconds)
+
 
 float decel(float x) {
     return 1.0-(1.0-x)*(1.0-x);
@@ -257,7 +251,7 @@ void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
     vertex_view.xyz = new_vert;
 
     // more AO near the base
-    oe_ao *= mix(0.5, 1.0, (row / 4.0));
+    oe_veg_ao = mix(0.5, 1.0, (row / 4.0));
 
     // Some color variation.
     vp_Color.gb -= browning*oe_noise_wide[NOISE_SMOOTH];
@@ -285,6 +279,8 @@ void oe_Grass_model(inout vec4 vertex_view, in uint i)
     oe_veg_texHandle = 0UL;
     if (oe_veg_texArenaIndex >= 0)
         oe_veg_texHandle = texArena[oe_veg_texArenaIndex];
+
+    oe_veg_ao = 1.0;
 }
 
 void oe_Grass_main(inout vec4 vertex_view)
@@ -320,14 +316,23 @@ in vec4 oe_layer_tilec;
 #endif
 
 in vec3 oe_veg_texCoord;
+in float oe_veg_ao;
 flat in uint64_t oe_veg_texHandle;
 vec3 vp_Normal;
+
+// fragment stage-global PBR parameters
+float oe_roughness;
+float oe_ao;
 
 uniform float oe_veg_maxAlpha;
 uniform int oe_veg_isMultisampled;
 
 void oe_Grass_FS(inout vec4 color)
 {
+    // default roughness for grass.
+    oe_roughness = 0.85;
+    oe_ao *= oe_veg_ao;
+
     if (oe_veg_texHandle > 0UL)
     {
         // paint the texture

@@ -23,7 +23,7 @@ namespace Bruneton
         std::string
             header,
             pbr,
-            ground_vert_init,
+            ground_init_frag,
             ground_best_vert,
             ground_best_frag,
             ground_fast_vert,

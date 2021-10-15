@@ -33,8 +33,8 @@ uniform mat4 OE_GROUNDCOVER_COLOR_MATRIX ;
 #ifdef OE_GROUNDCOVER_PICK_NOISE_TYPE
 int pickNoiseType = OE_GROUNDCOVER_PICK_NOISE_TYPE ;
 #else
-//int pickNoiseType = NOISE_RANDOM;
-int pickNoiseType = NOISE_CLUMPY;
+int pickNoiseType = NOISE_RANDOM;
+//int pickNoiseType = NOISE_CLUMPY;
 #endif
 
 #pragma import_defines(OE_LIFEMAP_SAMPLER)

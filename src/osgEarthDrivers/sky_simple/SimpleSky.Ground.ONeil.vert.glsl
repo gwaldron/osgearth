@@ -45,10 +45,6 @@ out vec3 atmos_vert;
 
 vec3 vp_Normal;             // surface normal (from osgEarth)
 
-out float oe_roughness;
-out float oe_ao;
-out float oe_metal;
-
 out vec3 camera_pos;
 out vec3 earth_center;
 
@@ -219,9 +215,4 @@ void atmos_vertex_main(inout vec4 vertexVIEW)
     //vec4 vw = osg_ViewMatrixInverse * vec4(atmos_vert, 1);
     //vw /= vw.w;
     //vertex_world = vw.xyz;
-
-    // initialize PBR values
-    oe_roughness = 1.0;
-    oe_ao = 1.0;
-    oe_metal = 0.0;
 }

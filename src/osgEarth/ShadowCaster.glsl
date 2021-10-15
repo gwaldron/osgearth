@@ -44,8 +44,11 @@ uniform float          oe_shadow_blur;
 in vec3 vp_Normal; // stage global
 in vec4 oe_shadow_coord[$OE_SHADOW_NUM_SLICES];
 in float oe_shadow_rf;
-in float oe_roughness;
-in float oe_ao;
+
+// stage global PBR params
+struct PBR {
+    float roughness, ao, metal, brightness, contrast;
+} pbr;
 
 // Parameters of each light:
 struct osg_LightSourceParameters 
@@ -127,26 +130,20 @@ void oe_shadow_fragment(inout vec4 color)
         vec4 c = oe_shadow_coord[i];
         vec3 coord = vec3(c.x, c.y, float(i));
 
-        // TODO: This causes an NVIDIA error (DUI_foreachId) - disable for now.
         if ( oe_shadow_blur > 0.0 )
         {
             factor = min(factor, oe_shadow_multisample(coord, c.z-bias, oe_shadow_blur));
         }
         else
         {
-            //float depth = texture(oe_shadow_map, coord).r;
             depth = texture(oe_shadow_map, coord).r;
             if ( depth < 1.0 && depth < c.z-bias )
                 factor = 0.0;
         }
     }
 
-    vec3 colorInFullShadow = color.rgb * oe_shadow_color;
-    factor = clamp(factor, 0, 1);
+    pbr.roughness = mix(1.0, pbr.roughness, factor);
 
-    vec3 shadowed = mix(colorInFullShadow, color.rgb, factor);
-    vec3 ranged = mix(shadowed, color.rgb, oe_shadow_rf);
-    color = vec4(ranged, alpha);
-
-    oe_roughness = mix(1.0, oe_roughness, factor);
+    float b = mix(pbr.brightness*oe_shadow_color, pbr.brightness, factor);
+    pbr.brightness = mix(b, pbr.brightness, oe_shadow_rf);
 }

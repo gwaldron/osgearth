@@ -49,8 +49,6 @@ void oe_splat_View(inout vec4 vertex_view)
 
 
 [break]
-
-
 #version 430
 #pragma vp_name Texture Splatter FS
 #pragma vp_function oe_splat_Frag, fragment, 0.8
@@ -150,13 +148,17 @@ vec3 unpackNormal(in vec4 p)
 struct Pixel {
     vec4 rgbh;
     vec3 normal;
-    vec4 material;
+    vec3 material;
 };
 
 #define ROUGHNESS 0
 #define AO 1
 #define METAL 2
-float oe_roughness, oe_ao, oe_metal;
+
+// stage global PBR params
+struct PBR {
+    float roughness, ao, metal, brightness, contrast;
+} pbr;
 
 // testing code for scale
 uniform float tex_size_scale = 1.0;
@@ -177,7 +179,7 @@ void get_pixel(out Pixel res, in int index, in vec2 coord)
     res.rgbh = texture(sampler2D(texHandle[index * 2]), coord);
     vec4 temp = texture(sampler2D(texHandle[index * 2 + 1]), coord);
     res.normal = unpackNormal(temp);
-    res.material.xyz = vec3(temp.z, temp.w, 0.0); // roughness, ao, metal
+    res.material = vec3(temp[2], temp[3], 0.0); // roughness, ao, metal
 }
 
 float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2, in float roughness)
@@ -280,11 +282,11 @@ void oe_splat_Frag(inout vec4 quad)
         DECEL(pixel.normal.x, normal_power),
         DECEL(pixel.normal.y, normal_power));
 
-    vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal.yxz);
+    vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
 
-    oe_roughness *= pixel.material[ROUGHNESS];
-    oe_ao *= pow(pixel.material[AO], ao_power);
-    oe_metal = pixel.material[METAL];
+    pbr.roughness *= pixel.material[ROUGHNESS];
+    pbr.ao *= pow(pixel.material[AO], ao_power);
+    pbr.metal = pixel.material[METAL];
 
     vec3 color;
 
@@ -302,7 +304,7 @@ void oe_splat_Frag(inout vec4 quad)
     float cos_angle = dot(vp_Normal, oe_UpVectorView);
     float snowiness = step(min_snow_cos_angle, cos_angle);
     color = mix(pixel.rgbh.rgb, vec3(1), snowiness);
-    oe_roughness = mix(oe_roughness, 0.1, snowiness);
+    pbr.roughness = mix(pbr.roughness, 0.1, snowiness);
 #else
     color = pixel.rgbh.rgb;
 #endif

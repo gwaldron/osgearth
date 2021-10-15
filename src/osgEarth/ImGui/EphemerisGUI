@@ -46,6 +46,7 @@ namespace osgEarth
             bool _first;
             bool _shadows;
             float _haze_cutoff, _haze_strength;
+            float _shadow_darkness, _shadow_blur;
 
         public:
             EphemerisGUI() : BaseGUI("Sky & Lighting"),
@@ -56,6 +57,8 @@ namespace osgEarth
                 _haze_strength(16.0f),
                 _showDetails(false),
                 _shadows(false),
+                _shadow_darkness(0.5f),
+                _shadow_blur(0.001f),
                 _first(true)
             {
                 DateTime now;
@@ -154,6 +157,16 @@ namespace osgEarth
 
                     if (_showDetails)
                     {
+                        ImGui::Separator();
+
+                        if (_shadows)
+                        {
+                            if (ImGui::SliderFloat("Shadow darkness", &_shadow_darkness, 0.0f, 1.0f))
+                                stateset(ri)->addUniform(new osg::Uniform("oe_shadow_color", _shadow_darkness), 0x7);
+                            if (ImGui::SliderFloat("Shadow blur", &_shadow_blur, 0.0f, 0.002f))
+                                stateset(ri)->addUniform(new osg::Uniform("oe_shadow_blur", _shadow_blur), 0x07);
+                        }
+
                         ImGui::Separator();
 
                         if (ImGui::SliderFloat("Haze cutoff", &_haze_cutoff, 0.0f, 0.2f)) dirtySettings();

@@ -296,11 +296,11 @@ ComputeDrawable::populateRenderingStateSets(
             shaders.rendering_functions +
             shaders.radiance_api;
 
-        vp->setFunction(
-            "atmos_eb_ground_init_frag",
-            shaders.ground_init_frag,
-            ShaderComp::LOCATION_FRAGMENT_COLORING,
-            -FLT_MAX);
+        //vp->setFunction(
+        //    "atmos_eb_ground_init_frag",
+        //    shaders.ground_init_frag,
+        //    ShaderComp::LOCATION_FRAGMENT_COLORING,
+        //    -FLT_MAX);
 
         if (i == 0) // ground
         {

@@ -25,6 +25,7 @@
 #include "NoiseTextureFactory"
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Shaders>
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Drawable>
@@ -251,11 +252,13 @@ TextureSplattingLayer::buildStateSets()
 
         // Install the texture splatting shader
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-        TerrainShaders shaders;
-        shaders.load(vp, shaders.TextureSplatting, getReadOptions());
+        TerrainShaders terrain_shaders;
+        terrain_shaders.load(vp, terrain_shaders.TextureSplatting, getReadOptions());
 
         // General purpose define indicating that this layer sets PBR values.
         ss->setDefine("OE_USE_PBR");
+        Shaders shaders;
+        shaders.load(vp, shaders.PBR);
 
         // Find the LifeMap layer and access its share
         ss->setDefine(

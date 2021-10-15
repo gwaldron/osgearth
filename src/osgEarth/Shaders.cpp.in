@@ -79,5 +79,8 @@ namespace osgEarth { namespace Util
         
         WindComputer = "WindLayer.CS.glsl";
         _sources[WindComputer] = "@WindLayer.CS.glsl@";
+
+        PBR = "PBR.glsl";
+        _sources[PBR] = "@PBR.glsl@";
     }
 } }

@@ -584,13 +584,15 @@ VegetationLayer::buildStateSets()
         }
     }
 
-    GroundCoverShaders shaders;
+    Shaders shaders;
 
     // Layer-wide stateset:
     osg::StateSet* stateset = getOrCreateStateSet();
 
     // General purpose define indicating that this layer sets PBR values.
-    stateset->setDefine("OE_USE_PBR");
+    //stateset->setDefine("OE_USE_PBR");
+    //VirtualProgram* vp = VirtualProgram::get(stateset);
+    //shaders.load(vp, shaders.PBR);
 
     // bind the noise sampler.
     stateset->setTextureAttribute(_noiseBinding.unit(), _renderer->_noiseTex.get(), osg::StateAttribute::OVERRIDE);

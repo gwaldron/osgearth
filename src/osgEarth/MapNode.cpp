@@ -32,6 +32,7 @@
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/MapNodeObserver>
 #include <osgEarth/Utils>
+#include <osgEarth/Shaders>
 #include <osgUtil/Optimizer>
 #include <osgDB/DatabasePager>
 
@@ -338,7 +339,7 @@ MapNode::open()
         _terrainEngine->setMap(_map.get(), options().terrain().get());
 
         // Define PBR lighting on the terrain engine
-        _terrainEngine->getNode()->getOrCreateStateSet()->setDefine("OE_USE_PBR");
+        //_terrainEngine->getNode()->getOrCreateStateSet()->setDefine("OE_USE_PBR");
     }
     else
     {
@@ -430,6 +431,12 @@ MapNode::open()
     defaultMaterial->setAmbient(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
     stateset->setAttributeAndModes(defaultMaterial, 1);
     MaterialCallback().operator()(defaultMaterial, 0L);
+
+    // activate PBR support.
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+    Shaders shaders;
+    shaders.load(vp, shaders.PBR);
+    stateset->setDefine("OE_USE_PBR");
 
     dirtyBound();
 

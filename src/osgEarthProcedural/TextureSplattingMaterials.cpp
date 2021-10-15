@@ -441,4 +441,5 @@ RGBH_NNRA_Loader::load(
     nnra->_uri = URI(colorURI.full() + ".oe_splat_nnra");
     nnra->_compress = false;
     arena->add(nnra);
+    return true;
 }

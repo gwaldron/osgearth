@@ -39,124 +39,112 @@
 #define VERTEX_SKIRT         8 // it's a skirt vertex (bitmask)
 #define VERTEX_CONSTRAINT   16 // part of a non-morphable constraint
 
-namespace osgEarth { namespace REX
-{
-    using namespace osgEarth;
-
-    // Adapted from osgTerrain shared geometry class.
-    class /*internal*/ SharedGeometry : public osg::Drawable //, public PatchLayer::GeometryArrayProvider
+namespace osgEarth {
+    namespace REX
     {
-    public:
-        SharedGeometry();
+        using namespace osgEarth;
 
-        SharedGeometry(const SharedGeometry&, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+        // Adapted from osgTerrain shared geometry class.
+        class /*internal*/ SharedGeometry : public osg::Drawable //, public PatchLayer::GeometryArrayProvider
+        {
+        public:
+            SharedGeometry();
 
-        META_Node(osgEarthRex, SharedGeometry);
+            SharedGeometry(const SharedGeometry&, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
 
-        void setVertexArray(osg::Array* array) { _vertexArray = array; }
-        osg::Array* getVertexArray() { return _vertexArray.get(); }
-        const osg::Array* getVertexArray() const { return _vertexArray.get(); }
+            META_Node(osgEarthRex, SharedGeometry);
 
-        void setNormalArray(osg::Array* array) { _normalArray = array; }
-        osg::Array* getNormalArray() { return _normalArray.get(); }
-        const osg::Array* getNormalArray() const { return _normalArray.get(); }
+            void setVertexArray(osg::Array* array) { _vertexArray = array; }
+            osg::Array* getVertexArray() { return _vertexArray.get(); }
+            const osg::Array* getVertexArray() const { return _vertexArray.get(); }
 
-        void setTexCoordArray(osg::Array* array) { _texcoordArray = array; }
-        osg::Array* getTexCoordArray() { return _texcoordArray.get(); }
-        const osg::Array* getTexCoordArray() const { return _texcoordArray.get(); }
+            void setNormalArray(osg::Array* array) { _normalArray = array; }
+            osg::Array* getNormalArray() { return _normalArray.get(); }
+            const osg::Array* getNormalArray() const { return _normalArray.get(); }
 
-        void setNeighborArray(osg::Array* array) { _neighborArray = array; }
-        osg::Array* getNeighborArray() { return _neighborArray.get(); }
-        const osg::Array* getNeighborArray() const { return _neighborArray.get(); }
+            void setTexCoordArray(osg::Array* array) { _texcoordArray = array; }
+            osg::Array* getTexCoordArray() { return _texcoordArray.get(); }
+            const osg::Array* getTexCoordArray() const { return _texcoordArray.get(); }
 
-        void setNeighborNormalArray(osg::Array* array) { _neighborNormalArray = array; }
-        osg::Array* getNeighborNormalArray() { return _neighborNormalArray.get(); }
-        const osg::Array* getNeighborNormalArray() const { return _neighborNormalArray.get(); }
+            void setNeighborArray(osg::Array* array) { _neighborArray = array; }
+            osg::Array* getNeighborArray() { return _neighborArray.get(); }
+            const osg::Array* getNeighborArray() const { return _neighborArray.get(); }
 
-        void setDrawElements(osg::DrawElements* array) { _drawElements = array; }
-        osg::DrawElements* getDrawElements() { return _drawElements.get(); }
-        const osg::DrawElements* getDrawElements() const { return _drawElements.get(); }
+            void setNeighborNormalArray(osg::Array* array) { _neighborNormalArray = array; }
+            osg::Array* getNeighborNormalArray() { return _neighborNormalArray.get(); }
+            const osg::Array* getNeighborNormalArray() const { return _neighborNormalArray.get(); }
 
-        //! Does this geometry include custom constraints?
-        void setHasConstraints(bool value) { _hasConstraints = value; }
-        bool hasConstraints() const { return _hasConstraints; }
+            void setDrawElements(osg::DrawElements* array) { _drawElements = array; }
+            osg::DrawElements* getDrawElements() { return _drawElements.get(); }
+            const osg::DrawElements* getDrawElements() const { return _drawElements.get(); }
 
-        // convert to a "real" geometry object
-        osg::Geometry* makeOsgGeometry();
+            //! Does this geometry include custom constraints?
+            void setHasConstraints(bool value) { _hasConstraints = value; }
+            bool hasConstraints() const { return _hasConstraints; }
 
-        // whether this geometry contains anything
-        bool empty() const;
+            // convert to a "real" geometry object
+            osg::Geometry* makeOsgGeometry();
 
-    public: // osg::Drawable
+            // whether this geometry contains anything
+            bool empty() const;
 
-        osg::VertexArrayState* createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const override;
+        public: // osg::Drawable
 
-        void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
-        
-        void drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const;
+            osg::VertexArrayState* createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const override;
 
-        void drawImplementation(osg::RenderInfo& renderInfo) const override;
+            void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
 
-        void resizeGLObjectBuffers(unsigned int maxSize) override;
+            void drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const;
 
-        void releaseGLObjects(osg::State* state) const override;
+            void drawImplementation(osg::RenderInfo& renderInfo) const override;
 
-        bool supports(const osg::Drawable::AttributeFunctor&) const { return true; }
-        void accept(osg::Drawable::AttributeFunctor&);
+            void resizeGLObjectBuffers(unsigned int maxSize) override;
 
-        bool supports(const osg::Drawable::ConstAttributeFunctor&) const { return true; }
-        void accept(osg::Drawable::ConstAttributeFunctor&) const;
+            void releaseGLObjects(osg::State* state) const override;
 
-        bool supports(const osg::PrimitiveFunctor&) const { return true; }
-        void accept(osg::PrimitiveFunctor&) const;
+            bool supports(const osg::Drawable::AttributeFunctor&) const { return true; }
+            void accept(osg::Drawable::AttributeFunctor&);
 
-        bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
-        void accept(osg::PrimitiveIndexFunctor&) const;
+            bool supports(const osg::Drawable::ConstAttributeFunctor&) const { return true; }
+            void accept(osg::Drawable::ConstAttributeFunctor&) const;
 
-        const osg::BoundingBox& getBoundingBox() const { return osg::Drawable::getBoundingBox(); }
+            bool supports(const osg::PrimitiveFunctor&) const { return true; }
+            void accept(osg::PrimitiveFunctor&) const;
 
-    protected:
+            bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
+            void accept(osg::PrimitiveIndexFunctor&) const;
 
-        virtual ~SharedGeometry();
+            const osg::BoundingBox& getBoundingBox() const { return osg::Drawable::getBoundingBox(); }
 
-        osg::ref_ptr<osg::Array>        _vertexArray;
-        osg::ref_ptr<osg::Array>        _normalArray;
-        osg::ref_ptr<osg::Array>        _colorArray;
-        osg::ref_ptr<osg::Array>        _texcoordArray;
-        osg::ref_ptr<osg::Array>        _neighborArray;
-        osg::ref_ptr<osg::Array>        _neighborNormalArray;
-        osg::ref_ptr<osg::DrawElements> _drawElements;
-        bool _hasConstraints;
+        protected:
 
-    private:
+            virtual ~SharedGeometry();
 
-        friend struct DrawTileCommand;
-        mutable osg::buffered_object<GLenum> _ptype;
-    };
+            osg::ref_ptr<osg::Array>        _vertexArray;
+            osg::ref_ptr<osg::Array>        _normalArray;
+            osg::ref_ptr<osg::Array>        _colorArray;
+            osg::ref_ptr<osg::Array>        _texcoordArray;
+            osg::ref_ptr<osg::Array>        _neighborArray;
+            osg::ref_ptr<osg::Array>        _neighborNormalArray;
+            osg::ref_ptr<osg::DrawElements> _drawElements;
+            bool _hasConstraints;
 
-    /**
-     * Pool of terrain tile geometries.
-     *
-     * In a geocentric map, every tile at a particular LOD and a particular latitudinal
-     * (north-south) extent shares exactly the same geometry; each tile is just shifted
-     * and rotated differently. Therefore we can use the same Geometry for all tiles that
-     * share the same LOD and same min/max latitude in a geocentric map. In a projected
-     * map, all tiles at a given LOD share the same geometry regardless of extent, so eve
-     * more sharing is possible.
-     *
-     * This object creates and returns geometries based on TileKeys, sharing instances
-     * whenever possible. Concept adapted from OSG's osgTerrain::GeometryPool.
-     */
-    class GeometryPool : public osg::Group
+        private:
+
+            friend struct DrawTileCommand;
+            mutable osg::buffered_object<GLenum> _ptype;
+        };
+    }
+}
+
+
+namespace osgEarth {
+    namespace REX
     {
-    public:
-        /** Construct the geometry pool */
-        GeometryPool();
 
-    public:
         /**
-         * Hashtable key for unique (and therefore shareable) geometries.
-         */
+                 * Hashtable key for unique (and therefore shareable) geometries.
+                 */
         struct GeometryKey
         {
             GeometryKey() :
@@ -164,8 +152,8 @@ namespace osgEarth { namespace REX
                 tileY(0),
                 patch(false),
                 size(0u)
-                {
-                }
+            {
+            }
 
             bool operator < (const GeometryKey& rhs) const
             {
@@ -201,9 +189,9 @@ namespace osgEarth { namespace REX
             std::size_t operator()(const GeometryKey& key) const
             {
                 return osgEarth::hash_value_unsigned(
-                    (unsigned)key.lod, 
+                    (unsigned)key.lod,
                     (unsigned)key.tileY,
-                    key.size,key.patch?1u:0u);
+                    key.size, key.patch ? 1u : 0u);
             }
 
             int      lod;
@@ -211,8 +199,48 @@ namespace osgEarth { namespace REX
             bool     patch;
             unsigned size;
         };
+    }
+}
 
-        typedef std::unordered_map<GeometryKey, osg::ref_ptr<SharedGeometry>, GeometryKey> GeometryMap;
+namespace std {
+    // std::hash specialization for GeometryKey
+    template<> struct hash<osgEarth::REX::GeometryKey> {
+        inline size_t operator()(const osgEarth::REX::GeometryKey& key) const {
+            return osgEarth::hash_value_unsigned(
+                (unsigned)key.lod,
+                (unsigned)key.tileY,
+                key.size, key.patch ? 1u : 0u);
+        }
+    };
+}
+
+
+namespace osgEarth {
+    namespace REX
+    {
+    /**
+     * Pool of terrain tile geometries.
+     *
+     * In a geocentric map, every tile at a particular LOD and a particular latitudinal
+     * (north-south) extent shares exactly the same geometry; each tile is just shifted
+     * and rotated differently. Therefore we can use the same Geometry for all tiles that
+     * share the same LOD and same min/max latitude in a geocentric map. In a projected
+     * map, all tiles at a given LOD share the same geometry regardless of extent, so eve
+     * more sharing is possible.
+     *
+     * This object creates and returns geometries based on TileKeys, sharing instances
+     * whenever possible. Concept adapted from OSG's osgTerrain::GeometryPool.
+     */
+    class GeometryPool : public osg::Group
+    {
+    public:
+        /** Construct the geometry pool */
+        GeometryPool();
+
+    public:
+        
+
+        typedef std::unordered_map<GeometryKey, osg::ref_ptr<SharedGeometry>> GeometryMap;
 
         /**
          * Gets the Geometry associated with a tile key, creating a new one if
@@ -255,6 +283,7 @@ namespace osgEarth { namespace REX
     protected:
         virtual ~GeometryPool() { }
 
+        mutable Threading::Gate<GeometryKey> _keygate;
         mutable Threading::Mutex _geometryMapMutex;
         GeometryMap _geometryMap;
         osg::ref_ptr<osg::DrawElements> _defaultPrimSet;

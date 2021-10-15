@@ -127,6 +127,9 @@ namespace osgEarth { namespace REX
         const osg::Array* getTexCoordArray() const { return _geom->getTexCoordArray(); }
         const osg::BoundingBox& getBoundingBox() const { return osg::Drawable::getBoundingBox(); }
 
+        void resizeGLObjectBuffers(unsigned maxsize);
+        void releaseGLObjects(osg::State* state) const;
+
     public:
         META_Object(osgEarth, TileDrawable);
         TileDrawable() : osg::Drawable(), _tileSize(0), _bboxCB(NULL), _bboxRadius(0.0) {}

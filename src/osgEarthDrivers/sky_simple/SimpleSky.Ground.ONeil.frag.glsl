@@ -4,17 +4,15 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_function atmos_frag_main_init, fragment, first
 
 // frag stage global PBR parameters
-struct PBR {
-    float roughness, ao, metal, brightness, contrast;
-} pbr;
+float oe_roughness, oe_ao, oe_metal, oe_brightness, oe_contrast;
 
 void atmos_frag_main_init(inout vec4 ignore)
 {
-    pbr.roughness = 1.0;
-    pbr.ao = 1.0;
-    pbr.metal = 0.0;
-    pbr.brightness = 1.0;
-    pbr.contrast = 1.0;
+    oe_roughness = 1.0;
+    oe_ao = 1.0;
+    oe_metal = 0.0;
+    oe_brightness = 1.0;
+    oe_contrast = 1.0;
 }
 
 
@@ -45,9 +43,7 @@ in vec3 atmos_vert;
 vec3 vp_Normal; // surface normal (from osgEarth)
 
 // frag stage global PBR parameters (see atmos_fragment_main_init)
-struct PBR {
-    float roughness, ao, metal, brightness, contrast;
-} pbr;
+float oe_roughness, oe_ao, oe_metal, oe_brightness, oe_contrast;
 
 // Parameters of each light:
 struct osg_LightSourceParameters
@@ -136,7 +132,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
     vec3 V = normalize(-atmos_vert);
 
     vec3 F0 = vec3(0.04);
-    F0 = mix(F0, albedo, vec3(pbr.metal));
+    F0 = mix(F0, albedo, vec3(oe_metal));
 
     vec3 Lo = vec3(0.0);
 
@@ -152,13 +148,13 @@ void atmos_fragment_main_pbr(inout vec4 color)
         radiance *= atmos_atten;
 
         // cook-torrance BRDF:
-        float NDF = DistributionGGX(N, H, pbr.roughness);
-        float G = GeometrySmith(N, V, L, pbr.roughness);
+        float NDF = DistributionGGX(N, H, oe_roughness);
+        float G = GeometrySmith(N, V, L, oe_roughness);
         vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
 
         vec3 kS = F;
         vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - pbr.metal;
+        kD *= 1.0 - oe_metal;
 
         float NdotL = max(dot(N, L), 0.0);
 
@@ -169,7 +165,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;
     }
 
-    vec3 ambient = osg_LightSource[0].ambient.rgb * albedo * pbr.ao;
+    vec3 ambient = osg_LightSource[0].ambient.rgb * albedo * oe_ao;
 
     color.rgb = ambient + Lo;
 
@@ -186,7 +182,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
     color.rgb = 1.0 - exp(-oe_sky_exposure*0.33 * color.rgb);
 
     // brightness and contrast
-    color.rgb = ((color.rgb - 0.5)*pbr.contrast*oe_sky_contrast + 0.5) * pbr.brightness;
+    color.rgb = ((color.rgb - 0.5)*oe_contrast*oe_sky_contrast + 0.5) * oe_brightness;
 }
 
 void atmos_fragment_material(inout vec4 color)

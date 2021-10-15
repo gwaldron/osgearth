@@ -156,9 +156,7 @@ struct Pixel {
 #define METAL 2
 
 // stage global PBR params
-struct PBR {
-    float roughness, ao, metal, brightness, contrast;
-} pbr;
+float oe_roughness, oe_ao, oe_metal, oe_brightness, oe_contrast;
 
 // testing code for scale
 uniform float tex_size_scale = 1.0;
@@ -284,9 +282,9 @@ void oe_splat_Frag(inout vec4 quad)
 
     vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
 
-    pbr.roughness *= pixel.material[ROUGHNESS];
-    pbr.ao *= pow(pixel.material[AO], ao_power);
-    pbr.metal = pixel.material[METAL];
+    oe_roughness *= pixel.material[ROUGHNESS];
+    oe_ao *= pow(pixel.material[AO], ao_power);
+    oe_metal = pixel.material[METAL];
 
     vec3 color;
 
@@ -304,7 +302,7 @@ void oe_splat_Frag(inout vec4 quad)
     float cos_angle = dot(vp_Normal, oe_UpVectorView);
     float snowiness = step(min_snow_cos_angle, cos_angle);
     color = mix(pixel.rgbh.rgb, vec3(1), snowiness);
-    pbr.roughness = mix(pbr.roughness, 0.1, snowiness);
+    oe_roughness = mix(oe_roughness, 0.1, snowiness);
 #else
     color = pixel.rgbh.rgb;
 #endif

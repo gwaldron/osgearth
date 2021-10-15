@@ -55,9 +55,7 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 }
 
 // fragment stage global PBR params
-struct PBR {
-    float roughness, ao, metal, brightness, contrast;
-} pbr;
+float oe_roughness, oe_ao, oe_metal, oe_brightness, oe_contrast;
 
 void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout vec3 ambience, inout vec3 COLOR)
 {
@@ -68,23 +66,23 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
 
     vec3 albedo = COLOR;
     vec3 F0 = vec3(0.04);
-    F0 = mix(F0, albedo, vec3(pbr.metal));
+    F0 = mix(F0, albedo, vec3(oe_metal));
 
     // cook-torrance BRDF:
-    float NDF = DistributionGGX(N, H, pbr.roughness);
-    float G = GeometrySmith(N, V, L, pbr.roughness);
+    float NDF = DistributionGGX(N, H, oe_roughness);
+    float G = GeometrySmith(N, V, L, oe_roughness);
     vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
 
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - pbr.metal;
+    kD *= 1.0 - oe_metal;
 
     float NdotL = max(dot(N, L), 0.0);
     vec3 numerator = NDF * G * F;
     float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL;
     vec3 specular = numerator / max(denominator, 0.001);
 
-    //ambience *= pbr.ao;
+    //ambience *= oe_ao;
 
     // ONLY calcuate the specularity here since we are incoporating
     // the radiance, etc. elsewhere.
@@ -100,17 +98,15 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
 
 ground_init_frag = R"(
 // fragment stage global PBR params
-struct PBR {
-    float roughness, ao, metal, brightness, contrast;
-} pbr;
+float oe_roughness, oe_ao, oe_metal, oe_brightness, oe_contrast;
 
 void atmos_eb_ground_init_frag(inout vec4 unused)
 {
-    pbr.roughness = 1.0;
-    pbr.ao = 1.0;
-    pbr.metal = 0.0;
-    pbr.brightness = 1.0;
-    pbr.contrast = 1.0;
+    oe_roughness = 1.0;
+    oe_ao = 1.0;
+    oe_metal = 0.0;
+    oe_brightness = 1.0;
+    oe_contrast = 1.0;
 }
 )";
 
@@ -208,7 +204,7 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
 	COLOR.rgb = pow(vec3(1,1,1) - exp(-COLOR.rgb / white_point * oe_sky_exposure*1e-5), vec3(1.0 / 2.2));
 
     // diffuse contrast + brightness
-    COLOR.rgb = ((COLOR.rgb - 0.5)*pbr.contrast*oe_sky_contrast + 0.5) * pbr.brightness;
+    COLOR.rgb = ((COLOR.rgb - 0.5)*oe_contrast*oe_sky_contrast + 0.5) * oe_brightness;
 
     // limit to ambient floor:
     COLOR.rgb = max(COLOR.rgb, ambient_floor);
@@ -325,7 +321,7 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
 	COLOR.rgb = pow(vec3(1,1,1) - exp(-COLOR.rgb / white_point * oe_sky_exposure*1e-5), vec3(1.0 / 2.2));
 
     // diffuse contrast + brightness
-    COLOR.rgb = ((COLOR.rgb - 0.5)*pbr.contrast*oe_sky_contrast + 0.5) * pbr.brightness;
+    COLOR.rgb = ((COLOR.rgb - 0.5)*oe_contrast*oe_sky_contrast + 0.5) * oe_brightness;
 
     // limit to ambient floor:
     COLOR.rgb = max(COLOR.rgb, ambient_floor);

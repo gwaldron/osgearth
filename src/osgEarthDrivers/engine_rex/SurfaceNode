@@ -146,7 +146,7 @@ namespace osgEarth { namespace REX
 
         VectorPoints _worldCorners;
 
-        typedef VectorPoints (ChildrenCorners) [4];
+        using ChildrenCorners = VectorPoints[4];
         ChildrenCorners _childrenCorners;
     };
 

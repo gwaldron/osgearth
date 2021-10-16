@@ -56,7 +56,13 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 
 #ifdef OE_USE_PBR
 // fragment stage global PBR params
-float oe_roughness, oe_ao, oe_metal, oe_brightness, oe_contrast;
+struct PBR {
+    float roughness;
+    float ao;
+    float metal;
+    float brightness;
+    float contrast;
+} oe_pbr;
 
 void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout vec3 ambience, inout vec3 COLOR)
 {
@@ -67,23 +73,23 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
 
     vec3 albedo = COLOR;
     vec3 F0 = vec3(0.04);
-    F0 = mix(F0, albedo, vec3(oe_metal));
+    F0 = mix(F0, albedo, vec3(oe_pbr.metal));
 
     // cook-torrance BRDF:
-    float NDF = DistributionGGX(N, H, oe_roughness);
-    float G = GeometrySmith(N, V, L, oe_roughness);
+    float NDF = DistributionGGX(N, H, oe_pbr.roughness);
+    float G = GeometrySmith(N, V, L, oe_pbr.roughness);
     vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
 
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - oe_metal;
+    kD *= 1.0 - oe_pbr.metal;
 
     float NdotL = max(dot(N, L), 0.0);
     vec3 numerator = NDF * G * F;
     float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL;
     vec3 specular = numerator / max(denominator, 0.001);
 
-    //ambience *= oe_ao;
+    //ambience *= oe_pbr.ao;
 
     // ONLY calcuate the specularity here since we are incoporating
     // the radiance, etc. elsewhere.
@@ -191,7 +197,7 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
 
 #ifdef OE_USE_PBR
     // diffuse contrast + brightness
-    COLOR.rgb = ((COLOR.rgb - 0.5)*oe_contrast*oe_sky_contrast + 0.5) * oe_brightness;
+    COLOR.rgb = ((COLOR.rgb - 0.5)*oe_pbr.contrast*oe_sky_contrast + 0.5) * oe_pbr.brightness;
 #endif
 
     // limit to ambient floor:
@@ -309,7 +315,7 @@ void atmos_eb_ground_render_frag(inout vec4 COLOR)
 
 #ifdef OE_USE_PBR
     // diffuse contrast + brightness
-    COLOR.rgb = ((COLOR.rgb - 0.5)*oe_contrast*oe_sky_contrast + 0.5) * oe_brightness;
+    COLOR.rgb = ((COLOR.rgb - 0.5)*oe_pbr.contrast*oe_sky_contrast + 0.5) * oe_pbr.brightness;
 #endif
 
     // limit to ambient floor:

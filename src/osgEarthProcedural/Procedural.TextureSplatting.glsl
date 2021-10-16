@@ -155,8 +155,14 @@ struct Pixel {
 #define AO 1
 #define METAL 2
 
-// stage global PBR params
-float oe_roughness, oe_ao, oe_metal, oe_brightness, oe_contrast;
+// fragment stage global PBR parameters.
+struct PBR {
+    float roughness;
+    float ao;
+    float metal;
+    float brightness;
+    float contrast;
+} oe_pbr;
 
 // testing code for scale
 uniform float tex_size_scale = 1.0;
@@ -282,16 +288,16 @@ void oe_splat_Frag(inout vec4 quad)
 
     vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
 
-    oe_roughness *= pixel.material[ROUGHNESS];
-    oe_ao *= pow(pixel.material[AO], ao_power);
-    oe_metal = pixel.material[METAL];
+    oe_pbr.roughness *= pixel.material[ROUGHNESS];
+    oe_pbr.ao *= pow(pixel.material[AO], ao_power);
+    oe_pbr.metal = pixel.material[METAL];
 
     vec3 color;
 
-    float f_contrast = contrast + (dense * dense_contrast);
-    float f_brightness = brightness + (dense * dense_brightness);
+    float f_c = contrast + (dense * dense_contrast);
+    float f_b = brightness + (dense * dense_brightness);
 
-    pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*f_contrast + 0.5) * f_brightness, 0, 1);
+    pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*f_c + 0.5) * f_b, 0, 1);
 
 #if 1
     // perma-snow caps:
@@ -302,7 +308,7 @@ void oe_splat_Frag(inout vec4 quad)
     float cos_angle = dot(vp_Normal, oe_UpVectorView);
     float snowiness = step(min_snow_cos_angle, cos_angle);
     color = mix(pixel.rgbh.rgb, vec3(1), snowiness);
-    oe_roughness = mix(oe_roughness, 0.1, snowiness);
+    oe_pbr.roughness = mix(oe_pbr.roughness, 0.1, snowiness);
 #else
     color = pixel.rgbh.rgb;
 #endif
@@ -315,12 +321,4 @@ void oe_splat_Frag(inout vec4 quad)
 
     // final color output:
     quad = vec4(color, oe_layer_opacity);
-
-#if 0 //debug
-    if (oe_snow > 0.99)
-    {
-        vec3 n = vp_Normal;
-        quad = vec4(n.x, 0, 0, 1)*0.5 + 0.5;
-    }
-#endif
 }

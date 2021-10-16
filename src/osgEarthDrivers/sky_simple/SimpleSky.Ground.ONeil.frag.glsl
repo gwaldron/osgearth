@@ -22,9 +22,16 @@ in vec3 atmos_vert;
 
 vec3 vp_Normal; // surface normal (from osgEarth)
 
-// frag stage global PBR parameters (see atmos_fragment_main_init)
+// frag stage global PBR parameters
 #ifdef OE_USE_PBR
-float oe_roughness, oe_ao, oe_metal, oe_brightness, oe_contrast;
+// fragment stage global PBR parameters.
+struct PBR {
+    float roughness;
+    float ao;
+    float metal;
+    float brightness;
+    float contrast;
+} oe_pbr;
 #endif
 
 // Parameters of each light:
@@ -115,7 +122,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
     vec3 V = normalize(-atmos_vert);
 
     vec3 F0 = vec3(0.04);
-    F0 = mix(F0, albedo, vec3(oe_metal));
+    F0 = mix(F0, albedo, vec3(oe_pbr.metal));
 
     vec3 Lo = vec3(0.0);
 
@@ -131,13 +138,13 @@ void atmos_fragment_main_pbr(inout vec4 color)
         radiance *= atmos_atten;
 
         // cook-torrance BRDF:
-        float NDF = DistributionGGX(N, H, oe_roughness);
-        float G = GeometrySmith(N, V, L, oe_roughness);
+        float NDF = DistributionGGX(N, H, oe_pbr.roughness);
+        float G = GeometrySmith(N, V, L, oe_pbr.roughness);
         vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
 
         vec3 kS = F;
         vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - oe_metal;
+        kD *= 1.0 - oe_pbr.metal;
 
         float NdotL = max(dot(N, L), 0.0);
 
@@ -148,7 +155,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;
     }
 
-    vec3 ambient = osg_LightSource[0].ambient.rgb * albedo * oe_ao;
+    vec3 ambient = osg_LightSource[0].ambient.rgb * albedo * oe_pbr.ao;
 
     color.rgb = ambient + Lo;
 
@@ -165,7 +172,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
     color.rgb = 1.0 - exp(-oe_sky_exposure*0.33 * color.rgb);
 
     // brightness and contrast
-    color.rgb = ((color.rgb - 0.5)*oe_contrast*oe_sky_contrast + 0.5) * oe_brightness;
+    color.rgb = ((color.rgb - 0.5)*oe_pbr.contrast*oe_sky_contrast + 0.5) * oe_pbr.brightness;
 }
 
 #else

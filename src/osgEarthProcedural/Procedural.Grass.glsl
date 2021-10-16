@@ -320,9 +320,14 @@ in float oe_veg_ao;
 flat in uint64_t oe_veg_texHandle;
 vec3 vp_Normal;
 
-// fragment stage-global PBR parameters
-float oe_roughness;
-float oe_ao;
+// fragment stage global PBR parameters.
+struct PBR {
+    float roughness;
+    float ao;
+    float metal;
+    float brightness;
+    float contrast;
+} oe_pbr;
 
 uniform float oe_veg_maxAlpha;
 uniform int oe_veg_isMultisampled;
@@ -330,8 +335,8 @@ uniform int oe_veg_isMultisampled;
 void oe_Grass_FS(inout vec4 color)
 {
     // default roughness for grass.
-    oe_roughness = 0.85;
-    oe_ao *= oe_veg_ao;
+    oe_pbr.roughness = 0.85;
+    oe_pbr.ao *= oe_veg_ao;
 
     if (oe_veg_texHandle > 0UL)
     {

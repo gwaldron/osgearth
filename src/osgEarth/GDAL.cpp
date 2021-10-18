@@ -2180,14 +2180,14 @@ namespace
         }
         else
         {
-            ds->GetRasterBand(1)->SetColorInterpretation(GCI_RedBand);
-            ds->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
-            ds->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
-
-            if (numBands == 4)
-            {
+            if (numBands >= 1)
+                ds->GetRasterBand(1)->SetColorInterpretation(GCI_RedBand);
+            if (numBands >= 2)
+                ds->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
+            if (numBands >= 3)
+                ds->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
+            if (numBands >= 4)
                 ds->GetRasterBand(4)->SetColorInterpretation(GCI_AlphaBand);
-            }
         }
 
         //Initialize the geotransform

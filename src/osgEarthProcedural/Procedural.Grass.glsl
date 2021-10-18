@@ -335,7 +335,7 @@ uniform int oe_veg_isMultisampled;
 void oe_Grass_FS(inout vec4 color)
 {
     // default roughness for grass.
-    oe_pbr.roughness = 0.85;
+    oe_pbr.roughness = 1.0;
     oe_pbr.ao *= oe_veg_ao;
 
     if (oe_veg_texHandle > 0UL)

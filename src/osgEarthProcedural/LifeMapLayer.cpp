@@ -67,6 +67,7 @@ LifeMapLayer::Options::getConfig() const
     Config conf = VisibleLayer::Options::getConfig();
     biomeLayer().set(conf, "biomes_layer");
     maskLayer().set(conf, "mask_layer");
+    waterLayer().set(conf, "water_layer");
     colorLayer().set(conf, "color_layer");
     landUseLayer().set(conf, "land_use_layer");
     conf.set("land_cover_weight", landCoverWeight());
@@ -93,6 +94,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
 
     biomeLayer().get(conf, "biomes_layer");
     maskLayer().get(conf, "mask_layer");
+    waterLayer().get(conf, "water_layer");
     colorLayer().get(conf, "color_layer");
     landUseLayer().get(conf, "land_use_layer");
     conf.get("land_cover_weight", landCoverWeight());
@@ -258,6 +260,8 @@ LifeMapLayer::openImplementation()
 
     options().maskLayer().open(getReadOptions());
 
+    options().waterLayer().open(getReadOptions());
+
     options().colorLayer().open(getReadOptions());
 
     options().landUseLayer().open(getReadOptions());
@@ -279,6 +283,7 @@ LifeMapLayer::addedToMap(const Map* map)
 
     options().biomeLayer().addedToMap(map);
     options().maskLayer().addedToMap(map);
+    options().waterLayer().addedToMap(map);
     options().colorLayer().addedToMap(map);
     options().landUseLayer().addedToMap(map);
 
@@ -322,6 +327,7 @@ LifeMapLayer::removedFromMap(const Map* map)
     _map = nullptr;
     options().biomeLayer().removedFromMap(map);
     options().maskLayer().removedFromMap(map);
+    options().waterLayer().removedFromMap(map);
     options().colorLayer().removedFromMap(map);
     ImageLayer::removedFromMap(map);
 }
@@ -348,6 +354,18 @@ ImageLayer*
 LifeMapLayer::getMaskLayer() const
 {
     return options().maskLayer().getLayer();
+}
+
+void
+LifeMapLayer::setWaterLayer(ImageLayer* layer)
+{
+    options().waterLayer().setLayer(layer);
+}
+
+ImageLayer*
+LifeMapLayer::getWaterLayer() const
+{
+    return options().waterLayer().getLayer();
 }
 
 void
@@ -585,6 +603,30 @@ LifeMapLayer::createImageImplementation(
         }
     }
 
+    GeoImage waterMask;
+    ImageUtils::PixelReader readWaterMask;
+    osg::Matrixf wm_matrix;
+
+    if (getWaterLayer())
+    {
+        TileKey wm_key(key);
+
+        while (wm_key.valid() && !waterMask.valid())
+        {
+            waterMask = getWaterLayer()->createImage(wm_key, progress);
+            if (!waterMask.valid())
+                wm_key.makeParent();
+        }
+
+        if (waterMask.valid())
+        {
+            readWaterMask.setImage(waterMask.getImage());
+            readWaterMask.setBilinear(true);
+            readWaterMask.setSampleAsTexture(true);
+            extent.createScaleBias(wm_key.getExtent(), wm_matrix);
+        }
+    }
+
     // the color layer alters lifemap values based on colors.
     GeoImage color;
     ImageUtils::PixelReader readColor;
@@ -616,7 +658,7 @@ LifeMapLayer::createImageImplementation(
         getTileSize(),
         getTileSize(),
         1,
-        GL_RGB, //GL_RGBA,
+        GL_RGBA,
         GL_UNSIGNED_BYTE);
 
     ImageUtils::PixelWriter write(image.get());
@@ -854,6 +896,20 @@ LifeMapLayer::createImageImplementation(
             combined_pixel[LIFEMAP_LUSH] *= temp.r();
             combined_pixel[LIFEMAP_RUGGED] *= temp.r();
         }
+
+        // WATER MASK
+        if (waterMask.valid())
+        {
+            double uu = clamp(i.u() * wm_matrix(0, 0) + wm_matrix(3, 0), 0.0, 1.0);
+            double vv = clamp(i.v() * wm_matrix(1, 1) + wm_matrix(3, 1), 0.0, 1.0);
+            readWaterMask(temp, uu, vv);
+
+            combined_pixel[LIFEMAP_DENSE] *= temp.r();
+            combined_pixel[LIFEMAP_LUSH] *= temp.r();
+            combined_pixel[LIFEMAP_RUGGED] *= temp.r();
+            combined_pixel[3] = 1.0f - temp.r();
+        }
+        else combined_pixel[3] = 0.0f;
 
         // Clamp everything to [0..1] and write it out.
         for (int i = 0; i < 4; ++i)

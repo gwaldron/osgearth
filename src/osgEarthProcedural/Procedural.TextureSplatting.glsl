@@ -282,12 +282,6 @@ void oe_splat_Frag(inout vec4 quad)
         resolveLevel(pixel, i, rugged, lush);
     }
 
-    pixel.normal.xy = vec2(
-        DECEL(pixel.normal.x, normal_power),
-        DECEL(pixel.normal.y, normal_power));
-
-    vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
-
     oe_pbr.roughness *= pixel.material[ROUGHNESS];
     oe_pbr.ao *= pow(pixel.material[AO], ao_power);
     oe_pbr.metal = pixel.material[METAL];
@@ -314,11 +308,18 @@ void oe_splat_Frag(inout vec4 quad)
 #endif
 
     // WATER
-    float water = 1.0 - life.a;
-    const vec3 water_color = vec3(1, 0, 0); // vec3(0.1, 0.2, 0.4);
+    float water = life.a;
+    const vec3 water_color = vec3(0.03, 0.07, 0.12); // vec3(0.1, 0.2, 0.4);
     color = mix(color, water_color, water);
-    oe_pbr.roughness = mix(oe_pbr.roughness, 0.2, water);
+    oe_pbr.roughness = mix(oe_pbr.roughness, 0.3, water);
     oe_pbr.ao = mix(oe_pbr.ao, 1.0, water);
+
+    // NORMAL
+    float np = mix(normal_power, normal_power * 0.5, water);
+    pixel.normal.xy = vec2(
+        DECEL(pixel.normal.x, np),
+        DECEL(pixel.normal.y, np));
+    vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
 
 #ifdef OE_COLOR_LAYER_TEX
     vec3 cltexel = texture(OE_COLOR_LAYER_TEX, (OE_COLOR_LAYER_MAT*oe_layer_tilec).st).rgb;

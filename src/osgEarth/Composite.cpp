@@ -460,10 +460,7 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
                                 readOne(pixelOne, s, t);
                                 readTwo(pixelTwo, s, t);
                                 if (pixelTwo.r() < pixelOne.r())
-                                {
-                                    pixelOne.r() = pixelTwo.r();
-                                    writeOne(pixelOne, s, t);
-                                }
+                                    writeOne(pixelTwo, s, t);
                             }
                         }
                     }

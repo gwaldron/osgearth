@@ -321,7 +321,7 @@ flat in uint64_t oe_veg_texHandle;
 vec3 vp_Normal;
 
 // fragment stage global PBR parameters.
-struct PBR {
+struct OE_PBR {
     float roughness;
     float ao;
     float metal;

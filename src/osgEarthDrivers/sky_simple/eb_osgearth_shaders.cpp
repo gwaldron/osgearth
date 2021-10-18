@@ -56,7 +56,7 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 
 #ifdef OE_USE_PBR
 // fragment stage global PBR params
-struct PBR {
+struct OE_PBR {
     float roughness;
     float ao;
     float metal;

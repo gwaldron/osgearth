@@ -156,7 +156,7 @@ struct Pixel {
 #define METAL 2
 
 // fragment stage global PBR parameters.
-struct PBR {
+struct OE_PBR {
     float roughness;
     float ao;
     float metal;
@@ -312,6 +312,13 @@ void oe_splat_Frag(inout vec4 quad)
 #else
     color = pixel.rgbh.rgb;
 #endif
+
+    // WATER
+    float water = 1.0 - life.a;
+    const vec3 water_color = vec3(1, 0, 0); // vec3(0.1, 0.2, 0.4);
+    color = mix(color, water_color, water);
+    oe_pbr.roughness = mix(oe_pbr.roughness, 0.2, water);
+    oe_pbr.ao = mix(oe_pbr.ao, 1.0, water);
 
 #ifdef OE_COLOR_LAYER_TEX
     vec3 cltexel = texture(OE_COLOR_LAYER_TEX, (OE_COLOR_LAYER_MAT*oe_layer_tilec).st).rgb;

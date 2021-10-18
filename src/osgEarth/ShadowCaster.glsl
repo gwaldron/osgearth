@@ -46,7 +46,7 @@ in vec4 oe_shadow_coord[$OE_SHADOW_NUM_SLICES];
 in float oe_shadow_rf;
 
 // fragment stage global PBR parameters.
-struct PBR {
+struct OE_PBR {
     float roughness;
     float ao;
     float metal;

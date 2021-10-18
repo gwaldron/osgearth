@@ -379,7 +379,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 #pragma import_defines(OE_IS_MULTISAMPLE)
 
 // fragment stage global PBR parameters.
-struct PBR {
+struct OE_PBR {
     float roughness;
     float ao;
     float metal;

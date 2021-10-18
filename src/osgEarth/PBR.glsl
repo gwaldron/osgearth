@@ -2,7 +2,7 @@
 #pragma vp_function oe_pbr_init, fragment, first
 
 // fragment stage global PBR parameters.
-struct PBR {
+struct OE_PBR {
     float roughness;
     float ao;
     float metal;

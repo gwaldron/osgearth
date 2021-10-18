@@ -25,7 +25,7 @@ vec3 vp_Normal; // surface normal (from osgEarth)
 // frag stage global PBR parameters
 #ifdef OE_USE_PBR
 // fragment stage global PBR parameters.
-struct PBR {
+struct OE_PBR {
     float roughness;
     float ao;
     float metal;

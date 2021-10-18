@@ -439,6 +439,9 @@ namespace osgEarth
         //! Jobs in queue
         std::size_t size() const;
 
+        //! Is this arena usable?
+        bool valid() const { return _gc.valid(); }
+
     public:
 
         void operator()(osg::GraphicsContext*) override;

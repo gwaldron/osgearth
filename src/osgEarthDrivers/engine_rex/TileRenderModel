@@ -133,6 +133,10 @@ namespace osgEarth { namespace REX
             //nop
         }
 
+        ~RenderingPass()
+        {
+            releaseGLObjects(nullptr);
+        }
         
         // UID of the layer corresponding to this rendering pass
         UID sourceUID() const { return _sourceUID; }

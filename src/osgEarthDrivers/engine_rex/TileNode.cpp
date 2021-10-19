@@ -612,6 +612,32 @@ TileNode::update(osg::NodeVisitor& nv)
         {
             Sampler& sampler = samplers[s];
 
+            // handle "future" textures. This is a texture that was installed
+            // by an "async" image layer that is working in the background
+            // to load. Once it is available we can merge it into the real texture
+            // slot for rendering.
+            if (sampler._futureTexture.valid())
+            {
+                if (sampler._futureTexture->requiresUpdateCall())
+                {
+                    sampler._futureTexture->update(&nv);
+                    ++numUpdatedTotal;
+                }
+
+                if (sampler._futureTexture->doneLoading())
+                {
+                    sampler._texture = sampler._futureTexture;
+                    sampler._matrix.makeIdentity();
+                    sampler._futureTexture = nullptr;
+                    ++numFuturesResolved;
+                }
+
+                else if (sampler._futureTexture->failed())
+                {
+                    sampler._futureTexture = nullptr;
+                }
+            }
+
             if (sampler.ownsTexture())
             {
                 for (unsigned i = 0; i < sampler._texture->getNumImages(); ++i)
@@ -620,54 +646,8 @@ TileNode::update(osg::NodeVisitor& nv)
                     if (image && image->requiresUpdateCall())
                     {
                         image->update(&nv);
-                        numUpdatedTotal++;
+                        ++numUpdatedTotal;
                     }
-                }
-            }
-
-            // handle "future" textures. This is a texture that was installed
-            // by an "async" image layer that is working in the background
-            // to load. Once it is available we can merge it into the real texture
-            // slot for rendering.
-            if (sampler._futureTexture.valid())
-            {
-                unsigned levelsDoneUpdating = sampler._futureTexture->getNumImages();
-                unsigned numUpdated = 0;
-
-                for (unsigned i = 0; i < sampler._futureTexture->getNumImages(); ++i)
-                {
-                    FutureImage* image = dynamic_cast<FutureImage*>(sampler._futureTexture->getImage(i));
-                    if (image)
-                    {
-                        if (image->requiresUpdateCall())
-                        {
-                            //OE_INFO << _key.str() << " image->update..." << std::endl;
-                            image->update(&nv);
-                            numUpdated++;
-                            numUpdatedTotal++;
-                        }
-
-                        // an image with a valid size indicates the job is complete
-                        if (image->doneLoading())
-                        {
-                            --levelsDoneUpdating;
-                        }
-                    }
-                }
-
-                // when all images are complete, update the texture and discard the future object.
-                if (levelsDoneUpdating == 0)
-                {
-                    sampler._texture = sampler._futureTexture;
-                    sampler._matrix.makeIdentity();
-                    sampler._futureTexture = nullptr;
-                    ++numFuturesResolved;
-                }
-
-                else if (numUpdated == 0)
-                {
-                    // can happen if the asynchronous request fails.
-                    sampler._futureTexture = nullptr;
                 }
             }
         }
@@ -886,7 +866,11 @@ TileNode::merge(
                         OE_DEBUG << "no parent pass in my pass. key=" << model->getKey().str() << std::endl;
                     }
 
-                    pass->sampler(SamplerBinding::COLOR)._futureTexture = imageLayerModel->getTexture();
+                    pass->sampler(SamplerBinding::COLOR)._futureTexture =
+                        dynamic_cast<FutureTexture2D*>(imageLayerModel->getTexture());
+
+                    // require an update pass to process the future texture
+                    _imageUpdatesActive = true;
                 }
 
                 uidsLoaded.insert(pass->sourceUID());

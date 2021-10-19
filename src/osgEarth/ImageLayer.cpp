@@ -812,29 +812,26 @@ ImageLayer::addPostLayer(ImageLayer* layer)
 #define ARENA_ASYNC_LAYER "oe.layer.async"
 //#define FUTURE_IMAGE_COLOR_PLACEHOLDER
 
-FutureImage::FutureImage(
+FutureTexture2D::FutureTexture2D(
     ImageLayer* layer,
     const TileKey& key) :
 
-    osg::Image(),
+    osg::Texture2D(),
+    FutureTexture(),
     _layer(layer),
-    _key(key),
-    _resolved(false),
-    _failed(false)
+    _key(key)
 {
-    allocateImage(1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    unsigned* c = (unsigned*)(data(0, 0));
-#ifdef FUTURE_IMAGE_COLOR_PLACEHOLDER
-    *c = 0x4F00FF00; // ABGR
-#else
-    *c = 0x00000000; // ABGR
-#endif
+    // since we'll be updating it mid stream
+    setDataVariance(osg::Object::DYNAMIC);
 
+    setName(_key.str() + ":" + _layer->getName());
+
+    // start loading the image
     dispatch();
 }
 
 void
-FutureImage::dispatch() const
+FutureTexture2D::dispatch() const
 {
     osg::observer_ptr<ImageLayer> layer_ptr(_layer);
     TileKey key(_key);
@@ -860,13 +857,13 @@ FutureImage::dispatch() const
 }
 
 bool
-FutureImage::requiresUpdateCall() const
+FutureTexture2D::requiresUpdateCall() const
 {
     // careful - if we return false here, it may never get called again.
 
     if (_resolved)
     {
-        return osg::Image::requiresUpdateCall();
+        return false;
     }
 
     if (_result.isCanceled())
@@ -879,52 +876,35 @@ FutureImage::requiresUpdateCall() const
 
 
 void
-FutureImage::update(osg::NodeVisitor* nv)
+FutureTexture2D::update(osg::NodeVisitor* nv)
 {
-    if (_resolved)
+    if (_resolved == false && _result.isAvailable() == true)
     {
-        return osg::Image::update(nv);
-    }
+        OE_DEBUG<< LC << "Async result available for " << getName() << std::endl;
 
-    if (_result.isAvailable())
-    {
         // fetch the result
         GeoImage geoImage = _result.get();
 
         if (geoImage.getStatus().isError())
         {
             OE_WARN << LC << "Error: " << geoImage.getStatus().message() << std::endl;
+            _failed = true;
         }
-
-        osg::ref_ptr<osg::Image> i = geoImage.takeImage();
-
-        if (i.valid())
-        {
-            this->setImage(
-                i->s(), i->t(), i->r(),
-                i->getInternalTextureFormat(), i->getPixelFormat(), i->getDataType(),
-                i->data(), i->getAllocationMode(),
-                i->getPacking(),
-                i->getRowLength());
-
-            // since we stole the data, make sure we don't double-delete it
-            i->setAllocationMode(osg::Image::NO_DELETE);
-
-            // trigger texture(s) that own this image to reapply
-            this->dirty();
-        }
-
         else
         {
-            _failed = true;
+            osg::ref_ptr<osg::Image> image = geoImage.takeImage();
 
-            unsigned* c = (unsigned*)(data(0, 0));
-#ifdef FUTURE_IMAGE_COLOR_PLACEHOLDER
-            *c = 0x4f0000FF; // ABGR
-#else
-            *c = 0x00000000; // ABGR
-#endif
-            dirty();
+            if (image.valid())
+            {
+                this->setImage(image);
+                this->dirtyTextureObject();
+            }
+
+            else
+            {
+                _failed = true;
+                this->dirtyTextureObject();
+            }
         }
 
         // reset the future so update won't be called again

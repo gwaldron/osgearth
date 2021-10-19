@@ -239,9 +239,7 @@ TerrainTileModelFactory::addImageLayer(
 
         else if (imageLayer->getAsyncLoading() == true)
         {
-            osg::Image* image = new FutureImage(imageLayer, key);
-
-            tex = new osg::Texture2D(image);
+            tex = new FutureTexture2D(imageLayer, key);
             tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
             tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
             tex->setResizeNonPowerOfTwoHint(false);
@@ -251,9 +249,6 @@ TerrainTileModelFactory::addImageLayer(
             tex->setFilter(osg::Texture::MIN_FILTER, minFilter);
             tex->setMaxAnisotropy(4.0f);
             tex->setUnRefImageDataAfterApply(false);
-
-            // prevent issues with replacing the texture in the middle of a render
-            tex->setDataVariance(osg::Object::DYNAMIC);
         }
 
         else

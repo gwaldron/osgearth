@@ -622,6 +622,32 @@ TerrainTileModelFactory::addStandaloneLandCover(
     }
 }
 
+namespace
+{
+    //#define DEBUG_TEXTURES
+
+    struct DebugTexture2D : public osg::Texture2D
+    {
+        DebugTexture2D(osg::Image* image) : osg::Texture2D(image) { }
+        virtual ~DebugTexture2D() {
+            OE_INFO << "Deleted texture " << getName() << std::endl;
+        }
+        void releaseGLObjects(osg::State* state) const {
+            osg::Texture2D::releaseGLObjects(state);
+            OE_INFO << "Released texture " << getName() << std::endl;
+        }
+    };
+
+    osg::Texture2D* createTexture2D(const osg::Image* image)
+    {
+#ifdef DEBUG_TEXTURES
+        return new DebugTexture2D(const_cast<osg::Image*>(image));
+#else
+        return new osg::Texture2D(const_cast<osg::Image*>(image));
+#endif
+    }
+}
+
 osg::Texture*
 TerrainTileModelFactory::createImageTexture(const osg::Image* image,
                                             const ImageLayer* layer) const
@@ -637,7 +663,7 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
     {
         // image sequences and other data that updates itself
         // shall not be mipmapped/compressed here
-        tex = new osg::Texture2D(const_cast<osg::Image*>(image));
+        tex = createTexture2D(image);
     }
     else
     {
@@ -664,7 +690,9 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
         {
             osg::ref_ptr<const osg::Image> compressed = ImageUtils::compressImage(image, compressionMethod);
             const osg::Image* mipmapped = ImageUtils::mipmapImage(compressed.get());
-            tex = new osg::Texture2D(const_cast<osg::Image*>(mipmapped));
+
+            tex = createTexture2D(mipmapped);
+
             hasMipMaps = mipmapped->isMipmap();
             isCompressed = mipmapped->isCompressed();
 
@@ -747,7 +775,7 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
 osg::Texture*
 TerrainTileModelFactory::createCoverageTexture(const osg::Image* image) const
 {
-    osg::Texture2D* tex = new osg::Texture2D(const_cast<osg::Image*>(image));
+    osg::Texture2D* tex = createTexture2D(image);
     tex->setDataVariance(osg::Object::STATIC);
 
     tex->setInternalFormat(LandCover::getTextureFormat());
@@ -769,7 +797,7 @@ TerrainTileModelFactory::createCoverageTexture(const osg::Image* image) const
 osg::Texture*
 TerrainTileModelFactory::createElevationTexture(const osg::Image* image) const
 {
-    osg::Texture2D* tex = new osg::Texture2D(const_cast<osg::Image*>(image));
+    osg::Texture2D* tex = createTexture2D(image);
     tex->setDataVariance(osg::Object::STATIC);
     tex->setInternalFormat(GL_R32F);
     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );

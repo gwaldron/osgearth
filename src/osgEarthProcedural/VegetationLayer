@@ -56,6 +56,7 @@ namespace osgEarth { namespace Procedural
 
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
+                OE_OPTION(bool, enabled);
                 OE_OPTION(Distance, spacing);
                 OE_OPTION(float, maxRange);
                 OE_OPTION(unsigned, lod);
@@ -117,6 +118,9 @@ namespace osgEarth { namespace Procedural
         // ...
         void setMaxRange(AssetGroup::Type, float);
         float getMaxRange(AssetGroup::Type) const;
+
+        void setEnabled(AssetGroup::Type, bool);
+        bool getEnabled(AssetGroup::Type) const;
 
         //! Force constant regeneration of locations (for debugging)
         void setAlwaysGenerate(bool value) {
@@ -242,7 +246,9 @@ namespace osgEarth { namespace Procedural
                 osg::Uniform* _maxRange_u;
 
                 bool active() const {
-                    return _instancer.valid();
+                    return
+                        _instancer.valid() &&
+                        _layer->options().group(_group).enabled() == true;
                 }
 
                 bool empty() const {

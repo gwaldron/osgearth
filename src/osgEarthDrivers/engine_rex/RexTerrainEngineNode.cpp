@@ -107,7 +107,7 @@ namespace
                 // if the map doesn't contain a layer with a matching UID,
                 // or if the layer is now disabled, remove it from the render model.
                 Layer* layer = _map->getLayerByUID(pass.sourceUID());
-                if (layer == NULL || layer->getEnabled() == false)
+                if (layer == nullptr || layer->isOpen() == false)
                 {
                     model._passes.erase(model._passes.begin()+p);
                     --p;

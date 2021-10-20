@@ -26,6 +26,7 @@
 #include <osgEarth/TileLayer>
 #include <osgEarth/URI>
 #include <osgEarth/Threading>
+#include <osg/Texture2D>
 
 namespace osgEarth
 {
@@ -282,45 +283,47 @@ namespace osgEarth
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;
-
-
+    
     /**
-     * An osg::Image loaded in the background.
+     * Texture that loads its data asynchronously
      */
-    class OSGEARTH_EXPORT FutureImage : public osg::Image
+    class OSGEARTH_EXPORT FutureTexture
     {
     public:
-        FutureImage(ImageLayer* layer, const TileKey& key);
+        virtual bool doneLoading() const { return _resolved; }
+        virtual bool succeeded() const { return _resolved && !_failed; }
+        virtual bool failed() const { return _resolved && _failed; }
 
-        // done working?
-        bool doneLoading() const {
-            return _resolved;
-        }
+        virtual bool requiresUpdateCall() const = 0;
+        virtual void update(osg::NodeVisitor* nv) = 0;
 
-        // got a result image?
-        bool succeeded() const {
-            return _resolved && !_failed;
-        }
+    protected:
+        FutureTexture() : _resolved(false), _failed(false) { }
+        bool _resolved, _failed;
+    };
 
-        // failed to get a result image?
-        bool failed() const {
-            return _resolved && _failed;
-        }
+    class OSGEARTH_EXPORT FutureTexture2D :
+        public osg::Texture2D,
+        public FutureTexture
+    {
+    public:
+        FutureTexture2D(
+            ImageLayer* layer,
+            const TileKey& key);
 
-    public: // osgImage API
-
-        // true if still working.
+    public: // FutureTexture
         bool requiresUpdateCall() const override;
-
         void update(osg::NodeVisitor* nv) override;
 
-    private:
-        void dispatch() const;
+    protected:
+        virtual ~FutureTexture2D() { }
 
-        osg::ref_ptr<ImageLayer> _layer;
+    private:
         TileKey _key;
+        osg::ref_ptr<ImageLayer> _layer;
         mutable Future<GeoImage> _result;
-        bool _resolved, _failed;
+
+        void dispatch() const;
     };
 
 } // namespace osgEarth

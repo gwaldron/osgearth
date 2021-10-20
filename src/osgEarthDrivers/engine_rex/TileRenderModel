@@ -75,7 +75,7 @@ namespace osgEarth { namespace REX
         osg::Matrixf _matrix;
 
         // point to a texture whose image is still being loaded asynchronously
-        osg::ref_ptr<osg::Texture> _futureTexture;
+        osg::ref_ptr<FutureTexture2D> _futureTexture;
 
         // revision of the data in this sampler (taken from its source layer)
         unsigned _revision;
@@ -133,6 +133,10 @@ namespace osgEarth { namespace REX
             //nop
         }
 
+        ~RenderingPass()
+        {
+            releaseGLObjects(nullptr);
+        }
         
         // UID of the layer corresponding to this rendering pass
         UID sourceUID() const { return _sourceUID; }

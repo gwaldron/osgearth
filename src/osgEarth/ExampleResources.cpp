@@ -880,9 +880,6 @@ MapNodeHelper::configureView( osgViewer::View* view ) const
     // disable small feature culling (otherwise Text annotations won't render)
     view->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-    // instruct the database pager to not modify the unref settings
-    view->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
-
     // thread-safe initialization of the OSG wrapper manager. Calling this here
     // prevents the "unsupported wrapper" messages from OSG
     osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");

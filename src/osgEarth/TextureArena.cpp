@@ -98,14 +98,13 @@ Texture::compileGLObjects(osg::State& state) const
 
     if (target == GL_TEXTURE_2D_ARRAY)
     {
-        GLFunctions::get(state).
-            glTexStorage3D(
-                target,
-                numMipLevelsToAllocate,
-                internalFormat,
-                _image->s(),
-                _image->t(),
-                _image->r());
+        ext->glTexStorage3D(
+            target,
+            numMipLevelsToAllocate,
+            internalFormat,
+            _image->s(),
+            _image->t(),
+            _image->r());
     }
     else
     {
@@ -582,8 +581,7 @@ TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
 
         _buffer->bind();
 
-        GLFunctions::get(state).
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, _buf, GL_DYNAMIC_STORAGE_BIT);
+        _buffer->ext()->glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, _buf, GL_DYNAMIC_STORAGE_BIT);
     }
 
     else if (_dirty)

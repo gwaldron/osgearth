@@ -26,7 +26,7 @@ _canCancel(true),
 _done(false),
 _mutex("SimplePager(OE)")
 {
-    //nop
+    _mapProfile = Profile::create(Profile::GLOBAL_GEODETIC);
 }
 
 void SimplePager::setEnableCancelation(bool value)
@@ -51,12 +51,20 @@ void SimplePager::build()
 
 osg::BoundingSphered SimplePager::getBounds(const TileKey& key) const
 {
-    return key.getExtent().createWorldBoundingSphere(-500, 500);    
+    if (key.getProfile()->getSRS()->isGeographic())
+    {
+        return key.getExtent().createWorldBoundingSphere(-500, 500);
+    }
+    else
+    {
+        GeoExtent e = _mapProfile->clampAndTransformExtent(key.getExtent());
+        return e.createWorldBoundingSphere(-500, 500);
+    }
 }
 
 osg::ref_ptr<osg::Node> SimplePager::buildRootNode()
 {
-    osg::ref_ptr<osg::Group> root = new PagingManager();
+    osg::ref_ptr<osg::Group> root = new osg::Group();
 
     std::vector<TileKey> keys;
     _profile->getRootKeys( keys );

@@ -38,7 +38,9 @@ namespace osgEarth { namespace Util
     public:
         SimplePager(const osgEarth::Profile* profile);
 
-        void build();
+        //! Initializes the graph. If you override this, be sure to call
+        //! buildRootNode and add that as a child of whatever you create.
+        virtual void build();
 
         //! Whether this pager uses additive lods.
         bool getAdditive() const { return _additive; }
@@ -106,7 +108,8 @@ namespace osgEarth { namespace Util
         //! Gets the bounding sphere for a given TileKey.
         osg::BoundingSphered getBounds(const TileKey& key) const;
 
-        //! The root node is a special node.
+        //! The root node is a special node. If you override this method,
+        //! be sure to all this to include it in the scene graph.
         osg::ref_ptr<osg::Node> buildRootNode();
 
         //! Creates a paging data for the given TileKey
@@ -124,6 +127,7 @@ namespace osgEarth { namespace Util
         float _priorityOffset;
         bool _canCancel;
         bool _done;
+        osg::ref_ptr<const Profile> _mapProfile;
         
         mutable Threading::Mutex _mutex;
         using Callbacks = std::vector<osg::ref_ptr<Callback>>;

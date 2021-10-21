@@ -173,6 +173,11 @@ namespace osgEarth {
         {
             OE_PROFILING_ZONE;
 
+            if (!geometry->isPolygon())
+            {
+                return;
+            }
+
             BLPath path;
 
             geometry->forEachPart([&](const Geometry* part)
@@ -200,7 +205,6 @@ namespace osgEarth {
             ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
             ctx.setStrokeWidth(1.0);
             ctx.strokePath(path);
-
         }
 
         void rasterizeLines(
@@ -212,6 +216,11 @@ namespace osgEarth {
         {
             OE_HARD_ASSERT(geometry != nullptr);
             OE_HARD_ASSERT(symbol != nullptr);
+
+            if (!geometry->isPolygon() && !geometry->isLinear())
+            {
+                return;
+            }
 
             OE_PROFILING_ZONE;
 
@@ -624,28 +633,34 @@ FeatureRasterizer::render_agglite(
             bool hasPoly = false;
             bool hasLine = false;
 
-            if (masterPoly || f->get()->style()->has<PolygonSymbol>())
+            if (f->get()->getGeometry()->isPolygon())
             {
-                polygons.push_back(f->get());
-                hasPoly = true;
+                if (masterPoly || f->get()->style()->has<PolygonSymbol>())
+                {
+                    polygons.push_back(f->get());
+                    hasPoly = true;
+                }
             }
 
-            if (masterLine || f->get()->style()->has<LineSymbol>())
+            if (f->get()->getGeometry()->isPolygon() || f->get()->getGeometry()->isLinear())
             {
-                // Use the GeometryIterator to get all the geometries so we can clone them as rings
-                GeometryIterator gi(f->get()->getGeometry());
-                while (gi.hasMore())
+                if (masterLine || f->get()->style()->has<LineSymbol>())
                 {
-                    Geometry* geom = gi.next();
-                    // Create a new feature for each geometry
-                    Feature* newFeature = new Feature(*f->get());
-                    newFeature->setGeometry(geom);
-                    if (!newFeature->getGeometry()->isLinear())
+                    // Use the GeometryIterator to get all the geometries so we can clone them as rings
+                    GeometryIterator gi(f->get()->getGeometry());
+                    while (gi.hasMore())
                     {
-                        newFeature->setGeometry(newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING));
+                        Geometry* geom = gi.next();
+                        // Create a new feature for each geometry
+                        Feature* newFeature = new Feature(*f->get());
+                        newFeature->setGeometry(geom);
+                        if (!newFeature->getGeometry()->isLinear())
+                        {
+                            newFeature->setGeometry(newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING));
+                        }
+                        lines.push_back(newFeature);
+                        hasLine = true;
                     }
-                    lines.push_back(newFeature);
-                    hasLine = true;
                 }
             }
 

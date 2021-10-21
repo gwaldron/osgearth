@@ -634,21 +634,22 @@ VegetationLayer::buildStateSets()
     _sseU->set(getMaxSSE());
     stateset->addUniform(_sseU.get());
 
-    if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
-    {
-        stateset->setDefine("OE_IS_MULTISAMPLE", "1");
-        stateset->setMode(GL_MULTISAMPLE, 1);
-        stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-    }
-    else
-    {
-        stateset->removeMode(GL_MULTISAMPLE);
-        stateset->removeMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB);
-        stateset->removeDefine("OE_IS_MULTISAMPLE");
-    }
+    //if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
+    //{
+    //    stateset->setDefine("OE_IS_MULTISAMPLE", "1");
+    //    stateset->setMode(GL_MULTISAMPLE, 1);
+    //    stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+    //}
+    //else
+    //{
+    //    stateset->removeMode(GL_MULTISAMPLE);
+    //    stateset->removeMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB);
+    //    stateset->removeDefine("OE_IS_MULTISAMPLE");
+    //}
 
-    if (getUseAlphaToCoverage())
-        stateset->setAttributeAndModes(_renderer->_a2cBlending.get(), 1);
+    //if (getUseAlphaToCoverage())
+
+    stateset->setAttributeAndModes(_renderer->_a2cBlending.get(), 1);
 
     // NEXT assemble the asset group statesets.
     if (AssetGroup::TREES < NUM_ASSET_GROUPS)
@@ -1229,7 +1230,7 @@ VegetationLayer::Renderer::CameraState::draw(
         // If the camera moved, we need to cull:
         if (!needsCull)
         {
-            osg::Matrix mvp = state->getModelViewMatrix() * state->getProjectionMatrix();
+            osg::Matrix mvp = state->getModelViewMatrix(); // *state->getProjectionMatrix();
             if (mvp != _lastMVP)
             {
                 _lastMVP = mvp;

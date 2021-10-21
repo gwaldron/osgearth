@@ -164,15 +164,12 @@ struct OE_PBR {
     float contrast;
 } oe_pbr;
 
-// testing code for scale
-uniform float tex_size_scale = 1.0;
-
 // compute the splatting texture coordinate by combining the macro (tile_xy)
 // and micro (local xy) components. Cannot do this in the VS because it will
 // overflow the interpolator and pause pixel jitter
 void get_coord(out vec2 coord, in int index, in int level)
 {
-    vec2 scale = texScale[index] * tex_size_scale;
+    vec2 scale = texScale[index];
     vec2 a = fract(splat_tilexy[level] * scale);
     vec2 b = splat_uv[level] * scale;
     coord = a + b;
@@ -286,30 +283,16 @@ void oe_splat_Frag(inout vec4 quad)
     oe_pbr.ao *= pow(pixel.material[AO], ao_power);
     oe_pbr.metal = pixel.material[METAL];
 
-    vec3 color;
-
     float f_c = contrast + (dense * dense_contrast);
     float f_b = brightness + (dense * dense_brightness);
 
     pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*f_c + 0.5) * f_b, 0, 1);
 
-#if 1
-    // perma-snow caps:
-    float coldness = MAP_TO_01(oe_elev, oe_snow_min_elev, oe_snow_max_elev);
-    float min_snow_cos_angle = 1.0 - SOFTEN(oe_snow*coldness);
-    const float snow_buf = 0.01;
-    float b = min(min_snow_cos_angle + snow_buf, 1.0);
-    float cos_angle = dot(vp_Normal, oe_UpVectorView);
-    float snowiness = step(min_snow_cos_angle, cos_angle);
-    color = mix(pixel.rgbh.rgb, vec3(1), snowiness);
-    oe_pbr.roughness = mix(oe_pbr.roughness, 0.1, snowiness);
-#else
-    color = pixel.rgbh.rgb;
-#endif
+    vec3 color = pixel.rgbh.rgb;
 
     // WATER
     float water = life.a;
-    const vec3 water_color = vec3(0.03, 0.07, 0.12); // vec3(0.1, 0.2, 0.4);
+    const vec3 water_color = vec3(0.02, 0.05, 0.1); // vec3(0.1, 0.2, 0.4);
     color = mix(color, water_color, water);
     oe_pbr.roughness = mix(oe_pbr.roughness, 0.3, water);
     oe_pbr.ao = mix(oe_pbr.ao, 1.0, water);
@@ -320,6 +303,16 @@ void oe_splat_Frag(inout vec4 quad)
         DECEL(pixel.normal.x, np),
         DECEL(pixel.normal.y, np));
     vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
+
+    // SNOW
+    float coldness = MAP_TO_01(oe_elev, oe_snow_min_elev, oe_snow_max_elev);
+    float min_snow_cos_angle = 1.0 - SOFTEN(oe_snow*coldness);
+    const float snow_buf = 0.01;
+    float b = min(min_snow_cos_angle + snow_buf, 1.0);
+    float cos_angle = dot(vp_Normal, oe_UpVectorView);
+    float snowiness = (1.0-water)*step(min_snow_cos_angle, cos_angle);
+    color = mix(color, vec3(1), snowiness);
+    oe_pbr.roughness = mix(oe_pbr.roughness, 0.1, snowiness);
 
 #ifdef OE_COLOR_LAYER_TEX
     vec3 cltexel = texture(OE_COLOR_LAYER_TEX, (OE_COLOR_LAYER_MAT*oe_layer_tilec).st).rgb;

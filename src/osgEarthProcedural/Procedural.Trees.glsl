@@ -371,7 +371,7 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 #version 430
 #extension GL_ARB_gpu_shader_int64 : enable
 
-#pragma vp_name       Land cover billboard texture application
+#pragma vp_name       Trees Fragment Shader
 #pragma vp_entryPoint oe_GroundCover_FS
 #pragma vp_location   fragment_coloring
 
@@ -439,25 +439,21 @@ void oe_GroundCover_FS(inout vec4 color)
 #endif
     }
 
-#ifdef OE_IS_SHADOW_CAMERA
-    if (color.a < oe_veg_maxAlpha)
-    {
-        discard;
-    }
-#else
-    #ifdef OE_IS_MULTISAMPLE
-        // mitigate the screen-door effect of A2C in the distance
-        // https://tinyurl.com/y7bbbpl9
-        float a = (color.a - oe_veg_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
-        color.a = mix(color.a, a, oe_veg_distance);
-    #else
-        if (color.a < oe_veg_maxAlpha)
-        {
-            discard;
-        }
-    #endif
+#if !defined(OE_IS_MULTISAMPLE) || defined(OE_IS_SHADOW_CAMERA)
 
-#if 0
+    if (color.a < oe_veg_maxAlpha)
+        discard;
+
+#else
+
+    // mitigate the screen-door effect of A2C in the distance
+    // https://tinyurl.com/y7bbbpl9
+    float a = (color.a - oe_veg_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+    color.a = mix(color.a, a, oe_veg_distance);
+
+#endif
+
+#ifndef OE_IS_SHADOW_CAMERA
     // TODO: revisit once we can figure out how to get terrain elevation
     float coldness = mapToNormalizedRange(elev, 1000, 3500);
     float cos_angle = clamp(dot(vp_Normal, normalize(oe_UpVectorView)), 0, 1);
@@ -467,7 +463,5 @@ void oe_GroundCover_FS(inout vec4 color)
         oe_pbr.roughness = mix(oe_pbr.roughness, 0.1, snowiness);
     }
 #endif
-
-#endif // OE_LIGHTING
 }
 

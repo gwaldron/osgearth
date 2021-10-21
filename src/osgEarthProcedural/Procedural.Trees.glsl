@@ -453,7 +453,7 @@ void oe_GroundCover_FS(inout vec4 color)
 
 #endif
 
-#ifndef OE_IS_SHADOW_CAMERA
+#if 0 //ifndef OE_IS_SHADOW_CAMERA
     // TODO: revisit once we can figure out how to get terrain elevation
     float coldness = mapToNormalizedRange(elev, 1000, 3500);
     float cos_angle = clamp(dot(vp_Normal, normalize(oe_UpVectorView)), 0, 1);

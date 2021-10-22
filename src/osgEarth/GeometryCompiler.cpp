@@ -73,7 +73,7 @@ _ignoreAlt             ( false ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
 _optimizeStateSharing  ( true ),
-_optimize              ( false ),
+_optimize              ( true ),
 _optimizeVertexOrdering( true ),
 _validate              ( false ),
 _maxPolyTilingAngle    ( 45.0f ),
@@ -410,8 +410,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( _options.featureName().isSet() )
             extrude.setFeatureNameExpr( *_options.featureName() );
 
-        if ( _options.mergeGeometry().isSet() )
-            extrude.setMergeGeometry( *_options.mergeGeometry() );
+        if (_options.mergeGeometry().isSet())
+            extrude.setMergeGeometry(*_options.mergeGeometry());
+        else if (_options.optimize() == true)
+            extrude.setMergeGeometry(false);
+            
 
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )

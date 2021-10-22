@@ -50,10 +50,10 @@ SimpleOceanLayer::Options::getConfig() const
 void
 SimpleOceanLayer::Options::fromConfig(const Config& conf)
 {
-    _color.init(Color("#1D2C4FFF"));
-    _maxAltitude.init(1500000.f);
-    _useBathymetry.init(true);
-    _textureLOD.init(13u);
+    color().setDefault(Color("#050D1AFF"));
+    maxAltitude().setDefault(500000.f);
+    useBathymetry().setDefault(true);
+    textureLOD().setDefault(13u);
 
     conf.get("color", _color);
     conf.get("max_altitude", _maxAltitude);

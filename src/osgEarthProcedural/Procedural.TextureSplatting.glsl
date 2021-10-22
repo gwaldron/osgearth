@@ -298,11 +298,10 @@ void oe_splat_Frag(inout vec4 quad)
     oe_pbr.ao = mix(oe_pbr.ao, 1.0, water);
 
     // NORMAL
-    float np = mix(normal_power, normal_power * 0.5, water);
     pixel.normal.xy = vec2(
-        DECEL(pixel.normal.x, np),
-        DECEL(pixel.normal.y, np));
-    vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
+        DECEL(pixel.normal.x, normal_power),
+        DECEL(pixel.normal.y, normal_power));
+    vp_Normal = mix(normalize(vp_Normal + oe_normalMapTBN * pixel.normal), oe_UpVectorView, water);
 
     // SNOW
     float coldness = MAP_TO_01(oe_elev, oe_snow_min_elev, oe_snow_max_elev);

@@ -1623,7 +1623,7 @@ VegetationLayer::Renderer::draw(
         {
             if (newGeometryAvailable)
             {
-                OE_INFO << LC << "New geometry available, but collection is empty" << std::endl;
+                OE_DEBUG << LC << "New geometry available, but collection is empty" << std::endl;
             }
             return;
         }

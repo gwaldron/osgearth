@@ -42,14 +42,13 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+    osgEarth::initialize();
+
     osg::ArgumentParser arguments(&argc, argv);
     if (arguments.read("--help"))
         return usage(argv[0]);
 
-    osgEarth::initialize();
-
     osgViewer::Viewer viewer(arguments);
-    // Use SingleThreaded mode with imgui.
     viewer.setThreadingModel(viewer.SingleThreaded);
     viewer.setCameraManipulator(new EarthManipulator(arguments));
 
@@ -64,9 +63,7 @@ main(int argc, char** argv)
         // Passing "true" tells it to install all the built-in osgEarth GUI tools.
         // Put it on the front of the list so events don't filter
         // through to other handlers.
-        GUI::ApplicationGUI* gui = new GUI::ApplicationGUI(arguments, true);
-        viewer.getEventHandlers().push_front(gui);
-
+        viewer.getEventHandlers().push_front(new GUI::ApplicationGUI(arguments, true));
         viewer.setSceneData(node);
         return viewer.run();
     }

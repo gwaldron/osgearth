@@ -412,8 +412,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         if (_options.mergeGeometry().isSet())
             extrude.setMergeGeometry(*_options.mergeGeometry());
-        else if (_options.optimize() == true)
-            extrude.setMergeGeometry(false);
+        //else if (_options.optimize() == true)
+        //    extrude.setMergeGeometry(false);
             
 
         osg::Node* node = extrude.push( workingSet, sharedCX );

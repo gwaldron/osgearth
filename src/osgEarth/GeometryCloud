@@ -1,0 +1,147 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_GEOMETRY_CLOUD
+#define OSGEARTH_GEOMETRY_CLOUD 1
+
+#include <osgEarth/Common>
+#include <osgEarth/GLUtils>
+#include <osgEarth/TextureArena>
+
+#include <osg/Geometry>
+#include <osg/GL>
+#include <osg/Texture2DArray>
+#include <osg/NodeVisitor>
+#include <osg/Program>
+
+#include <vector>
+
+namespace osgEarth
+{
+    /**
+    * Object that combines multiple models into a single GL_TRIANGLES geometry.
+    * This does two things:
+    *
+    * 1) Each time you call add(), the model is stripped down
+    *    and transformed into a single primitive set. All state
+    *    except for texture0 (and a normal map texture) will be lost.
+    * 2) The newly stripped geometry is appended to the One True
+    *    Combined Geometry and its texture added to the combined
+    *    atlas.
+    *
+    * You will end up with:
+    * - One GL_TRIANGLES geometry with one primitive set
+    * - One texture atlas
+    * - a DrawElementsIndirectCommand for each embedded model that you can 
+    *   use to call glDrawElementsIndirect or glMultiDrawElementsIndirect.
+    */
+    class OSGEARTH_EXPORT GeometryCloud : public osg::NodeVisitor
+    {
+    public:
+        //! New geometry could that will store its textures in an arena.
+        //! @param arena Texture arena that will hold any textures
+        //!    collected from node added to this cloud
+        GeometryCloud(TextureArena* arena);
+
+        //! Return from add(), contains the index of the new command
+        //! and a vector of texture references that you need to hold
+        //! on to do they don't get deleted.
+        struct AddResult
+        {
+            int _commandIndex;
+            std::vector<Texture::Ptr> _textures;
+        };
+
+        //! Add a model to be incorporated into the cloud.
+        //! @param node Node whose geometry to add
+        //! @param texturesAdded Populated with any textures that were added
+        //!    to the texture arena in the process of adding tis node
+        //! @param alignment If non-zero, pad the cloud's attribute arrays so
+        //!    the index of the first vertex in this node is a multiple of the
+        //!    alignment value. This is necessary for shaders that use gl_VertexID
+        //!    as a modulus.
+        //! @param generateTextureHandles Whether to visit the node, add textures
+        //!    to the arena, and generate texture handle vertex attribute. If false,
+        //!    copy the pre-existing handles from the incoming geometry.
+        //! @param normalMapTextureImageUnit If the model contains normal map textures,
+        //!    the TIU containing them. -1 = no normal maps.
+        //! @return Success: command number of the geometry; Failure: -1
+        AddResult add(
+            osg::Node* node,
+            unsigned alignment = 0,
+            int normalMapTextureImageUnit = -1);
+
+        //! The unified geometry
+        osg::Geometry* getGeometry() const { return _geom.get(); }
+
+        //! How many models were added
+        unsigned getNumDrawCommands() const { return _vertexOffsets.size(); }
+
+        //! Populates the i-th draw command from this cloud
+        //! @param[in] i Index of draw command to retrieve
+        //! @param[out] cmd Draw command output
+        //! @return True if [i] was in range, false if not
+        bool getDrawCommand(unsigned i, DrawElementsIndirectCommand& cmd) const;
+
+        //! Render the cloud
+        void draw(osg::RenderInfo& ri);
+
+        //! Whether this cloud contains any geometry
+        bool empty() const { return _vertexOffsets.empty(); }
+
+        //! Stateset supporting the geometry
+        osg::StateSet* getStateSet() { return _geom.valid() ? _geom->getStateSet() : nullptr; }
+
+    public: // osg::NodeVisitor
+        void apply(osg::Node& node) override;
+        void apply(osg::Transform& xform) override;
+        void apply(osg::Geometry& geom) override;
+        osg::ref_ptr<osg::Geometry> _geom;
+
+    private:
+        bool pushStateSet(osg::Node&);
+        void popStateSet();
+
+        osg::ref_ptr<TextureArena> _texarena;
+        osg::DrawElementsUShort* _primset;
+        osg::Vec3Array* _verts;
+        osg::Vec4Array* _colors;
+        osg::Vec3Array* _normals;
+        osg::Vec2Array* _texcoords;
+        osg::ShortArray* _albedoArenaIndices;
+        osg::ShortArray* _normalArenaIndices;
+        std::vector<unsigned> _vertexOffsets;
+        std::vector<unsigned> _elementOffsets;
+        std::vector<unsigned> _elementCounts;
+
+        //traversal data - must be cleared before each traversal
+        using ArenaIndexLUT = std::unordered_map<osg::Texture*, int>;
+        ArenaIndexLUT _arenaIndexLUT;
+        unsigned _numElements;
+        std::stack<int> _albedoArenaIndexStack;
+        std::stack<int> _normalArenaIndexStack;
+        std::stack<osg::Matrix> _matrixStack;
+        int _normalMapTextureImageUnit;
+        std::vector<Texture::Ptr>* _texturesAdded;
+    };
+}
+
+#endif // OSGEARTH_INSTANCE_CLOUD

@@ -149,6 +149,7 @@ SET(LIB_PUBLIC_HEADERS
     GeoMath
     GeoTransform
     GeometryClamper
+    GeometryCloud
     GLSLChunker
     GLUtils
     HeightFieldUtils
@@ -570,6 +571,7 @@ set(TARGET_SRC
     GeoMath.cpp
     GeoTransform.cpp
     GeometryClamper.cpp
+    GeometryCloud.cpp
     GLSLChunker.cpp
     GLUtils.cpp
     HeightFieldUtils.cpp

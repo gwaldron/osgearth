@@ -503,7 +503,7 @@ struct VegetationGUI : public GUI::BaseGUI
                                 {
                                     if (ImGui::TreeNode(pointer.asset->name()->c_str()))
                                     {
-                                        drawModelAsset(pointer.asset);
+                                        drawModelAsset(pointer.asset, nullptr);
                                         ImGui::TreePop();
                                     }
                                 }
@@ -528,7 +528,7 @@ struct VegetationGUI : public GUI::BaseGUI
 
                     if (ImGui::TreeNode(asset->name()->c_str()))
                     {
-                        drawModelAsset(asset);
+                        drawModelAsset(asset, data);
                         ImGui::TreePop();
                     }
                 }
@@ -537,14 +537,20 @@ struct VegetationGUI : public GUI::BaseGUI
         ImGui::End();
     }
 
-    void drawModelAsset(const ModelAsset* asset)
+    void drawModelAsset(const ModelAsset* asset, ModelAssetData::Ptr data)
     {
         if (asset->modelURI().isSet())
+        {
             ImGui::Text("Model: %s", asset->modelURI()->base().c_str());
+            if (data)
+                ImGui::Text("     : %d triangles", (data->_modelCommand.count / 3));
+        }
         if (asset->sideBillboardURI().isSet())
             ImGui::Text("Side BB: %s", asset->sideBillboardURI()->base().c_str());
         if (asset->topBillboardURI().isSet())
             ImGui::Text("Top BB: %s", asset->topBillboardURI()->base().c_str());
+
+
     }
 };
 

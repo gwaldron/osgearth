@@ -37,24 +37,6 @@ namespace osgEarth
 {
     class GeometryCloud;
 
-    //! A draw command for indirect rendering
-    struct DrawElementsIndirectCommand
-    {
-        GLuint  count;          // how many indices comprise this draw command
-        GLuint  instanceCount;  // how many instances of the geometry to draw
-        GLuint  firstIndex;     // index of the first element in the EBO to use
-        GLuint  baseVertex;     // offset to add to each element index (lets us use USHORT even when >65535 verts)
-        GLuint  baseInstance;   // offset to instance # when fetching vertex attrs (does NOT affect gl_InstanceID)
-    };
-
-    //! A dispatch command for indirect compute
-    struct DispatchIndirectCommand
-    {
-        GLuint num_groups_x;
-        GLuint num_groups_y;
-        GLuint num_groups_z;
-    };
-
     /**
      * InstanceCloud is a helper class that facilitates primitive set
      * instancing across multiple tiles.
@@ -248,98 +230,6 @@ namespace osgEarth
     private:
 
         InstancingData _data;
-    };
-
-    /**
-    * Object that combines multiple models into a single
-    * GL_TRIANGLES geometry. This does two things:
-    * 1) Each time you call add(), the model is stripped down
-    *    and transformed into a single primitive set. All state
-    *    except for texture0 will be lost.
-    * 2) The newly stripped geometry is appended to the One True
-    *    Combined Geometry and its texture added to the combined
-    *    atlas.
-    * You will end up with:
-    * - One GL_TRIANGLES geometry with one primitive set
-    * - One texture atlas
-    * - Vertex offset of each embedded model
-    * - Element count of each embedded model
-    */
-    class OSGEARTH_EXPORT GeometryCloud : public osg::NodeVisitor
-    {
-    public:
-        //! New geometry could that will store its textures in an arena.
-        //! @param arena Texture arena that will hold any textures
-        //!    collected from node added to this cloud
-        GeometryCloud(TextureArena* arena);
-
-        //! Add a model to be incorporated into the cloud.
-        //! @param node Node whose geometry to add
-        //! @param texturesAdded Populated with any textures that were added
-        //!    to the texture arena in the process of adding tis node
-        //! @param alignment If non-zero, pad the cloud's attribute arrays so
-        //!    the index of the first vertex in this node is a multiple of the
-        //!    alignment value. This is necessary for shaders that use gl_VertexID
-        //!    as a modulus.
-        //! @param generateTextureHandles Whether to visit the node, add textures
-        //!    to the arena, and generate texture handle vertex attribute. If false,
-        //!    copy the pre-existing handles from the incoming geometry.
-        //! @param normalMapTextureImageUnit If the model contains normal map textures,
-        //!    the TIU containing them. -1 = no normal maps.
-        //! @return Success: command number of the geometry; Failure: -1
-        int add(
-            osg::Node* node,
-            std::vector<Texture::Ptr>& texturesAdded,
-            unsigned alignment = 0,
-            int normalMapTextureImageUnit = -1);
-
-        //! The unified geometry
-        osg::Geometry* getGeometry() const { return _geom.get(); }
-
-        //! How many models were added
-        unsigned getNumDrawCommands() const { return _vertexOffsets.size(); }
-
-        //! Populates the i-th draw command from this cloud
-        bool getDrawCommand(unsigned i, DrawElementsIndirectCommand& cmd) const;
-
-        //! Render the cloud
-        void draw(osg::RenderInfo& ri);
-
-        bool empty() const { return _vertexOffsets.empty(); }
-
-        osg::StateSet* getStateSet() { return _geom.valid() ? _geom->getStateSet() : nullptr; }
-
-    public: // osg::NodeVisitor
-        void apply(osg::Node& node) override;
-        void apply(osg::Transform& xform) override;
-        void apply(osg::Geometry& geom) override;
-        osg::ref_ptr<osg::Geometry> _geom;
-
-    private:
-        bool pushStateSet(osg::Node&);
-        void popStateSet();
-
-        osg::ref_ptr<TextureArena> _texarena;
-        osg::DrawElementsUShort* _primset;
-        osg::Vec3Array* _verts;
-        osg::Vec4Array* _colors;
-        osg::Vec3Array* _normals;
-        osg::Vec2Array* _texcoords;
-        osg::ShortArray* _albedoArenaIndices;
-        osg::ShortArray* _normalArenaIndices;
-        std::vector<unsigned> _vertexOffsets;
-        std::vector<unsigned> _elementOffsets;
-        std::vector<unsigned> _elementCounts;
-
-        //traversal data - must be cleared before each traversal
-        using ArenaIndexLUT = std::unordered_map<osg::Texture*, int>;
-        ArenaIndexLUT _arenaIndexLUT;
-        unsigned _numElements;
-        std::stack<int> _albedoArenaIndexStack;
-        std::stack<int> _normalArenaIndexStack;
-        std::stack<osg::Matrix> _matrixStack;
-        int _normalMapTextureImageUnit;
-        std::vector<Texture::Ptr>* _texturesAdded;
     };
 }
 

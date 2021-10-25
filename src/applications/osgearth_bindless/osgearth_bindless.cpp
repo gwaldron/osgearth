@@ -21,10 +21,10 @@
 */
 
 #include <osgEarth/Notify>
-#include <osgEarth/InstanceCloud>
 #include <osgEarth/TextureArena>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ExampleResources>
+#include <osgEarth/GeometryCloud>
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -99,7 +99,10 @@ test_InstanceCloud(osg::ArgumentParser& args)
 
 //! Simple DrawCallback to render the contents of the GeometryCloud.
 //! This is really only useful in the context of this example, but
-//! you could adapt it for use in other situations
+//! you could adapt it for use in other situations. Normally you would
+//! allocate a GLBuffer and subload all the commands to it, and then
+//! call glMultiDrawElementsIndirect with a nullptr argument. But
+//! for this example we are just being lazy.
 struct GeometryCloudRenderer : public osg::Drawable::DrawCallback
 {
     GeometryCloud* _cloud;
@@ -174,8 +177,7 @@ main(int argc, char** argv)
         osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform();
         mt->setMatrix(osg::Matrix::translate(spacing, 0, 0));
         mt->addChild(node);
-        std::vector<Texture::Ptr> added;
-        cloud->add(mt.get(), added);
+        auto result = cloud->add(mt.get());
         
         spacing += radius;
     }

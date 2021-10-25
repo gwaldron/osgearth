@@ -98,6 +98,24 @@ namespace osgEarth
     {
         virtual void operator()(osg::Object*);
     };
+
+    //! A draw command for indirect rendering
+    struct DrawElementsIndirectCommand
+    {
+        GLuint  count;          // how many indices comprise this draw command
+        GLuint  instanceCount;  // how many instances of the geometry to draw
+        GLuint  firstIndex;     // index of the first element in the EBO to use
+        GLuint  baseVertex;     // offset to add to each element index (lets us use USHORT even when >65535 verts)
+        GLuint  baseInstance;   // offset to instance # when fetching vertex attrs (does NOT affect gl_InstanceID)
+    };
+
+    //! A dispatch command for indirect compute
+    struct DispatchIndirectCommand
+    {
+        GLuint num_groups_x;
+        GLuint num_groups_y;
+        GLuint num_groups_z;
+    };
     
     //! Base class for GL object containers
     class OSGEARTH_EXPORT GLObject

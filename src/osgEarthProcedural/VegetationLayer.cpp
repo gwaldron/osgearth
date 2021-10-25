@@ -169,6 +169,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 
     if (AssetGroup::TREES < NUM_ASSET_GROUPS)
     {
+        groups()[AssetGroup::TREES].enabled() = true;
         groups()[AssetGroup::TREES].castShadows() = true;
         groups()[AssetGroup::TREES].maxRange() = 2500.0f;
         groups()[AssetGroup::TREES].lod() = 14;
@@ -178,6 +179,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 
     if (AssetGroup::UNDERGROWTH < NUM_ASSET_GROUPS)
     {
+        groups()[AssetGroup::UNDERGROWTH].enabled() = true;
         groups()[AssetGroup::UNDERGROWTH].castShadows() = false;
         groups()[AssetGroup::UNDERGROWTH].maxRange() = 75.0f;
         groups()[AssetGroup::UNDERGROWTH].lod() = 19;
@@ -199,6 +201,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         if (g >= 0 && g < NUM_ASSET_GROUPS)
         {
             Group& group = groups()[g];
+            group_c.get("enabled", group.enabled());
             group_c.get("spacing", group.spacing());
             group_c.get("max_range", group.maxRange());
             group_c.get("lod", group.lod());
@@ -423,6 +426,7 @@ VegetationLayer::getGroupLOD(AssetGroup::Type group) const
     else
         return 0;
 }
+
 void
 VegetationLayer::setMaxRange(AssetGroup::Type type, float value)
 {
@@ -437,6 +441,22 @@ VegetationLayer::getMaxRange(AssetGroup::Type type) const
 {
     OE_HARD_ASSERT(type < NUM_ASSET_GROUPS);
     return options().group(type).maxRange().get();
+}
+
+void
+VegetationLayer::setEnabled(AssetGroup::Type type, bool value)
+{
+    OE_HARD_ASSERT(type < NUM_ASSET_GROUPS);
+
+    auto& group = options().group(type);
+    group.enabled() = value;
+}
+
+bool
+VegetationLayer::getEnabled(AssetGroup::Type type) const
+{
+    OE_HARD_ASSERT(type < NUM_ASSET_GROUPS);
+    return options().group(type).enabled().get();
 }
 
 void
@@ -614,21 +634,22 @@ VegetationLayer::buildStateSets()
     _sseU->set(getMaxSSE());
     stateset->addUniform(_sseU.get());
 
-    if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
-    {
-        stateset->setDefine("OE_IS_MULTISAMPLE", "1");
-        stateset->setMode(GL_MULTISAMPLE, 1);
-        stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-    }
-    else
-    {
-        stateset->removeMode(GL_MULTISAMPLE);
-        stateset->removeMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB);
-        stateset->removeDefine("OE_IS_MULTISAMPLE");
-    }
+    //if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
+    //{
+    //    stateset->setDefine("OE_IS_MULTISAMPLE", "1");
+    //    stateset->setMode(GL_MULTISAMPLE, 1);
+    //    stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+    //}
+    //else
+    //{
+    //    stateset->removeMode(GL_MULTISAMPLE);
+    //    stateset->removeMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB);
+    //    stateset->removeDefine("OE_IS_MULTISAMPLE");
+    //}
 
-    if (getUseAlphaToCoverage())
-        stateset->setAttributeAndModes(_renderer->_a2cBlending.get(), 1);
+    //if (getUseAlphaToCoverage())
+
+    stateset->setAttributeAndModes(_renderer->_a2cBlending.get(), 1);
 
     // NEXT assemble the asset group statesets.
     if (AssetGroup::TREES < NUM_ASSET_GROUPS)
@@ -1145,11 +1166,7 @@ VegetationLayer::Renderer::CameraState::draw(
     osg::State* state = ri.getState();
 
     // do not shadow groups marked as not casting shadows
-    bool isShadowCam = CameraUtils::isShadowCamera(ri.getCurrentCamera());
-
-    // Why doesn't OSG push this in the LayerDrawable RenderLeaf? No one knows.
-    // Anyway, push it before checking the oe_veg_sse uniform.
-    state->pushStateSet(_renderer->_layer->getStateSet());
+    //bool isShadowCam = CameraUtils::isShadowCamera(ri.getCurrentCamera());
 
     // do we need to re-generate some (or all) of the tiles?
     bool needsGenerate =
@@ -1158,10 +1175,14 @@ VegetationLayer::Renderer::CameraState::draw(
         _renderer->_layer->_forceGenerate;
 
     // split up the tiles to render by asset group:
+    unsigned numActiveGroups = 0;
+
     for (auto& group : _groups)
     {
         if (group.active() && group.accepts(ri))
         {
+            ++numActiveGroups;
+
             // returns true if the new batch differs from the previous batch,
             // in which case we need to regenerate tiles
             if (group.setTileBatch(batch))
@@ -1186,58 +1207,65 @@ VegetationLayer::Renderer::CameraState::draw(
         }
     }
 
-    // if we need to generate, we need to cull too
-    bool needsCull = needsGenerate;
-
-    // if the SSE value changed, we need to cull.
-    // This feels a little janky but it works.
-    if (!needsCull)
+    if (numActiveGroups > 0u)
     {
-        if (_last_sse != _renderer->_layer->getMaxSSE())
-        {
-            _last_sse = _renderer->_layer->getMaxSSE();
-            needsCull = true;
-        }
-    }
+        // Why doesn't OSG push this in the LayerDrawable RenderLeaf? No one knows.
+        // Anyway, push it before checking the oe_veg_sse uniform.
+        state->pushStateSet(_renderer->_layer->getStateSet());
 
-    // If the camera moved, we need to cull:
-    if (!needsCull)
-    {
-        osg::Matrix mvp = state->getModelViewMatrix() * state->getProjectionMatrix();
-        if (mvp != _lastMVP)
-        {
-            _lastMVP = mvp;
-            needsCull = true;
-        }
-    }
+        // if we need to generate, we need to cull too
+        bool needsCull = needsGenerate;
 
-    // compute pass:
-    if (needsGenerate || needsCull)
-    {
-        state->pushStateSet(_renderer->_computeSS.get());
-
-        for (auto& group : _groups)
+        // if the SSE value changed, we need to cull.
+        // This feels a little janky but it works.
+        if (!needsCull)
         {
-            if (group.active() && !group.empty())
+            if (_last_sse != _renderer->_layer->getMaxSSE())
             {
-                group.compute(ri, needsGenerate, needsCull);
+                _last_sse = _renderer->_layer->getMaxSSE();
+                needsCull = true;
             }
         }
 
+        // If the camera moved, we need to cull:
+        if (!needsCull)
+        {
+            osg::Matrix mvp = state->getModelViewMatrix(); // *state->getProjectionMatrix();
+            if (mvp != _lastMVP)
+            {
+                _lastMVP = mvp;
+                needsCull = true;
+            }
+        }
+
+        // compute pass:
+        if (needsGenerate || needsCull)
+        {
+            state->pushStateSet(_renderer->_computeSS.get());
+
+            for (auto& group : _groups)
+            {
+                if (group.active() && !group.empty())
+                {
+                    group.compute(ri, needsGenerate, needsCull);
+                }
+            }
+
+            state->popStateSet();
+        }
+
+        // draw pass:
+        for (auto& group : _groups)
+        {
+            if (group.active() && !group.empty() && group.accepts(ri))
+            {
+                group.render(ri);
+            }
+        }
+
+        // pop the layer's stateset.
         state->popStateSet();
     }
-
-    // draw pass:
-    for (auto& group : _groups)
-    {
-        if (group.active() && !group.empty() && group.accepts(ri))
-        {
-            group.render(ri);
-        }
-    }
-
-    // pop the layer's stateset.
-    state->popStateSet();
 
     // clear the dirty flag for the next frame.
     _geomDirty = false;
@@ -1595,7 +1623,7 @@ VegetationLayer::Renderer::draw(
         {
             if (newGeometryAvailable)
             {
-                OE_INFO << LC << "New geometry available, but collection is empty" << std::endl;
+                OE_DEBUG << LC << "New geometry available, but collection is empty" << std::endl;
             }
             return;
         }

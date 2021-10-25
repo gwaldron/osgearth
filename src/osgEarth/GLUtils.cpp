@@ -353,7 +353,7 @@ GLBuffer::create(GLenum target, osg::State& state, const std::string& label)
 }
 
 void
-GLBuffer::bind()
+GLBuffer::bind() const
 {
     OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
     OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name");
@@ -361,11 +361,23 @@ GLBuffer::bind()
 }
 
 void
-GLBuffer::bind(GLenum otherTarget)
+GLBuffer::bind(GLenum otherTarget) const
 {
     OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
     OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name");
     ext()->glBindBuffer(otherTarget, _name);
+}
+
+void
+GLBuffer::storage(GLintptr size, GLvoid* data, GLbitfield flags) const
+{
+    ext()->glBufferStorage(_target, size, data, flags);
+}
+
+void
+GLBuffer::subData(GLintptr offset, GLsizeiptr size, GLvoid* data) const
+{
+    ext()->glBufferSubData(_target, offset, size, data);
 }
 
 void

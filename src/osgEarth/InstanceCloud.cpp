@@ -78,9 +78,7 @@ InstanceCloud::CommandBuffer::allocate(
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC DrawCommands");
 
         _buffer->bind();
-
-        GLFunctions::get(state).
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, NULL, GL_DYNAMIC_STORAGE_BIT);
+        _buffer->storage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     }
 }
 
@@ -98,7 +96,7 @@ InstanceCloud::CommandBuffer::reset()
         }
 
         _buffer->bind();
-        _buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, _requiredSize, _buf);
+        _buffer->subData(0, _requiredSize, _buf);
     }
 }
 
@@ -120,9 +118,7 @@ InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::S
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC TileBuffer");
         
         _buffer->bind();
-
-        GLFunctions::get(state).
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, NULL, GL_DYNAMIC_STORAGE_BIT);  
+        _buffer->storage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);  
     }
 }
 
@@ -133,7 +129,7 @@ InstanceCloud::TileBuffer::update() const
     if (_requiredSize > 0)
     {
         _buffer->bind();
-        _buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, _requiredSize, _buf);
+        _buffer->subData(0, _requiredSize, _buf);
     }
 }
 
@@ -155,9 +151,7 @@ InstanceCloud::CullBuffer::allocate(unsigned numInstances, GLsizei alignment, os
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC CullBuffer");
 
         _buffer->bind();
-
-        GLFunctions::get(state).
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+        _buffer->storage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     }
 }
 
@@ -174,7 +168,7 @@ InstanceCloud::CullBuffer::clear()
     _buf->_padding[0] = 0;
 
     _buffer->bind();
-    _buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(Data), _buf);
+    _buffer->subData(0, sizeof(Data), _buf);
 }
 
 void
@@ -195,9 +189,7 @@ InstanceCloud::InstanceBuffer::allocate(unsigned numTiles, unsigned numInstances
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC GenBuffer");
 
         _buffer->bind();
-
-        GLFunctions::get(state).
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, NULL, 0);
+        _buffer->storage(_allocatedSize, nullptr, 0);
     }
 }
 
@@ -216,17 +208,13 @@ InstanceCloud::RenderBuffer::allocate(unsigned numInstances, GLsizei alignment, 
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC RenderBuffer");
 
         _buffer->bind();
-
-        GLFunctions::get(state).
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, nullptr, 0);
+        _buffer->storage(_allocatedSize, nullptr, 0);
     }
 }
 
 InstanceCloud::InstancingData::InstancingData() :
     _numTilesAllocated(0u),
     _alignment((GLsizei)-1),
-    //_passUL((GLint)-1),
-    //_numCommandsUL((GLint)-1),
     _numX(0u),
     _numY(0u)
 {
@@ -575,13 +563,12 @@ namespace
             {
                 OE_PROFILING_ZONE_NAMED("glMultiDrawElementsIndirect");
 
-                GLFunctions::get(state).
-                    glMultiDrawElementsIndirect(
-                        GL_TRIANGLES,
-                        GL_UNSIGNED_SHORT,
-                        nullptr,                       // in GL_DRAW_INDIRECT_BUFFER on GPU
-                        _cloud->getNumDrawCommands(),  // number of commands to execute
-                        0);                            // stride=0, commands are tightly packed
+                ext->glMultiDrawElementsIndirect(
+                    GL_TRIANGLES,
+                    GL_UNSIGNED_SHORT,
+                    nullptr,                       // in GL_DRAW_INDIRECT_BUFFER on GPU
+                    _cloud->getNumDrawCommands(),  // number of commands to execute
+                    0);                            // stride=0, commands are tightly packed
             }
         }
     };

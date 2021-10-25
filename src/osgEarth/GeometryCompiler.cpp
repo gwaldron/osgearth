@@ -410,8 +410,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( _options.featureName().isSet() )
             extrude.setFeatureNameExpr( *_options.featureName() );
 
-        if ( _options.mergeGeometry().isSet() )
-            extrude.setMergeGeometry( *_options.mergeGeometry() );
+        if (_options.mergeGeometry().isSet())
+            extrude.setMergeGeometry(*_options.mergeGeometry());
+        //else if (_options.optimize() == true)
+        //    extrude.setMergeGeometry(false);
+            
 
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )
@@ -530,6 +533,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( trackHistory ) history.push_back( "share state" );
     }
 
+#if 0 // never do this, let the filters do it.
     if ( _options.optimize() == true )
     {
         OE_DEBUG << LC << "optimize begin" << std::endl;
@@ -556,7 +560,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         if ( trackHistory ) history.push_back( "optimize" );
     }
-
+#endif
 
     //test: dump the tile to disk
     //OE_WARN << "Writing GC node file to out.osgt..." << std::endl;

@@ -120,11 +120,13 @@ namespace osgEarth
         using Ptr = std::shared_ptr<GLBuffer>;
         static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
 
-        void bind();
-        void bind(GLenum target);
+        void bind() const;
+        void bind(GLenum target) const;
         GLuint name() const { return _name; }
         GLenum target() const { return _target; }
         void release();
+        void storage(GLintptr size, GLvoid* data, GLbitfield flags) const;
+        void subData(GLintptr offset, GLsizeiptr size, GLvoid* data) const;
     protected:
         GLBuffer(GLenum target, osg::State& state, const std::string& label);
     private:

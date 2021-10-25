@@ -584,7 +584,7 @@ BiomeManager::createGeometryCloud(
                         imposter,
                         instance._textures,
                         getNumVertices(imposter),   // apply alignment so shader can use gl_VertexID
-                        1);                         // normal maps in texture image unit 1
+                        NORMAL_MAP_TEX_UNIT);       // normal maps in texture image unit 1
 
                     visited.insert(imposter);
                 }

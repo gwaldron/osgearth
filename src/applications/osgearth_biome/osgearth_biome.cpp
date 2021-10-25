@@ -398,18 +398,30 @@ struct VegetationGUI : public GUI::BaseGUI
 
             ImGui::Text("Num tiles: %d", _veglayer->getNumTilesRendered());
 
-            ImGui::Text("Max ranges:");
+            ImGui::Text("Groups:");
             ImGui::Indent();
             for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
             {
+                ImGui::PushID(i);
+
+                if (i > 0)
+                    ImGui::Separator();
+
                 AssetGroup::Type type = (AssetGroup::Type)i;
+
+                ImGui::Checkbox(
+                    AssetGroup::name(type).c_str(), 
+                    &_veglayer->options().group(type).enabled().mutable_value());
+
                 if (ImGui::SliderFloat(
-                    AssetGroup::name(type).c_str(),
+                    "Range",
                     &_veglayer->options().group(type).maxRange().mutable_value(),
                     0.0f, _maxMaxRanges[i]))
                 {
                     _veglayer->setMaxRange(type, _veglayer->options().group(type).maxRange().get());
                 }
+
+                ImGui::PopID();
             }
             ImGui::Unindent();
 

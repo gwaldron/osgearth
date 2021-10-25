@@ -53,4 +53,15 @@
               ]]>
         </script>
     </styles>
+    <shader>
+      <![CDATA[
+        #version 330
+        #pragma vp_function buildings_frag, fragment
+        struct OE_PBR { float roughness, ao, metal, brightness, contrast; } oe_pbr;
+        void buildings_frag(inout vec4 color) {
+            oe_pbr.roughness = 0.5;
+            oe_pbr.metal = 0.5;
+        }
+      ]]>
+    </shader>
 </FeatureModel>

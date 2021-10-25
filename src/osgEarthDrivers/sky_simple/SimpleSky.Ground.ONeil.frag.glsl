@@ -10,7 +10,6 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma import_defines(OE_USE_PBR)
 
 uniform float oe_sky_exposure = 3.3; // HDR scene exposure (ground level)
-uniform float oe_sky_contrast = 1.0;
 uniform float oe_sky_ambientBoostFactor; // ambient sunlight booster for daytime
 
 in vec3 atmos_lightDir;    // light direction (view coords)
@@ -172,7 +171,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
     color.rgb = 1.0 - exp(-oe_sky_exposure*0.33 * color.rgb);
 
     // brightness and contrast
-    color.rgb = ((color.rgb - 0.5)*oe_pbr.contrast*oe_sky_contrast + 0.5) * oe_pbr.brightness;
+    color.rgb = ((color.rgb - 0.5)*oe_pbr.contrast + 0.5) * oe_pbr.brightness;
 }
 
 #else

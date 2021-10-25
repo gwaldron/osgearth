@@ -791,3 +791,110 @@ ImageLayer::addPostLayer(ImageLayer* layer)
     ScopedMutexLock lock(_postLayers);
     _postLayers.push_back(layer);
 }
+
+//...................................................................
+
+#define ARENA_ASYNC_LAYER "oe.layer.async"
+//#define FUTURE_IMAGE_COLOR_PLACEHOLDER
+
+FutureTexture2D::FutureTexture2D(
+    ImageLayer* layer,
+    const TileKey& key) :
+
+    osg::Texture2D(),
+    FutureTexture(),
+    _layer(layer),
+    _key(key)
+{
+    // since we'll be updating it mid stream
+    setDataVariance(osg::Object::DYNAMIC);
+
+    setName(_key.str() + ":" + _layer->getName());
+
+    // start loading the image
+    dispatch();
+}
+
+void
+FutureTexture2D::dispatch() const
+{
+    osg::observer_ptr<ImageLayer> layer_ptr(_layer);
+    TileKey key(_key);
+
+    Job job(JobArena::get(ARENA_ASYNC_LAYER));
+    job.setName(Stringify() << key.str() << " " << _layer->getName());
+
+    // prioritize higher LOD tiles.
+    job.setPriority(key.getLOD());
+
+    _result = job.dispatch<GeoImage>(
+        [layer_ptr, key](Cancelable* progress) mutable
+        {
+            GeoImage result;
+            osg::ref_ptr<ImageLayer> safe(layer_ptr);
+            if (safe.valid())
+            {
+                osg::ref_ptr<ProgressCallback> p = new ProgressCallback(progress);
+                result = safe->createImage(key, p.get());
+            }
+            return result;
+        });
+}
+
+bool
+FutureTexture2D::requiresUpdateCall() const
+{
+    // careful - if we return false here, it may never get called again.
+
+    if (_resolved)
+    {
+        return false;
+    }
+
+    if (_result.isCanceled())
+    {
+        dispatch();
+    }
+
+    return true;
+}
+
+
+void
+FutureTexture2D::update(osg::NodeVisitor* nv)
+{
+    if (_resolved == false && _result.isAvailable() == true)
+    {
+        OE_DEBUG<< LC << "Async result available for " << getName() << std::endl;
+
+        // fetch the result
+        GeoImage geoImage = _result.get();
+
+        if (geoImage.getStatus().isError())
+        {
+            OE_WARN << LC << "Error: " << geoImage.getStatus().message() << std::endl;
+            _failed = true;
+        }
+        else
+        {
+            osg::ref_ptr<osg::Image> image = geoImage.takeImage();
+
+            if (image.valid())
+            {
+                this->setImage(image);
+                this->dirtyTextureObject();
+            }
+
+            else
+            {
+                _failed = true;
+                this->dirtyTextureObject();
+            }
+        }
+
+        // reset the future so update won't be called again
+        _result.abandon();
+
+        _resolved = true;
+    }
+}

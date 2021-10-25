@@ -26,6 +26,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
 #include <osgEarth/Progress>
+#include <osgEarth/Map>
 #include <osgEarth/SceneGraphCallback>
 #include <osg/Group>
 
@@ -36,7 +37,7 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT SimplePager : public osg::Group
     {
     public:
-        SimplePager(const osgEarth::Profile* profile);
+        SimplePager(const osgEarth::Map* map, const osgEarth::Profile* dataProfile);
 
         //! Initializes the graph. If you override this, be sure to call
         //! buildRootNode and add that as a child of whatever you create.
@@ -122,12 +123,14 @@ namespace osgEarth { namespace Util
         unsigned int _minLevel;
         unsigned int _maxLevel;
         osg::ref_ptr<const Profile> _profile;
+        osg::ref_ptr<const Profile> _mapProfile;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         float _priorityScale;
         float _priorityOffset;
         bool _canCancel;
         bool _done;
-        osg::ref_ptr<const Profile> _mapProfile;
+        osg::observer_ptr< const osgEarth::Map > _map;
+        
         
         mutable Threading::Mutex _mutex;
         using Callbacks = std::vector<osg::ref_ptr<Callback>>;

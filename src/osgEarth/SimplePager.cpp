@@ -4,17 +4,21 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Metrics>
 #include <osgEarth/PagedNode>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/ElevationRanges>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/ShapeDrawable>
 #include <osg/MatrixTransform>
 
+using namespace osgEarth;
 using namespace osgEarth::Util;
 
 #define LC "[SimplerPager] "
 
 
-SimplePager::SimplePager(const osgEarth::Profile* profile):
+SimplePager::SimplePager(const osgEarth::Map* map, const osgEarth::Profile* profile):
+_map(map),
 _profile( profile ),
 _rangeFactor( 6.0 ),
 _additive(false),
@@ -26,7 +30,14 @@ _canCancel(true),
 _done(false),
 _mutex("SimplePager(OE)")
 {
-    _mapProfile = Profile::create(Profile::GLOBAL_GEODETIC);
+    if (map)
+    {
+        _mapProfile = Profile::create(Profile::GLOBAL_GEODETIC);
+    }
+    else
+    {
+        _mapProfile = map->getProfile();
+    }
 }
 
 void SimplePager::setEnableCancelation(bool value)
@@ -51,15 +62,45 @@ void SimplePager::build()
 
 osg::BoundingSphered SimplePager::getBounds(const TileKey& key) const
 {
+    // TODO:  This is very similar to the code in FeatureModelGraph::getBoundInWorldCoords, consolidate it at some point.
+    GeoExtent workingExtent;
+
     if (key.getProfile()->getSRS()->isGeographic())
     {
-        return key.getExtent().createWorldBoundingSphere(-500, 500);
+        workingExtent = key.getExtent();
     }
     else
     {
-        GeoExtent e = _mapProfile->clampAndTransformExtent(key.getExtent());
-        return e.createWorldBoundingSphere(-500, 500);
+        workingExtent = _mapProfile->clampAndTransformExtent(key.getExtent());
     }
+
+    GeoPoint center = workingExtent.getCentroid();
+    unsigned lod = _mapProfile->getLOD(workingExtent.height());
+    float minElevation = -100.0f;
+    float maxElevation = 100.0f;
+
+    ElevationLayerVector elevationLayers;
+    osg::ref_ptr<const Map> map;
+    _map.lock(map);
+    if (map.valid())
+    {
+        map->getLayers<ElevationLayer>(elevationLayers);
+        if (!elevationLayers.empty())
+        {
+            // Get the approximate elevation range if we have elevation data in the map
+            lod = osg::clampBetween(lod, 0u, ElevationRanges::getMaxLevel());
+            GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
+            TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
+            short min, max;
+            ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+            // Clamp the min value to avoid extreme underwater values.
+            minElevation = osg::maximum(min, (short)-500);
+            // Add a little bit extra of extra height to account for feature data.
+            maxElevation = max + 100.0f;
+        }
+    }
+    return workingExtent.createWorldBoundingSphere(minElevation, maxElevation);
+
 }
 
 osg::ref_ptr<osg::Node> SimplePager::buildRootNode()

@@ -23,10 +23,11 @@
 
 using namespace osgEarth;
 
-TiledFeatureModelGraph::TiledFeatureModelGraph(FeatureSource* features,
+TiledFeatureModelGraph::TiledFeatureModelGraph(const osgEarth::Map* map,
+                                               FeatureSource* features,
                                                StyleSheet* styleSheet,
                                                Session* session) :
-    SimplePager(features->getFeatureProfile()->getTilingProfile()),
+    SimplePager(map, features->getFeatureProfile()->getTilingProfile()),
     _features(features),
     _styleSheet(styleSheet),
     _session(session)
@@ -35,6 +36,15 @@ TiledFeatureModelGraph::TiledFeatureModelGraph(FeatureSource* features,
     setMaxLevel(features->getFeatureProfile()->getMaxLevel());
 
     _session->setResourceCache(new ResourceCache());
+
+
+    FeatureSourceIndexOptions indexOptions;
+    indexOptions.enabled() = true;
+
+    _featureIndex = new FeatureSourceIndex(
+        features,
+        Registry::objectIndex(),
+        indexOptions);
 }
 
 void
@@ -74,7 +84,16 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
     query.tileKey() = key;
 
     GeoExtent dataExtent = key.getExtent();
-    FilterContext fc(_session.get(), new FeatureProfile(dataExtent), dataExtent);
+
+    // set up for feature indexing if appropriate:
+    osg::ref_ptr< FeatureSourceIndexNode > index = 0L;
+
+    if (_featureIndex.valid())
+    {
+        index = new FeatureSourceIndexNode(_featureIndex.get());
+    }
+
+    FilterContext fc(_session.get(), new FeatureProfile(dataExtent), dataExtent, index);
 
     GeometryCompilerOptions options;
     options.instancing() = true;
@@ -177,6 +196,16 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
         }
     }
 
-    return node->getBound().valid() ? node : nullptr;
-    //return node;
+    if (!node->getBound().valid())
+    {
+        return nullptr;
+    }
+
+    if (index.valid())
+    {
+        index->addChild(node);
+        return index;
+    }
+
+    return node;
 }

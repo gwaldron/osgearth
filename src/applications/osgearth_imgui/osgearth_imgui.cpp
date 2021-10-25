@@ -56,8 +56,8 @@ main(int argc, char** argv)
     // If you use the MapNodeHelper, call this first.
     viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
 
-    osg::Node* node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
-    if (node)
+    osg::ref_ptr<osg::Node> node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
+    if (node.valid())
     {
         // Call this to add the GUI. 
         // Passing "true" tells it to install all the built-in osgEarth GUI tools.

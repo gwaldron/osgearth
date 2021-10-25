@@ -263,7 +263,7 @@ TiledFeatureModelLayer::create()
             osg::ref_ptr<FeatureFilterChain> chain = FeatureFilterChain::create(options().filters(), getReadOptions());
 
             // group that will build all the feature geometry:
-            osg::ref_ptr<TiledFeatureModelGraph> fmg = new TiledFeatureModelGraph(getFeatureSource(), getStyleSheet(), _session.get());
+            osg::ref_ptr<TiledFeatureModelGraph> fmg = new TiledFeatureModelGraph(_session->getMap(), getFeatureSource(), getStyleSheet(), _session.get());
             fmg->setOwnerName(getName());
             fmg->setFilterChain(chain.get());
             fmg->setAdditive(*_options->additive());

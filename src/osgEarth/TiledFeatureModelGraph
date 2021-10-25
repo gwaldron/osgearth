@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/FeatureSource>
+#include <osgEarth/FeatureSourceIndexNode>
 #include <osgEarth/Style>
 #include <osgEarth/SimplePager>
 #include <osgEarth/MapNode>
@@ -35,7 +36,8 @@ namespace osgEarth {
     class OSGEARTH_EXPORT TiledFeatureModelGraph : public SimplePager
     {
     public:
-        TiledFeatureModelGraph(FeatureSource* features,
+        TiledFeatureModelGraph(const osgEarth::Map* map,
+                               FeatureSource* features,
                                StyleSheet* styleSheet,
                                Session* session);
 
@@ -55,6 +57,9 @@ namespace osgEarth {
         osg::ref_ptr< Session > _session;
         osg::ref_ptr< FeatureFilterChain > _filterChain;
         std::string _ownerName;
+        
+        osg::ref_ptr<FeatureSourceIndex> _featureIndex;       
+
 
         FeatureCursor* createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const;
     };

@@ -311,7 +311,7 @@ namespace osgEarth { namespace WMS
             ProgressCallback*  progress,
             ReadResult&        out_response ) const;
 
-        osg::Image* createImageSequence( 
+        osg::Image* createTemporalImage(
             const TileKey& key, 
             ProgressCallback* progress ) const;
 

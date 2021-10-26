@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/TemporalImage>
 #include <osg/ImageSequence>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -401,72 +402,6 @@ WMS::WMSImageLayerOptions::fromConfig(const Config& conf)
 
 //........................................................................
 
-namespace osgEarth {  namespace WMS
-{
-    class ImageTimeline : public osg::Image
-    {
-    public:
-        using Sequence = std::map<TimeStamp, osg::ref_ptr<const osg::Image>>;
-
-        Sequence _images;
-        Sequence::iterator _ptr;
-
-        ImageTimeline()
-        {
-            _ptr = _images.end();
-        }
-
-        void insert(const DateTime& dt, const osg::Image* image)
-        {
-            _images.insert(std::make_pair(dt.asTimeStamp(), image));
-
-            if (_images.size() == 1)
-            {
-                setDateTime(dt);
-            }
-        }
-
-        void insert(const DateTime& dt, osg::ref_ptr<osg::Image> image)
-        {
-            insert(dt, image.get());
-        }
-
-        bool requiresUpdateCall() const override
-        {
-            return true;
-        }
-
-        void update(osg::NodeVisitor* nv) override
-        {
-            DateTime dt(nv->getFrameStamp()->getSimulationTime());
-            setDateTime(dt);
-        }
-
-        void setDateTime(const DateTime& dt)
-        {
-            Sequence::iterator ptr = _images.lower_bound(dt.asTimeStamp());
-
-            if (ptr != _images.end() && ptr != _ptr)
-            {
-                _ptr = ptr;
-
-                const osg::Image* image = _ptr->second.get();
-
-                setImage(image->s(), image->t(), image->r(),
-                    image->getInternalTextureFormat(),
-                    image->getPixelFormat(), image->getDataType(),
-                    const_cast<unsigned char*>(image->data()),
-                    osg::Image::NO_DELETE,
-                    image->getPacking());
-
-                setMipmapLevels(image->getMipmapLevels());
-            }
-        }
-    };
-} } // namespace osgEarth::WMS
-
-//........................................................................
-
 //! Construct the WMS driver
 WMS::Driver::Driver(const WMS::WMSImageLayerOptions& myOptions,
                     const osgDB::Options* readOptions)
@@ -690,7 +625,7 @@ WMS::Driver::createImage(const TileKey& key, ProgressCallback* progress) const
 
     if (_timesVec.size() > 1)
     {
-        image = createImageSequence(key, progress);
+        image = createTemporalImage(key, progress);
     }
     else
     {
@@ -708,9 +643,9 @@ WMS::Driver::createImage(const TileKey& key, ProgressCallback* progress) const
 
 //! Creates an image from timestamped data
 osg::Image*
-WMS::Driver::createImageSequence(const TileKey& key, ProgressCallback* progress) const
+WMS::Driver::createTemporalImage(const TileKey& key, ProgressCallback* progress) const
 {
-    osg::ref_ptr<ImageTimeline> seq = new ImageTimeline();
+    osg::ref_ptr<TemporalImage> seq = new TemporalImage();
     unsigned size = 0;
 
     for (auto timeStr : _timesVec)

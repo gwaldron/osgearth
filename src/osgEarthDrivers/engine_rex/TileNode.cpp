@@ -191,10 +191,8 @@ TileNode::initializeData()
 
         const RenderBindings& bindings = _context->getRenderBindings();
 
-        for (unsigned p = 0; p < parent->_renderModel._passes.size(); ++p)
+        for(auto& parentPass : parent->_renderModel._passes)
         {
-            const RenderingPass& parentPass = parent->_renderModel._passes[p];
-
             // If the key is now out of the layer's valid min/max range, skip this pass.
             if (!passInLegalRange(parentPass))
                 continue;
@@ -205,26 +203,24 @@ TileNode::initializeData()
             myPass.setParent(&parentPass);
 
             // Scale/bias each matrix for this key quadrant.
-            Samplers& samplers = myPass.samplers();
-            for (unsigned s = 0; s < samplers.size(); ++s)
+            for(auto& sampler : myPass.samplers())
             {
-                samplers[s]._matrix.preMult(scaleBias[quadrant]);
+                sampler._matrix.preMult(scaleBias[quadrant]);
             }
 
             // Are we using image blending? If so, initialize the color_parent 
             // to the color texture.
             if (bindings[SamplerBinding::COLOR_PARENT].isActive())
             {
-                samplers[SamplerBinding::COLOR_PARENT] = samplers[SamplerBinding::COLOR];
+                myPass.samplers()[SamplerBinding::COLOR_PARENT] = myPass.samplers()[SamplerBinding::COLOR];
             }
         }
 
         // Copy the parent's shared samplers and scale+bias each matrix to the new quadrant:
         _renderModel._sharedSamplers = parent->_renderModel._sharedSamplers;
 
-        for (unsigned s = 0; s<_renderModel._sharedSamplers.size(); ++s)
+        for(auto& sampler : _renderModel._sharedSamplers)
         {
-            Sampler& sampler = _renderModel._sharedSamplers[s];
             sampler._matrix.preMult(scaleBias[quadrant]);
         }
 
@@ -295,7 +291,7 @@ TileNode::updateElevationRaster()
     if (elev._texture.valid())
         setElevationRaster(elev._texture->getImage(0), elev._matrix);
     else
-        setElevationRaster(NULL, osg::Matrixf::identity());
+        setElevationRaster(nullptr, osg::Matrixf::identity());
 }
 
 const osg::Image*
@@ -604,14 +600,10 @@ TileNode::update(osg::NodeVisitor& nv)
     unsigned numUpdatedTotal = 0u;
     unsigned numFuturesResolved = 0u;
 
-    for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
+    for(auto& pass : _renderModel._passes)
     {
-        RenderingPass& pass = _renderModel._passes[p];
-        Samplers& samplers = pass.samplers();
-        for (unsigned s = 0; s < samplers.size(); ++s)
+        for(auto& sampler : pass.samplers())
         {
-            Sampler& sampler = samplers[s];
-
             // handle "future" textures. This is a texture that was installed
             // by an "async" image layer that is working in the background
             // to load. Once it is available we can merge it into the real texture
@@ -690,7 +682,7 @@ TileNode::createChildren()
                 TileKey childkey = getKey().createChildKey(quadrant);
                 osg::observer_ptr<TileNode> tile_weakptr(this);
 
-                auto op = [context, tile_weakptr, childkey](Cancelable* state)
+                auto createChildOperation = [context, tile_weakptr, childkey](Cancelable* state)
                 {
                     //osg::ref_ptr<TileNode> tile = context->liveTiles()->get(parentkey);
                     osg::ref_ptr<TileNode> tile;
@@ -705,7 +697,7 @@ TileNode::createChildren()
                 job.setName(childkey.str());
 
                 _createChildResults.emplace_back(
-                    job.dispatch<CreateChildResult>(op)
+                    job.dispatch<CreateChildResult>(createChildOperation)
                 );
             }
         }
@@ -938,7 +930,6 @@ TileNode::merge(
 
             _renderModel.setSharedSampler(SamplerBinding::ELEVATION, tex, revision);
 
-            //setElevationRaster(tex->getImage(0), osg::Matrixf::identity());
             updateElevationRaster();
 
             newElevationData = true;
@@ -1016,9 +1007,9 @@ TileNode::merge(
 
     // Other Shared Layers:
     uidsLoaded.clear();
-    for (unsigned i = 0; i < model->sharedLayers().size(); ++i)
+
+    for(auto& layerModel : model->sharedLayers())
     {
-        TerrainTileImageLayerModel* layerModel = model->sharedLayers()[i].get();
         if (layerModel->getTexture())
         {
             // locate the shared binding corresponding to this layer:
@@ -1144,10 +1135,8 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     }
 
     // Look for passes in the parent that need to be inherited by this node.
-    for (unsigned p=0; p<parentPasses.size(); ++p)
+    for(auto& parentPass : parentPasses)
     {
-        const RenderingPass& parentPass = parentPasses[p];
-
         // the corresponsing pass in this node:
         RenderingPass* myPass = _renderModel.getPass(parentPass.sourceUID());
 
@@ -1339,7 +1328,7 @@ TileNode::removeSubTiles()
     _childrenReady = false;
     for(int i=0; i<(int)getNumChildren(); ++i)
     {
-        getChild(i)->releaseGLObjects(NULL);
+        getChild(i)->releaseGLObjects(nullptr);
     }
     this->removeChildren(0, this->getNumChildren());
 

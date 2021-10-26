@@ -748,6 +748,9 @@ namespace osgEarth { namespace Util
     class AutoArray
     {
     public:
+        using iterator = typename std::vector<T>::iterator;
+        using const_iterator = typename std::vector<T>::const_iterator;
+
         inline AutoArray() { }
 
         inline AutoArray(unsigned int size) : _array(size) { }
@@ -763,6 +766,11 @@ namespace osgEarth { namespace Util
         inline bool empty() const { return _array.empty(); }
         inline unsigned int size() const { return _array.size(); }
         inline void resize(unsigned int newSize) { _array.resize(newSize); }
+
+        inline iterator begin() { return _array.begin(); }
+        inline const_iterator begin() const { return _array.begin(); }
+        inline iterator end() { return _array.end(); }
+        inline const_iterator end() const { return _array.end(); }
 
         inline T& operator[] (unsigned int pos)
         {

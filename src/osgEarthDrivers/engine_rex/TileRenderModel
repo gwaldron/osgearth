@@ -51,8 +51,7 @@ namespace osgEarth { namespace REX
         Sampler(const Sampler& rhs) :
             _texture(rhs._texture),
             _matrix(rhs._matrix),
-            _revision(rhs._revision) //,
-            //_futureTexture(rhs._futureTexture)
+            _revision(rhs._revision)
         {
             //nop
         }

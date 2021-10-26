@@ -32,6 +32,8 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Metrics>
 
+#include <osg/ImageStream>
+
 using namespace osgEarth::REX;
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -72,7 +74,7 @@ TileNode::TileNode(
     _nextLoadManifestPtr(nullptr),
     _loadPriority(0.0f)
 {
-    OE_HARD_ASSERT(context != nullptr);
+    //OE_HARD_ASSERT(context != nullptr);
 
     // build the actual geometry for this node
     createGeometry(progress);

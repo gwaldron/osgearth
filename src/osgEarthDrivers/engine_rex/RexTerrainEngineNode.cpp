@@ -551,7 +551,7 @@ RexTerrainEngineNode::dirtyTerrain()
     // clear out the tile registry:
     if ( _liveTiles.valid() )
     {
-        _liveTiles->releaseAll(_releaser.get());
+        _liveTiles->releaseAll(nullptr); // releaseAll(_releaser.get());
     }
 
     // scrub the geometry pool:
@@ -829,6 +829,9 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
         if (layer->isOpen())
             layer->update(nv);
     }
+
+    // Call update on the tile registry
+    _liveTiles->update(nv);
 }
 
 void

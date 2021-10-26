@@ -23,7 +23,6 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/Threading>
-#include <osgEarth/ResourceReleaser>
 #include <osgEarth/Containers>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/FrameClock>
@@ -58,7 +57,7 @@ namespace osgEarth { namespace REX
             Tracker::iterator _trackerptr;
         };
 
-        typedef UnorderedMap <TileKey, TableEntry> TileTable;
+        using TileTable = std::unordered_map<TileKey, TableEntry>;
 
         // Prototype for a locked tileset operation (see run)
         struct Operation {
@@ -123,15 +122,15 @@ namespace osgEarth { namespace REX
         //! Adds a tile to the registry. Called by the TileNode itself.
         void add(TileNode* tile);
 
-        //! Update the tile's tracking info. Called by the TileNode itself
-        //! during the cull traversal.
-        void update(TileNode* tile, osg::NodeVisitor& nv);
+        //! Refresh the tile's tracking info. Called by the TileNode itself
+        //! during the cull traversal to let us know it's still active.
+        void touch(TileNode* tile, osg::NodeVisitor& nv);
 
         //! Number of tiles in the registry.
         unsigned size() const { return _tiles.size(); }
 
         //! Empty the registry, releasing all tiles.
-        void releaseAll(ResourceReleaser*);
+        void releaseAll(osg::State* state);
 
         //! Collect dormant tiles. This is called by UnloaderGroup
         //! during update/event to remove dormant scene graphs.
@@ -143,8 +142,8 @@ namespace osgEarth { namespace REX
             unsigned maxCount,          // maximum number of tiles to collect
             std::vector<osg::observer_ptr<TileNode> >& output);   // put dormant tiles here
 
-        //! Get a reference to a specific key if found.
-        osg::ref_ptr<TileNode> get(const TileKey& key) const;
+        //! Update traversal
+        void update(osg::NodeVisitor&);
 
     protected:
 
@@ -158,9 +157,10 @@ namespace osgEarth { namespace REX
         mutable Threading::Mutex _mutex;
         bool _notifyNeighbors;
         const FrameClock* _clock;
+        double _referenceTime;
 
-        typedef UnorderedSet<TileKey> TileKeySet;
-        typedef UnorderedMap<TileKey, TileKeySet> TileKeyOneToMany;
+        using TileKeySet = std::unordered_set<TileKey>;
+        using TileKeyOneToMany = std::unordered_map<TileKey, TileKeySet>;
 
         TileKeyOneToMany _notifiers;
 

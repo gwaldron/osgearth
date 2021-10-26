@@ -28,6 +28,7 @@
 #include <osgEarth/LayerShader>
 #include <osgEarth/Revisioning>
 #include <osgEarth/IOTypes>
+#include <osgEarth/DateTime>
 #include <osg/BoundingBox>
 #include <osg/Callback>
 #include <vector>
@@ -225,6 +226,9 @@ namespace osgEarth
         //! This method may return GeoExtent::INVALID which means that the
         //! extent is unavailable (not necessarily that there is no data).
         virtual const GeoExtent& getExtent() const;
+
+        //! Temporal extent of this layer's data.
+        virtual DateTimeExtent getDateTimeExtent() const;
 
         //! Unique caching ID for this layer.
         //! Only set this before opening the layer or adding to a map.

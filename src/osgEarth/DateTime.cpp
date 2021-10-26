@@ -330,3 +330,13 @@ DateTime::operator+(double hours) const
     double seconds = (double)asTimeStamp() + (hours*3600.0);
     return DateTime((TimeStamp)seconds);
 }
+
+void
+DateTimeExtent::expandBy(const DateTime& value)
+{
+    if (!_valid || value < _start)
+        _start = value;
+    if (!_valid || value > _end)
+        _end = value;
+    _valid = true;
+}

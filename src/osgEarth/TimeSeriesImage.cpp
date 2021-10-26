@@ -16,15 +16,15 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "TemporalImage"
+#include "TimeSeriesImage"
 #include <osg/NodeVisitor>
 
 using namespace osgEarth;
 
 #undef LC
-#define LC "[TemporalImage] "
+#define LC "[TimeSeriesImage] "
 
-TemporalImage::TemporalImage() :
+TimeSeriesImage::TimeSeriesImage() :
     osg::Image(),
     _ptr(_images.end())
 {
@@ -33,7 +33,7 @@ TemporalImage::TemporalImage() :
 
 
 void
-TemporalImage::insert(const DateTime& dt, const osg::Image* image)
+TimeSeriesImage::insert(const DateTime& dt, const osg::Image* image)
 {
     _images.insert(std::make_pair(dt.asTimeStamp(), image));
 
@@ -46,20 +46,20 @@ TemporalImage::insert(const DateTime& dt, const osg::Image* image)
 }
 
 void
-TemporalImage::insert(const DateTime& dt, osg::ref_ptr<osg::Image> image)
+TimeSeriesImage::insert(const DateTime& dt, osg::ref_ptr<osg::Image> image)
 {
     insert(dt, image.get());
 }
 
 void
-TemporalImage::update(osg::NodeVisitor* nv)
+TimeSeriesImage::update(osg::NodeVisitor* nv)
 {
     DateTime dt(nv->getFrameStamp()->getSimulationTime());
     setDateTime(dt);
 }
 
 void
-TemporalImage::setDateTime(const DateTime& dt)
+TimeSeriesImage::setDateTime(const DateTime& dt)
 {
     // find the closest image frame:
     Table::iterator ptr = _images.lower_bound(dt.asTimeStamp());
@@ -85,7 +85,7 @@ TemporalImage::setDateTime(const DateTime& dt)
 }
 
 const DateTimeExtent&
-TemporalImage::getDateTimeExtent() const
+TimeSeriesImage::getDateTimeExtent() const
 {
     return _extent;
 }

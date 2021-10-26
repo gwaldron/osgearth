@@ -23,6 +23,8 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
 #include <osgEarth/NetworkMonitor>
+#include <osgEarth/TimeSeriesImage>
+#include <osg/ImageStream>
 #include <cinttypes>
 
 using namespace osgEarth;
@@ -601,40 +603,31 @@ ImageLayer::assembleImage(
         // keep track of failed tiles.
         std::vector<TileKey> failedKeys;
 
-        for( std::vector<TileKey>::iterator k = intersectingKeys.begin(); k != intersectingKeys.end(); ++k )
+        for(auto& k : intersectingKeys)
         {
-            GeoImage image = createImageInKeyProfile(*k, progress);
+            GeoImage image = createImageInKeyProfile(k, progress);
 
-            if ( image.valid() )
+            if (image.valid())
             {
-                if ( !isCoverage() )
+                if (dynamic_cast<const TimeSeriesImage*>(image.getImage()))
                 {
-#if 0
-                    // Make sure all images in mosaic are based on "RGBA - unsigned byte" pixels.
-                    // This is not the smarter choice (in some case RGB would be sufficient) but
-                    // it ensure consistency between all images / layers.
-                    //
-                    // The main drawback is probably the CPU memory foot-print which would be reduced by allocating RGB instead of RGBA images.
-                    // On GPU side, this should not change anything because of data alignements : often RGB and RGBA textures have the same memory footprint
-                    //
-                    if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
-                        || (image.getImage()->getPixelFormat() != GL_RGBA) )
-                    {
-                        osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
-                        if (convertedImg.valid())
-                        {
-                            image = GeoImage(convertedImg.get(), image.getExtent());
-                        }
-                    }
-#endif
+                    OE_WARN << LC << "Cannot mosaic a TimeSeriesImage. Discarding." << std::endl;
+                    return GeoImage::INVALID;
                 }
-
-                mosaic.getImages().push_back( TileImage(image.getImage(), *k) );
+                else if (dynamic_cast<const osg::ImageStream*>(image.getImage()))
+                {
+                    OE_WARN << LC << "Cannot mosaic an osg::ImageStream. Discarding." << std::endl;
+                    return GeoImage::INVALID;
+                }
+                else
+                {
+                    mosaic.getImages().push_back(TileImage(image.getImage(), k));
+                }
             }
             else
             {
                 // the tile source did not return a tile, so make a note of it.
-                failedKeys.push_back( *k );
+                failedKeys.push_back(k);
 
                 if (progress && progress->isCanceled())
                 {
@@ -657,13 +650,13 @@ ImageLayer::assembleImage(
         // fall back on a lower resolution.
         // So now we go through the failed keys and try to fall back on lower resolution data
         // to fill in the gaps. The entire mosaic must be populated or this qualifies as a bad tile.
-        for(std::vector<TileKey>::iterator k = failedKeys.begin(); k != failedKeys.end(); ++k)
+        for(auto& k : failedKeys)
         {
             GeoImage image;
 
-            for(TileKey parentKey = k->createParentKey();
+            for(TileKey parentKey = k.createParentKey();
                 parentKey.valid() && !image.valid();
-                parentKey = parentKey.createParentKey())
+                parentKey.makeParent())
             {
                 image = createImageImplementation( parentKey, progress );
                 if ( image.valid() )
@@ -672,29 +665,17 @@ ImageLayer::assembleImage(
 
                     if ( !isCoverage() )
                     {
-#if 0
-                        if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
-                            || (image.getImage()->getPixelFormat() != GL_RGBA) )
-                        {
-                            osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
-                            if (convertedImg.valid())
-                            {
-                                image = GeoImage(convertedImg.get(), image.getExtent());
-                            }
-                        }
-#endif
-
-                        cropped = image.crop( k->getExtent(), false, image.getImage()->s(), image.getImage()->t() );
+                        cropped = image.crop(k.getExtent(), false, image.getImage()->s(), image.getImage()->t() );
                     }
 
                     else
                     {
                         // TODO: may not work.... test; tilekey extent will <> cropped extent
-                        cropped = image.crop( k->getExtent(), true, image.getImage()->s(), image.getImage()->t(), false );
+                        cropped = image.crop(k.getExtent(), true, image.getImage()->s(), image.getImage()->t(), false );
                     }
 
                     // and queue it.
-                    mosaic.getImages().push_back( TileImage(cropped.getImage(), *k) );
+                    mosaic.getImages().push_back( TileImage(cropped.getImage(), k) );
 
                 }
             }

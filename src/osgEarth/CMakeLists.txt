@@ -237,7 +237,7 @@ SET(LIB_PUBLIC_HEADERS
     Status
     StringUtils
     TDTiles
-    TemporalImage
+    TimeSeriesImage
     Terrain
     TerrainEffect
     TerrainOptions
@@ -644,7 +644,7 @@ set(TARGET_SRC
     Status.cpp
     StringUtils.cpp
     TDTiles.cpp
-    TemporalImage.cpp
+    TimeSeriesImage.cpp
     Terrain.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp

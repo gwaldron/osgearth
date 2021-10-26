@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_TEMPORAL_IMAGE_H
-#define OSGEARTH_TEMPORAL_IMAGE_H
+#ifndef OSGEARTH_TIME_SERIES_IMAGE_H
+#define OSGEARTH_TIME_SERIES_IMAGE_H
 
 #include <osgEarth/Common>
 #include <osgEarth/DateTime>
@@ -26,11 +26,14 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT TemporalImage : public osg::Image
+    /**
+     * An image that contains multiple images, each corresponding to a DateTime.
+     */
+    class OSGEARTH_EXPORT TimeSeriesImage : public osg::Image
     {
     public:
-        //! Construct a new empty temporal image
-        TemporalImage();
+        //! Construct a new empty time series image
+        TimeSeriesImage();
 
         //! Insert a new timestamped iunto the temporal image
         void insert(const DateTime& dt, const osg::Image* image);
@@ -58,6 +61,6 @@ namespace osgEarth
         DateTimeExtent _extent;
     };
 
-} // namespace osgEarth;
+} // namespace osgEarth
 
-#endif // OSGEARTH_TEMPORAL_IMAGE_H
+#endif // OSGEARTH_TIME_SERIES_IMAGE_H

@@ -21,7 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/TemporalImage>
+#include <osgEarth/TimeSeriesImage>
 #include <osg/ImageSequence>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -625,7 +625,7 @@ WMS::Driver::createImage(const TileKey& key, ProgressCallback* progress) const
 
     if (_timesVec.size() > 1)
     {
-        image = createTemporalImage(key, progress);
+        image = createTimeSeriesImage(key, progress);
     }
     else
     {
@@ -643,9 +643,9 @@ WMS::Driver::createImage(const TileKey& key, ProgressCallback* progress) const
 
 //! Creates an image from timestamped data
 osg::Image*
-WMS::Driver::createTemporalImage(const TileKey& key, ProgressCallback* progress) const
+WMS::Driver::createTimeSeriesImage(const TileKey& key, ProgressCallback* progress) const
 {
-    osg::ref_ptr<TemporalImage> seq = new TemporalImage();
+    osg::ref_ptr<TimeSeriesImage> seq = new TimeSeriesImage();
     unsigned size = 0;
 
     for (auto timeStr : _timesVec)

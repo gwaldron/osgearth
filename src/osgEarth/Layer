@@ -85,6 +85,18 @@ namespace osgDB {
         virtual const char* getConfigKey() const { return #SLUG ; }
 
 
+//! Macro for defining a layer with a default Options structure
+#define META_LayerNoOptions(LIBRARY, MYCLASS, SUPERCLASS, SLUG) \
+    public: \
+    struct Options : public SUPERCLASS::Options { \
+        META_LayerOptions(LIBRARY, Options, SUPERCLASS::Options); \
+    private: \
+        void fromConfig(const osgEarth::Config&) { } \
+    }; \
+    META_Layer(LIBRARY, MYCLASS, Options, SUPERCLASS, SLUG)
+    
+
+
 //! Macro to use when defining a Layer class
 #define META_Layer_Abstract(LIBRARY, MYCLASS, OPTIONS, SUPERCLASS) \
     private: \

@@ -8,3 +8,6 @@
 [submodule "src/third_party/rapidjson"]
 	path = src/third_party/rapidjson
 	url = https://github.com/Tencent/rapidjson.git
+[submodule "vcpkg"]
+	path = vcpkg
+	url = https://github.com/microsoft/vcpkg.git

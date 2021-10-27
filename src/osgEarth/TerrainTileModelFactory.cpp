@@ -169,14 +169,17 @@ TerrainTileModelFactory::createTileModel(
     // assemble all the components:
     addColorLayers(model.get(), map, requirements, key, manifest, progress, false);
 
-    if ( requirements == 0L || requirements->elevationTexturesRequired() )
+    if ( requirements == nullptr || requirements->elevationTexturesRequired() )
     {
         unsigned border = (requirements && requirements->elevationBorderRequired()) ? 1u : 0u;
 
         addElevation( model.get(), map, key, manifest, border, progress );
     }
 
-    addLandCover(model.get(), map, key, requirements, manifest, progress);
+    if (requirements == nullptr || requirements->landCoverTexturesRequired())
+    {
+        addLandCover(model.get(), map, key, requirements, manifest, progress);
+    }
 
     // done.
     return model.release();
@@ -426,34 +429,6 @@ TerrainTileModelFactory::addElevation(
     if (!needElevation)
         return;
 
-#if 0
-    LayerVector terrain_layers;
-
-    map->getLayers(
-        terrain_layers,
-        [] (const Layer* layer) {
-            return
-                dynamic_cast<const ElevationLayer*>(layer) != nullptr ||
-                dynamic_cast<const TerrainConstraintLayer*>(layer) != nullptr;
-        });
-
-    int combinedRevision = map->getDataModelRevision();
-
-    if (!manifest.empty())
-    {
-        for(const auto& layer : terrain_layers)
-        {
-            if (needElevation == false && !manifest.excludes(layer.get()))
-            {
-                needElevation = true;
-            }
-            combinedRevision += layer->getRevision();
-        }
-    }
-    if (!needElevation)
-        return;
-#endif
-
     osg::ref_ptr<ElevationTexture> elevTex;
 
     const bool acceptLowerRes = false;
@@ -466,7 +441,7 @@ TerrainTileModelFactory::addElevation(
 
         if ( elevTex.valid() )
         {
-            if (_options.normalMaps() == true)
+            if (_options.useNormalMaps() == true)
             {
                 // Make a normal map if it doesn't already exist
                 elevTex->generateNormalMap(map, &_workingSet, progress);

@@ -58,7 +58,7 @@ namespace osgEarth
         OE_OPTION(float, heightFieldSkirtRatio);
         OE_OPTION(Color, color);
         OE_OPTION(bool, progressive);
-        OE_OPTION(bool, normalMaps);
+        OE_OPTION(bool, useNormalMaps);
         OE_OPTION(bool, normalizeEdges);
         OE_OPTION(bool, morphTerrain);
         OE_OPTION(bool, morphImagery);
@@ -66,6 +66,7 @@ namespace osgEarth
         OE_OPTION(float, priorityScale);
         OE_OPTION(std::string, textureCompression);
         OE_OPTION(unsigned, concurrency);
+        OE_OPTION(bool, useLandCover);
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config&);
@@ -198,8 +199,12 @@ namespace osgEarth
         const bool& getProgressive() const;
 
         //! Whether to generate normal map textures. Default is true
-        void setNormalMaps(const bool& value);
-        const bool& getNormalMaps() const;
+        void setUseNormalMaps(const bool& value);
+        const bool& getUseNormalMaps() const;
+
+        //! Whether to include landcover textures. Default is true.
+        void setUseLandCover(const bool& value);
+        const bool& getUseLandCover() const;
 
         //! Whether to average normal vectors on tile boundaries. Doing so reduces the
         //! the appearance of seams when using lighting, but requires extra CPU work.

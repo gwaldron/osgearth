@@ -91,7 +91,6 @@ _requireLandCoverTextures( false ),
 _requireParentTextures   ( false ),
 _requireElevationBorder  ( false ),
 _requireFullDataAtFirstLOD( false ),
-_redrawRequired          ( true ),
 _updateScheduled( false ),
 _createTileModelCallbacksMutex(OE_MUTEX_NAME)
 {

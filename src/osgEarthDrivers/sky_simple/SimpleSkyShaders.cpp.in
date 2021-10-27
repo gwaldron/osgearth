@@ -8,39 +8,39 @@ using namespace osgEarth::SimpleSky;
 Shaders::Shaders()
 {
     Atmosphere_Vert = "SimpleSky.Atmosphere.vert.glsl";
-    _sources[Atmosphere_Vert] = "@SimpleSky.Atmosphere.vert.glsl@";
+    _sources[Atmosphere_Vert] = @SimpleSky.Atmosphere.vert.glsl@;
 
     Atmosphere_Frag = "SimpleSky.Atmosphere.frag.glsl";
-    _sources[Atmosphere_Frag] = "@SimpleSky.Atmosphere.frag.glsl@";
+    _sources[Atmosphere_Frag] = @SimpleSky.Atmosphere.frag.glsl@;
 
     Ground_ONeil_Vert = "SimpleSky.Ground.ONeil.vert.glsl";
-    _sources[Ground_ONeil_Vert] = "@SimpleSky.Ground.ONeil.vert.glsl@";
+    _sources[Ground_ONeil_Vert] = @SimpleSky.Ground.ONeil.vert.glsl@;
 
     Ground_ONeil_Frag = "SimpleSky.Ground.ONeil.frag.glsl";
-    _sources[Ground_ONeil_Frag] = "@SimpleSky.Ground.ONeil.frag.glsl@";
+    _sources[Ground_ONeil_Frag] = @SimpleSky.Ground.ONeil.frag.glsl@;
 
     Moon_Vert = "SimpleSky.Moon.vert.glsl";
-    _sources[Moon_Vert] = "@SimpleSky.Moon.vert.glsl@";
+    _sources[Moon_Vert] = @SimpleSky.Moon.vert.glsl@;
 
     Moon_Frag = "SimpleSky.Moon.frag.glsl";
-    _sources[Moon_Frag] = "@SimpleSky.Moon.frag.glsl@";
+    _sources[Moon_Frag] = @SimpleSky.Moon.frag.glsl@;
 
     Stars_Vert = "SimpleSky.Stars.vert.glsl";
-    _sources[Stars_Vert] = "@SimpleSky.Stars.vert.glsl@";
+    _sources[Stars_Vert] = @SimpleSky.Stars.vert.glsl@;
 
     Stars_Frag = "SimpleSky.Stars.frag.glsl";
-    _sources[Stars_Frag] = "@SimpleSky.Stars.frag.glsl@";
+    _sources[Stars_Frag] = @SimpleSky.Stars.frag.glsl@;
     
     Stars_GLES_Vert = "SimpleSky.Stars.GLES.vert.glsl";
-    _sources[Stars_GLES_Vert] = "@SimpleSky.Stars.GLES.vert.glsl@";
+    _sources[Stars_GLES_Vert] = @SimpleSky.Stars.GLES.vert.glsl@;
 
     Stars_GLES_Frag = "SimpleSky.Stars.GLES.frag.glsl";
-    _sources[Stars_GLES_Frag] = "@SimpleSky.Stars.GLES.frag.glsl@";
+    _sources[Stars_GLES_Frag] = @SimpleSky.Stars.GLES.frag.glsl@;
 
     Sun_Vert = "SimpleSky.Sun.vert.glsl";
-    _sources[Sun_Vert] = "@SimpleSky.Sun.vert.glsl@";
+    _sources[Sun_Vert] = @SimpleSky.Sun.vert.glsl@;
 
     Sun_Frag = "SimpleSky.Sun.frag.glsl";
-    _sources[Sun_Frag] = "@SimpleSky.Sun.frag.glsl@";
+    _sources[Sun_Frag] = @SimpleSky.Sun.frag.glsl@;
 }
 

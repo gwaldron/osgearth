@@ -1,15 +1,13 @@
 /** CMake Template File - compiled into AutoGenShaders.cpp */
 #include <osgEarthDrivers/detail/DetailShaders>
 
-#define MULTILINE(...) #__VA_ARGS__
-
 using namespace osgEarth::Detail;
 
 Shaders::Shaders()
 {
     VertexView = "Detail.vert.view.glsl";
-    _sources[VertexView] = "@Detail.vert.view.glsl@";
+    _sources[VertexView] = @Detail.vert.view.glsl@;
 
     Fragment = "Detail.frag.glsl";
-    _sources[Fragment] = "@Detail.frag.glsl@";
+    _sources[Fragment] = @Detail.frag.glsl@;
 };

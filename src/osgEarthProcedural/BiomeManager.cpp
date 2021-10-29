@@ -697,30 +697,23 @@ BiomeManager::createGPULookupTables(
     // Next, build the asset table using weightings.
     // Slot zero (0) will not be used because biome index starts at 1.
     // Reserve it for later use.
-    constexpr int MAX_NUM_BIOMES = 1024;
-    luts->biomeLUT().setNumElements(MAX_NUM_BIOMES);
+
+    std::map<unsigned, BiomeLUT_Data> biomeLUTData;
 
     int offset = 0;
     for (const auto& b : residentBiomeData)
     {
         const Biome* biome = b.first;
-        const ModelAssetUsageCollection& usages = b.second[group];
 
-        int biome_index = biome->index();
-
-        if (biome_index <= 0)
+        if (biome->index() <= 0)
         {
             OE_WARN << LC << "Found a biome index <= 0...skipping" << std::endl;
             continue;
         }
 
-        if (biome_index >= MAX_NUM_BIOMES)
-        {
-            OE_WARN << LC << "Exceeded maximum number of biomes (" << MAX_NUM_BIOMES << ")" << std::endl;
-            break;
-        }
-
+        const ModelAssetUsageCollection& usages = b.second[group];
         int ptr = offset;
+
         for (const auto& usage : usages)
         {
             int num = (int)(usage._weight*weightMultiplier);
@@ -735,11 +728,23 @@ BiomeManager::createGPULookupTables(
         }
 
         // populate the biome LUT:
-        luts->biomeLUT()[biome_index].offset = offset;
-        luts->biomeLUT()[biome_index].count = (ptr - offset);
+        BiomeLUT_Data entry;
+        entry.offset = offset;
+        entry.count = (ptr - offset);
+        biomeLUTData[biome->index()] = std::move(entry);
 
         offset += (ptr - offset);
     }
+
+    // allocate enough space for the highest-numbered biome index
+    luts->biomeLUT().setNumElements(
+        biomeLUTData.empty() ? 1 : biomeLUTData.rbegin()->first+1);
+
+    for (auto& iter : biomeLUTData)
+    {
+        luts->biomeLUT()[iter.first] = std::move(iter.second);
+    }
+
     luts->assetLUT().dirty();
     luts->biomeLUT().dirty();
 

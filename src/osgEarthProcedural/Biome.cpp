@@ -342,9 +342,13 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
     if (conf.hasChild("landcover_lifemap_table"))
         _landCoverTable = std::make_shared<LifeMapValueTable>(conf.child("landcover_lifemap_table"));
 
-    ConfigSet biomes_conf = conf.child("biomecollection").children("biome"); 
-    if (biomes_conf.empty()) biomes_conf = conf.child("biomes").children("biome");
-    for (const auto& b_conf : biomes_conf)
+    ConfigSet biome_defs = conf.child("biomedefinitions").children("biome");
+    if (biome_defs.empty())
+        biome_defs = conf.child("biomecollection").children("biome"); // backwards compat
+    if (biome_defs.empty())
+        biome_defs = conf.child("biomes").children("biome"); // backwards compat
+
+    for (const auto& b_conf : biome_defs)
     {
         Biome biome(b_conf, &_assets);
         biome._index = _biomeIndexGenerator++;

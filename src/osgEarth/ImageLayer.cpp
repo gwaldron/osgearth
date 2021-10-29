@@ -83,6 +83,10 @@ ImageLayer::Options::fromConfig(const Config& conf)
     // uniform names
     conf.get("shared_sampler", _shareTexUniformName);
     conf.get("shared_matrix",  _shareTexMatUniformName);
+
+    // automatically set shared=true if the uniform name is set.
+    if (shareTexUniformName().isSet() && !shared().isSet())
+        shared() = true;
     
     conf.get("async", async());
 }

@@ -41,6 +41,8 @@ CompositeImageLayer::Options::getConfig() const
     }
     conf.set("composite_function", "blend", function(), FUNCTION_BLEND);
     conf.set("composite_function", "less", function(), FUNCTION_LESS);
+    conf.set("composite_function", "greater", function(), FUNCTION_GREATER);
+    conf.set("composite_function", "more", function(), FUNCTION_GREATER);
     return conf;
 }
 
@@ -48,6 +50,7 @@ void
 CompositeImageLayer::Options::fromConfig(const Config& conf)
 {
     function().setDefault(FUNCTION_BLEND);
+
     const ConfigSet& layers = conf.child("layers").children();
     for( ConfigSet::const_iterator i = layers.begin(); i != layers.end(); ++i )
     {
@@ -55,6 +58,7 @@ CompositeImageLayer::Options::fromConfig(const Config& conf)
     }
     conf.get("composite_function", "blend", function(), FUNCTION_BLEND);
     conf.get("composite_function", "less", function(), FUNCTION_LESS);
+    conf.get("composite_function", "greater", function(), FUNCTION_GREATER);
 }
 
 //........................................................................
@@ -446,23 +450,27 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
                     {
                         ImageUtils::mix(result, imageInfo.image.get(), imageInfo.opacity);
                     }
-                    else if (options().function() == options().FUNCTION_LESS)
+                    else
                     {
                         ImageUtils::PixelReader readOne(result);
                         ImageUtils::PixelReader readTwo(imageInfo.image.get());
                         ImageUtils::PixelWriter writeOne(result);
                         osg::Vec4 pixelOne, pixelTwo;
 
-                        for (int t = 0; t < result->t(); ++t)
-                        {
-                            for (int s = 0; s < result->s(); ++s)
+                        std::function<bool(float, float)> compare;
+                        if (options().function() == options().FUNCTION_LESS)
+                            compare = [](float a, float b) { return a < b; };
+                        else // FUNCTION_MORE
+                            compare = [](float a, float b) { return a > b; };
+                            
+                        ImageUtils::ImageIterator iter(readOne);
+                        iter.forEachPixel([&]()
                             {
-                                readOne(pixelOne, s, t);
-                                readTwo(pixelTwo, s, t);
-                                if (pixelTwo.r() < pixelOne.r())
-                                    writeOne(pixelTwo, s, t);
-                            }
-                        }
+                                readOne(pixelOne, iter.s(), iter.t());
+                                readTwo(pixelTwo, iter.s(), iter.t());
+                                if (compare(pixelTwo.r(), pixelOne.r()))
+                                    writeOne(pixelTwo, iter.s(), iter.t());
+                            });
                     }
                 }
             }            

@@ -8,79 +8,79 @@ namespace osgEarth { namespace Util
     {
         // Cascade Draping
         CascadeDraping = "CascadeDraping.glsl";
-        _sources[CascadeDraping] = "@CascadeDraping.glsl@";
+        _sources[CascadeDraping] = @CascadeDraping.glsl@;
 
         // Depth Offset
         DepthOffset = "DepthOffset.glsl";
-        _sources[DepthOffset] = "@DepthOffset.glsl@";
+        _sources[DepthOffset] = @DepthOffset.glsl@;
 
         // Draping
         Draping = "Draping.glsl";
-        _sources[Draping] = "@Draping.glsl@";
+        _sources[Draping] = @Draping.glsl@;
 
         // DrawInstanced with attributes
         DrawInstancedAttribute = "DrawInstancedAttribute.glsl";
-        _sources[DrawInstancedAttribute] = "@DrawInstancedAttribute.glsl@";
+        _sources[DrawInstancedAttribute] = @DrawInstancedAttribute.glsl@;
 
         // GPU Clamping
         GPUClamping = "GPUClamping.glsl";
-        _sources[GPUClamping] = "@GPUClamping.glsl@";
+        _sources[GPUClamping] = @GPUClamping.glsl@;
 
         GPUClampingLib = "GPUClamping.lib.glsl";
-        _sources[GPUClampingLib] = "@GPUClamping.lib.glsl@";
+        _sources[GPUClampingLib] = @GPUClamping.lib.glsl@;
 
         // DrawInstanced
         Instancing = "Instancing.glsl";
-        _sources[Instancing] = "@Instancing.glsl@";
+        _sources[Instancing] = @Instancing.glsl@;
 
         // LineDrawable
         LineDrawable = "LineDrawable.glsl";
-        _sources[LineDrawable] = "@LineDrawable.glsl@";    
+        _sources[LineDrawable] = @LineDrawable.glsl@;    
 
         // PointDrawable
         PointDrawable = "PointDrawable.glsl";
-        _sources[PointDrawable] = "@PointDrawable.glsl@";          
+        _sources[PointDrawable] = @PointDrawable.glsl@;          
 
         // WireLines
         WireLines = "WireLines.glsl";
-        _sources[WireLines] = "@WireLines.glsl@";
+        _sources[WireLines] = @WireLines.glsl@;
 
         // PhongLightingEffect
         PhongLighting = "PhongLighting.glsl";
-        _sources[PhongLighting] = "@PhongLighting.glsl@";
+        _sources[PhongLighting] = @PhongLighting.glsl@;
 
 		// Text
 		Text = "Text.glsl";
-		_sources[Text] = "@Text.glsl@";
+		_sources[Text] = @Text.glsl@;
 
         TextLegacy = "Text_legacy.glsl";
-        _sources[TextLegacy] = "@Text_legacy.glsl@";
+        _sources[TextLegacy] = @Text_legacy.glsl@;
         
         ContourMap = "ContourMap.glsl";
-        _sources[ContourMap] = "@ContourMap.glsl@";
+        _sources[ContourMap] = @ContourMap.glsl@;
 
         LogDepthBuffer = "LogDepthBuffer.glsl";
-        _sources[LogDepthBuffer] = "@LogDepthBuffer.glsl@";
+        _sources[LogDepthBuffer] = @LogDepthBuffer.glsl@;
 
         LogDepthBuffer_VertOnly = "LogDepthBuffer.VertOnly.glsl";
-        _sources[LogDepthBuffer_VertOnly] = "@LogDepthBuffer.VertOnly.glsl@";
+        _sources[LogDepthBuffer_VertOnly] = @LogDepthBuffer.VertOnly.glsl@;
 
         GeodeticGraticule = "GeodeticGraticule.glsl";
-        _sources[GeodeticGraticule] = "@GeodeticGraticule.glsl@";
+        _sources[GeodeticGraticule] = @GeodeticGraticule.glsl@;
 
         ShadowCaster = "ShadowCaster.glsl";
-        _sources[ShadowCaster] = "@ShadowCaster.glsl@";
+        _sources[ShadowCaster] = @ShadowCaster.glsl@;
 
         SimpleOceanLayer = "SimpleOceanLayer.glsl";
-        _sources[SimpleOceanLayer] = "@SimpleOceanLayer.glsl@";
+        _sources[SimpleOceanLayer] = @SimpleOceanLayer.glsl@;
         
         RTTPicker = "RTTPicker.glsl";
-        _sources[RTTPicker] = "@RTTPicker.glsl@";
+        _sources[RTTPicker] = @RTTPicker.glsl@;
         
         WindComputer = "WindLayer.CS.glsl";
-        _sources[WindComputer] = "@WindLayer.CS.glsl@";
+        _sources[WindComputer] = @WindLayer.CS.glsl@;
 
         PBR = "PBR.glsl";
-        _sources[PBR] = "@PBR.glsl@";
+        _sources[PBR] = @PBR.glsl@;
     }
 } }

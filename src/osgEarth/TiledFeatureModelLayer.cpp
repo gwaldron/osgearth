@@ -47,8 +47,9 @@ GeometryCompilerOptions(options)
 
 void TiledFeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    _additive.init(false);
-    conf.get("additive", _additive);
+    additive().setDefault(false);
+
+    conf.get("additive", additive());
     featureSource().get(conf, "features");
 }
 
@@ -62,6 +63,8 @@ TiledFeatureModelLayer::Options::getConfig() const
 
     Config gcConf = GeometryCompilerOptions::getConfig();
     conf.merge(gcConf);
+
+    conf.set("additive", additive());
 
     featureSource().set(conf, "features");
 

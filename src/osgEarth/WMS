@@ -291,7 +291,6 @@ namespace osgEarth { namespace WMS
         //! Construct the WMS driver
 	    Driver(
             const WMSImageLayerOptions& myOptions,
-            SequenceControl* sequence,
             const osgDB::Options* readOptions);
 
         //! Connect to the WMS service, query capabilities, and prepare the driver
@@ -302,14 +301,8 @@ namespace osgEarth { namespace WMS
         //! Create and return an image for the tile key
         osg::Image* createImage( const TileKey& key, ProgressCallback* progress ) const;
 
-        //! Whether the data is sequenced
-        bool isSequenced() const;
-
-        //! Access the sequence frames
-        const std::vector<SequenceFrameInfo>& getSequenceFrameInfo() const;
-
-        //! Calculate the frame index based on the current time
-        int getCurrentSequenceFrameIndex(const osg::FrameStamp* fs, double secondsPerFrame) const;
+        //! Temporal extent of the data if any
+        const DateTimeExtent& getDateTimeExtent() const;
 
     protected:
         osg::Image* fetchTileImage(
@@ -318,22 +311,22 @@ namespace osgEarth { namespace WMS
             ProgressCallback*  progress,
             ReadResult&        out_response ) const;
 
-        osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress ) const;
+        osg::Image* createTimeSeriesImage(
+            const TileKey& key, 
+            ProgressCallback* progress ) const;
 
         std::string createURI( const TileKey& key ) const;
 
         const WMSImageLayerOptions* _options;
         const WMSImageLayerOptions& options() const;
 
-        SequenceControl*                   _sequence;
-        std::string                        _formatToUse;
-        std::string                        _srsToUse;
-        osg::ref_ptr<const Profile>        _profile;
-        std::string                        _prototype;
-        std::vector<std::string>           _timesVec;
+        std::string _formatToUse;
+        std::string _srsToUse;
+        osg::ref_ptr<const Profile> _profile;
+        std::string _prototype;
+        std::vector<std::string> _timesVec;
         osg::ref_ptr<const osgDB::Options> _readOptions;
-        bool                               _isPlaying;
-        std::vector<SequenceFrameInfo>     _seqFrameInfoVec;
+        DateTimeExtent _dateTimeExtent;
     };
 
     /**
@@ -370,9 +363,8 @@ namespace osgEarth
 {
     /**
      * Image layer connected to a WMS service
-     * Implements SequenceControl for *experimental* WMS-T support
      */
-    class OSGEARTH_EXPORT WMSImageLayer : public ImageLayer, public SequenceControl
+    class OSGEARTH_EXPORT WMSImageLayer : public ImageLayer
     {
     public:
         typedef WMS::WMSImageLayerOptions Options;
@@ -416,34 +408,20 @@ namespace osgEarth
         void setTimes(const std::string& value);
         const std::string& getTimes() const;
 
-        //! Duration of each WMS-T frame in seconds
-        void setSecondsPerFrame(const double& value);
-        const double& getSecondsPerFrame() const;
-
 
     public: // Layer
 
         //! Called by constructors
-        virtual void init();
+        virtual void init() override;
 
         //! Establishes a connection to the WMS service
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
 
         //! Gets a raster image for the given tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
-        //! Sequencing API (temporary - might go away)
-        virtual SequenceControl* getSequenceControl() { return this; }
-
-    public: // SequenceControl
-
-        bool supportsSequenceControl() const;
-        void playSequence();
-        void pauseSequence();
-        void seekToSequenceFrame(unsigned frame);
-        bool isSequencePlaying() const;
-        const std::vector<SequenceFrameInfo>& getSequenceFrameInfo() const;
-        int getCurrentSequenceFrameIndex( const osg::FrameStamp* fs ) const;
+        //! Date/Time range if this is WMS-T.
+        virtual DateTimeExtent getDateTimeExtent() const override;
 
     protected:
 

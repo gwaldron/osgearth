@@ -295,16 +295,6 @@ BiomeLayer::getBiomeCatalog() const
     return options().biomeCatalog();
 }
 
-const Biome*
-BiomeLayer::getBiomeByIndex(int index) const
-{
-    const auto cat = getBiomeCatalog();
-    if (cat)
-        return cat->getBiomeByIndex(index);
-    else
-        return nullptr;
-}
-
 void
 BiomeLayer::setAutoBiomeManagement(bool value)
 {
@@ -467,6 +457,7 @@ BiomeLayer::createImageImplementation(
     }
 
     return GeoImage::INVALID;
+
 }
 
 void
@@ -475,6 +466,9 @@ BiomeLayer::postCreateImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
+    // When a new biome raster arrives, scan it to find a set of all
+    // biome indices that it contains, and register this set with the
+    // tracker.
     if (getAutoBiomeManagement() &&
         createdImage.getTrackingToken() == nullptr)
     {
@@ -505,7 +499,7 @@ BiomeLayer::trackImage(
     std::set<int>& biome_index_set) const
 {
     // inform the biome manager that we are using the biomes corresponding
-    // to the biome ID's we collected
+    // to the set of biome indices collected from the raster.
     for (auto biome_index : biome_index_set)
     {
         const Biome* biome = getBiomeCatalog()->getBiomeByIndex(biome_index);
@@ -528,6 +522,9 @@ BiomeLayer::trackImage(
 void
 BiomeLayer::objectDeleted(void* value)
 {
+    // Invoked when the biome index raster destructs.
+    // Inform the BiomeManager that the indices referenced by this
+    // image are no longer in use (unreference the count).
     BiomeTrackerToken* token = static_cast<BiomeTrackerToken*>(value);
 
     _tracker.scoped_lock([&]() 

@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/TimeSeriesImage>
 #include <osg/ImageSequence>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -401,37 +402,12 @@ WMS::WMSImageLayerOptions::fromConfig(const Config& conf)
 
 //........................................................................
 
-namespace osgEarth {  namespace WMS
-{
-    // All looping ImageSequences deriving from this class will be in sync due to
-    // a shared reference time.
-    struct SyncImageSequence : public osg::ImageSequence
-    {
-        SyncImageSequence() : osg::ImageSequence() { }
-        virtual void update(osg::NodeVisitor* nv)
-        {
-            setReferenceTime( 0.0 );
-            osg::ImageSequence::update( nv );
-        }
-    };
-} } // namespace osgEarth::WMS
-
-//........................................................................
-
 //! Construct the WMS driver
 WMS::Driver::Driver(const WMS::WMSImageLayerOptions& myOptions,
-                    SequenceControl* sequence,
                     const osgDB::Options* readOptions)
 {
-    _sequence = sequence;
     _options = &myOptions;
     _readOptions = readOptions;
-}
-
-bool
-WMS::Driver::isSequenced() const
-{
-    return _timesVec.size() > 1;
 }
 
 //! Connect to the WMS service, query capabilities, and prepare the driver
@@ -446,8 +422,7 @@ WMS::Driver::open(osg::ref_ptr<const Profile>& profile,
 
         for (unsigned i = 0; i < _timesVec.size(); ++i)
         {
-            _seqFrameInfoVec.push_back(SequenceFrameInfo());
-            _seqFrameInfoVec.back().timeIdentifier = _timesVec[i];
+            _dateTimeExtent.expandBy(DateTime(_timesVec[i]));
         }
     }
 
@@ -650,7 +625,7 @@ WMS::Driver::createImage(const TileKey& key, ProgressCallback* progress) const
 
     if (_timesVec.size() > 1)
     {
-        image = createImageSequence(key, progress);
+        image = createTimeSeriesImage(key, progress);
     }
     else
     {
@@ -668,29 +643,23 @@ WMS::Driver::createImage(const TileKey& key, ProgressCallback* progress) const
 
 //! Creates an image from timestamped data
 osg::Image*
-WMS::Driver::createImageSequence(const TileKey& key, ProgressCallback* progress) const
+WMS::Driver::createTimeSeriesImage(const TileKey& key, ProgressCallback* progress) const
 {
-    osg::ref_ptr< osg::ImageSequence > seq = new SyncImageSequence();
+    osg::ref_ptr<TimeSeriesImage> seq = new TimeSeriesImage();
+    unsigned size = 0;
 
-    seq->setLoopingMode(osg::ImageStream::LOOPING);
-    seq->setLength(options().secondsPerFrame().value() * (double)_timesVec.size());
-    if (_sequence->isSequencePlaying())
-        seq->play();
-
-    for (unsigned int r = 0; r < _timesVec.size(); ++r)
+    for (auto timeStr : _timesVec)
     {
-        std::string extraAttrs = std::string("TIME=") + _timesVec[r];
+        std::string extraAttrs = std::string("TIME=") + timeStr;
 
         ReadResult response;
         osg::ref_ptr<osg::Image> image = fetchTileImage(key, extraAttrs, progress, response);
-        if (image.get())
+        if (image.valid())
         {
-            seq->addImage(image);
+            seq->insert(DateTime(timeStr), image);
+            ++size;
         }
     }
-
-    // Just return an empty image if we didn't get any images
-    unsigned size = seq->getNumImageData();
 
     if (size == 0)
     {
@@ -727,24 +696,10 @@ WMS::Driver::options() const
     return *_options;
 }
 
-const std::vector<SequenceFrameInfo>&
-WMS::Driver::getSequenceFrameInfo() const
+const DateTimeExtent&
+WMS::Driver::getDateTimeExtent() const
 {
-    return _seqFrameInfoVec;
-}
-
-int
-WMS::Driver::getCurrentSequenceFrameIndex(const osg::FrameStamp* fs, double secondsPerFrame) const
-{
-    if (_seqFrameInfoVec.size() == 0)
-        return 0;
-
-    double len = secondsPerFrame * (double)_timesVec.size();
-    double t = fmod(fs->getSimulationTime(), len) / len;
-    return osg::clampBetween(
-        (int)(t * (double)_seqFrameInfoVec.size()),
-        (int)0,
-        (int)_seqFrameInfoVec.size() - 1);
+    return _dateTimeExtent;
 }
 
 
@@ -761,7 +716,6 @@ OE_LAYER_PROPERTY_IMPL(WMSImageLayer, std::string, SRS, srs);
 OE_LAYER_PROPERTY_IMPL(WMSImageLayer, std::string, CRS, crs);
 OE_LAYER_PROPERTY_IMPL(WMSImageLayer, bool, Transparent, transparent);
 OE_LAYER_PROPERTY_IMPL(WMSImageLayer, std::string, Times, times);
-OE_LAYER_PROPERTY_IMPL(WMSImageLayer, double, SecondsPerFrame, secondsPerFrame);
 
 
 void
@@ -778,7 +732,7 @@ WMSImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    WMS::Driver* driver = new WMS::Driver(options(), this, getReadOptions());
+    WMS::Driver* driver = new WMS::Driver(options(), getReadOptions());
     _driver = driver;
 
     osg::ref_ptr<const Profile> profile = getProfile();
@@ -810,54 +764,13 @@ WMSImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* p
     return GeoImage(image.get(), key.getExtent());
 }
 
-/** Whether the implementation supports these methods */
-bool
-WMSImageLayer::supportsSequenceControl() const
+DateTimeExtent
+WMSImageLayer::getDateTimeExtent() const
 {
-    WMS::Driver* driver = static_cast<WMS::Driver*>(_driver.get());
-    return driver->isSequenced();
-}
-
-/** Starts playback */
-void
-WMSImageLayer::playSequence()
-{
-    _isPlaying = true;
-}
-
-/** Stops playback */
-void
-WMSImageLayer::pauseSequence()
-{
-    _isPlaying = false;
-}
-
-/** Seek to a specific frame */
-void
-WMSImageLayer::seekToSequenceFrame(unsigned frame)
-{
-    //todo
-}
-
-/** Whether the object is in playback mode */
-bool
-WMSImageLayer::isSequencePlaying() const
-{
-    return _isPlaying;
-}
-
-/** Gets data about the current frame in the sequence */
-const std::vector<SequenceFrameInfo>&
-WMSImageLayer::getSequenceFrameInfo() const
-{
-    WMS::Driver* driver = static_cast<WMS::Driver*>(_driver.get());
-    return driver->getSequenceFrameInfo();
-}
-
-/** Index of current frame */
-int
-WMSImageLayer::getCurrentSequenceFrameIndex(const osg::FrameStamp* fs) const
-{
-    WMS::Driver* driver = static_cast<WMS::Driver*>(_driver.get());
-    return driver->getCurrentSequenceFrameIndex(fs, options().secondsPerFrame().get());
+    if (_driver.valid())
+    {
+        WMS::Driver* driver = static_cast<WMS::Driver*>(_driver.get());
+        return driver->getDateTimeExtent();
+    }
+    else return DateTimeExtent();
 }

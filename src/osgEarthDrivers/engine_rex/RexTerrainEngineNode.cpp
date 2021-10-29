@@ -267,13 +267,10 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         if (getStateSet()) getStateSet()->removeDefine("OE_DEBUG_NORMALS");
 
     // check for normal map generation (required for lighting).
-    if (options().normalMaps() == true )
-    {
-        this->_requireNormalTextures = true;
-    }
+    this->_requireNormalTextures = (options().useNormalMaps() == true);
 
     // don't know how to set this up so just do it
-    this->_requireLandCoverTextures = true;
+    this->_requireLandCoverTextures = (options().useLandCover() == true);
 
     // ensure we get full coverage at the first LOD.
     this->_requireFullDataAtFirstLOD = true;
@@ -484,41 +481,49 @@ RexTerrainEngineNode::setupRenderBindings()
     color.getDefaultTexture()->setName("rex default color");
     getResources()->reserveTextureImageUnit( color.unit(), "Terrain Color" );
 
-    SamplerBinding& elevation = _renderBindings[SamplerBinding::ELEVATION];
-    elevation.usage()       = SamplerBinding::ELEVATION;
-    elevation.samplerName() = "oe_tile_elevationTex";
-    elevation.matrixName()  = "oe_tile_elevationTexMatrix";
-    elevation.setDefaultTexture(osgEarth::createEmptyElevationTexture());
-    elevation.getDefaultTexture()->setName("rex default elevation");
-    if (this->elevationTexturesRequired())
-        getResources()->reserveTextureImageUnit( elevation.unit(), "Terrain Elevation" );
+    if(this->elevationTexturesRequired())
+    {
+        SamplerBinding& elevation = _renderBindings[SamplerBinding::ELEVATION];
+        elevation.usage() = SamplerBinding::ELEVATION;
+        elevation.samplerName() = "oe_tile_elevationTex";
+        elevation.matrixName() = "oe_tile_elevationTexMatrix";
+        elevation.setDefaultTexture(osgEarth::createEmptyElevationTexture());
+        elevation.getDefaultTexture()->setName("rex default elevation");
+        getResources()->reserveTextureImageUnit(elevation.unit(), "Terrain Elevation");
+    }
 
-    SamplerBinding& normal = _renderBindings[SamplerBinding::NORMAL];
-    normal.usage()       = SamplerBinding::NORMAL;
-    normal.samplerName() = "oe_tile_normalTex";
-    normal.matrixName()  = "oe_tile_normalTexMatrix";
-    normal.setDefaultTexture(osgEarth::createEmptyNormalMapTexture());
-    normal.getDefaultTexture()->setName("rex default normalmap");
     if (this->normalTexturesRequired())
-        getResources()->reserveTextureImageUnit( normal.unit(), "Terrain Normals" );
+    {
+        SamplerBinding& normal = _renderBindings[SamplerBinding::NORMAL];
+        normal.usage() = SamplerBinding::NORMAL;
+        normal.samplerName() = "oe_tile_normalTex";
+        normal.matrixName() = "oe_tile_normalTexMatrix";
+        normal.setDefaultTexture(osgEarth::createEmptyNormalMapTexture());
+        normal.getDefaultTexture()->setName("rex default normalmap");
+        getResources()->reserveTextureImageUnit(normal.unit(), "Terrain Normals");
+    }
 
-    SamplerBinding& colorParent = _renderBindings[SamplerBinding::COLOR_PARENT];
-    colorParent.usage()       = SamplerBinding::COLOR_PARENT;
-    colorParent.samplerName() = "oe_layer_texParent";
-    colorParent.matrixName()  = "oe_layer_texParentMatrix";
     if (this->parentTexturesRequired())
+    {
+        SamplerBinding& colorParent = _renderBindings[SamplerBinding::COLOR_PARENT];
+        colorParent.usage() = SamplerBinding::COLOR_PARENT;
+        colorParent.samplerName() = "oe_layer_texParent";
+        colorParent.matrixName() = "oe_layer_texParentMatrix";
         getResources()->reserveTextureImageUnit(colorParent.unit(), "Terrain Parent Color");
+    }
 
-    SamplerBinding& landCover = _renderBindings[SamplerBinding::LANDCOVER];
-    landCover.usage()       = SamplerBinding::LANDCOVER;
-    landCover.samplerName() = "oe_tile_landCoverTex";
-    landCover.matrixName()  = "oe_tile_landCoverTexMatrix";
-    landCover.setDefaultTexture(LandCover::createEmptyTexture());
-    landCover.getDefaultTexture()->setName("rex default landcover");
     if (this->landCoverTexturesRequired())
+    {
+        SamplerBinding& landCover = _renderBindings[SamplerBinding::LANDCOVER];
+        landCover.usage() = SamplerBinding::LANDCOVER;
+        landCover.samplerName() = "oe_tile_landCoverTex";
+        landCover.matrixName() = "oe_tile_landCoverTexMatrix";
+        landCover.setDefaultTexture(LandCover::createEmptyTexture());
+        landCover.getDefaultTexture()->setName("rex default landcover");
         getResources()->reserveTextureImageUnit(landCover.unit(), "Terrain Land Cover");
-    getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX", landCover.samplerName());
-    getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX_MATRIX", landCover.matrixName());
+        getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX", landCover.samplerName());
+        getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX_MATRIX", landCover.matrixName());
+    }
 
     // Apply a default, empty texture to each render binding.
     OE_DEBUG << LC << "Render Bindings:\n";

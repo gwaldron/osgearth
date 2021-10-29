@@ -28,6 +28,7 @@
 #include <osgEarth/LayerShader>
 #include <osgEarth/Revisioning>
 #include <osgEarth/IOTypes>
+#include <osgEarth/DateTime>
 #include <osg/BoundingBox>
 #include <osg/Callback>
 #include <vector>
@@ -83,6 +84,18 @@ namespace osgDB {
         \
         OE_COMMENT("Configuration key for this layer (e.g. for earth files)") \
         virtual const char* getConfigKey() const { return #SLUG ; }
+
+
+//! Macro for defining a layer with a default Options structure
+#define META_LayerNoOptions(LIBRARY, MYCLASS, SUPERCLASS, SLUG) \
+    public: \
+    struct Options : public SUPERCLASS::Options { \
+        META_LayerOptions(LIBRARY, Options, SUPERCLASS::Options); \
+    private: \
+        void fromConfig(const osgEarth::Config&) { } \
+    }; \
+    META_Layer(LIBRARY, MYCLASS, Options, SUPERCLASS, SLUG)
+    
 
 
 //! Macro to use when defining a Layer class
@@ -213,6 +226,9 @@ namespace osgEarth
         //! This method may return GeoExtent::INVALID which means that the
         //! extent is unavailable (not necessarily that there is no data).
         virtual const GeoExtent& getExtent() const;
+
+        //! Temporal extent of this layer's data.
+        virtual DateTimeExtent getDateTimeExtent() const;
 
         //! Unique caching ID for this layer.
         //! Only set this before opening the layer or adding to a map.

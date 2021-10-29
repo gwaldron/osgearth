@@ -367,7 +367,7 @@ VegetationFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output)
             // look up the biome:
             sampleBiome(biome_value, tilec.x(), tilec.y());
             int biome_index = (int)(biome_value.r()); // *255.0f);
-            const Biome* biome = _biomelayer->getBiomeByIndex(biome_index);
+            const Biome* biome = _biomelayer->getBiomeCatalog()->getBiomeByIndex(biome_index);
             if (biome == nullptr)
             {
                 return Status(

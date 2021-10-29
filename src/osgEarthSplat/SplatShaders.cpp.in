@@ -9,48 +9,48 @@ using namespace osgEarth::Splat;
 SplattingShaders::SplattingShaders()
 {
     Types = "Splat.types.glsl";
-    _sources[Types] = "@Splat.types.glsl@";
+    _sources[Types] = @Splat.types.glsl@;
 
     Noise = "Splat.Noise.glsl";
-    _sources[Noise] = "@Splat.Noise.glsl@";
+    _sources[Noise] = @Splat.Noise.glsl@;
 
     VertModel = "Splat.vert.model.glsl";
-    _sources[VertModel] = "@Splat.vert.model.glsl@";
+    _sources[VertModel] = @Splat.vert.model.glsl@;
 
     VertView = "Splat.vert.view.glsl";
-    _sources[VertView] = "@Splat.vert.view.glsl@";
+    _sources[VertView] = @Splat.vert.view.glsl@;
 
     Frag = "Splat.frag.glsl";
-    _sources[Frag] = "@Splat.frag.glsl@";
+    _sources[Frag] = @Splat.frag.glsl@;
 
     Util = "Splat.util.glsl";
-    _sources[Util] = "@Splat.util.glsl@";
+    _sources[Util] = @Splat.util.glsl@;
 }
 
 
 GroundCoverShaders::GroundCoverShaders()
 {
     Grass = "Splat.Grass.glsl";
-    _sources[Grass] = "@Splat.Grass.glsl@";
+    _sources[Grass] = @Splat.Grass.glsl@;
     
     GroundCover_CS = "Splat.GroundCover.CS.glsl";
-    _sources[GroundCover_CS] = "@Splat.GroundCover.CS.glsl@";
+    _sources[GroundCover_CS] = @Splat.GroundCover.CS.glsl@;
     
     GroundCover_Sort_CS = "Splat.GroundCover.Sort.CS.glsl";
-    _sources[GroundCover_Sort_CS] = "@Splat.GroundCover.Sort.CS.glsl@";
+    _sources[GroundCover_Sort_CS] = @Splat.GroundCover.Sort.CS.glsl@;
 
     GroundCover_Billboard = "Splat.GroundCover.Billboard.glsl";
-    _sources[GroundCover_Billboard] = "@Splat.GroundCover.Billboard.glsl@";
+    _sources[GroundCover_Billboard] = @Splat.GroundCover.Billboard.glsl@;
     
     GroundCover_Model = "Splat.GroundCover.Model.glsl";
-    _sources[GroundCover_Model] = "@Splat.GroundCover.Model.glsl@";
+    _sources[GroundCover_Model] = @Splat.GroundCover.Model.glsl@;
     
     GroundCover_Generate = "Splat.GroundCover.Generate.CS.glsl";
-    _sources[GroundCover_Generate] = "@Splat.GroundCover.Generate.CS.glsl@";
+    _sources[GroundCover_Generate] = @Splat.GroundCover.Generate.CS.glsl@;
     
     GroundCover_Render = "Splat.GroundCover.Render.glsl";
-    _sources[GroundCover_Render] = "@Splat.GroundCover.Render.glsl@";
+    _sources[GroundCover_Render] = @Splat.GroundCover.Render.glsl@;
     
     GroundCover_Types = "Splat.GroundCover.Types.glsl";
-    _sources[GroundCover_Types] = "@Splat.GroundCover.Types.glsl@";
+    _sources[GroundCover_Types] = @Splat.GroundCover.Types.glsl@;
 }

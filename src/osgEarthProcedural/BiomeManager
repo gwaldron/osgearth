@@ -19,12 +19,13 @@
 #ifndef OSGEARTH_PROCEDURAL_BIOME_MANAGER
 #define OSGEARTH_PROCEDURAL_BIOME_MANAGER 1
 
-#include "Biome"
-#include <osgEarth/TextureArena>
-#include <osgEarth/InstanceCloud>
+#include <osgEarthProcedural/Biome>
+#include <osgEarth/GeometryCloud>
 
 namespace osgEarth
 {
+    class TextureArena;
+
     namespace Procedural
     {
         using namespace osgEarth;
@@ -64,8 +65,11 @@ namespace osgEarth
             osg::BoundingBox _modelAABB;
 
             // assigned by createGeometryCloud
-            int _modelCommand;
-            int _billboardCommand;
+            int _modelCommandIndex;
+            DrawElementsIndirectCommand _modelCommand; // for stats
+
+            int _billboardCommandIndex;
+            DrawElementsIndirectCommand _billboardCommand; // for stats
 
         private:
             ModelAssetData();

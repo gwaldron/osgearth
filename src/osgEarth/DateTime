@@ -81,6 +81,19 @@ namespace osgEarth
         /** Adds hours to return a new DateTime */
         DateTime operator + (double hours) const;
 
+        //! Compare functions
+        bool operator < (const DateTime& rhs) const {
+            return asTimeStamp() < rhs.asTimeStamp();
+        }
+
+        bool operator > (const DateTime& rhs) const {
+            return asTimeStamp() > rhs.asTimeStamp();
+        }
+
+        bool operator == (const DateTime& rhs) const {
+            return asTimeStamp() == rhs.asTimeStamp();
+        }
+
     public:
         int    year()  const;
         int    month() const;
@@ -94,6 +107,41 @@ namespace osgEarth
     private:
         // since timegm is not cross-platform
         ::time_t timegm(const ::tm* tm) const;
+    };
+
+
+    class OSGEARTH_EXPORT DateTimeExtent
+    {
+        public:
+            DateTimeExtent() : _valid(false)
+            {
+                //nop
+            }
+
+            DateTimeExtent(const DateTime& start, const DateTime& end) :
+                _start(start), _end(end), _valid(true)
+            {
+                //nop
+            }
+
+            const bool valid() const {
+                return _valid;
+            }
+
+            const DateTime& getStart() const {
+                return _start;
+            }
+
+            const DateTime& getEnd() const {
+                return _end;
+            }
+
+            void expandBy(const DateTime& value);
+
+        private:
+            bool _valid;
+            DateTime _start;
+            DateTime _end;
     };
 
 } // namespace osgEarth

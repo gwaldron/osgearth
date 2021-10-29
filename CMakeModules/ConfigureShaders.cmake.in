@@ -14,26 +14,11 @@ foreach(file ${glsl_files})
     # read the file into 'contents':
     file(READ ${source_dir}/${file} contents)
 
-    # append a newline so we do not break the MULTILINE macro when the last line
-    # of the file is a comment:
-    set(contents "${contents}\n")
-
-    # replace hashtags with a marker string to avoid breaking the MULTILINE macro:
-	# string(REGEX REPLACE "#" "$__HASHTAG__" tempString "${contents}")
-
-    # replace comment symbols to avoid breaking the MULTILINE macro:
-    # string(REGEX REPLACE "//"   "$__BEGINEOLCOMMENT__"   tempString2 "${tempString}")
-    # string(REGEX REPLACE "/\\*" "$__BEGINBLOCKCOMMENT__" tempString  "${tempString2}")
-    # string(REGEX REPLACE "\\*/" "$__ENDBLOCKCOMMENT__"   tempString2 "${tempString}")
-    # string(REGEX REPLACE "'"    "$__APOSTROPHE__"        tempString  "${tempString2}")
-    # string(REGEX REPLACE "\""   "$__QUOTE__"             tempString2 "${tempString}")
-
-    # replace newlines with printable newlines, and overwrite the original
-    # file name with the processed contents.
-	# string(REGEX REPLACE "\n" "\\\\n\n" ${file} "${tempString2}")
-
-	string(REGEX REPLACE  "\n"  "%EOL%"    tempString  "${contents}"   )
-    string(REGEX REPLACE  "\""  "%QUOTE%"  ${file}     "${tempString}" )
+    # compress whitespace.
+    # "contents" must be quoted, otherwise semicolons get dropped for some reason.
+    string(REGEX REPLACE "\n\n+" "\n" tempString "${contents}")
+    
+    set(${file} "\nR\"(${tempString})\"")
 
 endforeach(file)
 

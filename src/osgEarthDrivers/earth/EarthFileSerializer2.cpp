@@ -381,6 +381,12 @@ namespace
         }
     }
 
+    void replaceV2withV3(Config& c, const std::string& newkey)
+    {
+        OE_WARN << LC << "Replacing key \"" << c.key() << "\" with \"" << newkey << "\"; please update your earth file" << std::endl;
+        c.key() = newkey;
+    }
+
     void updateVersion2ToVersion3(Config& c)
     {
         std::string key0 = c.key();
@@ -389,22 +395,22 @@ namespace
         {
             const std::string& driver = c.value("driver");
             if (driver == "gdal") c.key() = "GDALImage";
-            else if (driver == "mbtiles") c.key() = "MBTilesImage";
-            else if (driver == "arcgisonline") c.key() = "ArcGISServerImage";
-            else if (driver == "arcgis") c.key() = "ArcGISServerImage";
-            else if (driver == "tilepackage") c.key() = "ArcGISTilePackageImage";
-            else if (driver == "bing") c.key() = "BingImage";
-            else if (driver == "cesiumion") c.key() = "CesiumIonImage";
-            else if (driver == "landcover") c.key() = "LandCover";
-            else if (driver == "tilecache") c.key() = "TileCacheImage";
-            else if (driver == "tms") c.key() = "TMSImage";
-            else if (driver == "video") c.key() = "VideoImage";
-            else if (driver == "wms") c.key() = "WMSImage";
-            else if (driver == "xyz") c.key() = "XYZImage";
-            else if (driver == "agglite") c.key() = "FeatureImage";
-            else if (driver == "debug") c.key() = "DebugImage";
-            else if (driver == "road_surface") c.key() = "RoadSurface";
-            else if (driver == "db") c.key() = "DBImage";
+            else if (driver == "mbtiles") replaceV2withV3(c, "MBTilesImage");
+            else if (driver == "arcgisonline") replaceV2withV3(c, "ArcGISServerImage");
+            else if (driver == "arcgis") replaceV2withV3(c, "ArcGISServerImage");
+            else if (driver == "tilepackage") replaceV2withV3(c, "ArcGISTilePackageImage");
+            else if (driver == "bing") replaceV2withV3(c, "BingImage");
+            else if (driver == "cesiumion") replaceV2withV3(c, "CesiumIonImage");
+            else if (driver == "landcover") replaceV2withV3(c, "LandCover");
+            else if (driver == "tilecache") replaceV2withV3(c, "TileCacheImage");
+            else if (driver == "tms") replaceV2withV3(c, "TMSImage");
+            else if (driver == "video") replaceV2withV3(c, "VideoImage");
+            else if (driver == "wms") replaceV2withV3(c, "WMSImage");
+            else if (driver == "xyz") replaceV2withV3(c, "XYZImage");
+            else if (driver == "agglite") replaceV2withV3(c, "FeatureImage");
+            else if (driver == "debug") replaceV2withV3(c, "DebugImage");
+            else if (driver == "road_surface") replaceV2withV3(c, "RoadSurface");
+            else if (driver == "db") replaceV2withV3(c, "DBImage");
             else if (driver == "composite" && !c.children().empty())
             {
                 ConfigSet children = c.children("image");
@@ -412,21 +418,21 @@ namespace
                 Config layers("layers");
                 layers.add(children);
                 c.add(layers);
-                c.key() = "CompositeImage";
+                replaceV2withV3(c, "CompositeImage");
             }
         }
         else if (c.key() == "elevation" && c.hasValue("driver"))
         {
             const std::string& driver = c.value("driver");
-            if (driver == "gdal") c.key() = "GDALElevation";
-            else if (driver == "mbtiles") c.key() = "MBTilesElevation";
-            else if (driver == "bing") c.key() = "BingElevation";
-            else if (driver == "tms") c.key() = "TMSElevation";
-            else if (driver == "xyz") c.key() = "XYZElevation";
-            else if (driver == "tilecache") c.key() = "TileCacheElevation";
-            else if (driver == "flatten_elevation") c.key() = "FlattenElevation";
-            else if (driver == "fractal_elevation") c.key() = "FractalElevation";
-            else if (driver == "db") c.key() = "DBElevation";
+            if (driver == "gdal") replaceV2withV3(c, "GDALElevation");
+            else if (driver == "mbtiles") replaceV2withV3(c, "MBTilesElevation");
+            else if (driver == "bing") replaceV2withV3(c, "BingElevation");
+            else if (driver == "tms") replaceV2withV3(c, "TMSElevation");
+            else if (driver == "xyz") replaceV2withV3(c, "XYZElevation");
+            else if (driver == "tilecache") replaceV2withV3(c, "TileCacheElevation");
+            else if (driver == "flatten_elevation") replaceV2withV3(c, "FlattenElevation");
+            else if (driver == "fractal_elevation") replaceV2withV3(c, "FractalElevation");
+            else if (driver == "db") replaceV2withV3(c, "DBElevation");
             else if (driver == "composite" && !c.children().empty())
             {
                 ConfigSet children = c.children("elevation");
@@ -434,14 +440,14 @@ namespace
                 Config layers("layers");
                 layers.add(children);
                 c.add(layers);
-                c.key() = "CompositeElevation";
+                replaceV2withV3(c, "CompositeElevation");
             }
         }
         else if (c.key() == "model" && c.hasValue("driver"))
         {
             const std::string& driver = c.value("driver");
-            if (driver == "simple") c.key() = "Model";
-            else if (driver == "feature_geom") c.key() = "FeatureModel";
+            if (driver == "simple") replaceV2withV3(c, "Model");
+            else if (driver == "feature_geom") replaceV2withV3(c, "FeatureModel");
         }
         else if (c.key() == "mask" && c.hasValue("driver"))
         {
@@ -451,16 +457,16 @@ namespace
         else if (c.key() == "feature_source" || c.key() == "features")
         {
             const std::string& driver = c.value("driver");
-            if (driver == "ogr") c.key() = "OGRFeatures";
-            else if (driver == "wfs") c.key() = "WFSFeatures";
-            else if (driver == "tfs") c.key() = "TFSFeatures";
-            else if (driver == "mapnikvectortiles") c.key() = "MVTFeatures";
-            else if (driver == "xyz") c.key() = "XYZFeatures";
-            else if (driver == "image_to_feature") c.key() = "ImageToFeature";
+            if (driver == "ogr") replaceV2withV3(c, "OGRFeatures");
+            else if (driver == "wfs") replaceV2withV3(c, "WFSFeatures");
+            else if (driver == "tfs") replaceV2withV3(c, "TFSFeatures");
+            else if (driver == "mapnikvectortiles") replaceV2withV3(c, "MVTFeatures");
+            else if (driver == "xyz") replaceV2withV3(c, "XYZFeatures");
+            else if (driver == "image_to_feature") replaceV2withV3(c, "ImageToFeature");
         }
-        else if (c.key() == "splat_imagery") c.key() = "SplatImage";
-        else if (c.key() == "splat_groundcover") c.key() = "GroundCover";
-        else if (c.key() == "land_cover") c.key() = "LandCover";
+        else if (c.key() == "splat_imagery") replaceV2withV3(c, "SplatImage");
+        else if (c.key() == "splat_groundcover") replaceV2withV3(c, "GroundCover");
+        else if (c.key() == "land_cover") replaceV2withV3(c, "LandCover");
 
         if (key0 != c.key())
         {

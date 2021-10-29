@@ -595,6 +595,12 @@ Layer::getExtent() const
     return s_invalid;
 }
 
+DateTimeExtent
+Layer::getDateTimeExtent() const
+{
+    return DateTimeExtent();
+}
+
 osg::StateSet*
 Layer::getOrCreateStateSet()
 {

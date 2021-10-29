@@ -7,26 +7,26 @@ using namespace osgEarth::REX;
 Shaders::Shaders()
 {
     ENGINE_VERT = "RexEngine.vert.glsl";
-    _sources[ENGINE_VERT] = "@RexEngine.vert.glsl@";
+    _sources[ENGINE_VERT] = @RexEngine.vert.glsl@;
 
 	ENGINE_ELEVATION = "RexEngine.elevation.glsl";
-    _sources[ENGINE_ELEVATION] = "@RexEngine.elevation.glsl@";
+    _sources[ENGINE_ELEVATION] = @RexEngine.elevation.glsl@;
 
     ENGINE_MORPHING = "RexEngine.Morphing.glsl";
-    _sources[ENGINE_MORPHING] = "@RexEngine.Morphing.glsl@";
+    _sources[ENGINE_MORPHING] = @RexEngine.Morphing.glsl@;
 
     ENGINE_IMAGELAYER = "RexEngine.ImageLayer.glsl";
-    _sources[ENGINE_IMAGELAYER] = "@RexEngine.ImageLayer.glsl@";
+    _sources[ENGINE_IMAGELAYER] = @RexEngine.ImageLayer.glsl@;
 
     ENGINE_NORMAL_MAP = "RexEngine.NormalMap.glsl";
-    _sources[ENGINE_NORMAL_MAP] = "@RexEngine.NormalMap.glsl@";
+    _sources[ENGINE_NORMAL_MAP] = @RexEngine.NormalMap.glsl@;
 
     ENGINE_GEOM = "RexEngine.gs.glsl";
-    _sources[ENGINE_GEOM] = "@RexEngine.gs.glsl@";
+    _sources[ENGINE_GEOM] = @RexEngine.gs.glsl@;
 
     ENGINE_TESSELLATION = "RexEngine.Tessellation.glsl";
-    _sources[ENGINE_TESSELLATION] = "@RexEngine.Tessellation.glsl@";
+    _sources[ENGINE_TESSELLATION] = @RexEngine.Tessellation.glsl@;
 
     ENGINE_SDK = "RexEngine.SDK.glsl";
-    _sources[ENGINE_SDK] = "@RexEngine.SDK.glsl@";
+    _sources[ENGINE_SDK] = @RexEngine.SDK.glsl@;
 }

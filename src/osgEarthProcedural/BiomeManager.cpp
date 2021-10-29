@@ -18,6 +18,7 @@
 */
 #include "BiomeManager"
 
+#include <osgEarth/TextureArena>
 #include <osgEarth/Elevation>
 #include <osgEarth/GLUtils>
 #include <osgEarth/MaterialLoader>
@@ -41,8 +42,8 @@ ModelAssetData::create()
 
 ModelAssetData::ModelAssetData() :
     _asset(nullptr),
-    _modelCommand(-1),
-    _billboardCommand(-1)
+    _modelCommandIndex(-1),
+    _billboardCommandIndex(-1)
 {
     //nop
 }
@@ -568,11 +569,14 @@ BiomeManager::createGeometryCloud(
                 auto model = data->_model.get();
                 if (model && visited.count(model) == 0)
                 {
-                    data->_modelCommand = cloud->add(
+                    auto result = cloud->add(
                         model,
-                        instance._textures,
                         0U,
                         NORMAL_MAP_TEX_UNIT);
+
+                    data->_modelCommandIndex = result._commandIndex;
+                    cloud->getDrawCommand(result._commandIndex, data->_modelCommand);
+                    instance._textures = result._textures;
 
                     visited.insert(model);
                 }
@@ -580,11 +584,14 @@ BiomeManager::createGeometryCloud(
                 auto imposter = data->_billboard.get();
                 if (imposter && visited.count(imposter) == 0)
                 {
-                    data->_billboardCommand = cloud->add(
+                    auto result = cloud->add(
                         imposter,
-                        instance._textures,
                         getNumVertices(imposter),   // apply alignment so shader can use gl_VertexID
                         NORMAL_MAP_TEX_UNIT);       // normal maps in texture image unit 1
+
+                    data->_billboardCommandIndex = result._commandIndex;
+                    cloud->getDrawCommand(result._commandIndex, data->_billboardCommand);
+                    instance._textures = result._textures;
 
                     visited.insert(imposter);
                 }
@@ -661,8 +668,8 @@ BiomeManager::createGPULookupTables(
 
             // store in our temporary LUT
             auto& r = temp[&usage];
-            r.modelCommand = data->_modelCommand;
-            r.billboardCommand = data->_billboardCommand;
+            r.modelCommand = data->_modelCommandIndex;
+            r.billboardCommand = data->_billboardCommandIndex;
             r.width = width;
             r.height = height;
             r.fill = usage._fill;

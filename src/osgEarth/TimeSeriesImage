@@ -1,0 +1,66 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_TIME_SERIES_IMAGE_H
+#define OSGEARTH_TIME_SERIES_IMAGE_H
+
+#include <osgEarth/Common>
+#include <osgEarth/DateTime>
+#include <osg/Image>
+#include <map>
+
+namespace osgEarth
+{
+    /**
+     * An image that contains multiple images, each corresponding to a DateTime.
+     */
+    class OSGEARTH_EXPORT TimeSeriesImage : public osg::Image
+    {
+    public:
+        //! Construct a new empty time series image
+        TimeSeriesImage();
+
+        //! Insert a new timestamped iunto the temporal image
+        void insert(const DateTime& dt, const osg::Image* image);
+        void insert(const DateTime& dt, osg::ref_ptr<osg::Image> image);
+
+        //! Set the active datetime to use
+        void setDateTime(const DateTime& dt);
+
+        //! Gets the extent
+        const DateTimeExtent& getDateTimeExtent() const;
+
+    public: // osg::Image
+
+        //! indicate that we require an update traversal
+        bool requiresUpdateCall() const override { return true; }
+
+        //! update traversal
+        void update(osg::NodeVisitor* nv) override;
+
+    private:
+        using Table = std::map<TimeStamp, osg::ref_ptr<const osg::Image>>;
+
+        Table _images;
+        Table::iterator _ptr;
+        DateTimeExtent _extent;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_TIME_SERIES_IMAGE_H

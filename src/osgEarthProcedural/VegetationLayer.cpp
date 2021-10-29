@@ -37,7 +37,6 @@
 #include <osg/BlendFunc>
 #include <osg/Multisample>
 #include <osg/Texture2D>
-#include <osg/Depth>
 #include <osg/Version>
 #include <osg/ComputeBoundsVisitor>
 #include <osgDB/ReadFile>
@@ -634,22 +633,7 @@ VegetationLayer::buildStateSets()
     _sseU->set(getMaxSSE());
     stateset->addUniform(_sseU.get());
 
-    //if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
-    //{
-    //    stateset->setDefine("OE_IS_MULTISAMPLE", "1");
-    //    stateset->setMode(GL_MULTISAMPLE, 1);
-    //    stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-    //}
-    //else
-    //{
-    //    stateset->removeMode(GL_MULTISAMPLE);
-    //    stateset->removeMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB);
-    //    stateset->removeDefine("OE_IS_MULTISAMPLE");
-    //}
-
-    //if (getUseAlphaToCoverage())
-
-    stateset->setAttributeAndModes(_renderer->_a2cBlending.get(), 1);
+    stateset->setAttributeAndModes(_renderer->_blending.get(), 1);
 
     // NEXT assemble the asset group statesets.
     if (AssetGroup::TREES < NUM_ASSET_GROUPS)
@@ -968,7 +952,7 @@ VegetationLayer::Renderer::Renderer(VegetationLayer* layer)
     _computeDataUName = osg::Uniform::getNameID("oe_tile");
     _maxRangeUName = osg::Uniform::getNameID("oe_veg_maxRange");
 
-    _a2cBlending = new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
+    _blending = new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
 
     // Load our compute shader
     GroundCoverShaders shaders;

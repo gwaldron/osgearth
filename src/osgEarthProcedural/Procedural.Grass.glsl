@@ -174,9 +174,11 @@ void oe_Grass_parametric(inout vec4 vertex_view, in uint i)
     float width = instance[i].width * falloff;
     float height = instance[i].height * falloff;
 
+    // TODO: move this to the CS?
     height = mix(-browning*height+height, browning*height+height, oe_noise_wide[NOISE_CLUMPY]);
 
     // height decreases near the edge of the fill threshold
+    // TODO: move this to the CS?
     height *= decel(instance[i].fillEdge);
 
     // ratio of adjusted height to nonimal height
@@ -350,12 +352,10 @@ void oe_Grass_FS(inout vec4 color)
 
 #ifdef OE_IS_MULTISAMPLE
     // https://medium.com/@bgolus/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
-    //color.a = (color.a - oe_veg_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+    color.a = (color.a - oe_veg_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
 #else
     if (color.a < oe_veg_maxAlpha)
-    {
         discard;
-    }
 #endif
 
 #ifdef OE_GROUNDCOVER_COLOR_SAMPLER

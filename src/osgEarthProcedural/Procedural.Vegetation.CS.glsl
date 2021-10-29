@@ -91,11 +91,11 @@ float getElevation(in vec2 tilec) {
 tweakable float dense_power = 1.0;
 tweakable float lush_power = 1.0;
 tweakable float rugged_power = 1.0;
-tweakable int oe_biome_override = 0;
 
 #define RUGGED 0
 #define DENSE 1
 #define LUSH 2
+#define VARIATION 3
 
 void generate()
 {

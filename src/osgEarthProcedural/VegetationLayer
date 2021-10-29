@@ -324,7 +324,7 @@ namespace osgEarth { namespace Procedural
 
             double _tileWidths[23]; // per LOD
             osg::observer_ptr<VegetationLayer> _layer; // owner
-            osg::ref_ptr<osg::StateAttribute> _a2cBlending; // blending function
+            osg::ref_ptr<osg::StateAttribute> _blending; // blending function
             osg::ref_ptr<osg::StateSet> _computeSS; // compute shader stateset
             GeometryCloudCollection _geomClouds; // veg instance cloud
             osg::ref_ptr<osg::Texture> _noiseTex; // noise for placement

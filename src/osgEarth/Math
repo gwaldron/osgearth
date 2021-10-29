@@ -487,7 +487,7 @@ namespace osgEarth
 
     // Adapted from Boost - see boost license
     // https://www.boost.org/users/license.html
-    template <class T> inline std::size_t hash_value_unsigned(T val) {
+    template <typename T> inline std::size_t hash_value_unsigned(T val) {
         const int size_t_bits = std::numeric_limits<std::size_t>::digits;
         const int length = (std::numeric_limits<T>::digits - 1) / size_t_bits;
         std::size_t seed = 0;
@@ -497,20 +497,32 @@ namespace osgEarth
         return seed;
     }
 
-    template <class T> inline std::size_t hash_value_unsigned(T a, T b) {
+    inline std::size_t hash_value_unsigned(bool val) {
+        return hash_value_unsigned((unsigned)val ? 0x1111111 : 0x2222222);
+    }
+
+    template<typename T>
+    inline std::size_t hash_value_unsigned(const optional<T>& val) {
+        if (val.isSet())
+            return hash_value_unsigned(0x3333333u, val.get());
+        else
+            return (std::size_t)0;
+    }
+
+    template <typename A, typename B> inline std::size_t hash_value_unsigned(A a, B b) {
         std::size_t seed = hash_value_unsigned(a);
         seed ^= hash_value_unsigned(b) + 0x9e3779b9 + (seed<<6) + (seed>>2);
         return seed;
     }
 
-    template <class T> inline std::size_t hash_value_unsigned(T a, T b, T c) {
+    template <typename A, typename B, typename C> inline std::size_t hash_value_unsigned(A a, B b, C c) {
         std::size_t seed = hash_value_unsigned(a);
         seed ^= hash_value_unsigned(b) + 0x9e3779b9 + (seed<<6) + (seed>>2);
         seed ^= hash_value_unsigned(c) + 0x9e3779b9 + (seed<<6) + (seed>>2);
         return seed;
     }
 
-    template <class T> inline std::size_t hash_value_unsigned(T a, T b, T c, T d) {
+    template <typename A, typename B, typename C, typename D> inline std::size_t hash_value_unsigned(A a, B b, C c, D d) {
         std::size_t seed = hash_value_unsigned(a);
         seed ^= hash_value_unsigned(b) + 0x9e3779b9 + (seed<<6) + (seed>>2);
         seed ^= hash_value_unsigned(c) + 0x9e3779b9 + (seed<<6) + (seed>>2);

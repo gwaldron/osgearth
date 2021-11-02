@@ -40,8 +40,9 @@ namespace osgEarth { namespace Procedural
 {
     using namespace osgEarth;
 
-    //! Layer that renders billboards on the ground using the GPU,
-    //! like trees, grass, rocks, etc.
+    /**
+     * Layer that renders trees and undergrowth.
+     */
     class OSGEARTHPROCEDURAL_EXPORT VegetationLayer : public PatchLayer
     {
     public:

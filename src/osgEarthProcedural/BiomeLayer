@@ -28,12 +28,63 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
+//#include <osgEarth/LandCoverLayer>
+#include <osgEarth/CoverageLayer>
 
 namespace osgEarth
 {
     namespace Procedural
     {
         using namespace osgEarth;
+
+        struct LandCoverSample
+        {
+            OE_OPTION(std::string, biomeid);
+            OE_OPTION(float, dense);
+            OE_OPTION(float, lush);
+            OE_OPTION(float, rugged);
+            OE_OPTION(float, special);
+
+            LandCoverSample() { }
+
+            LandCoverSample(const Config& conf)
+            {
+                conf.get("biome_id", biomeid());
+                conf.get("dense", dense());
+                conf.get("lush", lush());
+                conf.get("rugged", rugged());
+                conf.get("special", special());
+            }
+
+            bool valid() const {
+                return
+                    (biomeid().isSet() && !biomeid()->empty()) ||
+                    dense().isSet() ||
+                    lush().isSet() ||
+                    rugged().isSet() ||
+                    special().isSet();
+            }
+
+            // hash function
+            std::size_t operator()(const LandCoverSample& v) const {
+                return hash_value_unsigned(
+                    ::std::hash<::std::string>()(biomeid().get()),
+                    (unsigned)(dense().get()*255.0f),
+                    (unsigned)(lush().get()*255.0f),
+                    (unsigned)(rugged().get()*255.0f),
+                    (unsigned)(special().get()*255.0f));
+            };
+
+            bool operator == (const LandCoverSample& v) const {
+                return
+                    biomeid() == v.biomeid() &&
+                    dense() == v.dense() &&
+                    lush() == v.lush() &&
+                    rugged() == v.rugged() &&
+                    special() == v.special();
+            }
+        };
+
 
         /**
          * BiomeLayer creates rasters that encode Biome indices. 
@@ -57,7 +108,8 @@ namespace osgEarth
             {
             public:
                 META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-                OE_OPTION_LAYER(FeatureSource, controlVectors);
+                OE_OPTION_LAYER(FeatureSource, vectorLayer);
+                OE_OPTION_LAYER(CoverageLayer, coverageLayer);
                 OE_OPTION_SHAREDPTR(BiomeCatalog, biomeCatalog);
                 OE_OPTION(float, blendRadius);
                 OE_OPTION(std::string, biomeidField);
@@ -75,6 +127,8 @@ namespace osgEarth
             //! Manager that pages biome assets in and out
             BiomeManager& getBiomeManager() { return _biomeMan; }
 
+            CoverageLayer* getCoverageLayer() const;
+
             //! Whether to automatically load and unload biomes, or to 
             //! allow the user to manually do so with the setBiome() call.
             //! Default is true, meaning that as the user navigates the map,
@@ -87,6 +141,8 @@ namespace osgEarth
         public: // Layer
 
             virtual void addedToMap(const Map*) override;
+
+            virtual void removedFromMap(const Map*) override;
 
         protected: // Layer
 
@@ -109,10 +165,13 @@ namespace osgEarth
 
         private:
 
-            FeatureSource* getControlSet() const;
+            FeatureSource* getVectorLayer() const;
 
             // control features for biome selection
             FeatureList _features;
+
+            // land cover layers to use for biome overrides
+            CoverageLayerVector _landCoverLayers;
 
             // spatial index for _features
             void* _pointIndex;

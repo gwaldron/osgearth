@@ -22,8 +22,10 @@
 #include "BiomeLayer"
 #include <osgEarth/Random>
 #include <osgEarth/rtree.h>
+#include <osgEarth/MetaTile>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(biomes, BiomeLayer);
@@ -39,7 +41,9 @@ BiomeLayer::Options::fromConfig(const Config& conf)
     biomeidField().setDefault("biomeid");
 
     biomeCatalog() = std::make_shared<BiomeCatalog>(conf.child("biomecatalog"));
-    controlVectors().get(conf, "control_vectors");
+    vectorLayer().get(conf, "vector_layer");
+    coverageLayer().get(conf, "coverage_layer");
+
     conf.get("blend_radius", blendRadius());
     conf.get("biomeid_field", biomeidField());
 }
@@ -49,7 +53,8 @@ BiomeLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
     OE_DEBUG << LC << __func__ << " not yet implemented" << std::endl;
-    controlVectors().set(conf, "control_vectors");
+    vectorLayer().set(conf, "vector_layer");
+    coverageLayer().set(conf, "coverage_layer");
     //TODO - biomeCatalog
     conf.set("blend_radius", blendRadius());
     conf.set("biomeid_field", biomeidField());
@@ -116,9 +121,11 @@ BiomeLayer::openImplementation()
     if (p.isError())
         return p;
 
-    Status csStatus = options().controlVectors().open(getReadOptions());
+    Status csStatus = options().vectorLayer().open(getReadOptions());
     if (csStatus.isError())
         return csStatus;
+
+    options().coverageLayer().open(getReadOptions());
 
     // Warn the poor user if the configuration is missing
     if (getBiomeCatalog() == nullptr)
@@ -148,7 +155,7 @@ BiomeLayer::closeImplementation()
         _polygonIndex = nullptr;
     }
 
-    options().controlVectors().close();
+    options().vectorLayer().close();
 
     return ImageLayer::closeImplementation();
 }
@@ -156,11 +163,12 @@ BiomeLayer::closeImplementation()
 void
 BiomeLayer::addedToMap(const Map* map)
 {
-    options().controlVectors().addedToMap(map);
+    options().vectorLayer().addedToMap(map);
+    options().coverageLayer().addedToMap(map);
 
-    if (!getControlSet())
+    if (!getVectorLayer() && !getCoverageLayer())
     {
-        setStatus(Status::ConfigurationError, "No control set found");
+        setStatus(Status::ResourceUnavailable, "No source data available");
         return;
     }
 
@@ -170,8 +178,18 @@ BiomeLayer::addedToMap(const Map* map)
 }
 
 void
+BiomeLayer::removedFromMap(const Map* map)
+{
+    options().vectorLayer().removedFromMap(map);
+    options().coverageLayer().removedFromMap(map);
+}
+
+void
 BiomeLayer::loadPointControlSet()
 {
+    if (getVectorLayer() == nullptr)
+        return;
+
     // DEPRECATED?
 
     OE_INFO << LC << "Loading control set..." << std::endl;
@@ -183,7 +201,7 @@ BiomeLayer::loadPointControlSet()
 
     // Populate the in-memory spatial index with all the control points
     int count = 0;
-    osg::ref_ptr<FeatureCursor> cursor = getControlSet()->createFeatureCursor(Query(), nullptr);
+    osg::ref_ptr<FeatureCursor> cursor = getVectorLayer()->createFeatureCursor(Query(), nullptr);
     if (cursor.valid())
     {
         cursor->fill(_features);
@@ -231,6 +249,9 @@ BiomeLayer::loadPointControlSet()
 void
 BiomeLayer::loadPolygonControlSet()
 {
+    if (getVectorLayer() == nullptr)
+        return;
+
     OE_INFO << LC << "Loading polygon control set..." << std::endl;
 
     PolygonSpatialIndex* index = new PolygonSpatialIndex();
@@ -240,7 +261,7 @@ BiomeLayer::loadPolygonControlSet()
 
     // Populate the in-memory spatial index with all the control points
     int count = 0;
-    osg::ref_ptr<FeatureCursor> cursor = getControlSet()->createFeatureCursor(Query(), nullptr);
+    osg::ref_ptr<FeatureCursor> cursor = getVectorLayer()->createFeatureCursor(Query(), nullptr);
     if (cursor.valid())
     {
         cursor->fill(_features);
@@ -284,15 +305,21 @@ BiomeLayer::loadPolygonControlSet()
 
 
 FeatureSource*
-BiomeLayer::getControlSet() const
+BiomeLayer::getVectorLayer() const
 {
-    return options().controlVectors().getLayer();
+    return options().vectorLayer().getLayer();
 }
 
 std::shared_ptr<const BiomeCatalog>
 BiomeLayer::getBiomeCatalog() const
 {
     return options().biomeCatalog();
+}
+
+CoverageLayer*
+BiomeLayer::getCoverageLayer() const
+{
+    return options().coverageLayer().getLayer();
 }
 
 void
@@ -317,71 +344,6 @@ BiomeLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
-#if 0
-    MySpatialIndex* pointIndex = static_cast<MySpatialIndex*>(_pointIndex);
-    if (pointIndex)
-    {
-        // allocate a 16-bit image so we can represent 32K biomes
-        osg::ref_ptr<osg::Image> image = new osg::Image();
-        image->allocateImage(
-            getTileSize(),
-            getTileSize(),
-            1,
-            GL_RED,
-            GL_FLOAT);
-        image->setInternalTextureFormat(GL_R16F);
-
-        ImageUtils::PixelWriter write(image.get());
-
-        osg::Vec4 value;
-        float noise = 1.0f;
-        std::vector<RecordPtr> hits;
-        std::vector<double> ranges_squared;
-        Random prng(key.hash());
-        double radius = options().blendRadius().get();
-        std::set<int> biomeids_seen;
-
-        GeoImageIterator iter(GeoImage(image.get(), key.getExtent()));
-
-        iter.forEachPixelOnCenter([&]()
-            {
-                int biome_index = 0;
-
-                // randomly permute the coordinates in order to blend across biomes
-                double x = iter.x() + radius * (prng.next()*2.0 - 1.0);
-                double y = iter.y() + radius * (prng.next()*2.0 - 1.0);
-
-                hits.clear();
-
-                // find the closest biome vector to the point:
-                pointIndex->KNNSearch(
-                    osg::Vec3d(x, y, 0).ptr(),
-                    &hits,
-                    nullptr,
-                    1u,
-                    0.0);
-
-                if (hits.size() > 0)
-                {
-                    biome_index = hits[0]->_biome_index;
-
-                    if (biome_index > 0)
-                        biomeids_seen.insert(biome_index);
-                }
-
-                value.r() = biome_index;
-
-                write(value, iter.s(), iter.t());
-            });
-
-        GeoImage result(image.get(), key.getExtent());
-
-        trackImage(result, key, biomeids_seen);
-
-        return std::move(result);
-    }
-#endif
-
     PolygonSpatialIndex* polygonIndex = static_cast<PolygonSpatialIndex*>(_polygonIndex);
     if (polygonIndex)
     {
@@ -393,7 +355,25 @@ BiomeLayer::createImageImplementation(
             1,
             GL_RED,
             GL_FLOAT);
+
         image->setInternalTextureFormat(GL_R16F);
+
+
+        // bring in the land cover data if requested:
+        MetaTile<GeoCoverage<LandCoverSample>> metaverse;
+
+        // a "metaimage" lets us sample in the neighborhood of a tilekey image
+        if (getCoverageLayer() && getCoverageLayer()->isOpen())
+        {
+            metaverse.setCreateTileFunction(
+                [&](const TileKey& key, ProgressCallback* p) -> GeoCoverage<LandCoverSample>
+                {
+                    return getCoverageLayer()->createCoverage<LandCoverSample>(key, p);
+                });
+
+            metaverse.setCenterTileKey(key);
+        }
+
 
         ImageUtils::PixelWriter write(image.get());
 
@@ -405,59 +385,88 @@ BiomeLayer::createImageImplementation(
         double radius = options().blendRadius().get();
         std::set<int> biome_indexes_seen;
 
-        GeoImage temp(image.get(), key.getExtent());
+        const GeoExtent& ex = key.getExtent();
+        GeoImage temp(image.get(), ex);
         GeoImageIterator iter(temp);
+        LandCoverSample sample;
 
         iter.forEachPixelOnCenter([&]()
             {
                 int biome_index = 0;
 
-                // randomly permute the coordinates in order to blend across biomes
                 double x = iter.x();
                 double y = iter.y();
 
+                // randomly permute the coordinates in order to blend across biomes
                 if (radius > temp.getUnitsPerPixel())
                 {
                     x += radius * (prng.next()*2.0 - 1.0);
                     y += radius * (prng.next()*2.0 - 1.0);
                 }
 
-                double a_point[2] = { x, y };
-
-                hits.clear();
-
-                polygonIndex->Search(
-                    a_point, a_point,
-                    &hits,
-                    999u);
-
-                for (auto& hit : hits)
+                // First try the coverage layer.
+                if (metaverse.valid())
                 {
-                    if (hit->_polygon->contains2D(x, y))
+                    // convert the x,y to u,v
+                    double u = (x - ex.xMin()) / ex.width();
+                    double v = (y - ex.yMin()) / ex.height();
+
+                    if (metaverse.read(sample, u, v))
                     {
-                        biome_index = hit->_biome_index;
-
-                        if (biome_index > 0)
-                            biome_indexes_seen.insert(biome_index);
-
-                        break;
+                        // Process the landcover values!
+                        if (sample.biomeid().isSet())
+                        {
+                            const Biome* biome = getBiomeCatalog()->getBiome(sample.biomeid().get());
+                            if (biome)
+                            {
+                                biome_index = biome->index();
+                            }
+                        }
+                        // NB: lifemap values are read in the LifeMapLayer
                     }
                 }
 
-                value.r() = (float)biome_index;
+                // No biome yet? Try the vector layer.
+                if (biome_index == 0)
+                {
+                    double a_point[2] = { x, y };
 
+                    hits.clear();
+
+                    polygonIndex->Search(
+                        a_point, a_point,
+                        &hits,
+                        999u);
+
+                    for (auto& hit : hits)
+                    {
+                        if (hit->_polygon->contains2D(x, y))
+                        {
+                            biome_index = hit->_biome_index;
+                            break;
+                        }
+                    }
+                }
+                // if we found a valid one, insert it into the set
+                if (biome_index > 0)
+                {
+                    biome_indexes_seen.insert(biome_index);
+                }
+
+                // write it to the raster
+                value.r() = (float)biome_index;
                 write(value, iter.s(), iter.t());
             });
 
         GeoImage result(image.get(), key.getExtent());
 
+        // initiate tracking on all discovered biomes
         trackImage(result, key, biome_indexes_seen);
 
         return result;
     }
 
     return GeoImage::INVALID;
-
 }
 
 void

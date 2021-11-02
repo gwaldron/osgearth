@@ -540,7 +540,6 @@ LifeMapLayer::createImageImplementation(
     ImageUtils::PixelReader readLandCover;
     osg::Matrixf landcover_matrix;
     const LifeMapValueTable* landcover_table;
-    std::unordered_map<std::string, int> specialTextureIndexLUT;
 
     // a "metaimage" lets us sample in the neighborhood of a tilekey image
     TileKeyMetaImage landcover_metaimage;

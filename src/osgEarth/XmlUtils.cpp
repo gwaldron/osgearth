@@ -256,6 +256,16 @@ XmlElement::getConfig(const std::string& referrer) const
             Config conf = static_cast<XmlElement*>(doc->children.front().get())->getConfig( fullURI );
             conf.setExternalRef( href ); //fullURI );
             conf.setReferrer( fullURI );
+
+            // copy over include attrs (not spec), overwriting anything in the incoming conf
+            for (auto& attr : getAttrs())
+            {
+                if (attr.first != "href")
+                {
+                    conf.set(attr.first, attr.second);
+                }
+            }
+
             return conf;
         }
         else

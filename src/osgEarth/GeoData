@@ -637,6 +637,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT GeoImage
     {
     public:
+        using pixel_type = osg::Vec4f;
+
         /** Construct an empty (invalid) geoimage. */
         GeoImage();
 
@@ -923,6 +925,139 @@ namespace osgEarth
     };
 
     typedef std::vector<GeoNode> GeoNodeVector;
+
+
+    /**
+     * Sparse grid of templated values.
+     *
+     * The parameter <T> must follow implement the interface:
+     *
+     *    // return true for valid data, false for NO DATA.
+     *    bool valid() const { return ...has a valid data value...; }
+     *
+     *    // return a hash value for std::hash<T>
+     *    size_t operator()(const T& v) const
+     *
+     * and where the default constructed <T> returns valid()==false
+     */
+    template<typename T>
+    class Coverage
+    {
+    public:
+        using Ptr = std::shared_ptr<Coverage<T>>;
+
+        using pixel_type = T;
+
+        static Ptr create()
+        {
+            return Ptr(new Coverage<T>());
+        }
+
+        void allocate(unsigned w, unsigned h)
+        {
+            _width = w, _height = h;
+            _pixels.clear();
+            if (w*h > 0u)
+                _pixels.resize(w*h);
+        }
+
+        bool valid() const
+        {
+            return !_pixels.empty();
+        }
+
+        unsigned s() const {
+            return _width;
+        }
+
+        unsigned t() const {
+            return _height;
+        }
+
+        void write(const T& value, unsigned s, unsigned t)
+        {
+            unsigned ptr = t * _width + s;
+            _pixels[ptr] = value;
+        }
+
+        bool read(T& output, unsigned s, unsigned t) const
+        {
+            unsigned ptr = t * _width + s;
+            output = _pixels[ptr];
+            return output.valid();
+        }
+
+        bool read(T& output, double u, double v) const
+        {
+            unsigned s = (unsigned)((double)(_width - 1) * u);
+            unsigned t = (unsigned)((double)(_height - 1) * v);
+            return read(output, s, t);
+        }
+
+    private:
+        Coverage()
+        {
+            allocate(0, 0);
+        }
+
+    private:
+        unsigned _width, _height;
+        std::vector<T> _pixels;
+    };
+
+    template<typename T>
+    class GeoCoverage
+    {
+    public:
+        using pixel_type = T;
+
+        //! Construct a GeoCoverage
+        //! @param coverage Coverage to include in the geocoverage
+        //! @param extent geospatial extent of the coverage data
+        GeoCoverage(typename Coverage<T>::Ptr coverage, const GeoExtent& extent)
+            : _coverage(coverage), _extent(extent)
+        {
+            if (coverage == nullptr)
+                _status = Status::ResourceUnavailable;
+        }
+
+        GeoCoverage()
+            : _status(Status::ResourceUnavailable)
+        {
+            //nop
+        }
+
+        Status getStatus() const {
+            return _status;
+        }
+
+        bool valid() const {
+            return _status == STATUS_OK;
+        }
+
+        void write(const T& value, unsigned s, unsigned t)
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, void());
+            _coverage->write(value, s, t);
+        }
+
+        bool read(T& value, unsigned s, unsigned t) const
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
+            return _coverage->read(value, s, t);
+        }
+
+        bool read(T& value, double u, double v) const
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
+            return _coverage->read(value, u, v);
+        }
+
+    private:
+        GeoExtent _extent;
+        Status _status;
+        typename Coverage<T>::Ptr _coverage;
+    };
 }
 
 #endif // OSGEARTH_GEODATA_H

@@ -116,6 +116,7 @@ SET(LIB_PUBLIC_HEADERS
     Composite
     Config
     Containers
+    CoverageLayer
     Cube
     CullingUtils
     DateTime
@@ -542,6 +543,7 @@ set(TARGET_SRC
     ColorFilter.cpp
     Composite.cpp
     Config.cpp
+    CoverageLayer.cpp
     Cube.cpp
     CullingUtils.cpp
     DateTime.cpp

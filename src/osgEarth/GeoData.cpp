@@ -33,7 +33,6 @@ using namespace osgEarth;
 
 GeoPoint GeoPoint::INVALID;
 
-
 GeoPoint::GeoPoint(const SpatialReference* srs,
                    double x,
                    double y ) :

@@ -97,6 +97,122 @@ namespace osgEarth { namespace Util
         CreateImageFunction _createImage;
     };
 
+
+    /**
+     * MetaTile is a framework for treating a center tile and its 8 neighbors
+     * as a single larger tile. As you sample the tile with the read() function,
+     * it will automatically load the neighbors based on the u,v coordinates.
+     */
+    template<typename T>
+    class MetaTile
+    {
+    public:
+        using CreateTileFunction = std::function<T(const TileKey&, ProgressCallback*)>;
+
+        //! Function that will create new neighbor tiles given a tile key
+        inline void setCreateTileFunction(CreateTileFunction value);
+
+        //! Center tile of this metatile. Must call this before attempting
+        //! to read. Must call setCreateTileFunction before calling this.
+        inline void setCenterTileKey(const TileKey& key);
+
+        //! Read the value of a pixel of unit coordinates [u,v] relative to
+        //! the center tile of the meta
+        inline bool read(typename T::pixel_type& output, double u, double v);
+
+        //! The scale&bias of the tile relative to the key originally passed
+        //! to setCenterTileKey
+        inline const osg::Matrix& getScaleBias() const {
+            return _scale_bias;
+        }
+
+        inline bool valid() const {
+            return _tiles[1][1]._data.valid();
+        }
+
+    private:
+        TileKey _centerKey;
+        CreateTileFunction _createTile;
+
+        struct Tile {
+            Tile() : _failed(false) { }
+            bool _failed;
+            T _data;
+        };
+
+        Tile _tiles[3][3]; // col, row
+        osg::Matrix _scale_bias; // scale/bias matrix of _centerKey
+    };
+
+    template<typename T>
+    void MetaTile<T>::setCenterTileKey(const TileKey& original_key)
+    {
+        OE_HARD_ASSERT(_createTile != nullptr, "Must call setCreateTileFunction() before calling setCenterTileKey()");
+        // Fall back on parent keys until we get real data
+        TileKey key;
+        for (key = original_key;
+            !_tiles[1][1]._data.valid() && key.valid();
+            key.makeParent())
+        {
+            _tiles[1][1]._data = _createTile(key, nullptr);
+            _centerKey = key;
+        }
+        original_key.getExtent().createScaleBias(_centerKey.getExtent(), _scale_bias);
+    }
+
+    template<typename T>
+    void MetaTile<T>::setCreateTileFunction(MetaTile<T>::CreateTileFunction value)
+    {
+        _createTile = value;
+    }
+
+    template<typename T>
+    bool MetaTile<T>::read(typename T::pixel_type& output, double u, double v)
+    {
+        // scale and bias the u,v to the real center key
+        u = u * _scale_bias(0, 0) + _scale_bias(3, 0);
+        v = v * _scale_bias(1, 1) + _scale_bias(3, 1);
+
+        // clamp the input coordinates to the legal range:
+        u = clamp(u, -1.0, 2.0);
+        v = clamp(v, -1.0, 2.0);
+
+        // resolve the tile to sample:
+        int x = u < 0.0 ? 0 : u <= 1.0 ? 1 : 2;
+        int y = v < 0.0 ? 2 : v <= 1.0 ? 1 : 0;
+
+        Tile& tile = _tiles[x][y];
+
+        // if we already tried to load this tile and failed, bail out
+        if (tile._failed)
+            return false;
+
+        // if we still need to load this tile, do so
+        if (!tile._data.valid() && _createTile != nullptr)
+        {
+            TileKey key = _centerKey.createNeighborKey(x - 1, y - 1);
+            tile._data = _createTile(key, nullptr);
+            if (!tile._data.valid())
+            {
+                tile._failed = true;
+            }
+        }
+
+        if (tile._failed)
+            return false;
+
+        // transform the coordinates to the tile:
+        u += u < 0.0 ? 1.0 : u > 1.0 ? -1.0 : 0.0;
+        v += v < 0.0 ? 1.0 : v > 1.0 ? -1.0 : 0.0;
+
+        // scale/bias to this tile's extent:
+        // TODO. just supports same-level tilekey for now
+        //u = u * tile._scaleBias(0, 0) + tile._scaleBias(3, 0);
+        //v = v * tile._scaleBias(1, 1) + tile._scaleBias(3, 1);
+
+        return tile._data.read(output, u, v);
+    }
+
 } }
 
 #endif // OSGEARTH_METATILE_H

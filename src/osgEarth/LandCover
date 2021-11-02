@@ -22,7 +22,6 @@
 #include <osgEarth/Config>
 #include <osgEarth/Layer>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/Color>
 #include <vector>
 
 namespace osgEarth

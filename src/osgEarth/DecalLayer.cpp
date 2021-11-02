@@ -22,6 +22,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/Color>
 #include <osg/MatrixTransform>
 #include <osg/BlendFunc>
 #include <osg/BlendEquation>
@@ -638,7 +639,7 @@ DecalLandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallb
     
     // initialize to nodata
     ImageUtils::PixelWriter writeOutput(output.get());
-    writeOutput.assign(Color::all(NO_DATA_VALUE));
+    writeOutput.assign(Color(NO_DATA_VALUE));
 
     ImageUtils::PixelReader readOutput(output.get());
     readOutput.setBilinear(false);

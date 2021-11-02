@@ -58,10 +58,10 @@ namespace osgEarth
             : osg::Vec4f(r, g, b, a) { }
 
         /** Vector constructor */
-        static Color all(float v) { return Color(v,v,v,v); }
+        explicit Color(float v) : osg::Vec4f(v, v, v, v) { }
 
         /** RGBA/ABGR constructor */
-        Color( unsigned value, Format format =RGBA );
+        explicit Color( unsigned value, Format format =RGBA );
 
         /**
          * Construct a color from a hex string in one of the following formats, (with or

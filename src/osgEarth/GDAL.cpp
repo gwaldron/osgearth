@@ -26,6 +26,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
 #include <osgEarth/Metrics>
+#include <osgEarth/Color>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -1269,7 +1270,7 @@ GDAL::Driver::createImage(const TileKey& key,
             ImageUtils::PixelWriter write(image.get());
 
             // initialize all coverage texels to NODATA. -gw
-            write.assign(Color::all(NO_DATA_VALUE));
+            write.assign(Color(NO_DATA_VALUE));
 
             // coverage data; one channel data that is not subject to interpolated values
             unsigned char* data = new unsigned char[target_width * target_height * gdalSampleSize];
@@ -1376,7 +1377,7 @@ GDAL::Driver::createImage(const TileKey& key,
 
             // initialize all coverage texels to NODATA. -gw
             ImageUtils::PixelWriter write(image.get());
-            write.assign(Color::all(NO_DATA_VALUE));
+            write.assign(Color(NO_DATA_VALUE));
         }
         else
         {

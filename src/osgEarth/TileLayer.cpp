@@ -324,8 +324,6 @@ TileLayer::openImplementation()
 Status
 TileLayer::closeImplementation()
 {
-    setProfile(nullptr);
-
     return Layer::closeImplementation();
 }
 

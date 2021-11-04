@@ -320,7 +320,8 @@ BiomeManager::updateResidency(
             auto& assetUsages = iter.second[group];
 
             // The category points to multiple assets, which we will analyze and load.
-            for (const auto& assetPointer : assetPointers)
+            //volatile int x = assetPointers.size();
+            for (auto& assetPointer : assetPointers)
             {
                 const ModelAsset* asset = assetPointer.asset;
 

@@ -69,6 +69,7 @@ LifeMapLayer::Options::getConfig() const
     maskLayer().set(conf, "mask_layer");
     waterLayer().set(conf, "water_layer");
     colorLayer().set(conf, "color_layer");
+    landCoverLayer().set(conf, "land_cover_layer");
     landUseLayer().set(conf, "land_use_layer");
     conf.set("land_cover_weight", landCoverWeight());
     conf.set("land_cover_blur", landCoverBlur());
@@ -96,6 +97,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     maskLayer().get(conf, "mask_layer");
     waterLayer().get(conf, "water_layer");
     colorLayer().get(conf, "color_layer");
+    landCoverLayer().get(conf, "land_cover_layer");
     landUseLayer().get(conf, "land_use_layer");
     conf.get("land_cover_weight", landCoverWeight());
     conf.get("land_cover_blur", landCoverBlur());
@@ -264,6 +266,8 @@ LifeMapLayer::openImplementation()
 
     options().colorLayer().open(getReadOptions());
 
+    options().landCoverLayer().open(getReadOptions());
+
     options().landUseLayer().open(getReadOptions());
 
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
@@ -285,6 +289,7 @@ LifeMapLayer::addedToMap(const Map* map)
     options().maskLayer().addedToMap(map);
     options().waterLayer().addedToMap(map);
     options().colorLayer().addedToMap(map);
+    options().landCoverLayer().addedToMap(map);
     options().landUseLayer().addedToMap(map);
 
     // not specified; try to find it
@@ -299,6 +304,7 @@ LifeMapLayer::addedToMap(const Map* map)
 
     _map = map;
 
+#if 0
     if (getUseLandCover() == true)
     {
         _landCoverDictionary = map->getLayer<LandCoverDictionary>();
@@ -319,6 +325,7 @@ LifeMapLayer::addedToMap(const Map* map)
                 << std::endl;
         }
     }
+#endif
 }
 
 void
@@ -329,6 +336,7 @@ LifeMapLayer::removedFromMap(const Map* map)
     options().maskLayer().removedFromMap(map);
     options().waterLayer().removedFromMap(map);
     options().colorLayer().removedFromMap(map);
+    options().landCoverLayer().removedFromMap(map);
     ImageLayer::removedFromMap(map);
 }
 
@@ -366,6 +374,18 @@ ImageLayer*
 LifeMapLayer::getWaterLayer() const
 {
     return options().waterLayer().getLayer();
+}
+
+void
+LifeMapLayer::setLandCoverLayer(CoverageLayer* layer)
+{
+    options().landCoverLayer().setLayer(layer);
+}
+
+CoverageLayer*
+LifeMapLayer::getLandCoverLayer() const
+{
+    return options().landCoverLayer().getLayer();
 }
 
 void
@@ -504,11 +524,11 @@ LifeMapLayer::createImageImplementation(
     ElevationPool* ep = map->getElevationPool();
     ep->getTile(key, true, elevTile, &_workingSet, progress);
 
-    if (!elevTile.valid())
-        return GeoImage::INVALID;
-
     // ensure we have a normal map for slopes and curvatures:
-    elevTile->generateNormalMap(map.get(), &_workingSet, progress);
+    if (elevTile.valid())
+    {
+        elevTile->generateNormalMap(map.get(), &_workingSet, progress);
+    }
 
     // if we're using land use data, fetch that now:
     LandUseTile landuse;
@@ -524,6 +544,7 @@ LifeMapLayer::createImageImplementation(
         // the catalog:
         landuse_table = getBiomeLayer()->getBiomeCatalog()->getLandUseTable();
 
+
         // populate the tile with features that exist in the catalog:
         landuse.load(
             lu_key,
@@ -535,6 +556,7 @@ LifeMapLayer::createImageImplementation(
 
     GeoExtent extent = key.getExtent();
 
+#if 0
     // bring in the land cover data if requested:
     osg::ref_ptr<osg::Image> landcover;
     ImageUtils::PixelReader readLandCover;
@@ -575,6 +597,20 @@ LifeMapLayer::createImageImplementation(
                 }
             }
         }
+    }
+#endif
+
+    // set up the land cover data metatiler:
+    MetaTile<GeoCoverage<LandCoverSample>> landcover;
+    if (getLandCoverLayer())
+    {
+        landcover.setCreateTileFunction(
+            [&](const TileKey& key, ProgressCallback* p) -> GeoCoverage<LandCoverSample>
+            {
+                return getLandCoverLayer()->createCoverage<LandCoverSample>(key, p);
+            });
+
+        landcover.setCenterTileKey(key);
     }
 
     GeoImage densityMask;
@@ -713,43 +749,58 @@ LifeMapLayer::createImageImplementation(
         }
 
         // LAND COVER CONTRIBUTION
-        if (landcover.valid())
+        if (getLandCoverLayer() && landcover.valid())
         {
-            // scaled and biased UV coords
-            double uu = i.u() * landcover_matrix(0, 0) + landcover_matrix(3, 0);
-            double vv = i.v() * landcover_matrix(1, 1) + landcover_matrix(3, 1);
+            LandCoverSample temp;
+            LandCoverSample sample;
+            int dense_samples = 0;
+            int lush_samples = 0;
+            int rugged_samples = 0;
 
             // read the landcover with a blurring filter.
-            int lc_kernel_count = 0;
-            osg::Vec4f kernel;
             for (int a = -1; a <= 1; ++a)
             {
                 for (int b = -1; b <= 1; ++b)
                 {
-                    landcover_metaimage.read(uu + (double)a*lc_blur_u, vv + (double)b*lc_blur_v, temp);
-                    const LandCoverClass* lcc = _landCoverDictionary->getClassByValue((int)temp.r());
-                    if (lcc)
+                    if (landcover.read(temp, i.u() + (double)a*lc_blur_u, i.v() + (double)b*lc_blur_v))
                     {
-                        const LifeMapValue* value = landcover_table->getValue(lcc->getName());
-                        if (value)
+                        if (temp.dense().isSet())
                         {
-                            lc_kernel_count++;
-                            kernel[LIFEMAP_DENSE] += value->dense().get();
-                            kernel[LIFEMAP_LUSH] += value->lush().get();
-                            kernel[LIFEMAP_RUGGED] += value->rugged().get();
+                            sample.dense() = sample.dense().get() + temp.dense().get();
+                            ++dense_samples;
+                        }
+
+                        if (temp.lush().isSet())
+                        {
+                            sample.lush() = sample.lush().get() + temp.lush().get();
+                            ++lush_samples;
+                        }
+
+                        if (temp.rugged().isSet())
+                        {
+                            sample.rugged() = sample.rugged().get() + temp.rugged().get();
+                            ++rugged_samples;
                         }
                     }
                 }
             }
-            if (lc_kernel_count > 0)
+
+            weight[LANDCOVER] = 0.0f;
+
+            if (dense_samples > 1)
             {
-                kernel /= lc_kernel_count;
-                pixel[LANDCOVER] = kernel;
+                pixel[LANDCOVER][LIFEMAP_DENSE] = sample.dense().get() / (float)dense_samples;
                 weight[LANDCOVER] = getLandCoverWeight();
             }
-            else
+            if (lush_samples > 1)
             {
-                weight[LANDCOVER] = 0.0f;
+                pixel[LANDCOVER][LIFEMAP_LUSH] = sample.lush().get() / (float)lush_samples;
+                weight[LANDCOVER] = getLandCoverWeight();
+            }
+            if (rugged_samples > 1)
+            {
+                pixel[LANDCOVER][LIFEMAP_RUGGED] = sample.rugged().get() / (float)rugged_samples;
+                weight[LANDCOVER] = getLandCoverWeight();
             }
         }
 
@@ -822,7 +873,7 @@ LifeMapLayer::createImageImplementation(
         }
 
         // TERRAIN CONTRIBUTION:
-        if (getUseTerrain())
+        if (getUseTerrain() && elevTile.valid())
         {
             // Establish elevation at this pixel:
             elevation = elevTile->getElevation(i.x(), i.y()).elevation().as(Units::METERS);

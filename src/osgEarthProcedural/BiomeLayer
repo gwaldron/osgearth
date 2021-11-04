@@ -64,25 +64,6 @@ namespace osgEarth
                     lush().isSet() ||
                     rugged().isSet();
             }
-
-            // hash function
-            std::size_t operator()(const LandCoverSample& v) const {
-                return hash_value_unsigned(
-                    ::std::hash<::std::string>()(biomeid().get()),
-                    ::std::hash<::std::string>()(traits().get()),
-                    (unsigned)(dense().get()*255.0f),
-                    (unsigned)(lush().get()*255.0f),
-                    (unsigned)(rugged().get()*255.0f));
-            };
-
-            bool operator == (const LandCoverSample& v) const {
-                return
-                    biomeid() == v.biomeid() &&
-                    traits() == v.traits() &&
-                    dense() == v.dense() &&
-                    lush() == v.lush() &&
-                    rugged() == v.rugged();
-            }
         };
 
 
@@ -127,6 +108,10 @@ namespace osgEarth
             //! Manager that pages biome assets in and out
             BiomeManager& getBiomeManager() { return _biomeMan; }
 
+            //! Vector layer that deliniates the base biomes
+            FeatureSource* getVectorLayer() const;
+
+            //! Optional coverage layer that can modify the biome selection
             CoverageLayer* getCoverageLayer() const;
 
             //! Whether to automatically load and unload biomes, or to 
@@ -165,13 +150,8 @@ namespace osgEarth
 
         private:
 
-            FeatureSource* getVectorLayer() const;
-
             // control features for biome selection
             FeatureList _features;
-
-            // land cover layers to use for biome overrides
-            CoverageLayerVector _landCoverLayers;
 
             // spatial index for _features
             void* _pointIndex;

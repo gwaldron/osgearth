@@ -50,6 +50,7 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION_LAYER(ImageLayer, waterLayer);
+            OE_OPTION_LAYER(CoverageLayer, landCoverLayer);
             OE_OPTION_LAYER(FeatureSource, landUseLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
 
@@ -82,6 +83,9 @@ namespace osgEarth { namespace Procedural
 
         void setLandUseLayer(FeatureSource*);
         FeatureSource* getLandUseLayer() const;
+
+        void setLandCoverLayer(CoverageLayer*);
+        CoverageLayer* getLandCoverLayer() const;
 
         void setColorLayer(ImageLayer*);
         ImageLayer* getColorLayer() const;

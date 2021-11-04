@@ -37,11 +37,13 @@ REGISTER_OSGEARTH_LAYER(biomes, BiomeLayer);
 void
 BiomeLayer::Options::fromConfig(const Config& conf)
 {
-    blendRadius().setDefault(0.02);
+    blendRadius().setDefault(0.0f);
     biomeidField().setDefault("biomeid");
 
     biomeCatalog() = std::make_shared<BiomeCatalog>(conf.child("biomecatalog"));
     vectorLayer().get(conf, "vector_layer");
+    if (conf.hasChild("control_vectors"))
+        vectorLayer().get(conf, "control_vectors"); // backwards compat (now vector_layer)
     coverageLayer().get(conf, "coverage_layer");
 
     conf.get("blend_radius", blendRadius());
@@ -68,24 +70,31 @@ BiomeLayer::Options::getConfig() const
 
 namespace
 {
+    // Entry in the Biome Vectorpoint  R-Tree (no longer used)
     struct Record
     {
         Segment2d _segment;
         int _biome_index;
         double _radius;
     };
+    using RecordPtr = std::shared_ptr<Record>;
 
-    typedef std::shared_ptr<Record> RecordPtr;
-    typedef RTree<RecordPtr, double, 2> MySpatialIndex;
+    // Biome Vector R-Tree for point data (no longer used)
+    using MySpatialIndex = RTree<RecordPtr, double, 2>;
 
+    // Record in the Biome polygon spatial index
     struct PolygonRecord {
         int _biome_index;
         osg::ref_ptr<const Geometry> _polygon;
         double _buffer;
     };
-    typedef std::shared_ptr<PolygonRecord> PolygonRecordPtr;
-    typedef RTree<PolygonRecordPtr, double, 2> PolygonSpatialIndex;
+    using PolygonRecordPtr = std::shared_ptr<PolygonRecord>;
+
+    // The Biome polygon spatial index, held entirely in memory
+    using PolygonSpatialIndex = RTree<PolygonRecordPtr, double, 2>;
     
+    // Token for keeping track of biome images so we can page their
+    // asset data in and out
     struct BiomeTrackerToken : public osg::Object
     {
         META_Object(osgEarth, BiomeTrackerToken);
@@ -156,6 +165,7 @@ BiomeLayer::closeImplementation()
     }
 
     options().vectorLayer().close();
+    options().coverageLayer().close();
 
     return ImageLayer::closeImplementation();
 }
@@ -252,7 +262,7 @@ BiomeLayer::loadPolygonControlSet()
     if (getVectorLayer() == nullptr)
         return;
 
-    OE_INFO << LC << "Loading polygon control set..." << std::endl;
+    OE_INFO << LC << "Loading polygon biome vectors..." << std::endl;
 
     PolygonSpatialIndex* index = new PolygonSpatialIndex();
     _polygonIndex = index;
@@ -310,16 +320,16 @@ BiomeLayer::getVectorLayer() const
     return options().vectorLayer().getLayer();
 }
 
-std::shared_ptr<const BiomeCatalog>
-BiomeLayer::getBiomeCatalog() const
-{
-    return options().biomeCatalog();
-}
-
 CoverageLayer*
 BiomeLayer::getCoverageLayer() const
 {
     return options().coverageLayer().getLayer();
+}
+
+std::shared_ptr<const BiomeCatalog>
+BiomeLayer::getBiomeCatalog() const
+{
+    return options().biomeCatalog();
 }
 
 void
@@ -359,40 +369,38 @@ BiomeLayer::createImageImplementation(
         image->setInternalTextureFormat(GL_R16F);
 
 
-        // bring in the land cover data if requested:
-        MetaTile<GeoCoverage<LandCoverSample>> metaverse;
-
-        // a "metaimage" lets us sample in the neighborhood of a tilekey image
-        if (getCoverageLayer() && getCoverageLayer()->isOpen())
-        {
-            metaverse.setCreateTileFunction(
-                [&](const TileKey& key, ProgressCallback* p) -> GeoCoverage<LandCoverSample>
-                {
-                    return getCoverageLayer()->createCoverage<LandCoverSample>(key, p);
-                });
-
-            metaverse.setCenterTileKey(key);
-        }
-
-
         ImageUtils::PixelWriter write(image.get());
-
         osg::Vec4 value;
         float noise = 1.0f;
         std::vector<PolygonRecordPtr> hits;
         std::vector<double> ranges_squared;
         Random prng(key.hash());
         double radius = options().blendRadius().get();
-        std::set<int> biome_indexes_seen;
-
+        std::set<int> biome_indices_seen;
         const GeoExtent& ex = key.getExtent();
         GeoImage temp(image.get(), ex);
         GeoImageIterator iter(temp);
         LandCoverSample sample;
 
+        // Use meta-tiling to read coverage data with access to the 
+        // neighboring tiles - to support the blend radius.
+        MetaTile<GeoCoverage<LandCoverSample>> landcover;
+
+        if (getCoverageLayer() && getCoverageLayer()->isOpen())
+        {
+            landcover.setCreateTileFunction(
+                [&](const TileKey& key, ProgressCallback* p) -> GeoCoverage<LandCoverSample>
+                {
+                    return getCoverageLayer()->createCoverage<LandCoverSample>(key, p);
+                });
+
+            landcover.setCenterTileKey(key);
+        }
+
         iter.forEachPixelOnCenter([&]()
             {
                 int biome_index = 0;
+                std::string traits;
 
                 double x = iter.x();
                 double y = iter.y();
@@ -405,15 +413,14 @@ BiomeLayer::createImageImplementation(
                 }
 
                 // First try the coverage layer.
-                if (metaverse.valid())
+                if (landcover.valid())
                 {
                     // convert the x,y to u,v
                     double u = (x - ex.xMin()) / ex.width();
                     double v = (y - ex.yMin()) / ex.height();
 
-                    if (metaverse.read(sample, u, v))
+                    if (landcover.read(sample, u, v))
                     {
-                        // Process the landcover values!
                         if (sample.biomeid().isSet())
                         {
                             const Biome* biome = getBiomeCatalog()->getBiome(sample.biomeid().get());
@@ -422,35 +429,58 @@ BiomeLayer::createImageImplementation(
                                 biome_index = biome->index();
                             }
                         }
-                        // NB: lifemap values are read in the LifeMapLayer
+
+                        else if (sample.traits().isSet())
+                        {
+                            traits = sample.traits().get();
+                        }
+
+                        // NB: lifemap values are handled by the LifeMapLayer (ignored here)
                     }
                 }
 
-                // No biome yet? Try the vector layer.
+                // If the coverage did not resolve the biome, try the vector data:
                 if (biome_index == 0)
                 {
                     double a_point[2] = { x, y };
 
                     hits.clear();
 
-                    polygonIndex->Search(
-                        a_point, a_point,
-                        &hits,
-                        999u);
+                    polygonIndex->Search(a_point, a_point, &hits, 999u);
 
+                    // take the first hit.
+                    // idea: use a priority attribute to resolve layered polygons?
                     for (auto& hit : hits)
                     {
                         if (hit->_polygon->contains2D(x, y))
                         {
-                            biome_index = hit->_biome_index;
+                            if (traits.empty())
+                            {
+                                biome_index = hit->_biome_index;
+                            }
+                            else
+                            {
+                                const Biome* base = getBiomeCatalog()->getBiomeByIndex(hit->_biome_index);
+                                if (base)
+                                {
+                                    std::string id = base->id().get() + "." + traits;
+                                    const Biome* mod = getBiomeCatalog()->getBiome(id);
+                                    if (mod)
+                                    {
+                                        biome_index = mod->index();
+                                    }
+                                }
+                            }
+
                             break;
                         }
                     }
                 }
+
                 // if we found a valid one, insert it into the set
                 if (biome_index > 0)
                 {
-                    biome_indexes_seen.insert(biome_index);
+                    biome_indices_seen.insert(biome_index);
                 }
 
                 // write it to the raster
@@ -460,8 +490,10 @@ BiomeLayer::createImageImplementation(
 
         GeoImage result(image.get(), key.getExtent());
 
-        // initiate tracking on all discovered biomes
-        trackImage(result, key, biome_indexes_seen);
+        // Set up tracking on all discovered biomes in this image. 
+        // This will allow us to page out when all references to a biome
+        // expire from the scene
+        trackImage(result, key, biome_indices_seen);
 
         return result;
     }
@@ -475,6 +507,7 @@ BiomeLayer::postCreateImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
+    // (This runs post-caching)
     // When a new biome raster arrives, scan it to find a set of all
     // biome indices that it contains, and register this set with the
     // tracker.
@@ -486,7 +519,7 @@ BiomeLayer::postCreateImageImplementation(
         GeoImageIterator iter(createdImage);
         ImageUtils::PixelReader read(createdImage.getImage());
 
-        std::set<int> biome_indexes_seen;
+        std::set<int> biome_indices_seen;
         osg::Vec4 pixel;
 
         iter.forEachPixel([&]()
@@ -494,10 +527,10 @@ BiomeLayer::postCreateImageImplementation(
                 read(pixel, iter.s(), iter.t());
                 int biome_index = (int)pixel.r();
                 if (biome_index > 0)
-                    biome_indexes_seen.insert(biome_index);
+                    biome_indices_seen.insert(biome_index);
             });
 
-        trackImage(createdImage, key, biome_indexes_seen);
+        trackImage(createdImage, key, biome_indices_seen);
     }
 }
 
@@ -529,7 +562,7 @@ BiomeLayer::trackImage(
 }
 
 void
-BiomeLayer::objectDeleted(void* value)
+BiomeLayer::objectDeleted(void* value)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 {
     // Invoked when the biome index raster destructs.
     // Inform the BiomeManager that the indices referenced by this

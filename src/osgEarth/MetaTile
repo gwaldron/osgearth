@@ -126,21 +126,28 @@ namespace osgEarth { namespace Util
             return _scale_bias;
         }
 
-        inline bool valid() const {
-            return _tiles[1][1]._data.valid();
+        inline bool valid() {
+            return _tiles(0,0)._data.valid();
         }
 
     private:
         TileKey _centerKey;
         CreateTileFunction _createTile;
 
+        // one component tile
         struct Tile {
             Tile() : _failed(false) { }
             bool _failed;
             T _data;
         };
 
-        Tile _tiles[3][3]; // col, row
+        // sparse grid for metatile components
+        struct Grid : public std::unordered_map<int, Tile> {
+            inline Tile& operator()(int x, int y) {
+                return operator[](y * 100 + x);
+            }
+        };
+        Grid _tiles;
         osg::Matrix _scale_bias; // scale/bias matrix of _centerKey
     };
 
@@ -151,10 +158,10 @@ namespace osgEarth { namespace Util
         // Fall back on parent keys until we get real data
         TileKey key;
         for (key = original_key;
-            !_tiles[1][1]._data.valid() && key.valid();
+            !_tiles(0,0)._data.valid() && key.valid();
             key.makeParent())
         {
-            _tiles[1][1]._data = _createTile(key, nullptr);
+            _tiles(0,0)._data = _createTile(key, nullptr);
             _centerKey = key;
         }
         original_key.getExtent().createScaleBias(_centerKey.getExtent(), _scale_bias);
@@ -173,15 +180,11 @@ namespace osgEarth { namespace Util
         u = u * _scale_bias(0, 0) + _scale_bias(3, 0);
         v = v * _scale_bias(1, 1) + _scale_bias(3, 1);
 
-        // clamp the input coordinates to the legal range:
-        u = clamp(u, -1.0, 2.0);
-        v = clamp(v, -1.0, 2.0);
+        // tile number:
+        int x = ::floor(u);
+        int y = ::floor(v);
 
-        // resolve the tile to sample:
-        int x = u < 0.0 ? 0 : u <= 1.0 ? 1 : 2;
-        int y = v < 0.0 ? 2 : v <= 1.0 ? 1 : 0;
-
-        Tile& tile = _tiles[x][y];
+        Tile& tile = _tiles(x, y);
 
         // if we already tried to load this tile and failed, bail out
         if (tile._failed)
@@ -190,7 +193,7 @@ namespace osgEarth { namespace Util
         // if we still need to load this tile, do so
         if (!tile._data.valid() && _createTile != nullptr)
         {
-            TileKey key = _centerKey.createNeighborKey(x - 1, y - 1);
+            TileKey key = _centerKey.createNeighborKey(x, y);
             tile._data = _createTile(key, nullptr);
             if (!tile._data.valid())
             {
@@ -201,14 +204,9 @@ namespace osgEarth { namespace Util
         if (tile._failed)
             return false;
 
-        // transform the coordinates to the tile:
-        u += u < 0.0 ? 1.0 : u > 1.0 ? -1.0 : 0.0;
-        v += v < 0.0 ? 1.0 : v > 1.0 ? -1.0 : 0.0;
-
-        // scale/bias to this tile's extent:
-        // TODO. just supports same-level tilekey for now
-        //u = u * tile._scaleBias(0, 0) + tile._scaleBias(3, 0);
-        //v = v * tile._scaleBias(1, 1) + tile._scaleBias(3, 1);
+        // tile-local coordinates for sampling:
+        u = u - (double)x;
+        v = v - (double)y;
 
         return tile._data.read(output, u, v);
     }

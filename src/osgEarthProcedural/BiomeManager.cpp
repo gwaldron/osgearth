@@ -707,7 +707,7 @@ BiomeManager::createGPULookupTables(
 
         if (biome->index() <= 0)
         {
-            OE_WARN << LC << "Found a biome index <= 0...skipping" << std::endl;
+            OE_SOFT_ASSERT(biome->index() > 0, "Found a biome index <= 0, skipping");
             continue;
         }
 

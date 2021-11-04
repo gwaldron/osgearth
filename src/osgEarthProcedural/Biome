@@ -72,6 +72,7 @@ namespace osgEarth
             OE_OPTION(float, width);
             OE_OPTION(float, height);
             OE_OPTION(float, sizeVariation);
+            OE_OPTION(std::string, traits);
 
             //! Construct an empty model asset definition
             ModelAsset() { }
@@ -181,6 +182,10 @@ namespace osgEarth
 
                 // coverage percentage when this asset it selected (default = 1.0)
                 float fill;
+
+                bool operator < (const ModelAssetPointer& rhs) const {
+                    return (std::uintptr_t)asset < (std::uintptr_t)rhs.asset;
+                }
             };
 
             using ModelAssetPointers = std::vector<ModelAssetPointer>;
@@ -191,6 +196,7 @@ namespace osgEarth
 
             //! The assets group collections represented by this biome.
             ModelAssetGroups& assetGroups() { return _modelgroups; }
+            const ModelAssetGroups& assetGroups() const { return _modelgroups; };
 
             //! Collection of this biome's asset pointers for the specified asset
             //! group, or the assets from the parent biome if this biome's asset
@@ -204,10 +210,11 @@ namespace osgEarth
         private:
             int _index;
             const Biome* _parentBiome;
+            bool _implicit; // whether this biome really exists or was derived by filters
             friend class BiomeCatalog;
         };
 
-
+#if 1
         /**
          * A single lifemap value set.
          */
@@ -243,6 +250,7 @@ namespace osgEarth
         private:
             std::unordered_map<std::string, LifeMapValue> _lut;
         };
+#endif
 
         /**
          * Defines all biomes, assets, and land use mappings used
@@ -267,19 +275,24 @@ namespace osgEarth
             //! Asset catalog
             const AssetCatalog& getAssets() const;
 
+#if 1
             //! Table that maps land use classes to lifemap values.
             const LifeMapValueTable* getLandUseTable() const;
 
-            //! Talbe that maps land cover classes to lifemap values.
+            //! Table that maps land cover classes to lifemap values.
             const LifeMapValueTable* getLandCoverTable() const;
+#endif
 
         public:
             Config getConfig() const;
 
-            std::atomic_int _biomeIndexGenerator;
+            int _biomeIndexGenerator;
             AssetCatalog _assets;
+#if 1
             std::shared_ptr<LifeMapValueTable> _landUseTable;
             std::shared_ptr<LifeMapValueTable> _landCoverTable;
+#endif
+
             std::map<int, Biome> _biomes_by_index; // keep ordered by index
         };
 

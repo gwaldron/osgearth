@@ -63,6 +63,7 @@ ModelAsset::ModelAsset(const Config& conf)
     conf.get("width", width());
     conf.get("height", height());
     conf.get("size_variation", sizeVariation());
+    conf.get("traits", traits());
 
     // save the original so the user can extract user-defined values
     _sourceConfig = conf;
@@ -79,6 +80,7 @@ ModelAsset::getConfig() const
     conf.set("width", width());
     conf.set("height", height());
     conf.set("size_variation", sizeVariation());
+    conf.set("traits", traits());
     return conf;
 }
 
@@ -203,6 +205,7 @@ AssetCatalog::empty() const
     return _models.empty() && _textures.empty();
 }
 
+#if 1
 //...................................................................
 
 LifeMapValue::LifeMapValue(const Config& conf)
@@ -267,11 +270,13 @@ LifeMapValueTable::getValue(const std::string& id) const
     auto iter = _lut.find(id);
     return iter != _lut.end() ? &iter->second : nullptr;
 }
+#endif
 
 //...................................................................
 
 Biome::Biome(const Config& conf, AssetCatalog* assetCatalog) :
-    _parentBiome(nullptr)
+    _parentBiome(nullptr),
+    _implicit(false)
 {
     conf.get("id", id());
     conf.get("name", name());
@@ -336,11 +341,13 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
 {
     _assets = AssetCatalog(conf.child("assetcatalog"));
 
-    if (conf.hasChild("landuse_lifemap_table"))
+#if 0
+    if (conf.hasChild("landuse_lifemap_table")) // not used
         _landUseTable = std::make_shared<LifeMapValueTable>(conf.child("landuse_lifemap_table"));
 
-    if (conf.hasChild("landcover_lifemap_table"))
+    if (conf.hasChild("landcover_lifemap_table")) // deprecated
         _landCoverTable = std::make_shared<LifeMapValueTable>(conf.child("landcover_lifemap_table"));
+#endif
 
     ConfigSet biome_defs = conf.child("biomedefinitions").children("biome");
     if (biome_defs.empty())
@@ -348,6 +355,7 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
     if (biome_defs.empty())
         biome_defs = conf.child("biomes").children("biome"); // backwards compat
 
+    // bring in all the raw biome definitions.
     for (const auto& b_conf : biome_defs)
     {
         Biome biome(b_conf, &_assets);
@@ -355,7 +363,7 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
         _biomes_by_index[biome._index] = std::move(biome);
     }
 
-    // resolve parent biome pointers.
+    // resolve the explicit parent biome pointers.
     for (auto& iter : _biomes_by_index)
     {
         Biome& biome = iter.second;
@@ -364,6 +372,104 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
             const Biome* parent = getBiome(biome.parentId().get());
             if (parent)
                 biome._parentBiome = parent;
+        }
+    }
+
+    // next, scan the biomes for any assets with filter, and add a
+    // new biome for each combination
+    for (auto& iter : _biomes_by_index)
+    {
+        Biome& biome = iter.second;
+
+        // skip implicit biomes since we already processed them
+        if (biome._implicit)
+            continue;
+
+        // Collect all assets with filters so we can make a biome for each.
+        // traverse "up" through the parent biomes to find them all.
+        std::unordered_map<std::string, std::set<Biome::ModelAssetPointer>[NUM_ASSET_GROUPS]> traits_table;
+
+        for(const Biome* ptr = &biome; 
+            ptr != nullptr;
+            ptr = ptr->_parentBiome)
+        {
+            for (auto& asset_group : ptr->assetGroups())
+            {
+                int count = 0;
+                for (auto& asset_ptr : asset_group)
+                {
+                    const std::string& traits = asset_ptr.asset->traits().get();
+                    if (!traits.empty())
+                    {
+                        int g = asset_ptr.asset->_group;
+                        traits_table[traits][g].insert(asset_ptr);
+                    }
+                }
+            }
+        }
+
+        // for each filter found, make a new subbiome and copy all the corresponding
+        // assets to it.
+        for(auto& iter : traits_table)
+        {
+            const std::string& traits = iter.first;
+            auto& traits_asset_groups = iter.second;
+
+            // create a new biome for this traits if it doesn't already exist:
+            std::string sub_biome_id = biome.id().get() + "." + traits;
+            const Biome* sub_biome = getBiome(sub_biome_id);
+            if (sub_biome == nullptr)
+            {
+                // lastly, insert it into the index.
+                int new_index = _biomeIndexGenerator++;
+                Biome& new_biome = _biomes_by_index[new_index];
+                new_biome._index = new_index;
+
+                new_biome.id() = sub_biome_id;
+                new_biome.name() = biome.name().get() + " (" + traits + ")";
+
+                // marks this biome as one that was derived from filter data,
+                // not defined by the configuration.
+                new_biome._implicit = true;
+
+                // By default the parent is unset, but this may change in the
+                // search block that follows. A filtered biome without a 
+                // similarly filtered parent should render nothing.
+                new_biome.parentId().clear();
+
+                // serach "up the chain" to see if there's a parent that can 
+                // support fallback for this particular filter
+                const Biome* ptr = &biome;
+                while (ptr)
+                {
+                    // find the natural parent; if none, bail.
+                    const Biome* parent = getBiome(ptr->parentId().get());
+                    if (parent)
+                    {
+                        // find a selector variation of the natural parent. If found, success.
+                        std::string parent_filtered_id = parent->id().get() + "." + traits;
+                        const Biome* temp = getBiome(parent_filtered_id);
+                        if (temp)
+                        {
+                            new_biome.parentId() = parent_filtered_id;
+                            new_biome._parentBiome = temp;
+                            break;
+                        }
+                    }
+
+                    // if not found, parent up and try again.
+                    ptr = parent;
+                }
+
+                // copy over asset pointers for each asset matching the filter
+                for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
+                {
+                    for (auto& pointer : traits_asset_groups[i])
+                    {
+                        new_biome.assetGroups()[i].push_back(pointer);
+                    }
+                }
+            }
         }
     }
 }
@@ -412,6 +518,7 @@ BiomeCatalog::getAssets() const
     return _assets;
 }
 
+#if 1
 const LifeMapValueTable*
 BiomeCatalog::getLandUseTable() const
 {
@@ -423,3 +530,4 @@ BiomeCatalog::getLandCoverTable() const
 {
     return _landCoverTable.get();
 }
+#endif

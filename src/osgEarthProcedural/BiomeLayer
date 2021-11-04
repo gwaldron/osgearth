@@ -40,48 +40,48 @@ namespace osgEarth
         struct LandCoverSample
         {
             OE_OPTION(std::string, biomeid);
+            OE_OPTION(std::string, traits);
             OE_OPTION(float, dense);
             OE_OPTION(float, lush);
             OE_OPTION(float, rugged);
-            OE_OPTION(float, special);
 
             LandCoverSample() { }
 
             LandCoverSample(const Config& conf)
             {
                 conf.get("biome_id", biomeid());
+                conf.get("traits", traits());
                 conf.get("dense", dense());
                 conf.get("lush", lush());
                 conf.get("rugged", rugged());
-                conf.get("special", special());
             }
 
             bool valid() const {
                 return
                     (biomeid().isSet() && !biomeid()->empty()) ||
+                    traits().isSet() ||
                     dense().isSet() ||
                     lush().isSet() ||
-                    rugged().isSet() ||
-                    special().isSet();
+                    rugged().isSet();
             }
 
             // hash function
             std::size_t operator()(const LandCoverSample& v) const {
                 return hash_value_unsigned(
                     ::std::hash<::std::string>()(biomeid().get()),
+                    ::std::hash<::std::string>()(traits().get()),
                     (unsigned)(dense().get()*255.0f),
                     (unsigned)(lush().get()*255.0f),
-                    (unsigned)(rugged().get()*255.0f),
-                    (unsigned)(special().get()*255.0f));
+                    (unsigned)(rugged().get()*255.0f));
             };
 
             bool operator == (const LandCoverSample& v) const {
                 return
                     biomeid() == v.biomeid() &&
+                    traits() == v.traits() &&
                     dense() == v.dense() &&
                     lush() == v.lush() &&
-                    rugged() == v.rugged() &&
-                    special() == v.special();
+                    rugged() == v.rugged();
             }
         };
 

@@ -1,0 +1,367 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_COVERAGE_LAYER_H
+#define OSGEARTH_COVERAGE_LAYER_H
+
+#include <osgEarth/Common>
+#include <osgEarth/Layer>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/LayerReference>
+
+namespace osgEarth
+{
+    /**
+     * CoverageLayer is a data-only layer that creates gridded coverages.
+     * A "coverage" is a 2-dimensional data structure, like and image,
+     * but in which each cell contains a user-defined data structure.
+     *
+     * Internally, a Coverage is an Image consisting of a discrete
+     * integer value at each pixel. A mapping tables provides information
+     * on how to interpret specific values. The user of a CoverageLayer
+     * must know the format of the data structure in use, and must
+     * use that structure as the template parameter when calling
+     * createMappings() and createCoverage().
+     *
+     * This is a data-only layer. The terrain engine will not render it.
+     */
+    class OSGEARTH_EXPORT CoverageLayer : public Layer
+    {
+    public:
+        struct SourceLayerOptions : public ConfigOptions
+        {
+            OE_OPTION_LAYER(ImageLayer, source);
+            OE_OPTION(Config, mappings);
+            Config getConfig() const;
+            void fromConfig(const Config& conf);
+        };
+
+        struct OSGEARTH_EXPORT Options : public Layer::Options
+        {
+            META_LayerOptions(osgEarth, Options, Layer::Options);
+            OE_OPTION(Config, presets);
+            OE_OPTION_VECTOR(SourceLayerOptions, layers);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, CoverageLayer, Options, Layer, Coverage);
+
+        //! Table that holds the mappings from coverage values
+        //! to user data structures.
+        template<typename T>
+        struct Mappings : public std::unordered_map<unsigned, T> {
+            const T _nodata;
+            inline const T& get(unsigned value) const;
+        };
+
+        //! Table of preset sample values.
+        struct Presets : public std::unordered_map<std::string, Config> {
+            const Config _nodata;
+            inline const Config& get(const std::string& name) const;
+        };
+
+        //! Create the value mapping table. You can then pass
+        //! this table to the createCoverage() method.
+        template<typename T>
+        void createMappings(const SourceLayerOptions&, Mappings<T>& output) const;
+
+        //! Create a GeoCoverage for a given tile key.
+        //! @param key TileKey for which to create a coverage grid
+        //! @param progress Progress indicator (can be nullptr)
+        template<typename T>
+        inline GeoCoverage<T> createCoverage(
+            const TileKey& key,
+            ProgressCallback* progress);
+
+        //! Create a GeoCoverage for a given tile key.
+        //! @param key TileKey for which to create a coverage grid
+        //! @param mappings Value mapping table returned by createMappings()
+        //! @param progress Progress indicator (can be nullptr)
+        template<typename T>
+        inline GeoCoverage<T> createCoverage(
+            const TileKey& key,
+            ImageLayer* source,
+            const Mappings<T>& mappings,
+            ProgressCallback* progress);
+
+    protected: // Layer
+
+        virtual void init() override;
+
+        virtual Status openImplementation() override;
+
+    public: // Layer
+
+        virtual void addedToMap(const Map*);
+
+        virtual void removedFromMap(const Map*);
+
+    private:
+
+        template<typename T>
+        inline bool populate(
+            GeoCoverage<T>& output,
+            const TileKey& key,
+            ProgressCallback* progress);
+    };
+
+
+    // inline functions for CoverageLayer
+    template<typename T>
+    const T& CoverageLayer::Mappings<T>::get(unsigned value) const
+    {
+        auto i = find(value);
+        return i != end() ? i->second : _nodata;
+    }
+
+    const Config& CoverageLayer::Presets::get(const std::string& name) const
+    {
+        auto i = find(name);
+        return i != end() ? i->second : _nodata;
+    }
+
+    template<typename T>
+    GeoCoverage<T> CoverageLayer::createCoverage(
+        const TileKey& key,
+        ImageLayer* source,
+        const Mappings<T>& mappings,
+        ProgressCallback* p)
+    {
+        Coverage<T>::Ptr result;
+
+        if (source && source->isOpen())
+        {
+            GeoImage image = source->createImage(key, p);
+            if (image.valid())
+            {
+                osg::Vec4 pixel;
+                GeoImagePixelReader read(image);
+                read.setBilinear(false);
+                //bool normalized = image.getImage()->getDataType() == GL_UNSIGNED_BYTE;
+
+                result = Coverage<T>::create();
+                result->allocate(read.s(), read.t());
+
+                GeoImageIterator iter(image);
+                iter.forEachPixel([&]()
+                    {
+                        read(pixel, iter.s(), iter.t());
+                        unsigned value;
+                        //if (normalized)
+                        if (pixel.r() < 1.0f)
+                            value = (unsigned)(pixel.r()*255.0f);
+                        else
+                            value = (unsigned)pixel.r();
+
+                        const T& sample = mappings.get(value);
+                        if (sample.valid())
+                        {
+                            result->write(sample, iter.s(), iter.t());
+                        }
+                    });
+            }
+        }
+        return GeoCoverage<T>(result, key.getExtent());
+    }
+    
+    template<typename T>
+    void CoverageLayer::createMappings(
+        const SourceLayerOptions& layer,
+        CoverageLayer::Mappings<T>& output) const
+    {
+        Presets presets;
+        for (auto& child : options().presets()->children("preset"))
+        {
+            presets[child.value("name")] = child;
+        }
+        
+        for (auto& child : layer.mappings()->children("mapping"))
+        {            
+            optional<unsigned> value;
+            std::string preset_name;
+            if (child.get("value", value))
+            {
+                if (child.get("preset", preset_name))
+                {
+                    const Config& p = presets.get(preset_name);
+                    Config temp = child;
+                    temp.merge(p);
+                    output[value.get()] = T(temp);
+                }
+                else
+                {
+                    output[value.get()] = T(child);
+                }
+            }
+        }
+    }
+
+    template<typename T>
+    GeoCoverage<T> CoverageLayer::createCoverage(
+        const TileKey& key,
+        ProgressCallback* p)
+    {
+        GeoCoverage<T> result;
+        populate(result, key, p);
+        return result;
+    }
+
+    // inline function for CoverageLayerVector
+    template<typename T>
+    bool CoverageLayer::populate(
+        GeoCoverage<T>& output,
+        const TileKey& key,
+        ProgressCallback* progress)
+    {
+        if (options().layers().empty())
+            return false;
+
+        // Special case of one layer - no compositing necessary
+        if (options().layers().size() == 1)
+        {
+            auto& layer = options().layers().front();
+            if (layer.source().getLayer()->isOpen())
+            {
+                CoverageLayer::Mappings<T> mappings;
+                createMappings(layer, mappings);
+                output = createCoverage(key, layer.source().getLayer(), mappings, progress);
+            }
+            return output.valid();
+        }
+
+        bool fallback = false;   // whether to fall back on parent tiles for a component
+
+        T value;
+        unsigned num_values = 0u;
+        unsigned num_nodata_values = 1u;
+
+        // Iterate backwards since the last layer has the highest priority.
+        // If we get an image with all valid values (no NO_DATA), we are finished
+        for (auto i = options().layers().rbegin();
+            i != options().layers().rend() && num_nodata_values > 0u;
+            ++i)
+        {
+            auto& layer = *i;
+            ImageLayer* imageLayer = layer.source().getLayer();
+
+            if (!imageLayer->isOpen())
+                continue;
+
+            GeoCoverage<T> input;
+            osg::Matrixd input_scaleBias;
+
+            // TODO: find a way to cache these somewhere? or just leave it?
+            CoverageLayer::Mappings<T> mappings;
+            createMappings(layer, mappings);
+
+            // Fetch the image for the current component. If necessary, fall back on
+            // ancestor tilekeys until we get a result. This is necessary if we 
+            // already have some data but there are NO DATA values that need filling.
+            if (fallback)
+            {
+                TileKey inputKey = key;
+                while (input.valid() == false && inputKey.valid())
+                {
+                    input = createCoverage(inputKey, imageLayer, mappings, progress);
+                    if (!input.valid())
+                        inputKey.makeParent();
+                    else
+                        key.getExtent().createScaleBias(inputKey.getExtent(), input_scaleBias);
+                }
+            }
+            else
+            {
+                input = createCoverage(key, imageLayer, mappings, progress);
+            }
+
+            if (!input.valid()) // contains no data? move on
+            {
+                continue;
+            }
+
+            // scale and bias to read an ancestor (fallback) tile if necessary.
+            double
+                scale = input_scaleBias(0, 0),
+                sbias = input_scaleBias(3, 0)*input.s(),
+                tbias = input_scaleBias(3, 1)*input.t();
+
+            // If this is the first image, scan the image for NO_DATA values.
+            // TODO: revisit this, is it still necessary? Is there a quicker way
+            // to count nodatas with the coverage sparse grid?
+            if (!output.valid())
+            {
+                num_nodata_values = 0u;
+
+                for (unsigned t = 0; t < input.t() && num_nodata_values == 0u; ++t)
+                {
+                    for (unsigned s = 0; s < input.s() && num_nodata_values == 0u; ++s)
+                    {
+                        if (!input.read(value, (unsigned)(s*scale + sbias), (unsigned)(t*scale + tbias)))
+                        {
+                            num_nodata_values++;
+                        }
+                    }
+                }
+
+                output = input;
+                num_values = output.s() * output.t();
+                fallback = true;
+                continue;
+            }
+
+            // now composite this image under the previous one, 
+            // accumulating a count of NO_DATA values along the way.
+            T new_value;
+
+            for (unsigned t = 0u; t < output.t(); ++t)
+            {
+                for (unsigned s = 0u; s < output.s(); ++s)
+                {
+                    if (output.read(value, s, t) == false) // nodata
+                    {
+                        if (input.read(new_value, (unsigned)(s*scale + sbias), (unsigned)(t*scale + tbias)))
+                        {
+                            output.write(new_value, s, t);
+                        }
+                        else
+                        {
+                            ++num_nodata_values;
+                        }
+                    }
+                }
+            }
+        }
+
+        // If the image is ALL nodata ... return false.
+        if (num_nodata_values == num_values)
+        {
+            output = GeoCoverage<T>();
+            return false;
+        }
+        else
+        {
+            return output.valid();
+        }
+    }
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_COVERAGE_LAYER_H

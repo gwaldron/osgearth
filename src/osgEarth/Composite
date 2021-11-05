@@ -189,9 +189,6 @@ namespace osgEarth
         //! Close all composited layers
         virtual Status closeImplementation();
 
-        //! Creates a raster image for the given tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
-
         //! Scene graph containing any nodes from the composited image layers
         virtual osg::Node* getNode() const;
 
@@ -201,8 +198,11 @@ namespace osgEarth
 
     protected: // Layer
 
-               //! Called by constructors
+        //! Called by constructors
         virtual void init();
+
+        //! Creates a raster image for the given tile key
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
     protected:
 

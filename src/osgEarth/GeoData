@@ -1035,6 +1035,14 @@ namespace osgEarth
             return _status == STATUS_OK;
         }
 
+        unsigned s() const {
+            return _coverage ? _coverage->s() : 0;
+        }
+
+        unsigned t() const {
+            return _coverage ? _coverage->t() : 0;
+        }
+
         void write(const T& value, unsigned s, unsigned t)
         {
             OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, void());

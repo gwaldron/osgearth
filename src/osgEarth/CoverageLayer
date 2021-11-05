@@ -128,14 +128,14 @@ namespace osgEarth
     template<typename T>
     const T& CoverageLayer::Mappings<T>::get(unsigned value) const
     {
-        auto i = find(value);
-        return i != end() ? i->second : _nodata;
+        auto i = this->find(value);
+        return i != this->end() ? i->second : _nodata;
     }
 
     const Config& CoverageLayer::Presets::get(const std::string& name) const
     {
-        auto i = find(name);
-        return i != end() ? i->second : _nodata;
+        auto i = this->find(name);
+        return i != this->end() ? i->second : _nodata;
     }
 
     template<typename T>
@@ -145,7 +145,7 @@ namespace osgEarth
         const Mappings<T>& mappings,
         ProgressCallback* p)
     {
-        Coverage<T>::Ptr result;
+        typename Coverage<T>::Ptr result;
 
         if (source && source->isOpen())
         {

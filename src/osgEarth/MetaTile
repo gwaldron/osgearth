@@ -144,7 +144,7 @@ namespace osgEarth { namespace Util
         // sparse grid for metatile components
         struct Grid : public std::unordered_map<int, Tile> {
             inline Tile& operator()(int x, int y) {
-                return operator[](y * 100 + x);
+                return this->operator[](y * 100 + x);
             }
         };
         Grid _tiles;

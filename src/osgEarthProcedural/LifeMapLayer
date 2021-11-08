@@ -92,7 +92,6 @@ namespace osgEarth { namespace Procedural
 
         void setLandCoverWeight(float value);
         float getLandCoverWeight() const;
-        //void setUseLandCover(bool value);
         bool getUseLandCover() const;
 
         void setTerrainWeight(float value);

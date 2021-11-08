@@ -28,7 +28,6 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
-//#include <osgEarth/LandCoverLayer>
 #include <osgEarth/CoverageLayer>
 
 namespace osgEarth

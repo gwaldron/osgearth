@@ -303,29 +303,6 @@ LifeMapLayer::addedToMap(const Map* map)
     }
 
     _map = map;
-
-#if 0
-    if (getUseLandCover() == true)
-    {
-        _landCoverDictionary = map->getLayer<LandCoverDictionary>();
-        if (!_landCoverDictionary.valid())
-        {
-            OE_WARN << LC 
-                << "No land cover dictionary found in the map;"
-                << " Land cover data will not be used."
-                << std::endl;
-        }
-
-        map->getOpenLayers(_landCoverLayers);
-        if (_landCoverLayers.empty())
-        {
-            OE_WARN << LC
-                << "No land cover layers found in the map;"
-                << " Land cover data will not be used."
-                << std::endl;
-        }
-    }
-#endif
 }
 
 void
@@ -544,7 +521,6 @@ LifeMapLayer::createImageImplementation(
         // the catalog:
         landuse_table = getBiomeLayer()->getBiomeCatalog()->getLandUseTable();
 
-
         // populate the tile with features that exist in the catalog:
         landuse.load(
             lu_key,
@@ -555,50 +531,6 @@ LifeMapLayer::createImageImplementation(
     }
 
     GeoExtent extent = key.getExtent();
-
-#if 0
-    // bring in the land cover data if requested:
-    osg::ref_ptr<osg::Image> landcover;
-    ImageUtils::PixelReader readLandCover;
-    osg::Matrixf landcover_matrix;
-    const LifeMapValueTable* landcover_table;
-
-    // a "metaimage" lets us sample in the neighborhood of a tilekey image
-    TileKeyMetaImage landcover_metaimage;
-
-    if (getBiomeLayer())
-    {
-        landcover_table = getBiomeLayer()->getBiomeCatalog()->getLandCoverTable();
-
-        if (getUseLandCover() && !_landCoverLayers.empty() && _landCoverDictionary.valid() && landcover_table)
-        {
-            TileKey landcover_key(key);
-
-            // fall back until we get a valid result
-            for (; !landcover.valid() && landcover_key.valid(); landcover_key.makeParent())
-            {
-                _landCoverLayers.populateLandCoverImage(landcover, landcover_key, progress);
-                if (landcover.valid())
-                {
-                    readLandCover.setImage(landcover.get());
-                    readLandCover.setBilinear(false);
-                    readLandCover.setSampleAsTexture(true);
-                    extent.createScaleBias(landcover_key.getExtent(), landcover_matrix);
-
-                    landcover_metaimage.setTileKey(landcover_key);
-                    landcover_metaimage.setCreateImageFunction(
-                        [&](const TileKey& key, ProgressCallback* prog)
-                        {
-                            osg::ref_ptr<osg::Image> output;
-                            _landCoverLayers.populateLandCoverImage(output, key, prog);
-                            return GeoImage(output.release(), key.getExtent());
-                        }
-                    );
-                }
-            }
-        }
-    }
-#endif
 
     // set up the land cover data metatiler:
     MetaTile<GeoCoverage<LandCoverSample>> landcover;
@@ -714,13 +646,17 @@ LifeMapLayer::createImageImplementation(
     noiseSampler.setSampleAsRepeatingTexture(true);
 
     // size of the tile in meters:
-    double width_m = key.getExtent().width(Units::METERS);
-    double height_m = key.getExtent().height(Units::METERS);
+    GeoExtent ext = key.getExtent();
+    double width_m = ext.width(Units::METERS);
+    double height_m = ext.height(Units::METERS);
 
     // land cover blurring values
     double lc_blur_m = std::max(0.0, options().landCoverBlur()->as(Units::METERS));
     double lc_blur_u = lc_blur_m / width_m;
     double lc_blur_v = lc_blur_m / height_m;
+
+    double mpp_x = width_m / (double)getTileSize();
+    double mpp_y = height_m / (double)getTileSize();
 
     GeoImage result(image.get(), extent);
 
@@ -756,13 +692,17 @@ LifeMapLayer::createImageImplementation(
             int dense_samples = 0;
             int lush_samples = 0;
             int rugged_samples = 0;
+            Random prng(key.hash());
 
             // read the landcover with a blurring filter.
             for (int a = -1; a <= 1; ++a)
             {
                 for (int b = -1; b <= 1; ++b)
                 {
-                    if (landcover.read(temp, i.u() + (double)a*lc_blur_u, i.v() + (double)b*lc_blur_v))
+                    int ss = a * (int)(lc_blur_m / mpp_x);
+                    int tt = b * (int)(lc_blur_m / mpp_y);
+
+                    if (landcover.read(temp, i.s() + ss, i.t() + tt))
                     {
                         if (temp.dense().isSet())
                         {
@@ -787,17 +727,17 @@ LifeMapLayer::createImageImplementation(
 
             weight[LANDCOVER] = 0.0f;
 
-            if (dense_samples > 1)
+            if (dense_samples > 0)
             {
                 pixel[LANDCOVER][LIFEMAP_DENSE] = sample.dense().get() / (float)dense_samples;
                 weight[LANDCOVER] = getLandCoverWeight();
             }
-            if (lush_samples > 1)
+            if (lush_samples > 0)
             {
                 pixel[LANDCOVER][LIFEMAP_LUSH] = sample.lush().get() / (float)lush_samples;
                 weight[LANDCOVER] = getLandCoverWeight();
             }
-            if (rugged_samples > 1)
+            if (rugged_samples > 0)
             {
                 pixel[LANDCOVER][LIFEMAP_RUGGED] = sample.rugged().get() / (float)rugged_samples;
                 weight[LANDCOVER] = getLandCoverWeight();
@@ -968,7 +908,6 @@ LifeMapLayer::createImageImplementation(
         }
 
         write(combined_pixel, i.s(), i.t());
-
     });
 
     return std::move(result);

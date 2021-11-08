@@ -583,19 +583,17 @@ namespace osgEarth { namespace Util
 
             inline void forEachPixelOnCenter(const std::function<void()>& func)
             {
-                double _su = (double)(_image->s() - 1) / (double)(_image->s());
-                double _sv = (double)(_image->t() - 1) / (double)(_image->t());
                 double _bu = 0.5 / (double)_image->s();
                 double _bv = 0.5 / (double)_image->t();
 
                 for (_t = 0; _t < _image->t(); ++_t)
                 {
-                    _v = _bv + _sv * (double)_t / (double)(_image->t() - 1);
+                    _v = _bv + ((double)_t * 2.0 * _bv);
                     _y = _extent.yMin() + _extent.height()*_v;
 
                     for (_s = 0; _s < _image->s(); ++_s)
                     {
-                        _u = _bu + _su * (double)_s / (double)(_image->s() - 1);
+                        _u = _bu + ((double)_s * 2.0 * _bu);
                         _x = _extent.xMin() + _extent.width()*_u;
 
                         func();

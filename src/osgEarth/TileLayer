@@ -57,6 +57,7 @@ namespace osgEarth
             OE_OPTION(float, noDataValue);
             OE_OPTION(float, minValidValue);
             OE_OPTION(float, maxValidValue);
+            OE_OPTION(bool, upsample);
             OE_OPTION(ProfileOptions, profile);
             virtual Config getConfig() const;
         private:
@@ -88,6 +89,12 @@ namespace osgEarth
         //! Data from this layer will be upsampled in map tiles above the maxDataLevel.
         void setMaxDataLevel(unsigned value);
         unsigned getMaxDataLevel() const;
+
+        //! Whether to algorithmically upsample data to higher resolution
+        //! as specified by maxDataLevel.
+        //! Warning: don't use this without a cache (performance)
+        void setUpsample(bool value);
+        bool getUpsample() const;
 
         //! Number of samples in each dimension.
         void setTileSize(unsigned value);

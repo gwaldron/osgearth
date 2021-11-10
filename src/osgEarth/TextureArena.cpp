@@ -547,7 +547,7 @@ TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
 
     if (_requiredSize > _allocatedSize)
     {
-        static Threading::Mutex s_mutex;
+        static Threading::Mutex s_mutex("TextureArena::HandleLUT(OE)");
         Threading::ScopedMutexLock lock(s_mutex);
 
         if (!_alignment.isSet())

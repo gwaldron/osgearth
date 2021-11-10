@@ -224,6 +224,11 @@ namespace osgEarth { namespace Threading
             _ev(rhs._ev),
             _shared(rhs._shared) { }
 
+        //! Set name for mutex debugging
+        void setName(const std::string& name) {
+            _ev->setName(name);
+        }
+
         //! Assignment
         Future<T>& operator = (const Future<T>& rhs) {
             _ev = rhs._ev;
@@ -371,7 +376,7 @@ namespace osgEarth { namespace Threading
 
         //! Immediate synchronous resolve constructor
         FutureResult(const T& data) {
-            Promise<T> p;
+            Promise<T> p("FutureResult");
             _future = p.getFuture();
             p.resolve(data);
         }
@@ -954,7 +959,7 @@ namespace osgEarth { namespace Threading
     Future<T> Job::dispatch(
         std::function<T(Cancelable*)> function) const
     {
-        Promise<T> promise;
+        Promise<T> promise("JobArena(OE).dispatch");
         Future<T> future = promise.getFuture();
         JobArena::Delegate delegate = [function, promise]() mutable
         {

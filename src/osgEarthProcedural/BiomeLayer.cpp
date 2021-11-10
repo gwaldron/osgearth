@@ -120,6 +120,8 @@ BiomeLayer::init()
 
     _autoBiomeManagement = true;
 
+    _tracker.setName("BiomeLayer.tracker(OE)");
+
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 }
 
@@ -394,7 +396,7 @@ BiomeLayer::createImageImplementation(
                     return getCoverageLayer()->createCoverage<LandCoverSample>(key, p);
                 });
 
-            landcover.setCenterTileKey(key);
+            landcover.setCenterTileKey(key, progress);
         }
 
         iter.forEachPixelOnCenter([&]()

@@ -138,6 +138,12 @@ GenerateGL3LightingUniforms::apply(osg::LightSource& lightSource)
 
 //............................................................................
 
+LightSourceGL3UniformGenerator::LightSourceGL3UniformGenerator() :
+    _statesetsMutex("LightSourceGL3UniformGenerator(OE)")
+{
+    //nop
+}
+
 bool
 LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
 {

@@ -509,7 +509,8 @@ SSBO::bindLayout() const
 #define LC "[GLObjectReleaser] "
 
 GLObjectReleaser::GLObjectReleaser(unsigned contextID) :
-    osg::GraphicsObjectManager("OE GLObjectReleaser", contextID)
+    osg::GraphicsObjectManager("OE GLObjectReleaser", contextID),
+    _mutex("GLObjectReleaser(OE)")
 {
     //nop
 }
@@ -596,44 +597,9 @@ GLObjectReleaser::discardAllGLObjects()
 #undef LC
 #define LC "[GPUJobArena] "
 
-#if 0
-GPUJobArena<bool>::Result
-GPUJobArena::dispatchOnAllContexts(
-    GPUJobArena::Function& function)
-{
-    if (_gcs.size() == 1)
-    {
-        return dispatch(function);
-    }
-
-    else
-    {
-        Job<bool>::dispatch(
-            [...](Cancelable* progress)
-            {
-                std::queue<Future<bool>> futures;
-
-                for (auto& gc : _gcs)
-                {
-                    Future<bool> f = arena(gc).dispatch(...);
-                    futures.emplace_back(f);
-                }
-
-                while (futures.empty() == false)
-                {
-                    futures.front().get(progress);
-                    futures.pop_front();
-                }
-            }
-        );
-    }
-}
-#endif
-
-
 //static defs
 osg::ref_ptr<GPUJobArena> GPUJobArena::_arena_pool;
-Mutex GPUJobArena::_arena_pool_mutex;
+Mutex GPUJobArena::_arena_pool_mutex("GPUJobArena(OE)");
 
 GPUJobArena&
 GPUJobArena::arena()
@@ -651,7 +617,8 @@ GPUJobArena::arena()
 GPUJobArena::GPUJobArena() :
     osg::GraphicsOperation("oe.GPUJobArena", true),
     _timeSlice(0), // default time slice (milliseconds)
-    _done(false)
+    _done(false),
+    _queue_mutex("GPUJobArena(OE).queue")
 {
     const char* value = ::getenv("OSGEARTH_GPU_TIME_SLICE_MS");
     if (value)
@@ -1006,7 +973,7 @@ GLObjectsCompiler::compileAsync(
     if (!compileScheduled)
     {
         // no ICO available - just resolve the future immediately
-        Promise<osg::ref_ptr<osg::Node>> promise;
+        Promise<osg::ref_ptr<osg::Node>> promise("GLObjectsCompiler(OE)");
         result = promise.getFuture();
         promise.resolve(node);
     }

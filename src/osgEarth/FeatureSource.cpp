@@ -95,8 +95,9 @@ void
 FeatureSource::init()
 {
     Layer::init();
-    _blacklistMutex.setName(getName());
+    _blacklistMutex.setName("FeatureSource(OE).blacklist " + getName());
     _blacklistSize = 0u;
+    _featuresCacheMutex.setName("FeatureSource(OE).featuresCache " + getName());
 }
 
 Status

@@ -941,7 +941,9 @@ VegetationLayer::Renderer::PCPUniforms::PCPUniforms()
     _maxRangeUL = -1;
 }
 
-VegetationLayer::Renderer::Renderer(VegetationLayer* layer)
+VegetationLayer::Renderer::Renderer(VegetationLayer* layer) :
+    _geomCloudsInProgress("VegLayer::Renderer.geomClouds(OE)"),
+    _newGeometryMutex("VegLayer::Renderer.newGeometry(OE)")
 {
     _layer = layer;
 

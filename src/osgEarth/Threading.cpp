@@ -122,9 +122,9 @@ Mutex::setName(const std::string& name)
 void
 Mutex::lock()
 {
-    //if (_name.empty()) {
-    //    volatile int x =0 ; // breakpoint for finding unnamed mutexes
-    //}
+    if (_name.empty()) {
+        volatile int x =0 ; // breakpoint for finding unnamed mutexes
+    }
 
 #ifdef OSGEARTH_PROFILING
     if (_metricsData)
@@ -555,7 +555,8 @@ JobArena::JobArena(const std::string& name, unsigned concurrency, const Type& ty
     _targetConcurrency(concurrency),
     _type(type),
     _done(false),
-    _queueMutex("OE.JobArena[" + name + "]")
+    _queueMutex("OE.JobArena[" + name + "].queue"),
+    _quitMutex("OE.JobArena[" + name + "].quit")
 {
     // find a slot in the stats
     int new_index = -1;

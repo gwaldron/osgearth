@@ -93,6 +93,8 @@ ElevationLayer::init()
 {
     TileLayer::init();
 
+    _sentry.setName("ElevationLayer " + getName());
+
     // override with a different default tile size since elevation
     // tiles need overlapping edges
     if (!options().tileSize().isSet())

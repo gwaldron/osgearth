@@ -417,10 +417,10 @@ namespace osgEarth
     {
     public:
         //! Result type - future that will eventually contain the return value
-        typedef Future<RESULT_TYPE> Result;
+        using Result = Future<RESULT_TYPE>;
 
         //! Function type of async job
-        typedef std::function<RESULT_TYPE(osg::State*, Cancelable*)> Function;
+        using Function = std::function<RESULT_TYPE(osg::State*, Cancelable*)>;
 
         //! Dispatch the asynchronous function.
         //! @param function Function to execute in the graphics thread
@@ -497,7 +497,7 @@ namespace osgEarth
     template<typename RESULT_TYPE>
     Future<RESULT_TYPE> GPUJob<RESULT_TYPE>::dispatch(const Function& function)
     {
-        Promise<RESULT_TYPE> promise;
+        Promise<RESULT_TYPE> promise("GPUJob(OE)");
         Future<RESULT_TYPE> future = promise.getFuture();
 
         std::function<void(osg::State*)> delegate = [function, promise](osg::State* state) mutable
@@ -551,6 +551,9 @@ namespace osgEarth
     class PerThreadComputeSession
     {
     public:
+        PerThreadComputeSession() :
+            _sessions("PerThreadComputeSession(OE)") { }
+
         T& get(osg::Program* program) const {
             ScopedMutexLock lock(_sessions);
             SessionPtr& ptr = _sessions[getCurrentThreadId()];

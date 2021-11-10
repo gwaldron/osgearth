@@ -269,6 +269,12 @@ namespace osgEarth
             const TileKey& key,
             ProgressCallback* progress);
 
+        // Creates an image that enhances the previous LOD's image
+        // using a fractal algorithm.
+        GeoImage createFractalUpsampledImage(
+            const TileKey& key,
+            ProgressCallback* p);
+
         optional<int> _shareImageUnit;
         bool _useCreateTexture;
 

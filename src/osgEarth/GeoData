@@ -741,12 +741,32 @@ namespace osgEarth
         void setTrackingToken(osg::Object* token);
         osg::Object* getTrackingToken() const;
 
+
+        unsigned s() const {
+            return _myimage.valid() ? _myimage->s() : 0;
+        }
+        unsigned t() const {
+            return _myimage.valid() ? _myimage->t() : 0;
+        }
+        bool read(pixel_type& output, unsigned s, unsigned t) const {
+            _read(output, s, t);
+            return output.r() != NO_DATA_VALUE;
+        }
+        bool read(pixel_type& output, double u, double v) const {
+            _read(output, u, v);
+            return output.r() != NO_DATA_VALUE;
+        }
+
+        ImageUtils::PixelReader& getReader() { return _read; };
+        const ImageUtils::PixelReader& getReader() const { return _read; }
+
     private:
         GeoExtent _extent;
         Status _status;
         osg::ref_ptr<const osg::Image> _myimage;
         mutable optional<Future<osg::ref_ptr<osg::Image>>> _future;
         osg::ref_ptr<osg::Object> _token;
+        ImageUtils::PixelReader _read;
     };
 
     typedef std::vector<GeoImage> GeoImageVector;
@@ -953,12 +973,23 @@ namespace osgEarth
             return Ptr(new Coverage<T>());
         }
 
+        //! copy constructor
+        Coverage(const Coverage<T>& rhs) :
+            _width(rhs._width),
+            _height(rhs._height),
+            _pixel(rhs._pixels),
+            _nodata_count(rhs._nodata_count)
+        {
+            //nop
+        }
+
         void allocate(unsigned w, unsigned h)
         {
             _width = w, _height = h;
             _pixels.clear();
             if (w*h > 0u)
                 _pixels.resize(w*h);
+            _nodata_count = w * h;
         }
 
         bool valid() const
@@ -974,10 +1005,23 @@ namespace osgEarth
             return _height;
         }
 
+        //! Number of pixels containing "NO DATA" value
+        unsigned nodataCount() const {
+            return _nodata_count;
+        }
+
+        //! Write a value to a pixel
         void write(const T& value, unsigned s, unsigned t)
         {
             unsigned ptr = t * _width + s;
+            T& pixel = _pixels[ptr];
+            bool old_value_is_nodata = !pixel.valid();
+            bool new_value_is_nodata = !value.valid();
             _pixels[ptr] = value;
+            if (old_value_is_nodata && !new_value_is_nodata)
+                --_nodata_count;
+            else if (!old_value_is_nodata && new_value_is_nodata)
+                ++_nodata_count;
         }
 
         bool read(T& output, unsigned s, unsigned t) const
@@ -995,7 +1039,8 @@ namespace osgEarth
         }
 
     private:
-        Coverage()
+        Coverage() 
+            : _nodata_count(0u)
         {
             allocate(0, 0);
         }
@@ -1003,6 +1048,7 @@ namespace osgEarth
     private:
         unsigned _width, _height;
         std::vector<T> _pixels;
+        unsigned _nodata_count;
     };
 
     template<typename T>
@@ -1036,11 +1082,15 @@ namespace osgEarth
         }
 
         unsigned s() const {
-            return _coverage ? _coverage->s() : 0;
+            return _coverage ? _coverage->s() : 0u;
         }
 
         unsigned t() const {
-            return _coverage ? _coverage->t() : 0;
+            return _coverage ? _coverage->t() : 0u;
+        }
+
+        unsigned nodataCount() const {
+            return _coverage ? _coverage->nodataCount() : 0u;
         }
 
         void write(const T& value, unsigned s, unsigned t)

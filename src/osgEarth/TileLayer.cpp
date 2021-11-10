@@ -44,6 +44,7 @@ TileLayer::Options::getConfig() const
     conf.set("no_data_value", _noDataValue);
     conf.set("profile", _profile);
     conf.set("tile_size", _tileSize);
+    conf.set("upsample", upsample());
 
     return conf;
 }
@@ -58,6 +59,7 @@ TileLayer::Options::fromConfig(const Config& conf)
     _noDataValue.init( -32767.0f ); // SHRT_MIN
     _minValidValue.init( -32766.0f ); // -(2^15 - 2)
     _maxValidValue.init( 32767.0f );
+    upsample().setDefault(false);
 
     conf.get( "min_level", _minLevel );
     conf.get( "max_level", _maxLevel );
@@ -70,6 +72,7 @@ TileLayer::Options::fromConfig(const Config& conf)
     conf.get( "nodata_value", _noDataValue); // back compat
     conf.get( "min_valid_value", _minValidValue);
     conf.get( "max_valid_value", _maxValidValue);
+    conf.get("upsample", upsample());
 }
 
 //------------------------------------------------------------------------
@@ -292,6 +295,16 @@ void TileLayer::setTileSize(unsigned value)
 unsigned TileLayer::getTileSize() const
 {
     return options().tileSize().get();
+}
+
+void TileLayer::setUpsample(bool value)
+{
+    options().upsample() = value;
+}
+
+bool TileLayer::getUpsample() const
+{
+    return options().upsample().get();
 }
 
 void
@@ -885,5 +898,6 @@ TileLayer::getBestAvailableTileKey(const TileKey& key) const
 bool
 TileLayer::mayHaveData(const TileKey& key) const
 {
-    return key == getBestAvailableTileKey(key);
+    return
+        key == getBestAvailableTileKey(key);
 }

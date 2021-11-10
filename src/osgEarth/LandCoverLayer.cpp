@@ -363,6 +363,7 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     }
 }
 
+
 GeoImage
 LandCoverLayer::createFractalEnhancedImage(const TileKey& key, ProgressCallback* progress) const
 {

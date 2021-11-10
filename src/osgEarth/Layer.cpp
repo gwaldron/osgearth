@@ -424,8 +424,6 @@ Layer::openImplementation()
 Status
 Layer::closeImplementation()
 {
-    _cacheSettings = NULL;
-    _runtimeCacheId.clear();
     return Status::NoError;
 }
 

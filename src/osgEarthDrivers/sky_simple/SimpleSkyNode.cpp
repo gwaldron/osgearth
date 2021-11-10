@@ -203,7 +203,8 @@ namespace
 SimpleSkyNode::SimpleSkyNode(const SimpleSkyOptions& options) :
 SkyNode ( options ),
 _options( options ),
-_eb_initialized(false)
+_eb_initialized(false),
+_eb_mutex("SimpleSkyNode.eb_mutex(OE)")
 {
     construct();
 

@@ -135,7 +135,7 @@ struct LifeMapGUI : public GUI::BaseGUI
         ImGui::SliderFloat("Landcover contrib", &o.landCoverWeight().mutable_value(), 0.0f, 1.0f);
         ImGui::Indent();
         float value = o.landCoverBlur()->as(Units::METERS);
-        if (ImGui::SliderFloat("Landcover blur (m)", &value, 0.0f, 100.0f))
+        if (ImGui::SliderFloat("Landcover blur (m)", &value, 0.0f, 25.0f))
             o.landCoverBlur()->set(value, Units::METERS);
         ImGui::Unindent();
 
@@ -674,7 +674,7 @@ main(int argc, char** argv)
         viewer.getEventHandlers().push_front(new MainGUI(arguments, app));
         viewer.setSceneData(node);
 
-        return viewer.run();
+        return Metrics::run(viewer);
     }
     else
     {

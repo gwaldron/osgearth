@@ -24,6 +24,8 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/TimeSeriesImage>
+#include <osgEarth/Random>
+#include <osgEarth/MetaTile>
 #include <osg/ImageStream>
 #include <cinttypes>
 
@@ -242,6 +244,7 @@ ImageLayer::init()
     TileLayer::init();
 
     _useCreateTexture = false;
+    _sentry.setName("ImageLayer " + getName());
 
     // image layers render as a terrain texture.
     setRenderType(RENDERTYPE_TERRAIN_SURFACE);
@@ -367,7 +370,7 @@ ImageLayer::createImage(
     ProgressCallback* progress)
 {
     OE_PROFILING_ZONE;
-    OE_PROFILING_ZONE_TEXT(getName());
+    OE_PROFILING_ZONE_TEXT(getName() + " " + key.str());
 
     if (!isOpen())
     {
@@ -508,7 +511,16 @@ ImageLayer::createImageInKeyProfile(
 
     if (key.getProfile()->isHorizEquivalentTo(getProfile()))
     {
-        result = createImageImplementation(key, progress);
+        if (getUpsample() == true &&
+            getMaxDataLevel() > key.getLOD() &&
+            getBestAvailableTileKey(key) != key)
+        {
+            result = createFractalUpsampledImage(key, progress);
+        }
+        else
+        {
+            result = createImageImplementation(key, progress);
+        }
     }
     else
     {
@@ -897,4 +909,166 @@ FutureTexture2D::update(osg::NodeVisitor* nv)
 
         _resolved = true;
     }
+}
+
+GeoImage
+ImageLayer::createFractalUpsampledImage(
+    const TileKey& key,
+    ProgressCallback* progress)
+{
+    OE_PROFILING_ZONE;
+
+    // Input metatile grid. Always use the immediate parent for
+    // fractal enhancement.
+    MetaTile<GeoImage> input;
+    input.setCreateTileFunction(
+        [&](const TileKey& key, ProgressCallback* p) -> GeoImage
+        {
+            if (this->isKeyInLegalRange(key))
+                return this->createImage(key, p);
+            else
+                return GeoImage::INVALID;
+        }
+    );
+    TileKey parentKey = key.createParentKey();
+    osg::Matrix scale_bias;
+    key.getExtent().createScaleBias(parentKey.getExtent(), scale_bias);
+    input.setCenterTileKey(parentKey, scale_bias);
+
+    // validate that we have a good metatile.
+    if (input.valid() == false)
+        return GeoImage::INVALID;
+
+    // set up a workspace for creating the new image.
+    int ws_width = getTileSize() + 3;
+    int ws_height = getTileSize() + 3;
+
+    osg::ref_ptr<osg::Image> workspace = new osg::Image();
+    workspace->allocateImage(
+        ws_width, ws_height, 1,
+        input.getCenterTile().getImage()->getPixelFormat(),
+        input.getCenterTile().getImage()->getDataType(),
+        input.getCenterTile().getImage()->getPacking());
+
+    ImageUtils::PixelWriter writeToWorkspace(workspace.get());
+    ImageUtils::PixelReader readFromWorkspace(workspace.get());
+
+    // output image:
+    osg::ref_ptr<osg::Image> output = new osg::Image();
+    output->allocateImage(
+        getTileSize(), getTileSize(), 1,
+        input.getCenterTile().getImage()->getPixelFormat(),
+        input.getCenterTile().getImage()->getDataType(),
+        input.getCenterTile().getImage()->getPacking());
+
+    // Random number generator for fractal algorithm:
+    Util::Random prng(key.hash());
+
+    // temporaries:
+    GeoImage::pixel_type pixel, p0, p1, p2, p3;
+    float k0, k1, k2, k3;
+    unsigned r;
+    int s, t;
+
+    // First pass: loop over the grid and populate even-numbered
+    // pixels with values from the ancestors.
+    for (t = 0; t < ws_height; t += 2)
+    {
+        for (s = 0; s < ws_width; s += 2)
+        {
+            input.read(pixel, s - 2, t - 2);
+            writeToWorkspace(pixel, s, t);
+
+            if (progress && progress->isCanceled())
+                return GeoImage::INVALID;
+        }
+
+        if (progress && progress->isCanceled())
+            return GeoImage::INVALID;
+    }
+
+    // Second pass: diamond
+    for (t = 1; t < workspace->t() - 1; t += 2)
+    {
+        for (s = 1; s < workspace->s() - 1; s += 2)
+        {
+            r = prng.next(4u);
+
+            // Diamond: pick one of the four diagonals to copy into the
+            // center pixel, attempting to preserve curves. When there is
+            // no clear choice, go random.
+            readFromWorkspace(p0, s - 1, t - 1); k0 = p0.r();
+            readFromWorkspace(p1, s + 1, t - 1); k1 = p1.r();
+            readFromWorkspace(p2, s + 1, t + 1); k2 = p2.r();
+            readFromWorkspace(p3, s - 1, t + 1); k3 = p3.r();
+
+            // three the same
+            if (k0 == k1 && k1 == k2 && k2 != k3) pixel = p0;
+            else if (k1 == k2 && k2 == k3 && k3 != k0) pixel = p1;
+            else if (k2 == k3 && k3 == k0 && k0 != k1) pixel = p2;
+            else if (k3 == k0 && k0 == k1 && k1 != k2) pixel = p3;
+
+            // continuations
+            else if (k0 == k2 && k0 != k1 && k0 != k3) pixel = p0;
+            else if (k1 == k3 && k1 != k2 && k1 != k0) pixel = p1;
+
+            // all else, random.
+            else pixel = (r == 0) ? p0 : (r == 1) ? p1 : (r == 2) ? p2 : p3;
+
+            writeToWorkspace(pixel, s, t);
+        }
+    }
+
+    // Third pass: square
+    for (t = 2; t < workspace->t() - 1; ++t)
+    {
+        for (s = 2; s < workspace->s() - 1; ++s)
+        {
+            if (((s & 1) == 1 && (t & 1) == 0) || ((s & 1) == 0 && (t & 1) == 1))
+            {
+                r = prng.next(4u);
+
+                // Square: pick one of the four adjacents to copy into the
+                // center pixel, attempting to preserve curves. When there is
+                // no clear choice, go random.
+                readFromWorkspace(p0, s - 1, t); k0 = p0.r();
+                readFromWorkspace(p1, s, t - 1); k1 = p1.r();
+                readFromWorkspace(p2, s + 1, t); k2 = p2.r();
+                readFromWorkspace(p3, s, t + 1); k3 = p3.r();
+
+                // three the same
+                if (k0 == k1 && k1 == k2 && k2 != k3) pixel = p0;
+                else if (k1 == k2 && k2 == k3 && k3 != k0) pixel = p1;
+                else if (k2 == k3 && k3 == k0 && k0 != k1) pixel = p2;
+                else if (k3 == k0 && k0 == k1 && k1 != k2) pixel = p3;
+
+                // continuations
+                else if (k0 == k2 && k0 != k1 && k0 != k3) pixel = p0;
+                else if (k1 == k3 && k1 != k2 && k1 != k0) pixel = p1;
+
+                // all else, random.
+                else pixel = (r == 0) ? p0 : (r == 1) ? p1 : (r == 2) ? p2 : p3;
+
+                writeToWorkspace(pixel, s, t);
+            }
+        }
+    }
+
+    // finally blit from workspace interior to the output image.
+    ImageUtils::PixelWriter writeToOutput(output.get());
+    for (t = 0; t < output->t(); ++t)
+    {
+        for (s = 0; s < output->s(); ++s)
+        {
+            readFromWorkspace(pixel, s + 2, t + 2);
+            writeToOutput(pixel, s, t);
+        }
+    }
+
+    if (progress && progress->isCanceled())
+    {
+        return GeoImage::INVALID;
+    }
+
+    return GeoImage(output.get(), key.getExtent());
 }

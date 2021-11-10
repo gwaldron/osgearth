@@ -542,7 +542,7 @@ LifeMapLayer::createImageImplementation(
                 return getLandCoverLayer()->createCoverage<LandCoverSample>(key, p);
             });
 
-        landcover.setCenterTileKey(key);
+        landcover.setCenterTileKey(key, progress);
     }
 
     GeoImage densityMask;
@@ -694,53 +694,65 @@ LifeMapLayer::createImageImplementation(
             int rugged_samples = 0;
             Random prng(key.hash());
 
-            // read the landcover with a blurring filter.
-            for (int a = -1; a <= 1; ++a)
+            if (equivalent(lc_blur_m, 0.0))
             {
-                for (int b = -1; b <= 1; ++b)
+                landcover.read(temp, i.s(), i.t());
+
+                pixel[LANDCOVER][LIFEMAP_DENSE] = temp.dense().get();
+                pixel[LANDCOVER][LIFEMAP_LUSH] = temp.lush().get();
+                pixel[LANDCOVER][LIFEMAP_RUGGED] = temp.rugged().get();
+                weight[LANDCOVER] = getLandCoverWeight();
+            }
+            else
+            {
+                // read the landcover with a blurring filter.
+                for (int a = -1; a <= 1; ++a)
                 {
-                    int ss = a * (int)(lc_blur_m / mpp_x);
-                    int tt = b * (int)(lc_blur_m / mpp_y);
-
-                    if (landcover.read(temp, i.s() + ss, i.t() + tt))
+                    for (int b = -1; b <= 1; ++b)
                     {
-                        if (temp.dense().isSet())
-                        {
-                            sample.dense() = sample.dense().get() + temp.dense().get();
-                            ++dense_samples;
-                        }
+                        int ss = a * (int)(lc_blur_m / mpp_x);
+                        int tt = b * (int)(lc_blur_m / mpp_y);
 
-                        if (temp.lush().isSet())
+                        if (landcover.read(temp, i.s() + ss, i.t() + tt))
                         {
-                            sample.lush() = sample.lush().get() + temp.lush().get();
-                            ++lush_samples;
-                        }
+                            if (temp.dense().isSet())
+                            {
+                                sample.dense() = sample.dense().get() + temp.dense().get();
+                                ++dense_samples;
+                            }
 
-                        if (temp.rugged().isSet())
-                        {
-                            sample.rugged() = sample.rugged().get() + temp.rugged().get();
-                            ++rugged_samples;
+                            if (temp.lush().isSet())
+                            {
+                                sample.lush() = sample.lush().get() + temp.lush().get();
+                                ++lush_samples;
+                            }
+
+                            if (temp.rugged().isSet())
+                            {
+                                sample.rugged() = sample.rugged().get() + temp.rugged().get();
+                                ++rugged_samples;
+                            }
                         }
                     }
                 }
-            }
 
-            weight[LANDCOVER] = 0.0f;
+                weight[LANDCOVER] = 0.0f;
 
-            if (dense_samples > 0)
-            {
-                pixel[LANDCOVER][LIFEMAP_DENSE] = sample.dense().get() / (float)dense_samples;
-                weight[LANDCOVER] = getLandCoverWeight();
-            }
-            if (lush_samples > 0)
-            {
-                pixel[LANDCOVER][LIFEMAP_LUSH] = sample.lush().get() / (float)lush_samples;
-                weight[LANDCOVER] = getLandCoverWeight();
-            }
-            if (rugged_samples > 0)
-            {
-                pixel[LANDCOVER][LIFEMAP_RUGGED] = sample.rugged().get() / (float)rugged_samples;
-                weight[LANDCOVER] = getLandCoverWeight();
+                if (dense_samples > 0)
+                {
+                    pixel[LANDCOVER][LIFEMAP_DENSE] = sample.dense().get() / (float)dense_samples;
+                    weight[LANDCOVER] = getLandCoverWeight();
+                }
+                if (lush_samples > 0)
+                {
+                    pixel[LANDCOVER][LIFEMAP_LUSH] = sample.lush().get() / (float)lush_samples;
+                    weight[LANDCOVER] = getLandCoverWeight();
+                }
+                if (rugged_samples > 0)
+                {
+                    pixel[LANDCOVER][LIFEMAP_RUGGED] = sample.rugged().get() / (float)rugged_samples;
+                    weight[LANDCOVER] = getLandCoverWeight();
+                }
             }
         }
 

@@ -79,7 +79,9 @@ namespace
 //...................................................................
 
 BiomeManager::BiomeManager() :
-    _revision(0)
+    _revision(0),
+    _refsAndRevision_mutex("BiomeManager.refsAndRevision(OE)"),
+    _residentData_mutex("BiomeManager.residentData(OE)")
 {
     //nop
 }

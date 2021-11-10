@@ -74,6 +74,8 @@ RoadSurfaceLayer::init()
 {
     ImageLayer::init();
 
+    _keygate.setName("RoadSurfaceLayer " + getName());
+
     // Generate Mercator tiles by default.
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 

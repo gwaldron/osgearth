@@ -80,6 +80,8 @@ TextureSplattingLayer::init()
 {
     VisibleLayer::init();
 
+    _materialsJob.setName("TextureSplattingLayer.materialsjob(OE)");
+
     setRenderType(osgEarth::Layer::RENDERTYPE_TERRAIN_SURFACE);
 }
 

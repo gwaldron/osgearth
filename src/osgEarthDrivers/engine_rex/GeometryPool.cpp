@@ -33,9 +33,10 @@ using namespace osgEarth::REX;
 
 
 GeometryPool::GeometryPool() :
-_enabled ( true ),
-_debug   ( false ),
-_geometryMapMutex("GeometryPool(OE)")
+    _enabled(true),
+    _debug(false),
+    _geometryMapMutex("GeometryPool(OE)"),
+    _keygate("GeometryPool(OE).keygate")
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 

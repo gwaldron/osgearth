@@ -648,9 +648,9 @@ namespace
                 OE_WARN << LC << "FAILED to write \"" << fileURI.full() << "\" to cache bin \"" <<
                     getID() << "\"; msg = \"" << r.message() << "\"" << std::endl;
             }
-            else
+            else if (_s_debug)
             {
-                OE_DEBUG << LC << "Wrote " << fileURI.full() << " to cache bin " << getID() << std::endl;
+                OE_INFO << LC << "Wrote " << fileURI.full() << " to cache bin " << getID() << std::endl;
             }
 
             // remove it from the write cache now that we're done.

@@ -135,6 +135,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT LightSourceGL3UniformGenerator : public osg::NodeCallback
     {
     public:
+        LightSourceGL3UniformGenerator();
+
         /**
          * Creates and installs Uniforms on the stateset for the Light components
          * of the Light that are non-positional (everything but the position and direction)

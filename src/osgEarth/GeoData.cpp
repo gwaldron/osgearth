@@ -1803,6 +1803,11 @@ GeoImage::GeoImage(const osg::Image* image, const GeoExtent& extent) :
     {
         _status.set(Status::AssertionFailure, "Invalid geoextent");
     }
+
+    if (image)
+    {
+        _read.setImage(image);
+    }
 }
 
 GeoImage::GeoImage(Threading::Future<osg::ref_ptr<osg::Image>> fimage, const GeoExtent& extent) :

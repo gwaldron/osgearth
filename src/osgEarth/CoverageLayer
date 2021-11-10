@@ -23,6 +23,7 @@
 #include <osgEarth/Layer>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
+#include <osgEarth/Metrics>
 
 namespace osgEarth
 {
@@ -104,15 +105,13 @@ namespace osgEarth
 
     protected: // Layer
 
-        virtual void init() override;
-
         virtual Status openImplementation() override;
 
     public: // Layer
 
-        virtual void addedToMap(const Map*);
+        virtual void addedToMap(const Map*) override;
 
-        virtual void removedFromMap(const Map*);
+        virtual void removedFromMap(const Map*) override;
 
     private:
 
@@ -147,15 +146,19 @@ namespace osgEarth
     {
         typename Coverage<T>::Ptr result;
 
-        if (source && source->isOpen())
+        if (source &&
+            source->isOpen())
         {
             GeoImage image = source->createImage(key, p);
             if (image.valid())
             {
                 osg::Vec4 pixel;
                 GeoImagePixelReader read(image);
-                read.setBilinear(false);
+                read.setBilinear(false); // unnecessary
                 //bool normalized = image.getImage()->getDataType() == GL_UNSIGNED_BYTE;
+
+                if (p && p->isCanceled())
+                    return GeoCoverage<T>();
 
                 result = Coverage<T>::create();
                 result->allocate(read.s(), read.t());
@@ -175,6 +178,10 @@ namespace osgEarth
                         if (sample.valid())
                         {
                             result->write(sample, iter.s(), iter.t());
+                        }
+                        else
+                        {
+                            //OE_WARN << "No mapping for sample value " << value << std::endl;
                         }
                     });
             }
@@ -219,6 +226,9 @@ namespace osgEarth
         const TileKey& key,
         ProgressCallback* p)
     {
+        OE_PROFILING_ZONE;
+        OE_PROFILING_ZONE_TEXT(getName()+" "+key.str());
+
         GeoCoverage<T> result;
         populate(result, key, p);
         return result;
@@ -250,13 +260,11 @@ namespace osgEarth
         bool fallback = false;   // whether to fall back on parent tiles for a component
 
         T value;
-        unsigned num_values = 0u;
-        unsigned num_nodata_values = 1u;
 
         // Iterate backwards since the last layer has the highest priority.
         // If we get an image with all valid values (no NO_DATA), we are finished
         for (auto i = options().layers().rbegin();
-            i != options().layers().rend() && num_nodata_values > 0u;
+            i != options().layers().rend();
             ++i)
         {
             auto& layer = *i;
@@ -278,7 +286,11 @@ namespace osgEarth
             if (fallback)
             {
                 TileKey inputKey = key;
-                while (input.valid() == false && inputKey.valid())
+                while (
+                    input.valid() == false && 
+                    inputKey.valid() &&
+                    imageLayer->isKeyInLegalRange(inputKey) &&
+                    (imageLayer->mayHaveData(inputKey) || imageLayer->getUpsample()))
                 {
                     input = createCoverage(inputKey, imageLayer, mappings, progress);
                     if (!input.valid())
@@ -289,10 +301,14 @@ namespace osgEarth
             }
             else
             {
-                input = createCoverage(key, imageLayer, mappings, progress);
+                if (imageLayer->isKeyInLegalRange(key) &&
+                    (imageLayer->mayHaveData(key) || imageLayer->getUpsample()))
+                {
+                    input = createCoverage(key, imageLayer, mappings, progress);
+                }
             }
 
-            if (!input.valid()) // contains no data? move on
+            if (!input.valid()) // no input? move on to the next layer
             {
                 continue;
             }
@@ -300,29 +316,14 @@ namespace osgEarth
             // scale and bias to read an ancestor (fallback) tile if necessary.
             double
                 scale = input_scaleBias(0, 0),
-                sbias = input_scaleBias(3, 0)*input.s(),
-                tbias = input_scaleBias(3, 1)*input.t();
+                sbias = input_scaleBias(3, 0)*(double)input.s(),
+                tbias = input_scaleBias(3, 1)*(double)input.t();
 
-            // If this is the first image, scan the image for NO_DATA values.
-            // TODO: revisit this, is it still necessary? Is there a quicker way
-            // to count nodatas with the coverage sparse grid?
+            // If this is the first image, just set output to input
+            // (TODO: optimize)
             if (!output.valid())
             {
-                num_nodata_values = 0u;
-
-                for (unsigned t = 0; t < input.t() && num_nodata_values == 0u; ++t)
-                {
-                    for (unsigned s = 0; s < input.s() && num_nodata_values == 0u; ++s)
-                    {
-                        if (!input.read(value, (unsigned)(s*scale + sbias), (unsigned)(t*scale + tbias)))
-                        {
-                            num_nodata_values++;
-                        }
-                    }
-                }
-
                 output = input;
-                num_values = output.s() * output.t();
                 fallback = true;
                 continue;
             }
@@ -333,25 +334,33 @@ namespace osgEarth
 
             for (unsigned t = 0u; t < output.t(); ++t)
             {
+                unsigned tsb = (unsigned)((double)t*scale + tbias);
                 for (unsigned s = 0u; s < output.s(); ++s)
                 {
-                    if (output.read(value, s, t) == false) // nodata
+                    unsigned ssb = (unsigned)((double)s*scale + sbias);
+                    if (output.read(value, s, t) == false) // nodata, OK to overwrite:
                     {
-                        if (input.read(new_value, (unsigned)(s*scale + sbias), (unsigned)(t*scale + tbias)))
+                        if (input.read(new_value, ssb, tsb))
                         {
                             output.write(new_value, s, t);
                         }
-                        else
-                        {
-                            ++num_nodata_values;
-                        }
                     }
                 }
+
+                if (progress && progress->isCanceled())
+                    return false;
+            }
+
+            // if the output is completely filled with valid data,
+            // we are done!
+            if (output.nodataCount() == output.s()*output.t())
+            {
+                break;
             }
         }
 
         // If the image is ALL nodata ... return false.
-        if (num_nodata_values == num_values)
+        if (output.nodataCount() == output.s()*output.t())
         {
             output = GeoCoverage<T>();
             return false;

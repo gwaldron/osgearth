@@ -609,7 +609,6 @@ set(TARGET_SRC
     MetaTile.cpp
     Metrics.cpp
     MBTiles.cpp
-    MimeTypes.cpp
     ModelLayer.cpp
     ModelSource.cpp
     NetworkMonitor.cpp

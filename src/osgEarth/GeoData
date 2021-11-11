@@ -977,7 +977,7 @@ namespace osgEarth
         Coverage(const Coverage<T>& rhs) :
             _width(rhs._width),
             _height(rhs._height),
-            _pixel(rhs._pixels),
+            _pixels(rhs._pixels),
             _nodata_count(rhs._nodata_count)
         {
             //nop

@@ -61,7 +61,7 @@ in vec3 oe_LineDrawable_prev;
 in vec3 oe_LineDrawable_next;
 
 flat out int oe_LineDrawable_draw;
-flat out vec2 oe_LineDrawable_rv;
+out vec2 oe_LineDrawable_rv;
 
 // Shared stage globals
 vec4 oe_LineDrawable_prevView;
@@ -201,7 +201,7 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
 uniform int oe_GL_LineStippleFactor;
 uniform int oe_GL_LineStipplePattern;
 
-flat in vec2 oe_LineDrawable_rv;
+in vec2 oe_LineDrawable_rv;
 flat in int oe_LineDrawable_draw;
 
 #ifdef OE_LINE_SMOOTH

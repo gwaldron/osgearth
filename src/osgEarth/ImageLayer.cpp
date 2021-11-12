@@ -511,9 +511,12 @@ ImageLayer::createImageInKeyProfile(
 
     if (key.getProfile()->isHorizEquivalentTo(getProfile()))
     {
+        TileKey best;
+
         if (getUpsample() == true &&
             getMaxDataLevel() > key.getLOD() &&
-            getBestAvailableTileKey(key) != key)
+            (best = getBestAvailableTileKey(key)).valid() &&
+            best != key)
         {
             result = createFractalUpsampledImage(key, progress);
         }

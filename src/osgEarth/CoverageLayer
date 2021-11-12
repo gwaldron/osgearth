@@ -24,6 +24,8 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/Metrics>
+#include <osgEarth/Progress>
+#include <osgEarth/Coverage>
 
 namespace osgEarth
 {
@@ -160,9 +162,15 @@ namespace osgEarth
                 if (p && p->isCanceled())
                     return GeoCoverage<T>();
 
+                OE_PROFILING_ZONE;
+                OE_PROFILING_ZONE_TEXT("decode");
+
                 result = Coverage<T>::create();
                 result->allocate(read.s(), read.t());
 
+                const T* sample_ptr = nullptr;
+                unsigned value_prev;
+                int k = -1;
                 GeoImageIterator iter(image);
                 iter.forEachPixel([&]()
                     {
@@ -174,15 +182,16 @@ namespace osgEarth
                         else
                             value = (unsigned)pixel.r();
 
-                        const T& sample = mappings.get(value);
-                        if (sample.valid())
+                        if (!sample_ptr || value != value_prev)
                         {
-                            result->write(sample, iter.s(), iter.t());
+                            sample_ptr = &mappings.get(value);
+                            k = -1;
                         }
-                        else
-                        {
-                            //OE_WARN << "No mapping for sample value " << value << std::endl;
-                        }
+
+                        if (sample_ptr->valid())
+                            k = result->write(*sample_ptr, iter.s(), iter.t(), k);
+
+                        value_prev = value;
                     });
             }
         }
@@ -287,7 +296,7 @@ namespace osgEarth
             {
                 TileKey inputKey = key;
                 while (
-                    input.valid() == false && 
+                    input.valid() == false &&
                     inputKey.valid() &&
                     imageLayer->isKeyInLegalRange(inputKey) &&
                     (imageLayer->mayHaveData(inputKey) || imageLayer->getUpsample()))
@@ -308,54 +317,53 @@ namespace osgEarth
                 }
             }
 
-            if (!input.valid()) // no input? move on to the next layer
+            if (input.valid())
             {
-                continue;
-            }
-
-            // scale and bias to read an ancestor (fallback) tile if necessary.
-            double
-                scale = input_scaleBias(0, 0),
-                sbias = input_scaleBias(3, 0)*(double)input.s(),
-                tbias = input_scaleBias(3, 1)*(double)input.t();
-
-            // If this is the first image, just set output to input
-            // (TODO: optimize)
-            if (!output.valid())
-            {
-                output = input;
-                fallback = true;
-                continue;
-            }
-
-            // now composite this image under the previous one, 
-            // accumulating a count of NO_DATA values along the way.
-            T new_value;
-
-            for (unsigned t = 0u; t < output.t(); ++t)
-            {
-                unsigned tsb = (unsigned)((double)t*scale + tbias);
-                for (unsigned s = 0u; s < output.s(); ++s)
+                // If this is the first image, just set output to input
+                // (TODO: optimize)
+                if (!output.valid())
                 {
-                    unsigned ssb = (unsigned)((double)s*scale + sbias);
-                    if (output.read(value, s, t) == false) // nodata, OK to overwrite:
+                    output = input;
+                    fallback = true;
+                }
+
+                else
+                {
+                    // scale and bias to read an ancestor (fallback) tile if necessary.
+                    double
+                        scale = input_scaleBias(0, 0),
+                        sbias = input_scaleBias(3, 0)*(double)input.s(),
+                        tbias = input_scaleBias(3, 1)*(double)input.t();
+
+                    // now composite this image under the previous one, 
+                    // accumulating a count of NO_DATA values along the way.
+                    T new_value;
+
+                    for (unsigned t = 0u; t < output.t(); ++t)
                     {
-                        if (input.read(new_value, ssb, tsb))
+                        unsigned tsb = (unsigned)((double)t*scale + tbias);
+                        for (unsigned s = 0u; s < output.s(); ++s)
                         {
-                            output.write(new_value, s, t);
+                            unsigned ssb = (unsigned)((double)s*scale + sbias);
+                            if (output.read(value, s, t) == false) // nodata, OK to overwrite:
+                            {
+                                if (input.read(new_value, ssb, tsb))
+                                {
+                                    output.write(new_value, s, t);
+                                }
+                            }
                         }
+
+                        if (progress && progress->isCanceled())
+                            return false;
                     }
                 }
 
-                if (progress && progress->isCanceled())
-                    return false;
-            }
-
-            // if the output is completely filled with valid data,
-            // we are done!
-            if (output.nodataCount() == output.s()*output.t())
-            {
-                break;
+                // if the output is completely filled with valid data, we are done!
+                if (output.nodataCount() == 0)
+                {
+                    break;
+                }
             }
         }
 

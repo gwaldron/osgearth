@@ -116,6 +116,7 @@ SET(LIB_PUBLIC_HEADERS
     Composite
     Config
     Containers
+    Coverage
     CoverageLayer
     Cube
     CullingUtils

@@ -1,0 +1,269 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_COVERAGE_H
+#define OSGEARTH_COVERAGE_H 1
+
+#include <osgEarth/GeoData>
+#include <unordered_map>
+#include <vector>
+#include <map>
+
+namespace osgEarth
+{
+    /**
+     * Grid of templated values.
+     *
+     * The parameter <T> must follow implement the interface:
+     *
+     *    // default constructor, which will result in valid()==false
+     *    T() { }
+     *
+     *    // return true for valid data, false for NO DATA.
+     *    bool valid() const { return ...has a valid data value...; }
+     *
+     *    // "less than" operator for sorting
+     *    bool operator < (const T& rhs) const
+     *
+     * Note: This is a sparse grid for memory conservation purposes,
+     * but includes some optimizations for fast mass-insertion.
+     */
+    template<typename T>
+    class Coverage
+    {
+    public:
+        using Ptr = std::shared_ptr<Coverage<T>>;
+
+        // maps T to index for duplicate values (std::map so that T doesn't need std::hash)
+        using LUT = std::map<T, int>;
+
+        // reverse lookup for reading; maps index to value
+        using RLUT = std::unordered_map<int, T>;
+
+        // max out at 255 different indices. Make it a short if you want more.
+        // todo: consider templatizing this?
+        using Byte = unsigned char;
+
+        // raster of indices
+        using Grid = std::vector<Byte>;
+
+        using pixel_type = T;
+
+        //! create a new coverage (must be a shared_ptr)
+        static Ptr create()
+        {
+            return Ptr(new Coverage<T>());
+        }
+
+        //! copy constructor
+        Coverage(const Coverage<T>& rhs) :
+            _width(rhs._width),
+            _height(rhs._height),
+            _valid_count(rhs._valid_count),
+            _pixels(rhs._pixels),
+            _lut(rhs._lut),
+            _rlut(rhs._rlut)
+        {
+            //nop
+        }
+
+        //! move constructor
+        Coverage(Coverage<T>&& rhs) :
+            _width(rhs._width),
+            _height(rhs._height),
+            _valid_count(rhs._valid_count),
+            _pixels(std::move(rhs._pixels)),
+            _lut(std::move(rhs._lut)),
+            _rlut(std::move(rhs._rlut))
+        {
+            //nop
+        }
+
+        //! allocate width*height pixels
+        void allocate(unsigned w, unsigned h)
+        {
+            _width = w, _height = h;
+            _lut.clear();
+            _rlut.clear();
+            _pixels.assign(w*h, 0);
+            _valid_count = 0;
+        }
+
+        //! true if contains any valid data
+        bool valid() const
+        {
+            return _valid_count > 0;
+        }
+
+        //! raster width
+        unsigned s() const
+        {
+            return _width;
+        }
+
+        //! raster height
+        unsigned t() const
+        {
+            return _height;
+        }
+
+        //! Number of pixels containing "NO DATA" value
+        unsigned nodataCount() const
+        {
+            return (_width*_height) - _valid_count;
+        }
+
+        //! Write a value to a pixel.
+        //! Optional optimization: This method returns a value "k". If you
+        //! are writing the same value again on the next call, pass "k" back
+        //! in as your final argument, and this will dramatically speed up 
+        //! performance. This helps a lot when writing the same value many
+        //! times in a row.
+        int write(const T& value, unsigned s, unsigned t, int k = -1)
+        {
+            int ptr = t * _width + s;
+            if (value.valid())
+            {
+                if (_pixels[ptr] > 0)
+                    --_valid_count;
+
+                if (k < 0)
+                {
+                    LUT::iterator i = _lut.find(value);
+                    if (i != _lut.end())
+                    {
+                        k = i->second;
+                    }
+                    else
+                    {
+                        k = _lut.size() + 1; // skip 0, 0=>nodata
+                        _lut[value] = k;
+                        _rlut[k] = value;
+                    }
+                }
+                ++_valid_count;
+            }
+            else
+            {
+                k = 0;
+                if (_pixels[ptr] > 0)
+                    --_valid_count;
+            }
+
+            _pixels[ptr] = k;
+            return k;
+        }
+
+        bool read(T& output, unsigned s, unsigned t) const
+        {
+            int ptr = t * _width + s;
+            Byte i = _pixels[ptr];
+            bool found = (i > 0);
+            if (found) output = _rlut[i];
+            return found;
+        }
+
+        bool read(T& output, double u, double v) const
+        {
+            unsigned s = (unsigned)((double)(_width - 1) * u);
+            unsigned t = (unsigned)((double)(_height - 1) * v);
+            return read(output, s, t);
+        }
+
+    private:
+        Coverage()
+        {
+            allocate(0, 0);
+        }
+
+    private:
+        unsigned _width, _height;
+        unsigned _valid_count;
+        Grid _pixels;
+        LUT _lut;
+        mutable RLUT _rlut;
+    };
+
+    template<typename T>
+    class GeoCoverage
+    {
+    public:
+        using pixel_type = T;
+
+        //! Construct a GeoCoverage
+        //! @param coverage Coverage to include in the geocoverage
+        //! @param extent geospatial extent of the coverage data
+        GeoCoverage(typename Coverage<T>::Ptr coverage, const GeoExtent& extent)
+            : _coverage(coverage), _extent(extent)
+        {
+            if (coverage == nullptr)
+                _status = Status::ResourceUnavailable;
+        }
+
+        GeoCoverage()
+            : _status(Status::ResourceUnavailable)
+        {
+            //nop
+        }
+
+        Status getStatus() const {
+            return _status;
+        }
+
+        bool valid() const {
+            return _status == STATUS_OK;
+        }
+
+        unsigned s() const {
+            return _coverage ? _coverage->s() : 0u;
+        }
+
+        unsigned t() const {
+            return _coverage ? _coverage->t() : 0u;
+        }
+
+        unsigned nodataCount() const {
+            return _coverage ? _coverage->nodataCount() : 0u;
+        }
+
+        void write(const T& value, unsigned s, unsigned t)
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, void());
+            _coverage->write(value, s, t);
+        }
+
+        bool read(T& value, unsigned s, unsigned t) const
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
+            return _coverage->read(value, s, t);
+        }
+
+        bool read(T& value, double u, double v) const
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
+            return _coverage->read(value, u, v);
+        }
+
+    private:
+        GeoExtent _extent;
+        Status _status;
+        typename Coverage<T>::Ptr _coverage;
+    };
+}
+
+#endif // OSGEARTH_COVERAGE_H

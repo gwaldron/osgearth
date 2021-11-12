@@ -356,6 +356,11 @@ BiomeLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
+    if (getBiomeCatalog() == nullptr || (_polygonIndex == nullptr && getCoverageLayer() == nullptr))
+    {
+        return GeoImage::INVALID;
+    }
+
     PolygonSpatialIndex* polygonIndex = static_cast<PolygonSpatialIndex*>(_polygonIndex);
     if (polygonIndex)
     {

@@ -30,6 +30,13 @@
 #include <osgEarth/FeatureSource>
 #include <osgEarth/CoverageLayer>
 
+#define OE_OPTION_LESS(L,R) \
+    if (L().isSet() && !R().isSet()) return true; \
+    if (R().isSet() && !L().isSet()) return false; \
+    if (L().isSet() && R().isSet()) { \
+        if (L().get() < R().get()) return true; \
+        if (L().get() > R().get()) return false; }
+
 namespace osgEarth
 {
     namespace Procedural
@@ -62,6 +69,16 @@ namespace osgEarth
                     dense().isSet() ||
                     lush().isSet() ||
                     rugged().isSet();
+            }
+
+            bool operator < (const LandCoverSample& rhs) const
+            {
+                OE_OPTION_LESS(biomeid, rhs.biomeid);
+                OE_OPTION_LESS(traits, rhs.traits);
+                OE_OPTION_LESS(dense, rhs.dense);
+                OE_OPTION_LESS(lush, rhs.lush);
+                OE_OPTION_LESS(rugged, rhs.rugged);
+                return false;
             }
         };
 

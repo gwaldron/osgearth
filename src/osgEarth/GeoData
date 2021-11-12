@@ -32,6 +32,9 @@
 #include <osg/Shape>
 #include <osg/Polytope>
 
+#include <map>
+#include <unordered_map>
+
 namespace osgEarth
 {
     class TerrainResolver;
@@ -364,22 +367,22 @@ namespace osgEarth
     {
     public:
         /** Default ctor creates an "invalid" extent */
-        GeoExtent(); 
+        GeoExtent();
 
         /** Contructs a valid extent */
         GeoExtent(
             const SpatialReference* srs,
             double west, double south,
-            double east, double north );
+            double east, double north);
 
         /** Contructs an invalid extent that you can grow with the expandToInclude method */
-        GeoExtent( const SpatialReference* srs );
+        GeoExtent(const SpatialReference* srs);
 
         /** Copy ctor */
-        GeoExtent( const GeoExtent& rhs );
+        GeoExtent(const GeoExtent& rhs);
 
         /** create from Bounds object */
-        GeoExtent( const SpatialReference* srs, const Bounds& bounds );
+        GeoExtent(const SpatialReference* srs, const Bounds& bounds);
 
         /** dtor */
         virtual ~GeoExtent() { }
@@ -387,17 +390,17 @@ namespace osgEarth
         //! Set from the SW and NE corners.
         void set(double west, double south, double east, double north);
 
-        bool operator == ( const GeoExtent& rhs ) const;
-        bool operator != ( const GeoExtent& rhs ) const;
+        bool operator == (const GeoExtent& rhs) const;
+        bool operator != (const GeoExtent& rhs) const;
 
         /** Gets the spatial reference system underlying this extent. */
         const SpatialReference* getSRS() const { return _srs.get(); }
 
         //! Coordinates of the bounding edges, normalized for the lat/long frame if necessary
         inline double west() const { return _west; }
-        inline double east() const { return normalizeX(_west+_width); }
+        inline double east() const { return normalizeX(_west + _width); }
         inline double south() const { return _south; }
-        inline double north() const { return _south+_height; }
+        inline double north() const { return _south + _height; }
 
         //! Coordinates of the bounds, NOT normalized to the lat/long frame.
         inline double xMin() const { return _west; }
@@ -438,10 +441,10 @@ namespace osgEarth
          * each side, and returns true. Otherwise returns false and leaves the reference
          * parameters untouched.
          */
-        bool splitAcrossAntimeridian( GeoExtent& first, GeoExtent& second ) const;
+        bool splitAcrossAntimeridian(GeoExtent& first, GeoExtent& second) const;
 
         /**
-         * Returns this extent transformed into another spatial reference. 
+         * Returns this extent transformed into another spatial reference.
          *
          * NOTE! It is possible that the target SRS will not be able to accomadate the
          * extents of the source SRS. (For example, transforming a full WGS84 extent
@@ -449,12 +452,12 @@ namespace osgEarth
          * globe.) Consider using Profile:clampAndTransformExtent() instead of using
          * this method directly.
          */
-        GeoExtent transform( const SpatialReference* to_srs ) const;
+        GeoExtent transform(const SpatialReference* to_srs) const;
 
         /**
          * Same as transform(srs) but puts the result in the output extent
          */
-        bool transform( const SpatialReference* to_srs, GeoExtent& output ) const;
+        bool transform(const SpatialReference* to_srs, GeoExtent& output) const;
 
         /**
          * Returns true if the specified point falls within the bounds of the extent.
@@ -465,31 +468,31 @@ namespace osgEarth
          *      SRS of input x and y coordinates; if null, the method assumes x and y
          *      are in the same SRS as this object.
          */
-        bool contains(double x, double y, const SpatialReference* srs =0L) const;
+        bool contains(double x, double y, const SpatialReference* srs = 0L) const;
 
-        bool contains(const osg::Vec3d& xy, const SpatialReference* srs =0L) const { return contains(xy.x(),xy.y(),srs); }
+        bool contains(const osg::Vec3d& xy, const SpatialReference* srs = 0L) const { return contains(xy.x(), xy.y(), srs); }
 
         /**
          * Returns true if the point falls within this extent.
          */
-        bool contains( const GeoPoint& rhs ) const;
+        bool contains(const GeoPoint& rhs) const;
 
         /**
          * Returns true if this extent fully contains another extent.
          */
-        bool contains( const GeoExtent& rhs ) const;
+        bool contains(const GeoExtent& rhs) const;
 
         /**
          * Returns true if this extent fully contains the target bounds.
          */
-        bool contains( const Bounds& rhs ) const;
+        bool contains(const Bounds& rhs) const;
 
         /**
          * Returns TRUE if this extent intersects another extent.
          * @param[in ] rhs      Extent against which to perform intersect test
          * @param[in ] checkSRS If false, assume the extents have the same SRS (don't check).
          */
-        bool intersects( const GeoExtent& rhs, bool checkSRS =true ) const;
+        bool intersects(const GeoExtent& rhs, bool checkSRS = true) const;
 
         /**
          * Copy of the anonymous bounding box
@@ -505,20 +508,20 @@ namespace osgEarth
          * Grow this extent to include the specified point (which is assumed to be
          * in the extent's SRS.
          */
-        void expandToInclude( double x, double y ); 
-        void expandToInclude( const osg::Vec3d& v ) { expandToInclude(v.x(), v.y()); }
+        void expandToInclude(double x, double y);
+        void expandToInclude(const osg::Vec3d& v) { expandToInclude(v.x(), v.y()); }
         //void expandToInclude( const Bounds& bounds );
 
         /**
          * Expand this extent to include the bounds of another extent.
          */
-        bool expandToInclude( const GeoExtent& rhs );
-        
+        bool expandToInclude(const GeoExtent& rhs);
+
         /**
          * Intersect this extent with another extent in the same SRS and return the
          * result.
          */
-        GeoExtent intersectionSameSRS( const GeoExtent& rhs ) const; //const Bounds& rhs ) const;
+        GeoExtent intersectionSameSRS(const GeoExtent& rhs) const; //const Bounds& rhs ) const;
 
         /**
          * Returns a human-readable string containing the extent data (without the SRS)
@@ -533,7 +536,7 @@ namespace osgEarth
         /**
          * Expands the extent by x and y.
          */
-        void expand( double x, double y );
+        void expand(double x, double y);
 
         /**
         * Expands the extent by x and y.
@@ -559,7 +562,7 @@ namespace osgEarth
          * For example, if this extent is 100m wide, and the target extent is
          * 200m wide, the output matrix will have an x_scale = 0.5.
          *
-         * Note! For the sake of efficiency, this method does NOT check for 
+         * Note! For the sake of efficiency, this method does NOT check for
          * validity nor for SRS equivalence -- so be sure to validate those beforehand.
          * It also assumes the output matrix is preset to the identity.
          */
@@ -567,7 +570,7 @@ namespace osgEarth
         bool createScaleBias(const GeoExtent& target, osg::Matrixf& output) const;
 
         /**
-         * Generates a BoundingSphere encompassing the extent and a vertical 
+         * Generates a BoundingSphere encompassing the extent and a vertical
          * volume, in world coordinates.
          */
         osg::BoundingSphered createWorldBoundingSphere(double minElev, double maxElev) const;
@@ -584,7 +587,7 @@ namespace osgEarth
         double _west, _width, _south, _height;
         osg::ref_ptr<const SpatialReference> _srs;
 
-        double normalizeX( double longitude ) const;
+        double normalizeX(double longitude) const;
 
         void clamp();
 
@@ -603,7 +606,7 @@ namespace osgEarth
         DataExtent();
         DataExtent(const GeoExtent& extent);
         DataExtent(const GeoExtent& extent, const std::string &description);
-        DataExtent(const GeoExtent& extent, unsigned minLevel );
+        DataExtent(const GeoExtent& extent, unsigned minLevel);
         DataExtent(const GeoExtent& extent, unsigned minLevel, const std::string &description);
         DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel);
         DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel, const std::string &description);
@@ -658,7 +661,7 @@ namespace osgEarth
 
     public:
         /**
-         * True if this is a valid geo image. 
+         * True if this is a valid geo image.
          */
         bool valid() const;
 
@@ -682,7 +685,7 @@ namespace osgEarth
         const SpatialReference* getSRS() const;
 
         /**
-         * Crops the image to a new geospatial extent. 
+         * Crops the image to a new geospatial extent.
          *
          * @param extent
          *      New extent to which to crop the image.
@@ -696,7 +699,7 @@ namespace osgEarth
          *      New pixel size for the output image. By default, the method will automatically
          *      calculate a new pixel size.
          */
-        GeoImage crop( 
+        GeoImage crop(
             const GeoExtent& extent,
             bool exact = false,
             unsigned int width = 0,
@@ -727,10 +730,10 @@ namespace osgEarth
          */
         osg::ref_ptr<osg::Image> takeImage();
 
-		/**
-		 * Gets the units per pixel of this geoimage
-		 */
-		double getUnitsPerPixel() const;
+        /**
+         * Gets the units per pixel of this geoimage
+         */
+        double getUnitsPerPixel() const;
 
         //! Gets the coordinate at the image's s,t
         bool getCoord(int s, int t, double& out_x, double& out_y) const;
@@ -802,7 +805,7 @@ namespace osgEarth
          */
         GeoHeightField(
             const osg::HeightField* heightField,
-            const GeoExtent&  extent );
+            const GeoExtent&  extent);
 
         /** dtor */
         virtual ~GeoHeightField() { }
@@ -810,7 +813,7 @@ namespace osgEarth
         static GeoHeightField INVALID;
 
         /**
-         * True if this is a valid heightfield. 
+         * True if this is a valid heightfield.
          */
         bool valid() const;
 
@@ -829,7 +832,7 @@ namespace osgEarth
          * @param interp
          *      Interpolation method for the elevation query.
          * @param srsWithOutputVerticalDatum
-         *      Transform the output elevation value according to the vertical datum 
+         *      Transform the output elevation value according to the vertical datum
          *      associated with this SRS. If the SRS is NULL, assume a geodetic vertical datum
          *      relative to this object's reference ellipsoid.
          * @param out_elevation
@@ -839,21 +842,21 @@ namespace osgEarth
          *      fell outside the geospatial extent of the heightfield)
          */
         bool getElevation(
-            const SpatialReference* inputSRS, 
+            const SpatialReference* inputSRS,
             double                  x,
             double                  y,
             RasterInterpolation     interp,
             const SpatialReference* srsWithOutputVerticalDatum,
-            float&                  out_elevation ) const;
+            float&                  out_elevation) const;
 
         //! Gets the elevation at a point (must be in the same SRS; bilinear interpolation)
         float getElevation(double x, double y) const;
-        
+
         /**
          * Subsamples the heightfield, returning a new heightfield corresponding to
          * the destEx extent. The destEx must be a smaller, inset area of sourceEx.
          */
-        GeoHeightField createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, RasterInterpolation interpolation) const;
+        GeoHeightField createSubSample(const GeoExtent& destEx, unsigned int width, unsigned int height, RasterInterpolation interpolation) const;
 
         /**
          * Gets the geospatial extent of the heightfield.
@@ -890,7 +893,7 @@ namespace osgEarth
         struct SortByResolutionFunctor
         {
             inline bool operator() (const GeoHeightField& lhs, const GeoHeightField& rhs) const
-            {                
+            {
                 return lhs.getXInterval() < rhs.getXInterval();
             }
         };
@@ -904,7 +907,7 @@ namespace osgEarth
         void init();
     };
 
-	typedef std::vector<GeoHeightField> GeoHeightFieldVector;
+    typedef std::vector<GeoHeightField> GeoHeightFieldVector;
 
 
     /**
@@ -945,177 +948,6 @@ namespace osgEarth
     };
 
     typedef std::vector<GeoNode> GeoNodeVector;
-
-
-    /**
-     * Sparse grid of templated values.
-     *
-     * The parameter <T> must follow implement the interface:
-     *
-     *    // return true for valid data, false for NO DATA.
-     *    bool valid() const { return ...has a valid data value...; }
-     *
-     *    // return a hash value for std::hash<T>
-     *    size_t operator()(const T& v) const
-     *
-     * and where the default constructed <T> returns valid()==false
-     */
-    template<typename T>
-    class Coverage
-    {
-    public:
-        using Ptr = std::shared_ptr<Coverage<T>>;
-
-        using pixel_type = T;
-
-        static Ptr create()
-        {
-            return Ptr(new Coverage<T>());
-        }
-
-        //! copy constructor
-        Coverage(const Coverage<T>& rhs) :
-            _width(rhs._width),
-            _height(rhs._height),
-            _pixels(rhs._pixels),
-            _nodata_count(rhs._nodata_count)
-        {
-            //nop
-        }
-
-        void allocate(unsigned w, unsigned h)
-        {
-            _width = w, _height = h;
-            _pixels.clear();
-            if (w*h > 0u)
-                _pixels.resize(w*h);
-            _nodata_count = w * h;
-        }
-
-        bool valid() const
-        {
-            return !_pixels.empty();
-        }
-
-        unsigned s() const {
-            return _width;
-        }
-
-        unsigned t() const {
-            return _height;
-        }
-
-        //! Number of pixels containing "NO DATA" value
-        unsigned nodataCount() const {
-            return _nodata_count;
-        }
-
-        //! Write a value to a pixel
-        void write(const T& value, unsigned s, unsigned t)
-        {
-            unsigned ptr = t * _width + s;
-            T& pixel = _pixels[ptr];
-            bool old_value_is_nodata = !pixel.valid();
-            bool new_value_is_nodata = !value.valid();
-            _pixels[ptr] = value;
-            if (old_value_is_nodata && !new_value_is_nodata)
-                --_nodata_count;
-            else if (!old_value_is_nodata && new_value_is_nodata)
-                ++_nodata_count;
-        }
-
-        bool read(T& output, unsigned s, unsigned t) const
-        {
-            unsigned ptr = t * _width + s;
-            output = _pixels[ptr];
-            return output.valid();
-        }
-
-        bool read(T& output, double u, double v) const
-        {
-            unsigned s = (unsigned)((double)(_width - 1) * u);
-            unsigned t = (unsigned)((double)(_height - 1) * v);
-            return read(output, s, t);
-        }
-
-    private:
-        Coverage() 
-            : _nodata_count(0u)
-        {
-            allocate(0, 0);
-        }
-
-    private:
-        unsigned _width, _height;
-        std::vector<T> _pixels;
-        unsigned _nodata_count;
-    };
-
-    template<typename T>
-    class GeoCoverage
-    {
-    public:
-        using pixel_type = T;
-
-        //! Construct a GeoCoverage
-        //! @param coverage Coverage to include in the geocoverage
-        //! @param extent geospatial extent of the coverage data
-        GeoCoverage(typename Coverage<T>::Ptr coverage, const GeoExtent& extent)
-            : _coverage(coverage), _extent(extent)
-        {
-            if (coverage == nullptr)
-                _status = Status::ResourceUnavailable;
-        }
-
-        GeoCoverage()
-            : _status(Status::ResourceUnavailable)
-        {
-            //nop
-        }
-
-        Status getStatus() const {
-            return _status;
-        }
-
-        bool valid() const {
-            return _status == STATUS_OK;
-        }
-
-        unsigned s() const {
-            return _coverage ? _coverage->s() : 0u;
-        }
-
-        unsigned t() const {
-            return _coverage ? _coverage->t() : 0u;
-        }
-
-        unsigned nodataCount() const {
-            return _coverage ? _coverage->nodataCount() : 0u;
-        }
-
-        void write(const T& value, unsigned s, unsigned t)
-        {
-            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, void());
-            _coverage->write(value, s, t);
-        }
-
-        bool read(T& value, unsigned s, unsigned t) const
-        {
-            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
-            return _coverage->read(value, s, t);
-        }
-
-        bool read(T& value, double u, double v) const
-        {
-            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
-            return _coverage->read(value, u, v);
-        }
-
-    private:
-        GeoExtent _extent;
-        Status _status;
-        typename Coverage<T>::Ptr _coverage;
-    };
 }
 
 #endif // OSGEARTH_GEODATA_H

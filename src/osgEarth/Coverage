@@ -57,10 +57,10 @@ namespace osgEarth
 
         // max out at 255 different indices. Make it a short if you want more.
         // todo: consider templatizing this?
-        using Byte = unsigned char;
+        using Index = unsigned char;
 
         // raster of indices
-        using Grid = std::vector<Byte>;
+        using Grid = std::vector<Index>;
 
         using pixel_type = T;
 
@@ -144,7 +144,7 @@ namespace osgEarth
 
                 if (k < 0)
                 {
-                    LUT::iterator i = _lut.find(value);
+                    typename LUT::iterator i = _lut.find(value);
                     if (i != _lut.end())
                     {
                         k = i->second;
@@ -172,7 +172,7 @@ namespace osgEarth
         bool read(T& output, unsigned s, unsigned t) const
         {
             int ptr = t * _width + s;
-            Byte i = _pixels[ptr];
+            Index i = _pixels[ptr];
             bool found = (i > 0);
             if (found) output = _rlut[i];
             return found;

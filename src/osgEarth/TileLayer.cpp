@@ -792,8 +792,10 @@ TileKey
 TileLayer::getBestAvailableTileKey(const TileKey& key) const
 {
     // trivial reject
-    if ( !key.valid() )
+    if (!key.valid())
+    {
         return TileKey::INVALID;
+    }
 
     unsigned MDL = options().maxDataLevel().get();
 
@@ -803,7 +805,8 @@ TileLayer::getBestAvailableTileKey(const TileKey& key) const
         key.getLOD();
 
     // Check against level extrema:
-    if (localLOD < options().minLevel().get() || localLOD > options().maxLevel().get())
+    if ((options().maxLevel().isSet() && localLOD > options().maxLevel().value()) ||
+        (options().minLevel().isSet() && localLOD < options().minLevel().value()))
     {
         return TileKey::INVALID;
     }
@@ -889,7 +892,18 @@ TileLayer::getBestAvailableTileKey(const TileKey& key) const
 
     if ( intersects )
     {
-        return key.createAncestorKey(osg::minimum(key.getLOD(), osg::minimum(highestLOD, MDL)));
+        if (getUpsample())
+        {
+            // for a upsampled dataset, MDL takes priority over the dataset max
+            unsigned maxAvailableLOD = std::max(highestLOD, MDL);
+            return key.createAncestorKey(std::min(key.getLOD(), maxAvailableLOD));
+        }
+        else
+        {
+            // for a normal dataset, dataset max takes priority over MDL.
+            unsigned maxAvailableLOD = std::min(highestLOD, MDL);
+            return key.createAncestorKey(std::min(key.getLOD(), maxAvailableLOD));
+        }
     }
 
     return TileKey::INVALID;

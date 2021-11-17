@@ -24,6 +24,8 @@
 
 using namespace osgEarth;
 
+//#define USE_RUGGEDNESS
+
 osg::Texture*
 osgEarth::createEmptyElevationTexture()
 {
@@ -176,6 +178,7 @@ ElevationTexture::generateNormalMap(
 
         if (!_normalTex.valid())
         {
+#ifdef USE_RUGGEDNESS
             if (!_ruggedness.valid())
             {
                 _ruggedness = new osg::Image();
@@ -183,6 +186,7 @@ ElevationTexture::generateNormalMap(
                 _readRuggedness.setImage(_ruggedness.get());
                 _readRuggedness.setBilinear(true);
             }
+#endif
 
             NormalMapGenerator gen;
 

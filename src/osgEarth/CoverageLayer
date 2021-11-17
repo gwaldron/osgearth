@@ -299,7 +299,7 @@ namespace osgEarth
                     input.valid() == false &&
                     inputKey.valid() &&
                     imageLayer->isKeyInLegalRange(inputKey) &&
-                    (imageLayer->mayHaveData(inputKey) || imageLayer->getUpsample()))
+                    imageLayer->mayHaveData(inputKey))
                 {
                     input = createCoverage(inputKey, imageLayer, mappings, progress);
                     if (!input.valid())
@@ -311,7 +311,7 @@ namespace osgEarth
             else
             {
                 if (imageLayer->isKeyInLegalRange(key) &&
-                    (imageLayer->mayHaveData(key) || imageLayer->getUpsample()))
+                    imageLayer->mayHaveData(key))
                 {
                     input = createCoverage(key, imageLayer, mappings, progress);
                 }

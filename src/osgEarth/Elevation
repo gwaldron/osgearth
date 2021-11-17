@@ -106,6 +106,7 @@ namespace osgEarth
 
         //! Ruggedness value at map coordinates (x,y)
         //! (Warning: experimental function; may go away or change without notice.)
+        //! Note: currently disabled and will always return 0.
         inline float getRuggedness(double x, double y) const;
 
         //! The heightfield that was used to populate this object

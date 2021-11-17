@@ -22,13 +22,11 @@
 #include <osgEarth/Common>
 #include <atomic>
 #include <functional>
-#include <mutex>
 #include <condition_variable>
 #include <vector>
 #include <unordered_map>
 #include <queue>
 #include <thread>
-#include <future>
 #include <type_traits>
 
 // to include the file and line as the mutex name

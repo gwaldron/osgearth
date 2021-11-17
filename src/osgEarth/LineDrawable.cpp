@@ -376,10 +376,10 @@ _colors(NULL)
 {
     setUseVertexArrayObject(false);
     setUseVertexBufferObjects(false);
-    setUseDisplayList(false);
 
     _geom = new osg::Geometry();
     _geom->setUseVertexBufferObjects(true);
+    _geom->setUseDisplayList(false);
 
     if (!Registry::capabilities().supportsGLSL())
         _useGPU = false;
@@ -546,6 +546,13 @@ LineDrawable::setColor(const osg::Vec4& color)
 {
     initialize();
 
+    // if we've already called dirty() that means we are editing a completed
+    // drawable and therefore need dynamic variance.
+    if (_geom->getNumPrimitiveSets() > 0u && _geom->getDataVariance() != DYNAMIC)
+    {
+        _geom->setDataVariance(DYNAMIC);
+    }
+
     _color = color;
     if (_colors && !_colors->empty())
     {
@@ -557,6 +564,13 @@ LineDrawable::setColor(const osg::Vec4& color)
 void
 LineDrawable::setColor(unsigned vi, const osg::Vec4& color)
 {
+    // if we've already called dirty() that means we are editing a completed
+    // drawable and therefore need dynamic variance.
+    if (_geom->getNumPrimitiveSets() > 0u && _geom->getDataVariance() != DYNAMIC)
+    {
+        _geom->setDataVariance(DYNAMIC);
+    }
+
     bool dirty = false;
     if (_useGPU)
     {

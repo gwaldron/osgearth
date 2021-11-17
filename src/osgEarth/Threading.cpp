@@ -18,6 +18,7 @@
  */
 #include <osgEarth/Threading>
 #include <osgDB/Options>
+#include <mutex>
 #include "Utils"
 #include "Metrics"
 #include <cstdlib>

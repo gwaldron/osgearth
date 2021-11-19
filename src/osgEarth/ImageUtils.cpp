@@ -450,6 +450,49 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
     return true;
 }
 
+// helper function for calculating memory requirements and mipmap offsets of an
+// image without mipmaps.
+//
+// In OpenGL, the dimensions of map[n+1] are max(floor(s[n] / 2), 1),
+// max(floor(t[n] / 2), 1). This means that, in order to account for rectangular
+// maps, we cannot just divide the storage by 4 at each step.
+//
+// minSide - minimum for at least one side
+// minLevelSize - final minimum for both sides
+
+int computeMipmapMemory(const osg::Image* input, osg::Image::MipmapDataType& mipOffsets,
+                        int minSide, int minLevelSize)
+{
+    const int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
+    int imageSizeBytes = input->getTotalSizeInBytes();
+    // offset vector does not include level 0 (the full-resolution level)
+    mipOffsets.reserve(numLevels-1);
+
+    // calculate memory requirements:
+    int totalSizeBytes = imageSizeBytes;
+    int s = input->s();
+    int t = input->t();
+    for(int i = 1; i < numLevels; ++i)
+    {
+        if ((s < minLevelSize || t < minLevelSize)
+            || (s < minSide && t < minSide))
+            break;
+        mipOffsets.push_back(totalSizeBytes);
+        if (s > 1)
+        {
+            s >>= 1;
+            imageSizeBytes >>= 1;
+        }
+        if (t > 1)
+        {
+            t >>= 1;
+            imageSizeBytes >>= 1;
+        }
+        totalSizeBytes += imageSizeBytes;
+    }
+    return totalSizeBytes;
+}
+
 const osg::Image*
 ImageUtils::mipmapImage(const osg::Image* input, int minLevelSize)
 {
@@ -486,40 +529,14 @@ ImageUtils::mipmapImage(const osg::Image* input, int minLevelSize)
     }
 
     // first, build the image that will hold all the mipmap levels.
-    int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
-
-    // DXT compression has minimum mipmap sizes; enforce those now:    
+    // DXT compression has minimum mipmap sizes
     int minSize = 16;
-    for (int level = 0; level < numLevels; ++level)
-    {
-        int level_s = input->s() >> level;
-        int level_t = input->t() >> level;
-
-        if (level_s < minLevelSize || level_t < minLevelSize)
-        {
-            numLevels = level;
-            break;
-        }
-
-        if (level_s < minSize && level_t < minSize)
-        {
-            numLevels = level;
-        }
-    }
-
     int imageSizeBytes = input->getTotalSizeInBytes();
 
     // offset vector does not include level 0 (the full-resolution level)
     osg::Image::MipmapDataType mipOffsets;
-    mipOffsets.reserve(numLevels-1);
-
-    // calculate memory requirements:
-    int totalSizeBytes = imageSizeBytes;
-    for( int i=1; i<numLevels; ++i )
-    {
-        mipOffsets.push_back(totalSizeBytes);
-        totalSizeBytes += (imageSizeBytes >> i);
-    }
+    const int totalSizeBytes = computeMipmapMemory(input, mipOffsets, minSize, minLevelSize);
+    const int numLevels = mipOffsets.size() + 1;
 
     osg::Image* output = new osg::Image();
     output->setName(input->getName());
@@ -558,8 +575,8 @@ ImageUtils::mipmapImage(const osg::Image* input, int minLevelSize)
             output->t(),
             output->getDataType(),
             output->data(),
-            output->s() >> level,
-            output->t() >> level,
+            std::max(output->s() >> level, 1),
+            std::max(output->t() >> level, 1),
             output->getDataType(),
             output->getMipmapData(level));
 #else
@@ -619,20 +636,12 @@ ImageUtils::mipmapImageInPlace(osg::Image* input)
     }
 
     // first, build the image that will hold all the mipmap levels.
-    int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
     int imageSizeBytes = input->getTotalSizeInBytes();
 
     // offset vector does not include level 0 (the full-resolution level)
     osg::Image::MipmapDataType mipOffsets;
-    mipOffsets.reserve(numLevels-1);
-
-    // calculate memory requirements:
-    int totalSizeBytes = imageSizeBytes;
-    for( int i=1; i<numLevels; ++i )
-    {
-        mipOffsets.push_back(totalSizeBytes);
-        totalSizeBytes += (imageSizeBytes >> i);
-    }
+    const int totalSizeBytes = computeMipmapMemory(input, mipOffsets, 4, 4);
+    const int numLevels = mipOffsets.size() + 1;
 
     // allocate space for the new data and copy over level 0 of the old data
     unsigned char* newData = new unsigned char[totalSizeBytes];
@@ -666,8 +675,8 @@ ImageUtils::mipmapImageInPlace(osg::Image* input)
             input->t(),
             input->getDataType(),
             input->data(),
-            input->s() >> level,
-            input->t() >> level,
+            std::max(input->s() >> level, 1),
+            std::max(input->t() >> level, 1),
             input->getDataType(),
             input->getMipmapData(level));
     }

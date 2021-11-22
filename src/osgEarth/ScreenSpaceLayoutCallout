@@ -683,8 +683,6 @@ namespace osgEarth { namespace Internal
                     renderInfo.getState()->popStateSet();
                 }
 
-
-
                 // the debug diagram
                 if (local._voronoi.valid())
                 {
@@ -750,10 +748,8 @@ namespace osgEarth { namespace Internal
             const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
             if (pcp)
             {
-                if (pcp != rs.lastPCP || leaf->_depth != rs.lastFade)
+                if (pcp != rs.lastPCP)
                 {
-                    rs.lastFade = ScreenSpaceLayout::globallyEnabled ? leaf->_depth : 1.0f;
-                    _fade->set(rs.lastFade);
                     pcp->apply(*_fade.get());
                 }
             }

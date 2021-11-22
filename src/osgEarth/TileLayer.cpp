@@ -770,11 +770,19 @@ TileLayer::getDataExtentsUnion() const
                 for (unsigned int i = 1; i < de.size(); i++)
                 {
                     _dataExtentsUnion.expandToInclude(de[i]);
-                    if (de[i].minLevel().isSet())
-                        _dataExtentsUnion.minLevel() = osg::minimum(_dataExtentsUnion.minLevel().get(), de[i].minLevel().get());
-                    if (de[i].maxLevel().isSet())
-                        _dataExtentsUnion.maxLevel() = osg::maximum(_dataExtentsUnion.maxLevel().get(), de[i].maxLevel().get());
 
+                    if (de[i].minLevel().isSet())
+                        _dataExtentsUnion.minLevel() = std::min(_dataExtentsUnion.minLevel().get(), de[i].minLevel().get());
+
+                    if (de[i].maxLevel().isSet())
+                        _dataExtentsUnion.maxLevel() = std::max(_dataExtentsUnion.maxLevel().get(), de[i].maxLevel().get());
+                }
+
+                // if upsampling is enabled include the MDL in the union.
+                if (options().maxDataLevel().isSet() &&
+                    getUpsample())
+                {
+                    _dataExtentsUnion.maxLevel() = std::max(_dataExtentsUnion.maxLevel().get(), options().maxDataLevel().get());
                 }
             }
         }
@@ -789,7 +797,9 @@ TileLayer::getExtent() const
 }
 
 TileKey
-TileLayer::getBestAvailableTileKey(const TileKey& key) const
+TileLayer::getBestAvailableTileKey(
+    const TileKey& key,
+    bool considerUpsampling) const
 {
     // trivial reject
     if (!key.valid())
@@ -837,15 +847,16 @@ TileLayer::getBestAvailableTileKey(const TileKey& key) const
     }
 
     // Next check against the data extents.
-    const DataExtentList& de = getDataExtents();
+    const DataExtentList& de_list = getDataExtents();
 
-    // If we have mo data extents available, just return the MDL-limited input key.
-    if (de.empty())
+    // If we have no data extents available, just return the MDL-limited input key.
+    if (de_list.empty())
     {
         return localLOD > MDL ? key.createAncestorKey(MDL) : key;
     }
 
     // Reject if the extents don't overlap at all.
+    // (Note: this does not consider min/max levels, only spatial extents)
     if (!getDataExtentsUnion().intersects(key.getExtent()))
     {
         return TileKey::INVALID;
@@ -855,36 +866,36 @@ TileLayer::getBestAvailableTileKey(const TileKey& key) const
     unsigned highestLOD = 0;
 
     // Check each data extent in turn:
-    for (DataExtentList::const_iterator itr = de.begin(); itr != de.end(); ++itr)
+    for (auto& de : de_list)
     {
         // check for 2D intersection:
-        if (key.getExtent().intersects(*itr))
+        if (key.getExtent().intersects(de))
         {
             // check that the extent isn't higher-resolution than our key:
-            if ( !itr->minLevel().isSet() || localLOD >= (int)itr->minLevel().get() )
+            if ( !de.minLevel().isSet() || localLOD >= (int)de.minLevel().get() )
             {
                 // Got an intersetion; now test the LODs:
                 intersects = true;
 
-                // Is the high-LOD set? If not, there's not enough information
+                // If the maxLevel is not set, there's not enough information
                 // so just assume our key might be good.
-                if ( itr->maxLevel().isSet() == false )
+                if ( !de.maxLevel().isSet())
                 {
                     return localLOD > MDL ? key.createAncestorKey(MDL) : key;
                 }
 
                 // Is our key at a lower or equal LOD than the max key in this extent?
                 // If so, our key is good.
-                else if ( localLOD <= (int)itr->maxLevel().get() )
+                else if ( localLOD <= (int)de.maxLevel().get() )
                 {
                     return localLOD > MDL ? key.createAncestorKey(MDL) : key;
                 }
 
                 // otherwise, record the highest encountered LOD that
                 // intersects our key.
-                else if ( itr->maxLevel().get() > highestLOD )
+                else if ( de.maxLevel().get() > highestLOD )
                 {
-                    highestLOD = itr->maxLevel().get();
+                    highestLOD = de.maxLevel().get();
                 }
             }
         }
@@ -892,9 +903,9 @@ TileLayer::getBestAvailableTileKey(const TileKey& key) const
 
     if ( intersects )
     {
-        if (getUpsample())
+        if (considerUpsampling && (getUpsample() == true))
         {
-            // for a upsampled dataset, MDL takes priority over the dataset max
+            // for a normal dataset, MDL takes priority.
             unsigned maxAvailableLOD = std::max(highestLOD, MDL);
             return key.createAncestorKey(std::min(key.getLOD(), maxAvailableLOD));
         }
@@ -913,5 +924,5 @@ bool
 TileLayer::mayHaveData(const TileKey& key) const
 {
     return
-        key == getBestAvailableTileKey(key);
+        key == getBestAvailableTileKey(key, true);
 }

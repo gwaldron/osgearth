@@ -164,8 +164,15 @@ namespace osgEarth
          *
          * If a setting that effects the visible range of this layer is set (minLevel, maxLevel, minResolution or maxResolution)
          * then any key passed in that falls outside of the valid range for the layer will return TileKey::INVALID.
+         *
+         * @param key Tile key to check
+         * @param considerUpsampling Normally this method will only return a key
+         *    corresponding to possible real data. If you set this to true, it may
+         *    also return a TileKey that may correspond to upsampled data.
          */
-        virtual TileKey getBestAvailableTileKey(const TileKey& key) const;
+        virtual TileKey getBestAvailableTileKey(
+            const TileKey& key,
+            bool considerUpsampling =false) const;
 
         /**
          * Whether the layer possibly has real data for the provided TileKey.

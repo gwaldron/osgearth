@@ -118,8 +118,7 @@ namespace osgEarth { namespace REX
             _sourceUID(-1),
             _samplers(SamplerBinding::COLOR_PARENT+1),
             _visibleLayer(0L),
-            _tileLayer(0L),
-            _parentPass(nullptr)
+            _tileLayer(0L)
             { }
 
         RenderingPass(const RenderingPass& rhs) :
@@ -127,8 +126,7 @@ namespace osgEarth { namespace REX
             _samplers(rhs._samplers),
             _layer(rhs._layer),
             _visibleLayer(rhs._visibleLayer),
-            _tileLayer(rhs._tileLayer),
-            _parentPass(rhs._parentPass)
+            _tileLayer(rhs._tileLayer)
         {
             //nop
         }
@@ -152,9 +150,6 @@ namespace osgEarth { namespace REX
         const VisibleLayer* visibleLayer() const { return _visibleLayer; }
         const TileLayer* tileLayer() const { return _tileLayer; }
 
-        const RenderingPass* parent() const { return _parentPass; }
-        void setParent(const RenderingPass* value) { _parentPass = value; }
-
         // whether the color sampler in this rendering pass are native
         // or inherited from another tile
         bool ownsTexture() const { return _samplers[SamplerBinding::COLOR].ownsTexture(); }
@@ -166,7 +161,6 @@ namespace osgEarth { namespace REX
             _layer = rhs._layer;
             _visibleLayer = rhs._visibleLayer;
             _tileLayer = rhs._tileLayer;
-            _parentPass = &rhs;
 
             for (unsigned s = 0; s < samplers().size(); ++s)
                 sampler(s)._matrix.preMult(scaleBias);
@@ -236,9 +230,6 @@ namespace osgEarth { namespace REX
         /** VisibleLayer responsible for this rendering pass (is _layer is a TileLayer) */
         const TileLayer* _tileLayer;
 
-        //! Parent rendering pass
-        const RenderingPass* _parentPass;
-
         friend class TileRenderModel;
     };
 
@@ -261,10 +252,9 @@ namespace osgEarth { namespace REX
         RenderingPasses _passes;
 
         /** Add a new rendering pass to the end of the list. */
-        RenderingPass& addPass(const RenderingPass* parent)
+        RenderingPass& addPass()
         {
             _passes.resize(_passes.size()+1);
-            _passes.back()._parentPass = parent;
             return _passes.back();
         }
 

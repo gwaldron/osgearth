@@ -137,7 +137,7 @@ struct App
                 << std::endl;
         }
 
-tritonLayer->setUserCallback(new TritonCallback(settings));
+        tritonLayer->setUserCallback(new TritonCallback(settings));
         map->addLayer(tritonLayer);
         settings.tritonLayer = tritonLayer;
 

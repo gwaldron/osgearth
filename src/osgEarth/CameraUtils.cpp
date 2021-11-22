@@ -33,7 +33,6 @@ CameraUtils::setIsShadowCamera(osg::Camera* camera)
     OE_SOFT_ASSERT_AND_RETURN(camera != nullptr, void());
     osg::StateSet* ss = camera->getOrCreateStateSet();
     ss->setDefine("OE_IS_SHADOW_CAMERA");
-    ss->setDefine("OE_IS_DEPTH_CAMERA");
     setIsDepthCamera(camera);
 }
 

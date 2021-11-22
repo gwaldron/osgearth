@@ -260,6 +260,8 @@ LifeMapLayer::openImplementation()
     if (parent.isError())
         return parent;
 
+    options().biomeLayer().open(getReadOptions());
+
     options().maskLayer().open(getReadOptions());
 
     options().waterLayer().open(getReadOptions());
@@ -314,6 +316,7 @@ LifeMapLayer::removedFromMap(const Map* map)
     options().waterLayer().removedFromMap(map);
     options().colorLayer().removedFromMap(map);
     options().landCoverLayer().removedFromMap(map);
+    options().landUseLayer().removedFromMap(map);
     ImageLayer::removedFromMap(map);
 }
 

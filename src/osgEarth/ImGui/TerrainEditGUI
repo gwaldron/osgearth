@@ -379,8 +379,6 @@ namespace osgEarth
                     if (geom->size() == 1)
                         geom->push_back(pf.x(), pf.y());
                     _ditchCursor->dirty();
-
-                    OE_INFO << "point = " << pf.x() << ", " << pf.y() << std::endl;
                 }
             }
 

@@ -120,48 +120,14 @@ osg::Node* makeGeometryForImport(double x, double y)
     return geom;
 }
 
-struct TestFirstCount : public osg::NodeCallback
+template<typename T>
+struct CB : public osg::NodeCallback
 {
-    void operator()(osg::Node* node, osg::NodeVisitor* nv)
-    {
-        if (nv->getFrameStamp()->getFrameNumber() % 20 == 0)
-        {
-            LineDrawable* line = (LineDrawable*)node;
-
-            unsigned total = line->getNumVerts();
-            unsigned first = line->getFirst();
-
-            line->setFirst( (first+1) % total );
-            line->setCount( 3 );
-        }
-    }
-};
-
-struct RemoveAndReAddVertices : public osg::NodeCallback
-{
-    void operator()(osg::Node* node, osg::NodeVisitor* nv)
-    {
-        if (nv->getFrameStamp()->getFrameNumber() % 20 == 0)
-        {
-            size_ = (size_ == 10) ? 12 : 10;
-            LineDrawable* line = (LineDrawable*)node;
-
-
-            line->clear();
-            addVerts(line, size_ + 20, size_);
-        }
-    }
-    int size_ = 10;
-};
-
-struct RollStipple : public osg::NodeCallback
-{
-    void operator()(osg::Node* node, osg::NodeVisitor* nv)
-    {
-        LineDrawable* line = (LineDrawable*)node;
-        GLushort p = line->getStipplePattern();
-        ror(p, 1);
-        line->setStipplePattern(p);
+    using F = std::function<void(T*, osg::NodeVisitor*)>;
+    F _func;
+    CB(F func) : _func(func) { }
+    void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+        _func(static_cast<T*>(node), nv);
     }
 };
 
@@ -188,7 +154,18 @@ osg::Node* createDrawables()
     loop->setLineWidth(1);
     loop->setColor(osg::Vec4(1,1,0,1));
     addVerts(loop, x, y);
-    loop->addUpdateCallback(new RemoveAndReAddVertices());
+    loop->addUpdateCallback(new CB<LineDrawable>(
+        [&](LineDrawable* line, osg::NodeVisitor* nv)
+        {
+            unsigned fn = nv->getFrameStamp()->getFrameNumber();
+            if (fn % 19 == 0)
+            {
+                int size = (fn%2 == 0) ? 10 : 12;
+                line->clear();
+                addVerts(line, size + 20, size);
+            }
+        }
+    ));
     group->addChild(loop);
 
     x += 20;
@@ -200,13 +177,38 @@ osg::Node* createDrawables()
     group->addChild(stippled);
 
     x += 20;
-    LineDrawable* rollingStipple = new LineDrawable(GL_LINE_STRIP);
-    rollingStipple->setLineWidth(4);
-    rollingStipple->setStipplePattern(0xfff0);
-    rollingStipple->setColor(osg::Vec4(1,1,0,1));
-    addVerts(rollingStipple, x, y);
-    rollingStipple->addUpdateCallback(new RollStipple());
-    group->addChild(rollingStipple);
+    LineDrawable* rollStipple = new LineDrawable(GL_LINE_STRIP);
+    rollStipple->setLineWidth(4);
+    rollStipple->setStipplePattern(0xfff0);
+    rollStipple->setColor(osg::Vec4(1,1,0,1));
+    addVerts(rollStipple, x, y);
+    rollStipple->addUpdateCallback(new CB<LineDrawable>(
+        [&](LineDrawable* line, osg::NodeVisitor* nv)
+        {
+            GLushort p = line->getStipplePattern();
+            ror(p, 1);
+            line->setStipplePattern(p);
+        }
+    ));
+    group->addChild(rollStipple);
+
+    x += 20;
+    LineDrawable* rollColor = new LineDrawable(GL_LINE_STRIP);
+    rollColor->setLineWidth(4);
+    rollColor->setColor(osg::Vec4(1, 1, 0, 1));
+    addVerts(rollColor, x, y);
+    rollColor->addUpdateCallback(new CB<LineDrawable>(
+        [&](LineDrawable* line, osg::NodeVisitor* nv)
+        {
+            unsigned fn = nv->getFrameStamp()->getFrameNumber();
+            if (fn % 13 == 0) {
+                int index = fn % line->getNumVerts();
+                line->setColor(osg::Vec4(1, 1, 0, 1));
+                line->setColor(index, osg::Vec4(1, 0, 0, 1));
+            }
+        }
+    ));
+    group->addChild(rollColor);
 
     x += 20;
     LineDrawable* segments = new LineDrawable(GL_LINES);
@@ -220,7 +222,18 @@ osg::Node* createDrawables()
     firstCount->setLineWidth(5);
     firstCount->setColor(osg::Vec4(1,0,1,1));
     addVerts(firstCount, x, y);
-    firstCount->addUpdateCallback(new TestFirstCount());
+    firstCount->addUpdateCallback(new CB<LineDrawable>(
+        [&](LineDrawable* line, osg::NodeVisitor* nv)
+        {
+            if (nv->getFrameStamp()->getFrameNumber() % 20 == 0)
+            {
+                unsigned total = line->getNumVerts();
+                unsigned first = line->getFirst();
+                line->setFirst((first + 1) % total);
+                line->setCount(3);
+            }
+        }
+    ));
     group->addChild(firstCount);
 
     x += 20;

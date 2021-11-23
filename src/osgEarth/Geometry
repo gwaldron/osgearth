@@ -24,6 +24,7 @@
 #include <osgEarth/Containers>
 #include <vector>
 #include <stack>
+#include <queue>
 
 namespace osgEarth
 {

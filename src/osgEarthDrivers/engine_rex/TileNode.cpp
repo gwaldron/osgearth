@@ -200,7 +200,6 @@ TileNode::initializeData()
             // Copy the parent pass:
             _renderModel._passes.push_back(parentPass);
             RenderingPass& myPass = _renderModel._passes.back();
-            myPass.setParent(&parentPass);
 
             // Scale/bias each matrix for this key quadrant.
             for(auto& sampler : myPass.samplers())
@@ -798,7 +797,6 @@ TileNode::merge(
                 _renderModel.getPass(layer->getUID());
 
             const RenderingPass* parentPass =
-                pass ? pass->parent() :
                 getParentTile() ? getParentTile()->_renderModel.getPass(layer->getUID()) :
                 nullptr;
 
@@ -810,7 +808,7 @@ TileNode::merge(
                 if (isNewPass)
                 {
                     // Pass didn't exist here, so add it now.
-                    pass = &_renderModel.addPass(parentPass);
+                    pass = &_renderModel.addPass();
                     pass->setLayer(layer);
                 }
 
@@ -840,15 +838,15 @@ TileNode::merge(
 
                 if (imageLayerModel->getImageLayer()->getAsyncLoading())
                 {
-                    if (pass->parent())
+                    if (parentPass)
                     {
-                        pass->inheritFrom(*pass->parent(), scaleBias[_key.getQuadrant()]);
+                        pass->inheritFrom(*parentPass, scaleBias[_key.getQuadrant()]);
 
                         if (bindings[SamplerBinding::COLOR_PARENT].isActive())
                         {
                             Sampler& colorParent = pass->sampler(SamplerBinding::COLOR_PARENT);
-                            colorParent._texture = pass->parent()->sampler(SamplerBinding::COLOR)._texture;
-                            colorParent._matrix = pass->parent()->sampler(SamplerBinding::COLOR)._matrix;
+                            colorParent._texture = parentPass->sampler(SamplerBinding::COLOR)._texture;
+                            colorParent._matrix = parentPass->sampler(SamplerBinding::COLOR)._matrix;
                             colorParent._matrix.preMult(scaleBias[_key.getQuadrant()]);
                         }
                     }
@@ -872,7 +870,7 @@ TileNode::merge(
             {
                 if (!pass)
                 {
-                    pass = &_renderModel.addPass(parentPass);
+                    pass = &_renderModel.addPass();
                     pass->setLayer(colorLayerModel->getLayer());
                 }
 
@@ -1192,7 +1190,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
             // Pass exists in the parent node, but not in this node, so add it now.
             if (passInLegalRange(parentPass))
             {
-                myPass = &_renderModel.addPass(&parentPass);
+                myPass = &_renderModel.addPass();
                 myPass->inheritFrom(parentPass, scaleBias[quadrant]);
                 ++changes;
             }

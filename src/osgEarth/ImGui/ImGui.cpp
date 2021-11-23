@@ -288,19 +288,22 @@ void OsgImGuiHandler::render(osg::RenderInfo& ri)
         viewport->height() = camera->getGraphicsContext()->getTraits()->height;
     }
 
-    const osg::Matrixd& proj = camera->getProjectionMatrix();
-    bool isOrtho = osg::equivalent(proj(3, 3), 1.0);
-    if (!isOrtho)
+    if (autoAdjustProjectionMatrix)
     {
-        double fovy, ar, znear, zfar;
-        camera->getProjectionMatrixAsPerspective(fovy, ar, znear, zfar);
-        camera->setProjectionMatrixAsPerspective(fovy, viewport->width() / viewport->height(), znear, zfar);
-    }
-    else
-    {
-        double left, right, bottom, top, znear, zfar;
-        camera->getProjectionMatrixAsOrtho(left, right, bottom, top, znear, zfar);
-        camera->setProjectionMatrixAsOrtho(viewport->x(), viewport->x() + viewport->width(), viewport->y(), viewport->y() + viewport->height(), znear, zfar);
+        const osg::Matrixd& proj = camera->getProjectionMatrix();
+        bool isOrtho = osg::equivalent(proj(3, 3), 1.0);
+        if (!isOrtho)
+        {
+            double fovy, ar, znear, zfar;
+            camera->getProjectionMatrixAsPerspective(fovy, ar, znear, zfar);
+            camera->setProjectionMatrixAsPerspective(fovy, viewport->width() / viewport->height(), znear, zfar);
+        }
+        else
+        {
+            double left, right, bottom, top, znear, zfar;
+            camera->getProjectionMatrixAsOrtho(left, right, bottom, top, znear, zfar);
+            camera->setProjectionMatrixAsOrtho(viewport->x(), viewport->x() + viewport->width(), viewport->y(), viewport->y() + viewport->height(), znear, zfar);
+        }
     }
 }
 

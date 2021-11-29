@@ -61,7 +61,7 @@ namespace
         RexTerrainEngineNodeMapCallbackProxy(RexTerrainEngineNode* node) : _node(node) { }
         osg::observer_ptr<RexTerrainEngineNode> _node;
 
-        void onMapModelChanged( const MapModelChange& change ) {
+        void onMapModelChanged( const MapModelChange& change ) override {
             osg::ref_ptr<RexTerrainEngineNode> node;
             if ( _node.lock(node) )
                 node->onMapModelChanged( change );
@@ -144,9 +144,6 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
 
     // always require elevation.
     _requireElevationTextures = true;
-
-    // install an elevation callback so we can update elevation data
-    //_elevationCallback = new ElevationChangedCallback( this );
 
     // static shaders.
     if ( Registry::capabilities().supportsGLSL() )
@@ -443,10 +440,86 @@ RexTerrainEngineNode::refresh(bool forceDirty)
     }
     else
     {
-        dirtyTerrain();
-
         _refreshRequired = false;
+
+        if (_terrain.valid())
+        {
+            _terrain->releaseGLObjects();
+            _terrain->removeChildren(0, _terrain->getNumChildren());
+        }
+
+        // clear the loader:
+        _merger->clear();
+
+        // clear out the tile registry:
+        if (_liveTiles.valid())
+        {
+            _liveTiles->releaseAll(nullptr);
+        }
+
+        // scrub the geometry pool:
+        _geometryPool->clear();
+
+        // Build the first level of the terrain.
+        // Collect the tile keys comprising the root tiles of the terrain.
+        std::vector<TileKey> keys;
+        getMap()->getProfile()->getAllKeysAtLOD(options().firstLOD().get(), keys);
+
+        // create a root node for each root tile key.
+        OE_INFO << LC << "Creating " << keys.size() << " root keys." << std::endl;
+
+        // We need to take a self-ref here to ensure that the TileNode's data loader
+        // can use its observer_ptr back to the terrain engine.
+        this->ref();
+
+        // Load all the root key tiles.
+        JobGroup loadGroup;
+        Job load;
+        load.setArena(ARENA_LOAD_TILE);
+        load.setGroup(&loadGroup);
+
+        for (unsigned i = 0; i < keys.size(); ++i)
+        {
+            TileNode* tileNode = new TileNode(
+                keys[i],
+                nullptr, // parent
+                _engineContext.get(),
+                nullptr); // progress
+
+            // Next, build the surface geometry for the node.
+            //tileNode->create( keys[i], 0L, _engineContext.get(), nullptr );
+            tileNode->setDoNotExpire(true);
+
+            // Add it to the scene graph
+            _terrain->addChild(tileNode);
+
+            // Post-add initialization:
+            tileNode->initializeData();
+
+            // And load the tile's data
+            load.dispatch([tileNode](Cancelable*) {
+                tileNode->loadSync();
+                });
+
+            OE_DEBUG << " - " << (i + 1) << "/" << keys.size() << " : " << keys[i].str() << std::endl;
+        }
+
+        // wait for all loadSync calls to complete
+        loadGroup.join();
+
+        // release the self-ref.
+        this->unref_nodelete();
+
+        // Set up the state sets.
+        updateState();
     }
+}
+
+osg::StateSet*
+RexTerrainEngineNode::getTerrainStateSet()
+{
+    OE_SOFT_ASSERT_AND_RETURN(_terrain.valid(), nullptr);
+    return _terrain->getOrCreateStateSet();
 }
 
 osg::StateSet*
@@ -540,81 +613,6 @@ RexTerrainEngineNode::setupRenderBindings()
             OE_DEBUG << LC << " > Bound \"" << b.samplerName() << "\" to unit " << b.unit() << "\n";
         }
     }
-}
-
-void
-RexTerrainEngineNode::dirtyTerrain()
-{
-    if (_terrain.valid())
-    {
-        _terrain->releaseGLObjects();
-        _terrain->removeChildren(0, _terrain->getNumChildren());
-    }
-
-    // clear the loader:
-    _merger->clear();
-
-    // clear out the tile registry:
-    if ( _liveTiles.valid() )
-    {
-        _liveTiles->releaseAll(nullptr);
-    }
-
-    // scrub the geometry pool:
-    _geometryPool->clear();
-
-    // Build the first level of the terrain.
-    // Collect the tile keys comprising the root tiles of the terrain.
-    std::vector<TileKey> keys;
-    getMap()->getProfile()->getAllKeysAtLOD(options().firstLOD().get(), keys );
-
-    // create a root node for each root tile key.
-    OE_INFO << LC << "Creating " << keys.size() << " root keys." << std::endl;
-
-    // We need to take a self-ref here to ensure that the TileNode's data loader
-    // can use its observer_ptr back to the terrain engine.
-    this->ref();
-
-    // Load all the root key tiles.
-    JobGroup loadGroup;
-    Job load;
-    load.setArena(ARENA_LOAD_TILE);
-    load.setGroup(&loadGroup);
-
-    for( unsigned i=0; i<keys.size(); ++i )
-    {
-        TileNode* tileNode = new TileNode(
-            keys[i],
-            nullptr, // parent
-            _engineContext.get(),
-            nullptr); // progress
-
-        // Next, build the surface geometry for the node.
-        //tileNode->create( keys[i], 0L, _engineContext.get(), nullptr );
-        tileNode->setDoNotExpire(true);
-
-        // Add it to the scene graph
-        _terrain->addChild( tileNode );
-
-        // Post-add initialization:
-        tileNode->initializeData();
-
-        // And load the tile's data
-        load.dispatch([tileNode](Cancelable*) {
-                tileNode->loadSync();
-            });
-
-        OE_DEBUG << " - " << (i+1) << "/" << keys.size() << " : " << keys[i].str() << std::endl;
-    }
-
-    // wait for all loadSync calls to complete
-    loadGroup.join();
-
-    // release the self-ref.
-    this->unref_nodelete();
-
-    // Set up the state sets.
-    updateState();
 }
 
 void

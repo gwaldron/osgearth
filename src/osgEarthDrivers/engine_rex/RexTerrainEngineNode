@@ -62,27 +62,30 @@ namespace osgEarth { namespace REX
         void invalidateRegion(
             const GeoExtent& extent,
             unsigned minLevel,
-            unsigned maxLevel);
+            unsigned maxLevel) override;
 
         //! Forces regeneration of tiles in the given region for one layer.
         void invalidateRegion(
             const std::vector<const Layer*> layers,
             const GeoExtent& extent,
             unsigned minLevel,
-            unsigned maxLevel);
+            unsigned maxLevel) override;
+
+        //! Access the stateset used to render the entire terrain.
+        osg::StateSet* getTerrainStateSet() override;
 
         //! Get the stateset used to render the terrain surface.
-        osg::StateSet* getSurfaceStateSet();
+        osg::StateSet* getSurfaceStateSet() override;
 
         //! Unique identifier of this engine instance
-        UID getUID() const { return _uid; }
+        UID getUID() const override { return _uid; }
 
         //! Generate a standalone tile geometry
         osg::Node* createStandaloneTile(
             const TerrainTileModel* model,
             int createTileFlags,
             unsigned referenceLOD,
-            const TileKey& subRegion);
+            const TileKey& subRegion) override;
 
         //! Shutdown the engine and any running services
         void shutdown() override;
@@ -92,30 +95,25 @@ namespace osgEarth { namespace REX
 
     public: // osg::Node
 
-        void traverse(osg::NodeVisitor& nv);
+        void traverse(osg::NodeVisitor& nv) override;
 
-        osg::BoundingSphere computeBound() const;
+        osg::BoundingSphere computeBound() const override;
 
-        void resizeGLObjectBuffers(unsigned maxSize);
+        void resizeGLObjectBuffers(unsigned maxSize) override;
 
-        void releaseGLObjects(osg::State* state) const;
+        void releaseGLObjects(osg::State* state) const override;
 
     public: // MapCallback adapter functions
 
         void onMapModelChanged( const MapModelChange& change ); // not virtual!
 
-        //! Access to the data merger
-        Merger* getMerger() const { return _merger.get(); }
-
     protected: // TerrainEngineNode protected
 
-        virtual void setMap(const Map* map, const TerrainOptions& options);
+        virtual void setMap(const Map* map, const TerrainOptions& options) override;
 
-        virtual void updateTextureCombining() { updateState(); }
+        virtual void updateTextureCombining() override { updateState(); }
         
-        virtual void dirtyTerrain();
-
-        virtual void dirtyState();
+        virtual void dirtyState() override;
 
     private:
 

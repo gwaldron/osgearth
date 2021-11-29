@@ -89,6 +89,9 @@ namespace osgEarth
 
             virtual void* findByType(const std::type_info& type) { return nullptr; }
 
+            bool getAutoAdjustProjectionMatrix() const { return autoAdjustProjectionMatrix; }
+            void setAutoAdjustProjectionMatrix(bool value) { autoAdjustProjectionMatrix = value; }
+
         protected:
             // Put your ImGui code inside this function
             virtual void draw(osg::RenderInfo& renderInfo) = 0;
@@ -116,6 +119,7 @@ namespace osgEarth
             bool initialized_;
             bool firstFrame_;
             bool show_;
+            bool autoAdjustProjectionMatrix = true;
 
             static void* handleStartEntry(
                 ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name);

@@ -1035,7 +1035,7 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
                 std::set<AssetGroup::Type> groups;
 
                 result = biomeMan.updateResidency(
-                    [&](AssetGroup::Type group, std::vector<osg::Texture*>& textures)
+                    [layer](AssetGroup::Type group, std::vector<osg::Texture*>& textures)
                     {
                         return layer->createParametricGeometry(group, textures);
                     },
@@ -1058,7 +1058,7 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
 
         if (!_geomClouds.empty())
         {
-            OE_INFO << LC << "New geom clouds are ready (fr="
+            OE_DEBUG << LC << "New geom clouds are ready (fr="
                 << ri.getState()->getFrameStamp()->getFrameNumber() << ")"
                 << std::endl;
 

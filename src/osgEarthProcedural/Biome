@@ -163,7 +163,7 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT Biome
         {
         public:
-            Biome() { }
+            Biome();
             Biome(const Config& conf, AssetCatalog* assets);
             Config getConfig() const;
 
@@ -172,7 +172,7 @@ namespace osgEarth
             OE_OPTION(std::string, parentId);
 
             // points to an asset, adding in some custom parameters.
-            struct ModelAssetPointer
+            struct ModelAssetToUse
             {
                 // points to the base asset in the catalog
                 const ModelAsset* asset;
@@ -183,25 +183,27 @@ namespace osgEarth
                 // coverage percentage when this asset it selected (default = 1.0)
                 float fill;
 
-                bool operator < (const ModelAssetPointer& rhs) const {
+                bool operator < (const ModelAssetToUse& rhs) const {
                     return (std::uintptr_t)asset < (std::uintptr_t)rhs.asset;
                 }
+
+                ModelAssetToUse() { }
+
+                ModelAssetToUse(const ModelAssetToUse& rhs) :
+                    asset(rhs.asset),
+                    weight(rhs.weight),
+                    fill(rhs.fill) { }
             };
 
-            using ModelAssetPointers = std::vector<ModelAssetPointer>;
-            using ModelAssetGroups = ModelAssetPointers[NUM_ASSET_GROUPS];
+            using ModelAssetsToUse = std::vector<ModelAssetToUse>;
 
             // A collection of asset pointers for each existing AssetGroup
-            ModelAssetGroups _modelgroups;
-
-            //! The assets group collections represented by this biome.
-            ModelAssetGroups& assetGroups() { return _modelgroups; }
-            const ModelAssetGroups& assetGroups() const { return _modelgroups; };
+            ModelAssetsToUse _assetsToUse[NUM_ASSET_GROUPS];
 
             //! Collection of this biome's asset pointers for the specified asset
             //! group, or the assets from the parent biome if this biome's asset
             //! list is empty.
-            const ModelAssetPointers& assetPointers(int type) const;
+            const ModelAssetsToUse& getModelAssetsToUse(int group) const;
 
             //! The sequential biome index uses in encoded raster data
             //! Note: Starts at 1. Zero means "undefined."

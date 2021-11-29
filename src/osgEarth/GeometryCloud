@@ -27,10 +27,7 @@
 #include <osgEarth/TextureArena>
 
 #include <osg/Geometry>
-#include <osg/GL>
-#include <osg/Texture2DArray>
 #include <osg/NodeVisitor>
-#include <osg/Program>
 
 #include <vector>
 
@@ -61,13 +58,11 @@ namespace osgEarth
         //!    collected from node added to this cloud
         GeometryCloud(TextureArena* arena);
 
-        //! Return from add(), contains the index of the new command
-        //! and a vector of texture references that you need to hold
-        //! on to do they don't get deleted.
+        //! Return from add()
         struct AddResult
         {
             int _commandIndex;
-            std::vector<Texture::Ptr> _textures;
+            //std::vector<Texture::Ptr> _textures;
         };
 
         //! Add a model to be incorporated into the cloud.

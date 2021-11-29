@@ -274,7 +274,16 @@ LifeMapValueTable::getValue(const std::string& id) const
 
 //...................................................................
 
+Biome::Biome() :
+    _index(-1),
+    _parentBiome(nullptr),
+    _implicit(false)
+{
+    //nop
+}
+
 Biome::Biome(const Config& conf, AssetCatalog* assetCatalog) :
+    _index(-1),
     _parentBiome(nullptr),
     _implicit(false)
 {
@@ -286,7 +295,7 @@ Biome::Biome(const Config& conf, AssetCatalog* assetCatalog) :
     ConfigSet assets = conf.child("assets").children("asset");
     for (const auto& child : assets)
     {
-        ModelAssetPointer m;
+        ModelAssetToUse m;
         m.asset = assetCatalog->getModel(child.value("name"));
         if (m.asset)
         {
@@ -297,7 +306,7 @@ Biome::Biome(const Config& conf, AssetCatalog* assetCatalog) :
 
             if (m.asset->_group < NUM_ASSET_GROUPS)
             {
-                _modelgroups[m.asset->_group].emplace_back(m);
+                _assetsToUse[m.asset->_group].emplace_back(m);
             }
         }
     }
@@ -319,19 +328,24 @@ Biome::getConfig() const
     return conf;
 }
 
-const Biome::ModelAssetPointers&
-Biome::assetPointers(int type) const
+const Biome::ModelAssetsToUse&
+Biome::getModelAssetsToUse(int type) const
 {   
-    const ModelAssetPointers& pointers = _modelgroups[type];
-    if (!pointers.empty() || _parentBiome == nullptr)
-    {
-        return pointers;
-    }
+    OE_HARD_ASSERT(type >= 0 && type < NUM_ASSET_GROUPS);
+
+    const ModelAssetsToUse& assets = _assetsToUse[type];
+
+    // use this list if it's not empty
+    if (assets.empty() == false)
+        return assets;
+
+    // otherwise use the parent's list if there's a parent
+    else if (_parentBiome != nullptr)
+        return _parentBiome->getModelAssetsToUse(type);
+
+    // otherwise just return this empty list.
     else
-    {
-        // no assets? fall back on parent's assets
-        return _parentBiome->assetPointers(type);
-    }
+        return assets;
 }
 
 //..........................................................
@@ -364,9 +378,9 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
     }
 
     // resolve the explicit parent biome pointers.
-    for (auto& iter : _biomes_by_index)
+    for (auto& index_and_biome : _biomes_by_index)
     {
-        Biome& biome = iter.second;
+        Biome& biome = index_and_biome.second;
         if (biome.parentId().isSet())
         {
             const Biome* parent = getBiome(biome.parentId().get());
@@ -375,33 +389,35 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
         }
     }
 
-    // next, scan the biomes for any assets with filter, and add a
+    // next, scan the biomes for any assets with traits, and add a
     // new biome for each combination
-    for (auto& iter : _biomes_by_index)
+    for (auto& index_and_biome : _biomes_by_index)
     {
-        Biome& biome = iter.second;
+        Biome& biome = index_and_biome.second;
 
         // skip implicit biomes since we already processed them
         if (biome._implicit)
             continue;
 
-        // Collect all assets with filters so we can make a biome for each.
+        // Collect all assets with traits so we can make a biome for each.
         // traverse "up" through the parent biomes to find them all.
-        std::unordered_map<std::string, std::set<Biome::ModelAssetPointer>[NUM_ASSET_GROUPS]> traits_table;
+        std::unordered_map<
+            std::string,
+            std::set<Biome::ModelAssetToUse>[NUM_ASSET_GROUPS]> traits_table;
 
-        for(const Biome* ptr = &biome; 
-            ptr != nullptr;
-            ptr = ptr->_parentBiome)
+        for(const Biome* biome_ptr = &biome; 
+            biome_ptr != nullptr;
+            biome_ptr = biome_ptr->_parentBiome)
         {
-            for (auto& asset_group : ptr->assetGroups())
+            for(int g=0; g<NUM_ASSET_GROUPS; ++g)
             {
+                const Biome::ModelAssetsToUse& assetsToUse = biome_ptr->getModelAssetsToUse(g);
                 int count = 0;
-                for (auto& asset_ptr : asset_group)
+                for (auto& asset_ptr : assetsToUse)
                 {
                     const std::string& traits = asset_ptr.asset->traits().get();
                     if (!traits.empty())
                     {
-                        int g = asset_ptr.asset->_group;
                         traits_table[traits][g].insert(asset_ptr);
                     }
                 }
@@ -428,12 +444,12 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                 new_biome.id() = sub_biome_id;
                 new_biome.name() = biome.name().get() + " (" + traits + ")";
 
-                // marks this biome as one that was derived from filter data,
+                // marks this biome as one that was derived from traits data,
                 // not defined by the configuration.
                 new_biome._implicit = true;
 
                 // By default the parent is unset, but this may change in the
-                // search block that follows. A filtered biome without a 
+                // search block that follows. An implicit biome without a 
                 // similarly filtered parent should render nothing.
                 new_biome.parentId().clear();
 
@@ -447,11 +463,11 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                     if (parent)
                     {
                         // find a selector variation of the natural parent. If found, success.
-                        std::string parent_filtered_id = parent->id().get() + "." + traits;
-                        const Biome* temp = getBiome(parent_filtered_id);
+                        std::string parent_with_traits_id = parent->id().get() + "." + traits;
+                        const Biome* temp = getBiome(parent_with_traits_id);
                         if (temp)
                         {
-                            new_biome.parentId() = parent_filtered_id;
+                            new_biome.parentId() = parent_with_traits_id;
                             new_biome._parentBiome = temp;
                             break;
                         }
@@ -461,12 +477,12 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                     ptr = parent;
                 }
 
-                // copy over asset pointers for each asset matching the filter
+                // copy over asset pointers for each asset matching the traits
                 for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
                 {
-                    for (auto& pointer : traits_asset_groups[i])
+                    for (auto& asset_ptr : traits_asset_groups[i])
                     {
-                        new_biome.assetGroups()[i].push_back(pointer);
+                        new_biome._assetsToUse[i].push_back(asset_ptr);
                     }
                 }
             }

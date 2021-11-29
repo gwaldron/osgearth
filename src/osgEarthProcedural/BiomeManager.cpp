@@ -34,16 +34,14 @@ using namespace osgEarth::Procedural;
 
 //...................................................................
 
-ModelAssetData::Ptr
-ModelAssetData::create()
+ResidentModelAsset::Ptr
+ResidentModelAsset::create()
 {
-    return Ptr(new ModelAssetData());
+    return Ptr(new ResidentModelAsset());
 }
 
-ModelAssetData::ModelAssetData() :
-    _asset(nullptr),
-    _modelCommandIndex(-1),
-    _billboardCommandIndex(-1)
+ResidentModelAsset::ResidentModelAsset() :
+    _assetDef(nullptr)
 {
     //nop
 }
@@ -143,13 +141,12 @@ BiomeManager::reset()
         ++_revision;
     }
 
-    // Update will resolve the references and unload any resident
-    // assets from memory.
-    update();
+    // Resolve the references and unload any resident assets from memory.
+    refresh();
 }
 
 void
-BiomeManager::update()
+BiomeManager::refresh()
 {
     std::vector<const Biome*> biomes_to_add;
     std::vector<const Biome*> biomes_to_remove;
@@ -162,9 +159,6 @@ BiomeManager::update()
         {
             const Biome* biome = ref.first;
             int refcount = ref.second;
-
-            // creates the biome data entry if it doesn't exist
-            //auto& biomeData = _residentBiomeData[biome];
 
             if (refcount > 0)
             {
@@ -193,29 +187,24 @@ BiomeManager::update()
             _residentBiomeData.erase(biome);
         }
 
-        discardUnreferencedAssets();
-    }
-}
 
-void
-BiomeManager::discardUnreferencedAssets()
-{
-    // NOTE: ASSUMES _mutex is LOCKED
+        // finally, update the collection of resident assets to
+        // reflect the reference counts.
+        std::list<const ModelAsset*> to_delete;
 
-    std::list<const ModelAsset*> to_delete;
-
-    for (auto& entry : _residentModelAssetData)
-    {
-        if (entry.second.use_count() == 1)
+        for (auto& entry : _residentModelAssets)
         {
-            to_delete.push_back(entry.first);
+            if (entry.second.use_count() == 1)
+            {
+                to_delete.push_back(entry.first);
+            }
         }
-    }
 
-    for (auto& asset : to_delete)
-    {
-        _residentModelAssetData.erase(asset);
-        OE_DEBUG << LC << "Unloaded asset " << asset->name().get() << std::endl;
+        for (auto& asset : to_delete)
+        {
+            _residentModelAssets.erase(asset);
+            OE_DEBUG << LC << "Unloaded asset " << asset->name().get() << std::endl;
+        }
     }
 }
 
@@ -234,12 +223,16 @@ BiomeManager::getActiveBiomes() const
     return std::move(result);
 }
 
-BiomeManager::ModelAssetDataTable
+std::vector<const ModelAsset*>
 BiomeManager::getResidentAssets() const
 {
     ScopedMutexLock lock(_residentData_mutex);
 
-    return _residentModelAssetData;
+    std::vector<const ModelAsset*> result;
+    result.reserve(_residentModelAssets.size());
+    for (auto& entry : _residentModelAssets)
+        result.push_back(entry.first);
+    return std::move(result);
 }
 
 namespace
@@ -256,10 +249,10 @@ BiomeManager::updateResidency(
     CreateImposterFunction createImposter,
     const osgDB::Options* readOptions)
 {
-    // First update the resident biome collection based on current refcounts.
-    update();
+    // First refresh the resident biome collection based on current refcounts.
+    refresh();
 
-    // exclusive access to the biome instance map
+    // exclusive access to the resident dataset
     ScopedMutexLock lock(_residentData_mutex);
 
     std::set<AssetGroup::Type> asset_groups;
@@ -268,7 +261,7 @@ BiomeManager::updateResidency(
     osg::ref_ptr<osg::Texture> defaultNormalMap = osgEarth::createEmptyNormalMapTexture();
 
     // Some caches to avoid duplicating data
-    using TextureShareCache = std::map<URI, ModelAssetData::Ptr>;
+    using TextureShareCache = std::map<URI, ResidentModelAsset::Ptr>;
     TextureShareCache texcache;
     using ModelCache = std::map<URI, ModelCacheEntry>;
     ModelCache modelcache;
@@ -279,10 +272,9 @@ BiomeManager::updateResidency(
     OE_DEBUG << LC << "Found " << _residentBiomeData.size() << " resident biomes..." << std::endl;
     for (auto& iter : _residentBiomeData)
     {
-        const Biome* biome = iter.first;
-        AssetGroupUsageTable& groups = iter.second;
-        groups.clear();
-        groups.resize(NUM_ASSET_GROUPS);
+        auto& groups = iter.second;
+        for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
+            groups[i].clear();
     }
 
     // This loader will find material textures and install them on
@@ -308,66 +300,66 @@ BiomeManager::updateResidency(
         }
     );
 
-    // Go through the residency list and make resident any model assets
-    // that are not already loaded (and present in _residentModelAssetData);
-    // Along the way, build the usage instances for each biome. (A "usage" is
-    // a reference to a resident model asset, coupled with placement parameters)
-    for (auto& iter : _residentBiomeData)
+    // Go through the residency list and materialize any model assets
+    // that are not already loaded (and present in _residentModelAssets);
+    // Along the way, build the instances for each biome.
+    for (auto& e : _residentBiomeData)
     {
-        const Biome* biome = iter.first;
+        const Biome* biome = e.first;
 
         for (int group = 0; group < NUM_ASSET_GROUPS; ++group)
         {
-            auto& assetPointers = biome->assetPointers(group);
-            auto& assetUsages = iter.second[group];
+            const Biome::ModelAssetsToUse& assetsToUse = biome->getModelAssetsToUse(group);
 
-            // The category points to multiple assets, which we will analyze and load.
-            //volatile int x = assetPointers.size();
-            for (auto& assetPointer : assetPointers)
+            // this is the collection of instances we're going to populate
+            ResidentModelAssetInstances& assetInstances = e.second[group];
+
+            // The group points to multiple assets, which we will analyze and load.
+            for (auto& asset_ptr : assetsToUse)
             {
-                const ModelAsset* asset = assetPointer.asset;
+                const ModelAsset* assetDef = asset_ptr.asset;
 
-                OE_SOFT_ASSERT(asset != nullptr);
-                if (asset == nullptr)
+                OE_SOFT_ASSERT(assetDef != nullptr);
+                if (assetDef == nullptr)
                     continue;
 
                 // Look up this model asset. If it's already in the resident set,
                 // do nothing; otherwise make it resident by loading all the data.
-                ModelAssetData::Ptr& data = _residentModelAssetData[asset];
+                ResidentModelAsset::Ptr& residentAsset = _residentModelAssets[assetDef];
 
                 // First reference to this instance? Populate it:
-                if (data == nullptr)
+                if (residentAsset == nullptr)
                 {
-                    OE_INFO << LC << "  Loading asset " << asset->name().get() << std::endl;
+                    OE_INFO << LC << "  Loading asset " << assetDef->name().get() << std::endl;
 
-                    data = ModelAssetData::create();
+                    residentAsset = ResidentModelAsset::create();
 
-                    data->_asset = asset;
+                    residentAsset->_assetDef = assetDef;
 
-                    if (asset->modelURI().isSet())
+                    if (assetDef->modelURI().isSet())
                     {
-                        const URI& uri = asset->modelURI().get();
+                        const URI& uri = assetDef->modelURI().get();
                         ModelCache::iterator ic = modelcache.find(uri);
                         if (ic != modelcache.end())
                         {
-                            data->_model = ic->second._node.get();
-                            data->_modelAABB = ic->second._modelAABB;
+                            residentAsset->_model = ic->second._node.get();
+                            residentAsset->_modelAABB = ic->second._modelAABB;
                         }
                         else
                         {
-                            data->_model = uri.getNode(readOptions);
-                            if (data->_model.valid())
+                            residentAsset->_model = uri.getNode(readOptions);
+                            if (residentAsset->_model.valid())
                             {
                                 // find materials:
-                                data->_model->accept(materialLoader);
+                                residentAsset->_model->accept(materialLoader);
 
                                 OE_DEBUG << LC << "Loaded model: " << uri.base() << std::endl;
-                                modelcache[uri]._node = data->_model.get();
+                                modelcache[uri]._node = residentAsset->_model.get();
 
                                 osg::ComputeBoundsVisitor cbv;
-                                data->_model->accept(cbv);
-                                data->_modelAABB = cbv.getBoundingBox();
-                                modelcache[uri]._modelAABB = data->_modelAABB;
+                                residentAsset->_model->accept(cbv);
+                                residentAsset->_modelAABB = cbv.getBoundingBox();
+                                modelcache[uri]._modelAABB = residentAsset->_modelAABB;
                             }
                             else
                             {
@@ -376,25 +368,25 @@ BiomeManager::updateResidency(
                         }
                     }
 
-                    if (asset->sideBillboardURI().isSet())
+                    if (assetDef->sideBillboardURI().isSet())
                     {
-                        const URI& uri = asset->sideBillboardURI().get();
+                        const URI& uri = assetDef->sideBillboardURI().get();
 
                         auto ic = texcache.find(uri);
                         if (ic != texcache.end())
                         {
-                            data->_sideBillboardTex = ic->second->_sideBillboardTex;
-                            data->_sideBillboardNormalMap = ic->second->_sideBillboardNormalMap;
+                            residentAsset->_sideBillboardTex = ic->second->_sideBillboardTex;
+                            residentAsset->_sideBillboardNormalMap = ic->second->_sideBillboardNormalMap;
                         }
                         else
                         {
                             osg::ref_ptr<osg::Image> image = uri.getImage(readOptions);
                             if (image.valid())
                             {
-                                data->_sideBillboardTex = new osg::Texture2D(image.get());
+                                residentAsset->_sideBillboardTex = new osg::Texture2D(image.get());
 
                                 OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
-                                texcache[uri] = data;
+                                texcache[uri] = residentAsset;
 
                                 // normal map is the same file name but with _NML inserted before the extension
                                 URI normalMapURI(
@@ -406,11 +398,11 @@ BiomeManager::updateResidency(
                                 osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
                                 if (normalMap.valid())
                                 {
-                                    data->_sideBillboardNormalMap = new osg::Texture2D(normalMap.get());
+                                    residentAsset->_sideBillboardNormalMap = new osg::Texture2D(normalMap.get());
                                 }
                                 else
                                 {
-                                    data->_sideBillboardNormalMap = defaultNormalMap;
+                                    residentAsset->_sideBillboardNormalMap = defaultNormalMap;
                                 }
                             }
                             else
@@ -420,25 +412,25 @@ BiomeManager::updateResidency(
                         }
 
 
-                        if (asset->topBillboardURI().isSet())
+                        if (assetDef->topBillboardURI().isSet())
                         {
-                            const URI& uri = asset->topBillboardURI().get();
+                            const URI& uri = assetDef->topBillboardURI().get();
 
                             auto ic = texcache.find(uri);
                             if (ic != texcache.end())
                             {
-                                data->_topBillboardTex = ic->second->_topBillboardTex;
-                                data->_topBillboardNormalMap = ic->second->_topBillboardNormalMap;
+                                residentAsset->_topBillboardTex = ic->second->_topBillboardTex;
+                                residentAsset->_topBillboardNormalMap = ic->second->_topBillboardNormalMap;
                             }
                             else
                             {
                                 osg::ref_ptr<osg::Image> image = uri.getImage(readOptions);
                                 if (image.valid())
                                 {
-                                    data->_topBillboardTex = new osg::Texture2D(image.get());
+                                    residentAsset->_topBillboardTex = new osg::Texture2D(image.get());
 
                                     OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
-                                    texcache[uri] = data;
+                                    texcache[uri] = residentAsset;
 
                                     // normal map is the same file name but with _NML inserted before the extension
                                     URI normalMapURI(
@@ -450,11 +442,11 @@ BiomeManager::updateResidency(
                                     osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
                                     if (normalMap.valid())
                                     {
-                                        data->_topBillboardNormalMap = new osg::Texture2D(normalMap.get());
+                                        residentAsset->_topBillboardNormalMap = new osg::Texture2D(normalMap.get());
                                     }
                                     else
                                     {
-                                        data->_topBillboardNormalMap = defaultNormalMap;
+                                        residentAsset->_topBillboardNormalMap = defaultNormalMap;
                                     }
                                 }
                                 else
@@ -465,37 +457,33 @@ BiomeManager::updateResidency(
                         }
 
                         std::vector<osg::Texture*> textures(4);
-                        textures[0] = data->_sideBillboardTex.get();
-                        textures[1] = data->_sideBillboardNormalMap.get();
-                        textures[2] = data->_topBillboardTex.get();
-                        textures[3] = data->_topBillboardNormalMap.get();
+                        textures[0] = residentAsset->_sideBillboardTex.get();
+                        textures[1] = residentAsset->_sideBillboardNormalMap.get();
+                        textures[2] = residentAsset->_topBillboardTex.get();
+                        textures[3] = residentAsset->_topBillboardNormalMap.get();
 
-                        data->_billboard = createImposter((AssetGroup::Type)group, textures);
+                        residentAsset->_billboard = createImposter((AssetGroup::Type)group, textures);
                     }
                 }
 
                 // If this data successfully materialized, add it to the
                 // biome's instance collection.
-                if (data->_sideBillboardTex.valid() || data->_model.valid())
+                if (residentAsset->_sideBillboardTex.valid() || residentAsset->_model.valid())
                 {
-                    ModelAssetDataUsage usage;
-                    usage._data = data;
-                    usage._weight = assetPointer.weight;
-                    usage._fill = assetPointer.fill;
-                    assetUsages.push_back(std::move(usage));
+                    ResidentModelAssetInstance instance;
+                    instance._residentAsset = residentAsset;
+                    instance._weight = asset_ptr.weight;
+                    instance._fill = asset_ptr.fill;
+                    assetInstances.push_back(std::move(instance));
                 }
             }
 
-            if (!assetUsages.empty())
+            if (!assetInstances.empty())
             {
                 asset_groups.insert((AssetGroup::Type)group);
             }
         }
     }
-
-    // discard any resident assets that are no longer referenced
-    //discardUnreferencedAssets();
-
 
     // Now assemble the new geometry clouds based on the updated 
     // resident biome information.
@@ -541,8 +529,8 @@ namespace
 GeometryCloud*
 BiomeManager::createGeometryCloud(
     AssetGroup::Type group,
-    BiomeInstanceTable& residentBiomeData,
-    TextureArena* arena)
+    const ResidentBiomes& residentBiomes,
+    TextureArena* arena) const
 {
     if (arena == nullptr)
     {
@@ -555,63 +543,72 @@ BiomeManager::createGeometryCloud(
     // Keep track so we don't add the same model twice
     std::unordered_set<void*> visited;
 
+    CommandIndexMap modelCommands;
+    CommandIndexMap imposterCommands;
+
     // For each resident biome, locate all asset instances that belong
     // to the specified category. Add each to the geometry cloud.
-    for (auto& b_iter : residentBiomeData)
+    for (auto& b_iter : residentBiomes)
     {
         // Find the instance list for the requested group,
         // and if it's not empty, carry on:
         auto& instances = b_iter.second[group];
-        if (instances.size() > 0)
+
+        // for each instance, add it to the cloud as appropriate:
+        for (auto& instance : instances)
         {
-            // for each instance, add it to the cloud as appropriate:
-            for (auto& instance : instances)
+            auto residentAsset = instance._residentAsset;
+
+            // initialize the commands (insert will fail silently if it already exists)
+            modelCommands.insert(std::make_pair(residentAsset, -1));
+            imposterCommands.insert(std::make_pair(residentAsset, -1));
+
+            auto model = residentAsset->_model.get();
+            if (model && visited.count(model) == 0)
             {
-                const auto& data = instance._data;
+                auto result = cloud->add(
+                    model,
+                    0U,
+                    NORMAL_MAP_TEX_UNIT);
 
-                auto model = data->_model.get();
-                if (model && visited.count(model) == 0)
-                {
-                    auto result = cloud->add(
-                        model,
-                        0U,
-                        NORMAL_MAP_TEX_UNIT);
+                modelCommands[residentAsset] = result._commandIndex;
+                //instance._textures = result._textures;
 
-                    data->_modelCommandIndex = result._commandIndex;
-                    cloud->getDrawCommand(result._commandIndex, data->_modelCommand);
-                    instance._textures = result._textures;
+                visited.insert(model);
+            }
 
-                    visited.insert(model);
-                }
+            auto imposter = residentAsset->_billboard.get();
+            if (imposter && visited.count(imposter) == 0)
+            {
+                auto result = cloud->add(
+                    imposter,
+                    getNumVertices(imposter),   // apply alignment so shader can use gl_VertexID
+                    NORMAL_MAP_TEX_UNIT);       // normal maps in texture image unit 1
 
-                auto imposter = data->_billboard.get();
-                if (imposter && visited.count(imposter) == 0)
-                {
-                    auto result = cloud->add(
-                        imposter,
-                        getNumVertices(imposter),   // apply alignment so shader can use gl_VertexID
-                        NORMAL_MAP_TEX_UNIT);       // normal maps in texture image unit 1
+                imposterCommands[residentAsset] = result._commandIndex;
+                //instance._textures = result._textures;
 
-                    data->_billboardCommandIndex = result._commandIndex;
-                    cloud->getDrawCommand(result._commandIndex, data->_billboardCommand);
-                    instance._textures = result._textures;
-
-                    visited.insert(imposter);
-                }
+                visited.insert(imposter);
             }
         }
     }
 
     osg::StateSet* stateSet = cloud->getGeometry()->getOrCreateStateSet();
 
-    // attach the GPU lookup tables for this cloud:
-    stateSet->setAttribute(
-        createGPULookupTables(group, residentBiomeData),
-        osg::StateAttribute::ON);
-
     // attach the texture arena:
     stateSet->setAttribute(
         arena,
+        osg::StateAttribute::ON);
+
+    // attach the GPU lookup tables for this cloud:
+    osg::StateAttribute* luts = createGPULookupTables(
+        group,
+        modelCommands,
+        imposterCommands,
+        residentBiomes);
+
+    stateSet->setAttribute(
+        luts, 
         osg::StateAttribute::ON);
 
     return cloud;
@@ -620,7 +617,9 @@ BiomeManager::createGeometryCloud(
 osg::StateAttribute*
 BiomeManager::createGPULookupTables(
     AssetGroup::Type group,
-    BiomeInstanceTable& residentBiomeData)
+    const CommandIndexMap& modelCommands,
+    const CommandIndexMap& imposterCommands,
+    const ResidentBiomes& residentBiomes) const
 {
     // Our SSBOs to be reflected on the GPU:
     auto luts = new BiomeManager::BiomeGPUData();
@@ -632,51 +631,56 @@ BiomeManager::createGPULookupTables(
     luts->assetLUT().setBindingIndex(7);
 
     // working cache
-    std::unordered_map<const ModelAssetDataUsage*, BiomeManager::AssetLUT_Data> temp;
+    std::unordered_map<
+        const ResidentModelAssetInstance*, 
+        BiomeManager::AssetLUT_Data> temp;
 
     // First, caculate the weighting numbers by looping through all
     // biomes and adding up the weights.
     float weightTotal = 0.0f;
     float smallestWeight = FLT_MAX;
 
-    for (const auto& b : residentBiomeData)
+    for (const auto& b : residentBiomes)
     {
         const Biome* biome = b.first;
-        const ModelAssetUsageCollection& usages = b.second[group];
-        for (const auto& usage : usages)
+        const ResidentModelAssetInstances& instances = b.second[group];
+        for (const auto& instance : instances)
         {
-            weightTotal += usage._weight;
-            smallestWeight = std::min(smallestWeight, usage._weight);
+            weightTotal += instance._weight;
+            smallestWeight = std::min(smallestWeight, instance._weight);
 
-            auto data = usage._data;
+            auto residentAsset = instance._residentAsset;
+            auto assetDef = residentAsset->_assetDef;
 
             // record an asset:
-            float width = data->_asset->width().get();
-            if (data->_asset->width().isSet() == false &&
-                data->_modelAABB.valid())
+            float width = assetDef->width().get();
+            if (assetDef->width().isSet() == false &&
+                residentAsset->_modelAABB.valid())
             {
                 width = std::max(
-                    data->_modelAABB.xMax() - data->_modelAABB.xMin(),
-                    data->_modelAABB.yMax() - data->_modelAABB.yMin());
+                    residentAsset->_modelAABB.xMax() - residentAsset->_modelAABB.xMin(),
+                    residentAsset->_modelAABB.yMax() - residentAsset->_modelAABB.yMin());
             }
 
-            float height = data->_asset->height().get();
-            if (data->_asset->height().isSet() == false &&
-                data->_modelAABB.valid())
+            float height = assetDef->height().get();
+            if (assetDef->height().isSet() == false &&
+                residentAsset->_modelAABB.valid())
             {
-                height = data->_modelAABB.zMax() - data->_modelAABB.zMin();
+                height = residentAsset->_modelAABB.zMax() - residentAsset->_modelAABB.zMin();
             }
 
-            float sizeVariation = data->_asset->sizeVariation().get();
+            float sizeVariation = assetDef->sizeVariation().get();
 
             // store in our temporary LUT
-            auto& r = temp[&usage];
-            r.modelCommand = data->_modelCommandIndex;
-            r.billboardCommand = data->_billboardCommandIndex;
+            auto& r = temp[&instance];
+            r.modelCommand = modelCommands.at(residentAsset);
+            r.imposterCommand = imposterCommands.at(residentAsset);
             r.width = width;
             r.height = height;
-            r.fill = usage._fill;
+            r.fill = instance._fill;
             r.sizeVariation = sizeVariation;
+
+            OE_SOFT_ASSERT(r.modelCommand >= 0 || r.imposterCommand >= 0);
         }
     }
 
@@ -686,10 +690,10 @@ BiomeManager::createGPULookupTables(
 
     // Calcluate the total number of possible slots and allocate them:
     int numElements = 0;
-    for (const auto& b : residentBiomeData)
+    for (const auto& b : residentBiomes)
     {
         const Biome* biome = b.first;
-        const ModelAssetUsageCollection& instances = b.second[group];
+        const ResidentModelAssetInstances& instances = b.second[group];
         for(const auto& instance : instances)
         {
             numElements += instance._weight*weightMultiplier;
@@ -704,7 +708,7 @@ BiomeManager::createGPULookupTables(
     std::map<unsigned, BiomeLUT_Data> biomeLUTData;
 
     int offset = 0;
-    for (const auto& b : residentBiomeData)
+    for (const auto& b : residentBiomes)
     {
         const Biome* biome = b.first;
 
@@ -714,19 +718,19 @@ BiomeManager::createGPULookupTables(
             continue;
         }
 
-        const ModelAssetUsageCollection& usages = b.second[group];
+        const ResidentModelAssetInstances& instances = b.second[group];
         int ptr = offset;
 
-        for (const auto& usage : usages)
+        for (const auto& instance : instances)
         {
-            int num = (int)(usage._weight*weightMultiplier);
+            int num = (int)(instance._weight*weightMultiplier);
 
             // copy the asset record into all slots corresponding to
             // this instance. It wastes a bit of memory but no one cares
             for (int w = 0; w < num; ++w)
             {
                 auto& r = luts->assetLUT()[ptr++];
-                r = temp[&usage];
+                r = temp[&instance];
             }
         }
 

@@ -38,17 +38,17 @@ namespace osgEarth
          * This contains NO per-instance information (like selection
          * weight or fill percentage).
          */
-        class OSGEARTHPROCEDURAL_EXPORT ModelAssetData
+        class OSGEARTHPROCEDURAL_EXPORT ResidentModelAsset
         {
         public:
-            using Ptr = std::shared_ptr<ModelAssetData>;
+            using Ptr = std::shared_ptr<ResidentModelAsset>;
 
             //! Create a new instance - you can only create this as 
             //! a shared_ptr.
             static Ptr create();
 
-            //! the asset definition being instantiated
-            const ModelAsset* _asset;
+            //! the asset definition materialized in this object
+            const ModelAsset* _assetDef;
 
             //! the model node loaded from the asset definition
             osg::ref_ptr<osg::Node> _model;
@@ -65,29 +65,26 @@ namespace osgEarth
             osg::BoundingBox _modelAABB;
 
             // assigned by createGeometryCloud
-            int _modelCommandIndex;
-            DrawElementsIndirectCommand _modelCommand; // for stats
-
-            int _billboardCommandIndex;
-            DrawElementsIndirectCommand _billboardCommand; // for stats
+            //int _modelCommandIndex;
+            //int _billboardCommandIndex;
 
         private:
-            ModelAssetData();
+            ResidentModelAsset();
         };
 
         /**
-         * Usage of a model asset instance within the rendering system.
-         * It is possible to have a single asset data referenced more than
-         * Usage, each with with different placement parameters.
+         * Instance of a model asset within the rendering system.
+         * It is possible to have different instances all refer to the
+         * same model assert, each with with different usage parameters.
          */
-        class OSGEARTHPROCEDURAL_EXPORT ModelAssetDataUsage
+        class OSGEARTHPROCEDURAL_EXPORT ResidentModelAssetInstance
         {
         public:
-            ModelAssetDataUsage() :
+            ResidentModelAssetInstance() :
                 _weight(1.0f),
                 _fill(1.0f) { }
 
-            ModelAssetData::Ptr _data;
+            ResidentModelAsset::Ptr _residentAsset;
 
             // selection weight
             float _weight;
@@ -111,11 +108,19 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT BiomeManager
         {
         public:
-            using ModelAssetDataTable = std::unordered_map<const ModelAsset*, ModelAssetData::Ptr>;
-            using ModelAssetUsageCollection = std::vector<ModelAssetDataUsage>;
-            using AssetGroupUsageTable = std::vector<ModelAssetUsageCollection>;
-            using BiomeInstanceTable = std::unordered_map<const Biome*, AssetGroupUsageTable>;
-            using CreateImposterFunction = std::function<osg::Node*(AssetGroup::Type, std::vector<osg::Texture*>&)>;
+            using ResidentModelAssets = std::unordered_map<
+                const ModelAsset*,
+                ResidentModelAsset::Ptr>;
+
+            using ResidentModelAssetInstances = 
+                std::vector<ResidentModelAssetInstance>;
+            
+            using ResidentBiomes = std::unordered_map<
+                const Biome*,
+                ResidentModelAssetInstances[NUM_ASSET_GROUPS]>;
+            
+            using CreateImposterFunction = std::function<
+                osg::Node*(AssetGroup::Type, std::vector<osg::Texture*>&)>;
 
         public:
             BiomeManager();
@@ -142,25 +147,12 @@ namespace osgEarth
             std::vector<const Biome*> getActiveBiomes() const;
 
             //! Collection of assets loaded into memory (snapshot in time copy)
-            ModelAssetDataTable getResidentAssets() const;
+            std::vector<const ModelAsset*> getResidentAssets() const;
 
             //! Calculate the new resident set, and then make it resident.
             GeometryCloudCollection updateResidency(
                 CreateImposterFunction createImposterGeometry,
                 const osgDB::Options* readOptions);
-
-            //! Create a geometry cloud containing the current resident
-            //! set of biomes (for one asset group)
-            static GeometryCloud* createGeometryCloud(
-                AssetGroup::Type group,
-                BiomeInstanceTable& instances,
-                TextureArena* arena);
-
-            //! Generate the lookup tables necessary to render a geometry cloud
-            //! for one asset group
-            static osg::StateAttribute* createGPULookupTables(
-                AssetGroup::Type group,
-                BiomeInstanceTable& instances);
 
         private:
             mutable Mutex _refsAndRevision_mutex;
@@ -171,17 +163,32 @@ namespace osgEarth
             BiomeRefs _refs;
 
             // all currently loaded model assets (regardless of biome)
-            ModelAssetDataTable _residentModelAssetData;
+            ResidentModelAssets _residentModelAssets;
 
             // all model asset usage records, sorted by biome
-            BiomeInstanceTable _residentBiomeData;
+            ResidentBiomes _residentBiomeData;
 
-            // recalculate the required resident biome set and return
-            // a copy of it.
-            void update();
+            // recalculate the required resident biome sets
+            void refresh();
 
-            // release any assets no longer referenced by a resident biome
-            void discardUnreferencedAssets();
+            using CommandIndexMap = std::unordered_map<
+                ResidentModelAsset::Ptr,
+                int>;
+
+            //! Create a geometry cloud containing the current resident
+            //! set of biomes (for one asset group)
+            GeometryCloud* createGeometryCloud(
+                AssetGroup::Type group,
+                const ResidentBiomes& residentBiomes,
+                TextureArena* arena) const;
+
+            //! Generate the lookup tables necessary to render a geometry cloud
+            //! for one asset group
+            osg::StateAttribute* createGPULookupTables(
+                AssetGroup::Type group,
+                const CommandIndexMap& modelCommands,
+                const CommandIndexMap& imposterCommands,
+                const ResidentBiomes& residentBiomes) const;
 
         public:
 
@@ -200,7 +207,7 @@ namespace osgEarth
             {                
                 // please keep me 16-byte aligned
                 GLint modelCommand;
-                GLint billboardCommand;
+                GLint imposterCommand;
                 GLfloat width;
                 GLfloat height;
 

@@ -380,18 +380,18 @@ VegetationFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output)
             const std::string groupName = AssetGroup::name(group);
 
             // randomly select an asset from the category:
-            auto& pointers = biome->assetPointers(group);
-            if (pointers.size() == 0)
+            auto& assetsToUse = biome->getModelAssetsToUse(group);
+            if (assetsToUse.empty())
             {
                 return Status(
                     Status::ConfigurationError,
                     Stringify() << "Asset group " << groupName << " is empty in biome " << biome->name().get());
             }
-            int assetCount = pointers.size();
+            int assetCount = assetsToUse.size();
 
             int pickIndex = clamp(int(floor(lush * float(assetCount))), 0, assetCount - 1);
 
-            const Biome::ModelAssetPointer& pointer = pointers[pickIndex];
+            const Biome::ModelAssetToUse& pointer = assetsToUse[pickIndex];
             const ModelAsset* asset = pointer.asset;
             if (!asset)
             {

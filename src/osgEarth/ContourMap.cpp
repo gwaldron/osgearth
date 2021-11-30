@@ -34,20 +34,18 @@ using namespace osgEarth;
 Config
 ContourMapLayer::Options::getMetadata()
 {
-    return Config::readJSON(OE_MULTILINE(
+    return Config::readJSON(R"(
         { "name" : "ContourMap",
           "properties" : [
-            { "name": "grayscale", "description" : "", "type" : "bool", "default" : "" },
           ]
         }
-    ));
+    )");
 }
 
 Config
 ContourMapLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
-    conf.set("grayscale", _grayscale);
     Config stopsConf("stops");
     for (auto& stop : stops())
     {
@@ -64,9 +62,6 @@ ContourMapLayer::Options::getConfig() const
 void
 ContourMapLayer::Options::fromConfig(const Config& conf)
 {
-    _grayscale.init(false);
-    conf.get("grayscale", _grayscale);
-
     stops().clear();
     const ConfigSet& stopsConf = conf.child("stops").children();
     for (auto& stop : stopsConf)
@@ -80,8 +75,6 @@ ContourMapLayer::Options::fromConfig(const Config& conf)
 //........................................................................
 
 REGISTER_OSGEARTH_LAYER(contourmap, ContourMapLayer);
-
-OE_LAYER_PROPERTY_IMPL(ContourMapLayer, bool, Grayscale, grayscale);
 
 void
 ContourMapLayer::setTransferFunction(osg::TransferFunction1D* xfer)
@@ -145,30 +138,15 @@ ContourMapLayer::init()
     else
     {
         float s = 2500.0f;
-
-        if (getGrayscale())
-        {
-            xfer->setColor(-1.0000 * s, osg::Vec4f(.125, .125, .125, 1), false);
-            xfer->setColor(-0.2500 * s, osg::Vec4f(.25, .25, .25, 1), false);
-            xfer->setColor(0.0000 * s, osg::Vec4f(.375, .375, .375, 1), false);
-            xfer->setColor(0.0062 * s, osg::Vec4f(.5, .5, .5, 1), false);
-            xfer->setColor(0.1250 * s, osg::Vec4f(.625, .625, .625, 1), false);
-            xfer->setColor(0.3250 * s, osg::Vec4f(.75, .75, .75, 1), false);
-            xfer->setColor(0.7500 * s, osg::Vec4f(.875, .875, .875, 1), false);
-            xfer->setColor(1.0000 * s, osg::Vec4f(1, 1, 1, 1), false);
-        }
-        else
-        {
-            xfer->setColor(-1.0000 * s, osg::Vec4f(0, 0, 0.5, 1), false);
-            xfer->setColor(-0.2500 * s, osg::Vec4f(0, 0, 1, 1), false);
-            xfer->setColor(0.0000 * s, osg::Vec4f(0, .5, 1, 1), false);
-            xfer->setColor(0.0010 * s, Color("#C2B280FF"), false);
-            xfer->setColor(0.0062 * s, osg::Vec4f(.84, .84, .25, 1), false);
-            xfer->setColor(0.1250 * s, osg::Vec4f(.125, .62, 0, 1), false);
-            xfer->setColor(0.3250 * s, osg::Vec4f(.80, .70, .47, 1), false);
-            xfer->setColor(0.7500 * s, osg::Vec4f(.5, .5, .5, 1), false);
-            xfer->setColor(1.0000 * s, osg::Vec4f(1, 1, 1, 1), false);
-        }
+        xfer->setColor(-1.0000 * s, osg::Vec4f(0, 0, 0.5, 1), false);
+        xfer->setColor(-0.2500 * s, osg::Vec4f(0, 0, 1, 1), false);
+        xfer->setColor(0.0000 * s, osg::Vec4f(0, .5, 1, 1), false);
+        xfer->setColor(0.0010 * s, Color("#C2B280FF"), false);
+        xfer->setColor(0.0062 * s, osg::Vec4f(.84, .84, .25, 1), false);
+        xfer->setColor(0.1250 * s, osg::Vec4f(.125, .62, 0, 1), false);
+        xfer->setColor(0.3250 * s, osg::Vec4f(.80, .70, .47, 1), false);
+        xfer->setColor(0.7500 * s, osg::Vec4f(.5, .5, .5, 1), false);
+        xfer->setColor(1.0000 * s, osg::Vec4f(1, 1, 1, 1), false);
     }
 
     xfer->updateImage();

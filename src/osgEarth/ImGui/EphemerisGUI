@@ -105,7 +105,11 @@ namespace osgEarth
                     findNode(_shadowCaster, ri);
                     if (_shadowCaster.valid())
                         _shadows = _shadowCaster->getEnabled();
+
                     _skyNode->setDateTime(DateTime(_year, _month, _day, _hour));
+
+                    // so we can visualize tiume-series layers.
+                    _skyNode->setSimulationTimeTracksDateTime(true);
                 }
 
                 ImGui::Begin(name(), visible());
@@ -123,24 +127,26 @@ namespace osgEarth
                     ImGui::SameLine();
                     if (ImGui::Checkbox("Details", &_showDetails)) dirtySettings();
 
+                    ImGui::Separator();
+
+                    if (_showDetails)
+                        ImGui::Text("Date & Time:");
+
+                    if (ImGui::SliderFloat("Hour", &_hour, 0.0f, 24.0f))
+                        dirtySettings();
+
+                    if (_showDetails)
+                    {
+                        if (ImGui::SliderInt("Day", &_day, 1, 31)) dirtySettings();
+                        if (ImGui::SliderInt("Month", &_month, 1, 12)) dirtySettings();
+                        if (ImGui::SliderInt("Year", &_year, 1970, 2061)) dirtySettings();
+                    }
+
+                    DateTime mark(_year, _month, _day, _hour);
+                    _skyNode->setDateTime(mark);
+
                     if (lighting)
                     {
-                        ImGui::Separator();
-
-                        if (_showDetails)
-                            ImGui::Text("Date & Time:");
-
-                        if (ImGui::SliderFloat("Hour", &_hour, 0.0f, 24.0f)) dirtySettings();
-
-                        if (_showDetails)
-                        {
-                            if (ImGui::SliderInt("Day", &_day, 1, 31)) dirtySettings();
-                            if (ImGui::SliderInt("Month", &_month, 1, 12)) dirtySettings();
-                            if (ImGui::SliderInt("Year", &_year, 1970, 2061)) dirtySettings();
-                        }
-
-                        _skyNode->setDateTime(DateTime(_year, _month, _day, _hour));
-
                         if (ImGui::SliderFloat("Exposure", &_exposure, 1.0f, 10.0f)) dirtySettings();
                         _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_sky_exposure", osg::Uniform::FLOAT)->set(_exposure);
 

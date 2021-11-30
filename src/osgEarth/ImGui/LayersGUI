@@ -260,7 +260,7 @@ namespace osgEarth {
                                 if (extent.isValid() ||
                                     (layer->getNode() && layer->getNode()->getBound().valid()))
                                 {
-                                    if (ImGui::Button("Zoom"))
+                                    if (ImGui::Button("Zoom to layer"))
                                     {
                                         if (extent.isValid())
                                         {
@@ -287,6 +287,14 @@ namespace osgEarth {
                                             }
                                         }
                                     }
+                                }
+
+                                const DateTimeExtent& dtextent = layer->getDateTimeExtent();
+                                if (dtextent.valid())
+                                {
+                                    ImGui::Text("Time Series:");
+                                    ImGui::Text("  Start = %s", dtextent.getStart().asISO8601().c_str());
+                                    ImGui::Text("  End   = %s", dtextent.getEnd().asISO8601().c_str());
                                 }
                             }
 

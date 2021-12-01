@@ -28,6 +28,7 @@
 #include <queue>
 #include <thread>
 #include <type_traits>
+#include <mutex>
 
 // to include the file and line as the mutex name
 #define OE_MUTEX_NAME __FILE__ ":" OE_STRINGIFY(__LINE__)

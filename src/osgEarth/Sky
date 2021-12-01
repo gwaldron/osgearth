@@ -182,6 +182,11 @@ namespace osgEarth
         void setDateTime(const DateTime& dt);
         const DateTime& getDateTime() const { return _dateTime; }
 
+        //! Whether the traversal framestamp simulation time should
+        //! be set to the sky's date time. Default is false.
+        void setSimulationTimeTracksDateTime(bool value);
+        bool getSimulationTimeTracksDateTime() const;
+
         /** Whether the sun is visible */
         void setSunVisible(bool value);
         bool getSunVisible() const { return _sunVisible; }
@@ -207,6 +212,10 @@ namespace osgEarth
         virtual void attach(osg::View* view, int lightNum) { }
         void attach(osg::View* view) { attach(view, 0); }
 
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor& nv) override;
+
     protected:
 
         // impl class can override these events.
@@ -228,6 +237,7 @@ namespace osgEarth
         bool                    _atmosphereVisible;
         osg::Vec4f              _minimumAmbient;
         optional<GeoPoint>      _refpoint;
+        bool _simTimeTracksDateTime;
 
         osg::StateAttribute::OverrideValue _lightingValue;
         osg::ref_ptr<osg::Uniform>         _lightingUniform;

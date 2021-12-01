@@ -135,7 +135,10 @@ namespace osgEarth
             const std::vector<const Layer*> layers,
             const GeoExtent& extent) = 0;
 
-        //! Access the stateset used to render the terrain.
+        //! Access the stateset used to render the entire terrain.
+        virtual osg::StateSet* getTerrainStateSet() = 0;
+
+        //! Access the stateset used to render terrain surface layers.
         virtual osg::StateSet* getSurfaceStateSet() = 0;
 
         //! Gets the ComputeRangeCallback for this TerrainEngineNode */

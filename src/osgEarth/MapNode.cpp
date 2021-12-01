@@ -704,12 +704,6 @@ MapNode::getLayerNodeGroup() const
     return _layerNodes;
 }
 
-osg::Node*
-MapNode::getLayerNode(Layer* layer) const
-{
-    return layer ? layer->getNode() : 0L;
-}
-
 MapNode*
 MapNode::findMapNode( osg::Node* graph, unsigned travmask )
 {

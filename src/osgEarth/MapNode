@@ -142,11 +142,6 @@ namespace osgEarth
         osg::Group* getLayerNodeGroup() const;
 
         /**
-         * Accesses the root node for a specific ModelLayer.
-         */
-        osg::Node* getLayerNode(Layer* layer) const;
-
-        /**
          * Gets the underlying terrain engine that renders the terrain surface of the map.
          */
         TerrainEngine* getTerrainEngine() const;

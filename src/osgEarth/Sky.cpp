@@ -52,7 +52,7 @@ SkyNode::baseInit(const SkyOptions& options)
     _moonVisible = true;
     _starsVisible = true;
     _atmosphereVisible = true;
-    //_minimumAmbient.set(0.0f, 0.0f, 0.0f, 0.0f);
+    _simTimeTracksDateTime = false;
 
     setLighting( osg::StateAttribute::ON );
 
@@ -132,6 +132,45 @@ SkyNode::setAtmosphereVisible(bool value)
 {
     _atmosphereVisible = value;
     onSetAtmosphereVisible();
+}
+
+void
+SkyNode::setSimulationTimeTracksDateTime(bool value)
+{
+    _simTimeTracksDateTime = value;
+}
+
+bool
+SkyNode::getSimulationTimeTracksDateTime() const
+{
+    return _simTimeTracksDateTime;
+}
+
+void
+SkyNode::traverse(osg::NodeVisitor& nv)
+{
+    osg::ref_ptr<const osg::FrameStamp> fs;
+    double old_simtime;
+
+    if (_simTimeTracksDateTime &&
+        nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        // simulation time tracks the sky's date/time
+        fs = nv.getFrameStamp();
+        if (fs.valid())
+        {
+            old_simtime = fs->getSimulationTime();
+            const_cast<osg::FrameStamp*>(fs.get())->setSimulationTime(getDateTime().asTimeStamp());
+        }
+    }
+
+    osg::Group::traverse(nv);
+
+    if (_simTimeTracksDateTime &&
+        fs.valid())
+    {
+        const_cast<osg::FrameStamp*>(fs.get())->setSimulationTime(old_simtime);
+    }
 }
 
 //------------------------------------------------------------------------

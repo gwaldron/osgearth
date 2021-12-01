@@ -22,11 +22,7 @@
 #ifndef OSGEARTHUTIL_CONTOUR_MAP_H
 #define OSGEARTHUTIL_CONTOUR_MAP_H
 
-#include <osgEarth/Common>
-#include <osgEarth/TerrainEffect>
-#include <osgEarth/TerrainResources>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/Extension>
+#include <osgEarth/VisibleLayer>
 #include <osgEarth/Color>
 #include <osg/Texture1D>
 #include <osg/Texture2D>
@@ -34,6 +30,9 @@
 
 namespace osgEarth
 {
+    /**
+     * Layer that renders a color ramp based on Elevation data in the Map.
+     */
     class OSGEARTH_EXPORT ContourMapLayer : public VisibleLayer
     {
     public:
@@ -45,7 +44,6 @@ namespace osgEarth
                 Color color;
             };
             OE_OPTION_VECTOR(Stop, stops);
-            OE_OPTION(bool, grayscale); // @deprecated
             virtual Config getConfig() const;
             static Config getMetadata();
         private:
@@ -54,10 +52,6 @@ namespace osgEarth
 
     public:
         META_Layer(osgEarth, ContourMapLayer, Options, VisibleLayer, ContourMap);
-
-        //! Whether to render in grayscale
-        void setGrayscale(const bool& value);
-        const bool& getGrayscale() const;
 
         //! Sets a custom transfer function
         void setTransferFunction(osg::TransferFunction1D* xf);

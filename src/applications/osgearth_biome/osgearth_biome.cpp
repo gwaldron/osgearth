@@ -499,11 +499,11 @@ struct VegetationGUI : public GUI::BaseGUI
 
                             if (ImGui::TreeNode(groupName.c_str()))
                             {
-                                for(auto& pointer : biome->assetPointers(group))
+                                for(auto& pointer : biome->getModelAssetsToUse(group))
                                 {
                                     if (ImGui::TreeNode(pointer.asset->name()->c_str()))
                                     {
-                                        drawModelAsset(pointer.asset, nullptr);
+                                        drawModelAsset(pointer.asset);
                                         ImGui::TreePop();
                                     }
                                 }
@@ -521,14 +521,11 @@ struct VegetationGUI : public GUI::BaseGUI
                 auto& bioman = _app._map->getLayer<BiomeLayer>()->getBiomeManager();
 
                 auto assets = bioman.getResidentAssets();
-                for (auto& entry : assets)
+                for (auto& asset : assets)
                 {
-                    const ModelAsset* asset = entry.first;
-                    const auto& data = entry.second;
-
                     if (ImGui::TreeNode(asset->name()->c_str()))
                     {
-                        drawModelAsset(asset, data);
+                        drawModelAsset(asset);
                         ImGui::TreePop();
                     }
                 }
@@ -537,20 +534,14 @@ struct VegetationGUI : public GUI::BaseGUI
         ImGui::End();
     }
 
-    void drawModelAsset(const ModelAsset* asset, ModelAssetData::Ptr data)
+    void drawModelAsset(const ModelAsset* asset)
     {
         if (asset->modelURI().isSet())
-        {
             ImGui::Text("Model: %s", asset->modelURI()->base().c_str());
-            if (data)
-                ImGui::Text("     : %d triangles", (data->_modelCommand.count / 3));
-        }
         if (asset->sideBillboardURI().isSet())
             ImGui::Text("Side BB: %s", asset->sideBillboardURI()->base().c_str());
         if (asset->topBillboardURI().isSet())
             ImGui::Text("Top BB: %s", asset->topBillboardURI()->base().c_str());
-
-
     }
 };
 

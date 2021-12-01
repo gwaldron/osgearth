@@ -369,7 +369,7 @@ GLBuffer::bind(GLenum otherTarget) const
 }
 
 void
-GLBuffer::storage(GLintptr size, GLvoid* data, GLbitfield flags) const
+GLBuffer::allocateStorage(GLintptr size, GLvoid* data, GLbitfield flags) const
 {
     ext()->glBufferStorage(_target, size, data, flags);
 }

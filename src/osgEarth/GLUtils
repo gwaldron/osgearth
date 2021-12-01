@@ -143,7 +143,9 @@ namespace osgEarth
         GLuint name() const { return _name; }
         GLenum target() const { return _target; }
         void release();
-        void storage(GLintptr size, GLvoid* data, GLbitfield flags) const;
+        //! glBufferStorage
+        void allocateStorage(GLintptr size, GLvoid* data, GLbitfield flags) const;
+        //! glBufferSubData
         void subData(GLintptr offset, GLsizeiptr size, GLvoid* data) const;
     protected:
         GLBuffer(GLenum target, osg::State& state, const std::string& label);

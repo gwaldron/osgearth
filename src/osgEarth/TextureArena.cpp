@@ -578,10 +578,8 @@ TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
         refresh(textures, state);
 
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE TextureArena");
-
         _buffer->bind();
-
-        _buffer->ext()->glBufferStorage(GL_SHADER_STORAGE_BUFFER, _allocatedSize, _buf, GL_DYNAMIC_STORAGE_BIT);
+        _buffer->allocateStorage(_allocatedSize, _buf, GL_DYNAMIC_STORAGE_BIT);
     }
 
     else if (_dirty)
@@ -629,7 +627,7 @@ TextureArena::HandleLUT::update()
     if (updateMe)
     {
         _buffer->bind();
-        _buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, _allocatedSize, _buf);
+        _buffer->subData(0, _allocatedSize, _buf);
         _dirty = false;
     }
     return updateMe;

@@ -122,9 +122,6 @@ namespace osgEarth
         //! disable copy
         TextureArena(const TextureArena&, const osg::CopyOp&) { } 
 
-        //! allocate handles for all add()ed textures
-        //void activate(Texture::Ptr texture, osg::State& state) const;
-
         // Lookup table that maps texture ids to bindless handles
         struct HandleLUT : public SSBO {
             mutable GLuint64* _buf;

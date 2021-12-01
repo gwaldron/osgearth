@@ -23,6 +23,7 @@
 #include <osgEarth/ImGui/ImGui>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
+#include <osgEarth/Metrics>
 #include <osgViewer/Viewer>
 
 #define LC "[imgui] "
@@ -65,7 +66,7 @@ main(int argc, char** argv)
         // through to other handlers.
         viewer.getEventHandlers().push_front(new GUI::ApplicationGUI(arguments, true));
         viewer.setSceneData(node);
-        return viewer.run();
+        return Metrics::run(viewer);
     }
     else
     {

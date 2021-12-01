@@ -373,7 +373,7 @@ namespace
             return HTTPClient::readNode(req, opt, p);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readNodeImplementation(uri, opt);
+            osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readNode(uri, opt);
             if (osgRR.validNode()) return ReadResult(osgRR.takeNode());
             else return ReadResult(osgRR.message());
         }

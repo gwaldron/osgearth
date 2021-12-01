@@ -16,13 +16,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/Threading>
-#include <osgDB/Options>
-#include <mutex>
+#include "Threading"
 #include "Utils"
 #include "Metrics"
 #include <cstdlib>
 #include <climits>
+#include <mutex>
 
 #ifdef _WIN32
 #   include <Windows.h>
@@ -48,10 +47,12 @@ using namespace osgEarth::Util;
 //#define MUTEX_TYPE std::recursive_mutex
 //#endif
 
+#ifdef OSGEARTH_MUTEX_CONTENTION_TRACKING
+
 Mutex::Mutex() :
+    _handle(nullptr),
     _metricsData(nullptr)
 {
-#ifdef OSGEARTH_PROFILING
     if (Metrics::enabled())
     {
         tracy::SourceLocationData* s = new tracy::SourceLocationData();
@@ -67,16 +68,13 @@ Mutex::Mutex() :
     {
         _handle = new std::mutex();
     }
-#else
-    _handle = new std::mutex();
-#endif
 }
 
 Mutex::Mutex(const std::string& name, const char* file, std::uint32_t line) :
     _name(name),
+    _handle(nullptr),
     _metricsData(nullptr)
 {
-#ifdef OSGEARTH_PROFILING
     if (Metrics::enabled())
     {
         tracy::SourceLocationData* s = new tracy::SourceLocationData();
@@ -92,18 +90,13 @@ Mutex::Mutex(const std::string& name, const char* file, std::uint32_t line) :
     {
         _handle = new std::mutex();
     }
-#else
-    _handle = new std::mutex();
-#endif
 }
 
 Mutex::~Mutex()
 {
-#ifdef OSGEARTH_PROFILING
     if (_metricsData)
         delete static_cast<tracy::Lockable<std::mutex>*>(_handle);
     else
-#endif
         delete static_cast<std::mutex*>(_handle);
 }
 
@@ -111,13 +104,11 @@ void
 Mutex::setName(const std::string& name)
 {
     _name = name;
-#ifdef OSGEARTH_PROFILING
     if (_metricsData)
     {
         tracy::SourceLocationData* s = static_cast<tracy::SourceLocationData*>(_metricsData);
         s->function = _name.c_str();
     }
-#endif
 }
 
 void
@@ -127,43 +118,40 @@ Mutex::lock()
     //    volatile int x =0 ; // breakpoint for finding unnamed mutexes
     //}
 
-#ifdef OSGEARTH_PROFILING
     if (_metricsData)
         static_cast<tracy::Lockable<std::mutex>*>(_handle)->lock();
     else
-#endif
         static_cast<std::mutex*>(_handle)->lock();
 }
 
 void
 Mutex::unlock()
 {
-#ifdef OSGEARTH_PROFILING
     if (_metricsData)
         static_cast<tracy::Lockable<std::mutex>*>(_handle)->unlock();
     else
-#endif
         static_cast<std::mutex*>(_handle)->unlock();
 }
 
 bool
 Mutex::try_lock()
 {
-#ifdef OSGEARTH_PROFILING
     if (_metricsData)
         return static_cast<tracy::Lockable<std::mutex>*>(_handle)->try_lock();
     else
-#endif
         return static_cast<std::mutex*>(_handle)->try_lock();
 }
 
+#endif // OSGEARTH_MUTEX_CONTENTION_TRACKING
+
 //...................................................................
+
+#ifdef OSGEARTH_MUTEX_CONTENTION_TRACKING
 
 RecursiveMutex::RecursiveMutex() :
     _enabled(true),
     _metricsData(nullptr)
 {
-#ifdef OSGEARTH_PROFILING
     if (Metrics::enabled())
     {
         tracy::SourceLocationData* s = new tracy::SourceLocationData();
@@ -179,9 +167,6 @@ RecursiveMutex::RecursiveMutex() :
     {
         _handle = new std::recursive_mutex();
     }
-#else
-    _handle = new std::recursive_mutex();
-#endif
 }
 
 RecursiveMutex::RecursiveMutex(const std::string& name, const char* file, std::uint32_t line) :
@@ -189,7 +174,6 @@ RecursiveMutex::RecursiveMutex(const std::string& name, const char* file, std::u
     _enabled(true),
     _metricsData(nullptr)
 {
-#ifdef OSGEARTH_PROFILING
     if (Metrics::enabled())
     {
         tracy::SourceLocationData* s = new tracy::SourceLocationData();
@@ -205,20 +189,15 @@ RecursiveMutex::RecursiveMutex(const std::string& name, const char* file, std::u
     {
         _handle = new std::recursive_mutex();
     }
-#else
-    _handle = new std::recursive_mutex();
-#endif
 }
 
 RecursiveMutex::~RecursiveMutex()
 {
     if (_handle)
     {
-#ifdef OSGEARTH_PROFILING
         if (_metricsData)
             delete static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle);
         else
-#endif
             delete static_cast<std::recursive_mutex*>(_handle);
     }
 }
@@ -234,13 +213,11 @@ RecursiveMutex::setName(const std::string& name)
 {
     _name = name;
 
-#ifdef OSGEARTH_PROFILING
     if (_metricsData)
     {
         tracy::SourceLocationData* s = static_cast<tracy::SourceLocationData*>(_metricsData);
         s->function = _name.c_str();
     }
-#endif
 }
 
 void
@@ -248,11 +225,9 @@ RecursiveMutex::lock()
 {
     if (_enabled)
     {
-#ifdef OSGEARTH_PROFILING
         if (_metricsData)
             static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->lock();
         else
-#endif
             static_cast<std::recursive_mutex*>(_handle)->lock();
     }
 }
@@ -262,11 +237,9 @@ RecursiveMutex::unlock()
 {
     if (_enabled)
     {
-#ifdef OSGEARTH_PROFILING
         if (_metricsData)
             static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->unlock();
         else
-#endif
             static_cast<std::recursive_mutex*>(_handle)->unlock();
     }
 }
@@ -276,15 +249,15 @@ RecursiveMutex::try_lock()
 {
     if (_enabled)
     {
-#ifdef OSGEARTH_PROFILING
         if (_metricsData)
             return static_cast<tracy::Lockable<std::recursive_mutex>*>(_handle)->try_lock();
         else
-#endif
             return static_cast<std::recursive_mutex*>(_handle)->try_lock();
     }
     else return true;
 }
+
+#endif // OSGEARTH_MUTEX_CONTENTION_TRACKING
 
 //...................................................................
 
@@ -321,12 +294,6 @@ _set(false)
 {
     //nop
 }
-Event::Event(const std::string& name) :
-    _set(false),
-    _m(name)
-{
-    //nop
-}
 
 Event::~Event()
 {
@@ -335,17 +302,11 @@ Event::~Event()
         _cond.notify_all();
 }
 
-void
-Event::setName(const std::string& name)
-{
-    _m.setName(name);
-}
-
 bool Event::wait()
 {
     while(!_set)
     {
-        std::unique_lock<Mutex> lock(_m);
+        std::unique_lock<std::mutex> lock(_m);
         if (!_set)
             _cond.wait(lock);
     }
@@ -356,7 +317,7 @@ bool Event::wait(unsigned timeout_ms)
 {
     if (!_set)
     {
-        std::unique_lock<Mutex> lock(_m);
+        std::unique_lock<std::mutex> lock(_m);
         if (!_set) // double check
         {
             _cond.wait_for(lock, std::chrono::milliseconds(timeout_ms));
@@ -367,7 +328,7 @@ bool Event::wait(unsigned timeout_ms)
 
 bool Event::waitAndReset()
 {
-    std::unique_lock<Mutex> lock(_m);
+    std::unique_lock<std::mutex> lock(_m);
     if (!_set)
         _cond.wait(lock);
     _set = false;
@@ -378,7 +339,7 @@ void Event::set()
 {
     if (!_set)
     {
-        std::unique_lock<Mutex> lock(_m);
+        std::unique_lock<std::mutex> lock(_m);
         if (!_set) {
             _set = true;
             _cond.notify_all();
@@ -388,7 +349,7 @@ void Event::set()
 
 void Event::reset()
 {
-    std::lock_guard<Mutex> lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
     _set = false;
 }
 

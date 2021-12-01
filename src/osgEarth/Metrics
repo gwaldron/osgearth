@@ -58,11 +58,14 @@ namespace osgEarth {
 
 #ifdef OSGEARTH_PROFILING
 
+// uncomment this to attempt GPU profiling blocks
+//#define OSGEARTH_GPU_PROFILING
+
 #include <osg/GL>
 
 #define TRACY_ENABLE
 #define TRACY_ON_DEMAND
-// #define TRACY_DELAYED_INIT
+#define TRACY_DELAYED_INIT
 #include <TracyClient/Tracy.hpp>
 
 #define OE_PROFILING_ZONE ZoneNamed( ___tracy_scoped_zone, osgEarth::Util::Metrics::enabled() )
@@ -74,8 +77,6 @@ namespace osgEarth {
 #define OE_LOCKABLE(type, varname) TracyLockable(type, varname)
 #define OE_LOCKABLE_NAMED(type, varname, desc) TracyLockableN(type, varname, desc)
 #define OE_LOCKABLE_BASE( type ) LockableBase( type )
-
-#define OSGEARTH_GPU_PROFILING
 
 #ifdef OSGEARTH_GPU_PROFILING
 namespace osgEarth { namespace MetricsGL {

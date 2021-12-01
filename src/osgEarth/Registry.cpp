@@ -183,7 +183,7 @@ _blacklist("Reg.BlackList(OE)")
     // use the GDAL global mutex?
     if (getenv("OSGEARTH_DISABLE_GDAL_MUTEX"))
     {
-        getGDALMutex().disable();
+        //getGDALMutex().disable();
     }
 
     // register the system stock Units.

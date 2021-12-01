@@ -42,8 +42,6 @@ PagedNode2::PagedNode2() :
     _mergeTriggered(false),
     _merged(false),
     _failed(false),
-    _loaded("PagedNode.loaded(OE)"),
-    _compiled("PagedNode.compiled(OE)"),
     _mutex("PagedNode.mutex(OE)"),
     _minRange(0.0f),
     _maxRange(FLT_MAX),

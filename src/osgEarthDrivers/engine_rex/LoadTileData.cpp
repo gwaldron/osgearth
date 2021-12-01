@@ -122,7 +122,7 @@ LoadTileDataOperation::dispatch(bool async)
     }
     else
     {
-        Promise<LoadResult> promise("LoadTileData(OE)");
+        Promise<LoadResult> promise;
         _result = promise.getFuture();
         promise.resolve(load(nullptr));
     }

@@ -32,6 +32,9 @@
 // to include the file and line as the mutex name
 #define OE_MUTEX_NAME __FILE__ ":" OE_STRINGIFY(__LINE__)
 
+// uncomment to activate mutex contention tracking when profiling
+// #define OSGEARTH_MUTEX_CONTENTION_TRACKING
+
 namespace osgEarth { namespace Threading
 {
     //! C++ BasicLockable requirement
@@ -49,25 +52,27 @@ namespace osgEarth { namespace Threading
         virtual bool try_lock() =0;
     };
 
+#ifdef OSGEARTH_MUTEX_CONTENTION_TRACKING
+
     /**
-     * A normal mutex
+     * A normal mutex that supports contention tracking
      */
     class OSGEARTH_EXPORT Mutex : public Lockable
     {
     public:
         Mutex();
-        Mutex(const std::string& name, const char* file=nullptr, std::uint32_t line=0);
-        //! Do not permit copy constructor on Mutex
-        Mutex(const Mutex& copy) = delete;
         ~Mutex();
 
-        //! Explicitly block the copy operator
+        //! Explicitly block copying of mutexes
+        Mutex(const Mutex& copy) = delete;
         Mutex& operator=(const Mutex& copy) = delete;
 
         void lock() override;
         void unlock() override;
         bool try_lock() override;
 
+        // Methods for metrics-enabled mutexes
+        Mutex(const std::string& name, const char* file = nullptr, std::uint32_t line = 0);
         void setName(const std::string& name);
 
     private:
@@ -76,16 +81,14 @@ namespace osgEarth { namespace Threading
         void* _metricsData;
     };
 
-    typedef std::lock_guard<BasicLockable> ScopedMutexLock;
-
     /**
-     * A recursive mutex
+     * A recursive mutex that supports contention tracking
      */
     class OSGEARTH_EXPORT RecursiveMutex : public Lockable
     {
     public:
         RecursiveMutex();
-        RecursiveMutex(const std::string& name, const char* file=nullptr, std::uint32_t line=0);
+        RecursiveMutex(const std::string& name, const char* file = nullptr, std::uint32_t line = 0);
         ~RecursiveMutex();
 
         //! Enable or disable this mutex. Don't call this while threads are running.
@@ -104,7 +107,57 @@ namespace osgEarth { namespace Threading
         void* _metricsData;
     };
 
-    typedef std::lock_guard<RecursiveMutex> ScopedRecursiveMutexLock;
+#else
+
+    /**
+     * Standard mutex that implements Lockable
+     */
+    class Mutex : public Lockable, public std::mutex
+    {
+    public:
+        Mutex() {}
+
+        Mutex(const Mutex& copy) = delete;
+        Mutex& operator=(const Mutex& copy) = delete;
+
+        void lock() override { std::mutex::lock(); }
+        void unlock() override { std::mutex::unlock(); }
+        bool try_lock() override { return std::mutex::try_lock(); }
+
+        // stub out the naming stuff so the API is compatible with 
+        // the tracking mutex
+        Mutex(const std::string& name, const char* file = nullptr, std::uint32_t line = 0) { }
+        void setName(const std::string& name) { }
+    };
+
+    /**
+     * Recursive mutex that implements Lockable
+     */
+    class RecursiveMutex : public Lockable, std::recursive_mutex
+    {
+    public:
+        RecursiveMutex() { }
+
+        RecursiveMutex(const RecursiveMutex& copy) = delete;
+        RecursiveMutex& operator=(const RecursiveMutex& copy) = delete;
+
+        void lock() override { std::recursive_mutex::lock(); }
+        void unlock() override { std::recursive_mutex::unlock(); }
+        bool try_lock() override { return std::recursive_mutex::try_lock(); }
+
+        // stub out the naming stuff so the API is compatible with 
+        // the tracking mutex
+        RecursiveMutex(const std::string& name, const char* file = nullptr, std::uint32_t line = 0) { }
+        void setName(const std::string& name) { }
+    };
+
+#endif
+
+    //! Locks a mutex for the duration of the scope
+    using ScopedMutexLock = std::lock_guard<BasicLockable>;
+
+    //! Locks a recursive mutex for the duration of the scope
+    using ScopedRecursiveMutexLock = std::lock_guard<RecursiveMutex>;
 
     /**
      * Gets the approximate number of available threading contexts.
@@ -147,8 +200,6 @@ namespace osgEarth { namespace Threading
         //! Construct a new event
         Event();
 
-        Event(const std::string& name);
-
         //! DTOR
         ~Event();
 
@@ -171,10 +222,8 @@ namespace osgEarth { namespace Threading
         //! Whether the event state is set (waiters will not block).
         inline bool isSet() const { return _set; }
 
-        void setName(const std::string& name);
-
     protected:
-        Mutex _m;
+        std::mutex _m; // do not use Mutex, we never want tracking
         std::condition_variable_any _cond;
         bool _set;
     };
@@ -211,21 +260,10 @@ namespace osgEarth { namespace Threading
             _shared = std::make_shared<Container>();
         }
 
-        //! Named CTOR
-        Future(const std::string& name) {
-            _ev = std::make_shared<Event>(name);
-            _shared = std::make_shared<Container>();
-        }
-
         //! Copy CTOR
         Future(const Future& rhs) :
             _ev(rhs._ev),
             _shared(rhs._shared) { }
-
-        //! Set name for mutex debugging
-        void setName(const std::string& name) {
-            _ev->setName(name);
-        }
 
         //! Assignment
         Future<T>& operator = (const Future<T>& rhs) {
@@ -318,8 +356,6 @@ namespace osgEarth { namespace Threading
     public:
         Promise() { }
 
-        Promise(const std::string& name) : _future(name) { }
-
         //! This promise's future result.
         Future<T> getFuture() const { return _future; }
 
@@ -374,7 +410,7 @@ namespace osgEarth { namespace Threading
 
         //! Immediate synchronous resolve constructor
         FutureResult(const T& data) {
-            Promise<T> p("FutureResult");
+            Promise<T> p;
             _future = p.getFuture();
             p.resolve(data);
         }
@@ -957,7 +993,7 @@ namespace osgEarth { namespace Threading
     Future<T> Job::dispatch(
         std::function<T(Cancelable*)> function) const
     {
-        Promise<T> promise("JobArena(OE).dispatch");
+        Promise<T> promise;
         Future<T> future = promise.getFuture();
         JobArena::Delegate delegate = [function, promise]() mutable
         {

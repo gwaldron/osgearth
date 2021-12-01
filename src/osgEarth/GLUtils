@@ -499,7 +499,7 @@ namespace osgEarth
     template<typename RESULT_TYPE>
     Future<RESULT_TYPE> GPUJob<RESULT_TYPE>::dispatch(const Function& function)
     {
-        Promise<RESULT_TYPE> promise("GPUJob(OE)");
+        Promise<RESULT_TYPE> promise;
         Future<RESULT_TYPE> future = promise.getFuture();
 
         std::function<void(osg::State*)> delegate = [function, promise](osg::State* state) mutable

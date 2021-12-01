@@ -1052,7 +1052,7 @@ namespace osgEarth { namespace Internal
         Promise<ElevationSample> _promise;
 
         SampleElevationOp(osg::observer_ptr<const Map> map, const GeoPoint& p, const Distance& res, ElevationPool::WorkingSet* ws) :
-            _map(map), _p(p), _res(res), _ws(ws), _promise(OE_MUTEX_NAME) { }
+            _map(map), _p(p), _res(res), _ws(ws) { }
 
         void operator()(osg::Object*)
         {

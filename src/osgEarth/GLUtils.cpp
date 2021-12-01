@@ -973,7 +973,7 @@ GLObjectsCompiler::compileAsync(
     if (!compileScheduled)
     {
         // no ICO available - just resolve the future immediately
-        Promise<osg::ref_ptr<osg::Node>> promise("GLObjectsCompiler(OE)");
+        Promise<osg::ref_ptr<osg::Node>> promise;
         result = promise.getFuture();
         promise.resolve(node);
     }

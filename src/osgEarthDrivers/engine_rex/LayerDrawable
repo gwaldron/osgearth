@@ -53,13 +53,13 @@ namespace osgEarth { namespace REX
         // Pointer back to the actual Map layer, if there is one
         const Layer* _layer;
 
-        // If _layer is a VisibleLayer, this will be set as well, otherwise NULL
+        // If _layer is a VisibleLayer, this will be set as well, otherwise nullptr
         const VisibleLayer* _visibleLayer;
 
-        // If _layer is an ImageLayer, this will be set as well, otherwise NULL
+        // If _layer is an ImageLayer, this will be set as well, otherwise nullptr
         const ImageLayer* _imageLayer;
 
-        // If _layer is a PatchLayer, this will be set, otherwise NULL
+        // If _layer is a PatchLayer, this will be set, otherwise nullptr
         const PatchLayer* _patchLayer;
 
         // Layer render order, which is pushed into a Uniform at render time.
@@ -76,31 +76,19 @@ namespace osgEarth { namespace REX
 
         // Whether to render this layer.
         bool _draw;
-
-        std::size_t _tileBatchId;
-
-        // draw callback associated with a patchlayer
-        //TileRenderer* _drawCallback;
         
 
     public: // osg::Drawable
         
-        void drawImplementation(osg::RenderInfo& ri) const;
+        void drawImplementation(osg::RenderInfo& ri) const override;
 
         // All LayerDrawables share the common terrain bounds.
-        osg::BoundingSphere computeBound() const { return _drawState->_bs; }
-        osg::BoundingBox computeBoundingBox() const { return _drawState->_box; }
-        bool supports(const osg::PrimitiveFunctor&) const { return true; }
-        void accept(osg::PrimitiveFunctor& functor) const;
-        bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
-        void accept(osg::PrimitiveIndexFunctor&) const;
-
-    public: // TileBatch
-
-        //void drawTiles(osg::RenderInfo& ri) const;
-        //void visitTiles(osg::RenderInfo& ri) const;
-        //std::size_t size() const { return _tiles.size(); }
-        //std::size_t getBatchID() const { return _tileBatchId; }
+        osg::BoundingSphere computeBound() const override { return _drawState->_bs; }
+        osg::BoundingBox computeBoundingBox() const override { return _drawState->_box; }
+        bool supports(const osg::PrimitiveFunctor&) const override { return true; }
+        void accept(osg::PrimitiveFunctor& functor) const override;
+        bool supports(const osg::PrimitiveIndexFunctor&) const override { return true; }
+        void accept(osg::PrimitiveIndexFunctor&) const override;
 
     protected:
         // overriden to prevent OSG from releasing GL objects on an attached stateset.

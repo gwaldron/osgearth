@@ -126,7 +126,7 @@ namespace osgEarth { namespace REX
 
         //! Various methods that trigger when the Map model changes.
         void addLayer(Layer* layer);
-        void addTileLayer( Layer* layer );
+        void addSurfaceLayer( Layer* layer );
         void removeImageLayer( ImageLayer* layerRemoved );        
         void addElevationLayer(Layer* layer);
         void removeElevationLayer(Layer* layerRemoved );
@@ -161,6 +161,10 @@ namespace osgEarth { namespace REX
         // extents of each layer, in the Map's SRS. UID = vector index (for speed)
         LayerExtentMap _cachedLayerExtents;
         bool _cachedLayerExtentsComputeRequired;
+
+        // LayerDrawable objects for each layer. Store them instead of
+        // recreating each frame.
+        LayerDrawableTable _layerDrawables;
 
         // node registry is shared across all threads.
         osg::ref_ptr<TileNodeRegistry> _liveTiles; // tiles in the scene graph.

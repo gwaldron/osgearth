@@ -43,10 +43,12 @@ TerrainRenderData::sortDrawCommands()
 }
 
 void
-TerrainRenderData::setup(const Map* map,
-                         const RenderBindings& bindings,
-                         unsigned frameNum,
-                         osgUtil::CullVisitor* cv)
+TerrainRenderData::reset(
+    const Map* map,
+    const RenderBindings& bindings,
+    LayerDrawableTable& drawables,
+    unsigned frameNum,
+    osgUtil::CullVisitor* cv)
 {
     _bindings = &bindings;
 
@@ -62,9 +64,8 @@ TerrainRenderData::setup(const Map* map,
     LayerVector layers;
     map->getLayers(layers);
 
-    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    for (auto& layer : layers)
     {
-        Layer* layer = i->get();
         if (layer->isOpen())
         {
             bool render =
@@ -74,7 +75,7 @@ TerrainRenderData::setup(const Map* map,
             if ( render )
             {
                 // If this is an image layer, check the enabled/visible states.
-                VisibleLayer* visLayer = dynamic_cast<VisibleLayer*>(layer);
+                VisibleLayer* visLayer = dynamic_cast<VisibleLayer*>(layer.get());
                 if (visLayer)
                 {
                     // Check the visibility flag as well as the cull mask
@@ -85,7 +86,7 @@ TerrainRenderData::setup(const Map* map,
                 {
                     if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
                     {
-                        LayerDrawable* ld = addLayerDrawable(layer);
+                        LayerDrawable* ld = addLayerDrawable(layer, cam, drawables);
 
                         // If the current camera is depth-only, leave this layer in the set
                         // but mark it as no-draw. We keep it in the set so the culler doesn't
@@ -98,13 +99,13 @@ TerrainRenderData::setup(const Map* map,
 
                     else // if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_PATCH)
                     {
-                        PatchLayer* patchLayer = static_cast<PatchLayer*>(layer); // asumption!
+                        PatchLayer* patchLayer = static_cast<PatchLayer*>(layer.get()); // asumption!
 
-                        if (patchLayer->getAcceptCallback() != 0L &&
+                        if (patchLayer->getAcceptCallback() != nullptr &&
                             patchLayer->getAcceptCallback()->acceptLayer(*cv, cv->getCurrentCamera()))
                         {
-                            patchLayers().push_back(dynamic_cast<PatchLayer*>(layer));
-                            addLayerDrawable(layer);
+                            patchLayers().push_back(dynamic_cast<PatchLayer*>(layer.get()));
+                            addLayerDrawable(layer, cam, drawables);
                         }
                     }
                 }
@@ -113,29 +114,42 @@ TerrainRenderData::setup(const Map* map,
     }
 
     // Include a "blank" layer for missing data.
-    LayerDrawable* blank = addLayerDrawable(0L);
-}
-
-namespace
-{
-    struct DebugCallback : public osg::Drawable::DrawCallback
-    {
-        std::string _s;
-        DebugCallback(const std::string& s) : _s(s) { }
-        void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* d) const {
-            OE_WARN << "  Drawing Layer: " << _s << std::endl;
-            d->drawImplementation(ri);
-        }
-    };
+    addLayerDrawable(nullptr, cam, drawables);
 }
 
 LayerDrawable*
-TerrainRenderData::addLayerDrawable(const Layer* layer)
+TerrainRenderData::addLayerDrawable(
+    const Layer* layer,
+    const osg::Camera* camera,
+    LayerDrawableTable& drawables)
 {
-    LayerDrawable* drawable = new LayerDrawable();
-    if (layer) {
-        drawable->setName(layer->getName());
+    ScopedMutexLock lock(drawables);
+
+    auto key = std::make_pair(layer, camera);
+    osg::ref_ptr<LayerDrawable>& drawable = drawables[key];
+    //osg::ref_ptr<LayerDrawable> drawable;
+    if (!drawable.valid())
+    {
+        drawable = new LayerDrawable();
+
+        drawable->_layer = layer;
+        drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
+        drawable->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
+        drawable->_patchLayer = dynamic_cast<const PatchLayer*>(layer);
+
+        if (layer)
+        {
+            drawable->setName(layer->getName());
+            drawable->setStateSet(layer->getStateSet());
+            drawable->_renderType = layer->getRenderType();
+        }
     }
+
+    // reset state:
+    drawable->_tiles.clear();
+    drawable->_clearOsgState = false;
+
+
     drawable->_drawOrder = _layerList.size();
     _layerList.push_back(drawable);
 
@@ -144,19 +158,11 @@ TerrainRenderData::addLayerDrawable(const Layer* layer)
     if (layer)
     {
         _layerMap[layer->getUID()] = drawable;
-
-        drawable->_layer = layer;
-        drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
-        drawable->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
-        drawable->_patchLayer = dynamic_cast<const PatchLayer*>(layer);
-        drawable->_renderType = layer->getRenderType();
-
-        drawable->setStateSet(layer->getStateSet());
     }
     else
     {
         _layerMap[-1] = drawable;
     }
 
-    return drawable;
+    return drawable.get();
 }

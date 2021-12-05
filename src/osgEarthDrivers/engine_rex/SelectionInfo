@@ -22,6 +22,7 @@
 #include "Common"
 #include <osg/NodeVisitor>
 #include <osgEarth/Profile>
+#include <osgEarth/TileKey>
 #include <vector>
 
 
@@ -59,7 +60,15 @@ namespace osgEarth { namespace REX
         void get(const TileKey& key, float& out_range, float& out_startMorphRange, float& out_endMorphRange) const;
 
         //! Get just the visibility range for a TileKey.
-        float getRange(const TileKey& key) const;
+        //! inlined for speed (SL measured)
+        inline float getRange(const TileKey& key) const {
+            const LOD& lod = _lods[key.getLOD()];
+            if (key.getTileY() >= lod._minValidTY && key.getTileY() <= lod._maxValidTY)
+            {
+                return lod._visibilityRange;
+            }
+            return 0.0f;
+        }
 
     private:
         std::vector<LOD>    _lods;

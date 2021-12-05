@@ -28,6 +28,23 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace REX
 {
+    struct pair_hash
+    {
+        template <class T1, class T2>
+        std::size_t operator() (const std::pair<T1, T2> &pair) const {
+            return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+        }
+    };
+
+    //! Lookup table of each layer's layerdrawable
+    using LayerDrawableTable = Mutexed<
+        std::unordered_map<
+            std::pair<const Layer*, const osg::Camera*>,
+            osg::ref_ptr<LayerDrawable>,
+            pair_hash>
+        > ;
+
+
     /**
      * Main data structure assembled by the TerrainCuller that contains
      * everything necessary to render one frame of the terrain.
@@ -36,16 +53,24 @@ namespace osgEarth { namespace REX
     {
     public:
         TerrainRenderData() :
-            _bindings(0L) { }
+            _bindings(nullptr) { }
 
         /** Set up the map layers before culling the terrain */
-        void setup(const Map* map, const RenderBindings& bindings, unsigned frameNum, osgUtil::CullVisitor* cv);
+        void reset(
+            const Map* map,
+            const RenderBindings& bindings,
+            LayerDrawableTable& drawables,
+            unsigned frameNum,
+            osgUtil::CullVisitor* cv);
 
         /** Optimize for best state sharing (when using geometry pooling). Returns total tile count. */
         unsigned sortDrawCommands();
 
         /** Add a Drawable for a layer. Add these in the order you wish to render them. */
-        LayerDrawable* addLayerDrawable(const Layer*);
+        LayerDrawable* addLayerDrawable(
+            const Layer*,
+            const osg::Camera* cam,
+            LayerDrawableTable& drawables);
 
         /** Layers to draw */
         LayerDrawableList& layers() { return _layerList; }

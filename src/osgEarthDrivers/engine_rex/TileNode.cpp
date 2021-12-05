@@ -57,6 +57,7 @@ TileNode::TileNode(
     Cancelable* progress) :
 
     _key(key),
+    _parentTile(parent),
     _context(context),
     _loadsInQueue(0u),
     _childrenReady(false),

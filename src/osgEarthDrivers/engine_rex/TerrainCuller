@@ -49,6 +49,7 @@ namespace osgEarth { namespace REX
     {
     public:
         TerrainRenderData _terrain;
+        LayerDrawableTable* _layerDrawableLUT;
         EngineContext* _context;
         osg::Camera* _camera;
         TileNode* _currentTileNode;
@@ -59,13 +60,18 @@ namespace osgEarth { namespace REX
         bool _isSpy;
         std::vector<PatchLayer*> _patchLayers;
         bool _acceptSurfaceNodes;
+        unsigned _numberChildrenCreated;
 
     public:
-        /** A new terrain culler */
-        TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context);
+        //! Construct the culler
+        TerrainCuller();
 
-        /** Initialize the culler with a map and a set of render bindings. */
-        void setup(const Map* map, LayerExtentMap& layerExtents, const RenderBindings& bindings);
+        //! Reset for the next frame
+        void reset(
+            osgUtil::CullVisitor* parentCullVisitor,
+            EngineContext* context,
+            LayerExtentMap& layerExtents,
+            LayerDrawableTable& layerDrawables);
 
         /** The active camera */
         osg::Camera* getCamera() { return _camera; }

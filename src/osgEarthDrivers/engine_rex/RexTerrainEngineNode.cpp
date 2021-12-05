@@ -644,11 +644,15 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
-    // Initialize a new culler
-    TerrainCuller culler(cv, this->getEngineContext());
+    // Initialize a new culler.
+    TerrainCuller culler;
 
     // Prepare the culler with the set of renderable layers:
-    culler.setup(getMap(), _cachedLayerExtents, this->getEngineContext()->getRenderBindings());
+    culler.reset(
+        cv,
+        getEngineContext(),
+        _cachedLayerExtents,
+        _layerDrawables);
 
     // Assemble the terrain drawables:
     _terrain->accept(culler);
@@ -1013,7 +1017,7 @@ RexTerrainEngineNode::addLayer(Layer* layer)
         if (layer->getEnabled())
         {
             if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
-                addTileLayer(layer);
+                addSurfaceLayer(layer);
             else if (dynamic_cast<ElevationLayer*>(layer) || dynamic_cast<TerrainConstraintLayer*>(layer))
                 addElevationLayer(layer);
         }
@@ -1023,11 +1027,11 @@ RexTerrainEngineNode::addLayer(Layer* layer)
 }
 
 void
-RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
+RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
 {
-    if ( tileLayer && tileLayer->getEnabled() )
+    if (layer && layer->getEnabled() )
     {
-        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(tileLayer);
+        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
         if (imageLayer)
         {
             // for a shared layer, allocate a shared image unit if necessary.
@@ -1109,7 +1113,7 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             // Update the existing render models, and trigger a data reload.
             // Later we can limit the reload to an update of only the new data.
             std::vector<const Layer*> layers;
-            layers.push_back(tileLayer);
+            layers.push_back(layer);
             invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);
         }
 
@@ -1123,6 +1127,14 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 {
     if ( layerRemoved )
     {
+        // release its layer drawable
+        _layerDrawables.scoped_lock([&]() {
+            for (auto& entry : _layerDrawables) {
+                if (entry.first.first == layerRemoved)
+                    _layerDrawables.erase(entry.first);
+            }
+        });
+
         // for a shared layer, release the shared image unit.
         if ( layerRemoved->getEnabled() && layerRemoved->isShared() )
         {

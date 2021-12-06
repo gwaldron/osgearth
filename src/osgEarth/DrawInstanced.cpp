@@ -426,7 +426,8 @@ public:
     {
         osg::ref_ptr< InstanceGeometry > instanced = new InstanceGeometry(geometry);
         instanced->setMatrices(_matrices);
-        for (unsigned int i = 0; i < geometry.getNumParents(); i++)
+        unsigned int geometryParentCount = geometry.getNumParents();
+        for (unsigned int i = 0; i < geometryParentCount; i++)
         {
             geometry.getParent(i)->replaceChild(&geometry, instanced.get());
         }

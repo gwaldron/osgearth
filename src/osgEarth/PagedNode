@@ -229,6 +229,7 @@ namespace osgEarth { namespace Util
         std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load;
         std::atomic_int _revision;
         bool _autoUnload;
+        float _lastRange;
 
         bool merge(int revision);
         void traverseChildren(osg::NodeVisitor& nv);
@@ -253,6 +254,7 @@ namespace osgEarth { namespace Util
 
         //! Manually call an update on the PagingManager.  This should only be used if you are loading data outside of a traditional frameloop and want to merge data.
         void update();
+
 
     protected:
         virtual ~PagingManager();

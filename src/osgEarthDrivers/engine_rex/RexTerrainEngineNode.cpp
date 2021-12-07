@@ -1271,6 +1271,13 @@ RexTerrainEngineNode::updateState()
 #endif
         }
 
+        // Indirect rendering?
+        terrainVP->addGLSLExtension("GL_ARB_gpu_shader_int64");
+        if (options().indirectRendering() == true)
+        {
+            terrainStateSet->setDefine("OE_INDIRECT");
+        }
+
         // Elevation?
         if (this->elevationTexturesRequired())
         {
@@ -1420,7 +1427,6 @@ RexTerrainEngineNode::updateState()
             Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
 
         // For an image layer, attach the default fragment shader:
-        //_imageLayerStateSet = osg::clone(surfaceStateSet, osg::CopyOp::DEEP_COPY_ALL);
         _imageLayerStateSet = new osg::StateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(_imageLayerStateSet.get());
         package.load(vp, package.ENGINE_IMAGELAYER);

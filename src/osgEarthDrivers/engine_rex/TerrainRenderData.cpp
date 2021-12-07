@@ -48,6 +48,7 @@ TerrainRenderData::reset(
     const RenderBindings& bindings,
     LayerDrawableTable& drawables,
     unsigned frameNum,
+    bool useIndirectRendering,
     osgUtil::CullVisitor* cv)
 {
     _bindings = &bindings;
@@ -86,7 +87,7 @@ TerrainRenderData::reset(
                 {
                     if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
                     {
-                        LayerDrawable* ld = addLayerDrawable(layer, cam, drawables);
+                        LayerDrawable* ld = addLayerDrawable(layer, cam, drawables, useIndirectRendering);
 
                         // If the current camera is depth-only, leave this layer in the set
                         // but mark it as no-draw. We keep it in the set so the culler doesn't
@@ -105,7 +106,7 @@ TerrainRenderData::reset(
                             patchLayer->getAcceptCallback()->acceptLayer(*cv, cv->getCurrentCamera()))
                         {
                             patchLayers().push_back(dynamic_cast<PatchLayer*>(layer.get()));
-                            addLayerDrawable(layer, cam, drawables);
+                            addLayerDrawable(layer, cam, drawables, useIndirectRendering);
                         }
                     }
                 }
@@ -114,14 +115,15 @@ TerrainRenderData::reset(
     }
 
     // Include a "blank" layer for missing data.
-    addLayerDrawable(nullptr, cam, drawables);
+    addLayerDrawable(nullptr, cam, drawables, useIndirectRendering);
 }
 
 LayerDrawable*
 TerrainRenderData::addLayerDrawable(
     const Layer* layer,
     const osg::Camera* camera,
-    LayerDrawableTable& drawables)
+    LayerDrawableTable& drawables,
+    bool useIndirectRendering)
 {
     ScopedMutexLock lock(drawables);
 
@@ -131,6 +133,7 @@ TerrainRenderData::addLayerDrawable(
     if (!drawable.valid())
     {
         drawable = new LayerDrawable();
+        drawable->_useIndirectRendering = useIndirectRendering;
 
         drawable->_layer = layer;
         drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
@@ -164,5 +167,6 @@ TerrainRenderData::addLayerDrawable(
         _layerMap[-1] = drawable;
     }
 
+    //return drawable.release();
     return drawable.get();
 }

@@ -161,7 +161,7 @@ DrawTileCommand::debug(
         OE_INFO << "  _morphConstantsUL UL = " << pps._morphConstantsUL << ", value = " << (*pps._morphConstants)[0] << ", " << (*pps._elevTexelCoeff)[1] << std::endl;
     
     OE_INFO << "  samplers:" << std::endl;
-    int s = 0;
+    unsigned s = 0;
     if (_sharedSamplers)
     {
         for (; s < _sharedSamplers->size(); ++s)

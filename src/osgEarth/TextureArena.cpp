@@ -52,6 +52,8 @@ Texture::isCompiled(const osg::State& state) const
 void
 Texture::compileGLObjects(osg::State& state) const
 {
+    OE_PROFILING_ZONE;
+
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
     Texture::GCState& gc = get(state);
 
@@ -90,7 +92,7 @@ Texture::compileGLObjects(osg::State& state) const
         if (pixelFormat == GL_RGB)
             internalFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
         else if (pixelFormat == GL_RGBA)
-            GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+            internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
     }
 
     // Blit our image to the GPU
@@ -119,8 +121,9 @@ Texture::compileGLObjects(osg::State& state) const
     glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    GLint wrap = _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap);
 
     glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 4.0f);
 
@@ -220,6 +223,7 @@ Texture::compileGLObjects(osg::State& state) const
 
     if (numMipLevelsInMemory < numMipLevelsToAllocate)
     {
+        OE_PROFILING_ZONE_NAMED("glGenerateMipmap");
         ext->glGenerateMipmap(target);
     }
 }
@@ -239,6 +243,12 @@ Texture::makeResident(const osg::State& state, bool toggle) const
     }
 }
 
+bool
+Texture::isResident(const osg::State& state) const
+{
+    GCState& gc = get(state);
+    return (gc._gltexture != nullptr && gc._gltexture->isResident());
+}
 
 void
 Texture::resizeGLObjectBuffers(unsigned maxSize)
@@ -261,6 +271,9 @@ Texture::releaseGLObjects(osg::State* state) const
                 << "Texture::releaseGLObjects '" << gc._gltexture->id() 
                 << "' name=" << gc._gltexture->name() 
                 << " handle=" << gc._gltexture->handle(*state) << std::endl;
+
+            //gc._gltexture->release();
+            gc._gltexture->makeResident(false);
 
             // will activate the releaser
             gc._gltexture = nullptr;
@@ -296,11 +309,40 @@ TextureArena::~TextureArena()
     releaseGLObjects(nullptr);
 }
 
-bool
+int
+TextureArena::find(Texture::Ptr tex) const
+{
+    for (int i = 0; i < _textures.size(); ++i)
+        if (_textures[i] == tex)
+            return i;
+    return -1;
+}
+
+int
 TextureArena::add(Texture::Ptr tex)
 {
-    OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, false);
+    OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, -1);
 
+    // if it's already there, we good
+    int index = find(tex);
+    if (index >= 0)
+        return index;
+
+    // find an open slot if one is available:
+    for (int i = 0; i < _textures.size(); ++i)
+    {
+        if (_textures[i].use_count() == 1)
+        {
+            index = i;
+            break;
+        }
+    }
+    if (index < 0)
+    {
+        index = _textures.size();
+    }
+
+    // load the image if necessary (TODO: background?)
     if (tex->_image.valid() == false)
     {
         // TODO support read options for caching
@@ -339,13 +381,16 @@ TextureArena::add(Texture::Ptr tex)
                 _gc[i]._toAdd.push_back(tex);
         }
 
-        _textures.push_back(tex);
+        if (index < _textures.size())
+            _textures[index] = tex;
+        else
+            _textures.push_back(tex);
 
-        return true;
+        return index;
     }
     else
     {
-        return false;
+        return -1;
     }
 
     //TODO: consider issues like multiple GCs and "unref after apply"
@@ -402,6 +447,8 @@ TextureArena::apply(osg::State& state) const
 {
     if (_textures.empty())
         return;
+
+    OE_PROFILING_ZONE;
 
     GCState& gc = _gc[state.getContextID()];
 
@@ -477,7 +524,7 @@ TextureArena::apply(osg::State& state) const
         gc._handleLUT._dirty = true;
     }
 
-#if 0
+#if 1
     // Works, but re-visit so we don't need to call every frame
     // and re-visit loading/unloading of textures from main memory..
     for (auto& tex : _textures)
@@ -485,15 +532,13 @@ TextureArena::apply(osg::State& state) const
         if (tex.use_count() == 1)
         {
             tex->makeResident(state, false);
-        }
-        else
-        {
-            tex->makeResident(state, true);
+            tex->releaseGLObjects(&state);
         }
     }
 #endif
 
     // update the LUT if it needs more space:
+
     gc._handleLUT.sync(_textures, state);
 
     // bind to the layout index in the shader
@@ -579,7 +624,7 @@ TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
 
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE TextureArena");
         _buffer->bind();
-        _buffer->allocateStorage(_allocatedSize, _buf, GL_DYNAMIC_STORAGE_BIT);
+        _buffer->bufferStorage(_allocatedSize, _buf, GL_DYNAMIC_STORAGE_BIT);
     }
 
     else if (_dirty)
@@ -627,7 +672,7 @@ TextureArena::HandleLUT::update()
     if (updateMe)
     {
         _buffer->bind();
-        _buffer->subData(0, _allocatedSize, _buf);
+        _buffer->bufferSubData(0, _allocatedSize, _buf);
         _dirty = false;
     }
     return updateMe;

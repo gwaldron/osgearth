@@ -102,8 +102,9 @@ namespace osgEarth { namespace REX
         void notifyOfArrival(TileNode* that);
 
         /** Returns the tile's parent; convenience function */
-        inline TileNode* getParentTile() { return _parentTile.get(); }
-        inline const TileNode* getParentTile() const { return _parentTile.get(); }
+        inline TileNode* getParentTile() { return _parentTile; } //.get();
+    
+        inline const TileNode* getParentTile() const { return _parentTile; } //.get();
 
         /** Returns the SurfaceNode under this node. */
         SurfaceNode* getSurfaceNode() { return _surface.get(); }
@@ -161,7 +162,7 @@ namespace osgEarth { namespace REX
 
     protected:
         TileKey                            _key;
-        osg::ref_ptr<TileNode>             _parentTile;
+        TileNode*        _parentTile;
         osg::ref_ptr<SurfaceNode>          _surface;
         osg::ref_ptr<EngineContext>        _context;
         Threading::Mutex                   _mutex;

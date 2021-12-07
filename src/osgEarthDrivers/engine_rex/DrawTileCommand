@@ -88,10 +88,6 @@ namespace osgEarth { namespace REX
         // Renders the tile.
         void draw(osg::RenderInfo& ri) const;
 
-        // Visits the tile (to state applied, nothing rendered) - useful when collecting
-        // tile data for a compute shader, e.g.
-        //void visit(osg::RenderInfo& ri) const;
-
         // Less than operator will ensure that tiles are sorted near to far
         // to minimze overdraw.
         bool operator < (const DrawTileCommand& rhs) const
@@ -99,6 +95,13 @@ namespace osgEarth { namespace REX
             if (_range > rhs._range) return false;
             if (_range < rhs._range) return true;
             return _geom < rhs._geom;
+        }
+
+        bool operator == (const DrawTileCommand& rhs) const
+        {
+            return
+                _tile == rhs._tile &&
+                _tileRevision == rhs._tileRevision;
         }
 
         DrawTileCommand() :

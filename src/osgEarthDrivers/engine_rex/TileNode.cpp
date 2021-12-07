@@ -847,6 +847,7 @@ TileNode::merge(
                         {
                             Sampler& colorParent = pass->sampler(SamplerBinding::COLOR_PARENT);
                             colorParent._texture = parentPass->sampler(SamplerBinding::COLOR)._texture;
+                            colorParent._arena_texture = parentPass->sampler(SamplerBinding::COLOR)._arena_texture;
                             colorParent._matrix = parentPass->sampler(SamplerBinding::COLOR)._matrix;
                             colorParent._matrix.preMult(scaleBias[_key.getQuadrant()]);
                         }
@@ -1173,6 +1174,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
                         // set the parent-color texture to the parent's color texture
                         // and scale/bias the matrix.
                         mySampler._texture = parentColorSampler._texture.get();
+                        mySampler._arena_texture = parentColorSampler._arena_texture;
                         mySampler._matrix = newMatrix;
                         mySampler._revision = parentColorSampler._revision;
                     }

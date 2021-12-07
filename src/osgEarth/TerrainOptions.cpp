@@ -67,6 +67,7 @@ TerrainOptions::getConfig() const
     conf.set( "texture_compression", textureCompression());
     conf.set( "concurrency", concurrency());
     conf.set( "use_land_cover", useLandCover() );
+    conf.set("indirect_rendering", indirectRendering());
 
     return conf;
 }
@@ -107,6 +108,7 @@ TerrainOptions::fromConfig(const Config& conf)
     textureCompression().setDefault("");
     concurrency().setDefault(4u);
     useLandCover().setDefault(true);
+    indirectRendering().setDefault(false);
 
     conf.get( "tile_size", _tileSize );
     conf.get( "min_tile_range_factor", _minTileRangeFactor );   
@@ -146,6 +148,7 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "texture_compression", textureCompression());
     conf.get( "concurrency", concurrency());
     conf.get( "use_land_cover", useLandCover());
+    conf.get("indirect_rendering", indirectRendering());
 
     // report on deprecated usage
     const std::string deprecated_keys[] = {

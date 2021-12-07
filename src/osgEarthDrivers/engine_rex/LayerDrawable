@@ -23,6 +23,9 @@
 #include "DrawState"
 
 #include <osgEarth/ImageLayer>
+#include <osgEarth/GLUtils>
+#include <osgEarth/TextureArena>
+
 #include <vector>
 
 using namespace osgEarth;
@@ -76,7 +79,10 @@ namespace osgEarth { namespace REX
 
         // Whether to render this layer.
         bool _draw;
-        
+
+        // Whether to use indirect rendering, which requires GL 4.6.
+        bool _useIndirectRendering;
+
 
     public: // osg::Drawable
         
@@ -91,8 +97,58 @@ namespace osgEarth { namespace REX
         void accept(osg::PrimitiveIndexFunctor&) const override;
 
     protected:
+
         // overriden to prevent OSG from releasing GL objects on an attached stateset.
         virtual ~LayerDrawable();
+
+    private:
+
+        // SSBO data elements
+        // must align to 16 bytes
+        // maps directly into an SSBO, so don't use any vec3! or mat3!
+        struct TileBuffer
+        {
+            float verts[17 * 17 * 4];
+            float normals[17 * 17 * 4];
+            float modelViewMatrix[4 * 4];
+            float colorMat[4 * 4];
+            int   colorIndex;
+            float padding[3];
+        };
+
+        // Things maintained on a per-graphics-context basis
+        struct GCState
+        {
+            GLuint vao;
+            GLBuffer::Ptr vbo;
+            GLBuffer::Ptr ebo;
+            GLBuffer::Ptr tiles;
+            GLBuffer::Ptr commands;
+        };
+
+        // Things maintained on a per-camera basis
+        struct CameraState
+        {
+            CameraState() {
+                gcState.resize(64);
+            }
+
+            std::vector<TileBuffer> tilebuf;
+            std::vector<DrawElementsIndirectCommand> commands;
+            osg::buffered_object<GCState> gcState;
+
+            mutable DrawTileCommands _previous_tiles;
+        };
+
+        using CameraStates = std::unordered_map<const osg::Camera*, CameraState>;
+
+        mutable CameraStates _cameraStates;
+
+        mutable osg::ref_ptr<TextureArena> _textures;
+
+        void drawImplementationDirect(osg::RenderInfo& ri) const;
+
+        void drawImplementationIndirect(osg::RenderInfo& ri) const;
     };
 
 

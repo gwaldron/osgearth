@@ -61,6 +61,7 @@ namespace osgEarth { namespace REX
             const RenderBindings& bindings,
             LayerDrawableTable& drawables,
             unsigned frameNum,
+            bool useIndirectRendering,
             osgUtil::CullVisitor* cv);
 
         /** Optimize for best state sharing (when using geometry pooling). Returns total tile count. */
@@ -70,7 +71,8 @@ namespace osgEarth { namespace REX
         LayerDrawable* addLayerDrawable(
             const Layer*,
             const osg::Camera* cam,
-            LayerDrawableTable& drawables);
+            LayerDrawableTable& drawables,
+            bool useIndirectRendering);
 
         /** Layers to draw */
         LayerDrawableList& layers() { return _layerList; }

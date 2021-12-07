@@ -1521,6 +1521,7 @@ VirtualProgram::apply(osg::State& state) const
         local.accumAttribBindings.clear();
         local.accumAttribAliases.clear();
         local.programKey.clear();
+        local.accumExtensions.clear();
 #else
         ApplyVars local;
 #endif
@@ -1535,6 +1536,7 @@ VirtualProgram::apply(osg::State& state) const
                 local.accumShaderMap,
                 local.accumAttribBindings,
                 local.accumAttribAliases,
+                local.accumExtensions,
                 acceptCallbacksVary);
         }
 
@@ -1616,7 +1618,8 @@ VirtualProgram::apply(osg::State& state) const
                 state,
                 accumFunctions,
                 local.accumShaderMap,
-                _globalExtensions,
+                local.accumExtensions,
+                //_globalExtensions,
                 local.accumAttribBindings,
                 local.accumAttribAliases,
                 _template.get(),
@@ -1908,6 +1911,7 @@ VirtualProgram::accumulateShaders(const osg::State&  state,
     ShaderMap&         accumShaderMap,
     AttribBindingList& accumAttribBindings,
     AttribAliasMap&    accumAttribAliases,
+    ExtensionsSet&     accumExtensions,
     bool&              acceptCallbacksVary)
 {
     acceptCallbacksVary = false;
@@ -1964,6 +1968,9 @@ VirtualProgram::accumulateShaders(const osg::State&  state,
                 const AttribAliasMap& aliases = vp->getAttribAliases();
                 accumAttribAliases.insert(aliases.begin(), aliases.end());
 #endif
+
+                const ExtensionsSet& es = vp->_globalExtensions;
+                accumExtensions.insert(es.begin(), es.end());
             }
         }
     }
@@ -1988,16 +1995,18 @@ VirtualProgram::addShadersToAccumulationMap(VirtualProgram::ShaderMap& accumMap,
 }
 
 int
-VirtualProgram::getShaders(const osg::State&                        state,
+VirtualProgram::getShaders(
+    const osg::State& state,
     std::vector<osg::ref_ptr<osg::Shader> >& output)
 {
     ShaderMap         shaders;
     AttribBindingList bindings;
     AttribAliasMap    aliases;
+    ExtensionsSet     extensions;
     bool              acceptCallbacksVary;
 
     // build the collection:
-    accumulateShaders(state, ~0, shaders, bindings, aliases, acceptCallbacksVary);
+    accumulateShaders(state, ~0, shaders, bindings, aliases, extensions, acceptCallbacksVary);
 
     // pre-allocate space:
     output.reserve(shaders.size());
@@ -2013,16 +2022,18 @@ VirtualProgram::getShaders(const osg::State&                        state,
 }
 
 int
-VirtualProgram::getPolyShaders(const osg::State&                       state,
+VirtualProgram::getPolyShaders(
+    const osg::State& state,
     std::vector<osg::ref_ptr<PolyShader> >& output)
 {
     ShaderMap         shaders;
     AttribBindingList bindings;
     AttribAliasMap    aliases;
+    ExtensionsSet     extensions;
     bool              acceptCallbacksVary;
 
     // build the collection:
-    accumulateShaders(state, ~0, shaders, bindings, aliases, acceptCallbacksVary);
+    accumulateShaders(state, ~0, shaders, bindings, aliases, extensions, acceptCallbacksVary);
 
     // pre-allocate space:
     output.reserve(shaders.size());

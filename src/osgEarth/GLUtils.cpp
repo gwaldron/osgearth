@@ -333,7 +333,9 @@ GLObject::GLObject(osg::State& state, const std::string& label) :
 GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
     GLObject(state, label),
     _target(target),
-    _name(~0U)
+    _name(~0U),
+    _size(0),
+    _layoutIndex(0u)
 {
     ext()->glGenBuffers(1, &_name);
     if (_name != ~0U)
@@ -369,15 +371,29 @@ GLBuffer::bind(GLenum otherTarget) const
 }
 
 void
-GLBuffer::allocateStorage(GLintptr size, GLvoid* data, GLbitfield flags) const
+GLBuffer::bufferData(GLintptr size, GLvoid* data, GLbitfield flags) const
 {
-    ext()->glBufferStorage(_target, size, data, flags);
+    ext()->glBufferData(_target, size, data, flags);
+    _size = size;
 }
 
 void
-GLBuffer::subData(GLintptr offset, GLsizeiptr size, GLvoid* data) const
+GLBuffer::bufferStorage(GLintptr size, GLvoid* data, GLbitfield flags) const
+{
+    ext()->glBufferStorage(_target, size, data, flags);
+    _size = size;
+}
+
+void
+GLBuffer::bufferSubData(GLintptr offset, GLsizeiptr size, GLvoid* data) const
 {
     ext()->glBufferSubData(_target, offset, size, data);
+}
+
+void
+GLBuffer::bindBufferBase(GLuint index) const
+{
+    ext()->glBindBufferBase(target(), index, name());
 }
 
 void
@@ -389,6 +405,7 @@ GLBuffer::release()
         //OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
         ext()->glDeleteBuffers(1, &_name);
         _name = ~0U;
+        _size = 0;
     }
 }
 
@@ -501,7 +518,7 @@ SSBO::bindLayout() const
 {
     if (_buffer != nullptr && _bindingIndex >= 0)
     {
-        _buffer->ext()->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bindingIndex, _buffer->name());
+        _buffer->bindBufferBase(_bindingIndex);
     }
 }
 
@@ -526,6 +543,7 @@ GLObjectReleaser::watch(GLObject::Ptr object, osg::State& state_unused)
             ScopedMutexLock lock(rel->_mutex);
             rel->_objects.insert(object);
             OE_DEVEL << LC << "Added \"" << object->label() << "\"" << std::endl;
+            //OE_INFO << LC << "Watching " << rel->_objects.size() << std::endl;
         }
     }
 }
@@ -575,6 +593,11 @@ GLObjectReleaser::flushAllDeletedGLObjects()
             temp.insert(object);
         }
     }
+
+    //int num = (_objects.size() - temp.size());
+    //if (num > 0) {
+    //    OE_INFO << LC << "Released " << num << " objects; " << temp.size() << " remaining" << std::endl;
+    //}
 
     _objects.swap(temp);
 }
@@ -1010,6 +1033,7 @@ GLFunctions::get(unsigned contextID)
     {
         osg::setGLExtensionFuncPtr(f.glBufferStorage, "glBufferStorage", "glBufferStorageARB");
         osg::setGLExtensionFuncPtr(f.glClearBufferSubData, "glClearBufferSubData", "glClearBufferSubDataARB");
+        osg::setGLExtensionFuncPtr(f.glDrawElementsIndirect, "glDrawElementsIndirect", "glDrawElementsIndirectARB");
         osg::setGLExtensionFuncPtr(f.glMultiDrawElementsIndirect, "glMultiDrawElementsIndirect", "glMultiDrawElementsIndirectARB");
         osg::setGLExtensionFuncPtr(f.glDispatchComputeIndirect, "glDispatchComputeIndirect", "glDispatchComputeIndirectARB");
         osg::setGLExtensionFuncPtr(f.glTexStorage3D, "glTexStorage3D", "glTexStorage3DARB");

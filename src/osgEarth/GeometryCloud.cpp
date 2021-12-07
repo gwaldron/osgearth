@@ -273,14 +273,12 @@ GeometryCloud::pushStateSet(osg::Node& node)
                 auto i = _arenaIndexLUT.find(tex);
                 if (i == _arenaIndexLUT.end())
                 {
-                    // arena index of the texture we're about to add:
-                    int nextIndex = _texarena->size();
-
                     Texture::Ptr t = Texture::create();
                     t->_image = tex->getImage(0);
                     t->_uri = t->_image->getFileName();
 
-                    if (_texarena->add(t))
+                    int nextIndex = _texarena->add(t);
+                    if (nextIndex >= 0)
                     {
                         _arenaIndexLUT[tex] = nextIndex;
                         albedoArenaIndex = nextIndex;
@@ -314,14 +312,12 @@ GeometryCloud::pushStateSet(osg::Node& node)
                 auto i = _arenaIndexLUT.find(tex);
                 if (i == _arenaIndexLUT.end())
                 {
-                    // arena index of the texture we're about to add:
-                    int nextIndex = _texarena->size();
-
                     Texture::Ptr t = Texture::create();
                     t->_image = tex->getImage(0);
                     t->_compress = false; // do not compress normal maps
 
-                    if (_texarena->add(t))
+                    int nextIndex = _texarena->add(t);
+                    if (nextIndex >= 0)
                     {
                         _arenaIndexLUT[tex] = nextIndex;
                         normalArenaIndex = nextIndex;

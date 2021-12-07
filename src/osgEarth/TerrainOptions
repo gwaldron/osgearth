@@ -67,6 +67,7 @@ namespace osgEarth
         OE_OPTION(std::string, textureCompression);
         OE_OPTION(unsigned, concurrency);
         OE_OPTION(bool, useLandCover);
+        OE_OPTION(bool, indirectRendering);
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config&);

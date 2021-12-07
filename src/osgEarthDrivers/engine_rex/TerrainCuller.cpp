@@ -85,6 +85,7 @@ TerrainCuller::reset(
         context->getRenderBindings(),
         layerDrawables,
         frameNum,
+        context->options().indirectRendering().get(),
         _cv);
 }
 

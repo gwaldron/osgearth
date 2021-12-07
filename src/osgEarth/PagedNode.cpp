@@ -51,7 +51,8 @@ PagedNode2::PagedNode2() :
     _priorityScale(1.0f),
     _refinePolicy(REFINE_REPLACE),
     _preCompile(true),
-    _autoUnload(true)
+    _autoUnload(true),
+    _lastRange(FLT_MAX)
 {
     _job.setName(typeid(*this).name());
     _job.setArena(PAGEDNODE_ARENA_NAME);
@@ -418,6 +419,20 @@ PagingManager::traverse(osg::NodeVisitor& nv)
     }
 
     osg::Group::traverse(nv);
+
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        // After culling is complete, update all of the ranges for all of the node
+        ScopedMutexLock lock(_trackerMutex); // unnecessary?
+        for (auto& entry : _tracker._list)
+        {
+            if (entry._data.valid())
+            {               
+                float range = std::max(0.0f, nv.getDistanceToViewPoint(entry._data->getBound().center(), true) - entry._data->getBound().radius());
+                entry._data->_lastRange = std::min(entry._data->_lastRange, range);
+            }
+        }
+    }
 }
 
 void
@@ -430,8 +445,14 @@ PagingManager::update()
         _tracker.flush(
             0.0f,
             _mergesPerFrame,
-            [](osg::ref_ptr<PagedNode2> node) -> bool
+            [this](osg::ref_ptr<PagedNode2> node) -> bool
             {
+                // Don't expire nodes that are still within range even if they haven't passed cull.
+                if (node->_lastRange < node->getMaxRange())
+                {
+                    return false;
+                }
+
                 if (node->getAutoUnload())
                 {
                     node->unload();
@@ -439,6 +460,15 @@ PagingManager::update()
                 }
                 return false;
             });
+
+        // Reset the lastRange on the nodes for the next frame.
+        for (auto& entry : _tracker._list)
+        {
+            if (entry._data.valid())
+            {
+                entry._data->_lastRange = FLT_MAX;
+            }
+        }
     }
 
     // Handle merges

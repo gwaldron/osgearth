@@ -332,7 +332,7 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
         const bool isKeyDown = ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN;
         const int c = ea.getKey();
 
-        if (wantCaptureKeyboard)
+        if (wantCaptureKeyboard || ea.getKey() == osgGA::GUIEventAdapter::KEY_Return)
         {
             // Always update the mod key status.
             io.KeyCtrl = ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL;

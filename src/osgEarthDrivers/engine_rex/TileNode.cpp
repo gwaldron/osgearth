@@ -813,7 +813,11 @@ TileNode::merge(
                     pass->setLayer(layer);
                 }
 
-                pass->setSampler(SamplerBinding::COLOR, imageLayerModel->getTexture(), *imageLayerModel->getMatrix(), imageLayerModel->getRevision());
+                pass->setSampler(
+                    SamplerBinding::COLOR, 
+                    imageLayerModel->getTexture(), 
+                    *imageLayerModel->getMatrix(), 
+                    imageLayerModel->getRevision());
 
                 // If this is a new rendering pass, just copy the color into the color-parent.
                 if (isNewPass && bindings[SamplerBinding::COLOR_PARENT].isActive())

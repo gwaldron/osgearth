@@ -1,36 +1,35 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
-#pragma vp_name       REX Engine - ImageLayer/VS
-#pragma vp_entryPoint oe_rex_imageLayer_VS
-#pragma vp_location   vertex_view
-#pragma vp_order      0.4
+#version 460
+#pragma include RexEngine.Types.GL4.glsl
+#pragma vp_name REX Engine - ImageLayer/VS
+#pragma vp_function oe_rex_imageLayer_VS, vertex_view, 0.4
 
 // Stage globals
 vec4 oe_layer_tilec;
-vec2 oe_layer_texc;
-vec2 oe_layer_texcParent;
 
-uniform mat4 oe_layer_texMatrix;
-uniform mat4 oe_layer_texParentMatrix;
+// outputs
+out vec2 oe_color_uv;
+out vec2 oe_parent_uv;
+flat out uint64_t oe_color_handle;
+flat out uint64_t oe_parent_handle;
 
 void oe_rex_imageLayer_VS(inout vec4 vertexView)
 {
-    // calculate the texture coordinates:
-    oe_layer_texc = (oe_layer_texMatrix * oe_layer_tilec).st;
-    oe_layer_texcParent = (oe_layer_texParentMatrix * oe_layer_tilec).st;
+    oe_color_uv = (tile[oe_tileID].colorMat * oe_layer_tilec).st;
+    oe_color_handle = tex[tile[oe_tileID].colorIndex];
+
+    oe_parent_uv = (tile[oe_tileID].parentMat * oe_layer_tilec).st;
+    oe_parent_handle = tex[tile[oe_tileID].parentIndex];
 }
 
 
 [break]
 
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_name       REX Engine - Fragment
-#pragma vp_entryPoint oe_rex_imageLayer_FS
-#pragma vp_location   fragment_coloring
-#pragma vp_order      0.5
+#version 460
+#pragma include RexEngine.Types.GL4.glsl
+
+#pragma vp_name REX Engine - Fragment
+#pragma vp_function oe_rex_imageLayer_FS, fragment_coloring, 0.5
 
 #pragma import_defines(OE_TERRAIN_RENDER_IMAGERY)
 #pragma import_defines(OE_TERRAIN_MORPH_IMAGERY)
@@ -40,22 +39,23 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 #pragma import_defines(OE_IS_DEPTH_CAMERA)
 
-uniform sampler2D oe_layer_tex;
-uniform int       oe_layer_uid;
-uniform int       oe_layer_order;
+//uniform sampler2D oe_layer_tex;
+uniform int oe_layer_uid;
+uniform int oe_layer_order;
 
 #ifdef OE_TERRAIN_MORPH_IMAGERY
-uniform sampler2D oe_layer_texParent;
 uniform float oe_layer_texParentExists;
-in vec2 oe_layer_texcParent;
+in vec2 oe_parent_uv;
+flat in uint64_t oe_parent_handle;
 in float oe_rex_morphFactor;
 #endif
 
-in vec2 oe_layer_texc;
+// inputs
+in vec2 oe_color_uv;
+flat in uint64_t oe_color_handle;
 in vec4 oe_layer_tilec;
 in float oe_layer_opacity;
 
-// Vertex Markers:
 #define VERTEX_VISIBLE  1
 #define VERTEX_BOUNDARY 2
 #define VERTEX_HAS_ELEVATION 4
@@ -89,7 +89,8 @@ void oe_rex_imageLayer_FS(inout vec4 color)
     // if this is a picking camera, reset the color to all zeros:
 #ifdef OE_IS_PICK_CAMERA
     color = vec4(0);
-#else
+    return;
+#endif
 
     // If imagery rendering is disabled, we're done:
 #ifndef OE_TERRAIN_RENDER_IMAGERY
@@ -97,22 +98,22 @@ void oe_rex_imageLayer_FS(inout vec4 color)
 #endif
 
     // whether this layer contains texel color (UID<0 means no texture)
-    bool isTexelLayer = oe_layer_uid >= 0;
+    bool isTexelLayer = oe_color_handle > 0UL;
 
     // whether this is the first layer to render:
+    // TODO: check on this
     bool isFirstLayer = oe_layer_order == 0;
 
     vec4 texel = color;
 
     if (isTexelLayer)
     {
-        texel = texture(oe_layer_tex, oe_layer_texc);
+        texel = texture(sampler2D(oe_color_handle), oe_color_uv);
 
 #ifdef OE_TERRAIN_MORPH_IMAGERY
-        // sample the main texture:
 
         // sample the parent texture:
-        vec4 texelParent = texture(oe_layer_texParent, oe_layer_texcParent);
+        vec4 texelParent = texture(sampler2D(oe_parent_handle), oe_parent_uv);
 
         // if the parent texture does not exist, use the current texture with alpha=0 as the parent
         // so we can "fade in" an image layer that starts at LOD > 0:
@@ -142,6 +143,4 @@ void oe_rex_imageLayer_FS(inout vec4 color)
     // No blending? The output is just the texel value.
     color = texel;
 #endif // OE_TERRAIN_BLEND_IMAGERY
-
-#endif // OE_IS_PICK_CAMERA
 }

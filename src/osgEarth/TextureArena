@@ -67,11 +67,14 @@ namespace osgEarth
         optional<URI> _uri;
         osg::ref_ptr<osg::Image> _image;
         bool _compress;
+        bool _mipmap;
         bool _clamp;
+        optional<GLenum> _internalFormat;
+        optional<float> _maxAnisotropy;
         mutable osg::buffered_object<GCState> _gc;
 
     protected:
-        Texture() : _compress(true), _clamp(false) { }
+        Texture() : _compress(true), _mipmap(true), _clamp(false) { }
     };
 
     typedef std::vector<Texture::Ptr> TextureVector;
@@ -99,6 +102,8 @@ namespace osgEarth
         //! Returns the index of the texture handle
         int add(Texture::Ptr tex);
 
+        //! Find and return the index of this texture in the arena,
+        //! or return -1 if not found.
         int find(Texture::Ptr tex) const;
 
         //! Makes a texture fully available on the GPU.

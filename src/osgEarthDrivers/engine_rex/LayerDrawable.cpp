@@ -199,7 +199,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         // TODO: Benchmark to see whether it is faster to only update 
         // individual tiles that change BUT to use multiple uploads to do so.
 
-        int verts_per_tile = 17 * 17; // TODO
+        int verts_per_tile = NUM_VERTS; // 17 * 17; // TODO
         int tile_num = 0;
         int num_indices = 0;
 
@@ -208,7 +208,8 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             TileBuffer buf;
 
             osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(tile._geom->getVertexArray());
-            osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(tile._geom->getNormalArray());
+            osg::Vec3Array* upvectors = dynamic_cast<osg::Vec3Array*>(tile._geom->getNormalArray());
+            osg::Vec3Array* uvs = dynamic_cast<osg::Vec3Array*>(tile._geom->getTexCoordArray());
 
             for (int i = 0; i < verts_per_tile; ++i)
             {
@@ -219,16 +220,17 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                 //buf.verts[4 * i + 0] = (*verts)[i].x();
                 //buf.verts[4 * i + 1] = (*verts)[i].y();
                 //buf.verts[4 * i + 2] = (*verts)[i].z();
-                buf.verts[4 * i + 3] = 1.0f;
+                buf.verts[4 * i + 3] = (*uvs)[i].z(); // vertex flags marker
 
-                osg::Vec3f n = osg::Matrix::transform3x3(*tile._modelViewMatrix, (*normals)[i]);
-                buf.normals[4 * i + 0] = n.x();
-                buf.normals[4 * i + 1] = n.y();
-                buf.normals[4 * i + 2] = n.z();
+                osg::Vec3f up = osg::Matrix::transform3x3((*upvectors)[i] , *tile._modelViewMatrix);
+                up.normalize();
+                buf.upvectors[4 * i + 0] = up.x();
+                buf.upvectors[4 * i + 1] = up.y();
+                buf.upvectors[4 * i + 2] = up.z();
                 //buf.normals[4 * i + 0] = (*normals)[i].x();
                 //buf.normals[4 * i + 1] = (*normals)[i].y();
                 //buf.normals[4 * i + 2] = (*normals)[i].z();
-                buf.normals[4 * i + 3] = 0.0f;
+                buf.upvectors[4 * i + 3] = 0.0f;
             }
 
             // main MVM (double to float is OK)
@@ -236,13 +238,35 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                 buf.modelViewMatrix[i] = tile._modelViewMatrix->ptr()[i];
 
             // Color sampler and matrix:
-            buf.colorIndex = -1;
             if (tile._colorSamplers != nullptr)
             {
                 const Sampler& color = (*tile._colorSamplers)[SamplerBinding::COLOR];
                 buf.colorIndex = _textures->add(color._arena_texture);
-                for (int i = 0; i < 16; ++i)
-                    buf.colorMat[i] = color._matrix.ptr()[i];
+                for (int i = 0; i < 16; ++i) buf.colorMat[i] = color._matrix.ptr()[i];
+            }
+
+            // Elevation sampler:
+            if (tile._sharedSamplers != nullptr /* && is elevation active */)
+            {
+                const Sampler& s = (*tile._sharedSamplers)[SamplerBinding::ELEVATION];
+                s._arena_texture->_compress = false;
+                s._arena_texture->_mipmap = false;
+                s._arena_texture->_internalFormat = GL_R32F;
+                s._arena_texture->_maxAnisotropy = 1.0f;
+                buf.elevIndex = _textures->add(s._arena_texture);
+                for (int i = 0; i < 16; ++i) buf.elevMat[i] = s._matrix.ptr()[i];
+            }
+
+            // Normal sampler:
+            if (tile._sharedSamplers != nullptr /* && is normalmapping active */)
+            {
+                const Sampler& s = (*tile._sharedSamplers)[SamplerBinding::NORMAL];
+                s._arena_texture->_compress = false;
+                s._arena_texture->_mipmap = true;
+                //s._arena_texture->_internalFormat = GL_R32F;
+                s._arena_texture->_maxAnisotropy = 1.0f;
+                buf.normalIndex = _textures->add(s._arena_texture);
+                for (int i = 0; i < 16; ++i) buf.normalMat[i] = s._matrix.ptr()[i];
             }
 
             //TODO: other samplers and shared samplers...
@@ -250,6 +274,28 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
             cs.tilebuf.emplace_back(std::move(buf));
 
+            // First time through any layer? Make the global buffer
+            // TODO: this will eventually go to the terrain level.
+            if (gs.global == nullptr)
+            {
+                GlobalBuffer buf;
+                for (unsigned i = 0; i < uvs->size(); ++i)
+                {
+                    const osg::Vec3f& uv = (*uvs)[i];
+                    buf.uvs[2 * i + 0] = uv.x();
+                    buf.uvs[2 * i + 1] = uv.y();
+                }
+                
+                gs.global = GLBuffer::create(
+                    GL_SHADER_STORAGE_BUFFER,
+                    state,
+                    "LayerDrawable Global");
+                gs.global->bind();
+                gs.global->bufferStorage(
+                    align((GLsizei)sizeof(GlobalBuffer), GLUtils::getSSBOAlignment(state)),
+                    &buf,
+                    0); // permanent
+            }
 
             // First time through? Create the various shared buffer objects
             // we will need.
@@ -383,6 +429,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
     // Bind the layout indices so we can access our tile data from the shader:
     gs.tiles->bindBufferBase(0);
+    gs.global->bindBufferBase(1);
 
     // Apply the the texture arena:
     _textures->apply(state);

@@ -106,14 +106,35 @@ namespace osgEarth { namespace REX
         // SSBO data elements
         // must align to 16 bytes
         // maps directly into an SSBO, so don't use any vec3! or mat3!
+        #define NUM_VERTS 417
+
+        // data shared across all tiles
+        struct GlobalBuffer
+        {
+            float uvs[NUM_VERTS * 4];
+            float padding[2];
+        };
+
         struct TileBuffer
         {
-            float verts[17 * 17 * 4];
-            float normals[17 * 17 * 4];
+            float verts[NUM_VERTS * 4];
+            float upvectors[NUM_VERTS * 4];
             float modelViewMatrix[4 * 4];
             float colorMat[4 * 4];
-            int   colorIndex;
-            float padding[3];
+            float elevMat[4 * 4];
+            float normalMat[4 * 4];
+            float parentMat[4 * 4];
+            int colorIndex;
+            int elevIndex;
+            int normalIndex;
+            int parentIndex;
+            //float padding[1];
+
+            TileBuffer() :
+                colorIndex(-1),
+                elevIndex(-1),
+                normalIndex(-1),
+                parentIndex(-1) { }
         };
 
         // Things maintained on a per-graphics-context basis
@@ -122,6 +143,7 @@ namespace osgEarth { namespace REX
             GLuint vao;
             GLBuffer::Ptr vbo;
             GLBuffer::Ptr ebo;
+            GLBuffer::Ptr global;
             GLBuffer::Ptr tiles;
             GLBuffer::Ptr commands;
         };

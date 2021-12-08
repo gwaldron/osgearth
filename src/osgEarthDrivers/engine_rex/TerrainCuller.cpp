@@ -154,6 +154,7 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
 
             tile._layerOrder = drawable->_drawOrder;
 
+#if 0
             const osg::Image* elevRaster = tileNode->getElevationRaster();
             if (elevRaster)
             {
@@ -171,6 +172,7 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
                 float size = (float)elevRaster->s();
                 tile._elevTexelCoeff.set((size - (2.0*bias)) / size, bias / size);
             }
+#endif
 
             drawable->_tiles.emplace_back(std::move(tile));
             return &drawable->_tiles.back();

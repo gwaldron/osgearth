@@ -72,7 +72,7 @@ Texture::compileGLObjects(osg::State& state) const
     // how much space we need to allocate on the GPU:
     unsigned numMipLevelsToAllocate = numMipLevelsInMemory;
 
-    if (numMipLevelsInMemory <= 1)
+    if (numMipLevelsInMemory <= 1 && _mipmap == true)
     {
         numMipLevelsToAllocate = osg::Image::computeNumberOfMipmapLevels(
             _image->s(), _image->t(), _image->t());
@@ -80,9 +80,10 @@ Texture::compileGLObjects(osg::State& state) const
     
     GLenum pixelFormat = _image->getPixelFormat();
 
-    // trigger GPU compression if not already compressed
     GLenum internalFormat =
         _image->isCompressed() ? _image->getInternalTextureFormat() :
+        _internalFormat.isSet() ? _internalFormat.get() :
+        pixelFormat == GL_RED ? GL_R32F :
         pixelFormat == GL_RG ? GL_RG8 :
         pixelFormat == GL_RGB ? GL_RGB8 :
         GL_RGBA8;
@@ -118,14 +119,16 @@ Texture::compileGLObjects(osg::State& state) const
             _image->t() );
     }
 
-    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    GLint min_filter = _mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST;
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, min_filter);
     glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    GLint wrap = _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
-    glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap);
-    glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap);
+    GLint wrap_value = _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap_value);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap_value);
 
-    glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 4.0f);
+    float ma_value = _maxAnisotropy.getOrUse(4.0f);
+    glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, ma_value);
 
     // Force creation of the bindless handle - once you do this, you can
     // no longer change the texture parameters.
@@ -359,7 +362,8 @@ TextureArena::add(Texture::Ptr tex)
             {
                 // normalize the internal texture format
                 GLenum internalFormat =
-                    tex->_image->getPixelFormat() == GL_RED ? GL_R16F :
+                    tex->_internalFormat.isSet() ? tex->_internalFormat.get() :
+                    tex->_image->getPixelFormat() == GL_RED ? GL_R32F :
                     tex->_image->getPixelFormat() == GL_RG ? GL_RG8 :
                     tex->_image->getPixelFormat() == GL_RGB ? GL_RGB8 :
                     tex->_image->getPixelFormat() == GL_RGBA ? GL_RGBA8 :
@@ -474,12 +478,16 @@ TextureArena::apply(osg::State& state) const
 
     // allocate textures and resident handles
 
-    TextureVector stillCompiling;
+    TextureVector waitingToCompile;
+
+    const unsigned max_to_compile_per_apply = ~0;
+    unsigned num_compiled_this_apply = 0;
 
     for(auto& tex : gc._toAdd)
     {
         if (!tex->isCompiled(state))
         {
+#ifdef USE_ICO
             if (ico)
             {
                 Texture::GCState& tex_gc = tex->get(state);
@@ -491,20 +499,32 @@ TextureArena::apply(osg::State& state) const
                     ico->add(tex_gc._compileSet.get());
                 }
 
-                stillCompiling.push_back(tex);
+                waitingToCompile.push_back(tex);
             }
             else
             {
                 tex->compileGLObjects(state);
                 gc._toActivate.push_back(tex);
             }
+#else
+            if (num_compiled_this_apply < max_to_compile_per_apply)
+            {
+                tex->compileGLObjects(state);
+                ++num_compiled_this_apply;
+                gc._toActivate.push_back(tex);
+            }
+            else
+            {
+                waitingToCompile.push_back(tex);
+            }
+#endif
         }
         else
         {
             gc._toActivate.push_back(tex);
         }
     }
-    gc._toAdd.swap(stillCompiling);
+    gc._toAdd.swap(waitingToCompile);
 
     // remove pending objects by swapping them out of memory
     for(auto& tex : gc._toDeactivate)
@@ -538,7 +558,6 @@ TextureArena::apply(osg::State& state) const
 #endif
 
     // update the LUT if it needs more space:
-
     gc._handleLUT.sync(_textures, state);
 
     // bind to the layout index in the shader

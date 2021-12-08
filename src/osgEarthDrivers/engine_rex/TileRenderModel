@@ -218,13 +218,13 @@ namespace osgEarth { namespace REX
             sampler._matrix = matrix;
             sampler._revision = sourceRevision;
 
-            //if (texture)
-            //{
-            //    sampler._arena_texture = Texture::create();
-            //    sampler._arena_texture->_image = texture->getImage(0);
-            //    sampler._arena_texture->_clamp = true;
-            //    sampler._arena_texture->_compress = false;
-            //}
+            if (texture)
+            {
+                sampler._arena_texture = Texture::create();
+                sampler._arena_texture->_image = texture->getImage(0);
+                sampler._arena_texture->_clamp = true;
+                sampler._arena_texture->_compress = false;
+            }
         }
 
     private:
@@ -300,30 +300,27 @@ namespace osgEarth { namespace REX
         void setSharedSampler(
             unsigned binding,
             osg::Texture* texture,
-            const osg::Matrix& matrix,
-            int sourceRevision)
-        {
-            Sampler& sampler = _sharedSamplers[binding];
-            sampler._texture = texture;
-            sampler._matrix = matrix;
-            sampler._revision = sourceRevision;
-        }
-
-        void setSharedSampler(
-            unsigned binding,
-            osg::Texture* texture,
             int sourceRevision)
         {
             Sampler& sampler = _sharedSamplers[binding];
             sampler._texture = texture;
             sampler._matrix.makeIdentity();
             sampler._revision = sourceRevision;
+
+            if (texture)
+            {
+                sampler._arena_texture = Texture::create();
+                sampler._arena_texture->_image = texture->getImage(0);
+                sampler._arena_texture->_clamp = true;
+                sampler._arena_texture->_compress = false;
+            }
         }
 
         void clearSharedSampler(unsigned binding)
         {
             Sampler& sampler = _sharedSamplers[binding];
             sampler._texture = nullptr;
+            sampler._arena_texture = nullptr;
             sampler._matrix.makeIdentity();
             sampler._revision = 0;
         }

@@ -146,16 +146,11 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     _requireElevationTextures = true;
 
     // static shaders.
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        osg::StateSet* stateset = getOrCreateStateSet();
-        stateset->setName("RexTerrainEngineNode");
-        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setName("RexTerrainEngineNode");
-        vp->setIsAbstract(true);    // cannot run by itself, requires additional children
-        Shaders package;
-        package.load(vp, package.ENGINE_SDK);
-    }
+    osg::StateSet* stateset = getOrCreateStateSet();
+    stateset->setName("RexTerrainEngineNode");
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+    vp->setName("RexTerrainEngineNode");
+    vp->setIsAbstract(true);    // cannot run by itself, requires additional children
 
     _surfaceStateSet = new osg::StateSet();
     _surfaceStateSet->setName("Surface");
@@ -1238,19 +1233,26 @@ RexTerrainEngineNode::updateState()
             new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
             osg::StateAttribute::ON);
 
-        Shaders package;
+        ShadersGL3 package_GL3;
+        ShadersGL4 package_GL4;
+        REXShaders* shaders;
+        if (options().indirectRendering() == true)
+            shaders = &package_GL4;
+        else
+            shaders = &package_GL3;
 
         // Shaders that affect any terrain layer:
         VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
         terrainVP->setName("Rex Terrain");
-        package.load(terrainVP, package.ENGINE_VERT);
+        shaders->load(terrainVP, shaders->sdk());
+        shaders->load(terrainVP, shaders->vert());
 
         // Shaders that affect only terrain surface layers (RENDERTYPE_TERRAIN_SURFACE)
         VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
         surfaceVP->setName("Rex Surface");
 
         // Functions that affect the terrain surface only:
-        package.load(surfaceVP, package.ENGINE_ELEVATION);
+        shaders->load(surfaceVP, shaders->elevation());
 
         surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", options().color().get()));
         surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_altitude", (float)0.0f));
@@ -1258,8 +1260,7 @@ RexTerrainEngineNode::updateState()
 
         if (options().gpuTessellation() == true)
         {
-            package.load(surfaceVP, package.ENGINE_TESSELLATION);
-            //package.load(surfaceVP, package.ENGINE_GEOM);
+            shaders->load(surfaceVP, shaders->tessellation());
 
             // Default tess level
             surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_tess", 3.0f));
@@ -1272,22 +1273,31 @@ RexTerrainEngineNode::updateState()
         }
 
         // Indirect rendering?
-        terrainVP->addGLSLExtension("GL_ARB_gpu_shader_int64");
         if (options().indirectRendering() == true)
         {
-            terrainStateSet->setDefine("OE_INDIRECT");
+            terrainVP->addGLSLExtension("GL_ARB_gpu_shader_int64");
         }
 
         // Elevation?
         if (this->elevationTexturesRequired())
         {
             surfaceStateSet->setDefine("OE_TERRAIN_RENDER_ELEVATION");
+
+            float bias = getEngineContext()->getUseTextureBorder() ? 1.5 : 0.5;
+            float size = (float)ELEVATION_TILE_SIZE;
+
+            // Compute an elevation texture sampling scale/bias so we sample elevation data on center
+            // instead of on edge (as we do with color, etc.)
+            terrainStateSet->addUniform(new osg::Uniform(
+                "oe_tile_elevTexelCoeff",
+                osg::Vec2f((size - (2.0*bias)) / size, bias / size)));
+
         }
 
         // Normal mapping shaders:
         //if (this->normalTexturesRequired())
         {
-            package.load(surfaceVP, package.ENGINE_NORMAL_MAP);
+            shaders->load(surfaceVP, shaders->normal_map());
 
             if (this->normalTexturesRequired())
                 surfaceStateSet->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");
@@ -1309,7 +1319,7 @@ RexTerrainEngineNode::updateState()
             if ((options().morphTerrain() == true && _morphTerrainSupported == true) ||
                 options().morphImagery() == true)
             {
-                package.load(surfaceVP, package.ENGINE_MORPHING);
+                shaders->load(surfaceVP, shaders->morphing());
 
                 if ((options().morphTerrain() == true && _morphTerrainSupported == true))
                 {
@@ -1393,23 +1403,6 @@ RexTerrainEngineNode::updateState()
             }
         }
 
-#if 0
-        // Apply uniforms for sampler bindings:
-        OE_DEBUG << LC << "Render Bindings:\n";
-        osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
-        for (unsigned i = 0; i < _renderBindings.size(); ++i)
-        {
-            SamplerBinding& b = _renderBindings[i];
-            if (b.isActive())
-            {
-                osg::Uniform* u = new osg::Uniform(b.samplerName().c_str(), b.unit());
-                terrainStateSet->addUniform( u );
-                OE_DEBUG << LC << " > Bound \"" << b.samplerName() << "\" to unit " << b.unit() << "\n";
-                terrainStateSet->setTextureAttribute(b.unit(), tex.get());
-            }
-        }
-#endif
-
         // uniform that conveys the layer UID to the shaders; necessary
         // for per-layer branching (like color filters)
         // UID -1 => no image layer (no texture)
@@ -1429,7 +1422,7 @@ RexTerrainEngineNode::updateState()
         // For an image layer, attach the default fragment shader:
         _imageLayerStateSet = new osg::StateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(_imageLayerStateSet.get());
-        package.load(vp, package.ENGINE_IMAGELAYER);
+        shaders->load(vp, shaders->imagelayer());
 
         _stateUpdateRequired = false;
     }

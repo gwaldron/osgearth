@@ -101,7 +101,8 @@ namespace osgEarth { namespace REX
         {
             return
                 _tile == rhs._tile &&
-                _tileRevision == rhs._tileRevision;
+                _tileRevision == rhs._tileRevision &&
+                *_modelViewMatrix == *rhs._modelViewMatrix;
         }
 
         DrawTileCommand() :

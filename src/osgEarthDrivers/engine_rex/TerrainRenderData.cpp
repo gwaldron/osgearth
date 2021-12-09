@@ -152,7 +152,6 @@ TerrainRenderData::addLayerDrawable(
     drawable->_tiles.clear();
     drawable->_clearOsgState = false;
 
-
     drawable->_drawOrder = _layerList.size();
     _layerList.push_back(drawable);
 

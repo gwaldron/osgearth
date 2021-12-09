@@ -12,6 +12,7 @@ set(TARGET_GLSL
     RexEngine.vert.GL4.glsl
     RexEngine.ImageLayer.GL4.glsl
     RexEngine.NormalMap.GL4.glsl
+    RexEngine.Morphing.GL4.glsl
     RexEngine.SDK.GL4.glsl
     RexEngine.Types.GL4.glsl)    
 

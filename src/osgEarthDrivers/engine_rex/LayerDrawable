@@ -83,6 +83,8 @@ namespace osgEarth { namespace REX
         // Whether to use indirect rendering, which requires GL 4.6.
         bool _useIndirectRendering;
 
+        void reset(EngineContext*);
+
 
     public: // osg::Drawable
         
@@ -113,6 +115,8 @@ namespace osgEarth { namespace REX
         {
             float uvs[NUM_VERTS * 4];
             float padding[2];
+            float morphConstants[2 * 19]; //TODO
+            float padding2[2];
         };
 
         struct TileBuffer
@@ -128,7 +132,7 @@ namespace osgEarth { namespace REX
             int elevIndex;
             int normalIndex;
             int parentIndex;
-            //float padding[1];
+            //float padding[2];
 
             TileBuffer() :
                 colorIndex(-1),
@@ -166,7 +170,10 @@ namespace osgEarth { namespace REX
 
         mutable CameraStates _cameraStates;
 
+        // todo: move higher and share
         mutable osg::ref_ptr<TextureArena> _textures;
+
+        EngineContext* _context;
 
         void drawImplementationDirect(osg::RenderInfo& ri) const;
 

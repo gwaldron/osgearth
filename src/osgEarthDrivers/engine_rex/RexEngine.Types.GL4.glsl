@@ -11,6 +11,8 @@
 struct Global {
     vec2 uvs[MAX_TILE_VERTS];
     float padding[2];
+    vec2 morphConstants[19]; // TODO - one per LOD
+    float padding2[2];
 };
 
 struct Tile {
@@ -25,7 +27,7 @@ struct Tile {
     int elevIndex;
     int normalIndex;
     int parentIndex;
-    //float padding[1];
+    //float padding[2];
 };
 
 #undef MAX_TILE_VERTS

@@ -44,7 +44,6 @@ uniform int oe_layer_uid;
 uniform int oe_layer_order;
 
 #ifdef OE_TERRAIN_MORPH_IMAGERY
-uniform float oe_layer_texParentExists;
 in vec2 oe_parent_uv;
 flat in uint64_t oe_parent_handle;
 in float oe_rex_morphFactor;
@@ -55,12 +54,12 @@ in vec2 oe_color_uv;
 flat in uint64_t oe_color_handle;
 in vec4 oe_layer_tilec;
 in float oe_layer_opacity;
+flat in int oe_terrain_vertexMarker;
 
 #define VERTEX_VISIBLE  1
 #define VERTEX_BOUNDARY 2
 #define VERTEX_HAS_ELEVATION 4
 #define VERTEX_SKIRT 8
-flat in int oe_terrain_vertexMarker;
 
 void oe_rex_imageLayer_FS(inout vec4 color)
 {
@@ -112,15 +111,12 @@ void oe_rex_imageLayer_FS(inout vec4 color)
 
 #ifdef OE_TERRAIN_MORPH_IMAGERY
 
-        // sample the parent texture:
-        vec4 texelParent = texture(sampler2D(oe_parent_handle), oe_parent_uv);
-
-        // if the parent texture does not exist, use the current texture with alpha=0 as the parent
-        // so we can "fade in" an image layer that starts at LOD > 0:
-        texelParent = mix(vec4(texel.rgb, 0.0), texelParent, oe_layer_texParentExists);
-
-        // Resolve the final texel color:
-        texel = mix(texel, texelParent, oe_rex_morphFactor);
+        if (oe_parent_handle != 0UL)
+        {
+            // sample the parent texture and blend for the morphing:
+            vec4 texelParent = texture(sampler2D(oe_parent_handle), oe_parent_uv);
+            texel = mix(texel, texelParent, oe_rex_morphFactor);
+    }
 #endif
 
         // intergrate thelayer opacity:

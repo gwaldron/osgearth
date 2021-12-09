@@ -1,5 +1,5 @@
 #version 460
-#pragma include RexEngine.Types.GL4.glsl
+#pragma include RexEngine.GL4.glsl
 #pragma vp_name REX Engine - Init Model Space
 #pragma vp_function oe_rex_init_model, vertex_model, first
 
@@ -31,7 +31,7 @@ void oe_rex_init_model(inout vec4 vertexModel)
 [break]
 
 #version 460
-#pragma include RexEngine.Types.GL4.glsl
+#pragma include RexEngine.GL4.glsl
 #pragma vp_name REX Engine - Init View Space
 #pragma vp_function oe_rex_init_view, vertex_view, first
 

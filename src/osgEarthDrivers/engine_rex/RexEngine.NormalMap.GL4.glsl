@@ -1,5 +1,5 @@
 #version 460
-#pragma include RexEngine.Types.GL4.glsl
+#pragma include RexEngine.GL4.glsl
 #pragma vp_function oe_rex_normalMapVS, vertex_view, 0.5
 
 #pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
@@ -37,7 +37,7 @@ void oe_rex_normalMapVS(inout vec4 unused)
 
 [break]
 #version 460
-#pragma include RexEngine.Types.GL4.glsl
+#pragma include RexEngine.GL4.glsl
 #pragma vp_function oe_rex_normalMapFS, fragment_coloring, 0.1
 
 #pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)

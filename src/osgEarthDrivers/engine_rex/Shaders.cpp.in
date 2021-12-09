@@ -54,6 +54,6 @@ ShadersGL4::ShadersGL4()
     ENGINE_SDK = "RexEngine.SDK.GL4.glsl";
     _sources[ENGINE_SDK] = @RexEngine.SDK.GL4.glsl@;
 
-    ENGINE_TYPES = "RexEngine.Types.GL4.glsl";
-    _sources[ENGINE_TYPES] = @RexEngine.Types.GL4.glsl@;
+    ENGINE_TYPES = "RexEngine.GL4.glsl";
+    _sources[ENGINE_TYPES] = @RexEngine.GL4.glsl@;
 }

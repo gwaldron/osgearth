@@ -1,5 +1,5 @@
 #version 460
-#pragma include RexEngine.Types.GL4.glsl
+#pragma include RexEngine.GL4.glsl
 #pragma vp_name Rex Terrain SDK
 /**
  * SDK functions for the Rex engine.

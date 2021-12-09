@@ -1,5 +1,5 @@
 #version 460
-#pragma include RexEngine.Types.GL4.glsl
+#pragma include RexEngine.GL4.glsl
 
 #pragma vp_name  REX Engine - Morphing
 #pragma vp_function oe_rex_morph, vertex_view, 0.0

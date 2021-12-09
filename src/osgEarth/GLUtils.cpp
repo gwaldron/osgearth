@@ -498,6 +498,55 @@ GLTexture::release()
     }
 }
 
+void
+GLTexture::storage2D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t)
+{
+    ext()->glTexStorage2D(_target, mipLevels, internalFormat, s, t);
+    calcSize(mipLevels, internalFormat, s, t, 1);
+}
+
+void
+GLTexture::storage3D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r)
+{
+    ext()->glTexStorage3D(_target, mipLevels, internalFormat, s, t, r);
+    calcSize(mipLevels, internalFormat, s, t, r);
+}
+
+void
+GLTexture::subImage2D(GLint level, GLint xoff, GLint yoff, GLsizei width, GLsizei height, GLenum format, GLenum type, const void* pixels) const
+{
+    glTexSubImage2D(_target, level, xoff, yoff, width, height, format, type, pixels);
+}
+
+void
+GLTexture::subImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void* pixels) const
+{
+    ext()->glTexSubImage3D(_target, level, xoff, yoff, zoff, width, height, depth, format, type, pixels);
+}
+
+void
+GLTexture::compressedSubImage2D(GLint level, GLint xoff, GLint yoff, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const void* data) const
+{
+    ext()->glCompressedTexSubImage2D(_target, level, xoff, yoff, width, height, format, imageSize, data);
+}
+
+void
+GLTexture::compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void* data) const
+{
+    ext()->glCompressedTexSubImage3D(_target, level, xoff, yoff, zoff, width, height, depth, format, imageSize, data);
+}
+
+void
+GLTexture::calcSize(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r)
+{
+    _size = 0;
+    GLenum pixelFormat = osg::Image::computePixelFormat(internalFormat);
+    GLenum dataType = osg::Image::computeFormatDataType(pixelFormat);
+    unsigned pixelSizeBits = osg::Image::computePixelSizeInBits(pixelFormat, dataType);
+    unsigned temp = s * t * r * (pixelSizeBits / 8);
+    for (int i = mipLevels; i > 0; --i, temp /= 4)
+        _size += temp;
+}
 
 SSBO::SSBO() :
     _allocatedSize(0),
@@ -566,6 +615,13 @@ GLObjectReleaser::releaseAll(osg::State& state)
     }
 }
 
+GLsizei
+GLObjectReleaser::totalBytes(osg::State& state)
+{
+    GLObjectReleaser* rel = osg::get<GLObjectReleaser>(state.getContextID());
+    return rel ? rel->_totalBytes : 0;
+}
+
 void
 GLObjectReleaser::flushDeletedGLObjects(double currentTime, double& availableTime)
 {
@@ -579,7 +635,9 @@ GLObjectReleaser::flushAllDeletedGLObjects()
     ScopedMutexLock lock(_mutex);
 
     // OSG calls this method periodically
-    std::unordered_set<std::shared_ptr<GLObject>> temp;
+    std::unordered_set<std::shared_ptr<GLObject>> keep;
+
+    GLsizei bytes = 0;
 
     for (auto& object : _objects)
     {
@@ -590,16 +648,13 @@ GLObjectReleaser::flushAllDeletedGLObjects()
         }
         else
         {
-            temp.insert(object);
+            keep.insert(object);
+            bytes += object->size();
         }
     }
 
-    //int num = (_objects.size() - temp.size());
-    //if (num > 0) {
-    //    OE_INFO << LC << "Released " << num << " objects; " << temp.size() << " remaining" << std::endl;
-    //}
-
-    _objects.swap(temp);
+    _objects.swap(keep);
+    _totalBytes = bytes;
 }
 
 void

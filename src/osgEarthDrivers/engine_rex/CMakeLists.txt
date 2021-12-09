@@ -14,7 +14,7 @@ set(TARGET_GLSL
     RexEngine.NormalMap.GL4.glsl
     RexEngine.Morphing.GL4.glsl
     RexEngine.SDK.GL4.glsl
-    RexEngine.Types.GL4.glsl)    
+    RexEngine.GL4.glsl)
 
 set(TARGET_IN
     Shaders.cpp.in)

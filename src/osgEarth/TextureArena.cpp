@@ -101,8 +101,7 @@ Texture::compileGLObjects(osg::State& state) const
 
     if (target == GL_TEXTURE_2D_ARRAY)
     {
-        ext->glTexStorage3D(
-            target,
+        gc._gltexture->storage3D(
             numMipLevelsToAllocate,
             internalFormat,
             _image->s(),
@@ -111,8 +110,7 @@ Texture::compileGLObjects(osg::State& state) const
     }
     else
     {
-        ext->glTexStorage2D(
-            target,
+        gc._gltexture->storage2D(
             numMipLevelsToAllocate,
             internalFormat,
             _image->s(),
@@ -164,8 +162,7 @@ Texture::compileGLObjects(osg::State& state) const
 
                 if (compressed)
                 {
-                    ext->glCompressedTexSubImage3D(
-                        target, // GL_TEXTURE_2D_ARRAY
+                    gc._gltexture->compressedSubImage3D(
                         mipLevel,
                         0, 0, // xoffset, yoffset
                         r, // zoffset (array layer)
@@ -178,8 +175,7 @@ Texture::compileGLObjects(osg::State& state) const
                 }
                 else
                 {
-                    ext->glTexSubImage3D(
-                        target, // GL_TEXTURE_2D_ARRAY
+                    gc._gltexture->subImage3D(
                         mipLevel, // mip level
                         0, 0, // xoffset, yoffset
                         r, // zoffset (array layer)
@@ -198,8 +194,7 @@ Texture::compileGLObjects(osg::State& state) const
 
                 if (compressed)
                 {
-                    ext->glCompressedTexSubImage2D(
-                        target, // GL_TEXTURE_2D
+                    gc._gltexture->compressedSubImage2D(
                         mipLevel, // mip level
                         0, 0, // xoffset, yoffset
                         _image->s() >> mipLevel, // width at mipmap level i
@@ -210,8 +205,7 @@ Texture::compileGLObjects(osg::State& state) const
                 }
                 else
                 {
-                    glTexSubImage2D(
-                        target, // GL_TEXTURE_2D
+                    gc._gltexture->subImage2D(
                         mipLevel, // mip level
                         0, 0, // xoffset, yoffset
                         _image->s() >> mipLevel, // width at mipmap level i

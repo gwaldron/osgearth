@@ -135,7 +135,6 @@ namespace osgEarth
         std::stack<int> _normalArenaIndexStack;
         std::stack<osg::Matrix> _matrixStack;
         int _normalMapTextureImageUnit;
-        std::vector<Texture::Ptr>* _texturesAdded;
     };
 }
 

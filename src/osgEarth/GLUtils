@@ -210,7 +210,6 @@ namespace osgEarth
         bool _isResident;
         std::string _id;
         mutable GLsizei _size;
-        void calcSize(GLsizei levels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r);
     };
 
     /**

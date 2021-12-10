@@ -639,15 +639,21 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
+#if 1
     // Initialize a new culler.
+    _cullers.lock();
+    TerrainCuller& culler = _cullers[nv.getNodePath()];
+    _cullers.unlock();
+    culler.osg::CullStack::reset();
+#else
     TerrainCuller culler;
+#endif
 
     // Prepare the culler with the set of renderable layers:
     culler.reset(
         cv,
         getEngineContext(),
-        _cachedLayerExtents,
-        _layerDrawables);
+        _cachedLayerExtents);
 
     // Assemble the terrain drawables:
     _terrain->accept(culler);
@@ -672,12 +678,12 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     bool imageLayerStateSetPushed = false;
     int layersDrawn = 0;
 
-    for(osg::ref_ptr<LayerDrawable>& layerDrawable : culler._terrain.layers())
+    for(auto layerDrawable : culler._terrain._layerList)
     {
         // Note: Cannot save lastLayer here because its _tiles may be empty, which can lead to a crash later
         if (!layerDrawable->_tiles.empty())
         {
-            lastLayer = layerDrawable.get();
+            lastLayer = layerDrawable;
 
             // if this is a RENDERTYPE_TERRAIN_SURFACE, we need to activate either the
             // default surface state set or the image layer state set.
@@ -723,7 +729,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
             if (layerDrawable->_layer)
             {
-                layerDrawable->_layer->apply(layerDrawable.get(), cv);
+                layerDrawable->_layer->apply(layerDrawable, cv);
             }
             else
             {
@@ -1123,12 +1129,23 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
     if ( layerRemoved )
     {
         // release its layer drawable
-        _layerDrawables.scoped_lock([&]() {
-            for (auto& entry : _layerDrawables) {
-                if (entry.first.first == layerRemoved)
-                    _layerDrawables.erase(entry.first);
-            }
-        });
+        //TODO - for each camera
+        _cullers.scoped_lock([&]() {
+            for (auto& e : _cullers)
+                e.second.removeLayer(layerRemoved);
+            });
+
+             
+        //_cullers.forEach([&](TerrainCuller& culler) {
+        //    culler.removeLayer(layerRemoved);
+        //});
+
+        //_layerDrawables.scoped_lock([&]() {
+        //    for (auto& entry : _layerDrawables) {
+        //        if (entry.first.first == layerRemoved)
+        //            _layerDrawables.erase(entry.first);
+        //    }
+        //});
 
         // for a shared layer, release the shared image unit.
         if ( layerRemoved->getEnabled() && layerRemoved->isShared() )
@@ -1233,26 +1250,20 @@ RexTerrainEngineNode::updateState()
             new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
             osg::StateAttribute::ON);
 
-        ShadersGL3 package_GL3;
-        ShadersGL4 package_GL4;
-        REXShaders* shaders;
-        if (options().indirectRendering() == true)
-            shaders = &package_GL4;
-        else
-            shaders = &package_GL3;
+        REXShaders& shaders = REXShadersFactory::get(options().useGL4().get());
 
         // Shaders that affect any terrain layer:
         VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
         terrainVP->setName("Rex Terrain");
-        shaders->load(terrainVP, shaders->sdk());
-        shaders->load(terrainVP, shaders->vert());
+        shaders.load(terrainVP, shaders.sdk());
+        shaders.load(terrainVP, shaders.vert());
 
         // Shaders that affect only terrain surface layers (RENDERTYPE_TERRAIN_SURFACE)
         VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
         surfaceVP->setName("Rex Surface");
 
         // Functions that affect the terrain surface only:
-        shaders->load(surfaceVP, shaders->elevation());
+        shaders.load(surfaceVP, shaders.elevation());
 
         surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", options().color().get()));
         surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_altitude", (float)0.0f));
@@ -1260,7 +1271,7 @@ RexTerrainEngineNode::updateState()
 
         if (options().gpuTessellation() == true)
         {
-            shaders->load(surfaceVP, shaders->tessellation());
+            shaders.load(surfaceVP, shaders.tessellation());
 
             // Default tess level
             surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_tess", 3.0f));
@@ -1272,8 +1283,8 @@ RexTerrainEngineNode::updateState()
 #endif
         }
 
-        // Indirect rendering?
-        if (options().indirectRendering() == true)
+        // GL4 rendering?
+        if (options().useGL4() == true)
         {
             terrainVP->addGLSLExtension("GL_ARB_gpu_shader_int64");
         }
@@ -1297,7 +1308,7 @@ RexTerrainEngineNode::updateState()
         // Normal mapping shaders:
         //if (this->normalTexturesRequired())
         {
-            shaders->load(surfaceVP, shaders->normal_map());
+            shaders.load(surfaceVP, shaders.normal_map());
 
             if (this->normalTexturesRequired())
                 surfaceStateSet->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");
@@ -1319,7 +1330,7 @@ RexTerrainEngineNode::updateState()
             if ((options().morphTerrain() == true && _morphTerrainSupported == true) ||
                 options().morphImagery() == true)
             {
-                shaders->load(surfaceVP, shaders->morphing());
+                shaders.load(surfaceVP, shaders.morphing());
 
                 if ((options().morphTerrain() == true && _morphTerrainSupported == true))
                 {
@@ -1422,7 +1433,7 @@ RexTerrainEngineNode::updateState()
         // For an image layer, attach the default fragment shader:
         _imageLayerStateSet = new osg::StateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(_imageLayerStateSet.get());
-        shaders->load(vp, shaders->imagelayer());
+        shaders.load(vp, shaders.imagelayer());
 
         _stateUpdateRequired = false;
     }

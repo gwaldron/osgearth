@@ -27,7 +27,8 @@ struct Tile {
     int elevIndex;
     int normalIndex;
     int parentIndex;
-    //float padding[2];
+    int drawOrder;
+    float padding[3];
 };
 
 #undef MAX_TILE_VERTS

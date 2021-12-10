@@ -35,7 +35,7 @@ namespace osgEarth { namespace REX
     };
 
     struct ShadersGL3 : public REXShaders
-	{
+    {
         ShadersGL3();
 
         std::string
@@ -57,7 +57,7 @@ namespace osgEarth { namespace REX
         virtual std::string imagelayer() { return ENGINE_IMAGELAYER; }
         virtual std::string sdk() { return ENGINE_SDK; }
         virtual std::string types() { return ""; }
-	};
+    };
 
     struct ShadersGL4 : public REXShaders
     {
@@ -83,6 +83,13 @@ namespace osgEarth { namespace REX
         virtual std::string imagelayer() { return ENGINE_IMAGELAYER; }
         virtual std::string sdk() { return ENGINE_SDK; }
         virtual std::string types() { return ENGINE_TYPES; }
+    };
+
+    struct REXShadersFactory
+    {
+        static ShadersGL3 s_gl3;
+        static ShadersGL4 s_gl4;
+        static REXShaders& get(bool use_gl4) { return use_gl4 ? (REXShaders&)s_gl4 : (REXShaders&)s_gl3; }
     };
 	
 } } // namespace osgEarth::REX

@@ -94,8 +94,7 @@ namespace
 
 GeometryCloud::GeometryCloud(TextureArena* texarena) :
     osg::NodeVisitor(),
-    _texarena(texarena),
-    _texturesAdded(nullptr)
+    _texarena(texarena)
 {
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
     setNodeMaskOverride(~0);
@@ -282,9 +281,6 @@ GeometryCloud::pushStateSet(osg::Node& node)
                     {
                         _arenaIndexLUT[tex] = nextIndex;
                         albedoArenaIndex = nextIndex;
-
-                        if (_texturesAdded != nullptr)
-                            _texturesAdded->push_back(t);
                     }
                     else
                     {
@@ -303,7 +299,6 @@ GeometryCloud::pushStateSet(osg::Node& node)
         int normalArenaIndex = _normalArenaIndexStack.top();
         if (_normalMapTextureImageUnit > 0)
         {
-
             osg::Texture* tex = dynamic_cast<osg::Texture*>(
                 stateset->getTextureAttribute(_normalMapTextureImageUnit, osg::StateAttribute::TEXTURE));
 
@@ -321,9 +316,6 @@ GeometryCloud::pushStateSet(osg::Node& node)
                     {
                         _arenaIndexLUT[tex] = nextIndex;
                         normalArenaIndex = nextIndex;
-
-                        if (_texturesAdded != nullptr)
-                            _texturesAdded->push_back(t);
                     }
                     else
                     {

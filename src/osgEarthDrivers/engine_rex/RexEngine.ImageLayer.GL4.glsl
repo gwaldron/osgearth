@@ -11,6 +11,7 @@ out vec2 oe_color_uv;
 out vec2 oe_parent_uv;
 flat out uint64_t oe_color_handle;
 flat out uint64_t oe_parent_handle;
+flat out int oe_draw_order;
 
 void oe_rex_imageLayer_VS(inout vec4 vertexView)
 {
@@ -19,6 +20,8 @@ void oe_rex_imageLayer_VS(inout vec4 vertexView)
 
     oe_parent_uv = (tile[oe_tileID].parentMat * oe_layer_tilec).st;
     oe_parent_handle = tex[tile[oe_tileID].parentIndex];
+
+    oe_draw_order = tile[oe_tileID].drawOrder;
 }
 
 
@@ -55,6 +58,7 @@ flat in uint64_t oe_color_handle;
 in vec4 oe_layer_tilec;
 in float oe_layer_opacity;
 flat in int oe_terrain_vertexMarker;
+flat in int oe_draw_order;
 
 #define VERTEX_VISIBLE  1
 #define VERTEX_BOUNDARY 2
@@ -99,10 +103,6 @@ void oe_rex_imageLayer_FS(inout vec4 color)
     // whether this layer contains texel color (UID<0 means no texture)
     bool isTexelLayer = oe_color_handle > 0UL;
 
-    // whether this is the first layer to render:
-    // TODO: check on this
-    bool isFirstLayer = oe_layer_order == 0;
-
     vec4 texel = color;
 
     if (isTexelLayer)
@@ -127,7 +127,7 @@ void oe_rex_imageLayer_FS(inout vec4 color)
 #ifdef OE_TERRAIN_BLEND_IMAGERY
     // If this is a first image layer, blend with the incoming terrain color.
     // Otherwise, apply directly and let GL blending do the rest.
-    if (isTexelLayer && isFirstLayer)
+    if (isTexelLayer && (oe_draw_order == 0))
     {
         color.rgb = texel.rgb*texel.a + color.rgb*(1.0 - texel.a);
     }

@@ -64,10 +64,6 @@ namespace osgEarth
 
             osg::BoundingBox _modelAABB;
 
-            // assigned by createGeometryCloud
-            //int _modelCommandIndex;
-            //int _billboardCommandIndex;
-
         private:
             ResidentModelAsset();
         };
@@ -179,8 +175,7 @@ namespace osgEarth
             //! set of biomes (for one asset group)
             GeometryCloud* createGeometryCloud(
                 AssetGroup::Type group,
-                const ResidentBiomes& residentBiomes,
-                TextureArena* arena) const;
+                const ResidentBiomes& residentBiomes) const;
 
             //! Generate the lookup tables necessary to render a geometry cloud
             //! for one asset group

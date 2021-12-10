@@ -23,6 +23,12 @@ using namespace osgEarth::REX;
 #undef  LC
 #define LC "[DrawState] "
 
+DrawState::Ptr
+DrawState::create()
+{
+    return std::make_shared<DrawState>();
+}
+
 void
 ProgramState::init(
     const osg::Program::PerContextProgram* pcp,

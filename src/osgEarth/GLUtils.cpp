@@ -502,14 +502,19 @@ void
 GLTexture::storage2D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t)
 {
     ext()->glTexStorage2D(_target, mipLevels, internalFormat, s, t);
-    calcSize(mipLevels, internalFormat, s, t, 1);
+
+    osg::Texture::TextureProfile p(_target, mipLevels, internalFormat, s, t, 1, 0);
+    _size = p._size;
 }
 
 void
 GLTexture::storage3D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r)
 {
     ext()->glTexStorage3D(_target, mipLevels, internalFormat, s, t, r);
-    calcSize(mipLevels, internalFormat, s, t, r);
+
+    osg::Texture::TextureProfile p(_target, mipLevels, internalFormat, s, t, r, 0);
+    _size = p._size;
+
 }
 
 void
@@ -534,18 +539,6 @@ void
 GLTexture::compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void* data) const
 {
     ext()->glCompressedTexSubImage3D(_target, level, xoff, yoff, zoff, width, height, depth, format, imageSize, data);
-}
-
-void
-GLTexture::calcSize(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r)
-{
-    _size = 0;
-    GLenum pixelFormat = osg::Image::computePixelFormat(internalFormat);
-    GLenum dataType = osg::Image::computeFormatDataType(pixelFormat);
-    unsigned pixelSizeBits = osg::Image::computePixelSizeInBits(pixelFormat, dataType);
-    unsigned temp = s * t * r * (pixelSizeBits / 8);
-    for (int i = mipLevels; i > 0; --i, temp /= 4)
-        _size += temp;
 }
 
 SSBO::SSBO() :

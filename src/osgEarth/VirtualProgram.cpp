@@ -1540,7 +1540,7 @@ VirtualProgram::apply(osg::State& state) const
                 acceptCallbacksVary);
         }
 
-        // Next, add the shaders from this VP.
+        // Next, add the data from this VP.
         {
             _dataModelMutex.lock();
 
@@ -1559,6 +1559,8 @@ VirtualProgram::apply(osg::State& state) const
             const AttribAliasMap& aliases = this->getAttribAliases();
             local.accumAttribAliases.insert(aliases.begin(), aliases.end());
 #endif
+
+            local.accumExtensions.insert(_globalExtensions.begin(), _globalExtensions.end());
 
             _dataModelMutex.unlock();
         }
@@ -1906,7 +1908,8 @@ VirtualProgram::accumulateFunctions(const osg::State&                state,
 
 
 void
-VirtualProgram::accumulateShaders(const osg::State&  state,
+VirtualProgram::accumulateShaders(
+    const osg::State&  state,
     unsigned           mask,
     ShaderMap&         accumShaderMap,
     AttribBindingList& accumAttribBindings,

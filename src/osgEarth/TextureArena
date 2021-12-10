@@ -97,6 +97,12 @@ namespace osgEarth
         //! Construct an empty arena.
         TextureArena();
 
+        //! Whether to automatically release textures when they are no longer
+        //! referenced anywhere outside of this arena. Default is false.
+        //! You can enable this if you want to populate the arena with
+        //! textures that will be released when their owners desctruct (for example).
+        void setAutoRelease(bool value);
+
         //! Adds a texture to the arena. On next apply() GL handles will allocate.
         //! You only need to call this once for each texture.
         //! Returns the index of the texture handle
@@ -159,6 +165,7 @@ namespace osgEarth
         mutable osg::buffered_object<GCState> _gc;
 
         TextureVector _textures;
+        bool _autoRelease;
     };
 }
 

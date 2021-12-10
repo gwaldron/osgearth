@@ -49,7 +49,6 @@ namespace osgEarth { namespace REX
     {
     public:
         TerrainRenderData _terrain;
-        LayerDrawableTable* _layerDrawableLUT;
         EngineContext* _context;
         osg::Camera* _camera;
         TileNode* _currentTileNode;
@@ -61,6 +60,7 @@ namespace osgEarth { namespace REX
         std::vector<PatchLayer*> _patchLayers;
         bool _acceptSurfaceNodes;
         unsigned _numberChildrenCreated;
+        double _lastTimeVisited;
 
     public:
         //! Construct the culler
@@ -70,8 +70,7 @@ namespace osgEarth { namespace REX
         void reset(
             osgUtil::CullVisitor* parentCullVisitor,
             EngineContext* context,
-            LayerExtentMap& layerExtents,
-            LayerDrawableTable& layerDrawables);
+            LayerExtentMap& layerExtents);
 
         /** The active camera */
         osg::Camera* getCamera() { return _camera; }
@@ -83,6 +82,8 @@ namespace osgEarth { namespace REX
         osgUtil::CullVisitor& getParent() { return *_cv; }
 
         bool isCulledToBBox(osg::Transform* node, const osg::BoundingBox& box);
+
+        void removeLayer(const Layer* layer);
 
     public: // osg::NodeVisitor
         void apply(osg::Node& node);

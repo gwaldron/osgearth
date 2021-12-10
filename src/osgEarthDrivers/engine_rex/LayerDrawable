@@ -75,15 +75,13 @@ namespace osgEarth { namespace REX
         bool _clearOsgState;
 
         // Reference the terrain-wide state
-        osg::ref_ptr<DrawState> _drawState;
+        DrawState::Ptr _drawState;
 
         // Whether to render this layer.
         bool _draw;
 
         // Whether to use indirect rendering, which requires GL 4.6.
         bool _useIndirectRendering;
-
-        void reset(EngineContext*);
 
 
     public: // osg::Drawable
@@ -105,9 +103,11 @@ namespace osgEarth { namespace REX
 
     private:
 
+        // **** GL4 rendering support ****
+
         // SSBO data elements
         // must align to 16 bytes
-        // maps directly into an SSBO, so don't use any vec3! or mat3!
+        // maps directly into an SSBO, so don't cross the vec4 streams
         #define NUM_VERTS 417
 
         // data shared across all tiles
@@ -132,7 +132,8 @@ namespace osgEarth { namespace REX
             int elevIndex;
             int normalIndex;
             int parentIndex;
-            //float padding[2];
+            int drawOrder; // todo: stuff this somewhere else
+            float padding[3];
 
             TileBuffer() :
                 colorIndex(-1),
@@ -152,23 +153,17 @@ namespace osgEarth { namespace REX
             GLBuffer::Ptr commands;
         };
 
-        // Things maintained on a per-camera basis
-        struct CameraState
+        struct RenderState
         {
-            CameraState() {
+            RenderState() {
                 gcState.resize(64);
             }
-
             std::vector<TileBuffer> tilebuf;
             std::vector<DrawElementsIndirectCommand> commands;
             osg::buffered_object<GCState> gcState;
-
-            mutable DrawTileCommands _previous_tiles;
+            DrawTileCommands _previous_tiles;
         };
-
-        using CameraStates = std::unordered_map<const osg::Camera*, CameraState>;
-
-        mutable CameraStates _cameraStates;
+        mutable RenderState _rs;
 
         // todo: move higher and share
         mutable osg::ref_ptr<TextureArena> _textures;

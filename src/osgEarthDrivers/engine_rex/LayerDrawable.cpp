@@ -42,7 +42,11 @@ _useIndirectRendering(false)
     setUseDisplayList(false);
     setUseVertexBufferObjects(true);
     _tiles.reserve(128);
+
+    // set up an arena with "auto release" which means th textures
+    // will automatically get released when all references drop.
     _textures = new TextureArena();
+    _textures->setAutoRelease(true);
 }
 
 LayerDrawable::~LayerDrawable()
@@ -166,7 +170,7 @@ LayerDrawable::drawImplementationDirect(osg::RenderInfo& ri) const
 void
 LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 {
-    CameraState& cs = _cameraStates[ri.getCurrentCamera()];
+    RenderState& cs = _rs;
     GCState& gs = cs.gcState[ri.getContextID()];
     osg::State& state = *ri.getState();
 
@@ -192,8 +196,6 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         {
             OE_PROFILING_ZONE_NAMED("DEI Collect");
 
-            //cs.tilebuf.clear();
-            //cs.tilebuf.reserve(_tiles.size());
             if (cs.tilebuf.size() < _tiles.size())
                 cs.tilebuf.resize(_tiles.size());
 
@@ -359,6 +361,9 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                     gs.vbo->ext()->glBindVertexArray(0);
                 }
 
+                // stuck the layer order here (for now...later, hide it elsewhere)
+                buf.drawOrder = _drawOrder;
+
                 // advance the tile counter
                 ++tile_num;
 
@@ -372,12 +377,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         // Construct the draw command:
         DrawElementsIndirectCommand& cmd = cs.commands.back();
         cmd.instanceCount = _tiles.size();
-        cmd.count = num_indices; // element count
-        //cmd.instanceCount = _tiles.size(); // one instance per tile (look up using gl_InstanceID)
-        //cmd.firstIndex = 0; // offset into element array - zero since all tiles share the same element set
-        //cmd.baseVertex = 0; // unused - we aren't using a VBO
-        //cmd.baseInstance = 0; // no instancing
-        //cs.commands.emplace_back(std::move(cmd));
+        cmd.count = num_indices;
 
         // Update the tile render buffer:
         GLsizei tileBufSize = sizeof(TileBuffer) * _tiles.size();

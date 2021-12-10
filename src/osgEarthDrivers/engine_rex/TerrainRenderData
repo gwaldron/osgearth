@@ -28,6 +28,7 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace REX
 {
+#if 0
     struct pair_hash
     {
         template <class T1, class T2>
@@ -36,13 +37,18 @@ namespace osgEarth { namespace REX
         }
     };
 
-    //! Lookup table of each layer's layerdrawable
     using LayerDrawableTable = Mutexed<
         std::unordered_map<
-            std::pair<const Layer*, const osg::Camera*>,
-            osg::ref_ptr<LayerDrawable>,
-            pair_hash>
-        > ;
+        std::pair<const Layer*, const osg::Camera*>,
+        osg::ref_ptr<LayerDrawable>,
+        pair_hash>
+    >;
+#endif
+
+    //! Lookup table of each layer's layerdrawable
+    using LayerDrawableTable = std::unordered_map<
+        const Layer*,
+        osg::ref_ptr<LayerDrawable>>;
 
 
     /**
@@ -59,40 +65,37 @@ namespace osgEarth { namespace REX
         void reset(
             const Map* map,
             const RenderBindings& bindings,
-            LayerDrawableTable& drawables,
             unsigned frameNum,
-            bool useIndirectRendering,
+            bool useGL4Rendering,
             osgUtil::CullVisitor* cv);
 
         /** Optimize for best state sharing (when using geometry pooling). Returns total tile count. */
         unsigned sortDrawCommands();
 
         /** Add a Drawable for a layer. Add these in the order you wish to render them. */
-        LayerDrawable* addLayerDrawable(
-            const Layer*,
-            const osg::Camera* cam,
-            LayerDrawableTable& drawables,
-            bool useIndirectRendering);
-
-        /** Layers to draw */
-        LayerDrawableList& layers() { return _layerList; }
-        const LayerDrawableList& layers() const { return _layerList; }
+        LayerDrawable* addLayerDrawable(const Layer*);
 
         /** Look up a LayerDrawable by its source layer UID. */
-        osg::ref_ptr<LayerDrawable>& layer(UID uid) { return _layerMap[uid]; }
+        LayerDrawable* layer(UID uid) { return _layersByUID[uid]; }
 
         // Draw state shared by all layers during one frame.
-        osg::ref_ptr<DrawState> _drawState;
+        DrawState::Ptr _drawState;
 
         // Layers of type RENDERTYPE_TERRAIN_PATCH
         PatchLayerVector& patchLayers() { return _patchLayers; }
-        
-    private:
 
-        LayerDrawableList     _layerList;
-        LayerDrawableMap      _layerMap;
+        // persistent:
+        LayerDrawableTable _drawables; // with a ref_ptr.
+
+        // transient:
+        // ref_ptr's not necessary b/c of refs in _drawables above
+        std::unordered_map<UID, LayerDrawable*> _layersByUID;
+        std::vector<LayerDrawable*> _layerList;
         const RenderBindings* _bindings;
-        PatchLayerVector      _patchLayers;
+        PatchLayerVector _patchLayers; // Layers of type RENDERTYPE_TERRAIN_PATCH
+
+        // Whether to try to use GL4 features
+        bool _useGL4Rendering;
     };
 
 } } // namespace 

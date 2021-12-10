@@ -32,12 +32,12 @@ unsigned
 TerrainRenderData::sortDrawCommands()
 {
     unsigned total = 0;
-    for (LayerDrawableList::iterator i = _layerList.begin(); i != _layerList.end(); ++i)
+    for(auto layer : _layerList)
     {
         //TODO: review and benchmark list vs. vector vs. unsorted here.
-        DrawTileCommands& cmds = i->get()->_tiles;
-        std::sort(cmds.begin(), cmds.end());
-        total += i->get()->_tiles.size();
+        DrawTileCommands& tiles = layer->_tiles;
+        std::sort(tiles.begin(), tiles.end());
+        total += tiles.size();
     }
     return total;
 }
@@ -46,16 +46,20 @@ void
 TerrainRenderData::reset(
     const Map* map,
     const RenderBindings& bindings,
-    LayerDrawableTable& drawables,
     unsigned frameNum,
-    bool useIndirectRendering,
+    bool useGL4Rendering,
     osgUtil::CullVisitor* cv)
 {
     _bindings = &bindings;
+    _useGL4Rendering = useGL4Rendering;
 
     // Create a new State object to track sampler and uniform settings
-    _drawState = new DrawState();
+    _drawState = DrawState::create();
     _drawState->_bindings = &bindings;
+
+    _layerList.clear();
+    _layersByUID.clear();
+    _patchLayers.clear();
 
     // Is this a depth camera? Because if it is, we don't need any color layers.
     const osg::Camera* cam = cv->getCurrentCamera();
@@ -87,7 +91,7 @@ TerrainRenderData::reset(
                 {
                     if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
                     {
-                        LayerDrawable* ld = addLayerDrawable(layer, cam, drawables, useIndirectRendering);
+                        LayerDrawable* ld = addLayerDrawable(layer);
 
                         // If the current camera is depth-only, leave this layer in the set
                         // but mark it as no-draw. We keep it in the set so the culler doesn't
@@ -106,7 +110,7 @@ TerrainRenderData::reset(
                             patchLayer->getAcceptCallback()->acceptLayer(*cv, cv->getCurrentCamera()))
                         {
                             patchLayers().push_back(dynamic_cast<PatchLayer*>(layer.get()));
-                            addLayerDrawable(layer, cam, drawables, useIndirectRendering);
+                            addLayerDrawable(layer);
                         }
                     }
                 }
@@ -115,25 +119,19 @@ TerrainRenderData::reset(
     }
 
     // Include a "blank" layer for missing data.
-    addLayerDrawable(nullptr, cam, drawables, useIndirectRendering);
+    addLayerDrawable(nullptr);
 }
 
 LayerDrawable*
 TerrainRenderData::addLayerDrawable(
-    const Layer* layer,
-    const osg::Camera* camera,
-    LayerDrawableTable& drawables,
-    bool useIndirectRendering)
+    const Layer* layer)
 {
-    ScopedMutexLock lock(drawables);
+    auto& drawable = _drawables[layer];
 
-    auto key = std::make_pair(layer, camera);
-    osg::ref_ptr<LayerDrawable>& drawable = drawables[key];
-    //osg::ref_ptr<LayerDrawable> drawable;
     if (!drawable.valid())
     {
         drawable = new LayerDrawable();
-        drawable->_useIndirectRendering = useIndirectRendering;
+        drawable->_useIndirectRendering = _useGL4Rendering;
 
         drawable->_layer = layer;
         drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
@@ -155,17 +153,16 @@ TerrainRenderData::addLayerDrawable(
     drawable->_drawOrder = _layerList.size();
     _layerList.push_back(drawable);
 
-    drawable->_drawState = _drawState.get();
-
+    drawable->_drawState = _drawState;
+    
     if (layer)
     {
-        _layerMap[layer->getUID()] = drawable;
+        _layersByUID[layer->getUID()] = drawable;
     }
     else
     {
-        _layerMap[-1] = drawable;
+        _layersByUID[-1] = drawable;
     }
 
-    //return drawable.release();
     return drawable.get();
 }

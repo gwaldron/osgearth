@@ -294,7 +294,8 @@ Texture::releaseGLObjects(osg::State* state) const
 #define LC "[TextureArena] "
 
 
-TextureArena::TextureArena()
+TextureArena::TextureArena() :
+    _autoRelease(false)
 {
     // Keep this synchronous w.r.t. the render thread since we are
     // giong to be changing things on the fly
@@ -304,6 +305,12 @@ TextureArena::TextureArena()
 TextureArena::~TextureArena()
 {
     releaseGLObjects(nullptr);
+}
+
+void
+TextureArena::setAutoRelease(bool value)
+{
+    _autoRelease = value;
 }
 
 int
@@ -326,14 +333,18 @@ TextureArena::add(Texture::Ptr tex)
         return index;
 
     // find an open slot if one is available:
-    for (int i = 0; i < _textures.size(); ++i)
+    if (_autoRelease == true)
     {
-        if (_textures[i].use_count() == 1)
+        for (int i = 0; i < _textures.size(); ++i)
         {
-            index = i;
-            break;
+            if (_textures[i].use_count() == 1)
+            {
+                index = i;
+                break;
+            }
         }
     }
+
     if (index < 0)
     {
         index = _textures.size();
@@ -458,9 +469,9 @@ TextureArena::apply(osg::State& state) const
         std::copy(_textures.begin(), _textures.end(), gc._toAdd.begin());
     }
 
+#ifdef USE_ICO
     osgUtil::IncrementalCompileOperation* ico = nullptr;
 
-#ifdef USE_ICO
     if (!gc._toAdd.empty())
     {
         const osg::Camera* camera = state.getGraphicsContext()->getCameras().front();
@@ -538,18 +549,18 @@ TextureArena::apply(osg::State& state) const
         gc._handleLUT._dirty = true;
     }
 
-#if 1
-    // Works, but re-visit so we don't need to call every frame
-    // and re-visit loading/unloading of textures from main memory..
-    for (auto& tex : _textures)
+    if (_autoRelease == true)
     {
-        if (tex.use_count() == 1)
+        for (auto& tex : _textures)
         {
-            tex->makeResident(state, false);
-            tex->releaseGLObjects(&state);
+            if (tex.use_count() == 1)
+            {
+                // TODO: remove it from the area altogether
+                tex->makeResident(state, false);
+                tex->releaseGLObjects(&state);
+            }
         }
     }
-#endif
 
     // update the LUT if it needs more space:
     gc._handleLUT.sync(_textures, state);

@@ -1,7 +1,8 @@
 #version 430
+#extension GL_ARB_gpu_shader_int64 : enable
+
 #pragma vp_name Texture Splatter VV
 #pragma vp_function oe_splat_View, vertex_view
-#extension GL_ARB_gpu_shader_int64 : enable
 
 #pragma import_defines(OE_SPLAT_TWEAKS)
 #pragma import_defines(OE_SPLAT_NUM_LEVELS)

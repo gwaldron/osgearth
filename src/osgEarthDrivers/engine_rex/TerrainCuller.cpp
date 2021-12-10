@@ -20,8 +20,9 @@
 #include "TileNode"
 #include "SurfaceNode"
 #include "SelectionInfo"
+
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/Shadowing>
+#include <osgEarth/CameraUtils>
 
 #define LC "[TerrainCuller] "
 
@@ -29,31 +30,23 @@ using namespace osgEarth::REX;
 
 
 TerrainCuller::TerrainCuller() :
-    _camera(nullptr),
-    _currentTileNode(nullptr),
-    _orphanedPassesDetected(0u),
-    _context(nullptr),
-    _numberChildrenCreated(0u),
-    _layerExtents(nullptr),
-    _layerDrawableLUT(nullptr)
+    _lastTimeVisited(DBL_MAX)
 {
-    //nop
+    setVisitorType(CULL_VISITOR);
+    setTraversalMode(TRAVERSE_ALL_CHILDREN);
 }
 
 void
 TerrainCuller::reset(
     osgUtil::CullVisitor* parent_cullVisitor,
     EngineContext* context,
-    LayerExtentMap& layerExtents,
-    LayerDrawableTable& layerDrawables)
+    LayerExtentMap& layerExtents)
 {
-    setVisitorType(CULL_VISITOR);
-    setTraversalMode(TRAVERSE_ALL_CHILDREN);
+    _lastTimeVisited = osg::Timer::instance()->tick();
 
     _cv = parent_cullVisitor;
     _context = context;
     _layerExtents = &layerExtents;
-    _layerDrawableLUT = &layerDrawables;
 
     _orphanedPassesDetected = 0u;
     _numberChildrenCreated = 0u;
@@ -76,17 +69,23 @@ TerrainCuller::reset(
 
     // skip surface nodes is this is a shadow camera and shadowing is disabled.
     _acceptSurfaceNodes =
-        osgEarth::Util::Shadowing::isShadowCamera(_cv->getCurrentCamera()) == false ||
+        CameraUtils::isShadowCamera(_cv->getCurrentCamera()) == false ||
         context->options().castShadows() == true;
 
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
+
     _terrain.reset(
         context->getMap().get(),
         context->getRenderBindings(),
-        layerDrawables,
         frameNum,
-        context->options().indirectRendering().get(),
+        context->options().useGL4().get(),
         _cv);
+}
+
+void
+TerrainCuller::removeLayer(const Layer* layer)
+{
+    _terrain._drawables.erase(layer);
 }
 
 float
@@ -115,8 +114,8 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
     }
 
     // add a new Draw command to the appropriate layer
-    osg::ref_ptr<LayerDrawable>& drawable = _terrain.layer(uid);
-    if (drawable.valid())
+    LayerDrawable* drawable = _terrain.layer(uid);
+    if (drawable)
     {
         // Layer marked for drawing?
         if (drawable->_draw)

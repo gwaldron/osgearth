@@ -57,3 +57,6 @@ ShadersGL4::ShadersGL4()
     ENGINE_TYPES = "RexEngine.GL4.glsl";
     _sources[ENGINE_TYPES] = @RexEngine.GL4.glsl@;
 }
+
+ShadersGL3 REXShadersFactory::s_gl3;
+ShadersGL4 REXShadersFactory::s_gl4;

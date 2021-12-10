@@ -342,7 +342,7 @@ Status
 Layer::open()
 {
     // Cannot open a layer that's already open OR is disabled.
-    if (isOpen() || !getEnabled())
+    if (isOpen())
     {
         return getStatus();
     }

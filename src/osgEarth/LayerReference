@@ -87,6 +87,7 @@ namespace osgEarth
             }
             else if (_layer.valid() && !_layer->isOpen())
             {
+                _layer->setReadOptions(readOptions);
                 const Status& layerStatus = _layer->open();
                 if (layerStatus.isError())
                 {
@@ -110,6 +111,13 @@ namespace osgEarth
                 if (layer)
                 {
                     _layer = layer;
+
+                    if (!layer->isOpen())
+                    {
+                        layer->open();
+                        //if (layer->isOpen())
+                        //    layer->addedToMap(map);
+                    }
                 }
             }
             else if (getLayer() && _embeddedOptions.isSet())

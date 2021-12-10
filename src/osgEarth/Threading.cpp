@@ -516,8 +516,6 @@ JobArena::JobArena(const std::string& name, unsigned concurrency, const Type& ty
     _name(name),
     _targetConcurrency(concurrency),
     _type(type),
-    _done(false),
-    _queueMutex("OE.JobArena[" + name + "].queue"),
     _quitMutex("OE.JobArena[" + name + "].quit")
 {
     // find a slot in the stats
@@ -554,23 +552,22 @@ JobArena::defaultArenaName()
     return _defaultArenaName;
 }
 
+// We can't automatically call this function ourself because on Windows there are issues
+// when DLLs are mixed threads and static objects.
+// See https://github.com/gwaldron/osgearth/issues/1827
 void
 JobArena::shutdownAll()
 {
     ScopedMutexLock lock(_arenas_mutex);
     OE_INFO << LC << "Shutting down all job arenas." << std::endl;
     _arenas.clear();
+    OE_INFO << LC << "DONE Shutting down all job arenas." << std::endl;
 }
 
 JobArena*
 JobArena::get(const std::string& name_)
 {
     ScopedMutexLock lock(_arenas_mutex);
-
-    if (_arenas.empty())
-    {
-        std::atexit(JobArena::shutdownAll);
-    }
 
     std::string name(name_.empty() ? "oe.default" : name_);
 
@@ -594,11 +591,6 @@ JobArena::get(const Type& type_)
     }
 
     ScopedMutexLock lock(_arenas_mutex);
-
-    if (_arenas.empty())
-    {
-        std::atexit(JobArena::shutdownAll);
-    }
 
     if (type_ == UPDATE_TRAVERSAL)
     {
@@ -651,7 +643,6 @@ JobArena::setConcurrency(const std::string& name, unsigned value)
 void
 JobArena::cancelAll()
 {
-    std::lock_guard<Mutex> lock(_queueMutex);
     _queue.clear();
     _metrics->numJobsCanceled += _metrics->numJobsPending;
     _metrics->numJobsPending = 0;
@@ -674,10 +665,8 @@ JobArena::dispatch(
     {
         if (_targetConcurrency > 0)
         {
-            std::lock_guard<Mutex> lock(_queueMutex);
-            _queue.emplace_back(job, delegate, sema);
+            _queue.emplace(job, delegate, sema);
             _metrics->numJobsPending++;
-            _block.notify_one();
         }
         else
         {
@@ -693,8 +682,7 @@ JobArena::dispatch(
 
     else // _type == traversal
     {
-        std::lock_guard<Mutex> lock(_queueMutex);
-        _queue.emplace_back(job, delegate, sema);
+        _queue.emplace(job, delegate, sema);
         _metrics->numJobsPending++;
     }
 }
@@ -705,57 +693,28 @@ JobArena::runJobs()
     // cap the number of jobs to run (applies to TRAVERSAL modes only)
     int jobsLeftToRun = INT_MAX;
 
-    while (!_done)
+    while (_queue.running())
     {
-        QueuedJob next;
-
-        bool have_next = false;
+        if(_type == UPDATE_TRAVERSAL)
         {
-            std::unique_lock<Mutex> lock(_queueMutex);
-            
-            if (_type == THREAD_POOL)
+            if (jobsLeftToRun == INT_MAX)
             {
-                _block.wait(lock, [this] {
-                    return _queue.empty() == false || _done == true;
-                    });
+                jobsLeftToRun = _queue.size();
             }
-            else // traversal type
+            if (_queue.empty() || jobsLeftToRun == 0)
             {
-                // Prevents jobs that re-queue themselves from running 
-                // during the same traversal frame.
-                if (jobsLeftToRun == INT_MAX)
-                    jobsLeftToRun = _queue.size();
-
-                if (_queue.empty() || jobsLeftToRun == 0)
-                {
                     return;
-                }
-            }
-
-            if (!_queue.empty() && !_done)
-            {
-                // Quickly find the highest priority item in the "queue"
-                std::partial_sort(
-                    _queue.rbegin(), _queue.rbegin() + 1, _queue.rend(),
-                    [](const QueuedJob& lhs, const QueuedJob& rhs) {
-                        return lhs._job.getPriority() > rhs._job.getPriority();
-                    });
-
-                next = std::move(_queue.back());
-                have_next = true;
-                _queue.pop_back();
             }
         }
 
-        if (have_next)
+        QueuedJob next;
+        if (_queue.interrupt_pop(next))
         {
             _metrics->numJobsRunning++;
             _metrics->numJobsPending--;
 
             auto t0 = std::chrono::steady_clock::now();
-
             bool job_executed = next._delegate();
-
             auto duration = std::chrono::steady_clock::now() - t0;
 
             if (job_executed)
@@ -801,12 +760,12 @@ JobArena::runJobs()
 void
 JobArena::startThreads()
 {
-    _done = false;
-
     OE_INFO << LC << "Arena \"" << _name << "\" concurrency=" << _targetConcurrency << std::endl;
 
     // Not enough? Start up more
-    while(_metrics->concurrency < _targetConcurrency)
+    const int threadTarget =  _targetConcurrency;
+    const int currentNumberThreads = _metrics->concurrency;
+    for(auto i = currentNumberThreads; i < threadTarget; ++i)
     {
         _threads.push_back(std::thread([this]
             {
@@ -818,7 +777,7 @@ JobArena::startThreads()
                 runJobs();
 
                 // exit thread here
-                //OE_INFO << LC << "Thread " << std::this_thread::get_id() << " exiting" << std::endl;
+                OE_INFO << LC << "Thread " << std::this_thread::get_id() << " end loop" << std::endl;
             }
         ));
     }
@@ -826,34 +785,18 @@ JobArena::startThreads()
 
 void JobArena::stopThreads()
 {
-    _done = true;
+    _queue.stop();
 
     // Clear out the queue
+    while(!_queue.empty())
     {
-        std::lock_guard<Mutex> lock(_queueMutex);
-
-        // reset any group semaphores so that JobGroup.join()
-        // will not deadlock.
-        for (auto& queuedjob : _queue)
+        QueuedJob job;
+        if(_queue.try_pop(job))
         {
-            if (queuedjob._groupsema != nullptr)
-            {
-                queuedjob._groupsema->reset();
+            if (job._groupsema != nullptr) {
+                job._groupsema->reset();
             }
         }
-        _queue.clear();
-
-        //while (_queue.empty() == false)
-        //{
-        //    if (_queue.back()._groupsema != nullptr)
-        //    {
-        //        _queue.back()._groupsema->reset();
-        //    }
-        //    _queue.pop_back();
-        //}
-
-        // wake up all threads so they can exit
-        _block.notify_all();
     }
 
     // wait for them to exit
@@ -867,7 +810,6 @@ void JobArena::stopThreads()
 
     _threads.clear();
 }
-
 
 JobArena::Metrics::Metrics() :
     _arenas(512),

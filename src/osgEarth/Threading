@@ -924,13 +924,15 @@ namespace osgEarth { namespace Threading
             //! Internal function - do not call this directly.
             void runJobs();
 
+        //! Stop all the threads from all the JobArena, discard any pending job.
+        //! Should be called from main right before exiting to make sure ressources are properly cleaned.
+        static void shutdownAll();
     private:
 
         void startThreads();
 
         void stopThreads();
 
-        static void shutdownAll();
 
         using Delegate = std::function<bool()>;
 
@@ -954,24 +956,92 @@ namespace osgEarth { namespace Threading
             }
         };
 
+
+        class SynchronizedPriorityQueuedJob {
+        public:
+            template<class ...Ts>
+            void emplace(Ts... args) {
+                std::lock_guard<Mutex> lock(_queueMutex);
+                _queue.emplace(std::forward<Ts>(args)...);
+                _block.notify_one();
+            }
+
+            bool interrupt_pop(QueuedJob& next) {
+                std::unique_lock<Mutex> lk(_queueMutex);
+                _block.wait(lk,[this]{
+                    return !_queue.empty() || _done;});
+                if(_done) {
+                    return false;
+                }
+                next = std::move(_queue.top());
+                _queue.pop();
+                return true;
+            }
+
+            bool try_pop(QueuedJob& next) {
+                std::unique_lock<Mutex> lk(_queueMutex);
+                if(_queue.empty()){
+                    return false;
+                }
+
+                next = std::move(_queue.top());
+                _queue.pop();
+                return true;
+            }
+
+            bool empty() const
+            {
+                std::lock_guard<Mutex> lk(_queueMutex);
+                return _queue.empty();
+            }
+            int size() const
+            {
+                std::lock_guard<Mutex> lk(_queueMutex);
+                return _queue.size();
+            }
+
+            void stop()
+			{
+                std::lock_guard<Mutex> lk(_queueMutex);
+                _done = true;
+                _block.notify_all();
+            }
+			
+            bool running() const
+			{
+                std::lock_guard<Mutex> lk(_queueMutex);
+                return !_done;
+            }
+
+            void clear()
+            {
+                std::lock_guard<Mutex> lk(_queueMutex);
+				_queue = std::priority_queue<QueuedJob>{};
+            }
+        private:
+            std::priority_queue<QueuedJob> _queue;
+            mutable Mutex _queueMutex;
+            std::condition_variable_any _block;
+            bool _done{false};
+        };
+
         // pool name
         std::string _name;
+
         // type of arena
         Type _type;
-        // queued operations to run asynchronously
-        using Queue = std::vector<QueuedJob>;
-        Queue _queue;
+
+        SynchronizedPriorityQueuedJob _queue;
+
         // protect access to the queue
-        mutable Mutex _queueMutex;
         mutable Mutex _quitMutex;
+
         // target number of concurrent threads in the pool
         std::atomic<unsigned> _targetConcurrency;
-        // thread waiter block
-        std::condition_variable_any _block;
-        // set to true when threads should exit
-        bool _done;
+
         // threads in the pool
         std::vector<std::thread> _threads;
+
         // pointer to the stats structure for this arena
         Metrics::Arena* _metrics;
 
@@ -1026,3 +1096,5 @@ namespace osgEarth { namespace Threading
 #define OE_SCOPED_THREAD_NAME(base,name) osgEarth::Threading::ScopedThreadName _scoped_threadName(base,name);
 
 #endif // OSGEARTH_THREADING_UTILS_H
+
+

@@ -1010,7 +1010,7 @@ RexTerrainEngineNode::addLayer(Layer* layer)
 {
     if (layer)
     {
-        if (layer->getEnabled())
+        if (layer->isOpen() && layer->getEnabled())
         {
             if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
                 addTileLayer(layer);
@@ -1025,7 +1025,7 @@ RexTerrainEngineNode::addLayer(Layer* layer)
 void
 RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
 {
-    if ( tileLayer && tileLayer->getEnabled() )
+    if ( tileLayer && tileLayer->isOpen() && tileLayer->getEnabled() )
     {
         ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(tileLayer);
         if (imageLayer)
@@ -1124,7 +1124,7 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
     if ( layerRemoved )
     {
         // for a shared layer, release the shared image unit.
-        if ( layerRemoved->getEnabled() && layerRemoved->isShared() )
+        if ( layerRemoved->isOpen() && layerRemoved->isShared() )
         {
             if ( layerRemoved->sharedImageUnit().isSet() )
             {
@@ -1166,9 +1166,9 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 }
 
 void
-RexTerrainEngineNode::addElevationLayer(Layer* layer )
+RexTerrainEngineNode::addElevationLayer(Layer* layer)
 {
-    if (layer && layer->getEnabled())
+    if (layer && layer->isOpen() && layer->getEnabled())
     {
         std::vector<const Layer*> layers;
         layers.push_back(layer);
@@ -1191,7 +1191,7 @@ RexTerrainEngineNode::removeElevationLayer( Layer* layer)
 void
 RexTerrainEngineNode::moveElevationLayer(Layer* layer)
 {
-    if (layer && layer->getEnabled())
+    if (layer && layer->isOpen())
     {
         std::vector<const Layer*> layers;
         layers.push_back(layer);
@@ -1334,7 +1334,7 @@ RexTerrainEngineNode::updateState()
             for( int i=0; i<imageLayers.size(); ++i )
             {
                 ImageLayer* layer = imageLayers[i].get();
-                if ( layer->getEnabled() )
+                if ( layer->isOpen() && layer->getEnabled() )
                 {
                     // install Color Filter function calls:
                     const ColorFilterChain& chain = layer->getColorFilters();

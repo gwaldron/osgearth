@@ -421,7 +421,10 @@ Map::addLayer(Layer* layer)
 
     layer->setReadOptions(getReadOptions());
 
-    layer->open();
+    if (layer->getEnabled())
+    {
+        layer->open();
+    }
 
     // do we need this? Won't the callback to this?
     if (layer->isOpen() && getProfile() != NULL)
@@ -471,7 +474,10 @@ Map::insertLayer(Layer* layer, unsigned index)
 
     layer->setReadOptions(getReadOptions());
 
-    layer->open();
+    if (layer->getEnabled())
+    {
+        layer->open();
+    }
 
     if (layer->isOpen() && getProfile() != NULL)
     {
@@ -632,7 +638,10 @@ Map::addLayers(const LayerVector& layers)
         layer->setReadOptions(getReadOptions());
 
         // open, but don't call addedToMap(layer) yet.
-        layer->open();
+        if (layer->getEnabled())
+        {
+            layer->open();
+        }
     }
 
     unsigned firstIndex;

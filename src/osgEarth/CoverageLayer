@@ -295,11 +295,13 @@ namespace osgEarth
             if (fallback)
             {
                 TileKey inputKey = key;
+
+                // NB: do not call mayHaveData() on the key, since we want to be sure
+                // to fail and fall back until we get data.
                 while (
                     input.valid() == false &&
                     inputKey.valid() &&
-                    imageLayer->isKeyInLegalRange(inputKey) &&
-                    imageLayer->mayHaveData(inputKey))
+                    imageLayer->isKeyInLegalRange(inputKey))
                 {
                     input = createCoverage(inputKey, imageLayer, mappings, progress);
                     if (!input.valid())
@@ -323,7 +325,7 @@ namespace osgEarth
                 // (TODO: optimize)
                 if (!output.valid())
                 {
-                    output = input;
+                    output = std::move(input);
                     fallback = true;
                 }
 

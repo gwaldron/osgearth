@@ -69,10 +69,10 @@ LifeMapLayer::Options::getConfig() const
     maskLayer().set(conf, "mask_layer");
     waterLayer().set(conf, "water_layer");
     colorLayer().set(conf, "color_layer");
-    landCoverLayer().set(conf, "land_cover_layer");
+    landCoverLayer().set(conf, "coverage_layer");
     landUseLayer().set(conf, "land_use_layer");
-    conf.set("land_cover_weight", landCoverWeight());
-    conf.set("land_cover_blur", landCoverBlur());
+    conf.set("coverage_weight", landCoverWeight());
+    conf.set("coverage_blur", landCoverBlur());
     conf.set("terrain_weight", terrainWeight());
     conf.set("color_weight", colorWeight());
     conf.set("noise_weight", noiseWeight());
@@ -97,10 +97,10 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     maskLayer().get(conf, "mask_layer");
     waterLayer().get(conf, "water_layer");
     colorLayer().get(conf, "color_layer");
-    landCoverLayer().get(conf, "land_cover_layer");
+    landCoverLayer().get(conf, "coverage_layer");
     landUseLayer().get(conf, "land_use_layer");
-    conf.get("land_cover_weight", landCoverWeight());
-    conf.get("land_cover_blur", landCoverBlur());
+    conf.get("coverage_weight", landCoverWeight());
+    conf.get("coverage_blur", landCoverBlur());
     conf.get("terrain_weight", terrainWeight());
     conf.get("color_weight", colorWeight());
     conf.get("noise_weight", noiseWeight());

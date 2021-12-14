@@ -226,6 +226,9 @@ TerrainTileModelFactory::addImageLayer(
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(imageLayer->getName());
 
+    if (!imageLayer->isOpen() || !imageLayer->getEnabled())
+        return nullptr;
+
     TerrainTileImageLayerModel* layerModel = NULL;
     osg::Texture* tex = 0L;
     TextureWindow window;
@@ -367,7 +370,8 @@ TerrainTileModelFactory::addColorLayers(
     {
         Layer* layer = i->get();
 
-        if (!layer->isOpen())
+        // skip layers that are closed or are not participating (disabled)
+        if (!layer->isOpen() || !layer->getEnabled())
             continue;
 
         if (layer->getRenderType() != layer->RENDERTYPE_TERRAIN_SURFACE)

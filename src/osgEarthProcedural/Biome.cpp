@@ -385,7 +385,37 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
         {
             const Biome* parent = getBiome(biome.parentId().get());
             if (parent)
+            {
                 biome._parentBiome = parent;
+            }
+        }
+    }
+
+    // check for cyclical parent relationships, which are illegal
+    for (auto& index_and_biome : _biomes_by_index)
+    {
+        Biome& biome = index_and_biome.second;
+        std::vector<const Biome*> visited;
+        visited.push_back(&biome);
+
+        const Biome* parent = biome._parentBiome;
+        while (parent != nullptr)
+        {
+            if (std::find(visited.begin(), visited.end(), parent) != visited.end())
+            {
+                std::ostringstream buf;
+                for (auto& bptr : visited)
+                    buf << bptr->id().get() << " -> ";
+                buf << parent->id().get();
+                OE_WARN << LC << "***** I detected a parent loop in the biome catalog: " << buf.str() << std::endl;
+                biome._parentBiome = nullptr;
+                break;
+            }
+            else
+            {
+                visited.push_back(parent);
+                parent = parent->_parentBiome;
+            }
         }
     }
 
@@ -511,7 +541,7 @@ BiomeCatalog::getBiome(const std::string& id) const
 {
     for (auto& iter : _biomes_by_index)
     {
-        if (iter.second.id() == id)
+        if (iter.second.id().get() == id)
         {
             return &iter.second;
         }

@@ -463,6 +463,7 @@ SET(LIB_PUBLIC_HEADERS
 if(OSGEARTH_ENABLE_IMGUI)
     set(LIB_PUBLIC_HEADERS_IMGUI
         ImGui/ImGui
+        ImGui/ImGuiApp
         ImGui/LayersGUI
         ImGui/NetworkMonitorGUI
         ImGui/NotifyGUI
@@ -953,8 +954,14 @@ if(OSGEARTH_ENABLE_IMGUI)
     if(NOT USE_CUSTOM_SOURCE_GROUPS)
         source_group("Headers\\ImGui" FILES ${LIB_PUBLIC_HEADERS_IMGUI})
     endif()
+    
+    if(HEADER_INSTALL_DIR)
+        SET(IMGUI_INSTALL_INCDIR include/${HEADER_INSTALL_DIR}/ImGui)
+    else()
+        SET(IMGUI_INSTALL_INCDIR include/${LIB_NAME}/ImGui)
+    endif()
 
     install(
         FILES ${LIB_PUBLIC_HEADERS_IMGUI} ImGui/ImGui.cpp
-        DESTINATION ${INSTALL_INCDIR}/ImGui)
+        DESTINATION ${IMGUI_INSTALL_INCDIR})
 endif()

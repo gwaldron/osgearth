@@ -70,7 +70,6 @@ namespace osgEarth
                     ImGui::Text("Job Activity:");
                     ImGui::Indent();
                     const JobArena::Metrics& m = JobArena::metrics();
-                    int pending = 0, running = 0;
                     for (int i = 0; i <= m.maxArenaIndex; ++i)
                     {
                         if (m.arena(i).active)

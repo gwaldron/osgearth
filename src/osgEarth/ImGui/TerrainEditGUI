@@ -34,9 +34,9 @@ namespace osgEarth
     namespace GUI
     {
         using namespace osgEarth;
+        using namespace osgEarth::Contrib;
         using namespace osgEarth::Threading;
         using namespace osgEarth::Util;
-
 
         struct CraterRenderer
         {

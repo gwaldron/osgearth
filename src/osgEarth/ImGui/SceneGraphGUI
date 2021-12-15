@@ -21,17 +21,21 @@
 
 #include "ImGui"
 #include <osgEarth/AnnotationUtils>
-#include <osg/PolygonMode>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/PagedNode>
+#include <osgEarth/Viewpoint>
+#include <osgEarth/ViewFitter>
+#include <osgEarth/ThreeDTilesLayer>
+#include <osgEarth/EarthManipulator>
+
 #include <osg/io_utils>
+#include <osg/PolygonMode>
 
 namespace osgEarth {
     namespace GUI
     {
         using namespace osgEarth;
-
-
+        using namespace osgEarth::Util;
         
         template<typename T>
         std::string printArrayValue(const T* array)

@@ -27,6 +27,7 @@
 #include <osgEarth/FeatureNode>
 #include <osgEarth/LabelNode>
 #include <osgEarth/SelectExtentTool>
+#include <osgEarth/TerrainEngineNode>
 #include <chrono>
 #include <list>
 

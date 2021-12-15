@@ -16,11 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include "GL/glew.h"
+#include "imgui.h"
+#include "imgui_internal.h"
+#include "backends/imgui_impl_opengl3.h"
+
 #include <osgEarth/ImGui/ImGui>
 #include <osgEarth/GLUtils>
-
-#include "imgui.h"
-#include "backends/imgui_impl_opengl3.h"
 
 using namespace osgEarth::GUI;
 

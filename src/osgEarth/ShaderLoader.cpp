@@ -16,9 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/ShaderLoader>
-#include <osgEarth/URI>
-#include <osgEarth/VirtualProgram>
+#include "ShaderLoader"
+#include "ShaderUtils"
+#include "URI"
+#include "VirtualProgram"
+
 #include <osgDB/FileUtils>
 
 #undef  LC
@@ -238,6 +240,9 @@ ShaderLoader::load(const std::string&    filename,
         osgEarth::replaceIn(output, "%QUOTE%", "\"");
     }
 
+    // Run the "pre" callbacks before ANYTHING else
+    ShaderPreProcessor::runPre(output);
+
     // Process any "#pragma include" statements
     while(true)
     {
@@ -264,7 +269,7 @@ ShaderLoader::load(const std::string&    filename,
             << load(fileToInclude, package, dbOptions)
             << "\n";
 
-        osgEarth::replaceIn(output, statement, fileSource);
+        Strings::replaceIn(output, statement, fileSource);
     }
 
 // Process any "#pragma define" statements
@@ -296,8 +301,8 @@ while (true)
         << (defineIt ? "#define " : "#undef ")
         << varName;
 
-    osgEarth::replaceIn(output, statement, newStatement);
-}
+        Strings::replaceIn(output, statement, newStatement);
+    }
 
 // Process any replacements.
 for (ShaderPackage::ReplaceMap::const_iterator i = package._replaces.begin();

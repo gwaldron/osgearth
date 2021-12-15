@@ -79,11 +79,39 @@ namespace osgEarth { namespace Util
         osg::Uniform* createRangeUniform() const;
 
         //! Remove all preprocessor callbacks
-        void clearPreProcessorCallbacks();
+        void clearProcessorCallbacks();
 
         //! Install a shader post-processing callback
         //! This will run on each shader before it gets included
-        void addPreProcessorCallback(std::function<void(osg::Shader*)>);
+        void addPreProcessorCallback(
+            std::function<void(std::string&)>);
+
+        //! Install a shader post-processing callback with a name
+        //! that you can use to remove it later.
+        //! This will run on each shader before it gets included
+        void addPreProcessorCallback(
+            const std::string& name,
+            std::function<void(std::string&)>);
+
+        //! Remove a callback you installed with a name.
+        void removePreProcessorCallback(
+            const std::string& name);
+
+        //! Install a shader post-processing callback
+        //! This will run on each shader before it gets included
+        void addPostProcessorCallback(
+            std::function<void(osg::Shader*)>);
+
+        //! Install a shader post-processing callback with a name
+        //! that you can use to remove it later.
+        //! This will run on each shader before it gets included
+        void addPostProcessorCallback(
+            const std::string& name,
+            std::function<void(osg::Shader*)>);
+
+        //! Remove a callback you installed with a name.
+        void removePostProcessorCallback(
+            const std::string& name);
 
     protected:
         /** dtor */

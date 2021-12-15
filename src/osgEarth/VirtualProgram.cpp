@@ -2159,7 +2159,7 @@ PolyShader::prepare()
                 _nominalShader->setName(_name);
         }
 
-        ShaderPreProcessor::run(_nominalShader.get());
+        ShaderPreProcessor::runPost(_nominalShader.get());
 
         // for a VERTEX_VIEW or VERTEX_CLIP shader, these might get moved to another stage.
         if (_location == ShaderComp::LOCATION_VERTEX_VIEW || _location == ShaderComp::LOCATION_VERTEX_CLIP)
@@ -2167,12 +2167,12 @@ PolyShader::prepare()
             _geomShader = new osg::Shader(osg::Shader::GEOMETRY, _source);
             if (!_name.empty())
                 _geomShader->setName(_name);
-            ShaderPreProcessor::run(_geomShader.get());
+            ShaderPreProcessor::runPost(_geomShader.get());
 
             _tessevalShader = new osg::Shader(osg::Shader::TESSEVALUATION, _source);
             if (!_name.empty())
                 _tessevalShader->setName(_name);
-            ShaderPreProcessor::run(_tessevalShader.get());
+            ShaderPreProcessor::runPost(_tessevalShader.get());
         }
     }
     _dirty = false;

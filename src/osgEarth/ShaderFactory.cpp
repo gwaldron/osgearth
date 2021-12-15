@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderUtils>
+#include <sstream>
 
 #define LC "[ShaderFactory] "
 
@@ -35,7 +36,6 @@ namespace
 }
 
 #define INDENT "    "
-#define RANGE  osgEarth::Registry::instance()->shaderFactory()->getRangeUniformName()
 
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
@@ -48,15 +48,58 @@ ShaderFactory::ShaderFactory()
 }
 
 void
-ShaderFactory::clearPreProcessorCallbacks()
+ShaderFactory::clearProcessorCallbacks()
 {
-    ShaderPreProcessor::_callbacks.clear();
+    ShaderPreProcessor::_pre_callbacks.clear();
+    ShaderPreProcessor::_post_callbacks.clear();
 }
 
 void
-ShaderFactory::addPreProcessorCallback(std::function<void(osg::Shader*)> cb)
+ShaderFactory::addPreProcessorCallback(
+    std::function<void(std::string&) > cb)
 {
-    ShaderPreProcessor::_callbacks.push_back(cb);
+    static int nameGen = 0;
+    std::ostringstream name;
+    name << "__oesf_" << nameGen++;
+    addPreProcessorCallback(name.str(), cb);
+}
+
+void
+ShaderFactory::addPreProcessorCallback(
+    const std::string& name,
+    std::function<void(std::string&)> cb)
+{    
+    ShaderPreProcessor::_pre_callbacks[name] = cb;
+}
+
+void
+ShaderFactory::removePreProcessorCallback(const std::string& name)
+{
+    ShaderPreProcessor::_pre_callbacks.erase(name);
+}
+
+void
+ShaderFactory::addPostProcessorCallback(
+    std::function<void(osg::Shader*)> cb)
+{
+    static int nameGen = 0;
+    std::ostringstream name;
+    name << "__oesf_" << nameGen++;
+    addPostProcessorCallback(name.str(), cb);
+}
+
+void
+ShaderFactory::addPostProcessorCallback(
+    const std::string& name,
+    std::function<void(osg::Shader*)> cb)
+{
+    ShaderPreProcessor::_post_callbacks[name] = cb;
+}
+
+void
+ShaderFactory::removePostProcessorCallback(const std::string& name)
+{
+    ShaderPreProcessor::_post_callbacks.erase(name);
 }
 
 

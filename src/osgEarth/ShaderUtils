@@ -28,6 +28,7 @@
 #include <osg/observer_ptr>
 #include <osgDB/Options>
 #include <map>
+#include <unordered_map>
 #include <functional>
 
 namespace osgEarth
@@ -60,9 +61,18 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT ShaderPreProcessor
     {
     public:
-        static void run(osg::Shader* shader);
 
-        static std::vector<std::function<void(osg::Shader*)>> _callbacks;
+        static void runPre(std::string& source);
+
+        static void runPost(osg::Shader* shader);
+
+        static std::unordered_map<
+            std::string, 
+            std::function<void(std::string&)>> _pre_callbacks;
+
+        static std::unordered_map<
+            std::string,
+            std::function<void(osg::Shader*)>> _post_callbacks;
     };
 
     /**

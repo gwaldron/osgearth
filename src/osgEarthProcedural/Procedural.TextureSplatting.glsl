@@ -1,7 +1,8 @@
 #version 430
+#extension GL_ARB_gpu_shader_int64 : enable
+
 #pragma vp_name Texture Splatter VV
 #pragma vp_function oe_splat_View, vertex_view
-#extension GL_ARB_gpu_shader_int64 : enable
 
 #pragma import_defines(OE_SPLAT_TWEAKS)
 #pragma import_defines(OE_SPLAT_NUM_LEVELS)
@@ -29,8 +30,6 @@ float oe_terrain_getElevation();
 tweakable float oe_splat_blend_start = 2500.0;
 tweakable float oe_splat_blend_end = 500.0;
 
-uniform vec4 oe_tile_key;
-
 #define MAP_TO_01(VAL,LO,HI) clamp((VAL-LO) / (HI-LO), 0.0, 1.0)
 
 void oe_splat_View(inout vec4 vertex_view)
@@ -39,7 +38,7 @@ void oe_splat_View(inout vec4 vertex_view)
     for (int i = 0; i < OE_SPLAT_NUM_LEVELS; ++i)
     {
         vec4 uvxy = oe_terrain_scaleCoordsAndTileKeyToRefLOD(oe_layer_tilec.st, levels[i]);
-        splat_uv[i] = uvxy.xy; // oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, levels[i]);
+        splat_uv[i] = uvxy.xy;
         splat_tilexy[i] = uvxy.zw; // floor(oe_tile_key.xy / exp2(oe_tile_key.z - float(levels[i])));
     }
     splatLevelBlend = MAP_TO_01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
@@ -50,9 +49,9 @@ void oe_splat_View(inout vec4 vertex_view)
 
 [break]
 #version 430
+#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_name Texture Splatter FS
 #pragma vp_function oe_splat_Frag, fragment, 0.8
-#extension GL_ARB_gpu_shader_int64 : enable
 
 #pragma import_defines(OE_LIFEMAP_TEX)
 #pragma import_defines(OE_LIFEMAP_MAT)
@@ -73,10 +72,10 @@ uniform mat4 OE_COLOR_LAYER_MAT;
 #pragma import_defines(OE_LIFEMAP_DIRECT)
 #pragma import_defines(OE_SPLAT_USE_MTL_GLS_AO)
 
-layout(binding = 5, std430) buffer TextureLUT {
+layout(binding = 10, std430) buffer TextureLUT {
     uint64_t texHandle[];
 };
-layout(binding = 6, std430) buffer RenderParamsLUT {
+layout(binding = 11, std430) buffer RenderParamsLUT {
     vec2 texScale[];
 };
 

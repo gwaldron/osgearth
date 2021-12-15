@@ -656,11 +656,25 @@ namespace osgEarth { namespace Util
                 functor.operator()(i->second);
         }
 
+        void forEach(std::function<void(DATA&)> functor)
+        {
+            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            for (auto& entry : _data)
+                functor(entry.second);
+        }
+
         void forEach(ConstFunctor& functor) const
         {
             osgEarth::Threading::ScopedMutexLock lock(_mutex);
             for (typename std::unordered_map<KEY, DATA>::const_iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
+        }
+
+        void forEach(std::function<void(const DATA&)> functor) const
+        {
+            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            for (auto& entry : _data)
+                functor(entry.second);
         }
 
         unsigned size() const

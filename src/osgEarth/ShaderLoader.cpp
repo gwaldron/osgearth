@@ -123,6 +123,30 @@ namespace
                 f.order = as<float>(orderStr, 1.0f);
         }
     }
+
+    std::vector<std::string>
+    splitAtEndOfLineStartingWith(const std::string& source, const std::string& token)
+    {
+        std::vector<std::string> result(2);
+
+        std::string::size_type tokenPos = source.find(token);
+        if (tokenPos == std::string::npos)
+        {
+            result[1] = source;
+            return result;
+        }
+
+        std::string::size_type newlinePos = source.find('\n', tokenPos);
+        if (newlinePos == std::string::npos)
+        {
+            result[0] = source;
+            return result;
+        }
+
+        result[0] = source.substr(0, newlinePos+1);
+        result[1] = source.substr(newlinePos+1);
+        return result;
+    }
 }
 
 
@@ -272,50 +296,50 @@ ShaderLoader::load(const std::string&    filename,
         Strings::replaceIn(output, statement, fileSource);
     }
 
-// Process any "#pragma define" statements
-while (true)
-{
-    const std::string token("#pragma vp_define");
-    std::string::size_type statementPos = output.find(token);
-    if (statementPos == std::string::npos)
-        break;
+    // Process any "#pragma define" statements
+    while (true)
+    {
+        const std::string token("#pragma vp_define");
+        std::string::size_type statementPos = output.find(token);
+        if (statementPos == std::string::npos)
+            break;
 
-    std::string::size_type startPos = output.find_first_not_of(" \t", statementPos + token.length());
-    if (startPos == std::string::npos)
-        break;
+        std::string::size_type startPos = output.find_first_not_of(" \t", statementPos + token.length());
+        if (startPos == std::string::npos)
+            break;
 
-    std::string::size_type endPos = output.find('\n', startPos);
-    if (endPos == std::string::npos)
-        break;
+        std::string::size_type endPos = output.find('\n', startPos);
+        if (endPos == std::string::npos)
+            break;
 
-    std::string statement(output.substr(statementPos, endPos - statementPos));
-    std::string varName(trim(output.substr(startPos, endPos - startPos)));
+        std::string statement(output.substr(statementPos, endPos - statementPos));
+        std::string varName(trim(output.substr(startPos, endPos - startPos)));
 
-    ShaderPackage::DefineMap::const_iterator d = package._defines.find(varName);
+        ShaderPackage::DefineMap::const_iterator d = package._defines.find(varName);
 
-    bool defineIt =
-        d != package._defines.end() &&
-        d->second == true;
+        bool defineIt =
+            d != package._defines.end() &&
+            d->second == true;
 
-    std::string newStatement = Stringify()
-        << (defineIt ? "#define " : "#undef ")
-        << varName;
+        std::string newStatement = Stringify()
+            << (defineIt ? "#define " : "#undef ")
+            << varName;
 
         Strings::replaceIn(output, statement, newStatement);
     }
 
-// Process any replacements.
-for (ShaderPackage::ReplaceMap::const_iterator i = package._replaces.begin();
-    i != package._replaces.end();
-    ++i)
-{
-    osgEarth::replaceIn(output, i->first, i->second);
-}
+    // Process any replacements.
+    for (ShaderPackage::ReplaceMap::const_iterator i = package._replaces.begin();
+        i != package._replaces.end();
+        ++i)
+    {
+        osgEarth::replaceIn(output, i->first, i->second);
+    }
 
-// Lastly, remove any CRs
-osgEarth::replaceIn(output, "\r", "");
+    // Lastly, remove any CRs
+    osgEarth::replaceIn(output, "\r", "");
 
-return output;
+    return output;
 }
 
 std::string
@@ -458,17 +482,29 @@ ShaderLoader::load(VirtualProgram*       vp,
             else
             {
                 // If no location was set, install in all stages.
-                osg::Shader::Type types[5] = { 
+                const osg::Shader::Type types[5] = { 
                     osg::Shader::VERTEX, 
                     osg::Shader::FRAGMENT, 
                     osg::Shader::GEOMETRY, 
                     osg::Shader::TESSCONTROL, 
                     osg::Shader::TESSEVALUATION
                 };
+                const std::string stage_defines[5] = {
+                    "VP_STAGE_VERTEX",
+                    "VP_STAGE_FRAGMENT",
+                    "VP_STAGE_GEOMETRY",
+                    "VP_STAGE_TESSCONTROL",
+                    "VP_STAGE_TESSEVALUATION"
+                };
 
                 for(int i=0; i<5; ++i)
                 {
-                    osg::Shader* shader = new osg::Shader(types[i], source);
+                    std::vector<std::string> parts = splitAtEndOfLineStartingWith(source, "#version");
+                    std::string new_source =
+                        parts[0] +
+                        "#define " + stage_defines[i] + "\n" +
+                        parts[1];
+                    osg::Shader* shader = new osg::Shader(types[i], new_source);
                     std::string name = Stringify() << filename + "_" + shader->getTypename();
                     shader->setName( name );
                     vp->setShader( name, shader );

@@ -57,6 +57,7 @@ TileNode::TileNode(
     Cancelable* progress) :
 
     _key(key),
+    _parentTile(parent),
     _context(context),
     _loadsInQueue(0u),
     _childrenReady(false),
@@ -812,7 +813,11 @@ TileNode::merge(
                     pass->setLayer(layer);
                 }
 
-                pass->setSampler(SamplerBinding::COLOR, imageLayerModel->getTexture(), *imageLayerModel->getMatrix(), imageLayerModel->getRevision());
+                pass->setSampler(
+                    SamplerBinding::COLOR, 
+                    imageLayerModel->getTexture(), 
+                    *imageLayerModel->getMatrix(), 
+                    imageLayerModel->getRevision());
 
                 // If this is a new rendering pass, just copy the color into the color-parent.
                 if (isNewPass && bindings[SamplerBinding::COLOR_PARENT].isActive())
@@ -846,6 +851,7 @@ TileNode::merge(
                         {
                             Sampler& colorParent = pass->sampler(SamplerBinding::COLOR_PARENT);
                             colorParent._texture = parentPass->sampler(SamplerBinding::COLOR)._texture;
+                            colorParent._arena_texture = parentPass->sampler(SamplerBinding::COLOR)._arena_texture;
                             colorParent._matrix = parentPass->sampler(SamplerBinding::COLOR)._matrix;
                             colorParent._matrix.preMult(scaleBias[_key.getQuadrant()]);
                         }
@@ -1172,6 +1178,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
                         // set the parent-color texture to the parent's color texture
                         // and scale/bias the matrix.
                         mySampler._texture = parentColorSampler._texture.get();
+                        mySampler._arena_texture = parentColorSampler._arena_texture;
                         mySampler._matrix = newMatrix;
                         mySampler._revision = parentColorSampler._revision;
                     }

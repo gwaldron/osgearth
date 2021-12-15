@@ -49,11 +49,11 @@ DrawTileCommand::apply(
     }
 
     // Elevation coefficients (can probably be terrain-wide)
-    if (pps._elevTexelCoeffUL >= 0 && !pps._elevTexelCoeff.isSetTo(_elevTexelCoeff))
-    {
-        ext->glUniform2fv(pps._elevTexelCoeffUL, 1, _elevTexelCoeff.ptr());
-        pps._elevTexelCoeff = _elevTexelCoeff;
-    }
+    //if (pps._elevTexelCoeffUL >= 0 && !pps._elevTexelCoeff.isSetTo(_elevTexelCoeff))
+    //{
+    //    ext->glUniform2fv(pps._elevTexelCoeffUL, 1, _elevTexelCoeff.ptr());
+    //    pps._elevTexelCoeff = _elevTexelCoeff;
+    //}
 
     // Morphing constants for this LOD
     if (pps._morphConstantsUL >= 0 && !pps._morphConstants.isSetTo(_morphConstants))
@@ -154,14 +154,14 @@ DrawTileCommand::debug(
     if (pps._layerOrderUL >= 0)
         OE_INFO << "  layerOrder UL = " << pps._layerOrderUL << ", value = " << _layerOrder << std::endl;
 
-    if (pps._elevTexelCoeffUL >= 0)
-        OE_INFO << "  _elevTexelCoeff UL = " << pps._elevTexelCoeffUL << ", value = " << (*pps._elevTexelCoeff)[0] << ", " << (*pps._elevTexelCoeff)[1] << std::endl;
+    //if (pps._elevTexelCoeffUL >= 0)
+    //    OE_INFO << "  _elevTexelCoeff UL = " << pps._elevTexelCoeffUL << ", value = " << (*pps._elevTexelCoeff)[0] << ", " << (*pps._elevTexelCoeff)[1] << std::endl;
 
     if (pps._morphConstantsUL >= 0 )
-        OE_INFO << "  _morphConstantsUL UL = " << pps._morphConstantsUL << ", value = " << (*pps._morphConstants)[0] << ", " << (*pps._elevTexelCoeff)[1] << std::endl;
+        OE_INFO << "  _morphConstantsUL UL = " << pps._morphConstantsUL << ", value = " << (*pps._morphConstants)[0] << ", " << (*pps._morphConstants)[1] << std::endl;
     
     OE_INFO << "  samplers:" << std::endl;
-    int s = 0;
+    unsigned s = 0;
     if (_sharedSamplers)
     {
         for (; s < _sharedSamplers->size(); ++s)

@@ -6,10 +6,10 @@
 
 #pragma import_defines(OE_DISABLE_GRATICULE)
 
-uniform vec4 oe_tile_key;
 out vec4 oe_layer_tilec;
 out vec2 oe_GeodeticGraticule_coord;
 
+vec4 oe_tile_key;
 
 void oe_GeodeticGraticule_vertex(inout vec4 vertex)
 {

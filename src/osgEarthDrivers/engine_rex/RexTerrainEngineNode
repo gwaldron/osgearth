@@ -126,7 +126,7 @@ namespace osgEarth { namespace REX
 
         //! Various methods that trigger when the Map model changes.
         void addLayer(Layer* layer);
-        void addTileLayer( Layer* layer );
+        void addSurfaceLayer( Layer* layer );
         void removeImageLayer( ImageLayer* layerRemoved );        
         void addElevationLayer(Layer* layer);
         void removeElevationLayer(Layer* layerRemoved );
@@ -186,8 +186,34 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<osg::StateSet> _surfaceStateSet;
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
 
-        unsigned _frameLastUpdated;
+        // Data that we maintain across frames on a per-camera basis.
 
+        struct osgNodePath_hash
+        {
+            template <class T>
+            std::size_t operator() (const T& path) const {
+                std::size_t h;
+                for (auto i : path)
+                    h ^= hash_value_unsigned((std::uintptr_t)i);
+                return h;
+            }
+        };
+
+        using PersistentDataTable = Mutexed<std::unordered_map<
+            osg::NodePath,
+            TerrainRenderData::PersistentData,
+            osgNodePath_hash>>;
+
+        PersistentDataTable _persistent;
+
+        //using Cullers = Mutexed<std::unordered_map<
+        //    osg::NodePath,
+        //    TerrainCuller,
+        //    osgNodePath_hash>>;
+
+        //Cullers _cullers;
+
+        unsigned _frameLastUpdated;
         FrameClock _clock;
         std::atomic_bool _updatedThisFrame;
     };

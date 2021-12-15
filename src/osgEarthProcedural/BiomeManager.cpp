@@ -493,8 +493,7 @@ BiomeManager::updateResidency(
     {
         osg::ref_ptr<GeometryCloud> cloud = createGeometryCloud(
             group,
-            _residentBiomeData,
-            nullptr);
+            _residentBiomeData);
 
         if (cloud.valid())
         {
@@ -529,14 +528,10 @@ namespace
 GeometryCloud*
 BiomeManager::createGeometryCloud(
     AssetGroup::Type group,
-    const ResidentBiomes& residentBiomes,
-    TextureArena* arena) const
+    const ResidentBiomes& residentBiomes) const
 {
-    if (arena == nullptr)
-    {
-        arena = new TextureArena();
-        arena->setName(AssetGroup::name(group));
-    }
+    TextureArena* arena = new TextureArena();
+    arena->setName(AssetGroup::name(group));
 
     GeometryCloud* cloud = new GeometryCloud(arena);
 

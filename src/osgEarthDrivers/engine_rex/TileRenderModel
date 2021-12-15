@@ -26,6 +26,7 @@
 #include <osgEarth/Layer>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/PatchLayer>
+#include <osgEarth/TextureArena>
 #include <osg/Texture>
 #include <osg/Matrix>
 #include <vector>
@@ -50,6 +51,7 @@ namespace osgEarth { namespace REX
         //! Construct
         Sampler(const Sampler& rhs) :
             _texture(rhs._texture),
+            _arena_texture(rhs._arena_texture),
             _matrix(rhs._matrix),
             _revision(rhs._revision) //,
             //_futureTexture(rhs._futureTexture)
@@ -61,14 +63,16 @@ namespace osgEarth { namespace REX
         ~Sampler()
         {
             // Probably unnecessary since I think OSG does this...?
-            if (_texture.valid() && _texture->referenceCount() == 1)
-            {
-                _texture->releaseGLObjects(NULL);
-            }
+            //if (_texture.valid() && _texture->referenceCount() == 1)
+            //{
+            //    _texture->releaseGLObjects(NULL);
+            //}
         }
 
         // pointer to the sampler's active texture data
         osg::ref_ptr<osg::Texture> _texture;
+
+        Texture::Ptr _arena_texture;
 
         // scale and bias matrix for accessing the texture - will be non-identity
         // if the texture is inherited from an ancestor tile
@@ -98,6 +102,7 @@ namespace osgEarth { namespace REX
         //! Set this sampler's matrix to inherit
         inline void inheritFrom(const Sampler& rhs, const osg::Matrixf& scaleBias) {
             _texture = rhs._texture;
+            _arena_texture = rhs._arena_texture;
             _matrix = rhs._matrix;
             _revision = rhs._revision;
             // do NOT copy and overwrite _futureTexture!
@@ -212,6 +217,14 @@ namespace osgEarth { namespace REX
             sampler._texture = texture;
             sampler._matrix = matrix;
             sampler._revision = sourceRevision;
+
+            if (texture)
+            {
+                sampler._arena_texture = Texture::create();
+                sampler._arena_texture->_image = texture->getImage(0);
+                sampler._arena_texture->_clamp = true;
+                sampler._arena_texture->_compress = false;
+            }
         }
 
     private:
@@ -287,30 +300,27 @@ namespace osgEarth { namespace REX
         void setSharedSampler(
             unsigned binding,
             osg::Texture* texture,
-            const osg::Matrix& matrix,
-            int sourceRevision)
-        {
-            Sampler& sampler = _sharedSamplers[binding];
-            sampler._texture = texture;
-            sampler._matrix = matrix;
-            sampler._revision = sourceRevision;
-        }
-
-        void setSharedSampler(
-            unsigned binding,
-            osg::Texture* texture,
             int sourceRevision)
         {
             Sampler& sampler = _sharedSamplers[binding];
             sampler._texture = texture;
             sampler._matrix.makeIdentity();
             sampler._revision = sourceRevision;
+
+            if (texture)
+            {
+                sampler._arena_texture = Texture::create();
+                sampler._arena_texture->_image = texture->getImage(0);
+                sampler._arena_texture->_clamp = true;
+                sampler._arena_texture->_compress = false;
+            }
         }
 
         void clearSharedSampler(unsigned binding)
         {
             Sampler& sampler = _sharedSamplers[binding];
-            sampler._texture = NULL;
+            sampler._texture = nullptr;
+            sampler._arena_texture = nullptr;
             sampler._matrix.makeIdentity();
             sampler._revision = 0;
         }

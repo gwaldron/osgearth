@@ -37,7 +37,8 @@
 #define LC0 "[TextureSplattingLayer] "
 #define LC LC0 << getName() << ": "
 
-#define RENDERPARAMS_LAYOUT_BINDING_INDEX 6
+#define TEXTURE_ARENA_BINDING_POINT 10
+#define RENDERPARAMS_BINDING_POINT  11
 
 using namespace osgEarth::Procedural;
 
@@ -154,6 +155,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 
                 // contains the textures and their bindless handles
                 result->_arena = new TextureArena();
+                result->_arena->setBindingPoint(TEXTURE_ARENA_BINDING_POINT);
 
                 // contains metadata about the textures (size etc.)
                 result->_renderParams.setNumElements(assets.getLifeMapTextures().size() * tile_height_m.size());
@@ -204,7 +206,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                 result->_renderParams.dirty();
 
                 // bind the buffer to a layout index in the shader
-                result->_renderParams.setBindingIndex(RENDERPARAMS_LAYOUT_BINDING_INDEX);
+                result->_renderParams.setBindingIndex(RENDERPARAMS_BINDING_POINT);
 
                 return result;
             };

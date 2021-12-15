@@ -1,9 +1,7 @@
 #version $GLSL_VERSION_STR
 
-#pragma vp_name       REX Engine - Elevation
-#pragma vp_entryPoint oe_rex_applyElevation
-#pragma vp_location   vertex_view
-#pragma vp_order      0
+#pragma vp_name REX Engine - Elevation
+#pragma vp_function oe_rex_applyElevation, vertex_view, 0.1
 
 #pragma import_defines(OE_TERRAIN_RENDER_ELEVATION)
 
@@ -22,7 +20,7 @@ flat out int oe_terrain_vertexMarker;
 uniform float oe_terrain_altitude;
 
 // SDK functions:
-float oe_terrain_getElevation(in vec2 uv);
+float oe_terrain_getElevation();
 
 void oe_rex_applyElevation(inout vec4 vertex)
 {
@@ -32,7 +30,7 @@ void oe_rex_applyElevation(inout vec4 vertex)
         ((oe_terrain_vertexMarker & VERTEX_VISIBLE) != 0) &&
         ((oe_terrain_vertexMarker & VERTEX_HAS_ELEVATION) == 0);
 
-    float elev = elevate ? oe_terrain_getElevation(oe_layer_tilec.st) : 0.0;
+    float elev = elevate ? oe_terrain_getElevation() : 0.0;
 
     vertex.xyz += oe_UpVectorView * elev;
 #endif

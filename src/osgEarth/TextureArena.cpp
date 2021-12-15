@@ -52,6 +52,8 @@ Texture::isCompiled(const osg::State& state) const
 void
 Texture::compileGLObjects(osg::State& state) const
 {
+    OE_PROFILING_ZONE;
+
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
     Texture::GCState& gc = get(state);
 
@@ -70,7 +72,7 @@ Texture::compileGLObjects(osg::State& state) const
     // how much space we need to allocate on the GPU:
     unsigned numMipLevelsToAllocate = numMipLevelsInMemory;
 
-    if (numMipLevelsInMemory <= 1)
+    if (numMipLevelsInMemory <= 1 && _mipmap == true)
     {
         numMipLevelsToAllocate = osg::Image::computeNumberOfMipmapLevels(
             _image->s(), _image->t(), _image->t());
@@ -78,9 +80,10 @@ Texture::compileGLObjects(osg::State& state) const
     
     GLenum pixelFormat = _image->getPixelFormat();
 
-    // trigger GPU compression if not already compressed
     GLenum internalFormat =
         _image->isCompressed() ? _image->getInternalTextureFormat() :
+        _internalFormat.isSet() ? _internalFormat.get() :
+        pixelFormat == GL_RED ? GL_R32F :
         pixelFormat == GL_RG ? GL_RG8 :
         pixelFormat == GL_RGB ? GL_RGB8 :
         GL_RGBA8;
@@ -90,7 +93,7 @@ Texture::compileGLObjects(osg::State& state) const
         if (pixelFormat == GL_RGB)
             internalFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
         else if (pixelFormat == GL_RGBA)
-            GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+            internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
     }
 
     // Blit our image to the GPU
@@ -98,8 +101,7 @@ Texture::compileGLObjects(osg::State& state) const
 
     if (target == GL_TEXTURE_2D_ARRAY)
     {
-        ext->glTexStorage3D(
-            target,
+        gc._gltexture->storage3D(
             numMipLevelsToAllocate,
             internalFormat,
             _image->s(),
@@ -108,21 +110,23 @@ Texture::compileGLObjects(osg::State& state) const
     }
     else
     {
-        ext->glTexStorage2D(
-            target,
+        gc._gltexture->storage2D(
             numMipLevelsToAllocate,
             internalFormat,
             _image->s(),
             _image->t() );
     }
 
-    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    GLint min_filter = _mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST;
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, min_filter);
     glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    GLint wrap_value = _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap_value);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap_value);
 
-    glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 4.0f);
+    float ma_value = _maxAnisotropy.getOrUse(4.0f);
+    glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, ma_value);
 
     // Force creation of the bindless handle - once you do this, you can
     // no longer change the texture parameters.
@@ -158,8 +162,7 @@ Texture::compileGLObjects(osg::State& state) const
 
                 if (compressed)
                 {
-                    ext->glCompressedTexSubImage3D(
-                        target, // GL_TEXTURE_2D_ARRAY
+                    gc._gltexture->compressedSubImage3D(
                         mipLevel,
                         0, 0, // xoffset, yoffset
                         r, // zoffset (array layer)
@@ -172,8 +175,7 @@ Texture::compileGLObjects(osg::State& state) const
                 }
                 else
                 {
-                    ext->glTexSubImage3D(
-                        target, // GL_TEXTURE_2D_ARRAY
+                    gc._gltexture->subImage3D(
                         mipLevel, // mip level
                         0, 0, // xoffset, yoffset
                         r, // zoffset (array layer)
@@ -192,8 +194,7 @@ Texture::compileGLObjects(osg::State& state) const
 
                 if (compressed)
                 {
-                    ext->glCompressedTexSubImage2D(
-                        target, // GL_TEXTURE_2D
+                    gc._gltexture->compressedSubImage2D(
                         mipLevel, // mip level
                         0, 0, // xoffset, yoffset
                         _image->s() >> mipLevel, // width at mipmap level i
@@ -204,8 +205,7 @@ Texture::compileGLObjects(osg::State& state) const
                 }
                 else
                 {
-                    glTexSubImage2D(
-                        target, // GL_TEXTURE_2D
+                    gc._gltexture->subImage2D(
                         mipLevel, // mip level
                         0, 0, // xoffset, yoffset
                         _image->s() >> mipLevel, // width at mipmap level i
@@ -220,6 +220,7 @@ Texture::compileGLObjects(osg::State& state) const
 
     if (numMipLevelsInMemory < numMipLevelsToAllocate)
     {
+        OE_PROFILING_ZONE_NAMED("glGenerateMipmap");
         ext->glGenerateMipmap(target);
     }
 }
@@ -239,6 +240,12 @@ Texture::makeResident(const osg::State& state, bool toggle) const
     }
 }
 
+bool
+Texture::isResident(const osg::State& state) const
+{
+    GCState& gc = get(state);
+    return (gc._gltexture != nullptr && gc._gltexture->isResident());
+}
 
 void
 Texture::resizeGLObjectBuffers(unsigned maxSize)
@@ -262,6 +269,9 @@ Texture::releaseGLObjects(osg::State* state) const
                 << "' name=" << gc._gltexture->name() 
                 << " handle=" << gc._gltexture->handle(*state) << std::endl;
 
+            //gc._gltexture->release();
+            gc._gltexture->makeResident(false);
+
             // will activate the releaser
             gc._gltexture = nullptr;
         }
@@ -284,7 +294,9 @@ Texture::releaseGLObjects(osg::State* state) const
 #define LC "[TextureArena] "
 
 
-TextureArena::TextureArena()
+TextureArena::TextureArena() :
+    _autoRelease(false),
+    _bindingPoint(5u)
 {
     // Keep this synchronous w.r.t. the render thread since we are
     // giong to be changing things on the fly
@@ -296,11 +308,59 @@ TextureArena::~TextureArena()
     releaseGLObjects(nullptr);
 }
 
-bool
+void
+TextureArena::setAutoRelease(bool value)
+{
+    _autoRelease = value;
+}
+
+void
+TextureArena::setBindingPoint(unsigned value)
+{
+    _bindingPoint = value;
+}
+
+int
+TextureArena::find(Texture::Ptr tex) const
+{
+    for (int i = 0; i < _textures.size(); ++i)
+        if (_textures[i] == tex)
+            return i;
+    return -1;
+}
+
+int
 TextureArena::add(Texture::Ptr tex)
 {
-    OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, false);
+    if (tex == nullptr)
+    {
+        OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, -1);
+    }
 
+    // if it's already there, we good
+    int index = find(tex);
+    if (index >= 0)
+        return index;
+
+    // find an open slot if one is available:
+    if (_autoRelease == true)
+    {
+        for (int i = 0; i < _textures.size(); ++i)
+        {
+            if (_textures[i].use_count() == 1)
+            {
+                index = i;
+                break;
+            }
+        }
+    }
+
+    if (index < 0)
+    {
+        index = _textures.size();
+    }
+
+    // load the image if necessary (TODO: background?)
     if (tex->_image.valid() == false)
     {
         // TODO support read options for caching
@@ -317,7 +377,8 @@ TextureArena::add(Texture::Ptr tex)
             {
                 // normalize the internal texture format
                 GLenum internalFormat =
-                    tex->_image->getPixelFormat() == GL_RED ? GL_R16F :
+                    tex->_internalFormat.isSet() ? tex->_internalFormat.get() :
+                    tex->_image->getPixelFormat() == GL_RED ? GL_R32F :
                     tex->_image->getPixelFormat() == GL_RG ? GL_RG8 :
                     tex->_image->getPixelFormat() == GL_RGB ? GL_RGB8 :
                     tex->_image->getPixelFormat() == GL_RGBA ? GL_RGBA8 :
@@ -339,13 +400,16 @@ TextureArena::add(Texture::Ptr tex)
                 _gc[i]._toAdd.push_back(tex);
         }
 
-        _textures.push_back(tex);
+        if (index < _textures.size())
+            _textures[index] = tex;
+        else
+            _textures.push_back(tex);
 
-        return true;
+        return index;
     }
     else
     {
-        return false;
+        return -1;
     }
 
     //TODO: consider issues like multiple GCs and "unref after apply"
@@ -403,6 +467,8 @@ TextureArena::apply(osg::State& state) const
     if (_textures.empty())
         return;
 
+    OE_PROFILING_ZONE;
+
     GCState& gc = _gc[state.getContextID()];
 
     // first time seeing this GC? Prime it by adding all textures!
@@ -413,9 +479,9 @@ TextureArena::apply(osg::State& state) const
         std::copy(_textures.begin(), _textures.end(), gc._toAdd.begin());
     }
 
+#ifdef USE_ICO
     osgUtil::IncrementalCompileOperation* ico = nullptr;
 
-#ifdef USE_ICO
     if (!gc._toAdd.empty())
     {
         const osg::Camera* camera = state.getGraphicsContext()->getCameras().front();
@@ -427,12 +493,16 @@ TextureArena::apply(osg::State& state) const
 
     // allocate textures and resident handles
 
-    TextureVector stillCompiling;
+    TextureVector waitingToCompile;
+
+    const unsigned max_to_compile_per_apply = ~0;
+    unsigned num_compiled_this_apply = 0;
 
     for(auto& tex : gc._toAdd)
     {
         if (!tex->isCompiled(state))
         {
+#ifdef USE_ICO
             if (ico)
             {
                 Texture::GCState& tex_gc = tex->get(state);
@@ -444,20 +514,32 @@ TextureArena::apply(osg::State& state) const
                     ico->add(tex_gc._compileSet.get());
                 }
 
-                stillCompiling.push_back(tex);
+                waitingToCompile.push_back(tex);
             }
             else
             {
                 tex->compileGLObjects(state);
                 gc._toActivate.push_back(tex);
             }
+#else
+            if (num_compiled_this_apply < max_to_compile_per_apply)
+            {
+                tex->compileGLObjects(state);
+                ++num_compiled_this_apply;
+                gc._toActivate.push_back(tex);
+            }
+            else
+            {
+                waitingToCompile.push_back(tex);
+            }
+#endif
         }
         else
         {
             gc._toActivate.push_back(tex);
         }
     }
-    gc._toAdd.swap(stillCompiling);
+    gc._toAdd.swap(waitingToCompile);
 
     // remove pending objects by swapping them out of memory
     for(auto& tex : gc._toDeactivate)
@@ -477,24 +559,21 @@ TextureArena::apply(osg::State& state) const
         gc._handleLUT._dirty = true;
     }
 
-#if 0
-    // Works, but re-visit so we don't need to call every frame
-    // and re-visit loading/unloading of textures from main memory..
-    for (auto& tex : _textures)
+    if (_autoRelease == true)
     {
-        if (tex.use_count() == 1)
+        for (auto& tex : _textures)
         {
-            tex->makeResident(state, false);
-        }
-        else
-        {
-            tex->makeResident(state, true);
+            if (tex.use_count() == 1)
+            {
+                // TODO: remove it from the area altogether
+                tex->makeResident(state, false);
+                tex->releaseGLObjects(&state);
+            }
         }
     }
-#endif
 
     // update the LUT if it needs more space:
-    gc._handleLUT.sync(_textures, state);
+    gc._handleLUT.sync(_textures, _bindingPoint, state);
 
     // bind to the layout index in the shader
     gc._handleLUT.bindLayout();
@@ -541,7 +620,10 @@ TextureArena::releaseGLObjects(osg::State* state) const
 }
 
 void
-TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
+TextureArena::HandleLUT::sync(
+    const TextureVector& textures,
+    unsigned bindingPoint,
+    osg::State& state)
 {
     _requiredSize = textures.size() * sizeof(GLuint64);
 
@@ -556,13 +638,7 @@ TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
             OE_DEBUG << "SSBO Alignment = " << _alignment.get() << std::endl;
         }
 
-        // TODO: fetch the binding
-        // for now, hard-code it
-        //ext->glGetProgramResourceIndex(...
-        if (_bindingIndex < 0)
-        {
-            _bindingIndex = 5; // TODO: query...?
-        }
+        _bindingIndex = bindingPoint;
 
         release();
 
@@ -579,7 +655,7 @@ TextureArena::HandleLUT::sync(const TextureVector& textures, osg::State& state)
 
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE TextureArena");
         _buffer->bind();
-        _buffer->allocateStorage(_allocatedSize, _buf, GL_DYNAMIC_STORAGE_BIT);
+        _buffer->bufferStorage(_allocatedSize, _buf, GL_DYNAMIC_STORAGE_BIT);
     }
 
     else if (_dirty)
@@ -627,7 +703,7 @@ TextureArena::HandleLUT::update()
     if (updateMe)
     {
         _buffer->bind();
-        _buffer->subData(0, _allocatedSize, _buf);
+        _buffer->bufferSubData(0, _allocatedSize, _buf);
         _dirty = false;
     }
     return updateMe;

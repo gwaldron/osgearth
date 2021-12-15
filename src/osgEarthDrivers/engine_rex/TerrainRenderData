@@ -28,6 +28,12 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace REX
 {
+    //! Lookup table of each layer's layerdrawable
+    using LayerDrawableTable = std::unordered_map<
+        const Layer*,
+        osg::ref_ptr<LayerDrawable>>;
+
+
     /**
      * Main data structure assembled by the TerrainCuller that contains
      * everything necessary to render one frame of the terrain.
@@ -35,11 +41,26 @@ namespace osgEarth { namespace REX
     class TerrainRenderData
     {
     public:
+        struct PersistentData
+        {
+            LayerDrawableTable _drawables;
+        };
+
         TerrainRenderData() :
-            _bindings(0L) { }
+            _bindings(nullptr),
+            _persistent(nullptr) 
+        {
+            //nop
+        }
 
         /** Set up the map layers before culling the terrain */
-        void setup(const Map* map, const RenderBindings& bindings, unsigned frameNum, osgUtil::CullVisitor* cv);
+        void reset(
+            const Map* map,
+            const RenderBindings& bindings,
+            unsigned frameNum,
+            PersistentData& pd,
+            bool useGL4Rendering,
+            osgUtil::CullVisitor* cv);
 
         /** Optimize for best state sharing (when using geometry pooling). Returns total tile count. */
         unsigned sortDrawCommands();
@@ -47,25 +68,23 @@ namespace osgEarth { namespace REX
         /** Add a Drawable for a layer. Add these in the order you wish to render them. */
         LayerDrawable* addLayerDrawable(const Layer*);
 
-        /** Layers to draw */
-        LayerDrawableList& layers() { return _layerList; }
-        const LayerDrawableList& layers() const { return _layerList; }
-
         /** Look up a LayerDrawable by its source layer UID. */
-        osg::ref_ptr<LayerDrawable>& layer(UID uid) { return _layerMap[uid]; }
+        LayerDrawable* layer(UID uid) { return _layersByUID[uid]; }
 
         // Draw state shared by all layers during one frame.
-        osg::ref_ptr<DrawState> _drawState;
+        DrawState::Ptr _drawState;
 
         // Layers of type RENDERTYPE_TERRAIN_PATCH
         PatchLayerVector& patchLayers() { return _patchLayers; }
-        
-    private:
 
-        LayerDrawableList     _layerList;
-        LayerDrawableMap      _layerMap;
+        // transient:
+        // ref_ptr's not necessary b/c of refs in _drawables above
+        std::unordered_map<UID, LayerDrawable*> _layersByUID;
+        std::vector<LayerDrawable*> _layerList;
         const RenderBindings* _bindings;
-        PatchLayerVector      _patchLayers;
+        PatchLayerVector _patchLayers; // Layers of type RENDERTYPE_TERRAIN_PATCH
+        bool _useGL4Rendering;
+        PersistentData* _persistent;
     };
 
 } } // namespace 

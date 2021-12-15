@@ -35,6 +35,8 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/Elevation>
 #include <osgEarth/LandCover>
+#include <osgEarth/CameraUtils>
+#include <osgEarth/ShaderFactory>
 
 #include <osg/Version>
 #include <osg/BlendFunc>
@@ -146,16 +148,11 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     _requireElevationTextures = true;
 
     // static shaders.
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        osg::StateSet* stateset = getOrCreateStateSet();
-        stateset->setName("RexTerrainEngineNode");
-        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setName("RexTerrainEngineNode");
-        vp->setIsAbstract(true);    // cannot run by itself, requires additional children
-        Shaders package;
-        package.load(vp, package.ENGINE_SDK);
-    }
+    osg::StateSet* stateset = getOrCreateStateSet();
+    stateset->setName("RexTerrainEngineNode");
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+    vp->setName("RexTerrainEngineNode");
+    vp->setIsAbstract(true);    // cannot run by itself, requires additional children
 
     _surfaceStateSet = new osg::StateSet();
     _surfaceStateSet->setName("Surface");
@@ -284,7 +281,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // A shared geometry pool.
     _geometryPool = new GeometryPool();
-    this->addChild( _geometryPool.get() );
+    this->addChild(_geometryPool.get());
 
     // Geometry compiler/merger
     _merger = new Merger();
@@ -299,18 +296,18 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     JobArena::setConcurrency(ARENA_LOAD_TILE, concurrency);
 
     // Make a tile unloader
-    _unloader = new UnloaderGroup( _liveTiles.get() );
+    _unloader = new UnloaderGroup(_liveTiles.get());
     _unloader->setFrameClock(&_clock);
     _unloader->setMaxAge(options().minExpiryTime().get());
     _unloader->setMaxTilesToUnloadPerFrame(options().maxTilesToUnloadPerFrame().get());
     _unloader->setMinimumRange(options().minExpiryRange().get());
-    this->addChild( _unloader.get() );
+    this->addChild(_unloader.get());
 
     // Initialize the core render bindings.
     setupRenderBindings();
 
     // install a layer callback for processing further map actions:
-    map->addMapCallback( new RexTerrainEngineNodeMapCallbackProxy(this) );
+    map->addMapCallback(new RexTerrainEngineNodeMapCallbackProxy(this));
 
     // Prime with existing layers:
     _batchUpdateInProgress = true;
@@ -345,7 +342,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         true); // restrict polar subdivision for geographic maps
 
     TerrainResources* res = getResources();
-    for(unsigned lod=0; lod<=maxLOD; ++lod)
+    for (unsigned lod = 0; lod <= maxLOD; ++lod)
         res->setVisibilityRangeHint(lod, _selectionInfo.getLOD(lod)._visibilityRange);
 
     // set up the initial graph
@@ -353,6 +350,60 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
+
+    // install a shader pre-processor
+    bool use_gl4 = (options().useGL4() == true);
+
+    Registry::instance()->getShaderFactory()->addPreProcessorCallback(
+        "RexTerrainEngineNode",
+        [use_gl4](std::string& source)
+        {
+            while (true)
+            {
+                const std::string token("#pragma vp_import_shared");
+                std::string::size_type statementPos = source.find(token);
+                if (statementPos == std::string::npos)
+                    break;
+
+                std::string::size_type startPos = source.find_first_not_of(" \t", statementPos + token.length());
+                if (startPos == std::string::npos)
+                    break;
+
+                std::string::size_type endPos = source.find('\n', startPos);
+                if (endPos == std::string::npos)
+                    break;
+
+                std::string statement(source.substr(statementPos, endPos - statementPos));
+                std::string value(trim(source.substr(startPos, endPos - startPos)));
+
+                std::vector<std::string> tokens;
+                StringTokenizer(value, tokens, ", \t", "", false, true);
+                if (tokens.size() != 2)
+                    continue;
+
+                std::ostringstream buf;
+
+                if (use_gl4)
+                {
+                    const std::string incGL4 = "#pragma include RexEngine.GL4.glsl";
+                    if (source.find(incGL4) == std::string::npos)
+                    {
+                        buf << incGL4 << "\n";
+                    }
+
+                    buf << "#define " << tokens[0] << " sampler2D(tex[tile[oe_tileID].sharedIndex])\n"
+                        << "#define " << tokens[1] << " tile[oe_tileID].sharedMat\n";
+                }
+                else
+                {
+                    buf << "uniform sampler2D " << tokens[0] << ";\n"
+                        << "uniform mat4 " << tokens[1] << ";\n";
+                }
+
+                Strings::replaceIn(source, statement, buf.str());
+            }
+        }
+    );
 }
 
 
@@ -644,11 +695,19 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
-    // Initialize a new culler
-    TerrainCuller culler(cv, this->getEngineContext());
+    // fetch the persistent data associated with this traversal.
+    _persistent.lock();
+    TerrainRenderData::PersistentData& pd = _persistent[nv.getNodePath()];
+    _persistent.unlock();
 
-    // Prepare the culler with the set of renderable layers:
-    culler.setup(getMap(), _cachedLayerExtents, this->getEngineContext()->getRenderBindings());
+    // Prepare the culler:
+    TerrainCuller culler;
+
+    culler.reset(
+        cv,
+        pd,
+        getEngineContext(),
+        _cachedLayerExtents);
 
     // Assemble the terrain drawables:
     _terrain->accept(culler);
@@ -656,7 +715,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     // If we're using geometry pooling, optimize the drawable for shared state
     // by sorting the draw commands.
     // TODO: benchmark this further to see whether it's worthwhile
-    unsigned totalTiles = 0L;
+    unsigned totalTiles = 0u;
     if (getEngineContext()->getGeometryPool()->isEnabled())
     {
         totalTiles = culler._terrain.sortDrawCommands();
@@ -673,12 +732,12 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     bool imageLayerStateSetPushed = false;
     int layersDrawn = 0;
 
-    for(osg::ref_ptr<LayerDrawable>& layerDrawable : culler._terrain.layers())
+    for(auto layerDrawable : culler._terrain._layerList)
     {
         // Note: Cannot save lastLayer here because its _tiles may be empty, which can lead to a crash later
         if (!layerDrawable->_tiles.empty())
         {
-            lastLayer = layerDrawable.get();
+            lastLayer = layerDrawable;
 
             // if this is a RENDERTYPE_TERRAIN_SURFACE, we need to activate either the
             // default surface state set or the image layer state set.
@@ -724,7 +783,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
             if (layerDrawable->_layer)
             {
-                layerDrawable->_layer->apply(layerDrawable.get(), cv);
+                layerDrawable->_layer->apply(layerDrawable, cv);
             }
             else
             {
@@ -734,9 +793,6 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
             ++layersDrawn;
         }
     }
-
-    // Uncomment this to see how many layers were drawn
-    //Registry::instance()->startActivity("Layers", Stringify()<<layersDrawn);
 
     // The last layer to render must clear up the OSG state,
     // otherwise it will be corrupt and can lead to crashing.
@@ -1013,7 +1069,7 @@ RexTerrainEngineNode::addLayer(Layer* layer)
         if (layer->isOpen() && layer->getEnabled())
         {
             if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
-                addTileLayer(layer);
+                addSurfaceLayer(layer);
             else if (dynamic_cast<ElevationLayer*>(layer) || dynamic_cast<TerrainConstraintLayer*>(layer))
                 addElevationLayer(layer);
         }
@@ -1023,11 +1079,11 @@ RexTerrainEngineNode::addLayer(Layer* layer)
 }
 
 void
-RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
+RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
 {
-    if ( tileLayer && tileLayer->isOpen() && tileLayer->getEnabled() )
+    if (layer && layer->isOpen() && layer->getEnabled() )
     {
-        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(tileLayer);
+        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
         if (imageLayer)
         {
             // for a shared layer, allocate a shared image unit if necessary.
@@ -1109,7 +1165,7 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             // Update the existing render models, and trigger a data reload.
             // Later we can limit the reload to an update of only the new data.
             std::vector<const Layer*> layers;
-            layers.push_back(tileLayer);
+            layers.push_back(layer);
             invalidateRegion(layers, GeoExtent::INVALID, 0u, INT_MAX);
         }
 
@@ -1123,6 +1179,25 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 {
     if ( layerRemoved )
     {
+        // release its layer drawable
+        //TODO - for each camera
+        _persistent.scoped_lock([&]() {
+            for (auto& e : _persistent)
+                e.second._drawables.erase(layerRemoved);
+            });
+
+             
+        //_cullers.forEach([&](TerrainCuller& culler) {
+        //    culler.removeLayer(layerRemoved);
+        //});
+
+        //_layerDrawables.scoped_lock([&]() {
+        //    for (auto& entry : _layerDrawables) {
+        //        if (entry.first.first == layerRemoved)
+        //            _layerDrawables.erase(entry.first);
+        //    }
+        //});
+
         // for a shared layer, release the shared image unit.
         if ( layerRemoved->isOpen() && layerRemoved->isShared() )
         {
@@ -1226,19 +1301,20 @@ RexTerrainEngineNode::updateState()
             new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
             osg::StateAttribute::ON);
 
-        Shaders package;
+        REXShaders& shaders = REXShadersFactory::get(options().useGL4().get());
 
         // Shaders that affect any terrain layer:
         VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
         terrainVP->setName("Rex Terrain");
-        package.load(terrainVP, package.ENGINE_VERT);
+        shaders.load(terrainVP, shaders.sdk());
+        shaders.load(terrainVP, shaders.vert());
 
         // Shaders that affect only terrain surface layers (RENDERTYPE_TERRAIN_SURFACE)
         VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
         surfaceVP->setName("Rex Surface");
 
         // Functions that affect the terrain surface only:
-        package.load(surfaceVP, package.ENGINE_ELEVATION);
+        shaders.load(surfaceVP, shaders.elevation());
 
         surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", options().color().get()));
         surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_altitude", (float)0.0f));
@@ -1246,8 +1322,7 @@ RexTerrainEngineNode::updateState()
 
         if (options().gpuTessellation() == true)
         {
-            package.load(surfaceVP, package.ENGINE_TESSELLATION);
-            //package.load(surfaceVP, package.ENGINE_GEOM);
+            shaders.load(surfaceVP, shaders.tessellation());
 
             // Default tess level
             surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_tess", 3.0f));
@@ -1259,16 +1334,32 @@ RexTerrainEngineNode::updateState()
 #endif
         }
 
+        // GL4 rendering?
+        if (options().useGL4() == true)
+        {
+            terrainVP->addGLSLExtension("GL_ARB_gpu_shader_int64");
+        }
+
         // Elevation?
         if (this->elevationTexturesRequired())
         {
             surfaceStateSet->setDefine("OE_TERRAIN_RENDER_ELEVATION");
+
+            float bias = getEngineContext()->getUseTextureBorder() ? 1.5 : 0.5;
+            float size = (float)ELEVATION_TILE_SIZE;
+
+            // Compute an elevation texture sampling scale/bias so we sample elevation data on center
+            // instead of on edge (as we do with color, etc.)
+            terrainStateSet->addUniform(new osg::Uniform(
+                "oe_tile_elevTexelCoeff",
+                osg::Vec2f((size - (2.0*bias)) / size, bias / size)));
+
         }
 
         // Normal mapping shaders:
         //if (this->normalTexturesRequired())
         {
-            package.load(surfaceVP, package.ENGINE_NORMAL_MAP);
+            shaders.load(surfaceVP, shaders.normal_map());
 
             if (this->normalTexturesRequired())
                 surfaceStateSet->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");
@@ -1290,7 +1381,7 @@ RexTerrainEngineNode::updateState()
             if ((options().morphTerrain() == true && _morphTerrainSupported == true) ||
                 options().morphImagery() == true)
             {
-                package.load(surfaceVP, package.ENGINE_MORPHING);
+                shaders.load(surfaceVP, shaders.morphing());
 
                 if ((options().morphTerrain() == true && _morphTerrainSupported == true))
                 {
@@ -1374,23 +1465,6 @@ RexTerrainEngineNode::updateState()
             }
         }
 
-#if 0
-        // Apply uniforms for sampler bindings:
-        OE_DEBUG << LC << "Render Bindings:\n";
-        osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
-        for (unsigned i = 0; i < _renderBindings.size(); ++i)
-        {
-            SamplerBinding& b = _renderBindings[i];
-            if (b.isActive())
-            {
-                osg::Uniform* u = new osg::Uniform(b.samplerName().c_str(), b.unit());
-                terrainStateSet->addUniform( u );
-                OE_DEBUG << LC << " > Bound \"" << b.samplerName() << "\" to unit " << b.unit() << "\n";
-                terrainStateSet->setTextureAttribute(b.unit(), tex.get());
-            }
-        }
-#endif
-
         // uniform that conveys the layer UID to the shaders; necessary
         // for per-layer branching (like color filters)
         // UID -1 => no image layer (no texture)
@@ -1408,10 +1482,9 @@ RexTerrainEngineNode::updateState()
             Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
 
         // For an image layer, attach the default fragment shader:
-        //_imageLayerStateSet = osg::clone(surfaceStateSet, osg::CopyOp::DEEP_COPY_ALL);
         _imageLayerStateSet = new osg::StateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(_imageLayerStateSet.get());
-        package.load(vp, package.ENGINE_IMAGELAYER);
+        shaders.load(vp, shaders.imagelayer());
 
         _stateUpdateRequired = false;
     }

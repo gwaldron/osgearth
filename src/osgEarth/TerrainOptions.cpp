@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TerrainOptions>
+#include <cstdlib> // for getenv
 
 using namespace osgEarth;
 
@@ -67,6 +68,7 @@ TerrainOptions::getConfig() const
     conf.set( "texture_compression", textureCompression());
     conf.set( "concurrency", concurrency());
     conf.set( "use_land_cover", useLandCover() );
+    conf.set( "gl4", useGL4());
 
     return conf;
 }
@@ -107,6 +109,10 @@ TerrainOptions::fromConfig(const Config& conf)
     textureCompression().setDefault("");
     concurrency().setDefault(4u);
     useLandCover().setDefault(true);
+    useGL4().setDefault(false);
+
+    if (::getenv("OSGEARTH_USE_GL4"))
+        useGL4().setDefault(true);
 
     conf.get( "tile_size", _tileSize );
     conf.get( "min_tile_range_factor", _minTileRangeFactor );   
@@ -146,6 +152,8 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "texture_compression", textureCompression());
     conf.get( "concurrency", concurrency());
     conf.get( "use_land_cover", useLandCover());
+    conf.get( "gl4", useGL4());
+    conf.get( "use_gl4", useGL4());
 
     // report on deprecated usage
     const std::string deprecated_keys[] = {
@@ -204,6 +212,7 @@ OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, MergesPerFrame, mergesPerFrame);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, float, PriorityScale, priorityScale);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, std::string, TextureCompressionMethod, textureCompression);
 OE_PROPERTY_IMPL(TerrainOptionsAPI, unsigned, Concurrency, concurrency);
+OE_PROPERTY_IMPL(TerrainOptionsAPI, bool, UseGL4, useGL4);
 
 void
 TerrainOptionsAPI::setDriver(const std::string& value)

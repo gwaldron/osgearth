@@ -66,7 +66,7 @@ namespace osgEarth { namespace REX
         // data on center rather than on edge) - We might be able to move
         // this to the Layer level as long as the elevation texture size
         // doesn't change
-        osg::Vec2f _elevTexelCoeff;
+        //osg::Vec2f _elevTexelCoeff;
 
         // Coefficient used for tile vertex morphing
         osg::Vec2f _morphConstants;
@@ -88,10 +88,6 @@ namespace osgEarth { namespace REX
         // Renders the tile.
         void draw(osg::RenderInfo& ri) const;
 
-        // Visits the tile (to state applied, nothing rendered) - useful when collecting
-        // tile data for a compute shader, e.g.
-        //void visit(osg::RenderInfo& ri) const;
-
         // Less than operator will ensure that tiles are sorted near to far
         // to minimze overdraw.
         bool operator < (const DrawTileCommand& rhs) const
@@ -101,11 +97,19 @@ namespace osgEarth { namespace REX
             return _geom < rhs._geom;
         }
 
+        bool operator == (const DrawTileCommand& rhs) const
+        {
+            return
+                _tile == rhs._tile &&
+                _tileRevision == rhs._tileRevision &&
+                *_modelViewMatrix == *rhs._modelViewMatrix;
+        }
+
         DrawTileCommand() :
             _sharedSamplers(0L),
             _colorSamplers(0L),
             _geom(0L),
-            _elevTexelCoeff(1.0f, 0.0f),
+            //_elevTexelCoeff(1.0f, 0.0f),
             _drawCallback(0L),
             _drawPatch(false),
             _range(0.0f),

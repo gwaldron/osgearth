@@ -7,7 +7,14 @@ set(TARGET_GLSL
     RexEngine.NormalMap.glsl
     RexEngine.Morphing.glsl
     RexEngine.Tessellation.glsl
-    RexEngine.SDK.glsl)
+    RexEngine.SDK.glsl
+    
+    RexEngine.vert.GL4.glsl
+    RexEngine.ImageLayer.GL4.glsl
+    RexEngine.NormalMap.GL4.glsl
+    RexEngine.Morphing.GL4.glsl
+    RexEngine.SDK.GL4.glsl
+    RexEngine.GL4.glsl)
 
 set(TARGET_IN
     Shaders.cpp.in)

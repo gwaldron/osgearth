@@ -23,6 +23,12 @@ using namespace osgEarth::REX;
 #undef  LC
 #define LC "[DrawState] "
 
+DrawState::Ptr
+DrawState::create()
+{
+    return std::make_shared<DrawState>();
+}
+
 void
 ProgramState::init(
     const osg::Program::PerContextProgram* pcp,
@@ -44,8 +50,7 @@ ProgramState::init(
     }
 
     // resolve all the other uniform locations:
-    _tileKeyUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_key"));
-    _elevTexelCoeffUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_elevTexelCoeff"));
+    _tileKeyUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_key_u"));
     _parentTextureExistsUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_texParentExists"));
     _layerUidUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_uid"));
     _layerOrderUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_order"));
@@ -58,7 +63,7 @@ ProgramState::init(
 void
 ProgramState::reset()
 {
-    _elevTexelCoeff.clear();
+    //_elevTexelCoeff.clear();
     _morphConstants.clear();
     _parentTextureExists.clear();
     _layerOrder.clear();

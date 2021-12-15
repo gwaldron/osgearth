@@ -23,6 +23,9 @@
 #include "DrawState"
 
 #include <osgEarth/ImageLayer>
+#include <osgEarth/GLUtils>
+#include <osgEarth/TextureArena>
+
 #include <vector>
 
 using namespace osgEarth;
@@ -72,11 +75,14 @@ namespace osgEarth { namespace REX
         bool _clearOsgState;
 
         // Reference the terrain-wide state
-        osg::ref_ptr<DrawState> _drawState;
+        DrawState::Ptr _drawState;
 
         // Whether to render this layer.
         bool _draw;
-        
+
+        // Whether to use indirect rendering, which requires GL 4.6.
+        bool _useIndirectRendering;
+
 
     public: // osg::Drawable
         
@@ -91,14 +97,93 @@ namespace osgEarth { namespace REX
         void accept(osg::PrimitiveIndexFunctor&) const override;
 
     protected:
+
         // overriden to prevent OSG from releasing GL objects on an attached stateset.
         virtual ~LayerDrawable();
+
+    private:
+
+        // **** GL4 rendering support ****
+
+        // SSBO data elements
+        // must align to 16 bytes
+        // maps directly into an SSBO, so don't cross the vec4 streams
+        #define NUM_VERTS 417
+
+        // data shared across all tiles
+        struct GlobalBuffer
+        {
+            float uvs[NUM_VERTS * 4];
+            float padding[2];
+            float morphConstants[2 * 19]; //TODO
+            float padding2[2];
+        };
+
+        struct TileBuffer
+        {
+            float verts[NUM_VERTS * 4];
+            float upvectors[NUM_VERTS * 4];
+            float tileKey[4];
+            float modelViewMatrix[4 * 4];
+            float colorMat[4 * 4];
+            float elevMat[4 * 4];
+            float normalMat[4 * 4];
+            float parentMat[4 * 4];
+            float landcoverMat[4 * 4];
+            float sharedMat[4 * 4];
+            int colorIndex;
+            int elevIndex;
+            int normalIndex;
+            int parentIndex;
+            int landcoverIndex;
+            int sharedIndex;
+            int drawOrder; // todo: stuff this somewhere else
+            float padding[1];
+
+            TileBuffer() :
+                colorIndex(-1),
+                elevIndex(-1),
+                normalIndex(-1),
+                parentIndex(-1),
+                landcoverIndex(-1),
+                sharedIndex(-1) { }
+        };
+
+        // Things maintained on a per-graphics-context basis
+        struct GCState
+        {
+            GLuint vao;
+            GLBuffer::Ptr vbo;
+            GLBuffer::Ptr ebo;
+            GLBuffer::Ptr global;
+            GLBuffer::Ptr tiles;
+            GLBuffer::Ptr commands;
+        };
+
+        struct RenderState
+        {
+            RenderState() {
+                gcState.resize(64);
+            }
+            std::vector<TileBuffer> tilebuf;
+            std::vector<DrawElementsIndirectCommand> commands;
+            osg::buffered_object<GCState> gcState;
+            DrawTileCommands _previous_tiles;
+        };
+        mutable RenderState _rs;
+
+        // todo: move higher and share?
+        mutable osg::ref_ptr<TextureArena> _textures;
+
+        void drawImplementationDirect(osg::RenderInfo& ri) const;
+
+        void drawImplementationIndirect(osg::RenderInfo& ri) const;
     };
 
 
     // Straight list of LayerDrawables.
-    typedef std::vector< osg::ref_ptr<LayerDrawable> > LayerDrawableList;
-    typedef std::map<UID, osg::ref_ptr<LayerDrawable> > LayerDrawableMap;
+    using LayerDrawableList = std::vector<osg::ref_ptr<LayerDrawable>>;
+    using LayerDrawableMap = std::unordered_map<UID, osg::ref_ptr<LayerDrawable>>;
 
 } } // namespace 
 

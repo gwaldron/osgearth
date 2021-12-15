@@ -4,7 +4,7 @@
 
 using namespace osgEarth::REX;
 
-Shaders::Shaders()
+ShadersGL3::ShadersGL3()
 {
     ENGINE_VERT = "RexEngine.vert.glsl";
     _sources[ENGINE_VERT] = @RexEngine.vert.glsl@;
@@ -30,3 +30,33 @@ Shaders::Shaders()
     ENGINE_SDK = "RexEngine.SDK.glsl";
     _sources[ENGINE_SDK] = @RexEngine.SDK.glsl@;
 }
+
+ShadersGL4::ShadersGL4()
+{
+    ENGINE_VERT = "RexEngine.vert.GL4.glsl";
+    _sources[ENGINE_VERT] = @RexEngine.vert.GL4.glsl@;
+
+	ENGINE_ELEVATION = "RexEngine.elevation.glsl";
+    _sources[ENGINE_ELEVATION] = @RexEngine.elevation.glsl@;
+
+    ENGINE_MORPHING = "RexEngine.Morphing.GL4.glsl";
+    _sources[ENGINE_MORPHING] = @RexEngine.Morphing.GL4.glsl@;
+
+    ENGINE_IMAGELAYER = "RexEngine.ImageLayer.GL4.glsl";
+    _sources[ENGINE_IMAGELAYER] = @RexEngine.ImageLayer.GL4.glsl@;
+
+    ENGINE_NORMAL_MAP = "RexEngine.NormalMap.GL4.glsl";
+    _sources[ENGINE_NORMAL_MAP] = @RexEngine.NormalMap.GL4.glsl@;
+
+    ENGINE_TESSELLATION = "RexEngine.Tessellation.glsl";
+    _sources[ENGINE_TESSELLATION] = @RexEngine.Tessellation.glsl@;
+
+    ENGINE_SDK = "RexEngine.SDK.GL4.glsl";
+    _sources[ENGINE_SDK] = @RexEngine.SDK.GL4.glsl@;
+
+    ENGINE_TYPES = "RexEngine.GL4.glsl";
+    _sources[ENGINE_TYPES] = @RexEngine.GL4.glsl@;
+}
+
+ShadersGL3 REXShadersFactory::s_gl3;
+ShadersGL4 REXShadersFactory::s_gl4;

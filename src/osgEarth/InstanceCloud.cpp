@@ -70,7 +70,7 @@ InstanceCloud::CommandBuffer::allocate(
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC DrawCommands");
 
         _buffer->bind();
-        _buffer->allocateStorage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+        _buffer->bufferStorage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     }
 }
 
@@ -88,7 +88,7 @@ InstanceCloud::CommandBuffer::reset()
         }
 
         _buffer->bind();
-        _buffer->subData(0, _requiredSize, _buf);
+        _buffer->bufferSubData(0, _requiredSize, _buf);
     }
 }
 
@@ -110,7 +110,7 @@ InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::S
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC TileBuffer");
         
         _buffer->bind();
-        _buffer->allocateStorage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+        _buffer->bufferStorage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     }
 }
 
@@ -121,7 +121,7 @@ InstanceCloud::TileBuffer::update() const
     if (_requiredSize > 0)
     {
         _buffer->bind();
-        _buffer->subData(0, _requiredSize, _buf);
+        _buffer->bufferSubData(0, _requiredSize, _buf);
     }
 }
 
@@ -143,7 +143,7 @@ InstanceCloud::CullBuffer::allocate(unsigned numInstances, GLsizei alignment, os
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC CullBuffer");
 
         _buffer->bind();
-        _buffer->allocateStorage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+        _buffer->bufferStorage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
     }
 }
 
@@ -160,7 +160,7 @@ InstanceCloud::CullBuffer::clear()
     _buf->_padding[0] = 0;
 
     _buffer->bind();
-    _buffer->subData(0, sizeof(Data), _buf);
+    _buffer->bufferSubData(0, sizeof(Data), _buf);
 }
 
 void
@@ -181,7 +181,7 @@ InstanceCloud::InstanceBuffer::allocate(unsigned numTiles, unsigned numInstances
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC GenBuffer");
 
         _buffer->bind();
-        _buffer->allocateStorage(_allocatedSize, nullptr, 0);
+        _buffer->bufferStorage(_allocatedSize, nullptr, 0);
     }
 }
 
@@ -200,7 +200,7 @@ InstanceCloud::RenderBuffer::allocate(unsigned numInstances, GLsizei alignment, 
         _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC RenderBuffer");
 
         _buffer->bind();
-        _buffer->allocateStorage(_allocatedSize, nullptr, 0);
+        _buffer->bufferStorage(_allocatedSize, nullptr, 0);
     }
 }
 

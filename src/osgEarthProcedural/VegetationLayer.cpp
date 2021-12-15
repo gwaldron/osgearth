@@ -949,7 +949,7 @@ VegetationLayer::Renderer::Renderer(VegetationLayer* layer)
 
     // create uniform IDs for each of our uniforms
     //_isMSUName = osg::Uniform::getNameID("oe_veg_isMultisampled");
-    _computeDataUName = osg::Uniform::getNameID("oe_tile");
+    _computeDataUName = osg::Uniform::getNameID("veg_tiledata");
     _maxRangeUName = osg::Uniform::getNameID("oe_veg_maxRange");
 
     _blending = new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
@@ -1085,7 +1085,7 @@ VegetationLayer::Renderer::getUniforms(
     if (!pcp) return nullptr;
     PCPUniforms& u = _uniforms[pcp];
     if (u._generateDataUL < 0)
-        u._generateDataUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile"));
+        u._generateDataUL = pcp->getUniformLocation(osg::Uniform::getNameID("veg_tiledata"));
     if (u._maxRangeUL < 0)
         u._maxRangeUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_veg_maxRange"));
     return &u;

@@ -64,7 +64,11 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
-                    ImGui::Text("Memory: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
+                    ImGui::Text("Mem PB: %u MB", (Memory::getProcessPrivateUsage() / 1048576U));
+                    ImGui::SameLine();
+                    ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
+                    ImGui::SameLine();
+                    ImGui::Text("  GL: %u MB", GLObjectReleaser::totalBytes(*ri.getState()) / 1048576U);
                     ImGui::Separator();
 
                     ImGui::Text("Job Activity:");

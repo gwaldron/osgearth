@@ -20,26 +20,47 @@
 #include "TileNode"
 #include "SurfaceNode"
 #include "SelectionInfo"
+
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/Shadowing>
+#include <osgEarth/CameraUtils>
 
 #define LC "[TerrainCuller] "
 
 using namespace osgEarth::REX;
 
 
-TerrainCuller::TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context) :
-_camera(0L),
-_currentTileNode(0L),
-_orphanedPassesDetected(0u),
-_cv(cullVisitor),
-_context(context),
-_layerExtents(nullptr)
+TerrainCuller::TerrainCuller() :
+    _lastTimeVisited(DBL_MAX)
 {
     setVisitorType(CULL_VISITOR);
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
-    setCullingMode(cullVisitor->getCullingMode());
+}
 
+void
+TerrainCuller::reset(
+    osgUtil::CullVisitor* parent_cullVisitor,
+    TerrainRenderData::PersistentData& pd,
+    EngineContext* context,
+    LayerExtentMap& layerExtents)
+{
+    _cv = parent_cullVisitor;
+    _context = context;
+    _camera = _cv->getCurrentCamera();
+    _currentTileNode = nullptr;
+    _firstDrawCommandForTile = nullptr;
+    _orphanedPassesDetected = 0u;
+    _layerExtents = &layerExtents;
+    bool temp;
+    _isSpy = _cv->getUserValue("osgEarth.Spy", temp);
+    _patchLayers.clear();
+    _lastTimeVisited = osg::Timer::instance()->tick();
+
+    // skip surface nodes is this is a shadow camera and shadowing is disabled.
+    _acceptSurfaceNodes =
+        CameraUtils::isShadowCamera(_cv->getCurrentCamera()) == false ||
+        context->options().castShadows() == true;
+
+    setCullingMode(_cv->getCullingMode());
     setFrameStamp(new osg::FrameStamp(*_cv->getFrameStamp()));
     setDatabaseRequestHandler(_cv->getDatabaseRequestHandler());
     pushReferenceViewPoint(_cv->getReferenceViewPoint());
@@ -48,22 +69,16 @@ _layerExtents(nullptr)
     pushModelViewMatrix(_cv->getModelViewMatrix(), _cv->getCurrentCamera()->getReferenceFrame());
     setLODScale(_cv->getLODScale());
     setUserDataContainer(_cv->getUserDataContainer());
-    _camera = _cv->getCurrentCamera();
-    bool temp;
-    _isSpy = cullVisitor->getUserValue("osgEarth.Spy", temp);
 
-    // skip surface nodes is this is a shadow camera and shadowing is disabled.
-    _acceptSurfaceNodes =
-        osgEarth::Util::Shadowing::isShadowCamera(_cv->getCurrentCamera()) == false ||
-        context->options().castShadows() == true;
-}
-
-void
-TerrainCuller::setup(const Map* map, LayerExtentMap& layerExtents, const RenderBindings& bindings)
-{
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
-    _layerExtents = &layerExtents;
-    _terrain.setup(map, bindings, frameNum, _cv);
+
+    _terrain.reset(
+        context->getMap().get(),
+        context->getRenderBindings(),
+        frameNum,
+        pd,
+        context->options().useGL4().get(),
+        _cv);
 }
 
 float
@@ -92,8 +107,8 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
     }
 
     // add a new Draw command to the appropriate layer
-    osg::ref_ptr<LayerDrawable> drawable = _terrain.layer(uid);
-    if (drawable.valid())
+    LayerDrawable* drawable = _terrain.layer(uid);
+    if (drawable)
     {
         // Layer marked for drawing?
         if (drawable->_draw)
@@ -113,26 +128,25 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
                 }            
             }
 
-            drawable->_tiles.push_back(DrawTileCommand());
-            DrawTileCommand* tile = &drawable->_tiles.back();
+            DrawTileCommand tile;
 
             // install everything we need in the Draw Command:
-            tile->_colorSamplers = pass ? &(pass->samplers()) : 0L;
-            tile->_sharedSamplers = &model->_sharedSamplers;
-            tile->_modelViewMatrix = _cv->getModelViewMatrix();
-            tile->_keyValue = tileNode->getTileKeyValue();
-            tile->_geom = surface->getDrawable()->_geom.get();
-            tile->_tile = surface->getDrawable();
-            //tile->_provider = surface->getDrawable();
-            tile->_morphConstants = tileNode->getMorphConstants();
-            tile->_key = &tileNode->getKey();
-            tile->_tileRevision = tileNode->getRevision();
+            tile._colorSamplers = pass ? &(pass->samplers()) : 0L;
+            tile._sharedSamplers = &model->_sharedSamplers;
+            tile._modelViewMatrix = _cv->getModelViewMatrix();
+            tile._keyValue = tileNode->getTileKeyValue();
+            tile._geom = surface->getDrawable()->_geom.get();
+            tile._tile = surface->getDrawable();
+            tile._morphConstants = tileNode->getMorphConstants();
+            tile._key = &tileNode->getKey();
+            tile._tileRevision = tileNode->getRevision();
 
             osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
-            tile->_range = getDistanceToViewPoint(c, true);
+            tile._range = getDistanceToViewPoint(c, true);
 
-            tile->_layerOrder = drawable->_drawOrder;
+            tile._layerOrder = drawable->_drawOrder;
 
+#if 0
             const osg::Image* elevRaster = tileNode->getElevationRaster();
             if (elevRaster)
             {
@@ -148,10 +162,12 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
                 // But, since we also have a 1-texel border, we need to further reduce the scale by 2 texels to
                 // remove the border, and shift an extra texel over as well. Giving us this:
                 float size = (float)elevRaster->s();
-                tile->_elevTexelCoeff.set((size - (2.0*bias)) / size, bias / size);
+                tile._elevTexelCoeff.set((size - (2.0*bias)) / size, bias / size);
             }
+#endif
 
-            return tile;
+            drawable->_tiles.emplace_back(std::move(tile));
+            return &drawable->_tiles.back();
         }
     }
     else if (pass)
@@ -166,7 +182,7 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
         OE_WARN << "Added nothing for a UID -1 darw command" << std::endl;
     }
     
-    return 0L;
+    return nullptr;
 }
 
 void

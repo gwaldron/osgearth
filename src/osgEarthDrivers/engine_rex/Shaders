@@ -21,9 +21,22 @@
 
 namespace osgEarth { namespace REX
 {
-    struct Shaders : public osgEarth::Util::ShaderPackage
-	{
-        Shaders();
+    struct REXShaders : public osgEarth::Util::ShaderPackage
+    {
+        virtual std::string vert() = 0;
+        virtual std::string elevation() = 0;
+        virtual std::string geom() = 0;
+        virtual std::string tessellation() = 0;
+        virtual std::string normal_map() = 0;
+        virtual std::string morphing() = 0;
+        virtual std::string imagelayer() = 0;
+        virtual std::string sdk() = 0;
+        virtual std::string types() = 0;
+    };
+
+    struct ShadersGL3 : public REXShaders
+    {
+        ShadersGL3();
 
         std::string
             ENGINE_VERT,
@@ -34,6 +47,49 @@ namespace osgEarth { namespace REX
             ENGINE_MORPHING,
             ENGINE_IMAGELAYER,
             ENGINE_SDK;
-	};
+
+        virtual std::string vert() { return ENGINE_VERT; }
+        virtual std::string elevation() { return ENGINE_ELEVATION; }
+        virtual std::string geom() { return ENGINE_GEOM; }
+        virtual std::string tessellation() { return ENGINE_TESSELLATION; }
+        virtual std::string normal_map() { return ENGINE_NORMAL_MAP; }
+        virtual std::string morphing() { return ENGINE_MORPHING; }
+        virtual std::string imagelayer() { return ENGINE_IMAGELAYER; }
+        virtual std::string sdk() { return ENGINE_SDK; }
+        virtual std::string types() { return ""; }
+    };
+
+    struct ShadersGL4 : public REXShaders
+    {
+        ShadersGL4();
+
+        std::string
+            ENGINE_VERT,
+            ENGINE_ELEVATION,
+            ENGINE_GEOM,
+            ENGINE_TESSELLATION,
+            ENGINE_NORMAL_MAP,
+            ENGINE_MORPHING,
+            ENGINE_IMAGELAYER,
+            ENGINE_SDK,
+            ENGINE_TYPES;
+
+        virtual std::string vert() { return ENGINE_VERT; }
+        virtual std::string elevation() { return ENGINE_ELEVATION; }
+        virtual std::string geom() { return ENGINE_GEOM; }
+        virtual std::string tessellation() { return ENGINE_TESSELLATION; }
+        virtual std::string normal_map() { return ENGINE_NORMAL_MAP; }
+        virtual std::string morphing() { return ENGINE_MORPHING; }
+        virtual std::string imagelayer() { return ENGINE_IMAGELAYER; }
+        virtual std::string sdk() { return ENGINE_SDK; }
+        virtual std::string types() { return ENGINE_TYPES; }
+    };
+
+    struct REXShadersFactory
+    {
+        static ShadersGL3 s_gl3;
+        static ShadersGL4 s_gl4;
+        static REXShaders& get(bool use_gl4) { return use_gl4 ? (REXShaders&)s_gl4 : (REXShaders&)s_gl3; }
+    };
 	
 } } // namespace osgEarth::REX

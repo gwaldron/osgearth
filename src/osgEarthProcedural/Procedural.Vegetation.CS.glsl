@@ -1,7 +1,8 @@
 #version 430
+#pragma include Procedural.Vegetation.Types.glsl
+
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 
-#pragma include Procedural.Vegetation.Types.glsl
 
 uniform sampler2D oe_veg_noiseTex;
 #define NOISE_SMOOTH   0
@@ -10,7 +11,7 @@ uniform sampler2D oe_veg_noiseTex;
 #define NOISE_CLUMPY   3
 
 // (LLx, LLy, URx, URy, tileNum)
-uniform float oe_tile[5];
+uniform float veg_tiledata[5];
 
 uniform vec2 oe_tile_elevTexelCoeff;
 uniform sampler2D oe_tile_elevationTex;
@@ -102,7 +103,7 @@ void generate()
     const uint x = gl_GlobalInvocationID.x;
     const uint y = gl_GlobalInvocationID.y;
 
-    int tileNum = int(oe_tile[4]);
+    int tileNum = int(veg_tiledata[4]);
 
     uint local_i = 
         y * gl_NumWorkGroups.x + x;
@@ -176,8 +177,8 @@ void generate()
     // It's a keeper - record it to the instance buffer.
     instance[i].tileNum = tileNum; // need this for merge
 
-    vec2 LL = vec2(oe_tile[0], oe_tile[1]);
-    vec2 UR = vec2(oe_tile[2], oe_tile[3]);
+    vec2 LL = vec2(veg_tiledata[0], veg_tiledata[1]);
+    vec2 UR = vec2(veg_tiledata[2], veg_tiledata[3]);
 
     vec4 vertex_model = vec4(mix(LL, UR, tilec), getElevation(tilec), 1.0);
 

@@ -333,7 +333,9 @@ GLObject::GLObject(osg::State& state, const std::string& label) :
 GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
     GLObject(state, label),
     _target(target),
-    _name(~0U)
+    _name(~0U),
+    _size(0),
+    _layoutIndex(0u)
 {
     ext()->glGenBuffers(1, &_name);
     if (_name != ~0U)
@@ -369,15 +371,29 @@ GLBuffer::bind(GLenum otherTarget) const
 }
 
 void
-GLBuffer::allocateStorage(GLintptr size, GLvoid* data, GLbitfield flags) const
+GLBuffer::bufferData(GLintptr size, GLvoid* data, GLbitfield flags) const
 {
-    ext()->glBufferStorage(_target, size, data, flags);
+    ext()->glBufferData(_target, size, data, flags);
+    _size = size;
 }
 
 void
-GLBuffer::subData(GLintptr offset, GLsizeiptr size, GLvoid* data) const
+GLBuffer::bufferStorage(GLintptr size, GLvoid* data, GLbitfield flags) const
+{
+    ext()->glBufferStorage(_target, size, data, flags);
+    _size = size;
+}
+
+void
+GLBuffer::bufferSubData(GLintptr offset, GLsizeiptr size, GLvoid* data) const
 {
     ext()->glBufferSubData(_target, offset, size, data);
+}
+
+void
+GLBuffer::bindBufferBase(GLuint index) const
+{
+    ext()->glBindBufferBase(target(), index, name());
 }
 
 void
@@ -389,6 +405,7 @@ GLBuffer::release()
         //OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
         ext()->glDeleteBuffers(1, &_name);
         _name = ~0U;
+        _size = 0;
     }
 }
 
@@ -481,6 +498,48 @@ GLTexture::release()
     }
 }
 
+void
+GLTexture::storage2D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t)
+{
+    ext()->glTexStorage2D(_target, mipLevels, internalFormat, s, t);
+
+    osg::Texture::TextureProfile p(_target, mipLevels, internalFormat, s, t, 1, 0);
+    _size = p._size;
+}
+
+void
+GLTexture::storage3D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r)
+{
+    ext()->glTexStorage3D(_target, mipLevels, internalFormat, s, t, r);
+
+    osg::Texture::TextureProfile p(_target, mipLevels, internalFormat, s, t, r, 0);
+    _size = p._size;
+
+}
+
+void
+GLTexture::subImage2D(GLint level, GLint xoff, GLint yoff, GLsizei width, GLsizei height, GLenum format, GLenum type, const void* pixels) const
+{
+    glTexSubImage2D(_target, level, xoff, yoff, width, height, format, type, pixels);
+}
+
+void
+GLTexture::subImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void* pixels) const
+{
+    ext()->glTexSubImage3D(_target, level, xoff, yoff, zoff, width, height, depth, format, type, pixels);
+}
+
+void
+GLTexture::compressedSubImage2D(GLint level, GLint xoff, GLint yoff, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const void* data) const
+{
+    ext()->glCompressedTexSubImage2D(_target, level, xoff, yoff, width, height, format, imageSize, data);
+}
+
+void
+GLTexture::compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void* data) const
+{
+    ext()->glCompressedTexSubImage3D(_target, level, xoff, yoff, zoff, width, height, depth, format, imageSize, data);
+}
 
 SSBO::SSBO() :
     _allocatedSize(0),
@@ -501,7 +560,7 @@ SSBO::bindLayout() const
 {
     if (_buffer != nullptr && _bindingIndex >= 0)
     {
-        _buffer->ext()->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bindingIndex, _buffer->name());
+        _buffer->bindBufferBase(_bindingIndex);
     }
 }
 
@@ -526,6 +585,7 @@ GLObjectReleaser::watch(GLObject::Ptr object, osg::State& state_unused)
             ScopedMutexLock lock(rel->_mutex);
             rel->_objects.insert(object);
             OE_DEVEL << LC << "Added \"" << object->label() << "\"" << std::endl;
+            //OE_INFO << LC << "Watching " << rel->_objects.size() << std::endl;
         }
     }
 }
@@ -548,6 +608,13 @@ GLObjectReleaser::releaseAll(osg::State& state)
     }
 }
 
+GLsizei
+GLObjectReleaser::totalBytes(osg::State& state)
+{
+    GLObjectReleaser* rel = osg::get<GLObjectReleaser>(state.getContextID());
+    return rel ? rel->_totalBytes : 0;
+}
+
 void
 GLObjectReleaser::flushDeletedGLObjects(double currentTime, double& availableTime)
 {
@@ -561,7 +628,9 @@ GLObjectReleaser::flushAllDeletedGLObjects()
     ScopedMutexLock lock(_mutex);
 
     // OSG calls this method periodically
-    std::unordered_set<std::shared_ptr<GLObject>> temp;
+    std::unordered_set<std::shared_ptr<GLObject>> keep;
+
+    GLsizei bytes = 0;
 
     for (auto& object : _objects)
     {
@@ -572,11 +641,13 @@ GLObjectReleaser::flushAllDeletedGLObjects()
         }
         else
         {
-            temp.insert(object);
+            keep.insert(object);
+            bytes += object->size();
         }
     }
 
-    _objects.swap(temp);
+    _objects.swap(keep);
+    _totalBytes = bytes;
 }
 
 void
@@ -1010,6 +1081,7 @@ GLFunctions::get(unsigned contextID)
     {
         osg::setGLExtensionFuncPtr(f.glBufferStorage, "glBufferStorage", "glBufferStorageARB");
         osg::setGLExtensionFuncPtr(f.glClearBufferSubData, "glClearBufferSubData", "glClearBufferSubDataARB");
+        osg::setGLExtensionFuncPtr(f.glDrawElementsIndirect, "glDrawElementsIndirect", "glDrawElementsIndirectARB");
         osg::setGLExtensionFuncPtr(f.glMultiDrawElementsIndirect, "glMultiDrawElementsIndirect", "glMultiDrawElementsIndirectARB");
         osg::setGLExtensionFuncPtr(f.glDispatchComputeIndirect, "glDispatchComputeIndirect", "glDispatchComputeIndirectARB");
         osg::setGLExtensionFuncPtr(f.glTexStorage3D, "glTexStorage3D", "glTexStorage3DARB");

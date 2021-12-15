@@ -1,11 +1,9 @@
 #version 460
-$GLSL_DEFAULT_PRECISION_FLOAT
+#pragma include Procedural.Vegetation.Types.glsl
 
 #pragma vp_name       Grass VS MODEL
 #pragma vp_entryPoint oe_Grass_VS_MODEL
 #pragma vp_location   vertex_model
-
-#pragma include Procedural.Vegetation.Types.glsl
 
 vec3 vp_Normal;
 vec4 vp_Color;

@@ -1,39 +1,27 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
+#version 460
+#pragma include RexEngine.GL4.glsl
 #pragma vp_name REX Engine - Init Model Space
 #pragma vp_function oe_rex_init_model, vertex_model, first
 
 // uniforms
 uniform vec4 oe_terrain_color;
-uniform vec4 oe_tile_key_u;
 
 // outputs
 out vec4 vp_Color;
-out vec4 oe_layer_tilec;
-out vec4 oe_terrain_tessLevel;
 out float oe_rex_morphFactor;
-flat out int oe_terrain_vertexMarker;
-
-// stage globals
-vec4 oe_tile_key;
+out vec4 oe_terrain_tessLevel;
 
 void oe_rex_init_model(inout vec4 vertexModel)
 {
-    // Texture coordinate for the tile (always 0..1)
-    oe_layer_tilec = gl_MultiTexCoord0;
-
-    // Extract the vertex type marker
-    oe_terrain_vertexMarker = int(oe_layer_tilec.z);
+    // instance ID from the DrawElementsIndirect cmd
+    // if we go with MDEI, change this to gl_DrawID
+    oe_tileID = gl_InstanceID;
 
     // Color of the underlying map geometry (untextured)
     vp_Color = oe_terrain_color;
 
     // initialize:
     oe_rex_morphFactor = 0.0;
-
-    // tile key
-    oe_tile_key = oe_tile_key_u;
     
     // Default tessellation level (where applicable)
     oe_terrain_tessLevel = vec4(1);
@@ -41,16 +29,40 @@ void oe_rex_init_model(inout vec4 vertexModel)
 
 
 [break]
-#version $GLSL_VERSION_STR
+
+#version 460
+#pragma include RexEngine.GL4.glsl
 #pragma vp_name REX Engine - Init View Space
 #pragma vp_function oe_rex_init_view, vertex_view, first
 
 // outputs
-vec3 vp_Normal;
+out vec4 oe_layer_tilec;
+out vec3 vp_Normal;
 out vec3 oe_UpVectorView;
+flat out int oe_terrain_vertexMarker;
+
+// stage globals
+vec4 oe_tile_key;
 
 void oe_rex_init_view(inout vec4 vert_view)
 {
+    // extract vertex and its marker (in w)
+    vec4 vdata = tile[oe_tileID].verts[gl_VertexID];
+    mat4 mvm = tile[oe_tileID].modelViewMatrix;
+    vert_view =  mvm * vec4(vdata.xyz, 1);
+
+    // assign vertex marker flags
+    oe_terrain_vertexMarker = int(vdata.w);
+
+    // extract normal
+    vp_Normal = mat3(mvm) * tile[oe_tileID].normals[gl_VertexID].xyz;
+
+    // extract tile UV (global data)
+    oe_layer_tilec = vec4(global.uvs[gl_VertexID], 0, 1);
+
+    // the tile key
+    oe_tile_key = tile[oe_tileID].tileKey;
+
     // "up" vector at this vertex in view space, which we will later
     // need in order to elevate the terrain. vp_Normal can change later
     // but UpVectorView will stay the same.

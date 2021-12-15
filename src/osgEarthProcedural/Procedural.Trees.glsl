@@ -1,10 +1,9 @@
 #version 460
+#pragma include Procedural.Vegetation.Types.glsl
 
 #pragma vp_name       GroundCover VS MODEL
 #pragma vp_entryPoint oe_GroundCover_VS_MODEL
 #pragma vp_location   vertex_model
-
-#pragma include Procedural.Vegetation.Types.glsl
 
 vec3 vp_Normal;
 vec4 vp_Color;

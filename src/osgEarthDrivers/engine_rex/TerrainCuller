@@ -48,24 +48,29 @@ namespace osgEarth { namespace REX
     class TerrainCuller : public osg::NodeVisitor, public osg::CullStack
     {
     public:
-        TerrainRenderData _terrain;
+        osgUtil::CullVisitor* _cv;
         EngineContext* _context;
         osg::Camera* _camera;
         TileNode* _currentTileNode;
         DrawTileCommand* _firstDrawCommandForTile;
         unsigned _orphanedPassesDetected;
         LayerExtentMap* _layerExtents;
-        osgUtil::CullVisitor* _cv;
         bool _isSpy;
         std::vector<PatchLayer*> _patchLayers;
+        double _lastTimeVisited;
         bool _acceptSurfaceNodes;
+        TerrainRenderData _terrain;
 
     public:
-        /** A new terrain culler */
-        TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context);
+        //! Construct the culler
+        TerrainCuller();
 
-        /** Initialize the culler with a map and a set of render bindings. */
-        void setup(const Map* map, LayerExtentMap& layerExtents, const RenderBindings& bindings);
+        //! Reset for the next frame
+        void reset(
+            osgUtil::CullVisitor* parentCullVisitor,
+            TerrainRenderData::PersistentData& pd,
+            EngineContext* context,
+            LayerExtentMap& layerExtents);
 
         /** The active camera */
         osg::Camera* getCamera() { return _camera; }
@@ -77,6 +82,8 @@ namespace osgEarth { namespace REX
         osgUtil::CullVisitor& getParent() { return *_cv; }
 
         bool isCulledToBBox(osg::Transform* node, const osg::BoundingBox& box);
+
+        void removeLayer(const Layer* layer);
 
     public: // osg::NodeVisitor
         void apply(osg::Node& node);

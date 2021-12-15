@@ -150,14 +150,3 @@ SelectionInfo::get(const TileKey& key,
         }
     }
 }
-
-float
-SelectionInfo::getRange(const TileKey& key) const
-{
-    const LOD& lod = _lods[key.getLOD()];
-    if (key.getTileY() >= lod._minValidTY && key.getTileY() <= lod._maxValidTY)
-    {
-        return lod._visibilityRange;
-    }
-    return 0.0f;
-}

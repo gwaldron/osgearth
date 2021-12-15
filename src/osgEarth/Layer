@@ -205,11 +205,16 @@ namespace osgEarth
         //! Serialize this layer into a Config object (if applicable)
         virtual Config getConfig() const;
 
-        //! Whether the layer is used in the map.
+        //! Whether the layer is used by the map and the terrain engine
+        //! to create tiles.
         virtual void setEnabled(bool value);
 
-        //! Whether the layer is used in the map.
-        //! This will return false if the layer is set to disabled OR if getStatus returns an error.
+        //! Whether the layer is used by the map and the terrain engine
+        //! to create tiles. This will return false if the layer is set
+        //! to disabled OR if getStatus returns an error. Note: a layer
+        //! can still be opened and used with this is false; however,
+        //! the terrain engine will ignore it for the purposes of
+        //! building tiles.
         virtual bool getEnabled() const;
 
         //! Cacheing policy. Only set this before opening the layer or adding to a map.

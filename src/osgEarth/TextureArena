@@ -44,6 +44,7 @@ namespace osgEarth
     public:
         struct GCState {
             GLTexture::Ptr _gltexture;
+            bool _resident;
             osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
         };
 
@@ -57,6 +58,7 @@ namespace osgEarth
 
         GCState& get(const osg::State&) const;
         void makeResident(const osg::State&, bool toggle) const;
+        bool isResident(const osg::State&) const;
         bool isCompiled(const osg::State&) const;
         void compileGLObjects(osg::State&) const;
         void resizeGLObjectBuffers(unsigned);
@@ -65,10 +67,14 @@ namespace osgEarth
         optional<URI> _uri;
         osg::ref_ptr<osg::Image> _image;
         bool _compress;
+        bool _mipmap;
+        bool _clamp;
+        optional<GLenum> _internalFormat;
+        optional<float> _maxAnisotropy;
         mutable osg::buffered_object<GCState> _gc;
 
     protected:
-        Texture() : _compress(true) { }
+        Texture() : _compress(true), _mipmap(true), _clamp(false) { }
     };
 
     typedef std::vector<Texture::Ptr> TextureVector;
@@ -91,10 +97,23 @@ namespace osgEarth
         //! Construct an empty arena.
         TextureArena();
 
+        //! Whether to automatically release textures when they are no longer
+        //! referenced anywhere outside of this arena. Default is false.
+        //! You can enable this if you want to populate the arena with
+        //! textures that will be released when their owners desctruct (for example).
+        void setAutoRelease(bool value);
+
+        //! Sets the GLSL binding point for the arena. Default is 5.
+        void setBindingPoint(unsigned value);
+
         //! Adds a texture to the arena. On next apply() GL handles will allocate.
         //! You only need to call this once for each texture.
-        //! Returns false if the texture could not find a valid image
-        bool add(Texture::Ptr tex);
+        //! Returns the index of the texture handle
+        int add(Texture::Ptr tex);
+
+        //! Find and return the index of this texture in the arena,
+        //! or return -1 if not found.
+        int find(Texture::Ptr tex) const;
 
         //! Makes a texture fully available on the GPU.
         void activate(Texture::Ptr tex);
@@ -130,7 +149,7 @@ namespace osgEarth
             optional<GLsizei> _alignment;
             HandleLUT() : _buf(NULL), _dirty(false) { }
             ~HandleLUT() { if (_buf) delete[] _buf; }
-            void sync(const TextureVector&, osg::State&);
+            void sync(const TextureVector&, unsigned bindingPoint, osg::State&);
             void refresh(const TextureVector&, osg::State&);
             void release() const;
             bool update();
@@ -143,11 +162,14 @@ namespace osgEarth
             TextureVector _toAdd;
             TextureVector _toActivate;
             TextureVector _toDeactivate;
+            TextureVector _toRemove;
             mutable HandleLUT _handleLUT;
         };
         mutable osg::buffered_object<GCState> _gc;
 
         TextureVector _textures;
+        bool _autoRelease;
+        unsigned _bindingPoint;
     };
 }
 

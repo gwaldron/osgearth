@@ -35,6 +35,7 @@ osgEarth::createEmptyElevationTexture()
     osg::Texture2D* tex = new osg::Texture2D(image);
     tex->setInternalFormat(GL_R32F);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    tex->setName("empty:elevation");
     return tex;
 }
 
@@ -62,6 +63,8 @@ ElevationTexture::ElevationTexture(
     _extent(in_hf.getExtent()),
     _resolutions(std::move(resolutions))
 {
+    setName(key.str() + ":elevation");
+
     if (in_hf.valid())
     {
         _heightField = in_hf.getHeightField();

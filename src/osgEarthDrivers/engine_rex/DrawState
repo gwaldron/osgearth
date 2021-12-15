@@ -73,10 +73,10 @@ namespace osgEarth { namespace REX
         GLint _parentTextureExistsUL;
         GLint _layerUidUL;
         GLint _layerOrderUL;
-        GLint _elevTexelCoeffUL;
+        //GLint _elevTexelCoeffUL;
         GLint _morphConstantsUL;
 
-        optional<osg::Vec2f> _elevTexelCoeff;
+        //optional<osg::Vec2f> _elevTexelCoeff;
         optional<osg::Vec2f> _morphConstants;
         optional<bool>       _parentTextureExists;
         optional<int>        _layerOrder;
@@ -89,7 +89,6 @@ namespace osgEarth { namespace REX
             _parentTextureExistsUL(-1),
             _layerUidUL(-1),
             _layerOrderUL(-1),
-            _elevTexelCoeffUL(-1),
             _morphConstantsUL(-1) { }
 
         void reset();
@@ -103,8 +102,11 @@ namespace osgEarth { namespace REX
      * Tracks the state of terrain drawing settings in a single frame,
      * to prevent redundant OpenGL calls.
      */
-    struct DrawState : public osg::Referenced
+    struct DrawState
     {
+        using Ptr = std::shared_ptr<DrawState>;
+        static DrawState::Ptr create();
+
         using ContextState = std::unordered_map<const void*, ProgramState>;
 
         const RenderBindings* _bindings;

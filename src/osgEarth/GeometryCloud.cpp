@@ -94,8 +94,7 @@ namespace
 
 GeometryCloud::GeometryCloud(TextureArena* texarena) :
     osg::NodeVisitor(),
-    _texarena(texarena),
-    _texturesAdded(nullptr)
+    _texarena(texarena)
 {
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
     setNodeMaskOverride(~0);
@@ -273,20 +272,15 @@ GeometryCloud::pushStateSet(osg::Node& node)
                 auto i = _arenaIndexLUT.find(tex);
                 if (i == _arenaIndexLUT.end())
                 {
-                    // arena index of the texture we're about to add:
-                    int nextIndex = _texarena->size();
-
                     Texture::Ptr t = Texture::create();
                     t->_image = tex->getImage(0);
                     t->_uri = t->_image->getFileName();
 
-                    if (_texarena->add(t))
+                    int nextIndex = _texarena->add(t);
+                    if (nextIndex >= 0)
                     {
                         _arenaIndexLUT[tex] = nextIndex;
                         albedoArenaIndex = nextIndex;
-
-                        if (_texturesAdded != nullptr)
-                            _texturesAdded->push_back(t);
                     }
                     else
                     {
@@ -305,7 +299,6 @@ GeometryCloud::pushStateSet(osg::Node& node)
         int normalArenaIndex = _normalArenaIndexStack.top();
         if (_normalMapTextureImageUnit > 0)
         {
-
             osg::Texture* tex = dynamic_cast<osg::Texture*>(
                 stateset->getTextureAttribute(_normalMapTextureImageUnit, osg::StateAttribute::TEXTURE));
 
@@ -314,20 +307,15 @@ GeometryCloud::pushStateSet(osg::Node& node)
                 auto i = _arenaIndexLUT.find(tex);
                 if (i == _arenaIndexLUT.end())
                 {
-                    // arena index of the texture we're about to add:
-                    int nextIndex = _texarena->size();
-
                     Texture::Ptr t = Texture::create();
                     t->_image = tex->getImage(0);
                     t->_compress = false; // do not compress normal maps
 
-                    if (_texarena->add(t))
+                    int nextIndex = _texarena->add(t);
+                    if (nextIndex >= 0)
                     {
                         _arenaIndexLUT[tex] = nextIndex;
                         normalArenaIndex = nextIndex;
-
-                        if (_texturesAdded != nullptr)
-                            _texturesAdded->push_back(t);
                     }
                     else
                     {

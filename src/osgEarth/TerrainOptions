@@ -67,6 +67,7 @@ namespace osgEarth
         OE_OPTION(std::string, textureCompression);
         OE_OPTION(unsigned, concurrency);
         OE_OPTION(bool, useLandCover);
+        OE_OPTION(bool, useGL4);
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config&);
@@ -238,6 +239,11 @@ namespace osgEarth
         //! Target concurrency of terrain data loading operations. Default = 4.
         void setConcurrency(const unsigned& value);
         const unsigned& getConcurrency() const;
+
+        //! Whether to use OpenGL 4 rendering whene possible.
+        //! Defaults to false
+        void setUseGL4(const bool& value);
+        const bool& getUseGL4() const;
 
     public: // Legacy support
 

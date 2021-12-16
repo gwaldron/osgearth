@@ -131,6 +131,13 @@ namespace osgEarth
             unsigned int numTilesHighAtLod0 =0 );
 
         static const Profile* create(
+            const std::string& wellKnownName,
+            const SpatialReference* srs,
+            double xmin, double ymin, double xmax, double ymax,
+            unsigned int numTilesWideAtLod0 = 0,
+            unsigned int numTilesHighAtLod0 = 0);
+
+        static const Profile* create(
             const SpatialReference* srs);
 
         static const Profile* create(
@@ -313,6 +320,7 @@ namespace osgEarth
 
     private:
 
+        std::string _wellKnownName;
         GeoExtent   _extent;
         GeoExtent   _latlong_extent;
         unsigned    _numTilesWideAtLod0;

@@ -146,6 +146,20 @@ Profile::create(const std::string& srsInitString,
 }
 
 const Profile*
+Profile::create(
+    const std::string& wellKnownName,
+    const SpatialReference* srs,
+    double xmin, double ymin, double xmax, double ymax,
+    unsigned int numTilesWideAtLod0,
+    unsigned int numTilesHighAtLod0)
+{
+    const Profile* result = create(
+        srs, xmin, ymin, xmax, ymax, numTilesWideAtLod0, numTilesHighAtLod0);
+    const_cast<Profile*>(result)->_wellKnownName = wellKnownName;
+    return result;
+}
+
+const Profile*
 Profile::create(const SpatialReference* srs,
                 double xmin, double ymin, double xmax, double ymax,
                 unsigned int numTilesWideAtLod0,
@@ -342,11 +356,12 @@ Profile::create(const std::string& name)
         const SpatialReference* wgs84 = SpatialReference::get("wgs84");
         wgs84->transform(osg::Vec3d(180,90,0), plateCarre, ex);
 
-        return Profile::create(plateCarre, -ex.x(), -ex.y(), ex.x(), ex.y(), 2u, 1u);
+        return Profile::create(PLATE_CARREE, plateCarre, -ex.x(), -ex.y(), ex.x(), ex.y(), 2u, 1u);
     }
     else if (ciEquals(name, GLOBAL_GEODETIC))
     {
         return create(
+            GLOBAL_GEODETIC,
             SpatialReference::create("wgs84"),
             -180.0, -90.0, 180.0, 90.0,
             2, 1);
@@ -354,6 +369,7 @@ Profile::create(const std::string& name)
     else if (ciEquals(name, GLOBAL_MERCATOR))
     {
         return create(
+            GLOBAL_MERCATOR,
             SpatialReference::create("global-mercator"),
             MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
             1, 1);
@@ -361,6 +377,7 @@ Profile::create(const std::string& name)
     else if (ciEquals(name, SPHERICAL_MERCATOR))
     {
         return create(
+            SPHERICAL_MERCATOR,
             SpatialReference::create("spherical-mercator"),
             MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
             1, 1);
@@ -465,14 +482,21 @@ ProfileOptions
 Profile::toProfileOptions() const
 {
     ProfileOptions op;
-    op.srsString() = getSRS()->getHorizInitString();
-    op.vsrsString() = getSRS()->getVertInitString();
-    op.bounds()->xMin() = _extent.xMin();
-    op.bounds()->yMin() = _extent.yMin();
-    op.bounds()->xMax() = _extent.xMax();
-    op.bounds()->yMax() = _extent.yMax();
-    op.numTilesWideAtLod0() = _numTilesWideAtLod0;
-    op.numTilesHighAtLod0() = _numTilesHighAtLod0;
+    if (_wellKnownName.empty() == false)
+    {
+        op.namedProfile() = _wellKnownName;
+    }
+    else
+    {
+        op.srsString() = getSRS()->getHorizInitString();
+        op.vsrsString() = getSRS()->getVertInitString();
+        op.bounds()->xMin() = _extent.xMin();
+        op.bounds()->yMin() = _extent.yMin();
+        op.bounds()->xMax() = _extent.xMax();
+        op.bounds()->yMax() = _extent.yMax();
+        op.numTilesWideAtLod0() = _numTilesWideAtLod0;
+        op.numTilesHighAtLod0() = _numTilesHighAtLod0;
+    }
     return op;
 }
 

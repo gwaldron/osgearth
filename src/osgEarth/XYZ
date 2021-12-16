@@ -131,6 +131,9 @@ namespace osgEarth
         void setURL(const URI& value);
         const URI& getURL() const;
 
+        //! Tiling profile (required)
+        void setProfile(const Profile* profile) override;
+
         //! Whether to flip the Y axis for tile indexing
         void setInvertY(const bool& value);
         const bool& getInvertY() const;
@@ -141,11 +144,11 @@ namespace osgEarth
 
     public: // Layer
         
-        //! Establishes a connection to the TMS repository
-        virtual Status openImplementation();
+        //! Establishes a connection to the data
+        virtual Status openImplementation() override;
 
         //! Creates a raster image for the given tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
     protected: // Layer
 
@@ -163,7 +166,7 @@ namespace osgEarth
 
 
     /**
-     * Elevation layer connected to a TMS (Tile Map Service) facility
+     * Elevation layer that pulls from an XYZ encoded URL
      */
     class OSGEARTH_EXPORT XYZElevationLayer : public ElevationLayer
     {
@@ -176,6 +179,9 @@ namespace osgEarth
         //! Base URL for requests
         void setURL(const URI& value);
         const URI& getURL() const;
+
+        //! Tiling profile (required)
+        void setProfile(const Profile* profile) override;
 
         //! Whether to flip the Y axis for tile indexing
         void setInvertY(const bool& value);
@@ -191,11 +197,11 @@ namespace osgEarth
 
     public: // Layer
         
-        //! Establishes a connection to the TMS repository
-        virtual Status openImplementation();
+        //! Establishes a connection to the XYZ data
+        virtual Status openImplementation() override;
 
         //! Creates a heightfield for the given tile key
-        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
     protected: // Layer
 
@@ -216,4 +222,4 @@ namespace osgEarth
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZImageLayer::Options);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZElevationLayer::Options);
 
-#endif // OSGEARTH_TMS_H
+#endif // OSGEARTH_XYZ_H

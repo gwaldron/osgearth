@@ -63,24 +63,38 @@ namespace osgDB {
     private: \
         OPTIONS * _options; \
         OPTIONS   _optionsConcrete; \
+        const OPTIONS * _options0; \
+        const OPTIONS   _optionsConcrete0; \
         MYCLASS ( const MYCLASS& rhs, const osg::CopyOp& op ) { } \
     protected: \
         OE_COMMENT("Construct a new layer with default options") \
-        MYCLASS (OPTIONS* optr) : SUPERCLASS (optr? optr: &_optionsConcrete), _options(optr ? optr : &_optionsConcrete) { } \
+        MYCLASS (OPTIONS* optr, const OPTIONS* optr0) : \
+            SUPERCLASS (optr? optr: &_optionsConcrete, optr0? optr0 : &_optionsConcrete0), \
+            _options(optr ? optr : &_optionsConcrete), \
+            _options0(optr0 ? optr0 : &_optionsConcrete0) { } \
     public: \
         META_Object(LIBRARY, MYCLASS); \
         \
         OE_COMMENT("Construct a new layer with default options") \
-        MYCLASS () : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete) { MYCLASS::init(); } \
+        MYCLASS () : \
+            SUPERCLASS (&_optionsConcrete, &_optionsConcrete0), \
+            _options(&_optionsConcrete), \
+            _options0(&_optionsConcrete0) { MYCLASS::init(); } \
         \
         OE_COMMENT("Construct a new layer with user-defined options") \
-        MYCLASS (const OPTIONS& o) : SUPERCLASS (&_optionsConcrete), _options(&_optionsConcrete), _optionsConcrete(o) { MYCLASS::init(); } \
+        MYCLASS (const OPTIONS& o) : \
+            SUPERCLASS (&_optionsConcrete, &_optionsConcrete0), \
+            _options(&_optionsConcrete), _optionsConcrete(o), \
+            _options0(&_optionsConcrete0), _optionsConcrete0(o) { MYCLASS::init(); } \
         \
         OE_COMMENT("Mutable options for this layer") \
         OPTIONS& options() { return *_options; } \
         \
         OE_COMMENT("Immutable options for this layer") \
         const OPTIONS& options() const { return *_options; } \
+        \
+        OE_COMMENT("Immutable original (constructor) options for this layer") \
+        const OPTIONS& options_original() const { return *_options0; } \
         \
         OE_COMMENT("Configuration key for this layer (e.g. for earth files)") \
         virtual const char* getConfigKey() const { return #SLUG ; }
@@ -102,17 +116,24 @@ namespace osgDB {
 #define META_Layer_Abstract(LIBRARY, MYCLASS, OPTIONS, SUPERCLASS) \
     private: \
         OPTIONS * _options; \
+        const OPTIONS * _options0; \
         MYCLASS ( const MYCLASS& rhs, const osg::CopyOp& op ) { } \
     protected: \
         OE_COMMENT("Construct a new layer with default options") \
-        MYCLASS (OPTIONS* optr) : SUPERCLASS (optr), _options(optr) { } \
+        MYCLASS (OPTIONS* optr, const OPTIONS* optr0) : \
+            SUPERCLASS (optr, optr0), \
+            _options(optr), \
+            _options0(optr0) { } \
         MYCLASS () : SUPERCLASS () { } \
     public: \
         OE_COMMENT("Mutable options for this layer") \
         OPTIONS& options() { return *_options; } \
         \
         OE_COMMENT("Immutable options for this layer") \
-        const OPTIONS& options() const { return *_options; }
+        const OPTIONS& options() const { return *_options; } \
+        \
+        OE_COMMENT("Immutable original (constructor) options for this layer") \
+        const OPTIONS& options_original() const { return *_options0; }
 
 //! Templated inline property implementation macro
 #define OE_LAYER_PROPERTY_IMPL(CLASS, TYPE, FUNC, OPTION) \
@@ -374,7 +395,9 @@ namespace osgEarth
     protected:
 
         //! Constructs a map layer by deserializing options.
-        Layer(Layer::Options* options);
+        Layer(
+            Layer::Options* options,
+            const Layer::Options* options0);
 
         //! DTOR
         virtual ~Layer();
@@ -485,12 +508,17 @@ namespace osgEarth
 
         Layer::Options& options() { return *_options; }
         const Layer::Options& options() const { return *_options; }
+        const Layer::Options& options_original() const { return *_options0; }
         virtual const char* getConfigKey() const { return "layer" ; }
 
     private:
         Layer::Options * _options;
         Layer::Options   _optionsConcrete;
-        Layer ( const Layer& rhs, const osg::CopyOp& op );
+        const Layer::Options * _options0;
+        const Layer::Options   _optionsConcrete0;
+
+        // no copying
+        Layer(const Layer& rhs, const osg::CopyOp& op);
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map;

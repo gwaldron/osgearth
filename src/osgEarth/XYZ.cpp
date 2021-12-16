@@ -204,6 +204,18 @@ XYZImageLayer::init()
     ImageLayer::init();
 }
 
+void
+XYZImageLayer::setProfile(const Profile* profile)
+{
+    ImageLayer::setProfile(profile);
+
+    if (profile)
+    {
+        // update the options for proper serialization
+        options().profile() = profile->toProfileOptions();
+    }
+}
+
 Status
 XYZImageLayer::openImplementation()
 {
@@ -260,6 +272,18 @@ void
 XYZElevationLayer::init()
 {
     ElevationLayer::init();
+}
+
+void
+XYZElevationLayer::setProfile(const Profile* profile)
+{
+    XYZElevationLayer::setProfile(profile);
+
+    if (profile)
+    {
+        // update the options for proper serialization
+        options().profile() = profile->toProfileOptions();
+    }
 }
 
 Status

@@ -116,8 +116,16 @@ namespace osgEarth
         virtual float getMaxValidValue() const;
 
     protected:
+
         //! DTOR
         virtual ~TileLayer();
+
+        //! Tiling profile of this layer.
+        //! Layer implementaions will call this to set the profile based
+        //! on information gathered from source metadata. If your Layer
+        //! needs the user to expressly set a profile, override this to
+        //! make it public.
+        virtual void setProfile(const Profile* profile);
 
     public: // Layer
 
@@ -132,11 +140,6 @@ namespace osgEarth
 
         //! Tiling profile for this layer
         const Profile* getProfile() const;
-
-        //! Tiling profile of this layer. Many layer types will set this
-        //! automatically based on source metadata. For those that don't you can
-        //! call it directly to set up a profile.
-        void setProfile(const Profile* profile);
 
         /**
          * Whether the layer represents dynamic data, i.e. it generates data that requires

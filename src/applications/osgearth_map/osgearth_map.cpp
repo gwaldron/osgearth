@@ -160,14 +160,6 @@ main(int argc, char** argv)
     wms->options().cachePolicy() = CachePolicy::NO_CACHE;
     map->addLayer(wms);
 
-    // Add a local simple image as a layer. You can use the GDAL driver for this,
-    // but since a GIF has no spatial reference information, you have to assign a
-    // geospatial Profile so that osgEarth knows where to render it on the map.
-    GDALImageLayer* gif = new GDALImageLayer();
-    gif->setURL( "../data/osgearth.gif" );
-    gif->setProfile( Profile::create("WGS84", -90.0, 10.0, -80.0, 15.0) );
-    map->addLayer(gif);
-
     // Add a composite image layer that combines two other sources:
     GDALImageLayer* comp1 = new GDALImageLayer();
     comp1->setURL("../data/boston-inset-wgs84.tif");

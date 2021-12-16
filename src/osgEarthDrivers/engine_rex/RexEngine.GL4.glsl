@@ -6,14 +6,14 @@
 
 #define MAX_TILE_VERTS 417
 
-struct Global {
+struct oe_rex_Global {
     vec2 uvs[MAX_TILE_VERTS];
     float padding[2];
     vec2 morphConstants[19]; // TODO - one per LOD
     float padding2[2];
 };
 
-struct Tile {
+struct oe_rex_Tile {
     vec4 verts[MAX_TILE_VERTS];
     vec4 normals[MAX_TILE_VERTS];
     vec4 tileKey;
@@ -35,13 +35,13 @@ struct Tile {
 #undef MAX_TILE_VERTS
 
 layout(binding = 0, std430) readonly buffer TileBuffer {
-    Tile tile[];
+    oe_rex_Tile oe_tile[];
 };
 layout(binding = 1, std430) readonly buffer GlobalBuffer {
-    Global global;
+    oe_rex_Global oe_global;
 };
 layout(binding = 5, std430) readonly buffer TextureArena {
-    uint64_t tex[];
+    uint64_t oe_terrain_tex[];
 };
 
 int oe_tileID; // vertex stage global

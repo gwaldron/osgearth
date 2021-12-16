@@ -15,13 +15,13 @@ flat out int oe_draw_order;
 
 void oe_rex_imageLayer_VS(inout vec4 vertexView)
 {
-    oe_color_uv = (tile[oe_tileID].colorMat * oe_layer_tilec).st;
-    oe_color_handle = tex[tile[oe_tileID].colorIndex];
+    oe_color_uv = (oe_tile[oe_tileID].colorMat * oe_layer_tilec).st;
+    oe_color_handle = oe_terrain_tex[oe_tile[oe_tileID].colorIndex];
 
-    oe_parent_uv = (tile[oe_tileID].parentMat * oe_layer_tilec).st;
-    oe_parent_handle = tex[tile[oe_tileID].parentIndex];
+    oe_parent_uv = (oe_tile[oe_tileID].parentMat * oe_layer_tilec).st;
+    oe_parent_handle = oe_terrain_tex[oe_tile[oe_tileID].parentIndex];
 
-    oe_draw_order = tile[oe_tileID].drawOrder;
+    oe_draw_order = oe_tile[oe_tileID].drawOrder;
 }
 
 

@@ -20,11 +20,11 @@ float oe_terrain_getElevation(in vec2 uv)
     // Texel-level scale and bias allow us to sample the elevation texture
     // on texel center instead of edge.
     vec2 uv_scaledBiased = uv
-        * oe_tile_elevTexelCoeff.x * tile[oe_tileID].elevMat[0][0]     // scale
-        + oe_tile_elevTexelCoeff.x * tile[oe_tileID].elevMat[3].st     // bias
+        * oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].elevMat[0][0]     // scale
+        + oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].elevMat[3].st     // bias
         + oe_tile_elevTexelCoeff.y;
 
-    return texture(sampler2D(tex[tile[oe_tileID].elevIndex]), uv_scaledBiased).r;
+    return texture(sampler2D(oe_terrain_tex[oe_tile[oe_tileID].elevIndex]), uv_scaledBiased).r;
 }
 
 // Read the elevation at the build-in tile coordinates (convenience)
@@ -36,7 +36,7 @@ float oe_terrain_getElevation()
 // Read the normal vector and curvature at resolved UV tile coordinates.
 vec4 oe_terrain_getNormalAndCurvature(in vec2 uv_scaledBiased)
 {
-    vec4 n = texture(sampler2D(tex[tile[oe_tileID].normalIndex]), uv_scaledBiased);
+    vec4 n = texture(sampler2D(oe_terrain_tex[oe_tile[oe_tileID].normalIndex]), uv_scaledBiased);
     n.xyz = n.xyz*2.0-1.0;
     float curv = n.z;
     n.z = 1.0 - abs(n.x) - abs(n.y);
@@ -50,8 +50,8 @@ vec4 oe_terrain_getNormalAndCurvature(in vec2 uv_scaledBiased)
 vec4 oe_terrain_getNormalAndCurvature()
 {
     vec2 uv_scaledBiased = oe_layer_tilec.st
-        * oe_tile_elevTexelCoeff.x * tile[oe_tileID].normalMat[0][0]
-        + oe_tile_elevTexelCoeff.x * tile[oe_tileID].normalMat[3].st
+        * oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].normalMat[0][0]
+        + oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].normalMat[3].st
         + oe_tile_elevTexelCoeff.y;
 
     return oe_terrain_getNormalAndCurvature(uv_scaledBiased);
@@ -59,14 +59,14 @@ vec4 oe_terrain_getNormalAndCurvature()
 
 uint64_t oe_terrain_getNormalHandle()
 {
-    return tex[tile[oe_tileID].normalIndex];
+    return oe_terrain_tex[oe_tile[oe_tileID].normalIndex];
 }
 
 vec2 oe_terrain_getNormalCoords()
 {
     return oe_layer_tilec.st
-        * oe_tile_elevTexelCoeff.x * tile[oe_tileID].normalMat[0][0]
-        + oe_tile_elevTexelCoeff.x * tile[oe_tileID].normalMat[3].st
+        * oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].normalMat[0][0]
+        + oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].normalMat[3].st
         + oe_tile_elevTexelCoeff.y;
 }
 

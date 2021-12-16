@@ -64,7 +64,7 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
 
     int lod = int(oe_tile_key.z);
     float dist_to_eye = length(final_position.xyz); // or just -z.
-    vec2 mc = global.morphConstants[lod];
+    vec2 mc = oe_global.morphConstants[lod];
     float morph = 1.0f - clamp(mc[0] - dist_to_eye * mc[1], 0.0, 1.0 );
     return morph;
 }
@@ -82,8 +82,8 @@ void oe_rex_morph(inout vec4 vertex)
 
         int ni = oe_rex_getNeighborIndex();
 
-        vec4 neighbor_vertex = oe_tile_mvm * vec4(tile[oe_tileID].verts[ni].xyz, 1.0);
-        vec3 neighbor_normal = mat3(oe_tile_mvm) * tile[oe_tileID].normals[ni].xyz;
+        vec4 neighbor_vertex = oe_tile_mvm * vec4(oe_tile[oe_tileID].verts[ni].xyz, 1.0);
+        vec3 neighbor_normal = mat3(oe_tile_mvm) * oe_tile[oe_tileID].normals[ni].xyz;
 
         const float halfSize = (0.5*OE_TILE_SIZE) - 0.5;
         const float twoOverHalfSize = 2.0 / (OE_TILE_SIZE - 1.0);

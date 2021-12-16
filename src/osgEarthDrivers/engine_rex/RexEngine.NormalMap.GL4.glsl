@@ -31,7 +31,7 @@ void oe_rex_normalMapVS(inout vec4 unused)
     oe_normal_binormal = normalize(gl_NormalMatrix * vec3(0,1,0));
 
     oe_normal_uv = oe_terrain_getNormalCoords();
-    oe_normal_handle = tex[tile[oe_tileID].normalIndex];
+    oe_normal_handle = oe_terrain_tex[oe_tile[oe_tileID].normalIndex];
 }
 
 

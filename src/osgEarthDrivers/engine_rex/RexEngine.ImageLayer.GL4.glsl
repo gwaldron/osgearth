@@ -116,7 +116,8 @@ void oe_rex_imageLayer_FS(inout vec4 color)
             // sample the parent texture and blend for the morphing:
             vec4 texelParent = texture(sampler2D(oe_parent_handle), oe_parent_uv);
             texel = mix(texel, texelParent, oe_rex_morphFactor);
-    }
+        }
+
 #endif
 
         // intergrate thelayer opacity:

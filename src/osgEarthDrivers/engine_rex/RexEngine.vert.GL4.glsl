@@ -43,19 +43,21 @@ flat out int oe_terrain_vertexMarker;
 
 // stage globals
 vec4 oe_tile_key;
+mat4 oe_tile_mvm;
 
 void oe_rex_init_view(inout vec4 vert_view)
 {
+    oe_tile_mvm = tile[oe_tileID].modelViewMatrix;
+
     // extract vertex and its marker (in w)
     vec4 vdata = tile[oe_tileID].verts[gl_VertexID];
-    mat4 mvm = tile[oe_tileID].modelViewMatrix;
-    vert_view =  mvm * vec4(vdata.xyz, 1);
+    vert_view = oe_tile_mvm * vec4(vdata.xyz, 1);
 
     // assign vertex marker flags
     oe_terrain_vertexMarker = int(vdata.w);
 
     // extract normal
-    vp_Normal = mat3(mvm) * tile[oe_tileID].normals[gl_VertexID].xyz;
+    vp_Normal = mat3(oe_tile_mvm) * tile[oe_tileID].normals[gl_VertexID].xyz;
 
     // extract tile UV (global data)
     oe_layer_tilec = vec4(global.uvs[gl_VertexID], 0, 1);

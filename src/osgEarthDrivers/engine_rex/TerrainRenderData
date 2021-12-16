@@ -60,7 +60,8 @@ namespace osgEarth { namespace REX
             unsigned frameNum,
             PersistentData& pd,
             bool useGL4Rendering,
-            osgUtil::CullVisitor* cv);
+            osgUtil::CullVisitor* cv,
+            EngineContext* context);
 
         /** Optimize for best state sharing (when using geometry pooling). Returns total tile count. */
         unsigned sortDrawCommands();
@@ -85,6 +86,7 @@ namespace osgEarth { namespace REX
         PatchLayerVector _patchLayers; // Layers of type RENDERTYPE_TERRAIN_PATCH
         bool _useGL4Rendering;
         PersistentData* _persistent;
+        EngineContext* _context;
     };
 
 } } // namespace 

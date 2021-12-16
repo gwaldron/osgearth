@@ -18,6 +18,8 @@
  */
 #include "LayerDrawable"
 #include "TerrainRenderData"
+#include "SelectionInfo"
+#include "EngineContext"
 #include <osgEarth/Metrics>
 #include <sstream>
 
@@ -308,7 +310,6 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
 
                 //TODO: other samplers and shared samplers...
-                buf.sharedIndex = -1;
                 if (tile._sharedSamplers != nullptr)
                 {
                     for (unsigned i = SamplerBinding::SHARED; i < tile._sharedSamplers->size(); ++i)
@@ -316,11 +317,12 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                         const Sampler& s = (*tile._sharedSamplers)[i];
                         if (s._arena_texture)
                         {
+                            int k = i - SamplerBinding::SHARED;
                             s._arena_texture->_compress = false;
                             s._arena_texture->_mipmap = true;
                             //s._arena_texture->_maxAnisotropy = 4.0f;
-                            buf.sharedIndex = _textures->add(s._arena_texture);
-                            for (int i = 0; i < 16; ++i) buf.sharedMat[i] = s._matrix.ptr()[i];
+                            buf.sharedIndex[k] = _textures->add(s._arena_texture);
+                            for (int i = 0; i < 16; ++i) buf.sharedMat[k][i] = s._matrix.ptr()[i];
                         }
 
                         //TODO:
@@ -328,11 +330,8 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                     }
                 }
 
-
-                //cs.tilebuf.emplace_back(std::move(buf));
-
                 // First time through any layer? Make the global buffer
-                // TODO: this will eventually go to the terrain level.
+                // TODO: this might eventually go to the terrain level.
                 if (gs.global == nullptr)
                 {
                     GlobalBuffer buf;
@@ -341,6 +340,16 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                         const osg::Vec3f& uv = (*uvs)[i];
                         buf.uvs[2 * i + 0] = uv.x();
                         buf.uvs[2 * i + 1] = uv.y();
+                    }
+
+                    const SelectionInfo& info = _context->getSelectionInfo();
+                    for (unsigned lod = 0; lod < 19; ++lod)
+                    {
+                        float end = info.getLOD(lod)._morphEnd;
+                        float start = info.getLOD(lod)._morphStart;
+                        float one_over_end_minus_start = 1.0f / (end - start);
+                        buf.morphConstants[(2*lod)+0] = end * one_over_end_minus_start;
+                        buf.morphConstants[(2*lod)+1] = one_over_end_minus_start;
                     }
 
                     gs.global = GLBuffer::create(

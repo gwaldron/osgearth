@@ -78,7 +78,8 @@ TerrainCuller::reset(
         frameNum,
         pd,
         context->options().useGL4().get(),
-        _cv);
+        _cv,
+        _context);
 }
 
 float

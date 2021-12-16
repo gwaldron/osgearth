@@ -391,8 +391,8 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
                         buf << incGL4 << "\n";
                     }
 
-                    buf << "#define " << tokens[0] << " sampler2D(tex[tile[oe_tileID].sharedIndex])\n"
-                        << "#define " << tokens[1] << " tile[oe_tileID].sharedMat\n";
+                    buf << "#define " << tokens[0] << " sampler2D(tex[tile[oe_tileID].sharedIndex[0]])\n"
+                        << "#define " << tokens[1] << " tile[oe_tileID].sharedMat[0]\n";
                 }
                 else
                 {

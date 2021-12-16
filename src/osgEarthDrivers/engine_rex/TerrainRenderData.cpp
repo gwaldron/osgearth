@@ -49,11 +49,13 @@ TerrainRenderData::reset(
     unsigned frameNum,
     PersistentData& persistent,
     bool useGL4Rendering,
-    osgUtil::CullVisitor* cv)
+    osgUtil::CullVisitor* cv,
+    EngineContext* context)
 {
     _bindings = &bindings;
     _useGL4Rendering = useGL4Rendering;
     _persistent = &persistent;
+    _context = context;
 
     // Create a new State object to track sampler and uniform settings
     _drawState = DrawState::create();
@@ -134,6 +136,7 @@ TerrainRenderData::addLayerDrawable(
     {
         drawable = new LayerDrawable();
         drawable->_useIndirectRendering = _useGL4Rendering;
+        drawable->_context = _context;
 
         drawable->_layer = layer;
         drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);

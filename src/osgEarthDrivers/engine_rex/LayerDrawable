@@ -83,6 +83,7 @@ namespace osgEarth { namespace REX
         // Whether to use indirect rendering, which requires GL 4.6.
         bool _useIndirectRendering;
 
+        class EngineContext* _context;
 
     public: // osg::Drawable
         
@@ -113,9 +114,9 @@ namespace osgEarth { namespace REX
         // data shared across all tiles
         struct GlobalBuffer
         {
-            float uvs[NUM_VERTS * 4];
+            float uvs[NUM_VERTS * 2];
             float padding[2];
-            float morphConstants[2 * 19]; //TODO
+            float morphConstants[19*2]; //TODO
             float padding2[2];
         };
 
@@ -126,27 +127,23 @@ namespace osgEarth { namespace REX
             float tileKey[4];
             float modelViewMatrix[4 * 4];
             float colorMat[4 * 4];
+            float parentMat[4 * 4];
             float elevMat[4 * 4];
             float normalMat[4 * 4];
-            float parentMat[4 * 4];
-            float landcoverMat[4 * 4];
-            float sharedMat[4 * 4];
+            float sharedMat[4][4 * 4];
             int colorIndex;
+            int parentIndex;
             int elevIndex;
             int normalIndex;
-            int parentIndex;
-            int landcoverIndex;
-            int sharedIndex;
+            int sharedIndex[4];
             int drawOrder; // todo: stuff this somewhere else
-            float padding[1];
+            float padding[3];
 
             TileBuffer() :
                 colorIndex(-1),
                 elevIndex(-1),
                 normalIndex(-1),
-                parentIndex(-1),
-                landcoverIndex(-1),
-                sharedIndex(-1) { }
+                parentIndex(-1) { }
         };
 
         // Things maintained on a per-graphics-context basis

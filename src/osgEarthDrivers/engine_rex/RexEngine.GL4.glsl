@@ -19,19 +19,17 @@ struct Tile {
     vec4 tileKey;
     mat4 modelViewMatrix;
     mat4 colorMat;
+    mat4 parentMat;
     mat4 elevMat;
     mat4 normalMat;
-    mat4 parentMat;
-    mat4 landcoverMat; // not used
-    mat4 sharedMat;
+    mat4 sharedMat[4];
     int colorIndex;
+    int parentIndex;
     int elevIndex;
     int normalIndex;
-    int parentIndex;
-    int landcoverIndex; // not used
-    int sharedIndex;
+    int sharedIndex[4];
     int drawOrder;
-    float padding[1];
+    float padding[3];
 };
 
 #undef MAX_TILE_VERTS
@@ -47,6 +45,5 @@ layout(binding = 5, std430) readonly buffer TextureArena {
 };
 
 int oe_tileID; // vertex stage global
-
 
 //#endif // !VP_STAGE_FRAGMENT
